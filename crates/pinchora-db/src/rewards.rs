@@ -4,10 +4,18 @@ use crate::{Db, sql_id};
 pub const MAX_LEVEL_ROLES: i64 = 25;
 /// Most roles a server can sell.
 pub const MAX_STORE_ITEMS: i64 = 25;
+/// Most reputation roles a server can set up.
+pub const MAX_REP_ROLES: i64 = 25;
 
 #[derive(Debug, Clone, Copy, sqlx::FromRow)]
 pub struct LevelRoleRow {
     pub level: i32,
+    pub role_id: i64,
+}
+
+#[derive(Debug, Clone, Copy, sqlx::FromRow)]
+pub struct RepRoleRow {
+    pub reputation: i32,
     pub role_id: i64,
 }
 
@@ -75,11 +83,59 @@ impl Db {
         Ok(removed > 0)
     }
 
-    /// Drops a role that no longer exists on Discord from the rewards, the store, the role panels and
-    /// the join role.
+    pub async fn rep_roles(&self, guild_id: u64) -> anyhow::Result<Vec<RepRoleRow>> {
+        Ok(sqlx::query_as::<_, RepRoleRow>(
+            "SELECT reputation, role_id FROM rep_roles WHERE guild_id = $1 ORDER BY reputation, role_id",
+        )
+        .bind(sql_id(guild_id))
+        .fetch_all(self.pool())
+        .await?)
+    }
+
+    /// Sets the reputation a role is given at. `Ok(false)` when the server is at its limit.
+    pub async fn add_rep_role(&self, guild_id: u64, reputation: i32, role_id: u64) -> anyhow::Result<bool> {
+        let added = sqlx::query(
+            "INSERT INTO rep_roles (guild_id, reputation, role_id)
+             SELECT $1, $2, $3
+             WHERE (SELECT count(*) FROM rep_roles WHERE guild_id = $1) < $4
+                OR EXISTS (SELECT 1 FROM rep_roles WHERE guild_id = $1 AND role_id = $3)
+             ON CONFLICT (guild_id, role_id) DO UPDATE SET reputation = EXCLUDED.reputation",
+        )
+        .bind(sql_id(guild_id))
+        .bind(reputation)
+        .bind(sql_id(role_id))
+        .bind(MAX_REP_ROLES)
+        .execute(self.pool())
+        .await?
+        .rows_affected();
+        Ok(added > 0)
+    }
+
+    pub async fn remove_rep_role(&self, guild_id: u64, role_id: u64) -> anyhow::Result<bool> {
+        let removed = sqlx::query("DELETE FROM rep_roles WHERE guild_id = $1 AND role_id = $2")
+            .bind(sql_id(guild_id))
+            .bind(sql_id(role_id))
+            .execute(self.pool())
+            .await?
+            .rows_affected();
+        Ok(removed > 0)
+    }
+
+    /// Drops a role that no longer exists on Discord from the rewards, the store, the role panels,
+    /// the XP rules and the join role.
     pub async fn forget_role(&self, guild_id: u64, role_id: u64) -> anyhow::Result<()> {
         let mut tx = self.pool().begin().await?;
         sqlx::query("DELETE FROM level_roles WHERE guild_id = $1 AND role_id = $2")
+            .bind(sql_id(guild_id))
+            .bind(sql_id(role_id))
+            .execute(&mut *tx)
+            .await?;
+        sqlx::query("DELETE FROM rep_roles WHERE guild_id = $1 AND role_id = $2")
+            .bind(sql_id(guild_id))
+            .bind(sql_id(role_id))
+            .execute(&mut *tx)
+            .await?;
+        sqlx::query("DELETE FROM xp_rules WHERE guild_id = $1 AND kind = 'role' AND target_id = $2")
             .bind(sql_id(guild_id))
             .bind(sql_id(role_id))
             .execute(&mut *tx)

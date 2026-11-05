@@ -30,6 +30,12 @@ pub struct GuildSettings {
     pub log_names: bool,
     pub log_bans: bool,
     pub log_voice: bool,
+    /// Where level-ups are announced: `channel`, `current`, `dm` or `off`.
+    pub levelup_mode: String,
+    /// Whether members in voice earn server XP.
+    pub voice_xp_enabled: bool,
+    /// Server XP a minute in voice earns.
+    pub voice_xp_amount: i32,
 }
 
 /// What the server log can report. Each kind has its own switch.
@@ -65,7 +71,8 @@ macro_rules! columns {
          welcome_theme, welcome_title, welcome_accent, \
          level_roles_stack, points_enabled, points_name, points_emoji, points_min, points_max, \
          join_role_id, goodbye_channel_id, goodbye_message, \
-         log_channel_id, log_members, log_names, log_bans, log_voice"
+         log_channel_id, log_members, log_names, log_bans, log_voice, \
+         levelup_mode, voice_xp_enabled, voice_xp_amount"
     };
 }
 
@@ -130,6 +137,44 @@ impl Db {
             .bind(enabled)
             .bind(channel_id.map(sql_id))
             .bind(message)
+            .fetch_one(self.pool())
+            .await?)
+    }
+
+    /// Sets where level-ups are announced (`channel`, `current`, `dm` or `off`).
+    pub async fn set_levelup_mode(&self, guild_id: u64, mode: &str) -> anyhow::Result<GuildSettings> {
+        self.guild_settings(guild_id).await?;
+        let sql = concat!(
+            "UPDATE guilds SET levelup_mode = $2 WHERE id = $1 RETURNING ",
+            columns!()
+        );
+        Ok(sqlx::query_as::<_, GuildSettings>(sql)
+            .bind(sql_id(guild_id))
+            .bind(mode)
+            .fetch_one(self.pool())
+            .await?)
+    }
+
+    /// Turns voice XP on or off and sets what a minute earns; `None` keeps the current value. The
+    /// amount must already be in range, or the database refuses it.
+    pub async fn update_voice_xp(
+        &self,
+        guild_id: u64,
+        enabled: Option<bool>,
+        amount: Option<i32>,
+    ) -> anyhow::Result<GuildSettings> {
+        self.guild_settings(guild_id).await?;
+        let sql = concat!(
+            "UPDATE guilds SET
+                 voice_xp_enabled = COALESCE($2, voice_xp_enabled),
+                 voice_xp_amount = COALESCE($3, voice_xp_amount)
+             WHERE id = $1 RETURNING ",
+            columns!()
+        );
+        Ok(sqlx::query_as::<_, GuildSettings>(sql)
+            .bind(sql_id(guild_id))
+            .bind(enabled)
+            .bind(amount)
             .fetch_one(self.pool())
             .await?)
     }

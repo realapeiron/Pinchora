@@ -24,13 +24,17 @@ Written in Rust and built to run sharded on Kubernetes.
 | `/customize style` | Private editor with a live preview of your profile card: an **accent colour** (Auto follows the background; 12 pixel-palette presets; or **Hex code…**, a form that refuses unreadable near-black values), **panel opacity** (Light, Normal, Solid) and a pixel **frame** drawn around the whole card (Plain and Rope free; Coral from level 10, Pearl 20, Gold 30, Neon 40, shown with a lock and the level until then). **Reset style** puts it all back. The style is on the profile, rank and wallet cards |
 | `/customize showcase` | Private editor with a live preview: up to three picks for the profile card, a favourite **fish** (from your fish book), a **pet** and a **furniture** item (owned or placed), chosen from menus of what you have (25 per page), plus a **Show house** switch for a thumbnail of your first room (drawn once and kept until the room changes). **Clear slot** and **Clear all** empty it again; empty slots are simply not drawn |
 | Badge unlocked notices | When a command or chat level-up earns you an achievement badge (`/daily`, `/fish`, `/pet`, placing furniture, `/give`, a new chat level), a short "Badge unlocked" embed with the badge art follows the reply, once per badge |
-| `/leaderboard [board]` | Server XP, server points, global XP or global shells as a pixel-art card, with page buttons |
+| `/leaderboard [board]` | Server XP, server points, **Weekly XP** (resets Monday 00:00 UTC, with last week's top three in a panel under the board), global XP or global shells as a pixel-art card, with page buttons |
 | `/daily` | Daily shells; the streak bonus grows for 20 days |
 | `/balance [user]`, `/give user amount` | Wallet and transfers |
-| `/rep user` | One reputation point per day |
+| `/rep user` | One reputation point per day; a server's reputation roles are given the moment the receiver's total reaches them, and the reply says so |
 | `/bio text` | About-me text on the profile card |
-| `/config welcome\|leveling\|show` | Welcome cards and level-up messages (Manage Server) |
+| `/config welcome\|leveling\|show` | Welcome cards and level-up messages. `/config leveling` takes `enabled`, `channel`, `message` (placeholders `{user}` `{level}` `{server}` `{role}`, the last being the reward role just earned, empty when none) and `mode`: `channel` (the level-up channel, else where they chatted), `current` (always where they chatted), `dm` (a direct message; closed DMs are skipped quietly) or `off` (no message, roles still given) (Manage Server) |
 | `/config level-roles add\|remove\|list\|mode\|sync` | Roles given at a level (up to 25): `mode` keeps every role earned or only the highest, `sync` catches up members who already passed a level (Manage Server) |
+| `/config xp multiplier value [channel] [role]` | Scale the server XP and points a channel (text or voice) or role earns, from 0 to 5; 0 means no XP, 1 is normal and drops the rule. A channel's multiplier is multiplied by the member's highest role multiplier, a no-XP role always wins, and `@everyone` is a server-wide multiplier. Global XP is never scaled. Up to 50 rules (Manage Server) |
+| `/config xp clear [channel] [role]`, `/config xp show` | Remove one multiplier or all of them, or list the multipliers with the voice settings (Manage Server) |
+| `/config xp voice [enabled] [amount]` | Voice XP, off by default: members in a voice channel with at least one other person earn `amount` (1 to 100, default 10) server XP a minute; nothing while alone (bots do not count), muted and deafened at once, or in the server's AFK channel. Multipliers apply by the voice channel and the member's roles; level-ups follow the leveling mode (Manage Server) |
+| `/config rep-roles add\|remove\|list` | Roles given at a reputation count (up to 25, same safety checks as level roles); they always stack and are given when a `/rep` point lands (Manage Server) |
 | `/config join-role [role] [off]` | A role every new member gets, bots excepted; with neither option it shows the current setting (Manage Server) |
 | `/config goodbye [channel] [message] [off]` | Goodbye message in a channel when a member leaves; placeholders `{user}` `{server}` `{members}` (Manage Server) |
 | `/config log [channel] [off]` | Server log: compact embeds with the member, their avatar and the time for joins and leaves, nickname and username changes, bans and unbans, and voice joins, leaves and moves (Manage Server) |
@@ -51,6 +55,13 @@ hands out; roles the bot can't give (@everyone, integration-managed roles, roles
 are refused when they are added to the level roles, the store, the join role or a role panel. If
 Discord refuses a store role at purchase time, the points and stock are returned. New members get a
 welcome card when enabled.
+
+Voice XP keeps who is in voice in Redis, written from the voice-state events, and one ticker on the
+gateway pays every guild once a minute behind a per-minute lock, so a restart or a second gateway pod
+never pays a minute twice. Members already in voice when the bot first starts are noticed once their
+state changes, and a member the bot has not heard from for eight hours is dropped, in case it was
+away when they left. A voice multiplier by role uses the roles the member had at their last voice
+event. Weekly XP counts every chat and voice XP grant under the Monday of its week.
 
 Role panel buttons toggle the role and answer privately ("Added @Role" / "Removed @Role"). A button
 only works while its role is still on that panel, so removing a role from a panel stops old

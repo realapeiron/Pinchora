@@ -1,3 +1,4 @@
+use pinchora_core::leveling::LevelUpMode;
 use pinchora_db::GuildSettings;
 use pinchora_render::{Theme, WelcomeCard};
 use twilight_interactions::command::{CommandModel, CommandOption, CreateCommand, CreateOption};
@@ -14,10 +15,12 @@ use crate::{
     commands::{
         level_roles::ConfigLevelRoles,
         points::ConfigPoints,
+        rep_roles::ConfigRepRoles,
         store::ConfigStore,
         utilities::{
             ConfigGoodbye, ConfigJoinRole, ConfigLog, ConfigLogEvents, goodbye_summary, join_role_summary, log_summary,
         },
+        xp::{ConfigXp, voice_summary},
     },
     events::{DEFAULT_LEVELUP, DEFAULT_WELCOME},
     util::BRAND,
@@ -46,6 +49,10 @@ pub enum ConfigCommand {
     WelcomeCard(ConfigWelcomeCard),
     #[command(name = "level-roles")]
     LevelRoles(ConfigLevelRoles),
+    #[command(name = "xp")]
+    Xp(ConfigXp),
+    #[command(name = "rep-roles")]
+    RepRoles(ConfigRepRoles),
     #[command(name = "points")]
     Points(ConfigPoints),
     #[command(name = "store")]
@@ -147,14 +154,20 @@ impl ConfigCommand {
                     .await?
             }
             Self::Leveling(c) => {
-                cx.app
-                    .db
+                let db = &cx.app.db;
+                let mut settings = db
                     .update_leveling(guild, c.enabled, c.channel.map(|ch| ch.id.get()), c.message.as_deref())
-                    .await?
+                    .await?;
+                if let Some(mode) = c.mode {
+                    settings = db.set_levelup_mode(guild, mode.value()).await?;
+                }
+                settings
             }
             Self::Show(_) => cx.app.db.guild_settings(guild).await?,
             Self::WelcomeCard(c) => return c.run(cx, guild).await,
             Self::LevelRoles(c) => return c.run(cx, guild).await,
+            Self::Xp(c) => return c.run(cx, guild).await,
+            Self::RepRoles(c) => return c.run(cx, guild).await,
             Self::Store(c) => return c.run(cx, guild).await,
             Self::JoinRole(c) => return c.run(cx, guild).await,
             Self::Goodbye(c) => return c.run(cx, guild).await,
@@ -188,6 +201,18 @@ pub struct ConfigWelcome {
     message: Option<String>,
 }
 
+#[derive(CommandOption, CreateOption, Clone, Copy)]
+pub enum LevelUpChoice {
+    #[option(name = "Channel: the level-up channel, or where they chatted", value = "channel")]
+    Channel,
+    #[option(name = "Current: always where they chatted", value = "current")]
+    Current,
+    #[option(name = "DM: a direct message to them", value = "dm")]
+    Dm,
+    #[option(name = "Off: no level-up message (roles are still given)", value = "off")]
+    Off,
+}
+
 #[derive(CommandModel, CreateCommand)]
 #[command(name = "leveling", desc = "XP and level-up messages")]
 pub struct ConfigLeveling {
@@ -196,14 +221,32 @@ pub struct ConfigLeveling {
     /// Post level-ups here instead of where the member chatted
     #[command(channel_types = "guild_text guild_announcement")]
     channel: Option<InteractionChannel>,
-    /// Level-up text. Placeholders: {user} {level}
+    /// Level-up text. {user} {level} {server} {role} (reward role just earned, empty if none)
     #[command(max_length = 500)]
     message: Option<String>,
+    /// Where level-ups go (default: channel)
+    mode: Option<LevelUpChoice>,
 }
 
 #[derive(CommandModel, CreateCommand)]
 #[command(name = "show", desc = "Show the current settings")]
 pub struct ConfigShow;
+
+/// Where level-ups go, worded to follow "level-ups".
+fn levelup_summary(s: &GuildSettings) -> String {
+    match LevelUpMode::parse(&s.levelup_mode) {
+        LevelUpMode::Off => "are off".to_owned(),
+        LevelUpMode::Dm => "arrive by direct message".to_owned(),
+        LevelUpMode::Current => "in the channel the member chatted in".to_owned(),
+        LevelUpMode::Channel => format!(
+            "in {}",
+            s.levelup_channel_id.map_or_else(
+                || "the channel the member chatted in".to_owned(),
+                |id| format!("<#{id}>")
+            )
+        ),
+    }
+}
 
 fn settings_embed(s: &GuildSettings) -> Embed {
     let on_off = |b: bool| if b { "on" } else { "off" };
@@ -223,12 +266,15 @@ fn settings_embed(s: &GuildSettings) -> Embed {
         .field(EmbedFieldBuilder::new(
             "Leveling",
             format!(
-                "**{}** · level-ups in {}\n> {}",
+                "**{}** · level-ups {}\n> {}",
                 on_off(s.leveling_enabled),
-                s.levelup_channel_id
-                    .map_or_else(|| "the same channel".to_owned(), |id| format!("<#{id}>")),
+                levelup_summary(s),
                 s.levelup_message.as_deref().unwrap_or(DEFAULT_LEVELUP)
             ),
+        ))
+        .field(EmbedFieldBuilder::new(
+            "XP rules and voice XP",
+            format!("{}\n> Multipliers: `/config xp show`", voice_summary(s)),
         ))
         .field(EmbedFieldBuilder::new(
             "Level roles",

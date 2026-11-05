@@ -18,12 +18,24 @@ pub struct LeaderboardEntry {
     pub detail: String,
 }
 
-/// 900×716 leaderboard card with up to ten rows; the first three get gold, silver and bronze.
+/// One place on the previous week's podium, shown under the rows.
+pub struct LastWeekEntry {
+    /// 1 to 3.
+    pub rank: i64,
+    pub name: String,
+    /// What they earned, e.g. `4,210 XP`.
+    pub value: String,
+}
+
+/// 900×716 leaderboard card with up to ten rows; the first three get gold, silver and bronze. With a
+/// `last_week` podium the card grows by a panel of three places under the rows.
 pub struct LeaderboardCard {
     pub title: String,
     pub entries: Vec<LeaderboardEntry>,
     /// Zero-based; shown as `PAGE n`.
     pub page: u32,
+    /// The previous period's top places (up to three); empty leaves the panel out.
+    pub last_week: Vec<LastWeekEntry>,
     pub theme: Theme,
 }
 
@@ -33,7 +45,8 @@ impl LeaderboardCard {
 
     pub fn to_svg(&self) -> String {
         let t = &self.theme;
-        let (w, h) = (900.0, 716.0);
+        let podium = !self.last_week.is_empty();
+        let (w, h) = (900.0, if podium { 826.0 } else { 716.0 });
         let mut s = String::with_capacity(96 * 1024);
         let _ = write!(
             s,
@@ -153,10 +166,75 @@ impl LeaderboardCard {
             }
         }
 
-        sprite(&mut s, CRAB, 36.0, 686.0, 3.0, &t.accent, "#fff1e8");
-        text(&mut s, 864.0, 702.0, 14.0, PIXEL, false, &t.muted, "end", "PINCHORA");
+        if podium {
+            self.last_week_panel(&mut s, &medals);
+        }
+        sprite(&mut s, CRAB, 36.0, h - 30.0, 3.0, &t.accent, "#fff1e8");
+        text(&mut s, 864.0, h - 14.0, 14.0, PIXEL, false, &t.muted, "end", "PINCHORA");
         s.push_str("</svg>");
         s
+    }
+}
+
+impl LeaderboardCard {
+    /// The previous week's top three, side by side in a panel under the rows.
+    fn last_week_panel(&self, s: &mut String, medals: &[&str; 3]) {
+        let t = &self.theme;
+        let top = 678.0;
+        panel(s, 36.0, top, 828.0, 100.0, 4.0, &t.panel, &t.panel_edge);
+        text(
+            s,
+            56.0,
+            top + 28.0,
+            14.0,
+            PIXEL,
+            false,
+            &t.muted,
+            "start",
+            "LAST WEEK'S TOP 3",
+        );
+        for (i, e) in self.last_week.iter().take(3).enumerate() {
+            let x = 56.0 + i as f32 * 268.0;
+            let color = usize::try_from(e.rank - 1)
+                .ok()
+                .and_then(|r| medals.get(r))
+                .copied()
+                .unwrap_or(&t.muted);
+            panel(s, x, top + 44.0, 36.0, 36.0, 4.0, color, color);
+            text(
+                s,
+                x + 18.0,
+                top + 69.0,
+                18.0,
+                PIXEL,
+                false,
+                "#1b1d2b",
+                "middle",
+                &e.rank.to_string(),
+            );
+            text(
+                s,
+                x + 48.0,
+                top + 60.0,
+                18.0,
+                SANS,
+                true,
+                &t.ink,
+                "start",
+                &escape(&truncate(&e.name, 15)),
+            );
+            text(
+                s,
+                x + 48.0,
+                top + 78.0,
+                11.0,
+                PIXEL,
+                false,
+                &t.muted,
+                "start",
+                &escape(&e.value),
+            );
+        }
     }
 }
 
@@ -182,6 +260,7 @@ mod tests {
             title: "Server leaderboard".to_owned(),
             entries,
             page: 3,
+            last_week: Vec::new(),
             theme: Theme::reef(),
         };
         let full = (1..=10)
@@ -192,5 +271,37 @@ mod tests {
             assert!(png.starts_with(b"\x89PNG"));
         }
         assert!(card(vec![entry(1, "A<B")]).to_svg().contains("A&lt;B"));
+    }
+
+    #[test]
+    fn the_podium_makes_the_card_taller_and_survives_awkward_names() {
+        let r = Renderer::new();
+        let place = |rank, name: &str| LastWeekEntry {
+            rank,
+            name: name.to_owned(),
+            value: "4,210 XP".to_owned(),
+        };
+        let card = |last_week| LeaderboardCard {
+            title: "Weekly XP".to_owned(),
+            entries: (1..=3).map(|n| entry(n, "Tide")).collect(),
+            page: 0,
+            last_week,
+            theme: Theme::reef(),
+        };
+        let plain = r.leaderboard_card(&card(Vec::new())).expect("renders");
+        let image = |png: &[u8]| image::load_from_memory(png).expect("a png");
+        assert_eq!(image(&plain).height(), 716);
+        for podium in [
+            vec![
+                place(1, "<b>Anemone & Co</b> with a very long name"),
+                place(2, "Nori"),
+                place(3, "kelp"),
+            ],
+            vec![place(1, "Solo")],
+        ] {
+            let tall = r.leaderboard_card(&card(podium)).expect("renders");
+            assert_eq!(image(&tall).height(), 826);
+        }
+        assert!(card(vec![place(1, "A<B")]).to_svg().contains("A&lt;B"));
     }
 }

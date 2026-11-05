@@ -150,3 +150,48 @@ impl Cache {
         Ok(set.is_some())
     }
 }
+
+impl Cache {
+    /// Sets one field of a hash. The whole hash expires `ttl` after its last write.
+    pub async fn map_set(&self, key: &str, field: &str, value: &str, ttl: Duration) -> anyhow::Result<()> {
+        let key = format!("{PREFIX}:h:{key}");
+        let _: () = redis::pipe()
+            .atomic()
+            .hset(&key, field, value)
+            .ignore()
+            .expire(&key, ttl.as_secs().max(1) as i64)
+            .ignore()
+            .query_async(&mut self.conn())
+            .await?;
+        Ok(())
+    }
+
+    /// Removes one field of a hash.
+    pub async fn map_remove(&self, key: &str, field: &str) -> anyhow::Result<()> {
+        let _: () = self.conn().hdel(format!("{PREFIX}:h:{key}"), field).await?;
+        Ok(())
+    }
+
+    /// Every field and value of a hash; empty when there is none.
+    pub async fn map_all(&self, key: &str) -> anyhow::Result<Vec<(String, String)>> {
+        let all: std::collections::HashMap<String, String> = self.conn().hgetall(format!("{PREFIX}:h:{key}")).await?;
+        Ok(all.into_iter().collect())
+    }
+
+    /// Adds a member to a set.
+    pub async fn set_add(&self, key: &str, member: &str) -> anyhow::Result<()> {
+        let _: () = self.conn().sadd(format!("{PREFIX}:s:{key}"), member).await?;
+        Ok(())
+    }
+
+    /// Removes a member from a set.
+    pub async fn set_remove(&self, key: &str, member: &str) -> anyhow::Result<()> {
+        let _: () = self.conn().srem(format!("{PREFIX}:s:{key}"), member).await?;
+        Ok(())
+    }
+
+    /// Every member of a set; empty when there is none.
+    pub async fn set_members(&self, key: &str) -> anyhow::Result<Vec<String>> {
+        Ok(self.conn().smembers(format!("{PREFIX}:s:{key}")).await?)
+    }
+}

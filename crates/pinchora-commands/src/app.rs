@@ -11,6 +11,7 @@ use std::{
 use chrono::{DateTime, Utc};
 use moka::future::Cache as Moka;
 use pinchora_cache::Cache;
+use pinchora_core::leveling::XpRules;
 use pinchora_db::{Db, GuildSettings};
 use pinchora_render::{Renderer, placeholder_avatar, prepare_avatar};
 use tokio::sync::Semaphore;
@@ -40,6 +41,7 @@ pub struct App {
     render_slots: Arc<Semaphore>,
     guild_settings: Moka<u64, Arc<GuildSettings>>,
     guild_roles: Moka<u64, Arc<HashMap<u64, String>>>,
+    xp_rules: Moka<u64, Arc<XpRules>>,
     avatars: Moka<String, Arc<Vec<u8>>>,
     users: Moka<u64, Arc<User>>,
     tasks: TaskTracker,
@@ -82,6 +84,10 @@ impl App {
                 .build(),
             guild_roles: Moka::builder()
                 .max_capacity(10_000)
+                .time_to_live(Duration::from_secs(60))
+                .build(),
+            xp_rules: Moka::builder()
+                .max_capacity(50_000)
                 .time_to_live(Duration::from_secs(60))
                 .build(),
             avatars: Moka::builder()
@@ -150,6 +156,18 @@ impl App {
             .try_get_with(guild_id, async { self.db.guild_settings(guild_id).await.map(Arc::new) })
             .await
             .map_err(|e| anyhow::anyhow!("{e:#}"))
+    }
+
+    /// A server's XP multipliers, cached for a minute like its settings.
+    pub async fn xp_rules(&self, guild_id: u64) -> anyhow::Result<Arc<XpRules>> {
+        self.xp_rules
+            .try_get_with(guild_id, async { self.db.xp_rules(guild_id).await.map(Arc::new) })
+            .await
+            .map_err(|e| anyhow::anyhow!("{e:#}"))
+    }
+
+    pub async fn forget_xp_rules(&self, guild_id: u64) {
+        self.xp_rules.invalidate(&guild_id).await;
     }
 
     /// A server's role names by id, cached for a minute; `None` when Discord cannot be asked.

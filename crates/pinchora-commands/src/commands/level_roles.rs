@@ -195,7 +195,7 @@ async fn sync(cx: &Cx, guild: u64) -> anyhow::Result<()> {
         };
         let (added, removed) =
             roles::apply_level_roles(&cx.app, guild, user, level_of(member.value), &current, &rewards, stack).await;
-        if added + removed > 0 {
+        if added.len() + removed > 0 {
             updated += 1;
         }
     }

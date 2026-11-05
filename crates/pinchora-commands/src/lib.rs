@@ -4,10 +4,12 @@ mod components;
 mod cx;
 mod events;
 mod game;
+mod leveling;
 mod responder;
 mod roles;
 mod server_log;
 mod util;
+mod voice_xp;
 
 pub use app::App;
 pub use commands::{
@@ -20,6 +22,7 @@ pub use events::{
     on_ban_add, on_ban_remove, on_member_add, on_member_remove, on_member_update, on_message, on_voice_state_update,
 };
 pub use responder::Responder;
+pub use voice_xp::{spawn_ticker as spawn_voice_ticker, tick as voice_tick};
 
 use std::{sync::Arc, time::Instant};
 

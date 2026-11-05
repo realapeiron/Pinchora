@@ -3,7 +3,7 @@ use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
 use twilight_util::builder::embed::EmbedBuilder;
 
 use crate::{
-    Cx,
+    Cx, roles,
     util::{SUCCESS, mention, relative},
 };
 
@@ -28,14 +28,19 @@ impl Rep {
         }
         match cx.app.db.give_rep(from.get(), to.get()).await? {
             RepOutcome::Given { target_total } => {
-                let embed = EmbedBuilder::new()
-                    .color(SUCCESS)
-                    .description(format!(
-                        "{} gave {} a reputation point! They now have **{target_total}**.",
-                        mention(from),
-                        mention(to)
-                    ))
-                    .build();
+                let mut text = format!(
+                    "{} gave {} a reputation point! They now have **{target_total}**.",
+                    mention(from),
+                    mention(to)
+                );
+                // Reputation roles are the server's own reward for a member it can see.
+                if let (Some(guild), Some(member)) = (cx.guild_id(), self.user.member.as_ref()) {
+                    let held: Vec<u64> = member.roles.iter().map(|r| r.get()).collect();
+                    for role in roles::give_rep_roles(&cx.app, guild, to.get(), target_total, &held).await {
+                        text.push_str(&format!("\n🏅 {} earned <@&{role}>!", mention(to)));
+                    }
+                }
+                let embed = EmbedBuilder::new().color(SUCCESS).description(text).build();
                 cx.reply_embed(embed).await
             }
             RepOutcome::Cooldown { next_at } => {
