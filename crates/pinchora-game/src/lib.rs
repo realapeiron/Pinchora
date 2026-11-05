@@ -2,6 +2,7 @@
 
 pub mod character;
 mod content;
+pub mod contest;
 pub mod fishing;
 pub mod house;
 pub mod market;

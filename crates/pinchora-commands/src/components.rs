@@ -1,8 +1,10 @@
+use twilight_model::application::interaction::modal::ModalInteractionComponent;
+
 use crate::{
     Cx,
     commands::{
-        character, customize, decorate, duel, fish, gift, house, leaderboard, pet, plaza, quests, role_panels, shop,
-        stall, store,
+        character, contest, customize, decorate, duel, fish, gift, guestbook, house, leaderboard, pet, plaza, quests,
+        role_panels, shop, stall, store,
     },
 };
 
@@ -38,6 +40,34 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
         Some("st") => store::on_buy(cx, values.first().map(String::as_str)).await,
         Some("cz") => customize::on_component(cx, parts, values).await,
         Some("rr") => role_panels::on_toggle(cx, parts).await,
+        Some("gb") => guestbook::on_component(cx, parts, values.first().map(String::as_str)).await,
+        Some("rc") => contest::on_component(cx, parts).await,
         _ => cx.reply_ephemeral("This button has expired.").await,
     }
+}
+
+/// Routes a submitted modal by the `prefix:` of its custom id; `fields` are its text inputs
+/// as (custom id, value).
+pub(crate) async fn dispatch_modal(cx: &Cx, custom_id: &str, fields: &[(String, String)]) -> anyhow::Result<()> {
+    let mut parts = custom_id.split(':');
+    match parts.next() {
+        Some("gb") => guestbook::on_modal(cx, parts, fields).await,
+        _ => cx.reply_ephemeral("This form has expired.").await,
+    }
+}
+
+/// Every text input of a submitted modal, wherever its label or row put it.
+pub(crate) fn modal_fields(components: &[ModalInteractionComponent]) -> Vec<(String, String)> {
+    let mut fields = Vec::new();
+    for component in components {
+        match component {
+            ModalInteractionComponent::ActionRow(row) => fields.extend(modal_fields(&row.components)),
+            ModalInteractionComponent::Label(label) => {
+                fields.extend(modal_fields(std::slice::from_ref(&label.component)))
+            }
+            ModalInteractionComponent::TextInput(input) => fields.push((input.custom_id.clone(), input.value.clone())),
+            _ => {}
+        }
+    }
+    fields
 }

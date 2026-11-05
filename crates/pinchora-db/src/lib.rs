@@ -1,5 +1,7 @@
+mod contest;
 mod customize;
 mod economy;
+mod guestbook;
 mod guilds;
 mod house;
 mod members;
@@ -15,10 +17,15 @@ use std::time::Duration;
 
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
+pub use contest::{ContestEntry, ContestResult};
 pub use customize::{CustomizeBuy, MAX_BADGES, PlayerStats};
 pub use economy::{DailyOutcome, RepOutcome, TransferOutcome};
+pub use guestbook::{NoteRow, SignOutcome, VisitorRow};
 pub use guilds::{GuildSettings, LogKind};
-pub use house::{HouseRow, InventoryRow, NewRoom, PlaceOutcome, PlacementRow, RoomRow, UpgradeOutcome};
+pub use house::{
+    HouseRow, InventoryRow, NewRoom, PlaceOutcome, PlacementRow, Refusal, RestoreOutcome, RoomChange, RoomRow,
+    UpgradeOutcome,
+};
 pub use members::{LeaderboardRow, MemberRank, XpGain};
 pub use panels::{MAX_PANEL_ROLES, PanelRoleRow, PanelRow};
 pub use pets::PetRow;

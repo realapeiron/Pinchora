@@ -57,6 +57,18 @@ impl Cx {
         self.responder.respond(data, true).await
     }
 
+    /// Opens a modal with `components` (labels around text inputs).
+    pub async fn modal(&self, custom_id: String, title: &str, components: Vec<Component>) -> anyhow::Result<()> {
+        self.responder
+            .modal(InteractionResponseData {
+                custom_id: Some(custom_id),
+                title: Some(title.to_owned()),
+                components: Some(components),
+                ..Default::default()
+            })
+            .await
+    }
+
     pub async fn reply_text(&self, content: impl Into<String>) -> anyhow::Result<()> {
         self.reply(InteractionResponseData {
             content: Some(content.into()),

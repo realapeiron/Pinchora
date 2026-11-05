@@ -48,6 +48,36 @@ pub enum PlaceOutcome {
     Blocked(String),
 }
 
+/// One change [`Db::restore`] makes to a room.
+#[derive(Debug, Clone)]
+pub enum RoomChange {
+    /// Takes this placement, exactly as given, back to the inventory.
+    Remove(PlacementRow),
+    /// Turns this placement, exactly as given, the other way.
+    Flip(PlacementRow),
+    /// Places one item from the inventory; the row's id is not used.
+    Add(PlacementRow),
+}
+
+#[derive(Debug, Clone)]
+pub enum RestoreOutcome {
+    /// Everything changed; the new ids of the added rows, in order.
+    Done { added: Vec<i64> },
+    /// Nothing changed.
+    Refused(Refusal),
+}
+
+/// Why [`Db::restore`] changed nothing.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Refusal {
+    /// This item is no longer where the change expected it.
+    Moved(String),
+    /// The inventory has none of this item left.
+    NotOwned(String),
+    /// The room check refused a change.
+    Blocked(String),
+}
+
 #[derive(Debug, Clone, Copy)]
 pub enum UpgradeOutcome {
     Upgraded { tier: i16, balance: i64 },
@@ -201,6 +231,133 @@ impl Db {
         add_inventory(&mut tx, id, &item_id, 1).await?;
         tx.commit().await?;
         Ok(Some(item_id))
+    }
+
+    /// Takes every placement in a room back to the inventory at once; returns what stood there.
+    pub async fn clear_room(&self, user_id: u64, room_idx: i16) -> anyhow::Result<Vec<PlacementRow>> {
+        let id = sql_id(user_id);
+        let mut tx = self.pool().begin().await?;
+        sqlx::query("SELECT 1 FROM houses WHERE user_id = $1 FOR UPDATE")
+            .bind(id)
+            .execute(&mut *tx)
+            .await?;
+        let mut removed = sqlx::query_as::<_, PlacementRow>(
+            "DELETE FROM placements WHERE user_id = $1 AND room_idx = $2
+             RETURNING id, room_idx, item_id, x, y, flipped",
+        )
+        .bind(id)
+        .bind(room_idx)
+        .fetch_all(&mut *tx)
+        .await?;
+        removed.sort_by_key(|p| p.id);
+        let mut counts: Vec<(&str, i32)> = Vec::new();
+        for p in &removed {
+            match counts.iter_mut().find(|(item, _)| *item == p.item_id) {
+                Some((_, n)) => *n += 1,
+                None => counts.push((&p.item_id, 1)),
+            }
+        }
+        for (item, n) in counts {
+            add_inventory(&mut tx, id, item, n).await?;
+        }
+        tx.commit().await?;
+        Ok(removed)
+    }
+
+    /// Applies `changes` to a room in order, all or nothing, under the house lock (the editor's
+    /// undo). `check` sees the room as it is before each change and can refuse it.
+    pub async fn restore<F>(
+        &self,
+        user_id: u64,
+        room_idx: i16,
+        changes: &[RoomChange],
+        mut check: F,
+    ) -> anyhow::Result<RestoreOutcome>
+    where
+        F: FnMut(&[PlacementRow], &RoomChange) -> Result<(), String>,
+    {
+        let id = sql_id(user_id);
+        let mut tx = self.pool().begin().await?;
+        sqlx::query("SELECT 1 FROM houses WHERE user_id = $1 FOR UPDATE")
+            .bind(id)
+            .execute(&mut *tx)
+            .await?;
+        let mut current = sqlx::query_as::<_, PlacementRow>(
+            "SELECT id, room_idx, item_id, x, y, flipped FROM placements
+             WHERE user_id = $1 AND room_idx = $2 ORDER BY id",
+        )
+        .bind(id)
+        .bind(room_idx)
+        .fetch_all(&mut *tx)
+        .await?;
+        let mut added = Vec::new();
+        for change in changes {
+            if let RoomChange::Remove(p) | RoomChange::Flip(p) = change
+                && !current
+                    .iter()
+                    .any(|c| (c.id, &c.item_id, c.x, c.y, c.flipped) == (p.id, &p.item_id, p.x, p.y, p.flipped))
+            {
+                return Ok(RestoreOutcome::Refused(Refusal::Moved(p.item_id.clone())));
+            }
+            if let Err(reason) = check(&current, change) {
+                return Ok(RestoreOutcome::Refused(Refusal::Blocked(reason)));
+            }
+            match change {
+                RoomChange::Remove(p) => {
+                    sqlx::query("DELETE FROM placements WHERE id = $1 AND user_id = $2")
+                        .bind(p.id)
+                        .bind(id)
+                        .execute(&mut *tx)
+                        .await?;
+                    add_inventory(&mut tx, id, &p.item_id, 1).await?;
+                    current.retain(|c| c.id != p.id);
+                }
+                RoomChange::Flip(p) => {
+                    sqlx::query("UPDATE placements SET flipped = NOT flipped WHERE id = $1 AND user_id = $2")
+                        .bind(p.id)
+                        .bind(id)
+                        .execute(&mut *tx)
+                        .await?;
+                    if let Some(c) = current.iter_mut().find(|c| c.id == p.id) {
+                        c.flipped = !c.flipped;
+                    }
+                }
+                RoomChange::Add(p) => {
+                    let taken = sqlx::query(
+                        "UPDATE inventory SET quantity = quantity - 1
+                         WHERE user_id = $1 AND item_id = $2 AND quantity > 0",
+                    )
+                    .bind(id)
+                    .bind(&p.item_id)
+                    .execute(&mut *tx)
+                    .await?
+                    .rows_affected();
+                    if taken == 0 {
+                        return Ok(RestoreOutcome::Refused(Refusal::NotOwned(p.item_id.clone())));
+                    }
+                    let (new_id,): (i64,) = sqlx::query_as(
+                        "INSERT INTO placements (user_id, room_idx, item_id, x, y, flipped)
+                         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
+                    )
+                    .bind(id)
+                    .bind(room_idx)
+                    .bind(&p.item_id)
+                    .bind(p.x)
+                    .bind(p.y)
+                    .bind(p.flipped)
+                    .fetch_one(&mut *tx)
+                    .await?;
+                    current.push(PlacementRow {
+                        id: new_id,
+                        room_idx,
+                        ..p.clone()
+                    });
+                    added.push(new_id);
+                }
+            }
+        }
+        tx.commit().await?;
+        Ok(RestoreOutcome::Done { added })
     }
 
     /// Flips a placed item. The caller checks the turned footprint still fits first.

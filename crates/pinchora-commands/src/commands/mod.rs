@@ -1,6 +1,7 @@
 mod bio;
 pub(crate) mod character;
 mod config;
+pub(crate) mod contest;
 pub(crate) mod customize;
 mod daily;
 pub(crate) mod decorate;
@@ -8,6 +9,7 @@ pub(crate) mod duel;
 mod economy;
 pub(crate) mod fish;
 pub(crate) mod gift;
+pub(crate) mod guestbook;
 mod help;
 pub(crate) mod house;
 pub(crate) mod leaderboard;
@@ -24,6 +26,7 @@ pub(crate) mod role_panels;
 pub(crate) mod shop;
 pub(crate) mod stall;
 pub(crate) mod store;
+mod undo;
 mod utilities;
 
 use twilight_interactions::command::{CommandModel, CreateCommand};
