@@ -1,0 +1,28 @@
+{
+ "items": [
+  {
+   "name": "f_fizzproof_counter",
+   "width": 128
+  },
+  {
+   "name": "f_foliofin_reading_table",
+   "width": 128
+  },
+  {
+   "name": "f_glazewake_display_table",
+   "width": 128
+  },
+  {
+   "name": "f_hemdrawer_desk",
+   "width": 128
+  },
+  {
+   "name": "f_humskein_mix_desk",
+   "width": 128
+  },
+  {
+   "name": "f_inkfold_writing_desk",
+   "width": 96
+  }
+ ]
+}

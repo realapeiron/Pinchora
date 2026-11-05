@@ -1,0 +1,20 @@
+{
+ "items": [
+  {
+   "name": "f_foamfold_tub",
+   "width": 160
+  },
+  {
+   "name": "f_moonrinse_bath",
+   "width": 192
+  },
+  {
+   "name": "f_patchsoak_tub",
+   "width": 160
+  },
+  {
+   "name": "f_reedsteam_sauna",
+   "width": 192
+  }
+ ]
+}

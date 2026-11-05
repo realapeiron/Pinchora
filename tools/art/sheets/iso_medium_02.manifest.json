@@ -1,0 +1,28 @@
+{
+ "items": [
+  {
+   "name": "f_rivetpipe_shower",
+   "width": 128
+  },
+  {
+   "name": "f_stillglass_shower",
+   "width": 128
+  },
+  {
+   "name": "f_wishbowl_vanity",
+   "width": 96
+  },
+  {
+   "name": "f_foldfern_cot",
+   "width": 128
+  },
+  {
+   "name": "f_tuckbud_toddler_bed",
+   "width": 96
+  },
+  {
+   "name": "f_crustbloom_bread_stand",
+   "width": 96
+  }
+ ]
+}

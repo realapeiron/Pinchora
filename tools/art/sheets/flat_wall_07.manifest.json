@@ -1,0 +1,44 @@
+{
+ "items": [
+  {
+   "name": "f_boltpeg_wall_rack",
+   "width": 62,
+   "height": 30
+  },
+  {
+   "name": "f_bookbeam_wall_shelf",
+   "width": 126,
+   "height": 30
+  },
+  {
+   "name": "f_brinecrest_wall_wheel",
+   "width": 94,
+   "height": 62
+  },
+  {
+   "name": "f_clickcove_pennant",
+   "width": 30,
+   "height": 62
+  },
+  {
+   "name": "f_cloudindex_mural",
+   "width": 126,
+   "height": 94
+  },
+  {
+   "name": "f_coilpetal_mirror",
+   "width": 62,
+   "height": 62
+  },
+  {
+   "name": "f_crumbnote_board",
+   "width": 62,
+   "height": 30
+  },
+  {
+   "name": "f_dewtrail_print",
+   "width": 62,
+   "height": 30
+  }
+ ]
+}

@@ -1,0 +1,20 @@
+{
+ "items": [
+  {
+   "name": "f_pearlpleat_daybed",
+   "width": 192
+  },
+  {
+   "name": "f_reeffold_lounger",
+   "width": 160
+  },
+  {
+   "name": "f_shellhuddle_pit_seat",
+   "width": 256
+  },
+  {
+   "name": "f_swaystitch_swing_seat",
+   "width": 160
+  }
+ ]
+}

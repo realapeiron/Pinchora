@@ -48,6 +48,9 @@ struct Manifest {
     region: Option<[u32; 4]>,
     /// `avatar` quantizes to the character key palette instead of the shared one.
     palette: Option<String>,
+    /// Scale every sprite by one factor that brings the sheet's median height to this,
+    /// so figures drawn the same size stay the same size (tall hair stays taller).
+    uniform_height: Option<u32>,
     items: Vec<ManifestItem>,
 }
 
@@ -320,14 +323,25 @@ fn cut(sheet: &Path, manifest: &Path, out: &Path, preview: bool) -> anyhow::Resu
     std::fs::create_dir_all(out)?;
     let palette = palette(manifest.palette.as_deref());
     let mut made = Vec::new();
+    let uniform = manifest.uniform_height.map(|h| {
+        let mut heights: Vec<u32> = found.iter().map(BBox::h).collect();
+        heights.sort_unstable();
+        h as f32 / heights[heights.len() / 2].max(1) as f32
+    });
     for (bb, item) in found.iter().zip(&manifest.items) {
-        let (tw, th) = match (item.width, item.height) {
-            (0, Some(h)) => ((bb.w() as f32 * h as f32 / bb.h() as f32).round().max(1.0) as u32, h),
-            (w, Some(h)) => (w, h),
-            (w, None) => {
-                let w = w.max(1);
-                (w, (bb.h() as f32 * w as f32 / bb.w() as f32).round().max(1.0) as u32)
-            }
+        let (tw, th) = match (uniform, item.width, item.height) {
+            (Some(f), _, _) => (
+                (bb.w() as f32 * f).round().max(1.0) as u32,
+                (bb.h() as f32 * f).round().max(1.0) as u32,
+            ),
+            (None, w, h) => match (w, h) {
+                (0, Some(h)) => ((bb.w() as f32 * h as f32 / bb.h() as f32).round().max(1.0) as u32, h),
+                (w, Some(h)) => (w, h),
+                (w, None) => {
+                    let w = w.max(1);
+                    (w, (bb.h() as f32 * w as f32 / bb.w() as f32).round().max(1.0) as u32)
+                }
+            },
         };
         let sprite = downsample(&img, *bb, tw, th, &palette, item.opaque);
         sprite.save(out.join(format!("{}.png", item.name)))?;

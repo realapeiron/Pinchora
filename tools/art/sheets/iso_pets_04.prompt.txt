@@ -1,0 +1,24 @@
+Use your built-in image generation tool to draw ONE sprite sheet for "Pinchora", a cozy seaside pixel-art life game where players build and furnish rooms seen in an ISOMETRIC view.
+The attached image is the style reference: match its camera, pixel size, outline, shading and mood exactly.
+
+Rules:
+- True pixel art: crisp square pixels at one consistent size, no anti-aliasing, no blur, no gradients, no noise. Fine detail: one floor tile is about 64 art pixels wide.
+- 1-pixel dark outline #1b1d2b around every object, light from the upper-left, 2-3 tone shading.
+- Use only these colours: 1b1d2b 0f1631 1d2b53 2e3d75 4a5ba3 8fa0d8 7a2a3a c2413f ff6b4a ff9e7a ffd2c0 fff1e8 e6d3c3 b8a08f 7d6a5f 4a3f3b 5c3a21 8a5a34 b97f4a e0ac6e 1f4d3a 2f7d4f 5bbf6a a6e39a 1f5f8b 3a9bdc 8fd3ff c98a1e ffd166 5a3a7a 9b6bc4 06d6a0.
+- Background: flat pure #00FF00 everywhere around the objects (a fully transparent background is equally fine). Nothing else on the background: no floor, no tiles, no shadows, no text, no labels, no numbers, no grid lines.
+- Generate the image once and save it. Only regenerate (at most once) if objects are missing, merged together or drawn from the wrong angle; do not regenerate for background, colour or size nitpicks, our importer fixes those.
+- Draw the objects in a grid in exactly the order listed (row by row, left to right), each one complete and isolated with wide green gaps (at least 40 px) between them; parts of one object must touch each other.
+
+Pet sheet. View: 2:1 isometric exactly like the reference (floor diamonds twice as wide as tall). Every object's FRONT faces the LOWER-LEFT: we see its front on the lower-left, its right side on the lower-right and its top. Keep relative sizes: a 1x1-tile object is about as wide as the reference chair.
+Layout: 4 columns x 2 rows, 8 objects in total.
+
+1. Tasselcrest Cockatiel — 20x20, front three-quarter: Cream cockatiel, gold tall crest, coral cheeks, navy wings, sand feet, rounded tail. (cute pet standing on the floor, facing the lower-left, a little smaller than one floor tile)
+2. Hoothem Owlet — 20x20, front three-quarter: Plum round owlet, cream face discs, gold eyes, moss wing patches, sand small talons. (cute pet standing on the floor, facing the lower-left, a little smaller than one floor tile)
+3. Lanternclasp Crab — 20x20, front three-quarter: Coral crab, gold lantern shaped shell patches, cream chunky claws, navy eye stalks, plum leg tips. (cute pet standing on the floor, facing the lower-left, a little smaller than one floor tile)
+4. Lacefloat Cuttle — 20x20, front three-quarter: Lilac cuttlefish, cream frilled side fins, mint striped mantle, coral short arms, navy oval eyes. (cute pet standing on the floor, facing the lower-left, a little smaller than one floor tile)
+5. Thimblehorn Narwhal — 20x20, front three-quarter: Sky round narwhal, cream belly, short gold spiral horn, navy flippers, coral cheek marks. (cute pet standing on the floor, facing the lower-left, a little smaller than one floor tile)
+6. Meadowgill Nudibranch — 20x20, front three-quarter: Mint sea slug, rose flowerlike back gills, cream foot fringe, lilac horn tips, tiny navy eyes. (cute pet standing on the floor, facing the lower-left, a little smaller than one floor tile)
+7. Dunetuft Fennec — 20x20, front three-quarter: Sand small fox, oversized cream ears, navy ear tips, coral nose, moss collar tuft. (cute pet standing on the floor, facing the lower-left, a little smaller than one floor tile)
+8. Marmalade Mothkit — 20x20, front three-quarter: Cream kitten-like critter, coral fluffy cheek ruffs, lilac wing shaped ear tufts, sand curled tail. (cute pet standing on the floor, facing the lower-left, a little smaller than one floor tile)
+
+Save the final PNG to ./out/iso_pets_04.png (create ./out if needed). Exactly 8 objects.

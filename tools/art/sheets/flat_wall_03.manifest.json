@@ -1,0 +1,44 @@
+{
+ "items": [
+  {
+   "name": "f_shellflick_sconce",
+   "width": 30,
+   "height": 30
+  },
+  {
+   "name": "f_starplait_wall_lantern",
+   "width": 30,
+   "height": 62
+  },
+  {
+   "name": "f_tidebeam_wall_light",
+   "width": 62,
+   "height": 30
+  },
+  {
+   "name": "f_noteloop_wall_rack",
+   "width": 62,
+   "height": 30
+  },
+  {
+   "name": "f_reedrain_chimes",
+   "width": 30,
+   "height": 62
+  },
+  {
+   "name": "f_rehearsalbud_poster",
+   "width": 30,
+   "height": 62
+  },
+  {
+   "name": "f_portwhorl_porthole",
+   "width": 62,
+   "height": 62
+  },
+  {
+   "name": "f_signalpurl_flags",
+   "width": 94,
+   "height": 30
+  }
+ ]
+}

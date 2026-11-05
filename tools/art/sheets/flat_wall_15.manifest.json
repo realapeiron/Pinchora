@@ -1,0 +1,29 @@
+{
+ "items": [
+  {
+   "name": "f_stillframe_door",
+   "width": 30,
+   "height": 62
+  },
+  {
+   "name": "f_sunthread_clerestory",
+   "width": 126,
+   "height": 30
+  },
+  {
+   "name": "f_tidepair_french_doors",
+   "width": 94,
+   "height": 94
+  },
+  {
+   "name": "f_tilebloom_window",
+   "width": 62,
+   "height": 94
+  },
+  {
+   "name": "f_twintide_shutters",
+   "width": 94,
+   "height": 62
+  }
+ ]
+}

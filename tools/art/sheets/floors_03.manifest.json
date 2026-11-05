@@ -3,22 +3,26 @@
   {
    "name": "fl_fizzfern_specimen_tile",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "fl_hushwick_hexstones",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "fl_wishplait_courtyard",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "fl_budwhistle_petalpath",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   }
  ]
 }

@@ -1,0 +1,24 @@
+Use your built-in image generation tool to draw ONE sprite sheet for "Pinchora", a cozy seaside pixel-art life game where players build and furnish rooms seen in an ISOMETRIC view.
+The attached image is the style reference: match its camera, pixel size, outline, shading and mood exactly.
+
+Rules:
+- True pixel art: crisp square pixels at one consistent size, no anti-aliasing, no blur, no gradients, no noise. Fine detail: one floor tile is about 64 art pixels wide.
+- 1-pixel dark outline #1b1d2b around every object, light from the upper-left, 2-3 tone shading.
+- Use only these colours: 1b1d2b 0f1631 1d2b53 2e3d75 4a5ba3 8fa0d8 7a2a3a c2413f ff6b4a ff9e7a ffd2c0 fff1e8 e6d3c3 b8a08f 7d6a5f 4a3f3b 5c3a21 8a5a34 b97f4a e0ac6e 1f4d3a 2f7d4f 5bbf6a a6e39a 1f5f8b 3a9bdc 8fd3ff c98a1e ffd166 5a3a7a 9b6bc4 06d6a0.
+- Background: flat pure #00FF00 everywhere around the objects (a fully transparent background is equally fine). Nothing else on the background: no floor, no tiles, no shadows, no text, no labels, no numbers, no grid lines.
+- Generate the image once and save it. Only regenerate (at most once) if objects are missing, merged together or drawn from the wrong angle; do not regenerate for background, colour or size nitpicks, our importer fixes those.
+- Draw the objects in a grid in exactly the order listed (row by row, left to right), each one complete and isolated with wide green gaps (at least 40 px) between them; parts of one object must touch each other.
+
+Wall decorations. View: FLAT, seen straight from the front with no perspective at all (our engine slants it onto the wall). Each object fills its own rectangle with the exact proportions given.
+Layout: 4 columns x 2 rows, 8 objects in total.
+
+1. Hushglass Portrait — Front view: Wall-mounted, straight on; coral oval frame, plum silhouette with lilac smile, smoky sky glass, gold crescent crest. (proportions 2 wide by 2 tall) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+2. Leafledger Wall Shelf — Front view: Wall-mounted, straight on; Sky long wall shelf, cream front lip, walnut triangular brackets, gold label slots. (proportions 3 wide by 1 tall)
+3. Letterwake Organizer — Front view: Wall-mounted, straight on; Coral wall organizer, cream letter pockets, walnut key pegs, gold label windows. (proportions 2 wide by 1 tall) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+4. Marginglow Painting — Front view: Wall-mounted, straight on; Walnut frame, coral armchair painting, cream window light, gold stacks of books. (proportions 2 wide by 2 tall) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+5. Moonmargin Tapestry — Front view: Wall-mounted, straight on; Coral woven hanging, cream moon disc, navy hills, gold star stitches, walnut rod. (proportions 2 wide by 3 tall) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+6. Mossmargin Painting — Front view: Wall-mounted, straight on; Coral square frame, cream sky, moss hill terraces, navy river, gold window dots. (proportions 2 wide by 2 tall) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+7. Noteknot Board — Front view: Wall-mounted, straight on; Mint cork board frame, cream note squares, moss ticket shapes, gold round pins. (proportions 2 wide by 2 tall)
+8. Orbitpin Star Chart — Front view: Wall-mounted, straight on; coral metal panel, gold star pins, sky connecting arcs, cream circular coordinate rings. (proportions 3 wide by 2 tall) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+
+Save the final PNG to ./out/flat_wall_09.png (create ./out if needed). Exactly 8 objects.

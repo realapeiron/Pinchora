@@ -3,102 +3,122 @@
   {
    "name": "wp_blushbutton_spots",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "wp_rivetsprout_brick",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "wp_acorncourt_damask",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "wp_dewpeg_canvas",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "wp_orbitcrumb_stars",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "wp_fizzfern_grid",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "wp_kettlewink_tile",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "wp_humskein_felt",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "wp_clickcove_steps",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "wp_reedpause_weave",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "wp_dunethread_arches",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "wp_sugarquay_swirls",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "wp_hemrose_stencil",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "wp_pebblewake_ropework",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "wp_marginmoss_giltleaf",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "wp_stillfold_marblewash",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "wp_brinebeam_chartwork",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "wp_polypocket_pearls",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "wp_acorncourt_brocade",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "wp_orbitcrumb_auroras",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   }
  ]
 }

@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_linenpearl_towels",
+   "width": 28
+  },
+  {
+   "name": "f_reedsoap_dish",
+   "width": 20
+  },
+  {
+   "name": "f_soapbud_dish",
+   "width": 18
+  },
+  {
+   "name": "f_sprigfold_towels",
+   "width": 26
+  },
+  {
+   "name": "f_steamseed_oil_tray",
+   "width": 24
+  },
+  {
+   "name": "f_beanwhirl_grinder",
+   "width": 28
+  },
+  {
+   "name": "f_crumbparcel_cake_stand",
+   "width": 30
+  },
+  {
+   "name": "f_foamleaf_cappuccino",
+   "width": 18
+  },
+  {
+   "name": "f_sugarpocket_caddy",
+   "width": 22
+  },
+  {
+   "name": "f_teacoil_pot",
+   "width": 24
+  },
+  {
+   "name": "f_toastpetal_plate",
+   "width": 24
+  },
+  {
+   "name": "f_beamcast_projector",
+   "width": 26
+  }
+ ]
+}

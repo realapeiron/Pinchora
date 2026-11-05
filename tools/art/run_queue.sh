@@ -14,7 +14,7 @@ draw() {
     codex exec -s workspace-write --skip-git-repo-check -C "$PWD" -i style_reference_iso.png \
       < "sheets/$name.prompt.txt" > "logs/$name.$attempt.log" 2>&1
     [ -f "out/$name.png" ] && { echo "$(date +%T) done $name"; return 0; }
-    echo "$(date +%T) retry $name ($attempt)"; sleep 90
+    echo "$(date +%T) retry $name ($attempt)"; sleep 240
   done
   echo "$(date +%T) FAILED $name"
 }

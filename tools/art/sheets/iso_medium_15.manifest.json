@@ -1,0 +1,28 @@
+{
+ "items": [
+  {
+   "name": "f_cornerquay_half_wall",
+   "width": 128
+  },
+  {
+   "name": "f_curtaincove_stand",
+   "width": 128
+  },
+  {
+   "name": "f_deckparcel_platform",
+   "width": 128
+  },
+  {
+   "name": "f_frostveil_panel",
+   "width": 96
+  },
+  {
+   "name": "f_gatebud_picket_gate",
+   "width": 96
+  },
+  {
+   "name": "f_glasspetal_panel",
+   "width": 96
+  }
+ ]
+}

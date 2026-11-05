@@ -1,0 +1,28 @@
+{
+ "items": [
+  {
+   "name": "f_pebblewash_sink",
+   "width": 96
+  },
+  {
+   "name": "f_rivetpan_range",
+   "width": 128
+  },
+  {
+   "name": "f_stillwarm_stove",
+   "width": 96
+  },
+  {
+   "name": "f_toasthem_counter",
+   "width": 96
+  },
+  {
+   "name": "f_wishfeast_counter",
+   "width": 128
+  },
+  {
+   "name": "f_starcrumb_orrery",
+   "width": 80
+  }
+ ]
+}

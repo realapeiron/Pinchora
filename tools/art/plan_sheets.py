@@ -155,7 +155,7 @@ def main():
         name = f"iso_looks_{n:02d}"
         entries = [f"{l['name']} — {l['sprite_brief']}" for l in group]
         manifest = [{"name": f"a_{l['id']}", "width": 0, "height": 64} for l in group]
-        write_sheet(name, LOOKS, entries, 4, manifest, {"palette": "avatar"})
+        write_sheet(name, LOOKS, entries, 4, manifest, {"palette": "avatar", "uniform_height": 64})
         sheets.append(name)
 
     (OUT / "queue.txt").write_text("\n".join(sheets) + "\n")

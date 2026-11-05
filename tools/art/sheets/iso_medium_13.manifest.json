@@ -1,0 +1,28 @@
+{
+ "items": [
+  {
+   "name": "f_hemhang_clothesline",
+   "width": 128
+  },
+  {
+   "name": "f_kettleporch_bench",
+   "width": 96
+  },
+  {
+   "name": "f_reedskip_stepping_set",
+   "width": 96
+  },
+  {
+   "name": "f_reefmurmur_fountain",
+   "width": 128
+  },
+  {
+   "name": "f_rivetdrip_rain_barrel",
+   "width": 96
+  },
+  {
+   "name": "f_shadecoil_parasol",
+   "width": 112
+  }
+ ]
+}

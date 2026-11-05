@@ -3,102 +3,122 @@
   {
    "name": "fl_sandsettle_boards",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "fl_creamstep_tile",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "fl_mossrest_matting",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "fl_quietash_planks",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "fl_mintcool_squares",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "fl_rosewarm_cork",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "fl_skysoft_vinyl",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "fl_lilacdown_carpet",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "fl_hemgrain_boards",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "fl_pebblewake_deck",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "fl_stillfold_concrete",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "fl_blinkberry_checks",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "fl_marginmoss_parquet",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "fl_sprigspool_pavers",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "fl_hushwick_slates",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "fl_frostcrumb_flannel",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "fl_lanternplait_coins",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "fl_budwhistle_mosaic",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "fl_brinebeam_deckplate",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "fl_polypocket_limestone",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   }
  ]
 }

@@ -1,0 +1,20 @@
+{
+ "items": [
+  {
+   "name": "f_frostbough_bed",
+   "width": 192
+  },
+  {
+   "name": "f_hushdrape_bed",
+   "width": 192
+  },
+  {
+   "name": "f_hushwoven_double_bed",
+   "width": 192
+  },
+  {
+   "name": "f_moonpurl_family_bed",
+   "width": 256
+  }
+ ]
+}

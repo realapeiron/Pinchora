@@ -1,0 +1,36 @@
+{
+ "items": [
+  {
+   "name": "f_boltleaf_planter",
+   "width": 40
+  },
+  {
+   "name": "f_dunefan_palm",
+   "width": 48
+  },
+  {
+   "name": "f_fruitwhorl_planter",
+   "width": 46
+  },
+  {
+   "name": "f_kettlebloom_stand",
+   "width": 40
+  },
+  {
+   "name": "f_leafcoil_fig",
+   "width": 44
+  },
+  {
+   "name": "f_palmparcel_tree",
+   "width": 48
+  },
+  {
+   "name": "f_reeffern_arrangement",
+   "width": 48
+  },
+  {
+   "name": "f_sprigpleat_fern",
+   "width": 40
+  }
+ ]
+}

@@ -1,0 +1,44 @@
+{
+ "items": [
+  {
+   "name": "f_wishknot_wall_shelf",
+   "width": 94,
+   "height": 30
+  },
+  {
+   "name": "f_acornglass_window",
+   "width": 94,
+   "height": 62
+  },
+  {
+   "name": "f_archhem_entry",
+   "width": 62,
+   "height": 94
+  },
+  {
+   "name": "f_bayparcel_window",
+   "width": 94,
+   "height": 62
+  },
+  {
+   "name": "f_beamport_window",
+   "width": 62,
+   "height": 62
+  },
+  {
+   "name": "f_buttonround_window",
+   "width": 62,
+   "height": 62
+  },
+  {
+   "name": "f_deckseal_hatch",
+   "width": 62,
+   "height": 62
+  },
+  {
+   "name": "f_dunearc_window",
+   "width": 62,
+   "height": 62
+  }
+ ]
+}

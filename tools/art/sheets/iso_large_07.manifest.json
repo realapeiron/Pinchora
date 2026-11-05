@@ -1,0 +1,20 @@
+{
+ "items": [
+  {
+   "name": "f_stillsoft_bed",
+   "width": 192
+  },
+  {
+   "name": "f_crumbhuddle_booth",
+   "width": 160
+  },
+  {
+   "name": "f_blinkberry_twin_game",
+   "width": 160
+  },
+  {
+   "name": "f_cloudcrank_twin_game",
+   "width": 160
+  }
+ ]
+}

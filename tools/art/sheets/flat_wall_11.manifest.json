@@ -1,0 +1,44 @@
+{
+ "items": [
+  {
+   "name": "f_shellfolio_relief",
+   "width": 62,
+   "height": 62
+  },
+  {
+   "name": "f_shellscript_print",
+   "width": 62,
+   "height": 30
+  },
+  {
+   "name": "f_sprigrow_wall_shelf",
+   "width": 94,
+   "height": 30
+  },
+  {
+   "name": "f_sprouttick_clock",
+   "width": 30,
+   "height": 62
+  },
+  {
+   "name": "f_stillbar_wall_shelf",
+   "width": 62,
+   "height": 30
+  },
+  {
+   "name": "f_stilloval_mirror",
+   "width": 30,
+   "height": 62
+  },
+  {
+   "name": "f_sugarloop_mirror",
+   "width": 62,
+   "height": 62
+  },
+  {
+   "name": "f_twiggleam_wall_planter",
+   "width": 30,
+   "height": 30
+  }
+ ]
+}

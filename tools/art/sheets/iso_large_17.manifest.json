@@ -1,0 +1,20 @@
+{
+ "items": [
+  {
+   "name": "f_terracecoil_stair",
+   "width": 160
+  },
+  {
+   "name": "f_burrowloop_playhouse",
+   "width": 160
+  },
+  {
+   "name": "f_budwhistle_arbor",
+   "width": 160
+  },
+  {
+   "name": "f_fernharbor_garden_bed",
+   "width": 256
+  }
+ ]
+}

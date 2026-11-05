@@ -1,0 +1,20 @@
+{
+ "items": [
+  {
+   "name": "f_acornmarble_island",
+   "width": 192
+  },
+  {
+   "name": "f_brineboard_island",
+   "width": 160
+  },
+  {
+   "name": "f_crumbquay_island",
+   "width": 160
+  },
+  {
+   "name": "f_hearthcoil_bake_oven",
+   "width": 160
+  }
+ ]
+}

@@ -1,0 +1,36 @@
+{
+ "items": [
+  {
+   "name": "f_stillstem_rubber_tree",
+   "width": 44
+  },
+  {
+   "name": "f_wishcitrus_tree",
+   "width": 48
+  },
+  {
+   "name": "f_budbasket_stand",
+   "width": 40
+  },
+  {
+   "name": "f_hushknit_scarecrow",
+   "width": 44
+  },
+  {
+   "name": "f_hushpatch_pumpkin",
+   "width": 40
+  },
+  {
+   "name": "f_boltbud_chair",
+   "width": 64
+  },
+  {
+   "name": "f_buttonnap_cushion",
+   "width": 64
+  },
+  {
+   "name": "f_dewfold_seat",
+   "width": 64
+  }
+ ]
+}

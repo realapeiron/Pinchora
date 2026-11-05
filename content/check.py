@@ -8,6 +8,9 @@ capped at 40% of each target share so small tiers cannot disappear entirely.
 Fish junk is identified by its common rarity and 1-5 shell value; these six
 IDs are listed explicitly so a broken normal-catch price cannot become junk.
 Art quality and worldwide name originality still require editorial review.
+Furniture uses 2:1 isometric floor/surface sprites, frontal wall sprites and
+flat rectangular rugs. A base's variants enumerate its playable colours;
+the default sprite is not an extra item when variants are present.
 """
 
 import json
@@ -28,12 +31,20 @@ PALETTES = {
     "rose", "charcoal", "sand", "lilac",
 }
 CATEGORY_MIN = {
-    "seating": 24, "tables": 22, "beds": 14, "storage": 20,
-    "lighting": 20, "kitchen": 18, "bathroom": 14, "electronics": 14,
-    "rugs": 14, "wall_decor": 26, "windows_doors": 12, "plants": 20,
-    "pet_items": 12, "toys_games": 12, "music": 8, "outdoor": 12,
-    "seasonal": 18,
+    "seating": 40, "tables": 36, "beds": 20, "storage": 32,
+    "lighting": 34, "kitchen": 32, "bathroom": 22, "electronics": 26,
+    "rugs": 40, "wall_decor": 48, "windows_doors": 26, "plants": 36,
+    "pet_items": 20, "toys_games": 24, "music": 16, "outdoor": 28,
+    "seasonal": 28, "office": 16, "cafe": 16, "hobbies": 16,
+    "fitness": 14, "partitions": 22, "nautical": 14,
 }
+FURNITURE_MIN = 650
+# The current 40% recolourable expansion yields 1,861 playable items.
+# Even four colours on all 140 recolourable additions would yield only 1,945.
+PLAYABLE_MIN = 1800
+LAYER_MIN = {"floor": 360, "wall": 110, "surface": 115, "rug": 40}
+BRIEF_PREFIX = {"floor": "Isometric:", "surface": "Isometric:",
+                "wall": "Front view:", "rug": "Top-down flat:"}
 SHELL_BANDS = {
     "common": (40, 400), "uncommon": (300, 1200), "rare": (1000, 5000),
     "epic": (4000, 20000), "legendary": (15000, 80000),
@@ -55,7 +66,7 @@ JUNK_IDS = {
 }
 TREASURE_IDS = {"tidefold_locket", "brinebell_coin", "shellscript_key", "moonkeel_chest"}
 SEASONAL_SETS = {"hushwick_hollow", "frostcrumb_gathering", "lanternplait_fete", "budwhistle_meadow"}
-# Required thematic coverage is tied to this catalog's original set IDs.
+# Required thematic coverage includes the original and community-place sets.
 THEMED_SETS = {
     "thimblefen_cottage", "pebblewake_porch", "stillfold_home", "blinkberry_arcade",
     "marginmoss_library", "sprigspool_potting", "hushwick_hollow", "frostcrumb_gathering",
@@ -63,6 +74,10 @@ THEMED_SETS = {
     "blushbutton_nook", "rivetsprout_loft", "gilded_acorn_court", "dewpeg_camp",
     "orbitcrumb_station", "fizzfern_lab", "kettlewink_cafe", "humskein_studio",
     "clickcove_den", "reedpause_retreat", "dunethread_house", "sugarquay_parlor",
+    "saltstitch_landing", "bramblebob_sleepover", "foliofoam_commons", "inkkelp_office",
+    "crumbcoil_bakery", "glazefin_market", "spoolpetal_atelier", "bouncebrine_club",
+    "slategill_bathhouse", "sunspool_boardwalk", "rivetreef_workshop", "copperwake_cutter",
+    "tilebud_courtyard", "glimmerpip_midway", "driftchime_hall",
 }
 FORBIDDEN = re.compile(
     r"\b(?:tatsu|animal crossing|stardew(?: valley)?|pok[eé]mon|sims|ikea|"
@@ -217,7 +232,7 @@ def mix(records, key, expected):
 
 
 def check_sets(raw):
-    records = entries(raw, "sets.json", 24)
+    records = entries(raw, "sets.json", 39)
     seen, names = {}, {}
     for item, where in records:
         fields(item, where, ("id", "name", "description", "mood"))
@@ -237,15 +252,47 @@ def placement(item, where):
         problem(where, "footprint must be an array of two integers")
     else:
         width, depth = footprint
-        bounds = {"floor": (1, 4, 1, 3), "rug": (2, 4, 1, 3), "wall": (1, 3, 1, 2), "surface": (1, 1, 1, 1)}
+        # Wall footprints are [width, height]; the others are [width, depth].
+        bounds = {"floor": (1, 4, 1, 4), "rug": (1, 4, 1, 4), "wall": (1, 4, 1, 3), "surface": (1, 1, 1, 1)}
         if isinstance(layer, str) and layer in bounds:
             min_w, max_w, min_d, max_d = bounds[layer]
             if not (min_w <= width <= max_w and min_d <= depth <= max_d):
                 problem(where, f"invalid {layer} footprint {footprint}")
     raw_tags = item.get("tags")
     tags = set(tag for tag in raw_tags if isinstance(tag, str)) if isinstance(raw_tags, list) else set()
+    if layer in ("floor", "surface"):
+        iso_width = item.get("iso_width")
+        if not integer(iso_width):
+            problem(where, "iso_width is required and must be an integer")
+        elif valid and not 12 <= iso_width <= sum(footprint) * 32:
+            problem(where, f"iso_width must be 12..{sum(footprint) * 32} for footprint {footprint}")
+        if layer == "surface" and integer(iso_width) and not 16 <= iso_width <= 36:
+            problem(where, "small surface sprites must be 16..36 pixels wide")
+    elif "iso_width" in item:
+        problem(where, "iso_width is only allowed on floor and surface items")
+    if "surface" in tags:
+        height = item.get("surface_height")
+        if not integer(height) or not 10 <= height <= 70:
+            problem(where, "surface-tagged furniture needs integer surface_height in 10..70")
+    elif "surface_height" in item:
+        problem(where, "surface_height is only allowed on surface-tagged furniture")
+    brief = item.get("sprite_brief")
+    if isinstance(brief, str) and isinstance(layer, str) and layer in BRIEF_PREFIX:
+        if not brief.startswith(BRIEF_PREFIX[layer]):
+            problem(where, f"{layer} sprite_brief must start with {BRIEF_PREFIX[layer]!r}")
+        if layer in ("floor", "surface") and ("2:1" not in brief or "front facing lower-left" not in brief):
+            problem(where, "isometric sprite_brief must specify 2:1 and front facing lower-left")
+        if layer == "rug" and ("rectangle" not in brief.casefold() or "fills footprint" not in brief.casefold()):
+            problem(where, "rug sprite_brief must describe a rectangle that fills footprint")
+        if item.get("variants") and not re.search(r"\bcoral\b", brief, re.I):
+            problem(where, "recolourable sprite_brief must retain a coral base colour")
     name = item.get("name", "")
     name = name.casefold() if isinstance(name, str) else ""
+    if (layer == "floor" and valid and integer(item.get("iso_width"))
+            and (category in ("beds", "tables") or re.search(
+                r"\b(bed|bunk|cot|sofa|loveseat|sectional|table|desk|cabinet|counter|nightstand|dresser|wardrobe|bookcase|cupboard|armoire|island)\b", name))
+            and item["iso_width"] != sum(footprint) * 32):
+        problem(where, "furniture that fills its footprint needs iso_width = (w+d)*32")
     if category == "rugs" and layer != "rug":
         problem(where, "rugs must use the rug layer")
     if layer == "rug" and category != "rugs":
@@ -266,7 +313,8 @@ def placement(item, where):
         problem(where, "seating needs the seat tag")
     if re.search(r"\b(chair|sofa|stool|bench|armchair|loveseat|ottoman|lounger|pouf|hammock|beanbag)\b", name) and "seat" not in tags:
         problem(where, "sittable furniture needs the seat tag")
-    if (category == "tables" or re.search(r"\b(desk|counter|shelf|nightstand)\b", name)) and "surface" not in tags:
+    # "Desk lamp" and "desk calendar" are tabletop objects, not desks.
+    if (category == "tables" or re.search(r"\b(desk|counter|shelf|nightstand)$", name)) and "surface" not in tags:
         problem(where, "tables, desks, counters, shelves and nightstands need the surface tag")
     if category == "lighting" or re.search(r"\b(lamp|lantern|candle|candles|sconce|firepit|campfire)\b", name):
         if "light" not in tags:
@@ -276,7 +324,7 @@ def placement(item, where):
 
 
 def check_furniture(raw, set_ids, shared_ids):
-    records = entries(raw, "furniture.json", 260)
+    records = entries(raw, "furniture.json", FURNITURE_MIN)
     names = {}
     playable = 0
     size_prices = defaultdict(lambda: defaultdict(list))
@@ -284,7 +332,7 @@ def check_furniture(raw, set_ids, shared_ids):
         fields(item, where, (
             "id", "name", "category", "layer", "footprint", "rarity", "price", "currency",
             "set", "tags", "variants", "availability", "description", "sprite_brief",
-        ))
+        ), ("iso_width", "surface_height"))
         identity(item, where, shared_ids, names)
         string(item, "name", where, limit=28)
         name = item.get("name")
@@ -296,7 +344,7 @@ def check_furniture(raw, set_ids, shared_ids):
         price(item, where)
         set_reference(item, where, set_ids)
         string(item, "description", where, limit=80)
-        string(item, "sprite_brief", where, words=30)
+        string(item, "sprite_brief", where, limit=200)
         tags = item.get("tags")
         if not isinstance(tags, list) or not 1 <= len(tags) <= 5:
             problem(where, "tags must be an array of 1..5 lowercase words")
@@ -334,10 +382,12 @@ def check_furniture(raw, set_ids, shared_ids):
     for category, minimum in CATEGORY_MIN.items():
         if counts[category] < minimum:
             problem("furniture.json", f"{category}: needs {minimum}; found {counts[category]}")
-    if tally(records, "layer")["surface"] < 30:
-        problem("furniture.json", "needs at least 30 surface items")
-    if playable < 1000:
-        problem("furniture.json", f"needs at least 1000 playable items; found {playable}")
+    layers = tally(records, "layer")
+    for layer, minimum in LAYER_MIN.items():
+        if layers[layer] < minimum:
+            problem("furniture.json", f"needs at least {minimum} {layer} items; found {layers[layer]}")
+    if playable < PLAYABLE_MIN:
+        problem("furniture.json", f"needs at least {PLAYABLE_MIN} playable items; found {playable}")
     share(records, "furniture.json")
     mix(records, "rarity", dict(zip(RARITIES, (.40, .28, .18, .10, .04))))
     mix(records, "availability", dict(zip(AVAILABILITY, (.55, .30, .05, .05, .05))))
@@ -500,6 +550,22 @@ def table(title, rows):
         print(f"{label:<{width}}  {value:>5}")
 
 
+def furniture_table(title, records, key, order):
+    bases, playable = Counter(), Counter()
+    for item, _ in records:
+        label, variants = item.get(key), item.get("variants")
+        if isinstance(label, str):
+            bases[label] += 1
+            if isinstance(variants, list):
+                playable[label] += max(1, len(variants))
+    width = max(len(label) for label in order)
+    print(f"\n{title}")
+    print(f"{'Name':<{width}}  Bases  Playable")
+    print(f"{'-' * width}  -----  --------")
+    for label in order:
+        print(f"{label:<{width}}  {bases[label]:>5}  {playable[label]:>8}")
+
+
 def main():
     ERRORS.clear()
     raw = {name: read_file(name + ".json") for name in ("sets", "furniture", "surfaces", "rooms", "pets", "fish")}
@@ -516,8 +582,11 @@ def main():
                       ("Floors", len(surfaces["floors"])), ("Rooms", len(rooms)),
                       ("Pet species", len(pets)), ("Fish / catches", len(fish))])
     for key, order in (("category", CATEGORY_MIN), ("rarity", RARITIES), ("availability", AVAILABILITY), ("layer", LAYERS)):
-        counts = tally(furniture, key)
-        table(f"Furniture by {key}", [(label, counts[label]) for label in order])
+        if key in ("category", "layer"):
+            furniture_table(f"Furniture by {key}", furniture, key, order)
+        else:
+            counts = tally(furniture, key)
+            table(f"Furniture by {key}", [(label, counts[label]) for label in order])
     print(f"\nPearl furniture: {tally(furniture, 'currency')['pearls']} / {len(furniture)} bases")
     if ERRORS:
         print(f"\n{len(ERRORS)} problem(s):")

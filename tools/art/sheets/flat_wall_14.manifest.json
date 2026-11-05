@@ -1,0 +1,44 @@
+{
+ "items": [
+  {
+   "name": "f_reedslide_screen_door",
+   "width": 62,
+   "height": 94
+  },
+  {
+   "name": "f_reefarch_door",
+   "width": 62,
+   "height": 62
+  },
+  {
+   "name": "f_ribbonpane_storefront",
+   "width": 126,
+   "height": 94
+  },
+  {
+   "name": "f_saltlatch_door",
+   "width": 30,
+   "height": 94
+  },
+  {
+   "name": "f_shopbell_glass_door",
+   "width": 30,
+   "height": 94
+  },
+  {
+   "name": "f_shorecross_window",
+   "width": 62,
+   "height": 62
+  },
+  {
+   "name": "f_sprigslat_gate",
+   "width": 62,
+   "height": 62
+  },
+  {
+   "name": "f_stargill_round_window",
+   "width": 30,
+   "height": 30
+  }
+ ]
+}

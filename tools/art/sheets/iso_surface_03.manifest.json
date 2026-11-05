@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_stillbreeze_fan",
+   "width": 26
+  },
+  {
+   "name": "f_tapfin_tablet",
+   "width": 24
+  },
+  {
+   "name": "f_whirrpetal_fan",
+   "width": 26
+  },
+  {
+   "name": "f_claybud_bowl_set",
+   "width": 28
+  },
+  {
+   "name": "f_paintpearl_palette",
+   "width": 26
+  },
+  {
+   "name": "f_scrapfin_album",
+   "width": 30
+  },
+  {
+   "name": "f_threadnest_spools",
+   "width": 24
+  },
+  {
+   "name": "f_butterburl_breadbox",
+   "width": 32
+  },
+  {
+   "name": "f_buttonmix_blender",
+   "width": 26
+  },
+  {
+   "name": "f_crumbglint_toaster",
+   "width": 28
+  },
+  {
+   "name": "f_crumbscale_set",
+   "width": 26
+  },
+  {
+   "name": "f_crumbshine_toaster",
+   "width": 26
+  }
+ ]
+}

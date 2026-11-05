@@ -1,0 +1,44 @@
+{
+ "items": [
+  {
+   "name": "f_frostpurl_glazed_door",
+   "width": 30,
+   "height": 94
+  },
+  {
+   "name": "f_hearthoval_window",
+   "width": 62,
+   "height": 62
+  },
+  {
+   "name": "f_hedgepeek_garden_door",
+   "width": 62,
+   "height": 94
+  },
+  {
+   "name": "f_hemcross_window",
+   "width": 62,
+   "height": 62
+  },
+  {
+   "name": "f_marginpane_window",
+   "width": 62,
+   "height": 62
+  },
+  {
+   "name": "f_orbitseal_hatch",
+   "width": 62,
+   "height": 62
+  },
+  {
+   "name": "f_pebblepane_window",
+   "width": 62,
+   "height": 62
+  },
+  {
+   "name": "f_reedslide_door",
+   "width": 62,
+   "height": 62
+  }
+ ]
+}

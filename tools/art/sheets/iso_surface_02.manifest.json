@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_chirpcoil_speaker",
+   "width": 20
+  },
+  {
+   "name": "f_clickbud_screen",
+   "width": 36
+  },
+  {
+   "name": "f_clickquay_computer",
+   "width": 36
+  },
+  {
+   "name": "f_clickspool_printer",
+   "width": 36
+  },
+  {
+   "name": "f_fizzscan_terminal",
+   "width": 36
+  },
+  {
+   "name": "f_glowparcel_projector",
+   "width": 28
+  },
+  {
+   "name": "f_hushdial_radio",
+   "width": 28
+  },
+  {
+   "name": "f_kettlewave_radio",
+   "width": 26
+  },
+  {
+   "name": "f_pagecount_calculator",
+   "width": 20
+  },
+  {
+   "name": "f_pebbleclick_remote",
+   "width": 18
+  },
+  {
+   "name": "f_spooldeck_player",
+   "width": 32
+  },
+  {
+   "name": "f_sprigmist_humidifier",
+   "width": 26
+  }
+ ]
+}

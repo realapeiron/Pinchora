@@ -1,0 +1,36 @@
+{
+ "items": [
+  {
+   "name": "f_drowsepatch_basket",
+   "width": 64
+  },
+  {
+   "name": "f_nibblequay_feeder",
+   "width": 48
+  },
+  {
+   "name": "f_pageperch_stand",
+   "width": 36
+  },
+  {
+   "name": "f_pawpurl_basket",
+   "width": 56
+  },
+  {
+   "name": "f_pebblepaw_washpan",
+   "width": 64
+  },
+  {
+   "name": "f_reedroll_scratch_post",
+   "width": 28
+  },
+  {
+   "name": "f_sprigpaw_toy_basket",
+   "width": 64
+  },
+  {
+   "name": "f_blushpetal_planter",
+   "width": 36
+  }
+ ]
+}

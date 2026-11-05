@@ -1,0 +1,28 @@
+{
+ "items": [
+  {
+   "name": "f_pedalpetal_cycle",
+   "width": 78
+  },
+  {
+   "name": "f_rollshore_stretch_rack",
+   "width": 96
+  },
+  {
+   "name": "f_rowripple_machine",
+   "width": 112
+  },
+  {
+   "name": "f_stretchfin_barre",
+   "width": 128
+  },
+  {
+   "name": "f_sweatstitch_locker_bank",
+   "width": 128
+  },
+  {
+   "name": "f_claywhorl_pottery_wheel",
+   "width": 128
+  }
+ ]
+}

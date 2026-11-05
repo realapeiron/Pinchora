@@ -1,0 +1,28 @@
+{
+ "items": [
+  {
+   "name": "f_whiskerfold_hutch",
+   "width": 128
+  },
+  {
+   "name": "f_bloomcradle_trough",
+   "width": 128
+  },
+  {
+   "name": "f_hushglow_mushrooms",
+   "width": 96
+  },
+  {
+   "name": "f_mossnest_terrarium",
+   "width": 100
+  },
+  {
+   "name": "f_orbitgarden_sphere",
+   "width": 96
+  },
+  {
+   "name": "f_reedwater_lily_bowl",
+   "width": 128
+  }
+ ]
+}

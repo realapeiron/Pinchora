@@ -1,0 +1,24 @@
+Use your built-in image generation tool to draw ONE sprite sheet for "Pinchora", a cozy seaside pixel-art life game where players build and furnish rooms seen in an ISOMETRIC view.
+The attached image is the style reference: match its camera, pixel size, outline, shading and mood exactly.
+
+Rules:
+- True pixel art: crisp square pixels at one consistent size, no anti-aliasing, no blur, no gradients, no noise. Fine detail: one floor tile is about 64 art pixels wide.
+- 1-pixel dark outline #1b1d2b around every object, light from the upper-left, 2-3 tone shading.
+- Use only these colours: 1b1d2b 0f1631 1d2b53 2e3d75 4a5ba3 8fa0d8 7a2a3a c2413f ff6b4a ff9e7a ffd2c0 fff1e8 e6d3c3 b8a08f 7d6a5f 4a3f3b 5c3a21 8a5a34 b97f4a e0ac6e 1f4d3a 2f7d4f 5bbf6a a6e39a 1f5f8b 3a9bdc 8fd3ff c98a1e ffd166 5a3a7a 9b6bc4 06d6a0.
+- Background: flat pure #00FF00 everywhere around the objects (a fully transparent background is equally fine). Nothing else on the background: no floor, no tiles, no shadows, no text, no labels, no numbers, no grid lines.
+- Generate the image once and save it. Only regenerate (at most once) if objects are missing, merged together or drawn from the wrong angle; do not regenerate for background, colour or size nitpicks, our importer fixes those.
+- Draw the objects in a grid in exactly the order listed (row by row, left to right), each one complete and isolated with wide green gaps (at least 40 px) between them; parts of one object must touch each other.
+
+View: 2:1 isometric exactly like the reference (floor diamonds twice as wide as tall). Every object's FRONT faces the LOWER-LEFT: we see its front on the lower-left, its right side on the lower-right and its top. Keep relative sizes: a 1x1-tile object is about as wide as the reference chair. Character sheet: full-body player characters, all the SAME height and the SAME body (a friendly chibi-ish adult, head about a quarter of the height), standing relaxed, arms down, in the same pose, facing the lower-left. For characters the colour list above does NOT apply; use exactly this colour code instead, required because our engine recolours these regions: skin only in #8a4b3b #c97a5c #f0a98a #ffd8c2; hair only in the purple ramp #3b1f6b #5e35a8 #8a5ad8 #b994f0; top, shirt, jacket or dress only in the coral ramp #7a2a3a #c2413f #ff6b4a #ff9e7a #ffd2c0; trousers, shorts or skirt only in the blue ramp #1d2b53 #2e3d75 #4a5ba3 #8fa0d8; shoes in browns #3b2a24 #6b4a3a #a0705a; small details (buttons, glasses, laces) in greys #45495c #6a6f86 #a3a8bd or gold #c98a1e #ffd166; eyes #1b1d2b with a #fff1e8 highlight. No hats, no held items.
+Layout: 4 columns x 2 rows, 8 objects in total.
+
+1. Tidewalker — short messy hair, crew-neck t-shirt, rolled-up jeans, sneakers
+2. Bunhaven — hair in a high round bun, cosy knit sweater, straight trousers, flat shoes
+3. Longreef — long straight hair past the shoulders, sleeveless sundress (dress is the top colour, a short underskirt in the bottom colour), sandals
+4. Curlcove — big curly hair, hoodie with a front pocket, jogger pants, chunky sneakers
+5. Pigtail Pip — two pigtails with small ties, striped t-shirt, short overall shorts, boots
+6. Sidesweep — side-swept fringe, open jacket over a light undershirt, slim trousers, loafers
+7. Braidline — one long side braid, cropped cardigan, wide skirt to the knees, ankle boots
+8. Spikeshore — short spiky hair, sporty zip jacket, track pants, running shoes
+
+Save the final PNG to ./out/iso_looks_01.png (create ./out if needed). Exactly 8 objects.

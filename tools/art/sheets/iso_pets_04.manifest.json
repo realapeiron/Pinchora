@@ -1,0 +1,36 @@
+{
+ "items": [
+  {
+   "name": "p_tasselcrest_cockatiel",
+   "width": 40
+  },
+  {
+   "name": "p_hoothem_owlet",
+   "width": 40
+  },
+  {
+   "name": "p_lanternclasp_crab",
+   "width": 44
+  },
+  {
+   "name": "p_lacefloat_cuttle",
+   "width": 44
+  },
+  {
+   "name": "p_thimblehorn_narwhal",
+   "width": 44
+  },
+  {
+   "name": "p_meadowgill_nudibranch",
+   "width": 44
+  },
+  {
+   "name": "p_dunetuft_fennec",
+   "width": 44
+  },
+  {
+   "name": "p_marmalade_mothkit",
+   "width": 44
+  }
+ ]
+}

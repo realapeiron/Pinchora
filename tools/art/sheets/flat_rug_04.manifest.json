@@ -1,0 +1,34 @@
+{
+ "items": [
+  {
+   "name": "f_kettlelace_rug",
+   "width": 96,
+   "height": 64
+  },
+  {
+   "name": "f_leafmargin_rug",
+   "width": 96,
+   "height": 64
+  },
+  {
+   "name": "f_marginleaf_rug",
+   "width": 96,
+   "height": 64
+  },
+  {
+   "name": "f_memoquay_runner",
+   "width": 128,
+   "height": 64
+  },
+  {
+   "name": "f_mistweft_bath_mat",
+   "width": 64,
+   "height": 32
+  },
+  {
+   "name": "f_orbitlace_rug",
+   "width": 128,
+   "height": 96
+  }
+ ]
+}

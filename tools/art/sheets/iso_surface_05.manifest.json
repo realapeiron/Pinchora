@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_coilcap_desk_lamp",
+   "width": 28
+  },
+  {
+   "name": "f_dewloop_lantern",
+   "width": 26
+  },
+  {
+   "name": "f_dropletglow_lamp",
+   "width": 22
+  },
+  {
+   "name": "f_dunewick_candle",
+   "width": 18
+  },
+  {
+   "name": "f_fizzflask_lamp",
+   "width": 26
+  },
+  {
+   "name": "f_frosttin_lantern",
+   "width": 26
+  },
+  {
+   "name": "f_hemshade_lamp",
+   "width": 26
+  },
+  {
+   "name": "f_marshwick_lantern",
+   "width": 20
+  },
+  {
+   "name": "f_mothcup_table_lamp",
+   "width": 24
+  },
+  {
+   "name": "f_pageglow_lamp",
+   "width": 26
+  },
+  {
+   "name": "f_pearlseed_light_bowl",
+   "width": 32
+  },
+  {
+   "name": "f_pebblecap_lamp",
+   "width": 26
+  }
+ ]
+}

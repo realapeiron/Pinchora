@@ -1,0 +1,20 @@
+{
+ "items": [
+  {
+   "name": "f_reefcurl_tub",
+   "width": 160
+  },
+  {
+   "name": "f_acorncrest_canopy",
+   "width": 224
+  },
+  {
+   "name": "f_beamnest_bunk",
+   "width": 160
+  },
+  {
+   "name": "f_blushbun_bed",
+   "width": 160
+  }
+ ]
+}

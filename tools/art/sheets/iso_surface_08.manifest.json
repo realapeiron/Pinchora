@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_fizzroot_terrarium",
+   "width": 32
+  },
+  {
+   "name": "f_hemleaf_pothos",
+   "width": 24
+  },
+  {
+   "name": "f_mintbundle_herb_tin",
+   "width": 24
+  },
+  {
+   "name": "f_mossmarble_bowl",
+   "width": 30
+  },
+  {
+   "name": "f_needlepearl_cactus",
+   "width": 20
+  },
+  {
+   "name": "f_pagebud_ivy",
+   "width": 24
+  },
+  {
+   "name": "f_pebbletip_succulent",
+   "width": 24
+  },
+  {
+   "name": "f_petalquill_bud_vase",
+   "width": 16
+  },
+  {
+   "name": "f_reedbud_bonsai",
+   "width": 32
+  },
+  {
+   "name": "f_sprigcup_fern",
+   "width": 24
+  },
+  {
+   "name": "f_budbasket_eggs",
+   "width": 28
+  },
+  {
+   "name": "f_budwhistle_egg_bowl",
+   "width": 26
+  }
+ ]
+}

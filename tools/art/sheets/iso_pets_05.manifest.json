@@ -1,0 +1,36 @@
+{
+ "items": [
+  {
+   "name": "p_reedskip_kangaroo_rat",
+   "width": 44
+  },
+  {
+   "name": "p_velvetloop_moth",
+   "width": 44
+  },
+  {
+   "name": "p_cloudthimble_dove",
+   "width": 44
+  },
+  {
+   "name": "p_glassgarden_shrimp",
+   "width": 48
+  },
+  {
+   "name": "p_starstitch_squid",
+   "width": 48
+  },
+  {
+   "name": "p_crowncurl_dragonet",
+   "width": 48
+  },
+  {
+   "name": "p_hushpocket_bat",
+   "width": 48
+  },
+  {
+   "name": "p_moonbutton_chinchilla",
+   "width": 48
+  }
+ ]
+}

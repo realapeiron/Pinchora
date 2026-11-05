@@ -1,0 +1,28 @@
+{
+ "items": [
+  {
+   "name": "f_buttonbubble_basin",
+   "width": 96
+  },
+  {
+   "name": "f_fizzmist_shower",
+   "width": 128
+  },
+  {
+   "name": "f_mistrail_vanity",
+   "width": 96
+  },
+  {
+   "name": "f_pebbleflush_loo",
+   "width": 96
+  },
+  {
+   "name": "f_quietflush_loo",
+   "width": 96
+  },
+  {
+   "name": "f_rainpebble_shower",
+   "width": 128
+  }
+ ]
+}

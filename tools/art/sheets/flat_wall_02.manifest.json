@@ -1,0 +1,44 @@
+{
+ "items": [
+  {
+   "name": "f_formripple_mirror",
+   "width": 126,
+   "height": 94
+  },
+  {
+   "name": "f_stitchmap_pattern_poster",
+   "width": 62,
+   "height": 94
+  },
+  {
+   "name": "f_toolpetal_pegboard",
+   "width": 62,
+   "height": 62
+  },
+  {
+   "name": "f_panplait_wall_rack",
+   "width": 94,
+   "height": 30
+  },
+  {
+   "name": "f_beamguard_sconce",
+   "width": 30,
+   "height": 62
+  },
+  {
+   "name": "f_hushpetal_sconce",
+   "width": 62,
+   "height": 62
+  },
+  {
+   "name": "f_petalwick_sconce",
+   "width": 30,
+   "height": 62
+  },
+  {
+   "name": "f_quayglow_bulkhead",
+   "width": 30,
+   "height": 30
+  }
+ ]
+}

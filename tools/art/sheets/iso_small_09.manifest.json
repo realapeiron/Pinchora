@@ -1,0 +1,36 @@
+{
+ "items": [
+  {
+   "name": "f_spoolback_chair",
+   "width": 64
+  },
+  {
+   "name": "f_tuckfin_chair",
+   "width": 64
+  },
+  {
+   "name": "f_mottlehook_coat_stand",
+   "width": 28
+  },
+  {
+   "name": "f_reedfold_basket",
+   "width": 64
+  },
+  {
+   "name": "f_beambox_nightstand",
+   "width": 64
+  },
+  {
+   "name": "f_dunecup_table",
+   "width": 64
+  },
+  {
+   "name": "f_nestnib_side_table",
+   "width": 64
+  },
+  {
+   "name": "f_pebblepad_table",
+   "width": 64
+  }
+ ]
+}

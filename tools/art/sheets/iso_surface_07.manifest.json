@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_tidequill_logbook",
+   "width": 26
+  },
+  {
+   "name": "f_clipcoil_stapler",
+   "width": 18
+  },
+  {
+   "name": "f_memonest_desk_calendar",
+   "width": 24
+  },
+  {
+   "name": "f_nibnest_pen_cup",
+   "width": 16
+  },
+  {
+   "name": "f_paperwave_letter_tray",
+   "width": 28
+  },
+  {
+   "name": "f_quillpearl_stamp_set",
+   "width": 22
+  },
+  {
+   "name": "f_shellparcel_bowl",
+   "width": 30
+  },
+  {
+   "name": "f_treatparcel_jar",
+   "width": 22
+  },
+  {
+   "name": "f_clovercup_pot",
+   "width": 18
+  },
+  {
+   "name": "f_crumbmint_pot",
+   "width": 24
+  },
+  {
+   "name": "f_dewsprout_tin",
+   "width": 24
+  },
+  {
+   "name": "f_dunesip_cactus",
+   "width": 24
+  }
+ ]
+}

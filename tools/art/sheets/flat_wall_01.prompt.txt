@@ -1,0 +1,24 @@
+Use your built-in image generation tool to draw ONE sprite sheet for "Pinchora", a cozy seaside pixel-art life game where players build and furnish rooms seen in an ISOMETRIC view.
+The attached image is the style reference: match its camera, pixel size, outline, shading and mood exactly.
+
+Rules:
+- True pixel art: crisp square pixels at one consistent size, no anti-aliasing, no blur, no gradients, no noise. Fine detail: one floor tile is about 64 art pixels wide.
+- 1-pixel dark outline #1b1d2b around every object, light from the upper-left, 2-3 tone shading.
+- Use only these colours: 1b1d2b 0f1631 1d2b53 2e3d75 4a5ba3 8fa0d8 7a2a3a c2413f ff6b4a ff9e7a ffd2c0 fff1e8 e6d3c3 b8a08f 7d6a5f 4a3f3b 5c3a21 8a5a34 b97f4a e0ac6e 1f4d3a 2f7d4f 5bbf6a a6e39a 1f5f8b 3a9bdc 8fd3ff c98a1e ffd166 5a3a7a 9b6bc4 06d6a0.
+- Background: flat pure #00FF00 everywhere around the objects (a fully transparent background is equally fine). Nothing else on the background: no floor, no tiles, no shadows, no text, no labels, no numbers, no grid lines.
+- Generate the image once and save it. Only regenerate (at most once) if objects are missing, merged together or drawn from the wrong angle; do not regenerate for background, colour or size nitpicks, our importer fixes those.
+- Draw the objects in a grid in exactly the order listed (row by row, left to right), each one complete and isolated with wide green gaps (at least 40 px) between them; parts of one object must touch each other.
+
+Wall decorations. View: FLAT, seen straight from the front with no perspective at all (our engine slants it onto the wall). Each object fills its own rectangle with the exact proportions given.
+Layout: 4 columns x 2 rows, 8 objects in total.
+
+1. Foamloop Towel Rail — Front view: Wall-mounted, straight on; Rose metal rail, cream folded towels, gold wall brackets, navy hem stripes. (proportions 2 wide by 1 tall)
+2. Mistoval Mirror — Front view: Wall-mounted, straight on; Coral oval mirror frame, cream shell crest, sky glass, gold hanging tab. (proportions 1 wide by 2 tall) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+3. Tidefold Towel Rail — Front view: Wall-mounted, straight on; coral wall rail, navy brackets, two cream striped towels, coral corner tassels. (proportions 2 wide by 1 tall) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+4. Crumbcrest Shop Sign — Front view: Wall-mounted, straight on; Mint wooden sign, cream loaf emblem, gold border, oak hanging tabs. (proportions 3 wide by 1 tall)
+5. Menuwhorl Board — Front view: Wall-mounted, straight on; Coral menu board frame, charcoal slate, cream cup symbols, gold chalk lines. (proportions 2 wide by 2 tall) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+6. Sipminute Clock — Front view: Wall-mounted, straight on; Coral round clock, cream saucer face, gold spoon-shaped hands, navy hour dots. (proportions 1 wide by 1 tall) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+7. Pixelreed Wall Screen — Front view: Wall-mounted, straight on; Coral slim screen frame, sky blank panel, cream lower bar, gold mounting corners. (proportions 3 wide by 2 tall) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+8. Softsignal Intercom — Front view: Wall-mounted, straight on; Cream square intercom, cream speaker slots, gold call button, navy label plate. (proportions 1 wide by 1 tall)
+
+Save the final PNG to ./out/flat_wall_01.png (create ./out if needed). Exactly 8 objects.

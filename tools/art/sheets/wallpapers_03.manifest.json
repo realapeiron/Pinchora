@@ -3,22 +3,26 @@
   {
    "name": "wp_fizzfern_bubbles",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "wp_hushwick_moonlace",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "wp_wishplait_silk",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   },
   {
    "name": "wp_budwhistle_petalnet",
    "width": 16,
-   "height": 16
+   "height": 16,
+   "opaque": true
   }
  ]
 }

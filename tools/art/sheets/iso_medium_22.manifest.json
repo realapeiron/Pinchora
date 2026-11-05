@@ -1,0 +1,28 @@
+{
+ "items": [
+  {
+   "name": "f_hemharbor_loveseat",
+   "width": 128
+  },
+  {
+   "name": "f_hushwing_armchair",
+   "width": 128
+  },
+  {
+   "name": "f_milkdrop_beanbag",
+   "width": 128
+  },
+  {
+   "name": "f_nookcurl_chaise",
+   "width": 128
+  },
+  {
+   "name": "f_pagecurl_chaise",
+   "width": 128
+  },
+  {
+   "name": "f_pebbleplait_bench",
+   "width": 128
+  }
+ ]
+}

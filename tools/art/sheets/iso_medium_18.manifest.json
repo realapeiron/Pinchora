@@ -1,0 +1,28 @@
+{
+ "items": [
+  {
+   "name": "f_finbubble_tank",
+   "width": 96
+  },
+  {
+   "name": "f_fizzpaw_care_station",
+   "width": 96
+  },
+  {
+   "name": "f_orbitcurl_pet_pod",
+   "width": 128
+  },
+  {
+   "name": "f_pawdrift_grooming_table",
+   "width": 96
+  },
+  {
+   "name": "f_reefrest_pet_pool",
+   "width": 128
+  },
+  {
+   "name": "f_splashwhisk_pet_pool",
+   "width": 128
+  }
+ ]
+}

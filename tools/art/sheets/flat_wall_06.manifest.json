@@ -1,0 +1,44 @@
+{
+ "items": [
+  {
+   "name": "f_springskein_wreath",
+   "width": 62,
+   "height": 62
+  },
+  {
+   "name": "f_wishrope_garland",
+   "width": 94,
+   "height": 30
+  },
+  {
+   "name": "f_parcelperch_wall_shelf",
+   "width": 94,
+   "height": 30
+  },
+  {
+   "name": "f_ribbonhook_wall_rack",
+   "width": 62,
+   "height": 30
+  },
+  {
+   "name": "f_orbitfloat_mobile",
+   "width": 62,
+   "height": 62
+  },
+  {
+   "name": "f_scorepurl_poster",
+   "width": 62,
+   "height": 62
+  },
+  {
+   "name": "f_acornlight_mosaic",
+   "width": 94,
+   "height": 62
+  },
+  {
+   "name": "f_beamchart_map",
+   "width": 94,
+   "height": 62
+  }
+ ]
+}

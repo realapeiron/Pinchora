@@ -1,0 +1,36 @@
+{
+ "items": [
+  {
+   "name": "f_pebblebeat_drum",
+   "width": 44
+  },
+  {
+   "name": "f_anchorpurl_capstan",
+   "width": 46
+  },
+  {
+   "name": "f_helmwhorl_wheel_stand",
+   "width": 48
+  },
+  {
+   "name": "f_keelguard_figurehead",
+   "width": 40
+  },
+  {
+   "name": "f_sailparcel_mast",
+   "width": 40
+  },
+  {
+   "name": "f_inktray_file_cabinet",
+   "width": 64
+  },
+  {
+   "name": "f_memosip_water_cooler",
+   "width": 48
+  },
+  {
+   "name": "f_quillcurrent_chair",
+   "width": 64
+  }
+ ]
+}

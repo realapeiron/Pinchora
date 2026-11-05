@@ -1,0 +1,34 @@
+{
+ "items": [
+  {
+   "name": "f_graphfoam_rug",
+   "width": 96,
+   "height": 96
+  },
+  {
+   "name": "f_harborhem_carpet",
+   "width": 96,
+   "height": 128
+  },
+  {
+   "name": "f_hemcheck_rug",
+   "width": 64,
+   "height": 64
+  },
+  {
+   "name": "f_hoploop_training_mat",
+   "width": 64,
+   "height": 96
+  },
+  {
+   "name": "f_inksquare_mat",
+   "width": 64,
+   "height": 64
+  },
+  {
+   "name": "f_keelknot_runner",
+   "width": 96,
+   "height": 32
+  }
+ ]
+}

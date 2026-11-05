@@ -1,0 +1,20 @@
+{
+ "items": [
+  {
+   "name": "f_orbitshade_gazebo",
+   "width": 224
+  },
+  {
+   "name": "f_sandparcel_cabana",
+   "width": 192
+  },
+  {
+   "name": "f_sandskein_pergola",
+   "width": 256
+  },
+  {
+   "name": "f_shellspray_fountain",
+   "width": 192
+  }
+ ]
+}

@@ -1,0 +1,28 @@
+Use your built-in image generation tool to draw ONE sprite sheet for "Pinchora", a cozy seaside pixel-art life game where players build and furnish rooms seen in an ISOMETRIC view.
+The attached image is the style reference: match its camera, pixel size, outline, shading and mood exactly.
+
+Rules:
+- True pixel art: crisp square pixels at one consistent size, no anti-aliasing, no blur, no gradients, no noise. Fine detail: one floor tile is about 64 art pixels wide.
+- 1-pixel dark outline #1b1d2b around every object, light from the upper-left, 2-3 tone shading.
+- Use only these colours: 1b1d2b 0f1631 1d2b53 2e3d75 4a5ba3 8fa0d8 7a2a3a c2413f ff6b4a ff9e7a ffd2c0 fff1e8 e6d3c3 b8a08f 7d6a5f 4a3f3b 5c3a21 8a5a34 b97f4a e0ac6e 1f4d3a 2f7d4f 5bbf6a a6e39a 1f5f8b 3a9bdc 8fd3ff c98a1e ffd166 5a3a7a 9b6bc4 06d6a0.
+- Background: flat pure #00FF00 everywhere around the objects (a fully transparent background is equally fine). Nothing else on the background: no floor, no tiles, no shadows, no text, no labels, no numbers, no grid lines.
+- Generate the image once and save it. Only regenerate (at most once) if objects are missing, merged together or drawn from the wrong angle; do not regenerate for background, colour or size nitpicks, our importer fixes those.
+- Draw the objects in a grid in exactly the order listed (row by row, left to right), each one complete and isolated with wide green gaps (at least 40 px) between them; parts of one object must touch each other.
+
+Small tabletop decorations. View: 2:1 isometric exactly like the reference (floor diamonds twice as wide as tall). Every object's FRONT faces the LOWER-LEFT: we see its front on the lower-left, its right side on the lower-right and its top. Keep relative sizes: a 1x1-tile object is about as wide as the reference chair.
+Layout: 4 columns x 3 rows, 12 objects in total.
+
+1. Linenpearl Towels — Isometric: 2:1, front facing lower-left; Navy folded towel stack, cream hem stripes, sand ribbon tie, soft square edges. (small decoration that stands on a table, well under one tile)
+2. Reedsoap Dish — Isometric: 2:1, front facing lower-left; coral oval ceramic dish, moss drainage grooves, cream soap block. (small decoration that stands on a table, well under one tile) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+3. Soapbud Dish — Isometric: 2:1, front facing lower-left; Coral oval soap dish, cream ridged center, moss soap block, gold rim dots. (small decoration that stands on a table, well under one tile) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+4. Sprigfold Towels — Isometric: 2:1, front facing lower-left; Three folded coral towels, mint stripes, moss ribbon loop, slightly uneven stack. (small decoration that stands on a table, well under one tile) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+5. Steamseed Oil Tray — Isometric: 2:1, front facing lower-left; Mint ceramic tray, cream oil bottle, moss glass vial, sand wooden stopper. (small decoration that stands on a table, well under one tile)
+6. Beanwhirl Grinder — Isometric: 2:1, front facing lower-left; Coral grinder base, cream bean hopper, gold crank, charcoal grounds drawer. (small decoration that stands on a table, well under one tile) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+7. Crumbparcel Cake Stand — Isometric: 2:1, front facing lower-left; Cream cake stand, cream glass dome, gold knob, sand cake slices beneath. (small decoration that stands on a table, well under one tile)
+8. Foamleaf Cappuccino — Isometric: 2:1, front facing lower-left; Mint ceramic cup, cream foam leaf, gold rim, navy round saucer. (small decoration that stands on a table, well under one tile)
+9. Sugarpocket Caddy — Isometric: 2:1, front facing lower-left; Coral divided caddy, cream sugar packets, oak stirrers, gold carrying loop. (small decoration that stands on a table, well under one tile) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+10. Teacoil Pot — Isometric: 2:1, front facing lower-left; Coral round teapot, cream curved spout, gold lid knob, navy woven handle. (small decoration that stands on a table, well under one tile) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+11. Toastpetal Plate — Isometric: 2:1, front facing lower-left; Navy round plate, cream toast triangles, gold butter curl, navy rim dots. (small decoration that stands on a table, well under one tile)
+12. Beamcast Projector — Isometric: 2:1, front facing lower-left; coral box projector, gold lens ring, sand top handle, moss side vents. (small decoration that stands on a table, well under one tile) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+
+Save the final PNG to ./out/iso_surface_01.png (create ./out if needed). Exactly 12 objects.

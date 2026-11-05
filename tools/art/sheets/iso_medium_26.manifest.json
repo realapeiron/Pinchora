@@ -1,0 +1,28 @@
+{
+ "items": [
+  {
+   "name": "f_loomloop_low_shelf",
+   "width": 128
+  },
+  {
+   "name": "f_marginrow_bookcase",
+   "width": 96
+  },
+  {
+   "name": "f_mossbasket_chest",
+   "width": 96
+  },
+  {
+   "name": "f_parcelpurl_cabinet",
+   "width": 96
+  },
+  {
+   "name": "f_pebblepeg_cabinet",
+   "width": 96
+  },
+  {
+   "name": "f_plainstack_cubby",
+   "width": 96
+  }
+ ]
+}

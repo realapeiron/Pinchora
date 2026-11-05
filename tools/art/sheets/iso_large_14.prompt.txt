@@ -1,0 +1,20 @@
+Use your built-in image generation tool to draw ONE sprite sheet for "Pinchora", a cozy seaside pixel-art life game where players build and furnish rooms seen in an ISOMETRIC view.
+The attached image is the style reference: match its camera, pixel size, outline, shading and mood exactly.
+
+Rules:
+- True pixel art: crisp square pixels at one consistent size, no anti-aliasing, no blur, no gradients, no noise. Fine detail: one floor tile is about 64 art pixels wide.
+- 1-pixel dark outline #1b1d2b around every object, light from the upper-left, 2-3 tone shading.
+- Use only these colours: 1b1d2b 0f1631 1d2b53 2e3d75 4a5ba3 8fa0d8 7a2a3a c2413f ff6b4a ff9e7a ffd2c0 fff1e8 e6d3c3 b8a08f 7d6a5f 4a3f3b 5c3a21 8a5a34 b97f4a e0ac6e 1f4d3a 2f7d4f 5bbf6a a6e39a 1f5f8b 3a9bdc 8fd3ff c98a1e ffd166 5a3a7a 9b6bc4 06d6a0.
+- Background: flat pure #00FF00 everywhere around the objects (a fully transparent background is equally fine). Nothing else on the background: no floor, no tiles, no shadows, no text, no labels, no numbers, no grid lines.
+- Generate the image once and save it. Only regenerate (at most once) if objects are missing, merged together or drawn from the wrong angle; do not regenerate for background, colour or size nitpicks, our importer fixes those.
+- Draw the objects in a grid in exactly the order listed (row by row, left to right), each one complete and isolated with wide green gaps (at least 40 px) between them; parts of one object must touch each other.
+
+Furniture sheet. View: 2:1 isometric exactly like the reference (floor diamonds twice as wide as tall). Every object's FRONT faces the LOWER-LEFT: we see its front on the lower-left, its right side on the lower-right and its top. Keep relative sizes: a 1x1-tile object is about as wide as the reference chair.
+Layout: 2 columns x 2 rows, 4 objects in total.
+
+1. Beachburl Lounger — Isometric: 2:1, front facing lower-left; Sand slatted lounger, cream cushion, oak reclining frame, navy arm pads. (2x3 tiles, its long side runs from upper-right to lower-left)
+2. Boardbloom Stage — Isometric: 2:1, front facing lower-left; Navy plank stage, cream edge trim, oak front steps, navy square corner posts. (4x3 tiles, its long side runs from upper-left to lower-right)
+3. Boardwalkbud Kiosk — Isometric: 2:1, front facing lower-left; Coral kiosk, cream striped canopy, oak serving ledge, navy shutter panels. (3x2 tiles, its long side runs from upper-left to lower-right) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+4. Dewcord Hammock — Isometric: 2:1, front facing lower-left; coral canvas hammock, coral cords, pale wood stand, navy end cushions. (3x2 tiles, its long side runs from upper-left to lower-right) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+
+Save the final PNG to ./out/iso_large_14.png (create ./out if needed). Exactly 4 objects.

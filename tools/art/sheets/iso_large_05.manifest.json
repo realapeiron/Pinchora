@@ -1,0 +1,20 @@
+{
+ "items": [
+  {
+   "name": "f_mossmurmur_canopy_bed",
+   "width": 224
+  },
+  {
+   "name": "f_pagehaven_bed",
+   "width": 160
+  },
+  {
+   "name": "f_patchpillow_bed",
+   "width": 160
+  },
+  {
+   "name": "f_polypillow_bed",
+   "width": 192
+  }
+ ]
+}

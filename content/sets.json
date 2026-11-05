@@ -142,5 +142,95 @@
     "name": "Sugarquay Parlor",
     "description": "Confection-inspired furniture that looks delicious but stays politely inedible.",
     "mood": "Rose stripes, cream icing shapes, mint glass, plum dots."
+  },
+  {
+    "id": "saltstitch_landing",
+    "name": "Saltstitch Landing",
+    "description": "A bright coastal home with room for wet boots and unexpected guests.",
+    "mood": "Coral linen, pale oak, cream plaster, navy stitching."
+  },
+  {
+    "id": "bramblebob_sleepover",
+    "name": "Bramblebob Sleepover",
+    "description": "Soft bunks, secret drawers, and little beds for the smallest housemates.",
+    "mood": "Coral quilts, cream wicker, moss felt, lilac piping."
+  },
+  {
+    "id": "foliofoam_commons",
+    "name": "Foliofoam Commons",
+    "description": "A neighborhood reading room where every story finds a listening ear.",
+    "mood": "Coral bookcloth, walnut shelves, cream paper, gold tabs."
+  },
+  {
+    "id": "inkkelp_office",
+    "name": "Inkkelp Office",
+    "description": "An easygoing workplace for shared projects and very organized biscuits.",
+    "mood": "Coral enamel, ash desks, charcoal mesh, mint glass."
+  },
+  {
+    "id": "crumbcoil_bakery",
+    "name": "Crumbcoil Bakery",
+    "description": "Warm trays and tiny tables turn a corner shop into a daily ritual.",
+    "mood": "Coral tile, cream glaze, oak counters, gold fittings."
+  },
+  {
+    "id": "glazefin_market",
+    "name": "Glazefin Market",
+    "description": "A friendly little market for ribbons, produce, and curious keepsakes.",
+    "mood": "Coral awnings, cream shelves, sky glass, sand wicker."
+  },
+  {
+    "id": "spoolpetal_atelier",
+    "name": "Spoolpetal Atelier",
+    "description": "A shared studio for clay experiments, loose threads, and happy mistakes.",
+    "mood": "Coral canvas, maple frames, mint tools, cream clay."
+  },
+  {
+    "id": "bouncebrine_club",
+    "name": "Bouncebrine Club",
+    "description": "A cheerful movement club with space for stretching and a long water break.",
+    "mood": "Coral padding, charcoal steel, cream rubber, sky trim."
+  },
+  {
+    "id": "slategill_bathhouse",
+    "name": "Slategill Bathhouse",
+    "description": "Quiet pools and folded towels invite the whole neighborhood to slow down.",
+    "mood": "Coral tile, sand stone, moss cedar, cream linen."
+  },
+  {
+    "id": "sunspool_boardwalk",
+    "name": "Sunspool Boardwalk",
+    "description": "Breezy beach cabins and shady seats for a day that lasts until sunset.",
+    "mood": "Coral canvas, sand planks, navy rope, cream shells."
+  },
+  {
+    "id": "rivetreef_workshop",
+    "name": "Rivetreef Workshop",
+    "description": "A useful collection of sturdy tools, spare parts, and half-finished ideas.",
+    "mood": "Coral steel, charcoal iron, sand timber, copper rivets."
+  },
+  {
+    "id": "copperwake_cutter",
+    "name": "Copperwake Cutter",
+    "description": "Build a snug little ship from its busy deck to its sleepy crew quarters.",
+    "mood": "Coral hull paint, navy canvas, gold brass, pale rope."
+  },
+  {
+    "id": "tilebud_courtyard",
+    "name": "Tilebud Courtyard",
+    "description": "Walls, gates, and garden paths make a sheltered place to grow together.",
+    "mood": "Coral brick, cream mortar, moss leaves, sand gravel."
+  },
+  {
+    "id": "glimmerpip_midway",
+    "name": "Glimmerpip Midway",
+    "description": "A playful arcade of invented games and prizes that fit in a pocket.",
+    "mood": "Coral cabinets, plum felt, sky lights, charcoal trim."
+  },
+  {
+    "id": "driftchime_hall",
+    "name": "Driftchime Hall",
+    "description": "A community hall ready for rehearsal, supper, or a very small concert.",
+    "mood": "Coral felt, maple wood, gold brass, navy curtains."
   }
 ]

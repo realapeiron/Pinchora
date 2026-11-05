@@ -1,0 +1,28 @@
+{
+ "items": [
+  {
+   "name": "f_trinketshoal_chest",
+   "width": 96
+  },
+  {
+   "name": "f_wishknot_wardrobe",
+   "width": 128
+  },
+  {
+   "name": "f_clickspan_desk",
+   "width": 128
+  },
+  {
+   "name": "f_crumbcorner_table",
+   "width": 128
+  },
+  {
+   "name": "f_crumbshoal_coffee_table",
+   "width": 96
+  },
+  {
+   "name": "f_dewtray_table",
+   "width": 96
+  }
+ ]
+}

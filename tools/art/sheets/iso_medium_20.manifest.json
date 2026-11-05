@@ -1,0 +1,28 @@
+{
+ "items": [
+  {
+   "name": "f_sprigarch_trellis",
+   "width": 96
+  },
+  {
+   "name": "f_budcurl_flower_cart",
+   "width": 128
+  },
+  {
+   "name": "f_frostcrumb_tree",
+   "width": 128
+  },
+  {
+   "name": "f_frostglimmer_hearth",
+   "width": 128
+  },
+  {
+   "name": "f_frostpost_gift_pile",
+   "width": 96
+  },
+  {
+   "name": "f_petalparcel_wagon",
+   "width": 128
+  }
+ ]
+}

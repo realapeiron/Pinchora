@@ -1,0 +1,36 @@
+{
+ "items": [
+  {
+   "name": "p_crumbclaw_crab",
+   "width": 36
+  },
+  {
+   "name": "p_pebblepouch_hermit",
+   "width": 36
+  },
+  {
+   "name": "p_ribbonfin_guppy",
+   "width": 36
+  },
+  {
+   "name": "p_noodlenose_seahorse",
+   "width": 36
+  },
+  {
+   "name": "p_puddlesock_otter",
+   "width": 36
+  },
+  {
+   "name": "p_buttonbell_jelly",
+   "width": 36
+  },
+  {
+   "name": "p_sprinklearm_octopus",
+   "width": 36
+  },
+  {
+   "name": "p_drowsepatch_cat",
+   "width": 36
+  }
+ ]
+}

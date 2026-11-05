@@ -1,0 +1,28 @@
+{
+ "items": [
+  {
+   "name": "f_dunebowl_counter",
+   "width": 128
+  },
+  {
+   "name": "f_emberpleat_stove",
+   "width": 96
+  },
+  {
+   "name": "f_fizzchill_cabinet",
+   "width": 128
+  },
+  {
+   "name": "f_foamspout_sink",
+   "width": 96
+  },
+  {
+   "name": "f_hemtop_counter",
+   "width": 96
+  },
+  {
+   "name": "f_kettlewink_fridge",
+   "width": 128
+  }
+ ]
+}

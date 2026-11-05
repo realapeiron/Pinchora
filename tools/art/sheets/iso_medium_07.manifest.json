@@ -1,0 +1,28 @@
+{
+ "items": [
+  {
+   "name": "f_glazecoil_kiln",
+   "width": 128
+  },
+  {
+   "name": "f_loomharbor_frame",
+   "width": 128
+  },
+  {
+   "name": "f_needleparcel_craft_cabinet",
+   "width": 96
+  },
+  {
+   "name": "f_printpetal_press",
+   "width": 128
+  },
+  {
+   "name": "f_threadquay_sewing_desk",
+   "width": 96
+  },
+  {
+   "name": "f_chillpetal_fridge",
+   "width": 128
+  }
+ ]
+}

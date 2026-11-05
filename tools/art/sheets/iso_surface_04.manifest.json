@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_mintwhistle_kettle",
+   "width": 26
+  },
+  {
+   "name": "f_pagebreak_teacup",
+   "width": 18
+  },
+  {
+   "name": "f_pourpetal_kettle",
+   "width": 24
+  },
+  {
+   "name": "f_reedrest_breadbox",
+   "width": 32
+  },
+  {
+   "name": "f_reefsteam_cooker",
+   "width": 26
+  },
+  {
+   "name": "f_shellpin_saltcellar",
+   "width": 18
+  },
+  {
+   "name": "f_sprigseal_jar",
+   "width": 20
+  },
+  {
+   "name": "f_sprinklefin_spice_tray",
+   "width": 26
+  },
+  {
+   "name": "f_tidechip_mug",
+   "width": 20
+  },
+  {
+   "name": "f_whiskmoss_mixer",
+   "width": 32
+  },
+  {
+   "name": "f_blushcheek_lamp",
+   "width": 26
+  },
+  {
+   "name": "f_clickhalo_lamp",
+   "width": 26
+  }
+ ]
+}

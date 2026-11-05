@@ -1,0 +1,36 @@
+{
+ "items": [
+  {
+   "name": "p_rufflebranch_axolotl",
+   "width": 40
+  },
+  {
+   "name": "p_velvetloop_ray",
+   "width": 40
+  },
+  {
+   "name": "p_pearlwhisk_seal",
+   "width": 40
+  },
+  {
+   "name": "p_dapplespoon_newt",
+   "width": 40
+  },
+  {
+   "name": "p_quiltquill_hedgehog",
+   "width": 40
+  },
+  {
+   "name": "p_acornpocket_squirrel",
+   "width": 40
+  },
+  {
+   "name": "p_puffsole_guinea_pig",
+   "width": 40
+  },
+  {
+   "name": "p_tinkertrot_ferret",
+   "width": 40
+  }
+ ]
+}

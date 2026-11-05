@@ -1,0 +1,20 @@
+{
+ "items": [
+  {
+   "name": "f_hallhoney_banquet_table",
+   "width": 192
+  },
+  {
+   "name": "f_kinshipcoil_grand_table",
+   "width": 256
+  },
+  {
+   "name": "f_orbitmap_desk",
+   "width": 160
+  },
+  {
+   "name": "f_patchspan_craft_table",
+   "width": 160
+  }
+ ]
+}

@@ -1,0 +1,20 @@
+{
+ "items": [
+  {
+   "name": "f_tidefork_dining_table",
+   "width": 160
+  },
+  {
+   "name": "f_tideleaf_table",
+   "width": 160
+  },
+  {
+   "name": "f_acornmaze_play_castle",
+   "width": 192
+  },
+  {
+   "name": "f_blinkberry_pin_table",
+   "width": 160
+  }
+ ]
+}

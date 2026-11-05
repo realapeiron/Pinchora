@@ -1,0 +1,36 @@
+{
+ "items": [
+  {
+   "name": "f_acornsun_beacon",
+   "width": 48
+  },
+  {
+   "name": "f_moonhinge_arc_lamp",
+   "width": 32
+  },
+  {
+   "name": "f_reedflare_tripod_lamp",
+   "width": 30
+  },
+  {
+   "name": "f_rivetarm_floor_lamp",
+   "width": 28
+  },
+  {
+   "name": "f_stillarc_floor_lamp",
+   "width": 32
+  },
+  {
+   "name": "f_twineglow_floor_lamp",
+   "width": 24
+  },
+  {
+   "name": "f_chordpetal_floor_stand",
+   "width": 28
+  },
+  {
+   "name": "f_hemstring_ukulele",
+   "width": 32
+  }
+ ]
+}

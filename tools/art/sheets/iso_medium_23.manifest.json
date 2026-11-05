@@ -1,0 +1,28 @@
+{
+ "items": [
+  {
+   "name": "f_prismbeat_bench",
+   "width": 128
+  },
+  {
+   "name": "f_reedhush_rocker",
+   "width": 96
+  },
+  {
+   "name": "f_sailtuck_loveseat",
+   "width": 128
+  },
+  {
+   "name": "f_softangle_armchair",
+   "width": 128
+  },
+  {
+   "name": "f_sprigrail_bench",
+   "width": 96
+  },
+  {
+   "name": "f_velvetbough_throne",
+   "width": 128
+  }
+ ]
+}

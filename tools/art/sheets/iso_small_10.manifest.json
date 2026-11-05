@@ -1,0 +1,32 @@
+{
+ "items": [
+  {
+   "name": "f_rivetend_table",
+   "width": 64
+  },
+  {
+   "name": "f_stillstep_nightstand",
+   "width": 64
+  },
+  {
+   "name": "f_buttonbelly_plush",
+   "width": 64
+  },
+  {
+   "name": "f_duneloop_hoop",
+   "width": 64
+  },
+  {
+   "name": "f_pebbletoss_rings",
+   "width": 64
+  },
+  {
+   "name": "f_puffparcel_plush",
+   "width": 44
+  },
+  {
+   "name": "f_ringripple_toss",
+   "width": 52
+  }
+ ]
+}

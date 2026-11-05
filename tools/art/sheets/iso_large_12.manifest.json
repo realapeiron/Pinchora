@@ -1,0 +1,20 @@
+{
+ "items": [
+  {
+   "name": "f_reefpipe_organ",
+   "width": 160
+  },
+  {
+   "name": "f_windspool_organ",
+   "width": 160
+  },
+  {
+   "name": "f_deckharbor_cargo_crane",
+   "width": 192
+  },
+  {
+   "name": "f_hullbloom_dinghy",
+   "width": 160
+  }
+ ]
+}

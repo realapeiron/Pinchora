@@ -1,0 +1,29 @@
+{
+ "items": [
+  {
+   "name": "f_storybraid_runner",
+   "width": 128,
+   "height": 32
+  },
+  {
+   "name": "f_stretchstitch_mat",
+   "width": 32,
+   "height": 64
+  },
+  {
+   "name": "f_toastweft_runner",
+   "width": 96,
+   "height": 32
+  },
+  {
+   "name": "f_tucktide_mat",
+   "width": 32,
+   "height": 32
+  },
+  {
+   "name": "f_wishbraid_rug",
+   "width": 96,
+   "height": 64
+  }
+ ]
+}

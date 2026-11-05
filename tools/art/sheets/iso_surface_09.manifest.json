@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_hushwink_candle",
+   "width": 18
+  },
+  {
+   "name": "f_mittenmoss_globe",
+   "width": 24
+  },
+  {
+   "name": "f_pumpkinpurl_candle",
+   "width": 20
+  },
+  {
+   "name": "f_wishbud_lantern",
+   "width": 26
+  },
+  {
+   "name": "f_wishcoil_lantern",
+   "width": 26
+  },
+  {
+   "name": "f_wishfold_envelope",
+   "width": 18
+  },
+  {
+   "name": "f_blockbloom_set",
+   "width": 26
+  },
+  {
+   "name": "f_clickcube_puzzle",
+   "width": 32
+  },
+  {
+   "name": "f_crumbfit_puzzle",
+   "width": 32
+  },
+  {
+   "name": "f_dicewhorl_cup",
+   "width": 18
+  },
+  {
+   "name": "f_hemhop_blocks",
+   "width": 26
+  },
+  {
+   "name": "f_pagepath_story_tiles",
+   "width": 26
+  }
+ ]
+}

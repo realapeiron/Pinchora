@@ -1,0 +1,28 @@
+{
+ "items": [
+  {
+   "name": "f_quietparcel_phone_booth",
+   "width": 128
+  },
+  {
+   "name": "f_coastcurl_firepit",
+   "width": 112
+  },
+  {
+   "name": "f_dewpeg_firepit",
+   "width": 128
+  },
+  {
+   "name": "f_driftbarrow_cart",
+   "width": 112
+  },
+  {
+   "name": "f_duneshade_parasol",
+   "width": 128
+  },
+  {
+   "name": "f_gullstitch_picnic_bench",
+   "width": 128
+  }
+ ]
+}

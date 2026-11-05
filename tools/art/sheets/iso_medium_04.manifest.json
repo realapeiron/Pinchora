@@ -1,0 +1,28 @@
+{
+ "items": [
+  {
+   "name": "f_blinkpetal_cabinet",
+   "width": 128
+  },
+  {
+   "name": "f_blinkslot_cabinet",
+   "width": 128
+  },
+  {
+   "name": "f_foamcast_television",
+   "width": 96
+  },
+  {
+   "name": "f_humskein_sound_wall",
+   "width": 128
+  },
+  {
+   "name": "f_hushcurrent_air_unit",
+   "width": 96
+  },
+  {
+   "name": "f_orbitview_console",
+   "width": 128
+  }
+ ]
+}

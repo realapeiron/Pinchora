@@ -1,0 +1,20 @@
+{
+ "items": [
+  {
+   "name": "f_budrain_arbor",
+   "width": 160
+  },
+  {
+   "name": "f_frostparcel_sleigh",
+   "width": 160
+  },
+  {
+   "name": "f_frostwish_carousel",
+   "width": 192
+  },
+  {
+   "name": "f_lanternplait_moon_gate",
+   "width": 160
+  }
+ ]
+}

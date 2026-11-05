@@ -1,0 +1,44 @@
+{
+ "items": [
+  {
+   "name": "f_pawnpebble_board",
+   "width": 32
+  },
+  {
+   "name": "f_reedturn_board",
+   "width": 32
+  },
+  {
+   "name": "f_tiletwirl_puzzle",
+   "width": 28
+  },
+  {
+   "name": "f_acornquill_bookends",
+   "width": 30
+  },
+  {
+   "name": "f_buttonbud_vase",
+   "width": 20
+  },
+  {
+   "name": "f_driftcurl_sculpture",
+   "width": 24
+  },
+  {
+   "name": "f_pagecove_books",
+   "width": 28
+  },
+  {
+   "name": "f_pagepair_books",
+   "width": 26
+  },
+  {
+   "name": "f_shellstem_vase",
+   "width": 20
+  },
+  {
+   "name": "f_sprigthumb_vase",
+   "width": 20
+  }
+ ]
+}

@@ -1,0 +1,28 @@
+{
+ "items": [
+  {
+   "name": "f_wishdance_screen",
+   "width": 128
+  },
+  {
+   "name": "f_brinepleat_armchair",
+   "width": 128
+  },
+  {
+   "name": "f_clicknest_chair",
+   "width": 128
+  },
+  {
+   "name": "f_crumbrail_bench",
+   "width": 96
+  },
+  {
+   "name": "f_driftbutton_beanbag",
+   "width": 100
+  },
+  {
+   "name": "f_frostweave_rocker",
+   "width": 128
+  }
+ ]
+}

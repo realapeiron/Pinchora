@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_pebblewick_candle",
+   "width": 16
+  },
+  {
+   "name": "f_quietdot_lamp",
+   "width": 26
+  },
+  {
+   "name": "f_reedcap_lamp",
+   "width": 26
+  },
+  {
+   "name": "f_reefbubble_lamp",
+   "width": 26
+  },
+  {
+   "name": "f_sprigshade_lamp",
+   "width": 26
+  },
+  {
+   "name": "f_sugarstripe_lamp",
+   "width": 26
+  },
+  {
+   "name": "f_wickcrumb_candle",
+   "width": 18
+  },
+  {
+   "name": "f_wishfold_lantern",
+   "width": 26
+  },
+  {
+   "name": "f_chimecup_bells",
+   "width": 24
+  },
+  {
+   "name": "f_thumbtide_lyre",
+   "width": 26
+  },
+  {
+   "name": "f_compassbud_box",
+   "width": 20
+  },
+  {
+   "name": "f_shipwhisper_model",
+   "width": 36
+  }
+ ]
+}

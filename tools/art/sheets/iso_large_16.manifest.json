@@ -1,0 +1,20 @@
+{
+ "items": [
+  {
+   "name": "f_wavecradle_hammock",
+   "width": 160
+  },
+  {
+   "name": "f_wishbridge_arch",
+   "width": 160
+  },
+  {
+   "name": "f_gatherbud_platform",
+   "width": 256
+  },
+  {
+   "name": "f_latticeleaf_divider",
+   "width": 160
+  }
+ ]
+}

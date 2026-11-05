@@ -1,0 +1,36 @@
+{
+ "items": [
+  {
+   "name": "f_pebblepost_mailbox",
+   "width": 32
+  },
+  {
+   "name": "f_rainpocket_barrel",
+   "width": 56
+  },
+  {
+   "name": "f_spritzshore_shower",
+   "width": 52
+  },
+  {
+   "name": "f_brickwhorl_column",
+   "width": 40
+  },
+  {
+   "name": "f_flutebud_column",
+   "width": 40
+  },
+  {
+   "name": "f_clawcoil_tower",
+   "width": 54
+  },
+  {
+   "name": "f_cloverpuff_nibble_rack",
+   "width": 64
+  },
+  {
+   "name": "f_crumbclaw_bowl",
+   "width": 36
+  }
+ ]
+}

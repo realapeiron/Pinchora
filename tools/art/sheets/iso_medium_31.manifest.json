@@ -1,0 +1,28 @@
+{
+ "items": [
+  {
+   "name": "f_reedparcel_console",
+   "width": 128
+  },
+  {
+   "name": "f_sprigwork_table",
+   "width": 96
+  },
+  {
+   "name": "f_sugarbutton_table",
+   "width": 128
+  },
+  {
+   "name": "f_clawberry_prize_game",
+   "width": 128
+  },
+  {
+   "name": "f_dewkite_bundle",
+   "width": 96
+  },
+  {
+   "name": "f_fizzwhirl_workbench",
+   "width": 96
+  }
+ ]
+}

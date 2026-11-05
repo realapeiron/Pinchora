@@ -1,0 +1,36 @@
+{
+ "items": [
+  {
+   "name": "f_dunepot_hamper",
+   "width": 64
+  },
+  {
+   "name": "f_hemwash_basin",
+   "width": 64
+  },
+  {
+   "name": "f_sipspool_bar_stool",
+   "width": 64
+  },
+  {
+   "name": "f_punchparcel_bag",
+   "width": 42
+  },
+  {
+   "name": "f_canvasbud_easel",
+   "width": 36
+  },
+  {
+   "name": "f_clickpetal_camera_stand",
+   "width": 28
+  },
+  {
+   "name": "f_starpetal_telescope",
+   "width": 40
+  },
+  {
+   "name": "f_steamnest_dishwasher",
+   "width": 64
+  }
+ ]
+}

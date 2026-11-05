@@ -1,0 +1,36 @@
+{
+ "items": [
+  {
+   "name": "f_duneplait_stool",
+   "width": 64
+  },
+  {
+   "name": "f_hemloop_chair",
+   "width": 64
+  },
+  {
+   "name": "f_hushpurl_pouf",
+   "width": 52
+  },
+  {
+   "name": "f_loopshore_stool",
+   "width": 64
+  },
+  {
+   "name": "f_mosshem_pouf",
+   "width": 64
+  },
+  {
+   "name": "f_pebblerest_stool",
+   "width": 64
+  },
+  {
+   "name": "f_plainwhorl_chair",
+   "width": 64
+  },
+  {
+   "name": "f_reedwink_stool",
+   "width": 64
+  }
+ ]
+}

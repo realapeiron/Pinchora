@@ -1,0 +1,34 @@
+{
+ "items": [
+  {
+   "name": "f_crumbcheck_mat",
+   "width": 64,
+   "height": 32
+  },
+  {
+   "name": "f_crumbdot_mat",
+   "width": 64,
+   "height": 32
+  },
+  {
+   "name": "f_deckcheck_carpet",
+   "width": 128,
+   "height": 96
+  },
+  {
+   "name": "f_dewring_rug",
+   "width": 96,
+   "height": 64
+  },
+  {
+   "name": "f_duneline_runner",
+   "width": 96,
+   "height": 32
+  },
+  {
+   "name": "f_foliostar_carpet",
+   "width": 128,
+   "height": 128
+  }
+ ]
+}

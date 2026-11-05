@@ -1,0 +1,36 @@
+{
+ "items": [
+  {
+   "name": "p_cloverpuff_bun",
+   "width": 36
+  },
+  {
+   "name": "p_tumblebutton_pup",
+   "width": 36
+  },
+  {
+   "name": "p_teacup_toadlet",
+   "width": 36
+  },
+  {
+   "name": "p_mittensprout_mouse",
+   "width": 36
+  },
+  {
+   "name": "p_pipstitch_finch",
+   "width": 36
+  },
+  {
+   "name": "p_chirrupfold_budgie",
+   "width": 36
+  },
+  {
+   "name": "p_coppercup_fiddler",
+   "width": 40
+  },
+  {
+   "name": "p_mossmitten_crab",
+   "width": 40
+  }
+ ]
+}
