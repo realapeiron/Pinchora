@@ -3,6 +3,7 @@ use std::sync::Arc;
 use twilight_model::{
     application::interaction::Interaction,
     channel::message::{Component, Embed, MessageFlags},
+    guild::Permissions,
     http::{attachment::Attachment, interaction::InteractionResponseData},
     user::User,
 };
@@ -28,6 +29,15 @@ impl Cx {
 
     pub fn guild_id(&self) -> Option<u64> {
         self.interaction.guild_id.map(|id| id.get())
+    }
+
+    /// Whether the invoker has Manage Server (or Administrator) here.
+    pub fn can_manage_guild(&self) -> bool {
+        self.interaction
+            .member
+            .as_ref()
+            .and_then(|m| m.permissions)
+            .is_some_and(|p| p.contains(Permissions::MANAGE_GUILD) || p.contains(Permissions::ADMINISTRATOR))
     }
 
     /// Server nickname, then global display name, then username.

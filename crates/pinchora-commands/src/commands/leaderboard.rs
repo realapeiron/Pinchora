@@ -21,6 +21,8 @@ const MAX_PAGES: u32 = 50;
 pub enum Board {
     #[option(name = "This server (XP)", value = "server")]
     Server,
+    #[option(name = "This server (points)", value = "points")]
+    ServerPoints,
     #[option(name = "Global (XP)", value = "xp")]
     GlobalXp,
     #[option(name = "Global (shells)", value = "shells")]
@@ -31,6 +33,7 @@ impl Board {
     fn parse(raw: &str) -> Option<Self> {
         match raw {
             "server" => Some(Self::Server),
+            "points" => Some(Self::ServerPoints),
             "xp" => Some(Self::GlobalXp),
             "shells" => Some(Self::GlobalShells),
             _ => None,
@@ -39,7 +42,7 @@ impl Board {
 }
 
 #[derive(CommandModel, CreateCommand)]
-#[command(name = "leaderboard", desc = "Top members by XP or shells")]
+#[command(name = "leaderboard", desc = "Top members by XP, shells or server points")]
 pub struct Leaderboard {
     /// Which board (default: this server)
     board: Option<Board>,
@@ -49,7 +52,7 @@ impl Leaderboard {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
         let guild = cx.guild_id();
         let board = match (self.board, guild) {
-            (Some(Board::Server) | None, None) => Board::GlobalXp,
+            (Some(Board::Server | Board::ServerPoints) | None, None) => Board::GlobalXp,
             (Some(b), _) => b,
             (None, Some(_)) => Board::Server,
         };
@@ -72,19 +75,32 @@ pub(crate) async fn on_button(cx: &Cx, mut args: std::str::Split<'_, char>) -> a
 /// One page as a card image with the ◀ ▶ buttons; the image replaces whatever message it lands on.
 async fn page(app: &Arc<App>, board: Board, guild: Option<u64>, page: u32) -> anyhow::Result<InteractionResponseData> {
     let offset = i64::from(page) * PAGE_SIZE;
+    // The server boards need a server; anywhere else a stale button shows global XP.
+    let board = match (board, guild) {
+        (Board::Server | Board::ServerPoints, None) => Board::GlobalXp,
+        (b, _) => b,
+    };
     // Fetch one extra row to know whether a next page exists.
+    let mut points_name = String::new();
     let (mut rows, title) = match (board, guild) {
         (Board::Server, Some(g)) => (
             app.db.guild_leaderboard(g, PAGE_SIZE + 1, offset).await?,
-            "Server leaderboard",
+            "Server leaderboard".to_owned(),
         ),
+        (Board::ServerPoints, Some(g)) => {
+            points_name = app.guild_settings(g).await?.points_name.clone();
+            (
+                app.db.guild_points_leaderboard(g, PAGE_SIZE + 1, offset).await?,
+                format!("Top {points_name}"),
+            )
+        }
         (Board::GlobalShells, _) => (
             app.db.global_credits_leaderboard(PAGE_SIZE + 1, offset).await?,
-            "Richest shell collectors",
+            "Richest shell collectors".to_owned(),
         ),
         _ => (
             app.db.global_xp_leaderboard(PAGE_SIZE + 1, offset).await?,
-            "Global leaderboard",
+            "Global leaderboard".to_owned(),
         ),
     };
     let has_next = rows.len() as i64 > PAGE_SIZE && page < MAX_PAGES;
@@ -110,6 +126,7 @@ async fn page(app: &Arc<App>, board: Board, guild: Option<u64>, page: u32) -> an
         let (user, avatar) = person.await?;
         let (value, detail) = match board {
             Board::GlobalShells => (thousands(row.value), "SHELLS".to_owned()),
+            Board::ServerPoints => (thousands(row.value), points_name.to_uppercase()),
             _ => (
                 format!("LV {}", leveling::level_of(row.value)),
                 format!("{} XP", thousands(row.value)),
@@ -128,7 +145,7 @@ async fn page(app: &Arc<App>, board: Board, guild: Option<u64>, page: u32) -> an
     let png = app
         .render(move |r| {
             r.leaderboard_card(&LeaderboardCard {
-                title: title.to_owned(),
+                title,
                 entries,
                 page,
                 theme: Theme::reef(),
@@ -138,6 +155,7 @@ async fn page(app: &Arc<App>, board: Board, guild: Option<u64>, page: u32) -> an
 
     let key = match board {
         Board::Server => "server",
+        Board::ServerPoints => "points",
         Board::GlobalXp => "xp",
         Board::GlobalShells => "shells",
     };

@@ -11,6 +11,7 @@ use twilight_util::builder::embed::{EmbedBuilder, EmbedFieldBuilder};
 
 use crate::{
     Cx,
+    commands::{level_roles::ConfigLevelRoles, points::ConfigPoints, store::ConfigStore},
     events::{DEFAULT_LEVELUP, DEFAULT_WELCOME},
     util::BRAND,
 };
@@ -20,6 +21,7 @@ fn manage_guild() -> Permissions {
 }
 
 #[derive(CommandModel, CreateCommand)]
+#[allow(clippy::large_enum_variant)] // parsed once per interaction, never stored
 #[command(
     name = "config",
     desc = "Pinchora settings for this server",
@@ -35,6 +37,12 @@ pub enum ConfigCommand {
     Show(ConfigShow),
     #[command(name = "welcome-card")]
     WelcomeCard(ConfigWelcomeCard),
+    #[command(name = "level-roles")]
+    LevelRoles(ConfigLevelRoles),
+    #[command(name = "points")]
+    Points(ConfigPoints),
+    #[command(name = "store")]
+    Store(ConfigStore),
 }
 
 #[derive(CommandOption, CreateOption, Clone, Copy)]
@@ -131,6 +139,12 @@ impl ConfigCommand {
             }
             Self::Show(_) => cx.app.db.guild_settings(guild).await?,
             Self::WelcomeCard(c) => return c.run(cx, guild).await,
+            Self::LevelRoles(c) => return c.run(cx, guild).await,
+            Self::Store(c) => return c.run(cx, guild).await,
+            Self::Points(c) => match c.apply(&cx.app.db, guild).await? {
+                Ok(settings) => settings,
+                Err(reason) => return cx.reply_ephemeral(reason).await,
+            },
         };
         cx.app.forget_guild_settings(guild).await;
         cx.reply(InteractionResponseData {
@@ -195,6 +209,24 @@ fn settings_embed(s: &GuildSettings) -> Embed {
                 s.levelup_channel_id
                     .map_or_else(|| "the same channel".to_owned(), |id| format!("<#{id}>")),
                 s.levelup_message.as_deref().unwrap_or(DEFAULT_LEVELUP)
+            ),
+        ))
+        .field(EmbedFieldBuilder::new(
+            "Level roles",
+            format!(
+                "**{}** · set up with `/config level-roles`",
+                if s.level_roles_stack { "stack" } else { "replace" }
+            ),
+        ))
+        .field(EmbedFieldBuilder::new(
+            "Server points",
+            format!(
+                "**{}** · {} **{}** per message, {} to {}\n> Spend them in `/store`; add roles with `/config store`",
+                on_off(s.points_enabled),
+                s.points_emoji,
+                s.points_name,
+                s.points_min,
+                s.points_max
             ),
         ))
         .build()

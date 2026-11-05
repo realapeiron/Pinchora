@@ -48,7 +48,7 @@ pub struct StallSell {
 #[command(name = "manage", desc = "Take items back off your stall")]
 pub struct StallManage;
 
-fn menu(custom_id: String, placeholder: &str, options: Vec<SelectMenuOption>) -> Vec<Component> {
+pub(crate) fn menu(custom_id: String, placeholder: &str, options: Vec<SelectMenuOption>) -> Vec<Component> {
     if options.is_empty() {
         return Vec::new();
     }

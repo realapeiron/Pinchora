@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use image::{RgbaImage, imageops};
 use pinchora_render::{
-    CharacterCard, LeaderboardCard, LeaderboardEntry, LevelUpCard, ProfileCard, RankCard, Renderer, SpriteArt, Theme,
-    WelcomeCard,
+    CharacterCard, LeaderboardCard, LeaderboardEntry, LevelUpCard, NextRole, ProfileCard, RankCard, Renderer,
+    SpriteArt, Theme, WelcomeCard,
     character::{Colors, placeholder_character, recolor_character},
     placeholder_avatar,
     room::{Cursor, RoomScene, SceneItem, SceneLayer, render_room},
@@ -75,6 +75,10 @@ fn main() -> anyhow::Result<()> {
         xp_current: 3_120,
         xp_needed: 5_095,
         rank: 4,
+        next_role: Some(NextRole {
+            name: "Reef Veteran",
+            level: 30,
+        }),
         theme: Theme::reef().with_accent(Some(0x06d6a0)),
     })?;
     std::fs::write(format!("{out}/rank.png"), &rank)?;

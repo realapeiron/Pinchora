@@ -14,7 +14,7 @@ pub use leaderboard::{LeaderboardCard, LeaderboardEntry};
 pub use levelup::LevelUpCard;
 pub use pet::PetCard;
 pub use profile::ProfileCard;
-pub use rank::RankCard;
+pub use rank::{NextRole, RankCard};
 pub use wallet::WalletCard;
 pub use welcome::WelcomeCard;
 

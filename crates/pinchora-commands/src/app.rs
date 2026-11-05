@@ -1,4 +1,4 @@
-use std::{future::Future, sync::Arc, time::Duration};
+use std::{collections::HashMap, future::Future, sync::Arc, time::Duration};
 
 use moka::future::Cache as Moka;
 use pinchora_cache::Cache;
@@ -28,6 +28,7 @@ pub struct App {
     renderer: Arc<Renderer>,
     render_slots: Arc<Semaphore>,
     guild_settings: Moka<u64, Arc<GuildSettings>>,
+    guild_roles: Moka<u64, Arc<HashMap<u64, String>>>,
     avatars: Moka<String, Arc<Vec<u8>>>,
     users: Moka<u64, Arc<User>>,
     tasks: TaskTracker,
@@ -62,6 +63,10 @@ impl App {
             // Other pods see a settings change after at most this TTL.
             guild_settings: Moka::builder()
                 .max_capacity(50_000)
+                .time_to_live(Duration::from_secs(60))
+                .build(),
+            guild_roles: Moka::builder()
+                .max_capacity(10_000)
                 .time_to_live(Duration::from_secs(60))
                 .build(),
             avatars: Moka::builder()
@@ -118,6 +123,18 @@ impl App {
             .try_get_with(guild_id, async { self.db.guild_settings(guild_id).await.map(Arc::new) })
             .await
             .map_err(|e| anyhow::anyhow!("{e:#}"))
+    }
+
+    /// A server's role names by id, cached for a minute; `None` when Discord cannot be asked.
+    pub async fn guild_roles(&self, guild_id: u64) -> Option<Arc<HashMap<u64, String>>> {
+        self.guild_roles
+            .try_get_with(guild_id, async {
+                let roles = self.http.roles(Id::new(guild_id.max(1))).await?.models().await?;
+                anyhow::Ok(Arc::new(roles.into_iter().map(|r| (r.id.get(), r.name)).collect()))
+            })
+            .await
+            .map_err(|error| tracing::debug!(%error, guild_id, "role lookup failed"))
+            .ok()
     }
 
     /// Counts progress on today's quest of `kind`, if the player has that quest today.

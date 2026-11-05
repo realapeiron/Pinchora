@@ -79,13 +79,17 @@ http-proxy when one is configured.
 ## Data
 
 - `users` — global profile: shells (`credits`), global XP, reputation, daily streak, bio.
-- `guilds` — per-server settings (leveling, welcome cards).
-- `members` — per-server XP; `(guild_id, xp DESC)` index serves leaderboards and ranks.
+- `guilds` — per-server settings (leveling, welcome cards, level role mode, server points).
+- `members` — per-server XP and server points; `(guild_id, xp DESC)` and `(guild_id, points DESC)`
+  indexes serve leaderboards and ranks.
+- `level_roles` — roles given at a level; `store_items` — roles sold for server points (price, optional stock).
 - `credit_ledger` — every shell movement, for audits and economy statistics.
 
 Money moves only inside transactions that lock the touched user rows in id order, so
 concurrent transfers can neither overdraw nor deadlock (covered by
-`crates/pinchora-db/tests/db.rs`). Guild settings are cached per pod for 60 s.
+`crates/pinchora-db/tests/db.rs`). A store purchase locks the item row first, then takes the
+points and one unit of stock in the same transaction; if Discord then refuses the role, the
+handler refunds both. Guild settings are cached per pod for 60 s.
 
 ## Crates
 

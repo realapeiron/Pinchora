@@ -1,6 +1,6 @@
 use crate::{
     Cx,
-    commands::{character, decorate, duel, fish, gift, house, leaderboard, pet, plaza, quests, shop, stall},
+    commands::{character, decorate, duel, fish, gift, house, leaderboard, pet, plaza, quests, shop, stall, store},
 };
 
 /// Routes button clicks by the `prefix:` of their custom id. Ids carry all their
@@ -32,6 +32,7 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
         Some("tt") => duel::on_move(cx, parts).await,
         Some("gf") => gift::on_gift(cx, parts, values.first().map(String::as_str)).await,
         Some("ch") => character::on_select(cx, parts, values.first().map(String::as_str)).await,
+        Some("st") => store::on_buy(cx, values.first().map(String::as_str)).await,
         _ => cx.reply_ephemeral("This button has expired.").await,
     }
 }

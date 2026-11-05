@@ -6,6 +6,12 @@ use crate::{
     svg::{background, compact, escape, segment_bar, thousands, truncate},
 };
 
+/// The next level reward, shown as "Next role: <name> at level N".
+pub struct NextRole<'a> {
+    pub name: &'a str,
+    pub level: u32,
+}
+
 /// 934×282 server rank card.
 pub struct RankCard<'a> {
     pub display_name: &'a str,
@@ -16,6 +22,7 @@ pub struct RankCard<'a> {
     pub xp_current: u64,
     pub xp_needed: u64,
     pub rank: i64,
+    pub next_role: Option<NextRole<'a>>,
     pub theme: Theme,
 }
 
@@ -52,6 +59,20 @@ impl RankCard<'_> {
             thousands(self.xp_needed as i64)
         );
         text(&mut s, 900.0, 186.0, 16.0, PIXEL, false, &t.ink, "end", &xp);
+        if let Some(next) = &self.next_role {
+            let line = format!("Next role: {} at level {}", truncate(next.name, 18), next.level);
+            text(
+                &mut s,
+                282.0,
+                184.0,
+                18.0,
+                SANS,
+                false,
+                &t.muted,
+                "start",
+                &escape(&line),
+            );
+        }
         let fraction = self.xp_current as f32 / self.xp_needed.max(1) as f32;
         segment_bar(
             &mut s,

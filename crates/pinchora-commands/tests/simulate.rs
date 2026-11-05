@@ -10,11 +10,12 @@
 
 use std::{
     cell::RefCell,
+    collections::HashMap,
     fmt::{self, Write as _},
     path::{Path, PathBuf},
     sync::{
         Arc, LazyLock, Mutex, Once,
-        atomic::{AtomicU64, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
     },
     time::SystemTime,
 };
@@ -26,7 +27,7 @@ use axum::{
     http::{HeaderMap, Method, StatusCode, Uri, header::CONTENT_TYPE},
 };
 use pinchora_cache::Cache;
-use pinchora_commands::{App, Responder, handle_interaction};
+use pinchora_commands::{App, Responder, handle_interaction, on_message};
 use pinchora_db::Db;
 use serde_json::{Value, json};
 use tokio::{net::TcpListener, sync::oneshot};
@@ -46,12 +47,18 @@ use twilight_model::{
         Component, Embed, MessageFlags,
         component::{Button, SelectMenu, SelectMenuOption},
     },
+    gateway::payload::incoming::MessageCreate,
     http::interaction::{InteractionResponse, InteractionResponseType},
     id::Id,
 };
 
 const APPLICATION_ID: u64 = 1;
 const CHANNEL_ID: u64 = 2;
+/// The role the mock bot holds; its position is the ceiling for roles the bot can hand out.
+const BOT_ROLE_ID: u64 = 9_000_000_000_001;
+const BOT_ROLE_POSITION: i64 = 10;
+/// Manage Server, as the permission bit Discord sends.
+const MANAGE_GUILD: u64 = 1 << 5;
 
 /// An image a handler sent: its filename and bytes.
 type File = (String, Vec<u8>);
@@ -80,17 +87,110 @@ struct Call {
 
 type Calls = Arc<Mutex<Vec<Call>>>;
 
-/// Records webhook calls and refuses everything else (user lookups, the avatar CDN proxy).
+/// What the mock Discord remembers: the webhook calls, and a small server with roles and members.
+#[derive(Clone)]
+struct Mock {
+    calls: Calls,
+    /// Roles the server has besides the bot's own, as Discord's JSON.
+    roles: Arc<Mutex<Vec<Value>>>,
+    /// Roles each member holds; the role routes change them.
+    member_roles: Arc<Mutex<HashMap<u64, Vec<u64>>>>,
+    /// Role changes seen, as `PUT <member> <role>` or `DELETE <member> <role>`.
+    role_calls: Arc<Mutex<Vec<String>>>,
+    /// Whether role changes work. Off, Discord answers Missing Permissions.
+    roles_allowed: Arc<AtomicBool>,
+}
+
+fn role_json(id: u64, name: &str, position: i64, managed: bool) -> Value {
+    json!({
+        "id": id.to_string(),
+        "name": name,
+        "color": 0,
+        "colors": { "primary_color": 0, "secondary_color": null, "tertiary_color": null },
+        "hoist": false,
+        "managed": managed,
+        "mentionable": false,
+        "permissions": "0",
+        "position": position,
+        "flags": 0,
+    })
+}
+
+fn user_json(id: u64) -> Value {
+    json!({
+        "id": id.to_string(),
+        "username": format!("sim{id}"),
+        "discriminator": "0",
+        "global_name": "Sim",
+        "avatar": null,
+    })
+}
+
+fn member_json(user: u64, roles: &[u64]) -> Value {
+    json!({
+        "user": user_json(user),
+        "roles": roles.iter().map(u64::to_string).collect::<Vec<_>>(),
+        "joined_at": "2024-01-01T00:00:00.000000+00:00",
+        "deaf": false,
+        "mute": false,
+        "flags": 0,
+        "pending": false,
+    })
+}
+
+/// Answers the REST routes the reward flows use: the server's roles, member lookups, role
+/// changes and level-up posts. Records webhook calls and refuses everything else (user lookups,
+/// the avatar CDN proxy).
 async fn discord(
-    State(calls): State<Calls>,
+    State(mock): State<Mock>,
     method: Method,
     uri: Uri,
     headers: HeaderMap,
     body: Bytes,
-) -> (StatusCode, &'static str) {
+) -> (StatusCode, String) {
     let path = uri.path().to_owned();
+    let parts: Vec<&str> = path.trim_matches('/').split('/').collect();
+    let number = |part: &str| part.parse::<u64>().unwrap_or(0);
+    match (&method, parts.as_slice()) {
+        (&Method::GET, [.., "guilds", _, "roles"]) => {
+            let mut roles = vec![role_json(BOT_ROLE_ID, "Pinchora", BOT_ROLE_POSITION, true)];
+            roles.extend(mock.roles.lock().unwrap().iter().cloned());
+            return (StatusCode::OK, Value::Array(roles).to_string());
+        }
+        (&Method::GET, [.., "guilds", _, "members", user]) => {
+            let user = number(user);
+            let roles = if user == APPLICATION_ID {
+                vec![BOT_ROLE_ID]
+            } else {
+                mock.member_roles
+                    .lock()
+                    .unwrap()
+                    .get(&user)
+                    .cloned()
+                    .unwrap_or_default()
+            };
+            return (StatusCode::OK, member_json(user, &roles).to_string());
+        }
+        (&Method::PUT | &Method::DELETE, [.., "guilds", _, "members", user, "roles", role]) => {
+            if !mock.roles_allowed.load(Ordering::SeqCst) {
+                let refusal = json!({ "message": "Missing Permissions", "code": 50013 });
+                return (StatusCode::FORBIDDEN, refusal.to_string());
+            }
+            let (user, role) = (number(user), number(role));
+            mock.role_calls.lock().unwrap().push(format!("{method} {user} {role}"));
+            let mut members = mock.member_roles.lock().unwrap();
+            let held = members.entry(user).or_default();
+            held.retain(|r| *r != role);
+            if method == Method::PUT {
+                held.push(role);
+            }
+            return (StatusCode::NO_CONTENT, String::new());
+        }
+        (&Method::POST, [.., "channels", _, "messages"]) => return (StatusCode::OK, "{}".to_owned()),
+        _ => {}
+    }
     if method == Method::GET || !path.contains("/webhooks/") {
-        return (StatusCode::NOT_FOUND, "{}");
+        return (StatusCode::NOT_FOUND, "{}".to_owned());
     }
     let content_type = headers
         .get(CONTENT_TYPE)
@@ -100,13 +200,13 @@ async fn discord(
         Some((_, boundary)) => multipart(boundary, &body),
         None => (serde_json::from_slice(&body).unwrap_or(Value::Null), Vec::new()),
     };
-    calls.lock().unwrap().push(Call {
+    mock.calls.lock().unwrap().push(Call {
         method,
         path,
         body,
         files,
     });
-    (StatusCode::OK, "{}")
+    (StatusCode::OK, "{}".to_owned())
 }
 
 fn find(haystack: &[u8], needle: &[u8]) -> Option<usize> {
@@ -285,6 +385,14 @@ impl Reply {
         self.content.as_deref().unwrap_or_default()
     }
 
+    /// The text of the first embed's field called `name`.
+    fn field(&self, name: &str) -> &str {
+        self.embeds
+            .first()
+            .and_then(|e| e.fields.iter().find(|f| f.name == name))
+            .map_or("", |f| f.value.as_str())
+    }
+
     /// Number of action rows.
     fn rows(&self) -> usize {
         self.components
@@ -441,7 +549,12 @@ impl fmt::Display for Reply {
 struct Sim {
     app: Arc<App>,
     calls: Calls,
+    mock: Mock,
     guild: u64,
+    /// Permission bits the invoking member has, as Discord computes them for the channel.
+    permissions: u64,
+    /// Roles the invoking member holds.
+    roles: Vec<u64>,
     name: &'static str,
     dir: PathBuf,
     step: usize,
@@ -462,9 +575,16 @@ impl Sim {
         let cache = Cache::connect(&redis).await.expect("connect to redis");
 
         let calls = Calls::default();
+        let state = Mock {
+            calls: calls.clone(),
+            roles: Arc::default(),
+            member_roles: Arc::default(),
+            role_calls: Arc::default(),
+            roles_allowed: Arc::new(AtomicBool::new(true)),
+        };
         let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind the mock");
         let mock = listener.local_addr().expect("mock address");
-        let router = Router::new().fallback(discord).with_state(calls.clone());
+        let router = Router::new().fallback(discord).with_state(state.clone());
         tokio::spawn(axum::serve(listener, router).into_future());
         let rest = Arc::new(
             Client::builder()
@@ -491,7 +611,10 @@ impl Sim {
         Some(Self {
             app: Arc::new(app),
             calls,
+            mock: state,
             guild: unique(),
+            permissions: 0,
+            roles: Vec::new(),
             name,
             dir,
             step: 0,
@@ -503,6 +626,75 @@ impl Sim {
     async fn command(&mut self, user: u64, name: &str, options: Value) -> Reply {
         let data = json!({ "id": unique().to_string(), "name": name, "type": 1, "options": options });
         self.run(format!("/{name} {options}"), user, 2, data, None).await
+    }
+
+    /// Like [`Sim::command`] for options that name users or roles: `resolved` is Discord's
+    /// `data.resolved`, e.g. `json!({ "users": {...}, "roles": {...} })`.
+    async fn command_resolved(&mut self, user: u64, name: &str, options: Value, resolved: Value) -> Reply {
+        let data = json!({
+            "id": unique().to_string(),
+            "name": name,
+            "type": 1,
+            "options": options,
+            "resolved": resolved,
+        });
+        self.run(format!("/{name} {options}"), user, 2, data, None).await
+    }
+
+    /// Adds a role to the mock server and returns its JSON for `data.resolved.roles`.
+    fn guild_role(&self, id: u64, name: &str, position: i64) -> Value {
+        let role = role_json(id, name, position, false);
+        self.mock.roles.lock().unwrap().push(role.clone());
+        role
+    }
+
+    /// Switches role changes on or off in the mock (off: Missing Permissions).
+    fn allow_role_changes(&self, allowed: bool) {
+        self.mock.roles_allowed.store(allowed, Ordering::SeqCst);
+    }
+
+    /// Role changes the mock accepted since the last call, as `PUT <member> <role>` or `DELETE ...`.
+    fn role_changes(&self) -> Vec<String> {
+        std::mem::take(&mut *self.mock.role_calls.lock().unwrap())
+    }
+
+    /// A chat message from `user` carrying the roles they hold, as the gateway delivers it.
+    fn chat(&self, user: u64, roles: &[u64]) -> MessageCreate {
+        let message = json!({
+            "id": unique().to_string(),
+            "channel_id": CHANNEL_ID.to_string(),
+            "guild_id": self.guild.to_string(),
+            "type": 0,
+            "author": user_json(user),
+            "member": {
+                "roles": roles.iter().map(u64::to_string).collect::<Vec<_>>(),
+                "joined_at": "2024-01-01T00:00:00.000000+00:00",
+                "deaf": false,
+                "mute": false,
+                "flags": 0,
+            },
+            "content": "hello",
+            "timestamp": "2024-01-01T00:00:00.000000+00:00",
+            "edited_timestamp": null,
+            "tts": false,
+            "mention_everyone": false,
+            "mention_roles": [],
+            "mentions": [],
+            "pinned": false,
+            "attachments": [],
+            "embeds": [],
+            "flags": 0,
+        });
+        serde_json::from_value(message).expect("message JSON")
+    }
+
+    /// Delivers a chat message to the XP handler, which must not fail.
+    async fn say(&self, user: u64, roles: &[u64]) {
+        ERRORS.with_borrow_mut(Vec::clear);
+        on_message(self.app.clone(), self.chat(user, roles))
+            .await
+            .expect("the message handler failed");
+        println!("\n== {}: {user} chatted", self.name);
     }
 
     /// Clicks a button (no `values`) or picks from a select menu on the message `on`.
@@ -562,12 +754,12 @@ impl Sim {
                     "global_name": "Sim",
                     "avatar": null,
                 },
-                "roles": [],
+                "roles": self.roles.iter().map(u64::to_string).collect::<Vec<_>>(),
                 "joined_at": "2024-01-01T00:00:00.000000+00:00",
                 "deaf": false,
                 "mute": false,
                 "flags": 0,
-                "permissions": "0",
+                "permissions": self.permissions.to_string(),
             },
             "data": data,
         });
@@ -728,4 +920,373 @@ async fn profile_and_daily() {
     assert_eq!(profile.files.len(), 1);
     assert_eq!(profile.files[0].0, "profile.png");
     assert!(sim.app.db.user(user).await.expect("user row").credits > 0);
+}
+
+/// `data.resolved` for options that name `users` and `roles` (as made by [`Sim::guild_role`]).
+fn resolved(users: &[u64], roles: &[&Value]) -> Value {
+    json!({
+        "users": users.iter().map(|u| (u.to_string(), user_json(*u))).collect::<serde_json::Map<_, _>>(),
+        "roles": roles
+            .iter()
+            .map(|r| (r["id"].as_str().expect("role id").to_owned(), (*r).clone()))
+            .collect::<serde_json::Map<_, _>>(),
+    })
+}
+
+fn user_option(name: &str, id: u64) -> Value {
+    json!({ "name": name, "type": 6, "value": id.to_string() })
+}
+
+fn role_option(name: &str, role: &Value) -> Value {
+    json!({ "name": name, "type": 8, "value": role["id"] })
+}
+
+fn int_option(name: &str, value: i64) -> Value {
+    json!({ "name": name, "type": 4, "value": value })
+}
+
+fn text_option(name: &str, value: &str) -> Value {
+    json!({ "name": name, "type": 3, "value": value })
+}
+
+fn sub(name: &str, options: Vec<Value>) -> Value {
+    json!({ "name": name, "type": 1, "options": options })
+}
+
+fn group(name: &str, sub: Value) -> Value {
+    json!({ "name": name, "type": 2, "options": [sub] })
+}
+
+#[tokio::test]
+async fn level_roles_follow_level_ups() {
+    let Some(mut sim) = Sim::new("level_roles_follow_level_ups").await else {
+        return;
+    };
+    let (admin, early, late, middle) = (unique(), unique(), unique(), unique());
+    let (r1, r3) = (unique(), unique());
+    let novice = sim.guild_role(r1, "Novice", 2);
+    let veteran = sim.guild_role(r3, "Reef Veteran", 3);
+    sim.permissions = MANAGE_GUILD;
+
+    // Rewards: level 1 and level 3. A role above the bot, a managed one and @everyone are refused.
+    let add = |level: i64, role: &Value| {
+        json!([group(
+            "level-roles",
+            sub("add", vec![int_option("level", level), role_option("role", role)])
+        )])
+    };
+    let reply = sim
+        .command_resolved(admin, "config", add(1, &novice), resolved(&[], &[&novice]))
+        .await;
+    assert!(reply.content().contains("level **1**"), "{}", reply.content());
+    let reply = sim
+        .command_resolved(admin, "config", add(3, &veteran), resolved(&[], &[&veteran]))
+        .await;
+    assert!(reply.content().contains("level **3**"), "{}", reply.content());
+    let above = role_json(unique(), "Boss", BOT_ROLE_POSITION + 5, false);
+    let reply = sim
+        .command_resolved(admin, "config", add(5, &above), resolved(&[], &[&above]))
+        .await;
+    assert!(reply.content().contains("above my highest role"), "{}", reply.content());
+    let managed = role_json(unique(), "SomeBot", 1, true);
+    let reply = sim
+        .command_resolved(admin, "config", add(5, &managed), resolved(&[], &[&managed]))
+        .await;
+    assert!(
+        reply.content().contains("managed by an integration"),
+        "{}",
+        reply.content()
+    );
+    let everyone = role_json(sim.guild, "@everyone", 0, false);
+    let reply = sim
+        .command_resolved(admin, "config", add(5, &everyone), resolved(&[], &[&everyone]))
+        .await;
+    assert!(reply.content().contains("@everyone"), "{}", reply.content());
+
+    let list = sim
+        .command(admin, "config", json!([group("level-roles", sub("list", vec![]))]))
+        .await;
+    assert!(
+        list.description().contains(&format!("Level **1** · <@&{r1}>"))
+            && list.description().contains(&format!("Level **3** · <@&{r3}>")),
+        "{}",
+        list.description()
+    );
+
+    // Stacking: reaching level 1 gives the level 1 role.
+    sim.app.db.add_message_xp(sim.guild, early, 99, 0).await.unwrap();
+    sim.say(early, &[]).await;
+    assert_eq!(sim.role_changes(), vec![format!("PUT {early} {r1}")]);
+
+    // Replacing: reaching level 3 gives that role and takes the lower one.
+    let reply = sim
+        .command(
+            admin,
+            "config",
+            json!([group("level-roles", sub("mode", vec![text_option("mode", "replace")]))]),
+        )
+        .await;
+    assert!(reply.content().contains("replace"), "{}", reply.content());
+    sim.app.db.add_message_xp(sim.guild, late, 460, 0).await.unwrap();
+    sim.say(late, &[r1]).await;
+    assert_eq!(
+        sim.role_changes(),
+        vec![format!("PUT {late} {r3}"), format!("DELETE {late} {r1}")]
+    );
+
+    // A refusal from Discord is logged, not fatal: the member still levels up.
+    sim.allow_role_changes(false);
+    sim.app.db.add_message_xp(sim.guild, middle, 99, 0).await.unwrap();
+    sim.say(middle, &[]).await;
+    assert!(sim.role_changes().is_empty());
+    sim.allow_role_changes(true);
+
+    // Sync catches up members who levelled before the roles existed: `middle` is past level 1
+    // and holds nothing; `early` and `late` already hold the right role.
+    let sync = sim
+        .command(admin, "config", json!([group("level-roles", sub("sync", vec![]))]))
+        .await;
+    assert!(
+        sync.content().contains("Checked **3** members") && sync.content().contains("updated the level roles of **1**"),
+        "{}",
+        sync.content()
+    );
+    assert_eq!(sim.role_changes(), vec![format!("PUT {middle} {r1}")]);
+
+    // /rank shows the next reward.
+    let rank = sim.command(early, "rank", json!([])).await;
+    assert_eq!(rank.files.len(), 1, "the rank card");
+
+    // Removing a reward stops it being given.
+    let reply = sim
+        .command(
+            admin,
+            "config",
+            json!([group("level-roles", sub("remove", vec![role_option("role", &veteran)]))]),
+        )
+        .await;
+    assert!(
+        reply.content().contains("no longer a level role"),
+        "{}",
+        reply.content()
+    );
+    assert_eq!(sim.app.db.level_roles(sim.guild).await.unwrap().len(), 1);
+}
+
+#[tokio::test]
+async fn points_and_store_flow() {
+    let Some(mut sim) = Sim::new("points_and_store_flow").await else {
+        return;
+    };
+    let (admin, buyer) = (unique(), unique());
+    let (vip_id, pricey_id) = (unique(), unique());
+    let vip = sim.guild_role(vip_id, "VIP", 2);
+    let pricey = sim.guild_role(pricey_id, "Whale", 3);
+
+    // /config points renames the currency; an upside-down range is refused.
+    sim.permissions = MANAGE_GUILD;
+    let config = sim
+        .command(
+            admin,
+            "config",
+            json!([sub(
+                "points",
+                vec![
+                    text_option("name", "coins"),
+                    text_option("emoji", "🪙"),
+                    int_option("min", 2),
+                    int_option("max", 4),
+                ]
+            )]),
+        )
+        .await;
+    let line = config.field("Server points");
+    assert!(line.contains("🪙 **coins**") && line.contains("2 to 4"), "{line}");
+    let refused = sim
+        .command(admin, "config", json!([sub("points", vec![int_option("min", 9)])]))
+        .await;
+    assert!(refused.content().contains("can't be above"), "{}", refused.content());
+
+    // Only managers hand out points.
+    let give = |user: u64, amount: i64| {
+        json!([sub(
+            "give",
+            vec![user_option("user", user), int_option("amount", amount)]
+        )])
+    };
+    sim.permissions = 0;
+    let denied = sim
+        .command_resolved(buyer, "points", give(buyer, 100), resolved(&[buyer], &[]))
+        .await;
+    assert!(denied.content().contains("Manage Server"), "{}", denied.content());
+    sim.permissions = MANAGE_GUILD;
+    let given = sim
+        .command_resolved(admin, "points", give(buyer, 100), resolved(&[buyer], &[]))
+        .await;
+    assert!(
+        given.description().contains("Gave **100** 🪙 coins"),
+        "{}",
+        given.description()
+    );
+    let taken = sim
+        .command_resolved(
+            admin,
+            "points",
+            json!([sub("take", vec![user_option("user", buyer), int_option("amount", 5)])]),
+            resolved(&[buyer], &[]),
+        )
+        .await;
+    assert!(taken.description().contains("Took **5**") && taken.description().contains("**95** left"));
+    sim.permissions = 0;
+    let shown = sim.command(buyer, "points", json!([sub("show", vec![])])).await;
+    assert_eq!(shown.title(), "🪙 Coins");
+    assert!(
+        shown.description().contains("**95** 🪙 coins"),
+        "{}",
+        shown.description()
+    );
+
+    // /leaderboard has a points board.
+    let board = sim
+        .command(buyer, "leaderboard", json!([text_option("board", "points")]))
+        .await;
+    assert_eq!(board.files.len(), 1, "the points board card");
+
+    // Store setup: only roles the bot can hand out.
+    sim.permissions = MANAGE_GUILD;
+    let sell = |role: &Value, price: i64, stock: Option<i64>| {
+        let mut options = vec![role_option("role", role), int_option("price", price)];
+        options.extend(stock.map(|s| int_option("stock", s)));
+        json!([group("store", sub("add", options))])
+    };
+    let above = role_json(unique(), "Boss", BOT_ROLE_POSITION, false);
+    let refused = sim
+        .command_resolved(admin, "config", sell(&above, 10, None), resolved(&[], &[&above]))
+        .await;
+    assert!(
+        refused.content().contains("above my highest role"),
+        "{}",
+        refused.content()
+    );
+    let added = sim
+        .command_resolved(admin, "config", sell(&vip, 60, Some(1)), resolved(&[], &[&vip]))
+        .await;
+    assert!(
+        added.content().contains(&format!("<@&{vip_id}>"))
+            && added.content().contains("**60** 🪙")
+            && added.content().contains("1 left"),
+        "{}",
+        added.content()
+    );
+    sim.command_resolved(admin, "config", sell(&pricey, 500, None), resolved(&[], &[&pricey]))
+        .await;
+
+    // /store lists both and offers a menu.
+    sim.permissions = 0;
+    let store = sim.command(buyer, "store", json!([])).await;
+    assert_eq!(store.title(), "Server store");
+    assert!(
+        store
+            .description()
+            .contains(&format!("<@&{vip_id}> · **60** 🪙 · 1 left"))
+            && store.description().contains(&format!("<@&{pricey_id}> · **500** 🪙")),
+        "{}",
+        store.description()
+    );
+    let vip_item = store
+        .options("st")
+        .iter()
+        .find(|o| o.label == "VIP")
+        .expect("VIP is on sale")
+        .value
+        .clone();
+    let pricey_item = store
+        .options("st")
+        .iter()
+        .find(|o| o.label == "Whale")
+        .expect("Whale is on sale")
+        .value
+        .clone();
+
+    // Discord refuses the role: the purchase is undone and says why.
+    sim.allow_role_changes(false);
+    let failed = sim.pick(buyer, &store, "st", &vip_item).await;
+    assert!(
+        failed.content().contains("I couldn't give you")
+            && failed.content().contains("You weren't charged")
+            && failed.content().contains("**95**"),
+        "{}",
+        failed.content()
+    );
+    assert_eq!(
+        sim.app.db.member_points(sim.guild, buyer).await.unwrap().0,
+        95,
+        "refunded"
+    );
+    assert_eq!(
+        sim.app
+            .db
+            .store_item(sim.guild, vip_item.parse().unwrap())
+            .await
+            .unwrap()
+            .unwrap()
+            .stock,
+        Some(1)
+    );
+
+    // Not enough points for the pricey one.
+    let poor = sim.pick(buyer, &store, "st", &pricey_item).await;
+    assert!(
+        poor.content().contains("costs **500**") && poor.content().contains("you have **95**"),
+        "{}",
+        poor.content()
+    );
+
+    // Discord accepts: the points go, the role arrives, the store shows the last unit gone.
+    sim.allow_role_changes(true);
+    let bought = sim.pick(buyer, &store, "st", &vip_item).await;
+    let receipt = bought.followups.first().expect("a private receipt");
+    assert!(receipt.ephemeral);
+    assert!(
+        receipt.description().contains("You bought")
+            && receipt.description().contains("**60** 🪙 coins")
+            && receipt.description().contains("**35** left"),
+        "{}",
+        receipt.description()
+    );
+    assert!(bought.description().contains("sold out"), "{}", bought.description());
+    assert_eq!(sim.role_changes(), vec![format!("PUT {buyer} {vip_id}")]);
+    assert_eq!(sim.app.db.member_points(sim.guild, buyer).await.unwrap().0, 35);
+
+    // A member who already has the role is turned away without paying.
+    sim.permissions = MANAGE_GUILD;
+    let restocked = sell(&vip, 20, Some(5));
+    sim.command_resolved(admin, "config", restocked, resolved(&[], &[&vip]))
+        .await;
+    sim.permissions = 0;
+    sim.roles = vec![vip_id];
+    let store = sim.command(buyer, "store", json!([])).await;
+    let again = sim.pick(buyer, &store, "st", &vip_item).await;
+    assert!(again.content().contains("already have"), "{}", again.content());
+    assert_eq!(sim.app.db.member_points(sim.guild, buyer).await.unwrap().0, 35);
+    assert!(sim.role_changes().is_empty());
+
+    // /config store remove takes it off sale.
+    sim.permissions = MANAGE_GUILD;
+    let removed = sim
+        .command(
+            admin,
+            "config",
+            json!([group("store", sub("remove", vec![role_option("role", &pricey)]))]),
+        )
+        .await;
+    assert!(removed.content().contains("off sale"), "{}", removed.content());
+    let list = sim
+        .command(admin, "config", json!([group("store", sub("list", vec![]))]))
+        .await;
+    assert!(
+        !list.description().contains(&format!("<@&{pricey_id}>")),
+        "{}",
+        list.description()
+    );
 }

@@ -1,8 +1,8 @@
 use pinchora_core::leveling;
-use pinchora_render::{RankCard, Theme};
+use pinchora_render::{NextRole, RankCard, Theme};
 use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
 
-use crate::{Cx, util::resolved_display_name};
+use crate::{Cx, roles, util::resolved_display_name};
 
 #[derive(CommandModel, CreateCommand)]
 #[command(name = "rank", desc = "Show a server level card", contexts = "guild")]
@@ -29,6 +29,7 @@ impl Rank {
             None => (0, db.guild_member_count(guild).await? + 1),
         };
         let progress = leveling::progress(xp);
+        let next_role = roles::next_role(&cx.app, guild, progress.level).await?;
         let avatar = cx.app.avatar(&user, RankCard::AVATAR_SIZE, Some(50)).await;
         let accent = db.user(user.id.get()).await?.accent_color;
         let username = user.name.clone();
@@ -43,6 +44,7 @@ impl Rank {
                     xp_current: progress.current,
                     xp_needed: progress.needed,
                     rank,
+                    next_role: next_role.as_ref().map(|(name, level)| NextRole { name, level: *level }),
                     theme: Theme::reef().with_accent(accent.map(|c| c as u32)),
                 })
             })

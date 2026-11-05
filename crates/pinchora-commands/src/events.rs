@@ -10,7 +10,7 @@ use twilight_model::{
 };
 
 use crate::{
-    App,
+    App, roles,
     util::{display_name, mention},
 };
 
@@ -37,18 +37,35 @@ pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<(
         return Ok(());
     }
     let settings = app.guild_settings(g).await?;
+    let points = if settings.points_enabled {
+        rand::random_range(i64::from(settings.points_min)..=i64::from(settings.points_max))
+    } else {
+        0
+    };
     if !settings.leveling_enabled {
+        if points > 0 {
+            app.db.give_points(g, u, points).await?;
+            metrics::counter!("pinchora_points_granted_total").increment(points as u64);
+        }
         return Ok(());
     }
     let amount = rand::random_range(MESSAGE_XP);
-    let gain = app.db.add_message_xp(g, u, amount).await?;
+    let gain = app.db.add_message_xp(g, u, amount, points).await?;
     metrics::counter!("pinchora_xp_granted_total").increment(amount as u64);
+    metrics::counter!("pinchora_points_granted_total").increment(points as u64);
     app.quest(u, pinchora_game::quests::QuestKind::Chat).await;
 
     let (before, after) = (level_of(gain.old_xp), level_of(gain.new_xp));
     if after <= before {
         return Ok(());
     }
+    // Roles first: they must not depend on the announcement going out.
+    let held: Vec<u64> = msg
+        .member
+        .as_ref()
+        .map(|m| m.roles.iter().map(|r| r.get()).collect())
+        .unwrap_or_default();
+    roles::level_up_roles(&app, g, u, after, &held, settings.level_roles_stack).await;
     let channel = settings
         .levelup_channel_id
         .map_or(msg.channel_id, |id| Id::new(id as u64));

@@ -5,6 +5,7 @@ mod cx;
 mod events;
 mod game;
 mod responder;
+mod roles;
 mod util;
 
 pub use app::App;

@@ -17,16 +17,25 @@ Written in Rust and built to run sharded on Kubernetes.
 | Command | What it does |
 |---|---|
 | `/profile [user]` | Pixel-art profile card: level, XP, shells, reputation, streak, global and server rank, bio |
-| `/rank [user]` | Server level card |
-| `/leaderboard [board]` | Server XP, global XP or global shells as a pixel-art card, with page buttons |
+| `/rank [user]` | Server level card, with the next level role to earn |
+| `/leaderboard [board]` | Server XP, server points, global XP or global shells as a pixel-art card, with page buttons |
 | `/daily` | Daily shells; the streak bonus grows for 20 days |
 | `/balance [user]`, `/give user amount` | Wallet and transfers |
 | `/rep user` | One reputation point per day |
 | `/bio text` | About-me text on the profile card |
 | `/config welcome\|leveling\|show` | Welcome cards and level-up messages (Manage Server) |
+| `/config level-roles add\|remove\|list\|mode\|sync` | Roles given at a level (up to 25): `mode` keeps every role earned or only the highest, `sync` catches up members who already passed a level (Manage Server) |
+| `/points show [user]` | Server points balance and rank; the server can rename the points and pick their emoji |
+| `/points give\|take user amount` | Adjust a member's server points (Manage Server) |
+| `/config points [enabled] [name] [emoji] [min] [max]` | Turn server points on or off, rename them, and set what a message earns (Manage Server) |
+| `/store` | The server's role store: pick a role from the menu to buy it with server points |
+| `/config store add\|remove\|list` | Put roles on sale for points, with optional stock (up to 25); adding a role again updates its price and stock (Manage Server) |
 | `/ping`, `/help` | Health and command list |
 
-Chatting earns 15–25 XP per minute per server. New members get a welcome card when enabled.
+Chatting earns 15–25 XP and, by default, 1–3 server points per minute per server. Level roles are
+given on level-up, and the bot needs the Manage Roles permission with its role above the roles it
+hands out; roles the bot can't give are refused when they are added. If Discord refuses a store
+role at purchase time, the points and stock are returned. New members get a welcome card when enabled.
 
 ### The pixel world
 

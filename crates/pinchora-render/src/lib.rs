@@ -15,8 +15,8 @@ use resvg::{tiny_skia, usvg};
 
 pub use avatar::{placeholder_avatar, prepare_avatar};
 pub use cards::{
-    CharacterCard, GridSlot, ItemGridCard, LeaderboardCard, LeaderboardEntry, LevelUpCard, PetCard, ProfileCard,
-    RankCard, SpriteArt, WalletCard, WelcomeCard,
+    CharacterCard, GridSlot, ItemGridCard, LeaderboardCard, LeaderboardEntry, LevelUpCard, NextRole, PetCard,
+    ProfileCard, RankCard, SpriteArt, WalletCard, WelcomeCard,
 };
 pub use encode::encode_png;
 pub use svg::{compact, thousands};
