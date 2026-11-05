@@ -1,0 +1,23 @@
+Use your built-in image generation tool to draw ONE style reference sprite sheet for "Pinchora", a cozy seaside pixel-art life game for Discord where players build and furnish rooms in an ISOMETRIC view.
+
+Attached images:
+1. Our old style reference: keep its palette, its 1-pixel dark outline, its cheerful cozy mood and its chunky readable shapes, but NOT its top-down camera.
+2. Our isometric room renderer with placeholder boxes: match this exact camera. It is a 2:1 isometric projection (floor diamonds twice as wide as tall, edges climb one pixel up for every two across).
+
+Draw 6 separate pieces of furniture in a 3 columns x 2 rows grid, each in that 2:1 isometric view with its FRONT facing the LOWER-LEFT of the image (we see its front on the lower-left side, its right side on the lower-right side and its top):
+1. A 3-tile-long sofa: coral fabric, honey-oak feet, cream cushions (its long side runs from upper-left to lower-right).
+2. A 1-tile wooden chair: honey oak with a woven cream seat.
+3. A 2x2-tile double bed: navy blanket, cream pillows, oak frame, headboard at the back.
+4. A potted plant: round terracotta pot, lush green leaves (slim, narrower than one tile).
+5. A tall bookcase 2 tiles long: oak, colourful books on 4 shelves, back against the wall.
+6. A small round side table (1 tile) with a little gold lamp on top.
+
+Rules:
+- True pixel art: crisp square pixels at one consistent pixel size, no anti-aliasing, no blur, no gradients, no noise. Fine detail: one floor tile is about 64 art pixels wide, like classic isometric room-building games, so draw details such as wood grain lines, stitching and book spines.
+- 1-pixel dark outline #1b1d2b around every object, light from the upper-left: the top is lightest, the lower-left front face medium, the lower-right side face darkest.
+- Use only these colours: 1b1d2b 0f1631 1d2b53 2e3d75 4a5ba3 8fa0d8 7a2a3a c2413f ff6b4a ff9e7a ffd2c0 fff1e8 e6d3c3 b8a08f 7d6a5f 4a3f3b 5c3a21 8a5a34 b97f4a e0ac6e 1f4d3a 2f7d4f 5bbf6a a6e39a 1f5f8b 3a9bdc 8fd3ff c98a1e ffd166 5a3a7a 9b6bc4 06d6a0 
+- Background: flat pure #00FF00 around the objects (real transparency is fine too). No floor, no tiles, no shadows on the background, no text, no labels, no grid lines.
+- Each object complete and isolated, with wide gaps between them.
+- Generate the image once and save it; regenerate at most once and only if objects are missing or not isometric.
+
+Save the final PNG to ./style_reference_iso.png

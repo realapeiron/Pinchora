@@ -18,24 +18,29 @@ Every movement is written to `credit_ledger` (pearls get their own ledger).
 
 - Every player gets a **starter house** on first use. Houses have **tiers**; upgrading adds rooms
   and enlarges existing ones, and **keeps all placed furniture** (Tatsu discards it; we don't).
-- A **room** is a tile grid seen top-down at a 3/4 angle (cozy-farming-sim style).
-  - Tile: **16×16 px** native, rendered ×4 (nearest-neighbour). A 12×9 room → 768×576 PNG.
-  - The top **2 rows are wall**; the rest is floor. Wall items sit on the wall rows, floor items
-    on the floor rows.
+- A **room** is an isometric tile grid (2:1 pixel art, classic isometric room-builder view):
+  a `width`×`depth` floor of 64×32 px diamonds with two back walls, rendered ×2 with
+  nearest-neighbour scaling.
+  - Floor tile (x, y) has its top corner at screen (32·(x−y), 16·(x+y)); x runs down-right,
+    y runs down-left. The right wall stands on the y = 0 edge, the left wall on the x = 0 edge.
+  - Walls are 3 **levels** of 32 px. A wall item sits at an offset along its wall and a level.
   - Each room has a **type** (living, bedroom, kitchen, bathroom, garden, workshop, pet room,
     library, studio, attic) that sets its default wallpaper/floor and a style bonus for matching
     categories.
 - **Placement is free on the grid**, not fixed slots. An item has a footprint `[w, d]` in tiles
   and a layer:
-  - `rug` — drawn under everything, may overlap floor items;
-  - `floor` — occupies its footprint, no overlap with other floor items;
-  - `surface` — 1×1 decor that sits on a `floor` item tagged `surface` (lamps on tables);
-  - `wall` — footprint `[w, h]` on the wall rows, no overlap with other wall items.
-  Draw order: wallpaper → floor tiles → rugs → wall items → floor items sorted by bottom row →
-  surface items → pets → cursor overlay.
-- Items can be **flipped** horizontally.
+  - `rug` — flat top-down art projected onto the floor, under everything;
+  - `floor` — isometric sprite facing the lower-left; occupies its footprint, no overlap;
+  - `surface` — small decor standing on a free tile or on top of a `surface`-tagged floor item
+    (raised by that item's `surface_height`);
+  - `wall` — flat front-view art `[w, h]` (tiles × levels), sheared onto the wall.
+  Draw order: walls → wall items → floor → rugs → contact shadows → everything standing on the
+  floor in painter's order (an item is drawn first when it lies entirely behind another along
+  x or y) → cursor overlay.
+- **Flipping** mirrors the sprite, which in this projection turns a floor item a quarter
+  (footprint `[w, d]` becomes `[d, w]`) and moves a wall item to the other wall.
 - **Editing in Discord** (`/house edit`): an ephemeral message with the room render, a grid
-  cursor, ⬅⬆⬇➡ buttons, an inventory select (paged), and Place / Flip / Pick up / Room buttons.
+  cursor, ↖↗↙↘ buttons that follow the isometric axes, an inventory select (paged), and Place / Flip / Pick up / Room buttons.
   All state rides in `custom_id`; the database is the truth.
 - **Visiting** (`/house visit @user [room]`): renders their room; your pet appears as a guest.
   One small shell reward per target per day, max 10/day; the host's guestbook logs visits.
@@ -47,12 +52,12 @@ Every movement is written to `credit_ledger` (pearls get their own ledger).
 
 | Tier | Name | Rooms | Room size (tiles) | Price |
 |---|---|---|---|---|
-| 1 | Tide Pool Shack | 1 | 10×8 | free |
-| 2 | Beach Cottage | 2 | 11×8 | 5,000 |
-| 3 | Reef House | 3 | 12×9 | 20,000 |
-| 4 | Coral Villa | 4 | 12×9 | 60,000 |
-| 5 | Lighthouse Loft | 5 | 13×10 | 150,000 |
-| 6 | Sunken Palace | 6 | 14×10 | 400,000 |
+| 1 | Tide Pool Shack | 1 | 8×8 | free |
+| 2 | Beach Cottage | 2 | 9×8 | 5,000 |
+| 3 | Reef House | 3 | 10×9 | 20,000 |
+| 4 | Coral Villa | 4 | 11×10 | 60,000 |
+| 5 | Lighthouse Loft | 5 | 12×11 | 150,000 |
+| 6 | Sunken Palace | 6 | 14×12 | 400,000 |
 
 ## Furniture catalog
 
@@ -105,8 +110,10 @@ reacting in time catches a fish weighted by rarity and the rod tier. Catches fil
 
 ## Art direction
 
-- Pixel art, 16 px tiles, **1 px dark outline** (`#1b1d2b`), light from the top-left, cozy and
-  bright. Native resolution in the atlas; all scaling is integer and nearest-neighbour.
+- Isometric 2:1 pixel art, 64×32 px floor tiles, **1 px dark outline** (`#1b1d2b`), light from
+  the upper-left, cozy and bright. Native resolution in the atlas; all scaling is integer and
+  nearest-neighbour. Floor sprites are `iso_width` px wide (by default the footprint's
+  `(w+d)·32`); wall art is `w·32 × h·32`, rugs `w·32 × d·32`, both flat.
 - One shared **32-colour palette** (`assets/sprites/palette.hex`); the import pipeline quantizes
   every sprite to it so GPT-drawn sheets stay consistent. Variants swap palette ramps.
 - Sprites are drawn by GPT (Codex image generation) as sheets on a flat `#00FF00` background,

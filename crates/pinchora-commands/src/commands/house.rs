@@ -6,7 +6,7 @@ use pinchora_game::{
     Content, Layer,
     house::{self, Placed, ROOM_ORDER},
 };
-use pinchora_render::room::Cursor;
+use pinchora_render::room::{Cursor, WallSide};
 use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
 use twilight_model::{
     channel::message::{
@@ -127,8 +127,9 @@ impl HouseCommand {
                     prefix: "he",
                     room,
                     x: 1,
-                    y: house::WALL_ROWS,
+                    y: 0,
                     page: 0,
+                    flipped: false,
                     item: None,
                 };
                 let note = "Pick furniture from the menu, move with the arrows, then press **Place**.";
@@ -274,7 +275,7 @@ pub(crate) async fn room_card(
         &cx.app,
         RoomView {
             width: tier.width,
-            height: tier.height,
+            depth: tier.depth,
             room: row,
             placements,
             cursor: None,
@@ -394,20 +395,30 @@ pub(crate) struct EditState {
     pub(crate) x: u32,
     pub(crate) y: u32,
     pub(crate) page: usize,
+    /// The held item turned a quarter (floor items) or hung on the left wall (wall items).
+    pub(crate) flipped: bool,
     pub(crate) item: Option<String>,
 }
 
 impl EditState {
+    /// `<prefix>:<action>:<room>:<x>:<y>:<page>:<flipped 0|1>:<item>`
     fn id(&self, action: &str) -> String {
         format!(
-            "{}:{action}:{}:{}:{}:{}:{}",
+            "{}:{action}:{}:{}:{}:{}:{}:{}",
             self.prefix,
             self.room,
             self.x,
             self.y,
             self.page,
+            u8::from(self.flipped),
             self.item.as_deref().unwrap_or("")
         )
+    }
+
+    /// `Some(flipped)` when the held item hangs on a wall, so the cursor moves on that wall.
+    fn wall(&self, content: &Content) -> Option<bool> {
+        let item = content.item(self.item.as_deref()?)?;
+        (item.base.layer == Layer::Wall).then_some(self.flipped)
     }
 
     fn parse(prefix: &'static str, args: &mut Split<'_, char>) -> Option<(String, Self)> {
@@ -416,6 +427,11 @@ impl EditState {
         let x = args.next()?.parse().ok()?;
         let y = args.next()?.parse().ok()?;
         let page = args.next()?.parse().ok()?;
+        let flipped = match args.next()? {
+            "0" => false,
+            "1" => true,
+            _ => return None,
+        };
         let item = args.next().filter(|s| !s.is_empty()).map(str::to_owned);
         Some((
             action,
@@ -425,25 +441,56 @@ impl EditState {
                 x,
                 y,
                 page,
+                flipped,
                 item,
             },
         ))
     }
 }
 
-/// The placement whose footprint covers the cursor tile; smaller layers win.
-fn under_cursor<'a>(content: &Content, placements: &'a [PlacementRow], x: u32, y: u32) -> Option<&'a PlacementRow> {
+/// Moves the cursor one step for an arrow button and keeps it inside `0..=max`. The arrows
+/// follow the isometric screen: ↖ x−1, ↘ x+1, ↗ y−1, ↙ y+1. On the left wall the two axes swap
+/// (↗/↙ slide along the wall, ↖/↘ change level), so every arrow still points where it looks.
+fn step_cursor(action: &str, (x, y): (u32, u32), left_wall: bool, (max_x, max_y): (u32, u32)) -> (u32, u32) {
+    let (dx, dy): (i32, i32) = match action {
+        "ul" => (-1, 0),
+        "dr" => (1, 0),
+        "ur" => (0, -1),
+        "dl" => (0, 1),
+        _ => (0, 0),
+    };
+    let (dx, dy) = if left_wall { (dy, dx) } else { (dx, dy) };
+    (
+        (x as i32 + dx).clamp(0, max_x as i32) as u32,
+        (y as i32 + dy).clamp(0, max_y as i32) as u32,
+    )
+}
+
+/// The placement under the cursor. On the floor (`wall` is `None`): the item whose footprint
+/// covers the tile, surface before floor before rug. On a wall (`Some(flipped)`): the wall
+/// item on that wall covering the cell.
+fn under_cursor<'a>(
+    content: &Content,
+    placements: &'a [PlacementRow],
+    x: u32,
+    y: u32,
+    wall: Option<bool>,
+) -> Option<&'a PlacementRow> {
     let rank = |layer: Layer| match layer {
         Layer::Surface => 0,
         Layer::Floor => 1,
-        Layer::Wall => 2,
-        Layer::Rug => 3,
+        Layer::Rug => 2,
+        Layer::Wall => 3,
     };
     placements
         .iter()
         .filter_map(|p| {
-            let (layer, r) = house::footprint(content, &p.item_id, p.x as u32, p.y as u32)?;
-            (x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.d).then_some((rank(layer), p))
+            let (layer, r) = house::footprint(content, &p.item_id, p.x as u32, p.y as u32, p.flipped)?;
+            let here = match wall {
+                Some(flipped) => layer == Layer::Wall && p.flipped == flipped,
+                None => layer != Layer::Wall,
+            };
+            (here && x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.d).then_some((rank(layer), p))
         })
         .min_by_key(|(rank, p)| (*rank, -p.id))
         .map(|(_, p)| p)
@@ -473,59 +520,56 @@ pub(crate) async fn on_edit(
     let tier = house::tier(house_row.tier);
     state.room = state.room.clamp(0, rooms.len().saturating_sub(1) as i16);
     let placements = cx.app.db.placements(user_id, state.room).await?;
-    let (w, d) = state
-        .item
-        .as_deref()
-        .and_then(|i| content.item(i))
-        .map_or((1, 1), |i| (i.base.footprint[0], i.base.footprint[1]));
+    // Furthest cursor position that keeps the held item (or the one-tile cursor) on the floor or its wall.
+    let reach = |item: Option<&str>, flipped: bool| match item.and_then(|i| house::footprint(content, i, 0, 0, flipped))
+    {
+        Some((Layer::Wall, r)) => (
+            house::wall_length(tier.width, tier.depth, flipped).saturating_sub(r.w),
+            house::WALL_LEVELS.saturating_sub(r.d),
+        ),
+        Some((_, r)) => (tier.width.saturating_sub(r.w), tier.depth.saturating_sub(r.d)),
+        None => (tier.width - 1, tier.depth - 1),
+    };
 
     let note = match action.as_str() {
         "s" => {
             state.item = value.map(str::to_owned);
+            state.flipped = false;
             match state.item.as_deref().and_then(|i| content.item(i)) {
                 Some(item) => {
                     let [iw, id] = item.base.footprint;
-                    state.x = state.x.min(tier.width.saturating_sub(iw));
-                    state.y = state.y.min(tier.height.saturating_sub(id));
-                    if item.base.layer == Layer::Wall {
-                        state.y = 0;
-                    } else if state.y < house::WALL_ROWS {
-                        state.y = house::WALL_ROWS;
-                    }
+                    let (max_x, max_y) = reach(state.item.as_deref(), state.flipped);
+                    state.x = state.x.min(max_x);
+                    state.y = state.y.min(max_y);
                     format!("Selected **{}** ({iw}×{id}). Move it, then **Place**.", item.name())
                 }
                 None => "Pick something from the menu.".to_owned(),
             }
         }
-        "l" | "r" | "u" | "d" => {
-            let (dx, dy): (i32, i32) = match action.as_str() {
-                "l" => (-1, 0),
-                "r" => (1, 0),
-                "u" => (0, -1),
-                _ => (0, 1),
-            };
-            state.x = (state.x as i32 + dx).clamp(0, (tier.width - w) as i32) as u32;
-            state.y = (state.y as i32 + dy).clamp(0, (tier.height - d) as i32) as u32;
+        "ul" | "dr" | "ur" | "dl" => {
+            let max = reach(state.item.as_deref(), state.flipped);
+            (state.x, state.y) = step_cursor(&action, (state.x, state.y), state.wall(content) == Some(true), max);
             String::new()
         }
         "p" => match state.item.clone() {
             None => "Pick something to place first.".to_owned(),
             Some(item_id) => {
-                let (width, height) = (tier.width, tier.height);
-                let (x, y) = (state.x, state.y);
+                let (width, depth) = (tier.width, tier.depth);
+                let (x, y, flipped) = (state.x, state.y, state.flipped);
                 let outcome = cx
                     .app
                     .db
-                    .place_item(user_id, state.room, &item_id, x as i16, y as i16, false, |current| {
+                    .place_item(user_id, state.room, &item_id, x as i16, y as i16, flipped, |current| {
                         let placed: Vec<Placed> = current
                             .iter()
                             .map(|p| Placed {
                                 item_id: &p.item_id,
                                 x: p.x as u32,
                                 y: p.y as u32,
+                                flipped: p.flipped,
                             })
                             .collect();
-                        house::can_place(content, width, height, &placed, &item_id, x, y)
+                        house::can_place(content, width, depth, &placed, &item_id, x, y, flipped)
                     })
                     .await?;
                 let name = content.item(&item_id).map_or(item_id.clone(), |i| i.name());
@@ -545,7 +589,7 @@ pub(crate) async fn on_edit(
                 }
             }
         },
-        "k" => match under_cursor(content, &placements, state.x, state.y) {
+        "k" => match under_cursor(content, &placements, state.x, state.y, state.wall(content)) {
             Some(p) => {
                 let name = content.item(&p.item_id).map_or(p.item_id.clone(), |i| i.name());
                 cx.app.db.pick_up(user_id, p.id).await?;
@@ -553,17 +597,41 @@ pub(crate) async fn on_edit(
             }
             None => "Nothing under the cursor.".to_owned(),
         },
-        "f" => match under_cursor(content, &placements, state.x, state.y) {
+        // Turns the held item; the new footprint (or wall) may need the cursor pulled back inside.
+        "t" => {
+            state.flipped = !state.flipped;
+            let (max_x, max_y) = reach(state.item.as_deref(), state.flipped);
+            state.x = state.x.min(max_x);
+            state.y = state.y.min(max_y);
+            String::new()
+        }
+        "f" => match under_cursor(content, &placements, state.x, state.y, state.wall(content)) {
             Some(p) => {
-                cx.app.db.flip_placement(user_id, p.id).await?;
-                "Flipped.".to_owned()
+                let others: Vec<Placed> = placements
+                    .iter()
+                    .filter(|o| o.id != p.id)
+                    .map(|o| Placed {
+                        item_id: &o.item_id,
+                        x: o.x as u32,
+                        y: o.y as u32,
+                        flipped: o.flipped,
+                    })
+                    .collect();
+                let (x, y) = (p.x as u32, p.y as u32);
+                match house::can_place(content, tier.width, tier.depth, &others, &p.item_id, x, y, !p.flipped) {
+                    Ok(()) => {
+                        cx.app.db.flip_placement(user_id, p.id).await?;
+                        "Flipped.".to_owned()
+                    }
+                    Err(reason) => format!("Can't flip it: {reason}."),
+                }
             }
             None => "Nothing under the cursor to flip.".to_owned(),
         },
         "n" => {
             state.room = (state.room + 1) % rooms.len() as i16;
             state.x = 1;
-            state.y = house::WALL_ROWS;
+            state.y = 0;
             format!("Now editing room {}.", state.room + 1)
         }
         "q" => {
@@ -614,7 +682,12 @@ pub(crate) async fn editor(
     state.page = state.page.min(pages - 1);
 
     let selected_item = state.item.as_deref().and_then(|i| content.item(i));
-    let (cw, cd) = selected_item.map_or((1, 1), |i| (i.base.footprint[0], i.base.footprint[1]));
+    let wall = state.wall(content);
+    let (cw, cd) = state
+        .item
+        .as_deref()
+        .and_then(|i| house::footprint(content, i, 0, 0, state.flipped))
+        .map_or((1, 1), |(_, r)| (r.w, r.d));
     let fits = selected_item.is_some_and(|_| {
         let placed: Vec<Placed> = placements
             .iter()
@@ -622,20 +695,22 @@ pub(crate) async fn editor(
                 item_id: &p.item_id,
                 x: p.x as u32,
                 y: p.y as u32,
+                flipped: p.flipped,
             })
             .collect();
         house::can_place(
             content,
             tier.width,
-            tier.height,
+            tier.depth,
             &placed,
             state.item.as_deref().unwrap_or_default(),
             state.x,
             state.y,
+            state.flipped,
         )
         .is_ok()
     });
-    let hovered = under_cursor(content, &placements, state.x, state.y);
+    let hovered = under_cursor(content, &placements, state.x, state.y, wall);
     let hovered_id = hovered.map(|p| p.id);
     let hovered_name = hovered.and_then(|p| content.item(&p.item_id)).map(|i| i.name());
 
@@ -644,7 +719,7 @@ pub(crate) async fn editor(
         &cx.app,
         RoomView {
             width: tier.width,
-            height: tier.height,
+            depth: tier.depth,
             room,
             placements,
             cursor: Some(Cursor {
@@ -652,6 +727,7 @@ pub(crate) async fn editor(
                 y: state.y,
                 w: cw,
                 d: cd,
+                wall: wall.map(|flipped| if flipped { WallSide::Left } else { WallSide::Right }),
                 ok: selected_item.is_none() || fits,
             }),
             selected: hovered_id,
@@ -750,10 +826,11 @@ pub(crate) async fn editor(
     let mut components = vec![
         row(vec![select]),
         row(vec![
-            button("⬅", "l", ButtonStyle::Secondary, false),
-            button("⬆", "u", ButtonStyle::Secondary, false),
-            button("⬇", "d", ButtonStyle::Secondary, false),
-            button("➡", "r", ButtonStyle::Secondary, false),
+            button("↖", "ul", ButtonStyle::Secondary, false),
+            button("↗", "ur", ButtonStyle::Secondary, false),
+            button("↙", "dl", ButtonStyle::Secondary, false),
+            button("↘", "dr", ButtonStyle::Secondary, false),
+            button("↻ Turn", "t", ButtonStyle::Secondary, selected_item.is_none()),
         ]),
         row(vec![
             button("Place", "p", ButtonStyle::Success, !fits),
@@ -793,7 +870,7 @@ async fn upgrade_offer(cx: &Cx, user_id: u64) -> anyhow::Result<()> {
             current.rooms,
             next.rooms,
             next.width,
-            next.height,
+            next.depth,
             thousands(next.price),
             thousands(balance)
         ))
@@ -856,4 +933,127 @@ pub(crate) async fn on_upgrade(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Re
         ..Default::default()
     })
     .await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn arrows_follow_the_isometric_screen() {
+        let max = (9, 9);
+        // Floor and right wall: ↖ x−1, ↘ x+1, ↗ y−1, ↙ y+1.
+        assert_eq!(step_cursor("ul", (4, 4), false, max), (3, 4));
+        assert_eq!(step_cursor("dr", (4, 4), false, max), (5, 4));
+        assert_eq!(step_cursor("ur", (4, 4), false, max), (4, 3));
+        assert_eq!(step_cursor("dl", (4, 4), false, max), (4, 5));
+        // Left wall: ↗/↙ slide along the wall (x−1/x+1), ↖ is level up, ↘ level down.
+        assert_eq!(step_cursor("ur", (4, 1), true, max), (3, 1));
+        assert_eq!(step_cursor("dl", (4, 1), true, max), (5, 1));
+        assert_eq!(step_cursor("ul", (4, 1), true, max), (4, 0));
+        assert_eq!(step_cursor("dr", (4, 1), true, max), (4, 2));
+        assert_eq!(step_cursor("?", (4, 4), false, max), (4, 4));
+    }
+
+    #[test]
+    fn arrows_stay_inside_the_room_or_wall() {
+        assert_eq!(step_cursor("ul", (0, 2), false, (5, 4)), (0, 2));
+        assert_eq!(step_cursor("ur", (2, 0), false, (5, 4)), (2, 0));
+        assert_eq!(step_cursor("dr", (5, 2), false, (5, 4)), (5, 2));
+        assert_eq!(step_cursor("dl", (2, 4), false, (5, 4)), (2, 4));
+        // A wall: x along it, y is the level (0..WALL_LEVELS).
+        let levels = house::WALL_LEVELS - 1;
+        assert_eq!(
+            step_cursor("ur", (3, 0), false, (6, levels)),
+            (3, 0),
+            "already on the top level"
+        );
+        assert_eq!(
+            step_cursor("dl", (3, levels), false, (6, levels)),
+            (3, levels),
+            "already on the bottom level"
+        );
+        assert_eq!(step_cursor("ul", (3, 0), true, (6, levels)), (3, 0));
+        assert_eq!(step_cursor("dr", (3, levels), true, (6, levels)), (3, levels));
+        assert_eq!(step_cursor("ur", (0, 1), true, (6, levels)), (0, 1), "at the corner");
+        assert_eq!(step_cursor("dl", (6, 1), true, (6, levels)), (6, 1), "at the far end");
+    }
+
+    #[test]
+    fn picks_the_right_placement_under_the_cursor() {
+        let content = Content::get();
+        let find = |layer: Layer, footprint: [u32; 2]| {
+            content
+                .items()
+                .find(|i| i.base.layer == layer && i.base.footprint == footprint)
+                .map(|i| i.id())
+                .expect("content has this kind of item")
+        };
+        let row = |id: i64, item_id: String, x: i16, y: i16, flipped: bool| PlacementRow {
+            id,
+            room_idx: 0,
+            item_id,
+            x,
+            y,
+            flipped,
+        };
+        let rug = row(1, find(Layer::Rug, [3, 2]), 0, 0, false);
+        let sofa = row(2, find(Layer::Floor, [3, 2]), 1, 1, true);
+        let lamp = row(3, find(Layer::Surface, [1, 1]), 2, 2, false);
+        let frame = row(4, find(Layer::Wall, [2, 2]), 1, 0, false);
+        let all = [rug, sofa, lamp, frame];
+        let at = |x, y, wall| under_cursor(content, &all, x, y, wall).map(|p| p.id);
+        // The turned sofa covers x 1..3, y 1..4 (a 3×2 footprint would reach x = 3).
+        assert_eq!(at(2, 3, None), Some(2));
+        assert_eq!(at(3, 1, None), None);
+        // Surface over floor over rug.
+        assert_eq!(at(2, 2, None), Some(3));
+        assert_eq!(at(1, 1, None), Some(2));
+        assert_eq!(at(0, 0, None), Some(1));
+        // Wall items only answer on their own wall.
+        assert_eq!(at(2, 1, Some(false)), Some(4));
+        assert_eq!(at(2, 1, Some(true)), None);
+        assert_eq!(at(3, 0, Some(false)), None);
+    }
+
+    #[test]
+    fn edit_state_survives_the_custom_id() {
+        let state = EditState {
+            prefix: "pe",
+            room: 2,
+            x: 7,
+            y: 3,
+            page: 4,
+            flipped: true,
+            item: Some("sofa__mint".to_owned()),
+        };
+        let id = state.id("ul");
+        let mut parts = id.split(':');
+        assert_eq!(parts.next(), Some("pe"));
+        let (action, back) = EditState::parse("pe", &mut parts).expect("parses");
+        assert_eq!(action, "ul");
+        assert_eq!((back.room, back.x, back.y, back.page), (2, 7, 3, 4));
+        assert!(back.flipped);
+        assert_eq!(back.item.as_deref(), Some("sofa__mint"));
+        // Editors from before the flip flag was added are told to start over.
+        let mut old = "he:l:0:1:2:0:sofa".split(':');
+        old.next();
+        assert!(EditState::parse("he", &mut old).is_none());
+    }
+
+    #[test]
+    fn custom_ids_fit_discords_limit() {
+        for item in Content::get().items() {
+            let state = EditState {
+                prefix: "he",
+                room: 5,
+                x: 99,
+                y: 99,
+                page: 999,
+                flipped: true,
+                item: Some(item.id()),
+            };
+            assert!(state.id("dl").len() <= 100, "{} is too long", item.id());
+        }
+    }
 }

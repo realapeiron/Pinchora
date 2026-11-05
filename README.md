@@ -28,7 +28,7 @@ Chatting earns 15–25 XP per minute per server. New members get a welcome card 
 | Command | What it does |
 |---|---|
 | `/house view [room]` | Your house, rendered tile by tile; your active pet wanders around |
-| `/house edit [room]` | Decorate inside Discord: pick furniture, move the cursor with ⬅⬆⬇➡, place, flip, pick up |
+| `/house edit [room]` | Decorate inside Discord: pick furniture, move the cursor with the ↖↗↙↘ arrows, place, turn, flip, pick up |
 | `/house visit user` | Visit a house with your pet (first visit each day pays shells, 10 a day) |
 | `/house like user`, `/house lock` | Daily likes; close your doors to visitors |
 | `/house decorate [room]` | 44 wallpapers and 44 floors, bought on first use, swapped freely |

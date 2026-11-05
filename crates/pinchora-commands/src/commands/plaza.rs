@@ -2,7 +2,7 @@
 //! managers arrange it with the same editor as houses. Discord ids never collide
 //! across entity types, so the plaza is simply a house owned by the guild id.
 
-use pinchora_game::{Content, house::WALL_ROWS};
+use pinchora_game::Content;
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::{
     channel::message::{
@@ -75,8 +75,9 @@ impl PlazaCommand {
                     prefix: "pe",
                     room: 0,
                     x: 1,
-                    y: WALL_ROWS,
+                    y: 0,
                     page: 0,
+                    flipped: false,
                     item: None,
                 };
                 let data = editor(

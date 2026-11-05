@@ -78,6 +78,18 @@ pub enum CategoryOption {
     Outdoor,
     #[option(name = "Seasonal", value = "seasonal")]
     Seasonal,
+    #[option(name = "Office", value = "office")]
+    Office,
+    #[option(name = "Cafe & shop", value = "cafe")]
+    Cafe,
+    #[option(name = "Hobbies", value = "hobbies")]
+    Hobbies,
+    #[option(name = "Fitness", value = "fitness")]
+    Fitness,
+    #[option(name = "Walls & partitions", value = "partitions")]
+    Partitions,
+    #[option(name = "Nautical", value = "nautical")]
+    Nautical,
 }
 
 impl CategoryOption {

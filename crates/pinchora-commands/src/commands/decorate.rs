@@ -80,7 +80,7 @@ pub(crate) async fn panel(cx: &Cx, room: i16, page: usize, note: &str) -> anyhow
     let sprites = cx.app.sprites.clone();
     let view = RoomView {
         width: tier.width,
-        height: tier.height,
+        depth: tier.depth,
         room: row,
         placements,
         cursor: None,

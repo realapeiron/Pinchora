@@ -1,8 +1,14 @@
 //! House tiers and furniture placement rules.
+//!
+//! Rooms are seen isometrically: floor items sit on a `width`×`depth` tile grid, wall items
+//! hang on the right wall (along x) or, when flipped, on the left wall (along y), where `x`
+//! is the offset along that wall and `y` the level from the top. Flipping a floor item turns
+//! it a quarter, so its footprint swaps to `[d, w]`.
 
 use crate::{Content, Layer};
 
-pub const WALL_ROWS: u32 = 2;
+/// Wall items snap to this many rows on each wall.
+pub const WALL_LEVELS: u32 = 3;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Tier {
@@ -10,7 +16,7 @@ pub struct Tier {
     pub name: &'static str,
     pub rooms: usize,
     pub width: u32,
-    pub height: u32,
+    pub depth: u32,
     pub price: i64,
 }
 
@@ -19,40 +25,40 @@ pub const TIERS: [Tier; 6] = [
         tier: 1,
         name: "Tide Pool Shack",
         rooms: 1,
-        width: 10,
-        height: 8,
+        width: 8,
+        depth: 8,
         price: 0,
     },
     Tier {
         tier: 2,
         name: "Beach Cottage",
         rooms: 2,
-        width: 11,
-        height: 8,
+        width: 9,
+        depth: 8,
         price: 5_000,
     },
     Tier {
         tier: 3,
         name: "Reef House",
         rooms: 3,
-        width: 12,
-        height: 9,
+        width: 10,
+        depth: 9,
         price: 20_000,
     },
     Tier {
         tier: 4,
         name: "Coral Villa",
         rooms: 4,
-        width: 12,
-        height: 9,
+        width: 11,
+        depth: 10,
         price: 60_000,
     },
     Tier {
         tier: 5,
         name: "Lighthouse Loft",
         rooms: 5,
-        width: 13,
-        height: 10,
+        width: 12,
+        depth: 11,
         price: 150_000,
     },
     Tier {
@@ -60,7 +66,7 @@ pub const TIERS: [Tier; 6] = [
         name: "Sunken Palace",
         rooms: 6,
         width: 14,
-        height: 10,
+        depth: 12,
         price: 400_000,
     },
 ];
@@ -79,6 +85,7 @@ pub struct Placed<'a> {
     pub item_id: &'a str,
     pub x: u32,
     pub y: u32,
+    pub flipped: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -90,45 +97,66 @@ pub struct Rect {
 }
 
 impl Rect {
-    fn overlaps(&self, o: &Rect) -> bool {
+    pub fn overlaps(&self, o: &Rect) -> bool {
         self.x < o.x + o.w && o.x < self.x + self.w && self.y < o.y + o.d && o.y < self.y + self.d
     }
 
-    fn contains(&self, o: &Rect) -> bool {
+    pub fn contains(&self, o: &Rect) -> bool {
         o.x >= self.x && o.y >= self.y && o.x + o.w <= self.x + self.w && o.y + o.d <= self.y + self.d
     }
 }
 
-/// Footprint rectangle of an item at (x, y).
-pub fn footprint(content: &Content, item_id: &str, x: u32, y: u32) -> Option<(Layer, Rect)> {
+/// Footprint of an item at (x, y) as placed: floor layers swap `[w, d]` when flipped; wall
+/// items keep `[w, h]` (flipping moves them to the other wall).
+pub fn footprint(content: &Content, item_id: &str, x: u32, y: u32, flipped: bool) -> Option<(Layer, Rect)> {
     let item = content.item(item_id)?;
     let [w, d] = item.base.footprint;
+    let (w, d) = if flipped && item.base.layer != Layer::Wall {
+        (d, w)
+    } else {
+        (w, d)
+    };
     Some((item.base.layer, Rect { x, y, w, d }))
 }
 
-/// Checks whether `item_id` fits at (x, y) in a `width`×`height` room.
+/// Length in tiles of the wall a wall item hangs on.
+pub fn wall_length(width: u32, depth: u32, flipped: bool) -> u32 {
+    if flipped { depth } else { width }
+}
+
+/// Checks whether `item_id` fits at (x, y) in a `width`×`depth` room.
+#[allow(clippy::too_many_arguments)]
 pub fn can_place(
     content: &Content,
     width: u32,
-    height: u32,
+    depth: u32,
     placed: &[Placed<'_>],
     item_id: &str,
     x: u32,
     y: u32,
+    flipped: bool,
 ) -> Result<(), String> {
-    let (layer, rect) = footprint(content, item_id, x, y).ok_or("unknown item")?;
-    if rect.x + rect.w > width || rect.y + rect.d > height {
+    let (layer, rect) = footprint(content, item_id, x, y, flipped).ok_or("unknown item")?;
+    if layer == Layer::Wall {
+        if rect.x + rect.w > wall_length(width, depth, flipped) || rect.y + rect.d > WALL_LEVELS {
+            return Err("it does not fit on the wall there".into());
+        }
+        let taken = placed.iter().any(|p| {
+            p.flipped == flipped
+                && footprint(content, p.item_id, p.x, p.y, p.flipped)
+                    .is_some_and(|(l, r)| l == Layer::Wall && r.overlaps(&rect))
+        });
+        return if taken {
+            Err("something already hangs there".into())
+        } else {
+            Ok(())
+        };
+    }
+    if rect.x + rect.w > width || rect.y + rect.d > depth {
         return Err("it does not fit inside the room there".into());
     }
-    match layer {
-        Layer::Wall if rect.y + rect.d > WALL_ROWS => return Err("wall items go on the wall".into()),
-        Layer::Floor | Layer::Rug | Layer::Surface if rect.y < WALL_ROWS => {
-            return Err("that goes on the floor, not the wall".into());
-        }
-        _ => {}
-    }
     let others = placed.iter().filter_map(|p| {
-        let (l, r) = footprint(content, p.item_id, p.x, p.y)?;
+        let (l, r) = footprint(content, p.item_id, p.x, p.y, p.flipped)?;
         Some((l, r, content.item(p.item_id)?.base.has_tag("surface")))
     });
     match layer {
@@ -140,9 +168,9 @@ pub fn can_place(
                 return Err("another rug is already there".into());
             }
         }
-        Layer::Wall | Layer::Floor => {
+        Layer::Floor => {
             if others
-                .filter(|(l, _, _)| *l == layer)
+                .filter(|(l, _, _)| *l == Layer::Floor)
                 .any(|(_, r, _)| r.overlaps(&rect))
             {
                 return Err("something is already in that spot".into());
@@ -163,8 +191,24 @@ pub fn can_place(
                 return Err("small items need a free tile or a table/shelf top".into());
             }
         }
+        Layer::Wall => unreachable!("handled above"),
     }
     Ok(())
+}
+
+/// How high a surface item at (x, y) stands: the top of the table or shelf under it.
+pub fn surface_lift(content: &Content, placed: &[Placed<'_>], x: u32, y: u32) -> u32 {
+    let spot = Rect { x, y, w: 1, d: 1 };
+    placed
+        .iter()
+        .filter_map(|p| {
+            let base = &content.item(p.item_id)?.base;
+            let (layer, r) = footprint(content, p.item_id, p.x, p.y, p.flipped)?;
+            (layer == Layer::Floor && base.has_tag("surface") && r.contains(&spot))
+                .then(|| base.surface_height.unwrap_or(24))
+        })
+        .max()
+        .unwrap_or(0)
 }
 
 #[cfg(test)]
@@ -195,23 +239,42 @@ mod tests {
     #[test]
     fn placement_rules() {
         let c = content();
-        let fits = |placed: &[Placed], id: &str, x, y| can_place(&c, 10, 8, placed, id, x, y);
+        let fits = |placed: &[Placed], id: &str, x, y| can_place(&c, 10, 8, placed, id, x, y, false);
         assert!(fits(&[], "sofa__mint", 0, 2).is_ok());
         assert!(fits(&[], "sofa__mint", 8, 2).is_err(), "runs off the right edge");
-        assert!(fits(&[], "sofa__mint", 0, 1).is_err(), "floor item on the wall");
         assert!(fits(&[], "frame", 0, 0).is_ok());
-        assert!(fits(&[], "frame", 0, 2).is_err(), "wall item on the floor");
+        assert!(fits(&[], "frame", 8, 2).is_ok());
+        assert!(fits(&[], "frame", 9, 0).is_err(), "runs off the end of the wall");
+        assert!(fits(&[], "frame", 0, 3).is_err(), "below the lowest wall level");
+        assert!(
+            can_place(&c, 10, 8, &[], "sofa__mint", 9, 0, true).is_ok(),
+            "turned, the sofa runs along y"
+        );
+        assert!(can_place(&c, 10, 8, &[], "sofa__mint", 0, 6, true).is_err());
+        let frame = [Placed {
+            item_id: "frame",
+            x: 0,
+            y: 0,
+            flipped: false,
+        }];
+        assert!(fits(&frame, "frame", 1, 0).is_err(), "same wall, overlapping");
+        assert!(
+            can_place(&c, 10, 8, &frame, "frame", 1, 0, true).is_ok(),
+            "the other wall is free"
+        );
 
         let room = [
             Placed {
                 item_id: "table",
                 x: 4,
                 y: 4,
+                flipped: false,
             },
             Placed {
                 item_id: "sofa__navy",
                 x: 0,
                 y: 6,
+                flipped: false,
             },
         ];
         assert!(fits(&room, "sofa__mint", 3, 4).is_err(), "overlaps the table");
@@ -225,15 +288,19 @@ mod tests {
                 item_id: "table",
                 x: 4,
                 y: 4,
+                flipped: false,
             },
             Placed {
                 item_id: "lamp",
                 x: 4,
                 y: 4,
+                flipped: false,
             },
         ];
         assert!(fits(&with_lamp, "lamp", 4, 4).is_err(), "one thing per table tile");
         assert!(fits(&with_lamp, "lamp", 5, 4).is_ok());
+        assert_eq!(surface_lift(&c, &with_lamp, 5, 4), 24, "default table height");
+        assert_eq!(surface_lift(&c, &with_lamp, 7, 4), 0);
     }
 
     #[test]

@@ -21,8 +21,15 @@ fn shipped_content_is_consistent() {
         let [w, d] = f.footprint;
         match f.layer {
             Layer::Surface => assert_eq!([w, d], [1, 1], "{}", f.id),
-            Layer::Wall => assert!((1..=3).contains(&w) && (1..=house::WALL_ROWS).contains(&d), "{}", f.id),
-            _ => assert!((1..=4).contains(&w) && (1..=3).contains(&d), "{}", f.id),
+            Layer::Wall => assert!(
+                (1..=4).contains(&w) && (1..=house::WALL_LEVELS).contains(&d),
+                "{}",
+                f.id
+            ),
+            _ => assert!((1..=4).contains(&w) && (1..=4).contains(&d), "{}", f.id),
+        }
+        if let Some(iw) = f.iso_width {
+            assert!((8..=(w + d) * 32).contains(&iw), "{}: iso_width {iw}", f.id);
         }
         assert!(f.price > 0, "{}", f.id);
         if let Some(set) = &f.set {

@@ -64,10 +64,16 @@ pub enum Category {
     Music,
     Outdoor,
     Seasonal,
+    Office,
+    Cafe,
+    Hobbies,
+    Fitness,
+    Partitions,
+    Nautical,
 }
 
 impl Category {
-    pub const ALL: [Category; 17] = [
+    pub const ALL: [Category; 23] = [
         Self::Seating,
         Self::Tables,
         Self::Beds,
@@ -85,6 +91,12 @@ impl Category {
         Self::Music,
         Self::Outdoor,
         Self::Seasonal,
+        Self::Office,
+        Self::Cafe,
+        Self::Hobbies,
+        Self::Fitness,
+        Self::Partitions,
+        Self::Nautical,
     ];
 
     pub fn label(self) -> &'static str {
@@ -106,6 +118,12 @@ impl Category {
             Self::Music => "Music",
             Self::Outdoor => "Outdoor",
             Self::Seasonal => "Seasonal",
+            Self::Office => "Office",
+            Self::Cafe => "Cafe & shop",
+            Self::Hobbies => "Hobbies",
+            Self::Fitness => "Fitness",
+            Self::Partitions => "Walls & partitions",
+            Self::Nautical => "Nautical",
         }
     }
 
@@ -128,6 +146,12 @@ impl Category {
             Self::Music => "music",
             Self::Outdoor => "outdoor",
             Self::Seasonal => "seasonal",
+            Self::Office => "office",
+            Self::Cafe => "cafe",
+            Self::Hobbies => "hobbies",
+            Self::Fitness => "fitness",
+            Self::Partitions => "partitions",
+            Self::Nautical => "nautical",
         }
     }
 
@@ -179,6 +203,12 @@ pub struct Furniture {
     pub availability: Availability,
     pub description: String,
     pub sprite_brief: String,
+    /// Native sprite width for floor and surface items; defaults to the footprint width.
+    #[serde(default)]
+    pub iso_width: Option<u32>,
+    /// For items tagged `surface`: how high their top is, in native pixels.
+    #[serde(default)]
+    pub surface_height: Option<u32>,
 }
 
 impl Furniture {

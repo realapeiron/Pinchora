@@ -46,16 +46,22 @@ enum Command {
 struct Manifest {
     /// Only look inside this rectangle `[x0, y0, x1, y1]` (sheet pixels).
     region: Option<[u32; 4]>,
+    /// `avatar` quantizes to the character key palette instead of the shared one.
+    palette: Option<String>,
     items: Vec<ManifestItem>,
 }
 
 #[derive(Deserialize)]
 struct ManifestItem {
     name: String,
-    /// Target width in native pixels (e.g. footprint width × 16 − 2).
+    /// Target width in native pixels (e.g. an isometric item's iso width); 0 with a
+    /// `height` keeps the drawn aspect ratio at that height.
     width: u32,
-    /// Exact target height, for tiles; otherwise keeps the drawn aspect ratio.
+    /// Exact target height (tiles, flat wall art, rugs); otherwise keeps the drawn aspect ratio.
     height: Option<u32>,
+    /// Fill every pixel (seamless tiles) instead of keying the background out.
+    #[serde(default)]
+    opaque: bool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -78,9 +84,13 @@ fn main() -> anyhow::Result<()> {
     }
 }
 
-fn palette() -> Vec<[u8; 3]> {
-    include_str!("../../../assets/sprites/palette.hex")
-        .lines()
+/// The shared palette, or the character palette whose key ramps the renderer recolours.
+fn palette(name: Option<&str>) -> Vec<[u8; 3]> {
+    let hex = match name {
+        Some("avatar") => include_str!("../../../assets/sprites/avatar_palette.hex"),
+        _ => include_str!("../../../assets/sprites/palette.hex"),
+    };
+    hex.lines()
         .filter_map(|l| u32::from_str_radix(l.trim(), 16).ok())
         .map(|v| [(v >> 16) as u8, (v >> 8) as u8, v as u8])
         .collect()
@@ -308,14 +318,18 @@ fn cut(sheet: &Path, manifest: &Path, out: &Path, preview: bool) -> anyhow::Resu
         );
     }
     std::fs::create_dir_all(out)?;
-    let palette = palette();
+    let palette = palette(manifest.palette.as_deref());
     let mut made = Vec::new();
     for (bb, item) in found.iter().zip(&manifest.items) {
-        let tw = item.width.max(1);
-        let th = item
-            .height
-            .unwrap_or_else(|| ((bb.h() as f32) * tw as f32 / bb.w() as f32).round().max(1.0) as u32);
-        let sprite = downsample(&img, *bb, tw, th, &palette, item.height.is_some());
+        let (tw, th) = match (item.width, item.height) {
+            (0, Some(h)) => ((bb.w() as f32 * h as f32 / bb.h() as f32).round().max(1.0) as u32, h),
+            (w, Some(h)) => (w, h),
+            (w, None) => {
+                let w = w.max(1);
+                (w, (bb.h() as f32 * w as f32 / bb.w() as f32).round().max(1.0) as u32)
+            }
+        };
+        let sprite = downsample(&img, *bb, tw, th, &palette, item.opaque);
         sprite.save(out.join(format!("{}.png", item.name)))?;
         println!(
             "{:<28} {:>3}x{:<3} from {}x{} @({},{})",

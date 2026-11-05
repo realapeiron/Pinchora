@@ -6,7 +6,10 @@ use std::{
 
 use image::RgbaImage;
 use pinchora_db::{PlacementRow, RoomRow};
-use pinchora_game::{Content, Layer, house::WALL_ROWS};
+use pinchora_game::{
+    Content, Layer,
+    house::{self, Placed},
+};
 use pinchora_render::{
     room::{Cursor, RoomScene, SceneItem, SceneLayer, render_room},
     sprites::{SpriteStore, placeholder_item, placeholder_pet, placeholder_tile, recolor, variant_ramp},
@@ -47,7 +50,8 @@ impl Sprites {
         Some(self.cached(item_id, || {
             let drawn = self.store.get(&format!("f_{}", base.id)).map(|s| (*s).clone());
             let [w, d] = base.footprint;
-            let sprite = drawn.unwrap_or_else(|| placeholder_item(&base.id, w, d, scene_layer(base.layer)));
+            let sprite =
+                drawn.unwrap_or_else(|| placeholder_item(&base.id, w, d, scene_layer(base.layer), base.iso_width));
             match item.variant.and_then(variant_ramp) {
                 Some(ramp) => recolor(&sprite, &ramp),
                 None => sprite,
@@ -57,9 +61,17 @@ impl Sprites {
 
     pub fn pet(&self, species: &str) -> Arc<RgbaImage> {
         self.cached(&format!("p_{species}"), || {
-            self.store
+            let sprite = self
+                .store
                 .get(&format!("p_{species}"))
-                .map_or_else(|| placeholder_pet(species), |s| (*s).clone())
+                .map_or_else(|| placeholder_pet(species), |s| (*s).clone());
+            // Art drawn for the old 16 px tiles: doubled so it matches the 64 px rooms.
+            if sprite.width() < 28 {
+                let (w, h) = (sprite.width() * 2, sprite.height() * 2);
+                image::imageops::resize(&sprite, w, h, image::imageops::FilterType::Nearest)
+            } else {
+                sprite
+            }
         })
     }
 
@@ -100,7 +112,7 @@ pub fn scene_layer(layer: Layer) -> SceneLayer {
 /// Everything needed to draw one room; owned so it can move to the render thread.
 pub struct RoomView {
     pub width: u32,
-    pub height: u32,
+    pub depth: u32,
     pub room: RoomRow,
     pub placements: Vec<PlacementRow>,
     pub cursor: Option<Cursor>,
@@ -113,21 +125,33 @@ pub struct RoomView {
     pub seed: u64,
 }
 
+fn placed(view: &RoomView) -> Vec<Placed<'_>> {
+    view.placements
+        .iter()
+        .map(|p| Placed {
+            item_id: &p.item_id,
+            x: p.x as u32,
+            y: p.y as u32,
+            flipped: p.flipped,
+        })
+        .collect()
+}
+
 /// Free floor tiles, so pets never stand inside furniture.
 fn free_tiles(content: &Content, view: &RoomView) -> Vec<(u32, u32)> {
-    let mut taken = vec![false; (view.width * view.height) as usize];
+    let mut taken = vec![false; (view.width * view.depth) as usize];
     for p in &view.placements {
-        if let Some((layer, r)) = pinchora_game::house::footprint(content, &p.item_id, p.x as u32, p.y as u32)
+        if let Some((layer, r)) = house::footprint(content, &p.item_id, p.x as u32, p.y as u32, p.flipped)
             && layer == Layer::Floor
         {
-            for y in r.y..(r.y + r.d).min(view.height) {
+            for y in r.y..(r.y + r.d).min(view.depth) {
                 for x in r.x..(r.x + r.w).min(view.width) {
                     taken[(y * view.width + x) as usize] = true;
                 }
             }
         }
     }
-    (WALL_ROWS..view.height)
+    (0..view.depth)
         .flat_map(|y| (0..view.width).map(move |x| (x, y)))
         .filter(|&(x, y)| !taken[(y * view.width + x) as usize])
         .collect()
@@ -135,25 +159,30 @@ fn free_tiles(content: &Content, view: &RoomView) -> Vec<(u32, u32)> {
 
 pub fn render_view(sprites: &Sprites, view: &RoomView) -> anyhow::Result<Vec<u8>> {
     let content = Content::get();
-    let items: Vec<SceneItem> = view
+    let placed = placed(view);
+    let mut items: Vec<SceneItem> = view
         .placements
         .iter()
         .filter_map(|p| {
             let item = content.item(&p.item_id)?;
-            let [w, d] = item.base.footprint;
+            let (layer, r) = house::footprint(content, &p.item_id, p.x as u32, p.y as u32, p.flipped)?;
             Some(SceneItem {
                 sprite: sprites.item(content, &p.item_id)?,
-                x: p.x as u32,
-                y: p.y as u32,
-                w,
-                d,
+                x: r.x,
+                y: r.y,
+                w: r.w,
+                d: r.d,
                 layer: scene_layer(item.base.layer),
                 flipped: p.flipped,
                 selected: view.selected == Some(p.id),
+                lift: if layer == Layer::Surface {
+                    house::surface_lift(content, &placed, r.x, r.y)
+                } else {
+                    0
+                },
             })
         })
         .collect();
-    let mut items: Vec<SceneItem> = items;
     let free = free_tiles(content, view);
     for (i, species) in view.pets.iter().enumerate() {
         if free.is_empty() {
@@ -172,21 +201,21 @@ pub fn render_view(sprites: &Sprites, view: &RoomView) -> anyhow::Result<Vec<u8>
             y,
             w: 1,
             d: 1,
-            layer: SceneLayer::Pet,
+            layer: SceneLayer::Figure,
             flipped: (view.seed + i as u64).is_multiple_of(2),
             selected: false,
+            lift: 0,
         });
     }
     let scene = RoomScene {
         width: view.width,
-        height: view.height,
-        wall_rows: WALL_ROWS,
+        depth: view.depth,
         wallpaper: sprites.wallpaper(&view.room.wallpaper),
         floor: sprites.floor(&view.room.floor),
         items,
         cursor: view.cursor,
         grid: view.edit,
-        scale: 4,
+        scale: 2,
     };
     let img = render_room(&scene);
     let mut png = IoCursor::new(Vec::new());

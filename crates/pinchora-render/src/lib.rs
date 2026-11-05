@@ -2,6 +2,7 @@
 
 mod avatar;
 mod cards;
+pub mod character;
 pub mod room;
 pub mod sprites;
 mod svg;

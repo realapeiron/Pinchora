@@ -67,7 +67,7 @@ fn main() -> anyhow::Result<()> {
     std::fs::write(format!("{out}/levelup.png"), &level_up)?;
 
     let item = |id: &str, x, y, w, d, layer, variant: &str| {
-        let base = placeholder_item(id, w, d, layer);
+        let base = placeholder_item(id, w, d, layer, None);
         let sprite = variant_ramp(variant).map_or(base.clone(), |r| recolor(&base, &r));
         SceneItem {
             sprite: Arc::new(sprite),
@@ -78,34 +78,40 @@ fn main() -> anyhow::Result<()> {
             layer,
             flipped: false,
             selected: false,
+            lift: 0,
         }
     };
+    let mut lamp = item("lamp", 5, 5, 1, 1, SceneLayer::Surface, "gold");
+    lamp.lift = 22;
+    let mut mirror = item("mirror", 1, 0, 1, 2, SceneLayer::Wall, "sky");
+    mirror.flipped = true;
     let scene = RoomScene {
-        width: 12,
-        height: 9,
-        wall_rows: 2,
+        width: 10,
+        depth: 9,
         wallpaper: Arc::new(placeholder_tile("wp_stripes", true)),
         floor: Arc::new(placeholder_tile("floor_oak", false)),
         items: vec![
-            item("rug_round", 4, 5, 4, 2, SceneLayer::Rug, "mint"),
+            item("rug_round", 3, 4, 4, 3, SceneLayer::Rug, "mint"),
             item("painting", 1, 0, 2, 1, SceneLayer::Wall, "gold"),
-            item("window", 6, 0, 2, 2, SceneLayer::Wall, "sky"),
-            item("sofa", 4, 3, 3, 1, SceneLayer::Floor, "coral"),
+            item("window", 5, 0, 2, 2, SceneLayer::Wall, "sky"),
+            mirror,
+            item("sofa", 3, 2, 3, 1, SceneLayer::Floor, "coral"),
             item("table", 5, 5, 2, 1, SceneLayer::Floor, "cream"),
-            item("lamp", 5, 5, 1, 1, SceneLayer::Surface, "gold"),
-            item("bookshelf", 9, 2, 2, 1, SceneLayer::Floor, "navy"),
-            item("plant", 1, 6, 1, 1, SceneLayer::Floor, "moss"),
-            item("bed", 8, 5, 2, 3, SceneLayer::Floor, "plum"),
+            lamp,
+            item("bookshelf", 8, 0, 2, 1, SceneLayer::Floor, "navy"),
+            item("plant", 0, 6, 1, 1, SceneLayer::Floor, "moss"),
+            item("bed", 7, 5, 2, 3, SceneLayer::Floor, "plum"),
         ],
         cursor: Some(Cursor {
             x: 1,
             y: 3,
             w: 2,
             d: 1,
+            wall: None,
             ok: true,
         }),
         grid: true,
-        scale: 4,
+        scale: 2,
     };
     render_room(&scene).save(format!("{out}/room.png"))?;
 

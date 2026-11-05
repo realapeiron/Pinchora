@@ -203,7 +203,7 @@ impl Db {
         Ok(Some(item_id))
     }
 
-    /// Flips a placed item. The footprint is symmetric, so no collision check is needed.
+    /// Flips a placed item. The caller checks the turned footprint still fits first.
     pub async fn flip_placement(&self, user_id: u64, placement_id: i64) -> anyhow::Result<bool> {
         let n = sqlx::query("UPDATE placements SET flipped = NOT flipped WHERE id = $1 AND user_id = $2")
             .bind(placement_id)

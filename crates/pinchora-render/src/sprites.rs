@@ -5,7 +5,10 @@ use std::{collections::HashMap, sync::Arc};
 use image::{Rgba, RgbaImage};
 use serde::Deserialize;
 
-use crate::room::{SceneLayer, TILE};
+use crate::room::{LEVEL_H, SceneLayer};
+
+/// Wallpaper and floor textures are square tiles of this size.
+const TEX: u32 = 16;
 
 /// The coral ramp every base sprite uses for its main colour; variants replace it.
 pub const BASE_RAMP: [[u8; 3]; 5] = [
@@ -121,46 +124,94 @@ fn shade(c: [u8; 3], f: f32) -> Rgba<u8> {
     ])
 }
 
-/// A simple boxy stand-in for a furniture sprite: outline, lit top, darker front,
-/// drawn in the base ramp so variants recolor it like real art.
-pub fn placeholder_item(id: &str, w: u32, d: u32, layer: SceneLayer) -> RgbaImage {
+/// A stand-in for furniture art, drawn in the base ramp so variants recolor it like real
+/// art: an isometric box for floor and surface items, a framed panel for wall items and a
+/// striped flat mat for rugs (rugs and wall art are flat; the renderer projects them).
+pub fn placeholder_item(id: &str, w: u32, d: u32, layer: SceneLayer, iso_width: Option<u32>) -> RgbaImage {
     let outline = Rgba([0x1b, 0x1d, 0x2b, 255]);
-    let tone = BASE_RAMP[2];
-    let (pw, ph) = match layer {
-        SceneLayer::Rug => (w * TILE - 2, d * TILE - 2),
-        SceneLayer::Wall => (w * TILE - 4, d * TILE - 4),
-        SceneLayer::Surface => (10, 10),
-        SceneLayer::Floor | SceneLayer::Pet => (w * TILE - 2, d * TILE + 6 + (hash(id) % 10) as u32),
-    };
-    let mut img = RgbaImage::new(pw, ph);
-    let top_h = match layer {
-        SceneLayer::Floor => (d * TILE).min(ph) * 2 / 3,
-        _ => ph,
-    };
-    for y in 0..ph {
-        for x in 0..pw {
-            let edge = x == 0 || y == 0 || x == pw - 1 || y == ph - 1;
-            let px = if edge {
-                outline
-            } else if layer == SceneLayer::Rug {
-                let stripe = (x / 3 + y / 3) % 2 == 0;
-                if stripe {
+    match layer {
+        SceneLayer::Rug => {
+            let (pw, ph) = (w * 32, d * 32);
+            RgbaImage::from_fn(pw, ph, |x, y| {
+                if x == 0 || y == 0 || x == pw - 1 || y == ph - 1 {
+                    outline
+                } else if (x / 6 + y / 6) % 2 == 0 {
                     shade(BASE_RAMP[3], 1.0)
                 } else {
-                    shade(tone, 1.0)
+                    shade(BASE_RAMP[2], 1.0)
                 }
-            } else if y < top_h {
-                if y == 1 {
-                    shade(BASE_RAMP[4], 1.0)
-                } else {
-                    shade(BASE_RAMP[3], 1.0)
+            })
+        }
+        SceneLayer::Wall => {
+            let (pw, ph) = (w * 32 - 4, d * LEVEL_H - 4);
+            RgbaImage::from_fn(pw, ph, |x, y| {
+                let edge = x.min(y).min(pw - 1 - x).min(ph - 1 - y);
+                match edge {
+                    0 => outline,
+                    1..=2 => shade(BASE_RAMP[1], 1.0),
+                    _ => shade(BASE_RAMP[3], 1.0),
                 }
-            } else if y == top_h {
-                outline
+            })
+        }
+        SceneLayer::Floor | SceneLayer::Surface | SceneLayer::Figure => {
+            let full = (w + d) * 32;
+            let sw = iso_width
+                .unwrap_or(if layer == SceneLayer::Surface { 24 } else { full })
+                .clamp(8, full);
+            let k = sw as f32 / full as f32;
+            let tall = if layer == SceneLayer::Surface {
+                10 + hash(id) % 8
             } else {
-                shade(BASE_RAMP[1], 1.0)
+                18 + hash(id) % 34
             };
-            img.put_pixel(x, y, px);
+            let height = (tall as f32 * k.max(0.5)) as u32;
+            iso_box(w, d, sw, height)
+        }
+    }
+}
+
+/// An outlined isometric box with a `w`×`d` footprint, `sw` pixels wide and `height` tall.
+fn iso_box(w: u32, d: u32, sw: u32, height: u32) -> RgbaImage {
+    let outline = Rgba([0x1b, 0x1d, 0x2b, 255]);
+    let k = sw as f32 / ((w + d) * 32) as f32;
+    let sh = (16.0 * (w + d) as f32 * k) as u32 + height + 1;
+    let mut img = RgbaImage::new(sw, sh);
+    let (wf, df, hf) = (w as f32, d as f32, height as f32 / k);
+    for py in 0..sh {
+        for px in 0..sw {
+            // Back to footprint units, with the left corner at x = 0.
+            let (u, v) = (px as f32 / k, py as f32 / k);
+            let (a, b) = (u - 32.0 * df + 2.0 * v, 2.0 * v - u + 32.0 * df);
+            let top = a >= 0.0 && b >= 0.0 && a < 64.0 * wf && b < 64.0 * df;
+            let edge = if u < 32.0 * wf {
+                16.0 * df + u / 2.0
+            } else {
+                16.0 * (wf + df) - (u - 32.0 * wf) / 2.0
+            };
+            let c = if top {
+                BASE_RAMP[3]
+            } else if v >= edge && v < edge + hf && u < 32.0 * wf {
+                BASE_RAMP[2]
+            } else if v >= edge && v < edge + hf {
+                BASE_RAMP[1]
+            } else {
+                continue;
+            };
+            img.put_pixel(px, py, shade(c, 1.0));
+        }
+    }
+    // Outline every pixel that borders the background.
+    let solid = img.clone();
+    for (x, y, px) in img.enumerate_pixels_mut() {
+        if px[3] == 0 {
+            continue;
+        }
+        let open = |dx: i32, dy: i32| {
+            let (nx, ny) = (x as i32 + dx, y as i32 + dy);
+            nx < 0 || ny < 0 || nx >= sw as i32 || ny >= sh as i32 || solid.get_pixel(nx as u32, ny as u32)[3] == 0
+        };
+        if open(-1, 0) || open(1, 0) || open(0, -1) || open(0, 1) {
+            *px = outline;
         }
     }
     img
@@ -178,9 +229,9 @@ pub fn placeholder_tile(id: &str, wall: bool) -> RgbaImage {
         [0x9b, 0x6b, 0xc4],
     ];
     let base = palette[(h % palette.len() as u64) as usize];
-    let mut img = RgbaImage::new(TILE, TILE);
-    for y in 0..TILE {
-        for x in 0..TILE {
+    let mut img = RgbaImage::new(TEX, TEX);
+    for y in 0..TEX {
+        for x in 0..TEX {
             let f = if wall {
                 if x % 8 < 4 { 1.0 } else { 0.9 }
             } else if y % 8 == 7 || (x + (y / 8) * 8) % 16 == 0 {
@@ -228,5 +279,5 @@ pub fn placeholder_pet(id: &str) -> RgbaImage {
             img.put_pixel(x as u32, y as u32, px);
         }
     }
-    img
+    image::imageops::resize(&img, 36, rows.len() as u32 * 3, image::imageops::FilterType::Nearest)
 }
