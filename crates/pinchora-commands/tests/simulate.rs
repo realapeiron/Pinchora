@@ -2999,6 +2999,21 @@ async fn guestbook_sign_read_delete_block() {
     let older = sim.click(host, &book, "Older ▶").await;
     assert!(older.description().contains("Love the"), "{}", older.description());
     assert!(footer(&older).starts_with("Page 2/2"), "{}", footer(&older));
+    // The owner turning a public page of their book keeps it public, without their menus.
+    let shared = sim
+        .command_resolved(
+            guest,
+            "house",
+            json!([{ "name": "guestbook", "type": 1, "options": [user_option("user", host)] }]),
+            resolved(&[host], &[]),
+        )
+        .await;
+    let turned = sim.click(host, &shared, "Older ▶").await;
+    assert!(footer(&turned).starts_with("Page 2/2"), "{}", footer(&turned));
+    assert!(
+        turned.controls().all(|c| !matches!(c, Component::SelectMenu(_))),
+        "the owner's menus never show on a public page"
+    );
 
     // The owner deletes the first guest's note and blocks the stranger.
     let first = older

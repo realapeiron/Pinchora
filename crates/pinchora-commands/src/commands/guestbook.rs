@@ -30,6 +30,8 @@ pub(crate) const NOTE_MAX: usize = 140;
 const PER_PAGE: i64 = 5;
 /// Visitors listed under the notes.
 const VISITORS: i64 = 10;
+/// The `seen` a public page carries: no note is new, and nobody gets the owner's menus.
+const PUBLIC: i64 = i64::MAX;
 /// The note's text input in the modal.
 const NOTE_FIELD: &str = "note";
 
@@ -67,7 +69,8 @@ async fn page(
     note: &str,
 ) -> anyhow::Result<InteractionResponseData> {
     let db = &cx.app.db;
-    let own = cx.author()?.id.get() == host;
+    // A public page stays public when the owner turns it, so their menus never show there.
+    let own = cx.author()?.id.get() == host && seen != Some(PUBLIC);
     let (mut notes, total) = db.guestbook(host, page * PER_PAGE, PER_PAGE).await?;
     let pages = (total + PER_PAGE - 1).div_euclid(PER_PAGE).max(1);
     let page = page.clamp(0, pages - 1);
@@ -83,7 +86,7 @@ async fn page(
         db.mark_guestbook_read(host).await?;
         (seen, db.guestbook_blocks(host).await?)
     } else {
-        (i64::MAX, Vec::new())
+        (PUBLIC, Vec::new())
     };
 
     let mut lines: Vec<String> = Vec::new();
