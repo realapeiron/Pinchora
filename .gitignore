@@ -10,3 +10,4 @@ deploy/k8s/**/secrets.env
 tools/art/out/
 tools/art/logs/
 tools/art/queue.log
+tools/art/previews/

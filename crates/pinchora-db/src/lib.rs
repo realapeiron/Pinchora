@@ -4,6 +4,7 @@ mod house;
 mod members;
 mod pets;
 mod shop;
+mod social;
 mod users;
 
 use std::time::Duration;

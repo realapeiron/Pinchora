@@ -2,7 +2,8 @@
 """Validate Pinchora content using only the Python standard library.
 
 Run from any directory: python3 /path/to/check.py
-"Roughly" means +/- 5 percentage points for furniture rarity/availability.
+"Roughly" allows +/- 5 percentage points for furniture rarity/availability,
+capped at 40% of each target share so small tiers cannot disappear entirely.
 "About half" means 40-60% sea pets. "A few" treasures means at least three.
 Fish junk is identified by its common rarity and 1-5 shell value; these six
 IDs are listed explicitly so a broken normal-catch price cannot become junk.
@@ -17,7 +18,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parent / "content"
+ROOT = Path(__file__).resolve().parent  # this script lives in content/
 RARITIES = ("common", "uncommon", "rare", "epic", "legendary")
 CURRENCIES = ("shells", "pearls")
 LAYERS = ("floor", "rug", "wall", "surface")
@@ -81,7 +82,7 @@ def integer(value):
 
 
 def number(value):
-    return type(value) in (int, float) and math.isfinite(value)
+    return type(value) is int or (type(value) is float and math.isfinite(value))
 
 
 def nonempty(value):
@@ -210,8 +211,9 @@ def mix(records, key, expected):
     if records:
         for value, target in expected.items():
             actual = counts[value] / len(records)
-            if abs(actual - target) > 0.050000001:
-                problem("furniture.json", f"{key} {value} share {actual:.1%}; target {target:.0%} +/- 5pp")
+            tolerance = min(.05, .4 * target)
+            if abs(actual - target) > tolerance + 1e-9:
+                problem("furniture.json", f"{key} {value} share {actual:.1%}; target {target:.0%} +/- {100 * tolerance:g}pp")
 
 
 def check_sets(raw):
@@ -318,7 +320,8 @@ def check_furniture(raw, set_ids, shared_ids):
         if item.get("category") == "seasonal":
             if item.get("availability") not in ("event", "rotating"):
                 problem(where, "seasonal items must be event or rotating")
-            if item.get("set") not in SEASONAL_SETS:
+            seasonal_set = item.get("set")
+            if not isinstance(seasonal_set, str) or seasonal_set not in SEASONAL_SETS:
                 problem(where, "seasonal item must reference a seasonal set")
         if item.get("availability") == "event" and item.get("category") != "seasonal":
             problem(where, "event items must belong to the seasonal category")

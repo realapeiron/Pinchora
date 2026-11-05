@@ -45,6 +45,15 @@ pub enum HouseCommand {
     Upgrade(HouseUpgrade),
     #[command(name = "lock")]
     Lock(HouseLock),
+    #[command(name = "like")]
+    Like(HouseLike),
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "like", desc = "Leave a like on someone's house (once a day)")]
+pub struct HouseLike {
+    /// Whose house you like
+    user: ResolvedUser,
 }
 
 #[derive(CommandModel, CreateCommand)]
@@ -108,6 +117,30 @@ impl HouseCommand {
                 cx.reply(data).await
             }
             Self::Upgrade(_) => upgrade_offer(cx, author.id.get()).await,
+            Self::Like(c) => {
+                let host = &c.user.resolved;
+                if host.bot || host.id == author.id {
+                    return cx.reply_ephemeral("Like someone else's house!").await;
+                }
+                ensure_house(&cx.app, host.id.get()).await?;
+                match cx
+                    .app
+                    .db
+                    .like_house(host.id.get(), author.id.get(), Utc::now().date_naive())
+                    .await?
+                {
+                    Some(total) => {
+                        cx.reply_text(format!(
+                            "💖 {} liked {}'s house! It has **{total}** like{} now.",
+                            crate::util::mention(author.id),
+                            crate::util::mention(host.id),
+                            if total == 1 { "" } else { "s" }
+                        ))
+                        .await
+                    }
+                    None => cx.reply_ephemeral("You already liked this house today.").await,
+                }
+            }
             Self::Lock(c) => {
                 ensure_house(&cx.app, author.id.get()).await?;
                 cx.app.db.set_house_locked(author.id.get(), c.locked).await?;
@@ -230,10 +263,11 @@ async fn room_card(
         .color(BRAND)
         .title(format!("{owner_name}'s {}", tier.name))
         .description(format!(
-            "Room {}/{} · **{title}** · {count} item{}",
+            "Room {}/{} · **{title}** · {count} item{} · 💖 {}",
             room + 1,
             rooms.len(),
-            if count == 1 { "" } else { "s" }
+            if count == 1 { "" } else { "s" },
+            house.likes
         ));
     if let Some(footer) = footer {
         embed = embed.footer(EmbedFooterBuilder::new(footer));

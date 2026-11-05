@@ -3,6 +3,7 @@ mod config;
 mod daily;
 mod economy;
 pub(crate) mod fish;
+pub(crate) mod gift;
 mod help;
 pub(crate) mod house;
 pub(crate) mod leaderboard;
@@ -54,4 +55,5 @@ commands!(
     shop::Inventory,
     pet::PetCommand,
     fish::Fish,
+    gift::Gift,
 );
