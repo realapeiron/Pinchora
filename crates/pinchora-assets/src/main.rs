@@ -233,7 +233,9 @@ fn blobs(img: &RgbaImage, region: [u32; 4], gap: u32) -> Vec<BBox> {
 
 /// Shrinks a crop to `tw`×`th` native pixels: each target pixel takes the most common
 /// palette colour of its source block, or transparency when the block is mostly background.
-fn downsample(img: &RgbaImage, bb: BBox, tw: u32, th: u32, palette: &[[u8; 3]]) -> RgbaImage {
+/// With `opaque`, every block takes a colour (tiles fill their square edge to edge, and a
+/// green wallpaper must not be keyed out).
+fn downsample(img: &RgbaImage, bb: BBox, tw: u32, th: u32, palette: &[[u8; 3]], opaque: bool) -> RgbaImage {
     let mut out = RgbaImage::new(tw, th);
     let sx = bb.w() as f32 / tw as f32;
     let sy = bb.h() as f32 / th as f32;
@@ -260,7 +262,7 @@ fn downsample(img: &RgbaImage, bb: BBox, tw: u32, th: u32, palette: &[[u8; 3]]) 
                     total += 1;
                     // Next to the backdrop, green-tinted pixels are key spill, not art.
                     let spill = touches_bg && i32::from(p[1]) - i32::from(p[0].max(p[2])) > 50;
-                    if is_background(p) || spill {
+                    if !opaque && (is_background(p) || spill) {
                         bg += 1;
                     } else {
                         let c = [p[0], p[1], p[2]];
@@ -313,7 +315,7 @@ fn cut(sheet: &Path, manifest: &Path, out: &Path, preview: bool) -> anyhow::Resu
         let th = item
             .height
             .unwrap_or_else(|| ((bb.h() as f32) * tw as f32 / bb.w() as f32).round().max(1.0) as u32);
-        let sprite = downsample(&img, *bb, tw, th, &palette);
+        let sprite = downsample(&img, *bb, tw, th, &palette, item.height.is_some());
         sprite.save(out.join(format!("{}.png", item.name)))?;
         println!(
             "{:<28} {:>3}x{:<3} from {}x{} @({},{})",
