@@ -34,6 +34,7 @@ Chatting earns 15–25 XP per minute per server. New members get a welcome card 
 | `/shop catalog [category]` | 165 permanent designs in 17 aisles; 1,175 items with colour variants |
 | `/inventory`, `/gift user` | What you own, and sending furniture to friends |
 | `/stall sell\|view\|manage` | Your own player shop (8 listings, 5% market fee) |
+| `/plaza view\|donate\|edit` | The server's shared plaza: members donate furniture, managers arrange it |
 | `/pet adopt\|view\|capsule\|list\|rename` | Pets with needs that drift over time; feed, play, bathe; 42 species |
 | `/fish` | Cast, wait for the bite, press **Reel!** in time; 72 catches for the fish book |
 | `/quests` | Three daily quests; clear all three for pearls |

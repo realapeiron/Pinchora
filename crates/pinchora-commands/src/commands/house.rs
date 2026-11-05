@@ -98,7 +98,15 @@ impl HouseCommand {
         let author = cx.author()?.clone();
         match self {
             Self::View(c) => {
-                let data = room_card(cx, &author, &cx.author_display_name(), room_index(c.room), None, None).await?;
+                let data = room_card(
+                    cx,
+                    author.id.get(),
+                    &cx.author_display_name(),
+                    room_index(c.room),
+                    None,
+                    None,
+                )
+                .await?;
                 cx.reply(data).await
             }
             Self::Visit(c) => visit(cx, &author, &c.user, room_index(c.room)).await,
@@ -106,6 +114,7 @@ impl HouseCommand {
                 let (_, rooms) = ensure_house(&cx.app, author.id.get()).await?;
                 let room = room_index(c.room).min(rooms.len().saturating_sub(1) as i16);
                 let state = EditState {
+                    prefix: "he",
                     room,
                     x: 1,
                     y: house::WALL_ROWS,
@@ -224,15 +233,15 @@ fn room_title(content: &Content, room: &RoomRow) -> String {
 }
 
 /// Read-only room card with ◀ ▶ room buttons (`hv:<owner>:<room>`).
-async fn room_card(
+pub(crate) async fn room_card(
     cx: &Cx,
-    owner: &User,
+    owner_id: u64,
     owner_name: &str,
     room: i16,
     footer: Option<String>,
     guest: Option<u64>,
 ) -> anyhow::Result<InteractionResponseData> {
-    let owner_id = owner.id.get();
+    let plaza = cx.guild_id() == Some(owner_id);
     let (house, rooms) = ensure_house(&cx.app, owner_id).await?;
     let room = room.clamp(0, rooms.len().saturating_sub(1) as i16);
     let row = rooms[room as usize].clone();
@@ -264,7 +273,11 @@ async fn room_card(
     .await?;
     let mut embed = EmbedBuilder::new()
         .color(BRAND)
-        .title(format!("{owner_name}'s {}", tier.name))
+        .title(if plaza {
+            format!("{owner_name} plaza")
+        } else {
+            format!("{owner_name}'s {}", tier.name)
+        })
         .description(format!(
             "Room {}/{} · **{title}** · {count} item{} · 💖 {}",
             room + 1,
@@ -308,7 +321,7 @@ async fn visit(cx: &Cx, author: &User, target: &ResolvedUser, room: i16) -> anyh
     }
     let name = resolved_display_name(target);
     if host.id == author.id {
-        let data = room_card(cx, host, &name, room, None, None).await?;
+        let data = room_card(cx, host.id.get(), &name, room, None, None).await?;
         return cx.reply(data).await;
     }
     let (house, _) = ensure_house(&cx.app, host.id.get()).await?;
@@ -336,42 +349,45 @@ async fn visit(cx: &Cx, author: &User, target: &ResolvedUser, room: i16) -> anyh
         VisitOutcome::Rewarded { .. } => Some(format!("You've had your {VISIT_CAP} paid visits today")),
         VisitOutcome::AlreadyToday => None,
     };
-    let data = room_card(cx, host, &name, room, footer, Some(author.id.get())).await?;
+    let data = room_card(cx, host.id.get(), &name, room, footer, Some(author.id.get())).await?;
     cx.reply(data).await
 }
 
 pub(crate) async fn on_view_nav(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Result<()> {
     let owner: u64 = args.next().and_then(|v| v.parse().ok()).unwrap_or(0);
     let room: i16 = args.next().and_then(|v| v.parse().ok()).unwrap_or(0);
-    let owner_user = cx
-        .app
-        .http
-        .user(twilight_model::id::Id::new(owner.max(1)))
-        .await?
-        .model()
-        .await?;
-    let name = owner_user
-        .global_name
-        .clone()
-        .unwrap_or_else(|| owner_user.name.clone());
-    let data = room_card(cx, &owner_user, &name, room, None, None).await?;
+    let name = if cx.guild_id() == Some(owner) {
+        super::plaza::guild_name(cx, owner).await
+    } else {
+        let user = cx
+            .app
+            .http
+            .user(twilight_model::id::Id::new(owner.max(1)))
+            .await?
+            .model()
+            .await?;
+        user.global_name.clone().unwrap_or_else(|| user.name.clone())
+    };
+    let data = room_card(cx, owner, &name, room, None, Some(cx.author()?.id.get())).await?;
     cx.update(data).await
 }
 
 /// Editor state; it all rides in each component's custom id.
 #[derive(Debug, Clone)]
-struct EditState {
-    room: i16,
-    x: u32,
-    y: u32,
-    page: usize,
-    item: Option<String>,
+pub(crate) struct EditState {
+    pub(crate) prefix: &'static str,
+    pub(crate) room: i16,
+    pub(crate) x: u32,
+    pub(crate) y: u32,
+    pub(crate) page: usize,
+    pub(crate) item: Option<String>,
 }
 
 impl EditState {
     fn id(&self, action: &str) -> String {
         format!(
-            "he:{action}:{}:{}:{}:{}:{}",
+            "{}:{action}:{}:{}:{}:{}:{}",
+            self.prefix,
             self.room,
             self.x,
             self.y,
@@ -380,14 +396,24 @@ impl EditState {
         )
     }
 
-    fn parse(args: &mut Split<'_, char>) -> Option<(String, Self)> {
+    fn parse(prefix: &'static str, args: &mut Split<'_, char>) -> Option<(String, Self)> {
         let action = args.next()?.to_owned();
         let room = args.next()?.parse().ok()?;
         let x = args.next()?.parse().ok()?;
         let y = args.next()?.parse().ok()?;
         let page = args.next()?.parse().ok()?;
         let item = args.next().filter(|s| !s.is_empty()).map(str::to_owned);
-        Some((action, Self { room, x, y, page, item }))
+        Some((
+            action,
+            Self {
+                prefix,
+                room,
+                x,
+                y,
+                page,
+                item,
+            },
+        ))
     }
 }
 
@@ -409,13 +435,25 @@ fn under_cursor<'a>(content: &Content, placements: &'a [PlacementRow], x: u32, y
         .map(|(_, p)| p)
 }
 
-pub(crate) async fn on_edit(cx: &Cx, mut args: Split<'_, char>, value: Option<&str>) -> anyhow::Result<()> {
-    let Some((action, mut state)) = EditState::parse(&mut args) else {
+pub(crate) async fn on_edit(
+    cx: &Cx,
+    prefix: &'static str,
+    mut args: Split<'_, char>,
+    value: Option<&str>,
+) -> anyhow::Result<()> {
+    let Some((action, mut state)) = EditState::parse(prefix, &mut args) else {
         return cx
             .reply_ephemeral("This editor has expired. Run `/house edit` again.")
             .await;
     };
-    let user_id = cx.author()?.id.get();
+    // The owner being edited: the player's own house, or the server plaza.
+    let user_id = match prefix {
+        "pe" => match super::plaza::editable_plaza(cx) {
+            Some(guild) => guild,
+            None => return cx.reply_ephemeral("Only server managers can arrange the plaza.").await,
+        },
+        _ => cx.author()?.id.get(),
+    };
     let content = Content::get();
     let (house_row, rooms) = ensure_house(&cx.app, user_id).await?;
     let tier = house::tier(house_row.tier);
@@ -524,7 +562,14 @@ pub(crate) async fn on_edit(cx: &Cx, mut args: Split<'_, char>, value: Option<&s
         }
         "x" => {
             let data = InteractionResponseData {
-                content: Some("Saved! Show it off with `/house view`.".to_owned()),
+                content: Some(
+                    if prefix == "pe" {
+                        "Saved! See it with `/plaza view`."
+                    } else {
+                        "Saved! Show it off with `/house view`."
+                    }
+                    .to_owned(),
+                ),
                 embeds: Some(Vec::new()),
                 components: Some(Vec::new()),
                 attachments: Some(Vec::new()),
@@ -539,7 +584,12 @@ pub(crate) async fn on_edit(cx: &Cx, mut args: Split<'_, char>, value: Option<&s
     cx.update(data).await
 }
 
-async fn editor(cx: &Cx, user_id: u64, mut state: EditState, note: &str) -> anyhow::Result<InteractionResponseData> {
+pub(crate) async fn editor(
+    cx: &Cx,
+    user_id: u64,
+    mut state: EditState,
+    note: &str,
+) -> anyhow::Result<InteractionResponseData> {
     let content = Content::get();
     let (house_row, rooms) = ensure_house(&cx.app, user_id).await?;
     let tier = house::tier(house_row.tier);

@@ -1,6 +1,6 @@
 use crate::{
     Cx,
-    commands::{duel, fish, gift, house, leaderboard, pet, quests, shop, stall},
+    commands::{duel, fish, gift, house, leaderboard, pet, plaza, quests, shop, stall},
 };
 
 /// Routes button clicks by the `prefix:` of their custom id. Ids carry all their
@@ -9,7 +9,9 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
     let mut parts = custom_id.split(':');
     match parts.next() {
         Some("lb") => leaderboard::on_button(cx, parts).await,
-        Some("he") => house::on_edit(cx, parts, values.first().map(String::as_str)).await,
+        Some("he") => house::on_edit(cx, "he", parts, values.first().map(String::as_str)).await,
+        Some("pe") => house::on_edit(cx, "pe", parts, values.first().map(String::as_str)).await,
+        Some("pd") => plaza::on_donate(cx, values.first().map(String::as_str)).await,
         Some("hv") => house::on_view_nav(cx, parts).await,
         Some("hu") => house::on_upgrade(cx, parts).await,
         Some("mk") => shop::on_market_buy(cx, parts, values.first().map(String::as_str)).await,

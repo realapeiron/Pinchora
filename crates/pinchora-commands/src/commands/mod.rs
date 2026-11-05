@@ -10,6 +10,7 @@ pub(crate) mod house;
 pub(crate) mod leaderboard;
 pub(crate) mod pet;
 mod ping;
+pub(crate) mod plaza;
 mod profile;
 pub(crate) mod quests;
 mod rank;
@@ -62,4 +63,5 @@ commands!(
     duel::DuelCommand,
     quests::Quests,
     stall::StallCommand,
+    plaza::PlazaCommand,
 );
