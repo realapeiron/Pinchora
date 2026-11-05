@@ -1,0 +1,4 @@
+[env]
+# Debug builds keep every async frame's locals on the stack, and the simulator tests run whole
+# command handlers on a test thread; 2 MiB is not enough for them.
+RUST_MIN_STACK = "8388608"
