@@ -29,6 +29,7 @@ Chatting earns 15–25 XP per minute per server. New members get a welcome card 
 | `/house edit [room]` | Decorate inside Discord: pick furniture, move the cursor with ⬅⬆⬇➡, place, flip, pick up |
 | `/house visit user` | Visit a house with your pet (first visit each day pays shells, 10 a day) |
 | `/house like user`, `/house lock` | Daily likes; close your doors to visitors |
+| `/house decorate [room]` | 44 wallpapers and 44 floors, bought on first use, swapped freely |
 | `/house upgrade` | Six tiers from Tide Pool Shack to Sunken Palace; furniture stays put |
 | `/shop market` | Eight pieces every hour with stock shared by every player |
 | `/shop catalog [category]` | 165 permanent designs in 17 aisles; 1,175 items with colour variants |

@@ -1,6 +1,7 @@
 mod bio;
 mod config;
 mod daily;
+pub(crate) mod decorate;
 pub(crate) mod duel;
 mod economy;
 pub(crate) mod fish;

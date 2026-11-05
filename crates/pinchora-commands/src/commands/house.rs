@@ -47,6 +47,16 @@ pub enum HouseCommand {
     Lock(HouseLock),
     #[command(name = "like")]
     Like(HouseLike),
+    #[command(name = "decorate")]
+    Decorate(HouseDecorate),
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "decorate", desc = "Change a room's wallpaper and floor")]
+pub struct HouseDecorate {
+    /// Room number (default: 1)
+    #[command(min_value = 1, max_value = 6)]
+    room: Option<i64>,
 }
 
 #[derive(CommandModel, CreateCommand)]
@@ -126,6 +136,10 @@ impl HouseCommand {
                 cx.reply(data).await
             }
             Self::Upgrade(_) => upgrade_offer(cx, author.id.get()).await,
+            Self::Decorate(c) => {
+                let data = super::decorate::panel(cx, room_index(c.room), 0, "").await?;
+                cx.reply(data).await
+            }
             Self::Like(c) => {
                 let host = &c.user.resolved;
                 if host.bot || host.id == author.id {

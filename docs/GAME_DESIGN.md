@@ -113,3 +113,16 @@ reacting in time catches a fish weighted by rarity and the rod tier. Catches fil
   then cut, de-scaled to their native pixel grid, quantized and packed by
   `tools/asset-import`. Every sheet prompt lists exactly which items it contains and in which
   grid cell, and attaches the style reference sheet so all sheets match.
+
+## Status (2026-11-05)
+
+Built: houses (6 tiers, tile-grid editor in Discord, visits with rewards, likes, lock),
+hourly market with shared stock, catalog, inventory, gifts, player stalls (5% fee), server
+plaza (donations + manager editing), pets (adopt, capsules with published odds, care with
+decaying needs, pets wander in rooms), fishing (timed Reel button, fish book), daily quests
+(pearl all-clear), tic-tac-toe duels, profile / rank / wallet / pet / level-up / welcome
+cards, welcome card designer.
+
+Next, in order: pixel character creator (layered paper-doll sprites), wallpaper/floor
+selection inside the editor, leaderboard image, pet walks that find items, seasonal events
+with an event currency, furniture crafting, a web editor for free placement.
