@@ -20,7 +20,8 @@ Rules:
 - Top-down 3/4 view: we see the top and the front of each object, like the reference.
 - 1-pixel dark outline #1b1d2b around every object, light from the top-left, 2-3 tone shading.
 - Use only these colours: {' '.join(PALETTE)}.
-- Background: flat pure #00FF00 everywhere around the objects. Nothing else on the background, no floor, no shadows on the background, no text, no labels, no numbers, no grid lines.
+- Background: flat pure #00FF00 everywhere around the objects (a fully transparent background is equally fine). Nothing else on the background, no floor, no shadows on the background, no text, no labels, no numbers, no grid lines.
+- Generate the image once and save it. Only regenerate (at most once) if objects are missing or merged together; do not regenerate for background, colour or size nitpicks, our importer fixes those.
 - Draw the objects in a grid in exactly the order listed (row by row, left to right), each one complete and isolated with wide green gaps (at least 40 px) between them; parts of one object must touch each other.
 - Keep relative sizes: a 1-tile object is about as wide as a small chair; a 3-tile object is three times as wide.
 """

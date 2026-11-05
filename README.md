@@ -21,6 +21,25 @@ own house, pets and mini games. Written in Rust and built to run sharded on Kube
 
 Chatting earns 15–25 XP per minute per server. New members get a welcome card when enabled.
 
+### The pixel world
+
+| Command | What it does |
+|---|---|
+| `/house view [room]` | Your house, rendered tile by tile; your active pet wanders around |
+| `/house edit [room]` | Decorate inside Discord: pick furniture, move the cursor with ⬅⬆⬇➡, place, flip, pick up |
+| `/house visit user` | Visit a house with your pet (first visit each day pays shells, 10 a day) |
+| `/house like user`, `/house lock` | Daily likes; close your doors to visitors |
+| `/house upgrade` | Six tiers from Tide Pool Shack to Sunken Palace; furniture stays put |
+| `/shop market` | Eight pieces every hour with stock shared by every player |
+| `/shop catalog [category]` | 165 permanent designs in 17 aisles; 1,175 items with colour variants |
+| `/inventory`, `/gift user` | What you own, and sending furniture to friends |
+| `/pet adopt\|view\|capsule\|list\|rename` | Pets with needs that drift over time; feed, play, bathe; 42 species |
+| `/fish` | Cast, wait for the bite, press **Reel!** in time; 72 catches for the fish book |
+
+Game content (furniture, rooms, pets, fish) lives in `content/*.json`; see
+[`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md). Sprites are drawn by GPT and imported with
+`tools/art/` (see below).
+
 ## Quick start (Docker)
 
 1. Create an application at <https://discord.com/developers/applications>, add a bot, and turn
@@ -82,6 +101,18 @@ docs/                 architecture, research, game design
 Design notes: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Research behind the choices:
 [`docs/research/rust-bots.md`](docs/research/rust-bots.md) and
 [`docs/research/games-survey.md`](docs/research/games-survey.md).
+
+## Art pipeline
+
+```bash
+cd tools/art
+python3 plan_sheets.py     # content → 40 sheet prompts + cut manifests in sheets/
+./run_queue.sh 3           # Codex draws them (3 at a time, resumable)
+./import.sh                # cut, de-scale, palette-quantize, pack assets/sprites/atlas.*
+```
+
+Until a sprite exists, the renderer draws a tidy placeholder in its place, so every feature
+works before the art lands.
 
 ## Fonts
 

@@ -96,11 +96,11 @@ reacting in time catches a fish weighted by rarity and the rod tier. Catches fil
 | Profile | 960×540 | done |
 | Rank | 934×282 | done |
 | Welcome | 1100×500 | done |
-| Wallet | 900×300 | next |
-| Room / visit | 64·W × 64·H | next |
-| Shop (hourly market) | 1000×600 | next |
-| Catalog page | 1000×600 | next |
-| Pet status | 800×400 | later |
+| Wallet | 900×300 | done |
+| Room / visit | 64·W × 64·H | done |
+| Shop (hourly market) | 1000×600 | done |
+| Catalog page | 1000×600 | done |
+| Pet status | 860×420 | done |
 | Fish catch | 800×400 | later |
 
 ## Art direction
