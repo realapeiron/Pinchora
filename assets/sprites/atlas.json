@@ -1,434 +1,1802 @@
 {
+  "f_acorncourt_pavilion": {
+    "x": 63,
+    "y": 0,
+    "w": 62,
+    "h": 59
+  },
+  "f_acorncourt_table": {
+    "x": 312,
+    "y": 180,
+    "w": 62,
+    "h": 28
+  },
   "f_acorncrest_canopy": {
-    "x": 47,
+    "x": 173,
     "y": 0,
     "w": 62,
     "h": 53
   },
+  "f_acornglass_window": {
+    "x": 420,
+    "y": 112,
+    "w": 46,
+    "h": 33
+  },
+  "f_acornlight_mosaic": {
+    "x": 545,
+    "y": 71,
+    "w": 46,
+    "h": 36
+  },
   "f_acornmarble_island": {
-    "x": 93,
-    "y": 55,
+    "x": 747,
+    "y": 148,
     "w": 62,
     "h": 29
   },
+  "f_acornmaze_play_castle": {
+    "x": 502,
+    "y": 0,
+    "w": 46,
+    "h": 45
+  },
+  "f_acornmosaic_carpet": {
+    "x": 768,
+    "y": 0,
+    "w": 62,
+    "h": 43
+  },
   "f_acornsun_beacon": {
-    "x": 297,
+    "x": 690,
     "y": 0,
     "w": 30,
     "h": 44
   },
+  "f_beambox_nightstand": {
+    "x": 659,
+    "y": 262,
+    "w": 14,
+    "h": 15
+  },
   "f_beamcast_projector": {
-    "x": 829,
-    "y": 55,
+    "x": 338,
+    "y": 282,
     "w": 12,
     "h": 12
   },
+  "f_beamchart_map": {
+    "x": 965,
+    "y": 112,
+    "w": 46,
+    "h": 31
+  },
   "f_beamguard_sconce": {
-    "x": 156,
-    "y": 55,
+    "x": 810,
+    "y": 148,
     "w": 14,
     "h": 29
   },
+  "f_beamhold_chest": {
+    "x": 741,
+    "y": 238,
+    "w": 30,
+    "h": 20
+  },
   "f_beamnest_bunk": {
-    "x": 62,
-    "y": 55,
+    "x": 326,
+    "y": 148,
     "w": 30,
     "h": 30
   },
-  "f_blinkberry_twin_game": {
-    "x": 671,
+  "f_beamport_window": {
+    "x": 357,
+    "y": 148,
+    "w": 30,
+    "h": 30
+  },
+  "f_blinkberry_pin_table": {
+    "x": 878,
     "y": 0,
+    "w": 30,
+    "h": 42
+  },
+  "f_blinkberry_twin_game": {
+    "x": 763,
+    "y": 71,
     "w": 46,
     "h": 35
   },
   "f_blinkslot_cabinet": {
-    "x": 562,
-    "y": 0,
+    "x": 592,
+    "y": 71,
     "w": 30,
     "h": 36
   },
   "f_blushbun_bed": {
-    "x": 749,
-    "y": 0,
+    "x": 93,
+    "y": 112,
     "w": 30,
     "h": 34
   },
   "f_blushcheek_lamp": {
-    "x": 658,
-    "y": 55,
+    "x": 322,
+    "y": 262,
     "w": 12,
     "h": 17
   },
+  "f_blushcloud_rug": {
+    "x": 388,
+    "y": 148,
+    "w": 46,
+    "h": 30
+  },
+  "f_blushpetal_planter": {
+    "x": 177,
+    "y": 262,
+    "w": 14,
+    "h": 18
+  },
+  "f_boltbud_chair": {
+    "x": 385,
+    "y": 238,
+    "w": 14,
+    "h": 21
+  },
+  "f_boltcrate_locker": {
+    "x": 435,
+    "y": 148,
+    "w": 14,
+    "h": 30
+  },
+  "f_boltleaf_planter": {
+    "x": 192,
+    "y": 262,
+    "w": 14,
+    "h": 18
+  },
+  "f_boltpeg_wall_rack": {
+    "x": 674,
+    "y": 262,
+    "w": 30,
+    "h": 15
+  },
   "f_brineboard_island": {
-    "x": 171,
-    "y": 55,
+    "x": 825,
+    "y": 148,
     "w": 46,
     "h": 29
   },
-  "f_buttonbubble_basin": {
+  "f_brinecrest_wall_wheel": {
+    "x": 721,
+    "y": 0,
+    "w": 46,
+    "h": 44
+  },
+  "f_budbasket_stand": {
+    "x": 156,
+    "y": 238,
+    "w": 14,
+    "h": 22
+  },
+  "f_budcurl_flower_cart": {
+    "x": 203,
+    "y": 210,
+    "w": 30,
+    "h": 26
+  },
+  "f_budrain_arbor": {
     "x": 0,
-    "y": 55,
+    "y": 71,
+    "w": 46,
+    "h": 40
+  },
+  "f_budwhistle_arbor": {
+    "x": 0,
+    "y": 148,
+    "w": 46,
+    "h": 31
+  },
+  "f_budwhistle_egg_bowl": {
+    "x": 472,
+    "y": 282,
+    "w": 12,
+    "h": 11
+  },
+  "f_buttonbelly_dresser": {
+    "x": 234,
+    "y": 210,
+    "w": 30,
+    "h": 26
+  },
+  "f_buttonbelly_plush": {
+    "x": 212,
+    "y": 282,
+    "w": 14,
+    "h": 13
+  },
+  "f_buttonbubble_basin": {
+    "x": 47,
+    "y": 148,
     "w": 30,
     "h": 31
   },
-  "f_buttonmix_blender": {
-    "x": 591,
-    "y": 55,
+  "f_buttonbud_vase": {
+    "x": 957,
+    "y": 238,
     "w": 12,
     "h": 19
   },
+  "f_buttonburrow_house": {
+    "x": 732,
+    "y": 180,
+    "w": 30,
+    "h": 27
+  },
+  "f_buttonmix_blender": {
+    "x": 970,
+    "y": 238,
+    "w": 12,
+    "h": 19
+  },
+  "f_buttonnap_cushion": {
+    "x": 351,
+    "y": 282,
+    "w": 14,
+    "h": 12
+  },
+  "f_buttonround_window": {
+    "x": 450,
+    "y": 148,
+    "w": 30,
+    "h": 30
+  },
+  "f_capsulecurve_sofa": {
+    "x": 872,
+    "y": 148,
+    "w": 46,
+    "h": 29
+  },
   "f_capsulenap_pod": {
-    "x": 858,
-    "y": 0,
+    "x": 467,
+    "y": 112,
     "w": 30,
     "h": 33
   },
   "f_clickbud_screen": {
-    "x": 842,
-    "y": 55,
+    "x": 366,
+    "y": 282,
     "w": 12,
     "h": 12
   },
+  "f_clickcove_pennant": {
+    "x": 772,
+    "y": 238,
+    "w": 14,
+    "h": 20
+  },
+  "f_clickcube_puzzle": {
+    "x": 227,
+    "y": 282,
+    "w": 12,
+    "h": 13
+  },
   "f_clickhalo_lamp": {
-    "x": 619,
-    "y": 55,
+    "x": 207,
+    "y": 262,
     "w": 12,
     "h": 18
+  },
+  "f_clicknest_chair": {
+    "x": 47,
+    "y": 71,
+    "w": 30,
+    "h": 40
   },
   "f_clickquay_computer": {
-    "x": 632,
-    "y": 55,
+    "x": 220,
+    "y": 262,
     "w": 12,
     "h": 18
   },
+  "f_clickslot_cabinet": {
+    "x": 699,
+    "y": 210,
+    "w": 30,
+    "h": 24
+  },
+  "f_clickspan_desk": {
+    "x": 763,
+    "y": 180,
+    "w": 46,
+    "h": 27
+  },
+  "f_clickstep_rug": {
+    "x": 607,
+    "y": 112,
+    "w": 46,
+    "h": 32
+  },
+  "f_cloudtide_dayseat": {
+    "x": 330,
+    "y": 0,
+    "w": 62,
+    "h": 49
+  },
+  "f_cloverpuff_nibble_rack": {
+    "x": 914,
+    "y": 262,
+    "w": 14,
+    "h": 14
+  },
+  "f_coralfan_table": {
+    "x": 919,
+    "y": 148,
+    "w": 46,
+    "h": 29
+  },
+  "f_crumbclaw_bowl": {
+    "x": 587,
+    "y": 282,
+    "w": 14,
+    "h": 10
+  },
+  "f_crumbcorner_table": {
+    "x": 966,
+    "y": 148,
+    "w": 30,
+    "h": 29
+  },
+  "f_crumbdot_mat": {
+    "x": 983,
+    "y": 238,
+    "w": 30,
+    "h": 19
+  },
+  "f_crumbfit_puzzle": {
+    "x": 641,
+    "y": 282,
+    "w": 12,
+    "h": 9
+  },
+  "f_crumbmint_pot": {
+    "x": 929,
+    "y": 262,
+    "w": 12,
+    "h": 14
+  },
+  "f_crumbnote_board": {
+    "x": 400,
+    "y": 238,
+    "w": 30,
+    "h": 21
+  },
+  "f_crumbrail_bench": {
+    "x": 942,
+    "y": 262,
+    "w": 30,
+    "h": 14
+  },
   "f_crumbscale_set": {
-    "x": 712,
-    "y": 55,
+    "x": 521,
+    "y": 262,
     "w": 12,
     "h": 16
   },
   "f_crumbshine_toaster": {
-    "x": 920,
-    "y": 55,
+    "x": 602,
+    "y": 282,
     "w": 12,
     "h": 10
   },
-  "f_dewloop_lantern": {
-    "x": 645,
-    "y": 55,
-    "w": 12,
-    "h": 18
-  },
-  "f_dunebowl_counter": {
-    "x": 264,
-    "y": 55,
+  "f_dewcord_hammock": {
+    "x": 654,
+    "y": 112,
     "w": 46,
-    "h": 25
+    "h": 32
   },
-  "f_dunepot_hamper": {
-    "x": 604,
-    "y": 55,
+  "f_dewdash_tunnel": {
+    "x": 973,
+    "y": 262,
+    "w": 30,
+    "h": 14
+  },
+  "f_dewfold_seat": {
+    "x": 1004,
+    "y": 262,
+    "w": 14,
+    "h": 14
+  },
+  "f_dewkite_bundle": {
+    "x": 0,
+    "y": 262,
     "w": 14,
     "h": 19
   },
+  "f_dewloop_lantern": {
+    "x": 233,
+    "y": 262,
+    "w": 12,
+    "h": 18
+  },
+  "f_dewpeg_firepit": {
+    "x": 78,
+    "y": 148,
+    "w": 30,
+    "h": 31
+  },
+  "f_dewring_rug": {
+    "x": 481,
+    "y": 148,
+    "w": 46,
+    "h": 30
+  },
+  "f_dewsprout_tin": {
+    "x": 240,
+    "y": 282,
+    "w": 12,
+    "h": 13
+  },
+  "f_dewstrap_trunk": {
+    "x": 787,
+    "y": 238,
+    "w": 30,
+    "h": 20
+  },
+  "f_dewtrail_print": {
+    "x": 171,
+    "y": 238,
+    "w": 30,
+    "h": 22
+  },
+  "f_dewtray_table": {
+    "x": 431,
+    "y": 238,
+    "w": 30,
+    "h": 21
+  },
+  "f_drowsepatch_basket": {
+    "x": 485,
+    "y": 282,
+    "w": 14,
+    "h": 11
+  },
+  "f_dunearc_window": {
+    "x": 701,
+    "y": 112,
+    "w": 30,
+    "h": 32
+  },
+  "f_dunebead_garland": {
+    "x": 202,
+    "y": 238,
+    "w": 46,
+    "h": 22
+  },
+  "f_dunebell_harp": {
+    "x": 124,
+    "y": 112,
+    "w": 30,
+    "h": 34
+  },
+  "f_dunebowl_counter": {
+    "x": 373,
+    "y": 210,
+    "w": 46,
+    "h": 25
+  },
+  "f_dunecup_table": {
+    "x": 246,
+    "y": 262,
+    "w": 14,
+    "h": 18
+  },
+  "f_dunefan_palm": {
+    "x": 375,
+    "y": 180,
+    "w": 30,
+    "h": 28
+  },
+  "f_duneline_runner": {
+    "x": 705,
+    "y": 262,
+    "w": 46,
+    "h": 15
+  },
+  "f_duneloop_hoop": {
+    "x": 534,
+    "y": 262,
+    "w": 14,
+    "h": 16
+  },
+  "f_dunemarrow_armoire": {
+    "x": 312,
+    "y": 71,
+    "w": 30,
+    "h": 38
+  },
+  "f_duneplait_stool": {
+    "x": 379,
+    "y": 282,
+    "w": 14,
+    "h": 12
+  },
+  "f_dunepot_hamper": {
+    "x": 15,
+    "y": 262,
+    "w": 14,
+    "h": 19
+  },
+  "f_duneshade_parasol": {
+    "x": 623,
+    "y": 71,
+    "w": 30,
+    "h": 36
+  },
+  "f_duneshade_tapestry": {
+    "x": 810,
+    "y": 71,
+    "w": 46,
+    "h": 35
+  },
+  "f_dunesip_cactus": {
+    "x": 549,
+    "y": 262,
+    "w": 12,
+    "h": 16
+  },
   "f_dunetuck_bed": {
-    "x": 218,
-    "y": 55,
+    "x": 810,
+    "y": 180,
     "w": 30,
     "h": 27
   },
   "f_dunewick_candle": {
-    "x": 751,
-    "y": 55,
+    "x": 0,
+    "y": 282,
     "w": 12,
     "h": 14
   },
+  "f_fizzbubble_diagram": {
+    "x": 528,
+    "y": 148,
+    "w": 30,
+    "h": 30
+  },
   "f_fizzchill_cabinet": {
-    "x": 235,
+    "x": 471,
     "y": 0,
     "w": 30,
     "h": 46
   },
+  "f_fizzfile_drawers": {
+    "x": 730,
+    "y": 210,
+    "w": 30,
+    "h": 24
+  },
   "f_fizzflask_lamp": {
-    "x": 725,
-    "y": 55,
+    "x": 562,
+    "y": 262,
     "w": 12,
     "h": 16
   },
   "f_fizzmist_shower": {
-    "x": 593,
-    "y": 0,
+    "x": 654,
+    "y": 71,
     "w": 30,
     "h": 36
   },
+  "f_fizzpaw_care_station": {
+    "x": 841,
+    "y": 180,
+    "w": 30,
+    "h": 27
+  },
+  "f_fizzproof_counter": {
+    "x": 0,
+    "y": 180,
+    "w": 46,
+    "h": 29
+  },
+  "f_fizzroot_terrarium": {
+    "x": 575,
+    "y": 262,
+    "w": 12,
+    "h": 16
+  },
   "f_fizzscan_terminal": {
-    "x": 855,
-    "y": 55,
+    "x": 394,
+    "y": 282,
     "w": 12,
     "h": 12
   },
+  "f_fizzwhirl_workbench": {
+    "x": 406,
+    "y": 180,
+    "w": 30,
+    "h": 28
+  },
   "f_foldfern_cot": {
-    "x": 389,
-    "y": 55,
+    "x": 761,
+    "y": 210,
     "w": 14,
     "h": 24
   },
   "f_frostbough_bed": {
-    "x": 157,
+    "x": 393,
     "y": 0,
     "w": 46,
     "h": 47
   },
+  "f_frostcrumb_tree": {
+    "x": 972,
+    "y": 0,
+    "w": 30,
+    "h": 41
+  },
+  "f_frostglimmer_hearth": {
+    "x": 47,
+    "y": 180,
+    "w": 46,
+    "h": 29
+  },
+  "f_frostpocket_stocking": {
+    "x": 420,
+    "y": 210,
+    "w": 14,
+    "h": 25
+  },
+  "f_frostpost_gift_pile": {
+    "x": 265,
+    "y": 210,
+    "w": 30,
+    "h": 26
+  },
+  "f_froststitch_tapestry": {
+    "x": 437,
+    "y": 180,
+    "w": 30,
+    "h": 28
+  },
   "f_frosttin_lantern": {
-    "x": 671,
-    "y": 55,
+    "x": 335,
+    "y": 262,
     "w": 12,
     "h": 17
   },
+  "f_frostweave_rocker": {
+    "x": 155,
+    "y": 112,
+    "w": 30,
+    "h": 34
+  },
+  "f_frostwish_carousel": {
+    "x": 236,
+    "y": 0,
+    "w": 46,
+    "h": 53
+  },
+  "f_hemcheck_rug": {
+    "x": 109,
+    "y": 148,
+    "w": 30,
+    "h": 31
+  },
+  "f_hemcross_window": {
+    "x": 915,
+    "y": 210,
+    "w": 30,
+    "h": 23
+  },
+  "f_hemdrawer_desk": {
+    "x": 559,
+    "y": 148,
+    "w": 46,
+    "h": 30
+  },
+  "f_hemgrain_dresser": {
+    "x": 468,
+    "y": 180,
+    "w": 30,
+    "h": 28
+  },
+  "f_hemhang_clothesline": {
+    "x": 94,
+    "y": 180,
+    "w": 46,
+    "h": 29
+  },
+  "f_hemhill_painting": {
+    "x": 818,
+    "y": 238,
+    "w": 30,
+    "h": 20
+  },
+  "f_hemhop_blocks": {
+    "x": 253,
+    "y": 282,
+    "w": 12,
+    "h": 13
+  },
+  "f_hemleaf_pothos": {
+    "x": 407,
+    "y": 282,
+    "w": 12,
+    "h": 12
+  },
+  "f_hemloop_chair": {
+    "x": 849,
+    "y": 238,
+    "w": 14,
+    "h": 20
+  },
+  "f_hemshade_lamp": {
+    "x": 588,
+    "y": 262,
+    "w": 12,
+    "h": 16
+  },
+  "f_hemstring_ukulele": {
+    "x": 946,
+    "y": 210,
+    "w": 14,
+    "h": 23
+  },
   "f_hemtop_counter": {
-    "x": 435,
-    "y": 55,
+    "x": 249,
+    "y": 238,
     "w": 30,
     "h": 22
   },
   "f_hemwash_basin": {
-    "x": 684,
-    "y": 55,
+    "x": 348,
+    "y": 262,
     "w": 14,
     "h": 17
   },
+  "f_hemwindow_flowerbox": {
+    "x": 462,
+    "y": 238,
+    "w": 30,
+    "h": 21
+  },
+  "f_humskein_mix_desk": {
+    "x": 606,
+    "y": 148,
+    "w": 46,
+    "h": 30
+  },
   "f_humskein_sound_wall": {
-    "x": 466,
-    "y": 55,
+    "x": 280,
+    "y": 238,
     "w": 46,
     "h": 22
   },
+  "f_humskein_upright": {
+    "x": 187,
+    "y": 71,
+    "w": 46,
+    "h": 39
+  },
+  "f_humskein_wave_panel": {
+    "x": 140,
+    "y": 148,
+    "w": 30,
+    "h": 31
+  },
+  "f_hushbell_wreath": {
+    "x": 499,
+    "y": 180,
+    "w": 30,
+    "h": 28
+  },
   "f_hushdrape_bed": {
-    "x": 0,
+    "x": 126,
     "y": 0,
     "w": 46,
     "h": 54
   },
+  "f_hushglass_portrait": {
+    "x": 234,
+    "y": 71,
+    "w": 30,
+    "h": 39
+  },
+  "f_hushglow_mushrooms": {
+    "x": 872,
+    "y": 180,
+    "w": 30,
+    "h": 27
+  },
+  "f_hushpatch_pumpkin": {
+    "x": 752,
+    "y": 262,
+    "w": 14,
+    "h": 15
+  },
+  "f_hushpetal_sconce": {
+    "x": 435,
+    "y": 210,
+    "w": 30,
+    "h": 25
+  },
+  "f_hushpuff_door_arch": {
+    "x": 732,
+    "y": 112,
+    "w": 30,
+    "h": 32
+  },
+  "f_hushwing_armchair": {
+    "x": 857,
+    "y": 71,
+    "w": 30,
+    "h": 35
+  },
+  "f_hushwink_candle": {
+    "x": 767,
+    "y": 262,
+    "w": 12,
+    "h": 15
+  },
+  "f_kettlebloom_stand": {
+    "x": 530,
+    "y": 180,
+    "w": 14,
+    "h": 28
+  },
+  "f_kettlecorner_table": {
+    "x": 763,
+    "y": 112,
+    "w": 30,
+    "h": 32
+  },
+  "f_kettleporch_bench": {
+    "x": 864,
+    "y": 238,
+    "w": 30,
+    "h": 20
+  },
+  "f_kettleware_hutch": {
+    "x": 171,
+    "y": 148,
+    "w": 30,
+    "h": 31
+  },
   "f_kettlewave_radio": {
-    "x": 764,
-    "y": 55,
+    "x": 13,
+    "y": 282,
     "w": 12,
     "h": 14
   },
   "f_kettlewink_fridge": {
-    "x": 266,
+    "x": 549,
     "y": 0,
     "w": 30,
     "h": 45
   },
+  "f_lanternbow_settee": {
+    "x": 653,
+    "y": 148,
+    "w": 46,
+    "h": 30
+  },
+  "f_lanternplait_moon_gate": {
+    "x": 831,
+    "y": 0,
+    "w": 46,
+    "h": 43
+  },
+  "f_marginglow_painting": {
+    "x": 141,
+    "y": 180,
+    "w": 30,
+    "h": 29
+  },
+  "f_marginleaf_rug": {
+    "x": 903,
+    "y": 180,
+    "w": 46,
+    "h": 27
+  },
+  "f_marginpane_window": {
+    "x": 950,
+    "y": 180,
+    "w": 30,
+    "h": 27
+  },
+  "f_marginrow_bookcase": {
+    "x": 498,
+    "y": 112,
+    "w": 30,
+    "h": 33
+  },
+  "f_milkdrop_beanbag": {
+    "x": 981,
+    "y": 180,
+    "w": 30,
+    "h": 27
+  },
   "f_mintwhistle_kettle": {
-    "x": 777,
-    "y": 55,
+    "x": 26,
+    "y": 282,
     "w": 12,
     "h": 14
   },
   "f_moonrinse_bath": {
-    "x": 328,
-    "y": 0,
+    "x": 78,
+    "y": 71,
     "w": 46,
     "h": 40
   },
+  "f_mossbasket_chest": {
+    "x": 961,
+    "y": 210,
+    "w": 30,
+    "h": 23
+  },
+  "f_mosshem_pouf": {
+    "x": 780,
+    "y": 262,
+    "w": 14,
+    "h": 15
+  },
   "f_orbitbake_oven": {
-    "x": 484,
-    "y": 0,
+    "x": 436,
+    "y": 71,
     "w": 46,
     "h": 37
   },
+  "f_orbitbowl_resonator": {
+    "x": 794,
+    "y": 112,
+    "w": 30,
+    "h": 32
+  },
+  "f_orbitcurl_pet_pod": {
+    "x": 825,
+    "y": 112,
+    "w": 30,
+    "h": 32
+  },
+  "f_orbitfloat_mobile": {
+    "x": 888,
+    "y": 71,
+    "w": 30,
+    "h": 35
+  },
+  "f_orbitgarden_sphere": {
+    "x": 856,
+    "y": 112,
+    "w": 30,
+    "h": 32
+  },
+  "f_orbitlace_rug": {
+    "x": 909,
+    "y": 0,
+    "w": 62,
+    "h": 42
+  },
+  "f_orbitmap_desk": {
+    "x": 545,
+    "y": 180,
+    "w": 46,
+    "h": 28
+  },
+  "f_orbitpin_star_chart": {
+    "x": 592,
+    "y": 180,
+    "w": 46,
+    "h": 28
+  },
+  "f_orbitseal_hatch": {
+    "x": 172,
+    "y": 180,
+    "w": 30,
+    "h": 29
+  },
+  "f_orbitshade_gazebo": {
+    "x": 0,
+    "y": 0,
+    "w": 62,
+    "h": 70
+  },
+  "f_orbitvault_cupboard": {
+    "x": 919,
+    "y": 71,
+    "w": 46,
+    "h": 35
+  },
   "f_orbitview_console": {
-    "x": 311,
-    "y": 55,
+    "x": 466,
+    "y": 210,
     "w": 46,
     "h": 25
   },
   "f_pagebreak_teacup": {
-    "x": 933,
-    "y": 55,
+    "x": 615,
+    "y": 282,
     "w": 12,
     "h": 10
   },
+  "f_pagebud_ivy": {
+    "x": 500,
+    "y": 282,
+    "w": 12,
+    "h": 11
+  },
   "f_pagecount_calculator": {
-    "x": 816,
-    "y": 55,
+    "x": 266,
+    "y": 282,
     "w": 12,
     "h": 13
   },
+  "f_pagecurl_chaise": {
+    "x": 0,
+    "y": 210,
+    "w": 46,
+    "h": 27
+  },
+  "f_pageglow_lamp": {
+    "x": 39,
+    "y": 282,
+    "w": 12,
+    "h": 14
+  },
   "f_pagehaven_bed": {
-    "x": 889,
-    "y": 0,
+    "x": 529,
+    "y": 112,
     "w": 30,
     "h": 33
   },
+  "f_pageledge_table": {
+    "x": 203,
+    "y": 180,
+    "w": 30,
+    "h": 29
+  },
+  "f_pagepair_books": {
+    "x": 513,
+    "y": 282,
+    "w": 12,
+    "h": 11
+  },
+  "f_pagepath_story_tiles": {
+    "x": 693,
+    "y": 282,
+    "w": 12,
+    "h": 7
+  },
+  "f_pageperch_stand": {
+    "x": 327,
+    "y": 238,
+    "w": 14,
+    "h": 22
+  },
+  "f_paperleg_desk": {
+    "x": 493,
+    "y": 238,
+    "w": 30,
+    "h": 21
+  },
   "f_patchpillow_bed": {
-    "x": 531,
-    "y": 0,
+    "x": 483,
+    "y": 71,
     "w": 30,
     "h": 37
   },
   "f_patchscreen_television": {
-    "x": 404,
-    "y": 55,
+    "x": 776,
+    "y": 210,
     "w": 30,
     "h": 24
   },
   "f_patchsoak_tub": {
-    "x": 780,
-    "y": 0,
+    "x": 186,
+    "y": 112,
     "w": 46,
     "h": 34
   },
+  "f_patchwake_sofa": {
+    "x": 0,
+    "y": 238,
+    "w": 46,
+    "h": 23
+  },
+  "f_pebblebeat_drum": {
+    "x": 261,
+    "y": 262,
+    "w": 14,
+    "h": 18
+  },
+  "f_pebblecap_lamp": {
+    "x": 363,
+    "y": 262,
+    "w": 12,
+    "h": 17
+  },
   "f_pebbleclick_remote": {
-    "x": 868,
-    "y": 55,
+    "x": 420,
+    "y": 282,
     "w": 12,
     "h": 12
   },
   "f_pebbleflush_loo": {
-    "x": 249,
-    "y": 55,
+    "x": 296,
+    "y": 210,
     "w": 14,
     "h": 26
   },
+  "f_pebblehour_clock": {
+    "x": 52,
+    "y": 282,
+    "w": 14,
+    "h": 14
+  },
+  "f_pebblepad_table": {
+    "x": 795,
+    "y": 262,
+    "w": 14,
+    "h": 15
+  },
+  "f_pebblepane_window": {
+    "x": 524,
+    "y": 238,
+    "w": 30,
+    "h": 21
+  },
+  "f_pebblepath_runner": {
+    "x": 67,
+    "y": 282,
+    "w": 46,
+    "h": 14
+  },
+  "f_pebblepaw_washpan": {
+    "x": 526,
+    "y": 282,
+    "w": 14,
+    "h": 11
+  },
+  "f_pebblepeg_cabinet": {
+    "x": 311,
+    "y": 210,
+    "w": 30,
+    "h": 26
+  },
+  "f_pebblepost_mailbox": {
+    "x": 342,
+    "y": 238,
+    "w": 14,
+    "h": 22
+  },
+  "f_pebblerest_stool": {
+    "x": 376,
+    "y": 262,
+    "w": 14,
+    "h": 17
+  },
+  "f_pebbletip_succulent": {
+    "x": 114,
+    "y": 282,
+    "w": 12,
+    "h": 14
+  },
+  "f_pebbletoss_rings": {
+    "x": 279,
+    "y": 282,
+    "w": 14,
+    "h": 13
+  },
   "f_pebblewash_sink": {
-    "x": 31,
-    "y": 55,
+    "x": 202,
+    "y": 148,
     "w": 30,
     "h": 31
   },
+  "f_plainstack_cubby": {
+    "x": 639,
+    "y": 180,
+    "w": 30,
+    "h": 28
+  },
+  "f_plainwhorl_chair": {
+    "x": 555,
+    "y": 238,
+    "w": 14,
+    "h": 21
+  },
+  "f_plaitwish_table": {
+    "x": 233,
+    "y": 112,
+    "w": 46,
+    "h": 34
+  },
   "f_pocketweather_globe": {
-    "x": 422,
-    "y": 0,
+    "x": 343,
+    "y": 71,
     "w": 30,
     "h": 38
   },
   "f_polypillow_bed": {
-    "x": 110,
+    "x": 283,
     "y": 0,
     "w": 46,
     "h": 50
   },
+  "f_prismbeat_bench": {
+    "x": 570,
+    "y": 238,
+    "w": 46,
+    "h": 21
+  },
+  "f_quietarc_desk": {
+    "x": 513,
+    "y": 210,
+    "w": 46,
+    "h": 25
+  },
+  "f_quietdot_lamp": {
+    "x": 601,
+    "y": 262,
+    "w": 12,
+    "h": 16
+  },
+  "f_reedbud_bonsai": {
+    "x": 294,
+    "y": 282,
+    "w": 12,
+    "h": 13
+  },
+  "f_reedcap_lamp": {
+    "x": 127,
+    "y": 282,
+    "w": 12,
+    "h": 14
+  },
+  "f_reedflat_table": {
+    "x": 391,
+    "y": 262,
+    "w": 30,
+    "h": 17
+  },
+  "f_reedfold_basket": {
+    "x": 140,
+    "y": 282,
+    "w": 14,
+    "h": 14
+  },
+  "f_reedquiet_mat": {
+    "x": 670,
+    "y": 180,
+    "w": 30,
+    "h": 28
+  },
+  "f_reedrain_chimes": {
+    "x": 125,
+    "y": 71,
+    "w": 14,
+    "h": 40
+  },
   "f_reedrest_breadbox": {
-    "x": 946,
-    "y": 55,
+    "x": 654,
+    "y": 282,
     "w": 12,
     "h": 9
   },
   "f_reedroll_bed": {
-    "x": 718,
-    "y": 0,
+    "x": 966,
+    "y": 71,
     "w": 30,
     "h": 35
   },
+  "f_reedroll_scratch_post": {
+    "x": 30,
+    "y": 262,
+    "w": 14,
+    "h": 19
+  },
+  "f_reedskip_stepping_set": {
+    "x": 307,
+    "y": 282,
+    "w": 30,
+    "h": 13
+  },
+  "f_reedslide_door": {
+    "x": 342,
+    "y": 210,
+    "w": 30,
+    "h": 26
+  },
   "f_reedsoap_dish": {
-    "x": 959,
-    "y": 55,
+    "x": 667,
+    "y": 282,
     "w": 12,
     "h": 9
   },
+  "f_reedstroke_scroll": {
+    "x": 807,
+    "y": 210,
+    "w": 14,
+    "h": 24
+  },
+  "f_reedturn_board": {
+    "x": 628,
+    "y": 282,
+    "w": 12,
+    "h": 10
+  },
+  "f_reedwater_lily_bowl": {
+    "x": 47,
+    "y": 238,
+    "w": 30,
+    "h": 23
+  },
+  "f_reedwink_stool": {
+    "x": 614,
+    "y": 262,
+    "w": 14,
+    "h": 16
+  },
+  "f_reefarch_door": {
+    "x": 234,
+    "y": 180,
+    "w": 30,
+    "h": 29
+  },
+  "f_reefbubble_lamp": {
+    "x": 810,
+    "y": 262,
+    "w": 12,
+    "h": 15
+  },
   "f_reefcurl_tub": {
-    "x": 624,
-    "y": 0,
+    "x": 685,
+    "y": 71,
     "w": 46,
     "h": 36
   },
+  "f_reeffern_arrangement": {
+    "x": 280,
+    "y": 112,
+    "w": 30,
+    "h": 34
+  },
+  "f_reeffold_lounger": {
+    "x": 311,
+    "y": 112,
+    "w": 46,
+    "h": 34
+  },
+  "f_reefmurmur_fountain": {
+    "x": 732,
+    "y": 71,
+    "w": 30,
+    "h": 36
+  },
+  "f_reefniche_cabinet": {
+    "x": 47,
+    "y": 210,
+    "w": 30,
+    "h": 27
+  },
+  "f_reefpipe_organ": {
+    "x": 580,
+    "y": 0,
+    "w": 46,
+    "h": 45
+  },
+  "f_reefrest_pet_pool": {
+    "x": 617,
+    "y": 238,
+    "w": 30,
+    "h": 21
+  },
+  "f_reefroll_marble_run": {
+    "x": 0,
+    "y": 112,
+    "w": 30,
+    "h": 35
+  },
+  "f_reefsong_mural": {
+    "x": 78,
+    "y": 238,
+    "w": 46,
+    "h": 23
+  },
   "f_reefsteam_cooker": {
-    "x": 881,
-    "y": 55,
+    "x": 433,
+    "y": 282,
     "w": 12,
     "h": 12
   },
-  "f_rivetpan_range": {
-    "x": 920,
+  "f_reefwhorl_rug": {
+    "x": 265,
+    "y": 71,
+    "w": 46,
+    "h": 39
+  },
+  "f_revolving_tide_table": {
+    "x": 627,
     "y": 0,
+    "w": 62,
+    "h": 45
+  },
+  "f_rivetarm_floor_lamp": {
+    "x": 45,
+    "y": 262,
+    "w": 14,
+    "h": 19
+  },
+  "f_rivetdrip_rain_barrel": {
+    "x": 357,
+    "y": 238,
+    "w": 14,
+    "h": 22
+  },
+  "f_rivetend_table": {
+    "x": 629,
+    "y": 262,
+    "w": 14,
+    "h": 16
+  },
+  "f_rivetgrid_rug": {
+    "x": 265,
+    "y": 180,
+    "w": 46,
+    "h": 29
+  },
+  "f_rivetpan_range": {
+    "x": 887,
+    "y": 112,
     "w": 46,
     "h": 32
   },
   "f_rivetpipe_shower": {
-    "x": 453,
-    "y": 0,
+    "x": 374,
+    "y": 71,
     "w": 30,
     "h": 38
   },
+  "f_sailmark_wall_shelf": {
+    "x": 823,
+    "y": 262,
+    "w": 30,
+    "h": 15
+  },
+  "f_sailtuck_loveseat": {
+    "x": 822,
+    "y": 210,
+    "w": 30,
+    "h": 24
+  },
   "f_sandsheet_cot": {
-    "x": 204,
+    "x": 440,
     "y": 0,
     "w": 30,
     "h": 47
   },
+  "f_softangle_armchair": {
+    "x": 701,
+    "y": 180,
+    "w": 30,
+    "h": 28
+  },
+  "f_spoolback_chair": {
+    "x": 648,
+    "y": 238,
+    "w": 14,
+    "h": 21
+  },
   "f_spooldeck_player": {
-    "x": 790,
-    "y": 55,
+    "x": 155,
+    "y": 282,
     "w": 12,
     "h": 14
   },
+  "f_spoolnote_keyboard": {
+    "x": 853,
+    "y": 210,
+    "w": 30,
+    "h": 24
+  },
+  "f_spoolshoe_rack": {
+    "x": 663,
+    "y": 238,
+    "w": 30,
+    "h": 21
+  },
+  "f_sprigarch_trellis": {
+    "x": 31,
+    "y": 112,
+    "w": 30,
+    "h": 35
+  },
+  "f_sprigcup_fern": {
+    "x": 422,
+    "y": 262,
+    "w": 12,
+    "h": 17
+  },
   "f_sprigfold_towels": {
-    "x": 894,
-    "y": 55,
+    "x": 446,
+    "y": 282,
     "w": 12,
     "h": 12
   },
   "f_sprigmist_humidifier": {
-    "x": 699,
-    "y": 55,
+    "x": 435,
+    "y": 262,
     "w": 12,
     "h": 17
   },
+  "f_sprigpaw_toy_basket": {
+    "x": 541,
+    "y": 282,
+    "w": 14,
+    "h": 11
+  },
+  "f_sprigrail_bench": {
+    "x": 884,
+    "y": 210,
+    "w": 30,
+    "h": 24
+  },
+  "f_sprigrow_wall_shelf": {
+    "x": 854,
+    "y": 262,
+    "w": 46,
+    "h": 15
+  },
   "f_sprigseal_jar": {
-    "x": 803,
-    "y": 55,
+    "x": 168,
+    "y": 282,
     "w": 12,
     "h": 14
   },
+  "f_sprigshade_lamp": {
+    "x": 448,
+    "y": 262,
+    "w": 12,
+    "h": 17
+  },
+  "f_sprigslat_gate": {
+    "x": 125,
+    "y": 238,
+    "w": 30,
+    "h": 23
+  },
+  "f_sprigstep_mat": {
+    "x": 276,
+    "y": 262,
+    "w": 30,
+    "h": 18
+  },
+  "f_sprigstep_planter_box": {
+    "x": 60,
+    "y": 262,
+    "w": 30,
+    "h": 19
+  },
+  "f_sprigthumb_vase": {
+    "x": 372,
+    "y": 238,
+    "w": 12,
+    "h": 22
+  },
+  "f_sprigwheel_barrow": {
+    "x": 560,
+    "y": 210,
+    "w": 30,
+    "h": 25
+  },
+  "f_sprigwork_table": {
+    "x": 895,
+    "y": 238,
+    "w": 30,
+    "h": 20
+  },
+  "f_starcrumb_orrery": {
+    "x": 233,
+    "y": 148,
+    "w": 30,
+    "h": 31
+  },
+  "f_stillarc_floor_lamp": {
+    "x": 78,
+    "y": 210,
+    "w": 30,
+    "h": 27
+  },
+  "f_stillbar_wall_shelf": {
+    "x": 556,
+    "y": 282,
+    "w": 30,
+    "h": 11
+  },
   "f_stillbreeze_fan": {
-    "x": 738,
-    "y": 55,
+    "x": 901,
+    "y": 262,
     "w": 12,
     "h": 15
   },
+  "f_stillframe_door": {
+    "x": 591,
+    "y": 210,
+    "w": 14,
+    "h": 25
+  },
   "f_stillglass_shower": {
-    "x": 827,
-    "y": 0,
+    "x": 358,
+    "y": 112,
+    "w": 30,
+    "h": 34
+  },
+  "f_stilloval_mirror": {
+    "x": 606,
+    "y": 210,
+    "w": 14,
+    "h": 25
+  },
+  "f_stillpanel_wardrobe": {
+    "x": 389,
+    "y": 112,
     "w": 30,
     "h": 34
   },
   "f_stillsoft_bed": {
-    "x": 375,
-    "y": 0,
+    "x": 140,
+    "y": 71,
     "w": 46,
     "h": 40
   },
+  "f_stillstem_rubber_tree": {
+    "x": 307,
+    "y": 262,
+    "w": 14,
+    "h": 18
+  },
+  "f_stillstep_nightstand": {
+    "x": 644,
+    "y": 262,
+    "w": 14,
+    "h": 16
+  },
+  "f_stillstripe_mat": {
+    "x": 181,
+    "y": 282,
+    "w": 30,
+    "h": 14
+  },
   "f_stillwarm_stove": {
-    "x": 358,
-    "y": 55,
+    "x": 621,
+    "y": 210,
     "w": 30,
     "h": 25
   },
+  "f_sugarbutton_table": {
+    "x": 264,
+    "y": 148,
+    "w": 30,
+    "h": 31
+  },
+  "f_sugarloop_mirror": {
+    "x": 295,
+    "y": 148,
+    "w": 30,
+    "h": 31
+  },
+  "f_sugarstripe_lamp": {
+    "x": 91,
+    "y": 262,
+    "w": 12,
+    "h": 19
+  },
   "f_tidechip_mug": {
-    "x": 907,
-    "y": 55,
+    "x": 459,
+    "y": 282,
     "w": 12,
     "h": 12
   },
   "f_tidefold_towel_rail": {
-    "x": 560,
-    "y": 55,
+    "x": 926,
+    "y": 238,
     "w": 30,
     "h": 20
   },
+  "f_tideleaf_table": {
+    "x": 700,
+    "y": 148,
+    "w": 46,
+    "h": 30
+  },
+  "f_velvetbough_throne": {
+    "x": 62,
+    "y": 112,
+    "w": 30,
+    "h": 35
+  },
+  "f_velvetroot_cabinet": {
+    "x": 560,
+    "y": 112,
+    "w": 46,
+    "h": 33
+  },
+  "f_wickcrumb_candle": {
+    "x": 461,
+    "y": 262,
+    "w": 12,
+    "h": 17
+  },
   "f_wishbowl_vanity": {
-    "x": 967,
-    "y": 0,
+    "x": 934,
+    "y": 112,
     "w": 30,
     "h": 32
   },
+  "f_wishbraid_rug": {
+    "x": 109,
+    "y": 210,
+    "w": 46,
+    "h": 27
+  },
+  "f_wishbridge_arch": {
+    "x": 652,
+    "y": 210,
+    "w": 46,
+    "h": 25
+  },
+  "f_wishcitrus_tree": {
+    "x": 514,
+    "y": 71,
+    "w": 30,
+    "h": 37
+  },
+  "f_wishcoil_lantern": {
+    "x": 104,
+    "y": 262,
+    "w": 12,
+    "h": 19
+  },
+  "f_wishdance_screen": {
+    "x": 156,
+    "y": 210,
+    "w": 46,
+    "h": 27
+  },
   "f_wishfeast_counter": {
-    "x": 513,
-    "y": 55,
+    "x": 694,
+    "y": 238,
     "w": 46,
     "h": 21
+  },
+  "f_wishfold_envelope": {
+    "x": 680,
+    "y": 282,
+    "w": 12,
+    "h": 8
+  },
+  "f_wishfold_lantern": {
+    "x": 117,
+    "y": 262,
+    "w": 12,
+    "h": 19
+  },
+  "f_wishknot_wall_shelf": {
+    "x": 474,
+    "y": 262,
+    "w": 46,
+    "h": 17
+  },
+  "f_wishknot_wardrobe": {
+    "x": 405,
+    "y": 71,
+    "w": 30,
+    "h": 38
+  },
+  "f_wishrope_garland": {
+    "x": 130,
+    "y": 262,
+    "w": 46,
+    "h": 19
   }
 }
