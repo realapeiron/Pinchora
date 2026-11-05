@@ -16,8 +16,8 @@ use resvg::{tiny_skia, usvg};
 pub use avatar::{placeholder_avatar, prepare_avatar};
 pub use cards::{
     ABSENT, Backdrop, BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, CORRECT, CharacterCard, Connect4Card,
-    GridSlot, HangmanCard, HangmanLetter, ItemGridCard, LeaderboardCard, LeaderboardEntry, LevelUpCard, NextRole,
-    PRESENT, PetCard, ProfileCard, RankCard, SpriteArt, WalletCard, WelcomeCard, WordleCard, WordleRow,
+    GridSlot, HangmanCard, HangmanLetter, ItemGridCard, LastWeekEntry, LeaderboardCard, LeaderboardEntry, LevelUpCard,
+    NextRole, PRESENT, PetCard, ProfileCard, RankCard, SpriteArt, WalletCard, WelcomeCard, WordleCard, WordleRow,
 };
 pub use encode::encode_png;
 pub use svg::{compact, thousands};

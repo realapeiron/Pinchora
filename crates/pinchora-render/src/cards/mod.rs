@@ -17,7 +17,7 @@ pub use character::CharacterCard;
 pub use connect4::Connect4Card;
 pub use grid::{GridSlot, ItemGridCard};
 pub use hangman::{HangmanCard, HangmanLetter};
-pub use leaderboard::{LeaderboardCard, LeaderboardEntry};
+pub use leaderboard::{LastWeekEntry, LeaderboardCard, LeaderboardEntry};
 pub use levelup::LevelUpCard;
 pub use pet::PetCard;
 pub use profile::ProfileCard;

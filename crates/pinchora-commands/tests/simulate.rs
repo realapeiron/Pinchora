@@ -218,7 +218,7 @@ fn guild_json(id: u64) -> Value {
         "splash": null,
         "discovery_splash": null,
         "owner_id": "1",
-        "afk_channel_id": null,
+        "afk_channel_id": afk_channel(id).map(|c| c.to_string()),
         "afk_timeout": 300,
         "application_id": null,
         "banner": null,
@@ -308,6 +308,7 @@ async fn discord(
             return (StatusCode::NO_CONTENT, String::new());
         }
         (&Method::GET, [.., "guilds", guild]) => return (StatusCode::OK, guild_json(number(guild)).to_string()),
+        (&Method::POST, [.., "users", "@me", "channels"]) => return open_direct_message(),
         (&Method::POST, [.., "channels", channel, "messages"]) => {
             let (body, _) = request_body(&headers, &body);
             let (channel, id) = (number(channel), unique());
@@ -4781,4 +4782,1018 @@ async fn room_contest_week() {
     // A ballot from last week can't vote any more.
     let late = sim.click(d, &stale, "💖 Vote").await;
     assert!(late.content().contains("week is over"), "{}", late.content());
+}
+
+// /Leveling toolkit
+
+/// The direct message channel the mock opens for anyone.
+const DM_CHANNEL_ID: u64 = 9_100_000_000_001;
+/// Whether the mock refuses to open direct messages (the member closed them).
+static DMS_CLOSED: AtomicBool = AtomicBool::new(false);
+/// The AFK voice channel of each mock server.
+static AFK_CHANNELS: LazyLock<Mutex<HashMap<u64, u64>>> = LazyLock::new(Mutex::default);
+
+fn afk_channel(guild: u64) -> Option<u64> {
+    AFK_CHANNELS.lock().unwrap().get(&guild).copied()
+}
+
+/// `POST /users/@me/channels`.
+fn open_direct_message() -> (StatusCode, String) {
+    if DMS_CLOSED.load(Ordering::SeqCst) {
+        let refusal = json!({ "message": "Cannot send messages to this user", "code": 50007 });
+        return (StatusCode::FORBIDDEN, refusal.to_string());
+    }
+    let channel = json!({ "id": DM_CHANNEL_ID.to_string(), "type": 1, "recipients": [] });
+    (StatusCode::OK, channel.to_string())
+}
+
+fn number_option(name: &str, value: f64) -> Value {
+    json!({ "name": name, "type": 10, "value": value })
+}
+
+/// `data.resolved` for a user option whose member holds `roles` here.
+fn resolved_member(user: u64, roles: &[u64]) -> Value {
+    json!({
+        "users": { user.to_string(): user_json(user) },
+        "members": {
+            user.to_string(): {
+                "roles": roles.iter().map(u64::to_string).collect::<Vec<_>>(),
+                "joined_at": "2024-01-01T00:00:00.000000+00:00",
+                "flags": 0,
+                "permissions": "0",
+                "pending": false,
+            },
+        },
+    })
+}
+
+impl Sim {
+    /// A chat message from `user` in `channel` carrying the roles they hold.
+    fn chat_in(&self, user: u64, channel: u64, roles: &[u64]) -> MessageCreate {
+        let mut message = serde_json::to_value(self.chat(user, roles)).expect("message JSON");
+        message["channel_id"] = json!(channel.to_string());
+        serde_json::from_value(message).expect("message JSON")
+    }
+
+    async fn say_in(&self, user: u64, channel: u64, roles: &[u64]) {
+        ERRORS.with_borrow_mut(Vec::clear);
+        on_message(self.app.clone(), self.chat_in(user, channel, roles))
+            .await
+            .expect("the message handler failed");
+    }
+
+    /// `user` is now in voice `channel` (`None`: left) holding `roles`, muted and deafened as given.
+    async fn voice_in(&self, user: u64, channel: Option<u64>, roles: &[u64], mute: bool, deaf: bool, bot: bool) {
+        let event: VoiceStateUpdate = serde_json::from_value(json!({
+            "guild_id": self.guild.to_string(),
+            "channel_id": channel.map(|c| c.to_string()),
+            "user_id": user.to_string(),
+            "member": {
+                "user": person_json(user, "voice-user", Some("voice-user"), bot),
+                "roles": roles.iter().map(u64::to_string).collect::<Vec<_>>(),
+                "joined_at": "2024-01-01T00:00:00.000000+00:00",
+                "deaf": false,
+                "mute": false,
+                "flags": 0,
+                "pending": false,
+            },
+            "session_id": "sim",
+            "deaf": false,
+            "mute": false,
+            "self_deaf": deaf,
+            "self_mute": mute,
+            "self_stream": false,
+            "self_video": false,
+            "suppress": false,
+            "request_to_speak_timestamp": null,
+        }))
+        .expect("voice state JSON");
+        on_voice_state_update(self.app.clone(), event)
+            .await
+            .expect("the voice handler failed");
+    }
+
+    /// A member's server XP, 0 before they have a row.
+    async fn server_xp(&self, user: u64) -> i64 {
+        self.app
+            .db
+            .member_rank(self.guild, user)
+            .await
+            .expect("rank")
+            .map_or(0, |r| r.xp)
+    }
+
+    async fn global_xp(&self, user: u64) -> i64 {
+        self.app.db.user(user).await.expect("user row").xp
+    }
+
+    async fn points(&self, user: u64) -> i64 {
+        self.app.db.member_points(self.guild, user).await.expect("points").0
+    }
+
+    /// Runs `/config xp ...`.
+    async fn xp(&mut self, admin: u64, sub_command: Value) -> Reply {
+        self.command(admin, "config", json!([group("xp", sub_command)])).await
+    }
+}
+
+/// The server's PNG height, to tell a card with a podium from one without.
+fn png_height(reply: &Reply) -> u32 {
+    image::load_from_memory(&reply.files[0].1).expect("a png").height()
+}
+
+#[tokio::test]
+async fn xp_multipliers_and_voice_xp_are_configured_with_config() {
+    let Some(mut sim) = Sim::new("xp_multipliers_and_voice_xp_are_configured_with_config").await else {
+        return;
+    };
+    let admin = unique();
+    let (channel, lounge) = (unique(), unique());
+    let (booster_id, muted_id) = (unique(), unique());
+    let booster = sim.guild_role(booster_id, "Booster", 2);
+    let muted = sim.guild_role(muted_id, "Muted", 2);
+    sim.permissions = MANAGE_GUILD;
+
+    let by_channel = |value: f64, id: u64| {
+        sub(
+            "multiplier",
+            vec![number_option("value", value), channel_option("channel", id)],
+        )
+    };
+    let by_role = |value: f64, role: &Value| {
+        sub(
+            "multiplier",
+            vec![number_option("value", value), role_option("role", role)],
+        )
+    };
+
+    // Nothing set yet.
+    let shown = sim.xp(admin, sub("show", vec![])).await;
+    assert!(
+        shown.description().contains("No multipliers yet"),
+        "{}",
+        shown.description()
+    );
+    assert!(
+        shown.field("Voice XP").contains("**off**"),
+        "{}",
+        shown.field("Voice XP")
+    );
+
+    // A channel, a voice channel, a booster role and a no-XP role.
+    let reply = sim
+        .command_resolved(
+            admin,
+            "config",
+            json!([group("xp", by_channel(2.0, channel))]),
+            resolved_channels(&[channel]),
+        )
+        .await;
+    assert!(
+        reply.content().contains(&format!("<#{channel}> now earns **×2**")),
+        "{}",
+        reply.content()
+    );
+    sim.command_resolved(
+        admin,
+        "config",
+        json!([group("xp", by_channel(1.5, lounge))]),
+        resolved_channels(&[lounge]),
+    )
+    .await;
+    let reply = sim.xp(admin, by_role(3.0, &booster)).await;
+    assert!(
+        reply.content().contains(&format!("<@&{booster_id}> now earns **×3**")),
+        "{}",
+        reply.content()
+    );
+    let reply = sim.xp(admin, by_role(0.0, &muted)).await;
+    assert!(
+        reply.content().contains("**no XP and no points**"),
+        "{}",
+        reply.content()
+    );
+
+    // Exactly one of channel and role.
+    let neither = sim
+        .xp(admin, sub("multiplier", vec![number_option("value", 2.0)]))
+        .await;
+    assert!(
+        neither.content().contains("channel **or** a role"),
+        "{}",
+        neither.content()
+    );
+    let both = sim
+        .command_resolved(
+            admin,
+            "config",
+            json!([group(
+                "xp",
+                sub(
+                    "multiplier",
+                    vec![
+                        number_option("value", 2.0),
+                        channel_option("channel", channel),
+                        role_option("role", &booster)
+                    ]
+                )
+            )]),
+            resolved_channels(&[channel]),
+        )
+        .await;
+    assert!(both.content().contains("channel **or** a role"), "{}", both.content());
+
+    let shown = sim.xp(admin, sub("show", vec![])).await;
+    assert_eq!(shown.title(), "XP rules");
+    let lists = shown.description();
+    for line in [
+        format!("<#{channel}> · **×2**"),
+        format!("<#{lounge}> · **×1.5**"),
+        format!("<@&{booster_id}> · **×3**"),
+        format!("<@&{muted_id}> · **no XP**"),
+    ] {
+        assert!(lists.contains(&line), "{line} in {lists}");
+    }
+    assert_eq!(sim.app.db.xp_rules(sim.guild).await.unwrap().roles.len(), 2);
+
+    // A multiplier of 1 is the default, so it drops the rule; clear removes one or all.
+    let reply = sim
+        .command_resolved(
+            admin,
+            "config",
+            json!([group("xp", by_channel(1.0, lounge))]),
+            resolved_channels(&[lounge]),
+        )
+        .await;
+    assert!(reply.content().contains("earns normal XP"), "{}", reply.content());
+    assert!(
+        !sim.app
+            .db
+            .xp_rules(sim.guild)
+            .await
+            .unwrap()
+            .channels
+            .contains_key(&lounge)
+    );
+    let reply = sim.xp(admin, sub("clear", vec![role_option("role", &muted)])).await;
+    assert!(
+        reply.content().contains("earns normal XP and points again"),
+        "{}",
+        reply.content()
+    );
+    let reply = sim.xp(admin, sub("clear", vec![role_option("role", &muted)])).await;
+    assert!(reply.content().contains("had no multiplier"), "{}", reply.content());
+    let reply = sim.xp(admin, sub("clear", vec![])).await;
+    assert!(
+        reply.content().contains("Cleared **2** XP rules"),
+        "{}",
+        reply.content()
+    );
+    let reply = sim.xp(admin, sub("clear", vec![])).await;
+    assert!(reply.content().contains("no XP rules to clear"), "{}", reply.content());
+
+    // Voice XP: off until switched on; the amount is per minute.
+    let voice = sim
+        .xp(
+            admin,
+            sub("voice", vec![bool_option("enabled", true), int_option("amount", 15)]),
+        )
+        .await;
+    assert!(
+        voice.description().contains("**on** · 15 XP a minute"),
+        "{}",
+        voice.description()
+    );
+    let voice = sim.xp(admin, sub("voice", vec![])).await;
+    assert!(
+        voice.description().contains("**on** · 15 XP"),
+        "no options only shows: {}",
+        voice.description()
+    );
+    let settings = sim.app.db.guild_settings(sim.guild).await.unwrap();
+    assert!((settings.voice_xp_enabled, settings.voice_xp_amount) == (true, 15));
+
+    // The level-up mode, and the placeholders in the option text.
+    let leveling = |options: Vec<Value>| json!([sub("leveling", options)]);
+    for (mode, wording) in [
+        ("dm", "arrive by direct message"),
+        ("off", "are off"),
+        ("current", "in the channel the member chatted in"),
+        ("channel", "in the channel the member chatted in"),
+    ] {
+        let reply = sim
+            .command(admin, "config", leveling(vec![text_option("mode", mode)]))
+            .await;
+        assert!(
+            reply.field("Leveling").contains(wording),
+            "{mode}: {}",
+            reply.field("Leveling")
+        );
+    }
+    let reply = sim
+        .command_resolved(
+            admin,
+            "config",
+            leveling(vec![channel_option("channel", channel)]),
+            resolved_channels(&[channel]),
+        )
+        .await;
+    assert!(
+        reply.field("Leveling").contains(&format!("in <#{channel}>")),
+        "{}",
+        reply.field("Leveling")
+    );
+    assert!(
+        reply.field("XP rules and voice XP").contains("**on**"),
+        "{}",
+        reply.field("XP rules and voice XP")
+    );
+    let definitions = pinchora_commands::command_definitions();
+    let config = serde_json::to_value(definitions.iter().find(|c| c.name == "config").expect("config")).unwrap();
+    let leveling_message = config["options"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|o| o["name"] == "leveling")
+        .and_then(|o| o["options"].as_array())
+        .and_then(|options| options.iter().find(|o| o["name"] == "message"))
+        .expect("the message option");
+    let doc = leveling_message["description"].as_str().unwrap();
+    assert!(
+        ["{user}", "{level}", "{server}", "{role}"]
+            .iter()
+            .all(|p| doc.contains(p)),
+        "the placeholders are documented: {doc}"
+    );
+}
+
+#[tokio::test]
+async fn chat_multipliers_scale_server_xp_and_points_but_not_global_xp() {
+    let Some(mut sim) = Sim::new("chat_multipliers_scale_server_xp_and_points_but_not_global_xp").await else {
+        return;
+    };
+    let admin = unique();
+    let (double, silent, plain) = (unique(), unique(), unique());
+    let (booster_id, hush_id) = (unique(), unique());
+    let booster = sim.guild_role(booster_id, "Booster", 2);
+    let hush = sim.guild_role(hush_id, "Hushed", 2);
+    sim.permissions = MANAGE_GUILD;
+    for (id, value) in [(double, 2.0), (silent, 0.0)] {
+        sim.command_resolved(
+            admin,
+            "config",
+            json!([group(
+                "xp",
+                sub(
+                    "multiplier",
+                    vec![number_option("value", value), channel_option("channel", id)]
+                )
+            )]),
+            resolved_channels(&[id]),
+        )
+        .await;
+    }
+    for (role, value) in [(&booster, 3.0), (&hush, 0.0)] {
+        sim.xp(
+            admin,
+            sub(
+                "multiplier",
+                vec![number_option("value", value), role_option("role", role)],
+            ),
+        )
+        .await;
+    }
+    // Points are on by default, 1 to 3 a message.
+    sim.command(
+        admin,
+        "config",
+        json!([sub("points", vec![int_option("min", 4), int_option("max", 4)])]),
+    )
+    .await;
+
+    // Nothing set for this channel and these members: the usual 15 to 25 XP, global XP the same.
+    let normal = unique();
+    sim.say_in(normal, plain, &[]).await;
+    let xp = sim.server_xp(normal).await;
+    assert!((15..=25).contains(&xp), "{xp}");
+    assert_eq!(sim.global_xp(normal).await, xp);
+    assert_eq!(sim.points(normal).await, 4);
+
+    // A x2 channel: twice the server XP and points, the global XP stays the base amount.
+    let a = unique();
+    sim.say_in(a, double, &[]).await;
+    let global = sim.global_xp(a).await;
+    assert!((15..=25).contains(&global), "{global}");
+    assert_eq!(sim.server_xp(a).await, global * 2);
+    assert_eq!(sim.points(a).await, 8);
+
+    // A x3 role in a normal channel; the channel and the role multiply.
+    let b = unique();
+    sim.say_in(b, plain, &[booster_id]).await;
+    assert_eq!(sim.server_xp(b).await, sim.global_xp(b).await * 3);
+    assert_eq!(sim.points(b).await, 12);
+    let c = unique();
+    sim.say_in(c, double, &[booster_id, unique()]).await;
+    assert_eq!(sim.server_xp(c).await, sim.global_xp(c).await * 6);
+    assert_eq!(sim.points(c).await, 24);
+
+    // A no-XP channel and a no-XP role: nothing for the server (even next to a booster role), the
+    // global XP carries on as usual.
+    for (user, channel, roles) in [
+        (unique(), silent, vec![]),
+        (unique(), plain, vec![hush_id]),
+        (unique(), plain, vec![hush_id, booster_id]),
+        (unique(), silent, vec![booster_id]),
+    ] {
+        sim.say_in(user, channel, &roles).await;
+        assert_eq!(sim.server_xp(user).await, 0, "channel {channel} roles {roles:?}");
+        assert_eq!(sim.points(user).await, 0);
+        assert!((15..=25).contains(&sim.global_xp(user).await));
+    }
+    assert!(
+        sim.app
+            .db
+            .guild_leaderboard(sim.guild, 20, 0)
+            .await
+            .unwrap()
+            .iter()
+            .all(|r| r.value > 0),
+        "members who earned nothing stay off the board"
+    );
+
+    // Clearing the rules puts everything back to normal; @everyone is a server-wide multiplier.
+    sim.xp(admin, sub("clear", vec![])).await;
+    let everyone = role_json(sim.guild, "@everyone", 0, false);
+    sim.xp(
+        admin,
+        sub(
+            "multiplier",
+            vec![number_option("value", 5.0), role_option("role", &everyone)],
+        ),
+    )
+    .await;
+    let d = unique();
+    sim.say_in(d, plain, &[]).await;
+    assert_eq!(sim.server_xp(d).await, sim.global_xp(d).await * 5, "@everyone x5");
+    assert_eq!(sim.points(d).await, 20);
+}
+
+#[tokio::test]
+async fn voice_xp_pays_once_a_minute_to_members_with_company() {
+    let Some(mut sim) = Sim::new("voice_xp_pays_once_a_minute_to_members_with_company").await else {
+        return;
+    };
+    let Some(mut restarted) = Sim::new("voice_xp_pays_once_a_minute_after_a_restart").await else {
+        return;
+    };
+    // Minute-long locks live in Redis: a clock of its own keeps repeated runs apart.
+    sim.app.shift_clock(chrono::Duration::days((unique() % 36_500) as i64));
+    let admin = unique();
+    let (lounge, den, quiet, afk, tavern) = (unique(), unique(), unique(), unique(), unique());
+    let (a, b, alone, idle, listener, robot, sleeper1, sleeper2) = (
+        unique(),
+        unique(),
+        unique(),
+        unique(),
+        unique(),
+        unique(),
+        unique(),
+        unique(),
+    );
+    let (booster_id, hush_id) = (unique(), unique());
+    sim.guild_role(booster_id, "Booster", 2);
+    sim.guild_role(hush_id, "Hushed", 2);
+    AFK_CHANNELS.lock().unwrap().insert(sim.guild, afk);
+    sim.permissions = MANAGE_GUILD;
+
+    for (user, channel, mute, deaf, bot) in [
+        (a, lounge, false, false, false),
+        (b, lounge, false, false, false),
+        (robot, lounge, false, false, true),
+        (alone, quiet, false, false, false),
+        (idle, den, true, true, false),
+        (listener, den, false, false, false),
+        (sleeper1, afk, false, false, false),
+        (sleeper2, afk, false, false, false),
+    ] {
+        sim.voice_in(user, Some(channel), &[], mute, deaf, bot).await;
+    }
+
+    // Voice XP is off until a server turns it on: a minute passes and nobody earns.
+    sim.app.shift_clock(chrono::Duration::seconds(60));
+    pinchora_commands::voice_tick(&sim.app).await.expect("tick");
+    assert_eq!(sim.server_xp(a).await, 0);
+
+    let reply = sim
+        .xp(
+            admin,
+            sub("voice", vec![bool_option("enabled", true), int_option("amount", 20)]),
+        )
+        .await;
+    assert!(
+        reply.description().contains("20 XP a minute"),
+        "{}",
+        reply.description()
+    );
+
+    // The next minute: members with company earn; the lone member, the muted-and-deafened one, the
+    // bot and the AFK channel do not. A deafened member next to a listener still keeps them company.
+    sim.app.shift_clock(chrono::Duration::seconds(60));
+    let paid = pinchora_commands::voice_tick(&sim.app).await.expect("tick");
+    assert!(paid >= 3, "{paid}");
+    for earner in [a, b, listener] {
+        assert_eq!(sim.server_xp(earner).await, 20, "{earner}");
+        assert_eq!(sim.global_xp(earner).await, 0, "voice earns server XP only");
+    }
+    for nobody in [alone, idle, robot, sleeper1, sleeper2] {
+        assert_eq!(sim.server_xp(nobody).await, 0, "{nobody}");
+    }
+
+    // The same minute again, from this process or from a restarted one, pays nobody twice.
+    assert_eq!(pinchora_commands::voice_tick(&sim.app).await.expect("tick"), 0);
+    restarted.guild = sim.guild;
+    let ahead = sim.app.now() - restarted.app.now();
+    restarted.app.shift_clock(ahead);
+    assert_eq!(pinchora_commands::voice_tick(&restarted.app).await.expect("tick"), 0);
+    assert_eq!(sim.server_xp(a).await, 20, "paid once for the minute");
+
+    // The restarted process knows who is in voice (it lives in Redis) and pays the next minute.
+    sim.app.shift_clock(chrono::Duration::seconds(60));
+    restarted.app.shift_clock(chrono::Duration::seconds(60));
+    pinchora_commands::voice_tick(&restarted.app).await.expect("tick");
+    assert_eq!((sim.server_xp(a).await, sim.server_xp(listener).await), (40, 40));
+
+    // Multipliers apply to voice too, by the voice channel and the member's roles.
+    sim.command_resolved(
+        admin,
+        "config",
+        json!([group(
+            "xp",
+            sub(
+                "multiplier",
+                vec![number_option("value", 2.0), channel_option("channel", lounge)]
+            )
+        )]),
+        resolved_channels(&[lounge]),
+    )
+    .await;
+    for (role, value) in [(hush_id, 0.0), (booster_id, 3.0)] {
+        let role = role_json(role, "role", 2, false);
+        sim.xp(
+            admin,
+            sub(
+                "multiplier",
+                vec![number_option("value", value), role_option("role", &role)],
+            ),
+        )
+        .await;
+    }
+    sim.voice_in(a, Some(lounge), &[booster_id], false, false, false).await;
+    sim.voice_in(b, Some(lounge), &[hush_id], false, false, false).await;
+    sim.app.shift_clock(chrono::Duration::seconds(60));
+    pinchora_commands::voice_tick(&sim.app).await.expect("tick");
+    assert_eq!(sim.server_xp(a).await, 40 + 120, "x2 channel, x3 role");
+    assert_eq!(sim.server_xp(b).await, 40, "a no-XP role earns nothing");
+
+    // Leaving, and muting and deafening both at once, stop the XP.
+    sim.voice_in(a, None, &[], false, false, false).await;
+    sim.voice_in(b, Some(lounge), &[], true, true, false).await;
+    sim.voice_in(listener, None, &[], false, false, false).await;
+    sim.app.shift_clock(chrono::Duration::seconds(60));
+    pinchora_commands::voice_tick(&sim.app).await.expect("tick");
+    assert_eq!(
+        (sim.server_xp(a).await, sim.server_xp(b).await),
+        (160, 40),
+        "b is alone and idle"
+    );
+    assert_eq!(sim.server_xp(listener).await, 60, "gone before this minute");
+
+    // A level-up in voice is announced in the voice channel's chat when no channel is set.
+    let (climber, partner) = (unique(), unique());
+    sim.app.db.add_message_xp(sim.guild, climber, 90, 0).await.unwrap();
+    sim.voice_in(climber, Some(tavern), &[], false, false, false).await;
+    sim.voice_in(partner, Some(tavern), &[], false, false, false).await;
+    sim.posts();
+    sim.app.shift_clock(chrono::Duration::seconds(60));
+    pinchora_commands::voice_tick(&sim.app).await.expect("tick");
+    let posts = sim.posts();
+    assert!(
+        in_channel(&posts, tavern)
+            .iter()
+            .any(|p| p.content().contains(&format!("<@{climber}> reached **level 1**"))),
+        "the level-up lands in the voice channel's chat"
+    );
+
+    // The week's board counts voice XP too.
+    let week = pinchora_core::leveling::week_start(sim.app.now());
+    let board = sim.app.db.weekly_leaderboard(sim.guild, week, 10, 0).await.unwrap();
+    assert_eq!(board.iter().find(|r| r.user_id as u64 == a).map(|r| r.value), Some(160));
+
+    // Nobody earns on a record nothing refreshed for hours (the bot was away when they left), and
+    // the stale records are dropped.
+    sim.app.shift_clock(chrono::Duration::hours(9));
+    pinchora_commands::voice_tick(&sim.app).await.expect("tick");
+    assert_eq!(sim.server_xp(listener).await, 60);
+    assert!(
+        sim.app
+            .cache
+            .map_all(&format!("vc:{}", sim.guild))
+            .await
+            .unwrap()
+            .is_empty()
+    );
+}
+
+#[tokio::test]
+async fn level_ups_follow_the_mode_and_fill_their_placeholders() {
+    let Some(mut sim) = Sim::new("level_ups_follow_the_mode_and_fill_their_placeholders").await else {
+        return;
+    };
+    let admin = unique();
+    let (announce, chatty) = (unique(), unique());
+    let novice_id = unique();
+    let novice = sim.guild_role(novice_id, "Reef Novice", 2);
+    sim.permissions = MANAGE_GUILD;
+    let level_up = |sim: &Sim, user: u64| {
+        let (db, guild) = (sim.app.db.clone(), sim.guild);
+        async move {
+            db.add_message_xp(guild, user, 99, 0).await.unwrap();
+        }
+    };
+
+    // The default message when nothing is set: where the member chatted, with no {role} to fill.
+    let first = unique();
+    level_up(&sim, first).await;
+    sim.say_in(first, chatty, &[]).await;
+    let posts = sim.posts();
+    assert!(
+        in_channel(&posts, chatty)
+            .iter()
+            .any(|p| p.content().contains(&format!("<@{first}> reached **level 1**"))),
+        "the default message, in the channel they chatted in"
+    );
+
+    // Placeholders: {user} {level} {server} {role}; with no reward role the {role} is empty.
+    let template = "GG {user}: level {level} in {server}! New role: [{role}]";
+    let reply = sim
+        .command_resolved(
+            admin,
+            "config",
+            json!([sub(
+                "leveling",
+                vec![text_option("message", template), channel_option("channel", announce)]
+            )]),
+            resolved_channels(&[announce]),
+        )
+        .await;
+    assert!(
+        reply.field("Leveling").contains(&format!("in <#{announce}>")),
+        "{}",
+        reply.field("Leveling")
+    );
+    let second = unique();
+    level_up(&sim, second).await;
+    sim.say_in(second, chatty, &[]).await;
+    let posts = sim.posts();
+    let text = in_channel(&posts, announce)
+        .first()
+        .map(|p| p.content().to_owned())
+        .expect("a post in the level-up channel");
+    assert_eq!(text, format!("GG <@{second}>: level 1 in {GUILD_NAME}! New role: []"));
+
+    // With a reward role, {role} is the role they just earned; the role itself is given first.
+    sim.command_resolved(
+        admin,
+        "config",
+        json!([group(
+            "level-roles",
+            sub("add", vec![int_option("level", 1), role_option("role", &novice)])
+        )]),
+        resolved(&[], &[&novice]),
+    )
+    .await;
+    let third = unique();
+    level_up(&sim, third).await;
+    sim.say_in(third, chatty, &[]).await;
+    assert_eq!(sim.role_changes(), vec![format!("PUT {third} {novice_id}")]);
+    let posts = sim.posts();
+    let text = in_channel(&posts, announce)
+        .first()
+        .map(|p| p.content().to_owned())
+        .expect("a post");
+    assert_eq!(
+        text,
+        format!("GG <@{third}>: level 1 in {GUILD_NAME}! New role: [<@&{novice_id}>]")
+    );
+
+    // Mode `current`: always where they chatted, whatever channel is set.
+    sim.command(
+        admin,
+        "config",
+        json!([sub("leveling", vec![text_option("mode", "current")])]),
+    )
+    .await;
+    let fourth = unique();
+    level_up(&sim, fourth).await;
+    sim.say_in(fourth, chatty, &[]).await;
+    let posts = sim.posts();
+    assert_eq!(in_channel(&posts, chatty).len(), 1, "posted where they chatted");
+    assert!(in_channel(&posts, announce).is_empty());
+    sim.role_changes();
+
+    // Mode `dm`: a direct message, with the role's name, since a mention does not render there.
+    sim.command(
+        admin,
+        "config",
+        json!([sub("leveling", vec![text_option("mode", "dm")])]),
+    )
+    .await;
+    let fifth = unique();
+    level_up(&sim, fifth).await;
+    sim.say_in(fifth, chatty, &[]).await;
+    let posts = sim.posts();
+    assert!(in_channel(&posts, chatty).is_empty() && in_channel(&posts, announce).is_empty());
+    let dm = in_channel(&posts, DM_CHANNEL_ID);
+    assert_eq!(dm.len(), 1, "one direct message");
+    assert_eq!(
+        dm[0].content(),
+        format!("GG <@{fifth}>: level 1 in {GUILD_NAME}! New role: [Reef Novice]")
+    );
+    assert_eq!(sim.role_changes(), vec![format!("PUT {fifth} {novice_id}")]);
+
+    // Closed direct messages are not an error, and the level still counts.
+    DMS_CLOSED.store(true, Ordering::SeqCst);
+    let sixth = unique();
+    level_up(&sim, sixth).await;
+    sim.say_in(sixth, chatty, &[]).await;
+    DMS_CLOSED.store(false, Ordering::SeqCst);
+    assert!(sim.posts().is_empty());
+    assert!(sim.server_xp(sixth).await >= 100);
+    assert_eq!(
+        sim.role_changes(),
+        vec![format!("PUT {sixth} {novice_id}")],
+        "the role does not depend on the DM"
+    );
+
+    // Mode `off`: no message anywhere, the reward role still arrives.
+    sim.command(
+        admin,
+        "config",
+        json!([sub("leveling", vec![text_option("mode", "off")])]),
+    )
+    .await;
+    let seventh = unique();
+    level_up(&sim, seventh).await;
+    sim.say_in(seventh, chatty, &[]).await;
+    assert!(sim.posts().is_empty());
+    assert_eq!(sim.role_changes(), vec![format!("PUT {seventh} {novice_id}")]);
+
+    // Back to `channel`: the level-up channel again.
+    sim.command(
+        admin,
+        "config",
+        json!([sub("leveling", vec![text_option("mode", "channel")])]),
+    )
+    .await;
+    let eighth = unique();
+    level_up(&sim, eighth).await;
+    sim.say_in(eighth, chatty, &[]).await;
+    let posts = sim.posts();
+    assert_eq!(in_channel(&posts, announce).len(), 1);
+}
+
+#[tokio::test]
+async fn the_weekly_board_counts_this_week_and_shows_last_weeks_podium() {
+    let Some(mut sim) = Sim::new("the_weekly_board_counts_this_week_and_shows_last_weeks_podium").await else {
+        return;
+    };
+    let (chatter, early, mid, late, fourth) = (unique(), unique(), unique(), unique(), unique());
+    let week = pinchora_core::leveling::week_start(sim.app.now());
+    let grant = |xp| pinchora_db::XpGrant {
+        server_xp: xp,
+        global_xp: 0,
+        points: 0,
+    };
+
+    // This week: one chat tick, one big grant.
+    sim.say(chatter, &[]).await;
+    sim.app.db.add_xp(sim.guild, mid, grant(900), week).await.unwrap();
+    let all_time = sim.app.db.guild_leaderboard(sim.guild, 10, 0).await.unwrap();
+    assert_eq!(all_time[0].user_id as u64, mid);
+
+    // Nobody earned last week yet: no podium, the usual card size.
+    let board = sim
+        .command(chatter, "leaderboard", json!([text_option("board", "weekly")]))
+        .await;
+    assert_eq!(board.files.len(), 1);
+    assert_eq!(png_height(&board), 716, "no podium without a last week");
+    assert!(board.button("▶").disabled && board.button("◀").disabled);
+
+    // Last week's results (stored under last week's key) show up under the board.
+    let last = week - chrono::Duration::weeks(1);
+    for (user, xp) in [(early, 5_200), (late, 800), (fourth, 90), (mid, 3_100)] {
+        sim.app.db.add_xp(sim.guild, user, grant(xp), last).await.unwrap();
+    }
+    let board = sim
+        .command(chatter, "leaderboard", json!([text_option("board", "weekly")]))
+        .await;
+    assert_eq!(png_height(&board), 826, "the podium adds a panel");
+    // Its page buttons keep the weekly board.
+    let id = board.button("◀").custom_id.clone().unwrap();
+    assert_eq!(id, "lb:weekly:0");
+    let again = sim.component(chatter, &id, &[], &board).await;
+    assert_eq!(png_height(&again), 826);
+
+    // The server board is untouched by weeks.
+    let server = sim.command(chatter, "leaderboard", json!([])).await;
+    assert_eq!(png_height(&server), 716);
+
+    // A week later, this week's results are last week's: the podium shows them, the board starts again.
+    sim.app.shift_clock(chrono::Duration::weeks(1));
+    let next = sim
+        .command(chatter, "leaderboard", json!([text_option("board", "weekly")]))
+        .await;
+    assert_eq!(png_height(&next), 826);
+    let new_week = pinchora_core::leveling::week_start(sim.app.now());
+    assert_eq!(new_week, week + chrono::Duration::weeks(1));
+    assert!(
+        sim.app
+            .db
+            .weekly_leaderboard(sim.guild, new_week, 10, 0)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    let podium = sim.app.db.weekly_leaderboard(sim.guild, week, 3, 0).await.unwrap();
+    assert_eq!(
+        podium.iter().map(|r| r.user_id as u64).collect::<Vec<_>>(),
+        vec![mid, chatter]
+    );
+}
+
+/// `/rep target` from `from`, where the target holds `held` here.
+async fn give_rep(sim: &mut Sim, from: u64, target: u64, held: &[u64]) -> Reply {
+    let options = json!([user_option("user", target)]);
+    sim.command_resolved(from, "rep", options, resolved_member(target, held))
+        .await
+}
+
+#[tokio::test]
+async fn reputation_roles_are_given_when_a_point_lands() {
+    let Some(mut sim) = Sim::new("reputation_roles_are_given_when_a_point_lands").await else {
+        return;
+    };
+    let admin = unique();
+    let (target, g1, g2, g3, g4, g5) = (unique(), unique(), unique(), unique(), unique(), unique());
+    let (trusted_id, legend_id, gone_id) = (unique(), unique(), unique());
+    let trusted = sim.guild_role(trusted_id, "Trusted", 2);
+    let legend = sim.guild_role(legend_id, "Legend", 3);
+    let gone = sim.guild_role(gone_id, "Doomed", 4);
+    sim.permissions = MANAGE_GUILD;
+    let add = |reputation: i64, role: &Value| {
+        json!([group(
+            "rep-roles",
+            sub(
+                "add",
+                vec![int_option("reputation", reputation), role_option("role", role)]
+            )
+        )])
+    };
+
+    // The same safety checks as level roles.
+    let above = role_json(unique(), "Boss", BOT_ROLE_POSITION + 5, false);
+    let reply = sim
+        .command_resolved(admin, "config", add(3, &above), resolved(&[], &[&above]))
+        .await;
+    assert!(reply.content().contains("above my highest role"), "{}", reply.content());
+    let managed = role_json(unique(), "SomeBot", 1, true);
+    let reply = sim
+        .command_resolved(admin, "config", add(3, &managed), resolved(&[], &[&managed]))
+        .await;
+    assert!(
+        reply.content().contains("managed by an integration"),
+        "{}",
+        reply.content()
+    );
+    let everyone = role_json(sim.guild, "@everyone", 0, false);
+    let reply = sim
+        .command_resolved(admin, "config", add(3, &everyone), resolved(&[], &[&everyone]))
+        .await;
+    assert!(reply.content().contains("@everyone"), "{}", reply.content());
+    let empty = sim
+        .command(admin, "config", json!([group("rep-roles", sub("list", vec![]))]))
+        .await;
+    assert!(
+        empty.content().contains("No reputation roles yet"),
+        "{}",
+        empty.content()
+    );
+
+    for (reputation, role) in [(3, &trusted), (5, &legend), (4, &gone)] {
+        let reply = sim
+            .command_resolved(admin, "config", add(reputation, role), resolved(&[], &[role]))
+            .await;
+        assert!(
+            reply.content().contains(&format!("**{reputation}** reputation")),
+            "{}",
+            reply.content()
+        );
+    }
+    let list = sim
+        .command(admin, "config", json!([group("rep-roles", sub("list", vec![]))]))
+        .await;
+    assert_eq!(
+        list.description(),
+        format!(
+            "**3** reputation · <@&{trusted_id}>\n**4** reputation · <@&{gone_id}>\n**5** reputation · <@&{legend_id}>"
+        )
+    );
+
+    sqlx::query("INSERT INTO users (id, reputation) VALUES ($1, 1) ON CONFLICT (id) DO UPDATE SET reputation = 1")
+        .bind(target as i64)
+        .execute(sim.app.db.pool())
+        .await
+        .unwrap();
+
+    // 1 -> 2: no role yet. 2 -> 3: Trusted, announced under the point.
+    let reply = give_rep(&mut sim, g1, target, &[]).await;
+    assert!(
+        reply.description().contains("They now have **2**") && !reply.description().contains("earned"),
+        "{}",
+        reply.description()
+    );
+    assert!(sim.role_changes().is_empty());
+    let reply = give_rep(&mut sim, g2, target, &[]).await;
+    assert!(
+        reply.description().contains("They now have **3**"),
+        "{}",
+        reply.description()
+    );
+    assert!(
+        reply.description().contains(&format!("earned <@&{trusted_id}>!")),
+        "{}",
+        reply.description()
+    );
+    assert_eq!(sim.role_changes(), vec![format!("PUT {target} {trusted_id}")]);
+
+    // 3 -> 4: Doomed, a role somebody deletes; the point still lands and the role leaves the list.
+    sim.delete_role(gone_id);
+    let reply = give_rep(&mut sim, g3, target, &[trusted_id]).await;
+    assert!(
+        reply.description().contains("They now have **4**") && !reply.description().contains("earned"),
+        "{}",
+        reply.description()
+    );
+    assert!(sim.role_changes().is_empty());
+    assert_eq!(
+        sim.app.db.rep_roles(sim.guild).await.unwrap().len(),
+        2,
+        "the deleted role is forgotten"
+    );
+
+    // 4 -> 5: Legend, while Trusted (already held) is not given twice. Discord refusing a role does
+    // not stop the point.
+    sim.allow_role_changes(false);
+    let reply = give_rep(&mut sim, g4, target, &[trusted_id]).await;
+    assert!(
+        reply.description().contains("They now have **5**") && !reply.description().contains("earned"),
+        "{}",
+        reply.description()
+    );
+    sim.allow_role_changes(true);
+    let reply = give_rep(&mut sim, g5, target, &[trusted_id]).await;
+    assert!(
+        reply.description().contains(&format!("earned <@&{legend_id}>!")),
+        "{}",
+        reply.description()
+    );
+    assert!(!reply.description().contains(&format!("earned <@&{trusted_id}>")));
+    assert_eq!(sim.role_changes(), vec![format!("PUT {target} {legend_id}")]);
+
+    // Removing a reputation role stops it being given.
+    let removed = sim
+        .command(
+            admin,
+            "config",
+            json!([group("rep-roles", sub("remove", vec![role_option("role", &legend)]))]),
+        )
+        .await;
+    assert!(
+        removed.content().contains("no longer a reputation role"),
+        "{}",
+        removed.content()
+    );
+    let removed = sim
+        .command(
+            admin,
+            "config",
+            json!([group("rep-roles", sub("remove", vec![role_option("role", &legend)]))]),
+        )
+        .await;
+    assert!(
+        removed.content().contains("isn't a reputation role"),
+        "{}",
+        removed.content()
+    );
+    let _ = gone;
 }

@@ -97,8 +97,9 @@ pub(crate) async fn unassignable(app: &App, guild: u64, role: &Role) -> Option<S
     }
 }
 
-/// Gives and takes the level roles a member at `level` should hold, as `(added, removed)`.
-/// Discord refusals are logged and skipped; a role that no longer exists is dropped from the rewards.
+/// Gives and takes the level roles a member at `level` should hold, as the roles given and how many
+/// were taken. Discord refusals are logged and skipped; a role that no longer exists is dropped from
+/// the rewards.
 pub(crate) async fn apply_level_roles(
     app: &App,
     guild: u64,
@@ -107,10 +108,10 @@ pub(crate) async fn apply_level_roles(
     current: &[u64],
     rewards: &[LevelReward],
     stack: bool,
-) -> (usize, usize) {
+) -> (Vec<u64>, usize) {
     let (add, remove) = leveling::role_changes(rewards, level, stack, current);
     let (guild_id, user_id) = (Id::new(guild.max(1)), Id::new(user.max(1)));
-    let (mut added, mut removed) = (0, 0);
+    let (mut added, mut removed) = (Vec::new(), 0);
     for role in add {
         match app
             .http
@@ -118,7 +119,7 @@ pub(crate) async fn apply_level_roles(
             .reason("Level reward")
             .await
         {
-            Ok(_) => added += 1,
+            Ok(_) => added.push(role),
             Err(error) => {
                 tracing::warn!(guild, user, role, %error, "could not give a level role");
                 if role_is_gone(&error)
@@ -143,15 +144,72 @@ pub(crate) async fn apply_level_roles(
     (added, removed)
 }
 
-/// Applies the server's level roles after `user` reached `level`. Never fails the caller.
-pub(crate) async fn level_up_roles(app: &App, guild: u64, user: u64, level: u32, current: &[u64], stack: bool) {
+/// Applies the server's level roles after `user` reached `level`. Never fails the caller. Returns the
+/// role they just earned: of the roles given, the one for the highest level.
+pub(crate) async fn level_up_roles(
+    app: &App,
+    guild: u64,
+    user: u64,
+    level: u32,
+    current: &[u64],
+    stack: bool,
+) -> Option<u64> {
     match level_rewards(app, guild).await {
         Ok(rewards) if !rewards.is_empty() => {
-            apply_level_roles(app, guild, user, level, current, &rewards, stack).await;
+            let (added, _) = apply_level_roles(app, guild, user, level, current, &rewards, stack).await;
+            rewards
+                .iter()
+                .filter(|r| added.contains(&r.role_id))
+                .max_by_key(|r| (r.level, r.role_id))
+                .map(|r| r.role_id)
         }
-        Ok(_) => {}
-        Err(error) => tracing::warn!(guild, %error, "could not load the level roles"),
+        Ok(_) => None,
+        Err(error) => {
+            tracing::warn!(guild, %error, "could not load the level roles");
+            None
+        }
     }
+}
+
+/// Gives `user` the reputation roles their `total` earns that they do not hold yet, and returns the
+/// roles given. Reputation roles always stack. Never fails the caller; a role that no longer exists
+/// is dropped from the rewards.
+pub(crate) async fn give_rep_roles(app: &App, guild: u64, user: u64, total: i32, current: &[u64]) -> Vec<u64> {
+    let rewards: Vec<LevelReward> = match app.db.rep_roles(guild).await {
+        Ok(rows) => rows
+            .iter()
+            .map(|r| LevelReward {
+                level: r.reputation.max(0) as u32,
+                role_id: r.role_id as u64,
+            })
+            .collect(),
+        Err(error) => {
+            tracing::warn!(guild, %error, "could not load the reputation roles");
+            return Vec::new();
+        }
+    };
+    let (add, _) = leveling::role_changes(&rewards, total.max(0) as u32, true, current);
+    let (guild_id, user_id) = (Id::new(guild.max(1)), Id::new(user.max(1)));
+    let mut given = Vec::new();
+    for role in add {
+        match app
+            .http
+            .add_guild_member_role(guild_id, user_id, Id::new(role.max(1)))
+            .reason("Reputation reward")
+            .await
+        {
+            Ok(_) => given.push(role),
+            Err(error) => {
+                tracing::warn!(guild, user, role, %error, "could not give a reputation role");
+                if role_is_gone(&error)
+                    && let Err(error) = app.db.forget_role(guild, role).await
+                {
+                    tracing::warn!(guild, role, %error, "could not drop a deleted reputation role");
+                }
+            }
+        }
+    }
+    given
 }
 
 /// Gives a new member the server's join role. Never fails the caller; a role that no longer exists

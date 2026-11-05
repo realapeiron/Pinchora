@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use pinchora_core::leveling;
-use pinchora_render::{LeaderboardCard, LeaderboardEntry, Theme, placeholder_avatar};
+use pinchora_core::leveling::{self, week_start};
+use pinchora_render::{LastWeekEntry, LeaderboardCard, LeaderboardEntry, Theme, placeholder_avatar};
 use twilight_interactions::command::{CommandModel, CommandOption, CreateCommand, CreateOption};
 use twilight_model::channel::message::{
     Component,
@@ -23,6 +23,8 @@ pub enum Board {
     Server,
     #[option(name = "This server (points)", value = "points")]
     ServerPoints,
+    #[option(name = "Weekly XP", value = "weekly")]
+    Weekly,
     #[option(name = "Global (XP)", value = "xp")]
     GlobalXp,
     #[option(name = "Global (shells)", value = "shells")]
@@ -34,6 +36,7 @@ impl Board {
         match raw {
             "server" => Some(Self::Server),
             "points" => Some(Self::ServerPoints),
+            "weekly" => Some(Self::Weekly),
             "xp" => Some(Self::GlobalXp),
             "shells" => Some(Self::GlobalShells),
             _ => None,
@@ -52,7 +55,7 @@ impl Leaderboard {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
         let guild = cx.guild_id();
         let board = match (self.board, guild) {
-            (Some(Board::Server | Board::ServerPoints) | None, None) => Board::GlobalXp,
+            (Some(Board::Server | Board::ServerPoints | Board::Weekly) | None, None) => Board::GlobalXp,
             (Some(b), _) => b,
             (None, Some(_)) => Board::Server,
         };
@@ -72,17 +75,44 @@ pub(crate) async fn on_button(cx: &Cx, mut args: std::str::Split<'_, char>) -> a
     cx.update(data).await
 }
 
+/// The top three of the week starting `week`, for the recap under the weekly board.
+async fn last_week_podium(app: &Arc<App>, guild: u64, week: chrono::NaiveDate) -> anyhow::Result<Vec<LastWeekEntry>> {
+    let rows = app.db.weekly_leaderboard(guild, week, 3, 0).await?;
+    let mut podium = Vec::with_capacity(rows.len());
+    for (i, row) in rows.iter().enumerate() {
+        let name = app
+            .user(row.user_id as u64)
+            .await
+            .map_or_else(|| "Unknown user".to_owned(), |u| display_name(&u, None));
+        podium.push(LastWeekEntry {
+            rank: i as i64 + 1,
+            name,
+            value: format!("{} XP", thousands(row.value)),
+        });
+    }
+    Ok(podium)
+}
+
 /// One page as a card image with the ◀ ▶ buttons; the image replaces whatever message it lands on.
 async fn page(app: &Arc<App>, board: Board, guild: Option<u64>, page: u32) -> anyhow::Result<InteractionResponseData> {
     let offset = i64::from(page) * PAGE_SIZE;
     // The server boards need a server; anywhere else a stale button shows global XP.
     let board = match (board, guild) {
-        (Board::Server | Board::ServerPoints, None) => Board::GlobalXp,
+        (Board::Server | Board::ServerPoints | Board::Weekly, None) => Board::GlobalXp,
         (b, _) => b,
     };
     // Fetch one extra row to know whether a next page exists.
     let mut points_name = String::new();
+    let mut last_week = Vec::new();
     let (mut rows, title) = match (board, guild) {
+        (Board::Weekly, Some(g)) => {
+            let week = week_start(app.now());
+            last_week = last_week_podium(app, g, week - chrono::Duration::weeks(1)).await?;
+            (
+                app.db.weekly_leaderboard(g, week, PAGE_SIZE + 1, offset).await?,
+                "Weekly XP".to_owned(),
+            )
+        }
         (Board::Server, Some(g)) => (
             app.db.guild_leaderboard(g, PAGE_SIZE + 1, offset).await?,
             "Server leaderboard".to_owned(),
@@ -127,6 +157,7 @@ async fn page(app: &Arc<App>, board: Board, guild: Option<u64>, page: u32) -> an
         let (value, detail) = match board {
             Board::GlobalShells => (thousands(row.value), "SHELLS".to_owned()),
             Board::ServerPoints => (thousands(row.value), points_name.to_uppercase()),
+            Board::Weekly => (thousands(row.value), "XP THIS WEEK".to_owned()),
             _ => (
                 format!("LV {}", leveling::level_of(row.value)),
                 format!("{} XP", thousands(row.value)),
@@ -148,6 +179,7 @@ async fn page(app: &Arc<App>, board: Board, guild: Option<u64>, page: u32) -> an
                 title,
                 entries,
                 page,
+                last_week,
                 theme: Theme::reef(),
             })
         })
@@ -156,6 +188,7 @@ async fn page(app: &Arc<App>, board: Board, guild: Option<u64>, page: u32) -> an
     let key = match board {
         Board::Server => "server",
         Board::ServerPoints => "points",
+        Board::Weekly => "weekly",
         Board::GlobalXp => "xp",
         Board::GlobalShells => "shells",
     };

@@ -1,9 +1,20 @@
+use chrono::{NaiveDate, Utc};
+use pinchora_core::leveling::week_start;
+
 use crate::{Db, sql_id};
 
 #[derive(Debug, Clone, Copy)]
 pub struct XpGain {
     pub old_xp: i64,
     pub new_xp: i64,
+}
+
+/// What one chat tick earns: server XP and points, and the share that goes to the user's global XP.
+#[derive(Debug, Clone, Copy)]
+pub struct XpGrant {
+    pub server_xp: i64,
+    pub global_xp: i64,
+    pub points: i64,
 }
 
 #[derive(Debug, Clone, Copy, sqlx::FromRow)]
@@ -35,6 +46,17 @@ impl Db {
         amount: i64,
         points: i64,
     ) -> anyhow::Result<XpGain> {
+        let grant = XpGrant {
+            server_xp: amount,
+            global_xp: amount,
+            points,
+        };
+        self.add_xp(guild_id, user_id, grant, week_start(Utc::now())).await
+    }
+
+    /// Like [`Db::add_message_xp`] with the server and global shares apart, and the server XP counted
+    /// toward the weekly board of the week starting `week`.
+    pub async fn add_xp(&self, guild_id: u64, user_id: u64, grant: XpGrant, week: NaiveDate) -> anyhow::Result<XpGain> {
         let (new_xp,): (i64,) = sqlx::query_as(
             "WITH m AS (
                  INSERT INTO members (guild_id, user_id, xp, messages, points, last_xp_at)
@@ -46,19 +68,25 @@ impl Db {
                      last_xp_at = now()
                  RETURNING xp
              ), u AS (
-                 INSERT INTO users (id, xp) VALUES ($2, $3)
+                 INSERT INTO users (id, xp) VALUES ($2, $5)
                  ON CONFLICT (id) DO UPDATE SET xp = users.xp + EXCLUDED.xp
+             ), w AS (
+                 INSERT INTO weekly_xp (guild_id, week, user_id, xp)
+                 SELECT $1, $6, $2, $3::BIGINT WHERE $3::BIGINT > 0
+                 ON CONFLICT (guild_id, week, user_id) DO UPDATE SET xp = weekly_xp.xp + EXCLUDED.xp
              )
              SELECT xp FROM m",
         )
         .bind(sql_id(guild_id))
         .bind(sql_id(user_id))
-        .bind(amount)
-        .bind(points)
+        .bind(grant.server_xp)
+        .bind(grant.points)
+        .bind(grant.global_xp)
+        .bind(week)
         .fetch_one(self.pool())
         .await?;
         Ok(XpGain {
-            old_xp: new_xp - amount,
+            old_xp: new_xp - grant.server_xp,
             new_xp,
         })
     }

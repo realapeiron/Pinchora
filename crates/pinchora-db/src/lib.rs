@@ -13,6 +13,7 @@ mod shop;
 mod social;
 mod stalls;
 mod users;
+mod xp;
 
 use std::time::Duration;
 
@@ -28,13 +29,14 @@ pub use house::{
     HouseRow, InventoryRow, NewRoom, PlaceOutcome, PlacementRow, Refusal, RestoreOutcome, RoomChange, RoomRow,
     UpgradeOutcome,
 };
-pub use members::{LeaderboardRow, MemberRank, XpGain};
+pub use members::{LeaderboardRow, MemberRank, XpGain, XpGrant};
 pub use panels::{MAX_PANEL_ROLES, PanelRoleRow, PanelRow};
 pub use pets::PetRow;
-pub use rewards::{LevelRoleRow, MAX_LEVEL_ROLES, MAX_STORE_ITEMS, StoreBuy, StoreItem};
+pub use rewards::{LevelRoleRow, MAX_LEVEL_ROLES, MAX_REP_ROLES, MAX_STORE_ITEMS, RepRoleRow, StoreBuy, StoreItem};
 pub use shop::{BuyOutcome, Currency, MarketRow, VisitOutcome};
 pub use stalls::{ListingRow, MAX_LISTINGS, STALL_FEE_PERCENT, StallBuy};
 pub use users::UserRow;
+pub use xp::{MAX_XP_RULES, XpTarget};
 
 /// Handle to PostgreSQL. Cheap to clone.
 #[derive(Clone, Debug)]

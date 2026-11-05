@@ -1,7 +1,8 @@
 use std::{sync::Arc, time::Duration};
 
-use pinchora_core::leveling::{MESSAGE_XP, MESSAGE_XP_COOLDOWN_SECS, level_of};
-use pinchora_render::{LevelUpCard, Theme, WelcomeCard};
+use pinchora_core::leveling::{MESSAGE_XP, MESSAGE_XP_COOLDOWN_SECS, level_of, scale, week_start};
+use pinchora_db::XpGrant;
+use pinchora_render::{Theme, WelcomeCard};
 use twilight_model::{
     channel::message::{AllowedMentions, MessageType},
     gateway::payload::incoming::{
@@ -13,9 +14,10 @@ use twilight_model::{
 
 use crate::{
     App,
-    commands::customize,
+    leveling::{self, LevelUp},
     roles, server_log,
     util::{display_name, fill, mention},
+    voice_xp,
 };
 
 pub const DEFAULT_LEVELUP: &str = "🎉 {user} reached **level {level}**!";
@@ -55,6 +57,14 @@ pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<(
     } else {
         0
     };
+    let held: Vec<u64> = msg
+        .member
+        .as_ref()
+        .map(|m| m.roles.iter().map(|r| r.get()).collect())
+        .unwrap_or_default();
+    // The server's multipliers scale its own XP and points; the global XP stays what it is.
+    let multiplier = app.xp_rules(g).await?.multiplier(msg.channel_id.get(), &held);
+    let points = scale(points, multiplier);
     if !settings.leveling_enabled {
         if points > 0 {
             app.db.give_points(g, u, points).await?;
@@ -63,8 +73,13 @@ pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<(
         return Ok(());
     }
     let amount = rand::random_range(MESSAGE_XP);
-    let gain = app.db.add_message_xp(g, u, amount, points).await?;
-    metrics::counter!("pinchora_xp_granted_total").increment(amount as u64);
+    let grant = XpGrant {
+        server_xp: scale(amount, multiplier),
+        global_xp: amount,
+        points,
+    };
+    let gain = app.db.add_xp(g, u, grant, week_start(app.now())).await?;
+    metrics::counter!("pinchora_xp_granted_total").increment(grant.server_xp as u64);
     metrics::counter!("pinchora_points_granted_total").increment(points as u64);
     app.quest(u, pinchora_game::quests::QuestKind::Chat).await;
 
@@ -72,49 +87,21 @@ pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<(
     if after <= before {
         return Ok(());
     }
-    // Roles first: they must not depend on the announcement going out.
-    let held: Vec<u64> = msg
-        .member
-        .as_ref()
-        .map(|m| m.roles.iter().map(|r| r.get()).collect())
-        .unwrap_or_default();
-    roles::level_up_roles(&app, g, u, after, &held, settings.level_roles_stack).await;
-    let channel = settings
-        .levelup_channel_id
-        .map_or(msg.channel_id, |id| Id::new(id as u64));
-    let text = settings
-        .levelup_message
-        .as_deref()
-        .unwrap_or(DEFAULT_LEVELUP)
-        .replace("{user}", &mention(u))
-        .replace("{level}", &after.to_string());
-    let mentions = AllowedMentions {
-        users: vec![msg.author.id],
-        ..Default::default()
-    };
-    let name = display_name(&msg.author, msg.member.as_ref().and_then(|m| m.nick.as_deref()));
-    let avatar = app.avatar(&msg.author, LevelUpCard::AVATAR_SIZE, Some(34)).await;
-    let accent = app.db.user(u).await.ok().and_then(|r| r.accent_color);
-    let png = app
-        .render(move |r| {
-            r.level_up_card(&LevelUpCard {
-                display_name: &name,
-                avatar_png: &avatar,
-                from: before,
-                to: after,
-                theme: Theme::reef().with_accent(accent.map(|c| c as u32)),
-            })
-        })
-        .await?;
-    app.http
-        .create_message(channel)
-        .content(&text)
-        .allowed_mentions(Some(&mentions))
-        .attachments(&[Attachment::from_bytes("levelup.png".to_owned(), png, 1)])
-        .await?;
-    // The new level may have just earned a badge: say so right under the level-up.
-    customize::announce_in(&app, channel, u).await;
-    Ok(())
+    leveling::level_up(
+        &app,
+        &settings,
+        LevelUp {
+            guild: g,
+            user: u,
+            before,
+            after,
+            author: Some(&msg.author),
+            nick: msg.member.as_ref().and_then(|m| m.nick.as_deref()),
+            roles: &held,
+            here: msg.channel_id,
+        },
+    )
+    .await
 }
 
 /// Gives the join role, logs the join, and posts a welcome card when the server has them turned on.
@@ -237,7 +224,7 @@ pub async fn on_ban_remove(app: Arc<App>, event: BanRemove) -> anyhow::Result<()
     Ok(())
 }
 
-/// Logs voice joins, leaves and moves.
+/// Logs voice joins, leaves and moves, and keeps track of who sits in voice for voice XP.
 pub async fn on_voice_state_update(app: Arc<App>, event: VoiceStateUpdate) -> anyhow::Result<()> {
     let state = event.0;
     let Some(guild) = state.guild_id else {
@@ -245,5 +232,6 @@ pub async fn on_voice_state_update(app: Arc<App>, event: VoiceStateUpdate) -> an
     };
     let settings = app.guild_settings(guild.get()).await?;
     server_log::voice_updated(&app, &settings, guild.get(), &state).await;
+    voice_xp::track(&app, guild.get(), &state).await;
     Ok(())
 }

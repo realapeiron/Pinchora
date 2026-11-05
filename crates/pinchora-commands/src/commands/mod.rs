@@ -26,6 +26,7 @@ pub(crate) mod profile;
 pub(crate) mod quests;
 mod rank;
 mod rep;
+mod rep_roles;
 pub(crate) mod role_panels;
 pub(crate) mod rps;
 pub(crate) mod shop;
@@ -35,6 +36,7 @@ pub(crate) mod trivia;
 mod undo;
 mod utilities;
 pub(crate) mod wordle;
+mod xp;
 
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::application::{command::Command, interaction::application_command::CommandData};
