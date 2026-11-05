@@ -441,6 +441,11 @@ pub(crate) async fn on_market_buy(cx: &Cx, mut args: Split<'_, char>, value: Opt
         return cx.reply_ephemeral("That item no longer exists.").await;
     };
     let outcome = cx.app.db.market_buy(cx.author()?.id.get(), hour, item_id).await?;
+    if matches!(outcome, BuyOutcome::Bought { .. }) {
+        cx.app
+            .quest(cx.author()?.id.get(), pinchora_game::quests::QuestKind::Buy)
+            .await;
+    }
     let price = cx
         .app
         .db
@@ -471,6 +476,11 @@ pub(crate) async fn on_catalog_buy(cx: &Cx, value: Option<&str>) -> anyhow::Resu
         .db
         .buy_item(cx.author()?.id.get(), &item.id(), item.base.price, currency, 1)
         .await?;
+    if matches!(outcome, BuyOutcome::Bought { .. }) {
+        cx.app
+            .quest(cx.author()?.id.get(), pinchora_game::quests::QuestKind::Buy)
+            .await;
+    }
     cx.reply_ephemeral(buy_text(outcome, &item.name(), item.base.price, item.base.currency))
         .await
 }

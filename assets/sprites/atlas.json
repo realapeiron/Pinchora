@@ -5,87 +5,171 @@
     "w": 62,
     "h": 53
   },
+  "f_acornmarble_island": {
+    "x": 93,
+    "y": 55,
+    "w": 62,
+    "h": 29
+  },
+  "f_acornsun_beacon": {
+    "x": 297,
+    "y": 0,
+    "w": 30,
+    "h": 44
+  },
   "f_beamcast_projector": {
-    "x": 13,
+    "x": 829,
     "y": 55,
     "w": 12,
     "h": 12
   },
+  "f_beamguard_sconce": {
+    "x": 156,
+    "y": 55,
+    "w": 14,
+    "h": 29
+  },
   "f_beamnest_bunk": {
-    "x": 811,
-    "y": 0,
+    "x": 62,
+    "y": 55,
     "w": 30,
     "h": 30
   },
   "f_blinkberry_twin_game": {
-    "x": 500,
+    "x": 671,
     "y": 0,
     "w": 46,
     "h": 35
   },
   "f_blinkslot_cabinet": {
-    "x": 391,
+    "x": 562,
     "y": 0,
     "w": 30,
     "h": 36
   },
   "f_blushbun_bed": {
-    "x": 578,
+    "x": 749,
     "y": 0,
     "w": 30,
     "h": 34
   },
+  "f_blushcheek_lamp": {
+    "x": 658,
+    "y": 55,
+    "w": 12,
+    "h": 17
+  },
+  "f_brineboard_island": {
+    "x": 171,
+    "y": 55,
+    "w": 46,
+    "h": 29
+  },
   "f_buttonbubble_basin": {
-    "x": 780,
-    "y": 0,
+    "x": 0,
+    "y": 55,
     "w": 30,
     "h": 31
   },
+  "f_buttonmix_blender": {
+    "x": 591,
+    "y": 55,
+    "w": 12,
+    "h": 19
+  },
   "f_capsulenap_pod": {
-    "x": 687,
+    "x": 858,
     "y": 0,
     "w": 30,
     "h": 33
   },
   "f_clickbud_screen": {
-    "x": 26,
+    "x": 842,
     "y": 55,
     "w": 12,
     "h": 12
   },
-  "f_clickquay_computer": {
-    "x": 996,
-    "y": 0,
+  "f_clickhalo_lamp": {
+    "x": 619,
+    "y": 55,
     "w": 12,
     "h": 18
   },
+  "f_clickquay_computer": {
+    "x": 632,
+    "y": 55,
+    "w": 12,
+    "h": 18
+  },
+  "f_crumbscale_set": {
+    "x": 712,
+    "y": 55,
+    "w": 12,
+    "h": 16
+  },
+  "f_crumbshine_toaster": {
+    "x": 920,
+    "y": 55,
+    "w": 12,
+    "h": 10
+  },
+  "f_dewloop_lantern": {
+    "x": 645,
+    "y": 55,
+    "w": 12,
+    "h": 18
+  },
+  "f_dunebowl_counter": {
+    "x": 264,
+    "y": 55,
+    "w": 46,
+    "h": 25
+  },
   "f_dunepot_hamper": {
-    "x": 981,
-    "y": 0,
+    "x": 604,
+    "y": 55,
     "w": 14,
     "h": 19
   },
   "f_dunetuck_bed": {
-    "x": 842,
-    "y": 0,
+    "x": 218,
+    "y": 55,
     "w": 30,
     "h": 27
   },
+  "f_dunewick_candle": {
+    "x": 751,
+    "y": 55,
+    "w": 12,
+    "h": 14
+  },
+  "f_fizzchill_cabinet": {
+    "x": 235,
+    "y": 0,
+    "w": 30,
+    "h": 46
+  },
+  "f_fizzflask_lamp": {
+    "x": 725,
+    "y": 55,
+    "w": 12,
+    "h": 16
+  },
   "f_fizzmist_shower": {
-    "x": 422,
+    "x": 593,
     "y": 0,
     "w": 30,
     "h": 36
   },
   "f_fizzscan_terminal": {
-    "x": 39,
+    "x": 855,
     "y": 55,
     "w": 12,
     "h": 12
   },
   "f_foldfern_cot": {
-    "x": 888,
-    "y": 0,
+    "x": 389,
+    "y": 55,
     "w": 14,
     "h": 24
   },
@@ -95,15 +179,27 @@
     "w": 46,
     "h": 47
   },
+  "f_frosttin_lantern": {
+    "x": 671,
+    "y": 55,
+    "w": 12,
+    "h": 17
+  },
+  "f_hemtop_counter": {
+    "x": 435,
+    "y": 55,
+    "w": 30,
+    "h": 22
+  },
   "f_hemwash_basin": {
-    "x": 1009,
-    "y": 0,
+    "x": 684,
+    "y": 55,
     "w": 14,
     "h": 17
   },
   "f_humskein_sound_wall": {
-    "x": 903,
-    "y": 0,
+    "x": 466,
+    "y": 55,
     "w": 46,
     "h": 22
   },
@@ -114,40 +210,100 @@
     "h": 54
   },
   "f_kettlewave_radio": {
-    "x": 0,
+    "x": 764,
+    "y": 55,
+    "w": 12,
+    "h": 14
+  },
+  "f_kettlewink_fridge": {
+    "x": 266,
+    "y": 0,
+    "w": 30,
+    "h": 45
+  },
+  "f_mintwhistle_kettle": {
+    "x": 777,
     "y": 55,
     "w": 12,
     "h": 14
   },
   "f_moonrinse_bath": {
-    "x": 235,
+    "x": 328,
     "y": 0,
     "w": 46,
     "h": 40
   },
+  "f_orbitbake_oven": {
+    "x": 484,
+    "y": 0,
+    "w": 46,
+    "h": 37
+  },
+  "f_orbitview_console": {
+    "x": 311,
+    "y": 55,
+    "w": 46,
+    "h": 25
+  },
+  "f_pagebreak_teacup": {
+    "x": 933,
+    "y": 55,
+    "w": 12,
+    "h": 10
+  },
+  "f_pagecount_calculator": {
+    "x": 816,
+    "y": 55,
+    "w": 12,
+    "h": 13
+  },
   "f_pagehaven_bed": {
-    "x": 718,
+    "x": 889,
     "y": 0,
     "w": 30,
     "h": 33
   },
   "f_patchpillow_bed": {
-    "x": 360,
+    "x": 531,
     "y": 0,
     "w": 30,
     "h": 37
   },
+  "f_patchscreen_television": {
+    "x": 404,
+    "y": 55,
+    "w": 30,
+    "h": 24
+  },
   "f_patchsoak_tub": {
-    "x": 609,
+    "x": 780,
     "y": 0,
     "w": 46,
     "h": 34
   },
+  "f_pebbleclick_remote": {
+    "x": 868,
+    "y": 55,
+    "w": 12,
+    "h": 12
+  },
   "f_pebbleflush_loo": {
-    "x": 873,
-    "y": 0,
+    "x": 249,
+    "y": 55,
     "w": 14,
     "h": 26
+  },
+  "f_pebblewash_sink": {
+    "x": 31,
+    "y": 55,
+    "w": 30,
+    "h": 31
+  },
+  "f_pocketweather_globe": {
+    "x": 422,
+    "y": 0,
+    "w": 30,
+    "h": 38
   },
   "f_polypillow_bed": {
     "x": 110,
@@ -155,26 +311,44 @@
     "w": 46,
     "h": 50
   },
+  "f_reedrest_breadbox": {
+    "x": 946,
+    "y": 55,
+    "w": 12,
+    "h": 9
+  },
   "f_reedroll_bed": {
-    "x": 547,
+    "x": 718,
     "y": 0,
     "w": 30,
     "h": 35
   },
   "f_reedsoap_dish": {
-    "x": 65,
+    "x": 959,
     "y": 55,
     "w": 12,
     "h": 9
   },
   "f_reefcurl_tub": {
-    "x": 453,
+    "x": 624,
     "y": 0,
     "w": 46,
     "h": 36
   },
+  "f_reefsteam_cooker": {
+    "x": 881,
+    "y": 55,
+    "w": 12,
+    "h": 12
+  },
+  "f_rivetpan_range": {
+    "x": 920,
+    "y": 0,
+    "w": 46,
+    "h": 32
+  },
   "f_rivetpipe_shower": {
-    "x": 329,
+    "x": 453,
     "y": 0,
     "w": 30,
     "h": 38
@@ -185,34 +359,76 @@
     "w": 30,
     "h": 47
   },
+  "f_spooldeck_player": {
+    "x": 790,
+    "y": 55,
+    "w": 12,
+    "h": 14
+  },
   "f_sprigfold_towels": {
-    "x": 52,
+    "x": 894,
     "y": 55,
     "w": 12,
     "h": 12
   },
+  "f_sprigmist_humidifier": {
+    "x": 699,
+    "y": 55,
+    "w": 12,
+    "h": 17
+  },
+  "f_sprigseal_jar": {
+    "x": 803,
+    "y": 55,
+    "w": 12,
+    "h": 14
+  },
+  "f_stillbreeze_fan": {
+    "x": 738,
+    "y": 55,
+    "w": 12,
+    "h": 15
+  },
   "f_stillglass_shower": {
-    "x": 656,
+    "x": 827,
     "y": 0,
     "w": 30,
     "h": 34
   },
   "f_stillsoft_bed": {
-    "x": 282,
+    "x": 375,
     "y": 0,
     "w": 46,
     "h": 40
   },
+  "f_stillwarm_stove": {
+    "x": 358,
+    "y": 55,
+    "w": 30,
+    "h": 25
+  },
+  "f_tidechip_mug": {
+    "x": 907,
+    "y": 55,
+    "w": 12,
+    "h": 12
+  },
   "f_tidefold_towel_rail": {
-    "x": 950,
-    "y": 0,
+    "x": 560,
+    "y": 55,
     "w": 30,
     "h": 20
   },
   "f_wishbowl_vanity": {
-    "x": 749,
+    "x": 967,
     "y": 0,
     "w": 30,
     "h": 32
+  },
+  "f_wishfeast_counter": {
+    "x": 513,
+    "y": 55,
+    "w": 46,
+    "h": 21
   }
 }

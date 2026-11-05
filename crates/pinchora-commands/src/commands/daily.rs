@@ -13,7 +13,13 @@ pub struct Daily;
 
 impl Daily {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
-        let embed = match cx.app.db.claim_daily(cx.author()?.id.get()).await? {
+        let outcome = cx.app.db.claim_daily(cx.author()?.id.get()).await?;
+        if matches!(outcome, DailyOutcome::Claimed { .. }) {
+            cx.app
+                .quest(cx.author()?.id.get(), pinchora_game::quests::QuestKind::Daily)
+                .await;
+        }
+        let embed = match outcome {
             DailyOutcome::Claimed {
                 amount,
                 streak,

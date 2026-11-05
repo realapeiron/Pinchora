@@ -101,3 +101,36 @@ impl Cache {
         Ok(self.conn().get_del(format!("{PREFIX}:kv:{key}")).await?)
     }
 }
+
+impl Cache {
+    /// Increments a counter that expires after `ttl`; returns the new value.
+    pub async fn incr(&self, key: &str, ttl: Duration) -> anyhow::Result<i64> {
+        let key = format!("{PREFIX}:n:{key}");
+        let mut conn = self.conn();
+        let (value, _): (i64, i64) = redis::pipe()
+            .atomic()
+            .incr(&key, 1)
+            .expire(&key, ttl.as_secs() as i64)
+            .query_async(&mut conn)
+            .await?;
+        Ok(value)
+    }
+
+    pub async fn counter(&self, key: &str) -> anyhow::Result<i64> {
+        let value: Option<i64> = self.conn().get(format!("{PREFIX}:n:{key}")).await?;
+        Ok(value.unwrap_or(0))
+    }
+
+    /// True only the first time it is called for `key` within `ttl`.
+    pub async fn once(&self, key: &str, ttl: Duration) -> anyhow::Result<bool> {
+        let set: Option<String> = redis::cmd("SET")
+            .arg(format!("{PREFIX}:once:{key}"))
+            .arg(1)
+            .arg("NX")
+            .arg("EX")
+            .arg(ttl.as_secs().max(1))
+            .query_async(&mut self.conn())
+            .await?;
+        Ok(set.is_some())
+    }
+}

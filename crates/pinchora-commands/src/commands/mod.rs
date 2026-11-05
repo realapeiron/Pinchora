@@ -11,6 +11,7 @@ pub(crate) mod leaderboard;
 pub(crate) mod pet;
 mod ping;
 mod profile;
+pub(crate) mod quests;
 mod rank;
 mod rep;
 pub(crate) mod shop;
@@ -58,4 +59,5 @@ commands!(
     fish::Fish,
     gift::Gift,
     duel::DuelCommand,
+    quests::Quests,
 );

@@ -43,6 +43,7 @@ pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<(
     let amount = rand::random_range(MESSAGE_XP);
     let gain = app.db.add_message_xp(g, u, amount).await?;
     metrics::counter!("pinchora_xp_granted_total").increment(amount as u64);
+    app.quest(u, pinchora_game::quests::QuestKind::Chat).await;
 
     let (before, after) = (level_of(gain.old_xp), level_of(gain.new_xp));
     if after <= before {

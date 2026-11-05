@@ -130,6 +130,9 @@ impl HouseCommand {
                     .await?
                 {
                     Some(total) => {
+                        cx.app
+                            .quest(author.id.get(), pinchora_game::quests::QuestKind::Like)
+                            .await;
                         cx.reply_text(format!(
                             "💖 {} liked {}'s house! It has **{total}** like{} now.",
                             crate::util::mention(author.id),
@@ -312,7 +315,7 @@ async fn visit(cx: &Cx, author: &User, target: &ResolvedUser, room: i16) -> anyh
     if house.locked {
         return cx.reply_ephemeral(format!("{name} has locked their house.")).await;
     }
-    let footer = match cx
+    let outcome = cx
         .app
         .db
         .record_visit(
@@ -322,8 +325,13 @@ async fn visit(cx: &Cx, author: &User, target: &ResolvedUser, room: i16) -> anyh
             VISIT_REWARD,
             VISIT_CAP,
         )
-        .await?
-    {
+        .await?;
+    if matches!(outcome, VisitOutcome::Rewarded { .. }) {
+        cx.app
+            .quest(author.id.get(), pinchora_game::quests::QuestKind::Visit)
+            .await;
+    }
+    let footer = match outcome {
         VisitOutcome::Rewarded { reward } if reward > 0 => Some(format!("+{reward} shells for visiting today")),
         VisitOutcome::Rewarded { .. } => Some(format!("You've had your {VISIT_CAP} paid visits today")),
         VisitOutcome::AlreadyToday => None,
@@ -471,6 +479,7 @@ pub(crate) async fn on_edit(cx: &Cx, mut args: Split<'_, char>, value: Option<&s
                 let name = content.item(&item_id).map_or(item_id.clone(), |i| i.name());
                 match outcome {
                     PlaceOutcome::Placed { .. } => {
+                        cx.app.quest(user_id, pinchora_game::quests::QuestKind::Place).await;
                         if !cx.app.db.owns(user_id, &item_id).await? {
                             state.item = None;
                         }

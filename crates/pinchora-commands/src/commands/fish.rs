@@ -157,6 +157,7 @@ pub(crate) async fn on_reel(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
             .await;
     };
     let first = cx.app.db.log_catch(user, &fish.id, size).await?;
+    cx.app.quest(user, pinchora_game::quests::QuestKind::Fish).await;
     let balance = cx.app.db.earn_shells(user, value, "fishing").await?;
     let book = cx.app.db.fish_book_count(user).await?;
     let sprite = cx.app.sprites.fish(&fish.id);

@@ -196,3 +196,18 @@ impl Db {
         Ok(n)
     }
 }
+
+impl Db {
+    /// Pays premium pearls (quest rewards, events).
+    pub async fn earn_pearls(&self, user: u64, amount: i64) -> anyhow::Result<i64> {
+        let (balance,): (i64,) = sqlx::query_as(
+            "INSERT INTO users (id, pearls) VALUES ($1, $2)
+             ON CONFLICT (id) DO UPDATE SET pearls = users.pearls + EXCLUDED.pearls RETURNING pearls",
+        )
+        .bind(sql_id(user))
+        .bind(amount)
+        .fetch_one(self.pool())
+        .await?;
+        Ok(balance)
+    }
+}

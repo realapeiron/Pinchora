@@ -115,6 +115,19 @@ impl App {
             .map_err(|e| anyhow::anyhow!("{e:#}"))
     }
 
+    /// Counts progress on today's quest of `kind`, if the player has that quest today.
+    /// Failures are logged and swallowed: quest progress never breaks a command.
+    pub async fn quest(&self, user: u64, kind: pinchora_game::quests::QuestKind) {
+        let day = chrono::Utc::now().timestamp().div_euclid(86_400);
+        if !pinchora_game::quests::for_day(user, day).iter().any(|q| q.kind == kind) {
+            return;
+        }
+        let key = format!("quest:{day}:{user}:{}", kind.key());
+        if let Err(error) = self.cache.incr(&key, Duration::from_secs(2 * 86_400)).await {
+            tracing::debug!(%error, "quest progress not saved");
+        }
+    }
+
     pub async fn forget_guild_settings(&self, guild_id: u64) {
         self.guild_settings.invalidate(&guild_id).await;
     }

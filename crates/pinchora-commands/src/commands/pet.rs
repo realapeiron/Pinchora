@@ -231,6 +231,7 @@ pub(crate) async fn on_care(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
             xp,
         )
         .await?;
+    cx.app.quest(user, pinchora_game::quests::QuestKind::Care).await;
     let verb = match action {
         Care::Feed => "munches happily",
         Care::Play => "bounces around with you",
