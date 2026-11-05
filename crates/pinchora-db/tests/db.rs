@@ -170,3 +170,67 @@ async fn player_stalls() {
         pinchora_db::StallBuy::Gone
     ));
 }
+
+#[tokio::test]
+async fn market_never_oversells_under_contention() {
+    let Some(db) = db().await else { return };
+    let buyers: [u64; 20] = ids();
+    let hour = -(buyers[0] as i64); // a unique fake hour for this run
+    db.market(hour, &[("legendary_test".into(), 100, 3)]).await.unwrap();
+    for &b in &buyers {
+        db.claim_daily(b).await.unwrap(); // 250 shells each
+    }
+    let tasks: Vec<_> = buyers
+        .iter()
+        .map(|&b| {
+            let db = db.clone();
+            tokio::spawn(async move { db.market_buy(b, hour, "legendary_test").await.unwrap() })
+        })
+        .collect();
+    let mut bought = 0;
+    for t in tasks {
+        if matches!(t.await.unwrap(), pinchora_db::BuyOutcome::Bought { .. }) {
+            bought += 1;
+        }
+    }
+    assert_eq!(bought, 3, "stock of 3 sells exactly 3");
+    let row = &db.market(hour, &[]).await.unwrap()[0];
+    assert_eq!((row.sold, row.stock), (3, 3));
+}
+
+#[tokio::test]
+async fn place_and_pick_up_round_trip() {
+    let Some(db) = db().await else { return };
+    let [user] = ids();
+    let starter = pinchora_db::NewRoom {
+        room_type: "living".into(),
+        wallpaper: "w".into(),
+        floor: "f".into(),
+    };
+    let (_, rooms, created) = db.house(user, &starter).await.unwrap();
+    assert!(created && rooms.len() == 1);
+    assert!(!db.house(user, &starter).await.unwrap().2, "second call finds it");
+
+    db.grant_item(user, "chair", 1).await.unwrap();
+    let placed = db.place_item(user, 0, "chair", 2, 3, false, |_| Ok(())).await.unwrap();
+    let pinchora_db::PlaceOutcome::Placed { id } = placed else {
+        panic!("should place")
+    };
+    assert!(
+        !db.owns(user, "chair").await.unwrap(),
+        "placed items leave the inventory"
+    );
+    assert!(matches!(
+        db.place_item(user, 0, "chair", 4, 3, false, |_| Ok(())).await.unwrap(),
+        pinchora_db::PlaceOutcome::NotOwned
+    ));
+    assert!(matches!(
+        db.place_item(user, 0, "chair", 4, 3, false, |_| Err("blocked".into()))
+            .await
+            .unwrap(),
+        pinchora_db::PlaceOutcome::Blocked(_)
+    ));
+    assert_eq!(db.pick_up(user, id).await.unwrap().as_deref(), Some("chair"));
+    assert!(db.owns(user, "chair").await.unwrap());
+    assert!(db.pick_up(user, id).await.unwrap().is_none());
+}
