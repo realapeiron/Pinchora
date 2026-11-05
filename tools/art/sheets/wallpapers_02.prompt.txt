@@ -1,0 +1,37 @@
+Use your built-in image generation tool to draw ONE sprite sheet for "Pinchora", a cozy pixel-art life game.
+The attached image is the style reference: match its pixel size, outline, shading and mood exactly.
+
+Rules:
+- True pixel art with chunky square pixels, no anti-aliasing, no blur, no gradients, no texture noise.
+- Top-down 3/4 view: we see the top and the front of each object, like the reference.
+- 1-pixel dark outline #1b1d2b around every object, light from the top-left, 2-3 tone shading.
+- Use only these colours: 1b1d2b 0f1631 1d2b53 2e3d75 4a5ba3 8fa0d8 7a2a3a c2413f ff6b4a ff9e7a ffd2c0 fff1e8 e6d3c3 b8a08f 7d6a5f 4a3f3b 5c3a21 8a5a34 b97f4a e0ac6e 1f4d3a 2f7d4f 5bbf6a a6e39a 1f5f8b 3a9bdc 8fd3ff c98a1e ffd166 5a3a7a 9b6bc4 06d6a0.
+- Background: flat pure #00FF00 everywhere around the objects. Nothing else on the background, no floor, no shadows on the background, no text, no labels, no numbers, no grid lines.
+- Draw the objects in a grid in exactly the order listed (row by row, left to right), each one complete and isolated with wide green gaps (at least 40 px) between them; parts of one object must touch each other.
+- Keep relative sizes: a 1-tile object is about as wide as a small chair; a 3-tile object is three times as wide.
+
+Tile sheet: 20 separate SQUARE swatches, each one 16x16 art pixels drawn big, a repeating seamless pattern that fills its whole square edge to edge (no outline around the square).
+Layout: 5 columns x 4 rows, 20 objects in total.
+
+1. Blushbutton Spots — square seamless wallpaper tile: Seamless 16x16: Cream ground, rose rounded squares, mint center dots, lilac tiny pairs.
+2. Rivetsprout Brick — square seamless wallpaper tile: Seamless 16x16: Sand staggered bricks, charcoal mortar, moss worn corners, copper flecks.
+3. Acorncourt Damask — square seamless wallpaper tile: Seamless 16x16: Plum ground, gold acorn silhouettes, cream curled leaves, symmetrical repeating lattice.
+4. Dewpeg Canvas — square seamless wallpaper tile: Seamless 16x16: Moss woven canvas, sand warp lines, navy seam dots, coral cross stitches.
+5. Orbitcrumb Stars — square seamless wallpaper tile: Seamless 16x16: Navy field, sky four pixel stars, cream orbit dashes, gold isolated points.
+6. Fizzfern Grid — square seamless wallpaper tile: Seamless 16x16: Cream enamel squares, mint outlines, lilac corner dots, charcoal fine grid.
+7. Kettlewink Tile — square seamless wallpaper tile: Seamless 16x16: Cream square tiles, moss thin grout, coral dot in every fourth tile.
+8. Humskein Felt — square seamless wallpaper tile: Seamless 16x16: Plum felt field, navy diagonal ridges, sand fiber specks, gold pin dots.
+9. Clickcove Steps — square seamless wallpaper tile: Seamless 16x16: Charcoal field, mint stepped lines, sky square endpoints, coral accent pixels.
+10. Reedpause Weave — square seamless wallpaper tile: Seamless 16x16: Sand reed bands, cream alternating weave, moss fine vertical binding lines.
+11. Dunethread Arches — square seamless wallpaper tile: Seamless 16x16: Sand plaster, coral tiny arch outlines, navy centered diamonds, gold corner dots.
+12. Sugarquay Swirls — square seamless wallpaper tile: Seamless 16x16: Cream ground, rose spiral discs, mint connecting curls, plum sprinkle pixels.
+13. Hemrose Stencil — square seamless wallpaper tile: Seamless 16x16: Cream plaster, coral rosette stencils, moss paired leaves, faint sand speckles.
+14. Pebblewake Ropework — square seamless wallpaper tile: Seamless 16x16: Navy ground, sand braided rope diamonds, cream knots, coral single bead centers.
+15. Marginmoss Giltleaf — square seamless wallpaper tile: Seamless 16x16: Moss paper, gold fern fronds, cream small seed dots, dark paired stem shadows.
+16. Stillfold Marblewash — square seamless wallpaper tile: Seamless 16x16: Cream marble field, charcoal hairline veins, mint translucent patches, no tile border.
+17. Brinebeam Chartwork — square seamless wallpaper tile: Seamless 16x16: Sand ground, navy coast curls, moss dotted routes, gold compass diamonds.
+18. Polypocket Pearls — square seamless wallpaper tile: Seamless 16x16: Lilac ground, cream pearl circles, gold coral lattice, sky glints at alternating corners.
+19. Acorncourt Brocade — square seamless wallpaper tile: Seamless 16x16: Plum fabric, dense gold leaf lattice, cream acorn centers, moss thin shadows.
+20. Orbitcrumb Auroras — square seamless wallpaper tile: Seamless 16x16: Navy field, sky and mint flowing bands, cream star dots, lilac soft stepped edges.
+
+Save the final PNG to ./out/wallpapers_02.png (create ./out if needed). Exactly 20 objects.

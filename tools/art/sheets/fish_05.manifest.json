@@ -1,0 +1,36 @@
+{
+ "items": [
+  {
+   "name": "c_frostlace_sturgeon",
+   "width": 24
+  },
+  {
+   "name": "c_hushbell_angler",
+   "width": 24
+  },
+  {
+   "name": "c_petalwake_manta",
+   "width": 24
+  },
+  {
+   "name": "c_giltthread_arowana",
+   "width": 24
+  },
+  {
+   "name": "c_shellscript_key",
+   "width": 24
+  },
+  {
+   "name": "c_aurorawoven_leviathan",
+   "width": 24
+  },
+  {
+   "name": "c_dawncrown_coelacanth",
+   "width": 24
+  },
+  {
+   "name": "c_moonkeel_chest",
+   "width": 24
+  }
+ ]
+}

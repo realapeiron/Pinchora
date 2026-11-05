@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_revolving_tide_table",
+   "width": 62
+  },
+  {
+   "name": "f_rivetend_table",
+   "width": 14
+  },
+  {
+   "name": "f_sprigwork_table",
+   "width": 30
+  },
+  {
+   "name": "f_stillstep_nightstand",
+   "width": 14
+  },
+  {
+   "name": "f_sugarbutton_table",
+   "width": 30
+  },
+  {
+   "name": "f_tideleaf_table",
+   "width": 46
+  },
+  {
+   "name": "f_acornmaze_play_castle",
+   "width": 46
+  },
+  {
+   "name": "f_blinkberry_pin_table",
+   "width": 30
+  },
+  {
+   "name": "f_buttonbelly_plush",
+   "width": 14
+  },
+  {
+   "name": "f_clickcube_puzzle",
+   "width": 12
+  },
+  {
+   "name": "f_crumbfit_puzzle",
+   "width": 12
+  },
+  {
+   "name": "f_dewkite_bundle",
+   "width": 14
+  }
+ ]
+}

@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_hemshade_lamp",
+   "width": 12
+  },
+  {
+   "name": "f_hushpetal_sconce",
+   "width": 30
+  },
+  {
+   "name": "f_pageglow_lamp",
+   "width": 12
+  },
+  {
+   "name": "f_pebblecap_lamp",
+   "width": 12
+  },
+  {
+   "name": "f_quietdot_lamp",
+   "width": 12
+  },
+  {
+   "name": "f_reedcap_lamp",
+   "width": 12
+  },
+  {
+   "name": "f_reefbubble_lamp",
+   "width": 12
+  },
+  {
+   "name": "f_rivetarm_floor_lamp",
+   "width": 14
+  },
+  {
+   "name": "f_sprigshade_lamp",
+   "width": 12
+  },
+  {
+   "name": "f_starcrumb_orrery",
+   "width": 30
+  },
+  {
+   "name": "f_stillarc_floor_lamp",
+   "width": 30
+  },
+  {
+   "name": "f_sugarstripe_lamp",
+   "width": 12
+  }
+ ]
+}

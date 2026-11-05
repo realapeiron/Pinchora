@@ -1,0 +1,68 @@
+{
+ "items": [
+  {
+   "name": "c_cobbleback_barbel",
+   "width": 24
+  },
+  {
+   "name": "c_quiltstripe_bass",
+   "width": 24
+  },
+  {
+   "name": "c_skydimple_trout",
+   "width": 24
+  },
+  {
+   "name": "c_sandspoon_flounder",
+   "width": 24
+  },
+  {
+   "name": "c_clovercheek_bluegill",
+   "width": 24
+  },
+  {
+   "name": "c_brinebutton_mackerel",
+   "width": 24
+  },
+  {
+   "name": "c_liltfin_wrasse",
+   "width": 24
+  },
+  {
+   "name": "c_ochrecurl_pipefish",
+   "width": 24
+  },
+  {
+   "name": "c_frostwhisk_codlet",
+   "width": 24
+  },
+  {
+   "name": "c_plumspot_puffer",
+   "width": 24
+  },
+  {
+   "name": "c_reedlace_glassfish",
+   "width": 24
+  },
+  {
+   "name": "c_peachpeel_killi",
+   "width": 24
+  },
+  {
+   "name": "c_amberwink_squidlet",
+   "width": 24
+  },
+  {
+   "name": "c_brinebow_prawn",
+   "width": 24
+  },
+  {
+   "name": "c_oatstone_mussel",
+   "width": 24
+  },
+  {
+   "name": "c_twineclaw_crayfish",
+   "width": 24
+  }
+ ]
+}

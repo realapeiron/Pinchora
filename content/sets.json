@@ -1,1 +1,146 @@
-[]
+[
+  {
+    "id": "thimblefen_cottage",
+    "name": "Thimblefen Cottage",
+    "description": "A patchwork home for slow breakfasts and rainy afternoon naps.",
+    "mood": "Cream linen, moss checks, honey oak, coral stitching."
+  },
+  {
+    "id": "pebblewake_porch",
+    "name": "Pebblewake Porch",
+    "description": "Salt on the windows, soft cushions inside, and a spare seat for every visitor.",
+    "mood": "Sand canvas, navy stripes, pale driftwood, coral rope."
+  },
+  {
+    "id": "stillfold_home",
+    "name": "Stillfold Home",
+    "description": "Simple shapes leave plenty of room for little daily joys.",
+    "mood": "Cream plaster, charcoal steel, mint felt, pale ash."
+  },
+  {
+    "id": "blinkberry_arcade",
+    "name": "Blinkberry Arcade",
+    "description": "A pocket of coinless games, soft neon, and cheerful high scores.",
+    "mood": "Plum cabinets, sky neon, coral buttons, charcoal trim."
+  },
+  {
+    "id": "marginmoss_library",
+    "name": "Marginmoss Library",
+    "description": "Shelves for well-loved stories and the treasures tucked between their pages.",
+    "mood": "Moss cloth, walnut grain, cream paper, gold corners."
+  },
+  {
+    "id": "sprigspool_potting",
+    "name": "Sprigspool Potting",
+    "description": "A sunny indoor potting corner where muddy boots are always welcome.",
+    "mood": "Moss leaves, sand clay, cream wood, mint enamel."
+  },
+  {
+    "id": "hushwick_hollow",
+    "name": "Hushwick Hollow",
+    "description": "Friendly shadows gather here each autumn to trade very small frights.",
+    "mood": "Plum velvet, charcoal wood, lilac haze, gold candlelight."
+  },
+  {
+    "id": "frostcrumb_gathering",
+    "name": "Frostcrumb Gathering",
+    "description": "Winter holiday treats, warm mittens, and a chair saved beside the fire.",
+    "mood": "Cream wool, navy pine, coral ribbon, gold tin stars."
+  },
+  {
+    "id": "lanternplait_fete",
+    "name": "Lanternplait Fete",
+    "description": "A lunar new year table for shared wishes, bright lanterns, and another dumpling.",
+    "mood": "Coral lacquer, gold braid, cream paper, plum silk."
+  },
+  {
+    "id": "budwhistle_meadow",
+    "name": "Budwhistle Meadow",
+    "description": "Spring bloom decorations for doors left open to the first warm breeze.",
+    "mood": "Rose petals, mint gingham, lilac glass, cream wicker."
+  },
+  {
+    "id": "brinebeam_wreck",
+    "name": "Brinebeam Wreck",
+    "description": "A sunken ship's useful odds and ends, dried off and made homely again.",
+    "mood": "Navy planks, sand rope, moss patina, dull gold brass."
+  },
+  {
+    "id": "polypocket_reef",
+    "name": "Polypocket Reef",
+    "description": "Rounded coral forms make a welcoming home beneath an imaginary tide.",
+    "mood": "Coral branches, lilac fans, sky glass, cream limestone."
+  },
+  {
+    "id": "blushbutton_nook",
+    "name": "Blushbutton Nook",
+    "description": "Tiny smiles and squashy shapes make even chores feel huggable.",
+    "mood": "Rose plush, cream piping, mint dots, lilac plastic."
+  },
+  {
+    "id": "rivetsprout_loft",
+    "name": "Rivetsprout Loft",
+    "description": "Honest workshop materials with room for a kettle and a thriving fern.",
+    "mood": "Charcoal iron, sand brick, moss leather, copper details."
+  },
+  {
+    "id": "gilded_acorn_court",
+    "name": "Gilded Acorn Court",
+    "description": "A modest kingdom of carved leaves, polished wood, and excellent cushions.",
+    "mood": "Plum velvet, gold leaf, cream marble, dark walnut."
+  },
+  {
+    "id": "dewpeg_camp",
+    "name": "Dewpeg Camp",
+    "description": "Bring the campsite indoors, minus the damp socks and missing tent pegs.",
+    "mood": "Moss canvas, sand wood, navy enamel, coral cord."
+  },
+  {
+    "id": "orbitcrumb_station",
+    "name": "Orbitcrumb Station",
+    "description": "An off-duty space cabin with rounded hatches and a view of bedtime stars.",
+    "mood": "Sky metal, cream panels, navy glass, gold fasteners."
+  },
+  {
+    "id": "fizzfern_lab",
+    "name": "Fizzfern Lab",
+    "description": "A gentle laboratory for curious minds and carefully labelled biscuits.",
+    "mood": "Mint glass, cream enamel, charcoal rubber, lilac liquid."
+  },
+  {
+    "id": "kettlewink_cafe",
+    "name": "Kettlewink Cafe",
+    "description": "A little neighborhood cafe where the second biscuit is always encouraged.",
+    "mood": "Cream tile, sand oak, moss cushions, coral ceramic."
+  },
+  {
+    "id": "humskein_studio",
+    "name": "Humskein Studio",
+    "description": "A welcoming place to make a happy racket, then settle into a quiet tune.",
+    "mood": "Plum felt, gold brass, navy foam, honey maple."
+  },
+  {
+    "id": "clickcove_den",
+    "name": "Clickcove Den",
+    "description": "A comfy play corner for shared screens, friendly matches, and snack breaks.",
+    "mood": "Charcoal shells, mint lights, sky fabric, coral keys."
+  },
+  {
+    "id": "reedpause_retreat",
+    "name": "Reedpause Retreat",
+    "description": "Reed screens, quiet water, and enough clear space to take a full breath.",
+    "mood": "Sand reed, moss stone, cream paper, dark cedar."
+  },
+  {
+    "id": "dunethread_house",
+    "name": "Dunethread House",
+    "description": "Cool shade, woven cloth, and warm clay for the longest golden afternoons.",
+    "mood": "Sand plaster, coral clay, navy weave, gold ochre."
+  },
+  {
+    "id": "sugarquay_parlor",
+    "name": "Sugarquay Parlor",
+    "description": "Confection-inspired furniture that looks delicious but stays politely inedible.",
+    "mood": "Rose stripes, cream icing shapes, mint glass, plum dots."
+  }
+]

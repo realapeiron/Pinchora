@@ -1,0 +1,33 @@
+Use your built-in image generation tool to draw ONE sprite sheet for "Pinchora", a cozy pixel-art life game.
+The attached image is the style reference: match its pixel size, outline, shading and mood exactly.
+
+Rules:
+- True pixel art with chunky square pixels, no anti-aliasing, no blur, no gradients, no texture noise.
+- Top-down 3/4 view: we see the top and the front of each object, like the reference.
+- 1-pixel dark outline #1b1d2b around every object, light from the top-left, 2-3 tone shading.
+- Use only these colours: 1b1d2b 0f1631 1d2b53 2e3d75 4a5ba3 8fa0d8 7a2a3a c2413f ff6b4a ff9e7a ffd2c0 fff1e8 e6d3c3 b8a08f 7d6a5f 4a3f3b 5c3a21 8a5a34 b97f4a e0ac6e 1f4d3a 2f7d4f 5bbf6a a6e39a 1f5f8b 3a9bdc 8fd3ff c98a1e ffd166 5a3a7a 9b6bc4 06d6a0.
+- Background: flat pure #00FF00 everywhere around the objects. Nothing else on the background, no floor, no shadows on the background, no text, no labels, no numbers, no grid lines.
+- Draw the objects in a grid in exactly the order listed (row by row, left to right), each one complete and isolated with wide green gaps (at least 40 px) between them; parts of one object must touch each other.
+- Keep relative sizes: a 1-tile object is about as wide as a small chair; a 3-tile object is three times as wide.
+
+Fish and catches sheet.
+Layout: 4 columns x 4 rows, 16 objects in total.
+
+1. Butterwake Bleak — Slim gold fish, cream side sheen, sand dorsal line, coral split tail. (side view, facing right)
+2. Navynose Herring — Sky herring, navy rounded snout, cream belly, gold eye ring, narrow forked tail. (side view, facing right)
+3. Pebblepin Shrimp — Tiny translucent sand shrimp, coral joints, cream antennae, moss tail fan. (side view, facing right)
+4. Mintcap Limpet — Low mint cone shell, cream radial ridges, sand oval foot, navy rim shadow. (side view, facing right)
+5. Sandloop Cockle — Sand heart shaped shell, cream radiating ribs, coral hinge, navy outline. (side view, facing right)
+6. Creamcurl Whelk — Cream spiral shell, moss mottled bands, sand opening, coral soft foot. (side view, facing right)
+7. Siltstep Boot — Old sand ankle boot, navy cracked sole, moss silt patches, coral broken lace. (side view, facing right)
+8. Rattlelip Tin — Dented charcoal tin can, cream torn label, coral rust patches, bent gold pull ring. (side view, facing right)
+9. Frayloop Rope — Coiled sand rope, moss algae tufts, cream frayed ends, navy wet shadow. (side view, facing right)
+10. Driftspoke Wheel — Small worn wooden wheel, sand broken spokes, charcoal hub, moss seaweed strand. (side view, facing right)
+11. Chipwink Cup — Cream cracked cup, coral chipped handle, navy faded stripe, sand sediment inside. (side view, facing right)
+12. Snaggletoe Sock — Limp navy sock, cream worn toe hole, coral stripe, moss tangled thread. (side view, facing right)
+13. Honeypatch Tench — Plump gold tench, moss back patches, cream lips, coral rounded fins. (side view, facing right)
+14. Reedribbon Eel — Long moss eel, cream ribbon side stripe, sand fin fringe, navy nose. (side view, facing right)
+15. Rosefin Chub — Sand sturdy chub, rose fins, cream belly, moss large scales, navy eye. (side view, facing right)
+16. Tinysail Garlet — Slim sky garlet, navy long snout, coral sail dorsal fin, cream dotted sides. (side view, facing right)
+
+Save the final PNG to ./out/fish_02.png (create ./out if needed). Exactly 16 objects.

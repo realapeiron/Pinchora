@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_orbitpin_star_chart",
+   "width": 46
+  },
+  {
+   "name": "f_pagepair_books",
+   "width": 12
+  },
+  {
+   "name": "f_pebblehour_clock",
+   "width": 14
+  },
+  {
+   "name": "f_reedstroke_scroll",
+   "width": 14
+  },
+  {
+   "name": "f_reefsong_mural",
+   "width": 46
+  },
+  {
+   "name": "f_sailmark_wall_shelf",
+   "width": 30
+  },
+  {
+   "name": "f_sprigrow_wall_shelf",
+   "width": 46
+  },
+  {
+   "name": "f_sprigthumb_vase",
+   "width": 12
+  },
+  {
+   "name": "f_stillbar_wall_shelf",
+   "width": 30
+  },
+  {
+   "name": "f_stilloval_mirror",
+   "width": 14
+  },
+  {
+   "name": "f_sugarloop_mirror",
+   "width": 30
+  },
+  {
+   "name": "f_wishknot_wall_shelf",
+   "width": 46
+  }
+ ]
+}

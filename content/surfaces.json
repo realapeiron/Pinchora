@@ -1,1 +1,798 @@
-{"wallpapers":[],"floors":[]}
+{
+  "wallpapers": [
+    {
+      "id": "creamcalm_plaster",
+      "name": "Creamcalm Plaster",
+      "rarity": "common",
+      "price": 40,
+      "currency": "shells",
+      "set": null,
+      "pattern_brief": "Seamless 16x16: Warm cream flat plaster, two sand speckles, no border; evenly repeating texture."
+    },
+    {
+      "id": "mintmurmur_paint",
+      "name": "Mintmurmur Paint",
+      "rarity": "common",
+      "price": 45,
+      "currency": "shells",
+      "set": null,
+      "pattern_brief": "Seamless 16x16: Flat mint paint, sparse cream flecks, uniform edge pixels."
+    },
+    {
+      "id": "sandhush_wash",
+      "name": "Sandhush Wash",
+      "rarity": "common",
+      "price": 50,
+      "currency": "shells",
+      "set": null,
+      "pattern_brief": "Seamless 16x16: Pale sand limewash, subtle cream mottling, no directional seams."
+    },
+    {
+      "id": "skyrest_paper",
+      "name": "Skyrest Paper",
+      "rarity": "common",
+      "price": 55,
+      "currency": "shells",
+      "set": null,
+      "pattern_brief": "Seamless 16x16: Plain sky blue paper, tiny cream fiber flecks, matching edge colors."
+    },
+    {
+      "id": "rosequiet_paint",
+      "name": "Rosequiet Paint",
+      "rarity": "common",
+      "price": 60,
+      "currency": "shells",
+      "set": null,
+      "pattern_brief": "Seamless 16x16: Soft rose paint, two lighter stipples, flat unbordered field."
+    },
+    {
+      "id": "lilacpause_plaster",
+      "name": "Lilacpause Plaster",
+      "rarity": "common",
+      "price": 65,
+      "currency": "shells",
+      "set": null,
+      "pattern_brief": "Seamless 16x16: Pale lilac plaster, scattered cream pinholes, low contrast texture."
+    },
+    {
+      "id": "navynap_paper",
+      "name": "Navynap Paper",
+      "rarity": "common",
+      "price": 70,
+      "currency": "shells",
+      "set": null,
+      "pattern_brief": "Seamless 16x16: Muted navy paper, sparse sky fibers, continuous solid edges."
+    },
+    {
+      "id": "mosswhisper_wash",
+      "name": "Mosswhisper Wash",
+      "rarity": "common",
+      "price": 75,
+      "currency": "shells",
+      "set": null,
+      "pattern_brief": "Seamless 16x16: Soft moss wash, cream grain flecks, subtle sand mottling."
+    },
+    {
+      "id": "hemcheck_paper",
+      "name": "Hemcheck Paper",
+      "rarity": "common",
+      "price": 125,
+      "currency": "shells",
+      "set": "thimblefen_cottage",
+      "pattern_brief": "Seamless 16x16: Cream ground, moss gingham checks, one coral stitch at each crossing."
+    },
+    {
+      "id": "pebblewake_stripes",
+      "name": "Pebblewake Stripes",
+      "rarity": "common",
+      "price": 265,
+      "currency": "shells",
+      "set": "pebblewake_porch",
+      "pattern_brief": "Seamless 16x16: Sand ground, narrow navy vertical stripes, cream dotted rope lines."
+    },
+    {
+      "id": "stillfold_panels",
+      "name": "Stillfold Panels",
+      "rarity": "common",
+      "price": 145,
+      "currency": "shells",
+      "set": "stillfold_home",
+      "pattern_brief": "Seamless 16x16: Cream square panels, charcoal one pixel grooves, tiny mint corner highlights."
+    },
+    {
+      "id": "blinkberry_dots",
+      "name": "Blinkberry Dots",
+      "rarity": "uncommon",
+      "price": 825,
+      "currency": "shells",
+      "set": "blinkberry_arcade",
+      "pattern_brief": "Seamless 16x16: Charcoal background, spaced coral squares and sky dots, plum connecting steps."
+    },
+    {
+      "id": "marginleaf_print",
+      "name": "Marginleaf Print",
+      "rarity": "uncommon",
+      "price": 585,
+      "currency": "shells",
+      "set": "marginmoss_library",
+      "pattern_brief": "Seamless 16x16: Cream paper, paired moss leaves, gold curved stems, sand fiber texture."
+    },
+    {
+      "id": "sprigspool_trellis",
+      "name": "Sprigspool Trellis",
+      "rarity": "uncommon",
+      "price": 635,
+      "currency": "shells",
+      "set": "sprigspool_potting",
+      "pattern_brief": "Seamless 16x16: Mint ground, cream diagonal lattice, moss leaf pairs at alternate crossings."
+    },
+    {
+      "id": "hushwick_wisps",
+      "name": "Hushwick Wisps",
+      "rarity": "rare",
+      "price": 3740,
+      "currency": "shells",
+      "set": "hushwick_hollow",
+      "pattern_brief": "Seamless 16x16: Plum paper, lilac curling wisps, tiny gold crescent dots, charcoal soft shadows."
+    },
+    {
+      "id": "frostcrumb_flakes",
+      "name": "Frostcrumb Flakes",
+      "rarity": "uncommon",
+      "price": 700,
+      "currency": "shells",
+      "set": "frostcrumb_gathering",
+      "pattern_brief": "Seamless 16x16: Navy ground, cream six spoke flakes, coral dots, gold single pixel sparkles."
+    },
+    {
+      "id": "lanternplait_knots",
+      "name": "Lanternplait Knots",
+      "rarity": "rare",
+      "price": 2080,
+      "currency": "shells",
+      "set": "lanternplait_fete",
+      "pattern_brief": "Seamless 16x16: Coral paper, gold interlocking loop knots, plum centers, cream corner dots."
+    },
+    {
+      "id": "budwhistle_sprigs",
+      "name": "Budwhistle Sprigs",
+      "rarity": "uncommon",
+      "price": 655,
+      "currency": "shells",
+      "set": "budwhistle_meadow",
+      "pattern_brief": "Seamless 16x16: Cream paper, rose three petal buds, mint stems, lilac scattered specks."
+    },
+    {
+      "id": "brinebeam_planking",
+      "name": "Brinebeam Planking",
+      "rarity": "uncommon",
+      "price": 880,
+      "currency": "shells",
+      "set": "brinebeam_wreck",
+      "pattern_brief": "Seamless 16x16: Navy vertical planks, sand worn grain, moss nail stains, gold bolt dots."
+    },
+    {
+      "id": "polypocket_fans",
+      "name": "Polypocket Fans",
+      "rarity": "rare",
+      "price": 3890,
+      "currency": "shells",
+      "set": "polypocket_reef",
+      "pattern_brief": "Seamless 16x16: Sky ground, lilac fan corals, cream branching veins, small coral oval buds."
+    },
+    {
+      "id": "blushbutton_spots",
+      "name": "Blushbutton Spots",
+      "rarity": "common",
+      "price": 170,
+      "currency": "shells",
+      "set": "blushbutton_nook",
+      "pattern_brief": "Seamless 16x16: Cream ground, rose rounded squares, mint center dots, lilac tiny pairs."
+    },
+    {
+      "id": "rivetsprout_brick",
+      "name": "Rivetsprout Brick",
+      "rarity": "common",
+      "price": 185,
+      "currency": "shells",
+      "set": "rivetsprout_loft",
+      "pattern_brief": "Seamless 16x16: Sand staggered bricks, charcoal mortar, moss worn corners, copper flecks."
+    },
+    {
+      "id": "acorncourt_damask",
+      "name": "Acorncourt Damask",
+      "rarity": "epic",
+      "price": 15375,
+      "currency": "shells",
+      "set": "gilded_acorn_court",
+      "pattern_brief": "Seamless 16x16: Plum ground, gold acorn silhouettes, cream curled leaves, symmetrical repeating lattice."
+    },
+    {
+      "id": "dewpeg_canvas",
+      "name": "Dewpeg Canvas",
+      "rarity": "common",
+      "price": 220,
+      "currency": "shells",
+      "set": "dewpeg_camp",
+      "pattern_brief": "Seamless 16x16: Moss woven canvas, sand warp lines, navy seam dots, coral cross stitches."
+    },
+    {
+      "id": "orbitcrumb_stars",
+      "name": "Orbitcrumb Stars",
+      "rarity": "rare",
+      "price": 3570,
+      "currency": "shells",
+      "set": "orbitcrumb_station",
+      "pattern_brief": "Seamless 16x16: Navy field, sky four pixel stars, cream orbit dashes, gold isolated points."
+    },
+    {
+      "id": "fizzfern_grid",
+      "name": "Fizzfern Grid",
+      "rarity": "uncommon",
+      "price": 915,
+      "currency": "shells",
+      "set": "fizzfern_lab",
+      "pattern_brief": "Seamless 16x16: Cream enamel squares, mint outlines, lilac corner dots, charcoal fine grid."
+    },
+    {
+      "id": "kettlewink_tile",
+      "name": "Kettlewink Tile",
+      "rarity": "common",
+      "price": 180,
+      "currency": "shells",
+      "set": "kettlewink_cafe",
+      "pattern_brief": "Seamless 16x16: Cream square tiles, moss thin grout, coral dot in every fourth tile."
+    },
+    {
+      "id": "humskein_felt",
+      "name": "Humskein Felt",
+      "rarity": "uncommon",
+      "price": 600,
+      "currency": "shells",
+      "set": "humskein_studio",
+      "pattern_brief": "Seamless 16x16: Plum felt field, navy diagonal ridges, sand fiber specks, gold pin dots."
+    },
+    {
+      "id": "clickcove_steps",
+      "name": "Clickcove Steps",
+      "rarity": "uncommon",
+      "price": 525,
+      "currency": "shells",
+      "set": "clickcove_den",
+      "pattern_brief": "Seamless 16x16: Charcoal field, mint stepped lines, sky square endpoints, coral accent pixels."
+    },
+    {
+      "id": "reedpause_weave",
+      "name": "Reedpause Weave",
+      "rarity": "common",
+      "price": 295,
+      "currency": "shells",
+      "set": "reedpause_retreat",
+      "pattern_brief": "Seamless 16x16: Sand reed bands, cream alternating weave, moss fine vertical binding lines."
+    },
+    {
+      "id": "dunethread_arches",
+      "name": "Dunethread Arches",
+      "rarity": "uncommon",
+      "price": 520,
+      "currency": "shells",
+      "set": "dunethread_house",
+      "pattern_brief": "Seamless 16x16: Sand plaster, coral tiny arch outlines, navy centered diamonds, gold corner dots."
+    },
+    {
+      "id": "sugarquay_swirls",
+      "name": "Sugarquay Swirls",
+      "rarity": "rare",
+      "price": 2630,
+      "currency": "shells",
+      "set": "sugarquay_parlor",
+      "pattern_brief": "Seamless 16x16: Cream ground, rose spiral discs, mint connecting curls, plum sprinkle pixels."
+    },
+    {
+      "id": "hemrose_stencil",
+      "name": "Hemrose Stencil",
+      "rarity": "uncommon",
+      "price": 845,
+      "currency": "shells",
+      "set": "thimblefen_cottage",
+      "pattern_brief": "Seamless 16x16: Cream plaster, coral rosette stencils, moss paired leaves, faint sand speckles."
+    },
+    {
+      "id": "pebblewake_ropework",
+      "name": "Pebblewake Ropework",
+      "rarity": "rare",
+      "price": 3655,
+      "currency": "shells",
+      "set": "pebblewake_porch",
+      "pattern_brief": "Seamless 16x16: Navy ground, sand braided rope diamonds, cream knots, coral single bead centers."
+    },
+    {
+      "id": "marginmoss_giltleaf",
+      "name": "Marginmoss Giltleaf",
+      "rarity": "epic",
+      "price": 10430,
+      "currency": "shells",
+      "set": "marginmoss_library",
+      "pattern_brief": "Seamless 16x16: Moss paper, gold fern fronds, cream small seed dots, dark paired stem shadows."
+    },
+    {
+      "id": "stillfold_marblewash",
+      "name": "Stillfold Marblewash",
+      "rarity": "rare",
+      "price": 3175,
+      "currency": "shells",
+      "set": "stillfold_home",
+      "pattern_brief": "Seamless 16x16: Cream marble field, charcoal hairline veins, mint translucent patches, no tile border."
+    },
+    {
+      "id": "brinebeam_chartwork",
+      "name": "Brinebeam Chartwork",
+      "rarity": "epic",
+      "price": 7570,
+      "currency": "shells",
+      "set": "brinebeam_wreck",
+      "pattern_brief": "Seamless 16x16: Sand ground, navy coast curls, moss dotted routes, gold compass diamonds."
+    },
+    {
+      "id": "polypocket_pearls",
+      "name": "Polypocket Pearls",
+      "rarity": "legendary",
+      "price": 186,
+      "currency": "pearls",
+      "set": "polypocket_reef",
+      "pattern_brief": "Seamless 16x16: Lilac ground, cream pearl circles, gold coral lattice, sky glints at alternating corners."
+    },
+    {
+      "id": "acorncourt_brocade",
+      "name": "Acorncourt Brocade",
+      "rarity": "legendary",
+      "price": 48410,
+      "currency": "shells",
+      "set": "gilded_acorn_court",
+      "pattern_brief": "Seamless 16x16: Plum fabric, dense gold leaf lattice, cream acorn centers, moss thin shadows."
+    },
+    {
+      "id": "orbitcrumb_auroras",
+      "name": "Orbitcrumb Auroras",
+      "rarity": "epic",
+      "price": 121,
+      "currency": "pearls",
+      "set": "orbitcrumb_station",
+      "pattern_brief": "Seamless 16x16: Navy field, sky and mint flowing bands, cream star dots, lilac soft stepped edges."
+    },
+    {
+      "id": "fizzfern_bubbles",
+      "name": "Fizzfern Bubbles",
+      "rarity": "rare",
+      "price": 2505,
+      "currency": "shells",
+      "set": "fizzfern_lab",
+      "pattern_brief": "Seamless 16x16: Mint ground, lilac outlined bubbles, cream inner highlights, charcoal sparse guide dots."
+    },
+    {
+      "id": "hushwick_moonlace",
+      "name": "Hushwick Moonlace",
+      "rarity": "epic",
+      "price": 9445,
+      "currency": "shells",
+      "set": "hushwick_hollow",
+      "pattern_brief": "Seamless 16x16: Charcoal background, lilac scalloped lace arcs, plum moons, gold dangling star points."
+    },
+    {
+      "id": "wishplait_silk",
+      "name": "Wishplait Silk",
+      "rarity": "epic",
+      "price": 119,
+      "currency": "pearls",
+      "set": "lanternplait_fete",
+      "pattern_brief": "Seamless 16x16: Coral silk texture, gold braided diamonds, plum knot centers, cream diagonal sheen pixels."
+    },
+    {
+      "id": "budwhistle_petalnet",
+      "name": "Budwhistle Petalnet",
+      "rarity": "rare",
+      "price": 1875,
+      "currency": "shells",
+      "set": "budwhistle_meadow",
+      "pattern_brief": "Seamless 16x16: Cream field, rose petal diamonds, mint net stems, lilac four dot centers."
+    }
+  ],
+  "floors": [
+    {
+      "id": "sandsettle_boards",
+      "name": "Sandsettle Boards",
+      "rarity": "common",
+      "price": 40,
+      "currency": "shells",
+      "set": null,
+      "pattern_brief": "Seamless 16x16: Pale sand straight boards, cream grain strokes, one pixel darker seams."
+    },
+    {
+      "id": "creamstep_tile",
+      "name": "Creamstep Tile",
+      "rarity": "common",
+      "price": 45,
+      "currency": "shells",
+      "set": null,
+      "pattern_brief": "Seamless 16x16: Plain cream square tiles, sand one pixel grout, unmarked centers."
+    },
+    {
+      "id": "mossrest_matting",
+      "name": "Mossrest Matting",
+      "rarity": "common",
+      "price": 50,
+      "currency": "shells",
+      "set": null,
+      "pattern_brief": "Seamless 16x16: Flat moss woven matting, cream sparse fibers, fine alternating rows."
+    },
+    {
+      "id": "quietash_planks",
+      "name": "Quietash Planks",
+      "rarity": "common",
+      "price": 55,
+      "currency": "shells",
+      "set": null,
+      "pattern_brief": "Seamless 16x16: Pale gray ash planks, charcoal faint seams, cream linear grain."
+    },
+    {
+      "id": "mintcool_squares",
+      "name": "Mintcool Squares",
+      "rarity": "common",
+      "price": 60,
+      "currency": "shells",
+      "set": null,
+      "pattern_brief": "Seamless 16x16: Mint square tiles, cream narrow grout, one sky highlight at each corner."
+    },
+    {
+      "id": "rosewarm_cork",
+      "name": "Rosewarm Cork",
+      "rarity": "common",
+      "price": 65,
+      "currency": "shells",
+      "set": null,
+      "pattern_brief": "Seamless 16x16: Rose tinted cork, sand scattered flecks, cream tiny chips, no border."
+    },
+    {
+      "id": "skysoft_vinyl",
+      "name": "Skysoft Vinyl",
+      "rarity": "common",
+      "price": 70,
+      "currency": "shells",
+      "set": null,
+      "pattern_brief": "Seamless 16x16: Flat sky vinyl, cream sparse dashes, subtle evenly spaced joints."
+    },
+    {
+      "id": "lilacdown_carpet",
+      "name": "Lilacdown Carpet",
+      "rarity": "common",
+      "price": 75,
+      "currency": "shells",
+      "set": null,
+      "pattern_brief": "Seamless 16x16: Muted lilac pile, cream isolated tufts, plum faint shadow pixels."
+    },
+    {
+      "id": "hemgrain_boards",
+      "name": "Hemgrain Boards",
+      "rarity": "common",
+      "price": 270,
+      "currency": "shells",
+      "set": "thimblefen_cottage",
+      "pattern_brief": "Seamless 16x16: Honey sand boards, moss tiny knots, cream highlights, staggered plank seams."
+    },
+    {
+      "id": "pebblewake_deck",
+      "name": "Pebblewake Deck",
+      "rarity": "common",
+      "price": 160,
+      "currency": "shells",
+      "set": "pebblewake_porch",
+      "pattern_brief": "Seamless 16x16: Driftwood gray planks, navy gaps, sand grain, cream weathered short streaks."
+    },
+    {
+      "id": "stillfold_concrete",
+      "name": "Stillfold Concrete",
+      "rarity": "common",
+      "price": 115,
+      "currency": "shells",
+      "set": "stillfold_home",
+      "pattern_brief": "Seamless 16x16: Cream concrete slabs, charcoal thin joints, mint faint aggregate specks."
+    },
+    {
+      "id": "blinkberry_checks",
+      "name": "Blinkberry Checks",
+      "rarity": "uncommon",
+      "price": 825,
+      "currency": "shells",
+      "set": "blinkberry_arcade",
+      "pattern_brief": "Seamless 16x16: Charcoal and plum checker tiles, sky edge pixels, coral corner dots."
+    },
+    {
+      "id": "marginmoss_parquet",
+      "name": "Marginmoss Parquet",
+      "rarity": "uncommon",
+      "price": 665,
+      "currency": "shells",
+      "set": "marginmoss_library",
+      "pattern_brief": "Seamless 16x16: Sand and walnut brown parquet blocks, moss tiny inlays, cream grain strokes."
+    },
+    {
+      "id": "sprigspool_pavers",
+      "name": "Sprigspool Pavers",
+      "rarity": "common",
+      "price": 100,
+      "currency": "shells",
+      "set": "sprigspool_potting",
+      "pattern_brief": "Seamless 16x16: Sand square pavers, moss grout sprouts, cream chipped corners, mint stone flecks."
+    },
+    {
+      "id": "hushwick_slates",
+      "name": "Hushwick Slates",
+      "rarity": "rare",
+      "price": 1990,
+      "currency": "shells",
+      "set": "hushwick_hollow",
+      "pattern_brief": "Seamless 16x16: Charcoal slate squares, plum cracks, lilac edge highlights, gold tiny inclusions."
+    },
+    {
+      "id": "frostcrumb_flannel",
+      "name": "Frostcrumb Flannel",
+      "rarity": "uncommon",
+      "price": 535,
+      "currency": "shells",
+      "set": "frostcrumb_gathering",
+      "pattern_brief": "Seamless 16x16: Navy woven squares, cream crossing bands, coral thin stripes, gold stitch dots."
+    },
+    {
+      "id": "lanternplait_coins",
+      "name": "Lanternplait Coins",
+      "rarity": "rare",
+      "price": 2125,
+      "currency": "shells",
+      "set": "lanternplait_fete",
+      "pattern_brief": "Seamless 16x16: Coral lacquer squares, gold ring inlays, plum center knots, cream corner glints."
+    },
+    {
+      "id": "budwhistle_mosaic",
+      "name": "Budwhistle Mosaic",
+      "rarity": "uncommon",
+      "price": 540,
+      "currency": "shells",
+      "set": "budwhistle_meadow",
+      "pattern_brief": "Seamless 16x16: Cream small tesserae, rose petal clusters, mint leaf diamonds, lilac grout."
+    },
+    {
+      "id": "brinebeam_deckplate",
+      "name": "Brinebeam Deckplate",
+      "rarity": "uncommon",
+      "price": 830,
+      "currency": "shells",
+      "set": "brinebeam_wreck",
+      "pattern_brief": "Seamless 16x16: Navy timber blocks, gold bolt corners, moss patina, sand worn diagonal grain."
+    },
+    {
+      "id": "polypocket_limestone",
+      "name": "Polypocket Limestone",
+      "rarity": "rare",
+      "price": 3650,
+      "currency": "shells",
+      "set": "polypocket_reef",
+      "pattern_brief": "Seamless 16x16: Cream limestone slabs, coral fossil curls, sky grout, lilac porous flecks."
+    },
+    {
+      "id": "blushbutton_foam",
+      "name": "Blushbutton Foam",
+      "rarity": "common",
+      "price": 230,
+      "currency": "shells",
+      "set": "blushbutton_nook",
+      "pattern_brief": "Seamless 16x16: Rose foam squares, cream interlocking edges, mint dots, lilac corner patches."
+    },
+    {
+      "id": "rivetsprout_plate",
+      "name": "Rivetsprout Plate",
+      "rarity": "uncommon",
+      "price": 795,
+      "currency": "shells",
+      "set": "rivetsprout_loft",
+      "pattern_brief": "Seamless 16x16: Charcoal steel plates, sand raised diagonal treads, copper rivets, moss patina corners."
+    },
+    {
+      "id": "acorncourt_inlay",
+      "name": "Acorncourt Inlay",
+      "rarity": "epic",
+      "price": 12280,
+      "currency": "shells",
+      "set": "gilded_acorn_court",
+      "pattern_brief": "Seamless 16x16: Walnut parquet, gold acorn medallion quarters, cream leaf inlays, plum borders."
+    },
+    {
+      "id": "dewpeg_groundsheet",
+      "name": "Dewpeg Groundsheet",
+      "rarity": "common",
+      "price": 160,
+      "currency": "shells",
+      "set": "dewpeg_camp",
+      "pattern_brief": "Seamless 16x16: Moss canvas grid, navy seam strips, sand fibers, coral reinforced stitch crosses."
+    },
+    {
+      "id": "orbitcrumb_panels",
+      "name": "Orbitcrumb Panels",
+      "rarity": "rare",
+      "price": 3410,
+      "currency": "shells",
+      "set": "orbitcrumb_station",
+      "pattern_brief": "Seamless 16x16: Cream rounded metal panels, sky recesses, navy joints, gold fastener dots."
+    },
+    {
+      "id": "fizzfern_clean_tile",
+      "name": "Fizzfern Clean Tile",
+      "rarity": "uncommon",
+      "price": 900,
+      "currency": "shells",
+      "set": "fizzfern_lab",
+      "pattern_brief": "Seamless 16x16: Cream square tiles, mint anti-slip dots, charcoal fine grout, lilac corner markers."
+    },
+    {
+      "id": "kettlewink_checker",
+      "name": "Kettlewink Checker",
+      "rarity": "common",
+      "price": 160,
+      "currency": "shells",
+      "set": "kettlewink_cafe",
+      "pattern_brief": "Seamless 16x16: Cream and moss checker tiles, sand worn corners, thin coral grout highlights."
+    },
+    {
+      "id": "humskein_cork",
+      "name": "Humskein Cork",
+      "rarity": "uncommon",
+      "price": 930,
+      "currency": "shells",
+      "set": "humskein_studio",
+      "pattern_brief": "Seamless 16x16: Sand cork blocks, plum embedded flecks, navy fine seams, cream grain clusters."
+    },
+    {
+      "id": "clickcove_rubber",
+      "name": "Clickcove Rubber",
+      "rarity": "uncommon",
+      "price": 920,
+      "currency": "shells",
+      "set": "clickcove_den",
+      "pattern_brief": "Seamless 16x16: Charcoal rubber squares, mint stepped seams, sky corner pads, coral indicator dots."
+    },
+    {
+      "id": "reedpause_tatting",
+      "name": "Reedpause Tatting",
+      "rarity": "common",
+      "price": 255,
+      "currency": "shells",
+      "set": "reedpause_retreat",
+      "pattern_brief": "Seamless 16x16: Sand woven reed rectangles, moss binding edges, cream alternating fine strands."
+    },
+    {
+      "id": "dunethread_clay",
+      "name": "Dunethread Clay",
+      "rarity": "common",
+      "price": 105,
+      "currency": "shells",
+      "set": "dunethread_house",
+      "pattern_brief": "Seamless 16x16: Coral terracotta squares, sand powder speckles, navy thin grout, gold worn edges."
+    },
+    {
+      "id": "sugarquay_terrazzo",
+      "name": "Sugarquay Terrazzo",
+      "rarity": "rare",
+      "price": 40,
+      "currency": "pearls",
+      "set": "sugarquay_parlor",
+      "pattern_brief": "Seamless 16x16: Cream terrazzo, rose rounded chips, mint triangles, plum tiny squares, seamless scattered density."
+    },
+    {
+      "id": "hemgrain_herringbone",
+      "name": "Hemgrain Herringbone",
+      "rarity": "uncommon",
+      "price": 610,
+      "currency": "shells",
+      "set": "thimblefen_cottage",
+      "pattern_brief": "Seamless 16x16: Sand oak herringbone, cream grain dashes, moss narrow joints, coral knot flecks."
+    },
+    {
+      "id": "pebblewake_beachglass",
+      "name": "Pebblewake Beachglass",
+      "rarity": "rare",
+      "price": 1750,
+      "currency": "shells",
+      "set": "pebblewake_porch",
+      "pattern_brief": "Seamless 16x16: Cream grout with rounded sky and mint glass chips, navy sparse pebbles, sand highlights."
+    },
+    {
+      "id": "marginmoss_borders",
+      "name": "Marginmoss Borders",
+      "rarity": "epic",
+      "price": 7330,
+      "currency": "shells",
+      "set": "marginmoss_library",
+      "pattern_brief": "Seamless 16x16: Walnut small parquet, gold intersecting border lines, cream leaf corner inlays, moss shadows."
+    },
+    {
+      "id": "stillfold_polished_stone",
+      "name": "Stillfold Polished Stone",
+      "rarity": "rare",
+      "price": 3340,
+      "currency": "shells",
+      "set": "stillfold_home",
+      "pattern_brief": "Seamless 16x16: Cream polished stone, charcoal diagonal veins, mint subtle glints, matching edges."
+    },
+    {
+      "id": "brinebeam_compasswork",
+      "name": "Brinebeam Compasswork",
+      "rarity": "epic",
+      "price": 125,
+      "currency": "pearls",
+      "set": "brinebeam_wreck",
+      "pattern_brief": "Seamless 16x16: Navy wood, gold compass quarter stars meeting across edges, sand rope circles, moss nail dots."
+    },
+    {
+      "id": "polypocket_tideglass",
+      "name": "Polypocket Tideglass",
+      "rarity": "legendary",
+      "price": 42010,
+      "currency": "shells",
+      "set": "polypocket_reef",
+      "pattern_brief": "Seamless 16x16: Sky translucent glass tiles, coral branching inclusions, cream pearl dots, lilac waterlike glints."
+    },
+    {
+      "id": "acorncourt_starstone",
+      "name": "Acorncourt Starstone",
+      "rarity": "legendary",
+      "price": 191,
+      "currency": "pearls",
+      "set": "gilded_acorn_court",
+      "pattern_brief": "Seamless 16x16: Cream marble, gold eight point star quarters, plum diamond centers, moss fine veins."
+    },
+    {
+      "id": "orbitcrumb_nightglass",
+      "name": "Orbitcrumb Nightglass",
+      "rarity": "epic",
+      "price": 7340,
+      "currency": "shells",
+      "set": "orbitcrumb_station",
+      "pattern_brief": "Seamless 16x16: Navy glass panels, sky reflected arcs, gold star dots, cream thin seam glints."
+    },
+    {
+      "id": "fizzfern_specimen_tile",
+      "name": "Fizzfern Specimen Tile",
+      "rarity": "rare",
+      "price": 3795,
+      "currency": "shells",
+      "set": "fizzfern_lab",
+      "pattern_brief": "Seamless 16x16: Mint glass squares, lilac leaf silhouettes, cream small label bars, charcoal fine grout."
+    },
+    {
+      "id": "hushwick_hexstones",
+      "name": "Hushwick Hexstones",
+      "rarity": "epic",
+      "price": 129,
+      "currency": "pearls",
+      "set": "hushwick_hollow",
+      "pattern_brief": "Seamless 16x16: Charcoal hexagonal stones, plum crescent inlays, lilac edges, gold scattered pinpricks."
+    },
+    {
+      "id": "wishplait_courtyard",
+      "name": "Wishplait Courtyard",
+      "rarity": "epic",
+      "price": 12160,
+      "currency": "shells",
+      "set": "lanternplait_fete",
+      "pattern_brief": "Seamless 16x16: Coral stone squares, gold interwoven loop borders, cream center diamonds, plum narrow grout."
+    },
+    {
+      "id": "budwhistle_petalpath",
+      "name": "Budwhistle Petalpath",
+      "rarity": "rare",
+      "price": 3405,
+      "currency": "shells",
+      "set": "budwhistle_meadow",
+      "pattern_brief": "Seamless 16x16: Sand small pavers, rose petal inlays, mint grout sprouts, lilac corner stones."
+    }
+  ]
+}

@@ -2,12 +2,14 @@ mod grid;
 mod pet;
 mod profile;
 mod rank;
+mod wallet;
 mod welcome;
 
 pub use grid::{GridSlot, ItemGridCard};
 pub use pet::PetCard;
 pub use profile::ProfileCard;
 pub use rank::RankCard;
+pub use wallet::WalletCard;
 pub use welcome::WelcomeCard;
 
 use std::fmt::Write;

@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_wickcrumb_candle",
+   "width": 12
+  },
+  {
+   "name": "f_wishfold_lantern",
+   "width": 12
+  },
+  {
+   "name": "f_dunebell_harp",
+   "width": 30
+  },
+  {
+   "name": "f_hemstring_ukulele",
+   "width": 14
+  },
+  {
+   "name": "f_humskein_upright",
+   "width": 46
+  },
+  {
+   "name": "f_orbitbowl_resonator",
+   "width": 30
+  },
+  {
+   "name": "f_pebblebeat_drum",
+   "width": 14
+  },
+  {
+   "name": "f_reedrain_chimes",
+   "width": 14
+  },
+  {
+   "name": "f_reefpipe_organ",
+   "width": 46
+  },
+  {
+   "name": "f_spoolnote_keyboard",
+   "width": 30
+  },
+  {
+   "name": "f_acorncourt_pavilion",
+   "width": 62
+  },
+  {
+   "name": "f_dewcord_hammock",
+   "width": 46
+  }
+ ]
+}

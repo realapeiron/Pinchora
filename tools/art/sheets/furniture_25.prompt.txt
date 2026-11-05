@@ -1,0 +1,29 @@
+Use your built-in image generation tool to draw ONE sprite sheet for "Pinchora", a cozy pixel-art life game.
+The attached image is the style reference: match its pixel size, outline, shading and mood exactly.
+
+Rules:
+- True pixel art with chunky square pixels, no anti-aliasing, no blur, no gradients, no texture noise.
+- Top-down 3/4 view: we see the top and the front of each object, like the reference.
+- 1-pixel dark outline #1b1d2b around every object, light from the top-left, 2-3 tone shading.
+- Use only these colours: 1b1d2b 0f1631 1d2b53 2e3d75 4a5ba3 8fa0d8 7a2a3a c2413f ff6b4a ff9e7a ffd2c0 fff1e8 e6d3c3 b8a08f 7d6a5f 4a3f3b 5c3a21 8a5a34 b97f4a e0ac6e 1f4d3a 2f7d4f 5bbf6a a6e39a 1f5f8b 3a9bdc 8fd3ff c98a1e ffd166 5a3a7a 9b6bc4 06d6a0.
+- Background: flat pure #00FF00 everywhere around the objects. Nothing else on the background, no floor, no shadows on the background, no text, no labels, no numbers, no grid lines.
+- Draw the objects in a grid in exactly the order listed (row by row, left to right), each one complete and isolated with wide green gaps (at least 40 px) between them; parts of one object must touch each other.
+- Keep relative sizes: a 1-tile object is about as wide as a small chair; a 3-tile object is three times as wide.
+
+Furniture sheet.
+Layout: 4 columns x 3 rows, 12 objects in total.
+
+1. Acornglass Window — Top-down 3/4: Wide arched stained glass window, gold acorn tracery, plum and moss panes, cream stone frame. (3 tiles wide, 2 tiles tall, hangs on a wall (front view)) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+2. Beamport Window — Top-down 3/4: Gold round porthole, navy mounting plate, sky glass, moss patina bolts, sand hinge. (2 tiles wide, 2 tiles tall, hangs on a wall (front view)) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+3. Buttonround Window — Top-down 3/4: Circular rose window, cream four pane cross, mint bow latch, sky glass. (2 tiles wide, 2 tiles tall, hangs on a wall (front view)) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+4. Dunearc Window — Top-down 3/4: Sand arched plaster frame, navy lattice, sky pane, coral tile sill. (2 tiles wide, 2 tiles tall, hangs on a wall (front view)) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+5. Hemcross Window — Top-down 3/4: Square oak window, cream crossbars, sky panes, moss sill, coral curtain ties. (2 tiles wide, 2 tiles tall, hangs on a wall (front view)) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+6. Marginpane Window — Top-down 3/4: Walnut bay style window, cream mullions, moss sill, sky panes, gold corner braces. (2 tiles wide, 2 tiles tall, hangs on a wall (front view)) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+7. Orbitseal Hatch — Top-down 3/4: Cream rounded hatch, sky segmented rim, navy porthole, gold wheel latch. (2 tiles wide, 2 tiles tall, hangs on a wall (front view)) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+8. Pebblepane Window — Top-down 3/4: Driftwood window frame, navy shutters, sky glass, cream rope pull loops. (2 tiles wide, 2 tiles tall, hangs on a wall (front view)) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+9. Reedslide Door — Top-down 3/4: Cedar sliding screen door, cream paper squares, sand lower panel, moss recessed pulls. (2 tiles wide, 2 tiles tall, hangs on a wall (front view)) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+10. Reefarch Door — Top-down 3/4: Cream scalloped doorway, coral branch trim, lilac inset door, sky shell handle. (2 tiles wide, 2 tiles tall, hangs on a wall (front view)) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+11. Sprigslat Gate — Top-down 3/4: Cream slatted garden gate, moss hinges, sand posts, mint arched brace. (2 tiles wide, 2 tiles tall, hangs on a wall (front view))
+12. Stillframe Door — Top-down 3/4: Cream flush door, charcoal thin frame, mint inset stripe, gold lever handle. (1 tile wide, 2 tiles tall, hangs on a wall (front view)) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+
+Save the final PNG to ./out/furniture_25.png (create ./out if needed). Exactly 12 objects.

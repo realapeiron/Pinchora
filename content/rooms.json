@@ -1,1 +1,126 @@
-[]
+[
+  {
+    "id": "living",
+    "name": "Pebblewelcome Lounge",
+    "description": "Settle in, share a story, and make room for one more visitor.",
+    "default_wallpaper": "creamcalm_plaster",
+    "default_floor": "sandsettle_boards",
+    "bonus_categories": [
+      "seating",
+      "tables",
+      "rugs",
+      "wall_decor"
+    ]
+  },
+  {
+    "id": "bedroom",
+    "name": "Drowsyfold Bedroom",
+    "description": "A soft landing for sleepy heads and tomorrow's hopeful plans.",
+    "default_wallpaper": "lilacpause_plaster",
+    "default_floor": "lilacdown_carpet",
+    "bonus_categories": [
+      "beds",
+      "storage",
+      "lighting",
+      "rugs"
+    ]
+  },
+  {
+    "id": "kitchen",
+    "name": "Kettlecorner Kitchen",
+    "description": "Gather the ingredients for breakfast, dinner, or a very good snack.",
+    "default_wallpaper": "kettlewink_tile",
+    "default_floor": "kettlewink_checker",
+    "bonus_categories": [
+      "kitchen",
+      "tables",
+      "lighting"
+    ]
+  },
+  {
+    "id": "bathroom",
+    "name": "Rinsewhistle Bath",
+    "description": "A clean little corner for warm water and freshly folded towels.",
+    "default_wallpaper": "mintmurmur_paint",
+    "default_floor": "mintcool_squares",
+    "bonus_categories": [
+      "bathroom",
+      "plants",
+      "wall_decor"
+    ]
+  },
+  {
+    "id": "garden",
+    "name": "Spriggle Garden",
+    "description": "A patch of home where leaves, muddy boots, and daydreams can spread out.",
+    "default_wallpaper": "mosswhisper_wash",
+    "default_floor": "sprigspool_pavers",
+    "bonus_categories": [
+      "plants",
+      "outdoor",
+      "seating"
+    ]
+  },
+  {
+    "id": "workshop",
+    "name": "Tinkerwake Workshop",
+    "description": "Keep useful tools close and leave room for your next bright idea.",
+    "default_wallpaper": "rivetsprout_brick",
+    "default_floor": "quietash_planks",
+    "bonus_categories": [
+      "tables",
+      "storage",
+      "electronics"
+    ]
+  },
+  {
+    "id": "pet_room",
+    "name": "Pawpause Room",
+    "description": "A cozy home within your home for every small companion.",
+    "default_wallpaper": "blushbutton_spots",
+    "default_floor": "blushbutton_foam",
+    "bonus_categories": [
+      "pet_items",
+      "toys_games",
+      "rugs"
+    ]
+  },
+  {
+    "id": "library",
+    "name": "Marginrest Library",
+    "description": "Quiet shelves, comfortable chairs, and one more chapter before tea.",
+    "default_wallpaper": "hemcheck_paper",
+    "default_floor": "hemgrain_boards",
+    "bonus_categories": [
+      "storage",
+      "seating",
+      "lighting",
+      "wall_decor"
+    ]
+  },
+  {
+    "id": "studio",
+    "name": "Humminglow Studio",
+    "description": "Make a little music, sketch a new thought, or simply find your rhythm.",
+    "default_wallpaper": "navynap_paper",
+    "default_floor": "mossrest_matting",
+    "bonus_categories": [
+      "music",
+      "electronics",
+      "tables",
+      "wall_decor"
+    ]
+  },
+  {
+    "id": "attic",
+    "name": "Raftercrumb Attic",
+    "description": "Tuck away treasures and give forgotten favorites a new little corner.",
+    "default_wallpaper": "sandhush_wash",
+    "default_floor": "sandsettle_boards",
+    "bonus_categories": [
+      "storage",
+      "toys_games",
+      "seasonal"
+    ]
+  }
+]

@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_stillstripe_mat",
+   "width": 30
+  },
+  {
+   "name": "f_wishbraid_rug",
+   "width": 46
+  },
+  {
+   "name": "f_budbasket_stand",
+   "width": 14
+  },
+  {
+   "name": "f_budcurl_flower_cart",
+   "width": 30
+  },
+  {
+   "name": "f_budrain_arbor",
+   "width": 46
+  },
+  {
+   "name": "f_budwhistle_egg_bowl",
+   "width": 12
+  },
+  {
+   "name": "f_frostcrumb_tree",
+   "width": 30
+  },
+  {
+   "name": "f_frostglimmer_hearth",
+   "width": 46
+  },
+  {
+   "name": "f_frostpocket_stocking",
+   "width": 14
+  },
+  {
+   "name": "f_frostpost_gift_pile",
+   "width": 30
+  },
+  {
+   "name": "f_frostwish_carousel",
+   "width": 46
+  },
+  {
+   "name": "f_hushbell_wreath",
+   "width": 30
+  }
+ ]
+}

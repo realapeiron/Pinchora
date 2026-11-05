@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_buttonbelly_dresser",
+   "width": 30
+  },
+  {
+   "name": "f_clickslot_cabinet",
+   "width": 30
+  },
+  {
+   "name": "f_dewstrap_trunk",
+   "width": 30
+  },
+  {
+   "name": "f_dunemarrow_armoire",
+   "width": 30
+  },
+  {
+   "name": "f_fizzfile_drawers",
+   "width": 30
+  },
+  {
+   "name": "f_hemgrain_dresser",
+   "width": 30
+  },
+  {
+   "name": "f_kettleware_hutch",
+   "width": 30
+  },
+  {
+   "name": "f_marginrow_bookcase",
+   "width": 30
+  },
+  {
+   "name": "f_mossbasket_chest",
+   "width": 30
+  },
+  {
+   "name": "f_orbitvault_cupboard",
+   "width": 46
+  },
+  {
+   "name": "f_pebblepeg_cabinet",
+   "width": 30
+  },
+  {
+   "name": "f_plainstack_cubby",
+   "width": 30
+  }
+ ]
+}

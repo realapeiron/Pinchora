@@ -1,0 +1,28 @@
+{
+ "items": [
+  {
+   "name": "p_starstitch_squid",
+   "width": 20
+  },
+  {
+   "name": "p_crowncurl_dragonet",
+   "width": 20
+  },
+  {
+   "name": "p_hushpocket_bat",
+   "width": 20
+  },
+  {
+   "name": "p_moonbutton_chinchilla",
+   "width": 20
+  },
+  {
+   "name": "p_auroraclaw_crab",
+   "width": 20
+  },
+  {
+   "name": "p_wishroot_tortoise",
+   "width": 20
+  }
+ ]
+}

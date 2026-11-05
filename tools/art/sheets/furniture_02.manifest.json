@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_tidefold_towel_rail",
+   "width": 30
+  },
+  {
+   "name": "f_wishbowl_vanity",
+   "width": 30
+  },
+  {
+   "name": "f_acorncrest_canopy",
+   "width": 62
+  },
+  {
+   "name": "f_beamnest_bunk",
+   "width": 30
+  },
+  {
+   "name": "f_blushbun_bed",
+   "width": 30
+  },
+  {
+   "name": "f_capsulenap_pod",
+   "width": 30
+  },
+  {
+   "name": "f_dunetuck_bed",
+   "width": 30
+  },
+  {
+   "name": "f_foldfern_cot",
+   "width": 14
+  },
+  {
+   "name": "f_frostbough_bed",
+   "width": 46
+  },
+  {
+   "name": "f_hushdrape_bed",
+   "width": 46
+  },
+  {
+   "name": "f_pagehaven_bed",
+   "width": 30
+  },
+  {
+   "name": "f_patchpillow_bed",
+   "width": 30
+  }
+ ]
+}

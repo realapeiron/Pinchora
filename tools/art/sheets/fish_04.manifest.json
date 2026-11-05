@@ -1,0 +1,68 @@
+{
+ "items": [
+  {
+   "name": "c_lanternstripe_pike",
+   "width": 24
+  },
+  {
+   "name": "c_petalveil_betta",
+   "width": 24
+  },
+  {
+   "name": "c_pearlpatch_koi",
+   "width": 24
+  },
+  {
+   "name": "c_velvetwake_catfish",
+   "width": 24
+  },
+  {
+   "name": "c_tidefold_locket",
+   "width": 24
+  },
+  {
+   "name": "c_brinebell_coin",
+   "width": 24
+  },
+  {
+   "name": "c_duneglass_sole",
+   "width": 24
+  },
+  {
+   "name": "c_hushribbon_moray",
+   "width": 24
+  },
+  {
+   "name": "c_moonbutton_sunfish",
+   "width": 24
+  },
+  {
+   "name": "c_reefruff_lionfish",
+   "width": 24
+  },
+  {
+   "name": "c_chartcurl_nautilus",
+   "width": 24
+  },
+  {
+   "name": "c_wishscale_gourami",
+   "width": 24
+  },
+  {
+   "name": "c_sugarfin_trigger",
+   "width": 24
+  },
+  {
+   "name": "c_mossmosaic_lobster",
+   "width": 24
+  },
+  {
+   "name": "c_orbitglow_oarfish",
+   "width": 24
+  },
+  {
+   "name": "c_coralchorus_sailfish",
+   "width": 24
+  }
+ ]
+}

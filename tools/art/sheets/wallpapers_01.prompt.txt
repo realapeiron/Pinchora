@@ -1,0 +1,37 @@
+Use your built-in image generation tool to draw ONE sprite sheet for "Pinchora", a cozy pixel-art life game.
+The attached image is the style reference: match its pixel size, outline, shading and mood exactly.
+
+Rules:
+- True pixel art with chunky square pixels, no anti-aliasing, no blur, no gradients, no texture noise.
+- Top-down 3/4 view: we see the top and the front of each object, like the reference.
+- 1-pixel dark outline #1b1d2b around every object, light from the top-left, 2-3 tone shading.
+- Use only these colours: 1b1d2b 0f1631 1d2b53 2e3d75 4a5ba3 8fa0d8 7a2a3a c2413f ff6b4a ff9e7a ffd2c0 fff1e8 e6d3c3 b8a08f 7d6a5f 4a3f3b 5c3a21 8a5a34 b97f4a e0ac6e 1f4d3a 2f7d4f 5bbf6a a6e39a 1f5f8b 3a9bdc 8fd3ff c98a1e ffd166 5a3a7a 9b6bc4 06d6a0.
+- Background: flat pure #00FF00 everywhere around the objects. Nothing else on the background, no floor, no shadows on the background, no text, no labels, no numbers, no grid lines.
+- Draw the objects in a grid in exactly the order listed (row by row, left to right), each one complete and isolated with wide green gaps (at least 40 px) between them; parts of one object must touch each other.
+- Keep relative sizes: a 1-tile object is about as wide as a small chair; a 3-tile object is three times as wide.
+
+Tile sheet: 20 separate SQUARE swatches, each one 16x16 art pixels drawn big, a repeating seamless pattern that fills its whole square edge to edge (no outline around the square).
+Layout: 5 columns x 4 rows, 20 objects in total.
+
+1. Creamcalm Plaster — square seamless wallpaper tile: Seamless 16x16: Warm cream flat plaster, two sand speckles, no border; evenly repeating texture.
+2. Mintmurmur Paint — square seamless wallpaper tile: Seamless 16x16: Flat mint paint, sparse cream flecks, uniform edge pixels.
+3. Sandhush Wash — square seamless wallpaper tile: Seamless 16x16: Pale sand limewash, subtle cream mottling, no directional seams.
+4. Skyrest Paper — square seamless wallpaper tile: Seamless 16x16: Plain sky blue paper, tiny cream fiber flecks, matching edge colors.
+5. Rosequiet Paint — square seamless wallpaper tile: Seamless 16x16: Soft rose paint, two lighter stipples, flat unbordered field.
+6. Lilacpause Plaster — square seamless wallpaper tile: Seamless 16x16: Pale lilac plaster, scattered cream pinholes, low contrast texture.
+7. Navynap Paper — square seamless wallpaper tile: Seamless 16x16: Muted navy paper, sparse sky fibers, continuous solid edges.
+8. Mosswhisper Wash — square seamless wallpaper tile: Seamless 16x16: Soft moss wash, cream grain flecks, subtle sand mottling.
+9. Hemcheck Paper — square seamless wallpaper tile: Seamless 16x16: Cream ground, moss gingham checks, one coral stitch at each crossing.
+10. Pebblewake Stripes — square seamless wallpaper tile: Seamless 16x16: Sand ground, narrow navy vertical stripes, cream dotted rope lines.
+11. Stillfold Panels — square seamless wallpaper tile: Seamless 16x16: Cream square panels, charcoal one pixel grooves, tiny mint corner highlights.
+12. Blinkberry Dots — square seamless wallpaper tile: Seamless 16x16: Charcoal background, spaced coral squares and sky dots, plum connecting steps.
+13. Marginleaf Print — square seamless wallpaper tile: Seamless 16x16: Cream paper, paired moss leaves, gold curved stems, sand fiber texture.
+14. Sprigspool Trellis — square seamless wallpaper tile: Seamless 16x16: Mint ground, cream diagonal lattice, moss leaf pairs at alternate crossings.
+15. Hushwick Wisps — square seamless wallpaper tile: Seamless 16x16: Plum paper, lilac curling wisps, tiny gold crescent dots, charcoal soft shadows.
+16. Frostcrumb Flakes — square seamless wallpaper tile: Seamless 16x16: Navy ground, cream six spoke flakes, coral dots, gold single pixel sparkles.
+17. Lanternplait Knots — square seamless wallpaper tile: Seamless 16x16: Coral paper, gold interlocking loop knots, plum centers, cream corner dots.
+18. Budwhistle Sprigs — square seamless wallpaper tile: Seamless 16x16: Cream paper, rose three petal buds, mint stems, lilac scattered specks.
+19. Brinebeam Planking — square seamless wallpaper tile: Seamless 16x16: Navy vertical planks, sand worn grain, moss nail stains, gold bolt dots.
+20. Polypocket Fans — square seamless wallpaper tile: Seamless 16x16: Sky ground, lilac fan corals, cream branching veins, small coral oval buds.
+
+Save the final PNG to ./out/wallpapers_01.png (create ./out if needed). Exactly 20 objects.

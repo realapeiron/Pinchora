@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_crumbshine_toaster",
+   "width": 12
+  },
+  {
+   "name": "f_dunebowl_counter",
+   "width": 46
+  },
+  {
+   "name": "f_fizzchill_cabinet",
+   "width": 30
+  },
+  {
+   "name": "f_hemtop_counter",
+   "width": 30
+  },
+  {
+   "name": "f_kettlewink_fridge",
+   "width": 30
+  },
+  {
+   "name": "f_mintwhistle_kettle",
+   "width": 12
+  },
+  {
+   "name": "f_orbitbake_oven",
+   "width": 46
+  },
+  {
+   "name": "f_pagebreak_teacup",
+   "width": 12
+  },
+  {
+   "name": "f_pebblewash_sink",
+   "width": 30
+  },
+  {
+   "name": "f_reedrest_breadbox",
+   "width": 12
+  },
+  {
+   "name": "f_reefsteam_cooker",
+   "width": 12
+  },
+  {
+   "name": "f_rivetpan_range",
+   "width": 46
+  }
+ ]
+}

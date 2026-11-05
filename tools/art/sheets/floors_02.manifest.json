@@ -1,0 +1,104 @@
+{
+ "items": [
+  {
+   "name": "fl_blushbutton_foam",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "fl_rivetsprout_plate",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "fl_acorncourt_inlay",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "fl_dewpeg_groundsheet",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "fl_orbitcrumb_panels",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "fl_fizzfern_clean_tile",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "fl_kettlewink_checker",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "fl_humskein_cork",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "fl_clickcove_rubber",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "fl_reedpause_tatting",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "fl_dunethread_clay",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "fl_sugarquay_terrazzo",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "fl_hemgrain_herringbone",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "fl_pebblewake_beachglass",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "fl_marginmoss_borders",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "fl_stillfold_polished_stone",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "fl_brinebeam_compasswork",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "fl_polypocket_tideglass",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "fl_acorncourt_starstone",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "fl_orbitcrumb_nightglass",
+   "width": 16,
+   "height": 16
+  }
+ ]
+}

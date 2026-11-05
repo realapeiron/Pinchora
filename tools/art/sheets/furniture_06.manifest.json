@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_sprigseal_jar",
+   "width": 12
+  },
+  {
+   "name": "f_stillwarm_stove",
+   "width": 30
+  },
+  {
+   "name": "f_tidechip_mug",
+   "width": 12
+  },
+  {
+   "name": "f_wishfeast_counter",
+   "width": 46
+  },
+  {
+   "name": "f_acornsun_beacon",
+   "width": 30
+  },
+  {
+   "name": "f_beamguard_sconce",
+   "width": 14
+  },
+  {
+   "name": "f_blushcheek_lamp",
+   "width": 12
+  },
+  {
+   "name": "f_clickhalo_lamp",
+   "width": 12
+  },
+  {
+   "name": "f_dewloop_lantern",
+   "width": 12
+  },
+  {
+   "name": "f_dunewick_candle",
+   "width": 12
+  },
+  {
+   "name": "f_fizzflask_lamp",
+   "width": 12
+  },
+  {
+   "name": "f_frosttin_lantern",
+   "width": 12
+  }
+ ]
+}

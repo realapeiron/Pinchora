@@ -1,1 +1,425 @@
-[]
+[
+  {
+    "id": "crumbclaw_crab",
+    "name": "Crumbclaw Crab",
+    "rarity": "common",
+    "capsule_weight": 119,
+    "habitat": "sea",
+    "personality": "Brave about snacks, shy about waves.",
+    "favorite_food": "Kelp Crunchies",
+    "sprite_brief": "20x20, front three-quarter: Coral round crab, cream claw tips, navy bead eyes, sand speckled shell, one claw raised.",
+    "starter": true
+  },
+  {
+    "id": "pebblepouch_hermit",
+    "name": "Pebblepouch Hermit",
+    "rarity": "common",
+    "capsule_weight": 88,
+    "habitat": "sea",
+    "personality": "Carries home and spare confidence.",
+    "favorite_food": "Algae Wafers",
+    "sprite_brief": "20x20, front three-quarter: Sand hermit crab, spiral cream shell, coral legs, moss shell stripe, curious eye stalks."
+  },
+  {
+    "id": "ribbonfin_guppy",
+    "name": "Ribbonfin Guppy",
+    "rarity": "common",
+    "capsule_weight": 115,
+    "habitat": "sea",
+    "personality": "Wiggles hello to absolutely everyone.",
+    "favorite_food": "Pond Flake Mix",
+    "sprite_brief": "20x20, front three-quarter: Sky tiny fish, coral ribbon tail, cream belly, navy round eyes, mint dorsal fin."
+  },
+  {
+    "id": "noodlenose_seahorse",
+    "name": "Noodlenose Seahorse",
+    "rarity": "common",
+    "capsule_weight": 114,
+    "habitat": "sea",
+    "personality": "Patiently noses into every corner.",
+    "favorite_food": "Brine Nibbles",
+    "sprite_brief": "20x20, front three-quarter: Mint seahorse, curled sand tail, cream belly ridges, coral snout, tiny navy eyes."
+  },
+  {
+    "id": "puddlesock_otter",
+    "name": "Puddlesock Otter",
+    "rarity": "common",
+    "capsule_weight": 84,
+    "habitat": "sea",
+    "personality": "Collects smooth stones and compliments.",
+    "favorite_food": "River Bite Mix",
+    "sprite_brief": "20x20, front three-quarter: Sand plump otter, cream muzzle and belly, navy paws, coral nose, holds a smooth gray pebble."
+  },
+  {
+    "id": "buttonbell_jelly",
+    "name": "Buttonbell Jelly",
+    "rarity": "common",
+    "capsule_weight": 118,
+    "habitat": "sea",
+    "personality": "Bobs along at its own soft pace.",
+    "favorite_food": "Plankton Pearls",
+    "sprite_brief": "20x20, front three-quarter: Translucent sky jellyfish, cream round bell, lilac short tentacles, coral cheek dots, navy eyes."
+  },
+  {
+    "id": "sprinklearm_octopus",
+    "name": "Sprinklearm Octopus",
+    "rarity": "common",
+    "capsule_weight": 95,
+    "habitat": "sea",
+    "personality": "Hugs first, asks about snacks second.",
+    "favorite_food": "Tidal Dumplings",
+    "sprite_brief": "20x20, front three-quarter: Lilac squat octopus, cream sucker dots, coral speckled head, eight short curled arms, navy smiling eyes."
+  },
+  {
+    "id": "drowsepatch_cat",
+    "name": "Drowsepatch Cat",
+    "rarity": "common",
+    "capsule_weight": 105,
+    "habitat": "land",
+    "personality": "A champion of well-timed little naps.",
+    "favorite_food": "Cozy Kibble Bits",
+    "sprite_brief": "20x20, front three-quarter: Cream round cat, moss ear patch, coral nose, curled sand tail, closed navy eyes.",
+    "starter": true
+  },
+  {
+    "id": "cloverpuff_bun",
+    "name": "Cloverpuff Bun",
+    "rarity": "common",
+    "capsule_weight": 88,
+    "habitat": "land",
+    "personality": "Bounces first, plans the landing later.",
+    "favorite_food": "Clover Crisps",
+    "sprite_brief": "20x20, front three-quarter: Cream round bunny-like critter, moss tipped long ears, rose cheeks, tiny sand paws, puff tail.",
+    "starter": true
+  },
+  {
+    "id": "tumblebutton_pup",
+    "name": "Tumblebutton Pup",
+    "rarity": "common",
+    "capsule_weight": 117,
+    "habitat": "land",
+    "personality": "Proudly brings back the wrong toy.",
+    "favorite_food": "Oatbone Bites",
+    "sprite_brief": "20x20, front three-quarter: Sand floppy eared puppy, cream chest, coral collar, navy nose, one raised paw."
+  },
+  {
+    "id": "teacup_toadlet",
+    "name": "Teacup Toadlet",
+    "rarity": "common",
+    "capsule_weight": 108,
+    "habitat": "land",
+    "personality": "Listens as if every story is a secret.",
+    "favorite_food": "Puddle Pellets",
+    "sprite_brief": "20x20, front three-quarter: Moss tiny toad, cream chin, mint spots, broad sand feet, gold round eyes."
+  },
+  {
+    "id": "mittensprout_mouse",
+    "name": "Mittensprout Mouse",
+    "rarity": "common",
+    "capsule_weight": 83,
+    "habitat": "land",
+    "personality": "Tidies crumbs into impressive piles.",
+    "favorite_food": "Seedwheel Bites",
+    "sprite_brief": "20x20, front three-quarter: Sand round mouse, cream mitten paws, rose inner ears, moss nose, thin curled tail."
+  },
+  {
+    "id": "pipstitch_finch",
+    "name": "Pipstitch Finch",
+    "rarity": "common",
+    "capsule_weight": 119,
+    "habitat": "sky",
+    "personality": "Sings a tiny song about everything.",
+    "favorite_food": "Millet Morsels",
+    "sprite_brief": "20x20, front three-quarter: Cream chubby finch, coral beak, moss stitched wing marks, sand feet, navy dot eyes."
+  },
+  {
+    "id": "chirrupfold_budgie",
+    "name": "Chirrupfold Budgie",
+    "rarity": "common",
+    "capsule_weight": 102,
+    "habitat": "sky",
+    "personality": "Repeats the rhythm of happy chatter.",
+    "favorite_food": "Sproutseed Mix",
+    "sprite_brief": "20x20, front three-quarter: Mint round budgie, sky folded wings, cream forehead, gold beak, navy cheek dots."
+  },
+  {
+    "id": "coppercup_fiddler",
+    "name": "Coppercup Fiddler",
+    "rarity": "uncommon",
+    "capsule_weight": 40,
+    "habitat": "sea",
+    "personality": "Waves one grand claw at every guest.",
+    "favorite_food": "Kelp Knots",
+    "sprite_brief": "20x20, front three-quarter: Sand fiddler crab, oversized coral claw, cream smaller claw, navy stalk eyes, moss shell specks."
+  },
+  {
+    "id": "mossmitten_crab",
+    "name": "Mossmitten Crab",
+    "rarity": "uncommon",
+    "capsule_weight": 52,
+    "habitat": "sea",
+    "personality": "Offers slow, thoughtful little claps.",
+    "favorite_food": "Reef Crumble",
+    "sprite_brief": "20x20, front three-quarter: Moss square crab, cream fuzzy claw cuffs, sand legs, coral shell stripe, navy eyes."
+  },
+  {
+    "id": "rufflebranch_axolotl",
+    "name": "Rufflebranch Axolotl",
+    "rarity": "uncommon",
+    "capsule_weight": 48,
+    "habitat": "sea",
+    "personality": "Smiles through every small surprise.",
+    "favorite_food": "Pond Nibbles",
+    "sprite_brief": "20x20, front three-quarter: Cream axolotl, lilac feathery gills, sky curled tail, coral cheek spots, tiny mint feet."
+  },
+  {
+    "id": "velvetloop_ray",
+    "name": "Velvetloop Ray",
+    "rarity": "uncommon",
+    "capsule_weight": 36,
+    "habitat": "sea",
+    "personality": "Glides past with impeccable manners.",
+    "favorite_food": "Sandbed Snacks",
+    "sprite_brief": "20x20, front three-quarter: Navy rounded ray, cream belly edge, plum back dots, long sand tail, sky fin tips."
+  },
+  {
+    "id": "pearlwhisk_seal",
+    "name": "Pearlwhisk Seal",
+    "rarity": "uncommon",
+    "capsule_weight": 44,
+    "habitat": "sea",
+    "personality": "Applauds a meal before it arrives.",
+    "favorite_food": "Harbor Bites",
+    "sprite_brief": "20x20, front three-quarter: Sky round seal, cream whiskered muzzle, sand belly, coral nose, navy flipper tips."
+  },
+  {
+    "id": "dapplespoon_newt",
+    "name": "Dapplespoon Newt",
+    "rarity": "uncommon",
+    "capsule_weight": 39,
+    "habitat": "sea",
+    "personality": "Investigates puddles with great care.",
+    "favorite_food": "Brook Crunch",
+    "sprite_brief": "20x20, front three-quarter: Mint broad headed newt, coral back spots, cream throat, sand paddle tail, navy bright eyes."
+  },
+  {
+    "id": "quiltquill_hedgehog",
+    "name": "Quiltquill Hedgehog",
+    "rarity": "uncommon",
+    "capsule_weight": 51,
+    "habitat": "land",
+    "personality": "Unrolls slowly for trusted friends.",
+    "favorite_food": "Garden Nibble Mix",
+    "sprite_brief": "20x20, front three-quarter: Sand hedgehog, moss and cream checker spines, rose snout, tiny navy feet, rounded ears."
+  },
+  {
+    "id": "acornpocket_squirrel",
+    "name": "Acornpocket Squirrel",
+    "rarity": "uncommon",
+    "capsule_weight": 52,
+    "habitat": "land",
+    "personality": "Forgets hiding spots, remembers faces.",
+    "favorite_food": "Acorn Crumbles",
+    "sprite_brief": "20x20, front three-quarter: Coral squirrel, cream belly, huge sand curled tail, moss ear tufts, holds a gold acorn."
+  },
+  {
+    "id": "puffsole_guinea_pig",
+    "name": "Puffsole Guinea Pig",
+    "rarity": "uncommon",
+    "capsule_weight": 46,
+    "habitat": "land",
+    "personality": "Wheeks like a very small kettle.",
+    "favorite_food": "Hayflower Chews",
+    "sprite_brief": "20x20, front three-quarter: Cream oval guinea pig, rose feet, moss saddle patch, sand ears, navy bead eyes."
+  },
+  {
+    "id": "tinkertrot_ferret",
+    "name": "Tinkertrot Ferret",
+    "rarity": "uncommon",
+    "capsule_weight": 47,
+    "habitat": "land",
+    "personality": "Treats every sock as a new project.",
+    "favorite_food": "Burrow Bite Mix",
+    "sprite_brief": "20x20, front three-quarter: Sand long ferret, cream face, charcoal eye mask, coral nose, moss tipped tail."
+  },
+  {
+    "id": "tasselcrest_cockatiel",
+    "name": "Tasselcrest Cockatiel",
+    "rarity": "uncommon",
+    "capsule_weight": 53,
+    "habitat": "sky",
+    "personality": "Bows before every tiny performance.",
+    "favorite_food": "Sunseed Sprinkles",
+    "sprite_brief": "20x20, front three-quarter: Cream cockatiel, gold tall crest, coral cheeks, navy wings, sand feet, rounded tail."
+  },
+  {
+    "id": "hoothem_owlet",
+    "name": "Hoothem Owlet",
+    "rarity": "uncommon",
+    "capsule_weight": 37,
+    "habitat": "sky",
+    "personality": "Curious at dusk, cuddly by dawn.",
+    "favorite_food": "Moonmorsel Mix",
+    "sprite_brief": "20x20, front three-quarter: Plum round owlet, cream face discs, gold eyes, moss wing patches, sand small talons."
+  },
+  {
+    "id": "lanternclasp_crab",
+    "name": "Lanternclasp Crab",
+    "rarity": "rare",
+    "capsule_weight": 17,
+    "habitat": "sea",
+    "personality": "Guides shy friends toward the party.",
+    "favorite_food": "Glowkelp Crisps",
+    "sprite_brief": "20x20, front three-quarter: Coral crab, gold lantern shaped shell patches, cream chunky claws, navy eye stalks, plum leg tips."
+  },
+  {
+    "id": "lacefloat_cuttle",
+    "name": "Lacefloat Cuttle",
+    "rarity": "rare",
+    "capsule_weight": 16,
+    "habitat": "sea",
+    "personality": "Changes its mood one stripe at a time.",
+    "favorite_food": "Driftflake Bites",
+    "sprite_brief": "20x20, front three-quarter: Lilac cuttlefish, cream frilled side fins, mint striped mantle, coral short arms, navy oval eyes."
+  },
+  {
+    "id": "thimblehorn_narwhal",
+    "name": "Thimblehorn Narwhal",
+    "rarity": "rare",
+    "capsule_weight": 20,
+    "habitat": "sea",
+    "personality": "Very proud of its very small horn.",
+    "favorite_food": "Frostfin Pellets",
+    "sprite_brief": "20x20, front three-quarter: Sky round narwhal, cream belly, short gold spiral horn, navy flippers, coral cheek marks."
+  },
+  {
+    "id": "meadowgill_nudibranch",
+    "name": "Meadowgill Nudibranch",
+    "rarity": "rare",
+    "capsule_weight": 20,
+    "habitat": "sea",
+    "personality": "Moves slowly enough to admire itself.",
+    "favorite_food": "Reefleaf Flakes",
+    "sprite_brief": "20x20, front three-quarter: Mint sea slug, rose flowerlike back gills, cream foot fringe, lilac horn tips, tiny navy eyes."
+  },
+  {
+    "id": "dunetuft_fennec",
+    "name": "Dunetuft Fennec",
+    "rarity": "rare",
+    "capsule_weight": 19,
+    "habitat": "land",
+    "personality": "Hears the snack cupboard from anywhere.",
+    "favorite_food": "Dune Nibble Mix",
+    "sprite_brief": "20x20, front three-quarter: Sand small fox, oversized cream ears, navy ear tips, coral nose, moss collar tuft."
+  },
+  {
+    "id": "marmalade_mothkit",
+    "name": "Marmalade Mothkit",
+    "rarity": "rare",
+    "capsule_weight": 18,
+    "habitat": "land",
+    "personality": "Dreams of flying, excels at cuddling.",
+    "favorite_food": "Whisker Oat Bites",
+    "sprite_brief": "20x20, front three-quarter: Cream kitten-like critter, coral fluffy cheek ruffs, lilac wing shaped ear tufts, sand curled tail."
+  },
+  {
+    "id": "reedskip_kangaroo_rat",
+    "name": "Reedskip Kangaroo Rat",
+    "rarity": "rare",
+    "capsule_weight": 16,
+    "habitat": "land",
+    "personality": "Makes tiny hops feel like grand leaps.",
+    "favorite_food": "Grassseed Clusters",
+    "sprite_brief": "20x20, front three-quarter: Sand round hopping rodent, cream belly, long moss tipped tail, coral ears, oversized narrow hind feet."
+  },
+  {
+    "id": "velvetloop_moth",
+    "name": "Velvetloop Moth",
+    "rarity": "rare",
+    "capsule_weight": 20,
+    "habitat": "sky",
+    "personality": "Always finds a warm corner to visit.",
+    "favorite_food": "Nectar Beads",
+    "sprite_brief": "20x20, front three-quarter: Plum round moth, cream curled wing markings, lilac fluffy body, gold antennae, navy bead eyes."
+  },
+  {
+    "id": "cloudthimble_dove",
+    "name": "Cloudthimble Dove",
+    "rarity": "rare",
+    "capsule_weight": 15,
+    "habitat": "sky",
+    "personality": "Offers a soft coo instead of advice.",
+    "favorite_food": "Petalseed Mix",
+    "sprite_brief": "20x20, front three-quarter: Cream plump dove, sky wing tips, coral beak, sand feet, lilac chest speckles."
+  },
+  {
+    "id": "glassgarden_shrimp",
+    "name": "Glassgarden Shrimp",
+    "rarity": "epic",
+    "capsule_weight": 5,
+    "habitat": "sea",
+    "personality": "Proudly tends invisible little gardens.",
+    "favorite_food": "Bloomalgae Bites",
+    "sprite_brief": "20x20, front three-quarter: Translucent mint shrimp, coral leaf shaped antennae, cream segmented belly, lilac feet, navy bright eyes."
+  },
+  {
+    "id": "starstitch_squid",
+    "name": "Starstitch Squid",
+    "rarity": "epic",
+    "capsule_weight": 7,
+    "habitat": "sea",
+    "personality": "Draws little loops whenever it's happy.",
+    "favorite_food": "Starlit Plankton",
+    "sprite_brief": "20x20, front three-quarter: Navy small squid, gold stitched star spots, sky triangular fins, cream curled arms, coral cheeks."
+  },
+  {
+    "id": "crowncurl_dragonet",
+    "name": "Crowncurl Dragonet",
+    "rarity": "epic",
+    "capsule_weight": 6,
+    "habitat": "sea",
+    "personality": "Acts regal until a bubble drifts by.",
+    "favorite_food": "Reef Ribbon Mix",
+    "sprite_brief": "20x20, front three-quarter: Plum dragonet fish, gold crown shaped dorsal fin, coral curls on sky body, cream belly, navy eyes."
+  },
+  {
+    "id": "hushpocket_bat",
+    "name": "Hushpocket Bat",
+    "rarity": "epic",
+    "capsule_weight": 6,
+    "habitat": "sky",
+    "personality": "A shy upside-down hug enthusiast.",
+    "favorite_food": "Duskfruit Chews",
+    "sprite_brief": "20x20, front three-quarter: Charcoal round bat, lilac wing membranes, cream chest fluff, coral ears, gold sleepy eyes."
+  },
+  {
+    "id": "moonbutton_chinchilla",
+    "name": "Moonbutton Chinchilla",
+    "rarity": "epic",
+    "capsule_weight": 6,
+    "habitat": "land",
+    "personality": "Keeps a very busy schedule of fluff.",
+    "favorite_food": "Haymoon Biscuits",
+    "sprite_brief": "20x20, front three-quarter: Lilac round chinchilla, cream huge ears, sky fluffy tail, coral nose, navy mitten feet."
+  },
+  {
+    "id": "auroraclaw_crab",
+    "name": "Auroraclaw Crab",
+    "rarity": "legendary",
+    "capsule_weight": 1,
+    "habitat": "sea",
+    "personality": "Shares its glow with nervous neighbors.",
+    "favorite_food": "Prismkelp Wafers",
+    "sprite_brief": "20x20, front three-quarter: Cream crab, translucent sky shell, mint and lilac aurora bands, gold star freckles, coral gentle claws."
+  },
+  {
+    "id": "wishroot_tortoise",
+    "name": "Wishroot Tortoise",
+    "rarity": "legendary",
+    "capsule_weight": 1,
+    "habitat": "land",
+    "personality": "Carries a patient little garden home.",
+    "favorite_food": "Clovermoon Greens",
+    "sprite_brief": "20x20, front three-quarter: Sand tiny tortoise, moss domed shell, cream branching leaf patterns, gold budding sprouts, coral cheek dots."
+  }
+]

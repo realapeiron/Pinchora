@@ -1,0 +1,29 @@
+Use your built-in image generation tool to draw ONE sprite sheet for "Pinchora", a cozy pixel-art life game.
+The attached image is the style reference: match its pixel size, outline, shading and mood exactly.
+
+Rules:
+- True pixel art with chunky square pixels, no anti-aliasing, no blur, no gradients, no texture noise.
+- Top-down 3/4 view: we see the top and the front of each object, like the reference.
+- 1-pixel dark outline #1b1d2b around every object, light from the top-left, 2-3 tone shading.
+- Use only these colours: 1b1d2b 0f1631 1d2b53 2e3d75 4a5ba3 8fa0d8 7a2a3a c2413f ff6b4a ff9e7a ffd2c0 fff1e8 e6d3c3 b8a08f 7d6a5f 4a3f3b 5c3a21 8a5a34 b97f4a e0ac6e 1f4d3a 2f7d4f 5bbf6a a6e39a 1f5f8b 3a9bdc 8fd3ff c98a1e ffd166 5a3a7a 9b6bc4 06d6a0.
+- Background: flat pure #00FF00 everywhere around the objects. Nothing else on the background, no floor, no shadows on the background, no text, no labels, no numbers, no grid lines.
+- Draw the objects in a grid in exactly the order listed (row by row, left to right), each one complete and isolated with wide green gaps (at least 40 px) between them; parts of one object must touch each other.
+- Keep relative sizes: a 1-tile object is about as wide as a small chair; a 3-tile object is three times as wide.
+
+Pet sheet.
+Layout: 4 columns x 3 rows, 12 objects in total.
+
+1. Crumbclaw Crab — 20x20, front three-quarter: Coral round crab, cream claw tips, navy bead eyes, sand speckled shell, one claw raised. (cute pet, sitting, facing the viewer, about 1 tile big)
+2. Pebblepouch Hermit — 20x20, front three-quarter: Sand hermit crab, spiral cream shell, coral legs, moss shell stripe, curious eye stalks. (cute pet, sitting, facing the viewer, about 1 tile big)
+3. Ribbonfin Guppy — 20x20, front three-quarter: Sky tiny fish, coral ribbon tail, cream belly, navy round eyes, mint dorsal fin. (cute pet, sitting, facing the viewer, about 1 tile big)
+4. Noodlenose Seahorse — 20x20, front three-quarter: Mint seahorse, curled sand tail, cream belly ridges, coral snout, tiny navy eyes. (cute pet, sitting, facing the viewer, about 1 tile big)
+5. Puddlesock Otter — 20x20, front three-quarter: Sand plump otter, cream muzzle and belly, navy paws, coral nose, holds a smooth gray pebble. (cute pet, sitting, facing the viewer, about 1 tile big)
+6. Buttonbell Jelly — 20x20, front three-quarter: Translucent sky jellyfish, cream round bell, lilac short tentacles, coral cheek dots, navy eyes. (cute pet, sitting, facing the viewer, about 1 tile big)
+7. Sprinklearm Octopus — 20x20, front three-quarter: Lilac squat octopus, cream sucker dots, coral speckled head, eight short curled arms, navy smiling eyes. (cute pet, sitting, facing the viewer, about 1 tile big)
+8. Drowsepatch Cat — 20x20, front three-quarter: Cream round cat, moss ear patch, coral nose, curled sand tail, closed navy eyes. (cute pet, sitting, facing the viewer, about 1 tile big)
+9. Cloverpuff Bun — 20x20, front three-quarter: Cream round bunny-like critter, moss tipped long ears, rose cheeks, tiny sand paws, puff tail. (cute pet, sitting, facing the viewer, about 1 tile big)
+10. Tumblebutton Pup — 20x20, front three-quarter: Sand floppy eared puppy, cream chest, coral collar, navy nose, one raised paw. (cute pet, sitting, facing the viewer, about 1 tile big)
+11. Teacup Toadlet — 20x20, front three-quarter: Moss tiny toad, cream chin, mint spots, broad sand feet, gold round eyes. (cute pet, sitting, facing the viewer, about 1 tile big)
+12. Mittensprout Mouse — 20x20, front three-quarter: Sand round mouse, cream mitten paws, rose inner ears, moss nose, thin curled tail. (cute pet, sitting, facing the viewer, about 1 tile big)
+
+Save the final PNG to ./out/pets_01.png (create ./out if needed). Exactly 12 objects.

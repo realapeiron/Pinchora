@@ -1,0 +1,23 @@
+Use your built-in image generation tool to draw ONE sprite sheet for "Pinchora", a cozy pixel-art life game.
+The attached image is the style reference: match its pixel size, outline, shading and mood exactly.
+
+Rules:
+- True pixel art with chunky square pixels, no anti-aliasing, no blur, no gradients, no texture noise.
+- Top-down 3/4 view: we see the top and the front of each object, like the reference.
+- 1-pixel dark outline #1b1d2b around every object, light from the top-left, 2-3 tone shading.
+- Use only these colours: 1b1d2b 0f1631 1d2b53 2e3d75 4a5ba3 8fa0d8 7a2a3a c2413f ff6b4a ff9e7a ffd2c0 fff1e8 e6d3c3 b8a08f 7d6a5f 4a3f3b 5c3a21 8a5a34 b97f4a e0ac6e 1f4d3a 2f7d4f 5bbf6a a6e39a 1f5f8b 3a9bdc 8fd3ff c98a1e ffd166 5a3a7a 9b6bc4 06d6a0.
+- Background: flat pure #00FF00 everywhere around the objects. Nothing else on the background, no floor, no shadows on the background, no text, no labels, no numbers, no grid lines.
+- Draw the objects in a grid in exactly the order listed (row by row, left to right), each one complete and isolated with wide green gaps (at least 40 px) between them; parts of one object must touch each other.
+- Keep relative sizes: a 1-tile object is about as wide as a small chair; a 3-tile object is three times as wide.
+
+Pet sheet.
+Layout: 4 columns x 2 rows, 6 objects in total.
+
+1. Starstitch Squid — 20x20, front three-quarter: Navy small squid, gold stitched star spots, sky triangular fins, cream curled arms, coral cheeks. (cute pet, sitting, facing the viewer, about 1 tile big)
+2. Crowncurl Dragonet — 20x20, front three-quarter: Plum dragonet fish, gold crown shaped dorsal fin, coral curls on sky body, cream belly, navy eyes. (cute pet, sitting, facing the viewer, about 1 tile big)
+3. Hushpocket Bat — 20x20, front three-quarter: Charcoal round bat, lilac wing membranes, cream chest fluff, coral ears, gold sleepy eyes. (cute pet, sitting, facing the viewer, about 1 tile big)
+4. Moonbutton Chinchilla — 20x20, front three-quarter: Lilac round chinchilla, cream huge ears, sky fluffy tail, coral nose, navy mitten feet. (cute pet, sitting, facing the viewer, about 1 tile big)
+5. Auroraclaw Crab — 20x20, front three-quarter: Cream crab, translucent sky shell, mint and lilac aurora bands, gold star freckles, coral gentle claws. (cute pet, sitting, facing the viewer, about 1 tile big)
+6. Wishroot Tortoise — 20x20, front three-quarter: Sand tiny tortoise, moss domed shell, cream branching leaf patterns, gold budding sprouts, coral cheek dots. (cute pet, sitting, facing the viewer, about 1 tile big)
+
+Save the final PNG to ./out/pets_04.png (create ./out if needed). Exactly 6 objects.

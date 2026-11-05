@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_clickstep_rug",
+   "width": 46
+  },
+  {
+   "name": "f_crumbdot_mat",
+   "width": 30
+  },
+  {
+   "name": "f_dewring_rug",
+   "width": 46
+  },
+  {
+   "name": "f_duneline_runner",
+   "width": 46
+  },
+  {
+   "name": "f_hemcheck_rug",
+   "width": 30
+  },
+  {
+   "name": "f_marginleaf_rug",
+   "width": 46
+  },
+  {
+   "name": "f_orbitlace_rug",
+   "width": 62
+  },
+  {
+   "name": "f_pebblepath_runner",
+   "width": 46
+  },
+  {
+   "name": "f_reedquiet_mat",
+   "width": 30
+  },
+  {
+   "name": "f_reefwhorl_rug",
+   "width": 46
+  },
+  {
+   "name": "f_rivetgrid_rug",
+   "width": 46
+  },
+  {
+   "name": "f_sprigstep_mat",
+   "width": 30
+  }
+ ]
+}

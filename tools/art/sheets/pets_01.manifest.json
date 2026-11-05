@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "p_crumbclaw_crab",
+   "width": 20
+  },
+  {
+   "name": "p_pebblepouch_hermit",
+   "width": 20
+  },
+  {
+   "name": "p_ribbonfin_guppy",
+   "width": 20
+  },
+  {
+   "name": "p_noodlenose_seahorse",
+   "width": 20
+  },
+  {
+   "name": "p_puddlesock_otter",
+   "width": 20
+  },
+  {
+   "name": "p_buttonbell_jelly",
+   "width": 20
+  },
+  {
+   "name": "p_sprinklearm_octopus",
+   "width": 20
+  },
+  {
+   "name": "p_drowsepatch_cat",
+   "width": 20
+  },
+  {
+   "name": "p_cloverpuff_bun",
+   "width": 20
+  },
+  {
+   "name": "p_tumblebutton_pup",
+   "width": 20
+  },
+  {
+   "name": "p_teacup_toadlet",
+   "width": 20
+  },
+  {
+   "name": "p_mittensprout_mouse",
+   "width": 20
+  }
+ ]
+}

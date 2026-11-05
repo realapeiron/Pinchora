@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_dewpeg_firepit",
+   "width": 30
+  },
+  {
+   "name": "f_duneshade_parasol",
+   "width": 30
+  },
+  {
+   "name": "f_hemhang_clothesline",
+   "width": 46
+  },
+  {
+   "name": "f_kettleporch_bench",
+   "width": 30
+  },
+  {
+   "name": "f_orbitshade_gazebo",
+   "width": 62
+  },
+  {
+   "name": "f_pebblepost_mailbox",
+   "width": 14
+  },
+  {
+   "name": "f_reedskip_stepping_set",
+   "width": 30
+  },
+  {
+   "name": "f_reefmurmur_fountain",
+   "width": 30
+  },
+  {
+   "name": "f_rivetdrip_rain_barrel",
+   "width": 14
+  },
+  {
+   "name": "f_sprigstep_planter_box",
+   "width": 30
+  },
+  {
+   "name": "f_sprigwheel_barrow",
+   "width": 30
+  },
+  {
+   "name": "f_wishbridge_arch",
+   "width": 46
+  }
+ ]
+}

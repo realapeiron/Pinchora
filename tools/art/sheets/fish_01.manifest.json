@@ -1,0 +1,68 @@
+{
+ "items": [
+  {
+   "name": "c_toaststripe_minnow",
+   "width": 24
+  },
+  {
+   "name": "c_pebblelip_dace",
+   "width": 24
+  },
+  {
+   "name": "c_mintcomma_sprat",
+   "width": 24
+  },
+  {
+   "name": "c_sandskip_goby",
+   "width": 24
+  },
+  {
+   "name": "c_crumbfin_bream",
+   "width": 24
+  },
+  {
+   "name": "c_ribbonwink_shiner",
+   "width": 24
+  },
+  {
+   "name": "c_teadrop_loach",
+   "width": 24
+  },
+  {
+   "name": "c_mossbutton_perch",
+   "width": 24
+  },
+  {
+   "name": "c_puddlequilt_carp",
+   "width": 24
+  },
+  {
+   "name": "c_skythread_smelt",
+   "width": 24
+  },
+  {
+   "name": "c_oatflake_mullet",
+   "width": 24
+  },
+  {
+   "name": "c_lilacwhisk_gudgeon",
+   "width": 24
+  },
+  {
+   "name": "c_cupnose_sculpin",
+   "width": 24
+  },
+  {
+   "name": "c_reedflash_tetra",
+   "width": 24
+  },
+  {
+   "name": "c_coralcrumb_sardine",
+   "width": 24
+  },
+  {
+   "name": "c_softspine_stickleback",
+   "width": 24
+  }
+ ]
+}

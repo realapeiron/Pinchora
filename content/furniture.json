@@ -1,1 +1,8087 @@
-[]
+[
+  {
+    "id": "hemloop_chair",
+    "name": "Hemloop Chair",
+    "category": "seating",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 75,
+    "currency": "shells",
+    "set": "thimblefen_cottage",
+    "tags": [
+      "seat",
+      "wood",
+      "woven"
+    ],
+    "variants": [],
+    "availability": "permanent",
+    "description": "A woven seat that knows every breakfast story.",
+    "sprite_brief": "Top-down 3/4: Square honey oak chair, cream woven seat, straight back with coral stitched cushion."
+  },
+  {
+    "id": "pebblerest_stool",
+    "name": "Pebblerest Stool",
+    "category": "seating",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 75,
+    "currency": "shells",
+    "set": "pebblewake_porch",
+    "tags": [
+      "seat",
+      "wood"
+    ],
+    "variants": [
+      "sand",
+      "navy",
+      "coral",
+      "cream"
+    ],
+    "availability": "craft",
+    "description": "For sandy heels and conversations that run past sunset.",
+    "sprite_brief": "Top-down 3/4: Round driftwood stool, three splayed legs, navy seat pad, visible pale end grain."
+  },
+  {
+    "id": "plainwhorl_chair",
+    "name": "Plainwhorl Chair",
+    "category": "seating",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 70,
+    "currency": "shells",
+    "set": null,
+    "tags": [
+      "seat",
+      "wood"
+    ],
+    "variants": [
+      "cream",
+      "sand",
+      "mint",
+      "navy"
+    ],
+    "availability": "permanent",
+    "description": "A dependable chair with a little curl in its grain.",
+    "sprite_brief": "Top-down 3/4: Simple ash chair, rectangular backrest, sand seat, one spiral wood knot."
+  },
+  {
+    "id": "crumbrail_bench",
+    "name": "Crumbrail Bench",
+    "category": "seating",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "common",
+    "price": 110,
+    "currency": "shells",
+    "set": "kettlewink_cafe",
+    "tags": [
+      "seat",
+      "wood"
+    ],
+    "variants": [
+      "cream",
+      "sand",
+      "moss",
+      "coral"
+    ],
+    "availability": "permanent",
+    "description": "Every crumb has a comfortable place to land.",
+    "sprite_brief": "Top-down 3/4: Long oak bench, slab seat, cream trestle legs, coral edge stripe."
+  },
+  {
+    "id": "mosshem_pouf",
+    "name": "Mosshem Pouf",
+    "category": "seating",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 75,
+    "currency": "shells",
+    "set": "thimblefen_cottage",
+    "tags": [
+      "seat",
+      "fabric"
+    ],
+    "variants": [
+      "cream",
+      "moss",
+      "coral",
+      "sand"
+    ],
+    "availability": "permanent",
+    "description": "Small enough to scoot closer to a good story.",
+    "sprite_brief": "Top-down 3/4: Squat moss cloth cube, cream piping, tufted top, four tiny wooden feet."
+  },
+  {
+    "id": "reedwink_stool",
+    "name": "Reedwink Stool",
+    "category": "seating",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 80,
+    "currency": "shells",
+    "set": "reedpause_retreat",
+    "tags": [
+      "seat",
+      "woven"
+    ],
+    "variants": [
+      "sand",
+      "moss",
+      "cream",
+      "charcoal",
+      "sky"
+    ],
+    "availability": "permanent",
+    "description": "A quiet little perch for tying your slippers.",
+    "sprite_brief": "Top-down 3/4: Round braided reed seat, dark cedar cross legs, sand binding knots."
+  },
+  {
+    "id": "boltbud_chair",
+    "name": "Boltbud Chair",
+    "category": "seating",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 75,
+    "currency": "shells",
+    "set": "rivetsprout_loft",
+    "tags": [
+      "seat",
+      "metal"
+    ],
+    "variants": [
+      "charcoal",
+      "sand",
+      "moss",
+      "navy"
+    ],
+    "availability": "rotating",
+    "description": "A sturdy seat with a surprisingly soft side.",
+    "sprite_brief": "Top-down 3/4: Charcoal tubular chair, moss square cushion, exposed round rivets, open back."
+  },
+  {
+    "id": "dewfold_seat",
+    "name": "Dewfold Seat",
+    "category": "seating",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 70,
+    "currency": "shells",
+    "set": "dewpeg_camp",
+    "tags": [
+      "seat",
+      "canvas"
+    ],
+    "variants": [
+      "moss",
+      "sand",
+      "navy"
+    ],
+    "availability": "permanent",
+    "description": "Ready for a campfire tale, even indoors.",
+    "sprite_brief": "Top-down 3/4: Folding navy canvas chair, crossed pale wood legs, coral carry strap."
+  },
+  {
+    "id": "buttonnap_cushion",
+    "name": "Buttonnap Cushion",
+    "category": "seating",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 85,
+    "currency": "shells",
+    "set": "blushbutton_nook",
+    "tags": [
+      "seat",
+      "plush"
+    ],
+    "variants": [
+      "rose",
+      "cream",
+      "mint",
+      "lilac"
+    ],
+    "availability": "permanent",
+    "description": "Claims to be awake. Clearly isn't.",
+    "sprite_brief": "Top-down 3/4: Rose square floor cushion, cream face stitching, rounded corners, mint center button."
+  },
+  {
+    "id": "duneplait_stool",
+    "name": "Duneplait Stool",
+    "category": "seating",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 75,
+    "currency": "shells",
+    "set": "dunethread_house",
+    "tags": [
+      "seat",
+      "woven"
+    ],
+    "variants": [
+      "sand",
+      "coral",
+      "navy",
+      "gold"
+    ],
+    "availability": "rotating",
+    "description": "Braided by hand for unhurried afternoons.",
+    "sprite_brief": "Top-down 3/4: Low sand rope stool, coral clay feet, navy zigzag woven rim."
+  },
+  {
+    "id": "spoolback_chair",
+    "name": "Spoolback Chair",
+    "category": "seating",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 80,
+    "currency": "shells",
+    "set": "humskein_studio",
+    "tags": [
+      "seat",
+      "wood"
+    ],
+    "variants": [
+      "plum",
+      "gold",
+      "navy",
+      "sand",
+      "cream"
+    ],
+    "availability": "permanent",
+    "description": "Keeps the beat with a very polite creak.",
+    "sprite_brief": "Top-down 3/4: Maple chair, rounded slatted back, plum felt pad, narrow gold foot braces."
+  },
+  {
+    "id": "patchwake_sofa",
+    "name": "Patchwake Sofa",
+    "category": "seating",
+    "layer": "floor",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 730,
+    "currency": "shells",
+    "set": "thimblefen_cottage",
+    "tags": [
+      "seat",
+      "fabric"
+    ],
+    "variants": [
+      "cream",
+      "moss",
+      "coral",
+      "sand"
+    ],
+    "availability": "permanent",
+    "description": "There is always room for one more patch.",
+    "sprite_brief": "Top-down 3/4: Three seat cream sofa, moss patchwork cushions, oak bun feet, coral blanket over one arm."
+  },
+  {
+    "id": "sailtuck_loveseat",
+    "name": "Sailtuck Loveseat",
+    "category": "seating",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 575,
+    "currency": "shells",
+    "set": "pebblewake_porch",
+    "tags": [
+      "seat",
+      "fabric"
+    ],
+    "variants": [
+      "sand",
+      "navy",
+      "coral",
+      "cream"
+    ],
+    "availability": "permanent",
+    "description": "A harbor for two and a biscuit tin.",
+    "sprite_brief": "Top-down 3/4: Two seat navy striped loveseat, driftwood arms, sand cushions, rope wrapped feet."
+  },
+  {
+    "id": "softangle_armchair",
+    "name": "Softangle Armchair",
+    "category": "seating",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 595,
+    "currency": "shells",
+    "set": "stillfold_home",
+    "tags": [
+      "seat",
+      "fabric"
+    ],
+    "variants": [
+      "cream",
+      "charcoal",
+      "mint",
+      "sand"
+    ],
+    "availability": "rotating",
+    "description": "The corner where your shoulders remember to relax.",
+    "sprite_brief": "Top-down 3/4: Cream angular armchair, mint inset seat, low ash frame, charcoal tapered legs."
+  },
+  {
+    "id": "pagecurl_chaise",
+    "name": "Pagecurl Chaise",
+    "category": "seating",
+    "layer": "floor",
+    "footprint": [
+      3,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 525,
+    "currency": "shells",
+    "set": "marginmoss_library",
+    "tags": [
+      "seat",
+      "fabric"
+    ],
+    "variants": [
+      "moss",
+      "cream",
+      "gold"
+    ],
+    "availability": "permanent",
+    "description": "One chapter has a habit of becoming six.",
+    "sprite_brief": "Top-down 3/4: Moss chaise, curled walnut headrest, cream bolster, gold nailhead edge."
+  },
+  {
+    "id": "sprigrail_bench",
+    "name": "Sprigrail Bench",
+    "category": "seating",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 475,
+    "currency": "shells",
+    "set": "sprigspool_potting",
+    "tags": [
+      "seat",
+      "wood"
+    ],
+    "variants": [
+      "moss",
+      "sand",
+      "cream",
+      "mint",
+      "coral"
+    ],
+    "availability": "permanent",
+    "description": "A place to admire the seedlings you almost forgot to water.",
+    "sprite_brief": "Top-down 3/4: Cream slatted garden bench, moss cushion, terracotta feet, sprout carved backrest."
+  },
+  {
+    "id": "frostweave_rocker",
+    "name": "Frostweave Rocker",
+    "category": "seating",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 605,
+    "currency": "shells",
+    "set": "frostcrumb_gathering",
+    "tags": [
+      "seat",
+      "wood"
+    ],
+    "variants": [
+      "cream",
+      "navy",
+      "coral",
+      "gold"
+    ],
+    "availability": "permanent",
+    "description": "Rock gently until the kettle decides to sing.",
+    "sprite_brief": "Top-down 3/4: Navy wooden rocking chair, curved runners, cream knitted throw, coral tie bows."
+  },
+  {
+    "id": "milkdrop_beanbag",
+    "name": "Milkdrop Beanbag",
+    "category": "seating",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 595,
+    "currency": "shells",
+    "set": "sugarquay_parlor",
+    "tags": [
+      "seat",
+      "plush"
+    ],
+    "variants": [
+      "rose",
+      "cream",
+      "mint",
+      "plum"
+    ],
+    "availability": "permanent",
+    "description": "Sinks just enough to make standing up a small adventure.",
+    "sprite_brief": "Top-down 3/4: Cream teardrop beanbag, rose seam piping, mint stitched patch, soft pooled base."
+  },
+  {
+    "id": "reeffold_lounger",
+    "name": "Reeffold Lounger",
+    "category": "seating",
+    "layer": "floor",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "rare",
+    "price": 2980,
+    "currency": "shells",
+    "set": "polypocket_reef",
+    "tags": [
+      "seat",
+      "stone"
+    ],
+    "variants": [
+      "coral",
+      "lilac",
+      "sky",
+      "cream"
+    ],
+    "availability": "permanent",
+    "description": "Even imaginary tides deserve a lazy afternoon.",
+    "sprite_brief": "Top-down 3/4: Coral scalloped lounger, cream limestone base, lilac ribbed cushion, rounded fan back."
+  },
+  {
+    "id": "clicknest_chair",
+    "name": "Clicknest Chair",
+    "category": "seating",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "rare",
+    "price": 2285,
+    "currency": "shells",
+    "set": "clickcove_den",
+    "tags": [
+      "seat",
+      "fabric"
+    ],
+    "variants": [
+      "charcoal",
+      "mint",
+      "sky",
+      "coral"
+    ],
+    "availability": "permanent",
+    "description": "Built for one more round and a sensible stretch afterward.",
+    "sprite_brief": "Top-down 3/4: Charcoal swivel chair, sky quilted back, mint arm pads, five chunky caster feet."
+  },
+  {
+    "id": "lanternbow_settee",
+    "name": "Lanternbow Settee",
+    "category": "seating",
+    "layer": "floor",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "rare",
+    "price": 44,
+    "currency": "pearls",
+    "set": "lanternplait_fete",
+    "tags": [
+      "seat",
+      "wood"
+    ],
+    "variants": [
+      "coral",
+      "gold",
+      "cream",
+      "plum",
+      "rose"
+    ],
+    "availability": "permanent",
+    "description": "The best seat for sharing wishes and sesame crumbs.",
+    "sprite_brief": "Top-down 3/4: Coral lacquer settee, gold looped arms, cream cushions, plum knot tassels."
+  },
+  {
+    "id": "hushwing_armchair",
+    "name": "Hushwing Armchair",
+    "category": "seating",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "rare",
+    "price": 36,
+    "currency": "pearls",
+    "set": "hushwick_hollow",
+    "tags": [
+      "seat",
+      "fabric"
+    ],
+    "variants": [
+      "plum",
+      "charcoal",
+      "lilac"
+    ],
+    "availability": "permanent",
+    "description": "Its shadow likes your company.",
+    "sprite_brief": "Top-down 3/4: Plum wingback chair, charcoal claw feet, lilac diamond tufting, small crescent finials."
+  },
+  {
+    "id": "capsulecurve_sofa",
+    "name": "Capsulecurve Sofa",
+    "category": "seating",
+    "layer": "floor",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "rare",
+    "price": 2995,
+    "currency": "shells",
+    "set": "orbitcrumb_station",
+    "tags": [
+      "seat",
+      "metal"
+    ],
+    "variants": [
+      "sky",
+      "cream",
+      "navy",
+      "gold"
+    ],
+    "availability": "permanent",
+    "description": "A soft landing after a long imaginary orbit.",
+    "sprite_brief": "Top-down 3/4: Curved cream pod sofa, sky shell, navy cushions, gold bolt circles along base."
+  },
+  {
+    "id": "velvetbough_throne",
+    "name": "Velvetbough Throne",
+    "category": "seating",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "epic",
+    "price": 9550,
+    "currency": "shells",
+    "set": "gilded_acorn_court",
+    "tags": [
+      "seat",
+      "wood"
+    ],
+    "variants": [
+      "plum",
+      "gold",
+      "cream",
+      "moss"
+    ],
+    "availability": "permanent",
+    "description": "For grand announcements about who's making tea.",
+    "sprite_brief": "Top-down 3/4: Tall walnut throne, plum velvet seat, gilded acorn finials, cream carved leaf arms."
+  },
+  {
+    "id": "prismbeat_bench",
+    "name": "Prismbeat Bench",
+    "category": "seating",
+    "layer": "floor",
+    "footprint": [
+      3,
+      1
+    ],
+    "rarity": "epic",
+    "price": 95,
+    "currency": "pearls",
+    "set": "blinkberry_arcade",
+    "tags": [
+      "seat",
+      "light",
+      "metal"
+    ],
+    "variants": [
+      "plum",
+      "sky",
+      "coral",
+      "charcoal"
+    ],
+    "availability": "rotating",
+    "description": "A gentle glow celebrates everyone who sits down.",
+    "sprite_brief": "Top-down 3/4: Charcoal bench, plum padded seat, sky luminous side panels, coral square button trim."
+  },
+  {
+    "id": "cloudtide_dayseat",
+    "name": "Cloudtide Dayseat",
+    "category": "seating",
+    "layer": "floor",
+    "footprint": [
+      4,
+      3
+    ],
+    "rarity": "legendary",
+    "price": 75485,
+    "currency": "shells",
+    "set": "polypocket_reef",
+    "tags": [
+      "seat",
+      "stone"
+    ],
+    "variants": [
+      "coral",
+      "lilac",
+      "sky",
+      "cream",
+      "mint"
+    ],
+    "availability": "reward",
+    "description": "A whole tiny tide pool of room to curl up in.",
+    "sprite_brief": "Top-down 3/4: Wide cream shell seat, coral branching frame, sky glass base, lilac cushions clustered like bubbles."
+  },
+  {
+    "id": "crumbcorner_table",
+    "name": "Crumbcorner Table",
+    "category": "tables",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "common",
+    "price": 155,
+    "currency": "shells",
+    "set": "thimblefen_cottage",
+    "tags": [
+      "surface",
+      "wood",
+      "dining"
+    ],
+    "variants": [
+      "cream",
+      "moss",
+      "coral",
+      "sand"
+    ],
+    "availability": "permanent",
+    "description": "Breakfast tastes better at a table with rounded corners.",
+    "sprite_brief": "Top-down 3/4: Square honey oak table, rounded corners, cream turned legs, small coral inlay dot."
+  },
+  {
+    "id": "pebblepad_table",
+    "name": "Pebblepad Table",
+    "category": "tables",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 85,
+    "currency": "shells",
+    "set": "pebblewake_porch",
+    "tags": [
+      "surface",
+      "wood"
+    ],
+    "variants": [
+      "sand",
+      "navy",
+      "coral",
+      "cream"
+    ],
+    "availability": "permanent",
+    "description": "Just enough room for a mug and a smooth beach stone.",
+    "sprite_brief": "Top-down 3/4: Small round driftwood table, navy rim, three sand tapered legs."
+  },
+  {
+    "id": "stillstep_nightstand",
+    "name": "Stillstep Nightstand",
+    "category": "tables",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 85,
+    "currency": "shells",
+    "set": "stillfold_home",
+    "tags": [
+      "surface",
+      "wood"
+    ],
+    "variants": [
+      "cream",
+      "charcoal",
+      "mint"
+    ],
+    "availability": "permanent",
+    "description": "Keeps your bedtime essentials within sleepy reach.",
+    "sprite_brief": "Top-down 3/4: Cream box nightstand, single mint drawer, charcoal recessed pull, pale ash top."
+  },
+  {
+    "id": "paperleg_desk",
+    "name": "Paperleg Desk",
+    "category": "tables",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "common",
+    "price": 100,
+    "currency": "shells",
+    "set": "marginmoss_library",
+    "tags": [
+      "surface",
+      "wood"
+    ],
+    "variants": [],
+    "availability": "rotating",
+    "description": "An inviting place to begin a very short letter.",
+    "sprite_brief": "Top-down 3/4: Narrow walnut desk, cream writing pad, square legs, moss drawer front."
+  },
+  {
+    "id": "sprigwork_table",
+    "name": "Sprigwork Table",
+    "category": "tables",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "common",
+    "price": 105,
+    "currency": "shells",
+    "set": "sprigspool_potting",
+    "tags": [
+      "surface",
+      "wood"
+    ],
+    "variants": [
+      "moss",
+      "sand",
+      "cream",
+      "mint",
+      "coral"
+    ],
+    "availability": "craft",
+    "description": "A little dirt only improves its character.",
+    "sprite_brief": "Top-down 3/4: Sand plank potting table, mint lower brace, cream worn corners, slatted top."
+  },
+  {
+    "id": "rivetend_table",
+    "name": "Rivetend Table",
+    "category": "tables",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 80,
+    "currency": "shells",
+    "set": "rivetsprout_loft",
+    "tags": [
+      "surface",
+      "metal"
+    ],
+    "variants": [
+      "charcoal",
+      "sand",
+      "moss",
+      "navy"
+    ],
+    "availability": "rotating",
+    "description": "Tough enough for tools, gentle enough for tea.",
+    "sprite_brief": "Top-down 3/4: Square sand wood top, charcoal angle iron legs, four exposed corner bolts."
+  },
+  {
+    "id": "dewtray_table",
+    "name": "Dewtray Table",
+    "category": "tables",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "common",
+    "price": 110,
+    "currency": "shells",
+    "set": "dewpeg_camp",
+    "tags": [
+      "surface",
+      "wood"
+    ],
+    "variants": [
+      "moss",
+      "sand",
+      "navy",
+      "coral"
+    ],
+    "availability": "craft",
+    "description": "Folds away after the last marshmallow story.",
+    "sprite_brief": "Top-down 3/4: Pale slatted folding table, navy crossed legs, coral canvas hinge straps."
+  },
+  {
+    "id": "reedflat_table",
+    "name": "Reedflat Table",
+    "category": "tables",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "common",
+    "price": 100,
+    "currency": "shells",
+    "set": "reedpause_retreat",
+    "tags": [
+      "surface",
+      "wood"
+    ],
+    "variants": [
+      "sand",
+      "moss",
+      "cream",
+      "charcoal"
+    ],
+    "availability": "permanent",
+    "description": "Low to the floor, close to the calm.",
+    "sprite_brief": "Top-down 3/4: Low rectangular cedar table, sand inset reed mat, thick square legs."
+  },
+  {
+    "id": "dunecup_table",
+    "name": "Dunecup Table",
+    "category": "tables",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 85,
+    "currency": "shells",
+    "set": "dunethread_house",
+    "tags": [
+      "surface",
+      "clay"
+    ],
+    "variants": [
+      "sand",
+      "coral",
+      "navy",
+      "gold"
+    ],
+    "availability": "permanent",
+    "description": "Its clay top stays pleasantly cool through long afternoons.",
+    "sprite_brief": "Top-down 3/4: Round coral clay pedestal table, sand top, navy dotted rim."
+  },
+  {
+    "id": "kettlecorner_table",
+    "name": "Kettlecorner Table",
+    "category": "tables",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "common",
+    "price": 160,
+    "currency": "shells",
+    "set": "kettlewink_cafe",
+    "tags": [
+      "surface",
+      "wood",
+      "dining"
+    ],
+    "variants": [
+      "cream",
+      "sand",
+      "moss"
+    ],
+    "availability": "permanent",
+    "description": "The usual table for unusual little conversations.",
+    "sprite_brief": "Top-down 3/4: Round sand oak cafe table, cream pedestal, moss edge band."
+  },
+  {
+    "id": "tideleaf_table",
+    "name": "Tideleaf Table",
+    "category": "tables",
+    "layer": "floor",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 730,
+    "currency": "shells",
+    "set": "pebblewake_porch",
+    "tags": [
+      "surface",
+      "wood",
+      "dining"
+    ],
+    "variants": [
+      "sand",
+      "navy",
+      "coral",
+      "cream"
+    ],
+    "availability": "rotating",
+    "description": "Extra space for guests who washed in with the tide.",
+    "sprite_brief": "Top-down 3/4: Oval driftwood dining table, navy center strip, rope braces, cream peg joints."
+  },
+  {
+    "id": "hemdrawer_desk",
+    "name": "Hemdrawer Desk",
+    "category": "tables",
+    "layer": "floor",
+    "footprint": [
+      3,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 540,
+    "currency": "shells",
+    "set": "thimblefen_cottage",
+    "tags": [
+      "surface",
+      "wood"
+    ],
+    "variants": [
+      "cream",
+      "moss",
+      "coral",
+      "sand"
+    ],
+    "availability": "rotating",
+    "description": "Room for a project and all its delightful loose ends.",
+    "sprite_brief": "Top-down 3/4: Honey oak desk, three cream drawers, coral ceramic pulls, moss inset writing surface."
+  },
+  {
+    "id": "quietarc_desk",
+    "name": "Quietarc Desk",
+    "category": "tables",
+    "layer": "floor",
+    "footprint": [
+      3,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 520,
+    "currency": "shells",
+    "set": "stillfold_home",
+    "tags": [
+      "surface",
+      "metal"
+    ],
+    "variants": [
+      "cream",
+      "charcoal",
+      "mint",
+      "sand"
+    ],
+    "availability": "rotating",
+    "description": "A smooth curve takes the edge off a busy day.",
+    "sprite_brief": "Top-down 3/4: Curved cream desktop, charcoal steel frame, mint side cubby, rounded cable notch."
+  },
+  {
+    "id": "pageledge_table",
+    "name": "Pageledge Table",
+    "category": "tables",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 585,
+    "currency": "shells",
+    "set": "marginmoss_library",
+    "tags": [
+      "surface",
+      "wood"
+    ],
+    "variants": [
+      "moss",
+      "cream",
+      "gold",
+      "navy"
+    ],
+    "availability": "permanent",
+    "description": "A reading table with room to spread out the map.",
+    "sprite_brief": "Top-down 3/4: Walnut square table, cream inset top, gold corner plates, moss cross brace."
+  },
+  {
+    "id": "sugarbutton_table",
+    "name": "Sugarbutton Table",
+    "category": "tables",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 585,
+    "currency": "shells",
+    "set": "sugarquay_parlor",
+    "tags": [
+      "surface",
+      "resin",
+      "dining"
+    ],
+    "variants": [
+      "rose",
+      "cream",
+      "mint",
+      "plum",
+      "lilac"
+    ],
+    "availability": "permanent",
+    "description": "Looks frosted; wipes clean after real cake.",
+    "sprite_brief": "Top-down 3/4: Rose round table, cream scalloped rim, mint spiral pedestal, plum dot inlays."
+  },
+  {
+    "id": "clickspan_desk",
+    "name": "Clickspan Desk",
+    "category": "tables",
+    "layer": "floor",
+    "footprint": [
+      3,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 545,
+    "currency": "shells",
+    "set": "clickcove_den",
+    "tags": [
+      "surface",
+      "metal"
+    ],
+    "variants": [
+      "charcoal",
+      "mint",
+      "sky",
+      "coral"
+    ],
+    "availability": "rotating",
+    "description": "A wide landing strip for keyboards and snack plates.",
+    "sprite_brief": "Top-down 3/4: Charcoal desk, mint edge trim, sky drawer block, coral cable grommets."
+  },
+  {
+    "id": "beambox_nightstand",
+    "name": "Beambox Nightstand",
+    "category": "tables",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 390,
+    "currency": "shells",
+    "set": "brinebeam_wreck",
+    "tags": [
+      "surface",
+      "wood"
+    ],
+    "variants": [
+      "navy",
+      "sand",
+      "moss"
+    ],
+    "availability": "permanent",
+    "description": "A ship's small cabinet enjoying a quieter posting.",
+    "sprite_brief": "Top-down 3/4: Navy plank nightstand, sand top, gold ring pull, rope corner wraps."
+  },
+  {
+    "id": "coralfan_table",
+    "name": "Coralfan Table",
+    "category": "tables",
+    "layer": "floor",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "rare",
+    "price": 2910,
+    "currency": "shells",
+    "set": "polypocket_reef",
+    "tags": [
+      "surface",
+      "stone"
+    ],
+    "variants": [
+      "coral",
+      "lilac",
+      "sky",
+      "cream"
+    ],
+    "availability": "rotating",
+    "description": "A fan of reef shapes gathers everyone around.",
+    "sprite_brief": "Top-down 3/4: Cream oval stone top, coral branching legs, lilac inset edge, sky pebble feet."
+  },
+  {
+    "id": "fizzproof_counter",
+    "name": "Fizzproof Counter",
+    "category": "tables",
+    "layer": "floor",
+    "footprint": [
+      3,
+      1
+    ],
+    "rarity": "rare",
+    "price": 2040,
+    "currency": "shells",
+    "set": "fizzfern_lab",
+    "tags": [
+      "surface",
+      "metal"
+    ],
+    "variants": [
+      "mint",
+      "cream",
+      "charcoal",
+      "lilac"
+    ],
+    "availability": "permanent",
+    "description": "Prepared for spills, discoveries, and misplaced biscuits.",
+    "sprite_brief": "Top-down 3/4: Cream enamel counter, mint splash lip, charcoal cabinet doors, lilac inset work pad."
+  },
+  {
+    "id": "humskein_mix_desk",
+    "name": "Humskein Mix Desk",
+    "category": "tables",
+    "layer": "floor",
+    "footprint": [
+      3,
+      1
+    ],
+    "rarity": "rare",
+    "price": 2015,
+    "currency": "shells",
+    "set": "humskein_studio",
+    "tags": [
+      "surface",
+      "wood"
+    ],
+    "variants": [
+      "plum",
+      "gold",
+      "navy",
+      "sand",
+      "cream"
+    ],
+    "availability": "permanent",
+    "description": "Every knob-twiddler deserves a place to set their tea.",
+    "sprite_brief": "Top-down 3/4: Maple studio desk, plum felt inset, navy angled side wings, gold cable slots."
+  },
+  {
+    "id": "plaitwish_table",
+    "name": "Plaitwish Table",
+    "category": "tables",
+    "layer": "floor",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "rare",
+    "price": 2985,
+    "currency": "shells",
+    "set": "lanternplait_fete",
+    "tags": [
+      "surface",
+      "wood",
+      "dining"
+    ],
+    "variants": [
+      "coral",
+      "gold",
+      "cream",
+      "plum"
+    ],
+    "availability": "permanent",
+    "description": "A generous table for a fresh year's first shared meal.",
+    "sprite_brief": "Top-down 3/4: Round coral lacquer table, gold braided rim, plum carved pedestal, cream inset medallion."
+  },
+  {
+    "id": "orbitmap_desk",
+    "name": "Orbitmap Desk",
+    "category": "tables",
+    "layer": "floor",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "epic",
+    "price": 11335,
+    "currency": "shells",
+    "set": "orbitcrumb_station",
+    "tags": [
+      "surface",
+      "metal"
+    ],
+    "variants": [
+      "sky",
+      "cream",
+      "navy",
+      "gold"
+    ],
+    "availability": "rotating",
+    "description": "The route to the kitchen is a very important mission.",
+    "sprite_brief": "Top-down 3/4: Cream crescent desk, sky metal legs, navy star map inlay, gold rim rivets."
+  },
+  {
+    "id": "acorncourt_table",
+    "name": "Acorncourt Table",
+    "category": "tables",
+    "layer": "floor",
+    "footprint": [
+      4,
+      2
+    ],
+    "rarity": "epic",
+    "price": 13970,
+    "currency": "shells",
+    "set": "gilded_acorn_court",
+    "tags": [
+      "surface",
+      "wood",
+      "dining"
+    ],
+    "variants": [
+      "plum",
+      "gold",
+      "cream",
+      "moss"
+    ],
+    "availability": "reward",
+    "description": "A grand table with an especially democratic biscuit plate.",
+    "sprite_brief": "Top-down 3/4: Long walnut table, cream marble inset, gold acorn corners, plum carved trestles."
+  },
+  {
+    "id": "revolving_tide_table",
+    "name": "Revolving Tide Table",
+    "category": "tables",
+    "layer": "floor",
+    "footprint": [
+      4,
+      3
+    ],
+    "rarity": "legendary",
+    "price": 245,
+    "currency": "pearls",
+    "set": "polypocket_reef",
+    "tags": [
+      "surface",
+      "glass"
+    ],
+    "variants": [
+      "coral",
+      "lilac",
+      "sky"
+    ],
+    "availability": "permanent",
+    "description": "A glassy swirl holds the memory of a very gentle whirlpool.",
+    "sprite_brief": "Top-down 3/4: Wide circular sky glass table, spiral coral base, cream stone feet, gold concentric inlays."
+  },
+  {
+    "id": "patchpillow_bed",
+    "name": "Patchpillow Bed",
+    "category": "beds",
+    "layer": "floor",
+    "footprint": [
+      2,
+      3
+    ],
+    "rarity": "common",
+    "price": 210,
+    "currency": "shells",
+    "set": "thimblefen_cottage",
+    "tags": [
+      "sleep",
+      "fabric"
+    ],
+    "variants": [
+      "cream",
+      "moss",
+      "coral",
+      "sand",
+      "sky"
+    ],
+    "availability": "permanent",
+    "description": "A little patchwork invitation to turn in early.",
+    "sprite_brief": "Top-down 3/4: Single oak bed, cream quilt with moss squares, coral pillow, low spindle headboard."
+  },
+  {
+    "id": "sandsheet_cot",
+    "name": "Sandsheet Cot",
+    "category": "beds",
+    "layer": "floor",
+    "footprint": [
+      2,
+      3
+    ],
+    "rarity": "common",
+    "price": 210,
+    "currency": "shells",
+    "set": "pebblewake_porch",
+    "tags": [
+      "sleep",
+      "wood"
+    ],
+    "variants": [
+      "sand",
+      "navy",
+      "coral",
+      "cream"
+    ],
+    "availability": "rotating",
+    "description": "For dreaming of beaches without finding sand in your socks.",
+    "sprite_brief": "Top-down 3/4: Driftwood cot, navy striped sheet, sand pillow, rope wrapped head rail."
+  },
+  {
+    "id": "foldfern_cot",
+    "name": "Foldfern Cot",
+    "category": "beds",
+    "layer": "floor",
+    "footprint": [
+      1,
+      3
+    ],
+    "rarity": "common",
+    "price": 135,
+    "currency": "shells",
+    "set": "dewpeg_camp",
+    "tags": [
+      "sleep",
+      "canvas"
+    ],
+    "variants": [
+      "moss",
+      "sand",
+      "navy",
+      "coral"
+    ],
+    "availability": "rotating",
+    "description": "The campsite's most fiercely defended patch of comfort.",
+    "sprite_brief": "Top-down 3/4: Narrow moss canvas cot, crossed wood legs, navy roll pillow, coral tie straps."
+  },
+  {
+    "id": "reedroll_bed",
+    "name": "Reedroll Bed",
+    "category": "beds",
+    "layer": "floor",
+    "footprint": [
+      2,
+      3
+    ],
+    "rarity": "common",
+    "price": 215,
+    "currency": "shells",
+    "set": "reedpause_retreat",
+    "tags": [
+      "sleep",
+      "woven"
+    ],
+    "variants": [
+      "sand",
+      "moss",
+      "cream",
+      "charcoal"
+    ],
+    "availability": "rotating",
+    "description": "Unroll a little quiet at the end of the day.",
+    "sprite_brief": "Top-down 3/4: Cream floor mattress on sand reed mat, moss blanket folded at foot, cedar pillow block."
+  },
+  {
+    "id": "dunetuck_bed",
+    "name": "Dunetuck Bed",
+    "category": "beds",
+    "layer": "floor",
+    "footprint": [
+      2,
+      3
+    ],
+    "rarity": "common",
+    "price": 215,
+    "currency": "shells",
+    "set": "dunethread_house",
+    "tags": [
+      "sleep",
+      "fabric"
+    ],
+    "variants": [
+      "sand",
+      "coral",
+      "navy",
+      "gold"
+    ],
+    "availability": "permanent",
+    "description": "Cool linen for warm evenings and late mornings.",
+    "sprite_brief": "Top-down 3/4: Low clay bed frame, cream linen, navy woven runner, sand rectangular headboard."
+  },
+  {
+    "id": "stillsoft_bed",
+    "name": "Stillsoft Bed",
+    "category": "beds",
+    "layer": "floor",
+    "footprint": [
+      3,
+      3
+    ],
+    "rarity": "uncommon",
+    "price": 925,
+    "currency": "shells",
+    "set": "stillfold_home",
+    "tags": [
+      "sleep",
+      "fabric"
+    ],
+    "variants": [
+      "cream",
+      "charcoal",
+      "mint",
+      "sand",
+      "navy"
+    ],
+    "availability": "permanent",
+    "description": "Simple lines, wonderfully complicated dreams.",
+    "sprite_brief": "Top-down 3/4: Wide ash platform bed, cream duvet, mint pillows, charcoal recessed base."
+  },
+  {
+    "id": "pagehaven_bed",
+    "name": "Pagehaven Bed",
+    "category": "beds",
+    "layer": "floor",
+    "footprint": [
+      2,
+      3
+    ],
+    "rarity": "uncommon",
+    "price": 720,
+    "currency": "shells",
+    "set": "marginmoss_library",
+    "tags": [
+      "sleep",
+      "wood"
+    ],
+    "variants": [
+      "moss",
+      "cream",
+      "gold"
+    ],
+    "availability": "rotating",
+    "description": "One soft landing after an adventurous chapter.",
+    "sprite_brief": "Top-down 3/4: Walnut bed, moss quilt, cream pillows, gold leaf carvings on solid headboard."
+  },
+  {
+    "id": "blushbun_bed",
+    "name": "Blushbun Bed",
+    "category": "beds",
+    "layer": "floor",
+    "footprint": [
+      2,
+      3
+    ],
+    "rarity": "uncommon",
+    "price": 730,
+    "currency": "shells",
+    "set": "blushbutton_nook",
+    "tags": [
+      "sleep",
+      "plush"
+    ],
+    "variants": [
+      "rose",
+      "cream",
+      "mint",
+      "lilac"
+    ],
+    "availability": "permanent",
+    "description": "Its sleepy face is a persuasive bedtime reminder.",
+    "sprite_brief": "Top-down 3/4: Rose padded bed, cream rounded headboard with stitched closed eyes, mint blanket, lilac feet."
+  },
+  {
+    "id": "beamnest_bunk",
+    "name": "Beamnest Bunk",
+    "category": "beds",
+    "layer": "floor",
+    "footprint": [
+      2,
+      3
+    ],
+    "rarity": "uncommon",
+    "price": 730,
+    "currency": "shells",
+    "set": "brinebeam_wreck",
+    "tags": [
+      "sleep",
+      "wood"
+    ],
+    "variants": [],
+    "availability": "rotating",
+    "description": "Two snug berths from a ship that finally settled down.",
+    "sprite_brief": "Top-down 3/4: Stacked navy plank bunks, sand rope ladder, cream striped bedding, gold corner brackets."
+  },
+  {
+    "id": "polypillow_bed",
+    "name": "Polypillow Bed",
+    "category": "beds",
+    "layer": "floor",
+    "footprint": [
+      3,
+      3
+    ],
+    "rarity": "rare",
+    "price": 3785,
+    "currency": "shells",
+    "set": "polypocket_reef",
+    "tags": [
+      "sleep",
+      "stone"
+    ],
+    "variants": [
+      "coral",
+      "lilac",
+      "sky",
+      "cream"
+    ],
+    "availability": "rotating",
+    "description": "Dreams drift slowly between its coral curls.",
+    "sprite_brief": "Top-down 3/4: Cream shell bed frame, lilac fan headboard, coral cushion rolls, sky quilt."
+  },
+  {
+    "id": "hushdrape_bed",
+    "name": "Hushdrape Bed",
+    "category": "beds",
+    "layer": "floor",
+    "footprint": [
+      3,
+      3
+    ],
+    "rarity": "rare",
+    "price": 3740,
+    "currency": "shells",
+    "set": "hushwick_hollow",
+    "tags": [
+      "sleep",
+      "fabric"
+    ],
+    "variants": [
+      "plum",
+      "charcoal",
+      "lilac",
+      "gold",
+      "navy"
+    ],
+    "availability": "permanent",
+    "description": "The curtains keep drafts out and friendly shadows in.",
+    "sprite_brief": "Top-down 3/4: Charcoal four poster bed, plum curtains, lilac star quilt, gold crescent finials."
+  },
+  {
+    "id": "capsulenap_pod",
+    "name": "Capsulenap Pod",
+    "category": "beds",
+    "layer": "floor",
+    "footprint": [
+      2,
+      3
+    ],
+    "rarity": "rare",
+    "price": 2850,
+    "currency": "shells",
+    "set": "orbitcrumb_station",
+    "tags": [
+      "sleep",
+      "metal"
+    ],
+    "variants": [
+      "sky",
+      "cream",
+      "navy",
+      "gold"
+    ],
+    "availability": "permanent",
+    "description": "Ready for a restful journey from evening to breakfast.",
+    "sprite_brief": "Top-down 3/4: Sky oval sleep pod, open cream shell, navy mattress, gold round hinge caps."
+  },
+  {
+    "id": "frostbough_bed",
+    "name": "Frostbough Bed",
+    "category": "beds",
+    "layer": "floor",
+    "footprint": [
+      3,
+      3
+    ],
+    "rarity": "epic",
+    "price": 133,
+    "currency": "pearls",
+    "set": "frostcrumb_gathering",
+    "tags": [
+      "sleep",
+      "wood"
+    ],
+    "variants": [
+      "cream",
+      "navy",
+      "coral",
+      "gold"
+    ],
+    "availability": "permanent",
+    "description": "A warm little island in the longest winter night.",
+    "sprite_brief": "Top-down 3/4: Navy carved bed, cream cable knit duvet, coral ribbon pillows, gold pinecone finials."
+  },
+  {
+    "id": "acorncrest_canopy",
+    "name": "Acorncrest Canopy",
+    "category": "beds",
+    "layer": "floor",
+    "footprint": [
+      4,
+      3
+    ],
+    "rarity": "legendary",
+    "price": 74875,
+    "currency": "shells",
+    "set": "gilded_acorn_court",
+    "tags": [
+      "sleep",
+      "wood"
+    ],
+    "variants": [
+      "plum",
+      "gold",
+      "cream"
+    ],
+    "availability": "reward",
+    "description": "A royal invitation to sleep through the morning announcements.",
+    "sprite_brief": "Top-down 3/4: Walnut canopy bed, gilded leaf posts, plum velvet curtains, cream quilt, acorn crest above headboard."
+  },
+  {
+    "id": "hemgrain_dresser",
+    "name": "Hemgrain Dresser",
+    "category": "storage",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "common",
+    "price": 100,
+    "currency": "shells",
+    "set": "thimblefen_cottage",
+    "tags": [
+      "surface",
+      "wood"
+    ],
+    "variants": [
+      "cream",
+      "moss",
+      "coral",
+      "sand"
+    ],
+    "availability": "rotating",
+    "description": "Three drawers for folded things and one mystery ribbon.",
+    "sprite_brief": "Top-down 3/4: Honey oak dresser, three cream drawer fronts, coral round knobs, flat polished top."
+  },
+  {
+    "id": "pebblepeg_cabinet",
+    "name": "Pebblepeg Cabinet",
+    "category": "storage",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "common",
+    "price": 100,
+    "currency": "shells",
+    "set": "pebblewake_porch",
+    "tags": [
+      "surface",
+      "wood"
+    ],
+    "variants": [
+      "sand",
+      "navy",
+      "coral",
+      "cream",
+      "sky"
+    ],
+    "availability": "rotating",
+    "description": "Keeps your treasures dry and your clutter pleasantly hidden.",
+    "sprite_brief": "Top-down 3/4: Sand plank cabinet, navy doors, cream peg handles, driftwood slab top."
+  },
+  {
+    "id": "plainstack_cubby",
+    "name": "Plainstack Cubby",
+    "category": "storage",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "common",
+    "price": 110,
+    "currency": "shells",
+    "set": null,
+    "tags": [
+      "surface",
+      "wood"
+    ],
+    "variants": [
+      "cream",
+      "sand",
+      "mint",
+      "navy"
+    ],
+    "availability": "rotating",
+    "description": "Every little thing gets its own little square.",
+    "sprite_brief": "Top-down 3/4: Ash four cube organizer, cream outer frame, sand open compartments, flat top."
+  },
+  {
+    "id": "mossbasket_chest",
+    "name": "Mossbasket Chest",
+    "category": "storage",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "common",
+    "price": 105,
+    "currency": "shells",
+    "set": "sprigspool_potting",
+    "tags": [
+      "woven",
+      "storage"
+    ],
+    "variants": [
+      "moss",
+      "sand",
+      "cream",
+      "mint"
+    ],
+    "availability": "craft",
+    "description": "For seed packets, gloves, and optimistic planting plans.",
+    "sprite_brief": "Top-down 3/4: Rectangular woven moss basket chest, sand hinged lid, cream cloth liner, two loop handles."
+  },
+  {
+    "id": "boltcrate_locker",
+    "name": "Boltcrate Locker",
+    "category": "storage",
+    "layer": "floor",
+    "footprint": [
+      1,
+      2
+    ],
+    "rarity": "common",
+    "price": 100,
+    "currency": "shells",
+    "set": "rivetsprout_loft",
+    "tags": [
+      "metal",
+      "storage"
+    ],
+    "variants": [
+      "charcoal",
+      "sand",
+      "moss",
+      "navy"
+    ],
+    "availability": "rotating",
+    "description": "A trusty home for the tools that never stay put.",
+    "sprite_brief": "Top-down 3/4: Tall charcoal metal locker, sand vent slits, moss handle, square riveted feet."
+  },
+  {
+    "id": "dewstrap_trunk",
+    "name": "Dewstrap Trunk",
+    "category": "storage",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "common",
+    "price": 105,
+    "currency": "shells",
+    "set": "dewpeg_camp",
+    "tags": [
+      "wood",
+      "storage"
+    ],
+    "variants": [
+      "moss",
+      "sand",
+      "navy",
+      "coral"
+    ],
+    "availability": "permanent",
+    "description": "Always packed for a weekend that may happen indoors.",
+    "sprite_brief": "Top-down 3/4: Sand wood trunk, navy canvas straps, coral buckles, rounded reinforced corners."
+  },
+  {
+    "id": "spoolshoe_rack",
+    "name": "Spoolshoe Rack",
+    "category": "storage",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "common",
+    "price": 105,
+    "currency": "shells",
+    "set": "thimblefen_cottage",
+    "tags": [
+      "surface",
+      "wood"
+    ],
+    "variants": [
+      "cream",
+      "moss",
+      "coral"
+    ],
+    "availability": "permanent",
+    "description": "A small reunion spot for wandering slippers.",
+    "sprite_brief": "Top-down 3/4: Low oak shoe rack, two cream slatted levels, moss end rails, flat top shelf."
+  },
+  {
+    "id": "reedfold_basket",
+    "name": "Reedfold Basket",
+    "category": "storage",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 80,
+    "currency": "shells",
+    "set": "reedpause_retreat",
+    "tags": [
+      "woven",
+      "storage"
+    ],
+    "variants": [
+      "sand",
+      "moss",
+      "cream",
+      "charcoal"
+    ],
+    "availability": "craft",
+    "description": "The clutter goes in. A calmer room comes out.",
+    "sprite_brief": "Top-down 3/4: Square sand reed basket, moss cloth liner, cedar rim, two woven handles."
+  },
+  {
+    "id": "marginrow_bookcase",
+    "name": "Marginrow Bookcase",
+    "category": "storage",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 465,
+    "currency": "shells",
+    "set": "marginmoss_library",
+    "tags": [
+      "surface",
+      "wood"
+    ],
+    "variants": [
+      "moss",
+      "cream",
+      "gold",
+      "navy"
+    ],
+    "availability": "reward",
+    "description": "A bookcase that quietly encourages one more book.",
+    "sprite_brief": "Top-down 3/4: Walnut bookcase, four cream edged shelves, moss back panel, gold label tabs."
+  },
+  {
+    "id": "stillpanel_wardrobe",
+    "name": "Stillpanel Wardrobe",
+    "category": "storage",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 580,
+    "currency": "shells",
+    "set": "stillfold_home",
+    "tags": [
+      "wood",
+      "storage"
+    ],
+    "variants": [
+      "cream",
+      "charcoal",
+      "mint",
+      "sand"
+    ],
+    "availability": "permanent",
+    "description": "A smooth place to hide a very colorful wardrobe.",
+    "sprite_brief": "Top-down 3/4: Tall cream wardrobe, mint sliding panels, ash side strips, charcoal inset handles."
+  },
+  {
+    "id": "kettleware_hutch",
+    "name": "Kettleware Hutch",
+    "category": "storage",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 455,
+    "currency": "shells",
+    "set": "kettlewink_cafe",
+    "tags": [
+      "surface",
+      "wood"
+    ],
+    "variants": [
+      "cream",
+      "sand",
+      "moss",
+      "coral"
+    ],
+    "availability": "permanent",
+    "description": "A cheerful queue of shelves waiting for favorite cups.",
+    "sprite_brief": "Top-down 3/4: Sand oak hutch, cream open shelves, moss lower drawers, coral knob pairs."
+  },
+  {
+    "id": "buttonbelly_dresser",
+    "name": "Buttonbelly Dresser",
+    "category": "storage",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 445,
+    "currency": "shells",
+    "set": "blushbutton_nook",
+    "tags": [
+      "surface",
+      "wood"
+    ],
+    "variants": [
+      "rose",
+      "cream",
+      "mint",
+      "lilac",
+      "sky"
+    ],
+    "availability": "permanent",
+    "description": "Smiling drawers make laundry feel almost finished.",
+    "sprite_brief": "Top-down 3/4: Rose rounded dresser, cream oval pulls like cheeks, mint flat top, lilac stub feet."
+  },
+  {
+    "id": "beamhold_chest",
+    "name": "Beamhold Chest",
+    "category": "storage",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 460,
+    "currency": "shells",
+    "set": "brinebeam_wreck",
+    "tags": [
+      "wood",
+      "storage"
+    ],
+    "variants": [
+      "navy",
+      "sand",
+      "moss",
+      "gold"
+    ],
+    "availability": "rotating",
+    "description": "The lock is decorative; the tidy feeling is real.",
+    "sprite_brief": "Top-down 3/4: Navy seafarer chest, sand plank lid, gold bands, moss patina on round lock plate."
+  },
+  {
+    "id": "clickslot_cabinet",
+    "name": "Clickslot Cabinet",
+    "category": "storage",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 475,
+    "currency": "shells",
+    "set": "clickcove_den",
+    "tags": [
+      "surface",
+      "metal"
+    ],
+    "variants": [
+      "charcoal",
+      "mint",
+      "sky"
+    ],
+    "availability": "rotating",
+    "description": "A proper resting place for spare cables and old scores.",
+    "sprite_brief": "Top-down 3/4: Charcoal low cabinet, sky cubbies, mint door edge, coral pulls, smooth top."
+  },
+  {
+    "id": "reefniche_cabinet",
+    "name": "Reefniche Cabinet",
+    "category": "storage",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "rare",
+    "price": 2245,
+    "currency": "shells",
+    "set": "polypocket_reef",
+    "tags": [
+      "surface",
+      "stone"
+    ],
+    "variants": [
+      "coral",
+      "lilac",
+      "sky",
+      "cream"
+    ],
+    "availability": "permanent",
+    "description": "Tiny reef-shaped nooks for your favorite land treasures.",
+    "sprite_brief": "Top-down 3/4: Cream stone cabinet, coral arch openings, lilac drawers, sky pebble handles, broad top."
+  },
+  {
+    "id": "fizzfile_drawers",
+    "name": "Fizzfile Drawers",
+    "category": "storage",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "rare",
+    "price": 1750,
+    "currency": "shells",
+    "set": "fizzfern_lab",
+    "tags": [
+      "surface",
+      "metal"
+    ],
+    "variants": [
+      "mint",
+      "cream",
+      "charcoal",
+      "lilac"
+    ],
+    "availability": "rotating",
+    "description": "Labels keep discoveries from becoming snack mix-ups.",
+    "sprite_brief": "Top-down 3/4: Mint metal drawer bank, cream label slots, charcoal feet, lilac enamel top."
+  },
+  {
+    "id": "wishknot_wardrobe",
+    "name": "Wishknot Wardrobe",
+    "category": "storage",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "rare",
+    "price": 33,
+    "currency": "pearls",
+    "set": "lanternplait_fete",
+    "tags": [
+      "wood",
+      "storage"
+    ],
+    "variants": [
+      "coral",
+      "gold",
+      "cream",
+      "plum",
+      "rose"
+    ],
+    "availability": "permanent",
+    "description": "Knotted handles hold all sorts of hopeful outfits.",
+    "sprite_brief": "Top-down 3/4: Coral lacquer wardrobe, gold knot handles, plum inset panels, cream cloud corner motifs."
+  },
+  {
+    "id": "dunemarrow_armoire",
+    "name": "Dunemarrow Armoire",
+    "category": "storage",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "rare",
+    "price": 2250,
+    "currency": "shells",
+    "set": "dunethread_house",
+    "tags": [
+      "wood",
+      "storage"
+    ],
+    "variants": [
+      "sand",
+      "coral",
+      "navy",
+      "gold"
+    ],
+    "availability": "permanent",
+    "description": "Keeps linen cool behind a patient lattice of shade.",
+    "sprite_brief": "Top-down 3/4: Sand carved armoire, navy lattice doors, coral trim, gold loop handles."
+  },
+  {
+    "id": "velvetroot_cabinet",
+    "name": "Velvetroot Cabinet",
+    "category": "storage",
+    "layer": "floor",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "epic",
+    "price": 11930,
+    "currency": "shells",
+    "set": "gilded_acorn_court",
+    "tags": [
+      "surface",
+      "wood"
+    ],
+    "variants": [
+      "plum",
+      "gold",
+      "cream",
+      "moss"
+    ],
+    "availability": "permanent",
+    "description": "Even spare napkins get the grand treatment.",
+    "sprite_brief": "Top-down 3/4: Walnut cabinet, gold branching inlays, plum lined open niches, cream marble top."
+  },
+  {
+    "id": "orbitvault_cupboard",
+    "name": "Orbitvault Cupboard",
+    "category": "storage",
+    "layer": "floor",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "epic",
+    "price": 113,
+    "currency": "pearls",
+    "set": "orbitcrumb_station",
+    "tags": [
+      "metal",
+      "storage"
+    ],
+    "variants": [
+      "sky",
+      "cream",
+      "navy",
+      "gold"
+    ],
+    "availability": "rotating",
+    "description": "A secure compartment for perfectly ordinary socks.",
+    "sprite_brief": "Top-down 3/4: Cream rounded vault cupboard, sky segmented doors, navy portholes, gold wheel handles."
+  },
+  {
+    "id": "hemshade_lamp",
+    "name": "Hemshade Lamp",
+    "category": "lighting",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 85,
+    "currency": "shells",
+    "set": "thimblefen_cottage",
+    "tags": [
+      "light",
+      "fabric"
+    ],
+    "variants": [
+      "cream",
+      "moss",
+      "coral"
+    ],
+    "availability": "rotating",
+    "description": "A little pool of warmth for the last page.",
+    "sprite_brief": "Top-down 3/4: Small oak lamp, cream pleated shade, coral pull bead, round moss base."
+  },
+  {
+    "id": "pebblecap_lamp",
+    "name": "Pebblecap Lamp",
+    "category": "lighting",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 75,
+    "currency": "shells",
+    "set": "pebblewake_porch",
+    "tags": [
+      "light",
+      "stone"
+    ],
+    "variants": [
+      "sand",
+      "navy",
+      "coral",
+      "cream",
+      "sky"
+    ],
+    "availability": "permanent",
+    "description": "A beach pebble with a bright second career.",
+    "sprite_brief": "Top-down 3/4: Stacked sand pebble lamp base, navy conical shade, cream rim."
+  },
+  {
+    "id": "quietdot_lamp",
+    "name": "Quietdot Lamp",
+    "category": "lighting",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 80,
+    "currency": "shells",
+    "set": "stillfold_home",
+    "tags": [
+      "light",
+      "metal"
+    ],
+    "variants": [
+      "cream",
+      "charcoal",
+      "mint",
+      "sand"
+    ],
+    "availability": "permanent",
+    "description": "Enough light for a small and excellent idea.",
+    "sprite_brief": "Top-down 3/4: Mint dome lamp, slim charcoal stem, cream circular foot, tiny gold switch."
+  },
+  {
+    "id": "pageglow_lamp",
+    "name": "Pageglow Lamp",
+    "category": "lighting",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 75,
+    "currency": "shells",
+    "set": "marginmoss_library",
+    "tags": [
+      "light",
+      "metal"
+    ],
+    "variants": [],
+    "availability": "rotating",
+    "description": "Stays up with you until the chapter finally ends.",
+    "sprite_brief": "Top-down 3/4: Moss curved reading lamp, gold jointed neck, walnut rectangular base."
+  },
+  {
+    "id": "wickcrumb_candle",
+    "name": "Wickcrumb Candle",
+    "category": "lighting",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 70,
+    "currency": "shells",
+    "set": "kettlewink_cafe",
+    "tags": [
+      "light",
+      "wax"
+    ],
+    "variants": [
+      "cream",
+      "sand",
+      "moss",
+      "coral"
+    ],
+    "availability": "rotating",
+    "description": "Adds a warm glow without stealing the cake's attention.",
+    "sprite_brief": "Top-down 3/4: Cream pillar candle, coral ceramic saucer, gold flame, three wax drips."
+  },
+  {
+    "id": "dewloop_lantern",
+    "name": "Dewloop Lantern",
+    "category": "lighting",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 80,
+    "currency": "shells",
+    "set": "dewpeg_camp",
+    "tags": [
+      "light",
+      "metal"
+    ],
+    "variants": [
+      "moss",
+      "sand",
+      "navy",
+      "coral"
+    ],
+    "availability": "permanent",
+    "description": "A campsite glow that fits beside your mug.",
+    "sprite_brief": "Top-down 3/4: Navy square lantern, cream glass panes, coral loop handle, gold center flame."
+  },
+  {
+    "id": "reedcap_lamp",
+    "name": "Reedcap Lamp",
+    "category": "lighting",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 70,
+    "currency": "shells",
+    "set": "reedpause_retreat",
+    "tags": [
+      "light",
+      "woven"
+    ],
+    "variants": [
+      "sand",
+      "moss",
+      "cream",
+      "charcoal",
+      "sky"
+    ],
+    "availability": "craft",
+    "description": "Soft light filtered through a patient little weave.",
+    "sprite_brief": "Top-down 3/4: Sand woven dome shade, cedar tripod base, warm cream glow between reeds."
+  },
+  {
+    "id": "dunewick_candle",
+    "name": "Dunewick Candle",
+    "category": "lighting",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 75,
+    "currency": "shells",
+    "set": "dunethread_house",
+    "tags": [
+      "light",
+      "wax"
+    ],
+    "variants": [
+      "sand",
+      "coral",
+      "navy"
+    ],
+    "availability": "permanent",
+    "description": "A tiny evening sun in a cool clay dish.",
+    "sprite_brief": "Top-down 3/4: Gold candle nub, coral clay bowl, navy painted dots, cream melted wax rim."
+  },
+  {
+    "id": "sprigshade_lamp",
+    "name": "Sprigshade Lamp",
+    "category": "lighting",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 70,
+    "currency": "shells",
+    "set": "sprigspool_potting",
+    "tags": [
+      "light",
+      "metal"
+    ],
+    "variants": [
+      "moss",
+      "sand",
+      "cream",
+      "mint"
+    ],
+    "availability": "permanent",
+    "description": "An enamel shade with the spirit of a new leaf.",
+    "sprite_brief": "Top-down 3/4: Mint watering bell shade, cream stem, moss round base, sand pull cord."
+  },
+  {
+    "id": "rivetarm_floor_lamp",
+    "name": "Rivetarm Floor Lamp",
+    "category": "lighting",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 405,
+    "currency": "shells",
+    "set": "rivetsprout_loft",
+    "tags": [
+      "light",
+      "metal"
+    ],
+    "variants": [
+      "charcoal",
+      "sand",
+      "moss",
+      "navy"
+    ],
+    "availability": "permanent",
+    "description": "Its long arm offers light exactly where you're reading.",
+    "sprite_brief": "Top-down 3/4: Charcoal jointed floor lamp, sand cone shade, round heavy base, visible brass hinge bolts."
+  },
+  {
+    "id": "stillarc_floor_lamp",
+    "name": "Stillarc Floor Lamp",
+    "category": "lighting",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 440,
+    "currency": "shells",
+    "set": "stillfold_home",
+    "tags": [
+      "light",
+      "metal"
+    ],
+    "variants": [
+      "cream",
+      "charcoal",
+      "mint",
+      "sand"
+    ],
+    "availability": "permanent",
+    "description": "A graceful curve over a quiet corner.",
+    "sprite_brief": "Top-down 3/4: Tall charcoal arc, cream bowl shade, mint oval counterweight, gold switch."
+  },
+  {
+    "id": "blushcheek_lamp",
+    "name": "Blushcheek Lamp",
+    "category": "lighting",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 405,
+    "currency": "shells",
+    "set": "blushbutton_nook",
+    "tags": [
+      "light",
+      "glass"
+    ],
+    "variants": [
+      "rose",
+      "cream",
+      "mint",
+      "lilac",
+      "sky"
+    ],
+    "availability": "permanent",
+    "description": "Blushes every time you turn it on.",
+    "sprite_brief": "Top-down 3/4: Rose frosted glass orb, cream cheek dots, mint feet, small lilac leaf cap."
+  },
+  {
+    "id": "beamguard_sconce",
+    "name": "Beamguard Sconce",
+    "category": "lighting",
+    "layer": "wall",
+    "footprint": [
+      1,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 445,
+    "currency": "shells",
+    "set": "brinebeam_wreck",
+    "tags": [
+      "light",
+      "metal"
+    ],
+    "variants": [
+      "navy",
+      "sand",
+      "moss",
+      "gold"
+    ],
+    "availability": "rotating",
+    "description": "Once kept watch over waves. Now it watches over slippers.",
+    "sprite_brief": "Top-down 3/4: Gold cage wall sconce, navy mounting plank, cream glass cylinder, moss patina screws."
+  },
+  {
+    "id": "frosttin_lantern",
+    "name": "Frosttin Lantern",
+    "category": "lighting",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 410,
+    "currency": "shells",
+    "set": "frostcrumb_gathering",
+    "tags": [
+      "light",
+      "metal"
+    ],
+    "variants": [
+      "cream",
+      "navy",
+      "coral",
+      "gold"
+    ],
+    "availability": "rotating",
+    "description": "Punched stars scatter a pocketful of winter warmth.",
+    "sprite_brief": "Top-down 3/4: Cream tin lantern, gold star perforations, navy roof, coral wire handle."
+  },
+  {
+    "id": "sugarstripe_lamp",
+    "name": "Sugarstripe Lamp",
+    "category": "lighting",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 390,
+    "currency": "shells",
+    "set": "sugarquay_parlor",
+    "tags": [
+      "light",
+      "resin"
+    ],
+    "variants": [
+      "rose",
+      "cream",
+      "mint"
+    ],
+    "availability": "permanent",
+    "description": "A striped glow with absolutely no sticky fingerprints.",
+    "sprite_brief": "Top-down 3/4: Rose striped lamp stem, cream swirl shade, mint saucer base, plum pull bead."
+  },
+  {
+    "id": "reefbubble_lamp",
+    "name": "Reefbubble Lamp",
+    "category": "lighting",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "rare",
+    "price": 1420,
+    "currency": "shells",
+    "set": "polypocket_reef",
+    "tags": [
+      "light",
+      "glass"
+    ],
+    "variants": [
+      "coral",
+      "lilac",
+      "sky",
+      "cream"
+    ],
+    "availability": "permanent",
+    "description": "Little bubbles hold a tide pool's worth of glow.",
+    "sprite_brief": "Top-down 3/4: Sky glass bubble cluster, coral branch base, lilac highlights, cream pearl switch."
+  },
+  {
+    "id": "clickhalo_lamp",
+    "name": "Clickhalo Lamp",
+    "category": "lighting",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "rare",
+    "price": 1495,
+    "currency": "shells",
+    "set": "clickcove_den",
+    "tags": [
+      "light",
+      "metal"
+    ],
+    "variants": [
+      "charcoal",
+      "mint",
+      "sky",
+      "coral",
+      "plum"
+    ],
+    "availability": "rotating",
+    "description": "A gentle halo for a cheerful late-night session.",
+    "sprite_brief": "Top-down 3/4: Mint illuminated ring, charcoal stand, sky rectangular base, coral toggle."
+  },
+  {
+    "id": "wishfold_lantern",
+    "name": "Wishfold Lantern",
+    "category": "lighting",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "rare",
+    "price": 20,
+    "currency": "pearls",
+    "set": "lanternplait_fete",
+    "tags": [
+      "light",
+      "paper"
+    ],
+    "variants": [
+      "coral",
+      "gold",
+      "cream",
+      "plum"
+    ],
+    "availability": "permanent",
+    "description": "Folded paper gives each wish a warm place to rest.",
+    "sprite_brief": "Top-down 3/4: Coral pleated paper lantern, gold top loop, cream cloud cutouts, plum tassel base."
+  },
+  {
+    "id": "fizzflask_lamp",
+    "name": "Fizzflask Lamp",
+    "category": "lighting",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "rare",
+    "price": 1430,
+    "currency": "shells",
+    "set": "fizzfern_lab",
+    "tags": [
+      "light",
+      "glass"
+    ],
+    "variants": [
+      "mint",
+      "cream",
+      "charcoal",
+      "lilac"
+    ],
+    "availability": "permanent",
+    "description": "A bright experiment with reliably cozy results.",
+    "sprite_brief": "Top-down 3/4: Mint conical glass flask, glowing lilac liquid, cream cork cap, charcoal stand."
+  },
+  {
+    "id": "hushpetal_sconce",
+    "name": "Hushpetal Sconce",
+    "category": "lighting",
+    "layer": "wall",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "epic",
+    "price": 9250,
+    "currency": "shells",
+    "set": "hushwick_hollow",
+    "tags": [
+      "light",
+      "metal"
+    ],
+    "variants": [
+      "plum",
+      "charcoal",
+      "lilac",
+      "gold"
+    ],
+    "availability": "permanent",
+    "description": "Friendly shadows bloom around its soft purple flame.",
+    "sprite_brief": "Top-down 3/4: Charcoal vine sconce, plum petal cups, lilac flames, gold curling wall plate."
+  },
+  {
+    "id": "starcrumb_orrery",
+    "name": "Starcrumb Orrery",
+    "category": "lighting",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "epic",
+    "price": 9060,
+    "currency": "shells",
+    "set": "orbitcrumb_station",
+    "tags": [
+      "light",
+      "metal"
+    ],
+    "variants": [
+      "sky",
+      "cream",
+      "navy",
+      "gold"
+    ],
+    "availability": "reward",
+    "description": "An entire tiny sky that remembers to dim at bedtime.",
+    "sprite_brief": "Top-down 3/4: Gold orbit rings around cream luminous globe, sky planet beads, navy pedestal, short brass legs."
+  },
+  {
+    "id": "acornsun_beacon",
+    "name": "Acornsun Beacon",
+    "category": "lighting",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "legendary",
+    "price": 177,
+    "currency": "pearls",
+    "set": "gilded_acorn_court",
+    "tags": [
+      "light",
+      "glass"
+    ],
+    "variants": [
+      "plum",
+      "gold",
+      "cream"
+    ],
+    "availability": "permanent",
+    "description": "A golden glow for the smallest of grand celebrations.",
+    "sprite_brief": "Top-down 3/4: Tall cream glass acorn, gilded leaf cage, plum marble pedestal, concentric gold base rings."
+  },
+  {
+    "id": "hemtop_counter",
+    "name": "Hemtop Counter",
+    "category": "kitchen",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "common",
+    "price": 105,
+    "currency": "shells",
+    "set": "thimblefen_cottage",
+    "tags": [
+      "surface",
+      "wood",
+      "kitchen"
+    ],
+    "variants": [
+      "cream",
+      "moss",
+      "coral",
+      "sand"
+    ],
+    "availability": "permanent",
+    "description": "The first stop for every good breakfast plan.",
+    "sprite_brief": "Top-down 3/4: Honey oak counter, cream doors, coral knob handles, sand butcher block top."
+  },
+  {
+    "id": "pebblewash_sink",
+    "name": "Pebblewash Sink",
+    "category": "kitchen",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "common",
+    "price": 105,
+    "currency": "shells",
+    "set": "pebblewake_porch",
+    "tags": [
+      "water",
+      "kitchen"
+    ],
+    "variants": [
+      "sand",
+      "navy",
+      "coral",
+      "cream"
+    ],
+    "availability": "permanent",
+    "description": "A place to rinse mugs and very small beach finds.",
+    "sprite_brief": "Top-down 3/4: Cream basin in driftwood cabinet, navy curtain front, gold curved tap."
+  },
+  {
+    "id": "stillwarm_stove",
+    "name": "Stillwarm Stove",
+    "category": "kitchen",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "common",
+    "price": 100,
+    "currency": "shells",
+    "set": "stillfold_home",
+    "tags": [
+      "heat",
+      "kitchen"
+    ],
+    "variants": [
+      "cream",
+      "charcoal",
+      "mint",
+      "sand"
+    ],
+    "availability": "permanent",
+    "description": "Four neat circles ready for a little everyday magic.",
+    "sprite_brief": "Top-down 3/4: Cream compact stove, charcoal four ring top, mint oven door, gold dial dots."
+  },
+  {
+    "id": "crumbshine_toaster",
+    "name": "Crumbshine Toaster",
+    "category": "kitchen",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 70,
+    "currency": "shells",
+    "set": "kettlewink_cafe",
+    "tags": [
+      "metal",
+      "kitchen"
+    ],
+    "variants": [
+      "cream",
+      "sand",
+      "moss",
+      "coral"
+    ],
+    "availability": "rotating",
+    "description": "Makes the kitchen smell like somebody cares.",
+    "sprite_brief": "Top-down 3/4: Cream rounded toaster, coral lever, two dark slots, sand crumb tray."
+  },
+  {
+    "id": "mintwhistle_kettle",
+    "name": "Mintwhistle Kettle",
+    "category": "kitchen",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 80,
+    "currency": "shells",
+    "set": "thimblefen_cottage",
+    "tags": [
+      "metal",
+      "kitchen"
+    ],
+    "variants": [
+      "cream",
+      "moss",
+      "coral",
+      "sand",
+      "sky"
+    ],
+    "availability": "rotating",
+    "description": "It has a very small song and a very useful job.",
+    "sprite_brief": "Top-down 3/4: Mint enamel kettle, cream arched handle, coral whistle cap, round dark base."
+  },
+  {
+    "id": "tidechip_mug",
+    "name": "Tidechip Mug",
+    "category": "kitchen",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 70,
+    "currency": "shells",
+    "set": "pebblewake_porch",
+    "tags": [
+      "ceramic",
+      "kitchen"
+    ],
+    "variants": [
+      "sand",
+      "navy",
+      "coral",
+      "cream"
+    ],
+    "availability": "permanent",
+    "description": "The chip is painted on. The affection is quite real.",
+    "sprite_brief": "Top-down 3/4: Navy ceramic mug, cream wave stripe, coral handle, sand painted rim notch."
+  },
+  {
+    "id": "pagebreak_teacup",
+    "name": "Pagebreak Teacup",
+    "category": "kitchen",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 85,
+    "currency": "shells",
+    "set": "marginmoss_library",
+    "tags": [
+      "ceramic",
+      "kitchen"
+    ],
+    "variants": [
+      "moss",
+      "cream",
+      "gold"
+    ],
+    "availability": "rotating",
+    "description": "Marks the place where reading turned into daydreaming.",
+    "sprite_brief": "Top-down 3/4: Cream teacup, moss leaf motif, gold rim, matching round saucer."
+  },
+  {
+    "id": "sprigseal_jar",
+    "name": "Sprigseal Jar",
+    "category": "kitchen",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 80,
+    "currency": "shells",
+    "set": "sprigspool_potting",
+    "tags": [
+      "glass",
+      "kitchen"
+    ],
+    "variants": [
+      "moss",
+      "sand",
+      "cream",
+      "mint"
+    ],
+    "availability": "craft",
+    "description": "Keeps seeds dry and snack guesses interesting.",
+    "sprite_brief": "Top-down 3/4: Clear mint glass jar, sand cork lid, cream square label, moss twine."
+  },
+  {
+    "id": "reedrest_breadbox",
+    "name": "Reedrest Breadbox",
+    "category": "kitchen",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 85,
+    "currency": "shells",
+    "set": "reedpause_retreat",
+    "tags": [
+      "wood",
+      "kitchen"
+    ],
+    "variants": [
+      "sand",
+      "moss",
+      "cream",
+      "charcoal"
+    ],
+    "availability": "permanent",
+    "description": "Yesterday's loaf gets a quiet little shelter.",
+    "sprite_brief": "Top-down 3/4: Cedar breadbox, sand slatted roll lid, moss pull bead, rounded square corners."
+  },
+  {
+    "id": "rivetpan_range",
+    "name": "Rivetpan Range",
+    "category": "kitchen",
+    "layer": "floor",
+    "footprint": [
+      3,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 510,
+    "currency": "shells",
+    "set": "rivetsprout_loft",
+    "tags": [
+      "heat",
+      "metal",
+      "kitchen"
+    ],
+    "variants": [
+      "charcoal",
+      "sand",
+      "moss",
+      "navy",
+      "cream"
+    ],
+    "availability": "permanent",
+    "description": "A sturdy range for very ambitious soup.",
+    "sprite_brief": "Top-down 3/4: Charcoal steel range, six dark burners, sand oven panels, copper dial row."
+  },
+  {
+    "id": "kettlewink_fridge",
+    "name": "Kettlewink Fridge",
+    "category": "kitchen",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 605,
+    "currency": "shells",
+    "set": "kettlewink_cafe",
+    "tags": [
+      "cold",
+      "metal",
+      "kitchen"
+    ],
+    "variants": [],
+    "availability": "permanent",
+    "description": "A cool keeper of milk, cakes, and tomorrow's breakfast.",
+    "sprite_brief": "Top-down 3/4: Cream rounded fridge, moss side panels, coral handles, gold hinge caps."
+  },
+  {
+    "id": "dunebowl_counter",
+    "name": "Dunebowl Counter",
+    "category": "kitchen",
+    "layer": "floor",
+    "footprint": [
+      3,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 530,
+    "currency": "shells",
+    "set": "dunethread_house",
+    "tags": [
+      "surface",
+      "clay",
+      "kitchen"
+    ],
+    "variants": [
+      "sand",
+      "coral",
+      "navy",
+      "gold"
+    ],
+    "availability": "rotating",
+    "description": "A cool clay workspace for warm, floury afternoons.",
+    "sprite_brief": "Top-down 3/4: Sand plaster counter, coral clay drawers, navy tile inset top, gold pulls."
+  },
+  {
+    "id": "buttonmix_blender",
+    "name": "Buttonmix Blender",
+    "category": "kitchen",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 380,
+    "currency": "shells",
+    "set": "blushbutton_nook",
+    "tags": [
+      "metal",
+      "kitchen"
+    ],
+    "variants": [
+      "rose",
+      "cream",
+      "mint",
+      "lilac"
+    ],
+    "availability": "permanent",
+    "description": "Turns fruit into something with an equally cheerful color.",
+    "sprite_brief": "Top-down 3/4: Rose rounded blender base, mint glass jug, cream button face, lilac lid."
+  },
+  {
+    "id": "brineboard_island",
+    "name": "Brineboard Island",
+    "category": "kitchen",
+    "layer": "floor",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 715,
+    "currency": "shells",
+    "set": "brinebeam_wreck",
+    "tags": [
+      "surface",
+      "wood",
+      "kitchen"
+    ],
+    "variants": [
+      "navy",
+      "sand",
+      "moss"
+    ],
+    "availability": "permanent",
+    "description": "A well-traveled worktop, newly devoted to sandwiches.",
+    "sprite_brief": "Top-down 3/4: Navy plank kitchen island, sand top, gold corner guards, rope wrapped foot rail."
+  },
+  {
+    "id": "crumbscale_set",
+    "name": "Crumbscale Set",
+    "category": "kitchen",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 375,
+    "currency": "shells",
+    "set": "kettlewink_cafe",
+    "tags": [
+      "metal",
+      "kitchen"
+    ],
+    "variants": [
+      "cream",
+      "sand",
+      "moss",
+      "coral",
+      "navy"
+    ],
+    "availability": "permanent",
+    "description": "Measures flour with the seriousness cake deserves.",
+    "sprite_brief": "Top-down 3/4: Cream mechanical scale, coral shallow pan, moss round dial, gold pointer."
+  },
+  {
+    "id": "reefsteam_cooker",
+    "name": "Reefsteam Cooker",
+    "category": "kitchen",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "rare",
+    "price": 1450,
+    "currency": "shells",
+    "set": "polypocket_reef",
+    "tags": [
+      "metal",
+      "kitchen"
+    ],
+    "variants": [
+      "coral",
+      "lilac",
+      "sky",
+      "cream"
+    ],
+    "availability": "rotating",
+    "description": "A tiny cloud maker with a shell-shaped lid.",
+    "sprite_brief": "Top-down 3/4: Cream round cooker, coral scalloped lid, sky handle, lilac steam vent."
+  },
+  {
+    "id": "fizzchill_cabinet",
+    "name": "Fizzchill Cabinet",
+    "category": "kitchen",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "rare",
+    "price": 2395,
+    "currency": "shells",
+    "set": "fizzfern_lab",
+    "tags": [
+      "cold",
+      "metal",
+      "kitchen"
+    ],
+    "variants": [
+      "mint",
+      "cream",
+      "charcoal",
+      "lilac"
+    ],
+    "availability": "permanent",
+    "description": "Very carefully labelled so lunch stays lunch.",
+    "sprite_brief": "Top-down 3/4: Mint glass front cooler, cream frame, charcoal shelves, lilac temperature dial."
+  },
+  {
+    "id": "wishfeast_counter",
+    "name": "Wishfeast Counter",
+    "category": "kitchen",
+    "layer": "floor",
+    "footprint": [
+      3,
+      1
+    ],
+    "rarity": "rare",
+    "price": 2065,
+    "currency": "shells",
+    "set": "lanternplait_fete",
+    "tags": [
+      "surface",
+      "wood",
+      "kitchen"
+    ],
+    "variants": [
+      "coral",
+      "gold",
+      "cream",
+      "plum"
+    ],
+    "availability": "rotating",
+    "description": "Enough room for a whole gathering's worth of dumplings.",
+    "sprite_brief": "Top-down 3/4: Coral lacquer counter, cream stone top, gold braided handles, plum inset cupboard panels."
+  },
+  {
+    "id": "orbitbake_oven",
+    "name": "Orbitbake Oven",
+    "category": "kitchen",
+    "layer": "floor",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "epic",
+    "price": 11965,
+    "currency": "shells",
+    "set": "orbitcrumb_station",
+    "tags": [
+      "heat",
+      "metal",
+      "kitchen"
+    ],
+    "variants": [
+      "sky",
+      "cream",
+      "navy",
+      "gold"
+    ],
+    "availability": "rotating",
+    "description": "Its round window makes rising bread look like a tiny moon.",
+    "sprite_brief": "Top-down 3/4: Cream capsule oven, sky panels, navy circular window, gold locking rim and feet."
+  },
+  {
+    "id": "acornmarble_island",
+    "name": "Acornmarble Island",
+    "category": "kitchen",
+    "layer": "floor",
+    "footprint": [
+      4,
+      2
+    ],
+    "rarity": "epic",
+    "price": 13790,
+    "currency": "shells",
+    "set": "gilded_acorn_court",
+    "tags": [
+      "surface",
+      "wood",
+      "kitchen"
+    ],
+    "variants": [
+      "plum",
+      "gold",
+      "cream",
+      "moss",
+      "navy"
+    ],
+    "availability": "permanent",
+    "description": "A dignified stage for the everyday chopping of carrots.",
+    "sprite_brief": "Top-down 3/4: Cream marble island, walnut cabinets, gold leaf corner carvings, plum drawer fronts."
+  },
+  {
+    "id": "hemwash_basin",
+    "name": "Hemwash Basin",
+    "category": "bathroom",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 85,
+    "currency": "shells",
+    "set": "thimblefen_cottage",
+    "tags": [
+      "water",
+      "ceramic"
+    ],
+    "variants": [
+      "cream",
+      "moss",
+      "coral"
+    ],
+    "availability": "rotating",
+    "description": "For clean paws, hands, and questionable gardening decisions.",
+    "sprite_brief": "Top-down 3/4: Cream pedestal basin, coral tap knobs, honey oak soap ledge, round foot."
+  },
+  {
+    "id": "pebbleflush_loo",
+    "name": "Pebbleflush Loo",
+    "category": "bathroom",
+    "layer": "floor",
+    "footprint": [
+      1,
+      2
+    ],
+    "rarity": "common",
+    "price": 100,
+    "currency": "shells",
+    "set": "pebblewake_porch",
+    "tags": [
+      "water",
+      "ceramic"
+    ],
+    "variants": [
+      "sand",
+      "navy",
+      "coral",
+      "cream"
+    ],
+    "availability": "permanent",
+    "description": "A quiet essential with a tiny wave on the tank.",
+    "sprite_brief": "Top-down 3/4: Cream ceramic toilet, navy seat lid, sand tank, coral wave decal."
+  },
+  {
+    "id": "stillglass_shower",
+    "name": "Stillglass Shower",
+    "category": "bathroom",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "common",
+    "price": 155,
+    "currency": "shells",
+    "set": "stillfold_home",
+    "tags": [
+      "water",
+      "glass"
+    ],
+    "variants": [
+      "cream",
+      "charcoal",
+      "mint",
+      "sand"
+    ],
+    "availability": "rotating",
+    "description": "A bright corner for rinsing off the day.",
+    "sprite_brief": "Top-down 3/4: Clear square shower, charcoal thin frame, mint tray, cream wall panel and tap."
+  },
+  {
+    "id": "reedsoap_dish",
+    "name": "Reedsoap Dish",
+    "category": "bathroom",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 75,
+    "currency": "shells",
+    "set": "reedpause_retreat",
+    "tags": [
+      "ceramic",
+      "bath"
+    ],
+    "variants": [
+      "sand",
+      "moss",
+      "cream",
+      "charcoal"
+    ],
+    "availability": "permanent",
+    "description": "Gives the soap a dry little island.",
+    "sprite_brief": "Top-down 3/4: Sand oval ceramic dish, moss drainage grooves, cream soap block."
+  },
+  {
+    "id": "sprigfold_towels",
+    "name": "Sprigfold Towels",
+    "category": "bathroom",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 70,
+    "currency": "shells",
+    "set": "sprigspool_potting",
+    "tags": [
+      "fabric",
+      "bath"
+    ],
+    "variants": [
+      "moss",
+      "sand",
+      "cream",
+      "mint",
+      "coral"
+    ],
+    "availability": "rotating",
+    "description": "Soft squares for washing up after potting day.",
+    "sprite_brief": "Top-down 3/4: Three folded cream towels, mint stripes, moss ribbon loop, slightly uneven stack."
+  },
+  {
+    "id": "dunepot_hamper",
+    "name": "Dunepot Hamper",
+    "category": "bathroom",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 75,
+    "currency": "shells",
+    "set": "dunethread_house",
+    "tags": [
+      "woven",
+      "bath"
+    ],
+    "variants": [
+      "sand",
+      "coral",
+      "navy",
+      "gold"
+    ],
+    "availability": "craft",
+    "description": "A patient basket for tomorrow's laundry.",
+    "sprite_brief": "Top-down 3/4: Tall sand woven hamper, coral cloth liner, navy braided lid handle."
+  },
+  {
+    "id": "patchsoak_tub",
+    "name": "Patchsoak Tub",
+    "category": "bathroom",
+    "layer": "floor",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 745,
+    "currency": "shells",
+    "set": "thimblefen_cottage",
+    "tags": [
+      "water",
+      "metal"
+    ],
+    "variants": [
+      "cream",
+      "moss",
+      "coral",
+      "sand"
+    ],
+    "availability": "permanent",
+    "description": "A deep sigh, made into furniture.",
+    "sprite_brief": "Top-down 3/4: Cream freestanding tub, moss exterior panel, oak feet, coral rounded taps."
+  },
+  {
+    "id": "rivetpipe_shower",
+    "name": "Rivetpipe Shower",
+    "category": "bathroom",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 580,
+    "currency": "shells",
+    "set": "rivetsprout_loft",
+    "tags": [
+      "water",
+      "metal"
+    ],
+    "variants": [
+      "charcoal",
+      "sand",
+      "moss"
+    ],
+    "availability": "permanent",
+    "description": "Honest pipes and a very satisfying warm rinse.",
+    "sprite_brief": "Top-down 3/4: Charcoal shower pipe frame, copper round head, sand tile base, moss valve knobs."
+  },
+  {
+    "id": "buttonbubble_basin",
+    "name": "Buttonbubble Basin",
+    "category": "bathroom",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 450,
+    "currency": "shells",
+    "set": "blushbutton_nook",
+    "tags": [
+      "water",
+      "ceramic"
+    ],
+    "variants": [
+      "rose",
+      "cream",
+      "mint",
+      "lilac"
+    ],
+    "availability": "rotating",
+    "description": "Its happy little face forgives toothpaste splashes.",
+    "sprite_brief": "Top-down 3/4: Rose rounded vanity, cream smiling basin, mint doors, lilac pebble knobs."
+  },
+  {
+    "id": "tidefold_towel_rail",
+    "name": "Tidefold Towel Rail",
+    "category": "bathroom",
+    "layer": "wall",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 465,
+    "currency": "shells",
+    "set": "pebblewake_porch",
+    "tags": [
+      "metal",
+      "bath"
+    ],
+    "variants": [
+      "sand",
+      "navy",
+      "coral",
+      "cream",
+      "sky"
+    ],
+    "availability": "permanent",
+    "description": "Keeps fluffy towels above the imaginary tide line.",
+    "sprite_brief": "Top-down 3/4: Gold wall rail, navy brackets, two cream striped towels, coral corner tassels."
+  },
+  {
+    "id": "reefcurl_tub",
+    "name": "Reefcurl Tub",
+    "category": "bathroom",
+    "layer": "floor",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "rare",
+    "price": 43,
+    "currency": "pearls",
+    "set": "polypocket_reef",
+    "tags": [
+      "water",
+      "stone"
+    ],
+    "variants": [
+      "coral",
+      "lilac",
+      "sky",
+      "cream"
+    ],
+    "availability": "permanent",
+    "description": "A small cove for one very unhurried soak.",
+    "sprite_brief": "Top-down 3/4: Cream scalloped stone tub, lilac inner glaze, coral curled feet, sky shell taps."
+  },
+  {
+    "id": "fizzmist_shower",
+    "name": "Fizzmist Shower",
+    "category": "bathroom",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "rare",
+    "price": 2365,
+    "currency": "shells",
+    "set": "fizzfern_lab",
+    "tags": [
+      "water",
+      "glass"
+    ],
+    "variants": [
+      "mint",
+      "cream",
+      "charcoal",
+      "lilac"
+    ],
+    "availability": "permanent",
+    "description": "The only experiment required is finding the right warmth.",
+    "sprite_brief": "Top-down 3/4: Mint rounded glass shower, cream base, lilac knob panel, charcoal overhead ring."
+  },
+  {
+    "id": "wishbowl_vanity",
+    "name": "Wishbowl Vanity",
+    "category": "bathroom",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "rare",
+    "price": 1720,
+    "currency": "shells",
+    "set": "lanternplait_fete",
+    "tags": [
+      "water",
+      "wood"
+    ],
+    "variants": [
+      "coral",
+      "gold",
+      "cream",
+      "plum"
+    ],
+    "availability": "rotating",
+    "description": "A fresh face for a fresh beginning.",
+    "sprite_brief": "Top-down 3/4: Coral lacquer vanity, cream round basin, gold knot pulls, plum towel niche."
+  },
+  {
+    "id": "moonrinse_bath",
+    "name": "Moonrinse Bath",
+    "category": "bathroom",
+    "layer": "floor",
+    "footprint": [
+      3,
+      3
+    ],
+    "rarity": "epic",
+    "price": 15130,
+    "currency": "shells",
+    "set": "orbitcrumb_station",
+    "tags": [
+      "water",
+      "metal"
+    ],
+    "variants": [
+      "sky",
+      "cream",
+      "navy",
+      "gold"
+    ],
+    "availability": "permanent",
+    "description": "A round little lagoon for grounded space travelers.",
+    "sprite_brief": "Top-down 3/4: Sky circular tub, cream segmented rim, navy inner basin, gold jet covers and low feet."
+  },
+  {
+    "id": "clickbud_screen",
+    "name": "Clickbud Screen",
+    "category": "electronics",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 85,
+    "currency": "shells",
+    "set": "clickcove_den",
+    "tags": [
+      "light",
+      "screen"
+    ],
+    "variants": [
+      "charcoal",
+      "mint",
+      "sky"
+    ],
+    "availability": "permanent",
+    "description": "A modest screen for very big imaginary adventures.",
+    "sprite_brief": "Top-down 3/4: Small charcoal monitor, mint square stand, sky blank screen, coral power dot."
+  },
+  {
+    "id": "kettlewave_radio",
+    "name": "Kettlewave Radio",
+    "category": "electronics",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 80,
+    "currency": "shells",
+    "set": "kettlewink_cafe",
+    "tags": [
+      "audio",
+      "metal"
+    ],
+    "variants": [
+      "cream",
+      "sand",
+      "moss",
+      "coral"
+    ],
+    "availability": "rotating",
+    "description": "Keeps the toast company while you find the jam.",
+    "sprite_brief": "Top-down 3/4: Cream rounded radio, moss speaker mesh, coral tuning dial, gold antenna."
+  },
+  {
+    "id": "stillbreeze_fan",
+    "name": "Stillbreeze Fan",
+    "category": "electronics",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 70,
+    "currency": "shells",
+    "set": "stillfold_home",
+    "tags": [
+      "metal",
+      "comfort"
+    ],
+    "variants": [
+      "cream",
+      "charcoal",
+      "mint",
+      "sand"
+    ],
+    "availability": "permanent",
+    "description": "A small breeze that never steals your papers.",
+    "sprite_brief": "Top-down 3/4: Mint desk fan, charcoal circular cage, cream base, three broad blades."
+  },
+  {
+    "id": "pebbleclick_remote",
+    "name": "Pebbleclick Remote",
+    "category": "electronics",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 75,
+    "currency": "shells",
+    "set": null,
+    "tags": [
+      "plastic",
+      "screen"
+    ],
+    "variants": [
+      "cream",
+      "sand",
+      "mint",
+      "navy"
+    ],
+    "availability": "rotating",
+    "description": "Somehow always hiding exactly where you left it.",
+    "sprite_brief": "Top-down 3/4: Navy rounded remote, cream button grid, coral top button, sand wrist loop."
+  },
+  {
+    "id": "pagecount_calculator",
+    "name": "Pagecount Calculator",
+    "category": "electronics",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 85,
+    "currency": "shells",
+    "set": "marginmoss_library",
+    "tags": [
+      "plastic",
+      "study"
+    ],
+    "variants": [
+      "moss",
+      "cream",
+      "gold",
+      "navy"
+    ],
+    "availability": "rotating",
+    "description": "Counts book budgets with admirable optimism.",
+    "sprite_brief": "Top-down 3/4: Moss pocket calculator, cream chunky keys, gold solar strip, dark narrow display."
+  },
+  {
+    "id": "patchscreen_television",
+    "name": "Patchscreen Television",
+    "category": "electronics",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 450,
+    "currency": "shells",
+    "set": "thimblefen_cottage",
+    "tags": [
+      "light",
+      "screen"
+    ],
+    "variants": [],
+    "availability": "rotating",
+    "description": "A warm wooden frame around a rainy day's entertainment.",
+    "sprite_brief": "Top-down 3/4: Oak boxed television on short legs, cream screen bezel, moss speaker cloth, coral dials."
+  },
+  {
+    "id": "blinkslot_cabinet",
+    "name": "Blinkslot Cabinet",
+    "category": "electronics",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 610,
+    "currency": "shells",
+    "set": "blinkberry_arcade",
+    "tags": [
+      "light",
+      "game",
+      "screen"
+    ],
+    "variants": [
+      "plum",
+      "sky",
+      "coral",
+      "charcoal"
+    ],
+    "availability": "permanent",
+    "description": "Every round starts with a friendly little blink.",
+    "sprite_brief": "Top-down 3/4: Plum arcade cabinet, sky screen, coral joystick, charcoal coinless control panel."
+  },
+  {
+    "id": "sprigmist_humidifier",
+    "name": "Sprigmist Humidifier",
+    "category": "electronics",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 390,
+    "currency": "shells",
+    "set": "sprigspool_potting",
+    "tags": [
+      "water",
+      "plastic"
+    ],
+    "variants": [
+      "moss",
+      "sand",
+      "cream"
+    ],
+    "availability": "rotating",
+    "description": "A little cloud for leaves that miss the morning mist.",
+    "sprite_brief": "Top-down 3/4: Mint bulb humidifier, cream leaf spout, sand base, translucent sky water window."
+  },
+  {
+    "id": "spooldeck_player",
+    "name": "Spooldeck Player",
+    "category": "electronics",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 375,
+    "currency": "shells",
+    "set": "humskein_studio",
+    "tags": [
+      "audio",
+      "wood"
+    ],
+    "variants": [
+      "plum",
+      "gold",
+      "navy",
+      "sand"
+    ],
+    "availability": "permanent",
+    "description": "Gives your favorite tunes a gentle place to spin.",
+    "sprite_brief": "Top-down 3/4: Maple record player, plum lid, charcoal platter, gold tonearm, cream front dial."
+  },
+  {
+    "id": "clickquay_computer",
+    "name": "Clickquay Computer",
+    "category": "electronics",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "rare",
+    "price": 1330,
+    "currency": "shells",
+    "set": "clickcove_den",
+    "tags": [
+      "light",
+      "screen"
+    ],
+    "variants": [
+      "charcoal",
+      "mint",
+      "sky",
+      "coral"
+    ],
+    "availability": "permanent",
+    "description": "A tidy little machine with a very busy imagination.",
+    "sprite_brief": "Top-down 3/4: Charcoal compact computer tower, mint vent lights, sky side window, coral power switch."
+  },
+  {
+    "id": "fizzscan_terminal",
+    "name": "Fizzscan Terminal",
+    "category": "electronics",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "rare",
+    "price": 1400,
+    "currency": "shells",
+    "set": "fizzfern_lab",
+    "tags": [
+      "light",
+      "screen",
+      "study"
+    ],
+    "variants": [
+      "mint",
+      "cream",
+      "charcoal",
+      "lilac",
+      "sky"
+    ],
+    "availability": "permanent",
+    "description": "Reports a high probability of tea being ready soon.",
+    "sprite_brief": "Top-down 3/4: Cream angled terminal, mint screen, lilac square buttons, charcoal rubber base."
+  },
+  {
+    "id": "beamcast_projector",
+    "name": "Beamcast Projector",
+    "category": "electronics",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "rare",
+    "price": 20,
+    "currency": "pearls",
+    "set": "brinebeam_wreck",
+    "tags": [
+      "light",
+      "screen"
+    ],
+    "variants": [
+      "navy",
+      "sand",
+      "moss",
+      "gold"
+    ],
+    "availability": "permanent",
+    "description": "Turns a plain wall into a window for stories.",
+    "sprite_brief": "Top-down 3/4: Navy box projector, gold lens ring, sand top handle, moss side vents."
+  },
+  {
+    "id": "orbitview_console",
+    "name": "Orbitview Console",
+    "category": "electronics",
+    "layer": "floor",
+    "footprint": [
+      3,
+      1
+    ],
+    "rarity": "epic",
+    "price": 95,
+    "currency": "pearls",
+    "set": "orbitcrumb_station",
+    "tags": [
+      "light",
+      "screen"
+    ],
+    "variants": [
+      "sky",
+      "cream",
+      "navy",
+      "gold"
+    ],
+    "availability": "permanent",
+    "description": "Shows distant stars and very local snack reminders.",
+    "sprite_brief": "Top-down 3/4: Cream control console, sky curved screens, navy lower panels, gold dial clusters."
+  },
+  {
+    "id": "blinkberry_twin_game",
+    "name": "Blinkberry Twin Game",
+    "category": "electronics",
+    "layer": "floor",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "epic",
+    "price": 115,
+    "currency": "pearls",
+    "set": "blinkberry_arcade",
+    "tags": [
+      "light",
+      "game",
+      "screen"
+    ],
+    "variants": [
+      "plum",
+      "sky",
+      "coral",
+      "charcoal"
+    ],
+    "availability": "rotating",
+    "description": "Two sets of buttons, one shared excuse to stay awhile.",
+    "sprite_brief": "Top-down 3/4: Wide plum arcade machine, two sky displays, paired coral joysticks, charcoal stepped base."
+  },
+  {
+    "id": "humskein_sound_wall",
+    "name": "Humskein Sound Wall",
+    "category": "electronics",
+    "layer": "floor",
+    "footprint": [
+      3,
+      1
+    ],
+    "rarity": "epic",
+    "price": 96,
+    "currency": "pearls",
+    "set": "humskein_studio",
+    "tags": [
+      "audio",
+      "metal"
+    ],
+    "variants": [
+      "plum",
+      "gold",
+      "navy"
+    ],
+    "availability": "rotating",
+    "description": "Enough speakers to make a whisper feel wonderfully full.",
+    "sprite_brief": "Top-down 3/4: Three navy speaker cabinets, gold circular cones, plum fabric fronts, maple side rails."
+  },
+  {
+    "id": "pocketweather_globe",
+    "name": "Pocketweather Globe",
+    "category": "electronics",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "legendary",
+    "price": 180,
+    "currency": "pearls",
+    "set": "fizzfern_lab",
+    "tags": [
+      "light",
+      "glass"
+    ],
+    "variants": [
+      "mint",
+      "cream",
+      "charcoal",
+      "lilac",
+      "sky"
+    ],
+    "availability": "permanent",
+    "description": "A tiny weather report with an excellent chance of wonder.",
+    "sprite_brief": "Top-down 3/4: Large mint glass sphere, suspended lilac cloud and gold sun, cream tripod console, charcoal knobs."
+  },
+  {
+    "id": "hemcheck_rug",
+    "name": "Hemcheck Rug",
+    "category": "rugs",
+    "layer": "rug",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "common",
+    "price": 155,
+    "currency": "shells",
+    "set": "thimblefen_cottage",
+    "tags": [
+      "fabric",
+      "soft"
+    ],
+    "variants": [
+      "cream",
+      "moss",
+      "coral",
+      "sand"
+    ],
+    "availability": "craft",
+    "description": "The coziest square on a chilly morning.",
+    "sprite_brief": "Top-down 3/4: Square cream wool rug, moss check grid, coral corner stitches, short sand fringe."
+  },
+  {
+    "id": "pebblepath_runner",
+    "name": "Pebblepath Runner",
+    "category": "rugs",
+    "layer": "rug",
+    "footprint": [
+      3,
+      1
+    ],
+    "rarity": "common",
+    "price": 130,
+    "currency": "shells",
+    "set": "pebblewake_porch",
+    "tags": [
+      "fabric",
+      "woven"
+    ],
+    "variants": [
+      "sand",
+      "navy",
+      "coral",
+      "cream"
+    ],
+    "availability": "permanent",
+    "description": "A sandy-looking path that never needs sweeping.",
+    "sprite_brief": "Top-down 3/4: Long sand woven runner, navy pebble ovals, cream border, coral end tassels."
+  },
+  {
+    "id": "stillstripe_mat",
+    "name": "Stillstripe Mat",
+    "category": "rugs",
+    "layer": "rug",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "common",
+    "price": 105,
+    "currency": "shells",
+    "set": "stillfold_home",
+    "tags": [
+      "fabric",
+      "soft"
+    ],
+    "variants": [
+      "cream",
+      "charcoal",
+      "mint",
+      "sand"
+    ],
+    "availability": "permanent",
+    "description": "One clean stripe makes a small room feel settled.",
+    "sprite_brief": "Top-down 3/4: Rectangular mint mat, wide charcoal offset stripe, cream bound edges."
+  },
+  {
+    "id": "sprigstep_mat",
+    "name": "Sprigstep Mat",
+    "category": "rugs",
+    "layer": "rug",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "common",
+    "price": 105,
+    "currency": "shells",
+    "set": "sprigspool_potting",
+    "tags": [
+      "woven",
+      "garden"
+    ],
+    "variants": [
+      "moss",
+      "sand",
+      "cream",
+      "mint"
+    ],
+    "availability": "permanent",
+    "description": "A polite request for muddy boots to pause.",
+    "sprite_brief": "Top-down 3/4: Sand coir mat, moss sprout silhouette, cream stitched rectangular border."
+  },
+  {
+    "id": "reedquiet_mat",
+    "name": "Reedquiet Mat",
+    "category": "rugs",
+    "layer": "rug",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "common",
+    "price": 155,
+    "currency": "shells",
+    "set": "reedpause_retreat",
+    "tags": [
+      "woven",
+      "calm"
+    ],
+    "variants": [
+      "sand",
+      "moss",
+      "cream",
+      "charcoal",
+      "sky"
+    ],
+    "availability": "rotating",
+    "description": "A soft square of room to breathe.",
+    "sprite_brief": "Top-down 3/4: Square sand reed mat, moss woven edging, cream diagonal texture, dark cedar corner tabs."
+  },
+  {
+    "id": "duneline_runner",
+    "name": "Duneline Runner",
+    "category": "rugs",
+    "layer": "rug",
+    "footprint": [
+      3,
+      1
+    ],
+    "rarity": "common",
+    "price": 130,
+    "currency": "shells",
+    "set": "dunethread_house",
+    "tags": [
+      "fabric",
+      "woven"
+    ],
+    "variants": [
+      "sand",
+      "coral",
+      "navy"
+    ],
+    "availability": "permanent",
+    "description": "A little ribbon of shade for bare feet.",
+    "sprite_brief": "Top-down 3/4: Navy flatwoven runner, sand zigzag center, coral end bands, gold fringe."
+  },
+  {
+    "id": "crumbdot_mat",
+    "name": "Crumbdot Mat",
+    "category": "rugs",
+    "layer": "rug",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "common",
+    "price": 100,
+    "currency": "shells",
+    "set": "kettlewink_cafe",
+    "tags": [
+      "fabric",
+      "soft"
+    ],
+    "variants": [
+      "cream",
+      "sand",
+      "moss",
+      "coral"
+    ],
+    "availability": "permanent",
+    "description": "Its dots are decorative. Any actual crumbs are yours.",
+    "sprite_brief": "Top-down 3/4: Cream oval mat, coral scattered dots, moss thick stitched edge."
+  },
+  {
+    "id": "marginleaf_rug",
+    "name": "Marginleaf Rug",
+    "category": "rugs",
+    "layer": "rug",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 750,
+    "currency": "shells",
+    "set": "marginmoss_library",
+    "tags": [
+      "fabric",
+      "soft"
+    ],
+    "variants": [
+      "moss",
+      "cream",
+      "gold",
+      "navy"
+    ],
+    "availability": "rotating",
+    "description": "A leafy landing beneath the reading chair.",
+    "sprite_brief": "Top-down 3/4: Moss rectangular rug, cream leaf border, walnut colored center stripes, gold corner curls."
+  },
+  {
+    "id": "blushcloud_rug",
+    "name": "Blushcloud Rug",
+    "category": "rugs",
+    "layer": "rug",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 720,
+    "currency": "shells",
+    "set": "blushbutton_nook",
+    "tags": [
+      "fabric",
+      "plush"
+    ],
+    "variants": [
+      "rose",
+      "cream",
+      "mint",
+      "lilac"
+    ],
+    "availability": "rotating",
+    "description": "A smiling cloud that is very happy to stay indoors.",
+    "sprite_brief": "Top-down 3/4: Cream cloud shaped rug, rose cheek patches, mint stitched eyes, lilac scalloped edge."
+  },
+  {
+    "id": "rivetgrid_rug",
+    "name": "Rivetgrid Rug",
+    "category": "rugs",
+    "layer": "rug",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 715,
+    "currency": "shells",
+    "set": "rivetsprout_loft",
+    "tags": [
+      "fabric",
+      "woven"
+    ],
+    "variants": [
+      "charcoal",
+      "sand",
+      "moss",
+      "navy",
+      "cream"
+    ],
+    "availability": "permanent",
+    "description": "Softens the workshop without losing its straight lines.",
+    "sprite_brief": "Top-down 3/4: Charcoal rectangle, sand broad grid, moss narrow border, short cream fringe."
+  },
+  {
+    "id": "dewring_rug",
+    "name": "Dewring Rug",
+    "category": "rugs",
+    "layer": "rug",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 710,
+    "currency": "shells",
+    "set": "dewpeg_camp",
+    "tags": [
+      "woven",
+      "canvas"
+    ],
+    "variants": [
+      "moss",
+      "sand",
+      "navy",
+      "coral"
+    ],
+    "availability": "permanent",
+    "description": "A dry island for imaginary campsite mornings.",
+    "sprite_brief": "Top-down 3/4: Oval moss canvas rug, sand concentric rings, navy stitched edge, coral peg motifs."
+  },
+  {
+    "id": "clickstep_rug",
+    "name": "Clickstep Rug",
+    "category": "rugs",
+    "layer": "rug",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 730,
+    "currency": "shells",
+    "set": "clickcove_den",
+    "tags": [
+      "fabric",
+      "soft"
+    ],
+    "variants": [
+      "charcoal",
+      "mint",
+      "sky",
+      "coral"
+    ],
+    "availability": "permanent",
+    "description": "A comfortable checkpoint on the way to the snack shelf.",
+    "sprite_brief": "Top-down 3/4: Charcoal hexagonal rug, sky stepped center, mint border, coral corner squares."
+  },
+  {
+    "id": "reefwhorl_rug",
+    "name": "Reefwhorl Rug",
+    "category": "rugs",
+    "layer": "rug",
+    "footprint": [
+      3,
+      3
+    ],
+    "rarity": "rare",
+    "price": 3845,
+    "currency": "shells",
+    "set": "polypocket_reef",
+    "tags": [
+      "fabric",
+      "plush"
+    ],
+    "variants": [
+      "coral",
+      "lilac",
+      "sky"
+    ],
+    "availability": "permanent",
+    "description": "A whole little current, safely under your toes.",
+    "sprite_brief": "Top-down 3/4: Round sky rug, coral spiral branches, lilac scallops, cream tufted highlights."
+  },
+  {
+    "id": "wishbraid_rug",
+    "name": "Wishbraid Rug",
+    "category": "rugs",
+    "layer": "rug",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "rare",
+    "price": 2980,
+    "currency": "shells",
+    "set": "lanternplait_fete",
+    "tags": [
+      "fabric",
+      "woven"
+    ],
+    "variants": [
+      "coral",
+      "gold",
+      "cream",
+      "plum"
+    ],
+    "availability": "permanent",
+    "description": "Braided wishes make a welcoming place to gather.",
+    "sprite_brief": "Top-down 3/4: Coral rectangle, gold interlocking loops, plum center medallion, cream tassels."
+  },
+  {
+    "id": "orbitlace_rug",
+    "name": "Orbitlace Rug",
+    "category": "rugs",
+    "layer": "rug",
+    "footprint": [
+      4,
+      3
+    ],
+    "rarity": "epic",
+    "price": 153,
+    "currency": "pearls",
+    "set": "orbitcrumb_station",
+    "tags": [
+      "fabric",
+      "soft"
+    ],
+    "variants": [
+      "sky",
+      "cream",
+      "navy",
+      "gold",
+      "charcoal"
+    ],
+    "availability": "rotating",
+    "description": "A quiet map of paths no slipper has traveled yet.",
+    "sprite_brief": "Top-down 3/4: Navy oval rug, gold orbital arcs, sky planet circles, cream dotted star border."
+  },
+  {
+    "id": "acornmosaic_carpet",
+    "name": "Acornmosaic Carpet",
+    "category": "rugs",
+    "layer": "rug",
+    "footprint": [
+      4,
+      3
+    ],
+    "rarity": "legendary",
+    "price": 242,
+    "currency": "pearls",
+    "set": "gilded_acorn_court",
+    "tags": [
+      "fabric",
+      "plush"
+    ],
+    "variants": [
+      "plum",
+      "gold",
+      "cream",
+      "moss"
+    ],
+    "availability": "permanent",
+    "description": "A leaf-filled carpet worthy of your most ordinary afternoon.",
+    "sprite_brief": "Top-down 3/4: Plum broad carpet, gold acorn lattice, cream central rosette, moss leaf corners, thick gold fringe."
+  },
+  {
+    "id": "hemhill_painting",
+    "name": "Hemhill Painting",
+    "category": "wall_decor",
+    "layer": "wall",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "common",
+    "price": 110,
+    "currency": "shells",
+    "set": "thimblefen_cottage",
+    "tags": [
+      "art",
+      "wood"
+    ],
+    "variants": [
+      "cream",
+      "moss",
+      "coral",
+      "sand"
+    ],
+    "availability": "permanent",
+    "description": "A little hill that has never had a hurried day.",
+    "sprite_brief": "Top-down 3/4: Oak rectangular frame, cream sky, moss hill, coral cottage roof, visible square brush pixels."
+  },
+  {
+    "id": "pebblehour_clock",
+    "name": "Pebblehour Clock",
+    "category": "wall_decor",
+    "layer": "wall",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 75,
+    "currency": "shells",
+    "set": "pebblewake_porch",
+    "tags": [
+      "time",
+      "wood"
+    ],
+    "variants": [
+      "sand",
+      "navy",
+      "coral",
+      "cream"
+    ],
+    "availability": "permanent",
+    "description": "Keeps time even when the whole room feels like a holiday.",
+    "sprite_brief": "Top-down 3/4: Round driftwood clock, navy face, cream hour dots, coral hands."
+  },
+  {
+    "id": "stillbar_wall_shelf",
+    "name": "Stillbar Wall Shelf",
+    "category": "wall_decor",
+    "layer": "wall",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "common",
+    "price": 100,
+    "currency": "shells",
+    "set": "stillfold_home",
+    "tags": [
+      "surface",
+      "wood"
+    ],
+    "variants": [],
+    "availability": "permanent",
+    "description": "A simple ledge for small things worth seeing.",
+    "sprite_brief": "Top-down 3/4: Cream floating wall shelf, pale ash top, mint underside, two concealed charcoal brackets."
+  },
+  {
+    "id": "pagepair_books",
+    "name": "Pagepair Books",
+    "category": "wall_decor",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 85,
+    "currency": "shells",
+    "set": "marginmoss_library",
+    "tags": [
+      "paper",
+      "study"
+    ],
+    "variants": [
+      "moss",
+      "cream",
+      "gold"
+    ],
+    "availability": "permanent",
+    "description": "One for right now, one for very soon.",
+    "sprite_brief": "Top-down 3/4: Two stacked books, moss and cream covers, gold page edges, coral ribbon bookmark."
+  },
+  {
+    "id": "sprigthumb_vase",
+    "name": "Sprigthumb Vase",
+    "category": "wall_decor",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 75,
+    "currency": "shells",
+    "set": "sprigspool_potting",
+    "tags": [
+      "ceramic",
+      "decor"
+    ],
+    "variants": [
+      "moss",
+      "sand",
+      "cream",
+      "mint"
+    ],
+    "availability": "rotating",
+    "description": "Made for the flower that leaned too far over the path.",
+    "sprite_brief": "Top-down 3/4: Sand thumb pressed vase, mint glaze rim, single moss stem, cream daisy."
+  },
+  {
+    "id": "dewtrail_print",
+    "name": "Dewtrail Print",
+    "category": "wall_decor",
+    "layer": "wall",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "common",
+    "price": 100,
+    "currency": "shells",
+    "set": "dewpeg_camp",
+    "tags": [
+      "art",
+      "paper"
+    ],
+    "variants": [
+      "moss",
+      "sand",
+      "navy",
+      "coral"
+    ],
+    "availability": "reward",
+    "description": "A map of a short walk with many excellent stopping places.",
+    "sprite_brief": "Top-down 3/4: Cream paper print, moss winding trail, navy pond, coral tent symbol, pale wood frame."
+  },
+  {
+    "id": "reedstroke_scroll",
+    "name": "Reedstroke Scroll",
+    "category": "wall_decor",
+    "layer": "wall",
+    "footprint": [
+      1,
+      2
+    ],
+    "rarity": "common",
+    "price": 100,
+    "currency": "shells",
+    "set": "reedpause_retreat",
+    "tags": [
+      "art",
+      "paper"
+    ],
+    "variants": [
+      "sand",
+      "moss",
+      "cream",
+      "charcoal"
+    ],
+    "availability": "permanent",
+    "description": "One unhurried brushstroke is sometimes plenty.",
+    "sprite_brief": "Top-down 3/4: Cream hanging scroll, dark moss curved brushstroke, cedar end rods, sand cord."
+  },
+  {
+    "id": "dunebead_garland",
+    "name": "Dunebead Garland",
+    "category": "wall_decor",
+    "layer": "wall",
+    "footprint": [
+      3,
+      1
+    ],
+    "rarity": "common",
+    "price": 130,
+    "currency": "shells",
+    "set": "dunethread_house",
+    "tags": [
+      "woven",
+      "decor"
+    ],
+    "variants": [
+      "sand",
+      "coral",
+      "navy",
+      "gold"
+    ],
+    "availability": "permanent",
+    "description": "A cheerful little line of shade-colored beads.",
+    "sprite_brief": "Top-down 3/4: Sand cord garland, coral clay beads, navy tassels, gold flat discs."
+  },
+  {
+    "id": "crumbnote_board",
+    "name": "Crumbnote Board",
+    "category": "wall_decor",
+    "layer": "wall",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "common",
+    "price": 105,
+    "currency": "shells",
+    "set": "kettlewink_cafe",
+    "tags": [
+      "paper",
+      "wood"
+    ],
+    "variants": [
+      "cream",
+      "sand",
+      "moss",
+      "coral",
+      "navy"
+    ],
+    "availability": "rotating",
+    "description": "Today's special is whatever made you smile.",
+    "sprite_brief": "Top-down 3/4: Sand cork board, cream frame, moss paper slips, coral round pins."
+  },
+  {
+    "id": "boltpeg_wall_rack",
+    "name": "Boltpeg Wall Rack",
+    "category": "wall_decor",
+    "layer": "wall",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "common",
+    "price": 110,
+    "currency": "shells",
+    "set": "rivetsprout_loft",
+    "tags": [
+      "surface",
+      "metal"
+    ],
+    "variants": [
+      "charcoal",
+      "sand",
+      "moss",
+      "navy"
+    ],
+    "availability": "permanent",
+    "description": "A hardworking ledge with hooks for the usual suspects.",
+    "sprite_brief": "Top-down 3/4: Charcoal wall rack, sand narrow top shelf, moss hanging hooks, exposed gold bolts."
+  },
+  {
+    "id": "buttonbud_vase",
+    "name": "Buttonbud Vase",
+    "category": "wall_decor",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 70,
+    "currency": "shells",
+    "set": "blushbutton_nook",
+    "tags": [
+      "ceramic",
+      "decor"
+    ],
+    "variants": [
+      "rose",
+      "cream",
+      "mint"
+    ],
+    "availability": "rotating",
+    "description": "A round face for your tiniest bouquet.",
+    "sprite_brief": "Top-down 3/4: Rose bulb vase, cream smile dots, mint neck, three lilac round flowers."
+  },
+  {
+    "id": "sailmark_wall_shelf",
+    "name": "Sailmark Wall Shelf",
+    "category": "wall_decor",
+    "layer": "wall",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "common",
+    "price": 110,
+    "currency": "shells",
+    "set": "pebblewake_porch",
+    "tags": [
+      "surface",
+      "wood"
+    ],
+    "variants": [
+      "sand",
+      "navy",
+      "coral",
+      "cream"
+    ],
+    "availability": "craft",
+    "description": "A little dry dock for knickknacks.",
+    "sprite_brief": "Top-down 3/4: Driftwood wall shelf, navy triangular brackets, coral rope edge, cream worn top."
+  },
+  {
+    "id": "marginglow_painting",
+    "name": "Marginglow Painting",
+    "category": "wall_decor",
+    "layer": "wall",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 585,
+    "currency": "shells",
+    "set": "marginmoss_library",
+    "tags": [
+      "art",
+      "wood"
+    ],
+    "variants": [
+      "moss",
+      "cream",
+      "gold",
+      "navy"
+    ],
+    "availability": "rotating",
+    "description": "A painted reading nook for the wall beside your real one.",
+    "sprite_brief": "Top-down 3/4: Walnut frame, moss armchair painting, cream window light, gold stacks of books."
+  },
+  {
+    "id": "stilloval_mirror",
+    "name": "Stilloval Mirror",
+    "category": "wall_decor",
+    "layer": "wall",
+    "footprint": [
+      1,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 470,
+    "currency": "shells",
+    "set": "stillfold_home",
+    "tags": [
+      "glass",
+      "decor"
+    ],
+    "variants": [
+      "cream",
+      "charcoal",
+      "mint",
+      "sand",
+      "navy"
+    ],
+    "availability": "permanent",
+    "description": "Reflects a room that is getting a little more yours.",
+    "sprite_brief": "Top-down 3/4: Tall oval mirror, thin charcoal rim, sky reflective diagonal, mint bottom tab."
+  },
+  {
+    "id": "humskein_wave_panel",
+    "name": "Humskein Wave Panel",
+    "category": "wall_decor",
+    "layer": "wall",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 585,
+    "currency": "shells",
+    "set": "humskein_studio",
+    "tags": [
+      "fabric",
+      "acoustic"
+    ],
+    "variants": [
+      "plum",
+      "gold",
+      "navy",
+      "sand"
+    ],
+    "availability": "rotating",
+    "description": "Soft ripples help every room find its indoor voice.",
+    "sprite_brief": "Top-down 3/4: Plum felt acoustic panel, navy raised wave ridges, maple thin frame, gold corner pins."
+  },
+  {
+    "id": "clickcove_pennant",
+    "name": "Clickcove Pennant",
+    "category": "wall_decor",
+    "layer": "wall",
+    "footprint": [
+      1,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 450,
+    "currency": "shells",
+    "set": "clickcove_den",
+    "tags": [
+      "fabric",
+      "game"
+    ],
+    "variants": [
+      "charcoal",
+      "mint",
+      "sky",
+      "coral"
+    ],
+    "availability": "permanent",
+    "description": "For showing up, sharing snacks, and cheering each other on.",
+    "sprite_brief": "Top-down 3/4: Sky triangular pennant, mint pixel spiral emblem, coral lower fringe, charcoal hanging rod."
+  },
+  {
+    "id": "beamchart_map",
+    "name": "Beamchart Map",
+    "category": "wall_decor",
+    "layer": "wall",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 720,
+    "currency": "shells",
+    "set": "brinebeam_wreck",
+    "tags": [
+      "paper",
+      "art"
+    ],
+    "variants": [
+      "navy",
+      "sand",
+      "moss",
+      "gold"
+    ],
+    "availability": "permanent",
+    "description": "The safest harbor on the chart is marked with a teacup.",
+    "sprite_brief": "Top-down 3/4: Sand parchment chart, navy coastline, moss islands, coral cup symbol, gold weighted corners."
+  },
+  {
+    "id": "sugarloop_mirror",
+    "name": "Sugarloop Mirror",
+    "category": "wall_decor",
+    "layer": "wall",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 580,
+    "currency": "shells",
+    "set": "sugarquay_parlor",
+    "tags": [
+      "glass",
+      "decor"
+    ],
+    "variants": [
+      "rose",
+      "cream",
+      "mint"
+    ],
+    "availability": "rotating",
+    "description": "A sweet frame for a perfectly ordinary reflection.",
+    "sprite_brief": "Top-down 3/4: Round mirror, rose twisted border, cream bead dots, mint bow, sky glass highlight."
+  },
+  {
+    "id": "froststitch_tapestry",
+    "name": "Froststitch Tapestry",
+    "category": "wall_decor",
+    "layer": "wall",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 595,
+    "currency": "shells",
+    "set": "frostcrumb_gathering",
+    "tags": [
+      "fabric",
+      "art"
+    ],
+    "variants": [
+      "cream",
+      "navy",
+      "coral",
+      "gold",
+      "sky"
+    ],
+    "availability": "permanent",
+    "description": "A stitched snowfall that never makes the floor cold.",
+    "sprite_brief": "Top-down 3/4: Navy woven hanging, cream snow diamonds, coral cabin motif, gold fringe and rod."
+  },
+  {
+    "id": "sprigrow_wall_shelf",
+    "name": "Sprigrow Wall Shelf",
+    "category": "wall_decor",
+    "layer": "wall",
+    "footprint": [
+      3,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 535,
+    "currency": "shells",
+    "set": "sprigspool_potting",
+    "tags": [
+      "surface",
+      "wood"
+    ],
+    "variants": [
+      "moss",
+      "sand",
+      "cream",
+      "mint"
+    ],
+    "availability": "craft",
+    "description": "A sunny shelf waiting for a row of hopeful little pots.",
+    "sprite_brief": "Top-down 3/4: Cream long wall shelf, moss lattice brackets, sand worn top, mint hook pegs."
+  },
+  {
+    "id": "reefsong_mural",
+    "name": "Reefsong Mural",
+    "category": "wall_decor",
+    "layer": "wall",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "rare",
+    "price": 2985,
+    "currency": "shells",
+    "set": "polypocket_reef",
+    "tags": [
+      "art",
+      "ceramic"
+    ],
+    "variants": [
+      "coral",
+      "lilac",
+      "sky",
+      "cream"
+    ],
+    "availability": "permanent",
+    "description": "A quiet chorus of coral curls and small bright fish.",
+    "sprite_brief": "Top-down 3/4: Three cream ceramic panels, coral branching reef, sky fish dashes, lilac fan shapes."
+  },
+  {
+    "id": "wishknot_wall_shelf",
+    "name": "Wishknot Wall Shelf",
+    "category": "wall_decor",
+    "layer": "wall",
+    "footprint": [
+      3,
+      1
+    ],
+    "rarity": "rare",
+    "price": 29,
+    "currency": "pearls",
+    "set": "lanternplait_fete",
+    "tags": [
+      "surface",
+      "wood"
+    ],
+    "variants": [
+      "coral",
+      "gold",
+      "cream",
+      "plum"
+    ],
+    "availability": "permanent",
+    "description": "A bright ledge for the little things you're carrying into the new year.",
+    "sprite_brief": "Top-down 3/4: Coral lacquer shelf, gold knot shaped supports, plum lower edge, cream top inlay."
+  },
+  {
+    "id": "fizzbubble_diagram",
+    "name": "Fizzbubble Diagram",
+    "category": "wall_decor",
+    "layer": "wall",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "rare",
+    "price": 2225,
+    "currency": "shells",
+    "set": "fizzfern_lab",
+    "tags": [
+      "art",
+      "paper",
+      "study"
+    ],
+    "variants": [
+      "mint",
+      "cream",
+      "charcoal",
+      "lilac"
+    ],
+    "availability": "permanent",
+    "description": "Explains bubbles with much more enthusiasm than necessary.",
+    "sprite_brief": "Top-down 3/4: Cream framed diagram, mint flask outlines, lilac bubble clusters, charcoal arrows, gold title bar."
+  },
+  {
+    "id": "duneshade_tapestry",
+    "name": "Duneshade Tapestry",
+    "category": "wall_decor",
+    "layer": "wall",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "rare",
+    "price": 45,
+    "currency": "pearls",
+    "set": "dunethread_house",
+    "tags": [
+      "fabric",
+      "art"
+    ],
+    "variants": [
+      "sand",
+      "coral",
+      "navy",
+      "gold",
+      "cream"
+    ],
+    "availability": "permanent",
+    "description": "A woven memory of the coolest spot in the courtyard.",
+    "sprite_brief": "Top-down 3/4: Sand tapestry, navy arch pattern, coral stepped border, gold braided fringe."
+  },
+  {
+    "id": "hushglass_portrait",
+    "name": "Hushglass Portrait",
+    "category": "wall_decor",
+    "layer": "wall",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "epic",
+    "price": 9550,
+    "currency": "shells",
+    "set": "hushwick_hollow",
+    "tags": [
+      "art",
+      "glass"
+    ],
+    "variants": [
+      "plum",
+      "charcoal",
+      "lilac"
+    ],
+    "availability": "permanent",
+    "description": "A portrait of a friendly shadow practicing its best smile.",
+    "sprite_brief": "Top-down 3/4: Charcoal oval frame, plum silhouette with lilac smile, smoky sky glass, gold crescent crest."
+  },
+  {
+    "id": "orbitpin_star_chart",
+    "name": "Orbitpin Star Chart",
+    "category": "wall_decor",
+    "layer": "wall",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "epic",
+    "price": 11910,
+    "currency": "shells",
+    "set": "orbitcrumb_station",
+    "tags": [
+      "art",
+      "metal"
+    ],
+    "variants": [
+      "sky",
+      "cream",
+      "navy",
+      "gold"
+    ],
+    "availability": "rotating",
+    "description": "A sky full of tiny destinations, all reachable by daydream.",
+    "sprite_brief": "Top-down 3/4: Navy metal panel, gold star pins, sky connecting arcs, cream circular coordinate rings."
+  },
+  {
+    "id": "brinecrest_wall_wheel",
+    "name": "Brinecrest Wall Wheel",
+    "category": "wall_decor",
+    "layer": "wall",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "epic",
+    "price": 11885,
+    "currency": "shells",
+    "set": "brinebeam_wreck",
+    "tags": [
+      "wood",
+      "decor"
+    ],
+    "variants": [
+      "navy",
+      "sand",
+      "moss",
+      "gold"
+    ],
+    "availability": "rotating",
+    "description": "Retired from steering ships; now it steers the conversation.",
+    "sprite_brief": "Top-down 3/4: Large sand wooden ship wheel, navy center, gold hub, moss patina brackets, rope wrapped spokes."
+  },
+  {
+    "id": "acornlight_mosaic",
+    "name": "Acornlight Mosaic",
+    "category": "wall_decor",
+    "layer": "wall",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "legendary",
+    "price": 46835,
+    "currency": "shells",
+    "set": "gilded_acorn_court",
+    "tags": [
+      "art",
+      "glass"
+    ],
+    "variants": [
+      "plum",
+      "gold",
+      "cream",
+      "moss"
+    ],
+    "availability": "reward",
+    "description": "Small glass leaves gather into a very grand little tree.",
+    "sprite_brief": "Top-down 3/4: Cream framed mosaic, gold branching tree, plum glass acorns, moss leaf tiles, sky background chips."
+  },
+  {
+    "id": "hemcross_window",
+    "name": "Hemcross Window",
+    "category": "windows_doors",
+    "layer": "wall",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "common",
+    "price": 160,
+    "currency": "shells",
+    "set": "thimblefen_cottage",
+    "tags": [
+      "glass",
+      "wood"
+    ],
+    "variants": [
+      "cream",
+      "moss",
+      "coral",
+      "sand",
+      "sky"
+    ],
+    "availability": "rotating",
+    "description": "A small frame for a large amount of daydreaming.",
+    "sprite_brief": "Top-down 3/4: Square oak window, cream crossbars, sky panes, moss sill, coral curtain ties."
+  },
+  {
+    "id": "pebblepane_window",
+    "name": "Pebblepane Window",
+    "category": "windows_doors",
+    "layer": "wall",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "common",
+    "price": 160,
+    "currency": "shells",
+    "set": "pebblewake_porch",
+    "tags": [
+      "glass",
+      "wood"
+    ],
+    "variants": [
+      "sand",
+      "navy",
+      "coral",
+      "cream"
+    ],
+    "availability": "permanent",
+    "description": "Lets the room pretend it can hear the tide.",
+    "sprite_brief": "Top-down 3/4: Driftwood window frame, navy shutters, sky glass, cream rope pull loops."
+  },
+  {
+    "id": "stillframe_door",
+    "name": "Stillframe Door",
+    "category": "windows_doors",
+    "layer": "wall",
+    "footprint": [
+      1,
+      2
+    ],
+    "rarity": "common",
+    "price": 95,
+    "currency": "shells",
+    "set": "stillfold_home",
+    "tags": [
+      "wood",
+      "entry"
+    ],
+    "variants": [
+      "cream",
+      "charcoal",
+      "mint",
+      "sand"
+    ],
+    "availability": "permanent",
+    "description": "A clean little doorway into the rest of your day.",
+    "sprite_brief": "Top-down 3/4: Cream flush door, charcoal thin frame, mint inset stripe, gold lever handle."
+  },
+  {
+    "id": "sprigslat_gate",
+    "name": "Sprigslat Gate",
+    "category": "windows_doors",
+    "layer": "wall",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "common",
+    "price": 165,
+    "currency": "shells",
+    "set": "sprigspool_potting",
+    "tags": [
+      "wood",
+      "garden"
+    ],
+    "variants": [],
+    "availability": "permanent",
+    "description": "Even a tiny garden deserves a welcoming entrance.",
+    "sprite_brief": "Top-down 3/4: Cream slatted garden gate, moss hinges, sand posts, mint arched brace."
+  },
+  {
+    "id": "dunearc_window",
+    "name": "Dunearc Window",
+    "category": "windows_doors",
+    "layer": "wall",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "common",
+    "price": 160,
+    "currency": "shells",
+    "set": "dunethread_house",
+    "tags": [
+      "glass",
+      "clay"
+    ],
+    "variants": [
+      "sand",
+      "coral",
+      "navy",
+      "gold"
+    ],
+    "availability": "permanent",
+    "description": "A cool blue glimpse through a warm clay arch.",
+    "sprite_brief": "Top-down 3/4: Sand arched plaster frame, navy lattice, sky pane, coral tile sill."
+  },
+  {
+    "id": "marginpane_window",
+    "name": "Marginpane Window",
+    "category": "windows_doors",
+    "layer": "wall",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 590,
+    "currency": "shells",
+    "set": "marginmoss_library",
+    "tags": [
+      "glass",
+      "wood"
+    ],
+    "variants": [
+      "moss",
+      "cream",
+      "gold",
+      "navy",
+      "plum"
+    ],
+    "availability": "permanent",
+    "description": "Makes every reading nook look like a promising afternoon.",
+    "sprite_brief": "Top-down 3/4: Walnut bay style window, cream mullions, moss sill, sky panes, gold corner braces."
+  },
+  {
+    "id": "reedslide_door",
+    "name": "Reedslide Door",
+    "category": "windows_doors",
+    "layer": "wall",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 600,
+    "currency": "shells",
+    "set": "reedpause_retreat",
+    "tags": [
+      "paper",
+      "entry"
+    ],
+    "variants": [
+      "sand",
+      "moss",
+      "cream",
+      "charcoal"
+    ],
+    "availability": "rotating",
+    "description": "Slides open with the softness of a well-kept secret.",
+    "sprite_brief": "Top-down 3/4: Cedar sliding screen door, cream paper squares, sand lower panel, moss recessed pulls."
+  },
+  {
+    "id": "buttonround_window",
+    "name": "Buttonround Window",
+    "category": "windows_doors",
+    "layer": "wall",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 605,
+    "currency": "shells",
+    "set": "blushbutton_nook",
+    "tags": [
+      "glass",
+      "decor"
+    ],
+    "variants": [
+      "rose",
+      "cream",
+      "mint",
+      "lilac"
+    ],
+    "availability": "permanent",
+    "description": "A round little peek with a rosy frame.",
+    "sprite_brief": "Top-down 3/4: Circular rose window, cream four pane cross, mint bow latch, sky glass."
+  },
+  {
+    "id": "beamport_window",
+    "name": "Beamport Window",
+    "category": "windows_doors",
+    "layer": "wall",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "rare",
+    "price": 2310,
+    "currency": "shells",
+    "set": "brinebeam_wreck",
+    "tags": [
+      "glass",
+      "metal"
+    ],
+    "variants": [
+      "navy",
+      "sand",
+      "moss",
+      "gold"
+    ],
+    "availability": "rotating",
+    "description": "A porthole that remembers when the view moved.",
+    "sprite_brief": "Top-down 3/4: Gold round porthole, navy mounting plate, sky glass, moss patina bolts, sand hinge."
+  },
+  {
+    "id": "reefarch_door",
+    "name": "Reefarch Door",
+    "category": "windows_doors",
+    "layer": "wall",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "rare",
+    "price": 2225,
+    "currency": "shells",
+    "set": "polypocket_reef",
+    "tags": [
+      "stone",
+      "entry"
+    ],
+    "variants": [
+      "coral",
+      "lilac",
+      "sky",
+      "cream"
+    ],
+    "availability": "permanent",
+    "description": "A little coral arch for comings and goings.",
+    "sprite_brief": "Top-down 3/4: Cream scalloped doorway, coral branch trim, lilac inset door, sky shell handle."
+  },
+  {
+    "id": "orbitseal_hatch",
+    "name": "Orbitseal Hatch",
+    "category": "windows_doors",
+    "layer": "wall",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "epic",
+    "price": 9150,
+    "currency": "shells",
+    "set": "orbitcrumb_station",
+    "tags": [
+      "metal",
+      "entry"
+    ],
+    "variants": [
+      "sky",
+      "cream",
+      "navy"
+    ],
+    "availability": "permanent",
+    "description": "Closes softly, even during very dramatic imaginary launches.",
+    "sprite_brief": "Top-down 3/4: Cream rounded hatch, sky segmented rim, navy porthole, gold wheel latch."
+  },
+  {
+    "id": "acornglass_window",
+    "name": "Acornglass Window",
+    "category": "windows_doors",
+    "layer": "wall",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "legendary",
+    "price": 194,
+    "currency": "pearls",
+    "set": "gilded_acorn_court",
+    "tags": [
+      "glass",
+      "art"
+    ],
+    "variants": [
+      "plum",
+      "gold",
+      "cream",
+      "moss"
+    ],
+    "availability": "permanent",
+    "description": "Turns an ordinary wall into a small celebration of leaves.",
+    "sprite_brief": "Top-down 3/4: Wide arched stained glass window, gold acorn tracery, plum and moss panes, cream stone frame."
+  },
+  {
+    "id": "sprigcup_fern",
+    "name": "Sprigcup Fern",
+    "category": "plants",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 75,
+    "currency": "shells",
+    "set": "sprigspool_potting",
+    "tags": [
+      "leaf",
+      "ceramic"
+    ],
+    "variants": [
+      "moss",
+      "sand",
+      "cream",
+      "mint"
+    ],
+    "availability": "permanent",
+    "description": "A tiny forest that fits beside the kettle.",
+    "sprite_brief": "Top-down 3/4: Small moss fern, mint round pot, cream rim, three curled new fronds."
+  },
+  {
+    "id": "hemleaf_pothos",
+    "name": "Hemleaf Pothos",
+    "category": "plants",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 85,
+    "currency": "shells",
+    "set": "thimblefen_cottage",
+    "tags": [
+      "leaf",
+      "ceramic"
+    ],
+    "variants": [
+      "cream",
+      "moss",
+      "coral",
+      "sand"
+    ],
+    "availability": "rotating",
+    "description": "Its newest leaf is always looking for a little more room.",
+    "sprite_brief": "Top-down 3/4: Trailing moss pothos, cream squat pot, coral drip saucer, heart shaped leaves."
+  },
+  {
+    "id": "pebbletip_succulent",
+    "name": "Pebbletip Succulent",
+    "category": "plants",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 75,
+    "currency": "shells",
+    "set": "pebblewake_porch",
+    "tags": [
+      "leaf",
+      "stone"
+    ],
+    "variants": [
+      "sand",
+      "navy",
+      "coral",
+      "cream"
+    ],
+    "availability": "rotating",
+    "description": "A tidy little plant with no interest in rushing.",
+    "sprite_brief": "Top-down 3/4: Mint pointed succulent, sand pebble bowl, navy rim, cream gravel dots."
+  },
+  {
+    "id": "stillstem_rubber_tree",
+    "name": "Stillstem Rubber Tree",
+    "category": "plants",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 80,
+    "currency": "shells",
+    "set": "stillfold_home",
+    "tags": [
+      "leaf",
+      "ceramic"
+    ],
+    "variants": [
+      "cream",
+      "charcoal",
+      "mint",
+      "sand",
+      "navy"
+    ],
+    "availability": "permanent",
+    "description": "Adds one confident green shape to a quiet corner.",
+    "sprite_brief": "Top-down 3/4: Short dark stem, broad moss oval leaves, cream cylinder planter, mint saucer."
+  },
+  {
+    "id": "dunesip_cactus",
+    "name": "Dunesip Cactus",
+    "category": "plants",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 85,
+    "currency": "shells",
+    "set": "dunethread_house",
+    "tags": [
+      "leaf",
+      "clay"
+    ],
+    "variants": [
+      "sand",
+      "coral",
+      "navy",
+      "gold"
+    ],
+    "availability": "permanent",
+    "description": "A prickly little friend with excellent water-saving habits.",
+    "sprite_brief": "Top-down 3/4: Round moss cactus, cream spine dots, coral clay pot, navy zigzag band."
+  },
+  {
+    "id": "reedbud_bonsai",
+    "name": "Reedbud Bonsai",
+    "category": "plants",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 80,
+    "currency": "shells",
+    "set": "reedpause_retreat",
+    "tags": [
+      "leaf",
+      "ceramic"
+    ],
+    "variants": [
+      "sand",
+      "moss",
+      "cream"
+    ],
+    "availability": "permanent",
+    "description": "A small tree taking its time, as trees should.",
+    "sprite_brief": "Top-down 3/4: Tiny crooked cedar trunk, moss rounded canopy, sand shallow tray, cream pebbles."
+  },
+  {
+    "id": "crumbmint_pot",
+    "name": "Crumbmint Pot",
+    "category": "plants",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 80,
+    "currency": "shells",
+    "set": "kettlewink_cafe",
+    "tags": [
+      "leaf",
+      "herb"
+    ],
+    "variants": [
+      "cream",
+      "sand",
+      "moss",
+      "coral"
+    ],
+    "availability": "permanent",
+    "description": "Smells like the nicest part of washing up.",
+    "sprite_brief": "Top-down 3/4: Mint herb sprigs, cream enamel pot, coral handle loops, sand soil specks."
+  },
+  {
+    "id": "boltleaf_planter",
+    "name": "Boltleaf Planter",
+    "category": "plants",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 80,
+    "currency": "shells",
+    "set": "rivetsprout_loft",
+    "tags": [
+      "leaf",
+      "metal"
+    ],
+    "variants": [
+      "charcoal",
+      "sand",
+      "moss",
+      "navy"
+    ],
+    "availability": "permanent",
+    "description": "Fresh leaves make even a steel corner feel lived in.",
+    "sprite_brief": "Top-down 3/4: Moss sword leaves, charcoal riveted bucket, sand rolled rim, copper side handles."
+  },
+  {
+    "id": "pagebud_ivy",
+    "name": "Pagebud Ivy",
+    "category": "plants",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 75,
+    "currency": "shells",
+    "set": "marginmoss_library",
+    "tags": [
+      "leaf",
+      "ceramic"
+    ],
+    "variants": [
+      "moss",
+      "cream",
+      "gold",
+      "navy",
+      "plum"
+    ],
+    "availability": "permanent",
+    "description": "Keeps reaching toward the chapter with the garden.",
+    "sprite_brief": "Top-down 3/4: Small trailing ivy, cream square pot, moss vines, gold leaf shaped pot stamp."
+  },
+  {
+    "id": "dewsprout_tin",
+    "name": "Dewsprout Tin",
+    "category": "plants",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 80,
+    "currency": "shells",
+    "set": "dewpeg_camp",
+    "tags": [
+      "leaf",
+      "metal"
+    ],
+    "variants": [
+      "moss",
+      "sand",
+      "navy",
+      "coral"
+    ],
+    "availability": "rotating",
+    "description": "A borrowed patch of green for a portable little home.",
+    "sprite_brief": "Top-down 3/4: Three moss seedlings in navy tin, sand soil, coral wire handle, cream painted stripe."
+  },
+  {
+    "id": "sprigarch_trellis",
+    "name": "Sprigarch Trellis",
+    "category": "plants",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 455,
+    "currency": "shells",
+    "set": "sprigspool_potting",
+    "tags": [
+      "leaf",
+      "wood"
+    ],
+    "variants": [
+      "moss",
+      "sand",
+      "cream",
+      "mint"
+    ],
+    "availability": "permanent",
+    "description": "A helpful ladder for leaves with lofty plans.",
+    "sprite_brief": "Top-down 3/4: Cream wooden trellis in sand trough, moss climbing vine, mint ties, coral buds."
+  },
+  {
+    "id": "blushpetal_planter",
+    "name": "Blushpetal Planter",
+    "category": "plants",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 385,
+    "currency": "shells",
+    "set": "blushbutton_nook",
+    "tags": [
+      "flower",
+      "ceramic"
+    ],
+    "variants": [
+      "rose",
+      "cream",
+      "mint",
+      "lilac"
+    ],
+    "availability": "rotating",
+    "description": "A cheerful pot hosting an equally cheerful bloom.",
+    "sprite_brief": "Top-down 3/4: Rose smiling planter, mint broad leaves, cream round blossom, lilac stub feet."
+  },
+  {
+    "id": "hemwindow_flowerbox",
+    "name": "Hemwindow Flowerbox",
+    "category": "plants",
+    "layer": "wall",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 450,
+    "currency": "shells",
+    "set": "thimblefen_cottage",
+    "tags": [
+      "flower",
+      "wood"
+    ],
+    "variants": [
+      "cream",
+      "moss",
+      "coral"
+    ],
+    "availability": "craft",
+    "description": "A garden just outside your imaginary window.",
+    "sprite_brief": "Top-down 3/4: Honey oak wall flowerbox, cream daisies, coral blooms, moss leaves, sand bracket pair."
+  },
+  {
+    "id": "dunefan_palm",
+    "name": "Dunefan Palm",
+    "category": "plants",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 615,
+    "currency": "shells",
+    "set": "dunethread_house",
+    "tags": [
+      "leaf",
+      "clay"
+    ],
+    "variants": [
+      "sand",
+      "coral",
+      "navy",
+      "gold",
+      "cream"
+    ],
+    "availability": "rotating",
+    "description": "Makes a gentle patch of shade wherever it settles.",
+    "sprite_brief": "Top-down 3/4: Short sand palm trunk, broad moss fan leaves, coral clay pot, navy braided rim."
+  },
+  {
+    "id": "reedwater_lily_bowl",
+    "name": "Reedwater Lily Bowl",
+    "category": "plants",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 590,
+    "currency": "shells",
+    "set": "reedpause_retreat",
+    "tags": [
+      "water",
+      "flower"
+    ],
+    "variants": [
+      "sand",
+      "moss",
+      "cream",
+      "charcoal"
+    ],
+    "availability": "permanent",
+    "description": "A tiny pond that never asks you to find your boots.",
+    "sprite_brief": "Top-down 3/4: Wide sand stone bowl, sky water, moss round pads, cream lily, dark pebble rim."
+  },
+  {
+    "id": "kettlebloom_stand",
+    "name": "Kettlebloom Stand",
+    "category": "plants",
+    "layer": "floor",
+    "footprint": [
+      1,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 480,
+    "currency": "shells",
+    "set": "kettlewink_cafe",
+    "tags": [
+      "flower",
+      "wood"
+    ],
+    "variants": [
+      "cream",
+      "sand",
+      "moss",
+      "coral"
+    ],
+    "availability": "permanent",
+    "description": "Three little blooms keeping the queue company.",
+    "sprite_brief": "Top-down 3/4: Tall sand plant stand, cream pot, moss stems, coral cup shaped flowers."
+  },
+  {
+    "id": "reeffern_arrangement",
+    "name": "Reeffern Arrangement",
+    "category": "plants",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "rare",
+    "price": 2270,
+    "currency": "shells",
+    "set": "polypocket_reef",
+    "tags": [
+      "leaf",
+      "stone"
+    ],
+    "variants": [
+      "coral",
+      "lilac",
+      "sky",
+      "cream"
+    ],
+    "availability": "rotating",
+    "description": "An airy arrangement inspired by the reef's softest shapes.",
+    "sprite_brief": "Top-down 3/4: Cream limestone pot, lilac fern fans, coral branching stems, sky pebble mulch."
+  },
+  {
+    "id": "fizzroot_terrarium",
+    "name": "Fizzroot Terrarium",
+    "category": "plants",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "rare",
+    "price": 1420,
+    "currency": "shells",
+    "set": "fizzfern_lab",
+    "tags": [
+      "leaf",
+      "glass"
+    ],
+    "variants": [
+      "mint",
+      "cream",
+      "charcoal",
+      "lilac"
+    ],
+    "availability": "rotating",
+    "description": "A small green world with a very tidy glass roof.",
+    "sprite_brief": "Top-down 3/4: Mint glass dome, cream circular base, moss miniature fern, lilac pebble bed."
+  },
+  {
+    "id": "wishcitrus_tree",
+    "name": "Wishcitrus Tree",
+    "category": "plants",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "rare",
+    "price": 2295,
+    "currency": "shells",
+    "set": "lanternplait_fete",
+    "tags": [
+      "leaf",
+      "fruit"
+    ],
+    "variants": [
+      "coral",
+      "gold",
+      "cream",
+      "plum",
+      "rose"
+    ],
+    "availability": "reward",
+    "description": "Little golden fruits make every branch feel hopeful.",
+    "sprite_brief": "Top-down 3/4: Compact moss citrus tree, gold round fruit, coral square planter, cream braided ties."
+  },
+  {
+    "id": "budwhistle_arbor",
+    "name": "Budwhistle Arbor",
+    "category": "plants",
+    "layer": "floor",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "rare",
+    "price": 3000,
+    "currency": "shells",
+    "set": "budwhistle_meadow",
+    "tags": [
+      "flower",
+      "wood"
+    ],
+    "variants": [
+      "rose",
+      "mint",
+      "lilac"
+    ],
+    "availability": "rotating",
+    "description": "An arch of petals for the year's first long afternoon.",
+    "sprite_brief": "Top-down 3/4: Cream wooden arbor, rose blossom clusters, mint vines, lilac hanging flower bells."
+  },
+  {
+    "id": "hushglow_mushrooms",
+    "name": "Hushglow Mushrooms",
+    "category": "plants",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "epic",
+    "price": 101,
+    "currency": "pearls",
+    "set": "hushwick_hollow",
+    "tags": [
+      "light",
+      "fungus"
+    ],
+    "variants": [],
+    "availability": "permanent",
+    "description": "A soft glow for anyone who gets shy in the dark.",
+    "sprite_brief": "Top-down 3/4: Clustered plum mushroom caps, lilac luminous gills, charcoal mossy log, gold spore dots."
+  },
+  {
+    "id": "orbitgarden_sphere",
+    "name": "Orbitgarden Sphere",
+    "category": "plants",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "legendary",
+    "price": 37450,
+    "currency": "shells",
+    "set": "orbitcrumb_station",
+    "tags": [
+      "leaf",
+      "glass"
+    ],
+    "variants": [
+      "sky",
+      "cream",
+      "navy",
+      "gold"
+    ],
+    "availability": "reward",
+    "description": "A tiny green planet with excellent indoor weather.",
+    "sprite_brief": "Top-down 3/4: Large clear sky sphere, cream support ring, moss miniature tree, sand soil island, gold access hatch."
+  },
+  {
+    "id": "crumbclaw_bowl",
+    "name": "Crumbclaw Bowl",
+    "category": "pet_items",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 80,
+    "currency": "shells",
+    "set": "pebblewake_porch",
+    "tags": [
+      "pet",
+      "ceramic"
+    ],
+    "variants": [
+      "sand",
+      "navy",
+      "coral",
+      "cream"
+    ],
+    "availability": "reward",
+    "description": "Shallow enough for little claws to reach the last bite.",
+    "sprite_brief": "Top-down 3/4: Cream shallow feeding dish, coral claw emblem, navy rim, sand pellet dots."
+  },
+  {
+    "id": "drowsepatch_basket",
+    "name": "Drowsepatch Basket",
+    "category": "pet_items",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 75,
+    "currency": "shells",
+    "set": "thimblefen_cottage",
+    "tags": [
+      "pet",
+      "sleep"
+    ],
+    "variants": [
+      "cream",
+      "moss",
+      "coral",
+      "sand",
+      "sky"
+    ],
+    "availability": "permanent",
+    "description": "A suspiciously perfect fit for a curled-up cat.",
+    "sprite_brief": "Top-down 3/4: Honey wicker basket, moss cushion, cream quilt patch, coral cloth handle wraps."
+  },
+  {
+    "id": "cloverpuff_nibble_rack",
+    "name": "Cloverpuff Nibble Rack",
+    "category": "pet_items",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 70,
+    "currency": "shells",
+    "set": "sprigspool_potting",
+    "tags": [
+      "pet",
+      "wood"
+    ],
+    "variants": [
+      "moss",
+      "sand",
+      "cream",
+      "mint"
+    ],
+    "availability": "permanent",
+    "description": "A tidy snack stop for enthusiastic little nibblers.",
+    "sprite_brief": "Top-down 3/4: Cream slatted hay rack, moss hay tufts, sand tray, mint corner caps."
+  },
+  {
+    "id": "pebblepaw_washpan",
+    "name": "Pebblepaw Washpan",
+    "category": "pet_items",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 80,
+    "currency": "shells",
+    "set": "pebblewake_porch",
+    "tags": [
+      "pet",
+      "water"
+    ],
+    "variants": [
+      "sand",
+      "navy",
+      "coral",
+      "cream"
+    ],
+    "availability": "rotating",
+    "description": "For paws that have been investigating the puddles.",
+    "sprite_brief": "Top-down 3/4: Oval navy washpan, cream rim, sky water, coral paw print on side."
+  },
+  {
+    "id": "reedroll_scratch_post",
+    "name": "Reedroll Scratch Post",
+    "category": "pet_items",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 80,
+    "currency": "shells",
+    "set": "reedpause_retreat",
+    "tags": [
+      "pet",
+      "woven"
+    ],
+    "variants": [
+      "sand",
+      "moss",
+      "cream"
+    ],
+    "availability": "craft",
+    "description": "A proper place to practice those impressive little claws.",
+    "sprite_brief": "Top-down 3/4: Cedar upright scratching post, sand rope wrap, moss square base, cream hanging tassel."
+  },
+  {
+    "id": "buttonburrow_house",
+    "name": "Buttonburrow House",
+    "category": "pet_items",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 450,
+    "currency": "shells",
+    "set": "blushbutton_nook",
+    "tags": [
+      "pet",
+      "sleep"
+    ],
+    "variants": [
+      "rose",
+      "cream",
+      "mint",
+      "lilac"
+    ],
+    "availability": "permanent",
+    "description": "A snug doorway for the smallest housemate.",
+    "sprite_brief": "Top-down 3/4: Rose rounded pet house, cream oval entrance, mint roof, lilac cushion inside."
+  },
+  {
+    "id": "dewdash_tunnel",
+    "name": "Dewdash Tunnel",
+    "category": "pet_items",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 445,
+    "currency": "shells",
+    "set": "dewpeg_camp",
+    "tags": [
+      "pet",
+      "play"
+    ],
+    "variants": [
+      "moss",
+      "sand",
+      "navy",
+      "coral",
+      "cream"
+    ],
+    "availability": "permanent",
+    "description": "One entrance, one exit, and endless surprise appearances.",
+    "sprite_brief": "Top-down 3/4: Moss canvas tunnel, sand circular hoops, navy lining, coral pegged straps."
+  },
+  {
+    "id": "pageperch_stand",
+    "name": "Pageperch Stand",
+    "category": "pet_items",
+    "layer": "floor",
+    "footprint": [
+      1,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 460,
+    "currency": "shells",
+    "set": "marginmoss_library",
+    "tags": [
+      "pet",
+      "wood"
+    ],
+    "variants": [
+      "moss",
+      "cream",
+      "gold",
+      "navy"
+    ],
+    "availability": "rotating",
+    "description": "A high little seat for the household's chirpiest critic.",
+    "sprite_brief": "Top-down 3/4: Walnut bird perch, cream crossbar, moss base tray, gold hanging bell."
+  },
+  {
+    "id": "sprigpaw_toy_basket",
+    "name": "Sprigpaw Toy Basket",
+    "category": "pet_items",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 400,
+    "currency": "shells",
+    "set": "sprigspool_potting",
+    "tags": [
+      "pet",
+      "play"
+    ],
+    "variants": [
+      "moss",
+      "sand",
+      "cream",
+      "mint"
+    ],
+    "availability": "rotating",
+    "description": "Where every carefully put-away toy begins its next escape.",
+    "sprite_brief": "Top-down 3/4: Sand woven basket, mint cloth liner, coral ball, moss rope toy, cream handle loops."
+  },
+  {
+    "id": "reefrest_pet_pool",
+    "name": "Reefrest Pet Pool",
+    "category": "pet_items",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "rare",
+    "price": 2315,
+    "currency": "shells",
+    "set": "polypocket_reef",
+    "tags": [
+      "pet",
+      "water"
+    ],
+    "variants": [
+      "coral",
+      "lilac",
+      "sky",
+      "cream"
+    ],
+    "availability": "permanent",
+    "description": "A splash-sized seaside holiday for water-loving friends.",
+    "sprite_brief": "Top-down 3/4: Cream scalloped pet pool, sky water, lilac steps, coral pebble rim."
+  },
+  {
+    "id": "fizzpaw_care_station",
+    "name": "Fizzpaw Care Station",
+    "category": "pet_items",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "rare",
+    "price": 1680,
+    "currency": "shells",
+    "set": "fizzfern_lab",
+    "tags": [
+      "pet",
+      "water"
+    ],
+    "variants": [
+      "mint",
+      "cream",
+      "charcoal",
+      "lilac"
+    ],
+    "availability": "permanent",
+    "description": "All the little care supplies in one reassuringly tidy place.",
+    "sprite_brief": "Top-down 3/4: Cream pet wash station, mint basin, lilac towel hook, charcoal drawer, gold tap."
+  },
+  {
+    "id": "orbitcurl_pet_pod",
+    "name": "Orbitcurl Pet Pod",
+    "category": "pet_items",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "epic",
+    "price": 9445,
+    "currency": "shells",
+    "set": "orbitcrumb_station",
+    "tags": [
+      "pet",
+      "sleep"
+    ],
+    "variants": [
+      "sky",
+      "cream",
+      "navy"
+    ],
+    "availability": "permanent",
+    "description": "A safe little capsule for extremely important naps.",
+    "sprite_brief": "Top-down 3/4: Sky egg shaped pet pod, cream rim, navy cushion, gold paw hatch emblem."
+  },
+  {
+    "id": "hemhop_blocks",
+    "name": "Hemhop Blocks",
+    "category": "toys_games",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 70,
+    "currency": "shells",
+    "set": "thimblefen_cottage",
+    "tags": [
+      "play",
+      "wood"
+    ],
+    "variants": [
+      "cream",
+      "moss",
+      "coral",
+      "sand"
+    ],
+    "availability": "craft",
+    "description": "A small stack of possibilities, currently shaped like a tower.",
+    "sprite_brief": "Top-down 3/4: Five oak toy blocks, cream painted faces, moss dots, coral square cap."
+  },
+  {
+    "id": "pebbletoss_rings",
+    "name": "Pebbletoss Rings",
+    "category": "toys_games",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 70,
+    "currency": "shells",
+    "set": "pebblewake_porch",
+    "tags": [
+      "play",
+      "wood"
+    ],
+    "variants": [
+      "sand",
+      "navy",
+      "coral",
+      "cream"
+    ],
+    "availability": "rotating",
+    "description": "A seaside challenge with very forgiving rules.",
+    "sprite_brief": "Top-down 3/4: Sand wooden peg base, navy upright pegs, coral and cream rope rings."
+  },
+  {
+    "id": "reedturn_board",
+    "name": "Reedturn Board",
+    "category": "toys_games",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 80,
+    "currency": "shells",
+    "set": "reedpause_retreat",
+    "tags": [
+      "play",
+      "wood"
+    ],
+    "variants": [
+      "sand",
+      "moss",
+      "cream",
+      "charcoal"
+    ],
+    "availability": "rotating",
+    "description": "A quiet game that always leaves room for another turn.",
+    "sprite_brief": "Top-down 3/4: Cedar square game board, sand grid, moss and cream round counters, low rim."
+  },
+  {
+    "id": "duneloop_hoop",
+    "name": "Duneloop Hoop",
+    "category": "toys_games",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 80,
+    "currency": "shells",
+    "set": "dunethread_house",
+    "tags": [
+      "play",
+      "woven"
+    ],
+    "variants": [
+      "sand",
+      "coral",
+      "navy",
+      "gold"
+    ],
+    "availability": "rotating",
+    "description": "Round and round is a perfectly good destination.",
+    "sprite_brief": "Top-down 3/4: Large sand woven hoop leaning on coral stand, navy binding bands."
+  },
+  {
+    "id": "buttonbelly_plush",
+    "name": "Buttonbelly Plush",
+    "category": "toys_games",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 80,
+    "currency": "shells",
+    "set": "blushbutton_nook",
+    "tags": [
+      "play",
+      "plush"
+    ],
+    "variants": [
+      "rose",
+      "cream",
+      "mint",
+      "lilac",
+      "sky"
+    ],
+    "availability": "rotating",
+    "description": "A very patient listener with an exceptionally round middle.",
+    "sprite_brief": "Top-down 3/4: Rose bean shaped plush critter, cream belly, mint ears, lilac stitched sleepy eyes."
+  },
+  {
+    "id": "crumbfit_puzzle",
+    "name": "Crumbfit Puzzle",
+    "category": "toys_games",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 75,
+    "currency": "shells",
+    "set": "kettlewink_cafe",
+    "tags": [
+      "play",
+      "paper"
+    ],
+    "variants": [
+      "cream",
+      "sand",
+      "moss",
+      "coral"
+    ],
+    "availability": "permanent",
+    "description": "The last piece is probably under the biscuit plate.",
+    "sprite_brief": "Top-down 3/4: Cream puzzle tray, coral teapot picture, moss loose pieces, sand rectangular frame."
+  },
+  {
+    "id": "blinkberry_pin_table",
+    "name": "Blinkberry Pin Table",
+    "category": "toys_games",
+    "layer": "floor",
+    "footprint": [
+      2,
+      3
+    ],
+    "rarity": "uncommon",
+    "price": 720,
+    "currency": "shells",
+    "set": "blinkberry_arcade",
+    "tags": [
+      "play",
+      "light"
+    ],
+    "variants": [
+      "plum",
+      "sky",
+      "coral"
+    ],
+    "availability": "permanent",
+    "description": "A gentle clatter, a little glow, and one more try.",
+    "sprite_brief": "Top-down 3/4: Plum pin game table, sky glass top, coral bumpers, charcoal legs, gold ball track."
+  },
+  {
+    "id": "dewkite_bundle",
+    "name": "Dewkite Bundle",
+    "category": "toys_games",
+    "layer": "floor",
+    "footprint": [
+      1,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 460,
+    "currency": "shells",
+    "set": "dewpeg_camp",
+    "tags": [
+      "play",
+      "fabric"
+    ],
+    "variants": [
+      "moss",
+      "sand",
+      "navy",
+      "coral"
+    ],
+    "availability": "permanent",
+    "description": "Packed for a breeze that may arrive any minute.",
+    "sprite_brief": "Top-down 3/4: Folded navy diamond kite on sand spool stand, moss fabric panels, coral tail bows."
+  },
+  {
+    "id": "pagepath_story_tiles",
+    "name": "Pagepath Story Tiles",
+    "category": "toys_games",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 390,
+    "currency": "shells",
+    "set": "marginmoss_library",
+    "tags": [
+      "play",
+      "paper"
+    ],
+    "variants": [
+      "moss",
+      "cream",
+      "gold",
+      "navy"
+    ],
+    "availability": "reward",
+    "description": "Arrange a little adventure, then invent a better ending.",
+    "sprite_brief": "Top-down 3/4: Cream square story tiles, moss tree icons, gold path marks, walnut tray."
+  },
+  {
+    "id": "clickcube_puzzle",
+    "name": "Clickcube Puzzle",
+    "category": "toys_games",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 380,
+    "currency": "shells",
+    "set": "clickcove_den",
+    "tags": [
+      "play",
+      "plastic"
+    ],
+    "variants": [
+      "charcoal",
+      "mint",
+      "sky",
+      "coral",
+      "plum"
+    ],
+    "availability": "permanent",
+    "description": "Every side has a place; finding it is the fun part.",
+    "sprite_brief": "Top-down 3/4: Chunky charcoal puzzle cube, mint and sky inset squares, coral corner buttons."
+  },
+  {
+    "id": "reefroll_marble_run",
+    "name": "Reefroll Marble Run",
+    "category": "toys_games",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "rare",
+    "price": 2350,
+    "currency": "shells",
+    "set": "polypocket_reef",
+    "tags": [
+      "play",
+      "stone"
+    ],
+    "variants": [
+      "coral",
+      "lilac",
+      "sky",
+      "cream"
+    ],
+    "availability": "permanent",
+    "description": "Tiny marbles take the scenic route through a pretend reef.",
+    "sprite_brief": "Top-down 3/4: Cream marble run frame, coral curved tracks, sky marbles, lilac shell shaped catch bowl."
+  },
+  {
+    "id": "fizzwhirl_workbench",
+    "name": "Fizzwhirl Workbench",
+    "category": "toys_games",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "rare",
+    "price": 1735,
+    "currency": "shells",
+    "set": "fizzfern_lab",
+    "tags": [
+      "surface",
+      "play",
+      "wood"
+    ],
+    "variants": [
+      "mint",
+      "cream",
+      "charcoal",
+      "lilac"
+    ],
+    "availability": "rotating",
+    "description": "A worktop for experiments in joyful nonsense.",
+    "sprite_brief": "Top-down 3/4: Cream toy workbench, mint top, lilac spinning gears on backboard, charcoal drawer."
+  },
+  {
+    "id": "orbitfloat_mobile",
+    "name": "Orbitfloat Mobile",
+    "category": "toys_games",
+    "layer": "wall",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "epic",
+    "price": 100,
+    "currency": "pearls",
+    "set": "orbitcrumb_station",
+    "tags": [
+      "play",
+      "metal"
+    ],
+    "variants": [
+      "sky",
+      "cream",
+      "navy",
+      "gold"
+    ],
+    "availability": "rotating",
+    "description": "Small planets quietly minding their own orbits.",
+    "sprite_brief": "Top-down 3/4: Gold wall bracket, sky hanging planets, cream moons, navy thin wire circles."
+  },
+  {
+    "id": "acornmaze_play_castle",
+    "name": "Acornmaze Play Castle",
+    "category": "toys_games",
+    "layer": "floor",
+    "footprint": [
+      3,
+      3
+    ],
+    "rarity": "legendary",
+    "price": 60300,
+    "currency": "shells",
+    "set": "gilded_acorn_court",
+    "tags": [
+      "play",
+      "wood"
+    ],
+    "variants": [
+      "plum",
+      "gold",
+      "cream"
+    ],
+    "availability": "reward",
+    "description": "A tiny kingdom with a very winding route to snack time.",
+    "sprite_brief": "Top-down 3/4: Walnut tabletop height play castle, gold turrets, plum maze paths, cream arch tunnels, moss flags."
+  },
+  {
+    "id": "hemstring_ukulele",
+    "name": "Hemstring Ukulele",
+    "category": "music",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 75,
+    "currency": "shells",
+    "set": "thimblefen_cottage",
+    "tags": [
+      "audio",
+      "wood"
+    ],
+    "variants": [
+      "cream",
+      "moss",
+      "coral",
+      "sand",
+      "sky"
+    ],
+    "availability": "permanent",
+    "description": "Four strings and a whole afternoon of possibilities.",
+    "sprite_brief": "Top-down 3/4: Small honey oak ukulele on moss floor stand, cream strings, coral pickguard."
+  },
+  {
+    "id": "pebblebeat_drum",
+    "name": "Pebblebeat Drum",
+    "category": "music",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 85,
+    "currency": "shells",
+    "set": "pebblewake_porch",
+    "tags": [
+      "audio",
+      "wood"
+    ],
+    "variants": [],
+    "availability": "permanent",
+    "description": "Keeps the tide's rhythm at a neighbor-friendly volume.",
+    "sprite_brief": "Top-down 3/4: Sand barrel hand drum, cream skin top, navy rope lacing, coral side stripe."
+  },
+  {
+    "id": "spoolnote_keyboard",
+    "name": "Spoolnote Keyboard",
+    "category": "music",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 445,
+    "currency": "shells",
+    "set": "humskein_studio",
+    "tags": [
+      "audio",
+      "metal"
+    ],
+    "variants": [
+      "plum",
+      "gold",
+      "navy",
+      "sand"
+    ],
+    "availability": "permanent",
+    "description": "A row of keys waiting for a song to come home.",
+    "sprite_brief": "Top-down 3/4: Cream keyboard, charcoal keys, plum control strip, maple crossed floor stand."
+  },
+  {
+    "id": "reedrain_chimes",
+    "name": "Reedrain Chimes",
+    "category": "music",
+    "layer": "wall",
+    "footprint": [
+      1,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 455,
+    "currency": "shells",
+    "set": "reedpause_retreat",
+    "tags": [
+      "audio",
+      "wood"
+    ],
+    "variants": [
+      "sand",
+      "moss",
+      "cream",
+      "charcoal"
+    ],
+    "availability": "permanent",
+    "description": "A small wooden melody for the breeze you imagine.",
+    "sprite_brief": "Top-down 3/4: Cedar wall hook, sand bamboo chime tubes, moss hanging cord, cream circular sail."
+  },
+  {
+    "id": "humskein_upright",
+    "name": "Humskein Upright",
+    "category": "music",
+    "layer": "floor",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "rare",
+    "price": 2895,
+    "currency": "shells",
+    "set": "humskein_studio",
+    "tags": [
+      "audio",
+      "wood"
+    ],
+    "variants": [
+      "plum",
+      "gold",
+      "navy",
+      "sand"
+    ],
+    "availability": "permanent",
+    "description": "A whole room's worth of music tucked into polished wood.",
+    "sprite_brief": "Top-down 3/4: Maple upright piano, cream keybed, plum felt upper panel, gold pedals, navy side trim."
+  },
+  {
+    "id": "dunebell_harp",
+    "name": "Dunebell Harp",
+    "category": "music",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "rare",
+    "price": 2300,
+    "currency": "shells",
+    "set": "dunethread_house",
+    "tags": [
+      "audio",
+      "wood"
+    ],
+    "variants": [
+      "sand",
+      "coral",
+      "navy",
+      "gold",
+      "cream"
+    ],
+    "availability": "rotating",
+    "description": "Strings shimmer like the warm air above a courtyard.",
+    "sprite_brief": "Top-down 3/4: Sand curved harp frame, gold strings, coral carved base, navy geometric inlays."
+  },
+  {
+    "id": "reefpipe_organ",
+    "name": "Reefpipe Organ",
+    "category": "music",
+    "layer": "floor",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "epic",
+    "price": 11555,
+    "currency": "shells",
+    "set": "polypocket_reef",
+    "tags": [
+      "audio",
+      "stone"
+    ],
+    "variants": [
+      "coral",
+      "lilac",
+      "sky"
+    ],
+    "availability": "reward",
+    "description": "A gentle chorus shaped from the reef's tallest curls.",
+    "sprite_brief": "Top-down 3/4: Cream stone organ, coral curling pipes, lilac keys, sky shell pedals, broad stepped base."
+  },
+  {
+    "id": "orbitbowl_resonator",
+    "name": "Orbitbowl Resonator",
+    "category": "music",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "epic",
+    "price": 9295,
+    "currency": "shells",
+    "set": "orbitcrumb_station",
+    "tags": [
+      "audio",
+      "metal"
+    ],
+    "variants": [
+      "sky",
+      "cream",
+      "navy",
+      "gold"
+    ],
+    "availability": "permanent",
+    "description": "A rounded little instrument with a wonderfully roomy hum.",
+    "sprite_brief": "Top-down 3/4: Sky metal singing bowl array, gold circular frame, cream mallet holders, navy pedestal."
+  },
+  {
+    "id": "pebblepost_mailbox",
+    "name": "Pebblepost Mailbox",
+    "category": "outdoor",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 75,
+    "currency": "shells",
+    "set": "pebblewake_porch",
+    "tags": [
+      "metal",
+      "garden"
+    ],
+    "variants": [
+      "sand",
+      "navy",
+      "coral",
+      "cream"
+    ],
+    "availability": "rotating",
+    "description": "Waiting patiently for notes, postcards, and very small news.",
+    "sprite_brief": "Top-down 3/4: Navy curved mailbox, cream post, coral flag, sand shell shaped latch."
+  },
+  {
+    "id": "sprigstep_planter_box",
+    "name": "Sprigstep Planter Box",
+    "category": "outdoor",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "common",
+    "price": 105,
+    "currency": "shells",
+    "set": "sprigspool_potting",
+    "tags": [
+      "wood",
+      "garden"
+    ],
+    "variants": [
+      "moss",
+      "sand",
+      "cream",
+      "mint"
+    ],
+    "availability": "permanent",
+    "description": "An empty little stage for your next growing idea.",
+    "sprite_brief": "Top-down 3/4: Cream rectangular planter box, moss corner braces, sand soil bed, mint slatted sides."
+  },
+  {
+    "id": "dewpeg_firepit",
+    "name": "Dewpeg Firepit",
+    "category": "outdoor",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "common",
+    "price": 160,
+    "currency": "shells",
+    "set": "dewpeg_camp",
+    "tags": [
+      "light",
+      "heat",
+      "stone"
+    ],
+    "variants": [
+      "moss",
+      "sand",
+      "navy",
+      "coral",
+      "cream"
+    ],
+    "availability": "rotating",
+    "description": "A tiny campfire for stories that grow with every telling.",
+    "sprite_brief": "Top-down 3/4: Ring of sand stones, charcoal logs, coral flame tongues, gold ember pixels."
+  },
+  {
+    "id": "reedskip_stepping_set",
+    "name": "Reedskip Stepping Set",
+    "category": "outdoor",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "common",
+    "price": 110,
+    "currency": "shells",
+    "set": "reedpause_retreat",
+    "tags": [
+      "stone",
+      "garden"
+    ],
+    "variants": [
+      "sand",
+      "moss",
+      "cream",
+      "charcoal"
+    ],
+    "availability": "reward",
+    "description": "Two small steps toward a calmer afternoon.",
+    "sprite_brief": "Top-down 3/4: Pair of flat moss gray stepping stones, sand gravel base, cream edge highlights."
+  },
+  {
+    "id": "duneshade_parasol",
+    "name": "Duneshade Parasol",
+    "category": "outdoor",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "common",
+    "price": 155,
+    "currency": "shells",
+    "set": "dunethread_house",
+    "tags": [
+      "fabric",
+      "shade"
+    ],
+    "variants": [
+      "sand",
+      "coral",
+      "navy",
+      "gold"
+    ],
+    "availability": "permanent",
+    "description": "A little patch of shade with room to share.",
+    "sprite_brief": "Top-down 3/4: Sand octagonal parasol, navy stitched panels, coral wooden pole, round clay base."
+  },
+  {
+    "id": "hemhang_clothesline",
+    "name": "Hemhang Clothesline",
+    "category": "outdoor",
+    "layer": "floor",
+    "footprint": [
+      3,
+      1
+    ],
+    "rarity": "common",
+    "price": 135,
+    "currency": "shells",
+    "set": "thimblefen_cottage",
+    "tags": [
+      "fabric",
+      "garden"
+    ],
+    "variants": [
+      "cream",
+      "moss",
+      "coral"
+    ],
+    "availability": "craft",
+    "description": "Laundry gets the best view of the garden.",
+    "sprite_brief": "Top-down 3/4: Two oak posts, cream line, moss towel, coral cloth pegs, sand square feet."
+  },
+  {
+    "id": "kettleporch_bench",
+    "name": "Kettleporch Bench",
+    "category": "outdoor",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 455,
+    "currency": "shells",
+    "set": "kettlewink_cafe",
+    "tags": [
+      "seat",
+      "wood",
+      "garden"
+    ],
+    "variants": [
+      "cream",
+      "sand",
+      "moss",
+      "coral"
+    ],
+    "availability": "permanent",
+    "description": "A pleasant place to wait for someone worth waiting for.",
+    "sprite_brief": "Top-down 3/4: Sand slatted porch bench, cream backrest, moss seat pad, coral curved arm ends."
+  },
+  {
+    "id": "sprigwheel_barrow",
+    "name": "Sprigwheel Barrow",
+    "category": "outdoor",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 590,
+    "currency": "shells",
+    "set": "sprigspool_potting",
+    "tags": [
+      "metal",
+      "garden"
+    ],
+    "variants": [
+      "moss",
+      "sand",
+      "cream",
+      "mint",
+      "coral"
+    ],
+    "availability": "rotating",
+    "description": "Carries soil, seedlings, and excessively ambitious plans.",
+    "sprite_brief": "Top-down 3/4: Mint wheelbarrow, sand wooden handles, charcoal wheel, cream tub rim."
+  },
+  {
+    "id": "dewcord_hammock",
+    "name": "Dewcord Hammock",
+    "category": "outdoor",
+    "layer": "floor",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 745,
+    "currency": "shells",
+    "set": "dewpeg_camp",
+    "tags": [
+      "seat",
+      "fabric"
+    ],
+    "variants": [
+      "moss",
+      "sand",
+      "navy",
+      "coral"
+    ],
+    "availability": "permanent",
+    "description": "A gently sagging argument for taking the afternoon off.",
+    "sprite_brief": "Top-down 3/4: Moss canvas hammock, coral cords, pale wood stand, navy end cushions."
+  },
+  {
+    "id": "rivetdrip_rain_barrel",
+    "name": "Rivetdrip Rain Barrel",
+    "category": "outdoor",
+    "layer": "floor",
+    "footprint": [
+      1,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 445,
+    "currency": "shells",
+    "set": "rivetsprout_loft",
+    "tags": [
+      "water",
+      "metal",
+      "garden"
+    ],
+    "variants": [
+      "charcoal",
+      "sand",
+      "moss",
+      "navy"
+    ],
+    "availability": "permanent",
+    "description": "Saves a little rain for a sunnier day.",
+    "sprite_brief": "Top-down 3/4: Charcoal ribbed rain barrel, sand lid, copper tap, moss water gauge strip."
+  },
+  {
+    "id": "reefmurmur_fountain",
+    "name": "Reefmurmur Fountain",
+    "category": "outdoor",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "rare",
+    "price": 2400,
+    "currency": "shells",
+    "set": "polypocket_reef",
+    "tags": [
+      "water",
+      "stone"
+    ],
+    "variants": [
+      "coral",
+      "lilac",
+      "sky",
+      "cream"
+    ],
+    "availability": "permanent",
+    "description": "A tiny trickle with a whole tide pool's patience.",
+    "sprite_brief": "Top-down 3/4: Cream tiered fountain, coral shell spout, sky water stream, lilac pebble basin."
+  },
+  {
+    "id": "wishbridge_arch",
+    "name": "Wishbridge Arch",
+    "category": "outdoor",
+    "layer": "floor",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "rare",
+    "price": 2990,
+    "currency": "shells",
+    "set": "lanternplait_fete",
+    "tags": [
+      "wood",
+      "garden"
+    ],
+    "variants": [
+      "coral",
+      "gold",
+      "cream",
+      "plum"
+    ],
+    "availability": "permanent",
+    "description": "A bright little bridge between now and whatever comes next.",
+    "sprite_brief": "Top-down 3/4: Low coral garden bridge, gold curved rails, cream plank walkway, plum round post caps."
+  },
+  {
+    "id": "orbitshade_gazebo",
+    "name": "Orbitshade Gazebo",
+    "category": "outdoor",
+    "layer": "floor",
+    "footprint": [
+      4,
+      3
+    ],
+    "rarity": "epic",
+    "price": 18750,
+    "currency": "shells",
+    "set": "orbitcrumb_station",
+    "tags": [
+      "metal",
+      "shade"
+    ],
+    "variants": [
+      "sky",
+      "cream",
+      "navy"
+    ],
+    "availability": "permanent",
+    "description": "Shelter for a picnic beneath an entirely imaginary meteor shower.",
+    "sprite_brief": "Top-down 3/4: Cream domed gazebo, sky segmented roof, navy slender posts, gold circular floor rim."
+  },
+  {
+    "id": "acorncourt_pavilion",
+    "name": "Acorncourt Pavilion",
+    "category": "outdoor",
+    "layer": "floor",
+    "footprint": [
+      4,
+      3
+    ],
+    "rarity": "epic",
+    "price": 18505,
+    "currency": "shells",
+    "set": "gilded_acorn_court",
+    "tags": [
+      "wood",
+      "shade"
+    ],
+    "variants": [
+      "plum",
+      "gold",
+      "cream",
+      "moss"
+    ],
+    "availability": "reward",
+    "description": "A grand roof for very down-to-earth garden parties.",
+    "sprite_brief": "Top-down 3/4: Walnut open pavilion, plum scalloped canopy, gold acorn finials, cream square column bases."
+  },
+  {
+    "id": "hushpatch_pumpkin",
+    "name": "Hushpatch Pumpkin",
+    "category": "seasonal",
+    "layer": "floor",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 70,
+    "currency": "shells",
+    "set": "hushwick_hollow",
+    "tags": [
+      "autumn",
+      "clay"
+    ],
+    "variants": [
+      "plum",
+      "charcoal",
+      "lilac",
+      "gold"
+    ],
+    "availability": "event",
+    "description": "A little painted grin practicing its autumn welcome.",
+    "sprite_brief": "Top-down 3/4: Plum clay pumpkin, lilac painted smile, charcoal stem, gold leaf curl."
+  },
+  {
+    "id": "frostpocket_stocking",
+    "name": "Frostpocket Stocking",
+    "category": "seasonal",
+    "layer": "wall",
+    "footprint": [
+      1,
+      2
+    ],
+    "rarity": "common",
+    "price": 105,
+    "currency": "shells",
+    "set": "frostcrumb_gathering",
+    "tags": [
+      "winter",
+      "fabric"
+    ],
+    "variants": [
+      "cream",
+      "navy",
+      "coral",
+      "gold"
+    ],
+    "availability": "event",
+    "description": "Sized for small surprises and very large expectations.",
+    "sprite_brief": "Top-down 3/4: Cream knitted stocking, coral cuff, navy snowflake stitches, gold hanging loop."
+  },
+  {
+    "id": "wishfold_envelope",
+    "name": "Wishfold Envelope",
+    "category": "seasonal",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 75,
+    "currency": "shells",
+    "set": "lanternplait_fete",
+    "tags": [
+      "festival",
+      "paper"
+    ],
+    "variants": [
+      "coral",
+      "gold",
+      "cream",
+      "plum"
+    ],
+    "availability": "event",
+    "description": "A bright little pocket for a kind new-year wish.",
+    "sprite_brief": "Top-down 3/4: Coral paper envelope, gold knot seal, cream scalloped flap, plum tassel corner."
+  },
+  {
+    "id": "budwhistle_egg_bowl",
+    "name": "Budwhistle Egg Bowl",
+    "category": "seasonal",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "common",
+    "price": 70,
+    "currency": "shells",
+    "set": "budwhistle_meadow",
+    "tags": [
+      "spring",
+      "ceramic"
+    ],
+    "variants": [
+      "rose",
+      "mint",
+      "lilac",
+      "cream",
+      "sky"
+    ],
+    "availability": "event",
+    "description": "A bowlful of painted eggs waiting for a sunny table.",
+    "sprite_brief": "Top-down 3/4: Cream shallow bowl, rose and mint decorative eggs, lilac dot patterns, sand wicker rim."
+  },
+  {
+    "id": "hushbell_wreath",
+    "name": "Hushbell Wreath",
+    "category": "seasonal",
+    "layer": "wall",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 595,
+    "currency": "shells",
+    "set": "hushwick_hollow",
+    "tags": [
+      "autumn",
+      "woven"
+    ],
+    "variants": [
+      "plum",
+      "charcoal",
+      "lilac",
+      "gold"
+    ],
+    "availability": "event",
+    "description": "A soft little jingle welcomes even the shyest visitors.",
+    "sprite_brief": "Top-down 3/4: Charcoal twig wreath, plum felt leaves, lilac bells, gold crescent charm."
+  },
+  {
+    "id": "frostcrumb_tree",
+    "name": "Frostcrumb Tree",
+    "category": "seasonal",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 590,
+    "currency": "shells",
+    "set": "frostcrumb_gathering",
+    "tags": [
+      "winter",
+      "wood"
+    ],
+    "variants": [
+      "cream",
+      "navy",
+      "coral"
+    ],
+    "availability": "event",
+    "description": "A winter tree dressed for a small and cheerful gathering.",
+    "sprite_brief": "Top-down 3/4: Navy wooden pine tree, cream felt snow, coral ribbon spirals, gold star topper."
+  },
+  {
+    "id": "wishrope_garland",
+    "name": "Wishrope Garland",
+    "category": "seasonal",
+    "layer": "wall",
+    "footprint": [
+      3,
+      1
+    ],
+    "rarity": "uncommon",
+    "price": 545,
+    "currency": "shells",
+    "set": "lanternplait_fete",
+    "tags": [
+      "festival",
+      "fabric"
+    ],
+    "variants": [
+      "coral",
+      "gold",
+      "cream",
+      "plum"
+    ],
+    "availability": "event",
+    "description": "Knotted wishes stretch from one happy corner to another.",
+    "sprite_brief": "Top-down 3/4: Coral braided garland, gold loop knots, cream tassels, plum square pendants."
+  },
+  {
+    "id": "budbasket_stand",
+    "name": "Budbasket Stand",
+    "category": "seasonal",
+    "layer": "floor",
+    "footprint": [
+      1,
+      2
+    ],
+    "rarity": "uncommon",
+    "price": 465,
+    "currency": "shells",
+    "set": "budwhistle_meadow",
+    "tags": [
+      "spring",
+      "flower"
+    ],
+    "variants": [
+      "rose",
+      "mint",
+      "lilac",
+      "cream"
+    ],
+    "availability": "event",
+    "description": "A standing basket of first-bloom optimism.",
+    "sprite_brief": "Top-down 3/4: Cream wicker pedestal basket, rose tulips, mint leaves, lilac gingham bow."
+  },
+  {
+    "id": "hushwink_candle",
+    "name": "Hushwink Candle",
+    "category": "seasonal",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "rare",
+    "price": 1365,
+    "currency": "shells",
+    "set": "hushwick_hollow",
+    "tags": [
+      "autumn",
+      "light",
+      "wax"
+    ],
+    "variants": [],
+    "availability": "event",
+    "description": "Its flame seems to wink whenever someone tells a gentle ghost story.",
+    "sprite_brief": "Top-down 3/4: Plum candle shaped like a soft blob, lilac flame, charcoal saucer, gold eye dots."
+  },
+  {
+    "id": "frostpost_gift_pile",
+    "name": "Frostpost Gift Pile",
+    "category": "seasonal",
+    "layer": "floor",
+    "footprint": [
+      2,
+      1
+    ],
+    "rarity": "rare",
+    "price": 1735,
+    "currency": "shells",
+    "set": "frostcrumb_gathering",
+    "tags": [
+      "winter",
+      "paper"
+    ],
+    "variants": [
+      "cream",
+      "navy",
+      "coral",
+      "gold"
+    ],
+    "availability": "event",
+    "description": "The wrapping is almost too nice to disturb. Almost.",
+    "sprite_brief": "Top-down 3/4: Three stacked gifts, cream paper, navy pine print, coral ribbons, gold round tags."
+  },
+  {
+    "id": "wishcoil_lantern",
+    "name": "Wishcoil Lantern",
+    "category": "seasonal",
+    "layer": "surface",
+    "footprint": [
+      1,
+      1
+    ],
+    "rarity": "rare",
+    "price": 1330,
+    "currency": "shells",
+    "set": "lanternplait_fete",
+    "tags": [
+      "festival",
+      "light",
+      "paper"
+    ],
+    "variants": [
+      "coral",
+      "gold",
+      "cream",
+      "plum"
+    ],
+    "availability": "event",
+    "description": "A coiled paper glow for the year's brightest shared evening.",
+    "sprite_brief": "Top-down 3/4: Coral spiral paper lantern, gold wire ribs, cream center glow, plum tassel foot."
+  },
+  {
+    "id": "budcurl_flower_cart",
+    "name": "Budcurl Flower Cart",
+    "category": "seasonal",
+    "layer": "floor",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "rare",
+    "price": 2250,
+    "currency": "shells",
+    "set": "budwhistle_meadow",
+    "tags": [
+      "spring",
+      "flower",
+      "wood"
+    ],
+    "variants": [
+      "rose",
+      "mint",
+      "lilac",
+      "cream"
+    ],
+    "availability": "event",
+    "description": "A small cart carrying an unreasonable amount of spring.",
+    "sprite_brief": "Top-down 3/4: Cream flower cart, lilac wheels, rose blossoms, mint foliage, sand wooden handle."
+  },
+  {
+    "id": "hushpuff_door_arch",
+    "name": "Hushpuff Door Arch",
+    "category": "seasonal",
+    "layer": "wall",
+    "footprint": [
+      2,
+      2
+    ],
+    "rarity": "rare",
+    "price": 2380,
+    "currency": "shells",
+    "set": "hushwick_hollow",
+    "tags": [
+      "autumn",
+      "fabric"
+    ],
+    "variants": [
+      "plum",
+      "charcoal",
+      "lilac"
+    ],
+    "availability": "event",
+    "description": "A doorway dressed up for delightfully mild surprises.",
+    "sprite_brief": "Top-down 3/4: Charcoal padded doorway arch, plum scallops, lilac dangling puff shapes, gold ribbon ties."
+  },
+  {
+    "id": "frostglimmer_hearth",
+    "name": "Frostglimmer Hearth",
+    "category": "seasonal",
+    "layer": "floor",
+    "footprint": [
+      3,
+      1
+    ],
+    "rarity": "epic",
+    "price": 8135,
+    "currency": "shells",
+    "set": "frostcrumb_gathering",
+    "tags": [
+      "winter",
+      "light",
+      "heat"
+    ],
+    "variants": [
+      "cream",
+      "navy",
+      "coral",
+      "gold",
+      "sky"
+    ],
+    "availability": "event",
+    "description": "The room's warmest invitation to stay a little longer.",
+    "sprite_brief": "Top-down 3/4: Cream tile hearth, navy mantel, coral fire glow, gold star tiles, dark inset firebox."
+  },
+  {
+    "id": "wishdance_screen",
+    "name": "Wishdance Screen",
+    "category": "seasonal",
+    "layer": "floor",
+    "footprint": [
+      3,
+      1
+    ],
+    "rarity": "epic",
+    "price": 96,
+    "currency": "pearls",
+    "set": "lanternplait_fete",
+    "tags": [
+      "festival",
+      "wood"
+    ],
+    "variants": [
+      "coral",
+      "gold",
+      "cream",
+      "plum"
+    ],
+    "availability": "event",
+    "description": "A folding screen full of movement, music, and fresh starts.",
+    "sprite_brief": "Top-down 3/4: Three coral lacquer screen panels, gold ribbon dancer silhouettes, plum hinges, cream cloud borders."
+  },
+  {
+    "id": "budrain_arbor",
+    "name": "Budrain Arbor",
+    "category": "seasonal",
+    "layer": "floor",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "epic",
+    "price": 11340,
+    "currency": "shells",
+    "set": "budwhistle_meadow",
+    "tags": [
+      "spring",
+      "flower",
+      "wood"
+    ],
+    "variants": [
+      "rose",
+      "mint",
+      "lilac",
+      "cream"
+    ],
+    "availability": "rotating",
+    "description": "Petals gather overhead like the gentlest possible weather.",
+    "sprite_brief": "Top-down 3/4: Cream curved arbor, dense rose blossoms, mint leaf trails, lilac hanging petal strands."
+  },
+  {
+    "id": "frostwish_carousel",
+    "name": "Frostwish Carousel",
+    "category": "seasonal",
+    "layer": "floor",
+    "footprint": [
+      3,
+      3
+    ],
+    "rarity": "legendary",
+    "price": 220,
+    "currency": "pearls",
+    "set": "frostcrumb_gathering",
+    "tags": [
+      "winter",
+      "light",
+      "wood"
+    ],
+    "variants": [
+      "cream",
+      "navy",
+      "coral",
+      "gold"
+    ],
+    "availability": "rotating",
+    "description": "Little sleighs circle slowly through a pocket of holiday light.",
+    "sprite_brief": "Top-down 3/4: Navy miniature carousel, cream canopy, coral sleigh seats, gold lit stars, round wooden platform."
+  },
+  {
+    "id": "lanternplait_moon_gate",
+    "name": "Lanternplait Moon Gate",
+    "category": "seasonal",
+    "layer": "floor",
+    "footprint": [
+      3,
+      2
+    ],
+    "rarity": "legendary",
+    "price": 46850,
+    "currency": "shells",
+    "set": "lanternplait_fete",
+    "tags": [
+      "festival",
+      "light",
+      "wood"
+    ],
+    "variants": [
+      "coral",
+      "gold",
+      "cream",
+      "plum"
+    ],
+    "availability": "rotating",
+    "description": "A luminous circle for stepping into a hopeful new year.",
+    "sprite_brief": "Top-down 3/4: Coral circular moon gate, gold braided frame, cream paper lights, plum tassels, broad square feet."
+  }
+]

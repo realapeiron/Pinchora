@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_pebblerest_stool",
+   "width": 14
+  },
+  {
+   "name": "f_plainwhorl_chair",
+   "width": 14
+  },
+  {
+   "name": "f_prismbeat_bench",
+   "width": 46
+  },
+  {
+   "name": "f_reedwink_stool",
+   "width": 14
+  },
+  {
+   "name": "f_reeffold_lounger",
+   "width": 46
+  },
+  {
+   "name": "f_sailtuck_loveseat",
+   "width": 30
+  },
+  {
+   "name": "f_softangle_armchair",
+   "width": 30
+  },
+  {
+   "name": "f_spoolback_chair",
+   "width": 14
+  },
+  {
+   "name": "f_sprigrail_bench",
+   "width": 30
+  },
+  {
+   "name": "f_velvetbough_throne",
+   "width": 30
+  },
+  {
+   "name": "f_beamhold_chest",
+   "width": 30
+  },
+  {
+   "name": "f_boltcrate_locker",
+   "width": 14
+  }
+ ]
+}

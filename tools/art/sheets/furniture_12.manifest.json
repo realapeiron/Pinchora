@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_orbitgarden_sphere",
+   "width": 30
+  },
+  {
+   "name": "f_pagebud_ivy",
+   "width": 12
+  },
+  {
+   "name": "f_pebbletip_succulent",
+   "width": 12
+  },
+  {
+   "name": "f_reedbud_bonsai",
+   "width": 12
+  },
+  {
+   "name": "f_reedwater_lily_bowl",
+   "width": 30
+  },
+  {
+   "name": "f_reeffern_arrangement",
+   "width": 30
+  },
+  {
+   "name": "f_sprigarch_trellis",
+   "width": 30
+  },
+  {
+   "name": "f_sprigcup_fern",
+   "width": 12
+  },
+  {
+   "name": "f_stillstem_rubber_tree",
+   "width": 14
+  },
+  {
+   "name": "f_wishcitrus_tree",
+   "width": 30
+  },
+  {
+   "name": "f_acornmosaic_carpet",
+   "width": 62
+  },
+  {
+   "name": "f_blushcloud_rug",
+   "width": 46
+  }
+ ]
+}

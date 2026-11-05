@@ -1,0 +1,104 @@
+{
+ "items": [
+  {
+   "name": "wp_creamcalm_plaster",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "wp_mintmurmur_paint",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "wp_sandhush_wash",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "wp_skyrest_paper",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "wp_rosequiet_paint",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "wp_lilacpause_plaster",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "wp_navynap_paper",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "wp_mosswhisper_wash",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "wp_hemcheck_paper",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "wp_pebblewake_stripes",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "wp_stillfold_panels",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "wp_blinkberry_dots",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "wp_marginleaf_print",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "wp_sprigspool_trellis",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "wp_hushwick_wisps",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "wp_frostcrumb_flakes",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "wp_lanternplait_knots",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "wp_budwhistle_sprigs",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "wp_brinebeam_planking",
+   "width": 16,
+   "height": 16
+  },
+  {
+   "name": "wp_polypocket_fans",
+   "width": 16,
+   "height": 16
+  }
+ ]
+}

@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_duneloop_hoop",
+   "width": 14
+  },
+  {
+   "name": "f_fizzwhirl_workbench",
+   "width": 30
+  },
+  {
+   "name": "f_hemhop_blocks",
+   "width": 12
+  },
+  {
+   "name": "f_orbitfloat_mobile",
+   "width": 30
+  },
+  {
+   "name": "f_pagepath_story_tiles",
+   "width": 12
+  },
+  {
+   "name": "f_pebbletoss_rings",
+   "width": 14
+  },
+  {
+   "name": "f_reedturn_board",
+   "width": 12
+  },
+  {
+   "name": "f_reefroll_marble_run",
+   "width": 30
+  },
+  {
+   "name": "f_acornlight_mosaic",
+   "width": 46
+  },
+  {
+   "name": "f_beamchart_map",
+   "width": 46
+  },
+  {
+   "name": "f_boltpeg_wall_rack",
+   "width": 30
+  },
+  {
+   "name": "f_brinecrest_wall_wheel",
+   "width": 46
+  }
+ ]
+}

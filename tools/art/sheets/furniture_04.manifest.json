@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_orbitview_console",
+   "width": 46
+  },
+  {
+   "name": "f_pagecount_calculator",
+   "width": 12
+  },
+  {
+   "name": "f_patchscreen_television",
+   "width": 30
+  },
+  {
+   "name": "f_pebbleclick_remote",
+   "width": 12
+  },
+  {
+   "name": "f_pocketweather_globe",
+   "width": 30
+  },
+  {
+   "name": "f_spooldeck_player",
+   "width": 12
+  },
+  {
+   "name": "f_sprigmist_humidifier",
+   "width": 12
+  },
+  {
+   "name": "f_stillbreeze_fan",
+   "width": 12
+  },
+  {
+   "name": "f_acornmarble_island",
+   "width": 62
+  },
+  {
+   "name": "f_brineboard_island",
+   "width": 46
+  },
+  {
+   "name": "f_buttonmix_blender",
+   "width": 12
+  },
+  {
+   "name": "f_crumbscale_set",
+   "width": 12
+  }
+ ]
+}

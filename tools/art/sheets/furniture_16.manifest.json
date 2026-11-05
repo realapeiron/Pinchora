@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_cloudtide_dayseat",
+   "width": 62
+  },
+  {
+   "name": "f_crumbrail_bench",
+   "width": 30
+  },
+  {
+   "name": "f_dewfold_seat",
+   "width": 14
+  },
+  {
+   "name": "f_duneplait_stool",
+   "width": 14
+  },
+  {
+   "name": "f_frostweave_rocker",
+   "width": 30
+  },
+  {
+   "name": "f_hemloop_chair",
+   "width": 14
+  },
+  {
+   "name": "f_hushwing_armchair",
+   "width": 30
+  },
+  {
+   "name": "f_lanternbow_settee",
+   "width": 46
+  },
+  {
+   "name": "f_milkdrop_beanbag",
+   "width": 30
+  },
+  {
+   "name": "f_mosshem_pouf",
+   "width": 14
+  },
+  {
+   "name": "f_pagecurl_chaise",
+   "width": 46
+  },
+  {
+   "name": "f_patchwake_sofa",
+   "width": 46
+  }
+ ]
+}

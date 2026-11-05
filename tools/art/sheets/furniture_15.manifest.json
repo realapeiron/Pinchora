@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_hushpatch_pumpkin",
+   "width": 14
+  },
+  {
+   "name": "f_hushpuff_door_arch",
+   "width": 30
+  },
+  {
+   "name": "f_hushwink_candle",
+   "width": 12
+  },
+  {
+   "name": "f_lanternplait_moon_gate",
+   "width": 46
+  },
+  {
+   "name": "f_wishcoil_lantern",
+   "width": 12
+  },
+  {
+   "name": "f_wishdance_screen",
+   "width": 46
+  },
+  {
+   "name": "f_wishfold_envelope",
+   "width": 12
+  },
+  {
+   "name": "f_wishrope_garland",
+   "width": 46
+  },
+  {
+   "name": "f_boltbud_chair",
+   "width": 14
+  },
+  {
+   "name": "f_buttonnap_cushion",
+   "width": 14
+  },
+  {
+   "name": "f_capsulecurve_sofa",
+   "width": 46
+  },
+  {
+   "name": "f_clicknest_chair",
+   "width": 30
+  }
+ ]
+}

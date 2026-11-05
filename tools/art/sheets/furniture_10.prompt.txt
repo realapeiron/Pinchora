@@ -1,0 +1,29 @@
+Use your built-in image generation tool to draw ONE sprite sheet for "Pinchora", a cozy pixel-art life game.
+The attached image is the style reference: match its pixel size, outline, shading and mood exactly.
+
+Rules:
+- True pixel art with chunky square pixels, no anti-aliasing, no blur, no gradients, no texture noise.
+- Top-down 3/4 view: we see the top and the front of each object, like the reference.
+- 1-pixel dark outline #1b1d2b around every object, light from the top-left, 2-3 tone shading.
+- Use only these colours: 1b1d2b 0f1631 1d2b53 2e3d75 4a5ba3 8fa0d8 7a2a3a c2413f ff6b4a ff9e7a ffd2c0 fff1e8 e6d3c3 b8a08f 7d6a5f 4a3f3b 5c3a21 8a5a34 b97f4a e0ac6e 1f4d3a 2f7d4f 5bbf6a a6e39a 1f5f8b 3a9bdc 8fd3ff c98a1e ffd166 5a3a7a 9b6bc4 06d6a0.
+- Background: flat pure #00FF00 everywhere around the objects. Nothing else on the background, no floor, no shadows on the background, no text, no labels, no numbers, no grid lines.
+- Draw the objects in a grid in exactly the order listed (row by row, left to right), each one complete and isolated with wide green gaps (at least 40 px) between them; parts of one object must touch each other.
+- Keep relative sizes: a 1-tile object is about as wide as a small chair; a 3-tile object is three times as wide.
+
+Furniture sheet.
+Layout: 4 columns x 3 rows, 12 objects in total.
+
+1. Buttonburrow House — Top-down 3/4: Rose rounded pet house, cream oval entrance, mint roof, lilac cushion inside. (2 tiles wide, 1 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+2. Cloverpuff Nibble Rack — Top-down 3/4: Cream slatted hay rack, moss hay tufts, sand tray, mint corner caps. (1 tile wide, 1 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+3. Crumbclaw Bowl — Top-down 3/4: Cream shallow feeding dish, coral claw emblem, navy rim, sand pellet dots. (1 tile wide, 1 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+4. Dewdash Tunnel — Top-down 3/4: Moss canvas tunnel, sand circular hoops, navy lining, coral pegged straps. (2 tiles wide, 1 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+5. Drowsepatch Basket — Top-down 3/4: Honey wicker basket, moss cushion, cream quilt patch, coral cloth handle wraps. (1 tile wide, 1 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+6. Fizzpaw Care Station — Top-down 3/4: Cream pet wash station, mint basin, lilac towel hook, charcoal drawer, gold tap. (2 tiles wide, 1 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+7. Orbitcurl Pet Pod — Top-down 3/4: Sky egg shaped pet pod, cream rim, navy cushion, gold paw hatch emblem. (2 tiles wide, 2 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+8. Pageperch Stand — Top-down 3/4: Walnut bird perch, cream crossbar, moss base tray, gold hanging bell. (1 tile wide, 2 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+9. Pebblepaw Washpan — Top-down 3/4: Oval navy washpan, cream rim, sky water, coral paw print on side. (1 tile wide, 1 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+10. Reedroll Scratch Post — Top-down 3/4: Cedar upright scratching post, sand rope wrap, moss square base, cream hanging tassel. (1 tile wide, 1 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+11. Reefrest Pet Pool — Top-down 3/4: Cream scalloped pet pool, sky water, lilac steps, coral pebble rim. (2 tiles wide, 2 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+12. Sprigpaw Toy Basket — Top-down 3/4: Sand woven basket, mint cloth liner, coral ball, moss rope toy, cream handle loops. (1 tile wide, 1 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+
+Save the final PNG to ./out/furniture_10.png (create ./out if needed). Exactly 12 objects.

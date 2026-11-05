@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_reedfold_basket",
+   "width": 14
+  },
+  {
+   "name": "f_reefniche_cabinet",
+   "width": 30
+  },
+  {
+   "name": "f_spoolshoe_rack",
+   "width": 30
+  },
+  {
+   "name": "f_stillpanel_wardrobe",
+   "width": 30
+  },
+  {
+   "name": "f_velvetroot_cabinet",
+   "width": 46
+  },
+  {
+   "name": "f_wishknot_wardrobe",
+   "width": 30
+  },
+  {
+   "name": "f_acorncourt_table",
+   "width": 62
+  },
+  {
+   "name": "f_beambox_nightstand",
+   "width": 14
+  },
+  {
+   "name": "f_clickspan_desk",
+   "width": 46
+  },
+  {
+   "name": "f_coralfan_table",
+   "width": 46
+  },
+  {
+   "name": "f_crumbcorner_table",
+   "width": 30
+  },
+  {
+   "name": "f_dewtray_table",
+   "width": 30
+  }
+ ]
+}

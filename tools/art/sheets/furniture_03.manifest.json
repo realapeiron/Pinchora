@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_polypillow_bed",
+   "width": 46
+  },
+  {
+   "name": "f_reedroll_bed",
+   "width": 30
+  },
+  {
+   "name": "f_sandsheet_cot",
+   "width": 30
+  },
+  {
+   "name": "f_stillsoft_bed",
+   "width": 46
+  },
+  {
+   "name": "f_beamcast_projector",
+   "width": 12
+  },
+  {
+   "name": "f_blinkberry_twin_game",
+   "width": 46
+  },
+  {
+   "name": "f_blinkslot_cabinet",
+   "width": 30
+  },
+  {
+   "name": "f_clickbud_screen",
+   "width": 12
+  },
+  {
+   "name": "f_clickquay_computer",
+   "width": 12
+  },
+  {
+   "name": "f_fizzscan_terminal",
+   "width": 12
+  },
+  {
+   "name": "f_humskein_sound_wall",
+   "width": 46
+  },
+  {
+   "name": "f_kettlewave_radio",
+   "width": 12
+  }
+ ]
+}

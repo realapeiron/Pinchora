@@ -1,12 +1,13 @@
 use chrono::Utc;
 use pinchora_core::economy::{DAILY_COOLDOWN, DAILY_STREAK_WINDOW};
 use pinchora_db::TransferOutcome;
+use pinchora_render::{Theme, WalletCard};
 use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
-use twilight_util::builder::embed::{EmbedBuilder, EmbedFieldBuilder};
+use twilight_util::builder::embed::EmbedBuilder;
 
 use crate::{
     Cx,
-    util::{BRAND, SUCCESS, mention, relative, resolved_display_name, thousands},
+    util::{SUCCESS, mention, resolved_display_name, thousands},
 };
 
 #[derive(CommandModel, CreateCommand)]
@@ -29,17 +30,34 @@ impl Balance {
             _ => 0,
         };
         let next_daily = match row.last_daily_at {
-            Some(t) if now - t < DAILY_COOLDOWN => relative(t + DAILY_COOLDOWN),
-            _ => "ready now — `/daily`".to_owned(),
+            Some(t) if now - t < DAILY_COOLDOWN => {
+                let mins = (t + DAILY_COOLDOWN - now).num_minutes().max(1);
+                format!("{}h {}m", mins / 60, mins % 60)
+            }
+            _ => "ready".to_owned(),
         };
-        let embed = EmbedBuilder::new()
-            .color(BRAND)
-            .title(format!("{name}'s wallet"))
-            .field(EmbedFieldBuilder::new("Shells", thousands(row.credits)).inline())
-            .field(EmbedFieldBuilder::new("Daily streak", format!("{streak} days")).inline())
-            .field(EmbedFieldBuilder::new("Next daily", next_daily).inline())
-            .build();
-        cx.reply_embed(embed).await
+        let pets = cx.app.db.pets(user.id.get()).await?.len() as i64;
+        let fish_found = cx.app.db.fish_book_count(user.id.get()).await?;
+        let fish_total = pinchora_game::Content::get().fish.len() as i64;
+        let avatar = cx.app.avatar(&user, WalletCard::AVATAR_SIZE, Some(34)).await;
+        let png = cx
+            .app
+            .render(move |r| {
+                r.wallet_card(&WalletCard {
+                    display_name: &name,
+                    avatar_png: &avatar,
+                    shells: row.credits,
+                    pearls: row.pearls,
+                    streak,
+                    next_daily: &next_daily,
+                    pets,
+                    fish_found,
+                    fish_total,
+                    theme: Theme::reef(),
+                })
+            })
+            .await?;
+        cx.reply_png("wallet.png", png).await
     }
 }
 

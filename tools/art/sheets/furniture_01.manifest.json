@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_buttonbubble_basin",
+   "width": 30
+  },
+  {
+   "name": "f_dunepot_hamper",
+   "width": 14
+  },
+  {
+   "name": "f_fizzmist_shower",
+   "width": 30
+  },
+  {
+   "name": "f_hemwash_basin",
+   "width": 14
+  },
+  {
+   "name": "f_moonrinse_bath",
+   "width": 46
+  },
+  {
+   "name": "f_patchsoak_tub",
+   "width": 46
+  },
+  {
+   "name": "f_pebbleflush_loo",
+   "width": 14
+  },
+  {
+   "name": "f_reedsoap_dish",
+   "width": 12
+  },
+  {
+   "name": "f_reefcurl_tub",
+   "width": 46
+  },
+  {
+   "name": "f_rivetpipe_shower",
+   "width": 30
+  },
+  {
+   "name": "f_sprigfold_towels",
+   "width": 12
+  },
+  {
+   "name": "f_stillglass_shower",
+   "width": 30
+  }
+ ]
+}

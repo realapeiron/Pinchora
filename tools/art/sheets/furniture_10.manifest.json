@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_buttonburrow_house",
+   "width": 30
+  },
+  {
+   "name": "f_cloverpuff_nibble_rack",
+   "width": 14
+  },
+  {
+   "name": "f_crumbclaw_bowl",
+   "width": 14
+  },
+  {
+   "name": "f_dewdash_tunnel",
+   "width": 30
+  },
+  {
+   "name": "f_drowsepatch_basket",
+   "width": 14
+  },
+  {
+   "name": "f_fizzpaw_care_station",
+   "width": 30
+  },
+  {
+   "name": "f_orbitcurl_pet_pod",
+   "width": 30
+  },
+  {
+   "name": "f_pageperch_stand",
+   "width": 14
+  },
+  {
+   "name": "f_pebblepaw_washpan",
+   "width": 14
+  },
+  {
+   "name": "f_reedroll_scratch_post",
+   "width": 14
+  },
+  {
+   "name": "f_reefrest_pet_pool",
+   "width": 30
+  },
+  {
+   "name": "f_sprigpaw_toy_basket",
+   "width": 14
+  }
+ ]
+}

@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_dunecup_table",
+   "width": 14
+  },
+  {
+   "name": "f_fizzproof_counter",
+   "width": 46
+  },
+  {
+   "name": "f_hemdrawer_desk",
+   "width": 46
+  },
+  {
+   "name": "f_humskein_mix_desk",
+   "width": 46
+  },
+  {
+   "name": "f_kettlecorner_table",
+   "width": 30
+  },
+  {
+   "name": "f_orbitmap_desk",
+   "width": 46
+  },
+  {
+   "name": "f_pageledge_table",
+   "width": 30
+  },
+  {
+   "name": "f_paperleg_desk",
+   "width": 30
+  },
+  {
+   "name": "f_pebblepad_table",
+   "width": 14
+  },
+  {
+   "name": "f_plaitwish_table",
+   "width": 46
+  },
+  {
+   "name": "f_quietarc_desk",
+   "width": 46
+  },
+  {
+   "name": "f_reedflat_table",
+   "width": 30
+  }
+ ]
+}

@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_blushpetal_planter",
+   "width": 14
+  },
+  {
+   "name": "f_boltleaf_planter",
+   "width": 14
+  },
+  {
+   "name": "f_budwhistle_arbor",
+   "width": 46
+  },
+  {
+   "name": "f_crumbmint_pot",
+   "width": 12
+  },
+  {
+   "name": "f_dewsprout_tin",
+   "width": 12
+  },
+  {
+   "name": "f_dunefan_palm",
+   "width": 30
+  },
+  {
+   "name": "f_dunesip_cactus",
+   "width": 12
+  },
+  {
+   "name": "f_fizzroot_terrarium",
+   "width": 12
+  },
+  {
+   "name": "f_hemleaf_pothos",
+   "width": 12
+  },
+  {
+   "name": "f_hemwindow_flowerbox",
+   "width": 30
+  },
+  {
+   "name": "f_hushglow_mushrooms",
+   "width": 30
+  },
+  {
+   "name": "f_kettlebloom_stand",
+   "width": 14
+  }
+ ]
+}

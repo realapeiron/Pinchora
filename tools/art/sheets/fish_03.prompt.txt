@@ -1,0 +1,33 @@
+Use your built-in image generation tool to draw ONE sprite sheet for "Pinchora", a cozy pixel-art life game.
+The attached image is the style reference: match its pixel size, outline, shading and mood exactly.
+
+Rules:
+- True pixel art with chunky square pixels, no anti-aliasing, no blur, no gradients, no texture noise.
+- Top-down 3/4 view: we see the top and the front of each object, like the reference.
+- 1-pixel dark outline #1b1d2b around every object, light from the top-left, 2-3 tone shading.
+- Use only these colours: 1b1d2b 0f1631 1d2b53 2e3d75 4a5ba3 8fa0d8 7a2a3a c2413f ff6b4a ff9e7a ffd2c0 fff1e8 e6d3c3 b8a08f 7d6a5f 4a3f3b 5c3a21 8a5a34 b97f4a e0ac6e 1f4d3a 2f7d4f 5bbf6a a6e39a 1f5f8b 3a9bdc 8fd3ff c98a1e ffd166 5a3a7a 9b6bc4 06d6a0.
+- Background: flat pure #00FF00 everywhere around the objects. Nothing else on the background, no floor, no shadows on the background, no text, no labels, no numbers, no grid lines.
+- Draw the objects in a grid in exactly the order listed (row by row, left to right), each one complete and isolated with wide green gaps (at least 40 px) between them; parts of one object must touch each other.
+- Keep relative sizes: a 1-tile object is about as wide as a small chair; a 3-tile object is three times as wide.
+
+Fish and catches sheet.
+Layout: 4 columns x 4 rows, 16 objects in total.
+
+1. Cobbleback Barbel — Moss barbel, sand cobble spots, cream four chin barbels, coral tail. (side view, facing right)
+2. Quiltstripe Bass — Navy thick bass, cream broken stripes, moss dorsal fin, sand jaw, coral gills. (side view, facing right)
+3. Skydimple Trout — Sky trout, cream round dimples, lilac lateral wash, navy fins, coral gill mark. (side view, facing right)
+4. Sandspoon Flounder — Flat sand oval flounder, cream pebble spots, moss rim fins, two navy upper eyes. (side view, facing right)
+5. Clovercheek Bluegill — Mint deep fish, moss clover cheek patch, cream belly, coral fin tips. (side view, facing right)
+6. Brinebutton Mackerel — Navy mackerel, sky back bars, cream side buttons, sand pointed head. (side view, facing right)
+7. Liltfin Wrasse — Coral slim wrasse, mint curved stripes, cream lower jaw, lilac rounded fins. (side view, facing right)
+8. Ochrecurl Pipefish — Thin gold pipefish, moss ring bands, cream long snout, coral curled tail tip. (side view, facing right)
+9. Frostwhisk Codlet — Sky stocky codlet, navy speckles, cream chin barbel, sand broad tail. (side view, facing right)
+10. Plumspot Puffer — Cream round puffer, plum large spots, mint tiny spines, coral puckered mouth. (side view, facing right)
+11. Reedlace Glassfish — Transparent mint fish, cream fine spine, sky fin outlines, navy eye, coral heart dot. (side view, facing right)
+12. Peachpeel Killi — Coral small killi, cream diagonal scale marks, gold tail fan, moss dorsal stripe. (side view, facing right)
+13. Amberwink Squidlet — Gold short squid, cream dotted mantle, coral fins, moss curled arms, navy eyes. (side view, facing right)
+14. Brinebow Prawn — Coral curved prawn, cream segmented bands, navy tail fan, gold long antennae. (side view, facing right)
+15. Oatstone Mussel — Navy oval mussel, sand oat shaped freckles, cream open lip, lilac inner sheen. (side view, facing right)
+16. Twineclaw Crayfish — Moss crayfish, sand rope patterned claws, coral joints, cream belly plates, navy tail. (side view, facing right)
+
+Save the final PNG to ./out/fish_03.png (create ./out if needed). Exactly 16 objects.

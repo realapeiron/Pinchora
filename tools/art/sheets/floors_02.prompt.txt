@@ -1,0 +1,37 @@
+Use your built-in image generation tool to draw ONE sprite sheet for "Pinchora", a cozy pixel-art life game.
+The attached image is the style reference: match its pixel size, outline, shading and mood exactly.
+
+Rules:
+- True pixel art with chunky square pixels, no anti-aliasing, no blur, no gradients, no texture noise.
+- Top-down 3/4 view: we see the top and the front of each object, like the reference.
+- 1-pixel dark outline #1b1d2b around every object, light from the top-left, 2-3 tone shading.
+- Use only these colours: 1b1d2b 0f1631 1d2b53 2e3d75 4a5ba3 8fa0d8 7a2a3a c2413f ff6b4a ff9e7a ffd2c0 fff1e8 e6d3c3 b8a08f 7d6a5f 4a3f3b 5c3a21 8a5a34 b97f4a e0ac6e 1f4d3a 2f7d4f 5bbf6a a6e39a 1f5f8b 3a9bdc 8fd3ff c98a1e ffd166 5a3a7a 9b6bc4 06d6a0.
+- Background: flat pure #00FF00 everywhere around the objects. Nothing else on the background, no floor, no shadows on the background, no text, no labels, no numbers, no grid lines.
+- Draw the objects in a grid in exactly the order listed (row by row, left to right), each one complete and isolated with wide green gaps (at least 40 px) between them; parts of one object must touch each other.
+- Keep relative sizes: a 1-tile object is about as wide as a small chair; a 3-tile object is three times as wide.
+
+Tile sheet: 20 separate SQUARE swatches, each one 16x16 art pixels drawn big, a repeating seamless pattern that fills its whole square edge to edge (no outline around the square).
+Layout: 5 columns x 4 rows, 20 objects in total.
+
+1. Blushbutton Foam — square seamless floor tile: Seamless 16x16: Rose foam squares, cream interlocking edges, mint dots, lilac corner patches.
+2. Rivetsprout Plate — square seamless floor tile: Seamless 16x16: Charcoal steel plates, sand raised diagonal treads, copper rivets, moss patina corners.
+3. Acorncourt Inlay — square seamless floor tile: Seamless 16x16: Walnut parquet, gold acorn medallion quarters, cream leaf inlays, plum borders.
+4. Dewpeg Groundsheet — square seamless floor tile: Seamless 16x16: Moss canvas grid, navy seam strips, sand fibers, coral reinforced stitch crosses.
+5. Orbitcrumb Panels — square seamless floor tile: Seamless 16x16: Cream rounded metal panels, sky recesses, navy joints, gold fastener dots.
+6. Fizzfern Clean Tile — square seamless floor tile: Seamless 16x16: Cream square tiles, mint anti-slip dots, charcoal fine grout, lilac corner markers.
+7. Kettlewink Checker — square seamless floor tile: Seamless 16x16: Cream and moss checker tiles, sand worn corners, thin coral grout highlights.
+8. Humskein Cork — square seamless floor tile: Seamless 16x16: Sand cork blocks, plum embedded flecks, navy fine seams, cream grain clusters.
+9. Clickcove Rubber — square seamless floor tile: Seamless 16x16: Charcoal rubber squares, mint stepped seams, sky corner pads, coral indicator dots.
+10. Reedpause Tatting — square seamless floor tile: Seamless 16x16: Sand woven reed rectangles, moss binding edges, cream alternating fine strands.
+11. Dunethread Clay — square seamless floor tile: Seamless 16x16: Coral terracotta squares, sand powder speckles, navy thin grout, gold worn edges.
+12. Sugarquay Terrazzo — square seamless floor tile: Seamless 16x16: Cream terrazzo, rose rounded chips, mint triangles, plum tiny squares, seamless scattered density.
+13. Hemgrain Herringbone — square seamless floor tile: Seamless 16x16: Sand oak herringbone, cream grain dashes, moss narrow joints, coral knot flecks.
+14. Pebblewake Beachglass — square seamless floor tile: Seamless 16x16: Cream grout with rounded sky and mint glass chips, navy sparse pebbles, sand highlights.
+15. Marginmoss Borders — square seamless floor tile: Seamless 16x16: Walnut small parquet, gold intersecting border lines, cream leaf corner inlays, moss shadows.
+16. Stillfold Polished Stone — square seamless floor tile: Seamless 16x16: Cream polished stone, charcoal diagonal veins, mint subtle glints, matching edges.
+17. Brinebeam Compasswork — square seamless floor tile: Seamless 16x16: Navy wood, gold compass quarter stars meeting across edges, sand rope circles, moss nail dots.
+18. Polypocket Tideglass — square seamless floor tile: Seamless 16x16: Sky translucent glass tiles, coral branching inclusions, cream pearl dots, lilac waterlike glints.
+19. Acorncourt Starstone — square seamless floor tile: Seamless 16x16: Cream marble, gold eight point star quarters, plum diamond centers, moss fine veins.
+20. Orbitcrumb Nightglass — square seamless floor tile: Seamless 16x16: Navy glass panels, sky reflected arcs, gold star dots, cream thin seam glints.
+
+Save the final PNG to ./out/floors_02.png (create ./out if needed). Exactly 20 objects.

@@ -1,0 +1,29 @@
+Use your built-in image generation tool to draw ONE sprite sheet for "Pinchora", a cozy pixel-art life game.
+The attached image is the style reference: match its pixel size, outline, shading and mood exactly.
+
+Rules:
+- True pixel art with chunky square pixels, no anti-aliasing, no blur, no gradients, no texture noise.
+- Top-down 3/4 view: we see the top and the front of each object, like the reference.
+- 1-pixel dark outline #1b1d2b around every object, light from the top-left, 2-3 tone shading.
+- Use only these colours: 1b1d2b 0f1631 1d2b53 2e3d75 4a5ba3 8fa0d8 7a2a3a c2413f ff6b4a ff9e7a ffd2c0 fff1e8 e6d3c3 b8a08f 7d6a5f 4a3f3b 5c3a21 8a5a34 b97f4a e0ac6e 1f4d3a 2f7d4f 5bbf6a a6e39a 1f5f8b 3a9bdc 8fd3ff c98a1e ffd166 5a3a7a 9b6bc4 06d6a0.
+- Background: flat pure #00FF00 everywhere around the objects. Nothing else on the background, no floor, no shadows on the background, no text, no labels, no numbers, no grid lines.
+- Draw the objects in a grid in exactly the order listed (row by row, left to right), each one complete and isolated with wide green gaps (at least 40 px) between them; parts of one object must touch each other.
+- Keep relative sizes: a 1-tile object is about as wide as a small chair; a 3-tile object is three times as wide.
+
+Furniture sheet.
+Layout: 4 columns x 3 rows, 12 objects in total.
+
+1. Clickstep Rug — Top-down 3/4: Charcoal hexagonal rug, sky stepped center, mint border, coral corner squares. (3 tiles wide, 2 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue. Flat rug lying on the floor, seen from above.
+2. Crumbdot Mat — Top-down 3/4: Cream oval mat, coral scattered dots, moss thick stitched edge. (2 tiles wide, 1 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue. Flat rug lying on the floor, seen from above.
+3. Dewring Rug — Top-down 3/4: Oval moss canvas rug, sand concentric rings, navy stitched edge, coral peg motifs. (3 tiles wide, 2 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue. Flat rug lying on the floor, seen from above.
+4. Duneline Runner — Top-down 3/4: Navy flatwoven runner, sand zigzag center, coral end bands, gold fringe. (3 tiles wide, 1 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue. Flat rug lying on the floor, seen from above.
+5. Hemcheck Rug — Top-down 3/4: Square cream wool rug, moss check grid, coral corner stitches, short sand fringe. (2 tiles wide, 2 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue. Flat rug lying on the floor, seen from above.
+6. Marginleaf Rug — Top-down 3/4: Moss rectangular rug, cream leaf border, walnut colored center stripes, gold corner curls. (3 tiles wide, 2 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue. Flat rug lying on the floor, seen from above.
+7. Orbitlace Rug — Top-down 3/4: Navy oval rug, gold orbital arcs, sky planet circles, cream dotted star border. (4 tiles wide, 3 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue. Flat rug lying on the floor, seen from above.
+8. Pebblepath Runner — Top-down 3/4: Long sand woven runner, navy pebble ovals, cream border, coral end tassels. (3 tiles wide, 1 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue. Flat rug lying on the floor, seen from above.
+9. Reedquiet Mat — Top-down 3/4: Square sand reed mat, moss woven edging, cream diagonal texture, dark cedar corner tabs. (2 tiles wide, 2 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue. Flat rug lying on the floor, seen from above.
+10. Reefwhorl Rug — Top-down 3/4: Round sky rug, coral spiral branches, lilac scallops, cream tufted highlights. (3 tiles wide, 3 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue. Flat rug lying on the floor, seen from above.
+11. Rivetgrid Rug — Top-down 3/4: Charcoal rectangle, sand broad grid, moss narrow border, short cream fringe. (3 tiles wide, 2 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue. Flat rug lying on the floor, seen from above.
+12. Sprigstep Mat — Top-down 3/4: Sand coir mat, moss sprout silhouette, cream stitched rectangular border. (2 tiles wide, 1 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue. Flat rug lying on the floor, seen from above.
+
+Save the final PNG to ./out/furniture_13.png (create ./out if needed). Exactly 12 objects.

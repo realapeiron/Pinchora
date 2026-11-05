@@ -1,0 +1,25 @@
+Use your built-in image generation tool to draw ONE sprite sheet for "Pinchora", a cozy pixel-art life game.
+The attached image is the style reference: match its pixel size, outline, shading and mood exactly.
+
+Rules:
+- True pixel art with chunky square pixels, no anti-aliasing, no blur, no gradients, no texture noise.
+- Top-down 3/4 view: we see the top and the front of each object, like the reference.
+- 1-pixel dark outline #1b1d2b around every object, light from the top-left, 2-3 tone shading.
+- Use only these colours: 1b1d2b 0f1631 1d2b53 2e3d75 4a5ba3 8fa0d8 7a2a3a c2413f ff6b4a ff9e7a ffd2c0 fff1e8 e6d3c3 b8a08f 7d6a5f 4a3f3b 5c3a21 8a5a34 b97f4a e0ac6e 1f4d3a 2f7d4f 5bbf6a a6e39a 1f5f8b 3a9bdc 8fd3ff c98a1e ffd166 5a3a7a 9b6bc4 06d6a0.
+- Background: flat pure #00FF00 everywhere around the objects. Nothing else on the background, no floor, no shadows on the background, no text, no labels, no numbers, no grid lines.
+- Draw the objects in a grid in exactly the order listed (row by row, left to right), each one complete and isolated with wide green gaps (at least 40 px) between them; parts of one object must touch each other.
+- Keep relative sizes: a 1-tile object is about as wide as a small chair; a 3-tile object is three times as wide.
+
+Fish and catches sheet.
+Layout: 4 columns x 2 rows, 8 objects in total.
+
+1. Frostlace Sturgeon — Sky sturgeon, cream lace patterned scutes, navy pointed snout, gold barbels, lilac tail. (side view, facing right)
+2. Hushbell Angler — Plum round anglerfish, cream lure bulb on gold stalk, charcoal fins, lilac small teeth. (side view, facing right)
+3. Petalwake Manta — Wide rose manta, cream underside, mint petal back marks, navy long tail, gold eyes. (side view, facing right)
+4. Giltthread Arowana — Long gold arowana, cream plate scales, coral barbels, plum narrow fins, navy eye. (side view, facing right)
+5. Shellscript Key — Gold ornate key, cream shell bow, coral enamel grooves, moss patina teeth. (side view, facing right)
+6. Aurorawoven Leviathan — Long sky whale-fish, mint aurora bands, lilac streaming fins, cream belly, gold star flecks. (side view, facing right)
+7. Dawncrown Coelacanth — Plum heavy fish, gold crownlike dorsal lobes, cream scale rings, coral fleshy fins, sky eyes. (side view, facing right)
+8. Moonkeel Chest — Navy small sea chest, gold crescent latch, cream shell inlays, coral hinge bands, moss barnacle dots. (side view, facing right)
+
+Save the final PNG to ./out/fish_05.png (create ./out if needed). Exactly 8 objects.

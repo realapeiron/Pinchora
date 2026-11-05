@@ -1,0 +1,29 @@
+Use your built-in image generation tool to draw ONE sprite sheet for "Pinchora", a cozy pixel-art life game.
+The attached image is the style reference: match its pixel size, outline, shading and mood exactly.
+
+Rules:
+- True pixel art with chunky square pixels, no anti-aliasing, no blur, no gradients, no texture noise.
+- Top-down 3/4 view: we see the top and the front of each object, like the reference.
+- 1-pixel dark outline #1b1d2b around every object, light from the top-left, 2-3 tone shading.
+- Use only these colours: 1b1d2b 0f1631 1d2b53 2e3d75 4a5ba3 8fa0d8 7a2a3a c2413f ff6b4a ff9e7a ffd2c0 fff1e8 e6d3c3 b8a08f 7d6a5f 4a3f3b 5c3a21 8a5a34 b97f4a e0ac6e 1f4d3a 2f7d4f 5bbf6a a6e39a 1f5f8b 3a9bdc 8fd3ff c98a1e ffd166 5a3a7a 9b6bc4 06d6a0.
+- Background: flat pure #00FF00 everywhere around the objects. Nothing else on the background, no floor, no shadows on the background, no text, no labels, no numbers, no grid lines.
+- Draw the objects in a grid in exactly the order listed (row by row, left to right), each one complete and isolated with wide green gaps (at least 40 px) between them; parts of one object must touch each other.
+- Keep relative sizes: a 1-tile object is about as wide as a small chair; a 3-tile object is three times as wide.
+
+Pet sheet.
+Layout: 4 columns x 3 rows, 12 objects in total.
+
+1. Pipstitch Finch — 20x20, front three-quarter: Cream chubby finch, coral beak, moss stitched wing marks, sand feet, navy dot eyes. (cute pet, sitting, facing the viewer, about 1 tile big)
+2. Chirrupfold Budgie — 20x20, front three-quarter: Mint round budgie, sky folded wings, cream forehead, gold beak, navy cheek dots. (cute pet, sitting, facing the viewer, about 1 tile big)
+3. Coppercup Fiddler — 20x20, front three-quarter: Sand fiddler crab, oversized coral claw, cream smaller claw, navy stalk eyes, moss shell specks. (cute pet, sitting, facing the viewer, about 1 tile big)
+4. Mossmitten Crab — 20x20, front three-quarter: Moss square crab, cream fuzzy claw cuffs, sand legs, coral shell stripe, navy eyes. (cute pet, sitting, facing the viewer, about 1 tile big)
+5. Rufflebranch Axolotl — 20x20, front three-quarter: Cream axolotl, lilac feathery gills, sky curled tail, coral cheek spots, tiny mint feet. (cute pet, sitting, facing the viewer, about 1 tile big)
+6. Velvetloop Ray — 20x20, front three-quarter: Navy rounded ray, cream belly edge, plum back dots, long sand tail, sky fin tips. (cute pet, sitting, facing the viewer, about 1 tile big)
+7. Pearlwhisk Seal — 20x20, front three-quarter: Sky round seal, cream whiskered muzzle, sand belly, coral nose, navy flipper tips. (cute pet, sitting, facing the viewer, about 1 tile big)
+8. Dapplespoon Newt — 20x20, front three-quarter: Mint broad headed newt, coral back spots, cream throat, sand paddle tail, navy bright eyes. (cute pet, sitting, facing the viewer, about 1 tile big)
+9. Quiltquill Hedgehog — 20x20, front three-quarter: Sand hedgehog, moss and cream checker spines, rose snout, tiny navy feet, rounded ears. (cute pet, sitting, facing the viewer, about 1 tile big)
+10. Acornpocket Squirrel — 20x20, front three-quarter: Coral squirrel, cream belly, huge sand curled tail, moss ear tufts, holds a gold acorn. (cute pet, sitting, facing the viewer, about 1 tile big)
+11. Puffsole Guinea Pig — 20x20, front three-quarter: Cream oval guinea pig, rose feet, moss saddle patch, sand ears, navy bead eyes. (cute pet, sitting, facing the viewer, about 1 tile big)
+12. Tinkertrot Ferret — 20x20, front three-quarter: Sand long ferret, cream face, charcoal eye mask, coral nose, moss tipped tail. (cute pet, sitting, facing the viewer, about 1 tile big)
+
+Save the final PNG to ./out/pets_02.png (create ./out if needed). Exactly 12 objects.

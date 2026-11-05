@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_acornglass_window",
+   "width": 46
+  },
+  {
+   "name": "f_beamport_window",
+   "width": 30
+  },
+  {
+   "name": "f_buttonround_window",
+   "width": 30
+  },
+  {
+   "name": "f_dunearc_window",
+   "width": 30
+  },
+  {
+   "name": "f_hemcross_window",
+   "width": 30
+  },
+  {
+   "name": "f_marginpane_window",
+   "width": 30
+  },
+  {
+   "name": "f_orbitseal_hatch",
+   "width": 30
+  },
+  {
+   "name": "f_pebblepane_window",
+   "width": 30
+  },
+  {
+   "name": "f_reedslide_door",
+   "width": 30
+  },
+  {
+   "name": "f_reefarch_door",
+   "width": 30
+  },
+  {
+   "name": "f_sprigslat_gate",
+   "width": 30
+  },
+  {
+   "name": "f_stillframe_door",
+   "width": 14
+  }
+ ]
+}

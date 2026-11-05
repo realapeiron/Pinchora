@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "f_buttonbud_vase",
+   "width": 12
+  },
+  {
+   "name": "f_clickcove_pennant",
+   "width": 14
+  },
+  {
+   "name": "f_crumbnote_board",
+   "width": 30
+  },
+  {
+   "name": "f_dewtrail_print",
+   "width": 30
+  },
+  {
+   "name": "f_dunebead_garland",
+   "width": 46
+  },
+  {
+   "name": "f_duneshade_tapestry",
+   "width": 46
+  },
+  {
+   "name": "f_fizzbubble_diagram",
+   "width": 30
+  },
+  {
+   "name": "f_froststitch_tapestry",
+   "width": 30
+  },
+  {
+   "name": "f_hemhill_painting",
+   "width": 30
+  },
+  {
+   "name": "f_humskein_wave_panel",
+   "width": 30
+  },
+  {
+   "name": "f_hushglass_portrait",
+   "width": 30
+  },
+  {
+   "name": "f_marginglow_painting",
+   "width": 30
+  }
+ ]
+}

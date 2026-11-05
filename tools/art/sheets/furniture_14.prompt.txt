@@ -1,0 +1,29 @@
+Use your built-in image generation tool to draw ONE sprite sheet for "Pinchora", a cozy pixel-art life game.
+The attached image is the style reference: match its pixel size, outline, shading and mood exactly.
+
+Rules:
+- True pixel art with chunky square pixels, no anti-aliasing, no blur, no gradients, no texture noise.
+- Top-down 3/4 view: we see the top and the front of each object, like the reference.
+- 1-pixel dark outline #1b1d2b around every object, light from the top-left, 2-3 tone shading.
+- Use only these colours: 1b1d2b 0f1631 1d2b53 2e3d75 4a5ba3 8fa0d8 7a2a3a c2413f ff6b4a ff9e7a ffd2c0 fff1e8 e6d3c3 b8a08f 7d6a5f 4a3f3b 5c3a21 8a5a34 b97f4a e0ac6e 1f4d3a 2f7d4f 5bbf6a a6e39a 1f5f8b 3a9bdc 8fd3ff c98a1e ffd166 5a3a7a 9b6bc4 06d6a0.
+- Background: flat pure #00FF00 everywhere around the objects. Nothing else on the background, no floor, no shadows on the background, no text, no labels, no numbers, no grid lines.
+- Draw the objects in a grid in exactly the order listed (row by row, left to right), each one complete and isolated with wide green gaps (at least 40 px) between them; parts of one object must touch each other.
+- Keep relative sizes: a 1-tile object is about as wide as a small chair; a 3-tile object is three times as wide.
+
+Furniture sheet.
+Layout: 4 columns x 3 rows, 12 objects in total.
+
+1. Stillstripe Mat — Top-down 3/4: Rectangular mint mat, wide charcoal offset stripe, cream bound edges. (2 tiles wide, 1 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue. Flat rug lying on the floor, seen from above.
+2. Wishbraid Rug — Top-down 3/4: Coral rectangle, gold interlocking loops, plum center medallion, cream tassels. (3 tiles wide, 2 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue. Flat rug lying on the floor, seen from above.
+3. Budbasket Stand — Top-down 3/4: Cream wicker pedestal basket, rose tulips, mint leaves, lilac gingham bow. (1 tile wide, 2 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+4. Budcurl Flower Cart — Top-down 3/4: Cream flower cart, lilac wheels, rose blossoms, mint foliage, sand wooden handle. (2 tiles wide, 2 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+5. Budrain Arbor — Top-down 3/4: Cream curved arbor, dense rose blossoms, mint leaf trails, lilac hanging petal strands. (3 tiles wide, 2 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+6. Budwhistle Egg Bowl — Top-down 3/4: Cream shallow bowl, rose and mint decorative eggs, lilac dot patterns, sand wicker rim. (small decoration that sits on a table (about half a tile)) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+7. Frostcrumb Tree — Top-down 3/4: Navy wooden pine tree, cream felt snow, coral ribbon spirals, gold star topper. (2 tiles wide, 2 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+8. Frostglimmer Hearth — Top-down 3/4: Cream tile hearth, navy mantel, coral fire glow, gold star tiles, dark inset firebox. (3 tiles wide, 1 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+9. Frostpocket Stocking — Top-down 3/4: Cream knitted stocking, coral cuff, navy snowflake stitches, gold hanging loop. (1 tile wide, 2 tiles tall, hangs on a wall (front view)) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+10. Frostpost Gift Pile — Top-down 3/4: Three stacked gifts, cream paper, navy pine print, coral ribbons, gold round tags. (2 tiles wide, 1 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+11. Frostwish Carousel — Top-down 3/4: Navy miniature carousel, cream canopy, coral sleigh seats, gold lit stars, round wooden platform. (3 tiles wide, 3 tiles deep) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+12. Hushbell Wreath — Top-down 3/4: Charcoal twig wreath, plum felt leaves, lilac bells, gold crescent charm. (2 tiles wide, 2 tiles tall, hangs on a wall (front view)) Its main colour (fabric, paint or plastic) must use the coral ramp #7a2a3a (shadow), #c2413f, #ff6b4a (base), #ff9e7a, #ffd2c0 (highlight); keep wood brown and metal grey-blue.
+
+Save the final PNG to ./out/furniture_14.png (create ./out if needed). Exactly 12 objects.
