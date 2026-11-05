@@ -1,0 +1,6034 @@
+[
+  {
+    "id": "ocean_001",
+    "category": "ocean",
+    "difficulty": "easy",
+    "question": "Which is the biggest fish in the sea?",
+    "options": [
+      "Great white shark",
+      "Manta ray",
+      "Swordfish",
+      "Whale shark"
+    ],
+    "answer": "Whale shark"
+  },
+  {
+    "id": "ocean_002",
+    "category": "ocean",
+    "difficulty": "medium",
+    "question": "What do baleen whales use their bristly plates for?",
+    "options": [
+      "Chewing fish",
+      "Filtering food from water",
+      "Digging in sand",
+      "Singing songs"
+    ],
+    "answer": "Filtering food from water"
+  },
+  {
+    "id": "ocean_003",
+    "category": "ocean",
+    "difficulty": "hard",
+    "question": "About how much of Earth's surface is covered by ocean?",
+    "options": [
+      "About 50 percent",
+      "About 71 percent",
+      "About 30 percent",
+      "About 90 percent"
+    ],
+    "answer": "About 71 percent"
+  },
+  {
+    "id": "ocean_004",
+    "category": "ocean",
+    "difficulty": "medium",
+    "question": "What does a sea otter use to crack open shellfish?",
+    "options": [
+      "A rock",
+      "A stick",
+      "A fishing hook",
+      "A seaweed rope"
+    ],
+    "answer": "A rock"
+  },
+  {
+    "id": "ocean_005",
+    "category": "ocean",
+    "difficulty": "hard",
+    "question": "The Sargasso Sea is named after a kind of floating what?",
+    "options": [
+      "Iceberg",
+      "Seaweed",
+      "Sailboat",
+      "Coral"
+    ],
+    "answer": "Seaweed"
+  },
+  {
+    "id": "ocean_006",
+    "category": "ocean",
+    "difficulty": "medium",
+    "question": "Which sea animal is nicknamed the sea cow?",
+    "options": [
+      "Walrus",
+      "Porpoise",
+      "Sea lion",
+      "Manatee"
+    ],
+    "answer": "Manatee"
+  },
+  {
+    "id": "ocean_007",
+    "category": "ocean",
+    "difficulty": "medium",
+    "question": "What mainly causes the ocean's tides?",
+    "options": [
+      "The Moon's pull",
+      "Strong winds",
+      "Sea animals",
+      "Underwater volcanoes"
+    ],
+    "answer": "The Moon's pull"
+  },
+  {
+    "id": "ocean_008",
+    "category": "ocean",
+    "difficulty": "medium",
+    "question": "Which trench holds the Challenger Deep, the deepest known spot in the sea?",
+    "options": [
+      "Mariana Trench",
+      "Puerto Rico Trench",
+      "Java Trench",
+      "Tonga Trench"
+    ],
+    "answer": "Mariana Trench"
+  },
+  {
+    "id": "ocean_009",
+    "category": "ocean",
+    "difficulty": "easy",
+    "question": "What do we call a baby whale?",
+    "options": [
+      "Kit",
+      "Chick",
+      "Calf",
+      "Cub"
+    ],
+    "answer": "Calf"
+  },
+  {
+    "id": "ocean_010",
+    "category": "ocean",
+    "difficulty": "easy",
+    "question": "What do we call giant waves caused by undersea earthquakes?",
+    "options": [
+      "Monsoon",
+      "Whirlpool",
+      "Tsunami",
+      "Hurricane"
+    ],
+    "answer": "Tsunami"
+  },
+  {
+    "id": "ocean_011",
+    "category": "ocean",
+    "difficulty": "hard",
+    "question": "Which toothed giant of the deep hunts giant squid?",
+    "options": [
+      "Humpback whale",
+      "Blue whale",
+      "Gray whale",
+      "Sperm whale"
+    ],
+    "answer": "Sperm whale"
+  },
+  {
+    "id": "ocean_012",
+    "category": "ocean",
+    "difficulty": "easy",
+    "question": "Which of these sea animals is a mammal, not a fish?",
+    "options": [
+      "Shark",
+      "Tuna",
+      "Seahorse",
+      "Dolphin"
+    ],
+    "answer": "Dolphin"
+  },
+  {
+    "id": "ocean_013",
+    "category": "ocean",
+    "difficulty": "easy",
+    "question": "What do we call a group of fish swimming together?",
+    "options": [
+      "School",
+      "Herd",
+      "Flock",
+      "Pack"
+    ],
+    "answer": "School"
+  },
+  {
+    "id": "ocean_014",
+    "category": "ocean",
+    "difficulty": "easy",
+    "question": "Which shark has a flat, wide, T-shaped head?",
+    "options": [
+      "Great white shark",
+      "Tiger shark",
+      "Hammerhead shark",
+      "Nurse shark"
+    ],
+    "answer": "Hammerhead shark"
+  },
+  {
+    "id": "ocean_015",
+    "category": "ocean",
+    "difficulty": "easy",
+    "question": "Which orange-and-white striped fish hides among sea anemones?",
+    "options": [
+      "Clownfish",
+      "Tuna",
+      "Swordfish",
+      "Barracuda"
+    ],
+    "answer": "Clownfish"
+  },
+  {
+    "id": "ocean_016",
+    "category": "ocean",
+    "difficulty": "easy",
+    "question": "How many arms does an octopus have?",
+    "options": [
+      "Six",
+      "Ten",
+      "Eight",
+      "Twelve"
+    ],
+    "answer": "Eight"
+  },
+  {
+    "id": "ocean_017",
+    "category": "ocean",
+    "difficulty": "hard",
+    "question": "Which seabird has the longest wingspan of any living bird?",
+    "options": [
+      "Brown pelican",
+      "Wandering albatross",
+      "Great frigatebird",
+      "Herring gull"
+    ],
+    "answer": "Wandering albatross"
+  },
+  {
+    "id": "ocean_018",
+    "category": "ocean",
+    "difficulty": "easy",
+    "question": "What does a pufferfish do when it feels scared?",
+    "options": [
+      "Turns invisible",
+      "Blows up like a balloon",
+      "Sings loudly",
+      "Shrinks to a dot"
+    ],
+    "answer": "Blows up like a balloon"
+  },
+  {
+    "id": "ocean_019",
+    "category": "ocean",
+    "difficulty": "medium",
+    "question": "Which prickly sea creature is a close relative of the starfish?",
+    "options": [
+      "Sea snail",
+      "Sea urchin",
+      "Jellyfish",
+      "Crab"
+    ],
+    "answer": "Sea urchin"
+  },
+  {
+    "id": "ocean_020",
+    "category": "ocean",
+    "difficulty": "easy",
+    "question": "What is the largest animal on Earth?",
+    "options": [
+      "Whale shark",
+      "African elephant",
+      "Blue whale",
+      "Giant squid"
+    ],
+    "answer": "Blue whale"
+  },
+  {
+    "id": "ocean_021",
+    "category": "ocean",
+    "difficulty": "hard",
+    "question": "Which animal group does the sea cucumber belong to?",
+    "options": [
+      "Echinoderms",
+      "Crustaceans",
+      "Molluscs",
+      "Cnidarians"
+    ],
+    "answer": "Echinoderms"
+  },
+  {
+    "id": "ocean_022",
+    "category": "ocean",
+    "difficulty": "easy",
+    "question": "Which is the largest ocean on Earth?",
+    "options": [
+      "Atlantic Ocean",
+      "Indian Ocean",
+      "Arctic Ocean",
+      "Pacific Ocean"
+    ],
+    "answer": "Pacific Ocean"
+  },
+  {
+    "id": "ocean_023",
+    "category": "ocean",
+    "difficulty": "easy",
+    "question": "Which of these sea animals squirts ink to escape?",
+    "options": [
+      "Seahorse",
+      "Sea urchin",
+      "Sand dollar",
+      "Squid"
+    ],
+    "answer": "Squid"
+  },
+  {
+    "id": "ocean_024",
+    "category": "ocean",
+    "difficulty": "hard",
+    "question": "What is the pitch-dark ocean layer below about 1,000 metres often called?",
+    "options": [
+      "Twilight zone",
+      "Midnight zone",
+      "Sunlit zone",
+      "Coral zone"
+    ],
+    "answer": "Midnight zone"
+  },
+  {
+    "id": "ocean_025",
+    "category": "ocean",
+    "difficulty": "hard",
+    "question": "Which is Earth's longest mountain range, mostly under the sea?",
+    "options": [
+      "Mid-ocean ridge",
+      "Andes",
+      "Rocky Mountains",
+      "Himalayas"
+    ],
+    "answer": "Mid-ocean ridge"
+  },
+  {
+    "id": "ocean_026",
+    "category": "ocean",
+    "difficulty": "easy",
+    "question": "In which sea animal does the father carry the babies in a pouch?",
+    "options": [
+      "Dolphin",
+      "Sea turtle",
+      "Seahorse",
+      "Seal"
+    ],
+    "answer": "Seahorse"
+  },
+  {
+    "id": "ocean_027",
+    "category": "ocean",
+    "difficulty": "medium",
+    "question": "What are the tiny animals that build coral reefs called?",
+    "options": [
+      "Sea sponges",
+      "Sea squirts",
+      "Coral polyps",
+      "Plankton"
+    ],
+    "answer": "Coral polyps"
+  },
+  {
+    "id": "ocean_028",
+    "category": "ocean",
+    "difficulty": "easy",
+    "question": "Which sea animal is famous for walking sideways?",
+    "options": [
+      "Crab",
+      "Seal",
+      "Dolphin",
+      "Sea turtle"
+    ],
+    "answer": "Crab"
+  },
+  {
+    "id": "ocean_029",
+    "category": "ocean",
+    "difficulty": "hard",
+    "question": "About how deep does the sunlit zone of the ocean reach?",
+    "options": [
+      "About 20 metres",
+      "About 2,000 metres",
+      "About 6,000 metres",
+      "About 200 metres"
+    ],
+    "answer": "About 200 metres"
+  },
+  {
+    "id": "ocean_030",
+    "category": "ocean",
+    "difficulty": "medium",
+    "question": "What do we call whales swimming long distances to warmer waters to breed?",
+    "options": [
+      "Migration",
+      "Hibernation",
+      "Camouflage",
+      "Evolution"
+    ],
+    "answer": "Migration"
+  },
+  {
+    "id": "ocean_031",
+    "category": "ocean",
+    "difficulty": "easy",
+    "question": "What do dolphins breathe through?",
+    "options": [
+      "A blowhole",
+      "Gills",
+      "Their skin",
+      "Their fins"
+    ],
+    "answer": "A blowhole"
+  },
+  {
+    "id": "ocean_032",
+    "category": "ocean",
+    "difficulty": "medium",
+    "question": "Which gas do fish take from the water through their gills?",
+    "options": [
+      "Nitrogen",
+      "Helium",
+      "Hydrogen",
+      "Oxygen"
+    ],
+    "answer": "Oxygen"
+  },
+  {
+    "id": "ocean_033",
+    "category": "ocean",
+    "difficulty": "medium",
+    "question": "What small shrimp-like animals do blue whales mainly eat?",
+    "options": [
+      "Krill",
+      "Herring",
+      "Squid",
+      "Sardines"
+    ],
+    "answer": "Krill"
+  },
+  {
+    "id": "ocean_034",
+    "category": "ocean",
+    "difficulty": "medium",
+    "question": "What do we call a ring-shaped coral island?",
+    "options": [
+      "Peninsula",
+      "Delta",
+      "Atoll",
+      "Fjord"
+    ],
+    "answer": "Atoll"
+  },
+  {
+    "id": "ocean_035",
+    "category": "ocean",
+    "difficulty": "medium",
+    "question": "What do manatees mainly eat?",
+    "options": [
+      "Small fish",
+      "Crabs and shrimp",
+      "Seagrass and plants",
+      "Plankton only"
+    ],
+    "answer": "Seagrass and plants"
+  },
+  {
+    "id": "ocean_036",
+    "category": "ocean",
+    "difficulty": "medium",
+    "question": "Which sea creature is a master at changing colour to blend in?",
+    "options": [
+      "Dolphin",
+      "Cuttlefish",
+      "Walrus",
+      "Manta ray"
+    ],
+    "answer": "Cuttlefish"
+  },
+  {
+    "id": "ocean_037",
+    "category": "ocean",
+    "difficulty": "easy",
+    "question": "Which sea animal can regrow a lost arm?",
+    "options": [
+      "Dolphin",
+      "Seal",
+      "Walrus",
+      "Starfish"
+    ],
+    "answer": "Starfish"
+  },
+  {
+    "id": "ocean_038",
+    "category": "ocean",
+    "difficulty": "medium",
+    "question": "Which is the smallest of the world's oceans?",
+    "options": [
+      "Indian Ocean",
+      "Southern Ocean",
+      "Atlantic Ocean",
+      "Arctic Ocean"
+    ],
+    "answer": "Arctic Ocean"
+  },
+  {
+    "id": "ocean_039",
+    "category": "ocean",
+    "difficulty": "medium",
+    "question": "Which part of a jellyfish carries its stinging cells?",
+    "options": [
+      "Fins",
+      "Tentacles",
+      "Shell",
+      "Gills"
+    ],
+    "answer": "Tentacles"
+  },
+  {
+    "id": "ocean_040",
+    "category": "ocean",
+    "difficulty": "medium",
+    "question": "Which coral reef system is the largest in the world?",
+    "options": [
+      "Great Barrier Reef",
+      "Belize Barrier Reef",
+      "Ningaloo Reef",
+      "Florida Reef Tract"
+    ],
+    "answer": "Great Barrier Reef"
+  },
+  {
+    "id": "ocean_041",
+    "category": "ocean",
+    "difficulty": "medium",
+    "question": "Which ocean surrounds the continent of Antarctica?",
+    "options": [
+      "Arctic Ocean",
+      "Southern Ocean",
+      "Indian Ocean",
+      "Pacific Ocean"
+    ],
+    "answer": "Southern Ocean"
+  },
+  {
+    "id": "ocean_042",
+    "category": "ocean",
+    "difficulty": "easy",
+    "question": "Which sea creature has three hearts?",
+    "options": [
+      "Jellyfish",
+      "Seahorse",
+      "Octopus",
+      "Crab"
+    ],
+    "answer": "Octopus"
+  },
+  {
+    "id": "ocean_043",
+    "category": "ocean",
+    "difficulty": "easy",
+    "question": "What do we call a baby seal?",
+    "options": [
+      "Calf",
+      "Cub",
+      "Kit",
+      "Pup"
+    ],
+    "answer": "Pup"
+  },
+  {
+    "id": "ocean_044",
+    "category": "ocean",
+    "difficulty": "easy",
+    "question": "What do we call a boat that can travel underwater?",
+    "options": [
+      "Ferry",
+      "Submarine",
+      "Raft",
+      "Sailboat"
+    ],
+    "answer": "Submarine"
+  },
+  {
+    "id": "ocean_045",
+    "category": "ocean",
+    "difficulty": "medium",
+    "question": "Which deep-sea fish dangles a glowing lure to attract prey?",
+    "options": [
+      "Swordfish",
+      "Anglerfish",
+      "Flounder",
+      "Barracuda"
+    ],
+    "answer": "Anglerfish"
+  },
+  {
+    "id": "ocean_046",
+    "category": "ocean",
+    "difficulty": "easy",
+    "question": "What does ocean water taste like?",
+    "options": [
+      "Salty",
+      "Sweet",
+      "Sour",
+      "Spicy"
+    ],
+    "answer": "Salty"
+  },
+  {
+    "id": "ocean_047",
+    "category": "ocean",
+    "difficulty": "medium",
+    "question": "What are baby sea turtles called?",
+    "options": [
+      "Pups",
+      "Kits",
+      "Joeys",
+      "Hatchlings"
+    ],
+    "answer": "Hatchlings"
+  },
+  {
+    "id": "ocean_048",
+    "category": "ocean",
+    "difficulty": "easy",
+    "question": "Which shelled reptile lays its eggs on sandy beaches?",
+    "options": [
+      "Sea otter",
+      "Walrus",
+      "Sea turtle",
+      "Sea lion"
+    ],
+    "answer": "Sea turtle"
+  },
+  {
+    "id": "ocean_049",
+    "category": "ocean",
+    "difficulty": "easy",
+    "question": "Which tusked whale is nicknamed the unicorn of the sea?",
+    "options": [
+      "Beluga",
+      "Orca",
+      "Humpback whale",
+      "Narwhal"
+    ],
+    "answer": "Narwhal"
+  },
+  {
+    "id": "ocean_050",
+    "category": "ocean",
+    "difficulty": "easy",
+    "question": "Which shelled sea animal can make a pearl?",
+    "options": [
+      "Crab",
+      "Lobster",
+      "Oyster",
+      "Starfish"
+    ],
+    "answer": "Oyster"
+  },
+  {
+    "id": "ocean_051",
+    "category": "ocean",
+    "difficulty": "hard",
+    "question": "Which tentacled sea animal lives inside a spiral, chambered shell?",
+    "options": [
+      "Octopus",
+      "Nautilus",
+      "Squid",
+      "Cuttlefish"
+    ],
+    "answer": "Nautilus"
+  },
+  {
+    "id": "ocean_052",
+    "category": "ocean",
+    "difficulty": "medium",
+    "question": "Which sea mammal uses echolocation to find its food?",
+    "options": [
+      "Seal",
+      "Sea otter",
+      "Dolphin",
+      "Manatee"
+    ],
+    "answer": "Dolphin"
+  },
+  {
+    "id": "animals_001",
+    "category": "animals",
+    "difficulty": "medium",
+    "question": "What is the hard outer skeleton of an insect called?",
+    "options": [
+      "Backbone",
+      "Exoskeleton",
+      "Fur",
+      "Feather"
+    ],
+    "answer": "Exoskeleton"
+  },
+  {
+    "id": "animals_002",
+    "category": "animals",
+    "difficulty": "easy",
+    "question": "What do we call a group of lions?",
+    "options": [
+      "Pack",
+      "Pride",
+      "Herd",
+      "Flock"
+    ],
+    "answer": "Pride"
+  },
+  {
+    "id": "animals_003",
+    "category": "animals",
+    "difficulty": "easy",
+    "question": "Which lizard is famous for changing colour and has rolling eyes?",
+    "options": [
+      "Gecko",
+      "Chameleon",
+      "Iguana",
+      "Komodo dragon"
+    ],
+    "answer": "Chameleon"
+  },
+  {
+    "id": "animals_004",
+    "category": "animals",
+    "difficulty": "easy",
+    "question": "What does a caterpillar become after wrapping itself in a chrysalis?",
+    "options": [
+      "Butterfly",
+      "Beetle",
+      "Dragonfly",
+      "Ant"
+    ],
+    "answer": "Butterfly"
+  },
+  {
+    "id": "animals_005",
+    "category": "animals",
+    "difficulty": "easy",
+    "question": "What is the largest land animal in the world?",
+    "options": [
+      "Giraffe",
+      "Hippo",
+      "African elephant",
+      "Rhinoceros"
+    ],
+    "answer": "African elephant"
+  },
+  {
+    "id": "animals_006",
+    "category": "animals",
+    "difficulty": "medium",
+    "question": "What do we call an animal that hunts other animals for food?",
+    "options": [
+      "Prey",
+      "Predator",
+      "Pollinator",
+      "Parasite"
+    ],
+    "answer": "Predator"
+  },
+  {
+    "id": "animals_007",
+    "category": "animals",
+    "difficulty": "easy",
+    "question": "Which big cat is called the king of the beasts?",
+    "options": [
+      "Tiger",
+      "Leopard",
+      "Cheetah",
+      "Lion"
+    ],
+    "answer": "Lion"
+  },
+  {
+    "id": "animals_008",
+    "category": "animals",
+    "difficulty": "medium",
+    "question": "How many wings does a butterfly have?",
+    "options": [
+      "Two",
+      "Four",
+      "Six",
+      "Eight"
+    ],
+    "answer": "Four"
+  },
+  {
+    "id": "animals_009",
+    "category": "animals",
+    "difficulty": "hard",
+    "question": "What do we call a female fox?",
+    "options": [
+      "Doe",
+      "Sow",
+      "Jenny",
+      "Vixen"
+    ],
+    "answer": "Vixen"
+  },
+  {
+    "id": "animals_010",
+    "category": "animals",
+    "difficulty": "easy",
+    "question": "Which bird is famous for hooting at night?",
+    "options": [
+      "Parrot",
+      "Owl",
+      "Sparrow",
+      "Duck"
+    ],
+    "answer": "Owl"
+  },
+  {
+    "id": "animals_011",
+    "category": "animals",
+    "difficulty": "hard",
+    "question": "Which marsupial lives in the wild in the USA and Canada?",
+    "options": [
+      "Opossum",
+      "Raccoon",
+      "Skunk",
+      "Armadillo"
+    ],
+    "answer": "Opossum"
+  },
+  {
+    "id": "animals_012",
+    "category": "animals",
+    "difficulty": "medium",
+    "question": "Which is the largest living species of lizard?",
+    "options": [
+      "Green iguana",
+      "Bearded dragon",
+      "Komodo dragon",
+      "Gecko"
+    ],
+    "answer": "Komodo dragon"
+  },
+  {
+    "id": "animals_013",
+    "category": "animals",
+    "difficulty": "hard",
+    "question": "What is a baby bat called?",
+    "options": [
+      "Cub",
+      "Kit",
+      "Pup",
+      "Chick"
+    ],
+    "answer": "Pup"
+  },
+  {
+    "id": "animals_014",
+    "category": "animals",
+    "difficulty": "easy",
+    "question": "What do we call a baby penguin?",
+    "options": [
+      "Chick",
+      "Pup",
+      "Cub",
+      "Calf"
+    ],
+    "answer": "Chick"
+  },
+  {
+    "id": "animals_015",
+    "category": "animals",
+    "difficulty": "medium",
+    "question": "Which insect does a waggle dance to show where flowers are?",
+    "options": [
+      "Ladybird",
+      "Firefly",
+      "Honeybee",
+      "Cricket"
+    ],
+    "answer": "Honeybee"
+  },
+  {
+    "id": "animals_016",
+    "category": "animals",
+    "difficulty": "easy",
+    "question": "Which animal has a hump and lives in deserts?",
+    "options": [
+      "Horse",
+      "Zebra",
+      "Moose",
+      "Camel"
+    ],
+    "answer": "Camel"
+  },
+  {
+    "id": "animals_017",
+    "category": "animals",
+    "difficulty": "medium",
+    "question": "Which big cat is the largest in the world?",
+    "options": [
+      "Lion",
+      "Jaguar",
+      "Tiger",
+      "Leopard"
+    ],
+    "answer": "Tiger"
+  },
+  {
+    "id": "animals_018",
+    "category": "animals",
+    "difficulty": "hard",
+    "question": "Which land animal is pregnant for about 22 months?",
+    "options": [
+      "Elephant",
+      "Giraffe",
+      "Hippo",
+      "Horse"
+    ],
+    "answer": "Elephant"
+  },
+  {
+    "id": "animals_019",
+    "category": "animals",
+    "difficulty": "easy",
+    "question": "What do we call a baby horse?",
+    "options": [
+      "Calf",
+      "Lamb",
+      "Kid",
+      "Foal"
+    ],
+    "answer": "Foal"
+  },
+  {
+    "id": "animals_020",
+    "category": "animals",
+    "difficulty": "medium",
+    "question": "Which flightless bird is New Zealand's national symbol?",
+    "options": [
+      "Kiwi",
+      "Emu",
+      "Dodo",
+      "Cassowary"
+    ],
+    "answer": "Kiwi"
+  },
+  {
+    "id": "animals_021",
+    "category": "animals",
+    "difficulty": "medium",
+    "question": "What do we call animals that eat only plants?",
+    "options": [
+      "Carnivores",
+      "Omnivores",
+      "Herbivores",
+      "Insectivores"
+    ],
+    "answer": "Herbivores"
+  },
+  {
+    "id": "animals_022",
+    "category": "animals",
+    "difficulty": "medium",
+    "question": "Which is the only mammal that can truly fly?",
+    "options": [
+      "Flying squirrel",
+      "Eagle",
+      "Bat",
+      "Butterfly"
+    ],
+    "answer": "Bat"
+  },
+  {
+    "id": "animals_023",
+    "category": "animals",
+    "difficulty": "easy",
+    "question": "Which animal has a long trunk?",
+    "options": [
+      "Elephant",
+      "Hippo",
+      "Rhino",
+      "Giraffe"
+    ],
+    "answer": "Elephant"
+  },
+  {
+    "id": "animals_024",
+    "category": "animals",
+    "difficulty": "hard",
+    "question": "Which is the largest species of penguin?",
+    "options": [
+      "Emperor penguin",
+      "King penguin",
+      "Adelie penguin",
+      "Gentoo penguin"
+    ],
+    "answer": "Emperor penguin"
+  },
+  {
+    "id": "animals_025",
+    "category": "animals",
+    "difficulty": "easy",
+    "question": "What do pandas mostly eat?",
+    "options": [
+      "Fish",
+      "Honey",
+      "Berries",
+      "Bamboo"
+    ],
+    "answer": "Bamboo"
+  },
+  {
+    "id": "animals_026",
+    "category": "animals",
+    "difficulty": "easy",
+    "question": "How many legs does an insect have?",
+    "options": [
+      "Four",
+      "Six",
+      "Eight",
+      "Ten"
+    ],
+    "answer": "Six"
+  },
+  {
+    "id": "animals_027",
+    "category": "animals",
+    "difficulty": "medium",
+    "question": "What do we call animals that are awake at night?",
+    "options": [
+      "Nocturnal",
+      "Aquatic",
+      "Migratory",
+      "Venomous"
+    ],
+    "answer": "Nocturnal"
+  },
+  {
+    "id": "animals_028",
+    "category": "animals",
+    "difficulty": "easy",
+    "question": "What is a young frog called while it lives only in water?",
+    "options": [
+      "Fawn",
+      "Cub",
+      "Tadpole",
+      "Pup"
+    ],
+    "answer": "Tadpole"
+  },
+  {
+    "id": "animals_029",
+    "category": "animals",
+    "difficulty": "medium",
+    "question": "Which bird can turn its head about three-quarters of a full circle?",
+    "options": [
+      "Owl",
+      "Eagle",
+      "Parrot",
+      "Duck"
+    ],
+    "answer": "Owl"
+  },
+  {
+    "id": "animals_030",
+    "category": "animals",
+    "difficulty": "hard",
+    "question": "What is a group of owls called?",
+    "options": [
+      "Pride",
+      "Parliament",
+      "Gaggle",
+      "Swarm"
+    ],
+    "answer": "Parliament"
+  },
+  {
+    "id": "animals_031",
+    "category": "animals",
+    "difficulty": "easy",
+    "question": "What do we call a baby kangaroo?",
+    "options": [
+      "Pup",
+      "Cub",
+      "Joey",
+      "Calf"
+    ],
+    "answer": "Joey"
+  },
+  {
+    "id": "animals_032",
+    "category": "animals",
+    "difficulty": "easy",
+    "question": "Which is the fastest land animal?",
+    "options": [
+      "Lion",
+      "Horse",
+      "Cheetah",
+      "Gazelle"
+    ],
+    "answer": "Cheetah"
+  },
+  {
+    "id": "animals_033",
+    "category": "animals",
+    "difficulty": "easy",
+    "question": "Which animal carries its shell home on its back and leaves a slimy trail?",
+    "options": [
+      "Snail",
+      "Rabbit",
+      "Mouse",
+      "Duck"
+    ],
+    "answer": "Snail"
+  },
+  {
+    "id": "animals_034",
+    "category": "animals",
+    "difficulty": "medium",
+    "question": "Which is the largest rodent in the world?",
+    "options": [
+      "Beaver",
+      "Porcupine",
+      "Rat",
+      "Capybara"
+    ],
+    "answer": "Capybara"
+  },
+  {
+    "id": "animals_035",
+    "category": "animals",
+    "difficulty": "easy",
+    "question": "How many legs does a spider have?",
+    "options": [
+      "Eight",
+      "Six",
+      "Ten",
+      "Four"
+    ],
+    "answer": "Eight"
+  },
+  {
+    "id": "animals_036",
+    "category": "animals",
+    "difficulty": "medium",
+    "question": "Which bird lays the largest egg of any living bird?",
+    "options": [
+      "Eagle",
+      "Ostrich",
+      "Emu",
+      "Swan"
+    ],
+    "answer": "Ostrich"
+  },
+  {
+    "id": "animals_037",
+    "category": "animals",
+    "difficulty": "hard",
+    "question": "Which bird is the fastest diver in the sky, over 300 km per hour?",
+    "options": [
+      "Golden eagle",
+      "Common swift",
+      "Hummingbird",
+      "Peregrine falcon"
+    ],
+    "answer": "Peregrine falcon"
+  },
+  {
+    "id": "animals_038",
+    "category": "animals",
+    "difficulty": "hard",
+    "question": "How many eyes does a honeybee have in total?",
+    "options": [
+      "Two",
+      "Three",
+      "Five",
+      "Eight"
+    ],
+    "answer": "Five"
+  },
+  {
+    "id": "animals_039",
+    "category": "animals",
+    "difficulty": "medium",
+    "question": "What is a male chicken called?",
+    "options": [
+      "Drake",
+      "Gander",
+      "Rooster",
+      "Stallion"
+    ],
+    "answer": "Rooster"
+  },
+  {
+    "id": "animals_040",
+    "category": "animals",
+    "difficulty": "easy",
+    "question": "Which insect glows in the dark on summer nights?",
+    "options": [
+      "Cricket",
+      "Ant",
+      "Firefly",
+      "Grasshopper"
+    ],
+    "answer": "Firefly"
+  },
+  {
+    "id": "animals_041",
+    "category": "animals",
+    "difficulty": "easy",
+    "question": "Which animal is the tallest in the world?",
+    "options": [
+      "Elephant",
+      "Giraffe",
+      "Camel",
+      "Ostrich"
+    ],
+    "answer": "Giraffe"
+  },
+  {
+    "id": "animals_042",
+    "category": "animals",
+    "difficulty": "hard",
+    "question": "Which forest animal with striped legs is the giraffe's closest relative?",
+    "options": [
+      "Zebra",
+      "Okapi",
+      "Tapir",
+      "Antelope"
+    ],
+    "answer": "Okapi"
+  },
+  {
+    "id": "animals_043",
+    "category": "animals",
+    "difficulty": "easy",
+    "question": "Which animal builds dams across rivers?",
+    "options": [
+      "Otter",
+      "Badger",
+      "Mole",
+      "Beaver"
+    ],
+    "answer": "Beaver"
+  },
+  {
+    "id": "animals_044",
+    "category": "animals",
+    "difficulty": "hard",
+    "question": "Which insect group do ladybirds belong to?",
+    "options": [
+      "Beetles",
+      "Wasps",
+      "Flies",
+      "Moths"
+    ],
+    "answer": "Beetles"
+  },
+  {
+    "id": "animals_045",
+    "category": "animals",
+    "difficulty": "medium",
+    "question": "Which animal sleeps up to 20 hours a day and eats eucalyptus?",
+    "options": [
+      "Giraffe",
+      "Dog",
+      "Horse",
+      "Koala"
+    ],
+    "answer": "Koala"
+  },
+  {
+    "id": "animals_046",
+    "category": "animals",
+    "difficulty": "medium",
+    "question": "Which of these mammals lays eggs?",
+    "options": [
+      "Platypus",
+      "Kangaroo",
+      "Koala",
+      "Bat"
+    ],
+    "answer": "Platypus"
+  },
+  {
+    "id": "animals_047",
+    "category": "animals",
+    "difficulty": "medium",
+    "question": "What do we call animals that eat both plants and meat?",
+    "options": [
+      "Herbivores",
+      "Carnivores",
+      "Insectivores",
+      "Omnivores"
+    ],
+    "answer": "Omnivores"
+  },
+  {
+    "id": "animals_048",
+    "category": "animals",
+    "difficulty": "easy",
+    "question": "Which insect makes honey?",
+    "options": [
+      "Ant",
+      "Beetle",
+      "Butterfly",
+      "Bee"
+    ],
+    "answer": "Bee"
+  },
+  {
+    "id": "animals_049",
+    "category": "animals",
+    "difficulty": "easy",
+    "question": "What is the largest bird in the world?",
+    "options": [
+      "Emu",
+      "Ostrich",
+      "Condor",
+      "Swan"
+    ],
+    "answer": "Ostrich"
+  },
+  {
+    "id": "animals_050",
+    "category": "animals",
+    "difficulty": "medium",
+    "question": "How many humps does a Bactrian camel have?",
+    "options": [
+      "One",
+      "Three",
+      "Two",
+      "None"
+    ],
+    "answer": "Two"
+  },
+  {
+    "id": "animals_051",
+    "category": "animals",
+    "difficulty": "easy",
+    "question": "Which colourful bird is famous for copying human speech?",
+    "options": [
+      "Penguin",
+      "Parrot",
+      "Pelican",
+      "Owl"
+    ],
+    "answer": "Parrot"
+  },
+  {
+    "id": "animals_052",
+    "category": "animals",
+    "difficulty": "easy",
+    "question": "Which black-and-white striped animal is related to the horse?",
+    "options": [
+      "Panda",
+      "Zebra",
+      "Badger",
+      "Skunk"
+    ],
+    "answer": "Zebra"
+  },
+  {
+    "id": "animals_053",
+    "category": "animals",
+    "difficulty": "hard",
+    "question": "What is a male swan called?",
+    "options": [
+      "Drake",
+      "Gander",
+      "Tom",
+      "Cob"
+    ],
+    "answer": "Cob"
+  },
+  {
+    "id": "animals_054",
+    "category": "animals",
+    "difficulty": "medium",
+    "question": "Which slow animal spends most of its life hanging in trees?",
+    "options": [
+      "Sloth",
+      "Monkey",
+      "Squirrel",
+      "Parrot"
+    ],
+    "answer": "Sloth"
+  },
+  {
+    "id": "animals_055",
+    "category": "animals",
+    "difficulty": "medium",
+    "question": "Which tiny bird can hover and fly backwards?",
+    "options": [
+      "Swallow",
+      "Sparrow",
+      "Kingfisher",
+      "Hummingbird"
+    ],
+    "answer": "Hummingbird"
+  },
+  {
+    "id": "nature_001",
+    "category": "nature",
+    "difficulty": "medium",
+    "question": "About how many days does Earth take to circle the Sun?",
+    "options": [
+      "About 30",
+      "About 365",
+      "About 100",
+      "About 1,000"
+    ],
+    "answer": "About 365"
+  },
+  {
+    "id": "nature_002",
+    "category": "nature",
+    "difficulty": "medium",
+    "question": "Which planet is the hottest, thanks to its thick blanket of gas?",
+    "options": [
+      "Mercury",
+      "Venus",
+      "Mars",
+      "Jupiter"
+    ],
+    "answer": "Venus"
+  },
+  {
+    "id": "nature_003",
+    "category": "nature",
+    "difficulty": "medium",
+    "question": "Which natural material is the hardest known?",
+    "options": [
+      "Diamond",
+      "Quartz",
+      "Granite",
+      "Iron"
+    ],
+    "answer": "Diamond"
+  },
+  {
+    "id": "nature_004",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "What do we call a pattern of stars, like Orion?",
+    "options": [
+      "Galaxy",
+      "Nebula",
+      "Constellation",
+      "Orbit"
+    ],
+    "answer": "Constellation"
+  },
+  {
+    "id": "nature_005",
+    "category": "nature",
+    "difficulty": "hard",
+    "question": "What are the tiny holes in leaves that let a plant breathe?",
+    "options": [
+      "Stomata",
+      "Veins",
+      "Petioles",
+      "Buds"
+    ],
+    "answer": "Stomata"
+  },
+  {
+    "id": "nature_006",
+    "category": "nature",
+    "difficulty": "medium",
+    "question": "What do we call a seed starting to grow into a plant?",
+    "options": [
+      "Germination",
+      "Pollination",
+      "Erosion",
+      "Migration"
+    ],
+    "answer": "Germination"
+  },
+  {
+    "id": "nature_007",
+    "category": "nature",
+    "difficulty": "medium",
+    "question": "What do we call the blanket of gases around Earth?",
+    "options": [
+      "Biosphere",
+      "Hydrosphere",
+      "Atmosphere",
+      "Lithosphere"
+    ],
+    "answer": "Atmosphere"
+  },
+  {
+    "id": "nature_008",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "What can you count inside a tree trunk to learn its age?",
+    "options": [
+      "Leaves",
+      "Roots",
+      "Growth rings",
+      "Knots"
+    ],
+    "answer": "Growth rings"
+  },
+  {
+    "id": "nature_009",
+    "category": "nature",
+    "difficulty": "medium",
+    "question": "Which gas makes up most of Earth's air?",
+    "options": [
+      "Oxygen",
+      "Carbon dioxide",
+      "Hydrogen",
+      "Nitrogen"
+    ],
+    "answer": "Nitrogen"
+  },
+  {
+    "id": "nature_010",
+    "category": "nature",
+    "difficulty": "medium",
+    "question": "Which is the world's largest hot desert?",
+    "options": [
+      "Gobi",
+      "Kalahari",
+      "Arabian",
+      "Sahara"
+    ],
+    "answer": "Sahara"
+  },
+  {
+    "id": "nature_011",
+    "category": "nature",
+    "difficulty": "medium",
+    "question": "Which rocks form when hot lava cools and hardens?",
+    "options": [
+      "Sedimentary rocks",
+      "Igneous rocks",
+      "Metamorphic rocks",
+      "Fossil rocks"
+    ],
+    "answer": "Igneous rocks"
+  },
+  {
+    "id": "nature_012",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "What flashes in the sky first during a storm, before we hear the thunder?",
+    "options": [
+      "Hail",
+      "Fog",
+      "A rainbow",
+      "Lightning"
+    ],
+    "answer": "Lightning"
+  },
+  {
+    "id": "nature_013",
+    "category": "nature",
+    "difficulty": "medium",
+    "question": "What causes day and night on Earth?",
+    "options": [
+      "The Moon's shadow",
+      "Clouds moving",
+      "The Sun moving around us",
+      "Earth's spin"
+    ],
+    "answer": "Earth's spin"
+  },
+  {
+    "id": "nature_014",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "Which tree drops acorns?",
+    "options": [
+      "Oak",
+      "Pine",
+      "Maple",
+      "Birch"
+    ],
+    "answer": "Oak"
+  },
+  {
+    "id": "nature_015",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "How many planets are in our solar system?",
+    "options": [
+      "Seven",
+      "Eight",
+      "Nine",
+      "Ten"
+    ],
+    "answer": "Eight"
+  },
+  {
+    "id": "nature_016",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "Which dusty yellow powder do bees carry from flower to flower?",
+    "options": [
+      "Salt",
+      "Pollen",
+      "Soot",
+      "Sand"
+    ],
+    "answer": "Pollen"
+  },
+  {
+    "id": "nature_017",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "How many colours are traditionally named in a rainbow?",
+    "options": [
+      "Five",
+      "Six",
+      "Eight",
+      "Seven"
+    ],
+    "answer": "Seven"
+  },
+  {
+    "id": "nature_018",
+    "category": "nature",
+    "difficulty": "hard",
+    "question": "Which is the largest moon of Saturn?",
+    "options": [
+      "Europa",
+      "Triton",
+      "Titan",
+      "Ganymede"
+    ],
+    "answer": "Titan"
+  },
+  {
+    "id": "nature_019",
+    "category": "nature",
+    "difficulty": "hard",
+    "question": "Which planet spins the fastest, with a day of only about 10 hours?",
+    "options": [
+      "Jupiter",
+      "Mercury",
+      "Earth",
+      "Mars"
+    ],
+    "answer": "Jupiter"
+  },
+  {
+    "id": "nature_020",
+    "category": "nature",
+    "difficulty": "medium",
+    "question": "Which planet has a giant storm called the Great Red Spot?",
+    "options": [
+      "Saturn",
+      "Mars",
+      "Neptune",
+      "Jupiter"
+    ],
+    "answer": "Jupiter"
+  },
+  {
+    "id": "nature_021",
+    "category": "nature",
+    "difficulty": "medium",
+    "question": "What gives leaves their green colour?",
+    "options": [
+      "Pollen",
+      "Nectar",
+      "Chlorophyll",
+      "Carotene"
+    ],
+    "answer": "Chlorophyll"
+  },
+  {
+    "id": "nature_022",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "What is the name of the galaxy our solar system is in?",
+    "options": [
+      "Milky Way",
+      "Andromeda",
+      "Whirlpool",
+      "Pinwheel"
+    ],
+    "answer": "Milky Way"
+  },
+  {
+    "id": "nature_023",
+    "category": "nature",
+    "difficulty": "hard",
+    "question": "Which dwarf planet lives in the asteroid belt?",
+    "options": [
+      "Pluto",
+      "Eris",
+      "Ceres",
+      "Haumea"
+    ],
+    "answer": "Ceres"
+  },
+  {
+    "id": "nature_024",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "What orbits the Earth about once a month?",
+    "options": [
+      "The Sun",
+      "Mars",
+      "The Moon",
+      "A comet"
+    ],
+    "answer": "The Moon"
+  },
+  {
+    "id": "nature_025",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "What do we call a fast-spinning funnel of wind?",
+    "options": [
+      "Tornado",
+      "Breeze",
+      "Drizzle",
+      "Fog"
+    ],
+    "answer": "Tornado"
+  },
+  {
+    "id": "nature_026",
+    "category": "nature",
+    "difficulty": "medium",
+    "question": "What do plants take in from the air to make their food?",
+    "options": [
+      "Oxygen",
+      "Nitrogen",
+      "Helium",
+      "Carbon dioxide"
+    ],
+    "answer": "Carbon dioxide"
+  },
+  {
+    "id": "nature_027",
+    "category": "nature",
+    "difficulty": "hard",
+    "question": "What was the giant supercontinent that broke apart about 200 million years ago?",
+    "options": [
+      "Atlantis",
+      "Eurasia",
+      "Oceania",
+      "Pangaea"
+    ],
+    "answer": "Pangaea"
+  },
+  {
+    "id": "nature_028",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "Which planet is famous for its bright rings?",
+    "options": [
+      "Mars",
+      "Saturn",
+      "Venus",
+      "Mercury"
+    ],
+    "answer": "Saturn"
+  },
+  {
+    "id": "nature_029",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "What is the closest star to Earth?",
+    "options": [
+      "The Sun",
+      "Polaris",
+      "Sirius",
+      "Vega"
+    ],
+    "answer": "The Sun"
+  },
+  {
+    "id": "nature_030",
+    "category": "nature",
+    "difficulty": "medium",
+    "question": "Which type of cloud brings thunderstorms?",
+    "options": [
+      "Cirrus",
+      "Cumulonimbus",
+      "Stratus",
+      "Altocumulus"
+    ],
+    "answer": "Cumulonimbus"
+  },
+  {
+    "id": "nature_031",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "Which is the biggest planet in our solar system?",
+    "options": [
+      "Saturn",
+      "Neptune",
+      "Earth",
+      "Jupiter"
+    ],
+    "answer": "Jupiter"
+  },
+  {
+    "id": "nature_032",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "What is the rough outer covering of a tree trunk called?",
+    "options": [
+      "Peel",
+      "Rind",
+      "Husk",
+      "Bark"
+    ],
+    "answer": "Bark"
+  },
+  {
+    "id": "nature_033",
+    "category": "nature",
+    "difficulty": "medium",
+    "question": "Which planet spins tilted on its side?",
+    "options": [
+      "Neptune",
+      "Uranus",
+      "Saturn",
+      "Mars"
+    ],
+    "answer": "Uranus"
+  },
+  {
+    "id": "nature_034",
+    "category": "nature",
+    "difficulty": "medium",
+    "question": "What is a plant's way of making food from sunlight called?",
+    "options": [
+      "Pollination",
+      "Germination",
+      "Photosynthesis",
+      "Respiration"
+    ],
+    "answer": "Photosynthesis"
+  },
+  {
+    "id": "nature_035",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "Which planet is known as the Red Planet?",
+    "options": [
+      "Venus",
+      "Mars",
+      "Jupiter",
+      "Mercury"
+    ],
+    "answer": "Mars"
+  },
+  {
+    "id": "nature_036",
+    "category": "nature",
+    "difficulty": "medium",
+    "question": "How long does sunlight take to reach Earth?",
+    "options": [
+      "About 8 minutes",
+      "About 8 seconds",
+      "About 8 hours",
+      "About 8 days"
+    ],
+    "answer": "About 8 minutes"
+  },
+  {
+    "id": "nature_037",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "Which tree has needles and grows cones?",
+    "options": [
+      "Pine",
+      "Oak",
+      "Maple",
+      "Willow"
+    ],
+    "answer": "Pine"
+  },
+  {
+    "id": "nature_038",
+    "category": "nature",
+    "difficulty": "medium",
+    "question": "Which planet is closest to Earth in size?",
+    "options": [
+      "Mars",
+      "Mercury",
+      "Venus",
+      "Neptune"
+    ],
+    "answer": "Venus"
+  },
+  {
+    "id": "nature_039",
+    "category": "nature",
+    "difficulty": "hard",
+    "question": "Which planet takes about 165 Earth years to orbit the Sun?",
+    "options": [
+      "Uranus",
+      "Saturn",
+      "Jupiter",
+      "Neptune"
+    ],
+    "answer": "Neptune"
+  },
+  {
+    "id": "nature_040",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "What is the name for the calm centre of a hurricane?",
+    "options": [
+      "Eye",
+      "Heart",
+      "Mouth",
+      "Nose"
+    ],
+    "answer": "Eye"
+  },
+  {
+    "id": "nature_041",
+    "category": "nature",
+    "difficulty": "hard",
+    "question": "Which scale has long been used to measure the strength of earthquakes?",
+    "options": [
+      "Beaufort scale",
+      "Mohs scale",
+      "Kelvin scale",
+      "Richter scale"
+    ],
+    "answer": "Richter scale"
+  },
+  {
+    "id": "nature_042",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "What do we call a huge river of ice that creeps down a mountain?",
+    "options": [
+      "Glacier",
+      "Iceberg",
+      "Avalanche",
+      "Blizzard"
+    ],
+    "answer": "Glacier"
+  },
+  {
+    "id": "nature_043",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "What do we call a mountain that can erupt with lava?",
+    "options": [
+      "Glacier",
+      "Canyon",
+      "Dune",
+      "Volcano"
+    ],
+    "answer": "Volcano"
+  },
+  {
+    "id": "nature_044",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "Which planet is closest to the Sun?",
+    "options": [
+      "Venus",
+      "Mercury",
+      "Earth",
+      "Mars"
+    ],
+    "answer": "Mercury"
+  },
+  {
+    "id": "nature_045",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "In which season do many trees turn orange and drop their leaves?",
+    "options": [
+      "Spring",
+      "Autumn",
+      "Summer",
+      "Winter"
+    ],
+    "answer": "Autumn"
+  },
+  {
+    "id": "nature_046",
+    "category": "nature",
+    "difficulty": "hard",
+    "question": "What kind of star is our Sun?",
+    "options": [
+      "Red giant",
+      "White dwarf",
+      "Neutron star",
+      "Yellow dwarf"
+    ],
+    "answer": "Yellow dwarf"
+  },
+  {
+    "id": "nature_047",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "What do we call frozen rain that falls as small balls of ice?",
+    "options": [
+      "Mist",
+      "Hail",
+      "Dew",
+      "Frost"
+    ],
+    "answer": "Hail"
+  },
+  {
+    "id": "nature_048",
+    "category": "nature",
+    "difficulty": "hard",
+    "question": "Which tree species is the tallest in the world?",
+    "options": [
+      "Baobab",
+      "Oak",
+      "Coast redwood",
+      "Birch"
+    ],
+    "answer": "Coast redwood"
+  },
+  {
+    "id": "nature_049",
+    "category": "nature",
+    "difficulty": "medium",
+    "question": "What do we call the bright streak made by a space rock burning up in our sky?",
+    "options": [
+      "Asteroid",
+      "Comet",
+      "Meteor",
+      "Satellite"
+    ],
+    "answer": "Meteor"
+  },
+  {
+    "id": "nature_050",
+    "category": "nature",
+    "difficulty": "hard",
+    "question": "Which planet's name does not come from a Greek or Roman god?",
+    "options": [
+      "Venus",
+      "Earth",
+      "Saturn",
+      "Mercury"
+    ],
+    "answer": "Earth"
+  },
+  {
+    "id": "nature_051",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "Which part of a plant takes in water from the soil?",
+    "options": [
+      "Leaves",
+      "Roots",
+      "Petals",
+      "Seeds"
+    ],
+    "answer": "Roots"
+  },
+  {
+    "id": "nature_052",
+    "category": "nature",
+    "difficulty": "medium",
+    "question": "What does the tilt of Earth's axis give us?",
+    "options": [
+      "Tides",
+      "Volcanoes",
+      "The seasons",
+      "Earthquakes"
+    ],
+    "answer": "The seasons"
+  },
+  {
+    "id": "nature_053",
+    "category": "nature",
+    "difficulty": "hard",
+    "question": "Which scale rates wind strength from calm to hurricane force?",
+    "options": [
+      "Beaufort scale",
+      "Richter scale",
+      "Mohs scale",
+      "Kelvin scale"
+    ],
+    "answer": "Beaufort scale"
+  },
+  {
+    "id": "nature_054",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "On which layer of the Earth do we live?",
+    "options": [
+      "Crust",
+      "Mantle",
+      "Outer core",
+      "Inner core"
+    ],
+    "answer": "Crust"
+  },
+  {
+    "id": "nature_055",
+    "category": "nature",
+    "difficulty": "easy",
+    "question": "What do we call a long period with very little rain?",
+    "options": [
+      "Flood",
+      "Blizzard",
+      "Drought",
+      "Monsoon"
+    ],
+    "answer": "Drought"
+  },
+  {
+    "id": "nature_056",
+    "category": "nature",
+    "difficulty": "medium",
+    "question": "What is the Sun mostly made of?",
+    "options": [
+      "Oxygen",
+      "Iron",
+      "Hydrogen",
+      "Carbon"
+    ],
+    "answer": "Hydrogen"
+  },
+  {
+    "id": "science_001",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "What is the chemical symbol for gold?",
+    "options": [
+      "Ag",
+      "Go",
+      "Au",
+      "Gd"
+    ],
+    "answer": "Au"
+  },
+  {
+    "id": "science_002",
+    "category": "science",
+    "difficulty": "easy",
+    "question": "Which unit measures length?",
+    "options": [
+      "Litre",
+      "Metre",
+      "Gram",
+      "Second"
+    ],
+    "answer": "Metre"
+  },
+  {
+    "id": "science_003",
+    "category": "science",
+    "difficulty": "easy",
+    "question": "Which metal is strongly attracted to a magnet?",
+    "options": [
+      "Iron",
+      "Gold",
+      "Copper",
+      "Aluminium"
+    ],
+    "answer": "Iron"
+  },
+  {
+    "id": "science_004",
+    "category": "science",
+    "difficulty": "easy",
+    "question": "What is the biggest organ of the human body?",
+    "options": [
+      "Skin",
+      "Liver",
+      "Brain",
+      "Heart"
+    ],
+    "answer": "Skin"
+  },
+  {
+    "id": "science_005",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "What is it called when water vapour cools into liquid drops?",
+    "options": [
+      "Condensation",
+      "Evaporation",
+      "Erosion",
+      "Combustion"
+    ],
+    "answer": "Condensation"
+  },
+  {
+    "id": "science_006",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "Which black opening in the middle of the eye lets light in?",
+    "options": [
+      "Pupil",
+      "Retina",
+      "Eyelash",
+      "Eyebrow"
+    ],
+    "answer": "Pupil"
+  },
+  {
+    "id": "science_007",
+    "category": "science",
+    "difficulty": "hard",
+    "question": "What do we call the bending of light as it passes through water or glass?",
+    "options": [
+      "Reflection",
+      "Erosion",
+      "Refraction",
+      "Friction"
+    ],
+    "answer": "Refraction"
+  },
+  {
+    "id": "science_008",
+    "category": "science",
+    "difficulty": "easy",
+    "question": "How many chambers does the human heart have?",
+    "options": [
+      "Four",
+      "Two",
+      "Three",
+      "Six"
+    ],
+    "answer": "Four"
+  },
+  {
+    "id": "science_009",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "What is the centre of an atom called?",
+    "options": [
+      "Electron",
+      "Orbit",
+      "Nucleus",
+      "Shell"
+    ],
+    "answer": "Nucleus"
+  },
+  {
+    "id": "science_010",
+    "category": "science",
+    "difficulty": "hard",
+    "question": "What do we call a substance with a pH lower than 7?",
+    "options": [
+      "Acid",
+      "Base",
+      "Salt",
+      "Neutral"
+    ],
+    "answer": "Acid"
+  },
+  {
+    "id": "science_011",
+    "category": "science",
+    "difficulty": "hard",
+    "question": "What is the chemical symbol for sodium?",
+    "options": [
+      "So",
+      "Sd",
+      "S",
+      "Na"
+    ],
+    "answer": "Na"
+  },
+  {
+    "id": "science_012",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "What is the hardest substance in the human body?",
+    "options": [
+      "Bone",
+      "Fingernail",
+      "Tooth enamel",
+      "Skull"
+    ],
+    "answer": "Tooth enamel"
+  },
+  {
+    "id": "science_013",
+    "category": "science",
+    "difficulty": "hard",
+    "question": "In the binary number system, how is 1 + 1 written?",
+    "options": [
+      "10",
+      "2",
+      "11",
+      "0"
+    ],
+    "answer": "10"
+  },
+  {
+    "id": "science_014",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "Which of these numbers is a prime number?",
+    "options": [
+      "15",
+      "21",
+      "13",
+      "27"
+    ],
+    "answer": "13"
+  },
+  {
+    "id": "science_015",
+    "category": "science",
+    "difficulty": "easy",
+    "question": "At what temperature does water boil at sea level?",
+    "options": [
+      "80 degrees Celsius",
+      "50 degrees Celsius",
+      "120 degrees Celsius",
+      "100 degrees Celsius"
+    ],
+    "answer": "100 degrees Celsius"
+  },
+  {
+    "id": "science_016",
+    "category": "science",
+    "difficulty": "hard",
+    "question": "Which organ makes the hormone insulin?",
+    "options": [
+      "Liver",
+      "Kidney",
+      "Pancreas",
+      "Spleen"
+    ],
+    "answer": "Pancreas"
+  },
+  {
+    "id": "science_017",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "How many degrees do the angles inside a triangle add up to?",
+    "options": [
+      "90",
+      "360",
+      "270",
+      "180"
+    ],
+    "answer": "180"
+  },
+  {
+    "id": "science_018",
+    "category": "science",
+    "difficulty": "easy",
+    "question": "How many traditional senses do humans have?",
+    "options": [
+      "Three",
+      "Seven",
+      "Five",
+      "Nine"
+    ],
+    "answer": "Five"
+  },
+  {
+    "id": "science_019",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "What are the tiny building blocks of living things called?",
+    "options": [
+      "Cells",
+      "Crystals",
+      "Magnets",
+      "Grains"
+    ],
+    "answer": "Cells"
+  },
+  {
+    "id": "science_020",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "Which value is pi, rounded to two decimal places?",
+    "options": [
+      "3.41",
+      "3.14",
+      "2.71",
+      "3.00"
+    ],
+    "answer": "3.14"
+  },
+  {
+    "id": "science_021",
+    "category": "science",
+    "difficulty": "easy",
+    "question": "What do we call a scientist who studies animals?",
+    "options": [
+      "Botanist",
+      "Geologist",
+      "Zoologist",
+      "Chemist"
+    ],
+    "answer": "Zoologist"
+  },
+  {
+    "id": "science_022",
+    "category": "science",
+    "difficulty": "easy",
+    "question": "What is the chemical formula for water?",
+    "options": [
+      "CO2",
+      "O2",
+      "NaCl",
+      "H2O"
+    ],
+    "answer": "H2O"
+  },
+  {
+    "id": "science_023",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "Which part of the cell is its powerhouse that makes energy?",
+    "options": [
+      "Nucleus",
+      "Ribosome",
+      "Mitochondria",
+      "Membrane"
+    ],
+    "answer": "Mitochondria"
+  },
+  {
+    "id": "science_024",
+    "category": "science",
+    "difficulty": "easy",
+    "question": "Which organ is the control centre for thinking?",
+    "options": [
+      "Heart",
+      "Liver",
+      "Brain",
+      "Spine"
+    ],
+    "answer": "Brain"
+  },
+  {
+    "id": "science_025",
+    "category": "science",
+    "difficulty": "easy",
+    "question": "What do we call water when it freezes solid?",
+    "options": [
+      "Steam",
+      "Ice",
+      "Vapour",
+      "Dew"
+    ],
+    "answer": "Ice"
+  },
+  {
+    "id": "science_026",
+    "category": "science",
+    "difficulty": "easy",
+    "question": "At what temperature does water freeze?",
+    "options": [
+      "10 degrees Celsius",
+      "32 degrees Celsius",
+      "100 degrees Celsius",
+      "0 degrees Celsius"
+    ],
+    "answer": "0 degrees Celsius"
+  },
+  {
+    "id": "science_027",
+    "category": "science",
+    "difficulty": "easy",
+    "question": "Which gas in the air do we need to stay alive?",
+    "options": [
+      "Helium",
+      "Hydrogen",
+      "Argon",
+      "Oxygen"
+    ],
+    "answer": "Oxygen"
+  },
+  {
+    "id": "science_028",
+    "category": "science",
+    "difficulty": "easy",
+    "question": "How many sides does an octagon have?",
+    "options": [
+      "Six",
+      "Seven",
+      "Nine",
+      "Eight"
+    ],
+    "answer": "Eight"
+  },
+  {
+    "id": "science_029",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "Which blood cells help fight germs?",
+    "options": [
+      "Red blood cells",
+      "White blood cells",
+      "Platelets",
+      "Plasma"
+    ],
+    "answer": "White blood cells"
+  },
+  {
+    "id": "science_030",
+    "category": "science",
+    "difficulty": "hard",
+    "question": "What is the SI unit of force?",
+    "options": [
+      "Newton",
+      "Joule",
+      "Watt",
+      "Pascal"
+    ],
+    "answer": "Newton"
+  },
+  {
+    "id": "science_031",
+    "category": "science",
+    "difficulty": "easy",
+    "question": "What is seven times eight?",
+    "options": [
+      "54",
+      "56",
+      "48",
+      "64"
+    ],
+    "answer": "56"
+  },
+  {
+    "id": "science_032",
+    "category": "science",
+    "difficulty": "easy",
+    "question": "What is the square root of 81?",
+    "options": [
+      "8",
+      "9",
+      "7",
+      "11"
+    ],
+    "answer": "9"
+  },
+  {
+    "id": "science_033",
+    "category": "science",
+    "difficulty": "hard",
+    "question": "What is the chemical symbol for iron?",
+    "options": [
+      "Ir",
+      "Fe",
+      "In",
+      "I"
+    ],
+    "answer": "Fe"
+  },
+  {
+    "id": "science_034",
+    "category": "science",
+    "difficulty": "easy",
+    "question": "What is half of 250?",
+    "options": [
+      "120",
+      "125",
+      "150",
+      "100"
+    ],
+    "answer": "125"
+  },
+  {
+    "id": "science_035",
+    "category": "science",
+    "difficulty": "easy",
+    "question": "What colour do you get by mixing blue and yellow paint?",
+    "options": [
+      "Purple",
+      "Orange",
+      "Brown",
+      "Green"
+    ],
+    "answer": "Green"
+  },
+  {
+    "id": "science_036",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "The four angles of a square add up to how many degrees?",
+    "options": [
+      "180",
+      "270",
+      "540",
+      "360"
+    ],
+    "answer": "360"
+  },
+  {
+    "id": "science_037",
+    "category": "science",
+    "difficulty": "hard",
+    "question": "Which part of the blood helps it clot?",
+    "options": [
+      "White blood cells",
+      "Red blood cells",
+      "Bone marrow",
+      "Platelets"
+    ],
+    "answer": "Platelets"
+  },
+  {
+    "id": "science_038",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "What is the energy of movement called?",
+    "options": [
+      "Potential energy",
+      "Kinetic energy",
+      "Thermal energy",
+      "Nuclear energy"
+    ],
+    "answer": "Kinetic energy"
+  },
+  {
+    "id": "science_039",
+    "category": "science",
+    "difficulty": "easy",
+    "question": "Which shape has four equal sides and four right angles?",
+    "options": [
+      "Square",
+      "Rectangle",
+      "Rhombus",
+      "Trapezoid"
+    ],
+    "answer": "Square"
+  },
+  {
+    "id": "science_040",
+    "category": "science",
+    "difficulty": "hard",
+    "question": "About how fast does light travel?",
+    "options": [
+      "3,000 km per second",
+      "300,000 km per second",
+      "30,000 km per second",
+      "3,000,000 km per second"
+    ],
+    "answer": "300,000 km per second"
+  },
+  {
+    "id": "science_041",
+    "category": "science",
+    "difficulty": "hard",
+    "question": "Which tiny particle in an atom has a negative charge?",
+    "options": [
+      "Proton",
+      "Electron",
+      "Neutron",
+      "Photon"
+    ],
+    "answer": "Electron"
+  },
+  {
+    "id": "science_042",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "Which vitamin can our skin make from sunlight?",
+    "options": [
+      "Vitamin C",
+      "Vitamin A",
+      "Vitamin K",
+      "Vitamin D"
+    ],
+    "answer": "Vitamin D"
+  },
+  {
+    "id": "science_043",
+    "category": "science",
+    "difficulty": "easy",
+    "question": "What is it called when liquid water turns into vapour?",
+    "options": [
+      "Evaporation",
+      "Condensation",
+      "Freezing",
+      "Melting"
+    ],
+    "answer": "Evaporation"
+  },
+  {
+    "id": "science_044",
+    "category": "science",
+    "difficulty": "easy",
+    "question": "Steam is water in which state of matter?",
+    "options": [
+      "Solid",
+      "Gas",
+      "Liquid",
+      "Plasma"
+    ],
+    "answer": "Gas"
+  },
+  {
+    "id": "science_045",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "What is the chemical formula for table salt?",
+    "options": [
+      "KCl",
+      "NaCl",
+      "H2O",
+      "CO2"
+    ],
+    "answer": "NaCl"
+  },
+  {
+    "id": "science_046",
+    "category": "science",
+    "difficulty": "easy",
+    "question": "Which organs do we use to breathe?",
+    "options": [
+      "Lungs",
+      "Kidneys",
+      "Stomach",
+      "Liver"
+    ],
+    "answer": "Lungs"
+  },
+  {
+    "id": "science_047",
+    "category": "science",
+    "difficulty": "easy",
+    "question": "What does a thermometer measure?",
+    "options": [
+      "Weight",
+      "Speed",
+      "Temperature",
+      "Time"
+    ],
+    "answer": "Temperature"
+  },
+  {
+    "id": "science_048",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "How many teeth are in a full adult set?",
+    "options": [
+      "20",
+      "28",
+      "36",
+      "32"
+    ],
+    "answer": "32"
+  },
+  {
+    "id": "science_049",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "Which is the lightest gas of all?",
+    "options": [
+      "Helium",
+      "Oxygen",
+      "Hydrogen",
+      "Nitrogen"
+    ],
+    "answer": "Hydrogen"
+  },
+  {
+    "id": "science_050",
+    "category": "science",
+    "difficulty": "hard",
+    "question": "What is the unit of electric current?",
+    "options": [
+      "Volt",
+      "Ohm",
+      "Watt",
+      "Ampere"
+    ],
+    "answer": "Ampere"
+  },
+  {
+    "id": "science_051",
+    "category": "science",
+    "difficulty": "easy",
+    "question": "What is 12 times 12?",
+    "options": [
+      "124",
+      "144",
+      "122",
+      "164"
+    ],
+    "answer": "144"
+  },
+  {
+    "id": "science_052",
+    "category": "science",
+    "difficulty": "easy",
+    "question": "Which force keeps our feet on the ground?",
+    "options": [
+      "Gravity",
+      "Magnetism",
+      "Friction",
+      "Wind"
+    ],
+    "answer": "Gravity"
+  },
+  {
+    "id": "science_053",
+    "category": "science",
+    "difficulty": "easy",
+    "question": "Which organ pumps blood around the body?",
+    "options": [
+      "Lungs",
+      "Liver",
+      "Heart",
+      "Stomach"
+    ],
+    "answer": "Heart"
+  },
+  {
+    "id": "science_054",
+    "category": "science",
+    "difficulty": "easy",
+    "question": "What do we call a scientist who studies plants?",
+    "options": [
+      "Botanist",
+      "Zoologist",
+      "Geologist",
+      "Chemist"
+    ],
+    "answer": "Botanist"
+  },
+  {
+    "id": "science_055",
+    "category": "science",
+    "difficulty": "hard",
+    "question": "What is the longest bone in the human body?",
+    "options": [
+      "Tibia",
+      "Humerus",
+      "Fibula",
+      "Femur"
+    ],
+    "answer": "Femur"
+  },
+  {
+    "id": "science_056",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "At what temperature in Fahrenheit does water freeze?",
+    "options": [
+      "0",
+      "100",
+      "32",
+      "212"
+    ],
+    "answer": "32"
+  },
+  {
+    "id": "science_057",
+    "category": "science",
+    "difficulty": "easy",
+    "question": "Which tool shows direction using Earth's magnetism?",
+    "options": [
+      "Telescope",
+      "Compass",
+      "Barometer",
+      "Microscope"
+    ],
+    "answer": "Compass"
+  },
+  {
+    "id": "science_058",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "Which metal is liquid at room temperature?",
+    "options": [
+      "Iron",
+      "Lead",
+      "Silver",
+      "Mercury"
+    ],
+    "answer": "Mercury"
+  },
+  {
+    "id": "science_059",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "What do red blood cells carry around the body?",
+    "options": [
+      "Calcium",
+      "Vitamin C",
+      "Oxygen",
+      "Fat"
+    ],
+    "answer": "Oxygen"
+  },
+  {
+    "id": "science_060",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "Which pair of organs filters waste from our blood?",
+    "options": [
+      "Lungs",
+      "Kidneys",
+      "Tonsils",
+      "Ribs"
+    ],
+    "answer": "Kidneys"
+  },
+  {
+    "id": "science_061",
+    "category": "science",
+    "difficulty": "hard",
+    "question": "What is the smallest bone in the human body?",
+    "options": [
+      "Stapes",
+      "Radius",
+      "Patella",
+      "Clavicle"
+    ],
+    "answer": "Stapes"
+  },
+  {
+    "id": "science_062",
+    "category": "science",
+    "difficulty": "medium",
+    "question": "Which gas do we breathe out more of than we breathe in?",
+    "options": [
+      "Oxygen",
+      "Helium",
+      "Neon",
+      "Carbon dioxide"
+    ],
+    "answer": "Carbon dioxide"
+  },
+  {
+    "id": "science_063",
+    "category": "science",
+    "difficulty": "easy",
+    "question": "How many sides does a hexagon have?",
+    "options": [
+      "Six",
+      "Five",
+      "Seven",
+      "Eight"
+    ],
+    "answer": "Six"
+  },
+  {
+    "id": "science_064",
+    "category": "science",
+    "difficulty": "easy",
+    "question": "How many bones does an adult human body have?",
+    "options": [
+      "106",
+      "306",
+      "206",
+      "150"
+    ],
+    "answer": "206"
+  },
+  {
+    "id": "geography_001",
+    "category": "geography",
+    "difficulty": "hard",
+    "question": "Which is the highest mountain in South America?",
+    "options": [
+      "Chimborazo",
+      "Aconcagua",
+      "Huascaran",
+      "Cotopaxi"
+    ],
+    "answer": "Aconcagua"
+  },
+  {
+    "id": "geography_002",
+    "category": "geography",
+    "difficulty": "hard",
+    "question": "Which is the highest waterfall in the world?",
+    "options": [
+      "Niagara Falls",
+      "Victoria Falls",
+      "Iguazu Falls",
+      "Angel Falls"
+    ],
+    "answer": "Angel Falls"
+  },
+  {
+    "id": "geography_003",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "What is the capital of Mexico?",
+    "options": [
+      "Cancun",
+      "Mexico City",
+      "Guadalajara",
+      "Acapulco"
+    ],
+    "answer": "Mexico City"
+  },
+  {
+    "id": "geography_004",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "What is the capital of Brazil?",
+    "options": [
+      "Rio de Janeiro",
+      "Sao Paulo",
+      "Brasilia",
+      "Salvador"
+    ],
+    "answer": "Brasilia"
+  },
+  {
+    "id": "geography_005",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "What is the capital of Kenya?",
+    "options": [
+      "Nairobi",
+      "Mombasa",
+      "Kampala",
+      "Addis Ababa"
+    ],
+    "answer": "Nairobi"
+  },
+  {
+    "id": "geography_006",
+    "category": "geography",
+    "difficulty": "hard",
+    "question": "Which is the deepest lake in the world?",
+    "options": [
+      "Lake Superior",
+      "Lake Victoria",
+      "Lake Baikal",
+      "Lake Titicaca"
+    ],
+    "answer": "Lake Baikal"
+  },
+  {
+    "id": "geography_007",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "What is the capital of Egypt?",
+    "options": [
+      "Cairo",
+      "Alexandria",
+      "Luxor",
+      "Giza"
+    ],
+    "answer": "Cairo"
+  },
+  {
+    "id": "geography_008",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "In which sea can you float easily because the water is so salty?",
+    "options": [
+      "Red Sea",
+      "Black Sea",
+      "Dead Sea",
+      "Baltic Sea"
+    ],
+    "answer": "Dead Sea"
+  },
+  {
+    "id": "geography_009",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "What is the capital of Portugal?",
+    "options": [
+      "Porto",
+      "Lisbon",
+      "Madrid",
+      "Faro"
+    ],
+    "answer": "Lisbon"
+  },
+  {
+    "id": "geography_010",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "What is the smallest country in the world?",
+    "options": [
+      "Monaco",
+      "San Marino",
+      "Vatican City",
+      "Liechtenstein"
+    ],
+    "answer": "Vatican City"
+  },
+  {
+    "id": "geography_011",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "What is the capital of Austria?",
+    "options": [
+      "Salzburg",
+      "Graz",
+      "Innsbruck",
+      "Vienna"
+    ],
+    "answer": "Vienna"
+  },
+  {
+    "id": "geography_012",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "What is the capital of Argentina?",
+    "options": [
+      "Santiago",
+      "Lima",
+      "Montevideo",
+      "Buenos Aires"
+    ],
+    "answer": "Buenos Aires"
+  },
+  {
+    "id": "geography_013",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "In which country is Machu Picchu?",
+    "options": [
+      "Peru",
+      "Chile",
+      "Mexico",
+      "Bolivia"
+    ],
+    "answer": "Peru"
+  },
+  {
+    "id": "geography_014",
+    "category": "geography",
+    "difficulty": "hard",
+    "question": "Which is the longest river in Europe?",
+    "options": [
+      "Volga",
+      "Danube",
+      "Rhine",
+      "Seine"
+    ],
+    "answer": "Volga"
+  },
+  {
+    "id": "geography_015",
+    "category": "geography",
+    "difficulty": "hard",
+    "question": "What is the capital of New Zealand?",
+    "options": [
+      "Auckland",
+      "Christchurch",
+      "Hamilton",
+      "Wellington"
+    ],
+    "answer": "Wellington"
+  },
+  {
+    "id": "geography_016",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "What is the capital of the United Kingdom?",
+    "options": [
+      "London",
+      "Manchester",
+      "Edinburgh",
+      "Dublin"
+    ],
+    "answer": "London"
+  },
+  {
+    "id": "geography_017",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "Which river flows through Egypt and into the Mediterranean Sea?",
+    "options": [
+      "Amazon",
+      "Nile",
+      "Danube",
+      "Ganges"
+    ],
+    "answer": "Nile"
+  },
+  {
+    "id": "geography_018",
+    "category": "geography",
+    "difficulty": "hard",
+    "question": "Which country has the most lakes in the world?",
+    "options": [
+      "Russia",
+      "Canada",
+      "Finland",
+      "Sweden"
+    ],
+    "answer": "Canada"
+  },
+  {
+    "id": "geography_019",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "Which country is made up of over 17,000 islands?",
+    "options": [
+      "Indonesia",
+      "Philippines",
+      "Japan",
+      "Malaysia"
+    ],
+    "answer": "Indonesia"
+  },
+  {
+    "id": "geography_020",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "What is the capital of India?",
+    "options": [
+      "Mumbai",
+      "Kolkata",
+      "New Delhi",
+      "Chennai"
+    ],
+    "answer": "New Delhi"
+  },
+  {
+    "id": "geography_021",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "Which country is shaped like a boot?",
+    "options": [
+      "Spain",
+      "Greece",
+      "Portugal",
+      "Italy"
+    ],
+    "answer": "Italy"
+  },
+  {
+    "id": "geography_022",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "In which country is the city of Istanbul?",
+    "options": [
+      "Greece",
+      "Turkey",
+      "Egypt",
+      "Iran"
+    ],
+    "answer": "Turkey"
+  },
+  {
+    "id": "geography_023",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "Which mountain is the highest above sea level?",
+    "options": [
+      "K2",
+      "Mount Everest",
+      "Kilimanjaro",
+      "Mont Blanc"
+    ],
+    "answer": "Mount Everest"
+  },
+  {
+    "id": "geography_024",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "On which continent do you find the Sahara Desert?",
+    "options": [
+      "Asia",
+      "Australia",
+      "South America",
+      "Africa"
+    ],
+    "answer": "Africa"
+  },
+  {
+    "id": "geography_025",
+    "category": "geography",
+    "difficulty": "hard",
+    "question": "What is the capital of Switzerland?",
+    "options": [
+      "Bern",
+      "Zurich",
+      "Geneva",
+      "Basel"
+    ],
+    "answer": "Bern"
+  },
+  {
+    "id": "geography_026",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "Which is the largest continent?",
+    "options": [
+      "Africa",
+      "Asia",
+      "North America",
+      "Europe"
+    ],
+    "answer": "Asia"
+  },
+  {
+    "id": "geography_027",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "Which is the largest lake in Africa by area?",
+    "options": [
+      "Lake Victoria",
+      "Lake Chad",
+      "Lake Tanganyika",
+      "Lake Malawi"
+    ],
+    "answer": "Lake Victoria"
+  },
+  {
+    "id": "geography_028",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "What is the capital of Greece?",
+    "options": [
+      "Athens",
+      "Sparta",
+      "Thessaloniki",
+      "Corinth"
+    ],
+    "answer": "Athens"
+  },
+  {
+    "id": "geography_029",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "Which two countries share Niagara Falls?",
+    "options": [
+      "Brazil and Argentina",
+      "Mexico and USA",
+      "Canada and Mexico",
+      "Canada and USA"
+    ],
+    "answer": "Canada and USA"
+  },
+  {
+    "id": "geography_030",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "What is the capital of Japan?",
+    "options": [
+      "Osaka",
+      "Tokyo",
+      "Kyoto",
+      "Seoul"
+    ],
+    "answer": "Tokyo"
+  },
+  {
+    "id": "geography_031",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "Which country is nicknamed the Land of the Rising Sun?",
+    "options": [
+      "China",
+      "India",
+      "Vietnam",
+      "Japan"
+    ],
+    "answer": "Japan"
+  },
+  {
+    "id": "geography_032",
+    "category": "geography",
+    "difficulty": "hard",
+    "question": "What is the capital of Vietnam?",
+    "options": [
+      "Ho Chi Minh City",
+      "Da Nang",
+      "Hue",
+      "Hanoi"
+    ],
+    "answer": "Hanoi"
+  },
+  {
+    "id": "geography_033",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "Which sea lies between southern Europe and North Africa?",
+    "options": [
+      "Mediterranean Sea",
+      "Black Sea",
+      "Red Sea",
+      "Baltic Sea"
+    ],
+    "answer": "Mediterranean Sea"
+  },
+  {
+    "id": "geography_034",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "Which Italian city is built on over 100 small islands and has canals for streets?",
+    "options": [
+      "Venice",
+      "Naples",
+      "Florence",
+      "Genoa"
+    ],
+    "answer": "Venice"
+  },
+  {
+    "id": "geography_035",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "Which ocean lies between Europe and North America?",
+    "options": [
+      "Pacific Ocean",
+      "Indian Ocean",
+      "Atlantic Ocean",
+      "Arctic Ocean"
+    ],
+    "answer": "Atlantic Ocean"
+  },
+  {
+    "id": "geography_036",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "What is the capital of Italy?",
+    "options": [
+      "Milan",
+      "Venice",
+      "Rome",
+      "Naples"
+    ],
+    "answer": "Rome"
+  },
+  {
+    "id": "geography_037",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "In which country would you walk along the Great Wall?",
+    "options": [
+      "Japan",
+      "India",
+      "China",
+      "Mongolia"
+    ],
+    "answer": "China"
+  },
+  {
+    "id": "geography_038",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "Which is the world's largest island?",
+    "options": [
+      "Iceland",
+      "Madagascar",
+      "Greenland",
+      "Borneo"
+    ],
+    "answer": "Greenland"
+  },
+  {
+    "id": "geography_039",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "What is the capital of Spain?",
+    "options": [
+      "Barcelona",
+      "Madrid",
+      "Seville",
+      "Lisbon"
+    ],
+    "answer": "Madrid"
+  },
+  {
+    "id": "geography_040",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "On which continent is Brazil?",
+    "options": [
+      "Africa",
+      "South America",
+      "Asia",
+      "Europe"
+    ],
+    "answer": "South America"
+  },
+  {
+    "id": "geography_041",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "What is the tallest mountain in Africa?",
+    "options": [
+      "Mount Kilimanjaro",
+      "Mount Kenya",
+      "Mount Elbrus",
+      "Mont Blanc"
+    ],
+    "answer": "Mount Kilimanjaro"
+  },
+  {
+    "id": "geography_042",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "Which ocean does the Amazon River flow into?",
+    "options": [
+      "Atlantic Ocean",
+      "Pacific Ocean",
+      "Indian Ocean",
+      "Arctic Ocean"
+    ],
+    "answer": "Atlantic Ocean"
+  },
+  {
+    "id": "geography_043",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "What is the capital of Sweden?",
+    "options": [
+      "Oslo",
+      "Stockholm",
+      "Copenhagen",
+      "Helsinki"
+    ],
+    "answer": "Stockholm"
+  },
+  {
+    "id": "geography_044",
+    "category": "geography",
+    "difficulty": "hard",
+    "question": "What is the capital of Morocco?",
+    "options": [
+      "Casablanca",
+      "Marrakesh",
+      "Rabat",
+      "Fez"
+    ],
+    "answer": "Rabat"
+  },
+  {
+    "id": "geography_045",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "What is the capital of South Korea?",
+    "options": [
+      "Busan",
+      "Seoul",
+      "Incheon",
+      "Beijing"
+    ],
+    "answer": "Seoul"
+  },
+  {
+    "id": "geography_046",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "Which river carries the most water of any river on Earth?",
+    "options": [
+      "Nile",
+      "Mississippi",
+      "Yangtze",
+      "Amazon"
+    ],
+    "answer": "Amazon"
+  },
+  {
+    "id": "geography_047",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "What is the capital of the Netherlands?",
+    "options": [
+      "Rotterdam",
+      "Eindhoven",
+      "Utrecht",
+      "Amsterdam"
+    ],
+    "answer": "Amsterdam"
+  },
+  {
+    "id": "geography_048",
+    "category": "geography",
+    "difficulty": "hard",
+    "question": "What is the capital of Thailand?",
+    "options": [
+      "Phuket",
+      "Chiang Mai",
+      "Bangkok",
+      "Pattaya"
+    ],
+    "answer": "Bangkok"
+  },
+  {
+    "id": "geography_049",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "What is the capital of Turkey?",
+    "options": [
+      "Istanbul",
+      "Izmir",
+      "Antalya",
+      "Ankara"
+    ],
+    "answer": "Ankara"
+  },
+  {
+    "id": "geography_050",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "What is the capital of Canada?",
+    "options": [
+      "Ottawa",
+      "Toronto",
+      "Vancouver",
+      "Montreal"
+    ],
+    "answer": "Ottawa"
+  },
+  {
+    "id": "geography_051",
+    "category": "geography",
+    "difficulty": "hard",
+    "question": "What is the longest mountain range on land?",
+    "options": [
+      "Rocky Mountains",
+      "Alps",
+      "The Andes",
+      "Himalayas"
+    ],
+    "answer": "The Andes"
+  },
+  {
+    "id": "geography_052",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "What is the capital of China?",
+    "options": [
+      "Shanghai",
+      "Beijing",
+      "Hong Kong",
+      "Guangzhou"
+    ],
+    "answer": "Beijing"
+  },
+  {
+    "id": "geography_053",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "Which of these countries has no coastline?",
+    "options": [
+      "Italy",
+      "Spain",
+      "Switzerland",
+      "Greece"
+    ],
+    "answer": "Switzerland"
+  },
+  {
+    "id": "geography_054",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "What is the capital of Russia?",
+    "options": [
+      "Kyiv",
+      "Minsk",
+      "Moscow",
+      "Warsaw"
+    ],
+    "answer": "Moscow"
+  },
+  {
+    "id": "geography_055",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "In which country do kangaroos live in the wild?",
+    "options": [
+      "Brazil",
+      "Australia",
+      "India",
+      "Kenya"
+    ],
+    "answer": "Australia"
+  },
+  {
+    "id": "geography_056",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "In which country is the Eiffel Tower?",
+    "options": [
+      "Italy",
+      "Spain",
+      "France",
+      "Belgium"
+    ],
+    "answer": "France"
+  },
+  {
+    "id": "geography_057",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "The Alps are a mountain range in which continent?",
+    "options": [
+      "Asia",
+      "Europe",
+      "Africa",
+      "North America"
+    ],
+    "answer": "Europe"
+  },
+  {
+    "id": "geography_058",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "Which US state is a chain of islands in the Pacific Ocean?",
+    "options": [
+      "Alaska",
+      "Florida",
+      "Maine",
+      "Hawaii"
+    ],
+    "answer": "Hawaii"
+  },
+  {
+    "id": "geography_059",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "Which river flows through Paris?",
+    "options": [
+      "Thames",
+      "Rhine",
+      "Danube",
+      "Seine"
+    ],
+    "answer": "Seine"
+  },
+  {
+    "id": "geography_060",
+    "category": "geography",
+    "difficulty": "hard",
+    "question": "Which strait links the Mediterranean Sea to the Atlantic Ocean?",
+    "options": [
+      "Bosphorus",
+      "Strait of Hormuz",
+      "Dardanelles",
+      "Strait of Gibraltar"
+    ],
+    "answer": "Strait of Gibraltar"
+  },
+  {
+    "id": "geography_061",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "What is the capital of Australia?",
+    "options": [
+      "Canberra",
+      "Sydney",
+      "Melbourne",
+      "Perth"
+    ],
+    "answer": "Canberra"
+  },
+  {
+    "id": "geography_062",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "In which country is the Taj Mahal?",
+    "options": [
+      "India",
+      "Pakistan",
+      "Nepal",
+      "Iran"
+    ],
+    "answer": "India"
+  },
+  {
+    "id": "geography_063",
+    "category": "geography",
+    "difficulty": "hard",
+    "question": "What is the capital of Peru?",
+    "options": [
+      "Cusco",
+      "Quito",
+      "Lima",
+      "Bogota"
+    ],
+    "answer": "Lima"
+  },
+  {
+    "id": "geography_064",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "Which country is the largest in the world by area?",
+    "options": [
+      "Canada",
+      "China",
+      "Russia",
+      "Brazil"
+    ],
+    "answer": "Russia"
+  },
+  {
+    "id": "geography_065",
+    "category": "geography",
+    "difficulty": "hard",
+    "question": "What is the capital of Finland?",
+    "options": [
+      "Tampere",
+      "Helsinki",
+      "Oslo",
+      "Tallinn"
+    ],
+    "answer": "Helsinki"
+  },
+  {
+    "id": "geography_066",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "Which river flows through Vienna, Budapest and Belgrade?",
+    "options": [
+      "Danube",
+      "Rhine",
+      "Elbe",
+      "Volga"
+    ],
+    "answer": "Danube"
+  },
+  {
+    "id": "geography_067",
+    "category": "geography",
+    "difficulty": "medium",
+    "question": "What is the capital of Poland?",
+    "options": [
+      "Krakow",
+      "Gdansk",
+      "Prague",
+      "Warsaw"
+    ],
+    "answer": "Warsaw"
+  },
+  {
+    "id": "geography_068",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "What is the capital of Germany?",
+    "options": [
+      "Munich",
+      "Hamburg",
+      "Vienna",
+      "Berlin"
+    ],
+    "answer": "Berlin"
+  },
+  {
+    "id": "geography_069",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "What is the capital of France?",
+    "options": [
+      "Lyon",
+      "Paris",
+      "Marseille",
+      "Nice"
+    ],
+    "answer": "Paris"
+  },
+  {
+    "id": "geography_070",
+    "category": "geography",
+    "difficulty": "easy",
+    "question": "Which river flows through London?",
+    "options": [
+      "Thames",
+      "Seine",
+      "Rhine",
+      "Danube"
+    ],
+    "answer": "Thames"
+  },
+  {
+    "id": "food_001",
+    "category": "food",
+    "difficulty": "medium",
+    "question": "What is hummus mainly made from?",
+    "options": [
+      "Lentils",
+      "Peas",
+      "Rice",
+      "Chickpeas"
+    ],
+    "answer": "Chickpeas"
+  },
+  {
+    "id": "food_002",
+    "category": "food",
+    "difficulty": "hard",
+    "question": "Which French bread is long, thin and crusty?",
+    "options": [
+      "Brioche",
+      "Focaccia",
+      "Baguette",
+      "Ciabatta"
+    ],
+    "answer": "Baguette"
+  },
+  {
+    "id": "food_003",
+    "category": "food",
+    "difficulty": "medium",
+    "question": "Which sweet pastry is made of thin filo layers, nuts and syrup?",
+    "options": [
+      "Churros",
+      "Eclair",
+      "Baklava",
+      "Strudel"
+    ],
+    "answer": "Baklava"
+  },
+  {
+    "id": "food_004",
+    "category": "food",
+    "difficulty": "easy",
+    "question": "Which cooking method uses hot water vapour?",
+    "options": [
+      "Grilling",
+      "Roasting",
+      "Steaming",
+      "Frying"
+    ],
+    "answer": "Steaming"
+  },
+  {
+    "id": "food_005",
+    "category": "food",
+    "difficulty": "easy",
+    "question": "Bread is mainly made from water and what else?",
+    "options": [
+      "Sugar",
+      "Butter",
+      "Flour",
+      "Honey"
+    ],
+    "answer": "Flour"
+  },
+  {
+    "id": "food_006",
+    "category": "food",
+    "difficulty": "medium",
+    "question": "Which Spanish rice dish is cooked in a wide, flat pan?",
+    "options": [
+      "Risotto",
+      "Paella",
+      "Biryani",
+      "Sushi"
+    ],
+    "answer": "Paella"
+  },
+  {
+    "id": "food_007",
+    "category": "food",
+    "difficulty": "hard",
+    "question": "Which costly delicacy is found underground by trained dogs or pigs?",
+    "options": [
+      "Shiitake",
+      "Truffle",
+      "Chestnut",
+      "Radish"
+    ],
+    "answer": "Truffle"
+  },
+  {
+    "id": "food_008",
+    "category": "food",
+    "difficulty": "easy",
+    "question": "Which grain do we pop in a pot or microwave for a movie snack?",
+    "options": [
+      "Corn",
+      "Rice",
+      "Wheat",
+      "Barley"
+    ],
+    "answer": "Corn"
+  },
+  {
+    "id": "food_009",
+    "category": "food",
+    "difficulty": "medium",
+    "question": "Which fruit is dried to make prunes?",
+    "options": [
+      "Grapes",
+      "Figs",
+      "Dates",
+      "Plums"
+    ],
+    "answer": "Plums"
+  },
+  {
+    "id": "food_010",
+    "category": "food",
+    "difficulty": "medium",
+    "question": "Chocolate comes from the beans of which tree?",
+    "options": [
+      "Coffee plant",
+      "Vanilla orchid",
+      "Cashew tree",
+      "Cacao tree"
+    ],
+    "answer": "Cacao tree"
+  },
+  {
+    "id": "food_011",
+    "category": "food",
+    "difficulty": "medium",
+    "question": "Which green herb is the main ingredient of pesto?",
+    "options": [
+      "Mint",
+      "Parsley",
+      "Basil",
+      "Thyme"
+    ],
+    "answer": "Basil"
+  },
+  {
+    "id": "food_012",
+    "category": "food",
+    "difficulty": "medium",
+    "question": "Which white cheese is crumbled over a Greek salad?",
+    "options": [
+      "Feta",
+      "Cheddar",
+      "Brie",
+      "Gouda"
+    ],
+    "answer": "Feta"
+  },
+  {
+    "id": "food_013",
+    "category": "food",
+    "difficulty": "medium",
+    "question": "Which spread is made by churning cream?",
+    "options": [
+      "Margarine",
+      "Jam",
+      "Honey",
+      "Butter"
+    ],
+    "answer": "Butter"
+  },
+  {
+    "id": "food_014",
+    "category": "food",
+    "difficulty": "easy",
+    "question": "Cheese is made from which drink?",
+    "options": [
+      "Juice",
+      "Honey",
+      "Milk",
+      "Oil"
+    ],
+    "answer": "Milk"
+  },
+  {
+    "id": "food_015",
+    "category": "food",
+    "difficulty": "easy",
+    "question": "Which meal do we usually eat in the morning?",
+    "options": [
+      "Breakfast",
+      "Lunch",
+      "Dinner",
+      "Supper"
+    ],
+    "answer": "Breakfast"
+  },
+  {
+    "id": "food_016",
+    "category": "food",
+    "difficulty": "easy",
+    "question": "Which fruit has a spiky crown on top?",
+    "options": [
+      "Melon",
+      "Mango",
+      "Papaya",
+      "Pineapple"
+    ],
+    "answer": "Pineapple"
+  },
+  {
+    "id": "food_017",
+    "category": "food",
+    "difficulty": "hard",
+    "question": "Which dried seaweed sheet wraps a sushi roll?",
+    "options": [
+      "Wakame",
+      "Nori",
+      "Kombu",
+      "Dulse"
+    ],
+    "answer": "Nori"
+  },
+  {
+    "id": "food_018",
+    "category": "food",
+    "difficulty": "easy",
+    "question": "Which cereal grain is rolled flat to make porridge?",
+    "options": [
+      "Oats",
+      "Rye",
+      "Rice",
+      "Corn"
+    ],
+    "answer": "Oats"
+  },
+  {
+    "id": "food_019",
+    "category": "food",
+    "difficulty": "easy",
+    "question": "Which orange vegetable is carved into a jack-o'-lantern?",
+    "options": [
+      "Pumpkin",
+      "Carrot",
+      "Beetroot",
+      "Tomato"
+    ],
+    "answer": "Pumpkin"
+  },
+  {
+    "id": "food_020",
+    "category": "food",
+    "difficulty": "medium",
+    "question": "Granny Smith is a famous type of which fruit?",
+    "options": [
+      "Pear",
+      "Grape",
+      "Apple",
+      "Plum"
+    ],
+    "answer": "Apple"
+  },
+  {
+    "id": "food_021",
+    "category": "food",
+    "difficulty": "easy",
+    "question": "Which drink is made by soaking dried leaves in hot water?",
+    "options": [
+      "Tea",
+      "Coffee",
+      "Cocoa",
+      "Lemonade"
+    ],
+    "answer": "Tea"
+  },
+  {
+    "id": "food_022",
+    "category": "food",
+    "difficulty": "easy",
+    "question": "What do we call the yellow centre of an egg?",
+    "options": [
+      "Yolk",
+      "Shell",
+      "Membrane",
+      "Albumen"
+    ],
+    "answer": "Yolk"
+  },
+  {
+    "id": "food_023",
+    "category": "food",
+    "difficulty": "medium",
+    "question": "Which Middle Eastern dish is fried balls of ground chickpeas?",
+    "options": [
+      "Falafel",
+      "Kebab",
+      "Baklava",
+      "Couscous"
+    ],
+    "answer": "Falafel"
+  },
+  {
+    "id": "food_024",
+    "category": "food",
+    "difficulty": "medium",
+    "question": "Which nut is the main ingredient in marzipan?",
+    "options": [
+      "Walnut",
+      "Peanut",
+      "Hazelnut",
+      "Almond"
+    ],
+    "answer": "Almond"
+  },
+  {
+    "id": "food_025",
+    "category": "food",
+    "difficulty": "medium",
+    "question": "Which Indian dish is a thick stew made from lentils?",
+    "options": [
+      "Samosa",
+      "Dal",
+      "Raita",
+      "Chutney"
+    ],
+    "answer": "Dal"
+  },
+  {
+    "id": "food_026",
+    "category": "food",
+    "difficulty": "easy",
+    "question": "Which country is sushi from?",
+    "options": [
+      "China",
+      "Japan",
+      "India",
+      "Mexico"
+    ],
+    "answer": "Japan"
+  },
+  {
+    "id": "food_027",
+    "category": "food",
+    "difficulty": "easy",
+    "question": "Which vegetable are french fries made from?",
+    "options": [
+      "Carrot",
+      "Potato",
+      "Pumpkin",
+      "Beetroot"
+    ],
+    "answer": "Potato"
+  },
+  {
+    "id": "food_028",
+    "category": "food",
+    "difficulty": "medium",
+    "question": "Which fruit has its seeds on the outside?",
+    "options": [
+      "Strawberry",
+      "Apple",
+      "Orange",
+      "Peach"
+    ],
+    "answer": "Strawberry"
+  },
+  {
+    "id": "food_029",
+    "category": "food",
+    "difficulty": "medium",
+    "question": "Which Italian cheese is traditionally melted on a Margherita pizza?",
+    "options": [
+      "Parmesan",
+      "Feta",
+      "Brie",
+      "Mozzarella"
+    ],
+    "answer": "Mozzarella"
+  },
+  {
+    "id": "food_030",
+    "category": "food",
+    "difficulty": "medium",
+    "question": "Which pasta is shaped like a little bow tie?",
+    "options": [
+      "Farfalle",
+      "Penne",
+      "Fusilli",
+      "Rigatoni"
+    ],
+    "answer": "Farfalle"
+  },
+  {
+    "id": "food_031",
+    "category": "food",
+    "difficulty": "easy",
+    "question": "Which country is the home of spaghetti and lasagne?",
+    "options": [
+      "France",
+      "Italy",
+      "Spain",
+      "Germany"
+    ],
+    "answer": "Italy"
+  },
+  {
+    "id": "food_032",
+    "category": "food",
+    "difficulty": "easy",
+    "question": "Which yellow fruit is long and curved?",
+    "options": [
+      "Lemon",
+      "Pineapple",
+      "Pear",
+      "Banana"
+    ],
+    "answer": "Banana"
+  },
+  {
+    "id": "food_033",
+    "category": "food",
+    "difficulty": "hard",
+    "question": "Which small Italian dumplings are traditionally made from potato?",
+    "options": [
+      "Ravioli",
+      "Tortellini",
+      "Lasagne",
+      "Gnocchi"
+    ],
+    "answer": "Gnocchi"
+  },
+  {
+    "id": "food_034",
+    "category": "food",
+    "difficulty": "hard",
+    "question": "Which flatbread from India is baked in a clay tandoor oven?",
+    "options": [
+      "Pita",
+      "Naan",
+      "Tortilla",
+      "Baguette"
+    ],
+    "answer": "Naan"
+  },
+  {
+    "id": "food_035",
+    "category": "food",
+    "difficulty": "hard",
+    "question": "Which spice comes from the dried parts of crocus flowers?",
+    "options": [
+      "Cinnamon",
+      "Paprika",
+      "Turmeric",
+      "Saffron"
+    ],
+    "answer": "Saffron"
+  },
+  {
+    "id": "food_036",
+    "category": "food",
+    "difficulty": "hard",
+    "question": "Sauerkraut is made by fermenting which vegetable?",
+    "options": [
+      "Carrot",
+      "Beetroot",
+      "Onion",
+      "Cabbage"
+    ],
+    "answer": "Cabbage"
+  },
+  {
+    "id": "food_037",
+    "category": "food",
+    "difficulty": "easy",
+    "question": "Which vegetable can make you cry when you chop it?",
+    "options": [
+      "Carrot",
+      "Potato",
+      "Onion",
+      "Lettuce"
+    ],
+    "answer": "Onion"
+  },
+  {
+    "id": "food_038",
+    "category": "food",
+    "difficulty": "hard",
+    "question": "Which fermented soybean paste is used in a classic Japanese soup?",
+    "options": [
+      "Wasabi",
+      "Nori",
+      "Miso",
+      "Mirin"
+    ],
+    "answer": "Miso"
+  },
+  {
+    "id": "food_039",
+    "category": "food",
+    "difficulty": "hard",
+    "question": "Kimchi, a spicy fermented side dish, comes from which country?",
+    "options": [
+      "Japan",
+      "Korea",
+      "China",
+      "Vietnam"
+    ],
+    "answer": "Korea"
+  },
+  {
+    "id": "food_040",
+    "category": "food",
+    "difficulty": "easy",
+    "question": "Which cooking method uses hot oil in a pan?",
+    "options": [
+      "Frying",
+      "Boiling",
+      "Steaming",
+      "Baking"
+    ],
+    "answer": "Frying"
+  },
+  {
+    "id": "food_041",
+    "category": "food",
+    "difficulty": "easy",
+    "question": "Which of these fruits is a citrus fruit?",
+    "options": [
+      "Banana",
+      "Orange",
+      "Apple",
+      "Grape"
+    ],
+    "answer": "Orange"
+  },
+  {
+    "id": "food_042",
+    "category": "food",
+    "difficulty": "easy",
+    "question": "Which fruit goes with the saying that one a day keeps the doctor away?",
+    "options": [
+      "Pear",
+      "Apple",
+      "Orange",
+      "Banana"
+    ],
+    "answer": "Apple"
+  },
+  {
+    "id": "food_043",
+    "category": "food",
+    "difficulty": "medium",
+    "question": "Which powdered green drink is made from ground tea leaves?",
+    "options": [
+      "Cocoa",
+      "Matcha",
+      "Chai",
+      "Latte"
+    ],
+    "answer": "Matcha"
+  },
+  {
+    "id": "food_044",
+    "category": "food",
+    "difficulty": "medium",
+    "question": "What is tofu made from?",
+    "options": [
+      "Soybeans",
+      "Rice",
+      "Wheat",
+      "Corn"
+    ],
+    "answer": "Soybeans"
+  },
+  {
+    "id": "food_045",
+    "category": "food",
+    "difficulty": "hard",
+    "question": "Vanilla flavour comes from the pods of which kind of flower?",
+    "options": [
+      "Rose",
+      "Lily",
+      "Tulip",
+      "Orchid"
+    ],
+    "answer": "Orchid"
+  },
+  {
+    "id": "food_046",
+    "category": "food",
+    "difficulty": "hard",
+    "question": "Which creamy Italian dessert's name means pick me up?",
+    "options": [
+      "Gelato",
+      "Panna cotta",
+      "Tiramisu",
+      "Cannoli"
+    ],
+    "answer": "Tiramisu"
+  },
+  {
+    "id": "food_047",
+    "category": "food",
+    "difficulty": "easy",
+    "question": "Which fruit is dried to make raisins?",
+    "options": [
+      "Plums",
+      "Cherries",
+      "Grapes",
+      "Figs"
+    ],
+    "answer": "Grapes"
+  },
+  {
+    "id": "food_048",
+    "category": "food",
+    "difficulty": "medium",
+    "question": "Which tree's sap is boiled down to make a sweet syrup?",
+    "options": [
+      "Oak",
+      "Maple",
+      "Willow",
+      "Cedar"
+    ],
+    "answer": "Maple"
+  },
+  {
+    "id": "food_049",
+    "category": "food",
+    "difficulty": "easy",
+    "question": "Which cuisine is famous for tacos and tortillas?",
+    "options": [
+      "Mexican",
+      "Italian",
+      "Greek",
+      "Indian"
+    ],
+    "answer": "Mexican"
+  },
+  {
+    "id": "food_050",
+    "category": "food",
+    "difficulty": "medium",
+    "question": "Which small green citrus fruit is squeezed over tacos and drinks?",
+    "options": [
+      "Orange",
+      "Grapefruit",
+      "Lime",
+      "Tangerine"
+    ],
+    "answer": "Lime"
+  },
+  {
+    "id": "food_051",
+    "category": "food",
+    "difficulty": "medium",
+    "question": "Which tiny living thing makes bread dough rise?",
+    "options": [
+      "Salt",
+      "Honey",
+      "Yeast",
+      "Butter"
+    ],
+    "answer": "Yeast"
+  },
+  {
+    "id": "food_052",
+    "category": "food",
+    "difficulty": "easy",
+    "question": "What is the main ingredient of traditional guacamole?",
+    "options": [
+      "Avocado",
+      "Banana",
+      "Tomato",
+      "Pea"
+    ],
+    "answer": "Avocado"
+  },
+  {
+    "id": "food_053",
+    "category": "food",
+    "difficulty": "easy",
+    "question": "Which sweet food do bees make?",
+    "options": [
+      "Jam",
+      "Butter",
+      "Honey",
+      "Syrup"
+    ],
+    "answer": "Honey"
+  },
+  {
+    "id": "food_054",
+    "category": "food",
+    "difficulty": "medium",
+    "question": "Which gas makes fizzy drinks bubble?",
+    "options": [
+      "Oxygen",
+      "Carbon dioxide",
+      "Helium",
+      "Nitrogen"
+    ],
+    "answer": "Carbon dioxide"
+  },
+  {
+    "id": "food_055",
+    "category": "food",
+    "difficulty": "easy",
+    "question": "Which orange root vegetable do rabbits love?",
+    "options": [
+      "Cabbage",
+      "Celery",
+      "Cucumber",
+      "Carrot"
+    ],
+    "answer": "Carrot"
+  },
+  {
+    "id": "history_001",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "Who is credited with inventing the telephone?",
+    "options": [
+      "Thomas Edison",
+      "Nikola Tesla",
+      "Guglielmo Marconi",
+      "Alexander Graham Bell"
+    ],
+    "answer": "Alexander Graham Bell"
+  },
+  {
+    "id": "history_002",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "Bronze is a mix of copper and which other metal?",
+    "options": [
+      "Iron",
+      "Tin",
+      "Gold",
+      "Lead"
+    ],
+    "answer": "Tin"
+  },
+  {
+    "id": "history_003",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "Which Viking explorer reached North America around the year 1000?",
+    "options": [
+      "Marco Polo",
+      "Vasco da Gama",
+      "Hernan Cortes",
+      "Leif Erikson"
+    ],
+    "answer": "Leif Erikson"
+  },
+  {
+    "id": "history_004",
+    "category": "history",
+    "difficulty": "easy",
+    "question": "Which scientist proposed evolution by natural selection?",
+    "options": [
+      "Charles Darwin",
+      "Gregor Mendel",
+      "Louis Pasteur",
+      "Isaac Newton"
+    ],
+    "answer": "Charles Darwin"
+  },
+  {
+    "id": "history_005",
+    "category": "history",
+    "difficulty": "easy",
+    "question": "Which ancient people started the Olympic Games?",
+    "options": [
+      "Ancient Romans",
+      "Ancient Egyptians",
+      "Ancient Greeks",
+      "The Chinese"
+    ],
+    "answer": "Ancient Greeks"
+  },
+  {
+    "id": "history_006",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "Who invented the printing press with movable type in Europe?",
+    "options": [
+      "Johannes Gutenberg",
+      "Leonardo da Vinci",
+      "Galileo Galilei",
+      "Isaac Newton"
+    ],
+    "answer": "Johannes Gutenberg"
+  },
+  {
+    "id": "history_007",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "Which ancient city was buried by a volcanic eruption in 79 AD?",
+    "options": [
+      "Pompeii",
+      "Athens",
+      "Carthage",
+      "Alexandria"
+    ],
+    "answer": "Pompeii"
+  },
+  {
+    "id": "history_008",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "Who was the first woman to fly solo across the Atlantic Ocean?",
+    "options": [
+      "Amelia Earhart",
+      "Bessie Coleman",
+      "Harriet Quimby",
+      "Jacqueline Cochran"
+    ],
+    "answer": "Amelia Earhart"
+  },
+  {
+    "id": "history_009",
+    "category": "history",
+    "difficulty": "easy",
+    "question": "Which language did the ancient Romans speak?",
+    "options": [
+      "Greek",
+      "French",
+      "Italian",
+      "Latin"
+    ],
+    "answer": "Latin"
+  },
+  {
+    "id": "history_010",
+    "category": "history",
+    "difficulty": "hard",
+    "question": "Which of the Seven Wonders of the Ancient World still stands today?",
+    "options": [
+      "Hanging Gardens",
+      "Colossus of Rhodes",
+      "Great Pyramid of Giza",
+      "Lighthouse of Alexandria"
+    ],
+    "answer": "Great Pyramid of Giza"
+  },
+  {
+    "id": "history_011",
+    "category": "history",
+    "difficulty": "easy",
+    "question": "Early humans who made tools from flint lived in which age?",
+    "options": [
+      "Iron Age",
+      "Stone Age",
+      "Space Age",
+      "Bronze Age"
+    ],
+    "answer": "Stone Age"
+  },
+  {
+    "id": "history_012",
+    "category": "history",
+    "difficulty": "easy",
+    "question": "Which brothers made the first powered aeroplane flight in 1903?",
+    "options": [
+      "Montgolfier brothers",
+      "Wright brothers",
+      "Marx brothers",
+      "Grimm brothers"
+    ],
+    "answer": "Wright brothers"
+  },
+  {
+    "id": "history_013",
+    "category": "history",
+    "difficulty": "easy",
+    "question": "What did Galileo famously use to study the stars and planets?",
+    "options": [
+      "A microscope",
+      "A telescope",
+      "A compass",
+      "A periscope"
+    ],
+    "answer": "A telescope"
+  },
+  {
+    "id": "history_014",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "Which Italian explorer wrote about his travels to China in the 13th century?",
+    "options": [
+      "Christopher Columbus",
+      "Vasco da Gama",
+      "Marco Polo",
+      "Amerigo Vespucci"
+    ],
+    "answer": "Marco Polo"
+  },
+  {
+    "id": "history_015",
+    "category": "history",
+    "difficulty": "hard",
+    "question": "Who is credited with the first vaccine, against smallpox?",
+    "options": [
+      "Edward Jenner",
+      "Louis Pasteur",
+      "Alexander Fleming",
+      "Joseph Lister"
+    ],
+    "answer": "Edward Jenner"
+  },
+  {
+    "id": "history_016",
+    "category": "history",
+    "difficulty": "easy",
+    "question": "Which ship sank in 1912 after hitting an iceberg?",
+    "options": [
+      "Titanic",
+      "Mayflower",
+      "Santa Maria",
+      "Lusitania"
+    ],
+    "answer": "Titanic"
+  },
+  {
+    "id": "history_017",
+    "category": "history",
+    "difficulty": "easy",
+    "question": "In the old legend, which city was tricked by a giant wooden horse?",
+    "options": [
+      "Athens",
+      "Sparta",
+      "Rome",
+      "Troy"
+    ],
+    "answer": "Troy"
+  },
+  {
+    "id": "history_018",
+    "category": "history",
+    "difficulty": "easy",
+    "question": "What did the ancient Romans build to carry water into cities?",
+    "options": [
+      "Aqueducts",
+      "Pyramids",
+      "Moats",
+      "Windmills"
+    ],
+    "answer": "Aqueducts"
+  },
+  {
+    "id": "history_019",
+    "category": "history",
+    "difficulty": "easy",
+    "question": "What were the rulers of ancient Egypt called?",
+    "options": [
+      "Sultans",
+      "Pharaohs",
+      "Tsars",
+      "Shoguns"
+    ],
+    "answer": "Pharaohs"
+  },
+  {
+    "id": "history_020",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "Which ancient civilization built Machu Picchu?",
+    "options": [
+      "Aztec",
+      "Maya",
+      "Inca",
+      "Olmec"
+    ],
+    "answer": "Inca"
+  },
+  {
+    "id": "history_021",
+    "category": "history",
+    "difficulty": "easy",
+    "question": "Which explorer sailed across the Atlantic in 1492?",
+    "options": [
+      "Marco Polo",
+      "Vasco da Gama",
+      "Christopher Columbus",
+      "Ferdinand Magellan"
+    ],
+    "answer": "Christopher Columbus"
+  },
+  {
+    "id": "history_022",
+    "category": "history",
+    "difficulty": "hard",
+    "question": "Which civilization built the city of Chichen Itza?",
+    "options": [
+      "Maya",
+      "Inca",
+      "Roman",
+      "Viking"
+    ],
+    "answer": "Maya"
+  },
+  {
+    "id": "history_023",
+    "category": "history",
+    "difficulty": "hard",
+    "question": "In which year did the Great Fire of London happen?",
+    "options": [
+      "1666",
+      "1566",
+      "1766",
+      "1866"
+    ],
+    "answer": "1666"
+  },
+  {
+    "id": "history_024",
+    "category": "history",
+    "difficulty": "hard",
+    "question": "Where were the first ancient Olympic Games held?",
+    "options": [
+      "Athens",
+      "Sparta",
+      "Delphi",
+      "Olympia"
+    ],
+    "answer": "Olympia"
+  },
+  {
+    "id": "history_025",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "What was the first artificial satellite sent into orbit in 1957?",
+    "options": [
+      "Apollo 11",
+      "Sputnik 1",
+      "Explorer 1",
+      "Vostok 1"
+    ],
+    "answer": "Sputnik 1"
+  },
+  {
+    "id": "history_026",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "Which Greek mathematician gave his name to a famous right-triangle theorem?",
+    "options": [
+      "Archimedes",
+      "Euclid",
+      "Aristotle",
+      "Pythagoras"
+    ],
+    "answer": "Pythagoras"
+  },
+  {
+    "id": "history_027",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "What are the huge stone heads on Easter Island called?",
+    "options": [
+      "Totems",
+      "Obelisks",
+      "Sphinxes",
+      "Moai"
+    ],
+    "answer": "Moai"
+  },
+  {
+    "id": "history_028",
+    "category": "history",
+    "difficulty": "hard",
+    "question": "Which astronomer proposed in 1543 that Earth goes around the Sun?",
+    "options": [
+      "Ptolemy",
+      "Kepler",
+      "Copernicus",
+      "Halley"
+    ],
+    "answer": "Copernicus"
+  },
+  {
+    "id": "history_029",
+    "category": "history",
+    "difficulty": "easy",
+    "question": "Which ancient people built the Colosseum?",
+    "options": [
+      "Ancient Greeks",
+      "Ancient Romans",
+      "Ancient Egyptians",
+      "The Persians"
+    ],
+    "answer": "Ancient Romans"
+  },
+  {
+    "id": "history_030",
+    "category": "history",
+    "difficulty": "easy",
+    "question": "Which of these was invented in ancient China?",
+    "options": [
+      "Telescope",
+      "Paper",
+      "Steam engine",
+      "Telephone"
+    ],
+    "answer": "Paper"
+  },
+  {
+    "id": "history_031",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "Who invented the lightning rod?",
+    "options": [
+      "Thomas Edison",
+      "Benjamin Franklin",
+      "Nikola Tesla",
+      "Alexander Bell"
+    ],
+    "answer": "Benjamin Franklin"
+  },
+  {
+    "id": "history_032",
+    "category": "history",
+    "difficulty": "hard",
+    "question": "Which explorer's expedition was the first to sail around the world?",
+    "options": [
+      "Christopher Columbus",
+      "James Cook",
+      "Francis Drake",
+      "Ferdinand Magellan"
+    ],
+    "answer": "Ferdinand Magellan"
+  },
+  {
+    "id": "history_033",
+    "category": "history",
+    "difficulty": "easy",
+    "question": "Who was the first person to walk on the Moon?",
+    "options": [
+      "Buzz Aldrin",
+      "Neil Armstrong",
+      "Yuri Gagarin",
+      "John Glenn"
+    ],
+    "answer": "Neil Armstrong"
+  },
+  {
+    "id": "history_034",
+    "category": "history",
+    "difficulty": "easy",
+    "question": "Which ancient people built the pyramids of Giza?",
+    "options": [
+      "Ancient Romans",
+      "Ancient Greeks",
+      "The Aztecs",
+      "Ancient Egyptians"
+    ],
+    "answer": "Ancient Egyptians"
+  },
+  {
+    "id": "history_035",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "Which plant did the ancient Egyptians use to make paper-like sheets?",
+    "options": [
+      "Bamboo",
+      "Cotton",
+      "Papyrus",
+      "Flax"
+    ],
+    "answer": "Papyrus"
+  },
+  {
+    "id": "history_036",
+    "category": "history",
+    "difficulty": "easy",
+    "question": "Which scientist described gravity and the laws of motion?",
+    "options": [
+      "Albert Einstein",
+      "Charles Darwin",
+      "Isaac Newton",
+      "Galileo Galilei"
+    ],
+    "answer": "Isaac Newton"
+  },
+  {
+    "id": "history_037",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "Who invented the World Wide Web?",
+    "options": [
+      "Bill Gates",
+      "Steve Jobs",
+      "Alan Turing",
+      "Tim Berners-Lee"
+    ],
+    "answer": "Tim Berners-Lee"
+  },
+  {
+    "id": "history_038",
+    "category": "history",
+    "difficulty": "easy",
+    "question": "Who was the first President of the United States?",
+    "options": [
+      "Abraham Lincoln",
+      "Thomas Jefferson",
+      "John Adams",
+      "George Washington"
+    ],
+    "answer": "George Washington"
+  },
+  {
+    "id": "history_039",
+    "category": "history",
+    "difficulty": "easy",
+    "question": "Which scientist is famous for the theory of relativity?",
+    "options": [
+      "Isaac Newton",
+      "Galileo Galilei",
+      "Albert Einstein",
+      "Marie Curie"
+    ],
+    "answer": "Albert Einstein"
+  },
+  {
+    "id": "history_040",
+    "category": "history",
+    "difficulty": "easy",
+    "question": "In which year did people first land on the Moon?",
+    "options": [
+      "1959",
+      "1979",
+      "1969",
+      "1989"
+    ],
+    "answer": "1969"
+  },
+  {
+    "id": "history_041",
+    "category": "history",
+    "difficulty": "hard",
+    "question": "Which scientist won Nobel Prizes in both Physics and Chemistry?",
+    "options": [
+      "Marie Curie",
+      "Albert Einstein",
+      "Isaac Newton",
+      "Rosalind Franklin"
+    ],
+    "answer": "Marie Curie"
+  },
+  {
+    "id": "history_042",
+    "category": "history",
+    "difficulty": "easy",
+    "question": "Who discovered penicillin?",
+    "options": [
+      "Louis Pasteur",
+      "Marie Curie",
+      "Alexander Fleming",
+      "Edward Jenner"
+    ],
+    "answer": "Alexander Fleming"
+  },
+  {
+    "id": "history_043",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "Galileo discovered four big moons around which planet?",
+    "options": [
+      "Mars",
+      "Saturn",
+      "Venus",
+      "Jupiter"
+    ],
+    "answer": "Jupiter"
+  },
+  {
+    "id": "history_044",
+    "category": "history",
+    "difficulty": "easy",
+    "question": "Which ship carried the Pilgrims to America in 1620?",
+    "options": [
+      "Titanic",
+      "Mayflower",
+      "Santa Maria",
+      "Endeavour"
+    ],
+    "answer": "Mayflower"
+  },
+  {
+    "id": "history_045",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "Which ancient Mesopotamian people wrote on clay tablets in cuneiform?",
+    "options": [
+      "Vikings",
+      "Sumerians",
+      "Romans",
+      "Aztecs"
+    ],
+    "answer": "Sumerians"
+  },
+  {
+    "id": "history_046",
+    "category": "history",
+    "difficulty": "hard",
+    "question": "Which Chinese emperor was buried with the Terracotta Army?",
+    "options": [
+      "Qin Shi Huang",
+      "Kublai Khan",
+      "Genghis Khan",
+      "Puyi"
+    ],
+    "answer": "Qin Shi Huang"
+  },
+  {
+    "id": "history_047",
+    "category": "history",
+    "difficulty": "easy",
+    "question": "Who was the first human to travel into space?",
+    "options": [
+      "Neil Armstrong",
+      "Yuri Gagarin",
+      "Alan Shepard",
+      "Buzz Aldrin"
+    ],
+    "answer": "Yuri Gagarin"
+  },
+  {
+    "id": "history_048",
+    "category": "history",
+    "difficulty": "hard",
+    "question": "In 1885 Karl Benz built one of the first practical what?",
+    "options": [
+      "Aeroplane",
+      "Submarine",
+      "Motor car",
+      "Steamship"
+    ],
+    "answer": "Motor car"
+  },
+  {
+    "id": "history_049",
+    "category": "history",
+    "difficulty": "easy",
+    "question": "Which Italian artist and inventor drew designs for flying machines in the 1400s?",
+    "options": [
+      "Leonardo da Vinci",
+      "Michelangelo",
+      "Raphael",
+      "Galileo Galilei"
+    ],
+    "answer": "Leonardo da Vinci"
+  },
+  {
+    "id": "history_050",
+    "category": "history",
+    "difficulty": "medium",
+    "question": "Which famous queen ruled Egypt in the time of Julius Caesar?",
+    "options": [
+      "Nefertiti",
+      "Hatshepsut",
+      "Cleopatra",
+      "Boudica"
+    ],
+    "answer": "Cleopatra"
+  },
+  {
+    "id": "history_051",
+    "category": "history",
+    "difficulty": "hard",
+    "question": "Which Greek thinker was the teacher of Alexander the Great?",
+    "options": [
+      "Aristotle",
+      "Plato",
+      "Socrates",
+      "Homer"
+    ],
+    "answer": "Aristotle"
+  },
+  {
+    "id": "home_001",
+    "category": "home",
+    "difficulty": "medium",
+    "question": "What do painters use to hold and mix their paints?",
+    "options": [
+      "A palette",
+      "An easel",
+      "A canvas",
+      "A frame"
+    ],
+    "answer": "A palette"
+  },
+  {
+    "id": "home_002",
+    "category": "home",
+    "difficulty": "medium",
+    "question": "Who painted the famous artwork The Starry Night?",
+    "options": [
+      "Claude Monet",
+      "Pablo Picasso",
+      "Salvador Dali",
+      "Vincent van Gogh"
+    ],
+    "answer": "Vincent van Gogh"
+  },
+  {
+    "id": "home_003",
+    "category": "home",
+    "difficulty": "easy",
+    "question": "Where can you borrow books for free?",
+    "options": [
+      "Bakery",
+      "Library",
+      "Garage",
+      "Pharmacy"
+    ],
+    "answer": "Library"
+  },
+  {
+    "id": "home_004",
+    "category": "home",
+    "difficulty": "easy",
+    "question": "Which soft fibre comes from sheep?",
+    "options": [
+      "Wool",
+      "Silk",
+      "Cotton",
+      "Linen"
+    ],
+    "answer": "Wool"
+  },
+  {
+    "id": "home_005",
+    "category": "home",
+    "difficulty": "easy",
+    "question": "In which room would you find a bathtub?",
+    "options": [
+      "Kitchen",
+      "Garage",
+      "Attic",
+      "Bathroom"
+    ],
+    "answer": "Bathroom"
+  },
+  {
+    "id": "home_006",
+    "category": "home",
+    "difficulty": "medium",
+    "question": "Which small hand tool digs little holes for planting seedlings?",
+    "options": [
+      "Rake",
+      "Trowel",
+      "Hoe",
+      "Saw"
+    ],
+    "answer": "Trowel"
+  },
+  {
+    "id": "home_007",
+    "category": "home",
+    "difficulty": "medium",
+    "question": "How many strings does a standard guitar have?",
+    "options": [
+      "Six",
+      "Four",
+      "Five",
+      "Eight"
+    ],
+    "answer": "Six"
+  },
+  {
+    "id": "home_008",
+    "category": "home",
+    "difficulty": "hard",
+    "question": "Which Dutch painter made the artwork The Night Watch?",
+    "options": [
+      "Rembrandt",
+      "Vermeer",
+      "Van Gogh",
+      "Monet"
+    ],
+    "answer": "Rembrandt"
+  },
+  {
+    "id": "home_009",
+    "category": "home",
+    "difficulty": "easy",
+    "question": "Who fixes leaking water pipes?",
+    "options": [
+      "Carpenter",
+      "Painter",
+      "Plumber",
+      "Gardener"
+    ],
+    "answer": "Plumber"
+  },
+  {
+    "id": "home_010",
+    "category": "home",
+    "difficulty": "easy",
+    "question": "What colour do you get by mixing red and white paint?",
+    "options": [
+      "Pink",
+      "Orange",
+      "Purple",
+      "Brown"
+    ],
+    "answer": "Pink"
+  },
+  {
+    "id": "home_011",
+    "category": "home",
+    "difficulty": "medium",
+    "question": "How many strings does a violin have?",
+    "options": [
+      "Six",
+      "Three",
+      "Four",
+      "Five"
+    ],
+    "answer": "Four"
+  },
+  {
+    "id": "home_012",
+    "category": "home",
+    "difficulty": "medium",
+    "question": "How many keys does a standard piano have?",
+    "options": [
+      "66",
+      "100",
+      "88",
+      "76"
+    ],
+    "answer": "88"
+  },
+  {
+    "id": "home_013",
+    "category": "home",
+    "difficulty": "hard",
+    "question": "In which craft do you stitch patterns onto cloth with needle and thread?",
+    "options": [
+      "Embroidery",
+      "Origami",
+      "Weaving",
+      "Pottery"
+    ],
+    "answer": "Embroidery"
+  },
+  {
+    "id": "home_014",
+    "category": "home",
+    "difficulty": "medium",
+    "question": "Who composed the Moonlight Sonata?",
+    "options": [
+      "Wolfgang Mozart",
+      "Johann Sebastian Bach",
+      "Ludwig van Beethoven",
+      "Frederic Chopin"
+    ],
+    "answer": "Ludwig van Beethoven"
+  },
+  {
+    "id": "home_015",
+    "category": "home",
+    "difficulty": "easy",
+    "question": "Which tool is used to cut wood?",
+    "options": [
+      "Whisk",
+      "Saw",
+      "Ladle",
+      "Spatula"
+    ],
+    "answer": "Saw"
+  },
+  {
+    "id": "home_016",
+    "category": "home",
+    "difficulty": "easy",
+    "question": "Which instrument has black and white keys?",
+    "options": [
+      "Guitar",
+      "Piano",
+      "Violin",
+      "Drum"
+    ],
+    "answer": "Piano"
+  },
+  {
+    "id": "home_017",
+    "category": "home",
+    "difficulty": "easy",
+    "question": "Who wrote the play Romeo and Juliet?",
+    "options": [
+      "Charles Dickens",
+      "William Shakespeare",
+      "Mark Twain",
+      "Jane Austen"
+    ],
+    "answer": "William Shakespeare"
+  },
+  {
+    "id": "home_018",
+    "category": "home",
+    "difficulty": "hard",
+    "question": "Which note lasts four beats in 4/4 time?",
+    "options": [
+      "Whole note",
+      "Half note",
+      "Quarter note",
+      "Eighth note"
+    ],
+    "answer": "Whole note"
+  },
+  {
+    "id": "home_019",
+    "category": "home",
+    "difficulty": "easy",
+    "question": "Which furniture would you hang your clothes in?",
+    "options": [
+      "Sofa",
+      "Wardrobe",
+      "Stool",
+      "Desk"
+    ],
+    "answer": "Wardrobe"
+  },
+  {
+    "id": "home_020",
+    "category": "home",
+    "difficulty": "easy",
+    "question": "Which tool do you use to knock a nail into wood?",
+    "options": [
+      "Saw",
+      "Pliers",
+      "Hammer",
+      "Wrench"
+    ],
+    "answer": "Hammer"
+  },
+  {
+    "id": "home_021",
+    "category": "home",
+    "difficulty": "medium",
+    "question": "Which garden tool is used to trim hedges and bushes?",
+    "options": [
+      "Trowel",
+      "Rake",
+      "Shears",
+      "Watering can"
+    ],
+    "answer": "Shears"
+  },
+  {
+    "id": "home_022",
+    "category": "home",
+    "difficulty": "hard",
+    "question": "Which author created the character Peter Pan?",
+    "options": [
+      "J. M. Barrie",
+      "Lewis Carroll",
+      "Roald Dahl",
+      "Beatrix Potter"
+    ],
+    "answer": "J. M. Barrie"
+  },
+  {
+    "id": "home_023",
+    "category": "home",
+    "difficulty": "medium",
+    "question": "What is the underground floor of a house called?",
+    "options": [
+      "Basement",
+      "Attic",
+      "Balcony",
+      "Porch"
+    ],
+    "answer": "Basement"
+  },
+  {
+    "id": "home_024",
+    "category": "home",
+    "difficulty": "medium",
+    "question": "Who wrote Alice's Adventures in Wonderland?",
+    "options": [
+      "Lewis Carroll",
+      "Roald Dahl",
+      "A. A. Milne",
+      "J. M. Barrie"
+    ],
+    "answer": "Lewis Carroll"
+  },
+  {
+    "id": "home_025",
+    "category": "home",
+    "difficulty": "easy",
+    "question": "Which instrument do you hit with sticks?",
+    "options": [
+      "Flute",
+      "Harp",
+      "Violin",
+      "Drum"
+    ],
+    "answer": "Drum"
+  },
+  {
+    "id": "home_026",
+    "category": "home",
+    "difficulty": "easy",
+    "question": "Which piece of furniture do you sleep on?",
+    "options": [
+      "Table",
+      "Bed",
+      "Chair",
+      "Shelf"
+    ],
+    "answer": "Bed"
+  },
+  {
+    "id": "home_027",
+    "category": "home",
+    "difficulty": "medium",
+    "question": "Which craft uses a loom?",
+    "options": [
+      "Pottery",
+      "Painting",
+      "Woodcarving",
+      "Weaving"
+    ],
+    "answer": "Weaving"
+  },
+  {
+    "id": "home_028",
+    "category": "home",
+    "difficulty": "hard",
+    "question": "Who wrote the story of the wooden puppet Pinocchio?",
+    "options": [
+      "Hans Christian Andersen",
+      "Roald Dahl",
+      "Charles Perrault",
+      "Carlo Collodi"
+    ],
+    "answer": "Carlo Collodi"
+  },
+  {
+    "id": "home_029",
+    "category": "home",
+    "difficulty": "medium",
+    "question": "Which tool grips and turns nuts and bolts?",
+    "options": [
+      "Hammer",
+      "Saw",
+      "Scissors",
+      "Wrench"
+    ],
+    "answer": "Wrench"
+  },
+  {
+    "id": "home_030",
+    "category": "home",
+    "difficulty": "medium",
+    "question": "What are bricks traditionally made from?",
+    "options": [
+      "Clay",
+      "Glass",
+      "Paper",
+      "Cotton"
+    ],
+    "answer": "Clay"
+  },
+  {
+    "id": "home_031",
+    "category": "home",
+    "difficulty": "hard",
+    "question": "Who painted Girl with a Pearl Earring?",
+    "options": [
+      "Rembrandt",
+      "Claude Monet",
+      "Johannes Vermeer",
+      "Edgar Degas"
+    ],
+    "answer": "Johannes Vermeer"
+  },
+  {
+    "id": "home_032",
+    "category": "home",
+    "difficulty": "hard",
+    "question": "Which Russian composer wrote the ballets Swan Lake and The Nutcracker?",
+    "options": [
+      "Tchaikovsky",
+      "Stravinsky",
+      "Rachmaninoff",
+      "Prokofiev"
+    ],
+    "answer": "Tchaikovsky"
+  },
+  {
+    "id": "home_033",
+    "category": "home",
+    "difficulty": "easy",
+    "question": "Which craft folds paper into animals and shapes?",
+    "options": [
+      "Pottery",
+      "Knitting",
+      "Weaving",
+      "Origami"
+    ],
+    "answer": "Origami"
+  },
+  {
+    "id": "home_034",
+    "category": "home",
+    "difficulty": "hard",
+    "question": "What is the tall stand that holds a painter's canvas called?",
+    "options": [
+      "Podium",
+      "Plinth",
+      "Stool",
+      "Easel"
+    ],
+    "answer": "Easel"
+  },
+  {
+    "id": "home_035",
+    "category": "home",
+    "difficulty": "easy",
+    "question": "Which garden tool with long teeth gathers fallen leaves?",
+    "options": [
+      "Spade",
+      "Rake",
+      "Trowel",
+      "Shears"
+    ],
+    "answer": "Rake"
+  },
+  {
+    "id": "home_036",
+    "category": "home",
+    "difficulty": "medium",
+    "question": "Which brothers collected tales like Snow White and Rapunzel?",
+    "options": [
+      "Lumiere brothers",
+      "Wright brothers",
+      "Brothers Grimm",
+      "Montgolfier brothers"
+    ],
+    "answer": "Brothers Grimm"
+  },
+  {
+    "id": "home_037",
+    "category": "home",
+    "difficulty": "medium",
+    "question": "Which smooth, shiny fabric is spun by a cocoon-making caterpillar?",
+    "options": [
+      "Cotton",
+      "Silk",
+      "Wool",
+      "Linen"
+    ],
+    "answer": "Silk"
+  },
+  {
+    "id": "home_038",
+    "category": "home",
+    "difficulty": "easy",
+    "question": "Which appliance turns bread golden and crisp?",
+    "options": [
+      "Kettle",
+      "Toaster",
+      "Blender",
+      "Fridge"
+    ],
+    "answer": "Toaster"
+  },
+  {
+    "id": "home_039",
+    "category": "home",
+    "difficulty": "hard",
+    "question": "Which composer wrote The Four Seasons?",
+    "options": [
+      "Johann Sebastian Bach",
+      "Antonio Vivaldi",
+      "Claude Debussy",
+      "Franz Schubert"
+    ],
+    "answer": "Antonio Vivaldi"
+  },
+  {
+    "id": "home_040",
+    "category": "home",
+    "difficulty": "medium",
+    "question": "Which instrument family does the trumpet belong to?",
+    "options": [
+      "Woodwind",
+      "Strings",
+      "Brass",
+      "Percussion"
+    ],
+    "answer": "Brass"
+  },
+  {
+    "id": "home_041",
+    "category": "home",
+    "difficulty": "hard",
+    "question": "Which Spanish painter helped to invent Cubism?",
+    "options": [
+      "Salvador Dali",
+      "Joan Miro",
+      "Pablo Picasso",
+      "Francisco Goya"
+    ],
+    "answer": "Pablo Picasso"
+  },
+  {
+    "id": "home_042",
+    "category": "home",
+    "difficulty": "medium",
+    "question": "Which tool tells you if a shelf is perfectly flat?",
+    "options": [
+      "Tape measure",
+      "Hammer",
+      "Spirit level",
+      "Chisel"
+    ],
+    "answer": "Spirit level"
+  },
+  {
+    "id": "home_043",
+    "category": "home",
+    "difficulty": "easy",
+    "question": "Which tool with bristles on a long handle sweeps the floor?",
+    "options": [
+      "Sponge",
+      "Bucket",
+      "Hose",
+      "Broom"
+    ],
+    "answer": "Broom"
+  },
+  {
+    "id": "home_044",
+    "category": "home",
+    "difficulty": "easy",
+    "question": "What do you use to water garden plants by hand?",
+    "options": [
+      "Rake",
+      "Hammer",
+      "Shears",
+      "Watering can"
+    ],
+    "answer": "Watering can"
+  },
+  {
+    "id": "home_045",
+    "category": "home",
+    "difficulty": "medium",
+    "question": "Who painted the ceiling of the Sistine Chapel?",
+    "options": [
+      "Leonardo da Vinci",
+      "Raphael",
+      "Michelangelo",
+      "Donatello"
+    ],
+    "answer": "Michelangelo"
+  },
+  {
+    "id": "home_046",
+    "category": "home",
+    "difficulty": "easy",
+    "question": "What do we call someone who builds things from wood?",
+    "options": [
+      "Carpenter",
+      "Plumber",
+      "Electrician",
+      "Baker"
+    ],
+    "answer": "Carpenter"
+  },
+  {
+    "id": "home_047",
+    "category": "home",
+    "difficulty": "easy",
+    "question": "Which craft shapes wet clay into pots and bowls?",
+    "options": [
+      "Origami",
+      "Embroidery",
+      "Knitting",
+      "Pottery"
+    ],
+    "answer": "Pottery"
+  },
+  {
+    "id": "home_048",
+    "category": "home",
+    "difficulty": "easy",
+    "question": "Which tool cuts paper?",
+    "options": [
+      "Hammer",
+      "Pliers",
+      "Scissors",
+      "Wrench"
+    ],
+    "answer": "Scissors"
+  },
+  {
+    "id": "home_049",
+    "category": "home",
+    "difficulty": "medium",
+    "question": "Which instrument is a silver woodwind you blow across?",
+    "options": [
+      "Flute",
+      "Trumpet",
+      "Cello",
+      "Harp"
+    ],
+    "answer": "Flute"
+  },
+  {
+    "id": "home_050",
+    "category": "home",
+    "difficulty": "easy",
+    "question": "Which kitchen appliance keeps food cold?",
+    "options": [
+      "Oven",
+      "Fridge",
+      "Toaster",
+      "Kettle"
+    ],
+    "answer": "Fridge"
+  },
+  {
+    "id": "home_051",
+    "category": "home",
+    "difficulty": "easy",
+    "question": "What do we call the person who writes a book?",
+    "options": [
+      "Author",
+      "Editor",
+      "Illustrator",
+      "Publisher"
+    ],
+    "answer": "Author"
+  },
+  {
+    "id": "home_052",
+    "category": "home",
+    "difficulty": "easy",
+    "question": "Which room in a house do you cook in?",
+    "options": [
+      "Bedroom",
+      "Kitchen",
+      "Bathroom",
+      "Garage"
+    ],
+    "answer": "Kitchen"
+  },
+  {
+    "id": "home_053",
+    "category": "home",
+    "difficulty": "easy",
+    "question": "What do you use to dig a hole in the garden?",
+    "options": [
+      "Rake",
+      "Watering can",
+      "Hose",
+      "Spade"
+    ],
+    "answer": "Spade"
+  },
+  {
+    "id": "home_054",
+    "category": "home",
+    "difficulty": "easy",
+    "question": "What colour do you get by mixing red and blue paint?",
+    "options": [
+      "Green",
+      "Purple",
+      "Orange",
+      "Brown"
+    ],
+    "answer": "Purple"
+  },
+  {
+    "id": "home_055",
+    "category": "home",
+    "difficulty": "easy",
+    "question": "Who painted the Mona Lisa?",
+    "options": [
+      "Michelangelo",
+      "Raphael",
+      "Pablo Picasso",
+      "Leonardo da Vinci"
+    ],
+    "answer": "Leonardo da Vinci"
+  },
+  {
+    "id": "home_056",
+    "category": "home",
+    "difficulty": "medium",
+    "question": "Which three colours are the traditional primary paint colours?",
+    "options": [
+      "Red, green and purple",
+      "Orange, green, purple",
+      "Red, yellow and blue",
+      "Black, white and grey"
+    ],
+    "answer": "Red, yellow and blue"
+  },
+  {
+    "id": "home_057",
+    "category": "home",
+    "difficulty": "easy",
+    "question": "What is the job of a chimney?",
+    "options": [
+      "Collect rainwater",
+      "Hold up the roof",
+      "Keep out wind",
+      "Let smoke escape"
+    ],
+    "answer": "Let smoke escape"
+  },
+  {
+    "id": "home_058",
+    "category": "home",
+    "difficulty": "hard",
+    "question": "Who wrote the fairy tale The Ugly Duckling?",
+    "options": [
+      "Charles Perrault",
+      "Aesop",
+      "Hans Christian Andersen",
+      "Brothers Grimm"
+    ],
+    "answer": "Hans Christian Andersen"
+  },
+  {
+    "id": "home_059",
+    "category": "home",
+    "difficulty": "medium",
+    "question": "Which flower grows from a bulb?",
+    "options": [
+      "Rose",
+      "Daisy",
+      "Sunflower",
+      "Tulip"
+    ],
+    "answer": "Tulip"
+  },
+  {
+    "id": "home_060",
+    "category": "home",
+    "difficulty": "medium",
+    "question": "What is compost mostly made from?",
+    "options": [
+      "Crushed stones",
+      "Rotted plants and food",
+      "Melted plastic",
+      "Sand and glass"
+    ],
+    "answer": "Rotted plants and food"
+  },
+  {
+    "id": "home_061",
+    "category": "home",
+    "difficulty": "medium",
+    "question": "What is the room just under the roof of a house called?",
+    "options": [
+      "Attic",
+      "Cellar",
+      "Porch",
+      "Hallway"
+    ],
+    "answer": "Attic"
+  }
+]

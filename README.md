@@ -79,9 +79,24 @@ channel when the bot starts is only noticed once their state changes.
 | `/fish` | Cast, wait for the bite, press **Reel!** in time; 72 catches for the fish book |
 | `/quests` | Three daily quests; clear all three for pearls |
 | `/duel tictactoe user` | Button tic-tac-toe; the winner earns shells |
+| `/duel connect4 user [bet]` | Connect four on a pixel-art board: the challenged player accepts, then each turn is a column button (1-7) within 90 s; the winner earns shells |
+| `/duel rps user [rounds] [bet]` | Rock paper scissors, best of 1, 3 or 5: each player gets private Rock / Paper / Scissors buttons, the channel sees each round revealed; ties replay |
+| `/play hangman` | A cozy word (780 in five categories) guessed from two letter menus while the tide washes a pixel sandcastle away; six misses lose |
+| `/play wordle [mode]` | Five letters, six tries, typed into a form, shown as private pixel tiles with a keyboard summary. `daily` (default) is one word the same for everyone, kept per player per day, with a spoiler-free **Share result**; `practice` is a random word, as many as you like |
+| `/play trivia [category]` | A question for the channel from 464 (8 topics, three difficulties): four answer buttons, 20 seconds, anyone answers once; the message then reveals the answer and who got it right |
+| `/play stats [user]` | Games played and won for each game |
 | `/config welcome-card` | Design the welcome card (theme, headline, accent colour) with a live preview |
 
-Game content (furniture, rooms, pets, fish, looks, card backgrounds, badges and titles) lives in
+Duel wagers (`bet`, 10 to 500 shells each) are optional and off by default. Nothing is held until the
+challenged player accepts; then both bets leave the balances in one transaction and sit in the database
+row of the game. The winner takes both; a draw, a decline, a no-show or a timeout gives them back, and
+whoever ends the game first pays out, exactly once, so a restart cannot lose or double shells (a janitor on
+every pod ends games whose clock ran out every 10 seconds). Without a wager the system pays small rewards
+(connect four 25, rock paper scissors 15, hangman 15, wordle 10 and up to 45 for the daily, trivia 8 to 18
+by difficulty) with a daily limit per player and game.
+
+Game content (furniture, rooms, pets, fish, looks, card backgrounds, badges, titles, trivia, hangman words and
+the wordle lists) lives in
 `content/*.json` (`python3 content/check.py` validates it); see
 [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md). Sprites are drawn by GPT and imported with
 `tools/art/` (see below).
@@ -121,6 +136,7 @@ cargo run -p pinchora -- commands         # print slash command JSON
 cargo run -p pinchora-render --example samples   # render sample cards to target/render-samples
                                                  # (profile-background/-badges/-placeholder, rank-background, wallet-background show /customize;
                                                  #  the profile and rank samples carry a title)
+cargo run -p pinchora-render --example games     # connect four, hangman and wordle sample cards
 ```
 
 Tests: unit tests run with plain `cargo test --workspace`. Database and Redis integration

@@ -1,6 +1,7 @@
 mod contest;
 mod customize;
 mod economy;
+mod games;
 mod guestbook;
 mod guilds;
 mod house;
@@ -20,6 +21,7 @@ use sqlx::{PgPool, postgres::PgPoolOptions};
 pub use contest::{ContestEntry, ContestResult};
 pub use customize::{CustomizeBuy, MAX_BADGES, PlayerStats};
 pub use economy::{DailyOutcome, RepOutcome, TransferOutcome};
+pub use games::{ACTIVE, DONE, DuelStart, GameSession, GameStat, NewGame, PENDING, Payout, WordleGame};
 pub use guestbook::{NoteRow, SignOutcome, VisitorRow};
 pub use guilds::{GuildSettings, LogKind};
 pub use house::{

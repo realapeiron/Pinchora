@@ -1,6 +1,8 @@
-use std::{str::Split, time::Duration};
+use std::{str::Split, sync::Arc, time::Duration};
 
-use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
+use pinchora_db::{DuelStart, GameSession, NewGame, PENDING, Payout};
+use pinchora_game::play::{Game as Play, MAX_BET, MIN_BET};
+use twilight_interactions::command::{CommandModel, CommandOption, CreateCommand, CreateOption, ResolvedUser};
 use twilight_model::{
     channel::message::{
         AllowedMentions, Component,
@@ -9,7 +11,15 @@ use twilight_model::{
     http::interaction::InteractionResponseData,
 };
 
-use crate::{Cx, util::mention};
+use super::{
+    connect4,
+    games::{button, channel_of, edit_message, location, pack, record, track_message, unpack},
+    rps,
+};
+use crate::{
+    App, Cx,
+    util::{mention, relative, resolved_display_name, thousands},
+};
 
 /// Shells for a win; paid at most once per pair of players per hour.
 const WIN_REWARD: i64 = 30;
@@ -19,6 +29,58 @@ const WIN_REWARD: i64 = 30;
 pub enum DuelCommand {
     #[command(name = "tictactoe")]
     TicTacToe(DuelTicTacToe),
+    #[command(name = "connect4")]
+    Connect4(DuelConnect4),
+    #[command(name = "rps")]
+    Rps(DuelRps),
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(
+    name = "connect4",
+    desc = "Connect four on a pixel board; the winner earns shells, or the pot"
+)]
+pub struct DuelConnect4 {
+    /// Your opponent
+    user: ResolvedUser,
+    /// Shells each of you puts up (10-500); leave empty to play for fun
+    #[command(min_value = 10, max_value = 500)]
+    bet: Option<i64>,
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(
+    name = "rps",
+    desc = "Rock paper scissors, picked in secret; the winner earns shells, or the pot"
+)]
+pub struct DuelRps {
+    /// Your opponent
+    user: ResolvedUser,
+    /// How many rounds the match is (default: best of 3)
+    rounds: Option<Rounds>,
+    /// Shells each of you puts up (10-500); leave empty to play for fun
+    #[command(min_value = 10, max_value = 500)]
+    bet: Option<i64>,
+}
+
+#[derive(CommandOption, CreateOption, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Rounds {
+    #[option(name = "Best of 1", value = 1)]
+    One,
+    #[option(name = "Best of 3", value = 3)]
+    Three,
+    #[option(name = "Best of 5", value = 5)]
+    Five,
+}
+
+impl Rounds {
+    fn count(self) -> u8 {
+        match self {
+            Self::One => 1,
+            Self::Three => 3,
+            Self::Five => 5,
+        }
+    }
 }
 
 #[derive(CommandModel, CreateCommand)]
@@ -30,7 +92,17 @@ pub struct DuelTicTacToe {
 
 impl DuelCommand {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
-        let Self::TicTacToe(c) = self;
+        match self {
+            Self::TicTacToe(c) => c.run(cx).await,
+            Self::Connect4(c) => challenge(cx, Kind::Connect4, &c.user, 0, c.bet).await,
+            Self::Rps(c) => challenge(cx, Kind::Rps, &c.user, c.rounds.map_or(3, Rounds::count), c.bet).await,
+        }
+    }
+}
+
+impl DuelTicTacToe {
+    async fn run(self, cx: &Cx) -> anyhow::Result<()> {
+        let c = self;
         let me = cx.author()?.id.get();
         let them = &c.user.resolved;
         if them.bot || them.id.get() == me {
@@ -159,12 +231,15 @@ pub(crate) async fn on_move(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
         return cx.reply_ephemeral("That square is taken.").await;
     }
     game.board[cell] = if game.x_turn { b'x' } else { b'o' };
+    // Who won, once the game is over: `Some(None)` is a draw.
+    let mut finished = None;
     let text = if let Some((mark, _)) = game.winner() {
         let (winner, loser) = if mark == b'x' {
             (game.x, game.o)
         } else {
             (game.o, game.x)
         };
+        finished = Some(Some(winner));
         let pair = format!("ttt:{}:{}", winner.min(loser), winner.max(loser));
         let paid = cx
             .app
@@ -179,13 +254,322 @@ pub(crate) async fn on_move(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
             format!("🏆 {} wins! (Rewards for this pair reset hourly.)", mention(winner))
         }
     } else if game.full() {
+        finished = Some(None);
         "🤝 It's a draw!".to_owned()
     } else {
         game.x_turn = !game.x_turn;
         let next = if game.x_turn { game.x } else { game.o };
         format!("{}'s turn ({})", mention(next), if game.x_turn { "❌" } else { "⭕" })
     };
+    if let Some(winner) = finished {
+        // The buttons carry the whole game, so a double click finishes it twice; the message it
+        // was played on counts it once.
+        let key = format!("tttstat:{}", cx.clicked_message().map_or(0, |m| m.1));
+        if cx.app.cache.once(&key, Duration::from_secs(86_400)).await? {
+            for player in [game.x, game.o] {
+                record(&cx.app, Play::TicTacToe, player, winner == Some(player)).await;
+            }
+        }
+    }
     cx.update(game.message(&text)).await
+}
+
+/// How long a challenge waits to be accepted.
+const CHALLENGE_SECS: i64 = 180;
+/// How long a player has for one turn or one pick.
+pub(crate) const TURN_SECS: i64 = 90;
+
+/// The duels that keep their state in the database, with a challenge to accept first.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Kind {
+    Connect4,
+    Rps,
+}
+
+impl Kind {
+    pub(crate) fn key(self) -> &'static str {
+        match self {
+            Self::Connect4 => "connect4",
+            Self::Rps => "rps",
+        }
+    }
+
+    pub(crate) fn from_key(key: &str) -> Option<Self> {
+        match key {
+            "connect4" => Some(Self::Connect4),
+            "rps" => Some(Self::Rps),
+            _ => None,
+        }
+    }
+
+    /// The custom id prefix of its buttons.
+    fn prefix(self) -> &'static str {
+        match self {
+            Self::Connect4 => "c4",
+            Self::Rps => "rp",
+        }
+    }
+}
+
+/// `/duel connect4` and `/duel rps`: posts a challenge the opponent can accept or decline. Nothing is
+/// held until they accept.
+async fn challenge(cx: &Cx, kind: Kind, opponent: &ResolvedUser, rounds: u8, bet: Option<i64>) -> anyhow::Result<()> {
+    let me = cx.author()?.id.get();
+    let them = &opponent.resolved;
+    if them.bot || them.id.get() == me {
+        return cx.reply_ephemeral("Pick a human opponent!").await;
+    }
+    let bet = bet.unwrap_or(0);
+    if bet != 0 && !(MIN_BET..=MAX_BET).contains(&bet) {
+        return cx
+            .reply_ephemeral(format!("A wager is {MIN_BET} to {MAX_BET} shells."))
+            .await;
+    }
+    if bet > 0 {
+        let balance = cx.app.db.user(me).await?.credits;
+        if balance < bet {
+            return cx
+                .reply_ephemeral(format!(
+                    "You only have **{}** shells, so you can't wager {}. Try `/daily`!",
+                    thousands(balance),
+                    thousands(bet)
+                ))
+                .await;
+        }
+    }
+    if let Some(left) = cx
+        .app
+        .cache
+        .try_cooldown(&format!("duelchal:{me}"), Duration::from_secs(10))
+        .await?
+    {
+        return cx
+            .reply_ephemeral(format!(
+                "Easy there! You can send another challenge in {} s.",
+                left.as_secs() + 1
+            ))
+            .await;
+    }
+    let (host_name, guest_name) = (cx.author_display_name(), resolved_display_name(opponent));
+    let fields = if kind == Kind::Rps {
+        rounds.to_string()
+    } else {
+        String::new()
+    };
+    let session = cx
+        .app
+        .db
+        .create_game(NewGame {
+            kind: kind.key(),
+            guild_id: cx.guild_id().unwrap_or(0),
+            channel_id: channel_of(cx),
+            host: me,
+            guest: Some(them.id.get()),
+            bet,
+            status: PENDING,
+            state: &pack(&fields, [&host_name, &guest_name]),
+            ttl_secs: CHALLENGE_SECS,
+        })
+        .await?;
+    let title = match kind {
+        Kind::Connect4 => "Connect four".to_owned(),
+        Kind::Rps => format!("rock paper scissors, best of {rounds}"),
+    };
+    let wager = if bet > 0 {
+        format!(
+            "💰 Wager: **{}** shells each. The winner takes **{}**; a draw, a decline or a no-show gives the shells back.",
+            thousands(bet),
+            thousands(bet * 2)
+        )
+    } else {
+        "No wager, just for fun.".to_owned()
+    };
+    let prefix = kind.prefix();
+    cx.reply(InteractionResponseData {
+        content: Some(format!(
+            "⚔️ {} challenges {} to **{title}**!\n{wager}\n{}, answer {}.",
+            mention(me),
+            mention(them.id),
+            mention(them.id),
+            relative(session.expires_at)
+        )),
+        components: Some(vec![Component::ActionRow(ActionRow {
+            id: None,
+            components: vec![
+                button(
+                    format!("{prefix}:y:{}", session.id),
+                    "Accept",
+                    ButtonStyle::Success,
+                    false,
+                ),
+                button(
+                    format!("{prefix}:n:{}", session.id),
+                    "Decline",
+                    ButtonStyle::Danger,
+                    false,
+                ),
+            ],
+        })]),
+        // Only the challenged player is pinged.
+        allowed_mentions: Some(AllowedMentions {
+            users: vec![them.id],
+            ..Default::default()
+        }),
+        ..Default::default()
+    })
+    .await?;
+    track_message(cx, session.id);
+    Ok(())
+}
+
+/// A click on a challenge's Accept (`accept`) or Decline.
+pub(crate) async fn answer(cx: &Cx, kind: Kind, id: i64, accept: bool) -> anyhow::Result<()> {
+    let me = cx.author()?.id.get();
+    let Some(session) = cx.app.db.game(id).await? else {
+        return cx.reply_ephemeral("This challenge has expired.").await;
+    };
+    let (host, guest) = (session.host_id as u64, session.guest_id.unwrap_or(0) as u64);
+    if session.status != PENDING || session.expired() {
+        return cx.reply_ephemeral("This challenge is over.").await;
+    }
+    if !accept {
+        if me != host && me != guest {
+            return cx.reply_ephemeral("This challenge isn't yours.").await;
+        }
+        let ended = cx
+            .app
+            .db
+            // Only the pending state: an Accept that lands first holds the bets, which must not vanish.
+            .settle_game(id, Some(&session.state), "declined", Payout::Refund, false)
+            .await?
+            .is_some();
+        if !ended {
+            return cx.reply_ephemeral("This challenge is over.").await;
+        }
+        let text = if me == host {
+            format!("🚫 {} took the challenge back.", mention(host))
+        } else {
+            format!("🚫 {} declined the challenge.", mention(guest))
+        };
+        return cx
+            .update(InteractionResponseData {
+                content: Some(text),
+                components: Some(Vec::new()),
+                allowed_mentions: Some(AllowedMentions::default()),
+                ..Default::default()
+            })
+            .await;
+    }
+    if me != guest {
+        return cx
+            .reply_ephemeral(if me == host {
+                "You sent this challenge. Wait for it to be accepted, or decline to take it back."
+            } else {
+                "This challenge isn't for you. Start your own with `/duel`!"
+            })
+            .await;
+    }
+    let Some((channel, message)) = cx.clicked_message() else {
+        anyhow::bail!("accepted a challenge without a message");
+    };
+    let (fields, names) = unpack(&session.state);
+    let machine = match kind {
+        Kind::Connect4 => connect4::initial_fields(),
+        Kind::Rps => rps::initial_fields(fields.parse().unwrap_or(3)),
+    };
+    let packed = pack(&machine, [&names[0], &names[1]]);
+    match cx
+        .app
+        .db
+        .start_duel(id, me, (channel, message), &packed, TURN_SECS)
+        .await?
+    {
+        DuelStart::Started(started) => match kind {
+            Kind::Connect4 => connect4::begin(cx, &started).await,
+            Kind::Rps => rps::begin(cx, &started).await,
+        },
+        DuelStart::Gone => cx.reply_ephemeral("This challenge is over.").await,
+        DuelStart::NotInvited => cx.reply_ephemeral("This challenge isn't for you.").await,
+        DuelStart::Broke { user, balance } => {
+            let text = if user == me {
+                format!(
+                    "You only have **{}** shells, but the wager is **{}** each.",
+                    thousands(balance),
+                    thousands(session.bet)
+                )
+            } else {
+                format!(
+                    "{} can't cover the **{}** shell wager any more. Ask for a smaller one.",
+                    mention(user),
+                    thousands(session.bet)
+                )
+            };
+            cx.reply_ephemeral(text).await
+        }
+    }
+}
+
+/// Ends a duel (or an unanswered challenge) whose clock ran out: bets go back and the message
+/// says so. False when somebody else ended it first.
+pub(crate) async fn time_out(app: &Arc<App>, session: &GameSession) -> anyhow::Result<bool> {
+    let Some(before) = app
+        .db
+        .settle_game(session.id, None, "timeout", Payout::Refund, true)
+        .await?
+    else {
+        return Ok(false);
+    };
+    let text = timeout_text(&before);
+    if let Some((channel, message)) = location(&before) {
+        edit_message(app, channel, message, Some(&text), None, Some(&[])).await;
+    }
+    Ok(true)
+}
+
+/// A click on a game whose clock has run out: ends it (bets go back) and shows that on the message
+/// the player clicked.
+pub(crate) async fn expire_here(cx: &Cx, session: &GameSession) -> anyhow::Result<()> {
+    match cx
+        .app
+        .db
+        .settle_game(session.id, None, "timeout", Payout::Refund, true)
+        .await?
+    {
+        Some(before) => {
+            cx.update(InteractionResponseData {
+                content: Some(timeout_text(&before)),
+                components: Some(Vec::new()),
+                allowed_mentions: Some(AllowedMentions::default()),
+                ..Default::default()
+            })
+            .await
+        }
+        None => cx.reply_ephemeral("This game is over.").await,
+    }
+}
+
+/// What a timed-out duel's message says. `session` is the session as it was before it ended.
+pub(crate) fn timeout_text(session: &GameSession) -> String {
+    let guest = session.guest_id.unwrap_or(0);
+    if session.status == PENDING {
+        return format!("⌛ {} didn't answer in time, so the challenge expired.", mention(guest));
+    }
+    let slow = match Kind::from_key(&session.kind) {
+        Some(Kind::Connect4) => connect4::slow_players(session),
+        Some(Kind::Rps) => rps::slow_players(session),
+        None => Vec::new(),
+    };
+    let who = match slow.as_slice() {
+        [] => "Nobody".to_owned(),
+        [one] => mention(one),
+        many => many.iter().map(mention).collect::<Vec<_>>().join(" and "),
+    };
+    let refund = if session.bet > 0 {
+        " Both wagers were given back."
+    } else {
+        ""
+    };
+    format!("⌛ {who} ran out of time, so the game is over.{refund}")
 }
 
 #[cfg(test)]

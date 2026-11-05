@@ -3,8 +3,8 @@ use twilight_model::application::interaction::modal::ModalInteractionComponent;
 use crate::{
     Cx,
     commands::{
-        character, contest, customize, decorate, duel, fish, gift, guestbook, house, leaderboard, pet, plaza, quests,
-        role_panels, shop, stall, store,
+        character, connect4, contest, customize, decorate, duel, fish, gift, guestbook, hangman, house, leaderboard,
+        pet, plaza, quests, role_panels, rps, shop, stall, store, trivia, wordle,
     },
 };
 
@@ -43,6 +43,11 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
         Some("rr") => role_panels::on_toggle(cx, parts).await,
         Some("gb") => guestbook::on_component(cx, parts, values.first().map(String::as_str)).await,
         Some("rc") => contest::on_component(cx, parts).await,
+        Some("c4") => connect4::on_button(cx, parts).await,
+        Some("rp") => rps::on_button(cx, parts).await,
+        Some("hm") => hangman::on_pick(cx, parts, values.first().map(String::as_str)).await,
+        Some("wo") => wordle::on_button(cx, parts).await,
+        Some("tv") => trivia::on_answer(cx, parts).await,
         _ => cx.reply_ephemeral("This button has expired.").await,
     }
 }
@@ -53,6 +58,13 @@ pub(crate) async fn dispatch_modal(cx: &Cx, custom_id: &str, fields: &[(String, 
     let mut parts = custom_id.split(':');
     match parts.next() {
         Some("gb") => guestbook::on_modal(cx, parts, fields).await,
+        Some("wo") if parts.next() == Some("m") => {
+            let text = fields
+                .iter()
+                .find(|(id, _)| id == wordle::GUESS_FIELD)
+                .map_or("", |(_, value)| value.as_str());
+            wordle::on_guess(cx, parts, text).await
+        }
         _ => cx.reply_ephemeral("This form has expired.").await,
     }
 }

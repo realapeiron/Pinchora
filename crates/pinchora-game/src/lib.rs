@@ -7,6 +7,7 @@ pub mod fishing;
 pub mod house;
 pub mod market;
 pub mod pets;
+pub mod play;
 pub mod quests;
 
 pub use content::*;

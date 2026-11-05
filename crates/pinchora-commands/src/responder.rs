@@ -48,7 +48,9 @@ impl Responder {
             app,
             id: interaction.id,
             token: interaction.token.clone(),
-            component: interaction.kind == InteractionType::MessageComponent,
+            // A modal opened from a button answers by updating that button's message.
+            component: interaction.kind == InteractionType::MessageComponent
+                || (interaction.kind == InteractionType::ModalSubmit && interaction.message.is_some()),
             state: Mutex::new(State::Pending(tx)),
         }
     }

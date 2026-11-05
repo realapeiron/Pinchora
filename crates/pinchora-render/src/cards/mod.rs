@@ -1,6 +1,8 @@
 mod badges;
 mod character;
+mod connect4;
 mod grid;
+mod hangman;
 mod leaderboard;
 mod levelup;
 mod pet;
@@ -8,10 +10,13 @@ mod profile;
 mod rank;
 mod wallet;
 mod welcome;
+mod wordle;
 
 pub use badges::{BadgeCell, BadgeCollectionCard, BadgeState};
 pub use character::CharacterCard;
+pub use connect4::Connect4Card;
 pub use grid::{GridSlot, ItemGridCard};
+pub use hangman::{HangmanCard, HangmanLetter};
 pub use leaderboard::{LeaderboardCard, LeaderboardEntry};
 pub use levelup::LevelUpCard;
 pub use pet::PetCard;
@@ -19,6 +24,7 @@ pub use profile::ProfileCard;
 pub use rank::{NextRole, RankCard};
 pub use wallet::WalletCard;
 pub use welcome::WelcomeCard;
+pub use wordle::{ABSENT, CORRECT, PRESENT, WordleCard, WordleRow};
 
 use std::fmt::Write;
 

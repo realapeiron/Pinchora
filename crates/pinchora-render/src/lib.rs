@@ -15,9 +15,9 @@ use resvg::{tiny_skia, usvg};
 
 pub use avatar::{placeholder_avatar, prepare_avatar};
 pub use cards::{
-    Backdrop, BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, CharacterCard, GridSlot, ItemGridCard,
-    LeaderboardCard, LeaderboardEntry, LevelUpCard, NextRole, PetCard, ProfileCard, RankCard, SpriteArt, WalletCard,
-    WelcomeCard,
+    ABSENT, Backdrop, BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, CORRECT, CharacterCard, Connect4Card,
+    GridSlot, HangmanCard, HangmanLetter, ItemGridCard, LeaderboardCard, LeaderboardEntry, LevelUpCard, NextRole,
+    PRESENT, PetCard, ProfileCard, RankCard, SpriteArt, WalletCard, WelcomeCard, WordleCard, WordleRow,
 };
 pub use encode::encode_png;
 pub use svg::{compact, thousands};
@@ -101,6 +101,18 @@ impl Renderer {
     }
 
     pub fn leaderboard_card(&self, card: &LeaderboardCard) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn connect4_card(&self, card: &Connect4Card<'_>) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn hangman_card(&self, card: &HangmanCard<'_>) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn wordle_card(&self, card: &WordleCard<'_>) -> anyhow::Result<Vec<u8>> {
         self.svg_to_png(&card.to_svg())
     }
 }

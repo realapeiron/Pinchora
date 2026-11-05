@@ -114,5 +114,8 @@ async fn boot(config: &Config, role: &str) -> anyhow::Result<(Arc<App>, Readines
         cache,
         node,
     );
-    Ok((Arc::new(app), ready))
+    let app = Arc::new(app);
+    // Ends duels and rounds whose clock ran out, so no wager stays held after a restart.
+    pinchora_commands::spawn_game_janitor(app.clone());
+    Ok((app, ready))
 }
