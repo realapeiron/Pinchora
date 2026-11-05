@@ -36,6 +36,28 @@ impl Theme {
         }
     }
 
+    /// Named presets for server-designed cards.
+    pub fn preset(name: &str) -> Self {
+        let base = Self::reef();
+        let with = |top: &str, bottom: &str, panel: &str, edge: &str, accent: &str| Self {
+            bg_top: top.into(),
+            bg_bottom: bottom.into(),
+            panel: panel.into(),
+            panel_edge: edge.into(),
+            accent: accent.into(),
+            ..base.clone()
+        };
+        match name {
+            "sunset" => with("#7a2a3a", "#2b1330", "#3a1838", "#c2413f", "#ffd166"),
+            "forest" => with("#1f4d3a", "#0e2419", "#173a2b", "#2f7d4f", "#a6e39a"),
+            "candy" => with("#9b6bc4", "#5a3a7a", "#4a2f66", "#ff8fb1", "#fff1e8"),
+            "midnight" => with("#0f1631", "#05070f", "#0b1029", "#2e3d75", "#8fd3ff"),
+            _ => base,
+        }
+    }
+
+    pub const PRESETS: [&'static str; 5] = ["reef", "sunset", "forest", "candy", "midnight"];
+
     pub fn with_accent(mut self, rgb: Option<u32>) -> Self {
         if let Some(rgb) = rgb {
             self.accent = format!("#{:06x}", rgb & 0xff_ffff);

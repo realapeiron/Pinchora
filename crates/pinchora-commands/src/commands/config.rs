@@ -1,5 +1,6 @@
 use pinchora_db::GuildSettings;
-use twilight_interactions::command::{CommandModel, CreateCommand};
+use pinchora_render::{Theme, WelcomeCard};
+use twilight_interactions::command::{CommandModel, CommandOption, CreateCommand, CreateOption};
 use twilight_model::{
     application::interaction::InteractionChannel,
     channel::message::{Embed, MessageFlags},
@@ -32,6 +33,82 @@ pub enum ConfigCommand {
     Leveling(ConfigLeveling),
     #[command(name = "show")]
     Show(ConfigShow),
+    #[command(name = "welcome-card")]
+    WelcomeCard(ConfigWelcomeCard),
+}
+
+#[derive(CommandOption, CreateOption, Clone, Copy)]
+pub enum CardTheme {
+    #[option(name = "Reef (navy & coral)", value = "reef")]
+    Reef,
+    #[option(name = "Sunset", value = "sunset")]
+    Sunset,
+    #[option(name = "Forest", value = "forest")]
+    Forest,
+    #[option(name = "Candy", value = "candy")]
+    Candy,
+    #[option(name = "Midnight", value = "midnight")]
+    Midnight,
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "welcome-card", desc = "Design the welcome card and see a preview")]
+pub struct ConfigWelcomeCard {
+    /// Colour theme
+    theme: Option<CardTheme>,
+    /// Big headline on the card, e.g. WELCOME or HI THERE
+    #[command(max_length = 18)]
+    title: Option<String>,
+    /// Accent colour as hex, e.g. #ff6b4a
+    #[command(max_length = 7)]
+    color: Option<String>,
+}
+
+fn parse_hex(s: &str) -> Option<i32> {
+    let s = s.trim().trim_start_matches('#');
+    (s.len() == 6).then(|| i32::from_str_radix(s, 16).ok()).flatten()
+}
+
+impl ConfigWelcomeCard {
+    async fn run(self, cx: &Cx, guild: u64) -> anyhow::Result<()> {
+        let accent = match self.color.as_deref() {
+            Some(c) => match parse_hex(c) {
+                Some(v) => Some(v),
+                None => return cx.reply_ephemeral("Colours look like `#ff6b4a`.").await,
+            },
+            None => None,
+        };
+        let settings = cx
+            .app
+            .db
+            .update_welcome_card(guild, self.theme.map(|t| t.value()), self.title.as_deref(), accent)
+            .await?;
+        cx.app.forget_guild_settings(guild).await;
+        let author = cx.author()?.clone();
+        let name = cx.author_display_name();
+        let avatar = cx.app.avatar(&author, WelcomeCard::AVATAR_SIZE, Some(44)).await;
+        let title = settings.welcome_title.clone().unwrap_or_else(|| "Welcome".to_owned());
+        let theme = Theme::preset(settings.welcome_theme.as_deref().unwrap_or("reef"))
+            .with_accent(settings.welcome_accent.map(|c| c as u32));
+        let png = cx
+            .app
+            .render(move |r| {
+                r.welcome_card(&WelcomeCard {
+                    display_name: &name,
+                    avatar_png: &avatar,
+                    server_name: "your server",
+                    member_number: Some(1234),
+                    title: &title,
+                    theme,
+                })
+            })
+            .await?;
+        let embed = EmbedBuilder::new()
+            .color(BRAND)
+            .title("Welcome card preview")
+            .description("New members will see this card. Turn it on and pick a channel with `/config welcome`.");
+        cx.reply(Cx::card(embed, "welcome.png", png, Vec::new(), true)).await
+    }
 }
 
 impl ConfigCommand {
@@ -53,6 +130,7 @@ impl ConfigCommand {
                     .await?
             }
             Self::Show(_) => cx.app.db.guild_settings(guild).await?,
+            Self::WelcomeCard(c) => return c.run(cx, guild).await,
         };
         cx.app.forget_guild_settings(guild).await;
         cx.reply(InteractionResponseData {

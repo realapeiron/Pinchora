@@ -84,6 +84,9 @@ pub async fn on_member_add(app: Arc<App>, event: MemberAdd) -> anyhow::Result<()
     let name = display_name(&member.user, member.nick.as_deref());
     let avatar = app.avatar(&member.user, WelcomeCard::AVATAR_SIZE, Some(44)).await;
     let server_name = guild.name.clone();
+    let title = settings.welcome_title.clone().unwrap_or_else(|| "Welcome".to_owned());
+    let theme = Theme::preset(settings.welcome_theme.as_deref().unwrap_or("reef"))
+        .with_accent(settings.welcome_accent.map(|c| c as u32));
     let png = app
         .render(move |r| {
             r.welcome_card(&WelcomeCard {
@@ -91,8 +94,8 @@ pub async fn on_member_add(app: Arc<App>, event: MemberAdd) -> anyhow::Result<()
                 avatar_png: &avatar,
                 server_name: &server_name,
                 member_number: count,
-                title: "Welcome",
-                theme: Theme::reef(),
+                title: &title,
+                theme,
             })
         })
         .await?;

@@ -9,12 +9,16 @@ pub struct GuildSettings {
     pub welcome_enabled: bool,
     pub welcome_channel_id: Option<i64>,
     pub welcome_message: Option<String>,
+    pub welcome_theme: Option<String>,
+    pub welcome_title: Option<String>,
+    pub welcome_accent: Option<i32>,
 }
 
 macro_rules! columns {
     () => {
         "id, leveling_enabled, levelup_channel_id, levelup_message, \
-         welcome_enabled, welcome_channel_id, welcome_message"
+         welcome_enabled, welcome_channel_id, welcome_message, \
+         welcome_theme, welcome_title, welcome_accent"
     };
 }
 
@@ -79,6 +83,32 @@ impl Db {
             .bind(enabled)
             .bind(channel_id.map(sql_id))
             .bind(message)
+            .fetch_one(self.pool())
+            .await?)
+    }
+
+    /// Stores the welcome card design; `None` keeps the current value.
+    pub async fn update_welcome_card(
+        &self,
+        guild_id: u64,
+        theme: Option<&str>,
+        title: Option<&str>,
+        accent: Option<i32>,
+    ) -> anyhow::Result<GuildSettings> {
+        self.guild_settings(guild_id).await?;
+        let sql = concat!(
+            "UPDATE guilds SET
+                 welcome_theme = COALESCE($2, welcome_theme),
+                 welcome_title = COALESCE($3, welcome_title),
+                 welcome_accent = COALESCE($4, welcome_accent)
+             WHERE id = $1 RETURNING ",
+            columns!()
+        );
+        Ok(sqlx::query_as::<_, GuildSettings>(sql)
+            .bind(sql_id(guild_id))
+            .bind(theme)
+            .bind(title)
+            .bind(accent)
             .fetch_one(self.pool())
             .await?)
     }

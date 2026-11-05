@@ -1,6 +1,7 @@
 mod bio;
 mod config;
 mod daily;
+pub(crate) mod duel;
 mod economy;
 pub(crate) mod fish;
 pub(crate) mod gift;
@@ -56,4 +57,5 @@ commands!(
     pet::PetCommand,
     fish::Fish,
     gift::Gift,
+    duel::DuelCommand,
 );
