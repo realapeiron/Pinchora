@@ -5,7 +5,7 @@ use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
 
 use crate::{
     Cx,
-    commands::customize::{Cosmetics, theme},
+    commands::customize::{Cosmetics, theme, title_name},
     roles,
     util::resolved_display_name,
 };
@@ -41,12 +41,14 @@ impl Rank {
         let background = row.background.as_deref().and_then(|id| Content::get().background(id));
         let cosmetics = Cosmetics::new(&cx.app.sprites, background, &[]);
         let theme = theme(row.accent_color, background);
+        let title = title_name(&row);
         let username = user.name.clone();
         let png = cx
             .app
             .render(move |r| {
                 r.rank_card(&RankCard {
                     display_name: &name,
+                    title,
                     username: &username,
                     avatar_png: &avatar,
                     level: progress.level,

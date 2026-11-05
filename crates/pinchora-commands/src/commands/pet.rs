@@ -19,6 +19,7 @@ use twilight_util::builder::embed::{EmbedBuilder, EmbedFieldBuilder};
 
 use crate::{
     App, Cx,
+    commands::customize,
     util::{BRAND, WARN, thousands},
 };
 
@@ -335,7 +336,9 @@ pub(crate) async fn on_adopt(cx: &Cx, value: Option<&str>) -> anyhow::Result<()>
         )),
     )
     .await?;
-    cx.update(data).await
+    cx.update(data).await?;
+    customize::announce(cx).await;
+    Ok(())
 }
 
 async fn capsule(cx: &Cx, user: u64) -> anyhow::Result<()> {
@@ -378,7 +381,9 @@ async fn capsule(cx: &Cx, user: u64) -> anyhow::Result<()> {
         thousands(balance)
     );
     let data = pet_card(&cx.app, &pet, Some(note)).await?;
-    cx.reply(data).await
+    cx.reply(data).await?;
+    customize::announce(cx).await;
+    Ok(())
 }
 
 async fn list(cx: &Cx, user: u64) -> anyhow::Result<()> {

@@ -1,8 +1,10 @@
 use std::{collections::HashSet, str::Split, sync::Arc};
 
-use pinchora_db::{CustomizeBuy, MAX_BADGES, PlayerStats};
-use pinchora_game::{Background, Badge, BadgeKind, BadgeStat, Content};
-use pinchora_render::{Backdrop, BadgeIcon, SpriteArt, Theme, sprites::placeholder_badge_color};
+use pinchora_db::{CustomizeBuy, MAX_BADGES, PlayerStats, UserRow};
+use pinchora_game::{Background, Badge, BadgeKind, BadgeStat, Content, Rarity, TitleKind};
+use pinchora_render::{
+    Backdrop, BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, SpriteArt, Theme, sprites::placeholder_badge_color,
+};
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::{
     channel::message::{
@@ -20,16 +22,24 @@ use crate::{
     util::{BRAND, thousands},
 };
 
+mod titles;
+mod unlocks;
+
+pub(crate) use titles::on_title;
+pub(crate) use unlocks::{announce, announce_in};
+
 /// Discord shows at most this many options in one select menu.
 const PER_PAGE: usize = 25;
 
 #[derive(CommandModel, CreateCommand)]
-#[command(name = "customize", desc = "Backgrounds and badges for your cards")]
+#[command(name = "customize", desc = "Backgrounds, badges and titles for your cards")]
 pub enum CustomizeCommand {
     #[command(name = "background")]
     Background(CustomizeBackground),
     #[command(name = "badges")]
     Badges(CustomizeBadges),
+    #[command(name = "title")]
+    Title(CustomizeTitle),
 }
 
 #[derive(CommandModel, CreateCommand)]
@@ -40,14 +50,25 @@ pub enum CustomizeCommand {
 pub struct CustomizeBackground;
 
 #[derive(CommandModel, CreateCommand)]
-#[command(name = "badges", desc = "Earn, buy and wear the badges on your profile card")]
+#[command(
+    name = "badges",
+    desc = "Your badge collection: earn, buy and wear the badges on your profile card"
+)]
 pub struct CustomizeBadges;
+
+#[derive(CommandModel, CreateCommand)]
+#[command(
+    name = "title",
+    desc = "Pick the title under your name on your profile and rank cards"
+)]
+pub struct CustomizeTitle;
 
 impl CustomizeCommand {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
         let data = match self {
             Self::Background(_) => background_panel(cx, Highlight::Equipped, None, "").await?,
-            Self::Badges(_) => badges_panel(cx, 0, "").await?,
+            Self::Badges(_) => badges_panel(cx, 0, "", Fresh::Open).await?,
+            Self::Title(_) => titles::panel(cx, 0, "").await?,
         };
         cx.reply(data).await
     }
@@ -59,8 +80,8 @@ impl CustomizeCommand {
 pub(crate) struct Cosmetics {
     /// The art (`None` until it is drawn) and the accent colour.
     background: Option<(Option<Arc<ScaledArt>>, String)>,
-    /// Each badge's art, and the letter and colour of its placeholder.
-    badges: Vec<(Option<Arc<ScaledArt>>, char, u32)>,
+    /// Each badge's art, the letter and colour of its placeholder, and the colour of its rarity.
+    badges: Vec<(Option<Arc<ScaledArt>>, char, u32, u32)>,
 }
 
 impl Cosmetics {
@@ -70,12 +91,12 @@ impl Cosmetics {
             badges: badges
                 .iter()
                 .map(|b| {
-                    let letter = b
-                        .name
-                        .chars()
-                        .next()
-                        .map_or('?', |c| c.to_uppercase().next().unwrap_or(c));
-                    (sprites.badge(&b.id), letter, placeholder_badge_color(&b.id))
+                    (
+                        sprites.badge(&b.id),
+                        letter_of(b),
+                        placeholder_badge_color(&b.id),
+                        b.rarity.color(),
+                    )
                 })
                 .collect(),
         }
@@ -95,7 +116,7 @@ impl Cosmetics {
     pub(crate) fn icons(&self) -> Vec<BadgeIcon<'_>> {
         self.badges
             .iter()
-            .map(|(art, letter, color)| BadgeIcon {
+            .map(|(art, letter, color, rarity)| BadgeIcon {
                 art: art.as_ref().map(|a| SpriteArt {
                     png: &a.png,
                     w: a.w,
@@ -103,9 +124,19 @@ impl Cosmetics {
                 }),
                 letter: *letter,
                 color: *color,
+                rarity: *rarity,
             })
             .collect()
     }
+}
+
+/// The capital the badge's placeholder shows until its art is drawn.
+fn letter_of(badge: &Badge) -> char {
+    badge
+        .name
+        .chars()
+        .next()
+        .map_or('?', |c| c.to_uppercase().next().unwrap_or(c))
 }
 
 /// The card palette: the background's accent colour when there is a background, else the
@@ -140,15 +171,28 @@ struct Wardrobe {
     bought: Vec<String>,
     /// The ids saved as worn, in order.
     equipped: Vec<String>,
+    /// Whether they chose their badges. If not, the card shows their best ones instead.
+    chosen: bool,
+    /// Titles granted to them outside the stats (`user_titles`); only [`Wardrobe::load_titles`] fills it.
+    granted: Vec<String>,
 }
 
 impl Wardrobe {
-    async fn load(app: &App, user: u64, equipped: &[String]) -> anyhow::Result<Self> {
+    async fn load(app: &App, user: u64, row: &UserRow) -> anyhow::Result<Self> {
         Ok(Self {
             stats: app.db.player_stats(user).await?,
             bought: app.db.owned_badges(user).await?,
-            equipped: equipped.to_vec(),
+            equipped: row.badges.clone(),
+            chosen: row.badges_set,
+            granted: Vec::new(),
         })
+    }
+
+    /// Like [`Wardrobe::load`], with the titles they were granted too.
+    async fn load_titles(app: &App, user: u64, row: &UserRow) -> anyhow::Result<Self> {
+        let mut wardrobe = Self::load(app, user, row).await?;
+        wardrobe.granted = app.db.granted_titles(user).await?;
+        Ok(wardrobe)
     }
 
     /// Whether the badge is theirs: reached for an achievement, bought for a shop badge.
@@ -164,9 +208,22 @@ impl Wardrobe {
         Content::get().badges.iter().filter(|b| self.has(b)).collect()
     }
 
-    /// The saved badges they may still wear: one that stopped counting (a streak that
-    /// ended, shells spent) drops out until it is earned again.
+    /// What the card shows when they have not chosen: up to six of their badges, the rarest
+    /// first (the order of `content/badges.json` breaks ties).
+    fn best(&self) -> Vec<&'static Badge> {
+        let mut badges = self.wearable();
+        badges.sort_by_key(|b| std::cmp::Reverse(b.rarity));
+        badges.truncate(MAX_BADGES);
+        badges
+    }
+
+    /// The badges on their card: the saved ones they may still wear, or, until they choose,
+    /// their best. A saved badge that stopped counting (a streak that ended, shells spent)
+    /// drops out until it is earned again.
     fn worn(&self) -> Vec<&'static Badge> {
+        if !self.chosen {
+            return self.best();
+        }
         let content = Content::get();
         self.equipped
             .iter()
@@ -177,8 +234,8 @@ impl Wardrobe {
     }
 
     /// `✅ Name · Reach level 5.` once it is theirs, `🔒 Name · 3/5 levels` before.
-    fn line(&self, badge: &Badge) -> String {
-        let worn = if self.equipped.contains(&badge.id) && self.has(badge) {
+    fn line(&self, badge: &Badge, worn: &[&Badge]) -> String {
+        let worn = if worn.iter().any(|w| w.id == badge.id) {
             " *(worn)*"
         } else {
             ""
@@ -202,14 +259,55 @@ impl Wardrobe {
             BadgeKind::Shop { price } => format!("🛒 **{}** · {} shells", badge.name, thousands(price)),
         }
     }
+
+    /// Whether the title is theirs: its stat reached, its badge owned, or granted to them.
+    fn has_title(&self, title: &pinchora_game::Title) -> bool {
+        self.granted.contains(&title.id)
+            || match &title.kind {
+                TitleKind::Stat { stat, at } => stat_value(&self.stats, *stat) >= *at,
+                TitleKind::Badge { badge } => Content::get().badge(badge).is_some_and(|b| self.has(b)),
+                TitleKind::Special => false,
+            }
+    }
+
+    /// `✅ **Tide Angler** · Catch 5 different fish species.` once unlocked, else how far they are.
+    fn title_line(&self, title: &pinchora_game::Title, equipped: Option<&str>) -> String {
+        let worn = if equipped == Some(title.id.as_str()) {
+            " *(worn)*"
+        } else {
+            ""
+        };
+        if self.has_title(title) {
+            return format!("✅ **{}** · {}{worn}", title.name, title.description);
+        }
+        match &title.kind {
+            TitleKind::Stat { stat, at } => format!(
+                "🔒 **{}** · {}/{} {}",
+                title.name,
+                thousands(stat_value(&self.stats, *stat).max(0)),
+                thousands(*at),
+                stat.noun()
+            ),
+            _ => format!("🔒 **{}** · {}", title.name, title.description),
+        }
+    }
 }
 
-/// The badges a profile card shows for `user`: the ones saved as worn that they still may wear.
-pub(crate) async fn worn_badges(app: &App, user: u64, equipped: &[String]) -> anyhow::Result<Vec<&'static Badge>> {
-    if equipped.is_empty() {
+/// The badges a profile card shows for `user`: the ones saved as worn that they still may wear,
+/// or their best earned ones until they have chosen.
+pub(crate) async fn worn_badges(app: &App, user: u64, row: &UserRow) -> anyhow::Result<Vec<&'static Badge>> {
+    if row.badges_set && row.badges.is_empty() {
         return Ok(Vec::new());
     }
-    Ok(Wardrobe::load(app, user, equipped).await?.worn())
+    Ok(Wardrobe::load(app, user, row).await?.worn())
+}
+
+/// The name of the title under the player's name, if they have one and it still exists.
+pub(crate) fn title_name(row: &UserRow) -> Option<&'static str> {
+    row.title
+        .as_deref()
+        .and_then(|id| Content::get().title(id))
+        .map(|t| t.name.as_str())
 }
 
 // /Components
@@ -353,7 +451,7 @@ async fn background_panel(
         })
         .collect();
 
-    let worn = worn_badges(&cx.app, id, &player.badges).await?;
+    let worn = worn_badges(&cx.app, id, &player).await?;
     let credits = player.credits;
     let png = Box::pin(profile::card(cx, user, cx.author_display_name(), player, shown, &worn)).await?;
 
@@ -475,13 +573,14 @@ async fn equip_background(cx: &Cx, id: &str) -> anyhow::Result<()> {
 /// One embed field per thing achievements count, then the shop: a line for every badge.
 fn badge_fields(wardrobe: &Wardrobe) -> Vec<(&'static str, String)> {
     let badges = &Content::get().badges;
+    let worn = wardrobe.worn();
     let mut fields: Vec<_> = BadgeStat::ALL
         .into_iter()
         .map(|stat| {
             let lines: Vec<_> = badges
                 .iter()
                 .filter(|b| matches!(b.kind, BadgeKind::Achievement { stat: s, .. } if s == stat))
-                .map(|b| wardrobe.line(b))
+                .map(|b| wardrobe.line(b, &worn))
                 .collect();
             (stat.label(), lines.join("\n"))
         })
@@ -489,23 +588,108 @@ fn badge_fields(wardrobe: &Wardrobe) -> Vec<(&'static str, String)> {
     let shop: Vec<_> = badges
         .iter()
         .filter(|b| matches!(b.kind, BadgeKind::Shop { .. }))
-        .map(|b| wardrobe.line(b))
+        .map(|b| wardrobe.line(b, &worn))
         .collect();
     fields.push(("Shop", shop.join("\n")));
     fields.retain(|(_, lines)| !lines.is_empty());
     fields
 }
 
-/// The ephemeral badge editor: the profile card as it is now, every badge with its progress or
-/// price, a menu to put up to six on, a menu to buy shop badges and a button to take them all off.
-async fn badges_panel(cx: &Cx, page: usize, note: &str) -> anyhow::Result<InteractionResponseData> {
+/// The badges earned since the player last opened their collection, as a bit per badge of
+/// `content/badges.json` (the first 128). The panel's buttons carry it, so its NEW markers
+/// stay while the player works in it.
+fn fresh_mask(fresh: &[String]) -> u128 {
+    Content::get()
+        .badges
+        .iter()
+        .take(128)
+        .enumerate()
+        .filter(|(_, b)| fresh.contains(&b.id))
+        .fold(0, |mask, (i, _)| mask | 1 << i)
+}
+
+/// Whether badge number `index` of `content/badges.json` is in `mask`.
+fn is_fresh(mask: u128, index: usize) -> bool {
+    index < 128 && mask >> index & 1 == 1
+}
+
+/// Which badges the collection marks NEW.
+#[derive(Clone, Copy)]
+enum Fresh {
+    /// The player just opened the collection: whatever they earned since last time is new, and
+    /// from now on it has been seen.
+    Open,
+    /// A click in an open panel: the markers its buttons carry.
+    Keep(u128),
+}
+
+/// A badge of the collection, owned so the card can be drawn on the render thread.
+struct CollectionCell {
+    art: Option<Arc<ScaledArt>>,
+    letter: char,
+    color: u32,
+    rarity: u32,
+    name: &'static str,
+    rarity_label: &'static str,
+    state: BadgeState,
+}
+
+/// Every badge in the order of `content/badges.json`, as the collection card shows it.
+fn collection_cells(sprites: &Sprites, wardrobe: &Wardrobe, worn: &[&Badge], fresh: u128) -> Vec<CollectionCell> {
+    Content::get()
+        .badges
+        .iter()
+        .enumerate()
+        .map(|(i, b)| {
+            let state = match b.kind {
+                _ if wardrobe.has(b) => BadgeState::Earned {
+                    new: is_fresh(fresh, i),
+                    worn: worn.iter().position(|w| w.id == b.id).map(|p| p as u8 + 1),
+                },
+                BadgeKind::Achievement { stat, at } => BadgeState::Locked {
+                    have: stat_value(&wardrobe.stats, stat),
+                    at,
+                },
+                BadgeKind::Shop { price } => BadgeState::ForSale { price },
+            };
+            CollectionCell {
+                art: sprites.badge(&b.id),
+                letter: letter_of(b),
+                color: placeholder_badge_color(&b.id),
+                rarity: b.rarity.color(),
+                name: &b.name,
+                rarity_label: b.rarity.label(),
+                state,
+            }
+        })
+        .collect()
+}
+
+/// The ephemeral badge editor: the collection card (every badge, earned in colour, locked ones
+/// dark with their progress, NEW on the latest), what the profile card shows, a menu to put up to
+/// six on, a menu to buy shop badges, and buttons to take them off or let the card pick.
+async fn badges_panel(cx: &Cx, page: usize, note: &str, fresh: Fresh) -> anyhow::Result<InteractionResponseData> {
     let content = Content::get();
     let user = cx.author()?;
     let id = user.id.get();
     let player = cx.app.db.user(id).await?;
-    let wardrobe = Wardrobe::load(&cx.app, id, &player.badges).await?;
+    let wardrobe = Wardrobe::load(&cx.app, id, &player).await?;
     let worn = wardrobe.worn();
     let wearable = wardrobe.wearable();
+
+    let mask = match fresh {
+        Fresh::Keep(mask) => mask,
+        Fresh::Open => {
+            let earned: Vec<String> = wearable.iter().map(|b| b.id.clone()).collect();
+            // A player seen before notices existed has no list yet: nothing is new to them.
+            let new: Vec<String> = match &player.badges_seen {
+                Some(seen) => earned.iter().filter(|b| !seen.contains(b)).cloned().collect(),
+                None => Vec::new(),
+            };
+            cx.app.db.mark_badges_seen(id, &earned).await?;
+            fresh_mask(&new)
+        }
+    };
     let pages = wearable.len().div_ceil(PER_PAGE).max(1);
     let page = page.min(pages - 1);
 
@@ -513,7 +697,14 @@ async fn badges_panel(cx: &Cx, page: usize, note: &str) -> anyhow::Result<Intera
         .iter()
         .skip(page * PER_PAGE)
         .take(PER_PAGE)
-        .map(|b| option(&b.name, &b.id, b.description.clone(), worn.iter().any(|w| w.id == b.id)))
+        .map(|b| {
+            option(
+                &b.name,
+                &b.id,
+                format!("{} · {}", b.rarity.label(), b.description),
+                worn.iter().any(|w| w.id == b.id),
+            )
+        })
         .collect();
     let buy_options = content
         .badges
@@ -530,27 +721,57 @@ async fn badges_panel(cx: &Cx, page: usize, note: &str) -> anyhow::Result<Intera
         .collect();
 
     let background = player.background.as_deref().and_then(|e| content.background(e));
-    let (credits, equipped) = (player.credits, player.badges.len());
-    let png = Box::pin(profile::card(
-        cx,
-        user,
-        cx.author_display_name(),
-        player,
-        background,
-        &worn,
-    ))
-    .await?;
+    let (credits, saved_empty) = (player.credits, player.badges.is_empty());
+    let theme = theme(player.accent_color, background);
+    let cells = collection_cells(&cx.app.sprites, &wardrobe, &worn, mask);
+    let png = cx
+        .app
+        .render(move |r| {
+            let boxed: Vec<BadgeCell<'_>> = cells
+                .iter()
+                .map(|c| BadgeCell {
+                    icon: BadgeIcon {
+                        art: c.art.as_ref().map(|a| SpriteArt {
+                            png: &a.png,
+                            w: a.w,
+                            h: a.h,
+                        }),
+                        letter: c.letter,
+                        color: c.color,
+                        rarity: c.rarity,
+                    },
+                    name: c.name,
+                    rarity: c.rarity_label,
+                    state: c.state,
+                })
+                .collect();
+            let legend: Vec<(&str, u32)> = Rarity::ALL.iter().map(|r| (r.label(), r.color())).collect();
+            r.badge_collection(&BadgeCollectionCard {
+                cells: &boxed,
+                legend: &legend,
+                theme,
+            })
+        })
+        .await?;
 
     let mut text = String::new();
     if !note.is_empty() {
         text.push_str(note);
         text.push_str("\n\n");
     }
-    if worn.is_empty() {
+    let names: Vec<_> = worn.iter().map(|b| format!("**{}**", b.name)).collect();
+    if worn.is_empty() && wardrobe.chosen {
         text.push_str("You are not wearing any badges.");
-    } else {
-        let names: Vec<_> = worn.iter().map(|b| format!("**{}**", b.name)).collect();
+    } else if worn.is_empty() {
+        text.push_str("Your best badges will show on your card on their own once you have earned some.");
+    } else if wardrobe.chosen {
         text.push_str(&format!("Wearing {}/{MAX_BADGES}: {}.", worn.len(), names.join(", ")));
+    } else {
+        text.push_str(&format!(
+            "Your card shows your best badges on its own ({}/{MAX_BADGES}): {}.",
+            worn.len(),
+            names.join(", ")
+        ));
     }
     text.push_str(&format!(
         " Pick up to {MAX_BADGES} below.\nYou have **{}** shells.",
@@ -564,27 +785,33 @@ async fn badges_panel(cx: &Cx, page: usize, note: &str) -> anyhow::Result<Intera
     let mut buttons = Vec::new();
     if pages > 1 {
         buttons.push(button(
-            format!("cz:wp:{}", page.saturating_sub(1)),
+            format!("cz:wp:{}:{mask:x}", page.saturating_sub(1)),
             "◀ Page",
             ButtonStyle::Secondary,
             page == 0,
         ));
         buttons.push(button(
-            format!("cz:wp:{}", page + 1),
+            format!("cz:wp:{}:{mask:x}", page + 1),
             "Page ▶",
             ButtonStyle::Secondary,
             page + 1 >= pages,
         ));
     }
     buttons.push(button(
-        "cz:wc".to_owned(),
+        format!("cz:wc:{mask:x}"),
         "Take all off",
         ButtonStyle::Danger,
-        equipped == 0,
+        wardrobe.chosen && saved_empty,
+    ));
+    buttons.push(button(
+        format!("cz:wa:{mask:x}"),
+        "Show my best automatically",
+        ButtonStyle::Secondary,
+        !wardrobe.chosen,
     ));
     let components = vec![
         row(vec![menu(
-            format!("cz:ws:{page}"),
+            format!("cz:ws:{page}:{mask:x}"),
             "Badges to wear…",
             wear_options,
             0,
@@ -592,7 +819,7 @@ async fn badges_panel(cx: &Cx, page: usize, note: &str) -> anyhow::Result<Intera
             "Nothing to wear yet",
         )]),
         row(vec![menu(
-            "cz:wb".to_owned(),
+            format!("cz:wb:{mask:x}"),
             "Buy a shop badge…",
             buy_options,
             1,
@@ -601,13 +828,13 @@ async fn badges_panel(cx: &Cx, page: usize, note: &str) -> anyhow::Result<Intera
         )]),
         row(buttons),
     ];
-    Ok(Cx::card(embed, "profile.png", png, components, true))
+    Ok(Cx::card(embed, "badges.png", png, components, true))
 }
 
-/// `cz:ws:<page>`: the menu's picks replace what was worn from that page; badges worn from other pages stay.
-async fn wear(cx: &Cx, page: usize, values: &[String]) -> anyhow::Result<()> {
+/// `cz:ws:<page>:<new>`: the menu's picks replace what was worn from that page; badges worn from other pages stay.
+async fn wear(cx: &Cx, page: usize, fresh: u128, values: &[String]) -> anyhow::Result<()> {
     let id = cx.author()?.id.get();
-    let saved = cx.app.db.user(id).await?.badges;
+    let saved = cx.app.db.user(id).await?;
     let wardrobe = Wardrobe::load(&cx.app, id, &saved).await?;
     let wearable = wardrobe.wearable();
 
@@ -641,11 +868,11 @@ async fn wear(cx: &Cx, page: usize, values: &[String]) -> anyhow::Result<()> {
         cx.app.db.set_badges(id, &next).await?;
         "Saved.".to_owned()
     };
-    let data = badges_panel(cx, page, &note).await?;
+    let data = badges_panel(cx, page, &note, Fresh::Keep(fresh)).await?;
     cx.update(data).await
 }
 
-async fn buy_badge(cx: &Cx, id: &str) -> anyhow::Result<()> {
+async fn buy_badge(cx: &Cx, id: &str, fresh: u128) -> anyhow::Result<()> {
     let Some(badge) = Content::get().badge(id) else {
         return expired(cx, "badges").await;
     };
@@ -667,15 +894,17 @@ async fn buy_badge(cx: &Cx, id: &str) -> anyhow::Result<()> {
             thousands(balance)
         ),
     };
-    let data = badges_panel(cx, 0, &note).await?;
+    let data = badges_panel(cx, 0, &note, Fresh::Keep(fresh)).await?;
     cx.update(data).await
 }
 
-/// `cz:<what>:...` selects and buttons of both editors.
+/// `cz:<what>:...` selects and buttons of the editors.
 pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[String]) -> anyhow::Result<()> {
     let content = Content::get();
     let value = values.first().map(String::as_str);
     let page = |arg: Option<&str>| arg.and_then(|p| p.parse().ok()).unwrap_or(0);
+    // The badges NEW on the collection, as the hex bit mask the panel's ids carry.
+    let fresh = |arg: Option<&str>| arg.and_then(|m| u128::from_str_radix(m, 16).ok()).unwrap_or(0);
     // `-` is "no background": the buttons act on nothing then.
     fn shown(arg: Option<&str>) -> Option<&str> {
         arg.filter(|a| *a != "-")
@@ -708,18 +937,29 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[S
             let data = background_panel(cx, Highlight::Nothing, None, note).await?;
             cx.update(data).await
         }
-        Some("ws") => wear(cx, page(args.next()), values).await,
+        Some("ws") => {
+            let target = page(args.next());
+            wear(cx, target, fresh(args.next()), values).await
+        }
         Some("wb") => match value.filter(|v| *v != "none") {
-            Some(id) => buy_badge(cx, id).await,
+            Some(id) => buy_badge(cx, id, fresh(args.next())).await,
             None => expired(cx, "badges").await,
         },
         Some("wp") => {
-            let data = badges_panel(cx, page(args.next()), "").await?;
+            let (target, mask) = (page(args.next()), fresh(args.next()));
+            let data = badges_panel(cx, target, "", Fresh::Keep(mask)).await?;
             cx.update(data).await
         }
         Some("wc") => {
             cx.app.db.set_badges(cx.author()?.id.get(), &[]).await?;
-            let data = badges_panel(cx, 0, "Took every badge off.").await?;
+            let note = "Took every badge off. Your card shows none.";
+            let data = badges_panel(cx, 0, note, Fresh::Keep(fresh(args.next()))).await?;
+            cx.update(data).await
+        }
+        Some("wa") => {
+            cx.app.db.reset_badges(cx.author()?.id.get()).await?;
+            let note = "Done. Your card shows your best badges again, the rarest first.";
+            let data = badges_panel(cx, 0, note, Fresh::Keep(fresh(args.next()))).await?;
             cx.update(data).await
         }
         _ => cx.reply_ephemeral("This button has expired.").await,
@@ -738,6 +978,16 @@ mod tests {
             stats,
             bought: owned(bought),
             equipped: owned(equipped),
+            chosen: true,
+            granted: Vec::new(),
+        }
+    }
+
+    /// A player who never chose their badges: the card picks.
+    fn automatic(stats: PlayerStats, bought: &[&str]) -> Wardrobe {
+        Wardrobe {
+            chosen: false,
+            ..wardrobe(stats, bought, &[])
         }
     }
 
@@ -773,7 +1023,7 @@ mod tests {
             "but not the 24-species one"
         );
 
-        let line = |id: &str| w.line(content.badge(id).expect("a badge"));
+        let line = |id: &str| w.line(content.badge(id).expect("a badge"), &w.worn());
         assert_eq!(line("bright_beacon"), "🔒 **Bright Beacon** · 7/10 levels");
         assert_eq!(line("reef_regular"), "🔒 **Reef Regular** · 12/24 fish species");
         assert_eq!(line("little_beacon"), "✅ **Little Beacon** · Reach level 5. *(worn)*");
@@ -804,6 +1054,99 @@ mod tests {
         assert!(wardrobe(PlayerStats::default(), &[], &saved).worn().is_empty());
         // Ids the content no longer has are ignored too.
         assert!(wardrobe(PlayerStats::default(), &[], &["gone_badge"]).worn().is_empty());
+    }
+
+    #[test]
+    fn until_they_choose_the_card_shows_the_best_earned_badges_rarest_first() {
+        // Nothing earned, nothing shown.
+        assert!(automatic(PlayerStats::default(), &[]).worn().is_empty());
+
+        // Level 25 (rare), 12 species (common), a 7-day streak (common), 60 reputation (uncommon),
+        // a bought common badge and a bought legendary one.
+        let stats = PlayerStats {
+            level: 25,
+            fish_species: 12,
+            streak: 7,
+            reputation: 60,
+            ..Default::default()
+        };
+        let w = automatic(stats, &["tiny_tide", "pearl_wyrm"]);
+        assert_eq!(
+            ids(&w.worn()),
+            [
+                "pearl_wyrm",
+                "harbour_beacon",
+                "bright_beacon",
+                "harbour_helper",
+                "little_beacon",
+                "fin_finder"
+            ],
+            "legendary, rare, the two uncommon ones in content order, then the first commons"
+        );
+        assert_eq!(w.worn().len(), MAX_BADGES);
+
+        // Once they chose, only the choice counts, however good the rest is.
+        let chosen = wardrobe(stats, &["tiny_tide", "pearl_wyrm"], &["tiny_tide"]);
+        assert_eq!(ids(&chosen.worn()), ["tiny_tide"]);
+        assert!(
+            wardrobe(stats, &[], &[]).worn().is_empty(),
+            "an explicit empty choice is no badges"
+        );
+    }
+
+    #[test]
+    fn the_collection_shows_every_badge_in_its_state() {
+        let stats = PlayerStats {
+            level: 7,
+            fish_species: 3,
+            ..Default::default()
+        };
+        let w = wardrobe(stats, &["tiny_tide"], &["tiny_tide", "little_beacon"]);
+        let new = fresh_mask(&[
+            "little_beacon".to_owned(),
+            "tiny_tide".to_owned(),
+            "not_a_badge".to_owned(),
+        ]);
+        let cells = collection_cells(&Sprites::default(), &w, &w.worn(), new);
+        let content = Content::get();
+        assert_eq!(cells.len(), content.badges.len(), "every badge has a cell");
+        let state = |id: &str| {
+            let i = content.badges.iter().position(|b| b.id == id).expect("a badge");
+            cells[i].state
+        };
+        assert_eq!(
+            state("little_beacon"),
+            BadgeState::Earned {
+                new: true,
+                worn: Some(2)
+            },
+            "worn second: the order is the saved one"
+        );
+        assert_eq!(
+            state("tiny_tide"),
+            BadgeState::Earned {
+                new: true,
+                worn: Some(1)
+            }
+        );
+        assert_eq!(state("bright_beacon"), BadgeState::Locked { have: 7, at: 10 });
+        assert_eq!(state("fin_finder"), BadgeState::Locked { have: 3, at: 10 });
+        assert_eq!(state("crab_cap"), BadgeState::ForSale { price: 1_500 });
+        // The plate colour is the rarity's.
+        let i = content
+            .badges
+            .iter()
+            .position(|b| b.id == "pearl_wyrm")
+            .expect("a badge");
+        assert_eq!(cells[i].rarity, Rarity::Legendary.color());
+
+        // The NEW markers survive a round trip through the buttons' hex ids.
+        assert_eq!(fresh_mask(&[]), 0);
+        let hex = format!("{new:x}");
+        assert!(format!("cz:ws:1:{hex}").len() <= 100);
+        assert_eq!(u128::from_str_radix(&hex, 16).ok(), Some(new));
+        assert!(is_fresh(new, 0) && !is_fresh(new, 1));
+        assert!(!is_fresh(new, 500), "out of range is never new");
     }
 
     #[test]

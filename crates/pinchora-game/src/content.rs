@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::LazyLock};
 
 use serde::Deserialize;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Rarity {
     Common,
@@ -370,9 +370,33 @@ pub struct Badge {
     pub id: String,
     pub name: String,
     pub description: String,
+    /// Harder thresholds and dearer prices are rarer; the card tints the badge's plate with it.
+    pub rarity: Rarity,
     #[serde(flatten)]
     pub kind: BadgeKind,
     pub icon_brief: String,
+}
+
+/// What unlocks a title.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum TitleKind {
+    /// Reaching `at` of `stat`, counted like an achievement badge.
+    Stat { stat: BadgeStat, at: i64 },
+    /// Owning the badge `badge`, earned or bought.
+    Badge { badge: String },
+    /// Granted by something outside the stats; stored in `user_titles`.
+    Special,
+}
+
+/// A line under the player's name on the profile and rank cards.
+#[derive(Debug, Clone, Deserialize)]
+pub struct Title {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    #[serde(flatten)]
+    pub kind: TitleKind,
 }
 
 /// One playable item: a base design, optionally in a palette variant.
@@ -417,6 +441,7 @@ pub struct Content {
     pub looks: Vec<Look>,
     pub backgrounds: Vec<Background>,
     pub badges: Vec<Badge>,
+    pub titles: Vec<Title>,
     furniture_index: HashMap<String, usize>,
 }
 
@@ -434,6 +459,7 @@ static EMBEDDED: LazyLock<Content> = LazyLock::new(|| {
         content.with_cosmetics(
             include_str!("../../../content/backgrounds.json"),
             include_str!("../../../content/badges.json"),
+            include_str!("../../../content/titles.json"),
         )
     })
     .expect("embedded content must parse; run `cargo test -p pinchora-game`")
@@ -466,14 +492,16 @@ impl Content {
             looks: serde_json::from_str(looks)?,
             backgrounds: Vec::new(),
             badges: Vec::new(),
+            titles: Vec::new(),
             furniture_index,
         })
     }
 
-    /// Adds the profile backgrounds and badges, which `from_json` leaves empty.
-    pub fn with_cosmetics(mut self, backgrounds: &str, badges: &str) -> anyhow::Result<Self> {
+    /// Adds the profile backgrounds, badges and titles, which `from_json` leaves empty.
+    pub fn with_cosmetics(mut self, backgrounds: &str, badges: &str, titles: &str) -> anyhow::Result<Self> {
         self.backgrounds = serde_json::from_str(backgrounds)?;
         self.badges = serde_json::from_str(badges)?;
+        self.titles = serde_json::from_str(titles)?;
         Ok(self)
     }
 
@@ -540,5 +568,9 @@ impl Content {
 
     pub fn badge(&self, id: &str) -> Option<&Badge> {
         self.badges.iter().find(|b| b.id == id)
+    }
+
+    pub fn title(&self, id: &str) -> Option<&Title> {
+        self.titles.iter().find(|t| t.id == id)
     }
 }

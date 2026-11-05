@@ -16,10 +16,12 @@ Written in Rust and built to run sharded on Kubernetes.
 
 | Command | What it does |
 |---|---|
-| `/profile [user]` | Pixel-art profile card: level, XP, shells, reputation, streak, global and server rank, bio, up to six badges |
-| `/rank [user]` | Server level card, with the next level role to earn |
+| `/profile [user]` | Pixel-art profile card: level, XP, shells, reputation, streak, global and server rank, bio, an optional title under the name, and up to six badges, each on a plate tinted by its rarity. Until you choose your badges the card shows your best earned ones (rarest first) on its own |
+| `/rank [user]` | Server level card, with the next level role to earn and the title under the name |
 | `/customize background` | Private editor with a live preview of your profile card: 36 backgrounds in five rarities, bought once with shells (**Buy**), then worn (**Equip**) or taken off (**Remove**); the menu lists owned ones first, then the shop, 25 per page. The profile, rank and wallet cards draw the background under their panels and take their accent colour from it |
-| `/customize badges` | Private editor for the badges on your profile card: 28 achievements worked out on the spot from real progress (level, fish species, house likes, pets, daily streak, furniture placed, reputation, shells; locked ones show e.g. `12/36 fish species`) and 12 shop badges bought once with shells; wear up to six, in the order you pick them. A badge you no longer qualify for (a lapsed streak, spent shells) leaves the card until you earn it again |
+| `/customize badges` | Private editor with your badge collection card: all 40 badges in a grid, earned ones in colour on a rarity plate, locked ones dark with a progress bar, a `23/40` counter and a NEW tag on what you earned since you last looked. 28 achievements worked out on the spot from real progress (level, fish species, house likes, pets, daily streak, furniture placed, reputation, shells) and 12 shop badges bought once with shells; wear up to six, in the order you pick them, take them all off, or press **Show my best automatically** to let the card choose again. A badge you no longer qualify for (a lapsed streak, spent shells) leaves the card until you earn it again |
+| `/customize title` | Private editor for the title under your name on the profile and rank cards: 29 earned by stats (level, fish species, house likes, pets, streak, furniture, reputation, shells) or by owning a badge, plus the special *House of the Week* for contest winners; locked titles show what they still need. **Remove** takes it off |
+| Badge unlocked notices | When a command or chat level-up earns you an achievement badge (`/daily`, `/fish`, `/pet`, placing furniture, `/give`, a new chat level), a short "Badge unlocked" embed with the badge art follows the reply, once per badge |
 | `/leaderboard [board]` | Server XP, server points, global XP or global shells as a pixel-art card, with page buttons |
 | `/daily` | Daily shells; the streak bonus grows for 20 days |
 | `/balance [user]`, `/give user amount` | Wallet and transfers |
@@ -77,7 +79,7 @@ channel when the bot starts is only noticed once their state changes.
 | `/duel tictactoe user` | Button tic-tac-toe; the winner earns shells |
 | `/config welcome-card` | Design the welcome card (theme, headline, accent colour) with a live preview |
 
-Game content (furniture, rooms, pets, fish, looks, card backgrounds and badges) lives in
+Game content (furniture, rooms, pets, fish, looks, card backgrounds, badges and titles) lives in
 `content/*.json` (`python3 content/check.py` validates it); see
 [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md). Sprites are drawn by GPT and imported with
 `tools/art/` (see below).
@@ -115,7 +117,8 @@ Kubernetes manifests and scaling notes: [`deploy/k8s/README.md`](deploy/k8s/READ
 cargo run -p pinchora -- gateway          # needs PINCHORA_* env vars or pinchora.toml
 cargo run -p pinchora -- commands         # print slash command JSON
 cargo run -p pinchora-render --example samples   # render sample cards to target/render-samples
-                                                 # (profile-background/-badges/-placeholder, rank-background, wallet-background show /customize)
+                                                 # (profile-background/-badges/-placeholder, rank-background, wallet-background show /customize;
+                                                 #  the profile and rank samples carry a title)
 ```
 
 Tests: unit tests run with plain `cargo test --workspace`. Database and Redis integration

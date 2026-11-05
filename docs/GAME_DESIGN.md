@@ -115,6 +115,34 @@ Every movement is written to `credit_ledger` (pearls get their own ledger).
   card until it is earned again. Shop badges are bought once with shells (`user_badges`). Up to six are
   worn, in order (`users.badges`), along the foot of the profile card. Art is `b_<id>`, 24 px wide, drawn
   ×2; until it exists a coloured circle with the badge's first letter stands in.
+- Every badge has a **rarity** (common to legendary; a harder threshold or a dearer price is rarer, which
+  `content/check.py` and the content tests enforce). The profile card draws each badge on a small pixel
+  plate in its rarity colour (`Rarity::color`, the colours furniture and fish already use).
+- Badges **show by default**. `users.badges_set` is false until the player saves a choice in the editor;
+  while it is false the card shows their best earned badges, rarest first (content order breaks ties), up
+  to six. Saving a choice sets it (an empty one then means "no badges"); **Show my best automatically**
+  clears it again. Players who already wore badges when this shipped count as having chosen.
+- `/customize badges` shows the **collection card** (`BadgeCollectionCard`): the 40 badges in a grid of
+  eight, earned ones in colour with the rarity word, locked ones as dark silhouettes with a progress bar
+  (shop badges show their price), a worn marker `1`..`6`, a `23/40` counter, and a NEW tag on badges earned
+  since the player last opened it (`users.badges_seen`, written when `/customize badges` is run). The
+  panel's own buttons carry the NEW set as a hex bit mask in their custom ids, so the tags stay while the
+  player works in one message and any pod can serve a click.
+- **Unlock notices.** After a command that moves one of the eight stats for the acting player (`/daily`,
+  the final `/fish` reel, `/pet adopt` and capsules, placing furniture in the own house, `/give`) and after
+  a chat level-up, `customize::announce` reads the stats in one query and compares the earned achievement
+  badges with `users.badges_notified`. Whatever is new is claimed in a row-locked transaction (so two
+  commands finishing together announce it once) and posted as a "Badge unlocked: <name>" embed with the
+  badge art (96 px) as thumbnail, three at most per message. Because it compares the whole set, a badge
+  earned by something that never checks (a stall sale, a quest, someone's `/give`) is announced at the
+  player's next checking command. Players who existed before notices have `badges_notified = NULL`: the
+  first check fills it with what they already have and says nothing. New players start with `{}`.
+- 30 **titles** (`content/titles.json`): 24 unlocked by one of the same eight stats (three each), five by
+  owning a badge (earned or bought), and the special `house_of_the_week` that no stat grants. A row in
+  `user_titles` (`user_id`, `title_id`, `granted_at`) unlocks any title; a later contest feature grants
+  `house_of_the_week` that way. The player wears one (`users.title`), picked in `/customize title` (custom
+  ids `ti:`), and the profile and rank cards print it under the name. The pick is checked against what
+  they have unlocked when they choose it; the cards then show it without re-checking.
 - A purchase is one transaction: the ownership row, the shells and the ledger entry.
 
 ## Fishing (first mini game)

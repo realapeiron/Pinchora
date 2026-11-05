@@ -106,16 +106,21 @@ class CosmeticsTests(unittest.TestCase):
     BACKGROUNDS = json.loads(Path(__file__).with_name("backgrounds.json").read_text(encoding="utf-8"))
     BADGES = json.loads(Path(__file__).with_name("badges.json").read_text(encoding="utf-8"))
 
-    def errors(self, backgrounds=None, badges=None):
+    TITLES = json.loads(Path(__file__).with_name("titles.json").read_text(encoding="utf-8"))
+
+    def errors(self, backgrounds=None, badges=None, titles=None):
         check.ERRORS.clear()
         if backgrounds is not None:
             check.check_backgrounds(backgrounds)
         if badges is not None:
             check.check_badges(badges, 72)
+        if titles is not None:
+            records = check.entries(self.BADGES, "badges.json", 0)
+            check.check_titles(titles, records, 72)
         return check.ERRORS[:]
 
     def test_shipped_files_are_valid(self):
-        self.assertEqual(self.errors(self.BACKGROUNDS, self.BADGES), [])
+        self.assertEqual(self.errors(self.BACKGROUNDS, self.BADGES, self.TITLES), [])
 
     def test_background_accent_and_price(self):
         for change in ({"accent": "8eddd1"}, {"accent": "#8EDDD1"}, {"price": 0}, {"price": 800.0}, {"price": 99999}):
@@ -137,6 +142,40 @@ class CosmeticsTests(unittest.TestCase):
         broken = copy.deepcopy(self.BADGES)
         next(b for b in broken if b.get("stat") == "fish_species")["at"] = 73
         self.assertTrue(self.errors(badges=broken))
+
+    def test_badge_rarity_is_required_and_follows_difficulty(self):
+        shop = next(i for i, b in enumerate(self.BADGES) if b["kind"] == "shop" and b["price"] == 1000)
+        for index, change in ((0, {"rarity": "mythic"}), (0, {"rarity": None}),
+                              (shop, {"rarity": "legendary"}),  # a cheap badge cannot be legendary
+                              (0, {"rarity": "legendary"})):  # nor can the first level badge outrank the next
+            with self.subTest(index=index, change=change):
+                broken = copy.deepcopy(self.BADGES)
+                broken[index].update(change)
+                self.assertTrue(self.errors(badges=broken))
+        broken = copy.deepcopy(self.BADGES)
+        del broken[0]["rarity"]
+        self.assertTrue(self.errors(badges=broken))
+
+    def test_titles_follow_their_kind(self):
+        badge = next(i for i, t in enumerate(self.TITLES) if t["kind"] == "badge")
+        stat = next(i for i, t in enumerate(self.TITLES) if t["kind"] == "stat")
+        special = next(i for i, t in enumerate(self.TITLES) if t["kind"] == "special")
+        for index, change in ((badge, {"badge": "no_such_badge"}), (stat, {"at": 0}), (stat, {"stat": "xp"}),
+                              (stat, {"badge": "crab_cap"}), (special, {"at": 5}), (stat, {"kind": "gift"}),
+                              (stat, {"name": "A title that is far too long to fit"}),
+                              (special, {"kind": "stat", "stat": "level", "at": 99})):
+            with self.subTest(index=index, change=change):
+                broken = copy.deepcopy(self.TITLES)
+                broken[index].update(change)
+                self.assertTrue(self.errors(titles=broken))
+
+    def test_titles_need_the_house_of_the_week_and_distinct_thresholds(self):
+        broken = [t for t in self.TITLES if t["id"] != "house_of_the_week"]
+        self.assertTrue(any("house_of_the_week" in e for e in self.errors(titles=broken)))
+        broken = copy.deepcopy(self.TITLES)
+        levels = [t for t in broken if t.get("stat") == "level"]
+        levels[1]["at"] = levels[0]["at"]
+        self.assertTrue(any("different thresholds" in e for e in self.errors(titles=broken)))
 
 
 if __name__ == "__main__":

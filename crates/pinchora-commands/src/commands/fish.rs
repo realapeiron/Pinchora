@@ -17,6 +17,7 @@ use twilight_util::builder::embed::{EmbedBuilder, EmbedFooterBuilder};
 
 use crate::{
     Cx,
+    commands::customize,
     util::{BRAND, SUCCESS, WARN, thousands},
 };
 
@@ -196,5 +197,8 @@ pub(crate) async fn on_reel(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
             content.fish.len()
         )));
     let data = Cx::card(embed, "catch.png", png, Vec::new(), false);
-    cx.update(data).await
+    cx.update(data).await?;
+    // A new species in the fish book, or the shells it sold for, may have just earned a badge.
+    customize::announce(cx).await;
+    Ok(())
 }

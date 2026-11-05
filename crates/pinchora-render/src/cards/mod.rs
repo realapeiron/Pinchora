@@ -1,3 +1,4 @@
+mod badges;
 mod character;
 mod grid;
 mod leaderboard;
@@ -8,6 +9,7 @@ mod rank;
 mod wallet;
 mod welcome;
 
+pub use badges::{BadgeCell, BadgeCollectionCard, BadgeState};
 pub use character::CharacterCard;
 pub use grid::{GridSlot, ItemGridCard};
 pub use leaderboard::{LeaderboardCard, LeaderboardEntry};
@@ -20,7 +22,7 @@ pub use welcome::WelcomeCard;
 
 use std::fmt::Write;
 
-use crate::svg::{data_uri_png, mix, notched_path, panel};
+use crate::svg::{data_uri_png, escape, mix, notched_path, panel};
 
 /// A sprite already scaled up with nearest-neighbour, as PNG, with its pixel size.
 pub struct SpriteArt<'a> {
@@ -50,47 +52,88 @@ pub struct BadgeIcon<'a> {
     pub letter: char,
     /// `0xrrggbb`, the placeholder circle.
     pub color: u32,
+    /// `0xrrggbb`, the tint of the plate the badge sits on: the colour of its rarity.
+    pub rarity: u32,
 }
 
 impl BadgeIcon<'_> {
     pub const SCALE: u32 = 2;
-    /// What a drawn badge fills of its slot.
+    /// What a drawn badge fills of its plate.
     pub const SIZE: f32 = 48.0;
+    /// The plate behind a badge: the art with a 2 px frame around it.
+    pub const PLATE: f32 = 52.0;
 
-    /// Draws the badge in the `SIZE`×`SIZE` slot whose top-left is `(x, y)`.
+    /// Draws the badge on its rarity plate, whose top-left is `(x, y)`.
     pub(crate) fn draw(&self, out: &mut String, x: f32, y: f32) {
+        let edge = format!("#{:06x}", self.rarity & 0xff_ffff);
+        let fill = mix(&edge, "#0b1029", 0.74);
+        self.plate(out, x, y, &edge, &fill);
+        // The classic top highlight row of the pixel bevel.
+        let _ = write!(
+            out,
+            r##"<rect x="{}" y="{}" width="{}" height="2" fill="#ffffff" fill-opacity="0.22"/>"##,
+            x + 6.0,
+            y + 2.0,
+            Self::PLATE - 12.0
+        );
+        self.art(out, x, y, false);
+    }
+
+    /// Draws the badge as a dark silhouette on a dim plate: not earned yet.
+    pub(crate) fn draw_locked(&self, out: &mut String, x: f32, y: f32) {
+        let edge = badges::locked_tint(self.rarity);
+        self.plate(out, x, y, &mix(&edge, "#2e3d75", 0.5), "#0b1029");
+        self.art(out, x, y, true);
+    }
+
+    fn plate(&self, out: &mut String, x: f32, y: f32, edge: &str, fill: &str) {
+        let _ = write!(
+            out,
+            r#"<path d="{}" fill="{edge}"/><path d="{}" fill="{fill}"/>"#,
+            notched_path(x, y, Self::PLATE, Self::PLATE, 4.0),
+            notched_path(x + 2.0, y + 2.0, Self::PLATE - 4.0, Self::PLATE - 4.0, 2.0),
+        );
+    }
+
+    /// The art (or its placeholder) centred on the plate whose top-left is `(x, y)`.
+    fn art(&self, out: &mut String, x: f32, y: f32, locked: bool) {
+        let (mid_x, mid_y) = (x + Self::PLATE / 2.0, y + Self::PLATE / 2.0);
         match &self.art {
             Some(art) => {
                 // Sprites keep their proportions, shrink to fit when taller than wide, and sit
-                // in the middle of the slot.
+                // in the middle of the plate.
                 let (w, h) = (art.w as f32, art.h as f32);
                 let k = (Self::SIZE / w.max(h)).min(1.0);
                 let (w, h) = (w * k, h * k);
+                let filter = if locked { r#" filter="url(#locked)""# } else { "" };
                 let _ = write!(
                     out,
-                    r#"<image x="{}" y="{}" width="{w}" height="{h}" image-rendering="optimizeSpeed" href="{}"/>"#,
-                    x + (Self::SIZE - w) / 2.0,
-                    y + (Self::SIZE - h) / 2.0,
+                    r#"<image x="{}" y="{}" width="{w}" height="{h}" image-rendering="optimizeSpeed"{filter} href="{}"/>"#,
+                    mid_x - w / 2.0,
+                    mid_y - h / 2.0,
                     data_uri_png(art.png)
                 );
             }
             None => {
-                let (cx, cy) = (x + Self::SIZE / 2.0, y + Self::SIZE / 2.0);
+                let (fill, ink) = if locked {
+                    ("#1b1d2b".to_owned(), "#45495c")
+                } else {
+                    (format!("#{:06x}", self.color & 0xff_ffff), "#0b1029")
+                };
                 let _ = write!(
                     out,
-                    r##"<circle cx="{cx}" cy="{cy}" r="21" fill="#{:06x}" stroke="#1b1d2b" stroke-width="3"/>"##,
-                    self.color & 0xff_ffff
+                    r##"<circle cx="{mid_x}" cy="{mid_y}" r="21" fill="{fill}" stroke="#1b1d2b" stroke-width="3"/>"##
                 );
                 text(
                     out,
-                    cx,
-                    cy + 8.5,
+                    mid_x,
+                    mid_y + 8.5,
                     24.0,
                     PIXEL,
                     true,
-                    "#0b1029",
+                    ink,
                     "middle",
-                    &crate::svg::escape(&self.letter.to_string()),
+                    &escape(&self.letter.to_string()),
                 );
             }
         }
@@ -173,12 +216,14 @@ mod tests {
             art: art.map(|png| SpriteArt { png, w: 48, h: 48 }),
             letter,
             color: 0x06d6a0,
+            rarity: 0x3a9bdc,
         }
     }
 
     fn profile<'a>(backdrop: Option<Backdrop<'a>>, badges: &'a [BadgeIcon<'a>]) -> ProfileCard<'a> {
         ProfileCard {
             display_name: "Captain Pinch",
+            title: None,
             username: "captain.pinch",
             avatar_png: &[],
             bio: "",
@@ -204,6 +249,7 @@ mod tests {
             profile(None, &[]).to_svg(),
             RankCard {
                 display_name: "A",
+                title: None,
                 username: "a",
                 avatar_png: &[],
                 level: 1,
@@ -301,5 +347,215 @@ mod tests {
             let image = image::load_from_memory(&r.profile_card(&card).expect("renders")).expect("a png");
             assert_eq!((image.width(), image.height()), (960, 540));
         }
+    }
+
+    fn rank(title: Option<&str>) -> RankCard<'_> {
+        RankCard {
+            display_name: "Captain Pinch",
+            title,
+            username: "captain.pinch",
+            avatar_png: &[],
+            level: 7,
+            xp_current: 5,
+            xp_needed: 50,
+            rank: 3,
+            next_role: None,
+            backdrop: None,
+            theme: Theme::reef(),
+        }
+    }
+
+    #[test]
+    fn a_title_takes_its_own_line_under_the_name() {
+        let plain = profile(None, &[]).to_svg();
+        assert!(!plain.contains("TIDE ANGLER"), "no title, no line");
+        let mut card = profile(None, &[]);
+        card.title = Some("Tide <Angler>");
+        let svg = card.to_svg();
+        assert!(
+            svg.contains("TIDE &lt;ANGLER&gt;"),
+            "escaped and in the pixel font's capitals"
+        );
+        assert!(
+            svg.contains(r#"y="80""#) && svg.contains("@captain.pinch"),
+            "the name moves up for it"
+        );
+        // The same under a background picture: the plate grows to keep the handle on it.
+        let png = scene();
+        card.backdrop = Some(Backdrop {
+            art: Some(SpriteArt {
+                png: &png,
+                w: 960,
+                h: 540,
+            }),
+            accent: "#8eddd1",
+        });
+        assert!(card.to_svg().contains("TIDE &lt;ANGLER&gt;"));
+
+        assert!(!rank(None).to_svg().contains("TIDE ANGLER"));
+        let svg = rank(Some("Tide Angler")).to_svg();
+        assert!(svg.contains("TIDE ANGLER") && svg.contains(r#"y="98""#));
+    }
+
+    #[test]
+    fn badges_sit_on_plates_tinted_by_rarity() {
+        let epic = 0x9b6bc4;
+        assert!(!profile(None, &[]).to_svg().contains("#9b6bc4"), "no badge, no plate");
+        let mut purple = badge('A', None);
+        purple.rarity = epic;
+        let svg = profile(None, &[purple]).to_svg();
+        assert!(
+            svg.contains(r##"fill="#9b6bc4"/><path"##),
+            "the plate edge is the rarity colour"
+        );
+        assert!(!svg.contains("#3a9bdc"), "and no other badge colour appears");
+
+        // Six plates never reach the crab or run off the card.
+        let six: Vec<_> = "ABCDEF".chars().map(|c| badge(c, None)).collect();
+        let svg = profile(None, &six).to_svg();
+        assert_eq!(svg.matches(r##"fill="#3a9bdc"/><path"##).count(), 6);
+        let last_plate_right = 450.0 + 5.0 * (BadgeIcon::PLATE + 3.0) + BadgeIcon::PLATE;
+        assert!(last_plate_right + 12.0 < 804.0, "{last_plate_right}");
+    }
+
+    #[test]
+    fn a_huge_total_stays_short_enough_for_the_badges() {
+        let mut card = profile(None, &[]);
+        card.total_xp = 123_456_789;
+        assert!(card.to_svg().contains("TOTAL 123.5M XP"));
+        card.total_xp = 999_999;
+        assert!(card.to_svg().contains("TOTAL 999,999 XP"));
+    }
+
+    fn collection<'a>(art: &'a [u8]) -> Vec<BadgeCell<'a>> {
+        let icon = |letter, rarity| BadgeIcon {
+            art: (letter == 'A').then_some(SpriteArt { png: art, w: 48, h: 48 }),
+            letter,
+            color: 0x06d6a0,
+            rarity,
+        };
+        vec![
+            BadgeCell {
+                icon: icon('A', 0x8fa0d8),
+                name: "Little Beacon",
+                rarity: "Common",
+                state: BadgeState::Earned {
+                    new: true,
+                    worn: Some(1),
+                },
+            },
+            BadgeCell {
+                icon: icon('B', 0xffd166),
+                name: "Guiding Light",
+                rarity: "Legendary",
+                state: BadgeState::Earned { new: false, worn: None },
+            },
+            BadgeCell {
+                icon: icon('C', 0x3a9bdc),
+                name: "Fin Finder",
+                rarity: "Rare",
+                state: BadgeState::Locked { have: 3, at: 10 },
+            },
+            BadgeCell {
+                icon: icon('D', 0x9b6bc4),
+                name: "Pearl Wyrm",
+                rarity: "Epic",
+                state: BadgeState::ForSale { price: 25_000 },
+            },
+        ]
+    }
+
+    const LEGEND: [(&str, u32); 2] = [("Common", 0x8fa0d8), ("Legendary", 0xffd166)];
+
+    #[test]
+    fn the_collection_marks_earned_new_locked_and_for_sale() {
+        let png = scene();
+        let cells = collection(&png);
+        let card = BadgeCollectionCard {
+            cells: &cells,
+            legend: &LEGEND,
+            theme: Theme::reef(),
+        };
+        let svg = card.to_svg();
+        assert!(svg.contains(">2/4</text>"), "two of four are earned");
+        assert!(svg.contains(">NEW</text>") && svg.matches(">NEW</text>").count() == 1);
+        assert!(svg.contains(">1</text>"), "the worn badge shows its place");
+        assert!(svg.contains(">3/10</text>"), "locked badges show progress");
+        assert!(svg.contains(">25,000</text>"), "shop badges show the price");
+        assert!(svg.contains("Little Beacon") && svg.contains("Fin Finder"));
+        assert_eq!(
+            svg.matches("<image").count(),
+            1,
+            "only the badge with art draws an image"
+        );
+        assert!(
+            !svg.contains(r#"filter="url(#locked)""#),
+            "and that one is earned, so not darkened"
+        );
+        let mut locked = collection(&png);
+        locked[0].state = BadgeState::Locked { have: 1, at: 5 };
+        let svg = BadgeCollectionCard {
+            cells: &locked,
+            legend: &LEGEND,
+            theme: Theme::reef(),
+        }
+        .to_svg();
+        assert!(
+            svg.contains(r#"filter="url(#locked)""#),
+            "locked art goes through the dark filter"
+        );
+        assert!(
+            svg.contains(">1/4</text>") && !svg.contains(">NEW</text>"),
+            "one earned of four, and nothing new"
+        );
+        assert_eq!(BadgeCollectionCard::height_for(40), 100 + 5 * 134 + 56);
+        assert_eq!(BadgeCollectionCard::height_for(41), 100 + 6 * 134 + 56);
+    }
+
+    #[test]
+    fn the_collection_renders_at_its_height() {
+        let r = Renderer::new();
+        let png = scene();
+        let mut cells = collection(&png);
+        // Forty badges, a third of them locked, as in the real collection.
+        for i in 0..36 {
+            let (letter, state) = match i % 3 {
+                0 => ('A', BadgeState::Locked { have: i, at: 100 }),
+                1 => ('B', BadgeState::ForSale { price: 1_500 }),
+                _ => (
+                    'C',
+                    BadgeState::Earned {
+                        new: i == 5,
+                        worn: None,
+                    },
+                ),
+            };
+            cells.push(BadgeCell {
+                icon: BadgeIcon {
+                    art: (i % 2 == 0).then_some(SpriteArt {
+                        png: &png,
+                        w: 48,
+                        h: 48,
+                    }),
+                    letter,
+                    color: 0xff6b4a,
+                    rarity: 0x5bbf6a,
+                },
+                name: "Moonlong Mornings",
+                rarity: "Uncommon",
+                state,
+            });
+        }
+        assert_eq!(cells.len(), 40);
+        let card = BadgeCollectionCard {
+            cells: &cells,
+            legend: &LEGEND,
+            theme: Theme::reef(),
+        };
+        let image = image::load_from_memory(&r.badge_collection(&card).expect("renders")).expect("a png");
+        assert_eq!(
+            (image.width(), image.height()),
+            (BadgeCollectionCard::WIDTH, BadgeCollectionCard::height_for(40))
+        );
     }
 }

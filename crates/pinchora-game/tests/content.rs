@@ -2,7 +2,9 @@
 
 use std::collections::HashSet;
 
-use pinchora_game::{Availability, BadgeKind, BadgeStat, Content, Currency, Layer, Rarity, house, market, pets};
+use pinchora_game::{
+    Availability, BadgeKind, BadgeStat, Content, Currency, Layer, Rarity, TitleKind, house, market, pets,
+};
 
 #[test]
 fn shipped_content_is_consistent() {
@@ -152,19 +154,136 @@ fn backgrounds_and_badges_are_consistent() {
 }
 
 #[test]
+fn badge_rarity_follows_difficulty() {
+    let c = Content::get();
+    assert!(
+        Rarity::ALL.iter().all(|r| c.badges.iter().any(|b| b.rarity == *r)),
+        "every rarity has a badge"
+    );
+    // Within one stat a higher threshold is never less rare.
+    for stat in BadgeStat::ALL {
+        let mut ladder: Vec<_> = c
+            .badges
+            .iter()
+            .filter_map(|b| match b.kind {
+                BadgeKind::Achievement { stat: s, at } if s == stat => Some((at, b.rarity)),
+                _ => None,
+            })
+            .collect();
+        ladder.sort();
+        assert!(
+            ladder.windows(2).all(|w| w[0].1 <= w[1].1),
+            "{stat:?} gets less rare as it gets harder: {ladder:?}"
+        );
+    }
+    // Shop badges: the dearer, the rarer.
+    let mut shop: Vec<_> = c
+        .badges
+        .iter()
+        .filter_map(|b| match b.kind {
+            BadgeKind::Shop { price } => Some((price, b.rarity)),
+            _ => None,
+        })
+        .collect();
+    shop.sort();
+    assert!(shop.windows(2).all(|w| w[0].1 <= w[1].1), "{shop:?}");
+    assert_eq!(shop.first().map(|s| s.1), Some(Rarity::Common));
+    assert_eq!(shop.last().map(|s| s.1), Some(Rarity::Legendary));
+}
+
+#[test]
+fn titles_are_consistent() {
+    let c = Content::get();
+    assert!(c.titles.len() >= 30, "expected every title, got {}", c.titles.len());
+    let (mut ids, mut names) = (HashSet::new(), HashSet::new());
+    for t in &c.titles {
+        assert!(ids.insert(t.id.as_str()), "duplicate title id {}", t.id);
+        assert!(names.insert(t.name.to_lowercase()), "duplicate title name {}", t.name);
+        assert!(
+            !t.id.is_empty()
+                && t.id
+                    .bytes()
+                    .all(|x| x.is_ascii_lowercase() || x.is_ascii_digit() || x == b'_'),
+            "title id {:?}",
+            t.id
+        );
+        assert!(
+            !t.name.is_empty() && t.name.chars().count() <= 24 && !t.description.is_empty(),
+            "{}",
+            t.id
+        );
+        match &t.kind {
+            TitleKind::Stat { stat, at } => {
+                assert!(*at > 0, "{}: threshold {at}", t.id);
+                if *stat == BadgeStat::FishSpecies {
+                    assert!(
+                        *at as usize <= c.fish.len(),
+                        "{}: more species than the fish book has",
+                        t.id
+                    );
+                }
+            }
+            TitleKind::Badge { badge } => assert!(c.badge(badge).is_some(), "{}: unknown badge {badge}", t.id),
+            TitleKind::Special => {}
+        }
+        assert_eq!(c.title(&t.id).map(|x| x.id.as_str()), Some(t.id.as_str()));
+    }
+    for stat in BadgeStat::ALL {
+        assert!(
+            c.titles
+                .iter()
+                .any(|t| matches!(t.kind, TitleKind::Stat { stat: s, .. } if s == stat)),
+            "no title counts {stat:?}"
+        );
+    }
+    let special = c.title("house_of_the_week").expect("the contest title");
+    assert_eq!(special.kind, TitleKind::Special);
+    assert_eq!(
+        c.titles.iter().filter(|t| t.kind == TitleKind::Special).count(),
+        1,
+        "nothing else is special yet"
+    );
+}
+
+#[test]
 fn badge_kinds_reject_impossible_combinations() {
     let parse = |json: &str| {
         Content::from_json("[]", "[]", r#"{"wallpapers":[],"floors":[]}"#, "[]", "[]", "[]", "[]")
-            .and_then(|c| c.with_cosmetics("[]", json))
+            .and_then(|c| c.with_cosmetics("[]", json, "[]"))
     };
-    let achievement =
-        r#"{"id":"a","name":"A","description":"d","kind":"achievement","stat":"level","at":5,"icon_brief":"i"}"#;
+    let achievement = r#"{"id":"a","name":"A","description":"d","rarity":"common","kind":"achievement","stat":"level","at":5,"icon_brief":"i"}"#;
     assert!(parse(&format!("[{achievement}]")).is_ok());
     for bad in [
-        r#"{"id":"a","name":"A","description":"d","kind":"achievement","stat":"xp","at":5,"icon_brief":"i"}"#,
-        r#"{"id":"a","name":"A","description":"d","kind":"achievement","stat":"level","icon_brief":"i"}"#,
-        r#"{"id":"a","name":"A","description":"d","kind":"shop","icon_brief":"i"}"#,
-        r#"{"id":"a","name":"A","description":"d","kind":"gift","price":5,"icon_brief":"i"}"#,
+        r#"{"id":"a","name":"A","description":"d","rarity":"common","kind":"achievement","stat":"xp","at":5,"icon_brief":"i"}"#,
+        r#"{"id":"a","name":"A","description":"d","rarity":"common","kind":"achievement","stat":"level","icon_brief":"i"}"#,
+        r#"{"id":"a","name":"A","description":"d","rarity":"common","kind":"shop","icon_brief":"i"}"#,
+        r#"{"id":"a","name":"A","description":"d","rarity":"common","kind":"gift","price":5,"icon_brief":"i"}"#,
+        // A badge without a rarity, or with one that does not exist.
+        r#"{"id":"a","name":"A","description":"d","kind":"achievement","stat":"level","at":5,"icon_brief":"i"}"#,
+        r#"{"id":"a","name":"A","description":"d","rarity":"mythic","kind":"achievement","stat":"level","at":5,"icon_brief":"i"}"#,
+    ] {
+        assert!(parse(&format!("[{bad}]")).is_err(), "{bad}");
+    }
+}
+
+#[test]
+fn title_kinds_reject_impossible_combinations() {
+    let parse = |json: &str| {
+        Content::from_json("[]", "[]", r#"{"wallpapers":[],"floors":[]}"#, "[]", "[]", "[]", "[]")
+            .and_then(|c| c.with_cosmetics("[]", "[]", json))
+    };
+    for good in [
+        r#"{"id":"a","name":"A","description":"d","kind":"stat","stat":"level","at":5}"#,
+        r#"{"id":"a","name":"A","description":"d","kind":"badge","badge":"little_beacon"}"#,
+        r#"{"id":"a","name":"A","description":"d","kind":"special"}"#,
+    ] {
+        assert!(parse(&format!("[{good}]")).is_ok(), "{good}");
+    }
+    for bad in [
+        r#"{"id":"a","name":"A","description":"d","kind":"stat","stat":"xp","at":5}"#,
+        r#"{"id":"a","name":"A","description":"d","kind":"stat","stat":"level"}"#,
+        r#"{"id":"a","name":"A","description":"d","kind":"badge"}"#,
+        r#"{"id":"a","name":"A","description":"d","kind":"gift"}"#,
     ] {
         assert!(parse(&format!("[{bad}]")).is_err(), "{bad}");
     }

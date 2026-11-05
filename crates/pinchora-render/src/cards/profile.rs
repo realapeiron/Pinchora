@@ -12,6 +12,8 @@ use crate::{
 /// 960×540 profile card.
 pub struct ProfileCard<'a> {
     pub display_name: &'a str,
+    /// The title under the name, e.g. `Tide Angler`.
+    pub title: Option<&'a str>,
     pub username: &'a str,
     /// PNG, 208×208 (see [`crate::prepare_avatar`]).
     pub avatar_png: &'a [u8],
@@ -30,7 +32,7 @@ pub struct ProfileCard<'a> {
     pub character: Option<SpriteArt<'a>>,
     /// The picture behind the card; `None` keeps the plain night-sea look.
     pub backdrop: Option<Backdrop<'a>>,
-    /// Worn badges in order; only the first [`ProfileCard::MAX_BADGES`] are drawn.
+    /// Badges in order; only the first [`ProfileCard::MAX_BADGES`] are drawn.
     pub badges: &'a [BadgeIcon<'a>],
     pub theme: Theme,
 }
@@ -52,7 +54,11 @@ impl ProfileCard<'_> {
             Some(b) => {
                 backdrop(&mut s, w, h, b);
                 // Text that is not inside a panel gets a plate of its own.
-                plate(&mut s, 288.0, 44.0, 640.0, 88.0);
+                if self.title.is_some() {
+                    plate(&mut s, 288.0, 40.0, 640.0, 96.0);
+                } else {
+                    plate(&mut s, 288.0, 44.0, 640.0, 88.0);
+                }
                 plate(&mut s, 288.0, 400.0, 640.0, 136.0);
             }
             None => background(&mut s, w, h, &t.bg_top, &t.bg_bottom),
@@ -107,9 +113,30 @@ impl ProfileCard<'_> {
         // Right column: name, bio, stats, XP. With a character, text keeps clear of its corner.
         let (name_chars, bio_chars) = if self.character.is_some() { (17, 38) } else { (22, 46) };
         let name = escape(&truncate(self.display_name, name_chars));
-        text(&mut s, 296.0, 88.0, 44.0, SANS, true, &t.ink, "start", &name);
         let handle = escape(&truncate(&format!("@{}", self.username), 34));
-        text(&mut s, 298.0, 122.0, 22.0, SANS, false, &t.muted, "start", &handle);
+        match self.title {
+            // The title takes a line of its own between the name and the handle.
+            Some(title) => {
+                text(&mut s, 296.0, 80.0, 44.0, SANS, true, &t.ink, "start", &name);
+                sprite(&mut s, STAR, 298.0, 92.0, 2.4, &t.gold, "#fff7d6");
+                text(
+                    &mut s,
+                    322.0,
+                    106.0,
+                    16.0,
+                    PIXEL,
+                    false,
+                    &t.gold,
+                    "start",
+                    &escape(&truncate(&title.to_uppercase(), 24)),
+                );
+                text(&mut s, 298.0, 130.0, 20.0, SANS, false, &t.muted, "start", &handle);
+            }
+            None => {
+                text(&mut s, 296.0, 88.0, 44.0, SANS, true, &t.ink, "start", &name);
+                text(&mut s, 298.0, 122.0, 22.0, SANS, false, &t.muted, "start", &handle);
+            }
+        }
 
         panel(&mut s, 296.0, 140.0, 624.0, 132.0, 4.0, &t.panel, &t.panel_edge);
         text(&mut s, 316.0, 170.0, 14.0, PIXEL, false, &t.muted, "start", "ABOUT ME");
@@ -205,15 +232,20 @@ impl ProfileCard<'_> {
             "#1f2a57",
             &t.panel_edge,
         );
-        let total = format!("TOTAL {} XP", thousands(self.total_xp));
+        // Seven digits would run into the badges.
+        let total = if self.total_xp >= 1_000_000 {
+            format!("TOTAL {} XP", compact(self.total_xp))
+        } else {
+            format!("TOTAL {} XP", thousands(self.total_xp))
+        };
         text(&mut s, 296.0, 512.0, 14.0, PIXEL, false, &t.muted, "start", &total);
 
-        // Badges run along the footer between the total and the crab.
+        // Badges run along the footer between the total and the crab, each on its rarity plate.
         for (i, badge) in self.badges.iter().take(Self::MAX_BADGES).enumerate() {
-            badge.draw(&mut s, 462.0 + i as f32 * 50.0, 484.0);
+            badge.draw(&mut s, 450.0 + i as f32 * (BadgeIcon::PLATE + 3.0), 482.0);
         }
 
-        sprite(&mut s, CRAB, 770.0, 498.0, 3.0, &t.accent, "#fff1e8");
+        sprite(&mut s, CRAB, 804.0, 498.0, 3.0, &t.accent, "#fff1e8");
         text(&mut s, 920.0, 516.0, 14.0, PIXEL, false, &t.muted, "end", "PINCHORA");
         s.push_str("</svg>");
         s

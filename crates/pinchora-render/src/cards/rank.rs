@@ -3,7 +3,7 @@ use std::fmt::Write;
 use super::{Backdrop, PIXEL, SANS, avatar_frame, backdrop, text};
 use crate::{
     Theme,
-    svg::{background, compact, escape, plate, segment_bar, thousands, truncate},
+    svg::{STAR, background, compact, escape, plate, segment_bar, sprite, thousands, truncate},
 };
 
 /// The next level reward, shown as "Next role: <name> at level N".
@@ -15,6 +15,8 @@ pub struct NextRole<'a> {
 /// 934×282 server rank card.
 pub struct RankCard<'a> {
     pub display_name: &'a str,
+    /// The title under the name, e.g. `Tide Angler`.
+    pub title: Option<&'a str>,
     pub username: &'a str,
     /// PNG, 200×200.
     pub avatar_png: &'a [u8],
@@ -58,9 +60,30 @@ impl RankCard<'_> {
         text(&mut s, 720.0, 118.0, 44.0, PIXEL, false, &t.accent, "end", &level);
 
         let name = escape(&truncate(self.display_name, 18));
-        text(&mut s, 280.0, 110.0, 38.0, SANS, true, &t.ink, "start", &name);
         let handle = escape(&truncate(&format!("@{}", self.username), 28));
-        text(&mut s, 282.0, 144.0, 20.0, SANS, false, &t.muted, "start", &handle);
+        match self.title {
+            // The title takes a line of its own between the name and the handle.
+            Some(title) => {
+                text(&mut s, 280.0, 98.0, 38.0, SANS, true, &t.ink, "start", &name);
+                sprite(&mut s, STAR, 282.0, 109.0, 2.4, &t.gold, "#fff7d6");
+                text(
+                    &mut s,
+                    306.0,
+                    123.0,
+                    16.0,
+                    PIXEL,
+                    false,
+                    &t.gold,
+                    "start",
+                    &escape(&truncate(&title.to_uppercase(), 24)),
+                );
+                text(&mut s, 282.0, 152.0, 20.0, SANS, false, &t.muted, "start", &handle);
+            }
+            None => {
+                text(&mut s, 280.0, 110.0, 38.0, SANS, true, &t.ink, "start", &name);
+                text(&mut s, 282.0, 144.0, 20.0, SANS, false, &t.muted, "start", &handle);
+            }
+        }
 
         let xp = format!(
             "{} / {} XP",

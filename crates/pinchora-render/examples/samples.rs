@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use image::{RgbaImage, imageops};
 use pinchora_render::{
-    Backdrop, BadgeIcon, CharacterCard, LeaderboardCard, LeaderboardEntry, LevelUpCard, NextRole, ProfileCard,
-    RankCard, Renderer, SpriteArt, Theme, WalletCard, WelcomeCard,
+    Backdrop, BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, CharacterCard, LeaderboardCard, LeaderboardEntry,
+    LevelUpCard, NextRole, ProfileCard, RankCard, Renderer, SpriteArt, Theme, WalletCard, WelcomeCard,
     character::{Colors, placeholder_character, recolor_character},
     placeholder_avatar,
     room::{Cursor, RoomScene, SceneItem, SceneLayer, render_room},
@@ -69,6 +69,7 @@ fn main() -> anyhow::Result<()> {
     let started = std::time::Instant::now();
     let profile = r.profile_card(&ProfileCard {
         display_name: "Captain Pinch",
+        title: None,
         username: "captain.pinch",
         avatar_png: &placeholder_avatar(42, ProfileCard::AVATAR_SIZE),
         bio: "Collector of shiny shells, builder of tiny pixel houses. Ask me about my crab named Sir Clicks-a-lot!",
@@ -120,6 +121,13 @@ fn main() -> anyhow::Result<()> {
         .iter()
         .map(|(id, _)| store.get(&format!("b_{id}")).map(|s| scaled_png(&s, BadgeIcon::SCALE)))
         .collect();
+    let rarity_color = |id: &str| match id {
+        "little_beacon" => 0x8fa0d8,
+        "fin_finder" | "pawshake" => 0x5bbf6a,
+        "week_of_waves" => 0x3a9bdc,
+        "tiny_tide" => 0x8fa0d8,
+        _ => 0xffd166,
+    };
     let icons = |drawn: bool| -> Vec<BadgeIcon<'_>> {
         worn.iter()
             .zip(&badge_art)
@@ -130,6 +138,7 @@ fn main() -> anyhow::Result<()> {
                     .map(|(png, w, h)| SpriteArt { png, w: *w, h: *h }),
                 letter: *letter,
                 color: placeholder_badge_color(id),
+                rarity: rarity_color(id),
             })
             .collect()
     };
@@ -137,6 +146,7 @@ fn main() -> anyhow::Result<()> {
     let profile_with = |name: &str, backdrop: Option<Backdrop<'_>>, badges: &[BadgeIcon<'_>], theme: Theme| {
         let png = r.profile_card(&ProfileCard {
             display_name: "Captain Pinch",
+            title: Some("Tide Angler"),
             username: "captain.pinch",
             avatar_png: &placeholder_avatar(42, ProfileCard::AVATAR_SIZE),
             bio: "Collector of shiny shells, builder of tiny pixel houses. Ask me about my crab named Sir Clicks-a-lot!",
@@ -170,8 +180,60 @@ fn main() -> anyhow::Result<()> {
         themed.clone(),
     )?;
 
+    // The collection card: the six sample badges earned, new, worn, part-way and for sale.
+    let names = [
+        "Little Beacon",
+        "Fin Finder",
+        "Pawshake",
+        "Week Of Waves",
+        "Tiny Tide",
+        "Pearl Wyrm",
+    ];
+    let states = [
+        BadgeState::Earned {
+            new: false,
+            worn: Some(1),
+        },
+        BadgeState::Locked { have: 7, at: 10 },
+        BadgeState::Earned {
+            new: true,
+            worn: Some(2),
+        },
+        BadgeState::Locked { have: 3, at: 7 },
+        BadgeState::Earned { new: false, worn: None },
+        BadgeState::ForSale { price: 25_000 },
+    ];
+    let collection_icons = icons(true);
+    let cells: Vec<BadgeCell<'_>> = collection_icons
+        .into_iter()
+        .zip(names)
+        .zip(states)
+        .map(|((icon, name), state)| BadgeCell {
+            icon,
+            name,
+            rarity: "Common",
+            state,
+        })
+        .collect();
+    let legend = [
+        ("Common", 0x8fa0d8),
+        ("Uncommon", 0x5bbf6a),
+        ("Rare", 0x3a9bdc),
+        ("Epic", 0x9b6bc4),
+        ("Legendary", 0xffd166),
+    ];
+    std::fs::write(
+        format!("{out}/badge-collection.png"),
+        r.badge_collection(&BadgeCollectionCard {
+            cells: &cells,
+            legend: &legend,
+            theme: Theme::reef(),
+        })?,
+    )?;
+
     let rank = r.rank_card(&RankCard {
         display_name: "Captain Pinch",
+        title: Some("Tide Angler"),
         username: "captain.pinch",
         avatar_png: &placeholder_avatar(7, RankCard::AVATAR_SIZE),
         level: 27,
@@ -190,6 +252,7 @@ fn main() -> anyhow::Result<()> {
     let rank_card = |backdrop: Option<Backdrop<'_>>, theme: Theme| {
         r.rank_card(&RankCard {
             display_name: "Captain Pinch",
+            title: None,
             username: "captain.pinch",
             avatar_png: &placeholder_avatar(7, RankCard::AVATAR_SIZE),
             level: 27,
@@ -369,7 +432,7 @@ fn main() -> anyhow::Result<()> {
     render_room(&scene).save(format!("{out}/room.png"))?;
 
     println!(
-        "wrote {out}/{{profile,profile-badges,profile-background,profile-placeholder,rank,rank-background,wallet,wallet-background,welcome,levelup,character,leaderboard,leaderboard-shells,room}}.png (profile rendered in {profile_ms} ms)"
+        "wrote {out}/{{profile,profile-badges,profile-background,profile-placeholder,badge-collection,rank,rank-background,wallet,wallet-background,welcome,levelup,character,leaderboard,leaderboard-shells,room}}.png (profile rendered in {profile_ms} ms)"
     );
     Ok(())
 }

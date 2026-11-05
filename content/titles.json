@@ -1,0 +1,235 @@
+[
+  {
+    "id": "shoreline_stroller",
+    "name": "Shoreline Stroller",
+    "description": "Reach level 3.",
+    "kind": "stat",
+    "stat": "level",
+    "at": 3
+  },
+  {
+    "id": "lighthouse_keeper",
+    "name": "Lighthouse Keeper",
+    "description": "Reach level 15.",
+    "kind": "stat",
+    "stat": "level",
+    "at": 15
+  },
+  {
+    "id": "harbour_elder",
+    "name": "Harbour Elder",
+    "description": "Reach level 40.",
+    "kind": "stat",
+    "stat": "level",
+    "at": 40
+  },
+  {
+    "id": "tide_angler",
+    "name": "Tide Angler",
+    "description": "Catch 5 different fish species.",
+    "kind": "stat",
+    "stat": "fish_species",
+    "at": 5
+  },
+  {
+    "id": "net_whisperer",
+    "name": "Net Whisperer",
+    "description": "Catch 20 different fish species.",
+    "kind": "stat",
+    "stat": "fish_species",
+    "at": 20
+  },
+  {
+    "id": "deep_diver",
+    "name": "Deep Diver",
+    "description": "Catch 48 different fish species.",
+    "kind": "stat",
+    "stat": "fish_species",
+    "at": 48
+  },
+  {
+    "id": "cosy_host",
+    "name": "Cosy Host",
+    "description": "Receive 5 likes on your house.",
+    "kind": "stat",
+    "stat": "house_likes",
+    "at": 5
+  },
+  {
+    "id": "open_door",
+    "name": "Open Door",
+    "description": "Receive 30 likes on your house.",
+    "kind": "stat",
+    "stat": "house_likes",
+    "at": 30
+  },
+  {
+    "id": "hearth_keeper",
+    "name": "Hearth Keeper",
+    "description": "Receive 120 likes on your house.",
+    "kind": "stat",
+    "stat": "house_likes",
+    "at": 120
+  },
+  {
+    "id": "critter_friend",
+    "name": "Critter Friend",
+    "description": "Own 2 pets.",
+    "kind": "stat",
+    "stat": "pets",
+    "at": 2
+  },
+  {
+    "id": "pocket_menagerie",
+    "name": "Pocket Menagerie",
+    "description": "Own 6 pets.",
+    "kind": "stat",
+    "stat": "pets",
+    "at": 6
+  },
+  {
+    "id": "crab_shepherd",
+    "name": "Crab Shepherd",
+    "description": "Own 12 pets.",
+    "kind": "stat",
+    "stat": "pets",
+    "at": 12
+  },
+  {
+    "id": "early_riser",
+    "name": "Early Riser",
+    "description": "Reach a 3-day daily streak.",
+    "kind": "stat",
+    "stat": "streak",
+    "at": 3
+  },
+  {
+    "id": "steady_tide",
+    "name": "Steady Tide",
+    "description": "Reach a 14-day daily streak.",
+    "kind": "stat",
+    "stat": "streak",
+    "at": 14
+  },
+  {
+    "id": "clockwork_crab",
+    "name": "Clockwork Crab",
+    "description": "Reach a 60-day daily streak.",
+    "kind": "stat",
+    "stat": "streak",
+    "at": 60
+  },
+  {
+    "id": "coral_architect",
+    "name": "Coral Architect",
+    "description": "Place 60 pieces of furniture.",
+    "kind": "stat",
+    "stat": "placed",
+    "at": 60
+  },
+  {
+    "id": "cosy_curator",
+    "name": "Cosy Curator",
+    "description": "Place 200 pieces of furniture.",
+    "kind": "stat",
+    "stat": "placed",
+    "at": 200
+  },
+  {
+    "id": "home_weaver",
+    "name": "Home Weaver",
+    "description": "Place 600 pieces of furniture.",
+    "kind": "stat",
+    "stat": "placed",
+    "at": 600
+  },
+  {
+    "id": "kindly_neighbour",
+    "name": "Kindly Neighbour",
+    "description": "Reach 5 reputation.",
+    "kind": "stat",
+    "stat": "reputation",
+    "at": 5
+  },
+  {
+    "id": "beloved_local",
+    "name": "Beloved Local",
+    "description": "Reach 30 reputation.",
+    "kind": "stat",
+    "stat": "reputation",
+    "at": 30
+  },
+  {
+    "id": "pillar_of_the_pier",
+    "name": "Pillar of the Pier",
+    "description": "Reach 100 reputation.",
+    "kind": "stat",
+    "stat": "reputation",
+    "at": 100
+  },
+  {
+    "id": "shell_collector",
+    "name": "Shell Collector",
+    "description": "Hold 5,000 shells.",
+    "kind": "stat",
+    "stat": "shells",
+    "at": 5000
+  },
+  {
+    "id": "shell_tycoon",
+    "name": "Shell Tycoon",
+    "description": "Hold 50,000 shells.",
+    "kind": "stat",
+    "stat": "shells",
+    "at": 50000
+  },
+  {
+    "id": "pearl_baron",
+    "name": "Pearl Baron",
+    "description": "Hold 500,000 shells.",
+    "kind": "stat",
+    "stat": "shells",
+    "at": 500000
+  },
+  {
+    "id": "capn_crab",
+    "name": "Cap'n Crab",
+    "description": "Own the Crab Cap badge.",
+    "kind": "badge",
+    "badge": "crab_cap"
+  },
+  {
+    "id": "puddle_pilot",
+    "name": "Puddle Pilot",
+    "description": "Own the Rainy Day Duck badge.",
+    "kind": "badge",
+    "badge": "rainy_day_duck"
+  },
+  {
+    "id": "moonlit_wanderer",
+    "name": "Moonlit Wanderer",
+    "description": "Own the Moonlit Moth badge.",
+    "kind": "badge",
+    "badge": "moonlit_moth"
+  },
+  {
+    "id": "cloud_crowned",
+    "name": "Cloud Crowned",
+    "description": "Own the Cloudlet Crown badge.",
+    "kind": "badge",
+    "badge": "cloudlet_crown"
+  },
+  {
+    "id": "wyrm_whisperer",
+    "name": "Wyrm Whisperer",
+    "description": "Own the Pearl Wyrm badge.",
+    "kind": "badge",
+    "badge": "pearl_wyrm"
+  },
+  {
+    "id": "house_of_the_week",
+    "name": "House of the Week",
+    "description": "Granted to the house the community picks each week.",
+    "kind": "special"
+  }
+]

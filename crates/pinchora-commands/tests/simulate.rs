@@ -32,6 +32,8 @@ use pinchora_commands::{
     on_message, on_voice_state_update,
 };
 use pinchora_db::Db;
+use pinchora_game::Content;
+use pinchora_render::BadgeCollectionCard;
 use serde_json::{Value, json};
 use tokio::{net::TcpListener, sync::oneshot};
 use tracing::{
@@ -538,6 +540,22 @@ impl Reply {
             .first()
             .and_then(|e| e.fields.iter().find(|f| f.name == name))
             .map_or("", |f| f.value.as_str())
+    }
+
+    /// The text of every field of the first embed whose name starts with `prefix`, one after the
+    /// other: a long list is split into several fields.
+    fn fields_starting(&self, prefix: &str) -> String {
+        self.embeds
+            .first()
+            .map(|e| {
+                e.fields
+                    .iter()
+                    .filter(|f| f.name.starts_with(prefix))
+                    .map(|f| f.value.as_str())
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            })
+            .unwrap_or_default()
     }
 
     /// Number of action rows.
@@ -1780,6 +1798,30 @@ async fn buying_and_wearing_a_background() {
     ));
 }
 
+/// Where the badges stand along the foot of the profile card.
+const BADGE_FOOT: (std::ops::Range<u32>, std::ops::Range<u32>) = (450..780, 482..534);
+
+/// The collection card's height for the 40 badges.
+fn collection_height() -> u32 {
+    BadgeCollectionCard::height_for(Content::get().badges.len())
+}
+
+/// Whether the collection card marks the badge `id` NEW: a gold tag at the top-right of its plate.
+fn has_new_marker(card: &image::RgbaImage, id: &str) -> bool {
+    let index = Content::get()
+        .badges
+        .iter()
+        .position(|b| b.id == id)
+        .expect("a badge in the content");
+    let (xs, ys) = BadgeCollectionCard::new_tag_box(index);
+    let gold = image::Rgba([255, 209, 102, 255]);
+    let marker = ys
+        .flat_map(|y| xs.clone().map(move |x| (x, y)))
+        .filter(|&(x, y)| *card.get_pixel(x, y) == gold)
+        .count();
+    marker > 150
+}
+
 #[tokio::test]
 async fn earning_buying_and_wearing_badges() {
     let Some(mut sim) = Sim::new("earning_buying_and_wearing_badges").await else {
@@ -1787,6 +1829,10 @@ async fn earning_buying_and_wearing_badges() {
     };
     let user = unique();
     let db = sim.app.db.clone();
+    let foot = BADGE_FOOT;
+
+    // Nothing earned yet: nothing on the card.
+    let empty = sim.command(user, "profile", json!([])).await;
 
     // 1,200 XP is level 5; 12 reputation; three fish species; 1,500 shells.
     db.earn_shells(user, 1_500, "test").await.unwrap();
@@ -1797,24 +1843,47 @@ async fn earning_buying_and_wearing_badges() {
     for fish in ["a", "b", "c"] {
         db.log_catch(user, fish, 10.0).await.unwrap();
     }
-    let plain = sim.command(user, "profile", json!([])).await;
+
+    // They never opened /customize, yet the card already shows the best of what they earned.
+    let auto = sim.command(user, "profile", json!([])).await;
+    assert!(
+        differ_in(
+            &card_pixels(&auto, (960, 540)),
+            &card_pixels(&empty, (960, 540)),
+            foot.0.clone(),
+            foot.1.clone()
+        ),
+        "earned badges show without any setup"
+    );
+    assert!(!db.user(user).await.unwrap().badges_set);
 
     let panel = sim
         .command(user, "customize", json!([{ "name": "badges", "type": 1 }]))
         .await;
     assert_eq!(panel.title(), "Your badges");
     assert!(panel.ephemeral);
-    card_image(&panel, (960, 540));
+    let collection = card_pixels(&panel, (960, collection_height()));
     assert!(embed_chars(&panel) < 6_000, "{} characters", embed_chars(&panel));
     assert!(
-        panel.description().contains("not wearing any badges"),
+        panel
+            .description()
+            .contains("Your card shows your best badges on its own (2/6): **Little Beacon**, **Kind Current**."),
         "{}",
         panel.description()
+    );
+    // The first time, what they earned is NEW on the collection.
+    assert!(has_new_marker(&collection, "little_beacon") && has_new_marker(&collection, "kind_current"));
+    assert!(
+        !has_new_marker(&collection, "bright_beacon"),
+        "a locked badge is not new"
     );
 
     // Earned badges are ticked, locked ones show real progress, shop badges show prices.
     let level = panel.field("Level");
-    assert!(level.contains("✅ **Little Beacon** · Reach level 5."), "{level}");
+    assert!(
+        level.contains("✅ **Little Beacon** · Reach level 5. *(worn)*"),
+        "automatic badges count as worn: {level}"
+    );
     assert!(level.contains("🔒 **Bright Beacon** · 5/10 levels"), "{level}");
     assert!(
         panel
@@ -1835,8 +1904,19 @@ async fn earning_buying_and_wearing_badges() {
     assert!(panel.field("Shop").contains("🛒 **Tiny Tide** · 1,000 shells"));
     let wearable: Vec<_> = panel.options("cz:ws").iter().map(|o| o.value.as_str()).collect();
     assert_eq!(wearable, ["little_beacon", "kind_current"], "only what is earned");
+    assert!(
+        panel.options("cz:ws").iter().all(|o| o.default),
+        "the automatic badges are ticked"
+    );
     assert_eq!(panel.options("cz:wb").len(), 12, "every shop badge is for sale");
-    assert!(panel.button("Take all off").disabled);
+    assert!(
+        !panel.button("Take all off").disabled,
+        "no badges at all is a choice too"
+    );
+    assert!(
+        panel.button("Show my best automatically").disabled,
+        "nothing to hand back yet"
+    );
 
     // A badge that is not earned cannot be worn, even with a hand-made pick.
     let sneaky = sim.component(user, "cz:ws:0", &["guiding_light"], &panel).await;
@@ -1845,11 +1925,12 @@ async fn earning_buying_and_wearing_badges() {
         "{}",
         sneaky.content()
     );
-    assert!(db.user(user).await.unwrap().badges.is_empty());
+    assert!(!db.user(user).await.unwrap().badges_set, "nothing was saved");
 
-    // Wear the two earned ones.
+    // Wear the two earned ones: now it is their choice.
+    let ws = panel.menu("cz:ws").custom_id.clone();
     let worn = sim
-        .component(user, "cz:ws:0", &["little_beacon", "kind_current"], &panel)
+        .component(user, &ws, &["little_beacon", "kind_current"], &panel)
         .await;
     assert!(worn.description().contains("Saved."), "{}", worn.description());
     assert!(
@@ -1862,20 +1943,27 @@ async fn earning_buying_and_wearing_badges() {
         worn.field("Level")
             .contains("✅ **Little Beacon** · Reach level 5. *(worn)*")
     );
-    assert_eq!(db.user(user).await.unwrap().badges, ["little_beacon", "kind_current"]);
-    // The badges stand along the foot of the card, in the preview and on /profile alike.
-    let foot = (462..760, 484..532);
-    let bare = card_pixels(&panel, (960, 540));
-    assert!(differ_in(
-        &card_pixels(&worn, (960, 540)),
-        &bare,
-        foot.0.clone(),
-        foot.1.clone()
+    let row = db.user(user).await.unwrap();
+    assert_eq!(row.badges, ["little_beacon", "kind_current"]);
+    assert!(row.badges_set);
+    assert!(
+        has_new_marker(&card_pixels(&worn, (960, collection_height())), "little_beacon"),
+        "the NEW markers stay while the player works in the panel"
+    );
+    // Opening the collection again: they have seen those badges now.
+    let again = sim
+        .command(user, "customize", json!([{ "name": "badges", "type": 1 }]))
+        .await;
+    assert!(!has_new_marker(
+        &card_pixels(&again, (960, collection_height())),
+        "little_beacon"
     ));
+
+    // The same two, in the same order, look the same as what the card picked by itself.
     let with_badges = sim.command(user, "profile", json!([])).await;
-    assert!(differ_in(
+    assert!(!differ_in(
         &card_pixels(&with_badges, (960, 540)),
-        &card_pixels(&plain, (960, 540)),
+        &card_pixels(&auto, (960, 540)),
         foot.0.clone(),
         foot.1.clone()
     ));
@@ -1907,13 +1995,9 @@ async fn earning_buying_and_wearing_badges() {
     assert_eq!(bought.options("cz:wb").len(), 11);
     assert_eq!(bought.options("cz:ws").len(), 3, "the bought badge can be worn now");
     assert_eq!(db.user(user).await.unwrap().credits, 500);
+    let ws = bought.menu("cz:ws").custom_id.clone();
     let worn = sim
-        .component(
-            user,
-            "cz:ws:0",
-            &["little_beacon", "kind_current", "tiny_tide"],
-            &bought,
-        )
+        .component(user, &ws, &["little_beacon", "kind_current", "tiny_tide"], &bought)
         .await;
     assert_eq!(
         db.user(user).await.unwrap().badges,
@@ -1922,9 +2006,8 @@ async fn earning_buying_and_wearing_badges() {
     );
 
     // Unticking one takes just that one off, and the order of the rest stays.
-    let fewer = sim
-        .component(user, "cz:ws:0", &["little_beacon", "tiny_tide"], &worn)
-        .await;
+    let ws = worn.menu("cz:ws").custom_id.clone();
+    let fewer = sim.component(user, &ws, &["little_beacon", "tiny_tide"], &worn).await;
     assert!(fewer.description().contains("Wearing 2/6"), "{}", fewer.description());
     assert_eq!(db.user(user).await.unwrap().badges, ["little_beacon", "tiny_tide"]);
 
@@ -1957,7 +2040,17 @@ async fn earning_buying_and_wearing_badges() {
         "tiny_tide",
     ];
     assert_eq!(panel.options("cz:ws").len(), seven.len());
-    let refused = sim.component(user, "cz:ws:0", &seven, &panel).await;
+    let new_ones = card_pixels(&panel, (960, collection_height()));
+    assert!(
+        has_new_marker(&new_ones, "bright_beacon") && has_new_marker(&new_ones, "harbour_helper"),
+        "what they earned since last time is new"
+    );
+    assert!(
+        !has_new_marker(&new_ones, "little_beacon"),
+        "and what they had seen is not"
+    );
+    let ws = panel.menu("cz:ws").custom_id.clone();
+    let refused = sim.component(user, &ws, &seven, &panel).await;
     assert!(
         refused.description().contains("6 badges at most"),
         "{}",
@@ -1968,13 +2061,13 @@ async fn earning_buying_and_wearing_badges() {
         ["little_beacon", "tiny_tide"],
         "nothing changed"
     );
-    let six = sim.component(user, "cz:ws:0", &seven[..6], &panel).await;
+    let six = sim.component(user, &ws, &seven[..6], &panel).await;
     assert!(six.description().contains("Wearing 6/6"), "{}", six.description());
     assert_eq!(db.user(user).await.unwrap().badges.len(), 6);
     let profile = sim.command(user, "profile", json!([])).await;
     card_image(&profile, (960, 540));
 
-    // Take them all off.
+    // Take them all off: an explicit empty choice means no badges, however many they have earned.
     let bare = sim.click(user, &six, "Take all off").await;
     assert!(
         bare.description().contains("not wearing any badges"),
@@ -1982,13 +2075,422 @@ async fn earning_buying_and_wearing_badges() {
         bare.description()
     );
     assert!(bare.button("Take all off").disabled);
-    assert!(db.user(user).await.unwrap().badges.is_empty());
+    assert!(!bare.button("Show my best automatically").disabled);
+    let row = db.user(user).await.unwrap();
+    assert!(row.badges.is_empty() && row.badges_set);
     let plain_again = sim.command(user, "profile", json!([])).await;
     assert!(differ_in(
         &card_pixels(&plain_again, (960, 540)),
         &card_pixels(&profile, (960, 540)),
+        foot.0.clone(),
+        foot.1.clone()
+    ));
+    assert!(
+        !differ_in(
+            &card_pixels(&plain_again, (960, 540)),
+            &card_pixels(&empty, (960, 540)),
+            foot.0.clone(),
+            foot.1.clone()
+        ),
+        "no badges is no badges"
+    );
+
+    // Hand the choice back: the card shows the six best again, the rarest first.
+    let automatic = sim.click(user, &bare, "Show my best automatically").await;
+    assert!(
+        automatic.description().contains(
+            "(6/6): **Bright Beacon**, **Harbour Helper**, **Little Beacon**, **Warm Welcome**, **Pawshake**, **Kind Current**."
+        ),
+        "two uncommon badges first, then commons in the order of the list: {}",
+        automatic.description()
+    );
+    assert!(automatic.button("Show my best automatically").disabled);
+    let row = db.user(user).await.unwrap();
+    assert!(row.badges.is_empty() && !row.badges_set);
+    let best = sim.command(user, "profile", json!([])).await;
+    assert!(differ_in(
+        &card_pixels(&best, (960, 540)),
+        &card_pixels(&empty, (960, 540)),
         foot.0,
         foot.1
+    ));
+}
+
+/// Every badge on the collection card: some earned and worn, some locked part-way, some for
+/// sale, and the NEW tag on whatever came since the last look.
+#[tokio::test]
+async fn the_badge_collection_card_shows_progress_and_what_is_new() {
+    let Some(mut sim) = Sim::new("the_badge_collection_card_shows_progress_and_what_is_new").await else {
+        return;
+    };
+    let user = unique();
+    let db = sim.app.db.clone();
+
+    // Level 25, 14 fish species, a pet, a day of streak, two shop badges, 12,500 shells.
+    db.add_message_xp(sim.guild, user, 42_000, 0).await.unwrap();
+    db.earn_shells(user, 15_000, "test").await.unwrap();
+    for n in 0..14 {
+        db.log_catch(user, &format!("fish{n}"), 10.0).await.unwrap();
+    }
+    db.adopt(user, "crumbclaw_crab", "Sir Clicks").await.unwrap();
+    db.buy_badge(user, "tiny_tide", 1_000).await.unwrap();
+    db.buy_badge(user, "crab_cap", 1_500).await.unwrap();
+    db.claim_daily(user).await.unwrap();
+    for _ in 0..30 {
+        db.give_rep(unique(), user).await.unwrap();
+    }
+    db.set_badges(
+        user,
+        &["harbour_beacon", "pocket_rattle", "tiny_tide", "kind_current"].map(str::to_owned),
+    )
+    .await
+    .unwrap();
+
+    let panel = sim
+        .command(user, "customize", json!([{ "name": "badges", "type": 1 }]))
+        .await;
+    let first = card_pixels(&panel, (960, collection_height()));
+    for earned in [
+        "little_beacon",
+        "bright_beacon",
+        "harbour_beacon",
+        "fin_finder",
+        "pawshake",
+        "kind_current",
+        "pocket_rattle",
+        "tiny_tide",
+        "crab_cap",
+    ] {
+        assert!(has_new_marker(&first, earned), "{earned} was earned and never seen");
+    }
+    for not_yet in [
+        "starlit_beacon",
+        "reef_regular",
+        "week_of_waves",
+        "harbour_helper",
+        "pearl_wyrm",
+    ] {
+        assert!(!has_new_marker(&first, not_yet), "{not_yet} is not earned");
+    }
+    assert!(panel.description().contains("Wearing 4/6"), "{}", panel.description());
+
+    // Opened again, nothing is new. Earning one more makes just that one new.
+    let second = sim
+        .command(user, "customize", json!([{ "name": "badges", "type": 1 }]))
+        .await;
+    let calm = card_pixels(&second, (960, collection_height()));
+    assert!(!has_new_marker(&calm, "little_beacon") && !has_new_marker(&calm, "crab_cap"));
+    for _ in 0..25 {
+        db.give_rep(unique(), user).await.unwrap();
+    }
+    let third = sim
+        .command(user, "customize", json!([{ "name": "badges", "type": 1 }]))
+        .await;
+    let latest = card_pixels(&third, (960, collection_height()));
+    assert!(
+        has_new_marker(&latest, "harbour_helper"),
+        "55 reputation earns Harbour Helper"
+    );
+    assert!(!has_new_marker(&latest, "little_beacon"), "the rest was seen");
+    assert!(differ_in(&latest, &calm, 0..960, 0..collection_height()));
+}
+
+#[tokio::test]
+async fn badge_unlocks_are_announced_once_under_the_command_that_earned_them() {
+    let Some(mut sim) = Sim::new("badge_unlocks_are_announced_once_under_the_command_that_earned_them").await else {
+        return;
+    };
+    let db = sim.app.db.clone();
+    let thumbnail = |notice: &Reply, id: &str| {
+        assert_eq!(notice.files.len(), 1, "the badge art goes along as the thumbnail");
+        assert_eq!(notice.files[0].0, format!("badge-{id}.png"));
+        let art = image::load_from_memory(&notice.files[0].1).expect("a png");
+        assert_eq!(art.width(), 96, "drawn 4x");
+    };
+
+    // /daily: the shells it pays take a wallet over 10,000 and earn Pocket Rattle.
+    let saver = unique();
+    db.earn_shells(saver, 9_800, "test").await.unwrap();
+    let daily = sim.command(saver, "daily", json!([])).await;
+    assert!(daily.title().starts_with("+250"), "{}", daily.title());
+    assert_eq!(daily.followups.len(), 1, "one notice under the answer");
+    let notice = &daily.followups[0];
+    assert_eq!(notice.title(), "Badge unlocked: Pocket Rattle");
+    assert!(notice.description().contains("Hold 10,000 shells at once."));
+    assert!(notice.description().contains("Uncommon"));
+    thumbnail(notice, "pocket_rattle");
+    assert!(!notice.ephemeral, "a public answer, a public notice");
+    // Never twice: the cooldown answer carries no notice, and neither does another command.
+    let cooldown = sim.command(saver, "daily", json!([])).await;
+    assert!(cooldown.followups.is_empty());
+    let other = (unique(), unique());
+    let given = sim
+        .command_resolved(
+            saver,
+            "give",
+            json!([user_option("user", other.0), int_option("amount", 1)]),
+            resolved(&[other.0], &[]),
+        )
+        .await;
+    assert!(given.followups.is_empty(), "Pocket Rattle was announced already");
+
+    // /fish: a tenth species earns Fin Finder.
+    let angler = unique();
+    db.earn_shells(angler, 500, "test").await.unwrap();
+    for n in 0..9 {
+        db.log_catch(angler, &format!("fish{n}"), 10.0).await.unwrap();
+    }
+    let casting = Reply::new(InteractionResponseType::ChannelMessageWithSource);
+    let reel = |nonce: u32| format!("fr:{angler}:{nonce}");
+    let bite = |nonce: u32| {
+        let at = chrono::Utc::now().timestamp_millis() - 400;
+        (format!("cast:{angler}:{nonce}"), at.to_string())
+    };
+    let (key, at) = bite(1);
+    sim.app
+        .cache
+        .put(&key, &at, std::time::Duration::from_secs(30))
+        .await
+        .unwrap();
+    let caught = sim.component(angler, &reel(1), &[], &casting).await;
+    assert!(caught.title().contains("You caught"), "{}", caught.title());
+    assert_eq!(caught.followups.len(), 1, "{:?}", caught.title());
+    assert_eq!(caught.followups[0].title(), "Badge unlocked: Fin Finder");
+    thumbnail(&caught.followups[0], "fin_finder");
+    let (key, at) = bite(2);
+    sim.app
+        .cache
+        .put(&key, &at, std::time::Duration::from_secs(30))
+        .await
+        .unwrap();
+    let again = sim.component(angler, &reel(2), &[], &casting).await;
+    assert!(again.title().contains("You caught"), "{}", again.title());
+    assert!(again.followups.is_empty(), "Fin Finder is not announced twice");
+
+    // /pet adopt: the first pet earns Pawshake.
+    let keeper = unique();
+    let menu = sim
+        .command(keeper, "pet", json!([{ "name": "adopt", "type": 1 }]))
+        .await;
+    assert!(menu.followups.is_empty(), "choosing is not adopting");
+    let adopted = sim.pick(keeper, &menu, "pa", "crumbclaw_crab").await;
+    assert_eq!(adopted.followups.len(), 1);
+    assert_eq!(adopted.followups[0].title(), "Badge unlocked: Pawshake");
+
+    // /give: a badge earned some other way (here, reputation) is announced at the next chance.
+    let (kind, friend) = (unique(), unique());
+    db.earn_shells(kind, 5, "test").await.unwrap();
+    for _ in 0..10 {
+        db.give_rep(unique(), kind).await.unwrap();
+    }
+    let given = sim
+        .command_resolved(
+            kind,
+            "give",
+            json!([user_option("user", friend), int_option("amount", 1)]),
+            resolved(&[friend], &[]),
+        )
+        .await;
+    assert!(
+        given.description().contains("Sent **1** shells"),
+        "{}",
+        given.description()
+    );
+    assert_eq!(given.followups.len(), 1);
+    assert_eq!(given.followups[0].title(), "Badge unlocked: Kind Current");
+
+    // Chat: reaching level 5 earns Little Beacon, posted under the level-up message.
+    let chatter = unique();
+    db.add_message_xp(sim.guild, chatter, 1_149, 0).await.unwrap();
+    sim.say(chatter, &[]).await;
+    let posts = sim.posts();
+    assert_eq!(posts.len(), 2, "the level-up and the badge");
+    assert!(
+        posts[0].content().contains("reached **level 5**"),
+        "{}",
+        posts[0].content()
+    );
+    assert_eq!(posts[1].title(), "Badge unlocked: Little Beacon");
+    assert!(
+        posts[1].content().contains("unlocked a badge!"),
+        "{}",
+        posts[1].content()
+    );
+    assert_eq!(
+        posts[1].body["allowed_mentions"]["parse"].as_array().map(Vec::len),
+        Some(0),
+        "named, not pinged"
+    );
+
+    // Placing furniture: the 25th piece in the house earns Nest Nudger, privately under the editor.
+    let decorator = unique();
+    let edit = sim
+        .command(decorator, "house", json!([{ "name": "edit", "type": 1 }]))
+        .await;
+    db.grant_item(decorator, "seed_piece", 24).await.unwrap();
+    for x in 0..24 {
+        db.place_item(decorator, 0, "seed_piece", x, 0, false, |_| Ok(()))
+            .await
+            .unwrap();
+    }
+    let furniture = edit
+        .options("he:s:")
+        .iter()
+        .find(|o| !o.value.starts_with('<') && o.value != "none")
+        .expect("the starter kit is in the inventory")
+        .value
+        .clone();
+    let held = sim.pick(decorator, &edit, "he:s:", &furniture).await;
+    let placed = sim.click(decorator, &held, "Place").await;
+    assert!(placed.description().contains("Placed **"), "{}", placed.description());
+    assert_eq!(placed.followups.len(), 1);
+    assert_eq!(placed.followups[0].title(), "Badge unlocked: Nest Nudger");
+    assert!(placed.followups[0].ephemeral, "the editor is private, so is the notice");
+}
+
+#[tokio::test]
+async fn titles_sit_under_the_name_on_the_profile_and_rank_cards() {
+    let Some(mut sim) = Sim::new("titles_sit_under_the_name_on_the_profile_and_rank_cards").await else {
+        return;
+    };
+    let user = unique();
+    let db = sim.app.db.clone();
+    let name_block = (296..800, 40..136);
+    let rank_block = (280..700, 60..160);
+
+    // Level 5 and 12 reputation: Shoreline Stroller and Kindly Neighbour are theirs; three fish
+    // species are short of Tide Angler's five.
+    db.add_message_xp(sim.guild, user, 1_200, 0).await.unwrap();
+    for _ in 0..12 {
+        db.give_rep(unique(), user).await.unwrap();
+    }
+    for fish in ["a", "b", "c"] {
+        db.log_catch(user, fish, 10.0).await.unwrap();
+    }
+    let plain_profile = sim.command(user, "profile", json!([])).await;
+    let plain_rank = sim.command(user, "rank", json!([])).await;
+
+    let panel = sim
+        .command(user, "customize", json!([{ "name": "title", "type": 1 }]))
+        .await;
+    assert_eq!(panel.title(), "Your titles");
+    assert!(panel.ephemeral);
+    card_image(&panel, (960, 540));
+    assert!(embed_chars(&panel) < 6_000, "{} characters", embed_chars(&panel));
+    assert!(
+        panel.description().contains("You have no title yet."),
+        "{}",
+        panel.description()
+    );
+    assert!(panel.description().contains("unlocked 2/30"), "{}", panel.description());
+    let unlocked: Vec<_> = panel.options("ti:s").iter().map(|o| o.value.as_str()).collect();
+    assert_eq!(unlocked, ["shoreline_stroller", "kindly_neighbour"]);
+    assert!(
+        panel
+            .field("Unlocked")
+            .contains("✅ **Kindly Neighbour** · Reach 5 reputation.")
+    );
+    let locked = panel.fields_starting("Still to earn");
+    assert!(locked.contains("🔒 **Tide Angler** · 3/5 fish species"), "{locked}");
+    assert!(locked.contains("🔒 **House of the Week**"), "{locked}");
+    assert!(panel.button("Remove").disabled, "no title to remove");
+
+    // Hand-made picks of titles that are not theirs are refused.
+    for locked in ["tide_angler", "house_of_the_week", "no_such_title"] {
+        let refused = sim.component(user, "ti:s:0", &[locked], &panel).await;
+        assert!(
+            refused.content().contains("isn't available any more"),
+            "{locked}: {}",
+            refused.content()
+        );
+    }
+    assert_eq!(db.user(user).await.unwrap().title, None);
+
+    // Choosing one puts it on both cards.
+    let chosen = sim.pick(user, &panel, "ti:s", "kindly_neighbour").await;
+    assert!(
+        chosen
+            .description()
+            .contains("Saved. **Kindly Neighbour** sits under your name"),
+        "{}",
+        chosen.description()
+    );
+    assert!(chosen.description().contains("Your title is **Kindly Neighbour**."));
+    assert!(
+        chosen
+            .field("Unlocked")
+            .contains("✅ **Kindly Neighbour** · Reach 5 reputation. *(worn)*")
+    );
+    assert!(
+        chosen
+            .options("ti:s")
+            .iter()
+            .any(|o| o.value == "kindly_neighbour" && o.default)
+    );
+    assert!(!chosen.button("Remove").disabled);
+    assert_eq!(db.user(user).await.unwrap().title.as_deref(), Some("kindly_neighbour"));
+    // The editor shows the card as it will look.
+    assert!(differ_in(
+        &card_pixels(&chosen, (960, 540)),
+        &card_pixels(&plain_profile, (960, 540)),
+        name_block.0.clone(),
+        name_block.1.clone()
+    ));
+    let profile = sim.command(user, "profile", json!([])).await;
+    assert!(differ_in(
+        &card_pixels(&profile, (960, 540)),
+        &card_pixels(&plain_profile, (960, 540)),
+        name_block.0.clone(),
+        name_block.1.clone()
+    ));
+    let rank = sim.command(user, "rank", json!([])).await;
+    assert!(differ_in(
+        &card_pixels(&rank, (934, 282)),
+        &card_pixels(&plain_rank, (934, 282)),
+        rank_block.0.clone(),
+        rank_block.1.clone()
+    ));
+
+    // A title the contest grants shows up in the menu and can be worn.
+    db.grant_title(user, "house_of_the_week").await.unwrap();
+    let panel = sim
+        .command(user, "customize", json!([{ "name": "title", "type": 1 }]))
+        .await;
+    let unlocked: Vec<_> = panel.options("ti:s").iter().map(|o| o.value.as_str()).collect();
+    assert_eq!(
+        unlocked,
+        ["shoreline_stroller", "kindly_neighbour", "house_of_the_week"]
+    );
+    assert!(!panel.fields_starting("Still to earn").contains("House of the Week"));
+    let special = sim.pick(user, &panel, "ti:s", "house_of_the_week").await;
+    assert!(
+        special.description().contains("Your title is **House of the Week**."),
+        "{}",
+        special.description()
+    );
+
+    // Removing it makes both cards plain again.
+    let removed = sim.click(user, &special, "Remove").await;
+    assert!(
+        removed.description().contains("You have no title yet."),
+        "{}",
+        removed.description()
+    );
+    assert!(removed.button("Remove").disabled);
+    assert_eq!(db.user(user).await.unwrap().title, None);
+    let profile = sim.command(user, "profile", json!([])).await;
+    assert!(!differ_in(
+        &card_pixels(&profile, (960, 540)),
+        &card_pixels(&plain_profile, (960, 540)),
+        name_block.0,
+        name_block.1
+    ));
+    let rank = sim.command(user, "rank", json!([])).await;
+    assert!(!differ_in(
+        &card_pixels(&rank, (934, 282)),
+        &card_pixels(&plain_rank, (934, 282)),
+        rank_block.0,
+        rank_block.1
     ));
 }
 

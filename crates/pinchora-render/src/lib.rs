@@ -15,8 +15,9 @@ use resvg::{tiny_skia, usvg};
 
 pub use avatar::{placeholder_avatar, prepare_avatar};
 pub use cards::{
-    Backdrop, BadgeIcon, CharacterCard, GridSlot, ItemGridCard, LeaderboardCard, LeaderboardEntry, LevelUpCard,
-    NextRole, PetCard, ProfileCard, RankCard, SpriteArt, WalletCard, WelcomeCard,
+    Backdrop, BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, CharacterCard, GridSlot, ItemGridCard,
+    LeaderboardCard, LeaderboardEntry, LevelUpCard, NextRole, PetCard, ProfileCard, RankCard, SpriteArt, WalletCard,
+    WelcomeCard,
 };
 pub use encode::encode_png;
 pub use svg::{compact, thousands};
@@ -68,6 +69,10 @@ impl Renderer {
     }
 
     pub fn rank_card(&self, card: &RankCard<'_>) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn badge_collection(&self, card: &BadgeCollectionCard<'_>) -> anyhow::Result<Vec<u8>> {
         self.svg_to_png(&card.to_svg())
     }
 

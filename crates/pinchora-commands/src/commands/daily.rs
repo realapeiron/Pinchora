@@ -4,6 +4,7 @@ use twilight_util::builder::embed::EmbedBuilder;
 
 use crate::{
     Cx,
+    commands::customize,
     util::{SUCCESS, WARN, relative, thousands},
 };
 
@@ -14,7 +15,8 @@ pub struct Daily;
 impl Daily {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
         let outcome = cx.app.db.claim_daily(cx.author()?.id.get()).await?;
-        if matches!(outcome, DailyOutcome::Claimed { .. }) {
+        let claimed = matches!(outcome, DailyOutcome::Claimed { .. });
+        if claimed {
             cx.app
                 .quest(cx.author()?.id.get(), pinchora_game::quests::QuestKind::Daily)
                 .await;
@@ -38,6 +40,11 @@ impl Daily {
                 .description(format!("Your next daily is ready {}.", relative(next_at)))
                 .build(),
         };
-        cx.reply_embed(embed).await
+        cx.reply_embed(embed).await?;
+        // The shells and the streak may have just earned a badge.
+        if claimed {
+            customize::announce(cx).await;
+        }
+        Ok(())
     }
 }

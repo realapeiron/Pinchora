@@ -22,6 +22,12 @@ pub struct UserRow {
     pub background: Option<String>,
     /// The badge ids on their profile card, in order (`users.badges`).
     pub badges: Vec<String>,
+    /// Whether they chose their badges. While false the card shows their best earned ones.
+    pub badges_set: bool,
+    /// Badges they had earned when they last opened the collection; `None` before the first time.
+    pub badges_seen: Option<Vec<String>>,
+    /// The id of the title under their name (`users.title`).
+    pub title: Option<String>,
 }
 
 impl Db {

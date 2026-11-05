@@ -666,6 +666,166 @@ async fn badges_are_bought_once_and_worn_in_order() {
 }
 
 #[tokio::test]
+async fn badges_stay_automatic_until_the_player_chooses() {
+    let Some(db) = db().await else { return };
+    let [alice, bob] = ids();
+
+    // A new player has not chosen: the card picks their badges.
+    let row = db.user(alice).await.unwrap();
+    assert!(!row.badges_set && row.badges.is_empty());
+    assert_eq!(
+        row.badges_seen,
+        Some(Vec::new()),
+        "nothing seen yet, so what they earn first is new"
+    );
+    assert!(row.title.is_none());
+
+    // Any save is a choice, an empty one included: it now means "no badges".
+    db.set_badges(alice, &[]).await.unwrap();
+    assert!(db.user(alice).await.unwrap().badges_set);
+    db.set_badges(alice, &["pawshake".to_owned()]).await.unwrap();
+    assert!(db.user(alice).await.unwrap().badges_set);
+
+    // Resetting hands the choice back to the card.
+    db.reset_badges(alice).await.unwrap();
+    let row = db.user(alice).await.unwrap();
+    assert!(!row.badges_set && row.badges.is_empty());
+
+    // Saving for a player the database has never seen creates them with the choice made.
+    db.set_badges(bob, &[]).await.unwrap();
+    assert!(db.user(bob).await.unwrap().badges_set);
+}
+
+#[tokio::test]
+async fn badge_notices_are_claimed_once_and_old_news_is_not_announced() {
+    let Some(db) = db().await else { return };
+    let [alice, old, nobody] = ids();
+    let list = |ids: &[&str]| ids.iter().map(|s| (*s).to_owned()).collect::<Vec<_>>();
+
+    // A new player starts with nothing announced.
+    assert_eq!(db.user(alice).await.unwrap().credits, 0);
+    let (stats, notified) = db.badge_progress(alice).await.unwrap();
+    assert_eq!(stats, PlayerStats::default());
+    assert_eq!(notified, Some(Vec::new()));
+    assert_eq!(
+        db.claim_badge_notices(alice, &list(&["little_beacon"])).await.unwrap(),
+        list(&["little_beacon"])
+    );
+    assert_eq!(
+        db.claim_badge_notices(alice, &list(&["little_beacon"])).await.unwrap(),
+        Vec::<String>::new(),
+        "never twice"
+    );
+    assert_eq!(
+        db.claim_badge_notices(alice, &list(&["little_beacon", "pawshake"]))
+            .await
+            .unwrap(),
+        list(&["pawshake"]),
+        "only what is new"
+    );
+    assert_eq!(
+        db.badge_progress(alice).await.unwrap().1,
+        Some(list(&["little_beacon", "pawshake"]))
+    );
+
+    // Commands finishing together announce a badge exactly once between them.
+    let mut tasks = Vec::new();
+    for _ in 0..10 {
+        let db = db.clone();
+        tasks.push(tokio::spawn(async move {
+            db.claim_badge_notices(alice, &list(&["fin_finder"])).await.unwrap()
+        }));
+    }
+    let mut claimed = 0;
+    for t in tasks {
+        claimed += t.await.unwrap().len();
+    }
+    assert_eq!(claimed, 1);
+
+    // A player from before notices existed has no list. The first claim fills it with what
+    // they already have and announces nothing; the next one announces what comes after.
+    db.user(old).await.unwrap();
+    sqlx::query("UPDATE users SET badges_notified = NULL, badges_seen = NULL WHERE id = $1")
+        .bind(old as i64)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    assert_eq!(db.badge_progress(old).await.unwrap().1, None);
+    assert_eq!(db.user(old).await.unwrap().badges_seen, None);
+    assert!(
+        db.claim_badge_notices(old, &list(&["little_beacon", "fin_finder"]))
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    assert_eq!(
+        db.claim_badge_notices(old, &list(&["little_beacon", "fin_finder", "pawshake"]))
+            .await
+            .unwrap(),
+        list(&["pawshake"])
+    );
+
+    // Nobody the database does not know has nothing yet; a pet alone is enough to count, and
+    // announcing it gives them their row.
+    assert_eq!(
+        db.badge_progress(nobody).await.unwrap(),
+        (PlayerStats::default(), Some(Vec::new()))
+    );
+    db.adopt(nobody, "crumbclaw_crab", "Sir Clicks").await.unwrap();
+    let (stats, notified) = db.badge_progress(nobody).await.unwrap();
+    assert_eq!((stats.pets, notified), (1, Some(Vec::new())));
+    assert_eq!(
+        db.claim_badge_notices(nobody, &list(&["pawshake"])).await.unwrap(),
+        list(&["pawshake"])
+    );
+    assert!(
+        db.claim_badge_notices(nobody, &list(&["pawshake"]))
+            .await
+            .unwrap()
+            .is_empty()
+    );
+
+    // What the player has seen in the collection is kept for its NEW markers.
+    db.mark_badges_seen(old, &list(&["little_beacon"])).await.unwrap();
+    assert_eq!(db.user(old).await.unwrap().badges_seen, Some(list(&["little_beacon"])));
+}
+
+#[tokio::test]
+async fn titles_are_worn_and_granted() {
+    let Some(db) = db().await else { return };
+    let [alice, bob] = ids();
+
+    assert!(db.granted_titles(alice).await.unwrap().is_empty());
+    assert!(db.grant_title(alice, "house_of_the_week").await.unwrap());
+    assert!(
+        !db.grant_title(alice, "house_of_the_week").await.unwrap(),
+        "granted once"
+    );
+    assert!(db.grant_title(alice, "tide_angler").await.unwrap());
+    assert_eq!(
+        db.granted_titles(alice).await.unwrap(),
+        ["house_of_the_week", "tide_angler"],
+        "oldest first"
+    );
+    assert!(
+        db.granted_titles(bob).await.unwrap().is_empty(),
+        "grants are per player"
+    );
+
+    assert_eq!(db.user(alice).await.unwrap().title, None);
+    db.set_title(alice, Some("tide_angler")).await.unwrap();
+    assert_eq!(db.user(alice).await.unwrap().title.as_deref(), Some("tide_angler"));
+    db.set_title(alice, None).await.unwrap();
+    assert_eq!(db.user(alice).await.unwrap().title, None);
+    db.set_title(bob, Some("early_riser")).await.unwrap();
+    assert_eq!(
+        db.user(bob).await.unwrap().title.as_deref(),
+        Some("early_riser"),
+        "saving creates the player"
+    );
+}
+
+#[tokio::test]
 async fn player_stats_collect_every_number_for_achievements() {
     let Some(db) = db().await else { return };
     let [nobody, host, fan_a, fan_b] = ids();

@@ -788,6 +788,8 @@ pub(crate) async fn on_edit(
     state.room = state.room.clamp(0, rooms.len().saturating_sub(1) as i16);
     let placements = cx.app.db.placements(user_id, state.room).await?;
     let name_of = |item_id: &str| content.item(item_id).map_or(item_id.to_owned(), |i| i.name());
+    // Set when this click put a piece in the player's own house, which counts toward badges.
+    let mut placed_now = false;
 
     let note = match action.as_str() {
         "s" => match value {
@@ -882,6 +884,7 @@ pub(crate) async fn on_edit(
                 let name = name_of(&item_id);
                 match outcome {
                     PlaceOutcome::Placed { .. } => {
+                        placed_now = prefix == "he";
                         cx.app.quest(user_id, pinchora_game::quests::QuestKind::Place).await;
                         if cx.app.db.owns(user_id, &item_id).await? {
                             // Keep holding the next one, already on the nearest free spot.
@@ -1013,7 +1016,11 @@ pub(crate) async fn on_edit(
         _ => String::new(),
     };
     let data = editor(cx, user_id, state, &note).await?;
-    cx.update(data).await
+    cx.update(data).await?;
+    if placed_now {
+        super::customize::announce(cx).await;
+    }
+    Ok(())
 }
 
 pub(crate) async fn editor(

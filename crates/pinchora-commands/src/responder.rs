@@ -116,7 +116,10 @@ impl Responder {
                     };
                     self.initial(tx.take(), defer).await?;
                     *state = State::Deferred;
-                    self.edit_original(&data).await
+                    self.edit_original(&data).await?;
+                    // The edit was the answer: whatever comes next is a follow-up, as over the gateway.
+                    *state = State::Done;
+                    Ok(())
                 } else {
                     let kind = if update {
                         InteractionResponseType::UpdateMessage

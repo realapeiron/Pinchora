@@ -12,7 +12,9 @@ use twilight_model::{
 };
 
 use crate::{
-    App, roles, server_log,
+    App,
+    commands::customize,
+    roles, server_log,
     util::{display_name, fill, mention},
 };
 
@@ -110,6 +112,8 @@ pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<(
         .allowed_mentions(Some(&mentions))
         .attachments(&[Attachment::from_bytes("levelup.png".to_owned(), png, 1)])
         .await?;
+    // The new level may have just earned a badge: say so right under the level-up.
+    customize::announce_in(&app, channel, u).await;
     Ok(())
 }
 

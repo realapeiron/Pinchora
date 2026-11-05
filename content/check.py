@@ -61,6 +61,12 @@ BADGE_STATS = (
     "level", "fish_species", "house_likes", "pets", "streak", "placed", "reputation", "shells",
 )
 BADGE_KINDS = ("achievement", "shop")
+# Shop badges are rarer the dearer they are; achievements are rarer the harder they are.
+BADGE_SHOP_BANDS = {
+    "common": (1, 2500), "uncommon": (2501, 6500), "rare": (6501, 10000),
+    "epic": (10001, 18000), "legendary": (18001, 10**9),
+}
+TITLE_KINDS = ("stat", "badge", "special")
 PET_WEIGHTS = {"common": 100, "uncommon": 45, "rare": 18, "epic": 6, "legendary": 1}
 PET_COUNTS = {"common": 14, "uncommon": 12, "rare": 9, "epic": 5}
 ROOM_IDS = {
@@ -581,7 +587,7 @@ def check_badges(raw, fish_count):
     seen, names = {}, {}
     for item, where in records:
         kind = item.get("kind")
-        common = ("id", "name", "description", "kind", "icon_brief")
+        common = ("id", "name", "description", "rarity", "kind", "icon_brief")
         if kind == "achievement":
             fields(item, where, common + ("stat", "at"))
         elif kind == "shop":
@@ -593,6 +599,7 @@ def check_badges(raw, fish_count):
         string(item, "description", where, limit=80)
         string(item, "icon_brief", where, limit=200)
         enum(item, "kind", BADGE_KINDS, where)
+        enum(item, "rarity", RARITIES, where)
         if kind == "achievement":
             enum(item, "stat", BADGE_STATS, where)
             threshold = item.get("at")
@@ -601,9 +608,13 @@ def check_badges(raw, fish_count):
             elif item.get("stat") == "fish_species" and threshold > fish_count:
                 problem(where, f"fish_species at {threshold} is more than the {fish_count} catches in fish.json")
         elif kind == "shop":
-            amount = item.get("price")
+            amount, rarity = item.get("price"), item.get("rarity")
             if not integer(amount) or amount <= 0:
                 problem(where, "price must be a positive integer")
+            elif isinstance(rarity, str) and rarity in BADGE_SHOP_BANDS:
+                low, high = BADGE_SHOP_BANDS[rarity]
+                if not low <= amount <= high:
+                    problem(where, f"{rarity} shop badge price must be {low}..{high}; got {amount}")
     for stat in BADGE_STATS:
         thresholds = [item["at"] for item, _ in records
                       if item.get("stat") == stat and integer(item.get("at"))]
@@ -611,10 +622,68 @@ def check_badges(raw, fish_count):
             problem("badges.json", f"needs at least one {stat} achievement")
         elif len(set(thresholds)) != len(thresholds):
             problem("badges.json", f"{stat} achievements must have different thresholds")
+        # A higher threshold is never a lower rarity.
+        ladder = sorted((item["at"], item["rarity"]) for item, _ in records
+                        if item.get("stat") == stat and integer(item.get("at")) and item.get("rarity") in RARITIES)
+        ranks = [RARITIES.index(rarity) for _, rarity in ladder]
+        if ranks != sorted(ranks):
+            problem("badges.json", f"{stat} achievements must not get less rare as the threshold grows")
     counts = tally(records, "kind")
     for kind in BADGE_KINDS:
         if not counts[kind]:
             problem("badges.json", f"needs at least one {kind} badge")
+    rarities = tally(records, "rarity")
+    for rarity in RARITIES:
+        if not rarities[rarity]:
+            problem("badges.json", f"needs at least one {rarity} badge")
+    return records
+
+
+def check_titles(raw, badges, fish_count):
+    records = entries(raw, "titles.json", 30)
+    seen, names = {}, {}
+    badge_ids = {item.get("id") for item, _ in badges}
+    for item, where in records:
+        kind = item.get("kind")
+        common = ("id", "name", "description", "kind")
+        if kind == "stat":
+            fields(item, where, common + ("stat", "at"))
+        elif kind == "badge":
+            fields(item, where, common + ("badge",))
+        elif kind == "special":
+            fields(item, where, common)
+        else:
+            fields(item, where, common, ("stat", "at", "badge"))
+        identity(item, where, seen, names)
+        string(item, "name", where, limit=24)
+        string(item, "description", where, limit=80)
+        enum(item, "kind", TITLE_KINDS, where)
+        if kind == "stat":
+            enum(item, "stat", BADGE_STATS, where)
+            threshold = item.get("at")
+            if not integer(threshold) or threshold <= 0:
+                problem(where, "at must be a positive integer")
+            elif item.get("stat") == "fish_species" and threshold > fish_count:
+                problem(where, f"fish_species at {threshold} is more than the {fish_count} catches in fish.json")
+        elif kind == "badge":
+            if item.get("badge") not in badge_ids:
+                problem(where, f"badge {item.get('badge')!r} is not in badges.json")
+    for stat in BADGE_STATS:
+        thresholds = [item["at"] for item, _ in records
+                      if item.get("stat") == stat and integer(item.get("at"))]
+        if not thresholds:
+            problem("titles.json", f"needs at least one {stat} title")
+        elif len(set(thresholds)) != len(thresholds):
+            problem("titles.json", f"{stat} titles must have different thresholds")
+    counts = tally(records, "kind")
+    for kind in TITLE_KINDS:
+        if not counts[kind]:
+            problem("titles.json", f"needs at least one {kind} title")
+    special = next((item for item, _ in records if item.get("id") == "house_of_the_week"), None)
+    if special is None:
+        problem("titles.json", "missing the special title 'house_of_the_week'")
+    elif special.get("kind") != "special":
+        problem("titles.json", "house_of_the_week must be a special title")
     return records
 
 
@@ -646,7 +715,7 @@ def furniture_table(title, records, key, order):
 def main():
     ERRORS.clear()
     raw = {name: read_file(name + ".json") for name in (
-        "sets", "furniture", "surfaces", "rooms", "pets", "fish", "backgrounds", "badges")}
+        "sets", "furniture", "surfaces", "rooms", "pets", "fish", "backgrounds", "badges", "titles")}
     sets, set_ids = check_sets(raw["sets"])
     shared_ids = {}
     furniture, playable = check_furniture(raw["furniture"], set_ids, shared_ids)
@@ -656,12 +725,14 @@ def main():
     fish = check_fish(raw["fish"])
     backgrounds = check_backgrounds(raw["backgrounds"])
     badges = check_badges(raw["badges"], len(fish))
+    titles = check_titles(raw["titles"], badges, len(fish))
     share(furniture + surfaces["wallpapers"] + surfaces["floors"], "all purchasable designs")
     table("Catalog", [("Furniture sets", len(sets)), ("Furniture bases", len(furniture)),
                       ("Playable furniture items", playable), ("Wallpapers", len(surfaces["wallpapers"])),
                       ("Floors", len(surfaces["floors"])), ("Rooms", len(rooms)),
                       ("Pet species", len(pets)), ("Fish / catches", len(fish)),
-                      ("Backgrounds", len(backgrounds)), ("Badges", len(badges))])
+                      ("Backgrounds", len(backgrounds)), ("Badges", len(badges)),
+                      ("Titles", len(titles))])
     for key, order in (("category", CATEGORY_MIN), ("rarity", RARITIES), ("availability", AVAILABILITY), ("layer", LAYERS)):
         if key in ("category", "layer"):
             furniture_table(f"Furniture by {key}", furniture, key, order)

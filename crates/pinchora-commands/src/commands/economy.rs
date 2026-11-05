@@ -8,7 +8,7 @@ use twilight_util::builder::embed::EmbedBuilder;
 
 use crate::{
     Cx,
-    commands::customize::{Cosmetics, theme},
+    commands::customize::{self, Cosmetics, theme},
     util::{SUCCESS, mention, resolved_display_name, thousands},
 };
 
@@ -98,7 +98,11 @@ impl Give {
                         thousands(sender_balance)
                     ))
                     .build();
-                cx.reply_embed(embed).await
+                cx.reply_embed(embed).await?;
+                // Not a stat that goes up for the sender, but a catch-up for whatever other commands
+                // (a stall sale, a quest) moved since the last notice.
+                customize::announce(cx).await;
+                Ok(())
             }
             TransferOutcome::Insufficient { balance } => {
                 cx.reply_ephemeral(format!("You only have {} shells.", thousands(balance)))

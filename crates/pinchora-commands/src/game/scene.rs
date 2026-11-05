@@ -19,6 +19,9 @@ use pinchora_render::{
     sprites::{SpriteStore, placeholder_item, placeholder_pet, placeholder_tile, recolor, variant_ramp},
 };
 
+/// How much bigger than the card's 2× a badge's art is drawn for an unlock notice's thumbnail.
+const BADGE_LARGE_SCALE: u32 = 4;
+
 /// Recoloured characters kept at once; players can pick far more combinations than this.
 const CHARACTER_CACHE: usize = 512;
 
@@ -117,15 +120,20 @@ impl Sprites {
 
     /// The atlas sprite `name` scaled `factor`×, or `None` while it is not drawn yet.
     fn scaled_art(&self, name: String, factor: u32) -> Option<Arc<ScaledArt>> {
-        if let Some(art) = self.scaled.lock().expect("scaled cache").get(&name) {
+        self.scaled_art_as(&name, name.clone(), factor)
+    }
+
+    /// Like [`Sprites::scaled_art`], kept under `key` so one sprite can be scaled more than one way.
+    fn scaled_art_as(&self, name: &str, key: String, factor: u32) -> Option<Arc<ScaledArt>> {
+        if let Some(art) = self.scaled.lock().expect("scaled cache").get(&key) {
             return art.clone();
         }
-        let art = self.store.get(&name).and_then(|sprite| {
+        let art = self.store.get(name).and_then(|sprite| {
             let (w, h) = (sprite.width() * factor, sprite.height() * factor);
             let big = image::imageops::resize(sprite.as_ref(), w, h, image::imageops::FilterType::Nearest);
             encode_png(&big).ok().map(|png| Arc::new(ScaledArt { png, w, h }))
         });
-        self.scaled.lock().expect("scaled cache").insert(name, art.clone());
+        self.scaled.lock().expect("scaled cache").insert(key, art.clone());
         art
     }
 
@@ -137,6 +145,11 @@ impl Sprites {
     /// A badge's art (`b_<id>`, 24 px wide) scaled to 48 px.
     pub fn badge(&self, id: &str) -> Option<Arc<ScaledArt>> {
         self.scaled_art(format!("b_{id}"), BadgeIcon::SCALE)
+    }
+
+    /// A badge's art scaled to 96 px, for the thumbnail of an unlock notice.
+    pub fn badge_large(&self, id: &str) -> Option<Arc<ScaledArt>> {
+        self.scaled_art_as(&format!("b_{id}"), format!("b4_{id}"), BADGE_LARGE_SCALE)
     }
 
     pub fn fish(&self, id: &str) -> Arc<RgbaImage> {

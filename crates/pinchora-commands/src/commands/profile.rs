@@ -31,7 +31,7 @@ impl Profile {
         }
         let row = cx.app.db.user(user.id.get()).await?;
         let background = row.background.as_deref().and_then(|id| Content::get().background(id));
-        let badges = customize::worn_badges(&cx.app, user.id.get(), &row.badges).await?;
+        let badges = customize::worn_badges(&cx.app, user.id.get(), &row).await?;
         let png = card(cx, &user, name, row, background, &badges).await?;
         cx.reply_png("profile.png", png).await
     }
@@ -69,6 +69,7 @@ pub(crate) async fn card(
     let sprites = cx.app.sprites.clone();
     let cosmetics = Cosmetics::new(&sprites, background, badges);
     let theme = customize::theme(row.accent_color, background);
+    let title = customize::title_name(&row);
     cx.app
         .render(move |r| {
             let art = character
@@ -77,6 +78,7 @@ pub(crate) async fn card(
             let icons = cosmetics.icons();
             r.profile_card(&ProfileCard {
                 display_name: &name,
+                title,
                 username: &username,
                 avatar_png: &avatar,
                 bio: &row.bio,
