@@ -1,0 +1,147 @@
+# Gateway shard clusters: one pod per cluster, ordinal = cluster id.
+apiVersion: v1
+kind: Service
+metadata:
+  name: pinchora-gateway
+  labels:
+    app.kubernetes.io/name: pinchora
+    app.kubernetes.io/component: gateway
+spec:
+  # Headless: gives the StatefulSet stable pod names. Nothing routes traffic here
+  # (the gateway only dials out); it also exposes the ops port for debugging.
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: pinchora
+    app.kubernetes.io/component: gateway
+  ports:
+    - name: ops
+      port: 9000
+      targetPort: ops
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: pinchora-gateway
+  labels:
+    app.kubernetes.io/name: pinchora
+    app.kubernetes.io/component: gateway
+spec:
+  serviceName: pinchora-gateway
+  # Parallel: pods start and stop together instead of waiting on each ordinal.
+  # RollingUpdate still replaces one pod at a time, highest ordinal first.
+  podManagementPolicy: Parallel
+  updateStrategy:
+    type: RollingUpdate
+  # ---- scaling: replicas MUST equal PINCHORA_GATEWAY__CLUSTER_COUNT (env below) ----
+  # Pod N serves the shards of bucket N out of CLUSTER_COUNT. If the two differ,
+  # shards are skipped or served twice. With more than one cluster also set
+  # PINCHORA_GATEWAY__SHARDS (total shards, fixed). Overlays patch both together.
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pinchora
+      app.kubernetes.io/component: gateway
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pinchora
+        app.kubernetes.io/component: gateway
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9000"
+        prometheus.io/path: /metrics
+    spec:
+      # SIGTERM closes every shard with a resumable close frame and saves the
+      # sessions to Redis, which takes ~25 s. Do not lower this below that.
+      terminationGracePeriodSeconds: 45
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        # Concurrent runs are safe: sqlx holds a Postgres advisory lock.
+        - name: migrate
+          image: pinchora
+          args: ["migrate"]
+          envFrom:
+            - configMapRef:
+                name: pinchora-config
+            - secretRef:
+                name: pinchora-secrets
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+      containers:
+        - name: gateway
+          image: pinchora
+          args: ["gateway"]
+          envFrom:
+            - configMapRef:
+                name: pinchora-config
+            - secretRef:
+                name: pinchora-secrets
+          env:
+            # The cluster id is parsed from the hostname suffix (pinchora-gateway-2 -> 2).
+            - name: HOSTNAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            # Keep equal to spec.replicas (see the note above it).
+            - name: PINCHORA_GATEWAY__CLUSTER_COUNT
+              value: "1"
+          ports:
+            - name: ops
+              containerPort: 9000
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: ops
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: ops
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: pinchora-gateway
+  labels:
+    app.kubernetes.io/name: pinchora
+    app.kubernetes.io/component: gateway
+spec:
+  # Node drains take one shard cluster down at a time; it resumes from Redis.
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pinchora
+      app.kubernetes.io/component: gateway

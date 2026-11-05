@@ -1,0 +1,199 @@
+use std::sync::Arc;
+
+use tokio::sync::{Mutex, oneshot};
+use twilight_model::{
+    application::interaction::{Interaction, InteractionType},
+    channel::message::MessageFlags,
+    http::interaction::{InteractionResponse, InteractionResponseData, InteractionResponseType},
+    id::{Id, marker::InteractionMarker},
+};
+
+use crate::App;
+
+/// Answers one interaction, whichever way it arrived.
+///
+/// Over the gateway every answer is a REST call. Over the HTTP endpoint the first
+/// answer goes back as the HTTP response body; if the handler is slower than the
+/// endpoint's budget, the endpoint sends a "thinking…" defer and later answers
+/// become edits of that message. Images always take the defer-then-edit path,
+/// because files cannot ride in a JSON response body.
+pub struct Responder {
+    app: Arc<App>,
+    id: Id<InteractionMarker>,
+    token: String,
+    component: bool,
+    state: Mutex<State>,
+}
+
+enum State {
+    /// Not answered yet; holds the HTTP response channel in HTTP mode.
+    Pending(Option<oneshot::Sender<InteractionResponse>>),
+    /// A defer was sent; the next answer edits the original message.
+    Deferred,
+    /// Answered; further answers become follow-up messages.
+    Done,
+}
+
+impl Responder {
+    pub fn rest(app: Arc<App>, interaction: &Interaction) -> Self {
+        Self::new(app, interaction, None)
+    }
+
+    pub fn http(app: Arc<App>, interaction: &Interaction, tx: oneshot::Sender<InteractionResponse>) -> Self {
+        Self::new(app, interaction, Some(tx))
+    }
+
+    fn new(app: Arc<App>, interaction: &Interaction, tx: Option<oneshot::Sender<InteractionResponse>>) -> Self {
+        Self {
+            app,
+            id: interaction.id,
+            token: interaction.token.clone(),
+            component: interaction.kind == InteractionType::MessageComponent,
+            state: Mutex::new(State::Pending(tx)),
+        }
+    }
+
+    fn defer_kind(&self) -> InteractionResponseType {
+        if self.component {
+            InteractionResponseType::DeferredUpdateMessage
+        } else {
+            InteractionResponseType::DeferredChannelMessageWithSource
+        }
+    }
+
+    /// For the HTTP endpoint when its time budget runs out: claims the response
+    /// slot and returns the defer to send, or `None` if the handler already answered.
+    pub async fn defer_on_timeout(&self) -> Option<InteractionResponse> {
+        let mut state = self.state.lock().await;
+        match &mut *state {
+            State::Pending(Some(_)) => {
+                *state = State::Deferred;
+                Some(InteractionResponse {
+                    kind: self.defer_kind(),
+                    data: None,
+                })
+            }
+            _ => None,
+        }
+    }
+
+    /// Shows "thinking…" (or, for buttons, acknowledges silently).
+    pub async fn defer(&self, ephemeral: bool) -> anyhow::Result<()> {
+        let mut state = self.state.lock().await;
+        if let State::Pending(tx) = &mut *state {
+            let data = ephemeral.then(|| InteractionResponseData {
+                flags: Some(MessageFlags::EPHEMERAL),
+                ..Default::default()
+            });
+            let response = InteractionResponse {
+                kind: self.defer_kind(),
+                data,
+            };
+            self.initial(tx.take(), response).await?;
+            *state = State::Deferred;
+        }
+        Ok(())
+    }
+
+    /// Sends a new message (commands) or replaces the clicked message (`update`, components).
+    pub async fn respond(&self, data: InteractionResponseData, update: bool) -> anyhow::Result<()> {
+        let mut state = self.state.lock().await;
+        match &mut *state {
+            State::Pending(tx) => {
+                let has_files = data.attachments.as_ref().is_some_and(|a| !a.is_empty());
+                if tx.is_some() && has_files {
+                    let defer = InteractionResponse {
+                        kind: if update {
+                            InteractionResponseType::DeferredUpdateMessage
+                        } else {
+                            InteractionResponseType::DeferredChannelMessageWithSource
+                        },
+                        data: data.flags.map(|flags| InteractionResponseData {
+                            flags: Some(flags),
+                            ..Default::default()
+                        }),
+                    };
+                    self.initial(tx.take(), defer).await?;
+                    *state = State::Deferred;
+                    self.edit_original(&data).await
+                } else {
+                    let kind = if update {
+                        InteractionResponseType::UpdateMessage
+                    } else {
+                        InteractionResponseType::ChannelMessageWithSource
+                    };
+                    self.initial(tx.take(), InteractionResponse { kind, data: Some(data) })
+                        .await?;
+                    *state = State::Done;
+                    Ok(())
+                }
+            }
+            State::Deferred => {
+                self.edit_original(&data).await?;
+                *state = State::Done;
+                Ok(())
+            }
+            State::Done => self.followup(&data).await,
+        }
+    }
+
+    async fn initial(
+        &self,
+        tx: Option<oneshot::Sender<InteractionResponse>>,
+        response: InteractionResponse,
+    ) -> anyhow::Result<()> {
+        match tx {
+            Some(tx) => tx
+                .send(response)
+                .map_err(|_| anyhow::anyhow!("HTTP interaction request already closed")),
+            None => {
+                self.app
+                    .interaction()
+                    .create_response(self.id, &self.token, &response)
+                    .await?;
+                Ok(())
+            }
+        }
+    }
+
+    async fn edit_original(&self, data: &InteractionResponseData) -> anyhow::Result<()> {
+        let client = self.app.interaction();
+        let mut request = client.update_response(&self.token);
+        if let Some(content) = &data.content {
+            request = request.content(Some(content));
+        }
+        if let Some(embeds) = &data.embeds {
+            request = request.embeds(Some(embeds));
+        }
+        if let Some(components) = &data.components {
+            request = request.components(Some(components));
+        }
+        if let Some(attachments) = &data.attachments {
+            request = request.attachments(attachments);
+        }
+        request.await?;
+        Ok(())
+    }
+
+    async fn followup(&self, data: &InteractionResponseData) -> anyhow::Result<()> {
+        let client = self.app.interaction();
+        let mut request = client.create_followup(&self.token);
+        if let Some(content) = &data.content {
+            request = request.content(content);
+        }
+        if let Some(embeds) = &data.embeds {
+            request = request.embeds(embeds);
+        }
+        if let Some(components) = &data.components {
+            request = request.components(components);
+        }
+        if let Some(attachments) = &data.attachments {
+            request = request.attachments(attachments);
+        }
+        if let Some(flags) = data.flags {
+            request = request.flags(flags);
+        }
+        request.await?;
+        Ok(())
+    }
+}

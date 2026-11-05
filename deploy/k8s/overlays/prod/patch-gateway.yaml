@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: pinchora-gateway
+spec:
+  # replicas MUST equal PINCHORA_GATEWAY__CLUSTER_COUNT. SHARDS is the total across
+  # all clusters, fixed and a multiple of the bot's max_concurrency (16 here: 4 per pod).
+  replicas: 4
+  template:
+    spec:
+      containers:
+        - name: gateway
+          env:
+            - name: PINCHORA_GATEWAY__CLUSTER_COUNT
+              value: "4"
+            - name: PINCHORA_GATEWAY__SHARDS
+              value: "16"
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi

@@ -1,0 +1,15 @@
+[package]
+name = "pinchora-db"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+pinchora-core.workspace = true
+anyhow.workspace = true
+chrono.workspace = true
+sqlx.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
+sqlx.workspace = true

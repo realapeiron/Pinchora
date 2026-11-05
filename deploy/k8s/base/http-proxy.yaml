@@ -1,0 +1,86 @@
+# twilight http-proxy: one REST ratelimit view shared by every Pinchora pod.
+# Ratelimits are tracked in memory, so this MUST stay a single replica.
+# Pinchora uses it when PINCHORA_DISCORD__HTTP_PROXY is set (see configmap.yaml).
+apiVersion: v1
+kind: Service
+metadata:
+  name: pinchora-http-proxy
+  labels:
+    app.kubernetes.io/name: pinchora
+    app.kubernetes.io/component: http-proxy
+spec:
+  selector:
+    app.kubernetes.io/name: pinchora
+    app.kubernetes.io/component: http-proxy
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pinchora-http-proxy
+  labels:
+    app.kubernetes.io/name: pinchora
+    app.kubernetes.io/component: http-proxy
+spec:
+  replicas: 1
+  # Recreate: a rolling update would briefly run two proxies with split ratelimit state.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pinchora
+      app.kubernetes.io/component: http-proxy
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pinchora
+        app.kubernetes.io/component: http-proxy
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: http-proxy
+          # Published on GHCR (the Docker Hub images no longer work). `:latest` is
+          # a moving tag; pin a digest in production. `:metrics` adds Prometheus metrics.
+          image: ghcr.io/twilight-rs/http-proxy:latest
+          env:
+            - name: DISCORD_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: pinchora-secrets
+                  key: PINCHORA_DISCORD__TOKEN
+            # The image defaults to port 80, which a nonroot user cannot bind.
+            - name: PORT
+              value: "3000"
+          ports:
+            - name: http
+              containerPort: 3000
+          # Scratch image with no health endpoint: a TCP check is all there is.
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 10
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi

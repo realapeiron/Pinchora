@@ -1,0 +1,33 @@
+# Base for every environment. Overlays set the image, replica counts and sizing.
+#
+# Not in `resources` on purpose (apply by hand, see ../README.md):
+#   register-commands-job.yaml   one-shot slash command registration
+#   ingress.example.yaml         public TLS entry for the interactions endpoint
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: pinchora
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - gateway.yaml
+  - interactions.yaml
+  - http-proxy.yaml
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: pinchora
+    includeSelectors: false
+
+# `secrets.env` is gitignored: `cp secrets.env.example secrets.env` and fill it in.
+# The name suffix hash is off so the hand-applied register-commands Job can refer to
+# the Secret and ConfigMap by a fixed name. After changing either, roll the pods:
+#   kubectl -n pinchora rollout restart deploy/pinchora-interactions sts/pinchora-gateway
+generatorOptions:
+  disableNameSuffixHash: true
+
+secretGenerator:
+  - name: pinchora-secrets
+    envs:
+      - secrets.env

@@ -1,0 +1,24 @@
+# Build context for the Dockerfile. assets/ and migrations/ must stay in:
+# they are embedded into the binary at compile time.
+
+target/
+.git/
+.github/
+docs/
+deploy/
+graphify-out/
+
+# Dockerfile pins the toolchain through the base image tag.
+rust-toolchain.toml
+
+# Markdown is never read by the build.
+*.md
+
+# Local config and secrets.
+.env*
+**/secrets.env
+
+# Editors / OS noise.
+.idea/
+.vscode/
+.DS_Store

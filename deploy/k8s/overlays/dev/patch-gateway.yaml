@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: pinchora-gateway
+spec:
+  # One cluster: replicas == CLUSTER_COUNT, and no SHARDS (Discord's recommendation is used).
+  replicas: 1
+  template:
+    spec:
+      initContainers:
+        - name: migrate
+          imagePullPolicy: IfNotPresent
+      containers:
+        - name: gateway
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: PINCHORA_GATEWAY__CLUSTER_COUNT
+              value: "1"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

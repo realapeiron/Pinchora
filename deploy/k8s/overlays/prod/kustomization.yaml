@@ -1,0 +1,29 @@
+# Production example: 4 gateway clusters over 16 shards, 3+ interactions pods.
+#
+# Databases are NOT deployed here. Recommended:
+#   - Postgres: CloudNativePG (https://cloudnative-pg.io): an operator with HA,
+#     backups and point-in-time recovery. Put its read-write service URL in
+#     ../../base/secrets.env as PINCHORA_DATABASE__URL (with sslmode=require).
+#   - Redis: a managed Redis or Valkey (ElastiCache, Memorystore, Upstash, ...).
+#     Gateway sessions live there, so give it persistence or a replica; losing
+#     it only costs a full IDENTIFY on the next restart. Put its URL in
+#     PINCHORA_REDIS__URL (rediss:// for TLS).
+#
+# Set the release tag below (it is deliberately invalid until you do), then:
+#   kubectl apply -k deploy/k8s/overlays/prod
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: pinchora
+
+resources:
+  - ../../base
+
+images:
+  - name: pinchora
+    newName: ghcr.io/realapeiron/pinchora
+    newTag: "<tag>"
+
+patches:
+  - path: patch-gateway.yaml
+  - path: patch-interactions.yaml

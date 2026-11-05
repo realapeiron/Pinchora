@@ -1,0 +1,18 @@
+# Non-secret settings, shared by every Pinchora workload (envFrom).
+# Cluster/shard counts are NOT here: they live next to `replicas` in gateway.yaml.
+# Secrets (token, URLs with passwords, public key) come from the generated
+# `pinchora-secrets` Secret, see secrets.env.example.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pinchora-config
+data:
+  PINCHORA_LOG__FORMAT: json
+  PINCHORA_LOG__FILTER: info,pinchora=debug
+  PINCHORA_OPS__BIND: 0.0.0.0:9000
+  PINCHORA_INTERACTIONS__BIND: 0.0.0.0:8080
+  PINCHORA_DATABASE__MAX_CONNECTIONS: "20"
+  PINCHORA_GATEWAY__MEMBER_EVENTS: "true"
+  # Shared REST ratelimit view. Delete this line to talk to Discord directly
+  # (and drop http-proxy.yaml from kustomization.yaml).
+  PINCHORA_DISCORD__HTTP_PROXY: pinchora-http-proxy:3000

@@ -1,0 +1,32 @@
+# Example public entry for the interactions endpoint. NOT part of the kustomization:
+# copy it, replace the placeholders, and apply it yourself.
+#
+# Discord requires HTTPS on port 443 with a valid certificate. Set the application's
+# "Interactions Endpoint URL" to https://<host>/interactions after this is live.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pinchora-interactions
+  namespace: pinchora
+  labels:
+    app.kubernetes.io/name: pinchora
+    app.kubernetes.io/component: interactions
+  # annotations:
+  #   cert-manager.io/cluster-issuer: letsencrypt-prod   # if you use cert-manager
+spec:
+  ingressClassName: nginx # your ingress controller's class
+  tls:
+    - hosts:
+        - bot.example.com # placeholder
+      secretName: pinchora-interactions-tls # created by cert-manager, or by you
+  rules:
+    - host: bot.example.com # placeholder
+      http:
+        paths:
+          - path: /interactions
+            pathType: Exact
+            backend:
+              service:
+                name: pinchora-interactions
+                port:
+                  number: 80

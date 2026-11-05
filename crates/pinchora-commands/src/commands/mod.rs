@@ -1,0 +1,50 @@
+mod bio;
+mod config;
+mod daily;
+mod economy;
+mod help;
+pub(crate) mod house;
+pub(crate) mod leaderboard;
+mod ping;
+mod profile;
+mod rank;
+mod rep;
+
+use twilight_interactions::command::{CommandModel, CreateCommand};
+use twilight_model::application::{command::Command, interaction::application_command::CommandData};
+
+use crate::Cx;
+
+macro_rules! commands {
+    ($($ty:ty),* $(,)?) => {
+        /// Every slash command, for registration.
+        pub fn definitions() -> Vec<Command> {
+            vec![$(<$ty as CreateCommand>::create_command().into()),*]
+        }
+
+        pub(crate) async fn dispatch(cx: &Cx, data: CommandData) -> anyhow::Result<()> {
+            let name = data.name.clone();
+            $(
+                if name == <$ty as CreateCommand>::NAME {
+                    return <$ty as CommandModel>::from_interaction(data.into())?.run(cx).await;
+                }
+            )*
+            anyhow::bail!("unknown command `{name}`")
+        }
+    };
+}
+
+commands!(
+    ping::Ping,
+    help::Help,
+    profile::Profile,
+    rank::Rank,
+    leaderboard::Leaderboard,
+    daily::Daily,
+    economy::Balance,
+    economy::Give,
+    rep::Rep,
+    bio::Bio,
+    config::ConfigCommand,
+    house::HouseCommand,
+);

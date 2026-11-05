@@ -1,0 +1,35 @@
+# Throwaway cluster (kind / minikube): one gateway cluster, in-cluster Postgres and
+# Redis, locally built image. Needs ../../base/secrets.env (token, application id,
+# public key); the database/redis URLs below override whatever that file says.
+#
+#   docker build -t pinchora:dev .
+#   kind load docker-image pinchora:dev        # or: minikube image load pinchora:dev
+#   kubectl apply -k deploy/k8s/overlays/dev
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: pinchora
+
+resources:
+  - ../../base
+  - postgres.yaml
+  - redis.yaml
+
+images:
+  - name: pinchora
+    newName: pinchora
+    newTag: dev
+
+patches:
+  - path: patch-gateway.yaml
+  - path: patch-interactions.yaml
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+secretGenerator:
+  - name: pinchora-secrets
+    behavior: merge
+    literals:
+      - PINCHORA_DATABASE__URL=postgres://pinchora:pinchora@pinchora-postgres:5432/pinchora
+      - PINCHORA_REDIS__URL=redis://pinchora-redis:6379

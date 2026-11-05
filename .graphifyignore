@@ -1,0 +1,19 @@
+# Auto-generated
+node_modules/
+dist/
+build/
+out/
+.next/
+.nuxt/
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+target/
+.gradle/
+.idea/
+.vscode/
+*.min.js
+*.generated.*
+.git/
+graphify-out/

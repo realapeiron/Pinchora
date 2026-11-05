@@ -1,0 +1,25 @@
+[package]
+name = "pinchora-commands"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+pinchora-core.workspace = true
+pinchora-db.workspace = true
+pinchora-cache.workspace = true
+pinchora-render.workspace = true
+pinchora-game.workspace = true
+image.workspace = true
+anyhow.workspace = true
+chrono.workspace = true
+metrics.workspace = true
+moka.workspace = true
+rand.workspace = true
+reqwest.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+tracing.workspace = true
+twilight-http.workspace = true
+twilight-interactions.workspace = true
+twilight-model.workspace = true
+twilight-util.workspace = true

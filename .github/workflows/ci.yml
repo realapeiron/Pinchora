@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust:
+    name: fmt, clippy, test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: pinchora
+          POSTGRES_PASSWORD: pinchora
+          POSTGRES_DB: pinchora
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pinchora -d pinchora"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      PINCHORA_TEST_DATABASE_URL: postgres://pinchora:pinchora@localhost:5432/pinchora
+      PINCHORA_TEST_REDIS_URL: redis://localhost:6379
+    steps:
+      - uses: actions/checkout@v7
+
+      # rust-toolchain.toml is the single source of truth for the Rust version.
+      - name: Read toolchain channel
+        id: toolchain
+        run: echo "channel=$(sed -n 's/^channel *= *"\(.*\)"/\1/p' rust-toolchain.toml)" >> "$GITHUB_OUTPUT"
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ steps.toolchain.outputs.channel }}
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Format
+        run: cargo fmt --check
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test --workspace
+
+  docker:
+    name: docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      # Build only, nothing is pushed. mode=max also caches the cargo-chef
+      # dependency layer, which is what makes warm builds fast.
+      - name: Build image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          tags: pinchora:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  kustomize:
+    name: kustomize render
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # The base reads a gitignored secrets.env; use the example so the render works.
+      - name: Create placeholder secrets
+        run: cp deploy/k8s/base/secrets.env.example deploy/k8s/base/secrets.env
+
+      - name: Render dev overlay
+        run: kubectl kustomize deploy/k8s/overlays/dev > /dev/null
+
+      - name: Render prod overlay
+        run: kubectl kustomize deploy/k8s/overlays/prod > /dev/null

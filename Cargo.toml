@@ -1,0 +1,62 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+repository = "https://github.com/realapeiron/Pinchora"
+rust-version = "1.94"
+
+[workspace.dependencies]
+pinchora-core = { path = "crates/pinchora-core" }
+pinchora-db = { path = "crates/pinchora-db" }
+pinchora-cache = { path = "crates/pinchora-cache" }
+pinchora-render = { path = "crates/pinchora-render" }
+pinchora-commands = { path = "crates/pinchora-commands" }
+pinchora-game = { path = "crates/pinchora-game" }
+
+anyhow = "1"
+thiserror = "2"
+tokio = { version = "1.54", features = ["full"] }
+futures-util = "0.3"
+tokio-util = { version = "0.7", features = ["rt"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+figment = { version = "0.10", features = ["env", "toml"] }
+clap = { version = "4.6", features = ["derive", "env"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+metrics = "0.24"
+metrics-exporter-prometheus = { version = "0.18", default-features = false }
+chrono = { version = "0.4", features = ["serde"] }
+rand = "0.10"
+base64 = "0.23"
+hex = "0.4"
+
+twilight-gateway = { version = "0.18", default-features = false, features = ["rustls-webpki-roots", "zstd"] }
+twilight-gateway-queue = "0.18"
+twilight-http = { version = "0.18", default-features = false, features = ["rustls-webpki-roots", "decompression"] }
+twilight-model = "0.18"
+twilight-interactions = "0.18"
+twilight-util = { version = "0.18", features = ["builder"] }
+
+sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "postgres", "macros", "migrate", "chrono"] }
+redis = { version = "1", default-features = false, features = ["tokio-comp", "connection-manager", "script"] }
+
+resvg = "0.49"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "gif"] }
+reqwest = { version = "0.13", default-features = false, features = ["rustls"] }
+
+axum = "0.8"
+moka = { version = "0.12", features = ["future"] }
+rustls = "0.23"
+tikv-jemallocator = "0.6"
+tower = { version = "0.5", features = ["util"] }
+unicode-segmentation = "1"
+ed25519-dalek = "3"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "debuginfo"

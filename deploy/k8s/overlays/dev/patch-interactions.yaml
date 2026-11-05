@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pinchora-interactions
+spec:
+  replicas: 1
+  template:
+    spec:
+      initContainers:
+        - name: migrate
+          imagePullPolicy: IfNotPresent
+      containers:
+        - name: interactions
+          imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+---
+# kind/minikube usually have no metrics-server, and a PDB over one replica blocks drains.
+$patch: delete
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: pinchora-interactions
+---
+$patch: delete
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: pinchora-interactions

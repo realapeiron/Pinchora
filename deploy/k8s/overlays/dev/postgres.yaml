@@ -1,0 +1,75 @@
+# Throwaway Postgres for the dev overlay. The password is a literal on purpose:
+# do not reuse this anywhere that is not a local scratch cluster.
+apiVersion: v1
+kind: Service
+metadata:
+  name: pinchora-postgres
+  labels:
+    app.kubernetes.io/name: pinchora-postgres
+    app.kubernetes.io/part-of: pinchora
+spec:
+  selector:
+    app.kubernetes.io/name: pinchora-postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: pinchora-postgres
+  labels:
+    app.kubernetes.io/name: pinchora-postgres
+    app.kubernetes.io/part-of: pinchora
+spec:
+  serviceName: pinchora-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pinchora-postgres
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pinchora-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:18-alpine
+          env:
+            - name: POSTGRES_USER
+              value: pinchora
+            - name: POSTGRES_PASSWORD
+              value: pinchora
+            - name: POSTGRES_DB
+              value: pinchora
+          ports:
+            - name: postgres
+              containerPort: 5432
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "pinchora", "-d", "pinchora"]
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "pinchora", "-d", "pinchora"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          volumeMounts:
+            # Postgres 18+ keeps PGDATA in a versioned subdirectory; mount the parent.
+            - name: data
+              mountPath: /var/lib/postgresql
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi

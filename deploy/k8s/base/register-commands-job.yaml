@@ -1,0 +1,57 @@
+# One-shot slash command registration. NOT part of the kustomization: apply it by
+# hand after the first deploy and whenever commands change.
+#
+#   IMAGE=$(kubectl -n pinchora get sts pinchora-gateway \
+#             -o jsonpath='{.spec.template.spec.containers[0].image}')
+#   kubectl -n pinchora delete job register-commands --ignore-not-found
+#   sed "s#image: pinchora\$#image: ${IMAGE}#" deploy/k8s/base/register-commands-job.yaml \
+#     | kubectl apply -f -
+#   kubectl -n pinchora logs -f job/register-commands
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: register-commands
+  namespace: pinchora
+  labels:
+    app.kubernetes.io/name: pinchora
+    app.kubernetes.io/component: register-commands
+    app.kubernetes.io/part-of: pinchora
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pinchora
+        app.kubernetes.io/component: register-commands
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: register
+          image: pinchora
+          # --global registers for every guild (takes up to an hour to propagate).
+          # Without it, commands go to PINCHORA_DISCORD__DEV_GUILD_ID when set.
+          args: ["register", "--global"]
+          envFrom:
+            - configMapRef:
+                name: pinchora-config
+            - secretRef:
+                name: pinchora-secrets
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi

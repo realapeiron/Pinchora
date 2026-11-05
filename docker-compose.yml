@@ -1,0 +1,106 @@
+# Local development stack.
+#
+#   cp .env.example .env            # fill in the Discord values
+#   docker compose up --build       # postgres, redis, http-proxy, migrate, gateway
+#   docker compose --profile endpoint up interactions   # + the HTTP interactions endpoint
+#   docker compose run --rm gateway register            # register slash commands
+#
+# Secrets come from `.env`. Connection URLs for postgres/redis are set below
+# and win over `.env` for the app services, because inside compose the hosts are
+# `postgres` and `redis`, not localhost.
+
+name: pinchora
+
+x-app: &app
+  build:
+    context: .
+  image: pinchora:dev
+  env_file: .env
+  environment:
+    PINCHORA_LOG__FORMAT: pretty
+    PINCHORA_DATABASE__URL: postgres://pinchora:${POSTGRES_PASSWORD:-pinchora}@postgres:5432/pinchora
+    PINCHORA_REDIS__URL: redis://redis:6379
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: pinchora
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pinchora}
+      POSTGRES_DB: pinchora
+    volumes:
+      # Postgres 18+ keeps PGDATA in a versioned subdirectory; mount the parent.
+      - postgres-data:/var/lib/postgresql
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pinchora -d pinchora"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    restart: unless-stopped
+
+  redis:
+    image: redis:8-alpine
+    command: ["redis-server", "--save", "60", "1"]
+    volumes:
+      - redis-data:/data
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  # twilight's REST proxy: one ratelimit view for every pod. The app only uses it
+  # when PINCHORA_DISCORD__HTTP_PROXY=http-proxy:3000 is set in `.env`.
+  # The image is published on GHCR (the Docker Hub images are dead); the `metrics`
+  # tag adds Prometheus metrics. It is a scratch image, so it has no healthcheck.
+  http-proxy:
+    image: ghcr.io/twilight-rs/http-proxy:latest
+    environment:
+      DISCORD_TOKEN: ${PINCHORA_DISCORD__TOKEN}
+      PORT: "3000"
+    restart: unless-stopped
+
+  migrate:
+    <<: *app
+    command: ["migrate"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  gateway:
+    <<: *app
+    command: ["gateway"]
+    # Gets 25 s to close shards with RESUME and save sessions to Redis on SIGTERM.
+    stop_grace_period: 45s
+    ports:
+      - "127.0.0.1:9000:9000" # /metrics /healthz /readyz
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  interactions:
+    <<: *app
+    command: ["interactions"]
+    profiles: ["endpoint"]
+    ports:
+      - "127.0.0.1:8080:8080" # POST /interactions
+      - "127.0.0.1:9001:9000" # ops, shifted so it can run next to the gateway
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
+  redis-data:

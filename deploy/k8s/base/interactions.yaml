@@ -1,0 +1,155 @@
+# Stateless HTTP interactions endpoint. Scales horizontally; point Discord's
+# "Interactions Endpoint URL" at the Ingress (see ingress.example.yaml).
+apiVersion: v1
+kind: Service
+metadata:
+  name: pinchora-interactions
+  labels:
+    app.kubernetes.io/name: pinchora
+    app.kubernetes.io/component: interactions
+spec:
+  selector:
+    app.kubernetes.io/name: pinchora
+    app.kubernetes.io/component: interactions
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pinchora-interactions
+  labels:
+    app.kubernetes.io/name: pinchora
+    app.kubernetes.io/component: interactions
+spec:
+  # Floor for the HorizontalPodAutoscaler below. Once the HPA exists it owns the live
+  # count, but every `kubectl apply` resets it to this value, so keep it equal to
+  # the HPA's minReplicas.
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pinchora
+      app.kubernetes.io/component: interactions
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pinchora
+        app.kubernetes.io/component: interactions
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9000"
+        prometheus.io/path: /metrics
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        # Concurrent runs are safe: sqlx holds a Postgres advisory lock.
+        - name: migrate
+          image: pinchora
+          args: ["migrate"]
+          envFrom:
+            - configMapRef:
+                name: pinchora-config
+            - secretRef:
+                name: pinchora-secrets
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+      containers:
+        - name: interactions
+          image: pinchora
+          args: ["interactions"]
+          envFrom:
+            - configMapRef:
+                name: pinchora-config
+            - secretRef:
+                name: pinchora-secrets
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: ops
+              containerPort: 9000
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: ops
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: ops
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: pinchora-interactions
+  labels:
+    app.kubernetes.io/name: pinchora
+    app.kubernetes.io/component: interactions
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: pinchora-interactions
+  minReplicas: 2
+  maxReplicas: 20
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: pinchora-interactions
+  labels:
+    app.kubernetes.io/name: pinchora
+    app.kubernetes.io/component: interactions
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pinchora
+      app.kubernetes.io/component: interactions
