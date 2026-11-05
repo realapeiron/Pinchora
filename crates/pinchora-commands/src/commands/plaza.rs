@@ -86,6 +86,7 @@ impl PlazaCommand {
                     guild,
                     state,
                     "Arranging the plaza. The menu lists donated furniture.",
+                    None,
                 )
                 .await?;
                 cx.reply(data).await

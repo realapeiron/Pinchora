@@ -44,6 +44,14 @@ pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, res
                 Box::pin(components::dispatch(&cx, &component.custom_id, &component.values)).await,
             )
         }
+        Some(InteractionData::ModalSubmit(modal)) => {
+            let label = modal.custom_id.split(':').next().unwrap_or_default().to_owned();
+            let fields = components::modal_fields(&modal.components);
+            (
+                format!("modal:{label}"),
+                Box::pin(components::dispatch_modal(&cx, &modal.custom_id, &fields)).await,
+            )
+        }
         _ => return,
     };
     let outcome = if result.is_ok() { "ok" } else { "error" };

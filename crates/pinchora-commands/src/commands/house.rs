@@ -1,7 +1,10 @@
 use std::str::Split;
 
 use chrono::Utc;
-use pinchora_db::{HouseRow, NewRoom, PlaceOutcome, PlacementRow, RoomRow, UpgradeOutcome, VisitOutcome};
+use pinchora_db::{
+    HouseRow, NewRoom, PlaceOutcome, PlacementRow, Refusal, RestoreOutcome, RoomChange, RoomRow, UpgradeOutcome,
+    VisitOutcome,
+};
 use pinchora_game::{
     Content, Layer,
     character::Character,
@@ -17,12 +20,13 @@ use twilight_model::{
     http::interaction::InteractionResponseData,
     user::User,
 };
-use twilight_util::builder::embed::{EmbedBuilder, EmbedFooterBuilder};
+use twilight_util::builder::embed::{EmbedBuilder, EmbedFooterBuilder, ImageSource};
 
+use super::undo::{self, History, Kind, Piece, Step};
 use crate::{
     App, Cx,
     game::scene::{RoomView, render_view},
-    util::{BRAND, SUCCESS, WARN, resolved_display_name, thousands},
+    util::{BRAND, DANGER, SUCCESS, WARN, resolved_display_name, thousands},
 };
 
 /// Shells a guest earns for the first visit to a house each day.
@@ -52,6 +56,10 @@ pub enum HouseCommand {
     Like(HouseLike),
     #[command(name = "decorate")]
     Decorate(HouseDecorate),
+    #[command(name = "guestbook")]
+    Guestbook(super::guestbook::HouseGuestbook),
+    #[command(name = "contest")]
+    Contest(super::contest::HouseContest),
 }
 
 #[derive(CommandModel, CreateCommand)]
@@ -111,12 +119,19 @@ impl HouseCommand {
         let author = cx.author()?.clone();
         match self {
             Self::View(c) => {
+                let unread = cx.app.db.guestbook_unread(author.id.get()).await?;
+                let footer = (unread > 0).then(|| {
+                    format!(
+                        "📖 {unread} new guestbook note{} · read with /house guestbook",
+                        if unread == 1 { "" } else { "s" }
+                    )
+                });
                 let data = room_card(
                     cx,
                     author.id.get(),
                     &cx.author_display_name(),
                     room_index(c.room),
-                    None,
+                    footer,
                     None,
                 )
                 .await?;
@@ -137,7 +152,7 @@ impl HouseCommand {
                     item: None,
                 };
                 let note = "Pick furniture: it jumps to a free spot, then press **Place**.";
-                let data = editor(cx, author.id.get(), state, note).await?;
+                let data = editor(cx, author.id.get(), state, note, None).await?;
                 cx.reply(data).await
             }
             Self::Upgrade(_) => upgrade_offer(cx, author.id.get()).await,
@@ -145,6 +160,8 @@ impl HouseCommand {
                 let data = super::decorate::panel(cx, room_index(c.room), 0, "").await?;
                 cx.reply(data).await
             }
+            Self::Guestbook(c) => super::guestbook::run(cx, c).await,
+            Self::Contest(c) => c.run(cx).await,
             Self::Like(c) => {
                 let host = &c.user.resolved;
                 if host.bot || host.id == author.id {
@@ -186,7 +203,7 @@ impl HouseCommand {
     }
 }
 
-fn room_index(room: Option<i64>) -> i16 {
+pub(crate) fn room_index(room: Option<i64>) -> i16 {
     (room.unwrap_or(1).clamp(1, 6) - 1) as i16
 }
 
@@ -240,12 +257,12 @@ pub(crate) async fn ensure_house(app: &App, user_id: u64) -> anyhow::Result<(Hou
     Ok((house, rooms))
 }
 
-async fn render_room(app: &App, view: RoomView) -> anyhow::Result<Vec<u8>> {
+pub(crate) async fn render_room(app: &App, view: RoomView) -> anyhow::Result<Vec<u8>> {
     let sprites = app.sprites.clone();
     app.render(move |_| render_view(&sprites, &view)).await
 }
 
-fn room_title(content: &Content, room: &RoomRow) -> String {
+pub(crate) fn room_title(content: &Content, room: &RoomRow) -> String {
     content
         .room_type(&room.room_type)
         .map_or_else(|| room.room_type.clone(), |r| r.name.clone())
@@ -333,16 +350,31 @@ pub(crate) async fn room_card(
             url: None,
         })
     };
-    let components = if rooms.len() > 1 {
+    let mut buttons = Vec::new();
+    if rooms.len() > 1 {
+        buttons.push(nav("◀ Room", room - 1, room == 0));
+        buttons.push(nav("Room ▶", room + 1, room as usize + 1 >= rooms.len()));
+    }
+    // A guest can leave a note in the owner's guestbook.
+    if !plaza && guest.is_some_and(|g| g != owner_id) {
+        buttons.push(Component::Button(Button {
+            custom_id: Some(format!("gb:s:{owner_id}")),
+            disabled: false,
+            emoji: None,
+            id: None,
+            label: Some("Sign guestbook".to_owned()),
+            sku_id: None,
+            style: ButtonStyle::Primary,
+            url: None,
+        }));
+    }
+    let components = if buttons.is_empty() {
+        Vec::new()
+    } else {
         vec![Component::ActionRow(ActionRow {
             id: None,
-            components: vec![
-                nav("◀ Room", room - 1, room == 0),
-                nav("Room ▶", room + 1, room as usize + 1 >= rooms.len()),
-            ],
+            components: buttons,
         })]
-    } else {
-        Vec::new()
     };
     Ok(Cx::card(embed, "room.png", png, components, false))
 }
@@ -585,6 +617,8 @@ fn under_cursor<'a>(
 /// Inventory menu values that turn its page instead of picking furniture.
 const PREV_PAGE: &str = "<prev>";
 const NEXT_PAGE: &str = "<next>";
+/// The jump menu's first option with an empty hand: asks to store everything in the room.
+const CLEAR_ROOM: &str = "<clear>";
 
 fn placed_list(placements: &[PlacementRow]) -> Vec<Placed<'_>> {
     placements
@@ -746,21 +780,107 @@ fn standing_on<'a>(content: &Content, placements: &'a [PlacementRow], holder: &P
         .collect()
 }
 
-/// Takes a placement (and whatever stands on it) back into the inventory; returns how many
-/// pieces stood on it.
+/// Takes a placement (and whatever stands on it) back into the inventory; returns every piece
+/// that went, the placement first.
 async fn take_back(
     cx: &Cx,
     content: &Content,
     user_id: u64,
     placements: &[PlacementRow],
     p: &PlacementRow,
-) -> anyhow::Result<usize> {
+) -> anyhow::Result<Vec<Piece>> {
     let on_top = standing_on(content, placements, p);
     for top in &on_top {
         cx.app.db.pick_up(user_id, top.id).await?;
     }
     cx.app.db.pick_up(user_id, p.id).await?;
-    Ok(on_top.len())
+    Ok(std::iter::once(p).chain(on_top).map(Piece::of).collect())
+}
+
+/// Whether an undo change still fits the room as it stands (`current`).
+fn undo_fits(
+    content: &Content,
+    (width, depth): (u32, u32),
+    current: &[PlacementRow],
+    change: &RoomChange,
+) -> Result<(), String> {
+    match change {
+        RoomChange::Remove(p) if !standing_on(content, current, p).is_empty() => {
+            Err("something else stands on it now".to_owned())
+        }
+        RoomChange::Remove(_) => Ok(()),
+        RoomChange::Flip(p) => {
+            let others: Vec<Placed> = placed_list(current)
+                .into_iter()
+                .zip(current)
+                .filter(|(_, o)| o.id != p.id)
+                .map(|(placed, _)| placed)
+                .collect();
+            let (x, y) = (p.x as u32, p.y as u32);
+            house::can_place(content, width, depth, &others, &p.item_id, x, y, !p.flipped)?;
+            if house::flip_drops_surface_items(content, &others, &p.item_id, x, y, p.flipped) {
+                return Err("what stands on it would no longer be on top".to_owned());
+            }
+            Ok(())
+        }
+        RoomChange::Add(p) => house::can_place(
+            content,
+            width,
+            depth,
+            &placed_list(current),
+            &p.item_id,
+            p.x as u32,
+            p.y as u32,
+            p.flipped,
+        ),
+    }
+}
+
+/// Asks before storing every piece in the room. The room picture already on the message stays.
+async fn clear_prompt(cx: &Cx, state: &EditState, title: &str, pieces: usize) -> anyhow::Result<()> {
+    let mut embed = EmbedBuilder::new()
+        .color(DANGER)
+        .title(format!("Clear room {} · {title}?", state.room + 1))
+        .description(format!(
+            "Store all **{pieces}** piece{} in this room back in your inventory?\n**Undo** puts them all back where they were.",
+            if pieces == 1 { "" } else { "s" }
+        ));
+    if let Ok(image) = ImageSource::attachment("room.png") {
+        embed = embed.image(image);
+    }
+    let button = |label: &str, action: &str, style: ButtonStyle| {
+        Component::Button(Button {
+            custom_id: Some(state.id(action)),
+            disabled: false,
+            emoji: None,
+            id: None,
+            label: Some(label.to_owned()),
+            sku_id: None,
+            style,
+            url: None,
+        })
+    };
+    cx.update(InteractionResponseData {
+        embeds: Some(vec![embed.build()]),
+        components: Some(vec![Component::ActionRow(ActionRow {
+            id: None,
+            components: vec![
+                button(
+                    &if pieces == 1 {
+                        "Store it".to_owned()
+                    } else {
+                        format!("Store all {pieces}")
+                    },
+                    "z",
+                    ButtonStyle::Danger,
+                ),
+                button("Cancel", "c", ButtonStyle::Secondary),
+            ],
+        })]),
+        flags: Some(MessageFlags::EPHEMERAL),
+        ..Default::default()
+    })
+    .await
 }
 
 pub(crate) async fn on_edit(
@@ -790,6 +910,8 @@ pub(crate) async fn on_edit(
     let name_of = |item_id: &str| content.item(item_id).map_or(item_id.to_owned(), |i| i.name());
     // Set when this click put a piece in the player's own house, which counts toward badges.
     let mut placed_now = false;
+    let start_room = state.room;
+    let mut history = undo::load(&cx.app, user_id, state.room, &placements).await;
 
     let note = match action.as_str() {
         "s" => match value {
@@ -823,6 +945,10 @@ pub(crate) async fn on_edit(
         // A spot from the jump menu: `x.y` for the held item, `#id` for a placed piece.
         "j" => {
             match value {
+                Some(CLEAR_ROOM) if !placements.is_empty() => {
+                    let title = room_title(content, &rooms[state.room as usize]);
+                    return clear_prompt(cx, &state, &title, placements.len()).await;
+                }
                 Some(id) if id.starts_with('#') => {
                     let target = id[1..]
                         .parse::<i64>()
@@ -883,8 +1009,16 @@ pub(crate) async fn on_edit(
                     .await?;
                 let name = name_of(&item_id);
                 match outcome {
-                    PlaceOutcome::Placed { .. } => {
+                    PlaceOutcome::Placed { id } => {
                         placed_now = prefix == "he";
+                        let piece = Piece {
+                            id,
+                            item: item_id.clone(),
+                            x: x as i16,
+                            y: y as i16,
+                            flipped,
+                        };
+                        history.placed(piece, &name);
                         cx.app.quest(user_id, pinchora_game::quests::QuestKind::Place).await;
                         if cx.app.db.owns(user_id, &item_id).await? {
                             // Keep holding the next one, already on the nearest free spot.
@@ -915,7 +1049,10 @@ pub(crate) async fn on_edit(
         // Move: takes the piece under the cursor into the hand, turned as it was.
         "v" => match under_cursor(content, &placements, state.x, state.y, state.wall(content)) {
             Some(p) => {
-                let on_top = take_back(cx, content, user_id, &placements, p).await?;
+                let mut step = Step::new(Kind::Lift, name_of(&p.item_id));
+                step.removed = take_back(cx, content, user_id, &placements, p).await?;
+                let on_top = step.removed.len() - 1;
+                history.push(step);
                 state.item = Some(p.item_id.clone());
                 state.flipped = p.flipped;
                 (state.x, state.y) = (p.x as u32, p.y as u32);
@@ -933,7 +1070,10 @@ pub(crate) async fn on_edit(
         },
         "k" => match under_cursor(content, &placements, state.x, state.y, state.wall(content)) {
             Some(p) => {
-                let on_top = take_back(cx, content, user_id, &placements, p).await?;
+                let mut step = Step::new(Kind::Store, name_of(&p.item_id));
+                step.removed = take_back(cx, content, user_id, &placements, p).await?;
+                let on_top = step.removed.len() - 1;
+                history.push(step);
                 let extra = if on_top > 0 {
                     format!(", with the {on_top} on it")
                 } else {
@@ -978,6 +1118,13 @@ pub(crate) async fn on_edit(
                     }
                     Ok(()) => {
                         cx.app.db.flip_placement(user_id, p.id).await?;
+                        let on_wall = content.item(&p.item_id).is_some_and(|i| i.base.layer == Layer::Wall);
+                        let mut step = Step::new(if on_wall { Kind::Flip } else { Kind::Turn }, name_of(&p.item_id));
+                        step.turned = Some(Piece {
+                            flipped: !p.flipped,
+                            ..Piece::of(p)
+                        });
+                        history.push(step);
                         // With an empty hand the cursor follows a wall item to its new wall.
                         if let Some(left) = state.wall(content).filter(|_| state.item.is_none()) {
                             state.mode = CursorMode::from_wall(Some(!left));
@@ -988,6 +1135,64 @@ pub(crate) async fn on_edit(
                 }
             }
             None => "Nothing under the cursor to flip.".to_owned(),
+        },
+        // Clear room, confirmed: every piece goes back to the inventory, as one undo step.
+        "z" => {
+            let removed = cx.app.db.clear_room(user_id, state.room).await?;
+            state.release(content);
+            if removed.is_empty() {
+                "The room is already empty.".to_owned()
+            } else {
+                let n = removed.len();
+                let mut step = Step::new(Kind::Clear, room_title(content, &rooms[state.room as usize]));
+                step.removed = removed.iter().map(Piece::of).collect();
+                history.push(step);
+                format!(
+                    "Stored all **{n}** piece{} in your inventory. **Undo** puts them back.",
+                    if n == 1 { "" } else { "s" }
+                )
+            }
+        }
+        "u" => match history.pop() {
+            None => "Nothing to undo.".to_owned(),
+            Some(step) => {
+                let changes = step.reverse(content, state.room);
+                let size = (tier.width, tier.depth);
+                let outcome = cx
+                    .app
+                    .db
+                    .restore(user_id, state.room, &changes, |current, change| {
+                        undo_fits(content, size, current, change)
+                    })
+                    .await?;
+                match outcome {
+                    RestoreOutcome::Done { added } => {
+                        let put_back = changes.iter().filter_map(|c| match c {
+                            RoomChange::Add(p) => Some(p.id),
+                            _ => None,
+                        });
+                        for (old, new) in put_back.zip(added) {
+                            history.renumber(old, new);
+                        }
+                        state.item = None;
+                        state.flipped = false;
+                        if let Some(p) = step.focus() {
+                            let on_wall = content.item(&p.item).is_some_and(|i| i.base.layer == Layer::Wall);
+                            state.mode = CursorMode::from_wall(on_wall.then_some(p.flipped));
+                            (state.x, state.y) = (p.x.max(0) as u32, p.y.max(0) as u32);
+                        }
+                        format!("Undid {}.", step.describe())
+                    }
+                    RestoreOutcome::Refused(why) => {
+                        let why = match why {
+                            Refusal::Moved(item) => format!("**{}** is no longer where it was", name_of(&item)),
+                            Refusal::NotOwned(item) => format!("you have no **{}** left", name_of(&item)),
+                            Refusal::Blocked(reason) => reason,
+                        };
+                        format!("Can't undo {}: {why}. That step is off the undo list.", step.describe())
+                    }
+                }
+            }
         },
         "n" => {
             state.room = (state.room + 1) % rooms.len() as i16;
@@ -1015,7 +1220,9 @@ pub(crate) async fn on_edit(
         }
         _ => String::new(),
     };
-    let data = editor(cx, user_id, state, &note).await?;
+    // A new room has its own history; the editor loads it.
+    let history = (state.room == start_room).then_some(history);
+    let data = editor(cx, user_id, state, &note, history).await?;
     cx.update(data).await?;
     if placed_now {
         super::customize::announce(cx).await;
@@ -1023,11 +1230,14 @@ pub(crate) async fn on_edit(
     Ok(())
 }
 
+/// The editor message. `history` is the room's undo history when the caller already has it
+/// (saved here if it changed); `None` loads it.
 pub(crate) async fn editor(
     cx: &Cx,
     user_id: u64,
     mut state: EditState,
     note: &str,
+    history: Option<History>,
 ) -> anyhow::Result<InteractionResponseData> {
     let content = Content::get();
     let (house_row, rooms) = ensure_house(&cx.app, user_id).await?;
@@ -1035,6 +1245,11 @@ pub(crate) async fn editor(
     let room = rooms[state.room.clamp(0, rooms.len() as i16 - 1) as usize].clone();
     let (placements, inventory) =
         tokio::try_join!(cx.app.db.placements(user_id, state.room), cx.app.db.inventory(user_id))?;
+    let mut history = match history {
+        Some(history) => history,
+        None => undo::load(&cx.app, user_id, state.room, &placements).await,
+    };
+    undo::save(&cx.app, user_id, state.room, &mut history, &placements).await;
     // One page shows 25 pieces; with more, two of its slots turn the page.
     let per_page = if inventory.len() > PAGE { PAGE - 2 } else { PAGE };
     let pages = inventory.len().div_ceil(per_page).max(1);
@@ -1072,9 +1287,20 @@ pub(crate) async fn editor(
         _ => {
             let mut near: Vec<&PlacementRow> = placements.iter().collect();
             near.sort_by_key(|p| ((p.x as u32).abs_diff(state.x) + (p.y as u32).abs_diff(state.y), p.id));
-            near.into_iter()
-                .take(PAGE)
-                .filter_map(|p| {
+            let clear = (!placements.is_empty()).then(|| SelectMenuOption {
+                default: false,
+                description: Some(format!(
+                    "Store all {} piece{} in your inventory",
+                    placements.len(),
+                    if placements.len() == 1 { "" } else { "s" }
+                )),
+                emoji: None,
+                label: "Clear the room…".to_owned(),
+                value: CLEAR_ROOM.to_owned(),
+            });
+            clear
+                .into_iter()
+                .chain(near.into_iter().take(PAGE - 1).filter_map(|p| {
                     let item = content.item(&p.item_id)?;
                     let (layer, _) = house::footprint(content, &p.item_id, p.x as u32, p.y as u32, p.flipped)?;
                     let at = spot_label(p.x as u32, p.y as u32, (layer == Layer::Wall).then_some(p.flipped));
@@ -1085,7 +1311,7 @@ pub(crate) async fn editor(
                         label: item.name().chars().take(100).collect(),
                         value: format!("#{}", p.id),
                     })
-                })
+                }))
                 .collect()
         }
     };
@@ -1252,6 +1478,7 @@ pub(crate) async fn editor(
         })
         .collect();
     modes.push(button("Next room", "n", ButtonStyle::Secondary, rooms.len() < 2));
+    modes.push(button("↶ Undo", "u", ButtonStyle::Secondary, history.is_empty()));
     let components = vec![
         row(vec![inventory_menu]),
         row(vec![jump_menu]),

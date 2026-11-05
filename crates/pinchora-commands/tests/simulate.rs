@@ -444,6 +444,8 @@ struct Reply {
     files: Vec<File>,
     /// Further messages the handler posted.
     followups: Vec<Reply>,
+    /// The custom id of the modal the handler opened instead of answering.
+    modal: Option<String>,
 }
 
 impl Reply {
@@ -456,6 +458,7 @@ impl Reply {
             ephemeral: false,
             files: Vec::new(),
             followups: Vec::new(),
+            modal: None,
         }
     }
 
@@ -478,11 +481,15 @@ impl Reply {
                 kind: first.kind,
                 files: Vec::new(),
                 followups: Vec::new(),
+                modal: None,
                 ..on.clone()
             },
             _ => Self::new(first.kind),
         };
         if let Some(data) = first.data {
+            if first.kind == InteractionResponseType::Modal {
+                reply.modal = data.custom_id.clone();
+            }
             if let Some(flags) = data.flags {
                 reply.ephemeral = flags.contains(MessageFlags::EPHEMERAL);
             }
@@ -655,6 +662,9 @@ impl fmt::Display for Reply {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let ephemeral = if self.ephemeral { ", ephemeral" } else { "" };
         writeln!(f, "  answer: {:?}{ephemeral}", self.kind)?;
+        if let Some(modal) = &self.modal {
+            writeln!(f, "  modal: {modal}")?;
+        }
         if let Some(content) = &self.content {
             writeln!(f, "  content: {content}")?;
         }
@@ -664,6 +674,15 @@ impl fmt::Display for Reply {
             }
             for line in embed.description.iter().flat_map(|d| d.lines()) {
                 writeln!(f, "    {line}")?;
+            }
+            for field in &embed.fields {
+                writeln!(f, "  field {}:", field.name)?;
+                for line in field.value.lines() {
+                    writeln!(f, "    {line}")?;
+                }
+            }
+            if let Some(footer) = &embed.footer {
+                writeln!(f, "  footer: {}", footer.text)?;
             }
         }
         for (row, component) in self.components.iter().enumerate() {
@@ -1037,6 +1056,25 @@ impl Sim {
         self.component(user, &select.custom_id.clone(), &[value], on).await
     }
 
+    /// Submits the modal that `on` opened, with its text inputs set to `fields`.
+    async fn submit(&mut self, user: u64, on: &Reply, fields: &[(&str, &str)]) -> Reply {
+        let custom_id = on.modal.clone().expect("the step opened no modal");
+        let components: Vec<Value> = fields
+            .iter()
+            .enumerate()
+            .map(|(n, (id, value))| {
+                json!({
+                    "type": 18,
+                    "id": n * 2 + 1,
+                    "component": { "type": 4, "id": n * 2 + 2, "custom_id": id, "value": value },
+                })
+            })
+            .collect();
+        let data = json!({ "custom_id": custom_id, "components": components });
+        self.run(format!("submit {custom_id} {fields:?}"), user, 5, data, None)
+            .await
+    }
+
     fn interaction(&self, user: u64, kind: u8, data: Value, on: Option<&Reply>) -> Interaction {
         let id = unique();
         let mut interaction = json!({
@@ -1164,10 +1202,16 @@ async fn house_editor_flow() {
     let placed = sim.click(user, &held, "Place").await;
     assert!(placed.description().contains("Placed **"), "{}", placed.description());
 
-    // An empty hand lists the room's pieces (`#id`); pick one and take it up with Move.
+    // An empty hand lists the room's pieces (`#id`), after the clear-room option; pick one and
+    // take it up with Move.
+    assert_eq!(
+        placed.options("he:j:").first().map(|o| o.value.as_str()),
+        Some("<clear>")
+    );
     let piece = placed
         .options("he:j:")
-        .first()
+        .iter()
+        .find(|o| o.value.starts_with('#'))
         .expect("the placed piece is listed")
         .value
         .clone();
@@ -3182,4 +3226,524 @@ async fn join_role_goodbye_and_server_log() {
         in_channel(&posts, bye)[0].content(),
         format!("👋 **Zoë** has left **{GUILD_NAME}**.")
     );
+}
+
+// /House: undo, clear room, guestbook, contest
+
+/// The pieces in a room as (item, x, y, flipped), oldest first.
+async fn room_pieces(sim: &Sim, user: u64, room: i16) -> Vec<(String, i16, i16, bool)> {
+    sim.app
+        .db
+        .placements(user, room)
+        .await
+        .expect("placements")
+        .into_iter()
+        .map(|p| (p.item_id, p.x, p.y, p.flipped))
+        .collect()
+}
+
+/// How many of `item` the player has unplaced.
+async fn owned(sim: &Sim, user: u64, item: &str) -> i32 {
+    sim.app
+        .db
+        .inventory(user)
+        .await
+        .expect("inventory")
+        .into_iter()
+        .find(|row| row.item_id == item)
+        .map_or(0, |row| row.quantity)
+}
+
+/// The inventory menu value of the first piece whose description names `category`.
+fn kit_item(editor: &Reply, category: &str) -> String {
+    editor
+        .options("he:s:")
+        .iter()
+        .find(|o| o.description.as_deref().is_some_and(|d| d.contains(category)))
+        .unwrap_or_else(|| panic!("no {category} in the inventory menu"))
+        .value
+        .clone()
+}
+
+#[tokio::test]
+async fn house_editor_undo() {
+    let Some(mut sim) = Sim::new("house_editor_undo").await else {
+        return;
+    };
+    let user = unique();
+    let edit = sim.command(user, "house", json!([{ "name": "edit", "type": 1 }])).await;
+    assert_eq!(edit.rows(), 5, "the undo button fits the existing rows");
+    assert!(edit.button("↶ Undo").disabled, "nothing to undo yet");
+    let seat = kit_item(&edit, "Seating");
+    let table = kit_item(&edit, "Tables");
+
+    // Place → Undo: the piece goes back to the inventory.
+    let held = sim.pick(user, &edit, "he:s:", &seat).await;
+    let placed = sim.click(user, &held, "Place").await;
+    assert_eq!(room_pieces(&sim, user, 0).await.len(), 1);
+    assert_eq!(owned(&sim, user, &seat).await, 0);
+    let undone = sim.click(user, &placed, "↶ Undo").await;
+    assert!(
+        undone.description().contains("Undid placing **"),
+        "{}",
+        undone.description()
+    );
+    assert!(room_pieces(&sim, user, 0).await.is_empty());
+    assert_eq!(owned(&sim, user, &seat).await, 1);
+    assert!(undone.button("↶ Undo").disabled, "that was the only step");
+
+    // Move → Undo: one step, back to the old spot and turn.
+    let held = sim.pick(user, &undone, "he:s:", &seat).await;
+    let placed = sim.click(user, &held, "Place").await;
+    let before = room_pieces(&sim, user, 0).await;
+    let moving = sim.click(user, &placed, "Move").await;
+    let spot = moving.options("he:j:").last().expect("a free spot").value.clone();
+    let at_spot = sim.pick(user, &moving, "he:j:", &spot).await;
+    let moved = sim.click(user, &at_spot, "Place").await;
+    let after = room_pieces(&sim, user, 0).await;
+    assert_ne!(before, after, "the seat moved");
+    let undone = sim.click(user, &moved, "↶ Undo").await;
+    assert!(
+        undone.description().contains("Undid moving **"),
+        "{}",
+        undone.description()
+    );
+    assert_eq!(room_pieces(&sim, user, 0).await, before, "back where it was");
+    assert!(
+        undone.description().contains("Under cursor:"),
+        "the cursor follows the piece back: {}",
+        undone.description()
+    );
+
+    // Turn → Undo.
+    let turned = sim.click(user, &undone, "Flip").await;
+    assert!(room_pieces(&sim, user, 0).await[0].3, "turned");
+    let undone = sim.click(user, &turned, "↶ Undo").await;
+    assert!(
+        undone.description().contains("Undid turning **"),
+        "{}",
+        undone.description()
+    );
+    assert_eq!(room_pieces(&sim, user, 0).await, before);
+
+    // Store → Undo: back on the same spot.
+    let stored = sim.click(user, &undone, "Store").await;
+    assert!(room_pieces(&sim, user, 0).await.is_empty());
+    let undone = sim.click(user, &stored, "↶ Undo").await;
+    assert!(
+        undone.description().contains("Undid storing **"),
+        "{}",
+        undone.description()
+    );
+    assert_eq!(room_pieces(&sim, user, 0).await, before);
+
+    // Clear room: the first option of Go to, a confirm step, then one undo puts it all back.
+    let held = sim.pick(user, &undone, "he:s:", &table).await;
+    let with_table = sim.click(user, &held, "Place").await;
+    let full = room_pieces(&sim, user, 0).await;
+    assert_eq!(full.len(), 2);
+    assert_eq!(with_table.options("he:j:")[0].value, "<clear>");
+    let confirm = sim.pick(user, &with_table, "he:j:", "<clear>").await;
+    assert!(confirm.title().starts_with("Clear room 1"), "{}", confirm.title());
+    assert_eq!(confirm.rows(), 1, "only confirm or cancel");
+    assert!(confirm.files.is_empty(), "the room picture stays as it was");
+    let kept = sim.click(user, &confirm, "Cancel").await;
+    assert_eq!(room_pieces(&sim, user, 0).await, full, "cancel keeps everything");
+    let confirm = sim.pick(user, &kept, "he:j:", "<clear>").await;
+    let cleared = sim.click(user, &confirm, "Store all 2").await;
+    assert!(
+        cleared.description().contains("Stored all **2**"),
+        "{}",
+        cleared.description()
+    );
+    assert!(room_pieces(&sim, user, 0).await.is_empty());
+    assert_eq!(
+        (owned(&sim, user, &seat).await, owned(&sim, user, &table).await),
+        (1, 1)
+    );
+    let undone = sim.click(user, &cleared, "↶ Undo").await;
+    assert!(
+        undone.description().contains("Undid clearing the room (2 pieces)"),
+        "{}",
+        undone.description()
+    );
+    assert_eq!(room_pieces(&sim, user, 0).await, full);
+
+    // The history outlives the message: a new editor can still undo.
+    let reopened = sim.command(user, "house", json!([{ "name": "edit", "type": 1 }])).await;
+    assert!(!reopened.button("↶ Undo").disabled);
+
+    // An undo that is no longer possible says so and drops that step.
+    let seat_id = sim
+        .app
+        .db
+        .placements(user, 0)
+        .await
+        .expect("placements")
+        .into_iter()
+        .find(|p| p.item_id == seat)
+        .expect("the seat is back")
+        .id;
+    let picked = sim.pick(user, &reopened, "he:j:", &format!("#{seat_id}")).await;
+    let stored = sim.click(user, &picked, "Store").await;
+    assert!(stored.description().contains("Stored **"), "{}", stored.description());
+    let friend = unique();
+    assert!(sim.app.db.gift_item(user, friend, &seat).await.expect("gift"));
+    let refused = sim.click(user, &stored, "↶ Undo").await;
+    assert!(
+        refused.description().contains("Can't undo storing **") && refused.description().contains("left"),
+        "{}",
+        refused.description()
+    );
+    assert_eq!(room_pieces(&sim, user, 0).await.len(), 1, "nothing changed");
+    assert!(!refused.button("↶ Undo").disabled, "older steps are still there");
+
+    // A change outside the editor drops the history.
+    let table_id = sim.app.db.placements(user, 0).await.expect("placements")[0].id;
+    sim.app.db.pick_up(user, table_id).await.expect("pick up");
+    let moved = sim.click(user, &refused, "↘").await;
+    assert!(moved.button("↶ Undo").disabled, "the room changed outside the editor");
+}
+
+fn visit_options(host: u64) -> Value {
+    json!([{ "name": "visit", "type": 1, "options": [user_option("user", host)] }])
+}
+
+#[tokio::test]
+async fn guestbook_sign_read_delete_block() {
+    let Some(mut sim) = Sim::new("guestbook").await else {
+        return;
+    };
+    let (host, guest, stranger) = (unique(), unique(), unique());
+    sim.command(host, "house", json!([{ "name": "view", "type": 1 }])).await;
+
+    // A visit offers the guestbook; the note comes in through a modal and is cleaned.
+    let visit = sim
+        .command_resolved(guest, "house", visit_options(host), resolved(&[host], &[]))
+        .await;
+    let form = sim.click(guest, &visit, "Sign guestbook").await;
+    assert_eq!(form.modal.as_deref(), Some(format!("gb:n:{host}").as_str()));
+    let signed = sim
+        .submit(
+            guest,
+            &form,
+            &[(
+                "note",
+                "Hi @everyone! Love the **sofa** <@123> https://spam.example/x\nsee discord.gg/abc",
+            )],
+        )
+        .await;
+    assert!(
+        signed.ephemeral && signed.content().contains("Signed!"),
+        "{}",
+        signed.content()
+    );
+    let (notes, total) = sim.app.db.guestbook(host, 0, 5).await.expect("guestbook");
+    assert_eq!(total, 1);
+    assert_eq!(notes[0].body, "Hi ! Love the **sofa** see");
+    assert!(
+        signed.content().contains("Love the \\*\\*sofa\\*\\* see"),
+        "shown as typed: {}",
+        signed.content()
+    );
+
+    // Once a day, only after a visit.
+    let again = sim.click(guest, &visit, "Sign guestbook").await;
+    assert!(again.content().contains("already signed"), "{}", again.content());
+    let nope = sim.click(stranger, &visit, "Sign guestbook").await;
+    assert!(nope.content().contains("Visit the house first"), "{}", nope.content());
+    let own = sim.click(host, &visit, "Sign guestbook").await;
+    assert!(own.content().contains("your own guestbook"), "{}", own.content());
+
+    // The owner's /house view mentions it until it is read.
+    let view = sim.command(host, "house", json!([{ "name": "view", "type": 1 }])).await;
+    let footer = |r: &Reply| {
+        r.embeds
+            .first()
+            .and_then(|e| e.footer.as_ref())
+            .map(|f| f.text.clone())
+            .unwrap_or_default()
+    };
+    assert!(footer(&view).contains("1 new guestbook note"), "{}", footer(&view));
+
+    // More visitors, so the book has two pages.
+    let mut visitors = vec![guest];
+    for n in 0..5 {
+        let visitor = unique();
+        let visit = sim
+            .command_resolved(visitor, "house", visit_options(host), resolved(&[host], &[]))
+            .await;
+        let form = sim.click(visitor, &visit, "Sign guestbook").await;
+        sim.submit(visitor, &form, &[("note", &format!("Visitor {n} was here. Cozy!"))])
+            .await;
+        visitors.push(visitor);
+    }
+    let stranger_visit = sim
+        .command_resolved(stranger, "house", visit_options(host), resolved(&[host], &[]))
+        .await;
+    let form = sim.click(stranger, &stranger_visit, "Sign guestbook").await;
+    sim.submit(stranger, &form, &[("note", "buy my stuff, cheap cheap")])
+        .await;
+
+    let book = sim
+        .command(host, "house", json!([{ "name": "guestbook", "type": 1 }]))
+        .await;
+    assert!(book.ephemeral, "the owner's guestbook is private");
+    assert_eq!(book.title(), "📖 Your guestbook");
+    assert!(book.description().contains("**new**"), "{}", book.description());
+    assert!(book.description().contains("buy my stuff"), "newest first");
+    assert!(book.field("Recent visitors").contains(&format!("<@{stranger}>")));
+    assert_eq!(book.field("Recent visitors").lines().count(), 7);
+    assert_eq!(book.rows(), 3, "pages, delete, block");
+    let view = sim.command(host, "house", json!([{ "name": "view", "type": 1 }])).await;
+    assert!(!footer(&view).contains("new guestbook"), "read now: {}", footer(&view));
+
+    let older = sim.click(host, &book, "Older ▶").await;
+    assert!(older.description().contains("Love the"), "{}", older.description());
+    assert!(footer(&older).starts_with("Page 2/2"), "{}", footer(&older));
+    // The owner turning a public page of their book keeps it public, without their menus.
+    let shared = sim
+        .command_resolved(
+            guest,
+            "house",
+            json!([{ "name": "guestbook", "type": 1, "options": [user_option("user", host)] }]),
+            resolved(&[host], &[]),
+        )
+        .await;
+    let turned = sim.click(host, &shared, "Older ▶").await;
+    assert!(footer(&turned).starts_with("Page 2/2"), "{}", footer(&turned));
+    assert!(
+        turned.controls().all(|c| !matches!(c, Component::SelectMenu(_))),
+        "the owner's menus never show on a public page"
+    );
+
+    // The owner deletes the first guest's note and blocks the stranger.
+    let first = older
+        .options("gb:d:")
+        .iter()
+        .find(|o| o.label.contains("Love the"))
+        .expect("the first note can be deleted")
+        .value
+        .clone();
+    let deleted = sim.pick(host, &older, "gb:d:", &first).await;
+    assert!(
+        deleted.description().contains("Deleted the note"),
+        "{}",
+        deleted.description()
+    );
+    assert_eq!(sim.app.db.guestbook(host, 0, 50).await.expect("guestbook").1, 6);
+    let page1 = sim.click(host, &deleted, "◀ Newer").await;
+    let blocked = sim.pick(host, &page1, "gb:b:", &format!("b{stranger}")).await;
+    assert!(
+        blocked.description().contains("Blocked **"),
+        "{}",
+        blocked.description()
+    );
+    assert!(!blocked.description().contains("buy my stuff"), "their notes are gone");
+    assert!(
+        blocked
+            .options("gb:b:")
+            .iter()
+            .any(|o| o.value == format!("u{stranger}")),
+        "the owner can unblock them"
+    );
+    let refused = sim.click(stranger, &stranger_visit, "Sign guestbook").await;
+    assert!(refused.content().contains("blocked you"), "{}", refused.content());
+
+    // Only the owner manages the book; anyone can read it.
+    let meddling = sim.pick(guest, &blocked, "gb:b:", &format!("u{stranger}")).await;
+    assert!(meddling.content().contains("Only the owner"), "{}", meddling.content());
+    let public = sim
+        .command_resolved(
+            guest,
+            "house",
+            json!([{ "name": "guestbook", "type": 1, "options": [user_option("user", host)] }]),
+            resolved(&[host], &[]),
+        )
+        .await;
+    assert!(!public.ephemeral);
+    assert!(public.title().ends_with("'s guestbook"), "{}", public.title());
+    assert!(!public.description().contains("**new**"));
+    assert!(
+        public.controls().all(|c| !matches!(c, Component::SelectMenu(_))),
+        "no owner menus for visitors"
+    );
+
+    // A locked house turns signers away.
+    sim.command(
+        host,
+        "house",
+        json!([{ "name": "lock", "type": 1, "options": [bool_option("locked", true)] }]),
+    )
+    .await;
+    let locked = sim.click(visitors[1], &visit, "Sign guestbook").await;
+    assert!(locked.content().contains("locked"), "{}", locked.content());
+}
+
+fn contest(sub_name: &str, options: Vec<Value>) -> Value {
+    json!([group("contest", sub(sub_name, options))])
+}
+
+/// Places one starter piece of each category in room 1 with the editor.
+async fn furnish(sim: &mut Sim, user: u64, categories: &[&str]) {
+    let mut editor = sim.command(user, "house", json!([{ "name": "edit", "type": 1 }])).await;
+    for category in categories {
+        let held = sim.pick(user, &editor, "he:s:", &kit_item(&editor, category)).await;
+        editor = sim.click(user, &held, "Place").await;
+        assert!(editor.description().contains("Placed **"), "{}", editor.description());
+    }
+}
+
+/// Opens ballots as `voter`, voting for the rooms of `wanted` and skipping others; returns the last message.
+async fn vote_for(sim: &mut Sim, voter: u64, wanted: &[u64]) -> Reply {
+    let mut ballot = sim.command(voter, "house", contest("vote", vec![])).await;
+    let mut left = wanted.to_vec();
+    for _ in 0..20 {
+        if left.is_empty() {
+            return ballot;
+        }
+        assert_eq!(ballot.files.len(), 1, "a ballot shows the room");
+        let owner: u64 = ballot
+            .button("💖 Vote")
+            .custom_id
+            .as_deref()
+            .and_then(|id| id.rsplit(':').next())
+            .and_then(|id| id.parse().ok())
+            .expect("the vote button names the entry");
+        assert_ne!(owner, voter, "a ballot never shows your own room");
+        if let Some(i) = left.iter().position(|w| *w == owner) {
+            left.remove(i);
+            ballot = sim.click(voter, &ballot, "💖 Vote").await;
+            let said = format!("{}{}", ballot.content(), ballot.description());
+            assert!(said.contains("Vote counted"), "{said}");
+        } else {
+            ballot = sim.click(voter, &ballot, "Skip").await;
+        }
+    }
+    panic!("{voter} never got to vote for {left:?}");
+}
+
+async fn credits(sim: &Sim, user: u64) -> i64 {
+    sim.app.db.user(user).await.expect("user").credits
+}
+
+#[tokio::test]
+async fn room_contest_week() {
+    let Some(mut sim) = Sim::new("room_contest_week").await else {
+        return;
+    };
+    let (a, b, c, d) = (unique(), unique(), unique(), unique());
+    furnish(
+        &mut sim,
+        a,
+        &["Rugs", "Seating", "Tables", "Plants", "Wall decor", "Beds"],
+    )
+    .await;
+    furnish(&mut sim, b, &["Beds", "Lighting", "Rugs"]).await;
+    furnish(&mut sim, c, &["Seating", "Tables"]).await;
+
+    // An empty room can't be entered; furnished ones can, and entering again updates the snapshot.
+    let empty = sim.command(d, "house", contest("enter", vec![])).await;
+    assert!(
+        empty.ephemeral && empty.content().contains("is empty"),
+        "{}",
+        empty.content()
+    );
+    for user in [a, b, c] {
+        let entered = sim
+            .command(user, "house", contest("enter", vec![int_option("room", 1)]))
+            .await;
+        assert!(
+            entered.title().contains("entered the room contest"),
+            "{}",
+            entered.title()
+        );
+        assert_eq!(entered.files.len(), 1, "the entry is drawn");
+    }
+    let again = sim.command(a, "house", contest("enter", vec![])).await;
+    assert!(
+        again.title().contains("updated their contest entry"),
+        "{}",
+        again.title()
+    );
+
+    let view = sim.command(a, "house", contest("view", vec![])).await;
+    assert!(view.title().starts_with("🏆 Room contest: "), "{}", view.title());
+    assert_eq!(view.field("Entries"), "3");
+    assert!(
+        view.field("Your entry").starts_with("Room 1"),
+        "{}",
+        view.field("Your entry")
+    );
+    assert!(
+        view.field("Last week").contains("No contest"),
+        "{}",
+        view.field("Last week")
+    );
+
+    // Votes: a gets 3, b 2, c 1.
+    let done = vote_for(&mut sim, a, &[b, c]).await;
+    assert!(done.content().contains("judged every entry"), "{}", done.content());
+    vote_for(&mut sim, b, &[a]).await;
+    vote_for(&mut sim, c, &[a]).await;
+    let stale = vote_for(&mut sim, d, &[a, b]).await;
+    assert!(stale.button("Skip").disabled, "only one entry left to judge");
+    let already = sim.command(a, "house", contest("vote", vec![])).await;
+    assert!(
+        already.content().contains("judged every entry"),
+        "{}",
+        already.content()
+    );
+
+    // The week ends: the first contest call after it pays the prizes, once.
+    let before = [credits(&sim, a).await, credits(&sim, b).await, credits(&sim, c).await];
+    sim.app.shift_clock(chrono::Duration::days(7));
+    let next = sim.command(d, "house", contest("view", vec![])).await;
+    let podium = next.field("Last week");
+    assert!(podium.contains("🥇") && podium.contains("3 votes"), "{podium}");
+    assert!(podium.contains("🥈") && podium.contains("2 votes"), "{podium}");
+    assert!(podium.contains("🥉") && podium.contains("1 vote "), "{podium}");
+    assert_eq!(next.field("Entries"), "0", "a new week");
+    let after = [credits(&sim, a).await, credits(&sim, b).await, credits(&sim, c).await];
+    assert_eq!(
+        [after[0] - before[0], after[1] - before[1], after[2] - before[2]],
+        [500, 250, 100]
+    );
+    let pool = sim.app.db.pool().clone();
+    let (title,): (i64,) =
+        sqlx::query_as("SELECT count(*) FROM user_titles WHERE user_id = $1 AND title_id = 'house_of_the_week'")
+            .bind(a as i64)
+            .fetch_one(&pool)
+            .await
+            .expect("titles");
+    assert_eq!(title, 1, "the winner is House of the Week");
+    let (results,): (i64,) = sqlx::query_as("SELECT count(*) FROM contest_results WHERE guild_id = $1")
+        .bind(sim.guild as i64)
+        .fetch_one(&pool)
+        .await
+        .expect("results");
+    assert_eq!(results, 1);
+
+    sim.command(b, "house", contest("view", vec![])).await;
+    sim.command(c, "house", contest("winners", vec![])).await;
+    let (paid,): (i64,) =
+        sqlx::query_as("SELECT count(*) FROM credit_ledger WHERE user_id = $1 AND reason = 'contest_prize'")
+            .bind(a as i64)
+            .fetch_one(&pool)
+            .await
+            .expect("ledger");
+    assert_eq!(paid, 1, "paid exactly once");
+    assert_eq!(credits(&sim, a).await, after[0]);
+
+    let winners = sim.command(b, "house", contest("winners", vec![])).await;
+    assert!(
+        winners.title().starts_with("🏆 House of the Week"),
+        "{}",
+        winners.title()
+    );
+    assert_eq!(winners.files.len(), 1, "the winning room is drawn");
+
+    // A ballot from last week can't vote any more.
+    let late = sim.click(d, &stale, "💖 Vote").await;
+    assert!(late.content().contains("week is over"), "{}", late.content());
 }

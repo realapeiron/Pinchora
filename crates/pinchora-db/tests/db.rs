@@ -1047,3 +1047,124 @@ async fn role_panels_hold_at_most_25_roles_even_when_filled_at_once() {
         ("Renamed", Some("⭐"))
     );
 }
+
+#[tokio::test]
+async fn restore_is_all_or_nothing() {
+    let Some(db) = db().await else { return };
+    let [user] = ids();
+    let starter = pinchora_db::NewRoom {
+        room_type: "living".into(),
+        wallpaper: "w".into(),
+        floor: "f".into(),
+    };
+    db.house(user, &starter).await.unwrap();
+    db.grant_item(user, "chair", 2).await.unwrap();
+    db.place_item(user, 0, "chair", 1, 1, false, |_| Ok(())).await.unwrap();
+    db.place_item(user, 0, "chair", 2, 2, true, |_| Ok(())).await.unwrap();
+    let removed = db.clear_room(user, 0).await.unwrap();
+    assert_eq!(removed.len(), 2);
+    assert!(db.placements(user, 0).await.unwrap().is_empty());
+    assert_eq!(db.inventory(user).await.unwrap()[0].quantity, 2);
+
+    // Putting back three chairs with two in the inventory changes nothing.
+    let mut changes: Vec<pinchora_db::RoomChange> = removed.iter().cloned().map(pinchora_db::RoomChange::Add).collect();
+    let mut extra = removed[0].clone();
+    extra.x = 5;
+    changes.push(pinchora_db::RoomChange::Add(extra));
+    let refused = db.restore(user, 0, &changes, |_, _| Ok(())).await.unwrap();
+    assert!(matches!(
+        refused,
+        pinchora_db::RestoreOutcome::Refused(pinchora_db::Refusal::NotOwned(ref item)) if item == "chair"
+    ));
+    assert!(db.placements(user, 0).await.unwrap().is_empty(), "rolled back");
+
+    // The room check can refuse too; then the real two go back exactly.
+    changes.pop();
+    let blocked = db.restore(user, 0, &changes, |_, _| Err("no".into())).await.unwrap();
+    assert!(matches!(
+        blocked,
+        pinchora_db::RestoreOutcome::Refused(pinchora_db::Refusal::Blocked(_))
+    ));
+    let pinchora_db::RestoreOutcome::Done { added } = db.restore(user, 0, &changes, |_, _| Ok(())).await.unwrap()
+    else {
+        panic!("restores")
+    };
+    let back = db.placements(user, 0).await.unwrap();
+    assert_eq!(back.iter().map(|p| p.id).collect::<Vec<_>>(), added);
+    assert_eq!(
+        back.iter().map(|p| (p.x, p.y, p.flipped)).collect::<Vec<_>>(),
+        [(1, 1, false), (2, 2, true)]
+    );
+
+    // A remove or flip must find the row exactly as given.
+    let mut moved = back[0].clone();
+    moved.x = 7;
+    let stale = db
+        .restore(user, 0, &[pinchora_db::RoomChange::Flip(moved)], |_, _| Ok(()))
+        .await
+        .unwrap();
+    assert!(matches!(
+        stale,
+        pinchora_db::RestoreOutcome::Refused(pinchora_db::Refusal::Moved(_))
+    ));
+    db.restore(
+        user,
+        0,
+        &[
+            pinchora_db::RoomChange::Flip(back[0].clone()),
+            pinchora_db::RoomChange::Remove(back[1].clone()),
+        ],
+        |_, _| Ok(()),
+    )
+    .await
+    .unwrap();
+    let now = db.placements(user, 0).await.unwrap();
+    assert_eq!(now.len(), 1);
+    assert!(now[0].flipped);
+}
+
+#[tokio::test]
+async fn contest_week_closes_once() {
+    let Some(db) = db().await else { return };
+    let [guild, a, b, voter] = ids();
+    let starter = pinchora_db::NewRoom {
+        room_type: "living".into(),
+        wallpaper: "w".into(),
+        floor: "f".into(),
+    };
+    for user in [a, b] {
+        db.house(user, &starter).await.unwrap();
+        db.grant_item(user, "chair", 1).await.unwrap();
+        db.place_item(user, 0, "chair", 1, 1, false, |_| Ok(())).await.unwrap();
+        assert_eq!(db.enter_contest(guild, 100, user, "Name", 0).await.unwrap(), 1);
+    }
+    assert!(db.contest_vote(guild, 100, a, voter).await.unwrap());
+    assert!(
+        !db.contest_vote(guild, 100, a, voter).await.unwrap(),
+        "one vote per entry"
+    );
+    assert!(!db.contest_vote(guild, 100, a, a).await.unwrap(), "not for your own");
+    assert!(db.contest_vote(guild, 100, a, b).await.unwrap());
+    assert!(db.contest_vote(guild, 100, b, voter).await.unwrap());
+    assert_eq!(db.contest_pieces(guild, 100, a).await.unwrap().len(), 1);
+
+    let before = db.user(a).await.unwrap().credits;
+    // Two calls race to close the week; only one pays.
+    let (one, two) = tokio::join!(
+        db.close_contest_weeks(guild, 101, &[500, 250, 100], "house_of_the_week"),
+        db.close_contest_weeks(guild, 101, &[500, 250, 100], "house_of_the_week"),
+    );
+    let closed = [one.unwrap(), two.unwrap()];
+    assert_eq!(closed.iter().map(Vec::len).sum::<usize>(), 1, "{closed:?}");
+    assert!(
+        db.close_contest_weeks(guild, 101, &[500], "t")
+            .await
+            .unwrap()
+            .is_empty()
+    );
+    assert_eq!(db.user(a).await.unwrap().credits, before + 500);
+    let result = db.last_contest_result(guild, 101).await.unwrap().unwrap();
+    assert_eq!(result.winner_ids, vec![a as i64, b as i64]);
+    assert_eq!(result.winner_votes, vec![2, 1]);
+    assert_eq!(result.entries, 2);
+}

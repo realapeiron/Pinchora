@@ -141,6 +141,21 @@ impl Responder {
         }
     }
 
+    /// Opens a modal. Discord only takes one as the first answer.
+    pub async fn modal(&self, data: InteractionResponseData) -> anyhow::Result<()> {
+        let mut state = self.state.lock().await;
+        let State::Pending(tx) = &mut *state else {
+            anyhow::bail!("a modal can only be the first answer");
+        };
+        let response = InteractionResponse {
+            kind: InteractionResponseType::Modal,
+            data: Some(data),
+        };
+        self.initial(tx.take(), response).await?;
+        *state = State::Done;
+        Ok(())
+    }
+
     async fn initial(
         &self,
         tx: Option<oneshot::Sender<InteractionResponse>>,

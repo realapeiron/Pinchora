@@ -1,5 +1,14 @@
-use std::{collections::HashMap, future::Future, sync::Arc, time::Duration};
+use std::{
+    collections::HashMap,
+    future::Future,
+    sync::{
+        Arc,
+        atomic::{AtomicI64, Ordering},
+    },
+    time::Duration,
+};
 
+use chrono::{DateTime, Utc};
 use moka::future::Cache as Moka;
 use pinchora_cache::Cache;
 use pinchora_db::{Db, GuildSettings};
@@ -37,6 +46,8 @@ pub struct App {
     event_slots: Arc<Semaphore>,
     /// Last-seen names and voice channels, so the server log can say what changed.
     pub(crate) log_state: LogState,
+    /// Seconds added to the clock by [`App::shift_clock`].
+    clock_shift: AtomicI64,
 }
 
 impl App {
@@ -85,7 +96,18 @@ impl App {
             tasks: TaskTracker::new(),
             event_slots: Arc::new(Semaphore::new(1024)),
             log_state: LogState::new(),
+            clock_shift: AtomicI64::new(0),
         }
+    }
+
+    /// The time as game rules that span days and weeks see it (the room contest).
+    pub fn now(&self) -> DateTime<Utc> {
+        Utc::now() + chrono::Duration::seconds(self.clock_shift.load(Ordering::Relaxed))
+    }
+
+    /// Moves [`App::now`] forward, so tests can end a contest week without waiting for it.
+    pub fn shift_clock(&self, by: chrono::Duration) {
+        self.clock_shift.fetch_add(by.num_seconds(), Ordering::Relaxed);
     }
 
     pub fn interaction(&self) -> InteractionClient<'_> {

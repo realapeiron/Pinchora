@@ -105,6 +105,17 @@ impl Cache {
     pub async fn take(&self, key: &str) -> anyhow::Result<Option<String>> {
         Ok(self.conn().get_del(format!("{PREFIX}:kv:{key}")).await?)
     }
+
+    /// Reads a value stored with [`Cache::put`] and leaves it there.
+    pub async fn get(&self, key: &str) -> anyhow::Result<Option<String>> {
+        Ok(self.conn().get(format!("{PREFIX}:kv:{key}")).await?)
+    }
+
+    /// Deletes a value stored with [`Cache::put`].
+    pub async fn forget(&self, key: &str) -> anyhow::Result<()> {
+        let _: () = self.conn().del(format!("{PREFIX}:kv:{key}")).await?;
+        Ok(())
+    }
 }
 
 impl Cache {
