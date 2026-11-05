@@ -3,6 +3,8 @@
 A cozy pixel world for Discord servers: levels, shells, pixel-art profile cards, and soon your
 own house, pets and mini games. Written in Rust and built to run sharded on Kubernetes.
 
+![A furnished room](docs/images/room.png)
+
 ![Profile card](docs/images/profile.png)
 
 ## What works today
