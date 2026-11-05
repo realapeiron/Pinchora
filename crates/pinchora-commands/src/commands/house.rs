@@ -7,7 +7,7 @@ use pinchora_game::{
     character::Character,
     house::{self, Placed, ROOM_ORDER},
 };
-use pinchora_render::room::{Cursor, WallSide};
+use pinchora_render::room::{Cursor, WallSide, column_letter};
 use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
 use twilight_model::{
     channel::message::{
@@ -134,7 +134,7 @@ impl HouseCommand {
                     mode: CursorMode::Floor,
                     item: None,
                 };
-                let note = "Pick furniture from the menu, move with the arrows, then press **Place**.";
+                let note = "Pick furniture: it jumps to a free spot, then press **Place**.";
                 let data = editor(cx, author.id.get(), state, note).await?;
                 cx.reply(data).await
             }
@@ -574,6 +574,187 @@ fn under_cursor<'a>(
         .map(|(_, p)| p)
 }
 
+/// Inventory menu values that turn its page instead of picking furniture.
+const PREV_PAGE: &str = "<prev>";
+const NEXT_PAGE: &str = "<next>";
+
+fn placed_list(placements: &[PlacementRow]) -> Vec<Placed<'_>> {
+    placements
+        .iter()
+        .map(|p| Placed {
+            item_id: &p.item_id,
+            x: p.x as u32,
+            y: p.y as u32,
+            flipped: p.flipped,
+        })
+        .collect()
+}
+
+/// Furthest cursor position that keeps the held item (or the one-tile cursor) on the floor or its wall.
+fn reach(content: &Content, tier: &house::Tier, state: &EditState) -> (u32, u32) {
+    let held = state
+        .item
+        .as_deref()
+        .and_then(|i| house::footprint(content, i, 0, 0, state.flipped));
+    match (held, state.wall(content)) {
+        (Some((Layer::Wall, r)), _) => (
+            house::wall_length(tier.width, tier.depth, state.flipped).saturating_sub(r.w),
+            house::WALL_LEVELS.saturating_sub(r.d),
+        ),
+        (Some((_, r)), _) => (tier.width.saturating_sub(r.w), tier.depth.saturating_sub(r.d)),
+        (None, Some(left)) => (
+            house::wall_length(tier.width, tier.depth, left) - 1,
+            house::WALL_LEVELS - 1,
+        ),
+        (None, None) => (tier.width - 1, tier.depth - 1),
+    }
+}
+
+/// Every spot where the held item fits as it is turned now, nearest to the cursor first.
+fn free_spots(
+    content: &Content,
+    tier: &house::Tier,
+    placements: &[PlacementRow],
+    state: &EditState,
+) -> Vec<(u32, u32)> {
+    let Some(item_id) = state.item.as_deref() else {
+        return Vec::new();
+    };
+    let placed = placed_list(placements);
+    let (max_x, max_y) = reach(content, tier, state);
+    let mut spots: Vec<(u32, u32)> = (0..=max_y)
+        .flat_map(|y| (0..=max_x).map(move |x| (x, y)))
+        .filter(|&(x, y)| {
+            house::can_place(content, tier.width, tier.depth, &placed, item_id, x, y, state.flipped).is_ok()
+        })
+        .collect();
+    spots.sort_by_key(|&(x, y)| (x.abs_diff(state.x) + y.abs_diff(state.y), y, x));
+    spots
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum Settle {
+    Stayed,
+    Moved,
+    NoRoom,
+}
+
+/// Leaves the held item where it is when it fits there, else moves it to the nearest spot
+/// that fits, so a picked item is always one **Place** away from being in the room.
+fn settle(content: &Content, tier: &house::Tier, placements: &[PlacementRow], state: &mut EditState) -> Settle {
+    match free_spots(content, tier, placements, state).first() {
+        Some(&spot) if spot == (state.x, state.y) => Settle::Stayed,
+        Some(&(x, y)) => {
+            (state.x, state.y) = (x, y);
+            Settle::Moved
+        }
+        None => {
+            let (max_x, max_y) = reach(content, tier, state);
+            (state.x, state.y) = (state.x.min(max_x), state.y.min(max_y));
+            Settle::NoRoom
+        }
+    }
+}
+
+/// A cursor position as players read it: "C4" on the floor (the letters and numbers drawn
+/// along the front edges), "Right wall 3 · high" on a wall.
+fn spot_label(x: u32, y: u32, wall: Option<bool>) -> String {
+    const HEIGHTS: [&str; 3] = ["high", "middle", "low"];
+    match wall {
+        None => format!("{}{}", column_letter(x), y + 1),
+        Some(left) => format!(
+            "{} wall {} · {}",
+            if left { "Left" } else { "Right" },
+            x + 1,
+            HEIGHTS.get(y as usize).copied().unwrap_or("low")
+        ),
+    }
+}
+
+/// What a spot is next to, so the jump menu reads "next to Oak Bed" and not bare coordinates.
+fn spot_hint(
+    content: &Content,
+    placements: &[PlacementRow],
+    layer: Layer,
+    spot: house::Rect,
+    wall: Option<bool>,
+) -> String {
+    let name = |p: &PlacementRow| content.item(&p.item_id).map_or(p.item_id.clone(), |i| i.name());
+    let around = house::Rect {
+        x: spot.x.saturating_sub(1),
+        y: spot.y.saturating_sub(1),
+        w: spot.w + 1 + u32::from(spot.x > 0),
+        d: spot.d + 1 + u32::from(spot.y > 0),
+    };
+    let mut holder = None;
+    let mut neighbour = None;
+    for p in placements {
+        let Some((l, r)) = house::footprint(content, &p.item_id, p.x as u32, p.y as u32, p.flipped) else {
+            continue;
+        };
+        let same_plane = match wall {
+            Some(left) => l == Layer::Wall && p.flipped == left,
+            None => l != Layer::Wall,
+        };
+        if !same_plane {
+            continue;
+        }
+        if layer == Layer::Surface && l == Layer::Floor && r.contains(&spot) {
+            holder = Some(p);
+        } else if neighbour.is_none() && l != Layer::Rug && r.overlaps(&around) && !r.overlaps(&spot) {
+            neighbour = Some(p);
+        }
+    }
+    match (holder, neighbour, wall) {
+        (Some(p), _, _) => format!("on top of {}", name(p)),
+        (None, Some(p), Some(_)) => format!("beside {}", name(p)),
+        (None, Some(p), None) => format!("next to {}", name(p)),
+        (None, None, Some(_)) => "free wall".to_owned(),
+        (None, None, None) if spot.x == 0 || spot.y == 0 => "against a wall".to_owned(),
+        (None, None, None) => "open floor".to_owned(),
+    }
+}
+
+/// Surface pieces standing on a placed holder; they go back to the inventory with it.
+fn standing_on<'a>(content: &Content, placements: &'a [PlacementRow], holder: &PlacementRow) -> Vec<&'a PlacementRow> {
+    let Some((Layer::Floor, base)) = house::footprint(
+        content,
+        &holder.item_id,
+        holder.x as u32,
+        holder.y as u32,
+        holder.flipped,
+    ) else {
+        return Vec::new();
+    };
+    placements
+        .iter()
+        .filter(|p| {
+            p.id != holder.id
+                && matches!(
+                    house::footprint(content, &p.item_id, p.x as u32, p.y as u32, p.flipped),
+                    Some((Layer::Surface, r)) if base.contains(&r)
+                )
+        })
+        .collect()
+}
+
+/// Takes a placement (and whatever stands on it) back into the inventory; returns how many
+/// pieces stood on it.
+async fn take_back(
+    cx: &Cx,
+    content: &Content,
+    user_id: u64,
+    placements: &[PlacementRow],
+    p: &PlacementRow,
+) -> anyhow::Result<usize> {
+    let on_top = standing_on(content, placements, p);
+    for top in &on_top {
+        cx.app.db.pick_up(user_id, top.id).await?;
+    }
+    cx.app.db.pick_up(user_id, p.id).await?;
+    Ok(on_top.len())
+}
+
 pub(crate) async fn on_edit(
     cx: &Cx,
     prefix: &'static str,
@@ -598,52 +779,83 @@ pub(crate) async fn on_edit(
     let tier = house::tier(house_row.tier);
     state.room = state.room.clamp(0, rooms.len().saturating_sub(1) as i16);
     let placements = cx.app.db.placements(user_id, state.room).await?;
-    // Furthest cursor position that keeps the held item (or the one-tile cursor) on the floor or its wall.
-    let reach = |state: &EditState| {
-        let held = state
-            .item
-            .as_deref()
-            .and_then(|i| house::footprint(content, i, 0, 0, state.flipped));
-        match (held, state.wall(content)) {
-            (Some((Layer::Wall, r)), _) => (
-                house::wall_length(tier.width, tier.depth, state.flipped).saturating_sub(r.w),
-                house::WALL_LEVELS.saturating_sub(r.d),
-            ),
-            (Some((_, r)), _) => (tier.width.saturating_sub(r.w), tier.depth.saturating_sub(r.d)),
-            (None, Some(left)) => (
-                house::wall_length(tier.width, tier.depth, left) - 1,
-                house::WALL_LEVELS - 1,
-            ),
-            (None, None) => (tier.width - 1, tier.depth - 1),
-        }
-    };
+    let name_of = |item_id: &str| content.item(item_id).map_or(item_id.to_owned(), |i| i.name());
 
     let note = match action.as_str() {
-        "s" => {
-            state.item = value.map(str::to_owned);
-            state.flipped = false;
-            match state.item.as_deref().and_then(|i| content.item(i)) {
-                Some(item) => {
-                    let [iw, id] = item.base.footprint;
-                    let (max_x, max_y) = reach(&state);
-                    state.x = state.x.min(max_x);
-                    state.y = state.y.min(max_y);
-                    format!("Selected **{}** ({iw}×{id}). Move it, then **Place**.", item.name())
-                }
-                None => "Pick something from the menu.".to_owned(),
+        "s" => match value {
+            Some(PREV_PAGE) => {
+                state.page = state.page.saturating_sub(1);
+                String::new()
             }
+            Some(NEXT_PAGE) => {
+                state.page += 1;
+                String::new()
+            }
+            _ => {
+                state.item = value.filter(|v| content.item(v).is_some()).map(str::to_owned);
+                state.flipped = false;
+                match state.item.clone() {
+                    Some(item_id) => match settle(content, tier, &placements, &mut state) {
+                        Settle::NoRoom => format!(
+                            "**{}** fits nowhere in this room right now. **Turn** it, or store something.",
+                            name_of(&item_id)
+                        ),
+                        _ => format!(
+                            "Holding **{}**. Press **Place** to put it at **{}**, or pick another spot.",
+                            name_of(&item_id),
+                            spot_label(state.x, state.y, state.wall(content))
+                        ),
+                    },
+                    None => "Pick something from the menu.".to_owned(),
+                }
+            }
+        },
+        // A spot from the jump menu: `x.y` for the held item, `#id` for a placed piece.
+        "j" => {
+            match value {
+                Some(id) if id.starts_with('#') => {
+                    let target = id[1..]
+                        .parse::<i64>()
+                        .ok()
+                        .and_then(|id| placements.iter().find(|p| p.id == id));
+                    if let Some(p) = target
+                        && let Some((layer, r)) =
+                            house::footprint(content, &p.item_id, p.x as u32, p.y as u32, p.flipped)
+                    {
+                        let wall = (layer == Layer::Wall).then_some(p.flipped);
+                        state.mode = CursorMode::from_wall(wall);
+                        // A tile of its footprint where it is the piece under the cursor
+                        // (not a lamp standing on it).
+                        (state.x, state.y) = (r.y..r.y + r.d)
+                            .flat_map(|y| (r.x..r.x + r.w).map(move |x| (x, y)))
+                            .find(|&(x, y)| {
+                                under_cursor(content, &placements, x, y, wall).is_some_and(|u| u.id == p.id)
+                            })
+                            .unwrap_or((r.x, r.y));
+                    }
+                }
+                Some(spot) => {
+                    if let Some((x, y)) = spot.split_once('.')
+                        && let (Ok(x), Ok(y)) = (x.parse::<u32>(), y.parse::<u32>())
+                    {
+                        let (max_x, max_y) = reach(content, tier, &state);
+                        (state.x, state.y) = (x.min(max_x), y.min(max_y));
+                    }
+                }
+                None => {}
+            }
+            String::new()
         }
         "ul" | "dr" | "ur" | "dl" => {
-            let max = reach(&state);
+            let max = reach(content, tier, &state);
             (state.x, state.y) = step_cursor(&action, (state.x, state.y), state.wall(content) == Some(true), max);
             String::new()
         }
         // Moves the empty-hand cursor to the floor or a wall; the code is the mode's letter.
         "mf" | "mr" | "ml" => {
             state.mode = CursorMode::from_code(&action[1..]).unwrap_or(CursorMode::Floor);
-            let (max_x, max_y) = reach(&state);
-            state.x = state.x.min(max_x);
-            state.y = state.y.min(max_y);
+            let (max_x, max_y) = reach(content, tier, &state);
+            (state.x, state.y) = (state.x.min(max_x), state.y.min(max_y));
             String::new()
         }
         "p" => match state.item.clone() {
@@ -655,26 +867,31 @@ pub(crate) async fn on_edit(
                     .app
                     .db
                     .place_item(user_id, state.room, &item_id, x as i16, y as i16, flipped, |current| {
-                        let placed: Vec<Placed> = current
-                            .iter()
-                            .map(|p| Placed {
-                                item_id: &p.item_id,
-                                x: p.x as u32,
-                                y: p.y as u32,
-                                flipped: p.flipped,
-                            })
-                            .collect();
+                        let placed = placed_list(current);
                         house::can_place(content, width, depth, &placed, &item_id, x, y, flipped)
                     })
                     .await?;
-                let name = content.item(&item_id).map_or(item_id.clone(), |i| i.name());
+                let name = name_of(&item_id);
                 match outcome {
                     PlaceOutcome::Placed { .. } => {
                         cx.app.quest(user_id, pinchora_game::quests::QuestKind::Place).await;
-                        if !cx.app.db.owns(user_id, &item_id).await? {
+                        if cx.app.db.owns(user_id, &item_id).await? {
+                            // Keep holding the next one, already on the nearest free spot.
+                            let placements = cx.app.db.placements(user_id, state.room).await?;
+                            match settle(content, tier, &placements, &mut state) {
+                                Settle::NoRoom => {
+                                    state.release(content);
+                                    format!("Placed **{name}**. There is no free spot for another one.")
+                                }
+                                _ => format!(
+                                    "Placed **{name}**. Holding another: **Place** again at **{}**, or pick something else.",
+                                    spot_label(state.x, state.y, state.wall(content))
+                                ),
+                            }
+                        } else {
                             state.release(content);
+                            format!("Placed **{name}**.")
                         }
-                        format!("Placed **{name}**.")
                     }
                     PlaceOutcome::NotOwned => {
                         state.release(content);
@@ -684,33 +901,64 @@ pub(crate) async fn on_edit(
                 }
             }
         },
+        // Move: takes the piece under the cursor into the hand, turned as it was.
+        "v" => match under_cursor(content, &placements, state.x, state.y, state.wall(content)) {
+            Some(p) => {
+                let on_top = take_back(cx, content, user_id, &placements, p).await?;
+                state.item = Some(p.item_id.clone());
+                state.flipped = p.flipped;
+                (state.x, state.y) = (p.x as u32, p.y as u32);
+                let extra = if on_top > 0 {
+                    format!(" What stood on it ({on_top}) went back to your inventory.")
+                } else {
+                    String::new()
+                };
+                format!(
+                    "Moving **{}**: pick a spot with **Go to** or the arrows, then **Place**.{extra}",
+                    name_of(&p.item_id)
+                )
+            }
+            None => "Nothing under the cursor to move.".to_owned(),
+        },
         "k" => match under_cursor(content, &placements, state.x, state.y, state.wall(content)) {
             Some(p) => {
-                let name = content.item(&p.item_id).map_or(p.item_id.clone(), |i| i.name());
-                cx.app.db.pick_up(user_id, p.id).await?;
-                format!("Picked up **{name}**; it is back in your inventory.")
+                let on_top = take_back(cx, content, user_id, &placements, p).await?;
+                let extra = if on_top > 0 {
+                    format!(", with the {on_top} on it")
+                } else {
+                    String::new()
+                };
+                format!(
+                    "Stored **{}**{extra}; it is back in your inventory.",
+                    name_of(&p.item_id)
+                )
             }
             None => "Nothing under the cursor.".to_owned(),
         },
-        // Turns the held item; the new footprint (or wall) may need the cursor pulled back inside.
+        // Cancel: empties the hand; the held piece never left the inventory.
+        "c" => {
+            state.release(content);
+            String::new()
+        }
+        // Turns the held item; when the turned footprint no longer fits, it moves to the nearest spot.
         "t" => {
             state.flipped = !state.flipped;
-            let (max_x, max_y) = reach(&state);
-            state.x = state.x.min(max_x);
-            state.y = state.y.min(max_y);
-            String::new()
+            match settle(content, tier, &placements, &mut state) {
+                Settle::Moved => format!(
+                    "Turned it and moved to **{}** so it fits.",
+                    spot_label(state.x, state.y, state.wall(content))
+                ),
+                Settle::NoRoom => "Turned it, but it fits nowhere this way.".to_owned(),
+                Settle::Stayed => String::new(),
+            }
         }
         "f" => match under_cursor(content, &placements, state.x, state.y, state.wall(content)) {
             Some(p) => {
-                let others: Vec<Placed> = placements
-                    .iter()
-                    .filter(|o| o.id != p.id)
-                    .map(|o| Placed {
-                        item_id: &o.item_id,
-                        x: o.x as u32,
-                        y: o.y as u32,
-                        flipped: o.flipped,
-                    })
+                let others: Vec<Placed> = placed_list(&placements)
+                    .into_iter()
+                    .zip(&placements)
+                    .filter(|(_, o)| o.id != p.id)
+                    .map(|(placed, _)| placed)
                     .collect();
                 let (x, y) = (p.x as u32, p.y as u32);
                 match house::can_place(content, tier.width, tier.depth, &others, &p.item_id, x, y, !p.flipped) {
@@ -735,14 +983,6 @@ pub(crate) async fn on_edit(
             state.x = 1;
             state.y = 0;
             format!("Now editing room {}.", state.room + 1)
-        }
-        "q" => {
-            state.page = state.page.saturating_sub(1);
-            String::new()
-        }
-        "w" => {
-            state.page += 1;
-            String::new()
         }
         "x" => {
             let data = InteractionResponseData {
@@ -778,52 +1018,83 @@ pub(crate) async fn editor(
     let (house_row, rooms) = ensure_house(&cx.app, user_id).await?;
     let tier = house::tier(house_row.tier);
     let room = rooms[state.room.clamp(0, rooms.len() as i16 - 1) as usize].clone();
-    let placements = cx.app.db.placements(user_id, state.room).await?;
-    let inventory = cx.app.db.inventory(user_id).await?;
-    let pages = inventory.len().div_ceil(PAGE).max(1);
+    let (placements, inventory) =
+        tokio::try_join!(cx.app.db.placements(user_id, state.room), cx.app.db.inventory(user_id))?;
+    // One page shows 25 pieces; with more, two of its slots turn the page.
+    let per_page = if inventory.len() > PAGE { PAGE - 2 } else { PAGE };
+    let pages = inventory.len().div_ceil(per_page).max(1);
     state.page = state.page.min(pages - 1);
 
     let selected_item = state.item.as_deref().and_then(|i| content.item(i));
     let wall = state.wall(content);
-    let (cw, cd) = state
+    let held = state
         .item
         .as_deref()
-        .and_then(|i| house::footprint(content, i, 0, 0, state.flipped))
-        .map_or((1, 1), |(_, r)| (r.w, r.d));
-    let fits = selected_item.is_some_and(|_| {
-        let placed: Vec<Placed> = placements
-            .iter()
-            .map(|p| Placed {
-                item_id: &p.item_id,
-                x: p.x as u32,
-                y: p.y as u32,
-                flipped: p.flipped,
-            })
-            .collect();
-        house::can_place(
-            content,
-            tier.width,
-            tier.depth,
-            &placed,
-            state.item.as_deref().unwrap_or_default(),
-            state.x,
-            state.y,
-            state.flipped,
-        )
-        .is_ok()
-    });
+        .and_then(|i| house::footprint(content, i, 0, 0, state.flipped));
+    let (cw, cd) = held.map_or((1, 1), |(_, r)| (r.w, r.d));
+    let spots = free_spots(content, tier, &placements, &state);
+    let fits = selected_item.is_some() && spots.contains(&(state.x, state.y));
     let hovered = under_cursor(content, &placements, state.x, state.y, wall);
     let hovered_id = hovered.map(|p| p.id);
     let hovered_name = hovered.and_then(|p| content.item(&p.item_id)).map(|i| i.name());
 
+    // The jump menu: free spots for the held piece, or the pieces in the room for an empty hand.
+    let jump_options: Vec<SelectMenuOption> = match (state.item.as_deref(), held) {
+        (Some(item_id), Some((layer, _))) => spots
+            .iter()
+            .take(PAGE)
+            .filter_map(|&(x, y)| {
+                let (_, r) = house::footprint(content, item_id, x, y, state.flipped)?;
+                Some(SelectMenuOption {
+                    default: (x, y) == (state.x, state.y),
+                    description: Some(spot_hint(content, &placements, layer, r, wall)),
+                    emoji: None,
+                    label: spot_label(x, y, wall),
+                    value: format!("{x}.{y}"),
+                })
+            })
+            .collect(),
+        _ => {
+            let mut near: Vec<&PlacementRow> = placements.iter().collect();
+            near.sort_by_key(|p| ((p.x as u32).abs_diff(state.x) + (p.y as u32).abs_diff(state.y), p.id));
+            near.into_iter()
+                .take(PAGE)
+                .filter_map(|p| {
+                    let item = content.item(&p.item_id)?;
+                    let (layer, _) = house::footprint(content, &p.item_id, p.x as u32, p.y as u32, p.flipped)?;
+                    let at = spot_label(p.x as u32, p.y as u32, (layer == Layer::Wall).then_some(p.flipped));
+                    Some(SelectMenuOption {
+                        default: hovered_id == Some(p.id),
+                        description: Some(at),
+                        emoji: None,
+                        label: item.name().chars().take(100).collect(),
+                        value: format!("#{}", p.id),
+                    })
+                })
+                .collect()
+        }
+    };
+
     let title = room_title(content, &room);
+    // The held piece is drawn where it would go, so the picture shows the room as it will look.
+    let mut shown = placements;
+    if let Some(item_id) = state.item.as_deref().filter(|_| held.is_some()) {
+        shown.push(PlacementRow {
+            id: -1,
+            room_idx: room.idx,
+            item_id: item_id.to_owned(),
+            x: state.x as i16,
+            y: state.y as i16,
+            flipped: state.flipped,
+        });
+    }
     let png = render_room(
         &cx.app,
         RoomView {
             width: tier.width,
             depth: tier.depth,
             room,
-            placements,
+            placements: shown,
             cursor: Some(Cursor {
                 x: state.x,
                 y: state.y,
@@ -846,14 +1117,8 @@ pub(crate) async fn editor(
         lines.push(note.to_owned());
     }
     lines.push(format!(
-        "Cursor **{},{}**{} · Holding: **{}**",
-        state.x,
-        state.y,
-        match wall {
-            Some(false) => " on the right wall",
-            Some(true) => " on the left wall",
-            None => "",
-        },
+        "Cursor **{}** · Holding: **{}**",
+        spot_label(state.x, state.y, wall),
         selected_item.map_or("nothing".to_owned(), |i| i.name())
     ));
     if let Some(name) = &hovered_name {
@@ -868,56 +1133,84 @@ pub(crate) async fn editor(
             BRAND
         })
         .title(format!("Editing room {} · {title}", state.room + 1))
-        .description(lines.join("\n"));
+        .description(lines.join("\n"))
+        .footer(EmbedFooterBuilder::new(
+            "Pick furniture and it jumps to a free spot. Go to moves the cursor anywhere in one click.",
+        ));
 
-    let options: Vec<SelectMenuOption> = inventory
-        .iter()
-        .skip(state.page * PAGE)
-        .take(PAGE)
-        .filter_map(|row| {
-            let item = content.item(&row.item_id)?;
-            let [iw, id] = item.base.footprint;
-            Some(SelectMenuOption {
-                default: state.item.as_deref() == Some(row.item_id.as_str()),
-                description: Some(format!(
-                    "x{} · {} · {iw}×{id}",
-                    row.quantity,
-                    item.base.category.label()
-                )),
-                emoji: None,
-                label: item.name().chars().take(100).collect(),
-                value: row.item_id.clone(),
-            })
+    let mut options: Vec<SelectMenuOption> = Vec::new();
+    let option = |label: &str, value: &str, description: Option<String>, default: bool| SelectMenuOption {
+        default,
+        description,
+        emoji: None,
+        label: label.chars().take(100).collect(),
+        value: value.to_owned(),
+    };
+    if state.page > 0 {
+        options.push(option("◀ Previous items", PREV_PAGE, None, false));
+    }
+    options.extend(
+        inventory
+            .iter()
+            .skip(state.page * per_page)
+            .take(per_page)
+            .filter_map(|row| {
+                let item = content.item(&row.item_id)?;
+                let [iw, id] = item.base.footprint;
+                Some(option(
+                    &item.name(),
+                    &row.item_id,
+                    Some(format!(
+                        "x{} · {} · {iw}×{id}",
+                        row.quantity,
+                        item.base.category.label()
+                    )),
+                    state.item.as_deref() == Some(row.item_id.as_str()),
+                ))
+            }),
+    );
+    if state.page + 1 < pages {
+        options.push(option("More items ▶", NEXT_PAGE, None, false));
+    }
+    let select = |action: &str, options: Vec<SelectMenuOption>, placeholder: String, empty: &str| {
+        let disabled = options.is_empty();
+        Component::SelectMenu(SelectMenu {
+            channel_types: None,
+            custom_id: state.id(action),
+            default_values: None,
+            disabled,
+            id: None,
+            kind: SelectMenuType::Text,
+            max_values: Some(1),
+            min_values: Some(1),
+            options: Some(if disabled {
+                vec![option(empty, "none", None, false)]
+            } else {
+                options
+            }),
+            placeholder: Some(placeholder),
+            required: None,
         })
-        .collect();
-    let empty = options.is_empty();
-    let select = Component::SelectMenu(SelectMenu {
-        channel_types: None,
-        custom_id: state.id("s"),
-        default_values: None,
-        disabled: empty,
-        id: None,
-        kind: SelectMenuType::Text,
-        max_values: Some(1),
-        min_values: Some(1),
-        options: Some(if empty {
-            vec![SelectMenuOption {
-                default: false,
-                description: None,
-                emoji: None,
-                label: "Inventory empty".to_owned(),
-                value: "none".to_owned(),
-            }]
-        } else {
-            options
-        }),
-        placeholder: Some(if empty {
+    };
+    let inventory_menu = select(
+        "s",
+        options,
+        if inventory.is_empty() {
             "Your inventory is empty — buy furniture with /shop".to_owned()
-        } else {
+        } else if pages > 1 {
             format!("Choose furniture (page {}/{pages})", state.page + 1)
-        }),
-        required: None,
-    });
+        } else {
+            "Choose furniture".to_owned()
+        },
+        "Inventory empty",
+    );
+    let jump_placeholder = match (selected_item.is_some(), jump_options.is_empty()) {
+        (true, true) => "No free spot fits this".to_owned(),
+        (true, false) => format!("Go to a free spot ({} fit)", spots.len()),
+        (false, true) => "The room is empty".to_owned(),
+        (false, false) => "Go to something in the room".to_owned(),
+    };
+    let jump_menu = select("j", jump_options, jump_placeholder, "Nothing here");
     let button = |label: &str, action: &str, style: ButtonStyle, disabled: bool| {
         Component::Button(Button {
             custom_id: Some(state.id(action)),
@@ -931,43 +1224,42 @@ pub(crate) async fn editor(
         })
     };
     let row = |components: Vec<Component>| Component::ActionRow(ActionRow { id: None, components });
-    let mut components = vec![
-        row(vec![select]),
+    let holding = selected_item.is_some();
+    let mut modes: Vec<Component> = CursorMode::ALL
+        .into_iter()
+        .map(|mode| {
+            let style = if CursorMode::from_wall(wall) == mode {
+                ButtonStyle::Primary
+            } else {
+                ButtonStyle::Secondary
+            };
+            button(mode.label(), &format!("m{}", mode.code()), style, holding)
+        })
+        .collect();
+    modes.push(button("Next room", "n", ButtonStyle::Secondary, rooms.len() < 2));
+    let components = vec![
+        row(vec![inventory_menu]),
+        row(vec![jump_menu]),
         row(vec![
             button("↖", "ul", ButtonStyle::Secondary, false),
             button("↗", "ur", ButtonStyle::Secondary, false),
             button("↙", "dl", ButtonStyle::Secondary, false),
             button("↘", "dr", ButtonStyle::Secondary, false),
-            button("↻ Turn", "t", ButtonStyle::Secondary, selected_item.is_none()),
+            button("↻ Turn", "t", ButtonStyle::Secondary, !holding),
         ]),
         row(vec![
             button("Place", "p", ButtonStyle::Success, !fits),
-            button("Pick up", "k", ButtonStyle::Danger, hovered_id.is_none()),
+            button("Move", "v", ButtonStyle::Primary, holding || hovered_id.is_none()),
+            if holding {
+                button("Cancel", "c", ButtonStyle::Secondary, false)
+            } else {
+                button("Store", "k", ButtonStyle::Danger, hovered_id.is_none())
+            },
             button("Flip", "f", ButtonStyle::Secondary, hovered_id.is_none()),
-            button("Next room", "n", ButtonStyle::Secondary, rooms.len() < 2),
             button("Done", "x", ButtonStyle::Primary, false),
         ]),
+        row(modes),
     ];
-    // Item paging (when there is more than one page) and, for an empty hand, where the cursor sits.
-    let mut tools = Vec::new();
-    if pages > 1 {
-        tools.push(button("◀ Items", "q", ButtonStyle::Secondary, state.page == 0));
-        tools.push(button("Items ▶", "w", ButtonStyle::Secondary, state.page + 1 >= pages));
-    }
-    for mode in CursorMode::ALL {
-        let style = if CursorMode::from_wall(wall) == mode {
-            ButtonStyle::Primary
-        } else {
-            ButtonStyle::Secondary
-        };
-        tools.push(button(
-            mode.label(),
-            &format!("m{}", mode.code()),
-            style,
-            selected_item.is_some(),
-        ));
-    }
-    components.push(row(tools));
     Ok(Cx::card(embed, "room.png", png, components, true))
 }
 
@@ -1099,6 +1391,45 @@ mod tests {
         assert_eq!(step_cursor("dr", (3, levels), true, (6, levels)), (3, levels));
         assert_eq!(step_cursor("ur", (0, 1), true, (6, levels)), (0, 1), "at the corner");
         assert_eq!(step_cursor("dl", (6, 1), true, (6, levels)), (6, 1), "at the far end");
+    }
+
+    #[test]
+    fn a_picked_item_lands_on_the_nearest_free_spot() {
+        let content = Content::get();
+        let tier = house::tier(1);
+        let sofa = content
+            .items()
+            .find(|i| i.base.layer == Layer::Floor && i.base.footprint == [2, 1])
+            .map(|i| i.id())
+            .expect("content has a 2×1 floor item");
+        let blocker = PlacementRow {
+            id: 1,
+            room_idx: 0,
+            item_id: sofa.clone(),
+            x: 3,
+            y: 3,
+            flipped: false,
+        };
+        let mut state = EditState {
+            prefix: "he",
+            room: 0,
+            x: 3,
+            y: 3,
+            page: 0,
+            flipped: false,
+            mode: CursorMode::Floor,
+            item: Some(sofa.clone()),
+        };
+        let placements = [blocker];
+        // The cursor sits on the first sofa, so the second moves one tile away.
+        assert_eq!(settle(content, tier, &placements, &mut state), Settle::Moved);
+        assert_eq!((state.x + state.y).abs_diff(6), 1);
+        assert_eq!(settle(content, tier, &placements, &mut state), Settle::Stayed);
+        let spots = free_spots(content, tier, &placements, &state);
+        assert_eq!(spots.first(), Some(&(state.x, state.y)));
+        assert!(!spots.contains(&(3, 3)) && !spots.contains(&(2, 3)));
+        assert_eq!(spot_label(2, 3, None), "C4");
+        assert_eq!(spot_label(0, 1, Some(true)), "Left wall 1 · middle");
     }
 
     #[test]

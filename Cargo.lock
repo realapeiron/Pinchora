@@ -1944,6 +1944,7 @@ name = "pinchora-commands"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "axum",
  "chrono",
  "image",
  "metrics",
@@ -1955,9 +1956,11 @@ dependencies = [
  "pinchora-render",
  "rand 0.10.3",
  "reqwest",
+ "serde_json",
  "tokio",
  "tokio-util",
  "tracing",
+ "tracing-subscriber",
  "twilight-http",
  "twilight-interactions",
  "twilight-model",
@@ -2008,6 +2011,7 @@ dependencies = [
  "anyhow",
  "base64 0.23.1",
  "image",
+ "png",
  "resvg",
  "serde",
  "serde_json",

@@ -132,6 +132,9 @@ fn anchor(item: &SceneItem, sprite: &RgbaImage) -> (i32, i32) {
 fn bounds(scene: &RoomScene, sprites: &[RgbaImage]) -> (i32, i32, i32, i32) {
     let (w, d) = (scene.width as i32, scene.depth as i32);
     let mut b = (-32 * d - 2, 1 - WALL_H - 6, 32 * w + 2, 16 * (w + d) + SLAB + 2);
+    if scene.grid {
+        b = (b.0 - LABEL_GAP, b.1, b.2 + LABEL_GAP, b.3 + LABEL_GAP + 4 * GLYPH_PX);
+    }
     for (item, sprite) in scene.items.iter().zip(sprites) {
         if matches!(item.layer, SceneLayer::Floor | SceneLayer::Surface | SceneLayer::Figure) {
             let (left, top) = anchor(item, sprite);
@@ -275,6 +278,9 @@ pub fn render_room(scene: &RoomScene) -> RgbaImage {
     if let Some(c) = scene.cursor {
         draw_cursor(&mut cv, c);
     }
+    if scene.grid {
+        draw_labels(&mut cv, scene);
+    }
 
     let s = scene.scale.max(1);
     imageops::resize(&cv.img, cw * s, ch * s, imageops::FilterType::Nearest)
@@ -380,7 +386,7 @@ fn draw_grid(cv: &mut Canvas, scene: &RoomScene) {
     let (w, d) = (scene.width as i32, scene.depth as i32);
     each_footprint_pixel(0, 0, w, d, |lx, ly, a, b| {
         if a % 64 < 2 || b % 64 < 2 {
-            cv.blend(lx, ly, Rgba([255, 255, 255, 46]));
+            cv.blend(lx, ly, Rgba([255, 255, 255, 80]));
         }
     });
     for (side, len) in [(WallSide::Left, d), (WallSide::Right, w)] {
@@ -393,6 +399,91 @@ fn draw_grid(cv: &mut Canvas, scene: &RoomScene) {
                 }
             }
         }
+    }
+}
+
+/// Size of one font pixel in scene units, and how far labels sit outside the floor edge.
+const GLYPH_PX: i32 = 3;
+const LABEL_GAP: i32 = 14;
+
+/// 3×5 glyphs for the tile coordinates, one row per string, `#` for ink.
+fn glyph(c: char) -> Option<[&'static str; 5]> {
+    Some(match c {
+        '0' => ["###", "#.#", "#.#", "#.#", "###"],
+        '1' => [".#.", "##.", ".#.", ".#.", "###"],
+        '2' => ["##.", "..#", ".#.", "#..", "###"],
+        '3' => ["##.", "..#", ".#.", "..#", "##."],
+        '4' => ["#.#", "#.#", "###", "..#", "..#"],
+        '5' => ["###", "#..", "##.", "..#", "##."],
+        '6' => [".##", "#..", "###", "#.#", "###"],
+        '7' => ["###", "..#", ".#.", ".#.", ".#."],
+        '8' => ["###", "#.#", "###", "#.#", "###"],
+        '9' => ["###", "#.#", "###", "..#", "##."],
+        'A' => [".#.", "#.#", "###", "#.#", "#.#"],
+        'B' => ["##.", "#.#", "##.", "#.#", "##."],
+        'C' => [".##", "#..", "#..", "#..", ".##"],
+        'D' => ["##.", "#.#", "#.#", "#.#", "##."],
+        'E' => ["###", "#..", "##.", "#..", "###"],
+        'F' => ["###", "#..", "##.", "#..", "#.."],
+        'G' => [".##", "#..", "#.#", "#.#", ".##"],
+        'H' => ["#.#", "#.#", "###", "#.#", "#.#"],
+        'I' => ["###", ".#.", ".#.", ".#.", "###"],
+        'J' => ["..#", "..#", "..#", "#.#", ".#."],
+        'K' => ["#.#", "#.#", "##.", "#.#", "#.#"],
+        'L' => ["#..", "#..", "#..", "#..", "###"],
+        'M' => ["#.#", "###", "###", "#.#", "#.#"],
+        'N' => ["##.", "#.#", "#.#", "#.#", "#.#"],
+        _ => return None,
+    })
+}
+
+/// Column letter of a floor tile's x: A, B, C…
+pub fn column_letter(x: u32) -> char {
+    char::from(b'A' + (x % 26) as u8)
+}
+
+/// White text with a dark outline, centred on (`cx`, `cy`).
+fn draw_text(cv: &mut Canvas, text: &str, cx: i32, cy: i32) {
+    let chars: Vec<[&str; 5]> = text.chars().filter_map(glyph).collect();
+    let width = chars.len() as i32 * 4 - 1;
+    let (left, top) = (cx - width * GLYPH_PX / 2, cy - 5 * GLYPH_PX / 2);
+    let ink = |gx: i32, gy: i32| {
+        let (i, col) = (gx.div_euclid(4), gx.rem_euclid(4));
+        col < 3
+            && (0..5).contains(&gy)
+            && gx >= 0
+            && chars
+                .get(i as usize)
+                .is_some_and(|g| g[gy as usize].as_bytes()[col as usize] == b'#')
+    };
+    for gy in -1..6 {
+        for gx in -1..=width {
+            let on = ink(gx, gy);
+            let edge = !on && (-1..=1).any(|dy| (-1..=1).any(|dx| ink(gx + dx, gy + dy)));
+            if on || edge {
+                let color = if on { Rgba([0xff, 0xff, 0xff, 255]) } else { OUTLINE };
+                for py in 0..GLYPH_PX {
+                    for px in 0..GLYPH_PX {
+                        cv.set(left + gx * GLYPH_PX + px, top + gy * GLYPH_PX + py, color);
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Tile coordinates under the two front edges: letters for x along the left edge, numbers
+/// for y along the right one, so a spot reads like a chess square ("C4").
+fn draw_labels(cv: &mut Canvas, scene: &RoomScene) {
+    let (w, d) = (scene.width as i32, scene.depth as i32);
+    let drop = SLAB + LABEL_GAP / 2 + 5 * GLYPH_PX / 2;
+    for x in 0..w {
+        let (mx, my) = (32 * (x - d) + 16, 16 * (x + d) + 8);
+        draw_text(cv, &column_letter(x as u32).to_string(), mx - LABEL_GAP / 2, my + drop);
+    }
+    for y in 0..d {
+        let (mx, my) = (32 * (w - y) - 16, 16 * (w + y) + 8);
+        draw_text(cv, &(y + 1).to_string(), mx + LABEL_GAP / 2, my + drop);
     }
 }
 

@@ -45,6 +45,7 @@ sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio",
 redis = { version = "1", default-features = false, features = ["tokio-comp", "connection-manager", "script"] }
 
 resvg = "0.49"
+png = "0.18"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "gif"] }
 reqwest = { version = "0.13", default-features = false, features = ["rustls"] }
 

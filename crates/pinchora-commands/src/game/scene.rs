@@ -253,10 +253,7 @@ pub fn render_view(sprites: &Sprites, view: &RoomView) -> anyhow::Result<Vec<u8>
         grid: view.edit,
         scale: 2,
     };
-    let img = render_room(&scene);
-    let mut png = IoCursor::new(Vec::new());
-    img.write_to(&mut png, image::ImageFormat::Png)?;
-    Ok(png.into_inner())
+    pinchora_render::encode_png(&render_room(&scene))
 }
 
 /// A sprite scaled up by a whole `factor` with nearest-neighbour, as PNG with its new size.

@@ -3,6 +3,7 @@
 mod avatar;
 mod cards;
 pub mod character;
+mod encode;
 pub mod room;
 pub mod sprites;
 mod svg;
@@ -17,6 +18,7 @@ pub use cards::{
     CharacterCard, GridSlot, ItemGridCard, LeaderboardCard, LeaderboardEntry, LevelUpCard, PetCard, ProfileCard,
     RankCard, SpriteArt, WalletCard, WelcomeCard,
 };
+pub use encode::encode_png;
 pub use svg::{compact, thousands};
 pub use theme::Theme;
 
