@@ -7222,3 +7222,684 @@ async fn reputation_roles_are_given_when_a_point_lands() {
     );
     let _ = gone;
 }
+
+// /Pets
+
+fn pet_command(sub: &str) -> Value {
+    json!([{ "name": sub, "type": 1 }])
+}
+
+/// `/pet trip go destination [pet]`.
+fn trip_go(destination: &str, pet: Option<&str>) -> Value {
+    let mut options = vec![json!({ "name": "destination", "type": 3, "value": destination })];
+    if let Some(pet) = pet {
+        options.push(json!({ "name": "pet", "type": 3, "value": pet }));
+    }
+    json!([{ "name": "trip", "type": 2, "options": [{ "name": "go", "type": 1, "options": options }] }])
+}
+
+/// `/pet trip claim`.
+fn trip_claim() -> Value {
+    json!([{ "name": "trip", "type": 2, "options": [{ "name": "claim", "type": 1 }] }])
+}
+
+async fn pet_row(db: &Db, user: u64, id: i64) -> pinchora_db::PetRow {
+    db.pets(user)
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|p| p.id == id)
+        .expect("the pet")
+}
+
+fn assert_png(reply: &Reply, width: u32, height: u32) {
+    let (name, bytes) = reply.files.first().expect("a picture");
+    let image = image::load_from_memory(bytes).unwrap_or_else(|e| panic!("{name} is not a png: {e}"));
+    assert_eq!((image.width(), image.height()), (width, height), "{name}");
+}
+
+/// Care costs XP-free needs; a ready pet with every need at `v`.
+fn fresh_needs(v: i16) -> [i16; 4] {
+    [v, v, v, v]
+}
+
+#[tokio::test]
+async fn pets_level_up_and_the_top_level_stops_earning() {
+    let Some(mut sim) = Sim::new("pets_level_up_and_the_top_level_stops_earning").await else {
+        return;
+    };
+    let (user, db, app) = (unique(), sim.app.db.clone(), sim.app.clone());
+    let pet = db.adopt(user, "crumbclaw_crab", "Pip").await.unwrap();
+
+    // A new pet: level 1, care buttons ready, the second row has a trip and the nursery.
+    let card = sim.command(user, "pet", pet_command("view")).await;
+    assert_png(&card, 860, 420);
+    assert!(!card.button("Play").disabled && !card.button("Bath").disabled);
+    card.button("Trip");
+    card.button("Nursery");
+    assert!(
+        card.controls()
+            .all(|c| !matches!(c, Component::Button(b) if b.label.as_deref() == Some("Make active"))),
+        "the active pet needs no Make active"
+    );
+
+    // Level 3 → 4 on a Play, which opens the next trip.
+    db.save_pet(user, pet.id, fresh_needs(80), 3, 178, app.now())
+        .await
+        .unwrap();
+    let played = sim.click(user, &card, "Play").await;
+    assert!(played.description().contains("+15 XP"), "{}", played.description());
+    assert!(
+        played.description().contains("Pip reached level 4!"),
+        "{}",
+        played.description()
+    );
+    assert!(
+        played.description().contains("New trip unlocked: **Driftwood Cove**"),
+        "{}",
+        played.description()
+    );
+    assert_png(&played, 860, 420);
+    let row = pet_row(&db, user, pet.id).await;
+    assert_eq!((row.level, row.xp), (4, 13), "178 + 15 - 180 carried into level 4");
+    // A new player is told about their first badge under the reply.
+    assert_eq!(played.followups.len(), 1);
+    assert_eq!(played.followups[0].title(), "Badge unlocked: Pawshake");
+
+    // Walks find more at a higher level: level 20 pays 25 to 70 shells.
+    db.save_pet(user, pet.id, fresh_needs(80), 20, 0, app.now())
+        .await
+        .unwrap();
+    let before = db.user(user).await.unwrap().credits;
+    let walked = sim.click(user, &played, "Walk").await;
+    let after = db.user(user).await.unwrap().credits;
+    assert!((25..=70).contains(&(after - before)), "found {}", after - before);
+    assert!(
+        walked
+            .description()
+            .contains(&format!("Found **{}** shells", after - before)),
+        "{}",
+        walked.description()
+    );
+
+    // Level 29 with the next level five XP away; a bath is worth ten.
+    db.save_pet(user, pet.id, fresh_needs(40), 29, 1_215, app.now())
+        .await
+        .unwrap();
+    let bathed = sim.click(user, &walked, "Bath").await;
+    assert!(
+        bathed.description().contains("Pip reached level 30!"),
+        "{}",
+        bathed.description()
+    );
+    let row = pet_row(&db, user, pet.id).await;
+    assert_eq!((row.level, row.xp), (30, 0), "the top level holds no XP");
+
+    // At the top there is nothing to earn: no XP line, no level-up, the bar stays full.
+    let fed = sim.click(user, &bathed, "Feed (20 shells)").await;
+    assert!(!fed.description().contains("XP"), "{}", fed.description());
+    assert!(!fed.description().contains("reached"), "{}", fed.description());
+    assert_png(&fed, 860, 420);
+    let row = pet_row(&db, user, pet.id).await;
+    assert_eq!((row.level, row.xp), (30, 0));
+
+    // An unknown action is an error, not a bath (it used to be one).
+    db.save_pet(user, pet.id, [60, 60, 60, 30], 30, 0, app.now())
+        .await
+        .unwrap();
+    let odd = sim.component(user, &format!("pc:rub:{}", pet.id), &[], &fed).await;
+    assert!(
+        odd.ephemeral && odd.content().contains("doesn't do anything"),
+        "{}",
+        odd.content()
+    );
+    let none = sim.component(user, "pc", &[], &fed).await;
+    assert!(none.content().contains("doesn't do anything"), "{}", none.content());
+    let row = pet_row(&db, user, pet.id).await;
+    assert_eq!(row.hygiene, 30, "nothing was washed");
+
+    // Somebody else's pet is not yours to look after.
+    let stranger = unique();
+    let theirs = sim.component(stranger, &format!("pc:play:{}", pet.id), &[], &fed).await;
+    assert!(theirs.content().contains("not your pet"), "{}", theirs.content());
+}
+
+#[tokio::test]
+async fn a_neglected_pet_falls_asleep_and_waking_it_is_free_once_a_day() {
+    let Some(mut sim) = Sim::new("a_neglected_pet_falls_asleep_and_waking_it_is_free_once_a_day").await else {
+        return;
+    };
+    let (user, db, app) = (unique(), sim.app.db.clone(), sim.app.clone());
+    let pet = db.adopt(user, "ribbonfin_guppy", "Bub").await.unwrap();
+
+    // Everything has run dry: a day later, it is asleep. Until then it only looks grumpy.
+    db.save_pet(user, pet.id, [0, 0, 100, 0], 5, 40, app.now())
+        .await
+        .unwrap();
+    app.shift_clock(chrono::Duration::hours(23));
+    let drowsy = sim.command(user, "pet", pet_command("view")).await;
+    assert!(!drowsy.button("Play").disabled, "23 hours is not a day yet");
+    assert!(
+        drowsy.controls().all(
+            |c| !matches!(c, Component::Button(b) if b.label.as_deref().is_some_and(|l| l.starts_with("Wake up")))
+        ),
+        "nothing to wake up yet"
+    );
+    app.shift_clock(chrono::Duration::hours(2));
+    let asleep = sim.command(user, "pet", pet_command("view")).await;
+    assert_png(&asleep, 860, 420);
+    assert!(asleep.description().contains("dozed off"), "{}", asleep.description());
+    for label in ["Play", "Walk", "Bath", "Feed (20 shells)"] {
+        assert!(asleep.button(label).disabled, "{label} is for a pet that is up");
+    }
+    assert!(asleep.button("Wake up (free today)").custom_id.is_some());
+    assert!(
+        asleep
+            .controls()
+            .all(|c| !matches!(c, Component::Button(b) if b.label.as_deref() == Some("Trip"))),
+        "a sleeper takes no trips"
+    );
+
+    // An old message's care button does nothing for a sleeper, and earns no XP.
+    let nudge = sim.component(user, &format!("pc:play:{}", pet.id), &[], &asleep).await;
+    assert!(
+        nudge.ephemeral && nudge.content().contains("fast asleep"),
+        "{}",
+        nudge.content()
+    );
+    let trip = sim.command(user, "pet", trip_go("tidepool_meadow", None)).await;
+    assert!(
+        trip.ephemeral && trip.content().contains("fast asleep"),
+        "{}",
+        trip.content()
+    );
+    let row = pet_row(&db, user, pet.id).await;
+    assert_eq!((row.level, row.xp), (5, 40));
+    // The nursery shows it asleep.
+    let nursery = sim.command(user, "pet", pet_command("list")).await;
+    assert!(nursery.description().contains("1 asleep"), "{}", nursery.description());
+    assert_png(&nursery, 1000, 600);
+
+    // The day's first wake-up is free. The pet is up, a bit hungry, and rested.
+    let woke = sim.click(user, &asleep, "Wake up (free today)").await;
+    assert!(woke.description().contains("free wake-up"), "{}", woke.description());
+    assert!(!woke.button("Play").disabled && !woke.button("Feed (20 shells)").disabled);
+    assert_png(&woke, 860, 420);
+    let row = pet_row(&db, user, pet.id).await;
+    assert_eq!((row.hunger, row.fun, row.energy, row.hygiene), (50, 50, 100, 50));
+    assert_eq!(db.user(user).await.unwrap().credits, 0, "free means free");
+    // Waking it a second time from the same old message does nothing.
+    let again = sim.component(user, &format!("pc:wake:{}", pet.id), &[], &asleep).await;
+    assert!(again.content().contains("already awake"), "{}", again.content());
+
+    // It dozes off again the same day: a second wake-up costs 75 shells, which the player lacks.
+    db.save_pet(
+        user,
+        pet.id,
+        [0, 0, 100, 0],
+        5,
+        40,
+        app.now() - chrono::Duration::hours(30),
+    )
+    .await
+    .unwrap();
+    let again_asleep = sim.command(user, "pet", pet_command("view")).await;
+    let fee = again_asleep.button("Wake up (75 shells)").clone();
+    assert!(fee.custom_id.is_some());
+    let broke = sim.click(user, &again_asleep, "Wake up (75 shells)").await;
+    assert!(
+        broke.ephemeral && broke.content().contains("free wake-up for today is used"),
+        "{}",
+        broke.content()
+    );
+    assert!(
+        broke.content().contains("can sleep as long as it likes"),
+        "never permanent trouble"
+    );
+    db.earn_shells(user, 100, "test").await.unwrap();
+    let paid = sim.click(user, &again_asleep, "Wake up (75 shells)").await;
+    assert!(
+        paid.description().contains("cost 75 shells (25 left)"),
+        "{}",
+        paid.description()
+    );
+    assert_eq!(db.user(user).await.unwrap().credits, 25);
+    assert!(!paid.button("Play").disabled);
+
+    // Tomorrow the free wake-up is back.
+    db.save_pet(
+        user,
+        pet.id,
+        [0, 0, 100, 0],
+        5,
+        40,
+        app.now() - chrono::Duration::hours(30),
+    )
+    .await
+    .unwrap();
+    app.shift_clock(chrono::Duration::hours(24));
+    let next_day = sim.command(user, "pet", pet_command("view")).await;
+    let free = sim.click(user, &next_day, "Wake up (free today)").await;
+    assert!(free.description().contains("free wake-up"), "{}", free.description());
+    assert_eq!(db.user(user).await.unwrap().credits, 25);
+}
+
+#[tokio::test]
+async fn a_pet_goes_on_a_trip_and_its_souvenir_is_claimed_once() {
+    let Some(mut sim) = Sim::new("a_pet_goes_on_a_trip_and_its_souvenir_is_claimed_once").await else {
+        return;
+    };
+    let (user, db, app) = (unique(), sim.app.db.clone(), sim.app.clone());
+    let pet = db.adopt(user, "crumbclaw_crab", "Pip").await.unwrap();
+    let second = db.adopt(user, "ribbonfin_guppy", "Bub").await.unwrap();
+
+    // A new player's first care click seeds the badge notices (their first badge is announced).
+    let card = sim.command(user, "pet", pet_command("view")).await;
+    let cared = sim.click(user, &card, "Play").await;
+    assert_eq!(cared.followups.len(), 1);
+
+    // Places open with the pet's level.
+    let locked = sim.command(user, "pet", trip_go("driftwood_cove", None)).await;
+    assert!(locked.ephemeral, "a refusal is private");
+    assert!(
+        locked
+            .content()
+            .contains("**Driftwood Cove** opens when Pip reaches level 4"),
+        "{}",
+        locked.content()
+    );
+    let nobody = sim
+        .command(user, "pet", trip_go("tidepool_meadow", Some("Nobody")))
+        .await;
+    assert!(
+        nobody.content().contains("None of your pets is called **Nobody**"),
+        "{}",
+        nobody.content()
+    );
+
+    // The Trip button lists the places and offers a menu; the locked ones say what they need.
+    let picker = sim.click(user, &cared, "Trip").await;
+    assert!(picker.title().contains("Where should Pip go?"), "{}", picker.title());
+    assert!(
+        picker.description().contains("Tidepool Meadow"),
+        "{}",
+        picker.description()
+    );
+    assert!(
+        picker.description().contains("🔒 **Kelp Forest Library**"),
+        "{}",
+        picker.description()
+    );
+    assert_eq!(picker.options("py:s:").len(), 8);
+    assert_png(&picker, 860, 420);
+    let stay = sim.click(user, &picker, "Stay home").await;
+    stay.button("Trip");
+
+    // Off to the first meadow, by the menu.
+    let gone = sim.pick(user, &picker, "py:s:", "tidepool_meadow").await;
+    assert!(
+        gone.description()
+            .contains("sets off for **Tidepool Meadow**. Back in 1 h."),
+        "{}",
+        gone.description()
+    );
+    assert_png(&gone, 860, 420);
+    for label in ["Play", "Walk", "Bath", "Feed (20 shells)", "Back in 1 h"] {
+        assert!(gone.button(label).disabled, "{label}");
+    }
+    let row = pet_row(&db, user, pet.id).await;
+    assert_eq!(row.trip_dest.as_deref(), Some("tidepool_meadow"));
+
+    // While it is away it cannot be looked after, sent again, or claimed.
+    let care = sim.component(user, &format!("pc:walk:{}", pet.id), &[], &gone).await;
+    assert!(
+        care.ephemeral && care.content().contains("is away at Tidepool Meadow"),
+        "{}",
+        care.content()
+    );
+    let twice = sim.command(user, "pet", trip_go("tidepool_meadow", Some("pip"))).await;
+    assert!(
+        twice.content().contains("already away at **Tidepool Meadow**"),
+        "{}",
+        twice.content()
+    );
+    let early = sim.command(user, "pet", trip_claim()).await;
+    assert!(
+        early.ephemeral && early.content().contains("**Pip** is at Tidepool Meadow, back in 1 h"),
+        "{}",
+        early.content()
+    );
+    let impatient = sim.component(user, &format!("py:cl:{}", pet.id), &[], &gone).await;
+    assert!(
+        impatient.ephemeral && impatient.content().contains("still at Tidepool Meadow"),
+        "{}",
+        impatient.content()
+    );
+
+    // Its needs wait for it. The other pet can go too, and the nursery shows who is away.
+    let bub = sim.command(user, "pet", trip_go("tidepool_meadow", Some("bub"))).await;
+    assert!(
+        bub.description().contains("**Bub** packs a tiny bag"),
+        "{}",
+        bub.description()
+    );
+    let nursery = sim.command(user, "pet", pet_command("list")).await;
+    assert!(nursery.description().contains("2 away"), "{}", nursery.description());
+    assert_png(&nursery, 1000, 600);
+
+    // An hour on, both are back and the souvenirs wait. Care works again; a new trip waits for the claim.
+    app.shift_clock(chrono::Duration::minutes(61));
+    let back = sim.command(user, "pet", pet_command("view")).await;
+    assert!(
+        back.description()
+            .contains("is back from **Tidepool Meadow** with a souvenir"),
+        "{}",
+        back.description()
+    );
+    assert_png(&back, 860, 420);
+    assert!(!back.button("Play").disabled);
+    back.button("Claim souvenir");
+    let busy = sim.command(user, "pet", trip_go("tidepool_meadow", Some("Pip"))).await;
+    assert!(busy.content().contains("Claim it first"), "{}", busy.content());
+
+    // Claim: shells, XP and a story, once. The badge for 10,000 shells follows.
+    db.earn_shells(user, 9_980, "test").await.unwrap();
+    let before = db.user(user).await.unwrap().credits;
+    let claimed = sim.click(user, &back, "Claim souvenir").await;
+    let after = db.user(user).await.unwrap().credits;
+    assert!((25..=45).contains(&(after - before)), "found {}", after - before);
+    assert!(
+        claimed
+            .description()
+            .contains("**Pip** is back from **Tidepool Meadow**!"),
+        "{}",
+        claimed.description()
+    );
+    assert!(
+        claimed
+            .description()
+            .contains(&format!("**+{}** shells", after - before)),
+        "{}",
+        claimed.description()
+    );
+    assert!(
+        claimed.description().contains("**+25** XP"),
+        "{}",
+        claimed.description()
+    );
+    assert_png(&claimed, 860, 420);
+    claimed.button("Trip");
+    let row = pet_row(&db, user, pet.id).await;
+    assert_eq!(
+        (row.trip_dest.clone(), row.level, row.xp),
+        (None, 1, 15 + 25),
+        "the care XP and the trip's"
+    );
+    assert_eq!(claimed.followups.len(), 1);
+    assert_eq!(claimed.followups[0].title(), "Badge unlocked: Pocket Rattle");
+
+    // Claiming again, from the old message or the command, pays nothing.
+    let stale = sim.click(user, &back, "Claim souvenir").await;
+    assert!(
+        stale.description().contains("no souvenir waiting"),
+        "{}",
+        stale.description()
+    );
+    assert_eq!(db.user(user).await.unwrap().credits, after);
+    // The command collects the one left (Bub's) with a card of its own.
+    let last = sim.command(user, "pet", trip_claim()).await;
+    assert!(
+        last.description().contains("**Bub** is back from **Tidepool Meadow**!"),
+        "{}",
+        last.description()
+    );
+    assert_png(&last, 860, 420);
+    let none = sim.command(user, "pet", trip_claim()).await;
+    assert!(
+        none.ephemeral && none.content().contains("None of your pets is on a trip"),
+        "{}",
+        none.content()
+    );
+    let row = pet_row(&db, user, second.id).await;
+    assert_eq!((row.trip_dest, row.xp), (None, 25));
+}
+
+#[tokio::test]
+async fn a_high_level_trip_can_bring_home_furniture_and_several_pets_claim_together() {
+    let Some(mut sim) = Sim::new("a_high_level_trip_can_bring_home_furniture_and_several_pets_claim_together").await
+    else {
+        return;
+    };
+    let (user, db, app) = (unique(), sim.app.db.clone(), sim.app.clone());
+    let content = Content::get();
+    let (pip, bub) = (
+        db.adopt(user, "crumbclaw_crab", "Pip").await.unwrap(),
+        db.adopt(user, "ribbonfin_guppy", "Bub").await.unwrap(),
+    );
+    for pet in [&pip, &bub] {
+        db.save_pet(user, pet.id, fresh_needs(100), 30, 0, app.now())
+            .await
+            .unwrap();
+    }
+
+    // Level 30 brings the most: 320 to 520 shells at level 1, up to 1.87 times that.
+    let sent = sim.command(user, "pet", trip_go("starfall_sandbar", Some("Pip"))).await;
+    assert!(sent.description().contains("Back in 8 h"), "{}", sent.description());
+    let ready = sim.command(user, "pet", trip_go("starfall_sandbar", Some("Bub"))).await;
+    assert!(
+        ready.description().contains("sets off for **Starfall Sandbar**"),
+        "{}",
+        ready.description()
+    );
+    app.shift_clock(chrono::Duration::hours(7));
+    let early = sim.command(user, "pet", trip_claim()).await;
+    assert!(early.content().contains("back in 1 h"), "{}", early.content());
+    app.shift_clock(chrono::Duration::hours(1) + chrono::Duration::minutes(1));
+
+    let before = db.user(user).await.unwrap().credits;
+    let both = sim.command(user, "pet", trip_claim()).await;
+    assert_eq!(both.title(), "2 pets are home");
+    assert!(
+        both.field("Pip the Crumbclaw Crab")
+            .contains("is back from **Starfall Sandbar**")
+    );
+    assert!(
+        both.field("Bub the Ribbonfin Guppy")
+            .contains("is back from **Starfall Sandbar**")
+    );
+    let gained = db.user(user).await.unwrap().credits - before;
+    // Two pets, each between 320 * 1.87 and 520 * 1.87 shells.
+    assert!((2 * 598..=2 * 972).contains(&gained), "gained {gained}");
+    for pet in [&pip, &bub] {
+        let row = pet_row(&db, user, pet.id).await;
+        assert_eq!(
+            (row.level, row.xp, row.trip_dest),
+            (30, 0, None),
+            "the top level stays at the top"
+        );
+    }
+
+    // Keep sending Pip until a trip brings a piece of furniture (about one in two at level 30).
+    let mut found = None;
+    for _ in 0..40 {
+        sim.command(user, "pet", trip_go("starfall_sandbar", Some("Pip"))).await;
+        app.shift_clock(chrono::Duration::hours(9));
+        let claim = sim.command(user, "pet", trip_claim()).await;
+        let line = claim
+            .description()
+            .lines()
+            .find(|l| l.starts_with("It also found a **"))
+            .map(str::to_owned);
+        if line.is_some() {
+            found = line;
+            break;
+        }
+    }
+    let line = found.expect("a trip with a find in 40 tries");
+    assert!(line.ends_with("now in your `/inventory`."), "{line}");
+    let inventory = db.inventory(user).await.unwrap();
+    assert!(!inventory.is_empty(), "the find is in the inventory");
+    let item = content.item(&inventory[0].item_id).expect("a real item");
+    assert!(line.contains(&item.name()), "{line} vs {}", item.name());
+    assert_eq!(
+        item.base.availability,
+        pinchora_game::Availability::Reward,
+        "never what the shop sells"
+    );
+}
+
+#[tokio::test]
+async fn the_nursery_is_a_paged_grid_that_opens_one_pet() {
+    let Some(mut sim) = Sim::new("the_nursery_is_a_paged_grid_that_opens_one_pet").await else {
+        return;
+    };
+    let (user, stranger, db, app) = (unique(), unique(), sim.app.db.clone(), sim.app.clone());
+    let content = Content::get();
+
+    let nobody = sim.command(stranger, "pet", pet_command("list")).await;
+    assert!(
+        nobody.ephemeral && nobody.content().contains("No pets yet"),
+        "{}",
+        nobody.content()
+    );
+
+    // Ten pets: a few levels, one asleep, one away, one back with a souvenir, one at the top.
+    let names = [
+        "Pip", "Bub", "Moss", "Dot", "Fennel", "Sorrel", "Tansy", "Wisp", "Nib", "Orla",
+    ];
+    let mut pets = Vec::new();
+    for (n, name) in names.iter().enumerate() {
+        pets.push(db.adopt(user, &content.pets[n * 3].id, name).await.unwrap());
+    }
+    let now = app.now();
+    let hour = chrono::Duration::hours(1);
+    db.save_pet(user, pets[1].id, [30, 20, 60, 90], 7, 150, now)
+        .await
+        .unwrap();
+    db.save_pet(
+        user,
+        pets[2].id,
+        [0, 0, 100, 0],
+        12,
+        300,
+        now - chrono::Duration::hours(40),
+    )
+    .await
+    .unwrap();
+    db.start_trip(user, pets[3].id, "kelp_forest_library", fresh_needs(70), now + hour * 3)
+        .await
+        .unwrap();
+    db.start_trip(user, pets[4].id, "tidepool_meadow", fresh_needs(70), now - hour)
+        .await
+        .unwrap();
+    db.save_pet(user, pets[5].id, [100, 95, 90, 100], 30, 0, now)
+        .await
+        .unwrap();
+    db.save_pet(user, pets[6].id, [10, 5, 2, 8], 2, 99, now).await.unwrap();
+    db.save_pet(user, pets[9].id, [80, 70, 60, 50], 18, 600, now)
+        .await
+        .unwrap();
+
+    let page1 = sim.command(user, "pet", pet_command("list")).await;
+    assert!(page1.ephemeral, "the nursery is private");
+    assert_png(&page1, 1000, 600);
+    assert_eq!(page1.options("pn:o:").len(), 8, "eight to a page");
+    assert!(page1.description().contains("**10** pets"), "{}", page1.description());
+    assert!(
+        page1.description().contains("1 away") && page1.description().contains("1 asleep"),
+        "{}",
+        page1.description()
+    );
+    assert!(
+        page1.description().contains("1 back with a souvenir"),
+        "{}",
+        page1.description()
+    );
+    assert!(page1.button("◀ Page").disabled && !page1.button("Page ▶").disabled);
+    assert!(page1.button("1/2").disabled);
+    assert!(
+        page1.options("pn:o:")[0].default && page1.options("pn:o:")[0].label == "Pip",
+        "the active pet comes first"
+    );
+    let moss = page1.options("pn:o:").iter().find(|o| o.label == "Moss").unwrap();
+    assert!(
+        moss.description.as_deref().unwrap().contains("Lv 12")
+            && moss.description.as_deref().unwrap().contains("asleep")
+    );
+
+    let page2 = sim.click(user, &page1, "Page ▶").await;
+    assert_png(&page2, 1000, 600);
+    assert_eq!(page2.options("pn:o:").len(), 2);
+    assert!(!page2.button("◀ Page").disabled && page2.button("Page ▶").disabled);
+    assert_eq!(page2.options("pn:o:")[0].label, "Nib");
+    let back = sim.click(user, &page2, "◀ Page").await;
+    assert_eq!(back.options("pn:o:").len(), 8);
+
+    // Open a pet from the second page: its card, with Make active and a way back to that page.
+    let nib = &pets[8];
+    let card = sim.pick(user, &page2, "pn:o:", &nib.id.to_string()).await;
+    assert_eq!(
+        card.title(),
+        "Nib the ".to_owned() + &content.pet(&nib.species).unwrap().name
+    );
+    assert_png(&card, 860, 420);
+    let active = sim.click(user, &card, "Make active").await;
+    assert!(
+        active.description().contains("Active pet changed"),
+        "{}",
+        active.description()
+    );
+    assert_eq!(db.active_pet(user).await.unwrap().unwrap().id, nib.id);
+    assert!(
+        active
+            .controls()
+            .all(|c| !matches!(c, Component::Button(b) if b.label.as_deref() == Some("Make active"))),
+        "it is the active one now"
+    );
+    let home = sim.click(user, &active, "Nursery").await;
+    // The active pet leads the first page now.
+    assert_eq!(home.options("pn:o:").len(), 8);
+    assert!(home.options("pn:o:")[0].default && home.options("pn:o:")[0].label == "Nib");
+    assert_png(&home, 1000, 600);
+
+    // The cards of the away, sleeping and returned pets.
+    let away = sim.pick(user, &page1, "pn:o:", &pets[3].id.to_string()).await;
+    assert!(
+        away.description()
+            .contains("is away at **Kelp Forest Library**, back in 3 h"),
+        "{}",
+        away.description()
+    );
+    assert_png(&away, 860, 420);
+    let asleep = sim.pick(user, &page1, "pn:o:", &pets[2].id.to_string()).await;
+    assert!(asleep.description().contains("dozed off"), "{}", asleep.description());
+    assert_png(&asleep, 860, 420);
+    let returned = sim.pick(user, &page1, "pn:o:", &pets[4].id.to_string()).await;
+    returned.button("Claim souvenir");
+    let top = sim.pick(user, &page1, "pn:o:", &pets[5].id.to_string()).await;
+    assert_png(&top, 860, 420);
+
+    // Another player's menu pick of your pet is refused.
+    let theirs = sim
+        .component(stranger, "pn:o:0", &[&pets[0].id.to_string()], &page1)
+        .await;
+    assert!(
+        theirs.ephemeral && theirs.content().contains("isn't yours"),
+        "{}",
+        theirs.content()
+    );
+    let sneaky = sim
+        .component(stranger, &format!("pn:a:{}", pets[0].id), &[], &page1)
+        .await;
+    assert!(sneaky.content().contains("isn't yours"), "{}", sneaky.content());
+    assert_eq!(db.active_pet(user).await.unwrap().unwrap().id, nib.id);
+    // Another player's Nursery click on your public card does not swap it for their own nursery.
+    db.adopt(stranger, &content.pets[1].id, "Rex").await.unwrap();
+    let public = sim.command(user, "pet", pet_command("view")).await;
+    let swap = sim.component(stranger, &format!("pn:f:{}", nib.id), &[], &public).await;
+    assert!(
+        swap.ephemeral && swap.content().contains("isn't yours"),
+        "{}",
+        swap.content()
+    );
+}

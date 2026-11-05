@@ -9,5 +9,6 @@ pub mod market;
 pub mod pets;
 pub mod play;
 pub mod quests;
+pub mod trips;
 
 pub use content::*;

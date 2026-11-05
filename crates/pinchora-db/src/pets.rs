@@ -16,12 +16,60 @@ pub struct PetRow {
     pub hygiene: i16,
     pub needs_at: DateTime<Utc>,
     pub active: bool,
+    /// The field trip it is on or just came back from and has not been claimed (an id from
+    /// `content/pet_trips.json`), and when it is back.
+    pub trip_dest: Option<String>,
+    pub trip_ends_at: Option<DateTime<Utc>>,
+}
+
+impl PetRow {
+    /// Out on a trip that is not over yet: not at home, so not in the house and not to be cared for.
+    pub fn is_away(&self, now: DateTime<Utc>) -> bool {
+        self.trip_ends_at.is_some_and(|ends| ends > now)
+    }
+
+    /// Back from a trip whose souvenir nobody claimed yet.
+    pub fn has_souvenir(&self, now: DateTime<Utc>) -> bool {
+        self.trip_dest.is_some() && !self.is_away(now)
+    }
 }
 
 macro_rules! pet_columns {
     () => {
-        "id, owner_id, species, name, level, xp, hunger, fun, energy, hygiene, needs_at, active"
+        "id, owner_id, species, name, level, xp, hunger, fun, energy, hygiene, needs_at, active, trip_dest, trip_ends_at"
     };
+}
+
+/// What a claimed trip pays, worked out from the pet as the claim finds it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TripPayout {
+    pub shells: i64,
+    /// A catalog item id for the player's inventory.
+    pub item: Option<String>,
+    /// The pet's level and XP after the trip's XP.
+    pub level: i32,
+    pub xp: i32,
+}
+
+#[derive(Debug, Clone)]
+pub enum TripClaim {
+    /// Paid. `pet` is the pet as it was before the claim; `balance` is the player's shells now.
+    Claimed { pet: PetRow, balance: i64 },
+    /// The pet is still out there until `ends_at`.
+    Away { trip: String, ends_at: DateTime<Utc> },
+    /// No trip waits: the pet never went, or it was claimed already.
+    Nothing,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Wake {
+    /// Awake. `free` when the day's free wake-up paid for it, otherwise `balance` is what the
+    /// fee left.
+    Woke { free: bool, balance: i64 },
+    /// The pet changed since it was read (somebody woke it already): nothing was charged.
+    Stale,
+    /// Not enough shells for the fee, and the free wake-up is used.
+    Poor { balance: i64 },
 }
 
 impl Db {
@@ -102,11 +150,19 @@ impl Db {
         Ok(true)
     }
 
-    /// Stores needs as of now, plus new XP and level.
+    /// Stores needs as of `at`, plus new XP and level.
     #[allow(clippy::too_many_arguments)]
-    pub async fn save_pet(&self, owner: u64, pet_id: i64, needs: [i16; 4], level: i32, xp: i32) -> anyhow::Result<()> {
+    pub async fn save_pet(
+        &self,
+        owner: u64,
+        pet_id: i64,
+        needs: [i16; 4],
+        level: i32,
+        xp: i32,
+        at: DateTime<Utc>,
+    ) -> anyhow::Result<()> {
         sqlx::query(
-            "UPDATE pets SET hunger = $3, fun = $4, energy = $5, hygiene = $6, level = $7, xp = $8, needs_at = now()
+            "UPDATE pets SET hunger = $3, fun = $4, energy = $5, hygiene = $6, level = $7, xp = $8, needs_at = $9
              WHERE id = $1 AND owner_id = $2",
         )
         .bind(pet_id)
@@ -117,6 +173,7 @@ impl Db {
         .bind(needs[3])
         .bind(level)
         .bind(xp)
+        .bind(at)
         .execute(self.pool())
         .await?;
         Ok(())
@@ -131,6 +188,175 @@ impl Db {
             .await?
             .rows_affected();
         Ok(n == 1)
+    }
+
+    /// Sends a pet on a trip that ends at `ends_at`, with its needs frozen as `needs` until
+    /// then. False when the pet is not the player's or is already out or waiting to be claimed.
+    pub async fn start_trip(
+        &self,
+        owner: u64,
+        pet_id: i64,
+        trip: &str,
+        needs: [i16; 4],
+        ends_at: DateTime<Utc>,
+    ) -> anyhow::Result<bool> {
+        let n = sqlx::query(
+            "UPDATE pets SET trip_dest = $3, trip_ends_at = $4, needs_at = $4,
+                    hunger = $5, fun = $6, energy = $7, hygiene = $8
+             WHERE id = $1 AND owner_id = $2 AND trip_dest IS NULL",
+        )
+        .bind(pet_id)
+        .bind(sql_id(owner))
+        .bind(trip)
+        .bind(ends_at)
+        .bind(needs[0])
+        .bind(needs[1])
+        .bind(needs[2])
+        .bind(needs[3])
+        .execute(self.pool())
+        .await?
+        .rows_affected();
+        Ok(n == 1)
+    }
+
+    /// Pays the souvenir of a finished trip: shells, an item, the pet's XP. The pet is locked
+    /// while `payout` works out the haul from it, and the trip is cleared in the same
+    /// transaction as the payment, so a repeated claim finds [`TripClaim::Nothing`].
+    pub async fn claim_trip<F>(
+        &self,
+        owner: u64,
+        pet_id: i64,
+        now: DateTime<Utc>,
+        payout: F,
+    ) -> anyhow::Result<TripClaim>
+    where
+        F: FnOnce(&PetRow, &str) -> TripPayout,
+    {
+        let id = sql_id(owner);
+        let mut tx = self.pool().begin().await?;
+        let pet = sqlx::query_as::<_, PetRow>(concat!(
+            "SELECT ",
+            pet_columns!(),
+            " FROM pets WHERE id = $1 AND owner_id = $2 FOR UPDATE"
+        ))
+        .bind(pet_id)
+        .bind(id)
+        .fetch_optional(&mut *tx)
+        .await?;
+        let Some(pet) = pet else {
+            return Ok(TripClaim::Nothing);
+        };
+        let (Some(trip), Some(ends_at)) = (pet.trip_dest.clone(), pet.trip_ends_at) else {
+            return Ok(TripClaim::Nothing);
+        };
+        if ends_at > now {
+            return Ok(TripClaim::Away { trip, ends_at });
+        }
+        let paid = payout(&pet, &trip);
+        sqlx::query("UPDATE pets SET trip_dest = NULL, trip_ends_at = NULL, level = $2, xp = $3 WHERE id = $1")
+            .bind(pet_id)
+            .bind(paid.level)
+            .bind(paid.xp)
+            .execute(&mut *tx)
+            .await?;
+        let (balance,): (i64,) = sqlx::query_as(
+            "INSERT INTO users (id, credits) VALUES ($1, $2)
+             ON CONFLICT (id) DO UPDATE SET credits = users.credits + EXCLUDED.credits RETURNING credits",
+        )
+        .bind(id)
+        .bind(paid.shells)
+        .fetch_one(&mut *tx)
+        .await?;
+        crate::economy::ledger(&mut tx, id, paid.shells, "pet_trip").await?;
+        if let Some(item) = &paid.item {
+            crate::house::add_inventory(&mut tx, id, item, 1).await?;
+        }
+        tx.commit().await?;
+        Ok(TripClaim::Claimed { pet, balance })
+    }
+
+    /// Whether the player's free wake-up of the UTC day `day` (days since 1970) is still there.
+    pub async fn free_wake_ready(&self, user: u64, day: i32) -> anyhow::Result<bool> {
+        let row: Option<(Option<i32>,)> = sqlx::query_as("SELECT pet_wake_day FROM users WHERE id = $1")
+            .bind(sql_id(user))
+            .fetch_optional(self.pool())
+            .await?;
+        Ok(row.and_then(|(d,)| d).is_none_or(|d| d < day))
+    }
+
+    /// Wakes a sleeping pet: its needs become `needs` as of `at`. The player's free wake-up of
+    /// the day `day` pays for it, else `fee` shells. `seen_at` is the pet's `needs_at` as the
+    /// caller read it; a pet that changed since is left alone ([`Wake::Stale`]).
+    #[allow(clippy::too_many_arguments)]
+    pub async fn wake_pet(
+        &self,
+        owner: u64,
+        pet_id: i64,
+        seen_at: DateTime<Utc>,
+        needs: [i16; 4],
+        at: DateTime<Utc>,
+        day: i32,
+        fee: i64,
+    ) -> anyhow::Result<Wake> {
+        let id = sql_id(owner);
+        let mut tx = self.pool().begin().await?;
+        let current: Option<(DateTime<Utc>,)> =
+            sqlx::query_as("SELECT needs_at FROM pets WHERE id = $1 AND owner_id = $2 FOR UPDATE")
+                .bind(pet_id)
+                .bind(id)
+                .fetch_optional(&mut *tx)
+                .await?;
+        if current.is_none_or(|(t,)| t != seen_at) {
+            return Ok(Wake::Stale);
+        }
+        sqlx::query("INSERT INTO users (id) VALUES ($1) ON CONFLICT (id) DO NOTHING")
+            .bind(id)
+            .execute(&mut *tx)
+            .await?;
+        let free = sqlx::query(
+            "UPDATE users SET pet_wake_day = $2 WHERE id = $1 AND (pet_wake_day IS NULL OR pet_wake_day < $2)",
+        )
+        .bind(id)
+        .bind(day)
+        .execute(&mut *tx)
+        .await?
+        .rows_affected()
+            == 1;
+        let balance = if free {
+            let (credits,): (i64,) = sqlx::query_as("SELECT credits FROM users WHERE id = $1")
+                .bind(id)
+                .fetch_one(&mut *tx)
+                .await?;
+            credits
+        } else {
+            let paid: Option<(i64,)> = sqlx::query_as(
+                "UPDATE users SET credits = credits - $2 WHERE id = $1 AND credits >= $2 RETURNING credits",
+            )
+            .bind(id)
+            .bind(fee)
+            .fetch_optional(&mut *tx)
+            .await?;
+            let Some((credits,)) = paid else {
+                let (credits,): (i64,) = sqlx::query_as("SELECT credits FROM users WHERE id = $1")
+                    .bind(id)
+                    .fetch_one(&mut *tx)
+                    .await?;
+                return Ok(Wake::Poor { balance: credits });
+            };
+            crate::economy::ledger(&mut tx, id, -fee, "pet_wake").await?;
+            credits
+        };
+        sqlx::query("UPDATE pets SET hunger = $2, fun = $3, energy = $4, hygiene = $5, needs_at = $6 WHERE id = $1")
+            .bind(pet_id)
+            .bind(needs[0])
+            .bind(needs[1])
+            .bind(needs[2])
+            .bind(needs[3])
+            .bind(at)
+            .execute(&mut *tx)
+            .await?;
+        tx.commit().await?;
+        Ok(Wake::Woke { free, balance })
     }
 
     /// Takes shells for a purchase or fee; `None` when the player cannot afford it.

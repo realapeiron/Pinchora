@@ -1,0 +1,146 @@
+[
+  {
+    "id": "tidepool_meadow",
+    "name": "Tidepool Meadow",
+    "blurb": "Warm pools and very polite snails.",
+    "hours": 1,
+    "unlock_level": 1,
+    "shells": [25, 45],
+    "xp": 25,
+    "furniture_chance": 0.05,
+    "max_rarity": "uncommon",
+    "categories": ["plants", "outdoor", "pet_items"],
+    "stories": [
+      "{pet} counted the starfish, lost count, and was happy about it.",
+      "{pet} made friends with a snail and walked at snail speed all afternoon.",
+      "{pet} napped in a warm pool and came home smelling of seaweed.",
+      "{pet} chased one bubble all the way across the meadow."
+    ]
+  },
+  {
+    "id": "driftwood_cove",
+    "name": "Driftwood Cove",
+    "blurb": "Smooth sticks, slow boats and quiet benches.",
+    "hours": 1,
+    "unlock_level": 4,
+    "shells": [30, 55],
+    "xp": 30,
+    "furniture_chance": 0.06,
+    "max_rarity": "uncommon",
+    "categories": ["outdoor", "seating", "windows_doors"],
+    "stories": [
+      "{pet} dragged a very large stick home and will not explain.",
+      "{pet} sat on a driftwood bench and waved at every boat.",
+      "{pet} found a bottle with no message, which felt like a message.",
+      "{pet} learned that driftwood makes a surprisingly good drum."
+    ]
+  },
+  {
+    "id": "sandcastle_shallows",
+    "name": "Sandcastle Shallows",
+    "blurb": "Moats, turrets and one very brave wave.",
+    "hours": 1,
+    "unlock_level": 8,
+    "shells": [35, 65],
+    "xp": 35,
+    "furniture_chance": 0.07,
+    "max_rarity": "rare",
+    "categories": ["toys_games", "hobbies", "pet_items"],
+    "stories": [
+      "{pet} built a castle, welcomed one wave, and called it a draw.",
+      "{pet} patrolled the sandy moat with great ceremony.",
+      "{pet} buried a treasure and proudly forgot where.",
+      "{pet} was crowned king of the sandcastle for one whole minute."
+    ]
+  },
+  {
+    "id": "kelp_forest_library",
+    "name": "Kelp Forest Library",
+    "blurb": "Hushed shelves under a roof of kelp.",
+    "hours": 4,
+    "unlock_level": 10,
+    "shells": [110, 190],
+    "xp": 100,
+    "furniture_chance": 0.12,
+    "max_rarity": "rare",
+    "categories": ["storage", "hobbies", "wall_decor"],
+    "stories": [
+      "{pet} read the quiet shelves and nodded at all the good parts.",
+      "{pet} was gently shushed by a very kind octopus librarian.",
+      "{pet} borrowed a book about tides and came back with a bookmark.",
+      "{pet} dozed off on a soft stack of bedtime stories."
+    ]
+  },
+  {
+    "id": "lantern_lagoon",
+    "name": "Lantern Lagoon",
+    "blurb": "A lagoon that glows when it is happy.",
+    "hours": 4,
+    "unlock_level": 14,
+    "shells": [130, 220],
+    "xp": 115,
+    "furniture_chance": 0.13,
+    "max_rarity": "rare",
+    "categories": ["lighting", "windows_doors", "wall_decor"],
+    "stories": [
+      "{pet} followed the glowing jellies until the water turned gold.",
+      "{pet} caught a lantern's reflection and kept it in a pocket.",
+      "{pet} hummed along with the lagoon, and the lagoon hummed back.",
+      "{pet} watched the lights drift by and forgot to be hungry."
+    ]
+  },
+  {
+    "id": "coral_bakery_reef",
+    "name": "Coral Bakery Reef",
+    "blurb": "Warm rolls and cooling racks by the reef.",
+    "hours": 4,
+    "unlock_level": 18,
+    "shells": [150, 250],
+    "xp": 130,
+    "furniture_chance": 0.14,
+    "max_rarity": "epic",
+    "categories": ["kitchen", "tables", "pet_items"],
+    "stories": [
+      "{pet} helped knead the dough and ended up mostly flour.",
+      "{pet} was handed a warm kelp roll and an even warmer smile.",
+      "{pet} guarded the cooling rack with deadly seriousness.",
+      "{pet} decided that sea-salt caramel is a feeling, not a flavour."
+    ]
+  },
+  {
+    "id": "moonpearl_isles",
+    "name": "Moonpearl Isles",
+    "blurb": "Pearl-lit islands where the tide tucks you in.",
+    "hours": 8,
+    "unlock_level": 22,
+    "shells": [260, 420],
+    "xp": 240,
+    "furniture_chance": 0.2,
+    "max_rarity": "epic",
+    "categories": ["beds", "lighting", "seating"],
+    "stories": [
+      "{pet} slept under three moons' worth of pearl light.",
+      "{pet} drifted between islands on a quilt of moonlit foam.",
+      "{pet} whispered a wish to a pearl, and the pearl kept it safe.",
+      "{pet} was tucked in by the tide and told a very long goodnight."
+    ]
+  },
+  {
+    "id": "starfall_sandbar",
+    "name": "Starfall Sandbar",
+    "blurb": "A sandbar for stargazing and big wishes.",
+    "hours": 8,
+    "unlock_level": 26,
+    "shells": [320, 520],
+    "xp": 280,
+    "furniture_chance": 0.25,
+    "max_rarity": "legendary",
+    "categories": ["music", "fitness", "outdoor", "beds"],
+    "stories": [
+      "{pet} caught a falling star and set it gently back in the sky.",
+      "{pet} danced on the sandbar while the stars kept time.",
+      "{pet} carried home a shell full of stardust, careful as soup.",
+      "{pet} stayed up late and made a wish on everyone's behalf."
+    ]
+  }
+]

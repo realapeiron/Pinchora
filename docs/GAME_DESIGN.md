@@ -88,7 +88,12 @@ Every movement is written to `credit_ledger` (pearls get their own ledger).
 - Needs: hunger, fun, energy, hygiene (0–100), decaying on read from timestamps (no ticking
   jobs). Care actions with cooldowns; neglect makes the pet sleep and need a small revive fee,
   never permanent loss.
-- Pets live in a house room and show up in renders and on visits.
+- Pets live in a house room and show up in renders and on visits (not while they are on a trip).
+- Levels 1-30: every care action, walk and trip earns XP; higher levels find more on walks and trips.
+- Sleep: hunger, fun and hygiene all at zero for 24 hours puts a pet to sleep (no XP, no care, no trips) until a
+  wake-up (one free per player per UTC day, else 75 shells). It never dies or leaves.
+- Field trips (1, 4 or 8 hours, `content/pet_trips.json`): the needs freeze while away; the claim pays shells,
+  XP, a story line and sometimes a free-to-earn (`reward`) furniture piece. A stored end time makes it restart-proof.
 - Species, rarity weights and personalities: `content/pets.json`.
 
 ## Characters

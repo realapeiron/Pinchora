@@ -19,8 +19,8 @@ pub use avatar::{placeholder_avatar, prepare_avatar};
 pub use cards::{
     ABSENT, Backdrop, BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, CORRECT, CharacterCard, Connect4Card,
     GridSlot, HangmanCard, HangmanLetter, ItemGridCard, LastWeekEntry, LeaderboardCard, LeaderboardEntry, LevelUpCard,
-    NextRole, PRESENT, PetCard, ProfileCard, RankCard, ShowcaseKind, ShowcaseSlot, SpriteArt, WalletCard, WelcomeCard,
-    WordleCard, WordleRow,
+    NextRole, NurseryCard, NurseryPet, PRESENT, PetCard, PetStatus, ProfileCard, RankCard, ShowcaseKind, ShowcaseSlot,
+    SpriteArt, WalletCard, WelcomeCard, WordleCard, WordleRow,
 };
 pub use encode::encode_png;
 pub use style::{ACCENT_PRESETS, AccentError, Frame, Opacity, parse_accent, readable};
@@ -97,6 +97,10 @@ impl Renderer {
     }
 
     pub fn pet_card(&self, card: &PetCard) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn nursery_card(&self, card: &NurseryCard) -> anyhow::Result<Vec<u8>> {
         self.svg_to_png(&card.to_svg())
     }
 
