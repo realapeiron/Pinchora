@@ -74,6 +74,7 @@ ROOM_IDS = {
     "pet_room", "library", "studio", "attic",
 }
 STARTER_IDS = {"crumbclaw_crab", "drowsepatch_cat", "cloverpuff_bun"}
+SPOT_IDS = {"shore", "reef", "kelp_forest", "deep_sea", "abyss"}
 JUNK_IDS = {
     "siltstep_boot", "rattlelip_tin", "frayloop_rope", "driftspoke_wheel",
     "chipwink_cup", "snaggletoe_sock",
@@ -526,9 +527,10 @@ def check_pets(raw):
 
 def check_fish(raw):
     records = entries(raw, "fish.json", 64)
-    seen, names, weights = {}, {}, defaultdict(list)
+    seen, names = {}, {}
+    spot_weights = defaultdict(lambda: defaultdict(list))  # spot -> rarity -> draw weights there
     for item, where in records:
-        fields(item, where, ("id", "name", "rarity", "min_cm", "max_cm", "base_value", "time", "season", "weight", "flavor", "sprite_brief"))
+        fields(item, where, ("id", "name", "rarity", "min_cm", "max_cm", "base_value", "time", "season", "spots", "flavor", "sprite_brief"), ("junk",))
         identity(item, where, seen, names)
         enum(item, "rarity", RARITIES, where)
         enum(item, "time", ("any", "day", "night", "dawn", "dusk"), where)
@@ -538,8 +540,10 @@ def check_fish(raw):
         low_size, high_size = item.get("min_cm"), item.get("max_cm")
         if not number(low_size) or not number(high_size) or not 0 < low_size < high_size:
             problem(where, "sizes must be finite numbers with 0 < min_cm < max_cm")
-        rarity, value, weight, item_id = item.get("rarity"), item.get("base_value"), item.get("weight"), item.get("id")
+        rarity, value, item_id = item.get("rarity"), item.get("base_value"), item.get("id")
         is_junk = isinstance(item_id, str) and item_id in JUNK_IDS
+        if item.get("junk", False) != is_junk:
+            problem(where, "only the six odds and ends carry \"junk\": true")
         if not integer(value):
             problem(where, "base_value must be an integer")
         elif is_junk:
@@ -549,10 +553,17 @@ def check_fish(raw):
             low, high = FISH_BANDS[rarity]
             if not low <= value <= high:
                 problem(where, f"{rarity} base_value must be {low}..{high}")
-        if not integer(weight) or weight <= 0:
-            problem(where, "weight must be a positive integer")
-        elif isinstance(rarity, str) and rarity in RARITIES:
-            weights[rarity].append(weight)
+        spots = item.get("spots")
+        if not isinstance(spots, dict) or not spots:
+            problem(where, "spots must name at least one spot with its draw weight")
+            continue
+        for spot, weight in spots.items():
+            if spot not in SPOT_IDS:
+                problem(where, f"unknown spot {spot!r}; spots are {sorted(SPOT_IDS)}")
+            elif not integer(weight) or weight <= 0:
+                problem(where, f"the weight at {spot} must be a positive integer")
+            elif isinstance(rarity, str) and rarity in RARITIES:
+                spot_weights[spot][rarity].append(weight)
     if not JUNK_IDS <= seen.keys():
         problem("fish.json", f"missing junk catches: {sorted(JUNK_IDS - seen.keys())}")
     if not TREASURE_IDS <= seen.keys():
@@ -561,10 +572,110 @@ def check_fish(raw):
     for rarity in RARITIES:
         if not counts[rarity]:
             problem("fish.json", f"needs at least one {rarity} catch")
-    for commoner, rarer in zip(RARITIES, RARITIES[1:]):
-        if weights[commoner] and weights[rarer] and min(weights[commoner]) <= max(weights[rarer]):
-            problem("fish.json", f"every {rarer} draw weight must be smaller than every {commoner} weight")
+    for spot in sorted(SPOT_IDS):
+        if not spot_weights[spot]:
+            problem("fish.json", f"nothing lives at {spot}")
+        weights = spot_weights[spot]
+        for commoner, rarer in zip(RARITIES, RARITIES[1:]):
+            if weights[commoner] and weights[rarer] and min(weights[commoner]) <= max(weights[rarer]):
+                problem("fish.json", f"at {spot} every {rarer} draw weight must be smaller than every {commoner} weight")
     return records
+
+
+def check_fishing(raw, fish, backgrounds, badges):
+    """fishing_gear.json: spots, rods, baits and the fish-book milestones."""
+    if not isinstance(raw, dict):
+        problem("fishing_gear.json", "must be an object")
+        return
+    fields(raw, "fishing_gear.json", ("spots", "rods", "baits", "milestones"))
+    fish_spots = {item.get("id"): item.get("spots") for item, _ in fish}
+    spots, levels = entries(raw.get("spots"), "fishing_gear.json spots", len(SPOT_IDS)), []
+    seen_spots = {}
+    for item, where in spots:
+        fields(item, where, ("id", "name", "level", "blurb", "specials"))
+        identity(item, where, seen_spots, {})
+        string(item, "blurb", where, limit=80)
+        level = item.get("level")
+        if not integer(level) or level < 1:
+            problem(where, "level must be a positive integer")
+        else:
+            levels.append(level)
+        specials = item.get("specials")
+        if not isinstance(specials, list) or len(specials) < 2:
+            problem(where, "specials must list at least two fish")
+        else:
+            for fish_id in specials:
+                if item.get("id") not in (fish_spots.get(fish_id) or {}):
+                    problem(where, f"special {fish_id!r} does not live at this spot")
+    if set(seen_spots) != SPOT_IDS:
+        problem("fishing_gear.json", f"spots must be exactly {sorted(SPOT_IDS)}")
+    if levels != sorted(set(levels)) or levels[:1] != [1]:
+        problem("fishing_gear.json", "spots must open at rising levels, the first at level 1")
+
+    rods = entries(raw.get("rods"), "fishing_gear.json rods", 5)
+    seen, previous = {}, None
+    for item, where in rods:
+        fields(item, where, ("id", "name", "price", "window_ms", "luck", "blurb"))
+        identity(item, where, seen, {})
+        string(item, "blurb", where, limit=80)
+        price, window, luck = item.get("price"), item.get("window_ms"), item.get("luck")
+        if not integer(price) or price < 0 or not integer(window) or window < 1000 or not number(luck) or luck < 1:
+            problem(where, "price >= 0, window_ms >= 1000 and luck >= 1 are needed")
+        elif previous and not (previous[0] < price and previous[1] < window and previous[2] < luck):
+            problem(where, "every rod must cost more, reel longer and be luckier than the one before")
+        if not (isinstance(price, int) and isinstance(window, int) and number(luck)):
+            continue
+        previous = (price, window, luck)
+    if rods and rods[0][0].get("price") != 0:
+        problem("fishing_gear.json rods", "the first rod is the free starter")
+    if rods and rods[0][0].get("window_ms") != 2500:
+        problem("fishing_gear.json rods", "the starter rod keeps the 2500 ms window")
+
+    baits = entries(raw.get("baits"), "fishing_gear.json baits", 3)
+    seen_baits = {}
+    for item, where in baits:
+        fields(item, where, ("id", "name", "pack", "price", "boost", "blurb"))
+        identity(item, where, seen_baits, {})
+        if item.get("id") in seen:
+            problem(where, "bait ids must differ from rod ids")
+        string(item, "blurb", where, limit=80)
+        pack, price = item.get("pack"), item.get("price")
+        if not integer(pack) or pack < 1 or not integer(price) or price / max(pack, 1) <= 10:
+            problem(where, "pack >= 1 and every piece must cost more than the 10-shell plain bait")
+        boost = item.get("boost")
+        if not isinstance(boost, dict) or boost.get("kind") not in ("rarity", "specials"):
+            problem(where, "boost.kind must be rarity or specials")
+        elif boost["kind"] == "rarity":
+            fields(boost, where + ".boost", ("kind", "rarity", "factor"))
+            enum(boost, "rarity", RARITIES, where + ".boost")
+        else:
+            fields(boost, where + ".boost", ("kind", "factor"))
+        if isinstance(boost, dict) and not (number(boost.get("factor")) and 1 < boost.get("factor") <= 10):
+            problem(where, "boost.factor must be above 1 and at most 10")
+
+    milestones = entries(raw.get("milestones"), "fishing_gear.json milestones", 4)
+    badge_kinds = {item.get("id"): item.get("kind") for item, _ in badges}
+    background_ids = {item.get("id") for item, _ in backgrounds}
+    counts = []
+    for item, where in milestones:
+        fields(item, where, ("species", "shells", "reward"))
+        species, shells, reward = item.get("species"), item.get("shells"), item.get("reward")
+        if not integer(species) or not 1 <= species <= len(fish):
+            problem(where, f"species must be 1..{len(fish)}")
+        else:
+            counts.append(species)
+        if not integer(shells) or shells <= 0:
+            problem(where, "shells must be a positive integer")
+        if not isinstance(reward, dict) or reward.get("kind") not in ("badge", "background"):
+            problem(where, "reward.kind must be badge or background")
+        else:
+            fields(reward, where + ".reward", ("kind", "id"))
+            if reward["kind"] == "badge" and badge_kinds.get(reward.get("id")) != "shop":
+                problem(where, "a badge reward must be a shop badge from badges.json")
+            if reward["kind"] == "background" and reward.get("id") not in background_ids:
+                problem(where, "a background reward must be in backgrounds.json")
+    if counts != sorted(set(counts)) or (counts and counts[-1] != len(fish)):
+        problem("fishing_gear.json milestones", "counts must rise and the last one is the whole fish book")
 
 
 def check_backgrounds(raw):
@@ -843,7 +954,7 @@ def furniture_table(title, records, key, order):
 def main():
     ERRORS.clear()
     raw = {name: read_file(name + ".json") for name in (
-        "sets", "furniture", "surfaces", "rooms", "pets", "fish", "backgrounds", "badges", "titles")}
+        "sets", "furniture", "surfaces", "rooms", "pets", "fish", "backgrounds", "badges", "titles", "fishing_gear")}
     sets, set_ids = check_sets(raw["sets"])
     shared_ids = {}
     furniture, playable = check_furniture(raw["furniture"], set_ids, shared_ids)
@@ -854,6 +965,7 @@ def main():
     backgrounds = check_backgrounds(raw["backgrounds"])
     badges = check_badges(raw["badges"], len(fish))
     titles = check_titles(raw["titles"], badges, len(fish))
+    check_fishing(raw["fishing_gear"], fish, backgrounds, badges)
     trivia, hangman, answers, allowed = check_games()
     share(furniture + surfaces["wallpapers"] + surfaces["floors"], "all purchasable designs")
     table("Catalog", [("Furniture sets", len(sets)), ("Furniture bases", len(furniture)),

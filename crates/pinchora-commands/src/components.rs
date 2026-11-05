@@ -30,6 +30,8 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
         Some("pa") => pet::on_adopt(cx, values.first().map(String::as_str)).await,
         Some("ps") => pet::on_switch(cx, values.first().map(String::as_str)).await,
         Some("fr") => fish::on_reel(cx, parts).await,
+        Some("fx") => fish::on_gear(cx, parts, values.first().map(String::as_str)).await,
+        Some("fz") => fish::on_bucket(cx, parts).await,
         Some("sl") => stall::on_list(cx, parts, values.first().map(String::as_str)).await,
         Some("su") => stall::on_unlist(cx, values.first().map(String::as_str)).await,
         Some("sb") => stall::on_buy(cx, values.first().map(String::as_str)).await,

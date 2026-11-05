@@ -230,5 +230,70 @@ class GameContentTests(unittest.TestCase):
         self.assertTrue(any("not allowed guesses" in e for e in self.errors(check.check_words, broken)))
 
 
+class FishingContentTests(unittest.TestCase):
+    FISH = json.loads(Path(__file__).with_name("fish.json").read_text(encoding="utf-8"))
+    GEAR = json.loads(Path(__file__).with_name("fishing_gear.json").read_text(encoding="utf-8"))
+    BADGES = json.loads(Path(__file__).with_name("badges.json").read_text(encoding="utf-8"))
+    BACKGROUNDS = json.loads(Path(__file__).with_name("backgrounds.json").read_text(encoding="utf-8"))
+
+    def fish_errors(self, fish):
+        check.ERRORS.clear()
+        check.check_fish(fish)
+        return check.ERRORS[:]
+
+    def gear_errors(self, gear):
+        check.ERRORS.clear()
+        fish = check.entries(self.FISH, "fish.json", 0)
+        backgrounds = check.entries(self.BACKGROUNDS, "backgrounds.json", 0)
+        badges = check.entries(self.BADGES, "badges.json", 0)
+        check.check_fishing(gear, fish, backgrounds, badges)
+        return check.ERRORS[:]
+
+    def test_shipped_files_are_valid(self):
+        self.assertEqual(self.fish_errors(self.FISH), [])
+        self.assertEqual(self.gear_errors(self.GEAR), [])
+
+    def test_every_fish_needs_a_spot_with_a_weight_it_can_be_caught_at(self):
+        for change in ({"spots": {}}, {"spots": {"moon": 10}}, {"spots": {"shore": 0}}, {"spots": {"shore": 1.5}},
+                       {"weight": 100}):
+            with self.subTest(change=change):
+                broken = copy.deepcopy(self.FISH)
+                broken[0].update(change)
+                self.assertTrue(self.fish_errors(broken))
+
+    def test_a_rarer_fish_never_outweighs_a_commoner_one_at_the_same_spot(self):
+        broken = copy.deepcopy(self.FISH)
+        legend = next(f for f in broken if f["rarity"] == "legendary")
+        legend["spots"] = {spot: 500 for spot in legend["spots"]}
+        self.assertTrue(any("must be smaller" in e for e in self.fish_errors(broken)))
+
+    def test_only_the_six_odds_and_ends_are_junk(self):
+        broken = copy.deepcopy(self.FISH)
+        broken[0]["junk"] = True
+        self.assertTrue(any("junk" in e for e in self.fish_errors(broken)))
+        broken = copy.deepcopy(self.FISH)
+        next(f for f in broken if f["id"] == "siltstep_boot").pop("junk")
+        self.assertTrue(any("junk" in e for e in self.fish_errors(broken)))
+
+    def test_gear_must_improve_and_milestones_must_reward_real_cosmetics(self):
+        for path, change in (
+            (("rods", 1), {"window_ms": 2000}),
+            (("rods", 2), {"luck": 1.0}),
+            (("rods", 0), {"price": 100}),
+            (("baits", 0), {"price": 20}),
+            (("baits", 1), {"boost": {"kind": "rarity", "rarity": "mythic", "factor": 2}}),
+            (("baits", 2), {"boost": {"kind": "specials", "factor": 1}}),
+            (("spots", 1), {"level": 1}),
+            (("spots", 0), {"specials": ["siltstep_boot"]}),
+            (("milestones", 0), {"reward": {"kind": "badge", "id": "fin_finder"}}),  # an achievement, not for sale
+            (("milestones", 1), {"reward": {"kind": "background", "id": "no_such_background"}}),
+            (("milestones", 3), {"species": 71}),  # the last one is the whole book
+        ):
+            with self.subTest(path=path, change=change):
+                broken = copy.deepcopy(self.GEAR)
+                broken[path[0]][path[1]].update(change)
+                self.assertTrue(self.gear_errors(broken))
+
+
 if __name__ == "__main__":
     unittest.main()

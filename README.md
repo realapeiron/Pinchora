@@ -24,7 +24,7 @@ Written in Rust and built to run sharded on Kubernetes.
 | `/customize style` | Private editor with a live preview of your profile card: an **accent colour** (Auto follows the background; 12 pixel-palette presets; or **Hex code…**, a form that refuses unreadable near-black values), **panel opacity** (Light, Normal, Solid) and a pixel **frame** drawn around the whole card (Plain and Rope free; Coral from level 10, Pearl 20, Gold 30, Neon 40, shown with a lock and the level until then). **Reset style** puts it all back. The style is on the profile, rank and wallet cards |
 | `/customize showcase` | Private editor with a live preview: up to three picks for the profile card, a favourite **fish** (from your fish book), a **pet** and a **furniture** item (owned or placed), chosen from menus of what you have (25 per page), plus a **Show house** switch for a thumbnail of your first room (drawn once and kept until the room changes). **Clear slot** and **Clear all** empty it again; empty slots are simply not drawn |
 | Badge unlocked notices | When a command or chat level-up earns you an achievement badge (`/daily`, `/fish`, `/pet`, placing furniture, `/give`, a new chat level), a short "Badge unlocked" embed with the badge art follows the reply, once per badge |
-| `/leaderboard [board]` | Server XP, server points, **Weekly XP** (resets Monday 00:00 UTC, with last week's top three in a panel under the board), global XP or global shells as a pixel-art card, with page buttons |
+| `/leaderboard [board]` | Server XP, server points, **Weekly XP** (resets Monday 00:00 UTC, with last week's top three in a panel under the board), **Weekly catch** (each player's biggest catch of the week by size for its species, so a 7.9 cm minnow can beat a 200 cm sailfish; boots and tins do not count; same Monday reset and last-week podium), global XP or global shells as a pixel-art card, with page buttons |
 | `/daily` | Daily shells; the streak bonus grows for 20 days |
 | `/balance [user]`, `/give user amount` | Wallet and transfers |
 | `/rep user` | One reputation point per day; a server's reputation roles are given the moment the receiver's total reaches them, and the reply says so |
@@ -95,7 +95,11 @@ channel when the bot starts is only noticed once their state changes.
 | `/friends remove user`, `/friends list [user]` | Remove a friend, or page through a player's friends with their level and house likes (10 a page) |
 | `/hug user`, `/pat user`, `/wave user`, `/highfive user` | A looping GIF (14 frames, about 120 KB) of your two pixel characters, drawn from the looks and colours you both chose (a player without a character gets a stand-in made from their id): they step together with hearts, a hand bobs on a head, an arm waves, palms meet in a flash. "That's hug #12 from you to them", with the sender's and receiver's totals; the receiver gets a **Hug back** button. One every 5 seconds per player |
 | `/pet adopt\|view\|capsule\|list\|rename` | Pets with needs that drift over time; feed, play, bathe; 42 species |
-| `/fish` | Cast, wait for the bite, press **Reel!** in time; 72 catches for the fish book |
+| `/fish cast [spot]` | Cast, wait for the bite, press **Reel!** in time. Five spots open by global level (Shore 1, Reef 5, Kelp Forest 12, Deep Sea 20, Abyss 30) and the last one you fished is remembered; each has its own fish, and the time of day and season still decide who is about. Every catch rolls a size in cm (normal around the species' usual size), is added to the fish book (72 species, with a record size each) and goes into your **bucket**, which holds 60 fish and stops the next cast until you sell some. A plain cast costs 10 shells of bait; a better bait on the hook is used up instead. The reply tells of a new species, a new record, a big one for the week, and any book milestone |
+| `/fish shop` | Private tackle shop on a card: five rods (free starter, then 800, 3,500, 12,000 and 40,000 shells; each gives a longer Reel! window, 2.5 s up to 5 s, and a bigger chance at rare, epic and legendary fish) and three baits in packs of five (Glow Worm for uncommon fish, Silver Lure for rare ones, Tide Crumbs for the spot's signature fish) |
+| `/fish gear` | Private panel to pick the spot (closed ones show a lock and their level), the rod you own and the bait on the hook; a bait that runs out hands the hook back to plain bait |
+| `/fish sell` | Your bucket on a card, with **Sell all** and **Sell duplicates** (keeps the biggest of each species), priced by rarity and size. The fish book never loses an entry or a record |
+| `/fish book` | Your fish book on a card, eight species a page: record size and catch count for the ones you have, a shadow and where they live for the ones you have not, and the milestone rewards: **10 / 25 / 50 / 72** species pay 300 / 1,000 / 3,000 / 10,000 shells and a badge or profile background (Pocket Puffer, Brinebell Market, Lantern Jelly, Moonwhale Crossing). Each pays once; players who passed a milestone earlier are paid at their next catch |
 | `/quests` | Three daily quests; clear all three for pearls |
 | `/duel tictactoe user` | Button tic-tac-toe; the winner earns shells |
 | `/duel connect4 user [bet]` | Connect four on a pixel-art board: the challenged player accepts, then each turn is a column button (1-7) within 90 s; the winner earns shells |
@@ -114,7 +118,7 @@ every pod ends games whose clock ran out every 10 seconds). Without a wager the 
 (connect four 25, rock paper scissors 15, hangman 15, wordle 10 and up to 45 for the daily, trivia 8 to 18
 by difficulty) with a daily limit per player and game.
 
-Game content (furniture, rooms, pets, fish, looks, card backgrounds, badges, titles, trivia, hangman words and
+Game content (furniture, rooms, pets, fish, fishing gear, looks, card backgrounds, badges, titles, trivia, hangman words and
 the wordle lists) lives in
 `content/*.json` (`python3 content/check.py` validates it); see
 [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md). Sprites are drawn by GPT and imported with

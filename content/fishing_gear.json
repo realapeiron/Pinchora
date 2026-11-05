@@ -1,0 +1,113 @@
+{
+  "spots": [
+    {
+      "id": "shore",
+      "name": "Shore",
+      "level": 1,
+      "blurb": "Warm sand, tiny ripples and very polite fish.",
+      "specials": ["pearlpatch_koi", "petalveil_betta", "honeypatch_tench"]
+    },
+    {
+      "id": "reef",
+      "name": "Reef",
+      "level": 5,
+      "blurb": "Coral colours and a busy little crowd.",
+      "specials": ["reefruff_lionfish", "sugarfin_trigger", "petalwake_manta"]
+    },
+    {
+      "id": "kelp_forest",
+      "name": "Kelp Forest",
+      "level": 12,
+      "blurb": "Tall green ribbons swaying in cool water.",
+      "specials": ["mossmosaic_lobster", "giltthread_arowana", "hushribbon_moray"]
+    },
+    {
+      "id": "deep_sea",
+      "name": "Deep Sea",
+      "level": 20,
+      "blurb": "Blue-black water where the big shapes drift by.",
+      "specials": ["chartcurl_nautilus", "moonbutton_sunfish", "velvetwake_catfish"]
+    },
+    {
+      "id": "abyss",
+      "name": "Abyss",
+      "level": 30,
+      "blurb": "Hushed and starlit, far below the last sunbeam.",
+      "specials": ["shellscript_key", "hushbell_angler", "orbitglow_oarfish"]
+    }
+  ],
+  "rods": [
+    {
+      "id": "driftwood_rod",
+      "name": "Driftwood Rod",
+      "price": 0,
+      "window_ms": 2500,
+      "luck": 1.0,
+      "blurb": "A smooth stick and a string. Free, and it tries its best."
+    },
+    {
+      "id": "reedline_rod",
+      "name": "Reedline Rod",
+      "price": 800,
+      "window_ms": 3000,
+      "luck": 1.1,
+      "blurb": "Light and springy. The line stays calm a little longer."
+    },
+    {
+      "id": "pearlwhip_rod",
+      "name": "Pearlwhip Rod",
+      "price": 3500,
+      "window_ms": 3600,
+      "luck": 1.25,
+      "blurb": "A pearl-wrapped grip that fish seem to admire."
+    },
+    {
+      "id": "tidecaller_rod",
+      "name": "Tidecaller Rod",
+      "price": 12000,
+      "window_ms": 4300,
+      "luck": 1.45,
+      "blurb": "Hums softly whenever the tide is turning."
+    },
+    {
+      "id": "starweave_rod",
+      "name": "Starweave Rod",
+      "price": 40000,
+      "window_ms": 5000,
+      "luck": 1.7,
+      "blurb": "Spun from night sky. Patient, steady and a little magic."
+    }
+  ],
+  "baits": [
+    {
+      "id": "glow_worm",
+      "name": "Glow Worm",
+      "pack": 5,
+      "price": 60,
+      "boost": { "kind": "rarity", "rarity": "uncommon", "factor": 3.0 },
+      "blurb": "A cheerful little glow. Uncommon fish adore it."
+    },
+    {
+      "id": "silver_lure",
+      "name": "Silver Lure",
+      "pack": 5,
+      "price": 175,
+      "boost": { "kind": "rarity", "rarity": "rare", "factor": 2.5 },
+      "blurb": "One flash of silver that rare fish cannot ignore."
+    },
+    {
+      "id": "tide_crumbs",
+      "name": "Tide Crumbs",
+      "pack": 5,
+      "price": 225,
+      "boost": { "kind": "specials", "factor": 4.0 },
+      "blurb": "A sprinkle of treats for the spot's own favourites."
+    }
+  ],
+  "milestones": [
+    { "species": 10, "shells": 300, "reward": { "kind": "badge", "id": "pocket_puffer" } },
+    { "species": 25, "shells": 1000, "reward": { "kind": "background", "id": "brinebell_market" } },
+    { "species": 50, "shells": 3000, "reward": { "kind": "badge", "id": "lantern_jelly" } },
+    { "species": 72, "shells": 10000, "reward": { "kind": "background", "id": "moonwhale_crossing" } }
+  ]
+}

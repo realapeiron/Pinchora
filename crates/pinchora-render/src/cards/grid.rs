@@ -121,7 +121,7 @@ impl ItemGridCard {
                 true,
                 &t.ink,
                 "middle",
-                &escape(&truncate(&slot.name, 20)),
+                &escape(&truncate(&slot.name, 22)),
             );
             let price_x = if slot.shell_price { x + 120.0 } else { x + 110.0 };
             if slot.shell_price {

@@ -260,7 +260,7 @@ async fn announce(
     }
 }
 
-/// Runs [`tick`] for the life of the process, and prunes old weekly XP once an hour.
+/// Runs [`tick`] for the life of the process, and prunes old weekly XP and weekly catches once an hour.
 pub fn spawn_ticker(app: Arc<App>) {
     tokio::spawn(async move {
         let mut wake = tokio::time::interval(WAKE);
@@ -278,6 +278,11 @@ pub fn spawn_ticker(app: Arc<App>) {
                     Ok(n) if n > 0 => tracing::debug!(n, "old weekly XP forgotten"),
                     Ok(_) => {}
                     Err(error) => tracing::warn!(%error, "old weekly XP not forgotten"),
+                }
+                match app.db.forget_catch_weeks_before(before).await {
+                    Ok(n) if n > 0 => tracing::debug!(n, "old weekly catches forgotten"),
+                    Ok(_) => {}
+                    Err(error) => tracing::warn!(%error, "old weekly catches not forgotten"),
                 }
             }
         }

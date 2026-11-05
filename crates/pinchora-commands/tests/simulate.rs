@@ -7222,3 +7222,990 @@ async fn reputation_roles_are_given_when_a_point_lands() {
     );
     let _ = gone;
 }
+
+// /Fishing
+
+/// `/fish cast [spot]`.
+fn fish_cast(spot: Option<&str>) -> Value {
+    json!([sub("cast", spot.map(|s| text_option("spot", s)).into_iter().collect())])
+}
+
+fn fish_sub(name: &str) -> Value {
+    json!([sub(name, Vec::new())])
+}
+
+/// Total XP at the start of `level`.
+fn xp_for_level(level: u32) -> i64 {
+    (0..level).map(|l| pinchora_core::leveling::xp_to_next(l) as i64).sum()
+}
+
+fn footer(reply: &Reply) -> &str {
+    reply
+        .embeds
+        .first()
+        .and_then(|e| e.footer.as_ref())
+        .map_or("", |f| f.text.as_str())
+}
+
+/// Puts a cast of `user` in the cache as if it had bitten `late_ms` ago. `state` is the part of the
+/// value after the time (`spot:rod:bait`), or empty for a cast that carries none.
+async fn seed_cast(sim: &Sim, user: u64, nonce: u32, late_ms: i64, state: &str) -> String {
+    let at = chrono::Utc::now().timestamp_millis() - late_ms;
+    let value = if state.is_empty() {
+        at.to_string()
+    } else {
+        format!("{at}:{state}")
+    };
+    sim.app
+        .cache
+        .put(
+            &format!("cast:{user}:{nonce}"),
+            &value,
+            std::time::Duration::from_secs(30),
+        )
+        .await
+        .unwrap();
+    format!("fr:{user}:{nonce}")
+}
+
+/// The reel button as the cast message carries it.
+fn casting() -> Reply {
+    Reply::new(InteractionResponseType::ChannelMessageWithSource)
+}
+
+/// The fish a catch embed names.
+fn caught_fish(reply: &Reply) -> &'static pinchora_game::Fish {
+    let title = reply.title();
+    Content::get()
+        .fish
+        .iter()
+        .find(|f| title.ends_with(&format!("{}!", f.name)))
+        .unwrap_or_else(|| panic!("no fish in {title:?}"))
+}
+
+#[tokio::test]
+async fn fishing_spots_open_by_level_and_the_last_one_is_remembered() {
+    let Some(mut sim) = Sim::new("fishing_spots_open_by_level_and_the_last_one_is_remembered").await else {
+        return;
+    };
+    let db = sim.app.db.clone();
+
+    // A new player: the Reef is out of reach, and a refused cast costs nothing.
+    let angler = unique();
+    fund(&sim, angler, 500).await;
+    let locked = sim.command(angler, "fish", fish_cast(Some("reef"))).await;
+    assert!(locked.ephemeral);
+    assert!(
+        locked.content().contains("opens at level 5") && locked.content().contains("you are level 0"),
+        "{}",
+        locked.content()
+    );
+    assert_eq!(shells(&sim, angler).await, 500);
+    assert_eq!(db.fishing_gear(angler).await.unwrap().spot, "shore");
+
+    // Every deeper spot is shut one level short, whatever else the player has.
+    for (level, spot) in [(4, "reef"), (11, "kelp_forest"), (19, "deep_sea"), (29, "abyss")] {
+        let visitor = unique();
+        fund(&sim, visitor, 50).await;
+        db.add_message_xp(sim.guild, visitor, xp_for_level(level), 0)
+            .await
+            .unwrap();
+        let shut = sim.command(visitor, "fish", fish_cast(Some(spot))).await;
+        assert!(shut.content().contains("opens at level"), "{spot}: {}", shut.content());
+        assert_eq!(shells(&sim, visitor).await, 50, "{spot}");
+    }
+
+    // The shore is open to everyone and costs the plain 10 shells of bait.
+    let shore = sim.command(angler, "fish", fish_cast(None)).await;
+    assert_eq!(shore.title(), "🎣 Line in the water…");
+    assert_eq!(footer(&shore), "Shore · Driftwood Rod · Plain bait");
+    assert_eq!(shells(&sim, angler).await, 490);
+
+    // Level 5 opens the reef; choosing it remembers it.
+    let reef_fan = unique();
+    fund(&sim, reef_fan, 50).await;
+    db.add_message_xp(sim.guild, reef_fan, xp_for_level(5), 0)
+        .await
+        .unwrap();
+    let reef = sim.command(reef_fan, "fish", fish_cast(Some("reef"))).await;
+    assert_eq!(footer(&reef), "Reef · Driftwood Rod · Plain bait");
+    assert_eq!(db.fishing_gear(reef_fan).await.unwrap().spot, "reef");
+
+    // A bare /fish cast goes where the player went last.
+    let regular = unique();
+    fund(&sim, regular, 50).await;
+    db.add_message_xp(sim.guild, regular, xp_for_level(12), 0)
+        .await
+        .unwrap();
+    db.set_fishing_spot(regular, "kelp_forest").await.unwrap();
+    let kelp = sim.command(regular, "fish", fish_cast(None)).await;
+    assert_eq!(footer(&kelp), "Kelp Forest · Driftwood Rod · Plain bait");
+
+    // A remembered spot the player has no level for falls back to the deepest one they do have.
+    let strayed = unique();
+    fund(&sim, strayed, 50).await;
+    db.set_fishing_spot(strayed, "abyss").await.unwrap();
+    let back = sim.command(strayed, "fish", fish_cast(None)).await;
+    assert_eq!(footer(&back), "Shore · Driftwood Rod · Plain bait");
+    assert_eq!(db.fishing_gear(strayed).await.unwrap().spot, "shore");
+
+    // Level 30 opens the abyss.
+    let diver = unique();
+    fund(&sim, diver, 50).await;
+    db.add_message_xp(sim.guild, diver, xp_for_level(30), 0).await.unwrap();
+    let abyss = sim.command(diver, "fish", fish_cast(Some("abyss"))).await;
+    assert_eq!(footer(&abyss), "Abyss · Driftwood Rod · Plain bait");
+
+    // The gear panel lists every spot, the closed ones with a lock and the level they need.
+    let panel = sim.command(angler, "fish", fish_sub("gear")).await;
+    assert!(panel.ephemeral);
+    let spots: Vec<_> = panel
+        .options("fx:s:")
+        .iter()
+        .map(|o| {
+            (
+                o.label.as_str(),
+                o.description.as_deref().unwrap_or_default(),
+                o.default,
+            )
+        })
+        .collect();
+    assert_eq!(
+        spots.iter().map(|(label, ..)| *label).collect::<Vec<_>>(),
+        ["Shore", "🔒 Reef", "🔒 Kelp Forest", "🔒 Deep Sea", "🔒 Abyss"]
+    );
+    assert_eq!(spots[3].1, "Opens at level 20");
+    assert!(spots[0].2 && !spots[1].2, "the spot in use is the default");
+    assert!(panel.field("Spot").contains("**Shore**"), "{}", panel.field("Spot"));
+    let refused = sim.pick(angler, &panel, "fx:s:", "deep_sea").await;
+    assert!(
+        refused.description().contains("opens at level 20 and you are level 0"),
+        "{}",
+        refused.description()
+    );
+    assert_eq!(db.fishing_gear(angler).await.unwrap().spot, "shore");
+    // At level 20 the same pick works.
+    db.add_message_xp(sim.guild, angler, xp_for_level(20), 0).await.unwrap();
+    let opened = sim.pick(angler, &refused, "fx:s:", "deep_sea").await;
+    assert!(
+        opened.description().contains("Fishing at the **Deep Sea**"),
+        "{}",
+        opened.description()
+    );
+    assert_eq!(db.fishing_gear(angler).await.unwrap().spot, "deep_sea");
+    assert!(
+        opened
+            .options("fx:s:")
+            .iter()
+            .any(|o| o.label == "Deep Sea" && o.default)
+    );
+    assert!(opened.options("fx:s:").iter().any(|o| o.label == "🔒 Abyss"));
+    // Somebody else's panel is not theirs to use.
+    let stranger = sim
+        .component(unique(), &opened.menu("fx:s:").custom_id.clone(), &["reef"], &opened)
+        .await;
+    assert!(
+        stranger.content().contains("someone else's panel"),
+        "{}",
+        stranger.content()
+    );
+    assert_eq!(db.fishing_gear(angler).await.unwrap().spot, "deep_sea");
+
+    // The bites come on their own a few seconds after each cast; let them land before the test ends.
+    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+}
+
+#[tokio::test]
+async fn rods_and_bait_are_bought_equipped_and_used_up() {
+    let Some(mut sim) = Sim::new("rods_and_bait_are_bought_equipped_and_used_up").await else {
+        return;
+    };
+    let db = sim.app.db.clone();
+    let angler = unique();
+    fund(&sim, angler, 1_000).await;
+
+    // The shop: five rods (the free one is not for sale) and three baits on a card.
+    let shop = sim.command(angler, "fish", fish_sub("shop")).await;
+    assert!(shop.ephemeral);
+    let card = image::load_from_memory(&shop.files[0].1).expect("a png");
+    assert_eq!((card.width(), card.height()), (1_000, 600));
+    let values = |reply: &Reply| -> Vec<String> { reply.options("fx:p:").iter().map(|o| o.value.clone()).collect() };
+    assert_eq!(
+        values(&shop),
+        [
+            "r:reedline_rod",
+            "r:pearlwhip_rod",
+            "r:tidecaller_rod",
+            "r:starweave_rod",
+            "b:glow_worm",
+            "b:silver_lure",
+            "b:tide_crumbs"
+        ]
+    );
+
+    // Buying a rod: the shells go, the rod is theirs, and it leaves the menu.
+    let bought = sim.pick(angler, &shop, "fx:p:", "r:reedline_rod").await;
+    assert!(
+        bought
+            .description()
+            .contains("Bought the **Reedline Rod** for 800 shells"),
+        "{}",
+        bought.description()
+    );
+    assert_eq!(shells(&sim, angler).await, 200);
+    assert!(!values(&bought).contains(&"r:reedline_rod".to_owned()));
+    assert_eq!(db.owned_rods(angler).await.unwrap(), ["reedline_rod"]);
+    // Too dear: nothing is taken.
+    let poor = sim.pick(angler, &bought, "fx:p:", "r:tidecaller_rod").await;
+    assert!(
+        poor.description().contains("costs 12,000 shells and you have 200"),
+        "{}",
+        poor.description()
+    );
+    assert_eq!(shells(&sim, angler).await, 200);
+    // A rod bought twice (an old menu) is not charged twice.
+    let again = sim
+        .component(
+            angler,
+            &bought.menu("fx:p:").custom_id.clone(),
+            &["r:reedline_rod"],
+            &bought,
+        )
+        .await;
+    assert!(again.description().contains("already own"), "{}", again.description());
+    assert_eq!(shells(&sim, angler).await, 200);
+    // Neither is a rod that does not exist, nor the free one.
+    for value in ["r:driftwood_rod", "r:gold_rod", "b:dragon_bait", "x:y"] {
+        let nothing = sim
+            .component(angler, &bought.menu("fx:p:").custom_id.clone(), &[value], &bought)
+            .await;
+        assert!(
+            nothing.description().contains("not in the shop") || nothing.description().contains("expired"),
+            "{value}: {}",
+            nothing.description()
+        );
+    }
+    assert_eq!(shells(&sim, angler).await, 200);
+
+    // Bait comes in packs of five and adds up.
+    let worms = sim.pick(angler, &bought, "fx:p:", "b:glow_worm").await;
+    assert!(
+        worms
+            .description()
+            .contains("Bought 5 **Glow Worm** for 60 shells; you have 5"),
+        "{}",
+        worms.description()
+    );
+    let worms = sim.pick(angler, &worms, "fx:p:", "b:glow_worm").await;
+    assert!(worms.description().contains("you have 10"), "{}", worms.description());
+    assert_eq!(shells(&sim, angler).await, 80);
+    let broke = sim.pick(angler, &worms, "fx:p:", "b:silver_lure").await;
+    assert!(
+        broke.description().contains("costs 175 shells and you have 80"),
+        "{}",
+        broke.description()
+    );
+    // The shop is the player's own.
+    let stranger = sim
+        .component(
+            unique(),
+            &broke.menu("fx:p:").custom_id.clone(),
+            &["b:glow_worm"],
+            &broke,
+        )
+        .await;
+    assert!(
+        stranger.content().contains("someone else's panel"),
+        "{}",
+        stranger.content()
+    );
+    assert_eq!(shells(&sim, angler).await, 80);
+
+    // /fish gear: only owned rods and bait are offered; putting them on is saved.
+    let gear = sim.command(angler, "fish", fish_sub("gear")).await;
+    let labels = |reply: &Reply, prefix: &str| -> Vec<String> {
+        reply.options(prefix).iter().map(|o| o.label.clone()).collect()
+    };
+    assert_eq!(labels(&gear, "fx:r:"), ["Driftwood Rod", "Reedline Rod"]);
+    assert_eq!(labels(&gear, "fx:b:"), ["Plain bait", "Glow Worm ×10"]);
+    assert!(gear.field("Rod").contains("**Driftwood Rod**"), "{}", gear.field("Rod"));
+    assert!(gear.field("Bait").contains("Plain bait"), "{}", gear.field("Bait"));
+    let rod = sim.pick(angler, &gear, "fx:r:", "reedline_rod").await;
+    assert!(
+        rod.description().contains("**Reedline Rod** is on the line"),
+        "{}",
+        rod.description()
+    );
+    assert!(rod.field("Rod").contains("reel 3.0 s") && rod.field("Rod").contains("rare luck +10%"));
+    let hook = sim.pick(angler, &rod, "fx:b:", "glow_worm").await;
+    assert!(
+        hook.description().contains("**Glow Worm** is on the hook"),
+        "{}",
+        hook.description()
+    );
+    assert!(hook.field("Bait").contains("×10"), "{}", hook.field("Bait"));
+    let on_line = db.fishing_gear(angler).await.unwrap();
+    assert_eq!(
+        (on_line.rod.as_str(), on_line.bait.as_deref()),
+        ("reedline_rod", Some("glow_worm"))
+    );
+    // A hand-made pick of gear they do not have is refused.
+    let fake = sim
+        .component(angler, &hook.menu("fx:r:").custom_id.clone(), &["starweave_rod"], &hook)
+        .await;
+    assert!(fake.description().contains("not yours yet"), "{}", fake.description());
+    let fake = sim
+        .component(angler, &hook.menu("fx:b:").custom_id.clone(), &["tide_crumbs"], &hook)
+        .await;
+    assert!(
+        fake.description().contains("no Tide Crumbs left"),
+        "{}",
+        fake.description()
+    );
+    assert_eq!(db.fishing_gear(angler).await.unwrap().rod, "reedline_rod");
+
+    // A cast with bait on the hook uses one piece and no plain bait.
+    let cast = sim.command(angler, "fish", fish_cast(None)).await;
+    assert_eq!(footer(&cast), "Shore · Reedline Rod · Glow Worm ×9 left");
+    assert_eq!(shells(&sim, angler).await, 80, "the worm paid for the cast");
+    assert_eq!(db.bait_stock(angler).await.unwrap(), [("glow_worm".to_owned(), 9)]);
+    // Back to plain bait.
+    let plain = sim.pick(angler, &hook, "fx:b:", "plain").await;
+    assert!(
+        plain.description().contains("Plain bait it is"),
+        "{}",
+        plain.description()
+    );
+    assert_eq!(db.fishing_gear(angler).await.unwrap().bait, None);
+
+    // The last piece of bait is used and the hook goes back to plain bait, which costs shells.
+    let thrifty = unique();
+    fund(&sim, thrifty, 100).await;
+    db.buy_bait(thrifty, "glow_worm", 1, 1).await.unwrap();
+    db.equip_bait(thrifty, Some("glow_worm")).await.unwrap();
+    let last = sim.command(thrifty, "fish", fish_cast(None)).await;
+    assert_eq!(footer(&last), "Shore · Driftwood Rod · Glow Worm ×0 left");
+    assert_eq!(db.fishing_gear(thrifty).await.unwrap().bait, None);
+    let broke_bait = unique();
+    let none = sim.command(broke_bait, "fish", fish_cast(None)).await;
+    assert!(
+        none.content().contains("Plain bait costs 10 shells"),
+        "no shells, no cast: {}",
+        none.content()
+    );
+
+    // The window to Reel! is the rod's. 2.7 s after the bite is too slow for the starter rod...
+    let slow = unique();
+    let id = seed_cast(&sim, slow, 1, 2_700, "").await;
+    let missed = sim.component(slow, &id, &[], &casting()).await;
+    assert_eq!(missed.title(), "Too slow!");
+    // ...but fine for the Reedline Rod, whichever way the cast carries it.
+    let id = seed_cast(&sim, angler, 2, 2_700, "").await;
+    let caught = sim.component(angler, &id, &[], &casting()).await;
+    assert!(caught.title().contains("You caught"), "{}", caught.title());
+    // A cast remembers the rod it was made with: a rod swapped in afterwards changes nothing.
+    let swapper = unique();
+    let id = seed_cast(&sim, swapper, 3, 4_500, "shore:starweave_rod:-").await;
+    let caught = sim.component(swapper, &id, &[], &casting()).await;
+    assert!(caught.title().contains("You caught"), "{}", caught.title());
+    let id = seed_cast(&sim, swapper, 4, 2_600, "shore:driftwood_rod:-").await;
+    assert_eq!(sim.component(swapper, &id, &[], &casting()).await.title(), "Too slow!");
+    // Too early is still too early, and somebody else's line is theirs.
+    let id = seed_cast(&sim, swapper, 5, -800, "shore:driftwood_rod:-").await;
+    assert_eq!(sim.component(swapper, &id, &[], &casting()).await.title(), "Too early!");
+    let id = seed_cast(&sim, swapper, 6, 100, "").await;
+    let theirs = sim.component(unique(), &id, &[], &casting()).await;
+    assert!(theirs.content().contains("someone else's line"), "{}", theirs.content());
+
+    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+}
+
+#[tokio::test]
+async fn a_catch_has_a_size_waits_in_the_bucket_and_beats_records() {
+    let Some(mut sim) = Sim::new("a_catch_has_a_size_waits_in_the_bucket_and_beats_records").await else {
+        return;
+    };
+    let db = sim.app.db.clone();
+    let content = Content::get();
+
+    // A first catch: a fish of the shore, sized inside its range, put in the bucket and not sold.
+    let angler = unique();
+    fund(&sim, angler, 100).await;
+    let id = seed_cast(&sim, angler, 1, 400, "shore:driftwood_rod:-").await;
+    let catch = sim.component(angler, &id, &[], &casting()).await;
+    let fish = caught_fish(&catch);
+    assert!(
+        fish.spots.contains_key("shore"),
+        "{} does not live at the shore",
+        fish.id
+    );
+    assert!(catch.title().starts_with("🆕 You caught a"), "{}", catch.title());
+    assert!(
+        catch.title().contains(&fish.rarity.label().to_lowercase()),
+        "{}",
+        catch.title()
+    );
+    assert_eq!(catch.files[0].0, "catch.png");
+    let bucket = db.bucket(angler).await.unwrap();
+    assert_eq!(bucket.len(), 1);
+    let size = bucket[0].size_cm;
+    assert!(
+        size >= fish.min_cm && size <= fish.max_cm,
+        "{} cm for {}",
+        size,
+        fish.id
+    );
+    assert!(
+        catch.description().contains(&format!("**{size:.1} cm**")) && catch.description().contains("in your bucket"),
+        "{}",
+        catch.description()
+    );
+    assert!(catch.description().contains("A new species for your fish book!"));
+    assert!(
+        footer(&catch).starts_with("Shore · Reaction 0.4") && footer(&catch).ends_with("Fish book 1/72 · Bucket 1/60"),
+        "{}",
+        footer(&catch)
+    );
+    assert_eq!(shells(&sim, angler).await, 100, "a catch pays nothing until it is sold");
+    let book = db.fish_book(angler).await.unwrap();
+    assert_eq!(
+        (book[0].fish_id.as_str(), book[0].caught, book[0].best_cm),
+        (fish.id.as_str(), 1, size)
+    );
+    // The same fish worked out by hand: what it will sell for.
+    let value = pinchora_game::fishing::sale_value(fish, size);
+    assert!(
+        catch.description().contains(&format!("worth **{value}** shells")),
+        "{}",
+        catch.description()
+    );
+    // Boots and tins are no catch for the weekly board; everything else is.
+    let week = pinchora_core::leveling::week_start(sim.app.now());
+    let board = db.weekly_catch_board(sim.guild, week, 10, 0).await.unwrap();
+    assert_eq!(board.len(), usize::from(!fish.junk), "{}", fish.id);
+
+    // A bigger one of a species they know is a record: every shore fish is in this player's book,
+    // each at a tiny size, so whatever bites is a record.
+    let veteran = unique();
+    for fish in content.fish.iter().filter(|f| f.spots.contains_key("shore")) {
+        db.log_catch(veteran, &fish.id, 0.1).await.unwrap();
+    }
+    let id = seed_cast(&sim, veteran, 2, 400, "shore:driftwood_rod:-").await;
+    let record = sim.component(veteran, &id, &[], &casting()).await;
+    let fish = caught_fish(&record);
+    assert!(!record.title().starts_with("🆕"), "{}", record.title());
+    assert!(
+        record
+            .description()
+            .contains("🏆 A new record! Your biggest was 0.1 cm."),
+        "{}",
+        record.description()
+    );
+    let entry = db
+        .fish_book(veteran)
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|e| e.fish_id == fish.id)
+        .unwrap();
+    assert_eq!(entry.caught, 2);
+    assert!(entry.best_cm > 0.1);
+
+    // A catch is a catch even with no server (a DM has none to rank in): nothing breaks without one.
+    // The bucket holds 60 fish; a full one stops the next cast, for free, until something is sold.
+    let hoarder = unique();
+    fund(&sim, hoarder, 100).await;
+    for n in 0..60 {
+        db.record_catch(
+            hoarder,
+            pinchora_db::NewCatch {
+                fish_id: &format!("fish{}", n % 7),
+                size_cm: 10.0,
+                ratio: 1.0,
+                weekly: None,
+                milestones: &[],
+            },
+        )
+        .await
+        .unwrap();
+    }
+    let full = sim.command(hoarder, "fish", fish_cast(None)).await;
+    assert!(
+        full.ephemeral && full.content().contains("bucket is full (60/60)"),
+        "{}",
+        full.content()
+    );
+    assert_eq!(shells(&sim, hoarder).await, 100);
+    // Their bucket is the player's own: it fills with a catch made right at the brim, then warns.
+    let last = unique();
+    for n in 0..59 {
+        db.record_catch(
+            last,
+            pinchora_db::NewCatch {
+                fish_id: &format!("fish{}", n % 7),
+                size_cm: 10.0,
+                ratio: 1.0,
+                weekly: None,
+                milestones: &[],
+            },
+        )
+        .await
+        .unwrap();
+    }
+    let id = seed_cast(&sim, last, 3, 300, "shore:driftwood_rod:-").await;
+    let brim = sim.component(last, &id, &[], &casting()).await;
+    assert!(
+        brim.description()
+            .contains("Your bucket is full. Sell some fish with `/fish sell`."),
+        "{}",
+        brim.description()
+    );
+    assert!(footer(&brim).ends_with("Bucket 60/60"), "{}", footer(&brim));
+}
+
+#[tokio::test]
+async fn book_milestones_pay_shells_and_a_cosmetic_under_the_catch() {
+    let Some(mut sim) = Sim::new("book_milestones_pay_shells_and_a_cosmetic_under_the_catch").await else {
+        return;
+    };
+    let db = sim.app.db.clone();
+
+    // The tenth species pays 300 shells and a badge, in a second embed under the catch.
+    let tenth = unique();
+    for n in 0..9 {
+        db.log_catch(tenth, &format!("old{n}"), 5.0).await.unwrap();
+    }
+    let id = seed_cast(&sim, tenth, 1, 400, "shore:driftwood_rod:-").await;
+    let catch = sim.component(tenth, &id, &[], &casting()).await;
+    assert_eq!(catch.embeds.len(), 2, "the catch and the milestone");
+    assert_eq!(
+        catch.embeds[1].title.as_deref(),
+        Some("📖 Fish book milestone: 10 species!")
+    );
+    let text = catch.embeds[1].description.as_deref().unwrap_or_default();
+    assert!(
+        text.contains("**+300 shells**")
+            && text.contains("**Pocket Puffer** badge")
+            && text.contains("/customize badges"),
+        "{text}"
+    );
+    assert_eq!(shells(&sim, tenth).await, 300);
+    assert_eq!(db.owned_badges(tenth).await.unwrap(), ["pocket_puffer"]);
+    // The next catch pays nothing more.
+    let id = seed_cast(&sim, tenth, 2, 400, "shore:driftwood_rod:-").await;
+    let next = sim.component(tenth, &id, &[], &casting()).await;
+    assert_eq!(
+        next.embeds.len(),
+        1,
+        "{:?}",
+        next.embeds.iter().map(|e| e.title.clone()).collect::<Vec<_>>()
+    );
+    assert_eq!(shells(&sim, tenth).await, 300);
+
+    // The whole book: 71 species and a 72nd. A player who never claimed anything is paid the lot.
+    let complete = unique();
+    for n in 0..71 {
+        db.log_catch(complete, &format!("old{n}"), 5.0).await.unwrap();
+    }
+    let id = seed_cast(&sim, complete, 3, 400, "shore:driftwood_rod:-").await;
+    let all = sim.component(complete, &id, &[], &casting()).await;
+    let titles: Vec<_> = all.embeds[1..].iter().filter_map(|e| e.title.as_deref()).collect();
+    assert_eq!(
+        titles,
+        [
+            "📖 Fish book milestone: 10 species!",
+            "📖 Fish book milestone: 25 species!",
+            "📖 Fish book milestone: 50 species!",
+            "📖 Fish book milestone: 72 species!"
+        ]
+    );
+    assert_eq!(shells(&sim, complete).await, 300 + 1_000 + 3_000 + 10_000);
+    assert_eq!(
+        db.owned_badges(complete).await.unwrap(),
+        ["lantern_jelly", "pocket_puffer"]
+    );
+    assert_eq!(
+        db.owned_backgrounds(complete).await.unwrap(),
+        ["brinebell_market", "moonwhale_crossing"]
+    );
+    assert!(
+        all.embeds[2]
+            .description
+            .as_deref()
+            .unwrap_or_default()
+            .contains("**Brinebell Market** profile background"),
+        "{:?}",
+        all.embeds[2].description
+    );
+    // The rewards are the player's to wear: the background editor lists them as owned.
+    let editor = sim
+        .command(complete, "customize", json!([sub("background", Vec::new())]))
+        .await;
+    assert!(
+        editor
+            .options("cz:")
+            .iter()
+            .any(|o| o.value.contains("moonwhale_crossing")),
+        "{:?}",
+        editor.options("cz:").iter().map(|o| &o.value).collect::<Vec<_>>()
+    );
+
+    // A reward they already own (bought earlier) is said so, and not given twice.
+    let owner = unique();
+    fund(&sim, owner, 5_000).await;
+    db.buy_badge(owner, "pocket_puffer", 2_000).await.unwrap();
+    for n in 0..9 {
+        db.log_catch(owner, &format!("old{n}"), 5.0).await.unwrap();
+    }
+    let id = seed_cast(&sim, owner, 4, 400, "shore:driftwood_rod:-").await;
+    let had = sim.component(owner, &id, &[], &casting()).await;
+    assert!(
+        had.embeds[1]
+            .description
+            .as_deref()
+            .unwrap_or_default()
+            .contains("which you already had"),
+        "{:?}",
+        had.embeds[1].description
+    );
+    assert_eq!(shells(&sim, owner).await, 3_000 + 300);
+
+    // /fish book: every species with its record, the unknown ones as shadows with where they live.
+    let reader = unique();
+    let content = Content::get();
+    for (n, fish) in content.fish.iter().take(12).enumerate() {
+        db.log_catch(
+            reader,
+            &fish.id,
+            fish.min_cm + (fish.max_cm - fish.min_cm) * (n as f32 / 12.0),
+        )
+        .await
+        .unwrap();
+    }
+    db.log_catch(reader, &content.fish[2].id, content.fish[2].max_cm)
+        .await
+        .unwrap();
+    let book = sim.command(reader, "fish", fish_sub("book")).await;
+    assert!(!book.ephemeral, "a book is for showing off");
+    assert_eq!(book.title(), "📖 Fish book");
+    let lines: Vec<_> = book.description().lines().collect();
+    assert_eq!(lines.len(), 4);
+    assert!(
+        lines[0].starts_with("✅ **10 species**") && lines[1].starts_with("▫️ **25 species**"),
+        "{lines:?}"
+    );
+    assert!(lines[3].contains("Moonwhale Crossing background"), "{lines:?}");
+    assert!(book.button("◀ Page").disabled && !book.button("Page ▶").disabled);
+    let page_2 = sim.click(reader, &book, "Page ▶").await;
+    assert!(!page_2.button("◀ Page").disabled);
+    let (first, second) = (
+        image::load_from_memory(&book.files[0].1).unwrap(),
+        image::load_from_memory(&page_2.files[0].1).unwrap(),
+    );
+    assert_eq!((first.width(), first.height()), (1_000, 600));
+    assert_ne!(first.to_rgba8(), second.to_rgba8());
+    // Somebody else's book is not theirs to page through.
+    let stranger = sim.click(unique(), &page_2, "◀ Page").await;
+    assert!(
+        stranger.content().contains("someone else's book"),
+        "{}",
+        stranger.content()
+    );
+    // Pages past the end stop at the last one.
+    let far = sim.component(reader, &format!("fz:b:{reader}:99"), &[], &page_2).await;
+    assert!(far.button("Page ▶").disabled, "the last page has no next");
+}
+
+/// A catch in the weekly board's terms, put away with the real size rules.
+async fn catch_for_board(sim: &Sim, user: u64, fish: &str, size: f32, week: chrono::NaiveDate) {
+    let fish = Content::get().fish(fish).expect("a fish");
+    sim.app
+        .db
+        .record_catch(
+            user,
+            pinchora_db::NewCatch {
+                fish_id: &fish.id,
+                size_cm: size,
+                ratio: f64::from(pinchora_game::fishing::size_ratio(fish, size)),
+                weekly: Some((sim.guild, week)),
+                milestones: &[],
+            },
+        )
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn selling_empties_the_bucket_for_shells_and_keeps_the_book() {
+    let Some(mut sim) = Sim::new("selling_empties_the_bucket_for_shells_and_keeps_the_book").await else {
+        return;
+    };
+    let db = sim.app.db.clone();
+    let content = Content::get();
+    let value = |fish: &str, size: f32| pinchora_game::fishing::sale_value(content.fish(fish).unwrap(), size);
+
+    // Nine species in the bucket, three of them more than once: two pages of the card.
+    let seller = unique();
+    fund(&sim, seller, 9_990).await;
+    let catches: [(&str, f32); 14] = [
+        ("pearlpatch_koi", 66.0),
+        ("pearlpatch_koi", 50.0),
+        ("pearlpatch_koi", 31.0),
+        ("reefruff_lionfish", 36.0),
+        ("reefruff_lionfish", 20.0),
+        ("toaststripe_minnow", 7.9),
+        ("toaststripe_minnow", 4.0),
+        ("pebblelip_dace", 9.0),
+        ("crumbfin_bream", 15.0),
+        ("honeypatch_tench", 30.0),
+        ("orbitglow_oarfish", 300.0),
+        ("aurorawoven_leviathan", 600.0),
+        ("siltstep_boot", 25.0),
+        ("mossmosaic_lobster", 40.0),
+    ];
+    for (fish, size) in catches {
+        catch_for_board(
+            &sim,
+            seller,
+            fish,
+            size,
+            chrono::NaiveDate::from_ymd_opt(2026, 11, 2).unwrap(),
+        )
+        .await;
+    }
+    let everything: i64 = catches.iter().map(|(f, s)| value(f, *s)).sum();
+    let spare: i64 = [
+        ("pearlpatch_koi", 50.0),
+        ("pearlpatch_koi", 31.0),
+        ("reefruff_lionfish", 20.0),
+        ("toaststripe_minnow", 4.0),
+    ]
+    .iter()
+    .map(|(f, s)| value(f, *s))
+    .sum();
+
+    let bucket = sim.command(seller, "fish", fish_sub("sell")).await;
+    assert!(bucket.ephemeral);
+    assert!(
+        bucket
+            .description()
+            .contains("Sell it all, or keep the biggest of each kind"),
+        "{}",
+        bucket.description()
+    );
+    assert_eq!(image::load_from_memory(&bucket.files[0].1).unwrap().height(), 600);
+    let all_label = format!("Sell all (14 · {} shells)", pinchora_render::thousands(everything));
+    let dup_label = format!("Sell duplicates (4 · {} shells)", pinchora_render::thousands(spare));
+    assert!(!bucket.button(&all_label).disabled && !bucket.button(&dup_label).disabled);
+    assert!(
+        bucket.button("◀").disabled && !bucket.button("▶").disabled,
+        "ten species make two pages"
+    );
+    let page_2 = sim.click(seller, &bucket, "▶").await;
+    assert!(!page_2.button("◀").disabled && page_2.button("▶").disabled);
+    assert_ne!(bucket.files[0].1, page_2.files[0].1);
+    let back = sim.click(seller, &page_2, "◀").await;
+    assert!(back.button("◀").disabled);
+
+    // Duplicates go, the biggest of each kind stays.
+    let before = shells(&sim, seller).await;
+    let sold = sim.click(seller, &back, &dup_label).await;
+    assert!(
+        sold.description().contains(&format!(
+            "Sold **4 fish** for **{} shells**. You have {}.",
+            pinchora_render::thousands(spare),
+            pinchora_render::thousands(before + spare)
+        )),
+        "{}",
+        sold.description()
+    );
+    assert_eq!(shells(&sim, seller).await, before + spare);
+    let left = db.bucket(seller).await.unwrap();
+    assert_eq!(left.len(), 10);
+    let koi = left.iter().find(|r| r.fish_id == "pearlpatch_koi").unwrap();
+    assert_eq!(koi.size_cm, 66.0, "the biggest koi is the one kept");
+    assert_eq!(
+        db.fish_book(seller).await.unwrap().len(),
+        10,
+        "the book keeps every species"
+    );
+    let book_koi = db
+        .fish_book(seller)
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|b| b.fish_id == "pearlpatch_koi")
+        .unwrap();
+    assert_eq!((book_koi.caught, book_koi.best_cm), (3, 66.0));
+    // Pocket Rattle: the shells took the wallet over 10,000.
+    assert!(
+        sold.followups
+            .iter()
+            .flat_map(|f| f.embeds.iter())
+            .any(|e| e.title.as_deref() == Some("Badge unlocked: Pocket Rattle")),
+        "{:?}",
+        sold.followups
+            .iter()
+            .flat_map(|f| f.embeds.iter())
+            .map(|e| e.title.clone())
+            .collect::<Vec<_>>()
+    );
+    // Nothing is a duplicate any more, and an old duplicates button sells nothing.
+    assert!(sold.button("Sell duplicates (0 · 0 shells)").disabled);
+    let stale = sim.component(seller, &format!("fz:s:{seller}:dup"), &[], &sold).await;
+    assert!(
+        stale.description().contains("Nothing to sell right now."),
+        "{}",
+        stale.description()
+    );
+    assert_eq!(db.bucket_count(seller).await.unwrap(), 10);
+
+    // Somebody else's bucket is not theirs to sell.
+    let thief = sim
+        .click(
+            unique(),
+            &sold,
+            &format!(
+                "Sell all (10 · {} shells)",
+                pinchora_render::thousands(everything - spare)
+            ),
+        )
+        .await;
+    assert!(thief.content().contains("someone else's bucket"), "{}", thief.content());
+    assert_eq!(db.bucket_count(seller).await.unwrap(), 10);
+
+    // Sell the rest.
+    let rest = everything - spare;
+    let all = sim
+        .click(
+            seller,
+            &sold,
+            &format!("Sell all (10 · {} shells)", pinchora_render::thousands(rest)),
+        )
+        .await;
+    assert!(all.description().contains("Sold **10 fish**"), "{}", all.description());
+    assert_eq!(shells(&sim, seller).await, before + everything);
+    assert_eq!(db.bucket_count(seller).await.unwrap(), 0);
+    assert!(all.button("Sell all (0 · 0 shells)").disabled);
+    assert_eq!(db.fish_book(seller).await.unwrap().len(), 10);
+    assert_eq!(
+        db.user(seller).await.unwrap().credits,
+        9_990 + everything,
+        "every shell came from a sale"
+    );
+
+    // An empty bucket says so.
+    let empty = sim.command(seller, "fish", fish_sub("sell")).await;
+    assert!(
+        empty.description().contains("The bucket is empty"),
+        "{}",
+        empty.description()
+    );
+}
+
+#[tokio::test]
+async fn the_weekly_catch_board_ranks_by_size_for_the_species() {
+    let Some(mut sim) = Sim::new("the_weekly_catch_board_ranks_by_size_for_the_species").await else {
+        return;
+    };
+    let week = pinchora_core::leveling::week_start(sim.app.now());
+    let (viewer, dave, alice, bob, carol, erin) = (unique(), unique(), unique(), unique(), unique(), unique());
+
+    // Nobody has fished this week: an empty board of the usual size.
+    let empty = sim
+        .command(viewer, "leaderboard", json!([text_option("board", "catch")]))
+        .await;
+    assert_eq!(png_height(&empty), 716);
+
+    // A koi of 66 cm is big for a koi (usual 47.5), a 7.9 cm minnow is bigger for a minnow (usual 5.5),
+    // and 200 cm is nothing for a sailfish. Centimetres do not decide it; the size for the species does.
+    for (user, fish, size) in [
+        (alice, "pearlpatch_koi", 66.0),
+        (bob, "reefruff_lionfish", 36.0),
+        (carol, "coralchorus_sailfish", 200.0),
+        (dave, "toaststripe_minnow", 7.9),
+        (erin, "velvetwake_catfish", 40.0),
+    ] {
+        catch_for_board(&sim, user, fish, size, week).await;
+    }
+    // A smaller second catch does not replace a player's best.
+    catch_for_board(&sim, alice, "pearlpatch_koi", 30.0, week).await;
+    let board = sim
+        .command(viewer, "leaderboard", json!([text_option("board", "catch")]))
+        .await;
+    assert_eq!(png_height(&board), 716, "no podium without a last week");
+    let ranked: Vec<u64> = sim
+        .app
+        .db
+        .weekly_catch_board(sim.guild, week, 10, 0)
+        .await
+        .unwrap()
+        .iter()
+        .map(|r| r.user_id as u64)
+        .collect();
+    assert_eq!(ranked, [dave, alice, bob, carol, erin]);
+    assert!(board.button("◀").disabled && board.button("▶").disabled);
+    assert_eq!(
+        board.button("◀").custom_id.as_deref(),
+        Some("lb:catch:0"),
+        "its buttons keep the catch board"
+    );
+
+    // Last week's winners show under the board as a podium.
+    let last = week - chrono::Duration::weeks(1);
+    for (user, fish, size) in [
+        (erin, "moonbutton_sunfish", 80.0),
+        (bob, "hushbell_angler", 50.0),
+        (alice, "petalveil_betta", 8.0),
+    ] {
+        catch_for_board(&sim, user, fish, size, last).await;
+    }
+    let with_podium = sim
+        .command(viewer, "leaderboard", json!([text_option("board", "catch")]))
+        .await;
+    assert_eq!(png_height(&with_podium), 826);
+    let again = sim.component(viewer, "lb:catch:0", &[], &with_podium).await;
+    assert_eq!(png_height(&again), 826);
+
+    // Other boards and other servers do not see it.
+    let weekly_xp = sim
+        .command(viewer, "leaderboard", json!([text_option("board", "weekly")]))
+        .await;
+    assert_eq!(png_height(&weekly_xp), 716);
+    assert!(
+        sim.app
+            .db
+            .weekly_catch_board(unique(), week, 10, 0)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+
+    // A week later: this week's catches are the podium and the board starts again.
+    sim.app.shift_clock(chrono::Duration::weeks(1));
+    let next = sim
+        .command(viewer, "leaderboard", json!([text_option("board", "catch")]))
+        .await;
+    assert_eq!(png_height(&next), 826);
+    let new_week = pinchora_core::leveling::week_start(sim.app.now());
+    assert!(
+        sim.app
+            .db
+            .weekly_catch_board(sim.guild, new_week, 10, 0)
+            .await
+            .unwrap()
+            .is_empty()
+    );
+
+    // A reeled catch lands on the board of the week it was caught in, unless it is junk.
+    let angler = unique();
+    let id = seed_cast(&sim, angler, 1, 400, "shore:driftwood_rod:-").await;
+    let catch = sim.component(angler, &id, &[], &casting()).await;
+    let fish = caught_fish(&catch);
+    let row = sim.app.db.weekly_catch_board(sim.guild, new_week, 10, 0).await.unwrap();
+    assert_eq!(row.len(), usize::from(!fish.junk), "{}", fish.id);
+    if let Some(row) = row.first() {
+        assert_eq!(row.user_id as u64, angler);
+        assert_eq!(row.fish_id, fish.id);
+    }
+}

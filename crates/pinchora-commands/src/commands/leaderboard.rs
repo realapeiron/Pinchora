@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
 use pinchora_core::leveling::{self, week_start};
+use pinchora_db::{CatchBoardRow, LeaderboardRow};
+use pinchora_game::Content;
 use pinchora_render::{LastWeekEntry, LeaderboardCard, LeaderboardEntry, Theme, placeholder_avatar};
 use twilight_interactions::command::{CommandModel, CommandOption, CreateCommand, CreateOption};
 use twilight_model::channel::message::{
@@ -25,6 +27,8 @@ pub enum Board {
     ServerPoints,
     #[option(name = "Weekly XP", value = "weekly")]
     Weekly,
+    #[option(name = "Weekly catch", value = "catch")]
+    WeeklyCatch,
     #[option(name = "Global (XP)", value = "xp")]
     GlobalXp,
     #[option(name = "Global (shells)", value = "shells")]
@@ -37,6 +41,7 @@ impl Board {
             "server" => Some(Self::Server),
             "points" => Some(Self::ServerPoints),
             "weekly" => Some(Self::Weekly),
+            "catch" => Some(Self::WeeklyCatch),
             "xp" => Some(Self::GlobalXp),
             "shells" => Some(Self::GlobalShells),
             _ => None,
@@ -45,7 +50,10 @@ impl Board {
 }
 
 #[derive(CommandModel, CreateCommand)]
-#[command(name = "leaderboard", desc = "Top members by XP, shells or server points")]
+#[command(
+    name = "leaderboard",
+    desc = "Top members by XP, shells, server points or biggest catch"
+)]
 pub struct Leaderboard {
     /// Which board (default: this server)
     board: Option<Board>,
@@ -55,7 +63,9 @@ impl Leaderboard {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
         let guild = cx.guild_id();
         let board = match (self.board, guild) {
-            (Some(Board::Server | Board::ServerPoints | Board::Weekly) | None, None) => Board::GlobalXp,
+            (Some(Board::Server | Board::ServerPoints | Board::Weekly | Board::WeeklyCatch) | None, None) => {
+                Board::GlobalXp
+            }
             (Some(b), _) => b,
             (None, Some(_)) => Board::Server,
         };
@@ -93,18 +103,57 @@ async fn last_week_podium(app: &Arc<App>, guild: u64, week: chrono::NaiveDate) -
     Ok(podium)
 }
 
+/// "Pearlpatch Koi 61.4 cm": what a weekly catch was.
+fn catch_text(row: &CatchBoardRow) -> String {
+    let name = Content::get().fish(&row.fish_id).map_or("a fish", |f| f.name.as_str());
+    format!("{name} {:.1} cm", row.size_cm)
+}
+
+/// The top three catches of the week starting `week`, for the recap under the weekly catch board.
+async fn last_week_catches(app: &Arc<App>, guild: u64, week: chrono::NaiveDate) -> anyhow::Result<Vec<LastWeekEntry>> {
+    let rows = app.db.weekly_catch_board(guild, week, 3, 0).await?;
+    let mut podium = Vec::with_capacity(rows.len());
+    for (i, row) in rows.iter().enumerate() {
+        let name = app
+            .user(row.user_id as u64)
+            .await
+            .map_or_else(|| "Unknown user".to_owned(), |u| display_name(&u, None));
+        podium.push(LastWeekEntry {
+            rank: i as i64 + 1,
+            name,
+            value: catch_text(row),
+        });
+    }
+    Ok(podium)
+}
+
 /// One page as a card image with the ◀ ▶ buttons; the image replaces whatever message it lands on.
 async fn page(app: &Arc<App>, board: Board, guild: Option<u64>, page: u32) -> anyhow::Result<InteractionResponseData> {
     let offset = i64::from(page) * PAGE_SIZE;
     // The server boards need a server; anywhere else a stale button shows global XP.
     let board = match (board, guild) {
-        (Board::Server | Board::ServerPoints | Board::Weekly, None) => Board::GlobalXp,
+        (Board::Server | Board::ServerPoints | Board::Weekly | Board::WeeklyCatch, None) => Board::GlobalXp,
         (b, _) => b,
     };
     // Fetch one extra row to know whether a next page exists.
     let mut points_name = String::new();
     let mut last_week = Vec::new();
+    // The weekly catch board's rows, which carry a fish and a size the plain rows have no room for.
+    let mut catches: Vec<CatchBoardRow> = Vec::new();
     let (mut rows, title) = match (board, guild) {
+        (Board::WeeklyCatch, Some(g)) => {
+            let week = week_start(app.now());
+            last_week = last_week_catches(app, g, week - chrono::Duration::weeks(1)).await?;
+            catches = app.db.weekly_catch_board(g, week, PAGE_SIZE + 1, offset).await?;
+            let rows = catches
+                .iter()
+                .map(|c| LeaderboardRow {
+                    user_id: c.user_id,
+                    value: (c.ratio * 1000.0).round() as i64,
+                })
+                .collect();
+            (rows, "Weekly catch".to_owned())
+        }
         (Board::Weekly, Some(g)) => {
             let week = week_start(app.now());
             last_week = last_week_podium(app, g, week - chrono::Duration::weeks(1)).await?;
@@ -158,6 +207,16 @@ async fn page(app: &Arc<App>, board: Board, guild: Option<u64>, page: u32) -> an
             Board::GlobalShells => (thousands(row.value), "SHELLS".to_owned()),
             Board::ServerPoints => (thousands(row.value), points_name.to_uppercase()),
             Board::Weekly => (thousands(row.value), "XP THIS WEEK".to_owned()),
+            Board::WeeklyCatch => {
+                let catch = &catches[i];
+                let fish = Content::get()
+                    .fish(&catch.fish_id)
+                    .map_or("A FISH", |f| f.name.as_str());
+                (
+                    format!("{:.1} CM", catch.size_cm),
+                    format!("{} · {:.0}% OF USUAL", fish.to_uppercase(), catch.ratio * 100.0),
+                )
+            }
             _ => (
                 format!("LV {}", leveling::level_of(row.value)),
                 format!("{} XP", thousands(row.value)),
@@ -189,6 +248,7 @@ async fn page(app: &Arc<App>, board: Board, guild: Option<u64>, page: u32) -> an
         Board::Server => "server",
         Board::ServerPoints => "points",
         Board::Weekly => "weekly",
+        Board::WeeklyCatch => "catch",
         Board::GlobalXp => "xp",
         Board::GlobalShells => "shells",
     };

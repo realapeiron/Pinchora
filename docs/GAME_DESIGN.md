@@ -160,11 +160,34 @@ Every movement is written to `credit_ledger` (pearls get their own ledger).
   and is cached in memory by a hash of the room's look and placements.
 - A purchase is one transaction: the ownership row, the shells and the ledger entry.
 
-## Fishing (first mini game)
+## Fishing
 
-`/fish` costs a bait, shows a cast image, and a **Reel!** button appears after a random 1–4 s;
-reacting in time catches a fish weighted by rarity and the rod tier. Catches fill a fish book
-(`content/fish.json`: size ranges, value, rarity, flavour); duplicates sell for shells.
+`/fish cast` costs a bait (10 shells plain, or one piece of a bought bait), shows a cast message, and
+a **Reel!** button works once the fish has bitten, a random 1.5–4.5 s later; reacting inside the rod's
+window (2.5 s for the starter rod, up to 5 s) catches a fish. The cast keeps what it was made with in
+Redis (`cast:<user>:<nonce>` = `<bite ms>:<spot>:<rod>:<bait>`), so the reel does not depend on the
+player's gear at that moment.
+
+- **Spots** (`content/fishing_gear.json`): Shore, Reef, Kelp Forest, Deep Sea and Abyss open at global
+  level 1 / 5 / 12 / 20 / 30 (the first is open even at level 0). Each fish in `content/fish.json` has
+  `spots`: the spots it lives in and its draw weight at each. Within one spot a rarer fish always has a
+  smaller weight than a commoner one (`content/check.py` and the game tests check it); the depth shifts the
+  mix, not the order. Time of day and season still filter who bites, so a pool is never empty (junk lives
+  everywhere). Base odds work out to roughly 17 / 27 / 44 / 100 / 160 shells of fish per cast at the five spots.
+- **Gear**: five rods (`window_ms`, `luck` multiplies the weight of rare and better fish) and three baits
+  (a rarity tier's weight ×3 or ×2.5, or a spot's signature `specials` ×4); a bait replaces the plain-bait fee.
+  Tables `fishing_gear`, `user_rods`, `user_baits`; no row means the shore, the starter rod and plain bait.
+- **Sizes and selling**: a size is normal around the middle of the species' range, three deviations to either
+  end of it. A catch goes to `fish_bucket` (60 fish at most) and to the fish book, which keeps the count and the
+  record size for good; `/fish sell` sells all or all but the biggest of each species, for the species' worth
+  scaled by size. `fish_bucket` rows are deleted and paid in one transaction, so a double click pays once.
+- **Book milestones**: 10 / 25 / 50 / 72 species pay shells and a shop badge or a background that already
+  exists. `fish_milestones` makes each pay once; the claim runs in the catch's transaction and also catches up
+  players who passed a milestone before it existed.
+- **Weekly catch** (`weekly_catch`, custom ids of the board `lb:catch:<page>`): one row per player per server
+  and week, the catch with the biggest size over the species' middle; junk never counts. Weeks are the Monday
+  (UTC) like `weekly_xp`, and the hourly janitor forgets weeks older than the kept ones.
+- Custom ids: `fr:` reel, `fx:` shop and gear menus, `fz:` bucket and book buttons.
 
 ## Cards
 
