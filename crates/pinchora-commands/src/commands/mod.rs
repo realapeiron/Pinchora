@@ -15,6 +15,7 @@ pub(crate) mod quests;
 mod rank;
 mod rep;
 pub(crate) mod shop;
+pub(crate) mod stall;
 
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::application::{command::Command, interaction::application_command::CommandData};
@@ -60,4 +61,5 @@ commands!(
     gift::Gift,
     duel::DuelCommand,
     quests::Quests,
+    stall::StallCommand,
 );

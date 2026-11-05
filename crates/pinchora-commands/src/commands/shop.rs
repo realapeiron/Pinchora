@@ -157,16 +157,16 @@ fn buy_menu(custom_id: String, placeholder: &str, options: Vec<SelectMenuOption>
     })
 }
 
-struct SlotSpec {
-    item_id: String,
-    line1: String,
-    line2: String,
-    bar: Option<f32>,
-    badge: String,
-    shell_price: bool,
+pub(crate) struct SlotSpec {
+    pub(crate) item_id: String,
+    pub(crate) line1: String,
+    pub(crate) line2: String,
+    pub(crate) bar: Option<f32>,
+    pub(crate) badge: String,
+    pub(crate) shell_price: bool,
 }
 
-async fn grid_png(
+pub(crate) async fn grid_png(
     app: &App,
     title: String,
     subtitle: String,

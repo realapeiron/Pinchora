@@ -33,8 +33,12 @@ Chatting earns 15–25 XP per minute per server. New members get a welcome card 
 | `/shop market` | Eight pieces every hour with stock shared by every player |
 | `/shop catalog [category]` | 165 permanent designs in 17 aisles; 1,175 items with colour variants |
 | `/inventory`, `/gift user` | What you own, and sending furniture to friends |
+| `/stall sell\|view\|manage` | Your own player shop (8 listings, 5% market fee) |
 | `/pet adopt\|view\|capsule\|list\|rename` | Pets with needs that drift over time; feed, play, bathe; 42 species |
 | `/fish` | Cast, wait for the bite, press **Reel!** in time; 72 catches for the fish book |
+| `/quests` | Three daily quests; clear all three for pearls |
+| `/duel tictactoe user` | Button tic-tac-toe; the winner earns shells |
+| `/config welcome-card` | Design the welcome card (theme, headline, accent colour) with a live preview |
 
 Game content (furniture, rooms, pets, fish) lives in `content/*.json`; see
 [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md). Sprites are drawn by GPT and imported with

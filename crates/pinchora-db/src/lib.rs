@@ -5,6 +5,7 @@ mod members;
 mod pets;
 mod shop;
 mod social;
+mod stalls;
 mod users;
 
 use std::time::Duration;
@@ -17,6 +18,7 @@ pub use house::{HouseRow, InventoryRow, NewRoom, PlaceOutcome, PlacementRow, Roo
 pub use members::{LeaderboardRow, MemberRank, XpGain};
 pub use pets::PetRow;
 pub use shop::{BuyOutcome, Currency, MarketRow, VisitOutcome};
+pub use stalls::{ListingRow, MAX_LISTINGS, STALL_FEE_PERCENT, StallBuy};
 pub use users::UserRow;
 
 /// Handle to PostgreSQL. Cheap to clone.

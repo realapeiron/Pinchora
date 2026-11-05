@@ -1,6 +1,6 @@
 use crate::{
     Cx,
-    commands::{duel, fish, gift, house, leaderboard, pet, quests, shop},
+    commands::{duel, fish, gift, house, leaderboard, pet, quests, shop, stall},
 };
 
 /// Routes button clicks by the `prefix:` of their custom id. Ids carry all their
@@ -20,6 +20,9 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
         Some("pa") => pet::on_adopt(cx, values.first().map(String::as_str)).await,
         Some("ps") => pet::on_switch(cx, values.first().map(String::as_str)).await,
         Some("fr") => fish::on_reel(cx, parts).await,
+        Some("sl") => stall::on_list(cx, parts, values.first().map(String::as_str)).await,
+        Some("su") => stall::on_unlist(cx, values.first().map(String::as_str)).await,
+        Some("sb") => stall::on_buy(cx, values.first().map(String::as_str)).await,
         Some("qc") => quests::on_claim(cx).await,
         Some("tt") => duel::on_move(cx, parts).await,
         Some("gf") => gift::on_gift(cx, parts, values.first().map(String::as_str)).await,
