@@ -94,6 +94,17 @@ FORBIDDEN = re.compile(
 SNAKE = re.compile(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)*\Z")
 HEX_COLOR = re.compile(r"#[0-9a-f]{6}\Z")
 WORD = re.compile(r"[a-z]+\Z")
+TRIVIA_CATEGORIES = ("ocean", "animals", "nature", "science", "geography", "food", "history", "home")
+TRIVIA_DIFFICULTIES = ("easy", "medium", "hard")
+HANGMAN_CATEGORIES = ("sea_life", "house_items", "food", "nature", "pets")
+# Words a family friendly game must never accept or show.
+BANNED_WORDS = {
+    "bitch", "whore", "penis", "dildo", "porno", "shits", "fucks", "pussy", "cunts", "twats", "wanks",
+    "boobs", "sluts", "dicks", "horny", "nazis", "raped", "rapes", "spics", "homos", "fagot", "nigga",
+    "negro", "pubic",
+}
+WORD5 = re.compile(r"[a-z]{5}\Z")
+HANGMAN_WORD = re.compile(r"[a-z]+(?: [a-z]+)?\Z")
 ERRORS = []
 
 
@@ -618,6 +629,123 @@ def check_badges(raw, fish_count):
     return records
 
 
+def check_trivia(raw):
+    records = entries(raw, "trivia.json", 300)
+    ids, questions = {}, {}
+    per_category, per_difficulty, slots = Counter(), Counter(), Counter()
+    for item, where in records:
+        fields(item, where, ("id", "category", "difficulty", "question", "options", "answer"))
+        enum(item, "category", TRIVIA_CATEGORIES, where)
+        enum(item, "difficulty", TRIVIA_DIFFICULTIES, where)
+        string(item, "question", where, limit=110)
+        identifier, category = item.get("id"), item.get("category")
+        if not isinstance(identifier, str) or not SNAKE.fullmatch(identifier):
+            problem(where, "id must be snake_case")
+        elif identifier in ids:
+            problem(where, f"duplicate id {identifier!r}; first used at {ids[identifier]}")
+        else:
+            ids[identifier] = where
+            if isinstance(category, str) and not identifier.startswith(category + "_"):
+                problem(where, f"id must start with {category + '_'!r}")
+        question = item.get("question")
+        if nonempty(question):
+            key = " ".join(question.casefold().split())
+            if key in questions:
+                problem(where, f"duplicate question; first used at {questions[key]}")
+            else:
+                questions[key] = where
+        options = item.get("options")
+        if not isinstance(options, list) or len(options) != 4:
+            problem(where, "options must be exactly four strings")
+            continue
+        if not all(nonempty(option) and len(option) <= 28 for option in options):
+            problem(where, "every option must be a nonempty string of at most 28 characters")
+            continue
+        if len({option.casefold() for option in options}) != 4:
+            problem(where, "options must all differ")
+        answer = item.get("answer")
+        if options.count(answer) != 1:
+            problem(where, "answer must be exactly one of the options")
+        else:
+            slots[options.index(answer)] += 1
+        if nonempty(question) and nonempty(answer) and len(answer) > 3 and answer.casefold() in question.casefold():
+            problem(where, "the question gives the answer away")
+        per_category[category] += 1
+        per_difficulty[(category, item.get("difficulty"))] += 1
+    for category in TRIVIA_CATEGORIES:
+        if per_category[category] < 40:
+            problem("trivia.json", f"needs at least 40 {category} questions; found {per_category[category]}")
+        for difficulty in TRIVIA_DIFFICULTIES:
+            if per_difficulty[(category, difficulty)] < 3:
+                problem("trivia.json", f"needs at least 3 {difficulty} {category} questions")
+    total = sum(slots.values())
+    if total and min(slots[slot] for slot in range(4)) * 100 < total * 15:
+        problem("trivia.json", f"right answers are lopsided by option position: {dict(sorted(slots.items()))}")
+    return records
+
+
+def check_hangman(raw):
+    records = entries(raw, "hangman.json", 400)
+    seen, per_category = {}, Counter()
+    for item, where in records:
+        fields(item, where, ("category", "word"))
+        enum(item, "category", HANGMAN_CATEGORIES, where)
+        word = item.get("word")
+        if not isinstance(word, str) or not HANGMAN_WORD.fullmatch(word):
+            problem(where, "word must be lowercase a-z with at most one space")
+            continue
+        letters = len(word.replace(" ", ""))
+        if not 4 <= letters <= 16:
+            problem(where, f"word has {letters} letters; allowed 4..16")
+        if word in seen:
+            problem(where, f"duplicate word {word!r}; first used at {seen[word]}")
+        seen[word] = where
+        if word in BANNED_WORDS:
+            problem(where, f"{word!r} is not family friendly")
+        per_category[item.get("category")] += 1
+    for category in HANGMAN_CATEGORIES:
+        if per_category[category] < 80:
+            problem("hangman.json", f"needs at least 80 {category} words; found {per_category[category]}")
+    return records
+
+
+def check_words(raw):
+    if not isinstance(raw, dict):
+        problem("words.json", "must be an object with answers and allowed")
+        return [], []
+    fields(raw, "words.json", ("answers", "allowed"))
+    lists = {}
+    for key, minimum in (("answers", 1000), ("allowed", 3000)):
+        words = raw.get(key)
+        if not isinstance(words, list):
+            problem("words.json", f"{key} must be an array")
+            lists[key] = []
+            continue
+        if len(words) < minimum:
+            problem("words.json", f"{key} needs at least {minimum} words; found {len(words)}")
+        bad = [w for w in words if not isinstance(w, str) or not WORD5.fullmatch(w)]
+        if bad:
+            problem("words.json", f"{key} must be five lowercase letters a-z; first bad: {bad[0]!r}")
+        good = [w for w in words if isinstance(w, str)]
+        if good != sorted(set(good)):
+            problem("words.json", f"{key} must be sorted with no repeats")
+        for word in good:
+            if word in BANNED_WORDS:
+                problem("words.json", f"{word!r} in {key} is not family friendly")
+        lists[key] = good
+    missing = sorted(set(lists["answers"]) - set(lists["allowed"]))
+    if missing:
+        problem("words.json", f"{len(missing)} answers are not allowed guesses, e.g. {missing[0]!r}")
+    return lists["answers"], lists["allowed"]
+
+
+def check_games():
+    trivia = check_trivia(read_file("trivia.json"))
+    hangman = check_hangman(read_file("hangman.json"))
+    answers, allowed = check_words(read_file("words.json"))
+    return trivia, hangman, answers, allowed
+
+
 def table(title, rows):
     print(f"\n{title}")
     width = max(len(str(label)) for label, _ in rows)
@@ -656,12 +784,15 @@ def main():
     fish = check_fish(raw["fish"])
     backgrounds = check_backgrounds(raw["backgrounds"])
     badges = check_badges(raw["badges"], len(fish))
+    trivia, hangman, answers, allowed = check_games()
     share(furniture + surfaces["wallpapers"] + surfaces["floors"], "all purchasable designs")
     table("Catalog", [("Furniture sets", len(sets)), ("Furniture bases", len(furniture)),
                       ("Playable furniture items", playable), ("Wallpapers", len(surfaces["wallpapers"])),
                       ("Floors", len(surfaces["floors"])), ("Rooms", len(rooms)),
                       ("Pet species", len(pets)), ("Fish / catches", len(fish)),
                       ("Backgrounds", len(backgrounds)), ("Badges", len(badges))])
+    table("Games", [("Trivia questions", len(trivia)), ("Hangman words", len(hangman)),
+                    ("Wordle answers", len(answers)), ("Wordle allowed guesses", len(allowed))])
     for key, order in (("category", CATEGORY_MIN), ("rarity", RARITIES), ("availability", AVAILABILITY), ("layer", LAYERS)):
         if key in ("category", "layer"):
             furniture_table(f"Furniture by {key}", furniture, key, order)

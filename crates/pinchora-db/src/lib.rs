@@ -1,5 +1,6 @@
 mod customize;
 mod economy;
+mod games;
 mod guilds;
 mod house;
 mod members;
@@ -17,6 +18,7 @@ use sqlx::{PgPool, postgres::PgPoolOptions};
 
 pub use customize::{CustomizeBuy, MAX_BADGES, PlayerStats};
 pub use economy::{DailyOutcome, RepOutcome, TransferOutcome};
+pub use games::{ACTIVE, DONE, DuelStart, GameSession, GameStat, NewGame, PENDING, Payout, WordleGame};
 pub use guilds::{GuildSettings, LogKind};
 pub use house::{HouseRow, InventoryRow, NewRoom, PlaceOutcome, PlacementRow, RoomRow, UpgradeOutcome};
 pub use members::{LeaderboardRow, MemberRank, XpGain};

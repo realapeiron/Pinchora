@@ -1,10 +1,11 @@
 use crate::{
     Cx,
     commands::{
-        character, customize, decorate, duel, fish, gift, house, leaderboard, pet, plaza, quests, role_panels, shop,
-        stall, store,
+        character, connect4, customize, decorate, duel, fish, gift, hangman, house, leaderboard, pet, plaza, quests,
+        role_panels, rps, shop, stall, store, trivia, wordle,
     },
 };
+use twilight_model::application::interaction::modal::{ModalInteractionComponent, ModalInteractionData};
 
 /// Routes button clicks by the `prefix:` of their custom id. Ids carry all their
 /// state, so any pod can serve any click.
@@ -38,6 +39,33 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
         Some("st") => store::on_buy(cx, values.first().map(String::as_str)).await,
         Some("cz") => customize::on_component(cx, parts, values).await,
         Some("rr") => role_panels::on_toggle(cx, parts).await,
+        Some("c4") => connect4::on_button(cx, parts).await,
+        Some("rp") => rps::on_button(cx, parts).await,
+        Some("hm") => hangman::on_pick(cx, parts, values.first().map(String::as_str)).await,
+        Some("wo") => wordle::on_button(cx, parts).await,
+        Some("tv") => trivia::on_answer(cx, parts).await,
         _ => cx.reply_ephemeral("This button has expired.").await,
     }
+}
+
+/// Routes a submitted modal by the `prefix:` of its custom id.
+pub(crate) async fn dispatch_modal(cx: &Cx, modal: &ModalInteractionData) -> anyhow::Result<()> {
+    let mut parts = modal.custom_id.split(':');
+    match parts.next() {
+        Some("wo") if parts.next() == Some("m") => {
+            let text = modal_text(&modal.components, "guess").unwrap_or_default();
+            wordle::on_guess(cx, parts, &text).await
+        }
+        _ => cx.reply_ephemeral("This form has expired.").await,
+    }
+}
+
+/// What was typed into the text input called `custom_id`, wherever the form nests it.
+fn modal_text(components: &[ModalInteractionComponent], custom_id: &str) -> Option<String> {
+    components.iter().find_map(|component| match component {
+        ModalInteractionComponent::TextInput(input) if input.custom_id == custom_id => Some(input.value.clone()),
+        ModalInteractionComponent::ActionRow(row) => modal_text(&row.components, custom_id),
+        ModalInteractionComponent::Label(label) => modal_text(std::slice::from_ref(&label.component), custom_id),
+        _ => None,
+    })
 }

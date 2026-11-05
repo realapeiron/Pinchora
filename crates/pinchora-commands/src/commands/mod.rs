@@ -1,19 +1,23 @@
 mod bio;
 pub(crate) mod character;
 mod config;
+pub(crate) mod connect4;
 pub(crate) mod customize;
 mod daily;
 pub(crate) mod decorate;
 pub(crate) mod duel;
 mod economy;
 pub(crate) mod fish;
+pub(crate) mod games;
 pub(crate) mod gift;
+pub(crate) mod hangman;
 mod help;
 pub(crate) mod house;
 pub(crate) mod leaderboard;
 mod level_roles;
 pub(crate) mod pet;
 mod ping;
+pub(crate) mod play;
 pub(crate) mod plaza;
 mod points;
 pub(crate) mod profile;
@@ -21,10 +25,13 @@ pub(crate) mod quests;
 mod rank;
 mod rep;
 pub(crate) mod role_panels;
+pub(crate) mod rps;
 pub(crate) mod shop;
 pub(crate) mod stall;
 pub(crate) mod store;
+pub(crate) mod trivia;
 mod utilities;
+pub(crate) mod wordle;
 
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::application::{command::Command, interaction::application_command::CommandData};
@@ -77,4 +84,5 @@ commands!(
     store::StoreCommand,
     customize::CustomizeCommand,
     role_panels::RolesCommand,
+    play::PlayCommand,
 );

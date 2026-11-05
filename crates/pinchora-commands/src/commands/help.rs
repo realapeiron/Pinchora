@@ -22,6 +22,10 @@ impl Help {
                 "`/daily` daily shells with streak bonus\n`/balance` your wallet\n`/give` send shells to a friend",
             ))
             .field(EmbedFieldBuilder::new(
+                "Games",
+                "`/duel connect4`, `/duel rps` and `/duel tictactoe` challenge a friend (optional wager)\n`/play hangman`, `/play wordle` and `/play trivia` play on your own or with the channel\n`/play stats` your wins",
+            ))
+            .field(EmbedFieldBuilder::new(
                 "Leaderboards",
                 "`/leaderboard` server XP, server points, global XP or global shells",
             ))

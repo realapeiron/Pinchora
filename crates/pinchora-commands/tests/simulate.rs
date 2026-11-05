@@ -29,9 +29,10 @@ use axum::{
 use pinchora_cache::Cache;
 use pinchora_commands::{
     App, Responder, handle_interaction, on_ban_add, on_ban_remove, on_member_add, on_member_remove, on_member_update,
-    on_message, on_voice_state_update,
+    on_message, on_voice_state_update, sweep_games,
 };
 use pinchora_db::Db;
+use pinchora_game::play::{PlayContent, hangman::Hangman, trivia, wordle};
 use serde_json::{Value, json};
 use tokio::{net::TcpListener, sync::oneshot};
 use tracing::{
@@ -331,6 +332,10 @@ async fn discord(
         }
         _ => {}
     }
+    // A handler asking which message it just posted (`GET .../messages/@original`).
+    if method == Method::GET && path.contains("/webhooks/") && path.ends_with("/messages/@original") {
+        return (StatusCode::OK, message_json(CHANNEL_ID, unique()).to_string());
+    }
     if method == Method::GET || !path.contains("/webhooks/") {
         return (StatusCode::NOT_FOUND, "{}".to_owned());
     }
@@ -442,6 +447,8 @@ struct Reply {
     files: Vec<File>,
     /// Further messages the handler posted.
     followups: Vec<Reply>,
+    /// The form the handler opened, as its custom id and title.
+    modal: Option<(String, String)>,
 }
 
 impl Reply {
@@ -454,6 +461,7 @@ impl Reply {
             ephemeral: false,
             files: Vec::new(),
             followups: Vec::new(),
+            modal: None,
         }
     }
 
@@ -476,11 +484,16 @@ impl Reply {
                 kind: first.kind,
                 files: Vec::new(),
                 followups: Vec::new(),
+                modal: None,
                 ..on.clone()
             },
             _ => Self::new(first.kind),
         };
         if let Some(data) = first.data {
+            if first.kind == InteractionResponseType::Modal {
+                reply.modal = data.custom_id.clone().zip(data.title.clone());
+                return reply;
+            }
             if let Some(flags) = data.flags {
                 reply.ephemeral = flags.contains(MessageFlags::EPHEMERAL);
             }
@@ -637,6 +650,9 @@ impl fmt::Display for Reply {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let ephemeral = if self.ephemeral { ", ephemeral" } else { "" };
         writeln!(f, "  answer: {:?}{ephemeral}", self.kind)?;
+        if let Some((custom_id, title)) = &self.modal {
+            writeln!(f, "  form: {title} ({custom_id})")?;
+        }
         if let Some(content) = &self.content {
             writeln!(f, "  content: {content}")?;
         }
@@ -705,6 +721,9 @@ struct Sim {
     name: &'static str,
     dir: PathBuf,
     step: usize,
+    /// The channel interactions come from; tests that need channel-wide cooldowns to themselves
+    /// pick their own.
+    channel: u64,
 }
 
 impl Sim {
@@ -768,6 +787,7 @@ impl Sim {
             name,
             dir,
             step: 0,
+            channel: CHANNEL_ID,
         })
     }
 
@@ -1019,6 +1039,22 @@ impl Sim {
         self.component(user, &select.custom_id.clone(), &[value], on).await
     }
 
+    /// Submits the form `modal` opened with `text` typed into its only text input, from the
+    /// message `on` the button was on.
+    async fn submit(&mut self, user: u64, modal: &Reply, text: &str, on: &Reply) -> Reply {
+        let (custom_id, title) = modal.modal.clone().expect("the reply is not a form");
+        let data = json!({
+            "custom_id": custom_id,
+            "components": [{
+                "type": 18,
+                "id": 1,
+                "component": { "type": 4, "id": 2, "custom_id": "guess", "value": text },
+            }],
+        });
+        self.run(format!("submit [{title}] {text:?}"), user, 5, data, Some(on))
+            .await
+    }
+
     fn interaction(&self, user: u64, kind: u8, data: Value, on: Option<&Reply>) -> Interaction {
         let id = unique();
         let mut interaction = json!({
@@ -1028,7 +1064,7 @@ impl Sim {
             "token": format!("sim-{id}"),
             "version": 1,
             "guild_id": self.guild.to_string(),
-            "channel": { "id": CHANNEL_ID.to_string(), "type": 0, "guild_id": self.guild.to_string() },
+            "channel": { "id": self.channel.to_string(), "type": 0, "guild_id": self.guild.to_string() },
             "locale": "en-US",
             "guild_locale": "en-US",
             "context": 0,
@@ -1244,6 +1280,1010 @@ fn sub(name: &str, options: Vec<Value>) -> Value {
 
 fn group(name: &str, sub: Value) -> Value {
     json!({ "name": name, "type": 2, "options": [sub] })
+}
+
+// /Games
+
+/// Today as the games count it: days since 1970-01-01, UTC.
+fn today() -> i64 {
+    chrono::Utc::now().timestamp().div_euclid(86_400)
+}
+
+async fn fund(sim: &Sim, user: u64, shells: i64) {
+    sim.app.db.earn_shells(user, shells, "sim").await.expect("fund");
+}
+
+async fn shells(sim: &Sim, user: u64) -> i64 {
+    sim.app.db.user(user).await.expect("user row").credits
+}
+
+/// What `/play stats` keeps for a player: games played and won.
+async fn record_of(sim: &Sim, user: u64, game: &str) -> (i32, i32) {
+    sim.app
+        .db
+        .game_stats(user)
+        .await
+        .expect("stats")
+        .iter()
+        .find(|s| s.game == game)
+        .map_or((0, 0), |s| (s.played, s.won))
+}
+
+/// `/duel <game> user [options]`.
+async fn duel(sim: &mut Sim, host: u64, guest: u64, game: &str, extra: Vec<Value>) -> Reply {
+    let mut options = vec![user_option("user", guest)];
+    options.extend(extra);
+    sim.command_resolved(host, "duel", json!([sub(game, options)]), resolved(&[guest], &[]))
+        .await
+}
+
+/// The session id inside a message's buttons (`c4:m:<id>:<col>`, `tv:<id>:<slot>`, ...).
+fn session_of(reply: &Reply) -> i64 {
+    reply
+        .controls()
+        .find_map(|c| match c {
+            Component::Button(b) => b.custom_id.as_deref(),
+            Component::SelectMenu(m) => Some(m.custom_id.as_str()),
+            _ => None,
+        })
+        .and_then(|id| {
+            let parts: Vec<&str> = id.split(':').collect();
+            // `tv:<id>:<slot>` and `hm:<id>:<half>` lead with the id; the duels' `c4:m:<id>:<col>` follow an action.
+            let at = if matches!(parts[0], "tv" | "hm") { 1 } else { 2 };
+            parts.get(at)?.parse().ok()
+        })
+        .expect("a control with a session id")
+}
+
+/// The janitor ends every late game in the database, whoever's it is, so tests that make games
+/// late take turns.
+static SWEEPS: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+/// The message a session is shown in, as the database knows it.
+async fn message_of(sim: &Sim, session: i64) -> u64 {
+    sim.app
+        .db
+        .game(session)
+        .await
+        .expect("session")
+        .and_then(|g| g.message_id)
+        .expect("the session knows its message") as u64
+}
+
+/// Makes a session's clock run out, as if its deadline had passed.
+async fn expire(sim: &Sim, session: i64) {
+    sqlx::query("UPDATE game_sessions SET expires_at = now() - interval '1 second' WHERE id = $1")
+        .bind(session)
+        .execute(sim.app.db.pool())
+        .await
+        .expect("expire the session");
+}
+
+#[tokio::test]
+async fn tic_tac_toe_counts_in_the_stats() {
+    let Some(mut sim) = Sim::new("tic_tac_toe_counts_in_the_stats").await else {
+        return;
+    };
+    let (x, o) = (unique(), unique());
+    let mut game = duel(&mut sim, x, o, "tictactoe", vec![]).await;
+    let click = |game: &Reply, cell: usize| match game.controls().nth(cell) {
+        Some(Component::Button(b)) => b.custom_id.clone().expect("custom id"),
+        other => panic!("cell {cell} is {other:?}"),
+    };
+    // X takes the top row while O answers in the middle row.
+    for (player, cell) in [(x, 0), (o, 3), (x, 1), (o, 4), (x, 2)] {
+        let id = click(&game, cell);
+        game = sim.component(player, &id, &[], &game).await;
+    }
+    assert!(game.content().contains("wins"), "{}", game.content());
+    assert_eq!(record_of(&sim, x, "tictactoe").await, (1, 1));
+    assert_eq!(record_of(&sim, o, "tictactoe").await, (1, 0));
+}
+
+#[tokio::test]
+async fn connect_four_plays_to_a_win_and_pays_once() {
+    let Some(mut sim) = Sim::new("connect_four_plays_to_a_win_and_pays_once").await else {
+        return;
+    };
+    let (a, b, bystander) = (unique(), unique(), unique());
+
+    let challenge = duel(&mut sim, a, b, "connect4", vec![]).await;
+    assert!(
+        !challenge.ephemeral && challenge.content().contains("challenges"),
+        "{}",
+        challenge.content()
+    );
+    assert!(challenge.content().contains("No wager"), "{}", challenge.content());
+    let refused = sim.click(a, &challenge, "Accept").await;
+    assert!(
+        refused.ephemeral && refused.content().contains("You sent this challenge"),
+        "{}",
+        refused.content()
+    );
+    let refused = sim.click(bystander, &challenge, "Accept").await;
+    assert!(
+        refused.ephemeral && refused.content().contains("isn't for you"),
+        "{}",
+        refused.content()
+    );
+
+    let board = sim.click(b, &challenge, "Accept").await;
+    assert_eq!((board.files.len(), board.files[0].0.as_str()), (1, "connect4.png"));
+    assert_eq!(board.rows(), 2, "columns 1-4 and 5-7");
+    assert!(
+        board.content().contains(&format!("<@{a}>'s turn")),
+        "{}",
+        board.content()
+    );
+    let refused = sim.click(b, &board, "3").await;
+    assert!(
+        refused.ephemeral && refused.content().contains("Not your turn"),
+        "{}",
+        refused.content()
+    );
+    let refused = sim.click(bystander, &board, "3").await;
+    assert!(
+        refused.ephemeral && refused.content().contains("not in this game"),
+        "{}",
+        refused.content()
+    );
+
+    // A stacks column 1 while B answers in column 2: A's fourth disc wins.
+    let mut board = board;
+    for (player, label) in [(a, "1"), (b, "2"), (a, "1"), (b, "2"), (a, "1"), (b, "2")] {
+        board = sim.click(player, &board, label).await;
+        assert!(board.components.len() == 2, "the game is still on");
+    }
+    assert!(
+        board.content().contains(&format!("<@{a}>'s turn")),
+        "{}",
+        board.content()
+    );
+    let won = sim.click(a, &board, "1").await;
+    assert!(
+        won.content().contains(&format!("<@{a}> wins!")) && won.content().contains("+**25** shells"),
+        "{}",
+        won.content()
+    );
+    assert!(
+        won.components.is_empty() && won.files.len() == 1,
+        "the final board has no buttons"
+    );
+    assert_eq!((shells(&sim, a).await, shells(&sim, b).await), (25, 0));
+    assert_eq!(record_of(&sim, a, "connect4").await, (1, 1));
+    assert_eq!(record_of(&sim, b, "connect4").await, (1, 0));
+    let late = sim
+        .component(b, &board.button("2").custom_id.clone().expect("id"), &[], &board)
+        .await;
+    assert!(late.ephemeral && late.content().contains("over"), "{}", late.content());
+    assert_eq!(shells(&sim, a).await, 25, "a finished game pays no second time");
+
+    let stats = sim.command(a, "play", json!([sub("stats", vec![])])).await;
+    assert!(
+        stats.field("🔴 Connect four").contains("**1** won of **1**"),
+        "{}",
+        stats.field("🔴 Connect four")
+    );
+    assert!(
+        stats.description().contains("**1** wins in **1** games"),
+        "{}",
+        stats.description()
+    );
+}
+
+#[tokio::test]
+async fn connect_four_rewards_stop_at_the_daily_limit() {
+    let Some(mut sim) = Sim::new("connect_four_rewards_stop_at_the_daily_limit").await else {
+        return;
+    };
+    let (a, b) = (unique(), unique());
+    // The cap counts paid wins per player per day; five are already on the counter.
+    for _ in 0..5 {
+        sim.app
+            .cache
+            .incr(
+                &format!("gamewin:connect4:{}:{a}", today()),
+                std::time::Duration::from_secs(3600),
+            )
+            .await
+            .expect("counter");
+    }
+    let challenge = duel(&mut sim, a, b, "connect4", vec![]).await;
+    let mut board = sim.click(b, &challenge, "Accept").await;
+    for (player, label) in [(a, "4"), (b, "5"), (a, "4"), (b, "5"), (a, "4"), (b, "5"), (a, "4")] {
+        board = sim.click(player, &board, label).await;
+    }
+    assert!(
+        board.content().contains("wins!") && board.content().contains("limit"),
+        "{}",
+        board.content()
+    );
+    assert_eq!(shells(&sim, a).await, 0);
+    assert_eq!(record_of(&sim, a, "connect4").await, (1, 1), "the win still counts");
+}
+
+#[tokio::test]
+async fn connect_four_wagers_are_held_paid_and_refunded() {
+    let Some(mut sim) = Sim::new("connect_four_wagers_are_held_paid_and_refunded").await else {
+        return;
+    };
+    let (a, b, broke, rich) = (unique(), unique(), unique(), unique());
+    fund(&sim, a, 500).await;
+    fund(&sim, b, 500).await;
+    fund(&sim, rich, 500).await;
+    fund(&sim, broke, 30).await;
+
+    // A challenge holds nothing; a player who cannot cover it cannot accept, and nothing is taken.
+    let challenge = duel(&mut sim, rich, broke, "connect4", vec![int_option("bet", 100)]).await;
+    assert!(
+        challenge.content().contains("Wager: **100** shells each"),
+        "{}",
+        challenge.content()
+    );
+    assert_eq!(shells(&sim, rich).await, 500);
+    let refused = sim.click(broke, &challenge, "Accept").await;
+    assert!(
+        refused.ephemeral && refused.content().contains("only have **30**"),
+        "{}",
+        refused.content()
+    );
+    assert_eq!((shells(&sim, rich).await, shells(&sim, broke).await), (500, 30));
+    let declined = sim.click(broke, &challenge, "Decline").await;
+    assert!(
+        declined.content().contains("declined") && declined.components.is_empty(),
+        "{}",
+        declined.content()
+    );
+    let after = sim.click(broke, &challenge, "Accept").await;
+    assert!(
+        after.ephemeral && after.content().contains("over"),
+        "{}",
+        after.content()
+    );
+
+    // Nobody can wager what they do not have.
+    let too_much = duel(&mut sim, broke, a, "connect4", vec![int_option("bet", 100)]).await;
+    assert!(
+        too_much.ephemeral && too_much.content().contains("only have **30**"),
+        "{}",
+        too_much.content()
+    );
+
+    // Accepted: both 100 are held. A wins and takes the pot of 200, and no system reward on top.
+    let challenge = duel(&mut sim, a, b, "connect4", vec![int_option("bet", 100)]).await;
+    let mut board = sim.click(b, &challenge, "Accept").await;
+    assert_eq!(
+        (shells(&sim, a).await, shells(&sim, b).await),
+        (400, 400),
+        "both bets are held"
+    );
+    assert!(board.description().contains("Pot: **200**"), "{}", board.description());
+    for (player, label) in [(a, "1"), (b, "2"), (a, "1"), (b, "2"), (a, "1"), (b, "2"), (a, "1")] {
+        board = sim.click(player, &board, label).await;
+    }
+    assert!(
+        board.content().contains("take the pot of **200**"),
+        "{}",
+        board.content()
+    );
+    assert_eq!((shells(&sim, a).await, shells(&sim, b).await), (600, 400));
+}
+
+#[tokio::test]
+async fn connect_four_timeouts_give_the_bets_back_even_after_a_restart() {
+    let _serial = SWEEPS.lock().await;
+    let Some(mut sim) = Sim::new("connect_four_timeouts_give_the_bets_back_even_after_a_restart").await else {
+        return;
+    };
+    let (a, b, c, d, e) = (unique(), unique(), unique(), unique(), unique());
+    for user in [a, b, c, d, e] {
+        fund(&sim, user, 300).await;
+    }
+
+    // The player to move does nothing: the janitor ends the game and edits its message.
+    let challenge = duel(&mut sim, a, b, "connect4", vec![int_option("bet", 50)]).await;
+    let board = sim.click(b, &challenge, "Accept").await;
+    let session = session_of(&board);
+    assert_eq!((shells(&sim, a).await, shells(&sim, b).await), (250, 250));
+    sweep_games(&sim.app).await.expect("sweep");
+    assert_eq!(shells(&sim, a).await, 250, "a game with time left is not touched");
+    expire(&sim, session).await;
+    sweep_games(&sim.app).await.expect("sweep");
+    assert_eq!(
+        (shells(&sim, a).await, shells(&sim, b).await),
+        (300, 300),
+        "both wagers are back"
+    );
+    let message = message_of(&sim, session).await;
+    let posts = sim.posts();
+    let edit = posts
+        .iter()
+        .find(|p| p.message == message)
+        .expect("the message says the game timed out");
+    assert!(edit.content().contains("ran out of time"), "{}", edit.content());
+    assert!(
+        edit.content().contains(&format!("<@{a}>")),
+        "A was to move: {}",
+        edit.content()
+    );
+    assert!(
+        edit.content().contains("Both wagers were given back"),
+        "{}",
+        edit.content()
+    );
+    assert_eq!(
+        edit.body["components"].as_array().map(Vec::len),
+        Some(0),
+        "the buttons are gone"
+    );
+    sweep_games(&sim.app).await.expect("sweep again");
+    assert_eq!(
+        (shells(&sim, a).await, shells(&sim, b).await),
+        (300, 300),
+        "refunded once"
+    );
+    let late = sim.click(a, &board, "4").await;
+    assert!(late.ephemeral && late.content().contains("over"), "{}", late.content());
+
+    // A click on a late game ends it in place.
+    let challenge = duel(&mut sim, c, d, "connect4", vec![int_option("bet", 50)]).await;
+    let board = sim.click(d, &challenge, "Accept").await;
+    assert_eq!((shells(&sim, c).await, shells(&sim, d).await), (250, 250));
+    expire(&sim, session_of(&board)).await;
+    let ended = sim.click(c, &board, "4").await;
+    assert!(
+        ended.content().contains("ran out of time") && ended.components.is_empty(),
+        "{}",
+        ended.content()
+    );
+    assert_eq!((shells(&sim, c).await, shells(&sim, d).await), (300, 300));
+
+    // A restart loses nothing: the wager lives in the database, so a fresh process settles it.
+    let challenge = duel(&mut sim, e, b, "connect4", vec![int_option("bet", 200)]).await;
+    let board = sim.click(b, &challenge, "Accept").await;
+    assert_eq!((shells(&sim, e).await, shells(&sim, b).await), (100, 100));
+    expire(&sim, session_of(&board)).await;
+    drop(sim);
+    let Some(restarted) = Sim::new("connect_four_after_a_restart").await else {
+        return;
+    };
+    sweep_games(&restarted.app).await.expect("sweep");
+    assert_eq!((shells(&restarted, e).await, shells(&restarted, b).await), (300, 300));
+}
+
+#[tokio::test]
+async fn unanswered_challenges_expire_without_touching_shells() {
+    let _serial = SWEEPS.lock().await;
+    let Some(mut sim) = Sim::new("unanswered_challenges_expire_without_touching_shells").await else {
+        return;
+    };
+    let (a, b) = (unique(), unique());
+    fund(&sim, a, 100).await;
+    fund(&sim, b, 100).await;
+    let challenge = duel(&mut sim, a, b, "rps", vec![int_option("bet", 50)]).await;
+    // The challenge may not know its message yet; give it one, as Discord's lookup would.
+    let session = session_of(&challenge);
+    let message = unique();
+    sim.app
+        .db
+        .set_game_message(session, CHANNEL_ID, message)
+        .await
+        .expect("message");
+    expire(&sim, session).await;
+    sweep_games(&sim.app).await.expect("sweep");
+    let posts = sim.posts();
+    let edit = posts
+        .iter()
+        .find(|p| p.message == message)
+        .expect("the challenge message was edited");
+    assert!(edit.content().contains("didn't answer in time"), "{}", edit.content());
+    assert_eq!((shells(&sim, a).await, shells(&sim, b).await), (100, 100));
+    let late = sim.click(b, &challenge, "Accept").await;
+    assert!(late.ephemeral && late.content().contains("over"), "{}", late.content());
+}
+
+#[tokio::test]
+async fn rock_paper_scissors_is_picked_in_secret_and_revealed_per_round() {
+    let Some(mut sim) = Sim::new("rock_paper_scissors_is_picked_in_secret_and_revealed_per_round").await else {
+        return;
+    };
+    let (a, b, bystander) = (unique(), unique(), unique());
+
+    let challenge = duel(&mut sim, a, b, "rps", vec![int_option("rounds", 3)]).await;
+    assert!(challenge.content().contains("best of 3"), "{}", challenge.content());
+    let board = sim.click(b, &challenge, "Accept").await;
+    assert!(board.files.is_empty(), "no picture, just the scores");
+    assert!(
+        board.content().contains("Round 1") && board.title().contains("best of 3"),
+        "{}",
+        board.content()
+    );
+    assert!(board.content().contains("⏳"), "{}", board.content());
+
+    let refused = sim.click(bystander, &board, "Choose your move").await;
+    assert!(
+        refused.ephemeral && refused.content().contains("not in this match"),
+        "{}",
+        refused.content()
+    );
+
+    // Each player gets a private picker.
+    let a_picker = sim.click(a, &board, "Choose your move").await;
+    let b_picker = sim.click(b, &board, "Choose your move").await;
+    assert!(a_picker.ephemeral && b_picker.ephemeral);
+    assert_eq!(a_picker.controls().count(), 3, "rock, paper, scissors");
+
+    // A locks in rock: only A sees it, the public message just shows that A is ready.
+    let locked = sim.click(a, &a_picker, "🪨 Rock").await;
+    assert!(
+        locked.content().contains("Locked in 🪨 Rock") && locked.components.is_empty(),
+        "{}",
+        locked.content()
+    );
+    let posts = sim.posts();
+    let shown = posts.last().expect("the public message was refreshed");
+    assert!(
+        shown.content().contains("✅") && shown.content().contains("⏳"),
+        "{}",
+        shown.content()
+    );
+    assert!(!shown.content().contains("Rock") && !shown.embed()["description"].as_str().unwrap_or("").contains("🪨"));
+    let again = sim.click(a, &board, "Choose your move").await;
+    assert!(
+        again.ephemeral && again.content().contains("You locked in"),
+        "{}",
+        again.content()
+    );
+    let repeat = sim.click(a, &a_picker, "📄 Paper").await;
+    assert!(
+        repeat.content().contains("You locked in 🪨"),
+        "no changing your mind: {}",
+        repeat.content()
+    );
+
+    // B picks scissors: the round is revealed to the channel, rock breaks scissors.
+    let revealed = sim.click(b, &b_picker, "✂️ Scissors").await;
+    assert!(
+        revealed.content().contains("You lose the round"),
+        "{}",
+        revealed.content()
+    );
+    let posts = sim.posts();
+    let public = posts.last().expect("the reveal");
+    assert!(public.content().contains("Round 2"), "{}", public.content());
+    let description = public.embed()["description"].as_str().unwrap_or_default();
+    assert!(
+        description.contains("1 - 0") && description.contains("1. 🪨 vs ✂️"),
+        "{description}"
+    );
+    let stale = sim.click(b, &b_picker, "🪨 Rock").await;
+    assert!(
+        stale.content().contains("already over"),
+        "buttons of round 1 are dead: {}",
+        stale.content()
+    );
+
+    // Round 2 ties and is played again; round 3 gives A the match.
+    let board2 = Reply {
+        content: Some(public.content().to_owned()),
+        components: serde_json::from_value(public.body["components"].clone()).expect("components"),
+        embeds: serde_json::from_value(public.body["embeds"].clone()).expect("embeds"),
+        ..board.clone()
+    };
+    let a_picker = sim.click(a, &board2, "Choose your move").await;
+    let b_picker = sim.click(b, &board2, "Choose your move").await;
+    sim.click(a, &a_picker, "📄 Paper").await;
+    let tie = sim.click(b, &b_picker, "📄 Paper").await;
+    assert!(tie.content().contains("A tie"), "{}", tie.content());
+    let posts = sim.posts();
+    let public = posts.last().expect("the tie");
+    assert!(
+        public.content().contains("Round 2"),
+        "a tie replays the round: {}",
+        public.content()
+    );
+    assert!(
+        public.embed()["description"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("played again")
+    );
+    let board3 = Reply {
+        content: Some(public.content().to_owned()),
+        components: serde_json::from_value(public.body["components"].clone()).expect("components"),
+        embeds: serde_json::from_value(public.body["embeds"].clone()).expect("embeds"),
+        ..board.clone()
+    };
+    let a_picker = sim.click(a, &board3, "Choose your move").await;
+    let b_picker = sim.click(b, &board3, "Choose your move").await;
+    sim.click(b, &b_picker, "📄 Paper").await;
+    let won = sim.click(a, &a_picker, "✂️ Scissors").await;
+    assert!(won.content().contains("You win the round"), "{}", won.content());
+    let posts = sim.posts();
+    let end = posts.last().expect("the final message");
+    assert!(
+        end.content().contains(&format!("<@{a}> wins the match 2 - 0")) && end.content().contains("+**15** shells"),
+        "{}",
+        end.content()
+    );
+    assert_eq!(end.body["components"].as_array().map(Vec::len), Some(0));
+    assert_eq!((shells(&sim, a).await, shells(&sim, b).await), (15, 0));
+    assert_eq!(record_of(&sim, a, "rps").await, (1, 1));
+    assert_eq!(record_of(&sim, b, "rps").await, (1, 0));
+}
+
+#[tokio::test]
+async fn rock_paper_scissors_wagers_go_to_the_match_winner() {
+    let Some(mut sim) = Sim::new("rock_paper_scissors_wagers_go_to_the_match_winner").await else {
+        return;
+    };
+    let (a, b) = (unique(), unique());
+    fund(&sim, a, 300).await;
+    fund(&sim, b, 300).await;
+    let challenge = duel(
+        &mut sim,
+        a,
+        b,
+        "rps",
+        vec![int_option("bet", 150), int_option("rounds", 1)],
+    )
+    .await;
+    let board = sim.click(b, &challenge, "Accept").await;
+    assert_eq!((shells(&sim, a).await, shells(&sim, b).await), (150, 150));
+    let a_picker = sim.click(a, &board, "Choose your move").await;
+    let b_picker = sim.click(b, &board, "Choose your move").await;
+    sim.click(a, &a_picker, "🪨 Rock").await;
+    sim.click(b, &b_picker, "📄 Paper").await;
+    let posts = sim.posts();
+    let end = posts.last().expect("the final message");
+    assert!(
+        end.content().contains(&format!("<@{b}> wins the match")) && end.content().contains("pot of **300**"),
+        "{}",
+        end.content()
+    );
+    assert_eq!(
+        (shells(&sim, a).await, shells(&sim, b).await),
+        (150, 450),
+        "the winner takes both wagers"
+    );
+}
+
+#[tokio::test]
+async fn hangman_is_won_and_lost_one_letter_at_a_time() {
+    let Some(mut sim) = Sim::new("hangman_is_won_and_lost_one_letter_at_a_time").await else {
+        return;
+    };
+    let (player, other, loser) = (unique(), unique(), unique());
+
+    let start = sim.command(player, "play", json!([sub("hangman", vec![])])).await;
+    assert_eq!((start.files.len(), start.files[0].0.as_str()), (1, "hangman.png"));
+    assert!(start.content().contains("6"), "{}", start.content());
+    assert!(
+        !start.options("hm:").is_empty() && start.rows() == 2,
+        "two letter menus"
+    );
+    let id = session_of(&start);
+    let state = sim.app.db.game(id).await.expect("session").expect("a game").state;
+    let game = Hangman::decode(&state).expect("a hangman state");
+    let word = game.word().to_owned();
+
+    let again = sim.command(player, "play", json!([sub("hangman", vec![])])).await;
+    assert!(
+        again.ephemeral && again.content().contains("One sandcastle at a time"),
+        "{}",
+        again.content()
+    );
+
+    // Somebody else cannot play your sandcastle.
+    let letter = word.chars().find(|c| *c != ' ').expect("a letter");
+    let half = |c: char| if c <= 'm' { "a" } else { "n" };
+    let intruder = sim
+        .component(
+            other,
+            &format!("hm:{id}:{}", half(letter)),
+            &[&letter.to_string()],
+            &start,
+        )
+        .await;
+    assert!(
+        intruder.ephemeral && intruder.content().contains("sandcastle"),
+        "{}",
+        intruder.content()
+    );
+
+    // A wrong guess first, then every letter of the word.
+    let wrong = ('a'..='z')
+        .find(|c| !word.contains(*c))
+        .expect("a letter not in the word");
+    let mut board = sim
+        .pick(player, &start, &format!("hm:{id}:{}", half(wrong)), &wrong.to_string())
+        .await;
+    assert!(board.content().contains("5"), "one miss used: {}", board.content());
+    assert!(
+        !board
+            .options(&format!("hm:{id}:{}", half(wrong)))
+            .iter()
+            .any(|o| o.value == wrong.to_string()),
+        "a guessed letter leaves its menu"
+    );
+    let mut letters: Vec<char> = word.chars().filter(|c| *c != ' ').collect();
+    letters.sort_unstable();
+    letters.dedup();
+    for letter in letters {
+        board = sim
+            .pick(
+                player,
+                &board,
+                &format!("hm:{id}:{}", half(letter)),
+                &letter.to_string(),
+            )
+            .await;
+    }
+    assert!(
+        board.content().contains("saved the sandcastle") && board.content().contains("+**15** shells"),
+        "{}",
+        board.content()
+    );
+    assert!(board.components.is_empty());
+    assert_eq!(shells(&sim, player).await, 15);
+    assert_eq!(record_of(&sim, player, "hangman").await, (1, 1));
+
+    // Six misses lose the castle; no shells, but the game counts.
+    let start = sim.command(loser, "play", json!([sub("hangman", vec![])])).await;
+    let id = session_of(&start);
+    let word = Hangman::decode(&sim.app.db.game(id).await.unwrap().unwrap().state)
+        .unwrap()
+        .word()
+        .to_owned();
+    let mut board = start;
+    for letter in ('a'..='z').filter(|c| !word.contains(*c)).take(6) {
+        board = sim
+            .pick(loser, &board, &format!("hm:{id}:{}", half(letter)), &letter.to_string())
+            .await;
+    }
+    assert!(
+        board.content().contains("tide won") && board.content().contains(&word),
+        "{}",
+        board.content()
+    );
+    assert!(board.components.is_empty() && board.files.len() == 1);
+    assert_eq!(shells(&sim, loser).await, 0);
+    assert_eq!(record_of(&sim, loser, "hangman").await, (1, 0));
+}
+
+#[tokio::test]
+async fn an_abandoned_hangman_game_is_closed_by_the_janitor() {
+    let _serial = SWEEPS.lock().await;
+    let Some(mut sim) = Sim::new("an_abandoned_hangman_game_is_closed_by_the_janitor").await else {
+        return;
+    };
+    let player = unique();
+    let start = sim.command(player, "play", json!([sub("hangman", vec![])])).await;
+    let id = session_of(&start);
+    let message = unique();
+    sim.app
+        .db
+        .set_game_message(id, CHANNEL_ID, message)
+        .await
+        .expect("message");
+    expire(&sim, id).await;
+    sweep_games(&sim.app).await.expect("sweep");
+    let posts = sim.posts();
+    let edit = posts
+        .iter()
+        .find(|p| p.message == message)
+        .expect("the game message was edited");
+    assert!(edit.content().contains("tide came in"), "{}", edit.content());
+    let late = sim.pick(player, &start, &format!("hm:{id}:a"), "a").await;
+    assert!(late.ephemeral && late.content().contains("over"), "{}", late.content());
+}
+
+#[tokio::test]
+async fn the_daily_wordle_is_typed_into_a_form_and_shared_without_spoilers() {
+    let Some(mut sim) = Sim::new("the_daily_wordle_is_typed_into_a_form_and_shared_without_spoilers").await else {
+        return;
+    };
+    let player = unique();
+    let words = &PlayContent::get().words;
+    let day = today();
+    let answer = wordle::daily_word(&words.answers, day).to_owned();
+
+    let board = sim.command(player, "play", json!([sub("wordle", vec![])])).await;
+    assert!(board.ephemeral, "the board is private, so nobody sees your letters");
+    assert_eq!((board.files.len(), board.files[0].0.as_str()), (1, "wordle.png"));
+    assert!(board.title().starts_with("Daily wordle #"), "{}", board.title());
+
+    let form = sim.click(player, &board, "Guess").await;
+    assert_eq!(
+        form.modal.as_ref().map(|m| m.0.clone()),
+        Some(format!("wo:m:daily:{day}")),
+        "{form}"
+    );
+
+    let short = sim.submit(player, &form, "abc", &board).await;
+    assert!(
+        short.ephemeral && short.content().contains("five letters"),
+        "{}",
+        short.content()
+    );
+    let nonsense = sim.submit(player, &form, "zzzzz", &board).await;
+    assert!(
+        nonsense.ephemeral && nonsense.content().contains("isn't in my word list"),
+        "{}",
+        nonsense.content()
+    );
+
+    let miss = ["crane", "slate", "pious"]
+        .into_iter()
+        .find(|w| *w != answer && words.is_allowed(w))
+        .expect("an allowed word that is not the answer");
+    let board = sim.submit(player, &form, &miss.to_uppercase(), &board).await;
+    assert!(
+        board.description().contains("Guess the five-letter word"),
+        "{}",
+        board.description()
+    );
+    assert_eq!(board.files.len(), 1);
+    let db_board = sim
+        .app
+        .db
+        .wordle_game(player, "daily", day as i32)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        (db_board.guesses.clone(), db_board.status.as_str()),
+        (vec![miss.to_owned()], "playing")
+    );
+
+    let won = sim.submit(player, &form, &answer, &board).await;
+    assert!(
+        won.description().contains("You got it in **2**") && won.description().contains("+**40** shells"),
+        "{}",
+        won.description()
+    );
+    assert_eq!(shells(&sim, player).await, 40);
+    assert_eq!(record_of(&sim, player, "wordle").await, (1, 1));
+    won.button("Share result");
+
+    let late = sim.click(player, &board, "Guess").await;
+    assert!(
+        late.ephemeral && late.content().contains("finished"),
+        "{}",
+        late.content()
+    );
+
+    // Sharing posts the result for the channel: no letters, and only once.
+    let shared = sim.click(player, &won, "Share result").await;
+    assert!(
+        !shared.ephemeral && shared.content().contains("Pinchora Wordle #"),
+        "{}",
+        shared.content()
+    );
+    assert!(
+        shared.content().contains("2/6") && shared.content().contains("🟩🟩🟩🟩🟩"),
+        "{}",
+        shared.content()
+    );
+    assert!(
+        !shared.content().contains(&answer) && !shared.content().contains(miss),
+        "no spoilers"
+    );
+    let twice = sim.click(player, &won, "Share result").await;
+    assert!(
+        twice.ephemeral && twice.content().contains("already shared"),
+        "{}",
+        twice.content()
+    );
+
+    // The day's result stays: asking again shows the finished board.
+    let again = sim.command(player, "play", json!([sub("wordle", vec![])])).await;
+    assert!(
+        again.description().contains("You got it in **2**"),
+        "{}",
+        again.description()
+    );
+    assert_eq!(shells(&sim, player).await, 40, "the daily word pays once");
+}
+
+#[tokio::test]
+async fn practice_wordle_has_unlimited_words() {
+    let Some(mut sim) = Sim::new("practice_wordle_has_unlimited_words").await else {
+        return;
+    };
+    let player = unique();
+    let words = &PlayContent::get().words;
+    let board = sim
+        .command(
+            player,
+            "play",
+            json!([sub("wordle", vec![text_option("mode", "practice")])]),
+        )
+        .await;
+    assert_eq!(board.title(), "Practice wordle");
+    let first = sim
+        .app
+        .db
+        .wordle_game(player, "practice", 0)
+        .await
+        .unwrap()
+        .expect("a practice board");
+    let resumed = sim
+        .command(
+            player,
+            "play",
+            json!([sub("wordle", vec![text_option("mode", "practice")])]),
+        )
+        .await;
+    assert_eq!(resumed.title(), "Practice wordle");
+    assert_eq!(
+        sim.app
+            .db
+            .wordle_game(player, "practice", 0)
+            .await
+            .unwrap()
+            .unwrap()
+            .word,
+        first.word,
+        "an unfinished practice word is resumed, not rerolled"
+    );
+
+    // Six wrong guesses lose it and show the word.
+    let form = sim.click(player, &board, "Guess").await;
+    let mut board = board;
+    let misses: Vec<&str> = ["crane", "slate", "pious", "tough", "vivid", "quirk", "blown"]
+        .into_iter()
+        .filter(|w| *w != first.word && words.is_allowed(w))
+        .take(6)
+        .collect();
+    assert_eq!(misses.len(), 6);
+    for miss in &misses {
+        board = sim.submit(player, &form, miss, &board).await;
+    }
+    assert!(board.description().contains("Out of tries"), "{}", board.description());
+    assert!(
+        board.description().contains(&first.word),
+        "the word is shown once it is lost"
+    );
+    assert_eq!(record_of(&sim, player, "wordle").await, (1, 0));
+    assert_eq!(shells(&sim, player).await, 0);
+
+    // A new word is one click away and winning pays a little.
+    let fresh = sim.click(player, &board, "New word").await;
+    assert_eq!(fresh.title(), "Practice wordle");
+    let word = sim
+        .app
+        .db
+        .wordle_game(player, "practice", 0)
+        .await
+        .unwrap()
+        .unwrap()
+        .word;
+    let form = sim.click(player, &fresh, "Guess").await;
+    let won = sim.submit(player, &form, &word, &fresh).await;
+    assert!(
+        won.description().contains("You got it in **1**") && won.description().contains("+**10** shells"),
+        "{}",
+        won.description()
+    );
+    assert_eq!(record_of(&sim, player, "wordle").await, (2, 1));
+}
+
+#[tokio::test]
+async fn a_trivia_round_collects_answers_then_reveals_and_pays() {
+    let _serial = SWEEPS.lock().await;
+    let Some(mut sim) = Sim::new("a_trivia_round_collects_answers_then_reveals_and_pays").await else {
+        return;
+    };
+    // Rounds are limited per channel, so this test has a channel to itself.
+    sim.channel = unique();
+    let (starter, right, wrong, late) = (unique(), unique(), unique(), unique());
+    let round = sim
+        .command(
+            starter,
+            "play",
+            json!([sub("trivia", vec![text_option("category", "ocean")])]),
+        )
+        .await;
+    assert!(!round.ephemeral && round.title().contains("Ocean"), "{}", round.title());
+    assert_eq!(round.controls().count(), 4, "four answers");
+    assert!(
+        round.content().contains("started a trivia round"),
+        "{}",
+        round.content()
+    );
+    let id = session_of(&round);
+
+    // The round is in the database: its question and the order its options are shown in.
+    let state = sim.app.db.game(id).await.unwrap().unwrap().state;
+    let (question_id, order) = state.split_once(':').expect("question:order");
+    let question = PlayContent::get().question(question_id).expect("a real question");
+    let order = trivia::decode_order(order).expect("an order");
+    let correct = question.correct_slot(order).expect("the answer is shown");
+    let incorrect = (correct + 1) % 4;
+    for slot in 0..4 {
+        assert!(
+            round.description().contains(question.shown(order)[slot]),
+            "option {slot} is on the message"
+        );
+    }
+    let again = sim.command(unique(), "play", json!([sub("trivia", vec![])])).await;
+    assert!(
+        again.ephemeral && again.content().contains("just ran"),
+        "{}",
+        again.content()
+    );
+
+    let click = |slot: usize| format!("tv:{id}:{slot}");
+    let locked = sim.component(right, &click(correct), &[], &round).await;
+    assert!(
+        locked.ephemeral && locked.content().contains("Locked in"),
+        "{}",
+        locked.content()
+    );
+    assert!(!locked.content().contains("right"), "the answer is not given away");
+    let twice = sim.component(right, &click(incorrect), &[], &round).await;
+    assert!(
+        twice.ephemeral && twice.content().contains("already locked in"),
+        "{}",
+        twice.content()
+    );
+    sim.component(wrong, &click(incorrect), &[], &round).await;
+
+    // Time runs out: the janitor reveals the answer and pays the right answer only.
+    expire(&sim, id).await;
+    let after = sim.component(late, &click(correct), &[], &round).await;
+    assert!(
+        after.ephemeral && after.content().contains("Time's up"),
+        "{}",
+        after.content()
+    );
+    sweep_games(&sim.app).await.expect("sweep");
+    let message = message_of(&sim, id).await;
+    let posts = sim.posts();
+    let reveal = posts
+        .iter()
+        .find(|p| p.message == message)
+        .expect("the round was revealed");
+    assert!(
+        reveal.content().contains("**2** answered") && reveal.content().contains(&question.answer),
+        "{}",
+        reveal.content()
+    );
+    let embed = reveal.embed();
+    assert!(
+        embed["fields"][0]["value"]
+            .as_str()
+            .unwrap_or_default()
+            .contains(&format!("<@{right}> +{}", question.difficulty.reward()))
+    );
+    assert!(
+        !embed["fields"][0]["value"]
+            .as_str()
+            .unwrap_or_default()
+            .contains(&wrong.to_string())
+    );
+    assert!(
+        embed["description"]
+            .as_str()
+            .unwrap_or_default()
+            .contains(&format!("✅ **{}.**", ['A', 'B', 'C', 'D'][correct]))
+    );
+    assert_eq!(
+        reveal.body["components"][0]["components"][correct]["style"], 3,
+        "the right button is green"
+    );
+    assert_eq!(shells(&sim, right).await, question.difficulty.reward());
+    assert_eq!(shells(&sim, wrong).await, 0);
+    assert_eq!(record_of(&sim, right, "trivia").await, (1, 1));
+    assert_eq!(record_of(&sim, wrong, "trivia").await, (1, 0));
+    assert_eq!(
+        record_of(&sim, late, "trivia").await,
+        (0, 0),
+        "a late answer does not count"
+    );
+    sweep_games(&sim.app).await.expect("sweep again");
+    assert_eq!(shells(&sim, right).await, question.difficulty.reward(), "paid once");
 }
 
 #[tokio::test]

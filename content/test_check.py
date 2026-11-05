@@ -139,5 +139,57 @@ class CosmeticsTests(unittest.TestCase):
         self.assertTrue(self.errors(badges=broken))
 
 
+class GameContentTests(unittest.TestCase):
+    TRIVIA = json.loads(Path(__file__).with_name("trivia.json").read_text(encoding="utf-8"))
+    HANGMAN = json.loads(Path(__file__).with_name("hangman.json").read_text(encoding="utf-8"))
+    WORDS = json.loads(Path(__file__).with_name("words.json").read_text(encoding="utf-8"))
+
+    def errors(self, function, raw):
+        check.ERRORS.clear()
+        function(raw)
+        return check.ERRORS[:]
+
+    def test_shipped_game_content_is_clean(self):
+        self.assertEqual(self.errors(check.check_trivia, self.TRIVIA), [])
+        self.assertEqual(self.errors(check.check_hangman, self.HANGMAN), [])
+        self.assertEqual(self.errors(check.check_words, self.WORDS), [])
+
+    def test_trivia_answers_must_be_one_of_the_options(self):
+        for change in ({"answer": "Not an option"}, {"options": ["A", "B", "C"]}, {"options": ["A", "A", "B", "C"]},
+                       {"category": "sports"}, {"difficulty": "brutal"}):
+            with self.subTest(change=change):
+                broken = copy.deepcopy(self.TRIVIA)
+                broken[0].update(change)
+                self.assertTrue(any("trivia.json[0]" in e for e in self.errors(check.check_trivia, broken)))
+
+    def test_trivia_questions_and_ids_must_be_unique(self):
+        broken = copy.deepcopy(self.TRIVIA)
+        broken[1]["question"] = broken[0]["question"].upper()
+        self.assertTrue(any("duplicate question" in e for e in self.errors(check.check_trivia, broken)))
+        broken = copy.deepcopy(self.TRIVIA)
+        broken[1]["id"] = broken[0]["id"]
+        self.assertTrue(any("duplicate id" in e for e in self.errors(check.check_trivia, broken)))
+
+    def test_hangman_words_are_plain_and_unique(self):
+        for word in ("Sea Horse", "sea  horse", "sea-horse", "a b c", "abc", "x" * 17, "sea horse boat"):
+            with self.subTest(word=word):
+                broken = copy.deepcopy(self.HANGMAN)
+                broken[0]["word"] = word
+                self.assertTrue(any("hangman.json[0]" in e for e in self.errors(check.check_hangman, broken)))
+        broken = copy.deepcopy(self.HANGMAN)
+        broken[1]["word"] = broken[0]["word"]
+        self.assertTrue(any("duplicate word" in e for e in self.errors(check.check_hangman, broken)))
+
+    def test_word_lists_are_sorted_five_letter_words(self):
+        for key, word in (("answers", "toolong"), ("answers", "Abcde"), ("allowed", "abc"), ("allowed", "bitch")):
+            with self.subTest(key=key, word=word):
+                broken = copy.deepcopy(self.WORDS)
+                broken[key].append(word)
+                self.assertTrue(self.errors(check.check_words, broken))
+        broken = copy.deepcopy(self.WORDS)
+        broken["allowed"].remove(broken["answers"][0])
+        self.assertTrue(any("not allowed guesses" in e for e in self.errors(check.check_words, broken)))
+
+
 if __name__ == "__main__":
     unittest.main()

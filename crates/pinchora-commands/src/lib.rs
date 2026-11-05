@@ -10,7 +10,10 @@ mod server_log;
 mod util;
 
 pub use app::App;
-pub use commands::definitions as command_definitions;
+pub use commands::{
+    definitions as command_definitions,
+    games::{spawn_janitor as spawn_game_janitor, sweep as sweep_games},
+};
 pub use cx::Cx;
 pub use events::{
     on_ban_add, on_ban_remove, on_member_add, on_member_remove, on_member_update, on_message, on_voice_state_update,
@@ -42,6 +45,13 @@ pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, res
             (
                 format!("component:{label}"),
                 Box::pin(components::dispatch(&cx, &component.custom_id, &component.values)).await,
+            )
+        }
+        Some(InteractionData::ModalSubmit(modal)) => {
+            let label = modal.custom_id.split(':').next().unwrap_or_default().to_owned();
+            (
+                format!("modal:{label}"),
+                Box::pin(components::dispatch_modal(&cx, &modal)).await,
             )
         }
         _ => return,

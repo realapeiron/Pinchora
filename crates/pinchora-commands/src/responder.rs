@@ -48,7 +48,9 @@ impl Responder {
             app,
             id: interaction.id,
             token: interaction.token.clone(),
-            component: interaction.kind == InteractionType::MessageComponent,
+            // A modal opened from a button answers by updating that button's message.
+            component: interaction.kind == InteractionType::MessageComponent
+                || (interaction.kind == InteractionType::ModalSubmit && interaction.message.is_some()),
             state: Mutex::new(State::Pending(tx)),
         }
     }
@@ -154,6 +156,23 @@ impl Responder {
                     .await?;
                 Ok(())
             }
+        }
+    }
+
+    /// Opens a modal (a pop-up form). It has to be the first answer.
+    pub async fn modal(&self, data: InteractionResponseData) -> anyhow::Result<()> {
+        let mut state = self.state.lock().await;
+        match &mut *state {
+            State::Pending(tx) => {
+                let response = InteractionResponse {
+                    kind: InteractionResponseType::Modal,
+                    data: Some(data),
+                };
+                self.initial(tx.take(), response).await?;
+                *state = State::Done;
+                Ok(())
+            }
+            _ => anyhow::bail!("a modal has to be the first answer"),
         }
     }
 

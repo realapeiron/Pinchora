@@ -57,6 +57,19 @@ impl Cx {
         self.responder.respond(data, true).await
     }
 
+    /// Opens a modal; it has to be the first answer.
+    pub async fn modal(&self, data: InteractionResponseData) -> anyhow::Result<()> {
+        self.responder.modal(data).await
+    }
+
+    /// The channel and id of the message a component was clicked on.
+    pub fn clicked_message(&self) -> Option<(u64, u64)> {
+        self.interaction
+            .message
+            .as_ref()
+            .map(|m| (m.channel_id.get(), m.id.get()))
+    }
+
     pub async fn reply_text(&self, content: impl Into<String>) -> anyhow::Result<()> {
         self.reply(InteractionResponseData {
             content: Some(content.into()),
