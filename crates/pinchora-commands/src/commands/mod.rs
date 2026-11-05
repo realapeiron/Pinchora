@@ -9,14 +9,17 @@ pub(crate) mod decorate;
 pub(crate) mod duel;
 mod economy;
 pub(crate) mod fish;
+pub(crate) mod friends;
 pub(crate) mod games;
 pub(crate) mod gift;
 pub(crate) mod guestbook;
 pub(crate) mod hangman;
 mod help;
 pub(crate) mod house;
+pub(crate) mod interact;
 pub(crate) mod leaderboard;
 mod level_roles;
+pub(crate) mod partner;
 pub(crate) mod pet;
 mod ping;
 pub(crate) mod play;
@@ -29,6 +32,7 @@ mod rep;
 pub(crate) mod role_panels;
 pub(crate) mod rps;
 pub(crate) mod shop;
+mod social;
 pub(crate) mod stall;
 pub(crate) mod store;
 pub(crate) mod trivia;
@@ -88,4 +92,10 @@ commands!(
     customize::CustomizeCommand,
     role_panels::RolesCommand,
     play::PlayCommand,
+    partner::PartnerCommand,
+    friends::FriendsCommand,
+    interact::Hug,
+    interact::Pat,
+    interact::Wave,
+    interact::HighFive,
 );

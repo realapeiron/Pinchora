@@ -1,4 +1,6 @@
-//! Editor undo: the last few changes the editor made to a room, kept in Redis per owner and room.
+//! Editor undo: the last few changes the editor made to a room, kept in Redis per house owner,
+//! room and editor (a partner decorating has a history of their own, which a new partnership
+//! starts afresh).
 
 use std::time::Duration;
 
@@ -6,6 +8,7 @@ use pinchora_db::{PlacementRow, RoomChange};
 use pinchora_game::{Content, Layer};
 use serde::{Deserialize, Serialize};
 
+use super::house::Who;
 use crate::App;
 
 /// Steps kept per room.
@@ -226,16 +229,26 @@ pub(crate) fn fingerprint(placements: &[PlacementRow]) -> u64 {
     hash
 }
 
-fn key(owner: u64, room: i16) -> String {
-    format!("undo:{owner}:{room}")
+/// `bond` is 0 for an editor in their own house, and for a partner the moment their partnership
+/// began, so a piece placed under one partnership cannot be undone under the next.
+fn key(owner: u64, editor: u64, bond: i64, room: i16) -> String {
+    if owner == editor {
+        format!("undo:{owner}:{room}")
+    } else {
+        format!("undo:{owner}:{room}:{editor}:{bond}")
+    }
 }
 
 /// The room's undo history; empty when the room changed since the editor last saved it.
-pub(crate) async fn load(app: &App, owner: u64, room: i16, placements: &[PlacementRow]) -> History {
-    let raw = app.cache.get(&key(owner, room)).await.unwrap_or_else(|error| {
-        tracing::debug!(%error, "undo history not read");
-        None
-    });
+pub(crate) async fn load(app: &App, who: Who, room: i16, placements: &[PlacementRow]) -> History {
+    let raw = app
+        .cache
+        .get(&key(who.owner, who.stock, who.bond, room))
+        .await
+        .unwrap_or_else(|error| {
+            tracing::debug!(%error, "undo history not read");
+            None
+        });
     let Some(history) = raw.and_then(|r| serde_json::from_str::<History>(&r).ok()) else {
         return History::default();
     };
@@ -251,13 +264,13 @@ pub(crate) async fn load(app: &App, owner: u64, room: i16, placements: &[Placeme
 }
 
 /// Saves the history, if it changed, against the room as it is now.
-pub(crate) async fn save(app: &App, owner: u64, room: i16, history: &mut History, placements: &[PlacementRow]) {
+pub(crate) async fn save(app: &App, who: Who, room: i16, history: &mut History, placements: &[PlacementRow]) {
     if !history.dirty {
         return;
     }
     history.dirty = false;
     history.room = fingerprint(placements);
-    let key = key(owner, room);
+    let key = key(who.owner, who.stock, who.bond, room);
     let saved = if history.steps.is_empty() {
         app.cache.forget(&key).await
     } else {

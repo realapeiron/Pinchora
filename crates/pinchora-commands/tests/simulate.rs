@@ -5317,3 +5317,893 @@ async fn room_contest_week() {
     let late = sim.click(d, &stale, "💖 Vote").await;
     assert!(late.content().contains("week is over"), "{}", late.content());
 }
+
+// /Social: partners, friends, hug, pat, wave, high five
+
+/// `data.resolved` for users that have names of their own.
+fn named(users: &[(u64, &str)]) -> Value {
+    json!({
+        "users": users
+            .iter()
+            .map(|(id, name)| (id.to_string(), person_json(*id, name, Some(name), false)))
+            .collect::<serde_json::Map<_, _>>(),
+    })
+}
+
+fn mention(user: u64) -> String {
+    format!("<@{user}>")
+}
+
+/// Every frame of the GIF named `name` in a reply, as pictures.
+fn gif_frames(reply: &Reply, name: &str) -> Vec<image::RgbaImage> {
+    use image::AnimationDecoder;
+    let (_, bytes) = reply.files.iter().find(|(file, _)| file == name).unwrap_or_else(|| {
+        panic!(
+            "no file {name}; the reply has {:?}",
+            reply.files.iter().map(|f| &f.0).collect::<Vec<_>>()
+        )
+    });
+    assert!(bytes.len() <= 1_000_000, "{name} is {} bytes", bytes.len());
+    image::codecs::gif::GifDecoder::new(std::io::Cursor::new(bytes))
+        .expect("a GIF")
+        .into_frames()
+        .collect_frames()
+        .expect("every frame decodes")
+        .into_iter()
+        .map(image::Frame::into_buffer)
+        .collect()
+}
+
+/// Saves the first and the middle frame of a GIF next to the step images, to look at.
+fn save_frames(sim: &Sim, step_name: &str, frames: &[image::RgbaImage]) {
+    for (label, at) in [("first", 0), ("middle", frames.len() / 2)] {
+        frames[at]
+            .save(sim.dir.join(format!("{step_name}-{label}.png")))
+            .expect("save the frame");
+    }
+}
+
+fn partner_options(sub_name: &str, options: Vec<Value>) -> Value {
+    json!([sub(sub_name, options)])
+}
+
+#[tokio::test]
+async fn partners_propose_accept_view_leave() {
+    let Some(mut sim) = Sim::new("partners_flow").await else {
+        return;
+    };
+    let (a, b, c, d, e, f) = (unique(), unique(), unique(), unique(), unique(), unique());
+    let propose = |to: u64, name: &str| {
+        (
+            partner_options("propose", vec![user_option("user", to)]),
+            named(&[(to, name)]),
+        )
+    };
+
+    // Nobody partners themselves.
+    let (options, users) = propose(a, "Sim");
+    let own = sim.command_resolved(a, "partner", options, users).await;
+    assert!(
+        own.ephemeral && own.content().contains("somebody else"),
+        "{}",
+        own.content()
+    );
+
+    // a asks b; only b can answer, and the question pings b.
+    let (options, users) = propose(b, "Bea");
+    let asked = sim.command_resolved(a, "partner", options, users).await;
+    assert_eq!(asked.content(), mention(b));
+    assert!(
+        asked
+            .description()
+            .contains(&format!("{} asks {}", mention(a), mention(b))),
+        "{}",
+        asked.description()
+    );
+    assert_eq!(asked.rows(), 1);
+    asked.button("Decline");
+    let stolen = sim.click(c, &asked, "Accept").await;
+    assert!(
+        stolen.ephemeral && stolen.content().contains("isn't for you"),
+        "{}",
+        stolen.content()
+    );
+    assert!(sim.app.db.partner(a).await.unwrap().is_none());
+
+    // b accepts: partners, with a picture of the two of them.
+    let paired = sim.click(b, &asked, "Accept").await;
+    assert_eq!(paired.title(), "💞 New partners");
+    assert!(
+        paired.components.is_empty() && paired.content().is_empty(),
+        "{}",
+        paired.content()
+    );
+    assert_eq!(paired.files.len(), 1);
+    assert_eq!(paired.files[0].0, "partners.png");
+    let pair = sim.app.db.partner(a).await.unwrap().expect("a has a partner");
+    assert_eq!(pair.partner_id, b);
+    // A second click on the same Accept changes nothing.
+    let twice = sim.click(b, &asked, "Accept").await;
+    assert!(twice.content().contains("partners already"), "{}", twice.content());
+    assert_eq!(sim.app.db.partner(b).await.unwrap().map(|p| p.partner_id), Some(a));
+    // The profile card asks for the partner's name.
+    let name = pinchora_commands::partner_name(&sim.app, a).await;
+    assert_eq!(name.as_deref(), Some("Sim"), "the name b had when they answered");
+    assert_eq!(pinchora_commands::partner_name(&sim.app, c).await, None);
+
+    // Both must be free: a and b are taken, whoever asks.
+    let (options, users) = propose(c, "Cy");
+    let busy = sim.command_resolved(a, "partner", options, users).await;
+    assert!(
+        busy.ephemeral && busy.content().contains("already have a partner"),
+        "{}",
+        busy.content()
+    );
+    let (options, users) = propose(b, "Bea");
+    let taken = sim.command_resolved(c, "partner", options, users).await;
+    assert!(
+        taken.ephemeral && taken.content().contains("already has a partner"),
+        "{}",
+        taken.content()
+    );
+
+    // The pair's page, counting what they sent each other.
+    sim.app.db.record_interaction("hug", a, b).await.unwrap();
+    sim.app.db.record_interaction("hug", b, a).await.unwrap();
+    sim.app.db.record_interaction("pat", a, b).await.unwrap();
+    let view = sim.command(a, "partner", partner_options("view", vec![])).await;
+    assert!(
+        view.title().starts_with("💞 ") && view.title().contains(" & "),
+        "{}",
+        view.title()
+    );
+    assert_eq!(
+        view.field("Together since"),
+        format!("<t:{}:D>", pair.since.timestamp())
+    );
+    assert_eq!(view.field("Days together"), "1");
+    let sent = view.field("Sent to each other");
+    assert!(
+        sent.contains("2 hugs") && sent.contains("1 pat") && sent.contains("0 waves") && sent.contains("0 high fives"),
+        "{sent}"
+    );
+    assert!(
+        view.field("Their houses").contains("pieces"),
+        "{}",
+        view.field("Their houses")
+    );
+    assert_eq!(view.files[0].0, "partners.png");
+    // Anybody can look at a pair; somebody without a partner gets told so.
+    let seen = sim
+        .command_resolved(
+            c,
+            "partner",
+            partner_options("view", vec![user_option("user", b)]),
+            named(&[(b, "Bea")]),
+        )
+        .await;
+    assert_eq!(seen.field("Days together"), "1");
+    let alone = sim.command(c, "partner", partner_options("view", vec![])).await;
+    assert!(
+        alone.ephemeral && alone.content().contains("don't have a partner"),
+        "{}",
+        alone.content()
+    );
+
+    // Declining and taking a request back both end it.
+    let (options, users) = propose(f, "Fay");
+    let asked = sim.command_resolved(e, "partner", options, users).await;
+    let said_no = sim.click(f, &asked, "Decline").await;
+    assert!(
+        said_no.content().contains("said no thanks") && said_no.components.is_empty(),
+        "{}",
+        said_no.content()
+    );
+    let (options, users) = propose(f, "Fay");
+    let asked = sim.command_resolved(e, "partner", options, users).await;
+    let back = sim.click(e, &asked, "Decline").await;
+    assert!(
+        back.content().contains("took the partner request back"),
+        "{}",
+        back.content()
+    );
+    assert!(sim.app.db.partner(e).await.unwrap().is_none());
+
+    // A request nobody answered in ten minutes is dead.
+    let (options, users) = propose(d, "Dee");
+    let asked = sim.command_resolved(c, "partner", options, users).await;
+    sim.app.shift_clock(chrono::Duration::minutes(11));
+    let late = sim.click(d, &asked, "Accept").await;
+    assert!(
+        late.content().contains("expired") && late.components.is_empty(),
+        "{}",
+        late.content()
+    );
+    assert!(sim.app.db.partner(c).await.unwrap().is_none() && sim.app.db.partner(d).await.unwrap().is_none());
+
+    // Leaving takes a confirmation; staying keeps the pair.
+    let alone = sim.command(c, "partner", partner_options("leave", vec![])).await;
+    assert!(
+        alone.ephemeral && alone.content().contains("don't have a partner"),
+        "{}",
+        alone.content()
+    );
+    let confirm = sim.command(a, "partner", partner_options("leave", vec![])).await;
+    assert!(
+        confirm.ephemeral && confirm.title().contains("Leave"),
+        "{}",
+        confirm.title()
+    );
+    let stayed = sim.click(a, &confirm, "Stay together").await;
+    assert!(stayed.content().contains("still partners"), "{}", stayed.content());
+    assert!(sim.app.db.partner(a).await.unwrap().is_some());
+    let wrong = sim.click(b, &confirm, "Leave").await;
+    assert!(
+        wrong.ephemeral && wrong.content().contains("isn't yours"),
+        "{}",
+        wrong.content()
+    );
+    let left = sim.click(a, &confirm, "Leave").await;
+    assert!(left.content().contains("not partners anymore"), "{}", left.content());
+    assert!(sim.app.db.partner(a).await.unwrap().is_none() && sim.app.db.partner(b).await.unwrap().is_none());
+    assert_eq!(pinchora_commands::partner_name(&sim.app, a).await, None);
+    // Both are free to pair again.
+    assert!(matches!(
+        sim.app.db.pair_partners(b, c).await.unwrap(),
+        pinchora_db::PairOutcome::Paired { .. }
+    ));
+}
+
+#[tokio::test]
+async fn a_partner_decorates_the_others_house() {
+    let Some(mut sim) = Sim::new("partner_editing").await else {
+        return;
+    };
+    let (a, b, stranger) = (unique(), unique(), unique());
+    sim.app.db.pair_partners(a, b).await.unwrap();
+    sim.app.db.remember_name(b, "Bea").await.unwrap();
+    let edit_options = |owner: u64| json!([sub("edit", vec![user_option("owner", owner)])]);
+
+    // Only a partner gets in.
+    let refused = sim
+        .command_resolved(stranger, "house", edit_options(b), named(&[(b, "Bea")]))
+        .await;
+    assert!(
+        refused.ephemeral && refused.content().contains("partner"),
+        "{}",
+        refused.content()
+    );
+    assert!(room_pieces(&sim, b, 0).await.is_empty());
+
+    // The editor shows b's room and a's inventory, and says whose the pieces become.
+    let edit = sim
+        .command_resolved(a, "house", edit_options(b), named(&[(b, "Bea")]))
+        .await;
+    assert!(edit.title().starts_with("Decorating Bea's room 1"), "{}", edit.title());
+    let footer = edit.embeds[0]
+        .footer
+        .as_ref()
+        .map(|f| f.text.clone())
+        .unwrap_or_default();
+    assert!(footer.contains("belongs to Bea from then on"), "{footer}");
+    assert_eq!(edit.rows(), 5, "the same rows as the owner's editor");
+    assert!(edit.button("Move").disabled, "a piece of Bea's can't go into a's hand");
+    let pieces: Vec<&str> = edit
+        .options("pt:s:")
+        .iter()
+        .map(|o| o.value.as_str())
+        .filter(|v| !v.starts_with('<') && *v != "none")
+        .collect();
+    assert!(!pieces.is_empty(), "a's starter kit is in the menu");
+    let seat = pieces[0].to_owned();
+    let seat_before = owned(&sim, a, &seat).await;
+    // Opening b's house made it, with a starter kit of b's own.
+    let b_before = owned(&sim, b, &seat).await;
+
+    // Place: it leaves a's inventory and stands in b's house.
+    let held = sim.pick(a, &edit, "pt:s:", &seat).await;
+    let placed = sim.click(a, &held, "Place").await;
+    assert!(placed.description().contains("Placed **"), "{}", placed.description());
+    assert_eq!(room_pieces(&sim, b, 0).await.len(), 1);
+    assert!(room_pieces(&sim, a, 0).await.is_empty(), "not in a's own room");
+    assert_eq!(owned(&sim, a, &seat).await, seat_before - 1);
+
+    // Store: it is b's now, so it goes to b's inventory.
+    let stored = sim.click(a, &placed, "Store").await;
+    assert!(
+        stored.description().contains("Bea's inventory"),
+        "{}",
+        stored.description()
+    );
+    assert!(room_pieces(&sim, b, 0).await.is_empty());
+    assert_eq!(owned(&sim, b, &seat).await, b_before + 1);
+    assert_eq!(owned(&sim, a, &seat).await, seat_before - 1);
+
+    // Undo puts it back from b's inventory; undoing the placement returns it to a, who paid.
+    let undone = sim.click(a, &stored, "↶ Undo").await;
+    assert!(
+        undone.description().contains("Undid storing"),
+        "{}",
+        undone.description()
+    );
+    assert_eq!(room_pieces(&sim, b, 0).await.len(), 1);
+    assert_eq!(owned(&sim, b, &seat).await, b_before);
+    let undone = sim.click(a, &undone, "↶ Undo").await;
+    assert!(
+        undone.description().contains("Undid placing"),
+        "{}",
+        undone.description()
+    );
+    assert!(room_pieces(&sim, b, 0).await.is_empty());
+    assert_eq!(owned(&sim, a, &seat).await, seat_before);
+    assert_eq!(owned(&sim, b, &seat).await, b_before);
+
+    // Place again and clear the room: everything goes to b's inventory, undo puts it back.
+    let held = sim.pick(a, &undone, "pt:s:", &seat).await;
+    let placed = sim.click(a, &held, "Place").await;
+    let prompt = sim.pick(a, &placed, "pt:j:", "<clear>").await;
+    assert!(
+        prompt.description().contains("Bea's inventory"),
+        "{}",
+        prompt.description()
+    );
+    let cleared = sim.click(a, &prompt, "Store it").await;
+    assert!(
+        cleared.description().contains("Bea's inventory"),
+        "{}",
+        cleared.description()
+    );
+    assert!(room_pieces(&sim, b, 0).await.is_empty());
+    assert_eq!(owned(&sim, b, &seat).await, b_before + 1);
+    let back = sim.click(a, &cleared, "↶ Undo").await;
+    assert_eq!(room_pieces(&sim, b, 0).await.len(), 1);
+    assert_eq!(owned(&sim, b, &seat).await, b_before);
+    assert!(
+        back.description().contains("Undid clearing the room"),
+        "{}",
+        back.description()
+    );
+    assert!(!back.button("↶ Undo").disabled, "a's placement can still be undone");
+
+    // A new partnership starts without that history: what a placed under the old one stays b's.
+    sim.app.db.leave_partner(a).await.unwrap();
+    sim.app.db.pair_partners(a, b).await.unwrap();
+    let reopened = sim
+        .command_resolved(a, "house", edit_options(b), named(&[(b, "Bea")]))
+        .await;
+    assert!(
+        reopened.button("↶ Undo").disabled,
+        "the old partnership's steps are gone"
+    );
+    let old_undo = back.button("↶ Undo").custom_id.clone().expect("custom id");
+    let nothing = sim.component(a, &old_undo, &[], &back).await;
+    assert!(
+        nothing.description().contains("Nothing to undo"),
+        "{}",
+        nothing.description()
+    );
+    assert_eq!(room_pieces(&sim, b, 0).await.len(), 1);
+
+    // Moving is the owner's: the button is off, and a hand-made click is refused too.
+    let id = placed
+        .button("Store")
+        .custom_id
+        .clone()
+        .expect("custom id")
+        .replacen(":k:", ":v:", 1);
+    let move_it = sim.component(a, &id, &[], &placed).await;
+    assert!(move_it.description().contains("theirs"), "{}", move_it.description());
+    assert_eq!(room_pieces(&sim, b, 0).await.len(), 1);
+
+    // b's own editor is b's: the same room, b's inventory, and a history of b's own.
+    let own = sim.command(b, "house", json!([{ "name": "edit", "type": 1 }])).await;
+    assert!(own.title().starts_with("Editing room 1"), "{}", own.title());
+    assert!(own.button("↶ Undo").disabled, "a's steps are not b's to undo");
+    assert!(!own.button("Move").disabled || own.description().contains("Holding: **nothing**"));
+    let hovered = sim
+        .pick(
+            b,
+            &own,
+            "he:j:",
+            &own.options("he:j:")
+                .iter()
+                .find(|o| o.value.starts_with('#'))
+                .expect("the piece is listed")
+                .value,
+        )
+        .await;
+    let lifted = sim.click(b, &hovered, "Store").await;
+    assert!(lifted.description().contains("Stored **"), "{}", lifted.description());
+    assert_eq!(owned(&sim, b, &seat).await, b_before + 1);
+    // ... and a's editor, still open, now finds b's change under it and has nothing to undo.
+    let stale = sim.click(a, &placed, "Store").await;
+    assert!(
+        stale.description().contains("Nothing under the cursor"),
+        "{}",
+        stale.description()
+    );
+    assert!(stale.button("↶ Undo").disabled, "the room changed outside a's editor");
+    let seen = stale.options("pt:s:").len();
+    assert!(seen > 0);
+
+    // Once they stop being partners, a's open editor stops working.
+    sim.app.db.leave_partner(a).await.unwrap();
+    let any_click = stale.button("Place").custom_id.clone().expect("custom id");
+    let gone = sim.component(a, &any_click, &[], &stale).await;
+    assert!(
+        gone.ephemeral && gone.content().contains("no longer partners"),
+        "{}",
+        gone.content()
+    );
+    let again = sim
+        .command_resolved(a, "house", edit_options(b), named(&[(b, "Bea")]))
+        .await;
+    assert!(
+        again.ephemeral && again.content().contains("partner"),
+        "{}",
+        again.content()
+    );
+}
+
+#[tokio::test]
+async fn friends_add_accept_list_remove_and_visit() {
+    let Some(mut sim) = Sim::new("friends_flow").await else {
+        return;
+    };
+    let (a, b, c) = (unique(), unique(), unique());
+    let add = |to: u64, name: &str| (json!([sub("add", vec![user_option("user", to)])]), named(&[(to, name)]));
+
+    let (options, users) = add(a, "Sim");
+    let own = sim.command_resolved(a, "friends", options, users).await;
+    assert!(
+        own.ephemeral && own.content().contains("other people"),
+        "{}",
+        own.content()
+    );
+
+    let (options, users) = add(b, "Bea");
+    let asked = sim.command_resolved(a, "friends", options, users).await;
+    assert_eq!(asked.content(), mention(b));
+    assert!(asked.title().contains("Friend request"), "{}", asked.title());
+    let stolen = sim.click(c, &asked, "Accept").await;
+    assert!(
+        stolen.ephemeral && stolen.content().contains("isn't for you"),
+        "{}",
+        stolen.content()
+    );
+    assert!(!sim.app.db.are_friends(a, b).await.unwrap());
+    let friends = sim.click(b, &asked, "Accept").await;
+    assert!(
+        friends
+            .description()
+            .contains(&format!("{} and {} are friends now", mention(a), mention(b))),
+        "{}",
+        friends.description()
+    );
+    assert!(friends.components.is_empty());
+    assert!(sim.app.db.are_friends(a, b).await.unwrap() && sim.app.db.are_friends(b, a).await.unwrap());
+    // Answering twice does nothing more.
+    let (options, users) = add(b, "Bea");
+    let twice = sim.command_resolved(a, "friends", options, users).await;
+    assert!(
+        twice.ephemeral && twice.content().contains("already friends"),
+        "{}",
+        twice.content()
+    );
+
+    // The list shows level and house likes; b's house gets a like and a lock to see both.
+    sim.command(b, "house", json!([{ "name": "view", "type": 1 }])).await;
+    sim.app
+        .db
+        .like_house(b, c, chrono::Utc::now().date_naive())
+        .await
+        .unwrap();
+    sim.app.db.add_message_xp(sim.guild, b, 99, 0).await.unwrap();
+    let list = sim.command(a, "friends", json!([sub("list", vec![])])).await;
+    assert_eq!(list.title(), "👥 Your friends");
+    assert!(
+        list.description().contains(&format!("**1.** {} · Lv ", mention(b))) && list.description().contains("💖 1"),
+        "{}",
+        list.description()
+    );
+    assert!(
+        list.embeds[0]
+            .footer
+            .as_ref()
+            .is_some_and(|f| f.text == "1 of 100 friends")
+    );
+    let theirs = sim
+        .command_resolved(
+            c,
+            "friends",
+            json!([sub("list", vec![user_option("user", b)])]),
+            named(&[(b, "Bea")]),
+        )
+        .await;
+    assert_eq!(theirs.title(), "👥 Bea's friends", "{}", theirs.title());
+    assert!(theirs.description().contains(&mention(a)));
+    let empty = sim.command(c, "friends", json!([sub("list", vec![])])).await;
+    assert!(
+        empty.description().contains("No friends yet"),
+        "{}",
+        empty.description()
+    );
+
+    // /house visit without a name offers the friends whose doors are open.
+    let shortlist = sim.command(a, "house", json!([sub("visit", vec![])])).await;
+    assert!(shortlist.ephemeral);
+    let options = shortlist.options("fd:v:");
+    assert_eq!(options.len(), 1);
+    assert_eq!(options[0].value, b.to_string());
+    assert!(
+        options[0]
+            .description
+            .as_deref()
+            .is_some_and(|d| d.contains("Lv ") && d.contains("💖 1")),
+        "{:?}",
+        options[0].description
+    );
+    let credits = sim.app.db.user(a).await.unwrap().credits;
+    let visit = sim.pick(a, &shortlist, "fd:v:", &b.to_string()).await;
+    assert!(
+        visit.title().contains("house") || visit.title().contains("Shack") || !visit.title().is_empty(),
+        "{}",
+        visit.title()
+    );
+    assert_eq!(visit.files[0].0, "room.png");
+    assert!(
+        visit.embeds[0]
+            .footer
+            .as_ref()
+            .is_some_and(|f| f.text.contains("shells for visiting")),
+        "{:?}",
+        visit.embeds[0].footer
+    );
+    assert_eq!(sim.app.db.user(a).await.unwrap().credits, credits + 25);
+    visit.button("Sign guestbook");
+    // A locked house leaves the shortlist.
+    sim.command(b, "house", json!([sub("lock", vec![bool_option("locked", true)])]))
+        .await;
+    let shortlist = sim.command(a, "house", json!([sub("visit", vec![])])).await;
+    assert!(
+        shortlist.content().contains("Name whose house"),
+        "{}",
+        shortlist.content()
+    );
+    // Somebody without friends is told how to get some.
+    let none = sim.command(c, "house", json!([sub("visit", vec![])])).await;
+    assert!(
+        none.ephemeral && none.content().contains("/friends add"),
+        "{}",
+        none.content()
+    );
+    // Naming someone still works as before.
+    let named_visit = sim
+        .command_resolved(c, "house", visit_options(a), resolved(&[a], &[]))
+        .await;
+    assert_eq!(named_visit.files[0].0, "room.png");
+
+    // Remove, and decline.
+    let removed = sim
+        .command_resolved(
+            b,
+            "friends",
+            json!([sub("remove", vec![user_option("user", a)])]),
+            named(&[(a, "Amy")]),
+        )
+        .await;
+    assert!(
+        removed.ephemeral && removed.content().contains("no longer your friend"),
+        "{}",
+        removed.content()
+    );
+    assert!(!sim.app.db.are_friends(a, b).await.unwrap() && !sim.app.db.are_friends(b, a).await.unwrap());
+    let again = sim
+        .command_resolved(
+            b,
+            "friends",
+            json!([sub("remove", vec![user_option("user", a)])]),
+            named(&[(a, "Amy")]),
+        )
+        .await;
+    assert!(
+        again.content().contains("isn't one of your friends"),
+        "{}",
+        again.content()
+    );
+    let (options, users) = add(c, "Cy");
+    let asked = sim.command_resolved(a, "friends", options, users).await;
+    let no = sim.click(c, &asked, "Decline").await;
+    assert!(no.content().contains("said no thanks"), "{}", no.content());
+    assert!(!sim.app.db.are_friends(a, c).await.unwrap());
+    // A request stops being good after a day.
+    let (options, users) = add(c, "Cy");
+    let asked = sim.command_resolved(a, "friends", options, users).await;
+    sim.app.shift_clock(chrono::Duration::hours(25));
+    let late = sim.click(c, &asked, "Accept").await;
+    assert!(late.content().contains("expired"), "{}", late.content());
+    assert!(!sim.app.db.are_friends(a, c).await.unwrap());
+}
+
+#[tokio::test]
+async fn a_hundred_friends_is_the_most_and_the_list_pages() {
+    let Some(mut sim) = Sim::new("friends_cap").await else {
+        return;
+    };
+    let (full, extra) = (unique(), unique());
+    let crowd: Vec<u64> = (0..100).map(|n| full + 5_000_000 + n).collect();
+    for friend in &crowd {
+        sim.app.db.befriend(full, *friend).await.unwrap();
+    }
+    let (options, users) = (
+        json!([sub("add", vec![user_option("user", extra)])]),
+        named(&[(extra, "Xi")]),
+    );
+    let refused = sim.command_resolved(full, "friends", options, users).await;
+    assert!(
+        refused.ephemeral && refused.content().contains("100 friends"),
+        "{}",
+        refused.content()
+    );
+    let (options, users) = (
+        json!([sub("add", vec![user_option("user", full)])]),
+        named(&[(full, "Fu")]),
+    );
+    let theirs = sim.command_resolved(extra, "friends", options, users).await;
+    assert!(
+        theirs.ephemeral && theirs.content().contains("has 100 friends already"),
+        "{}",
+        theirs.content()
+    );
+
+    let first = sim.command(full, "friends", json!([sub("list", vec![])])).await;
+    assert!(
+        first.embeds[0]
+            .footer
+            .as_ref()
+            .is_some_and(|f| f.text == "Page 1/10 · 100 of 100 friends"),
+        "{:?}",
+        first.embeds[0].footer
+    );
+    assert_eq!(first.description().lines().count(), 10);
+    assert!(first.button("◀ Newer").disabled && !first.button("Older ▶").disabled);
+    let second = sim.click(full, &first, "Older ▶").await;
+    assert!(second.description().starts_with("**11.**"), "{}", second.description());
+    assert!(!second.button("◀ Newer").disabled);
+    // Newest first: the last friend added heads page one.
+    assert!(
+        first.description().contains(&mention(*crowd.last().unwrap())),
+        "{}",
+        first.description()
+    );
+}
+
+#[tokio::test]
+async fn hug_pat_wave_and_high_five_send_a_gif_of_the_two_players() {
+    let Some(mut sim) = Sim::new("interactions").await else {
+        return;
+    };
+    let (a, b, c) = (unique(), unique(), unique());
+    // a and b each design a character, so the GIF shows their own looks and colours.
+    let content = Content::get();
+    for (user, look, skin, top) in [(a, 0, 1, 0), (b, 2, 5, 4)] {
+        let code = format!("{}.{skin}.3.{top}.2", content.looks[look].id);
+        sim.app.db.set_character(user, &code).await.unwrap();
+    }
+
+    let mut last = None;
+    for (command, verb, key) in [
+        ("hug", "hugs", "hug"),
+        ("pat", "pats", "pat"),
+        ("wave", "waves at", "wave"),
+        ("highfive", "high-fives", "highfive"),
+    ] {
+        // Each kind from a different sender, so the 5 s wait between two of one player's is not in the way.
+        let sender = unique();
+        sim.app
+            .db
+            .set_character(sender, &format!("{}.2.1.1.3", content.looks[3].id))
+            .await
+            .unwrap();
+        let reply = sim
+            .command_resolved(sender, command, json!([user_option("user", b)]), named(&[(b, "Bea")]))
+            .await;
+        let said = format!("{} {} {verb} {}", content_emoji(key), mention(sender), mention(b));
+        assert_eq!(reply.content(), said);
+        assert!(
+            reply
+                .description()
+                .contains(&format!("from {} to {}", mention(sender), mention(b))),
+            "{}",
+            reply.description()
+        );
+        assert!(reply.description().contains("**#1**"), "{}", reply.description());
+        let frames = gif_frames(&reply, &format!("{key}.gif"));
+        assert!(frames.len() > 1, "{key} is animated");
+        assert!((12..=16).contains(&frames.len()), "{key} has {} frames", frames.len());
+        assert!(frames.windows(2).any(|w| w[0] != w[1]), "{key} moves");
+        save_frames(&sim, key, &frames);
+        let footer = reply.embeds[0]
+            .footer
+            .as_ref()
+            .map(|f| f.text.clone())
+            .unwrap_or_default();
+        assert!(
+            footer.contains("1 ") && footer.contains("given") && footer.contains("received"),
+            "{footer}"
+        );
+        assert!(!footer.contains("/character"), "the sender has a character: {footer}");
+        reply.button(&format!(
+            "{} back",
+            match key {
+                "highfive" => "High five".to_owned(),
+                other => format!("{}{}", other[..1].to_uppercase(), &other[1..]),
+            }
+        ));
+        last = Some((reply, sender));
+    }
+    let (high_five, _) = last.unwrap();
+    assert_eq!(high_five.files.len(), 1);
+
+    // Counted per pair and per user: a second hug from the same player is #2, once the wait is over.
+    let (sender, receiver) = (a, c);
+    let started = std::time::Instant::now();
+    let first = sim
+        .command_resolved(
+            sender,
+            "hug",
+            json!([user_option("user", receiver)]),
+            named(&[(receiver, "Cy")]),
+        )
+        .await;
+    assert!(first.description().contains("**#1**"), "{}", first.description());
+    // The wait is five seconds from the moment the first went out.
+    if started.elapsed() < std::time::Duration::from_secs(4) {
+        let eager = sim
+            .command_resolved(
+                sender,
+                "pat",
+                json!([user_option("user", receiver)]),
+                named(&[(receiver, "Cy")]),
+            )
+            .await;
+        assert!(
+            eager.ephemeral && eager.content().contains("Easy there"),
+            "{}",
+            eager.content()
+        );
+        assert!(eager.files.is_empty());
+        assert_eq!(
+            sim.app.db.exchanged(a, c).await.unwrap(),
+            vec![("hug".to_owned(), 1, 0)]
+        );
+    }
+    // A cooldown that is running refuses, whoever the receiver is.
+    let busy = unique();
+    assert!(
+        sim.app
+            .cache
+            .try_cooldown(&format!("social:{busy}"), std::time::Duration::from_secs(30))
+            .await
+            .unwrap()
+            .is_none()
+    );
+    let eager = sim
+        .command_resolved(
+            busy,
+            "wave",
+            json!([user_option("user", receiver)]),
+            named(&[(receiver, "Cy")]),
+        )
+        .await;
+    assert!(
+        eager.ephemeral && eager.content().contains("Easy there"),
+        "{}",
+        eager.content()
+    );
+    assert!(eager.files.is_empty() && sim.app.db.exchanged(busy, c).await.unwrap().is_empty());
+    tokio::time::sleep(std::time::Duration::from_millis(5_200)).await;
+    // Another receiver starts its own pair count while the sender's total goes on.
+    let second = sim
+        .command_resolved(sender, "hug", json!([user_option("user", b)]), named(&[(b, "Bea")]))
+        .await;
+    assert!(second.description().contains("**#1**"), "{}", second.description());
+    let footer = second.embeds[0]
+        .footer
+        .as_ref()
+        .map(|f| f.text.clone())
+        .unwrap_or_default();
+    assert!(footer.contains("2 hugs given"), "{footer}");
+    tokio::time::sleep(std::time::Duration::from_millis(5_200)).await;
+    let third = sim
+        .command_resolved(
+            sender,
+            "hug",
+            json!([user_option("user", receiver)]),
+            named(&[(receiver, "Cy")]),
+        )
+        .await;
+    assert!(third.description().contains("**#2**"), "{}", third.description());
+    let footer = third.embeds[0]
+        .footer
+        .as_ref()
+        .map(|f| f.text.clone())
+        .unwrap_or_default();
+    assert!(
+        footer.contains("3 hugs given") && footer.contains("2 hugs received"),
+        "{footer}"
+    );
+    assert_eq!(first.files.len(), 1);
+
+    // The receiver can send one back from the button, once; anybody else is told it isn't theirs.
+    let not_yours = sim.click(b, &third, "Hug back").await;
+    assert!(
+        not_yours.ephemeral && not_yours.content().contains(&format!("for {}", mention(receiver))),
+        "{}",
+        not_yours.content()
+    );
+    let back = sim.click(receiver, &third, "Hug back").await;
+    assert!(back.components.is_empty(), "the button is spent");
+    assert_eq!(back.followups.len(), 1);
+    let answer = &back.followups[0];
+    assert_eq!(
+        answer.content(),
+        format!("🤗 {} hugs {}", mention(receiver), mention(sender))
+    );
+    assert!(
+        answer.description().contains("**#1**")
+            && answer
+                .description()
+                .contains(&format!("from {} to {}", mention(receiver), mention(sender))),
+        "{}",
+        answer.description()
+    );
+    assert!(gif_frames(answer, "hug.gif").len() > 1);
+    assert_eq!(
+        sim.app.db.exchanged(a, c).await.unwrap(),
+        vec![("hug".to_owned(), 2, 1)]
+    );
+
+    // Nobody hugs themselves or a bot, and a player without a character is still on screen.
+    let own = sim
+        .command_resolved(unique(), "hug", json!([user_option("user", 77)]), named(&[(77, "x")]))
+        .await;
+    assert!(own.files.len() == 1, "someone else's id");
+    let me = unique();
+    let myself = sim
+        .command_resolved(me, "hug", json!([user_option("user", me)]), named(&[(me, "Me")]))
+        .await;
+    assert!(
+        myself.ephemeral && myself.content().contains("can't give yourself a hug"),
+        "{}",
+        myself.content()
+    );
+    let bot = json!({ "users": { "55": person_json(55, "robo", Some("Robo"), true) } });
+    let robot = sim
+        .command_resolved(unique(), "wave", json!([user_option("user", 55)]), bot)
+        .await;
+    assert!(
+        robot.ephemeral && robot.content().contains("bots"),
+        "{}",
+        robot.content()
+    );
+    let footer = own.embeds[0]
+        .footer
+        .as_ref()
+        .map(|f| f.text.clone())
+        .unwrap_or_default();
+    assert!(
+        footer.contains("Design your own with /character"),
+        "no saved character: {footer}"
+    );
+}
+
+/// The emoji each command starts its message with.
+fn content_emoji(key: &str) -> &'static str {
+    match key {
+        "hug" => "🤗",
+        "pat" => "🫳",
+        "wave" => "👋",
+        _ => "🙌",
+    }
+}

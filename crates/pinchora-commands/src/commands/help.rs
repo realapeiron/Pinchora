@@ -18,6 +18,10 @@ impl Help {
                 "`/profile` your card\n`/rank` server level card\n`/character` design your pixel character\n`/customize background`, `badges`, `title`, `style` and `showcase` dress up your cards\n`/bio` set your about-me\n`/rep` give someone reputation",
             ))
             .field(EmbedFieldBuilder::new(
+                "Friends & partners",
+                "`/friends add` `/friends list` and a quick pick in `/house visit`\n`/partner propose` pair up, then decorate each other's house with `/house edit owner:`\n`/hug` `/pat` `/wave` `/highfive` send an animated GIF of your characters",
+            ))
+            .field(EmbedFieldBuilder::new(
                 "Shells",
                 "`/daily` daily shells with streak bonus\n`/balance` your wallet\n`/give` send shells to a friend",
             ))

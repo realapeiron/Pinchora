@@ -1,12 +1,15 @@
 mod contest;
 mod customize;
 mod economy;
+mod friends;
 mod games;
 mod guestbook;
 mod guilds;
 mod house;
+mod interactions;
 mod members;
 mod panels;
+mod partners;
 mod pets;
 mod rewards;
 mod shop;
@@ -22,6 +25,7 @@ use sqlx::{PgPool, postgres::PgPoolOptions};
 pub use contest::{ContestEntry, ContestResult};
 pub use customize::{CustomizeBuy, MAX_BADGES, PlayerStats};
 pub use economy::{DailyOutcome, RepOutcome, TransferOutcome};
+pub use friends::{BefriendOutcome, FriendRow, MAX_FRIENDS};
 pub use games::{ACTIVE, DONE, DuelStart, GameSession, GameStat, NewGame, PENDING, Payout, WordleGame};
 pub use guestbook::{NoteRow, SignOutcome, VisitorRow};
 pub use guilds::{GuildSettings, LogKind};
@@ -29,8 +33,10 @@ pub use house::{
     HouseRow, InventoryRow, NewRoom, PlaceOutcome, PlacementRow, Refusal, RestoreOutcome, RoomChange, RoomRow,
     UpgradeOutcome,
 };
+pub use interactions::Tally;
 pub use members::{LeaderboardRow, MemberRank, XpGain};
 pub use panels::{MAX_PANEL_ROLES, PanelRoleRow, PanelRow};
+pub use partners::{PairOutcome, PartnerRow};
 pub use pets::PetRow;
 pub use rewards::{LevelRoleRow, MAX_LEVEL_ROLES, MAX_STORE_ITEMS, StoreBuy, StoreItem};
 pub use shop::{BuyOutcome, Currency, MarketRow, VisitOutcome};

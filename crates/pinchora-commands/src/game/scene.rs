@@ -106,6 +106,14 @@ impl Sprites {
         })
     }
 
+    /// The look as drawn, in the key colours before a player's own are swapped in: the atlas
+    /// sprite `a_<look>`, or a placeholder figure until that art exists.
+    pub fn look(&self, look: &str) -> Arc<RgbaImage> {
+        self.store
+            .get(&format!("a_{look}"))
+            .unwrap_or_else(|| Arc::new(placeholder_character()))
+    }
+
     /// The character's look in its colours: the atlas sprite `a_<look>`, or a placeholder
     /// figure until that art exists.
     pub fn character(&self, character: &Character) -> Arc<RgbaImage> {
