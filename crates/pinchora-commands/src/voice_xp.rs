@@ -162,7 +162,7 @@ async fn pay_guild(app: &Arc<App>, guild: u64) -> anyhow::Result<usize> {
     let key = members_key(guild);
     let stored = app.cache.map_all(&key).await?;
     if stored.is_empty() {
-        app.cache.set_remove(GUILDS, &guild.to_string()).await?;
+        forget_guild(app, guild, &key).await?;
         return Ok(0);
     }
     let mut here: Vec<(u64, Record)> = Vec::with_capacity(stored.len());
@@ -178,7 +178,7 @@ async fn pay_guild(app: &Arc<App>, guild: u64) -> anyhow::Result<usize> {
         }
     }
     if here.is_empty() {
-        app.cache.set_remove(GUILDS, &guild.to_string()).await?;
+        forget_guild(app, guild, &key).await?;
         return Ok(0);
     }
     let settings = app.guild_settings(guild).await?;
@@ -218,6 +218,16 @@ async fn pay_guild(app: &Arc<App>, guild: u64) -> anyhow::Result<usize> {
         }
     }
     Ok(gains.len())
+}
+
+/// Stops ticking `guild`, unless a voice event refilled its hash between the empty read and the
+/// removal: that member would otherwise sit unpaid until the next event in the server.
+async fn forget_guild(app: &App, guild: u64, key: &str) -> anyhow::Result<()> {
+    app.cache.set_remove(GUILDS, &guild.to_string()).await?;
+    if !app.cache.map_all(key).await?.is_empty() {
+        app.cache.set_add(GUILDS, &guild.to_string()).await?;
+    }
+    Ok(())
 }
 
 /// A level-up earned in voice. Failures are logged: the XP is already paid.
