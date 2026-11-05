@@ -114,7 +114,9 @@ impl Db {
     }
 
     /// Logs a house visit and pays the guest `reward` for the first visit to this host
-    /// today, up to `daily_cap` paid visits per day.
+    /// today, up to `daily_cap` paid visits per day. Every visit stamps `visited_at` with
+    /// the time of the latest one (the guestbook's "visited in the last day" and the recent
+    /// visitors read it); only the first of the day pays.
     pub async fn record_visit(
         &self,
         host: u64,
@@ -125,16 +127,19 @@ impl Db {
     ) -> anyhow::Result<VisitOutcome> {
         let (host, guest) = (sql_id(host), sql_id(guest));
         let mut tx = self.pool().begin().await?;
-        let fresh =
-            sqlx::query("INSERT INTO visits (host_id, guest_id, day) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING")
-                .bind(host)
-                .bind(guest)
-                .bind(day)
-                .execute(&mut *tx)
-                .await?
-                .rows_affected()
-                == 1;
+        // `xmax` is 0 on a row this statement inserted and set on one it updated.
+        let (fresh,): (bool,) = sqlx::query_as(
+            "INSERT INTO visits (host_id, guest_id, day) VALUES ($1, $2, $3)
+             ON CONFLICT (host_id, guest_id, day) DO UPDATE SET visited_at = now()
+             RETURNING (xmax = 0)",
+        )
+        .bind(host)
+        .bind(guest)
+        .bind(day)
+        .fetch_one(&mut *tx)
+        .await?;
         if !fresh {
+            tx.commit().await?;
             return Ok(VisitOutcome::AlreadyToday);
         }
         let (today,): (i64,) = sqlx::query_as("SELECT count(*) FROM visits WHERE guest_id = $1 AND day = $2")

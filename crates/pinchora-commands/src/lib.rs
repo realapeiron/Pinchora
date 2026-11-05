@@ -11,6 +11,7 @@ mod util;
 
 pub use app::App;
 pub use commands::definitions as command_definitions;
+pub use commands::partner::partner_name;
 pub use cx::Cx;
 pub use events::{
     on_ban_add, on_ban_remove, on_member_add, on_member_remove, on_member_update, on_message, on_voice_state_update,

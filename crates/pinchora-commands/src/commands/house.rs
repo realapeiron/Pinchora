@@ -88,8 +88,8 @@ pub struct HouseView {
 #[derive(CommandModel, CreateCommand)]
 #[command(name = "visit", desc = "Visit someone's house (first visit each day pays shells)")]
 pub struct HouseVisit {
-    /// Whose house
-    user: ResolvedUser,
+    /// Whose house (leave out to pick from your friends)
+    user: Option<ResolvedUser>,
     /// Room number (default: 1)
     #[command(min_value = 1, max_value = 6)]
     room: Option<i64>,
@@ -101,6 +101,8 @@ pub struct HouseEdit {
     /// Room number (default: 1)
     #[command(min_value = 1, max_value = 6)]
     room: Option<i64>,
+    /// Whose house: your partner's, to decorate it together (default: yours)
+    owner: Option<ResolvedUser>,
 }
 
 #[derive(CommandModel, CreateCommand)]
@@ -137,12 +139,54 @@ impl HouseCommand {
                 .await?;
                 cx.reply(data).await
             }
-            Self::Visit(c) => visit(cx, &author, &c.user, room_index(c.room)).await,
+            Self::Visit(c) => match &c.user {
+                Some(user) if user.resolved.bot => cx.reply_ephemeral("Bots don't have houses.").await,
+                Some(user) => {
+                    let name = resolved_display_name(user);
+                    visit(cx, &author, user.resolved.id.get(), name, room_index(c.room)).await
+                }
+                None => super::friends::visit_shortlist(cx, room_index(c.room)).await,
+            },
             Self::Edit(c) => {
-                let (_, rooms) = ensure_house(&cx.app, author.id.get()).await?;
+                let me = author.id.get();
+                // A partner's house is edited through its own prefix: the click finds the owner
+                // in the partners table, so the custom id never carries one.
+                let (who, prefix, note) = match &c.owner {
+                    Some(owner) if owner.resolved.id != author.id => {
+                        if owner.resolved.bot {
+                            return cx.reply_ephemeral("Bots don't have houses.").await;
+                        }
+                        match cx.app.db.partner(me).await? {
+                            Some(p) if p.partner_id == owner.resolved.id.get() => {
+                                ensure_house(&cx.app, me).await?;
+                                (
+                                    Who {
+                                        owner: p.partner_id,
+                                        stock: me,
+                                    },
+                                    "pt",
+                                    "Pick furniture from your inventory: it jumps to a free spot, then press **Place**.",
+                                )
+                            }
+                            _ => {
+                                return cx
+                                    .reply_ephemeral(
+                                        "You can only decorate the house of your partner. Pair up with `/partner propose`.",
+                                    )
+                                    .await;
+                            }
+                        }
+                    }
+                    _ => (
+                        Who::own(me),
+                        "he",
+                        "Pick furniture: it jumps to a free spot, then press **Place**.",
+                    ),
+                };
+                let (_, rooms) = ensure_house(&cx.app, who.owner).await?;
                 let room = room_index(c.room).min(rooms.len().saturating_sub(1) as i16);
                 let state = EditState {
-                    prefix: "he",
+                    prefix,
                     room,
                     x: 1,
                     y: 0,
@@ -151,8 +195,7 @@ impl HouseCommand {
                     mode: CursorMode::Floor,
                     item: None,
                 };
-                let note = "Pick furniture: it jumps to a free spot, then press **Place**.";
-                let data = editor(cx, author.id.get(), state, note, None).await?;
+                let data = editor_as(cx, who, state, note, None).await?;
                 cx.reply(data).await
             }
             Self::Upgrade(_) => upgrade_offer(cx, author.id.get()).await,
@@ -379,17 +422,13 @@ pub(crate) async fn room_card(
     Ok(Cx::card(embed, "room.png", png, components, false))
 }
 
-async fn visit(cx: &Cx, author: &User, target: &ResolvedUser, room: i16) -> anyhow::Result<()> {
-    let host = &target.resolved;
-    if host.bot {
-        return cx.reply_ephemeral("Bots don't have houses.").await;
-    }
-    let name = resolved_display_name(target);
-    if host.id == author.id {
-        let data = room_card(cx, host.id.get(), &name, room, None, None).await?;
+/// Visits a house: whoever the command named, or a friend the shortlist offered.
+pub(crate) async fn visit(cx: &Cx, author: &User, host_id: u64, name: String, room: i16) -> anyhow::Result<()> {
+    if host_id == author.id.get() {
+        let data = room_card(cx, host_id, &name, room, None, None).await?;
         return cx.reply(data).await;
     }
-    let (house, _) = ensure_house(&cx.app, host.id.get()).await?;
+    let (house, _) = ensure_house(&cx.app, host_id).await?;
     if house.locked {
         return cx.reply_ephemeral(format!("{name} has locked their house.")).await;
     }
@@ -397,7 +436,7 @@ async fn visit(cx: &Cx, author: &User, target: &ResolvedUser, room: i16) -> anyh
         .app
         .db
         .record_visit(
-            host.id.get(),
+            host_id,
             author.id.get(),
             Utc::now().date_naive(),
             VISIT_REWARD,
@@ -414,7 +453,7 @@ async fn visit(cx: &Cx, author: &User, target: &ResolvedUser, room: i16) -> anyh
         VisitOutcome::Rewarded { .. } => Some(format!("You've had your {VISIT_CAP} paid visits today")),
         VisitOutcome::AlreadyToday => None,
     };
-    let data = room_card(cx, host.id.get(), &name, room, footer, Some(author.id.get())).await?;
+    let data = room_card(cx, host_id, &name, room, footer, Some(author.id.get())).await?;
     cx.reply(data).await
 }
 
@@ -487,6 +526,26 @@ impl CursorMode {
             Some(false) => Self::RightWall,
             Some(true) => Self::LeftWall,
         }
+    }
+}
+
+/// Whose house an editor click changes and whose inventory its pieces come from. Alone they are
+/// the same player (or the server, for the plaza); a partner decorating has the pieces come out of
+/// their own inventory and go into the owner's house, where they belong to the owner.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Who {
+    pub(crate) owner: u64,
+    pub(crate) stock: u64,
+}
+
+impl Who {
+    pub(crate) fn own(id: u64) -> Self {
+        Self { owner: id, stock: id }
+    }
+
+    /// Decorating somebody else's house.
+    fn is_guest(self) -> bool {
+        self.owner != self.stock
     }
 }
 
@@ -837,12 +896,12 @@ fn undo_fits(
 }
 
 /// Asks before storing every piece in the room. The room picture already on the message stays.
-async fn clear_prompt(cx: &Cx, state: &EditState, title: &str, pieces: usize) -> anyhow::Result<()> {
+async fn clear_prompt(cx: &Cx, state: &EditState, title: &str, pieces: usize, whose: &str) -> anyhow::Result<()> {
     let mut embed = EmbedBuilder::new()
         .color(DANGER)
         .title(format!("Clear room {} · {title}?", state.room + 1))
         .description(format!(
-            "Store all **{pieces}** piece{} in this room back in your inventory?\n**Undo** puts them all back where they were.",
+            "Store all **{pieces}** piece{} in this room back in {whose} inventory?\n**Undo** puts them all back where they were.",
             if pieces == 1 { "" } else { "s" }
         ));
     if let Ok(image) = ImageSource::attachment("room.png") {
@@ -894,13 +953,31 @@ pub(crate) async fn on_edit(
             .reply_ephemeral("This editor has expired. Run `/house edit` again.")
             .await;
     };
-    // The owner being edited: the player's own house, or the server plaza.
-    let user_id = match prefix {
+    // The house being edited: the player's own, the server plaza, or their partner's.
+    let me = cx.author()?.id.get();
+    let who = match prefix {
         "pe" => match super::plaza::editable_plaza(cx) {
-            Some(guild) => guild,
+            Some(guild) => Who::own(guild),
             None => return cx.reply_ephemeral("Only server managers can arrange the plaza.").await,
         },
-        _ => cx.author()?.id.get(),
+        "pt" => match cx.app.db.partner(me).await? {
+            Some(p) => Who {
+                owner: p.partner_id,
+                stock: me,
+            },
+            None => {
+                return cx
+                    .reply_ephemeral("You are no longer partners, so you can't decorate their house.")
+                    .await;
+            }
+        },
+        _ => Who::own(me),
+    };
+    let user_id = who.owner;
+    let whose = if who.is_guest() {
+        format!("{}'s", partner_label(&cx.app, who.owner).await)
+    } else {
+        "your".to_owned()
     };
     let content = Content::get();
     let (house_row, rooms) = ensure_house(&cx.app, user_id).await?;
@@ -911,7 +988,7 @@ pub(crate) async fn on_edit(
     // Set when this click put a piece in the player's own house, which counts toward badges.
     let mut placed_now = false;
     let start_room = state.room;
-    let mut history = undo::load(&cx.app, user_id, state.room, &placements).await;
+    let mut history = undo::load(&cx.app, who.owner, who.stock, state.room, &placements).await;
 
     let note = match action.as_str() {
         "s" => match value {
@@ -947,7 +1024,7 @@ pub(crate) async fn on_edit(
             match value {
                 Some(CLEAR_ROOM) if !placements.is_empty() => {
                     let title = room_title(content, &rooms[state.room as usize]);
-                    return clear_prompt(cx, &state, &title, placements.len()).await;
+                    return clear_prompt(cx, &state, &title, placements.len(), &whose).await;
                 }
                 Some(id) if id.starts_with('#') => {
                     let target = id[1..]
@@ -1002,10 +1079,19 @@ pub(crate) async fn on_edit(
                 let outcome = cx
                     .app
                     .db
-                    .place_item(user_id, state.room, &item_id, x as i16, y as i16, flipped, |current| {
-                        let placed = placed_list(current);
-                        house::can_place(content, width, depth, &placed, &item_id, x, y, flipped)
-                    })
+                    .place_item_for(
+                        who.owner,
+                        who.stock,
+                        state.room,
+                        &item_id,
+                        x as i16,
+                        y as i16,
+                        flipped,
+                        |current| {
+                            let placed = placed_list(current);
+                            house::can_place(content, width, depth, &placed, &item_id, x, y, flipped)
+                        },
+                    )
                     .await?;
                 let name = name_of(&item_id);
                 match outcome {
@@ -1019,8 +1105,8 @@ pub(crate) async fn on_edit(
                             flipped,
                         };
                         history.placed(piece, &name);
-                        cx.app.quest(user_id, pinchora_game::quests::QuestKind::Place).await;
-                        if cx.app.db.owns(user_id, &item_id).await? {
+                        cx.app.quest(who.stock, pinchora_game::quests::QuestKind::Place).await;
+                        if cx.app.db.owns(who.stock, &item_id).await? {
                             // Keep holding the next one, already on the nearest free spot.
                             let placements = cx.app.db.placements(user_id, state.room).await?;
                             match settle(content, tier, &placements, &mut state) {
@@ -1047,6 +1133,9 @@ pub(crate) async fn on_edit(
             }
         },
         // Move: takes the piece under the cursor into the hand, turned as it was.
+        "v" if who.is_guest() => format!(
+            "A piece in {whose} house is theirs, so it can't go into your hand. **Store** it to give it back to them, or place one of yours."
+        ),
         "v" => match under_cursor(content, &placements, state.x, state.y, state.wall(content)) {
             Some(p) => {
                 let mut step = Step::new(Kind::Lift, name_of(&p.item_id));
@@ -1080,7 +1169,7 @@ pub(crate) async fn on_edit(
                     String::new()
                 };
                 format!(
-                    "Stored **{}**{extra}; it is back in your inventory.",
+                    "Stored **{}**{extra}; it is back in {whose} inventory.",
                     name_of(&p.item_id)
                 )
             }
@@ -1148,7 +1237,7 @@ pub(crate) async fn on_edit(
                 step.removed = removed.iter().map(Piece::of).collect();
                 history.push(step);
                 format!(
-                    "Stored all **{n}** piece{} in your inventory. **Undo** puts them back.",
+                    "Stored all **{n}** piece{} in {whose} inventory. **Undo** puts them back.",
                     if n == 1 { "" } else { "s" }
                 )
             }
@@ -1161,7 +1250,7 @@ pub(crate) async fn on_edit(
                 let outcome = cx
                     .app
                     .db
-                    .restore(user_id, state.room, &changes, |current, change| {
+                    .restore_for(who.owner, who.stock, state.room, &changes, |current, change| {
                         undo_fits(content, size, current, change)
                     })
                     .await?;
@@ -1186,6 +1275,9 @@ pub(crate) async fn on_edit(
                     RestoreOutcome::Refused(why) => {
                         let why = match why {
                             Refusal::Moved(item) => format!("**{}** is no longer where it was", name_of(&item)),
+                            Refusal::NotOwned(item) if who.is_guest() => {
+                                format!("{whose} inventory has no **{}** left", name_of(&item))
+                            }
                             Refusal::NotOwned(item) => format!("you have no **{}** left", name_of(&item)),
                             Refusal::Blocked(reason) => reason,
                         };
@@ -1203,10 +1295,10 @@ pub(crate) async fn on_edit(
         "x" => {
             let data = InteractionResponseData {
                 content: Some(
-                    if prefix == "pe" {
-                        "Saved! See it with `/plaza view`."
-                    } else {
-                        "Saved! Show it off with `/house view`."
+                    match prefix {
+                        "pe" => "Saved! See it with `/plaza view`.",
+                        "pt" => "Saved! They can see it with `/house view`; you can too, with `/house visit`.",
+                        _ => "Saved! Show it off with `/house view`.",
                     }
                     .to_owned(),
                 ),
@@ -1222,7 +1314,7 @@ pub(crate) async fn on_edit(
     };
     // A new room has its own history; the editor loads it.
     let history = (state.room == start_room).then_some(history);
-    let data = editor(cx, user_id, state, &note, history).await?;
+    let data = editor_as(cx, who, state, &note, history).await?;
     cx.update(data).await?;
     if placed_now {
         super::customize::announce(cx).await;
@@ -1230,26 +1322,53 @@ pub(crate) async fn on_edit(
     Ok(())
 }
 
-/// The editor message. `history` is the room's undo history when the caller already has it
-/// (saved here if it changed); `None` loads it.
+/// The editor message for somebody's own house (or the plaza). `history` is the room's undo
+/// history when the caller already has it (saved here if it changed); `None` loads it.
 pub(crate) async fn editor(
     cx: &Cx,
     user_id: u64,
+    state: EditState,
+    note: &str,
+    history: Option<History>,
+) -> anyhow::Result<InteractionResponseData> {
+    editor_as(cx, Who::own(user_id), state, note, history).await
+}
+
+/// What a partner is called in the editor: the name they were last seen with.
+async fn partner_label(app: &App, user: u64) -> String {
+    match app.db.remembered_name(user).await {
+        Ok(Some(name)) if !name.is_empty() => name,
+        _ => "your partner".to_owned(),
+    }
+}
+
+/// [`editor`] for `who`: the house of `who.owner`, with the pieces of `who.stock`'s inventory.
+pub(crate) async fn editor_as(
+    cx: &Cx,
+    who: Who,
     mut state: EditState,
     note: &str,
     history: Option<History>,
 ) -> anyhow::Result<InteractionResponseData> {
     let content = Content::get();
+    let user_id = who.owner;
     let (house_row, rooms) = ensure_house(&cx.app, user_id).await?;
     let tier = house::tier(house_row.tier);
     let room = rooms[state.room.clamp(0, rooms.len() as i16 - 1) as usize].clone();
-    let (placements, inventory) =
-        tokio::try_join!(cx.app.db.placements(user_id, state.room), cx.app.db.inventory(user_id))?;
+    let (placements, inventory) = tokio::try_join!(
+        cx.app.db.placements(user_id, state.room),
+        cx.app.db.inventory(who.stock)
+    )?;
     let mut history = match history {
         Some(history) => history,
-        None => undo::load(&cx.app, user_id, state.room, &placements).await,
+        None => undo::load(&cx.app, who.owner, who.stock, state.room, &placements).await,
     };
-    undo::save(&cx.app, user_id, state.room, &mut history, &placements).await;
+    undo::save(&cx.app, who.owner, who.stock, state.room, &mut history, &placements).await;
+    let owner_name = if who.is_guest() {
+        Some(partner_label(&cx.app, who.owner).await)
+    } else {
+        None
+    };
     // One page shows 25 pieces; with more, two of its slots turn the page.
     let per_page = if inventory.len() > PAGE { PAGE - 2 } else { PAGE };
     let pages = inventory.len().div_ceil(per_page).max(1);
@@ -1365,6 +1484,18 @@ pub(crate) async fn editor(
     if let Some(name) = &hovered_name {
         lines.push(format!("Under cursor: {name}"));
     }
+    let (heading, footer) = match &owner_name {
+        Some(name) => (
+            format!("Decorating {name}'s room {} · {title}", state.room + 1),
+            format!(
+                "A piece you place comes from your inventory and belongs to {name} from then on. Stored pieces go to their inventory."
+            ),
+        ),
+        None => (
+            format!("Editing room {} · {title}", state.room + 1),
+            "Pick furniture and it jumps to a free spot. Go to moves the cursor anywhere in one click.".to_owned(),
+        ),
+    };
     let embed = EmbedBuilder::new()
         .color(if fits {
             SUCCESS
@@ -1373,11 +1504,9 @@ pub(crate) async fn editor(
         } else {
             BRAND
         })
-        .title(format!("Editing room {} · {title}", state.room + 1))
+        .title(heading)
         .description(lines.join("\n"))
-        .footer(EmbedFooterBuilder::new(
-            "Pick furniture and it jumps to a free spot. Go to moves the cursor anywhere in one click.",
-        ));
+        .footer(EmbedFooterBuilder::new(footer));
 
     let mut options: Vec<SelectMenuOption> = Vec::new();
     let option = |label: &str, value: &str, description: Option<String>, default: bool| SelectMenuOption {
@@ -1491,7 +1620,12 @@ pub(crate) async fn editor(
         ]),
         row(vec![
             button("Place", "p", ButtonStyle::Success, !fits),
-            button("Move", "v", ButtonStyle::Primary, holding || hovered_id.is_none()),
+            button(
+                "Move",
+                "v",
+                ButtonStyle::Primary,
+                holding || hovered_id.is_none() || who.is_guest(),
+            ),
             if holding {
                 button("Cancel", "c", ButtonStyle::Secondary, false)
             } else {

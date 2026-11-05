@@ -5,6 +5,7 @@ mod cards;
 pub mod character;
 mod encode;
 pub mod room;
+pub mod social;
 pub mod sprites;
 mod svg;
 mod theme;

@@ -1,4 +1,5 @@
-//! Editor undo: the last few changes the editor made to a room, kept in Redis per owner and room.
+//! Editor undo: the last few changes the editor made to a room, kept in Redis per house owner,
+//! room and editor (a partner decorating has a history of their own).
 
 use std::time::Duration;
 
@@ -226,13 +227,17 @@ pub(crate) fn fingerprint(placements: &[PlacementRow]) -> u64 {
     hash
 }
 
-fn key(owner: u64, room: i16) -> String {
-    format!("undo:{owner}:{room}")
+fn key(owner: u64, editor: u64, room: i16) -> String {
+    if owner == editor {
+        format!("undo:{owner}:{room}")
+    } else {
+        format!("undo:{owner}:{room}:{editor}")
+    }
 }
 
 /// The room's undo history; empty when the room changed since the editor last saved it.
-pub(crate) async fn load(app: &App, owner: u64, room: i16, placements: &[PlacementRow]) -> History {
-    let raw = app.cache.get(&key(owner, room)).await.unwrap_or_else(|error| {
+pub(crate) async fn load(app: &App, owner: u64, editor: u64, room: i16, placements: &[PlacementRow]) -> History {
+    let raw = app.cache.get(&key(owner, editor, room)).await.unwrap_or_else(|error| {
         tracing::debug!(%error, "undo history not read");
         None
     });
@@ -251,13 +256,20 @@ pub(crate) async fn load(app: &App, owner: u64, room: i16, placements: &[Placeme
 }
 
 /// Saves the history, if it changed, against the room as it is now.
-pub(crate) async fn save(app: &App, owner: u64, room: i16, history: &mut History, placements: &[PlacementRow]) {
+pub(crate) async fn save(
+    app: &App,
+    owner: u64,
+    editor: u64,
+    room: i16,
+    history: &mut History,
+    placements: &[PlacementRow],
+) {
     if !history.dirty {
         return;
     }
     history.dirty = false;
     history.room = fingerprint(placements);
-    let key = key(owner, room);
+    let key = key(owner, editor, room);
     let saved = if history.steps.is_empty() {
         app.cache.forget(&key).await
     } else {

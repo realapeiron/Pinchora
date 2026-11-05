@@ -3,8 +3,8 @@ use twilight_model::application::interaction::modal::ModalInteractionComponent;
 use crate::{
     Cx,
     commands::{
-        character, contest, customize, decorate, duel, fish, gift, guestbook, house, leaderboard, pet, plaza, quests,
-        role_panels, shop, stall, store,
+        character, contest, customize, decorate, duel, fish, friends, gift, guestbook, house, interact, leaderboard,
+        partner, pet, plaza, quests, role_panels, shop, stall, store,
     },
 };
 
@@ -43,6 +43,9 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
         Some("rr") => role_panels::on_toggle(cx, parts).await,
         Some("gb") => guestbook::on_component(cx, parts, values.first().map(String::as_str)).await,
         Some("rc") => contest::on_component(cx, parts).await,
+        Some("pt") => partner::on_component(cx, parts, values.first().map(String::as_str)).await,
+        Some("fd") => friends::on_component(cx, parts, values.first().map(String::as_str)).await,
+        Some("hg") => interact::on_component(cx, parts).await,
         _ => cx.reply_ephemeral("This button has expired.").await,
     }
 }

@@ -172,7 +172,28 @@ impl Db {
     where
         F: FnOnce(&[PlacementRow]) -> Result<(), String>,
     {
-        let id = sql_id(user_id);
+        self.place_item_for(user_id, user_id, room_idx, item_id, x, y, flipped, check)
+            .await
+    }
+
+    /// Like [`Db::place_item`] for a piece that comes out of `stock`'s inventory and goes into
+    /// `owner`'s house, where it is the owner's from then on (a partner decorating).
+    #[allow(clippy::too_many_arguments)]
+    pub async fn place_item_for<F>(
+        &self,
+        owner: u64,
+        stock: u64,
+        room_idx: i16,
+        item_id: &str,
+        x: i16,
+        y: i16,
+        flipped: bool,
+        check: F,
+    ) -> anyhow::Result<PlaceOutcome>
+    where
+        F: FnOnce(&[PlacementRow]) -> Result<(), String>,
+    {
+        let (id, stock) = (sql_id(owner), sql_id(stock));
         let mut tx = self.pool().begin().await?;
         sqlx::query("SELECT 1 FROM houses WHERE user_id = $1 FOR UPDATE")
             .bind(id)
@@ -191,7 +212,7 @@ impl Db {
         let taken = sqlx::query(
             "UPDATE inventory SET quantity = quantity - 1 WHERE user_id = $1 AND item_id = $2 AND quantity > 0",
         )
-        .bind(id)
+        .bind(stock)
         .bind(item_id)
         .execute(&mut *tx)
         .await?
@@ -271,12 +292,29 @@ impl Db {
         user_id: u64,
         room_idx: i16,
         changes: &[RoomChange],
+        check: F,
+    ) -> anyhow::Result<RestoreOutcome>
+    where
+        F: FnMut(&[PlacementRow], &RoomChange) -> Result<(), String>,
+    {
+        self.restore_for(user_id, user_id, room_idx, changes, check).await
+    }
+
+    /// Like [`Db::restore`] in `owner`'s house when `editor` is making the undo: a piece the
+    /// undo takes out of the room (a placement being undone) goes back to the editor who placed
+    /// it; pieces it puts back come from the owner's inventory, where taking them out left them.
+    pub async fn restore_for<F>(
+        &self,
+        owner: u64,
+        editor: u64,
+        room_idx: i16,
+        changes: &[RoomChange],
         mut check: F,
     ) -> anyhow::Result<RestoreOutcome>
     where
         F: FnMut(&[PlacementRow], &RoomChange) -> Result<(), String>,
     {
-        let id = sql_id(user_id);
+        let (id, refund) = (sql_id(owner), sql_id(editor));
         let mut tx = self.pool().begin().await?;
         sqlx::query("SELECT 1 FROM houses WHERE user_id = $1 FOR UPDATE")
             .bind(id)
@@ -309,7 +347,7 @@ impl Db {
                         .bind(id)
                         .execute(&mut *tx)
                         .await?;
-                    add_inventory(&mut tx, id, &p.item_id, 1).await?;
+                    add_inventory(&mut tx, refund, &p.item_id, 1).await?;
                     current.retain(|c| c.id != p.id);
                 }
                 RoomChange::Flip(p) => {
