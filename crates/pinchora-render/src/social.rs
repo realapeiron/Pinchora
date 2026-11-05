@@ -366,11 +366,13 @@ fn float_heart(canvas: &mut RgbaImage, x: f32, y: f32, a: f32, sway: f32, phase:
     };
     let sprite = heart(size);
     let x = x + (a * 9.0 + phase).sin() * sway;
+    // Below a tall head there is less sky: the heart rises less, so the biggest never leaves it.
+    let rise = (y - 13.0).clamp(0.0, 40.0);
     blit(
         canvas,
         &sprite,
         (x - sprite.width() as f32 / 2.0).round() as i32,
-        (y - a * 40.0 - sprite.height() as f32).round() as i32,
+        (y - a * rise - sprite.height() as f32).round() as i32,
     );
 }
 
@@ -770,14 +772,14 @@ fn hug(canvas: &mut RgbaImage, a: &Figure, b: &Figure, at: f32) {
         for (me, other, figure, drop) in [(&placed_a, &placed_b, a, 3.0), (&placed_b, &placed_a, b, 11.0)] {
             let dir = me.dir as f32;
             let wrap = (other.centre + dir * 9.0, other.far.1 + drop);
-            let spread = (me.near.0 + dir * 21.0, me.near.1 + 1.0);
+            let spread = (me.near.0 + dir * 21.0, me.near.1 + 8.0);
             let wrist = (lerp(wrap.0, spread.0, open), lerp(wrap.1, spread.1, open));
             let pull = (me.near.0 + dir * 8.0, me.near.1 + lerp(8.0, 11.0, open));
             let paint = |layer: &mut RgbaImage| {
                 arm(layer, figure, me.near, pull, wrist);
                 hand(layer, figure, wrist, dir * lerp(1.7, 0.7, open), me.dir > 0, 1.2);
             };
-            if me.dir < 0 && squeeze > 0.5 {
+            if me.dir < 0 {
                 behind(canvas, other, paint);
             } else {
                 paint(canvas);
