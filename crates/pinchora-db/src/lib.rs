@@ -1,3 +1,4 @@
+mod customize;
 mod economy;
 mod guilds;
 mod house;
@@ -13,6 +14,7 @@ use std::time::Duration;
 
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
+pub use customize::{CustomizeBuy, MAX_BADGES, PlayerStats};
 pub use economy::{DailyOutcome, RepOutcome, TransferOutcome};
 pub use guilds::GuildSettings;
 pub use house::{HouseRow, InventoryRow, NewRoom, PlaceOutcome, PlacementRow, RoomRow, UpgradeOutcome};

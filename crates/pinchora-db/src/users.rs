@@ -18,6 +18,10 @@ pub struct UserRow {
     /// The saved character code (`users.avatar`); `None` until they design one.
     #[sqlx(rename = "avatar")]
     pub character: Option<String>,
+    /// The id of the background on their cards (`users.background`); `None` is the plain look.
+    pub background: Option<String>,
+    /// The badge ids on their profile card, in order (`users.badges`).
+    pub badges: Vec<String>,
 }
 
 impl Db {

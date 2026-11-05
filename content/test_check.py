@@ -102,5 +102,42 @@ class IsometricPlacementTests(unittest.TestCase):
                 self.assertTrue(self.errors(item_id, {"footprint": footprint}))
 
 
+class CosmeticsTests(unittest.TestCase):
+    BACKGROUNDS = json.loads(Path(__file__).with_name("backgrounds.json").read_text(encoding="utf-8"))
+    BADGES = json.loads(Path(__file__).with_name("badges.json").read_text(encoding="utf-8"))
+
+    def errors(self, backgrounds=None, badges=None):
+        check.ERRORS.clear()
+        if backgrounds is not None:
+            check.check_backgrounds(backgrounds)
+        if badges is not None:
+            check.check_badges(badges, 72)
+        return check.ERRORS[:]
+
+    def test_shipped_files_are_valid(self):
+        self.assertEqual(self.errors(self.BACKGROUNDS, self.BADGES), [])
+
+    def test_background_accent_and_price(self):
+        for change in ({"accent": "8eddd1"}, {"accent": "#8EDDD1"}, {"price": 0}, {"price": 800.0}, {"price": 99999}):
+            with self.subTest(change=change):
+                broken = copy.deepcopy(self.BACKGROUNDS)
+                broken[0].update(change)
+                self.assertTrue(self.errors(backgrounds=broken))
+
+    def test_badge_fields_follow_kind(self):
+        shop = next(i for i, b in enumerate(self.BADGES) if b["kind"] == "shop")
+        for index, change in ((0, {"price": 10}), (0, {"stat": "xp"}), (0, {"at": 0}), (shop, {"stat": "level"}),
+                              (shop, {"price": -1}), (0, {"kind": "gift"})):
+            with self.subTest(index=index, change=change):
+                broken = copy.deepcopy(self.BADGES)
+                broken[index].update(change)
+                self.assertTrue(self.errors(badges=broken))
+
+    def test_fish_badges_cannot_ask_for_more_species_than_exist(self):
+        broken = copy.deepcopy(self.BADGES)
+        next(b for b in broken if b.get("stat") == "fish_species")["at"] = 73
+        self.assertTrue(self.errors(badges=broken))
+
+
 if __name__ == "__main__":
     unittest.main()

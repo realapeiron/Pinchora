@@ -157,7 +157,7 @@ impl Db {
 }
 
 /// Deducts `amount`; returns the new balance, or `None` if the player cannot afford it.
-async fn charge(
+pub(crate) async fn charge(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     user_id: i64,
     amount: i64,
@@ -175,7 +175,7 @@ async fn charge(
     Ok(row.map(|(b,)| b))
 }
 
-async fn balance_of(
+pub(crate) async fn balance_of(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     user_id: i64,
     currency: Currency,

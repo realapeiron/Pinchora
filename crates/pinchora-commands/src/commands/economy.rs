@@ -1,12 +1,14 @@
 use chrono::Utc;
 use pinchora_core::economy::{DAILY_COOLDOWN, DAILY_STREAK_WINDOW};
 use pinchora_db::TransferOutcome;
-use pinchora_render::{Theme, WalletCard};
+use pinchora_game::Content;
+use pinchora_render::WalletCard;
 use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
 use twilight_util::builder::embed::EmbedBuilder;
 
 use crate::{
     Cx,
+    commands::customize::{Cosmetics, theme},
     util::{SUCCESS, mention, resolved_display_name, thousands},
 };
 
@@ -40,6 +42,9 @@ impl Balance {
         let fish_found = cx.app.db.fish_book_count(user.id.get()).await?;
         let fish_total = pinchora_game::Content::get().fish.len() as i64;
         let avatar = cx.app.avatar(&user, WalletCard::AVATAR_SIZE, Some(34)).await;
+        let background = row.background.as_deref().and_then(|id| Content::get().background(id));
+        let cosmetics = Cosmetics::new(&cx.app.sprites, background, &[]);
+        let theme = theme(row.accent_color, background);
         let png = cx
             .app
             .render(move |r| {
@@ -53,7 +58,8 @@ impl Balance {
                     pets,
                     fish_found,
                     fish_total,
-                    theme: Theme::reef(),
+                    backdrop: cosmetics.backdrop(),
+                    theme,
                 })
             })
             .await?;

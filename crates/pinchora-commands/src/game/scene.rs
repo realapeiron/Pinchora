@@ -12,7 +12,9 @@ use pinchora_game::{
     house::{self, Placed},
 };
 use pinchora_render::{
+    Backdrop, BadgeIcon,
     character::{placeholder_character, recolor_character},
+    encode_png,
     room::{Cursor, RoomScene, SceneItem, SceneLayer, render_room},
     sprites::{SpriteStore, placeholder_item, placeholder_pet, placeholder_tile, recolor, variant_ramp},
 };
@@ -20,10 +22,19 @@ use pinchora_render::{
 /// Recoloured characters kept at once; players can pick far more combinations than this.
 const CHARACTER_CACHE: usize = 512;
 
+/// A sprite scaled up whole and encoded once, ready to go into a card.
+pub struct ScaledArt {
+    pub png: Vec<u8>,
+    pub w: u32,
+    pub h: u32,
+}
+
 /// Sprites by name, with palette variants and placeholders made on first use.
 pub struct Sprites {
     store: SpriteStore,
     made: Mutex<HashMap<String, Arc<RgbaImage>>>,
+    /// Background and badge art, scaled for cards; `None` while the art is not drawn yet.
+    scaled: Mutex<HashMap<String, Option<Arc<ScaledArt>>>>,
     /// Characters by saved code; emptied when it outgrows [`CHARACTER_CACHE`].
     characters: Mutex<HashMap<String, Arc<RgbaImage>>>,
 }
@@ -33,6 +44,7 @@ impl Default for Sprites {
         Self {
             store: SpriteStore::embedded(),
             made: Mutex::new(HashMap::new()),
+            scaled: Mutex::new(HashMap::new()),
             characters: Mutex::new(HashMap::new()),
         }
     }
@@ -101,6 +113,30 @@ impl Sprites {
         }
         cache.insert(code, sprite.clone());
         sprite
+    }
+
+    /// The atlas sprite `name` scaled `factor`×, or `None` while it is not drawn yet.
+    fn scaled_art(&self, name: String, factor: u32) -> Option<Arc<ScaledArt>> {
+        if let Some(art) = self.scaled.lock().expect("scaled cache").get(&name) {
+            return art.clone();
+        }
+        let art = self.store.get(&name).and_then(|sprite| {
+            let (w, h) = (sprite.width() * factor, sprite.height() * factor);
+            let big = image::imageops::resize(sprite.as_ref(), w, h, image::imageops::FilterType::Nearest);
+            encode_png(&big).ok().map(|png| Arc::new(ScaledArt { png, w, h }))
+        });
+        self.scaled.lock().expect("scaled cache").insert(name, art.clone());
+        art
+    }
+
+    /// A profile background's art (`bg_<id>`, 240×135) scaled to 960×540.
+    pub fn background(&self, id: &str) -> Option<Arc<ScaledArt>> {
+        self.scaled_art(format!("bg_{id}"), Backdrop::SCALE)
+    }
+
+    /// A badge's art (`b_<id>`, 24 px wide) scaled to 48 px.
+    pub fn badge(&self, id: &str) -> Option<Arc<ScaledArt>> {
+        self.scaled_art(format!("b_{id}"), BadgeIcon::SCALE)
     }
 
     pub fn fish(&self, id: &str) -> Arc<RgbaImage> {
@@ -303,6 +339,28 @@ mod tests {
         let (png, w, h) = scaled_png(&art_a, 3).expect("encodes");
         assert_eq!((w, h), (art_a.width() * 3, art_a.height() * 3));
         assert!(png.starts_with(b"\x89PNG"));
+    }
+
+    #[test]
+    fn card_art_is_scaled_once_and_missing_art_is_none() {
+        let content = Content::get();
+        let sprites = Sprites::default();
+        assert!(sprites.background("no_such_background").is_none());
+        assert!(sprites.badge("no_such_badge").is_none());
+        // Real art, once it is in the atlas: backgrounds fill a 960×540 card, badges are 48 px wide.
+        for b in &content.backgrounds {
+            if let Some(art) = sprites.background(&b.id) {
+                assert_eq!((art.w, art.h), (960, 540), "{}", b.id);
+                assert!(art.png.starts_with(b"\x89PNG"));
+                assert!(Arc::ptr_eq(&art, &sprites.background(&b.id).expect("cached")));
+            }
+        }
+        for b in &content.badges {
+            if let Some(art) = sprites.badge(&b.id) {
+                // Taller badges shrink to fit the 48 px slot when drawn.
+                assert_eq!(art.w, 48, "{}", b.id);
+            }
+        }
     }
 
     #[test]

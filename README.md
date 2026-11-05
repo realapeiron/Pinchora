@@ -16,8 +16,10 @@ Written in Rust and built to run sharded on Kubernetes.
 
 | Command | What it does |
 |---|---|
-| `/profile [user]` | Pixel-art profile card: level, XP, shells, reputation, streak, global and server rank, bio |
+| `/profile [user]` | Pixel-art profile card: level, XP, shells, reputation, streak, global and server rank, bio, up to six badges |
 | `/rank [user]` | Server level card, with the next level role to earn |
+| `/customize background` | Private editor with a live preview of your profile card: 36 backgrounds in five rarities, bought once with shells (**Buy**), then worn (**Equip**) or taken off (**Remove**); the menu lists owned ones first, then the shop, 25 per page. The profile, rank and wallet cards draw the background under their panels and take their accent colour from it |
+| `/customize badges` | Private editor for the badges on your profile card: 28 achievements worked out on the spot from real progress (level, fish species, house likes, pets, daily streak, furniture placed, reputation, shells; locked ones show e.g. `12/36 fish species`) and 12 shop badges bought once with shells; wear up to six, in the order you pick them. A badge you no longer qualify for (a lapsed streak, spent shells) leaves the card until you earn it again |
 | `/leaderboard [board]` | Server XP, server points, global XP or global shells as a pixel-art card, with page buttons |
 | `/daily` | Daily shells; the streak bonus grows for 20 days |
 | `/balance [user]`, `/give user amount` | Wallet and transfers |
@@ -59,7 +61,8 @@ role at purchase time, the points and stock are returned. New members get a welc
 | `/duel tictactoe user` | Button tic-tac-toe; the winner earns shells |
 | `/config welcome-card` | Design the welcome card (theme, headline, accent colour) with a live preview |
 
-Game content (furniture, rooms, pets, fish) lives in `content/*.json`; see
+Game content (furniture, rooms, pets, fish, looks, card backgrounds and badges) lives in
+`content/*.json` (`python3 content/check.py` validates it); see
 [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md). Sprites are drawn by GPT and imported with
 `tools/art/` (see below).
 
@@ -94,6 +97,7 @@ Kubernetes manifests and scaling notes: [`deploy/k8s/README.md`](deploy/k8s/READ
 cargo run -p pinchora -- gateway          # needs PINCHORA_* env vars or pinchora.toml
 cargo run -p pinchora -- commands         # print slash command JSON
 cargo run -p pinchora-render --example samples   # render sample cards to target/render-samples
+                                                 # (profile-background/-badges/-placeholder, rank-background, wallet-background show /customize)
 ```
 
 Tests: unit tests run with plain `cargo test --workspace`. Database and Redis integration
@@ -135,7 +139,10 @@ python3 plan_sheets.py     # content → 40 sheet prompts + cut manifests in she
 ```
 
 Until a sprite exists, the renderer draws a tidy placeholder in its place, so every feature
-works before the art lands.
+works before the art lands. Backgrounds are `bg_<id>` (240×135, drawn ×4 to 960×540 and
+cropped to cover the rank and wallet cards) and badges `b_<id>` (24 px wide, drawn ×2); until
+they are in the atlas a background is a gradient from its accent colour and a badge is a
+coloured circle with its first letter.
 
 ## Fonts
 

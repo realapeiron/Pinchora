@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 
-use pinchora_game::{Availability, Content, Currency, Layer, Rarity, house, market, pets};
+use pinchora_game::{Availability, BadgeKind, BadgeStat, Content, Currency, Layer, Rarity, house, market, pets};
 
 #[test]
 fn shipped_content_is_consistent() {
@@ -70,6 +70,103 @@ fn shipped_content_is_consistent() {
             l.id
         );
         assert!(!l.name.is_empty() && !l.sprite_brief.is_empty(), "{}", l.id);
+    }
+}
+
+#[test]
+fn backgrounds_and_badges_are_consistent() {
+    let c = Content::get();
+
+    // Background ids name atlas sprites (`bg_<id>`), so they must stay plain words.
+    assert!(
+        c.backgrounds.len() >= 36,
+        "expected every background, got {}",
+        c.backgrounds.len()
+    );
+    let mut ids = HashSet::new();
+    for b in &c.backgrounds {
+        assert!(ids.insert(b.id.as_str()), "duplicate background id {}", b.id);
+        assert!(
+            !b.id.is_empty()
+                && b.id
+                    .bytes()
+                    .all(|x| x.is_ascii_lowercase() || x.is_ascii_digit() || x == b'_'),
+            "background id {:?}",
+            b.id
+        );
+        assert!(b.price > 0, "{}", b.id);
+        assert!(
+            b.accent_rgb().is_some(),
+            "{}: accent {:?} is not #rrggbb",
+            b.id,
+            b.accent
+        );
+        assert!(!b.name.is_empty() && !b.scene_brief.is_empty(), "{}", b.id);
+        assert_eq!(c.background(&b.id).map(|x| x.id.as_str()), Some(b.id.as_str()));
+    }
+    assert!(Rarity::ALL.iter().all(|r| c.backgrounds.iter().any(|b| b.rarity == *r)));
+
+    // Badge ids name atlas sprites (`b_<id>`) and end up in saved lists.
+    assert!(c.badges.len() >= 40, "expected every badge, got {}", c.badges.len());
+    let mut ids = HashSet::new();
+    let (mut achievements, mut shop) = (0, 0);
+    for b in &c.badges {
+        assert!(ids.insert(b.id.as_str()), "duplicate badge id {}", b.id);
+        assert!(
+            !b.id.is_empty()
+                && b.id
+                    .bytes()
+                    .all(|x| x.is_ascii_lowercase() || x.is_ascii_digit() || x == b'_'),
+            "badge id {:?}",
+            b.id
+        );
+        assert!(!b.name.is_empty() && !b.description.is_empty(), "{}", b.id);
+        match b.kind {
+            BadgeKind::Achievement { stat, at } => {
+                achievements += 1;
+                assert!(at > 0, "{}: threshold {at}", b.id);
+                if stat == BadgeStat::FishSpecies {
+                    assert!(
+                        at as usize <= c.fish.len(),
+                        "{}: more species than the fish book has",
+                        b.id
+                    );
+                }
+            }
+            BadgeKind::Shop { price } => {
+                shop += 1;
+                assert!(price > 0, "{}", b.id);
+            }
+        }
+        assert_eq!(c.badge(&b.id).map(|x| x.id.as_str()), Some(b.id.as_str()));
+    }
+    assert!(achievements > 0 && shop > 0);
+    for stat in BadgeStat::ALL {
+        assert!(
+            c.badges
+                .iter()
+                .any(|b| matches!(b.kind, BadgeKind::Achievement { stat: s, .. } if s == stat)),
+            "no badge counts {stat:?}"
+        );
+    }
+}
+
+#[test]
+fn badge_kinds_reject_impossible_combinations() {
+    let parse = |json: &str| {
+        Content::from_json("[]", "[]", r#"{"wallpapers":[],"floors":[]}"#, "[]", "[]", "[]", "[]")
+            .and_then(|c| c.with_cosmetics("[]", json))
+    };
+    let achievement =
+        r#"{"id":"a","name":"A","description":"d","kind":"achievement","stat":"level","at":5,"icon_brief":"i"}"#;
+    assert!(parse(&format!("[{achievement}]")).is_ok());
+    for bad in [
+        r#"{"id":"a","name":"A","description":"d","kind":"achievement","stat":"xp","at":5,"icon_brief":"i"}"#,
+        r#"{"id":"a","name":"A","description":"d","kind":"achievement","stat":"level","icon_brief":"i"}"#,
+        r#"{"id":"a","name":"A","description":"d","kind":"shop","icon_brief":"i"}"#,
+        r#"{"id":"a","name":"A","description":"d","kind":"gift","price":5,"icon_brief":"i"}"#,
+    ] {
+        assert!(parse(&format!("[{bad}]")).is_err(), "{bad}");
     }
 }
 

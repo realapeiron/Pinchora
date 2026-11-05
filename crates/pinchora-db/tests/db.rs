@@ -1,6 +1,6 @@
 //! Runs against a real PostgreSQL when `PINCHORA_TEST_DATABASE_URL` is set; skipped otherwise.
 
-use pinchora_db::{DailyOutcome, Db, RepOutcome, TransferOutcome};
+use pinchora_db::{CustomizeBuy, DailyOutcome, Db, MAX_BADGES, PlayerStats, RepOutcome, TransferOutcome};
 
 async fn db() -> Option<Db> {
     let url = std::env::var("PINCHORA_TEST_DATABASE_URL").ok()?;
@@ -540,4 +540,180 @@ async fn store_is_capped_per_server() {
         db.add_store_item(guild, 6_000, 99, Some(2)).await.unwrap().is_some(),
         "an existing role can still be updated"
     );
+}
+
+#[tokio::test]
+async fn backgrounds_are_bought_once_and_equipped_only_when_owned() {
+    let Some(db) = db().await else { return };
+    let [alice] = ids();
+
+    assert_eq!(
+        db.buy_background(alice, "dune", 500).await.unwrap(),
+        CustomizeBuy::Insufficient { balance: 0 },
+        "a new player has no shells"
+    );
+    assert!(
+        db.owned_backgrounds(alice).await.unwrap().is_empty(),
+        "a refused buy owns nothing"
+    );
+    assert!(
+        !db.equip_background(alice, "dune").await.unwrap(),
+        "not owned, not worn"
+    );
+    assert!(
+        db.buy_background(alice, "dune", 0).await.is_err(),
+        "a purchase has a price"
+    );
+
+    db.earn_shells(alice, 1_000, "test").await.unwrap();
+    assert_eq!(
+        db.buy_background(alice, "dune", 500).await.unwrap(),
+        CustomizeBuy::Bought { balance: 500 }
+    );
+    assert_eq!(
+        db.buy_background(alice, "dune", 500).await.unwrap(),
+        CustomizeBuy::AlreadyOwned
+    );
+    assert_eq!(db.user(alice).await.unwrap().credits, 500, "a duplicate costs nothing");
+    assert_eq!(
+        db.buy_background(alice, "reef", 600).await.unwrap(),
+        CustomizeBuy::Insufficient { balance: 500 }
+    );
+    assert_eq!(db.owned_backgrounds(alice).await.unwrap(), vec!["dune"]);
+
+    assert_eq!(db.user(alice).await.unwrap().background, None);
+    assert!(db.equip_background(alice, "dune").await.unwrap());
+    assert_eq!(db.user(alice).await.unwrap().background.as_deref(), Some("dune"));
+    assert!(
+        !db.equip_background(alice, "reef").await.unwrap(),
+        "wearing one does not unlock another"
+    );
+    assert_eq!(db.user(alice).await.unwrap().background.as_deref(), Some("dune"));
+    db.remove_background(alice).await.unwrap();
+    assert_eq!(db.user(alice).await.unwrap().background, None);
+
+    let (net, spent): (i64, i64) = sqlx::query_as(
+        "SELECT COALESCE(SUM(delta), 0)::BIGINT, COALESCE(SUM(delta) FILTER (WHERE reason = 'background'), 0)::BIGINT
+         FROM credit_ledger WHERE user_id = $1",
+    )
+    .bind(alice as i64)
+    .fetch_one(db.pool())
+    .await
+    .unwrap();
+    assert_eq!((net, spent), (500, -500), "the ledger shows the one purchase");
+}
+
+#[tokio::test]
+async fn badges_are_bought_once_and_worn_in_order() {
+    let Some(db) = db().await else { return };
+    let [alice, bob] = ids();
+    db.earn_shells(alice, 1_000, "test").await.unwrap();
+
+    // Ten clicks at once buy the badge exactly once.
+    let mut tasks = Vec::new();
+    for _ in 0..10 {
+        let db = db.clone();
+        tasks.push(tokio::spawn(async move {
+            db.buy_badge(alice, "tiny_tide", 100).await.unwrap()
+        }));
+    }
+    let mut outcomes = Vec::new();
+    for t in tasks {
+        outcomes.push(t.await.unwrap());
+    }
+    let bought = outcomes
+        .iter()
+        .filter(|o| matches!(o, CustomizeBuy::Bought { .. }))
+        .count();
+    assert_eq!(bought, 1, "{outcomes:?}");
+    assert!(outcomes.iter().all(|o| !matches!(o, CustomizeBuy::Insufficient { .. })));
+    assert_eq!(db.user(alice).await.unwrap().credits, 900);
+    assert_eq!(db.owned_badges(alice).await.unwrap(), vec!["tiny_tide"]);
+    assert_eq!(
+        db.buy_badge(bob, "tiny_tide", 100).await.unwrap(),
+        CustomizeBuy::Insufficient { balance: 0 },
+        "owning is per player"
+    );
+    assert!(db.owned_badges(bob).await.unwrap().is_empty());
+
+    let worn = |ids: &[&str]| ids.iter().map(|s| (*s).to_owned()).collect::<Vec<_>>();
+    assert!(db.user(alice).await.unwrap().badges.is_empty());
+    db.set_badges(alice, &worn(&["tiny_tide", "fin_finder", "pawshake"]))
+        .await
+        .unwrap();
+    assert_eq!(
+        db.user(alice).await.unwrap().badges,
+        worn(&["tiny_tide", "fin_finder", "pawshake"]),
+        "the order is kept"
+    );
+    db.set_badges(alice, &worn(&["pawshake", "tiny_tide"])).await.unwrap();
+    assert_eq!(db.user(alice).await.unwrap().badges, worn(&["pawshake", "tiny_tide"]));
+
+    let seven = worn(&["a", "b", "c", "d", "e", "f", "g"]);
+    assert_eq!(MAX_BADGES, 6);
+    assert!(db.set_badges(alice, &seven).await.is_err(), "at most six");
+    assert!(db.set_badges(alice, &worn(&["a", "a"])).await.is_err(), "no repeats");
+    assert_eq!(
+        db.user(alice).await.unwrap().badges,
+        worn(&["pawshake", "tiny_tide"]),
+        "refused saves change nothing"
+    );
+    db.set_badges(alice, &seven[..6]).await.unwrap();
+    db.set_badges(alice, &[]).await.unwrap();
+    assert!(db.user(alice).await.unwrap().badges.is_empty());
+}
+
+#[tokio::test]
+async fn player_stats_collect_every_number_for_achievements() {
+    let Some(db) = db().await else { return };
+    let [nobody, host, fan_a, fan_b] = ids();
+    assert_eq!(db.player_stats(nobody).await.unwrap(), PlayerStats::default());
+
+    // 255 XP is exactly level 2; the streak is alive after a daily.
+    db.claim_daily(host).await.unwrap();
+    sqlx::query("UPDATE users SET xp = 255, reputation = 7 WHERE id = $1")
+        .bind(host as i64)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    db.log_catch(host, "minnow", 10.0).await.unwrap();
+    db.log_catch(host, "minnow", 12.0).await.unwrap();
+    db.log_catch(host, "trout", 30.0).await.unwrap();
+    db.adopt(host, "crumbclaw_crab", "Sir Clicks").await.unwrap();
+    let starter = pinchora_db::NewRoom {
+        room_type: "living".into(),
+        wallpaper: "w".into(),
+        floor: "f".into(),
+    };
+    db.house(host, &starter).await.unwrap();
+    db.grant_item(host, "chair", 2).await.unwrap();
+    for x in [1, 3] {
+        db.place_item(host, 0, "chair", x, 1, false, |_| Ok(())).await.unwrap();
+    }
+    let day = chrono::NaiveDate::from_ymd_opt(2026, 11, 5).unwrap();
+    for fan in [fan_a, fan_b] {
+        db.like_house(host, fan, day).await.unwrap();
+    }
+
+    assert_eq!(
+        db.player_stats(host).await.unwrap(),
+        PlayerStats {
+            level: 2,
+            fish_species: 2,
+            house_likes: 2,
+            pets: 1,
+            streak: 1,
+            placed: 2,
+            reputation: 7,
+            shells: 250,
+        }
+    );
+
+    // A streak nobody extended in time counts as none, as on the profile card.
+    sqlx::query("UPDATE users SET last_daily_at = now() - interval '3 days' WHERE id = $1")
+        .bind(host as i64)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    assert_eq!(db.player_stats(host).await.unwrap().streak, 0);
 }

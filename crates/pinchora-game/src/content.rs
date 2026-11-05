@@ -280,6 +280,101 @@ pub struct Fish {
     pub sprite_brief: String,
 }
 
+/// A picture behind the profile, rank and wallet cards, bought with shells.
+#[derive(Debug, Clone, Deserialize)]
+pub struct Background {
+    pub id: String,
+    pub name: String,
+    pub rarity: Rarity,
+    pub price: i64,
+    /// `#rrggbb`; cards drawn on this background take their accent colour from it.
+    pub accent: String,
+    pub scene_brief: String,
+}
+
+impl Background {
+    /// The accent as `0xrrggbb`, or `None` if it is not written `#rrggbb`.
+    pub fn accent_rgb(&self) -> Option<u32> {
+        let hex = self.accent.strip_prefix('#').filter(|h| h.len() == 6)?;
+        u32::from_str_radix(hex, 16).ok()
+    }
+}
+
+/// What an achievement badge counts.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BadgeStat {
+    Level,
+    FishSpecies,
+    HouseLikes,
+    Pets,
+    Streak,
+    Placed,
+    Reputation,
+    Shells,
+}
+
+impl BadgeStat {
+    pub const ALL: [BadgeStat; 8] = [
+        Self::Level,
+        Self::FishSpecies,
+        Self::HouseLikes,
+        Self::Pets,
+        Self::Streak,
+        Self::Placed,
+        Self::Reputation,
+        Self::Shells,
+    ];
+
+    /// Heading for the badges that count this.
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Level => "Level",
+            Self::FishSpecies => "Fish book",
+            Self::HouseLikes => "House likes",
+            Self::Pets => "Pets",
+            Self::Streak => "Daily streak",
+            Self::Placed => "Furniture placed",
+            Self::Reputation => "Reputation",
+            Self::Shells => "Shells",
+        }
+    }
+
+    /// What the count is of, as in "12/36 fish species".
+    pub fn noun(self) -> &'static str {
+        match self {
+            Self::Level => "levels",
+            Self::FishSpecies => "fish species",
+            Self::HouseLikes => "house likes",
+            Self::Pets => "pets",
+            Self::Streak => "day streak",
+            Self::Placed => "furniture placed",
+            Self::Reputation => "reputation",
+            Self::Shells => "shells",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum BadgeKind {
+    /// Earned by reaching `at` of `stat`; worked out from the player's real progress.
+    Achievement { stat: BadgeStat, at: i64 },
+    /// Bought once with shells.
+    Shop { price: i64 },
+}
+
+/// A small icon worn on the profile card.
+#[derive(Debug, Clone, Deserialize)]
+pub struct Badge {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    #[serde(flatten)]
+    pub kind: BadgeKind,
+    pub icon_brief: String,
+}
+
 /// One playable item: a base design, optionally in a palette variant.
 #[derive(Debug, Clone, Copy)]
 pub struct Item<'a> {
@@ -320,6 +415,8 @@ pub struct Content {
     pub pets: Vec<PetSpecies>,
     pub fish: Vec<Fish>,
     pub looks: Vec<Look>,
+    pub backgrounds: Vec<Background>,
+    pub badges: Vec<Badge>,
     furniture_index: HashMap<String, usize>,
 }
 
@@ -333,6 +430,12 @@ static EMBEDDED: LazyLock<Content> = LazyLock::new(|| {
         include_str!("../../../content/fish.json"),
         include_str!("../../../content/looks.json"),
     )
+    .and_then(|content| {
+        content.with_cosmetics(
+            include_str!("../../../content/backgrounds.json"),
+            include_str!("../../../content/badges.json"),
+        )
+    })
     .expect("embedded content must parse; run `cargo test -p pinchora-game`")
 });
 
@@ -361,8 +464,17 @@ impl Content {
             pets: serde_json::from_str(pets)?,
             fish: serde_json::from_str(fish)?,
             looks: serde_json::from_str(looks)?,
+            backgrounds: Vec::new(),
+            badges: Vec::new(),
             furniture_index,
         })
+    }
+
+    /// Adds the profile backgrounds and badges, which `from_json` leaves empty.
+    pub fn with_cosmetics(mut self, backgrounds: &str, badges: &str) -> anyhow::Result<Self> {
+        self.backgrounds = serde_json::from_str(backgrounds)?;
+        self.badges = serde_json::from_str(badges)?;
+        Ok(self)
     }
 
     pub fn furniture(&self, base_id: &str) -> Option<&Furniture> {
@@ -420,5 +532,13 @@ impl Content {
 
     pub fn look(&self, id: &str) -> Option<&Look> {
         self.looks.iter().find(|l| l.id == id)
+    }
+
+    pub fn background(&self, id: &str) -> Option<&Background> {
+        self.backgrounds.iter().find(|b| b.id == id)
+    }
+
+    pub fn badge(&self, id: &str) -> Option<&Badge> {
+        self.badges.iter().find(|b| b.id == id)
     }
 }

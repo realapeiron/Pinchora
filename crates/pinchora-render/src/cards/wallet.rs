@@ -1,9 +1,9 @@
 use std::fmt::Write;
 
-use super::{PIXEL, SANS, avatar_frame, text};
+use super::{Backdrop, PIXEL, SANS, avatar_frame, backdrop, text};
 use crate::{
     Theme,
-    svg::{HEART, SHELL, STAR, background, compact, escape, panel, sprite, truncate},
+    svg::{HEART, SHELL, STAR, background, compact, escape, panel, plate, sprite, truncate},
 };
 
 /// 900×300 wallet card.
@@ -18,6 +18,8 @@ pub struct WalletCard<'a> {
     pub pets: i64,
     pub fish_found: i64,
     pub fish_total: i64,
+    /// The picture behind the card; `None` keeps the plain night-sea look.
+    pub backdrop: Option<Backdrop<'a>>,
     pub theme: Theme,
 }
 
@@ -32,7 +34,14 @@ impl WalletCard<'_> {
             s,
             r#"<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}">"#
         );
-        background(&mut s, w, h, &t.bg_top, &t.bg_bottom);
+        match &self.backdrop {
+            Some(b) => {
+                backdrop(&mut s, w, h, b);
+                // The name under the avatar is the only text outside a panel.
+                plate(&mut s, 24.0, 196.0, 168.0, 68.0);
+            }
+            None => background(&mut s, w, h, &t.bg_top, &t.bg_bottom),
+        }
         avatar_frame(&mut s, self.avatar_png, 32.0, 32.0, 152.0, 8.0, &t.gold, "avatar");
         text(
             &mut s,

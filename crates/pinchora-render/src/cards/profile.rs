@@ -1,11 +1,11 @@
 use std::fmt::Write;
 
-use super::{PIXEL, SANS, SpriteArt, avatar_frame, text};
+use super::{Backdrop, BadgeIcon, PIXEL, SANS, SpriteArt, avatar_frame, backdrop, text};
 use crate::{
     Theme,
     svg::{
-        CRAB, HEART, SHELL, STAR, background, compact, data_uri_png, escape, panel, segment_bar, sprite, thousands,
-        truncate, wrap,
+        CRAB, HEART, SHELL, STAR, background, compact, data_uri_png, escape, panel, plate, segment_bar, sprite,
+        thousands, truncate, wrap,
     },
 };
 
@@ -28,12 +28,17 @@ pub struct ProfileCard<'a> {
     /// The player's character, scaled [`ProfileCard::CHARACTER_SCALE`]×; it stands in the
     /// top-right corner when set.
     pub character: Option<SpriteArt<'a>>,
+    /// The picture behind the card; `None` keeps the plain night-sea look.
+    pub backdrop: Option<Backdrop<'a>>,
+    /// Worn badges in order; only the first [`ProfileCard::MAX_BADGES`] are drawn.
+    pub badges: &'a [BadgeIcon<'a>],
     pub theme: Theme,
 }
 
 impl ProfileCard<'_> {
     pub const AVATAR_SIZE: u32 = 208;
     pub const CHARACTER_SCALE: u32 = 2;
+    pub const MAX_BADGES: usize = 6;
 
     pub fn to_svg(&self) -> String {
         let t = &self.theme;
@@ -43,7 +48,15 @@ impl ProfileCard<'_> {
             s,
             r#"<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}">"#
         );
-        background(&mut s, w, h, &t.bg_top, &t.bg_bottom);
+        match &self.backdrop {
+            Some(b) => {
+                backdrop(&mut s, w, h, b);
+                // Text that is not inside a panel gets a plate of its own.
+                plate(&mut s, 288.0, 44.0, 640.0, 88.0);
+                plate(&mut s, 288.0, 400.0, 640.0, 136.0);
+            }
+            None => background(&mut s, w, h, &t.bg_top, &t.bg_bottom),
+        }
 
         // Left column: avatar, level, rep, streak.
         avatar_frame(&mut s, self.avatar_png, 40.0, 40.0, 224.0, 8.0, &t.accent, "avatar");
@@ -194,6 +207,11 @@ impl ProfileCard<'_> {
         );
         let total = format!("TOTAL {} XP", thousands(self.total_xp));
         text(&mut s, 296.0, 512.0, 14.0, PIXEL, false, &t.muted, "start", &total);
+
+        // Badges run along the footer between the total and the crab.
+        for (i, badge) in self.badges.iter().take(Self::MAX_BADGES).enumerate() {
+            badge.draw(&mut s, 462.0 + i as f32 * 50.0, 484.0);
+        }
 
         sprite(&mut s, CRAB, 770.0, 498.0, 3.0, &t.accent, "#fff1e8");
         text(&mut s, 920.0, 516.0, 14.0, PIXEL, false, &t.muted, "end", "PINCHORA");

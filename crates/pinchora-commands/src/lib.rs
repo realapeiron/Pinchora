@@ -27,16 +27,18 @@ pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, res
         interaction,
         responder,
     };
+    // The handler futures are large (every command's state in one enum); on the heap they
+    // cannot overflow a worker thread's stack.
     let (label, result) = match data {
         Some(InteractionData::ApplicationCommand(command)) => {
             let label = command.name.clone();
-            (label, commands::dispatch(&cx, *command).await)
+            (label, Box::pin(commands::dispatch(&cx, *command)).await)
         }
         Some(InteractionData::MessageComponent(component)) => {
             let label = component.custom_id.split(':').next().unwrap_or_default().to_owned();
             (
                 format!("component:{label}"),
-                components::dispatch(&cx, &component.custom_id, &component.values).await,
+                Box::pin(components::dispatch(&cx, &component.custom_id, &component.values)).await,
             )
         }
         _ => return,

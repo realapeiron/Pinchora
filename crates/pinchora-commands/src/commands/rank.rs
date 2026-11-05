@@ -1,8 +1,14 @@
 use pinchora_core::leveling;
-use pinchora_render::{NextRole, RankCard, Theme};
+use pinchora_game::Content;
+use pinchora_render::{NextRole, RankCard};
 use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
 
-use crate::{Cx, roles, util::resolved_display_name};
+use crate::{
+    Cx,
+    commands::customize::{Cosmetics, theme},
+    roles,
+    util::resolved_display_name,
+};
 
 #[derive(CommandModel, CreateCommand)]
 #[command(name = "rank", desc = "Show a server level card", contexts = "guild")]
@@ -31,7 +37,10 @@ impl Rank {
         let progress = leveling::progress(xp);
         let next_role = roles::next_role(&cx.app, guild, progress.level).await?;
         let avatar = cx.app.avatar(&user, RankCard::AVATAR_SIZE, Some(50)).await;
-        let accent = db.user(user.id.get()).await?.accent_color;
+        let row = db.user(user.id.get()).await?;
+        let background = row.background.as_deref().and_then(|id| Content::get().background(id));
+        let cosmetics = Cosmetics::new(&cx.app.sprites, background, &[]);
+        let theme = theme(row.accent_color, background);
         let username = user.name.clone();
         let png = cx
             .app
@@ -45,7 +54,8 @@ impl Rank {
                     xp_needed: progress.needed,
                     rank,
                     next_role: next_role.as_ref().map(|(name, level)| NextRole { name, level: *level }),
-                    theme: Theme::reef().with_accent(accent.map(|c| c as u32)),
+                    backdrop: cosmetics.backdrop(),
+                    theme,
                 })
             })
             .await?;

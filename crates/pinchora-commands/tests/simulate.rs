@@ -1290,3 +1290,415 @@ async fn points_and_store_flow() {
         list.description()
     );
 }
+
+/// The characters Discord counts against an embed's 6,000 limit.
+fn embed_chars(reply: &Reply) -> usize {
+    let embed = &reply.embeds[0];
+    embed.title.as_deref().map_or(0, |t| t.chars().count())
+        + embed.description.as_deref().map_or(0, |d| d.chars().count())
+        + embed
+            .fields
+            .iter()
+            .map(|f| f.name.chars().count() + f.value.chars().count())
+            .sum::<usize>()
+}
+
+/// The picture of a step's first image, which must be a card of `size`.
+fn card_image(reply: &Reply, size: (u32, u32)) -> &[u8] {
+    let (filename, bytes) = &reply.files[0];
+    let image = image::load_from_memory(bytes).expect("a png");
+    assert_eq!((image.width(), image.height()), size, "{filename}");
+    bytes
+}
+
+/// A step's first image, decoded; it must be a card of `size`.
+fn card_pixels(reply: &Reply, size: (u32, u32)) -> image::RgbaImage {
+    image::load_from_memory(card_image(reply, size))
+        .expect("a png")
+        .to_rgba8()
+}
+
+/// Whether two cards differ anywhere in the `x0..x1`, `y0..y1` box. Whole-image comparisons would
+/// also notice the global rank moving while the other tests in this binary earn XP.
+fn differ_in(a: &image::RgbaImage, b: &image::RgbaImage, x: std::ops::Range<u32>, y: std::ops::Range<u32>) -> bool {
+    y.clone()
+        .any(|y| x.clone().any(|x| a.get_pixel(x, y) != b.get_pixel(x, y)))
+}
+
+#[tokio::test]
+async fn buying_and_wearing_a_background() {
+    let Some(mut sim) = Sim::new("buying_and_wearing_a_background").await else {
+        return;
+    };
+    let user = unique();
+    sim.app.db.earn_shells(user, 5_000, "test").await.unwrap();
+    let plain_profile = sim.command(user, "profile", json!([])).await;
+    let plain_rank = sim.command(user, "rank", json!([])).await;
+    let plain_wallet = sim.command(user, "balance", json!([])).await;
+
+    // The panel starts on the real profile card, with nothing picked: nothing to buy, wear or remove.
+    let panel = sim
+        .command(user, "customize", json!([{ "name": "background", "type": 1 }]))
+        .await;
+    assert_eq!(panel.title(), "Card backgrounds");
+    assert!(panel.ephemeral, "the editor is private");
+    card_image(&panel, (960, 540));
+    assert!(
+        panel.description().contains("**5,000** shells"),
+        "{}",
+        panel.description()
+    );
+    assert_eq!(panel.options("cz:bs").len(), 25, "Discord's page of options");
+    assert!(panel.button("Buy").disabled && panel.button("Equip").disabled && panel.button("Remove").disabled);
+    assert!(panel.button("◀ Page").disabled && !panel.button("Page ▶").disabled);
+
+    // Each option says its rarity and price; a pick previews the background and offers Buy.
+    let option = panel
+        .options("cz:bs")
+        .iter()
+        .find(|o| o.value == "shellwash_morning")
+        .expect("the cheapest backgrounds are on page one");
+    assert_eq!(option.label, "Shellwash Morning");
+    assert_eq!(option.description.as_deref(), Some("Common · 800 shells"));
+    let picked = sim.pick(user, &panel, "cz:bs", "shellwash_morning").await;
+    assert!(
+        picked
+            .description()
+            .contains("**Shellwash Morning** · Common · 800 shells"),
+        "{}",
+        picked.description()
+    );
+    assert!(!picked.button("Buy").disabled && picked.button("Equip").disabled);
+    assert!(
+        picked
+            .options("cz:bs")
+            .iter()
+            .any(|o| o.default && o.value == "shellwash_morning")
+    );
+    assert_ne!(
+        card_image(&picked, (960, 540)),
+        card_image(&panel, (960, 540)),
+        "the card changes"
+    );
+    assert!(
+        sim.app.db.owned_backgrounds(user).await.unwrap().is_empty(),
+        "a preview is free"
+    );
+
+    // Wearing what you do not own is refused, even with a hand-made click.
+    let sneaky = sim.component(user, "cz:be:shellwash_morning", &[], &picked).await;
+    assert!(sneaky.description().contains("don't own"), "{}", sneaky.description());
+    assert_eq!(sim.app.db.user(user).await.unwrap().background, None);
+
+    // Buying takes the shells once; the background moves to the front of the menu.
+    let bought = sim.click(user, &picked, "Buy").await;
+    assert!(
+        bought
+            .description()
+            .contains("Bought **Shellwash Morning** for 800 shells. 4,200 left."),
+        "{}",
+        bought.description()
+    );
+    assert!(bought.button("Buy").disabled && !bought.button("Equip").disabled);
+    let first = &bought.options("cz:bs")[0];
+    assert_eq!(
+        (first.value.as_str(), first.description.as_deref()),
+        ("shellwash_morning", Some("Common · Owned"))
+    );
+    let again = sim.component(user, "cz:bb:shellwash_morning", &[], &bought).await;
+    assert!(again.description().contains("already own"), "{}", again.description());
+    assert_eq!(sim.app.db.user(user).await.unwrap().credits, 4_200, "no second charge");
+
+    // Too expensive: page two holds the dearest backgrounds; the refusal quotes both numbers.
+    let page_two = sim.click(user, &bought, "Page ▶").await;
+    assert_eq!(page_two.options("cz:bs").len(), 36 - 25, "the rest of the shop");
+    let last = page_two.options("cz:bs").last().expect("an option").value.clone();
+    let looking = sim.pick(user, &page_two, "cz:bs", &last).await;
+    let refused = sim.click(user, &looking, "Buy").await;
+    assert!(
+        refused.description().contains("shells; you have 4,200"),
+        "{}",
+        refused.description()
+    );
+    assert_eq!(
+        sim.app.db.owned_backgrounds(user).await.unwrap(),
+        vec!["shellwash_morning"]
+    );
+
+    // Equip: every card changes, and the accent follows the background.
+    let back = sim.click(user, &refused, "◀ Page").await;
+    let again = sim.pick(user, &back, "cz:bs", "shellwash_morning").await;
+    let worn = sim.click(user, &again, "Equip").await;
+    assert!(worn.description().contains("Saved."), "{}", worn.description());
+    assert!(
+        worn.description().contains("on your cards now"),
+        "{}",
+        worn.description()
+    );
+    assert!(worn.button("Equip").disabled && !worn.button("Remove").disabled);
+    assert_eq!(
+        sim.app.db.user(user).await.unwrap().background.as_deref(),
+        Some("shellwash_morning")
+    );
+    let profile = sim.command(user, "profile", json!([])).await;
+    let rank = sim.command(user, "rank", json!([])).await;
+    let wallet = sim.command(user, "balance", json!([])).await;
+    // Every card has the background in its corner now.
+    for (now, before, size) in [
+        (&profile, &plain_profile, (960, 540)),
+        (&rank, &plain_rank, (934, 282)),
+        (&wallet, &plain_wallet, (900, 300)),
+    ] {
+        assert!(differ_in(
+            &card_pixels(now, size),
+            &card_pixels(before, size),
+            0..24,
+            0..24
+        ));
+    }
+    // The panel opens on what is worn.
+    let reopened = sim
+        .command(user, "customize", json!([{ "name": "background", "type": 1 }]))
+        .await;
+    assert!(
+        reopened.description().contains("on your cards now"),
+        "{}",
+        reopened.description()
+    );
+
+    // Remove: back to the plain look.
+    let removed = sim.click(user, &reopened, "Remove").await;
+    assert!(
+        removed.description().contains("plain again"),
+        "{}",
+        removed.description()
+    );
+    assert!(removed.button("Remove").disabled);
+    assert_eq!(sim.app.db.user(user).await.unwrap().background, None);
+    // The plain card has its night-sea corner back.
+    let plain_again = card_pixels(&sim.command(user, "profile", json!([])).await, (960, 540));
+    assert!(!differ_in(
+        &plain_again,
+        &card_pixels(&plain_profile, (960, 540)),
+        0..24,
+        0..24
+    ));
+    assert!(differ_in(
+        &plain_again,
+        &card_pixels(&profile, (960, 540)),
+        0..24,
+        0..24
+    ));
+}
+
+#[tokio::test]
+async fn earning_buying_and_wearing_badges() {
+    let Some(mut sim) = Sim::new("earning_buying_and_wearing_badges").await else {
+        return;
+    };
+    let user = unique();
+    let db = sim.app.db.clone();
+
+    // 1,200 XP is level 5; 12 reputation; three fish species; 1,500 shells.
+    db.earn_shells(user, 1_500, "test").await.unwrap();
+    db.add_message_xp(sim.guild, user, 1_200, 0).await.unwrap();
+    for _ in 0..12 {
+        db.give_rep(unique(), user).await.unwrap();
+    }
+    for fish in ["a", "b", "c"] {
+        db.log_catch(user, fish, 10.0).await.unwrap();
+    }
+    let plain = sim.command(user, "profile", json!([])).await;
+
+    let panel = sim
+        .command(user, "customize", json!([{ "name": "badges", "type": 1 }]))
+        .await;
+    assert_eq!(panel.title(), "Your badges");
+    assert!(panel.ephemeral);
+    card_image(&panel, (960, 540));
+    assert!(embed_chars(&panel) < 6_000, "{} characters", embed_chars(&panel));
+    assert!(
+        panel.description().contains("not wearing any badges"),
+        "{}",
+        panel.description()
+    );
+
+    // Earned badges are ticked, locked ones show real progress, shop badges show prices.
+    let level = panel.field("Level");
+    assert!(level.contains("✅ **Little Beacon** · Reach level 5."), "{level}");
+    assert!(level.contains("🔒 **Bright Beacon** · 5/10 levels"), "{level}");
+    assert!(
+        panel
+            .field("Fish book")
+            .contains("🔒 **Fin Finder** · 3/10 fish species")
+    );
+    assert!(panel.field("Reputation").contains("✅ **Kind Current**"));
+    assert!(
+        panel
+            .field("Reputation")
+            .contains("🔒 **Harbour Helper** · 12/50 reputation")
+    );
+    assert!(
+        panel
+            .field("Shells")
+            .contains("🔒 **Pocket Rattle** · 1,500/10,000 shells")
+    );
+    assert!(panel.field("Shop").contains("🛒 **Tiny Tide** · 1,000 shells"));
+    let wearable: Vec<_> = panel.options("cz:ws").iter().map(|o| o.value.as_str()).collect();
+    assert_eq!(wearable, ["little_beacon", "kind_current"], "only what is earned");
+    assert_eq!(panel.options("cz:wb").len(), 12, "every shop badge is for sale");
+    assert!(panel.button("Take all off").disabled);
+
+    // A badge that is not earned cannot be worn, even with a hand-made pick.
+    let sneaky = sim.component(user, "cz:ws:0", &["guiding_light"], &panel).await;
+    assert!(
+        sneaky.content().contains("isn't available any more"),
+        "{}",
+        sneaky.content()
+    );
+    assert!(db.user(user).await.unwrap().badges.is_empty());
+
+    // Wear the two earned ones.
+    let worn = sim
+        .component(user, "cz:ws:0", &["little_beacon", "kind_current"], &panel)
+        .await;
+    assert!(worn.description().contains("Saved."), "{}", worn.description());
+    assert!(
+        worn.description()
+            .contains("Wearing 2/6: **Little Beacon**, **Kind Current**"),
+        "{}",
+        worn.description()
+    );
+    assert!(
+        worn.field("Level")
+            .contains("✅ **Little Beacon** · Reach level 5. *(worn)*")
+    );
+    assert_eq!(db.user(user).await.unwrap().badges, ["little_beacon", "kind_current"]);
+    // The badges stand along the foot of the card, in the preview and on /profile alike.
+    let foot = (462..760, 484..532);
+    let bare = card_pixels(&panel, (960, 540));
+    assert!(differ_in(
+        &card_pixels(&worn, (960, 540)),
+        &bare,
+        foot.0.clone(),
+        foot.1.clone()
+    ));
+    let with_badges = sim.command(user, "profile", json!([])).await;
+    assert!(differ_in(
+        &card_pixels(&with_badges, (960, 540)),
+        &card_pixels(&plain, (960, 540)),
+        foot.0.clone(),
+        foot.1.clone()
+    ));
+
+    // A shop badge: too dear for a poor player, then bought once.
+    db.spend_shells(user, 1_000, "test").await.unwrap();
+    let poor = sim.pick(user, &worn, "cz:wb", "tiny_tide").await;
+    assert!(
+        poor.description()
+            .contains("**Tiny Tide** costs 1,000 shells; you have 500."),
+        "{}",
+        poor.description()
+    );
+    assert!(db.owned_badges(user).await.unwrap().is_empty());
+    db.earn_shells(user, 1_000, "test").await.unwrap();
+    let bought = sim.pick(user, &poor, "cz:wb", "tiny_tide").await;
+    assert!(
+        bought
+            .description()
+            .contains("Bought **Tiny Tide** for 1,000 shells. 500 left."),
+        "{}",
+        bought.description()
+    );
+    assert!(
+        bought.field("Shop").contains("✅ **Tiny Tide** · bought"),
+        "{}",
+        bought.field("Shop")
+    );
+    assert_eq!(bought.options("cz:wb").len(), 11);
+    assert_eq!(bought.options("cz:ws").len(), 3, "the bought badge can be worn now");
+    assert_eq!(db.user(user).await.unwrap().credits, 500);
+    let worn = sim
+        .component(
+            user,
+            "cz:ws:0",
+            &["little_beacon", "kind_current", "tiny_tide"],
+            &bought,
+        )
+        .await;
+    assert_eq!(
+        db.user(user).await.unwrap().badges,
+        ["little_beacon", "kind_current", "tiny_tide"],
+        "new badges go last"
+    );
+
+    // Unticking one takes just that one off, and the order of the rest stays.
+    let fewer = sim
+        .component(user, "cz:ws:0", &["little_beacon", "tiny_tide"], &worn)
+        .await;
+    assert!(fewer.description().contains("Wearing 2/6"), "{}", fewer.description());
+    assert_eq!(db.user(user).await.unwrap().badges, ["little_beacon", "tiny_tide"]);
+
+    // Never more than six: earn more, then ask for seven.
+    db.add_message_xp(sim.guild, user, 3_800, 0).await.unwrap();
+    for _ in 0..48 {
+        db.give_rep(unique(), user).await.unwrap();
+    }
+    db.adopt(user, "crumbclaw_crab", "Sir Clicks").await.unwrap();
+    let starter = pinchora_db::NewRoom {
+        room_type: "living".into(),
+        wallpaper: "w".into(),
+        floor: "f".into(),
+    };
+    db.house(user, &starter).await.unwrap();
+    let day = chrono::NaiveDate::from_ymd_opt(2026, 11, 5).unwrap();
+    for _ in 0..10 {
+        db.like_house(user, unique(), day).await.unwrap();
+    }
+    let panel = sim
+        .command(user, "customize", json!([{ "name": "badges", "type": 1 }]))
+        .await;
+    let seven = [
+        "little_beacon",
+        "bright_beacon",
+        "warm_welcome",
+        "pawshake",
+        "kind_current",
+        "harbour_helper",
+        "tiny_tide",
+    ];
+    assert_eq!(panel.options("cz:ws").len(), seven.len());
+    let refused = sim.component(user, "cz:ws:0", &seven, &panel).await;
+    assert!(
+        refused.description().contains("6 badges at most"),
+        "{}",
+        refused.description()
+    );
+    assert_eq!(
+        db.user(user).await.unwrap().badges,
+        ["little_beacon", "tiny_tide"],
+        "nothing changed"
+    );
+    let six = sim.component(user, "cz:ws:0", &seven[..6], &panel).await;
+    assert!(six.description().contains("Wearing 6/6"), "{}", six.description());
+    assert_eq!(db.user(user).await.unwrap().badges.len(), 6);
+    let profile = sim.command(user, "profile", json!([])).await;
+    card_image(&profile, (960, 540));
+
+    // Take them all off.
+    let bare = sim.click(user, &six, "Take all off").await;
+    assert!(
+        bare.description().contains("not wearing any badges"),
+        "{}",
+        bare.description()
+    );
+    assert!(bare.button("Take all off").disabled);
+    assert!(db.user(user).await.unwrap().badges.is_empty());
+    let plain_again = sim.command(user, "profile", json!([])).await;
+    assert!(differ_in(
+        &card_pixels(&plain_again, (960, 540)),
+        &card_pixels(&profile, (960, 540)),
+        foot.0,
+        foot.1
+    ));
+}

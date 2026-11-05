@@ -245,6 +245,12 @@ pub fn placeholder_tile(id: &str, wall: bool) -> RgbaImage {
     img
 }
 
+/// The fill of a badge's placeholder circle, `0xrrggbb`; the same badge always gets the same one.
+pub fn placeholder_badge_color(id: &str) -> u32 {
+    const COLORS: [u32; 6] = [0xff6b4a, 0x06d6a0, 0xffd166, 0x9b6bc4, 0x3a9bdc, 0xff8fb1];
+    COLORS[(hash(id) % COLORS.len() as u64) as usize]
+}
+
 /// A small round critter with eyes, tinted per species, until real pet art exists.
 pub fn placeholder_pet(id: &str) -> RgbaImage {
     let colors: [[u8; 3]; 6] = [

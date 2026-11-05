@@ -1,6 +1,7 @@
 mod bio;
 pub(crate) mod character;
 mod config;
+pub(crate) mod customize;
 mod daily;
 pub(crate) mod decorate;
 pub(crate) mod duel;
@@ -15,7 +16,7 @@ pub(crate) mod pet;
 mod ping;
 pub(crate) mod plaza;
 mod points;
-mod profile;
+pub(crate) mod profile;
 pub(crate) mod quests;
 mod rank;
 mod rep;
@@ -72,4 +73,5 @@ commands!(
     character::CharacterCommand,
     points::PointsCommand,
     store::StoreCommand,
+    customize::CustomizeCommand,
 );

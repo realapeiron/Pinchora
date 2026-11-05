@@ -4,12 +4,12 @@ use std::sync::Arc;
 
 use image::{RgbaImage, imageops};
 use pinchora_render::{
-    CharacterCard, LeaderboardCard, LeaderboardEntry, LevelUpCard, NextRole, ProfileCard, RankCard, Renderer,
-    SpriteArt, Theme, WelcomeCard,
+    Backdrop, BadgeIcon, CharacterCard, LeaderboardCard, LeaderboardEntry, LevelUpCard, NextRole, ProfileCard,
+    RankCard, Renderer, SpriteArt, Theme, WalletCard, WelcomeCard,
     character::{Colors, placeholder_character, recolor_character},
     placeholder_avatar,
     room::{Cursor, RoomScene, SceneItem, SceneLayer, render_room},
-    sprites::{SpriteStore, placeholder_item, placeholder_tile, recolor, variant_ramp},
+    sprites::{SpriteStore, placeholder_badge_color, placeholder_item, placeholder_tile, recolor, variant_ramp},
     thousands,
 };
 
@@ -20,6 +20,30 @@ fn scaled_png(sprite: &RgbaImage, factor: u32) -> (Vec<u8>, u32, u32) {
     let mut png = std::io::Cursor::new(Vec::new());
     big.write_to(&mut png, image::ImageFormat::Png).expect("encode png");
     (png.into_inner(), w, h)
+}
+
+/// A bright 240×135 beach for backgrounds until the atlas has real scenes: peach sky, turquoise sea, pale
+/// sand. Light art like this is the hardest case for the text on a card.
+fn sample_scene() -> RgbaImage {
+    RgbaImage::from_fn(240, 135, |x, y| {
+        let (dx, dy) = (x as i32 - 190, y as i32 - 34);
+        let c = if dx * dx + dy * dy < 15 * 15 {
+            [255, 244, 214]
+        } else if y < 62 {
+            [255, 214 + (y / 4) as u8, 180 + (y / 2) as u8]
+        } else if y < 96 {
+            if (y / 3 + x / 20) % 4 == 0 {
+                [176, 236, 226]
+            } else {
+                [118, 214, 208]
+            }
+        } else if (x * 7 + y * 13) % 29 == 0 {
+            [214, 190, 140]
+        } else {
+            [240, 222, 176]
+        };
+        image::Rgba([c[0], c[1], c[2], 255])
+    })
 }
 
 fn main() -> anyhow::Result<()> {
@@ -62,10 +86,89 @@ fn main() -> anyhow::Result<()> {
             w: character_w,
             h: character_h,
         }),
+        backdrop: None,
+        badges: &[],
         theme: Theme::reef(),
     })?;
     let profile_ms = started.elapsed().as_millis();
     std::fs::write(format!("{out}/profile.png"), &profile)?;
+
+    // A background and six badges: the atlas art when it exists, placeholders until then.
+    let store = SpriteStore::embedded();
+    let scene = store
+        .get("bg_shellwash_morning")
+        .map_or_else(sample_scene, |s| (*s).clone());
+    let (scene_png, scene_w, scene_h) = scaled_png(&scene, Backdrop::SCALE);
+    let accent = "#8eddd1";
+    let backdrop = |art: bool| Backdrop {
+        art: art.then_some(SpriteArt {
+            png: &scene_png,
+            w: scene_w,
+            h: scene_h,
+        }),
+        accent,
+    };
+    let worn = [
+        ("little_beacon", 'L'),
+        ("fin_finder", 'F'),
+        ("pawshake", 'P'),
+        ("week_of_waves", 'W'),
+        ("tiny_tide", 'T'),
+        ("pearl_wyrm", 'P'),
+    ];
+    let badge_art: Vec<Option<(Vec<u8>, u32, u32)>> = worn
+        .iter()
+        .map(|(id, _)| store.get(&format!("b_{id}")).map(|s| scaled_png(&s, BadgeIcon::SCALE)))
+        .collect();
+    let icons = |drawn: bool| -> Vec<BadgeIcon<'_>> {
+        worn.iter()
+            .zip(&badge_art)
+            .map(|((id, letter), art)| BadgeIcon {
+                art: art
+                    .as_ref()
+                    .filter(|_| drawn)
+                    .map(|(png, w, h)| SpriteArt { png, w: *w, h: *h }),
+                letter: *letter,
+                color: placeholder_badge_color(id),
+            })
+            .collect()
+    };
+    let themed = Theme::reef().with_accent(Some(0x8eddd1));
+    let profile_with = |name: &str, backdrop: Option<Backdrop<'_>>, badges: &[BadgeIcon<'_>], theme: Theme| {
+        let png = r.profile_card(&ProfileCard {
+            display_name: "Captain Pinch",
+            username: "captain.pinch",
+            avatar_png: &placeholder_avatar(42, ProfileCard::AVATAR_SIZE),
+            bio: "Collector of shiny shells, builder of tiny pixel houses. Ask me about my crab named Sir Clicks-a-lot!",
+            level: 27,
+            xp_current: 3_120,
+            xp_needed: 5_095,
+            total_xp: 64_820,
+            credits: 1_284_500,
+            reputation: 133,
+            streak: 12,
+            global_rank: 1_337,
+            server_rank: Some(4),
+            character: Some(SpriteArt {
+                png: &character_png,
+                w: character_w,
+                h: character_h,
+            }),
+            backdrop,
+            badges,
+            theme,
+        })?;
+        std::fs::write(format!("{out}/{name}.png"), png)?;
+        anyhow::Ok(())
+    };
+    profile_with("profile-badges", None, &icons(true), Theme::reef())?;
+    profile_with("profile-background", Some(backdrop(true)), &icons(true), themed.clone())?;
+    profile_with(
+        "profile-placeholder",
+        Some(backdrop(false)),
+        &icons(false),
+        themed.clone(),
+    )?;
 
     let rank = r.rank_card(&RankCard {
         display_name: "Captain Pinch",
@@ -79,9 +182,53 @@ fn main() -> anyhow::Result<()> {
             name: "Reef Veteran",
             level: 30,
         }),
+        backdrop: None,
         theme: Theme::reef().with_accent(Some(0x06d6a0)),
     })?;
     std::fs::write(format!("{out}/rank.png"), &rank)?;
+
+    let rank_card = |backdrop: Option<Backdrop<'_>>, theme: Theme| {
+        r.rank_card(&RankCard {
+            display_name: "Captain Pinch",
+            username: "captain.pinch",
+            avatar_png: &placeholder_avatar(7, RankCard::AVATAR_SIZE),
+            level: 27,
+            xp_current: 3_120,
+            xp_needed: 5_095,
+            rank: 4,
+            next_role: Some(NextRole {
+                name: "Reef Veteran",
+                level: 30,
+            }),
+            backdrop,
+            theme,
+        })
+    };
+    std::fs::write(
+        format!("{out}/rank-background.png"),
+        rank_card(Some(backdrop(true)), themed.clone())?,
+    )?;
+
+    let wallet_card = |backdrop: Option<Backdrop<'_>>, theme: Theme| {
+        r.wallet_card(&WalletCard {
+            display_name: "Captain Pinch",
+            avatar_png: &placeholder_avatar(7, WalletCard::AVATAR_SIZE),
+            shells: 1_284_500,
+            pearls: 42,
+            streak: 12,
+            next_daily: "3h 20m",
+            pets: 5,
+            fish_found: 31,
+            fish_total: 72,
+            backdrop,
+            theme,
+        })
+    };
+    std::fs::write(format!("{out}/wallet.png"), wallet_card(None, Theme::reef())?)?;
+    std::fs::write(
+        format!("{out}/wallet-background.png"),
+        wallet_card(Some(backdrop(true)), themed.clone())?,
+    )?;
 
     let welcome = r.welcome_card(&WelcomeCard {
         display_name: "Captain Pinch",
@@ -222,7 +369,7 @@ fn main() -> anyhow::Result<()> {
     render_room(&scene).save(format!("{out}/room.png"))?;
 
     println!(
-        "wrote {out}/{{profile,rank,welcome,levelup,character,leaderboard,leaderboard-shells,room}}.png (profile rendered in {profile_ms} ms)"
+        "wrote {out}/{{profile,profile-badges,profile-background,profile-placeholder,rank,rank-background,wallet,wallet-background,welcome,levelup,character,leaderboard,leaderboard-shells,room}}.png (profile rendered in {profile_ms} ms)"
     );
     Ok(())
 }

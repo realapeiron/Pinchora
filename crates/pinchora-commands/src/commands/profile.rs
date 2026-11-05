@@ -1,10 +1,17 @@
 use chrono::Utc;
 use pinchora_core::{economy::DAILY_STREAK_WINDOW, leveling};
-use pinchora_game::{Content, character::Character};
-use pinchora_render::{ProfileCard, SpriteArt, Theme};
+use pinchora_db::UserRow;
+use pinchora_game::{Background, Badge, Content, character::Character};
+use pinchora_render::{ProfileCard, SpriteArt};
 use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
+use twilight_model::user::User;
 
-use crate::{Cx, game::scene::scaled_png, util::resolved_display_name};
+use crate::{
+    Cx,
+    commands::customize::{self, Cosmetics},
+    game::scene::scaled_png,
+    util::resolved_display_name,
+};
 
 #[derive(CommandModel, CreateCommand)]
 #[command(name = "profile", desc = "Show a profile card")]
@@ -22,52 +29,71 @@ impl Profile {
         if user.bot {
             return cx.reply_ephemeral("Bots don't have profiles.").await;
         }
-        let db = &cx.app.db;
-        let row = db.user(user.id.get()).await?;
-        let global_rank = db.global_xp_rank(row.xp).await?;
-        let server_rank = match cx.guild_id() {
-            Some(guild) => db.member_rank(guild, user.id.get()).await?.map(|m| m.rank),
-            None => None,
-        };
-        // A streak the user can no longer extend shows as 0.
-        let streak = if row.last_daily_at.is_some_and(|t| Utc::now() - t <= DAILY_STREAK_WINDOW) {
-            row.daily_streak
-        } else {
-            0
-        };
-        let avatar = cx.app.avatar(&user, ProfileCard::AVATAR_SIZE, Some(52)).await;
-        let progress = leveling::progress(row.xp);
-        let username = user.name.clone();
-        let character = row
-            .character
-            .as_deref()
-            .and_then(|code| Character::decode(Content::get(), code));
-        let sprites = cx.app.sprites.clone();
-        let png = cx
-            .app
-            .render(move |r| {
-                let art = character
-                    .map(|c| scaled_png(&sprites.character(&c), ProfileCard::CHARACTER_SCALE))
-                    .transpose()?;
-                r.profile_card(&ProfileCard {
-                    display_name: &name,
-                    username: &username,
-                    avatar_png: &avatar,
-                    bio: &row.bio,
-                    level: progress.level,
-                    xp_current: progress.current,
-                    xp_needed: progress.needed,
-                    total_xp: row.xp,
-                    credits: row.credits,
-                    reputation: row.reputation,
-                    streak,
-                    global_rank,
-                    server_rank,
-                    character: art.as_ref().map(|(png, w, h)| SpriteArt { png, w: *w, h: *h }),
-                    theme: Theme::reef().with_accent(row.accent_color.map(|c| c as u32)),
-                })
-            })
-            .await?;
+        let row = cx.app.db.user(user.id.get()).await?;
+        let background = row.background.as_deref().and_then(|id| Content::get().background(id));
+        let badges = customize::worn_badges(&cx.app, user.id.get(), &row.badges).await?;
+        let png = card(cx, &user, name, row, background, &badges).await?;
         cx.reply_png("profile.png", png).await
     }
+}
+
+/// Draws `user`'s profile card. The background and badges are passed in, rather than read from
+/// `row`, so `/customize` can show a choice before it is made.
+pub(crate) async fn card(
+    cx: &Cx,
+    user: &User,
+    name: String,
+    row: UserRow,
+    background: Option<&Background>,
+    badges: &[&Badge],
+) -> anyhow::Result<Vec<u8>> {
+    let db = &cx.app.db;
+    let global_rank = db.global_xp_rank(row.xp).await?;
+    let server_rank = match cx.guild_id() {
+        Some(guild) => db.member_rank(guild, user.id.get()).await?.map(|m| m.rank),
+        None => None,
+    };
+    // A streak the user can no longer extend shows as 0.
+    let streak = if row.last_daily_at.is_some_and(|t| Utc::now() - t <= DAILY_STREAK_WINDOW) {
+        row.daily_streak
+    } else {
+        0
+    };
+    let avatar = cx.app.avatar(user, ProfileCard::AVATAR_SIZE, Some(52)).await;
+    let progress = leveling::progress(row.xp);
+    let username = user.name.clone();
+    let character = row
+        .character
+        .as_deref()
+        .and_then(|code| Character::decode(Content::get(), code));
+    let sprites = cx.app.sprites.clone();
+    let cosmetics = Cosmetics::new(&sprites, background, badges);
+    let theme = customize::theme(row.accent_color, background);
+    cx.app
+        .render(move |r| {
+            let art = character
+                .map(|c| scaled_png(&sprites.character(&c), ProfileCard::CHARACTER_SCALE))
+                .transpose()?;
+            let icons = cosmetics.icons();
+            r.profile_card(&ProfileCard {
+                display_name: &name,
+                username: &username,
+                avatar_png: &avatar,
+                bio: &row.bio,
+                level: progress.level,
+                xp_current: progress.current,
+                xp_needed: progress.needed,
+                total_xp: row.xp,
+                credits: row.credits,
+                reputation: row.reputation,
+                streak,
+                global_rank,
+                server_rank,
+                character: art.as_ref().map(|(png, w, h)| SpriteArt { png, w: *w, h: *h }),
+                backdrop: cosmetics.backdrop(),
+                badges: &icons,
+                theme,
+            })
+        })
+        .await
 }

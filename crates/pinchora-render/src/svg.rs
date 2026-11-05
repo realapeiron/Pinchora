@@ -110,6 +110,29 @@ pub fn panel(out: &mut String, x: f32, y: f32, w: f32, h: f32, border: f32, fill
     );
 }
 
+/// A translucent dark plate behind text that would otherwise sit on a background picture.
+pub fn plate(out: &mut String, x: f32, y: f32, w: f32, h: f32) {
+    let _ = write!(
+        out,
+        r##"<path d="{}" fill="#0b1029" fill-opacity="0.8"/>"##,
+        notched_path(x, y, w, h, 4.0)
+    );
+}
+
+/// Blends `#rrggbb` colours: `0` is `from`, `1` is `to`. Anything unreadable counts as black.
+pub fn mix(from: &str, to: &str, t: f32) -> String {
+    let rgb = |c: &str| {
+        let v = c
+            .strip_prefix('#')
+            .and_then(|h| u32::from_str_radix(h, 16).ok())
+            .unwrap_or(0);
+        [(v >> 16) & 0xff, (v >> 8) & 0xff, v & 0xff]
+    };
+    let (a, b) = (rgb(from), rgb(to));
+    let channel = |i: usize| (a[i] as f32 + (b[i] as f32 - a[i] as f32) * t.clamp(0.0, 1.0)).round() as u32;
+    format!("#{:02x}{:02x}{:02x}", channel(0), channel(1), channel(2))
+}
+
 /// Segmented progress bar.
 pub fn segment_bar(
     out: &mut String,
@@ -227,6 +250,14 @@ mod tests {
         assert_eq!(compact(999), "999");
         assert_eq!(compact(12_500), "12.5K");
         assert_eq!(compact(3_400_000), "3.4M");
+    }
+
+    #[test]
+    fn colours_mix() {
+        assert_eq!(mix("#000000", "#ffffff", 0.5), "#808080");
+        assert_eq!(mix("#ff6b4a", "#0f1631", 0.0), "#ff6b4a");
+        assert_eq!(mix("#ff6b4a", "#0f1631", 1.0), "#0f1631");
+        assert_eq!(mix("nonsense", "#ffffff", 1.0), "#ffffff");
     }
 
     #[test]

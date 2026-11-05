@@ -102,6 +102,21 @@ Every movement is written to `credit_ledger` (pearls get their own ledger).
   designed). Only players who designed a character are drawn: standing on a free tile in their house, in the
   room of a house they visit, and in the corner of their profile card.
 
+## Card backgrounds and badges
+
+- 36 **backgrounds** (`content/backgrounds.json`, five rarities, 800 to 45,000 shells) are bought once
+  with shells and worn with `/customize background`. One is worn at a time (`users.background`); it sits
+  under the profile, rank and wallet cards, behind a dark scrim and translucent plates for the text that is
+  not inside a panel, and the cards take the background's accent colour. Art is `bg_<id>`, 240×135, drawn
+  ×4; until it exists a gradient from the accent stands in.
+- 40 **badges** (`content/badges.json`): 28 achievements and 12 shop badges. Achievements are never stored:
+  `/customize badges` works them out from real progress (`PlayerStats`: level, fish species, house likes,
+  pets, daily streak, furniture placed, reputation, shells), so a badge that stops counting leaves the
+  card until it is earned again. Shop badges are bought once with shells (`user_badges`). Up to six are
+  worn, in order (`users.badges`), along the foot of the profile card. Art is `b_<id>`, 24 px wide, drawn
+  ×2; until it exists a coloured circle with the badge's first letter stands in.
+- A purchase is one transaction: the ownership row, the shells and the ledger entry.
+
 ## Fishing (first mini game)
 
 `/fish` costs a bait, shows a cast image, and a **Reel!** button appears after a random 1–4 s;
@@ -144,7 +159,7 @@ hourly market with shared stock, catalog, inventory, gifts, player stalls (5% fe
 plaza (donations + manager editing), pets (adopt, capsules with published odds, care with
 decaying needs, pets wander in rooms), fishing (timed Reel button, fish book), daily quests
 (pearl all-clear), tic-tac-toe duels, profile / rank / wallet / pet / level-up / welcome
-cards, welcome card designer, pixel characters (`/character`), leaderboard card.
+cards, welcome card designer, pixel characters (`/character`), leaderboard card, card backgrounds and badges (`/customize`).
 
 Next, in order: wallpaper/floor selection inside the editor, pet walks that find items,
 seasonal events with an event currency, furniture crafting, a web editor for free placement.

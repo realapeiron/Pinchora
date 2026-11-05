@@ -1,9 +1,9 @@
 use std::fmt::Write;
 
-use super::{PIXEL, SANS, avatar_frame, text};
+use super::{Backdrop, PIXEL, SANS, avatar_frame, backdrop, text};
 use crate::{
     Theme,
-    svg::{background, compact, escape, segment_bar, thousands, truncate},
+    svg::{background, compact, escape, plate, segment_bar, thousands, truncate},
 };
 
 /// The next level reward, shown as "Next role: <name> at level N".
@@ -23,6 +23,8 @@ pub struct RankCard<'a> {
     pub xp_needed: u64,
     pub rank: i64,
     pub next_role: Option<NextRole<'a>>,
+    /// The picture behind the card; `None` keeps the plain night-sea look.
+    pub backdrop: Option<Backdrop<'a>>,
     pub theme: Theme,
 }
 
@@ -37,7 +39,14 @@ impl RankCard<'_> {
             s,
             r#"<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}">"#
         );
-        background(&mut s, w, h, &t.bg_top, &t.bg_bottom);
+        match &self.backdrop {
+            Some(b) => {
+                backdrop(&mut s, w, h, b);
+                // Everything beside the avatar is loose text: one plate under all of it.
+                plate(&mut s, 264.0, 33.0, 652.0, 216.0);
+            }
+            None => background(&mut s, w, h, &t.bg_top, &t.bg_bottom),
+        }
         avatar_frame(&mut s, self.avatar_png, 33.0, 33.0, 216.0, 8.0, &t.accent, "avatar");
 
         text(&mut s, 900.0, 74.0, 18.0, PIXEL, false, &t.muted, "end", "RANK");
