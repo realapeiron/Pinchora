@@ -1,4 +1,5 @@
 mod bio;
+pub(crate) mod character;
 mod config;
 mod daily;
 pub(crate) mod decorate;
@@ -65,4 +66,5 @@ commands!(
     quests::Quests,
     stall::StallCommand,
     plaza::PlazaCommand,
+    character::CharacterCommand,
 );

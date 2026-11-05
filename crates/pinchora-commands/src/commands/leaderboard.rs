@@ -1,18 +1,20 @@
+use std::sync::Arc;
+
 use pinchora_core::leveling;
+use pinchora_render::{LeaderboardCard, LeaderboardEntry, Theme, placeholder_avatar};
 use twilight_interactions::command::{CommandModel, CommandOption, CreateCommand, CreateOption};
 use twilight_model::channel::message::{
-    Component, Embed,
+    Component,
     component::{ActionRow, Button, ButtonStyle},
 };
-use twilight_model::http::interaction::InteractionResponseData;
-use twilight_util::builder::embed::{EmbedBuilder, EmbedFooterBuilder};
+use twilight_model::http::{attachment::Attachment, interaction::InteractionResponseData};
 
 use crate::{
     App, Cx,
-    util::{BRAND, mention, thousands},
+    util::{display_name, thousands},
 };
 
-const PAGE_SIZE: i64 = 10;
+const PAGE_SIZE: i64 = LeaderboardCard::ROWS as i64;
 const MAX_PAGES: u32 = 50;
 
 #[derive(CommandOption, CreateOption, Clone, Copy, Debug, PartialEq, Eq)]
@@ -51,8 +53,10 @@ impl Leaderboard {
             (Some(b), _) => b,
             (None, Some(_)) => Board::Server,
         };
-        let (embed, components) = page(&cx.app, board, guild, 0).await?;
-        cx.reply_embed_components(embed, components).await
+        // Up to ten names and avatars are fetched, which can outlast Discord's first-answer window.
+        cx.responder.defer(false).await?;
+        let data = page(&cx.app, board, guild, 0).await?;
+        cx.reply(data).await
     }
 }
 
@@ -60,19 +64,16 @@ impl Leaderboard {
 pub(crate) async fn on_button(cx: &Cx, mut args: std::str::Split<'_, char>) -> anyhow::Result<()> {
     let board = args.next().and_then(Board::parse).unwrap_or(Board::GlobalXp);
     let page_no: u32 = args.next().and_then(|p| p.parse().ok()).unwrap_or(0);
-    let (embed, components) = page(&cx.app, board, cx.guild_id(), page_no.min(MAX_PAGES)).await?;
-    cx.update(InteractionResponseData {
-        embeds: Some(vec![embed]),
-        components: Some(components),
-        ..Default::default()
-    })
-    .await
+    cx.responder.defer(false).await?;
+    let data = page(&cx.app, board, cx.guild_id(), page_no.min(MAX_PAGES)).await?;
+    cx.update(data).await
 }
 
-async fn page(app: &App, board: Board, guild: Option<u64>, page: u32) -> anyhow::Result<(Embed, Vec<Component>)> {
+/// One page as a card image with the ◀ ▶ buttons; the image replaces whatever message it lands on.
+async fn page(app: &Arc<App>, board: Board, guild: Option<u64>, page: u32) -> anyhow::Result<InteractionResponseData> {
     let offset = i64::from(page) * PAGE_SIZE;
     // Fetch one extra row to know whether a next page exists.
-    let (rows, title) = match (board, guild) {
+    let (mut rows, title) = match (board, guild) {
         (Board::Server, Some(g)) => (
             app.db.guild_leaderboard(g, PAGE_SIZE + 1, offset).await?,
             "Server leaderboard",
@@ -87,37 +88,53 @@ async fn page(app: &App, board: Board, guild: Option<u64>, page: u32) -> anyhow:
         ),
     };
     let has_next = rows.len() as i64 > PAGE_SIZE && page < MAX_PAGES;
+    rows.truncate(PAGE_SIZE as usize);
 
-    let mut lines = Vec::new();
-    for (i, row) in rows.iter().take(PAGE_SIZE as usize).enumerate() {
-        let place = offset + i as i64 + 1;
-        let badge = match place {
-            1 => "🥇".to_owned(),
-            2 => "🥈".to_owned(),
-            3 => "🥉".to_owned(),
-            n => format!("`#{n}`"),
-        };
-        let stat = match board {
-            Board::GlobalShells => format!("**{}** shells", thousands(row.value)),
-            _ => format!(
-                "**Lv. {}** · {} XP",
-                leveling::level_of(row.value),
-                thousands(row.value)
+    // Names and avatars for the whole page at once; most come from the caches.
+    let people: Vec<_> = rows
+        .iter()
+        .map(|row| {
+            let (app, id) = (app.clone(), row.user_id as u64);
+            tokio::spawn(async move {
+                let user = app.user(id).await;
+                let avatar = match &user {
+                    Some(user) => app.avatar(user, LeaderboardCard::AVATAR_SIZE, Some(16)).await,
+                    None => Arc::new(placeholder_avatar(id, LeaderboardCard::AVATAR_SIZE)),
+                };
+                (user, avatar)
+            })
+        })
+        .collect();
+    let mut entries = Vec::with_capacity(rows.len());
+    for (i, (row, person)) in rows.iter().zip(people).enumerate() {
+        let (user, avatar) = person.await?;
+        let (value, detail) = match board {
+            Board::GlobalShells => (thousands(row.value), "SHELLS".to_owned()),
+            _ => (
+                format!("LV {}", leveling::level_of(row.value)),
+                format!("{} XP", thousands(row.value)),
             ),
         };
-        lines.push(format!("{badge} {} — {stat}", mention(row.user_id)));
+        entries.push(LeaderboardEntry {
+            rank: offset + i as i64 + 1,
+            avatar_png: avatar.to_vec(),
+            name: user
+                .as_deref()
+                .map_or_else(|| "Unknown user".to_owned(), |u| display_name(u, None)),
+            value,
+            detail,
+        });
     }
-    let description = if lines.is_empty() {
-        "Nobody here yet. Chat a bit and check again!".to_owned()
-    } else {
-        lines.join("\n")
-    };
-    let embed = EmbedBuilder::new()
-        .color(BRAND)
-        .title(title)
-        .description(description)
-        .footer(EmbedFooterBuilder::new(format!("Page {}", page + 1)))
-        .build();
+    let png = app
+        .render(move |r| {
+            r.leaderboard_card(&LeaderboardCard {
+                title: title.to_owned(),
+                entries,
+                page,
+                theme: Theme::reef(),
+            })
+        })
+        .await?;
 
     let key = match board {
         Board::Server => "server",
@@ -143,5 +160,11 @@ async fn page(app: &App, board: Board, guild: Option<u64>, page: u32) -> anyhow:
             button("▶", page + 1, !has_next),
         ],
     });
-    Ok((embed, vec![row]))
+    Ok(InteractionResponseData {
+        attachments: Some(vec![Attachment::from_bytes("leaderboard.png".to_owned(), png, 1)]),
+        // Boards posted before the card existed were embeds; the card replaces those too.
+        embeds: Some(Vec::new()),
+        components: Some(vec![row]),
+        ..Default::default()
+    })
 }

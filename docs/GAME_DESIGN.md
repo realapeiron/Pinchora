@@ -42,7 +42,10 @@ Every movement is written to `credit_ledger` (pearls get their own ledger).
 - **Editing in Discord** (`/house edit`): an ephemeral message with the room render, a grid
   cursor, ↖↗↙↘ buttons that follow the isometric axes, an inventory select (paged), and Place / Flip / Pick up / Room buttons.
   All state rides in `custom_id`; the database is the truth.
-- **Visiting** (`/house visit @user [room]`): renders their room; your pet appears as a guest.
+  With nothing held, Floor / Right wall / Left wall buttons put the cursor on the floor or a wall, so hung items can be
+  picked up and flipped; a surface-tagged table or shelf cannot be flipped while that would leave something standing on
+  it off its top.
+- **Visiting** (`/house visit @user [room]`): renders their room; your pet and character appear as guests.
   One small shell reward per target per day, max 10/day; the host's guestbook logs visits.
   Houses can be locked.
 - **Community plaza** (later): one shared room per server; members donate furniture, admins
@@ -88,6 +91,17 @@ Every movement is written to `credit_ledger` (pearls get their own ledger).
 - Pets live in a house room and show up in renders and on visits.
 - Species, rarity weights and personalities: `content/pets.json`.
 
+## Characters
+
+- `/character` opens an ephemeral editor: one of the 24 **looks** (`content/looks.json`) plus four colours,
+  chosen from select menus: skin (8), hair (12), top (12), bottom (12). Every change is saved at once.
+- A look is one GPT-drawn sprite (`a_<look id>` in the atlas) in key colours (`assets/sprites/avatar_palette.hex`);
+  the renderer swaps the skin, hair, top and bottom ramps for the chosen colours. Until a look has art, a
+  placeholder figure stands in.
+- Saved as one text value on the user, `"<look>.<skin>.<hair>.<top>.<bottom>"` (`users.avatar`, NULL until
+  designed). Only players who designed a character are drawn: standing on a free tile in their house, in the
+  room of a house they visit, and in the corner of their profile card.
+
 ## Fishing (first mini game)
 
 `/fish` costs a bait, shows a cast image, and a **Reel!** button appears after a random 1–4 s;
@@ -106,6 +120,8 @@ reacting in time catches a fish weighted by rarity and the rod tier. Catches fil
 | Shop (hourly market) | 1000×600 | done |
 | Catalog page | 1000×600 | done |
 | Pet status | 860×420 | done |
+| Character editor | 860×420 | done |
+| Leaderboard | 900×716 | done |
 | Fish catch | 800×400 | later |
 
 ## Art direction
@@ -128,8 +144,7 @@ hourly market with shared stock, catalog, inventory, gifts, player stalls (5% fe
 plaza (donations + manager editing), pets (adopt, capsules with published odds, care with
 decaying needs, pets wander in rooms), fishing (timed Reel button, fish book), daily quests
 (pearl all-clear), tic-tac-toe duels, profile / rank / wallet / pet / level-up / welcome
-cards, welcome card designer.
+cards, welcome card designer, pixel characters (`/character`), leaderboard card.
 
-Next, in order: pixel character creator (layered paper-doll sprites), wallpaper/floor
-selection inside the editor, leaderboard image, pet walks that find items, seasonal events
-with an event currency, furniture crafting, a web editor for free placement.
+Next, in order: wallpaper/floor selection inside the editor, pet walks that find items,
+seasonal events with an event currency, furniture crafting, a web editor for free placement.

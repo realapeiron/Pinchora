@@ -8,17 +8,24 @@ use image::RgbaImage;
 use pinchora_db::{PlacementRow, RoomRow};
 use pinchora_game::{
     Content, Layer,
+    character::Character,
     house::{self, Placed},
 };
 use pinchora_render::{
+    character::{placeholder_character, recolor_character},
     room::{Cursor, RoomScene, SceneItem, SceneLayer, render_room},
     sprites::{SpriteStore, placeholder_item, placeholder_pet, placeholder_tile, recolor, variant_ramp},
 };
+
+/// Recoloured characters kept at once; players can pick far more combinations than this.
+const CHARACTER_CACHE: usize = 512;
 
 /// Sprites by name, with palette variants and placeholders made on first use.
 pub struct Sprites {
     store: SpriteStore,
     made: Mutex<HashMap<String, Arc<RgbaImage>>>,
+    /// Characters by saved code; emptied when it outgrows [`CHARACTER_CACHE`].
+    characters: Mutex<HashMap<String, Arc<RgbaImage>>>,
 }
 
 impl Default for Sprites {
@@ -26,6 +33,7 @@ impl Default for Sprites {
         Self {
             store: SpriteStore::embedded(),
             made: Mutex::new(HashMap::new()),
+            characters: Mutex::new(HashMap::new()),
         }
     }
 }
@@ -75,6 +83,26 @@ impl Sprites {
         })
     }
 
+    /// The character's look in its colours: the atlas sprite `a_<look>`, or a placeholder
+    /// figure until that art exists.
+    pub fn character(&self, character: &Character) -> Arc<RgbaImage> {
+        let code = character.encode();
+        if let Some(s) = self.characters.lock().expect("character cache").get(&code) {
+            return s.clone();
+        }
+        let look = self
+            .store
+            .get(&format!("a_{}", character.look))
+            .map_or_else(placeholder_character, |s| (*s).clone());
+        let sprite = Arc::new(recolor_character(&look, character.colors));
+        let mut cache = self.characters.lock().expect("character cache");
+        if cache.len() >= CHARACTER_CACHE {
+            cache.clear();
+        }
+        cache.insert(code, sprite.clone());
+        sprite
+    }
+
     pub fn fish(&self, id: &str) -> Arc<RgbaImage> {
         self.cached(&format!("c_{id}"), || {
             self.store
@@ -121,7 +149,9 @@ pub struct RoomView {
     pub edit: bool,
     /// Pet species to show wandering in the room (owner's and a visitor's).
     pub pets: Vec<String>,
-    /// Varies where pets stand, e.g. the current hour.
+    /// Characters standing in the room (owner's and a visitor's).
+    pub characters: Vec<Character>,
+    /// Varies where pets and characters stand, e.g. the current hour.
     pub seed: u64,
 }
 
@@ -137,7 +167,7 @@ fn placed(view: &RoomView) -> Vec<Placed<'_>> {
         .collect()
 }
 
-/// Free floor tiles, so pets never stand inside furniture.
+/// Free floor tiles, so pets and characters never stand inside furniture.
 fn free_tiles(content: &Content, view: &RoomView) -> Vec<(u32, u32)> {
     let mut taken = vec![false; (view.width * view.depth) as usize];
     for p in &view.placements {
@@ -183,8 +213,13 @@ pub fn render_view(sprites: &Sprites, view: &RoomView) -> anyhow::Result<Vec<u8>
             })
         })
         .collect();
-    let free = free_tiles(content, view);
-    for (i, species) in view.pets.iter().enumerate() {
+    let mut free = free_tiles(content, view);
+    let figures = view
+        .pets
+        .iter()
+        .map(|species| sprites.pet(species))
+        .chain(view.characters.iter().map(|c| sprites.character(c)));
+    for (i, sprite) in figures.enumerate() {
         if free.is_empty() {
             break;
         }
@@ -194,9 +229,10 @@ pub fn render_view(sprites: &Sprites, view: &RoomView) -> anyhow::Result<Vec<u8>
             .wrapping_add(i as u64 * 7919)
             >> 16) as usize
             % free.len();
-        let (x, y) = free[pick];
+        // Each figure takes its own tile.
+        let (x, y) = free.swap_remove(pick);
         items.push(SceneItem {
-            sprite: sprites.pet(species),
+            sprite,
             x,
             y,
             w: 1,
@@ -223,6 +259,15 @@ pub fn render_view(sprites: &Sprites, view: &RoomView) -> anyhow::Result<Vec<u8>
     Ok(png.into_inner())
 }
 
+/// A sprite scaled up by a whole `factor` with nearest-neighbour, as PNG with its new size.
+pub fn scaled_png(sprite: &RgbaImage, factor: u32) -> anyhow::Result<(Vec<u8>, u32, u32)> {
+    let (w, h) = (sprite.width() * factor, sprite.height() * factor);
+    let big = image::imageops::resize(sprite, w, h, image::imageops::FilterType::Nearest);
+    let mut png = IoCursor::new(Vec::new());
+    big.write_to(&mut png, image::ImageFormat::Png)?;
+    Ok((png.into_inner(), w, h))
+}
+
 /// An item sprite scaled by the largest whole factor that fits `max_w`×`max_h`, as PNG.
 pub fn slot_sprite(sprites: &Sprites, content: &Content, item_id: &str, max_w: u32, max_h: u32) -> (Vec<u8>, u32, u32) {
     let sprite = sprites
@@ -236,4 +281,62 @@ pub fn slot_sprite(sprites: &Sprites, content: &Content, item_id: &str, max_w: u
     let mut png = IoCursor::new(Vec::new());
     let _ = big.write_to(&mut png, image::ImageFormat::Png);
     (png.into_inner(), w, h)
+}
+
+#[cfg(test)]
+mod tests {
+    use pinchora_render::character::Colors;
+
+    use super::*;
+
+    fn character(content: &Content, skin: usize, top: usize) -> Character {
+        let mut c = Character::starter(content);
+        c.colors = Colors { skin, top, ..c.colors };
+        c
+    }
+
+    #[test]
+    fn characters_are_recoloured_and_kept() {
+        let content = Content::get();
+        let sprites = Sprites::default();
+        let (a, b) = (character(content, 1, 0), character(content, 5, 4));
+        let (art_a, art_b) = (sprites.character(&a), sprites.character(&b));
+        assert_ne!(art_a.as_ref(), art_b.as_ref(), "different colours, different pixels");
+        assert!(Arc::ptr_eq(&art_a, &sprites.character(&a)), "the second call is cached");
+        let (png, w, h) = scaled_png(&art_a, 3).expect("encodes");
+        assert_eq!((w, h), (art_a.width() * 3, art_a.height() * 3));
+        assert!(png.starts_with(b"\x89PNG"));
+    }
+
+    #[test]
+    fn rooms_draw_pets_and_characters() {
+        let content = Content::get();
+        let pet = content.pets[0].id.clone();
+        let view = |characters: Vec<Character>| RoomView {
+            width: 8,
+            depth: 8,
+            room: RoomRow {
+                idx: 0,
+                room_type: "living".to_owned(),
+                wallpaper: content.surfaces.wallpapers[0].id.clone(),
+                floor: content.surfaces.floors[0].id.clone(),
+            },
+            placements: Vec::new(),
+            cursor: None,
+            selected: None,
+            edit: false,
+            pets: vec![pet.clone()],
+            characters,
+            seed: 7,
+        };
+        let sprites = Sprites::default();
+        let bare = render_view(&sprites, &view(Vec::new())).expect("renders");
+        let people = render_view(
+            &sprites,
+            &view(vec![character(content, 1, 0), character(content, 5, 4)]),
+        )
+        .expect("renders");
+        assert!(bare.starts_with(b"\x89PNG") && people.starts_with(b"\x89PNG"));
+        assert_ne!(bare, people, "the characters are in the picture");
+    }
 }

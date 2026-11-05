@@ -1,10 +1,11 @@
 use std::fmt::Write;
 
-use super::{PIXEL, SANS, avatar_frame, text};
+use super::{PIXEL, SANS, SpriteArt, avatar_frame, text};
 use crate::{
     Theme,
     svg::{
-        CRAB, HEART, SHELL, STAR, background, compact, escape, panel, segment_bar, sprite, thousands, truncate, wrap,
+        CRAB, HEART, SHELL, STAR, background, compact, data_uri_png, escape, panel, segment_bar, sprite, thousands,
+        truncate, wrap,
     },
 };
 
@@ -24,11 +25,15 @@ pub struct ProfileCard<'a> {
     pub streak: i32,
     pub global_rank: i64,
     pub server_rank: Option<i64>,
+    /// The player's character, scaled [`ProfileCard::CHARACTER_SCALE`]×; it stands in the
+    /// top-right corner when set.
+    pub character: Option<SpriteArt<'a>>,
     pub theme: Theme,
 }
 
 impl ProfileCard<'_> {
     pub const AVATAR_SIZE: u32 = 208;
+    pub const CHARACTER_SCALE: u32 = 2;
 
     pub fn to_svg(&self) -> String {
         let t = &self.theme;
@@ -86,8 +91,9 @@ impl ProfileCard<'_> {
             &format!("{} DAY", self.streak.max(0)),
         );
 
-        // Right column: name, bio, stats, XP.
-        let name = escape(&truncate(self.display_name, 22));
+        // Right column: name, bio, stats, XP. With a character, text keeps clear of its corner.
+        let (name_chars, bio_chars) = if self.character.is_some() { (17, 38) } else { (22, 46) };
+        let name = escape(&truncate(self.display_name, name_chars));
         text(&mut s, 296.0, 88.0, 44.0, SANS, true, &t.ink, "start", &name);
         let handle = escape(&truncate(&format!("@{}", self.username), 34));
         text(&mut s, 298.0, 122.0, 22.0, SANS, false, &t.muted, "start", &handle);
@@ -99,7 +105,7 @@ impl ProfileCard<'_> {
         } else {
             self.bio
         };
-        for (i, line) in wrap(bio, 46, 3).iter().enumerate() {
+        for (i, line) in wrap(bio, bio_chars, 3).iter().enumerate() {
             text(
                 &mut s,
                 316.0,
@@ -110,6 +116,21 @@ impl ProfileCard<'_> {
                 &t.ink,
                 "start",
                 &escape(line),
+            );
+        }
+
+        if let Some(art) = &self.character {
+            // Feet on the bottom edge of the about-me panel, head up into the title row.
+            let (cx, feet) = (862.0, 262.0);
+            let _ = write!(
+                s,
+                r##"<ellipse cx="{cx}" cy="{feet}" rx="{}" ry="9" fill="#000000" fill-opacity="0.3"/><image x="{}" y="{}" width="{}" height="{}" href="{}"/>"##,
+                (art.w as f32 / 2.5).max(30.0),
+                cx - art.w as f32 / 2.0,
+                feet - art.h as f32,
+                art.w,
+                art.h,
+                data_uri_png(art.png)
             );
         }
 

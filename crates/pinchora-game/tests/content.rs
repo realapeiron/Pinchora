@@ -54,6 +54,23 @@ fn shipped_content_is_consistent() {
     assert!((odds - 1.0).abs() < 1e-9);
     assert!(c.fish.len() >= 60);
     assert!(c.fish.iter().all(|f| f.min_cm <= f.max_cm && f.weight > 0));
+
+    // Look ids end up in saved character codes, so they must stay plain words.
+    assert!(
+        c.looks.len() >= 24,
+        "expected the full set of looks, got {}",
+        c.looks.len()
+    );
+    let mut looks = HashSet::new();
+    for l in &c.looks {
+        assert!(looks.insert(l.id.as_str()), "duplicate look id {}", l.id);
+        assert!(
+            !l.id.is_empty() && l.id.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit()),
+            "look id {:?}",
+            l.id
+        );
+        assert!(!l.name.is_empty() && !l.sprite_brief.is_empty(), "{}", l.id);
+    }
 }
 
 #[test]

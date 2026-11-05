@@ -1,4 +1,6 @@
+mod character;
 mod grid;
+mod leaderboard;
 mod levelup;
 mod pet;
 mod profile;
@@ -6,7 +8,9 @@ mod rank;
 mod wallet;
 mod welcome;
 
+pub use character::CharacterCard;
 pub use grid::{GridSlot, ItemGridCard};
+pub use leaderboard::{LeaderboardCard, LeaderboardEntry};
 pub use levelup::LevelUpCard;
 pub use pet::PetCard;
 pub use profile::ProfileCard;
@@ -17,6 +21,13 @@ pub use welcome::WelcomeCard;
 use std::fmt::Write;
 
 use crate::svg::{data_uri_png, notched_path, panel};
+
+/// A sprite already scaled up with nearest-neighbour, as PNG, with its pixel size.
+pub struct SpriteArt<'a> {
+    pub png: &'a [u8],
+    pub w: u32,
+    pub h: u32,
+}
 
 /// Avatar in a notched frame. `png` should already be `size - 2*border` square.
 pub(crate) fn avatar_frame(out: &mut String, png: &[u8], x: f32, y: f32, size: f32, border: f32, edge: &str, id: &str) {

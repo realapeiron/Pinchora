@@ -13,7 +13,7 @@ own house, pets and mini games. Written in Rust and built to run sharded on Kube
 |---|---|
 | `/profile [user]` | Pixel-art profile card: level, XP, shells, reputation, streak, global and server rank, bio |
 | `/rank [user]` | Server level card |
-| `/leaderboard [board]` | Server XP, global XP or global shells, with page buttons |
+| `/leaderboard [board]` | Server XP, global XP or global shells as a pixel-art card, with page buttons |
 | `/daily` | Daily shells; the streak bonus grows for 20 days |
 | `/balance [user]`, `/give user amount` | Wallet and transfers |
 | `/rep user` | One reputation point per day |
@@ -27,9 +27,10 @@ Chatting earns 15–25 XP per minute per server. New members get a welcome card 
 
 | Command | What it does |
 |---|---|
+| `/character` | Design your pixel character: 24 looks, skin, hair, top and bottom colours; it stands in your house, joins you on visits and shows on your profile card |
 | `/house view [room]` | Your house, rendered tile by tile; your active pet wanders around |
-| `/house edit [room]` | Decorate inside Discord: pick furniture, move the cursor with the ↖↗↙↘ arrows, place, turn, flip, pick up |
-| `/house visit user` | Visit a house with your pet (first visit each day pays shells, 10 a day) |
+| `/house edit [room]` | Decorate inside Discord: pick furniture, move the cursor with the ↖↗↙↘ arrows (on the floor or either wall), place, turn, flip, pick up |
+| `/house visit user` | Visit a house with your pet and character (first visit each day pays shells, 10 a day) |
 | `/house like user`, `/house lock` | Daily likes; close your doors to visitors |
 | `/house decorate [room]` | 44 wallpapers and 44 floors, bought on first use, swapped freely |
 | `/house upgrade` | Six tiers from Tide Pool Shack to Sunken Palace; furniture stays put |

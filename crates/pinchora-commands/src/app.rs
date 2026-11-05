@@ -29,6 +29,7 @@ pub struct App {
     render_slots: Arc<Semaphore>,
     guild_settings: Moka<u64, Arc<GuildSettings>>,
     avatars: Moka<String, Arc<Vec<u8>>>,
+    users: Moka<u64, Arc<User>>,
     tasks: TaskTracker,
     event_slots: Arc<Semaphore>,
 }
@@ -66,6 +67,10 @@ impl App {
             avatars: Moka::builder()
                 .weigher(|_k: &String, v: &Arc<Vec<u8>>| v.len().try_into().unwrap_or(u32::MAX))
                 .max_capacity(64 * 1024 * 1024)
+                .time_to_live(Duration::from_secs(600))
+                .build(),
+            users: Moka::builder()
+                .max_capacity(10_000)
                 .time_to_live(Duration::from_secs(600))
                 .build(),
             tasks: TaskTracker::new(),
@@ -144,6 +149,19 @@ impl App {
         let out = tokio::task::spawn_blocking(move || job(&renderer)).await??;
         metrics::histogram!("pinchora_render_seconds").record(started.elapsed().as_secs_f64());
         Ok(out)
+    }
+
+    /// A user's name and avatar as Discord has them, cached for ten minutes; `None` when
+    /// Discord cannot find them (deleted accounts) or is unreachable.
+    pub async fn user(&self, id: u64) -> Option<Arc<User>> {
+        self.users
+            .try_get_with(id, async {
+                let user = self.http.user(Id::new(id.max(1))).await?.model().await?;
+                anyhow::Ok(Arc::new(user))
+            })
+            .await
+            .map_err(|error| tracing::debug!(%error, id, "user lookup failed"))
+            .ok()
     }
 
     /// The user's avatar as a `size`² PNG, pixelated to `grid` when given. Falls back

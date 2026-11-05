@@ -234,3 +234,36 @@ async fn place_and_pick_up_round_trip() {
     assert!(db.owns(user, "chair").await.unwrap());
     assert!(db.pick_up(user, id).await.unwrap().is_none());
 }
+
+#[tokio::test]
+async fn characters_are_saved_per_player() {
+    let Some(db) = db().await else { return };
+    let [alice, bob] = ids();
+
+    assert_eq!(db.character(alice).await.unwrap(), None, "unknown player");
+    assert_eq!(
+        db.user(alice).await.unwrap().character,
+        None,
+        "no character designed yet"
+    );
+    assert_eq!(db.character(alice).await.unwrap(), None);
+
+    db.set_character(alice, "tidewalker.1.1.0.2").await.unwrap();
+    db.set_character(bob, "bunhaven.7.11.5.9").await.unwrap();
+    assert_eq!(
+        db.character(alice).await.unwrap().as_deref(),
+        Some("tidewalker.1.1.0.2")
+    );
+    assert_eq!(
+        db.user(bob).await.unwrap().character.as_deref(),
+        Some("bunhaven.7.11.5.9")
+    );
+
+    db.set_character(alice, "curlcove.0.0.0.0").await.unwrap();
+    assert_eq!(db.character(alice).await.unwrap().as_deref(), Some("curlcove.0.0.0.0"));
+    assert_eq!(
+        db.character(bob).await.unwrap().as_deref(),
+        Some("bunhaven.7.11.5.9"),
+        "other players are untouched"
+    );
+}

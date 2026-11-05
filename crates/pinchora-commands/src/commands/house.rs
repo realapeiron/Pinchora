@@ -4,6 +4,7 @@ use chrono::Utc;
 use pinchora_db::{HouseRow, NewRoom, PlaceOutcome, PlacementRow, RoomRow, UpgradeOutcome, VisitOutcome};
 use pinchora_game::{
     Content, Layer,
+    character::Character,
     house::{self, Placed, ROOM_ORDER},
 };
 use pinchora_render::room::{Cursor, WallSide};
@@ -130,6 +131,7 @@ impl HouseCommand {
                     y: 0,
                     page: 0,
                     flipped: false,
+                    mode: CursorMode::Floor,
                     item: None,
                 };
                 let note = "Pick furniture from the menu, move with the arrows, then press **Place**.";
@@ -266,9 +268,16 @@ pub(crate) async fn room_card(
     let content = Content::get();
     let title = room_title(content, &row);
     let mut pets: Vec<String> = Vec::new();
-    for who in std::iter::once(owner_id).chain(guest) {
+    let mut characters: Vec<Character> = Vec::new();
+    // A guest who is the owner (clicking through their own rooms) is only there once.
+    for who in std::iter::once(owner_id).chain(guest.filter(|g| *g != owner_id)) {
         if let Some(pet) = cx.app.db.active_pet(who).await? {
             pets.push(pet.species);
+        }
+        if let Some(code) = cx.app.db.character(who).await?
+            && let Some(character) = Character::decode(content, &code)
+        {
+            characters.push(character);
         }
     }
     let png = render_room(
@@ -282,6 +291,7 @@ pub(crate) async fn room_card(
             selected: None,
             edit: false,
             pets,
+            characters,
             seed: (Utc::now().timestamp() / 600) as u64,
         },
     )
@@ -387,6 +397,59 @@ pub(crate) async fn on_view_nav(cx: &Cx, mut args: Split<'_, char>) -> anyhow::R
     cx.update(data).await
 }
 
+/// Where the cursor sits while no furniture is held: on the floor, or on one of the two walls
+/// so hung items can be picked up and flipped. A held item decides this itself.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CursorMode {
+    Floor,
+    RightWall,
+    LeftWall,
+}
+
+impl CursorMode {
+    const ALL: [Self; 3] = [Self::Floor, Self::RightWall, Self::LeftWall];
+
+    /// The single character the mode has in a custom id.
+    fn code(self) -> char {
+        match self {
+            Self::Floor => 'f',
+            Self::RightWall => 'r',
+            Self::LeftWall => 'l',
+        }
+    }
+
+    fn from_code(code: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|m| code.len() == 1 && code.starts_with(m.code()))
+    }
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::Floor => "Floor",
+            Self::RightWall => "Right wall",
+            Self::LeftWall => "Left wall",
+        }
+    }
+
+    /// `Some(flipped)` on a wall, as in [`EditState::wall`]; `None` on the floor.
+    fn wall(self) -> Option<bool> {
+        match self {
+            Self::Floor => None,
+            Self::RightWall => Some(false),
+            Self::LeftWall => Some(true),
+        }
+    }
+
+    fn from_wall(wall: Option<bool>) -> Self {
+        match wall {
+            None => Self::Floor,
+            Some(false) => Self::RightWall,
+            Some(true) => Self::LeftWall,
+        }
+    }
+}
+
 /// Editor state; it all rides in each component's custom id.
 #[derive(Debug, Clone)]
 pub(crate) struct EditState {
@@ -397,28 +460,41 @@ pub(crate) struct EditState {
     pub(crate) page: usize,
     /// The held item turned a quarter (floor items) or hung on the left wall (wall items).
     pub(crate) flipped: bool,
+    /// Where the cursor sits with an empty hand.
+    pub(crate) mode: CursorMode,
     pub(crate) item: Option<String>,
 }
 
 impl EditState {
-    /// `<prefix>:<action>:<room>:<x>:<y>:<page>:<flipped 0|1>:<item>`
+    /// `<prefix>:<action>:<room>:<x>:<y>:<page>:<flipped 0|1>:<mode f|r|l>:<item>`
     fn id(&self, action: &str) -> String {
         format!(
-            "{}:{action}:{}:{}:{}:{}:{}:{}",
+            "{}:{action}:{}:{}:{}:{}:{}:{}:{}",
             self.prefix,
             self.room,
             self.x,
             self.y,
             self.page,
             u8::from(self.flipped),
+            self.mode.code(),
             self.item.as_deref().unwrap_or("")
         )
     }
 
-    /// `Some(flipped)` when the held item hangs on a wall, so the cursor moves on that wall.
+    /// `Some(flipped)` when the cursor is on a wall, so it moves on that wall: the held item
+    /// hangs there, or (empty hand) the mode says so.
     fn wall(&self, content: &Content) -> Option<bool> {
-        let item = content.item(self.item.as_deref()?)?;
+        let Some(item_id) = self.item.as_deref() else {
+            return self.mode.wall();
+        };
+        let item = content.item(item_id)?;
         (item.base.layer == Layer::Wall).then_some(self.flipped)
+    }
+
+    /// Puts the held item down; the cursor stays where it was, on its wall or the floor.
+    fn release(&mut self, content: &Content) {
+        self.mode = CursorMode::from_wall(self.wall(content));
+        self.item = None;
     }
 
     fn parse(prefix: &'static str, args: &mut Split<'_, char>) -> Option<(String, Self)> {
@@ -432,6 +508,7 @@ impl EditState {
             "1" => true,
             _ => return None,
         };
+        let mode = CursorMode::from_code(args.next()?)?;
         let item = args.next().filter(|s| !s.is_empty()).map(str::to_owned);
         Some((
             action,
@@ -442,6 +519,7 @@ impl EditState {
                 y,
                 page,
                 flipped,
+                mode,
                 item,
             },
         ))
@@ -521,14 +599,23 @@ pub(crate) async fn on_edit(
     state.room = state.room.clamp(0, rooms.len().saturating_sub(1) as i16);
     let placements = cx.app.db.placements(user_id, state.room).await?;
     // Furthest cursor position that keeps the held item (or the one-tile cursor) on the floor or its wall.
-    let reach = |item: Option<&str>, flipped: bool| match item.and_then(|i| house::footprint(content, i, 0, 0, flipped))
-    {
-        Some((Layer::Wall, r)) => (
-            house::wall_length(tier.width, tier.depth, flipped).saturating_sub(r.w),
-            house::WALL_LEVELS.saturating_sub(r.d),
-        ),
-        Some((_, r)) => (tier.width.saturating_sub(r.w), tier.depth.saturating_sub(r.d)),
-        None => (tier.width - 1, tier.depth - 1),
+    let reach = |state: &EditState| {
+        let held = state
+            .item
+            .as_deref()
+            .and_then(|i| house::footprint(content, i, 0, 0, state.flipped));
+        match (held, state.wall(content)) {
+            (Some((Layer::Wall, r)), _) => (
+                house::wall_length(tier.width, tier.depth, state.flipped).saturating_sub(r.w),
+                house::WALL_LEVELS.saturating_sub(r.d),
+            ),
+            (Some((_, r)), _) => (tier.width.saturating_sub(r.w), tier.depth.saturating_sub(r.d)),
+            (None, Some(left)) => (
+                house::wall_length(tier.width, tier.depth, left) - 1,
+                house::WALL_LEVELS - 1,
+            ),
+            (None, None) => (tier.width - 1, tier.depth - 1),
+        }
     };
 
     let note = match action.as_str() {
@@ -538,7 +625,7 @@ pub(crate) async fn on_edit(
             match state.item.as_deref().and_then(|i| content.item(i)) {
                 Some(item) => {
                     let [iw, id] = item.base.footprint;
-                    let (max_x, max_y) = reach(state.item.as_deref(), state.flipped);
+                    let (max_x, max_y) = reach(&state);
                     state.x = state.x.min(max_x);
                     state.y = state.y.min(max_y);
                     format!("Selected **{}** ({iw}×{id}). Move it, then **Place**.", item.name())
@@ -547,8 +634,16 @@ pub(crate) async fn on_edit(
             }
         }
         "ul" | "dr" | "ur" | "dl" => {
-            let max = reach(state.item.as_deref(), state.flipped);
+            let max = reach(&state);
             (state.x, state.y) = step_cursor(&action, (state.x, state.y), state.wall(content) == Some(true), max);
+            String::new()
+        }
+        // Moves the empty-hand cursor to the floor or a wall; the code is the mode's letter.
+        "mf" | "mr" | "ml" => {
+            state.mode = CursorMode::from_code(&action[1..]).unwrap_or(CursorMode::Floor);
+            let (max_x, max_y) = reach(&state);
+            state.x = state.x.min(max_x);
+            state.y = state.y.min(max_y);
             String::new()
         }
         "p" => match state.item.clone() {
@@ -577,12 +672,12 @@ pub(crate) async fn on_edit(
                     PlaceOutcome::Placed { .. } => {
                         cx.app.quest(user_id, pinchora_game::quests::QuestKind::Place).await;
                         if !cx.app.db.owns(user_id, &item_id).await? {
-                            state.item = None;
+                            state.release(content);
                         }
                         format!("Placed **{name}**.")
                     }
                     PlaceOutcome::NotOwned => {
-                        state.item = None;
+                        state.release(content);
                         format!("You have no **{name}** left.")
                     }
                     PlaceOutcome::Blocked(reason) => format!("Can't place it: {reason}."),
@@ -600,7 +695,7 @@ pub(crate) async fn on_edit(
         // Turns the held item; the new footprint (or wall) may need the cursor pulled back inside.
         "t" => {
             state.flipped = !state.flipped;
-            let (max_x, max_y) = reach(state.item.as_deref(), state.flipped);
+            let (max_x, max_y) = reach(&state);
             state.x = state.x.min(max_x);
             state.y = state.y.min(max_y);
             String::new()
@@ -619,8 +714,15 @@ pub(crate) async fn on_edit(
                     .collect();
                 let (x, y) = (p.x as u32, p.y as u32);
                 match house::can_place(content, tier.width, tier.depth, &others, &p.item_id, x, y, !p.flipped) {
+                    Ok(()) if house::flip_drops_surface_items(content, &others, &p.item_id, x, y, p.flipped) => {
+                        "Can't flip it: what stands on it would no longer be on top.".to_owned()
+                    }
                     Ok(()) => {
                         cx.app.db.flip_placement(user_id, p.id).await?;
+                        // With an empty hand the cursor follows a wall item to its new wall.
+                        if let Some(left) = state.wall(content).filter(|_| state.item.is_none()) {
+                            state.mode = CursorMode::from_wall(Some(!left));
+                        }
                         "Flipped.".to_owned()
                     }
                     Err(reason) => format!("Can't flip it: {reason}."),
@@ -733,6 +835,7 @@ pub(crate) async fn editor(
             selected: hovered_id,
             edit: true,
             pets: Vec::new(),
+            characters: Vec::new(),
             seed: 0,
         },
     )
@@ -743,9 +846,14 @@ pub(crate) async fn editor(
         lines.push(note.to_owned());
     }
     lines.push(format!(
-        "Cursor **{},{}** · Holding: **{}**",
+        "Cursor **{},{}**{} · Holding: **{}**",
         state.x,
         state.y,
+        match wall {
+            Some(false) => " on the right wall",
+            Some(true) => " on the left wall",
+            None => "",
+        },
         selected_item.map_or("nothing".to_owned(), |i| i.name())
     ));
     if let Some(name) = &hovered_name {
@@ -840,12 +948,26 @@ pub(crate) async fn editor(
             button("Done", "x", ButtonStyle::Primary, false),
         ]),
     ];
+    // Item paging (when there is more than one page) and, for an empty hand, where the cursor sits.
+    let mut tools = Vec::new();
     if pages > 1 {
-        components.push(row(vec![
-            button("◀ Items", "q", ButtonStyle::Secondary, state.page == 0),
-            button("Items ▶", "w", ButtonStyle::Secondary, state.page + 1 >= pages),
-        ]));
+        tools.push(button("◀ Items", "q", ButtonStyle::Secondary, state.page == 0));
+        tools.push(button("Items ▶", "w", ButtonStyle::Secondary, state.page + 1 >= pages));
     }
+    for mode in CursorMode::ALL {
+        let style = if CursorMode::from_wall(wall) == mode {
+            ButtonStyle::Primary
+        } else {
+            ButtonStyle::Secondary
+        };
+        tools.push(button(
+            mode.label(),
+            &format!("m{}", mode.code()),
+            style,
+            selected_item.is_some(),
+        ));
+    }
+    components.push(row(tools));
     Ok(Cx::card(embed, "room.png", png, components, true))
 }
 
@@ -1025,6 +1147,7 @@ mod tests {
             y: 3,
             page: 4,
             flipped: true,
+            mode: CursorMode::LeftWall,
             item: Some("sofa__mint".to_owned()),
         };
         let id = state.id("ul");
@@ -1034,11 +1157,69 @@ mod tests {
         assert_eq!(action, "ul");
         assert_eq!((back.room, back.x, back.y, back.page), (2, 7, 3, 4));
         assert!(back.flipped);
+        assert_eq!(back.mode, CursorMode::LeftWall);
         assert_eq!(back.item.as_deref(), Some("sofa__mint"));
-        // Editors from before the flip flag was added are told to start over.
+        // The cursor mode survives with an empty hand too.
+        for mode in CursorMode::ALL {
+            let empty = EditState {
+                mode,
+                item: None,
+                ..state.clone()
+            };
+            let id = empty.id("dr");
+            let mut parts = id.split(':');
+            parts.next();
+            let (_, back) = EditState::parse("pe", &mut parts).expect("parses");
+            assert_eq!((back.mode, back.item), (mode, None));
+        }
+        // Editors from before the flip flag and before the cursor mode are told to start over.
         let mut old = "he:l:0:1:2:0:sofa".split(':');
         old.next();
         assert!(EditState::parse("he", &mut old).is_none());
+        let mut old = "he:ul:0:1:2:0:0:sofa".split(':');
+        old.next();
+        assert!(EditState::parse("he", &mut old).is_none());
+        let mut bad = "he:ul:0:1:2:0:0:x:sofa".split(':');
+        bad.next();
+        assert!(EditState::parse("he", &mut bad).is_none());
+    }
+
+    #[test]
+    fn empty_hand_cursor_follows_its_mode() {
+        let content = Content::get();
+        let at = |mode, item: Option<&str>, flipped| EditState {
+            prefix: "he",
+            room: 0,
+            x: 0,
+            y: 0,
+            page: 0,
+            flipped,
+            mode,
+            item: item.map(str::to_owned),
+        };
+        assert_eq!(at(CursorMode::Floor, None, false).wall(content), None);
+        assert_eq!(at(CursorMode::RightWall, None, false).wall(content), Some(false));
+        assert_eq!(at(CursorMode::LeftWall, None, false).wall(content), Some(true));
+        // A held item decides for itself, whatever the mode says.
+        let frame = content
+            .items()
+            .find(|i| i.base.layer == Layer::Wall)
+            .map(|i| i.id())
+            .expect("content has wall items");
+        let sofa = content
+            .items()
+            .find(|i| i.base.layer == Layer::Floor)
+            .map(|i| i.id())
+            .expect("content has floor items");
+        assert_eq!(at(CursorMode::Floor, Some(&frame), true).wall(content), Some(true));
+        assert_eq!(at(CursorMode::LeftWall, Some(&sofa), false).wall(content), None);
+        // Putting a held wall item down leaves the cursor on its wall.
+        let mut state = at(CursorMode::Floor, Some(&frame), true);
+        state.release(content);
+        assert_eq!((state.mode, state.item), (CursorMode::LeftWall, None));
+        let mut state = at(CursorMode::RightWall, Some(&sofa), false);
+        state.release(content);
+        assert_eq!(state.mode, CursorMode::Floor);
     }
 
     #[test]
@@ -1051,6 +1232,7 @@ mod tests {
                 y: 99,
                 page: 999,
                 flipped: true,
+                mode: CursorMode::RightWall,
                 item: Some(item.id()),
             };
             assert!(state.id("dl").len() <= 100, "{} is too long", item.id());

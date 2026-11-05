@@ -41,7 +41,7 @@ LOOKS = (ISO + " Character sheet: full-body player characters, all the SAME heig
          "same pose, facing the lower-left. For characters the colour list above does NOT apply; use exactly "
          "this colour code instead, required because our engine recolours these regions: "
          "skin only in #8a4b3b #c97a5c #f0a98a #ffd8c2; hair only in the purple ramp #3b1f6b #5e35a8 #8a5ad8 "
-         "#b994f0; top, shirt, jacket or dress only in the coral ramp #7a2a3a #c2413f #ff6b4a #ff9e7a #ffd2c0; "
+         "#b994f0; top, shirt, jacket or dress only in the turquoise ramp #0b5e6b #0f8a9a #19b8c8 #6fe0ea #c0f6fa; "
          "trousers, shorts or skirt only in the blue ramp #1d2b53 #2e3d75 #4a5ba3 #8fa0d8; shoes in browns "
          "#3b2a24 #6b4a3a #a0705a; small details (buttons, glasses, laces) in greys #45495c #6a6f86 #a3a8bd or "
          "gold #c98a1e #ffd166; eyes #1b1d2b with a #fff1e8 highlight. No hats, no held items.")
@@ -154,8 +154,8 @@ def main():
     for n, group in enumerate(chunks(looks, 8), 1):
         name = f"iso_looks_{n:02d}"
         entries = [f"{l['name']} — {l['sprite_brief']}" for l in group]
-        manifest = [{"name": f"a_{l['id']}", "width": 0, "height": 64} for l in group]
-        write_sheet(name, LOOKS, entries, 4, manifest, {"palette": "avatar", "uniform_height": 64})
+        manifest = [{"name": f"a_{l['id']}", "width": 0, "height": 100} for l in group]
+        write_sheet(name, LOOKS, entries, 4, manifest, {"palette": "avatar", "uniform_height": 100})
         sheets.append(name)
 
     (OUT / "queue.txt").write_text("\n".join(sheets) + "\n")

@@ -14,7 +14,7 @@ use twilight_model::{
     id::Id,
 };
 
-use super::house::{EditState, editor, ensure_house, room_card};
+use super::house::{CursorMode, EditState, editor, ensure_house, room_card};
 use crate::{Cx, util::mention};
 
 #[derive(CommandModel, CreateCommand)]
@@ -78,6 +78,7 @@ impl PlazaCommand {
                     y: 0,
                     page: 0,
                     flipped: false,
+                    mode: CursorMode::Floor,
                     item: None,
                 };
                 let data = editor(

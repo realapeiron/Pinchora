@@ -1,9 +1,10 @@
 use chrono::Utc;
 use pinchora_core::{economy::DAILY_STREAK_WINDOW, leveling};
-use pinchora_render::{ProfileCard, Theme};
+use pinchora_game::{Content, character::Character};
+use pinchora_render::{ProfileCard, SpriteArt, Theme};
 use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
 
-use crate::{Cx, util::resolved_display_name};
+use crate::{Cx, game::scene::scaled_png, util::resolved_display_name};
 
 #[derive(CommandModel, CreateCommand)]
 #[command(name = "profile", desc = "Show a profile card")]
@@ -37,9 +38,17 @@ impl Profile {
         let avatar = cx.app.avatar(&user, ProfileCard::AVATAR_SIZE, Some(52)).await;
         let progress = leveling::progress(row.xp);
         let username = user.name.clone();
+        let character = row
+            .character
+            .as_deref()
+            .and_then(|code| Character::decode(Content::get(), code));
+        let sprites = cx.app.sprites.clone();
         let png = cx
             .app
             .render(move |r| {
+                let art = character
+                    .map(|c| scaled_png(&sprites.character(&c), ProfileCard::CHARACTER_SCALE))
+                    .transpose()?;
                 r.profile_card(&ProfileCard {
                     display_name: &name,
                     username: &username,
@@ -54,6 +63,7 @@ impl Profile {
                     streak,
                     global_rank,
                     server_rank,
+                    character: art.as_ref().map(|(png, w, h)| SpriteArt { png, w: *w, h: *h }),
                     theme: Theme::reef().with_accent(row.accent_color.map(|c| c as u32)),
                 })
             })

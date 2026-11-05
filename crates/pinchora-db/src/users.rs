@@ -15,6 +15,9 @@ pub struct UserRow {
     pub accent_color: Option<i32>,
     pub created_at: DateTime<Utc>,
     pub pearls: i64,
+    /// The saved character code (`users.avatar`); `None` until they design one.
+    #[sqlx(rename = "avatar")]
+    pub character: Option<String>,
 }
 
 impl Db {
@@ -47,6 +50,27 @@ impl Db {
         )
         .bind(sql_id(id))
         .bind(bio)
+        .execute(self.pool())
+        .await?;
+        Ok(())
+    }
+
+    /// The saved character code, or `None` if the player never designed one (or is unknown).
+    pub async fn character(&self, id: u64) -> anyhow::Result<Option<String>> {
+        let row: Option<(Option<String>,)> = sqlx::query_as("SELECT avatar FROM users WHERE id = $1")
+            .bind(sql_id(id))
+            .fetch_optional(self.pool())
+            .await?;
+        Ok(row.and_then(|(code,)| code))
+    }
+
+    pub async fn set_character(&self, id: u64, code: &str) -> anyhow::Result<()> {
+        sqlx::query(
+            "INSERT INTO users (id, avatar) VALUES ($1, $2)
+             ON CONFLICT (id) DO UPDATE SET avatar = EXCLUDED.avatar",
+        )
+        .bind(sql_id(id))
+        .bind(code)
         .execute(self.pool())
         .await?;
         Ok(())

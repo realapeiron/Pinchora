@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use image::{Rgba, RgbaImage, imageops};
 
-use crate::sprites::{BASE_RAMP, variant_ramp};
+use crate::sprites::variant_ramp;
 
 pub const SKIN_KEY: [[u8; 3]; 4] = [
     [0x8a, 0x4b, 0x3b],
@@ -25,7 +25,13 @@ pub const BOTTOM_KEY: [[u8; 3]; 4] = [
     [0x4a, 0x5b, 0xa3],
     [0x8f, 0xa0, 0xd8],
 ];
-// Tops use the furniture recolour ramp, `BASE_RAMP`.
+pub const TOP_KEY: [[u8; 3]; 5] = [
+    [0x0b, 0x5e, 0x6b],
+    [0x0f, 0x8a, 0x9a],
+    [0x19, 0xb8, 0xc8],
+    [0x6f, 0xe0, 0xea],
+    [0xc0, 0xf6, 0xfa],
+];
 
 pub const SKIN_TONES: [(&str, [u32; 4]); 8] = [
     ("Porcelain", [0x9a6a5a, 0xd9a08a, 0xf6cdb6, 0xfff0e6]),
@@ -58,6 +64,16 @@ pub const OUTFIT_COLORS: [&str; 12] = [
     "coral", "mint", "navy", "cream", "plum", "gold", "sky", "moss", "rose", "charcoal", "sand", "lilac",
 ];
 
+/// Display name of an outfit colour: `"coral"` → `"Coral"`.
+pub fn outfit_name(index: usize) -> String {
+    let name = OUTFIT_COLORS[index % OUTFIT_COLORS.len()];
+    let mut chars = name.chars();
+    chars
+        .next()
+        .map(|first| first.to_uppercase().chain(chars).collect())
+        .unwrap_or_default()
+}
+
 /// Indices into `SKIN_TONES`, `HAIR_COLORS` and `OUTFIT_COLORS`.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Colors {
@@ -81,7 +97,7 @@ pub fn recolor_character(sprite: &RgbaImage, colors: Colors) -> RgbaImage {
         map.insert(HAIR_KEY[i], rgb(hair[i]));
     }
     if let Some(top) = variant_ramp(OUTFIT_COLORS[colors.top % OUTFIT_COLORS.len()]) {
-        for (key, to) in BASE_RAMP.iter().zip(top) {
+        for (key, to) in TOP_KEY.iter().zip(top) {
             map.insert(*key, to);
         }
     }
@@ -136,7 +152,7 @@ pub fn placeholder_character() -> RgbaImage {
             let c = match ch {
                 'h' => HAIR_KEY[2],
                 's' => SKIN_KEY[2],
-                't' => BASE_RAMP[2],
+                't' => TOP_KEY[2],
                 'b' => BOTTOM_KEY[2],
                 'o' => [0x3b, 0x2a, 0x24],
                 'e' => [0x1b, 0x1d, 0x2b],
@@ -174,7 +190,7 @@ mod tests {
     fn swaps_only_key_colours() {
         let mut look = RgbaImage::new(3, 1);
         look.put_pixel(0, 0, Rgba([0x8a, 0x5a, 0xd8, 255]));
-        look.put_pixel(1, 0, Rgba([0xff, 0x6b, 0x4a, 255]));
+        look.put_pixel(1, 0, Rgba([0x19, 0xb8, 0xc8, 255]));
         look.put_pixel(2, 0, Rgba([0x12, 0x34, 0x56, 255]));
         let out = recolor_character(
             &look,

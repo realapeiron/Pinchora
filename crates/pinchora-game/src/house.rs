@@ -211,6 +211,35 @@ pub fn surface_lift(content: &Content, placed: &[Placed<'_>], x: u32, y: u32) ->
         .unwrap_or(0)
 }
 
+/// Whether flipping the floor item `item_id` (placed at (x, y), currently `flipped`) would leave
+/// a surface item that stands on it outside its new footprint. Only floor items tagged
+/// `surface` carry things; everything else flips freely.
+pub fn flip_drops_surface_items(
+    content: &Content,
+    placed: &[Placed<'_>],
+    item_id: &str,
+    x: u32,
+    y: u32,
+    flipped: bool,
+) -> bool {
+    let Some(item) = content.item(item_id) else {
+        return false;
+    };
+    if item.base.layer != Layer::Floor || !item.base.has_tag("surface") {
+        return false;
+    }
+    let (Some((_, now)), Some((_, after))) = (
+        footprint(content, item_id, x, y, flipped),
+        footprint(content, item_id, x, y, !flipped),
+    ) else {
+        return false;
+    };
+    placed.iter().any(|p| {
+        footprint(content, p.item_id, p.x, p.y, p.flipped)
+            .is_some_and(|(layer, r)| layer == Layer::Surface && now.contains(&r) && !after.contains(&r))
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -223,7 +252,7 @@ mod tests {
           {"id":"rug","name":"Rug","category":"rugs","layer":"rug","footprint":[3,2],"rarity":"common","price":50,"currency":"shells","set":null,"tags":[],"variants":[],"availability":"permanent","description":"","sprite_brief":""},
           {"id":"frame","name":"Frame","category":"wall_decor","layer":"wall","footprint":[2,1],"rarity":"common","price":50,"currency":"shells","set":null,"tags":[],"variants":[],"availability":"permanent","description":"","sprite_brief":""}
         ]"#;
-        Content::from_json("[]", f, r#"{"wallpapers":[],"floors":[]}"#, "[]", "[]", "[]").unwrap()
+        Content::from_json("[]", f, r#"{"wallpapers":[],"floors":[]}"#, "[]", "[]", "[]", "[]").unwrap()
     }
 
     #[test]
@@ -301,6 +330,40 @@ mod tests {
         assert!(fits(&with_lamp, "lamp", 5, 4).is_ok());
         assert_eq!(surface_lift(&c, &with_lamp, 5, 4), 24, "default table height");
         assert_eq!(surface_lift(&c, &with_lamp, 7, 4), 0);
+    }
+
+    #[test]
+    fn flipping_a_table_keeps_what_stands_on_it() {
+        let c = content();
+        let at = |item_id, x, y| Placed {
+            item_id,
+            x,
+            y,
+            flipped: false,
+        };
+        let drops = |placed: &[Placed], flipped| flip_drops_surface_items(&c, placed, "table", 4, 4, flipped);
+        // A 2×1 table at (4, 4) covers (4,4) and (5,4); turned, it covers (4,4) and (4,5).
+        assert!(!drops(&[], false), "nothing on it");
+        assert!(!drops(&[at("lamp", 4, 4)], false), "the origin tile stays under it");
+        assert!(drops(&[at("lamp", 5, 4)], false), "the far tile leaves the table");
+        assert!(
+            !drops(&[at("lamp", 6, 4)], false),
+            "a lamp beside the table is not on it"
+        );
+        assert!(drops(&[at("lamp", 4, 4), at("lamp", 5, 4)], false));
+        // Turned back, the lamp on its second tile (4,5) is dropped the same way.
+        let turned = [at("lamp", 4, 5)];
+        assert!(flip_drops_surface_items(&c, &turned, "table", 4, 4, true));
+        // Only tables and shelves carry things.
+        assert!(!flip_drops_surface_items(
+            &c,
+            &[at("lamp", 1, 6)],
+            "sofa__mint",
+            0,
+            6,
+            false
+        ));
+        assert!(!flip_drops_surface_items(&c, &[at("lamp", 1, 1)], "frame", 1, 1, false));
     }
 
     #[test]

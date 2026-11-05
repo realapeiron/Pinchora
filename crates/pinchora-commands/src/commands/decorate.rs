@@ -87,6 +87,7 @@ pub(crate) async fn panel(cx: &Cx, room: i16, page: usize, note: &str) -> anyhow
         selected: None,
         edit: false,
         pets: Vec::new(),
+        characters: Vec::new(),
         seed: 0,
     };
     let png = cx.app.render(move |_| render_view(&sprites, &view)).await?;

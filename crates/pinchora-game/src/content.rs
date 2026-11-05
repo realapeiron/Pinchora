@@ -259,6 +259,13 @@ pub struct PetSpecies {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct Look {
+    pub id: String,
+    pub name: String,
+    pub sprite_brief: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct Fish {
     pub id: String,
     pub name: String,
@@ -312,6 +319,7 @@ pub struct Content {
     pub rooms: Vec<RoomType>,
     pub pets: Vec<PetSpecies>,
     pub fish: Vec<Fish>,
+    pub looks: Vec<Look>,
     furniture_index: HashMap<String, usize>,
 }
 
@@ -323,6 +331,7 @@ static EMBEDDED: LazyLock<Content> = LazyLock::new(|| {
         include_str!("../../../content/rooms.json"),
         include_str!("../../../content/pets.json"),
         include_str!("../../../content/fish.json"),
+        include_str!("../../../content/looks.json"),
     )
     .expect("embedded content must parse; run `cargo test -p pinchora-game`")
 });
@@ -340,6 +349,7 @@ impl Content {
         rooms: &str,
         pets: &str,
         fish: &str,
+        looks: &str,
     ) -> anyhow::Result<Self> {
         let furniture: Vec<Furniture> = serde_json::from_str(furniture)?;
         let furniture_index = furniture.iter().enumerate().map(|(i, f)| (f.id.clone(), i)).collect();
@@ -350,6 +360,7 @@ impl Content {
             rooms: serde_json::from_str(rooms)?,
             pets: serde_json::from_str(pets)?,
             fish: serde_json::from_str(fish)?,
+            looks: serde_json::from_str(looks)?,
             furniture_index,
         })
     }
@@ -405,5 +416,9 @@ impl Content {
 
     pub fn fish(&self, id: &str) -> Option<&Fish> {
         self.fish.iter().find(|f| f.id == id)
+    }
+
+    pub fn look(&self, id: &str) -> Option<&Look> {
+        self.looks.iter().find(|l| l.id == id)
     }
 }

@@ -13,7 +13,10 @@ use std::sync::Arc;
 use resvg::{tiny_skia, usvg};
 
 pub use avatar::{placeholder_avatar, prepare_avatar};
-pub use cards::{GridSlot, ItemGridCard, LevelUpCard, PetCard, ProfileCard, RankCard, WalletCard, WelcomeCard};
+pub use cards::{
+    CharacterCard, GridSlot, ItemGridCard, LeaderboardCard, LeaderboardEntry, LevelUpCard, PetCard, ProfileCard,
+    RankCard, SpriteArt, WalletCard, WelcomeCard,
+};
 pub use svg::{compact, thousands};
 pub use theme::Theme;
 
@@ -83,6 +86,14 @@ impl Renderer {
     }
 
     pub fn pet_card(&self, card: &PetCard) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn character_card(&self, card: &CharacterCard) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn leaderboard_card(&self, card: &LeaderboardCard) -> anyhow::Result<Vec<u8>> {
         self.svg_to_png(&card.to_svg())
     }
 }

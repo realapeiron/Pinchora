@@ -15,7 +15,7 @@ impl Help {
             .description("A cozy pixel world for your server: levels, shells, profiles and soon your own house.")
             .field(EmbedFieldBuilder::new(
                 "Profile",
-                "`/profile` your card\n`/rank` server level card\n`/bio` set your about-me\n`/rep` give someone reputation",
+                "`/profile` your card\n`/rank` server level card\n`/character` design your pixel character\n`/bio` set your about-me\n`/rep` give someone reputation",
             ))
             .field(EmbedFieldBuilder::new(
                 "Shells",
