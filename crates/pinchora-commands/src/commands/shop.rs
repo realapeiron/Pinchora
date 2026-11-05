@@ -288,7 +288,8 @@ fn catalog_items(content: &Content, category: Category) -> Vec<pinchora_game::It
         .items()
         .filter(|i| i.base.category == category && i.base.availability == Availability::Permanent)
         .collect();
-    items.sort_by(|a, b| a.base.price.cmp(&b.base.price).then_with(|| a.id().cmp(&b.id())));
+    // Shell items first (cheapest first), premium pearl items after them.
+    items.sort_by_key(|i| (i.base.currency == Currency::Pearls, i.base.price, i.id()));
     items
 }
 

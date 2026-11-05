@@ -1,1 +1,218 @@
-{}
+{
+  "f_acorncrest_canopy": {
+    "x": 47,
+    "y": 0,
+    "w": 62,
+    "h": 53
+  },
+  "f_beamcast_projector": {
+    "x": 13,
+    "y": 55,
+    "w": 12,
+    "h": 12
+  },
+  "f_beamnest_bunk": {
+    "x": 811,
+    "y": 0,
+    "w": 30,
+    "h": 30
+  },
+  "f_blinkberry_twin_game": {
+    "x": 500,
+    "y": 0,
+    "w": 46,
+    "h": 35
+  },
+  "f_blinkslot_cabinet": {
+    "x": 391,
+    "y": 0,
+    "w": 30,
+    "h": 36
+  },
+  "f_blushbun_bed": {
+    "x": 578,
+    "y": 0,
+    "w": 30,
+    "h": 34
+  },
+  "f_buttonbubble_basin": {
+    "x": 780,
+    "y": 0,
+    "w": 30,
+    "h": 31
+  },
+  "f_capsulenap_pod": {
+    "x": 687,
+    "y": 0,
+    "w": 30,
+    "h": 33
+  },
+  "f_clickbud_screen": {
+    "x": 26,
+    "y": 55,
+    "w": 12,
+    "h": 12
+  },
+  "f_clickquay_computer": {
+    "x": 996,
+    "y": 0,
+    "w": 12,
+    "h": 18
+  },
+  "f_dunepot_hamper": {
+    "x": 981,
+    "y": 0,
+    "w": 14,
+    "h": 19
+  },
+  "f_dunetuck_bed": {
+    "x": 842,
+    "y": 0,
+    "w": 30,
+    "h": 27
+  },
+  "f_fizzmist_shower": {
+    "x": 422,
+    "y": 0,
+    "w": 30,
+    "h": 36
+  },
+  "f_fizzscan_terminal": {
+    "x": 39,
+    "y": 55,
+    "w": 12,
+    "h": 12
+  },
+  "f_foldfern_cot": {
+    "x": 888,
+    "y": 0,
+    "w": 14,
+    "h": 24
+  },
+  "f_frostbough_bed": {
+    "x": 157,
+    "y": 0,
+    "w": 46,
+    "h": 47
+  },
+  "f_hemwash_basin": {
+    "x": 1009,
+    "y": 0,
+    "w": 14,
+    "h": 17
+  },
+  "f_humskein_sound_wall": {
+    "x": 903,
+    "y": 0,
+    "w": 46,
+    "h": 22
+  },
+  "f_hushdrape_bed": {
+    "x": 0,
+    "y": 0,
+    "w": 46,
+    "h": 54
+  },
+  "f_kettlewave_radio": {
+    "x": 0,
+    "y": 55,
+    "w": 12,
+    "h": 14
+  },
+  "f_moonrinse_bath": {
+    "x": 235,
+    "y": 0,
+    "w": 46,
+    "h": 40
+  },
+  "f_pagehaven_bed": {
+    "x": 718,
+    "y": 0,
+    "w": 30,
+    "h": 33
+  },
+  "f_patchpillow_bed": {
+    "x": 360,
+    "y": 0,
+    "w": 30,
+    "h": 37
+  },
+  "f_patchsoak_tub": {
+    "x": 609,
+    "y": 0,
+    "w": 46,
+    "h": 34
+  },
+  "f_pebbleflush_loo": {
+    "x": 873,
+    "y": 0,
+    "w": 14,
+    "h": 26
+  },
+  "f_polypillow_bed": {
+    "x": 110,
+    "y": 0,
+    "w": 46,
+    "h": 50
+  },
+  "f_reedroll_bed": {
+    "x": 547,
+    "y": 0,
+    "w": 30,
+    "h": 35
+  },
+  "f_reedsoap_dish": {
+    "x": 65,
+    "y": 55,
+    "w": 12,
+    "h": 9
+  },
+  "f_reefcurl_tub": {
+    "x": 453,
+    "y": 0,
+    "w": 46,
+    "h": 36
+  },
+  "f_rivetpipe_shower": {
+    "x": 329,
+    "y": 0,
+    "w": 30,
+    "h": 38
+  },
+  "f_sandsheet_cot": {
+    "x": 204,
+    "y": 0,
+    "w": 30,
+    "h": 47
+  },
+  "f_sprigfold_towels": {
+    "x": 52,
+    "y": 55,
+    "w": 12,
+    "h": 12
+  },
+  "f_stillglass_shower": {
+    "x": 656,
+    "y": 0,
+    "w": 30,
+    "h": 34
+  },
+  "f_stillsoft_bed": {
+    "x": 282,
+    "y": 0,
+    "w": 46,
+    "h": 40
+  },
+  "f_tidefold_towel_rail": {
+    "x": 950,
+    "y": 0,
+    "w": 30,
+    "h": 20
+  },
+  "f_wishbowl_vanity": {
+    "x": 749,
+    "y": 0,
+    "w": 30,
+    "h": 32
+  }
+}
