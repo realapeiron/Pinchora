@@ -30,7 +30,7 @@ fn main() -> anyhow::Result<()> {
         theme: Theme::reef(),
     };
     std::fs::write(format!("{out}/connect4-midgame.png"), r.connect4_card(&card)?)?;
-    let won = board([".......", ".......", "...1...", "..11...", ".2122..", "21212.."]);
+    let won = board([".......", ".......", "...1...", "..12...", ".122...", "12121.."]);
     let card = Connect4Card {
         cells: &won,
         names: ["Captain Pinch", "A very long display name"],
@@ -95,17 +95,20 @@ fn main() -> anyhow::Result<()> {
         row("crane", [ABSENT, PRESENT, CORRECT, ABSENT, PRESENT]),
         row("pearl", [CORRECT, CORRECT, CORRECT, CORRECT, CORRECT]),
     ];
-    let mut keys = [0u8; 26];
-    for r in &rows {
-        for (c, m) in r.letters.iter().zip(r.marks) {
-            let k = &mut keys[(*c as u8 - b'a') as usize];
-            *k = (*k).max(m);
+    let keys_of = |rows: &[WordleRow]| {
+        let mut keys = [0u8; 26];
+        for r in rows {
+            for (c, m) in r.letters.iter().zip(r.marks) {
+                let k = &mut keys[(*c as u8 - b'a') as usize];
+                *k = (*k).max(m);
+            }
         }
-    }
+        keys
+    };
     let card = WordleCard {
         title: "Daily wordle #63",
         rows: &rows,
-        keys,
+        keys: keys_of(&rows),
         footer: "Solved in 2/6",
         theme: Theme::reef(),
     };
@@ -113,7 +116,7 @@ fn main() -> anyhow::Result<()> {
     let card = WordleCard {
         title: "Practice wordle",
         rows: &rows[..1],
-        keys,
+        keys: keys_of(&rows[..1]),
         footer: "Try 2 of 6",
         theme: Theme::reef(),
     };

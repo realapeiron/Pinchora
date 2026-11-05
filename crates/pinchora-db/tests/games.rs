@@ -179,6 +179,21 @@ async fn a_player_who_cannot_cover_the_bet_blocks_the_game() {
 }
 
 #[tokio::test]
+async fn a_decline_that_loses_the_race_to_accept_keeps_the_bets() {
+    let Some(db) = db().await else { return };
+    let [host, guest] = ids();
+    db.earn_shells(host, 100, "test").await.unwrap();
+    db.earn_shells(guest, 100, "test").await.unwrap();
+    let session = db.create_game(duel(host, guest, 40)).await.unwrap();
+    db.start_duel(session.id, guest, (8, 5), "go", 90).await.unwrap();
+    // The decline was read while pending, so it only ends the pending state.
+    let declined = db.settle_game(session.id, Some("start"), "declined", Payout::Refund, false);
+    assert!(declined.await.unwrap().is_none(), "the accepted duel goes on");
+    assert_eq!(db.game(session.id).await.unwrap().unwrap().status, ACTIVE);
+    assert_eq!((shells(&db, host).await, shells(&db, guest).await), (60, 60));
+}
+
+#[tokio::test]
 async fn simultaneous_endings_pay_exactly_once() {
     let Some(db) = db().await else { return };
     let [host, guest] = ids();

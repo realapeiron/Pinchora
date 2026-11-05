@@ -1763,7 +1763,7 @@
       "The Sun",
       "Polaris",
       "Sirius",
-      "Proxima Centauri"
+      "Vega"
     ],
     "answer": "The Sun"
   },
@@ -3555,7 +3555,7 @@
     "question": "What is the capital of the Netherlands?",
     "options": [
       "Rotterdam",
-      "The Hague",
+      "Eindhoven",
       "Utrecht",
       "Amsterdam"
     ],

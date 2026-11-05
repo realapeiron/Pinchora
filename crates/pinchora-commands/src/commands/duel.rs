@@ -439,7 +439,8 @@ pub(crate) async fn answer(cx: &Cx, kind: Kind, id: i64, accept: bool) -> anyhow
         let ended = cx
             .app
             .db
-            .settle_game(id, None, "declined", Payout::None, false)
+            // Only the pending state: an Accept that lands first holds the bets, which must not vanish.
+            .settle_game(id, Some(&session.state), "declined", Payout::Refund, false)
             .await?
             .is_some();
         if !ended {
