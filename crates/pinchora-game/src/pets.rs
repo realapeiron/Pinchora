@@ -53,6 +53,7 @@ pub enum Care {
     Feed,
     Play,
     Clean,
+    Walk,
 }
 
 impl Care {
@@ -61,6 +62,7 @@ impl Care {
             Self::Feed => 30 * 60,
             Self::Play => 20 * 60,
             Self::Clean => 2 * 3600,
+            Self::Walk => 45 * 60,
         }
     }
 
@@ -80,6 +82,13 @@ impl Care {
                 ..n
             }),
             Self::Clean => Some(Needs { hygiene: 100, ..n }),
+            Self::Walk if n.energy < 10 => None,
+            Self::Walk => Some(Needs {
+                fun: up(n.fun, 20),
+                energy: (n.energy - 10).max(0),
+                hunger: (n.hunger - 8).max(0),
+                hygiene: (n.hygiene - 10).max(0),
+            }),
         }
     }
 
@@ -88,6 +97,7 @@ impl Care {
             Self::Feed => 8,
             Self::Play => 15,
             Self::Clean => 10,
+            Self::Walk => 12,
         }
     }
 }

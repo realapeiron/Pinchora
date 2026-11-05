@@ -170,6 +170,7 @@ async fn pet_card(app: &App, pet: &PetRow, note: Option<String>) -> anyhow::Resu
                 ButtonStyle::Success,
             ),
             button(format!("pc:play:{id}"), "Play", ButtonStyle::Primary),
+            button(format!("pc:walk:{id}"), "Walk", ButtonStyle::Primary),
             button(format!("pc:clean:{id}"), "Bath", ButtonStyle::Secondary),
         ],
     })];
@@ -181,6 +182,7 @@ pub(crate) async fn on_care(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
     let action = match args.next() {
         Some("feed") => Care::Feed,
         Some("play") => Care::Play,
+        Some("walk") => Care::Walk,
         _ => Care::Clean,
     };
     let pet_id: i64 = args.next().and_then(|v| v.parse().ok()).unwrap_or(0);
@@ -211,7 +213,7 @@ pub(crate) async fn on_care(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
     let needs = current_needs(&pet);
     let Some(after) = action.apply(needs) else {
         return cx
-            .reply_ephemeral(format!("{} is too tired to play. Let it rest.", pet.name))
+            .reply_ephemeral(format!("{} is too tired for that. Let it rest.", pet.name))
             .await;
     };
     let (mut level, mut xp) = (pet.level, pet.xp + action.xp());
@@ -236,8 +238,15 @@ pub(crate) async fn on_care(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
         Care::Feed => "munches happily",
         Care::Play => "bounces around with you",
         Care::Clean => "is squeaky clean",
+        Care::Walk => "trots along the shore with you",
     };
     let mut note = format!("{} {verb}. +{} XP", pet.name, action.xp());
+    // Walks turn up a few shells on the beach.
+    if action == Care::Walk {
+        let found = rand::random_range(5..=30);
+        cx.app.db.earn_shells(user, found, "pet_walk").await?;
+        note.push_str(&format!("\nFound **{found}** shells on the walk!"));
+    }
     if leveled {
         note.push_str(&format!("\n🎉 **{} reached level {level}!**", pet.name));
     }

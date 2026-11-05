@@ -31,6 +31,8 @@ const VISIT_REWARD: i64 = 25;
 const VISIT_CAP: i64 = 10;
 /// Inventory entries per select-menu page (Discord's limit).
 const PAGE: usize = 25;
+/// Pets that wander around their owner's house at once.
+const DAYCARE: usize = 8;
 
 #[derive(CommandModel, CreateCommand)]
 #[command(name = "house", desc = "Your pixel house")]
@@ -269,9 +271,15 @@ pub(crate) async fn room_card(
     let title = room_title(content, &row);
     let mut pets: Vec<String> = Vec::new();
     let mut characters: Vec<Character> = Vec::new();
-    // A guest who is the owner (clicking through their own rooms) is only there once.
+    // The owner's pets live here (up to DAYCARE, the active one first); a guest brings only
+    // their active pet. A guest who is the owner is only there once.
+    let mut owned = cx.app.db.pets(owner_id).await?;
+    owned.sort_by_key(|p| !p.active);
+    pets.extend(owned.into_iter().take(DAYCARE).map(|p| p.species));
     for who in std::iter::once(owner_id).chain(guest.filter(|g| *g != owner_id)) {
-        if let Some(pet) = cx.app.db.active_pet(who).await? {
+        if who != owner_id
+            && let Some(pet) = cx.app.db.active_pet(who).await?
+        {
             pets.push(pet.species);
         }
         if let Some(code) = cx.app.db.character(who).await?
