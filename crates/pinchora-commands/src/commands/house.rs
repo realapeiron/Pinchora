@@ -89,7 +89,7 @@ impl HouseCommand {
         let author = cx.author()?.clone();
         match self {
             Self::View(c) => {
-                let data = room_card(cx, &author, &cx.author_display_name(), room_index(c.room), None).await?;
+                let data = room_card(cx, &author, &cx.author_display_name(), room_index(c.room), None, None).await?;
                 cx.reply(data).await
             }
             Self::Visit(c) => visit(cx, &author, &c.user, room_index(c.room)).await,
@@ -194,6 +194,7 @@ async fn room_card(
     owner_name: &str,
     room: i16,
     footer: Option<String>,
+    guest: Option<u64>,
 ) -> anyhow::Result<InteractionResponseData> {
     let owner_id = owner.id.get();
     let (house, rooms) = ensure_house(&cx.app, owner_id).await?;
@@ -204,6 +205,12 @@ async fn room_card(
     let count = placements.len();
     let content = Content::get();
     let title = room_title(content, &row);
+    let mut pets: Vec<String> = Vec::new();
+    for who in std::iter::once(owner_id).chain(guest) {
+        if let Some(pet) = cx.app.db.active_pet(who).await? {
+            pets.push(pet.species);
+        }
+    }
     let png = render_room(
         &cx.app,
         RoomView {
@@ -214,6 +221,8 @@ async fn room_card(
             cursor: None,
             selected: None,
             edit: false,
+            pets,
+            seed: (Utc::now().timestamp() / 600) as u64,
         },
     )
     .await?;
@@ -262,7 +271,7 @@ async fn visit(cx: &Cx, author: &User, target: &ResolvedUser, room: i16) -> anyh
     }
     let name = resolved_display_name(target);
     if host.id == author.id {
-        let data = room_card(cx, host, &name, room, None).await?;
+        let data = room_card(cx, host, &name, room, None, None).await?;
         return cx.reply(data).await;
     }
     let (house, _) = ensure_house(&cx.app, host.id.get()).await?;
@@ -285,7 +294,7 @@ async fn visit(cx: &Cx, author: &User, target: &ResolvedUser, room: i16) -> anyh
         VisitOutcome::Rewarded { .. } => Some(format!("You've had your {VISIT_CAP} paid visits today")),
         VisitOutcome::AlreadyToday => None,
     };
-    let data = room_card(cx, host, &name, room, footer).await?;
+    let data = room_card(cx, host, &name, room, footer, Some(author.id.get())).await?;
     cx.reply(data).await
 }
 
@@ -303,7 +312,7 @@ pub(crate) async fn on_view_nav(cx: &Cx, mut args: Split<'_, char>) -> anyhow::R
         .global_name
         .clone()
         .unwrap_or_else(|| owner_user.name.clone());
-    let data = room_card(cx, &owner_user, &name, room, None).await?;
+    let data = room_card(cx, &owner_user, &name, room, None, None).await?;
     cx.update(data).await
 }
 
@@ -540,6 +549,8 @@ async fn editor(cx: &Cx, user_id: u64, mut state: EditState, note: &str) -> anyh
             }),
             selected: hovered_id,
             edit: true,
+            pets: Vec::new(),
+            seed: 0,
         },
     )
     .await?;

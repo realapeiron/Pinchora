@@ -97,6 +97,7 @@ impl Responder {
 
     /// Sends a new message (commands) or replaces the clicked message (`update`, components).
     pub async fn respond(&self, data: InteractionResponseData, update: bool) -> anyhow::Result<()> {
+        dump_attachments(&data);
         let mut state = self.state.lock().await;
         match &mut *state {
             State::Pending(tx) => {
@@ -156,6 +157,11 @@ impl Responder {
         }
     }
 
+    /// Edits the first answer, e.g. to reveal something after a delay.
+    pub async fn edit(&self, data: &InteractionResponseData) -> anyhow::Result<()> {
+        self.edit_original(data).await
+    }
+
     async fn edit_original(&self, data: &InteractionResponseData) -> anyhow::Result<()> {
         let client = self.app.interaction();
         let mut request = client.update_response(&self.token);
@@ -195,5 +201,21 @@ impl Responder {
         }
         request.await?;
         Ok(())
+    }
+}
+
+/// Development aid: with `PINCHORA_DEBUG_DUMP_DIR` set, every outgoing image is also
+/// written there, so cards and rooms can be checked without a Discord client.
+fn dump_attachments(data: &InteractionResponseData) {
+    static DIR: std::sync::LazyLock<Option<std::path::PathBuf>> =
+        std::sync::LazyLock::new(|| std::env::var_os("PINCHORA_DEBUG_DUMP_DIR").map(Into::into));
+    let (Some(dir), Some(files)) = (DIR.as_ref(), data.attachments.as_ref()) else {
+        return;
+    };
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_millis());
+    for file in files {
+        let _ = std::fs::write(dir.join(format!("{stamp}-{}", file.filename)), &file.file);
     }
 }

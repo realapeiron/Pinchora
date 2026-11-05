@@ -85,3 +85,19 @@ impl Cache {
         RedisQueue::new(self.conn(), max_concurrency)
     }
 }
+
+impl Cache {
+    /// Stores a short-lived value.
+    pub async fn put(&self, key: &str, value: &str, ttl: Duration) -> anyhow::Result<()> {
+        let _: () = self
+            .conn()
+            .set_ex(format!("{PREFIX}:kv:{key}"), value, ttl.as_secs().max(1))
+            .await?;
+        Ok(())
+    }
+
+    /// Reads and deletes a value stored with [`Cache::put`].
+    pub async fn take(&self, key: &str) -> anyhow::Result<Option<String>> {
+        Ok(self.conn().get_del(format!("{PREFIX}:kv:{key}")).await?)
+    }
+}

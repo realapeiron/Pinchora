@@ -2,6 +2,7 @@ mod economy;
 mod guilds;
 mod house;
 mod members;
+mod pets;
 mod shop;
 mod users;
 
@@ -13,6 +14,7 @@ pub use economy::{DailyOutcome, RepOutcome, TransferOutcome};
 pub use guilds::GuildSettings;
 pub use house::{HouseRow, InventoryRow, NewRoom, PlaceOutcome, PlacementRow, RoomRow, UpgradeOutcome};
 pub use members::{LeaderboardRow, MemberRank, XpGain};
+pub use pets::PetRow;
 pub use shop::{BuyOutcome, Currency, MarketRow, VisitOutcome};
 pub use users::UserRow;
 

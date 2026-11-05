@@ -5,3 +5,7 @@
 .env.*
 !.env.example
 deploy/k8s/**/secrets.env
+
+# GPT sprite sheets (large, regenerated from tools/art)
+tools/art/out/
+tools/art/logs/

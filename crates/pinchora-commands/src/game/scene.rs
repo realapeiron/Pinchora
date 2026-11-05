@@ -9,7 +9,7 @@ use pinchora_db::{PlacementRow, RoomRow};
 use pinchora_game::{Content, Layer, house::WALL_ROWS};
 use pinchora_render::{
     room::{Cursor, RoomScene, SceneItem, SceneLayer, render_room},
-    sprites::{SpriteStore, placeholder_item, placeholder_tile, recolor, variant_ramp},
+    sprites::{SpriteStore, placeholder_item, placeholder_pet, placeholder_tile, recolor, variant_ramp},
 };
 
 /// Sprites by name, with palette variants and placeholders made on first use.
@@ -55,6 +55,22 @@ impl Sprites {
         }))
     }
 
+    pub fn pet(&self, species: &str) -> Arc<RgbaImage> {
+        self.cached(&format!("p_{species}"), || {
+            self.store
+                .get(&format!("p_{species}"))
+                .map_or_else(|| placeholder_pet(species), |s| (*s).clone())
+        })
+    }
+
+    pub fn fish(&self, id: &str) -> Arc<RgbaImage> {
+        self.cached(&format!("c_{id}"), || {
+            self.store
+                .get(&format!("c_{id}"))
+                .map_or_else(|| placeholder_pet(id), |s| (*s).clone())
+        })
+    }
+
     pub fn wallpaper(&self, id: &str) -> Arc<RgbaImage> {
         self.cached(&format!("wp_{id}"), || {
             self.store
@@ -91,11 +107,35 @@ pub struct RoomView {
     /// Placement under the cursor, drawn highlighted.
     pub selected: Option<i64>,
     pub edit: bool,
+    /// Pet species to show wandering in the room (owner's and a visitor's).
+    pub pets: Vec<String>,
+    /// Varies where pets stand, e.g. the current hour.
+    pub seed: u64,
+}
+
+/// Free floor tiles, so pets never stand inside furniture.
+fn free_tiles(content: &Content, view: &RoomView) -> Vec<(u32, u32)> {
+    let mut taken = vec![false; (view.width * view.height) as usize];
+    for p in &view.placements {
+        if let Some((layer, r)) = pinchora_game::house::footprint(content, &p.item_id, p.x as u32, p.y as u32)
+            && layer == Layer::Floor
+        {
+            for y in r.y..(r.y + r.d).min(view.height) {
+                for x in r.x..(r.x + r.w).min(view.width) {
+                    taken[(y * view.width + x) as usize] = true;
+                }
+            }
+        }
+    }
+    (WALL_ROWS..view.height)
+        .flat_map(|y| (0..view.width).map(move |x| (x, y)))
+        .filter(|&(x, y)| !taken[(y * view.width + x) as usize])
+        .collect()
 }
 
 pub fn render_view(sprites: &Sprites, view: &RoomView) -> anyhow::Result<Vec<u8>> {
     let content = Content::get();
-    let items = view
+    let items: Vec<SceneItem> = view
         .placements
         .iter()
         .filter_map(|p| {
@@ -113,6 +153,30 @@ pub fn render_view(sprites: &Sprites, view: &RoomView) -> anyhow::Result<Vec<u8>
             })
         })
         .collect();
+    let mut items: Vec<SceneItem> = items;
+    let free = free_tiles(content, view);
+    for (i, species) in view.pets.iter().enumerate() {
+        if free.is_empty() {
+            break;
+        }
+        let pick = (view
+            .seed
+            .wrapping_mul(0x9e37_79b9_7f4a_7c15)
+            .wrapping_add(i as u64 * 7919)
+            >> 16) as usize
+            % free.len();
+        let (x, y) = free[pick];
+        items.push(SceneItem {
+            sprite: sprites.pet(species),
+            x,
+            y,
+            w: 1,
+            d: 1,
+            layer: SceneLayer::Pet,
+            flipped: (view.seed + i as u64).is_multiple_of(2),
+            selected: false,
+        });
+    }
     let scene = RoomScene {
         width: view.width,
         height: view.height,
@@ -128,4 +192,19 @@ pub fn render_view(sprites: &Sprites, view: &RoomView) -> anyhow::Result<Vec<u8>
     let mut png = IoCursor::new(Vec::new());
     img.write_to(&mut png, image::ImageFormat::Png)?;
     Ok(png.into_inner())
+}
+
+/// An item sprite scaled by the largest whole factor that fits `max_w`×`max_h`, as PNG.
+pub fn slot_sprite(sprites: &Sprites, content: &Content, item_id: &str, max_w: u32, max_h: u32) -> (Vec<u8>, u32, u32) {
+    let sprite = sprites
+        .item(content, item_id)
+        .unwrap_or_else(|| Arc::new(RgbaImage::from_pixel(8, 8, image::Rgba([0x8f, 0xa0, 0xd8, 255]))));
+    let factor = (max_w / sprite.width().max(1))
+        .min(max_h / sprite.height().max(1))
+        .clamp(1, 8);
+    let (w, h) = (sprite.width() * factor, sprite.height() * factor);
+    let big = image::imageops::resize(sprite.as_ref(), w, h, image::imageops::FilterType::Nearest);
+    let mut png = IoCursor::new(Vec::new());
+    let _ = big.write_to(&mut png, image::ImageFormat::Png);
+    (png.into_inner(), w, h)
 }

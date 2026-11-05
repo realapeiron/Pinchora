@@ -1,7 +1,11 @@
+mod grid;
+mod pet;
 mod profile;
 mod rank;
 mod welcome;
 
+pub use grid::{GridSlot, ItemGridCard};
+pub use pet::PetCard;
 pub use profile::ProfileCard;
 pub use rank::RankCard;
 pub use welcome::WelcomeCard;

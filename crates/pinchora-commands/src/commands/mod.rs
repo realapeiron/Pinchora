@@ -2,13 +2,16 @@ mod bio;
 mod config;
 mod daily;
 mod economy;
+pub(crate) mod fish;
 mod help;
 pub(crate) mod house;
 pub(crate) mod leaderboard;
+pub(crate) mod pet;
 mod ping;
 mod profile;
 mod rank;
 mod rep;
+pub(crate) mod shop;
 
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::application::{command::Command, interaction::application_command::CommandData};
@@ -47,4 +50,8 @@ commands!(
     bio::Bio,
     config::ConfigCommand,
     house::HouseCommand,
+    shop::ShopCommand,
+    shop::Inventory,
+    pet::PetCommand,
+    fish::Fish,
 );

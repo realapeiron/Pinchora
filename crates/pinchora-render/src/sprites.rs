@@ -193,3 +193,40 @@ pub fn placeholder_tile(id: &str, wall: bool) -> RgbaImage {
     }
     img
 }
+
+/// A small round critter with eyes, tinted per species, until real pet art exists.
+pub fn placeholder_pet(id: &str) -> RgbaImage {
+    let colors: [[u8; 3]; 6] = [
+        [0xff, 0x6b, 0x4a],
+        [0x06, 0xd6, 0xa0],
+        [0xff, 0xd1, 0x66],
+        [0x9b, 0x6b, 0xc4],
+        [0x3a, 0x9b, 0xdc],
+        [0xff, 0x8f, 0xb1],
+    ];
+    let c = colors[(hash(id) % colors.len() as u64) as usize];
+    let rows = [
+        "....####....",
+        "..#oooooo#..",
+        ".#oooooooo#.",
+        "#oo##oo##oo#",
+        "#oo#wo#woo.#",
+        "#oooooooooo#",
+        "#oooo##oooo#",
+        ".#oooooooo#.",
+        "..##.##.##..",
+    ];
+    let mut img = RgbaImage::new(12, rows.len() as u32);
+    for (y, row) in rows.iter().enumerate() {
+        for (x, ch) in row.chars().enumerate() {
+            let px = match ch {
+                '#' => Rgba([0x1b, 0x1d, 0x2b, 255]),
+                'o' => shade(c, 1.0),
+                'w' => Rgba([0xff, 0xf1, 0xe8, 255]),
+                _ => continue,
+            };
+            img.put_pixel(x as u32, y as u32, px);
+        }
+    }
+    img
+}
