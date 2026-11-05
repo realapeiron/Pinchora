@@ -54,9 +54,9 @@ impl Edge {
     }
 }
 
-/// Runs `cell(edge, index, u, length)` for every cell of about `unit` along all four sides,
-/// between the corners. The cells of a side are stretched a hair so they end exactly at the
-/// corner, whatever the card's size.
+/// Runs `cell(edge, index, u, length)` for every cell of `unit` along all four sides, between
+/// the corners. The cells are whole and sit on the 2 px grid, centred on their side, so no pixel
+/// is blended; the corner pieces cover the few pixels left over at either end.
 fn along(w: f32, h: f32, unit: f32, mut cell: impl FnMut(&Edge, usize, f32, f32)) {
     for (n, side) in [Side::Top, Side::Right, Side::Bottom, Side::Left]
         .into_iter()
@@ -66,12 +66,12 @@ fn along(w: f32, h: f32, unit: f32, mut cell: impl FnMut(&Edge, usize, f32, f32)
             Side::Top | Side::Bottom => w,
             Side::Left | Side::Right => h,
         } - 2.0 * BAND;
-        let count = (span / unit).round().max(1.0) as usize;
-        let length = span / count as f32;
+        let count = (span / unit).floor().max(1.0) as usize;
+        let start = ((span - count as f32 * unit) / 4.0).floor() * 2.0;
         let edge = Edge { side, w, h };
         for i in 0..count {
             // The index goes on counting round the card, so a pattern does not repeat per side.
-            cell(&edge, n * 1000 + i, i as f32 * length, length);
+            cell(&edge, n * 1000 + i, start + i as f32 * unit, unit);
         }
     }
 }
@@ -192,8 +192,10 @@ fn gold(out: &mut String, w: f32, h: f32) {
     }
 }
 
-/// A glowing tube in the accent colour: a bright line with a haze either side.
+/// A glowing tube in the accent colour: a bright line with a haze either side, in a dark channel
+/// so it still glows on a bright background picture.
 fn neon(out: &mut String, w: f32, h: f32, accent: &str) {
+    ring(out, w, h, 0.0, BAND, 0.0, "#0b1029", 0.75);
     ring(out, w, h, 0.0, 2.0, 0.0, accent, 0.34);
     ring(out, w, h, 2.0, 6.0, 4.0, accent, 1.0);
     ring(out, w, h, 3.0, 5.0, 2.0, &mix(accent, "#ffffff", 0.7), 0.95);
