@@ -3852,6 +3852,9 @@ async fn partners_propose_accept_view_leave() {
     assert_eq!(paired.files[0].0, "partners.png");
     let pair = sim.app.db.partner(a).await.unwrap().expect("a has a partner");
     assert_eq!(pair.partner_id, b);
+    // A second click on the same Accept changes nothing.
+    let twice = sim.click(b, &asked, "Accept").await;
+    assert!(twice.content().contains("partners already"), "{}", twice.content());
     assert_eq!(sim.app.db.partner(b).await.unwrap().map(|p| p.partner_id), Some(a));
     // The profile card asks for the partner's name.
     let name = pinchora_commands::partner_name(&sim.app, a).await;
@@ -4090,6 +4093,26 @@ async fn a_partner_decorates_the_others_house() {
         "{}",
         back.description()
     );
+    assert!(!back.button("↶ Undo").disabled, "a's placement can still be undone");
+
+    // A new partnership starts without that history: what a placed under the old one stays b's.
+    sim.app.db.leave_partner(a).await.unwrap();
+    sim.app.db.pair_partners(a, b).await.unwrap();
+    let reopened = sim
+        .command_resolved(a, "house", edit_options(b), named(&[(b, "Bea")]))
+        .await;
+    assert!(
+        reopened.button("↶ Undo").disabled,
+        "the old partnership's steps are gone"
+    );
+    let old_undo = back.button("↶ Undo").custom_id.clone().expect("custom id");
+    let nothing = sim.component(a, &old_undo, &[], &back).await;
+    assert!(
+        nothing.description().contains("Nothing to undo"),
+        "{}",
+        nothing.description()
+    );
+    assert_eq!(room_pieces(&sim, b, 0).await.len(), 1);
 
     // Moving is the owner's: the button is off, and a hand-made click is refused too.
     let id = placed

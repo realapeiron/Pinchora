@@ -23,8 +23,9 @@ const SCALE: u32 = 2;
 const FEET: i32 = 140;
 const OUTLINE: Rgba<u8> = Rgba([0x1b, 0x1d, 0x2b, 255]);
 const FRAMES: usize = 14;
-/// Frame time in hundredths of a second.
+/// Frame time in hundredths of a second, and how long the first frame (everyone at home) rests.
 const TICK: u16 = 9;
+const HOLD: u16 = 12;
 
 /// What one player does to another.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -123,17 +124,19 @@ pub struct Person<'a> {
 
 /// A looping GIF of `from` doing `kind` to `to`, 480×320.
 pub fn interaction_gif(kind: Interaction, from: Person<'_>, to: Person<'_>) -> anyhow::Result<Vec<u8>> {
-    let frames = (0..FRAMES).map(|i| scale_up(&scene(kind, from, to, i as f32 / FRAMES as f32)));
     let mut out = Vec::new();
     {
         let mut encoder = GifEncoder::new_with_speed(&mut out, 30);
         encoder.set_repeat(Repeat::Infinite)?;
-        for frame in frames {
+        for i in 0..FRAMES {
+            let frame = scale_up(&scene(kind, from, to, i as f32 / FRAMES as f32));
+            // The scene rests for a moment before it starts again.
+            let ticks = if i == 0 { HOLD } else { TICK };
             encoder.encode_frame(Frame::from_parts(
                 frame,
                 0,
                 0,
-                Delay::from_numer_denom_ms(u32::from(TICK) * 10, 1),
+                Delay::from_numer_denom_ms(u32::from(ticks) * 10, 1),
             ))?;
         }
     }
@@ -874,7 +877,7 @@ fn wave(canvas: &mut RgbaImage, a: &Figure, b: &Figure, at: f32) {
         0.0
     };
     let pa = Pose {
-        x: 90.0 + 4.0 * raise,
+        x: 76.0 + 4.0 * raise,
         lift: if (0.03..0.12).contains(&at) {
             7.0 * ((at - 0.03) / 0.09 * PI).sin()
         } else {
@@ -886,7 +889,7 @@ fn wave(canvas: &mut RgbaImage, a: &Figure, b: &Figure, at: f32) {
     };
     let hello = ((at - 0.40) / 0.14).clamp(0.0, 1.0);
     let pb = Pose {
-        x: 154.0,
+        x: 164.0,
         lift: if (0.40..0.54).contains(&at) {
             9.0 * (hello * PI).sin()
         } else if (0.62..0.72).contains(&at) {
@@ -1042,6 +1045,9 @@ mod tests {
             let gif = interaction_gif(kind, a, b).expect("encodes");
             let took = started.elapsed();
             println!("{kind:?}: {} KB in {took:?}", gif.len() / 1024);
+            if !cfg!(debug_assertions) {
+                assert!(took < std::time::Duration::from_millis(200), "{kind:?} took {took:?}");
+            }
             assert!(gif.len() < 1_000_000, "{kind:?} is {} bytes", gif.len());
             let decoder = GifDecoder::new(std::io::Cursor::new(&gif)).expect("a GIF");
             let frames = decoder.into_frames().collect_frames().expect("frames");
@@ -1077,6 +1083,38 @@ mod tests {
                 f.top
             );
             assert!(store.get(&format!("a_{look}")).is_some());
+        }
+    }
+
+    #[test]
+    fn every_look_poses_every_scene_within_a_gifs_palette() {
+        let store = SpriteStore::embedded();
+        let mut looks: Vec<String> = ["tidewalker", "longreef", "capewind", "curlcove", "puffcloud", "bobbin"]
+            .map(String::from)
+            .into();
+        looks.extend((0..2).map(|n| format!("missing{n}")));
+        for (n, look) in looks.iter().enumerate() {
+            let colors = Colors {
+                skin: n % SKIN_TONES.len(),
+                hair: n * 5 % HAIR_COLORS.len(),
+                top: n * 7 % OUTFIT_COLORS.len(),
+                bottom: n * 11 % OUTFIT_COLORS.len(),
+            };
+            let (sprite, _) = person(look, colors);
+            // A look with no art yet is drawn as the stand-in figure.
+            assert!(store.get(&format!("a_{look}")).is_some() || look.starts_with("missing"));
+            let (a, b) = (Person { look: &sprite, colors }, Person { look: &sprite, colors });
+            for kind in Interaction::ALL {
+                for at in [0.0, 0.35, 0.6] {
+                    let frame = scene(kind, a, b, at);
+                    let used: std::collections::HashSet<_> = frame.pixels().map(|p| p.0).collect();
+                    assert!(used.len() <= 256, "{look} {kind:?} at {at}: {} colours", used.len());
+                    assert!(
+                        frame.pixels().all(|p| p[3] == 255),
+                        "{look} {kind:?} at {at} has clear pixels"
+                    );
+                }
+            }
         }
     }
 

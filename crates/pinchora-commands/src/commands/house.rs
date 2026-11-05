@@ -160,10 +160,7 @@ impl HouseCommand {
                             Some(p) if p.partner_id == owner.resolved.id.get() => {
                                 ensure_house(&cx.app, me).await?;
                                 (
-                                    Who {
-                                        owner: p.partner_id,
-                                        stock: me,
-                                    },
+                                    Who::partner_of(me, p),
                                     "pt",
                                     "Pick furniture from your inventory: it jumps to a free spot, then press **Place**.",
                                 )
@@ -536,11 +533,27 @@ impl CursorMode {
 pub(crate) struct Who {
     pub(crate) owner: u64,
     pub(crate) stock: u64,
+    /// For a partner, when their partnership began (Unix microseconds; 0 otherwise): an undo
+    /// history belongs to one partnership.
+    pub(crate) bond: i64,
 }
 
 impl Who {
     pub(crate) fn own(id: u64) -> Self {
-        Self { owner: id, stock: id }
+        Self {
+            owner: id,
+            stock: id,
+            bond: 0,
+        }
+    }
+
+    /// `editor` decorating the house of their partner (`pair`).
+    fn partner_of(editor: u64, pair: pinchora_db::PartnerRow) -> Self {
+        Self {
+            owner: pair.partner_id,
+            stock: editor,
+            bond: pair.since.timestamp_micros(),
+        }
     }
 
     /// Decorating somebody else's house.
@@ -961,10 +974,7 @@ pub(crate) async fn on_edit(
             None => return cx.reply_ephemeral("Only server managers can arrange the plaza.").await,
         },
         "pt" => match cx.app.db.partner(me).await? {
-            Some(p) => Who {
-                owner: p.partner_id,
-                stock: me,
-            },
+            Some(p) => Who::partner_of(me, p),
             None => {
                 return cx
                     .reply_ephemeral("You are no longer partners, so you can't decorate their house.")
@@ -988,7 +998,7 @@ pub(crate) async fn on_edit(
     // Set when this click put a piece in the player's own house, which counts toward badges.
     let mut placed_now = false;
     let start_room = state.room;
-    let mut history = undo::load(&cx.app, who.owner, who.stock, state.room, &placements).await;
+    let mut history = undo::load(&cx.app, who, state.room, &placements).await;
 
     let note = match action.as_str() {
         "s" => match value {
@@ -1361,9 +1371,9 @@ pub(crate) async fn editor_as(
     )?;
     let mut history = match history {
         Some(history) => history,
-        None => undo::load(&cx.app, who.owner, who.stock, state.room, &placements).await,
+        None => undo::load(&cx.app, who, state.room, &placements).await,
     };
-    undo::save(&cx.app, who.owner, who.stock, state.room, &mut history, &placements).await;
+    undo::save(&cx.app, who, state.room, &mut history, &placements).await;
     let owner_name = if who.is_guest() {
         Some(partner_label(&cx.app, who.owner).await)
     } else {

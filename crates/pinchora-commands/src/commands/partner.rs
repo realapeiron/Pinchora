@@ -312,14 +312,26 @@ async fn on_answer(cx: &Cx, accept: bool, request: Request) -> anyhow::Result<()
             cx.update(data).await
         }
         PairOutcome::Taken { user } => {
-            closed(
-                cx,
+            // A second click on Accept finds them already together.
+            let together = cx
+                .app
+                .db
+                .partner(request.from)
+                .await?
+                .is_some_and(|p| p.partner_id == request.to);
+            let text = if together {
+                format!(
+                    "{} and {} are partners already.",
+                    mention(request.from),
+                    mention(request.to)
+                )
+            } else {
                 format!(
                     "{} already has a partner, so this request can't be accepted.",
                     mention(user)
-                ),
-            )
-            .await
+                )
+            };
+            closed(cx, text).await
         }
     }
 }
