@@ -147,7 +147,7 @@ impl BadgeCollectionCard<'_> {
                 &escape(&label.to_uppercase()),
             );
         }
-        sprite(&mut s, CRAB, w - 130.0, foot - 2.0, 3.0, &t.accent, "#fff1e8");
+        sprite(&mut s, CRAB, w - 140.0, foot - 2.0, 3.0, &t.accent, "#fff1e8");
         text(
             &mut s,
             w - Self::MARGIN,
