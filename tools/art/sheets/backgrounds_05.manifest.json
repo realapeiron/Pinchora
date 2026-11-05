@@ -1,0 +1,28 @@
+{
+ "items": [
+  {
+   "name": "bg_snowmuffin_village",
+   "width": 240,
+   "height": 135,
+   "opaque": true
+  },
+  {
+   "name": "bg_palmcup_oasis",
+   "width": 240,
+   "height": 135,
+   "opaque": true
+  },
+  {
+   "name": "bg_bamboo_hush",
+   "width": 240,
+   "height": 135,
+   "opaque": true
+  },
+  {
+   "name": "bg_coralnap_garden",
+   "width": 240,
+   "height": 135,
+   "opaque": true
+  }
+ ]
+}

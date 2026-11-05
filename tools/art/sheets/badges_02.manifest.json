@@ -1,0 +1,84 @@
+{
+ "items": [
+  {
+   "name": "b_room_bloomer",
+   "width": 24
+  },
+  {
+   "name": "b_little_world_maker",
+   "width": 24
+  },
+  {
+   "name": "b_kind_current",
+   "width": 24
+  },
+  {
+   "name": "b_harbour_helper",
+   "width": 24
+  },
+  {
+   "name": "b_community_pearl",
+   "width": 24
+  },
+  {
+   "name": "b_pocket_rattle",
+   "width": 24
+  },
+  {
+   "name": "b_shell_stacker",
+   "width": 24
+  },
+  {
+   "name": "b_tide_treasurer",
+   "width": 24
+  },
+  {
+   "name": "b_tiny_tide",
+   "width": 24
+  },
+  {
+   "name": "b_crab_cap",
+   "width": 24
+  },
+  {
+   "name": "b_pocket_puffer",
+   "width": 24
+  },
+  {
+   "name": "b_peachy_float",
+   "width": 24
+  },
+  {
+   "name": "b_rainy_day_duck",
+   "width": 24
+  },
+  {
+   "name": "b_snoozy_star",
+   "width": 24
+  },
+  {
+   "name": "b_tea_by_the_sea",
+   "width": 24
+  },
+  {
+   "name": "b_pebble_pal",
+   "width": 24
+  },
+  {
+   "name": "b_lantern_jelly",
+   "width": 24
+  },
+  {
+   "name": "b_moonlit_moth",
+   "width": 24
+  },
+  {
+   "name": "b_cloudlet_crown",
+   "width": 24
+  },
+  {
+   "name": "b_pearl_wyrm",
+   "width": 24
+  }
+ ]
+}

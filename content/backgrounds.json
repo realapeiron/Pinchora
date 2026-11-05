@@ -1,0 +1,290 @@
+[
+  {
+    "id": "shellwash_morning",
+    "name": "Shellwash Morning",
+    "rarity": "common",
+    "price": 800,
+    "accent": "#8eddd1",
+    "scene_brief": "Create a calm 960x540 pixel-art beach at dawn in seafoam, pale peach and warm sand, with tiny shells confined to the lower corners, a high straight horizon and broad, unbroken central water."
+  },
+  {
+    "id": "tideglass_noon",
+    "name": "Tideglass Noon",
+    "rarity": "common",
+    "price": 900,
+    "accent": "#72d7ed",
+    "scene_brief": "Create a breezy 960x540 pixel-art shoreline at noon in turquoise, sky blue and cream, placing a striped parasol at the far left beneath a high sea horizon and leaving the central sand smooth and empty."
+  },
+  {
+    "id": "honeywake_sunset",
+    "name": "Honeywake Sunset",
+    "rarity": "common",
+    "price": 1100,
+    "accent": "#ffc58b",
+    "scene_brief": "Create a mellow 960x540 pixel-art sea at sunset in honey gold, dusty rose and muted plum, with the sun near the upper-right horizon, distant sails at the edges and only soft horizontal ripples through the center."
+  },
+  {
+    "id": "moonpool_shore",
+    "name": "Moonpool Shore",
+    "rarity": "common",
+    "price": 1200,
+    "accent": "#aabdf5",
+    "scene_brief": "Create a hushed 960x540 pixel-art beach at midnight in periwinkle, navy and silver, framing open central sand with small tide pools in the lower corners beneath a high horizon and an upper-left crescent moon."
+  },
+  {
+    "id": "driftwood_dunes",
+    "name": "Driftwood Dunes",
+    "rarity": "common",
+    "price": 900,
+    "accent": "#e7ca8d",
+    "scene_brief": "Create a restful 960x540 pixel-art dune path in late afternoon using oat beige, faded teal and sage, with driftwood and beach grass along the outer edges and a wide empty center leading to a level sea horizon."
+  },
+  {
+    "id": "clovercap_bluff",
+    "name": "Clovercap Bluff",
+    "rarity": "common",
+    "price": 1000,
+    "accent": "#a4d68a",
+    "scene_brief": "Create a fresh 960x540 pixel-art coastal bluff on a spring morning in clover green, butter yellow and pale blue, placing wildflowers around the borders and keeping the central lawn simple beneath a high ocean horizon."
+  },
+  {
+    "id": "saltpetal_lane",
+    "name": "Saltpetal Lane",
+    "rarity": "common",
+    "price": 1100,
+    "accent": "#f2adc2",
+    "scene_brief": "Create a welcoming 960x540 pixel-art village lane on a summer afternoon in shell pink, cream and faded aqua, arranging small isometric seaside houses and flowerpots along both sides of a broad, quiet central path."
+  },
+  {
+    "id": "lantern_nook",
+    "name": "Lantern Nook",
+    "rarity": "common",
+    "price": 1300,
+    "accent": "#f7cf8d",
+    "scene_brief": "Create a snug 960x540 pixel-art fishing cottage at evening in amber, chestnut and muted sea blue, placing a lantern, rod and round window at the sides while leaving a softly shaded central wall and floor uncluttered."
+  },
+  {
+    "id": "teacup_window",
+    "name": "Teacup Window",
+    "rarity": "common",
+    "price": 1400,
+    "accent": "#c1dea3",
+    "scene_brief": "Create a peaceful 960x540 pixel-art seaside kitchen in midmorning using mint, warm cream and pale oak, with a teacup and herb pot at the ends of a low windowsill framing a broad central view of calm blue water."
+  },
+  {
+    "id": "hearthside_paws",
+    "name": "Hearthside Paws",
+    "rarity": "common",
+    "price": 1500,
+    "accent": "#edb38e",
+    "scene_brief": "Create a sleepy 960x540 pixel-art cottage interior on a winter evening in cinnamon, muted coral and wool cream, keeping a glowing hearth and curled pet at opposite edges around a plain central rug and softly lit wall."
+  },
+  {
+    "id": "misty_boardwalk",
+    "name": "Misty Boardwalk",
+    "rarity": "common",
+    "price": 1000,
+    "accent": "#aacfd3",
+    "scene_brief": "Create a quiet 960x540 pixel-art boardwalk at foggy dawn in mist grey, pale teal and weathered brown, placing railings along the lower edges and leaving the center open toward a faint, level sea horizon."
+  },
+  {
+    "id": "starlit_jetty",
+    "name": "Starlit Jetty",
+    "rarity": "common",
+    "price": 1500,
+    "accent": "#b7b6f3",
+    "scene_brief": "Create a tranquil 960x540 pixel-art jetty late at night in indigo, lavender and muted gold, with moored rowboats tucked into the lower corners, sparse stars above a high horizon and wide, dark central water."
+  },
+  {
+    "id": "silverdrizzle_docks",
+    "name": "Silverdrizzle Docks",
+    "rarity": "uncommon",
+    "price": 2200,
+    "accent": "#a1c6e4",
+    "scene_brief": "Create a soothing 960x540 pixel-art harbour at rainy dusk in slate blue, silver and soft amber, placing isometric boathouses and lamps along the sides with sparse rain streaks, a high harbour wall and a broad central puddle."
+  },
+  {
+    "id": "brinebell_market",
+    "name": "Brinebell Market",
+    "rarity": "uncommon",
+    "price": 2500,
+    "accent": "#f4bb86",
+    "scene_brief": "Create a friendly 960x540 pixel-art fish market just after sunrise in faded coral, ice blue and sandy cream, grouping isometric stalls, fish trays and baskets at the edges while keeping the central quay spacious and quiet."
+  },
+  {
+    "id": "cherryfoam_garden",
+    "name": "Cherryfoam Garden",
+    "rarity": "uncommon",
+    "price": 2800,
+    "accent": "#f3b4d0",
+    "scene_brief": "Create a tender 960x540 pixel-art cherry garden at spring dawn in blossom pink, pale jade and pearl grey, framing a smooth central pond with flowering trees at the sides and only a few petals along the lower border."
+  },
+  {
+    "id": "amberleaf_trail",
+    "name": "Amberleaf Trail",
+    "rarity": "uncommon",
+    "price": 2400,
+    "accent": "#efbc79",
+    "scene_brief": "Create a contemplative 960x540 pixel-art autumn forest in late afternoon using copper, ochre and muted olive, clustering leafy trunks at the margins around a wide central trail with soft shadows and a clear distant opening."
+  },
+  {
+    "id": "snowmuffin_village",
+    "name": "Snowmuffin Village",
+    "rarity": "uncommon",
+    "price": 3000,
+    "accent": "#b5d9f1",
+    "scene_brief": "Create a hushed 960x540 pixel-art snowy village at winter twilight in powder blue, cream and warm amber, placing tiny isometric cottages with lit windows around the edges of a broad, unmarked central square beneath distant snowy hills."
+  },
+  {
+    "id": "palmcup_oasis",
+    "name": "Palmcup Oasis",
+    "rarity": "uncommon",
+    "price": 2900,
+    "accent": "#9ed4ab",
+    "scene_brief": "Create a cooling 960x540 pixel-art desert oasis at dusk in apricot sand, sage and dusty turquoise, placing palms and clay jars at the far sides around a still central pool beneath a simple, high dune horizon."
+  },
+  {
+    "id": "bamboo_hush",
+    "name": "Bamboo Hush",
+    "rarity": "uncommon",
+    "price": 2600,
+    "accent": "#a6d994",
+    "scene_brief": "Create a meditative 960x540 pixel-art bamboo grove in early morning using moss green, pale jade and warm grey, concentrating bamboo stalks along the outer edges and leaving a wide central path softened by low-contrast mist."
+  },
+  {
+    "id": "coralnap_garden",
+    "name": "Coralnap Garden",
+    "rarity": "uncommon",
+    "price": 3500,
+    "accent": "#f49fae",
+    "scene_brief": "Create a dreamy 960x540 pixel-art coral reef under midday light in muted salmon, turquoise and deep teal, keeping branching coral and a few tiny fish along the lower and side borders around a broad, open central water column."
+  },
+  {
+    "id": "beacon_bend",
+    "name": "Beacon Bend",
+    "rarity": "uncommon",
+    "price": 3200,
+    "accent": "#f6d88f",
+    "scene_brief": "Create a reassuring 960x540 pixel-art headland at dusk in cornflower blue, cream and soft gold, setting an isometric lighthouse on the far-right cliff with its beam across the upper sky above a high horizon and calm central sea."
+  },
+  {
+    "id": "firefly_picnic",
+    "name": "Firefly Picnic",
+    "rarity": "uncommon",
+    "price": 2000,
+    "accent": "#c9dc8f",
+    "scene_brief": "Create a gentle 960x540 pixel-art coastal picnic spot on a summer night in moss green, dusk indigo and citron, tucking a blanket, basket and sparse fireflies into the lower corners around an open central lawn beneath a high sea horizon."
+  },
+  {
+    "id": "ribbonfin_festival",
+    "name": "Ribbonfin Festival",
+    "rarity": "rare",
+    "price": 6500,
+    "accent": "#ffbd9d",
+    "scene_brief": "Create a softly festive 960x540 pixel-art island square at twilight in peach, faded teal and honey gold, arranging isometric stalls at the sides and paper lanterns along the top border while leaving the central plaza clear."
+  },
+  {
+    "id": "buttonbay_arcade",
+    "name": "Buttonbay Arcade",
+    "rarity": "rare",
+    "price": 5500,
+    "accent": "#bca7f2",
+    "scene_brief": "Create a nostalgic 960x540 pixel-art retro arcade at night in dusty lilac, mint and muted coral, lining the outer walls with softly glowing isometric cabinets around a broad central floor, with no readable signage or sharp light patterns."
+  },
+  {
+    "id": "pearlvolt_city",
+    "name": "Pearlvolt City",
+    "rarity": "rare",
+    "price": 8000,
+    "accent": "#87dbe5",
+    "scene_brief": "Create a mellow 960x540 pixel-art waterfront city at night in deep navy, soft cyan and muted magenta, placing neon buildings along a high skyline with brighter signs at the edges and broad, subdued reflections across open central water."
+  },
+  {
+    "id": "sleepy_hull",
+    "name": "Sleepy Hull",
+    "rarity": "rare",
+    "price": 6000,
+    "accent": "#8dcfc6",
+    "scene_brief": "Create a peaceful 960x540 pixel-art sunken ship at underwater dusk in deep teal, faded oak and sea-glass green, nestling the wreck in the lower-left corner with seaweed at the margins and an uncluttered central band of blue water."
+  },
+  {
+    "id": "biscuit_cove",
+    "name": "Biscuit Cove",
+    "rarity": "rare",
+    "price": 7000,
+    "accent": "#ecc28a",
+    "scene_brief": "Create a playful 960x540 pixel-art pirate cove in late afternoon using biscuit sand, muted plum and sea green, tucking a tiny pirate sloop and closed treasure chest against opposite cliffs around calm central water and a clear horizon."
+  },
+  {
+    "id": "glowtide_inlet",
+    "name": "Glowtide Inlet",
+    "rarity": "rare",
+    "price": 7500,
+    "accent": "#83e3cb",
+    "scene_brief": "Create an enchanted 960x540 pixel-art inlet at midnight in navy, turquoise and faint lilac, tracing gentle bioluminescence along the outer shoreline beneath a high horizon while keeping the central water dark, smooth and nearly empty."
+  },
+  {
+    "id": "lotusdrift_pond",
+    "name": "Lotusdrift Pond",
+    "rarity": "rare",
+    "price": 5000,
+    "accent": "#c4b5ec",
+    "scene_brief": "Create a serene 960x540 pixel-art lotus pond at blue hour in muted jade, lavender and cream, gathering floating blossoms and stepping stones along the lower corners around a broad central reflection beneath a simple distant bank."
+  },
+  {
+    "id": "fernlight_grotto",
+    "name": "Fernlight Grotto",
+    "rarity": "rare",
+    "price": 6200,
+    "accent": "#a3d6b0",
+    "scene_brief": "Create a sheltered 960x540 pixel-art sea grotto in late morning using fern green, slate and pale aqua, framing a still central pool with dark rock edges and a narrow waterfall at the far right under soft reflected daylight."
+  },
+  {
+    "id": "ribbonlight_aurora",
+    "name": "Ribbonlight Aurora",
+    "rarity": "epic",
+    "price": 16000,
+    "accent": "#9de8ce",
+    "scene_brief": "Create an awestruck yet tranquil 960x540 pixel-art snowy fjord at midnight in ink blue, mint and lavender, keeping soft aurora ribbons in the upper third and snowy banks at the sides around broad, dark central water."
+  },
+  {
+    "id": "pillowcloud_court",
+    "name": "Pillowcloud Court",
+    "rarity": "epic",
+    "price": 18000,
+    "accent": "#d1b8f3",
+    "scene_brief": "Create a weightless 960x540 pixel-art cloud kingdom at sunrise in peach, cream and pale lavender, placing tiny isometric towers on cloud islands at the far edges and a soft cloud horizon below a wide, empty central sky."
+  },
+  {
+    "id": "emberhug_caldera",
+    "name": "Emberhug Caldera",
+    "rarity": "epic",
+    "price": 15000,
+    "accent": "#ffa990",
+    "scene_brief": "Create a quietly wondrous 960x540 pixel-art volcanic island at sunset in ash blue, copper and soft peach, placing a gently glowing volcano on the upper-left horizon with tiny lava seams near its rim above broad, smooth central water."
+  },
+  {
+    "id": "pocket_constellations",
+    "name": "Pocket Constellations",
+    "rarity": "epic",
+    "price": 12000,
+    "accent": "#bdd0ff",
+    "scene_brief": "Create a soothing 960x540 pixel-art starfield at midnight in ink indigo, faint violet and pearl white, concentrating sparse stars and small constellation shapes near the borders around a broad, almost uniform central sky."
+  },
+  {
+    "id": "moonwhale_crossing",
+    "name": "Moonwhale Crossing",
+    "rarity": "legendary",
+    "price": 36000,
+    "accent": "#9fe3ed",
+    "scene_brief": "Create a tenderly magical 960x540 pixel-art ocean at midnight in sapphire, pearl and pale cyan, showing a luminous sky whale gliding along the upper border above a high moonlit horizon and a wide expanse of calm central sea."
+  },
+  {
+    "id": "dawnreef_palace",
+    "name": "Dawnreef Palace",
+    "rarity": "legendary",
+    "price": 45000,
+    "accent": "#f5d89a",
+    "scene_brief": "Create a hushed, regal 960x540 pixel-art underwater palace at dawn in pearl cream, muted gold and sea-glass teal, placing isometric shell towers and coral arches along the sides with soft light above a broad, uncluttered central courtyard."
+  }
+]

@@ -158,6 +158,29 @@ def main():
         write_sheet(name, LOOKS, entries, 4, manifest, {"palette": "avatar", "uniform_height": 100})
         sheets.append(name)
 
+    backgrounds = json.loads((CONTENT / "backgrounds.json").read_text())
+    for n, group in enumerate(chunks(backgrounds, 4), 1):
+        name = f"backgrounds_{n:02d}"
+        entries = [f"{b['name']} — {b['scene_brief']}" for b in group]
+        manifest = [{"name": f"bg_{b['id']}", "width": 240, "height": 135, "opaque": True} for b in group]
+        header = ("Background sheet. These are NOT isometric: each one is a flat 2D side-view scene like a cozy "
+                  "game's title screen; keep only the reference's pixel size, outline and palette. Draw "
+                  f"{len(group)} separate RECTANGULAR panels, each exactly 16:9 and filled edge to edge with its "
+                  "scene (no frame, no border, no text, no people). Keep the middle calm and uncluttered: text "
+                  "panels will sit on top of it.")
+        write_sheet(name, header, entries, 2, manifest)
+        sheets.append(name)
+
+    badges = json.loads((CONTENT / "badges.json").read_text())
+    for n, group in enumerate(chunks(badges, 20), 1):
+        name = f"badges_{n:02d}"
+        entries = [f"{b['name']} — {b['icon_brief']}" for b in group]
+        manifest = [{"name": f"b_{b['id']}", "width": 24} for b in group]
+        header = ("Badge icon sheet. Flat front-facing emblems (not isometric): each one a small round, shield "
+                  "or star badge with one bold symbol that still reads at 24x24 pixels.")
+        write_sheet(name, header, entries, 5, manifest)
+        sheets.append(name)
+
     (OUT / "queue.txt").write_text("\n".join(sheets) + "\n")
     print(f"planned {len(sheets)} sheets -> {OUT}")
 

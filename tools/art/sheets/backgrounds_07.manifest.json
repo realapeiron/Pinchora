@@ -1,0 +1,28 @@
+{
+ "items": [
+  {
+   "name": "bg_pearlvolt_city",
+   "width": 240,
+   "height": 135,
+   "opaque": true
+  },
+  {
+   "name": "bg_sleepy_hull",
+   "width": 240,
+   "height": 135,
+   "opaque": true
+  },
+  {
+   "name": "bg_biscuit_cove",
+   "width": 240,
+   "height": 135,
+   "opaque": true
+  },
+  {
+   "name": "bg_glowtide_inlet",
+   "width": 240,
+   "height": 135,
+   "opaque": true
+  }
+ ]
+}

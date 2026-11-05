@@ -1,0 +1,28 @@
+{
+ "items": [
+  {
+   "name": "bg_emberhug_caldera",
+   "width": 240,
+   "height": 135,
+   "opaque": true
+  },
+  {
+   "name": "bg_pocket_constellations",
+   "width": 240,
+   "height": 135,
+   "opaque": true
+  },
+  {
+   "name": "bg_moonwhale_crossing",
+   "width": 240,
+   "height": 135,
+   "opaque": true
+  },
+  {
+   "name": "bg_dawnreef_palace",
+   "width": 240,
+   "height": 135,
+   "opaque": true
+  }
+ ]
+}

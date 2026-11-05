@@ -1,0 +1,350 @@
+[
+  {
+    "id": "little_beacon",
+    "name": "Little Beacon",
+    "description": "Reach level 5.",
+    "kind": "achievement",
+    "stat": "level",
+    "at": 5,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of a short cream lighthouse with a coral roof and one amber window, using a dark outline on a transparent background."
+  },
+  {
+    "id": "bright_beacon",
+    "name": "Bright Beacon",
+    "description": "Reach level 10.",
+    "kind": "achievement",
+    "stat": "level",
+    "at": 10,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of a cream lighthouse with a coral roof and two small gold light beams, using a dark outline on a transparent background."
+  },
+  {
+    "id": "harbour_beacon",
+    "name": "Harbour Beacon",
+    "description": "Reach level 25.",
+    "kind": "achievement",
+    "stat": "level",
+    "at": 25,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of a tall cream lighthouse with a coral roof above one curling teal wave, using a dark outline on a transparent background."
+  },
+  {
+    "id": "starlit_beacon",
+    "name": "Starlit Beacon",
+    "description": "Reach level 50.",
+    "kind": "achievement",
+    "stat": "level",
+    "at": 50,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of a pearl lighthouse with a lavender roof topped by a large four-point gold star, using a dark outline on a transparent background."
+  },
+  {
+    "id": "guiding_light",
+    "name": "Guiding Light",
+    "description": "Reach level 100.",
+    "kind": "achievement",
+    "stat": "level",
+    "at": 100,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of a golden lighthouse framed by two simple teal laurel sprigs, using a dark outline on a transparent background."
+  },
+  {
+    "id": "fin_finder",
+    "name": "Fin Finder",
+    "description": "Catch 10 different fish species.",
+    "kind": "achievement",
+    "stat": "fish_species",
+    "at": 10,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of one round blue fish beside a single cream bubble, using a dark outline on a transparent background."
+  },
+  {
+    "id": "reef_regular",
+    "name": "Reef Regular",
+    "description": "Catch 24 different fish species.",
+    "kind": "achievement",
+    "stat": "fish_species",
+    "at": 24,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of a coral reef fish with one broad cream stripe and a gold tail, using a dark outline on a transparent background."
+  },
+  {
+    "id": "shoal_scholar",
+    "name": "Shoal Scholar",
+    "description": "Catch 36 different fish species.",
+    "kind": "achievement",
+    "stat": "fish_species",
+    "at": 36,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of two small teal fish circling a single coral dot, using clear spacing and dark outlines on a transparent background."
+  },
+  {
+    "id": "every_fin_friend",
+    "name": "Every Fin Friend",
+    "description": "Catch all 72 fish species.",
+    "kind": "achievement",
+    "stat": "fish_species",
+    "at": 72,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of a golden fish wearing a tiny three-point blue crown, using a dark outline on a transparent background."
+  },
+  {
+    "id": "warm_welcome",
+    "name": "Warm Welcome",
+    "description": "Receive 10 likes on your house.",
+    "kind": "achievement",
+    "stat": "house_likes",
+    "at": 10,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of a coral heart floating above a simple cream roof, using a dark outline on a transparent background."
+  },
+  {
+    "id": "heartfelt_home",
+    "name": "Heartfelt Home",
+    "description": "Receive 50 likes on your house.",
+    "kind": "achievement",
+    "stat": "house_likes",
+    "at": 50,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of a peach cottage with a teal roof and a coral heart-shaped door, using a dark outline on a transparent background."
+  },
+  {
+    "id": "town_favourite",
+    "name": "Town Favourite",
+    "description": "Receive 250 likes on your house.",
+    "kind": "achievement",
+    "stat": "house_likes",
+    "at": 250,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of a golden roof sheltering a large coral heart with one cream sparkle beside it, using a dark outline on a transparent background."
+  },
+  {
+    "id": "pawshake",
+    "name": "Pawshake",
+    "description": "Own 1 pet.",
+    "kind": "achievement",
+    "stat": "pets",
+    "at": 1,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of one rounded terracotta paw print with a cream highlight, using a dark outline on a transparent background."
+  },
+  {
+    "id": "cuddle_circle",
+    "name": "Cuddle Circle",
+    "description": "Own 5 pets.",
+    "kind": "achievement",
+    "stat": "pets",
+    "at": 5,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of two diagonally offset paw prints in coral and teal, keeping both silhouettes distinct with dark outlines on a transparent background."
+  },
+  {
+    "id": "full_nest",
+    "name": "Full Nest",
+    "description": "Own 15 pets.",
+    "kind": "achievement",
+    "stat": "pets",
+    "at": 15,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of a peach paw print nestled inside a thick golden heart outline, with dark edging on a transparent background."
+  },
+  {
+    "id": "week_of_waves",
+    "name": "Week Of Waves",
+    "description": "Play for 7 consecutive days.",
+    "kind": "achievement",
+    "stat": "streak",
+    "at": 7,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of a cream calendar page with a mint top and one blue wave symbol instead of numbers, using a dark outline on a transparent background."
+  },
+  {
+    "id": "moonlong_mornings",
+    "name": "Moonlong Mornings",
+    "description": "Play for 30 consecutive days.",
+    "kind": "achievement",
+    "stat": "streak",
+    "at": 30,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of a cream calendar page with a lavender top and a gold crescent instead of numbers, using a dark outline on a transparent background."
+  },
+  {
+    "id": "always_ashore",
+    "name": "Always Ashore",
+    "description": "Play for 100 consecutive days.",
+    "kind": "achievement",
+    "stat": "streak",
+    "at": 100,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of a cream calendar page with a coral top and a golden sun instead of numbers, using a dark outline on a transparent background."
+  },
+  {
+    "id": "year_at_the_pier",
+    "name": "Year At The Pier",
+    "description": "Play for 365 consecutive days.",
+    "kind": "achievement",
+    "stat": "streak",
+    "at": 365,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of a gold-edged cream calendar page bearing a teal wave within a golden ring instead of numbers, using a dark outline on a transparent background."
+  },
+  {
+    "id": "nest_nudger",
+    "name": "Nest Nudger",
+    "description": "Place 25 furniture items.",
+    "kind": "achievement",
+    "stat": "placed",
+    "at": 25,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of a tiny oak stool with a plump mint cushion, using a dark outline on a transparent background."
+  },
+  {
+    "id": "room_bloomer",
+    "name": "Room Bloomer",
+    "description": "Place 100 furniture items.",
+    "kind": "achievement",
+    "stat": "placed",
+    "at": 100,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of a terracotta pot holding a green stem and one large cream flower, using a dark outline on a transparent background."
+  },
+  {
+    "id": "little_world_maker",
+    "name": "Little World Maker",
+    "description": "Place 300 furniture items.",
+    "kind": "achievement",
+    "stat": "placed",
+    "at": 300,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of a simple golden house outline enclosing a blue armchair silhouette, with dark edging on a transparent background."
+  },
+  {
+    "id": "kind_current",
+    "name": "Kind Current",
+    "description": "Reach 10 reputation.",
+    "kind": "achievement",
+    "stat": "reputation",
+    "at": 10,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of two simplified clasped hands in warm peach and brown with teal cuffs, using a dark outline on a transparent background."
+  },
+  {
+    "id": "harbour_helper",
+    "name": "Harbour Helper",
+    "description": "Reach 50 reputation.",
+    "kind": "achievement",
+    "stat": "reputation",
+    "at": 50,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of a cream-and-teal lifebuoy surrounding a coral heart, using a dark outline on a transparent background."
+  },
+  {
+    "id": "community_pearl",
+    "name": "Community Pearl",
+    "description": "Reach 150 reputation.",
+    "kind": "achievement",
+    "stat": "reputation",
+    "at": 150,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of a large cream pearl cradled in a golden scallop shell with one teal ribbon below, using a dark outline on a transparent background."
+  },
+  {
+    "id": "pocket_rattle",
+    "name": "Pocket Rattle",
+    "description": "Hold 10,000 shells at once.",
+    "kind": "achievement",
+    "stat": "shells",
+    "at": 10000,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of three overlapping peach shell tokens with simple cream ridges, using a dark outline on a transparent background."
+  },
+  {
+    "id": "shell_stacker",
+    "name": "Shell Stacker",
+    "description": "Hold 100,000 shells at once.",
+    "kind": "achievement",
+    "stat": "shells",
+    "at": 100000,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of a rounded teal drawstring pouch with one peach shell emblem, using a dark outline on a transparent background."
+  },
+  {
+    "id": "tide_treasurer",
+    "name": "Tide Treasurer",
+    "description": "Hold 1,000,000 shells at once.",
+    "kind": "achievement",
+    "stat": "shells",
+    "at": 1000000,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of an open golden treasure chest displaying one oversized pearl-white shell, using a dark outline on a transparent background."
+  },
+  {
+    "id": "tiny_tide",
+    "name": "Tiny Tide",
+    "description": "A little wave to carry wherever you wander.",
+    "kind": "shop",
+    "price": 1000,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of one curled mint wave with a cream foam tip, using a dark outline on a transparent background."
+  },
+  {
+    "id": "crab_cap",
+    "name": "Crab Cap",
+    "description": "A sideways sort of seaside style.",
+    "kind": "shop",
+    "price": 1500,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of a round coral crab wearing a tiny cream cap, with two raised claws and a dark outline on a transparent background."
+  },
+  {
+    "id": "pocket_puffer",
+    "name": "Pocket Puffer",
+    "description": "Small, round and quietly delighted to be here.",
+    "kind": "shop",
+    "price": 2000,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of a round golden pufferfish with short spikes and a tiny cream belly, using a dark outline on a transparent background."
+  },
+  {
+    "id": "peachy_float",
+    "name": "Peachy Float",
+    "description": "Sweet enough to float through a slow afternoon.",
+    "kind": "shop",
+    "price": 2500,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of a peach-pink swim ring with one mint leaf attached at the top, using a dark outline on a transparent background."
+  },
+  {
+    "id": "rainy_day_duck",
+    "name": "Rainy Day Duck",
+    "description": "Every drizzle deserves a cheerful little paddle.",
+    "kind": "shop",
+    "price": 3500,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of a yellow duck tucked beneath a simple blue umbrella, using a dark outline on a transparent background."
+  },
+  {
+    "id": "snoozy_star",
+    "name": "Snoozy Star",
+    "description": "Even the sky needs a small afternoon nap.",
+    "kind": "shop",
+    "price": 5000,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of a soft lavender five-point star with two closed navy eyes and one cream highlight, using a dark outline on a transparent background."
+  },
+  {
+    "id": "tea_by_the_sea",
+    "name": "Tea By The Sea",
+    "description": "A warm sip with a pinch of salt in the breeze.",
+    "kind": "shop",
+    "price": 6500,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of a cream teacup bearing one teal wave stripe and a single curl of steam, using a dark outline on a transparent background."
+  },
+  {
+    "id": "pebble_pal",
+    "name": "Pebble Pal",
+    "description": "A small friend with a very unhurried outlook.",
+    "kind": "shop",
+    "price": 8000,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of a smooth grey pebble with a tiny smile and one lilac flower on its upper edge, using a dark outline on a transparent background."
+  },
+  {
+    "id": "lantern_jelly",
+    "name": "Lantern Jelly",
+    "description": "A gentle glow for the deepest little daydreams.",
+    "kind": "shop",
+    "price": 10000,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of a lavender jellyfish with a warm gold center and three short pink tentacles, using a dark outline on a transparent background."
+  },
+  {
+    "id": "moonlit_moth",
+    "name": "Moonlit Moth",
+    "description": "Soft wings, silver wishes and nowhere to hurry.",
+    "kind": "shop",
+    "price": 12500,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of a symmetrical lavender moth with broad wings and two small cream crescent markings, using a dark outline on a transparent background."
+  },
+  {
+    "id": "cloudlet_crown",
+    "name": "Cloudlet Crown",
+    "description": "Royal permission to keep your head in the clouds.",
+    "kind": "shop",
+    "price": 18000,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of a pale blue cloud with three rounded lobes wearing a simple golden crown, using a dark outline on a transparent background."
+  },
+  {
+    "id": "pearl_wyrm",
+    "name": "Pearl Wyrm",
+    "description": "A tiny sea dragon with a very precious pebble.",
+    "kind": "shop",
+    "price": 25000,
+    "icon_brief": "Draw a text-free 24x24 pixel icon of a seafoam dragon curled around one cream pearl, with a rounded snout, two tiny horns and a dark outline on a transparent background."
+  }
+]

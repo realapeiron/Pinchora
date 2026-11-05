@@ -1,0 +1,36 @@
+Use your built-in image generation tool to draw ONE sprite sheet for "Pinchora", a cozy seaside pixel-art life game where players build and furnish rooms seen in an ISOMETRIC view.
+The attached image is the style reference: match its camera, pixel size, outline, shading and mood exactly.
+
+Rules:
+- True pixel art: crisp square pixels at one consistent size, no anti-aliasing, no blur, no gradients, no noise. Fine detail: one floor tile is about 64 art pixels wide.
+- 1-pixel dark outline #1b1d2b around every object, light from the upper-left, 2-3 tone shading.
+- Use only these colours: 1b1d2b 0f1631 1d2b53 2e3d75 4a5ba3 8fa0d8 7a2a3a c2413f ff6b4a ff9e7a ffd2c0 fff1e8 e6d3c3 b8a08f 7d6a5f 4a3f3b 5c3a21 8a5a34 b97f4a e0ac6e 1f4d3a 2f7d4f 5bbf6a a6e39a 1f5f8b 3a9bdc 8fd3ff c98a1e ffd166 5a3a7a 9b6bc4 06d6a0.
+- Background: flat pure #00FF00 everywhere around the objects (a fully transparent background is equally fine). Nothing else on the background: no floor, no tiles, no shadows, no text, no labels, no numbers, no grid lines.
+- Generate the image once and save it. Only regenerate (at most once) if objects are missing, merged together or drawn from the wrong angle; do not regenerate for background, colour or size nitpicks, our importer fixes those.
+- Draw the objects in a grid in exactly the order listed (row by row, left to right), each one complete and isolated with wide green gaps (at least 40 px) between them; parts of one object must touch each other.
+
+Badge icon sheet. Flat front-facing emblems (not isometric): each one a small round, shield or star badge with one bold symbol that still reads at 24x24 pixels.
+Layout: 5 columns x 4 rows, 20 objects in total.
+
+1. Little Beacon — Draw a text-free 24x24 pixel icon of a short cream lighthouse with a coral roof and one amber window, using a dark outline on a transparent background.
+2. Bright Beacon — Draw a text-free 24x24 pixel icon of a cream lighthouse with a coral roof and two small gold light beams, using a dark outline on a transparent background.
+3. Harbour Beacon — Draw a text-free 24x24 pixel icon of a tall cream lighthouse with a coral roof above one curling teal wave, using a dark outline on a transparent background.
+4. Starlit Beacon — Draw a text-free 24x24 pixel icon of a pearl lighthouse with a lavender roof topped by a large four-point gold star, using a dark outline on a transparent background.
+5. Guiding Light — Draw a text-free 24x24 pixel icon of a golden lighthouse framed by two simple teal laurel sprigs, using a dark outline on a transparent background.
+6. Fin Finder — Draw a text-free 24x24 pixel icon of one round blue fish beside a single cream bubble, using a dark outline on a transparent background.
+7. Reef Regular — Draw a text-free 24x24 pixel icon of a coral reef fish with one broad cream stripe and a gold tail, using a dark outline on a transparent background.
+8. Shoal Scholar — Draw a text-free 24x24 pixel icon of two small teal fish circling a single coral dot, using clear spacing and dark outlines on a transparent background.
+9. Every Fin Friend — Draw a text-free 24x24 pixel icon of a golden fish wearing a tiny three-point blue crown, using a dark outline on a transparent background.
+10. Warm Welcome — Draw a text-free 24x24 pixel icon of a coral heart floating above a simple cream roof, using a dark outline on a transparent background.
+11. Heartfelt Home — Draw a text-free 24x24 pixel icon of a peach cottage with a teal roof and a coral heart-shaped door, using a dark outline on a transparent background.
+12. Town Favourite — Draw a text-free 24x24 pixel icon of a golden roof sheltering a large coral heart with one cream sparkle beside it, using a dark outline on a transparent background.
+13. Pawshake — Draw a text-free 24x24 pixel icon of one rounded terracotta paw print with a cream highlight, using a dark outline on a transparent background.
+14. Cuddle Circle — Draw a text-free 24x24 pixel icon of two diagonally offset paw prints in coral and teal, keeping both silhouettes distinct with dark outlines on a transparent background.
+15. Full Nest — Draw a text-free 24x24 pixel icon of a peach paw print nestled inside a thick golden heart outline, with dark edging on a transparent background.
+16. Week Of Waves — Draw a text-free 24x24 pixel icon of a cream calendar page with a mint top and one blue wave symbol instead of numbers, using a dark outline on a transparent background.
+17. Moonlong Mornings — Draw a text-free 24x24 pixel icon of a cream calendar page with a lavender top and a gold crescent instead of numbers, using a dark outline on a transparent background.
+18. Always Ashore — Draw a text-free 24x24 pixel icon of a cream calendar page with a coral top and a golden sun instead of numbers, using a dark outline on a transparent background.
+19. Year At The Pier — Draw a text-free 24x24 pixel icon of a gold-edged cream calendar page bearing a teal wave within a golden ring instead of numbers, using a dark outline on a transparent background.
+20. Nest Nudger — Draw a text-free 24x24 pixel icon of a tiny oak stool with a plump mint cushion, using a dark outline on a transparent background.
+
+Save the final PNG to ./out/badges_01.png (create ./out if needed). Exactly 20 objects.

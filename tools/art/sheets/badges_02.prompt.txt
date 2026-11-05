@@ -1,0 +1,36 @@
+Use your built-in image generation tool to draw ONE sprite sheet for "Pinchora", a cozy seaside pixel-art life game where players build and furnish rooms seen in an ISOMETRIC view.
+The attached image is the style reference: match its camera, pixel size, outline, shading and mood exactly.
+
+Rules:
+- True pixel art: crisp square pixels at one consistent size, no anti-aliasing, no blur, no gradients, no noise. Fine detail: one floor tile is about 64 art pixels wide.
+- 1-pixel dark outline #1b1d2b around every object, light from the upper-left, 2-3 tone shading.
+- Use only these colours: 1b1d2b 0f1631 1d2b53 2e3d75 4a5ba3 8fa0d8 7a2a3a c2413f ff6b4a ff9e7a ffd2c0 fff1e8 e6d3c3 b8a08f 7d6a5f 4a3f3b 5c3a21 8a5a34 b97f4a e0ac6e 1f4d3a 2f7d4f 5bbf6a a6e39a 1f5f8b 3a9bdc 8fd3ff c98a1e ffd166 5a3a7a 9b6bc4 06d6a0.
+- Background: flat pure #00FF00 everywhere around the objects (a fully transparent background is equally fine). Nothing else on the background: no floor, no tiles, no shadows, no text, no labels, no numbers, no grid lines.
+- Generate the image once and save it. Only regenerate (at most once) if objects are missing, merged together or drawn from the wrong angle; do not regenerate for background, colour or size nitpicks, our importer fixes those.
+- Draw the objects in a grid in exactly the order listed (row by row, left to right), each one complete and isolated with wide green gaps (at least 40 px) between them; parts of one object must touch each other.
+
+Badge icon sheet. Flat front-facing emblems (not isometric): each one a small round, shield or star badge with one bold symbol that still reads at 24x24 pixels.
+Layout: 5 columns x 4 rows, 20 objects in total.
+
+1. Room Bloomer — Draw a text-free 24x24 pixel icon of a terracotta pot holding a green stem and one large cream flower, using a dark outline on a transparent background.
+2. Little World Maker — Draw a text-free 24x24 pixel icon of a simple golden house outline enclosing a blue armchair silhouette, with dark edging on a transparent background.
+3. Kind Current — Draw a text-free 24x24 pixel icon of two simplified clasped hands in warm peach and brown with teal cuffs, using a dark outline on a transparent background.
+4. Harbour Helper — Draw a text-free 24x24 pixel icon of a cream-and-teal lifebuoy surrounding a coral heart, using a dark outline on a transparent background.
+5. Community Pearl — Draw a text-free 24x24 pixel icon of a large cream pearl cradled in a golden scallop shell with one teal ribbon below, using a dark outline on a transparent background.
+6. Pocket Rattle — Draw a text-free 24x24 pixel icon of three overlapping peach shell tokens with simple cream ridges, using a dark outline on a transparent background.
+7. Shell Stacker — Draw a text-free 24x24 pixel icon of a rounded teal drawstring pouch with one peach shell emblem, using a dark outline on a transparent background.
+8. Tide Treasurer — Draw a text-free 24x24 pixel icon of an open golden treasure chest displaying one oversized pearl-white shell, using a dark outline on a transparent background.
+9. Tiny Tide — Draw a text-free 24x24 pixel icon of one curled mint wave with a cream foam tip, using a dark outline on a transparent background.
+10. Crab Cap — Draw a text-free 24x24 pixel icon of a round coral crab wearing a tiny cream cap, with two raised claws and a dark outline on a transparent background.
+11. Pocket Puffer — Draw a text-free 24x24 pixel icon of a round golden pufferfish with short spikes and a tiny cream belly, using a dark outline on a transparent background.
+12. Peachy Float — Draw a text-free 24x24 pixel icon of a peach-pink swim ring with one mint leaf attached at the top, using a dark outline on a transparent background.
+13. Rainy Day Duck — Draw a text-free 24x24 pixel icon of a yellow duck tucked beneath a simple blue umbrella, using a dark outline on a transparent background.
+14. Snoozy Star — Draw a text-free 24x24 pixel icon of a soft lavender five-point star with two closed navy eyes and one cream highlight, using a dark outline on a transparent background.
+15. Tea By The Sea — Draw a text-free 24x24 pixel icon of a cream teacup bearing one teal wave stripe and a single curl of steam, using a dark outline on a transparent background.
+16. Pebble Pal — Draw a text-free 24x24 pixel icon of a smooth grey pebble with a tiny smile and one lilac flower on its upper edge, using a dark outline on a transparent background.
+17. Lantern Jelly — Draw a text-free 24x24 pixel icon of a lavender jellyfish with a warm gold center and three short pink tentacles, using a dark outline on a transparent background.
+18. Moonlit Moth — Draw a text-free 24x24 pixel icon of a symmetrical lavender moth with broad wings and two small cream crescent markings, using a dark outline on a transparent background.
+19. Cloudlet Crown — Draw a text-free 24x24 pixel icon of a pale blue cloud with three rounded lobes wearing a simple golden crown, using a dark outline on a transparent background.
+20. Pearl Wyrm — Draw a text-free 24x24 pixel icon of a seafoam dragon curled around one cream pearl, with a rounded snout, two tiny horns and a dark outline on a transparent background.
+
+Save the final PNG to ./out/badges_02.png (create ./out if needed). Exactly 20 objects.

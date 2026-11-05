@@ -1,0 +1,84 @@
+{
+ "items": [
+  {
+   "name": "b_little_beacon",
+   "width": 24
+  },
+  {
+   "name": "b_bright_beacon",
+   "width": 24
+  },
+  {
+   "name": "b_harbour_beacon",
+   "width": 24
+  },
+  {
+   "name": "b_starlit_beacon",
+   "width": 24
+  },
+  {
+   "name": "b_guiding_light",
+   "width": 24
+  },
+  {
+   "name": "b_fin_finder",
+   "width": 24
+  },
+  {
+   "name": "b_reef_regular",
+   "width": 24
+  },
+  {
+   "name": "b_shoal_scholar",
+   "width": 24
+  },
+  {
+   "name": "b_every_fin_friend",
+   "width": 24
+  },
+  {
+   "name": "b_warm_welcome",
+   "width": 24
+  },
+  {
+   "name": "b_heartfelt_home",
+   "width": 24
+  },
+  {
+   "name": "b_town_favourite",
+   "width": 24
+  },
+  {
+   "name": "b_pawshake",
+   "width": 24
+  },
+  {
+   "name": "b_cuddle_circle",
+   "width": 24
+  },
+  {
+   "name": "b_full_nest",
+   "width": 24
+  },
+  {
+   "name": "b_week_of_waves",
+   "width": 24
+  },
+  {
+   "name": "b_moonlong_mornings",
+   "width": 24
+  },
+  {
+   "name": "b_always_ashore",
+   "width": 24
+  },
+  {
+   "name": "b_year_at_the_pier",
+   "width": 24
+  },
+  {
+   "name": "b_nest_nudger",
+   "width": 24
+  }
+ ]
+}
