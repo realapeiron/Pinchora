@@ -77,7 +77,9 @@ channel when the bot starts is only noticed once their state changes.
 | `/inventory`, `/gift user` | What you own, and sending furniture to friends |
 | `/stall sell\|view\|manage` | Your own player shop (8 listings, 5% market fee) |
 | `/plaza view\|donate\|edit` | The server's shared plaza: members donate furniture, managers arrange it |
-| `/pet adopt\|view\|capsule\|list\|rename` | Pets with needs that drift over time; feed, play, bathe; 42 species |
+| `/pet adopt\|view\|capsule\|rename` | Pets with needs that drift over time; feed, play, bathe, walk (a walk finds shells, more at a higher level); 42 species. Every care action, walk and trip earns XP: levels 1-30, a bar on the pet card, level-ups (and the trips they open) announced in the reply. A pet whose hunger, fun and hygiene all sit at zero for 24 hours falls asleep: its card shows it asleep, it earns no XP and cannot be looked after or sent away until **Wake up** (one free a day, else 75 shells). Never permanent, never lost. Unknown button actions answer with an error instead of bathing the pet |
+| `/pet list` | The nursery: one card with every pet in a grid (portrait, name, level and XP bar, the four needs as icons, a star on the active pet, ASLEEP / AWAY / BACK! badges), 8 to a page, with a menu that opens one pet's card (care buttons, **Make active**, a way back to its page) |
+| `/pet trip go destination [pet]`, `/pet trip claim` | Field trips: send a pet (default: your active one) for 1, 4 or 8 hours to one of 8 cosy places from `content/pet_trips.json` (a place opens at a pet level, 1 to 26; the card's **Trip** button lists them). The pet leaves the house, its needs wait for it and it cannot be looked after meanwhile. Back, **Claim souvenir** (or `/pet trip claim`, which collects every pet that is home and otherwise says who is still away) pays shells, XP and a short story, and sometimes a free-to-earn furniture piece (`reward` items only, weighted by rarity, never shop stock). Higher levels find more shells and rarer pieces. A trip is a stored end time, so it survives restarts, and a claim pays exactly once |
 | `/fish` | Cast, wait for the bite, press **Reel!** in time; 72 catches for the fish book |
 | `/quests` | Three daily quests; clear all three for pearls |
 | `/duel tictactoe user` | Button tic-tac-toe; the winner earns shells |
@@ -97,7 +99,7 @@ every pod ends games whose clock ran out every 10 seconds). Without a wager the 
 (connect four 25, rock paper scissors 15, hangman 15, wordle 10 and up to 45 for the daily, trivia 8 to 18
 by difficulty) with a daily limit per player and game.
 
-Game content (furniture, rooms, pets, fish, looks, card backgrounds, badges, titles, trivia, hangman words and
+Game content (furniture, rooms, pets, pet trips, fish, looks, card backgrounds, badges, titles, trivia, hangman words and
 the wordle lists) lives in
 `content/*.json` (`python3 content/check.py` validates it); see
 [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md). Sprites are drawn by GPT and imported with

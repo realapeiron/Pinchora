@@ -3,8 +3,17 @@ use std::fmt::Write;
 use super::{PIXEL, SANS, text};
 use crate::{
     Theme,
-    svg::{HEART, STAR, background, data_uri_png, escape, panel, segment_bar, sprite, truncate},
+    svg::{HEART, STAR, background, data_uri_png, escape, panel, plate, segment_bar, sprite, truncate},
 };
+
+/// Whether a pet is up and about, asleep, away on a trip, or back with a souvenir to claim.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PetStatus {
+    Awake,
+    Asleep,
+    Away,
+    Back,
+}
 
 /// 860×420 pet status card.
 pub struct PetCard {
@@ -18,11 +27,17 @@ pub struct PetCard {
     pub rarity_color: u32,
     pub level: i32,
     pub xp: i32,
+    /// XP to the next level; 0 for a pet at the top level.
     pub xp_needed: i32,
     /// hunger, fun, energy, hygiene (0..=100).
     pub needs: [i16; 4],
     pub mood: String,
     pub personality: String,
+    pub status: PetStatus,
+    /// The trip's destination, for a pet that is away or just back.
+    pub place: String,
+    /// When an away pet is back, e.g. `in 2 h 5 min`.
+    pub back: String,
     pub theme: Theme,
 }
 
@@ -40,17 +55,40 @@ impl PetCard {
         background(&mut s, w, h, &t.bg_top, &t.bg_bottom);
         let frame = format!("#{:06x}", self.rarity_color);
         panel(&mut s, 32.0, 32.0, 300.0, 356.0, 8.0, &t.panel, &frame);
+        // A sleeping pet is a little faded, a pet on a trip is only a ghost of itself.
+        let opacity = match self.status {
+            PetStatus::Awake | PetStatus::Back => 1.0,
+            PetStatus::Asleep => 0.55,
+            PetStatus::Away => 0.18,
+        };
         let _ = write!(
             s,
-            r##"<ellipse cx="182" cy="{}" rx="{}" ry="10" fill="#000000" fill-opacity="0.3"/><image x="{}" y="{}" width="{}" height="{}" href="{}"/>"##,
+            r##"<ellipse cx="182" cy="{}" rx="{}" ry="10" fill="#000000" fill-opacity="{}"/><image x="{}" y="{}" width="{}" height="{}" opacity="{opacity}" href="{}"/>"##,
             300.0,
             (self.sprite_w as f32 / 2.5).max(30.0),
+            0.3 * opacity,
             182.0 - self.sprite_w as f32 / 2.0,
             300.0 - self.sprite_h as f32,
             self.sprite_w,
             self.sprite_h,
             data_uri_png(&self.sprite_png)
         );
+        match self.status {
+            PetStatus::Asleep => {
+                // Zs rising in the corner of the panel, bigger as they climb.
+                for (n, size) in [20.0, 28.0, 38.0].into_iter().enumerate() {
+                    let (x, y) = (256.0 + n as f32 * 18.0, 124.0 - [0.0, 26.0, 54.0][n]);
+                    text(&mut s, x, y, size, PIXEL, false, "#b8c4ff", "start", "Z");
+                }
+            }
+            PetStatus::Away => {
+                plate(&mut s, 52.0, 148.0, 260.0, 80.0, 0.7);
+                text(&mut s, 182.0, 180.0, 24.0, PIXEL, false, &t.gold, "middle", "ON A TRIP");
+                let place = escape(&truncate(&self.place, 26));
+                text(&mut s, 182.0, 212.0, 15.0, SANS, true, &t.ink, "middle", &place);
+            }
+            PetStatus::Awake | PetStatus::Back => {}
+        }
         text(
             &mut s,
             182.0,
@@ -100,7 +138,12 @@ impl PetCard {
             &self.level.to_string(),
         );
         sprite(&mut s, STAR, 486.0, 136.0, 3.4, &t.gold, "#fff7d6");
-        let xp = format!("{} / {} XP", self.xp, self.xp_needed);
+        let maxed = self.xp_needed <= 0;
+        let xp = match (maxed, self.status) {
+            (true, _) => "MAX LEVEL".to_owned(),
+            (false, PetStatus::Asleep) => "NO XP WHILE ASLEEP".to_owned(),
+            _ => format!("{} / {} XP", self.xp, self.xp_needed),
+        };
         text(&mut s, 828.0, 152.0, 14.0, PIXEL, false, &t.ink, "end", &xp);
         segment_bar(
             &mut s,
@@ -108,7 +151,11 @@ impl PetCard {
             164.0,
             464.0,
             28.0,
-            self.xp as f32 / self.xp_needed.max(1) as f32,
+            if maxed {
+                1.0
+            } else {
+                self.xp as f32 / self.xp_needed.max(1) as f32
+            },
             16,
             &t.gold,
             "#1f2a57",
@@ -144,6 +191,12 @@ impl PetCard {
             );
         }
         sprite(&mut s, HEART, 364.0, 380.0, 3.4, &t.heart, "#ffc2cf");
+        let line = match self.status {
+            PetStatus::Awake => format!("FEELING {}", self.mood.to_uppercase()),
+            PetStatus::Asleep => "FAST ASLEEP, WAKE IT UP".to_owned(),
+            PetStatus::Away => format!("BACK {}", self.back.to_uppercase()),
+            PetStatus::Back => "BACK HOME, SOUVENIR WAITING".to_owned(),
+        };
         text(
             &mut s,
             396.0,
@@ -153,7 +206,7 @@ impl PetCard {
             false,
             &t.ink,
             "start",
-            &format!("FEELING {}", escape(&self.mood.to_uppercase())),
+            &escape(&line),
         );
         s.push_str("</svg>");
         s

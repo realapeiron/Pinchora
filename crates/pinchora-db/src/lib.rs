@@ -31,7 +31,7 @@ pub use house::{
 };
 pub use members::{LeaderboardRow, MemberRank, XpGain};
 pub use panels::{MAX_PANEL_ROLES, PanelRoleRow, PanelRow};
-pub use pets::PetRow;
+pub use pets::{PetRow, TripClaim, TripPayout, Wake};
 pub use rewards::{LevelRoleRow, MAX_LEVEL_ROLES, MAX_STORE_ITEMS, StoreBuy, StoreItem};
 pub use shop::{BuyOutcome, Currency, MarketRow, VisitOutcome};
 pub use showcase::{FishBookRow, HousePreview};

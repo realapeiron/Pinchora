@@ -1,9 +1,9 @@
 use std::str::Split;
 
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use pinchora_db::{
-    HouseRow, NewRoom, PlaceOutcome, PlacementRow, Refusal, RestoreOutcome, RoomChange, RoomRow, UpgradeOutcome,
-    VisitOutcome,
+    HouseRow, NewRoom, PetRow, PlaceOutcome, PlacementRow, Refusal, RestoreOutcome, RoomChange, RoomRow,
+    UpgradeOutcome, VisitOutcome,
 };
 use pinchora_game::{
     Content, Layer,
@@ -268,6 +268,14 @@ pub(crate) fn room_title(content: &Content, room: &RoomRow) -> String {
         .map_or_else(|| room.room_type.clone(), |r| r.name.clone())
 }
 
+/// The species of the owner's pets that stand in the house: the active one first, up to
+/// [`DAYCARE`], and none that is away on a field trip.
+fn home_pets(mut owned: Vec<PetRow>, now: DateTime<Utc>) -> Vec<String> {
+    owned.retain(|p| !p.is_away(now));
+    owned.sort_by_key(|p| !p.active);
+    owned.into_iter().take(DAYCARE).map(|p| p.species).collect()
+}
+
 /// Read-only room card with ◀ ▶ room buttons (`hv:<owner>:<room>`).
 pub(crate) async fn room_card(
     cx: &Cx,
@@ -290,12 +298,11 @@ pub(crate) async fn room_card(
     let mut characters: Vec<Character> = Vec::new();
     // The owner's pets live here (up to DAYCARE, the active one first); a guest brings only
     // their active pet. A guest who is the owner is only there once.
-    let mut owned = cx.app.db.pets(owner_id).await?;
-    owned.sort_by_key(|p| !p.active);
-    pets.extend(owned.into_iter().take(DAYCARE).map(|p| p.species));
+    let now = cx.app.now();
+    pets.extend(home_pets(cx.app.db.pets(owner_id).await?, now));
     for who in std::iter::once(owner_id).chain(guest.filter(|g| *g != owner_id)) {
         if who != owner_id
-            && let Some(pet) = cx.app.db.active_pet(who).await?
+            && let Some(pet) = cx.app.db.active_pet(who).await?.filter(|p| !p.is_away(now))
         {
             pets.push(pet.species);
         }
@@ -1594,6 +1601,40 @@ pub(crate) async fn on_upgrade(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Re
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn pet(id: i64, species: &str, active: bool, away_until: Option<DateTime<Utc>>) -> PetRow {
+        PetRow {
+            id,
+            owner_id: 1,
+            species: species.to_owned(),
+            name: species.to_owned(),
+            level: 1,
+            xp: 0,
+            hunger: 80,
+            fun: 80,
+            energy: 80,
+            hygiene: 80,
+            needs_at: Utc::now(),
+            active,
+            trip_dest: away_until.map(|_| "tidepool_meadow".to_owned()),
+            trip_ends_at: away_until,
+        }
+    }
+
+    #[test]
+    fn a_pet_on_a_field_trip_is_not_at_home() {
+        let now = Utc::now();
+        let hour = chrono::Duration::hours(1);
+        let pets = vec![
+            pet(1, "crab", false, None),
+            pet(2, "guppy", true, None),
+            pet(3, "otter", false, Some(now + hour)),
+            // Back from its trip (the souvenir is still unclaimed): home again.
+            pet(4, "jelly", false, Some(now - hour)),
+        ];
+        assert_eq!(home_pets(pets, now), ["guppy", "crab", "jelly"]);
+        assert!(home_pets(Vec::new(), now).is_empty());
+    }
 
     #[test]
     fn arrows_follow_the_isometric_screen() {

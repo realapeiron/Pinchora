@@ -2,6 +2,7 @@
 
 use pinchora_db::{
     CustomizeBuy, DailyOutcome, Db, LogKind, MAX_BADGES, MAX_PANEL_ROLES, PlayerStats, RepOutcome, TransferOutcome,
+    TripClaim, TripPayout, Wake,
 };
 
 async fn db() -> Option<Db> {
@@ -1293,4 +1294,172 @@ async fn contest_week_closes_once() {
     assert_eq!(result.winner_ids, vec![a as i64, b as i64]);
     assert_eq!(result.winner_votes, vec![2, 1]);
     assert_eq!(result.entries, 2);
+}
+
+#[tokio::test]
+async fn a_trip_pays_once_and_freezes_the_pets_needs() {
+    let Some(db) = db().await else { return };
+    let [owner, other] = ids();
+    let pet = db.adopt(owner, "crumbclaw_crab", "Pip").await.unwrap();
+    assert!(!pet.is_away(chrono::Utc::now()) && !pet.has_souvenir(chrono::Utc::now()));
+    let now = chrono::Utc::now();
+    let back = now + chrono::Duration::hours(4);
+
+    // Only the owner can send it, and only once at a time.
+    assert!(
+        !db.start_trip(other, pet.id, "tidepool_meadow", [10, 20, 30, 40], back)
+            .await
+            .unwrap()
+    );
+    assert!(
+        db.start_trip(owner, pet.id, "tidepool_meadow", [10, 20, 30, 40], back)
+            .await
+            .unwrap()
+    );
+    assert!(
+        !db.start_trip(owner, pet.id, "driftwood_cove", [1, 1, 1, 1], back)
+            .await
+            .unwrap()
+    );
+    let away = db.pets(owner).await.unwrap().remove(0);
+    assert!(away.is_away(now) && !away.has_souvenir(now));
+    assert_eq!(away.trip_dest.as_deref(), Some("tidepool_meadow"));
+    assert_eq!(
+        (away.hunger, away.fun, away.energy, away.hygiene, away.needs_at),
+        (10, 20, 30, 40, back),
+        "needs are frozen until the pet is back"
+    );
+
+    // Too early: nothing is paid, the trip stays.
+    let early = db
+        .claim_trip(owner, pet.id, now, |_, _| panic!("nothing to pay yet"))
+        .await
+        .unwrap();
+    assert!(matches!(early, TripClaim::Away { ref trip, ends_at } if trip == "tidepool_meadow" && ends_at == back));
+    // Somebody else's pet is nothing to claim.
+    let theirs = db
+        .claim_trip(other, pet.id, back, |_, _| panic!("not theirs"))
+        .await
+        .unwrap();
+    assert!(matches!(theirs, TripClaim::Nothing));
+
+    // Two claims race at the end of the trip; the souvenir is paid once.
+    let after = back + chrono::Duration::minutes(1);
+    assert!(db.pets(owner).await.unwrap()[0].has_souvenir(after));
+    let pay = |_: &pinchora_db::PetRow, trip: &str| {
+        assert_eq!(trip, "tidepool_meadow");
+        TripPayout {
+            shells: 120,
+            item: Some("chair".to_owned()),
+            level: 3,
+            xp: 17,
+        }
+    };
+    let (one, two) = tokio::join!(
+        db.claim_trip(owner, pet.id, after, pay),
+        db.claim_trip(owner, pet.id, after, pay),
+    );
+    let results = [one.unwrap(), two.unwrap()];
+    let paid = results
+        .iter()
+        .filter(|r| matches!(r, TripClaim::Claimed { .. }))
+        .count();
+    assert_eq!(paid, 1, "{results:?}");
+    assert_eq!(db.user(owner).await.unwrap().credits, 120);
+    assert!(db.owns(owner, "chair").await.unwrap());
+    let home = db.pets(owner).await.unwrap().remove(0);
+    assert_eq!((home.level, home.xp, home.trip_dest.clone()), (3, 17, None));
+    assert!(!home.is_away(after) && !home.has_souvenir(after));
+    let again = db.claim_trip(owner, pet.id, after, pay).await.unwrap();
+    assert!(matches!(again, TripClaim::Nothing));
+    assert_eq!(
+        db.user(owner).await.unwrap().credits,
+        120,
+        "a repeat claim pays nothing"
+    );
+
+    // Home again, it can go out again.
+    assert!(
+        db.start_trip(owner, pet.id, "driftwood_cove", [5, 5, 5, 5], after)
+            .await
+            .unwrap()
+    );
+}
+
+#[tokio::test]
+async fn waking_a_pet_is_free_once_a_day_and_costs_a_fee_after_that() {
+    let Some(db) = db().await else { return };
+    let [owner] = ids();
+    let (pet, second) = (
+        db.adopt(owner, "crumbclaw_crab", "Pip").await.unwrap(),
+        db.adopt(owner, "ribbonfin_guppy", "Bub").await.unwrap(),
+    );
+    let long_ago = chrono::Utc::now() - chrono::Duration::days(5);
+    for p in [&pet, &second] {
+        db.save_pet(owner, p.id, [0, 0, 100, 0], 1, 0, long_ago).await.unwrap();
+    }
+    let now = chrono::Utc::now();
+    assert!(db.free_wake_ready(owner, 20_000).await.unwrap());
+
+    // A stale read changes nothing and charges nothing.
+    let stale = db
+        .wake_pet(owner, pet.id, now, [50, 50, 100, 50], now, 20_000, 75)
+        .await
+        .unwrap();
+    assert_eq!(stale, Wake::Stale);
+    assert!(db.free_wake_ready(owner, 20_000).await.unwrap());
+
+    // The day's first wake-up is free.
+    let first = db
+        .wake_pet(owner, pet.id, long_ago, [50, 50, 100, 50], now, 20_000, 75)
+        .await
+        .unwrap();
+    assert_eq!(first, Wake::Woke { free: true, balance: 0 });
+    assert!(!db.free_wake_ready(owner, 20_000).await.unwrap());
+    assert!(db.free_wake_ready(owner, 20_001).await.unwrap());
+    let woke = db
+        .pets(owner)
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|p| p.id == pet.id)
+        .unwrap();
+    assert_eq!(
+        (woke.hunger, woke.fun, woke.energy, woke.hygiene, woke.needs_at),
+        (50, 50, 100, 50, now)
+    );
+    // Waking it twice is stale the second time.
+    let twice = db
+        .wake_pet(owner, pet.id, long_ago, [50, 50, 100, 50], now, 20_001, 75)
+        .await
+        .unwrap();
+    assert_eq!(twice, Wake::Stale);
+
+    // The second pet the same day costs the fee, which a broke player cannot pay.
+    let broke = db
+        .wake_pet(owner, second.id, long_ago, [50, 50, 100, 50], now, 20_000, 75)
+        .await
+        .unwrap();
+    assert_eq!(broke, Wake::Poor { balance: 0 });
+    let still = db
+        .pets(owner)
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|p| p.id == second.id)
+        .unwrap();
+    assert_eq!(still.needs_at, long_ago, "a refused wake-up changes nothing");
+    db.earn_shells(owner, 100, "test").await.unwrap();
+    let paid = db
+        .wake_pet(owner, second.id, long_ago, [50, 50, 100, 50], now, 20_000, 75)
+        .await
+        .unwrap();
+    assert_eq!(
+        paid,
+        Wake::Woke {
+            free: false,
+            balance: 25
+        }
+    );
+    assert_eq!(db.user(owner).await.unwrap().credits, 25);
 }
