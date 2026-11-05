@@ -339,4 +339,71 @@ mod tests {
         assert!(bare.starts_with(b"\x89PNG") && people.starts_with(b"\x89PNG"));
         assert_ne!(bare, people, "the characters are in the picture");
     }
+
+    /// Renders a furnished room with real catalog items to check the art in place:
+    /// `cargo test -p pinchora-commands preview_room -- --ignored`, then open
+    /// `target/room-preview.png`.
+    #[test]
+    #[ignore]
+    fn preview_room() {
+        let content = Content::get();
+        let items: [(&str, i16, i16, bool); 21] = [
+            ("pebblepane_window__sand", 1, 0, false),
+            ("hemhill_painting__cream", 4, 0, false),
+            ("pebblehour_clock__navy", 7, 0, false),
+            ("dunearc_window__coral", 2, 0, true),
+            ("stillframe_door__cream", 6, 1, true),
+            ("stillpanel_wardrobe__cream", 0, 0, false),
+            ("stillstep_nightstand__cream", 6, 0, false),
+            ("pebblecap_lamp__sand", 6, 0, false),
+            ("patchpillow_bed__cream", 7, 0, false),
+            ("humskein_upright__plum", 0, 3, true),
+            ("rivetgrid_rug__sand", 2, 4, false),
+            ("crumbcorner_table__moss", 3, 4, false),
+            ("pagepair_books__moss", 3, 4, false),
+            ("sprigcup_fern__moss", 4, 5, false),
+            ("plainwhorl_chair__sand", 5, 4, false),
+            ("plainwhorl_chair__sand", 3, 6, true),
+            ("crumbrail_bench__sand", 6, 7, false),
+            ("stillstem_rubber_tree__cream", 0, 7, false),
+            ("rivetarm_floor_lamp__charcoal", 9, 4, false),
+            ("blinkslot_cabinet__plum", 8, 7, false),
+            ("duneline_runner__coral", 6, 3, false),
+        ];
+        let placements = items
+            .iter()
+            .enumerate()
+            .map(|(i, &(item_id, x, y, flipped))| PlacementRow {
+                id: i as i64,
+                room_idx: 0,
+                item_id: item_id.to_owned(),
+                x,
+                y,
+                flipped,
+            })
+            .collect();
+        let view = RoomView {
+            width: 10,
+            depth: 9,
+            room: RoomRow {
+                idx: 0,
+                room_type: "living".to_owned(),
+                wallpaper: content.surfaces.wallpapers[0].id.clone(),
+                floor: content.surfaces.floors[0].id.clone(),
+            },
+            placements,
+            cursor: None,
+            selected: None,
+            edit: false,
+            pets: vec![content.pets[0].id.clone()],
+            characters: vec![character(content, 2, 1)],
+            seed: 3,
+        };
+        let png = render_view(&Sprites::default(), &view).expect("renders");
+        std::fs::write(
+            concat!(env!("CARGO_MANIFEST_DIR"), "/../../target/room-preview.png"),
+            png,
+        )
+        .unwrap();
+    }
 }

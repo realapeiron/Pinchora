@@ -64,7 +64,7 @@ Every movement is written to `credit_ledger` (pearls get their own ledger).
 
 ## Furniture catalog
 
-- ~250 **base designs** × palette **variants** (coral, mint, navy, cream, plum, gold…) ⇒ 1,000+
+- 650 **base designs** × palette **variants** (coral, mint, navy, cream, plum, gold…) ⇒ 1,861
   items. A variant is the base sprite with a palette swap, so one drawing yields 3–5 items.
 - Fields (`content/furniture.json`): `id`, `name`, `category`, `layer`, `footprint`, `rarity`,
   `price`, `currency`, `set`, `tags`, `variants`, `availability`, `description`.

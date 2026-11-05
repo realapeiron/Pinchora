@@ -1,11 +1,16 @@
 # Pinchora
 
-A cozy pixel world for Discord servers: levels, shells, pixel-art profile cards, and soon your
-own house, pets and mini games. Written in Rust and built to run sharded on Kubernetes.
+A cozy pixel world for Discord servers: an isometric house you build and furnish from 1,800+
+items, a pixel character, pets, fishing, a shared server plaza, levels and pixel-art cards.
+Written in Rust and built to run sharded on Kubernetes.
 
 ![A furnished room](docs/images/room.png)
 
 ![Profile card](docs/images/profile.png)
+
+![Character creator](docs/images/character.png)
+
+![Leaderboard](docs/images/leaderboard.png)
 
 ## What works today
 
@@ -35,7 +40,7 @@ Chatting earns 15–25 XP per minute per server. New members get a welcome card 
 | `/house decorate [room]` | 44 wallpapers and 44 floors, bought on first use, swapped freely |
 | `/house upgrade` | Six tiers from Tide Pool Shack to Sunken Palace; furniture stays put |
 | `/shop market` | Eight pieces every hour with stock shared by every player |
-| `/shop catalog [category]` | 165 permanent designs in 17 aisles; 1,175 items with colour variants |
+| `/shop catalog [category]` | 358 permanent designs in 23 aisles; 650 designs and 1,861 items with colour variants in all |
 | `/inventory`, `/gift user` | What you own, and sending furniture to friends |
 | `/stall sell\|view\|manage` | Your own player shop (8 listings, 5% market fee) |
 | `/plaza view\|donate\|edit` | The server's shared plaza: members donate furniture, managers arrange it |

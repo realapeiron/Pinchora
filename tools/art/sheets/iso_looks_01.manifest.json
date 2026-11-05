@@ -1,46 +1,46 @@
 {
  "palette": "avatar",
- "uniform_height": 64,
+ "uniform_height": 100,
  "items": [
   {
    "name": "a_tidewalker",
    "width": 0,
-   "height": 64
+   "height": 100
   },
   {
    "name": "a_bunhaven",
    "width": 0,
-   "height": 64
+   "height": 100
   },
   {
    "name": "a_longreef",
    "width": 0,
-   "height": 64
+   "height": 100
   },
   {
    "name": "a_curlcove",
    "width": 0,
-   "height": 64
+   "height": 100
   },
   {
    "name": "a_pigtailpip",
    "width": 0,
-   "height": 64
+   "height": 100
   },
   {
    "name": "a_sidesweep",
    "width": 0,
-   "height": 64
+   "height": 100
   },
   {
    "name": "a_braidline",
    "width": 0,
-   "height": 64
+   "height": 100
   },
   {
    "name": "a_spikeshore",
    "width": 0,
-   "height": 64
+   "height": 100
   }
  ]
 }
