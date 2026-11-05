@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    hash::{Hash, Hasher},
     io::Cursor as IoCursor,
     sync::{Arc, Mutex},
 };
@@ -12,7 +13,7 @@ use pinchora_game::{
     house::{self, Placed},
 };
 use pinchora_render::{
-    Backdrop, BadgeIcon,
+    Backdrop, BadgeIcon, ShowcaseSlot,
     character::{placeholder_character, recolor_character},
     encode_png,
     room::{Cursor, RoomScene, SceneItem, SceneLayer, render_room},
@@ -24,6 +25,9 @@ const BADGE_LARGE_SCALE: u32 = 4;
 
 /// Recoloured characters kept at once; players can pick far more combinations than this.
 const CHARACTER_CACHE: usize = 512;
+
+/// Showcase tiles kept at once: fish, pets, furniture and house thumbnails.
+const TILE_CACHE: usize = 512;
 
 /// A sprite scaled up whole and encoded once, ready to go into a card.
 pub struct ScaledArt {
@@ -40,6 +44,9 @@ pub struct Sprites {
     scaled: Mutex<HashMap<String, Option<Arc<ScaledArt>>>>,
     /// Characters by saved code; emptied when it outgrows [`CHARACTER_CACHE`].
     characters: Mutex<HashMap<String, Arc<RgbaImage>>>,
+    /// The art of profile showcase tiles by what they show (`fish:<id>`, `house:<hash of the room>`);
+    /// emptied when it outgrows [`TILE_CACHE`].
+    tiles: Mutex<HashMap<String, Arc<ScaledArt>>>,
 }
 
 impl Default for Sprites {
@@ -49,6 +56,7 @@ impl Default for Sprites {
             made: Mutex::new(HashMap::new()),
             scaled: Mutex::new(HashMap::new()),
             characters: Mutex::new(HashMap::new()),
+            tiles: Mutex::new(HashMap::new()),
         }
     }
 }
@@ -116,6 +124,56 @@ impl Sprites {
         }
         cache.insert(code, sprite.clone());
         sprite
+    }
+
+    /// The tile art kept under `key`, made by `make` the first time. A failure is not kept.
+    fn tile(&self, key: String, make: impl FnOnce() -> anyhow::Result<(Vec<u8>, u32, u32)>) -> Option<Arc<ScaledArt>> {
+        if let Some(art) = self.tiles.lock().expect("tile cache").get(&key) {
+            return Some(art.clone());
+        }
+        let (png, w, h) = make().ok()?;
+        let art = Arc::new(ScaledArt { png, w, h });
+        let mut cache = self.tiles.lock().expect("tile cache");
+        if cache.len() >= TILE_CACHE {
+            cache.clear();
+        }
+        cache.insert(key, art.clone());
+        Some(art)
+    }
+
+    /// A fish's picture for a showcase tile.
+    pub fn showcase_fish(&self, id: &str) -> Option<Arc<ScaledArt>> {
+        self.tile(format!("fish:{id}"), || ShowcaseSlot::fit_sprite(&self.fish(id)))
+    }
+
+    /// A pet species' picture for a showcase tile.
+    pub fn showcase_pet(&self, species: &str) -> Option<Arc<ScaledArt>> {
+        self.tile(format!("pet:{species}"), || {
+            ShowcaseSlot::fit_sprite(&self.pet(species))
+        })
+    }
+
+    /// A furniture item's picture for a showcase tile, in the colour of its variant.
+    pub fn showcase_item(&self, content: &Content, item_id: &str) -> Option<Arc<ScaledArt>> {
+        let sprite = self.item(content, item_id)?;
+        self.tile(format!("item:{item_id}"), || ShowcaseSlot::fit_sprite(&sprite))
+    }
+
+    /// A thumbnail of the room as `view` draws it, without pets or characters. Rooms are kept by
+    /// what is in them, so a profile is not drawn again until its owner changes something.
+    pub fn house_thumbnail(&self, view: &RoomView) -> Option<Arc<ScaledArt>> {
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        (view.width, view.depth, &view.room.wallpaper, &view.room.floor).hash(&mut hasher);
+        let mut placements: Vec<_> = view
+            .placements
+            .iter()
+            .map(|p| (p.id, &p.item_id, p.x, p.y, p.flipped))
+            .collect();
+        placements.sort();
+        placements.hash(&mut hasher);
+        self.tile(format!("house:{:016x}", hasher.finish()), || {
+            ShowcaseSlot::fit_house(&room_image(self, view, 1))
+        })
     }
 
     /// The atlas sprite `name` scaled `factor`×, or `None` while it is not drawn yet.
@@ -237,6 +295,11 @@ fn free_tiles(content: &Content, view: &RoomView) -> Vec<(u32, u32)> {
 }
 
 pub fn render_view(sprites: &Sprites, view: &RoomView) -> anyhow::Result<Vec<u8>> {
+    pinchora_render::encode_png(&room_image(sprites, view, 2))
+}
+
+/// The room as a picture, each art pixel `scale` pixels wide.
+fn room_image(sprites: &Sprites, view: &RoomView, scale: u32) -> RgbaImage {
     let content = Content::get();
     let placed = placed(view);
     let mut items: Vec<SceneItem> = view
@@ -300,9 +363,9 @@ pub fn render_view(sprites: &Sprites, view: &RoomView) -> anyhow::Result<Vec<u8>
         items,
         cursor: view.cursor,
         grid: view.edit,
-        scale: 2,
+        scale,
     };
-    pinchora_render::encode_png(&render_room(&scene))
+    render_room(&scene)
 }
 
 /// A sprite scaled up by a whole `factor` with nearest-neighbour, as PNG with its new size.
@@ -406,6 +469,72 @@ mod tests {
         .expect("renders");
         assert!(bare.starts_with(b"\x89PNG") && people.starts_with(b"\x89PNG"));
         assert_ne!(bare, people, "the characters are in the picture");
+    }
+
+    #[test]
+    fn showcase_art_is_fitted_and_kept_and_a_room_is_drawn_again_only_when_it_changes() {
+        let content = Content::get();
+        let sprites = Sprites::default();
+        let fish = sprites.showcase_fish(&content.fish[0].id).expect("a fish");
+        let (box_w, box_h) = ShowcaseSlot::ART_BOX;
+        assert!(fish.w <= box_w && fish.h <= box_h && fish.png.starts_with(b"\x89PNG"));
+        assert!(Arc::ptr_eq(
+            &fish,
+            &sprites.showcase_fish(&content.fish[0].id).expect("kept")
+        ));
+        let pet = sprites.showcase_pet(&content.pets[0].id).expect("a pet");
+        assert!(pet.w <= box_w && pet.h <= box_h);
+        let sofa = content.items().find(|i| i.base.id.contains("sofa")).expect("a sofa");
+        let art = sprites.showcase_item(content, &sofa.id()).expect("a sofa's picture");
+        assert!(
+            art.w <= box_w && art.h <= box_h,
+            "a big sofa is shrunk to the box: {}x{}",
+            art.w,
+            art.h
+        );
+        assert!(sprites.showcase_item(content, "no_such_item").is_none());
+
+        let room = |placements: Vec<PlacementRow>| RoomView {
+            width: 8,
+            depth: 8,
+            room: RoomRow {
+                idx: 0,
+                room_type: "living".to_owned(),
+                wallpaper: content.surfaces.wallpapers[0].id.clone(),
+                floor: content.surfaces.floors[0].id.clone(),
+            },
+            placements,
+            cursor: None,
+            selected: None,
+            edit: false,
+            pets: vec![content.pets[0].id.clone()],
+            characters: Vec::new(),
+            seed: 1,
+        };
+        let placement = |x: i16| PlacementRow {
+            id: 1,
+            room_idx: 0,
+            item_id: sofa.id(),
+            x,
+            y: 2,
+            flipped: false,
+        };
+        let first = sprites.house_thumbnail(&room(vec![placement(1)])).expect("a thumbnail");
+        assert_eq!((first.w, first.h), ShowcaseSlot::HOUSE_BOX);
+        let again = sprites.house_thumbnail(&room(vec![placement(1)])).expect("kept");
+        assert!(Arc::ptr_eq(&first, &again), "the same room is not drawn twice");
+        let mut other_seed = room(vec![placement(1)]);
+        other_seed.seed = 99;
+        other_seed.pets.clear();
+        assert!(
+            Arc::ptr_eq(&first, &sprites.house_thumbnail(&other_seed).expect("kept")),
+            "pets and the hour do not change the thumbnail"
+        );
+        let moved = sprites.house_thumbnail(&room(vec![placement(4)])).expect("a thumbnail");
+        assert!(!Arc::ptr_eq(&first, &moved), "moving a sofa draws the room again");
+        assert_ne!(first.png, moved.png);
+        let empty = sprites.house_thumbnail(&room(Vec::new())).expect("a thumbnail");
+        assert_ne!(first.png, empty.png);
     }
 
     /// Renders a furnished room with real catalog items to check the art in place:

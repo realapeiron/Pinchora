@@ -143,6 +143,22 @@ Every movement is written to `credit_ledger` (pearls get their own ledger).
   `house_of_the_week` that way. The player wears one (`users.title`), picked in `/customize title` (custom
   ids `ti:`), and the profile and rank cards print it under the name. The pick is checked against what
   they have unlocked when they choose it; the cards then show it without re-checking.
+- **Card style** (`/customize style`, custom ids `cs:`): `users.accent` (`#rrggbb`, NULL follows the
+  background, else the reef coral), `users.panel_opacity` (0 light, 1 normal, 2 solid: the veil over a
+  background picture, the plates under loose text, and how see-through the panels are) and `users.frame`
+  (`plain`, `rope`, `coral`, `pearl`, `gold`, `neon`). Frames are procedural SVG, 8 px thick, drawn over the
+  finished card; Coral/Pearl/Gold/Neon need level 10/20/30/40, checked when picked and again when drawn.
+  The profile card lifts its footer 6 px under a frame so the badges clear the band. A typed colour must
+  have 3:1 contrast against the darkest panel colour (`#0b1029`). Hex input is a modal: the first modal in
+  the bot (`Cx::text_modal`, answered in `components::dispatch_modal`, which updates the message the
+  modal came from).
+- **Showcase** (`/customize showcase`, custom ids `sw:`): `users.showcase_fish`, `showcase_pet` (the pet's
+  id), `showcase_item` and `showcase_house`. A pick is checked against what the player has when saved and
+  again when the card is drawn (a pet that left is skipped quietly). The profile card has two row layouts:
+  the classic one (no showcase, byte-for-byte the card before this existed) and a showcase one that
+  shrinks the about-me panel (still three bio lines) and the stat tiles to fit a row of up to four tiles.
+  The house thumbnail draws the first room without pets or characters at native size, scales it to fit
+  and is cached in memory by a hash of the room's look and placements.
 - A purchase is one transaction: the ownership row, the shells and the ledger entry.
 
 ## Fishing (first mini game)

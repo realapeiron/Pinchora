@@ -19,7 +19,10 @@ pub use responder::Responder;
 
 use std::{sync::Arc, time::Instant};
 
-use twilight_model::application::interaction::{Interaction, InteractionData};
+use twilight_model::application::interaction::{
+    Interaction, InteractionData,
+    modal::{ModalInteractionComponent, ModalInteractionData},
+};
 
 /// Runs one interaction to completion. Every path answers the user, errors included.
 pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, responder: Arc<Responder>) {
@@ -44,6 +47,14 @@ pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, res
                 Box::pin(components::dispatch(&cx, &component.custom_id, &component.values)).await,
             )
         }
+        Some(InteractionData::ModalSubmit(modal)) => {
+            let label = modal.custom_id.split(':').next().unwrap_or_default().to_owned();
+            let texts = modal_texts(&modal);
+            (
+                format!("modal:{label}"),
+                Box::pin(components::dispatch_modal(&cx, &modal.custom_id, &texts)).await,
+            )
+        }
         _ => return,
     };
     let outcome = if result.is_ok() { "ok" } else { "error" };
@@ -56,4 +67,19 @@ pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, res
             .reply_ephemeral("Something went wrong on our side. Please try again in a moment.")
             .await;
     }
+}
+
+/// The text boxes of a submitted modal as `(custom_id, value)`, whether they sit in labels or rows.
+fn modal_texts(modal: &ModalInteractionData) -> Vec<(String, String)> {
+    fn collect(component: &ModalInteractionComponent, out: &mut Vec<(String, String)>) {
+        match component {
+            ModalInteractionComponent::TextInput(input) => out.push((input.custom_id.clone(), input.value.clone())),
+            ModalInteractionComponent::Label(label) => collect(&label.component, out),
+            ModalInteractionComponent::ActionRow(row) => row.components.iter().for_each(|c| collect(c, out)),
+            _ => {}
+        }
+    }
+    let mut texts = Vec::new();
+    modal.components.iter().for_each(|c| collect(c, &mut texts));
+    texts
 }

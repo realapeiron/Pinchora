@@ -2,7 +2,10 @@ use std::sync::Arc;
 
 use twilight_model::{
     application::interaction::Interaction,
-    channel::message::{Component, Embed, MessageFlags},
+    channel::message::{
+        Component, Embed, MessageFlags,
+        component::{Label, TextInput, TextInputStyle},
+    },
     guild::Permissions,
     http::{attachment::Attachment, interaction::InteractionResponseData},
     user::User,
@@ -110,6 +113,45 @@ impl Cx {
             flags: ephemeral.then_some(MessageFlags::EPHEMERAL),
             ..Default::default()
         }
+    }
+
+    /// Opens a modal with one single-line text box, filled with `value` when there is one. The
+    /// answer comes back as a modal submit with `custom_id`, and the text under `text`.
+    #[allow(deprecated)] // `TextInput::label` moved to the label around it, but the field must be set
+    pub async fn text_modal(
+        &self,
+        custom_id: &str,
+        title: &str,
+        label: &str,
+        placeholder: &str,
+        value: Option<&str>,
+        max_length: u16,
+    ) -> anyhow::Result<()> {
+        let input = TextInput {
+            custom_id: "text".to_owned(),
+            id: None,
+            label: None,
+            max_length: Some(max_length),
+            min_length: Some(1),
+            placeholder: Some(placeholder.to_owned()),
+            required: Some(true),
+            style: TextInputStyle::Short,
+            value: value.map(str::to_owned),
+        };
+        let components = vec![Component::Label(Label {
+            component: Box::new(Component::TextInput(input)),
+            description: None,
+            id: None,
+            label: label.to_owned(),
+        })];
+        self.responder
+            .modal(InteractionResponseData {
+                custom_id: Some(custom_id.to_owned()),
+                title: Some(title.to_owned()),
+                components: Some(components),
+                ..Default::default()
+            })
+            .await
     }
 
     pub async fn reply_png(&self, filename: &str, png: Vec<u8>) -> anyhow::Result<()> {

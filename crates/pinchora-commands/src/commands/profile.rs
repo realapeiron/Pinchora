@@ -8,7 +8,7 @@ use twilight_model::user::User;
 
 use crate::{
     Cx,
-    commands::customize::{self, Cosmetics},
+    commands::customize::{self, Cosmetics, Showcase},
     game::scene::scaled_png,
     util::resolved_display_name,
 };
@@ -68,14 +68,17 @@ pub(crate) async fn card(
         .and_then(|code| Character::decode(Content::get(), code));
     let sprites = cx.app.sprites.clone();
     let cosmetics = Cosmetics::new(&sprites, background, badges);
-    let theme = customize::theme(row.accent_color, background);
+    let theme = customize::theme(&row, background);
     let title = customize::title_name(&row);
+    let showcase = Showcase::load(&cx.app, user.id.get(), &row).await?;
     cx.app
         .render(move |r| {
             let art = character
                 .map(|c| scaled_png(&sprites.character(&c), ProfileCard::CHARACTER_SCALE))
                 .transpose()?;
             let icons = cosmetics.icons();
+            let showcase_art = showcase.art(&sprites);
+            let slots = Showcase::slots(&showcase_art);
             r.profile_card(&ProfileCard {
                 display_name: &name,
                 title,
@@ -94,6 +97,9 @@ pub(crate) async fn card(
                 character: art.as_ref().map(|(png, w, h)| SpriteArt { png, w: *w, h: *h }),
                 backdrop: cosmetics.backdrop(),
                 badges: &icons,
+                showcase: &slots,
+                // Filled in by whatever puts partners on the card.
+                partner: None,
                 theme,
             })
         })

@@ -1,11 +1,13 @@
 mod badges;
 mod character;
+mod frame;
 mod grid;
 mod leaderboard;
 mod levelup;
 mod pet;
 mod profile;
 mod rank;
+mod showcase;
 mod wallet;
 mod welcome;
 
@@ -17,10 +19,13 @@ pub use levelup::LevelUpCard;
 pub use pet::PetCard;
 pub use profile::ProfileCard;
 pub use rank::{NextRole, RankCard};
+pub use showcase::{ShowcaseKind, ShowcaseSlot};
 pub use wallet::WalletCard;
 pub use welcome::WelcomeCard;
 
 use std::fmt::Write;
+
+pub(crate) use frame::draw_frame;
 
 use crate::svg::{data_uri_png, escape, mix, notched_path, panel};
 
@@ -140,8 +145,9 @@ impl BadgeIcon<'_> {
     }
 }
 
-/// Draws a [`Backdrop`] over the whole card, then a dark scrim that keeps panels and text readable.
-pub(crate) fn backdrop(out: &mut String, w: f32, h: f32, b: &Backdrop<'_>) {
+/// Draws a [`Backdrop`] over the whole card, then a dark scrim of opacity `scrim` that keeps
+/// panels and text readable.
+pub(crate) fn backdrop(out: &mut String, w: f32, h: f32, b: &Backdrop<'_>, scrim: f32) {
     match &b.art {
         Some(art) => {
             let _ = write!(
@@ -161,7 +167,7 @@ pub(crate) fn backdrop(out: &mut String, w: f32, h: f32, b: &Backdrop<'_>) {
     }
     let _ = write!(
         out,
-        r##"<rect width="{w}" height="{h}" fill="#0b1029" fill-opacity="0.25"/>"##
+        r##"<rect width="{w}" height="{h}" fill="#0b1029" fill-opacity="{scrim}"/>"##
     );
 }
 
@@ -205,7 +211,7 @@ mod tests {
     use image::RgbaImage;
 
     use super::*;
-    use crate::{ProfileCard, RankCard, Renderer, Theme, WalletCard, encode_png, placeholder_avatar};
+    use crate::{Frame, Opacity, ProfileCard, RankCard, Renderer, Theme, WalletCard, encode_png, placeholder_avatar};
 
     fn scene() -> Vec<u8> {
         encode_png(&RgbaImage::from_pixel(960, 540, image::Rgba([200, 220, 180, 255]))).expect("encodes")
@@ -239,6 +245,8 @@ mod tests {
             character: None,
             backdrop,
             badges,
+            showcase: &[],
+            partner: None,
             theme: Theme::reef(),
         }
     }
@@ -557,5 +565,214 @@ mod tests {
             (image.width(), image.height()),
             (BadgeCollectionCard::WIDTH, BadgeCollectionCard::height_for(40))
         );
+    }
+
+    fn tile<'a>(kind: ShowcaseKind, png: &'a [u8], name: &'a str) -> ShowcaseSlot<'a> {
+        let (w, h) = if kind == ShowcaseKind::House {
+            ShowcaseSlot::HOUSE_BOX
+        } else {
+            (32, 24)
+        };
+        ShowcaseSlot {
+            kind,
+            art: SpriteArt { png, w, h },
+            name,
+        }
+    }
+
+    #[test]
+    fn a_card_with_nothing_chosen_keeps_its_classic_layout() {
+        // The rows the card has always had: the XP label, the stats, the about-me panel, the total.
+        let svg = profile(None, &[]).to_svg();
+        for classic in [
+            r#"y="424""#,
+            r#"y="318""#,
+            r#"y="362""#,
+            r#"y="170""#,
+            r#"y="200""#,
+            r#"y="512""#,
+        ] {
+            assert!(svg.contains(classic), "{classic}");
+        }
+        assert!(!svg.contains("FURNITURE") && !svg.contains("HOME") && !svg.contains("evenodd"));
+        // Showing nothing and a plain, normal style are the same card.
+        let mut explicit = profile(None, &[]);
+        explicit.theme = Theme::reef().with_style(Opacity::Normal, Frame::Plain);
+        assert_eq!(explicit.to_svg(), svg);
+    }
+
+    #[test]
+    fn a_showcase_squeezes_the_card_to_fit_a_row_of_tiles() {
+        let png = scene();
+        let slots = [
+            tile(ShowcaseKind::Fish, &png, "Amberwink Squidlet"),
+            tile(ShowcaseKind::Pet, &png, "Sir Clicks"),
+            tile(ShowcaseKind::Furniture, &png, "Blushbun Bed (Rose)"),
+            tile(ShowcaseKind::House, &png, "Tide Pool Shack"),
+        ];
+        let mut card = profile(None, &[]);
+        card.showcase = &slots;
+        let svg = card.to_svg();
+        for caption in ["FISH", "PET", "FURNITURE", "HOME"] {
+            assert!(svg.contains(&format!(">{caption}</text>")), "{caption}");
+        }
+        assert!(svg.contains("Tide Pool Shack") && svg.contains("Sir Clicks"));
+        assert!(!svg.contains(r#"y="424""#), "the XP bar moved down to make room");
+        assert!(svg.contains(r#"y="383""#), "the stats row sits under the showcase");
+        assert!(svg.contains(r#"y="432""#));
+        // Four tiles are all there is room for.
+        let mut five: Vec<_> = slots.iter().map(|s| tile(s.kind, &png, s.name)).collect();
+        five.push(tile(ShowcaseKind::Fish, &png, "Fifth"));
+        card.showcase = &five;
+        assert!(!card.to_svg().contains("Fifth"));
+    }
+
+    #[test]
+    fn the_footer_stays_clear_of_a_frame() {
+        // The frame's band is 8 px; the lowest thing on the card is the badge plates.
+        let band = 540.0 - super::frame::BAND;
+        for (rows, what) in [
+            (super::profile::Rows::classic(6.0), "classic with a frame"),
+            (super::profile::Rows::showcase(), "showcase"),
+        ] {
+            assert!(rows.foot_y + BadgeIcon::PLATE <= band, "{what}: {}", rows.foot_y);
+            assert!(rows.plate.0 + rows.plate.1 <= band, "{what}: the plate");
+        }
+        // And the classic rows are the old ones when there is no frame.
+        assert_eq!(super::profile::Rows::classic(0.0).foot_y, 482.0);
+        let mut framed = profile(None, &[]);
+        framed.theme = Theme::reef().with_style(Opacity::Normal, Frame::Gold);
+        let svg = framed.to_svg();
+        assert!(
+            svg.contains(r#"y="418""#) && !svg.contains(r#"y="424""#),
+            "the footer rose 6 px for the band"
+        );
+    }
+
+    #[test]
+    fn showcase_tiles_stay_inside_the_row_whatever_the_names() {
+        let png = scene();
+        let long = "Wolfgang Amadeus Mozartwolfgangamadeus";
+        for count in 1..=4 {
+            let slots: Vec<_> = [
+                ShowcaseKind::Fish,
+                ShowcaseKind::Pet,
+                ShowcaseKind::Furniture,
+                ShowcaseKind::House,
+            ]
+            .into_iter()
+            .take(count)
+            .map(|kind| tile(kind, &png, long))
+            .collect();
+            let mut svg = String::new();
+            showcase::draw_row(&mut svg, &Theme::reef(), &slots, 296.0, 260.0, 624.0);
+            // Every panel edge path starts at its left corner and stays within the 624 px.
+            let mut right = 0.0f32;
+            for path in svg.split("<path d=\"M").skip(1) {
+                for point in path.split_whitespace().take(2) {
+                    let x: f32 = point.split(',').next().expect("x").parse().unwrap_or(0.0);
+                    right = right.max(x);
+                }
+            }
+            assert!(right <= 920.0 + 0.01 && right > 296.0, "{count} tiles reach {right}");
+            assert!(svg.contains('…'), "names that do not fit are cut");
+            assert!(!svg.contains(long));
+        }
+        let mut none = String::new();
+        showcase::draw_row(&mut none, &Theme::reef(), &[], 296.0, 260.0, 624.0);
+        assert!(none.is_empty(), "no tiles, no row");
+    }
+
+    #[test]
+    fn a_partner_gets_a_heart_in_the_corner_of_the_about_me_panel() {
+        let plain = profile(None, &[]).to_svg();
+        assert!(!plain.contains("MARLOW"));
+        let mut card = profile(None, &[]);
+        card.partner = Some("Marlow <3".to_owned());
+        let svg = card.to_svg();
+        assert!(svg.contains("MARLOW &lt;3"), "escaped, in capitals");
+        let hearts = |s: &str| s.matches(&format!(r##"fill="{}""##, Theme::reef().heart)).count();
+        assert!(hearts(&svg) > hearts(&plain), "a heart sprite comes with it");
+        // A name too long for the corner is cut.
+        card.partner = Some("An Extremely Long Partner Name Indeed".to_owned());
+        assert!(card.to_svg().contains('…'));
+        // The row holds up on the busy layout too.
+        let png = scene();
+        let slots = [tile(ShowcaseKind::Fish, &png, "Fish")];
+        card.showcase = &slots;
+        card.character = Some(SpriteArt {
+            png: &png,
+            w: 60,
+            h: 100,
+        });
+        assert!(card.to_svg().contains("AN EXTREMELY LONG"));
+    }
+
+    #[test]
+    fn style_shows_on_the_profile_rank_and_wallet_cards() {
+        let themed = |opacity, frame| Theme::reef().with_style(opacity, frame);
+        let rank = |theme| RankCard { theme, ..rank(None) };
+        let wallet = |theme| WalletCard {
+            display_name: "A",
+            avatar_png: &[],
+            shells: 1,
+            pearls: 1,
+            streak: 1,
+            next_daily: "ready",
+            pets: 1,
+            fish_found: 1,
+            fish_total: 2,
+            backdrop: None,
+            theme,
+        };
+        let plain = (
+            profile(None, &[]).to_svg().len(),
+            rank(Theme::reef()).to_svg().len(),
+            wallet(Theme::reef()).to_svg().len(),
+        );
+        for frame in &Frame::ALL[1..] {
+            let mut card = profile(None, &[]);
+            card.theme = themed(Opacity::Normal, *frame);
+            assert!(card.to_svg().len() > plain.0, "{frame:?} on the profile");
+            assert!(
+                rank(themed(Opacity::Normal, *frame)).to_svg().len() > plain.1,
+                "{frame:?} on rank"
+            );
+            assert!(
+                wallet(themed(Opacity::Normal, *frame)).to_svg().len() > plain.2,
+                "{frame:?} on wallet"
+            );
+        }
+        // See-through panels use a ring and a translucent fill; normal panels do not.
+        let mut light = profile(None, &[]);
+        light.theme = themed(Opacity::Light, Frame::Plain);
+        assert!(light.to_svg().contains("evenodd"));
+        assert!(
+            wallet(themed(Opacity::Light, Frame::Plain))
+                .to_svg()
+                .contains("evenodd")
+        );
+        assert!(!wallet(Theme::reef()).to_svg().contains("evenodd"));
+        // Over a picture the veil and the plates follow the opacity.
+        let png = scene();
+        let art = |opacity| {
+            let mut card = profile(
+                Some(Backdrop {
+                    art: Some(SpriteArt {
+                        png: &png,
+                        w: 960,
+                        h: 540,
+                    }),
+                    accent: "#8eddd1",
+                }),
+                &[],
+            );
+            card.theme = themed(opacity, Frame::Plain);
+            card.to_svg()
+        };
+        assert!(art(Opacity::Light).contains(r#"fill-opacity="0.1""#));
+        assert!(art(Opacity::Normal).contains(r#"fill-opacity="0.25""#));
+        assert!(art(Opacity::Solid).contains(r#"fill-opacity="0.55""#));
+        assert!(art(Opacity::Solid).contains(r#"fill-opacity="0.95""#));
     }
 }

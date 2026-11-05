@@ -32,6 +32,63 @@ pub fn truncate(text: &str, max: usize) -> String {
     out
 }
 
+/// What each printable ASCII character, from the space, takes in Noto Sans, in ems; read off the
+/// renderer, so names can be fitted into a box of pixels.
+const SANS_EM: [f32; 95] = [
+    0.246, 0.246, 0.400, 0.640, 0.580, 0.890, 0.730, 0.207, 0.297, 0.297, 0.500, 0.570, 0.252, 0.321, 0.246, 0.370,
+    0.580, 0.525, 0.580, 0.580, 0.596, 0.575, 0.580, 0.583, 0.580, 0.580, 0.270, 0.270, 0.570, 0.570, 0.570, 0.480,
+    0.930, 0.676, 0.649, 0.628, 0.731, 0.549, 0.517, 0.737, 0.734, 0.339, 0.286, 0.628, 0.522, 0.909, 0.753, 0.795,
+    0.602, 0.795, 0.628, 0.557, 0.599, 0.726, 0.636, 0.978, 0.617, 0.599, 0.586, 0.300, 0.370, 0.300, 0.570, 0.500,
+    0.500, 0.559, 0.617, 0.488, 0.617, 0.572, 0.374, 0.617, 0.612, 0.233, 0.270, 0.541, 0.231, 0.949, 0.612, 0.615,
+    0.617, 0.617, 0.413, 0.482, 0.374, 0.612, 0.538, 0.827, 0.549, 0.538, 0.477, 0.300, 0.270, 0.300, 0.570,
+];
+
+/// About how wide `text` is in Noto Sans at `size` px: close enough to cut a name to fit a box.
+pub fn sans_width(text: &str, size: f32) -> f32 {
+    let em: f32 = text
+        .chars()
+        .map(|c| match c {
+            ' '..='~' => SANS_EM[c as usize - 32],
+            // Emoji and the wide scripts.
+            c if c as u32 >= 0x2e80 || (0x2190..0x2c00).contains(&(c as u32)) => 1.0,
+            _ => 0.6,
+        })
+        .sum();
+    em * size
+}
+
+/// How wide `text` is in the pixel font at `size` px: every glyph is a whole number of font
+/// pixels, eight to the em, so this is exact.
+pub fn pixel_width(text: &str, size: f32) -> f32 {
+    let pixels: u32 = text
+        .chars()
+        .map(|c| match c {
+            'I' | 'i' | '.' | '!' | '\'' | ' ' | ':' | ';' | '|' => 3,
+            ',' | '(' | ')' => 4,
+            'E' | 'F' | 'L' | 'T' | 'Z' | 'e' | 'f' | 'l' | 't' | 'z' | '-' | '1' => 5,
+            'M' | 'N' | 'V' | 'W' | 'X' | 'Y' | 'm' | 'n' | 'v' | 'w' | 'x' | 'y' => 7,
+            _ => 6,
+        })
+        .sum();
+    pixels as f32 * size / 8.0
+}
+
+/// Cuts `text` to what fits `max` px in Noto Sans at `size`, ending with an ellipsis when shortened.
+pub fn truncate_to(text: &str, size: f32, max: f32) -> String {
+    if sans_width(text, size) <= max {
+        return text.to_owned();
+    }
+    let mut out = String::new();
+    for g in text.graphemes(true) {
+        if sans_width(&format!("{out}{g}…"), size) > max {
+            break;
+        }
+        out.push_str(g);
+    }
+    out.push('…');
+    out
+}
+
 /// Greedy word wrap by grapheme count; the last allowed line gets an ellipsis.
 pub fn wrap(text: &str, per_line: usize, max_lines: usize) -> Vec<String> {
     let mut lines: Vec<String> = Vec::new();
@@ -110,11 +167,22 @@ pub fn panel(out: &mut String, x: f32, y: f32, w: f32, h: f32, border: f32, fill
     );
 }
 
-/// A translucent dark plate behind text that would otherwise sit on a background picture.
-pub fn plate(out: &mut String, x: f32, y: f32, w: f32, h: f32) {
+/// Like [`panel`], with a fill that lets what is behind show through: the outline is a ring, so
+/// its colour does not shine through the fill.
+pub fn panel_alpha(out: &mut String, x: f32, y: f32, w: f32, h: f32, border: f32, fill: &str, edge: &str, alpha: f32) {
+    let inner = notched_path(x + border, y + border, w - 2.0 * border, h - 2.0 * border, border);
     let _ = write!(
         out,
-        r##"<path d="{}" fill="#0b1029" fill-opacity="0.8"/>"##,
+        r#"<path d="{} {inner}" fill="{edge}" fill-rule="evenodd"/><path d="{inner}" fill="{fill}" fill-opacity="{alpha}"/>"#,
+        notched_path(x, y, w, h, border),
+    );
+}
+
+/// A translucent dark plate behind text that would otherwise sit on a background picture.
+pub fn plate(out: &mut String, x: f32, y: f32, w: f32, h: f32, alpha: f32) {
+    let _ = write!(
+        out,
+        r##"<path d="{}" fill="#0b1029" fill-opacity="{alpha}"/>"##,
         notched_path(x, y, w, h, 4.0)
     );
 }
@@ -258,6 +326,21 @@ mod tests {
         assert_eq!(mix("#ff6b4a", "#0f1631", 0.0), "#ff6b4a");
         assert_eq!(mix("#ff6b4a", "#0f1631", 1.0), "#0f1631");
         assert_eq!(mix("nonsense", "#ffffff", 1.0), "#ffffff");
+    }
+
+    #[test]
+    fn text_widths_follow_the_fonts() {
+        // Read off the renderer: four `w` in Noto Sans at 100 px ink 312 px; the pixel font's
+        // wide glyphs are seven font pixels, at 16 px two pixels each.
+        assert!((sans_width("wwww", 100.0) - 330.8).abs() < 1.0);
+        assert_eq!(pixel_width("NN", 16.0), 28.0);
+        assert_eq!(pixel_width("I", 8.0), 3.0);
+        assert!(pixel_width("MARLOW", 14.0) > pixel_width("MARLOW", 8.0));
+        let name = "Blushbun Bed (Rose)";
+        assert_eq!(truncate_to(name, 13.0, 400.0), name);
+        let cut = truncate_to(name, 13.0, 90.0);
+        assert!(cut.ends_with('…') && sans_width(&cut, 13.0) <= 90.0, "{cut}");
+        assert!(cut.len() > 6, "it keeps what fits: {cut}");
     }
 
     #[test]

@@ -826,6 +826,132 @@ async fn titles_are_worn_and_granted() {
 }
 
 #[tokio::test]
+async fn card_style_and_showcase_are_saved_per_player() {
+    let Some(db) = db().await else { return };
+    let [alice, bob] = ids();
+
+    // A new player has the look every player starts with and an empty showcase.
+    let row = db.user(alice).await.unwrap();
+    assert_eq!(
+        (row.accent.as_deref(), row.panel_opacity, row.frame.as_str()),
+        (None, 1, "plain")
+    );
+    assert_eq!(
+        (
+            row.showcase_fish,
+            row.showcase_pet,
+            row.showcase_item,
+            row.showcase_house
+        ),
+        (None, None, None, false)
+    );
+
+    // Style: each part is saved on its own; saving creates the player; the database refuses nonsense.
+    db.set_accent(alice, Some("#3a9bdc")).await.unwrap();
+    db.set_panel_opacity(alice, 0).await.unwrap();
+    db.set_frame(alice, "rope").await.unwrap();
+    let row = db.user(alice).await.unwrap();
+    assert_eq!(
+        (row.accent.as_deref(), row.panel_opacity, row.frame.as_str()),
+        (Some("#3a9bdc"), 0, "rope")
+    );
+    for bad in ["3a9bdc", "#3A9BDC", "#fff", "#3a9bd", "#3a9bdcc", "#gggggg", ""] {
+        assert!(
+            db.set_accent(alice, Some(bad)).await.is_err(),
+            "{bad:?} is not an accent"
+        );
+    }
+    assert!(db.set_panel_opacity(alice, 3).await.is_err() && db.set_panel_opacity(alice, -1).await.is_err());
+    assert_eq!(
+        db.user(alice).await.unwrap().accent.as_deref(),
+        Some("#3a9bdc"),
+        "refusals change nothing"
+    );
+    db.set_frame(bob, "gold").await.unwrap();
+    assert_eq!(db.user(bob).await.unwrap().frame, "gold", "saving creates the player");
+    assert_eq!(db.user(alice).await.unwrap().frame, "rope", "styles are per player");
+    db.set_accent(alice, None).await.unwrap();
+    assert_eq!(db.user(alice).await.unwrap().accent, None);
+    db.set_accent(alice, Some("#06d6a0")).await.unwrap();
+    db.reset_card_style(alice).await.unwrap();
+    let row = db.user(alice).await.unwrap();
+    assert_eq!(
+        (row.accent.as_deref(), row.panel_opacity, row.frame.as_str()),
+        (None, 1, "plain")
+    );
+
+    // What can be put on the showcase: the fish book, first catch first.
+    assert!(db.fish_book(alice).await.unwrap().is_empty());
+    db.log_catch(alice, "trout", 20.0).await.unwrap();
+    db.log_catch(alice, "carp", 31.5).await.unwrap();
+    db.log_catch(alice, "trout", 25.0).await.unwrap();
+    let book = db.fish_book(alice).await.unwrap();
+    assert_eq!(
+        book.iter().map(|b| b.fish_id.as_str()).collect::<Vec<_>>(),
+        ["trout", "carp"]
+    );
+    assert_eq!((book[0].caught, book[0].best_cm), (2, 25.0));
+    assert!(db.fish_book(bob).await.unwrap().is_empty(), "books are per player");
+
+    // Furniture they own: in the inventory or standing in a room, each once, by id.
+    let starter = pinchora_db::NewRoom {
+        room_type: "living".into(),
+        wallpaper: "w".into(),
+        floor: "f".into(),
+    };
+    assert!(db.house_preview(alice).await.unwrap().is_none(), "no house yet");
+    db.house(alice, &starter).await.unwrap();
+    db.grant_item(alice, "chair", 2).await.unwrap();
+    db.grant_item(alice, "lamp", 1).await.unwrap();
+    db.place_item(alice, 0, "lamp", 1, 1, false, |_| Ok(())).await.unwrap();
+    db.place_item(alice, 0, "chair", 2, 2, false, |_| Ok(())).await.unwrap();
+    assert_eq!(
+        db.owned_item_ids(alice).await.unwrap(),
+        ["chair", "lamp"],
+        "a chair left in the inventory and a placed one count once; a lamp that is only placed counts too"
+    );
+    assert!(db.owned_item_ids(bob).await.unwrap().is_empty());
+    let preview = db.house_preview(alice).await.unwrap().expect("a house");
+    assert_eq!((preview.room.idx, preview.room.wallpaper.as_str()), (0, "w"));
+    assert_eq!(preview.placements.len(), 2);
+    assert_eq!(preview.house.tier, 1);
+
+    // The picks themselves, and clearing them.
+    db.set_showcase_fish(alice, Some("carp")).await.unwrap();
+    db.set_showcase_pet(alice, Some(42)).await.unwrap();
+    db.set_showcase_item(alice, Some("lamp")).await.unwrap();
+    db.set_showcase_house(alice, true).await.unwrap();
+    let row = db.user(alice).await.unwrap();
+    assert_eq!(
+        (
+            row.showcase_fish.as_deref(),
+            row.showcase_pet,
+            row.showcase_item.as_deref(),
+            row.showcase_house
+        ),
+        (Some("carp"), Some(42), Some("lamp"), true)
+    );
+    db.set_showcase_fish(alice, None).await.unwrap();
+    assert_eq!(db.user(alice).await.unwrap().showcase_fish, None);
+    assert_eq!(
+        db.user(alice).await.unwrap().showcase_pet,
+        Some(42),
+        "the other picks stay"
+    );
+    db.clear_showcase(alice).await.unwrap();
+    let row = db.user(alice).await.unwrap();
+    assert_eq!(
+        (
+            row.showcase_fish,
+            row.showcase_pet,
+            row.showcase_item,
+            row.showcase_house
+        ),
+        (None, None, None, false)
+    );
+}
+
+#[tokio::test]
 async fn player_stats_collect_every_number_for_achievements() {
     let Some(db) = db().await else { return };
     let [nobody, host, fan_a, fan_b] = ids();

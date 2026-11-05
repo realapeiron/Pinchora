@@ -1,10 +1,12 @@
 use std::fmt::Write;
 
-use super::{Backdrop, BadgeIcon, PIXEL, SANS, SpriteArt, avatar_frame, backdrop, text};
+use super::{
+    Backdrop, BadgeIcon, PIXEL, SANS, ShowcaseSlot, SpriteArt, avatar_frame, backdrop, showcase::draw_row, text,
+};
 use crate::{
     Theme,
     svg::{
-        CRAB, HEART, SHELL, STAR, background, compact, data_uri_png, escape, panel, plate, segment_bar, sprite,
+        CRAB, HEART, SHELL, STAR, background, compact, data_uri_png, escape, pixel_width, segment_bar, sprite,
         thousands, truncate, wrap,
     },
 };
@@ -34,17 +36,113 @@ pub struct ProfileCard<'a> {
     pub backdrop: Option<Backdrop<'a>>,
     /// Badges in order; only the first [`ProfileCard::MAX_BADGES`] are drawn.
     pub badges: &'a [BadgeIcon<'a>],
+    /// Up to [`ShowcaseSlot::MAX`] tiles in a row under the about-me panel. With none the card
+    /// keeps the layout it had before the showcase existed; with some, the about-me panel and
+    /// the stats give up height to make room.
+    pub showcase: &'a [ShowcaseSlot<'a>],
+    /// Who the player is with, drawn as "♥ name" in the corner of the about-me panel.
+    pub partner: Option<String>,
     pub theme: Theme,
+}
+
+/// Where the right-hand side of the card keeps its parts. The classic rows are the card as it
+/// was before the showcase; the showcase rows squeeze the about-me panel and the stats to fit a
+/// row of tiles. Both end clear of a frame's band at the bottom edge.
+pub(super) struct Rows {
+    bio_h: f32,
+    bio_label_dy: f32,
+    bio_first_dy: f32,
+    bio_leading: f32,
+    bio_size: f32,
+    /// Top of the showcase row, if there is one.
+    show_y: Option<f32>,
+    stats_y: f32,
+    stats_h: f32,
+    stats_label_dy: f32,
+    stats_label_size: f32,
+    stats_value_dy: f32,
+    stats_value_size: f32,
+    stats_icon_dx: f32,
+    stats_icon_dy: f32,
+    stats_icon_scale: f32,
+    xp_y: f32,
+    bar_y: f32,
+    bar_h: f32,
+    /// Top of the badge plates; the total, the crab and the name hang off it.
+    pub(super) foot_y: f32,
+    /// The plate behind the footer text on a background picture: top and height.
+    pub(super) plate: (f32, f32),
+}
+
+impl Rows {
+    /// The card as it always was; `lift` raises the footer for a frame's band.
+    pub(super) fn classic(lift: f32) -> Self {
+        Self {
+            bio_h: 132.0,
+            bio_label_dy: 30.0,
+            bio_first_dy: 60.0,
+            bio_leading: 28.0,
+            bio_size: 21.0,
+            show_y: None,
+            stats_y: 288.0,
+            stats_h: 96.0,
+            stats_label_dy: 30.0,
+            stats_label_size: 14.0,
+            stats_value_dy: 74.0,
+            stats_value_size: 30.0,
+            stats_icon_dx: 142.0,
+            stats_icon_dy: 16.0,
+            stats_icon_scale: 4.0,
+            xp_y: 424.0 - lift,
+            bar_y: 436.0 - lift,
+            bar_h: 44.0,
+            foot_y: 482.0 - lift,
+            plate: (400.0 - lift, 136.0),
+        }
+    }
+
+    pub(super) fn showcase() -> Self {
+        Self {
+            bio_h: 112.0,
+            bio_label_dy: 26.0,
+            bio_first_dy: 50.0,
+            bio_leading: 24.0,
+            bio_size: 20.0,
+            show_y: Some(260.0),
+            stats_y: 364.0,
+            stats_h: 48.0,
+            stats_label_dy: 19.0,
+            stats_label_size: 12.0,
+            stats_value_dy: 42.0,
+            stats_value_size: 24.0,
+            stats_icon_dx: 150.0,
+            stats_icon_dy: 14.0,
+            stats_icon_scale: 3.0,
+            xp_y: 432.0,
+            bar_y: 438.0,
+            bar_h: 32.0,
+            foot_y: 474.0,
+            plate: (414.0, 116.0),
+        }
+    }
 }
 
 impl ProfileCard<'_> {
     pub const AVATAR_SIZE: u32 = 208;
     pub const CHARACTER_SCALE: u32 = 2;
     pub const MAX_BADGES: usize = 6;
+    /// Letters of a partner's name that fit the corner of the about-me panel.
+    pub const PARTNER_CHARS: usize = 18;
 
     pub fn to_svg(&self) -> String {
         let t = &self.theme;
         let (w, h) = (960.0, 540.0);
+        let rows = if self.showcase.is_empty() {
+            // A frame's band takes the last few pixels of the footer's room.
+            Rows::classic(if t.frame == crate::Frame::Plain { 0.0 } else { 6.0 })
+        } else {
+            Rows::showcase()
+        };
         let mut s = String::with_capacity(64 * 1024);
         let _ = write!(
             s,
@@ -52,14 +150,14 @@ impl ProfileCard<'_> {
         );
         match &self.backdrop {
             Some(b) => {
-                backdrop(&mut s, w, h, b);
+                backdrop(&mut s, w, h, b, t.opacity.scrim());
                 // Text that is not inside a panel gets a plate of its own.
                 if self.title.is_some() {
-                    plate(&mut s, 288.0, 40.0, 640.0, 96.0);
+                    t.plate(&mut s, 288.0, 40.0, 640.0, 96.0);
                 } else {
-                    plate(&mut s, 288.0, 44.0, 640.0, 88.0);
+                    t.plate(&mut s, 288.0, 44.0, 640.0, 88.0);
                 }
-                plate(&mut s, 288.0, 400.0, 640.0, 136.0);
+                t.plate(&mut s, 288.0, rows.plate.0, 640.0, rows.plate.1);
             }
             None => background(&mut s, w, h, &t.bg_top, &t.bg_bottom),
         }
@@ -67,7 +165,7 @@ impl ProfileCard<'_> {
         // Left column: avatar, level, rep, streak.
         avatar_frame(&mut s, self.avatar_png, 40.0, 40.0, 224.0, 8.0, &t.accent, "avatar");
 
-        panel(&mut s, 40.0, 280.0, 224.0, 88.0, 4.0, &t.panel, &t.panel_edge);
+        t.panel(&mut s, 40.0, 280.0, 224.0, 88.0, 4.0);
         text(&mut s, 60.0, 312.0, 18.0, PIXEL, false, &t.muted, "start", "LEVEL");
         text(
             &mut s,
@@ -82,7 +180,7 @@ impl ProfileCard<'_> {
         );
         sprite(&mut s, STAR, 200.0, 300.0, 6.0, &t.gold, "#fff7d6");
 
-        panel(&mut s, 40.0, 384.0, 224.0, 56.0, 4.0, &t.panel, &t.panel_edge);
+        t.panel(&mut s, 40.0, 384.0, 224.0, 56.0, 4.0);
         sprite(&mut s, HEART, 58.0, 396.0, 4.6, &t.heart, "#ffc2cf");
         text(
             &mut s,
@@ -96,7 +194,7 @@ impl ProfileCard<'_> {
             &format!("{} REP", compact(i64::from(self.reputation))),
         );
 
-        panel(&mut s, 40.0, 456.0, 224.0, 56.0, 4.0, &t.panel, &t.panel_edge);
+        t.panel(&mut s, 40.0, 456.0, 224.0, 56.0, 4.0);
         sprite(&mut s, STAR, 58.0, 468.0, 4.6, &t.mint, "#c9fff0");
         text(
             &mut s,
@@ -138,8 +236,24 @@ impl ProfileCard<'_> {
             }
         }
 
-        panel(&mut s, 296.0, 140.0, 624.0, 132.0, 4.0, &t.panel, &t.panel_edge);
-        text(&mut s, 316.0, 170.0, 14.0, PIXEL, false, &t.muted, "start", "ABOUT ME");
+        let bio_top = 140.0;
+        t.panel(&mut s, 296.0, bio_top, 624.0, rows.bio_h, 4.0);
+        text(
+            &mut s,
+            316.0,
+            bio_top + rows.bio_label_dy,
+            14.0,
+            PIXEL,
+            false,
+            &t.muted,
+            "start",
+            "ABOUT ME",
+        );
+        if let Some(partner) = &self.partner {
+            // The corner of the label row; a character takes the panel's right edge.
+            let right = if self.character.is_some() { 806.0 } else { 900.0 };
+            self.partner_line(&mut s, partner, right, bio_top + rows.bio_label_dy);
+        }
         let bio = if self.bio.trim().is_empty() {
             "No bio yet. Set one with /bio."
         } else {
@@ -149,8 +263,8 @@ impl ProfileCard<'_> {
             text(
                 &mut s,
                 316.0,
-                200.0 + i as f32 * 28.0,
-                21.0,
+                bio_top + rows.bio_first_dy + i as f32 * rows.bio_leading,
+                rows.bio_size,
                 SANS,
                 false,
                 &t.ink,
@@ -160,8 +274,8 @@ impl ProfileCard<'_> {
         }
 
         if let Some(art) = &self.character {
-            // Feet on the bottom edge of the about-me panel, head up into the title row.
-            let (cx, feet) = (862.0, 262.0);
+            // Feet near the bottom edge of the about-me panel, head up into the title row.
+            let (cx, feet) = (862.0, bio_top + rows.bio_h - 10.0);
             let _ = write!(
                 s,
                 r##"<ellipse cx="{cx}" cy="{feet}" rx="{}" ry="9" fill="#000000" fill-opacity="0.3"/><image x="{}" y="{}" width="{}" height="{}" href="{}"/>"##,
@@ -174,6 +288,10 @@ impl ProfileCard<'_> {
             );
         }
 
+        if let Some(y) = rows.show_y {
+            draw_row(&mut s, t, self.showcase, 296.0, y, 624.0);
+        }
+
         let server_rank = self
             .server_rank
             .map_or_else(|| "-".to_owned(), |r| format!("#{}", thousands(r)));
@@ -184,28 +302,46 @@ impl ProfileCard<'_> {
         ];
         for (i, (label, value, icon)) in stats.iter().enumerate() {
             let x = 296.0 + i as f32 * 216.0;
-            panel(&mut s, x, 288.0, 192.0, 96.0, 4.0, &t.panel, &t.panel_edge);
-            text(&mut s, x + 18.0, 318.0, 14.0, PIXEL, false, &t.muted, "start", label);
+            t.panel(&mut s, x, rows.stats_y, 192.0, rows.stats_h, 4.0);
             text(
                 &mut s,
                 x + 18.0,
-                362.0,
-                30.0,
+                rows.stats_y + rows.stats_label_dy,
+                rows.stats_label_size,
+                PIXEL,
+                false,
+                &t.muted,
+                "start",
+                label,
+            );
+            text(
+                &mut s,
+                x + 18.0,
+                rows.stats_y + rows.stats_value_dy,
+                rows.stats_value_size,
                 PIXEL,
                 false,
                 &t.ink,
                 "start",
                 &escape(value),
             );
-            if let Some((rows, color)) = icon {
-                sprite(&mut s, rows, x + 142.0, 304.0, 4.0, color, "#fff7d6");
+            if let Some((sprite_rows, color)) = icon {
+                sprite(
+                    &mut s,
+                    sprite_rows,
+                    x + rows.stats_icon_dx,
+                    rows.stats_y + rows.stats_icon_dy,
+                    rows.stats_icon_scale,
+                    color,
+                    "#fff7d6",
+                );
             }
         }
 
         text(
             &mut s,
             296.0,
-            424.0,
+            rows.xp_y,
             16.0,
             PIXEL,
             false,
@@ -218,14 +354,14 @@ impl ProfileCard<'_> {
             thousands(self.xp_current as i64),
             thousands(self.xp_needed as i64)
         );
-        text(&mut s, 920.0, 424.0, 16.0, PIXEL, false, &t.ink, "end", &xp_label);
+        text(&mut s, 920.0, rows.xp_y, 16.0, PIXEL, false, &t.ink, "end", &xp_label);
         let fraction = self.xp_current as f32 / self.xp_needed.max(1) as f32;
         segment_bar(
             &mut s,
             296.0,
-            436.0,
+            rows.bar_y,
             624.0,
-            44.0,
+            rows.bar_h,
             fraction,
             24,
             &t.accent,
@@ -238,16 +374,46 @@ impl ProfileCard<'_> {
         } else {
             format!("TOTAL {} XP", thousands(self.total_xp))
         };
-        text(&mut s, 296.0, 512.0, 14.0, PIXEL, false, &t.muted, "start", &total);
+        text(
+            &mut s,
+            296.0,
+            rows.foot_y + 30.0,
+            14.0,
+            PIXEL,
+            false,
+            &t.muted,
+            "start",
+            &total,
+        );
 
         // Badges run along the footer between the total and the crab, each on its rarity plate.
         for (i, badge) in self.badges.iter().take(Self::MAX_BADGES).enumerate() {
-            badge.draw(&mut s, 450.0 + i as f32 * (BadgeIcon::PLATE + 3.0), 482.0);
+            badge.draw(&mut s, 450.0 + i as f32 * (BadgeIcon::PLATE + 3.0), rows.foot_y);
         }
 
-        sprite(&mut s, CRAB, 804.0, 498.0, 3.0, &t.accent, "#fff1e8");
-        text(&mut s, 920.0, 516.0, 14.0, PIXEL, false, &t.muted, "end", "PINCHORA");
+        sprite(&mut s, CRAB, 804.0, rows.foot_y + 16.0, 3.0, &t.accent, "#fff1e8");
+        text(
+            &mut s,
+            920.0,
+            rows.foot_y + 34.0,
+            14.0,
+            PIXEL,
+            false,
+            &t.muted,
+            "end",
+            "PINCHORA",
+        );
+        t.draw_frame(&mut s, w, h);
         s.push_str("</svg>");
         s
+    }
+
+    /// "♥ name", its right end at `right`, on the text baseline `y`.
+    fn partner_line(&self, s: &mut String, partner: &str, right: f32, y: f32) {
+        let t = &self.theme;
+        let name = truncate(&partner.to_uppercase(), Self::PARTNER_CHARS);
+        let width = pixel_width(&name, 14.0);
+        text(s, right, y, 14.0, PIXEL, false, &t.ink, "end", &escape(&name));
+        sprite(s, HEART, right - width - 31.0, y - 12.0, 3.0, &t.heart, "#ffc2cf");
     }
 }

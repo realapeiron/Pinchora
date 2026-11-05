@@ -6,6 +6,7 @@ pub mod character;
 mod encode;
 pub mod room;
 pub mod sprites;
+mod style;
 mod svg;
 mod theme;
 
@@ -16,10 +17,11 @@ use resvg::{tiny_skia, usvg};
 pub use avatar::{placeholder_avatar, prepare_avatar};
 pub use cards::{
     Backdrop, BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, CharacterCard, GridSlot, ItemGridCard,
-    LeaderboardCard, LeaderboardEntry, LevelUpCard, NextRole, PetCard, ProfileCard, RankCard, SpriteArt, WalletCard,
-    WelcomeCard,
+    LeaderboardCard, LeaderboardEntry, LevelUpCard, NextRole, PetCard, ProfileCard, RankCard, ShowcaseKind,
+    ShowcaseSlot, SpriteArt, WalletCard, WelcomeCard,
 };
 pub use encode::encode_png;
+pub use style::{ACCENT_PRESETS, AccentError, Frame, Opacity, parse_accent, readable};
 pub use svg::{compact, thousands};
 pub use theme::Theme;
 

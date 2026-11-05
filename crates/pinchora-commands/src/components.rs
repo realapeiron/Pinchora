@@ -38,7 +38,19 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
         Some("st") => store::on_buy(cx, values.first().map(String::as_str)).await,
         Some("cz") => customize::on_component(cx, parts, values).await,
         Some("ti") => customize::on_title(cx, parts, values).await,
+        Some("cs") => customize::on_style(cx, parts, values).await,
+        Some("sw") => customize::on_showcase(cx, parts, values).await,
         Some("rr") => role_panels::on_toggle(cx, parts).await,
         _ => cx.reply_ephemeral("This button has expired.").await,
+    }
+}
+
+/// Routes a submitted modal by the `prefix:` of its custom id; `texts` are its text boxes as
+/// `(custom_id, value)`.
+pub(crate) async fn dispatch_modal(cx: &Cx, custom_id: &str, texts: &[(String, String)]) -> anyhow::Result<()> {
+    let mut parts = custom_id.split(':');
+    match parts.next() {
+        Some("cs") => customize::on_style_modal(cx, parts, texts).await,
+        _ => cx.reply_ephemeral("This form has expired.").await,
     }
 }

@@ -28,6 +28,18 @@ pub struct UserRow {
     pub badges_seen: Option<Vec<String>>,
     /// The id of the title under their name (`users.title`).
     pub title: Option<String>,
+    /// The accent colour they typed or picked, `#rrggbb` (`users.accent`); `None` follows the background.
+    pub accent: Option<String>,
+    /// How see-through their card panels are: 0 light, 1 normal, 2 solid.
+    pub panel_opacity: i16,
+    /// The id of the frame around their cards (`users.frame`).
+    pub frame: String,
+    /// The fish, pet (its id) and furniture item (its id) on their profile card, and whether it
+    /// shows their house.
+    pub showcase_fish: Option<String>,
+    pub showcase_pet: Option<i64>,
+    pub showcase_item: Option<String>,
+    pub showcase_house: bool,
 }
 
 impl Db {

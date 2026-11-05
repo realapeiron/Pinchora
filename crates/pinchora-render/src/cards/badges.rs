@@ -3,7 +3,9 @@ use std::fmt::Write;
 use super::{BadgeIcon, PIXEL, SANS, text};
 use crate::{
     Theme,
-    svg::{CRAB, SHELL, background, compact, escape, mix, notched_path, segment_bar, sprite, thousands, wrap},
+    svg::{
+        CRAB, SHELL, background, compact, escape, mix, notched_path, pixel_width, segment_bar, sprite, thousands, wrap,
+    },
 };
 
 /// Where one badge of the collection stands for the player.
@@ -45,6 +47,13 @@ impl BadgeCollectionCard<'_> {
     const FOOT: f32 = 56.0;
     /// Where a cell's plate starts below the cell's top.
     const PLATE_TOP: f32 = 8.0;
+    /// The NEW tag's gold: the pixel font at 8 px (a font pixel is a pixel of the card) spells NEW
+    /// in 17×5 pixels; the gold leaves 6 pixels either side and 4 above and below.
+    const NEW_W: f32 = 29.0;
+    const NEW_H: f32 = 13.0;
+    /// The disc under the worn badge's place number, which is set at 16 px: a digit is 10 pixels
+    /// tall, and the disc leaves 6 around it.
+    const WORN_DISC: f32 = 22.0;
 
     /// The card's height for `cells` badges.
     pub fn height_for(cells: usize) -> u32 {
@@ -62,11 +71,17 @@ impl BadgeCollectionCard<'_> {
     /// The pixel box where the NEW tag of the badge at `index` is drawn.
     pub fn new_tag_box(index: usize) -> (std::ops::Range<u32>, std::ops::Range<u32>) {
         let (x0, y0) = Self::cell_origin(index);
-        let (x, y) = (
-            x0 + Self::CELL_W / 2.0 + BadgeIcon::PLATE / 2.0 - 24.0,
-            y0 + Self::PLATE_TOP - 7.0,
-        );
-        ((x - 2.0) as u32..(x + 30.0) as u32, (y - 2.0) as u32..(y + 16.0) as u32)
+        let (x, y) = Self::new_tag_origin(x0 + Self::CELL_W / 2.0 - BadgeIcon::PLATE / 2.0, y0 + Self::PLATE_TOP);
+        (
+            (x - 2.0) as u32..(x + Self::NEW_W + 2.0) as u32,
+            (y - 2.0) as u32..(y + Self::NEW_H + 2.0) as u32,
+        )
+    }
+
+    /// The top-left of the NEW tag's gold, for a plate whose top-left is `(plate_x, plate_y)`: on the
+    /// plate's top-right corner, reaching a little past it. Whole pixels, so the text stays crisp.
+    fn new_tag_origin(plate_x: f32, plate_y: f32) -> (f32, f32) {
+        (plate_x + BadgeIcon::PLATE - 24.0, plate_y - 7.0)
     }
 
     pub fn to_svg(&self) -> String {
@@ -206,36 +221,33 @@ impl BadgeCollectionCard<'_> {
                     &escape(&cell.rarity.to_uppercase()),
                 );
                 if new {
-                    let (nx, ny) = (plate_x + BadgeIcon::PLATE - 24.0, plate_y - 7.0);
+                    let (nx, ny) = Self::new_tag_origin(plate_x, plate_y);
                     let _ = write!(
                         s,
                         r##"<path d="{}" fill="#0b1029"/><path d="{}" fill="{}"/>"##,
-                        notched_path(nx - 2.0, ny - 2.0, 32.0, 18.0, 3.0),
-                        notched_path(nx, ny, 28.0, 14.0, 3.0),
+                        notched_path(nx - 2.0, ny - 2.0, Self::NEW_W + 4.0, Self::NEW_H + 4.0, 3.0),
+                        notched_path(nx, ny, Self::NEW_W, Self::NEW_H, 3.0),
                         t.gold,
                     );
-                    text(s, nx + 14.0, ny + 11.0, 10.0, PIXEL, true, "#0b1029", "middle", "NEW");
+                    // The ink starts one font pixel after the text's x, and sits on its baseline.
+                    text(s, nx + 5.0, ny + 9.0, 8.0, PIXEL, false, "#0b1029", "start", "NEW");
                 }
                 if let Some(place) = worn {
-                    let (wx, wy) = (plate_x - 5.0, plate_y + BadgeIcon::PLATE - 14.0);
+                    let disc = Self::WORN_DISC;
+                    let (wx, wy) = (plate_x - 7.0, plate_y + BadgeIcon::PLATE - 16.0);
                     let _ = write!(
                         s,
                         r##"<path d="{}" fill="#0b1029"/><path d="{}" fill="{}"/>"##,
-                        notched_path(wx - 2.0, wy - 2.0, 22.0, 22.0, 3.0),
-                        notched_path(wx, wy, 18.0, 18.0, 3.0),
+                        notched_path(wx - 2.0, wy - 2.0, disc + 4.0, disc + 4.0, 3.0),
+                        notched_path(wx, wy, disc, disc, 3.0),
                         t.mint,
                     );
-                    text(
-                        s,
-                        wx + 9.0,
-                        wy + 14.0,
-                        12.0,
-                        PIXEL,
-                        true,
-                        "#0b1029",
-                        "middle",
-                        &place.to_string(),
-                    );
+                    // Centred on whole pixels: a digit's ink is its advance less a font pixel of
+                    // space on either side, and starts one font pixel (two pixels at 16 px) in.
+                    let digit = place.to_string();
+                    let ink = pixel_width(&digit, 16.0) - 4.0;
+                    let x = wx + ((disc - ink) / 2.0).floor() - 2.0;
+                    text(s, x, wy + 16.0, 16.0, PIXEL, false, "#0b1029", "start", &digit);
                 }
             }
             BadgeState::Locked { have, at } => {
@@ -296,4 +308,83 @@ const LOCKED_FILTER: &str = r#"<defs><filter id="locked" x="0" y="0" width="1" h
 /// The plate colour for a locked badge: a hint of its rarity in near-black.
 pub(crate) fn locked_tint(rarity: u32) -> String {
     mix(&format!("#{:06x}", rarity & 0xff_ffff), "#0b1029", 0.78)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashSet;
+
+    use super::*;
+    use crate::Renderer;
+
+    fn cell(state: BadgeState) -> BadgeCell<'static> {
+        BadgeCell {
+            icon: BadgeIcon {
+                art: None,
+                letter: 'L',
+                color: 0x06d6a0,
+                rarity: 0x8fa0d8,
+            },
+            name: "Little Beacon",
+            rarity: "Common",
+            state,
+        }
+    }
+
+    /// The colours inside a box of the rendered collection.
+    fn colours(image: &image::RgbaImage, x: std::ops::Range<u32>, y: std::ops::Range<u32>) -> HashSet<[u8; 4]> {
+        y.flat_map(|y| x.clone().map(move |x| image.get_pixel(x, y).0))
+            .collect()
+    }
+
+    #[test]
+    fn the_new_tag_and_the_worn_number_are_set_in_crisp_pixels() {
+        let cells = [
+            cell(BadgeState::Earned {
+                new: true,
+                worn: Some(4),
+            }),
+            cell(BadgeState::Earned {
+                new: false,
+                worn: Some(1),
+            }),
+        ];
+        let card = BadgeCollectionCard {
+            cells: &cells,
+            legend: &[],
+            theme: Theme::reef(),
+        };
+        let png = Renderer::new().badge_collection(&card).expect("renders");
+        let image = image::load_from_memory(&png).expect("a png").to_rgba8();
+        let gold = [255, 209, 102, 255];
+        let mint = [6, 214, 160, 255];
+        let ink = [11, 16, 41, 255];
+
+        // The tag's gold holds its text and nothing else: no blended pixels, so nothing muddy.
+        let (xs, ys) = BadgeCollectionCard::new_tag_box(0);
+        let inside = (xs.start + 5..xs.end - 5, ys.start + 5..ys.end - 5);
+        assert_eq!(colours(&image, inside.0, inside.1), HashSet::from([gold, ink]));
+
+        // The same for the worn number's disc, for a wide digit and a narrow one.
+        for (index, place) in [(0, 4u8), (1, 1)] {
+            let (x0, y0) = BadgeCollectionCard::cell_origin(index);
+            let plate_x = x0 + BadgeCollectionCard::CELL_W / 2.0 - BadgeIcon::PLATE / 2.0;
+            let plate_y = y0 + BadgeCollectionCard::PLATE_TOP;
+            let (wx, wy) = (plate_x - 7.0, plate_y + BadgeIcon::PLATE - 16.0);
+            let (xs, ys) = ((wx as u32 + 3)..(wx as u32 + 19), (wy as u32 + 3)..(wy as u32 + 19));
+            let shades = colours(&image, xs.clone(), ys.clone());
+            assert_eq!(shades, HashSet::from([mint, ink]), "the disc of place {place}");
+            // The digit is centred: as much mint to its left as to its right.
+            let dark = |x: u32| ys.clone().any(|y| image.get_pixel(x, y).0 == ink);
+            let (first, last) = (
+                xs.clone().find(|x| dark(*x)).expect("ink"),
+                xs.clone().rev().find(|x| dark(*x)).expect("ink"),
+            );
+            let (left, right) = (first - xs.start, xs.end - 1 - last);
+            assert!(
+                left.abs_diff(right) <= 1,
+                "place {place}: {left} px left, {right} px right"
+            );
+        }
+    }
 }

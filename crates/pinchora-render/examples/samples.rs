@@ -4,12 +4,16 @@ use std::sync::Arc;
 
 use image::{RgbaImage, imageops};
 use pinchora_render::{
-    Backdrop, BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, CharacterCard, LeaderboardCard, LeaderboardEntry,
-    LevelUpCard, NextRole, ProfileCard, RankCard, Renderer, SpriteArt, Theme, WalletCard, WelcomeCard,
+    Backdrop, BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, CharacterCard, Frame, LeaderboardCard,
+    LeaderboardEntry, LevelUpCard, NextRole, Opacity, ProfileCard, RankCard, Renderer, ShowcaseKind, ShowcaseSlot,
+    SpriteArt, Theme, WalletCard, WelcomeCard,
     character::{Colors, placeholder_character, recolor_character},
     placeholder_avatar,
     room::{Cursor, RoomScene, SceneItem, SceneLayer, render_room},
-    sprites::{SpriteStore, placeholder_badge_color, placeholder_item, placeholder_tile, recolor, variant_ramp},
+    sprites::{
+        SpriteStore, placeholder_badge_color, placeholder_item, placeholder_pet, placeholder_tile, recolor,
+        variant_ramp,
+    },
     thousands,
 };
 
@@ -20,6 +24,15 @@ fn scaled_png(sprite: &RgbaImage, factor: u32) -> (Vec<u8>, u32, u32) {
     let mut png = std::io::Cursor::new(Vec::new());
     big.write_to(&mut png, image::ImageFormat::Png).expect("encode png");
     (png.into_inner(), w, h)
+}
+
+/// A scaled sprite as card art.
+fn art(sprite: &(Vec<u8>, u32, u32)) -> SpriteArt<'_> {
+    SpriteArt {
+        png: &sprite.0,
+        w: sprite.1,
+        h: sprite.2,
+    }
 }
 
 /// A bright 240×135 beach for backgrounds until the atlas has real scenes: peach sky, turquoise sea, pale
@@ -89,6 +102,8 @@ fn main() -> anyhow::Result<()> {
         }),
         backdrop: None,
         badges: &[],
+        showcase: &[],
+        partner: None,
         theme: Theme::reef(),
     })?;
     let profile_ms = started.elapsed().as_millis();
@@ -166,6 +181,8 @@ fn main() -> anyhow::Result<()> {
             }),
             backdrop,
             badges,
+            showcase: &[],
+            partner: None,
             theme,
         })?;
         std::fs::write(format!("{out}/{name}.png"), png)?;
@@ -407,7 +424,7 @@ fn main() -> anyhow::Result<()> {
             item("plant", 0, 6, 1, 1, SceneLayer::Floor, "moss"),
             item("bed", 7, 5, 2, 3, SceneLayer::Floor, "plum"),
             SceneItem {
-                sprite: Arc::new(character),
+                sprite: Arc::new(character.clone()),
                 x: 2,
                 y: 6,
                 w: 1,
@@ -430,6 +447,159 @@ fn main() -> anyhow::Result<()> {
         scale: 2,
     };
     render_room(&scene).save(format!("{out}/room.png"))?;
+
+    // The showcase, partner and frames: a long name and a full bio on the busiest layout.
+    let thumb_scene = RoomScene {
+        width: scene.width,
+        depth: scene.depth,
+        wallpaper: scene.wallpaper.clone(),
+        floor: scene.floor.clone(),
+        items: scene.items.clone(),
+        cursor: None,
+        grid: false,
+        scale: 1,
+    };
+    let (house_png, house_w, house_h) = ShowcaseSlot::fit_house(&render_room(&thumb_scene))?;
+    let tile_art = |key: &str| -> anyhow::Result<(Vec<u8>, u32, u32)> {
+        let sprite = store.get(key).map_or_else(|| placeholder_pet(key), |s| (*s).clone());
+        ShowcaseSlot::fit_sprite(&sprite)
+    };
+    let fish = tile_art("c_amberwink_squidlet")?;
+    let pet = tile_art("p_auroraclaw_crab")?;
+    let bed = tile_art("f_blushbun_bed")?;
+    let lamp = tile_art("f_blushcheek_lamp")?;
+    let all = [
+        ShowcaseSlot {
+            kind: ShowcaseKind::Fish,
+            art: art(&fish),
+            name: "Amberwink Squidlet",
+        },
+        ShowcaseSlot {
+            kind: ShowcaseKind::Pet,
+            art: art(&pet),
+            name: "Sir Clicks-a-lot",
+        },
+        ShowcaseSlot {
+            kind: ShowcaseKind::Furniture,
+            art: art(&bed),
+            name: "Blushbun Bed (Rose)",
+        },
+        ShowcaseSlot {
+            kind: ShowcaseKind::House,
+            art: SpriteArt {
+                png: &house_png,
+                w: house_w,
+                h: house_h,
+            },
+            name: "Tide Pool Shack",
+        },
+    ];
+    let long_bio = "Collector of shiny shells, builder of tiny pixel houses, feeder of crabs and chaser of rare fish. Ask me about Sir Clicks-a-lot or my 4 AM fishing trips!";
+    let busy = |showcase: &[ShowcaseSlot<'_>],
+                partner: Option<&str>,
+                backdrop: Option<Backdrop<'_>>,
+                theme: Theme|
+     -> anyhow::Result<Vec<u8>> {
+        r.profile_card(&ProfileCard {
+            display_name: "Bartholomew Fizzlebottom Smythe!",
+            title: Some("Lighthouse Keeper"),
+            username: "bartholomew.fizzlebottom.smythe.99",
+            avatar_png: &placeholder_avatar(42, ProfileCard::AVATAR_SIZE),
+            bio: long_bio,
+            level: 41,
+            xp_current: 3_120,
+            xp_needed: 5_095,
+            total_xp: 1_864_820,
+            credits: 1_284_500,
+            reputation: 1_330,
+            streak: 112,
+            global_rank: 1_337,
+            server_rank: Some(4),
+            character: Some(SpriteArt {
+                png: &character_png,
+                w: character_w,
+                h: character_h,
+            }),
+            backdrop,
+            badges: &icons(true),
+            showcase,
+            partner: partner.map(str::to_owned),
+            theme,
+        })
+    };
+    let write = |name: &str, png: Vec<u8>| std::fs::write(format!("{out}/{name}.png"), png);
+    write(
+        "profile-showcase",
+        busy(&all, Some("Marlow the Quiet"), None, Theme::reef())?,
+    )?;
+    write(
+        "profile-showcase-background",
+        busy(&all, Some("Marlow the Quiet"), Some(backdrop(true)), themed.clone())?,
+    )?;
+    write(
+        "profile-showcase-light",
+        busy(
+            &all,
+            None,
+            Some(backdrop(true)),
+            themed.clone().with_style(Opacity::Light, Frame::Plain),
+        )?,
+    )?;
+    write(
+        "profile-showcase-solid",
+        busy(
+            &all,
+            None,
+            Some(backdrop(true)),
+            themed.clone().with_style(Opacity::Solid, Frame::Plain),
+        )?,
+    )?;
+    let two = [
+        ShowcaseSlot {
+            kind: ShowcaseKind::Fish,
+            art: art(&fish),
+            name: "Amberwink Squidlet",
+        },
+        ShowcaseSlot {
+            kind: ShowcaseKind::Furniture,
+            art: art(&lamp),
+            name: "Blushcheek Lamp",
+        },
+    ];
+    write("profile-showcase-two", busy(&two, None, None, Theme::reef())?)?;
+    write(
+        "profile-showcase-house",
+        busy(&all[3..], Some("Marlow"), None, Theme::reef())?,
+    )?;
+    write(
+        "profile-partner",
+        busy(&[], Some("Marlow the Quiet"), None, Theme::reef())?,
+    )?;
+    write("profile-long", busy(&[], None, None, Theme::reef())?)?;
+    for frame in &Frame::ALL[1..] {
+        let styled = |opacity| Theme::reef().with_style(opacity, *frame);
+        write(
+            &format!("profile-frame-{}", frame.id()),
+            busy(&all, Some("Marlow the Quiet"), None, styled(Opacity::Normal))?,
+        )?;
+        write(
+            &format!("profile-frame-{}-classic", frame.id()),
+            busy(
+                &[],
+                Some("Marlow the Quiet"),
+                Some(backdrop(true)),
+                themed.clone().with_style(Opacity::Normal, *frame),
+            )?,
+        )?;
+        write(
+            &format!("rank-frame-{}", frame.id()),
+            rank_card(Some(backdrop(true)), themed.clone().with_style(Opacity::Normal, *frame))?,
+        )?;
+        write(
+            &format!("wallet-frame-{}", frame.id()),
+            wallet_card(None, Theme::reef().with_style(Opacity::Normal, *frame))?,
+        )?;
+    }
 
     println!(
         "wrote {out}/{{profile,profile-badges,profile-background,profile-placeholder,badge-collection,rank,rank-background,wallet,wallet-background,welcome,levelup,character,leaderboard,leaderboard-shells,room}}.png (profile rendered in {profile_ms} ms)"
