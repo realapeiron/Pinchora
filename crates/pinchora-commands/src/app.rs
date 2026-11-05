@@ -12,6 +12,8 @@ use twilight_model::{
     user::User,
 };
 
+use crate::server_log::LogState;
+
 /// Everything a handler needs. Built once per process and shared as `Arc<App>`.
 pub struct App {
     /// REST client; goes through the shared http-proxy when one is configured.
@@ -33,6 +35,8 @@ pub struct App {
     users: Moka<u64, Arc<User>>,
     tasks: TaskTracker,
     event_slots: Arc<Semaphore>,
+    /// Last-seen names and voice channels, so the server log can say what changed.
+    pub(crate) log_state: LogState,
 }
 
 impl App {
@@ -80,6 +84,7 @@ impl App {
                 .build(),
             tasks: TaskTracker::new(),
             event_slots: Arc::new(Semaphore::new(1024)),
+            log_state: LogState::new(),
         }
     }
 

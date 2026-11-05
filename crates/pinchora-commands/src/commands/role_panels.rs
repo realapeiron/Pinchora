@@ -1,0 +1,523 @@
+//! `/roles`: messages of buttons that give and take roles.
+
+use pinchora_db::{MAX_PANEL_ROLES, PanelRoleRow, PanelRow};
+use twilight_http::{Error, request::AuditLogReason};
+use twilight_interactions::command::{CommandModel, CreateCommand};
+use twilight_model::{
+    application::interaction::InteractionChannel,
+    channel::message::{
+        Component, Embed, EmojiReactionType,
+        component::{ActionRow, Button, ButtonStyle},
+    },
+    guild::{Permissions, Role},
+    id::{
+        Id,
+        marker::{ChannelMarker, RoleMarker},
+    },
+};
+use twilight_util::builder::embed::{EmbedBuilder, EmbedFooterBuilder};
+
+use crate::{Cx, roles, util::BRAND};
+
+const UNKNOWN_CHANNEL: u64 = 10003;
+const UNKNOWN_MESSAGE: u64 = 10008;
+const MISSING_ACCESS: u64 = 50001;
+const MISSING_PERMISSIONS: u64 = 50013;
+
+/// Buttons per action row, which is also Discord's limit.
+const ROW_WIDTH: usize = 5;
+
+fn manage_guild() -> Permissions {
+    Permissions::MANAGE_GUILD
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(
+    name = "roles",
+    desc = "Role buttons: members pick their own roles",
+    default_permissions = "manage_guild",
+    contexts = "guild"
+)]
+#[allow(clippy::large_enum_variant)] // parsed once per interaction, never stored
+pub enum RolesCommand {
+    #[command(name = "panel")]
+    Panel(RolesPanel),
+    #[command(name = "add")]
+    Add(RolesAdd),
+    #[command(name = "remove")]
+    Remove(RolesRemove),
+    #[command(name = "post")]
+    Post(RolesPost),
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "panel", desc = "Start a panel of role buttons, or change its description")]
+pub struct RolesPanel {
+    /// Title of the panel; it is how the other commands find it
+    #[command(min_length = 1, max_length = 80)]
+    title: String,
+    /// Text shown above the buttons
+    #[command(max_length = 500)]
+    description: Option<String>,
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "add", desc = "Add a role button to a panel (up to 25), or change its label")]
+pub struct RolesAdd {
+    /// The panel's title or number
+    #[command(min_length = 1, max_length = 80)]
+    panel: String,
+    /// The role the button gives and takes
+    role: Role,
+    /// Text on the button
+    #[command(min_length = 1, max_length = 80)]
+    label: String,
+    /// Emoji on the button: a Unicode emoji or a custom one
+    #[command(max_length = 64)]
+    emoji: Option<String>,
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "remove", desc = "Take a role button off a panel")]
+pub struct RolesRemove {
+    /// The panel's title or number
+    #[command(min_length = 1, max_length = 80)]
+    panel: String,
+    /// The role whose button to remove
+    role: Id<RoleMarker>,
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(
+    name = "post",
+    desc = "Post a panel in a channel, or update it if it is already there"
+)]
+pub struct RolesPost {
+    /// The panel's title or number
+    #[command(min_length = 1, max_length = 80)]
+    panel: String,
+    /// Where to post it
+    #[command(channel_types = "guild_text guild_announcement")]
+    channel: InteractionChannel,
+}
+
+/// The custom id of a role button: the panel and the role, nothing else.
+fn button_id(panel: i64, role: u64) -> String {
+    format!("rr:{panel}:{role}")
+}
+
+/// Reads what follows the `rr:` prefix of a custom id.
+fn parse_button<'a>(mut parts: impl Iterator<Item = &'a str>) -> Option<(i64, u64)> {
+    let panel = parts.next()?.parse().ok()?;
+    let role = parts.next()?.parse().ok()?;
+    parts.next().is_none().then_some((panel, role))
+}
+
+/// Reads the emoji a manager typed: a Unicode emoji, or a custom one as Discord writes it
+/// (`<:name:id>`, `<a:name:id>`). Words are not emoji.
+fn parse_emoji(text: &str) -> Option<EmojiReactionType> {
+    let text = text.trim();
+    if let Some(inner) = text.strip_prefix('<').and_then(|t| t.strip_suffix('>')) {
+        let (animated, inner) = match inner.strip_prefix("a:") {
+            Some(rest) => (true, rest),
+            None => (false, inner.strip_prefix(':')?),
+        };
+        let (name, id) = inner.split_once(':')?;
+        let id: u64 = id.parse().ok().filter(|id| *id > 0)?;
+        let name_ok = (2..=32).contains(&name.len()) && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_');
+        return name_ok.then(|| EmojiReactionType::Custom {
+            animated,
+            id: Id::new(id),
+            name: Some(name.to_owned()),
+        });
+    }
+    // Emoji sequences are a handful of characters; a letter or a space means it is text. The
+    // non-ASCII character rules out "1" and "#" on their own.
+    let emoji =
+        !text.is_ascii() && text.chars().count() <= 16 && !text.chars().any(|c| c.is_alphabetic() || c.is_whitespace());
+    emoji.then(|| EmojiReactionType::Unicode { name: text.to_owned() })
+}
+
+/// The panel as a message: its text with a line per role, and a button per role, five to a row.
+fn panel_message(panel: &PanelRow, roles: &[PanelRoleRow]) -> (Embed, Vec<Component>) {
+    let mut lines: Vec<String> = Vec::new();
+    lines.extend(panel.description.clone());
+    if !lines.is_empty() {
+        lines.push(String::new());
+    }
+    lines.extend(roles.iter().map(|r| {
+        let emoji = r.emoji.as_deref().map_or_else(String::new, |e| format!("{e} "));
+        format!("{emoji}**{}** · <@&{}>", r.label, r.role_id)
+    }));
+    let embed = EmbedBuilder::new()
+        .color(BRAND)
+        .title(&panel.title)
+        .description(lines.join("\n"))
+        .footer(EmbedFooterBuilder::new(
+            "Click a button to get a role; click it again to drop it",
+        ))
+        .build();
+    let components = roles
+        .chunks(ROW_WIDTH)
+        .map(|row| {
+            Component::ActionRow(ActionRow {
+                id: None,
+                components: row
+                    .iter()
+                    .map(|r| {
+                        Component::Button(Button {
+                            custom_id: Some(button_id(panel.id, r.role_id as u64)),
+                            disabled: false,
+                            emoji: r.emoji.as_deref().and_then(parse_emoji),
+                            id: None,
+                            label: Some(r.label.clone()),
+                            sku_id: None,
+                            style: ButtonStyle::Secondary,
+                            url: None,
+                        })
+                    })
+                    .collect(),
+            })
+        })
+        .collect();
+    (embed, components)
+}
+
+/// Why Discord would not take the panel message, for the manager who asked.
+fn post_refusal(channel: Id<ChannelMarker>, error: &Error) -> String {
+    match roles::error_code(error) {
+        Some(MISSING_ACCESS | MISSING_PERMISSIONS) => {
+            format!("I can't post in <#{channel}>: I need View Channel, Send Messages and Embed Links there.")
+        }
+        Some(UNKNOWN_CHANNEL) => "That channel no longer exists.".to_owned(),
+        Some(_) => "Discord refused the message. Check that the emojis on the buttons are valid.".to_owned(),
+        None => "Discord could not be reached. Try again in a moment.".to_owned(),
+    }
+}
+
+/// The panel called `key`, or a reply saying there is none (and `None`).
+async fn find_panel(cx: &Cx, guild: u64, key: &str) -> anyhow::Result<Option<PanelRow>> {
+    let panel = cx.app.db.find_panel(guild, key).await?;
+    if panel.is_none() {
+        cx.reply_ephemeral(format!(
+            "There is no panel called **{}**. Start one with `/roles panel`.",
+            key.trim()
+        ))
+        .await?;
+    }
+    Ok(panel)
+}
+
+impl RolesCommand {
+    pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
+        let Some(guild) = cx.guild_id() else {
+            return cx.reply_ephemeral("Role panels only exist inside a server.").await;
+        };
+        if !cx.can_manage_guild() {
+            return cx
+                .reply_ephemeral("You need the Manage Server permission to set up role panels.")
+                .await;
+        }
+        let db = &cx.app.db;
+        match self {
+            Self::Panel(c) => {
+                let title = c.title.trim();
+                if title.is_empty() {
+                    return cx.reply_ephemeral("Give the panel a title.").await;
+                }
+                let description = c.description.as_deref().map(str::trim).filter(|d| !d.is_empty());
+                let (panel, created) = db.save_panel(guild, title, description).await?;
+                cx.reply_ephemeral(if created {
+                    format!(
+                        "Panel **{}** (number {}) is a draft. Add roles with `/roles add`, then publish it with `/roles post`.",
+                        panel.title, panel.id
+                    )
+                } else {
+                    format!(
+                        "Panel **{}** already existed; its description is up to date. Run `/roles post` to refresh the message.",
+                        panel.title
+                    )
+                })
+                .await
+            }
+            Self::Add(c) => {
+                let Some(panel) = find_panel(cx, guild, &c.panel).await? else {
+                    return Ok(());
+                };
+                let emoji = c.emoji.as_deref().map(str::trim).filter(|e| !e.is_empty());
+                if emoji.is_some_and(|e| parse_emoji(e).is_none()) {
+                    return cx
+                        .reply_ephemeral(
+                            "I couldn't read that emoji. Use a Unicode emoji or a custom one like `<:name:123456789>`.",
+                        )
+                        .await;
+                }
+                if let Some(why) = roles::unassignable(&cx.app, guild, &c.role).await {
+                    return cx.reply_ephemeral(why).await;
+                }
+                if !db
+                    .add_panel_role(panel.id, c.role.id.get(), c.label.trim(), emoji)
+                    .await?
+                {
+                    return cx
+                        .reply_ephemeral(format!(
+                            "A panel holds at most {MAX_PANEL_ROLES} roles. Remove one with `/roles remove` first."
+                        ))
+                        .await;
+                }
+                let count = db.panel_roles(panel.id).await?.len();
+                cx.reply_ephemeral(format!(
+                    "<@&{}> is on **{}** as **{}** ({count}/{MAX_PANEL_ROLES}). Run `/roles post` to show it.",
+                    c.role.id,
+                    panel.title,
+                    c.label.trim()
+                ))
+                .await
+            }
+            Self::Remove(c) => {
+                let Some(panel) = find_panel(cx, guild, &c.panel).await? else {
+                    return Ok(());
+                };
+                cx.reply_ephemeral(if db.remove_panel_role(panel.id, c.role.get()).await? {
+                    format!(
+                        "<@&{}> is off **{}**. Run `/roles post` to refresh the message; members keep the role they have.",
+                        c.role, panel.title
+                    )
+                } else {
+                    format!("<@&{}> isn't on **{}**.", c.role, panel.title)
+                })
+                .await
+            }
+            Self::Post(c) => post(cx, guild, c).await,
+        }
+    }
+}
+
+/// Posts the panel, or updates its message when it already sits in that channel.
+async fn post(cx: &Cx, guild: u64, c: RolesPost) -> anyhow::Result<()> {
+    let Some(panel) = find_panel(cx, guild, &c.panel).await? else {
+        return Ok(());
+    };
+    let db = &cx.app.db;
+    let roles = db.panel_roles(panel.id).await?;
+    if roles.is_empty() {
+        return cx
+            .reply_ephemeral(format!(
+                "**{}** has no roles yet. Add some with `/roles add`.",
+                panel.title
+            ))
+            .await;
+    }
+    let channel = c.channel.id;
+    let (embed, components) = panel_message(&panel, &roles);
+    let before = panel.channel_id.zip(panel.message_id);
+
+    // Same channel: edit the message in place. A message someone deleted is posted afresh.
+    if let Some((same, message)) = before.filter(|(posted_in, _)| *posted_in as u64 == channel.get()) {
+        match cx
+            .app
+            .http
+            .update_message(channel, Id::new(message as u64))
+            .embeds(Some(std::slice::from_ref(&embed)))
+            .components(Some(&components))
+            .await
+        {
+            Ok(_) => {
+                return cx
+                    .reply_ephemeral(format!("Updated **{}** in <#{same}>.", panel.title))
+                    .await;
+            }
+            Err(error) if roles::error_code(&error) == Some(UNKNOWN_MESSAGE) => {}
+            Err(error) => {
+                tracing::warn!(guild, panel = panel.id, %error, "could not update a role panel");
+                return cx.reply_ephemeral(post_refusal(channel, &error)).await;
+            }
+        }
+    }
+
+    let message = match cx
+        .app
+        .http
+        .create_message(channel)
+        .embeds(&[embed])
+        .components(&components)
+        .await
+    {
+        Ok(response) => response.model().await?,
+        Err(error) => {
+            tracing::warn!(guild, panel = panel.id, %error, "could not post a role panel");
+            return cx.reply_ephemeral(post_refusal(channel, &error)).await;
+        }
+    };
+    db.set_panel_message(panel.id, channel.get(), message.id.get()).await?;
+    let moved = before
+        .filter(|(posted_in, _)| *posted_in as u64 != channel.get())
+        .map_or_else(String::new, |(old, _)| {
+            format!(" The earlier message in <#{old}> still works but won't update.")
+        });
+    cx.reply_ephemeral(format!(
+        "Posted **{}** in <#{channel}>: https://discord.com/channels/{guild}/{channel}/{}{moved}",
+        panel.title, message.id
+    ))
+    .await
+}
+
+/// `rr` buttons: give the member the role, or take it if they have it.
+pub(crate) async fn on_toggle<'a>(cx: &Cx, parts: impl Iterator<Item = &'a str>) -> anyhow::Result<()> {
+    let Some(guild) = cx.guild_id() else {
+        return cx.reply_ephemeral("Role buttons only work inside a server.").await;
+    };
+    let Some((panel, role)) = parse_button(parts) else {
+        return cx.reply_ephemeral("This button has expired.").await;
+    };
+    // The id came from the client; it counts only if that role still has a button on a panel of this server.
+    if cx.app.db.panel_role(guild, panel, role).await?.is_none() {
+        return cx.reply_ephemeral("That role isn't on this panel any more.").await;
+    }
+    let user = cx.author()?.id;
+    let has_it = cx
+        .interaction
+        .member
+        .as_ref()
+        .is_some_and(|m| m.roles.iter().any(|r| r.get() == role));
+    let (guild_id, role_id) = (Id::new(guild), Id::new(role));
+    let result = if has_it {
+        cx.app
+            .http
+            .remove_guild_member_role(guild_id, user, role_id)
+            .reason("Role panel")
+            .await
+    } else {
+        cx.app
+            .http
+            .add_guild_member_role(guild_id, user, role_id)
+            .reason("Role panel")
+            .await
+    };
+    match result {
+        Ok(_) => {
+            cx.reply_ephemeral(format!("{} <@&{role}>.", if has_it { "Removed" } else { "Added" }))
+                .await
+        }
+        Err(error) => {
+            tracing::warn!(guild, user = user.get(), role, %error, "could not change a role from a panel");
+            let verb = if has_it { "take" } else { "give you" };
+            let mut text = format!("I couldn't {verb} <@&{role}>: {}.", roles::refusal(&error));
+            if roles::role_is_gone(&error) {
+                cx.app.db.forget_role(guild, role).await?;
+                cx.app.forget_guild_settings(guild).await;
+                text.push_str(" Its button was taken off the panel.");
+            }
+            cx.reply_ephemeral(text).await
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn button_ids_round_trip() {
+        let id = button_id(12, 345_678_901_234_567_890);
+        let mut parts = id.split(':');
+        assert_eq!(parts.next(), Some("rr"));
+        assert_eq!(parse_button(parts), Some((12, 345_678_901_234_567_890)));
+        assert!(id.len() <= 100, "Discord's custom id limit");
+    }
+
+    #[test]
+    fn bad_button_ids_are_refused() {
+        assert_eq!(parse_button("1".split(':')), None, "no role");
+        assert_eq!(parse_button("x:2".split(':')), None, "panel is not a number");
+        assert_eq!(parse_button("1:-2".split(':')), None, "role is not an id");
+        assert_eq!(parse_button("1:2:3".split(':')), None, "trailing parts");
+        assert_eq!(parse_button("".split(':')), None);
+    }
+
+    #[test]
+    fn reads_unicode_and_custom_emoji() {
+        assert!(matches!(
+            parse_emoji("🎮"),
+            Some(EmojiReactionType::Unicode { name }) if name == "🎮"
+        ));
+        assert!(matches!(
+            parse_emoji(" 1️⃣ "),
+            Some(EmojiReactionType::Unicode { name }) if name == "1️⃣"
+        ));
+        assert!(matches!(parse_emoji("👨‍👩‍👧"), Some(EmojiReactionType::Unicode { .. })));
+        match parse_emoji("<:blobwave:123456789>") {
+            Some(EmojiReactionType::Custom { animated, id, name }) => {
+                assert!(!animated);
+                assert_eq!(id.get(), 123_456_789);
+                assert_eq!(name.as_deref(), Some("blobwave"));
+            }
+            other => panic!("custom emoji read as {other:?}"),
+        }
+        assert!(matches!(
+            parse_emoji("<a:party:42>"),
+            Some(EmojiReactionType::Custom { animated: true, .. })
+        ));
+    }
+
+    #[test]
+    fn words_and_broken_markup_are_not_emoji() {
+        for text in [
+            "",
+            "gaming",
+            "a",
+            "1",
+            "#",
+            "é",
+            "🎮 games",
+            ":video_game:",
+            "<:x:1>",
+            "<:ok:0>",
+            "<:ok:x>",
+            "<ok>",
+        ] {
+            assert!(parse_emoji(text).is_none(), "{text:?} was accepted");
+        }
+    }
+
+    #[test]
+    fn a_panel_becomes_rows_of_five_buttons() {
+        let panel = PanelRow {
+            id: 7,
+            title: "Colours".to_owned(),
+            description: Some("Pick one".to_owned()),
+            channel_id: None,
+            message_id: None,
+        };
+        let roles: Vec<PanelRoleRow> = (1..=12)
+            .map(|n| PanelRoleRow {
+                role_id: 1_000 + n,
+                label: format!("Role {n}"),
+                emoji: (n == 1).then(|| "🎮".to_owned()),
+            })
+            .collect();
+        let (embed, rows) = panel_message(&panel, &roles);
+        assert_eq!(embed.title.as_deref(), Some("Colours"));
+        let description = embed.description.unwrap();
+        assert!(
+            description.starts_with("Pick one\n\n🎮 **Role 1** · <@&1001>"),
+            "{description}"
+        );
+        let widths: Vec<usize> = rows
+            .iter()
+            .map(|row| match row {
+                Component::ActionRow(r) => r.components.len(),
+                _ => 0,
+            })
+            .collect();
+        assert_eq!(widths, [5, 5, 2]);
+        let Component::ActionRow(first) = &rows[0] else {
+            panic!("not a row");
+        };
+        let Component::Button(button) = &first.components[0] else {
+            panic!("not a button");
+        };
+        assert_eq!(button.custom_id.as_deref(), Some("rr:7:1001"));
+        assert!(button.emoji.is_some());
+    }
+}

@@ -1,7 +1,10 @@
 use std::{sync::Arc, time::Duration};
 
 use pinchora_cache::{RedisQueue, StoredSession};
-use pinchora_commands::{App, Responder, handle_interaction, on_member_add, on_message};
+use pinchora_commands::{
+    App, Responder, handle_interaction, on_ban_add, on_ban_remove, on_member_add, on_member_remove, on_member_update,
+    on_message, on_voice_state_update,
+};
 use pinchora_core::{
     Config, cluster,
     telemetry::{self, Readiness},
@@ -25,6 +28,11 @@ fn wanted_events() -> EventTypeFlags {
     EventTypeFlags::INTERACTION_CREATE
         | EventTypeFlags::MESSAGE_CREATE
         | EventTypeFlags::MEMBER_ADD
+        | EventTypeFlags::MEMBER_REMOVE
+        | EventTypeFlags::MEMBER_UPDATE
+        | EventTypeFlags::BAN_ADD
+        | EventTypeFlags::BAN_REMOVE
+        | EventTypeFlags::VOICE_STATE_UPDATE
         | EventTypeFlags::READY
         | EventTypeFlags::RESUMED
 }
@@ -61,7 +69,9 @@ pub async fn run(config: &Config, app: Arc<App>, ready: Readiness) -> anyhow::Re
         "starting shard cluster"
     );
 
-    let mut intents = Intents::GUILDS | Intents::GUILD_MESSAGES;
+    // Bans and voice states feed the server log; neither intent is privileged.
+    let mut intents =
+        Intents::GUILDS | Intents::GUILD_MESSAGES | Intents::GUILD_MODERATION | Intents::GUILD_VOICE_STATES;
     if config.gateway.member_events {
         intents |= Intents::GUILD_MEMBERS;
     }
@@ -88,6 +98,9 @@ pub async fn run(config: &Config, app: Arc<App>, ready: Readiness) -> anyhow::Re
     for id in ids {
         let mut builder = ConfigBuilder::from(base.clone());
         match app.cache.take_session(id.number()).await {
+            Ok(Some(saved)) if saved.intents != intents.bits() => {
+                tracing::info!(shard = id.number(), "intents changed; identifying instead of resuming");
+            }
             Ok(Some(saved)) => {
                 tracing::info!(shard = id.number(), "resuming saved session");
                 builder = builder.session(Session::new(saved.sequence, saved.session_id));
@@ -153,6 +166,7 @@ async fn run_shard(
         session_id: s.id().to_owned(),
         sequence: s.sequence(),
         resume_url: shard.resume_url().map(ToOwned::to_owned),
+        intents: shard.config().intents().bits(),
     });
     (id, session)
 }
@@ -180,6 +194,46 @@ fn dispatch(app: &Arc<App>, shard: u32, event: Event) {
             app.spawn_event("member_add", async move {
                 if let Err(error) = on_member_add(app2, *member).await {
                     tracing::warn!(%error, "welcome handler failed");
+                }
+            });
+        }
+        Event::MemberRemove(event) => {
+            let app2 = app.clone();
+            app.spawn_event("member_remove", async move {
+                if let Err(error) = on_member_remove(app2, event).await {
+                    tracing::warn!(%error, "goodbye handler failed");
+                }
+            });
+        }
+        Event::MemberUpdate(event) => {
+            let app2 = app.clone();
+            app.spawn_event("member_update", async move {
+                if let Err(error) = on_member_update(app2, *event).await {
+                    tracing::warn!(%error, "member update handler failed");
+                }
+            });
+        }
+        Event::BanAdd(event) => {
+            let app2 = app.clone();
+            app.spawn_event("ban_add", async move {
+                if let Err(error) = on_ban_add(app2, event).await {
+                    tracing::warn!(%error, "ban handler failed");
+                }
+            });
+        }
+        Event::BanRemove(event) => {
+            let app2 = app.clone();
+            app.spawn_event("ban_remove", async move {
+                if let Err(error) = on_ban_remove(app2, event).await {
+                    tracing::warn!(%error, "unban handler failed");
+                }
+            });
+        }
+        Event::VoiceStateUpdate(event) => {
+            let app2 = app.clone();
+            app.spawn_event("voice_state_update", async move {
+                if let Err(error) = on_voice_state_update(app2, *event).await {
+                    tracing::warn!(%error, "voice handler failed");
                 }
             });
         }

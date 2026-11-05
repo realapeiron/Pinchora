@@ -20,9 +20,11 @@ pub(crate) mod profile;
 pub(crate) mod quests;
 mod rank;
 mod rep;
+pub(crate) mod role_panels;
 pub(crate) mod shop;
 pub(crate) mod stall;
 pub(crate) mod store;
+mod utilities;
 
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::application::{command::Command, interaction::application_command::CommandData};
@@ -74,4 +76,5 @@ commands!(
     points::PointsCommand,
     store::StoreCommand,
     customize::CustomizeCommand,
+    role_panels::RolesCommand,
 );

@@ -11,7 +11,14 @@ use twilight_util::builder::embed::{EmbedBuilder, EmbedFieldBuilder};
 
 use crate::{
     Cx,
-    commands::{level_roles::ConfigLevelRoles, points::ConfigPoints, store::ConfigStore},
+    commands::{
+        level_roles::ConfigLevelRoles,
+        points::ConfigPoints,
+        store::ConfigStore,
+        utilities::{
+            ConfigGoodbye, ConfigJoinRole, ConfigLog, ConfigLogEvents, goodbye_summary, join_role_summary, log_summary,
+        },
+    },
     events::{DEFAULT_LEVELUP, DEFAULT_WELCOME},
     util::BRAND,
 };
@@ -43,6 +50,14 @@ pub enum ConfigCommand {
     Points(ConfigPoints),
     #[command(name = "store")]
     Store(ConfigStore),
+    #[command(name = "join-role")]
+    JoinRole(ConfigJoinRole),
+    #[command(name = "goodbye")]
+    Goodbye(ConfigGoodbye),
+    #[command(name = "log")]
+    Log(ConfigLog),
+    #[command(name = "log-events")]
+    LogEvents(ConfigLogEvents),
 }
 
 #[derive(CommandOption, CreateOption, Clone, Copy)]
@@ -141,6 +156,10 @@ impl ConfigCommand {
             Self::WelcomeCard(c) => return c.run(cx, guild).await,
             Self::LevelRoles(c) => return c.run(cx, guild).await,
             Self::Store(c) => return c.run(cx, guild).await,
+            Self::JoinRole(c) => return c.run(cx, guild).await,
+            Self::Goodbye(c) => return c.run(cx, guild).await,
+            Self::Log(c) => return c.run(cx, guild).await,
+            Self::LogEvents(c) => return c.run(cx, guild).await,
             Self::Points(c) => match c.apply(&cx.app.db, guild).await? {
                 Ok(settings) => settings,
                 Err(reason) => return cx.reply_ephemeral(reason).await,
@@ -229,5 +248,8 @@ fn settings_embed(s: &GuildSettings) -> Embed {
                 s.points_max
             ),
         ))
+        .field(EmbedFieldBuilder::new("Join role", join_role_summary(s)))
+        .field(EmbedFieldBuilder::new("Goodbye", goodbye_summary(s)))
+        .field(EmbedFieldBuilder::new("Server log", log_summary(s)))
         .build()
 }

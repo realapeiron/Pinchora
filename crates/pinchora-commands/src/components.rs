@@ -1,7 +1,8 @@
 use crate::{
     Cx,
     commands::{
-        character, customize, decorate, duel, fish, gift, house, leaderboard, pet, plaza, quests, shop, stall, store,
+        character, customize, decorate, duel, fish, gift, house, leaderboard, pet, plaza, quests, role_panels, shop,
+        stall, store,
     },
 };
 
@@ -36,6 +37,7 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
         Some("ch") => character::on_select(cx, parts, values.first().map(String::as_str)).await,
         Some("st") => store::on_buy(cx, values.first().map(String::as_str)).await,
         Some("cz") => customize::on_component(cx, parts, values).await,
+        Some("rr") => role_panels::on_toggle(cx, parts).await,
         _ => cx.reply_ephemeral("This button has expired.").await,
     }
 }

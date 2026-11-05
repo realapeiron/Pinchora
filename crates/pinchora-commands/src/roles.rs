@@ -154,6 +154,25 @@ pub(crate) async fn level_up_roles(app: &App, guild: u64, user: u64, level: u32,
     }
 }
 
+/// Gives a new member the server's join role. Never fails the caller; a role that no longer exists
+/// is dropped from the settings.
+pub(crate) async fn give_join_role(app: &App, guild: u64, user: u64, role: u64) {
+    let given = app
+        .http
+        .add_guild_member_role(Id::new(guild.max(1)), Id::new(user.max(1)), Id::new(role.max(1)))
+        .reason("Join role")
+        .await;
+    if let Err(error) = given {
+        tracing::warn!(guild, user, role, %error, "could not give the join role");
+        if role_is_gone(&error) {
+            match app.db.forget_role(guild, role).await {
+                Ok(()) => app.forget_guild_settings(guild).await,
+                Err(error) => tracing::warn!(guild, role, %error, "could not drop a deleted join role"),
+            }
+        }
+    }
+}
+
 /// The nearest level role above `level` that still exists, as its name and level.
 /// `None` when there is none or Discord cannot name the roles.
 pub(crate) async fn next_role(app: &App, guild: u64, level: u32) -> anyhow::Result<Option<(String, u32)>> {

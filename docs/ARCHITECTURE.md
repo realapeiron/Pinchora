@@ -37,7 +37,8 @@ One binary, `pinchora`, with roles chosen by subcommand:
 - **`gateway`** runs one shard cluster. With `C` clusters and `S` total shards, cluster `i`
   owns the consecutive shard range `twilight_gateway::bucket(i, C, S)`. In Kubernetes this is a
   StatefulSet: the pod ordinal (`pinchora-gateway-3`) is the cluster id. It handles chat XP,
-  welcome cards and — while no Interactions Endpoint URL is set — interactions.
+  welcome cards, join roles, goodbye messages, the server log (joins, name changes, bans, voice) and —
+  while no Interactions Endpoint URL is set — interactions.
 - **`interactions`** is a stateless HTTPS endpoint for slash commands and buttons. Once its URL
   is set in the Developer Portal, Discord stops sending interactions over the gateway, so
   command load scales with this Deployment (HPA) instead of with shards.
@@ -79,10 +80,13 @@ http-proxy when one is configured.
 ## Data
 
 - `users` — global profile: shells (`credits`), global XP, reputation, daily streak, bio.
-- `guilds` — per-server settings (leveling, welcome cards, level role mode, server points).
+- `guilds` — per-server settings (leveling, welcome cards, level role mode, server points, join role,
+  goodbye message, server log channel and its per-event switches).
 - `members` — per-server XP and server points; `(guild_id, xp DESC)` and `(guild_id, points DESC)`
   indexes serve leaderboards and ranks.
 - `level_roles` — roles given at a level; `store_items` — roles sold for server points (price, optional stock).
+- `role_panels` / `role_panel_roles` — messages of role buttons (up to 25 per panel); a button's custom id is
+  `rr:<panel>:<role>` and a click is checked against these tables.
 - `credit_ledger` — every shell movement, for audits and economy statistics.
 
 Money moves only inside transactions that lock the touched user rows in id order, so

@@ -27,6 +27,13 @@ Written in Rust and built to run sharded on Kubernetes.
 | `/bio text` | About-me text on the profile card |
 | `/config welcome\|leveling\|show` | Welcome cards and level-up messages (Manage Server) |
 | `/config level-roles add\|remove\|list\|mode\|sync` | Roles given at a level (up to 25): `mode` keeps every role earned or only the highest, `sync` catches up members who already passed a level (Manage Server) |
+| `/config join-role [role] [off]` | A role every new member gets, bots excepted; with neither option it shows the current setting (Manage Server) |
+| `/config goodbye [channel] [message] [off]` | Goodbye message in a channel when a member leaves; placeholders `{user}` `{server}` `{members}` (Manage Server) |
+| `/config log [channel] [off]` | Server log: compact embeds with the member, their avatar and the time for joins and leaves, nickname and username changes, bans and unbans, and voice joins, leaves and moves (Manage Server) |
+| `/config log-events [members] [names] [bans] [voice]` | Switch kinds of log entries on or off; all start on, so picking a log channel is enough (Manage Server) |
+| `/roles panel title [description]` | Start a panel of role buttons (a draft); the same title again only changes the description (Manage Server) |
+| `/roles add panel role label [emoji]` | Put a role button on a panel (up to 25); adding a role again changes its label and emoji. `panel` is the title or the number (Manage Server) |
+| `/roles remove panel role`, `/roles post panel channel` | Take a button off, or post the panel; posting again in the same channel updates the message in place (Manage Server) |
 | `/points show [user]` | Server points balance and rank; the server can rename the points and pick their emoji |
 | `/points give\|take user amount` | Adjust a member's server points (Manage Server) |
 | `/config points [enabled] [name] [emoji] [min] [max]` | Turn server points on or off, rename them, and set what a message earns (Manage Server) |
@@ -36,8 +43,17 @@ Written in Rust and built to run sharded on Kubernetes.
 
 Chatting earns 15–25 XP and, by default, 1–3 server points per minute per server. Level roles are
 given on level-up, and the bot needs the Manage Roles permission with its role above the roles it
-hands out; roles the bot can't give are refused when they are added. If Discord refuses a store
-role at purchase time, the points and stock are returned. New members get a welcome card when enabled.
+hands out; roles the bot can't give (@everyone, integration-managed roles, roles above the bot's own)
+are refused when they are added to the level roles, the store, the join role or a role panel. If
+Discord refuses a store role at purchase time, the points and stock are returned. New members get a
+welcome card when enabled.
+
+Role panel buttons toggle the role and answer privately ("Added @Role" / "Removed @Role"). A button
+only works while its role is still on that panel, so removing a role from a panel stops old
+messages from handing it out. The server log remembers each member's last-seen nickname and username
+in memory to show "old → new"; after a restart, or for a member it has not seen yet, a nickname
+change is logged as just the new value. Voice moves work the same way: a member already in a voice
+channel when the bot starts is only noticed once their state changes.
 
 ### The pixel world
 
@@ -69,7 +85,9 @@ Game content (furniture, rooms, pets, fish, looks, card backgrounds and badges) 
 ## Quick start (Docker)
 
 1. Create an application at <https://discord.com/developers/applications>, add a bot, and turn
-   on **Server Members Intent** (for welcome cards; or set `PINCHORA_GATEWAY__MEMBER_EVENTS=false`).
+   on **Server Members Intent** (for welcome cards, join roles, goodbye messages and the member, nickname and
+   username entries of the server log; or set `PINCHORA_GATEWAY__MEMBER_EVENTS=false`). The server log's ban and voice
+   entries use the non-privileged Guild Moderation and Guild Voice States intents.
 2. `cp .env.example .env` and fill in the token and application id.
 3. Start everything:
 

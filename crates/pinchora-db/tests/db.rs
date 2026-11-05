@@ -1,6 +1,8 @@
 //! Runs against a real PostgreSQL when `PINCHORA_TEST_DATABASE_URL` is set; skipped otherwise.
 
-use pinchora_db::{CustomizeBuy, DailyOutcome, Db, MAX_BADGES, PlayerStats, RepOutcome, TransferOutcome};
+use pinchora_db::{
+    CustomizeBuy, DailyOutcome, Db, LogKind, MAX_BADGES, MAX_PANEL_ROLES, PlayerStats, RepOutcome, TransferOutcome,
+};
 
 async fn db() -> Option<Db> {
     let url = std::env::var("PINCHORA_TEST_DATABASE_URL").ok()?;
@@ -716,4 +718,172 @@ async fn player_stats_collect_every_number_for_achievements() {
         .await
         .unwrap();
     assert_eq!(db.player_stats(host).await.unwrap().streak, 0);
+}
+
+#[tokio::test]
+async fn join_role_goodbye_and_log_settings() {
+    let Some(db) = db().await else { return };
+    let [guild, other] = ids();
+
+    // Everything starts off, and a log channel alone switches every kind of event on.
+    let fresh = db.guild_settings(guild).await.unwrap();
+    assert!(fresh.join_role_id.is_none() && fresh.goodbye_channel_id.is_none() && fresh.log_channel_id.is_none());
+    assert!(fresh.log_members && fresh.log_names && fresh.log_bans && fresh.log_voice);
+    assert_eq!(fresh.log_channel(LogKind::Voice), None);
+
+    assert_eq!(db.set_join_role(guild, Some(77)).await.unwrap().join_role_id, Some(77));
+    assert_eq!(db.set_join_role(guild, None).await.unwrap().join_role_id, None);
+
+    // The message survives turning goodbyes off.
+    let on = db.update_goodbye(guild, Some(5), Some("bye {user}")).await.unwrap();
+    assert_eq!(
+        (on.goodbye_channel_id, on.goodbye_message.as_deref()),
+        (Some(5), Some("bye {user}"))
+    );
+    let kept = db.update_goodbye(guild, None, None).await.unwrap();
+    assert_eq!(kept.goodbye_channel_id, Some(5), "nothing given, nothing changed");
+    let off = db.clear_goodbye(guild).await.unwrap();
+    assert_eq!(
+        (off.goodbye_channel_id, off.goodbye_message.as_deref()),
+        (None, Some("bye {user}"))
+    );
+
+    let logged = db.set_log_channel(guild, Some(9)).await.unwrap();
+    assert_eq!(logged.log_channel(LogKind::Bans), Some(9));
+    let some = db
+        .update_log_events(guild, Some(false), None, None, Some(false))
+        .await
+        .unwrap();
+    assert_eq!(some.log_channel(LogKind::Members), None);
+    assert_eq!(some.log_channel(LogKind::Names), Some(9));
+    assert_eq!(some.log_channel(LogKind::Voice), None);
+    assert_eq!(
+        db.set_log_channel(guild, None)
+            .await
+            .unwrap()
+            .log_channel(LogKind::Names),
+        None
+    );
+
+    // Another server is untouched.
+    assert!(db.guild_settings(other).await.unwrap().join_role_id.is_none());
+
+    // A role deleted on Discord stops being the join role.
+    db.set_join_role(guild, Some(88)).await.unwrap();
+    db.forget_role(guild, 99).await.unwrap();
+    assert_eq!(db.guild_settings(guild).await.unwrap().join_role_id, Some(88));
+    db.forget_role(guild, 88).await.unwrap();
+    assert_eq!(db.guild_settings(guild).await.unwrap().join_role_id, None);
+}
+
+#[tokio::test]
+async fn role_panels_belong_to_their_server_and_keep_order() {
+    let Some(db) = db().await else { return };
+    let [guild, other] = ids();
+
+    // A panel is found by title (any case) or number, only in its own server.
+    let (panel, created) = db.save_panel(guild, "Colours", Some("Pick one")).await.unwrap();
+    assert!(created && panel.channel_id.is_none() && panel.message_id.is_none());
+    let (again, created) = db.save_panel(guild, "colours", None).await.unwrap();
+    assert!(!created && again.id == panel.id, "same title, same panel");
+    assert_eq!(
+        again.description.as_deref(),
+        Some("Pick one"),
+        "no description given, none lost"
+    );
+    let (updated, _) = db.save_panel(guild, "COLOURS", Some("Pick two")).await.unwrap();
+    assert_eq!(updated.description.as_deref(), Some("Pick two"));
+    assert_eq!(updated.title, "Colours", "the first title stays");
+    assert_eq!(db.find_panel(guild, "COLOURS").await.unwrap().unwrap().id, panel.id);
+    assert_eq!(
+        db.find_panel(guild, &format!("#{}", panel.id))
+            .await
+            .unwrap()
+            .unwrap()
+            .id,
+        panel.id
+    );
+    assert!(db.find_panel(other, "Colours").await.unwrap().is_none());
+    assert!(db.find_panel(other, &panel.id.to_string()).await.unwrap().is_none());
+    let (theirs, created) = db.save_panel(other, "Colours", None).await.unwrap();
+    assert!(created && theirs.id != panel.id, "titles only clash within a server");
+
+    // Buttons keep the order they were added in; adding again changes the label in place.
+    assert!(db.add_panel_role(panel.id, 301, "Red", Some("🔴")).await.unwrap());
+    assert!(db.add_panel_role(panel.id, 300, "Blue", None).await.unwrap());
+    assert!(db.add_panel_role(panel.id, 301, "Crimson", None).await.unwrap());
+    let roles: Vec<_> = db
+        .panel_roles(panel.id)
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|r| (r.role_id, r.label, r.emoji))
+        .collect();
+    assert_eq!(
+        roles,
+        vec![(301, "Crimson".to_owned(), None), (300, "Blue".to_owned(), None)]
+    );
+
+    // A click is only valid for a button of this server's panel.
+    assert_eq!(
+        db.panel_role(guild, panel.id, 300).await.unwrap().unwrap().label,
+        "Blue"
+    );
+    assert!(
+        db.panel_role(other, panel.id, 300).await.unwrap().is_none(),
+        "another server"
+    );
+    assert!(
+        db.panel_role(guild, panel.id, 999).await.unwrap().is_none(),
+        "not on the panel"
+    );
+    assert!(
+        db.panel_role(guild, theirs.id, 300).await.unwrap().is_none(),
+        "not on that panel"
+    );
+
+    // Posting remembers the message.
+    db.set_panel_message(panel.id, 11, 22).await.unwrap();
+    let posted = db.find_panel(guild, "Colours").await.unwrap().unwrap();
+    assert_eq!((posted.channel_id, posted.message_id), (Some(11), Some(22)));
+
+    // Removing a button, and a role deleted on Discord, both take it off the panel.
+    assert!(db.remove_panel_role(panel.id, 300).await.unwrap());
+    assert!(!db.remove_panel_role(panel.id, 300).await.unwrap());
+    db.forget_role(guild, 301).await.unwrap();
+    assert!(db.panel_roles(panel.id).await.unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn role_panels_hold_at_most_25_roles_even_when_filled_at_once() {
+    let Some(db) = db().await else { return };
+    let [guild] = ids();
+    let (panel, _) = db.save_panel(guild, "Everything", None).await.unwrap();
+
+    // 40 managers adding at once: exactly 25 get in.
+    let mut tasks = Vec::new();
+    for role in 0..40u64 {
+        let db = db.clone();
+        tasks.push(tokio::spawn(async move {
+            db.add_panel_role(panel.id, 5_000 + role, &format!("Role {role}"), None)
+                .await
+                .unwrap()
+        }));
+    }
+    let mut added = 0;
+    for task in tasks {
+        added += i64::from(task.await.unwrap());
+    }
+    assert_eq!(added, MAX_PANEL_ROLES);
+    assert_eq!(db.panel_roles(panel.id).await.unwrap().len() as i64, MAX_PANEL_ROLES);
+
+    // Existing roles can still be relabelled when full; new ones are refused.
+    let first = db.panel_roles(panel.id).await.unwrap()[0].role_id as u64;
+    assert!(db.add_panel_role(panel.id, first, "Renamed", Some("⭐")).await.unwrap());
+    assert!(!db.add_panel_role(panel.id, 9_999, "One too many", None).await.unwrap());
+    let renamed = db.panel_role(guild, panel.id, first).await.unwrap().unwrap();
+    assert_eq!(
+        (renamed.label.as_str(), renamed.emoji.as_deref()),
+        ("Renamed", Some("⭐"))
+    );
 }

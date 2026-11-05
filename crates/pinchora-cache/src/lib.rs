@@ -21,6 +21,11 @@ pub struct StoredSession {
     pub session_id: String,
     pub sequence: u64,
     pub resume_url: Option<String>,
+    /// The intents the session was identified with; a resumed session keeps them, so a
+    /// release that changes intents must identify afresh. Sessions saved before this field
+    /// read as 0 and are not resumed.
+    #[serde(default)]
+    pub intents: u64,
 }
 
 impl Cache {

@@ -34,6 +34,7 @@ async fn cooldowns_and_sessions() {
         session_id: "abc".into(),
         sequence: 42,
         resume_url: Some("wss://resume".into()),
+        intents: 1,
     };
     cache
         .store_session(shard, &session, Duration::from_secs(30))

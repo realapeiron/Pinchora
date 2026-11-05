@@ -27,7 +27,10 @@ use axum::{
     http::{HeaderMap, Method, StatusCode, Uri, header::CONTENT_TYPE},
 };
 use pinchora_cache::Cache;
-use pinchora_commands::{App, Responder, handle_interaction, on_message};
+use pinchora_commands::{
+    App, Responder, handle_interaction, on_ban_add, on_ban_remove, on_member_add, on_member_remove, on_member_update,
+    on_message, on_voice_state_update,
+};
 use pinchora_db::Db;
 use serde_json::{Value, json};
 use tokio::{net::TcpListener, sync::oneshot};
@@ -47,7 +50,9 @@ use twilight_model::{
         Component, Embed, MessageFlags,
         component::{Button, SelectMenu, SelectMenuOption},
     },
-    gateway::payload::incoming::MessageCreate,
+    gateway::payload::incoming::{
+        BanAdd, BanRemove, MemberAdd, MemberRemove, MemberUpdate, MessageCreate, VoiceStateUpdate,
+    },
     http::interaction::{InteractionResponse, InteractionResponseType},
     id::Id,
 };
@@ -57,6 +62,9 @@ const CHANNEL_ID: u64 = 2;
 /// The role the mock bot holds; its position is the ceiling for roles the bot can hand out.
 const BOT_ROLE_ID: u64 = 9_000_000_000_001;
 const BOT_ROLE_POSITION: i64 = 10;
+/// What the mock says about the server when asked: its name and member count.
+const GUILD_NAME: &str = "Pinchora Reef";
+const GUILD_MEMBERS: u64 = 42;
 /// Manage Server, as the permission bit Discord sends.
 const MANAGE_GUILD: u64 = 1 << 5;
 
@@ -99,6 +107,43 @@ struct Mock {
     role_calls: Arc<Mutex<Vec<String>>>,
     /// Whether role changes work. Off, Discord answers Missing Permissions.
     roles_allowed: Arc<AtomicBool>,
+    /// Messages posted to or edited in channels, oldest first.
+    posts: Arc<Mutex<Vec<Post>>>,
+    /// Messages somebody deleted: editing one answers Unknown Message.
+    deleted: Arc<Mutex<Vec<u64>>>,
+    /// Roles somebody deleted: changing one answers Unknown Role.
+    deleted_roles: Arc<Mutex<Vec<u64>>>,
+}
+
+/// A message a handler posted to a channel (`POST`) or edited there (`PATCH`).
+struct Post {
+    method: Method,
+    channel: u64,
+    message: u64,
+    body: Value,
+}
+
+impl Post {
+    fn embed(&self) -> &Value {
+        &self.body["embeds"][0]
+    }
+
+    fn title(&self) -> &str {
+        self.embed()["title"].as_str().unwrap_or_default()
+    }
+
+    /// The text of the first embed's field called `name`.
+    fn field(&self, name: &str) -> &str {
+        self.embed()["fields"]
+            .as_array()
+            .and_then(|fields| fields.iter().find(|f| f["name"] == name))
+            .and_then(|f| f["value"].as_str())
+            .unwrap_or_default()
+    }
+
+    fn content(&self) -> &str {
+        self.body["content"].as_str().unwrap_or_default()
+    }
 }
 
 fn role_json(id: u64, name: &str, position: i64, managed: bool) -> Value {
@@ -123,6 +168,73 @@ fn user_json(id: u64) -> Value {
         "discriminator": "0",
         "global_name": "Sim",
         "avatar": null,
+    })
+}
+
+/// A user who can be a bot and have any name.
+fn person_json(id: u64, name: &str, global_name: Option<&str>, bot: bool) -> Value {
+    json!({
+        "id": id.to_string(),
+        "username": name,
+        "discriminator": "0",
+        "global_name": global_name,
+        "avatar": null,
+        "bot": bot,
+    })
+}
+
+/// The message Discord answers when one is posted or edited.
+fn message_json(channel: u64, id: u64) -> Value {
+    json!({
+        "id": id.to_string(),
+        "channel_id": channel.to_string(),
+        "type": 0,
+        "author": user_json(APPLICATION_ID),
+        "content": "",
+        "timestamp": "2024-01-01T00:00:00.000000+00:00",
+        "edited_timestamp": null,
+        "tts": false,
+        "mention_everyone": false,
+        "mentions": [],
+        "mention_roles": [],
+        "pinned": false,
+        "attachments": [],
+        "embeds": [],
+        "flags": 0,
+    })
+}
+
+/// `GET /guilds/{id}?with_counts=true`.
+fn guild_json(id: u64) -> Value {
+    json!({
+        "id": id.to_string(),
+        "name": GUILD_NAME,
+        "icon": null,
+        "splash": null,
+        "discovery_splash": null,
+        "owner_id": "1",
+        "afk_channel_id": null,
+        "afk_timeout": 300,
+        "application_id": null,
+        "banner": null,
+        "default_message_notifications": 0,
+        "description": null,
+        "emojis": [],
+        "explicit_content_filter": 0,
+        "features": [],
+        "large": false,
+        "mfa_level": 0,
+        "nsfw_level": 0,
+        "preferred_locale": "en-US",
+        "premium_progress_bar_enabled": false,
+        "public_updates_channel_id": null,
+        "roles": [],
+        "rules_channel_id": null,
+        "system_channel_flags": 0,
+        "system_channel_id": null,
+        "vanity_url_code": null,
+        "verification_level": 0,
+        "approximate_member_count": GUILD_MEMBERS,
     })
 }
 
@@ -172,6 +284,10 @@ async fn discord(
             return (StatusCode::OK, member_json(user, &roles).to_string());
         }
         (&Method::PUT | &Method::DELETE, [.., "guilds", _, "members", user, "roles", role]) => {
+            if mock.deleted_roles.lock().unwrap().contains(&number(role)) {
+                let gone = json!({ "message": "Unknown Role", "code": 10011 });
+                return (StatusCode::NOT_FOUND, gone.to_string());
+            }
             if !mock.roles_allowed.load(Ordering::SeqCst) {
                 let refusal = json!({ "message": "Missing Permissions", "code": 50013 });
                 return (StatusCode::FORBIDDEN, refusal.to_string());
@@ -186,20 +302,39 @@ async fn discord(
             }
             return (StatusCode::NO_CONTENT, String::new());
         }
-        (&Method::POST, [.., "channels", _, "messages"]) => return (StatusCode::OK, "{}".to_owned()),
+        (&Method::GET, [.., "guilds", guild]) => return (StatusCode::OK, guild_json(number(guild)).to_string()),
+        (&Method::POST, [.., "channels", channel, "messages"]) => {
+            let (body, _) = request_body(&headers, &body);
+            let (channel, id) = (number(channel), unique());
+            mock.posts.lock().unwrap().push(Post {
+                method: method.clone(),
+                channel,
+                message: id,
+                body,
+            });
+            return (StatusCode::OK, message_json(channel, id).to_string());
+        }
+        (&Method::PATCH, [.., "channels", channel, "messages", id]) => {
+            let (channel, id) = (number(channel), number(id));
+            if mock.deleted.lock().unwrap().contains(&id) {
+                let gone = json!({ "message": "Unknown Message", "code": 10008 });
+                return (StatusCode::NOT_FOUND, gone.to_string());
+            }
+            let (body, _) = request_body(&headers, &body);
+            mock.posts.lock().unwrap().push(Post {
+                method: method.clone(),
+                channel,
+                message: id,
+                body,
+            });
+            return (StatusCode::OK, message_json(channel, id).to_string());
+        }
         _ => {}
     }
     if method == Method::GET || !path.contains("/webhooks/") {
         return (StatusCode::NOT_FOUND, "{}".to_owned());
     }
-    let content_type = headers
-        .get(CONTENT_TYPE)
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or_default();
-    let (body, files) = match content_type.split_once("boundary=") {
-        Some((_, boundary)) => multipart(boundary, &body),
-        None => (serde_json::from_slice(&body).unwrap_or(Value::Null), Vec::new()),
-    };
+    let (body, files) = request_body(&headers, &body);
     mock.calls.lock().unwrap().push(Call {
         method,
         path,
@@ -207,6 +342,18 @@ async fn discord(
         files,
     });
     (StatusCode::OK, "{}".to_owned())
+}
+
+/// A request's JSON, and the files that came with it as multipart.
+fn request_body(headers: &HeaderMap, body: &[u8]) -> (Value, Vec<File>) {
+    let content_type = headers
+        .get(CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or_default();
+    match content_type.split_once("boundary=") {
+        Some((_, boundary)) => multipart(boundary, body),
+        None => (serde_json::from_slice(body).unwrap_or(Value::Null), Vec::new()),
+    }
 }
 
 fn find(haystack: &[u8], needle: &[u8]) -> Option<usize> {
@@ -581,6 +728,9 @@ impl Sim {
             member_roles: Arc::default(),
             role_calls: Arc::default(),
             roles_allowed: Arc::new(AtomicBool::new(true)),
+            posts: Arc::default(),
+            deleted: Arc::default(),
+            deleted_roles: Arc::default(),
         };
         let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind the mock");
         let mock = listener.local_addr().expect("mock address");
@@ -658,6 +808,39 @@ impl Sim {
         std::mem::take(&mut *self.mock.role_calls.lock().unwrap())
     }
 
+    /// Messages the handlers posted to or edited in channels since the last call.
+    fn posts(&self) -> Vec<Post> {
+        let posts = std::mem::take(&mut *self.mock.posts.lock().unwrap());
+        for post in &posts {
+            let text = [post.title(), post.content()]
+                .iter()
+                .filter(|t| !t.is_empty())
+                .copied()
+                .collect::<Vec<_>>()
+                .join(" | ");
+            println!(
+                "  {} in channel {}: {text} {}",
+                post.method,
+                post.channel,
+                post.embed()["description"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .replace('\n', " / ")
+            );
+        }
+        posts
+    }
+
+    /// Makes a role disappear, as if a moderator had deleted it.
+    fn delete_role(&self, id: u64) {
+        self.mock.deleted_roles.lock().unwrap().push(id);
+    }
+
+    /// Makes a posted message disappear, as if a moderator had deleted it.
+    fn delete_message(&self, id: u64) {
+        self.mock.deleted.lock().unwrap().push(id);
+    }
+
     /// A chat message from `user` carrying the roles they hold, as the gateway delivers it.
     fn chat(&self, user: u64, roles: &[u64]) -> MessageCreate {
         let message = json!({
@@ -686,6 +869,112 @@ impl Sim {
             "flags": 0,
         });
         serde_json::from_value(message).expect("message JSON")
+    }
+
+    /// Delivers a member joining to the handler, which must not fail.
+    async fn join(&self, user: u64, name: &str, bot: bool, nick: Option<&str>) {
+        let event: MemberAdd = serde_json::from_value(json!({
+            "guild_id": self.guild.to_string(),
+            "user": person_json(user, name, Some(name), bot),
+            "nick": nick,
+            "roles": [],
+            "joined_at": "2024-01-01T00:00:00.000000+00:00",
+            "deaf": false,
+            "mute": false,
+            "flags": 0,
+            "pending": false,
+        }))
+        .expect("member add JSON");
+        println!("\n== {}: {name} joined", self.name);
+        Box::pin(on_member_add(self.app.clone(), event))
+            .await
+            .expect("the join handler failed");
+    }
+
+    async fn leave(&self, user: u64, name: &str, bot: bool) {
+        let event: MemberRemove = serde_json::from_value(json!({
+            "guild_id": self.guild.to_string(),
+            "user": person_json(user, name, Some(name), bot),
+        }))
+        .expect("member remove JSON");
+        println!("\n== {}: {name} left", self.name);
+        Box::pin(on_member_remove(self.app.clone(), event))
+            .await
+            .expect("the leave handler failed");
+    }
+
+    /// A member update: the names the gateway reports for `user` now.
+    async fn update_member(&self, user: u64, name: &str, nick: Option<&str>) {
+        let event: MemberUpdate = serde_json::from_value(json!({
+            "guild_id": self.guild.to_string(),
+            "user": person_json(user, name, Some(name), false),
+            "nick": nick,
+            "roles": [],
+            "avatar": null,
+            "communication_disabled_until": null,
+            "joined_at": null,
+            "deaf": null,
+            "mute": null,
+            "pending": false,
+            "premium_since": null,
+        }))
+        .expect("member update JSON");
+        println!("\n== {}: {name} updated (nick {nick:?})", self.name);
+        on_member_update(self.app.clone(), event)
+            .await
+            .expect("the update handler failed");
+    }
+
+    async fn ban(&self, user: u64, name: &str, banned: bool) {
+        let event = json!({ "guild_id": self.guild.to_string(), "user": person_json(user, name, Some(name), false) });
+        println!(
+            "\n== {}: {name} {}",
+            self.name,
+            if banned { "banned" } else { "unbanned" }
+        );
+        if banned {
+            let event: BanAdd = serde_json::from_value(event).expect("ban JSON");
+            on_ban_add(self.app.clone(), event)
+                .await
+                .expect("the ban handler failed");
+        } else {
+            let event: BanRemove = serde_json::from_value(event).expect("unban JSON");
+            on_ban_remove(self.app.clone(), event)
+                .await
+                .expect("the unban handler failed");
+        }
+    }
+
+    /// A voice state: `user` is now in `channel` (`None`: in none); `mute` flips the mute flag.
+    async fn voice(&self, user: u64, name: &str, bot: bool, channel: Option<u64>, mute: bool) {
+        let event: VoiceStateUpdate = serde_json::from_value(json!({
+            "guild_id": self.guild.to_string(),
+            "channel_id": channel.map(|c| c.to_string()),
+            "user_id": user.to_string(),
+            "member": {
+                "user": person_json(user, name, Some(name), bot),
+                "roles": [],
+                "joined_at": "2024-01-01T00:00:00.000000+00:00",
+                "deaf": false,
+                "mute": false,
+                "flags": 0,
+                "pending": false,
+            },
+            "session_id": "sim",
+            "deaf": false,
+            "mute": false,
+            "self_deaf": false,
+            "self_mute": mute,
+            "self_stream": false,
+            "self_video": false,
+            "suppress": false,
+            "request_to_speak_timestamp": null,
+        }))
+        .expect("voice state JSON");
+        println!("\n== {}: {name} voice {channel:?} (muted: {mute})", self.name);
+        on_voice_state_update(self.app.clone(), event)
+            .await
+            .expect("the voice handler failed");
     }
 
     /// Delivers a chat message to the XP handler, which must not fail.
@@ -1701,4 +1990,694 @@ async fn earning_buying_and_wearing_badges() {
         foot.0,
         foot.1
     ));
+}
+
+fn channel_option(name: &str, id: u64) -> Value {
+    json!({ "name": name, "type": 7, "value": id.to_string() })
+}
+
+fn bool_option(name: &str, value: bool) -> Value {
+    json!({ "name": name, "type": 5, "value": value })
+}
+
+/// `data.resolved` for options that name channels.
+fn resolved_channels(ids: &[u64]) -> Value {
+    json!({
+        "channels": ids
+            .iter()
+            .map(|id| {
+                (
+                    id.to_string(),
+                    json!({ "id": id.to_string(), "type": 0, "name": "sim-channel", "permissions": "0" }),
+                )
+            })
+            .collect::<serde_json::Map<_, _>>(),
+    })
+}
+
+/// A message a handler posted, as the `Reply` a member would see, so its buttons can be clicked.
+fn posted_reply(post: &Post) -> Reply {
+    let mut reply = Reply::new(InteractionResponseType::ChannelMessageWithSource);
+    let embeds = serde_json::from_value(post.body["embeds"].clone()).ok();
+    let components = serde_json::from_value::<Vec<Component>>(post.body["components"].clone()).ok();
+    reply.edit(post.body["content"].as_str().map(str::to_owned), embeds, components);
+    reply
+}
+
+/// The posts made in `channel`.
+fn in_channel(posts: &[Post], channel: u64) -> Vec<&Post> {
+    posts.iter().filter(|p| p.channel == channel).collect()
+}
+
+#[tokio::test]
+async fn role_panels_post_and_toggle_roles() {
+    let Some(mut sim) = Sim::new("role_panels_post_and_toggle_roles").await else {
+        return;
+    };
+    let (admin, alice) = (unique(), unique());
+    let (red_id, blue_id) = (unique(), unique());
+    let red = sim.guild_role(red_id, "Red", 2);
+    let blue = sim.guild_role(blue_id, "Blue", 3);
+    let (lounge, elsewhere) = (unique(), unique());
+
+    let panel_cmd = |title: &str, description: Option<&str>| {
+        let mut options = vec![text_option("title", title)];
+        options.extend(description.map(|d| text_option("description", d)));
+        json!([sub("panel", options)])
+    };
+    let add_cmd = |panel: &str, role: &Value, label: &str, emoji: Option<&str>| {
+        let mut options = vec![
+            text_option("panel", panel),
+            role_option("role", role),
+            text_option("label", label),
+        ];
+        options.extend(emoji.map(|e| text_option("emoji", e)));
+        json!([sub("add", options)])
+    };
+    let post_cmd = |panel: &str, channel: u64| {
+        json!([sub(
+            "post",
+            vec![text_option("panel", panel), channel_option("channel", channel)]
+        )])
+    };
+
+    // Only managers set panels up.
+    let denied = sim.command(alice, "roles", panel_cmd("Colours", None)).await;
+    assert!(denied.content().contains("Manage Server"), "{}", denied.content());
+    assert!(sim.app.db.find_panel(sim.guild, "Colours").await.unwrap().is_none());
+    sim.permissions = MANAGE_GUILD;
+
+    // A draft; the same title again only updates the description.
+    let draft = sim
+        .command(admin, "roles", panel_cmd("Colours", Some("Pick a colour")))
+        .await;
+    assert!(
+        draft.content().contains("**Colours**") && draft.content().contains("draft"),
+        "{}",
+        draft.content()
+    );
+    assert!(draft.ephemeral);
+    let panel = sim.app.db.find_panel(sim.guild, "Colours").await.unwrap().unwrap();
+    let again = sim
+        .command(admin, "roles", panel_cmd("colours", Some("Pick your colour")))
+        .await;
+    assert!(again.content().contains("already existed"), "{}", again.content());
+
+    // A panel without roles is not posted.
+    let empty = sim
+        .command_resolved(
+            admin,
+            "roles",
+            post_cmd("Colours", lounge),
+            resolved_channels(&[lounge]),
+        )
+        .await;
+    assert!(empty.content().contains("no roles yet"), "{}", empty.content());
+    assert!(sim.posts().is_empty());
+
+    // Buttons need a known panel, a readable emoji, and a role the bot can hand out.
+    let reply = sim
+        .command_resolved(
+            admin,
+            "roles",
+            add_cmd("Nope", &red, "Red", None),
+            resolved(&[], &[&red]),
+        )
+        .await;
+    assert!(reply.content().contains("no panel called"), "{}", reply.content());
+    let reply = sim
+        .command_resolved(
+            admin,
+            "roles",
+            add_cmd("Colours", &red, "Red", Some("red")),
+            resolved(&[], &[&red]),
+        )
+        .await;
+    assert!(reply.content().contains("read that emoji"), "{}", reply.content());
+    let above = role_json(unique(), "Boss", BOT_ROLE_POSITION + 5, false);
+    let reply = sim
+        .command_resolved(
+            admin,
+            "roles",
+            add_cmd("Colours", &above, "Boss", None),
+            resolved(&[], &[&above]),
+        )
+        .await;
+    assert!(reply.content().contains("above my highest role"), "{}", reply.content());
+    let managed = role_json(unique(), "SomeBot", 1, true);
+    let reply = sim
+        .command_resolved(
+            admin,
+            "roles",
+            add_cmd("Colours", &managed, "Bot", None),
+            resolved(&[], &[&managed]),
+        )
+        .await;
+    assert!(
+        reply.content().contains("managed by an integration"),
+        "{}",
+        reply.content()
+    );
+    let everyone = role_json(sim.guild, "@everyone", 0, false);
+    let reply = sim
+        .command_resolved(
+            admin,
+            "roles",
+            add_cmd("Colours", &everyone, "All", None),
+            resolved(&[], &[&everyone]),
+        )
+        .await;
+    assert!(reply.content().contains("@everyone"), "{}", reply.content());
+    assert!(sim.app.db.panel_roles(panel.id).await.unwrap().is_empty());
+
+    // The panel can be named by its number, too.
+    let reply = sim
+        .command_resolved(
+            admin,
+            "roles",
+            add_cmd("Colours", &red, "Red", Some("🔴")),
+            resolved(&[], &[&red]),
+        )
+        .await;
+    assert!(
+        reply.content().contains(&format!("<@&{red_id}>")) && reply.content().contains("(1/25)"),
+        "{}",
+        reply.content()
+    );
+    let reply = sim
+        .command_resolved(
+            admin,
+            "roles",
+            add_cmd(&panel.id.to_string(), &blue, "Blue", None),
+            resolved(&[], &[&blue]),
+        )
+        .await;
+    assert!(reply.content().contains("(2/25)"), "{}", reply.content());
+
+    // Posting puts the panel in the channel: an embed and one button per role.
+    let reply = sim
+        .command_resolved(
+            admin,
+            "roles",
+            post_cmd("colours", lounge),
+            resolved_channels(&[lounge]),
+        )
+        .await;
+    assert!(
+        reply.content().contains(&format!("Posted **Colours** in <#{lounge}>")),
+        "{}",
+        reply.content()
+    );
+    let posts = sim.posts();
+    let [post] = &posts[..] else {
+        panic!("expected one post, got {}", posts.len());
+    };
+    assert_eq!((post.method.clone(), post.channel), (Method::POST, lounge));
+    assert_eq!(post.title(), "Colours");
+    let text = post.embed()["description"].as_str().unwrap();
+    assert!(
+        text.starts_with("Pick your colour\n\n🔴 **Red** ·") && text.contains(&format!("<@&{blue_id}>")),
+        "{text}"
+    );
+    let buttons = post.body["components"][0]["components"].as_array().unwrap();
+    let ids: Vec<_> = buttons.iter().map(|b| b["custom_id"].as_str().unwrap()).collect();
+    assert_eq!(
+        ids,
+        [
+            format!("rr:{}:{red_id}", panel.id),
+            format!("rr:{}:{blue_id}", panel.id)
+        ]
+    );
+    assert_eq!(buttons[0]["emoji"]["name"], "🔴");
+    let stored = sim.app.db.find_panel(sim.guild, "Colours").await.unwrap().unwrap();
+    assert_eq!(
+        (stored.channel_id, stored.message_id),
+        (Some(lounge as i64), Some(post.message as i64))
+    );
+
+    // A click toggles: Added, then Removed. Both answers are private.
+    let message = posted_reply(post);
+    let added = sim.click(alice, &message, "Red").await;
+    assert!(added.ephemeral);
+    assert_eq!(added.content(), format!("Added <@&{red_id}>."));
+    assert_eq!(sim.role_changes(), vec![format!("PUT {alice} {red_id}")]);
+    sim.roles = vec![red_id];
+    let removed = sim.click(alice, &message, "Red").await;
+    assert!(removed.ephemeral);
+    assert_eq!(removed.content(), format!("Removed <@&{red_id}>."));
+    assert_eq!(sim.role_changes(), vec![format!("DELETE {alice} {red_id}")]);
+    sim.roles = Vec::new();
+
+    // Discord refusing is explained, not swallowed.
+    sim.allow_role_changes(false);
+    let refused = sim.click(alice, &message, "Blue").await;
+    assert!(
+        refused.content().contains("couldn't give you") && refused.content().contains("highest role"),
+        "{}",
+        refused.content()
+    );
+    sim.allow_role_changes(true);
+
+    // Ids are checked against the panel: another server's panel, a role that has no button,
+    // and garbage all give nothing.
+    let stranger = unique();
+    let (theirs, _) = sim.app.db.save_panel(stranger, "Theirs", None).await.unwrap();
+    assert!(
+        sim.app
+            .db
+            .add_panel_role(theirs.id, blue_id, "Blue", None)
+            .await
+            .unwrap()
+    );
+    for (forged, expect) in [
+        (format!("rr:{}:{blue_id}", theirs.id), "isn't on this panel"),
+        (format!("rr:{}:{}", panel.id, unique()), "isn't on this panel"),
+        ("rr:x:y".to_owned(), "expired"),
+        (format!("rr:{}:{red_id}:extra", panel.id), "expired"),
+    ] {
+        let reply = sim.component(alice, &forged, &[], &message).await;
+        assert!(reply.content().contains(expect), "{forged}: {}", reply.content());
+    }
+    assert!(sim.role_changes().is_empty(), "forged ids must not change roles");
+
+    // Taking a button off stops its old message working, until the panel is posted again.
+    let reply = sim
+        .command(
+            admin,
+            "roles",
+            json!([sub(
+                "remove",
+                vec![text_option("panel", "Colours"), role_option("role", &red)]
+            )]),
+        )
+        .await;
+    assert!(reply.content().contains("is off **Colours**"), "{}", reply.content());
+    let stale = sim.click(alice, &message, "Red").await;
+    assert!(stale.content().contains("isn't on this panel"), "{}", stale.content());
+    assert!(sim.role_changes().is_empty());
+
+    // Posting again in the same channel edits the message in place.
+    sim.command_resolved(
+        admin,
+        "roles",
+        post_cmd("Colours", lounge),
+        resolved_channels(&[lounge]),
+    )
+    .await;
+    let posts = sim.posts();
+    let [edit] = &posts[..] else {
+        panic!("expected one edit, got {}", posts.len());
+    };
+    assert_eq!((edit.method.clone(), edit.message), (Method::PATCH, post.message));
+    assert_eq!(edit.body["components"][0]["components"].as_array().unwrap().len(), 1);
+
+    // A message somebody deleted is posted afresh.
+    sim.delete_message(post.message);
+    sim.command_resolved(
+        admin,
+        "roles",
+        post_cmd("Colours", lounge),
+        resolved_channels(&[lounge]),
+    )
+    .await;
+    let posts = sim.posts();
+    let [fresh] = &posts[..] else {
+        panic!("expected one post, got {}", posts.len());
+    };
+    assert_eq!((fresh.method.clone(), fresh.channel), (Method::POST, lounge));
+    assert_ne!(fresh.message, post.message);
+
+    // Another channel gets a new message; the old one keeps working but is no longer updated.
+    let moved = sim
+        .command_resolved(
+            admin,
+            "roles",
+            post_cmd("Colours", elsewhere),
+            resolved_channels(&[elsewhere]),
+        )
+        .await;
+    assert!(
+        moved.content().contains(&format!("<#{lounge}>")) && moved.content().contains("still works"),
+        "{}",
+        moved.content()
+    );
+    let posts = sim.posts();
+    assert_eq!((posts.len(), posts[0].channel), (1, elsewhere));
+    let stored = sim.app.db.find_panel(sim.guild, "Colours").await.unwrap().unwrap();
+    assert_eq!(stored.channel_id, Some(elsewhere as i64));
+
+    // A role deleted on Discord loses its button when somebody clicks it.
+    let ghost_id = unique();
+    let ghost = sim.guild_role(ghost_id, "Ghost", 1);
+    sim.command_resolved(
+        admin,
+        "roles",
+        add_cmd("Colours", &ghost, "Ghost", None),
+        resolved(&[], &[&ghost]),
+    )
+    .await;
+    sim.command_resolved(
+        admin,
+        "roles",
+        post_cmd("Colours", elsewhere),
+        resolved_channels(&[elsewhere]),
+    )
+    .await;
+    let posts = sim.posts();
+    let latest = posted_reply(&posts[0]);
+    sim.delete_role(ghost_id);
+    let gone = sim.click(alice, &latest, "Ghost").await;
+    assert!(
+        gone.content().contains("no longer exists") && gone.content().contains("taken off the panel"),
+        "{}",
+        gone.content()
+    );
+    assert!(
+        sim.app
+            .db
+            .panel_role(sim.guild, panel.id, ghost_id)
+            .await
+            .unwrap()
+            .is_none()
+    );
+}
+
+#[tokio::test]
+async fn join_role_goodbye_and_server_log() {
+    let Some(mut sim) = Sim::new("join_role_goodbye_and_server_log").await else {
+        return;
+    };
+    let admin = unique();
+    let (alice, robot, stranger) = (unique(), unique(), unique());
+    let (newbie_id, log, bye) = (unique(), unique(), unique());
+    let (lounge, den) = (unique(), unique());
+    let newbie = sim.guild_role(newbie_id, "Newbie", 2);
+
+    let config = |sub_command: Value| json!([sub_command]);
+
+    // Nothing is configured yet: members come and go unnoticed.
+    sim.join(unique(), "Early", false, None).await;
+    assert!(sim.role_changes().is_empty() && sim.posts().is_empty());
+
+    // /config join-role: only roles the bot can hand out.
+    sim.permissions = MANAGE_GUILD;
+    let join_role = |role: &Value| config(sub("join-role", vec![role_option("role", role)]));
+    let above = role_json(unique(), "Boss", BOT_ROLE_POSITION + 5, false);
+    let reply = sim
+        .command_resolved(admin, "config", join_role(&above), resolved(&[], &[&above]))
+        .await;
+    assert!(reply.content().contains("above my highest role"), "{}", reply.content());
+    let managed = role_json(unique(), "SomeBot", 1, true);
+    let reply = sim
+        .command_resolved(admin, "config", join_role(&managed), resolved(&[], &[&managed]))
+        .await;
+    assert!(
+        reply.content().contains("managed by an integration"),
+        "{}",
+        reply.content()
+    );
+    let everyone = role_json(sim.guild, "@everyone", 0, false);
+    let reply = sim
+        .command_resolved(admin, "config", join_role(&everyone), resolved(&[], &[&everyone]))
+        .await;
+    assert!(reply.content().contains("@everyone"), "{}", reply.content());
+    assert!(
+        sim.app
+            .db
+            .guild_settings(sim.guild)
+            .await
+            .unwrap()
+            .join_role_id
+            .is_none()
+    );
+    let reply = sim
+        .command_resolved(admin, "config", join_role(&newbie), resolved(&[], &[&newbie]))
+        .await;
+    assert!(
+        reply.content().contains(&format!("<@&{newbie_id}>")),
+        "{}",
+        reply.content()
+    );
+
+    // /config goodbye and /config log.
+    let goodbye = sim
+        .command_resolved(
+            admin,
+            "config",
+            config(sub(
+                "goodbye",
+                vec![
+                    channel_option("channel", bye),
+                    text_option("message", "Bye {user} from {server} ({members} left) {nope}"),
+                ],
+            )),
+            resolved_channels(&[bye]),
+        )
+        .await;
+    assert!(
+        goodbye.content().contains(&format!("<#{bye}>")) && goodbye.content().contains("Bye {user}"),
+        "{}",
+        goodbye.content()
+    );
+    let clash = sim
+        .command_resolved(
+            admin,
+            "config",
+            config(sub(
+                "goodbye",
+                vec![channel_option("channel", bye), bool_option("off", true)],
+            )),
+            resolved_channels(&[bye]),
+        )
+        .await;
+    assert!(clash.content().contains("on its own"), "{}", clash.content());
+    let logging = sim
+        .command_resolved(
+            admin,
+            "config",
+            config(sub("log", vec![channel_option("channel", log)])),
+            resolved_channels(&[log]),
+        )
+        .await;
+    assert!(
+        logging.content().contains(&format!("<#{log}>")),
+        "{}",
+        logging.content()
+    );
+    let shown = sim.command(admin, "config", config(sub("show", vec![]))).await;
+    assert!(
+        shown.field("Join role").contains(&format!("<@&{newbie_id}>"))
+            && shown.field("Goodbye").contains(&format!("<#{bye}>"))
+            && shown.field("Server log").contains(&format!("<#{log}>"))
+            && shown.field("Server log").contains("voice on"),
+        "{:?}",
+        shown.embeds[0].fields
+    );
+
+    // A human joins: the role, and a log entry; the entry says when the account was made.
+    sim.join(alice, "Alice", false, None).await;
+    assert_eq!(sim.role_changes(), vec![format!("PUT {alice} {newbie_id}")]);
+    let posts = sim.posts();
+    let [joined] = &posts[..] else {
+        panic!("expected one log entry, got {}", posts.len());
+    };
+    assert_eq!((joined.channel, joined.title()), (log, "Member joined"));
+    assert!(
+        joined.embed()["description"]
+            .as_str()
+            .unwrap()
+            .contains(&format!("<@{alice}>")),
+        "{:?}",
+        joined.embed()
+    );
+    assert!(
+        joined.field("Account created").starts_with("<t:"),
+        "{:?}",
+        joined.embed()
+    );
+    assert!(
+        joined.embed()["thumbnail"]["url"]
+            .as_str()
+            .unwrap()
+            .contains("cdn.discordapp.com")
+    );
+    assert!(joined.embed()["timestamp"].is_string());
+
+    // A bot joining is logged but gets no role.
+    sim.join(robot, "RoboBot", true, None).await;
+    assert!(sim.role_changes().is_empty());
+    let posts = sim.posts();
+    assert_eq!(posts.iter().map(Post::title).collect::<Vec<_>>(), ["Bot joined"]);
+
+    // Discord refusing the role does not stop the log.
+    sim.allow_role_changes(false);
+    sim.join(unique(), "Blocked", false, None).await;
+    sim.allow_role_changes(true);
+    assert_eq!(
+        sim.posts().iter().map(Post::title).collect::<Vec<_>>(),
+        ["Member joined"]
+    );
+
+    // Leaving: the goodbye fills its placeholders (and pings nobody), and the log has an entry.
+    sim.leave(alice, "Alice", false).await;
+    let posts = sim.posts();
+    let [say] = &in_channel(&posts, bye)[..] else {
+        panic!("expected one goodbye, got {}", in_channel(&posts, bye).len());
+    };
+    assert_eq!(
+        say.content(),
+        format!("Bye Alice from {GUILD_NAME} ({GUILD_MEMBERS} left) {{nope}}")
+    );
+    assert_eq!(say.body["allowed_mentions"]["parse"], json!([]));
+    assert_eq!(
+        in_channel(&posts, log).iter().map(|p| p.title()).collect::<Vec<_>>(),
+        ["Member left"]
+    );
+
+    // Bots get no goodbye, only the log entry.
+    sim.leave(robot, "RoboBot", true).await;
+    let posts = sim.posts();
+    assert!(in_channel(&posts, bye).is_empty());
+    assert_eq!(posts.iter().map(Post::title).collect::<Vec<_>>(), ["Bot left"]);
+
+    // /config goodbye with nothing to change shows the current setting.
+    let reply = sim.command(admin, "config", config(sub("goodbye", vec![]))).await;
+    assert!(reply.content().contains("Bye {user}"), "{}", reply.content());
+
+    // Nicknames: Alice's names were noted when she joined, so the change shows both sides.
+    sim.join(alice, "alice", false, None).await;
+    sim.posts();
+    sim.role_changes();
+    sim.update_member(alice, "alice", Some("Zed")).await;
+    let posts = sim.posts();
+    let [renamed] = &posts[..] else {
+        panic!("expected one entry, got {}", posts.len());
+    };
+    assert_eq!((renamed.channel, renamed.title()), (log, "Nickname changed"));
+    assert_eq!(renamed.field("Nickname"), "*none* → `Zed`");
+    sim.update_member(alice, "alice", Some("Zedd")).await;
+    assert_eq!(sim.posts()[0].field("Nickname"), "`Zed` → `Zedd`");
+    // Roles, timeouts and the like also send member updates; nothing changed, nothing logged.
+    sim.update_member(alice, "alice", Some("Zedd")).await;
+    assert!(sim.posts().is_empty());
+    // A changed username (and with it the display name) is one entry with both.
+    sim.update_member(alice, "alice2", Some("Zedd")).await;
+    let posts = sim.posts();
+    assert_eq!(posts[0].title(), "Names changed");
+    assert_eq!(posts[0].field("Username"), "`alice` → `alice2`");
+    assert_eq!(posts[0].field("Display name"), "`alice` → `alice2`");
+    // A member never seen before: only a set nickname is reported, as the bare new value.
+    sim.update_member(stranger, "stranger", Some("Hello")).await;
+    let posts = sim.posts();
+    assert_eq!(
+        (posts[0].title(), posts[0].field("Nickname")),
+        ("Nickname changed", "`Hello`")
+    );
+    sim.update_member(unique(), "nobody", None).await;
+    assert!(sim.posts().is_empty());
+
+    // Bans and unbans.
+    sim.ban(stranger, "stranger", true).await;
+    assert_eq!(
+        sim.posts().iter().map(Post::title).collect::<Vec<_>>(),
+        ["Member banned"]
+    );
+    sim.ban(stranger, "stranger", false).await;
+    assert_eq!(
+        sim.posts().iter().map(Post::title).collect::<Vec<_>>(),
+        ["Member unbanned"]
+    );
+
+    // Voice: join, mute (nothing to say), move, leave. Bots are ignored.
+    sim.voice(alice, "alice2", false, Some(lounge), false).await;
+    let posts = sim.posts();
+    assert_eq!(posts[0].title(), "Joined voice");
+    assert!(
+        posts[0].embed()["description"]
+            .as_str()
+            .unwrap()
+            .contains(&format!("<#{lounge}>")),
+        "{:?}",
+        posts[0].embed()
+    );
+    sim.voice(alice, "alice2", false, Some(lounge), true).await;
+    assert!(sim.posts().is_empty());
+    sim.voice(alice, "alice2", false, Some(den), true).await;
+    let posts = sim.posts();
+    assert_eq!(posts[0].title(), "Moved voice");
+    assert!(
+        posts[0].embed()["description"]
+            .as_str()
+            .unwrap()
+            .contains(&format!("<#{lounge}> to <#{den}>")),
+        "{:?}",
+        posts[0].embed()
+    );
+    sim.voice(alice, "alice2", false, None, false).await;
+    assert_eq!(sim.posts()[0].title(), "Left voice");
+    sim.voice(robot, "RoboBot", true, Some(lounge), false).await;
+    assert!(sim.posts().is_empty());
+
+    // /config log-events switches kinds off; the others keep working.
+    let events = |options: Vec<Value>| config(sub("log-events", options));
+    let reply = sim
+        .command(
+            admin,
+            "config",
+            events(vec![bool_option("voice", false), bool_option("names", false)]),
+        )
+        .await;
+    assert!(
+        reply.content().contains("name changes off")
+            && reply.content().contains("voice off")
+            && reply.content().contains("bans on"),
+        "{}",
+        reply.content()
+    );
+    sim.voice(alice, "alice2", false, Some(lounge), false).await;
+    sim.update_member(alice, "alice2", Some("Quiet")).await;
+    assert!(sim.posts().is_empty(), "switched-off kinds are not logged");
+    sim.ban(stranger, "stranger", true).await;
+    assert_eq!(sim.posts().len(), 1, "bans are still logged");
+    sim.command(admin, "config", events(vec![bool_option("members", false)]))
+        .await;
+    sim.join(unique(), "Quiet", false, None).await;
+    assert_eq!(sim.role_changes().len(), 1, "the join role does not depend on the log");
+    assert!(sim.posts().is_empty());
+
+    // Everything off: no log, no goodbye, no join role.
+    sim.command(admin, "config", config(sub("log", vec![bool_option("off", true)])))
+        .await;
+    sim.ban(stranger, "stranger", false).await;
+    assert!(sim.posts().is_empty());
+    sim.command(admin, "config", config(sub("goodbye", vec![bool_option("off", true)])))
+        .await;
+    sim.leave(unique(), "Gone", false).await;
+    assert!(sim.posts().is_empty());
+    let reply = sim
+        .command(
+            admin,
+            "config",
+            config(sub("join-role", vec![bool_option("off", true)])),
+        )
+        .await;
+    assert!(reply.content().contains("no longer get a role"), "{}", reply.content());
+    sim.join(unique(), "Late", false, None).await;
+    assert!(sim.role_changes().is_empty() && sim.posts().is_empty());
+
+    // On a server with a goodbye channel but no message of its own, the default names the server.
+    sim.guild = unique();
+    sim.command_resolved(
+        admin,
+        "config",
+        config(sub("goodbye", vec![channel_option("channel", bye)])),
+        resolved_channels(&[bye]),
+    )
+    .await;
+    sim.leave(unique(), "Zoë", false).await;
+    let posts = sim.posts();
+    assert_eq!(
+        in_channel(&posts, bye)[0].content(),
+        format!("👋 **Zoë** has left **{GUILD_NAME}**.")
+    );
 }

@@ -75,7 +75,8 @@ impl Db {
         Ok(removed > 0)
     }
 
-    /// Drops a role that no longer exists on Discord from the rewards and the store.
+    /// Drops a role that no longer exists on Discord from the rewards, the store, the role panels and
+    /// the join role.
     pub async fn forget_role(&self, guild_id: u64, role_id: u64) -> anyhow::Result<()> {
         let mut tx = self.pool().begin().await?;
         sqlx::query("DELETE FROM level_roles WHERE guild_id = $1 AND role_id = $2")
@@ -84,6 +85,19 @@ impl Db {
             .execute(&mut *tx)
             .await?;
         sqlx::query("DELETE FROM store_items WHERE guild_id = $1 AND role_id = $2")
+            .bind(sql_id(guild_id))
+            .bind(sql_id(role_id))
+            .execute(&mut *tx)
+            .await?;
+        sqlx::query(
+            "DELETE FROM role_panel_roles
+             WHERE role_id = $2 AND panel_id IN (SELECT id FROM role_panels WHERE guild_id = $1)",
+        )
+        .bind(sql_id(guild_id))
+        .bind(sql_id(role_id))
+        .execute(&mut *tx)
+        .await?;
+        sqlx::query("UPDATE guilds SET join_role_id = NULL WHERE id = $1 AND join_role_id = $2")
             .bind(sql_id(guild_id))
             .bind(sql_id(role_id))
             .execute(&mut *tx)

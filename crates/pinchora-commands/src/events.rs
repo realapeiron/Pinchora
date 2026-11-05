@@ -4,18 +4,21 @@ use pinchora_core::leveling::{MESSAGE_XP, MESSAGE_XP_COOLDOWN_SECS, level_of};
 use pinchora_render::{LevelUpCard, Theme, WelcomeCard};
 use twilight_model::{
     channel::message::{AllowedMentions, MessageType},
-    gateway::payload::incoming::{MemberAdd, MessageCreate},
+    gateway::payload::incoming::{
+        BanAdd, BanRemove, MemberAdd, MemberRemove, MemberUpdate, MessageCreate, VoiceStateUpdate,
+    },
     http::attachment::Attachment,
     id::Id,
 };
 
 use crate::{
-    App, roles,
-    util::{display_name, mention},
+    App, roles, server_log,
+    util::{display_name, fill, mention},
 };
 
 pub const DEFAULT_LEVELUP: &str = "🎉 {user} reached **level {level}**!";
 pub const DEFAULT_WELCOME: &str = "Welcome to **{server}**, {user}!";
+pub const DEFAULT_GOODBYE: &str = "👋 **{user}** has left **{server}**.";
 
 /// Grants chat XP (once per minute per member) and announces level-ups.
 pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<()> {
@@ -37,6 +40,14 @@ pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<(
         return Ok(());
     }
     let settings = app.guild_settings(g).await?;
+    server_log::note_names(
+        &app,
+        &settings,
+        g,
+        &msg.author,
+        msg.member.as_ref().and_then(|m| m.nick.as_deref()),
+    )
+    .await;
     let points = if settings.points_enabled {
         rand::random_range(i64::from(settings.points_min)..=i64::from(settings.points_max))
     } else {
@@ -102,13 +113,19 @@ pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<(
     Ok(())
 }
 
-/// Posts a welcome card when the server has them turned on.
+/// Gives the join role, logs the join, and posts a welcome card when the server has them turned on.
 pub async fn on_member_add(app: Arc<App>, event: MemberAdd) -> anyhow::Result<()> {
     let MemberAdd { guild_id, member } = event;
+    let settings = app.guild_settings(guild_id.get()).await?;
+    // The role and the log come first: neither depends on the welcome card going out.
+    if let Some(role) = settings.join_role_id.filter(|_| !member.user.bot) {
+        roles::give_join_role(&app, guild_id.get(), member.user.id.get(), role as u64).await;
+    }
+    server_log::note_names(&app, &settings, guild_id.get(), &member.user, member.nick.as_deref()).await;
+    server_log::member_joined(&app, &settings, &member.user).await;
     if member.user.bot {
         return Ok(());
     }
-    let settings = app.guild_settings(guild_id.get()).await?;
     let Some(channel) = settings.welcome_channel_id.filter(|_| settings.welcome_enabled) else {
         return Ok(());
     };
@@ -149,5 +166,80 @@ pub async fn on_member_add(app: Arc<App>, event: MemberAdd) -> anyhow::Result<()
         .allowed_mentions(Some(&mentions))
         .attachments(&[Attachment::from_bytes("welcome.png".to_owned(), png, 1)])
         .await?;
+    Ok(())
+}
+
+/// Says goodbye when the server has it turned on, and logs the leave.
+pub async fn on_member_remove(app: Arc<App>, event: MemberRemove) -> anyhow::Result<()> {
+    let MemberRemove { guild_id, user } = event;
+    let settings = app.guild_settings(guild_id.get()).await?;
+    app.log_state.forget(guild_id.get(), user.id.get()).await;
+    server_log::member_left(&app, &settings, &user).await;
+    let Some(channel) = settings.goodbye_channel_id.filter(|_| !user.bot) else {
+        return Ok(());
+    };
+    let template = settings.goodbye_message.as_deref().unwrap_or(DEFAULT_GOODBYE);
+    // Only ask Discord for the server when the message uses it.
+    let (server, members) = if template.contains("{server}") || template.contains("{members}") {
+        let guild = app.http.guild(guild_id).with_counts(true).await?.model().await?;
+        let members = guild.approximate_member_count.map(|c| c.to_string());
+        (guild.name, members.unwrap_or_default())
+    } else {
+        Default::default()
+    };
+    // Not a mention: the member is gone, and a name reads better than a bare id.
+    let text = fill(
+        template,
+        &[
+            ("user", &display_name(&user, None)),
+            ("server", &server),
+            ("members", &members),
+        ],
+    );
+    let mentions = AllowedMentions::default();
+    app.http
+        .create_message(Id::new(channel as u64))
+        .content(&text)
+        .allowed_mentions(Some(&mentions))
+        .await?;
+    Ok(())
+}
+
+/// Logs nickname and username changes.
+pub async fn on_member_update(app: Arc<App>, event: MemberUpdate) -> anyhow::Result<()> {
+    let settings = app.guild_settings(event.guild_id.get()).await?;
+    server_log::names_updated(
+        &app,
+        &settings,
+        event.guild_id.get(),
+        &event.user,
+        event.nick.as_deref(),
+    )
+    .await;
+    Ok(())
+}
+
+/// Logs a ban.
+pub async fn on_ban_add(app: Arc<App>, event: BanAdd) -> anyhow::Result<()> {
+    let settings = app.guild_settings(event.guild_id.get()).await?;
+    server_log::ban_changed(&app, &settings, &event.user, true).await;
+    Ok(())
+}
+
+/// Logs an unban.
+pub async fn on_ban_remove(app: Arc<App>, event: BanRemove) -> anyhow::Result<()> {
+    let settings = app.guild_settings(event.guild_id.get()).await?;
+    server_log::ban_changed(&app, &settings, &event.user, false).await;
+    Ok(())
+}
+
+/// Logs voice joins, leaves and moves.
+pub async fn on_voice_state_update(app: Arc<App>, event: VoiceStateUpdate) -> anyhow::Result<()> {
+    let state = event.0;
+    let Some(guild) = state.guild_id else {
+        return Ok(());
+    };
+    let settings = app.guild_settings(guild.get()).await?;
+    server_log::voice_updated(&app, &settings, guild.get(), &state).await;
     Ok(())
 }
