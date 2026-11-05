@@ -22,3 +22,7 @@ rust-toolchain.toml
 .idea/
 .vscode/
 .DS_Store
+
+# GPT sprite sheets and logs; only the packed atlas is compiled in.
+tools/
+assets/sprites/src/
