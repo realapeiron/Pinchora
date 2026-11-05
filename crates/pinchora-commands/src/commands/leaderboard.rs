@@ -103,10 +103,15 @@ async fn last_week_podium(app: &Arc<App>, guild: u64, week: chrono::NaiveDate) -
     Ok(podium)
 }
 
-/// "Pearlpatch Koi 61.4 cm": what a weekly catch was.
+/// "Pearlpatch Koi 61.4 cm": what a weekly catch was. Sizes of 100 cm and up drop the tenth, so the
+/// longest names still fit their place on the podium.
 fn catch_text(row: &CatchBoardRow) -> String {
     let name = Content::get().fish(&row.fish_id).map_or("a fish", |f| f.name.as_str());
-    format!("{name} {:.1} cm", row.size_cm)
+    if row.size_cm >= 100.0 {
+        format!("{name} {:.0} cm", row.size_cm)
+    } else {
+        format!("{name} {:.1} cm", row.size_cm)
+    }
 }
 
 /// The top three catches of the week starting `week`, for the recap under the weekly catch board.
@@ -239,6 +244,11 @@ async fn page(app: &Arc<App>, board: Board, guild: Option<u64>, page: u32) -> an
                 entries,
                 page,
                 last_week,
+                empty: if board == Board::WeeklyCatch {
+                    "No catches this week yet. Cast a line with /fish cast!"
+                } else {
+                    "Nobody here yet. Chat a bit and check again!"
+                },
                 theme: Theme::reef(),
             })
         })
