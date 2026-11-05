@@ -1,7 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use pinchora_core::leveling::{MESSAGE_XP, MESSAGE_XP_COOLDOWN_SECS, level_of};
-use pinchora_render::{Theme, WelcomeCard};
+use pinchora_render::{LevelUpCard, Theme, WelcomeCard};
 use twilight_model::{
     channel::message::{AllowedMentions, MessageType},
     gateway::payload::incoming::{MemberAdd, MessageCreate},
@@ -62,10 +62,25 @@ pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<(
         users: vec![msg.author.id],
         ..Default::default()
     };
+    let name = display_name(&msg.author, msg.member.as_ref().and_then(|m| m.nick.as_deref()));
+    let avatar = app.avatar(&msg.author, LevelUpCard::AVATAR_SIZE, Some(34)).await;
+    let accent = app.db.user(u).await.ok().and_then(|r| r.accent_color);
+    let png = app
+        .render(move |r| {
+            r.level_up_card(&LevelUpCard {
+                display_name: &name,
+                avatar_png: &avatar,
+                from: before,
+                to: after,
+                theme: Theme::reef().with_accent(accent.map(|c| c as u32)),
+            })
+        })
+        .await?;
     app.http
         .create_message(channel)
         .content(&text)
         .allowed_mentions(Some(&mentions))
+        .attachments(&[Attachment::from_bytes("levelup.png".to_owned(), png, 1)])
         .await?;
     Ok(())
 }

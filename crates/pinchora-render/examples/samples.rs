@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use pinchora_render::{
-    ProfileCard, RankCard, Renderer, Theme, WelcomeCard, placeholder_avatar,
+    LevelUpCard, ProfileCard, RankCard, Renderer, Theme, WelcomeCard, placeholder_avatar,
     room::{Cursor, RoomScene, SceneItem, SceneLayer, render_room},
     sprites::{placeholder_item, placeholder_tile, recolor, variant_ramp},
 };
@@ -56,6 +56,15 @@ fn main() -> anyhow::Result<()> {
         theme: Theme::reef(),
     })?;
     std::fs::write(format!("{out}/welcome.png"), &welcome)?;
+
+    let level_up = r.level_up_card(&LevelUpCard {
+        display_name: "Captain Pinch",
+        avatar_png: &placeholder_avatar(5, LevelUpCard::AVATAR_SIZE),
+        from: 26,
+        to: 27,
+        theme: Theme::reef(),
+    })?;
+    std::fs::write(format!("{out}/levelup.png"), &level_up)?;
 
     let item = |id: &str, x, y, w, d, layer, variant: &str| {
         let base = placeholder_item(id, w, d, layer);

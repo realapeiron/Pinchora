@@ -1,4 +1,5 @@
 mod grid;
+mod levelup;
 mod pet;
 mod profile;
 mod rank;
@@ -6,6 +7,7 @@ mod wallet;
 mod welcome;
 
 pub use grid::{GridSlot, ItemGridCard};
+pub use levelup::LevelUpCard;
 pub use pet::PetCard;
 pub use profile::ProfileCard;
 pub use rank::RankCard;
