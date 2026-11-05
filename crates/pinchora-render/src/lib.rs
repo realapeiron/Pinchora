@@ -6,6 +6,7 @@ pub mod character;
 mod encode;
 pub mod room;
 pub mod sprites;
+mod style;
 mod svg;
 mod theme;
 
@@ -17,9 +18,11 @@ pub use avatar::{placeholder_avatar, prepare_avatar};
 pub use cards::{
     ABSENT, Backdrop, BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, CORRECT, CharacterCard, Connect4Card,
     GridSlot, HangmanCard, HangmanLetter, ItemGridCard, LeaderboardCard, LeaderboardEntry, LevelUpCard, NextRole,
-    PRESENT, PetCard, ProfileCard, RankCard, SpriteArt, WalletCard, WelcomeCard, WordleCard, WordleRow,
+    PRESENT, PetCard, ProfileCard, RankCard, ShowcaseKind, ShowcaseSlot, SpriteArt, WalletCard, WelcomeCard,
+    WordleCard, WordleRow,
 };
 pub use encode::encode_png;
+pub use style::{ACCENT_PRESETS, AccentError, Frame, Opacity, parse_accent, readable};
 pub use svg::{compact, thousands};
 pub use theme::Theme;
 

@@ -34,6 +34,7 @@ use pinchora_commands::{
 use pinchora_db::Db;
 use pinchora_game::{
     Content,
+    character::Character,
     play::{PlayContent, hangman::Hangman, trivia, wordle},
 };
 use pinchora_render::BadgeCollectionCard;
@@ -453,6 +454,8 @@ struct Reply {
     followups: Vec<Reply>,
     /// The form the handler opened instead of answering, as its custom id and title.
     modal: Option<(String, String)>,
+    /// The text boxes of that form as (custom id, prefilled value).
+    modal_inputs: Vec<(String, Option<String>)>,
 }
 
 impl Reply {
@@ -466,6 +469,7 @@ impl Reply {
             files: Vec::new(),
             followups: Vec::new(),
             modal: None,
+            modal_inputs: Vec::new(),
         }
     }
 
@@ -489,6 +493,7 @@ impl Reply {
                 files: Vec::new(),
                 followups: Vec::new(),
                 modal: None,
+                modal_inputs: Vec::new(),
                 ..on.clone()
             },
             _ => Self::new(first.kind),
@@ -496,6 +501,18 @@ impl Reply {
         if let Some(data) = first.data {
             if first.kind == InteractionResponseType::Modal {
                 reply.modal = data.custom_id.clone().zip(data.title.clone());
+                reply.modal_inputs = data
+                    .components
+                    .iter()
+                    .flatten()
+                    .filter_map(|component| match component {
+                        Component::Label(label) => match label.component.as_ref() {
+                            Component::TextInput(input) => Some((input.custom_id.clone(), input.value.clone())),
+                            _ => None,
+                        },
+                        _ => None,
+                    })
+                    .collect();
                 return reply;
             }
             if let Some(flags) = data.flags {
@@ -3568,6 +3585,524 @@ async fn titles_sit_under_the_name_on_the_profile_and_rank_cards() {
         rank_block.0,
         rank_block.1
     ));
+}
+
+/// A pixel of a card.
+fn pixel(card: &image::RgbaImage, x: u32, y: u32) -> [u8; 4] {
+    card.get_pixel(x, y).0
+}
+
+/// The left border of the profile card's avatar frame, which is drawn in the accent colour.
+fn profile_accent(reply: &Reply) -> [u8; 4] {
+    pixel(&card_pixels(reply, (960, 540)), 44, 150)
+}
+
+/// The same border on the rank card.
+fn rank_accent(reply: &Reply) -> [u8; 4] {
+    pixel(&card_pixels(reply, (934, 282)), 37, 140)
+}
+
+#[tokio::test]
+async fn the_style_editor_sets_accent_opacity_and_frame_on_every_card() {
+    let Some(mut sim) = Sim::new("the_style_editor_sets_accent_opacity_and_frame_on_every_card").await else {
+        return;
+    };
+    let user = unique();
+    let db = sim.app.db.clone();
+    let coral = [255, 107, 74, 255];
+    let plain_profile = sim.command(user, "profile", json!([])).await;
+    let plain_rank = sim.command(user, "rank", json!([])).await;
+    let plain_wallet = sim.command(user, "balance", json!([])).await;
+    assert_eq!(profile_accent(&plain_profile), coral);
+
+    // The editor opens on the real profile card with nothing to reset: 12 colours and Auto, 6 frames.
+    let panel = sim
+        .command(user, "customize", json!([{ "name": "style", "type": 1 }]))
+        .await;
+    assert_eq!(panel.title(), "Card style");
+    assert!(panel.ephemeral, "the editor is private");
+    card_image(&panel, (960, 540));
+    assert_eq!(panel.rows(), 3, "two menus and a row of buttons");
+    assert_eq!(panel.options("cs:a").len(), 13);
+    assert!(panel.options("cs:a").iter().any(|o| o.value == "auto" && o.default));
+    assert!(
+        panel.description().contains("**Accent** Auto (coral)"),
+        "{}",
+        panel.description()
+    );
+    assert!(panel.button("Reset style").disabled, "nothing to reset yet");
+    assert!(panel.button("Normal").style == twilight_model::channel::message::component::ButtonStyle::Primary);
+
+    // Locked frames show a lock and the level, in the menu and under the card.
+    let frames = panel.options("cs:f");
+    assert_eq!(
+        frames.iter().map(|o| o.value.as_str()).collect::<Vec<_>>(),
+        ["plain", "rope", "coral", "pearl", "gold", "neon"]
+    );
+    let frame = |id: &str| frames.iter().find(|o| o.value == id).expect("a frame");
+    assert_eq!(frame("plain").description.as_deref(), Some("On your cards now"));
+    assert_eq!(frame("rope").description.as_deref(), Some("Free"));
+    assert_eq!(
+        frame("pearl").description.as_deref(),
+        Some("Locked · reach level 20 (you are level 0)")
+    );
+    assert!(frame("pearl").emoji.is_some() && frame("rope").emoji.is_none());
+    assert!(
+        panel.description().contains("🔒 Coral · level 10"),
+        "{}",
+        panel.description()
+    );
+
+    // A preset recolours the avatar frame on the profile and rank cards.
+    let blue = sim.pick(user, &panel, "cs:a", "3a9bdc").await;
+    assert!(
+        blue.description().contains("Your accent is `#3a9bdc`"),
+        "{}",
+        blue.description()
+    );
+    assert_eq!(db.user(user).await.unwrap().accent.as_deref(), Some("#3a9bdc"));
+    assert!(blue.options("cs:a").iter().any(|o| o.value == "3a9bdc" && o.default));
+    assert!(!blue.button("Reset style").disabled);
+    assert_eq!(
+        pixel(&card_pixels(&blue, (960, 540)), 44, 150),
+        [58, 155, 220, 255],
+        "the editor previews it"
+    );
+    let ocean = [58, 155, 220, 255];
+    assert_eq!(profile_accent(&sim.command(user, "profile", json!([])).await), ocean);
+    assert_eq!(rank_accent(&sim.command(user, "rank", json!([])).await), ocean);
+
+    // The hex button opens a form that holds the current colour; unreadable and malformed codes are
+    // refused with a reason, and a short code is widened.
+    let form = sim.click(user, &blue, "Hex code…").await;
+    assert_eq!(
+        form.modal.as_ref().map(|m| (m.0.as_str(), m.1.as_str())),
+        Some(("cs:hx", "Accent colour"))
+    );
+    assert_eq!(
+        form.modal_inputs,
+        [("hex".to_owned(), Some("#3a9bdc".to_owned()))],
+        "the box starts with the colour in use"
+    );
+    let dark = sim.submit_fields(user, &form, &[("hex", "#0b1029")]).await;
+    assert!(dark.description().contains("too dark"), "{}", dark.description());
+    assert_eq!(db.user(user).await.unwrap().accent.as_deref(), Some("#3a9bdc"), "kept");
+    let junk = sim.submit_fields(user, &form, &[("hex", "banana")]).await;
+    assert!(
+        junk.description().contains("not a colour code"),
+        "{}",
+        junk.description()
+    );
+    let typed = sim.submit_fields(user, &form, &[("hex", "F84")]).await;
+    assert!(
+        typed.description().contains("Your accent is `#ff8844`"),
+        "{}",
+        typed.description()
+    );
+    assert_eq!(db.user(user).await.unwrap().accent.as_deref(), Some("#ff8844"));
+    assert_eq!(
+        profile_accent(&sim.command(user, "profile", json!([])).await),
+        [255, 136, 68, 255]
+    );
+    // A hand-made menu value gets the same check.
+    let sneaky = sim.component(user, "cs:a", &["000000"], &typed).await;
+    assert!(
+        sneaky.content().contains("isn't available any more"),
+        "{}",
+        sneaky.content()
+    );
+    assert_eq!(db.user(user).await.unwrap().accent.as_deref(), Some("#ff8844"));
+
+    // Auto gives the background's (here: coral) back.
+    let auto = sim.pick(user, &typed, "cs:a", "auto").await;
+    assert_eq!(db.user(user).await.unwrap().accent, None);
+    assert_eq!(profile_accent(&sim.command(user, "profile", json!([])).await), coral);
+
+    // Opacity: Light makes the panels see-through on every card.
+    let light = sim.click(user, &auto, "Light").await;
+    assert_eq!(db.user(user).await.unwrap().panel_opacity, 0);
+    assert!(light.button("Light").style == twilight_model::channel::message::component::ButtonStyle::Primary);
+    assert!(light.button("Normal").style == twilight_model::channel::message::component::ButtonStyle::Secondary);
+    assert!(differ_in(
+        &card_pixels(&light, (960, 540)),
+        &card_pixels(&plain_profile, (960, 540)),
+        150..190,
+        340..360
+    ));
+    let solid = sim.click(user, &light, "Solid").await;
+    assert_eq!(db.user(user).await.unwrap().panel_opacity, 2);
+    assert!(differ_in(
+        &card_pixels(&sim.click(user, &solid, "Light").await, (960, 540)),
+        &card_pixels(&solid, (960, 540)),
+        150..190,
+        340..360
+    ));
+    let normal = sim.click(user, &solid, "Normal").await;
+    assert_eq!(db.user(user).await.unwrap().panel_opacity, 1);
+
+    // Frames: the free ones apply at once; the others wait for their level, however they are asked for.
+    let rope = sim.pick(user, &normal, "cs:f", "rope").await;
+    assert!(
+        rope.description().contains("The **Rope** frame is on your cards"),
+        "{}",
+        rope.description()
+    );
+    assert_eq!(db.user(user).await.unwrap().frame, "rope");
+    let framed = [
+        (
+            sim.command(user, "profile", json!([])).await,
+            &plain_profile,
+            (960, 540),
+        ),
+        (sim.command(user, "rank", json!([])).await, &plain_rank, (934, 282)),
+        (sim.command(user, "balance", json!([])).await, &plain_wallet, (900, 300)),
+    ];
+    for (card, plain, size) in &framed {
+        assert!(
+            differ_in(&card_pixels(card, *size), &card_pixels(plain, *size), 0..8, 0..size.1),
+            "the rope band is on the {size:?} card"
+        );
+    }
+    let refused = sim.pick(user, &rope, "cs:f", "pearl").await;
+    assert!(
+        refused
+            .description()
+            .contains("The **Pearl** frame unlocks at level 20. You are level 0."),
+        "{}",
+        refused.description()
+    );
+    assert_eq!(
+        db.user(user).await.unwrap().frame,
+        "rope",
+        "a locked frame is not saved"
+    );
+    let bogus = sim.component(user, "cs:f", &["diamond"], &refused).await;
+    assert!(
+        bogus.content().contains("isn't available any more"),
+        "{}",
+        bogus.content()
+    );
+    // Level 20 opens the pearl frame (23,850 XP in all); a frame the level no longer allows would
+    // simply not be drawn.
+    db.add_message_xp(sim.guild, user, 30_000, 0).await.unwrap();
+    let reopened = sim
+        .command(user, "customize", json!([{ "name": "style", "type": 1 }]))
+        .await;
+    let pearl = reopened
+        .options("cs:f")
+        .iter()
+        .find(|o| o.value == "pearl")
+        .expect("a frame");
+    assert_eq!(pearl.description.as_deref(), Some("Unlocked at level 20"));
+    assert!(pearl.emoji.is_none(), "unlocked, so no lock");
+    assert!(
+        reopened
+            .options("cs:f")
+            .iter()
+            .any(|o| o.value == "gold" && o.emoji.is_some()),
+        "gold is still locked"
+    );
+    let pearly = sim.pick(user, &reopened, "cs:f", "pearl").await;
+    assert_eq!(db.user(user).await.unwrap().frame, "pearl");
+    assert!(
+        pearly.description().contains("**Frame** Pearl"),
+        "{}",
+        pearly.description()
+    );
+
+    // Reset puts everything back, and the plain card has its bare corners again.
+    let reset = sim.click(user, &pearly, "Reset style").await;
+    let row = db.user(user).await.unwrap();
+    assert_eq!((row.accent, row.panel_opacity, row.frame.as_str()), (None, 1, "plain"));
+    assert!(reset.button("Reset style").disabled);
+    let profile = sim.command(user, "profile", json!([])).await;
+    assert!(!differ_in(
+        &card_pixels(&profile, (960, 540)),
+        &card_pixels(&plain_profile, (960, 540)),
+        0..8,
+        0..540
+    ));
+}
+
+/// A long display name, to see how the profile card keeps it clear of everything else.
+const LONG_NAME: &str = "Bartholomew Fizzlebottom Smythe!";
+
+/// `/profile user:<target>` as `viewer`, with the target's display name set to `name`.
+async fn profile_of(sim: &mut Sim, viewer: u64, target: u64, name: &str) -> Reply {
+    let resolved = json!({
+        "users": { target.to_string(): person_json(target, "bartholomew.fizzlebottom", Some(name), false) },
+    });
+    sim.command_resolved(viewer, "profile", json!([user_option("user", target)]), resolved)
+        .await
+}
+
+#[tokio::test]
+async fn the_showcase_editor_picks_fish_pet_furniture_and_house() {
+    let Some(mut sim) = Sim::new("the_showcase_editor_picks_fish_pet_furniture_and_house").await else {
+        return;
+    };
+    let (user, other, viewer) = (unique(), unique(), unique());
+    let db = sim.app.db.clone();
+    let content = Content::get();
+    let (squid, mackerel) = (&content.fish[0], &content.fish[1]);
+    db.log_catch(user, &squid.id, 31.5).await.unwrap();
+    db.log_catch(user, &mackerel.id, 12.0).await.unwrap();
+    let pet = db.adopt(user, &content.pets[0].id, "Sir Clicks").await.unwrap();
+    let others_pet = db.adopt(other, &content.pets[0].id, "Not Yours").await.unwrap();
+    let lamp = content
+        .items()
+        .find(|i| i.base.id.contains("lamp"))
+        .expect("a lamp in the catalog");
+    db.grant_item(user, &lamp.id(), 1).await.unwrap();
+    let plain = sim.command(user, "profile", json!([])).await;
+
+    // Nothing chosen: the editor says so and offers nothing to clear; fish are picked first.
+    let panel = sim
+        .command(user, "customize", json!([{ "name": "showcase", "type": 1 }]))
+        .await;
+    assert_eq!(panel.title(), "Profile showcase");
+    assert!(panel.ephemeral);
+    card_image(&panel, (960, 540));
+    assert_eq!(panel.rows(), 3);
+    assert!(
+        panel.description().contains("Nothing is on your showcase"),
+        "{}",
+        panel.description()
+    );
+    assert!(panel.button("Clear slot").disabled && panel.button("Clear all").disabled);
+    assert_eq!(panel.options("sw:k").len(), 3);
+    let fish_values: Vec<_> = panel.options("sw:s:f").iter().map(|o| o.value.as_str()).collect();
+    let mut expected = vec![squid.name.as_str(), mackerel.name.as_str()];
+    expected.sort_by_key(|n| n.to_lowercase());
+    let labels: Vec<_> = panel.options("sw:s:f").iter().map(|o| o.label.as_str()).collect();
+    assert_eq!(labels, expected, "the fish book, by name");
+    assert_eq!(fish_values.len(), 2);
+    assert!(
+        panel.options("sw:s:f")[0]
+            .description
+            .as_deref()
+            .is_some_and(|d| d.contains("best") && d.contains("cm")),
+        "{:?}",
+        panel.options("sw:s:f")[0].description
+    );
+    assert!(panel.button("Show house").disabled, "no house to show yet");
+    let no_house = sim.component(user, "sw:h:f", &[], &panel).await;
+    assert!(
+        no_house.description().contains("no house yet"),
+        "{}",
+        no_house.description()
+    );
+    assert!(!db.user(user).await.unwrap().showcase_house);
+
+    // A fish goes on the card: the layout makes room for the row.
+    let fish = sim.pick(user, &panel, "sw:s:f", &squid.id).await;
+    assert!(
+        fish.description().contains(&format!("Saved. **{}**", squid.name)),
+        "{}",
+        fish.description()
+    );
+    assert_eq!(
+        db.user(user).await.unwrap().showcase_fish.as_deref(),
+        Some(squid.id.as_str())
+    );
+    assert!(fish.options("sw:s:f").iter().any(|o| o.value == squid.id && o.default));
+    assert!(!fish.button("Clear slot").disabled && !fish.button("Clear all").disabled);
+    assert!(
+        differ_in(
+            &card_pixels(&fish, (960, 540)),
+            &card_pixels(&plain, (960, 540)),
+            296..920,
+            260..356
+        ),
+        "a tile stands in the showcase row"
+    );
+
+    // The pet and the furniture, through the slot menu.
+    let pets = sim.pick(user, &fish, "sw:k", "p").await;
+    assert!(pets.menu("sw:s:p").placeholder.as_deref() == Some("Pick a pet…"));
+    assert_eq!(pets.options("sw:s:p").len(), 1);
+    assert_eq!(pets.options("sw:s:p")[0].label, "Sir Clicks");
+    let with_pet = sim.pick(user, &pets, "sw:s:p", &pet.id.to_string()).await;
+    assert_eq!(db.user(user).await.unwrap().showcase_pet, Some(pet.id));
+    let furniture = sim.pick(user, &with_pet, "sw:k", "i").await;
+    assert!(
+        furniture.options("sw:s:i").iter().any(|o| o.value == lamp.id()),
+        "owned furniture is listed"
+    );
+    let with_lamp = sim.pick(user, &furniture, "sw:s:i", &lamp.id()).await;
+    assert_eq!(
+        db.user(user).await.unwrap().showcase_item.as_deref(),
+        Some(lamp.id().as_str())
+    );
+    assert!(
+        with_lamp.description().contains(&squid.name) && with_lamp.description().contains("Sir Clicks"),
+        "{}",
+        with_lamp.description()
+    );
+
+    // Hand-made picks of things that are not theirs are refused: a fish never caught, somebody
+    // else's pet, furniture nobody owns.
+    for (menu, value) in [
+        ("sw:s:f:0", content.fish.last().expect("fish").id.clone()),
+        ("sw:s:p:0", others_pet.id.to_string()),
+        ("sw:s:i:0", "no_such_item".to_owned()),
+    ] {
+        let refused = sim.component(user, menu, &[&value], &with_lamp).await;
+        assert!(
+            refused.content().contains("isn't available any more"),
+            "{menu}: {}",
+            refused.content()
+        );
+    }
+    let row = db.user(user).await.unwrap();
+    assert_eq!(row.showcase_pet, Some(pet.id), "the pet is still theirs");
+    assert_eq!(row.showcase_fish.as_deref(), Some(squid.id.as_str()));
+
+    // The house thumbnail needs a house; once there is one, a button shows it.
+    sim.command(user, "house", json!([{ "name": "edit", "type": 1 }])).await;
+    let house_panel = sim
+        .command(user, "customize", json!([{ "name": "showcase", "type": 1 }]))
+        .await;
+    assert!(!house_panel.button("Show house").disabled);
+    let before_house = card_pixels(&house_panel, (960, 540));
+    let house = sim.click(user, &house_panel, "Show house").await;
+    assert!(
+        house.description().contains("Your house is on your card."),
+        "{}",
+        house.description()
+    );
+    assert!(
+        house.description().contains("**House** shown"),
+        "{}",
+        house.description()
+    );
+    assert!(db.user(user).await.unwrap().showcase_house);
+    // The house tile is the right-hand one of the four.
+    assert!(differ_in(
+        &card_pixels(&house, (960, 540)),
+        &before_house,
+        760..912,
+        270..350
+    ));
+
+    // Anyone looking at the profile sees the showcase, and the card is the editor's picture.
+    let seen = profile_of(&mut sim, viewer, user, "Sim").await;
+    assert!(differ_in(
+        &card_pixels(&seen, (960, 540)),
+        &card_pixels(&plain, (960, 540)),
+        296..920,
+        260..356
+    ));
+    let again = profile_of(&mut sim, viewer, user, "Sim").await;
+    assert_eq!(
+        card_image(&seen, (960, 540)),
+        card_image(&again, (960, 540)),
+        "drawn from the same things, it is drawn the same"
+    );
+
+    // Hiding the house, clearing one slot and clearing everything, each undoes its part.
+    let hidden = sim.click(user, &house, "Hide house").await;
+    assert!(
+        hidden.description().contains("**House** hidden"),
+        "{}",
+        hidden.description()
+    );
+    let fish_slot = sim.pick(user, &hidden, "sw:k", "f").await;
+    let cleared = sim.click(user, &fish_slot, "Clear slot").await;
+    let row = db.user(user).await.unwrap();
+    assert_eq!(row.showcase_fish, None);
+    assert_eq!(row.showcase_pet, Some(pet.id), "the other slots stay");
+    assert!(cleared.button("Clear slot").disabled, "the fish slot is empty now");
+    let nothing = sim.click(user, &cleared, "Clear all").await;
+    let row = db.user(user).await.unwrap();
+    assert_eq!(
+        (
+            row.showcase_fish,
+            row.showcase_pet,
+            row.showcase_item,
+            row.showcase_house
+        ),
+        (None, None, None, false)
+    );
+    assert!(
+        nothing.description().contains("Nothing is on your showcase"),
+        "{}",
+        nothing.description()
+    );
+
+    // With nothing chosen the card is the card it always was: the same bio, stats and footer.
+    let profile = sim.command(user, "profile", json!([])).await;
+    let (now, was) = (card_pixels(&profile, (960, 540)), card_pixels(&plain, (960, 540)));
+    for (xs, ys) in [(0..960, 0..288), (0..960, 396..540)] {
+        assert!(!differ_in(&now, &was, xs, ys));
+    }
+    // Stale choices drop out of the card quietly: a pet that left leaves no hole in the editor either.
+    db.set_showcase_pet(user, Some(pet.id + 1_000_000)).await.unwrap();
+    let stale = sim.command(user, "profile", json!([])).await;
+    assert!(!differ_in(&card_pixels(&stale, (960, 540)), &was, 0..960, 0..288));
+}
+
+#[tokio::test]
+async fn a_busy_profile_card_stays_clean_with_a_long_name_and_a_full_bio() {
+    let Some(mut sim) = Sim::new("a_busy_profile_card_stays_clean_with_a_long_name_and_a_full_bio").await else {
+        return;
+    };
+    let (user, viewer) = (unique(), unique());
+    let db = sim.app.db.clone();
+    let content = Content::get();
+    let bio = "Collector of shiny shells, builder of tiny pixel houses, feeder of crabs and chaser of rare fish. \
+               Ask me about Sir Clicks or my 4 AM fishing trips!";
+    assert!(bio.chars().count() <= 160);
+    db.set_bio(user, bio).await.unwrap();
+    db.add_message_xp(sim.guild, user, 70_000, 0).await.unwrap();
+    db.earn_shells(user, 1_284_500, "test").await.unwrap();
+    for fish in content.fish.iter().take(12) {
+        db.log_catch(user, &fish.id, 20.0).await.unwrap();
+    }
+    db.set_title(user, Some("lighthouse_keeper")).await.unwrap();
+    let pet = db.adopt(user, &content.pets[1].id, "Sir Clicks-a-lot").await.unwrap();
+    let sofa = content.items().find(|i| i.base.id.contains("bed")).expect("a bed");
+    db.grant_item(user, &sofa.id(), 1).await.unwrap();
+    sim.command(user, "house", json!([{ "name": "edit", "type": 1 }])).await;
+    db.set_character(user, &Character::starter(content).encode())
+        .await
+        .unwrap();
+
+    // Every slot filled, a gold frame and a teal accent.
+    db.set_showcase_fish(user, Some(&content.fish[3].id)).await.unwrap();
+    db.set_showcase_pet(user, Some(pet.id)).await.unwrap();
+    db.set_showcase_item(user, Some(&sofa.id())).await.unwrap();
+    db.set_showcase_house(user, true).await.unwrap();
+    db.set_frame(user, "gold").await.unwrap();
+    db.set_accent(user, Some("#06d6a0")).await.unwrap();
+    let busy = profile_of(&mut sim, viewer, user, LONG_NAME).await;
+    card_image(&busy, (960, 540));
+    assert_eq!(busy.files[0].0, "profile.png");
+
+    // The same player with nothing on the showcase and no frame: today's layout, same size.
+    db.clear_showcase(user).await.unwrap();
+    db.reset_card_style(user).await.unwrap();
+    let classic = profile_of(&mut sim, viewer, user, LONG_NAME).await;
+    card_image(&classic, (960, 540));
+    assert!(differ_in(
+        &card_pixels(&busy, (960, 540)),
+        &card_pixels(&classic, (960, 540)),
+        296..920,
+        260..420
+    ));
+
+    // The same busy card over a background picture, with light panels.
+    db.earn_shells(user, 5_000, "test").await.unwrap();
+    db.buy_background(user, "shellwash_morning", 800).await.unwrap();
+    db.equip_background(user, "shellwash_morning").await.unwrap();
+    db.set_showcase_fish(user, Some(&content.fish[3].id)).await.unwrap();
+    db.set_showcase_pet(user, Some(pet.id)).await.unwrap();
+    db.set_showcase_item(user, Some(&sofa.id())).await.unwrap();
+    db.set_showcase_house(user, true).await.unwrap();
+    db.set_frame(user, "rope").await.unwrap();
+    db.set_panel_opacity(user, 0).await.unwrap();
+    let scenic = profile_of(&mut sim, viewer, user, LONG_NAME).await;
+    card_image(&scenic, (960, 540));
 }
 
 fn channel_option(name: &str, id: u64) -> Value {

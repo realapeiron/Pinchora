@@ -1,9 +1,11 @@
 use std::{collections::HashSet, str::Split, sync::Arc};
 
+use pinchora_core::leveling;
 use pinchora_db::{CustomizeBuy, MAX_BADGES, PlayerStats, UserRow};
 use pinchora_game::{Background, Badge, BadgeKind, BadgeStat, Content, Rarity, TitleKind};
 use pinchora_render::{
-    Backdrop, BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, SpriteArt, Theme, sprites::placeholder_badge_color,
+    Backdrop, BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, Frame, Opacity, SpriteArt, Theme, parse_accent,
+    sprites::placeholder_badge_color,
 };
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::{
@@ -22,9 +24,13 @@ use crate::{
     util::{BRAND, thousands},
 };
 
+mod showcase;
+mod style;
 mod titles;
 mod unlocks;
 
+pub(crate) use showcase::{Showcase, on_showcase};
+pub(crate) use style::{on_style, on_style_modal};
 pub(crate) use titles::on_title;
 pub(crate) use unlocks::{announce, announce_in};
 
@@ -32,7 +38,10 @@ pub(crate) use unlocks::{announce, announce_in};
 const PER_PAGE: usize = 25;
 
 #[derive(CommandModel, CreateCommand)]
-#[command(name = "customize", desc = "Backgrounds, badges and titles for your cards")]
+#[command(
+    name = "customize",
+    desc = "Backgrounds, badges, titles, colours, frames and a showcase for your cards"
+)]
 pub enum CustomizeCommand {
     #[command(name = "background")]
     Background(CustomizeBackground),
@@ -40,6 +49,10 @@ pub enum CustomizeCommand {
     Badges(CustomizeBadges),
     #[command(name = "title")]
     Title(CustomizeTitle),
+    #[command(name = "style")]
+    Style(CustomizeStyle),
+    #[command(name = "showcase")]
+    Showcase(CustomizeShowcase),
 }
 
 #[derive(CommandModel, CreateCommand)]
@@ -63,12 +76,28 @@ pub struct CustomizeBadges;
 )]
 pub struct CustomizeTitle;
 
+#[derive(CommandModel, CreateCommand)]
+#[command(
+    name = "style",
+    desc = "Accent colour, panel opacity and a frame for your profile, rank and wallet cards"
+)]
+pub struct CustomizeStyle;
+
+#[derive(CommandModel, CreateCommand)]
+#[command(
+    name = "showcase",
+    desc = "Put a favourite fish, a pet, a furniture item and your house on your profile card"
+)]
+pub struct CustomizeShowcase;
+
 impl CustomizeCommand {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
         let data = match self {
             Self::Background(_) => background_panel(cx, Highlight::Equipped, None, "").await?,
             Self::Badges(_) => badges_panel(cx, 0, "", Fresh::Open).await?,
             Self::Title(_) => titles::panel(cx, 0, "").await?,
+            Self::Style(_) => style::panel(cx, "").await?,
+            Self::Showcase(_) => showcase::panel(cx, showcase::Slot::Fish, 0, "").await?,
         };
         cx.reply(data).await
     }
@@ -139,14 +168,24 @@ fn letter_of(badge: &Badge) -> char {
         .map_or('?', |c| c.to_uppercase().next().unwrap_or(c))
 }
 
-/// The card palette: the background's accent colour when there is a background, else the
-/// colour the player picked, else the reef coral.
-pub(crate) fn theme(accent_color: Option<i32>, background: Option<&Background>) -> Theme {
-    Theme::reef().with_accent(
-        background
-            .and_then(Background::accent_rgb)
-            .or(accent_color.map(|c| c as u32)),
-    )
+/// The card palette and look of a player's cards: the accent colour they chose, else their
+/// background's, else the colour from before accents were a choice, else the reef coral; their
+/// panel opacity; and their frame, if their level has unlocked it.
+pub(crate) fn theme(row: &UserRow, background: Option<&Background>) -> Theme {
+    let chosen = row.accent.as_deref().and_then(|a| parse_accent(a).ok());
+    let accent = chosen
+        .or_else(|| background.and_then(Background::accent_rgb))
+        .or(row.accent_color.map(|c| c as u32));
+    Theme::reef()
+        .with_accent(accent)
+        .with_style(Opacity::from_index(row.panel_opacity), frame_of(row))
+}
+
+/// The frame around the player's cards: the one they chose, if it exists and their level has unlocked it.
+pub(crate) fn frame_of(row: &UserRow) -> Frame {
+    Frame::from_id(&row.frame)
+        .filter(|f| f.is_unlocked(leveling::level_of(row.xp)))
+        .unwrap_or_default()
 }
 
 // /Badges
@@ -722,7 +761,7 @@ async fn badges_panel(cx: &Cx, page: usize, note: &str, fresh: Fresh) -> anyhow:
 
     let background = player.background.as_deref().and_then(|e| content.background(e));
     let (credits, saved_empty) = (player.credits, player.badges.is_empty());
-    let theme = theme(player.accent_color, background);
+    let theme = theme(&player, background);
     let cells = collection_cells(&cx.app.sprites, &wardrobe, &worn, mask);
     let png = cx
         .app
@@ -1204,17 +1243,80 @@ mod tests {
         assert_eq!(MAX_BADGES, ProfileCard::MAX_BADGES);
     }
 
+    /// A player row with the defaults every new player has.
+    fn player() -> UserRow {
+        UserRow {
+            id: 1,
+            credits: 0,
+            xp: 0,
+            reputation: 0,
+            daily_streak: 0,
+            last_daily_at: None,
+            last_rep_at: None,
+            bio: String::new(),
+            accent_color: None,
+            created_at: chrono::Utc::now(),
+            pearls: 0,
+            character: None,
+            background: None,
+            badges: Vec::new(),
+            badges_set: false,
+            badges_seen: None,
+            title: None,
+            accent: None,
+            panel_opacity: 1,
+            frame: "plain".to_owned(),
+            showcase_fish: None,
+            showcase_pet: None,
+            showcase_item: None,
+            showcase_house: false,
+        }
+    }
+
     #[test]
-    fn the_accent_follows_the_background() {
+    fn the_accent_follows_the_background_unless_the_player_chose_one() {
         let content = Content::get();
         let background = content.background("shellwash_morning").expect("a background");
-        let mine = Some(0x112233);
+        let mut row = player();
+        row.accent_color = Some(0x112233);
         assert_eq!(
-            theme(mine, Some(background)).accent,
+            theme(&row, Some(background)).accent,
             background.accent,
-            "the picture wins"
+            "the picture wins over the colour from before accents were a choice"
         );
-        assert_eq!(theme(mine, None).accent, "#112233", "else the colour the player picked");
-        assert_eq!(theme(None, None).accent, Theme::reef().accent);
+        assert_eq!(theme(&row, None).accent, "#112233", "else that colour");
+        assert_eq!(theme(&player(), None).accent, Theme::reef().accent);
+
+        // A chosen accent beats the background; Auto (NULL) gives the background back.
+        row.accent = Some("#06d6a0".to_owned());
+        assert_eq!(theme(&row, Some(background)).accent, "#06d6a0");
+        assert_eq!(theme(&row, None).accent, "#06d6a0");
+        // A value the card could not show is ignored, as if the player had never chosen.
+        row.accent = Some("#000000".to_owned());
+        assert_eq!(theme(&row, Some(background)).accent, background.accent);
+        row.accent = Some("nonsense".to_owned());
+        assert_eq!(theme(&row, None).accent, "#112233");
+    }
+
+    #[test]
+    fn frames_and_opacity_come_from_the_row_and_frames_need_their_level() {
+        let mut row = player();
+        assert_eq!(theme(&row, None).frame, Frame::Plain);
+        assert_eq!(theme(&row, None).opacity, Opacity::Normal);
+        row.panel_opacity = 0;
+        assert_eq!(theme(&row, None).opacity, Opacity::Light);
+        row.panel_opacity = 9;
+        assert_eq!(theme(&row, None).opacity, Opacity::Normal, "an unknown value is Normal");
+
+        row.frame = "pearl".to_owned();
+        assert_eq!(frame_of(&row), Frame::Plain, "level 1 has not unlocked the pearl frame");
+        row.xp = 30_000; // level 20 takes 23,850 XP in all
+        assert!(leveling::level_of(row.xp) >= 20);
+        assert_eq!(frame_of(&row), Frame::Pearl);
+        row.frame = "rope".to_owned();
+        row.xp = 0;
+        assert_eq!(frame_of(&row), Frame::Rope, "the rope frame is free");
+        row.frame = "no_such_frame".to_owned();
+        assert_eq!(frame_of(&row), Frame::Plain);
     }
 }

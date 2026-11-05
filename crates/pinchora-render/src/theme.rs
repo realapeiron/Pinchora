@@ -1,3 +1,8 @@
+use crate::{
+    style::{Frame, Opacity},
+    svg::{panel, panel_alpha},
+};
+
 /// Card palette. Colors are `#rrggbb`.
 #[derive(Debug, Clone)]
 pub struct Theme {
@@ -11,6 +16,10 @@ pub struct Theme {
     pub gold: String,
     pub mint: String,
     pub heart: String,
+    /// How much of the background shows through panels, plates and the veil.
+    pub opacity: Opacity,
+    /// The frame drawn around the whole card.
+    pub frame: Frame,
 }
 
 impl Default for Theme {
@@ -33,6 +42,8 @@ impl Theme {
             gold: "#ffd166".into(),
             mint: "#06d6a0".into(),
             heart: "#ff4d6d".into(),
+            opacity: Opacity::Normal,
+            frame: Frame::Plain,
         }
     }
 
@@ -63,5 +74,30 @@ impl Theme {
             self.accent = format!("#{:06x}", rgb & 0xff_ffff);
         }
         self
+    }
+
+    /// The card's chosen look: the opacity of its panels and the frame around it.
+    pub fn with_style(mut self, opacity: Opacity, frame: Frame) -> Self {
+        self.opacity = opacity;
+        self.frame = frame;
+        self
+    }
+
+    /// A panel of the card: the panel colour in its edge, see-through as far as the opacity says.
+    pub(crate) fn panel(&self, out: &mut String, x: f32, y: f32, w: f32, h: f32, border: f32) {
+        match self.opacity.panel() {
+            alpha if alpha < 1.0 => panel_alpha(out, x, y, w, h, border, &self.panel, &self.panel_edge, alpha),
+            _ => panel(out, x, y, w, h, border, &self.panel, &self.panel_edge),
+        }
+    }
+
+    /// A plate behind text that sits on a background picture.
+    pub(crate) fn plate(&self, out: &mut String, x: f32, y: f32, w: f32, h: f32) {
+        crate::svg::plate(out, x, y, w, h, self.opacity.plate());
+    }
+
+    /// Draws the card's frame over everything else; `w` and `h` are the card's size.
+    pub(crate) fn draw_frame(&self, out: &mut String, w: f32, h: f32) {
+        crate::cards::draw_frame(out, self.frame, w, h, &self.accent);
     }
 }

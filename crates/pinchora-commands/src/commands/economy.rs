@@ -44,7 +44,7 @@ impl Balance {
         let avatar = cx.app.avatar(&user, WalletCard::AVATAR_SIZE, Some(34)).await;
         let background = row.background.as_deref().and_then(|id| Content::get().background(id));
         let cosmetics = Cosmetics::new(&cx.app.sprites, background, &[]);
-        let theme = theme(row.accent_color, background);
+        let theme = theme(&row, background);
         let png = cx
             .app
             .render(move |r| {

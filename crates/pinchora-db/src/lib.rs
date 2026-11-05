@@ -10,6 +10,7 @@ mod panels;
 mod pets;
 mod rewards;
 mod shop;
+mod showcase;
 mod social;
 mod stalls;
 mod users;
@@ -33,6 +34,7 @@ pub use panels::{MAX_PANEL_ROLES, PanelRoleRow, PanelRow};
 pub use pets::PetRow;
 pub use rewards::{LevelRoleRow, MAX_LEVEL_ROLES, MAX_STORE_ITEMS, StoreBuy, StoreItem};
 pub use shop::{BuyOutcome, Currency, MarketRow, VisitOutcome};
+pub use showcase::{FishBookRow, HousePreview};
 pub use stalls::{ListingRow, MAX_LISTINGS, STALL_FEE_PERCENT, StallBuy};
 pub use users::UserRow;
 

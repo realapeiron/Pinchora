@@ -3,7 +3,7 @@ use std::fmt::Write;
 use super::{Backdrop, PIXEL, SANS, avatar_frame, backdrop, text};
 use crate::{
     Theme,
-    svg::{HEART, SHELL, STAR, background, compact, escape, panel, plate, sprite, truncate},
+    svg::{HEART, SHELL, STAR, background, compact, escape, sprite, truncate},
 };
 
 /// 900×300 wallet card.
@@ -36,9 +36,9 @@ impl WalletCard<'_> {
         );
         match &self.backdrop {
             Some(b) => {
-                backdrop(&mut s, w, h, b);
+                backdrop(&mut s, w, h, b, t.opacity.scrim());
                 // The name under the avatar is the only text outside a panel.
-                plate(&mut s, 24.0, 196.0, 168.0, 68.0);
+                t.plate(&mut s, 24.0, 196.0, 168.0, 68.0);
             }
             None => background(&mut s, w, h, &t.bg_top, &t.bg_bottom),
         }
@@ -62,7 +62,7 @@ impl WalletCard<'_> {
         ];
         for (i, (label, value, icon)) in big.iter().enumerate() {
             let x = 216.0 + i as f32 * 336.0;
-            panel(&mut s, x, 32.0, 320.0, 112.0, 4.0, &t.panel, &t.panel_edge);
+            t.panel(&mut s, x, 32.0, 320.0, 112.0, 4.0);
             text(&mut s, x + 20.0, 66.0, 15.0, PIXEL, false, &t.muted, "start", label);
             text(
                 &mut s,
@@ -90,7 +90,7 @@ impl WalletCard<'_> {
         ];
         for (i, (label, value)) in small.iter().enumerate() {
             let x = 216.0 + i as f32 * 168.0;
-            panel(&mut s, x, 160.0, 152.0, 104.0, 4.0, &t.panel, &t.panel_edge);
+            t.panel(&mut s, x, 160.0, 152.0, 104.0, 4.0);
             text(&mut s, x + 16.0, 190.0, 13.0, PIXEL, false, &t.muted, "start", label);
             text(
                 &mut s,
@@ -105,6 +105,7 @@ impl WalletCard<'_> {
             );
         }
         sprite(&mut s, HEART, 860.0, 270.0, 2.4, &t.heart, "#ffc2cf");
+        t.draw_frame(&mut s, w, h);
         s.push_str("</svg>");
         s
     }

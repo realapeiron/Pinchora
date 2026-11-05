@@ -40,6 +40,8 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
         Some("st") => store::on_buy(cx, values.first().map(String::as_str)).await,
         Some("cz") => customize::on_component(cx, parts, values).await,
         Some("ti") => customize::on_title(cx, parts, values).await,
+        Some("cs") => customize::on_style(cx, parts, values).await,
+        Some("sw") => customize::on_showcase(cx, parts, values).await,
         Some("rr") => role_panels::on_toggle(cx, parts).await,
         Some("gb") => guestbook::on_component(cx, parts, values.first().map(String::as_str)).await,
         Some("rc") => contest::on_component(cx, parts).await,
@@ -58,6 +60,7 @@ pub(crate) async fn dispatch_modal(cx: &Cx, custom_id: &str, fields: &[(String, 
     let mut parts = custom_id.split(':');
     match parts.next() {
         Some("gb") => guestbook::on_modal(cx, parts, fields).await,
+        Some("cs") => customize::on_style_modal(cx, parts, fields).await,
         Some("wo") if parts.next() == Some("m") => {
             let text = fields
                 .iter()

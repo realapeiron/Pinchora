@@ -3,7 +3,7 @@ use std::fmt::Write;
 use super::{Backdrop, PIXEL, SANS, avatar_frame, backdrop, text};
 use crate::{
     Theme,
-    svg::{STAR, background, compact, escape, plate, segment_bar, sprite, thousands, truncate},
+    svg::{STAR, background, compact, escape, segment_bar, sprite, thousands, truncate},
 };
 
 /// The next level reward, shown as "Next role: <name> at level N".
@@ -43,9 +43,9 @@ impl RankCard<'_> {
         );
         match &self.backdrop {
             Some(b) => {
-                backdrop(&mut s, w, h, b);
+                backdrop(&mut s, w, h, b, t.opacity.scrim());
                 // Everything beside the avatar is loose text: one plate under all of it.
-                plate(&mut s, 264.0, 33.0, 652.0, 216.0);
+                t.plate(&mut s, 264.0, 33.0, 652.0, 216.0);
             }
             None => background(&mut s, w, h, &t.bg_top, &t.bg_bottom),
         }
@@ -118,6 +118,7 @@ impl RankCard<'_> {
             "#1f2a57",
             &t.panel_edge,
         );
+        t.draw_frame(&mut s, w, h);
         s.push_str("</svg>");
         s
     }
