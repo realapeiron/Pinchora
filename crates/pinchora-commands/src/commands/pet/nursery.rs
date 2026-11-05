@@ -198,8 +198,11 @@ pub(crate) async fn on_nursery(cx: &Cx, mut args: Split<'_, char>, value: Option
     match action {
         Some("p") => show_page(cx, user, usize::try_from(arg).unwrap_or(0)).await,
         Some("f") => {
-            let at = cx.app.db.pets(user).await?.iter().position(|p| p.id == arg);
-            show_page(cx, user, at.unwrap_or(0) / PER_PAGE).await
+            // Only the pet's owner may turn its card into their nursery.
+            let Some(at) = cx.app.db.pets(user).await?.iter().position(|p| p.id == arg) else {
+                return cx.reply_ephemeral("That pet isn't yours.").await;
+            };
+            show_page(cx, user, at / PER_PAGE).await
         }
         Some("o") => {
             let id: i64 = value.and_then(|v| v.parse().ok()).unwrap_or(0);

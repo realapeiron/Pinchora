@@ -3,7 +3,7 @@ use std::fmt::Write;
 use super::{PIXEL, PetStatus, SANS, text};
 use crate::{
     Theme,
-    svg::{STAR, background, data_uri_png, escape, panel, plate, sprite, truncate},
+    svg::{STAR, background, data_uri_png, escape, panel, plate, sprite, truncate_to},
 };
 
 /// One pet in the nursery grid.
@@ -177,7 +177,8 @@ impl NurseryCard {
                 true,
                 &t.ink,
                 "middle",
-                &escape(&truncate(&pet.name, 16)),
+                // Cut to the cell's width (bold runs wider than the regular widths it measures).
+                &escape(&truncate_to(&pet.name, 18.5, 196.0)),
             );
             // Level, and how far to the next one.
             text(

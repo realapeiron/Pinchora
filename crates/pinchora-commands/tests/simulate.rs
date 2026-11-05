@@ -5988,4 +5988,13 @@ async fn the_nursery_is_a_paged_grid_that_opens_one_pet() {
         .await;
     assert!(sneaky.content().contains("isn't yours"), "{}", sneaky.content());
     assert_eq!(db.active_pet(user).await.unwrap().unwrap().id, nib.id);
+    // Another player's Nursery click on your public card does not swap it for their own nursery.
+    db.adopt(stranger, &content.pets[1].id, "Rex").await.unwrap();
+    let public = sim.command(user, "pet", pet_command("view")).await;
+    let swap = sim.component(stranger, &format!("pn:f:{}", nib.id), &[], &public).await;
+    assert!(
+        swap.ephemeral && swap.content().contains("isn't yours"),
+        "{}",
+        swap.content()
+    );
 }
