@@ -1,6 +1,6 @@
 use crate::{
     style::{Frame, Opacity},
-    svg::{panel, panel_alpha},
+    svg::{mix, panel, panel_alpha},
 };
 
 /// Card palette. Colors are `#rrggbb`.
@@ -76,8 +76,16 @@ impl Theme {
         self
     }
 
-    /// The card's chosen look: the opacity of its panels and the frame around it.
+    /// How far the muted label colour moves towards the ink on see-through panels.
+    const LIGHT_LABEL_LIFT: f32 = 0.5;
+
+    /// The card's chosen look: the opacity of its panels and the frame around it. Over see-through
+    /// panels the muted colour of the small labels is lifted towards the ink, so they keep their
+    /// contrast over a bright background picture.
     pub fn with_style(mut self, opacity: Opacity, frame: Frame) -> Self {
+        if opacity == Opacity::Light && self.opacity != Opacity::Light {
+            self.muted = mix(&self.muted, &self.ink, Self::LIGHT_LABEL_LIFT);
+        }
         self.opacity = opacity;
         self.frame = frame;
         self
@@ -94,6 +102,11 @@ impl Theme {
     /// A plate behind text that sits on a background picture.
     pub(crate) fn plate(&self, out: &mut String, x: f32, y: f32, w: f32, h: f32) {
         crate::svg::plate(out, x, y, w, h, self.opacity.plate());
+    }
+
+    /// A second plate over the first, for the small text and busy art of a card's footer.
+    pub(crate) fn footer_plate(&self, out: &mut String, x: f32, y: f32, w: f32, h: f32) {
+        crate::svg::plate(out, x, y, w, h, Opacity::FOOTER_PLATE);
     }
 
     /// Draws the card's frame over everything else; `w` and `h` are the card's size.

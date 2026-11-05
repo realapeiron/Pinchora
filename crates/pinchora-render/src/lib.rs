@@ -11,7 +11,7 @@ mod style;
 mod svg;
 mod theme;
 
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use resvg::{tiny_skia, usvg};
 
@@ -27,6 +27,25 @@ pub use style::{ACCENT_PRESETS, AccentError, Frame, Opacity, parse_accent, reada
 pub use svg::{compact, thousands};
 pub use theme::Theme;
 
+/// The fonts the cards are drawn in, loaded once: the renderer draws with them and the text
+/// measuring in [`svg`] lays names out with them.
+pub(crate) fn fonts() -> &'static Arc<usvg::fontdb::Database> {
+    static FONTS: LazyLock<Arc<usvg::fontdb::Database>> = LazyLock::new(|| {
+        let mut db = usvg::fontdb::Database::new();
+        for font in [
+            &include_bytes!("../../../assets/fonts/Silkscreen-Regular.ttf")[..],
+            &include_bytes!("../../../assets/fonts/Silkscreen-Bold.ttf")[..],
+            &include_bytes!("../../../assets/fonts/NotoSans-Regular.ttf")[..],
+            &include_bytes!("../../../assets/fonts/NotoSans-Bold.ttf")[..],
+        ] {
+            db.load_font_data(font.to_vec());
+        }
+        db.set_sans_serif_family("Noto Sans");
+        Arc::new(db)
+    });
+    &FONTS
+}
+
 /// Renders cards to PNG. Build once and share; rendering is CPU-bound, so call it
 /// from `spawn_blocking`.
 pub struct Renderer {
@@ -41,17 +60,7 @@ impl Default for Renderer {
 
 impl Renderer {
     pub fn new() -> Self {
-        let mut db = usvg::fontdb::Database::new();
-        for font in [
-            &include_bytes!("../../../assets/fonts/Silkscreen-Regular.ttf")[..],
-            &include_bytes!("../../../assets/fonts/Silkscreen-Bold.ttf")[..],
-            &include_bytes!("../../../assets/fonts/NotoSans-Regular.ttf")[..],
-            &include_bytes!("../../../assets/fonts/NotoSans-Bold.ttf")[..],
-        ] {
-            db.load_font_data(font.to_vec());
-        }
-        db.set_sans_serif_family("Noto Sans");
-        Self { fonts: Arc::new(db) }
+        Self { fonts: fonts().clone() }
     }
 
     pub fn svg_to_png(&self, svg: &str) -> anyhow::Result<Vec<u8>> {

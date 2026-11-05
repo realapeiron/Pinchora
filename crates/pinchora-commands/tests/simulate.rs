@@ -9,7 +9,7 @@
 //! `--nocapture` to read the steps as they happen.
 
 use std::{
-    cell::RefCell,
+    cell::{Cell, RefCell},
     collections::HashMap,
     fmt::{self, Write as _},
     path::{Path, PathBuf},
@@ -403,6 +403,13 @@ thread_local! {
     /// `error!` events from this thread. The handlers swallow their errors into a generic
     /// reply, so a test reads the real one here. Tests run on one thread each.
     static ERRORS: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };
+    /// How many statements the database ran for this thread so far (sqlx logs each one).
+    static QUERIES: Cell<usize> = const { Cell::new(0) };
+}
+
+/// The statements the database has run for this test so far.
+fn queries() -> usize {
+    QUERIES.get()
 }
 
 struct CaptureErrors;
@@ -417,6 +424,9 @@ impl Visit for Fields<'_> {
 
 impl<S: tracing::Subscriber> Layer<S> for CaptureErrors {
     fn on_event(&self, event: &Event<'_>, _: Context<'_, S>) {
+        if event.metadata().target() == "sqlx::query" {
+            QUERIES.set(QUERIES.get() + 1);
+        }
         if *event.metadata().level() == Level::ERROR {
             let mut line = String::new();
             event.record(&mut Fields(&mut line));
@@ -622,6 +632,12 @@ impl Reply {
                     .collect();
                 panic!("no button labelled {label:?}; the message has {labels:?}")
             })
+    }
+
+    /// Whether the message has a button with this label.
+    fn has_button(&self, label: &str) -> bool {
+        self.controls()
+            .any(|c| matches!(c, Component::Button(b) if b.label.as_deref() == Some(label)))
     }
 
     /// The select menu whose custom id starts with `prefix`.
@@ -3610,10 +3626,7 @@ async fn the_style_editor_sets_accent_opacity_and_frame_on_every_card() {
     let user = unique();
     let db = sim.app.db.clone();
     let coral = [255, 107, 74, 255];
-    let plain_profile = sim.command(user, "profile", json!([])).await;
-    let plain_rank = sim.command(user, "rank", json!([])).await;
-    let plain_wallet = sim.command(user, "balance", json!([])).await;
-    assert_eq!(profile_accent(&plain_profile), coral);
+    assert_eq!(profile_accent(&sim.command(user, "profile", json!([])).await), coral);
 
     // The editor opens on the real profile card with nothing to reset: 12 colours and Auto, 6 frames.
     let panel = sim
@@ -3631,7 +3644,6 @@ async fn the_style_editor_sets_accent_opacity_and_frame_on_every_card() {
         panel.description()
     );
     assert!(panel.button("Reset style").disabled, "nothing to reset yet");
-    assert!(panel.button("Normal").style == twilight_model::channel::message::component::ButtonStyle::Primary);
 
     // Locked frames show a lock and the level, in the menu and under the card.
     let frames = panel.options("cs:f");
@@ -3718,8 +3730,37 @@ async fn the_style_editor_sets_accent_opacity_and_frame_on_every_card() {
     assert_eq!(db.user(user).await.unwrap().accent, None);
     assert_eq!(profile_accent(&sim.command(user, "profile", json!([])).await), coral);
 
-    // Opacity: Light makes the panels see-through on every card.
-    let light = sim.click(user, &auto, "Light").await;
+    // Panel opacity only shows over a picture: without one the buttons are left out and the editor
+    // says where to get one. The others stay.
+    assert!(
+        !auto.has_button("Light") && !auto.has_button("Normal") && !auto.has_button("Solid"),
+        "no picture, no opacity choice"
+    );
+    assert!(
+        auto.description().contains("`/customize background`"),
+        "{}",
+        auto.description()
+    );
+    assert!(auto.has_button("Hex code…") && auto.has_button("Reset style"));
+    db.earn_shells(user, 5_000, "test").await.unwrap();
+    db.buy_background(user, "shellwash_morning", 800).await.unwrap();
+    db.equip_background(user, "shellwash_morning").await.unwrap();
+    let scenic = sim
+        .command(user, "customize", json!([{ "name": "style", "type": 1 }]))
+        .await;
+    assert!(scenic.has_button("Light") && scenic.has_button("Normal") && scenic.has_button("Solid"));
+    assert!(
+        !scenic.description().contains("`/customize background`"),
+        "{}",
+        scenic.description()
+    );
+    // The plain cards over the picture: what the style is measured against from here on.
+    let plain_profile = sim.command(user, "profile", json!([])).await;
+    let plain_rank = sim.command(user, "rank", json!([])).await;
+    let plain_wallet = sim.command(user, "balance", json!([])).await;
+
+    // Opacity: Light makes the panels see-through on every card, Solid darkens the picture.
+    let light = sim.click(user, &scenic, "Light").await;
     assert_eq!(db.user(user).await.unwrap().panel_opacity, 0);
     assert!(light.button("Light").style == twilight_model::channel::message::component::ButtonStyle::Primary);
     assert!(light.button("Normal").style == twilight_model::channel::message::component::ButtonStyle::Secondary);
@@ -3737,6 +3778,15 @@ async fn the_style_editor_sets_accent_opacity_and_frame_on_every_card() {
         150..190,
         340..360
     ));
+    assert!(
+        differ_in(
+            &card_pixels(&solid, (960, 540)),
+            &card_pixels(&plain_profile, (960, 540)),
+            0..960,
+            0..540
+        ),
+        "over a picture Solid is not Normal"
+    );
     let normal = sim.click(user, &solid, "Normal").await;
     assert_eq!(db.user(user).await.unwrap().panel_opacity, 1);
 
@@ -3822,6 +3872,29 @@ async fn the_style_editor_sets_accent_opacity_and_frame_on_every_card() {
         0..8,
         0..540
     ));
+
+    // A frame saved above the player's level is not drawn, but it is still saved: Reset is not
+    // greyed out because the card looks plain, and it clears the frame.
+    db.set_frame(user, "gold").await.unwrap();
+    let stale = sim
+        .command(user, "customize", json!([{ "name": "style", "type": 1 }]))
+        .await;
+    assert!(
+        !differ_in(
+            &card_pixels(&stale, (960, 540)),
+            &card_pixels(&plain_profile, (960, 540)),
+            0..8,
+            0..540
+        ),
+        "the locked gold frame is not drawn"
+    );
+    assert!(
+        !stale.button("Reset style").disabled,
+        "there is a stored frame to reset"
+    );
+    let unstuck = sim.click(user, &stale, "Reset style").await;
+    assert_eq!(db.user(user).await.unwrap().frame, "plain");
+    assert!(unstuck.button("Reset style").disabled);
 }
 
 /// A long display name, to see how the profile card keeps it clear of everything else.
@@ -3984,6 +4057,17 @@ async fn the_showcase_editor_picks_fish_pet_furniture_and_house() {
         760..912,
         270..350
     ));
+
+    // A click costs what the editor shows and nothing twice. All four tiles are on the card here;
+    // the pick (2), the player (1), each tile's check (3) and the house (3), the menu's list (1),
+    // the worn badges (2) and the card's ranks and partner (3) come to 15. It was 23, with the
+    // showcase read twice and whole lists fetched to check one item.
+    let before = queries();
+    let repicked = sim.pick(user, &house, "sw:s:f", &squid.id).await;
+    let spent = queries() - before;
+    assert!(repicked.description().contains("Saved."), "{}", repicked.description());
+    assert!(spent > 0, "the statements are being counted");
+    assert!(spent <= 16, "a showcase click ran {spent} statements");
 
     // Anyone looking at the profile sees the showcase, and the card is the editor's picture.
     let seen = profile_of(&mut sim, viewer, user, "Sim").await;
@@ -5430,6 +5514,18 @@ async fn partners_propose_accept_view_leave() {
     let name = pinchora_commands::partner_name(&sim.app, a).await;
     assert_eq!(name.as_deref(), Some("Sim"), "the name b had when they answered");
     assert_eq!(pinchora_commands::partner_name(&sim.app, c).await, None);
+    // And the card draws it: "♥ Sim" in the corner of the about-me panel, which stays empty for
+    // somebody without a partner.
+    let corner = |card: &Reply| card_pixels(card, (960, 540));
+    let partnered = sim.command(a, "profile", json!([])).await;
+    let loner = sim.command(c, "profile", json!([])).await;
+    assert!(
+        differ_in(&corner(&partnered), &corner(&loner), 640..900, 156..178),
+        "the partner line is on the card"
+    );
+    // Whoever looks at the profile sees the partner of the player it belongs to.
+    let looked_at = profile_of(&mut sim, c, a, "Sim").await;
+    assert!(differ_in(&corner(&looked_at), &corner(&loner), 640..900, 156..178));
 
     // Both must be free: a and b are taken, whoever asks.
     let (options, users) = propose(c, "Cy");
@@ -5547,6 +5643,11 @@ async fn partners_propose_accept_view_leave() {
     assert!(left.content().contains("not partners anymore"), "{}", left.content());
     assert!(sim.app.db.partner(a).await.unwrap().is_none() && sim.app.db.partner(b).await.unwrap().is_none());
     assert_eq!(pinchora_commands::partner_name(&sim.app, a).await, None);
+    let single = sim.command(a, "profile", json!([])).await;
+    assert!(
+        !differ_in(&corner(&single), &corner(&loner), 640..900, 156..178),
+        "the corner is empty again"
+    );
     // Both are free to pair again.
     assert!(matches!(
         sim.app.db.pair_partners(b, c).await.unwrap(),

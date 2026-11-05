@@ -117,6 +117,52 @@ impl Db {
         .await?)
     }
 
+    /// Whether the fish is in the player's book.
+    pub async fn has_fish(&self, user: u64, fish_id: &str) -> anyhow::Result<bool> {
+        let (found,): (bool,) =
+            sqlx::query_as("SELECT EXISTS (SELECT 1 FROM fish_book WHERE user_id = $1 AND fish_id = $2)")
+                .bind(sql_id(user))
+                .bind(fish_id)
+                .fetch_one(self.pool())
+                .await?;
+        Ok(found)
+    }
+
+    /// The name and species of the player's pet `pet_id`, or `None` if they have no such pet.
+    pub async fn pet_name_species(&self, user: u64, pet_id: i64) -> anyhow::Result<Option<(String, String)>> {
+        Ok(
+            sqlx::query_as("SELECT name, species FROM pets WHERE owner_id = $1 AND id = $2")
+                .bind(sql_id(user))
+                .bind(pet_id)
+                .fetch_optional(self.pool())
+                .await?,
+        )
+    }
+
+    /// Whether the player has the furniture item: in the inventory or standing in a room.
+    pub async fn owns_item(&self, user: u64, item_id: &str) -> anyhow::Result<bool> {
+        let (found,): (bool,) = sqlx::query_as(
+            "SELECT EXISTS (SELECT 1 FROM inventory WHERE user_id = $1 AND item_id = $2 AND quantity > 0)
+                 OR EXISTS (SELECT 1 FROM placements WHERE user_id = $1 AND item_id = $2)",
+        )
+        .bind(sql_id(user))
+        .bind(item_id)
+        .fetch_one(self.pool())
+        .await?;
+        Ok(found)
+    }
+
+    /// Whether the player has a house with a room to draw a thumbnail of.
+    pub async fn has_house_room(&self, user: u64) -> anyhow::Result<bool> {
+        let (found,): (bool,) = sqlx::query_as(
+            "SELECT EXISTS (SELECT 1 FROM houses h JOIN rooms r ON r.user_id = h.user_id WHERE h.user_id = $1)",
+        )
+        .bind(sql_id(user))
+        .fetch_one(self.pool())
+        .await?;
+        Ok(found)
+    }
+
     /// Furniture ids the player has: in the inventory or standing in a room, each once, by id.
     pub async fn owned_item_ids(&self, user: u64) -> anyhow::Result<Vec<String>> {
         let rows: Vec<(String,)> = sqlx::query_as(
