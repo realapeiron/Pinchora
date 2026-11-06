@@ -32,6 +32,7 @@ impl Gift {
             return cx.reply_ephemeral("Gifts are for friends!").await;
         }
         let content = Content::get();
+        let lang = cx.lang();
         let (rows, kept_back) = giveable(cx.app.db.inventory(author.get()).await?);
         let options: Vec<SelectMenuOption> = rows
             .into_iter()
@@ -41,7 +42,7 @@ impl Gift {
                     default: false,
                     description: Some(format!("You have {}", row.quantity)),
                     emoji: None,
-                    label: item.name(),
+                    label: item.name_in(lang),
                     value: row.item_id,
                 })
             })
@@ -90,14 +91,18 @@ pub(crate) async fn on_gift(cx: &Cx, mut args: std::str::Split<'_, char>, value:
     if to == 0 || to == from {
         return cx.reply_ephemeral("Gifts are for friends!").await;
     }
+    let lang = cx.lang();
     if item.bound {
         return cx
-            .reply_ephemeral(format!("**{}** can't be given away. {SOULBOUND_RULE}", item.name()))
+            .reply_ephemeral(format!(
+                "**{}** can't be given away. {SOULBOUND_RULE}",
+                item.name_in(lang)
+            ))
             .await;
     }
     if !cx.app.db.gift_item(from, to, &item.id()).await? {
         return cx
-            .reply_ephemeral(format!("You don't have a **{}** anymore.", item.name()))
+            .reply_ephemeral(format!("You don't have a **{}** anymore.", item.name_in(lang)))
             .await;
     }
     cx.update(InteractionResponseData {
@@ -112,7 +117,7 @@ pub(crate) async fn on_gift(cx: &Cx, mut args: std::str::Split<'_, char>, value:
             "🎁 {} sent {} a **{}**! It's waiting in their `/inventory`.",
             mention(from),
             mention(to),
-            item.name()
+            item.name_in(lang)
         )),
         allowed_mentions: ping_only(to),
         ..Default::default()

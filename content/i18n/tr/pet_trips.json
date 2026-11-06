@@ -1,0 +1,82 @@
+{
+ "tidepool_meadow": {
+  "name": "Gelgit Havuzu Çayırı",
+  "description": "Sıcak havuzlar ve çok kibar salyangozlar.",
+  "stories": [
+   "{pet} deniz yıldızlarını saydı, sayıyı şaşırdı ve buna çok sevindi.",
+   "{pet} bir salyangozla arkadaş oldu ve bütün öğleden sonra salyangoz hızıyla yürüdü.",
+   "{pet} sıcak bir havuzda şekerleme yaptı ve eve deniz yosunu kokarak döndü.",
+   "{pet} tek bir baloncuğun peşinden bütün çayırı boydan boya koştu."
+  ]
+ },
+ "driftwood_cove": {
+  "name": "Deniz Odunu Koyu",
+  "description": "Pürüzsüz sopalar, ağır giden tekneler ve sessiz banklar.",
+  "stories": [
+   "{pet} kocaman bir sopayı eve sürükledi ve hiçbir açıklama yapmayacak.",
+   "{pet} deniz odunundan bir bankta oturup her tekneye el salladı.",
+   "{pet} içinde mesaj olmayan bir şişe buldu; bu da başlı başına bir mesaj gibiydi.",
+   "{pet} deniz odununun şaşırtıcı derecede iyi bir davul olduğunu öğrendi."
+  ]
+ },
+ "sandcastle_shallows": {
+  "name": "Kumdan Kale Sığlığı",
+  "description": "Hendekler, kuleler ve çok cesur bir dalga.",
+  "stories": [
+   "{pet} bir kale yaptı, bir dalgayı karşıladı ve sonuca berabere dedi.",
+   "{pet} kumlu hendeği büyük bir törenle devriye gezdi.",
+   "{pet} bir hazine gömdü ve nereye gömdüğünü gururla unuttu.",
+   "{pet} tam bir dakikalığına kum kalesinin kralı olarak taçlandırıldı."
+  ]
+ },
+ "kelp_forest_library": {
+  "name": "Yosun Ormanı Kütüphanesi",
+  "description": "Deniz yosunundan bir çatının altında sessiz raflar.",
+  "stories": [
+   "{pet} sessiz rafları okudu ve bütün güzel yerlerde başını salladı.",
+   "{pet} çok nazik bir ahtapot kütüphaneci tarafından usulca susturuldu.",
+   "{pet} gelgitler hakkında bir kitap ödünç aldı ve bir ayraçla geri geldi.",
+   "{pet} yumuşak bir uyku masalı yığınının üstünde uyuyakaldı."
+  ]
+ },
+ "lantern_lagoon": {
+  "name": "Fener Lagünü",
+  "description": "Mutlu olunca parlayan bir lagün.",
+  "stories": [
+   "{pet} su altın rengine dönene kadar parlayan denizanalarını takip etti.",
+   "{pet} bir fenerin yansımasını yakaladı ve cebinde sakladı.",
+   "{pet} lagünle birlikte mırıldandı, lagün de mırıldanarak karşılık verdi.",
+   "{pet} ışıkların süzülüp geçişini izledi ve acıkmayı unuttu."
+  ]
+ },
+ "coral_bakery_reef": {
+  "name": "Mercan Fırın Resifi",
+  "description": "Resifin kenarında sıcak ekmekler ve soğutma rafları.",
+  "stories": [
+   "{pet} hamur yoğurmaya yardım etti ve sonunda çoğunlukla una bulandı.",
+   "{pet} sıcak bir deniz yosunlu çörek ve ondan da sıcak bir gülümseme aldı.",
+   "{pet} soğutma rafını ölümcül bir ciddiyetle korudu.",
+   "{pet} deniz tuzlu karamelin bir tat değil, bir duygu olduğuna karar verdi."
+  ]
+ },
+ "moonpearl_isles": {
+  "name": "Moonpearl Adaları",
+  "description": "Gelgitin seni örtüp yatırdığı, inci ışıklı adalar.",
+  "stories": [
+   "{pet} üç ayın aydınlığı kadar inci ışığının altında uyudu.",
+   "{pet} ay ışıklı köpükten bir yorganın üstünde adalar arasında sürüklendi.",
+   "{pet} bir inciye dilek fısıldadı, inci de onu güvenle sakladı.",
+   "{pet} gelgit tarafından örtülüp yatırıldı ve ona çok uzun bir iyi geceler dendi."
+  ]
+ },
+ "starfall_sandbar": {
+  "name": "Starfall Kum Şeridi",
+  "description": "Yıldız izlemek ve büyük dilekler için bir kum şeridi.",
+  "stories": [
+   "{pet} düşen bir yıldızı yakaladı ve onu usulca göğe geri koydu.",
+   "{pet} yıldızlar tempo tutarken kum şeridinde dans etti.",
+   "{pet} çorba taşır gibi dikkatle, yıldız tozuyla dolu bir deniz kabuğunu eve taşıdı.",
+   "{pet} geç saate kadar uyanık kaldı ve herkes adına bir dilek tuttu."
+  ]
+ }
+}

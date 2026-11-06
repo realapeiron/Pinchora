@@ -40,6 +40,7 @@ fn bar(progress: i64, target: i64) -> String {
 async fn board(cx: &Cx, note: Option<String>) -> anyhow::Result<InteractionResponseData> {
     let user = cx.author()?.id.get();
     let day = today();
+    let lang = cx.lang();
     let mut lines = Vec::new();
     let mut claimable = false;
     for q in quests::for_day(user, day) {
@@ -65,7 +66,7 @@ async fn board(cx: &Cx, note: Option<String>) -> anyhow::Result<InteractionRespo
         };
         lines.push(format!(
             "{mark} **{}** — {} `{}/{}` · +{} shells",
-            q.text,
+            q.text_in(lang),
             bar(progress, q.target),
             progress.min(q.target),
             q.target,

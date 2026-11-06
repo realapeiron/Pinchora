@@ -1,0 +1,1197 @@
+{
+ "note": "One Turkish word per English term. A term applies to an id when its English name (scope name) or name and description (scope all) contains the English word; the Turkish text must then contain one of the match stems (Turkish-lowercased). EXEMPT lists ids that use the word in another sense.",
+ "terms": [
+  {
+   "en": "shell",
+   "tr": "deniz kabuğu",
+   "match": [
+    "kabuk",
+    "kabuğ"
+   ],
+   "scope": "all"
+  },
+  {
+   "en": "pearl",
+   "tr": "inci",
+   "match": [
+    "inci"
+   ],
+   "scope": "all"
+  },
+  {
+   "en": "fragment",
+   "tr": "parçacık",
+   "match": [
+    "parçacık"
+   ],
+   "scope": "all"
+  },
+  {
+   "en": "pet",
+   "tr": "evcil hayvan",
+   "match": [
+    "evcil",
+    "patili"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "fish",
+   "tr": "balık",
+   "match": [
+    "balık",
+    "balığ"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "furniture",
+   "tr": "mobilya",
+   "match": [
+    "mobilya"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "shop",
+   "tr": "dükkân",
+   "match": [
+    "dükkân",
+    "dükkan"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "treasure",
+   "tr": "hazine",
+   "match": [
+    "hazine"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "key",
+   "tr": "anahtar",
+   "match": [
+    "anahtar"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "coin",
+   "tr": "sikke",
+   "match": [
+    "sikke"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "chest",
+   "tr": "sandık",
+   "match": [
+    "sandık",
+    "sandığ"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "compass",
+   "tr": "pusula",
+   "match": [
+    "pusula"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "map",
+   "tr": "harita",
+   "match": [
+    "harita"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "rod",
+   "tr": "olta",
+   "match": [
+    "olta"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "lure",
+   "tr": "yem",
+   "match": [
+    "yem"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "bait",
+   "tr": "yem",
+   "match": [
+    "yem"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "sea",
+   "tr": "deniz",
+   "match": [
+    "deniz"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "tide",
+   "tr": "gelgit",
+   "match": [
+    "gelgit"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "reef",
+   "tr": "resif",
+   "match": [
+    "resif"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "coral",
+   "tr": "mercan",
+   "match": [
+    "mercan"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "kelp",
+   "tr": "deniz yosunu",
+   "match": [
+    "yosun"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "moss",
+   "tr": "yosun",
+   "match": [
+    "yosun"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "wave",
+   "tr": "dalga",
+   "match": [
+    "dalga"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "beach",
+   "tr": "kumsal",
+   "match": [
+    "kumsal"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "shore",
+   "tr": "kıyı",
+   "match": [
+    "kıyı"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "seaside",
+   "tr": "deniz kenarı",
+   "match": [
+    "deniz kenarı",
+    "kıyı"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "harbor",
+   "tr": "liman",
+   "match": [
+    "liman"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "harbour",
+   "tr": "liman",
+   "match": [
+    "liman"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "pier",
+   "tr": "iskele",
+   "match": [
+    "iskele"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "boardwalk",
+   "tr": "sahil yolu",
+   "match": [
+    "sahil yolu"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "lighthouse",
+   "tr": "deniz feneri",
+   "match": [
+    "fener"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "lantern",
+   "tr": "fener",
+   "match": [
+    "fener"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "beacon",
+   "tr": "fener",
+   "match": [
+    "fener"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "island",
+   "tr": "ada",
+   "match": [
+    "ada"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "lagoon",
+   "tr": "lagün",
+   "match": [
+    "lagün"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "cove",
+   "tr": "koy",
+   "match": [
+    "koy"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "sand",
+   "tr": "kum",
+   "match": [
+    "kum"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "pebble",
+   "tr": "çakıl",
+   "match": [
+    "çakıl"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "driftwood",
+   "tr": "deniz odunu",
+   "match": [
+    "odun"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "rope",
+   "tr": "halat",
+   "match": [
+    "halat"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "net",
+   "tr": "ağ",
+   "match": [
+    "ağ"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "anchor",
+   "tr": "çapa",
+   "match": [
+    "çapa"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "ship",
+   "tr": "gemi",
+   "match": [
+    "gemi"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "boat",
+   "tr": "tekne",
+   "match": [
+    "tekne"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "captain",
+   "tr": "kaptan",
+   "match": [
+    "kaptan"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "pirate",
+   "tr": "korsan",
+   "match": [
+    "korsan"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "room",
+   "tr": "oda",
+   "match": [
+    "oda"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "house",
+   "tr": "ev",
+   "match": [
+    "ev"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "home",
+   "tr": "ev",
+   "match": [
+    "ev"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "cottage",
+   "tr": "kulübe",
+   "match": [
+    "kulübe"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "cabin",
+   "tr": "kulübe",
+   "match": [
+    "kulübe"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "shack",
+   "tr": "barınak",
+   "match": [
+    "barınak"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "loft",
+   "tr": "çatı katı",
+   "match": [
+    "çatı katı"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "attic",
+   "tr": "çatı arası",
+   "match": [
+    "çatı arası"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "nook",
+   "tr": "köşe",
+   "match": [
+    "köşe"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "corner",
+   "tr": "köşe",
+   "match": [
+    "köşe"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "garden",
+   "tr": "bahçe",
+   "match": [
+    "bahçe"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "greenhouse",
+   "tr": "sera",
+   "match": [
+    "sera"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "kitchen",
+   "tr": "mutfak",
+   "match": [
+    "mutfak",
+    "mutfağ"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "bath",
+   "tr": "banyo",
+   "match": [
+    "banyo"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "bathroom",
+   "tr": "banyo",
+   "match": [
+    "banyo"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "bedroom",
+   "tr": "yatak odası",
+   "match": [
+    "yatak odası"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "library",
+   "tr": "kütüphane",
+   "match": [
+    "kütüphane"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "studio",
+   "tr": "stüdyo",
+   "match": [
+    "stüdyo"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "atelier",
+   "tr": "atölye",
+   "match": [
+    "atölye"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "workshop",
+   "tr": "atölye",
+   "match": [
+    "atölye"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "lounge",
+   "tr": "salon",
+   "match": [
+    "salon"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "parlor",
+   "tr": "salon",
+   "match": [
+    "salon"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "cafe",
+   "tr": "kafe",
+   "match": [
+    "kafe"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "bakery",
+   "tr": "fırın",
+   "match": [
+    "fırın"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "market",
+   "tr": "pazar",
+   "match": [
+    "pazar"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "arcade",
+   "tr": "oyun salonu",
+   "match": [
+    "oyun salonu"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "courtyard",
+   "tr": "avlu",
+   "match": [
+    "avlu"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "porch",
+   "tr": "veranda",
+   "match": [
+    "veranda"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "balcony",
+   "tr": "balkon",
+   "match": [
+    "balkon"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "meadow",
+   "tr": "çayır",
+   "match": [
+    "çayır"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "forest",
+   "tr": "orman",
+   "match": [
+    "orman"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "pond",
+   "tr": "gölet",
+   "match": [
+    "gölet"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "little",
+   "tr": "küçük",
+   "match": [
+    "küçük",
+    "minik"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "tiny",
+   "tr": "minik",
+   "match": [
+    "minik"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "cosy",
+   "tr": "sıcacık",
+   "match": [
+    "sıcacık"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "cozy",
+   "tr": "sıcacık",
+   "match": [
+    "sıcacık"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "warm",
+   "tr": "sıcak",
+   "match": [
+    "sıcak"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "quiet",
+   "tr": "sessiz",
+   "match": [
+    "sessiz"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "soft",
+   "tr": "yumuşak",
+   "match": [
+    "yumuşak",
+    "yumuşağ"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "bright",
+   "tr": "parlak",
+   "match": [
+    "parlak"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "golden",
+   "tr": "altın",
+   "match": [
+    "altın"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "silver",
+   "tr": "gümüş",
+   "match": [
+    "gümüş"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "moon",
+   "tr": "ay",
+   "match": [
+    "ay"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "moonlit",
+   "tr": "ay ışıklı",
+   "match": [
+    "ay ışı",
+    "ayışı",
+    "ay ışığ"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "star",
+   "tr": "yıldız",
+   "match": [
+    "yıldız"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "starlit",
+   "tr": "yıldızlı",
+   "match": [
+    "yıldız"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "sun",
+   "tr": "güneş",
+   "match": [
+    "güneş"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "sky",
+   "tr": "gök",
+   "match": [
+    "gök",
+    "göğ"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "cloud",
+   "tr": "bulut",
+   "match": [
+    "bulut"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "rain",
+   "tr": "yağmur",
+   "match": [
+    "yağmur"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "rainy",
+   "tr": "yağmurlu",
+   "match": [
+    "yağmur"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "snow",
+   "tr": "kar",
+   "match": [
+    "kar"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "winter",
+   "tr": "kış",
+   "match": [
+    "kış"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "spring",
+   "tr": "bahar",
+   "match": [
+    "bahar"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "autumn",
+   "tr": "sonbahar",
+   "match": [
+    "sonbahar"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "sunset",
+   "tr": "gün batımı",
+   "match": [
+    "gün batımı"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "night",
+   "tr": "gece",
+   "match": [
+    "gece"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "morning",
+   "tr": "sabah",
+   "match": [
+    "sabah"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "noon",
+   "tr": "öğle",
+   "match": [
+    "öğle"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "crab",
+   "tr": "yengeç",
+   "match": [
+    "yengeç",
+    "yengec"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "hermit",
+   "tr": "keşiş yengeç",
+   "match": [
+    "keşiş"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "fiddler",
+   "tr": "kemancı yengeç",
+   "match": [
+    "kemancı"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "jelly",
+   "tr": "denizanası",
+   "match": [
+    "denizanası"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "seahorse",
+   "tr": "denizatı",
+   "match": [
+    "denizatı"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "octopus",
+   "tr": "ahtapot",
+   "match": [
+    "ahtapot"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "squid",
+   "tr": "kalamar",
+   "match": [
+    "kalamar"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "cuttle",
+   "tr": "mürekkep balığı",
+   "match": [
+    "mürekkep"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "shrimp",
+   "tr": "karides",
+   "match": [
+    "karides"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "prawn",
+   "tr": "karides",
+   "match": [
+    "karides"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "lobster",
+   "tr": "ıstakoz",
+   "match": [
+    "ıstakoz"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "crayfish",
+   "tr": "kerevit",
+   "match": [
+    "kerevit",
+    "kerevid"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "turtle",
+   "tr": "kaplumbağa",
+   "match": [
+    "kaplumbağa"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "tortoise",
+   "tr": "kara kaplumbağası",
+   "match": [
+    "kaplumbağa"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "otter",
+   "tr": "su samuru",
+   "match": [
+    "samur"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "seal",
+   "tr": "fok",
+   "match": [
+    "fok"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "manta",
+   "tr": "manta",
+   "match": [
+    "manta"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "ray",
+   "tr": "vatoz",
+   "match": [
+    "vatoz"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "cat",
+   "tr": "kedi",
+   "match": [
+    "kedi"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "bun",
+   "tr": "tavşan",
+   "match": [
+    "tavşan"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "pup",
+   "tr": "köpek yavrusu",
+   "match": [
+    "köpek",
+    "yavru"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "mouse",
+   "tr": "fare",
+   "match": [
+    "fare"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "hedgehog",
+   "tr": "kirpi",
+   "match": [
+    "kirpi"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "squirrel",
+   "tr": "sincap",
+   "match": [
+    "sincap",
+    "sincab"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "ferret",
+   "tr": "yaban gelinciği",
+   "match": [
+    "gelinci"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "owlet",
+   "tr": "minik baykuş",
+   "match": [
+    "baykuş"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "moth",
+   "tr": "güve",
+   "match": [
+    "güve"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "dove",
+   "tr": "güvercin",
+   "match": [
+    "güvercin"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "bat",
+   "tr": "yarasa",
+   "match": [
+    "yarasa"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "angler",
+   "tr": "fener balığı",
+   "match": [
+    "fener balığı",
+    "olta balığı",
+    "balıkçı",
+    "oltacı"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "urchin",
+   "tr": "deniz kestanesi",
+   "match": [
+    "kestane"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "snail",
+   "tr": "salyangoz",
+   "match": [
+    "salyangoz"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "slug",
+   "tr": "deniz sümüklüsü",
+   "match": [
+    "sümüklü"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "nudibranch",
+   "tr": "deniz sümüklüsü",
+   "match": [
+    "sümüklü"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "clam",
+   "tr": "kum midyesi",
+   "match": [
+    "midye"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "cockle",
+   "tr": "kalp midyesi",
+   "match": [
+    "midye"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "mussel",
+   "tr": "midye",
+   "match": [
+    "midye"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "scallop",
+   "tr": "deniz tarağı",
+   "match": [
+    "tarak",
+    "tarağ"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "whelk",
+   "tr": "deniz salyangozu",
+   "match": [
+    "salyangoz"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "limpet",
+   "tr": "patella",
+   "match": [
+    "patella"
+   ],
+   "scope": "name"
+  },
+  {
+   "en": "anemone",
+   "tr": "deniz anemonu",
+   "match": [
+    "anemon"
+   ],
+   "scope": "name"
+  }
+ ],
+ "exempt": {
+  "twinbuns": "hair buns, not the bunny",
+  "seamcloud_loft_bed": "a loft bed is a raised bed, not a loft room"
+ }
+}

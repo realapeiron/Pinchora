@@ -1,0 +1,194 @@
+{
+ "pebblesnap_crab": {
+  "name": "Pebblesnap Yengeci",
+  "description": "Rakip sandığı çakıllara kıskaç şaklatır."
+ },
+ "toastclaw_crab": {
+  "name": "Toastclaw Yengeci",
+  "description": "Kenarları hep biraz altın kahverengi."
+ },
+ "sidestep_scuttler": {
+  "name": "Yan Yürüyücü",
+  "description": "Hiç bilerek ileri doğru yürümemiştir."
+ },
+ "dunebuckle_hermit": {
+  "name": "Dunebuckle Keşiş Yengeci",
+  "description": "Daha güzel bir deniz kabuğu yuvarlanıp gelince ev değiştirir."
+ },
+ "cobbleshell_hermit": {
+  "name": "Cobbleshell Keşiş Yengeci",
+  "description": "Geniş bir deniz kabuğunu ve sessiz bir su birikintisini sever."
+ },
+ "mossback_snail": {
+  "name": "Mossback Salyangozu",
+  "description": "Sırtında minik bir bahçe büyütür."
+ },
+ "plumcoil_snail": {
+  "name": "Plumcoil Salyangozu",
+  "description": "Her tedirgin olduğunda biraz daha sıkı kıvrılır."
+ },
+ "buttonstar": {
+  "name": "Buttonstar",
+  "description": "Hiç kıpırdamadan oturur, düğme taklidi yapar."
+ },
+ "rustpatch_star": {
+  "name": "Rustpatch Deniz Yıldızı",
+  "description": "Üzerinde gizemli bir pas kırmızısı leke taşır."
+ },
+ "spindle_urchin": {
+  "name": "İğ Deniz Kestanesi",
+  "description": "Hep diken, hiç plan yok."
+ },
+ "gumdrop_jelly": {
+  "name": "Jelibon Denizanası",
+  "description": "Güldüğünde sallanır."
+ },
+ "nibblefoot_shrimp": {
+  "name": "Nibblefoot Karidesi",
+  "description": "Ayak parmaklarını kemirir. Nazikçe."
+ },
+ "peppercorn_shrimp": {
+  "name": "Karabiber Karidesi",
+  "description": "Küçük, koyu ve şaşırtıcı derecede acı."
+ },
+ "wobblecap_anemone": {
+  "name": "Wobblecap Deniz Anemonu",
+  "description": "Süzülüp geçen her şeye el sallar."
+ },
+ "puddlepuff": {
+  "name": "Puddlepuff",
+  "description": "Fotoğraf için şişinir."
+ },
+ "kelpknot_slug": {
+  "name": "Kelpknot Deniz Sümüklüsü",
+  "description": "Rahatlamak için kendini düğümler."
+ },
+ "thimble_clam": {
+  "name": "Yüksük Kum Midyesi",
+  "description": "Hiç bahsetmediği bir inci saklar."
+ },
+ "rockpool_limpet": {
+  "name": "Kaya Havuzu Patellası",
+  "description": "Sıkı tutunur, hiçbir şeyi bırakmaz."
+ },
+ "ripplecrest_cockle": {
+  "name": "Ripplecrest Kalp Midyesi",
+  "description": "Dalgalarla birlikte alkışlar, bir vuruş geriden."
+ },
+ "twirltail_whelk": {
+  "name": "Twirltail Deniz Salyangozu",
+  "description": "Kumda kıvrımlı bir imza bırakır."
+ },
+ "sparkle_shrimplet": {
+  "name": "Parıltılı Karidescik",
+  "description": "Sanki az önce bir şey kazanmış gibi parıldar."
+ },
+ "doorstep_hermit": {
+  "name": "Kapı Eşiği Keşiş Yengeci",
+  "description": "Deniz kabuğunun kapısında dostça bir tıklama bekler."
+ },
+ "bellbob_jelly": {
+  "name": "Bellbob Denizanası",
+  "description": "Akıntı değiştiğinde usulca çınlar."
+ },
+ "curlnose_seahorse": {
+  "name": "Curlnose Denizatı",
+  "description": "Deniz yosunu yaprağını minik bir tırabzan gibi tutar."
+ },
+ "mittenmoss_crab": {
+  "name": "Mittenmoss Yengeci",
+  "description": "Kıskaçlarını tüylü yeşil eldivenlerle sıcak tutar."
+ },
+ "copperfiddler": {
+  "name": "Copperfiddler",
+  "description": "Kocaman kıskacında çok uzun tek bir nota çalar."
+ },
+ "glimmer_jelly": {
+  "name": "Pırıltı Denizanası",
+  "description": "Yalnızca kimse bakmazken ışıldar."
+ },
+ "sailor_turtle": {
+  "name": "Denizci Kaplumbağa",
+  "description": "Yolunu hislerle ve okyanusla bulur."
+ },
+ "ribbon_seahorse": {
+  "name": "Kurdele Denizatı",
+  "description": "Hiçbir sebep olmadan kurdele takar."
+ },
+ "giggle_octopus": {
+  "name": "Kıkırdayan Ahtapot",
+  "description": "Sekiz kol, sekiz farklı şaka."
+ },
+ "pearlback_clam": {
+  "name": "Pearlback Kum Midyesi",
+  "description": "Deniz kabuğunu her sabah cilalar."
+ },
+ "sunburst_star": {
+  "name": "Güneş Deniz Yıldızı",
+  "description": "Öğle ışığını pil gibi emer."
+ },
+ "moonwhisker_slug": {
+  "name": "Moonwhisker Deniz Sümüklüsü",
+  "description": "Deniz yosunu boyunca ayı yavaşça takip eder."
+ },
+ "sapphire_puffer": {
+  "name": "Safir Balon Balığı",
+  "description": "Şişince kusursuz mavi bir mücevhere dönüşür."
+ },
+ "lantern_crab": {
+  "name": "Fener Yengeci",
+  "description": "Okumak için küçük bir ışık taşır."
+ },
+ "meadow_nudibranch": {
+  "name": "Çayır Deniz Sümüklüsü",
+  "description": "Tek bir küçük deniz sümüklüsünde koca bir çiçek çayırı."
+ },
+ "emberclaw_crab": {
+  "name": "Emberclaw Yengeci",
+  "description": "Kıskaçları sıcak közler gibi parlar."
+ },
+ "dreamdrift_jelly": {
+  "name": "Dreamdrift Denizanası",
+  "description": "Herkesin en uykulu rüyalarında süzülür."
+ },
+ "thunderspine_urchin": {
+  "name": "Thunderspine Deniz Kestanesi",
+  "description": "Yaz fırtınasından önce dikenlerini şıngırdatır."
+ },
+ "velvetmantle_octopus": {
+  "name": "Velvetmantle Ahtapotu",
+  "description": "Kadife pelerini içinde göz önünde saklanır."
+ },
+ "frostfin_seahorse": {
+  "name": "Frostfin Denizatı",
+  "description": "Yalnızca su soğuyunca uğrar."
+ },
+ "tidecrown_turtle": {
+  "name": "Tidecrown Kaplumbağası",
+  "description": "Hak ettiği minik deniz kabuklarından bir taç takar."
+ },
+ "lacewing_cuttle": {
+  "name": "Lacewing Mürekkep Balığı",
+  "description": "Akıntıda dantel bir perde gibi dalgalanır."
+ },
+ "opal_anemone": {
+  "name": "Opal Deniz Anemonu",
+  "description": "Her dokunaç ayrı bir gün batımı taşır."
+ },
+ "gildedshell_hermit": {
+  "name": "Gildedshell Keşiş Yengeci",
+  "description": "Eski altından yapılmış bir deniz kabuğuna taşınmış."
+ },
+ "nebula_jelly": {
+  "name": "Bulutsu Denizanası",
+  "description": "Süzülüp gezen küçük bir gece göğü."
+ },
+ "auroraglow_star": {
+  "name": "Auroraglow Deniz Yıldızı",
+  "description": "Deniz dibini kuzey ışıklarıyla boyar."
+ },
+ "moonpearl_seahorse": {
+  "name": "Moonpearl Denizatı",
+  "description": "Ay büyüklüğündeki bir incinin üstünde gelgitle yolculuk eder."
+ }
+}
