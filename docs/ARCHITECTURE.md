@@ -67,7 +67,10 @@ One binary, `pinchora`, with roles chosen by subcommand:
 
 Every command receives a `Cx` and answers through a `Responder` that hides the transport:
 
-- Gateway mode: answers are REST callbacks.
+- Gateway mode: answers are REST callbacks. A handler still running after 1.8 s is deferred through REST
+  (`handle_gateway_interaction`); its answer then becomes an edit of the original message. The defer is
+  ephemeral for commands that answer privately (the table in `defer.rs`) and is skipped for buttons that may
+  open a modal, which only works as the first answer.
 - HTTP mode: the first answer is the HTTP response body. If the handler takes longer than 2 s,
   the endpoint sends a deferral and later answers become edits of the original message.
   Answers with image attachments always take the defer-then-edit path, because files cannot

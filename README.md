@@ -31,9 +31,9 @@ Written in Rust and built to run sharded on Kubernetes.
 | `/bio text` | About-me text on the profile card |
 | `/config welcome\|leveling\|show` | Welcome cards and level-up messages. `/config leveling` takes `enabled`, `channel`, `message` (placeholders `{user}` `{level}` `{server}` `{role}`, the last being the reward role just earned, empty when none) and `mode`: `channel` (the level-up channel, else where they chatted), `current` (always where they chatted), `dm` (a direct message; closed DMs are skipped quietly) or `off` (no message, roles still given) (Manage Server) |
 | `/config level-roles add\|remove\|list\|mode\|sync` | Roles given at a level (up to 25): `mode` keeps every role earned or only the highest, `sync` catches up members who already passed a level (Manage Server) |
-| `/config xp multiplier value [channel] [role]` | Scale the server XP and points a channel (text or voice) or role earns, from 0 to 5; 0 means no XP, 1 is normal and drops the rule. A channel's multiplier is multiplied by the member's highest role multiplier, a no-XP role always wins, and `@everyone` is a server-wide multiplier. Global XP is never scaled. Up to 50 rules (Manage Server) |
+| `/config xp multiplier value [channel] [role]` | Scale the server XP and points a channel (text, voice or forum) or category, or a role, earns, from 0 to 5; 0 means no XP, 1 is normal and drops the rule. Threads and forum posts follow their channel, and a channel follows its category unless it has a rule of its own (the nearest rule wins). A channel's multiplier is multiplied by the member's highest role multiplier, a no-XP role always wins, and `@everyone` is a server-wide multiplier. Global XP is never scaled. Up to 50 rules (Manage Server) |
 | `/config xp clear [channel] [role]`, `/config xp show` | Remove one multiplier or all of them, or list the multipliers with the voice settings (Manage Server) |
-| `/config xp voice [enabled] [amount]` | Voice XP, off by default: members in a voice channel with at least one other person earn `amount` (1 to 100, default 10) server XP a minute; nothing while alone (bots do not count), muted and deafened at once, or in the server's AFK channel. Multipliers apply by the voice channel and the member's roles; level-ups follow the leveling mode (Manage Server) |
+| `/config xp voice [enabled] [amount]` | Voice XP, off by default: members in a voice channel with at least one other person earn `amount` (1 to 100, default 10) server XP a minute; nothing while alone (bots do not count), muted and deafened at once, or in the server's AFK channel. Multipliers apply by the voice channel (or its category) and the member's roles; level-ups follow the leveling mode. Switching it on does not see who is already in voice: they start earning when they next join, move, mute or unmute (Manage Server) |
 | `/config rep-roles add\|remove\|list` | Roles given at a reputation count (up to 25, same safety checks as level roles); they always stack and are given when a `/rep` point lands (Manage Server) |
 | `/config join-role [role] [off]` | A role every new member gets, bots excepted; with neither option it shows the current setting (Manage Server) |
 | `/config goodbye [channel] [message] [off]` | Goodbye message in a channel when a member leaves; placeholders `{user}` `{server}` `{members}` (Manage Server) |
@@ -65,10 +65,21 @@ welcome card when enabled.
 
 Voice XP keeps who is in voice in Redis, written from the voice-state events, and one ticker on the
 gateway pays every guild once a minute behind a per-minute lock, so a restart or a second gateway pod
-never pays a minute twice. Members already in voice when the bot first starts are noticed once their
-state changes, and a member the bot has not heard from for eight hours is dropped, in case it was
-away when they left. A voice multiplier by role uses the roles the member had at their last voice
-event. Weekly XP counts every chat and voice XP grant under the Monday of its week.
+never pays a minute twice. Servers with voice XP off are not tracked at all (the ticker drops one the
+moment it finds it switched off). Discord sends each server's voice states once per session in
+GUILD_CREATE, so on every identify the bot replaces what it remembered of a server with that snapshot
+(and forgets a server on GUILD_DELETE): a leave missed while the bot was away stops paying, and members
+already in voice at startup are paid at once. A member the bot has not heard from for a day is still
+dropped, in case a leave event was lost. The snapshot's member list gives the roles (a voice
+multiplier by role uses the roles the member had at their last voice event or the snapshot) and the
+bot flag; a voice state it has no member for waits for the next event. GUILD_CREATE is the one
+heavyweight event the gateway deserializes, for this. The ticker reads each server's settings and
+multipliers from a five-minute cache, pays a few servers at a time, pays every minute in a task of
+its own (one that was late catches up on the last few), and skips a server for the minute when the AFK
+channel cannot be looked up and was never known (it uses the last known one otherwise). Multipliers
+look up a channel's parent and category from Discord once and remember them for ten minutes. Weekly XP
+counts every chat and voice XP grant under the Monday of its week; the hourly prune of weeks older
+than six uses an index on the week and takes a per-hour lock, so only one gateway pod runs it.
 
 Giveaways, suggestions and polls: a shells prize is paid by the **host**. `winners` x `shells` comes off
 the host's balance in the transaction that starts the giveaway (so a server can never mint shells), each

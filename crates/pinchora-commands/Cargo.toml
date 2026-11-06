@@ -29,4 +29,5 @@ twilight-util.workspace = true
 [dev-dependencies]
 axum.workspace = true
 sqlx.workspace = true
+tokio = { workspace = true, features = ["test-util"] }
 tracing-subscriber.workspace = true

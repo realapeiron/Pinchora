@@ -166,6 +166,22 @@ impl Cache {
         Ok(())
     }
 
+    /// Replaces a whole hash with `entries` in one step; no entries deletes it. The hash expires `ttl`
+    /// after this write.
+    pub async fn map_replace(&self, key: &str, entries: &[(String, String)], ttl: Duration) -> anyhow::Result<()> {
+        let key = format!("{PREFIX}:h:{key}");
+        let mut pipe = redis::pipe();
+        pipe.atomic().del(&key).ignore();
+        if !entries.is_empty() {
+            pipe.hset_multiple(&key, entries)
+                .ignore()
+                .expire(&key, ttl.as_secs().max(1) as i64)
+                .ignore();
+        }
+        let _: () = pipe.query_async(&mut self.conn()).await?;
+        Ok(())
+    }
+
     /// Removes one field of a hash.
     pub async fn map_remove(&self, key: &str, field: &str) -> anyhow::Result<()> {
         let _: () = self.conn().hdel(format!("{PREFIX}:h:{key}"), field).await?;

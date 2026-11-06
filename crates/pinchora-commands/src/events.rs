@@ -6,7 +6,8 @@ use pinchora_render::{Theme, WelcomeCard};
 use twilight_model::{
     channel::message::{AllowedMentions, MessageType},
     gateway::payload::incoming::{
-        BanAdd, BanRemove, MemberAdd, MemberRemove, MemberUpdate, MessageCreate, VoiceStateUpdate,
+        BanAdd, BanRemove, GuildCreate, GuildDelete, MemberAdd, MemberRemove, MemberUpdate, MessageCreate,
+        VoiceStateUpdate,
     },
     http::attachment::Attachment,
     id::Id,
@@ -69,7 +70,9 @@ pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<(
         .map(|m| m.roles.iter().map(|r| r.get()).collect())
         .unwrap_or_default();
     // The server's multipliers scale its own XP and points; the global XP stays what it is.
-    let multiplier = app.xp_rules(g).await?.multiplier(msg.channel_id.get(), &held);
+    let rules = app.xp_rules(g).await?;
+    let lineage = app.xp_lineage(&rules, msg.channel_id.get()).await;
+    let multiplier = rules.multiplier_in(&lineage, &held);
     let points = scale(points, multiplier);
     if !settings.leveling_enabled {
         if points > 0 {
@@ -238,6 +241,21 @@ pub async fn on_voice_state_update(app: Arc<App>, event: VoiceStateUpdate) -> an
     };
     let settings = app.guild_settings(guild.get()).await?;
     server_log::voice_updated(&app, &settings, guild.get(), &state).await;
-    voice_xp::track(&app, guild.get(), &state).await;
+    voice_xp::track(&app, guild.get(), &state, &settings).await;
     Ok(())
+}
+
+/// Rebuilds who is in voice from the server's voice states, which Discord sends once per session in
+/// GUILD_CREATE: a leave or join missed while the bot was away is put right here.
+pub async fn on_guild_create(app: Arc<App>, event: GuildCreate) -> anyhow::Result<()> {
+    let GuildCreate::Available(guild) = event else {
+        return Ok(());
+    };
+    voice_xp::rebuild(&app, &guild).await
+}
+
+/// Forgets who was in voice in a server the bot lost, or that went down: it starts over from the
+/// GUILD_CREATE that follows when it comes back.
+pub async fn on_guild_delete(app: Arc<App>, event: GuildDelete) -> anyhow::Result<()> {
+    voice_xp::forget(&app, event.id.get()).await
 }
