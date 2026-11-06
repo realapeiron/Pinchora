@@ -1376,7 +1376,7 @@ async fn practice_puzzles_keep_clear_of_the_coming_dailies_and_are_never_upside_
     let day = sim.app.now().timestamp().div_euclid(86_400);
     let allowed = picross::practice_pictures(day);
     let practice = || json!([super::sub("picross", vec![super::text_option("mode", "practice")])]);
-    sim.command(user, "play", practice()).await;
+    let first = sim.command(user, "play", practice()).await;
     for round in 0..40 {
         let game = sim
             .app
@@ -1416,6 +1416,13 @@ async fn practice_puzzles_keep_clear_of_the_coming_dailies_and_are_never_upside_
         .start_picross(user, "practice", 0, (daily_picture as u8, 0), true)
         .await
         .unwrap();
+    // Nor can an older message go on playing it.
+    let late = sim.component(user, "pz:r:practice:0", &["0"], &first).await;
+    assert!(
+        late.ephemeral && late.content().contains("practice puzzle has ended"),
+        "{}",
+        late.content()
+    );
     sim.command(user, "play", practice()).await;
     let game = sim
         .app

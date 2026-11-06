@@ -107,6 +107,14 @@ async fn new_practice(app: &App, user: u64) -> anyhow::Result<PicrossGame> {
     app.db.start_picross(user, PRACTICE, 0, (picture, variant), true).await
 }
 
+/// Whether an unsolved practice board's picture has since come close to the daily puzzle's, so an older
+/// message can no longer play it.
+fn practice_closed(app: &App, game: &PicrossGame) -> bool {
+    game.mode == PRACTICE
+        && !game.solved()
+        && !picross::practice_pictures(today(app)).contains(&(game.picture as usize))
+}
+
 fn puzzle_of(game: &PicrossGame) -> Puzzle {
     Puzzle::new(game.picture as usize, game.variant as u8)
 }
@@ -318,6 +326,11 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[S
             .reply_ephemeral("That puzzle has ended. Start today's with `/play picross`!")
             .await;
     }
+    if practice_closed(&cx.app, &game) {
+        return cx
+            .reply_ephemeral("That practice puzzle has ended. Start another with `/play picross`!")
+            .await;
+    }
     match action {
         Some("r") => {
             let Some(row) = values
@@ -451,6 +464,11 @@ async fn mark(
         if mode == DAILY && i64::from(day) != today(&cx.app) {
             return cx
                 .reply_ephemeral("That puzzle has ended. Start today's with `/play picross`!")
+                .await;
+        }
+        if practice_closed(&cx.app, &game) {
+            return cx
+                .reply_ephemeral("That practice puzzle has ended. Start another with `/play picross`!")
                 .await;
         }
         let puzzle = puzzle_of(&game);
