@@ -4,7 +4,7 @@ use pinchora_game::play::{Game, TriviaCategory};
 use twilight_interactions::command::{CommandModel, CommandOption, CreateCommand, CreateOption, ResolvedUser};
 use twilight_util::builder::embed::{EmbedBuilder, EmbedFieldBuilder, EmbedFooterBuilder};
 
-use super::{hangman, trivia, wordle};
+use super::{derby, hangman, heist, shells, trivia, wordle};
 use crate::{
     Cx,
     util::{BRAND, resolved_display_name},
@@ -13,7 +13,7 @@ use crate::{
 #[derive(CommandModel, CreateCommand)]
 #[command(
     name = "play",
-    desc = "Calm games: hangman, wordle, trivia and your game stats",
+    desc = "Games: hangman, wordle, trivia, crab derby, heist, shell game and your game stats",
     contexts = "guild"
 )]
 #[allow(clippy::large_enum_variant)] // parsed once per interaction, never stored
@@ -24,6 +24,12 @@ pub enum PlayCommand {
     Wordle(PlayWordle),
     #[command(name = "trivia")]
     Trivia(PlayTrivia),
+    #[command(name = "derby")]
+    Derby(PlayDerby),
+    #[command(name = "heist")]
+    Heist(PlayHeist),
+    #[command(name = "shells")]
+    Shells(PlayShells),
     #[command(name = "stats")]
     Stats(PlayStats),
 }
@@ -93,6 +99,35 @@ impl TriviaTopic {
 }
 
 #[derive(CommandModel, CreateCommand)]
+#[command(
+    name = "derby",
+    desc = "Hermit Crab Derby: everyone picks a crab and watches the race; winners share the stakes"
+)]
+pub struct PlayDerby {
+    /// Shells each racer stakes on a crab (10-500, needs /config gambling); empty races for fun
+    #[command(min_value = 10, max_value = 500)]
+    bet: Option<i64>,
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(
+    name = "heist",
+    desc = "Treasure Heist: crew up against a sunken vault, nobody loses shells"
+)]
+pub struct PlayHeist;
+
+#[derive(CommandModel, CreateCommand)]
+#[command(
+    name = "shells",
+    desc = "Shell Game: find the pearl under one of three shells (needs gambling switched on)"
+)]
+pub struct PlayShells {
+    /// Shells to stake (5-100); a right guess pays two and a half times
+    #[command(min_value = 5, max_value = 100)]
+    bet: i64,
+}
+
+#[derive(CommandModel, CreateCommand)]
 #[command(name = "stats", desc = "How many games someone played and won")]
 pub struct PlayStats {
     /// Whose stats (default: yours)
@@ -105,6 +140,9 @@ impl PlayCommand {
             Self::Hangman(_) => hangman::start(cx).await,
             Self::Wordle(c) => wordle::start(cx, c.mode != Some(WordleMode::Practice)).await,
             Self::Trivia(c) => trivia::start(cx, c.category.map(TriviaTopic::category)).await,
+            Self::Derby(c) => derby::start(cx, c.bet).await,
+            Self::Heist(_) => heist::start(cx).await,
+            Self::Shells(c) => shells::start(cx, c.bet).await,
             Self::Stats(c) => stats(cx, c.user).await,
         }
     }

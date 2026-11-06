@@ -14,7 +14,7 @@ use twilight_model::{
 use super::{
     connect4,
     games::{button, channel_of, edit_message, location, pack, record, track_message, unpack},
-    rps,
+    rps, share,
 };
 use crate::{
     App, Cx,
@@ -33,6 +33,8 @@ pub enum DuelCommand {
     Connect4(DuelConnect4),
     #[command(name = "rps")]
     Rps(DuelRps),
+    #[command(name = "share")]
+    Share(DuelShare),
 }
 
 #[derive(CommandModel, CreateCommand)]
@@ -59,6 +61,19 @@ pub struct DuelRps {
     /// How many rounds the match is (default: best of 3)
     rounds: Option<Rounds>,
     /// Shells each of you puts up (10-500); leave empty to play for fun
+    #[command(min_value = 10, max_value = 500)]
+    bet: Option<i64>,
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(
+    name = "share",
+    desc = "Share or Grab: split the pool, or grab it all and hope they share"
+)]
+pub struct DuelShare {
+    /// Your opponent
+    user: ResolvedUser,
+    /// Shells each of you puts up (10-500); leave empty to play for the sea's pool
     #[command(min_value = 10, max_value = 500)]
     bet: Option<i64>,
 }
@@ -96,6 +111,7 @@ impl DuelCommand {
             Self::TicTacToe(c) => c.run(cx).await,
             Self::Connect4(c) => challenge(cx, Kind::Connect4, &c.user, 0, c.bet).await,
             Self::Rps(c) => challenge(cx, Kind::Rps, &c.user, c.rounds.map_or(3, Rounds::count), c.bet).await,
+            Self::Share(c) => challenge(cx, Kind::ShareGrab, &c.user, 0, c.bet).await,
         }
     }
 }
@@ -284,6 +300,7 @@ pub(crate) const TURN_SECS: i64 = 90;
 pub(crate) enum Kind {
     Connect4,
     Rps,
+    ShareGrab,
 }
 
 impl Kind {
@@ -291,6 +308,7 @@ impl Kind {
         match self {
             Self::Connect4 => "connect4",
             Self::Rps => "rps",
+            Self::ShareGrab => "sharegrab",
         }
     }
 
@@ -298,6 +316,7 @@ impl Kind {
         match key {
             "connect4" => Some(Self::Connect4),
             "rps" => Some(Self::Rps),
+            "sharegrab" => Some(Self::ShareGrab),
             _ => None,
         }
     }
@@ -307,6 +326,15 @@ impl Kind {
         match self {
             Self::Connect4 => "c4",
             Self::Rps => "rp",
+            Self::ShareGrab => "sh",
+        }
+    }
+
+    /// How long a player has for one turn or one pick.
+    fn turn_secs(self) -> i64 {
+        match self {
+            Self::ShareGrab => pinchora_game::party::share::PICK_SECS,
+            _ => TURN_SECS,
         }
     }
 }
@@ -374,15 +402,25 @@ async fn challenge(cx: &Cx, kind: Kind, opponent: &ResolvedUser, rounds: u8, bet
     let title = match kind {
         Kind::Connect4 => "Connect four".to_owned(),
         Kind::Rps => format!("rock paper scissors, best of {rounds}"),
+        Kind::ShareGrab => "Share or Grab".to_owned(),
     };
-    let wager = if bet > 0 {
-        format!(
+    let wager = match (kind, bet > 0) {
+        (Kind::ShareGrab, true) => format!(
+            "💰 Stake: **{}** shells each, **{}** in the pot. Both share: stakes back. One grabs: they take the pot. \
+             Both grab: the sea keeps it all. A decline or a no-show gives the shells back.",
+            thousands(bet),
+            thousands(bet * 2)
+        ),
+        (Kind::ShareGrab, false) => format!(
+            "The sea puts **{}** shells in the pool: share it, or grab it all!",
+            pinchora_game::party::share::POOL
+        ),
+        (_, true) => format!(
             "💰 Wager: **{}** shells each. The winner takes **{}**; a draw, a decline or a no-show gives the shells back.",
             thousands(bet),
             thousands(bet * 2)
-        )
-    } else {
-        "No wager, just for fun.".to_owned()
+        ),
+        (_, false) => "No wager, just for fun.".to_owned(),
     };
     let prefix = kind.prefix();
     cx.reply(InteractionResponseData {
@@ -476,17 +514,19 @@ pub(crate) async fn answer(cx: &Cx, kind: Kind, id: i64, accept: bool) -> anyhow
     let machine = match kind {
         Kind::Connect4 => connect4::initial_fields(),
         Kind::Rps => rps::initial_fields(fields.parse().unwrap_or(3)),
+        Kind::ShareGrab => share::initial_fields(),
     };
     let packed = pack(&machine, [&names[0], &names[1]]);
     match cx
         .app
         .db
-        .start_duel(id, me, (channel, message), &packed, TURN_SECS)
+        .start_duel(id, me, (channel, message), &packed, kind.turn_secs())
         .await?
     {
         DuelStart::Started(started) => match kind {
             Kind::Connect4 => connect4::begin(cx, &started).await,
             Kind::Rps => rps::begin(cx, &started).await,
+            Kind::ShareGrab => share::begin(cx, &started).await,
         },
         DuelStart::Gone => cx.reply_ephemeral("This challenge is over.").await,
         DuelStart::NotInvited => cx.reply_ephemeral("This challenge isn't for you.").await,
@@ -557,6 +597,7 @@ pub(crate) fn timeout_text(session: &GameSession) -> String {
     let slow = match Kind::from_key(&session.kind) {
         Some(Kind::Connect4) => connect4::slow_players(session),
         Some(Kind::Rps) => rps::slow_players(session),
+        Some(Kind::ShareGrab) => share::slow_players(session),
         None => Vec::new(),
     };
     let who = match slow.as_slice() {

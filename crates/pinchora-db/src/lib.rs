@@ -15,6 +15,7 @@ mod interactions;
 mod members;
 mod panels;
 mod partners;
+mod party;
 mod pets;
 mod polls;
 mod rewards;
@@ -58,6 +59,10 @@ pub use interactions::Tally;
 pub use members::{LeaderboardRow, MemberRank, XpGain, XpGrant};
 pub use panels::{MAX_PANEL_ROLES, PanelRoleRow, PanelRow};
 pub use partners::{PairOutcome, PartnerRow};
+pub use party::{
+    CrewJoin, DerbyJoin, DerbyLeave, DerbyOutcome, DerbyResult, HeistSettled, PartyMember, PartySettings, ShellDone,
+    ShellLimits, ShellPick, ShellStart, SurgeHelp, SurgeSettled,
+};
 pub use pets::{PetRow, TripClaim, TripPayout, Wake};
 pub use polls::{MAX_OPEN_POLLS, NewPoll, PollOpen, PollRow, PollVote};
 pub use rewards::{LevelRoleRow, MAX_LEVEL_ROLES, MAX_REP_ROLES, MAX_STORE_ITEMS, RepRoleRow, StoreBuy, StoreItem};

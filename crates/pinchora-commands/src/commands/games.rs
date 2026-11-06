@@ -1,5 +1,5 @@
 //! What the calm games share: reward caps, win counts, names kept in a game's state, message
-//! edits, and the janitor that ends games whose clock ran out.
+//! edits, and the janitor that ends games whose clock ran out (and keeps storm surges going).
 
 use std::{sync::Arc, time::Duration};
 
@@ -158,6 +158,11 @@ pub async fn sweep(app: &Arc<App>) -> anyhow::Result<usize> {
     for session in app.db.late_games(50).await? {
         let result = match session.kind.as_str() {
             "connect4" | "rps" => super::duel::time_out(app, &session).await,
+            "sharegrab" => super::share::time_out(app, &session).await,
+            "derby" => super::derby::time_out(app, &session).await,
+            "heist" => super::heist::time_out(app, &session).await,
+            "shellgame" => super::shells::time_out(app, &session).await,
+            "surge" => super::surge::time_out(app, &session).await,
             "hangman" => super::hangman::time_out(app, &session).await,
             "trivia" => super::trivia::finish(app, session.id, None).await,
             other => {
@@ -173,6 +178,10 @@ pub async fn sweep(app: &Arc<App>) -> anyhow::Result<usize> {
             Ok(false) => {}
             Err(error) => tracing::warn!(%error, session = session.id, kind = %session.kind, "late game not ended"),
         }
+    }
+    // Timed storm surges start, and running ones show their wall.
+    if let Err(error) = super::surge::tick(app).await {
+        tracing::warn!(%error, "storm tick failed");
     }
     Ok(ended)
 }

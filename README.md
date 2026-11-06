@@ -150,10 +150,17 @@ permission gets a private refusal and nothing changes.
 | `/duel tictactoe user` | Button tic-tac-toe; the winner earns shells |
 | `/duel connect4 user [bet]` | Connect four on a pixel-art board: the challenged player accepts, then each turn is a column button (1-7) within 90 s; the winner earns shells |
 | `/duel rps user [rounds] [bet]` | Rock paper scissors, best of 1, 3 or 5: each player gets private Rock / Paper / Scissors buttons, the channel sees each round revealed; ties replay |
+| `/duel share user [bet]` | Share or Grab: the challenged player accepts, then each of you picks **Share** or **Grab** in secret (private buttons, two minutes). Both share: the pool is split. One grabs: they take it all. Both grab: nobody gets anything. The pool is the sea's 60 shells without a wager, or the two stakes with one (shares give the stakes back, a grab takes the pot, two grabs sink it: **in a wagered game both players grabbing loses both stakes, that is the game**); a player who never picks forfeits. The sea pays a pair once an hour, and the hour starts when a payout has gone through |
 | `/play hangman` | A cozy word (780 in five categories) guessed from two letter menus while the tide washes a pixel sandcastle away; six misses lose |
 | `/play wordle [mode]` | Five letters, six tries, typed into a form, shown as private pixel tiles with a keyboard summary. `daily` (default) is one word the same for everyone, kept per player per day, with a spoiler-free **Share result**; `practice` is a random word, as many as you like |
 | `/play trivia [category]` | A question for the channel from 464 (8 topics, three difficulties): four answer buttons, 20 seconds, anyone answers once; the message then reveals the answer and who got it right |
+| `/play derby [bet]` | Hermit Crab Derby: a lobby for the channel with six crabs (the hermit crab pet in six shell colours); everyone picks a crab with a button (and can switch or **Leave** until the start) and **Start the race** (host) or the 75 s timer runs it as an animated GIF of 480x288 under 600 KB that plays once (the lane plates show each crab's number and name, and the finished crabs fan out by place). With a `bet` (10 to 500) each racer puts that many shells on their crab and those who back the winner share the pool; nobody backing it, or fewer than two racers, gives every stake back, so the house never takes a shell. A staked race is pure chance, so it is a gambling-style game: `bet` is refused until a manager runs `/config gambling`, and nobody can be more than 1,000 shells down on a day's staked races (a stake held in a lobby counts as down until it comes back, counted on the day it was put up). Without a bet the backers of the winner get 20 shells (five wins a day). The result is hidden in a spoiler under the GIF |
+| `/play heist` | Treasure Heist: a crew of 2 to 8 picks roles (Lookout, Locksmith, Diver) in a lobby; three stages (slip past the guards, crack the lock, haul out the loot) each go better with a fitting role, and the card shows the crew's live chances. All three stages pay each member 60 shells, two pay 25, one pays 8, none is busted. Nobody ever loses shells; at most 150 shells a day and a 5 minute rest after a heist |
+| `/play shells bet` | Shell Game: the pearl is under one of three shells, a right guess pays two and a half times the stake (5 to 100), which is a sixth less than fair. A gambling-style game, so it is off until a manager runs `/config gambling`, with 20 games, a 300 shell loss and a 600 shell win limit per player a day; an unanswered table gives the stake back |
+| `/surge` | Managers call a Storm Surge: for 10 minutes everyone presses **Stack a sandbag** (one every 6 s, at most 25 each) while the sea washes one away every 30 s; the wall's goal is 24 plus 8 per helper, so one player cannot hold it alone. A shared card shows the wall, the helpers and the best three; hold it and every helper gets 20 shells plus 2 per sandbag (up to 50), lose and they get 6 plus 1 per sandbag; at most 120 shells a day |
 | `/play stats [user]` | Games played and won for each game |
+| `/config gambling enabled` | Switch gambling-style games (the shell game and staked derbies) on or off for the server; off by default (Manage Server) |
+| `/config surge [enabled] [channel] [every]` | Timed storm surges, off by default: one comes to the channel every 6, 12 or 24 hours, 2 days or a week; with no options it shows the setting. `/surge` always works for managers (Manage Server) |
 | `/config welcome-card` | Design the welcome card (theme, headline, accent colour) with a live preview |
 
 Duel wagers (`bet`, 10 to 500 shells each) are optional and off by default. Nothing is held until the
@@ -193,6 +200,19 @@ counting once every 20 seconds, at most one every 12 minutes per server (a drop 
 and bottles are rows in `collection_drops`, closed by a ticker on every pod when their time is up. Until the
 atlas has `cr_<id>` sprites for them, critters and finds borrow a fish, pet or furniture sprite or are drawn
 from small pixel shapes (`pinchora_render::critters`).
+
+The party games (`/duel share`, `/play derby`, `/play heist`, `/play shells`, `/surge`) keep the same promise:
+every move of shells happens in one transaction with the row that causes it, and a game ends exactly once.
+Stakes (derby and share-or-grab wagers, shell game stakes) are held when they are put up and given back on
+a decline, a draw, a timeout nobody is to blame for or a race with nobody to pay; a player who abandons a
+wagered share-or-grab forfeits to the one who picked. What the system pays out of thin air is capped per
+player and day in `party_daily`: 180 shells for share or grab, 150 for the heist, 120 for storm surges (and
+the derby's 20-shell reward five times a day), well under what fishing pays an hour. The two games of
+chance a player can lose shells at, the shell game and staked derbies, sit behind the per-server gambling
+switch and a daily loss limit each (300 and 1,000 shells), kept in `party_daily` on the day the stake was put
+up, so a refund after midnight still lands on the right day. The derby, heist and
+storm all run from a seed or a clock kept in the database, so any pod can finish them after a restart. One
+derby or heist lobby can be open per channel and one storm per server.
 
 Game content (furniture, rooms, pets, pet trips, fish, fishing gear, critters, finds, bottle messages, looks, accessories, character presets, card backgrounds,
 badges, titles, trivia, hangman words and the wordle lists) lives in
