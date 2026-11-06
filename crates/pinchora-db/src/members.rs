@@ -1,7 +1,7 @@
 use chrono::{NaiveDate, Utc};
 use pinchora_core::leveling::week_start;
 
-use crate::{Db, sql_id};
+use crate::{Db, locks::retry, sql_id};
 
 #[derive(Debug, Clone, Copy)]
 pub struct XpGain {
@@ -56,39 +56,48 @@ impl Db {
 
     /// Like [`Db::add_message_xp`] with the server and global shares apart, and the server XP counted
     /// toward the weekly board of the week starting `week` and toward `/wrapped` (as voice XP is).
+    ///
+    /// Still one statement, with the player's lock first (see the `locks` module): the `users` row
+    /// is written before anything else because every other part reads from it, and the trigger on
+    /// `users` takes the player's lock before that row is touched.
     pub async fn add_xp(&self, guild_id: u64, user_id: u64, grant: XpGrant, week: NaiveDate) -> anyhow::Result<XpGain> {
-        let (new_xp,): (i64,) = sqlx::query_as(
-            "WITH m AS (
-                 INSERT INTO members (guild_id, user_id, xp, messages, points, last_xp_at)
-                 VALUES ($1, $2, $3, 1, $4, now())
-                 ON CONFLICT (guild_id, user_id) DO UPDATE
-                 SET xp = members.xp + EXCLUDED.xp,
-                     messages = members.messages + 1,
-                     points = members.points + EXCLUDED.points,
-                     last_xp_at = now()
-                 RETURNING xp
-             ), u AS (
-                 INSERT INTO users (id, xp) VALUES ($2, $5)
-                 ON CONFLICT (id) DO UPDATE SET xp = users.xp + EXCLUDED.xp
-             ), w AS (
-                 INSERT INTO weekly_xp (guild_id, week, user_id, xp)
-                 SELECT $1, $6, $2, $3::BIGINT WHERE $3::BIGINT > 0
-                 ON CONFLICT (guild_id, week, user_id) DO UPDATE SET xp = weekly_xp.xp + EXCLUDED.xp
-             ), a AS (
-                 INSERT INTO activity_monthly (user_id, month, messages, xp)
-                 VALUES ($2, date_trunc('month', now() AT TIME ZONE 'UTC')::date, 1, $3)
-                 ON CONFLICT (user_id, month) DO UPDATE
-                 SET messages = activity_monthly.messages + 1, xp = activity_monthly.xp + EXCLUDED.xp
-             )
-             SELECT xp FROM m",
-        )
-        .bind(sql_id(guild_id))
-        .bind(sql_id(user_id))
-        .bind(grant.server_xp)
-        .bind(grant.points)
-        .bind(grant.global_xp)
-        .bind(week)
-        .fetch_one(self.pool())
+        let new_xp = retry("add_xp", || async move {
+            let (new_xp,): (i64,) = sqlx::query_as(
+                "WITH u AS (
+                     INSERT INTO users (id, xp) VALUES ($2, $5)
+                     ON CONFLICT (id) DO UPDATE SET xp = users.xp + EXCLUDED.xp
+                     RETURNING id
+                 ), m AS (
+                     INSERT INTO members (guild_id, user_id, xp, messages, points, last_xp_at)
+                     SELECT $1, id, $3, 1, $4, now() FROM u
+                     ON CONFLICT (guild_id, user_id) DO UPDATE
+                     SET xp = members.xp + EXCLUDED.xp,
+                         messages = members.messages + 1,
+                         points = members.points + EXCLUDED.points,
+                         last_xp_at = now()
+                     RETURNING user_id, xp
+                 ), w AS (
+                     INSERT INTO weekly_xp (guild_id, week, user_id, xp)
+                     SELECT $1, $6, user_id, $3::BIGINT FROM m WHERE $3::BIGINT > 0
+                     ON CONFLICT (guild_id, week, user_id) DO UPDATE SET xp = weekly_xp.xp + EXCLUDED.xp
+                 ), a AS (
+                     INSERT INTO activity_monthly (user_id, month, messages, xp)
+                     SELECT user_id, date_trunc('month', now() AT TIME ZONE 'UTC')::date, 1, $3 FROM m
+                     ON CONFLICT (user_id, month) DO UPDATE
+                     SET messages = activity_monthly.messages + 1, xp = activity_monthly.xp + EXCLUDED.xp
+                 )
+                 SELECT xp FROM m",
+            )
+            .bind(sql_id(guild_id))
+            .bind(sql_id(user_id))
+            .bind(grant.server_xp)
+            .bind(grant.points)
+            .bind(grant.global_xp)
+            .bind(week)
+            .fetch_one(self.pool())
+            .await?;
+            Ok(new_xp)
+        })
         .await?;
         Ok(XpGain {
             old_xp: new_xp - grant.server_xp,

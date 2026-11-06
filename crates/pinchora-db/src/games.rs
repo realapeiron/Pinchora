@@ -2,7 +2,12 @@
 
 use chrono::{DateTime, Utc};
 
-use crate::{Db, economy::ledger, privacy::lock_users, sql_id};
+use crate::{
+    Db,
+    economy::ledger,
+    locks::{lock_users, retry},
+    sql_id,
+};
 
 pub const PENDING: &str = "pending";
 pub const ACTIVE: &str = "active";
@@ -173,7 +178,23 @@ impl Db {
         state: &str,
         ttl_secs: i64,
     ) -> anyhow::Result<DuelStart> {
+        retry("start_duel", || {
+            self.start_duel_once(id, guest, message, state, ttl_secs)
+        })
+        .await
+    }
+
+    /// One attempt of [`Db::start_duel`].
+    async fn start_duel_once(
+        &self,
+        id: i64,
+        guest: u64,
+        message: (u64, u64),
+        state: &str,
+        ttl_secs: i64,
+    ) -> anyhow::Result<DuelStart> {
         let mut tx = self.pool().begin().await?;
+        lock_players(&mut tx, id).await?;
         let session: Option<GameSession> = sqlx::query_as(concat!(
             "SELECT ",
             columns!(),
@@ -190,7 +211,6 @@ impl Db {
         }
         if session.bet > 0 {
             let players = [session.host_id, sql_id(guest)];
-            lock_users(&mut tx, &players).await?;
             sqlx::query("INSERT INTO users (id) VALUES ($1), ($2) ON CONFLICT (id) DO NOTHING")
                 .bind(players[0])
                 .bind(players[1])
@@ -250,7 +270,23 @@ impl Db {
         payout: Payout,
         only_if_expired: bool,
     ) -> anyhow::Result<Option<GameSession>> {
+        retry("settle_game", || {
+            self.settle_game_once(id, from_state, final_state, payout, only_if_expired)
+        })
+        .await
+    }
+
+    /// One attempt of [`Db::settle_game`].
+    async fn settle_game_once(
+        &self,
+        id: i64,
+        from_state: Option<&str>,
+        final_state: &str,
+        payout: Payout,
+        only_if_expired: bool,
+    ) -> anyhow::Result<Option<GameSession>> {
         let mut tx = self.pool().begin().await?;
+        lock_players(&mut tx, id).await?;
         let session: Option<GameSession> = sqlx::query_as(concat!(
             "SELECT ",
             columns!(),
@@ -433,6 +469,23 @@ impl Db {
         .fetch_optional(self.pool())
         .await?)
     }
+}
+
+/// Takes the locks of the session's players when it holds (or will hold) shells, before the session's
+/// row is locked (see the `locks` module). The players and the bet of a session never change, so the
+/// plain read is good for the locked one that follows.
+async fn lock_players(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, id: i64) -> anyhow::Result<()> {
+    let row: Option<(i64, Option<i64>, i64)> =
+        sqlx::query_as("SELECT host_id, guest_id, bet FROM game_sessions WHERE id = $1")
+            .bind(id)
+            .fetch_optional(&mut **tx)
+            .await?;
+    if let Some((host, guest, bet)) = row
+        && bet > 0
+    {
+        lock_users(tx, &[Some(host), guest].into_iter().flatten().collect::<Vec<_>>()).await?;
+    }
+    Ok(())
 }
 
 async fn pay(

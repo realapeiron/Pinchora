@@ -1,4 +1,8 @@
-use crate::{Db, sql_id};
+use crate::{
+    Db,
+    locks::{lock_users, retry},
+    sql_id,
+};
 
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct HouseRow {
@@ -90,6 +94,7 @@ impl Db {
     pub async fn house(&self, user_id: u64, starter: &NewRoom) -> anyhow::Result<(HouseRow, Vec<RoomRow>, bool)> {
         let id = sql_id(user_id);
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[id]).await?;
         let created = sqlx::query("INSERT INTO houses (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING")
             .bind(id)
             .execute(&mut *tx)
@@ -151,6 +156,7 @@ impl Db {
 
     pub async fn grant_item(&self, user_id: u64, item_id: &str, quantity: i32) -> anyhow::Result<()> {
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(user_id)]).await?;
         add_inventory(&mut tx, sql_id(user_id), item_id, quantity).await?;
         tx.commit().await?;
         Ok(())
@@ -195,6 +201,7 @@ impl Db {
     {
         let (id, stock) = (sql_id(owner), sql_id(stock));
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[id, stock]).await?;
         sqlx::query("SELECT 1 FROM houses WHERE user_id = $1 FOR UPDATE")
             .bind(id)
             .execute(&mut *tx)
@@ -240,6 +247,7 @@ impl Db {
     pub async fn pick_up(&self, user_id: u64, placement_id: i64) -> anyhow::Result<Option<String>> {
         let id = sql_id(user_id);
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[id]).await?;
         let item: Option<(String,)> =
             sqlx::query_as("DELETE FROM placements WHERE id = $1 AND user_id = $2 RETURNING item_id")
                 .bind(placement_id)
@@ -258,6 +266,7 @@ impl Db {
     pub async fn clear_room(&self, user_id: u64, room_idx: i16) -> anyhow::Result<Vec<PlacementRow>> {
         let id = sql_id(user_id);
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[id]).await?;
         sqlx::query("SELECT 1 FROM houses WHERE user_id = $1 FOR UPDATE")
             .bind(id)
             .execute(&mut *tx)
@@ -316,6 +325,7 @@ impl Db {
     {
         let (id, refund) = (sql_id(owner), sql_id(editor));
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[id, refund]).await?;
         sqlx::query("SELECT 1 FROM houses WHERE user_id = $1 FOR UPDATE")
             .bind(id)
             .execute(&mut *tx)
@@ -446,8 +456,23 @@ impl Db {
         price: i64,
         new_rooms: &[NewRoom],
     ) -> anyhow::Result<UpgradeOutcome> {
+        retry("upgrade_house", || {
+            self.upgrade_house_once(user_id, from_tier, price, new_rooms)
+        })
+        .await
+    }
+
+    /// One attempt of [`Db::upgrade_house`].
+    async fn upgrade_house_once(
+        &self,
+        user_id: u64,
+        from_tier: i16,
+        price: i64,
+        new_rooms: &[NewRoom],
+    ) -> anyhow::Result<UpgradeOutcome> {
         let id = sql_id(user_id);
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[id]).await?;
         let (tier,): (i16,) = sqlx::query_as("SELECT tier FROM houses WHERE user_id = $1 FOR UPDATE")
             .bind(id)
             .fetch_one(&mut *tx)

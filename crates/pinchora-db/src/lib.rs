@@ -10,6 +10,7 @@ mod guestbook;
 mod guilds;
 mod house;
 mod interactions;
+mod locks;
 mod members;
 mod panels;
 mod partners;
@@ -51,6 +52,7 @@ pub use house::{
     UpgradeOutcome,
 };
 pub use interactions::Tally;
+pub use locks::conflict_retries;
 pub use members::{LeaderboardRow, MemberRank, XpGain, XpGrant};
 pub use panels::{MAX_PANEL_ROLES, PanelRoleRow, PanelRow};
 pub use partners::{PairOutcome, PartnerRow};

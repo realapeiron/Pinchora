@@ -2,7 +2,7 @@
 
 use chrono::{DateTime, Utc};
 
-use crate::{Db, sql_id};
+use crate::{Db, locks::lock_users, sql_id};
 
 pub const OPEN: &str = "open";
 
@@ -68,11 +68,9 @@ impl Db {
     /// Starts a poll, unless its author already has [`MAX_OPEN_POLLS`] open in this server.
     pub async fn create_poll(&self, new: NewPoll<'_>) -> anyhow::Result<PollOpen> {
         let mut tx = self.pool().begin().await?;
-        // Two polls started at once by one member must not both slip under the limit.
-        sqlx::query("SELECT pg_advisory_xact_lock($1)")
-            .bind(sql_id(new.author) ^ sql_id(new.guild_id))
-            .execute(&mut *tx)
-            .await?;
+        // Two polls started at once by one member must not both slip under the limit: the author's
+        // lock makes them take turns.
+        lock_users(&mut tx, &[sql_id(new.author)]).await?;
         let (open,): (i64,) =
             sqlx::query_as("SELECT count(*) FROM polls WHERE guild_id = $1 AND author_id = $2 AND status = 'open'")
                 .bind(sql_id(new.guild_id))
@@ -132,6 +130,7 @@ impl Db {
     /// never lands after the poll closed.
     pub async fn vote_poll(&self, id: i64, user: u64, choice: usize, now: DateTime<Utc>) -> anyhow::Result<PollVote> {
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(user)]).await?;
         let open: Option<(bool,)> =
             sqlx::query_as("SELECT status = 'open' AND ends_at > $2 FROM polls WHERE id = $1 FOR SHARE")
                 .bind(id)

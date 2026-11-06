@@ -72,8 +72,8 @@ CREATE TABLE activity_monthly (
 -- What "delete my data" leaves behind: the id of a player who deleted everything, with the times
 -- of what they had used up, so deleting and coming back cannot hand out a fresh daily, weekly or
 -- monthly reward, another rep, a second daily wordle reward, more paid visits or likes for the
--- day, or an early pet walk. A returning player starts with nothing else (no shells, no level, no
--- house). The numbers are honoured wherever the player's own rows would have been looked at, and
+-- day, a second free pet wake-up for the day, or an early pet walk. A returning player starts with
+-- nothing else (no shells, no level, no house). The numbers are honoured wherever the player's own rows would have been looked at, and
 -- the row is dropped once the longest cooldown (a month) is long gone.
 -- `day` is the UTC day `visits` (paid-visit slots used) and `liked` (houses liked) belong to.
 CREATE TABLE deleted_users (
@@ -87,7 +87,8 @@ CREATE TABLE deleted_users (
     visits         BIGINT      NOT NULL DEFAULT 0,
     liked          BIGINT[]    NOT NULL DEFAULT '{}',
     wordle_day     INTEGER,
-    walk_until     TIMESTAMPTZ
+    walk_until     TIMESTAMPTZ,
+    pet_wake_day   INTEGER
 );
 
 CREATE INDEX deleted_users_age_idx ON deleted_users (deleted_at);
@@ -100,15 +101,16 @@ CREATE SEQUENCE deleted_ids;
 -- Everything that hands out something limited per player, or creates the player's row, and the
 -- delete of that player's data take this lock first and keep it to the end of their transaction,
 -- so the two never overlap: a claim waits for a delete in progress and then sees its tombstone, and
--- a delete waits for a claim in progress and then tombstones the time it set. Locks are taken in id
--- order when a transaction needs two.
+-- a delete waits for a claim in progress and then tombstones the time it set. Every transaction that
+-- writes a player's rows takes the locks of all its players first, in id order, before any row: the
+-- rule is written down in pinchora-db's `locks` module.
 CREATE FUNCTION lock_user(player_id BIGINT) RETURNS void AS $$
     SELECT pg_advisory_xact_lock(hashtextextended('user:' || player_id, 0))
 $$ LANGUAGE sql;
 
 -- A player's row is created from many places (every first command makes one), so this is where a
--- returning player gets the cooldowns of their last life back: the daily and rep ones on the row
--- itself, the weekly and monthly ones as the claims they were. Everything that reads those reads
+-- returning player gets the cooldowns of their last life back: the daily, rep and free pet wake-up
+-- ones on the row itself, the weekly and monthly ones as the claims they were. Everything that reads those reads
 -- them as if the player had never deleted anything.
 --
 -- The lock comes first, and it is taken even when the insert turns out to hit an existing row (a
@@ -124,6 +126,7 @@ BEGIN
     IF FOUND THEN
         NEW.last_daily_at := GREATEST(NEW.last_daily_at, tomb.last_daily_at);
         NEW.last_rep_at := GREATEST(NEW.last_rep_at, tomb.last_rep_at);
+        NEW.pet_wake_day := GREATEST(NEW.pet_wake_day, tomb.pet_wake_day);
         IF tomb.weekly_at IS NOT NULL THEN
             INSERT INTO reward_claims (user_id, kind, claimed_at) VALUES (NEW.id, 'weekly', tomb.weekly_at)
             ON CONFLICT (user_id, kind) DO NOTHING;

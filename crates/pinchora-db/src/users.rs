@@ -43,17 +43,35 @@ pub struct UserRow {
 }
 
 impl Db {
+    /// The player's row, created when missing.
+    ///
+    /// The insert waits for whoever holds the player's lock (see the `locks` module). When that was
+    /// a transaction creating or re-creating the row, the insert finds it but the statement's
+    /// snapshot, taken before the wait, does not show it: a statement of its own reads it then. A
+    /// row a delete takes away in between is made again on the next go.
     pub async fn user(&self, id: u64) -> anyhow::Result<UserRow> {
-        let row = sqlx::query_as::<_, UserRow>(
-            "WITH ins AS (
-                 INSERT INTO users (id) VALUES ($1) ON CONFLICT (id) DO NOTHING RETURNING *
-             )
-             SELECT * FROM ins UNION ALL SELECT * FROM users WHERE id = $1 LIMIT 1",
-        )
-        .bind(sql_id(id))
-        .fetch_one(self.pool())
-        .await?;
-        Ok(row)
+        for _ in 0..3 {
+            let row = sqlx::query_as::<_, UserRow>(
+                "WITH ins AS (
+                     INSERT INTO users (id) VALUES ($1) ON CONFLICT (id) DO NOTHING RETURNING *
+                 )
+                 SELECT * FROM ins UNION ALL SELECT * FROM users WHERE id = $1 LIMIT 1",
+            )
+            .bind(sql_id(id))
+            .fetch_optional(self.pool())
+            .await?;
+            if let Some(row) = row {
+                return Ok(row);
+            }
+            let row = sqlx::query_as::<_, UserRow>("SELECT * FROM users WHERE id = $1")
+                .bind(sql_id(id))
+                .fetch_optional(self.pool())
+                .await?;
+            if let Some(row) = row {
+                return Ok(row);
+            }
+        }
+        anyhow::bail!("the row of player {id} kept disappearing")
     }
 
     /// 1-based position on the global XP leaderboard, which leaves out players who hide from it.

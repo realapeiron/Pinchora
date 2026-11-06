@@ -3,13 +3,22 @@
 use chrono::{DateTime, Utc};
 use sqlx::{Postgres, Transaction};
 
-use crate::{Db, economy::ledger, sql_id};
+use crate::{
+    Db,
+    economy::ledger,
+    locks::{Retry, lock_users, retry},
+    sql_id,
+};
 
 pub const RUNNING: &str = "running";
 pub const ENDED: &str = "ended";
 
 /// Most giveaways one server can run at once.
 pub const MAX_RUNNING_GIVEAWAYS: i64 = 20;
+
+/// How many times an end starts over because entries came or went between reading who wins and
+/// locking the giveaway. Entries close when it is due, so only an early end can see that at all.
+const END_TRIES: usize = 5;
 
 /// A giveaway, running or over.
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -119,6 +128,23 @@ fn chosen(picked: Vec<u64>, pool: &[u64], max: usize) -> Vec<u64> {
     out
 }
 
+/// Who has entered the giveaway.
+async fn entrants_of(tx: &mut Transaction<'_, Postgres>, id: i64) -> anyhow::Result<Vec<u64>> {
+    let rows: Vec<(i64,)> = sqlx::query_as("SELECT user_id FROM giveaway_entries WHERE giveaway_id = $1")
+        .bind(id)
+        .fetch_all(&mut **tx)
+        .await?;
+    Ok(rows.into_iter().map(|(user,)| user as u64).collect())
+}
+
+/// Whether two lists hold the same people, in any order.
+fn same_people(a: &[u64], b: &[u64]) -> bool {
+    let (mut a, mut b) = (a.to_vec(), b.to_vec());
+    a.sort_unstable();
+    b.sort_unstable();
+    a == b
+}
+
 /// Adds shells to a balance inside a transaction, with its ledger line.
 async fn credit(tx: &mut Transaction<'_, Postgres>, user: i64, amount: i64, reason: &str) -> anyhow::Result<()> {
     sqlx::query(
@@ -136,7 +162,13 @@ impl Db {
     /// Starts a giveaway: holds `winners` x `shells` from the host and creates the row, in one
     /// transaction. Nothing changes when the host cannot cover it or the server is full.
     pub async fn create_giveaway(&self, new: NewGiveaway<'_>) -> anyhow::Result<GiveawayOpen> {
+        retry("create_giveaway", || self.create_giveaway_once(new)).await
+    }
+
+    /// One attempt of [`Db::create_giveaway`].
+    async fn create_giveaway_once(&self, new: NewGiveaway<'_>) -> anyhow::Result<GiveawayOpen> {
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(new.host)]).await?;
         // Two giveaways started at once must not both slip under the limit.
         sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended('giveaways:' || $1::text, 0))")
             .bind(sql_id(new.guild_id))
@@ -218,7 +250,21 @@ impl Db {
     /// Takes back a giveaway whose message could not be posted: the row goes and the host gets the
     /// held shells back. False when it was no longer running.
     pub async fn abort_giveaway(&self, id: i64) -> anyhow::Result<bool> {
+        retry("abort_giveaway", || self.abort_giveaway_once(id)).await
+    }
+
+    /// One attempt of [`Db::abort_giveaway`].
+    async fn abort_giveaway_once(&self, id: i64) -> anyhow::Result<bool> {
         let mut tx = self.pool().begin().await?;
+        // The host's lock comes before the giveaway's row (see the `locks` module); the host of a
+        // giveaway never changes.
+        let host: Option<(i64,)> = sqlx::query_as("SELECT host_id FROM giveaways WHERE id = $1")
+            .bind(id)
+            .fetch_optional(&mut *tx)
+            .await?;
+        if let Some((host,)) = host {
+            lock_users(&mut tx, &[host]).await?;
+        }
         let row = sqlx::query_as::<_, GiveawayRow>(concat!(
             "SELECT ",
             columns!(),
@@ -244,7 +290,16 @@ impl Db {
     /// Enters the member, or takes their entry back when they are in. The giveaway row is
     /// share-locked, so an entry never lands after the giveaway ended.
     pub async fn toggle_giveaway_entry(&self, id: i64, user: u64, now: DateTime<Utc>) -> anyhow::Result<EntryToggle> {
+        retry("toggle_giveaway_entry", || {
+            self.toggle_giveaway_entry_once(id, user, now)
+        })
+        .await
+    }
+
+    /// One attempt of [`Db::toggle_giveaway_entry`].
+    async fn toggle_giveaway_entry_once(&self, id: i64, user: u64, now: DateTime<Utc>) -> anyhow::Result<EntryToggle> {
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(user)]).await?;
         let open: Option<(bool,)> =
             sqlx::query_as("SELECT status = 'running' AND ends_at > $2 FROM giveaways WHERE id = $1 FOR SHARE")
                 .bind(id)
@@ -295,69 +350,101 @@ impl Db {
     /// Ends a running giveaway, once: `pick(entrants, count)` chooses the winners, each is paid
     /// the shells prize and the host gets back the prize nobody won, all in one transaction with the
     /// status change. `None` when it is not running (somebody ended it first) or, unless `early`,
-    /// not due at `now`.
+    /// not due at `now`. `pick` may be asked more than once, when the end has to start over.
     pub async fn end_giveaway(
         &self,
         id: i64,
         now: DateTime<Utc>,
         early: bool,
-        pick: impl FnOnce(&[u64], usize) -> Vec<u64>,
+        mut pick: impl FnMut(&[u64], usize) -> Vec<u64>,
     ) -> anyhow::Result<Option<EndedGiveaway>> {
-        let mut tx = self.pool().begin().await?;
-        let row = sqlx::query_as::<_, GiveawayRow>(concat!(
+        let mut retry = Retry::new("end_giveaway");
+        loop {
+            let result = self.end_giveaway_once(id, now, early, &mut pick).await;
+            if !retry.again(&result).await {
+                return result;
+            }
+        }
+    }
+
+    /// One attempt of [`Db::end_giveaway`]. The winners are picked from a plain read so that their
+    /// locks and the host's come before the giveaway's row (see the `locks` module); with the row
+    /// locked nobody can enter or leave, and if somebody did in between, it starts over.
+    async fn end_giveaway_once(
+        &self,
+        id: i64,
+        now: DateTime<Utc>,
+        early: bool,
+        pick: &mut impl FnMut(&[u64], usize) -> Vec<u64>,
+    ) -> anyhow::Result<Option<EndedGiveaway>> {
+        let due = concat!(
             "SELECT ",
             columns!(),
-            " FROM giveaways g WHERE g.id = $1 AND g.status = 'running' AND ($3 OR g.ends_at <= $2) FOR UPDATE OF g"
-        ))
-        .bind(id)
-        .bind(now)
-        .bind(early)
-        .fetch_optional(&mut *tx)
-        .await?;
-        let Some(mut giveaway) = row else {
-            return Ok(None);
-        };
-        let entrants: Vec<(i64,)> = sqlx::query_as("SELECT user_id FROM giveaway_entries WHERE giveaway_id = $1")
-            .bind(id)
-            .fetch_all(&mut *tx)
-            .await?;
-        let entrants: Vec<u64> = entrants.into_iter().map(|(user,)| user as u64).collect();
-        let winners = chosen(
-            pick(&entrants, giveaway.winners as usize),
-            &entrants,
-            giveaway.winners as usize,
+            " FROM giveaways g WHERE g.id = $1 AND g.status = 'running' AND ($3 OR g.ends_at <= $2)"
         );
+        for _ in 0..END_TRIES {
+            let mut tx = self.pool().begin().await?;
+            let seen = sqlx::query_as::<_, GiveawayRow>(due)
+                .bind(id)
+                .bind(now)
+                .bind(early)
+                .fetch_optional(&mut *tx)
+                .await?;
+            let Some(seen) = seen else {
+                return Ok(None);
+            };
+            let seen_in = entrants_of(&mut tx, id).await?;
+            let winners = chosen(pick(&seen_in, seen.winners as usize), &seen_in, seen.winners as usize);
+            if seen.shells > 0 {
+                let mut paid: Vec<i64> = winners.iter().map(|w| sql_id(*w)).collect();
+                paid.push(seen.host_id);
+                lock_users(&mut tx, &paid).await?;
+            }
+            let row = sqlx::query_as::<_, GiveawayRow>(sqlx::AssertSqlSafe(format!("{due} FOR UPDATE OF g")))
+                .bind(id)
+                .bind(now)
+                .bind(early)
+                .fetch_optional(&mut *tx)
+                .await?;
+            let Some(mut giveaway) = row else {
+                return Ok(None);
+            };
+            let now_in = entrants_of(&mut tx, id).await?;
+            if !same_people(&now_in, &seen_in) {
+                tx.rollback().await?;
+                continue;
+            }
 
-        let refunded = giveaway.shells * (i64::from(giveaway.winners) - winners.len() as i64);
-        // Balances are locked in id order, like every other shell movement, so a payout cannot
-        // deadlock with a transfer between two of the winners.
-        let mut payouts: Vec<(i64, i64, &str)> = Vec::with_capacity(winners.len() + 1);
-        if giveaway.shells > 0 {
-            payouts.extend(winners.iter().map(|w| (sql_id(*w), giveaway.shells, "giveaway_win")));
+            let refunded = giveaway.shells * (i64::from(giveaway.winners) - winners.len() as i64);
+            let mut payouts: Vec<(i64, i64, &str)> = Vec::with_capacity(winners.len() + 1);
+            if giveaway.shells > 0 {
+                payouts.extend(winners.iter().map(|w| (sql_id(*w), giveaway.shells, "giveaway_win")));
+            }
+            if refunded > 0 {
+                payouts.push((giveaway.host_id, refunded, "giveaway_refund"));
+            }
+            payouts.sort_by_key(|(user, _, _)| *user);
+            for (user, amount, reason) in payouts {
+                credit(&mut tx, user, amount, reason).await?;
+            }
+            let ids: Vec<i64> = winners.iter().map(|w| sql_id(*w)).collect();
+            sqlx::query("UPDATE giveaways SET status = 'ended', ended_at = $2, winner_ids = $3 WHERE id = $1")
+                .bind(id)
+                .bind(now)
+                .bind(&ids)
+                .execute(&mut *tx)
+                .await?;
+            tx.commit().await?;
+            giveaway.status = ENDED.to_owned();
+            giveaway.ended_at = Some(now);
+            giveaway.winner_ids = ids;
+            return Ok(Some(EndedGiveaway {
+                giveaway,
+                winners,
+                refunded,
+            }));
         }
-        if refunded > 0 {
-            payouts.push((giveaway.host_id, refunded, "giveaway_refund"));
-        }
-        payouts.sort_by_key(|(user, _, _)| *user);
-        for (user, amount, reason) in payouts {
-            credit(&mut tx, user, amount, reason).await?;
-        }
-        let ids: Vec<i64> = winners.iter().map(|w| sql_id(*w)).collect();
-        sqlx::query("UPDATE giveaways SET status = 'ended', ended_at = $2, winner_ids = $3 WHERE id = $1")
-            .bind(id)
-            .bind(now)
-            .bind(&ids)
-            .execute(&mut *tx)
-            .await?;
-        tx.commit().await?;
-        giveaway.status = ENDED.to_owned();
-        giveaway.ended_at = Some(now);
-        giveaway.winner_ids = ids;
-        Ok(Some(EndedGiveaway {
-            giveaway,
-            winners,
-            refunded,
-        }))
+        anyhow::bail!("the entries of giveaway {id} kept changing while it ended")
     }
 
     /// Picks `count` new winners of an ended giveaway from the entrants who have not won yet. No

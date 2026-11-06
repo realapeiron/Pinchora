@@ -5,6 +5,7 @@ edition.workspace = true
 
 [dependencies]
 pinchora-core.workspace = true
+tokio.workspace = true
 anyhow.workspace = true
 chrono.workspace = true
 sqlx.workspace = true

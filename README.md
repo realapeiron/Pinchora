@@ -85,16 +85,26 @@ history of its own.
 
 "Delete my data" leaves a tombstone: a row in `deleted_users` with the player's id and when they last used
 the daily, weekly and monthly rewards and rep, which houses they liked and how many paid visits they made
-today, whether they had played today's daily wordle, and a 45 minute walk lock when they had a pet (its
-cooldown is kept in Redis under the pet's id, which a new pet does not share). A trigger on `users` gives a
-returning player the daily, rep, weekly and monthly times back when their row is created again, so every
-reader of those sees them; the paid-visit and like checks, the wordle payout and the pet walk read the
-tombstone themselves. A guest's paid visits of the day outlive a host who deletes their data (the host's id
-on the visit becomes a number from a sequence that is nobody's). A delete and a claim of the same player never
-overlap: the delete, the trigger that creates a player's row, and every claim of a per-player limit (daily,
-weekly, monthly, rep, likes, paid visits, the wordle and walk reads) take the player's advisory lock first
-(`lock_user(id)`, in id order when two players are involved) and keep it to the end of their transaction, so a
-claim that lands while a delete is still in flight waits for it and then finds the tombstone. Tombstones are
+today, whether they had played today's daily wordle, the day of their last free pet wake-up, and a 45 minute
+walk lock when they had a pet (its cooldown is kept in Redis under the pet's id, which a new pet does not
+share). A trigger on `users` gives a returning player the daily, rep, free wake-up, weekly and monthly times
+back when their row is created again, so every reader of those sees them; the paid-visit and like checks, the
+wordle payout, the free wake-up check and the pet walk read the tombstone themselves. A guest's paid visits of
+the day outlive a host who deletes their data (the host's id on the visit becomes a number from a sequence that
+is nobody's). A delete and a claim of the same player never overlap: the delete, the trigger that creates a
+player's row, and every claim of a per-player limit take the player's advisory lock (`lock_user(id)`) and keep
+it to the end of their transaction, so a claim that lands while a delete is still in flight waits for it and
+then finds the tombstone.
+
+One lock order holds for every transaction that touches a player's rows (written down in
+`crates/pinchora-db/src/locks.rs`): first the locks of all its players at once, in id order (a duel's two
+players, a giveaway's host and winners, a listing's buyer and seller, everyone a delete pays back or takes a
+like from), then the object it is about (session, giveaway, pet, listing, poll), then the writes. Chat XP
+stays one statement that writes `users` first, so the trigger takes the lock before anything else. Postgres
+still breaks any deadlock this misses by rolling one side back; claims, payments and the delete run a
+transaction that lost like that again (up to three times, after a few random milliseconds), which is safe
+because the lost attempt left nothing behind and every claim checks what was already used inside its own
+transaction. Tombstones are
 dropped after 35 days, by the reminder ticker. A test inserts into every table that names a player and one reads
 the schema, so a new table or an id column (`*_by`, id arrays included) must be listed in
 `crates/pinchora-db/src/privacy.rs` before it can ship.

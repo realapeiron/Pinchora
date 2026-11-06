@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 
-use crate::{Db, PlacementRow, sql_id};
+use crate::{Db, PlacementRow, locks::lock_users, sql_id};
 
 /// A room entered in a server's weekly contest, with its votes so far.
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -61,6 +61,7 @@ impl Db {
     ) -> anyhow::Result<u64> {
         let (guild, user) = (sql_id(guild), sql_id(user));
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[user]).await?;
         sqlx::query(
             "INSERT INTO contest_entries (guild_id, week, user_id, owner_name, room_idx, tier, room_type, wallpaper, floor)
              SELECT $1, $2, $3, $4, r.idx, h.tier, r.room_type, r.wallpaper, r.floor
@@ -236,6 +237,9 @@ impl Db {
                 .filter(|(_, votes)| *votes > 0)
                 .take(prizes.len())
                 .collect();
+            // The winners' locks before anything is written (see the `locks` module): the standings
+            // of a week that is over do not move.
+            lock_users(&mut tx, &winners.iter().map(|(user, _)| *user).collect::<Vec<i64>>()).await?;
             let fresh = sqlx::query(
                 "INSERT INTO contest_results (guild_id, week, winner_ids, winner_votes, entries)
                  VALUES ($1, $2, $3, $4, $5) ON CONFLICT (guild_id, week) DO NOTHING",

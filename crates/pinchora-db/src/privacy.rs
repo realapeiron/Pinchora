@@ -2,7 +2,11 @@
 
 use chrono::{DateTime, Duration, NaiveDate, Utc};
 
-use crate::{Db, sql_id};
+use crate::{
+    Db,
+    locks::{lock_users, retry},
+    sql_id,
+};
 
 /// How long a deleted player's id is remembered: past the longest cooldown (a month), so by then
 /// nothing they could have used up is still locked.
@@ -183,17 +187,22 @@ impl Db {
     /// - Likes they gave are taken off the houses they went to.
     ///
     /// And a tombstone is left (see [`Db::walk_locked_until`] and the `deleted_users` migration) so
-    /// that deleting is not a way to get a daily reward, a rep, a wordle reward, paid visits or a
-    /// walk a second time: the player comes back with nothing, but not with fresh cooldowns.
-    ///
-    /// The player's lock (see `lock_users`) is taken first and held to the commit, so a claim of
-    /// theirs that overlaps the delete waits and then finds the tombstone instead of a row with no
+    /// that deleting is not a way to get a daily reward, a rep, a wordle reward, paid visits, a free
+    /// pet wake-up or a walk a second time: the player comes back with nothing, but not with fresh
     /// cooldowns.
+    ///
+    /// The player's lock (see the `locks` module) is taken first and held to the commit, with the
+    /// locks of the players it pays back or takes a like from, so a claim of theirs that overlaps the
+    /// delete waits and then finds the tombstone instead of a row with no cooldowns. A delete that
+    /// loses a deadlock anyway runs again.
     pub async fn delete_user_data(&self, user: u64, now: DateTime<Utc>) -> anyhow::Result<Deleted> {
-        let mut tx = self.pool().begin().await?;
-        let deleted = Self::delete_user_data_in(&mut tx, user, now).await?;
-        tx.commit().await?;
-        Ok(deleted)
+        retry("delete_user_data", || async move {
+            let mut tx = self.pool().begin().await?;
+            let deleted = Self::delete_user_data_in(&mut tx, user, now).await?;
+            tx.commit().await?;
+            Ok(deleted)
+        })
+        .await
     }
 
     /// [`Db::delete_user_data`] up to, but not including, the commit: the caller owns the
@@ -205,7 +214,20 @@ impl Db {
     ) -> anyhow::Result<Deleted> {
         let id = sql_id(user);
         let today = now.date_naive();
-        lock_users(tx, &[id]).await?;
+        // Who else gets written to is read before the locks. Somebody who came in between (a duel
+        // accepted or a like given, both under the player's lock, which lets nobody new in once it
+        // is held) is locked straight after, out of order: a deadlock that causes is run again.
+        let mut locked = others_written(tx, id).await?;
+        locked.push(id);
+        lock_users(tx, &locked).await?;
+        let late: Vec<i64> = others_written(tx, id)
+            .await?
+            .into_iter()
+            .filter(|other| !locked.contains(other))
+            .collect();
+        if !late.is_empty() {
+            lock_users(tx, &late).await?;
+        }
 
         // Their own claims wait for this to finish, and see the tombstone when they go on.
         sqlx::query("SELECT 1 FROM users WHERE id = $1 FOR UPDATE")
@@ -332,20 +354,23 @@ impl Db {
     }
 }
 
-/// Takes the lock of each player in `ids` (the same one `delete_user_data` and the trigger that
-/// creates a player's row take) and keeps it until the transaction ends. Every claim of something
-/// limited per player calls this before it reads what the player has used, and so does a delete
-/// before it writes the tombstone: the two cannot overlap, which is what keeps a claim from
-/// landing between a delete's `DELETE FROM users` and its commit and starting from a row with no
-/// cooldowns. Ids are taken in order, so two transactions that need the same pair cannot deadlock.
-pub(crate) async fn lock_users(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, ids: &[i64]) -> anyhow::Result<()> {
-    let mut ids = ids.to_vec();
-    ids.sort_unstable();
-    ids.dedup();
-    for id in ids {
-        sqlx::query("SELECT lock_user($1)").bind(id).execute(&mut **tx).await?;
-    }
-    Ok(())
+/// The players besides `id` whose rows a delete of `id` writes: the other player of each running
+/// duel with shells in it (who gets their bet back) and the host of each house `id` liked (whose
+/// house loses the like).
+async fn others_written(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, id: i64) -> anyhow::Result<Vec<i64>> {
+    let rows: Vec<(Option<i64>,)> = sqlx::query_as(
+        "SELECT CASE WHEN host_id = $1 THEN guest_id ELSE host_id END FROM game_sessions
+         WHERE status = 'active' AND bet > 0 AND (host_id = $1 OR guest_id = $1)
+         UNION SELECT host_id FROM house_likes WHERE liker_id = $1",
+    )
+    .bind(id)
+    .fetch_all(&mut **tx)
+    .await?;
+    Ok(rows
+        .into_iter()
+        .filter_map(|(other,)| other)
+        .filter(|other| *other != id)
+        .collect())
 }
 
 /// What the player had used up, as it stands in their rows.
@@ -358,6 +383,7 @@ struct Used {
     visits: i64,
     liked: Vec<i64>,
     wordle_day: Option<i32>,
+    pet_wake_day: Option<i32>,
     has_pet: bool,
 }
 
@@ -378,6 +404,7 @@ async fn leave_tombstone(
                 (SELECT count(*) FROM visits WHERE guest_id = $1 AND day = $2) AS visits,
                 COALESCE((SELECT array_agg(host_id) FROM house_likes WHERE liker_id = $1 AND day = $2), '{}'::BIGINT[]) AS liked,
                 (SELECT max(day) FROM wordle_games WHERE user_id = $1 AND mode = 'daily') AS wordle_day,
+                (SELECT pet_wake_day FROM users WHERE id = $1) AS pet_wake_day,
                 EXISTS (SELECT 1 FROM pets WHERE owner_id = $1) AS has_pet",
     )
     .bind(id)
@@ -391,14 +418,16 @@ async fn leave_tombstone(
         && used.visits == 0
         && used.liked.is_empty()
         && used.wordle_day.is_none()
+        && used.pet_wake_day.is_none()
         && !used.has_pet
     {
         return Ok(());
     }
     sqlx::query(
         "INSERT INTO deleted_users
-             (user_id, deleted_at, last_daily_at, last_rep_at, weekly_at, monthly_at, day, visits, liked, wordle_day, walk_until)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+             (user_id, deleted_at, last_daily_at, last_rep_at, weekly_at, monthly_at, day, visits, liked, wordle_day,
+              walk_until, pet_wake_day)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
          ON CONFLICT (user_id) DO UPDATE SET
              deleted_at = EXCLUDED.deleted_at,
              last_daily_at = GREATEST(deleted_users.last_daily_at, EXCLUDED.last_daily_at),
@@ -412,7 +441,8 @@ async fn leave_tombstone(
                           ELSE EXCLUDED.liked END,
              day = EXCLUDED.day,
              wordle_day = GREATEST(deleted_users.wordle_day, EXCLUDED.wordle_day),
-             walk_until = GREATEST(deleted_users.walk_until, EXCLUDED.walk_until)",
+             walk_until = GREATEST(deleted_users.walk_until, EXCLUDED.walk_until),
+             pet_wake_day = GREATEST(deleted_users.pet_wake_day, EXCLUDED.pet_wake_day)",
     )
     .bind(id)
     .bind(now)
@@ -425,6 +455,7 @@ async fn leave_tombstone(
     .bind(&used.liked)
     .bind(used.wordle_day)
     .bind(used.has_pet.then_some(now + WALK_LOCK))
+    .bind(used.pet_wake_day)
     .execute(&mut **tx)
     .await?;
     Ok(())

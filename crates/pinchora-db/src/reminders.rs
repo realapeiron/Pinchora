@@ -2,7 +2,7 @@
 
 use chrono::{DateTime, Utc};
 
-use crate::{Db, sql_id};
+use crate::{Db, locks::lock_users, sql_id};
 
 /// Open reminders of the kind a player writes themselves.
 pub const MAX_TEXT_REMINDERS: i64 = 25;
@@ -59,6 +59,7 @@ impl Db {
                 .await?;
         } else {
             let mut tx = self.pool().begin().await?;
+            lock_users(&mut tx, &[id]).await?;
             sqlx::query("DELETE FROM reminder_optins WHERE user_id = $1 AND kind = $2")
                 .bind(id)
                 .bind(kind)
@@ -78,11 +79,8 @@ impl Db {
     pub async fn add_text_reminder(&self, user: u64, body: &str, due_at: DateTime<Utc>) -> anyhow::Result<Option<i64>> {
         let id = sql_id(user);
         let mut tx = self.pool().begin().await?;
-        // Two reminders added at once count each other.
-        sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended('reminders:' || $1::text, 0))")
-            .bind(id)
-            .execute(&mut *tx)
-            .await?;
+        // Two reminders added at once count each other: the player's lock makes them take turns.
+        lock_users(&mut tx, &[id]).await?;
         let (open,): (i64,) = sqlx::query_as("SELECT count(*) FROM reminders WHERE user_id = $1 AND kind = $2")
             .bind(id)
             .bind(TEXT)

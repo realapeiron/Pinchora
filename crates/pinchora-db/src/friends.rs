@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 
-use crate::{Db, sql_id};
+use crate::{Db, locks::lock_users, sql_id};
 
 /// Friends a player can have.
 pub const MAX_FRIENDS: i64 = 100;
@@ -61,13 +61,8 @@ impl Db {
         anyhow::ensure!(a != b, "nobody befriends themselves");
         let (low, high) = (sql_id(a.min(b)), sql_id(a.max(b)));
         let mut tx = self.pool().begin().await?;
-        // Other pairings of either player wait here, smaller id first so they cannot deadlock.
-        for id in [low, high] {
-            sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended('friends:' || $1::text, 0))")
-                .bind(id)
-                .execute(&mut *tx)
-                .await?;
-        }
+        // Other pairings of either player wait here: the players' locks, taken in id order.
+        lock_users(&mut tx, &[low, high]).await?;
         let (already,): (bool,) =
             sqlx::query_as("SELECT EXISTS (SELECT 1 FROM friends WHERE user_id = $1 AND friend_id = $2)")
                 .bind(sql_id(a))

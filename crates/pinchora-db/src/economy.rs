@@ -1,7 +1,11 @@
 use chrono::{DateTime, Utc};
 use pinchora_core::economy::{DAILY_COOLDOWN, REP_COOLDOWN, daily_reward, next_streak};
 
-use crate::{Db, privacy::lock_users, sql_id};
+use crate::{
+    Db,
+    locks::{lock_users, retry},
+    sql_id,
+};
 
 #[derive(Debug, Clone, Copy)]
 pub enum DailyOutcome {
@@ -23,6 +27,11 @@ pub enum RepOutcome {
 
 impl Db {
     pub async fn claim_daily(&self, user_id: u64) -> anyhow::Result<DailyOutcome> {
+        retry("claim_daily", || self.claim_daily_once(user_id)).await
+    }
+
+    /// One attempt of [`Db::claim_daily`].
+    async fn claim_daily_once(&self, user_id: u64) -> anyhow::Result<DailyOutcome> {
         let id = sql_id(user_id);
         let mut tx = self.pool().begin().await?;
         lock_users(&mut tx, &[id]).await?;
@@ -68,6 +77,11 @@ impl Db {
 
     pub async fn transfer_credits(&self, from: u64, to: u64, amount: i64) -> anyhow::Result<TransferOutcome> {
         anyhow::ensure!(amount > 0 && from != to, "invalid transfer");
+        retry("transfer_credits", || self.transfer_credits_once(from, to, amount)).await
+    }
+
+    /// One attempt of [`Db::transfer_credits`].
+    async fn transfer_credits_once(&self, from: u64, to: u64, amount: i64) -> anyhow::Result<TransferOutcome> {
         let (from, to) = (sql_id(from), sql_id(to));
         let mut tx = self.pool().begin().await?;
         lock_users(&mut tx, &[from, to]).await?;
@@ -106,6 +120,11 @@ impl Db {
 
     pub async fn give_rep(&self, from: u64, to: u64) -> anyhow::Result<RepOutcome> {
         anyhow::ensure!(from != to, "cannot rep yourself");
+        retry("give_rep", || self.give_rep_once(from, to)).await
+    }
+
+    /// One attempt of [`Db::give_rep`].
+    async fn give_rep_once(&self, from: u64, to: u64) -> anyhow::Result<RepOutcome> {
         let (from, to) = (sql_id(from), sql_id(to));
         let mut tx = self.pool().begin().await?;
         lock_users(&mut tx, &[from, to]).await?;

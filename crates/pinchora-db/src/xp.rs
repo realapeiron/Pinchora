@@ -3,7 +3,11 @@
 use chrono::NaiveDate;
 use pinchora_core::leveling::XpRules;
 
-use crate::{Db, LeaderboardRow, XpGain, sql_id};
+use crate::{
+    Db, LeaderboardRow, XpGain,
+    locks::{lock_users, retry},
+    sql_id,
+};
 
 /// Most multiplier rules a server can set up, channels and roles together.
 pub const MAX_XP_RULES: i64 = 50;
@@ -96,8 +100,8 @@ impl Db {
     }
 
     /// Adds one minute of voice XP to every member in `grants` (user, server XP), in a single
-    /// statement, and counts it toward the week. Each user may appear once. Returns every member's
-    /// XP before and after, to spot level-ups.
+    /// statement after their locks (see the `locks` module), and counts it toward the week. Each
+    /// user may appear once. Returns every member's XP before and after, to spot level-ups.
     pub async fn add_voice_xp(
         &self,
         guild_id: u64,
@@ -109,6 +113,34 @@ impl Db {
         }
         let users: Vec<i64> = grants.iter().map(|(user, _)| sql_id(*user)).collect();
         let amounts: Vec<i64> = grants.iter().map(|(_, xp)| *xp).collect();
+        let rows = retry("add_voice_xp", || {
+            self.add_voice_xp_once(guild_id, &users, &amounts, week)
+        })
+        .await?;
+        Ok(rows
+            .into_iter()
+            .map(|(user, new_xp, amount)| {
+                (
+                    user as u64,
+                    XpGain {
+                        old_xp: new_xp - amount,
+                        new_xp,
+                    },
+                )
+            })
+            .collect())
+    }
+
+    /// One attempt of [`Db::add_voice_xp`]: (user, XP now, XP added) per member.
+    async fn add_voice_xp_once(
+        &self,
+        guild_id: u64,
+        users: &[i64],
+        amounts: &[i64],
+        week: NaiveDate,
+    ) -> anyhow::Result<Vec<(i64, i64, i64)>> {
+        let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, users).await?;
         let rows: Vec<(i64, i64, i64)> = sqlx::query_as(
             "WITH g AS (
                  SELECT * FROM UNNEST($2::BIGINT[], $3::BIGINT[]) AS t(user_id, amount) WHERE amount > 0
@@ -133,20 +165,10 @@ impl Db {
         .bind(users)
         .bind(amounts)
         .bind(week)
-        .fetch_all(self.pool())
+        .fetch_all(&mut *tx)
         .await?;
-        Ok(rows
-            .into_iter()
-            .map(|(user, new_xp, amount)| {
-                (
-                    user as u64,
-                    XpGain {
-                        old_xp: new_xp - amount,
-                        new_xp,
-                    },
-                )
-            })
-            .collect())
+        tx.commit().await?;
+        Ok(rows)
     }
 
     /// The server's weekly XP board for the week starting `week`, with the XP as `value`.

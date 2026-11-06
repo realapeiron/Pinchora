@@ -4,7 +4,11 @@
 use chrono::{DateTime, Utc};
 use pinchora_core::economy::Period;
 
-use crate::{Db, privacy::lock_users, sql_id};
+use crate::{
+    Db,
+    locks::{lock_users, retry},
+    sql_id,
+};
 
 /// What a claim of a [`Period`] reward came to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -22,6 +26,11 @@ impl Db {
     /// Pays the reward of `period` unless it was collected less than a cooldown before `now`.
     /// The player's row is locked while the claim is worked out, so two claims at once pay once.
     pub async fn claim_period(&self, user: u64, period: Period, now: DateTime<Utc>) -> anyhow::Result<PeriodOutcome> {
+        retry("claim_period", || self.claim_period_once(user, period, now)).await
+    }
+
+    /// One attempt of [`Db::claim_period`].
+    async fn claim_period_once(&self, user: u64, period: Period, now: DateTime<Utc>) -> anyhow::Result<PeriodOutcome> {
         let id = sql_id(user);
         let mut tx = self.pool().begin().await?;
         lock_users(&mut tx, &[id]).await?;

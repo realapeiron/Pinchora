@@ -1,6 +1,6 @@
 use chrono::{DateTime, NaiveDate, Utc};
 
-use crate::{Db, sql_id};
+use crate::{Db, locks::lock_users, sql_id};
 
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct NoteRow {
@@ -163,6 +163,7 @@ impl Db {
     pub async fn block_signer(&self, host: u64, signer: u64, name: &str) -> anyhow::Result<u64> {
         let (host, signer) = (sql_id(host), sql_id(signer));
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[host, signer]).await?;
         sqlx::query(
             "INSERT INTO guestbook_blocks (host_id, blocked_id, blocked_name) VALUES ($1, $2, $3)
              ON CONFLICT (host_id, blocked_id) DO NOTHING",

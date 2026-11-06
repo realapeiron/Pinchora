@@ -3,6 +3,7 @@ use pinchora_core::{economy::DAILY_STREAK_WINDOW, leveling};
 
 use crate::{
     Db,
+    locks::{lock_users, retry},
     shop::{Currency, balance_of, charge},
     sql_id,
 };
@@ -105,6 +106,7 @@ impl Db {
     /// nothing: those badges are old news.
     pub async fn claim_badge_notices(&self, user: u64, earned: &[String]) -> anyhow::Result<Vec<String>> {
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(user)]).await?;
         // A player may have things to announce before they have a row (a first pet needs none).
         sqlx::query("INSERT INTO users (id) VALUES ($1) ON CONFLICT (id) DO NOTHING")
             .bind(sql_id(user))
@@ -197,8 +199,24 @@ impl Db {
         reason: &str,
     ) -> anyhow::Result<CustomizeBuy> {
         anyhow::ensure!(price > 0, "a purchase needs a price");
+        retry("buy_cosmetic", || {
+            self.buy_cosmetic_once(insert, user, id, price, reason)
+        })
+        .await
+    }
+
+    /// One attempt of [`Db::buy_cosmetic`].
+    async fn buy_cosmetic_once(
+        &self,
+        insert: &'static str,
+        user: u64,
+        id: &str,
+        price: i64,
+        reason: &str,
+    ) -> anyhow::Result<CustomizeBuy> {
         let user = sql_id(user);
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[user]).await?;
         sqlx::query("INSERT INTO users (id) VALUES ($1) ON CONFLICT (id) DO NOTHING")
             .bind(user)
             .execute(&mut *tx)
