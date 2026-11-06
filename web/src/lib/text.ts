@@ -94,6 +94,8 @@ const ACTIONS: Record<string, string> = {
   "store.delete": "took a role off sale",
   "suggestions.set": "changed the suggestion channel",
   "critters.set": "changed critter drops",
+  "moderation.set": "changed the moderation settings",
+  "logs.set": "changed the server log",
 };
 
 const MODES: Record<string, string> = {

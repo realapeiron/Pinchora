@@ -1731,3 +1731,165 @@ input[type="number"].pixel-input {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+/* /Moderation */
+
+.mod-page .panel-body > .field + .setting-row,
+.mod-page .panel-body > .field + .field,
+.mod-page .panel-body > .setting-row + .field {
+  margin-top: 20px;
+}
+
+.ladder-row .pixel-select {
+  flex: 1;
+  min-width: 0;
+  max-width: 220px;
+}
+
+.ladder-add {
+  display: flex;
+  gap: 8px;
+}
+.ladder-add .pixel-select {
+  flex: 1;
+  min-width: 0;
+}
+
+.log-matrix {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px;
+}
+.log-matrix.is-muted {
+  opacity: 0.55;
+}
+
+.log-category {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 14px;
+  background: #10173a;
+  box-shadow: inset 0 0 0 2px #232e5c;
+}
+
+.log-category-head {
+  display: grid;
+  gap: 8px;
+}
+
+.log-events {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.log-event {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 36px;
+}
+
+.log-event-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 14px;
+}
+
+.ignore-add {
+  display: grid;
+  grid-template-columns: minmax(0, 360px) auto;
+  gap: 10px;
+  align-items: center;
+  justify-content: start;
+}
+
+.ignore-chips {
+  margin-top: 10px;
+}
+
+.ignore-empty {
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: start;
+}
+
+.filters-switch {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
+.case-number {
+  flex: none;
+  min-width: 52px;
+  color: var(--muted);
+}
+.case-number.is-danger {
+  color: var(--heart);
+}
+.case-number.is-warn {
+  color: var(--gold);
+}
+.case-number.is-good {
+  color: var(--mint);
+}
+
+.case-reason {
+  overflow-wrap: anywhere;
+}
+
+.case-detail {
+  display: grid;
+  gap: 12px;
+  padding: 0 4px 14px;
+}
+
+.reason-editor {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+.reason-editor .field {
+  width: 100%;
+}
+
+.case-history .list {
+  margin-top: 6px;
+}
+
+.staff-command {
+  background: var(--accent);
+}
+.staff-web {
+  background: var(--gold);
+}
+.staff-discord {
+  background: var(--mint);
+}
+
+@media (max-width: 767px) {
+  .log-matrix {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .filters,
+  .ignore-add {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ladder-row .pixel-select {
+    max-width: none;
+  }
+}

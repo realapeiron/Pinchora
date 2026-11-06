@@ -1,11 +1,13 @@
 import { Navigate, createBrowserRouter } from "react-router";
 
 import { AuditLog } from "./pages/AuditLog";
+import { Cases } from "./pages/Cases";
 import { Community } from "./pages/Community";
 import { GuildLayout } from "./pages/GuildLayout";
 import { MyHouse, VisitHouse } from "./pages/House";
 import { Leveling } from "./pages/Leveling";
 import { Login } from "./pages/Login";
+import { Moderation } from "./pages/Moderation";
 import { Modules } from "./pages/Modules";
 import { NotFound } from "./pages/NotFound";
 import { Overview } from "./pages/Overview";
@@ -13,6 +15,7 @@ import { Points } from "./pages/Points";
 import { RequireLogin } from "./pages/RequireLogin";
 import { ServerLog } from "./pages/ServerLog";
 import { Servers } from "./pages/Servers";
+import { StaffLog } from "./pages/StaffLog";
 import { Welcome } from "./pages/Welcome";
 
 // Admin pages live under /g/:guildId, one per sidebar entry (GuildLayout's NAV).
@@ -33,6 +36,9 @@ export const router = createBrowserRouter([
       { path: "points", element: <Points /> },
       { path: "log", element: <ServerLog /> },
       { path: "community", element: <Community /> },
+      { path: "moderation", element: <Moderation /> },
+      { path: "cases", element: <Cases /> },
+      { path: "staff-log", element: <StaffLog /> },
       { path: "audit", element: <AuditLog /> },
       { path: "*", element: <NotFound /> },
     ],

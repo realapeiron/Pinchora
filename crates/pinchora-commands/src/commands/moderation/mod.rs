@@ -421,8 +421,8 @@ pub(crate) async fn post_case(app: &App, guild: u64, case: &CaseRow) {
     }
 }
 
-/// Brings a case's mod-log post up to date (a new reason).
-pub(crate) async fn refresh_post(app: &App, case: &CaseRow) {
+/// Brings a case's mod-log post up to date (a new reason, from `/reason` or the dashboard).
+pub async fn refresh_post(app: &App, case: &CaseRow) {
     let (Some(channel), Some(message)) = (case.log_channel_id, case.log_message_id) else {
         return;
     };

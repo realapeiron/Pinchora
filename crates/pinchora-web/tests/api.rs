@@ -2941,3 +2941,194 @@ async fn points_that_race_each_other_never_leave_the_least_above_the_most() {
             .await;
     }
 }
+
+/// The moderation pages: the mod-log and the warn ladder, the server log's matrix, the cases with a
+/// new reason, and the staff log that reads commands, Discord and the dashboard together.
+#[tokio::test]
+async fn moderation_logs_cases_and_the_staff_log_follow_the_command_rules() {
+    use pinchora_core::moderation::CaseKind;
+    let Some(h) = Harness::new("moderation").await else {
+        return;
+    };
+    let (guild, owner, mut browser) = h.managed_server().await;
+    let g = format!("/api/guilds/{guild}");
+
+    // Moderation settings: a text channel, the ladder checked like the command checks it.
+    let start = browser.get(&format!("{g}/moderation")).await.json();
+    assert_eq!(start["dm_members"], true);
+    assert_eq!(start["ladder"], json!([]));
+    let saved = browser
+        .write(
+            Method::PUT,
+            &format!("{g}/moderation"),
+            json!({
+                "log_channel_id": GENERAL.to_string(),
+                "dm_members": false,
+                "ladder": [
+                    { "warns": 5, "action": "kick" },
+                    { "warns": 3, "action": "timeout", "duration": "1h" },
+                ],
+            }),
+        )
+        .await;
+    assert_eq!(saved.status, StatusCode::OK, "{}", saved.text());
+    let saved = saved.json();
+    assert_eq!(saved["log_channel_id"], GENERAL.to_string());
+    assert_eq!(saved["ladder"][0]["label"], "3 warns → 1h timeout");
+    assert_eq!(saved["ladder"][1]["label"], "5 warns → kick");
+    assert_eq!(h.state.app.db.warn_thresholds(guild).await.unwrap().len(), 2);
+    for bad in [
+        json!({ "log_channel_id": LOUNGE.to_string() }),
+        json!({ "ladder": [{ "warns": 3, "action": "timeout" }] }),
+        json!({ "ladder": [{ "warns": 3, "action": "kick" }, { "warns": 3, "action": "ban" }] }),
+    ] {
+        let refused = browser
+            .write(Method::PUT, &format!("{g}/moderation"), bad.clone())
+            .await;
+        assert_eq!(
+            refused.status,
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "{bad}: {}",
+            refused.text()
+        );
+    }
+    let unknown = browser
+        .write(Method::PUT, &format!("{g}/moderation"), json!({ "colour": 1 }))
+        .await;
+    assert_eq!(unknown.status, StatusCode::BAD_REQUEST);
+
+    // The server log: a channel per category, single events, the ignore lists.
+    let logs = browser.get(&format!("{g}/logs")).await.json();
+    assert_eq!(logs["categories"].as_array().unwrap().len(), 9);
+    let saved = browser
+        .write(
+            Method::PUT,
+            &format!("{g}/logs"),
+            json!({
+                "channel_id": GENERAL.to_string(),
+                "category_channels": { "moderation": NEWS.to_string() },
+                "events": { "message_edit": false, "voice_self": true },
+                "ignored_channels": [CATEGORY.to_string()],
+                "ignored_roles": [FAN.to_string()],
+                "ignored_users": [owner.to_string()],
+                "ignore_bots": true,
+            }),
+        )
+        .await;
+    assert_eq!(saved.status, StatusCode::OK, "{}", saved.text());
+    let config = h.state.app.db.log_config(guild).await.unwrap();
+    use pinchora_core::logging::{LogCategory, LogEvent};
+    assert_eq!(config.default_channel, Some(GENERAL));
+    assert_eq!(config.channels.get(&LogCategory::Moderation), Some(&NEWS));
+    assert!(!config.enabled(LogEvent::MessageEdit) && config.enabled(LogEvent::VoiceSelf));
+    assert_eq!(
+        (config.ignored_channels.clone(), config.ignored_roles.clone()),
+        (vec![CATEGORY], vec![FAN])
+    );
+    assert!(config.ignore_bots);
+    assert_eq!(
+        h.state.app.db.guild_settings(guild).await.unwrap().log_channel_id,
+        Some(GENERAL as i64),
+        "the same log channel the settings page shows"
+    );
+    for bad in [
+        json!({ "events": { "nope": true } }),
+        json!({ "category_channels": { "moderation": LOUNGE.to_string() } }),
+        json!({ "ignored_roles": ["123"] }),
+        json!({ "ignored_users": (1..=51).map(|n| n.to_string()).collect::<Vec<_>>() }),
+    ] {
+        let refused = browser.write(Method::PUT, &format!("{g}/logs"), bad.clone()).await;
+        assert_eq!(
+            refused.status,
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "{bad}: {}",
+            refused.text()
+        );
+    }
+    let back = browser
+        .write(
+            Method::PUT,
+            &format!("{g}/logs"),
+            json!({ "category_channels": { "moderation": null }, "events": { "message_edit": true } }),
+        )
+        .await
+        .json();
+    assert_eq!(back["categories"][5]["key"], "moderation");
+    assert_eq!(back["categories"][5]["channel_id"], Value::Null);
+
+    // Cases: found by member and words, a new reason, the member's other cases.
+    let db = &h.state.app.db;
+    let target = unique();
+    for (kind, reason) in [(CaseKind::Warn, "spam"), (CaseKind::Ban, "raid")] {
+        db.open_case(&pinchora_db::NewCase {
+            guild,
+            kind,
+            target,
+            target_name: "Mia",
+            moderator: 9,
+            moderator_name: "Mod",
+            reason: Some(reason),
+            duration: None,
+            expires_at: None,
+            details: None,
+        })
+        .await
+        .unwrap();
+    }
+    let list = browser.get(&format!("{g}/cases")).await.json();
+    assert_eq!(list["items"].as_array().unwrap().len(), 2);
+    assert_eq!(list["items"][0]["label"], "Ban");
+    let found = browser
+        .get(&format!("{g}/cases?q=spam&kind=warn&member={target}"))
+        .await
+        .json();
+    assert_eq!(found["items"].as_array().unwrap().len(), 1);
+    let bad_kind = browser.get(&format!("{g}/cases?kind=mute")).await;
+    assert_eq!(bad_kind.status, StatusCode::BAD_REQUEST);
+    let detail = browser.get(&format!("{g}/cases/2")).await.json();
+    assert_eq!(detail["case"]["reason"], "raid");
+    assert_eq!(detail["history"].as_array().unwrap().len(), 1, "the warn");
+    assert_eq!(
+        browser.get(&format!("{g}/cases/99")).await.status,
+        StatusCode::NOT_FOUND
+    );
+    let edited = browser
+        .write(
+            Method::PATCH,
+            &format!("{g}/cases/2"),
+            json!({ "reason": "raid with alts" }),
+        )
+        .await;
+    assert_eq!(edited.json()["reason"], "raid with alts");
+    let long = browser
+        .write(
+            Method::PATCH,
+            &format!("{g}/cases/2"),
+            json!({ "reason": "x".repeat(513) }),
+        )
+        .await;
+    assert_eq!(long.status, StatusCode::UNPROCESSABLE_ENTITY);
+
+    // The staff log: the commands' cases, the new reason from here, and the dashboard's own changes.
+    let staff = browser.get(&format!("{g}/staff-log")).await.json();
+    let sources: Vec<&str> = staff["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|i| i["source"].as_str().unwrap())
+        .collect();
+    assert!(sources.contains(&"command") && sources.contains(&"web"), "{sources:?}");
+    let reasons = browser.get(&format!("{g}/staff-log?q=alts")).await.json();
+    assert_eq!(reasons["items"][0]["action"], "reason");
+    assert_eq!(reasons["items"][0]["actor_id"], owner.to_string());
+    let bad_source = browser.get(&format!("{g}/staff-log?source=mail")).await;
+    assert_eq!(bad_source.status, StatusCode::BAD_REQUEST);
+    let actions: Vec<String> = db
+        .audit_page(guild, None, 10)
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|r| r.action)
+        .collect();
+    assert_eq!(actions, ["logs.set", "logs.set", "moderation.set"]);
+}

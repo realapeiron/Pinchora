@@ -30,11 +30,17 @@ export const NAV: { group: string; pages: { to: string; label: string }[] }[] = 
     ],
   },
   {
-    group: "TOOLS",
+    group: "MODERATION",
     pages: [
+      { to: "moderation", label: "Moderation" },
+      { to: "cases", label: "Cases" },
       { to: "log", label: "Server log" },
-      { to: "community", label: "Community" },
+      { to: "staff-log", label: "Staff log" },
     ],
+  },
+  {
+    group: "TOOLS",
+    pages: [{ to: "community", label: "Community" }],
   },
 ];
 

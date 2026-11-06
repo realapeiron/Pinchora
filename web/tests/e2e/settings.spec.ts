@@ -39,6 +39,9 @@ const PAGES = [
   { path: "/leveling", name: "leveling", heading: "LEVELING" },
   { path: "/points", name: "points", heading: "POINTS" },
   { path: "/log", name: "server-log", heading: "SERVER LOG" },
+  { path: "/moderation", name: "moderation", heading: "MODERATION" },
+  { path: "/cases", name: "cases", heading: "CASES" },
+  { path: "/staff-log", name: "staff-log", heading: "STAFF LOG" },
   { path: "/community", name: "community", heading: "COMMUNITY" },
   { path: "/audit", name: "audit-log", heading: "AUDIT LOG" },
 ];
