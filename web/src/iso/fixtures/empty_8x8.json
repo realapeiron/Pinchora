@@ -1,0 +1,27 @@
+{
+  "character_sprites": {},
+  "hash": "035ca4a8",
+  "name": "empty_8x8",
+  "options": {
+    "cursor": null,
+    "edit": false,
+    "selected": null
+  },
+  "png": "empty_8x8.png",
+  "room": {
+    "characters": [],
+    "depth": 8,
+    "floor": "sandsettle_boards",
+    "idx": 0,
+    "pets": [],
+    "placements": [],
+    "room_type": "living",
+    "seed": 0,
+    "wallpaper": "creamcalm_plaster",
+    "width": 8
+  },
+  "size": [
+    540,
+    399
+  ]
+}

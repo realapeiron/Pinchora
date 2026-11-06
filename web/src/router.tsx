@@ -3,6 +3,7 @@ import { Navigate, createBrowserRouter } from "react-router";
 import { AuditLog } from "./pages/AuditLog";
 import { Community } from "./pages/Community";
 import { GuildLayout } from "./pages/GuildLayout";
+import { MyHouse, VisitHouse } from "./pages/House";
 import { Leveling } from "./pages/Leveling";
 import { Login } from "./pages/Login";
 import { Modules } from "./pages/Modules";
@@ -19,6 +20,8 @@ export const router = createBrowserRouter([
   { path: "/", element: <Navigate to="/servers" replace /> },
   { path: "/login", element: <Login /> },
   { path: "/servers", element: <RequireLogin>{(me) => <Servers me={me} />}</RequireLogin> },
+  { path: "/me/house", element: <RequireLogin>{(me) => <MyHouse me={me} />}</RequireLogin> },
+  { path: "/house/:userId", element: <RequireLogin>{(me) => <VisitHouse me={me} />}</RequireLogin> },
   {
     path: "/g/:guildId",
     element: <RequireLogin>{(me) => <GuildLayout me={me} />}</RequireLogin>,

@@ -1,0 +1,551 @@
+{
+  "character_sprites": {
+    "tidewalker.1.4.3.2.0.0": "crowded_14x12.character0.png",
+    "tidewalker.4.1.0.2.0.0": "crowded_14x12.character1.png"
+  },
+  "hash": "9f238e4f",
+  "name": "crowded_14x12",
+  "options": {
+    "cursor": null,
+    "edit": false,
+    "selected": null
+  },
+  "png": "crowded_14x12.png",
+  "room": {
+    "characters": [
+      "tidewalker.1.4.3.2.0.0",
+      "tidewalker.4.1.0.2.0.0"
+    ],
+    "depth": 12,
+    "floor": "fizzfern_specimen_tile",
+    "idx": 0,
+    "pets": [
+      {
+        "asleep": false,
+        "species": "noodlenose_seahorse"
+      },
+      {
+        "asleep": false,
+        "species": "coppercup_fiddler"
+      },
+      {
+        "asleep": true,
+        "species": "acornpocket_squirrel"
+      }
+    ],
+    "placements": [
+      {
+        "flipped": false,
+        "id": "1",
+        "item_id": "stillpanel_wardrobe__charcoal",
+        "x": 8,
+        "y": 4
+      },
+      {
+        "flipped": false,
+        "id": "2",
+        "item_id": "frostweave_rocker__coral",
+        "x": 8,
+        "y": 2
+      },
+      {
+        "flipped": true,
+        "id": "3",
+        "item_id": "fizzproof_counter__lilac",
+        "x": 12,
+        "y": 3
+      },
+      {
+        "flipped": true,
+        "id": "4",
+        "item_id": "reedflare_tripod_lamp__moss",
+        "x": 1,
+        "y": 6
+      },
+      {
+        "flipped": true,
+        "id": "5",
+        "item_id": "humskein_mix_desk__cream",
+        "x": 5,
+        "y": 2
+      },
+      {
+        "flipped": true,
+        "id": "6",
+        "item_id": "clickspan_desk__charcoal",
+        "x": 4,
+        "y": 9
+      },
+      {
+        "flipped": false,
+        "id": "7",
+        "item_id": "wishcitrus_tree__coral",
+        "x": 6,
+        "y": 9
+      },
+      {
+        "flipped": true,
+        "id": "8",
+        "item_id": "wishfeast_counter__coral",
+        "x": 4,
+        "y": 3
+      },
+      {
+        "flipped": true,
+        "id": "9",
+        "item_id": "pagecurl_chaise__cream",
+        "x": 11,
+        "y": 5
+      },
+      {
+        "flipped": false,
+        "id": "10",
+        "item_id": "hemloop_chair",
+        "x": 4,
+        "y": 0
+      },
+      {
+        "flipped": false,
+        "id": "11",
+        "item_id": "plasterpurl_half_wall",
+        "x": 10,
+        "y": 8
+      },
+      {
+        "flipped": false,
+        "id": "12",
+        "item_id": "barbellbloom_rack",
+        "x": 1,
+        "y": 9
+      },
+      {
+        "flipped": false,
+        "id": "13",
+        "item_id": "mosshem_pouf__sand",
+        "x": 3,
+        "y": 1
+      },
+      {
+        "flipped": false,
+        "id": "14",
+        "item_id": "ringripple_toss",
+        "x": 10,
+        "y": 10
+      },
+      {
+        "flipped": false,
+        "id": "15",
+        "item_id": "dewkite_bundle__moss",
+        "x": 11,
+        "y": 1
+      },
+      {
+        "flipped": true,
+        "id": "16",
+        "item_id": "sipspool_bar_stool__cream",
+        "x": 5,
+        "y": 11
+      },
+      {
+        "flipped": true,
+        "id": "17",
+        "item_id": "pageledge_table__navy",
+        "x": 8,
+        "y": 0
+      },
+      {
+        "flipped": true,
+        "id": "18",
+        "item_id": "anchorpurl_capstan",
+        "x": 9,
+        "y": 8
+      },
+      {
+        "flipped": true,
+        "id": "19",
+        "item_id": "dunecup_table__gold",
+        "x": 3,
+        "y": 7
+      },
+      {
+        "flipped": true,
+        "id": "20",
+        "item_id": "fizzpaw_care_station__mint",
+        "x": 1,
+        "y": 10
+      },
+      {
+        "flipped": true,
+        "id": "21",
+        "item_id": "stillwarm_stove__sand",
+        "x": 10,
+        "y": 1
+      },
+      {
+        "flipped": false,
+        "id": "22",
+        "item_id": "chartcoil_captain_desk",
+        "x": 5,
+        "y": 6
+      },
+      {
+        "flipped": true,
+        "id": "23",
+        "item_id": "rivetend_table__navy",
+        "x": 10,
+        "y": 0
+      },
+      {
+        "flipped": false,
+        "id": "24",
+        "item_id": "wishcitrus_tree__rose",
+        "x": 0,
+        "y": 3
+      },
+      {
+        "flipped": true,
+        "id": "25",
+        "item_id": "duneplait_stool__coral",
+        "x": 11,
+        "y": 10
+      },
+      {
+        "flipped": true,
+        "id": "26",
+        "item_id": "foldfern_cot__navy",
+        "x": 0,
+        "y": 2
+      },
+      {
+        "flipped": false,
+        "id": "27",
+        "item_id": "quayfold_locker__coral",
+        "x": 8,
+        "y": 8
+      },
+      {
+        "flipped": true,
+        "id": "28",
+        "item_id": "mossbasket_chest__cream",
+        "x": 0,
+        "y": 7
+      },
+      {
+        "flipped": false,
+        "id": "29",
+        "item_id": "dewstrap_trunk__navy",
+        "x": 11,
+        "y": 0
+      },
+      {
+        "flipped": false,
+        "id": "30",
+        "item_id": "hushpurl_pouf",
+        "x": 0,
+        "y": 9
+      },
+      {
+        "flipped": true,
+        "id": "31",
+        "item_id": "reedroll_scratch_post__moss",
+        "x": 7,
+        "y": 3
+      },
+      {
+        "flipped": true,
+        "id": "32",
+        "item_id": "flutebud_column__coral",
+        "x": 7,
+        "y": 5
+      },
+      {
+        "flipped": false,
+        "id": "33",
+        "item_id": "sipspool_bar_stool__gold",
+        "x": 5,
+        "y": 5
+      },
+      {
+        "flipped": true,
+        "id": "34",
+        "item_id": "dunepot_hamper__sand",
+        "x": 9,
+        "y": 7
+      },
+      {
+        "flipped": true,
+        "id": "35",
+        "item_id": "spoolshoe_rack__cream",
+        "x": 7,
+        "y": 0
+      },
+      {
+        "flipped": true,
+        "id": "36",
+        "item_id": "fizzchill_cabinet__mint",
+        "x": 12,
+        "y": 10
+      },
+      {
+        "flipped": true,
+        "id": "37",
+        "item_id": "hushknit_scarecrow__lilac",
+        "x": 3,
+        "y": 10
+      },
+      {
+        "flipped": false,
+        "id": "38",
+        "item_id": "boltleaf_planter__navy",
+        "x": 3,
+        "y": 0
+      },
+      {
+        "flipped": true,
+        "id": "39",
+        "item_id": "plainwhorl_chair__sand",
+        "x": 6,
+        "y": 8
+      },
+      {
+        "flipped": false,
+        "id": "40",
+        "item_id": "dunemarrow_armoire__sand",
+        "x": 2,
+        "y": 5
+      },
+      {
+        "flipped": true,
+        "id": "41",
+        "item_id": "canvasquill_divider__mint",
+        "x": 7,
+        "y": 6
+      },
+      {
+        "flipped": false,
+        "id": "42",
+        "item_id": "pebblepad_table__cream",
+        "x": 10,
+        "y": 3
+      },
+      {
+        "flipped": false,
+        "id": "43",
+        "item_id": "stillstem_rubber_tree__charcoal",
+        "x": 3,
+        "y": 2
+      },
+      {
+        "flipped": false,
+        "id": "44",
+        "item_id": "keelguard_figurehead__lilac",
+        "x": 13,
+        "y": 8
+      },
+      {
+        "flipped": true,
+        "id": "45",
+        "item_id": "starpetal_telescope",
+        "x": 11,
+        "y": 9
+      },
+      {
+        "flipped": false,
+        "id": "46",
+        "item_id": "coastcurl_firepit__plum",
+        "x": 8,
+        "y": 10
+      },
+      {
+        "flipped": true,
+        "id": "47",
+        "item_id": "flutebud_column__charcoal",
+        "x": 4,
+        "y": 1
+      },
+      {
+        "flipped": false,
+        "id": "48",
+        "item_id": "hushpatch_pumpkin__charcoal",
+        "x": 5,
+        "y": 7
+      },
+      {
+        "flipped": false,
+        "id": "49",
+        "item_id": "drowsepatch_basket__sky",
+        "x": 11,
+        "y": 3
+      },
+      {
+        "flipped": true,
+        "id": "50",
+        "item_id": "dewstrap_trunk__moss",
+        "x": 0,
+        "y": 10
+      },
+      {
+        "flipped": true,
+        "id": "51",
+        "item_id": "rainpocket_barrel__moss",
+        "x": 13,
+        "y": 9
+      },
+      {
+        "flipped": true,
+        "id": "52",
+        "item_id": "buttonburrow_house__cream",
+        "x": 13,
+        "y": 5
+      },
+      {
+        "flipped": false,
+        "id": "53",
+        "item_id": "anchorpurl_capstan",
+        "x": 3,
+        "y": 9
+      },
+      {
+        "flipped": true,
+        "id": "54",
+        "item_id": "beambox_nightstand__sand",
+        "x": 10,
+        "y": 6
+      },
+      {
+        "flipped": false,
+        "id": "55",
+        "item_id": "dunecup_table__gold",
+        "x": 8,
+        "y": 7
+      },
+      {
+        "flipped": false,
+        "id": "56",
+        "item_id": "ropewake_railing__coral",
+        "x": 0,
+        "y": 0
+      },
+      {
+        "flipped": true,
+        "id": "57",
+        "item_id": "sailparcel_mast__rose",
+        "x": 5,
+        "y": 0
+      },
+      {
+        "flipped": true,
+        "id": "58",
+        "item_id": "beamhold_chest__gold",
+        "x": 13,
+        "y": 0
+      },
+      {
+        "flipped": true,
+        "id": "59",
+        "item_id": "rivetarm_floor_lamp__charcoal",
+        "x": 5,
+        "y": 10
+      },
+      {
+        "flipped": false,
+        "id": "60",
+        "item_id": "foldfern_cot__coral",
+        "x": 4,
+        "y": 6
+      },
+      {
+        "flipped": false,
+        "id": "61",
+        "item_id": "budwhistle_egg_bowl__sky",
+        "x": 12,
+        "y": 3
+      },
+      {
+        "flipped": false,
+        "id": "62",
+        "item_id": "paintpearl_palette",
+        "x": 5,
+        "y": 2
+      },
+      {
+        "flipped": false,
+        "id": "63",
+        "item_id": "crumbfit_puzzle__moss",
+        "x": 4,
+        "y": 9
+      },
+      {
+        "flipped": false,
+        "id": "64",
+        "item_id": "crumbmint_pot__sand",
+        "x": 4,
+        "y": 3
+      },
+      {
+        "flipped": false,
+        "id": "65",
+        "item_id": "dunewick_candle__navy",
+        "x": 8,
+        "y": 0
+      },
+      {
+        "flipped": false,
+        "id": "66",
+        "item_id": "tidechip_mug__sand",
+        "x": 3,
+        "y": 7
+      },
+      {
+        "flipped": false,
+        "id": "67",
+        "item_id": "beanwhirl_grinder__coral",
+        "x": 5,
+        "y": 6
+      },
+      {
+        "flipped": false,
+        "id": "68",
+        "item_id": "reedrest_breadbox__moss",
+        "x": 10,
+        "y": 0
+      },
+      {
+        "flipped": false,
+        "id": "69",
+        "item_id": "quietdot_lamp__mint",
+        "x": 7,
+        "y": 0
+      },
+      {
+        "flipped": false,
+        "id": "70",
+        "item_id": "fizzscan_terminal__charcoal",
+        "x": 10,
+        "y": 3
+      },
+      {
+        "flipped": false,
+        "id": "71",
+        "item_id": "pagecove_books__coral",
+        "x": 10,
+        "y": 6
+      },
+      {
+        "flipped": false,
+        "id": "72",
+        "item_id": "pagecount_calculator__moss",
+        "x": 8,
+        "y": 7
+      }
+    ],
+    "room_type": "living",
+    "seed": 12,
+    "wallpaper": "pebblewake_ropework",
+    "width": 14
+  },
+  "size": [
+    860,
+    559
+  ]
+}

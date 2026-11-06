@@ -1,0 +1,147 @@
+{
+  "character_sprites": {},
+  "hash": "4874fab8",
+  "name": "edit_grid_cursor",
+  "options": {
+    "cursor": {
+      "d": 1,
+      "ok": false,
+      "w": 2,
+      "wall": "right",
+      "x": 3,
+      "y": 1
+    },
+    "edit": true,
+    "selected": "12"
+  },
+  "png": "edit_grid_cursor.png",
+  "room": {
+    "characters": [],
+    "depth": 8,
+    "floor": "rosewarm_cork",
+    "idx": 0,
+    "pets": [],
+    "placements": [
+      {
+        "flipped": false,
+        "id": "1",
+        "item_id": "pebblepane_window__sand",
+        "x": 1,
+        "y": 0
+      },
+      {
+        "flipped": false,
+        "id": "2",
+        "item_id": "hemhill_painting__cream",
+        "x": 4,
+        "y": 0
+      },
+      {
+        "flipped": false,
+        "id": "3",
+        "item_id": "pebblehour_clock__navy",
+        "x": 7,
+        "y": 0
+      },
+      {
+        "flipped": true,
+        "id": "4",
+        "item_id": "dunearc_window__coral",
+        "x": 2,
+        "y": 0
+      },
+      {
+        "flipped": true,
+        "id": "5",
+        "item_id": "stillframe_door__cream",
+        "x": 6,
+        "y": 1
+      },
+      {
+        "flipped": false,
+        "id": "6",
+        "item_id": "stillpanel_wardrobe__cream",
+        "x": 0,
+        "y": 0
+      },
+      {
+        "flipped": false,
+        "id": "7",
+        "item_id": "stillstep_nightstand__cream",
+        "x": 6,
+        "y": 0
+      },
+      {
+        "flipped": false,
+        "id": "8",
+        "item_id": "pebblecap_lamp__sand",
+        "x": 6,
+        "y": 0
+      },
+      {
+        "flipped": false,
+        "id": "9",
+        "item_id": "patchpillow_bed__cream",
+        "x": 7,
+        "y": 0
+      },
+      {
+        "flipped": true,
+        "id": "10",
+        "item_id": "humskein_upright__plum",
+        "x": 0,
+        "y": 3
+      },
+      {
+        "flipped": false,
+        "id": "11",
+        "item_id": "rivetgrid_rug__sand",
+        "x": 2,
+        "y": 4
+      },
+      {
+        "flipped": false,
+        "id": "12",
+        "item_id": "crumbcorner_table__moss",
+        "x": 3,
+        "y": 4
+      },
+      {
+        "flipped": false,
+        "id": "13",
+        "item_id": "pagepair_books__moss",
+        "x": 3,
+        "y": 4
+      },
+      {
+        "flipped": false,
+        "id": "14",
+        "item_id": "sprigcup_fern__moss",
+        "x": 4,
+        "y": 5
+      },
+      {
+        "flipped": false,
+        "id": "15",
+        "item_id": "plainwhorl_chair__sand",
+        "x": 5,
+        "y": 4
+      },
+      {
+        "flipped": true,
+        "id": "16",
+        "item_id": "plainwhorl_chair__sand",
+        "x": 3,
+        "y": 6
+      }
+    ],
+    "room_type": "living",
+    "seed": 1,
+    "wallpaper": "skyrest_paper",
+    "width": 9
+  },
+  "size": [
+    600,
+    450
+  ]
+}

@@ -4,6 +4,7 @@ mod audit_log;
 mod community;
 mod discord_info;
 mod guilds;
+mod house;
 mod leveling;
 mod me;
 mod modules;
@@ -46,10 +47,12 @@ pub fn router(state: WebState) -> Router {
         .route("/api/me/guilds", get(me::guilds))
         .route("/api/me/guilds/refresh", post(me::refresh_guilds))
         .nest("/api/guilds/{g}", guilds::router())
+        .nest("/api/house", house::router())
         .route("/api/{*rest}", any(|| async { ApiError::not_found() }));
     Router::new()
         .merge(auth)
         .merge(api)
+        .merge(house::assets())
         .merge(static_files::router())
         .layer(middleware::from_fn_with_state(state.clone(), headers))
         .with_state(state)

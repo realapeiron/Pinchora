@@ -1,0 +1,300 @@
+{
+  "character_sprites": {
+    "tidewalker.3.2.5.2.0.0": "crowded_9x8.character0.png"
+  },
+  "hash": "4f77553c",
+  "name": "crowded_9x8",
+  "options": {
+    "cursor": null,
+    "edit": false,
+    "selected": null
+  },
+  "png": "crowded_9x8.png",
+  "room": {
+    "characters": [
+      "tidewalker.3.2.5.2.0.0"
+    ],
+    "depth": 8,
+    "floor": "blushbutton_foam",
+    "idx": 0,
+    "pets": [
+      {
+        "asleep": false,
+        "species": "ribbonfin_guppy"
+      },
+      {
+        "asleep": true,
+        "species": "tumblebutton_pup"
+      }
+    ],
+    "placements": [
+      {
+        "flipped": true,
+        "id": "1",
+        "item_id": "marginrow_bookcase__moss",
+        "x": 2,
+        "y": 6
+      },
+      {
+        "flipped": false,
+        "id": "2",
+        "item_id": "orbitview_console__gold",
+        "x": 5,
+        "y": 1
+      },
+      {
+        "flipped": false,
+        "id": "3",
+        "item_id": "nestnib_side_table__cream",
+        "x": 8,
+        "y": 4
+      },
+      {
+        "flipped": true,
+        "id": "4",
+        "item_id": "plasterpurl_half_wall",
+        "x": 7,
+        "y": 2
+      },
+      {
+        "flipped": true,
+        "id": "5",
+        "item_id": "clicknest_chair__coral",
+        "x": 3,
+        "y": 1
+      },
+      {
+        "flipped": true,
+        "id": "6",
+        "item_id": "clicknest_chair__mint",
+        "x": 2,
+        "y": 3
+      },
+      {
+        "flipped": false,
+        "id": "7",
+        "item_id": "hemgrain_dresser__sand",
+        "x": 0,
+        "y": 3
+      },
+      {
+        "flipped": true,
+        "id": "8",
+        "item_id": "sprigstep_planter_box__moss",
+        "x": 6,
+        "y": 4
+      },
+      {
+        "flipped": false,
+        "id": "9",
+        "item_id": "dunecup_table__coral",
+        "x": 6,
+        "y": 6
+      },
+      {
+        "flipped": true,
+        "id": "10",
+        "item_id": "buttonburrow_house__rose",
+        "x": 0,
+        "y": 6
+      },
+      {
+        "flipped": false,
+        "id": "11",
+        "item_id": "stillwarm_stove__mint",
+        "x": 4,
+        "y": 4
+      },
+      {
+        "flipped": false,
+        "id": "12",
+        "item_id": "beambox_nightstand__moss",
+        "x": 1,
+        "y": 0
+      },
+      {
+        "flipped": false,
+        "id": "13",
+        "item_id": "pebblepeg_cabinet__navy",
+        "x": 1,
+        "y": 5
+      },
+      {
+        "flipped": true,
+        "id": "14",
+        "item_id": "kettlebloom_stand__sand",
+        "x": 3,
+        "y": 7
+      },
+      {
+        "flipped": false,
+        "id": "15",
+        "item_id": "pebblerest_stool__coral",
+        "x": 3,
+        "y": 0
+      },
+      {
+        "flipped": false,
+        "id": "16",
+        "item_id": "sailparcel_mast__coral",
+        "x": 2,
+        "y": 0
+      },
+      {
+        "flipped": false,
+        "id": "17",
+        "item_id": "keelguard_figurehead__cream",
+        "x": 5,
+        "y": 5
+      },
+      {
+        "flipped": true,
+        "id": "18",
+        "item_id": "spoolback_chair__sand",
+        "x": 4,
+        "y": 3
+      },
+      {
+        "flipped": true,
+        "id": "19",
+        "item_id": "dewdash_tunnel__coral",
+        "x": 0,
+        "y": 0
+      },
+      {
+        "flipped": true,
+        "id": "20",
+        "item_id": "dunepot_hamper__navy",
+        "x": 7,
+        "y": 5
+      },
+      {
+        "flipped": false,
+        "id": "21",
+        "item_id": "hemgrain_dresser__coral",
+        "x": 5,
+        "y": 2
+      },
+      {
+        "flipped": false,
+        "id": "22",
+        "item_id": "flutebud_column__charcoal",
+        "x": 6,
+        "y": 3
+      },
+      {
+        "flipped": true,
+        "id": "23",
+        "item_id": "glazepocket_vitrine",
+        "x": 7,
+        "y": 6
+      },
+      {
+        "flipped": false,
+        "id": "24",
+        "item_id": "rivetend_table__charcoal",
+        "x": 0,
+        "y": 5
+      },
+      {
+        "flipped": true,
+        "id": "25",
+        "item_id": "drowsepatch_basket__coral",
+        "x": 8,
+        "y": 3
+      },
+      {
+        "flipped": true,
+        "id": "26",
+        "item_id": "nestnib_side_table__cream",
+        "x": 5,
+        "y": 0
+      },
+      {
+        "flipped": false,
+        "id": "27",
+        "item_id": "sprigpaw_toy_basket__cream",
+        "x": 5,
+        "y": 3
+      },
+      {
+        "flipped": false,
+        "id": "28",
+        "item_id": "budbasket_stand__rose",
+        "x": 8,
+        "y": 0
+      },
+      {
+        "flipped": false,
+        "id": "29",
+        "item_id": "reefbubble_lamp__lilac",
+        "x": 2,
+        "y": 6
+      },
+      {
+        "flipped": false,
+        "id": "30",
+        "item_id": "wickcrumb_candle__moss",
+        "x": 8,
+        "y": 4
+      },
+      {
+        "flipped": false,
+        "id": "31",
+        "item_id": "frosttin_lantern__cream",
+        "x": 0,
+        "y": 3
+      },
+      {
+        "flipped": false,
+        "id": "32",
+        "item_id": "linenpearl_towels",
+        "x": 6,
+        "y": 6
+      },
+      {
+        "flipped": false,
+        "id": "33",
+        "item_id": "blushcheek_lamp__mint",
+        "x": 1,
+        "y": 0
+      },
+      {
+        "flipped": false,
+        "id": "34",
+        "item_id": "crumbmint_pot__sand",
+        "x": 1,
+        "y": 5
+      },
+      {
+        "flipped": false,
+        "id": "35",
+        "item_id": "clipcoil_stapler__mint",
+        "x": 5,
+        "y": 2
+      },
+      {
+        "flipped": false,
+        "id": "36",
+        "item_id": "reedcap_lamp__moss",
+        "x": 0,
+        "y": 5
+      },
+      {
+        "flipped": false,
+        "id": "37",
+        "item_id": "crumbscale_set__cream",
+        "x": 5,
+        "y": 0
+      }
+    ],
+    "room_type": "living",
+    "seed": 11,
+    "wallpaper": "blushbutton_spots",
+    "width": 9
+  },
+  "size": [
+    572,
+    415
+  ]
+}

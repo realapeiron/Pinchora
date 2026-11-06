@@ -5,3 +5,4 @@ test-results
 playwright-report
 # Written by `cargo test -p pinchora-web rules -- --ignored write_rules`.
 src/lib/rules.json
+src/iso/fixtures

@@ -15,6 +15,11 @@ export function TopBar({ me }: { me: Me }) {
         <span className="brand-name">PINCHORA</span>
         <span className="brand-tag">DASHBOARD</span>
       </Link>
+      <nav className="top-bar-links" aria-label="Player pages">
+        <Link to="/me/house" className="top-bar-link">
+          My house
+        </Link>
+      </nav>
       <div className="top-bar-user">
         <img className="avatar" src={me.user.avatar_url} alt="" width={32} height={32} />
         <span className="top-bar-name">{name}</span>

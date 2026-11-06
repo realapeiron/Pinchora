@@ -402,6 +402,34 @@ cargo build -p pinchora && PINCHORA_TEST_DATABASE_URL=... PINCHORA_TEST_REDIS_UR
 For UI work against a running server, set `PINCHORA_WEB__PUBLIC_URL=http://localhost:5173` on the Rust side
 (`cargo run -p pinchora -- web`).
 
+### House viewer (read-only)
+
+Players open **My house** (`/me/house`, in the top bar) to look at their rooms, and any player's unlocked
+house at `/house/<player id>` (a locked house answers with the same sentence `/house visit` does). Pick a room, pan,
+zoom in whole steps, hover or tap a piece to see its name, switch the tile grid on, and press **Compare
+with Discord** to lay the bot's own picture of the room over the browser's and see how many pixels differ
+(none). Looking never moves anyone in: no house means a 404 telling the player to run `/house`, and nothing
+is paid for visiting from the web.
+
+The browser draws the room itself, in `web/src/iso`: a TypeScript port of `pinchora-render/src/room.rs`
+(projection, walls, floor, rugs, shadows, wall hangings, painter's order, pets, characters) on plain pixel
+buffers, fed by the same sprite sheet the bot embeds, served as `/assets/atlas.png` and `/assets/atlas.json`.
+Characters are the one thing it does not draw: the server draws each one (`/api/house/character.png`) and the
+browser places the sprite. The API is `GET /api/house`, `/api/house/rooms/{idx}` (+ `/render.png`, the bot's
+picture), `/api/house/visit/{player}` (+ `/rooms/{idx}`), `/api/house/content` (the catalogue the browser
+draws with) and `/api/house/character.png?code=`.
+
+The two renderers are kept equal by fixtures the Rust code writes: scenes (empty, furnished, crowded 14x12 with 60
+pieces, sleeping and walking pets, grid and cursors on both walls) as JSON next to the PNG the bot draws at native
+resolution, plus placeholder art and sleeping pets as fingerprints, in `web/src/iso/fixtures`. `npm test`
+draws every scene in TypeScript and requires every pixel to match; `cargo test -p pinchora-commands
+house_fixtures_match` fails when the renderer, the art or the catalogue moves away from what is committed.
+After changing the room renderer or the sprite sheet, regenerate them and commit the result:
+
+```bash
+cargo test -p pinchora-commands write_house_fixtures -- --ignored
+```
+
 ## Development
 
 ```bash
@@ -440,7 +468,7 @@ crates/
   pinchora-cache/     Redis: cooldowns, gateway sessions, cross-pod identify queue, invalidation pub/sub
   pinchora-render/    pixel-art cards (SVG → PNG with resvg)
   pinchora-commands/  slash commands, buttons, gateway event handlers
-  pinchora-web/       web dashboard API (axum): Discord OAuth, sessions, CSRF, server settings, modules, the SPA
+  pinchora-web/       web dashboard API (axum): Discord OAuth, sessions, CSRF, server settings, modules, the house viewer, the SPA
 web/                  dashboard UI (Vite + React + TypeScript), embedded into the binary
 migrations/           SQL migrations
 assets/fonts/         Silkscreen + Noto Sans (SIL OFL)
