@@ -151,13 +151,29 @@ pub fn scrub_value(text: &str) -> String {
 pub fn escape_markdown(text: &str) -> String {
     let mut out = String::with_capacity(text.len() + 8);
     for c in text.chars() {
-        if matches!(
-            c,
-            '\\' | '*' | '_' | '~' | '`' | '|' | '>' | '<' | '[' | ']' | '(' | ')' | '#' | '-'
-        ) {
+        if ESCAPED.contains(&c) {
             out.push('\\');
         }
         out.push(c);
+    }
+    out
+}
+
+const ESCAPED: [char; 14] = ['\\', '*', '_', '~', '`', '|', '>', '<', '[', ']', '(', ')', '#', '-'];
+
+/// [`escape_markdown`] undone, for an embed's author and footer: Discord shows those as plain text,
+/// backslashes and all, and nothing there can become a link or bold.
+fn unescape_markdown(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut chars = text.chars().peekable();
+    while let Some(c) = chars.next() {
+        match chars.peek() {
+            Some(&next) if c == '\\' && ESCAPED.contains(&next) => {
+                out.push(next);
+                chars.next();
+            }
+            _ => out.push(c),
+        }
     }
     out
 }
@@ -307,9 +323,11 @@ fn fill_embed(embed: &mut EmbedSpec, fill: &mut dyn FnMut(&mut String, usize)) {
     }
     if let Some(text) = &mut embed.author {
         fill(text, EMBED_AUTHOR_MAX);
+        *text = unescape_markdown(text);
     }
     if let Some(text) = &mut embed.footer {
         fill(text, EMBED_FOOTER_MAX);
+        *text = unescape_markdown(text);
     }
     for field in &mut embed.fields {
         fill(&mut field.name, EMBED_FIELD_NAME_MAX);
@@ -836,6 +854,23 @@ mod tests {
         let built = embed_of(&e);
         assert_eq!(built.fields.len(), 1);
         assert_eq!(built.title.as_deref(), Some("Hello Sam"));
+    }
+
+    #[test]
+    fn an_embeds_author_and_footer_show_names_without_escapes() {
+        let embed = EmbedSpec {
+            description: Some("{user.name}".into()),
+            author: Some("{user.name}".into()),
+            footer: Some("by {user.name} \\\\".into()),
+            ..Default::default()
+        };
+        let mut vars = Vars::new();
+        vars.set("user.name", scrub_value(r"captain_crab-(\*)"));
+        let r = render_message(&spec(&[String::new()], Some(&embed), false), &vars, &mut first);
+        let e = r.embed.expect("an embed");
+        assert_eq!(e.description.as_deref(), Some(r"captain\_crab\-\(\\\*\)"));
+        assert_eq!(e.author.as_deref(), Some(r"captain_crab-(\*)"));
+        assert_eq!(e.footer.as_deref(), Some(r"by captain_crab-(\*) \"));
     }
 
     #[test]
