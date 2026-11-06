@@ -60,9 +60,11 @@ function glance(s: Settings, modules: ModuleEntry[]) {
       on: switched("log") && s.log_channel_id !== null,
       detail: !switched("log")
         ? off
-        : [s.log_members && "joins", s.log_names && "names", s.log_bans && "bans", s.log_voice && "voice"]
-            .filter(Boolean)
-            .join(", ") || "nothing picked",
+        : s.log_channel_id === null
+          ? "no channel yet"
+          : [s.log_members && "joins", s.log_names && "names", s.log_bans && "bans", s.log_voice && "voice"]
+              .filter(Boolean)
+              .join(", ") || "nothing picked",
     },
   ];
 }

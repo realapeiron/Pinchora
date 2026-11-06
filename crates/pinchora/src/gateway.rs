@@ -152,6 +152,9 @@ async fn run_shard(
 ) -> (u32, Option<StoredSession>) {
     let id = shard.id().number();
     let flags = wanted_events();
+    // Without the Message Content intent Discord still sends the text of messages that mention the bot;
+    // it is dropped, so keyword auto-responders never hear chat the operator did not turn on.
+    let reads_chat = shard.config().intents().contains(Intents::MESSAGE_CONTENT);
     let mut closing = false;
     loop {
         tokio::select! {
@@ -164,7 +167,12 @@ async fn run_shard(
             item = shard.next_event(flags) => match item {
                 None => break,
                 Some(Ok(Event::GatewayClose(_))) if closing => break,
-                Some(Ok(event)) => dispatch(&app, id, event),
+                Some(Ok(mut event)) => {
+                    if !reads_chat && let Event::MessageCreate(message) = &mut event {
+                        message.content.clear();
+                    }
+                    dispatch(&app, id, event)
+                }
                 Some(Err(error)) => tracing::warn!(shard = id, %error, "gateway receive error"),
             },
         }
