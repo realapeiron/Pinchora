@@ -53,7 +53,9 @@ const PRIVATE: &[&str] = &[
     "pet rename",
     "plaza donate",
     "plaza edit",
+    "play picross",
     "play wordle",
+    "play 2048",
     "poll",
     "quests",
     "roles",
@@ -65,7 +67,7 @@ const PRIVATE: &[&str] = &[
 
 /// Component clicks that may answer with a modal, as `prefix:action` of the custom id. The simulator
 /// checks that every modal it sees opened comes from one of these.
-const OPENS_MODAL: &[&str] = &["ca:hex", "ca:name", "gb:s", "wo:g", "cs:h"];
+const OPENS_MODAL: &[&str] = &["ca:hex", "ca:name", "gb:s", "pz:m", "wo:g", "cs:h"];
 
 impl Deferral {
     pub(crate) fn of(interaction: &Interaction) -> Self {

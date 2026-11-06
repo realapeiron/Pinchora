@@ -1,10 +1,16 @@
-//! The calm games: pure rules and content for connect four, rock-paper-scissors, hangman, wordle
-//! and trivia. Nothing here touches the database or Discord.
+//! The calm games: pure rules and content for connect four, rock-paper-scissors, hangman, wordle,
+//! trivia and the board and puzzle games (Sea Fleet, Pixel Picross, Tide 2048, Pearl Checkers and Reef
+//! Chess). Nothing here touches the database or Discord.
 
+pub mod checkers;
+pub mod chess;
 pub mod connect4;
 mod content;
+pub mod fleet;
 pub mod hangman;
+pub mod picross;
 pub mod rps;
+pub mod tide2048;
 pub mod trivia;
 pub mod wordle;
 
@@ -19,16 +25,26 @@ pub enum Game {
     Hangman,
     Wordle,
     Trivia,
+    SeaFleet,
+    Picross,
+    Tide2048,
+    Checkers,
+    Chess,
 }
 
 impl Game {
-    pub const ALL: [Game; 6] = [
+    pub const ALL: [Game; 11] = [
         Self::TicTacToe,
         Self::Connect4,
         Self::Rps,
         Self::Hangman,
         Self::Wordle,
         Self::Trivia,
+        Self::SeaFleet,
+        Self::Picross,
+        Self::Tide2048,
+        Self::Checkers,
+        Self::Chess,
     ];
 
     /// What the database and the reward-cap counters call it.
@@ -40,6 +56,11 @@ impl Game {
             Self::Hangman => "hangman",
             Self::Wordle => "wordle",
             Self::Trivia => "trivia",
+            Self::SeaFleet => "seafleet",
+            Self::Picross => "picross",
+            Self::Tide2048 => "tide2048",
+            Self::Checkers => "checkers",
+            Self::Chess => "chess",
         }
     }
 
@@ -51,6 +72,11 @@ impl Game {
             Self::Hangman => "Hangman",
             Self::Wordle => "Wordle",
             Self::Trivia => "Trivia",
+            Self::SeaFleet => "Sea Fleet",
+            Self::Picross => "Pixel Picross",
+            Self::Tide2048 => "Tide 2048",
+            Self::Checkers => "Pearl Checkers",
+            Self::Chess => "Reef Chess",
         }
     }
 
@@ -62,6 +88,11 @@ impl Game {
             Self::Hangman => "🏰",
             Self::Wordle => "🟩",
             Self::Trivia => "🧠",
+            Self::SeaFleet => "🚢",
+            Self::Picross => "🧩",
+            Self::Tide2048 => "🌊",
+            Self::Checkers => "⚪",
+            Self::Chess => "♟️",
         }
     }
 
@@ -79,6 +110,11 @@ impl Game {
             Self::Hangman => 15,
             Self::Wordle => 10,
             Self::Trivia => 8,
+            Self::SeaFleet => 25,
+            Self::Picross => 10,
+            Self::Tide2048 => 10,
+            Self::Checkers => 20,
+            Self::Chess => 30,
         }
     }
 
@@ -91,6 +127,7 @@ impl Game {
             Self::Hangman => 6,
             Self::Wordle => 6,
             Self::Trivia => 12,
+            Self::SeaFleet | Self::Picross | Self::Tide2048 | Self::Checkers | Self::Chess => 5,
         }
     }
 }
@@ -109,6 +146,6 @@ mod tests {
             assert_eq!(Game::from_key(game.key()), Some(game));
             assert!(game.win_reward() > 0 && game.daily_cap() > 0);
         }
-        assert_eq!(Game::from_key("chess"), None);
+        assert_eq!(Game::from_key("poker"), None);
     }
 }

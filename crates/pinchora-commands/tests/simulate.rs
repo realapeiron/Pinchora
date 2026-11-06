@@ -67,6 +67,9 @@ use twilight_model::{
     id::Id,
 };
 
+#[path = "simulate/board.rs"]
+mod board;
+
 const APPLICATION_ID: u64 = 1;
 const CHANNEL_ID: u64 = 2;
 /// The role the mock bot holds; its position is the ceiling for roles the bot can hand out.

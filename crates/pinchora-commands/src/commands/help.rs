@@ -30,6 +30,10 @@ impl Help {
                 "`/duel connect4`, `/duel rps` and `/duel tictactoe` challenge a friend (optional wager)\n`/play hangman`, `/play wordle` and `/play trivia` play on your own or with the channel\n`/play stats` your wins",
             ))
             .field(EmbedFieldBuilder::new(
+                "Board & puzzle games",
+                "`/duel seafleet` hide your ships and sink theirs\n`/duel chess` and `/duel checkers` on pixel boards (all three take an optional wager)\n`/play picross` a daily nonogram that hides a sea creature, or a practice one\n`/play 2048` slide and merge sea creatures",
+            ))
+            .field(EmbedFieldBuilder::new(
                 "Leaderboards",
                 "`/leaderboard` server XP, server points, global XP or global shells",
             ))

@@ -157,7 +157,7 @@ pub async fn sweep(app: &Arc<App>) -> anyhow::Result<usize> {
     let mut ended = 0;
     for session in app.db.late_games(50).await? {
         let result = match session.kind.as_str() {
-            "connect4" | "rps" => super::duel::time_out(app, &session).await,
+            "connect4" | "rps" | "seafleet" | "checkers" | "chess" => super::duel::time_out(app, &session).await,
             "hangman" => super::hangman::time_out(app, &session).await,
             "trivia" => super::trivia::finish(app, session.id, None).await,
             other => {

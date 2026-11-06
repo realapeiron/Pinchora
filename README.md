@@ -138,6 +138,11 @@ channel when the bot starts is only noticed once their state changes.
 | `/duel tictactoe user` | Button tic-tac-toe; the winner earns shells |
 | `/duel connect4 user [bet]` | Connect four on a pixel-art board: the challenged player accepts, then each turn is a column button (1-7) within 90 s; the winner earns shells |
 | `/duel rps user [rounds] [bet]` | Rock paper scissors, best of 1, 3 or 5: each player gets private Rock / Paper / Scissors buttons, the channel sees each round revealed; ties replay |
+| `/duel seafleet user [bet]` | **Sea Fleet**, battleship on a 10×10 sea. After the challenge is accepted each captain places five ships in private (a preset such as *Harbour line*, or **Shuffle** for a random layout, then **Lock in fleet**; fleets are never shown to the other captain). Then they take turns: pick a column and a row from two menus under the shared radar, which shows both players' waters, every hit and miss and the ships that have gone down. **My fleet** is your own waters, privately. 5 minutes to place, 2 minutes a shot |
+| `/duel chess user [bet]` | **Reef Chess** with a rules engine written for the bot (castling, en passant, promotion, check, checkmate, stalemate, fifty-move rule, threefold repetition, insufficient material; checked against the standard perft counts). Pieces are pixel sea creatures (pearl, seahorse, conch, lighthouse, octopus queen, crab king); a move is two picks from menus under the board, the piece then where it goes (promotions list all four pieces). Coral or sky is drawn at random; 5 minutes a move |
+| `/duel checkers user [bet]` | **Pearl Checkers**, English draughts with pearls: compulsory jumps, multiple jumps, kings, a draw after 40 quiet moves each. The same two menus (piece, then move, where a jump chain is one entry); 3 minutes a move |
+| `/play picross [mode]` | **Pixel Picross**: a 10×10 nonogram of a sea creature (26 pictures, each unique-solution checked, each also mirrored and flipped). `daily` (default) is the same puzzle for everyone each day, with a streak: 35 shells, plus 5 for each day of the streak up to a week; `practice` is a random puzzle (10 shells, 5 a day). Pick a row and tick its filled cells from a menu, or **Mark cells** and type `A1 B3-B7 -C2` (a dash clears); **Check** crosses out wrong cells. The solved picture is revealed, with a spoiler-free **Share result** |
+| `/play 2048` | **Tide 2048** with a fish from the atlas on every tile (shrimp up to a leviathan at 2048): four arrow buttons, the game is kept between sessions, **Finish** counts it. The best score shows in `/play stats`; a finished game pays 5 to 60 shells for a tile of 256 or more (5 paid games a day) |
 | `/play hangman` | A cozy word (780 in five categories) guessed from two letter menus while the tide washes a pixel sandcastle away; six misses lose |
 | `/play wordle [mode]` | Five letters, six tries, typed into a form, shown as private pixel tiles with a keyboard summary. `daily` (default) is one word the same for everyone, kept per player per day, with a spoiler-free **Share result**; `practice` is a random word, as many as you like |
 | `/play trivia [category]` | A question for the channel from 464 (8 topics, three difficulties): four answer buttons, 20 seconds, anyone answers once; the message then reveals the answer and who got it right |
@@ -148,9 +153,13 @@ Duel wagers (`bet`, 10 to 500 shells each) are optional and off by default. Noth
 challenged player accepts; then both bets leave the balances in one transaction and sit in the database
 row of the game. The winner takes both; a draw, a decline, a no-show or a timeout gives them back, and
 whoever ends the game first pays out, exactly once, so a restart cannot lose or double shells (a janitor on
-every pod ends games whose clock ran out every 10 seconds). Without a wager the system pays small rewards
-(connect four 25, rock paper scissors 15, hangman 15, wordle 10 and up to 45 for the daily, trivia 8 to 18
-by difficulty) with a daily limit per player and game.
+every pod ends games whose clock ran out every 10 seconds). In Sea Fleet, Reef Chess and Pearl Checkers a
+wagered game is stricter: a player who runs out of time *during the game* forfeits the pot to the other
+(both slow while placing fleets gives the bets back), settled only if nobody has moved since the janitor
+looked; resigning works the same way, behind a confirmation. Without a wager the system pays small rewards
+(connect four 25, rock paper scissors 15, Sea Fleet 25, Pearl Checkers 20, Reef Chess 30, hangman 15,
+wordle 10 and up to 45 for the daily, trivia 8 to 18 by difficulty, picross and 2048 as above) with a daily
+limit per player and game. Every game is counted in `/play stats`.
 
 Game content (furniture, rooms, pets, pet trips, fish, fishing gear, looks, accessories, character presets, card backgrounds,
 badges, titles, trivia, hangman words and the wordle lists) lives in
@@ -195,6 +204,7 @@ cargo run -p pinchora-render --example samples   # render sample cards to target
                                                  #  the profile and rank samples carry a title; profile-showcase-*, profile-bg-<white|black|stripes|beach>-<opacity>,
                                                  #  profile-nobg-*, profile-unicode/-wide/-cyrillic/-shout and profile-frame-* are the stress variants)
 cargo run -p pinchora-render --example games     # connect four, hangman and wordle sample cards
+cargo run -p pinchora-render --example board_games   # chess, checkers, Sea Fleet radar and fleet, picross and 2048 sample cards
 cargo run --release -p pinchora-render --example characters   # characters-looks.png (all 24 looks with a hat, glasses and a
                                                  # hand item), characters-<slot>.png, characters-colours.png, character-editor.png
 ```

@@ -1,3 +1,4 @@
+mod board_games;
 mod character;
 mod contest;
 mod customize;
@@ -28,6 +29,7 @@ use std::time::Duration;
 
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
+pub use board_games::{PicrossGame, SoloGame, SoloStep};
 pub use character::OutfitRow;
 pub use contest::{ContestEntry, ContestResult};
 pub use customize::{CustomizeBuy, MAX_BADGES};
