@@ -3,6 +3,7 @@
 use std::str::Split;
 
 use chrono::{DateTime, Duration, Utc};
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{GameSession, Payout};
 use pinchora_game::play::{
     Game,
@@ -108,10 +109,21 @@ pub(crate) fn slow_players(session: &GameSession) -> Vec<u64> {
         .collect()
 }
 
+/// What the winner got for the match.
+#[derive(Clone, Copy)]
+enum Reward {
+    /// The pot of a wagered match.
+    Pot,
+    /// Shells the sea paid.
+    Paid(i64),
+    /// The game's daily limit was reached.
+    Limit,
+}
+
 /// How a match ended: who won (0 host, 1 guest).
 struct End {
     winner: usize,
-    note: String,
+    reward: Reward,
 }
 
 /// The public message: scores, the rounds so far, who has locked in, and the button to pick.
@@ -133,7 +145,14 @@ impl View {
     }
 }
 
-fn view(session: &GameSession, names: &[String; 2], state: &State, end: Option<&End>, deadline: DateTime<Utc>) -> View {
+fn view(
+    lang: Lang,
+    session: &GameSession,
+    names: &[String; 2],
+    state: &State,
+    end: Option<&End>,
+    deadline: DateTime<Utc>,
+) -> View {
     let players = [session.host_id as u64, session.guest_id.unwrap_or(0) as u64];
     let mut lines = vec![format!(
         "**{}** {} - {} **{}**",
@@ -142,21 +161,29 @@ fn view(session: &GameSession, names: &[String; 2], state: &State, end: Option<&
     let skip = state.history.len().saturating_sub(SHOWN_ROUNDS);
     for (i, (a, b)) in state.history.iter().enumerate().skip(skip) {
         let result = match round(*a, *b) {
-            Round::First => format!("**{}** takes it", names[0]),
-            Round::Second => format!("**{}** takes it", names[1]),
-            Round::Tie => "a tie, played again".to_owned(),
+            Round::First => t!(lang, "rps.takes-it", name = names[0]),
+            Round::Second => t!(lang, "rps.takes-it", name = names[1]),
+            Round::Tie => t!(lang, "rps.tie-again"),
         };
-        lines.push(format!("{}. {} vs {}: {result}", i + 1, a.emoji(), b.emoji()));
+        lines.push(t!(
+            lang,
+            "rps.round-line",
+            n = i + 1,
+            first = a.emoji(),
+            second = b.emoji(),
+            result = result
+        ));
     }
     let embed = {
         let mut embed = EmbedBuilder::new()
             .color(if end.is_some() { SUCCESS } else { BRAND })
-            .title(format!("Rock paper scissors, best of {}", state.rounds))
+            .title(t!(lang, "rps.title", rounds = state.rounds))
             .description(lines.join("\n"));
         if session.bet > 0 {
-            embed = embed.footer(twilight_util::builder::embed::EmbedFooterBuilder::new(format!(
-                "Pot: {} shells",
-                thousands(session.bet * 2)
+            embed = embed.footer(twilight_util::builder::embed::EmbedFooterBuilder::new(t!(
+                lang,
+                "rps.pot-footer",
+                pot = thousands(session.bet * 2)
             )));
         }
         embed.build()
@@ -165,40 +192,49 @@ fn view(session: &GameSession, names: &[String; 2], state: &State, end: Option<&
         None => {
             let status = |i: usize| {
                 if state.picks[i].is_some() {
-                    format!("✅ **{}** locked in", names[i])
+                    t!(lang, "rps.locked-in", name = names[i])
                 } else {
-                    format!("⏳ **{}** is choosing", names[i])
+                    t!(lang, "rps.choosing", name = names[i])
                 }
             };
             View {
-                content: format!(
-                    "{} vs {}\nRound {}: pick in secret, {}.\n{} · {}",
-                    mention(players[0]),
-                    mention(players[1]),
-                    state.round,
-                    relative(deadline),
-                    status(0),
-                    status(1)
+                content: t!(
+                    lang,
+                    "rps.round",
+                    host = mention(players[0]),
+                    guest = mention(players[1]),
+                    round = state.round,
+                    when = relative(deadline),
+                    host_status = status(0),
+                    guest_status = status(1)
                 ),
                 embed,
                 components: vec![button_row(
                     format!("rp:o:{}", session.id),
-                    "Choose your move",
+                    &t!(lang, "rps.choose"),
                     ButtonStyle::Primary,
                 )],
             }
         }
-        Some(end) => View {
-            content: format!(
-                "🏆 {} wins the match {} - {}! {}",
-                mention(players[end.winner]),
-                state.score[0],
-                state.score[1],
-                end.note
-            ),
-            embed,
-            components: Vec::new(),
-        },
+        Some(end) => {
+            let note = match end.reward {
+                Reward::Pot => t!(lang, "duel.pot-won", pot = thousands(session.bet * 2)),
+                Reward::Paid(paid) => t!(lang, "duel.paid", paid = paid),
+                Reward::Limit => t!(lang, "duel.limit-reached"),
+            };
+            View {
+                content: t!(
+                    lang,
+                    "rps.won",
+                    winner = mention(players[end.winner]),
+                    host_score = state.score[0],
+                    guest_score = state.score[1],
+                    note = note
+                ),
+                embed,
+                components: Vec::new(),
+            }
+        }
     }
 }
 
@@ -206,7 +242,7 @@ fn view(session: &GameSession, names: &[String; 2], state: &State, end: Option<&
 pub(crate) async fn begin(cx: &Cx, session: &GameSession) -> anyhow::Result<()> {
     let (fields, names) = unpack(&session.state);
     let state = State::decode(fields).ok_or_else(|| anyhow::anyhow!("bad rock paper scissors state {fields:?}"))?;
-    cx.update(view(session, &names, &state, None, session.expires_at).response())
+    cx.update(view(cx.lang(), session, &names, &state, None, session.expires_at).response())
         .await
 }
 
@@ -215,7 +251,7 @@ pub(crate) async fn begin(cx: &Cx, session: &GameSession) -> anyhow::Result<()> 
 pub(crate) async fn on_button(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Result<()> {
     let action = args.next();
     let Some(id) = args.next().and_then(|v| v.parse::<i64>().ok()) else {
-        return cx.reply_ephemeral("This game has expired.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "duel.game-expired")).await;
     };
     match action {
         Some("y") => answer(cx, Kind::Rps, id, true).await,
@@ -226,10 +262,10 @@ pub(crate) async fn on_button(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Res
             let mv = args.next().and_then(|v| v.chars().next()).and_then(Move::from_key);
             match (round, mv) {
                 (Some(round), Some(mv)) => on_pick(cx, id, round, mv).await,
-                _ => cx.reply_ephemeral("This button has expired.").await,
+                _ => cx.reply_ephemeral(t!(cx.lang(), "duel.button-expired")).await,
             }
         }
-        _ => cx.reply_ephemeral("This button has expired.").await,
+        _ => cx.reply_ephemeral(t!(cx.lang(), "duel.button-expired")).await,
     }
 }
 
@@ -244,12 +280,11 @@ async fn running(cx: &Cx, id: i64) -> anyhow::Result<Option<GameSession>> {
         .await?
         .filter(|s| s.is_active() && s.kind == Kind::Rps.key())
     else {
-        cx.reply_ephemeral("This match is over.").await?;
+        cx.reply_ephemeral(t!(cx.lang(), "rps.match-over")).await?;
         return Ok(None);
     };
     if !session.has_player(me) {
-        cx.reply_ephemeral("You're not in this match. Challenge someone with `/duel rps`!")
-            .await?;
+        cx.reply_ephemeral(t!(cx.lang(), "rps.not-in-match")).await?;
         return Ok(None);
     }
     if session.expired() {
@@ -267,13 +302,14 @@ async fn on_open(cx: &Cx, id: i64) -> anyhow::Result<()> {
     let (fields, names) = unpack(&session.state);
     let state = State::decode(fields).ok_or_else(|| anyhow::anyhow!("bad rock paper scissors state {fields:?}"))?;
     let mine = usize::from(me != session.host_id as u64);
+    let lang = cx.lang();
     if let Some(mv) = state.picks[mine] {
         return cx
-            .reply_ephemeral(format!(
-                "You locked in {} {}. Waiting for **{}**.",
-                mv.emoji(),
-                mv.label(),
-                names[1 - mine]
+            .reply_ephemeral(t!(
+                lang,
+                "rps.already-locked",
+                pick = format!("{} {}", mv.emoji(), mv.label(lang)),
+                name = names[1 - mine]
             ))
             .await;
     }
@@ -282,18 +318,14 @@ async fn on_open(cx: &Cx, id: i64) -> anyhow::Result<()> {
         .map(|mv| {
             button(
                 format!("rp:m:{id}:{}:{}", state.round, mv.key()),
-                &format!("{} {}", mv.emoji(), mv.label()),
+                &format!("{} {}", mv.emoji(), mv.label(lang)),
                 ButtonStyle::Primary,
                 false,
             )
         })
         .collect();
     cx.reply(InteractionResponseData {
-        content: Some(format!(
-            "Round {}: choose your move. **{}** can't see it until you both have.",
-            state.round,
-            names[1 - mine]
-        )),
+        content: Some(t!(lang, "rps.pick-prompt", round = state.round, name = names[1 - mine])),
         components: Some(vec![Component::ActionRow(ActionRow {
             id: None,
             components: buttons,
@@ -316,6 +348,7 @@ async fn private(cx: &Cx, text: String) -> anyhow::Result<()> {
 
 async fn on_pick(cx: &Cx, id: i64, round_no: u8, mv: Move) -> anyhow::Result<()> {
     let me = cx.author()?.id.get();
+    let lang = cx.lang();
     // Two picks can land at once; the one that loses the race for the state tries again.
     for _ in 0..4 {
         let Some(session) = running(cx, id).await? else {
@@ -327,11 +360,12 @@ async fn on_pick(cx: &Cx, id: i64, round_no: u8, mv: Move) -> anyhow::Result<()>
             anyhow::bail!("bad rock paper scissors state {fields:?}");
         };
         if state.round != round_no {
-            return private(cx, "That round is already over.".to_owned()).await;
+            return private(cx, t!(lang, "rps.round-over")).await;
         }
         let mine = usize::from(me != host);
         if let Some(locked) = state.picks[mine] {
-            return private(cx, format!("You locked in {} {}.", locked.emoji(), locked.label())).await;
+            let pick = format!("{} {}", locked.emoji(), locked.label(lang));
+            return private(cx, t!(lang, "rps.locked", pick = pick)).await;
         }
         state.picks[mine] = Some(mv);
         let deadline = Utc::now() + Duration::seconds(TURN_SECS);
@@ -343,16 +377,8 @@ async fn on_pick(cx: &Cx, id: i64, round_no: u8, mv: Move) -> anyhow::Result<()>
                 continue;
             }
             refresh_public(cx, &session, &names, &state, None, deadline).await;
-            return private(
-                cx,
-                format!(
-                    "🔒 Locked in {} {}. Waiting for **{}**.",
-                    mv.emoji(),
-                    mv.label(),
-                    names[1 - mine]
-                ),
-            )
-            .await;
+            let pick = format!("{} {}", mv.emoji(), mv.label(lang));
+            return private(cx, t!(lang, "rps.locked-waiting", pick = pick, name = names[1 - mine])).await;
         };
 
         // Both have picked: reveal.
@@ -380,16 +406,16 @@ async fn on_pick(cx: &Cx, id: i64, round_no: u8, mv: Move) -> anyhow::Result<()>
             let mine_move = if mine == 0 { first } else { second };
             let theirs = if mine == 0 { second } else { first };
             let verdict = match outcome {
-                Round::Tie => "A tie. Pick again!".to_owned(),
-                _ if (outcome == Round::First) == (mine == 0) => "You win the round!".to_owned(),
-                _ => "You lose the round.".to_owned(),
+                Round::Tie => t!(lang, "rps.result-tie"),
+                _ if (outcome == Round::First) == (mine == 0) => t!(lang, "rps.result-win"),
+                _ => t!(lang, "rps.result-lose"),
             };
-            format!(
-                "{} {} vs {} {}. {verdict}",
-                mine_move.emoji(),
-                mine_move.label(),
-                theirs.emoji(),
-                theirs.label()
+            t!(
+                lang,
+                "rps.result",
+                mine = format!("{} {}", mine_move.emoji(), mine_move.label(lang)),
+                theirs = format!("{} {}", theirs.emoji(), theirs.label(lang)),
+                verdict = verdict
             )
         };
 
@@ -417,25 +443,19 @@ async fn on_pick(cx: &Cx, id: i64, round_no: u8, mv: Move) -> anyhow::Result<()>
         for (i, player) in [host, guest].into_iter().enumerate() {
             record(&cx.app, Game::Rps, player, i == w).await;
         }
-        let note = if session.bet > 0 {
-            format!("They take the pot of **{}** shells.", thousands(session.bet * 2))
+        let reward = if session.bet > 0 {
+            Reward::Pot
         } else {
-            let paid = pay_win(&cx.app, champion, Game::Rps, Game::Rps.win_reward(), "rps_win").await?;
-            if paid > 0 {
-                format!("+**{paid}** shells!")
-            } else {
-                "(Today's reward limit for this game is reached.)".to_owned()
+            match pay_win(&cx.app, champion, Game::Rps, Game::Rps.win_reward(), "rps_win").await? {
+                0 => Reward::Limit,
+                paid => Reward::Paid(paid),
             }
         };
-        let end = End { winner: w, note };
+        let end = End { winner: w, reward };
         refresh_public(cx, &session, &names, &state, Some(&end), deadline).await;
         return private(cx, result()).await;
     }
-    private(
-        cx,
-        "The match moved on while you picked. Press **Choose your move** again.".to_owned(),
-    )
-    .await
+    private(cx, t!(lang, "rps.moved-on")).await
 }
 
 /// Edits the public message with the bot's token, because the click that changed it was on a
@@ -451,7 +471,9 @@ async fn refresh_public(
     let Some((channel, message)) = location(session) else {
         return;
     };
-    let view = view(session, names, state, end, deadline);
+    // The bot's own edit is for everyone: the server's language.
+    let lang = cx.app.guild_lang(session.guild_id as u64).await;
+    let view = view(lang, session, names, state, end, deadline);
     edit_message(
         &cx.app,
         channel,

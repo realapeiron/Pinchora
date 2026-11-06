@@ -1,5 +1,7 @@
 use std::fmt::Write;
 
+use pinchora_core::{i18n::Lang, t};
+
 use super::{
     PIXEL, SANS,
     boards::{COORDINATE_SIZE, coordinate_color, fitted_pixel_text},
@@ -14,6 +16,7 @@ use crate::{
 
 /// The colours of the five ships, longest first: galleon, frigate, brig, sloop and dinghy.
 pub const SHIP_COLORS: [&str; 5] = ["#c98a1e", "#e0674a", "#9b6bc4", "#3a9bdc", "#06d6a0"];
+/// The ships' English names; the cards use `seafleet.ship-<index>` of the catalogs.
 pub const SHIP_NAMES: [&str; 5] = ["Galleon", "Frigate", "Brig", "Sloop", "Dinghy"];
 const SHIP_LENGTHS: [usize; 5] = [5, 4, 3, 3, 2];
 
@@ -177,6 +180,8 @@ fn pips(out: &mut String, t: &Theme, x: f32, y: f32, afloat: usize) {
 
 /// 836×550 radar: both players' waters side by side with the shots fired into them, and who is aiming where.
 pub struct RadarCard<'a> {
+    /// The language of the labels; the status line comes translated, and in capitals.
+    pub lang: Lang,
     pub seas: [SeaView<'a>; 2],
     /// Which player is to fire (0 or 1); the other's waters are the target. `None` when the game is over.
     pub turn: Option<u8>,
@@ -223,20 +228,30 @@ impl RadarCard<'_> {
             );
             pips(&mut s, t, x + PANEL_W - 116.0, 28.0, view.afloat);
             let note = if self.winner == Some(side as u8) {
-                "WINNER!"
+                t!(self.lang, "board.card.winner")
             } else if lost {
-                "FLEET SUNK"
+                t!(self.lang, "seafleet.card.sunk")
             } else if aimed {
-                "FIRE HERE"
+                t!(self.lang, "seafleet.card.fire-here")
             } else {
-                "WAITING"
+                t!(self.lang, "seafleet.card.waiting")
             };
             let color = if aimed || self.winner == Some(side as u8) {
                 &t.gold
             } else {
                 &t.muted
             };
-            text(&mut s, x + PANEL_W - 16.0, 66.0, 11.0, PIXEL, false, color, "end", note);
+            text(
+                &mut s,
+                x + PANEL_W - 16.0,
+                66.0,
+                11.0,
+                PIXEL,
+                false,
+                color,
+                "end",
+                &note,
+            );
             let last = self
                 .last
                 .filter(|&(sea, _)| usize::from(sea) == side)
@@ -269,6 +284,8 @@ impl RadarCard<'_> {
 /// 620×500: one player's own sea with every ship on it, a list of the fleet beside it. Shows the fleet being
 /// placed (no shots) and the fleet under fire.
 pub struct FleetCard<'a> {
+    /// The language of the labels; title, subtitle and footer come translated, and in capitals.
+    pub lang: Lang,
     pub title: &'a str,
     pub subtitle: &'a str,
     pub sea: SeaView<'a>,
@@ -327,7 +344,7 @@ impl FleetCard<'_> {
             false,
             &t.gold,
             "start",
-            "YOUR FLEET",
+            &t!(self.lang, "seafleet.card.your-fleet"),
         );
         for ship in 0..5 {
             let y = 128.0 + ship as f32 * 52.0;
@@ -353,7 +370,15 @@ impl FleetCard<'_> {
                 true,
                 if sunk { &t.muted } else { &t.ink },
                 "start",
-                &format!("{}{}", SHIP_NAMES[ship], if sunk { " (sunk)" } else { "" }),
+                &escape(&if sunk {
+                    t!(
+                        self.lang,
+                        "seafleet.card.ship-sunk",
+                        ship = t!(self.lang, &format!("seafleet.ship-{ship}"))
+                    )
+                } else {
+                    t!(self.lang, &format!("seafleet.ship-{ship}"))
+                }),
             );
         }
         text(
@@ -412,6 +437,7 @@ mod tests {
     fn the_radar_draws_both_seas_their_shots_and_who_is_aimed_at() {
         let text = shots();
         let card = RadarCard {
+            lang: Lang::En,
             seas: [
                 SeaView {
                     name: "Marlowe",
@@ -450,6 +476,7 @@ mod tests {
     fn the_radar_and_the_fleet_render_to_pngs_of_the_documented_size() {
         let text = shots();
         let radar = RadarCard {
+            lang: Lang::En,
             seas: [
                 SeaView {
                     name: "A",
@@ -475,6 +502,7 @@ mod tests {
         let image = image::load_from_memory(&png).expect("a png");
         assert_eq!((image.width(), image.height()), (RadarCard::WIDTH, RadarCard::HEIGHT));
         let fleet = FleetCard {
+            lang: Lang::En,
             title: "Your fleet",
             subtitle: "Harbour line",
             sea: SeaView {

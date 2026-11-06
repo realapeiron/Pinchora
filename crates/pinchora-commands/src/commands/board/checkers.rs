@@ -4,10 +4,14 @@
 use std::str::Split;
 
 use chrono::{DateTime, Duration, Utc};
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::GameSession;
-use pinchora_game::play::{
-    Game as Play,
-    checkers::{self as rules, Game, Move, Outcome},
+use pinchora_game::{
+    lang::upper,
+    play::{
+        Game as Play,
+        checkers::{self as rules, Game, Move, Outcome},
+    },
 };
 use pinchora_render::{CheckersCard, Theme};
 use twilight_model::{channel::message::Component, http::interaction::InteractionResponseData};
@@ -102,10 +106,30 @@ pub(crate) fn slow_players(session: &GameSession) -> Vec<u64> {
         .unwrap_or_default()
 }
 
+/// Why a game ended.
+enum How {
+    /// The loser had no piece or no move left.
+    Cleared,
+    /// The 40-move rule.
+    Rule,
+    /// This player (0 host, 1 guest) gave up.
+    Resigned(usize),
+}
+
+impl How {
+    fn text(&self, lang: Lang, names: &[String; 2]) -> String {
+        match self {
+            Self::Cleared => t!(lang, "checkers.how-cleared"),
+            Self::Rule => t!(lang, "checkers.how-rule"),
+            Self::Resigned(loser) => t!(lang, "board.how-resigned", name = tag(&names[*loser])),
+        }
+    }
+}
+
 /// How a game ended: the winner (0 host, 1 guest) or `None` for a draw, and why.
 struct End {
     winner: Option<usize>,
-    how: String,
+    how: How,
 }
 
 impl End {
@@ -113,11 +137,11 @@ impl End {
         match outcome {
             Outcome::Won(side) => Self {
                 winner: Some(state.player(side)),
-                how: "taking or blocking every piece".to_owned(),
+                how: How::Cleared,
             },
             Outcome::Draw => Self {
                 winner: None,
-                how: "the 40-move rule".to_owned(),
+                how: How::Rule,
             },
         }
     }
@@ -132,9 +156,10 @@ struct Show<'a> {
     note: &'a str,
 }
 
-/// The board message: the picture, whose move it is, and the menus to make it.
+/// The board message in `lang`: the picture, whose move it is, and the menus to make it.
 async fn message(
     app: &App,
+    lang: Lang,
     session: &GameSession,
     names: &[String; 2],
     state: &State,
@@ -158,27 +183,45 @@ async fn message(
     let winner = end.and_then(|e| e.winner).map(|w| u8::from(w != state.pearl));
     let mover = state.mover();
     let status = match end {
-        Some(End { winner: Some(w), how }) => format!("{} wins by {how}", tag(&names[*w])),
-        Some(End { winner: None, how }) => format!("A draw by {how}"),
-        None if moves.iter().any(|m| !m.captured.is_empty()) => format!("{} must jump!", tag(&names[mover])),
-        None => format!("{} to move", tag(&names[mover])),
-    };
-    let content = match end {
-        None => format!(
-            "⚪ {} (pearls) vs 🟣 {} (black pearls)\n{}'s move, {}{note}",
-            mention(ids[state.pearl]),
-            mention(ids[1 - state.pearl]),
-            mention(ids[mover]),
-            relative(deadline)
+        Some(End { winner: Some(w), how }) => t!(
+            lang,
+            "board.status-won",
+            name = tag(&names[*w]),
+            how = how.text(lang, names)
         ),
-        Some(End { winner: Some(w), how }) => format!("🏆 {} wins by {how}! {note}", mention(ids[*w])),
-        Some(End { winner: None, how }) => format!("🤝 It's a draw by {how}! {note}"),
+        Some(End { winner: None, how }) => t!(lang, "board.status-draw", how = how.text(lang, names)),
+        None if moves.iter().any(|m| !m.captured.is_empty()) => {
+            t!(lang, "checkers.status-jump", name = tag(&names[mover]))
+        }
+        None => t!(lang, "board.status-move", name = tag(&names[mover])),
+    };
+    // The card draws it in capitals.
+    let status = upper(lang, &status);
+    let content = match end {
+        None => t!(
+            lang,
+            "checkers.turn",
+            pearls = mention(ids[state.pearl]),
+            black = mention(ids[1 - state.pearl]),
+            mover = mention(ids[mover]),
+            when = relative(deadline),
+            note = note
+        ),
+        Some(End { winner: Some(w), how }) => t!(
+            lang,
+            "board.won",
+            winner = mention(ids[*w]),
+            how = how.text(lang, names),
+            note = note
+        ),
+        Some(End { winner: None, how }) => t!(lang, "board.draw", how = how.text(lang, names), note = note),
     };
     let pot = if session.bet > 0 { session.bet * 2 } else { 0 };
     let png = {
         let (status, targets, last) = (status.clone(), targets.clone(), state.last.clone());
         app.render(move |r| {
             r.checkers_card(&CheckersCard {
+                lang,
                 cells: &cells,
                 names: [&pearl_name, &black_name],
                 turn,
@@ -194,24 +237,26 @@ async fn message(
         .await?
     };
     let mut description = if state.plies == 0 {
-        "Pearls move first. Pick a piece, then its move. Jumps are compulsory.".to_owned()
+        t!(lang, "checkers.intro")
     } else {
-        format!("Move {}", state.plies / 2 + 1)
+        t!(lang, "checkers.move-number", n = state.plies / 2 + 1)
     };
     if pot > 0 {
-        description.push_str(&format!(
-            "\nPot: **{}** shells ({} each)",
-            thousands(pot),
-            thousands(session.bet)
+        description.push('\n');
+        description.push_str(&t!(
+            lang,
+            "duel.pot-line",
+            pot = thousands(pot),
+            bet = thousands(session.bet)
         ));
     }
     let embed = EmbedBuilder::new()
         .color(if end.is_some() { SUCCESS } else { BRAND })
-        .title("Pearl Checkers")
+        .title(Play::Checkers.name(lang))
         .description(description);
     let mut components = Vec::new();
     if end.is_none() {
-        components = menus(session.id, state, &moves, selected);
+        components = menus(lang, session.id, state, &moves, selected);
     }
     let mut data = Cx::card(embed, "checkers.png", png, components, false);
     data.content = Some(content);
@@ -220,7 +265,7 @@ async fn message(
 }
 
 /// The piece menu, the move menu once a piece is picked, and Resign.
-fn menus(id: i64, state: &State, moves: &[Move], selected: Option<u8>) -> Vec<Component> {
+fn menus(lang: Lang, id: i64, state: &State, moves: &[Move], selected: Option<u8>) -> Vec<Component> {
     let mut froms: Vec<u8> = moves.iter().map(Move::from).collect();
     froms.sort_unstable();
     froms.dedup();
@@ -230,16 +275,24 @@ fn menus(id: i64, state: &State, moves: &[Move], selected: Option<u8>) -> Vec<Co
             let count = moves.iter().filter(|m| m.from() == sq).count();
             let jumps = moves.iter().any(|m| m.from() == sq && !m.captured.is_empty());
             option(
-                format!(
-                    "{} on {}",
-                    if state.game.is_king(sq) { "King" } else { "Man" },
-                    rules::name(sq)
+                t!(
+                    lang,
+                    if state.game.is_king(sq) {
+                        "checkers.piece-king"
+                    } else {
+                        "checkers.piece-man"
+                    },
+                    square = rules::name(sq)
                 ),
                 sq.to_string(),
-                Some(format!(
-                    "{count} move{}{}",
-                    if count == 1 { "" } else { "s" },
-                    if jumps { ", jumps" } else { "" }
+                Some(t!(
+                    lang,
+                    if jumps {
+                        "checkers.moves-jumps"
+                    } else {
+                        "checkers.moves"
+                    },
+                    count = count
                 )),
                 selected == Some(sq),
             )
@@ -247,7 +300,7 @@ fn menus(id: i64, state: &State, moves: &[Move], selected: Option<u8>) -> Vec<Co
         .collect();
     let mut rows = vec![select_row(
         format!("ck:s:{id}:{}", state.plies),
-        "Pick a piece to move",
+        &t!(lang, "checkers.pick-piece"),
         piece_options,
         (1, 1),
     )];
@@ -257,17 +310,23 @@ fn menus(id: i64, state: &State, moves: &[Move], selected: Option<u8>) -> Vec<Co
             .filter(|m| m.from() == from)
             .map(|m| {
                 let takes = m.captured.len();
-                option(m.text(), m.code(), (takes > 0).then(|| format!("takes {takes}")), false)
+                option(
+                    m.text(),
+                    m.code(),
+                    (takes > 0).then(|| t!(lang, "checkers.takes", count = takes)),
+                    false,
+                )
             })
             .collect();
         rows.extend(select_rows(
+            lang,
             &format!("ck:t:{id}:{}:{from}", state.plies),
-            &format!("Where should the piece on {} go?", rules::name(from)),
+            &t!(lang, "checkers.where", square = rules::name(from)),
             options,
             (1, 1),
         ));
     }
-    rows.push(resign_button("ck", id));
+    rows.push(resign_button(lang, "ck", id));
     rows
 }
 
@@ -277,6 +336,7 @@ pub(crate) async fn begin(cx: &Cx, session: &GameSession) -> anyhow::Result<()> 
     let state = State::decode(fields).ok_or_else(|| anyhow::anyhow!("bad checkers state {fields:?}"))?;
     let data = message(
         &cx.app,
+        cx.lang(),
         session,
         &names,
         &state,
@@ -295,7 +355,7 @@ pub(crate) async fn begin(cx: &Cx, session: &GameSession) -> anyhow::Result<()> 
 pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[String]) -> anyhow::Result<()> {
     let action = args.next();
     let Some(id) = args.next().and_then(|v| v.parse::<i64>().ok()) else {
-        return cx.reply_ephemeral("This game has expired.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "duel.game-expired")).await;
     };
     let value = values.first().map(String::as_str);
     match action {
@@ -308,13 +368,13 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[S
             value.and_then(|v| v.parse::<u8>().ok()),
         ) {
             (Some(plies), Some(from)) => on_piece(cx, id, plies, from).await,
-            _ => cx.reply_ephemeral("This menu has expired.").await,
+            _ => cx.reply_ephemeral(t!(cx.lang(), "duel.menu-expired")).await,
         },
         Some("t") => match (args.next().and_then(|v| v.parse::<usize>().ok()), value) {
             (Some(plies), Some(path)) => on_move(cx, id, plies, path).await,
-            _ => cx.reply_ephemeral("This menu has expired.").await,
+            _ => cx.reply_ephemeral(t!(cx.lang(), "duel.menu-expired")).await,
         },
-        _ => cx.reply_ephemeral("This button has expired.").await,
+        _ => cx.reply_ephemeral(t!(cx.lang(), "duel.button-expired")).await,
     }
 }
 
@@ -329,11 +389,11 @@ async fn running(cx: &Cx, id: i64, plies: Option<usize>) -> anyhow::Result<Optio
         .await?
         .filter(|s| s.is_active() && s.kind == DuelKind::Checkers.key())
     else {
-        cx.reply_ephemeral("This game is over.").await?;
+        cx.reply_ephemeral(t!(cx.lang(), "duel.game-over")).await?;
         return Ok(None);
     };
     if !session.has_player(me) {
-        cx.reply_ephemeral("You're not in this game. Challenge someone with `/duel checkers`!")
+        cx.reply_ephemeral(t!(cx.lang(), "duel.not-in-game", command = "checkers"))
             .await?;
         return Ok(None);
     }
@@ -347,6 +407,7 @@ async fn running(cx: &Cx, id: i64, plies: Option<usize>) -> anyhow::Result<Optio
         if state.plies != plies {
             let data = message(
                 &cx.app,
+                cx.lang(),
                 &session,
                 &names,
                 &state,
@@ -360,7 +421,7 @@ async fn running(cx: &Cx, id: i64, plies: Option<usize>) -> anyhow::Result<Optio
             return Ok(None);
         }
         if state.mover() != usize::from(me != players(&session)[0]) {
-            cx.reply_ephemeral("Not your turn yet.").await?;
+            cx.reply_ephemeral(t!(cx.lang(), "duel.not-your-turn")).await?;
             return Ok(None);
         }
     }
@@ -372,10 +433,11 @@ async fn on_piece(cx: &Cx, id: i64, plies: usize, from: u8) -> anyhow::Result<()
         return Ok(());
     };
     if !state.game.legal_moves().iter().any(|m| m.from() == from) {
-        return cx.reply_ephemeral("That piece can't move.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "board.cant-move")).await;
     }
     let data = message(
         &cx.app,
+        cx.lang(),
         &session,
         &names,
         &state,
@@ -393,6 +455,7 @@ async fn on_move(cx: &Cx, id: i64, plies: usize, path: &str) -> anyhow::Result<(
     let Some((session, names, state)) = running(cx, id, Some(plies)).await? else {
         return Ok(());
     };
+    let lang = cx.lang();
     let wanted: Option<Vec<u8>> = path.split('.').map(|s| s.parse().ok()).collect();
     let Some(mv) = state
         .game
@@ -400,7 +463,7 @@ async fn on_move(cx: &Cx, id: i64, plies: usize, path: &str) -> anyhow::Result<(
         .into_iter()
         .find(|m| wanted.as_deref() == Some(m.path.as_slice()))
     else {
-        return cx.reply_ephemeral("That move isn't legal.").await;
+        return cx.reply_ephemeral(t!(lang, "board.illegal")).await;
     };
     let mut game = state.game.clone();
     game.play(&mv)
@@ -419,13 +482,12 @@ async fn on_move(cx: &Cx, id: i64, plies: usize, path: &str) -> anyhow::Result<(
             .advance_game(id, &session.state, &packed, CHECKERS_SECS)
             .await?
         {
-            return cx
-                .reply_ephemeral("The board changed under you. Look again and pick a piece.")
-                .await;
+            return cx.reply_ephemeral(t!(lang, "board.changed-pick")).await;
         }
         let deadline = Utc::now() + Duration::seconds(CHECKERS_SECS);
         let data = message(
             &cx.app,
+            lang,
             &session,
             &names,
             &next,
@@ -439,11 +501,12 @@ async fn on_move(cx: &Cx, id: i64, plies: usize, path: &str) -> anyhow::Result<(
     };
     let end = End::of(&next, outcome);
     let winner = end.winner.map(|w| players(&session)[w]);
-    let Some(note) = conclude(&cx.app, &session, &packed, Play::Checkers, winner, next.plies).await? else {
-        return cx.reply_ephemeral("The board changed under you. Look again.").await;
+    let Some(note) = conclude(&cx.app, lang, &session, &packed, Play::Checkers, winner, next.plies).await? else {
+        return cx.reply_ephemeral(t!(lang, "duel.board-changed")).await;
     };
     let data = message(
         &cx.app,
+        lang,
         &session,
         &names,
         &next,
@@ -466,8 +529,11 @@ async fn on_resign(cx: &Cx, id: i64) -> anyhow::Result<()> {
     let me = cx.author()?.id.get();
     let ids = players(&session);
     let winner = usize::from(me == ids[0]);
+    // The public board is edited with the bot's token, for everyone: the server's language.
+    let board_lang = cx.app.guild_lang(session.guild_id as u64).await;
     let Some(note) = conclude(
         &cx.app,
+        board_lang,
         &session,
         &session.state,
         Play::Checkers,
@@ -476,14 +542,15 @@ async fn on_resign(cx: &Cx, id: i64) -> anyhow::Result<()> {
     )
     .await?
     else {
-        return resigned(cx, "The game was over before you could resign.").await;
+        return resigned(cx, &t!(cx.lang(), "board.too-late")).await;
     };
     let end = End {
         winner: Some(winner),
-        how: format!("resignation ({} gave up)", tag(&names[1 - winner])),
+        how: How::Resigned(1 - winner),
     };
     let data = message(
         &cx.app,
+        board_lang,
         &session,
         &names,
         &state,
@@ -498,7 +565,7 @@ async fn on_resign(cx: &Cx, id: i64) -> anyhow::Result<()> {
     if let Some((channel, message)) = location(&session) {
         edit_card(&cx.app, channel, message, &data).await;
     }
-    resigned(cx, "You resigned.").await
+    resigned(cx, &t!(cx.lang(), "board.resigned")).await
 }
 
 #[cfg(test)]

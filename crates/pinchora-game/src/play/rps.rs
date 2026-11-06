@@ -1,5 +1,7 @@
 //! Rock paper scissors, best of one, three or five.
 
+use pinchora_core::{i18n::Lang, t};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Move {
     Rock,
@@ -31,11 +33,12 @@ impl Move {
         Self::ALL.into_iter().find(|m| m.key() == key)
     }
 
-    pub fn label(self) -> &'static str {
+    /// The move's name in `lang` (`rps.rock`, `rps.paper`, `rps.scissors`).
+    pub fn label(self, lang: Lang) -> String {
         match self {
-            Self::Rock => "Rock",
-            Self::Paper => "Paper",
-            Self::Scissors => "Scissors",
+            Self::Rock => t!(lang, "rps.rock"),
+            Self::Paper => t!(lang, "rps.paper"),
+            Self::Scissors => t!(lang, "rps.scissors"),
         }
     }
 
@@ -92,5 +95,11 @@ mod tests {
     #[test]
     fn matches_need_a_majority() {
         assert_eq!([1, 3, 5].map(wins_needed), [1, 2, 3]);
+    }
+
+    #[test]
+    fn moves_are_named_in_every_language() {
+        assert_eq!(Move::ALL.map(|m| m.label(Lang::En)), ["Rock", "Paper", "Scissors"]);
+        assert_eq!(Move::ALL.map(|m| m.label(Lang::Tr)), ["Taş", "Kâğıt", "Makas"]);
     }
 }

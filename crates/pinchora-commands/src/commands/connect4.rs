@@ -3,10 +3,14 @@
 use std::str::Split;
 
 use chrono::{DateTime, Duration, Utc};
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{GameSession, Payout};
-use pinchora_game::play::{
-    Game,
-    connect4::{Board, COLS},
+use pinchora_game::{
+    lang::upper,
+    play::{
+        Game,
+        connect4::{Board, COLS},
+    },
 };
 use pinchora_render::{Connect4Card, Theme};
 use twilight_model::{
@@ -76,9 +80,11 @@ enum End {
     Draw,
 }
 
-/// The board message: the picture, a line on whose turn it is and the column buttons.
+/// The board message in `lang`: the picture, a line on whose turn it is and the column buttons.
+#[allow(clippy::too_many_arguments)]
 async fn message(
     app: &App,
+    lang: Lang,
     session: &GameSession,
     names: &[String; 2],
     state: &State,
@@ -91,39 +97,48 @@ async fn message(
     let name_of = |n: u8| names[usize::from(n) - 1].clone();
     let (content, status, turn, winner, win_cells) = match end {
         None => (
-            format!(
-                "🔴 {} vs 🔵 {}\n{}'s turn, move {}",
-                mention(host),
-                mention(guest),
-                mention(players[usize::from(state.turn) - 1]),
-                relative(deadline)
+            t!(
+                lang,
+                "connect4.turn",
+                host = mention(host),
+                guest = mention(guest),
+                mover = mention(players[usize::from(state.turn) - 1]),
+                when = relative(deadline)
             ),
-            format!("{}'s move", name_of(state.turn)),
+            t!(lang, "connect4.status-turn", name = name_of(state.turn)),
             Some(state.turn),
             None,
             Vec::new(),
         ),
         Some(End::Won(who, line)) => (
-            format!("🏆 {} wins! {note}", mention(players[usize::from(*who) - 1])),
-            format!("{} wins!", name_of(*who)),
+            t!(
+                lang,
+                "connect4.won",
+                winner = mention(players[usize::from(*who) - 1]),
+                note = note
+            ),
+            t!(lang, "connect4.status-won", name = name_of(*who)),
             None,
             Some(*who),
             line.to_vec(),
         ),
         Some(End::Draw) => (
-            format!("🤝 It's a draw! {note}"),
-            "A draw!".to_owned(),
+            t!(lang, "connect4.draw", note = note),
+            t!(lang, "connect4.status-draw"),
             None,
             None,
             Vec::new(),
         ),
     };
+    // The card draws it in capitals.
+    let status = upper(lang, &status);
     let pot = if session.bet > 0 { session.bet * 2 } else { 0 };
     let cells = state.board.cells().to_vec();
     let (names, last) = (names.clone(), state.last);
     let png = app
         .render(move |r| {
             r.connect4_card(&Connect4Card {
+                lang,
                 cells: &cells,
                 names: [&names[0], &names[1]],
                 turn,
@@ -136,12 +151,13 @@ async fn message(
             })
         })
         .await?;
-    let mut embed = EmbedBuilder::new().color(BRAND).title("Connect four");
+    let mut embed = EmbedBuilder::new().color(BRAND).title(Game::Connect4.name(lang));
     if session.bet > 0 {
-        embed = embed.description(format!(
-            "Pot: **{}** shells ({} each)",
-            thousands(pot),
-            thousands(session.bet)
+        embed = embed.description(t!(
+            lang,
+            "duel.pot-line",
+            pot = thousands(pot),
+            bet = thousands(session.bet)
         ));
     }
     let components = if end.is_some() {
@@ -183,7 +199,17 @@ fn column_rows(id: i64, board: &Board) -> Vec<Component> {
 pub(crate) async fn begin(cx: &Cx, session: &GameSession) -> anyhow::Result<()> {
     let (fields, names) = unpack(&session.state);
     let state = State::decode(fields).ok_or_else(|| anyhow::anyhow!("bad connect four state {fields:?}"))?;
-    let data = message(&cx.app, session, &names, &state, None, session.expires_at, "").await?;
+    let data = message(
+        &cx.app,
+        cx.lang(),
+        session,
+        &names,
+        &state,
+        None,
+        session.expires_at,
+        "",
+    )
+    .await?;
     cx.update(data).await
 }
 
@@ -191,21 +217,22 @@ pub(crate) async fn begin(cx: &Cx, session: &GameSession) -> anyhow::Result<()> 
 pub(crate) async fn on_button(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Result<()> {
     let action = args.next();
     let Some(id) = args.next().and_then(|v| v.parse::<i64>().ok()) else {
-        return cx.reply_ephemeral("This game has expired.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "duel.game-expired")).await;
     };
     match action {
         Some("y") => answer(cx, Kind::Connect4, id, true).await,
         Some("n") => answer(cx, Kind::Connect4, id, false).await,
         Some("m") => match args.next().and_then(|v| v.parse::<usize>().ok()) {
             Some(col) => on_move(cx, id, col).await,
-            None => cx.reply_ephemeral("This game has expired.").await,
+            None => cx.reply_ephemeral(t!(cx.lang(), "duel.game-expired")).await,
         },
-        _ => cx.reply_ephemeral("This button has expired.").await,
+        _ => cx.reply_ephemeral(t!(cx.lang(), "duel.button-expired")).await,
     }
 }
 
 async fn on_move(cx: &Cx, id: i64, col: usize) -> anyhow::Result<()> {
     let me = cx.author()?.id.get();
+    let lang = cx.lang();
     // Another kind's id is not this game: its buttons pass another module's switch.
     let Some(session) = cx
         .app
@@ -214,11 +241,11 @@ async fn on_move(cx: &Cx, id: i64, col: usize) -> anyhow::Result<()> {
         .await?
         .filter(|s| s.is_active() && s.kind == Kind::Connect4.key())
     else {
-        return cx.reply_ephemeral("This game is over.").await;
+        return cx.reply_ephemeral(t!(lang, "duel.game-over")).await;
     };
     if !session.has_player(me) {
         return cx
-            .reply_ephemeral("You're not in this game. Challenge someone with `/duel connect4`!")
+            .reply_ephemeral(t!(lang, "duel.not-in-game", command = "connect4"))
             .await;
     }
     if session.expired() {
@@ -231,10 +258,10 @@ async fn on_move(cx: &Cx, id: i64, col: usize) -> anyhow::Result<()> {
     };
     let mine: u8 = if me == host { 1 } else { 2 };
     if state.turn != mine {
-        return cx.reply_ephemeral("Not your turn yet.").await;
+        return cx.reply_ephemeral(t!(lang, "duel.not-your-turn")).await;
     }
     let Some(cell) = state.board.drop_disc(col, mine) else {
-        return cx.reply_ephemeral("That column is full.").await;
+        return cx.reply_ephemeral(t!(lang, "connect4.column-full")).await;
     };
     state.last = Some(cell);
     let end = match state.board.winner() {
@@ -246,12 +273,10 @@ async fn on_move(cx: &Cx, id: i64, col: usize) -> anyhow::Result<()> {
         state.turn = 3 - mine;
         let next = pack(&state.encode(), [&names[0], &names[1]]);
         if !cx.app.db.advance_game(id, &session.state, &next, TURN_SECS).await? {
-            return cx
-                .reply_ephemeral("The board changed under you. Look again and pick a column.")
-                .await;
+            return cx.reply_ephemeral(t!(lang, "connect4.changed-pick")).await;
         }
         let deadline = Utc::now() + Duration::seconds(TURN_SECS);
-        let data = message(&cx.app, &session, &names, &state, None, deadline, "").await?;
+        let data = message(&cx.app, lang, &session, &names, &state, None, deadline, "").await?;
         return cx.update(data).await;
     };
 
@@ -268,7 +293,7 @@ async fn on_move(cx: &Cx, id: i64, col: usize) -> anyhow::Result<()> {
         .await?
         .is_none()
     {
-        return cx.reply_ephemeral("The board changed under you. Look again.").await;
+        return cx.reply_ephemeral(t!(lang, "duel.board-changed")).await;
     }
     let winner = match end {
         End::Won(who, _) => Some(if who == 1 { host } else { guest }),
@@ -278,19 +303,19 @@ async fn on_move(cx: &Cx, id: i64, col: usize) -> anyhow::Result<()> {
         record(&cx.app, Game::Connect4, player, winner == Some(player)).await;
     }
     let note = match winner {
-        Some(_) if session.bet > 0 => format!("They take the pot of **{}** shells.", thousands(session.bet * 2)),
+        Some(_) if session.bet > 0 => t!(lang, "duel.pot-won", pot = thousands(session.bet * 2)),
         Some(w) => {
             let paid = pay_win(&cx.app, w, Game::Connect4, Game::Connect4.win_reward(), "connect4_win").await?;
             if paid > 0 {
-                format!("+**{paid}** shells!")
+                t!(lang, "duel.paid", paid = paid)
             } else {
-                "(Today's reward limit for this game is reached.)".to_owned()
+                t!(lang, "duel.limit-reached")
             }
         }
-        None if session.bet > 0 => "Both wagers were given back.".to_owned(),
+        None if session.bet > 0 => t!(lang, "duel.wagers-back"),
         None => String::new(),
     };
-    let data = message(&cx.app, &session, &names, &state, Some(&end), Utc::now(), &note).await?;
+    let data = message(&cx.app, lang, &session, &names, &state, Some(&end), Utc::now(), &note).await?;
     cx.update(data).await
 }
 

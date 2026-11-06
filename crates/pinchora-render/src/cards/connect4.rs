@@ -1,5 +1,7 @@
 use std::fmt::Write;
 
+use pinchora_core::{i18n::Lang, t};
+
 use super::{PIXEL, SANS, text};
 use crate::{
     Theme,
@@ -8,7 +10,6 @@ use crate::{
 
 /// The two disc colours: coral for player 1, sky blue for player 2.
 const DISC_COLORS: [(&str, &str); 2] = [("#ff6b4a", "#ffb9a8"), ("#5bc0eb", "#bfe9fa")];
-const DISC_NAMES: [&str; 2] = ["CORAL", "SKY"];
 
 /// An 11×11 pixel disc.
 const DISC: &[&str] = &[
@@ -27,6 +28,8 @@ const DISC: &[&str] = &[
 
 /// 580×670 connect-four board: two player panels, column numbers over the 7×6 grid, a status line.
 pub struct Connect4Card<'a> {
+    /// The language of the labels; the status line comes translated, and in capitals.
+    pub lang: Lang,
     /// The 42 cells, row 0 on top: 0 empty, 1 or 2 for a player's disc.
     pub cells: &'a [u8],
     pub names: [&'a str; 2],
@@ -73,7 +76,7 @@ impl Connect4Card<'_> {
         s.push_str("</defs>");
 
         // Player panels.
-        for player in 0..2usize {
+        for (player, name) in self.names.iter().enumerate() {
             let x = 24.0 + player as f32 * 270.0;
             let number = player as u8 + 1;
             let active = self.turn == Some(number);
@@ -96,16 +99,26 @@ impl Connect4Card<'_> {
                 true,
                 &t.ink,
                 "start",
-                &escape(&truncate(self.names[player], 13)),
+                &escape(&truncate(name, 13)),
             );
             let (note, note_color) = if won {
-                ("WINNER!", &t.gold)
+                (t!(self.lang, "board.card.winner"), &t.gold)
             } else if active {
-                ("YOUR MOVE", &t.mint)
+                (t!(self.lang, "board.card.your-move"), &t.mint)
             } else {
-                (DISC_NAMES[player], &t.muted)
+                (
+                    t!(
+                        self.lang,
+                        if player == 0 {
+                            "connect4.card.coral"
+                        } else {
+                            "connect4.card.sky"
+                        }
+                    ),
+                    &t.muted,
+                )
             };
-            text(&mut s, x + 72.0, 84.0, 14.0, PIXEL, false, note_color, "start", note);
+            text(&mut s, x + 72.0, 84.0, 14.0, PIXEL, false, note_color, "start", &note);
         }
 
         // Column numbers match the buttons under the message.
@@ -198,6 +211,7 @@ mod tests {
 
     fn card<'a>(cells: &'a [u8], win: &'a [usize], pot: i64) -> Connect4Card<'a> {
         Connect4Card {
+            lang: Lang::En,
             cells,
             names: ["A", "B"],
             turn: Some(2),
