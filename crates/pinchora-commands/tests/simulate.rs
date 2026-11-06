@@ -8298,12 +8298,19 @@ async fn reminders_arrive_once_after_their_time() {
     // At most 25 are open at a time.
     let busy = unique();
     for n in 0..25 {
-        let set = sim.command(busy, "remind", remind_in("1d", &format!("note {n}"))).await;
+        let text = format!("note {n} {}", "long ".repeat(38));
+        let set = sim.command(busy, "remind", remind_in("1d", &text)).await;
         assert_eq!(set.title(), "⏰ Reminder set", "{n}");
     }
     let full = sim.command(busy, "remind", remind_in("1d", "one too many")).await;
     assert!(full.content().contains("already have 25"), "{}", full.content());
     assert_eq!(sim.app.db.text_reminders(busy).await.unwrap().len(), 25);
+    // 25 notes of 200 characters still fit the list: an embed field takes 1,024 at most.
+    let list = sim.command(busy, "remind", json!([sub("list", vec![])])).await;
+    let field = list.field("Reminders");
+    assert!(field.chars().count() <= 1024, "{} characters", field.chars().count());
+    assert!(field.contains("more in the menu below"), "{field}");
+    assert_eq!(list.options("rm:c").len(), 25);
     sim.app.db.delete_user_data(busy).await.unwrap();
 }
 

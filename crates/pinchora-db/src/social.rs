@@ -50,8 +50,15 @@ impl Db {
             .bind(host)
             .fetch_one(&mut *tx)
             .await?;
-        crate::activity::bump(&mut tx, liker, crate::Counter::LikesGiven, 1, None).await?;
-        crate::activity::bump(&mut tx, host, crate::Counter::LikesReceived, 1, None).await?;
+        // In id order, so two players liking each other's houses at once cannot deadlock.
+        let mut counts = [
+            (liker, crate::Counter::LikesGiven),
+            (host, crate::Counter::LikesReceived),
+        ];
+        counts.sort_by_key(|(user, _)| *user);
+        for (user, counter) in counts {
+            crate::activity::bump(&mut tx, user, counter, 1, None).await?;
+        }
         tx.commit().await?;
         Ok(Some(likes))
     }

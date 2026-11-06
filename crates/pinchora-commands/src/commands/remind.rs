@@ -489,13 +489,24 @@ async fn list_panel(cx: &Cx, user: u64, note: &str) -> anyhow::Result<Interactio
         .map(|kind| format!("{} {}", if chosen(kind, &optins) { "🔔" } else { "🔕" }, label_of(kind)))
         .collect::<Vec<_>>()
         .join("\n");
+    // An embed field holds 1,024 characters: long notes are cut here, and the menu below has them all.
+    let mut reminders = String::new();
+    for (i, r) in rows.iter().enumerate() {
+        let mut body: String = r.body.chars().take(40).collect();
+        if body.len() < r.body.len() {
+            body.push('…');
+        }
+        let line = format!("`#{}` {} · {body}\n", r.id, relative(r.due_at));
+        if reminders.chars().count() + line.chars().count() > 980 {
+            reminders.push_str(&format!("…and {} more in the menu below", rows.len() - i));
+            break;
+        }
+        reminders.push_str(&line);
+    }
     let reminders = if rows.is_empty() {
         "None. Set one with `/remind me in 2h30m <text>`.".to_owned()
     } else {
-        rows.iter()
-            .map(|r| format!("`#{}` {} · {}", r.id, relative(r.due_at), r.body))
-            .collect::<Vec<_>>()
-            .join("\n")
+        reminders.trim_end().to_owned()
     };
     let mut embed = EmbedBuilder::new()
         .color(BRAND)
