@@ -86,6 +86,19 @@ fn mention_len(text: &str) -> Option<usize> {
 /// their `@`, so nothing in it can ping. Spaces are tidied per line and the ends trimmed; line
 /// breaks stay.
 pub fn strip_mentions(text: &str) -> String {
+    // Dropping one mention can join what was around it into another (`<<@1>@2>`, `@@everyone`), so
+    // strip until nothing changes.
+    let mut out = strip_once(text);
+    loop {
+        let next = strip_once(&out);
+        if next == out {
+            return out;
+        }
+        out = next;
+    }
+}
+
+fn strip_once(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let mut rest = text;
     while let Some(at) = rest.find(['<', '@']) {
@@ -153,6 +166,13 @@ mod tests {
         );
         assert_eq!(strip_mentions("<@1><@2>"), "");
         assert_eq!(strip_mentions("a  b \n\n  c  "), "a b\n\nc");
+        for nested in ["<<@1>@2>", "<@<@1>&2>", "@@everyone", "@every<@1>one", "@<@1>here"] {
+            let out = strip_mentions(nested);
+            assert!(
+                !out.contains("<@") && !out.contains("@everyone") && !out.contains("@here"),
+                "{nested:?} → {out:?}"
+            );
+        }
     }
 
     #[test]

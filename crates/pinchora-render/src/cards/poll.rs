@@ -98,7 +98,8 @@ impl PollCard {
                 true,
                 &t.ink,
                 "start",
-                &escape(line),
+                // Wrapping counts letters, so wide ones still get cut at the edge; bold needs the margin.
+                &escape(&truncate_to(line, 30.0, 760.0)),
             );
         }
 

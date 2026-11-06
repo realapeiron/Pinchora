@@ -137,6 +137,11 @@ impl Db {
     /// transaction. Nothing changes when the host cannot cover it or the server is full.
     pub async fn create_giveaway(&self, new: NewGiveaway<'_>) -> anyhow::Result<GiveawayOpen> {
         let mut tx = self.pool().begin().await?;
+        // Two giveaways started at once must not both slip under the limit.
+        sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended('giveaways:' || $1::text, 0))")
+            .bind(sql_id(new.guild_id))
+            .execute(&mut *tx)
+            .await?;
         let (running,): (i64,) =
             sqlx::query_as("SELECT count(*) FROM giveaways WHERE guild_id = $1 AND status = 'running'")
                 .bind(sql_id(new.guild_id))
