@@ -1,3 +1,6 @@
+use pinchora_core::settings::GuildSettingsPatch;
+use sqlx::{Postgres, QueryBuilder};
+
 use crate::{Db, sql_id};
 
 #[derive(Debug, Clone, Default, sqlx::FromRow)]
@@ -64,6 +67,56 @@ impl GuildSettings {
     }
 }
 
+impl GuildSettings {
+    /// These settings with `patch` applied, as [`Db::patch_guild_settings`] would store them.
+    pub fn apply(&self, patch: &GuildSettingsPatch) -> GuildSettings {
+        let mut s = self.clone();
+        let id = |v: Option<u64>| v.map(sql_id);
+        let p = patch;
+        macro_rules! set {
+            ($field:ident) => {
+                if let Some(v) = &p.$field {
+                    s.$field = v.clone();
+                }
+            };
+            ($field:ident, $map:expr) => {
+                if let Some(v) = &p.$field {
+                    s.$field = $map(v.clone());
+                }
+            };
+        }
+        set!(leveling_enabled);
+        set!(levelup_channel_id, id);
+        set!(levelup_message);
+        set!(levelup_mode, |m: pinchora_core::leveling::LevelUpMode| m
+            .key()
+            .to_owned());
+        set!(level_roles_stack);
+        set!(voice_xp_enabled);
+        set!(voice_xp_amount, |n: i64| n as i32);
+        set!(welcome_enabled);
+        set!(welcome_channel_id, id);
+        set!(welcome_message);
+        set!(welcome_theme);
+        set!(welcome_title);
+        set!(welcome_accent, |c: Option<u32>| c.map(|c| c as i32));
+        set!(join_role_id, id);
+        set!(goodbye_channel_id, id);
+        set!(goodbye_message);
+        set!(points_enabled);
+        set!(points_name);
+        set!(points_emoji);
+        set!(points_min, |n: i64| n as i32);
+        set!(points_max, |n: i64| n as i32);
+        set!(log_channel_id, id);
+        set!(log_members);
+        set!(log_names);
+        set!(log_bans);
+        set!(log_voice);
+        s
+    }
+}
+
 macro_rules! columns {
     () => {
         "id, leveling_enabled, levelup_channel_id, levelup_message, \
@@ -89,6 +142,63 @@ impl Db {
             .bind(sql_id(guild_id))
             .fetch_one(self.pool())
             .await?)
+    }
+
+    /// Writes exactly the columns `patch` names (clearing those set to `Some(None)`) and returns the
+    /// row. The patch must have passed `settings::check_patch`, or the database may refuse it.
+    pub async fn patch_guild_settings(
+        &self,
+        guild_id: u64,
+        patch: &GuildSettingsPatch,
+    ) -> anyhow::Result<GuildSettings> {
+        self.guild_settings(guild_id).await?;
+        let mut sql: QueryBuilder<Postgres> = QueryBuilder::new("UPDATE guilds SET id = id");
+        let p = patch;
+        let id = |v: Option<u64>| v.map(sql_id);
+        macro_rules! bind {
+            ($field:ident) => {
+                if let Some(v) = &p.$field {
+                    sql.push(concat!(", ", stringify!($field), " = "))
+                        .push_bind(v.clone());
+                }
+            };
+            ($field:ident, $map:expr) => {
+                if let Some(v) = &p.$field {
+                    sql.push(concat!(", ", stringify!($field), " = "))
+                        .push_bind($map(v.clone()));
+                }
+            };
+        }
+        bind!(leveling_enabled);
+        bind!(levelup_channel_id, id);
+        bind!(levelup_message);
+        bind!(levelup_mode, |m: pinchora_core::leveling::LevelUpMode| m.key());
+        bind!(level_roles_stack);
+        bind!(voice_xp_enabled);
+        bind!(voice_xp_amount, |n: i64| n as i32);
+        bind!(welcome_enabled);
+        bind!(welcome_channel_id, id);
+        bind!(welcome_message);
+        bind!(welcome_theme);
+        bind!(welcome_title);
+        bind!(welcome_accent, |c: Option<u32>| c.map(|c| c as i32));
+        bind!(join_role_id, id);
+        bind!(goodbye_channel_id, id);
+        bind!(goodbye_message);
+        bind!(points_enabled);
+        bind!(points_name);
+        bind!(points_emoji);
+        bind!(points_min, |n: i64| n as i32);
+        bind!(points_max, |n: i64| n as i32);
+        bind!(log_channel_id, id);
+        bind!(log_members);
+        bind!(log_names);
+        bind!(log_bans);
+        bind!(log_voice);
+        sql.push(" WHERE id = ")
+            .push_bind(sql_id(guild_id))
+            .push(concat!(" RETURNING ", columns!()));
+        Ok(sql.build_query_as::<GuildSettings>().fetch_one(self.pool()).await?)
     }
 
     pub async fn update_welcome(

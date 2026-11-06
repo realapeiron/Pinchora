@@ -9,9 +9,10 @@
 use std::{
     collections::{HashMap, HashSet},
     net::SocketAddr,
+    path::PathBuf,
     sync::{
         Arc, LazyLock, Mutex,
-        atomic::{AtomicBool, AtomicU64, Ordering},
+        atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
     },
     time::{Duration, Instant, SystemTime},
 };
@@ -26,9 +27,9 @@ use axum::{
 use base64::Engine;
 use futures_util::StreamExt;
 use pinchora_cache::{Cache, Invalidation};
-use pinchora_commands::{App, listen_for_invalidations, on_message};
+use pinchora_commands::{App, WelcomeDesign, listen_for_invalidations, on_message, welcome_card_png};
 use pinchora_core::config::WebConfig;
-use pinchora_db::Db;
+use pinchora_db::{Db, XpGrant};
 use pinchora_web::{WebSettings, WebState};
 use reqwest::Url;
 use serde_json::{Value, json};
@@ -43,6 +44,20 @@ const PUBLIC_URL: &str = "http://dash.test";
 const MANAGE_GUILD: u64 = 1 << 5;
 const ADMINISTRATOR: u64 = 1 << 3;
 const SEND_MESSAGES: u64 = 1 << 11;
+const MANAGE_ROLES: u64 = 1 << 28;
+
+// The server every mocked guild looks like: a category with a text channel, an announcement and a
+// voice channel; roles below the bot's, one above it, and one an integration manages.
+const CATEGORY: u64 = 7_004;
+const GENERAL: u64 = 7_001;
+const NEWS: u64 = 7_002;
+const LOUNGE: u64 = 7_003;
+const BOT_ROLE: u64 = 9_000;
+const BOT_ROLE_POSITION: i64 = 10;
+const FAN: u64 = 9_001;
+const REGULAR: u64 = 9_002;
+const ADMIN: u64 = 9_003;
+const BOOSTER: u64 = 9_004;
 
 /// Ids unique per process and, through the clock, per run, so tests can share one database.
 fn unique() -> u64 {
@@ -78,6 +93,18 @@ struct Mock {
     short_tokens: Arc<AtomicBool>,
     /// Refuse refresh tokens, as Discord does once the user removed the app.
     refuse_refresh: Arc<AtomicBool>,
+    /// Hand out a new refresh token with every refresh and refuse a used one, as Discord does.
+    rotate: Arc<AtomicBool>,
+    /// Refresh tokens already traded in.
+    used_refresh: Arc<Mutex<HashSet<String>>>,
+    /// Makes the token endpoint slow, to widen races.
+    token_delay_ms: Arc<AtomicU64>,
+    /// Roles each member holds.
+    member_roles: Arc<Mutex<HashMap<u64, Vec<u64>>>>,
+    /// Role changes, as `PUT user role` / `DELETE user role`.
+    role_calls: Arc<Mutex<Vec<String>>>,
+    /// How many times a server's channels were asked for.
+    channel_lookups: Arc<AtomicUsize>,
 }
 
 fn user_json(id: u64, name: &str) -> Value {
@@ -98,6 +125,68 @@ fn guild_entry(id: u64, name: &str, owner: bool, permissions: u64) -> Value {
         "owner": owner,
         "permissions": permissions.to_string(),
         "features": [],
+    })
+}
+
+fn role_json(id: u64, name: &str, position: i64, managed: bool, permissions: u64) -> Value {
+    json!({
+        "id": id.to_string(),
+        "name": name,
+        "color": 0,
+        "colors": { "primary_color": 0xff6b4a, "secondary_color": null, "tertiary_color": null },
+        "hoist": false,
+        "managed": managed,
+        "mentionable": false,
+        "permissions": permissions.to_string(),
+        "position": position,
+        "flags": 0,
+    })
+}
+
+/// `GET /guilds/{id}/roles`: `@everyone` (the server's id) and the fixed roles.
+fn roles_json(guild: u64) -> Value {
+    json!([
+        role_json(guild, "@everyone", 0, false, SEND_MESSAGES),
+        role_json(BOT_ROLE, "Pinchora", BOT_ROLE_POSITION, true, MANAGE_ROLES),
+        role_json(FAN, "Fan", 3, false, 0),
+        role_json(REGULAR, "Regular", 5, false, 0),
+        role_json(ADMIN, "Admin", 20, false, ADMINISTRATOR),
+        role_json(BOOSTER, "Server Booster", 2, true, 0),
+    ])
+}
+
+fn channel_json(guild: u64, id: u64, name: &str, kind: u8, position: i32, parent: Option<u64>) -> Value {
+    json!({
+        "id": id.to_string(),
+        "guild_id": guild.to_string(),
+        "type": kind,
+        "name": name,
+        "position": position,
+        "parent_id": parent.map(|p| p.to_string()),
+        "permission_overwrites": [],
+        "nsfw": false,
+    })
+}
+
+/// `GET /guilds/{id}/channels`.
+fn channels_json(guild: u64) -> Value {
+    json!([
+        channel_json(guild, CATEGORY, "Chat", 4, 0, None),
+        channel_json(guild, GENERAL, "general", 0, 1, Some(CATEGORY)),
+        channel_json(guild, NEWS, "news", 5, 2, Some(CATEGORY)),
+        channel_json(guild, LOUNGE, "Lounge", 2, 3, Some(CATEGORY)),
+    ])
+}
+
+fn member_json(user: u64, roles: &[u64]) -> Value {
+    json!({
+        "user": user_json(user, &format!("user{user}")),
+        "roles": roles.iter().map(u64::to_string).collect::<Vec<_>>(),
+        "joined_at": "2024-01-01T00:00:00.000000+00:00",
+        "deaf": false,
+        "mute": false,
+        "flags": 0,
+        "pending": false,
     })
 }
 
@@ -172,6 +261,10 @@ fn tokens_json(mock: &Mock, access: &str) -> Value {
 /// `POST /oauth2/token`: codes for tokens (checking the redirect and the PKCE verifier), and refreshes.
 async fn token(State(mock): State<Mock>, Form(form): Form<HashMap<String, String>>) -> (StatusCode, String) {
     mock.token_forms.lock().unwrap().push(form.clone());
+    let delay = mock.token_delay_ms.load(Ordering::SeqCst);
+    if delay > 0 {
+        tokio::time::sleep(Duration::from_millis(delay)).await;
+    }
     let refused = (StatusCode::BAD_REQUEST, json!({ "error": "invalid_grant" }).to_string());
     if form.get("client_secret").map(String::as_str) != Some("test-secret") {
         return (
@@ -199,6 +292,17 @@ async fn token(State(mock): State<Mock>, Form(form): Form<HashMap<String, String
                 .to_owned();
             if mock.refuse_refresh.load(Ordering::SeqCst) || !mock.users.lock().unwrap().contains_key(&access) {
                 return refused;
+            }
+            if mock.rotate.load(Ordering::SeqCst) {
+                let used = form.get("refresh_token").cloned().unwrap_or_default();
+                if !mock.used_refresh.lock().unwrap().insert(used) {
+                    return refused;
+                }
+                let renewed = format!("{access}-{}", unique());
+                let mut users = mock.users.lock().unwrap();
+                let account = users[&access].clone();
+                users.insert(renewed.clone(), account);
+                return (StatusCode::OK, tokens_json(&mock, &renewed).to_string());
             }
             (StatusCode::OK, tokens_json(&mock, &access).to_string())
         }
@@ -241,6 +345,40 @@ async fn discord(State(mock): State<Mock>, method: Method, uri: Uri, headers: He
                 Some((_, guilds)) => (StatusCode::OK, Value::Array(guilds).to_string()),
                 None => unauthorized,
             }
+        }
+        (&Method::GET, [.., "guilds", guild, "channels"]) => {
+            mock.channel_lookups.fetch_add(1, Ordering::SeqCst);
+            let id = guild.parse::<u64>().unwrap_or(0);
+            (StatusCode::OK, channels_json(id).to_string())
+        }
+        (&Method::GET, [.., "guilds", guild, "roles"]) => {
+            let id = guild.parse::<u64>().unwrap_or(0);
+            (StatusCode::OK, roles_json(id).to_string())
+        }
+        (&Method::GET, [.., "guilds", _, "members", user]) => {
+            let user = user.parse::<u64>().unwrap_or(0);
+            let roles = if user == APPLICATION_ID {
+                vec![BOT_ROLE]
+            } else {
+                mock.member_roles
+                    .lock()
+                    .unwrap()
+                    .get(&user)
+                    .cloned()
+                    .unwrap_or_default()
+            };
+            (StatusCode::OK, member_json(user, &roles).to_string())
+        }
+        (&Method::PUT | &Method::DELETE, [.., "guilds", _, "members", user, "roles", role]) => {
+            let (user, role) = (user.parse::<u64>().unwrap_or(0), role.parse::<u64>().unwrap_or(0));
+            mock.role_calls.lock().unwrap().push(format!("{method} {user} {role}"));
+            let mut members = mock.member_roles.lock().unwrap();
+            let held = members.entry(user).or_default();
+            held.retain(|r| *r != role);
+            if method == Method::PUT {
+                held.push(role);
+            }
+            (StatusCode::NO_CONTENT, String::new())
         }
         (&Method::GET, [.., "guilds", guild]) => {
             let id = guild.parse::<u64>().unwrap_or(0);
@@ -344,6 +482,33 @@ impl Harness {
         token
     }
 
+    /// A server with the bot, and a browser logged in as its owner.
+    async fn managed_server(&self) -> (u64, u64, Browser) {
+        let (guild, owner) = (unique(), unique());
+        self.add_bot(guild);
+        let mut browser = self.browser();
+        browser
+            .login(self, owner, vec![guild_entry(guild, "Pinchora Reef", true, 0)])
+            .await;
+        (guild, owner, browser)
+    }
+
+    /// Gives a member server XP, as chatting would.
+    async fn seed_xp(&self, guild: u64, user: u64, xp: i64) {
+        let grant = XpGrant {
+            server_xp: xp,
+            global_xp: 0,
+            points: 0,
+        };
+        let week = pinchora_core::leveling::week_start(chrono::Utc::now());
+        self.state
+            .app
+            .db
+            .add_xp(guild, user, grant, week)
+            .await
+            .expect("seed XP");
+    }
+
     /// Another pod of the bot on the same databases, as the gateway would run it.
     async fn bot_pod(&self) -> Arc<App> {
         app(&self.database, &self.redis, self.mock_addr).await
@@ -399,6 +564,7 @@ impl Response {
 }
 
 /// Cookies and the CSRF token, like a browser tab on the dashboard.
+#[derive(Clone)]
 struct Browser {
     router: Router,
     cookies: HashMap<String, String>,
@@ -496,6 +662,43 @@ impl Browser {
         self.csrf = me["csrf"].as_str().map(str::to_owned);
         me
     }
+}
+
+/// Saves a PNG the dashboard served to `target/web-sim/<test>/<step>.png`, for a person (or an agent)
+/// to look at.
+fn save_png(test: &str, step: &str, bytes: &[u8]) -> PathBuf {
+    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!("../../target/web-sim/{test}"));
+    std::fs::create_dir_all(&dir).expect("png folder");
+    let path = dir.join(format!("{step}.png"));
+    std::fs::write(&path, bytes).expect("write png");
+    path
+}
+
+/// The fields a 422 names, in order.
+fn fields_of(response: &Response) -> Vec<String> {
+    response.json()["error"]["errors"]
+        .as_array()
+        .map(|errors| {
+            errors
+                .iter()
+                .filter_map(|e| e["field"].as_str().map(str::to_owned))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// Waits for `what` to be announced on Redis.
+async fn announced(heard: &mut (impl futures_util::Stream<Item = Invalidation> + Unpin), what: Invalidation) -> bool {
+    tokio::time::timeout(Duration::from_secs(5), async {
+        while let Some(got) = heard.next().await {
+            if got == what {
+                return true;
+            }
+        }
+        false
+    })
+    .await
+    .unwrap_or(false)
 }
 
 /// A chat message from `user` in `guild`, as the gateway delivers it.
@@ -1146,5 +1349,911 @@ async fn login_attempts_are_rate_limited_per_address() {
         other.get("/auth/login").await.status,
         StatusCode::SEE_OTHER,
         "per address"
+    );
+}
+
+// /Settings pages (P2)
+
+#[tokio::test]
+async fn the_server_lists_mark_what_the_bot_can_hand_out() {
+    let Some(h) = Harness::new("discord_lists").await else {
+        return;
+    };
+    let (guild, _, mut browser) = h.managed_server().await;
+    let lists = browser.get(&format!("/api/guilds/{guild}/discord")).await;
+    assert_eq!(lists.status, StatusCode::OK, "{}", lists.text());
+    let lists = lists.json();
+    let channels: Vec<(&str, u64)> = lists["channels"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| (c["name"].as_str().unwrap(), c["type"].as_u64().unwrap()))
+        .collect();
+    assert_eq!(channels, [("Chat", 4), ("general", 0), ("news", 5), ("Lounge", 2)]);
+    assert_eq!(lists["channels"][1]["parent_id"], CATEGORY.to_string());
+    let role = |name: &str| {
+        lists["roles"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|r| r["name"] == name)
+            .cloned()
+            .unwrap_or_else(|| panic!("no role {name}"))
+    };
+    assert_eq!(lists["roles"][0]["name"], "Admin", "highest first");
+    assert_eq!(role("Fan")["assignable"], true);
+    assert_eq!(role("Fan")["why_not"], Value::Null);
+    assert_eq!(
+        role("Admin")["why_not"],
+        "@Admin is above my highest role. Drag my role above it in Server Settings > Roles, then try again."
+    );
+    assert_eq!(
+        role("Server Booster")["why_not"],
+        "@Server Booster is managed by an integration or a bot, so it can't be handed out."
+    );
+    assert_eq!(
+        role("everyone")["why_not"],
+        "@everyone can't be handed out: every member already has it."
+    );
+    assert_eq!(role("everyone")["everyone"], true);
+    assert_eq!(lists["bot"]["top_role_position"], BOT_ROLE_POSITION);
+    assert_eq!(lists["bot"]["manage_roles"], true);
+
+    // Cached for a minute; a refresh asks again, but not twice within ten seconds.
+    let asked = h.mock.channel_lookups.load(Ordering::SeqCst);
+    browser.get(&format!("/api/guilds/{guild}/discord")).await;
+    assert_eq!(h.mock.channel_lookups.load(Ordering::SeqCst), asked);
+    browser.get(&format!("/api/guilds/{guild}/discord?refresh=1")).await;
+    browser.get(&format!("/api/guilds/{guild}/discord?refresh=1")).await;
+    assert_eq!(h.mock.channel_lookups.load(Ordering::SeqCst), asked + 1);
+    // A write naming a role the lists lack asks again no more often than the refresh does.
+    let unknown = browser
+        .write(
+            Method::PUT,
+            &format!("/api/guilds/{guild}/level-roles/1"),
+            json!({ "level": 2 }),
+        )
+        .await;
+    assert_eq!(unknown.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(h.mock.channel_lookups.load(Ordering::SeqCst), asked + 1);
+}
+
+#[tokio::test]
+async fn every_setting_saves_with_the_command_rules_and_reaches_the_bot() {
+    let Some(h) = Harness::new("settings_patch").await else {
+        return;
+    };
+    let (guild, owner, mut browser) = h.managed_server().await;
+    let mut heard = Box::pin(h.state.app.cache.invalidations().await.expect("subscribe"));
+    let path = format!("/api/guilds/{guild}/settings");
+
+    let saved = browser
+        .write(
+            Method::PATCH,
+            &path,
+            json!({
+                "leveling_enabled": false,
+                "levelup_mode": "dm",
+                "levelup_channel_id": NEWS.to_string(),
+                "levelup_message": "GG {user}, level {level}!",
+                "level_roles_stack": false,
+                "voice_xp_enabled": true,
+                "voice_xp_amount": 25,
+                "welcome_enabled": true,
+                "welcome_channel_id": GENERAL.to_string(),
+                "welcome_message": "Hi {user}, you are #{count}",
+                "welcome_theme": "forest",
+                "welcome_title": "  HELLO ",
+                "welcome_accent": "#06D6A0",
+                "join_role_id": FAN.to_string(),
+                "goodbye_channel_id": GENERAL.to_string(),
+                "goodbye_message": "Bye {user}",
+                "points_enabled": false,
+                "points_name": " shells ",
+                "points_emoji": "🐚",
+                "points_min": 2,
+                "points_max": 6,
+                "log_channel_id": NEWS.to_string(),
+                "log_members": false,
+                "log_names": true,
+                "log_bans": false,
+                "log_voice": true,
+            }),
+        )
+        .await;
+    assert_eq!(saved.status, StatusCode::OK, "{}", saved.text());
+    let view = saved.json();
+    assert_eq!(view["welcome_title"], "HELLO", "trimmed like the command trims");
+    assert_eq!(view["welcome_accent"], "#06d6a0");
+    assert_eq!(view["points_name"], "shells");
+    assert_eq!(view["join_role_id"], FAN.to_string());
+    let stored = h.state.app.db.guild_settings(guild).await.unwrap();
+    assert_eq!(stored.levelup_mode, "dm");
+    assert_eq!(stored.voice_xp_amount, 25);
+    assert_eq!(stored.welcome_accent, Some(0x06d6a0));
+    assert_eq!(stored.goodbye_channel_id, Some(GENERAL as i64));
+    assert_eq!((stored.points_min, stored.points_max), (2, 6));
+    assert!(!stored.log_members && stored.log_names && !stored.log_bans && stored.log_voice);
+    assert!(announced(&mut heard, Invalidation::Guild(guild)).await);
+
+    let rows = h.state.app.db.audit_page(guild, None, 10).await.unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].actor_id, owner as i64);
+    let after: Value = serde_json::from_str(rows[0].after.as_deref().unwrap()).unwrap();
+    let before: Value = serde_json::from_str(rows[0].before.as_deref().unwrap()).unwrap();
+    assert_eq!(after["welcome_theme"], "forest");
+    assert_eq!(before["welcome_theme"], Value::Null);
+    assert_eq!(before["points_name"], "points");
+    assert_eq!(
+        after.as_object().unwrap().len(),
+        24,
+        "every field sent but log_names and log_voice, which were on already: {after}"
+    );
+
+    // `null` clears; what is not sent stays.
+    let cleared = browser
+        .write(
+            Method::PATCH,
+            &path,
+            json!({ "goodbye_channel_id": null, "welcome_accent": null, "join_role_id": null }),
+        )
+        .await;
+    assert_eq!(cleared.status, StatusCode::OK, "{}", cleared.text());
+    let stored = h.state.app.db.guild_settings(guild).await.unwrap();
+    assert_eq!(
+        (stored.goodbye_channel_id, stored.welcome_accent, stored.join_role_id),
+        (None, None, None)
+    );
+    assert_eq!(
+        stored.goodbye_message.as_deref(),
+        Some("Bye {user}"),
+        "the text is kept"
+    );
+    assert_eq!(stored.welcome_channel_id, Some(GENERAL as i64));
+}
+
+#[tokio::test]
+async fn settings_answer_with_the_field_and_the_command_sentence() {
+    let Some(h) = Harness::new("settings_invalid").await else {
+        return;
+    };
+    let (guild, _, mut browser) = h.managed_server().await;
+    let path = format!("/api/guilds/{guild}/settings");
+    let refused = |r: &Response| {
+        let errors = r.json()["error"]["errors"].as_array().cloned().unwrap_or_default();
+        errors
+            .iter()
+            .map(|e| {
+                (
+                    e["field"].as_str().unwrap().to_owned(),
+                    e["message"].as_str().unwrap().to_owned(),
+                )
+            })
+            .collect::<Vec<_>>()
+    };
+
+    let bad = browser
+        .write(
+            Method::PATCH,
+            &path,
+            json!({
+                "welcome_accent": "coral",
+                "welcome_title": "A HEADLINE FAR TOO LONG",
+                "points_min": 9,
+                "points_emoji": "coins",
+                "voice_xp_amount": 500,
+                "welcome_message": "x".repeat(501),
+            }),
+        )
+        .await;
+    assert_eq!(bad.status, StatusCode::UNPROCESSABLE_ENTITY, "{}", bad.text());
+    assert_eq!(bad.code(), "invalid");
+    assert_eq!(bad.json()["error"]["field"], "welcome_accent");
+    let errors = refused(&bad);
+    assert_eq!(
+        errors[0].1, "Colours look like `#ff6b4a`.",
+        "the /config welcome-card sentence"
+    );
+    let fields: Vec<&str> = errors.iter().map(|(f, _)| f.as_str()).collect();
+    assert_eq!(
+        fields,
+        ["welcome_accent"],
+        "unreadable fields first, nothing else checked"
+    );
+
+    let bad = browser
+        .write(
+            Method::PATCH,
+            &path,
+            json!({
+                "welcome_title": "A HEADLINE FAR TOO LONG",
+                "points_min": 9,
+                "points_emoji": "coins",
+                "voice_xp_amount": 500,
+                "welcome_message": "x".repeat(501),
+            }),
+        )
+        .await;
+    let errors = refused(&bad);
+    let fields: Vec<&str> = errors.iter().map(|(f, _)| f.as_str()).collect();
+    assert_eq!(
+        fields,
+        [
+            "welcome_message",
+            "voice_xp_amount",
+            "welcome_title",
+            "points_emoji",
+            "points_min"
+        ]
+    );
+    assert_eq!(
+        errors[4].1, "The least points per message can't be above the most.",
+        "the /config points sentence, checked against the stored maximum of 3"
+    );
+
+    // Channels must be text or announcement channels that exist; the join role one the bot can give.
+    let voice = browser
+        .write(
+            Method::PATCH,
+            &path,
+            json!({ "welcome_channel_id": LOUNGE.to_string() }),
+        )
+        .await;
+    assert_eq!(
+        refused(&voice),
+        [(
+            "welcome_channel_id".to_owned(),
+            "#Lounge isn't a text or announcement channel.".to_owned()
+        )]
+    );
+    let gone = browser
+        .write(Method::PATCH, &path, json!({ "log_channel_id": "123456" }))
+        .await;
+    assert_eq!(refused(&gone)[0].0, "log_channel_id");
+    let above = browser
+        .write(Method::PATCH, &path, json!({ "join_role_id": ADMIN.to_string() }))
+        .await;
+    assert_eq!(
+        refused(&above),
+        [(
+            "join_role_id".to_owned(),
+            "@Admin is above my highest role. Drag my role above it in Server Settings > Roles, then try again."
+                .to_owned()
+        )]
+    );
+    let not_an_id = browser
+        .write(Method::PATCH, &path, json!({ "join_role_id": "Fan" }))
+        .await;
+    assert_eq!(refused(&not_an_id)[0].0, "join_role_id");
+
+    let untouched = h.state.app.db.guild_settings(guild).await.unwrap();
+    assert_eq!(untouched.welcome_channel_id, None);
+    assert_eq!(untouched.join_role_id, None);
+    assert!(
+        h.state.app.db.audit_page(guild, None, 10).await.unwrap().is_empty(),
+        "nothing was written, nothing recorded"
+    );
+}
+
+#[tokio::test]
+async fn xp_multipliers_follow_the_command_and_reach_the_bot() {
+    let Some(h) = Harness::new("xp_rules").await else {
+        return;
+    };
+    let (guild, _, mut browser) = h.managed_server().await;
+    let bot = h.bot_pod().await;
+    listen_for_invalidations(&bot).await;
+    let base = format!("/api/guilds/{guild}/xp-rules");
+
+    // The bot caches the server's (empty) rules and pays XP in #2.
+    let first = unique();
+    on_message(bot.clone(), chat(guild, first)).await.unwrap();
+    assert!(server_xp(&bot, guild, first).await > 0);
+
+    let none = browser
+        .write(Method::PUT, &format!("{base}/role/{guild}"), json!({ "multiplier": 0 }))
+        .await;
+    assert_eq!(none.status, StatusCode::OK, "{}", none.text());
+    assert_eq!(
+        none.json()["items"],
+        json!([{ "kind": "role", "target_id": guild.to_string(), "multiplier": 0.0 }]),
+        "@everyone set to no XP"
+    );
+    let mut earned = 1;
+    let started = Instant::now();
+    while started.elapsed() < Duration::from_secs(5) && earned > 0 {
+        let user = unique();
+        on_message(bot.clone(), chat(guild, user)).await.unwrap();
+        earned = server_xp(&bot, guild, user).await;
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    assert_eq!(earned, 0, "the bot dropped its cached rules at once");
+
+    let doubled = browser
+        .write(
+            Method::PUT,
+            &format!("{base}/channel/{GENERAL}"),
+            json!({ "multiplier": 2.004 }),
+        )
+        .await;
+    assert_eq!(doubled.status, StatusCode::OK, "{}", doubled.text());
+    let items = doubled.json()["items"].clone();
+    assert_eq!(
+        items[0],
+        json!({ "kind": "channel", "target_id": GENERAL.to_string(), "multiplier": 2.0 })
+    );
+
+    let too_much = browser
+        .write(
+            Method::PUT,
+            &format!("{base}/channel/{GENERAL}"),
+            json!({ "multiplier": 6 }),
+        )
+        .await;
+    assert_eq!(too_much.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(too_much.json()["error"]["message"], "A multiplier goes from 0 to 5.");
+    let nowhere = browser
+        .write(
+            Method::PUT,
+            &format!("{base}/channel/424242"),
+            json!({ "multiplier": 2 }),
+        )
+        .await;
+    assert_eq!(nowhere.json()["error"]["field"], "target_id");
+    let wrong_kind = browser
+        .write(
+            Method::PUT,
+            &format!("{base}/user/{GENERAL}"),
+            json!({ "multiplier": 2 }),
+        )
+        .await;
+    assert_eq!(wrong_kind.status, StatusCode::NOT_FOUND);
+
+    // 1 drops a rule, like `/config xp multiplier value:1`.
+    let normal = browser
+        .write(
+            Method::PUT,
+            &format!("{base}/channel/{GENERAL}"),
+            json!({ "multiplier": 1 }),
+        )
+        .await;
+    assert_eq!(normal.json()["items"].as_array().unwrap().len(), 1);
+    let removed = browser
+        .write(Method::DELETE, &format!("{base}/role/{guild}"), json!({}))
+        .await;
+    assert_eq!(removed.json()["items"], json!([]));
+    assert!(h.state.app.db.xp_rules(guild).await.unwrap().is_empty());
+
+    // At the limit, a new rule is refused with the limit code.
+    for n in 0..pinchora_db::MAX_XP_RULES as u64 {
+        h.state
+            .app
+            .db
+            .set_xp_rule(guild, pinchora_db::XpTarget::Channel, 100_000 + n, 2.0)
+            .await
+            .unwrap();
+    }
+    let full = browser
+        .write(
+            Method::PUT,
+            &format!("{base}/channel/{NEWS}"),
+            json!({ "multiplier": 2 }),
+        )
+        .await;
+    assert_eq!(
+        (full.status, full.code().as_str()),
+        (StatusCode::UNPROCESSABLE_ENTITY, "limit")
+    );
+    let cleared = browser.write(Method::DELETE, &base, json!({})).await;
+    assert_eq!(cleared.json()["items"], json!([]));
+
+    let actions: Vec<String> = h
+        .state
+        .app
+        .db
+        .audit_page(guild, None, 20)
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|r| r.action)
+        .collect();
+    assert_eq!(
+        actions,
+        [
+            "xp_rules.clear",
+            "xp_rules.delete",
+            "xp_rules.put",
+            "xp_rules.put",
+            "xp_rules.put"
+        ]
+    );
+    let clear = h.state.app.db.audit_page(guild, None, 1).await.unwrap().remove(0);
+    let before: Value = serde_json::from_str(clear.before.as_deref().unwrap()).unwrap();
+    assert_eq!(
+        before["rules"].as_array().map(Vec::len),
+        Some(pinchora_db::MAX_XP_RULES as usize),
+        "a clear keeps the rules it removed"
+    );
+}
+
+#[tokio::test]
+async fn level_roles_rep_roles_and_the_store_refuse_what_the_bot_cannot_give() {
+    let Some(h) = Harness::new("reward_lists").await else {
+        return;
+    };
+    let (guild, _, mut browser) = h.managed_server().await;
+    let g = format!("/api/guilds/{guild}");
+
+    let added = browser
+        .write(Method::PUT, &format!("{g}/level-roles/{FAN}"), json!({ "level": 5 }))
+        .await;
+    assert_eq!(added.status, StatusCode::OK, "{}", added.text());
+    assert_eq!(
+        added.json(),
+        json!({ "items": [{ "role_id": FAN.to_string(), "level": 5 }], "max": 25, "stack": true })
+    );
+    let moved = browser
+        .write(Method::PUT, &format!("{g}/level-roles/{FAN}"), json!({ "level": 10 }))
+        .await;
+    assert_eq!(
+        moved.json()["items"][0]["level"],
+        10,
+        "adding again moves it, like the command"
+    );
+    for (role, sentence) in [
+        (
+            ADMIN,
+            "@Admin is above my highest role. Drag my role above it in Server Settings > Roles, then try again.",
+        ),
+        (
+            BOOSTER,
+            "@Server Booster is managed by an integration or a bot, so it can't be handed out.",
+        ),
+        (guild, "@everyone can't be handed out: every member already has it."),
+    ] {
+        let refused = browser
+            .write(Method::PUT, &format!("{g}/level-roles/{role}"), json!({ "level": 3 }))
+            .await;
+        assert_eq!(refused.status, StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(refused.json()["error"]["message"], sentence);
+        assert_eq!(refused.json()["error"]["field"], "role_id");
+    }
+    let level_zero = browser
+        .write(
+            Method::PUT,
+            &format!("{g}/level-roles/{REGULAR}"),
+            json!({ "level": 0 }),
+        )
+        .await;
+    assert_eq!(level_zero.json()["error"]["field"], "level");
+    let gone = browser
+        .write(Method::DELETE, &format!("{g}/level-roles/{FAN}"), json!({}))
+        .await;
+    assert_eq!(gone.json()["items"], json!([]));
+
+    let rep = browser
+        .write(
+            Method::PUT,
+            &format!("{g}/rep-roles/{REGULAR}"),
+            json!({ "reputation": 50 }),
+        )
+        .await;
+    assert_eq!(
+        rep.json(),
+        json!({ "items": [{ "role_id": REGULAR.to_string(), "reputation": 50 }], "max": 25 })
+    );
+    let rep_above = browser
+        .write(
+            Method::PUT,
+            &format!("{g}/rep-roles/{ADMIN}"),
+            json!({ "reputation": 5 }),
+        )
+        .await;
+    assert_eq!(rep_above.status, StatusCode::UNPROCESSABLE_ENTITY);
+
+    let sale = browser
+        .write(
+            Method::PUT,
+            &format!("{g}/store/{REGULAR}"),
+            json!({ "price": 250, "stock": 3 }),
+        )
+        .await;
+    assert_eq!(sale.status, StatusCode::OK, "{}", sale.text());
+    assert_eq!(sale.json()["items"][0]["price"], 250);
+    assert_eq!(sale.json()["items"][0]["stock"], 3);
+    let unlimited = browser
+        .write(
+            Method::PUT,
+            &format!("{g}/store/{REGULAR}"),
+            json!({ "price": 300, "stock": null }),
+        )
+        .await;
+    assert_eq!(unlimited.json()["items"][0]["stock"], Value::Null);
+    let bad_price = browser
+        .write(
+            Method::PUT,
+            &format!("{g}/store/{FAN}"),
+            json!({ "price": 0, "stock": 0 }),
+        )
+        .await;
+    assert_eq!(fields_of(&bad_price), ["price", "stock"]);
+    let off = browser
+        .write(Method::DELETE, &format!("{g}/store/{REGULAR}"), json!({}))
+        .await;
+    assert_eq!(off.json()["items"], json!([]));
+
+    let actions: Vec<String> = h
+        .state
+        .app
+        .db
+        .audit_page(guild, None, 20)
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|r| r.action)
+        .collect();
+    assert_eq!(
+        actions,
+        [
+            "store.delete",
+            "store.put",
+            "store.put",
+            "rep_roles.put",
+            "level_roles.delete",
+            "level_roles.put",
+            "level_roles.put"
+        ]
+    );
+}
+
+#[tokio::test]
+async fn the_sync_job_gives_members_the_roles_they_earned() {
+    let Some(h) = Harness::new("level_role_sync").await else {
+        return;
+    };
+    let (guild, _, mut browser) = h.managed_server().await;
+    let g = format!("/api/guilds/{guild}");
+    let none = browser
+        .write(Method::POST, &format!("{g}/level-roles/sync"), json!({}))
+        .await;
+    assert_eq!(none.status, StatusCode::UNPROCESSABLE_ENTITY, "no level roles yet");
+
+    let (veteran, novice) = (unique(), unique());
+    h.seed_xp(guild, veteran, 5_000).await;
+    h.seed_xp(guild, novice, 10).await;
+    browser
+        .write(Method::PUT, &format!("{g}/level-roles/{FAN}"), json!({ "level": 2 }))
+        .await;
+    let started = browser
+        .write(Method::POST, &format!("{g}/level-roles/sync"), json!({}))
+        .await;
+    assert_eq!(started.status, StatusCode::ACCEPTED, "{}", started.text());
+    let job = started.json()["job_id"].as_str().unwrap().to_owned();
+
+    let mut state = Value::Null;
+    let waited = Instant::now();
+    while waited.elapsed() < Duration::from_secs(10) {
+        state = browser.get(&format!("{g}/jobs/{job}")).await.json();
+        if state["status"] != "running" {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    assert_eq!(state["status"], "done", "{state}");
+    assert_eq!(
+        (state["checked"].as_u64(), state["updated"].as_u64()),
+        (Some(2), Some(1))
+    );
+    assert_eq!(
+        state["message"], "Checked **2** members and updated the level roles of **1**.",
+        "the command's own sentence"
+    );
+    let calls = h.mock.role_calls.lock().unwrap().clone();
+    assert_eq!(calls, [format!("PUT {veteran} {FAN}")]);
+
+    // Another server cannot read this one's job.
+    let (other, _, mut stranger) = h.managed_server().await;
+    let foreign = stranger.get(&format!("/api/guilds/{other}/jobs/{job}")).await;
+    assert_eq!(foreign.status, StatusCode::NOT_FOUND);
+    let audit = h.state.app.db.audit_page(guild, None, 1).await.unwrap();
+    assert_eq!(audit[0].action, "level_roles.sync");
+}
+
+#[tokio::test]
+async fn the_welcome_preview_is_the_command_card() {
+    let Some(h) = Harness::new("welcome_preview").await else {
+        return;
+    };
+    let (guild, owner, mut browser) = h.managed_server().await;
+    let path = format!("/api/guilds/{guild}/preview/welcome-card");
+    let body = json!({ "theme": "sunset", "title": "HI THERE", "accent": "#8fd3ff" });
+    let preview = browser.write(Method::POST, &path, body).await;
+    assert_eq!(preview.status, StatusCode::OK, "{}", preview.text());
+    assert_eq!(preview.header("content-type"), "image/png");
+    assert!(preview.header("cache-control").contains("no-store"));
+    let shown = save_png("welcome_preview", "sunset", &preview.body);
+
+    // The very function `/config welcome-card` draws with, for the same person and server.
+    let design = WelcomeDesign {
+        theme: Some("sunset".into()),
+        title: Some("HI THERE".into()),
+        accent: Some(0x8fd3ff),
+    };
+    let direct = welcome_card_png(
+        &h.state.app,
+        Id::new(owner),
+        None,
+        &format!("user{owner} G"),
+        "Pinchora Reef",
+        &design,
+    )
+    .await
+    .unwrap();
+    assert!(
+        preview.body.as_ref() == direct.as_slice(),
+        "byte for byte: {}",
+        shown.display()
+    );
+
+    let reef = browser.write(Method::POST, &path, json!({})).await;
+    assert_eq!(reef.status, StatusCode::OK);
+    save_png("welcome_preview", "default", &reef.body);
+    assert_ne!(reef.body, preview.body, "another design, another card");
+
+    let bad = browser
+        .write(Method::POST, &path, json!({ "theme": "neon", "accent": "blue" }))
+        .await;
+    assert_eq!(bad.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(fields_of(&bad), ["welcome_theme", "welcome_accent"]);
+    assert!(
+        h.state.app.db.audit_page(guild, None, 5).await.unwrap().is_empty(),
+        "a preview saves nothing"
+    );
+
+    let text = browser
+        .write(
+            Method::POST,
+            &format!("/api/guilds/{guild}/preview/message"),
+            json!({ "kind": "welcome", "message": "Hi {user}, member #{count} of {server} {unknown}" }),
+        )
+        .await;
+    assert_eq!(
+        text.json()["text"],
+        format!("Hi @user{owner} G, member #1234 of Pinchora Reef {{unknown}}")
+    );
+    let default = browser
+        .write(
+            Method::POST,
+            &format!("/api/guilds/{guild}/preview/message"),
+            json!({ "kind": "levelup" }),
+        )
+        .await;
+    assert_eq!(
+        default.json()["text"],
+        format!("🎉 @user{owner} G reached **level 5**!")
+    );
+}
+
+#[tokio::test]
+async fn suggestions_and_critter_drops_have_their_own_settings() {
+    let Some(h) = Harness::new("community").await else {
+        return;
+    };
+    let (guild, _, mut browser) = h.managed_server().await;
+    let g = format!("/api/guilds/{guild}");
+    let start = browser.get(&format!("{g}/community")).await.json();
+    assert_eq!(
+        start,
+        json!({ "suggestions": { "channel_id": null }, "critters": { "enabled": false, "channel_id": null } })
+    );
+
+    let on = browser
+        .write(
+            Method::PUT,
+            &format!("{g}/suggestions/settings"),
+            json!({ "channel_id": NEWS.to_string() }),
+        )
+        .await;
+    assert_eq!(on.json(), json!({ "channel_id": NEWS.to_string() }));
+    assert_eq!(h.state.app.db.suggestion_channel(guild).await.unwrap(), Some(NEWS));
+    let voice = browser
+        .write(
+            Method::PUT,
+            &format!("{g}/suggestions/settings"),
+            json!({ "channel_id": LOUNGE.to_string() }),
+        )
+        .await;
+    assert_eq!(voice.status, StatusCode::UNPROCESSABLE_ENTITY);
+
+    let critters = browser
+        .write(
+            Method::PUT,
+            &format!("{g}/critters/settings"),
+            json!({ "enabled": true, "channel_id": GENERAL.to_string() }),
+        )
+        .await;
+    assert_eq!(
+        critters.json(),
+        json!({ "enabled": true, "channel_id": GENERAL.to_string() })
+    );
+    let anywhere = browser
+        .write(
+            Method::PUT,
+            &format!("{g}/critters/settings"),
+            json!({ "channel_id": null }),
+        )
+        .await;
+    assert_eq!(anywhere.json(), json!({ "enabled": true, "channel_id": null }));
+    let same = browser
+        .write(
+            Method::PUT,
+            &format!("{g}/critters/settings"),
+            json!({ "enabled": true }),
+        )
+        .await;
+    assert_eq!(same.status, StatusCode::OK);
+
+    let actions: Vec<String> = h
+        .state
+        .app
+        .db
+        .audit_page(guild, None, 10)
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|r| r.action)
+        .collect();
+    assert_eq!(actions, ["critters.set", "critters.set", "suggestions.set"]);
+}
+
+#[tokio::test]
+async fn the_audit_log_pages_through_every_change() {
+    let Some(h) = Harness::new("audit_pages").await else {
+        return;
+    };
+    let (guild, _, mut browser) = h.managed_server().await;
+    for n in 0..55 {
+        h.state
+            .app
+            .db
+            .audit(&pinchora_db::NewAudit {
+                guild,
+                actor: 7,
+                actor_name: "Crab",
+                source: pinchora_db::AuditSource::Web,
+                action: "settings.patch",
+                target: None,
+                before: Some("{}"),
+                after: Some(&format!(r#"{{"n": {n}}}"#)),
+            })
+            .await
+            .unwrap();
+    }
+    let first = browser.get(&format!("/api/guilds/{guild}/audit")).await.json();
+    assert_eq!(first["items"].as_array().unwrap().len(), 50);
+    assert_eq!(first["items"][0]["after"], json!({ "n": 54 }), "newest first");
+    let next = first["next"].as_str().expect("a next page").to_owned();
+    let second = browser
+        .get(&format!("/api/guilds/{guild}/audit?before={next}"))
+        .await
+        .json();
+    assert_eq!(second["items"].as_array().unwrap().len(), 5);
+    assert_eq!(second["next"], Value::Null);
+    let bad = browser.get(&format!("/api/guilds/{guild}/audit?before=x")).await;
+    assert_eq!(bad.status, StatusCode::BAD_REQUEST);
+}
+
+// /Hardening
+
+#[tokio::test]
+async fn a_trusted_proxy_names_the_client_for_the_login_limit() {
+    let Some(h) = Harness::with("trusted_proxy", |web| web.trusted_proxies = "10.0.0.0/8".into()).await else {
+        return;
+    };
+    // Every browser below connects through the proxy at 10.x.
+    let behind = |client: &str| {
+        Request::get("/auth/login")
+            .header("x-forwarded-for", client)
+            .body(Body::empty())
+            .unwrap()
+    };
+    let mut proxy = h.browser();
+    let mut statuses = Vec::new();
+    for _ in 0..21 {
+        statuses.push(proxy.send(behind("203.0.113.7")).await.status);
+    }
+    assert!(statuses.contains(&StatusCode::TOO_MANY_REQUESTS), "{statuses:?}");
+    assert_eq!(
+        proxy.send(behind("203.0.113.8")).await.status,
+        StatusCode::SEE_OTHER,
+        "another client behind the same proxy has its own bucket"
+    );
+
+    // An untrusted peer cannot pick a bucket by sending the header itself.
+    let mut outsider = h.browser();
+    outsider.address = SocketAddr::from(([198, 51, 100, (unique() % 250) as u8], 4000));
+    let mut statuses = Vec::new();
+    for n in 0..21 {
+        statuses.push(outsider.send(behind(&format!("192.0.2.{n}"))).await.status);
+    }
+    assert!(statuses.contains(&StatusCode::TOO_MANY_REQUESTS), "{statuses:?}");
+}
+
+#[tokio::test]
+async fn concurrent_requests_refresh_a_token_once() {
+    let Some(h) = Harness::new("refresh_race").await else {
+        return;
+    };
+    h.mock.short_tokens.store(true, Ordering::SeqCst);
+    let user = unique();
+    let mut browser = h.browser();
+    browser.login(&h, user, vec![]).await;
+    // From now on Discord rotates refresh tokens, slowly, and the new tokens last a week.
+    h.mock.short_tokens.store(false, Ordering::SeqCst);
+    h.mock.rotate.store(true, Ordering::SeqCst);
+    h.mock.token_delay_ms.store(300, Ordering::SeqCst);
+    let before = h.mock.token_forms.lock().unwrap().len();
+
+    let (mut a, mut b, mut c) = (browser.clone(), browser.clone(), browser.clone());
+    let (ra, rb, rc) = tokio::join!(
+        a.get("/api/me/guilds"),
+        b.get("/api/me/guilds"),
+        c.get("/api/me/guilds")
+    );
+    for r in [&ra, &rb, &rc] {
+        assert_eq!(r.status, StatusCode::OK, "{}", r.text());
+    }
+    let refreshes: Vec<String> = h.mock.token_forms.lock().unwrap()[before..]
+        .iter()
+        .map(|f| f["grant_type"].clone())
+        .collect();
+    assert_eq!(refreshes, ["refresh_token"], "one refresh for three requests");
+
+    // The session kept the rotated token: the next request works without refreshing again.
+    let again = browser.write(Method::POST, "/api/me/guilds/refresh", json!({})).await;
+    assert_eq!(again.status, StatusCode::OK, "{}", again.text());
+    assert_eq!(h.mock.token_forms.lock().unwrap().len(), before + 1);
+}
+
+#[tokio::test]
+async fn hsts_is_sent_only_over_https() {
+    let Some(plain) = Harness::new("hsts_plain").await else {
+        return;
+    };
+    let page = plain.browser().get("/").await;
+    assert_eq!(page.header("strict-transport-security"), "");
+
+    let Some(secure) = Harness::with("hsts_secure", |web| web.cookie_secure = Some(true)).await else {
+        return;
+    };
+    for path in ["/", "/api/me", "/auth/login"] {
+        let response = secure.browser().get(path).await;
+        assert_eq!(
+            response.header("strict-transport-security"),
+            "max-age=31536000; includeSubDomains",
+            "{path}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn logging_in_again_ends_the_old_session() {
+    let Some(h) = Harness::new("relogin").await else {
+        return;
+    };
+    let user = unique();
+    let mut browser = h.browser();
+    browser.login(&h, user, vec![]).await;
+    let old = browser.cookies["pinchora_sid"].clone();
+    let mut copy = browser.clone();
+    assert_eq!(copy.get("/api/me").await.status, StatusCode::OK);
+
+    browser.login(&h, user, vec![]).await;
+    assert_ne!(browser.cookies["pinchora_sid"], old);
+    assert_eq!(browser.get("/api/me").await.status, StatusCode::OK);
+    assert_eq!(
+        copy.get("/api/me").await.status,
+        StatusCode::UNAUTHORIZED,
+        "the cookie from before the new login no longer works"
     );
 }

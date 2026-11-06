@@ -1,5 +1,6 @@
 //! `/config rep-roles`: roles members earn when their reputation reaches a count.
 
+use pinchora_core::settings;
 use pinchora_db::MAX_REP_ROLES;
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::{
@@ -50,10 +51,14 @@ impl ConfigRepRoles {
         let db = &cx.app.db;
         match self {
             Self::Add(c) => {
+                let reputation = match settings::check_reputation(c.reputation) {
+                    Ok(reputation) => reputation,
+                    Err(error) => return cx.reply_ephemeral(error.message).await,
+                };
                 if let Some(why) = roles::unassignable(&cx.app, guild, &c.role).await {
                     return cx.reply_ephemeral(why).await;
                 }
-                if !db.add_rep_role(guild, c.reputation as i32, c.role.id.get()).await? {
+                if !db.add_rep_role(guild, reputation, c.role.id.get()).await? {
                     return cx
                         .reply_ephemeral(format!(
                             "A server can have {MAX_REP_ROLES} reputation roles. Remove one with `/config rep-roles remove` first."

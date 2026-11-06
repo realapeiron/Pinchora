@@ -1,6 +1,6 @@
 //! `/config xp`: multipliers and no-XP channels and roles, and voice XP.
 
-use pinchora_core::leveling::{MAX_MULTIPLIER, VOICE_XP_RANGE};
+use pinchora_core::settings;
 use pinchora_db::{GuildSettings, MAX_XP_RULES, XpTarget};
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::{
@@ -114,12 +114,10 @@ async fn multiplier(cx: &Cx, guild: u64, c: XpMultiplier) -> anyhow::Result<()> 
                 .await;
         }
     };
-    let value = (c.value * 100.0).round() / 100.0;
-    if !(0.0..=MAX_MULTIPLIER).contains(&value) {
-        return cx
-            .reply_ephemeral(format!("A multiplier goes from 0 to {MAX_MULTIPLIER}."))
-            .await;
-    }
+    let value = match settings::check_multiplier(c.value) {
+        Ok(value) => value,
+        Err(error) => return cx.reply_ephemeral(error.message).await,
+    };
     let who = subject(target, id);
     let text = if value == 1.0 {
         // 1 is what everything earns anyway, so the rule is simply dropped.
@@ -207,7 +205,10 @@ async fn show(cx: &Cx, guild: u64) -> anyhow::Result<()> {
 }
 
 async fn voice(cx: &Cx, guild: u64, c: XpVoice) -> anyhow::Result<()> {
-    let amount = c.amount.filter(|a| VOICE_XP_RANGE.contains(a)).map(|a| a as i32);
+    let amount = match c.amount.map(settings::check_voice_amount).transpose() {
+        Ok(amount) => amount,
+        Err(error) => return cx.reply_ephemeral(error.message).await,
+    };
     let settings = if c.enabled.is_none() && c.amount.is_none() {
         cx.app.db.guild_settings(guild).await?
     } else {

@@ -3,6 +3,8 @@
 
 import { type Page, expect, test } from "@playwright/test";
 
+import { devLogin as login, shot } from "./helpers";
+
 const run = Date.now();
 const reef = `${run}1`;
 const cafe = `${run}2`;
@@ -10,32 +12,13 @@ const chatting = `${run}3`;
 const kelp = `${run}9`; // ends in 9: the mock says the bot is not there
 const user = `${run}5`;
 
-/** A pixel avatar for every Discord CDN image, so screenshots do not depend on the network. */
-const AVATAR = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8" shape-rendering="crispEdges">
-<rect width="8" height="8" fill="#2e3d75"/><rect x="2" y="2" width="4" height="4" fill="#ffd166"/>
-<rect x="3" y="3" width="1" height="1" fill="#1b1d2b"/><rect x="5" y="3" width="1" height="1" fill="#1b1d2b"/></svg>`;
-
 async function devLogin(page: Page) {
-  await page.route("https://cdn.discordapp.com/**", (route) =>
-    route.fulfill({ contentType: "image/svg+xml", body: AVATAR }),
-  );
-  const response = await page.request.post("/auth/dev-login", {
-    data: {
-      user_id: user,
-      username: "captain_crab",
-      guilds: [
-        { id: reef, name: "Pinchora Reef", owner: true, permissions: "0", icon: null },
-        { id: cafe, name: "Coral Cafe", owner: false, permissions: "32", icon: null },
-        { id: kelp, name: "Kelp Corner", owner: false, permissions: "8", icon: null },
-        { id: chatting, name: "Just Chatting", owner: false, permissions: "2048", icon: null },
-      ],
-    },
-  });
-  expect(response.ok()).toBeTruthy();
-}
-
-function shot(page: Page, name: string) {
-  return page.screenshot({ path: `test-results/screens/${name}.png`, animations: "disabled" });
+  await login(page, user, [
+    { id: reef, name: "Pinchora Reef", owner: true, permissions: "0" },
+    { id: cafe, name: "Coral Cafe", owner: false, permissions: "32" },
+    { id: kelp, name: "Kelp Corner", owner: false, permissions: "8" },
+    { id: chatting, name: "Just Chatting", owner: false, permissions: "2048" },
+  ]);
 }
 
 test("the login page offers Discord login", async ({ page }) => {

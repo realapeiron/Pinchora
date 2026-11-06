@@ -18,8 +18,12 @@ use tokio::sync::Semaphore;
 use tokio_util::task::TaskTracker;
 use twilight_http::{Client, client::InteractionClient};
 use twilight_model::{
-    id::{Id, marker::ApplicationMarker},
+    id::{
+        Id,
+        marker::{ApplicationMarker, UserMarker},
+    },
     user::User,
+    util::ImageHash,
 };
 
 use crate::server_log::LogState;
@@ -314,15 +318,23 @@ impl App {
     /// The user's avatar as a `size`² PNG, pixelated to `grid` when given. Falls back
     /// to a generated pixel creature when the CDN fails.
     pub async fn avatar(&self, user: &User, size: u32, grid: Option<u32>) -> Arc<Vec<u8>> {
-        let url = match user.avatar {
-            Some(hash) => format!("https://cdn.discordapp.com/avatars/{}/{hash}.png?size=256", user.id),
-            None => format!(
-                "https://cdn.discordapp.com/embed/avatars/{}.png",
-                (user.id.get() >> 22) % 6
-            ),
+        self.avatar_of(user.id, user.avatar, size, grid).await
+    }
+
+    /// [`App::avatar`] by id and avatar hash, for callers without a [`User`] (the dashboard).
+    pub async fn avatar_of(
+        &self,
+        id: Id<UserMarker>,
+        hash: Option<ImageHash>,
+        size: u32,
+        grid: Option<u32>,
+    ) -> Arc<Vec<u8>> {
+        let url = match hash {
+            Some(hash) => format!("https://cdn.discordapp.com/avatars/{id}/{hash}.png?size=256"),
+            None => format!("https://cdn.discordapp.com/embed/avatars/{}.png", (id.get() >> 22) % 6),
         };
         let key = format!("{url}|{size}|{grid:?}");
-        let seed = user.id.get();
+        let seed = id.get();
         self.avatars
             .get_with(key, async move {
                 let processed = async {

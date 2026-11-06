@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { useOutletContext } from "react-router";
+import { Link, useOutletContext } from "react-router";
 
 import { Panel } from "../components/Panel";
 import { PixelToggle } from "../components/PixelToggle";
@@ -9,6 +9,54 @@ import type { Overview as OverviewData, Settings } from "../lib/api";
 import { changedFields, patchOf } from "../lib/draft";
 import { useSaveSettings } from "../lib/queries";
 import { describeChange, timeAgo } from "../lib/text";
+
+const MODE_WORDS: Record<string, string> = {
+  channel: "level-ups in their channel",
+  current: "level-ups where they chat",
+  dm: "level-ups by DM",
+  off: "no level-up messages",
+};
+
+/** One tile per settings page: is its main switch on, and the gist of how it is set. */
+function glance(s: Settings) {
+  return [
+    {
+      to: "welcome",
+      name: "Welcome cards",
+      on: s.welcome_enabled && s.welcome_channel_id !== null,
+      detail:
+        (s.welcome_channel_id ? `${s.welcome_theme ?? "reef"} theme` : "no channel yet") +
+        (s.join_role_id ? ", join role" : ""),
+    },
+    {
+      to: "leveling",
+      name: "Leveling",
+      on: s.leveling_enabled,
+      detail: `${MODE_WORDS[s.levelup_mode] ?? s.levelup_mode}${s.voice_xp_enabled ? ", voice XP" : ""}`,
+    },
+    {
+      to: "points",
+      name: "Server points",
+      on: s.points_enabled,
+      detail: `${s.points_emoji} ${s.points_min}–${s.points_max} ${s.points_name} a message`,
+    },
+    {
+      to: "welcome",
+      name: "Goodbye",
+      on: s.goodbye_channel_id !== null,
+      detail: s.goodbye_channel_id ? "when someone leaves" : "no channel yet",
+    },
+    {
+      to: "log",
+      name: "Server log",
+      on: s.log_channel_id !== null,
+      detail:
+        [s.log_members && "joins", s.log_names && "names", s.log_bans && "bans", s.log_voice && "voice"]
+          .filter(Boolean)
+          .join(", ") || "nothing picked",
+    },
+  ];
+}
 
 export function Overview() {
   const data = useOutletContext<OverviewData>();
@@ -66,6 +114,22 @@ export function Overview() {
             disabled={save.isPending}
           />
         </div>
+      </Panel>
+
+      <Panel title="AT A GLANCE">
+        <ul className="glance">
+          {glance(saved).map((tile) => (
+            <li key={tile.name}>
+              <Link to={`/g/${guild}/${tile.to}`} className="glance-tile">
+                <span className="glance-name">{tile.name}</span>
+                <span className={`badge ${tile.on ? "badge-mint" : "badge-dim"}`}>
+                  {tile.on ? "ON" : "OFF"}
+                </span>
+                <span className="glance-detail muted">{tile.detail}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
       </Panel>
 
       <Panel title="RECENT CHANGES">

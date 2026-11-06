@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use anyhow::Context as _;
 use futures_util::{StreamExt, stream};
+use pinchora_core::config::Secret;
 use reqwest::{StatusCode, Url};
 use serde::{Deserialize, Serialize};
 use twilight_http::error::ErrorType;
@@ -29,11 +30,16 @@ const BOT_PERMISSIONS: u64 =
 const LIST_TTL: Duration = Duration::from_secs(60);
 /// A token this close to expiring is refreshed before use.
 const REFRESH_MARGIN_SECS: i64 = 300;
+/// One request per session refreshes its token at a time; the lock outlives a slow Discord call.
+const REFRESH_LOCK: Duration = Duration::from_secs(15);
+/// How long a request waits for another one's refresh before giving up.
+const REFRESH_WAIT: Duration = Duration::from_secs(12);
 
+/// Tokens print as `Secret(***)` in any `Debug` output.
 #[derive(Debug, Deserialize)]
 pub struct TokenResponse {
-    pub access_token: String,
-    pub refresh_token: Option<String>,
+    pub access_token: Secret,
+    pub refresh_token: Option<Secret>,
     pub expires_in: i64,
 }
 
@@ -101,7 +107,7 @@ impl DiscordApi {
     }
 
     async fn token(&self, settings: &WebSettings, form: &[(&str, &str)]) -> Result<TokenResponse, CallError> {
-        let secret = settings.client_secret.as_deref().unwrap_or_default();
+        let secret = settings.client_secret.as_ref().map_or("", Secret::expose);
         let client_id = settings.client_id.to_string();
         let mut body = vec![("client_id", client_id.as_str()), ("client_secret", secret)];
         body.extend_from_slice(form);
@@ -137,17 +143,20 @@ impl DiscordApi {
         .await
     }
 
-    pub async fn refresh(&self, settings: &WebSettings, refresh_token: &str) -> Result<TokenResponse, CallError> {
+    pub async fn refresh(&self, settings: &WebSettings, refresh_token: &Secret) -> Result<TokenResponse, CallError> {
         self.token(
             settings,
-            &[("grant_type", "refresh_token"), ("refresh_token", refresh_token)],
+            &[
+                ("grant_type", "refresh_token"),
+                ("refresh_token", refresh_token.expose()),
+            ],
         )
         .await
     }
 
     /// Revokes a token on logout. Best effort: a failure is only logged.
-    pub async fn revoke(&self, settings: &WebSettings, token: &str) {
-        let secret = settings.client_secret.as_deref().unwrap_or_default();
+    pub async fn revoke(&self, settings: &WebSettings, token: &Secret) {
+        let secret = settings.client_secret.as_ref().map_or("", Secret::expose);
         let client_id = settings.client_id.to_string();
         let result = self
             .http
@@ -155,7 +164,7 @@ impl DiscordApi {
             .form(&[
                 ("client_id", client_id.as_str()),
                 ("client_secret", secret),
-                ("token", token),
+                ("token", token.expose()),
                 ("token_type_hint", "access_token"),
             ])
             .send()
@@ -165,11 +174,11 @@ impl DiscordApi {
         }
     }
 
-    async fn get<T: for<'de> Deserialize<'de>>(&self, token: &str, path: &str) -> Result<T, CallError> {
+    async fn get<T: for<'de> Deserialize<'de>>(&self, token: &Secret, path: &str) -> Result<T, CallError> {
         let response = self
             .http
             .get(format!("{}{path}", self.base))
-            .bearer_auth(token)
+            .bearer_auth(token.expose())
             .send()
             .await?;
         match response.status() {
@@ -179,11 +188,11 @@ impl DiscordApi {
         }
     }
 
-    pub async fn me(&self, token: &str) -> Result<DiscordUser, CallError> {
+    pub async fn me(&self, token: &Secret) -> Result<DiscordUser, CallError> {
         self.get(token, "/users/@me").await
     }
 
-    pub async fn guilds(&self, token: &str) -> Result<Vec<UserGuild>, CallError> {
+    pub async fn guilds(&self, token: &Secret) -> Result<Vec<UserGuild>, CallError> {
         self.get(token, "/users/@me/guilds").await
     }
 }
@@ -214,9 +223,41 @@ pub async fn user_guilds(state: &WebState, current: &mut CurrentSession, force: 
 }
 
 /// The session's access token, refreshed first when it is about to expire.
-async fn fresh_token(state: &WebState, current: &mut CurrentSession) -> ApiResult<String> {
-    let now = chrono::Utc::now().timestamp();
-    if current.session.token_expires_at - now > REFRESH_MARGIN_SECS {
+///
+/// Discord hands out a new refresh token with every refresh and refuses the old one, so two
+/// requests must never refresh one session at once: a Redis lock lets one through, and the others
+/// wait for it and then use the token it stored.
+async fn fresh_token(state: &WebState, current: &mut CurrentSession) -> ApiResult<Secret> {
+    if !expiring(&current.session) {
+        return Ok(current.session.access_token.clone());
+    }
+    let cache = &state.app.cache;
+    let lock = format!("web:refresh:{}", current.sid);
+    let started = std::time::Instant::now();
+    while cache.try_cooldown(&lock, REFRESH_LOCK).await?.is_some() {
+        if started.elapsed() > REFRESH_WAIT {
+            return Err(ApiError::new(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "busy",
+                "Discord is slow to answer right now. Try again in a moment.",
+            ));
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    let refreshed = refresh_locked(state, current).await;
+    if let Err(error) = cache.release_cooldown(&lock).await {
+        tracing::warn!(%error, "token refresh lock not released; it runs out by itself");
+    }
+    refreshed
+}
+
+/// The refresh itself, under the session's lock: whoever held it before may have done it already.
+async fn refresh_locked(state: &WebState, current: &mut CurrentSession) -> ApiResult<Secret> {
+    let Some(stored) = session::read(&state.app.cache, &current.sid).await? else {
+        return Err(ApiError::session_expired());
+    };
+    current.session = stored;
+    if !expiring(&current.session) {
         return Ok(current.session.access_token.clone());
     }
     let Some(refresh) = current.session.refresh_token.clone() else {
@@ -224,15 +265,21 @@ async fn fresh_token(state: &WebState, current: &mut CurrentSession) -> ApiResul
     };
     match state.discord.refresh(&state.settings, &refresh).await {
         Ok(tokens) => {
+            let now = chrono::Utc::now().timestamp();
             current.session.access_token = tokens.access_token;
             current.session.refresh_token = tokens.refresh_token.or(Some(refresh));
             current.session.token_expires_at = now + tokens.expires_in;
+            current.session.last_seen_at = now;
             session::save(&state.app.cache, &current.sid, &current.session).await?;
             Ok(current.session.access_token.clone())
         }
         Err(CallError::Unauthorized) => Err(end_session(state, current).await),
         Err(CallError::Other(error)) => Err(error.context("token refresh").into()),
     }
+}
+
+fn expiring(session: &Session) -> bool {
+    session.token_expires_at - chrono::Utc::now().timestamp() <= REFRESH_MARGIN_SECS
 }
 
 async fn end_session(state: &WebState, current: &CurrentSession) -> ApiError {

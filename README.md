@@ -231,9 +231,23 @@ Kubernetes manifests and scaling notes: [`deploy/k8s/README.md`](deploy/k8s/READ
 
 `pinchora web` (the `web` compose service, <http://localhost:8090>) is a browser dashboard for server
 managers: log in with Discord, pick a server you have **Manage Server** in (servers without the bot get an
-"Add bot" invite), and change its settings. So far the Overview turns chat XP (leveling) on and off and lists
-the latest dashboard changes; every change is written to an audit log and announced on Redis, so every bot
-pod uses it from the next message instead of after its one-minute cache.
+"Add bot" invite), and change its settings. Every change is written to an audit log and announced on Redis,
+so every bot pod uses it from the next message instead of after its one-minute cache.
+
+| Page | What it sets | Same as |
+|---|---|---|
+| Overview | Chat XP on/off, every page's state at a glance, the latest changes | `/config show`, `/config leveling enabled` |
+| Welcome & goodbye | Welcome cards (channel, text with placeholder chips), the card designer (theme, headline, accent, live preview drawn by the bot), join role, goodbye channel and text | `/config welcome`, `welcome-card`, `join-role`, `goodbye` |
+| Leveling | Leveling, where level-ups go, level-up channel and text, voice XP, XP multipliers, level roles (stack/replace, **Sync members**), reputation roles | `/config leveling`, `xp`, `level-roles`, `rep-roles` |
+| Points & store | Points on/off, name, emoji, points per message; roles on sale with price and stock | `/config points`, `/config store` |
+| Server log | Log channel and the four kinds of events | `/config log`, `/config log-events` |
+| Community | The `/suggest` channel; critter drops on/off and where they land | `/config suggestions`, `/config critters` |
+| Audit log | Every dashboard change: who, what, before and after (kept 180 days) | |
+
+The dashboard and the slash commands check values with the same rules (`pinchora_core::settings`): the same
+limits and the same sentences, and a role the bot cannot hand out is greyed out with the reason `/config`
+gives. `web/src/lib/rules.json` carries those limits and sample answers to the browser (`cargo test -p
+pinchora-web rules -- --ignored write_rules` rewrites it; a test fails while it is out of date).
 
 To turn the login on:
 
@@ -245,10 +259,13 @@ To turn the login on:
 
 Until the secret is set the dashboard serves a setup page that lists what is missing and the redirect to
 register; the rest of the stack runs either way. Other settings (`PINCHORA_WEB__PUBLIC_URL`, `__CLIENT_ID`,
-`__BIND`, `__COOKIE_SECURE`, `__STATIC_DIR`) are described in [`.env.example`](.env.example).
+`__BIND`, `__COOKIE_SECURE`, `__STATIC_DIR`, `__TRUSTED_PROXIES`) are described in [`.env.example`](.env.example).
+Behind a reverse proxy, list it in `PINCHORA_WEB__TRUSTED_PROXIES` so the login rate limit counts each client
+instead of the proxy.
 
 The login asks Discord for `identify guilds` only. Sessions live in Redis behind an HttpOnly cookie (7 days
-idle, 30 days at most); every write needs the session's CSRF token and the dashboard's own origin.
+idle, 30 days at most; logging in again ends the old one); every write needs the session's CSRF token and the
+dashboard's own origin. Over HTTPS the dashboard sends HSTS.
 
 The UI is a Vite + React app in `web/`, built into the binary (`crates/pinchora-web/build.rs` embeds
 `web/dist`; without Node a placeholder page is embedded, so `cargo build` never needs npm):

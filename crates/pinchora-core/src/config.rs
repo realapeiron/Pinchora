@@ -4,7 +4,7 @@ use figment::{
     Figment,
     providers::{Env, Format, Toml},
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// Runtime configuration.
 ///
@@ -38,8 +38,9 @@ impl Config {
     }
 }
 
-/// A string that never shows up in logs or `Debug` output.
-#[derive(Clone, Deserialize)]
+/// A string that never shows up in logs or `Debug` output. It still serializes as itself, for
+/// stores that must keep it (the dashboard's sessions in Redis).
+#[derive(Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct Secret(String);
 
@@ -168,6 +169,10 @@ pub struct WebConfig {
     pub dev_login: bool,
     /// Serve the SPA from this folder instead of the copy built into the binary.
     pub static_dir: Option<PathBuf>,
+    /// Reverse proxies in front of the dashboard, as comma-separated addresses or CIDR ranges
+    /// (`172.16.0.0/12, 10.0.0.1`). Only requests from these may name the client with
+    /// `X-Forwarded-For`; everyone else is who the connection says.
+    pub trusted_proxies: String,
 }
 
 impl Default for WebConfig {
@@ -181,6 +186,7 @@ impl Default for WebConfig {
             cookie_secure: None,
             dev_login: false,
             static_dir: None,
+            trusted_proxies: String::new(),
         }
     }
 }

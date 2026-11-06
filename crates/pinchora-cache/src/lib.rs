@@ -121,6 +121,15 @@ impl Cache {
         Ok(self.conn().get(format!("{PREFIX}:kv:{key}")).await?)
     }
 
+    /// Pushes back the expiry of a value stored with [`Cache::put`]; `false` when it is gone.
+    pub async fn extend(&self, key: &str, ttl: Duration) -> anyhow::Result<bool> {
+        let set: i64 = self
+            .conn()
+            .expire(format!("{PREFIX}:kv:{key}"), ttl.as_secs().max(1) as i64)
+            .await?;
+        Ok(set == 1)
+    }
+
     /// Deletes a value stored with [`Cache::put`].
     pub async fn forget(&self, key: &str) -> anyhow::Result<()> {
         let _: () = self.conn().del(format!("{PREFIX}:kv:{key}")).await?;

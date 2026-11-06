@@ -2,20 +2,46 @@
 
 use axum::{
     Router,
-    routing::{get, patch},
+    routing::{get, patch, post, put},
 };
 use chrono::{DateTime, Utc};
 use pinchora_db::{AuditRow, GuildSettings};
 use serde::Serialize;
 use serde_json::Value;
 
-use super::{me::icon_url, overview, settings};
+use super::{audit_log, community, discord_info, leveling, me::icon_url, overview, preview, settings, store};
 use crate::state::WebState;
 
 pub fn router() -> Router<WebState> {
     Router::new()
         .route("/", get(overview::overview))
+        .route("/discord", get(discord_info::discord))
         .route("/settings", patch(settings::patch))
+        .route("/audit", get(audit_log::audit))
+        .route("/xp-rules", get(leveling::xp_rules).delete(leveling::clear_xp_rules))
+        .route(
+            "/xp-rules/{kind}/{target}",
+            put(leveling::put_xp_rule).delete(leveling::delete_xp_rule),
+        )
+        .route("/level-roles", get(leveling::level_roles))
+        .route("/level-roles/sync", post(leveling::sync_level_roles))
+        .route(
+            "/level-roles/{role}",
+            put(leveling::put_level_role).delete(leveling::delete_level_role),
+        )
+        .route("/rep-roles", get(leveling::rep_roles))
+        .route(
+            "/rep-roles/{role}",
+            put(leveling::put_rep_role).delete(leveling::delete_rep_role),
+        )
+        .route("/jobs/{id}", get(leveling::job))
+        .route("/store", get(store::store))
+        .route("/store/{role}", put(store::put_item).delete(store::delete_item))
+        .route("/community", get(community::community))
+        .route("/suggestions/settings", put(community::put_suggestions))
+        .route("/critters/settings", put(community::put_critters))
+        .route("/preview/welcome-card", post(preview::welcome_card))
+        .route("/preview/message", post(preview::message))
 }
 
 #[derive(Serialize)]

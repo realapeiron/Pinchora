@@ -6,6 +6,7 @@ use axum::{
     http::{HeaderValue, StatusCode, header::RETRY_AFTER},
     response::{IntoResponse, Response},
 };
+use pinchora_core::settings::FieldError;
 use serde::de::DeserializeOwned;
 use serde_json::json;
 
@@ -22,6 +23,8 @@ pub struct ApiError {
     pub invite_url: Option<String>,
     /// Seconds until a rate limit lifts.
     pub retry_after: Option<u64>,
+    /// Every field a form got wrong, when there were several (boxed: errors travel by value).
+    pub errors: Box<[FieldError]>,
 }
 
 impl ApiError {
@@ -33,7 +36,26 @@ impl ApiError {
             field: None,
             invite_url: None,
             retry_after: None,
+            errors: Box::default(),
         }
+    }
+
+    /// 422 `invalid`: what the form got wrong, the first problem in `message` and `field`.
+    pub fn invalid(errors: Vec<FieldError>) -> Self {
+        let first = errors
+            .first()
+            .cloned()
+            .unwrap_or_else(|| FieldError::new("", "Check the form."));
+        Self {
+            field: Some(first.field).filter(|f| !f.is_empty()),
+            errors: errors.into_boxed_slice(),
+            ..Self::new(StatusCode::UNPROCESSABLE_ENTITY, "invalid", first.message)
+        }
+    }
+
+    /// 422 `limit`: the server already has as many of something as it may.
+    pub fn limit(message: impl Into<String>) -> Self {
+        Self::new(StatusCode::UNPROCESSABLE_ENTITY, "limit", message)
     }
 
     pub fn malformed(message: impl Into<String>) -> Self {
@@ -104,6 +126,18 @@ impl ApiError {
     }
 }
 
+impl From<FieldError> for ApiError {
+    fn from(error: FieldError) -> Self {
+        Self::invalid(vec![error])
+    }
+}
+
+impl From<Vec<FieldError>> for ApiError {
+    fn from(errors: Vec<FieldError>) -> Self {
+        Self::invalid(errors)
+    }
+}
+
 impl From<anyhow::Error> for ApiError {
     fn from(error: anyhow::Error) -> Self {
         Self::internal(error)
@@ -118,6 +152,9 @@ impl IntoResponse for ApiError {
         }
         if let Some(url) = &self.invite_url {
             error["invite_url"] = url.as_str().into();
+        }
+        if !self.errors.is_empty() {
+            error["errors"] = json!(self.errors);
         }
         let mut response = (self.status, Json(json!({ "error": error }))).into_response();
         if let Some(seconds) = self.retry_after {

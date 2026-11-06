@@ -30,12 +30,18 @@ pub async fn check(cache: &Cache, scope: &str, who: &str, limit: i64, window: Du
     }
 }
 
-/// Limits `/auth/*` per client address.
+/// Limits `/auth/*` per client address: the connection's, or what a trusted proxy says it is.
 pub async fn auth_by_address(State(state): State<WebState>, request: Request, next: Next) -> Response {
-    let address = request
-        .extensions()
-        .get::<ConnectInfo<SocketAddr>>()
-        .map_or_else(|| "unknown".to_owned(), |info| info.0.ip().to_string());
+    let address = request.extensions().get::<ConnectInfo<SocketAddr>>().map_or_else(
+        || "unknown".to_owned(),
+        |info| {
+            state
+                .settings
+                .trusted_proxies
+                .client(info.0.ip(), request.headers())
+                .to_string()
+        },
+    );
     match check(
         &state.app.cache,
         "auth",

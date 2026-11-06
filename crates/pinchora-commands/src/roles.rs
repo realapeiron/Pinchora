@@ -1,6 +1,9 @@
 //! Handing roles out on Discord: level rewards and what the server store sells.
 
-use pinchora_core::leveling::{self, LevelReward};
+use pinchora_core::{
+    leveling::{self, LevelReward},
+    settings::{self, RoleFacts},
+};
 use pinchora_db::LevelRoleRow;
 use twilight_http::{Error, api_error::ApiError, error::ErrorType, request::AuditLogReason};
 use twilight_model::{guild::Role, id::Id};
@@ -73,28 +76,26 @@ async fn bot_position(app: &App, guild: u64) -> anyhow::Result<i64> {
         .unwrap_or(0))
 }
 
-/// Why the bot cannot hand out `role`, or `None` when it can.
+/// Why the bot cannot hand out `role`, or `None` when it can. The rule is
+/// [`settings::role_refusal`], which the dashboard's role pickers use too.
 pub(crate) async fn unassignable(app: &App, guild: u64, role: &Role) -> Option<String> {
-    if role.id.get() == guild {
-        return Some("@everyone can't be handed out: every member already has it.".to_owned());
-    }
-    if role.managed {
-        return Some(format!(
-            "<@&{}> is managed by an integration or a bot, so it can't be handed out.",
-            role.id
-        ));
-    }
-    match bot_position(app, guild).await {
-        Ok(top) if role.position < top => None,
-        Ok(_) => Some(format!(
-            "<@&{}> is above my highest role. Drag my role above it in Server Settings > Roles, then try again.",
-            role.id
-        )),
-        Err(error) => {
-            tracing::warn!(guild, %error, "could not look up the bot's roles");
-            Some("I couldn't check my own role position just now. Try again in a moment.".to_owned())
+    let facts = RoleFacts {
+        everyone: role.id.get() == guild,
+        managed: role.managed,
+        position: role.position,
+    };
+    let top = if facts.everyone || facts.managed {
+        None
+    } else {
+        match bot_position(app, guild).await {
+            Ok(top) => Some(top),
+            Err(error) => {
+                tracing::warn!(guild, %error, "could not look up the bot's roles");
+                None
+            }
         }
-    }
+    };
+    settings::role_refusal(facts, top, &format!("<@&{}>", role.id))
 }
 
 /// Gives and takes the level roles a member at `level` should hold, as the roles given and how many

@@ -17,8 +17,10 @@ mod voice_xp;
 pub use app::App;
 pub use commands::{
     collection::{post_bottle, post_critter_drop, spawn_ticker as spawn_collection_ticker, tick as collection_tick},
+    config::{WelcomeDesign, welcome_card_png},
     definitions as command_definitions,
     games::{spawn_janitor as spawn_game_janitor, sweep as sweep_games},
+    level_roles::{SyncReport, sync_level_roles},
     partner::partner_name,
 };
 pub use cx::Cx;
@@ -30,7 +32,10 @@ pub use events::{
 pub use invalidations::listen as listen_for_invalidations;
 pub use responder::Responder;
 pub use server_events::{spawn_ticker as spawn_events_ticker, tick as events_tick};
-pub use voice_xp::{prune as voice_prune, spawn_ticker as spawn_voice_ticker, tick as voice_tick};
+pub use util::fill;
+pub use voice_xp::{
+    forget as forget_voice_presence, prune as voice_prune, spawn_ticker as spawn_voice_ticker, tick as voice_tick,
+};
 
 use std::{sync::Arc, time::Instant};
 

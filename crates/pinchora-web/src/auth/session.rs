@@ -5,6 +5,7 @@ use std::time::Duration;
 use axum::http::{HeaderMap, HeaderValue, header::COOKIE};
 use base64::Engine;
 use pinchora_cache::Cache;
+use pinchora_core::config::Secret;
 use serde::{Deserialize, Serialize};
 
 use crate::discord::UserGuild;
@@ -18,22 +19,23 @@ const IDLE: Duration = Duration::from_secs(7 * 86_400);
 /// And after this long whatever happens.
 pub const LIFETIME_SECS: i64 = 30 * 86_400;
 /// The idle clock is pushed back at most this often.
-const TOUCH_EVERY_SECS: i64 = 300;
+const TOUCH_EVERY: Duration = Duration::from_secs(300);
 
-/// A logged-in user. Lives only in Redis.
+/// A logged-in user. Lives only in Redis; the tokens never print.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Session {
     pub user_id: u64,
     pub username: String,
     pub global_name: Option<String>,
     pub avatar: Option<String>,
-    pub access_token: String,
-    pub refresh_token: Option<String>,
+    pub access_token: Secret,
+    pub refresh_token: Option<Secret>,
     /// Unix seconds.
     pub token_expires_at: i64,
     /// What `X-CSRF-Token` must carry on every write.
     pub csrf: String,
     pub created_at: i64,
+    /// When the session was last written: its login, or its last token refresh.
     pub last_seen_at: i64,
     /// Set by dev login: the server list to use instead of asking Discord.
     #[serde(default)]
@@ -75,26 +77,40 @@ pub async fn save(cache: &Cache, sid: &str, session: &Session) -> anyhow::Result
 }
 
 /// The live session behind `sid`, its idle clock pushed back; `None` when there is none or it is too old.
+///
+/// The idle clock lives in the key's expiry, so pushing it back never rewrites the session: a
+/// request that read the session just before another one refreshed its tokens cannot put the old
+/// tokens back.
 pub async fn load(cache: &Cache, sid: &str, now: i64) -> anyhow::Result<Option<Session>> {
-    if !plausible(sid) {
-        return Ok(None);
-    }
-    let Some(raw) = cache.get(&key(sid)).await? else {
-        return Ok(None);
-    };
-    let Ok(mut session) = serde_json::from_str::<Session>(&raw) else {
-        cache.forget(&key(sid)).await?;
+    let Some(session) = read(cache, sid).await? else {
         return Ok(None);
     };
     if now - session.created_at > LIFETIME_SECS {
         cache.forget(&key(sid)).await?;
         return Ok(None);
     }
-    if now - session.last_seen_at > TOUCH_EVERY_SECS {
-        session.last_seen_at = now;
-        save(cache, sid, &session).await?;
+    if cache.once(&format!("web:sess-touch:{sid}"), TOUCH_EVERY).await? {
+        cache.extend(&key(sid), IDLE).await?;
     }
     Ok(Some(session))
+}
+
+/// The session behind `sid` as stored, without touching it. A session that no longer parses is
+/// dropped.
+pub async fn read(cache: &Cache, sid: &str) -> anyhow::Result<Option<Session>> {
+    if !plausible(sid) {
+        return Ok(None);
+    }
+    let Some(raw) = cache.get(&key(sid)).await? else {
+        return Ok(None);
+    };
+    match serde_json::from_str::<Session>(&raw) {
+        Ok(session) => Ok(Some(session)),
+        Err(_) => {
+            cache.forget(&key(sid)).await?;
+            Ok(None)
+        }
+    }
 }
 
 pub async fn delete(cache: &Cache, sid: &str) -> anyhow::Result<()> {

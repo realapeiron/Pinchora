@@ -1,17 +1,61 @@
-import { NavLink, Outlet, useParams } from "react-router";
+import { useEffect, useRef } from "react";
+import { NavLink, Outlet, useLocation, useParams } from "react-router";
 
 import { PixelLink } from "../components/PixelButton";
 import { Panel } from "../components/Panel";
 import { ServerIcon } from "../components/ServerIcon";
 import { TopBar } from "../components/TopBar";
 import { ApiError, type Me } from "../lib/api";
+import { isDiscordId } from "../lib/ids";
 import { useOverview } from "../lib/queries";
+import { NotFound } from "./NotFound";
 import { Loading, Problem } from "./States";
+
+/** The admin pages of a server, by sidebar group. Paths are relative to `/g/:guildId`. */
+export const NAV: { group: string; pages: { to: string; label: string }[] }[] = [
+  {
+    group: "SERVER",
+    pages: [
+      { to: "", label: "Overview" },
+      { to: "audit", label: "Audit log" },
+    ],
+  },
+  {
+    group: "MEMBERS",
+    pages: [
+      { to: "welcome", label: "Welcome & goodbye" },
+      { to: "leveling", label: "Leveling" },
+      { to: "points", label: "Points & store" },
+    ],
+  },
+  {
+    group: "TOOLS",
+    pages: [
+      { to: "log", label: "Server log" },
+      { to: "community", label: "Community" },
+    ],
+  },
+];
 
 /** The admin side of one server: sidebar with the server and its pages, the page on the right. */
 export function GuildLayout({ me }: { me: Me }) {
   const { guildId = "" } = useParams();
+  if (!isDiscordId(guildId)) return <NotFound />;
+  return <ValidGuildLayout me={me} guildId={guildId} />;
+}
+
+function ValidGuildLayout({ me, guildId }: { me: Me; guildId: string }) {
   const overview = useOverview(guildId);
+  const nav = useRef<HTMLElement>(null);
+  const { pathname } = useLocation();
+  // On a phone the links are one sideways strip: keep the open page's tab in sight.
+  useEffect(() => {
+    const strip = nav.current;
+    const active = strip?.querySelector(".sidebar-link.active");
+    if (strip && active && strip.scrollWidth > strip.clientWidth) {
+      strip.scrollLeft += active.getBoundingClientRect().left - strip.getBoundingClientRect().left - 16;
+    }
+  }, [pathname]);
   return (
     <div className="page">
       <TopBar me={me} />
@@ -35,11 +79,22 @@ export function GuildLayout({ me }: { me: Me }) {
               </NavLink>
             </div>
           </div>
-          <nav aria-label="Server settings">
-            <p className="sidebar-group pixel-label">SERVER</p>
-            <NavLink end to={`/g/${guildId}`} className="sidebar-link">
-              Overview
-            </NavLink>
+          <nav ref={nav} aria-label="Server settings" className="sidebar-nav">
+            {NAV.map(({ group, pages }) => (
+              <div key={group} className="sidebar-section">
+                <p className="sidebar-group pixel-label">{group}</p>
+                {pages.map((page) => (
+                  <NavLink
+                    key={page.to}
+                    end
+                    to={page.to ? `/g/${guildId}/${page.to}` : `/g/${guildId}`}
+                    className="sidebar-link"
+                  >
+                    {page.label}
+                  </NavLink>
+                ))}
+              </div>
+            ))}
           </nav>
         </aside>
         <main className="content">

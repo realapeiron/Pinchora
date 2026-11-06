@@ -3,8 +3,10 @@
 use std::{net::SocketAddr, path::PathBuf};
 
 use anyhow::Context as _;
-use pinchora_core::config::WebConfig;
+use pinchora_core::config::{Secret, WebConfig};
 use reqwest::Url;
+
+use crate::client_ip::TrustedProxies;
 
 /// [`WebConfig`] resolved: URLs parsed, defaults applied, what is missing listed.
 #[derive(Debug, Clone)]
@@ -15,7 +17,7 @@ pub struct WebSettings {
     /// `<public_url>/auth/callback`, as registered in the Developer Portal.
     pub redirect_uri: String,
     pub client_id: u64,
-    pub client_secret: Option<String>,
+    pub client_secret: Option<Secret>,
     /// Discord's REST base, without a trailing slash.
     pub discord_api_base: String,
     /// Where the browser is sent to authorise: Discord's (or the mock's) `/oauth2/authorize`.
@@ -25,6 +27,8 @@ pub struct WebSettings {
     /// release build never has it: a loopback bind is still reachable through a same-host proxy).
     pub dev_login: bool,
     pub static_dir: Option<PathBuf>,
+    /// Proxies whose `X-Forwarded-For` names the client.
+    pub trusted_proxies: TrustedProxies,
     /// Environment variables still needed before anyone can log in.
     pub missing: Vec<&'static str>,
 }
@@ -38,7 +42,8 @@ impl WebSettings {
             .client_secret
             .as_ref()
             .map(|s| s.expose().trim().to_owned())
-            .filter(|s| !s.is_empty());
+            .filter(|s| !s.is_empty())
+            .map(Secret::from);
         let mut missing = Vec::new();
         if client_secret.is_none() {
             missing.push("PINCHORA_WEB__CLIENT_SECRET");
@@ -54,6 +59,7 @@ impl WebSettings {
             cookie_secure: web.cookie_secure.unwrap_or(public.scheme() == "https"),
             dev_login: cfg!(debug_assertions) && web.dev_login && web.bind.ip().is_loopback(),
             static_dir: web.static_dir.clone(),
+            trusted_proxies: TrustedProxies::parse(&web.trusted_proxies)?,
             missing,
         })
     }
@@ -94,7 +100,8 @@ mod tests {
         let s = WebSettings::resolve(&config, 77).unwrap();
         assert!(s.cookie_secure);
         assert_eq!(s.redirect_uri, "https://dash.example.com/auth/callback");
-        assert_eq!(s.client_secret.as_deref(), Some("s3cret"));
+        assert_eq!(s.client_secret.as_ref().map(Secret::expose), Some("s3cret"));
+        assert!(!format!("{s:?}").contains("s3cret"), "the secret never prints");
         assert_eq!(s.client_id, 5);
         assert!(s.missing.is_empty());
 
@@ -116,6 +123,17 @@ mod tests {
             cfg!(debug_assertions),
             "release builds never have it"
         );
+    }
+
+    #[test]
+    fn trusted_proxies_are_parsed_at_start() {
+        let mut config = web();
+        assert!(WebSettings::resolve(&config, 1).unwrap().trusted_proxies.is_empty());
+        config.trusted_proxies = "172.16.0.0/12".into();
+        let s = WebSettings::resolve(&config, 1).unwrap();
+        assert!(s.trusted_proxies.contains("172.17.0.1".parse().unwrap()));
+        config.trusted_proxies = "the proxy".into();
+        assert!(WebSettings::resolve(&config, 1).is_err(), "a typo fails the start");
     }
 
     #[test]
