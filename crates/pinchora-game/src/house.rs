@@ -240,6 +240,118 @@ pub fn flip_drops_surface_items(
     })
 }
 
+/// The pixels a piece covers on screen in the room picture, as `[left, top, right, bottom]` with the
+/// room's own pixel grid (the picture before it is scaled up): where the renderer draws the art of
+/// `item_id` at (x, y), `height` pixels tall, `lift` pixels above the floor. A rug lies flat, so it
+/// covers the diamond of its footprint.
+fn art_box(
+    content: &Content,
+    item_id: &str,
+    x: u32,
+    y: u32,
+    flipped: bool,
+    height: u32,
+    lift: u32,
+) -> Option<[i32; 4]> {
+    let (layer, r) = footprint(content, item_id, x, y, flipped)?;
+    let (x, y, w, d) = (x as i32, y as i32, r.w as i32, r.d as i32);
+    if layer == Layer::Rug {
+        return Some([32 * (x - y - d), 16 * (x + y), 32 * (x + w - y), 16 * (x + y + w + d)]);
+    }
+    let full = (w + d) * 32;
+    let base = &content.item(item_id)?.base;
+    let width = base
+        .iso_width
+        .map_or(if layer == Layer::Surface { 24 } else { full }, |w| w as i32)
+        .clamp(8, full);
+    let centre = 32 * (x - y) + 16 * (w - d);
+    let bottom = 16 * (x + y) + 8 * (w + d) + width / 4 - lift as i32;
+    Some([
+        centre - width / 2,
+        bottom - height as i32,
+        centre - width / 2 + width,
+        bottom,
+    ])
+}
+
+/// Whether `item_id`, put at (x, y), would be mostly hidden in the room picture: a taller piece is
+/// drawn in front of it, over more than half of what it covers. `height_of` says how many pixels tall
+/// an item's art is. Pieces on the same tile or behind it never hide it; a rug, which lies under
+/// whatever stands on it, is hidden by the pieces that stand on it or in front of it. Wall pieces are
+/// never hidden.
+pub fn is_hidden(
+    content: &Content,
+    placed: &[Placed<'_>],
+    height_of: &dyn Fn(&str) -> u32,
+    item_id: &str,
+    x: u32,
+    y: u32,
+    flipped: bool,
+) -> bool {
+    let Some((layer, rect)) = footprint(content, item_id, x, y, flipped) else {
+        return false;
+    };
+    if layer == Layer::Wall {
+        return false;
+    }
+    let own = height_of(item_id);
+    let lift = if layer == Layer::Surface {
+        surface_lift(content, placed, x, y)
+    } else {
+        0
+    };
+    let Some(mine) = art_box(content, item_id, x, y, flipped, own, lift) else {
+        return false;
+    };
+    let mut hiding = Vec::new();
+    for p in placed {
+        let Some((l, r)) = footprint(content, p.item_id, p.x, p.y, p.flipped) else {
+            continue;
+        };
+        let height = height_of(p.item_id);
+        if !matches!(l, Layer::Floor | Layer::Surface) || (layer != Layer::Rug && height <= own) {
+            continue;
+        }
+        // Drawn after the held piece: it lies entirely behind the other one along x or y.
+        let in_front = (rect.x + rect.w <= r.x && r.y + r.d > rect.y) || (rect.y + rect.d <= r.y && r.x + r.w > rect.x);
+        if !(in_front || (layer == Layer::Rug && rect.overlaps(&r))) {
+            continue;
+        }
+        let lift = if l == Layer::Surface {
+            surface_lift(content, placed, p.x, p.y)
+        } else {
+            0
+        };
+        hiding.extend(art_box(content, p.item_id, p.x, p.y, p.flipped, height, lift));
+    }
+    if hiding.is_empty() {
+        return false;
+    }
+    // Sample the piece's picture on a grid: a rug counts only the points inside its diamond.
+    const GRID: i32 = 8;
+    let [left, top, right, bottom] = mine;
+    let (width, height) = ((right - left) as f32, (bottom - top) as f32);
+    let (mut seen, mut covered) = (0, 0);
+    for row in 0..GRID {
+        for col in 0..GRID {
+            let u = (col as f32 + 0.5) / GRID as f32;
+            let v = (row as f32 + 0.5) / GRID as f32;
+            if layer == Layer::Rug && (u - 0.5).abs() + (v - 0.5).abs() > 0.5 {
+                continue;
+            }
+            let (px, py) = (left as f32 + u * width, top as f32 + v * height);
+            seen += 1;
+            if hiding
+                .iter()
+                .any(|b| px >= b[0] as f32 && px < b[2] as f32 && py >= b[1] as f32 && py < b[3] as f32)
+            {
+                covered += 1;
+            }
+        }
+    }
+    covered * 2 > seen
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -383,6 +495,64 @@ mod tests {
             false
         ));
         assert!(!flip_drops_surface_items(&c, &[at("lamp", 1, 1)], "frame", 1, 1, false));
+    }
+
+    #[test]
+    fn a_small_piece_behind_a_tall_one_is_hidden() {
+        let c = content();
+        let at = |item_id, x, y| Placed {
+            item_id,
+            x,
+            y,
+            flipped: false,
+        };
+        // The lamp's art is 20 px tall, the sofa's 80, the table's 10.
+        let tall = |id: &str| match id {
+            "lamp" => 20,
+            "table" => 10,
+            _ => 80,
+        };
+        let hidden = |placed: &[Placed], id, x, y| is_hidden(&c, placed, &tall, id, x, y, false);
+        let sofa = [at("sofa__mint", 0, 1)];
+        assert!(
+            hidden(&sofa, "lamp", 0, 0),
+            "the sofa stands right in front of that corner"
+        );
+        assert!(!hidden(&sofa, "lamp", 5, 0), "beside the sofa the lamp is seen");
+        assert!(!hidden(&sofa, "lamp", 0, 3), "in front of the sofa nothing covers it");
+        assert!(!hidden(&sofa, "lamp", 4, 4));
+        // Only a taller piece hides: a low table in front covers nothing of the lamp's top.
+        assert!(!hidden(&[at("table", 0, 1)], "lamp", 0, 0));
+        // A lamp on the table is on it, not behind it.
+        assert!(!hidden(&[at("table", 4, 4)], "lamp", 4, 4));
+        // Wall pieces hang above everything that stands.
+        assert!(!hidden(&sofa, "frame", 0, 0));
+        // An unknown piece hides nothing and is not hidden.
+        assert!(!hidden(&sofa, "nothing", 0, 0));
+    }
+
+    #[test]
+    fn a_rug_under_furniture_is_hidden_but_an_open_one_is_not() {
+        let c = content();
+        let tall = |id: &str| if id == "rug" { 0 } else { 80 };
+        let sofa_on_it = [Placed {
+            item_id: "sofa__mint",
+            x: 0,
+            y: 0,
+            flipped: false,
+        }];
+        assert!(is_hidden(&c, &sofa_on_it, &tall, "rug", 0, 0, false));
+        let far_sofa = [Placed {
+            item_id: "sofa__mint",
+            x: 6,
+            y: 6,
+            flipped: false,
+        }];
+        assert!(
+            !is_hidden(&c, &far_sofa, &tall, "rug", 0, 0, false),
+            "a sofa far behind it"
+        );
+        assert!(!is_hidden(&c, &[], &tall, "rug", 0, 0, false), "an empty room");
     }
 
     #[test]

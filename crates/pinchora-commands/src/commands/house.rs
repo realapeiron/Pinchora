@@ -756,12 +756,18 @@ fn reach(content: &Content, tier: &house::Tier, state: &EditState) -> (u32, u32)
     }
 }
 
-/// Every spot where the held item fits as it is turned now, nearest to the cursor first.
+/// How tall each item's art is, in pixels: what decides whether a piece in front hides another.
+type Heights<'a> = &'a dyn Fn(&str) -> u32;
+
+/// Every spot where the held item fits as it is turned now: the ones where it stays in sight first,
+/// then the ones where a taller piece in front would hide most of it, each group nearest to the
+/// cursor first.
 fn free_spots(
     content: &Content,
     tier: &house::Tier,
     placements: &[PlacementRow],
     state: &EditState,
+    heights: Heights<'_>,
 ) -> Vec<(u32, u32)> {
     let Some(item_id) = state.item.as_deref() else {
         return Vec::new();
@@ -774,7 +780,15 @@ fn free_spots(
             house::can_place(content, tier.width, tier.depth, &placed, item_id, x, y, state.flipped).is_ok()
         })
         .collect();
-    spots.sort_by_key(|&(x, y)| (x.abs_diff(state.x) + y.abs_diff(state.y), y, x));
+    let hidden = |&(x, y): &(u32, u32)| house::is_hidden(content, &placed, heights, item_id, x, y, state.flipped);
+    spots.sort_by_cached_key(|spot| {
+        (
+            hidden(spot),
+            spot.0.abs_diff(state.x) + spot.1.abs_diff(state.y),
+            spot.1,
+            spot.0,
+        )
+    });
     spots
 }
 
@@ -785,11 +799,23 @@ enum Settle {
     NoRoom,
 }
 
-/// Leaves the held item where it is when it fits there, else moves it to the nearest spot
-/// that fits, so a picked item is always one **Place** away from being in the room.
-fn settle(content: &Content, tier: &house::Tier, placements: &[PlacementRow], state: &mut EditState) -> Settle {
-    match free_spots(content, tier, placements, state).first() {
-        Some(&spot) if spot == (state.x, state.y) => Settle::Stayed,
+/// Leaves the held item where it is when it fits there and shows, else moves it to the nearest spot
+/// that fits and shows, so a picked item is always one **Place** away from being in the room. A spot
+/// hidden behind a taller piece is the last choice, taken when nothing else fits. `keep_hidden` keeps an
+/// item that fits where it is even then: the player put it there, and only a turn is changing the fit.
+fn settle(
+    content: &Content,
+    tier: &house::Tier,
+    placements: &[PlacementRow],
+    state: &mut EditState,
+    heights: Heights<'_>,
+    keep_hidden: bool,
+) -> Settle {
+    let spots = free_spots(content, tier, placements, state, heights);
+    let here = (state.x, state.y);
+    match spots.first() {
+        Some(&spot) if spot == here => Settle::Stayed,
+        Some(_) if keep_hidden && spots.contains(&here) => Settle::Stayed,
         Some(&(x, y)) => {
             (state.x, state.y) = (x, y);
             Settle::Moved
@@ -1027,6 +1053,7 @@ pub(crate) async fn on_edit(
     state.room = state.room.clamp(0, rooms.len().saturating_sub(1) as i16);
     let placements = cx.app.db.placements(user_id, state.room).await?;
     let name_of = |item_id: &str| content.item(item_id).map_or(item_id.to_owned(), |i| i.name());
+    let heights = |id: &str| cx.app.sprites.item(content, id).map_or(0, |sprite| sprite.height());
     // Set when this click put a piece in the player's own house, which counts toward badges.
     let mut placed_now = false;
     let start_room = state.room;
@@ -1046,7 +1073,7 @@ pub(crate) async fn on_edit(
                 state.item = value.filter(|v| content.item(v).is_some()).map(str::to_owned);
                 state.flipped = false;
                 match state.item.clone() {
-                    Some(item_id) => match settle(content, tier, &placements, &mut state) {
+                    Some(item_id) => match settle(content, tier, &placements, &mut state, &heights, false) {
                         Settle::NoRoom => format!(
                             "**{}** fits nowhere in this room right now. **Turn** it, or store something.",
                             name_of(&item_id)
@@ -1151,7 +1178,7 @@ pub(crate) async fn on_edit(
                         if cx.app.db.owns(who.stock, &item_id).await? {
                             // Keep holding the next one, already on the nearest free spot.
                             let placements = cx.app.db.placements(user_id, state.room).await?;
-                            match settle(content, tier, &placements, &mut state) {
+                            match settle(content, tier, &placements, &mut state, &heights, false) {
                                 Settle::NoRoom => {
                                     state.release(content);
                                     format!("Placed **{name}**. There is no free spot for another one.")
@@ -1225,7 +1252,7 @@ pub(crate) async fn on_edit(
         // Turns the held item; when the turned footprint no longer fits, it moves to the nearest spot.
         "t" => {
             state.flipped = !state.flipped;
-            match settle(content, tier, &placements, &mut state) {
+            match settle(content, tier, &placements, &mut state, &heights, true) {
                 Settle::Moved => format!(
                     "Turned it and moved to **{}** so it fits.",
                     spot_label(state.x, state.y, state.wall(content))
@@ -1428,22 +1455,28 @@ pub(crate) async fn editor_as(
         .as_deref()
         .and_then(|i| house::footprint(content, i, 0, 0, state.flipped));
     let (cw, cd) = held.map_or((1, 1), |(_, r)| (r.w, r.d));
-    let spots = free_spots(content, tier, &placements, &state);
+    let heights = |id: &str| cx.app.sprites.item(content, id).map_or(0, |sprite| sprite.height());
+    let spots = free_spots(content, tier, &placements, &state, &heights);
     let fits = selected_item.is_some() && spots.contains(&(state.x, state.y));
     let hovered = under_cursor(content, &placements, state.x, state.y, wall);
     let hovered_id = hovered.map(|p| p.id);
     let hovered_name = hovered.and_then(|p| content.item(&p.item_id)).map(|i| i.name());
 
     // The jump menu: free spots for the held piece, or the pieces in the room for an empty hand.
+    let on_floor = placed_list(&placements);
     let jump_options: Vec<SelectMenuOption> = match (state.item.as_deref(), held) {
         (Some(item_id), Some((layer, _))) => spots
             .iter()
             .take(PAGE)
             .filter_map(|&(x, y)| {
                 let (_, r) = house::footprint(content, item_id, x, y, state.flipped)?;
+                let mut hint = spot_hint(content, &placements, layer, r, wall);
+                if house::is_hidden(content, &on_floor, &heights, item_id, x, y, state.flipped) {
+                    hint.push_str(" · mostly hidden");
+                }
                 Some(SelectMenuOption {
                     default: (x, y) == (state.x, state.y),
-                    description: Some(spot_hint(content, &placements, layer, r, wall)),
+                    description: Some(hint),
                     emoji: None,
                     label: spot_label(x, y, wall),
                     value: format!("{x}.{y}"),
@@ -1911,14 +1944,160 @@ mod tests {
         };
         let placements = [blocker];
         // The cursor sits on the first sofa, so the second moves one tile away.
-        assert_eq!(settle(content, tier, &placements, &mut state), Settle::Moved);
+        let flat = |_: &str| 0;
+        assert_eq!(
+            settle(content, tier, &placements, &mut state, &flat, false),
+            Settle::Moved
+        );
         assert_eq!((state.x + state.y).abs_diff(6), 1);
-        assert_eq!(settle(content, tier, &placements, &mut state), Settle::Stayed);
-        let spots = free_spots(content, tier, &placements, &state);
+        assert_eq!(
+            settle(content, tier, &placements, &mut state, &flat, false),
+            Settle::Stayed
+        );
+        let spots = free_spots(content, tier, &placements, &state, &flat);
         assert_eq!(spots.first(), Some(&(state.x, state.y)));
         assert!(!spots.contains(&(3, 3)) && !spots.contains(&(2, 3)));
         assert_eq!(spot_label(2, 3, None), "C4");
         assert_eq!(spot_label(0, 1, Some(true)), "Left wall 1 · middle");
+    }
+
+    /// A small lamp, a tall bed and the tier-1 room, for the tests of what the jump avoids.
+    fn lamp_and_bed() -> (&'static Content, &'static house::Tier, String, String, PlacementRow) {
+        let content = Content::get();
+        let find = |layer: Layer, footprint: [u32; 2]| {
+            content
+                .items()
+                .find(|i| i.base.layer == layer && i.base.footprint == footprint)
+                .map(|i| i.id())
+                .expect("content has this kind of item")
+        };
+        let (lamp, bed) = (find(Layer::Surface, [1, 1]), find(Layer::Floor, [2, 2]));
+        // The bed stands right in front of the room's back corner.
+        let bed_row = PlacementRow {
+            id: 1,
+            room_idx: 0,
+            item_id: bed.clone(),
+            x: 0,
+            y: 1,
+            flipped: false,
+        };
+        (content, house::tier(1), lamp, bed, bed_row)
+    }
+
+    fn holding(item: &str, x: u32, y: u32) -> EditState {
+        EditState {
+            prefix: "he",
+            room: 0,
+            x,
+            y,
+            page: 0,
+            flipped: false,
+            mode: CursorMode::Floor,
+            item: Some(item.to_owned()),
+        }
+    }
+
+    #[test]
+    fn a_picked_lamp_is_not_put_where_a_bed_hides_it() {
+        let (content, tier, lamp, bed, bed_row) = lamp_and_bed();
+        // The lamp's art is 20 px tall, the bed's 120: the bed in front of A1 covers the lamp there.
+        let tall = {
+            let bed = bed.clone();
+            move |id: &str| if id == bed { 120 } else { 20 }
+        };
+        let placements = [bed_row];
+        let placed = placed_list(&placements);
+        assert!(
+            house::is_hidden(content, &placed, &tall, &lamp, 0, 0, false),
+            "A1 is behind the bed"
+        );
+        assert!(!house::is_hidden(content, &placed, &tall, &lamp, 5, 0, false));
+
+        // The cursor starts on A1, which is free: the lamp still moves to the nearest spot in sight.
+        let mut state = holding(&lamp, 0, 0);
+        assert!(
+            free_spots(content, tier, &placements, &state, &tall).contains(&(0, 0)),
+            "A1 is free"
+        );
+        assert_eq!(
+            settle(content, tier, &placements, &mut state, &tall, false),
+            Settle::Moved
+        );
+        let (x, y) = (state.x, state.y);
+        assert!(
+            !house::is_hidden(content, &placed, &tall, &lamp, x, y, false),
+            "{} is in sight",
+            spot_label(x, y, None)
+        );
+        let spots = free_spots(content, tier, &placements, &state, &tall);
+        let distance = |&(sx, sy): &(u32, u32)| sx.abs_diff(0) + sy.abs_diff(0);
+        let nearest_seen = spots
+            .iter()
+            .filter(|&&(sx, sy)| !house::is_hidden(content, &placed, &tall, &lamp, sx, sy, false))
+            .map(distance)
+            .min();
+        assert_eq!(Some(x + y), nearest_seen, "and it is the nearest one that is");
+        // The menu lists what shows before what is hidden.
+        let first_hidden = spots
+            .iter()
+            .position(|&(sx, sy)| house::is_hidden(content, &placed, &tall, &lamp, sx, sy, false));
+        if let Some(at) = first_hidden {
+            assert!(
+                spots[at..]
+                    .iter()
+                    .all(|&(sx, sy)| house::is_hidden(content, &placed, &tall, &lamp, sx, sy, false)),
+                "no spot in sight after a hidden one"
+            );
+        }
+
+        // Turning an item keeps it where the player put it as long as it fits.
+        let mut turned = holding(&lamp, 0, 0);
+        turned.flipped = true;
+        assert_eq!(
+            settle(content, tier, &placements, &mut turned, &tall, true),
+            Settle::Stayed
+        );
+        assert_eq!((turned.x, turned.y), (0, 0));
+    }
+
+    #[test]
+    fn when_every_spot_is_hidden_any_free_one_will_do() {
+        let (content, tier, lamp, _, _) = lamp_and_bed();
+        let tall = |id: &str| if id == lamp { 20 } else { 400 };
+        let block = content
+            .items()
+            .find(|i| i.base.layer == Layer::Floor && i.base.footprint == [1, 1])
+            .map(|i| i.id())
+            .expect("a 1×1 floor item");
+        // Tall pieces fill every row but the back one, so what is left is all behind them.
+        let placements: Vec<PlacementRow> = (1..tier.depth)
+            .flat_map(|y| (0..tier.width).map(move |x| (x, y)))
+            .enumerate()
+            .map(|(n, (x, y))| PlacementRow {
+                id: n as i64 + 1,
+                room_idx: 0,
+                item_id: block.clone(),
+                x: x as i16,
+                y: y as i16,
+                flipped: false,
+            })
+            .collect();
+        let placed = placed_list(&placements);
+        let mut state = holding(&lamp, 0, 3);
+        let spots = free_spots(content, tier, &placements, &state, &tall);
+        assert!(!spots.is_empty() && spots.iter().all(|&(_, y)| y == 0), "{spots:?}");
+        assert!(
+            spots
+                .iter()
+                .any(|&(x, y)| house::is_hidden(content, &placed, &tall, &lamp, x, y, false)),
+            "the back row is behind the tall pieces"
+        );
+        // Nothing shows well, yet the lamp still goes to a free spot instead of being refused.
+        assert_eq!(
+            settle(content, tier, &placements, &mut state, &tall, false),
+            Settle::Moved
+        );
+        assert!(spots.contains(&(state.x, state.y)));
     }
 
     #[test]
