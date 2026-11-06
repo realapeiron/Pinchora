@@ -40,6 +40,10 @@ const WAKE: Duration = Duration::from_secs(20);
 const PARALLEL: usize = 8;
 /// The most minutes a stalled ticker pays back once it is running again.
 const MAX_CATCH_UP: i64 = 3;
+/// How long a paid minute stays locked: past the oldest minute a late ticker still pays, so a pod that
+/// catches up never pays a minute another pod already paid.
+const MINUTE_LOCK: Duration = Duration::from_secs(60 * (MAX_CATCH_UP as u64 + 3));
+const _: () = assert!(MINUTE_LOCK.as_secs() > (MAX_CATCH_UP as u64 + 1) * 60 + WAKE.as_secs());
 /// Weekly XP older than this many weeks is pruned, hourly.
 const KEEP_WEEKS: i64 = 6;
 /// How long the AFK channel lookup is trusted, and how long its last answer is kept for when Discord
@@ -226,11 +230,7 @@ pub async fn tick(app: &Arc<App>) -> anyhow::Result<usize> {
 
 /// Pays `minute` to every guild with somebody in voice, a few guilds at a time.
 async fn pay_minute(app: &Arc<App>, minute: i64) -> anyhow::Result<usize> {
-    if !app
-        .cache
-        .once(&format!("voice-tick:{minute}"), Duration::from_secs(150))
-        .await?
-    {
+    if !app.cache.once(&format!("voice-tick:{minute}"), MINUTE_LOCK).await? {
         return Ok(0);
     }
     let guilds: Vec<u64> = app

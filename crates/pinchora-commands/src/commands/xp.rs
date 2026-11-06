@@ -214,6 +214,12 @@ async fn voice(cx: &Cx, guild: u64, c: XpVoice) -> anyhow::Result<()> {
         cx.app.db.update_voice_xp(guild, c.enabled, amount).await?
     };
     cx.app.forget_guild_settings(guild).await;
+    // Other pods' caches lag the switch by minutes; with nobody remembered, none of them pays.
+    if c.enabled == Some(false)
+        && let Err(error) = crate::voice_xp::forget(&cx.app, guild).await
+    {
+        tracing::warn!(guild, %error, "voice presence not forgotten");
+    }
     let mut text = voice_summary(&settings);
     if c.enabled == Some(true) {
         // Nobody is remembered while voice XP is off, and Discord cannot list who is in voice.

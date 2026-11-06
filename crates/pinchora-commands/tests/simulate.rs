@@ -7294,6 +7294,10 @@ async fn servers_with_voice_xp_off_are_not_tracked_and_are_dropped_when_it_goes_
     // Off again: the next tick pays nothing and drops the server and its records, so a later
     // "on" does not resurrect members who left in between.
     sim.xp(admin, voice(false)).await;
+    assert!(
+        sim.voice_members().await.is_empty(),
+        "switching it off forgets everyone at once, so no pod with an older view pays"
+    );
     sim.app.shift_clock(chrono::Duration::seconds(60));
     pinchora_commands::voice_tick(&sim.app).await.expect("tick");
     assert_eq!(sim.server_xp(a).await, 40);
