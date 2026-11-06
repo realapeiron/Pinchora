@@ -3,6 +3,7 @@
 
 use std::{str::Split, time::Duration};
 
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::Tally;
 use pinchora_render::social::{Interaction, Person, interaction_gif};
 use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
@@ -44,13 +45,11 @@ async fn send(cx: &Cx, kind: Interaction, target: &ResolvedUser) -> anyhow::Resu
     let from = cx.author()?.id.get();
     let to = &target.resolved;
     if to.bot {
-        return cx
-            .reply_ephemeral("Pick a person; bots keep their circuits to themselves.")
-            .await;
+        return cx.reply_ephemeral(t!(cx.lang(), "interact.bot")).await;
     }
     if to.id.get() == from {
         return cx
-            .reply_ephemeral(format!("You can't give yourself a {}. Pick someone else!", kind.noun()))
+            .reply_ephemeral(t!(cx.lang(), &format!("interact.{}.self", kind.key())))
             .await;
     }
     if throttled(cx, from).await? {
@@ -75,12 +74,8 @@ async fn throttled(cx: &Cx, user: u64) -> anyhow::Result<bool> {
     let Some(left) = left else {
         return Ok(false);
     };
-    cx.reply_ephemeral(format!(
-        "Easy there! You can send another in {} second{}.",
-        left.as_secs() + 1,
-        if left.as_secs() == 0 { "" } else { "s" }
-    ))
-    .await?;
+    cx.reply_ephemeral(t!(cx.lang(), "interact.throttled", count = left.as_secs() + 1))
+        .await?;
     Ok(true)
 }
 
@@ -95,30 +90,35 @@ async fn deliver(cx: &Cx, kind: Interaction, from: u64, to: u64) -> anyhow::Resu
         })
         .await?;
     let tally = cx.app.db.record_interaction(kind.key(), from, to).await?;
+    let lang = cx.lang();
     let (name_from, name_to) = (name(cx, from).await, name(cx, to).await);
-    let footer = footer(kind, tally, &name_from, &name_to, saved);
+    let footer = footer(lang, kind, tally, &name_from, &name_to, saved);
     let embed = EmbedBuilder::new()
         .color(BRAND)
-        .description(format!(
-            "That's {} **#{}** from {} to {}.",
-            kind.noun(),
-            thousands(i64::from(tally.pair)),
-            mention(from),
-            mention(to)
+        .description(t!(
+            lang,
+            "interact.tally",
+            noun = t!(lang, &format!("interact.{}.noun", kind.key())),
+            number = thousands(i64::from(tally.pair)),
+            from = mention(from),
+            to = mention(to)
         ))
         .footer(EmbedFooterBuilder::new(footer));
     let back = button(
-        &format!("{} back", capitalized(kind.noun())),
+        &t!(lang, &format!("interact.{}.back", kind.key())),
         format!("hg:{}:{from}:{to}", kind.key()),
         ButtonStyle::Primary,
     );
     let mut data = Cx::card(embed, &format!("{}.gif", kind.key()), gif, vec![row(vec![back])], false);
     data.content = Some(format!(
-        "{} {} {} {}",
+        "{} {}",
         kind.emoji(),
-        mention(from),
-        kind.verb(),
-        mention(to)
+        t!(
+            lang,
+            &format!("interact.{}.line", kind.key()),
+            from = mention(from),
+            to = mention(to)
+        )
     ));
     // The message names both players, but only the one it is for is pinged.
     data.allowed_mentions = social::ping_only(to);
@@ -133,37 +133,27 @@ async fn name(cx: &Cx, user: u64) -> String {
         .ok()
         .flatten()
         .filter(|n| !n.is_empty())
-        .unwrap_or_else(|| "Someone".to_owned())
+        .unwrap_or_else(|| t!(cx.lang(), "interact.someone"))
 }
 
-fn capitalized(text: &str) -> String {
-    let mut chars = text.chars();
-    chars
-        .next()
-        .map(|first| first.to_uppercase().chain(chars).collect())
-        .unwrap_or_default()
-}
-
-fn plural(kind: Interaction) -> &'static str {
-    match kind {
-        Interaction::Hug => "hugs",
-        Interaction::Pat => "pats",
-        Interaction::Wave => "waves",
-        Interaction::HighFive => "high fives",
-    }
+/// "12 hugs" or "1 hug", in `lang`.
+pub(super) fn count_text(lang: Lang, kind: Interaction, n: i64) -> String {
+    t!(lang, &format!("interact.{}.count", kind.key()), count = thousands(n))
 }
 
 /// "Pip: 12 hugs given · Sam: 7 hugs received", and a nudge for a player who never designed a
 /// character, whose stand-in is standing there.
-fn footer(kind: Interaction, tally: Tally, from: &str, to: &str, saved: bool) -> String {
-    let count = |n: i64| format!("{} {}", thousands(n), if n == 1 { kind.noun() } else { plural(kind) });
-    let mut text = format!(
-        "{from}: {} given · {to}: {} received",
-        count(tally.given),
-        count(tally.received)
+fn footer(lang: Lang, kind: Interaction, tally: Tally, from: &str, to: &str, saved: bool) -> String {
+    let mut text = t!(
+        lang,
+        "interact.footer",
+        from = from,
+        to = to,
+        given = count_text(lang, kind, tally.given),
+        received = count_text(lang, kind, tally.received)
     );
     if !saved {
-        text.push_str(" · Design your own with /character");
+        text.push_str(&t!(lang, "interact.design-hint"));
     }
     text
 }
@@ -174,11 +164,13 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>) -> anyhow::
     let from: u64 = args.next().and_then(|v| v.parse().ok()).unwrap_or(0);
     let to: u64 = args.next().and_then(|v| v.parse().ok()).unwrap_or(0);
     let Some(kind) = kind.filter(|_| from != 0 && to != 0) else {
-        return cx.reply_ephemeral("This button has expired.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "social.button-expired")).await;
     };
     let me = cx.author()?.id.get();
     if me != to {
-        return cx.reply_ephemeral(format!("This one is for {}.", mention(to))).await;
+        return cx
+            .reply_ephemeral(t!(cx.lang(), "interact.not-yours", user = mention(to)))
+            .await;
     }
     if throttled(cx, me).await? {
         return Ok(());

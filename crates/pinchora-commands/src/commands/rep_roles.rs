@@ -1,6 +1,6 @@
 //! `/config rep-roles`: roles members earn when their reputation reaches a count.
 
-use pinchora_core::settings;
+use pinchora_core::{settings, t};
 use pinchora_db::MAX_REP_ROLES;
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::{
@@ -60,46 +60,51 @@ impl ConfigRepRoles {
                 }
                 if !db.add_rep_role(guild, reputation, c.role.id.get()).await? {
                     return cx
-                        .reply_ephemeral(format!(
-                            "A server can have {MAX_REP_ROLES} reputation roles. Remove one with `/config rep-roles remove` first."
-                        ))
+                        .reply_ephemeral(t!(cx.lang(), "rep-roles.full", max = MAX_REP_ROLES))
                         .await;
                 }
-                cx.reply_ephemeral(format!(
-                    "Members who reach **{}** reputation now get <@&{}> the moment they receive a point.",
-                    c.reputation, c.role.id
+                cx.reply_ephemeral(t!(
+                    cx.lang(),
+                    "rep-roles.added",
+                    reputation = c.reputation,
+                    role = format!("<@&{}>", c.role.id)
                 ))
                 .await
             }
             Self::Remove(c) => {
+                let role = format!("<@&{}>", c.role);
                 let text = if db.remove_rep_role(guild, c.role.get()).await? {
-                    format!(
-                        "<@&{}> is no longer a reputation role. Members keep the role they already have.",
-                        c.role
-                    )
+                    t!(cx.lang(), "rep-roles.removed", role = role)
                 } else {
-                    format!("<@&{}> isn't a reputation role.", c.role)
+                    t!(cx.lang(), "rep-roles.not-one", role = role)
                 };
                 cx.reply_ephemeral(text).await
             }
             Self::List(_) => {
                 let rows = db.rep_roles(guild).await?;
                 if rows.is_empty() {
-                    return cx
-                        .reply_ephemeral("No reputation roles yet. Add one with `/config rep-roles add`.")
-                        .await;
+                    return cx.reply_ephemeral(t!(cx.lang(), "rep-roles.empty")).await;
                 }
                 let lines: Vec<String> = rows
                     .iter()
-                    .map(|r| format!("**{}** reputation · <@&{}>", r.reputation, r.role_id))
+                    .map(|r| {
+                        t!(
+                            cx.lang(),
+                            "rep-roles.row",
+                            reputation = r.reputation,
+                            role = format!("<@&{}>", r.role_id)
+                        )
+                    })
                     .collect();
                 let embed = EmbedBuilder::new()
                     .color(BRAND)
-                    .title("Reputation roles")
+                    .title(t!(cx.lang(), "rep-roles.title"))
                     .description(lines.join("\n"))
-                    .footer(EmbedFooterBuilder::new(format!(
-                        "{}/{MAX_REP_ROLES} · members keep every role they earn",
-                        rows.len()
+                    .footer(EmbedFooterBuilder::new(t!(
+                        cx.lang(),
+                        "rep-roles.footer",
+                        count = rows.len(),
+                        max = MAX_REP_ROLES
                     )))
                     .build();
                 cx.reply(InteractionResponseData {

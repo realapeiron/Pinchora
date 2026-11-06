@@ -1,0 +1,155 @@
+# /partner, /friends, /hug /pat /wave /highfive, /rep, /bio, /ping and what they share.
+
+[social]
+ask-too-soon = "You just asked {user}. You can ask again in {seconds} seconds."
+decline = "Decline"
+said-no = "{to} said no thanks to {from}."
+not-for-you = "This request isn't for you."
+button-expired = "This button has expired."
+
+[partner]
+not-self = "A partner is somebody else. Ask someone from the server!"
+you-have = "You already have a partner: {partner}. End it with `/partner leave` first."
+they-have = "{user} already has a partner."
+request-title = "💞 Partner request"
+request = "{from} asks {to} to be partners!\nPartners decorate each other's house (`/house edit owner:`), show on each other's profile and share a page of their own in `/partner view`.\nThis request expires <t:{until}:R>."
+accept = "Accept"
+bot = "Bots don't have partners."
+none-self = "You don't have a partner yet. Ask someone with `/partner propose`."
+none-other = "{user} doesn't have a partner."
+none = "You don't have a partner."
+leave-title = "Leave your partnership?"
+leave-body = "You and {partner} will no longer decorate each other's houses. Everything in a house stays with the house's owner, whoever placed it."
+leave = "Leave"
+stay = "Stay together"
+fallback-name = "Partner"
+card-since = "Together since"
+card-days = "Days together"
+card-sent = "Sent to each other"
+card-houses = "Their houses"
+card-houses-value = "💖 {likes} likes · 🪑 {pieces} pieces"
+card-footer = "Decorate each other's house with /house edit and the owner option."
+expired = "This partner request has expired."
+stayed = "You're still partners. 💞"
+withdrawn = "{from} took the partner request back."
+new-title = "💞 New partners"
+new = "{from} and {to} are partners now!\nDecorate each other's house with `/house edit` and the `owner` option."
+already-partners = "{from} and {to} are partners already."
+taken = "{user} already has a partner, so this request can't be accepted."
+not-yours = "This button isn't yours."
+left = "💔 You and {partner} are not partners anymore."
+not-partners = "You are not partners with them anymore."
+
+[friends]
+not-self = "Friends are other people. Try someone from the server!"
+already = "You and {user} are already friends."
+you-full = "You have {max} friends, the most there can be. Make room with `/friends remove`."
+they-full = "{user} has {max} friends already, the most there can be."
+request-title = "🤝 Friend request"
+request = "{from} would like to be friends with {to}.\nFriends get a quick pick in `/house visit` and a place in `/friends list`.\nThis request expires <t:{until}:R>."
+accept = "Accept"
+removed = "{user} is no longer your friend."
+not-a-friend = "{user} isn't one of your friends."
+bot = "Bots don't have friends."
+title-own = "👥 Your friends"
+title-of = "👥 {name}'s friends"
+title = "👥 Friends"
+empty-own = "No friends yet. Ask someone with `/friends add`."
+empty = "No friends yet."
+row = "**{number}.** {user} · Lv {level} · 💖 {likes}{locked}"
+footer = "{total} of {max} friends"
+footer-paged = "Page {page}/{pages} · {total} of {max} friends"
+newer = "◀ Newer"
+older = "Older ▶"
+shortlist-empty = "Name whose house to visit: `/house visit user:@someone`. Friends you add with `/friends add` show up here as a shortlist (houses they have locked or hidden are left out)."
+shortlist-ask = "Whose house do you want to visit?"
+shortlist-placeholder = "Visit a friend…"
+a-friend = "A friend"
+option = "Lv {level} · 💖 {likes}"
+expired = "This friend request has expired."
+pick = "Pick a friend to visit."
+withdrawn = "{from} took the friend request back."
+new-title = "🤝 New friends"
+new = "{from} and {to} are friends now!"
+already-pair = "{from} and {to} are already friends."
+
+[interact]
+bot = "Pick a person; bots keep their circuits to themselves."
+throttled = { one = "Easy there! You can send another in {count} second.", other = "Easy there! You can send another in {count} seconds." }
+tally = "That's {noun} **#{number}** from {from} to {to}."
+footer = "{from}: {given} given · {to}: {received} received"
+design-hint = " · Design your own with /character"
+not-yours = "This one is for {user}."
+someone = "Someone"
+
+[interact.hug]
+noun = "hug"
+count = { one = "{count} hug", other = "{count} hugs" }
+line = "{from} hugs {to}"
+back = "Hug back"
+self = "You can't give yourself a hug. Pick someone else!"
+
+[interact.pat]
+noun = "pat"
+count = { one = "{count} pat", other = "{count} pats" }
+line = "{from} pats {to}"
+back = "Pat back"
+self = "You can't give yourself a pat. Pick someone else!"
+
+[interact.wave]
+noun = "wave"
+count = { one = "{count} wave", other = "{count} waves" }
+line = "{from} waves at {to}"
+back = "Wave back"
+self = "You can't give yourself a wave. Pick someone else!"
+
+[interact.highfive]
+noun = "high five"
+count = { one = "{count} high five", other = "{count} high fives" }
+line = "{from} high-fives {to}"
+back = "High five back"
+self = "You can't give yourself a high five. Pick someone else!"
+
+[rep]
+self = "Nice try. Reputation has to come from someone else."
+bot = "Bots can't receive reputation."
+given = "{from} gave {to} a reputation point! They now have **{total}**."
+earned = "🏅 {user} earned {role}!"
+cooldown = "You can give reputation again {when}."
+
+[rep-roles]
+full = "A server can have {max} reputation roles. Remove one with `/config rep-roles remove` first."
+added = "Members who reach **{reputation}** reputation now get {role} the moment they receive a point."
+removed = "{role} is no longer a reputation role. Members keep the role they already have."
+not-one = "{role} isn't a reputation role."
+empty = "No reputation roles yet. Add one with `/config rep-roles add`."
+row = "**{reputation}** reputation · {role}"
+title = "Reputation roles"
+footer = "{count}/{max} · members keep every role they earn"
+
+[bio]
+cleared = "Bio cleared."
+updated = "Bio updated. Check it with `/profile`."
+
+[ping]
+title = "Pong!"
+interaction = "Interaction"
+database = "Database"
+node = "Node: {node}"
+
+# Dates the guestbook and the room contest write; the month names are here so Turkish can say "5 Kas".
+[date]
+short = "{month} {day}"
+short-time = "{month} {day}, {time} UTC"
+month-1 = "Jan"
+month-2 = "Feb"
+month-3 = "Mar"
+month-4 = "Apr"
+month-5 = "May"
+month-6 = "Jun"
+month-7 = "Jul"
+month-8 = "Aug"
+month-9 = "Sep"
+month-10 = "Oct"
+month-11 = "Nov"
+month-12 = "Dec"

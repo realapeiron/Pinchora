@@ -1,0 +1,155 @@
+# /partner, /friends, /hug /pat /wave /highfive, /rep, /bio, /ping and what they share.
+
+[social]
+ask-too-soon = "{user} kullanıcısına az önce sordun. {seconds} saniye sonra yeniden sorabilirsin."
+decline = "Reddet"
+said-no = "{to}, {from} kullanıcısına \"hayır, teşekkürler\" dedi."
+not-for-you = "Bu istek sana gelmedi."
+button-expired = "Bu düğmenin süresi doldu."
+
+[partner]
+not-self = "Partner başka biri olmalı. Sunucudan birine sor!"
+you-have = "Zaten bir partnerin var: {partner}. Önce `/partner leave` ile bitir."
+they-have = "{user} kullanıcısının zaten bir partneri var."
+request-title = "💞 Partner isteği"
+request = "{from}, {to} kullanıcısına partner olmayı teklif ediyor!\nPartnerler birbirinin evini döşer (`/house edit owner:`), birbirinin profilinde görünür ve `/partner view` içinde kendilerine ait bir sayfayı paylaşır.\nBu isteğin süresi <t:{until}:R> dolar."
+accept = "Kabul et"
+bot = "Botların partneri olmaz."
+none-self = "Henüz bir partnerin yok. `/partner propose` ile birine teklif et."
+none-other = "{user} kullanıcısının partneri yok."
+none = "Bir partnerin yok."
+leave-title = "Partnerlikten ayrılıyor musun?"
+leave-body = "Sen ve {partner} artık birbirinizin evini döşemeyeceksiniz. Bir evdeki her şey, kim koyarsa koysun, ev sahibinde kalır."
+leave = "Ayrıl"
+stay = "Birlikte kal"
+fallback-name = "Partner"
+card-since = "Şu tarihten beri birlikte"
+card-days = "Birlikte geçen gün"
+card-sent = "Birbirine gönderdikleri"
+card-houses = "Evleri"
+card-houses-value = "💖 {likes} beğeni · 🪑 {pieces} parça"
+card-footer = "Birbirinizin evini /house edit ve owner seçeneğiyle döşeyin."
+expired = "Bu partner isteğinin süresi doldu."
+stayed = "Hâlâ partnersiniz. 💞"
+withdrawn = "{from} partner isteğini geri çekti."
+new-title = "💞 Yeni partnerler"
+new = "{from} ve {to} artık partner!\nBirbirinizin evini `/house edit` ve `owner` seçeneğiyle döşeyin."
+already-partners = "{from} ve {to} zaten partner."
+taken = "{user} kullanıcısının zaten bir partneri var, bu yüzden bu istek kabul edilemez."
+not-yours = "Bu düğme senin değil."
+left = "💔 Sen ve {partner} artık partner değilsiniz."
+not-partners = "Artık onunla partner değilsin."
+
+[friends]
+not-self = "Arkadaşların başka insanlar. Sunucudan birini dene!"
+already = "Sen ve {user} zaten arkadaşsınız."
+you-full = "{max} arkadaşın var, bu olabilecek en yüksek sayı. `/friends remove` ile yer aç."
+they-full = "{user} kullanıcısının zaten {max} arkadaşı var, bu olabilecek en yüksek sayı."
+request-title = "🤝 Arkadaşlık isteği"
+request = "{from}, {to} kullanıcısıyla arkadaş olmak istiyor.\nArkadaşlar `/house visit` içinde hızlı seçime, `/friends list` içinde de bir yere kavuşur.\nBu isteğin süresi <t:{until}:R> dolar."
+accept = "Kabul et"
+removed = "{user} artık arkadaşın değil."
+not-a-friend = "{user} arkadaşlarından biri değil."
+bot = "Botların arkadaşı olmaz."
+title-own = "👥 Arkadaşların"
+title-of = "👥 {name} kullanıcısının arkadaşları"
+title = "👥 Arkadaşlar"
+empty-own = "Henüz arkadaşın yok. `/friends add` ile birine teklif et."
+empty = "Henüz arkadaşı yok."
+row = "**{number}.** {user} · Sv {level} · 💖 {likes}{locked}"
+footer = "{total}/{max} arkadaş"
+footer-paged = "Sayfa {page}/{pages} · {total}/{max} arkadaş"
+newer = "◀ Yeniler"
+older = "Eskiler ▶"
+shortlist-empty = "Kimin evine gideceğini yaz: `/house visit user:@biri`. `/friends add` ile eklediğin arkadaşlar burada kısa liste olarak çıkar (kilitledikleri ya da gizledikleri evler listede olmaz)."
+shortlist-ask = "Kimin evini ziyaret etmek istiyorsun?"
+shortlist-placeholder = "Bir arkadaşını ziyaret et…"
+a-friend = "Bir arkadaş"
+option = "Sv {level} · 💖 {likes}"
+expired = "Bu arkadaşlık isteğinin süresi doldu."
+pick = "Ziyaret edilecek bir arkadaş seç."
+withdrawn = "{from} arkadaşlık isteğini geri çekti."
+new-title = "🤝 Yeni arkadaşlar"
+new = "{from} ve {to} artık arkadaş!"
+already-pair = "{from} ve {to} zaten arkadaş."
+
+[interact]
+bot = "Bir insan seç; botlar devrelerini kendilerine saklar."
+throttled = { other = "Yavaş ol! Bir sonrakini {count} saniye sonra gönderebilirsin." }
+tally = "Bu, {from} kullanıcısından {to} kullanıcısına giden **{number}.** {noun}."
+footer = "{from}: {given} gönderdi · {to}: {received} aldı"
+design-hint = " · Kendi karakterini /character ile tasarla"
+not-yours = "Bu, {user} için."
+someone = "Biri"
+
+[interact.hug]
+noun = "sarılma"
+count = { other = "{count} sarılma" }
+line = "{from} {to} kullanıcısına sarılıyor"
+back = "Sen de sarıl"
+self = "Kendine sarılamazsın. Başka birini seç!"
+
+[interact.pat]
+noun = "okşama"
+count = { other = "{count} okşama" }
+line = "{from} {to} kullanıcısının başını okşuyor"
+back = "Sen de okşa"
+self = "Kendi başını okşayamazsın. Başka birini seç!"
+
+[interact.wave]
+noun = "el sallama"
+count = { other = "{count} el sallama" }
+line = "{from} {to} kullanıcısına el sallıyor"
+back = "Sen de el salla"
+self = "Kendine el sallayamazsın. Başka birini seç!"
+
+[interact.highfive]
+noun = "beşlik"
+count = { other = "{count} beşlik" }
+line = "{from} {to} kullanıcısıyla beşlik çakıyor"
+back = "Sen de beşlik çak"
+self = "Kendinle beşlik çakamazsın. Başka birini seç!"
+
+[rep]
+self = "Güzel deneme. İtibar başka birinden gelmeli."
+bot = "Botlar itibar alamaz."
+given = "{from}, {to} kullanıcısına bir itibar puanı verdi! Artık **{total}** itibarı var."
+earned = "🏅 {user}, {role} rolünü kazandı!"
+cooldown = "İtibarı yeniden {when} verebilirsin."
+
+[rep-roles]
+full = "Bir sunucuda en fazla {max} itibar rolü olabilir. Önce `/config rep-roles remove` ile birini kaldır."
+added = "**{reputation}** itibara ulaşan üyeler artık puanı aldıkları anda {role} rolünü kazanacak."
+removed = "{role} artık bir itibar rolü değil. Üyeler zaten sahip oldukları rolü korur."
+not-one = "{role} bir itibar rolü değil."
+empty = "Henüz itibar rolü yok. `/config rep-roles add` ile bir tane ekle."
+row = "**{reputation}** itibar · {role}"
+title = "İtibar rolleri"
+footer = "{count}/{max} · üyeler kazandıkları her rolü korur"
+
+[bio]
+cleared = "Hakkında yazın silindi."
+updated = "Hakkında yazın güncellendi. `/profile` ile bak."
+
+[ping]
+title = "Pong!"
+interaction = "Etkileşim"
+database = "Veritabanı"
+node = "Düğüm: {node}"
+
+# Dates the guestbook and the room contest write; the month names are here so Turkish can say "5 Kas".
+[date]
+short = "{day} {month}"
+short-time = "{day} {month}, {time} UTC"
+month-1 = "Oca"
+month-2 = "Şub"
+month-3 = "Mar"
+month-4 = "Nis"
+month-5 = "May"
+month-6 = "Haz"
+month-7 = "Tem"
+month-8 = "Ağu"
+month-9 = "Eyl"
+month-10 = "Eki"
+month-11 = "Kas"
+month-12 = "Ara"
