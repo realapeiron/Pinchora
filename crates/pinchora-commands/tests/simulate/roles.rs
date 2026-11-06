@@ -14,6 +14,7 @@ use std::{
 
 use axum::http::{Method, StatusCode, Uri};
 use pinchora_commands::{ReactionEvent, give_after_verify, on_reaction, roles_tick};
+use pinchora_core::modules::{ChannelMode, Module};
 use twilight_model::gateway::payload::incoming::{ReactionAdd, ReactionRemove};
 
 use super::*;
@@ -24,6 +25,14 @@ static LOG: LazyLock<Mutex<Vec<(u64, String)>>> = LazyLock::new(Mutex::default);
 static MEMBERS: LazyLock<Mutex<HashMap<u64, Listed>>> = LazyLock::new(Mutex::default);
 /// The members of one server, as (member, roles).
 type Listed = Vec<(u64, Vec<u64>)>;
+
+impl Sim {
+    /// Set both the gateway snapshot and the mock's live Discord member state.
+    fn set_member_roles(&mut self, user: u64, roles: &[u64]) {
+        self.roles = roles.to_vec();
+        self.mock.member_roles.lock().unwrap().insert(user, roles.to_vec());
+    }
+}
 /// The ticker claims what is due in any server of the shared database, so the tests that make something
 /// come due take turns.
 static TICKS: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
@@ -224,6 +233,11 @@ impl Sim {
         });
         if add {
             event["member"] = member_json(user, member_roles);
+            self.mock
+                .member_roles
+                .lock()
+                .unwrap()
+                .insert(user, member_roles.to_vec());
         }
         let event = if add {
             ReactionEvent::Add(Box::new(
@@ -701,6 +715,195 @@ fn add_role_cmd(panel: &str, role: &Value, label: &str, extra: Vec<Value>) -> Va
 }
 
 #[tokio::test]
+async fn stale_panel_clicks_and_changed_role_permissions_are_rechecked() {
+    let Some(mut sim) = Sim::new("stale_panel_clicks_and_changed_role_permissions_are_rechecked").await else {
+        return;
+    };
+    let (admin, alice, red_id, blue_id) = (unique(), unique(), unique(), unique());
+    sim.own_server(admin);
+    let red = sim.guild_role(red_id, "Red", 2);
+    let blue = sim.guild_role(blue_id, "Blue", 3);
+    sim.manage(
+        admin,
+        "roles",
+        panel_cmd("Safety", vec![bool_option("exclusive", true)]),
+        &[],
+        &[],
+    )
+    .await;
+    for (role, name) in [(&red, "Red"), (&blue, "Blue")] {
+        sim.manage(admin, "roles", add_role_cmd("Safety", role, name, vec![]), &[role], &[])
+            .await;
+    }
+    let (_, message) = post_panel(&mut sim, admin, "Safety", unique()).await;
+    sim.click(alice, &message, "Red").await;
+    assert_eq!(sim.role_changes(), [format!("PUT {alice} {red_id}")]);
+    // The interaction snapshot is still empty, but Discord now says the member holds Red.
+    sim.click(alice, &message, "Blue").await;
+    assert_eq!(
+        sim.role_changes(),
+        [format!("DELETE {alice} {red_id}"), format!("PUT {alice} {blue_id}")]
+    );
+    let red_key = red_id.to_string();
+    for role in sim
+        .mock
+        .roles
+        .lock()
+        .unwrap()
+        .iter_mut()
+        .filter(|r| r["id"].as_str() == Some(red_key.as_str()))
+    {
+        role["permissions"] = json!((1u64 << 3).to_string());
+    }
+    let refused = sim.click(alice, &message, "Red").await;
+    assert!(refused.content().contains("Administrator"), "{}", refused.content());
+    assert!(sim.role_changes().is_empty(), "unsafe grant must not remove Blue first");
+}
+
+#[tokio::test]
+async fn queued_auto_role_is_dropped_when_rule_is_removed() {
+    let Some(mut sim) = Sim::new("queued_auto_role_is_dropped_when_rule_is_removed").await else {
+        return;
+    };
+    let _ticks = TICKS.lock().await;
+    let (admin, alice, role_id) = (unique(), unique(), unique());
+    sim.own_server(admin);
+    let role = sim.guild_role(role_id, "Waiting", 2);
+    sim.manage(
+        admin,
+        "autoroles",
+        add_auto(&role, vec![text_option("delay", "1m")]),
+        &[&role],
+        &[],
+    )
+    .await;
+    sim.join(alice, "Alice", false, None).await;
+    sim.manage(
+        admin,
+        "autoroles",
+        json!([sub("remove", vec![role_option("role", &role)])]),
+        &[&role],
+        &[],
+    )
+    .await;
+    sim.app.shift_clock(chrono::Duration::minutes(2));
+    roles_tick(&sim.app).await.unwrap();
+    assert!(sim.changes_of(alice).is_empty());
+    sim.manage(
+        admin,
+        "autoroles",
+        add_auto(&role, vec![text_option("delay", "1m")]),
+        &[&role],
+        &[],
+    )
+    .await;
+    let bob = unique();
+    sim.join(bob, "Bob", false, None).await;
+    sim.app
+        .db
+        .save_auto_role(
+            sim.guild,
+            &pinchora_db::NewAutoRole {
+                role_id,
+                kind: "join",
+                delay_secs: 60,
+                remove_after_secs: 0,
+                enabled: false,
+            },
+            10,
+        )
+        .await
+        .unwrap();
+    sim.app.shift_clock(chrono::Duration::minutes(2));
+    roles_tick(&sim.app).await.unwrap();
+    assert!(sim.changes_of(bob).is_empty(), "paused rule must not grant");
+}
+
+#[tokio::test]
+async fn reaction_minimum_and_module_switch_are_enforced() {
+    let Some(mut sim) = Sim::new("reaction_minimum_and_module_switch_are_enforced").await else {
+        return;
+    };
+    let (admin, alice, bob, role_id) = (unique(), unique(), unique(), unique());
+    sim.own_server(admin);
+    let role = sim.guild_role(role_id, "Member", 2);
+    sim.manage(
+        admin,
+        "roles",
+        panel_cmd("React", vec![text_option("style", "reactions"), int_option("min", 1)]),
+        &[],
+        &[],
+    )
+    .await;
+    sim.manage(
+        admin,
+        "roles",
+        add_role_cmd("React", &role, "Member", vec![text_option("emoji", "🎮")]),
+        &[&role],
+        &[],
+    )
+    .await;
+    let (post, _) = post_panel(&mut sim, admin, "React", unique()).await;
+    sim.react(true, alice, post.message, unicode("🎮"), &[]).await;
+    assert_eq!(sim.role_changes(), [format!("PUT {alice} {role_id}")]);
+    sim.react(false, alice, post.message, unicode("🎮"), &[]).await;
+    assert!(sim.role_changes().is_empty(), "min=1 must keep the last role");
+    sim.app
+        .db
+        .set_module(sim.guild, Module::RolePanels, Some(false), None)
+        .await
+        .unwrap();
+    sim.app.forget_guild_settings(sim.guild).await;
+    sim.react(true, bob, post.message, unicode("🎮"), &[]).await;
+    assert!(sim.role_changes().is_empty(), "disabled reaction panel must not grant");
+    sim.app
+        .db
+        .set_module(
+            sim.guild,
+            Module::RolePanels,
+            Some(true),
+            Some((ChannelMode::Except, &[CHANNEL_ID])),
+        )
+        .await
+        .unwrap();
+    sim.app.forget_guild_settings(sim.guild).await;
+    sim.react(true, bob, post.message, unicode("🎮"), &[]).await;
+    assert!(
+        sim.role_changes().is_empty(),
+        "channel-disabled reaction panel must not grant"
+    );
+}
+
+#[tokio::test]
+async fn stale_colour_click_replaces_the_live_colour() {
+    let Some(mut sim) = Sim::new("stale_colour_click_replaces_the_live_colour").await else {
+        return;
+    };
+    let (admin, alice) = (unique(), unique());
+    sim.own_server(admin);
+    sim.manage(
+        admin,
+        "color",
+        json!([sub("setup", vec![bool_option("enabled", true)])]),
+        &[],
+        &[],
+    )
+    .await;
+    let menu = sim.command(alice, "color", json!([sub("pick", vec![])])).await;
+    pick_colour(&mut sim, alice, &menu, "ff6b4a").await;
+    let made = seen(sim.guild);
+    let coral: u64 = made[0].split(' ').nth(1).unwrap().parse().unwrap();
+    assert_eq!(sim.changes_of(alice), [format!("PUT {alice} {coral}")]);
+    // The next interaction still says no roles, while Discord has Coral.
+    let stale = sim.command(alice, "color", json!([sub("pick", vec![])])).await;
+    pick_colour(&mut sim, alice, &stale, "8fd3ff").await;
+    let changes = sim.changes_of(alice);
+    assert_eq!(changes.len(), 2, "{changes:?}");
+    assert_eq!(changes[0], format!("DELETE {alice} {coral}"));
+    assert!(changes[1].starts_with(&format!("PUT {alice} ")));
+}
+
+#[tokio::test]
 async fn a_menu_panel_follows_its_minimum_maximum_and_required_role() {
     let Some(mut sim) = Sim::new("a_menu_panel_follows_its_minimum_maximum_and_required_role").await else {
         return;
@@ -784,7 +987,7 @@ async fn a_menu_panel_follows_its_minimum_maximum_and_required_role() {
         first.content()
     );
     assert_eq!(sim.role_changes(), [format!("PUT {alice} {chess_id}")]);
-    sim.roles = vec![chess_id];
+    sim.set_member_roles(alice, &[chess_id]);
     let swapped = sim
         .component(alice, &id, &[&go_id.to_string(), &shogi_id.to_string()], &message)
         .await;
@@ -805,7 +1008,7 @@ async fn a_menu_panel_follows_its_minimum_maximum_and_required_role() {
     ];
     wanted.sort();
     assert_eq!(changes, wanted);
-    sim.roles = vec![go_id, shogi_id];
+    sim.set_member_roles(alice, &[go_id, shogi_id]);
 
     // Past the limit, under the floor, and a role that is not on the panel.
     let many = sim
@@ -838,7 +1041,7 @@ async fn a_menu_panel_follows_its_minimum_maximum_and_required_role() {
         &[],
     )
     .await;
-    sim.roles = vec![];
+    sim.set_member_roles(alice, &[]);
     let shut = sim.component(alice, &id, &[&chess_id.to_string()], &message).await;
     assert!(
         shut.content()
@@ -847,7 +1050,7 @@ async fn a_menu_panel_follows_its_minimum_maximum_and_required_role() {
         shut.content()
     );
     assert!(sim.role_changes().is_empty());
-    sim.roles = vec![vip_id];
+    sim.set_member_roles(alice, &[vip_id]);
     sim.component(alice, &id, &[&chess_id.to_string()], &message).await;
     assert_eq!(sim.role_changes(), [format!("PUT {alice} {chess_id}")]);
     // @everyone takes the need away again.
@@ -947,7 +1150,7 @@ async fn button_panels_with_rules_swap_and_cap() {
     let first = sim.click(alice, &message, "Red").await;
     assert_eq!(first.content(), format!("Added <@&{red_id}>."));
     assert_eq!(sim.role_changes(), [format!("PUT {alice} {red_id}")]);
-    sim.roles = vec![red_id];
+    sim.set_member_roles(alice, &[red_id]);
     let swap = sim.click(alice, &message, "Blue").await;
     assert!(
         swap.content().contains(&format!("Added <@&{blue_id}>."))
@@ -960,7 +1163,7 @@ async fn button_panels_with_rules_swap_and_cap() {
         [format!("DELETE {alice} {red_id}"), format!("PUT {alice} {blue_id}")],
         "the old one goes first"
     );
-    sim.roles = vec![blue_id];
+    sim.set_member_roles(alice, &[blue_id]);
     let floor = sim.click(alice, &message, "Blue").await;
     assert!(floor.content().contains("at least 1"), "{}", floor.content());
     assert!(sim.role_changes().is_empty());
@@ -984,7 +1187,7 @@ async fn button_panels_with_rules_swap_and_cap() {
             .await;
     }
     let (_, perks) = post_panel(&mut sim, admin, "Perks", unique()).await;
-    sim.roles = vec![red_id, blue_id];
+    sim.set_member_roles(alice, &[red_id, blue_id]);
     let capped = sim.click(alice, &perks, "Green").await;
     assert!(capped.content().contains("at most 2 roles"), "{}", capped.content());
     assert!(sim.role_changes().is_empty());
@@ -1088,9 +1291,9 @@ async fn panel_roles_can_expire() {
 
     // Taking it off by hand cancels the timer.
     sim.app.shift_clock(-chrono::Duration::hours(13));
-    sim.roles = vec![];
+    sim.set_member_roles(alice, &[]);
     sim.click(alice, &message, "Trial").await;
-    sim.roles = vec![trial_id];
+    sim.set_member_roles(alice, &[trial_id]);
     sim.click(alice, &message, "Trial").await;
     sim.changes_of(alice);
     sim.app.shift_clock(chrono::Duration::hours(13));
@@ -1427,7 +1630,7 @@ async fn colour_roles_are_one_at_a_time_and_made_on_demand() {
     assert_eq!((rows[0].role_id as u64, rows[0].hex.as_str()), (coral_id, "#ff6b4a"));
 
     // Another colour replaces the first: the old role comes off.
-    sim.roles = vec![coral_id];
+    sim.set_member_roles(alice, &[coral_id]);
     let menu = sim.command(alice, "color", json!([sub("pick", vec![])])).await;
     assert!(
         all_options(&menu).iter().any(|o| o.default && o.value == "ff6b4a"),
@@ -1442,14 +1645,14 @@ async fn colour_roles_are_one_at_a_time_and_made_on_demand() {
         [format!("DELETE {alice} {coral_id}"), format!("PUT {alice} {sky_id}")]
     );
     // A colour somebody else has already made is not made twice.
-    sim.roles = vec![];
+    sim.set_member_roles(bob, &[]);
     let again = sim.command(bob, "color", json!([sub("pick", vec![])])).await;
     pick_colour(&mut sim, bob, &again, "ff6b4a").await;
     assert!(seen(guild).is_empty(), "Coral's role exists");
     assert_eq!(sim.changes_of(bob), [format!("PUT {bob} {coral_id}")]);
 
     // The button takes the colour off.
-    sim.roles = vec![sky_id];
+    sim.set_member_roles(alice, &[sky_id]);
     let menu = sim.command(alice, "color", json!([sub("pick", vec![])])).await;
     let removed = sim.click(alice, &menu, "Take my colour off").await;
     assert!(
@@ -1458,7 +1661,7 @@ async fn colour_roles_are_one_at_a_time_and_made_on_demand() {
         removed.description()
     );
     assert_eq!(sim.changes_of(alice), [format!("DELETE {alice} {sky_id}")]);
-    sim.roles = vec![];
+    sim.set_member_roles(alice, &[]);
     let none = sim.command(alice, "color", json!([sub("remove", vec![])])).await;
     assert!(none.content().contains("no colour to take off"), "{}", none.content());
 
@@ -1520,14 +1723,14 @@ async fn colour_roles_are_one_at_a_time_and_made_on_demand() {
     )
     .await;
     sim.permissions = 0;
-    sim.roles = vec![];
+    sim.set_member_roles(alice, &[]);
     let shut = sim.command(alice, "color", json!([sub("pick", vec![])])).await;
     assert!(
         shut.content().contains(&format!("Only members with <@&{booster_id}>")),
         "{}",
         shut.content()
     );
-    sim.roles = vec![booster_id];
+    sim.set_member_roles(alice, &[booster_id]);
     let open = sim.command(alice, "color", json!([sub("pick", vec![])])).await;
     assert!(!open.files.is_empty());
     sim.manage(
@@ -1551,7 +1754,7 @@ async fn colour_roles_are_one_at_a_time_and_made_on_demand() {
         .await;
     assert!(set.content().contains(&format!("<@&{anchor_id}>")), "{}", set.content());
     sim.permissions = 0;
-    sim.roles = vec![];
+    sim.set_member_roles(bob, &[]);
     let menu = sim.command(bob, "color", json!([sub("pick", vec![])])).await;
     pick_colour(&mut sim, bob, &menu, "06d6a0").await;
     let made = seen(guild);

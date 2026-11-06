@@ -298,7 +298,13 @@ impl RolesCommand {
                     return cx.reply_ephemeral(t!(lang, "roles.panel.bad-emoji")).await;
                 }
                 if let Some(why) = roles::unassignable(cx, guild, &c.role).await {
-                    return cx.reply_ephemeral(why).await;
+                    return cx
+                        .reply_ephemeral(crate::commands::roles_pack::configure_refusal(
+                            lang,
+                            c.role.id.get(),
+                            &why,
+                        ))
+                        .await;
                 }
                 let entry = PanelEntry {
                     label: c.label.trim().to_owned(),

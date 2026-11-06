@@ -25,6 +25,7 @@ use twilight_util::builder::embed::{EmbedBuilder, EmbedFooterBuilder};
 use super::{
     give::{self, bot_view, refusal_text},
     palette::{hex_of, palette, palette_colour, rgb_of},
+    panel::current_roles,
 };
 use crate::{App, Cx, roles, util::BRAND};
 
@@ -117,6 +118,11 @@ struct Choice {
     /// `#rrggbb`.
     hex: String,
     rgb: u32,
+}
+
+fn localized_palette_name(lang: Lang, name: &str) -> String {
+    let key = format!("roles.color.palette.{}", name.to_ascii_lowercase());
+    t!(lang, &key)
 }
 
 /// The colours on offer: the palette, then the server's own colour roles that are not in it.
@@ -392,7 +398,11 @@ async fn view(
         cells: offered
             .iter()
             .map(|c| ColorCell {
-                name: c.name.clone(),
+                name: if palette_colour(&c.hex).is_some() {
+                    localized_palette_name(lang, &c.name)
+                } else {
+                    c.name.clone()
+                },
                 rgb: c.rgb,
             })
             .collect(),
@@ -451,7 +461,14 @@ fn controls(offered: &[Choice], at: Option<usize>, lang: Lang) -> Vec<Component>
                                 default: at == Some(first + i),
                                 description: None,
                                 emoji: None,
-                                label: c.name.chars().take(100).collect(),
+                                label: if palette_colour(&c.hex).is_some() {
+                                    localized_palette_name(lang, &c.name)
+                                } else {
+                                    c.name.clone()
+                                }
+                                .chars()
+                                .take(100)
+                                .collect(),
                                 value: c.hex.trim_start_matches('#').to_owned(),
                             })
                             .collect(),
@@ -508,6 +525,8 @@ async fn set_hex(cx: &Cx, guild: u64, text: &str) -> anyhow::Result<()> {
 /// first when it does not exist yet. Returns the colour's name, or what to tell the member.
 async fn choose(cx: &Cx, guild: u64, hex: &str) -> anyhow::Result<Result<String, String>> {
     let lang = cx.lang();
+    let user = cx.author()?.id.get();
+    let _lock = cx.app.db.lock_role_member(guild, user).await?;
     let settings = match allowed(cx, guild).await? {
         Ok(settings) => settings,
         Err(text) => return Ok(Err(text)),
@@ -515,7 +534,7 @@ async fn choose(cx: &Cx, guild: u64, hex: &str) -> anyhow::Result<Result<String,
     let db = &cx.app.db;
     let rows = db.color_roles(guild).await?;
     let known = rows.iter().find(|r| r.hex == hex);
-    let named = palette_colour(hex).map(|c| c.name.clone());
+    let named = palette_colour(hex).map(|c| localized_palette_name(lang, &c.name));
     if known.is_none() && named.is_none() && settings.mode != "hex" {
         return Ok(Err(t!(lang, "roles.color.palette-only")));
     }
@@ -526,15 +545,26 @@ async fn choose(cx: &Cx, guild: u64, hex: &str) -> anyhow::Result<Result<String,
                 return Ok(Err(stop_text(lang, ColorStop::Full)));
             }
             let name = named.unwrap_or_else(|| hex.to_uppercase());
-            match make_role(&cx.app, guild, &settings, &name, hex).await {
+            let discord_name = palette_colour(hex).map_or(name.as_str(), |c| c.name.as_str());
+            match make_role(&cx.app, guild, &settings, discord_name, hex).await {
                 Ok(role) => (role, name),
                 Err(stop) => return Ok(Err(stop_text(lang, stop))),
             }
         }
     };
-    let user = cx.author()?.id.get();
-    let held = held(cx);
+    let held = current_roles(&cx.app, guild, user).await?;
+    if !held.contains(&role)
+        && let Err(error) = give::validate(&cx.app, guild, role).await
+    {
+        return Ok(Err(t!(
+            lang,
+            "roles.color.cannot-give",
+            role = format!("<@&{role}>"),
+            why = give::give_refusal_text(lang, &error)
+        )));
+    }
     // One colour at a time: the others the member holds come off first.
+    let mut removed = Vec::new();
     for other in rows
         .iter()
         .map(|r| r.role_id as u64)
@@ -545,21 +575,38 @@ async fn choose(cx: &Cx, guild: u64, hex: &str) -> anyhow::Result<Result<String,
             if roles::role_is_gone(&error) {
                 give::forget(&cx.app, guild, other).await;
             }
+            for previous in removed {
+                if let Err(restore) = give::give(&cx.app, guild, user, previous, "Colour swap rollback").await {
+                    tracing::error!(guild, user, role = previous, %restore, "could not restore an old colour");
+                }
+            }
+            return Ok(Err(t!(
+                lang,
+                "roles.color.cannot-take",
+                role = format!("<@&{other}>"),
+                why = refusal_text(lang, &error)
+            )));
         }
+        removed.push(other);
     }
     if held.contains(&role) {
         return Ok(Ok(name));
     }
     if let Err(error) = give::give(&cx.app, guild, user, role, "Colour role").await {
         tracing::warn!(guild, user, role, %error, "could not give a colour role");
-        if roles::role_is_gone(&error) {
+        if error.downcast_ref::<Error>().is_some_and(roles::role_is_gone) {
             give::forget(&cx.app, guild, role).await;
+        }
+        for previous in removed {
+            if let Err(restore) = give::give(&cx.app, guild, user, previous, "Colour swap rollback").await {
+                tracing::error!(guild, user, role = previous, %restore, "could not restore an old colour");
+            }
         }
         return Ok(Err(t!(
             lang,
             "roles.color.cannot-give",
             role = format!("<@&{role}>"),
-            why = refusal_text(lang, &error)
+            why = give::give_refusal_text(lang, &error)
         )));
     }
     Ok(Ok(name))
@@ -568,9 +615,11 @@ async fn choose(cx: &Cx, guild: u64, hex: &str) -> anyhow::Result<Result<String,
 /// Takes the member's colour off. A click on the menu's button (`on_menu`) updates the menu.
 async fn remove(cx: &Cx, guild: u64, on_menu: bool) -> anyhow::Result<()> {
     let lang = cx.lang();
+    let user = cx.author()?.id.get();
+    let _lock = cx.app.db.lock_role_member(guild, user).await?;
     let settings = cx.app.db.color_settings(guild).await?;
     let rows = cx.app.db.color_roles(guild).await?;
-    let held = held(cx);
+    let held = current_roles(&cx.app, guild, user).await?;
     let mine: Vec<u64> = rows
         .iter()
         .map(|r| r.role_id as u64)
@@ -579,7 +628,6 @@ async fn remove(cx: &Cx, guild: u64, on_menu: bool) -> anyhow::Result<()> {
     if mine.is_empty() {
         return cx.reply_ephemeral(t!(lang, "roles.color.none-to-remove")).await;
     }
-    let user = cx.author()?.id.get();
     for role in &mine {
         if let Err(error) = give::take(&cx.app, guild, user, *role, "Colour role").await {
             tracing::warn!(guild, user, role, %error, "could not take a colour role");
@@ -670,7 +718,9 @@ impl ColorSetup {
         }
         if let Some(anchor) = &self.anchor {
             if let Some(why) = roles::unassignable(cx, guild, anchor).await {
-                return cx.reply_ephemeral(why).await;
+                return cx
+                    .reply_ephemeral(give::configure_refusal(lang, anchor.id.get(), &why))
+                    .await;
             }
             settings.anchor_role_id = Some(anchor.id.get() as i64);
         }
@@ -738,7 +788,7 @@ async fn adopt(cx: &Cx, guild: u64, text: &str, notes: &mut Vec<String>) -> anyh
             continue;
         };
         if let Some(why) = roles::unassignable(cx, guild, role).await {
-            notes.push(why);
+            notes.push(give::configure_refusal(lang, id, &why));
             continue;
         }
         let rgb = role.colors.primary_color;
@@ -785,6 +835,12 @@ fn role_ids(text: &str, max: usize) -> Vec<u64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn palette_names_are_localized() {
+        assert_eq!(localized_palette_name(Lang::Tr, "Coral"), "Mercan");
+        assert_eq!(localized_palette_name(Lang::Tr, "Sky"), "Gökyüzü");
+    }
 
     #[test]
     fn role_mentions_and_bare_ids_are_read() {

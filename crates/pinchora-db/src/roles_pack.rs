@@ -1,9 +1,15 @@
 //! The roles pack's tables: auto roles, sticky roles, roles on a timer, and colour roles. Role panels
 //! live in `panels.rs`.
 
-use chrono::{DateTime, Utc};
+use std::{
+    collections::HashMap,
+    sync::{Arc, LazyLock, Mutex},
+};
 
-use crate::{Db, sql_id};
+use chrono::{DateTime, Utc};
+use tokio::sync::OwnedSemaphorePermit;
+
+use crate::{Db, locks, sql_id};
 
 /// An auto role as stored: who gets it, how long it waits, how long it lasts (0: at once, for good).
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -40,7 +46,19 @@ pub struct TimedRoleRow {
     pub guild_id: i64,
     pub user_id: i64,
     pub role_id: i64,
+    pub remove_at: DateTime<Utc>,
+    pub lease_until: DateTime<Utc>,
 }
+
+/// Holds the cross-pod advisory lock and a local connection-pool reservation.
+pub struct RoleMemberLock {
+    _transaction: sqlx::Transaction<'static, sqlx::Postgres>,
+    _permit: OwnedSemaphorePermit,
+}
+
+/// Cap lock-holding operations below the pool size: each may need another connection for a timer.
+static ROLE_PERMITS: LazyLock<Mutex<HashMap<u32, Arc<tokio::sync::Semaphore>>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
 
 /// An auto role waiting out its delay.
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -94,6 +112,27 @@ pub enum ColorAdded {
 }
 
 impl Db {
+    /// Serializes all role changes for a guild member across pods while Discord is called.
+    pub async fn lock_role_member(&self, guild_id: u64, user_id: u64) -> anyhow::Result<RoleMemberLock> {
+        let max = self.pool().options().get_max_connections();
+        anyhow::ensure!(max >= 2, "role member locks need at least two database connections");
+        let semaphore = ROLE_PERMITS
+            .lock()
+            .unwrap()
+            .entry(max)
+            .or_insert_with(|| Arc::new(tokio::sync::Semaphore::new(max as usize - 1)))
+            .clone();
+        let permit = semaphore.acquire_owned().await?;
+        let mut tx = self.pool().begin().await?;
+        sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))")
+            .bind(format!("roles:{guild_id}:{user_id}"))
+            .execute(&mut *tx)
+            .await?;
+        Ok(RoleMemberLock {
+            _transaction: tx,
+            _permit: permit,
+        })
+    }
     // /Auto roles
 
     pub async fn auto_roles(&self, guild_id: u64) -> anyhow::Result<Vec<AutoRoleRow>> {
@@ -116,6 +155,20 @@ impl Db {
         .bind(kind)
         .fetch_all(self.pool())
         .await?)
+    }
+
+    /// A delayed grant is still backed by an enabled delayed auto-role rule.
+    pub async fn delayed_auto_role_active(
+        &self,
+        guild_id: u64,
+        role_id: u64,
+        remove_after_secs: i32,
+    ) -> anyhow::Result<bool> {
+        let (active,): (bool,) = sqlx::query_as(
+            "SELECT EXISTS(SELECT 1 FROM auto_roles WHERE guild_id = $1 AND role_id = $2 AND enabled AND delay_secs > 0 AND remove_after_secs = $3)")
+            .bind(sql_id(guild_id)).bind(sql_id(role_id)).bind(remove_after_secs)
+            .fetch_one(self.pool()).await?;
+        Ok(active)
     }
 
     /// Adds an auto role, or changes the delay, the expiry and the switch of the one this role and kind
@@ -196,27 +249,66 @@ impl Db {
         Ok(())
     }
 
-    /// Notes what a member holds now (a member still here: `left_at` stays empty). No roles means there
-    /// is nothing to keep, so the row goes.
+    /// Notes a gateway update. After a leave was observed, only removals can change that leave's
+    /// snapshot: an older update must never restore a role a moderator took away.
     pub async fn remember_roles(&self, guild_id: u64, user_id: u64, roles: &[u64]) -> anyhow::Result<()> {
-        if roles.is_empty() {
-            sqlx::query("DELETE FROM sticky_roles WHERE guild_id = $1 AND user_id = $2 AND left_at IS NULL")
-                .bind(sql_id(guild_id))
-                .bind(sql_id(user_id))
-                .execute(self.pool())
-                .await?;
-            return Ok(());
-        }
         let ids: Vec<i64> = roles.iter().map(|r| sql_id(*r)).collect();
         sqlx::query(
             "INSERT INTO sticky_roles (guild_id, user_id, role_ids) VALUES ($1, $2, $3)
-             ON CONFLICT (guild_id, user_id) DO UPDATE SET role_ids = EXCLUDED.role_ids, left_at = NULL",
+             ON CONFLICT (guild_id, user_id) DO UPDATE SET role_ids =
+               CASE WHEN sticky_roles.left_at IS NULL THEN EXCLUDED.role_ids
+                    ELSE ARRAY(SELECT unnest(sticky_roles.role_ids) INTERSECT SELECT unnest(EXCLUDED.role_ids)) END",
         )
         .bind(sql_id(guild_id))
         .bind(sql_id(user_id))
         .bind(ids)
         .execute(self.pool())
         .await?;
+        Ok(())
+    }
+
+    /// Row versions at the start of a REST snapshot. A later gateway event changes `xmin`, so
+    /// the REST page can refresh old history without overwriting that newer event.
+    pub async fn sticky_snapshot_versions(&self, guild_id: u64) -> anyhow::Result<HashMap<u64, String>> {
+        let rows: Vec<(i64, String)> =
+            sqlx::query_as("SELECT user_id, xmin::text FROM sticky_roles WHERE guild_id = $1 AND left_at IS NULL")
+                .bind(sql_id(guild_id))
+                .fetch_all(self.pool())
+                .await?;
+        Ok(rows.into_iter().map(|(user, version)| (user as u64, version)).collect())
+    }
+
+    /// Refreshes a member only if no gateway event has changed them since the snapshot began.
+    /// Empty role lists are stored as tombstones, so stale pages cannot reintroduce a revoked role.
+    pub async fn remember_snapshot(
+        &self,
+        guild_id: u64,
+        user_id: u64,
+        roles: &[u64],
+        version: Option<&str>,
+    ) -> anyhow::Result<()> {
+        let ids: Vec<i64> = roles.iter().map(|r| sql_id(*r)).collect();
+        if let Some(version) = version {
+            sqlx::query(
+                "UPDATE sticky_roles SET role_ids = $3 WHERE guild_id = $1 AND user_id = $2
+                 AND left_at IS NULL AND xmin::text = $4",
+            )
+            .bind(sql_id(guild_id))
+            .bind(sql_id(user_id))
+            .bind(ids)
+            .bind(version)
+            .execute(self.pool())
+            .await?;
+        } else {
+            sqlx::query(
+                "INSERT INTO sticky_roles (guild_id, user_id, role_ids) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+            )
+            .bind(sql_id(guild_id))
+            .bind(sql_id(user_id))
+            .bind(ids)
+            .execute(self.pool())
+            .await?;
+        }
         Ok(())
     }
 
@@ -234,7 +326,7 @@ impl Db {
     /// Whether something is kept for a member who left: what they held when they were last seen.
     pub async fn sticky_waiting(&self, guild_id: u64, user_id: u64) -> anyhow::Result<bool> {
         let (waiting,): (bool,) = sqlx::query_as(
-            "SELECT EXISTS (SELECT 1 FROM sticky_roles WHERE guild_id = $1 AND user_id = $2 AND left_at IS NOT NULL)",
+            "SELECT EXISTS (SELECT 1 FROM sticky_roles WHERE guild_id = $1 AND user_id = $2 AND left_at IS NOT NULL AND cardinality(role_ids) > 0)",
         )
         .bind(sql_id(guild_id))
         .bind(sql_id(user_id))
@@ -258,13 +350,30 @@ impl Db {
 
     /// Forgets members who left before `before`.
     pub async fn prune_sticky(&self, before: DateTime<Utc>) -> anyhow::Result<u64> {
-        Ok(
-            sqlx::query("DELETE FROM sticky_roles WHERE left_at IS NOT NULL AND left_at < $1")
-                .bind(before)
-                .execute(self.pool())
-                .await?
-                .rows_affected(),
+        let mut tx = self.pool().begin().await?;
+        let candidates: Vec<(i64,)> = sqlx::query_as(
+            "SELECT DISTINCT user_id FROM sticky_roles WHERE left_at IS NOT NULL AND left_at < $1 ORDER BY user_id LIMIT 1000")
+            .bind(before).fetch_all(&mut *tx).await?;
+        let ids: Vec<i64> = candidates.into_iter().map(|(id,)| id).collect();
+        let acquired: Vec<(i64, bool)> = sqlx::query_as(
+            "SELECT id, pg_try_advisory_xact_lock(hashtextextended('user:' || id, 0)) FROM unnest($1::BIGINT[]) AS id",
         )
+        .bind(&ids)
+        .fetch_all(&mut *tx)
+        .await?;
+        let available: Vec<i64> = acquired.into_iter().filter_map(|(id, got)| got.then_some(id)).collect();
+        let deleted = sqlx::query(
+            "DELETE FROM sticky_roles WHERE ctid IN (
+               SELECT ctid FROM sticky_roles WHERE user_id = ANY($2) AND left_at IS NOT NULL AND left_at < $1
+               FOR UPDATE SKIP LOCKED LIMIT 1000)",
+        )
+        .bind(before)
+        .bind(&available)
+        .execute(&mut *tx)
+        .await?
+        .rows_affected();
+        tx.commit().await?;
+        Ok(deleted)
     }
 
     // /Roles on a timer
@@ -323,7 +432,7 @@ impl Db {
                  ORDER BY remove_at, id LIMIT $2
                  FOR UPDATE SKIP LOCKED
              )
-             RETURNING id, guild_id, user_id, role_id",
+             RETURNING id, guild_id, user_id, role_id, remove_at, lease_until",
         )
         .bind(now)
         .bind(limit)
@@ -331,12 +440,33 @@ impl Db {
         .await?)
     }
 
-    pub async fn finish_removal(&self, id: i64) -> anyhow::Result<()> {
-        sqlx::query("DELETE FROM timed_roles WHERE id = $1")
-            .bind(id)
-            .execute(self.pool())
-            .await?;
-        Ok(())
+    pub async fn removal_current(&self, row: &TimedRoleRow) -> anyhow::Result<bool> {
+        let found: (bool,) = sqlx::query_as(
+            "SELECT EXISTS(SELECT 1 FROM timed_roles WHERE id = $1 AND remove_at = $2 AND lease_until = $3)",
+        )
+        .bind(row.id)
+        .bind(row.remove_at)
+        .bind(row.lease_until)
+        .fetch_one(self.pool())
+        .await?;
+        Ok(found.0)
+    }
+
+    pub async fn finish_removal(&self, row: &TimedRoleRow) -> anyhow::Result<bool> {
+        locks::retry("finish timed role", || async {
+            let mut tx = self.pool().begin().await?;
+            locks::lock_users(&mut tx, &[row.user_id]).await?;
+            let removed = sqlx::query("DELETE FROM timed_roles WHERE id = $1 AND remove_at = $2 AND lease_until = $3")
+                .bind(row.id).bind(row.remove_at).bind(row.lease_until)
+                .execute(&mut *tx).await?.rows_affected() > 0;
+            if removed {
+                sqlx::query("UPDATE sticky_roles SET role_ids = array_remove(role_ids, $3) WHERE guild_id = $1 AND user_id = $2")
+                    .bind(row.guild_id).bind(row.user_id).bind(row.role_id)
+                    .execute(&mut *tx).await?;
+            }
+            tx.commit().await?;
+            Ok(removed)
+        }).await
     }
 
     /// Gives `role_id` to the member at `grant_at`; once given it lasts `remove_after_secs` (0: for good).
@@ -519,7 +649,20 @@ impl Db {
     /// (`forget_role` does the same for level roles, the store and the panels' entries.)
     pub async fn forget_pack_role(&self, guild_id: u64, role_id: u64) -> anyhow::Result<()> {
         let (guild, role) = (sql_id(guild_id), sql_id(role_id));
+        locks::retry("forget roles pack role", || async {
         let mut tx = self.pool().begin().await?;
+        let users: Vec<(i64,)> = sqlx::query_as(
+            "SELECT user_id FROM timed_roles WHERE guild_id = $1 AND role_id = $2
+             UNION SELECT user_id FROM delayed_roles WHERE guild_id = $1 AND role_id = $2
+             UNION SELECT user_id FROM sticky_roles WHERE guild_id = $1 AND $2 = ANY(role_ids)")
+            .bind(guild).bind(role).fetch_all(&mut *tx).await?;
+        locks::lock_users(&mut tx, &users.iter().map(|(id,)| *id).collect::<Vec<_>>()).await?;
+        let current: Vec<(i64,)> = sqlx::query_as(
+            "SELECT user_id FROM timed_roles WHERE guild_id = $1 AND role_id = $2
+             UNION SELECT user_id FROM delayed_roles WHERE guild_id = $1 AND role_id = $2
+             UNION SELECT user_id FROM sticky_roles WHERE guild_id = $1 AND $2 = ANY(role_ids)")
+            .bind(guild).bind(role).fetch_all(&mut *tx).await?;
+        locks::try_lock_users(&mut tx, &current.iter().map(|(id,)| *id).collect::<Vec<_>>()).await?;
         for sql in [
             "DELETE FROM auto_roles WHERE guild_id = $1 AND role_id = $2",
             "DELETE FROM color_roles WHERE guild_id = $1 AND role_id = $2",
@@ -536,5 +679,6 @@ impl Db {
         }
         tx.commit().await?;
         Ok(())
+        }).await
     }
 }

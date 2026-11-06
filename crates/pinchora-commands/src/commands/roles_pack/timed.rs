@@ -3,7 +3,7 @@
 
 use std::{sync::Arc, time::Duration};
 
-use pinchora_core::roles_pack::STICKY_KEPT_DAYS;
+use pinchora_core::{modules::Module, roles_pack::STICKY_KEPT_DAYS};
 
 use super::give::{self, is_final};
 use crate::App;
@@ -27,9 +27,18 @@ pub async fn tick(app: &Arc<App>) -> anyhow::Result<usize> {
         let full = due.len() as i64 == BATCH;
         for row in due {
             let (guild, user, role) = (row.guild_id as u64, row.user_id as u64, row.role_id as u64);
+            if !app.module_allowed(guild, None, Module::AutoRoles).await
+                || !app
+                    .db
+                    .delayed_auto_role_active(guild, role, row.remove_after_secs)
+                    .await?
+            {
+                app.db.finish_grant(row.id).await?;
+                continue;
+            }
             match give::give_timed(app, guild, user, role, row.remove_after_secs, "Auto role").await {
                 Ok(()) => changed += 1,
-                Err(error) if is_final(&error) => {
+                Err(error) if give::is_final_grant(&error) => {
                     tracing::debug!(guild, user, role, %error, "a waiting auto role was dropped");
                 }
                 Err(error) => {
@@ -50,6 +59,10 @@ pub async fn tick(app: &Arc<App>) -> anyhow::Result<usize> {
         let full = due.len() as i64 == BATCH;
         for row in due {
             let (guild, user, role) = (row.guild_id as u64, row.user_id as u64, row.role_id as u64);
+            let _lock = app.db.lock_role_member(guild, user).await?;
+            if !app.db.removal_current(&row).await? {
+                continue;
+            }
             match give::take(app, guild, user, role, "Role expired").await {
                 Ok(()) => changed += 1,
                 Err(error) if is_final(&error) => {
@@ -63,7 +76,7 @@ pub async fn tick(app: &Arc<App>) -> anyhow::Result<usize> {
                     continue;
                 }
             }
-            if let Err(error) = app.db.finish_removal(row.id).await {
+            if let Err(error) = app.db.finish_removal(&row).await {
                 tracing::warn!(guild, user, role, %error, "could not finish an expiring role");
             }
         }

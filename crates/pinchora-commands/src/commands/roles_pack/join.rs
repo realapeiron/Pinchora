@@ -119,6 +119,14 @@ async fn restore(app: &Arc<App>, guild: u64, user: u64) {
         tracing::warn!(guild, user, "could not look at the roles to give a member's back");
         return;
     };
+    let now = app.now();
+    let lapsed = match app.db.lapsed_roles(guild, user, now).await {
+        Ok(rows) => rows,
+        Err(error) => {
+            tracing::warn!(guild, user, %error, "could not check expired roles; deferring sticky restore");
+            return;
+        }
+    };
     let row = match app.db.take_sticky(guild, user).await {
         Ok(Some(row)) => row,
         Ok(None) => return,
@@ -127,14 +135,12 @@ async fn restore(app: &Arc<App>, guild: u64, user: u64) {
             return;
         }
     };
-    let now = app.now();
     if row
         .left_at
         .is_some_and(|left| now - left > Span::days(STICKY_KEPT_DAYS))
     {
         return;
     }
-    let lapsed = app.db.lapsed_roles(guild, user, now).await.unwrap_or_default();
     for role in lapsed.iter().map(|r| *r as u64) {
         if let Err(error) = app.db.cancel_removal(guild, user, role).await {
             tracing::warn!(guild, user, role, %error, "could not clear a lapsed role's timer");
@@ -214,6 +220,13 @@ pub async fn start_sticky_snapshot(app: &Arc<App>, guild: u64) {
 }
 
 async fn snapshot(app: &App, guild: u64) {
+    let versions = match app.db.sticky_snapshot_versions(guild).await {
+        Ok(versions) => versions,
+        Err(error) => {
+            tracing::warn!(guild, %error, "could not start a sticky roles snapshot");
+            return;
+        }
+    };
     let guild_id = Id::new(guild.max(1));
     let mut after: Option<Id<UserMarker>> = None;
     for _ in 0..SNAPSHOT_PAGES {
@@ -237,9 +250,18 @@ async fn snapshot(app: &App, guild: u64) {
         let Some(last) = members.last().map(|m| m.user.id) else {
             return;
         };
-        for member in members.iter().filter(|m| !m.user.bot && !m.roles.is_empty()) {
+        for member in members.iter().filter(|m| !m.user.bot) {
             let roles: Vec<u64> = member.roles.iter().map(|r| r.get()).collect();
-            if let Err(error) = app.db.remember_roles(guild, member.user.id.get(), &roles).await {
+            if let Err(error) = app
+                .db
+                .remember_snapshot(
+                    guild,
+                    member.user.id.get(),
+                    &roles,
+                    versions.get(&member.user.id.get()).map(String::as_str),
+                )
+                .await
+            {
                 tracing::warn!(guild, %error, "could not note a member's roles");
                 return;
             }

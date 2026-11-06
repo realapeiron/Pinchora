@@ -8,7 +8,10 @@ use std::{
 };
 
 use moka::future::Cache as Moka;
-use pinchora_core::roles_pack::{PanelRules, PanelStyle, toggle};
+use pinchora_core::{
+    modules::Module,
+    roles_pack::{PanelRules, PanelStyle, toggle},
+};
 use twilight_model::{
     channel::message::EmojiReactionType,
     id::{
@@ -19,7 +22,7 @@ use twilight_model::{
 
 use super::{
     give,
-    panel::{KeyEmoji, apply, emoji_key, request_type, rules_of, style_of},
+    panel::{KeyEmoji, apply, current_roles, emoji_key, request_type, rules_of, style_of},
 };
 use crate::{App, hooks::ReactionEvent};
 
@@ -97,15 +100,16 @@ pub(crate) async fn on_reaction(app: &Arc<App>, event: &ReactionEvent) {
                 channel: added.channel_id,
                 message: added.message_id,
             };
+            if !app
+                .module_allowed(who.guild, Some(who.channel.get()), Module::RolePanels)
+                .await
+            {
+                return;
+            }
             if added.member.as_ref().is_some_and(|m| m.user.bot) || added.user_id.get() == app.application_id.get() {
                 return;
             }
-            let held: Vec<u64> = added
-                .member
-                .as_ref()
-                .map(|m| m.roles.iter().map(|r| r.get()).collect())
-                .unwrap_or_default();
-            picked(app, &who, &added.emoji, &held).await;
+            picked(app, &who, &added.emoji).await;
         }
         ReactionEvent::Remove(removed) => {
             let Some(guild) = removed.guild_id else { return };
@@ -118,6 +122,12 @@ pub(crate) async fn on_reaction(app: &Arc<App>, event: &ReactionEvent) {
                 channel: removed.channel_id,
                 message: removed.message_id,
             };
+            if !app
+                .module_allowed(who.guild, Some(who.channel.get()), Module::RolePanels)
+                .await
+            {
+                return;
+            }
             dropped(app, &who, &removed.emoji).await;
         }
         // Staff clearing a message's reactions does not take anyone's role; the panel just needs posting again.
@@ -144,13 +154,19 @@ async fn undo(app: &App, who: &Who, emoji: &EmojiReactionType) {
     }
 }
 
-async fn picked(app: &Arc<App>, who: &Who, emoji: &EmojiReactionType, held: &[u64]) {
+async fn picked(app: &Arc<App>, who: &Who, emoji: &EmojiReactionType) {
     let Some(panel) = lookup(app, who.guild, who.message.get()).await else {
         return;
     };
     let key = emoji_key(emoji);
     // An emoji the panel does not use is somebody else's business.
     let Some(&role) = panel.by_key.get(&key) else { return };
+    let Ok(_lock) = app.db.lock_role_member(who.guild, who.user.get()).await else {
+        return;
+    };
+    let Ok(held) = current_roles(app, who.guild, who.user.get()).await else {
+        return;
+    };
     if panel.required_role.is_some_and(|needed| !held.contains(&needed)) {
         undo(app, who, emoji).await;
         return;
@@ -158,7 +174,7 @@ async fn picked(app: &Arc<App>, who: &Who, emoji: &EmojiReactionType, held: &[u6
     if held.contains(&role) {
         return;
     }
-    let changes = match toggle(&panel.rules, &panel.roles, held, role) {
+    let changes = match toggle(&panel.rules, &panel.roles, &held, role) {
         Ok(changes) => changes,
         Err(_) => {
             undo(app, who, emoji).await;
@@ -191,6 +207,15 @@ async fn dropped(app: &Arc<App>, who: &Who, emoji: &EmojiReactionType) {
         return;
     };
     let user = who.user.get();
+    let Ok(_lock) = app.db.lock_role_member(who.guild, user).await else {
+        return;
+    };
+    let Ok(held) = current_roles(app, who.guild, user).await else {
+        return;
+    };
+    if !held.contains(&role) || held.iter().filter(|id| panel.roles.contains(id)).count() <= panel.rules.min_picks {
+        return;
+    }
     match give::take(app, who.guild, user, role, "Reaction role").await {
         Ok(()) => {
             if let Err(error) = app.db.cancel_removal(who.guild, user, role).await {

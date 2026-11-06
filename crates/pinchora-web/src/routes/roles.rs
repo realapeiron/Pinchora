@@ -810,6 +810,12 @@ pub async fn remove_color(
 ) -> ApiResult<Json<Value>> {
     let (guild, role) = (managed.id, path_id(&params, "role")?);
     let delete = query.get("delete_role").is_some_and(|v| v == "true");
+    if delete {
+        let info = guild_info::live(&state, guild).await?;
+        let grantor = guild_info::grantor(&state, &managed, &info.roles, true).await?;
+        info.check_grant("role_id", role, grantor)
+            .map_err(|error| ApiError::invalid(vec![error]))?;
+    }
     if delete_color_role(&state.app, guild, role, delete).await? {
         let target = role.to_string();
         audit::finish(

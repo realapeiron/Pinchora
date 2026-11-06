@@ -311,7 +311,12 @@ async fn sticky_roles_are_kept_for_those_who_left() {
     db.remember_roles(guild, user, &[1]).await.unwrap();
     db.remember_roles(guild, user, &[]).await.unwrap();
     db.note_left(guild, user, left).await.unwrap();
-    assert!(db.take_sticky(guild, user).await.unwrap().is_none());
+    assert!(
+        db.take_sticky(guild, user)
+            .await
+            .unwrap()
+            .is_none_or(|row| row.role_ids.is_empty())
+    );
 
     // Switching it off forgets what was kept.
     db.remember_roles(guild, user, &[5]).await.unwrap();
@@ -345,7 +350,7 @@ async fn roles_on_a_timer_are_claimed_once() {
             .all(|r| r.guild_id as u64 != guild),
         "a claimed one is leased to the pod that took it"
     );
-    db.finish_removal(mine[0].id).await.unwrap();
+    db.finish_removal(mine[0]).await.unwrap();
     assert!(db.lapsed_roles(guild, user, now).await.unwrap().is_empty());
     // Moving the time of a role that is still held, and cancelling it.
     db.schedule_removal(guild, user, role + 1, now - Duration::seconds(5))
@@ -376,6 +381,194 @@ async fn roles_on_a_timer_are_claimed_once() {
             .iter()
             .all(|r| r.guild_id as u64 != guild)
     );
+}
+
+#[tokio::test]
+async fn renewed_timer_survives_old_worker_completion() {
+    let Some(db) = db().await else { return };
+    let [guild, user, role] = ids();
+    let now = Utc::now();
+    db.schedule_removal(guild, user, role, now - Duration::minutes(1))
+        .await
+        .unwrap();
+    let old = db
+        .claim_due_removals(now, 50)
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|row| row.guild_id as u64 == guild)
+        .unwrap();
+    db.schedule_removal(guild, user, role, now + Duration::hours(1))
+        .await
+        .unwrap();
+    db.finish_removal(&old).await.unwrap();
+    let remaining: (i64,) =
+        sqlx::query_as("SELECT count(*) FROM timed_roles WHERE guild_id = $1 AND user_id = $2 AND role_id = $3")
+            .bind(guild as i64)
+            .bind(user as i64)
+            .bind(role as i64)
+            .fetch_one(db.pool())
+            .await
+            .unwrap();
+    assert_eq!(remaining.0, 1, "old completion erased the renewed timer");
+}
+
+#[tokio::test]
+async fn empty_update_after_leave_revokes_sticky_role() {
+    let Some(db) = db().await else { return };
+    let [guild, user, role] = ids();
+    db.remember_roles(guild, user, &[role]).await.unwrap();
+    db.note_left(guild, user, Utc::now()).await.unwrap();
+    db.remember_roles(guild, user, &[]).await.unwrap();
+    let kept = db.take_sticky(guild, user).await.unwrap();
+    assert!(
+        kept.is_none_or(|row| row.role_ids.is_empty()),
+        "revoked role survived a reordered leave/update"
+    );
+}
+
+#[tokio::test]
+async fn stale_snapshot_cannot_replace_gateway_tombstone() {
+    let Some(db) = db().await else { return };
+    let [guild, user, role] = ids();
+    db.remember_roles(guild, user, &[role]).await.unwrap();
+    let versions = db.sticky_snapshot_versions(guild).await.unwrap();
+    db.remember_roles(guild, user, &[]).await.unwrap();
+    db.remember_snapshot(guild, user, &[role], versions.get(&user).map(String::as_str))
+        .await
+        .unwrap();
+    db.note_left(guild, user, Utc::now()).await.unwrap();
+    assert!(!db.sticky_waiting(guild, user).await.unwrap());
+}
+
+#[tokio::test]
+async fn snapshot_refreshes_roles_revoked_while_bot_was_offline() {
+    let Some(db) = db().await else { return };
+    let [guild, user, role] = ids();
+    db.remember_roles(guild, user, &[role]).await.unwrap();
+    let versions = db.sticky_snapshot_versions(guild).await.unwrap();
+    db.remember_snapshot(guild, user, &[], versions.get(&user).map(String::as_str))
+        .await
+        .unwrap();
+    db.note_left(guild, user, Utc::now()).await.unwrap();
+    assert!(!db.sticky_waiting(guild, user).await.unwrap());
+}
+
+#[tokio::test]
+async fn expiry_removes_role_from_sticky_history() {
+    let Some(db) = db().await else { return };
+    let [guild, user, role] = ids();
+    db.remember_roles(guild, user, &[role]).await.unwrap();
+    db.note_left(guild, user, Utc::now()).await.unwrap();
+    let now = Utc::now();
+    db.schedule_removal(guild, user, role, now - Duration::minutes(1))
+        .await
+        .unwrap();
+    let claimed = db
+        .claim_due_removals(now, 50)
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|row| row.guild_id as u64 == guild)
+        .unwrap();
+    assert!(db.finish_removal(&claimed).await.unwrap());
+    assert!(!db.sticky_waiting(guild, user).await.unwrap());
+}
+
+#[tokio::test]
+async fn cleanup_waits_for_privacy_user_lock() {
+    let Some(db) = db().await else { return };
+    let [guild, user, role] = ids();
+    db.schedule_removal(guild, user, role, Utc::now()).await.unwrap();
+    db.remember_roles(guild, user, &[role]).await.unwrap();
+    let mut privacy = db.pool().begin().await.unwrap();
+    sqlx::query("SELECT lock_user($1)")
+        .bind(user as i64)
+        .execute(&mut *privacy)
+        .await
+        .unwrap();
+    let worker_db = db.clone();
+    let mut worker = tokio::spawn(async move { worker_db.forget_pack_role(guild, role).await });
+    assert!(
+        tokio::time::timeout(std::time::Duration::from_millis(100), &mut worker)
+            .await
+            .is_err()
+    );
+    privacy.rollback().await.unwrap();
+    tokio::time::timeout(std::time::Duration::from_secs(5), worker)
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+}
+
+#[tokio::test]
+async fn role_member_lock_serializes_concurrent_changes() {
+    let Some(db) = db().await else { return };
+    let [guild, user] = ids();
+    let first = db.lock_role_member(guild, user).await.unwrap();
+    let second_db = db.clone();
+    let mut second = tokio::spawn(async move { second_db.lock_role_member(guild, user).await });
+    assert!(
+        tokio::time::timeout(std::time::Duration::from_millis(100), &mut second)
+            .await
+            .is_err()
+    );
+    drop(first);
+    drop(
+        tokio::time::timeout(std::time::Duration::from_secs(5), second)
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap(),
+    );
+}
+
+#[tokio::test]
+async fn concurrent_role_locks_leave_a_connection_for_timers() {
+    let Some(db) = db().await else { return };
+    let [guild, first_user, role] = ids();
+    let tasks: Vec<_> = (0..5)
+        .map(|offset| {
+            let db = db.clone();
+            tokio::spawn(async move {
+                let user = first_user + offset;
+                let _lock = db.lock_role_member(guild, user).await.unwrap();
+                db.schedule_removal(guild, user, role, Utc::now()).await.unwrap();
+            })
+        })
+        .collect();
+    tokio::time::timeout(std::time::Duration::from_secs(5), async {
+        for task in tasks {
+            task.await.unwrap();
+        }
+    })
+    .await
+    .expect("role locks exhausted every database connection");
+}
+
+#[tokio::test]
+async fn sticky_prune_skips_a_user_being_deleted() {
+    let Some(db) = db().await else { return };
+    let [guild, user, role] = ids();
+    db.remember_roles(guild, user, &[role]).await.unwrap();
+    let before = Utc::now() - Duration::days(61);
+    db.note_left(guild, user, before - Duration::days(1)).await.unwrap();
+    let mut privacy = db.pool().begin().await.unwrap();
+    sqlx::query("SELECT lock_user($1)")
+        .bind(user as i64)
+        .execute(&mut *privacy)
+        .await
+        .unwrap();
+    assert_eq!(
+        tokio::time::timeout(std::time::Duration::from_secs(2), db.prune_sticky(before))
+            .await
+            .unwrap()
+            .unwrap(),
+        0
+    );
+    privacy.rollback().await.unwrap();
+    assert_eq!(db.prune_sticky(before).await.unwrap(), 1);
 }
 
 #[tokio::test]

@@ -178,7 +178,9 @@ impl AutoRolesCommand {
                     },
                 };
                 if let Some(why) = roles::unassignable(cx, guild, &c.role).await {
-                    return cx.reply_ephemeral(why).await;
+                    return cx
+                        .reply_ephemeral(super::give::configure_refusal(lang, c.role.id.get(), &why))
+                        .await;
                 }
                 let auto = NewAutoRole {
                     role_id: c.role.id.get(),

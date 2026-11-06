@@ -16,6 +16,7 @@ pub(crate) use color::on_component as on_color_component;
 pub use color::{
     ColorCommand, ColorRoleReport, ColorStop, create_palette_roles, delete_color_role, stop_text as color_stop_text,
 };
+pub(crate) use give::configure_refusal;
 pub use join::{give_after_verify, start_sticky_snapshot, sticky_changed};
 pub(crate) use join::{on_member_join, on_member_leave, on_member_update};
 pub use palette::{PaletteColor, palette};

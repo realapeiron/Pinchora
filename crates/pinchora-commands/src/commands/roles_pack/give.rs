@@ -1,6 +1,10 @@
 //! Giving and taking roles for the roles pack, and what to say when Discord says no.
 
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::{
+    i18n::Lang,
+    settings::{self, Grantor, RoleFacts},
+    t,
+};
 use twilight_http::{Error, request::AuditLogReason};
 use twilight_model::{guild::Role, id::Id};
 
@@ -10,7 +14,55 @@ const UNKNOWN_ROLE: u64 = 10011;
 const MISSING_ACCESS: u64 = 50001;
 const MISSING_PERMISSIONS: u64 = 50013;
 
-pub(crate) async fn give(app: &App, guild: u64, user: u64, role: u64, reason: &str) -> Result<(), Error> {
+#[derive(Debug)]
+struct UnsafeRole {
+    role: u64,
+    why: String,
+}
+
+impl std::fmt::Display for UnsafeRole {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.why)
+    }
+}
+
+impl std::error::Error for UnsafeRole {}
+
+/// Re-read both the target role and bot hierarchy for each grant. Configuration-time checks are
+/// insufficient because a manager can edit a role's permissions after a panel was posted.
+pub(crate) async fn validate(app: &App, guild: u64, role: u64) -> anyhow::Result<()> {
+    let (roles, top) = bot_view(app, guild)
+        .await
+        .ok_or_else(|| anyhow::anyhow!("Could not check the current role hierarchy"))?;
+    let found = roles
+        .iter()
+        .find(|r| r.id.get() == role)
+        .ok_or_else(|| anyhow::anyhow!("That role no longer exists"))?;
+    let facts = RoleFacts {
+        everyone: role == guild,
+        managed: found.managed,
+        position: found.position,
+        permissions: found.permissions.bits(),
+    };
+    let label = format!("<@&{role}>");
+    if let Some(why) = settings::role_refusal(facts, Some(top), &label).or_else(|| {
+        settings::grant_refusal(
+            facts,
+            Grantor {
+                owner: false,
+                administrator: false,
+                top_role: Some(top),
+            },
+            &label,
+        )
+    }) {
+        return Err(UnsafeRole { role, why }.into());
+    }
+    Ok(())
+}
+
+pub(crate) async fn give(app: &App, guild: u64, user: u64, role: u64, reason: &str) -> anyhow::Result<()> {
+    validate(app, guild, role).await?;
     app.http
         .add_guild_member_role(Id::new(guild.max(1)), Id::new(user.max(1)), Id::new(role.max(1)))
         .reason(reason)
@@ -35,23 +87,52 @@ pub(crate) async fn give_timed(
     role: u64,
     expiry_secs: i32,
     reason: &str,
-) -> Result<(), Error> {
+) -> anyhow::Result<()> {
+    let _lock = app.db.lock_role_member(guild, user).await?;
+    if expiry_secs > 0 {
+        let at = app.now() + chrono::Duration::seconds(i64::from(expiry_secs));
+        // Persist the expiry before Discord can grant the role: a database outage cannot turn a
+        // temporary role into a permanent one.
+        app.db.schedule_removal(guild, user, role, at).await?;
+    }
     match give(app, guild, user, role, reason).await {
-        Ok(()) => {
-            if expiry_secs > 0 {
-                let at = app.now() + chrono::Duration::seconds(i64::from(expiry_secs));
-                if let Err(error) = app.db.schedule_removal(guild, user, role, at).await {
-                    tracing::warn!(guild, user, role, %error, "could not time a role");
-                }
-            }
-            Ok(())
-        }
+        Ok(()) => Ok(()),
         Err(error) => {
-            if roles::role_is_gone(&error) {
+            if expiry_secs > 0
+                && let Err(cancel) = app.db.cancel_removal(guild, user, role).await
+            {
+                tracing::warn!(guild, user, role, %cancel, "failed grant's timer remains for recovery");
+            }
+            if error.downcast_ref::<Error>().is_some_and(roles::role_is_gone) {
                 forget(app, guild, role).await;
             }
             Err(error)
         }
+    }
+}
+
+pub(crate) fn give_refusal_text(lang: Lang, error: &anyhow::Error) -> String {
+    if let Some(unsafe_role) = error.downcast_ref::<UnsafeRole>() {
+        return if lang == Lang::En {
+            unsafe_role.why.clone()
+        } else {
+            configure_refusal(lang, unsafe_role.role, &unsafe_role.why)
+        };
+    }
+    error
+        .downcast_ref::<Error>()
+        .map_or_else(|| error.to_string(), |discord| refusal_text(lang, discord))
+}
+
+pub(crate) fn configure_refusal(lang: Lang, role: u64, why: &str) -> String {
+    if why.contains("above my highest role") {
+        t!(lang, "roles.refusal.bot-hierarchy", role = format!("<@&{role}>"))
+    } else if why.contains("managed by an integration") {
+        t!(lang, "roles.refusal.managed", role = format!("<@&{role}>"))
+    } else if why.contains("@everyone") {
+        t!(lang, "roles.refusal.everyone")
+    } else {
+        t!(lang, "roles.refusal.cannot-configure", role = format!("<@&{role}>"))
     }
 }
 
@@ -84,6 +165,10 @@ pub(crate) fn is_final(error: &Error) -> bool {
         || matches!(roles::error_code(error), Some(MISSING_ACCESS | MISSING_PERMISSIONS))
 }
 
+pub(crate) fn is_final_grant(error: &anyhow::Error) -> bool {
+    error.downcast_ref::<Error>().is_some_and(is_final)
+}
+
 /// The server's roles, and the position of the bot's highest one (the roles below it are the ones it
 /// can hand out); `None` when Discord cannot be asked.
 pub(crate) async fn bot_view(app: &App, guild: u64) -> Option<(Vec<Role>, i64)> {
@@ -104,4 +189,20 @@ pub(crate) async fn bot_view(app: &App, guild: u64) -> Option<(Vec<Role>, i64)> 
         .max()
         .unwrap_or(0);
     Some((roles, top))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn setup_refusal_uses_the_member_language() {
+        let why = "<@&7> is above my highest role. Drag my role above it in Server Settings > Roles, then try again.";
+        assert!(configure_refusal(Lang::En, 7, why).contains("above my highest role"));
+        assert!(configure_refusal(Lang::Tr, 7, why).contains("üstünde"));
+        let managed = "<@&7> is managed by an integration or a bot, so it can't be handed out.";
+        assert!(configure_refusal(Lang::En, 7, managed).contains("managed by an integration"));
+        assert!(configure_refusal(Lang::Tr, 7, managed).contains("entegrasyon"));
+        assert!(configure_refusal(Lang::En, 7, "@everyone can't be handed out").contains("@everyone"));
+    }
 }

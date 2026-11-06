@@ -19,7 +19,7 @@ use twilight_model::{
 };
 use twilight_util::builder::embed::{EmbedBuilder, EmbedFooterBuilder};
 
-use super::give::{self, refusal_text};
+use super::give;
 use crate::{App, Cx, commands::role_panels::parse_emoji, roles, util::BRAND};
 
 const UNKNOWN_CHANNEL: u64 = 10003;
@@ -436,7 +436,7 @@ pub(crate) struct Applied {
 pub(crate) struct Failed {
     pub role: u64,
     pub giving: bool,
-    pub error: Error,
+    pub error: anyhow::Error,
     /// The role no longer exists, and was dropped from everything that named it.
     pub gone: bool,
 }
@@ -456,6 +456,29 @@ pub(crate) async fn apply(
         removed: Vec::new(),
         failed: None,
     };
+    // Reject a role whose current permissions or position changed before touching a held role.
+    for &role in &changes.add {
+        if let Err(error) = give::validate(app, guild, role).await {
+            done.failed = Some(failed(app, guild, role, true, error).await);
+            return done;
+        }
+    }
+    let mut scheduled = Vec::new();
+    for &role in &changes.add {
+        if let Some(secs) = temp.get(&role) {
+            let at = app.now() + chrono::Duration::seconds(i64::from(*secs));
+            if let Err(error) = app.db.schedule_removal(guild, user, role, at).await {
+                for prior in scheduled {
+                    if let Err(cancel) = app.db.cancel_removal(guild, user, prior).await {
+                        tracing::warn!(guild, user, role = prior, %cancel, "could not clear a prepared timer");
+                    }
+                }
+                done.failed = Some(failed(app, guild, role, true, error).await);
+                return done;
+            }
+            scheduled.push(role);
+        }
+    }
     for &role in &changes.remove {
         match give::take(app, guild, user, role, reason).await {
             Ok(()) => {
@@ -465,7 +488,12 @@ pub(crate) async fn apply(
                 }
             }
             Err(error) => {
-                done.failed = Some(failed(app, guild, role, false, error).await);
+                for &pending in &scheduled {
+                    if let Err(cancel) = app.db.cancel_removal(guild, user, pending).await {
+                        tracing::warn!(guild, user, role = pending, %cancel, "could not clear a prepared timer");
+                    }
+                }
+                done.failed = Some(failed(app, guild, role, false, error.into()).await);
                 return done;
             }
         }
@@ -474,14 +502,15 @@ pub(crate) async fn apply(
         match give::give(app, guild, user, role, reason).await {
             Ok(()) => {
                 done.added.push(role);
-                if let Some(secs) = temp.get(&role) {
-                    let at = app.now() + chrono::Duration::seconds(i64::from(*secs));
-                    if let Err(error) = app.db.schedule_removal(guild, user, role, at).await {
-                        tracing::warn!(guild, user, role, %error, "could not time a role");
-                    }
-                }
             }
             Err(error) => {
+                for &pending in &scheduled {
+                    if !done.added.contains(&pending)
+                        && let Err(cancel) = app.db.cancel_removal(guild, user, pending).await
+                    {
+                        tracing::warn!(guild, user, role = pending, %cancel, "could not clear a prepared timer");
+                    }
+                }
                 done.failed = Some(failed(app, guild, role, true, error).await);
                 return done;
             }
@@ -490,9 +519,9 @@ pub(crate) async fn apply(
     done
 }
 
-async fn failed(app: &App, guild: u64, role: u64, giving: bool, error: Error) -> Failed {
+async fn failed(app: &App, guild: u64, role: u64, giving: bool, error: anyhow::Error) -> Failed {
     tracing::warn!(guild, role, %error, "could not change a role from a panel");
-    let gone = roles::role_is_gone(&error);
+    let gone = error.downcast_ref::<Error>().is_some_and(roles::role_is_gone);
     if gone {
         give::forget(app, guild, role).await;
     }
@@ -525,7 +554,7 @@ pub(crate) fn applied_text(lang: Lang, done: &Applied, temp: &HashMap<u64, i32>)
     }
     if let Some(fail) = &done.failed {
         let role = format!("<@&{}>", fail.role);
-        let why = refusal_text(lang, &fail.error);
+        let why = give::give_refusal_text(lang, &fail.error);
         parts.push(if fail.giving {
             t!(lang, "roles.panel.cant-give", role = role, why = why)
         } else {
@@ -561,13 +590,15 @@ async fn panel_facts(cx: &Cx, panel: &PanelRow) -> anyhow::Result<(Vec<u64>, Has
     Ok((entries.iter().map(|e| e.role_id as u64).collect(), temp))
 }
 
-/// The roles the member who clicked holds.
-fn held(cx: &Cx) -> Vec<u64> {
-    cx.interaction
-        .member
-        .as_ref()
-        .map(|m| m.roles.iter().map(|r| r.get()).collect())
-        .unwrap_or_default()
+/// Interaction member roles can be older than another click. Read Discord under the member lock.
+pub(crate) async fn current_roles(app: &App, guild: u64, user: u64) -> anyhow::Result<Vec<u64>> {
+    let member = app
+        .http
+        .guild_member(Id::new(guild.max(1)), Id::new(user.max(1)))
+        .await?
+        .model()
+        .await?;
+    Ok(member.roles.iter().map(|role| role.get()).collect())
 }
 
 /// `rr` and `rb` buttons: give the member the role, or take it if they have it, as the panel's rules allow.
@@ -587,7 +618,9 @@ pub(crate) async fn on_toggle<'a>(cx: &Cx, parts: impl Iterator<Item = &'a str>)
     if db.panel_role(guild, panel_id, role).await?.is_none() {
         return cx.reply_ephemeral(t!(lang, "roles.panel.role-gone")).await;
     }
-    let held = held(cx);
+    let user = cx.author()?.id.get();
+    let _lock = cx.app.db.lock_role_member(guild, user).await?;
+    let held = current_roles(&cx.app, guild, user).await?;
     if let Some(needed) = panel.required_role.filter(|r| !held.contains(&(*r as u64))) {
         return cx
             .reply_ephemeral(t!(lang, "roles.panel.needs-role", role = format!("<@&{needed}>")))
@@ -598,7 +631,6 @@ pub(crate) async fn on_toggle<'a>(cx: &Cx, parts: impl Iterator<Item = &'a str>)
         Ok(changes) => changes,
         Err(refusal) => return cx.reply_ephemeral(refusal_line(lang, refusal)).await,
     };
-    let user = cx.author()?.id.get();
     let done = apply(&cx.app, guild, user, &changes, &temp, "Role panel").await;
     cx.reply_ephemeral(applied_text(lang, &done, &temp)).await
 }
@@ -621,7 +653,9 @@ pub(crate) async fn on_select<'a>(
     let Some(panel) = cx.app.db.panel_by_id(guild, panel_id).await? else {
         return cx.reply_ephemeral(t!(lang, "roles.panel.menu-gone")).await;
     };
-    let held = held(cx);
+    let user = cx.author()?.id.get();
+    let _lock = cx.app.db.lock_role_member(guild, user).await?;
+    let held = current_roles(&cx.app, guild, user).await?;
     if let Some(needed) = panel.required_role.filter(|r| !held.contains(&(*r as u64))) {
         return cx
             .reply_ephemeral(t!(lang, "roles.panel.needs-role", role = format!("<@&{needed}>")))
@@ -632,7 +666,6 @@ pub(crate) async fn on_select<'a>(
         Ok(changes) => changes,
         Err(refusal) => return cx.reply_ephemeral(refusal_line(lang, refusal)).await,
     };
-    let user = cx.author()?.id.get();
     let done = apply(&cx.app, guild, user, &changes, &temp, "Role panel").await;
     cx.reply_ephemeral(applied_text(lang, &done, &temp)).await
 }

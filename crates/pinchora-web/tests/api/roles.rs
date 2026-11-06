@@ -614,6 +614,45 @@ async fn colour_roles_save_with_the_command_rules() {
 }
 
 #[tokio::test]
+async fn manager_cannot_delete_adopted_colour_at_or_above_their_rank() {
+    let Some(h) = Harness::new("roles_colour_delete_rank").await else {
+        return;
+    };
+    let (guild, _, _) = h.managed_server().await;
+    h.state
+        .app
+        .db
+        .add_color_role(guild, REGULAR, "#8fd3ff", "Sky", 32)
+        .await
+        .unwrap();
+    h.state
+        .app
+        .db
+        .add_color_role(guild, HELPER, "#ff6b4a", "Coral", 32)
+        .await
+        .unwrap();
+    let user = unique();
+    h.mock.member_roles.lock().unwrap().insert(user, vec![REGULAR]);
+    let mut manager = h.browser();
+    manager
+        .login(&h, user, vec![guild_entry(guild, "Pinchora Reef", false, MANAGE_GUILD)])
+        .await;
+    let path = format!("{}/colors/{REGULAR}?delete_role=true", g(guild));
+    let refused = manager.write(Method::DELETE, &path, json!({})).await;
+    assert_eq!(refused.status, StatusCode::UNPROCESSABLE_ENTITY, "{}", refused.text());
+    assert_eq!(refusal(&refused).0, "role_id");
+    let staff = manager
+        .write(
+            Method::DELETE,
+            &format!("{}/colors/{HELPER}?delete_role=true", g(guild)),
+            json!({}),
+        )
+        .await;
+    assert_eq!(staff.status, StatusCode::UNPROCESSABLE_ENTITY, "{}", staff.text());
+    assert_eq!(h.state.app.db.color_roles(guild).await.unwrap().len(), 2);
+}
+
+#[tokio::test]
 async fn the_roles_page_is_for_managers_of_a_server_with_the_bot() {
     let Some(h) = Harness::new("roles_access").await else {
         return;
