@@ -1,3 +1,4 @@
+mod invalidate;
 mod queue;
 
 use std::time::Duration;
@@ -5,6 +6,7 @@ use std::time::Duration;
 use redis::{AsyncCommands, aio::ConnectionManager};
 use serde::{Deserialize, Serialize};
 
+pub use invalidate::{INVALIDATE_CHANNEL, Invalidation};
 pub use queue::RedisQueue;
 
 const PREFIX: &str = "pinchora";
@@ -13,6 +15,8 @@ const PREFIX: &str = "pinchora";
 #[derive(Clone)]
 pub struct Cache {
     conn: ConnectionManager,
+    /// For pub/sub, which needs a connection of its own.
+    client: redis::Client,
 }
 
 /// What a shard needs to resume its gateway session after a restart.
@@ -34,8 +38,8 @@ impl Cache {
         let config = redis::aio::ConnectionManagerConfig::new()
             .set_connection_timeout(Some(Duration::from_secs(5)))
             .set_response_timeout(Some(Duration::from_secs(5)));
-        let conn = ConnectionManager::new_with_config(client, config).await?;
-        Ok(Self { conn })
+        let conn = ConnectionManager::new_with_config(client.clone(), config).await?;
+        Ok(Self { conn, client })
     }
 
     pub fn conn(&self) -> ConnectionManager {

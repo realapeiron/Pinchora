@@ -1,3 +1,4 @@
+mod audit;
 mod contest;
 mod customize;
 mod economy;
@@ -26,6 +27,7 @@ use std::time::Duration;
 
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
+pub use audit::{AuditRow, AuditSource, NewAudit};
 pub use contest::{ContestEntry, ContestResult};
 pub use customize::{CustomizeBuy, MAX_BADGES, PlayerStats};
 pub use economy::{DailyOutcome, RepOutcome, TransferOutcome};

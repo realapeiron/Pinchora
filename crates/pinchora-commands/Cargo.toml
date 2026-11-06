@@ -12,6 +12,7 @@ pinchora-game.workspace = true
 image.workspace = true
 anyhow.workspace = true
 chrono.workspace = true
+futures-util.workspace = true
 metrics.workspace = true
 moka.workspace = true
 rand.workspace = true

@@ -15,6 +15,7 @@ pinchora-cache = { path = "crates/pinchora-cache" }
 pinchora-render = { path = "crates/pinchora-render" }
 pinchora-commands = { path = "crates/pinchora-commands" }
 pinchora-game = { path = "crates/pinchora-game" }
+pinchora-web = { path = "crates/pinchora-web" }
 
 anyhow = "1"
 thiserror = "2"
@@ -31,6 +32,7 @@ metrics = "0.24"
 metrics-exporter-prometheus = { version = "0.18", default-features = false }
 chrono = { version = "0.4", features = ["serde"] }
 rand = "0.10"
+sha2 = "0.10"
 base64 = "0.23"
 hex = "0.4"
 

@@ -12,6 +12,15 @@
 
 ARG RUST_VERSION=1.99
 ARG CARGO_CHEF_VERSION=0.1.78
+ARG NODE_VERSION=22
+
+# --- web: the dashboard SPA (web/), embedded into the binary by pinchora-web ------
+FROM node:${NODE_VERSION}-alpine AS web
+WORKDIR /web
+COPY web/package.json web/package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
+COPY web/ ./
+RUN npm run build
 
 # --- chef: Rust toolchain + cargo-chef -------------------------------------------
 FROM rust:${RUST_VERSION}-bookworm AS chef
@@ -43,8 +52,10 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     cargo chef cook --release --locked -p pinchora --recipe-path recipe.json
 
 # Full source. assets/fonts (include_bytes!) and migrations (sqlx::migrate!) are
-# embedded at compile time, so both must be in the build context.
+# embedded at compile time, so both must be in the build context. So is the built
+# dashboard: pinchora-web's build.rs bakes web/dist into the binary.
 COPY . .
+COPY --from=web /web/dist web/dist
 RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
     cargo build --release --locked -p pinchora \
@@ -54,8 +65,8 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
 FROM gcr.io/distroless/cc-debian12:nonroot AS runtime
 COPY --from=builder /out/pinchora /usr/local/bin/pinchora
 
-# 8080 interactions endpoint, 9000 ops (/metrics /healthz /readyz).
-EXPOSE 8080 9000
+# 8080 interactions endpoint, 8090 web dashboard, 9000 ops (/metrics /healthz /readyz).
+EXPOSE 8080 8090 9000
 USER 65532:65532
 ENTRYPOINT ["/usr/local/bin/pinchora"]
 CMD ["gateway"]

@@ -181,10 +181,48 @@ To serve commands over HTTPS instead of the gateway, run the `endpoint` profile
 
 Kubernetes manifests and scaling notes: [`deploy/k8s/README.md`](deploy/k8s/README.md).
 
+## Web dashboard
+
+`pinchora web` (the `web` compose service, <http://localhost:8090>) is a browser dashboard for server
+managers: log in with Discord, pick a server you have **Manage Server** in (servers without the bot get an
+"Add bot" invite), and change its settings. So far the Overview turns chat XP (leveling) on and off and lists
+the latest dashboard changes; every change is written to an audit log and announced on Redis, so every bot
+pod uses it from the next message instead of after its one-minute cache.
+
+To turn the login on:
+
+1. Developer Portal -> your application -> **OAuth2** -> **Redirects**: add
+   `<PINCHORA_WEB__PUBLIC_URL>/auth/callback`, i.e. `http://localhost:8090/auth/callback` by default (and
+   `http://localhost:5173/auth/callback` if you work on the UI with `npm run dev`).
+2. Copy the **Client Secret** from the same page into `.env` as `PINCHORA_WEB__CLIENT_SECRET`.
+3. `docker compose up -d --build web`, open <http://localhost:8090> and log in.
+
+Until the secret is set the dashboard serves a setup page that lists what is missing and the redirect to
+register; the rest of the stack runs either way. Other settings (`PINCHORA_WEB__PUBLIC_URL`, `__CLIENT_ID`,
+`__BIND`, `__COOKIE_SECURE`, `__STATIC_DIR`) are described in [`.env.example`](.env.example).
+
+The login asks Discord for `identify guilds` only. Sessions live in Redis behind an HttpOnly cookie (7 days
+idle, 30 days at most); every write needs the session's CSRF token and the dashboard's own origin.
+
+The UI is a Vite + React app in `web/`, built into the binary (`crates/pinchora-web/build.rs` embeds
+`web/dist`; without Node a placeholder page is embedded, so `cargo build` never needs npm):
+
+```bash
+cd web && npm ci
+npm run dev        # http://localhost:5173, proxies /api and /auth to the Rust server on :8090
+npm run lint && npm run typecheck && npm test && npm run build
+cargo build -p pinchora && PINCHORA_TEST_DATABASE_URL=... PINCHORA_TEST_REDIS_URL=... npm run e2e
+                   # Playwright smoke against the real server and a mock Discord; screenshots in test-results/screens/
+```
+
+For UI work against a running server, set `PINCHORA_WEB__PUBLIC_URL=http://localhost:5173` on the Rust side
+(`cargo run -p pinchora -- web`).
+
 ## Development
 
 ```bash
 cargo run -p pinchora -- gateway          # needs PINCHORA_* env vars or pinchora.toml
+cargo run -p pinchora -- web              # the web dashboard on :8090 (see "Web dashboard")
 cargo run -p pinchora -- commands         # print slash command JSON
 cargo run -p pinchora-render --example samples   # render sample cards to target/render-samples
                                                  # (profile-background/-badges/-placeholder, rank-background, wallet-background show /customize;
@@ -206,12 +244,14 @@ cargo test --workspace
 
 ```
 crates/
-  pinchora/           binary: gateway | interactions | migrate | register | commands
+  pinchora/           binary: gateway | interactions | web | migrate | register | commands
   pinchora-core/      config, telemetry, level/economy/cluster math
   pinchora-db/        PostgreSQL (sqlx) + migrations runner
-  pinchora-cache/     Redis: cooldowns, gateway sessions, cross-pod identify queue
+  pinchora-cache/     Redis: cooldowns, gateway sessions, cross-pod identify queue, invalidation pub/sub
   pinchora-render/    pixel-art cards (SVG → PNG with resvg)
   pinchora-commands/  slash commands, buttons, gateway event handlers
+  pinchora-web/       web dashboard API (axum): Discord OAuth, sessions, CSRF, server settings, the SPA
+web/                  dashboard UI (Vite + React + TypeScript), embedded into the binary
 migrations/           SQL migrations
 assets/fonts/         Silkscreen + Noto Sans (SIL OFL)
 deploy/               Kubernetes (kustomize)
