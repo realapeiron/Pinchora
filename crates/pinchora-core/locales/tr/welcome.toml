@@ -1,0 +1,9 @@
+# Karşılama ve veda görselleri: /config welcome-card önizlemesi ile panelin deneme mesajı.
+
+[welcome]
+preview-title = "Karşılama kartı önizlemesi"
+preview-about = "Yeni üyeler bu kartı görecek. `/config welcome` ile açıp bir kanal seçebilirsin; panelin düzenleyicisi karttaki her şeyi taşıyıp ekleyebilir, yeniden biçimlendirebilir."
+preview-replaced = "Bu klasik kart, panelin düzenleyicisinde yaptığın tasarımın yerine geçti."
+preview-custom = "Bu, panelin düzenleyicisinde yaptığın tasarım; buradaki herhangi bir seçenek klasik karta geri döner."
+test-welcome = "Karşılama görselinin denemesi; {name} tarafından panelden gönderildi."
+test-goodbye = "Veda görselinin denemesi; {name} tarafından panelden gönderildi."

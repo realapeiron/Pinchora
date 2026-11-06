@@ -32,6 +32,8 @@ import {
   api,
   setCsrfToken,
 } from "./api";
+import { ATLAS_URL, type AtlasIndex } from "../components/card/CardSvg";
+import type { Cards } from "./card";
 import { type Names, plainNames } from "./text";
 
 export function useMe() {
@@ -309,6 +311,38 @@ export function useLogout() {
   });
 }
 
+/** The welcome and goodbye images, the template gallery and the uploads (`GET /cards`). */
+export function cardsKey(guild: string) {
+  return [`/api/guilds/${guild}/cards`];
+}
+
+export function useCards(guild: string) {
+  return useQuery({
+    queryKey: cardsKey(guild),
+    queryFn: () => api<Cards>(`/api/guilds/${guild}/cards`),
+    staleTime: 60_000,
+  });
+}
+
+/** Where every sprite sits in the sheet the bot draws from; ready once the sheet itself is decoded, so
+ * every sticker and background shows at once. */
+export function useAtlasIndex() {
+  return useQuery({
+    queryKey: ["/assets/atlas.json"],
+    queryFn: async () => {
+      const sheet = new Image();
+      sheet.src = ATLAS_URL;
+      const [response] = await Promise.all([
+        fetch("/assets/atlas.json", { credentials: "same-origin" }),
+        sheet.decode().catch(() => undefined),
+      ]);
+      if (!response.ok) throw new Error(`atlas.json: ${response.status}`);
+      return (await response.json()) as AtlasIndex;
+    },
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+}
 // /Custom commands and auto-responders
 
 /** The two lists share every route shape: `/commands` and `/responders`. */

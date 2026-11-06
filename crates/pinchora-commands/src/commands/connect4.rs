@@ -5,12 +5,9 @@ use std::str::Split;
 use chrono::{DateTime, Duration, Utc};
 use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{GameSession, Payout};
-use pinchora_game::{
-    lang::upper,
-    play::{
-        Game,
-        connect4::{Board, COLS},
-    },
+use pinchora_game::play::{
+    Game,
+    connect4::{Board, COLS},
 };
 use pinchora_render::{Connect4Card, Theme};
 use twilight_model::{
@@ -131,7 +128,7 @@ async fn message(
         ),
     };
     // The card draws it in capitals.
-    let status = upper(lang, &status);
+    let status = lang.upper(&status);
     let pot = if session.bet > 0 { session.bet * 2 } else { 0 };
     let cells = state.board.cells().to_vec();
     let (names, last) = (names.clone(), state.last);

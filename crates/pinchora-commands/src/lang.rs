@@ -95,6 +95,17 @@ pub(crate) async fn resolve(app: &App, interaction: &Interaction) -> Lang {
     pick(user, locale, guild)
 }
 
+/// The language a text command is answered in. A message carries no Discord language, so it is the
+/// member's `/language` pick, else the server's default, else English.
+pub(crate) async fn resolve_text(app: &App, user: u64, guild: u64) -> Lang {
+    let user = app.user_lang_choice(user).await;
+    let guild = match user {
+        None => app.guild_lang_choice(guild).await,
+        Some(_) => None,
+    };
+    pick(user, None, guild)
+}
+
 /// The order of [`resolve`], on what it read.
 fn pick(user: Option<Lang>, locale: Option<&str>, guild: Option<Lang>) -> Lang {
     user.or_else(|| locale.map(Lang::from_discord))

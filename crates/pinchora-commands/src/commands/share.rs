@@ -9,7 +9,6 @@ use std::{str::Split, sync::Arc};
 use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{GameSession, PENDING, Payout};
 use pinchora_game::{
-    lang::upper,
     party::share::{DAILY_SHELLS, Outcome, PAIR_COOLDOWN_SECS, PICK_SECS, POOL, Pick, Picks},
     play::Game,
 };
@@ -159,7 +158,7 @@ async fn message(
         }
     };
     // The card draws it in capitals.
-    let banner = upper(lang, &banner);
+    let banner = lang.upper(&banner);
     let (card_names, pool, wager) = (names.clone(), pool_of(session), session.bet > 0);
     let views = shown(picks, end.is_some());
     let png = app

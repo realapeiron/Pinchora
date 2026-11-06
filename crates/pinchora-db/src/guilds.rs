@@ -52,6 +52,8 @@ pub struct GuildSettings {
     pub voice_xp_enabled: bool,
     /// Server XP a minute in voice earns.
     pub voice_xp_amount: i32,
+    /// What text commands start with; `None` is [`settings::DEFAULT_PREFIX`].
+    pub prefix: Option<String>,
 }
 
 /// What the server log can report. Each kind has its own switch.
@@ -81,6 +83,11 @@ impl GuildSettings {
 }
 
 impl GuildSettings {
+    /// The prefix text commands start with here.
+    pub fn prefix(&self) -> &str {
+        self.prefix.as_deref().unwrap_or(settings::DEFAULT_PREFIX)
+    }
+
     /// These settings with `patch` applied, as [`Db::patch_guild_settings`] would store them.
     pub fn apply(&self, patch: &GuildSettingsPatch) -> GuildSettings {
         let mut s = self.clone();
@@ -126,6 +133,7 @@ impl GuildSettings {
         set!(log_names);
         set!(log_bans);
         set!(log_voice);
+        set!(prefix);
         s
     }
 }
@@ -138,7 +146,7 @@ macro_rules! columns {
          level_roles_stack, points_enabled, points_name, points_emoji, points_min, points_max, \
          join_role_id, goodbye_channel_id, goodbye_message, \
          log_channel_id, log_members, log_names, log_bans, log_voice, \
-         levelup_mode, voice_xp_enabled, voice_xp_amount"
+         levelup_mode, voice_xp_enabled, voice_xp_amount, prefix"
     };
 }
 
@@ -223,6 +231,7 @@ impl Db {
         bind!(log_names);
         bind!(log_bans);
         bind!(log_voice);
+        bind!(prefix);
         sql.push(" WHERE id = ")
             .push_bind(sql_id(guild_id))
             .push(concat!(" RETURNING ", columns!()));
@@ -277,6 +286,18 @@ impl Db {
             .bind(enabled)
             .bind(channel_id.map(sql_id))
             .bind(message)
+            .fetch_one(self.pool())
+            .await?)
+    }
+
+    /// Sets the text command prefix; `None` goes back to the default. It must have passed
+    /// `settings::check_prefix`.
+    pub async fn set_prefix(&self, guild_id: u64, prefix: Option<&str>) -> anyhow::Result<GuildSettings> {
+        self.guild_settings(guild_id).await?;
+        let sql = concat!("UPDATE guilds SET prefix = $2 WHERE id = $1 RETURNING ", columns!());
+        Ok(sqlx::query_as::<_, GuildSettings>(sql)
+            .bind(sql_id(guild_id))
+            .bind(prefix)
             .fetch_one(self.pool())
             .await?)
     }

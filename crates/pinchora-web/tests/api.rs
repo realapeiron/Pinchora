@@ -27,8 +27,10 @@ use axum::{
 use base64::Engine;
 use futures_util::StreamExt;
 use pinchora_cache::{Cache, Invalidation};
-use pinchora_commands::{App, WelcomeDesign, listen_for_invalidations, on_message, welcome_card_png};
-use pinchora_core::config::WebConfig;
+use pinchora_commands::{
+    App, CardSubject, PreviewError, card_png, listen_for_invalidations, on_member_add, on_message,
+};
+use pinchora_core::{card_design::CardKind, config::WebConfig, i18n::Lang};
 use pinchora_db::{Db, XpGrant};
 use pinchora_web::{WebSettings, WebState};
 use reqwest::Url;
@@ -37,7 +39,10 @@ use sha2::{Digest, Sha256};
 use tokio::net::TcpListener;
 use tower::ServiceExt;
 use twilight_http::Client;
-use twilight_model::{gateway::payload::incoming::MessageCreate, id::Id};
+use twilight_model::{
+    gateway::payload::incoming::{MemberAdd, MessageCreate},
+    id::Id,
+};
 
 // Custom commands and auto-responders.
 #[path = "api/tags.rs"]
@@ -114,6 +119,8 @@ struct Mock {
     channel_lookups: Arc<AtomicUsize>,
     /// Where the bot's own role sits, so a test can move it between two saves.
     bot_position: Arc<AtomicI64>,
+    /// Messages the bot posted: the channel and the request body as text (JSON, or multipart with files).
+    posts: Arc<Mutex<Vec<(u64, String)>>>,
 }
 
 fn user_json(id: u64, name: &str) -> Value {
@@ -329,7 +336,13 @@ async fn revoke(State(mock): State<Mock>, Form(form): Form<HashMap<String, Strin
 }
 
 /// Everything else: user-token routes by bearer token, bot-token routes, message posts.
-async fn discord(State(mock): State<Mock>, method: Method, uri: Uri, headers: HeaderMap) -> (StatusCode, String) {
+async fn discord(
+    State(mock): State<Mock>,
+    method: Method,
+    uri: Uri,
+    headers: HeaderMap,
+    body: Bytes,
+) -> (StatusCode, String) {
     let path = uri.path().to_owned();
     let parts: Vec<&str> = path.trim_matches('/').split('/').collect();
     let bearer = headers
@@ -404,6 +417,8 @@ async fn discord(State(mock): State<Mock>, method: Method, uri: Uri, headers: He
         }
         (&Method::POST, [.., "channels", channel, "messages"]) => {
             let channel = channel.parse::<u64>().unwrap_or(1);
+            let text = String::from_utf8_lossy(&body).into_owned();
+            mock.posts.lock().unwrap().push((channel, text));
             (StatusCode::OK, message_json(channel, unique()).to_string())
         }
         _ => (
@@ -1233,12 +1248,21 @@ async fn without_a_client_secret_the_setup_page_is_served() {
         return;
     };
     let mut browser = h.browser();
-    let page = browser.get("/").await;
+    let page = browser.get("/servers").await;
     assert_eq!(page.status, StatusCode::OK);
     let html = page.text();
     assert!(html.contains("PINCHORA_WEB__CLIENT_SECRET"), "{html}");
     assert!(html.contains(&redirect_uri()), "the redirect to register is shown");
-    assert_eq!(browser.get("/servers").await.text(), html, "every app page shows it");
+    assert_eq!(
+        browser.get("/g/1/overview").await.text(),
+        html,
+        "every app page shows it"
+    );
+    assert_ne!(
+        browser.get("/").await.text(),
+        html,
+        "the public front page needs no login, so it is not the setup page"
+    );
     assert_eq!(browser.get("/setup.css").await.status, StatusCode::OK);
 
     let login = browser.get("/auth/login").await;
@@ -1981,56 +2005,11 @@ async fn the_sync_job_gives_members_the_roles_they_earned() {
 }
 
 #[tokio::test]
-async fn the_welcome_preview_is_the_command_card() {
-    let Some(h) = Harness::new("welcome_preview").await else {
+async fn message_previews_fill_in_the_placeholders() {
+    let Some(h) = Harness::new("message_preview").await else {
         return;
     };
     let (guild, owner, mut browser) = h.managed_server().await;
-    let path = format!("/api/guilds/{guild}/preview/welcome-card");
-    let body = json!({ "theme": "sunset", "title": "HI THERE", "accent": "#8fd3ff" });
-    let preview = browser.write(Method::POST, &path, body).await;
-    assert_eq!(preview.status, StatusCode::OK, "{}", preview.text());
-    assert_eq!(preview.header("content-type"), "image/png");
-    assert!(preview.header("cache-control").contains("no-store"));
-    let shown = save_png("welcome_preview", "sunset", &preview.body);
-
-    // The very function `/config welcome-card` draws with, for the same person and server.
-    let design = WelcomeDesign {
-        theme: Some("sunset".into()),
-        title: Some("HI THERE".into()),
-        accent: Some(0x8fd3ff),
-    };
-    let direct = welcome_card_png(
-        &h.state.app,
-        Id::new(owner),
-        None,
-        &format!("user{owner} G"),
-        "Pinchora Reef",
-        &design,
-    )
-    .await
-    .unwrap();
-    assert!(
-        preview.body.as_ref() == direct.as_slice(),
-        "byte for byte: {}",
-        shown.display()
-    );
-
-    let reef = browser.write(Method::POST, &path, json!({})).await;
-    assert_eq!(reef.status, StatusCode::OK);
-    save_png("welcome_preview", "default", &reef.body);
-    assert_ne!(reef.body, preview.body, "another design, another card");
-
-    let bad = browser
-        .write(Method::POST, &path, json!({ "theme": "neon", "accent": "blue" }))
-        .await;
-    assert_eq!(bad.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert_eq!(fields_of(&bad), ["welcome_theme", "welcome_accent"]);
-    assert!(
-        h.state.app.db.audit_page(guild, None, 5).await.unwrap().is_empty(),
-        "a preview saves nothing"
-    );
-
     let text = browser
         .write(
             Method::POST,
@@ -2053,6 +2032,427 @@ async fn the_welcome_preview_is_the_command_card() {
         default.json()["text"],
         format!("🎉 @user{owner} G reached **level 5**!")
     );
+}
+
+/// A PNG of `w`×`h` in one colour.
+fn png_of(w: u32, h: u32) -> Vec<u8> {
+    let image = image::RgbaImage::from_pixel(w, h, image::Rgba([40, 90, 160, 255]));
+    let mut out = std::io::Cursor::new(Vec::new());
+    image.write_to(&mut out, image::ImageFormat::Png).unwrap();
+    out.into_inner()
+}
+
+/// The new member `user` as the gateway announces them.
+fn joined(guild: u64, user: u64) -> MemberAdd {
+    serde_json::from_value(json!({
+        "guild_id": guild.to_string(),
+        "user": user_json(user, &format!("user{user}")),
+        "nick": null,
+        "roles": [],
+        "joined_at": "2024-01-01T00:00:00.000000+00:00",
+        "deaf": false,
+        "mute": false,
+        "flags": 0,
+        "pending": false,
+    }))
+    .expect("member add JSON")
+}
+
+#[tokio::test]
+async fn the_card_editor_previews_saves_uploads_and_tests_designs() {
+    let Some(h) = Harness::new("card_editor").await else {
+        return;
+    };
+    let (guild, owner, mut browser) = h.managed_server().await;
+    let base = format!("/api/guilds/{guild}");
+
+    // A server that never opened the editor sends the classic card, with goodbyes as text.
+    let cards = browser.get(&format!("{base}/cards")).await;
+    assert_eq!(cards.status, StatusCode::OK, "{}", cards.text());
+    let cards = cards.json();
+    let classic = pinchora_render::templates::classic(CardKind::Welcome, "reef", None, None, Lang::En);
+    assert_eq!(cards["welcome"]["design"], json!(classic));
+    assert_eq!(
+        (&cards["welcome"]["custom"], &cards["welcome"]["delivery"]),
+        (&json!(false), &json!("with_message"))
+    );
+    assert_eq!(cards["goodbye"]["delivery"], "text_only");
+    assert_eq!(
+        cards["goodbye"]["deliveries"].as_array().unwrap().len(),
+        4,
+        "no DMs to who left"
+    );
+    assert_eq!(cards["templates"].as_array().unwrap().len(), 8);
+    assert_eq!(cards["uploads"], json!([]));
+
+    // The preview is the bot's own drawing, byte for byte, with the requester as the member.
+    let banner = cards["templates"][5]["welcome"].clone();
+    assert_eq!(cards["templates"][5]["key"], "starlit-banner");
+    let preview = browser
+        .write(
+            Method::POST,
+            &format!("{base}/preview/card"),
+            json!({ "design": banner }),
+        )
+        .await;
+    assert_eq!(preview.status, StatusCode::OK, "{}", preview.text());
+    assert_eq!(preview.header("content-type"), "image/png");
+    assert!(preview.header("cache-control").contains("no-store"));
+    let shown = save_png("card_editor", "banner-preview", &preview.body);
+    let subject = CardSubject {
+        user: Id::new(owner),
+        avatar: None,
+        name: format!("user{owner} G"),
+        username: format!("user{owner}"),
+        server: "Pinchora Reef".into(),
+        members: Some(1234),
+    };
+    let design = serde_json::from_value(banner.clone()).unwrap();
+    let direct = card_png(&h.state.app, guild, &design, &subject).await.unwrap();
+    assert!(
+        preview.body.as_ref() == direct.as_slice(),
+        "byte for byte: {}",
+        shown.display()
+    );
+
+    // A broken design is refused with the validator's sentences, and nothing is saved.
+    let mut broken = banner.clone();
+    broken["dim"] = json!(95);
+    broken["layers"][2]["text"] = json!("Hi {nickname}");
+    let bad = browser
+        .write(
+            Method::POST,
+            &format!("{base}/preview/card"),
+            json!({ "design": broken }),
+        )
+        .await;
+    assert_eq!(bad.status, StatusCode::UNPROCESSABLE_ENTITY, "{}", bad.text());
+    assert_eq!(fields_of(&bad), ["dim", "layers"]);
+    assert!(bad.text().contains("{nickname} isn't a placeholder"), "{}", bad.text());
+    let put = browser
+        .write(
+            Method::PUT,
+            &format!("{base}/cards/welcome"),
+            json!({ "design": broken, "delivery": "with_message" }),
+        )
+        .await;
+    assert_eq!(put.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(h.state.app.db.audit_page(guild, None, 5).await.unwrap().is_empty());
+
+    // Uploads: only pictures, re-encoded and shrunk to fit the largest canvas.
+    let upload = |content_type: &'static str, bytes: Vec<u8>| {
+        let mut browser = browser.clone();
+        let path = format!("{base}/cards/uploads");
+        async move {
+            let request = Request::builder()
+                .method(Method::POST)
+                .uri(path)
+                .header(header::CONTENT_TYPE, content_type)
+                .header(header::ORIGIN, PUBLIC_URL)
+                .header("sec-fetch-site", "same-origin")
+                .header("x-csrf-token", browser.csrf.clone().unwrap())
+                .body(Body::from(bytes))
+                .unwrap();
+            browser.send(request).await
+        }
+    };
+    let text = upload("text/plain", b"hello".to_vec()).await;
+    assert_eq!(text.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(text.text().contains("PNG, JPEG, WebP or GIF"), "{}", text.text());
+    let junk = upload("image/png", b"not a picture at all".to_vec()).await;
+    assert_eq!(junk.status, StatusCode::UNPROCESSABLE_ENTITY, "{}", junk.text());
+    let huge = upload(
+        "image/png",
+        vec![0; pinchora_core::card_design::UPLOAD_MAX_BYTES + 2048],
+    )
+    .await;
+    assert_eq!(huge.status, StatusCode::PAYLOAD_TOO_LARGE);
+    let sent = upload("image/png", png_of(2000, 1500)).await;
+    assert_eq!(sent.status, StatusCode::OK, "{}", sent.text());
+    let sent = sent.json();
+    assert_eq!((&sent["width"], &sent["height"]), (&json!(1333), &json!(1000)));
+    let id = sent["id"].as_str().unwrap().to_owned();
+    let stored = browser.get(sent["url"].as_str().unwrap()).await;
+    assert_eq!(stored.status, StatusCode::OK);
+    assert_eq!(image::load_from_memory(&stored.body).unwrap().width(), 1333);
+
+    // The design with that upload behind it is saved, audited and announced.
+    let mut mine = banner.clone();
+    mine["background"] = json!({ "type": "upload", "id": id });
+    let mut heard = Box::pin(h.state.app.cache.invalidations().await.expect("subscribe"));
+    let saved = browser
+        .write(
+            Method::PUT,
+            &format!("{base}/cards/welcome"),
+            json!({ "design": mine, "delivery": "before_message" }),
+        )
+        .await;
+    assert_eq!(saved.status, StatusCode::OK, "{}", saved.text());
+    assert_eq!(
+        (&saved.json()["custom"], &saved.json()["delivery"]),
+        (&json!(true), &json!("before_message"))
+    );
+    assert!(announced(&mut heard, Invalidation::Guild(guild)).await);
+    let audit = h.state.app.db.audit_page(guild, None, 5).await.unwrap();
+    let actions: Vec<_> = audit.iter().map(|a| a.action.as_str()).collect();
+    assert_eq!(actions, ["card.put", "card.upload"]);
+    assert_eq!(
+        browser.get(&format!("{base}/cards")).await.json()["welcome"]["design"],
+        mine
+    );
+
+    // Another server cannot borrow it.
+    let (other, _, mut stranger) = h.managed_server().await;
+    let borrowed = stranger
+        .write(
+            Method::PUT,
+            &format!("/api/guilds/{other}/cards/welcome"),
+            json!({ "design": mine, "delivery": "with_message" }),
+        )
+        .await;
+    assert_eq!(borrowed.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(fields_of(&borrowed), ["background"]);
+    assert_eq!(
+        stranger
+            .get(&format!("/api/guilds/{other}/cards/uploads/{id}"))
+            .await
+            .status,
+        StatusCode::NOT_FOUND
+    );
+
+    // A test message goes to a text channel, pinging nobody, with the image first as chosen.
+    h.mock.posts.lock().unwrap().clear();
+    let voice = browser
+        .write(
+            Method::POST,
+            &format!("{base}/cards/welcome/test"),
+            json!({ "design": mine, "delivery": "before_message", "channel_id": LOUNGE.to_string() }),
+        )
+        .await;
+    assert_eq!(voice.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(fields_of(&voice), ["channel_id"]);
+    let tested = browser
+        .write(
+            Method::POST,
+            &format!("{base}/cards/welcome/test"),
+            json!({ "design": mine, "delivery": "before_message", "channel_id": GENERAL.to_string() }),
+        )
+        .await;
+    assert_eq!(tested.status, StatusCode::OK, "{}", tested.text());
+    let posts = std::mem::take(&mut *h.mock.posts.lock().unwrap());
+    assert_eq!(posts.len(), 2, "the image, then the text");
+    assert!(posts.iter().all(|(channel, _)| *channel == GENERAL));
+    assert!(posts[0].1.contains("filename=\"welcome.png\""));
+    assert!(posts[1].1.contains("Test of the welcome image") && !posts[1].1.contains("filename="));
+    assert!(
+        posts[1].1.contains(r#""allowed_mentions":{"parse":[]}"#),
+        "{}",
+        posts[1].1
+    );
+
+    // The note under a test message speaks the server's language.
+    h.state.app.set_guild_lang(guild, Some(Lang::Tr)).await.unwrap();
+    let turkish = browser
+        .write(
+            Method::POST,
+            &format!("{base}/cards/welcome/test"),
+            json!({ "design": mine, "delivery": "text_only", "channel_id": GENERAL.to_string() }),
+        )
+        .await;
+    assert_eq!(turkish.status, StatusCode::OK, "{}", turkish.text());
+    let posts = std::mem::take(&mut *h.mock.posts.lock().unwrap());
+    assert_eq!(posts.len(), 1, "{posts:?}");
+    assert!(
+        posts[0].1.contains("Karşılama görselinin denemesi") && !posts[0].1.contains("Test of the"),
+        "{}",
+        posts[0].1
+    );
+    h.state.app.set_guild_lang(guild, None).await.unwrap();
+
+    // A new member gets the saved design, sent the saved way.
+    let settings = browser
+        .write(
+            Method::PATCH,
+            &format!("{base}/settings"),
+            json!({ "welcome_enabled": true, "welcome_channel_id": GENERAL.to_string() }),
+        )
+        .await;
+    assert_eq!(settings.status, StatusCode::OK, "{}", settings.text());
+    let bot = h.bot_pod().await;
+    let member = unique();
+    on_member_add(bot.clone(), joined(guild, member)).await.expect("join");
+    let posts = std::mem::take(&mut *h.mock.posts.lock().unwrap());
+    assert_eq!(posts.len(), 2, "{posts:?}");
+    assert!(posts[0].1.contains("filename=\"welcome.png\""));
+    assert!(posts[1].1.contains(&format!("<@{member}>")));
+
+    // Goodbyes cannot go by DM; back to the classic card keeps the delivery chosen.
+    let dm = browser
+        .write(
+            Method::PUT,
+            &format!("{base}/cards/goodbye"),
+            json!({ "design": null, "delivery": "dm" }),
+        )
+        .await;
+    assert_eq!(fields_of(&dm), ["delivery"]);
+    let back = browser
+        .write(
+            Method::PUT,
+            &format!("{base}/cards/welcome"),
+            json!({ "design": null, "delivery": "image_only" }),
+        )
+        .await;
+    assert_eq!(back.json()["custom"], false);
+    assert_eq!(back.json()["design"], json!(classic));
+    on_member_add(bot, joined(guild, unique())).await.expect("join");
+    let posts = std::mem::take(&mut *h.mock.posts.lock().unwrap());
+    assert_eq!(posts.len(), 1, "only the image");
+    assert!(posts[0].1.contains("filename=\"welcome.png\""));
+}
+
+/// A design with nothing on it, as small as a card goes, which draws in no time.
+fn blank_design() -> Value {
+    json!({
+        "version": 1, "width": 300, "height": 150,
+        "background": { "type": "solid", "color": "#102030" }, "dim": 0, "layers": [],
+    })
+}
+
+#[tokio::test]
+async fn previews_are_limited_for_the_whole_server_and_refuse_what_is_too_heavy() {
+    let Some(h) = Harness::new("card_preview_limit").await else {
+        return;
+    };
+    let (guild, _, mut browser) = h.managed_server().await;
+    let path = format!("/api/guilds/{guild}/preview/card");
+    for n in 1..=20 {
+        let drawn = browser
+            .write(Method::POST, &path, json!({ "design": blank_design() }))
+            .await;
+        assert_eq!(drawn.status, StatusCode::OK, "preview {n}: {}", drawn.text());
+    }
+    let refused = browser
+        .write(Method::POST, &path, json!({ "design": blank_design() }))
+        .await;
+    assert_eq!(refused.status, StatusCode::TOO_MANY_REQUESTS, "{}", refused.text());
+    assert!(refused.header("retry-after").parse::<u64>().is_ok_and(|s| s >= 1));
+    // The limit is the server's: another server's managers draw as many as they like.
+    let (other_guild, _, mut stranger) = h.managed_server().await;
+    let other = format!("/api/guilds/{other_guild}/preview/card");
+    let drawn = stranger
+        .write(Method::POST, &other, json!({ "design": blank_design() }))
+        .await;
+    assert_eq!(drawn.status, StatusCode::OK, "{}", drawn.text());
+
+    // Too many layers, too big a layer or too heavy a pile is refused with the validator's sentence.
+    let mut heavy = blank_design();
+    let avatar = |i: usize| {
+        json!({
+            "id": format!("a{i}"), "type": "avatar", "x": 0, "y": 0, "w": 150, "h": 150,
+            "shape": "circle", "border_color": "#000000", "border_width": 0,
+        })
+    };
+    heavy["layers"] = json!((0..5).map(avatar).collect::<Vec<_>>());
+    let bad = stranger.write(Method::POST, &other, json!({ "design": heavy })).await;
+    assert_eq!(bad.status, StatusCode::UNPROCESSABLE_ENTITY, "{}", bad.text());
+    assert!(bad.text().contains("at most 4 avatars"), "{}", bad.text());
+    let mut bigger = blank_design();
+    bigger["layers"] = json!([{
+        "id": "s", "type": "shape", "x": 0, "y": 0, "w": 301, "h": 150,
+        "shape": "rect", "fill": "#336699", "border_color": "#000000",
+    }]);
+    let bad = stranger.write(Method::POST, &other, json!({ "design": bigger })).await;
+    assert_eq!(bad.status, StatusCode::UNPROCESSABLE_ENTITY, "{}", bad.text());
+    assert!(
+        bad.text().contains("bigger than the canvas (300×150 px)"),
+        "{}",
+        bad.text()
+    );
+}
+
+#[tokio::test]
+async fn previews_wait_in_their_own_lane_and_give_up_rather_than_crowd_out_the_bots_cards() {
+    let Some(h) = Harness::new("preview_lane").await else {
+        return;
+    };
+    // Four previews at once, each holding its slot for four seconds (the lane waits three): the slots fill,
+    // the rest are told the bot is busy.
+    let jobs: Vec<_> = (0..4)
+        .map(|_| {
+            let app = h.state.app.clone();
+            tokio::spawn(async move {
+                app.render_preview(|_| {
+                    std::thread::sleep(Duration::from_secs(4));
+                    Ok(())
+                })
+                .await
+            })
+        })
+        .collect();
+    let (mut drawn, mut busy) = (0, 0);
+    for job in jobs {
+        match job.await.expect("joined") {
+            Ok(()) => drawn += 1,
+            Err(PreviewError::Busy) => busy += 1,
+            Err(other) => panic!("unexpected: {other}"),
+        }
+    }
+    assert!(drawn >= 1 && busy >= 2, "drawn {drawn}, busy {busy}");
+}
+
+#[tokio::test]
+async fn a_preview_that_takes_too_long_is_given_up_on() {
+    let Some(h) = Harness::new("preview_slow").await else {
+        return;
+    };
+    let slow = h
+        .state
+        .app
+        .render_preview(|_| {
+            std::thread::sleep(Duration::from_secs(8));
+            Ok(())
+        })
+        .await;
+    assert!(matches!(slow, Err(PreviewError::TooSlow)), "{slow:?}");
+    // The job still holds its slot until it ends, so the lane is as busy as it really is.
+}
+
+#[tokio::test]
+async fn a_noisy_upload_is_shrunk_until_it_is_small_enough_to_keep() {
+    let Some(h) = Harness::new("card_upload_noise").await else {
+        return;
+    };
+    let (guild, _, mut browser) = h.managed_server().await;
+    // Random pixels: they hardly compress, so the stored PNG would be over a megabyte at this size.
+    let mut state = 12345u32;
+    let noise = image::RgbImage::from_fn(600, 500, |_, _| {
+        state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+        let v = state.to_le_bytes();
+        image::Rgb([v[1], v[2], v[3]])
+    });
+    let mut sent = std::io::Cursor::new(Vec::new());
+    noise.write_to(&mut sent, image::ImageFormat::Png).unwrap();
+    let request = Request::builder()
+        .method(Method::POST)
+        .uri(format!("/api/guilds/{guild}/cards/uploads"))
+        .header(header::CONTENT_TYPE, "image/png")
+        .header(header::ORIGIN, PUBLIC_URL)
+        .header("sec-fetch-site", "same-origin")
+        .header("x-csrf-token", browser.csrf.clone().unwrap())
+        .body(Body::from(sent.into_inner()))
+        .unwrap();
+    let made = browser.send(request).await;
+    assert_eq!(made.status, StatusCode::OK, "{}", made.text());
+    let made = made.json();
+    let stored = browser.get(made["url"].as_str().unwrap()).await;
+    assert!(
+        stored.body.len() <= pinchora_core::card_design::UPLOAD_STORED_MAX_BYTES,
+        "{} bytes kept",
+        stored.body.len()
+    );
+    let (w, tall) = (made["width"].as_f64().unwrap(), made["height"].as_f64().unwrap());
+    assert!(w < 600.0 && tall < 500.0, "shrunk: {w}x{tall}");
+    assert!((w / tall - 1.2).abs() < 0.02, "in proportion: {w}x{tall}");
 }
 
 #[tokio::test]
@@ -2294,7 +2694,7 @@ async fn access(
 
 #[tokio::test]
 async fn module_switches_save_with_the_command_rules_and_reach_the_bot() {
-    use pinchora_core::modules::{Access, Module};
+    use pinchora_core::modules::{Access, Group, Module};
     let Some(h) = Harness::new("modules").await else {
         return;
     };
@@ -2315,7 +2715,7 @@ async fn module_switches_save_with_the_command_rules_and_reach_the_bot() {
     assert_eq!(list.status, StatusCode::OK, "{}", list.text());
     let list = list.json();
     assert_eq!(list["max_channels"], 50);
-    assert_eq!(list["groups"].as_array().unwrap().len(), 4);
+    assert_eq!(list["groups"].as_array().unwrap().len(), Group::ALL.len());
     let items = list["items"].as_array().unwrap();
     assert_eq!(items.len(), Module::ALL.len());
     for item in items {
@@ -2948,4 +3348,204 @@ async fn points_that_race_each_other_never_leave_the_least_above_the_most() {
             .write(Method::PATCH, &path, json!({ "points_min": 1, "points_max": 500 }))
             .await;
     }
+}
+
+/// A folder shaped like `web/dist`: the app shell, the public pages the build writes out, the text files that
+/// name the site's address, and a hashed asset.
+fn site_dir(name: &str) -> PathBuf {
+    let dir = std::env::temp_dir().join(format!("pinchora-site-{name}-{}", unique()));
+    std::fs::create_dir_all(dir.join("commands")).expect("create the site folder");
+    std::fs::create_dir_all(dir.join("assets")).expect("create the assets folder");
+    let write = |file: &str, text: &str| std::fs::write(dir.join(file), text).expect("write a site file");
+    write(
+        "index.html",
+        "<!doctype html><title>Front page</title><link rel=\"canonical\" href=\"__ORIGIN__/\">",
+    );
+    write(
+        "commands/index.html",
+        "<!doctype html><title>Commands</title><link rel=\"canonical\" href=\"__ORIGIN__/commands\">",
+    );
+    write("robots.txt", "User-agent: *\nSitemap: __ORIGIN__/sitemap.xml\n");
+    write(
+        "sitemap.xml",
+        "<urlset><url><loc>__ORIGIN__/commands</loc></url></urlset>",
+    );
+    write("assets/app-abc123.js", "console.log('app')");
+    write("og.png", "not really a png");
+    dir
+}
+
+#[tokio::test]
+async fn public_pages_are_pages_of_their_own_with_the_sites_address_in_them() {
+    let dir = site_dir("pages");
+    let folder = dir.clone();
+    let Some(h) = Harness::with("public_pages", move |web| web.static_dir = Some(folder)).await else {
+        return;
+    };
+    let mut browser = h.browser();
+
+    let front = browser.get("/").await;
+    assert_eq!(front.status, StatusCode::OK);
+    assert!(front.text().contains("<title>Front page</title>"));
+    assert!(
+        front.text().contains(&format!("href=\"{PUBLIC_URL}/\"")) && !front.text().contains("__ORIGIN__"),
+        "the placeholder becomes the public URL: {}",
+        front.text()
+    );
+    assert_eq!(front.header("cache-control"), "no-cache");
+    assert_eq!(front.header("x-robots-tag"), "", "the front page is for search engines");
+
+    for path in ["/commands", "/commands/"] {
+        let page = browser.get(path).await;
+        assert_eq!(page.status, StatusCode::OK, "{path}");
+        assert!(
+            page.text().contains("<title>Commands</title>"),
+            "{path}: its own page, not the shell"
+        );
+        assert!(page.text().contains(&format!("{PUBLIC_URL}/commands")), "{path}");
+        assert_eq!(page.header("x-robots-tag"), "", "{path}");
+    }
+
+    let shell = browser.get("/servers").await;
+    assert!(shell.text().contains("Front page"), "dashboard pages get the shell");
+    assert_eq!(
+        shell.header("x-robots-tag"),
+        "noindex, nofollow",
+        "and are not for search engines"
+    );
+    assert_eq!(
+        browser.get("/nothing-here").await.header("x-robots-tag"),
+        "noindex, nofollow"
+    );
+
+    let robots = browser.get("/robots.txt").await;
+    assert_eq!(robots.status, StatusCode::OK);
+    assert_eq!(robots.header("content-type"), "text/plain; charset=utf-8");
+    assert_eq!(
+        robots.text(),
+        format!("User-agent: *\nSitemap: {PUBLIC_URL}/sitemap.xml\n")
+    );
+    let sitemap = browser.get("/sitemap.xml").await;
+    assert_eq!(sitemap.header("content-type"), "application/xml; charset=utf-8");
+    assert!(sitemap.text().contains(&format!("<loc>{PUBLIC_URL}/commands</loc>")));
+
+    let script = browser.get("/assets/app-abc123.js").await;
+    assert_eq!(script.header("cache-control"), "public, max-age=31536000, immutable");
+    assert_eq!(
+        browser.get("/og.png").await.body.as_ref(),
+        b"not really a png",
+        "other files are served as they are"
+    );
+    assert_eq!(browser.get("/commands/missing.png").await.status, StatusCode::NOT_FOUND);
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[tokio::test]
+async fn the_front_page_works_before_login_is_set_up() {
+    let dir = site_dir("unconfigured");
+    let folder = dir.clone();
+    let Some(h) = Harness::with("public_pages_unconfigured", move |web| {
+        web.static_dir = Some(folder);
+        web.client_secret = None;
+    })
+    .await
+    else {
+        return;
+    };
+    let mut browser = h.browser();
+    assert!(browser.get("/").await.text().contains("<title>Front page</title>"));
+    assert!(
+        browser
+            .get("/commands")
+            .await
+            .text()
+            .contains("<title>Commands</title>")
+    );
+    assert!(
+        browser
+            .get("/servers")
+            .await
+            .text()
+            .contains("PINCHORA_WEB__CLIENT_SECRET"),
+        "the dashboard still says what is missing"
+    );
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[tokio::test]
+async fn the_invite_link_sends_visitors_to_discord_with_the_bots_permissions() {
+    let Some(h) = Harness::new("invite").await else {
+        return;
+    };
+    let mut browser = h.browser();
+    let response = browser.get("/invite").await;
+    assert_eq!(response.status, StatusCode::TEMPORARY_REDIRECT);
+    assert_eq!(response.header("cache-control"), "no-cache");
+    let location = Url::parse(response.header("location")).expect("an absolute URL");
+    assert_eq!(location.path(), "/oauth2/authorize");
+    let query: HashMap<String, String> = location.query_pairs().into_owned().collect();
+    assert_eq!(query["client_id"], APPLICATION_ID.to_string());
+    assert_eq!(query["scope"], "bot applications.commands");
+    let permissions: u64 = query["permissions"].parse().expect("permission bits");
+    assert!(permissions & MANAGE_ROLES != 0 && permissions & SEND_MESSAGES != 0);
+    assert!(
+        !query.contains_key("guild_id"),
+        "the visitor picks the server on Discord's page"
+    );
+}
+
+#[tokio::test]
+async fn the_landing_data_is_public_cached_and_knows_who_is_looking() {
+    let Some(h) = Harness::new("landing_data").await else {
+        return;
+    };
+    let cache = &h.state.app.cache;
+    cache.forget("web:landing-counts").await.expect("forget the totals");
+    let mut browser = h.browser();
+
+    let first = browser.get("/api/public/landing").await;
+    assert_eq!(first.status, StatusCode::OK, "{}", first.text());
+    assert_eq!(first.header("cache-control"), "no-store");
+    let body = first.json();
+    assert!(body["viewer"].is_null(), "nobody is logged in");
+    for key in ["servers", "players", "houses", "pets"] {
+        assert!(body["stats"][key].as_i64().is_some_and(|n| n >= 0), "{key}: {body}");
+    }
+
+    // A new player does not show until the totals are counted again.
+    let id = (unique() >> 2) as i64;
+    sqlx::query("INSERT INTO users (id) VALUES ($1) ON CONFLICT (id) DO NOTHING")
+        .bind(id)
+        .execute(h.state.app.db.pool())
+        .await
+        .expect("add a player");
+    let second = browser.get("/api/public/landing").await.json();
+    assert_eq!(second["stats"], body["stats"], "the totals are cached");
+    cache.forget("web:landing-counts").await.expect("forget the totals");
+    let third = browser.get("/api/public/landing").await.json();
+    assert!(third["stats"]["players"].as_i64() > Some(0), "counted again: {third}");
+
+    browser.login(&h, 7_001, vec![]).await;
+    let signed_in = browser.get("/api/public/landing").await.json();
+    assert_eq!(signed_in["viewer"]["name"], "user7001 G");
+    assert!(
+        signed_in["viewer"]["avatar_url"]
+            .as_str()
+            .is_some_and(|url| url.starts_with("https://cdn.discordapp.com/")),
+        "{signed_in}"
+    );
+    assert!(
+        signed_in["viewer"].get("csrf").is_none(),
+        "nothing secret is handed out"
+    );
+
+    // Past the limit it says to wait: the window may roll over once, so twice the limit is sent.
+    let mut flood = h.browser();
+    let mut refused = 0;
+    for _ in 0..125 {
+        if flood.get("/api/public/landing").await.status == StatusCode::TOO_MANY_REQUESTS {
+            refused += 1;
+        }
+    }
+    assert!(refused > 0, "an address that asks 125 times a minute is slowed down");
 }

@@ -6,7 +6,11 @@ use std::{
     sync::{Arc, LazyLock, Mutex},
 };
 
-use pinchora_core::server_events::{POLL_DEFAULT, POLL_MAX, POLL_MIN, parse_duration};
+use pinchora_core::{
+    i18n::Lang,
+    server_events::{POLL_DEFAULT, POLL_MAX, POLL_MIN, parse_duration},
+    t,
+};
 use pinchora_db::{MAX_OPEN_POLLS, NewPoll, PollOpen, PollRow, PollVote};
 use pinchora_render::{PollCard, PollOption, Theme};
 use twilight_interactions::command::{CommandModel, CreateCommand};
@@ -34,8 +38,8 @@ const KEPT_CARDS: usize = 200;
 /// A card drawn at a time (unix seconds).
 type Drawn = (i64, Arc<Vec<u8>>);
 
-/// Result cards rendered for open polls, by poll id.
-static CARDS: LazyLock<Mutex<HashMap<i64, Drawn>>> = LazyLock::new(Mutex::default);
+/// Result cards rendered for open polls, by poll id and language.
+static CARDS: LazyLock<Mutex<HashMap<(i64, Lang), Drawn>>> = LazyLock::new(Mutex::default);
 
 #[derive(CommandModel, CreateCommand)]
 #[command(
@@ -56,21 +60,21 @@ pub struct Poll {
 }
 
 /// The answers a member typed, separated by `|`: mentions stripped, blanks dropped.
-fn parse_options(raw: &str) -> Result<Vec<String>, String> {
+fn parse_options(lang: Lang, raw: &str) -> Result<Vec<String>, String> {
     let options: Vec<String> = raw
         .split('|')
         .map(|o| single_line(&strip_mentions(o)))
         .filter(|o| !o.is_empty())
         .collect();
     if !(2..=5).contains(&options.len()) {
-        return Err("A poll needs two to five answers, separated by `|`, like `Pizza | Tacos | Sushi`.".to_owned());
+        return Err(t!(lang, "poll.bad-options"));
     }
     if options.iter().any(|o| o.chars().count() > OPTION_MAX) {
-        return Err(format!("Each answer can be up to {OPTION_MAX} characters."));
+        return Err(t!(lang, "poll.option-long", max = OPTION_MAX));
     }
     let lower: Vec<String> = options.iter().map(|o| o.to_lowercase()).collect();
     if lower.iter().enumerate().any(|(i, o)| lower[..i].contains(o)) {
-        return Err("Every answer needs to be different.".to_owned());
+        return Err(t!(lang, "poll.duplicate"));
     }
     Ok(options)
 }
@@ -101,7 +105,7 @@ fn parse_button<'a>(mut parts: impl Iterator<Item = &'a str>) -> Option<Click> {
 
 /// The poll as its message shows it: the question, the answers and when it closes. Votes stay
 /// hidden until it closes.
-fn poll_embed(p: &PollRow) -> Embed {
+fn poll_embed(lang: Lang, p: &PollRow) -> Embed {
     let mut lines: Vec<String> = p
         .options
         .iter()
@@ -109,25 +113,22 @@ fn poll_embed(p: &PollRow) -> Embed {
         .map(|(i, o)| format!("**{}** · {o}", i + 1))
         .collect();
     lines.push(String::new());
-    lines.push(format!("Asked by <@{}>", p.author_id));
+    lines.push(t!(lang, "poll.asked-by", author = format!("<@{}>", p.author_id)));
     if p.is_open() {
-        lines.push(format!("Closes {}", relative(p.ends_at)));
+        lines.push(t!(lang, "poll.closes", when = relative(p.ends_at)));
     } else {
-        lines.push("This poll is closed.".to_owned());
+        lines.push(t!(lang, "poll.closed"));
     }
     EmbedBuilder::new()
         .color(if p.is_open() { BRAND } else { SUCCESS })
         .title(&p.question)
         .description(lines.join("\n"))
-        .footer(EmbedFooterBuilder::new(format!(
-            "Poll #{} · one vote each; press your answer again to take it back",
-            p.id
-        )))
+        .footer(EmbedFooterBuilder::new(t!(lang, "poll.footer", id = p.id)))
         .build()
 }
 
 /// An answer button each, then Results; none once the poll is closed.
-fn poll_components(p: &PollRow) -> Vec<Component> {
+fn poll_components(lang: Lang, p: &PollRow) -> Vec<Component> {
     if !p.is_open() {
         return Vec::new();
     }
@@ -139,7 +140,7 @@ fn poll_components(p: &PollRow) -> Vec<Component> {
         .collect();
     buttons.push(button(
         results_id(p.id),
-        "Results",
+        &t!(lang, "poll.results"),
         Some("📊"),
         ButtonStyle::Primary,
         false,
@@ -150,13 +151,13 @@ fn poll_components(p: &PollRow) -> Vec<Component> {
 impl Poll {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
         let Some(guild) = cx.guild_id() else {
-            return tell(cx, "Polls only exist inside a server.").await;
+            return tell(cx, t!(cx.lang(), "poll.guild-only")).await;
         };
         let question = single_line(&strip_mentions(&self.question));
         if question.is_empty() {
-            return tell(cx, "Ask a question.").await;
+            return tell(cx, t!(cx.lang(), "poll.needs-question")).await;
         }
-        let options = match parse_options(&self.options) {
+        let options = match parse_options(cx.lang(), &self.options) {
             Ok(options) => options,
             Err(why) => return tell(cx, why).await,
         };
@@ -164,11 +165,11 @@ impl Poll {
             None => POLL_DEFAULT,
             Some(text) => match parse_duration(text) {
                 Some(span) => span,
-                None => return tell(cx, "I couldn't read that duration. Try `30m`, `6h` or `1d`.").await,
+                None => return tell(cx, t!(cx.lang(), "poll.bad-duration")).await,
             },
         };
         if span < POLL_MIN || span > POLL_MAX {
-            return tell(cx, "A poll stays open from 1 minute to 14 days.").await;
+            return tell(cx, t!(cx.lang(), "poll.duration-range")).await;
         }
         let channel = cx
             .interaction
@@ -193,19 +194,17 @@ impl Poll {
         let poll = match opened {
             PollOpen::Started(poll) => poll,
             PollOpen::TooMany => {
-                return tell(
-                    cx,
-                    format!("You already have {MAX_OPEN_POLLS} polls open here. Wait for one to close."),
-                )
-                .await;
+                return tell(cx, t!(cx.lang(), "poll.too-many", max = MAX_OPEN_POLLS)).await;
             }
         };
+        // The poll's message answers nobody in particular: it speaks the server's language.
+        let server_lang = cx.app.guild_lang(guild).await;
         let posted = cx
             .app
             .http
             .create_message(channel)
-            .embeds(&[poll_embed(&poll)])
-            .components(&poll_components(&poll))
+            .embeds(&[poll_embed(server_lang, &poll)])
+            .components(&poll_components(server_lang, &poll))
             .allowed_mentions(quiet().as_ref())
             .await;
         let message = match posted {
@@ -213,7 +212,7 @@ impl Poll {
             Err(error) => {
                 tracing::warn!(guild, poll = poll.id, %error, "could not post a poll");
                 cx.app.db.abort_poll(poll.id).await?;
-                return tell(cx, post_refusal(channel, &error)).await;
+                return tell(cx, post_refusal(cx.lang(), channel, &error)).await;
             }
         };
         cx.app
@@ -222,10 +221,12 @@ impl Poll {
             .await?;
         tell(
             cx,
-            format!(
-                "Poll **#{}** is open in <#{channel}>: {}",
-                poll.id,
-                message_link(guild, channel.get(), message.id.get())
+            t!(
+                cx.lang(),
+                "poll.opened",
+                id = poll.id,
+                channel = format!("<#{channel}>"),
+                link = message_link(guild, channel.get(), message.id.get())
             ),
         )
         .await
@@ -235,13 +236,13 @@ impl Poll {
 /// `pl:v:<poll>:<option>` votes, `pl:r:<poll>` shows the results so far.
 pub(crate) async fn on_component<'a>(cx: &Cx, parts: impl Iterator<Item = &'a str>) -> anyhow::Result<()> {
     let Some(click) = parse_button(parts) else {
-        return tell(cx, "This button has expired.").await;
+        return tell(cx, t!(cx.lang(), "social.button-expired")).await;
     };
     let (Click::Vote(id, _) | Click::Results(id)) = click;
     let guild = cx.guild_id();
     let poll = cx.app.db.poll(id).await?.filter(|p| Some(p.guild_id as u64) == guild);
     let Some(poll) = poll else {
-        return tell(cx, "That poll no longer exists.").await;
+        return tell(cx, t!(cx.lang(), "poll.gone")).await;
     };
     match click {
         Click::Vote(_, choice) => vote(cx, &poll, choice).await,
@@ -251,24 +252,24 @@ pub(crate) async fn on_component<'a>(cx: &Cx, parts: impl Iterator<Item = &'a st
 
 async fn vote(cx: &Cx, poll: &PollRow, choice: usize) -> anyhow::Result<()> {
     let Some(answer) = poll.options.get(choice) else {
-        return tell(cx, "This button has expired.").await;
+        return tell(cx, t!(cx.lang(), "social.button-expired")).await;
     };
     let user = cx.author()?.id.get();
     let outcome = cx.app.db.vote_poll(poll.id, user, choice, cx.app.now()).await?;
     tell(
         cx,
         match outcome {
-            PollVote::Cast => format!("Your vote for **{answer}** is in."),
-            PollVote::Changed => format!("Moved your vote to **{answer}**."),
-            PollVote::Withdrawn => "Took your vote back.".to_owned(),
-            PollVote::Closed => "This poll has closed.".to_owned(),
+            PollVote::Cast => t!(cx.lang(), "poll.voted", answer = answer),
+            PollVote::Changed => t!(cx.lang(), "poll.moved", answer = answer),
+            PollVote::Withdrawn => t!(cx.lang(), "poll.withdrawn"),
+            PollVote::Closed => t!(cx.lang(), "poll.vote-closed"),
         },
     )
     .await
 }
 
 /// Draws the card for `poll` with the votes in `tally`.
-async fn render(app: &App, poll: &PollRow, tally: &[i64]) -> anyhow::Result<Vec<u8>> {
+async fn render(app: &App, lang: Lang, poll: &PollRow, tally: &[i64]) -> anyhow::Result<Vec<u8>> {
     let card = PollCard {
         number: poll.id,
         question: poll.question.clone(),
@@ -282,6 +283,7 @@ async fn render(app: &App, poll: &PollRow, tally: &[i64]) -> anyhow::Result<Vec<
             })
             .collect(),
         closed: !poll.is_open(),
+        lang,
         theme: Theme::reef(),
     };
     app.render(move |r| r.poll_card(&card)).await
@@ -294,31 +296,33 @@ async fn results(cx: &Cx, poll: &PollRow) -> anyhow::Result<()> {
     let cached = CARDS
         .lock()
         .ok()
-        .and_then(|cards| cards.get(&poll.id).cloned())
+        .and_then(|cards| cards.get(&(poll.id, cx.lang())).cloned())
         .filter(|(drawn, _)| (0..RESULTS_EVERY).contains(&(now - drawn)))
         .map(|(_, png)| png);
     let png = match cached {
         Some(png) => png,
         None => {
             let tally = cx.app.db.poll_tally(poll.id, poll.options.len()).await?;
-            let png = Arc::new(render(&cx.app, poll, &tally).await?);
+            let png = Arc::new(render(&cx.app, cx.lang(), poll, &tally).await?);
             if let Ok(mut cards) = CARDS.lock() {
                 cards.retain(|_, (drawn, _)| (0..RESULTS_EVERY).contains(&(now - *drawn)));
                 if cards.len() >= KEPT_CARDS {
                     cards.clear();
                 }
-                cards.insert(poll.id, (now, png.clone()));
+                cards.insert((poll.id, cx.lang()), (now, png.clone()));
             }
             png
         }
     };
     let note = if poll.is_open() {
-        format!(
-            "Closes {}. Results refresh every {RESULTS_EVERY} seconds.",
-            relative(poll.ends_at)
+        t!(
+            cx.lang(),
+            "poll.results-open",
+            when = relative(poll.ends_at),
+            seconds = RESULTS_EVERY
         )
     } else {
-        "This poll is closed. These are the final results.".to_owned()
+        t!(cx.lang(), "poll.results-closed")
     };
     let embed = EmbedBuilder::new().color(BRAND).description(note);
     let mut data = Cx::card(embed, "poll.png", png.to_vec(), Vec::new(), true);
@@ -341,11 +345,11 @@ pub(crate) async fn close(app: &Arc<App>, id: i64) -> anyhow::Result<bool> {
 }
 
 /// Who won, in words: the leader, a tie, or nobody.
-fn verdict(poll: &PollRow, tally: &[i64]) -> String {
+fn verdict(lang: Lang, poll: &PollRow, tally: &[i64]) -> String {
     let best = tally.iter().copied().max().unwrap_or(0);
     let total: i64 = tally.iter().sum();
     if best == 0 {
-        return "Nobody voted.".to_owned();
+        return t!(lang, "poll.nobody");
     }
     let leaders: Vec<String> = poll
         .options
@@ -354,14 +358,21 @@ fn verdict(poll: &PollRow, tally: &[i64]) -> String {
         .filter(|(_, votes)| **votes == best)
         .map(|(o, _)| format!("**{o}**"))
         .collect();
-    let votes = |n: i64| format!("{n} vote{}", if n == 1 { "" } else { "s" });
+    let votes = |n: i64| t!(lang, "poll.votes", count = n);
     match leaders.as_slice() {
-        [only] => format!(
-            "{only} wins with {} ({}%).",
-            votes(best),
-            PollCard::percent(best, total)
+        [only] => t!(
+            lang,
+            "poll.wins",
+            winner = only,
+            votes = votes(best),
+            percent = PollCard::percent(best, total)
         ),
-        _ => format!("A tie between {} with {} each.", leaders.join(" and "), votes(best)),
+        _ => t!(
+            lang,
+            "poll.tie",
+            leaders = leaders.join(&t!(lang, "poll.tie-and")),
+            votes = votes(best)
+        ),
     }
 }
 
@@ -372,13 +383,15 @@ async fn announce(app: &Arc<App>, poll: &PollRow) -> anyhow::Result<()> {
         return Ok(());
     }
     let tally = app.db.poll_tally(poll.id, poll.options.len()).await?;
-    let png = render(app, poll, &tally).await?;
+    // The result answers nobody in particular: it speaks the server's language.
+    let lang = app.guild_lang(poll.guild_id as u64).await;
+    let png = render(app, lang, poll, &tally).await?;
     let channel = Id::new((poll.channel_id as u64).max(1));
 
     let embed = EmbedBuilder::new()
         .color(SUCCESS)
-        .title(format!("Poll closed: {}", poll.question))
-        .description(verdict(poll, &tally));
+        .title(t!(lang, "poll.closed-title", question = poll.question))
+        .description(verdict(lang, poll, &tally));
     let embed = match ImageSource::attachment("poll.png") {
         Ok(source) => embed.image(source),
         Err(_) => embed,
@@ -413,8 +426,8 @@ async fn announce(app: &Arc<App>, poll: &PollRow) -> anyhow::Result<()> {
             poll.channel_id as u64,
             message as u64,
             None,
-            Some(&[poll_embed(&closed)]),
-            Some(&poll_components(&closed)),
+            Some(&[poll_embed(lang, &closed)]),
+            Some(&poll_components(lang, &closed)),
         )
         .await;
     }
@@ -456,15 +469,15 @@ mod tests {
     #[test]
     fn answers_are_split_cleaned_and_counted() {
         assert_eq!(
-            parse_options("Pizza | <@1> Tacos |  | @everyone Sushi ").unwrap(),
+            parse_options(Lang::En, "Pizza | <@1> Tacos |  | @everyone Sushi ").unwrap(),
             ["Pizza", "Tacos", "everyone Sushi"]
         );
-        assert!(parse_options("Only one").is_err());
-        assert!(parse_options("a|b|c|d|e|f").is_err());
-        assert!(parse_options("a| |<@1>").is_err(), "blanks do not count");
-        assert!(parse_options(&format!("a|{}", "x".repeat(81))).is_err());
-        assert!(parse_options(&format!("a|{}", "x".repeat(80))).is_ok());
-        assert!(parse_options("Same|same").is_err());
+        assert!(parse_options(Lang::En, "Only one").is_err());
+        assert!(parse_options(Lang::En, "a|b|c|d|e|f").is_err());
+        assert!(parse_options(Lang::En, "a| |<@1>").is_err(), "blanks do not count");
+        assert!(parse_options(Lang::En, &format!("a|{}", "x".repeat(81))).is_err());
+        assert!(parse_options(Lang::En, &format!("a|{}", "x".repeat(80))).is_ok());
+        assert!(parse_options(Lang::En, "Same|same").is_err());
     }
 
     #[test]
@@ -485,7 +498,7 @@ mod tests {
 
     #[test]
     fn an_open_poll_has_a_button_per_answer_and_results() {
-        let rows = poll_components(&poll(true));
+        let rows = poll_components(Lang::En, &poll(true));
         let widths: Vec<usize> = rows
             .iter()
             .map(|r| match r {
@@ -496,19 +509,22 @@ mod tests {
         assert_eq!(widths, [4], "three answers and Results");
         let mut five = poll(true);
         five.options = (1..=5).map(|n| format!("Answer {n}")).collect();
-        let rows = poll_components(&five);
+        let rows = poll_components(Lang::En, &five);
         assert_eq!(rows.len(), 2, "five answers fill a row; Results goes on the next");
-        assert!(poll_components(&poll(false)).is_empty(), "no buttons once closed");
+        assert!(
+            poll_components(Lang::En, &poll(false)).is_empty(),
+            "no buttons once closed"
+        );
     }
 
     #[test]
     fn the_verdict_names_a_winner_a_tie_or_nobody() {
         let p = poll(false);
-        assert_eq!(verdict(&p, &[0, 0, 0]), "Nobody voted.");
-        assert_eq!(verdict(&p, &[3, 1, 0]), "**Pizza** wins with 3 votes (75%).");
-        assert_eq!(verdict(&p, &[1, 0, 0]), "**Pizza** wins with 1 vote (100%).");
+        assert_eq!(verdict(Lang::En, &p, &[0, 0, 0]), "Nobody voted.");
+        assert_eq!(verdict(Lang::En, &p, &[3, 1, 0]), "**Pizza** wins with 3 votes (75%).");
+        assert_eq!(verdict(Lang::En, &p, &[1, 0, 0]), "**Pizza** wins with 1 vote (100%).");
         assert_eq!(
-            verdict(&p, &[2, 2, 1]),
+            verdict(Lang::En, &p, &[2, 2, 1]),
             "A tie between **Pizza** and **Tacos** with 2 votes each."
         );
     }

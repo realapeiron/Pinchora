@@ -7,7 +7,11 @@
 use std::{sync::Arc, time::Duration};
 
 use chrono::{DateTime, Utc};
-use pinchora_core::server_events::{GIVEAWAY_MAX, GIVEAWAY_MIN, parse_duration, pick_winners};
+use pinchora_core::{
+    i18n::Lang,
+    server_events::{GIVEAWAY_MAX, GIVEAWAY_MIN, parse_duration, pick_winners},
+    t,
+};
 use pinchora_db::{EndedGiveaway, EntryToggle, GiveawayOpen, GiveawayRow, MAX_RUNNING_GIVEAWAYS, NewGiveaway, Reroll};
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::{
@@ -123,50 +127,65 @@ fn timestamp(at: DateTime<Utc>) -> String {
 }
 
 /// The giveaway as its message shows it: details and the entry count while it runs, the winners after.
-fn giveaway_embed(g: &GiveawayRow) -> Embed {
+fn giveaway_embed(lang: Lang, g: &GiveawayRow) -> Embed {
     let mut lines = Vec::new();
     if g.is_running() {
-        lines.push("Press **Enter** to join. Press it again to leave.".to_owned());
+        lines.push(t!(lang, "giveaway.press-enter"));
         lines.push(String::new());
     }
-    lines.push(format!("Hosted by <@{}>", g.host_id));
+    lines.push(t!(lang, "giveaway.hosted-by", host = format!("<@{}>", g.host_id)));
     if g.is_running() {
-        lines.push(format!("Ends {} ({})", relative(g.ends_at), timestamp(g.ends_at)));
+        lines.push(t!(
+            lang,
+            "giveaway.ends",
+            relative = relative(g.ends_at),
+            absolute = timestamp(g.ends_at)
+        ));
     } else {
-        lines.push(format!("Ended {}", relative(g.ended_at.unwrap_or(g.ends_at))));
+        lines.push(t!(
+            lang,
+            "giveaway.ended",
+            relative = relative(g.ended_at.unwrap_or(g.ends_at))
+        ));
     }
-    lines.push(format!("Winners: **{}**", g.winners));
+    lines.push(t!(lang, "giveaway.winners-line", count = g.winners));
     if g.shells > 0 {
-        lines.push(format!("Prize: **{}** shells each", thousands(g.shells)));
+        lines.push(t!(lang, "giveaway.prize-line", amount = thousands(g.shells)));
     }
     if let Some(role) = g.required_role_id {
-        lines.push(format!("Requires <@&{role}>"));
+        lines.push(t!(lang, "giveaway.requires", role = format!("<@&{role}>")));
     }
     let mut embed = EmbedBuilder::new()
         .color(if g.is_running() { BRAND } else { SUCCESS })
         .title(&g.prize)
         .description(lines.join("\n"));
     embed = if g.is_running() {
-        embed.field(EmbedFieldBuilder::new("Entries", g.entries.to_string()).inline())
+        embed.field(EmbedFieldBuilder::new(t!(lang, "giveaway.entries"), g.entries.to_string()).inline())
     } else if g.winner_ids.is_empty() {
-        embed.field(EmbedFieldBuilder::new("Winners", "Nobody entered"))
+        embed.field(EmbedFieldBuilder::new(
+            t!(lang, "giveaway.winners-field"),
+            t!(lang, "giveaway.nobody-entered"),
+        ))
     } else {
-        embed.field(EmbedFieldBuilder::new("Winners", mentions(&g.winner_ids)))
+        embed.field(EmbedFieldBuilder::new(
+            t!(lang, "giveaway.winners-field"),
+            mentions(&g.winner_ids),
+        ))
     };
     embed
-        .footer(EmbedFooterBuilder::new(format!("Giveaway #{}", g.id)))
+        .footer(EmbedFooterBuilder::new(t!(lang, "giveaway.footer", id = g.id)))
         .build()
 }
 
-fn giveaway_components(g: &GiveawayRow) -> Vec<Component> {
+fn giveaway_components(lang: Lang, g: &GiveawayRow) -> Vec<Component> {
     let (label, style) = if g.is_running() {
-        ("Enter", ButtonStyle::Primary)
+        (t!(lang, "giveaway.enter"), ButtonStyle::Primary)
     } else {
-        ("Ended", ButtonStyle::Secondary)
+        (t!(lang, "giveaway.ended-button"), ButtonStyle::Secondary)
     };
     vec![row(vec![button(
         button_id(g.id),
-        label,
+        &label,
         Some("🎉"),
         style,
         !g.is_running(),
@@ -176,10 +195,10 @@ fn giveaway_components(g: &GiveawayRow) -> Vec<Component> {
 impl GiveawayCommand {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
         let Some(guild) = cx.guild_id() else {
-            return tell(cx, "Giveaways only exist inside a server.").await;
+            return tell(cx, t!(cx.lang(), "giveaway.guild-only")).await;
         };
         if !cx.can_manage_guild() {
-            return tell(cx, "You need the Manage Server permission to run giveaways.").await;
+            return tell(cx, t!(cx.lang(), "giveaway.needs-manage")).await;
         }
         match self {
             Self::Start(c) => start(cx, guild, c).await,
@@ -192,14 +211,14 @@ impl GiveawayCommand {
 
 async fn start(cx: &Cx, guild: u64, c: GiveawayStart) -> anyhow::Result<()> {
     let Some(span) = parse_duration(&c.duration) else {
-        return tell(cx, "I couldn't read that duration. Try `30m`, `2h`, `1d` or `1d12h`.").await;
+        return tell(cx, t!(cx.lang(), "giveaway.bad-duration")).await;
     };
     if span < GIVEAWAY_MIN || span > GIVEAWAY_MAX {
-        return tell(cx, "A giveaway runs from 1 minute to 30 days.").await;
+        return tell(cx, t!(cx.lang(), "giveaway.duration-range")).await;
     }
     let prize = single_line(&strip_mentions(&c.prize));
     if prize.is_empty() {
-        return tell(cx, "Give the giveaway a prize.").await;
+        return tell(cx, t!(cx.lang(), "giveaway.needs-prize")).await;
     }
     let channel = c
         .channel
@@ -230,32 +249,30 @@ async fn start(cx: &Cx, guild: u64, c: GiveawayStart) -> anyhow::Result<()> {
         GiveawayOpen::Broke { balance } => {
             return tell(
                 cx,
-                format!(
-                    "A shells prize is paid by you: {} winner{} x {} shells = **{}** shells, taken now. You have {}.",
-                    c.winners,
-                    if c.winners == 1 { "" } else { "s" },
-                    thousands(shells),
-                    thousands(shells * c.winners),
-                    thousands(balance)
+                t!(
+                    cx.lang(),
+                    "giveaway.broke",
+                    count = c.winners,
+                    each = thousands(shells),
+                    total = thousands(shells * c.winners),
+                    balance = thousands(balance)
                 ),
             )
             .await;
         }
         GiveawayOpen::Full => {
-            return tell(
-                cx,
-                format!("This server already runs {MAX_RUNNING_GIVEAWAYS} giveaways. End one first."),
-            )
-            .await;
+            return tell(cx, t!(cx.lang(), "giveaway.full", max = MAX_RUNNING_GIVEAWAYS)).await;
         }
     };
+    // The giveaway message answers nobody in particular: it speaks the server's language.
+    let server_lang = cx.app.guild_lang(guild).await;
 
     let posted = cx
         .app
         .http
         .create_message(channel)
-        .embeds(&[giveaway_embed(&giveaway)])
-        .components(&giveaway_components(&giveaway))
+        .embeds(&[giveaway_embed(server_lang, &giveaway)])
+        .components(&giveaway_components(server_lang, &giveaway))
         .allowed_mentions(quiet().as_ref())
         .await;
     let message = match posted {
@@ -263,7 +280,7 @@ async fn start(cx: &Cx, guild: u64, c: GiveawayStart) -> anyhow::Result<()> {
         Err(error) => {
             tracing::warn!(guild, giveaway = giveaway.id, %error, "could not post a giveaway");
             cx.app.db.abort_giveaway(giveaway.id).await?;
-            return tell(cx, post_refusal(channel, &error)).await;
+            return tell(cx, post_refusal(cx.lang(), channel, &error)).await;
         }
     };
     // The message is up; the giveaway has to know it (the entry counter and the ending edit it). One more try
@@ -282,19 +299,19 @@ async fn start(cx: &Cx, guild: u64, c: GiveawayStart) -> anyhow::Result<()> {
         }
     }
     let held = if giveaway.escrow() > 0 {
-        format!(
-            " {} shells were taken from you to pay the winners; whatever nobody wins comes back.",
-            thousands(giveaway.escrow())
-        )
+        t!(cx.lang(), "giveaway.held", amount = thousands(giveaway.escrow()))
     } else {
         String::new()
     };
     tell(
         cx,
-        format!(
-            "Giveaway **#{}** is live in <#{channel}>: {}{held}",
-            giveaway.id,
-            message_link(guild, channel.get(), message.id.get())
+        t!(
+            cx.lang(),
+            "giveaway.live",
+            id = giveaway.id,
+            channel = format!("<#{channel}>"),
+            link = message_link(guild, channel.get(), message.id.get()),
+            held = held
         ),
     )
     .await
@@ -304,7 +321,7 @@ async fn start(cx: &Cx, guild: u64, c: GiveawayStart) -> anyhow::Result<()> {
 async fn find(cx: &Cx, guild: u64, id: i64) -> anyhow::Result<Option<GiveawayRow>> {
     let found = cx.app.db.giveaway(id).await?.filter(|g| g.guild_id as u64 == guild);
     if found.is_none() {
-        tell(cx, format!("There is no giveaway #{id} in this server.")).await?;
+        tell(cx, t!(cx.lang(), "giveaway.none", id = id)).await?;
     }
     Ok(found)
 }
@@ -314,16 +331,17 @@ async fn end_now(cx: &Cx, guild: u64, id: i64) -> anyhow::Result<()> {
         return Ok(());
     };
     let Some(ended) = end(&cx.app, giveaway.id, true).await? else {
-        return tell(
-            cx,
-            format!("Giveaway #{id} already ended. Use `/giveaway reroll` to pick someone else."),
-        )
-        .await;
+        return tell(cx, t!(cx.lang(), "giveaway.already-ended", id = id)).await;
     };
     let text = if ended.winners.is_empty() {
-        format!("Ended giveaway **#{id}**: nobody had entered, so there is no winner.")
+        t!(cx.lang(), "giveaway.ended-none", id = id)
     } else {
-        format!("Ended giveaway **#{id}**: {}", mentions(&ended.giveaway.winner_ids))
+        t!(
+            cx.lang(),
+            "giveaway.ended-with",
+            id = id,
+            winners = mentions(&ended.giveaway.winner_ids)
+        )
     };
     tell(cx, text).await
 }
@@ -333,38 +351,28 @@ async fn reroll(cx: &Cx, guild: u64, c: GiveawayReroll) -> anyhow::Result<()> {
     let outcome = cx.app.db.reroll_giveaway(guild, c.id, count, draw).await?;
     let (giveaway, picked) = match outcome {
         Reroll::Done(giveaway, picked) => (*giveaway, picked),
-        Reroll::Missing => return tell(cx, format!("There is no giveaway #{} in this server.", c.id)).await,
+        Reroll::Missing => return tell(cx, t!(cx.lang(), "giveaway.none", id = c.id)).await,
         Reroll::StillRunning => {
-            return tell(
-                cx,
-                format!(
-                    "Giveaway #{} is still running. End it first with `/giveaway end`.",
-                    c.id
-                ),
-            )
-            .await;
+            return tell(cx, t!(cx.lang(), "giveaway.still-running", id = c.id)).await;
         }
         Reroll::NoOneLeft => {
-            return tell(
-                cx,
-                format!(
-                    "Nobody is left to pick for giveaway #{}: every entrant has already won.",
-                    c.id
-                ),
-            )
-            .await;
+            return tell(cx, t!(cx.lang(), "giveaway.no-one-left", id = c.id)).await;
         }
     };
     let winners = mentions(&picked.iter().map(|w| *w as i64).collect::<Vec<_>>());
     // A reroll only picks people: the shells of a shells prize were paid when it ended.
-    let text = format!(
-        "🎉 New winner{} for **{}**: {winners}. Congratulations!{}",
-        if picked.len() == 1 { "" } else { "s" },
-        giveaway.prize,
-        if giveaway.shells > 0 {
-            " (no shells on a reroll)"
+    // The announcement answers nobody in particular: it speaks the server's language.
+    let server_lang = cx.app.guild_lang(guild).await;
+    let text = t!(
+        server_lang,
+        "giveaway.reroll-announce",
+        count = picked.len(),
+        prize = giveaway.prize,
+        winners = winners,
+        note = if giveaway.shells > 0 {
+            t!(server_lang, "giveaway.reroll-no-shells")
         } else {
-            ""
+            String::new()
         }
     );
     let channel = Id::new((giveaway.channel_id as u64).max(1));
@@ -379,42 +387,61 @@ async fn reroll(cx: &Cx, guild: u64, c: GiveawayReroll) -> anyhow::Result<()> {
         post = post.reply(Id::new((message as u64).max(1))).fail_if_not_exists(false);
     }
     let told = match post.await {
-        Ok(_) => format!("Announced in <#{channel}>."),
+        Ok(_) => t!(cx.lang(), "giveaway.announced", channel = format!("<#{channel}>")),
         Err(error) => {
             tracing::warn!(guild, giveaway = giveaway.id, %error, "could not announce a reroll");
-            format!(
-                "I couldn't announce it in <#{channel}>: {}",
-                post_refusal(channel, &error)
+            t!(
+                cx.lang(),
+                "giveaway.announce-failed",
+                channel = format!("<#{channel}>"),
+                reason = post_refusal(cx.lang(), channel, &error)
             )
         }
     };
-    tell(cx, format!("Rerolled giveaway **#{}**: {winners}. {told}", giveaway.id)).await
+    tell(
+        cx,
+        t!(
+            cx.lang(),
+            "giveaway.rerolled",
+            id = giveaway.id,
+            winners = winners,
+            told = told
+        ),
+    )
+    .await
 }
 
 async fn list(cx: &Cx, guild: u64) -> anyhow::Result<()> {
     let running = cx.app.db.running_giveaways(guild).await?;
     if running.is_empty() {
-        return tell(cx, "No giveaways are running. Start one with `/giveaway start`.").await;
+        return tell(cx, t!(cx.lang(), "giveaway.list-empty")).await;
     }
+    let lang = cx.lang();
     let lines: Vec<String> = running
         .iter()
         .map(|g| {
             let prize: String = g.prize.chars().take(40).collect();
             let link = g.message_id.map_or_else(String::new, |m| {
-                format!(" · [jump]({})", message_link(guild, g.channel_id as u64, m as u64))
+                t!(
+                    lang,
+                    "giveaway.jump",
+                    link = message_link(guild, g.channel_id as u64, m as u64)
+                )
             });
-            format!(
-                "**#{}** · {prize} · {} {} · ends {}{link}",
-                g.id,
-                g.entries,
-                if g.entries == 1 { "entry" } else { "entries" },
-                relative(g.ends_at)
+            t!(
+                lang,
+                "giveaway.list-row",
+                id = g.id,
+                prize = prize,
+                entries = t!(lang, "giveaway.entries-count", count = g.entries),
+                ends = relative(g.ends_at),
+                link = link
             )
         })
         .collect();
     let embed = EmbedBuilder::new()
         .color(BRAND)
-        .title("Running giveaways")
+        .title(t!(lang, "giveaway.list-title"))
         .description(lines.join("\n"))
         .build();
     cx.reply(InteractionResponseData {
@@ -429,7 +456,7 @@ async fn list(cx: &Cx, guild: u64) -> anyhow::Result<()> {
 /// `gw:e:<id>`: a member enters the giveaway, or leaves it when they are in.
 pub(crate) async fn on_component<'a>(cx: &Cx, parts: impl Iterator<Item = &'a str>) -> anyhow::Result<()> {
     let Some(id) = parse_button(parts) else {
-        return tell(cx, "This button has expired.").await;
+        return tell(cx, t!(cx.lang(), "social.button-expired")).await;
     };
     let guild = cx.guild_id();
     let giveaway = cx
@@ -439,11 +466,11 @@ pub(crate) async fn on_component<'a>(cx: &Cx, parts: impl Iterator<Item = &'a st
         .await?
         .filter(|g| Some(g.guild_id as u64) == guild);
     let Some(giveaway) = giveaway else {
-        return tell(cx, "That giveaway no longer exists.").await;
+        return tell(cx, t!(cx.lang(), "giveaway.gone")).await;
     };
     let user = cx.author()?.id.get();
     if giveaway.host_id as u64 == user {
-        return tell(cx, "You're hosting this giveaway, so you can't enter it.").await;
+        return tell(cx, t!(cx.lang(), "giveaway.hosting")).await;
     }
     if let Some(role) = giveaway.required_role_id {
         let has_it = cx
@@ -452,18 +479,19 @@ pub(crate) async fn on_component<'a>(cx: &Cx, parts: impl Iterator<Item = &'a st
             .as_ref()
             .is_some_and(|m| m.roles.iter().any(|r| r.get() == role as u64));
         if !has_it {
-            return tell(cx, format!("You need <@&{role}> to enter this giveaway.")).await;
+            return tell(cx, t!(cx.lang(), "giveaway.needs-role", role = format!("<@&{role}>"))).await;
         }
     }
     let entered = cx.app.db.toggle_giveaway_entry(id, user, cx.app.now()).await?;
     let text = match entered {
-        EntryToggle::Closed => return tell(cx, "This giveaway has ended.").await,
-        EntryToggle::Entered(n) => format!(
-            "You're in! **{}** is up for grabs. {n} {} so far.",
-            giveaway.prize,
-            if n == 1 { "entry" } else { "entries" }
+        EntryToggle::Closed => return tell(cx, t!(cx.lang(), "giveaway.closed")).await,
+        EntryToggle::Entered(n) => t!(
+            cx.lang(),
+            "giveaway.entered",
+            prize = giveaway.prize,
+            entries = t!(cx.lang(), "giveaway.entries-count", count = n)
         ),
-        EntryToggle::Left(_) => "You left the giveaway. Press Enter again to rejoin.".to_owned(),
+        EntryToggle::Left(_) => t!(cx.lang(), "giveaway.left"),
     };
     tell(cx, text).await?;
     show_count(&cx.app, id).await;
@@ -496,12 +524,13 @@ async fn refresh_message(app: &App, id: i64) {
         Err(error) => return tracing::debug!(%error, giveaway = id, "giveaway not loaded"),
     };
     if let Some(message) = giveaway.message_id {
+        let lang = app.guild_lang(giveaway.guild_id as u64).await;
         edit_message(
             app,
             giveaway.channel_id as u64,
             message as u64,
             None,
-            Some(&[giveaway_embed(&giveaway)]),
+            Some(&[giveaway_embed(lang, &giveaway)]),
             None,
         )
         .await;
@@ -552,35 +581,34 @@ async fn announce(app: &Arc<App>, g: &GiveawayRow) -> anyhow::Result<()> {
         return Ok(());
     }
     let channel = Id::new((g.channel_id as u64).max(1));
+    let lang = app.guild_lang(g.guild_id as u64).await;
     if let Some(message) = g.message_id {
         edit_message(
             app,
             g.channel_id as u64,
             message as u64,
             None,
-            Some(&[giveaway_embed(g)]),
-            Some(&giveaway_components(g)),
+            Some(&[giveaway_embed(lang, g)]),
+            Some(&giveaway_components(lang, g)),
         )
         .await;
     }
     let winners = mentions(&g.winner_ids);
     let unpaid = g.shells * (i64::from(g.winners) - g.winner_ids.len() as i64).max(0);
     let mut text = if g.winner_ids.is_empty() {
-        format!(
-            "Nobody entered the giveaway for **{}**, so there is no winner.",
-            g.prize
-        )
+        t!(lang, "giveaway.nobody", prize = g.prize)
     } else {
-        format!("🎉 Congratulations {winners}! You won **{}**.", g.prize)
+        t!(lang, "giveaway.congrats", winners = winners, prize = g.prize)
     };
     if g.shells > 0 && !g.winner_ids.is_empty() {
-        text.push_str(&format!(" {} shells were paid to each winner.", thousands(g.shells)));
+        text.push_str(&t!(lang, "giveaway.paid", amount = thousands(g.shells)));
     }
     if unpaid > 0 {
-        text.push_str(&format!(
-            " {} unclaimed shells went back to <@{}>.",
-            thousands(unpaid),
-            g.host_id
+        text.push_str(&t!(
+            lang,
+            "giveaway.unclaimed",
+            amount = thousands(unpaid),
+            host = format!("<@{}>", g.host_id)
         ));
     }
     let no_pings = quiet();
@@ -660,7 +688,7 @@ mod tests {
 
     #[test]
     fn a_running_giveaway_shows_its_terms_and_entry_count() {
-        let embed = giveaway_embed(&giveaway(true));
+        let embed = giveaway_embed(Lang::En, &giveaway(true));
         let text = embed.description.expect("a description");
         for part in [
             "Hosted by <@4>",
@@ -672,7 +700,7 @@ mod tests {
         }
         assert_eq!(embed.fields[0].name, "Entries");
         assert_eq!(embed.fields[0].value, "9");
-        let Component::ActionRow(buttons) = &giveaway_components(&giveaway(true))[0] else {
+        let Component::ActionRow(buttons) = &giveaway_components(Lang::En, &giveaway(true))[0] else {
             panic!("no row");
         };
         let Component::Button(enter) = &buttons.components[0] else {
@@ -685,9 +713,9 @@ mod tests {
     #[test]
     fn an_ended_giveaway_names_its_winners_and_locks_the_button() {
         let ended = giveaway(false);
-        let embed = giveaway_embed(&ended);
+        let embed = giveaway_embed(Lang::En, &ended);
         assert_eq!(embed.fields[0].value, "<@7>, <@8>");
-        let Component::ActionRow(buttons) = &giveaway_components(&ended)[0] else {
+        let Component::ActionRow(buttons) = &giveaway_components(Lang::En, &ended)[0] else {
             panic!("no row");
         };
         let Component::Button(enter) = &buttons.components[0] else {
@@ -698,6 +726,6 @@ mod tests {
             winner_ids: Vec::new(),
             ..ended
         };
-        assert_eq!(giveaway_embed(&nobody).fields[0].value, "Nobody entered");
+        assert_eq!(giveaway_embed(Lang::En, &nobody).fields[0].value, "Nobody entered");
     }
 }

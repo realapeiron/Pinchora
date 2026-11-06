@@ -6,12 +6,9 @@ use std::str::Split;
 use chrono::{DateTime, Duration, Utc};
 use pinchora_core::{i18n::Lang, t};
 use pinchora_db::GameSession;
-use pinchora_game::{
-    lang::upper,
-    play::{
-        Game as Play,
-        checkers::{self as rules, Game, Move, Outcome},
-    },
+use pinchora_game::play::{
+    Game as Play,
+    checkers::{self as rules, Game, Move, Outcome},
 };
 use pinchora_render::{CheckersCard, Theme};
 use twilight_model::{channel::message::Component, http::interaction::InteractionResponseData};
@@ -196,7 +193,7 @@ async fn message(
         None => t!(lang, "board.status-move", name = tag(&names[mover])),
     };
     // The card draws it in capitals.
-    let status = upper(lang, &status);
+    let status = lang.upper(&status);
     let content = match end {
         None => t!(
             lang,

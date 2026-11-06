@@ -4,6 +4,7 @@
 use std::fmt::Write;
 
 use image::{Rgba, RgbaImage, imageops};
+use pinchora_core::{i18n::Lang, t};
 
 use super::{PIXEL, SANS, SpriteArt, text};
 use crate::{
@@ -22,12 +23,12 @@ pub enum ShowcaseKind {
 }
 
 impl ShowcaseKind {
-    fn caption(self) -> &'static str {
+    fn caption(self, lang: Lang) -> String {
         match self {
-            Self::Fish => "FISH",
-            Self::Pet => "PET",
-            Self::Furniture => "FURNITURE",
-            Self::House => "HOME",
+            Self::Fish => t!(lang, "card.showcase.fish"),
+            Self::Pet => t!(lang, "card.showcase.pet"),
+            Self::Furniture => t!(lang, "card.showcase.furniture"),
+            Self::House => t!(lang, "card.showcase.house"),
         }
     }
 }
@@ -183,7 +184,15 @@ fn resize_smooth(img: &RgbaImage, w: u32, h: u32) -> RgbaImage {
 /// Draws up to [`ShowcaseSlot::MAX`] tiles centred in the `width` pixels from `x`, tops at `y`.
 /// Tiles with a sprite share what the house picture leaves, up to a width of their own. Every
 /// edge lies on a whole pixel, so nothing is blended.
-pub(crate) fn draw_row(out: &mut String, t: &Theme, slots: &[ShowcaseSlot<'_>], x: f32, y: f32, width: f32) {
+pub(crate) fn draw_row(
+    out: &mut String,
+    t: &Theme,
+    lang: Lang,
+    slots: &[ShowcaseSlot<'_>],
+    x: f32,
+    y: f32,
+    width: f32,
+) {
     let slots = &slots[..slots.len().min(ShowcaseSlot::MAX)];
     if slots.is_empty() {
         return;
@@ -208,8 +217,8 @@ pub(crate) fn draw_row(out: &mut String, t: &Theme, slots: &[ShowcaseSlot<'_>], 
             tile_w
         };
         match slot.kind {
-            ShowcaseKind::House => house_tile(out, t, slot, at, y, w),
-            _ => sprite_tile(out, t, slot, at, y, w),
+            ShowcaseKind::House => house_tile(out, t, lang, slot, at, y, w),
+            _ => sprite_tile(out, t, lang, slot, at, y, w),
         }
         at += w + ShowcaseSlot::GAP;
     }
@@ -217,7 +226,7 @@ pub(crate) fn draw_row(out: &mut String, t: &Theme, slots: &[ShowcaseSlot<'_>], 
 
 /// A panel with the kind in its corner, the sprite in the middle and the name under it. Fish
 /// swim in the middle of the art box; everything else stands on the floor of it, on a shadow.
-fn sprite_tile(out: &mut String, t: &Theme, slot: &ShowcaseSlot<'_>, x: f32, y: f32, w: f32) {
+fn sprite_tile(out: &mut String, t: &Theme, lang: Lang, slot: &ShowcaseSlot<'_>, x: f32, y: f32, w: f32) {
     t.panel(out, x, y, w, ShowcaseSlot::HEIGHT, 4.0);
     text(
         out,
@@ -228,7 +237,7 @@ fn sprite_tile(out: &mut String, t: &Theme, slot: &ShowcaseSlot<'_>, x: f32, y: 
         false,
         &t.muted,
         "start",
-        slot.kind.caption(),
+        &slot.kind.caption(lang),
     );
     let (art_w, art_h) = (slot.art.w as f32, slot.art.h as f32);
     let (mid_x, floor) = ((x + w / 2.0).floor(), y + ShowcaseSlot::FLOOR);
@@ -259,7 +268,7 @@ fn sprite_tile(out: &mut String, t: &Theme, slot: &ShowcaseSlot<'_>, x: f32, y: 
 }
 
 /// The house picture fills its panel; the kind and the name sit on dark chips over it.
-fn house_tile(out: &mut String, t: &Theme, slot: &ShowcaseSlot<'_>, x: f32, y: f32, w: f32) {
+fn house_tile(out: &mut String, t: &Theme, lang: Lang, slot: &ShowcaseSlot<'_>, x: f32, y: f32, w: f32) {
     let h = ShowcaseSlot::HEIGHT;
     t.panel(out, x, y, w, h, 4.0);
     let _ = write!(
@@ -287,7 +296,7 @@ fn house_tile(out: &mut String, t: &Theme, slot: &ShowcaseSlot<'_>, x: f32, y: f
         false,
         &t.muted,
         "start",
-        slot.kind.caption(),
+        &slot.kind.caption(lang),
     );
     // The name, along the bottom.
     let _ = write!(

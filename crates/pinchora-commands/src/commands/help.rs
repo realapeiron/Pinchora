@@ -10,7 +10,7 @@ use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::{
     application::command::{Command, CommandOption, CommandOptionType},
     channel::message::{
-        Component,
+        Component, MessageFlags,
         component::{ActionRow, Button, ButtonStyle, SelectMenu, SelectMenuOption, SelectMenuType},
     },
     http::interaction::InteractionResponseData,
@@ -25,32 +25,33 @@ pub struct Help;
 
 impl Help {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
-        let data = page_card(cx, 0).await?;
+        // Asked by text, the guide is posted for the channel: there is no private message to turn.
+        let data = page_card(cx, 0, !cx.responder.is_text()).await?;
         cx.reply(data).await
     }
 }
 
 /// An area of the guide: its name, a line about it, and the commands it holds, as the start of their
 /// path (`house` holds `/house view` and everything else under `/house`; `play stats` just that one).
-struct Area {
+pub(crate) struct Area {
     /// Its name and line are `help.area.<key>.title` and `.intro` in the catalogs.
     key: &'static str,
-    covers: &'static [&'static str],
+    pub(crate) covers: &'static [&'static str],
 }
 
 impl Area {
-    fn title(&self, lang: Lang) -> String {
+    pub(crate) fn title(&self, lang: Lang) -> String {
         t!(lang, &format!("help.area.{}.title", self.key))
     }
 
-    fn intro(&self, lang: Lang) -> String {
+    pub(crate) fn intro(&self, lang: Lang) -> String {
         t!(lang, &format!("help.area.{}.intro", self.key))
     }
 }
 
 /// The areas in the order of the guide. A command belongs to the area with the longest start of its
 /// path that matches, so `play stats` can sit with the profile while the other `/play` games sit elsewhere.
-const AREAS: &[Area] = &[
+pub(crate) const AREAS: &[Area] = &[
     Area {
         key: "start",
         covers: &[
@@ -139,6 +140,7 @@ const AREAS: &[Area] = &[
         key: "setup",
         covers: &[
             "config show",
+            "config prefix",
             "config welcome",
             "config welcome-card",
             "config leveling",
@@ -187,10 +189,12 @@ struct Page {
 }
 
 /// A command that can be run: the path of names down to it, and what it says about itself.
-struct Leaf {
-    path: String,
-    text: String,
-    manager: bool,
+pub(crate) struct Leaf {
+    pub(crate) path: String,
+    pub(crate) text: String,
+    pub(crate) manager: bool,
+    /// What it takes, in the order Discord shows the options.
+    pub(crate) options: Vec<CommandOption>,
 }
 
 /// `description` in `lang`, from the localizations registration filled in.
@@ -203,7 +207,7 @@ fn described(description: &str, localizations: Option<&HashMap<String, String>>,
 }
 
 /// Every runnable command and subcommand of `commands`, in registration order, described in `lang`.
-fn leaves(commands: &[Command], lang: Lang) -> Vec<Leaf> {
+pub(crate) fn leaves(commands: &[Command], lang: Lang) -> Vec<Leaf> {
     fn walk(
         options: &[CommandOption],
         path: &str,
@@ -231,6 +235,7 @@ fn leaves(commands: &[Command], lang: Lang) -> Vec<Leaf> {
                 path: path.to_owned(),
                 manager: manager || english.contains("Manage Server"),
                 text,
+                options: options.to_vec(),
             });
         }
         for sub in subs {
@@ -265,7 +270,7 @@ fn leaves(commands: &[Command], lang: Lang) -> Vec<Leaf> {
 }
 
 /// The area that holds `path`: the one with the longest start of the path, if exactly one has it.
-fn area_of(path: &str) -> Option<usize> {
+pub(crate) fn area_of(path: &str) -> Option<usize> {
     let mut best: Option<(usize, usize)> = None;
     let mut tied = false;
     for (index, area) in AREAS.iter().enumerate() {
@@ -425,9 +430,9 @@ fn controls(pages: &[Page], at: usize, lang: Lang) -> Vec<Component> {
     ]
 }
 
-/// The card for page `at` (the last one when it is past the end), with its controls. Private: the
+/// The card for page `at` (the last one when it is past the end), with its controls. Private, the
 /// controls are one person's to turn.
-async fn page_card(cx: &Cx, at: usize) -> anyhow::Result<InteractionResponseData> {
+async fn page_card(cx: &Cx, at: usize, private: bool) -> anyhow::Result<InteractionResponseData> {
     let lang = cx.lang();
     let pages = &PAGES[&lang];
     let at = at.min(pages.len().saturating_sub(1));
@@ -442,12 +447,18 @@ async fn page_card(cx: &Cx, at: usize) -> anyhow::Result<InteractionResponseData
         theme: Theme::reef(),
     };
     let png = cx.app.render(move |r| r.help_card(&card)).await?;
+    let mut description = t!(lang, "help.description");
+    if let Some(guild) = cx.guild_id() {
+        let prefix = crate::text::shown_prefix(&cx.app, guild).await;
+        description.push('\n');
+        description.push_str(&t!(lang, "text.help-hint", prefix = prefix));
+    }
     let embed = EmbedBuilder::new()
         .color(BRAND)
         .title(t!(lang, "help.title"))
-        .description(t!(lang, "help.description"))
+        .description(description)
         .footer(EmbedFooterBuilder::new(t!(lang, "help.footer")));
-    Ok(Cx::card(embed, "help.png", png, controls(pages, at, lang), true))
+    Ok(Cx::card(embed, "help.png", png, controls(pages, at, lang), private))
 }
 
 /// `hp:<page>` buttons and the `hp:s` menu, whose value is the page.
@@ -457,7 +468,13 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, value: Opti
         other => other,
     };
     let at = wanted.and_then(|p| p.parse().ok()).unwrap_or(0);
-    let data = page_card(cx, at).await?;
+    let private = cx
+        .interaction
+        .message
+        .as_ref()
+        .and_then(|m| m.flags)
+        .is_none_or(|flags| flags.contains(MessageFlags::EPHEMERAL));
+    let data = page_card(cx, at, private).await?;
     cx.update(data).await
 }
 

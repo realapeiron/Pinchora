@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{Commit, LOBBY, NewParty, PartyGame, PartyJoin, PartyLeave, PartyPlayer};
-use pinchora_game::{lang::upper, party::Party};
+use pinchora_game::party::Party;
 use pinchora_render::PartyLobbyCard;
 use twilight_model::{channel::message::component::ButtonStyle, http::interaction::InteractionResponseData};
 use twilight_util::builder::embed::EmbedBuilder;
@@ -107,8 +107,8 @@ pub(crate) async fn view(
     let label = party.label_in(lang);
     let png = {
         // The card draws its title and footer in capitals, which Turkish spells with its own İ.
-        let (title, tagline, shown) = (upper(lang, &label), tagline.clone(), shown.clone());
-        let footer = upper(lang, &t!(lang, "party.lobby.ready"));
+        let (title, tagline, shown) = (lang.upper(&label), tagline.clone(), shown.clone());
+        let footer = lang.upper(&t!(lang, "party.lobby.ready"));
         app.render(move |r| {
             r.party_lobby_card(&PartyLobbyCard {
                 lang,

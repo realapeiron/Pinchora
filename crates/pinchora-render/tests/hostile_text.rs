@@ -3,17 +3,18 @@
 //! characters) must not stop a card from rendering.
 
 use image::RgbaImage;
+use pinchora_core::card_design::{CardKind, Content};
 use pinchora_render::{
-    Backdrop, BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, BottleCard, CharacterCard, CheckersCard,
-    ChessCard, Connect4Card, CrewView, DerbyCard, DerbyLane, DexCard, DexCell, DropCard, DropCritter, EditorCell,
-    EditorSection, EntriesCard, EntryHeader, EntryPicture, EntryRow, FleetCard, GridSlot, HangmanCard, HangmanLetter,
-    HaulCard, HaulTile, HeistCard, HelpCard, HelpRow, ItemGridCard, LastWeekEntry, LeaderboardCard, LeaderboardEntry,
-    LettersCard, LevelUpCard, Mood, NextRole, NurseryCard, NurseryPet, PartyLobbyCard, PearlCard, PearlSeat, PetCard,
-    PetStatus, PickView, PicrossCard, PollCard, PollOption, PostcardCard, PotCard, PotState, ProfileCard, PromptCard,
-    PromptTone, RaceCard, Racer, RacerState, RadarCard, RankCard, RatherCard, Renderer, Reveal, SeaView, ShareGrabCard,
-    ShellCard, ShipView, ShowcaseKind, ShowcaseSlot, SpriteArt, StageView, StandingRow, StandingsCard, SurgeCard,
-    SurgeState, Theme, Tide2048Card, WalletCard, WelcomeCard, WordleCard, WordleRow, WrappedCard, WrappedFish,
-    WrappedHouse, WrappedTotals, encode_png,
+    Backdrop, BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, BottleCard, CardFill, CharacterCard, CheckersCard,
+    ChessCard, Connect4Card, CrewView, DerbyCard, DerbyLane, DesignedCard, DexCard, DexCell, DropCard, DropCritter,
+    EditorCell, EditorSection, EntriesCard, EntryHeader, EntryPicture, EntryRow, FleetCard, GridSlot, HangmanCard,
+    HangmanLetter, HaulCard, HaulTile, HeistCard, HelpCard, HelpRow, ItemGridCard, LastWeekEntry, LeaderboardCard,
+    LeaderboardEntry, LettersCard, LevelUpCard, Mood, NextRole, NurseryCard, NurseryPet, PartyLobbyCard, PearlCard,
+    PearlSeat, PetCard, PetStatus, PickView, PicrossCard, PollCard, PollOption, PostcardCard, PotCard, PotState,
+    ProfileCard, PromptCard, PromptTone, RaceCard, Racer, RacerState, RadarCard, RankCard, RatherCard, Renderer,
+    Reveal, SeaView, ShareGrabCard, ShellCard, ShipView, ShowcaseKind, ShowcaseSlot, SpriteArt, StageView, StandingRow,
+    StandingsCard, SurgeCard, SurgeState, Theme, Tide2048Card, WalletCard, WelcomeCard, WordleCard, WordleRow,
+    WrappedCard, WrappedFish, WrappedHouse, WrappedTotals, encode_png, templates,
 };
 
 /// Emoji, a Chinese letter, markup, then code points XML 1.0 forbids or a parser may refuse: U+FFFE, U+FFFF, a
@@ -146,7 +147,28 @@ fn hostile_text_renders_on_every_card() {
             server_name: HOSTILE,
             member_number: Some(12),
             title: HOSTILE,
+            lang: pinchora_core::i18n::Lang::En,
             theme: t(),
+        }),
+    ));
+    // A server's own design: hostile names in the placeholders, and hostile text typed into a layer.
+    let mut design = templates::template("starlit-banner", CardKind::Welcome).expect("a template");
+    if let Some(Content::Text { text, .. }) = design.layers.iter_mut().map(|l| &mut l.content).last() {
+        *text = format!("{HOSTILE} {{user}}");
+    }
+    let fill = CardFill {
+        user: HOSTILE,
+        username: HOSTILE,
+        server: HOSTILE,
+        members: Some(12),
+    };
+    drawn.push((
+        "designed",
+        r.designed_card(&DesignedCard {
+            design: &design,
+            avatar_png: &[],
+            upload_png: None,
+            fill: &fill,
         }),
     ));
     drawn.push((
@@ -156,6 +178,7 @@ fn hostile_text_renders_on_every_card() {
             avatar_png: &[],
             from: 2,
             to: 3,
+            lang: pinchora_core::i18n::Lang::En,
             theme: t(),
         }),
     ));
@@ -173,6 +196,7 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "badge collection",
         r.badge_collection(&BadgeCollectionCard {
+            lang: pinchora_core::i18n::Lang::En,
             cells: &cells,
             legend: &[(HOSTILE, 0x3a9bdc)],
             theme: t(),
@@ -181,6 +205,7 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "leaderboard",
         r.leaderboard_card(&LeaderboardCard {
+            lang: pinchora_core::i18n::Lang::Tr,
             title: hostile(),
             entries: vec![LeaderboardEntry {
                 rank: 1,
@@ -195,13 +220,14 @@ fn hostile_text_renders_on_every_card() {
                 name: hostile(),
                 value: hostile(),
             }],
-            empty: "nobody",
+            empty: "nobody".to_owned(),
             theme: t(),
         }),
     ));
     drawn.push((
         "poll",
         r.poll_card(&PollCard {
+            lang: pinchora_core::i18n::Lang::En,
             number: 3,
             question: hostile(),
             options: vec![
@@ -223,6 +249,7 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "pet",
         r.pet_card(&PetCard {
+            lang: pinchora_core::i18n::Lang::En,
             sprite_png: png.clone(),
             sprite_w: 16,
             sprite_h: 16,
@@ -245,6 +272,7 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "nursery",
         r.nursery_card(&NurseryCard {
+            lang: pinchora_core::i18n::Lang::En,
             title: hostile(),
             subtitle: hostile(),
             pets: vec![NurseryPet {
@@ -832,6 +860,7 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "wrapped",
         r.wrapped_card(&WrappedCard {
+            lang: pinchora_core::i18n::Lang::Tr,
             year: 2026,
             display_name: HOSTILE,
             avatar_png: &[],

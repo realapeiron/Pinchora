@@ -133,7 +133,7 @@ pub(crate) async fn view(
     };
     let card = DexCard {
         title: t!(lang, "dex.title"),
-        tab: letters::upper(lang, kind.label_in(lang)),
+        tab: lang.upper(kind.label_in(lang)),
         owner: name.to_owned(),
         found: found_here,
         total: list.len(),

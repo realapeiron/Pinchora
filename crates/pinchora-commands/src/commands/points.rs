@@ -1,4 +1,8 @@
-use pinchora_core::settings::{self, FieldError};
+use pinchora_core::{
+    i18n::Lang,
+    settings::{self, FieldError},
+    t,
+};
 use pinchora_db::{Db, GuildSettings};
 use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
 use twilight_util::builder::embed::{EmbedBuilder, EmbedFooterBuilder};
@@ -70,9 +74,9 @@ pub struct ConfigPoints {
 }
 
 impl ConfigPoints {
-    /// Stores what was given. `Err` carries the reason when the result would make no sense; the
-    /// rules are the dashboard's too (`pinchora_core::settings`).
-    pub async fn apply(self, db: &Db, guild: u64) -> anyhow::Result<Result<GuildSettings, String>> {
+    /// Stores what was given. `Err` carries the reason, in `lang`, when the result would make no sense;
+    /// the rules are the dashboard's too (`pinchora_core::settings`).
+    pub async fn apply(self, db: &Db, guild: u64, lang: Lang) -> anyhow::Result<Result<GuildSettings, String>> {
         let current = db.guild_settings(guild).await?;
         let min = self.min.unwrap_or(current.points_min.into());
         let max = self.max.unwrap_or(current.points_max.into());
@@ -84,7 +88,7 @@ impl ConfigPoints {
         })();
         let (name, emoji) = match checked {
             Ok(values) => values,
-            Err(error) => return Ok(Err(error.message)),
+            Err(error) => return Ok(Err(error.text(lang))),
         };
         Ok(Ok(db
             .update_points(
@@ -99,18 +103,19 @@ impl ConfigPoints {
     }
 }
 
-/// "points" -> "Points", for titles.
-pub(crate) fn capitalized(name: &str) -> String {
+/// "points" -> "Points", for titles; Turkish capitalises `i` as `İ` and `ı` as `I`.
+pub(crate) fn capitalized(name: &str, lang: Lang) -> String {
     let mut chars = name.chars();
-    chars
-        .next()
-        .map_or_else(String::new, |c| c.to_uppercase().chain(chars).collect())
+    chars.next().map_or_else(String::new, |c| {
+        lang.upper(c.encode_utf8(&mut [0; 4])).chars().chain(chars).collect()
+    })
 }
 
 impl PointsCommand {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
+        let lang = cx.lang();
         let Some(guild) = cx.guild_id() else {
-            return cx.reply_ephemeral("Points only exist inside a server.").await;
+            return cx.reply_ephemeral(t!(lang, "points.guild-only")).await;
         };
         let settings = cx.app.guild_settings(guild).await?;
         let (emoji, name) = (&settings.points_emoji, &settings.points_name);
@@ -121,24 +126,28 @@ impl PointsCommand {
                     None => (cx.author()?.clone(), cx.author_display_name()),
                 };
                 if user.bot {
-                    return cx.reply_ephemeral(format!("Bots don't earn {name}.")).await;
+                    return cx.reply_ephemeral(t!(lang, "points.no-bots", name = name)).await;
                 }
                 if super::privacy::private_profile(cx, user.id.get()).await? {
                     return Ok(());
                 }
                 let (points, rank) = cx.app.db.member_points(guild, user.id.get()).await?;
                 let footer = match (rank, settings.points_enabled) {
-                    (Some(rank), _) => format!("Rank #{rank} on this server"),
-                    (None, true) => format!("Chat to earn {name}"),
-                    (None, false) => format!("Chatting doesn't earn {name} on this server"),
+                    (Some(rank), _) => t!(lang, "points.rank", rank = rank),
+                    (None, true) => t!(lang, "points.chat-to-earn", name = name),
+                    (None, false) => t!(lang, "points.chat-off", name = name),
                 };
                 let embed = EmbedBuilder::new()
                     .color(BRAND)
-                    .title(format!("{emoji} {}", capitalized(name)))
-                    .description(format!(
-                        "{} ({display}) has **{}** {emoji} {name}.",
-                        mention(user.id),
-                        thousands(points)
+                    .title(format!("{emoji} {}", capitalized(name, lang)))
+                    .description(t!(
+                        lang,
+                        "points.balance",
+                        user = mention(user.id),
+                        display = display,
+                        points = thousands(points),
+                        emoji = emoji,
+                        name = name
                     ))
                     .footer(EmbedFooterBuilder::new(footer))
                     .build();
@@ -146,46 +155,53 @@ impl PointsCommand {
             }
             Self::Give(c) => {
                 if !cx.can_manage_guild() {
-                    return cx
-                        .reply_ephemeral("You need the Manage Server permission to give points.")
-                        .await;
+                    return cx.reply_ephemeral(t!(lang, "points.give-denied")).await;
                 }
                 let target = &c.user.resolved;
                 if target.bot {
-                    return cx.reply_ephemeral(format!("Bots don't earn {name}.")).await;
+                    return cx.reply_ephemeral(t!(lang, "points.no-bots", name = name)).await;
                 }
                 let balance = cx.app.db.give_points(guild, target.id.get(), c.amount).await?;
                 let embed = EmbedBuilder::new()
                     .color(SUCCESS)
-                    .description(format!(
-                        "Gave **{}** {emoji} {name} to {}. They have **{}** now.",
-                        thousands(c.amount),
-                        mention(target.id),
-                        thousands(balance)
+                    .description(t!(
+                        lang,
+                        "points.gave",
+                        amount = thousands(c.amount),
+                        emoji = emoji,
+                        name = name,
+                        user = mention(target.id),
+                        balance = thousands(balance)
                     ))
                     .build();
                 cx.reply_embed(embed).await
             }
             Self::Take(c) => {
                 if !cx.can_manage_guild() {
-                    return cx
-                        .reply_ephemeral("You need the Manage Server permission to take points.")
-                        .await;
+                    return cx.reply_ephemeral(t!(lang, "points.take-denied")).await;
                 }
                 let target = &c.user.resolved;
                 let (taken, balance) = cx.app.db.take_points(guild, target.id.get(), c.amount).await?;
                 if taken == 0 {
                     return cx
-                        .reply_ephemeral(format!("{} has no {name} to take.", mention(target.id)))
+                        .reply_ephemeral(t!(
+                            lang,
+                            "points.nothing-to-take",
+                            user = mention(target.id),
+                            name = name
+                        ))
                         .await;
                 }
                 let embed = EmbedBuilder::new()
                     .color(SUCCESS)
-                    .description(format!(
-                        "Took **{}** {emoji} {name} from {}. They have **{}** left.",
-                        thousands(taken),
-                        mention(target.id),
-                        thousands(balance)
+                    .description(t!(
+                        lang,
+                        "points.took",
+                        amount = thousands(taken),
+                        emoji = emoji,
+                        name = name,
+                        user = mention(target.id),
+                        balance = thousands(balance)
                     ))
                     .build();
                 cx.reply_embed(embed).await

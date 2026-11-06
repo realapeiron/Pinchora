@@ -85,7 +85,8 @@ pub struct GatewayConfig {
     /// Listen for `GUILD_MEMBER_ADD` (privileged "Server Members" intent) for welcome cards.
     pub member_events: bool,
     /// Listen for message text (privileged "Message Content" intent): without it the bot cannot read chat,
-    /// so keyword auto-responders stay locked. Discord needs verification for it above 100 servers.
+    /// so keyword auto-responders stay locked and text commands only work after an @mention of the bot.
+    /// Discord needs verification for it above 100 servers.
     pub message_content: bool,
 }
 

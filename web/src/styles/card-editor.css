@@ -1,0 +1,637 @@
+/* The welcome image editor: a toolbar, then layers | canvas | properties. Narrower screens put layers and
+   properties in one column beside the canvas (1024-1499 px), then under it, then fold to one column. */
+
+.content:has(.card-editor) {
+  max-width: 1480px;
+}
+
+.card-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+}
+
+.card-toolbar-gap {
+  flex: 1;
+}
+
+.card-send {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+.card-send .pixel-select {
+  width: auto;
+  min-width: 260px;
+}
+
+.segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 2px;
+  background: var(--outline);
+}
+
+.segment {
+  position: relative;
+  min-height: 34px;
+  padding: 6px 12px;
+  border: 0;
+  color: var(--muted);
+  font: 600 13px/1.2 var(--font-body);
+  background: #0c1230;
+  cursor: pointer;
+}
+.segment:hover {
+  color: var(--ink);
+}
+.segment.is-checked {
+  color: var(--outline);
+  background: var(--gold);
+}
+/* In the property panel the segments share each row's width, so no dark gap trails the last one. */
+.prop .segmented {
+  display: flex;
+}
+.prop .segment {
+  flex: 1 1 auto;
+  text-align: center;
+}
+.segment .dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 6px;
+  vertical-align: middle;
+  background: var(--accent);
+}
+
+.card-workspace {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr) 300px;
+  grid-template-areas: "layers center props";
+  gap: 16px;
+  align-items: start;
+}
+.card-workspace .panel .panel-body {
+  padding: 14px;
+}
+
+/* Layers and properties are grid items of the workspace; a wrapper only gathers them where they share a column. */
+.card-aside {
+  display: contents;
+}
+.card-layers {
+  grid-area: layers;
+}
+.card-props {
+  grid-area: props;
+}
+
+.card-center {
+  grid-area: center;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  /* The canvas stays in view, under the top bar, while the panels beside it scroll. */
+  position: sticky;
+  top: 84px;
+}
+
+.card-zoom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.card-zoom-value {
+  min-width: 48px;
+  text-align: center;
+}
+.card-snap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.card-size {
+  margin-left: auto;
+}
+
+.card-viewport {
+  overflow: auto;
+  max-height: 72vh;
+  padding: 4px;
+  background: var(--outline);
+}
+
+/* The canvas: the drawing, with the hit boxes, handles and guides laid over it. */
+.card-stage {
+  position: relative;
+  margin: 0 auto;
+  touch-action: none;
+  user-select: none;
+}
+.card-stage.is-transparent {
+  background: repeating-conic-gradient(#2a3157 0 25%, #1c2244 0 50%) 0 0 / 16px 16px;
+}
+.card-svg {
+  display: block;
+}
+
+.card-overlay {
+  position: absolute;
+  inset: 0;
+}
+
+.card-hit {
+  position: absolute;
+  cursor: move;
+  touch-action: none;
+}
+.card-hit:hover {
+  outline: 1px dashed rgb(255 209 102 / 0.6);
+}
+.card-hit.is-locked {
+  pointer-events: none;
+}
+
+.card-selection {
+  position: absolute;
+  pointer-events: none;
+  outline: 2px solid var(--gold);
+  box-shadow: 0 0 0 1px var(--outline);
+}
+.card-selection.is-locked {
+  outline-style: dashed;
+  outline-color: var(--muted);
+}
+
+.card-handle {
+  --size: 14px;
+  position: absolute;
+  width: var(--size);
+  height: var(--size);
+  margin: calc(var(--size) / -2) 0 0 calc(var(--size) / -2);
+  background: var(--gold);
+  box-shadow: 0 0 0 2px var(--outline);
+  pointer-events: auto;
+  touch-action: none;
+}
+@media (pointer: coarse) {
+  .card-handle {
+    --size: 26px;
+  }
+}
+.card-handle-nw {
+  left: 0;
+  top: 0;
+  cursor: nwse-resize;
+}
+.card-handle-n {
+  left: 50%;
+  top: 0;
+  cursor: ns-resize;
+}
+.card-handle-ne {
+  left: 100%;
+  top: 0;
+  cursor: nesw-resize;
+}
+.card-handle-e {
+  left: 100%;
+  top: 50%;
+  cursor: ew-resize;
+}
+.card-handle-se {
+  left: 100%;
+  top: 100%;
+  cursor: nwse-resize;
+}
+.card-handle-s {
+  left: 50%;
+  top: 100%;
+  cursor: ns-resize;
+}
+.card-handle-sw {
+  left: 0;
+  top: 100%;
+  cursor: nesw-resize;
+}
+.card-handle-w {
+  left: 0;
+  top: 50%;
+  cursor: ew-resize;
+}
+
+.card-guide {
+  position: absolute;
+  pointer-events: none;
+  background: var(--heart);
+}
+.card-guide-x {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+.card-guide-y {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+.card-bot-preview {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+.card-bot-preview .preview-image {
+  max-width: 100%;
+}
+
+/* /Layers */
+
+.layer-add {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+/* How much of a card's drawing allowance the visible layers use. */
+.cost-meter {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.cost-label {
+  display: flex;
+  justify-content: space-between;
+}
+.cost-bar {
+  display: block;
+  height: 8px;
+  background: #0c1230;
+  box-shadow: inset 0 0 0 2px #232e5c;
+}
+.cost-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--mint);
+}
+.cost-meter.is-high .cost-bar > span {
+  background: var(--gold);
+}
+.cost-meter.is-over {
+  color: var(--ink);
+}
+.cost-meter.is-over .cost-bar > span {
+  background: var(--accent);
+}
+
+.layer-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.layer-row {
+  display: grid;
+  grid-template-columns: 28px 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px;
+  background: #0c1230;
+  box-shadow: inset 0 0 0 2px #232e5c;
+}
+.layer-row.is-selected {
+  box-shadow: inset 0 0 0 2px var(--gold);
+}
+.layer-row.is-hidden .layer-name {
+  opacity: 0.5;
+}
+
+.layer-icon {
+  min-width: 28px;
+  min-height: 34px;
+  border: 0;
+  color: var(--muted);
+  font-size: 12px;
+  background: transparent;
+  cursor: pointer;
+}
+.layer-icon:hover:not(:disabled) {
+  color: var(--ink);
+}
+.layer-lock[aria-pressed="false"] {
+  opacity: 0.3;
+  filter: grayscale(1);
+}
+.layer-icon:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.layer-name {
+  display: grid;
+  min-width: 0;
+  padding: 6px 4px;
+  border: 0;
+  text-align: left;
+  color: var(--ink);
+  background: transparent;
+  cursor: pointer;
+}
+.layer-kind {
+  color: var(--muted);
+  font-size: 10px;
+}
+.layer-label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 13px;
+}
+
+.layer-moves {
+  display: flex;
+}
+
+.layer-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+/* /Properties */
+
+.props {
+  display: grid;
+  gap: 12px;
+}
+.props-title {
+  color: var(--gold);
+}
+
+.prop {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.prop-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+.prop-switch {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+
+.prop-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.pixel-input.prop-number {
+  min-height: 36px;
+  padding: 6px 8px;
+}
+
+.prop-slider {
+  width: 100%;
+  accent-color: var(--gold);
+}
+
+.prop-color {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 6px;
+}
+.prop-color input[type="color"] {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 2px solid var(--panel-edge);
+  background: #0c1230;
+  cursor: pointer;
+}
+.prop-color .pixel-input {
+  min-height: 40px;
+  padding: 6px 8px;
+  font-family: ui-monospace, monospace;
+}
+
+.prop-text {
+  min-height: 64px;
+}
+
+.picture-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 6px;
+  max-height: 260px;
+  overflow: auto;
+}
+.picture {
+  display: grid;
+  place-items: center;
+  padding: 2px;
+  min-height: 52px;
+  border: 0;
+  background: #0c1230;
+  box-shadow: inset 0 0 0 2px #232e5c;
+  cursor: pointer;
+}
+.picture.is-checked {
+  box-shadow: inset 0 0 0 3px var(--gold);
+}
+.picture img,
+.picture svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.atlas-thumb {
+  display: block;
+}
+
+/* /Dialogs: templates and stickers */
+
+.dialog.card-dialog {
+  width: min(920px, calc(100vw - 32px));
+  max-height: calc(100vh - 64px);
+  overflow: auto;
+}
+
+.template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.template {
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  border: 0;
+  color: var(--ink);
+  text-align: left;
+  background: #0c1230;
+  box-shadow: inset 0 0 0 2px #232e5c;
+  cursor: pointer;
+}
+.template:hover {
+  box-shadow: inset 0 0 0 2px var(--gold);
+}
+/* Every tile has the same frame, whatever the shape of its design, which is shown whole inside it. */
+.template-frame {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 12 / 5;
+  background: repeating-conic-gradient(#2a3157 0 25%, #1c2244 0 50%) 0 0 / 12px 12px;
+}
+.template-art {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+}
+.template-name {
+  font: 400 12px/1.2 var(--font-pixel);
+  letter-spacing: 1px;
+}
+
+.sticker-groups {
+  display: grid;
+  gap: 14px;
+  margin-top: 12px;
+}
+.sticker-group {
+  margin-bottom: 6px;
+  color: var(--muted);
+}
+.sticker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+  gap: 6px;
+}
+.sticker {
+  display: grid;
+  place-items: center;
+  min-height: 56px;
+  border: 0;
+  background: #0c1230;
+  box-shadow: inset 0 0 0 2px #232e5c;
+  cursor: pointer;
+}
+.sticker:hover {
+  box-shadow: inset 0 0 0 2px var(--gold);
+}
+
+.card-errors {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--ink);
+}
+
+.card-test {
+  display: grid;
+  grid-template-columns: minmax(0, 360px) auto;
+  align-items: end;
+  gap: 12px;
+}
+.card-test > .pixel-button {
+  justify-self: start;
+}
+
+/* /Laptops (1024-1499 px): the canvas stays in view on the left; layers and properties share one column on the
+   right, which scrolls by itself when it is taller than the screen. */
+@media (min-width: 1024px) and (max-width: 1499px) {
+  .card-workspace {
+    grid-template-columns: minmax(0, 1fr) 340px;
+    grid-template-areas: "center aside";
+  }
+  .card-aside {
+    grid-area: aside;
+    display: grid;
+    gap: 16px;
+    align-content: start;
+    position: sticky;
+    top: 84px;
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+    /* Room for the panels' pixel edges, which a scroll box would cut. */
+    padding: 0 6px 6px 0;
+  }
+  .card-layers,
+  .card-props {
+    grid-area: auto;
+  }
+  .card-aside .layer-list {
+    max-height: 190px;
+    overflow-y: auto;
+  }
+}
+
+/* /Tablets: the canvas on top, layers and properties side by side under it. */
+@media (max-width: 1023px) {
+  .card-workspace {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      "center center"
+      "layers props";
+  }
+  .card-center {
+    position: static;
+  }
+}
+
+/* /Phones: one column, the canvas first, then what is selected, then the layers. */
+@media (max-width: 767px) {
+  .card-workspace {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: none;
+  }
+  .card-center,
+  .card-layers,
+  .card-props {
+    grid-area: auto;
+  }
+  .card-center {
+    order: 0;
+  }
+  .card-props {
+    order: 1;
+  }
+  .card-layers {
+    order: 2;
+  }
+  .card-send {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+  .card-send .pixel-select {
+    min-width: 0;
+    width: 100%;
+  }
+  .card-toolbar-gap {
+    display: none;
+  }
+  .card-test {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .card-size {
+    display: none;
+  }
+}

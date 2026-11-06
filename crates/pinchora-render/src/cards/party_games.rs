@@ -46,7 +46,7 @@ fn background(out: &mut String, w: f32, h: f32, t: &Theme) {
     }
 }
 
-fn heading(s: &mut String, t: &Theme, title: &str, right: &str) {
+fn heading(s: &mut String, t: &Theme, lang: Lang, title: &str, right: &str) {
     text(
         s,
         36.0,
@@ -56,7 +56,7 @@ fn heading(s: &mut String, t: &Theme, title: &str, right: &str) {
         false,
         &t.ink,
         "start",
-        &escape(&title.to_uppercase()),
+        &escape(&lang.upper(title)),
     );
     if !right.is_empty() {
         let chip = pixel_width(right, 16.0) + 28.0;
@@ -70,12 +70,12 @@ fn heading(s: &mut String, t: &Theme, title: &str, right: &str) {
             false,
             &t.gold,
             "middle",
-            &escape(&right.to_uppercase()),
+            &escape(&lang.upper(right)),
         );
     }
 }
 
-fn footer(s: &mut String, t: &Theme, y: f32, line: &str) {
+fn footer(s: &mut String, t: &Theme, lang: Lang, y: f32, line: &str) {
     text(
         s,
         WIDTH / 2.0,
@@ -85,7 +85,7 @@ fn footer(s: &mut String, t: &Theme, y: f32, line: &str) {
         false,
         &t.muted,
         "middle",
-        &escape(&line.to_uppercase()),
+        &escape(&lang.upper(line)),
     );
 }
 
@@ -149,7 +149,13 @@ impl PartyLobbyCard<'_> {
         let h = top + rows as f32 * 56.0 + 70.0;
         let mut s = open(WIDTH, h);
         background(&mut s, WIDTH, h, t);
-        heading(&mut s, t, self.title, &format!("{}/{}", self.players.len(), max));
+        heading(
+            &mut s,
+            t,
+            self.lang,
+            self.title,
+            &format!("{}/{}", self.players.len(), max),
+        );
         for (i, line) in lines.iter().enumerate() {
             text(
                 &mut s,
@@ -220,7 +226,7 @@ impl PartyLobbyCard<'_> {
         } else {
             t!(self.lang, "party.card.waiting", count = need)
         };
-        footer(&mut s, t, h - 26.0, &line);
+        footer(&mut s, t, self.lang, h - 26.0, &line);
         s.push_str("</svg>");
         s
     }
@@ -278,7 +284,7 @@ impl PearlCard<'_> {
         rect(&mut s, cx - 6.0, cy - 112.0, 6.0, 30.0, "#c98a1e");
         rect(&mut s, cx - 6.0, cy - 112.0, 6.0, 6.0, "#ffd166");
         sprite(&mut s, STAR, cx - 15.0, cy - 138.0, 4.0, &t.accent, "#ffd166");
-        let syllable = self.syllable.to_uppercase();
+        let syllable = self.lang.upper(self.syllable);
         text(
             &mut s,
             cx - 2.0,
@@ -356,7 +362,7 @@ impl PearlCard<'_> {
             false,
             &t.gold,
             "middle",
-            &escape(&truncate_pixel(&self.banner.to_uppercase(), 15.0, 840.0)),
+            &escape(&truncate_pixel(&self.lang.upper(self.banner), 15.0, 840.0)),
         );
         if let Some(word) = self.last_word {
             text(
@@ -368,7 +374,7 @@ impl PearlCard<'_> {
                 false,
                 &t.muted,
                 "middle",
-                &escape(&t!(self.lang, "hotpearl.card.last-word", word = word.to_uppercase())),
+                &escape(&t!(self.lang, "hotpearl.card.last-word", word = self.lang.upper(word))),
             );
         }
         s.push_str("</svg>");
@@ -408,7 +414,7 @@ impl StandingsCard<'_> {
         let h = 150.0 + self.rows.len().min(10) as f32 * 62.0 + 40.0;
         let mut s = open(WIDTH, h);
         background(&mut s, WIDTH, h, t);
-        heading(&mut s, t, self.title, "");
+        heading(&mut s, t, Lang::En, self.title, "");
         text(
             &mut s,
             36.0,
@@ -465,7 +471,7 @@ impl StandingsCard<'_> {
                 false,
                 &t.ink,
                 "end",
-                &escape(&row.score.to_uppercase()),
+                &escape(&Lang::En.upper(row.score)),
             );
             if !row.note.is_empty() {
                 text(
@@ -477,11 +483,11 @@ impl StandingsCard<'_> {
                     false,
                     &t.mint,
                     "end",
-                    &escape(&row.note.to_uppercase()),
+                    &escape(&Lang::En.upper(row.note)),
                 );
             }
         }
-        footer(&mut s, t, h - 16.0, self.footer);
+        footer(&mut s, t, Lang::En, h - 16.0, self.footer);
         s.push_str("</svg>");
         s
     }
@@ -505,7 +511,7 @@ impl LettersCard<'_> {
         let (w, h) = (WIDTH, 380.0);
         let mut s = open(w, h);
         background(&mut s, w, h, t);
-        heading(&mut s, t, self.title, self.round);
+        heading(&mut s, t, Lang::En, self.title, self.round);
         let n = self.letters.len().max(1) as f32;
         let (tile, gap) = (120.0, 22.0);
         let x0 = (w - (n * tile + (n - 1.0) * gap)) / 2.0;
@@ -547,7 +553,7 @@ impl LettersCard<'_> {
                 &escape(&truncate_to(line, 20.0, 828.0)),
             );
         }
-        footer(&mut s, t, 350.0, self.status);
+        footer(&mut s, t, Lang::En, 350.0, self.status);
         s.push_str("</svg>");
         s
     }
@@ -599,7 +605,7 @@ impl EntriesCard<'_> {
         let h = top + rows as f32 * 78.0 + 44.0;
         let mut s = open(WIDTH, h);
         background(&mut s, WIDTH, h, t);
-        heading(&mut s, t, self.title, self.chip);
+        heading(&mut s, t, self.lang, self.title, self.chip);
         text(
             &mut s,
             36.0,
@@ -690,7 +696,7 @@ impl EntriesCard<'_> {
                 sprite(&mut s, STAR, 600.0, y + 24.0, 3.0, &t.gold, "#fff1e8");
             }
         }
-        footer(&mut s, t, h - 16.0, self.footer);
+        footer(&mut s, t, self.lang, h - 16.0, self.footer);
         s.push_str("</svg>");
         s
     }
@@ -729,7 +735,7 @@ impl RaceCard<'_> {
         let (w, h) = (WIDTH, 440.0);
         let mut s = open(w, h);
         background(&mut s, w, h, t);
-        heading(&mut s, t, self.title, "");
+        heading(&mut s, t, self.lang, self.title, "");
         let n = self.racers.len().clamp(1, 4) as f32;
         let col_w = (w - 72.0 - (n - 1.0) * 16.0) / n;
         let (tile, gap) = (24.0, 4.0);
@@ -799,7 +805,7 @@ impl RaceCard<'_> {
                 &label,
             );
         }
-        footer(&mut s, t, 420.0, self.footer);
+        footer(&mut s, t, self.lang, 420.0, self.footer);
         s.push_str("</svg>");
         s
     }
@@ -867,7 +873,7 @@ impl PostcardCard<'_> {
             true,
             ink,
             "start",
-            &escape(&truncate_pixel(&self.place.to_uppercase(), 48.0, 640.0)),
+            &escape(&truncate_pixel(&self.lang.upper(self.place), 48.0, 640.0)),
         );
         // The picture, one image pixel to one card pixel, in a white mount.
         rect(&mut s, 34.0, 128.0, 972.0, 552.0, "#ffffff");
@@ -901,7 +907,7 @@ impl PostcardCard<'_> {
             false,
             ink,
             "middle",
-            &escape(&self.stamp.to_uppercase()),
+            &escape(&self.lang.upper(self.stamp)),
         );
         // A postmark with wavy lines beside it.
         let _ = write!(
@@ -954,7 +960,7 @@ impl RatherCard<'_> {
         let (w, h) = (WIDTH, 470.0);
         let mut s = open(w, h);
         background(&mut s, w, h, t);
-        heading(&mut s, t, &t!(self.lang, "rather.card.title"), self.category);
+        heading(&mut s, t, self.lang, &t!(self.lang, "rather.card.title"), self.category);
         let total = self.votes.map_or(0, |(a, b)| a + b);
         for (i, (label, tone)) in [(self.a, &t.accent), (self.b, &t.mint)].into_iter().enumerate() {
             let x = 36.0 + i as f32 * 424.0;
@@ -1024,7 +1030,7 @@ impl RatherCard<'_> {
             Some(_) => t!(self.lang, "rather.card.so-far"),
             None => t!(self.lang, "rather.card.pick"),
         };
-        footer(&mut s, t, 430.0, &line);
+        footer(&mut s, t, self.lang, 430.0, &line);
         s.push_str("</svg>");
         s
     }
@@ -1091,7 +1097,7 @@ impl PromptCard<'_> {
                 false,
                 &t.muted,
                 "middle",
-                &escape(&self.category.to_uppercase()),
+                &escape(&self.lang.upper(self.category)),
             );
         }
         text(
@@ -1128,7 +1134,7 @@ impl PromptCard<'_> {
                 &escape(line),
             );
         }
-        footer(&mut s, t, h - 20.0, self.footer);
+        footer(&mut s, t, self.lang, h - 20.0, self.footer);
         s.push_str("</svg>");
         s
     }
@@ -1436,7 +1442,7 @@ mod tests {
             theme: Theme::reef(),
         }
         .to_svg();
-        assert!(lobby.contains("boş yer") && lobby.contains("1 OYUNCU DAHA BEKLENIYOR"));
+        assert!(lobby.contains("boş yer") && lobby.contains("1 OYUNCU DAHA BEKLENİYOR"));
         assert_eq!(size(&lobby).0, 900);
 
         let seats = [
@@ -1464,7 +1470,7 @@ mod tests {
             theme: Theme::reef(),
         }
         .to_svg();
-        assert!(pearl.contains("INCI ONDA") && pearl.contains("ELENDI") && pearl.contains("SON KELIME ISIK"));
+        assert!(pearl.contains("İNCİ ONDA") && pearl.contains("ELENDİ") && pearl.contains("SON KELİME IŞIK"));
         assert_eq!(size(&pearl), (900, 560));
 
         let rows = [[1u8, 2, 3, 1, 1]];
@@ -1498,7 +1504,7 @@ mod tests {
             theme: Theme::reef(),
         }
         .to_svg();
-        assert!(race.contains("6 DENEMEDE ÇÖZDÜ") && race.contains("5 HAK KALDI") && race.contains("HAKKI BITTI"));
+        assert!(race.contains("6 DENEMEDE ÇÖZDÜ") && race.contains("5 HAK KALDI") && race.contains("HAKKI BİTTİ"));
         assert_eq!(size(&race), (900, 440));
 
         let entries = [EntryRow {
@@ -1541,13 +1547,13 @@ mod tests {
             theme: Theme::reef(),
         };
         let svg = rather.to_svg();
-        assert!(svg.contains("HANGISINI SEÇERDIN") && svg.contains("SON SONUÇ: 3 OY") && svg.contains("67%"));
+        assert!(svg.contains("HANGİSİNİ SEÇERDİN") && svg.contains("SON SONUÇ: 3 OY") && svg.contains("67%"));
         let open = RatherCard {
             votes: None,
             closed: false,
             ..rather
         };
-        assert!(open.to_svg().contains("DÜGMELERLE BIR TARAF SEÇ"));
+        assert!(open.to_svg().contains("DÜĞMELERLE BİR TARAF SEÇ"));
 
         let badges: Vec<String> = [PromptTone::Turn, PromptTone::Truth, PromptTone::Dare]
             .into_iter()
@@ -1564,7 +1570,7 @@ mod tests {
                 .to_svg()
             })
             .collect();
-        assert!(badges[0].contains("SIRA SENDE") && badges[1].contains("DOGRULUK") && badges[2].contains("CESARET"));
+        assert!(badges[0].contains("SIRA SENDE") && badges[1].contains("DOĞRULUK") && badges[2].contains("CESARET"));
 
         // `PINCHORA_PREVIEW_DIR=some/dir cargo test -p pinchora-render turkish_cards` saves the pictures to look at.
         if let Some(dir) = std::env::var_os("PINCHORA_PREVIEW_DIR").map(std::path::PathBuf::from) {

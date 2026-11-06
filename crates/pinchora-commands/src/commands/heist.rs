@@ -9,7 +9,7 @@ use std::{str::Split, sync::Arc};
 use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{CrewJoin, GameSession, HeistSettled, NewGame, PENDING, PartyMember};
 use pinchora_game::{
-    lang::{lower, upper},
+    lang::lower,
     party::heist::{self, COOLDOWN_SECS, DAILY_SHELLS, Heist, LOBBY_SECS, MAX_CREW, MIN_CREW, Role, Tier, stage_title},
     play::Game,
 };
@@ -129,7 +129,7 @@ async fn card(
         .collect();
     let roles = roles_of(crew);
     let stages = stages_for(&roles, heist, lang);
-    let headline = upper(lang, &headline);
+    let headline = lang.upper(&headline);
     app.render(move |r| {
         let views: Vec<CrewView<'_>> = names
             .iter()

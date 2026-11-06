@@ -1,5 +1,6 @@
 //! "Badge unlocked" notices: told once, under the command or chat message that earned the badge.
 
+use pinchora_core::{i18n::Lang, t};
 use pinchora_game::{Badge, BadgeKind, Content};
 use twilight_model::{
     channel::message::{AllowedMentions, Embed, MessageFlags},
@@ -38,15 +39,20 @@ pub(crate) async fn unlocked_badges(app: &App, user: u64) -> anyhow::Result<Vec<
 const NOTICES_PER_MESSAGE: usize = 3;
 
 /// A "Badge unlocked" embed for each badge (three at most), with the badge art as its thumbnail.
-pub(crate) fn unlock_notice(sprites: &Sprites, badges: &[&Badge]) -> (Vec<Embed>, Vec<Attachment>) {
+pub(crate) fn unlock_notice(sprites: &Sprites, badges: &[&Badge], lang: Lang) -> (Vec<Embed>, Vec<Attachment>) {
+    let content = Content::get();
     let shown = badges.len().min(NOTICES_PER_MESSAGE);
     let mut embeds = Vec::new();
     let mut files = Vec::new();
     for (n, badge) in badges.iter().take(NOTICES_PER_MESSAGE).enumerate() {
         let mut embed = EmbedBuilder::new()
             .color(badge.rarity.color())
-            .title(format!("Badge unlocked: {}", badge.name))
-            .description(format!("{}\n*{}*", badge.description, badge.rarity.label()));
+            .title(t!(lang, "customize.unlock.title", name = content.name(&badge.id, lang)))
+            .description(format!(
+                "{}\n*{}*",
+                content.description(&badge.id, lang).unwrap_or_default(),
+                badge.rarity.label_in(lang)
+            ));
         if let Some(art) = sprites.badge_large(&badge.id) {
             let name = format!("badge-{}.png", badge.id);
             if let Ok(thumbnail) = ImageSource::attachment(&name) {
@@ -57,10 +63,11 @@ pub(crate) fn unlock_notice(sprites: &Sprites, badges: &[&Badge]) -> (Vec<Embed>
         if n + 1 == shown {
             let more = match badges.len() - shown {
                 0 => String::new(),
-                left => format!("…and {left} more. "),
+                left => t!(lang, "customize.unlock.more", count = left),
             };
             embed = embed.footer(EmbedFooterBuilder::new(format!(
-                "{more}See your collection with /customize badges"
+                "{more}{}",
+                t!(lang, "customize.unlock.hint")
             )));
         }
         embeds.push(embed.build());
@@ -80,7 +87,7 @@ pub(crate) async fn announce(cx: &Cx) {
             return;
         }
     };
-    let (embeds, files) = unlock_notice(&cx.app.sprites, &badges);
+    let (embeds, files) = unlock_notice(&cx.app.sprites, &badges, cx.lang());
     // Under a private message (an editor) the notice stays private too.
     let private = cx
         .interaction
@@ -101,7 +108,7 @@ pub(crate) async fn announce(cx: &Cx) {
 
 /// Like [`announce`] for something that happened outside a command, such as a chat level-up:
 /// posts the notice in `channel`, naming the player without pinging them.
-pub(crate) async fn announce_in(app: &App, channel: Id<ChannelMarker>, user: u64) {
+pub(crate) async fn announce_in(app: &App, channel: Id<ChannelMarker>, user: u64, lang: Lang) {
     let badges = match unlocked_badges(app, user).await {
         Ok(badges) if badges.is_empty() => return,
         Ok(badges) => badges,
@@ -110,8 +117,8 @@ pub(crate) async fn announce_in(app: &App, channel: Id<ChannelMarker>, user: u64
             return;
         }
     };
-    let (embeds, files) = unlock_notice(&app.sprites, &badges);
-    let text = format!("{} unlocked a badge!", mention(user));
+    let (embeds, files) = unlock_notice(&app.sprites, &badges, lang);
+    let text = t!(lang, "customize.unlock.announce", user = mention(user));
     let quiet = AllowedMentions::default();
     let sent = app
         .http
@@ -140,7 +147,7 @@ mod tests {
             .iter()
             .map(|id| content.badge(id).expect("a badge"))
             .collect();
-        let (embeds, files) = unlock_notice(&sprites, &few);
+        let (embeds, files) = unlock_notice(&sprites, &few, Lang::En);
         assert_eq!(embeds.len(), 2);
         assert_eq!(embeds[0].title.as_deref(), Some("Badge unlocked: Fin Finder"));
         assert_eq!(embeds[0].color, Some(Rarity::Common.color()));
@@ -161,13 +168,24 @@ mod tests {
         assert_eq!(art.width(), 96);
 
         let many: Vec<&Badge> = content.badges.iter().take(5).collect();
-        let (embeds, _) = unlock_notice(&sprites, &many);
+        let (embeds, _) = unlock_notice(&sprites, &many, Lang::En);
         assert_eq!(embeds.len(), NOTICES_PER_MESSAGE);
         assert!(
             embeds
                 .last()
                 .and_then(|e| e.footer.as_ref())
                 .is_some_and(|f| f.text.starts_with("…and 2 more. "))
+        );
+        let (turkish, _) = unlock_notice(&sprites, &few, Lang::Tr);
+        assert_eq!(
+            turkish[1].footer.as_ref().map(|f| f.text.as_str()),
+            Some("Koleksiyonunu /customize badges ile gör")
+        );
+        assert!(
+            turkish[0]
+                .title
+                .as_deref()
+                .is_some_and(|t| t.starts_with("Rozet açıldı: "))
         );
     }
 }

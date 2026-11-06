@@ -22,7 +22,7 @@ impl Daily {
                 .quest(cx.author()?.id.get(), pinchora_game::quests::QuestKind::Daily)
                 .await;
             let ready = chrono::Utc::now() + DAILY_COOLDOWN;
-            remind::after_claim(&cx.app, cx.author()?.id.get(), "daily", ready).await;
+            remind::after_claim(&cx.app, cx.author()?.id.get(), "daily", ready, cx.lang()).await;
         }
         let lang = cx.lang();
         let embed = match outcome {

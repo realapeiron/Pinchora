@@ -1,0 +1,59 @@
+# /config level-roles and /roles.
+
+[level-roles]
+full = "A server can have {max} level roles. Remove one with `/config level-roles remove` first."
+added = "Members who reach level **{level}** now get {role}. Run `/config level-roles sync` to give it to members who are already there."
+removed = "{role} is no longer a level role. Members keep the role they already have."
+not-one = "{role} isn't a level role."
+empty = "No level roles yet. Add one with `/config level-roles add`."
+row = "Level **{level}** · {role}"
+title = "Level roles"
+footer = "{count}/{max} · {mode}"
+footer-stack = "stack: members keep every role they earn"
+footer-replace = "replace: members keep only their highest role"
+mode-stack = "Level roles now **stack**: members keep every role they earn."
+mode-replace = "Level roles now **replace** each other: members keep only the role of the highest level they reached."
+summary = "Checked **{checked}** members and updated the level roles of **{updated}**.{early}"
+early = " Stopped early after {checked} of {total} members; it was taking too long."
+busy = "A sync is already running for this server. Give it a few minutes."
+resting = "A sync just finished. Syncing again is possible in {minutes} min."
+
+[roles]
+refused = "Discord refused the message. Check that the emojis on the buttons are valid."
+panel-missing = "There is no panel called **{name}**. Start one with `/roles panel`."
+guild-only = "Role panels only exist inside a server."
+needs-manage = "You need the Manage Server permission to set up role panels."
+needs-title = "Give the panel a title."
+draft = "Panel **{title}** (number {id}) is a draft. Add roles with `/roles add`, then publish it with `/roles post`."
+exists = "Panel **{title}** already existed; its description is up to date. Run `/roles post` to refresh the message."
+bad-emoji = "I couldn't read that emoji. Use a Unicode emoji or a custom one like `<:name:123456789>`."
+full = "A panel holds at most {max} roles. Remove one with `/roles remove` first."
+added = "{role} is on **{title}** as **{label}** ({count}/{max}). Run `/roles post` to show it."
+removed = "{role} is off **{title}**. Run `/roles post` to refresh the message; members keep the role they have."
+not-on = "{role} isn't on **{title}**."
+no-roles = "**{title}** has no roles yet. Add some with `/roles add`."
+updated = "Updated **{title}** in {channel}."
+posted = "Posted **{title}** in {channel}: {link}{moved}"
+moved = " The earlier message in {old} still works but won't update."
+footer = "Click a button to get a role; click it again to drop it"
+buttons-guild-only = "Role buttons only work inside a server."
+gone-from-panel = "That role isn't on this panel any more."
+added-role = "Added {role}."
+removed-role = "Removed {role}."
+cant-take = "I couldn't take {role}: {why}."
+cant-give = "I couldn't give you {role}: {why}."
+button-removed = " Its button was taken off the panel."
+
+# Why Discord refused to give a role, worded to follow "I couldn't give you <role>:".
+[role-refusal]
+permissions = "my highest role is not above it, or I lack the Manage Roles permission"
+gone = "that role no longer exists"
+refused = "Discord refused it"
+unreachable = "Discord could not be reached"
+
+# Why a server event (giveaway, suggestion, poll) could not be posted.
+[post-refusal]
+access = "I can't post in {channel}: I need View Channel, Send Messages and Embed Links there."
+gone = "That channel no longer exists."
+refused = "Discord refused the message."
+unreachable = "Discord could not be reached. Try again in a moment."

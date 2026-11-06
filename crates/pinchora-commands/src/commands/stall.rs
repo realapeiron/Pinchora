@@ -1,3 +1,4 @@
+use pinchora_core::t;
 use pinchora_db::{MAX_LISTINGS, STALL_FEE_PERCENT, StallBuy};
 use pinchora_game::Content;
 use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
@@ -14,8 +15,8 @@ use twilight_util::builder::embed::EmbedBuilder;
 use crate::{
     Cx,
     commands::{
-        collection::{SOULBOUND_RULE, giveable},
-        shop::{SlotSpec, grid_png},
+        collection::giveable,
+        shop::{SlotSpec, grid_png, soulbound_rule},
         social::ping_only,
     },
     util::{BRAND, mention, resolved_display_name, thousands},
@@ -99,10 +100,11 @@ impl StallCommand {
                         let item = content.item(&row.item_id)?;
                         Some(SelectMenuOption {
                             default: false,
-                            description: Some(format!(
-                                "You have {} · catalog price {}",
-                                row.quantity,
-                                thousands(item.base.price)
+                            description: Some(t!(
+                                lang,
+                                "stall.sell-option",
+                                count = row.quantity,
+                                price = thousands(item.base.price)
                             )),
                             emoji: None,
                             label: item.name_in(lang),
@@ -113,19 +115,25 @@ impl StallCommand {
                 if options.is_empty() {
                     return cx
                         .reply_ephemeral(if kept_back {
-                            format!("Nothing in your inventory can go on a stall. {SOULBOUND_RULE}")
+                            t!(lang, "stall.nothing-to-sell", rule = soulbound_rule(lang))
                         } else {
-                            "Your inventory is empty.".to_owned()
+                            t!(lang, "inventory.empty")
                         })
                         .await;
                 }
                 cx.reply(InteractionResponseData {
-                    content: Some(format!(
-                        "Which item do you want to sell for **{}** shells? (You receive {} after the {STALL_FEE_PERCENT}% fee.)",
-                        thousands(c.price),
-                        thousands(c.price - c.price * STALL_FEE_PERCENT / 100)
+                    content: Some(t!(
+                        lang,
+                        "stall.sell-prompt",
+                        price = thousands(c.price),
+                        net = thousands(c.price - c.price * STALL_FEE_PERCENT / 100),
+                        fee = STALL_FEE_PERCENT
                     )),
-                    components: Some(menu(format!("sl:{}", c.price), "Choose an item…", options)),
+                    components: Some(menu(
+                        format!("sl:{}", c.price),
+                        &t!(lang, "stall.sell-placeholder"),
+                        options,
+                    )),
                     flags: Some(MessageFlags::EPHEMERAL),
                     ..Default::default()
                 })
@@ -142,20 +150,18 @@ impl StallCommand {
                     .into_iter()
                     .map(|l| SelectMenuOption {
                         default: false,
-                        description: Some(format!("Listed for {} shells", thousands(l.price))),
+                        description: Some(t!(lang, "stall.manage-option", price = thousands(l.price))),
                         emoji: None,
                         label: content.item(&l.item_id).map_or(l.item_id.clone(), |i| i.name_in(lang)),
                         value: l.id.to_string(),
                     })
                     .collect();
                 if options.is_empty() {
-                    return cx
-                        .reply_ephemeral("Your stall is empty. Add items with `/stall sell`.")
-                        .await;
+                    return cx.reply_ephemeral(t!(lang, "stall.empty")).await;
                 }
                 cx.reply(InteractionResponseData {
-                    content: Some("Pick a listing to take back into your inventory.".to_owned()),
-                    components: Some(menu("su".to_owned(), "Take back…", options)),
+                    content: Some(t!(lang, "stall.manage-prompt")),
+                    components: Some(menu("su".to_owned(), &t!(lang, "stall.manage-placeholder"), options)),
                     flags: Some(MessageFlags::EPHEMERAL),
                     ..Default::default()
                 })
@@ -167,27 +173,27 @@ impl StallCommand {
 
 async fn stall_card(cx: &Cx, seller: &User, name: &str) -> anyhow::Result<InteractionResponseData> {
     let content = Content::get();
+    let lang = cx.lang();
     let listings = cx.app.db.listings(seller.id.get()).await?;
     let specs = listings
         .iter()
         .map(|l| SlotSpec {
             item_id: l.item_id.clone(),
             line1: thousands(l.price),
-            line2: content
-                .item(&l.item_id)
-                .map_or_else(String::new, |i| format!("CATALOG {}", thousands(i.base.price))),
+            line2: content.item(&l.item_id).map_or_else(String::new, |i| {
+                t!(lang, "stall.catalog-price", price = thousands(i.base.price))
+            }),
             bar: None,
             badge: String::new(),
             shell_price: true,
         })
         .collect();
-    let lang = cx.lang();
     let png = grid_png(
         &cx.app,
         lang,
-        format!("{name}'s stall"),
-        format!("{}/{MAX_LISTINGS} LISTINGS", listings.len()),
-        "PLAYER SHOP · 5% MARKET FEE".to_owned(),
+        t!(lang, "stall.title", name = name),
+        t!(lang, "stall.listings", count = listings.len(), max = MAX_LISTINGS),
+        t!(lang, "stall.footer", fee = STALL_FEE_PERCENT),
         specs,
     )
     .await?;
@@ -195,7 +201,7 @@ async fn stall_card(cx: &Cx, seller: &User, name: &str) -> anyhow::Result<Intera
         .iter()
         .map(|l| SelectMenuOption {
             default: false,
-            description: Some(format!("{} shells", thousands(l.price))),
+            description: Some(t!(lang, "stall.option-price", price = thousands(l.price))),
             emoji: None,
             label: content.item(&l.item_id).map_or(l.item_id.clone(), |i| i.name_in(lang)),
             value: l.id.to_string(),
@@ -203,17 +209,17 @@ async fn stall_card(cx: &Cx, seller: &User, name: &str) -> anyhow::Result<Intera
         .collect();
     let embed = EmbedBuilder::new()
         .color(BRAND)
-        .title(format!("{name}'s stall"))
+        .title(t!(lang, "stall.title", name = name))
         .description(if listings.is_empty() {
-            "Nothing for sale right now.".to_owned()
+            t!(lang, "stall.nothing-for-sale")
         } else {
-            "Pick something below to buy it.".to_owned()
+            t!(lang, "stall.pick-to-buy")
         });
     Ok(Cx::card(
         embed,
         "stall.png",
         png,
-        menu(format!("sb:{}", seller.id), "Buy from this stall…", options),
+        menu(format!("sb:{}", seller.id), &t!(lang, "stall.buy-placeholder"), options),
         false,
     ))
 }
@@ -225,26 +231,29 @@ pub(crate) async fn on_list(cx: &Cx, mut args: std::str::Split<'_, char>, value:
         .and_then(|v| v.parse().ok())
         .unwrap_or(0)
         .clamp(1, 10_000_000);
-    let Some(item) = value.and_then(|v| Content::get().item(v)) else {
-        return cx.reply_ephemeral("Pick an item.").await;
-    };
     let lang = cx.lang();
+    let Some(item) = value.and_then(|v| Content::get().item(v)) else {
+        return cx.reply_ephemeral(t!(lang, "stall.pick-item")).await;
+    };
     if item.bound {
         return cx
-            .reply_ephemeral(format!(
-                "**{}** can't go on a stall. {SOULBOUND_RULE}",
-                item.name_in(lang)
+            .reply_ephemeral(t!(
+                lang,
+                "stall.cant-list",
+                name = item.name_in(lang),
+                rule = soulbound_rule(lang)
             ))
             .await;
     }
     let text = if cx.app.db.list_item(cx.author()?.id.get(), &item.id(), price).await? {
-        format!(
-            "🏷️ **{}** is on your stall for {} shells.",
-            item.name_in(lang),
-            thousands(price)
+        t!(
+            lang,
+            "stall.listed",
+            name = item.name_in(lang),
+            price = thousands(price)
         )
     } else {
-        format!("Couldn't list it: either your stall is full ({MAX_LISTINGS} items) or you no longer have one.")
+        t!(lang, "stall.list-failed", max = MAX_LISTINGS)
     };
     cx.update(InteractionResponseData {
         content: Some(text),
@@ -259,11 +268,12 @@ pub(crate) async fn on_unlist(cx: &Cx, value: Option<&str>) -> anyhow::Result<()
     let listing: i64 = value.and_then(|v| v.parse().ok()).unwrap_or(0);
     let lang = cx.lang();
     let text = match cx.app.db.unlist_item(cx.author()?.id.get(), listing).await? {
-        Some(item) => format!(
-            "Took **{}** back into your inventory.",
-            Content::get().item(&item).map_or(item.clone(), |i| i.name_in(lang))
+        Some(item) => t!(
+            lang,
+            "stall.took-back",
+            name = Content::get().item(&item).map_or(item.clone(), |i| i.name_in(lang))
         ),
-        None => "That listing is gone.".to_owned(),
+        None => t!(lang, "stall.listing-gone"),
     };
     cx.update(InteractionResponseData {
         content: Some(text),
@@ -292,22 +302,29 @@ pub(crate) async fn on_buy(cx: &Cx, value: Option<&str>) -> anyhow::Result<()> {
             // The seller hears of the sale; the buyer is not pinged for their own purchase.
             return cx
                 .reply(InteractionResponseData {
-                    content: Some(format!(
-                        "🤝 {} bought **{name}** from {}'s stall for {} shells. ({} left)",
-                        mention(buyer),
-                        mention(seller),
-                        thousands(price),
-                        thousands(balance)
+                    content: Some(t!(
+                        lang,
+                        "stall.bought",
+                        buyer = mention(buyer),
+                        name = name,
+                        seller = mention(seller),
+                        price = thousands(price),
+                        balance = thousands(balance)
                     )),
                     allowed_mentions: ping_only(seller as u64),
                     ..Default::default()
                 })
                 .await;
         }
-        StallBuy::Gone => "Someone was faster: that item is already sold.".to_owned(),
-        StallBuy::OwnListing => "That's your own listing. Use `/stall manage` to take it back.".to_owned(),
+        StallBuy::Gone => t!(lang, "stall.sold-already"),
+        StallBuy::OwnListing => t!(lang, "stall.own-listing"),
         StallBuy::Insufficient { price, balance } => {
-            format!("It costs {} shells; you have {}.", thousands(price), thousands(balance))
+            t!(
+                lang,
+                "stall.insufficient",
+                price = thousands(price),
+                balance = thousands(balance)
+            )
         }
     };
     cx.reply_ephemeral(text).await

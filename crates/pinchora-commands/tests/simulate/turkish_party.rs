@@ -3,7 +3,7 @@
 //! What the words and prompts themselves are is covered next door in `words.rs`.
 
 use pinchora_core::i18n::Lang;
-use pinchora_game::{lang, party::writing_reward};
+use pinchora_game::party::writing_reward;
 
 use super::{
     words::{
@@ -163,7 +163,7 @@ async fn a_turkish_hot_pearl_goes_from_lobby_to_a_winner() {
         missing.content()
     );
     assert!(
-        missing.content().contains(&lang::upper(Lang::Tr, &syllable)),
+        missing.content().contains(&Lang::Tr.upper(&syllable)),
         "the syllable is shown in capitals: {}",
         missing.content()
     );
@@ -180,11 +180,11 @@ async fn a_turkish_hot_pearl_goes_from_lobby_to_a_winner() {
         .expect("a word for the syllable")
         .to_owned();
     let played = sim
-        .submit_fields(cur, &form, &[("word", lang::upper(Lang::Tr, &good).as_str())])
+        .submit_fields(cur, &form, &[("word", Lang::Tr.upper(&good).as_str())])
         .await;
     assert!(!played.ephemeral, "{}", played.content());
     assert!(
-        played.description().contains("yazdı") && played.description().contains(&lang::upper(Lang::Tr, &good)),
+        played.description().contains("yazdı") && played.description().contains(&Lang::Tr.upper(&good)),
         "{}",
         played.description()
     );
@@ -700,7 +700,7 @@ async fn a_turkish_word_race_has_a_lobby_private_boards_and_a_result() {
         .clone();
     sim.posts();
     let board = sim
-        .submit_fields(bo, &form, &[("guess", lang::upper(Lang::Tr, &other).as_str())])
+        .submit_fields(bo, &form, &[("guess", Lang::Tr.upper(&other).as_str())])
         .await;
     assert!(
         board.ephemeral && board.files[0].0 == "board.png",
@@ -728,7 +728,7 @@ async fn a_turkish_word_race_has_a_lobby_private_boards_and_a_result() {
     let end = edits(&posts).into_iter().last().expect("the result");
     assert!(end.title().contains("bitti"), "{}", end.title());
     assert!(
-        description(end).contains("kelimeyi ilk buldu") && description(end).contains(&lang::upper(Lang::Tr, &word)),
+        description(end).contains("kelimeyi ilk buldu") && description(end).contains(&Lang::Tr.upper(&word)),
         "{}",
         description(end)
     );

@@ -248,9 +248,10 @@ permission gets a private refusal and nothing changes.
 | `/party truthordare [topic]` | Truth or Dare, 2 to 10 players, family friendly (102 truths and 102 dares in six topics): the bot picks whose turn it is, that player presses **Truth** or **Dare**, gets one nobody had lately, and presses **Done** or **Pass** (passing is always fine). The host ends the game with **End game**; a table that lets two turns in a row run out of time ends it by itself. Each player gets one game in `/play stats` when it ends |
 | `/party stop` | Ends the lobby or game running in this channel: its host or a member with Manage Server can. The message is closed, nobody wins and nothing is paid or refunded (the party games have no wagers); the answer is private |
 | `/config partygames [strict]` | How strict the filter on what members type is (Manage Server). The base filter always blocks strong words and slurs (it reads whole words, undoes disguises like `sh!t`, `f u c k`, `f*ck`, `s1ut` and common misspellings, and lets names like Matsushita through); `strict:true` adds mild words and name-calling. Mentions, links, invites and formatting are always taken out of typed text |
-| `/config modules show\|toggle\|channels` | Switch parts of Pinchora off for the whole server (`toggle module enabled`) or per channel (`channels module where [channel] [remove]`: `where` is all channels, only these, or everywhere except these, and the list grows one channel at a time; a category covers the channels and threads under it; up to 50 channels). A switched-off module answers its commands, buttons and forms with a private "This feature is turned off on this server" (or "in this channel"), stops its chat XP, points, critter drops, goodbyes, log lines or timed storms, and `/config`, `/help`, `/language`, `/ping`, `/privacy` and `/remind` (with their buttons) are never switched off; `/weekly` and `/monthly` belong to the economy module and `/wrapped` to profiles. The 27 modules are listed with `show`, and `module` suggests them as you type (start with part of a name, or of a game such as `chess`); leveling, points, welcome and gambling keep their switch where it already was (`/config leveling`, `points`, `welcome`, `gambling`). The dashboard's Modules page does the same (Manage Server) |
-| `/config welcome-card` | Design the welcome card (theme, headline, accent colour) with a live preview |
+| `/config modules show\|toggle\|channels` | Switch parts of Pinchora off for the whole server (`toggle module enabled`) or per channel (`channels module where [channel] [remove]`: `where` is all channels, only these, or everywhere except these, and the list grows one channel at a time; a category covers the channels and threads under it; up to 50 channels). A switched-off module answers its commands, buttons and forms with a private "This feature is turned off on this server" (or "in this channel"), stops its chat XP, points, critter drops, goodbyes, log lines or timed storms, and `/config`, `/help`, `/language`, `/ping`, `/privacy` and `/remind` (with their buttons) are never switched off; `/weekly` and `/monthly` belong to the economy module and `/wrapped` to profiles. The 28 modules are listed with `show`, and `module` suggests them as you type (start with part of a name, or of a game such as `chess`); leveling, points, welcome and gambling keep their switch where it already was (`/config leveling`, `points`, `welcome`, `gambling`). The dashboard's Modules page does the same (Manage Server) |
+| `/config welcome-card` | The classic welcome card (theme, headline, accent colour) with a preview: any option makes the classic card the server's welcome image again (a design made in the dashboard's editor is put aside, and the reply says so; how the image is sent stays), and without options it shows the welcome image as it is now, the editor's design included |
 | `/config language language` | The server's default language (English, Türkçe, or Automatic for English) for messages that answer nobody in particular: welcome cards, level-ups, logs, giveaways. Replies to a member are still in that member's own language (Manage Server) |
+| `/config prefix set\|reset\|show` | What text commands start with here: 1 to 5 characters without spaces, `@`, `#` or backticks; `reset` goes back to `p!`. `/config show` and the dashboard's Overview show it too (Manage Server) |
 
 Duel wagers (`bet`, 10 to 500 shells each) are optional and off by default. Nothing is held until the
 challenged player accepts; then both bets leave the balances in one transaction and sit in the database
@@ -345,6 +346,23 @@ no duplicate names, the glossary, the furniture noun table (`_furniture_nouns.js
 `content/i18n/tr/`, translate it, add the files to `TR_FILES`-style tables in `crates/pinchora-game/src/overlay.rs` and
 an arm to `overlay()`.
 
+**Turkish social and server tools.** `/partner`, `/friends`, `/hug` `/pat` `/wave` `/highfive`, `/rep`, `/bio`, `/ping`,
+the house guestbook and room contest, `/giveaway`, `/suggest`, `/poll`, `/roles`, `/tag` and `/customcommand`, every
+`/config` subcommand's replies (`show`, `xp`, `level-roles`, `rep-roles`, `modules`, `join-role`, `goodbye`, `log`,
+`suggestions`, `welcome-card`) and the messages a server sends on its own (welcome card, goodbye, level-up banner, server
+log, giveaway, suggestion and poll messages) speak Turkish: the catalogs are `locales/<code>/social.toml`, `guestbook.toml`
+(+ contest), `giveaway.toml`, `suggest.toml` (+ poll), `roles.toml`, `tags.toml`, `modules.toml`, `serverconfig.toml`
+and `settings.toml`. Replies use the member's language; what answers nobody in particular (the giveaway, suggestion, poll and
+role-panel messages, welcome, goodbye, level-ups in a channel, the server log) uses the server's default (`/config
+language`), and a direct message (a level-up by DM, a suggestion's verdict) uses its recipient's own pick. The checks that
+refuse a setting (`pinchora_core::settings::FieldError`) carry a catalog key beside their English text: ask
+`error.text(lang)`; role refusals have `*_in(lang, …)` twins (`role_refusal_in`, `grant_refusal_in`, …) and the pixel cards
+(`PollCard`, `LevelUpCard`) take a `lang`. The classic welcome and goodbye card (`templates::classic`, what a server that
+never opened the card editor sends) draws its default headline (`HOŞ GELDİN`, Turkish capitals by `Lang::upper`) and its
+line in the server's language; a design saved in the editor keeps the words it was given. A server's own
+welcome/goodbye/level-up text and custom commands stay as the server wrote them; only the defaults (`events.default-*`)
+are translated.
+
 **Turkish games.** The word and quiz games speak Turkish to a player whose Discord locale is Turkish (the games
 ask `cx.lang()`, so a `/language` choice and the server default count too). Their content sits beside
 the English files: `words_tr.json` (wordle answers and guesses), `hangman_tr.json`, `trivia_tr.json` (ids
@@ -369,8 +387,156 @@ the duel and board-game boards ask `App::guild_lang`, and a lobby locks the serv
 heist, storm and shell game states end in `|<code>`, the party games' JSON state holds `lang`) so the janitor does not
 switch it. What only the clicker sees (a refusal, a menu, a private picker, "not your turn") is in the clicker's own
 language; what the bot edits in by itself (a time-out, a secret pick) is in the server's. Pixel-font labels are kept in the
-catalog already in capitals, and text a card capitalises is capitalised with `pinchora_game::lang::upper` first (Turkish
+catalog already in capitals, and text a card capitalises is capitalised with `Lang::upper` first (Turkish
 `i` is `İ`). The Turkish simulator flows are `tests/simulate/turkish_{duel,solo,party,arcade}.rs`.
+**Turkish pets, fishing, shops and cards.** `/pet` (with trips and the nursery), `/fish`, `/shop`, `/inventory`, `/gift`,
+`/stall`, `/plaza`, `/quests`, `/points`, `/store`, `/leaderboard`, `/wrapped`, `/remind` and the `/customize` title, style
+and showcase editors answer in the player's language: their texts are the keys of `locales/{en,tr}/{pets,fish,shop,
+quests,points,remind,boards,cosmetics}.toml`, and the pet, nursery, wrapped, leaderboard and badge-collection cards take
+a `lang` for the words they draw. A new pet is named after its species in the adopter's language. `/remind` also
+understands Turkish units (`2sa30dk`, `3g`, `1hf`). The direct messages a reminder sends have no interaction to take a
+language from: they use the player's `/language` pick, else the language the notification was switched on or last
+refreshed in (kept in the reminder's `body`), else English. `tests/simulate/turkish_{pets,fish,shop,remind}.rs` play
+each group in Turkish.
+
+### Text commands
+
+Every command also works as a message: `p!profile`, `p!fish cast reef`, `p!duel connect4 @Sam bet:50`, or the
+same after the bot's mention (`@Pinchora fish cast reef`), which always works whatever the prefix. The message
+is read against the registered slash commands and runs the very same handler, so the module switches, the
+Manage Server checks (from the member's roles), cooldowns and wagers are those of the slash command.
+
+Servers control them like any other part of the bot. The **Text commands** module (`/config modules`, the
+dashboard's Modules page) switches every text command off for the server or in some channels, the `@Pinchora`
+form included: where it is off, a command typed with the prefix is ignored without a word and one typed after
+the mention is answered with "This feature is turned off". On top of that a text command is allowed only where
+the slash command would be: the member needs **Use Application Commands** in the channel (channel
+permission overwrites and a thread's parent are applied), and the server's **Server Settings, Integrations**
+overrides for the bot's commands (a user, role or channel switched off for a command, or for all of them)
+are honoured; administrators and the owner are never held back by those. Commands that ask for default
+permissions (`default_member_permissions`, where `"0"` means administrators only) are checked the same way.
+
+- Command and subcommand names are any case; `bal`, `lb` (or `top`), `h` and `inv` stand for `balance`,
+  `leaderboard`, `help` and `inventory`.
+- Options go in their order, or as `name:value` in any order. Words with spaces go in quotes
+  (`text:"two words"`); the last free-text option takes the rest of the line. Members, roles and channels are
+  mentions or raw ids; a choice is its value or its name (`kelp`, `"Kelp Forest"`); `yes`/`no` for switches.
+- A wrong call answers with the problem and a usage line from the schema, e.g.
+  ``Usage: `p!duel connect4 <user> [bet]` ``. Words that name no command (another bot's) get no answer.
+- Answers are replies to the message that ping nobody (a challenge still pings the member it names). A
+  private answer (a refusal, a short notice) is posted the same way and deleted after 15 seconds, or at
+  once when the bot shuts down. Buttons and menus on a reply work as on the slash command's message and
+  check the member who typed the command.
+- A message carries no Discord language, so a text command answers in the member's `/language` pick, else the
+  server's default (`/config language`), else English. The notices, usage lines and `/config prefix` are in the
+  `text` catalogs (`crates/pinchora-core/locales/<code>/text.toml`); a switch also takes `evet`/`hayır`.
+- Private panels, forms and server settings stay slash-only: `/config` (which would show the server's
+  settings to the whole channel), `/house edit`, `/house decorate`, `/customize`, `/character`,
+  `/plaza edit`, `/stall manage`, `/play picross`, `/play wordle` and `/play 2048` (and any other command
+  whose first answer is a private panel) answer "This one only works as a slash command: use `/…`".
+- Bots, webhooks and direct messages are ignored, and a member's text commands count at most once every
+  1.5 seconds. If the rate limit cannot be read (Redis is down) text commands are ignored rather than let
+  through unlimited. Whole numbers are brought within ±2^53, the most a slash option can carry.
+
+The bot owner turns this on in two places: **Message Content Intent** on the Bot page of the Discord Developer
+Portal, and `PINCHORA_GATEWAY__MESSAGE_CONTENT=true`. Without them Discord only sends the text of messages that
+mention the bot, so text commands work as `@Pinchora profile` and `/help` says so.
+
+### AutoMod
+
+<!-- F1: the AutoMod package replaces this heading's section; keep it one `###` section. -->
+
+### Roles pack
+
+<!-- F2: the Roles pack package replaces this heading's section; keep it one `###` section. -->
+
+### Tickets
+
+<!-- F3: the Tickets package replaces this heading's section; keep it one `###` section. -->
+
+### Temp voice
+
+<!-- F4: the Temp voice package replaces this heading's section; keep it one `###` section. -->
+
+### Starboard and vote channels
+
+<!-- F5: the Starboard and vote channels package replaces this heading's section; keep it one `###` section. -->
+
+### Invite tracker
+
+<!-- F6: the Invite tracker package replaces this heading's section; keep it one `###` section. -->
+
+### Birthdays
+
+<!-- F7: the Birthdays package replaces this heading's section; keep it one `###` section. -->
+
+### Achievements
+
+<!-- F8: the Achievements package replaces this heading's section; keep it one `###` section. -->
+
+### Stats
+
+<!-- F9: the Stats package replaces this heading's section; keep it one `###` section. -->
+
+### Raid protection and verification
+
+<!-- F10: the Raid protection and verification package replaces this heading's section; keep it one `###` section. -->
+
+### Anti-nuke
+
+<!-- F11: the Anti-nuke package replaces this heading's section; keep it one `###` section. -->
+
+### Social feeds
+
+<!-- F12: the Social feeds package replaces this heading's section; keep it one `###` section. -->
+
+### Workflows
+
+<!-- F13: the Workflows package replaces this heading's section; keep it one `###` section. -->
+
+### Branding
+
+<!-- F14: the Branding package replaces this heading's section; keep it one `###` section. -->
+
+### AI characters
+
+<!-- F15: the AI characters package replaces this heading's section; keep it one `###` section. -->
+
+### Roblox verification
+
+<!-- F16: the Roblox verification package replaces this heading's section; keep it one `###` section. -->
+
+### Game trackers
+
+<!-- F17: the Game trackers package replaces this heading's section; keep it one `###` section. -->
+
+### Info commands
+
+<!-- F18: the Info commands package replaces this heading's section; keep it one `###` section. -->
+
+### Utility
+
+<!-- F19: the Utility package replaces this heading's section; keep it one `###` section. -->
+
+### Community pack
+
+<!-- F20: the Community pack package replaces this heading's section; keep it one `###` section. -->
+
+### Events
+
+<!-- F21: the Events package replaces this heading's section; keep it one `###` section. -->
+
+### XP admin
+
+<!-- F22: the XP admin package replaces this heading's section; keep it one `###` section. -->
+
+### Brand kit
+
+<!-- F23: the Brand kit package replaces this heading's section; keep it one `###` section. -->
+
+### More games
+
+<!-- F24: the More games package replaces this heading's section; keep it one `###` section. -->
 
 ## Quick start (Docker)
 
@@ -378,9 +544,10 @@ catalog already in capitals, and text a card capitalises is capitalised with `pi
    on **Server Members Intent** (for welcome cards, join roles, goodbye messages and the member, nickname and
    username entries of the server log; or set `PINCHORA_GATEWAY__MEMBER_EVENTS=false`). The server log's ban and voice
    entries use the non-privileged Guild Moderation and Guild Voice States intents. Keyword auto-responders
-   need the privileged **Message Content Intent** as well: turn it on in the Developer Portal and set
-   `PINCHORA_GATEWAY__MESSAGE_CONTENT=true` (Discord asks for verification above 100 servers); without it the
-   dashboard shows keyword triggers as locked and the bot never reads chat text.
+   and text commands with a prefix (`p!profile`) need the privileged **Message Content Intent** as well: turn it
+   on in the Developer Portal and set `PINCHORA_GATEWAY__MESSAGE_CONTENT=true` (Discord asks for verification
+   above 100 servers). Without it the dashboard shows keyword triggers as locked, the bot never reads chat text,
+   and text commands only work after an @mention of the bot.
 2. `cp .env.example .env` and fill in the token and application id.
 3. Start everything:
 
@@ -411,9 +578,10 @@ so every bot pod uses it from the next message instead of after its one-minute c
 
 | Page | What it sets | Same as |
 |---|---|---|
-| Overview | Chat XP on/off, every page's state at a glance, every module's state, the latest changes | `/config show`, `/config leveling enabled`, `/config modules show` |
-| Modules | Each part of Pinchora (leveling, points, welcome, goodbye, log, role panels, store, suggestions, polls, giveaways, custom commands, profiles, economy, shops, quests, social, houses, plaza, pets, fishing, duels, board and puzzle games, word and trivia games, party games, word party games, critter drops, gambling) on or off, and where it works: all channels, only some, or all but some | `/config modules` |
-| Welcome & goodbye | Welcome cards (channel, text with placeholder chips), the card designer (theme, headline, accent, live preview drawn by the bot), join role, goodbye channel and text | `/config welcome`, `welcome-card`, `join-role`, `goodbye` |
+| Overview | Chat XP on/off, the text command prefix, every page's state at a glance, every module's state, the latest changes | `/config show`, `/config leveling enabled`, `/config prefix`, `/config modules show` |
+| Modules | Each part of Pinchora (leveling, points, welcome, goodbye, log, role panels, store, suggestions, polls, giveaways, custom commands, profiles, economy, shops, quests, social, houses, plaza, pets, fishing, duels, board and puzzle games, word and trivia games, party games, word party games, critter drops, gambling, text commands) on or off, and where it works: all channels, only some, or all but some | `/config modules` |
+| Welcome & goodbye | Welcome cards (channel, text with placeholder chips), the welcome image the bot sends now (drawn by the bot) with a link to the editor, join role, goodbye channel and text | `/config welcome`, `join-role`, `goodbye` |
+| Welcome image | The image editor for welcome and goodbye pictures (below) | `/config welcome-card` (the classic card) |
 | Leveling | Leveling, where level-ups go, level-up channel and text, voice XP, XP multipliers, level roles (stack/replace, **Sync members**), reputation roles | `/config leveling`, `xp`, `level-roles`, `rep-roles` |
 | Points & store | Points on/off, name, emoji, points per message; roles on sale with price and stock | `/config points`, `/config store` |
 | Server log | Log channel and the four kinds of events | `/config log`, `/config log-events` |
@@ -526,6 +694,95 @@ cargo build -p pinchora && PINCHORA_TEST_DATABASE_URL=... PINCHORA_TEST_REDIS_UR
 For UI work against a running server, set `PINCHORA_WEB__PUBLIC_URL=http://localhost:5173` on the Rust side
 (`cargo run -p pinchora -- web`).
 
+### Welcome and goodbye images
+
+The **Welcome image** page is a canvas editor for the picture a new member gets and the one that says goodbye.
+A design (`pinchora_core::card_design`, versioned JSON) is a canvas of 300 to 1600 by 150 to 1000 px, a
+background (none, a colour, a gradient with or without the pixel dither and sparkles, one of the 36 pixel-art
+backgrounds scaled up in whole steps, or an uploaded picture), a darkening scrim, and up to 20 layers from
+bottom to top: the **avatar** (circle, rounded, square or pixel-notched, a border, chunky pixels or smooth),
+**text** with `{user}` `{username}` `{server}` `{members}` `{ordinal}` (Noto Sans or the pixel font, bold, size,
+colour, alignment, capitals, up to 4 wrapped lines cut with an ellipsis, a hard shadow, an outline), **stickers**
+(crab, heart, star and shell glyphs in any colour, or any pet, critter, fish, badge or furniture sprite from the
+atlas, resized in whole pixel steps) and **shapes** (box, rounded, pixel panel, ellipse, the dashed stage edge).
+Each layer can be hidden, locked and faded. One validator checks a design for the API, the bot and (through
+`rules.json`) the editor's inputs; a setting it does not know is refused by name, and every problem is listed
+with its layer.
+
+A design is also kept cheap to draw, so a card takes under 400 ms (release build) however it is made: a layer is
+never bigger than the canvas, an avatar is at most 1024 px across, a design has at most 4 avatars, and the
+visible layers together may use at most `LAYER_COST_MAX` (30 million pixel-equivalents): a shape or sticker costs
+its width times height, an avatar five times that, and a text layer 80,000 per character it can show, a
+placeholder counted at the longest it can be (a name 32, a server 40). The editor shows the share used as the
+**draw cost** bar over the layer list, holds sizes to the canvas, and refuses a layer that would go over.
+`cargo test --release -p pinchora-render --test cost -- --nocapture` builds the heaviest designs the validator
+allows (all text in emoji and CJK, four avatars, twenty faded layers, a noisy upload) and times them; the
+slowest must take 400 ms (it measured 270 ms on a loaded laptop; set the numbers again if the costs change).
+Uploads are kept at 1 MiB of PNG at most (a noisy picture is shrunk until it fits) and designed cards are
+written with the fast PNG level, because squeezing a photo at the default level took longer than drawing it.
+
+In the editor: drag layers with a mouse, pen or finger, pull the handles to resize (avatars stay square, text
+corners scale the font, side handles set its width), snap to the canvas middle and edges and to other layers
+(guides show; Alt or the Snap switch turns it off), nudge with the arrow keys, undo and redo (Ctrl+Z / Ctrl+Shift+Z,
+a whole drag is one step), duplicate (Ctrl+D) and delete; reorder, hide and lock in the layer list; zoom or fit.
+A template gallery holds eight starts: the classic card in each of the five themes (layer for layer the card
+Pinchora always drew; a server that never opened the editor gets it in its theme, headline and accent),
+*Starlit banner*, *Clean card* (transparent) and *Pet party*. **Send** picks how it goes out: with the text in one
+message, the image first then the text, the image alone, the text alone, or (welcomes) by direct message to the
+new member (closed DMs are skipped). **Send test** posts it to a channel you pick, with you as the member and
+pinging nobody (the note under it is in the server's language, like the `/config welcome-card` preview's text, which follows the member's own). The canvas is drawn by the browser so every drag is instant; **Try it** below holds the test and, behind
+**Show the bot's picture**, the bot's own PNG of the same design (`POST /api/guilds/{g}/preview/card`, debounced),
+which is exactly what members get, because the member events, the preview and the test all draw through the same
+`pinchora_commands` code. Previews (and test messages) are drawn in their own lane: two at a time, waiting at
+most 3 s for a turn (then 503 `busy`) and given up on after 6 s (503 `slow`), so an editor being dragged around
+cannot crowd the member events' cards out of the render slots; a session may ask for 60 a minute and a server for
+20 (429, which the editor waits out and asks again). From 1024 px the canvas stays in view beside one column
+holding the layers and the properties; tablets get the canvas over the two panels side by side; phones a single
+column with the settings a thumb needs.
+
+Uploads (`POST /api/guilds/{g}/cards/uploads`, the file's own bytes): PNG, JPEG, WebP or GIF (first frame) up to
+4 MB and 4096 px a side, decoded within those limits, shrunk to fit the largest canvas and 1 MiB and stored as PNG in
+`card_uploads`; a server keeps its 12 newest plus any a saved design uses, and a design can only name the
+server's own. Designs live in `card_designs` (migration 0043; `design` NULL is the classic card), saving is
+audited (`card.put`, `card.upload`) and announced like other settings. The API: `GET /cards` (both images, the
+templates, the uploads), `PUT /cards/{welcome|goodbye}` (`design` or `null`, `delivery`), `POST
+/cards/{kind}/test` and `GET /cards/uploads/{id}`. `cargo test -p pinchora-render --test designed` checks the
+classic template against the old card pixel for pixel and every template against its golden in
+`crates/pinchora-render/tests/golden` (`PINCHORA_UPDATE_GOLDENS=1` rewrites them).
+
+### Public website
+
+The same server (`pinchora web`) is the bot's public site. `/` is the landing page for everyone (a logged-in visitor
+sees a **Dashboard** button in the header instead of **Log in**; the dashboard keeps its own paths: `/servers`,
+`/g/<id>`, `/me/house`, `/login`), `/commands` is the searchable command list, `/features/<area>` has a page for each
+of the six areas, `/privacy` and `/terms` are plain-language drafts to review before launch, and anything else is a
+404 page. The pages are in `web/src/site` (the words and links of the landing page in `content.ts`, the areas in
+`features.ts`, the styles in `web/src/styles/site.css`).
+
+| Address | What it is |
+|---|---|
+| `/invite` | Redirects to Discord's page for adding the bot, with the `bot applications.commands` scopes and the permissions it uses; every **Add to Discord** button points here |
+| `/api/public/landing` | `{ stats, viewer }`: servers, players, houses and pets counted in the database (cached in Redis for ten minutes, one refresh at a time), and the logged-in visitor's name and avatar, or `null`. Rate limited per address |
+| `/robots.txt`, `/sitemap.xml`, `/og.png`, the favicon set, `/site.webmanifest` | Written by the build or generated (below); `__ORIGIN__` in them becomes `PINCHORA_WEB__PUBLIC_URL` when served, so one build serves any domain |
+
+Search engines and link previews do not run scripts, so the build writes each public page's own title, description,
+canonical link and Open Graph / Twitter tags into its HTML (`commands/index.html`, `features/games/index.html`, ...,
+from `web/src/site/routes.ts`; the Vite plugin in `web/vite.config.ts` does it) and the server answers
+`/commands` with that file. The dashboard's pages get the shell with `X-Robots-Tag: noindex`. The public pages work
+before login is set up; only the dashboard shows the setup page. The support server link in the footer is a placeholder:
+build with `VITE_SUPPORT_URL=https://discord.gg/<invite>` to set it.
+
+Nothing on the page is a screenshot. Every card and room is drawn by the bot's own renderer from sample data
+(`crates/pinchora-commands/src/landing_assets.rs`: the profile card with real backgrounds, badges, showcase tiles and
+character, an isometric room, chess, connect four, wordle, the rank, wallet, welcome, level-up, leaderboard, pet and
+badge cards, the 1200x630 link preview and the favicons), committed in `web/src/site/showcase` and `web/public`.
+`landing_assets_match` fails when a card, the art or the catalogue changes what these look like; regenerate with
+`cargo test -p pinchora-commands write_landing_assets -- --ignored`. The command list and the content counts on the
+landing page come from the registered command tree and the content files, in `web/src/lib/commands.json` and
+`facts.json`; `committed_site_data_matches` fails while they are out of date and
+`cargo test -p pinchora-web commands_catalog -- --ignored write_site_data` rewrites them. A new command needs an area in
+`/help`'s `AREAS`, and then shows on the site by itself.
+
 ### House viewer (read-only)
 
 Players open **My house** (`/me/house`, in the top bar) to look at their rooms, and any player's unlocked
@@ -599,9 +856,10 @@ crates/
   pinchora-db/        PostgreSQL (sqlx) + migrations runner
   pinchora-cache/     Redis: cooldowns, gateway sessions, cross-pod identify queue, invalidation pub/sub
   pinchora-render/    pixel-art cards (SVG → PNG with resvg)
-  pinchora-commands/  slash commands, buttons, gateway event handlers
-  pinchora-web/       web dashboard API (axum): Discord OAuth, sessions, CSRF, server settings, modules, the house viewer, the SPA
-web/                  dashboard UI (Vite + React + TypeScript), embedded into the binary
+  pinchora-commands/  slash commands, buttons, gateway event handlers; `hooks.rs` is where feature packages listen
+                      to messages, joins, leaves, reactions, DMs and level-ups
+  pinchora-web/       web dashboard API (axum): Discord OAuth, sessions, CSRF, server settings, modules, the house viewer, the public site's data and invite link, the SPA
+web/                  dashboard and public site UI (Vite + React + TypeScript), embedded into the binary
 migrations/           SQL migrations
 assets/fonts/         Silkscreen + Noto Sans, and Noto Sans CJK + Noto Emoji subsets as fallback (SIL OFL)
 deploy/               Kubernetes (kustomize)
@@ -634,6 +892,15 @@ coloured circle with its first letter.
 
 Silkscreen and Noto Sans are under the SIL Open Font License; the license texts are in
 `assets/fonts/`.
+
+Silkscreen is a modified version: `tools/fonts/silkscreen_tr.py` adds the Turkish letters it lacked, İ ı Ş ş Ğ ğ,
+to both weights, on the font's own 125-unit pixel grid (İ is an I with a dot, Ş an S with Ç's cedilla, Ğ a G with a
+breve in the rows of Â's circumflex; Silkscreen has no lower case, so ı is the I bar), and moves the dots of Ö and Ü
+(and the circumflex of Regular's Û) onto that grid. Ç Ö Ü Â were already there. The family name stays
+`Silkscreen`: its copyright line declares no Reserved Font Name. The change is noted in the font's version and
+description fields and in `OFL-Silkscreen.txt`. Re-run the script (fontTools) to rebuild; it is idempotent. The
+profile, rank and wallet cards capitalise Turkish text with `Lang::upper` (`i` becomes `İ`, as `lang::upper` does
+for the wordle board), so the dots land where Turkish puts them.
 
 Names, bios and titles in emoji or CJK draw as letters, not empty boxes, because two fallback fonts follow the
 card fonts in the renderer's font database (`pinchora_render::FONT_FILES` for the cards and the dashboard,

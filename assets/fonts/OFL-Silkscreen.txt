@@ -1,5 +1,14 @@
 Copyright 2001 The Silkscreen Project Authors (https://github.com/googlefonts/silkscreen)
 
+MODIFIED VERSION. The Silkscreen-Regular.ttf and Silkscreen-Bold.ttf in this folder are Modified Versions
+made by the Pinchora project in 2026: the Turkish letters I-dot (U+0130), dotless i (U+0131), S-cedilla
+(U+015E, U+015F) and G-breve (U+011E, U+011F) were added on the font's pixel grid, and the dots of O-diaeresis
+and U-diaeresis (U+00D6, U+00F6, U+00DC, U+00FC), and the circumflex of the Regular
+U-circumflex (U+00DB), moved onto that grid. The copyright line above names no Reserved
+Font Name, so the family name is unchanged. The changes are made by tools/fonts/silkscreen_tr.py in the Pinchora
+repository (https://github.com/realapeiron/Pinchora). The Silkscreen Project Authors and Jason Kottke do not
+endorse this version.
+
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:
 https://scripts.sil.org/OFL

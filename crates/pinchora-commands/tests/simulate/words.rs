@@ -1765,7 +1765,7 @@ async fn a_turkish_hot_pearl_table_gets_turkish_syllables_and_words() {
         "{}",
         foreign.content()
     );
-    let typed = pinchora_game::lang::upper(Lang::Tr, &word);
+    let typed = Lang::Tr.upper(&word);
     let played = sim.submit_fields(cur, &form, &[("word", typed.as_str())]).await;
     assert!(!played.ephemeral, "{}", played.content());
     keep_reply_png(&sim, &played, "hot-pearl-tr-after-a-word");
@@ -1841,7 +1841,7 @@ async fn a_turkish_word_race_is_played_with_the_turkish_keyboard() {
         .find(|w| **w != secret && w.contains('ş') && w.contains('ı'))
         .expect("an allowed word")
         .clone();
-    let typed = pinchora_game::lang::upper(Lang::Tr, &miss);
+    let typed = Lang::Tr.upper(&miss);
     let board = sim.submit_fields(ada, &form, &[("guess", typed.as_str())]).await;
     assert!(board.ephemeral && board.files.len() == 1, "{}", board.content());
     keep_reply_png(&sim, &board, "word-race-tr-board");

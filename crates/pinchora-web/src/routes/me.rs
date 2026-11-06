@@ -7,6 +7,7 @@ use serde::Serialize;
 use serde_json::{Value, json};
 
 use crate::{
+    auth::session::Session,
     discord::{self, UserGuild},
     error::{ApiError, ApiResult},
     extract::CurrentSession,
@@ -19,20 +20,24 @@ const REFRESH_COOLDOWN: Duration = Duration::from_secs(10);
 /// `GET /api/me`: who is logged in, and the token writes must carry.
 pub async fn me(State(state): State<WebState>, current: CurrentSession) -> Json<Value> {
     let s = &current.session;
-    let avatar_url = match &s.avatar {
-        Some(hash) => format!("https://cdn.discordapp.com/avatars/{}/{hash}.png?size=64", s.user_id),
-        None => format!("https://cdn.discordapp.com/embed/avatars/{}.png", (s.user_id >> 22) % 6),
-    };
     Json(json!({
         "user": {
             "id": s.user_id.to_string(),
             "username": s.username,
             "global_name": s.global_name,
-            "avatar_url": avatar_url,
+            "avatar_url": avatar_url(s),
         },
         "csrf": s.csrf,
         "capabilities": { "message_content": state.settings.message_content },
     }))
+}
+
+/// The user's avatar on Discord's CDN, or the default one their id picks.
+pub fn avatar_url(s: &Session) -> String {
+    match &s.avatar {
+        Some(hash) => format!("https://cdn.discordapp.com/avatars/{}/{hash}.png?size=64", s.user_id),
+        None => format!("https://cdn.discordapp.com/embed/avatars/{}.png", (s.user_id >> 22) % 6),
+    }
 }
 
 /// A server on the picker.

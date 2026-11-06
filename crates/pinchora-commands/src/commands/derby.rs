@@ -16,7 +16,6 @@ use image::RgbaImage;
 use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{DerbyJoin, DerbyLeave, DerbyOutcome, DerbyResult, GameSession, NewGame, PENDING, PartyMember};
 use pinchora_game::{
-    lang::upper,
     party::derby::{self, CRABS, DAILY_LOSS_LIMIT, LOBBY_SECS, MAX_RACERS, MIN_STAKED_RACERS, ROSTER, Race},
     play::{Game, MAX_BET, MIN_BET},
 };
@@ -133,7 +132,7 @@ async fn lobby_message(
         })
         .collect();
     let (stake, racer_count) = (session.bet, racers.len());
-    let status = upper(lang, &t!(lang, "derby.lobby-status"));
+    let status = lang.upper(&t!(lang, "derby.lobby-status"));
     let png = app
         .render(move |r| {
             let lanes: Vec<DerbyLane<'_>> = (0..CRABS)

@@ -139,7 +139,7 @@ async fn view(app: &App, game: &WordleGame, note: &str) -> anyhow::Result<Intera
     // English shows the word as it is stored; Turkish in capitals with the dotted İ.
     let shown_word = match lang {
         Lang::En => game.word.clone(),
-        Lang::Tr => lang::upper(lang, &game.word),
+        Lang::Tr => lang.upper(&game.word),
     };
     let footer = match game.status.as_str() {
         "won" => t!(lang, "wordle.footer-won", tries = tries, max = MAX_TRIES),
@@ -147,7 +147,7 @@ async fn view(app: &App, game: &WordleGame, note: &str) -> anyhow::Result<Intera
         _ => t!(lang, "wordle.footer-playing", number = tries + 1, max = MAX_TRIES),
     };
     let png = {
-        let (title, footer) = (lang::upper(lang, &title), lang::upper(lang, &footer));
+        let (title, footer) = (lang.upper(&title), lang.upper(&footer));
         app.render(move |r| {
             r.wordle_card(&WordleCard {
                 title: &title,
@@ -314,7 +314,7 @@ pub(crate) async fn on_guess(cx: &Cx, mut args: Split<'_, char>, text: &str) -> 
     };
     if !PlayContent::for_lang(lang).words.is_allowed(&guess) {
         return cx
-            .reply_ephemeral(t!(lang, "wordle.not-listed", word = lang::upper(lang, &guess)))
+            .reply_ephemeral(t!(lang, "wordle.not-listed", word = lang.upper(&guess)))
             .await;
     }
     let Some(game) = cx.app.db.wordle_guess(me, mode, day, &guess).await? else {

@@ -275,7 +275,7 @@ impl WordError {
 
     /// The same in `lang`.
     pub fn say_in(self, lang: Lang, syllable: &str) -> String {
-        let syllable = lang::upper(lang, syllable);
+        let syllable = lang.upper(syllable);
         match self {
             Self::Letters => t!(lang, "hotpearl.err.letters"),
             Self::TooShort => t!(lang, "hotpearl.err.too-short", min = MIN_WORD),

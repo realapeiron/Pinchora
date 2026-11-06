@@ -1,3 +1,4 @@
+pub mod card_design;
 pub mod cluster;
 pub mod config;
 pub mod economy;

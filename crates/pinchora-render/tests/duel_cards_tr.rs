@@ -1,5 +1,5 @@
 //! The duel cards in Turkish: every label comes out of the catalog (a missing key would be drawn as itself),
-//! the pixel font's missing letters fall back to the plain ones, and the cards still render.
+//! the pixel font draws the Turkish letters, and the cards still render.
 
 use pinchora_core::i18n::Lang;
 use pinchora_render::{
@@ -43,7 +43,7 @@ fn connect_four_names_its_discs_and_the_winner_in_turkish() {
         theme: Theme::reef(),
     };
     let svg = card(Some(2), None).to_svg();
-    assert!(svg.contains("MERCAN") && svg.contains("SENIN SIRAN"), "{svg}");
+    assert!(svg.contains("MERCAN") && svg.contains("SENİN SIRAN"), "{svg}");
     assert!(svg.contains("SIRA: CAN"));
     let won = card(None, Some(1)).to_svg();
     assert!(won.contains("KAZANAN!") && won.contains("GÖK"), "{won}");
@@ -74,7 +74,7 @@ fn the_board_cards_count_pieces_and_name_the_sides_in_turkish() {
         theme: Theme::reef(),
     };
     let svg = checkers.to_svg();
-    assert!(svg.contains("SENIN SIRAN") && svg.contains("12 KALDI"), "{svg}");
+    assert!(svg.contains("SENİN SIRAN") && svg.contains("12 KALDI"), "{svg}");
     assert_no_keys(&svg);
     let png = Renderer::new().checkers_card(&checkers).expect("renders");
     assert_eq!(png_size(&png), (CheckersCard::WIDTH, CheckersCard::HEIGHT));
@@ -90,13 +90,13 @@ fn the_board_cards_count_pieces_and_name_the_sides_in_turkish() {
         selected: None,
         targets: &[],
         check: None,
-        status: "SIRA: CAN, ŞAH TEHLIKEDE!",
+        status: "SIRA: CAN, ŞAH TEHLİKEDE!",
         pot: 0,
         theme: Theme::reef(),
     };
     let svg = chess.to_svg();
     // The first player's note names the side that moves first; the second player is on turn.
-    assert!(svg.contains("MERCAN, ILK") && svg.contains("SENIN SIRAN"), "{svg}");
+    assert!(svg.contains("MERCAN, İLK") && svg.contains("SENİN SIRAN"), "{svg}");
     assert_no_keys(&svg);
     let over = ChessCard {
         turn: None,
@@ -104,7 +104,7 @@ fn the_board_cards_count_pieces_and_name_the_sides_in_turkish() {
         ..chess
     };
     let svg = over.to_svg();
-    assert!(svg.contains("KAZANAN!") && svg.contains("MERCAN, ILK"), "{svg}");
+    assert!(svg.contains("KAZANAN!") && svg.contains("MERCAN, İLK"), "{svg}");
     let png = Renderer::new().chess_card(&over).expect("renders");
     assert_eq!(png_size(&png), (ChessCard::WIDTH, ChessCard::HEIGHT));
 }
@@ -152,10 +152,10 @@ fn the_sea_fleet_cards_speak_turkish_down_to_the_ship_names() {
         theme: Theme::reef(),
     };
     let svg = radar(Some(0), None).to_svg();
-    // The pixel font has no Ş and no İ: they are drawn as S and I.
-    assert!(svg.contains("BURAYA ATES") && svg.contains("BEKLIYOR"), "{svg}");
+    // The pixel font draws Ş and İ directly.
+    assert!(svg.contains("BURAYA ATEŞ") && svg.contains("BEKLİYOR"), "{svg}");
     let won = radar(None, Some(0)).to_svg();
-    assert!(won.contains("KAZANAN!") && won.contains("FILO BATTI"), "{won}");
+    assert!(won.contains("KAZANAN!") && won.contains("FİLO BATTI"), "{won}");
     assert_no_keys(&svg);
     assert_no_keys(&won);
     let png = Renderer::new().radar_card(&radar(Some(0), None)).expect("renders");
@@ -180,7 +180,7 @@ fn the_sea_fleet_cards_speak_turkish_down_to_the_ship_names() {
     for ship in ["Kalyon", "Fırkateyn", "Brik", "Şalupa (battı)", "Sandal"] {
         assert!(svg.contains(ship), "{ship}: {svg}");
     }
-    assert!(svg.contains("FILON"), "{svg}");
+    assert!(svg.contains("FİLON"), "{svg}");
     assert_no_keys(&svg);
     let png = Renderer::new().fleet_card(&fleet).expect("renders");
     assert_eq!(png_size(&png), (FleetCard::WIDTH, FleetCard::HEIGHT));
@@ -194,23 +194,23 @@ fn share_or_grab_labels_its_pool_and_picks_in_turkish() {
         picks,
         pool: 60,
         wager,
-        banner: "KIMSE KAZANMADI",
+        banner: "KİMSE KAZANMADI",
         mood: Mood::Wait,
         theme: Theme::reef(),
     };
     let svg = card([PickView::Locked, PickView::Thinking], false).to_svg();
     assert!(
-        svg.contains("PAYLAS YA DA KAP") && svg.contains("DENIZIN HAVUZU") && svg.contains("HAVUZDA"),
+        svg.contains("PAYLAŞ YA DA KAP") && svg.contains("DENİZİN HAVUZU") && svg.contains("HAVUZDA"),
         "{svg}"
     );
-    assert!(svg.contains("SEÇTI") && svg.contains("DÜSÜNÜYOR..."), "{svg}");
+    assert!(svg.contains("SEÇTİ") && svg.contains("DÜŞÜNÜYOR..."), "{svg}");
     assert!(
-        !svg.contains(">PAYLAS<") && !svg.contains(">KAP<"),
+        !svg.contains(">PAYLAŞ<") && !svg.contains(">KAP<"),
         "the picks stay hidden"
     );
     let svg = card([PickView::Share, PickView::Grab], true).to_svg();
     assert!(
-        svg.contains("YATIRIMLARINIZ") && svg.contains(">PAYLAS<") && svg.contains(">KAP<"),
+        svg.contains("YATIRIMLARINIZ") && svg.contains(">PAYLAŞ<") && svg.contains(">KAP<"),
         "{svg}"
     );
     assert_no_keys(&svg);

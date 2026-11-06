@@ -70,6 +70,16 @@ export function checkPointsName(s: string): Check<string> {
   return ok(name);
 }
 
+export function checkPrefix(s: string): Check<string> {
+  const prefix = s.trim();
+  const length = characters(prefix);
+  if (length === 0 || length > LIMITS.prefix_max) {
+    return fail("prefix", `A prefix is 1 to ${LIMITS.prefix_max} characters, e.g. p! or ?.`);
+  }
+  if (/[\s@#`]/u.test(prefix)) return fail("prefix", "A prefix can't hold spaces, @, # or backticks.");
+  return ok(prefix);
+}
+
 function isCustomEmoji(s: string): boolean {
   return /^<a?:[A-Za-z0-9_]{2,32}:[0-9]{17,20}>$/.test(s);
 }

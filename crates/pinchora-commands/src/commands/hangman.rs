@@ -91,22 +91,16 @@ async fn message(
         })
         .collect();
     let mystery = t!(tongue, "hangman.mystery");
-    let category = lang::upper(
-        tongue,
-        find_hangman(game.word()).map_or(mystery.as_str(), |h| h.category.label_in(tongue)),
-    );
+    let category = tongue.upper(find_hangman(game.word()).map_or(mystery.as_str(), |h| h.category.label_in(tongue)));
     let wrong: Vec<char> = game.wrong().into_iter().map(up).collect();
     let misses = game.misses();
-    let status = lang::upper(
-        tongue,
-        &if game.is_won() {
-            t!(tongue, "hangman.status-won")
-        } else if lost {
-            t!(tongue, "hangman.status-lost")
-        } else {
-            t!(tongue, "hangman.status-playing")
-        },
-    );
+    let status = tongue.upper(&if game.is_won() {
+        t!(tongue, "hangman.status-won")
+    } else if lost {
+        t!(tongue, "hangman.status-lost")
+    } else {
+        t!(tongue, "hangman.status-playing")
+    });
     let png = app
         .render(move |r| {
             r.hangman_card(&HangmanCard {
@@ -123,7 +117,7 @@ async fn message(
     // English shows the word as it is stored; Turkish in capitals with the dotted İ.
     let shown_word = match tongue {
         Lang::En => game.word().to_owned(),
-        Lang::Tr => lang::upper(tongue, game.word()),
+        Lang::Tr => tongue.upper(game.word()),
     };
     let left = MAX_MISSES - misses;
     let user = mention(owner);
@@ -308,7 +302,7 @@ async fn close(app: &App, session: &GameSession) -> anyhow::Result<Option<String
     let word = game.map(|g| g.word().to_owned()).unwrap_or_default();
     let shown_word = match tongue {
         Lang::En => word,
-        Lang::Tr => lang::upper(tongue, &word),
+        Lang::Tr => tongue.upper(&word),
     };
     Ok(Some(t!(tongue, "hangman.timeout", word = shown_word)))
 }

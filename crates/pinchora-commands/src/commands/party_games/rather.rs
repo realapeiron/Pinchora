@@ -6,7 +6,6 @@ use std::{str::Split, sync::Arc, time::Duration};
 use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{Commit, NewParty, PartyGame, PollChoice};
 use pinchora_game::{
-    lang::upper,
     party::{
         POLL_VOTE_REWARD, Party,
         prompts::{Category, PartyContent, Rather},
@@ -115,7 +114,7 @@ async fn view(
 ) -> anyhow::Result<twilight_model::http::interaction::InteractionResponseData> {
     let lang = game_lang(game);
     // The card draws the category in capitals, which Turkish spells with its own İ.
-    let (category, a, b) = (upper(lang, &q.category.label_in(lang)), q.a.clone(), q.b.clone());
+    let (category, a, b) = (lang.upper(&q.category.label_in(lang)), q.a.clone(), q.b.clone());
     let closed = result.is_some();
     let png = app
         .render(move |r| {

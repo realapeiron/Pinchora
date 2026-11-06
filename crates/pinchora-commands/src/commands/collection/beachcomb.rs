@@ -68,7 +68,7 @@ impl Beachcomb {
         let part = fishing::time_of_day(now.hour());
         let card = HaulCard {
             title: Game::Beachcomb.name(lang),
-            subtitle: letters::upper(lang, &shore(lang, part)),
+            subtitle: lang.upper(&shore(lang, part)),
             tiles: vec![tile],
             footer,
             theme: Theme::reef(),

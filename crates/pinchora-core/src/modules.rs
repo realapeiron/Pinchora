@@ -18,17 +18,31 @@ pub const NEVER_GATED: [&str; 6] = ["config", "help", "language", "ping", "priva
 /// module either.
 pub const NEVER_GATED_PREFIXES: [&str; 3] = ["hp", "pr", "rm"];
 
-/// Where a module's settings are shown together.
+/// Where a module's settings are shown together. Roles, Safety, Community and Feeds start empty: the
+/// dashboard shows a group once a module belongs to it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Group {
     Server,
     Players,
     Home,
     Games,
+    Roles,
+    Safety,
+    Community,
+    Feeds,
 }
 
 impl Group {
-    pub const ALL: [Self; 4] = [Self::Server, Self::Players, Self::Home, Self::Games];
+    pub const ALL: [Self; 8] = [
+        Self::Server,
+        Self::Players,
+        Self::Home,
+        Self::Games,
+        Self::Roles,
+        Self::Safety,
+        Self::Community,
+        Self::Feeds,
+    ];
 
     pub const fn key(self) -> &'static str {
         match self {
@@ -36,7 +50,16 @@ impl Group {
             Self::Players => "players",
             Self::Home => "home",
             Self::Games => "games",
+            Self::Roles => "roles",
+            Self::Safety => "safety",
+            Self::Community => "community",
+            Self::Feeds => "feeds",
         }
+    }
+
+    /// [`Group::label`] in `lang`.
+    pub fn name(self, lang: Lang) -> String {
+        t!(lang, &format!("module-group.{}", self.key()))
     }
 
     pub const fn label(self) -> &'static str {
@@ -45,6 +68,10 @@ impl Group {
             Self::Players => "Players",
             Self::Home => "Home, pets and fishing",
             Self::Games => "Games",
+            Self::Roles => "Roles",
+            Self::Safety => "Safety",
+            Self::Community => "Community",
+            Self::Feeds => "Feeds",
         }
     }
 }
@@ -88,11 +115,12 @@ pub enum Module {
     PartyGames,
     Collection,
     Gambling,
+    TextCommands,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 27] = [
+    pub const ALL: [Self; 28] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -120,6 +148,7 @@ impl Module {
         Self::PartyGames,
         Self::Collection,
         Self::Gambling,
+        Self::TextCommands,
     ];
 
     /// The key stored in the database and used in the API.
@@ -152,6 +181,7 @@ impl Module {
             Self::PartyGames => "party_games",
             Self::Collection => "collection",
             Self::Gambling => "gambling",
+            Self::TextCommands => "text_commands",
         }
     }
 
@@ -188,12 +218,18 @@ impl Module {
             Self::PartyGames => "Word party games",
             Self::Collection => "Critter drops and beachcombing",
             Self::Gambling => "Gambling-style games",
+            Self::TextCommands => "Text commands",
         }
     }
 
     /// [`Module::label`] in `lang`.
     pub fn name(self, lang: Lang) -> String {
         t!(lang, &format!("module.{}", self.key()))
+    }
+
+    /// [`Module::blurb`] in `lang`.
+    pub fn blurb_in(self, lang: Lang) -> String {
+        t!(lang, &format!("module-blurb.{}", self.key()))
     }
 
     /// One line on what the module covers, for the dashboard and `/config modules show`.
@@ -230,6 +266,9 @@ impl Module {
             }
             Self::Collection => "/dex, /beachcomb, /crabpot, /critterdrop and drops that wash up in chat.",
             Self::Gambling => "Games that stake shells on chance: the shell game and staked derbies.",
+            Self::TextCommands => {
+                "Commands typed as messages, with the prefix or an @mention. Slash commands are not affected."
+            }
         }
     }
 
@@ -245,7 +284,8 @@ impl Module {
             | Self::Suggestions
             | Self::Polls
             | Self::Giveaways
-            | Self::CustomCommands => Group::Server,
+            | Self::CustomCommands
+            | Self::TextCommands => Group::Server,
             Self::Profile | Self::Economy | Self::Shop | Self::Quests | Self::Social => Group::Players,
             Self::House | Self::Plaza | Self::Pets | Self::Fishing => Group::Home,
             Self::Duels
@@ -472,28 +512,30 @@ pub fn check_channels(module: Module, mode: ChannelMode, channels: &[u64]) -> Re
                 "{} works for the whole server, so it can't be limited to channels.",
                 module.label()
             ),
-        ));
+        )
+        .keyed("whole-server", [("module", module.label().to_owned())]));
     }
     let mut clean: Vec<u64> = Vec::with_capacity(channels.len());
     for &id in channels {
         if id == 0 {
-            return Err(FieldError::new("channels", "That isn't a Discord id."));
+            return Err(FieldError::new("channels", "That isn't a Discord id.").keyed("not-an-id", []));
         }
         if !clean.contains(&id) {
             clean.push(id);
         }
     }
     if clean.is_empty() {
-        return Err(FieldError::new(
-            "channels",
-            "Pick at least one channel, or choose all channels.",
-        ));
+        return Err(
+            FieldError::new("channels", "Pick at least one channel, or choose all channels.")
+                .keyed("pick-channels", []),
+        );
     }
     if clean.len() > MAX_CHANNELS {
         return Err(FieldError::new(
             "channels",
             format!("A module can name at most {MAX_CHANNELS} channels."),
-        ));
+        )
+        .keyed("too-many-channels", [("max", MAX_CHANNELS.to_string())]));
     }
     Ok(clean)
 }
@@ -511,10 +553,9 @@ pub fn edit_channels(
         return Ok((ChannelMode::All, Vec::new()));
     }
     let Some(channel) = channel else {
-        return Err(FieldError::new(
-            "channel",
-            "Pick a channel to add, or choose all channels.",
-        ));
+        return Err(
+            FieldError::new("channel", "Pick a channel to add, or choose all channels.").keyed("pick-a-channel", []),
+        );
     };
     // Taking a channel off a list the module does not use changes nothing (rather than wiping the one it does).
     if remove && now.mode != mode {
@@ -551,15 +592,19 @@ pub fn refusal(module: Module, access: Access, manager: bool, lang: Lang) -> Str
 
 /// A rule in a few words, for lists: "on", "off", "only in 3 channels", "off in 2 channels".
 pub fn summary(rule: &ModuleRule) -> String {
+    summary_in(Lang::En, rule)
+}
+
+/// [`summary`] in `lang`.
+pub fn summary_in(lang: Lang, rule: &ModuleRule) -> String {
     if !rule.enabled {
-        return "off".to_owned();
+        return t!(lang, "module-summary.off");
     }
     let n = rule.channels.len();
-    let channels = if n == 1 { "channel" } else { "channels" };
     match rule.mode {
-        ChannelMode::All => "on".to_owned(),
-        ChannelMode::Only => format!("only in {n} {channels}"),
-        ChannelMode::Except => format!("off in {n} {channels}"),
+        ChannelMode::All => t!(lang, "module-summary.on"),
+        ChannelMode::Only => t!(lang, "module-summary.only", count = n),
+        ChannelMode::Except => t!(lang, "module-summary.except", count = n),
     }
 }
 
@@ -575,8 +620,13 @@ mod tests {
             assert!(!module.label().is_empty() && !module.blurb().is_empty());
         }
         assert_eq!(Module::parse("nope"), None);
-        for group in Group::ALL {
+        // The four newer groups are filled by the phase-4 packages; until then they are empty and hidden.
+        for group in [Group::Server, Group::Players, Group::Home, Group::Games] {
             assert!(Module::ALL.iter().any(|m| m.group() == group), "{group:?} is empty");
+        }
+        for (i, group) in Group::ALL.iter().enumerate() {
+            assert!(!group.label().is_empty());
+            assert!(!Group::ALL[i + 1..].iter().any(|g| g.key() == group.key()));
         }
     }
 

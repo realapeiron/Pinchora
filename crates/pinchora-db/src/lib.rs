@@ -1,6 +1,7 @@
 mod activity;
 mod audit;
 mod board_games;
+mod card_designs;
 mod character;
 mod collection;
 mod contest;
@@ -27,6 +28,7 @@ mod periodic;
 mod pets;
 mod polls;
 mod privacy;
+mod public_stats;
 mod reminders;
 mod rewards;
 mod shop;
@@ -45,6 +47,7 @@ use sqlx::{PgPool, postgres::PgPoolOptions};
 pub use activity::{Activity, Counter};
 pub use audit::{AuditRow, AuditSource, NewAudit};
 pub use board_games::{PicrossGame, SoloGame, SoloStep};
+pub use card_designs::{CardDesignRow, CardUploadRow};
 pub use character::OutfitRow;
 pub use collection::{
     Award, BOTTLE as DROP_BOTTLE, BottleOpen, BottlePrize, CRITTERS as DROP_CRITTERS, CollectionSettings, Comb, Daily,
@@ -88,6 +91,7 @@ pub use privacy::{
     ANONYMISED, CLEARED_COLUMNS, DAILY_LIMITS, DELETED_NAME, Deleted, Hide, ID_LISTS, ListEdit, OTHER_TABLES, Privacy,
     TOMBSTONE_DAYS, USER_COLUMNS, ZEROED_COLUMNS,
 };
+pub use public_stats::PublicCounts;
 pub use reminders::{MAX_TEXT_REMINDERS, OPT_IN_KINDS, ReminderRow, TEXT as TEXT_REMINDER};
 pub use rewards::{LevelRoleRow, MAX_LEVEL_ROLES, MAX_REP_ROLES, MAX_STORE_ITEMS, RepRoleRow, StoreBuy, StoreItem};
 pub use shop::{BuyOutcome, Currency, MarketRow, VisitOutcome};

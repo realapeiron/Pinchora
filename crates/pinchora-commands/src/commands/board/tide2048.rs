@@ -112,7 +112,7 @@ async fn view(
     };
     let cells = *board.cells();
     let png = {
-        let status = pinchora_game::lang::upper(lang, &status);
+        let status = lang.upper(&status);
         let art = art(app);
         app.render(move |r| {
             let creatures: Vec<SpriteArt<'_>> = art.iter().map(|(png, w, h)| SpriteArt { png, w: *w, h: *h }).collect();

@@ -6,7 +6,6 @@ use std::{str::Split, sync::Arc};
 
 use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{Commit, NewEntry, PartyEntry, PartyGame, PartyPlayer, Pay, PlayerChange};
-use pinchora_game::lang::upper;
 use pinchora_game::party::{
     Dice, Party,
     filter::is_profane_for,
@@ -88,7 +87,7 @@ impl Moment {
                 lang,
                 "hotpearl.played",
                 name = name,
-                word = upper(lang, word),
+                word = lang.upper(word),
                 next = next
             ),
             Self::Boom { name, out } => t!(
@@ -184,9 +183,9 @@ async fn view(
     let png = {
         // The card draws these in capitals, which Turkish spells with its own İ.
         let (syllable, banner, last) = (
-            upper(lang, &state.syl),
-            upper(lang, &banner),
-            state.last.as_deref().map(|word| upper(lang, word)),
+            lang.upper(&state.syl),
+            lang.upper(&banner),
+            state.last.as_deref().map(|word| lang.upper(word)),
         );
         let seats: Vec<(String, i32, bool, bool)> = players
             .iter()
@@ -235,7 +234,7 @@ async fn view(
             "hotpearl.turn",
             headline = headline.unwrap_or(&banner),
             holder = mention(state.cur),
-            syllable = upper(lang, &state.syl),
+            syllable = lang.upper(&state.syl),
             when = relative(game.deadline),
             secs = secs
         ));
@@ -266,7 +265,7 @@ fn word_field(ui: Lang, lang: Lang, syllable: &str) -> Component {
         })),
         description: None,
         id: None,
-        label: t!(ui, "hotpearl.field-label", syllable = upper(lang, syllable)),
+        label: t!(ui, "hotpearl.field-label", syllable = lang.upper(syllable)),
     })
 }
 

@@ -1,5 +1,7 @@
 mod app;
 mod auto;
+mod card_images;
+mod catalog;
 mod commands;
 mod components;
 mod custom;
@@ -8,21 +10,26 @@ mod defer;
 mod events;
 mod game;
 mod gate;
+mod hooks;
 mod house_view;
 mod invalidations;
+#[cfg(test)]
+mod landing_assets;
 mod lang;
 mod leveling;
 mod responder;
 mod roles;
 mod server_events;
 mod server_log;
+mod text;
 mod util;
 mod voice_xp;
 
-pub use app::App;
+pub use app::{App, PreviewError};
+pub use card_images::{CardSubject, ServerCard, atlas_has, card_png, classic_card, deliver, preview_png, server_card};
+pub use catalog::{command_catalog, site_facts};
 pub use commands::{
     collection::{post_bottle, post_critter_drop, spawn_ticker as spawn_collection_ticker, tick as collection_tick},
-    config::{WelcomeDesign, welcome_card_png},
     customcommand::reserved_names as reserved_command_names,
     definitions as command_definitions,
     games::{spawn_janitor as spawn_game_janitor, sweep as sweep_games},
@@ -37,10 +44,12 @@ pub use custom::{
 };
 pub use cx::Cx;
 pub use defer::Deferral;
+pub use events::on_reaction;
 pub use events::{
-    on_ban_add, on_ban_remove, on_guild_create, on_guild_delete, on_member_add, on_member_remove, on_member_update,
-    on_message, on_voice_state_update, voice_snapshot,
+    PermissionChange, on_ban_add, on_ban_remove, on_guild_create, on_guild_delete, on_member_add, on_member_remove,
+    on_member_update, on_message, on_permissions_changed, on_voice_state_update, voice_snapshot,
 };
+pub use hooks::ReactionEvent;
 pub use house_view::{
     RoomData, catalog as house_catalog, character_png, render_png as render_room_png, room_name as house_room_name,
     seed_at as house_seed_at,
@@ -48,6 +57,7 @@ pub use house_view::{
 pub use invalidations::listen as listen_for_invalidations;
 pub use responder::Responder;
 pub use server_events::{spawn_ticker as spawn_events_ticker, tick as events_tick};
+pub use text::on_text_command;
 pub use util::fill;
 pub use voice_xp::{
     VoiceSnapshot, forget as forget_voice_presence, prune as voice_prune, rebuild as rebuild_voice,
@@ -83,7 +93,7 @@ pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, res
         if let Some(InteractionData::ApplicationCommand(command)) = data {
             let choices = match command.name.as_str() {
                 "tag" | "customcommand" => commands::tag::autocomplete(&cx, &command).await,
-                _ => commands::modules::autocomplete(&command),
+                _ => commands::modules::autocomplete(cx.lang(), &command),
             };
             if let Err(error) = cx.responder.suggest(choices).await {
                 tracing::warn!(%error, name = %command.name, "could not answer an autocomplete");

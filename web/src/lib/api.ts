@@ -15,6 +15,8 @@ export class ApiError extends Error {
   readonly errors: FieldError[];
   /** The job already running, when a 409 says so (`x-job-id`). */
   readonly jobId?: string;
+  /** Seconds until asking again may work, when a 429 or 503 says so (`Retry-After`). */
+  readonly retryAfter?: number;
 
   constructor(
     status: number,
@@ -24,6 +26,7 @@ export class ApiError extends Error {
     inviteUrl?: string,
     errors?: FieldError[],
     jobId?: string,
+    retryAfter?: number,
   ) {
     super(message);
     this.name = "ApiError";
@@ -33,6 +36,7 @@ export class ApiError extends Error {
     this.inviteUrl = inviteUrl;
     this.errors = errors?.length ? errors : field ? [{ field, message }] : [];
     this.jobId = jobId;
+    this.retryAfter = retryAfter;
   }
 }
 
@@ -74,6 +78,7 @@ async function errorOf(response: Response): Promise<ApiError> {
     field("invite_url"),
     Array.isArray(error?.errors) ? (error.errors as FieldError[]) : undefined,
     response.headers.get("x-job-id") ?? undefined,
+    Number(response.headers.get("retry-after")) || undefined,
   );
 }
 
@@ -89,6 +94,15 @@ export async function apiImage(path: string, body: unknown, signal?: AbortSignal
   const response = await send(path, "POST", body, "image/png");
   if (signal?.aborted) throw new DOMException("aborted", "AbortError");
   return response.blob();
+}
+
+/** A POST of a file's own bytes (an upload), answered with JSON. */
+export async function apiUpload<T>(path: string, file: Blob): Promise<T> {
+  const headers: Record<string, string> = { Accept: "application/json", "Content-Type": file.type };
+  if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
+  const response = await fetch(path, { method: "POST", headers, credentials: "same-origin", body: file });
+  if (!response.ok) throw await errorOf(response);
+  return (await response.json()) as T;
 }
 
 function safeParse(text: string): unknown {
@@ -150,6 +164,8 @@ export interface Settings {
   log_names: boolean;
   log_bans: boolean;
   log_voice: boolean;
+  /** What text commands start with; the default when the server picked none. */
+  prefix: string;
 }
 
 export interface AuditEntry {

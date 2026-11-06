@@ -160,6 +160,8 @@ pub const OTHER_TABLES: &[&str] = &[
     "collection_drops",
     "party_settings",
     "guild_modules",
+    "card_designs",
+    "card_uploads",
 ];
 
 /// What a player hides.

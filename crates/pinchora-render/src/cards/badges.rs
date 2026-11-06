@@ -1,5 +1,7 @@
 use std::fmt::Write;
 
+use pinchora_core::{i18n::Lang, t};
+
 use super::{BadgeIcon, PIXEL, SANS, text};
 use crate::{
     Theme,
@@ -31,6 +33,8 @@ pub struct BadgeCell<'a> {
 /// The badge collection: every badge in a grid, earned ones in colour, locked ones dark with
 /// their progress, a counter of how many are earned and a NEW marker on the latest. 960 px wide.
 pub struct BadgeCollectionCard<'a> {
+    /// The language of the card's heading; the badge names and rarity words come translated.
+    pub lang: Lang,
     pub cells: &'a [BadgeCell<'a>],
     /// Rarity words and their plate colours (`0xrrggbb`), in the order the footer lists them.
     pub legend: &'a [(&'a str, u32)],
@@ -109,7 +113,7 @@ impl BadgeCollectionCard<'_> {
             false,
             &t.ink,
             "start",
-            "BADGES",
+            &t!(self.lang, "card.badges.title"),
         );
         text(
             &mut s,
@@ -159,7 +163,7 @@ impl BadgeCollectionCard<'_> {
                 false,
                 &t.muted,
                 "start",
-                &escape(&label.to_uppercase()),
+                &escape(&self.lang.upper(label)),
             );
         }
         sprite(&mut s, CRAB, w - 140.0, foot - 2.0, 3.0, &t.accent, "#fff1e8");
@@ -218,7 +222,7 @@ impl BadgeCollectionCard<'_> {
                     false,
                     &tint,
                     "middle",
-                    &escape(&cell.rarity.to_uppercase()),
+                    &escape(&self.lang.upper(cell.rarity)),
                 );
                 if new {
                     let (nx, ny) = Self::new_tag_origin(plate_x, plate_y);
@@ -350,6 +354,7 @@ mod tests {
             }),
         ];
         let card = BadgeCollectionCard {
+            lang: pinchora_core::i18n::Lang::En,
             cells: &cells,
             legend: &[],
             theme: Theme::reef(),

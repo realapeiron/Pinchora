@@ -7,7 +7,6 @@ use std::{str::Split, sync::Arc};
 use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{GameSession, NewGame, ShellDone, ShellLimits, ShellPick, ShellStart};
 use pinchora_game::{
-    lang::upper,
     party::shells::{
         COOLDOWN_SECS, DAILY_LOSS_LIMIT, DAILY_PLAYS, DAILY_WIN_LIMIT, GUESS_SECS, MAX_STAKE, MIN_STAKE, SHELLS,
         payout, pearl,
@@ -48,7 +47,7 @@ async fn message(
     lang: Lang,
 ) -> anyhow::Result<InteractionResponseData> {
     let (stake, picked, pearl) = (session.bet, table.picked, table.pearl);
-    let status = upper(lang, &table.status);
+    let status = lang.upper(&table.status);
     let png = app
         .render(move |r| {
             r.shell_card(&ShellCard {

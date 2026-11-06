@@ -13,7 +13,11 @@ use std::{
 };
 
 use chrono::{DateTime, Utc};
-use pinchora_core::economy::{DAILY_COOLDOWN, Period};
+use pinchora_core::{
+    economy::{DAILY_COOLDOWN, Period},
+    i18n::Lang,
+    t,
+};
 use pinchora_db::{MAX_TEXT_REMINDERS, OPT_IN_KINDS, PetRow, ReminderRow, TEXT_REMINDER};
 use pinchora_game::pets::Needs;
 use twilight_interactions::command::{CommandModel, CommandOption, CreateCommand, CreateOption};
@@ -134,14 +138,8 @@ impl Thing {
     }
 
     /// What it is about, in a sentence.
-    fn phrase(self) -> &'static str {
-        match self {
-            Self::Daily => "your daily reward",
-            Self::Weekly => "your weekly reward",
-            Self::Monthly => "your monthly reward",
-            Self::Pet => "your pet needing care",
-            Self::Trip => "your pets coming home from trips",
-        }
+    fn phrase(self, lang: Lang) -> String {
+        t!(lang, &format!("remind.thing.{}", self.key()))
     }
 }
 
@@ -164,13 +162,11 @@ impl RemindCommand {
                 cx.reply(data).await
             }
             Self::Cancel(c) => {
+                let lang = cx.lang();
                 let note = if cx.app.db.cancel_text_reminder(user, c.id).await? {
-                    format!("Cancelled reminder **#{}**.", c.id)
+                    t!(lang, "remind.cancelled", id = c.id)
                 } else {
-                    format!(
-                        "You have no reminder **#{}**. See your numbers with `/remind list`.",
-                        c.id
-                    )
+                    t!(lang, "remind.no-such", id = c.id)
                 };
                 cx.reply_ephemeral(note).await
             }
@@ -181,23 +177,21 @@ impl RemindCommand {
 // /Notifications
 
 async fn when(cx: &Cx, user: u64, what: Thing, on: bool) -> anyhow::Result<()> {
+    let lang = cx.lang();
     cx.app.db.set_optin(user, what.key(), on).await?;
     if !on {
         return cx
-            .reply_ephemeral(format!("Okay, no more messages about {}.", what.phrase()))
+            .reply_ephemeral(t!(lang, "remind.off", thing = what.phrase(lang)))
             .await;
     }
-    let note = arm(&cx.app, user, what).await?;
-    cx.reply_ephemeral(format!(
-        "{note}\nI send these as direct messages, so keep your DMs open. Turn it off with `/remind me when {} off`.",
-        what.key()
-    ))
-    .await
+    let note = arm(&cx.app, user, what, lang).await?;
+    cx.reply_ephemeral(t!(lang, "remind.on-hint", note = note, what = what.key()))
+        .await
 }
 
 /// Schedules the message for what is already under way when a notification is turned on, and says
 /// what will happen.
-async fn arm(app: &App, user: u64, what: Thing) -> anyhow::Result<String> {
+async fn arm(app: &App, user: u64, what: Thing, lang: Lang) -> anyhow::Result<String> {
     let now = app.now();
     let key = what.key();
     let next = match what {
@@ -218,12 +212,15 @@ async fn arm(app: &App, user: u64, what: Thing) -> anyhow::Result<String> {
     match what {
         Thing::Daily | Thing::Weekly | Thing::Monthly => Ok(match next.filter(|at| *at > now) {
             Some(at) => {
-                app.db.schedule_reminder(user, key, 0, "", at).await?;
-                format!("Your next {key} is ready {}. I'll message you then.", relative(at))
+                app.db.schedule_reminder(user, key, 0, lang.code(), at).await?;
+                t!(
+                    lang,
+                    "remind.next-ready",
+                    kind = t!(lang, &format!("remind.kind.{key}")),
+                    when = relative(at)
+                )
             }
-            None => {
-                format!("Your {key} is ready to collect now. I'll message you the next time, once you've collected it.")
-            }
+            None => t!(lang, "remind.ready-now", kind = t!(lang, &format!("remind.kind.{key}"))),
         }),
         Thing::Trip => {
             let away: Vec<PetRow> = app
@@ -234,29 +231,21 @@ async fn arm(app: &App, user: u64, what: Thing) -> anyhow::Result<String> {
                 .filter(|p| p.trip_dest.is_some())
                 .collect();
             for pet in &away {
-                refresh_pet(app, pet).await;
+                refresh_pet(app, pet, lang).await;
             }
             Ok(match away.len() {
-                0 => "None of your pets is on a trip. I'll message you when one you send off is home.".to_owned(),
-                1 => format!("**{}** is on a trip. I'll message you when it is home.", away[0].name),
-                n => format!("{n} of your pets are on trips. I'll message you as each one gets home."),
+                0 => t!(lang, "remind.trip-none"),
+                1 => t!(lang, "remind.trip-one", name = away[0].name),
+                n => t!(lang, "remind.trip-many", count = n),
             })
         }
         Thing::Pet => Ok(match app.db.active_pet(user).await? {
-            None => "You have no pet yet (`/pet adopt`). I'll message you when your active pet needs looking after."
-                .to_owned(),
+            None => t!(lang, "remind.pet-none"),
             Some(pet) => {
-                refresh_pet(app, &pet).await;
+                refresh_pet(app, &pet, lang).await;
                 match app.db.scheduled_reminder(user, key, pet.id).await? {
-                    Some(at) => format!(
-                        "I'll message you when **{}** needs looking after, around {}.",
-                        pet.name,
-                        relative(at)
-                    ),
-                    None => format!(
-                        "I'll message you when **{}** needs looking after, once it is home and awake.",
-                        pet.name
-                    ),
+                    Some(at) => t!(lang, "remind.pet-at", name = pet.name, when = relative(at)),
+                    None => t!(lang, "remind.pet-later", name = pet.name),
                 }
             }
         }),
@@ -264,11 +253,13 @@ async fn arm(app: &App, user: u64, what: Thing) -> anyhow::Result<String> {
 }
 
 /// After a reward was collected: if the player asked to be told, schedules the message for when it
-/// is ready again. Failures are logged and swallowed: a reminder never breaks a command.
-pub(crate) async fn after_claim(app: &App, user: u64, kind: &str, ready_at: DateTime<Utc>) {
+/// is ready again. `lang` is stored with it (in its `body`), for the message to be written in when
+/// the player has made no `/language` choice. Failures are logged and swallowed: a reminder never
+/// breaks a command.
+pub(crate) async fn after_claim(app: &App, user: u64, kind: &str, ready_at: DateTime<Utc>, lang: Lang) {
     let result = async {
         if app.db.has_optin(user, kind).await? {
-            app.db.schedule_reminder(user, kind, 0, "", ready_at).await?;
+            app.db.schedule_reminder(user, kind, 0, lang.code(), ready_at).await?;
         }
         anyhow::Ok(())
     };
@@ -292,14 +283,15 @@ fn pet_due(pet: &PetRow) -> DateTime<Utc> {
 
 /// Keeps the notifications about `pet` in step with how it is now: a trip that ends, and the
 /// moment the active pet will need looking after. Called whenever a pet's card is shown, which is
-/// every time its state changes. Failures are logged and swallowed.
-pub(crate) async fn refresh_pet(app: &App, pet: &PetRow) {
-    if let Err(error) = try_refresh_pet(app, pet).await {
+/// every time its state changes. `lang` is stored with the messages (see [`after_claim`]). Failures
+/// are logged and swallowed.
+pub(crate) async fn refresh_pet(app: &App, pet: &PetRow, lang: Lang) {
+    if let Err(error) = try_refresh_pet(app, pet, lang).await {
         tracing::debug!(%error, pet = pet.id, "pet reminders not scheduled");
     }
 }
 
-async fn try_refresh_pet(app: &App, pet: &PetRow) -> anyhow::Result<()> {
+async fn try_refresh_pet(app: &App, pet: &PetRow, lang: Lang) -> anyhow::Result<()> {
     let user = pet.owner_id as u64;
     let optins = app.db.reminder_optins(user).await?;
     if optins.is_empty() {
@@ -311,7 +303,9 @@ async fn try_refresh_pet(app: &App, pet: &PetRow) -> anyhow::Result<()> {
     if optins.iter().any(|k| k == "trip") {
         match (&pet.trip_dest, pet.trip_ends_at) {
             (Some(_), Some(ends)) if ends > now => {
-                app.db.schedule_reminder(user, "trip", pet.id, "", ends).await?;
+                app.db
+                    .schedule_reminder(user, "trip", pet.id, lang.code(), ends)
+                    .await?;
             }
             (Some(_), Some(_)) => {}
             _ => app.db.unschedule_reminder(user, "trip", pet.id).await?,
@@ -321,7 +315,7 @@ async fn try_refresh_pet(app: &App, pet: &PetRow) -> anyhow::Result<()> {
         if pet.active && !pet.is_away(now) && !pet::is_asleep(pet, now) {
             let due = pet_due(pet);
             if due > now {
-                app.db.schedule_reminder(user, "pet", pet.id, "", due).await?;
+                app.db.schedule_reminder(user, "pet", pet.id, lang.code(), due).await?;
             }
         } else {
             app.db.unschedule_reminder(user, "pet", pet.id).await?;
@@ -333,32 +327,27 @@ async fn try_refresh_pet(app: &App, pet: &PetRow) -> anyhow::Result<()> {
 // /Text reminders
 
 async fn remind_in(cx: &Cx, user: u64, duration: &str, text: &str) -> anyhow::Result<()> {
+    let lang = cx.lang();
     let after = match parse_duration(duration) {
         Ok(after) => after,
-        Err(why) => return cx.reply_ephemeral(why).await,
+        Err(why) => return cx.reply_ephemeral(t!(lang, why)).await,
     };
     let body = strip_mentions(text);
     if body.is_empty() {
-        return cx
-            .reply_ephemeral("Write what to remind you of (mentions are left out of reminders).")
-            .await;
+        return cx.reply_ephemeral(t!(lang, "remind.write-text")).await;
     }
     let due = cx.app.now() + after;
     match cx.app.db.add_text_reminder(user, &body, due).await? {
         None => {
-            cx.reply_ephemeral(format!(
-                "You already have {MAX_TEXT_REMINDERS} reminders open. Cancel one with `/remind list` first."
-            ))
-            .await
+            cx.reply_ephemeral(t!(lang, "remind.too-many", max = MAX_TEXT_REMINDERS))
+                .await
         }
         Some(id) => {
             let embed = EmbedBuilder::new()
                 .color(BRAND)
-                .title("⏰ Reminder set")
-                .description(format!("I'll message you {}:\n{body}", relative(due)))
-                .footer(EmbedFooterBuilder::new(format!(
-                    "#{id} · cancel with /remind cancel or /remind list · sent as a direct message"
-                )))
+                .title(t!(lang, "remind.set-title"))
+                .description(t!(lang, "remind.set-text", when = relative(due), body = body))
+                .footer(EmbedFooterBuilder::new(t!(lang, "remind.set-footer", id = id)))
                 .build();
             cx.reply(InteractionResponseData {
                 embeds: Some(vec![embed]),
@@ -371,10 +360,12 @@ async fn remind_in(cx: &Cx, user: u64, duration: &str, text: &str) -> anyhow::Re
     }
 }
 
-/// "2h30m", "45 min", "1d 12h": a time from now. Units are `w`, `d`, `h`, `m` and `s` (and their
-/// longer spellings); a bare number is refused because it could mean anything.
+/// "2h30m", "45 min", "1d 12h", "2sa30dk": a time from now. Units are `w`, `d`, `h`, `m` and `s` (and
+/// their longer spellings), or in Turkish `hf`, `g`, `sa`, `dk` and `sn`; a bare number is refused
+/// because it could mean anything. An error is the catalog key of what to tell the player.
 fn parse_duration(text: &str) -> Result<chrono::Duration, &'static str> {
-    const BAD: &str = "I couldn't read that time. Write it like `45m`, `2h30m` or `3d` (units: w, d, h, m, s).";
+    const BAD: &str = "remind.bad-time";
+    const TOO_LONG: &str = "remind.time-too-long";
     let mut total = chrono::Duration::zero();
     let mut chars = text.trim().chars().peekable();
     let mut any = false;
@@ -386,33 +377,33 @@ fn parse_duration(text: &str) -> Result<chrono::Duration, &'static str> {
         }
         while !digits.is_empty() && chars.next_if(|c| c.is_whitespace()).is_some() {}
         let mut unit = String::new();
-        while let Some(c) = chars.next_if(|c| c.is_ascii_alphabetic()) {
-            unit.push(c.to_ascii_lowercase());
+        while let Some(c) = chars.next_if(|c| c.is_alphabetic()) {
+            unit.extend(c.to_lowercase());
         }
         if digits.is_empty() && unit.is_empty() && chars.peek().is_none() {
             break;
         }
         let amount: i64 = digits.parse().map_err(|_| BAD)?;
         let step = match unit.as_str() {
-            "w" | "wk" | "wks" | "week" | "weeks" => chrono::Duration::try_weeks(amount),
-            "d" | "day" | "days" => chrono::Duration::try_days(amount),
-            "h" | "hr" | "hrs" | "hour" | "hours" => chrono::Duration::try_hours(amount),
-            "m" | "min" | "mins" | "minute" | "minutes" => chrono::Duration::try_minutes(amount),
-            "s" | "sec" | "secs" | "second" | "seconds" => chrono::Duration::try_seconds(amount),
+            "w" | "wk" | "wks" | "week" | "weeks" | "hf" | "hafta" => chrono::Duration::try_weeks(amount),
+            "d" | "day" | "days" | "g" | "gün" | "gun" => chrono::Duration::try_days(amount),
+            "h" | "hr" | "hrs" | "hour" | "hours" | "sa" | "saat" => chrono::Duration::try_hours(amount),
+            "m" | "min" | "mins" | "minute" | "minutes" | "dk" | "dakika" => chrono::Duration::try_minutes(amount),
+            "s" | "sec" | "secs" | "second" | "seconds" | "sn" | "saniye" => chrono::Duration::try_seconds(amount),
             _ => return Err(BAD),
         }
-        .ok_or("That is too long a time.")?;
-        total = total.checked_add(&step).ok_or("That is too long a time.")?;
+        .ok_or(TOO_LONG)?;
+        total = total.checked_add(&step).ok_or(TOO_LONG)?;
         any = true;
         if total > MAX_AFTER {
-            return Err("I can only remind you up to a year ahead.");
+            return Err("remind.time-year");
         }
     }
     if !any {
         return Err(BAD);
     }
     if total < MIN_AFTER {
-        return Err("That is too soon: reminders are at least a minute away.");
+        return Err("remind.time-too-soon");
     }
     Ok(total)
 }
@@ -477,24 +468,27 @@ fn chosen(kind: &str, optins: &[String]) -> bool {
     optins.iter().any(|k| k == kind)
 }
 
-fn label_of(kind: &str) -> &'static str {
+fn label_of(kind: &str, lang: Lang) -> String {
     match kind {
-        "daily" => "Daily reward",
-        "weekly" => "Weekly reward",
-        "monthly" => "Monthly reward",
-        "pet" => "Pet needs looking after",
-        "trip" => "Pet back from a trip",
-        _ => "",
+        "daily" | "weekly" | "monthly" | "pet" | "trip" => t!(lang, &format!("remind.label.{kind}")),
+        _ => String::new(),
     }
 }
 
 /// The list: which notifications are on, and the reminders still to come, with a menu to cancel one.
 async fn list_panel(cx: &Cx, user: u64, note: &str) -> anyhow::Result<InteractionResponseData> {
+    let lang = cx.lang();
     let optins = cx.app.db.reminder_optins(user).await?;
     let rows = cx.app.db.text_reminders(user).await?;
     let notifications = OPT_IN_KINDS
         .iter()
-        .map(|kind| format!("{} {}", if chosen(kind, &optins) { "🔔" } else { "🔕" }, label_of(kind)))
+        .map(|kind| {
+            format!(
+                "{} {}",
+                if chosen(kind, &optins) { "🔔" } else { "🔕" },
+                label_of(kind, lang)
+            )
+        })
         .collect::<Vec<_>>()
         .join("\n");
     // An embed field holds 1,024 characters: long notes are cut here, and the menu below has them all.
@@ -506,27 +500,29 @@ async fn list_panel(cx: &Cx, user: u64, note: &str) -> anyhow::Result<Interactio
         }
         let line = format!("`#{}` {} · {body}\n", r.id, relative(r.due_at));
         if reminders.chars().count() + line.chars().count() > 980 {
-            reminders.push_str(&format!("…and {} more in the menu below", rows.len() - i));
+            reminders.push_str(&t!(lang, "remind.list-more", count = rows.len() - i));
             break;
         }
         reminders.push_str(&line);
     }
     let reminders = if rows.is_empty() {
-        "None. Set one with `/remind me in 2h30m <text>`.".to_owned()
+        t!(lang, "remind.list-none")
     } else {
         reminders.trim_end().to_owned()
     };
     let mut embed = EmbedBuilder::new()
         .color(BRAND)
-        .title("⏰ Your reminders")
+        .title(t!(lang, "remind.list-title"))
         .field(EmbedFieldBuilder::new(
-            "Messages when something is ready",
+            t!(lang, "remind.list-notifications"),
             notifications,
         ))
-        .field(EmbedFieldBuilder::new("Reminders", reminders))
-        .footer(EmbedFooterBuilder::new(format!(
-            "{} of {MAX_TEXT_REMINDERS} reminders · change notifications with /remind me when",
-            rows.len()
+        .field(EmbedFieldBuilder::new(t!(lang, "remind.list-reminders"), reminders))
+        .footer(EmbedFooterBuilder::new(t!(
+            lang,
+            "remind.list-footer",
+            count = rows.len(),
+            max = MAX_TEXT_REMINDERS
         )));
     if !note.is_empty() {
         embed = embed.description(note);
@@ -555,7 +551,7 @@ async fn list_panel(cx: &Cx, user: u64, note: &str) -> anyhow::Result<Interactio
                 max_values: Some(1),
                 min_values: Some(1),
                 options: Some(options),
-                placeholder: Some("Cancel a reminder…".to_owned()),
+                placeholder: Some(t!(lang, "remind.list-placeholder")),
                 required: None,
             })],
         }));
@@ -571,19 +567,20 @@ async fn list_panel(cx: &Cx, user: u64, note: &str) -> anyhow::Result<Interactio
 
 /// `rm:c`: the menu under the list cancels the reminder picked.
 pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, value: Option<&str>) -> anyhow::Result<()> {
+    let lang = cx.lang();
     match args.next() {
         Some("c") => {
             let user = cx.author()?.id.get();
             let id: i64 = value.and_then(|v| v.parse().ok()).unwrap_or(0);
             let note = if cx.app.db.cancel_text_reminder(user, id).await? {
-                format!("Cancelled reminder **#{id}**.")
+                t!(lang, "remind.cancelled", id = id)
             } else {
-                "That reminder was already gone.".to_owned()
+                t!(lang, "remind.already-gone")
             };
             let data = list_panel(cx, user, &note).await?;
             cx.update(data).await
         }
-        _ => cx.reply_ephemeral("This menu has expired.").await,
+        _ => cx.reply_ephemeral(t!(lang, "remind.expired")).await,
     }
 }
 
@@ -601,11 +598,26 @@ enum Delivery {
     Later(DateTime<Utc>),
 }
 
-async fn plan(app: &App, r: &ReminderRow, now: DateTime<Utc>) -> anyhow::Result<Delivery> {
+/// The language a due reminder is written in. There is no interaction to ask: the player's
+/// `/language` pick, else the language their command was answered in when the message was scheduled
+/// (the automatic kinds keep it in their `body`), else English.
+async fn delivery_lang(app: &App, r: &ReminderRow) -> Lang {
+    let stored = if r.kind == TEXT_REMINDER {
+        None
+    } else {
+        Lang::from_code(&r.body)
+    };
+    match app.user_lang_choice(r.user_id as u64).await {
+        Some(lang) => lang,
+        None => stored.unwrap_or_default(),
+    }
+}
+
+async fn plan(app: &App, r: &ReminderRow, now: DateTime<Utc>, lang: Lang) -> anyhow::Result<Delivery> {
     let user = r.user_id as u64;
     if r.kind == TEXT_REMINDER {
         return Ok(Delivery::Send {
-            title: "⏰ Reminder".to_owned(),
+            title: t!(lang, "remind.text-title"),
             text: r.body.clone(),
         });
     }
@@ -615,18 +627,21 @@ async fn plan(app: &App, r: &ReminderRow, now: DateTime<Utc>) -> anyhow::Result<
     }
     Ok(match r.kind.as_str() {
         "daily" | "weekly" | "monthly" => Delivery::Send {
-            title: format!("Your {} is ready", r.kind),
+            title: t!(lang, &format!("remind.title.{}", r.kind)),
             text: format!(
-                "Collect your shells with `/{}`.\nTurn these messages off with `/remind me when {} off`.",
-                r.kind, r.kind
+                "{}\n{}",
+                t!(lang, "remind.collect", cmd = r.kind),
+                t!(lang, "remind.turn-off", what = r.kind)
             ),
         },
         "trip" => match app.db.pets(user).await?.into_iter().find(|p| p.id == r.ref_id) {
             Some(pet) if pet.has_souvenir(now) => Delivery::Send {
-                title: format!("{} is home", pet.name),
-                text: "It is back from its trip with a souvenir. Collect it with `/pet trip claim`.\n\
-                       Turn these messages off with `/remind me when trip off`."
-                    .to_owned(),
+                title: t!(lang, "remind.trip-title", name = pet.name),
+                text: format!(
+                    "{}\n{}",
+                    t!(lang, "remind.trip-text"),
+                    t!(lang, "remind.turn-off", what = "trip")
+                ),
             },
             _ => Delivery::Drop,
         },
@@ -643,12 +658,13 @@ async fn plan(app: &App, r: &ReminderRow, now: DateTime<Utc>) -> anyhow::Result<
                         hygiene: pet.hygiene,
                     };
                     let hours = (now - pet.needs_at).num_seconds() as f32 / 3600.0;
+                    let wants = t!(lang, &format!("remind.wants.{}", stored.after(hours).want_key()));
                     Delivery::Send {
-                        title: format!("{} needs you", pet.name),
+                        title: t!(lang, "remind.pet-title", name = pet.name),
                         text: format!(
-                            "It could use {}. Look after it with `/pet view`.\n\
-                             Turn these messages off with `/remind me when pet off`.",
-                            stored.after(hours).wants()
+                            "{}\n{}",
+                            t!(lang, "remind.pet-text", wants = wants),
+                            t!(lang, "remind.turn-off", what = "pet")
                         ),
                     }
                 }
@@ -661,7 +677,8 @@ async fn plan(app: &App, r: &ReminderRow, now: DateTime<Utc>) -> anyhow::Result<
 
 /// Sends one due reminder. True when a message went out.
 async fn deliver(app: &App, r: &ReminderRow, now: DateTime<Utc>) -> anyhow::Result<bool> {
-    let (title, text) = match plan(app, r, now).await? {
+    let lang = delivery_lang(app, r).await;
+    let (title, text) = match plan(app, r, now, lang).await? {
         Delivery::Send { title, text } => (title, text),
         Delivery::Drop => {
             app.db.finish_reminder(r).await?;
@@ -770,13 +787,34 @@ mod tests {
     }
 
     #[test]
+    fn turkish_units_are_read_too() {
+        let m = chrono::Duration::minutes;
+        let h = chrono::Duration::hours;
+        assert_eq!(parse_duration("45dk"), Ok(m(45)));
+        assert_eq!(parse_duration("2sa30dk"), Ok(h(2) + m(30)));
+        assert_eq!(parse_duration("2 saat 30 dakika"), Ok(h(2) + m(30)));
+        assert_eq!(parse_duration(" 1G 12SA "), Ok(h(36)));
+        assert_eq!(parse_duration("3 gün"), Ok(chrono::Duration::days(3)));
+        assert_eq!(parse_duration("3 gun"), Ok(chrono::Duration::days(3)));
+        assert_eq!(parse_duration("1hf"), Ok(chrono::Duration::days(7)));
+        assert_eq!(parse_duration("2 HAFTA"), Ok(chrono::Duration::days(14)));
+        assert_eq!(parse_duration("60sn"), Ok(m(1)));
+        assert_eq!(parse_duration("90 saniye"), Ok(m(1) + chrono::Duration::seconds(30)));
+        assert_eq!(parse_duration("1d 30dk"), Ok(h(24) + m(30)));
+        for bad in ["yakında", "5ş", "5gü", "dk", "2sa30"] {
+            assert_eq!(parse_duration(bad), Err("remind.bad-time"), "{bad:?}");
+        }
+        assert!(t!(Lang::Tr, parse_duration("yakında").unwrap_err()).contains("hf, g, sa, dk, sn"));
+    }
+
+    #[test]
     fn durations_that_make_no_sense_are_refused() {
         for bad in ["", "soon", "30", "m5", "5x", "h", "2h30", "1.5h", "-5m"] {
             assert!(parse_duration(bad).is_err(), "{bad:?}");
         }
-        assert!(parse_duration("30s").unwrap_err().contains("too soon"));
+        assert!(t!(Lang::En, parse_duration("30s").unwrap_err()).contains("too soon"));
         assert!(parse_duration("0m").is_err());
-        assert!(parse_duration("366d").unwrap_err().contains("a year"));
+        assert!(t!(Lang::En, parse_duration("366d").unwrap_err()).contains("a year"));
         assert!(parse_duration("99999999999999999999h").is_err());
         assert!(parse_duration("9999999999999w").is_err());
         assert!(parse_duration("365d").is_ok());

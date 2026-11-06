@@ -7,7 +7,7 @@ use chrono::{DateTime, Duration, Utc};
 use pinchora_core::{i18n::Lang, t};
 use pinchora_db::GameSession;
 use pinchora_game::{
-    lang::{lower, upper},
+    lang::lower,
     play::{
         Game as Play,
         chess::{self as rules, Color, Game, Kind, Move, Outcome},
@@ -191,7 +191,7 @@ async fn message(
         None => t!(lang, "board.status-move", name = tag(&names[mover])),
     };
     // The card draws it in capitals.
-    let status = upper(lang, &status);
+    let status = lang.upper(&status);
     let content = match end {
         None => t!(
             lang,

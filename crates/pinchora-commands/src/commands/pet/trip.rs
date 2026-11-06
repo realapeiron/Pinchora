@@ -5,9 +5,12 @@
 use std::str::Split;
 
 use chrono::Duration;
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{PetRow, TripClaim, TripPayout};
 use pinchora_game::{
-    Content, pets,
+    Content, Rarity,
+    lang::lower,
+    pets,
     trips::{self, Haul, Rolls, Trip},
 };
 use twilight_interactions::command::{CommandModel, CommandOption, CreateCommand, CreateOption};
@@ -18,7 +21,7 @@ use twilight_model::{
 use twilight_util::builder::embed::{EmbedBuilder, EmbedFieldBuilder};
 
 use super::{
-    button, current_needs, is_asleep, level_up_note, pet_card, pet_png, pet_title, place_of, row, select, span,
+    button, current_needs, is_asleep, left_in, level_up_note, pet_card, pet_png, pet_title, place_of, row, select, span,
 };
 use crate::{
     App, Cx,
@@ -120,49 +123,56 @@ impl PetTrip {
 
 /// The pet a player means: their active pet, or the one whose name (else the start of it, else
 /// its species) matches, ignoring case.
-fn pick_pet<'a>(pets: &'a [PetRow], name: Option<&str>) -> Result<&'a PetRow, String> {
+fn pick_pet<'a>(pets: &'a [PetRow], name: Option<&str>, lang: Lang) -> Result<&'a PetRow, String> {
     let Some(name) = name.map(str::trim).filter(|n| !n.is_empty()) else {
         return pets
             .iter()
             .find(|p| p.active)
             .or(pets.first())
-            .ok_or_else(|| "You don't have a pet yet. Get one with `/pet adopt`.".to_owned());
+            .ok_or_else(|| t!(lang, "pet.no-pet"));
     };
-    let wanted = name.to_lowercase();
+    // English folds every letter as before (É and é match); Turkish folds I/ı and İ/i its own way.
+    let fold = |text: &str| match lang {
+        Lang::En => text.to_lowercase(),
+        Lang::Tr => lower(lang, text),
+    };
+    let wanted = fold(name);
     let content = Content::get();
-    let species = |p: &PetRow| content.pet(&p.species).map_or(String::new(), |s| s.name.to_lowercase());
+    // The species by the name the player sees, or by the English one.
+    let species = |p: &PetRow| match content.pet(&p.species) {
+        Some(s) => [fold(&content.name(&s.id, lang)), s.name.to_lowercase()],
+        None => [String::new(), String::new()],
+    };
     pets.iter()
-        .find(|p| p.name.to_lowercase() == wanted)
-        .or_else(|| pets.iter().find(|p| p.name.to_lowercase().starts_with(&wanted)))
-        .or_else(|| pets.iter().find(|p| species(p) == wanted))
+        .find(|p| fold(&p.name) == wanted)
+        .or_else(|| pets.iter().find(|p| fold(&p.name).starts_with(&wanted)))
+        .or_else(|| pets.iter().find(|p| species(p).contains(&wanted)))
         .ok_or_else(|| {
             let names: Vec<String> = pets.iter().take(10).map(|p| format!("**{}**", p.name)).collect();
-            format!("None of your pets is called **{name}**. You have {}.", names.join(", "))
+            t!(lang, "trip.none-called", name = name, names = names.join(", "))
         })
 }
 
 /// Why this pet cannot set off right now, if it cannot.
-fn cannot_leave(app: &App, pet: &PetRow) -> Option<String> {
+fn cannot_leave(app: &App, lang: Lang, pet: &PetRow) -> Option<String> {
     let now = app.now();
     if pet.is_away(now) {
-        let left = pet.trip_ends_at.map_or(0, |ends| (ends - now).num_seconds());
-        Some(format!(
-            "**{}** is already away at **{}**, back in {}.",
-            pet.name,
-            place_of(pet),
-            span(left)
+        Some(t!(
+            lang,
+            "trip.already-away",
+            name = pet.name,
+            place = place_of(pet, lang),
+            span = left_in(pet.trip_ends_at, now, lang)
         ))
     } else if pet.has_souvenir(now) {
-        Some(format!(
-            "**{}** is back from **{}** with a souvenir. Claim it first with `/pet trip claim`.",
-            pet.name,
-            place_of(pet)
+        Some(t!(
+            lang,
+            "trip.has-souvenir",
+            name = pet.name,
+            place = place_of(pet, lang)
         ))
     } else if is_asleep(pet, now) {
-        Some(format!(
-            "**{}** is fast asleep. Wake it up before it travels.",
-            pet.name
-        ))
+        Some(t!(lang, "trip.asleep", name = pet.name))
     } else {
         None
     }
@@ -175,14 +185,18 @@ enum Departure {
 }
 
 /// Sends `pet` to `trip` if it may go.
-async fn depart(app: &App, user: u64, pet: &PetRow, trip: &Trip) -> anyhow::Result<Departure> {
-    if let Some(why) = cannot_leave(app, pet) {
+async fn depart(app: &App, lang: Lang, user: u64, pet: &PetRow, trip: &Trip) -> anyhow::Result<Departure> {
+    if let Some(why) = cannot_leave(app, lang, pet) {
         return Ok(Departure::Refused(why));
     }
     if pet.level < trip.unlock_level {
-        return Ok(Departure::Refused(format!(
-            "**{}** opens when {} reaches level {} (it is level {}). Care, walks and trips all earn XP.",
-            trip.name, pet.name, trip.unlock_level, pet.level
+        return Ok(Departure::Refused(t!(
+            lang,
+            "trip.locked",
+            trip = Content::get().name(&trip.id, lang),
+            name = pet.name,
+            unlock = trip.unlock_level,
+            level = pet.level
         )));
     }
     let now = app.now();
@@ -190,7 +204,7 @@ async fn depart(app: &App, user: u64, pet: &PetRow, trip: &Trip) -> anyhow::Resu
     let ends = now + Duration::hours(i64::from(trip.hours));
     let kept = [needs.hunger, needs.fun, needs.energy, needs.hygiene];
     if !app.db.start_trip(user, pet, &trip.id, kept, ends).await? {
-        return Ok(Departure::Refused(format!("**{}** can't set off right now.", pet.name)));
+        return Ok(Departure::Refused(t!(lang, "trip.cant-leave", name = pet.name)));
     }
     Ok(Departure::Left(PetRow {
         hunger: needs.hunger,
@@ -204,25 +218,42 @@ async fn depart(app: &App, user: u64, pet: &PetRow, trip: &Trip) -> anyhow::Resu
     }))
 }
 
-fn departure_note(pet: &PetRow, trip: &Trip) -> String {
-    format!(
-        "**{}** packs a tiny bag and sets off for **{}**. Back in {} h.\n*{}*",
-        pet.name, trip.name, trip.hours, trip.blurb
+fn departure_note(lang: Lang, pet: &PetRow, trip: &Trip) -> String {
+    let content = Content::get();
+    t!(
+        lang,
+        "trip.departure",
+        name = pet.name,
+        trip = content.name(&trip.id, lang),
+        hours = trip.hours,
+        blurb = content.description(&trip.id, lang).unwrap_or_default()
     )
 }
 
+/// "4 h": how long a trip lasts.
+fn length(lang: Lang, trip: &Trip) -> String {
+    t!(lang, "trip.length", hours = trip.hours)
+}
+
+/// What a place can turn up, as a short phrase.
+fn finds(lang: Lang, trip: &Trip) -> String {
+    let places: Vec<String> = trip.categories.iter().map(|c| lower(lang, c.label_in(lang))).collect();
+    t!(lang, "trip.finds", places = places.join(", "))
+}
+
 async fn go_command(cx: &Cx, user: u64, go: PetTripGo) -> anyhow::Result<()> {
+    let lang = cx.lang();
     let Some(trip) = trips::get(go.destination.id()) else {
-        return cx.reply_ephemeral("That place isn't on the map yet.").await;
+        return cx.reply_ephemeral(t!(lang, "trip.not-on-map")).await;
     };
     let pets = cx.app.db.pets(user).await?;
-    let pet = match pick_pet(&pets, go.pet.as_deref()) {
+    let pet = match pick_pet(&pets, go.pet.as_deref(), lang) {
         Ok(pet) => pet,
         Err(why) => return cx.reply_ephemeral(why).await,
     };
-    match depart(&cx.app, user, pet, trip).await? {
+    match depart(&cx.app, lang, user, pet, trip).await? {
         Departure::Left(fresh) => {
-            let data = pet_card(&cx.app, &fresh, Some(departure_note(&fresh, trip))).await?;
+            let data = pet_card(&cx.app, lang, &fresh, Some(departure_note(lang, &fresh, trip))).await?;
             cx.reply(data).await
         }
         Departure::Refused(why) => cx.reply_ephemeral(why).await,
@@ -233,50 +264,56 @@ async fn go_command(cx: &Cx, user: u64, go: PetTripGo) -> anyhow::Result<()> {
 
 /// The "where to?" card behind the Trip button: every place, and a menu of the ones that are open.
 async fn picker(cx: &Cx, user: u64, pet_id: i64) -> anyhow::Result<()> {
+    let lang = cx.lang();
     let Some(pet) = cx.app.db.pets(user).await?.into_iter().find(|p| p.id == pet_id) else {
-        return cx.reply_ephemeral("That's not your pet.").await;
+        return cx.reply_ephemeral(t!(lang, "trip.not-yours")).await;
     };
-    if let Some(why) = cannot_leave(&cx.app, &pet) {
+    if let Some(why) = cannot_leave(&cx.app, lang, &pet) {
         return cx.reply_ephemeral(why).await;
     }
+    let content = Content::get();
     let mut lines = Vec::new();
     let mut options = Vec::new();
     for trip in trips::all() {
         let open = pet.level >= trip.unlock_level;
+        let name = content.name(&trip.id, lang);
+        let blurb = content.description(&trip.id, lang).unwrap_or_default();
         lines.push(if open {
-            format!(
-                "**{}** · {} · level {}\n{} Finds {}.",
-                trip.name,
-                trip.length(),
-                trip.unlock_level,
-                trip.blurb,
-                trip.finds()
+            t!(
+                lang,
+                "trip.picker-open",
+                name = name,
+                length = length(lang, trip),
+                level = trip.unlock_level,
+                blurb = blurb,
+                finds = finds(lang, trip)
             )
         } else {
-            format!(
-                "🔒 **{}** · {} · opens at level {}\n{}",
-                trip.name,
-                trip.length(),
-                trip.unlock_level,
-                trip.blurb
+            t!(
+                lang,
+                "trip.picker-locked",
+                name = name,
+                length = length(lang, trip),
+                level = trip.unlock_level,
+                blurb = blurb
             )
         });
         options.push(SelectMenuOption {
             default: false,
             description: Some(if open {
-                format!("{} · {}", trip.length(), trip.blurb)
+                t!(lang, "trip.option-open", length = length(lang, trip), blurb = blurb)
             } else {
-                format!("Opens at level {} (now {})", trip.unlock_level, pet.level)
+                t!(lang, "trip.option-locked", level = trip.unlock_level, now = pet.level)
             }),
             emoji: None,
-            label: trip.name.clone(),
+            label: name.into_owned(),
             value: trip.id.clone(),
         });
     }
-    let png = pet_png(&cx.app, &pet).await?;
+    let png = pet_png(&cx.app, lang, &pet).await?;
     let embed = EmbedBuilder::new()
         .color(BRAND)
-        .title(format!("Where should {} go?", pet.name))
+        .title(t!(lang, "trip.picker-title", pet = pet.name))
         .description(lines.join("\n\n"));
     let id = pet.id;
     cx.update(Cx::card(
@@ -284,8 +321,12 @@ async fn picker(cx: &Cx, user: u64, pet_id: i64) -> anyhow::Result<()> {
         "pet.png",
         png,
         vec![
-            select(format!("py:s:{id}"), "Choose a destination…", options),
-            row(vec![button(format!("py:b:{id}"), "Stay home", ButtonStyle::Secondary)]),
+            select(format!("py:s:{id}"), &t!(lang, "trip.picker-placeholder"), options),
+            row(vec![button(
+                format!("py:b:{id}"),
+                &t!(lang, "trip.stay-home"),
+                ButtonStyle::Secondary,
+            )]),
         ],
         false,
     ))
@@ -294,15 +335,16 @@ async fn picker(cx: &Cx, user: u64, pet_id: i64) -> anyhow::Result<()> {
 
 /// `py:s:<pet>` select: set off for the chosen place.
 async fn set_off(cx: &Cx, user: u64, pet_id: i64, place: Option<&str>) -> anyhow::Result<()> {
+    let lang = cx.lang();
     let Some(trip) = place.and_then(trips::get) else {
-        return cx.reply_ephemeral("That place isn't on the map yet.").await;
+        return cx.reply_ephemeral(t!(lang, "trip.not-on-map")).await;
     };
     let Some(pet) = cx.app.db.pets(user).await?.into_iter().find(|p| p.id == pet_id) else {
-        return cx.reply_ephemeral("That's not your pet.").await;
+        return cx.reply_ephemeral(t!(lang, "trip.not-yours")).await;
     };
-    match depart(&cx.app, user, &pet, trip).await? {
+    match depart(&cx.app, lang, user, &pet, trip).await? {
         Departure::Left(fresh) => {
-            let data = pet_card(&cx.app, &fresh, Some(departure_note(&fresh, trip))).await?;
+            let data = pet_card(&cx.app, lang, &fresh, Some(departure_note(lang, &fresh, trip))).await?;
             cx.update(data).await
         }
         Departure::Refused(why) => cx.reply_ephemeral(why).await,
@@ -329,7 +371,7 @@ enum Claimed {
 }
 
 /// Claims one pet's souvenir.
-async fn claim_one(app: &App, user: u64, pet_id: i64) -> anyhow::Result<Claimed> {
+async fn claim_one(app: &App, lang: Lang, user: u64, pet_id: i64) -> anyhow::Result<Claimed> {
     let content = Content::get();
     let now = app.now();
     let rolls = Rolls {
@@ -343,7 +385,7 @@ async fn claim_one(app: &App, user: u64, pet_id: i64) -> anyhow::Result<Claimed>
         .db
         .claim_trip(user, pet_id, now, |pet, trip_id| {
             let trip = trips::get(trip_id).unwrap_or(&trips::all()[0]);
-            let mut haul = trip.haul(content, &pet.name, pet.level, rolls);
+            let mut haul = trip.haul_in(content, &pet.name, pet.level, rolls, lang);
             // A pet that dozed off while waiting is too sleepy to learn from the trip.
             if is_asleep(pet, now) {
                 haul.xp = 0;
@@ -373,10 +415,14 @@ async fn claim_one(app: &App, user: u64, pet_id: i64) -> anyhow::Result<Claimed>
             progress,
             balance,
         })),
-        (TripClaim::Away { trip, ends_at }, _) => Claimed::NotYet(format!(
-            "That pet is still at {}, back in {}.",
-            trips::get(&trip).map_or("its trip", |t| t.name.as_str()),
-            span((ends_at - now).num_seconds())
+        (TripClaim::Away { trip, ends_at }, _) => Claimed::NotYet(t!(
+            lang,
+            "trip.still-away",
+            place = match trips::get(&trip) {
+                Some(t) => Content::get().name(&t.id, lang).into_owned(),
+                None => t!(lang, "trip.its-trip"),
+            },
+            span = span((ends_at - now).num_seconds(), lang)
         )),
         _ => Claimed::Nothing,
     })
@@ -384,28 +430,32 @@ async fn claim_one(app: &App, user: u64, pet_id: i64) -> anyhow::Result<Claimed>
 
 impl Souvenir {
     /// The text of the claim: where it was, the story, the pay and any find.
-    fn note(&self, before: i32) -> String {
+    fn note(&self, lang: Lang, before: i32) -> String {
         let content = Content::get();
         let name = &self.pet.name;
-        let mut note = format!(
-            "**{name}** is back from **{}**!\n*{}*\n**+{}** shells",
-            self.trip.name,
-            self.haul.story,
-            thousands(self.haul.shells)
+        let mut note = t!(
+            lang,
+            "trip.home",
+            name = name,
+            trip = content.name(&self.trip.id, lang),
+            story = self.haul.story,
+            shells = thousands(self.haul.shells)
         );
         if self.haul.xp > 0 && before < pets::MAX_LEVEL {
-            note.push_str(&format!(" · **+{}** XP", self.haul.xp));
+            note.push_str(&t!(lang, "trip.home-xp", xp = self.haul.xp));
         }
         if let Some(item) = self.haul.item.as_deref().and_then(|id| content.item(id)) {
-            note.push_str(&format!(
-                "\nIt also found a **{}** ({}), now in your `/inventory`.",
-                item.name(),
-                item.base.rarity.label().to_lowercase()
+            let rarity: Rarity = item.base.rarity;
+            note.push_str(&t!(
+                lang,
+                "trip.home-found",
+                item = item.name_in(lang),
+                rarity = lower(lang, rarity.label_in(lang))
             ));
         }
         if self.progress.gained > 0 {
             note.push('\n');
-            note.push_str(&level_up_note(name, before, self.progress.level));
+            note.push_str(&level_up_note(lang, name, before, self.progress.level));
         }
         note
     }
@@ -413,13 +463,14 @@ impl Souvenir {
 
 /// `py:cl:<pet>`: the Claim souvenir button.
 async fn claim_button(cx: &Cx, user: u64, pet_id: i64) -> anyhow::Result<()> {
+    let lang = cx.lang();
     let before = cx.app.db.pets(user).await?.into_iter().find(|p| p.id == pet_id);
     let Some(before) = before else {
-        return cx.reply_ephemeral("That's not your pet.").await;
+        return cx.reply_ephemeral(t!(lang, "trip.not-yours")).await;
     };
-    match claim_one(&cx.app, user, pet_id).await? {
+    match claim_one(&cx.app, lang, user, pet_id).await? {
         Claimed::Paid(souvenir) => {
-            let data = pet_card(&cx.app, &souvenir.pet, Some(souvenir.note(before.level))).await?;
+            let data = pet_card(&cx.app, lang, &souvenir.pet, Some(souvenir.note(lang, before.level))).await?;
             cx.update(data).await?;
             customize::announce(cx).await;
             Ok(())
@@ -430,11 +481,11 @@ async fn claim_button(cx: &Cx, user: u64, pet_id: i64) -> anyhow::Result<()> {
             let fresh = cx.app.db.pets(user).await?.into_iter().find(|p| p.id == pet_id);
             match fresh {
                 Some(pet) => {
-                    let note = format!("**{}** has no souvenir waiting.", pet.name);
-                    let data = pet_card(&cx.app, &pet, Some(note)).await?;
+                    let note = t!(lang, "trip.no-souvenir", name = pet.name);
+                    let data = pet_card(&cx.app, lang, &pet, Some(note)).await?;
                     cx.update(data).await
                 }
-                None => cx.reply_ephemeral("That's not your pet.").await,
+                None => cx.reply_ephemeral(t!(lang, "trip.not-yours")).await,
             }
         }
     }
@@ -442,6 +493,7 @@ async fn claim_button(cx: &Cx, user: u64, pet_id: i64) -> anyhow::Result<()> {
 
 /// `/pet trip claim`: collects every souvenir that is ready; with none ready, says who is away.
 async fn claim_command(cx: &Cx, user: u64) -> anyhow::Result<()> {
+    let lang = cx.lang();
     let pets = cx.app.db.pets(user).await?;
     let now = cx.app.now();
     let ready: Vec<&PetRow> = pets.iter().filter(|p| p.has_souvenir(now)).take(8).collect();
@@ -451,12 +503,18 @@ async fn claim_command(cx: &Cx, user: u64) -> anyhow::Result<()> {
             .filter(|p| p.is_away(now))
             .map(|p| {
                 let left = p.trip_ends_at.map_or(0, |ends| (ends - now).num_seconds());
-                format!("**{}** is at {}, back in {}.", p.name, place_of(p), span(left))
+                t!(
+                    lang,
+                    "trip.list-away",
+                    name = p.name,
+                    place = place_of(p, lang),
+                    span = span(left, lang)
+                )
             })
             .collect();
         return cx
             .reply_ephemeral(if away.is_empty() {
-                "None of your pets is on a trip. Send one with `/pet trip go`.".to_owned()
+                t!(lang, "trip.none-away")
             } else {
                 away.join("\n")
             })
@@ -464,14 +522,14 @@ async fn claim_command(cx: &Cx, user: u64) -> anyhow::Result<()> {
     }
     let mut paid = Vec::new();
     for pet in ready {
-        if let Claimed::Paid(souvenir) = claim_one(&cx.app, user, pet.id).await? {
+        if let Claimed::Paid(souvenir) = claim_one(&cx.app, lang, user, pet.id).await? {
             paid.push((pet.level, *souvenir));
         }
     }
     match paid.as_slice() {
-        [] => cx.reply_ephemeral("Those souvenirs were already collected.").await,
+        [] => cx.reply_ephemeral(t!(lang, "trip.already-collected")).await,
         [(before, souvenir)] => {
-            let data = pet_card(&cx.app, &souvenir.pet, Some(souvenir.note(*before))).await?;
+            let data = pet_card(&cx.app, lang, &souvenir.pet, Some(souvenir.note(lang, *before))).await?;
             cx.reply(data).await?;
             customize::announce(cx).await;
             Ok(())
@@ -479,18 +537,22 @@ async fn claim_command(cx: &Cx, user: u64) -> anyhow::Result<()> {
         many => {
             let mut embed = EmbedBuilder::new()
                 .color(BRAND)
-                .title(format!("{} pets are home", many.len()));
+                .title(t!(lang, "trip.many-title", count = many.len()));
             for (before, souvenir) in many {
-                embed = embed.field(EmbedFieldBuilder::new(pet_title(&souvenir.pet), souvenir.note(*before)));
+                embed = embed.field(EmbedFieldBuilder::new(
+                    pet_title(lang, &souvenir.pet),
+                    souvenir.note(lang, *before),
+                ));
             }
             let total: i64 = many.iter().map(|(_, s)| s.haul.shells).sum();
             let balance = many.iter().map(|(_, s)| s.balance).max().unwrap_or(0);
             cx.reply_embed(
                 embed
-                    .description(format!(
-                        "**+{}** shells in all. Balance: {}.",
-                        thousands(total),
-                        thousands(balance)
+                    .description(t!(
+                        lang,
+                        "trip.many-total",
+                        total = thousands(total),
+                        balance = thousands(balance)
                     ))
                     .build(),
             )
@@ -507,6 +569,7 @@ async fn claim_command(cx: &Cx, user: u64) -> anyhow::Result<()> {
 /// the souvenir, `b` back to the card.
 pub(crate) async fn on_trip(cx: &Cx, mut args: Split<'_, char>, value: Option<&str>) -> anyhow::Result<()> {
     let user = cx.author()?.id.get();
+    let lang = cx.lang();
     let action = args.next();
     let pet_id: i64 = args.next().and_then(|v| v.parse().ok()).unwrap_or(0);
     match action {
@@ -515,12 +578,12 @@ pub(crate) async fn on_trip(cx: &Cx, mut args: Split<'_, char>, value: Option<&s
         Some("cl") => claim_button(cx, user, pet_id).await,
         Some("b") => {
             let Some(pet) = cx.app.db.pets(user).await?.into_iter().find(|p| p.id == pet_id) else {
-                return cx.reply_ephemeral("That's not your pet.").await;
+                return cx.reply_ephemeral(t!(lang, "trip.not-yours")).await;
             };
-            let data: InteractionResponseData = pet_card(&cx.app, &pet, None).await?;
+            let data: InteractionResponseData = pet_card(&cx.app, lang, &pet, None).await?;
             cx.update(data).await
         }
-        _ => cx.reply_ephemeral("This button has expired.").await,
+        _ => cx.reply_ephemeral(t!(lang, "trip.expired")).await,
     }
 }
 
@@ -599,15 +662,18 @@ mod tests {
             pet(3, "Pipette", "puddlesock_otter", false),
         ];
         // No name: the active pet.
-        assert_eq!(pick_pet(&pets, None).unwrap().id, 2);
-        assert_eq!(pick_pet(&pets, Some("  ")).unwrap().id, 2);
+        assert_eq!(pick_pet(&pets, None, Lang::En).unwrap().id, 2);
+        assert_eq!(pick_pet(&pets, Some("  "), Lang::En).unwrap().id, 2);
         // The exact name beats a longer one that starts with it.
-        assert_eq!(pick_pet(&pets, Some("pip")).unwrap().id, 1);
-        assert_eq!(pick_pet(&pets, Some("PIPE")).unwrap().id, 3);
-        assert_eq!(pick_pet(&pets, Some("ribbonfin guppy")).unwrap().id, 2);
-        let err = pick_pet(&pets, Some("Nobody")).unwrap_err();
+        assert_eq!(pick_pet(&pets, Some("pip"), Lang::En).unwrap().id, 1);
+        assert_eq!(pick_pet(&pets, Some("PIPE"), Lang::En).unwrap().id, 3);
+        assert_eq!(pick_pet(&pets, Some("ribbonfin guppy"), Lang::En).unwrap().id, 2);
+        let err = pick_pet(&pets, Some("Nobody"), Lang::En).unwrap_err();
         assert!(err.contains("Nobody") && err.contains("**Biscuit**"), "{err}");
-        assert!(pick_pet(&[], None).is_err());
+        assert!(pick_pet(&[], None, Lang::En).is_err());
+        // Letters beyond ASCII still ignore case in English.
+        let accented = vec![pet(4, "Émile", "crumbclaw_crab", true)];
+        assert_eq!(pick_pet(&accented, Some("émile"), Lang::En).unwrap().id, 4);
     }
 
     #[test]

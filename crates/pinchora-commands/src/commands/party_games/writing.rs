@@ -8,11 +8,8 @@ use std::{str::Split, sync::Arc, time::Duration};
 
 use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{Commit, PartyEntry, PartyGame, PartyPlayer, PartyVote, Pay, PlayerChange};
-use pinchora_game::{
-    lang::upper,
-    party::{
-        Dice, Party, VOTE_POINTS, WIN_BONUS, acronym, postcard as scenes, round_points, round_winners, writing_reward,
-    },
+use pinchora_game::party::{
+    Dice, Party, VOTE_POINTS, WIN_BONUS, acronym, postcard as scenes, round_points, round_winners, writing_reward,
 };
 use pinchora_render::{EntryHeader, EntryRow, LettersCard, PostcardCard};
 use serde::{Deserialize, Serialize};
@@ -258,11 +255,11 @@ async fn write_view(
 ) -> anyhow::Result<InteractionResponseData> {
     let lang = state.lang;
     // The cards draw their title, place, stamp and footer in capitals, which Turkish spells with its own İ.
-    let round = upper(lang, &round_label(lang, game.round, game.rounds));
+    let round = lang.upper(&round_label(lang, game.round, game.rounds));
     let png = if party == Party::Postcard {
         let scene = scenes::scene(&state.scene).ok_or_else(|| anyhow::anyhow!("unknown scene {}", state.scene))?;
         let picture = postcard::scene_png(app, scene)?;
-        let place = upper(lang, &t!(lang, &format!("postcard.place.{}", scene.id)));
+        let place = lang.upper(&t!(lang, &format!("postcard.place.{}", scene.id)));
         app.render(move |r| {
             r.postcard_card(&PostcardCard {
                 lang,
@@ -275,9 +272,9 @@ async fn write_view(
         .await?
     } else {
         let letters = letters_of(state);
-        let title = upper(lang, &party.label_in(lang));
+        let title = lang.upper(&party.label_in(lang));
         let hint = t!(lang, "acronym.card-hint");
-        let status = upper(lang, &t!(lang, "acronym.card-status"));
+        let status = lang.upper(&t!(lang, "acronym.card-status"));
         app.render(move |r| {
             r.letters_card(&LettersCard {
                 title: &title,
@@ -394,11 +391,11 @@ async fn entries_png(
     let lang = game_lang(game);
     // The card draws its title, chip and footer in capitals, which Turkish spells with its own İ.
     let (title, subtitle, footer) = (
-        upper(lang, &party.label_in(lang)),
+        lang.upper(&party.label_in(lang)),
         subtitle.to_owned(),
-        upper(lang, footer),
+        lang.upper(footer),
     );
-    let chip = upper(lang, &round_label(lang, game.round, game.rounds));
+    let chip = lang.upper(&round_label(lang, game.round, game.rounds));
     app.render(move |r| {
         let rows: Vec<EntryRow> = rows
             .iter()

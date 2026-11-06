@@ -17,19 +17,21 @@ use pinchora_core::{
 };
 use pinchora_db::{Db, GuildSettings};
 use pinchora_render::{Renderer, placeholder_avatar, prepare_avatar};
-use tokio::sync::Semaphore;
-use tokio_util::task::TaskTracker;
-use twilight_http::{Client, client::InteractionClient};
+use tokio::sync::{OwnedSemaphorePermit, Semaphore};
+use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use twilight_http::{Client, client::InteractionClient, error::ErrorType};
 use twilight_model::{
+    channel::permission_overwrite::PermissionOverwrite,
+    guild::Role,
     id::{
         Id,
-        marker::{ApplicationMarker, UserMarker},
+        marker::{ApplicationMarker, ChannelMarker, MessageMarker, UserMarker},
     },
     user::User,
     util::ImageHash,
 };
 
-use crate::{custom::CustomState, server_log::LogState};
+use crate::{custom::CustomState, server_log::LogState, text::access::CommandOverrides};
 
 /// Where a channel sits, for XP multipliers that follow a thread to its channel and a channel to its category.
 #[derive(Debug, Clone, Copy)]
@@ -48,11 +50,71 @@ const CHANNEL_MISS_KEPT: Duration = Duration::from_secs(10 * 60);
 /// identify storm cannot crowd the message and member events out of their slots.
 const REBUILD_SLOTS: usize = 16;
 
+/// How many dashboard previews are drawn (or waiting for a render slot) at once, at most: a small share of the
+/// render slots, so an editor being dragged around cannot crowd the member events' cards out.
+const PREVIEW_SLOTS: usize = 2;
+/// How long a preview waits for its turn before the dashboard is told the bot is busy.
+const PREVIEW_WAIT: Duration = Duration::from_secs(3);
+/// How long a preview may take from its turn to its picture. A card is within the card design's cost cap, which
+/// draws in well under a second; this is for a starved or stuck pod.
+const PREVIEW_BUDGET: Duration = Duration::from_secs(6);
+
+/// Why a dashboard preview was not drawn.
+#[derive(Debug)]
+pub enum PreviewError {
+    /// All the preview slots stayed taken for [`PREVIEW_WAIT`].
+    Busy,
+    /// The drawing did not finish within [`PREVIEW_BUDGET`]. The job still runs to its end (it cannot be
+    /// interrupted) and keeps its slots until then.
+    TooSlow,
+    Failed(anyhow::Error),
+}
+
+impl std::fmt::Display for PreviewError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Busy => f.write_str("the preview slots are all taken"),
+            Self::TooSlow => f.write_str("the preview took too long to draw"),
+            Self::Failed(error) => write!(f, "{error}"),
+        }
+    }
+}
+
+impl std::error::Error for PreviewError {}
+
+impl From<anyhow::Error> for PreviewError {
+    fn from(error: anyhow::Error) -> Self {
+        Self::Failed(error)
+    }
+}
+
 /// What the voice XP ticker needs about a server, kept for minutes so a tick every minute does not ask
 /// the database every time.
 pub(crate) struct VoiceGuild {
     pub settings: Arc<GuildSettings>,
     pub rules: Arc<XpRules>,
+}
+
+/// What a text command needs about a server to stand in for Discord: who owns it and its roles with
+/// their permissions.
+pub(crate) struct PermissionFacts {
+    pub owner: u64,
+    pub roles: Vec<Role>,
+}
+
+/// What a text command needs about a channel to stand in for Discord: where command permissions are
+/// looked up, and which permission overwrites apply there.
+pub(crate) struct ChannelRules {
+    /// The channel, followed by its parent when it is a thread (a thread follows its channel).
+    pub lineage: Vec<u64>,
+    /// The overwrites that count in it: the channel's own, or its parent's for a thread.
+    pub overwrites: Vec<PermissionOverwrite>,
+}
+
+/// Whether Discord's answer says the application has no command permissions to read in a server (it
+/// was added without the commands scope), rather than that Discord could not be asked.
+fn is_missing(error: &twilight_http::Error) -> bool {
+    matches!(error.kind(), ErrorType::Response { status, .. } if matches!(status.get(), 403 | 404))
 }
 
 /// Everything a handler needs. Built once per process and shared as `Arc<App>`.
@@ -66,12 +128,20 @@ pub struct App {
     pub cache: Cache,
     /// Shown by /ping, e.g. `gateway-2 (shards 32-47)` or `interactions`.
     pub node: String,
+    /// Whether the gateway reads message text (the Message Content intent), so text commands work
+    /// with a server's prefix; without it they need an @mention of the bot.
+    pub message_content: bool,
     pub web: reqwest::Client,
     pub sprites: Arc<crate::game::scene::Sprites>,
     renderer: Arc<Renderer>,
     render_slots: Arc<Semaphore>,
+    preview_slots: Arc<Semaphore>,
     guild_settings: Moka<u64, Arc<GuildSettings>>,
     guild_roles: Moka<u64, Arc<HashMap<u64, String>>>,
+    permission_facts: Moka<u64, Arc<PermissionFacts>>,
+    channel_rules: Moka<u64, Arc<ChannelRules>>,
+    command_ids: Moka<(), Arc<HashMap<String, u64>>>,
+    command_overrides: Moka<u64, Arc<CommandOverrides>>,
     xp_rules: Moka<u64, Arc<XpRules>>,
     module_rules: Moka<u64, Arc<GuildModules>>,
     voice_guilds: Moka<u64, Arc<VoiceGuild>>,
@@ -81,6 +151,8 @@ pub struct App {
     users: Moka<u64, Arc<User>>,
     pub(crate) languages: crate::lang::Languages,
     tasks: TaskTracker,
+    /// Cancelled when shutdown begins, so tasks that wait for a while can finish at once.
+    shutdown: CancellationToken,
     event_slots: Arc<Semaphore>,
     rebuild_slots: Arc<Semaphore>,
     /// Last-seen names and voice channels, so the server log can say what changed.
@@ -108,6 +180,7 @@ impl App {
             db,
             cache,
             node,
+            message_content: false,
             web: reqwest::Client::builder()
                 .timeout(Duration::from_secs(5))
                 .user_agent("Pinchora (https://github.com/realapeiron/Pinchora)")
@@ -116,6 +189,7 @@ impl App {
             sprites: Arc::new(crate::game::scene::Sprites::default()),
             renderer: Arc::new(Renderer::new()),
             render_slots: Arc::new(Semaphore::new(cpus)),
+            preview_slots: Arc::new(Semaphore::new(PREVIEW_SLOTS.min(cpus))),
             // Other pods see a settings change after at most this TTL.
             guild_settings: Moka::builder()
                 .max_capacity(50_000)
@@ -124,6 +198,22 @@ impl App {
             guild_roles: Moka::builder()
                 .max_capacity(10_000)
                 .time_to_live(Duration::from_secs(60))
+                .build(),
+            permission_facts: Moka::builder()
+                .max_capacity(10_000)
+                .time_to_live(Duration::from_secs(60))
+                .build(),
+            channel_rules: Moka::builder()
+                .max_capacity(50_000)
+                .time_to_live(Duration::from_secs(60))
+                .build(),
+            command_ids: Moka::builder()
+                .max_capacity(1)
+                .time_to_live(Duration::from_secs(600))
+                .build(),
+            command_overrides: Moka::builder()
+                .max_capacity(10_000)
+                .time_to_live(Duration::from_secs(300))
                 .build(),
             xp_rules: Moka::builder()
                 .max_capacity(50_000)
@@ -157,6 +247,7 @@ impl App {
                 .build(),
             languages: crate::lang::Languages::new(),
             tasks: TaskTracker::new(),
+            shutdown: CancellationToken::new(),
             event_slots: Arc::new(Semaphore::new(1024)),
             rebuild_slots: Arc::new(Semaphore::new(REBUILD_SLOTS)),
             log_state: LogState::new(),
@@ -185,6 +276,22 @@ impl App {
         F: Future<Output = ()> + Send + 'static,
     {
         self.tasks.spawn(future);
+    }
+
+    /// Deletes a message of ours after `after`, or as soon as shutdown begins, whichever comes
+    /// first: a private answer given in a channel must not outlive the process. The wait is a
+    /// tracked task, and a delete that fails is logged.
+    pub fn delete_later(&self, channel: Id<ChannelMarker>, message: Id<MessageMarker>, after: Duration) {
+        let (http, shutdown) = (self.http.clone(), self.shutdown.clone());
+        self.spawn(async move {
+            tokio::select! {
+                () = tokio::time::sleep(after) => {}
+                () = shutdown.cancelled() => {}
+            }
+            if let Err(error) = http.delete_message(channel, message).await {
+                tracing::warn!(%error, channel = channel.get(), message = message.get(), "private answer not deleted");
+            }
+        });
     }
 
     /// Spawns a gateway event handler, or drops the event when 1024 are already
@@ -220,8 +327,10 @@ impl App {
         });
     }
 
-    /// Waits up to `limit` for spawned tasks to finish.
+    /// Waits up to `limit` for spawned tasks to finish. Tasks that are only waiting out a delay
+    /// ([`App::delete_later`]) are told to stop waiting.
     pub async fn drain(&self, limit: Duration) {
+        self.shutdown.cancel();
         self.tasks.close();
         let _ = tokio::time::timeout(limit, self.tasks.wait()).await;
     }
@@ -373,6 +482,109 @@ impl App {
             .ok()
     }
 
+    /// A server's owner and roles, cached for a minute; asked for by text commands only.
+    pub(crate) async fn permission_facts(&self, guild_id: u64) -> anyhow::Result<Arc<PermissionFacts>> {
+        self.permission_facts
+            .try_get_with(guild_id, async {
+                let id = Id::new(guild_id.max(1));
+                let guild = self.http.guild(id).await?.model().await?;
+                let roles = self.http.roles(id).await?.models().await?;
+                anyhow::Ok(Arc::new(PermissionFacts {
+                    owner: guild.owner_id.get(),
+                    roles,
+                }))
+            })
+            .await
+            .map_err(|e| anyhow::anyhow!("{e:#}"))
+    }
+
+    /// Forgets a server's cached owner and roles, when either changed.
+    pub async fn forget_permission_facts(&self, guild_id: u64) {
+        self.permission_facts.invalidate(&guild_id).await;
+    }
+
+    /// Where command permissions are looked up in a channel and which overwrites apply there, cached
+    /// for a minute. Fails when Discord cannot say, which a text command answers by refusing.
+    pub(crate) async fn channel_rules(&self, channel: u64) -> anyhow::Result<Arc<ChannelRules>> {
+        self.channel_rules
+            .try_get_with(channel, async {
+                let found = self.http.channel(Id::new(channel.max(1))).await?.model().await?;
+                let mut lineage = vec![channel];
+                let mut overwrites = found.permission_overwrites.unwrap_or_default();
+                if found.kind.is_thread()
+                    && let Some(parent) = found.parent_id
+                {
+                    lineage.push(parent.get());
+                    let parent = self.http.channel(parent).await?.model().await?;
+                    overwrites = parent.permission_overwrites.unwrap_or_default();
+                }
+                anyhow::Ok(Arc::new(ChannelRules { lineage, overwrites }))
+            })
+            .await
+            .map_err(|e| anyhow::anyhow!("{e:#}"))
+    }
+
+    /// Forgets what a channel's permissions were, when they changed.
+    pub async fn forget_channel_rules(&self, channel: u64) {
+        self.channel_rules.invalidate(&channel).await;
+    }
+
+    /// What a server set for the bot's commands under Server Settings, Integrations, cached for five
+    /// minutes. A server that cannot have any (Discord says the application is not there, as for a bot
+    /// added without the commands scope) has none; any other failure is an error, which a text
+    /// command answers by refusing rather than guessing.
+    pub(crate) async fn command_overrides(&self, guild_id: u64) -> anyhow::Result<Arc<CommandOverrides>> {
+        self.command_overrides
+            .try_get_with(guild_id, async {
+                let entries = match self
+                    .interaction()
+                    .guild_command_permissions(Id::new(guild_id.max(1)))
+                    .await
+                {
+                    Ok(response) => response.models().await?,
+                    Err(error) if is_missing(&error) => Vec::new(),
+                    Err(error) => return Err(error.into()),
+                };
+                if entries.is_empty() {
+                    return anyhow::Ok(Arc::new(CommandOverrides::default()));
+                }
+                let ids = self.command_ids().await?;
+                anyhow::Ok(Arc::new(CommandOverrides::new(
+                    entries,
+                    self.application_id.get(),
+                    &ids,
+                )))
+            })
+            .await
+            .map_err(|e| anyhow::anyhow!("{e:#}"))
+    }
+
+    /// Forgets a server's command overrides, when they changed.
+    pub async fn forget_command_overrides(&self, guild_id: u64) {
+        self.command_overrides.invalidate(&guild_id).await;
+    }
+
+    /// The ids of the bot's commands by name, which tell the entries of Discord's command permissions
+    /// apart; cached for ten minutes.
+    async fn command_ids(&self) -> anyhow::Result<Arc<HashMap<String, u64>>> {
+        self.command_ids
+            .try_get_with((), async {
+                let commands = match self.interaction().global_commands().await {
+                    Ok(response) => response.models().await?,
+                    Err(error) if is_missing(&error) => Vec::new(),
+                    Err(error) => return Err(error.into()),
+                };
+                anyhow::Ok(Arc::new(
+                    commands
+                        .into_iter()
+                        .filter_map(|c| Some((c.name, c.id?.get())))
+                        .collect(),
+                ))
+            })
+            .await
+            .map_err(|e| anyhow::anyhow!("{e:#}"))
+    }
+
     /// Counts progress on today's quest of `kind`, if the player has that quest today.
     /// Failures are logged and swallowed: quest progress never breaks a command.
     pub async fn quest(&self, user: u64, kind: pinchora_game::quests::QuestKind) {
@@ -443,10 +655,49 @@ impl App {
         T: Send + 'static,
         F: FnOnce(&Renderer) -> anyhow::Result<T> + Send + 'static,
     {
-        let _permit = self.render_slots.acquire().await?;
+        self.render_holding(None, job).await
+    }
+
+    /// [`App::render`] for the dashboard's previews: they share a few preview slots, so however many are asked
+    /// for, at most that many wait among the member events' cards for a render slot; one that waits too long
+    /// for its turn, or takes too long to draw, gives up with an error the dashboard can show.
+    pub async fn render_preview<T, F>(&self, job: F) -> Result<T, PreviewError>
+    where
+        T: Send + 'static,
+        F: FnOnce(&Renderer) -> anyhow::Result<T> + Send + 'static,
+    {
+        let turn = match tokio::time::timeout(PREVIEW_WAIT, self.preview_slots.clone().acquire_owned()).await {
+            Ok(turn) => turn.map_err(anyhow::Error::from)?,
+            Err(_) => {
+                metrics::counter!("pinchora_preview_refused_total", "why" => "busy").increment(1);
+                return Err(PreviewError::Busy);
+            }
+        };
+        match tokio::time::timeout(PREVIEW_BUDGET, self.render_holding(Some(turn), job)).await {
+            Ok(drawn) => Ok(drawn?),
+            Err(_) => {
+                metrics::counter!("pinchora_preview_refused_total", "why" => "slow").increment(1);
+                Err(PreviewError::TooSlow)
+            }
+        }
+    }
+
+    /// The slots (`turn`, if any, and a render slot) go with the job to the blocking pool and are given back
+    /// when it ends, even if whoever waits for it has given up.
+    async fn render_holding<T, F>(&self, turn: Option<OwnedSemaphorePermit>, job: F) -> anyhow::Result<T>
+    where
+        T: Send + 'static,
+        F: FnOnce(&Renderer) -> anyhow::Result<T> + Send + 'static,
+    {
+        let slot = self.render_slots.clone().acquire_owned().await?;
         let renderer = self.renderer.clone();
         let started = std::time::Instant::now();
-        let out = tokio::task::spawn_blocking(move || job(&renderer)).await??;
+        let out = tokio::task::spawn_blocking(move || {
+            let out = job(&renderer);
+            drop((turn, slot));
+            out
+        })
+        .await??;
         metrics::histogram!("pinchora_render_seconds").record(started.elapsed().as_secs_f64());
         Ok(out)
     }

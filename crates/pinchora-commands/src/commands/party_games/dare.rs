@@ -6,12 +6,9 @@ use std::{str::Split, sync::Arc};
 
 use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{Commit, PartyGame, PartyPlayer, Pay, PlayerChange};
-use pinchora_game::{
-    lang::upper,
-    party::{
-        Dice, Party, TURN_REWARD,
-        prompts::{Category, PartyContent, Pick},
-    },
+use pinchora_game::party::{
+    Dice, Party, TURN_REWARD,
+    prompts::{Category, PartyContent, Pick},
 };
 use pinchora_render::{PromptCard, PromptTone};
 use serde::{Deserialize, Serialize};
@@ -183,7 +180,7 @@ async fn view(
     };
     let png = {
         // The card draws the category and footer in capitals, which Turkish spells with its own İ.
-        let (name, topic, footer) = (name.clone(), upper(lang, &topic), upper(lang, &footer));
+        let (name, topic, footer) = (name.clone(), lang.upper(&topic), lang.upper(&footer));
         app.render(move |r| {
             r.prompt_card(&PromptCard {
                 lang,

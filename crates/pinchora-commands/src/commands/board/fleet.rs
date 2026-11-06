@@ -8,12 +8,9 @@ use std::str::Split;
 use chrono::{DateTime, Duration, Utc};
 use pinchora_core::{i18n::Lang, t};
 use pinchora_db::GameSession;
-use pinchora_game::{
-    lang::upper,
-    play::{
-        Game as Play,
-        fleet::{self as rules, CELLS, Fired, Fleet, SHIPS, SIZE, Sea},
-    },
+use pinchora_game::play::{
+    Game as Play,
+    fleet::{self as rules, CELLS, Fired, Fleet, SHIPS, SIZE, Sea},
 };
 use pinchora_render::{FleetCard, RadarCard, SeaView, ShipView, Theme};
 use twilight_model::{
@@ -236,7 +233,7 @@ async fn public(
         }
     };
     // The card draws it in capitals.
-    let status = upper(lang, &status);
+    let status = lang.upper(&status);
     let content = match end {
         Some(end) => t!(
             lang,
@@ -490,11 +487,11 @@ async fn placement(
     let ships = ship_views(fleet, &sea);
     // The card draws its title, subtitle and footer in capitals.
     let (title, subtitle, name) = (
-        upper(lang, &t!(lang, "seafleet.place-title")),
-        upper(lang, &t!(lang, "seafleet.layout", rev = rev)),
+        lang.upper(&t!(lang, "seafleet.place-title")),
+        lang.upper(&t!(lang, "seafleet.layout", rev = rev)),
         name.to_owned(),
     );
-    let footer = upper(lang, &t!(lang, "seafleet.place-footer"));
+    let footer = lang.upper(&t!(lang, "seafleet.place-footer"));
     let png = app
         .render(move |r| {
             r.fleet_card(&FleetCard {
@@ -601,16 +598,13 @@ async fn locked(
     let afloat = sea.afloat(fleet).len();
     let (name, last) = (names[me].clone(), state.last.filter(|(s, _)| *s == me).map(|(_, c)| c));
     // The card draws its title, subtitle and footer in capitals.
-    let footer = upper(
-        lang,
-        &if state.battle {
-            t!(lang, "seafleet.only-you")
-        } else {
-            t!(lang, "seafleet.locked-footer", name = names[1 - me])
-        },
-    );
-    let title = upper(lang, &t!(lang, "seafleet.your-fleet"));
-    let subtitle = upper(lang, &t!(lang, "seafleet.afloat", afloat = afloat));
+    let footer = lang.upper(&if state.battle {
+        t!(lang, "seafleet.only-you")
+    } else {
+        t!(lang, "seafleet.locked-footer", name = names[1 - me])
+    });
+    let title = lang.upper(&t!(lang, "seafleet.your-fleet"));
+    let subtitle = lang.upper(&t!(lang, "seafleet.afloat", afloat = afloat));
     let png = app
         .render(move |r| {
             r.fleet_card(&FleetCard {

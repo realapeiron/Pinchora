@@ -608,6 +608,15 @@ p {
   border-left-color: var(--accent);
 }
 
+.sidebar-filter {
+  appearance: none;
+  border-radius: 0;
+}
+
+.sidebar-empty {
+  margin: 0 0 0 8px;
+}
+
 .overview {
   display: grid;
   gap: 24px;
@@ -745,6 +754,17 @@ p {
   color: var(--ink);
   box-shadow: inset 0 0 0 var(--px) var(--mint);
   font-weight: 700;
+}
+
+/* While the save bar is up the toast rides above it, not on top of its buttons. */
+body:has(.save-bar.is-open) .toast {
+  bottom: 112px;
+}
+/* On a phone the bar's label and buttons stack, so it is taller. */
+@media (max-width: 767px) {
+  body:has(.save-bar.is-open) .toast {
+    bottom: 160px;
+  }
 }
 
 /* /Loading and problems */

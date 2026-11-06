@@ -35,9 +35,6 @@ const CLEANUP_EVERY: u32 = 720;
 /// Closed drops are forgotten after this long.
 const KEEP: Span = Span::days(2);
 
-/// What soulbound means in English, for the places that have not moved to [`soulbound_rule`] yet.
-pub(crate) const SOULBOUND_RULE: &str = "Pieces bought with fragments are soulbound: place them in your own house, but they can never be sold, gifted or donated.";
-
 /// What soulbound means, for every place that has to tell a player so.
 pub(crate) fn soulbound_rule(lang: Lang) -> String {
     t!(lang, "collect.soulbound-rule")

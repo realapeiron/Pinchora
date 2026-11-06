@@ -2,6 +2,7 @@
 
 use std::sync::LazyLock;
 
+use pinchora_core::i18n::Lang;
 use serde::Deserialize;
 
 use crate::{Availability, Category, Content, Currency, Furniture, Rarity, pets};
@@ -126,6 +127,11 @@ impl Trip {
 
     /// The haul of one trip claimed by a pet called `pet_name` at `level`.
     pub fn haul(&self, content: &Content, pet_name: &str, level: i32, rolls: Rolls) -> Haul {
+        self.haul_in(content, pet_name, level, rolls, Lang::En)
+    }
+
+    /// [`Trip::haul`] with the story told in `lang`.
+    pub fn haul_in(&self, content: &Content, pet_name: &str, level: i32, rolls: Rolls, lang: Lang) -> Haul {
         let (low, high) = self.shells_range(level);
         let shells = low + (rolls.shells.clamp(0.0, 0.999_999) * (high - low + 1) as f64) as i64;
         let item = if rolls.furniture < self.furniture_chance_at(level) {
@@ -133,11 +139,12 @@ impl Trip {
         } else {
             None
         };
-        let story = match self.stories.len() {
+        let stories = self.stories_in(lang);
+        let story = match stories.len() {
             0 => String::new(),
             n => {
                 let at = (rolls.story.clamp(0.0, 0.999_999) * n as f64) as usize;
-                self.stories[at].replace("{pet}", pet_name)
+                stories[at].replace("{pet}", pet_name)
             }
         };
         Haul {

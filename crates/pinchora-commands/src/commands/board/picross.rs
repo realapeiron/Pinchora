@@ -7,12 +7,9 @@ use std::{str::Split, time::Duration};
 
 use pinchora_core::{i18n::Lang, t};
 use pinchora_db::PicrossGame;
-use pinchora_game::{
-    lang,
-    play::{
-        Game,
-        picross::{self, CELLS, Clues, Grid, Ink, Puzzle, SIZE, Shade, parse_marks},
-    },
+use pinchora_game::play::{
+    Game,
+    picross::{self, CELLS, Clues, Grid, Ink, Puzzle, SIZE, Shade, parse_marks},
 };
 use pinchora_render::{PicrossCard, Reveal, Theme};
 use twilight_model::{
@@ -274,11 +271,7 @@ async fn view(
     let cells = *grid.cells();
     let png = {
         // The card draws its words in capitals; Turkish needs its dotted İ.
-        let (title, subtitle, footer) = (
-            lang::upper(lang, &title),
-            lang::upper(lang, &subtitle),
-            lang::upper(lang, &footer),
-        );
+        let (title, subtitle, footer) = (lang.upper(&title), lang.upper(&subtitle), lang.upper(&footer));
         let name = name.clone();
         app.render(move |r| {
             r.picross_card(&PicrossCard {

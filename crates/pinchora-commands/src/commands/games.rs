@@ -162,18 +162,14 @@ pub(crate) async fn edit_message(
 /// edit it later. Best effort: without it a late game is only closed when someone clicks.
 pub(crate) fn track_message(cx: &Cx, session: i64) {
     let app = cx.app.clone();
-    let token = cx.interaction.token.clone();
+    let responder = cx.responder.clone();
     cx.app.spawn(async move {
         // The answer to the command may still be on its way to Discord.
         tokio::time::sleep(Duration::from_millis(1_500)).await;
-        let message = async { anyhow::Ok(app.interaction().response(&token).await?.model().await?) }.await;
+        let message = responder.original().await;
         match message {
-            Ok(message) => {
-                if let Err(error) = app
-                    .db
-                    .set_game_message(session, message.channel_id.get(), message.id.get())
-                    .await
-                {
+            Ok((channel, message)) => {
+                if let Err(error) = app.db.set_game_message(session, channel, message).await {
                     tracing::debug!(%error, session, "game message not remembered");
                 }
             }

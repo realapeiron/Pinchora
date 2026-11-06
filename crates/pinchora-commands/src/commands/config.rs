@@ -1,19 +1,23 @@
-use pinchora_core::{leveling::LevelUpMode, settings, t};
+use pinchora_core::{
+    card_design::CardKind,
+    i18n::Lang,
+    leveling::LevelUpMode,
+    settings::{self, MessageKind},
+    t,
+};
 use pinchora_db::GuildSettings;
-use pinchora_render::{Theme, WelcomeCard};
 use twilight_interactions::command::{CommandModel, CommandOption, CreateCommand, CreateOption};
 use twilight_model::{
     application::interaction::InteractionChannel,
     channel::message::{Embed, MessageFlags},
     guild::Permissions,
     http::interaction::InteractionResponseData,
-    id::{Id, marker::UserMarker},
-    util::ImageHash,
 };
 use twilight_util::builder::embed::{EmbedBuilder, EmbedFieldBuilder};
 
 use crate::{
-    App, Cx,
+    Cx,
+    card_images::{CardSubject, card_png, server_card},
     commands::{
         collection::settings::{ConfigCritters, critters_summary},
         language::ConfigLanguage,
@@ -22,6 +26,7 @@ use crate::{
         party::ConfigGambling,
         party_games::{ConfigPartyGames, party_summary},
         points::ConfigPoints,
+        prefix::{ConfigPrefix, prefix_summary},
         rep_roles::ConfigRepRoles,
         store::ConfigStore,
         suggest::{ConfigSuggestions, suggestions_summary},
@@ -31,7 +36,7 @@ use crate::{
         },
         xp::{ConfigXp, voice_summary},
     },
-    events::{DEFAULT_LEVELUP, DEFAULT_WELCOME},
+    events::default_message,
     util::BRAND,
 };
 
@@ -88,6 +93,8 @@ pub enum ConfigCommand {
     Modules(ConfigModules),
     #[command(name = "language")]
     Language(ConfigLanguage),
+    #[command(name = "prefix")]
+    Prefix(ConfigPrefix),
 }
 
 #[derive(CommandOption, CreateOption, Clone, Copy)]
@@ -118,88 +125,64 @@ pub struct ConfigWelcomeCard {
 }
 
 impl ConfigWelcomeCard {
+    /// With any option, the classic card in the chosen theme, headline and accent becomes the server's welcome
+    /// image (a design made in the dashboard's editor is put aside); without one, the image as it is now.
     async fn run(self, cx: &Cx, guild: u64) -> anyhow::Result<()> {
         let accent = match self.color.as_deref().map(settings::check_accent) {
             Some(Ok(rgb)) => Some(rgb as i32),
-            Some(Err(error)) => return cx.reply_ephemeral(error.message).await,
+            Some(Err(error)) => return cx.reply_ephemeral(error.text(cx.lang())).await,
             None => None,
         };
         let title = match self.title.as_deref().map(settings::check_welcome_title) {
             Some(Ok(title)) => Some(title),
-            Some(Err(error)) => return cx.reply_ephemeral(error.message).await,
+            Some(Err(error)) => return cx.reply_ephemeral(error.text(cx.lang())).await,
             None => None,
         };
-        let stored = cx
-            .app
-            .db
-            .update_welcome_card(guild, self.theme.map(|t| t.value()), title.as_deref(), accent)
-            .await?;
-        cx.app.forget_guild_settings(guild).await;
+        let changed = self.theme.is_some() || title.is_some() || accent.is_some();
+        let (stored, replaced) = if changed {
+            let stored = cx
+                .app
+                .db
+                .update_welcome_card(guild, self.theme.map(|t| t.value()), title.as_deref(), accent)
+                .await?;
+            let replaced = cx.app.db.clear_card_design(guild, CardKind::Welcome).await?;
+            cx.app.forget_guild_settings(guild).await;
+            (stored, replaced)
+        } else {
+            (cx.app.db.guild_settings(guild).await?, false)
+        };
+        let card = server_card(&cx.app, &stored, guild, CardKind::Welcome).await?;
         let author = cx.author()?.clone();
-        let png = welcome_card_png(
-            &cx.app,
-            author.id,
-            author.avatar,
-            &cx.author_display_name(),
-            "your server",
-            &WelcomeDesign::of(&stored),
-        )
-        .await?;
+        // The card speaks the server's language, as it will for members.
+        let card_lang = cx.app.guild_lang(guild).await;
+        let subject = CardSubject {
+            user: author.id,
+            avatar: author.avatar,
+            name: cx.author_display_name(),
+            username: author.name.clone(),
+            server: t!(card_lang, "cfg.your-server"),
+            members: Some(PREVIEW_MEMBERS),
+        };
+        let png = card_png(&cx.app, guild, &card.design, &subject).await?;
+        let lang = cx.lang();
+        let mut about = t!(lang, "welcome.preview-about");
+        if replaced {
+            about.push_str("\n\n");
+            about.push_str(&t!(lang, "welcome.preview-replaced"));
+        } else if card.custom {
+            about.push_str("\n\n");
+            about.push_str(&t!(lang, "welcome.preview-custom"));
+        }
         let embed = EmbedBuilder::new()
             .color(BRAND)
-            .title("Welcome card preview")
-            .description("New members will see this card. Turn it on and pick a channel with `/config welcome`.");
+            .title(t!(lang, "welcome.preview-title"))
+            .description(about);
         cx.reply(Cx::card(embed, "welcome.png", png, Vec::new(), true)).await
     }
 }
 
-/// How a server's welcome card looks: theme key, headline and accent, each `None` for the default.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct WelcomeDesign {
-    pub theme: Option<String>,
-    pub title: Option<String>,
-    pub accent: Option<u32>,
-}
-
-impl WelcomeDesign {
-    pub fn of(settings: &GuildSettings) -> Self {
-        Self {
-            theme: settings.welcome_theme.clone(),
-            title: settings.welcome_title.clone(),
-            accent: settings.welcome_accent.map(|c| c as u32),
-        }
-    }
-}
-
-/// The welcome card preview `/config welcome-card` shows: the card for `name` (with their avatar)
-/// joining `server` as member #1234. The dashboard's live preview draws through this too.
-pub async fn welcome_card_png(
-    app: &App,
-    user: Id<UserMarker>,
-    avatar: Option<ImageHash>,
-    name: &str,
-    server: &str,
-    design: &WelcomeDesign,
-) -> anyhow::Result<Vec<u8>> {
-    let avatar = app.avatar_of(user, avatar, WelcomeCard::AVATAR_SIZE, Some(44)).await;
-    let title = design
-        .title
-        .clone()
-        .unwrap_or_else(|| settings::DEFAULT_WELCOME_TITLE.to_owned());
-    let theme = Theme::preset(design.theme.as_deref().unwrap_or(settings::DEFAULT_THEME)).with_accent(design.accent);
-    let (name, server) = (name.to_owned(), server.to_owned());
-    app.render(move |r| {
-        r.welcome_card(&WelcomeCard {
-            display_name: &name,
-            avatar_png: &avatar,
-            server_name: &server,
-            member_number: Some(1234),
-            title: &title,
-            theme,
-        })
-    })
-    .await
-}
+/// The member number a preview shows.
+const PREVIEW_MEMBERS: u64 = 1234;
 
 impl ConfigCommand {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
@@ -245,32 +228,34 @@ impl ConfigCommand {
             Self::PartyGames(c) => return c.run(cx, guild).await,
             Self::Modules(c) => return c.run(cx, guild).await,
             Self::Language(c) => return c.run(cx, guild).await,
-            Self::Points(c) => match c.apply(&cx.app.db, guild).await? {
+            Self::Prefix(c) => return c.run(cx, guild).await,
+            Self::Points(c) => match c.apply(&cx.app.db, guild, cx.lang()).await? {
                 Ok(settings) => settings,
                 Err(reason) => return cx.reply_ephemeral(reason).await,
             },
         };
         // Leveling on or off (and the rest of these settings) counts on every pod at once, voice XP included.
         cx.app.announce_guild_change(guild).await;
-        let mut embed = settings_embed(&settings);
+        let lang = cx.lang();
+        let mut embed = settings_embed(lang, &settings);
         embed.fields.push(
             EmbedFieldBuilder::new(
-                "Suggestions",
-                suggestions_summary(cx.app.db.suggestion_channel(guild).await?),
+                t!(lang, "cfg.suggestions"),
+                suggestions_summary(lang, cx.app.db.suggestion_channel(guild).await?),
             )
             .build(),
         );
         embed.fields.push(
             EmbedFieldBuilder::new(
-                "Critter drops",
-                critters_summary(&cx.app.db.collection_settings(guild).await?, cx.lang()),
+                t!(lang, "cfg.critter-drops"),
+                critters_summary(&cx.app.db.collection_settings(guild).await?, lang),
             )
             .build(),
         );
         embed.fields.push(
             EmbedFieldBuilder::new(
-                "Party games",
-                party_summary(cx.lang(), cx.app.db.party_strict(guild).await?),
+                t!(lang, "cfg.party-games"),
+                party_summary(lang, cx.app.db.party_strict(guild).await?),
             )
             .build(),
         );
@@ -281,6 +266,13 @@ impl ConfigCommand {
         embed
             .fields
             .push(EmbedFieldBuilder::new(t!(cx.lang(), "config.language-field"), language).build());
+        embed.fields.push(
+            EmbedFieldBuilder::new(
+                t!(cx.lang(), "text.config-field"),
+                prefix_summary(settings.prefix(), cx.app.message_content, cx.lang()),
+            )
+            .build(),
+        );
         cx.reply(InteractionResponseData {
             embeds: Some(vec![embed]),
             flags: Some(MessageFlags::EPHEMERAL),
@@ -335,70 +327,90 @@ pub struct ConfigLeveling {
 pub struct ConfigShow;
 
 /// Where level-ups go, worded to follow "level-ups".
-fn levelup_summary(s: &GuildSettings) -> String {
+fn levelup_summary(lang: Lang, s: &GuildSettings) -> String {
     match LevelUpMode::parse(&s.levelup_mode) {
-        LevelUpMode::Off => "are off".to_owned(),
-        LevelUpMode::Dm => "arrive by direct message".to_owned(),
-        LevelUpMode::Current => "in the channel the member chatted in".to_owned(),
-        LevelUpMode::Channel => format!(
-            "in {}",
-            s.levelup_channel_id.map_or_else(
-                || "the channel the member chatted in".to_owned(),
-                |id| format!("<#{id}>")
-            )
-        ),
+        LevelUpMode::Off => t!(lang, "cfg.levelup-off"),
+        LevelUpMode::Dm => t!(lang, "cfg.levelup-dm"),
+        LevelUpMode::Current => t!(lang, "cfg.levelup-current"),
+        LevelUpMode::Channel => match s.levelup_channel_id {
+            Some(id) => t!(lang, "cfg.levelup-channel", channel = format!("<#{id}>")),
+            None => t!(lang, "cfg.levelup-current"),
+        },
     }
 }
 
-fn settings_embed(s: &GuildSettings) -> Embed {
-    let on_off = |b: bool| if b { "on" } else { "off" };
-    let channel = |c: Option<i64>| c.map_or_else(|| "not set".to_owned(), |id| format!("<#{id}>"));
+fn settings_embed(lang: Lang, s: &GuildSettings) -> Embed {
+    let on_off = |b: bool| t!(lang, if b { "cfg.on" } else { "cfg.off" });
+    let channel = |c: Option<i64>| c.map_or_else(|| t!(lang, "cfg.not-set"), |id| format!("<#{id}>"));
     EmbedBuilder::new()
         .color(BRAND)
-        .title("Server settings")
+        .title(t!(lang, "cfg.title"))
         .field(EmbedFieldBuilder::new(
-            "Welcome cards",
-            format!(
-                "**{}** · {}\n> {}",
-                on_off(s.welcome_enabled),
-                channel(s.welcome_channel_id),
-                s.welcome_message.as_deref().unwrap_or(DEFAULT_WELCOME)
+            t!(lang, "cfg.welcome-cards"),
+            t!(
+                lang,
+                "cfg.welcome-value",
+                state = on_off(s.welcome_enabled),
+                channel = channel(s.welcome_channel_id),
+                message = s
+                    .welcome_message
+                    .clone()
+                    .unwrap_or_else(|| default_message(lang, MessageKind::Welcome))
             ),
         ))
         .field(EmbedFieldBuilder::new(
-            "Leveling",
-            format!(
-                "**{}** · level-ups {}\n> {}",
-                on_off(s.leveling_enabled),
-                levelup_summary(s),
-                s.levelup_message.as_deref().unwrap_or(DEFAULT_LEVELUP)
+            t!(lang, "cfg.leveling"),
+            t!(
+                lang,
+                "cfg.leveling-value",
+                state = on_off(s.leveling_enabled),
+                summary = levelup_summary(lang, s),
+                message = s
+                    .levelup_message
+                    .clone()
+                    .unwrap_or_else(|| default_message(lang, MessageKind::LevelUp))
             ),
         ))
         .field(EmbedFieldBuilder::new(
-            "XP rules and voice XP",
-            format!("{}\n> Multipliers: `/config xp show`", voice_summary(s)),
+            t!(lang, "cfg.xp-rules"),
+            t!(lang, "cfg.xp-value", voice = voice_summary(lang, s)),
         ))
         .field(EmbedFieldBuilder::new(
-            "Level roles",
-            format!(
-                "**{}** · set up with `/config level-roles`",
-                if s.level_roles_stack { "stack" } else { "replace" }
+            t!(lang, "cfg.level-roles"),
+            t!(
+                lang,
+                "cfg.level-roles-value",
+                mode = t!(
+                    lang,
+                    if s.level_roles_stack {
+                        "cfg.stack"
+                    } else {
+                        "cfg.replace"
+                    }
+                )
             ),
         ))
         .field(EmbedFieldBuilder::new(
-            "Server points",
-            format!(
-                "**{}** · {} **{}** per message, {} to {}\n> Spend them in `/store`; add roles with `/config store`",
-                on_off(s.points_enabled),
-                s.points_emoji,
-                s.points_name,
-                s.points_min,
-                s.points_max
+            t!(lang, "cfg.server-points"),
+            t!(
+                lang,
+                "cfg.points-value",
+                state = on_off(s.points_enabled),
+                emoji = s.points_emoji,
+                name = s.points_name,
+                min = s.points_min,
+                max = s.points_max
             ),
         ))
-        .field(EmbedFieldBuilder::new("Join role", join_role_summary(s)))
-        .field(EmbedFieldBuilder::new("Goodbye", goodbye_summary(s)))
-        .field(EmbedFieldBuilder::new("Server log", log_summary(s)))
+        .field(EmbedFieldBuilder::new(
+            t!(lang, "cfg.join-role"),
+            join_role_summary(lang, s),
+        ))
+        .field(EmbedFieldBuilder::new(
+            t!(lang, "cfg.goodbye"),
+            goodbye_summary(lang, s),
+        ))
+        .field(EmbedFieldBuilder::new(t!(lang, "cfg.server-log"), log_summary(lang, s)))
         .build()
 }
 
@@ -407,6 +419,7 @@ mod tests {
     use std::ops::RangeInclusive;
 
     use pinchora_core::leveling::{MAX_MULTIPLIER, VOICE_XP_RANGE};
+    use pinchora_render::Theme;
     use twilight_model::application::command::{CommandOption, CommandOptionChoiceValue, CommandOptionValue};
 
     use super::*;

@@ -1,6 +1,7 @@
 //! The dashboard's routes and the headers every response carries.
 
 mod audit_log;
+mod cards;
 mod commands;
 mod community;
 mod discord_info;
@@ -13,6 +14,7 @@ mod overview;
 mod preview;
 mod responders;
 mod settings;
+mod site;
 mod static_files;
 mod store;
 mod tag_common;
@@ -45,6 +47,12 @@ pub fn router(state: WebState) -> Router {
             state.clone(),
             ratelimit::auth_by_address,
         ));
+    let public = Router::new()
+        .route("/api/public/landing", get(site::landing))
+        .route_layer(middleware::from_fn_with_state(
+            state.clone(),
+            ratelimit::public_by_address,
+        ));
     let api = Router::new()
         .route("/api/me", get(me::me))
         .route("/api/me/guilds", get(me::guilds))
@@ -54,6 +62,8 @@ pub fn router(state: WebState) -> Router {
         .route("/api/{*rest}", any(|| async { ApiError::not_found() }));
     Router::new()
         .merge(auth)
+        .merge(public)
+        .route("/invite", get(site::invite))
         .merge(api)
         .merge(house::assets())
         .merge(static_files::router())

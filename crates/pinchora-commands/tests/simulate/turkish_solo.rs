@@ -922,7 +922,7 @@ async fn turkish_hangman_is_lost_refuses_repeats_and_is_closed_by_the_janitor() 
     }
     assert_eq!(board.title(), "Deniz kaleyi aldı");
     assert!(
-        board.content().contains("Bu sefer gelgit kazandı") && board.content().contains(&lang::upper(Lang::Tr, &word)),
+        board.content().contains("Bu sefer gelgit kazandı") && board.content().contains(&Lang::Tr.upper(&word)),
         "{}",
         board.content()
     );

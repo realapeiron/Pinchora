@@ -6,7 +6,7 @@ use std::{str::Split, sync::Arc};
 use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{Commit, PartyGame, PartyPlayer, Pay};
 use pinchora_game::{
-    lang::{self, upper},
+    lang,
     party::{
         Party,
         race::{self, Board, RACE_SECS},
@@ -122,8 +122,8 @@ async fn view(
     let lang = state.lang;
     // The card draws its title and footer in capitals, which Turkish spells with its own İ.
     let (title, footer) = (
-        upper(lang, &Party::WordRace.label_in(lang)),
-        upper(lang, &t!(lang, "wordrace.card-footer")),
+        lang.upper(&Party::WordRace.label_in(lang)),
+        lang.upper(&t!(lang, "wordrace.card-footer")),
     );
     let png = app
         .render(move |r| {
@@ -255,15 +255,12 @@ async fn private_board(
         })
         .collect();
     let tries = guesses.len();
-    let footer = upper(
+    let footer = ui.upper(&t!(
         ui,
-        &t!(
-            ui,
-            "wordrace.try",
-            n = (tries + 1).min(wordle::MAX_TRIES),
-            max = wordle::MAX_TRIES
-        ),
-    );
+        "wordrace.try",
+        n = (tries + 1).min(wordle::MAX_TRIES),
+        max = wordle::MAX_TRIES
+    ));
     let title = t!(ui, "wordrace.card-board");
     let png = app
         .render(move |r| {
@@ -320,7 +317,7 @@ pub(crate) async fn on_modal(cx: &Cx, mut parts: Split<'_, char>, fields: &[(Str
     };
     if !PlayContent::for_lang(state.lang).words.is_allowed(&guess) {
         return cx
-            .reply_ephemeral(t!(lang, "wordrace.not-listed", guess = upper(state.lang, &guess)))
+            .reply_ephemeral(t!(lang, "wordrace.not-listed", guess = state.lang.upper(&guess)))
             .await;
     }
     let Some(board) = app.db.race_guess(id, me, &guess, &state.word, app.now()).await? else {
@@ -413,7 +410,7 @@ pub(crate) async fn finish(app: &Arc<App>, id: i64, winner: Option<(u64, usize)>
             )
         })
         .collect();
-    let word = upper(lang, &state.word);
+    let word = lang.upper(&state.word);
     let label = Party::WordRace.label_in(lang);
     let subtitle = t!(lang, "wordrace.word-was", word = word);
     let png = standings_png(app, lang, &label, &subtitle, rows, &t!(lang, "wordrace.thanks")).await?;

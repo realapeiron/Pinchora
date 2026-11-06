@@ -7,7 +7,6 @@ use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{Granted, PotHaul, PotRow, PotUpgrade};
 use pinchora_game::{
     collection::{self, Collection, POT_HOURS, POT_MAX_LEVEL},
-    lang as letters,
     play::Game,
 };
 use pinchora_render::{HaulCard, PotCard, PotState, Theme};
@@ -245,7 +244,7 @@ fn haul_card(app: &App, lang: Lang, granted: &[Granted], paid: bool, hours: i16)
     }
     HaulCard {
         title: Game::CrabPot.name(lang),
-        subtitle: letters::upper(lang, &t!(lang, "crabpot.soak", hours = hours)),
+        subtitle: lang.upper(&t!(lang, "crabpot.soak", hours = hours)),
         tiles,
         footer,
         theme: Theme::reef(),

@@ -79,47 +79,37 @@ pub fn sans_width(text: &str, size: f32) -> f32 {
     em * size
 }
 
-/// How wide `text` is in the pixel font at `size` px. Plain ASCII is exact from a table: every
-/// glyph is a whole number of font pixels, eight to the em. Anything else (accents, other
-/// scripts, emoji) is laid out for real, so font fallback and the empty box the pixel font
-/// draws for what it lacks are counted as the renderer draws them.
+/// How wide `text` is in the pixel font at `size` px. Plain ASCII and the Turkish letters are exact from a table:
+/// every glyph is a whole number of font pixels, eight to the em. Anything else (accents, other scripts, emoji)
+/// is laid out for real, so font fallback and the empty box the pixel font draws for what it lacks are counted as
+/// the renderer draws them.
 pub fn pixel_width(text: &str, size: f32) -> f32 {
-    let text = &*pixel_letters(text);
-    if !text.is_ascii() {
+    if !text.chars().all(|c| c.is_ascii() || turkish_pixels(c).is_some()) {
         return laid_out_width(text, crate::cards::PIXEL, false, size);
     }
     let pixels: u32 = text
         .chars()
-        .map(|c| match c {
-            'I' | 'i' | '.' | '!' | '\'' | ' ' | ':' | ';' | '|' => 3,
-            ',' | '(' | ')' => 4,
-            'E' | 'F' | 'L' | 'T' | 'Z' | 'e' | 'f' | 'l' | 't' | 'z' | '-' | '1' => 5,
-            'M' | 'N' | 'V' | 'W' | 'X' | 'Y' | 'm' | 'n' | 'v' | 'w' | 'x' | 'y' => 7,
-            _ => 6,
+        .map(|c| {
+            turkish_pixels(c).unwrap_or(match c {
+                'I' | 'i' | '.' | '!' | '\'' | ' ' | ':' | ';' | '|' => 3,
+                ',' | '(' | ')' => 4,
+                'E' | 'F' | 'L' | 'T' | 'Z' | 'e' | 'f' | 'l' | 't' | 'z' | '-' | '1' => 5,
+                'M' | 'N' | 'V' | 'W' | 'X' | 'Y' | 'm' | 'n' | 'v' | 'w' | 'x' | 'y' => 7,
+                _ => 6,
+            })
         })
         .sum();
     pixels as f32 * size / 8.0
 }
 
-/// `text` as the pixel font draws it. The font has no İ, ı, Ş, ş, Ğ or ğ: they become the plain
-/// letter, as Turkish is often typed on keyboards without them, rather than a letter of another font.
-pub(crate) fn pixel_letters(text: &str) -> std::borrow::Cow<'_, str> {
-    const MISSING: [char; 6] = ['İ', 'ı', 'Ş', 'ş', 'Ğ', 'ğ'];
-    if !text.contains(MISSING) {
-        return std::borrow::Cow::Borrowed(text);
+/// How many font pixels the pixel font advances for a Turkish letter: `İ` and `ı` are an `I` wide, the others
+/// a letter wide. The font draws all of them itself (`İ ı Ş ş Ğ ğ` were added to Silkscreen for these cards).
+const fn turkish_pixels(c: char) -> Option<u32> {
+    match c {
+        'İ' | 'ı' => Some(3),
+        'Ş' | 'ş' | 'Ğ' | 'ğ' | 'Ç' | 'ç' | 'Ö' | 'ö' | 'Ü' | 'ü' | 'Â' | 'â' => Some(6),
+        _ => None,
     }
-    text.chars()
-        .map(|c| match c {
-            'İ' => 'I',
-            'ı' => 'i',
-            'Ş' => 'S',
-            'ş' => 's',
-            'Ğ' => 'G',
-            'ğ' => 'g',
-            c => c,
-        })
-        .collect::<String>()
-        .into()
 }
 
 /// How wide the renderer draws `text` in `family` at `size` px, laid out with the card fonts.
@@ -624,6 +614,23 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn the_turkish_letters_are_measured_from_the_table_as_the_font_draws_them() {
+        let same = |a: f32, b: f32| (a - b).abs() < 0.01;
+        for c in "İıŞşĞğÇçÖöÜüÂâ".chars() {
+            let text = c.to_string();
+            let drawn = laid_out_width(&text, crate::cards::PIXEL, false, 16.0);
+            assert!(
+                same(pixel_width(&text, 16.0), drawn),
+                "{c}: {} vs {drawn}",
+                pixel_width(&text, 16.0)
+            );
+        }
+        // Each is as wide as the letter it is made from, so a Turkish text is as wide as its ASCII twin.
+        assert!(same(pixel_width("ŞİRİN ĞIÇ", 14.0), pixel_width("SIRIN GIC", 14.0)));
+        assert!(same(pixel_width("ışık", 14.0), pixel_width("isik", 14.0)));
     }
 
     #[test]
