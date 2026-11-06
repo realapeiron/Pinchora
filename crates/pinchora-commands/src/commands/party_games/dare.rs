@@ -4,11 +4,14 @@
 
 use std::{str::Split, sync::Arc};
 
-use pinchora_core::i18n::Lang;
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{Commit, PartyGame, PartyPlayer, Pay, PlayerChange};
-use pinchora_game::party::{
-    Dice, Party, TURN_REWARD,
-    prompts::{Category, PartyContent, Pick},
+use pinchora_game::{
+    lang::upper,
+    party::{
+        Dice, Party, TURN_REWARD,
+        prompts::{Category, PartyContent, Pick},
+    },
 };
 use pinchora_render::{PromptCard, PromptTone};
 use serde::{Deserialize, Serialize};
@@ -16,8 +19,8 @@ use twilight_model::{channel::message::component::ButtonStyle, http::interaction
 use twilight_util::builder::embed::EmbedBuilder;
 
 use super::{
-    after, card, count_games, day, edit_card, lobby, name_of, paid_note, push_button, remember, row, snapshot,
-    standings_png, theme,
+    after, card, count_games, day, edit_card, game_lang, lobby, name_of, paid_text, push_button, remember, row,
+    snapshot, standings_png, theme,
 };
 use crate::{
     App, Cx,
@@ -50,7 +53,54 @@ struct State {
     /// Turns in a row that nobody answered.
     quiet: u32,
     /// What happened last turn, shown above this one.
-    note: String,
+    #[serde(default)]
+    news: News,
+}
+
+/// What happened last turn. It is kept as what it was, not as a sentence, so it is worded in the language of
+/// the table whenever the turn is drawn.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+enum News {
+    #[default]
+    Nothing,
+    /// `paid` is the shells the turn paid, once known (0 when the day's limit was reached); it is only ever
+    /// shown on the message that announces the turn, never kept.
+    Did {
+        name: String,
+        #[serde(skip)]
+        paid: Option<i64>,
+    },
+    Passed {
+        name: String,
+    },
+    Quiet {
+        name: String,
+    },
+}
+
+impl News {
+    fn say(&self, lang: Lang) -> String {
+        match self {
+            Self::Nothing => String::new(),
+            Self::Did { name, paid } => {
+                let line = t!(lang, "dare.did", name = name);
+                match paid {
+                    Some(shells) => format!("{line} ({})", paid_text(lang, *shells)),
+                    None => line,
+                }
+            }
+            Self::Passed { name } => t!(lang, "dare.passed", name = name),
+            Self::Quiet { name } => t!(lang, "dare.quiet", name = name),
+        }
+    }
+}
+
+/// Why a game ended.
+#[derive(Debug, Clone, Copy)]
+enum Ended {
+    Host,
+    Quiet,
 }
 
 fn decode(game: &PartyGame) -> anyhow::Result<State> {
@@ -106,36 +156,39 @@ async fn view(
     players: &[PartyPlayer],
     state: &State,
 ) -> anyhow::Result<InteractionResponseData> {
-    let name = name_of(players, state.cur);
+    let lang = state.lang;
+    let name = name_of(lang, players, state.cur);
     let prompt = PartyContent::find_prompt(&state.prompt).filter(|_| game.phase == "prompt");
     let (tone, text, topic, footer) = match (&prompt, state.pick.as_deref().and_then(Pick::from_key)) {
         (Some(prompt), Some(Pick::Truth)) => (
             PromptTone::Truth,
             prompt.text.clone(),
-            prompt.category.label_in(state.lang),
-            "Answer it, or pass: passing is always fine",
+            prompt.category.label_in(lang),
+            t!(lang, "dare.footer-truth"),
         ),
         (Some(prompt), _) => (
             PromptTone::Dare,
             prompt.text.clone(),
-            prompt.category.label_in(state.lang),
-            "Do it, or pass: passing is always fine",
+            prompt.category.label_in(lang),
+            t!(lang, "dare.footer-dare"),
         ),
         (None, _) => (
             PromptTone::Turn,
-            "Truth or dare?".to_owned(),
-            category(state).map_or("", |c| c.label_in(state.lang)),
-            "Only the player whose turn it is can pick",
+            t!(lang, "dare.question"),
+            category(state).map_or_else(String::new, |c| c.label_in(lang)),
+            t!(lang, "dare.footer-turn"),
         ),
     };
     let png = {
-        let (name, footer) = (name.clone(), footer.to_owned());
+        // The card draws the category and footer in capitals, which Turkish spells with its own İ.
+        let (name, topic, footer) = (name.clone(), upper(lang, &topic), upper(lang, &footer));
         app.render(move |r| {
             r.prompt_card(&PromptCard {
+                lang,
                 tone,
                 name: &name,
                 text: &text,
-                category: topic,
+                category: &topic,
                 footer: &footer,
                 theme: theme(),
             })
@@ -144,40 +197,72 @@ async fn view(
     };
     let id = game.id;
     let turn = state.turn;
-    let ask = if tone == PromptTone::Turn {
-        format!(
-            "{}, truth or dare? Pick {}.",
-            mention(state.cur),
-            relative(game.deadline)
-        )
-    } else {
-        format!(
-            "{} has {}. Press **Done** when it is done, or **Pass** {}.",
-            mention(state.cur),
-            if tone == PromptTone::Truth { "a truth" } else { "a dare" },
-            relative(game.deadline)
-        )
+    let ask = match tone {
+        PromptTone::Turn => t!(
+            lang,
+            "dare.ask-pick",
+            holder = mention(state.cur),
+            when = relative(game.deadline)
+        ),
+        PromptTone::Truth => t!(
+            lang,
+            "dare.ask-truth",
+            holder = mention(state.cur),
+            when = relative(game.deadline)
+        ),
+        PromptTone::Dare => t!(
+            lang,
+            "dare.ask-dare",
+            holder = mention(state.cur),
+            when = relative(game.deadline)
+        ),
     };
-    let description = if state.note.is_empty() {
-        ask
-    } else {
-        format!("{}\n{ask}", state.note)
-    };
+    let news = state.news.say(lang);
+    let description = if news.is_empty() { ask } else { format!("{news}\n{ask}") };
     let embed = EmbedBuilder::new()
         .color(BRAND)
-        .title(format!("{} Truth or Dare", Party::TruthOrDare.emoji()))
+        .title(format!(
+            "{} {}",
+            Party::TruthOrDare.emoji(),
+            Party::TruthOrDare.label_in(lang)
+        ))
         .description(description);
-    let end = push_button(Party::TruthOrDare, &[&"e", &id], "End game", ButtonStyle::Secondary);
+    let end = push_button(
+        Party::TruthOrDare,
+        &[&"e", &id],
+        &t!(lang, "dare.btn-end"),
+        ButtonStyle::Secondary,
+    );
     let buttons = if game.phase == "prompt" {
         vec![
-            push_button(Party::TruthOrDare, &[&"ok", &id, &turn], "Done", ButtonStyle::Success),
-            push_button(Party::TruthOrDare, &[&"no", &id, &turn], "Pass", ButtonStyle::Secondary),
+            push_button(
+                Party::TruthOrDare,
+                &[&"ok", &id, &turn],
+                &t!(lang, "dare.btn-done"),
+                ButtonStyle::Success,
+            ),
+            push_button(
+                Party::TruthOrDare,
+                &[&"no", &id, &turn],
+                &t!(lang, "dare.btn-pass"),
+                ButtonStyle::Secondary,
+            ),
             end,
         ]
     } else {
         vec![
-            push_button(Party::TruthOrDare, &[&"t", &id, &turn], "Truth", ButtonStyle::Success),
-            push_button(Party::TruthOrDare, &[&"d", &id, &turn], "Dare", ButtonStyle::Danger),
+            push_button(
+                Party::TruthOrDare,
+                &[&"t", &id, &turn],
+                &t!(lang, "dare.btn-truth"),
+                ButtonStyle::Success,
+            ),
+            push_button(
+                Party::TruthOrDare,
+                &[&"d", &id, &turn],
+                &t!(lang, "dare.btn-dare"),
+                ButtonStyle::Danger,
+            ),
             end,
         ]
     };
@@ -188,8 +273,9 @@ async fn view(
 /// and `e` to end the game.
 pub(crate) async fn on_button(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::Result<()> {
     let action = parts.next().unwrap_or_default();
+    let lang = cx.lang();
     let Some(id) = parts.next().and_then(|v| v.parse::<i64>().ok()) else {
-        return cx.reply_ephemeral("This button has expired.").await;
+        return cx.reply_ephemeral(t!(lang, "party.expired-button")).await;
     };
     if lobby::on_button(cx, Party::TruthOrDare, action, id).await? {
         return Ok(());
@@ -197,21 +283,21 @@ pub(crate) async fn on_button(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::Re
     let app = &cx.app;
     let me = cx.author()?.id.get();
     let Some((game, players)) = snapshot(app, Party::TruthOrDare, id).await? else {
-        return cx.reply_ephemeral("This game has expired.").await;
+        return cx.reply_ephemeral(t!(lang, "party.expired-game")).await;
     };
     remember(cx, &game).await;
     if !game.is_playing() {
-        return cx.reply_ephemeral("This game is over.").await;
+        return cx.reply_ephemeral(t!(lang, "dare.over-click")).await;
     }
     if action == "e" {
         if me != game.host() && !cx.can_manage_guild() {
             return cx
-                .reply_ephemeral(format!("Only {} can end this game.", mention(game.host())))
+                .reply_ephemeral(t!(lang, "dare.only-host-ends", host = mention(game.host())))
                 .await;
         }
-        return match finish(app, &game, &players, "The host ended the game").await? {
+        return match finish(app, &game, &players, Ended::Host).await? {
             Some((_, data)) => cx.update(data).await,
-            None => cx.reply_ephemeral("The turn changed just now. Try again!").await,
+            None => cx.reply_ephemeral(t!(lang, "dare.changed")).await,
         };
     }
     let state = decode(&game)?;
@@ -219,22 +305,24 @@ pub(crate) async fn on_button(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::Re
         parts.next().and_then(|v| v.parse::<u32>().ok()),
         matches!(action, "t" | "d" | "ok" | "no"),
     ) else {
-        return cx.reply_ephemeral("This button has expired.").await;
+        return cx.reply_ephemeral(t!(lang, "party.expired-button")).await;
     };
     let phase = if matches!(action, "t" | "d") { "pick" } else { "prompt" };
     if game.phase != phase || state.turn != turn {
-        return cx
-            .reply_ephemeral("That turn is over. Use the buttons on the newest message!")
-            .await;
+        return cx.reply_ephemeral(t!(lang, "dare.turn-over")).await;
     }
     if me != state.cur {
         return cx
-            .reply_ephemeral(format!("It is {}'s turn, not yours.", name_of(&players, state.cur)))
+            .reply_ephemeral(t!(
+                lang,
+                "dare.not-your-turn",
+                name = name_of(lang, &players, state.cur)
+            ))
             .await;
     }
     if game.late(app.now()) {
         on_due(app, game).await?;
-        return cx.reply_ephemeral("Time ran out for this turn.").await;
+        return cx.reply_ephemeral(t!(lang, "dare.late")).await;
     }
     match action {
         "t" => choose(cx, game, players, state, Pick::Truth).await,
@@ -275,7 +363,7 @@ async fn choose(
         pay: None,
     };
     let Some(done) = app.db.commit_party(game.id, game.seq, commit).await? else {
-        return cx.reply_ephemeral("The turn changed just now. Try again!").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "dare.changed")).await;
     };
     cx.update(view(app, &done.game, &players, &state).await?).await
 }
@@ -290,7 +378,7 @@ async fn resolve(
 ) -> anyhow::Result<()> {
     let app = &cx.app;
     let who = state.cur;
-    let name = name_of(&players, who);
+    let name = name_of(state.lang, &players, who);
     let shells = if did { vec![(who, TURN_REWARD)] } else { Vec::new() };
     let change = PlayerChange {
         user: who,
@@ -299,10 +387,10 @@ async fn resolve(
     };
     next_turn(&mut state, &players);
     state.quiet = 0;
-    state.note = if did {
-        format!("🎉 {name} did it!")
+    state.news = if did {
+        News::Did { name, paid: None }
     } else {
-        format!("{name} passed.")
+        News::Passed { name }
     };
     let commit = Commit {
         phase: "pick",
@@ -321,13 +409,14 @@ async fn resolve(
         }),
     };
     let Some(done) = app.db.commit_party(game.id, game.seq, commit).await? else {
-        return cx.reply_ephemeral("The turn changed just now. Try again!").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "dare.changed")).await;
     };
-    if did {
-        let paid = paid_note(&done.paid, who);
-        if !paid.is_empty() {
-            state.note = format!("{} ({paid})", state.note);
-        }
+    if let News::Did { paid, .. } = &mut state.news {
+        *paid = done
+            .paid
+            .iter()
+            .find(|(user, _)| *user == who)
+            .map(|(_, shells)| *shells);
     }
     cx.update(view(app, &done.game, &players, &state).await?).await
 }
@@ -353,8 +442,16 @@ async fn finish(
     app: &Arc<App>,
     game: &PartyGame,
     players: &[PartyPlayer],
-    why: &str,
+    ended: Ended,
 ) -> anyhow::Result<Option<(PartyGame, InteractionResponseData)>> {
+    let lang = game_lang(game);
+    let why = t!(
+        lang,
+        match ended {
+            Ended::Host => "dare.why-host",
+            Ended::Quiet => "dare.why-quiet",
+        }
+    );
     let commit = Commit {
         phase: "done",
         round: game.round,
@@ -383,17 +480,23 @@ async fn finish(
         .map(|p| {
             (
                 p.name.clone(),
-                format!("{} DONE", p.score),
+                t!(lang, "dare.done-count", count = p.score),
                 String::new(),
                 top > 0 && p.score == top,
             )
         })
         .collect();
-    let png = standings_png(app, "Truth or Dare", why, rows, "Thanks for playing").await?;
+    let label = Party::TruthOrDare.label_in(lang);
+    let png = standings_png(app, lang, &label, &why, rows, &t!(lang, "party.thanks")).await?;
     let embed = EmbedBuilder::new()
         .color(SUCCESS)
-        .title(format!("{} Truth or Dare is over", Party::TruthOrDare.emoji()))
-        .description(format!("{why}. Thanks for playing!"));
+        .title(t!(
+            lang,
+            "party.over-title",
+            emoji = Party::TruthOrDare.emoji(),
+            label = label
+        ))
+        .description(t!(lang, "dare.over", why = why));
     Ok(Some((done.game, card(None, embed, "standings.png", png, Vec::new()))))
 }
 
@@ -405,16 +508,16 @@ pub(crate) async fn on_due(app: &Arc<App>, game: PartyGame) -> anyhow::Result<bo
     let players = app.db.party_players(game.id).await?;
     let mut state = decode(&game)?;
     if state.quiet + 1 >= 2 {
-        let Some((done, data)) = finish(app, &game, &players, "The table went quiet").await? else {
+        let Some((done, data)) = finish(app, &game, &players, Ended::Quiet).await? else {
             return Ok(false);
         };
         edit_card(app, &done, &data).await;
         return Ok(true);
     }
-    let name = name_of(&players, state.cur);
+    let name = name_of(state.lang, &players, state.cur);
     next_turn(&mut state, &players);
     state.quiet += 1;
-    state.note = format!("⌛ {name} did not answer in time.");
+    state.news = News::Quiet { name };
     let commit = Commit {
         phase: "pick",
         round: state.turn as i32,

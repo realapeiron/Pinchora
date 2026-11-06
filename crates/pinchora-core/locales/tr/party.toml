@@ -1,0 +1,306 @@
+# The word and prompt party games (/party): the lobby they share, Hot Pearl, Acronym Tide, Caption the
+# Postcard, Wordle Race, Would You Rather and Truth or Dare, the cards they draw, /party stop and the
+# party settings in /config. Fixed card labels are in capitals (with İ) where the card draws them as written.
+
+[party]
+expired-button = "Bu düğmenin süresi doldu."
+expired-form = "Bu formun süresi doldu."
+expired-game = "Bu oyunun süresi doldu."
+somebody = "Birisi"
+nobody = "Kimse"
+player = "Oyuncu"
+a-party-game = "Bir parti oyunu"
+the-party-game = "Parti oyunu"
+players-range = "{min}-{max} oyuncu"
+round = "Tur {round}/{rounds}"
+thanks = "Oynadığınız için teşekkürler"
+paid = "+{shells} kabuk"
+daily-limit = "günlük sınıra ulaşıldı"
+wait-sec = "{n} sn"
+wait-min = "{n} dk"
+busy = "{what} bu kanalda zaten sürüyor. Önce bitmesini bekle!"
+not-playing = "Bu oyunda yoksun."
+not-in-game = "Bu oyunda yoksun: yalnızca oyuncular yazar ve oy verir."
+step-over = "Bu adım bitti. En yeni mesajdaki düğmeleri kullan!"
+step-late = "Bu adımın süresi doldu!"
+no-entry = "Böyle bir giriş yok."
+no-own-vote = "Kendi yazdığına oy veremezsin"
+no-votes = "Bu turda kimse oy almadı."
+round-winner = "🏆 {name} turu “{text}” ile kazandı"
+round-tie = "🏆 Berabere! Turu {names} paylaştı."
+vote-title = "{emoji} {label} · oylama"
+results-title = "{emoji} {label} · {round}. tur sonuçları"
+over-title = "{emoji} {label} bitti"
+reveal-next = "{note}\nSonraki tur {when}."
+reveal-final = "{note}\nFinal puanları {when}."
+score-rule = "oy başına {points} puan, kazanana {bonus} puan daha"
+points = { other = "{count} PUAN" }
+final-after = { other = "{count} tur sonunda final puanları" }
+nobody-scored = "Bu sefer kimse puan almadı."
+wins = "🏆 {name} kazandı!"
+tie-between = "🏆 {names} arasında beraberlik!"
+
+[party.card]
+open-seat = "boş yer"
+waiting = { other = "{count} OYUNCU DAHA BEKLENİYOR" }
+votes = { other = "{count} OY" }
+
+[party.btn]
+join = "Katıl"
+leave = "Ayrıl"
+start = "Başlat"
+cancel = "İptal"
+
+[party.lobby]
+ready = "Hazır: kurucu başlat düğmesine basabilir"
+description = "{tagline}\n\n{rules}\nKurucu: {host} · {when} kapanır"
+opened = "{emoji} {host} bir **{label}** lobisi açtı! Katılmak için **Katıl** düğmesine bas ({n}/{max})."
+closed = "Bu lobi kapandı."
+expired = "Bu lobinin süresi doldu."
+already-in = "Zaten içeridesin. Kurucunun başlatmasını bekle!"
+full = "Bu lobi dolu."
+not-in = "Bu lobide değilsin."
+host-leaves = "Kurucu sensin: ayrılmak yerine **İptal** düğmesine basıp lobiyi kapat."
+only-host-cancels = "Bu lobiyi yalnızca {host} iptal edebilir."
+started = "Bu oyun zaten başladı."
+changed = "Lobi az önce değişti. Tekrar dene!"
+cancelled = "🚫 {user} lobiyi iptal etti."
+only-host-starts = "Bu oyunu yalnızca {host} başlatabilir."
+too-few = "{label} için en az {min} oyuncu gerekiyor, şu ana kadar yalnızca {n} kişi katıldı."
+none = "Bunun lobisi yok."
+kept-changing = "Lobi sürekli değişti. Birazdan tekrar başlatmayı dene!"
+timed-out = "⌛ Lobiyi süresinde kimse başlatmadı, o yüzden kapatıldı."
+
+[party.stop]
+none = "Bu kanalda durdurulacak bir parti oyunu yok."
+denied = "Bu oyunu yalnızca {host} ya da sunucuyu yönetebilen bir üye durdurabilir."
+stopped = "🛑 {user} şunu durdurdu: {label}. Kimse kazanmadı ve kabuk dağıtılmadı."
+done = "Durduruldu: {label}."
+done-unseen = "Durduruldu: {label}, ama mesajı güncellenemedi: silinmiş olabilir."
+kept-changing = "Oyun sürekli değişti. Birazdan tekrar durdurmayı dene!"
+
+[party.filter]
+strict = "**sıkı** · hafif sözler ve lakap takmalar da engelli"
+normal = "**normal** · ağır sözler ve hakaretler engelli · `/config partygames strict:true` daha fazlasını engeller"
+says = "Parti oyunları filtresi: {summary}"
+
+[party.refused]
+empty = "Bağlantılar, etiketler ve biçimlendirme çıkarılınca gösterecek bir şey kalmadı. Düz kelimelerle tekrar dene!"
+profane = "Ortamı güzel tutalım: yazdığında bu masanın kabul etmediği bir kelime var. Başka kelimelerle dene!"
+
+[party.gambling]
+denied = "Şans oyunu tarzı oyunları yalnızca Sunucuyu Yönet yetkisi olanlar açıp kapatabilir."
+on = "🎲 Şans oyunu tarzı oyunlar **açık**. Üyeler masada `/play shells` ile, yengeçlere de `/play derby bet` ile kabuk yatırabilir; oynama, kazanma ve kaybetmede günlük sınırlar var. Tekrar kapatmak için `/config gambling enabled:false` kullan."
+off = "🎲 Şans oyunu tarzı oyunlar **kapalı**. Burada kimse şans oyunlarına kabuk yatıramaz."
+
+[party.vote]
+counted = "🗳️ **#{number}** için oyun kaydedildi. Oylama kapanana kadar değiştirebilirsin."
+changed = "🗳️ Oyunu **#{number}** olarak değiştirdim."
+same = "Zaten **#{number}** için oy verdin."
+own = "Bu senin! Başka birini seç."
+not-player = "Yalnızca oyuncular oy verebilir."
+closed = "Oylama kapandı."
+
+[party.entry]
+locked = "✍️ Kaydedildi: “{line}”. Süre bitene kadar yeniden yazmak için düğmeye tekrar bas."
+rewritten = "✍️ Yeniden yazıldı ve kaydedildi: “{line}”. Süre bitene kadar yeniden yazmak için düğmeye tekrar bas."
+
+# The topics of Would You Rather and Truth or Dare, by `Category::key` (the names /party offers).
+[party.topic]
+silly = "Saçma"
+food = "Yemek"
+adventure = "Macera"
+ocean = "Okyanus"
+brainy = "Zekâ"
+cozy = "Rahat"
+
+[hotpearl]
+blurb = "Bir hece çıkar. İnci patlamadan onu içeren bir kelime yaz!"
+rules = { other = "{table} · herkese {count} can · her patlama bir can götürür · canı kalan son oyuncu kazanır" }
+holds = "İnci {name} kullanıcısında"
+first = "{name} başlıyor"
+played = "{name} {word} yazdı  ·  sıra {next} kullanıcısında"
+boom = "PATLADI! {name} bir can kaybetti"
+boom-out = "PATLADI! {name} elendi"
+turn = "{headline}\n{holder}, inci patlamadan {when} **{syllable}** geçen bir kelime yaz! (tur başına {secs} saniye)"
+btn-word = "Kelime yaz"
+placeholder = "inci"
+field-label = "{syllable} içeren bir kelime"
+moved-on = "İnci ilerledi. En yeni mesajdaki düğmeleri kullan!"
+not-your-turn = "Sıra sende değil: şu an {name} oynuyor."
+too-slow = "Çok yavaştın: inci patladı!"
+nobody-left = "İncinin geçeceği kimse kalmadı."
+moved-before = "Kelimen yetişmeden inci ilerledi."
+pop-out = "💥 İnci **{name}** üzerinde patladı, oyundan çıktı!"
+pop = { other = "💥 İnci **{name}** üzerinde patladı! {count} can kaldı." }
+last-standing = "SON AYAKTA KALAN"
+out-on-turn = "{n}. TURDA ELENDİ"
+no-shells = "kabuk yok: az kelime"
+wins-after = "{name} {turns} tur sonunda kazandı"
+unpaid = "Bu sefer kabuk yok: kazancın ödenmesi için en az {min_words} kelime oynanmalı, bunların {min_winner} tanesi de kazanandan gelmeli."
+over = "{verdict}\n🏆 {winner} kazandı!{unpaid}"
+
+[hotpearl.card]
+out = "ELENDİ"
+holds = "İNCİ ONDA"
+last-word = "SON KELİME {word}"
+
+[hotpearl.err]
+letters = "Sadece harf yaz lütfen: Türk alfabesi."
+too-short = "Bir kelime en az {min} harfli olmalı."
+too-long = "Bu kelime olamayacak kadar uzun."
+missing-syllable = "Bu kelimede **{syllable}** yok."
+not-a-word = "Bu kelime listemde yok."
+already-used = "Bu kelime bu oyunda zaten kullanıldı."
+
+[acronym]
+blurb = "Harfler çıkar. Kelimeleri sırayla bu harflerle başlayan bir cümle yaz, sonra en iyisine oy ver."
+rules = "{table} · {rounds} tur · oylar açıklanana kadar gizli"
+ask = "**{letters}** harflerinden bir cümle kur"
+write-desc = "{ask}. Herkes bir tane yazar; oylama bitene kadar kimin neyi yazdığını kimse görmez.\nCümleler {when} kapanır · {players} kişiden {written} cümle geldi"
+vote-desc = "En beğendiğin cümleye oy ver; oylama {when} kapanır. {players} kişiden {voted} oy verdi."
+btn-write = "Cümle yaz"
+modal-title = "Kısaltma Gelgiti"
+field-label = "{letters} için cümlen"
+placeholder = "Minik balinalar kızakla kayıyor"
+card-hint = "Her harf için sırayla bir kelime. Düğmeye bas ve cümleni yaz."
+card-status = "Oylama bitene kadar cümleler gizli kalır"
+vote-sub = "{letters} için en iyi cümle hangisi?"
+reveal-sub = "Harfler: {letters}"
+too-late = "Süre doldu: bu cümle çok geç kaldı."
+not-counted = "Süre doldu ya da bu oyunda değilsin: cümlen sayılmadı."
+no-entries = "Bu turda kimse cümle yazmadı."
+one-entry = "Yalnızca bir cümle geldi, oylanacak bir şey yok."
+
+[acronym.err]
+empty = "Önce bir cümle yaz."
+count = { other = "{count} kelime yazdın, ama **{letters}** için tam **{want}** kelime gerekiyor." }
+letter = "{n}. kelime **{want}** ile başlamalı."
+too-long = "En fazla {max_phrase} karakter olsun, her kelime de {max_word} karakteri geçmesin."
+
+[postcard]
+blurb = "Piksel bir kartpostal çıkar. En komik altyazıyı yaz, sonra favorine oy ver."
+rules = "{table} · {rounds} tur · oylar açıklanana kadar gizli"
+ask = "Bu kartpostal için bir altyazı yaz"
+write-desc = "{ask}. Herkes bir tane yazar; oylama bitene kadar kimin neyi yazdığını kimse görmez.\nAltyazılar {when} kapanır · {players} kişiden {written} altyazı geldi"
+vote-desc = "En beğendiğin altyazıya oy ver; oylama {when} kapanır. {players} kişiden {voted} oy verdi."
+btn-write = "Altyazı yaz"
+modal-title = "Kartpostala altyazı yaz"
+field-label = "Altyazın"
+placeholder = "Burada neler oluyor?"
+vote-sub = "En komik altyazı hangisi?"
+reveal-sub = "Oylar belli oldu"
+too-late = "Süre doldu: bu altyazı çok geç kaldı."
+not-counted = "Süre doldu ya da bu oyunda değilsin: altyazın sayılmadı."
+no-entries = "Bu turda kimse altyazı yazmadı."
+one-entry = "Yalnızca bir altyazı geldi, oylanacak bir şey yok."
+
+[postcard.err]
+too-short = "Bir altyazı en az {min} karakter olmalı."
+too-long = "{max} karakteri geçmesin."
+
+[postcard.card]
+greetings = "SELAMLAR"
+post = "POSTA"
+
+# The place each scene greets from, by scene id.
+[postcard.place]
+dunes_stand_off = "Odun Kumulları"
+noon_umbrella = "Gelgit Öğlesi"
+shore_argument = "Kabuk Kıyısı"
+bluff_picnic_line = "Yonca Yamacı"
+boardwalk_big_one = "Sisli İskele"
+jetty_night_shift = "Yıldızlı Rıhtım"
+market_fish_deal = "Tuzlu Çan Pazarı"
+firefly_club = "Ateşböceği Pikniği"
+cove_pirates = "Bisküvi Koyu"
+snow_day_off = "Karlı Çörek Köyü"
+oasis_slow_lane = "Palmiye Vahası"
+
+[wordrace]
+blurb = "Herkes özel bir tahtada aynı beş harfli kelimeyi bulmak için yarışır. İlk bulan kazanır."
+rules = "{table} · kişi başı altı tahmin · diğer tahtalarda yalnızca renkleri görürsün"
+desc = "Aynı beş harfli kelimeyi ilk sen bul! Tahtan sana özel: **Tahmin et** düğmesine bas, tahta yalnızca sana gelir. Yarış {when} biter."
+btn-guess = "Tahmin et"
+card-footer = "KELİMEYİ İLK BULAN KAZANIR"
+placeholder = "inci"
+field-label = "Beş harfli tahminin"
+modal-title = "Wordle Yarışı tahmini"
+expired = "Bu yarışın süresi doldu."
+finished = "Bu yarış bitti."
+late = "Süre doldu: yarış bitti!"
+not-racing = "Bu yarışta değilsin: yalnızca yarışanlar tahmin edebilir."
+board-done = "Tahtan bitti. Diğerlerini bekle!"
+guess-letters = "Bir tahmin tam olarak beş harf olmalı (Türk alfabesi)."
+not-listed = "**{guess}** kelime listemde yok. Başka bir kelime dene!"
+guess-uncounted = "Tahtan bitmişti, o yüzden bu tahmin sayılmadı."
+note-solved = "**{tries}** denemede buldun! Sonucu artık herkes görüyor."
+note-failed = "Hakkın bitti. Yarış bitene kadar kelime gizli kalır."
+note-playing = "🟩 doğru yer · 🟨 yanlış yer · ⬛ kelimede yok."
+board-title = "Tahtan"
+card-board = "YARIŞ TAHTAN"
+try = "Deneme {n} / {max}"
+guesses = "{count} TAHMİN"
+word-was = "Kelime {word} idi"
+thanks = "Yarıştığınız için teşekkürler"
+winner = "🏆 {name} kelimeyi ilk buldu!"
+nobody = "Bu sefer kimse kelimeyi bulamadı."
+over = "{line}\nKelime **{word}** idi."
+
+[wordrace.card]
+solved = "{count} DENEMEDE ÇÖZDÜ"
+failed = "HAKKI BİTTİ"
+left = "{count} HAK KALDI"
+
+[rather]
+title = "{emoji} Hangisini seçerdin?"
+open = "Bir taraf seç. Fikrini değiştirebilirsin; dağılım anket {when} kapanınca gösterilir."
+closed = { other = "Anket kapandı: toplam **{count}** oy." }
+cooldown = "Bu kanala az önce bir soru gönderildi. Sonraki {secs} sn içinde gelebilir."
+expired = "Bu anketin süresi doldu."
+poll-closed = "Bu anket kapandı."
+picked = "**{letter}** seçtin: {chosen}."
+paid = " +{paid} kabuk"
+moved = "Oyunu **{letter}** tarafına taşıdın: {chosen}."
+same = "Zaten **{letter}** seçmiştin: {chosen}."
+so-far = { other = "Şimdilik: A %{a} · B %{b} ({count} oy). Kesin dağılım anket kapanınca gelir." }
+
+[rather.card]
+title = "HANGİSİNİ SEÇERDİN"
+final = { other = "SON SONUÇ: {count} OY" }
+so-far = "ŞİMDİKİ SONUÇLAR"
+pick = "DÜĞMELERLE BİR TARAF SEÇ"
+
+[dare]
+blurb = "Sırayla oynanır: rastgele bir oyuncu doğruluk ya da cesaret seçer. Buradaki her şey aileye uygun."
+rules = "{table} · herkes doyunca kurucu oyunu bitirir"
+question = "Doğruluk mu, cesaret mi?"
+footer-truth = "Cevapla ya da pas geç: pas geçmek her zaman serbest"
+footer-dare = "Yap ya da pas geç: pas geçmek her zaman serbest"
+footer-turn = "Yalnızca sırası gelen oyuncu seçebilir"
+ask-pick = "{holder}, doğruluk mu cesaret mi? {when} seç."
+ask-truth = "{holder} için bir doğruluk geldi. Cevapladığında **Tamam**, geçmek için **Pas** düğmesine bas. Süre: {when}."
+ask-dare = "{holder} için bir cesaret geldi. Yaptığında **Tamam**, geçmek için **Pas** düğmesine bas. Süre: {when}."
+btn-end = "Oyunu bitir"
+btn-done = "Tamam"
+btn-pass = "Pas"
+btn-truth = "Doğruluk"
+btn-dare = "Cesaret"
+did = "🎉 {name} yaptı!"
+passed = "{name} pas geçti."
+quiet = "⌛ {name} zamanında cevap vermedi."
+over-click = "Bu oyun bitti."
+over = "{why}. Oynadığınız için teşekkürler!"
+only-host-ends = "Bu oyunu yalnızca {host} bitirebilir."
+changed = "Sıra az önce değişti. Tekrar dene!"
+turn-over = "Bu sıra bitti. En yeni mesajdaki düğmeleri kullan!"
+not-your-turn = "Sıra sende değil: şu an {name} oynuyor."
+late = "Bu sıranın süresi doldu."
+why-host = "Kurucu oyunu bitirdi"
+why-quiet = "Masa sessizleşti"
+done-count = "{count} GÖREV"
+
+[dare.card]
+turn = "SIRA SENDE"
+truth = "DOĞRULUK"
+dare = "CESARET"

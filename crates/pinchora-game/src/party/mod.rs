@@ -19,6 +19,8 @@ pub mod surge;
 
 pub use rng::Rng;
 
+use pinchora_core::i18n::Lang;
+
 use crate::play::Game;
 
 /// Which party game a row of `party_games` is.
@@ -72,6 +74,11 @@ impl Party {
             Self::TruthOrDare => "Truth or Dare",
             Self::WouldYouRather => "Would You Rather",
         }
+    }
+
+    /// The game's name in `lang` (`game.<key>` in the catalogs); in English it is [`Party::label`].
+    pub fn label_in(self, lang: Lang) -> String {
+        self.game().name(lang)
     }
 
     pub fn emoji(self) -> &'static str {

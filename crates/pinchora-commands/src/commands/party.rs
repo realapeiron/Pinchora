@@ -3,6 +3,7 @@
 
 use std::time::Duration;
 
+use pinchora_core::{i18n::Lang, t};
 use pinchora_game::play::Game;
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::{
@@ -150,13 +151,13 @@ pub(crate) async fn unrest(app: &App, kind: &str, user: u64) {
     }
 }
 
-/// "3 min" or "40 s": how long is left, for a refusal.
-pub(crate) fn wait_text(left: Duration) -> String {
+/// "3 min" or "40 s": how long is left, for a refusal, in `lang`; in Turkish `3 dk` or `40 sn`.
+pub(crate) fn wait_text_in(lang: Lang, left: Duration) -> String {
     let secs = left.as_secs() + 1;
     if secs > 90 {
-        format!("{} min", secs.div_ceil(60))
+        t!(lang, "party.wait-min", n = secs.div_ceil(60))
     } else {
-        format!("{secs} s")
+        t!(lang, "party.wait-sec", n = secs)
     }
 }
 
@@ -193,19 +194,15 @@ impl ConfigGambling {
     pub(crate) async fn run(self, cx: &Cx, guild: u64) -> anyhow::Result<()> {
         // Discord's default permissions can be changed by a server's admins; the switch checks too.
         if !cx.can_manage_guild() {
-            return cx
-                .reply_ephemeral("Only members with Manage Server can switch gambling-style games.")
-                .await;
+            return cx.reply_ephemeral(t!(cx.lang(), "party.gambling.denied")).await;
         }
         cx.app.db.set_gambling(guild, self.enabled).await?;
-        cx.reply_ephemeral(if self.enabled {
-            "🎲 Gambling-style games are **on**. Members can stake shells at the table with `/play shells` and on \
-             crabs with `/play derby bet`; there are daily limits on plays, wins and losses. Turn them off again \
-             with `/config gambling enabled:false`."
+        let key = if self.enabled {
+            "party.gambling.on"
         } else {
-            "🎲 Gambling-style games are **off**. Nobody can stake shells on games of chance here."
-        })
-        .await
+            "party.gambling.off"
+        };
+        cx.reply_ephemeral(t!(cx.lang(), key)).await
     }
 }
 
@@ -264,8 +261,10 @@ mod tests {
 
     #[test]
     fn waits_read_in_the_unit_that_fits() {
-        assert_eq!(wait_text(Duration::from_secs(39)), "40 s");
-        assert_eq!(wait_text(Duration::from_secs(299)), "5 min");
-        assert_eq!(wait_text(Duration::from_secs(0)), "1 s");
+        assert_eq!(wait_text_in(Lang::En, Duration::from_secs(39)), "40 s");
+        assert_eq!(wait_text_in(Lang::En, Duration::from_secs(299)), "5 min");
+        assert_eq!(wait_text_in(Lang::En, Duration::from_secs(0)), "1 s");
+        assert_eq!(wait_text_in(Lang::Tr, Duration::from_secs(39)), "40 sn");
+        assert_eq!(wait_text_in(Lang::Tr, Duration::from_secs(299)), "5 dk");
     }
 }

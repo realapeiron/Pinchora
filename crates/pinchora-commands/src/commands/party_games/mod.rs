@@ -21,8 +21,12 @@ pub(crate) use settings::party_summary;
 use std::{future::Future, str::Split, sync::Arc, time::Duration};
 
 use chrono::{DateTime, Duration as Span, Utc};
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{PartyGame, PartyPlayer};
-use pinchora_game::party::{Party, prompts::Category};
+use pinchora_game::{
+    lang::upper,
+    party::{Party, prompts::Category},
+};
 use pinchora_render::{StandingRow, StandingsCard, Theme};
 use twilight_interactions::command::{CommandModel, CommandOption, CreateCommand, CreateOption};
 use twilight_model::{
@@ -207,7 +211,7 @@ pub(crate) async fn on_component(cx: &Cx, prefix: &str, parts: Split<'_, char>) 
         Some(Party::WordRace) => race::on_button(cx, parts).await,
         Some(Party::TruthOrDare) => dare::on_button(cx, parts).await,
         Some(Party::WouldYouRather) => rather::on_button(cx, parts).await,
-        None => cx.reply_ephemeral("This button has expired.").await,
+        None => cx.reply_ephemeral(t!(cx.lang(), "party.expired-button")).await,
     }
 }
 
@@ -222,11 +226,22 @@ pub(crate) async fn on_modal(
         Some(Party::HotPearl) => pearl::on_modal(cx, parts, fields).await,
         Some(party @ (Party::Acronym | Party::Postcard)) => writing::on_modal(cx, party, parts, fields).await,
         Some(Party::WordRace) => race::on_modal(cx, parts, fields).await,
-        _ => cx.reply_ephemeral("This form has expired.").await,
+        _ => cx.reply_ephemeral(t!(cx.lang(), "party.expired-form")).await,
     }
 }
 
 // /Shared
+
+/// The language a game is played and shown in: the one its state records (every game keeps it in `lang`),
+/// English for one that has none. What the whole table sees (the lobby, the cards, what the clock posts) is
+/// in this language, so a message does not change language with whoever clicked last; what only one player
+/// sees is in theirs.
+pub(crate) fn game_lang(game: &PartyGame) -> Lang {
+    serde_json::from_str::<serde_json::Value>(&game.state)
+        .ok()
+        .and_then(|state| serde_json::from_value(state.get("lang")?.clone()).ok())
+        .unwrap_or_default()
+}
 
 pub(crate) fn theme() -> Theme {
     Theme::reef()
@@ -381,11 +396,16 @@ pub(crate) fn names(players: &[PartyPlayer]) -> Vec<String> {
 }
 
 /// The name of a player by id, or a plain label for somebody who is gone.
-pub(crate) fn name_of(players: &[PartyPlayer], user: u64) -> String {
+pub(crate) fn name_of(lang: Lang, players: &[PartyPlayer], user: u64) -> String {
     players
         .iter()
         .find(|p| p.id() == user)
-        .map_or_else(|| "Somebody".to_owned(), |p| p.name.clone())
+        .map_or_else(|| t!(lang, "party.somebody"), |p| p.name.clone())
+}
+
+/// How a round is named on a card and over a vote: `Round 2/3`.
+pub(crate) fn round_label(lang: Lang, round: i32, rounds: i32) -> String {
+    t!(lang, "party.round", round = round, rounds = rounds)
 }
 
 /// Counts a finished game for each of `players`: played, and won for the ones in `winners`.
@@ -395,15 +415,21 @@ pub(crate) async fn count_games(app: &App, party: Party, players: &[PartyPlayer]
     }
 }
 
-/// A finished game's standings as a picture: `rows` already ranked.
+/// A finished game's standings as a picture: `rows` already ranked. The card draws its title, footer, scores
+/// and notes in capitals, which Turkish spells with its own İ, so they are capitalised here.
 pub(crate) async fn standings_png(
     app: &App,
+    lang: Lang,
     title: &str,
     subtitle: &str,
     rows: Vec<(String, String, String, bool)>,
     footer: &str,
 ) -> anyhow::Result<Vec<u8>> {
-    let (title, subtitle, footer) = (title.to_owned(), subtitle.to_owned(), footer.to_owned());
+    let (title, subtitle, footer) = (upper(lang, title), subtitle.to_owned(), upper(lang, footer));
+    let rows: Vec<(String, String, String, bool)> = rows
+        .into_iter()
+        .map(|(name, score, note, winner)| (name, upper(lang, &score), upper(lang, &note), winner))
+        .collect();
     app.render(move |r| {
         let rows: Vec<StandingRow> = rows
             .iter()
@@ -428,11 +454,19 @@ pub(crate) async fn standings_png(
 }
 
 /// What a payout line says: `+25 shells`, a note that the day's limit was reached, or nothing.
-pub(crate) fn paid_note(paid: &[(u64, i64)], user: u64) -> String {
+pub(crate) fn paid_note(lang: Lang, paid: &[(u64, i64)], user: u64) -> String {
     match paid.iter().find(|(who, _)| *who == user) {
-        Some((_, shells)) if *shells > 0 => format!("+{shells} shells"),
-        Some(_) => "daily limit reached".to_owned(),
+        Some((_, shells)) => paid_text(lang, *shells),
         None => String::new(),
+    }
+}
+
+/// `+25 shells`, or a note that the day's limit was reached when nothing was paid.
+pub(crate) fn paid_text(lang: Lang, shells: i64) -> String {
+    if shells > 0 {
+        t!(lang, "party.paid", shells = shells)
+    } else {
+        t!(lang, "party.daily-limit")
     }
 }
 

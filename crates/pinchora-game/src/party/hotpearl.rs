@@ -11,7 +11,7 @@ use std::{
     sync::LazyLock,
 };
 
-use pinchora_core::i18n::Lang;
+use pinchora_core::{i18n::Lang, t};
 
 use super::{Dice, filter, hotpearl_tr};
 use crate::lang;
@@ -276,23 +276,13 @@ impl WordError {
     /// The same in `lang`.
     pub fn say_in(self, lang: Lang, syllable: &str) -> String {
         let syllable = lang::upper(lang, syllable);
-        if lang == Lang::Tr {
-            return match self {
-                Self::Letters => "Sadece harf yaz lütfen: Türk alfabesi.".to_owned(),
-                Self::TooShort => format!("Bir kelime en az {MIN_WORD} harfli olmalı."),
-                Self::TooLong => "Bu kelime olamayacak kadar uzun.".to_owned(),
-                Self::MissingSyllable => format!("Bu kelimede **{syllable}** yok."),
-                Self::NotAWord => "Bu kelime listemde yok.".to_owned(),
-                Self::AlreadyUsed => "Bu kelime bu oyunda zaten kullanıldı.".to_owned(),
-            };
-        }
         match self {
-            Self::Letters => "Just letters, please: a to z.".to_owned(),
-            Self::TooShort => format!("A word needs at least {MIN_WORD} letters."),
-            Self::TooLong => "That one is too long to be a word.".to_owned(),
-            Self::MissingSyllable => format!("That word doesn't contain **{syllable}**."),
-            Self::NotAWord => "That isn't in my word list.".to_owned(),
-            Self::AlreadyUsed => "That word was already played this game.".to_owned(),
+            Self::Letters => t!(lang, "hotpearl.err.letters"),
+            Self::TooShort => t!(lang, "hotpearl.err.too-short", min = MIN_WORD),
+            Self::TooLong => t!(lang, "hotpearl.err.too-long"),
+            Self::MissingSyllable => t!(lang, "hotpearl.err.missing-syllable", syllable = syllable),
+            Self::NotAWord => t!(lang, "hotpearl.err.not-a-word"),
+            Self::AlreadyUsed => t!(lang, "hotpearl.err.already-used"),
         }
     }
 }

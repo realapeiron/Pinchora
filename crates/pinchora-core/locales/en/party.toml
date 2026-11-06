@@ -1,0 +1,306 @@
+# The word and prompt party games (/party): the lobby they share, Hot Pearl, Acronym Tide, Caption the
+# Postcard, Wordle Race, Would You Rather and Truth or Dare, the cards they draw, /party stop and the
+# party settings in /config. Fixed card labels are in capitals where the card draws them as written.
+
+[party]
+expired-button = "This button has expired."
+expired-form = "This form has expired."
+expired-game = "This game has expired."
+somebody = "Somebody"
+nobody = "Nobody"
+player = "Player"
+a-party-game = "A party game"
+the-party-game = "The party game"
+players-range = "{min}-{max} players"
+round = "Round {round}/{rounds}"
+thanks = "Thanks for playing"
+paid = "+{shells} shells"
+daily-limit = "daily limit reached"
+wait-sec = "{n} s"
+wait-min = "{n} min"
+busy = "{what} is already going in this channel. Let it finish first!"
+not-playing = "You are not playing this game."
+not-in-game = "You are not in this game: only players write and vote."
+step-over = "That step is over. Use the buttons on the newest message!"
+step-late = "Time is up for this step!"
+no-entry = "There is no such entry."
+no-own-vote = "You can not vote for your own"
+no-votes = "Nobody got a vote this round."
+round-winner = "🏆 {name} takes the round with “{text}”"
+round-tie = "🏆 A tie! {names} share the round."
+vote-title = "{emoji} {label} · vote"
+results-title = "{emoji} {label} · round {round} results"
+over-title = "{emoji} {label} is over"
+reveal-next = "{note}\nNext round {when}."
+reveal-final = "{note}\nFinal scores {when}."
+score-rule = "{points} point a vote, {bonus} more for the winner"
+points = { one = "{count} PT", other = "{count} PTS" }
+final-after = { one = "Final scores after {count} round", other = "Final scores after {count} rounds" }
+nobody-scored = "Nobody scored this time."
+wins = "🏆 {name} wins!"
+tie-between = "🏆 A tie between {names}!"
+
+[party.card]
+open-seat = "open seat"
+waiting = { one = "Waiting for {count} more player", other = "Waiting for {count} more players" }
+votes = { one = "{count} VOTE", other = "{count} VOTES" }
+
+[party.btn]
+join = "Join"
+leave = "Leave"
+start = "Start"
+cancel = "Cancel"
+
+[party.lobby]
+ready = "Ready: the host can press start"
+description = "{tagline}\n\n{rules}\nHost: {host} · closes {when}"
+opened = "{emoji} {host} opened a **{label}** lobby! Press **Join** ({n}/{max})."
+closed = "This lobby has closed."
+expired = "This lobby has expired."
+already-in = "You are already in. Wait for the host to press Start!"
+full = "This lobby is full."
+not-in = "You are not in this lobby."
+host-leaves = "You are the host: press Cancel to close the lobby instead."
+only-host-cancels = "Only {host} can cancel this lobby."
+started = "This game has already started."
+changed = "Somebody changed the lobby just now. Try again!"
+cancelled = "🚫 {user} cancelled the lobby."
+only-host-starts = "Only {host} can start this game."
+too-few = "{label} needs at least {min} players, and only {n} joined so far."
+none = "This one has no lobby."
+kept-changing = "The lobby kept changing. Press Start again in a moment!"
+timed-out = "⌛ Nobody started this lobby in time, so it was closed."
+
+[party.stop]
+none = "There is no party game to stop in this channel."
+denied = "Only {host} or a member who can manage the server can stop this game."
+stopped = "🛑 {user} stopped {label}. Nobody won, and no shells were paid out."
+done = "Stopped {label}."
+done-unseen = "Stopped {label}, but its message could not be updated: it may have been deleted."
+kept-changing = "The game kept changing. Try stopping it again in a moment!"
+
+[party.filter]
+strict = "**strict** · mild words and name-calling are blocked too"
+normal = "**normal** · strong words and slurs are blocked · `/config partygames strict:true` blocks more"
+says = "Party games filter: {summary}"
+
+[party.refused]
+empty = "There is nothing left to show once links, mentions and formatting are taken out. Try again with plain words!"
+profane = "Let's keep it friendly: that one has a word this table doesn't allow. Try different words!"
+
+[party.gambling]
+denied = "Only members with Manage Server can switch gambling-style games."
+on = "🎲 Gambling-style games are **on**. Members can stake shells at the table with `/play shells` and on crabs with `/play derby bet`; there are daily limits on plays, wins and losses. Turn them off again with `/config gambling enabled:false`."
+off = "🎲 Gambling-style games are **off**. Nobody can stake shells on games of chance here."
+
+[party.vote]
+counted = "🗳️ Your vote for **#{number}** is in. You can change it until voting closes."
+changed = "🗳️ Moved your vote to **#{number}**."
+same = "You already voted for **#{number}**."
+own = "That one is yours! Pick another."
+not-player = "Only players can vote."
+closed = "Voting is closed."
+
+[party.entry]
+locked = "✍️ Locked in: “{line}”. Press the button again to rewrite it until time is up."
+rewritten = "✍️ Rewritten and locked in: “{line}”. Press the button again to rewrite it until time is up."
+
+# The topics of Would You Rather and Truth or Dare, by `Category::key`.
+[party.topic]
+silly = "Silly"
+food = "Food"
+adventure = "Adventure"
+ocean = "Ocean"
+brainy = "Brainy"
+cozy = "Cozy"
+
+[hotpearl]
+blurb = "A syllable appears. Type a word that contains it before the pearl pops!"
+rules = { one = "{table} · {count} life each · every pop costs a life · the last player with lives wins", other = "{table} · {count} lives each · every pop costs a life · the last player with lives wins" }
+holds = "{name} holds the pearl"
+first = "{name} goes first"
+played = "{name} played {word}  ·  {next} is up"
+boom = "BOOM! {name} lost a life"
+boom-out = "BOOM! {name} is out"
+turn = "{headline}\n{holder}, type a word with **{syllable}** before the pearl pops {when}! ({secs} seconds a turn)"
+btn-word = "Type a word"
+placeholder = "pearl"
+field-label = "A word with {syllable}"
+moved-on = "The pearl has moved on. Use the buttons on the newest message!"
+not-your-turn = "It is {name}'s turn, not yours."
+too-slow = "Too slow: the pearl popped!"
+nobody-left = "Nobody is left to pass the pearl to."
+moved-before = "The pearl moved on before your word landed."
+pop-out = "💥 The pearl popped on **{name}**, who is out!"
+pop = { one = "💥 The pearl popped on **{name}**! {count} life left.", other = "💥 The pearl popped on **{name}**! {count} lives left." }
+last-standing = "LAST ONE STANDING"
+out-on-turn = "OUT ON TURN {n}"
+no-shells = "no shells: too few words"
+wins-after = "{name} wins after {turns} turns"
+unpaid = "No shells this time: a win pays once {min_words} words were played, {min_winner} of them by the winner."
+over = "{verdict}\n🏆 {winner} wins!{unpaid}"
+
+[hotpearl.card]
+out = "OUT"
+holds = "HOLDS THE PEARL"
+last-word = "LAST WORD {word}"
+
+[hotpearl.err]
+letters = "Just letters, please: a to z."
+too-short = "A word needs at least {min} letters."
+too-long = "That one is too long to be a word."
+missing-syllable = "That word doesn't contain **{syllable}**."
+not-a-word = "That isn't in my word list."
+already-used = "That word was already played this game."
+
+[acronym]
+blurb = "Letters appear. Write a phrase whose words start with them in order, then vote for the best one."
+rules = "{table} · {rounds} rounds · votes are anonymous until the reveal"
+ask = "Build a phrase from **{letters}**"
+write-desc = "{ask}. Everyone writes one, and nobody sees who wrote what until the vote is over.\nphrases close {when} · {written} of {players} phrases in"
+vote-desc = "Vote for the phrase you like best, {when}. {voted} of {players} voted."
+btn-write = "Write a phrase"
+modal-title = "Acronym Tide"
+field-label = "Your phrase for {letters}"
+placeholder = "Tiny whales ride sleds"
+card-hint = "One word for each letter, in order. Press the button and type your phrase."
+card-status = "Phrases stay hidden until the vote is over"
+vote-sub = "Which phrase is best for {letters}?"
+reveal-sub = "Letters: {letters}"
+too-late = "Time is up: this phrase came too late."
+not-counted = "Time is up, or you are not in this game: that phrase did not count."
+no-entries = "Nobody wrote a phrase this round."
+one-entry = "Only one phrase came in, so there was nothing to vote on."
+
+[acronym.err]
+empty = "Write a phrase first."
+count = { one = "You wrote {count} word, and **{letters}** needs exactly **{want}**.", other = "You wrote {count} words, and **{letters}** needs exactly **{want}**." }
+letter = "Word {n} has to start with **{want}**."
+too-long = "Keep it under {max_phrase} characters, and each word under {max_word}."
+
+[postcard]
+blurb = "A pixel postcard appears. Write the funniest caption, then vote for your favourite."
+rules = "{table} · {rounds} rounds · votes are anonymous until the reveal"
+ask = "Write a caption for this postcard"
+write-desc = "{ask}. Everyone writes one, and nobody sees who wrote what until the vote is over.\ncaptions close {when} · {written} of {players} captions in"
+vote-desc = "Vote for the caption you like best, {when}. {voted} of {players} voted."
+btn-write = "Write a caption"
+modal-title = "Caption the postcard"
+field-label = "Your caption"
+placeholder = "What is going on here?"
+vote-sub = "Which caption is the funniest?"
+reveal-sub = "The votes are in"
+too-late = "Time is up: this caption came too late."
+not-counted = "Time is up, or you are not in this game: that caption did not count."
+no-entries = "Nobody wrote a caption this round."
+one-entry = "Only one caption came in, so there was nothing to vote on."
+
+[postcard.err]
+too-short = "A caption needs at least {min} characters."
+too-long = "Keep it under {max} characters."
+
+[postcard.card]
+greetings = "GREETINGS FROM"
+post = "REEF POST"
+
+# The place each scene greets from, by scene id.
+[postcard.place]
+dunes_stand_off = "Driftwood Dunes"
+noon_umbrella = "Tideglass Noon"
+shore_argument = "Shellwash Shore"
+bluff_picnic_line = "Clovercap Bluff"
+boardwalk_big_one = "Misty Boardwalk"
+jetty_night_shift = "Starlit Jetty"
+market_fish_deal = "Brinebell Market"
+firefly_club = "Firefly Picnic"
+cove_pirates = "Biscuit Cove"
+snow_day_off = "Snowmuffin Village"
+oasis_slow_lane = "Palmcup Oasis"
+
+[wordrace]
+blurb = "Everyone races to find the same five-letter word on a private board. First to solve it wins."
+rules = "{table} · six guesses each · you only see colours on the other boards"
+desc = "Find the same five-letter word, first! Your own board is private: press **Guess** and the board comes back only to you. The race ends {when}."
+btn-guess = "Guess"
+card-footer = "First to find the word wins"
+placeholder = "pearl"
+field-label = "Your five-letter guess"
+modal-title = "Wordle Race guess"
+expired = "This race has expired."
+finished = "This race is over."
+late = "Time is up: the race is over!"
+not-racing = "You are not in this race: only its players guess."
+board-done = "Your board is finished. Wait for the others!"
+guess-letters = "A guess is exactly five letters, a to z."
+not-listed = "**{guess}** isn't in my word list. Try another word!"
+guess-uncounted = "Your board is finished, so that guess did not count."
+note-solved = "You found it in **{tries}**! Everyone else sees the result now."
+note-failed = "Out of tries. The word stays secret until the race is over."
+note-playing = "🟩 right spot · 🟨 wrong spot · ⬛ not in the word."
+board-title = "Your board"
+card-board = "Your race board"
+try = "Try {n} of {max}"
+guesses = "{count} GUESSES"
+word-was = "The word was {word}"
+thanks = "Thanks for racing"
+winner = "🏆 {name} found the word first!"
+nobody = "Nobody found the word this time."
+over = "{line}\nThe word was **{word}**."
+
+[wordrace.card]
+solved = "SOLVED IN {count}"
+failed = "OUT OF TRIES"
+left = "{count} LEFT"
+
+[rather]
+title = "{emoji} Would you rather…"
+open = "Pick a side. You can change your mind, and the split is shown when the poll closes {when}."
+closed = { one = "The poll is closed: **{count}** vote in all.", other = "The poll is closed: **{count}** votes in all." }
+cooldown = "A question was just posted in this channel. The next one can go up in {secs} s."
+expired = "This poll has expired."
+poll-closed = "This poll has closed."
+picked = "You picked **{letter}**: {chosen}."
+paid = " +{paid} shell"
+moved = "You moved your vote to **{letter}**: {chosen}."
+same = "You already picked **{letter}**: {chosen}."
+so-far = { one = "So far: A {a}% · B {b}% ({count} vote). The final split comes when the poll closes.", other = "So far: A {a}% · B {b}% ({count} votes). The final split comes when the poll closes." }
+
+[rather.card]
+title = "Would you rather"
+final = { one = "Final: {count} vote", other = "Final: {count} votes" }
+so-far = "Results so far"
+pick = "Pick a side with the buttons"
+
+[dare]
+blurb = "Take turns: a random player picks truth or dare. Everything here is family friendly."
+rules = "{table} · the host ends the game when everybody has had enough"
+question = "Truth or dare?"
+footer-truth = "Answer it, or pass: passing is always fine"
+footer-dare = "Do it, or pass: passing is always fine"
+footer-turn = "Only the player whose turn it is can pick"
+ask-pick = "{holder}, truth or dare? Pick {when}."
+ask-truth = "{holder} has a truth. Press **Done** when it is done, or **Pass** {when}."
+ask-dare = "{holder} has a dare. Press **Done** when it is done, or **Pass** {when}."
+btn-end = "End game"
+btn-done = "Done"
+btn-pass = "Pass"
+btn-truth = "Truth"
+btn-dare = "Dare"
+did = "🎉 {name} did it!"
+passed = "{name} passed."
+quiet = "⌛ {name} did not answer in time."
+over-click = "This game is over."
+over = "{why}. Thanks for playing!"
+only-host-ends = "Only {host} can end this game."
+changed = "The turn changed just now. Try again!"
+turn-over = "That turn is over. Use the buttons on the newest message!"
+not-your-turn = "It is {name}'s turn, not yours."
+late = "Time ran out for this turn."
+why-host = "The host ended the game"
+why-quiet = "The table went quiet"
+done-count = "{count} DONE"
+
+[dare.card]
+turn = "YOUR TURN"
+truth = "TRUTH"
+dare = "DARE"

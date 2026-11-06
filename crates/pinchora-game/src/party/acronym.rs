@@ -1,7 +1,7 @@
 //! Acronym Tide: a few letters come up, everyone writes a phrase whose words start with them in
 //! order, and the table votes for the best one without knowing who wrote what.
 
-use pinchora_core::i18n::Lang;
+use pinchora_core::{i18n::Lang, t};
 
 use super::Dice;
 use crate::lang;
@@ -68,17 +68,30 @@ pub enum PhraseError {
 }
 
 impl PhraseError {
+    /// What to tell the player, in English.
     pub fn say(&self, letters: &[char]) -> String {
+        self.say_in(Lang::En, letters)
+    }
+
+    /// The same in `lang` (`acronym.err.*` in the catalogs).
+    pub fn say_in(&self, lang: Lang, letters: &[char]) -> String {
         let shown: String = letters.iter().map(|c| format!("{c} ")).collect();
         match self {
-            Self::Empty => "Write a phrase first.".to_owned(),
-            Self::Count { want, got } => format!(
-                "You wrote {got} word{}, and **{}** needs exactly **{want}**.",
-                if *got == 1 { "" } else { "s" },
-                shown.trim_end()
+            Self::Empty => t!(lang, "acronym.err.empty"),
+            Self::Count { want, got } => t!(
+                lang,
+                "acronym.err.count",
+                count = got,
+                letters = shown.trim_end(),
+                want = want
             ),
-            Self::Letter { index, want } => format!("Word {} has to start with **{want}**.", index + 1),
-            Self::TooLong => format!("Keep it under {MAX_PHRASE} characters, and each word under {MAX_WORD}."),
+            Self::Letter { index, want } => t!(lang, "acronym.err.letter", n = index + 1, want = want),
+            Self::TooLong => t!(
+                lang,
+                "acronym.err.too-long",
+                max_phrase = MAX_PHRASE,
+                max_word = MAX_WORD
+            ),
         }
     }
 }
@@ -188,6 +201,26 @@ mod tests {
             PhraseError::Letter { index: 1, want: 'W' }
                 .say(&letters)
                 .contains("Word 2")
+        );
+    }
+
+    #[test]
+    fn the_messages_come_in_turkish_too() {
+        let letters = ['İ', 'K', 'Ş'];
+        let count = PhraseError::Count { want: 3, got: 1 }.say_in(Lang::Tr, &letters);
+        assert!(
+            count.contains("1 kelime yazdın") && count.contains("**İ K Ş**"),
+            "{count}"
+        );
+        assert!(
+            PhraseError::Letter { index: 1, want: 'K' }
+                .say_in(Lang::Tr, &letters)
+                .contains("2. kelime **K** ile")
+        );
+        assert!(PhraseError::TooLong.say_in(Lang::Tr, &letters).contains("100 karakter"));
+        assert_eq!(
+            PhraseError::Empty.say_in(Lang::En, &letters),
+            PhraseError::Empty.say(&letters)
         );
     }
 

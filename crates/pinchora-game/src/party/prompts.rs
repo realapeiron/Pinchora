@@ -3,7 +3,7 @@
 
 use std::sync::LazyLock;
 
-use pinchora_core::i18n::Lang;
+use pinchora_core::{i18n::Lang, t};
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
@@ -49,19 +49,9 @@ impl Category {
         }
     }
 
-    /// The label in `lang`.
-    pub fn label_in(self, lang: Lang) -> &'static str {
-        if lang == Lang::En {
-            return self.label();
-        }
-        match self {
-            Self::Silly => "Komik",
-            Self::Food => "Yemek",
-            Self::Adventure => "Macera",
-            Self::Ocean => "Okyanus",
-            Self::Brainy => "Zekâ",
-            Self::Cozy => "Huzur",
-        }
+    /// The label in `lang` (`party.topic.<key>` in the catalogs); in English it is [`Category::label`].
+    pub fn label_in(self, lang: Lang) -> String {
+        t!(lang, &format!("party.topic.{}", self.key()))
     }
 
     pub fn from_key(key: &str) -> Option<Self> {
@@ -253,5 +243,14 @@ mod tests {
         assert_eq!(Pick::from_key("dare"), Some(Pick::Dare));
         assert_eq!(Pick::from_key("nope"), None);
         assert_eq!(Category::from_key("ocean"), Some(Category::Ocean));
+    }
+
+    #[test]
+    fn topics_are_named_in_every_language() {
+        for category in Category::ALL {
+            assert_eq!(category.label_in(Lang::En), category.label());
+            assert_ne!(category.label_in(Lang::Tr), category.label());
+        }
+        assert_eq!(Category::Silly.label_in(Lang::Tr), "Saçma");
     }
 }
