@@ -3,6 +3,7 @@
 mod avatar;
 mod cards;
 pub mod character;
+mod derby;
 mod encode;
 pub mod room;
 pub mod social;
@@ -18,10 +19,12 @@ use resvg::{tiny_skia, usvg};
 pub use avatar::{placeholder_avatar, prepare_avatar};
 pub use cards::{
     ABSENT, Backdrop, BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, CORRECT, CharacterCard, Connect4Card,
-    GridSlot, HangmanCard, HangmanLetter, ItemGridCard, LastWeekEntry, LeaderboardCard, LeaderboardEntry, LevelUpCard,
-    NextRole, NurseryCard, NurseryPet, PRESENT, PetCard, PetStatus, PollCard, PollOption, ProfileCard, RankCard,
-    ShowcaseKind, ShowcaseSlot, SpriteArt, WalletCard, WelcomeCard, WordleCard, WordleRow,
+    CrewView, DerbyCard, DerbyLane, GridSlot, HangmanCard, HangmanLetter, HeistCard, ItemGridCard, LastWeekEntry,
+    LeaderboardCard, LeaderboardEntry, LevelUpCard, Mood, NextRole, NurseryCard, NurseryPet, PRESENT, PetCard,
+    PetStatus, PickView, PollCard, PollOption, ProfileCard, RankCard, ShareGrabCard, ShellCard, ShowcaseKind,
+    ShowcaseSlot, SpriteArt, StageView, SurgeCard, SurgeState, WalletCard, WelcomeCard, WordleCard, WordleRow,
 };
+pub use derby::{DerbyScene, LANES as DERBY_LANES, derby_gif, derby_still, tint_crab};
 pub use encode::encode_png;
 pub use style::{ACCENT_PRESETS, AccentError, Frame, Opacity, parse_accent, readable};
 pub use svg::{compact, thousands};
@@ -134,6 +137,26 @@ impl Renderer {
     }
 
     pub fn poll_card(&self, card: &PollCard) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn derby_card(&self, card: &DerbyCard<'_>) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn share_grab_card(&self, card: &ShareGrabCard<'_>) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn shell_card(&self, card: &ShellCard<'_>) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn heist_card(&self, card: &HeistCard<'_>) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn surge_card(&self, card: &SurgeCard<'_>) -> anyhow::Result<Vec<u8>> {
         self.svg_to_png(&card.to_svg())
     }
 }

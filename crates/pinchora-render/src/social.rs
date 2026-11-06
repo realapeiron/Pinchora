@@ -174,25 +174,25 @@ fn clamp01(x: f32) -> f32 {
     x.clamp(0.0, 1.0)
 }
 
-fn smooth(x: f32) -> f32 {
+pub(crate) fn smooth(x: f32) -> f32 {
     let x = clamp01(x);
     x * x * (3.0 - 2.0 * x)
 }
 
 /// 0 before `a`, 1 after `b`, eased between.
-fn between(x: f32, a: f32, b: f32) -> f32 {
+pub(crate) fn between(x: f32, a: f32, b: f32) -> f32 {
     smooth((x - a) / (b - a))
 }
 
-fn lerp(a: f32, b: f32, t: f32) -> f32 {
+pub(crate) fn lerp(a: f32, b: f32, t: f32) -> f32 {
     a + (b - a) * t
 }
 
-fn hex(c: [u8; 3]) -> Rgba<u8> {
+pub(crate) fn hex(c: [u8; 3]) -> Rgba<u8> {
     Rgba([c[0], c[1], c[2], 255])
 }
 
-fn mix(a: [u8; 3], b: [u8; 3], t: f32) -> [u8; 3] {
+pub(crate) fn mix(a: [u8; 3], b: [u8; 3], t: f32) -> [u8; 3] {
     [0, 1, 2].map(|i| lerp(f32::from(a[i]), f32::from(b[i]), t).round() as u8)
 }
 
@@ -203,14 +203,14 @@ fn rgb(v: u32) -> [u8; 3] {
 // /Canvas
 
 /// Draws `color` at (x, y) if it is on the canvas.
-fn put(canvas: &mut RgbaImage, x: i32, y: i32, color: Rgba<u8>) {
+pub(crate) fn put(canvas: &mut RgbaImage, x: i32, y: i32, color: Rgba<u8>) {
     if x >= 0 && y >= 0 && x < canvas.width() as i32 && y < canvas.height() as i32 {
         canvas.put_pixel(x as u32, y as u32, color);
     }
 }
 
 /// Draws a sprite with its top-left at (x0, y0); transparent pixels leave the canvas alone.
-fn blit(canvas: &mut RgbaImage, sprite: &RgbaImage, x0: i32, y0: i32) {
+pub(crate) fn blit(canvas: &mut RgbaImage, sprite: &RgbaImage, x0: i32, y0: i32) {
     for (x, y, px) in sprite.enumerate_pixels() {
         if px[3] > 127 {
             put(canvas, x0 + x as i32, y0 + y as i32, Rgba([px[0], px[1], px[2], 255]));
@@ -219,7 +219,7 @@ fn blit(canvas: &mut RgbaImage, sprite: &RgbaImage, x0: i32, y0: i32) {
 }
 
 /// A sprite drawn from text rows: each character is a key into `palette`, anything else is clear.
-fn picture(rows: &[&str], palette: &[(char, Rgba<u8>)]) -> RgbaImage {
+pub(crate) fn picture(rows: &[&str], palette: &[(char, Rgba<u8>)]) -> RgbaImage {
     let width = rows.iter().map(|r| r.chars().count()).max().unwrap_or(0) as u32;
     let mut img = RgbaImage::new(width, rows.len() as u32);
     for (y, row) in rows.iter().enumerate() {
@@ -233,7 +233,7 @@ fn picture(rows: &[&str], palette: &[(char, Rgba<u8>)]) -> RgbaImage {
 }
 
 /// Filled circle of pixels whose centres are within `r` of (cx, cy).
-fn disc(canvas: &mut RgbaImage, cx: f32, cy: f32, r: f32, color: Rgba<u8>) {
+pub(crate) fn disc(canvas: &mut RgbaImage, cx: f32, cy: f32, r: f32, color: Rgba<u8>) {
     let (x0, x1) = ((cx - r).floor() as i32, (cx + r).ceil() as i32);
     let (y0, y1) = ((cy - r).floor() as i32, (cy + r).ceil() as i32);
     for y in y0..=y1 {

@@ -10,6 +10,8 @@ pub mod wordle;
 
 pub use content::*;
 
+use crate::party;
+
 /// Every game that keeps win counts in `/play stats`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Game {
@@ -19,16 +21,26 @@ pub enum Game {
     Hangman,
     Wordle,
     Trivia,
+    Derby,
+    ShareGrab,
+    ShellGame,
+    Heist,
+    Surge,
 }
 
 impl Game {
-    pub const ALL: [Game; 6] = [
+    pub const ALL: [Game; 11] = [
         Self::TicTacToe,
         Self::Connect4,
         Self::Rps,
         Self::Hangman,
         Self::Wordle,
         Self::Trivia,
+        Self::Derby,
+        Self::ShareGrab,
+        Self::ShellGame,
+        Self::Heist,
+        Self::Surge,
     ];
 
     /// What the database and the reward-cap counters call it.
@@ -40,6 +52,11 @@ impl Game {
             Self::Hangman => "hangman",
             Self::Wordle => "wordle",
             Self::Trivia => "trivia",
+            Self::Derby => "derby",
+            Self::ShareGrab => "sharegrab",
+            Self::ShellGame => "shellgame",
+            Self::Heist => "heist",
+            Self::Surge => "surge",
         }
     }
 
@@ -51,6 +68,11 @@ impl Game {
             Self::Hangman => "Hangman",
             Self::Wordle => "Wordle",
             Self::Trivia => "Trivia",
+            Self::Derby => "Crab Derby",
+            Self::ShareGrab => "Share or Grab",
+            Self::ShellGame => "Shell Game",
+            Self::Heist => "Treasure Heist",
+            Self::Surge => "Storm Surge",
         }
     }
 
@@ -62,6 +84,11 @@ impl Game {
             Self::Hangman => "🏰",
             Self::Wordle => "🟩",
             Self::Trivia => "🧠",
+            Self::Derby => "🦀",
+            Self::ShareGrab => "🤝",
+            Self::ShellGame => "🐚",
+            Self::Heist => "💰",
+            Self::Surge => "⛈️",
         }
     }
 
@@ -79,6 +106,12 @@ impl Game {
             Self::Hangman => 15,
             Self::Wordle => 10,
             Self::Trivia => 8,
+            Self::Derby => 20,
+            // The three below pay by the shell through their own daily limits, see `party`.
+            Self::ShareGrab => party::share::POOL / 2,
+            Self::ShellGame => party::shells::payout(party::shells::MIN_STAKE),
+            Self::Heist => party::heist::Tier::Haul.each(),
+            Self::Surge => party::surge::WIN_BASE,
         }
     }
 
@@ -91,6 +124,11 @@ impl Game {
             Self::Hangman => 6,
             Self::Wordle => 6,
             Self::Trivia => 12,
+            Self::Derby => 5,
+            Self::ShareGrab => 6,
+            Self::ShellGame => i64::from(party::shells::DAILY_PLAYS),
+            Self::Heist => 6,
+            Self::Surge => 3,
         }
     }
 }
