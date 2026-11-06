@@ -8,7 +8,7 @@
 use std::path::{Path, PathBuf};
 
 use image::{RgbaImage, imageops::FilterType};
-use pinchora_core::card_design::{CardDesign, CardKind, check_design};
+use pinchora_core::card_design::{Background, CardDesign, CardKind, Direction, check_design};
 use pinchora_render::{
     CardFill, DesignedCard, Renderer, Theme, WelcomeCard, character::atlas, fill_placeholders, ordinal,
     placeholder_avatar, templates,
@@ -155,6 +155,32 @@ fn placeholders_fill_in_and_hostile_names_still_draw() {
         let design = templates::template(key, CardKind::Welcome).expect("a template");
         let card = draw(&design, &fill);
         assert_eq!(card.width(), design.width);
+    }
+}
+
+#[test]
+fn gradients_draw_every_way_with_and_without_the_pixel_look() {
+    let mut design = templates::template("clean-card", CardKind::Welcome).expect("a template");
+    design.layers.clear();
+    for direction in [Direction::Vertical, Direction::Horizontal, Direction::Diagonal] {
+        for pixel in [false, true] {
+            design.background = Background::Gradient {
+                from: "#000000".to_owned(),
+                to: "#ffffff".to_owned(),
+                direction,
+                pixel,
+            };
+            let card = draw(&design, &FILL);
+            let at = |x: u32, y: u32| card.get_pixel(x, y).0[0];
+            let (right, bottom) = (design.width - 2, design.height - 2);
+            let (tl, tr, bl, br) = (at(1, 1), at(right, 1), at(1, bottom), at(right, bottom));
+            let ok = match direction {
+                Direction::Vertical => tl < 40 && bl > 200 && tl.abs_diff(tr) < 8,
+                Direction::Horizontal => tl < 40 && tr > 200 && tl.abs_diff(bl) < 8,
+                Direction::Diagonal => tl < 40 && br > 200 && (80..180).contains(&tr),
+            };
+            assert!(ok, "{direction:?} pixel {pixel}: {tl} {tr} {bl} {br}");
+        }
     }
 }
 

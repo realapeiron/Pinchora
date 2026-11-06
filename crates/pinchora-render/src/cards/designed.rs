@@ -16,8 +16,8 @@ use crate::{
     character::atlas,
     encode_png,
     svg::{
-        CRAB, HEART, SHELL, STAR, background, data_uri_png, escape, fit_laid_out, notched_path, thousands, truncate,
-        wrap_laid_out,
+        CRAB, HEART, SHELL, STAR, background, background_plain, data_uri_png, escape, fit_laid_out, notched_path,
+        thousands, truncate, wrap_laid_out,
     },
 };
 
@@ -274,8 +274,11 @@ fn gradient(s: &mut String, w: f32, h: f32, from: &str, to: &str, direction: Dir
                 &look[start..start + end + "</pattern>".len()]
             );
         }
-        if let Some(sparkles) = look.find(r#"<rect x="#) {
-            s.push_str(&look[sparkles..]);
+        // The sparkles are what `background` draws after the plain background.
+        let mut plain = String::new();
+        background_plain(&mut plain, w, h, from, to);
+        if let Some(sparkles) = look.strip_prefix(plain.as_str()) {
+            s.push_str(sparkles);
         }
     }
 }
