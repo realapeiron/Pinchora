@@ -8,6 +8,9 @@ import { channelLabel } from "../components/Pickers";
 import {
   type AuditPage,
   type AutoResponder,
+  type Case,
+  type CaseDetail,
+  type CasesPage,
   type Community,
   type GuildEntry,
   type CommandDef,
@@ -16,7 +19,11 @@ import {
   type ImportReport,
   type Job,
   type LevelRoles,
+  type LogSettings,
+  type LogsPatch,
   type Me,
+  type ModerationPatch,
+  type ModerationSettings,
   type ModulePatch,
   type Modules,
   type Overview,
@@ -25,6 +32,7 @@ import {
   type ResponderDef,
   type Settings,
   type SettingsPatch,
+  type StaffPage,
   type Store,
   type TagList,
   type XpRules,
@@ -308,6 +316,104 @@ export function useLogout() {
       client.clear();
       window.location.assign("/login");
     },
+  });
+}
+
+// /Moderation
+
+export function useModeration(guild: string) {
+  const client = useQueryClient();
+  const path = `/api/guilds/${guild}/moderation`;
+  const query = useQuery({ queryKey: [path], queryFn: () => api<ModerationSettings>(path) });
+  const save = useMutation({
+    mutationFn: (patch: ModerationPatch) => api<ModerationSettings>(path, "PUT", patch),
+    onSuccess: async (settings) => {
+      client.setQueryData([path], settings);
+      await client.invalidateQueries({ queryKey: [`/api/guilds/${guild}/audit`] });
+    },
+  });
+  return { query, save };
+}
+
+export function useLogs(guild: string) {
+  const client = useQueryClient();
+  const path = `/api/guilds/${guild}/logs`;
+  const query = useQuery({ queryKey: [path], queryFn: () => api<LogSettings>(path) });
+  const save = useMutation({
+    mutationFn: (patch: LogsPatch) => api<LogSettings>(path, "PUT", patch),
+    onSuccess: async (settings) => {
+      client.setQueryData([path], settings);
+      await client.invalidateQueries({ queryKey: overviewKey(guild) });
+      await client.invalidateQueries({ queryKey: [`/api/guilds/${guild}/audit`] });
+    },
+  });
+  return { query, save };
+}
+
+/** What the cases list is narrowed to. */
+export interface CaseFilters {
+  q: string;
+  kind: string;
+  member: string;
+  active: boolean;
+}
+
+function search(params: Record<string, string | number | boolean | null | undefined>): string {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== null && value !== undefined && value !== "" && value !== false)
+      query.set(key, String(value));
+  }
+  const text = query.toString();
+  return text ? `?${text}` : "";
+}
+
+export function useCases(guild: string, filters: CaseFilters) {
+  return useInfiniteQuery({
+    queryKey: [`/api/guilds/${guild}/cases`, filters],
+    queryFn: ({ pageParam }) =>
+      api<CasesPage>(`/api/guilds/${guild}/cases${search({ ...filters, before: pageParam || undefined })}`),
+    initialPageParam: 0,
+    getNextPageParam: (last) => last.next ?? undefined,
+  });
+}
+
+export function useCase(guild: string, number: number | null) {
+  return useQuery({
+    queryKey: [`/api/guilds/${guild}/cases/${number}`],
+    queryFn: () => api<CaseDetail>(`/api/guilds/${guild}/cases/${number}`),
+    enabled: number !== null,
+  });
+}
+
+export function useSaveReason(guild: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ number, reason }: { number: number; reason: string | null }) =>
+      api<Case>(`/api/guilds/${guild}/cases/${number}`, "PATCH", { reason }),
+    onSuccess: async (saved) => {
+      await client.invalidateQueries({ queryKey: [`/api/guilds/${guild}/cases`] });
+      await client.invalidateQueries({ queryKey: [`/api/guilds/${guild}/cases/${saved.number}`] });
+      await client.invalidateQueries({ queryKey: [`/api/guilds/${guild}/staff-log`] });
+    },
+  });
+}
+
+/** What the staff log is narrowed to. */
+export interface StaffFilters {
+  q: string;
+  source: string;
+}
+
+export function useStaffLog(guild: string, filters: StaffFilters) {
+  return useInfiniteQuery({
+    queryKey: [`/api/guilds/${guild}/staff-log`, filters],
+    queryFn: ({ pageParam }) =>
+      api<StaffPage>(
+        `/api/guilds/${guild}/staff-log${search({ ...filters, before: pageParam || undefined })}`,
+      ),
+    initialPageParam: "",
+    getNextPageParam: (last) => last.next ?? undefined,
   });
 }
 

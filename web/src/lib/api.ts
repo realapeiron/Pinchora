@@ -316,6 +316,119 @@ export interface AuditPage {
   next: string | null;
 }
 
+// /Moderation
+
+export type LadderAction = "timeout" | "kick" | "ban";
+
+/** One rung of the warn ladder: what a number of active warns brings. */
+export interface Rung {
+  warns: number;
+  action: LadderAction;
+  duration: string | null;
+  duration_secs: number | null;
+  label: string;
+}
+
+export interface ModerationSettings {
+  log_channel_id: string | null;
+  dm_members: boolean;
+  ladder: Rung[];
+  max_rungs: number;
+}
+
+export interface ModerationPatch {
+  log_channel_id?: string | null;
+  dm_members?: boolean;
+  ladder?: { warns: number; action: LadderAction; duration: string | null }[];
+}
+
+export interface LogEventEntry {
+  key: string;
+  label: string;
+  enabled: boolean;
+  /** Pinchora learns of it from Discord's audit log (needs View Audit Log). */
+  audit_log: boolean;
+}
+
+export interface LogCategoryEntry {
+  key: string;
+  label: string;
+  /** Its own channel; `null` uses the log channel. */
+  channel_id: string | null;
+  events: LogEventEntry[];
+}
+
+export interface LogSettings {
+  channel_id: string | null;
+  categories: LogCategoryEntry[];
+  ignored_channels: string[];
+  ignored_roles: string[];
+  ignored_users: string[];
+  ignore_bots: boolean;
+  max_ignored: number;
+}
+
+export interface LogsPatch {
+  channel_id?: string | null;
+  category_channels?: Record<string, string | null>;
+  events?: Record<string, boolean>;
+  ignored_channels?: string[];
+  ignored_roles?: string[];
+  ignored_users?: string[];
+  ignore_bots?: boolean;
+}
+
+export interface Case {
+  number: number;
+  kind: string;
+  label: string;
+  /** A channel action (purge, slowmode, lock): `target_id` is the channel. */
+  on_channel: boolean;
+  target_id: string;
+  target_name: string;
+  moderator_id: string;
+  moderator_name: string;
+  reason: string | null;
+  duration: string | null;
+  expires_at: string | null;
+  details: string | null;
+  active: boolean;
+  dm_sent: boolean | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface CasesPage {
+  items: Case[];
+  next: number | null;
+  kinds: { key: string; label: string }[];
+}
+
+export interface CaseDetail {
+  case: Case;
+  /** The member's other cases, newest first. */
+  history: Case[];
+}
+
+export interface StaffEntry {
+  key: string;
+  actor_id: string;
+  actor_name: string;
+  source: "command" | "discord" | "web";
+  action: string;
+  target_id: string | null;
+  target_name: string | null;
+  case_number: number | null;
+  reason: string | null;
+  details: string | null;
+  created_at: string;
+}
+
+export interface StaffPage {
+  items: StaffEntry[];
+  next: string | null;
+}
+
 // /Custom commands and auto-responders
 
 export interface EmbedField {

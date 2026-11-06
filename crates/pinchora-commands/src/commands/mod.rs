@@ -26,6 +26,7 @@ pub(crate) mod interact;
 pub(crate) mod language;
 pub(crate) mod leaderboard;
 pub(crate) mod level_roles;
+pub(crate) mod moderation;
 pub(crate) mod modules;
 pub(crate) mod partner;
 pub(crate) mod party;
@@ -141,6 +142,22 @@ commands!(
     collection::drops::CritterDrop,
     surge::SurgeCommand,
     party_games::PartyCommand,
+    moderation::Ban,
+    moderation::Unban,
+    moderation::Kick,
+    moderation::Timeout,
+    moderation::Untimeout,
+    moderation::Warn,
+    moderation::Warnings,
+    moderation::Unwarn,
+    moderation::Purge,
+    moderation::Slowmode,
+    moderation::Lock,
+    moderation::Unlock,
+    moderation::Nick,
+    moderation::RoleCommand,
+    moderation::CaseCommand,
+    moderation::ReasonCommand,
     tag::Tag,
     customcommand::CustomCommand,
     language::LanguageCommand,

@@ -44,7 +44,7 @@ pub(crate) async fn forget(guild: u64) {
 }
 
 /// How `/config show` and `/config critters` word the setting.
-pub(crate) fn critters_summary(s: &CollectionSettings, lang: Lang) -> String {
+pub(crate) fn critters_summary(lang: Lang, s: &CollectionSettings) -> String {
     match (s.enabled, s.channel_id) {
         (false, _) => t!(lang, "collect.summary-off"),
         (true, Some(channel)) => t!(lang, "collect.summary-channel", channel = channel),
@@ -64,7 +64,7 @@ impl ConfigCritters {
         };
         let settings = cx.app.db.set_collection_settings(guild, self.enabled, channel).await?;
         forget(guild).await;
-        let summary = critters_summary(&settings, cx.lang());
+        let summary = critters_summary(cx.lang(), &settings);
         tell(cx, t!(cx.lang(), "collect.setting", summary = summary)).await
     }
 }

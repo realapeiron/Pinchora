@@ -22,6 +22,7 @@ use crate::{
         collection::settings::{ConfigCritters, critters_summary},
         language::ConfigLanguage,
         level_roles::ConfigLevelRoles,
+        moderation::setup::{ConfigLogIgnore, ConfigModeration, ConfigWarnLadder, moderation_summary},
         modules::ConfigModules,
         party::ConfigGambling,
         party_games::{ConfigPartyGames, party_summary},
@@ -79,6 +80,12 @@ pub enum ConfigCommand {
     Log(ConfigLog),
     #[command(name = "log-events")]
     LogEvents(ConfigLogEvents),
+    #[command(name = "log-ignore")]
+    LogIgnore(ConfigLogIgnore),
+    #[command(name = "moderation")]
+    Moderation(ConfigModeration),
+    #[command(name = "warn-ladder")]
+    WarnLadder(ConfigWarnLadder),
     #[command(name = "suggestions")]
     Suggestions(ConfigSuggestions),
     #[command(name = "critters")]
@@ -221,6 +228,9 @@ impl ConfigCommand {
             Self::Goodbye(c) => return c.run(cx, guild).await,
             Self::Log(c) => return c.run(cx, guild).await,
             Self::LogEvents(c) => return c.run(cx, guild).await,
+            Self::LogIgnore(c) => return c.run(cx, guild).await,
+            Self::Moderation(c) => return c.run(cx, guild).await,
+            Self::WarnLadder(c) => return c.run(cx, guild).await,
             Self::Suggestions(c) => return c.run(cx, guild).await,
             Self::Critters(c) => return c.run(cx, guild).await,
             Self::Gambling(c) => return c.run(cx, guild).await,
@@ -248,7 +258,7 @@ impl ConfigCommand {
         embed.fields.push(
             EmbedFieldBuilder::new(
                 t!(lang, "cfg.critter-drops"),
-                critters_summary(&cx.app.db.collection_settings(guild).await?, lang),
+                critters_summary(lang, &cx.app.db.collection_settings(guild).await?),
             )
             .build(),
         );
@@ -259,6 +269,14 @@ impl ConfigCommand {
             )
             .build(),
         );
+        let moderation = moderation_summary(
+            cx.lang(),
+            &cx.app.db.mod_settings(guild).await?,
+            &cx.app.db.warn_thresholds(guild).await?,
+        );
+        embed
+            .fields
+            .push(EmbedFieldBuilder::new(t!(cx.lang(), "mod.setup.field"), moderation).build());
         let language = match cx.app.guild_lang_choice(guild).await {
             Some(lang) => lang.native_name().to_owned(),
             None => t!(cx.lang(), "config.language-default"),

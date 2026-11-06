@@ -5,6 +5,8 @@ pub mod economy;
 pub mod i18n;
 pub mod items;
 pub mod leveling;
+pub mod logging;
+pub mod moderation;
 pub mod modules;
 pub mod server_events;
 pub mod settings;

@@ -137,6 +137,27 @@ pub(crate) const AREAS: &[Area] = &[
         ],
     },
     Area {
+        key: "moderation",
+        covers: &[
+            "ban",
+            "unban",
+            "kick",
+            "timeout",
+            "untimeout",
+            "warn",
+            "warnings",
+            "unwarn",
+            "purge",
+            "slowmode",
+            "lock",
+            "unlock",
+            "nick",
+            "role",
+            "case",
+            "reason",
+        ],
+    },
+    Area {
         key: "setup",
         covers: &[
             "config show",
@@ -146,10 +167,18 @@ pub(crate) const AREAS: &[Area] = &[
             "config leveling",
             "config join-role",
             "config goodbye",
-            "config log",
-            "config log-events",
             "config suggestions",
             "config language",
+        ],
+    },
+    Area {
+        key: "logsetup",
+        covers: &[
+            "config log",
+            "config log-events",
+            "config log-ignore",
+            "config moderation",
+            "config warn-ladder",
         ],
     },
     Area {

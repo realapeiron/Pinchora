@@ -247,6 +247,12 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         // A change they made on the dashboard ($1 doubles as the server).
         "INSERT INTO dashboard_audit (guild_id, actor_id, actor_name, source, action)
          VALUES ($1, $1, 'Pinch', 'web', 'settings.patch')",
+        // A warn they gave as a moderator, its staff log line, and a server log that leaves them alone.
+        "INSERT INTO mod_cases (guild_id, number, kind, target_id, target_name, moderator_id, moderator_name)
+         VALUES ($1, 1, 'warn', $2, 'Other', $1, 'Pinch')",
+        "INSERT INTO staff_actions (guild_id, actor_id, actor_name, source, action, case_number)
+         VALUES ($1, $1, 'Pinch', 'command', 'warn', 1)",
+        "INSERT INTO log_settings (guild_id, ignored_users) VALUES ($1, ARRAY[$1, $2])",
         // A custom command and an auto-responder they wrote ($1 doubles as the server).
         "INSERT INTO custom_commands (guild_id, name, responses, created_by) VALUES ($1, 'hello', ARRAY['hi'], $1)",
         "INSERT INTO custom_responders (guild_id, name, trigger_kind, responses, created_by)

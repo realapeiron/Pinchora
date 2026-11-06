@@ -29,7 +29,7 @@ const CONFIRM_SECS: i64 = 120;
     desc = "Choose what others can see of you, whether servers may DM you, or delete your data"
 )]
 pub struct PrivacyCommand {
-    /// Let servers' custom commands, auto-responders, level-ups and suggestion updates DM you
+    /// Let servers' custom commands, auto-responders, level-ups, suggestion updates and moderators DM you
     server_dms: Option<bool>,
 }
 

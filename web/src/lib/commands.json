@@ -188,7 +188,7 @@
           "manager": false,
           "options": [
             {
-              "description": "Let servers' custom commands, auto-responders, level-ups and suggestion updates DM you",
+              "description": "Let servers' custom commands, auto-responders, level-ups, suggestion updates and moderators DM you",
               "name": "server_dms",
               "required": false
             }
@@ -1641,6 +1641,369 @@
     {
       "commands": [
         {
+          "description": "Ban someone, for good or for a while",
+          "manager": true,
+          "options": [
+            {
+              "description": "Who to ban: a member, or anyone by their user id",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Why (they are told, and the mod-log keeps it)",
+              "name": "reason",
+              "required": false
+            },
+            {
+              "description": "How long, like 12h or 7d (default: for good)",
+              "name": "duration",
+              "required": false
+            },
+            {
+              "description": "Delete their messages from the last 0 to 7 days",
+              "name": "delete_days",
+              "required": false
+            }
+          ],
+          "path": "ban",
+          "usage": "/ban <user> [reason] [duration] [delete_days]"
+        },
+        {
+          "description": "Lift someone's ban",
+          "manager": true,
+          "options": [
+            {
+              "description": "Who to unban (paste their user id)",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Why",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "unban",
+          "usage": "/unban <user> [reason]"
+        },
+        {
+          "description": "Remove a member (they can join again)",
+          "manager": true,
+          "options": [
+            {
+              "description": "Who to kick",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Why (they are told, and the mod-log keeps it)",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "kick",
+          "usage": "/kick <user> [reason]"
+        },
+        {
+          "description": "Stop a member chatting and talking for a while",
+          "manager": true,
+          "options": [
+            {
+              "description": "Who to time out",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "How long, like 10m, 2h or 7d (up to 28 days)",
+              "name": "duration",
+              "required": true
+            },
+            {
+              "description": "Why (they are told, and the mod-log keeps it)",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "timeout",
+          "usage": "/timeout <user> <duration> [reason]"
+        },
+        {
+          "description": "End a member's timeout early",
+          "manager": true,
+          "options": [
+            {
+              "description": "Whose timeout to end",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Why",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "untimeout",
+          "usage": "/untimeout <user> [reason]"
+        },
+        {
+          "description": "Warn a member; enough warns act on their own",
+          "manager": true,
+          "options": [
+            {
+              "description": "Who to warn",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Why (they are told, and the mod-log keeps it)",
+              "name": "reason",
+              "required": true
+            }
+          ],
+          "path": "warn",
+          "usage": "/warn <user> <reason>"
+        },
+        {
+          "description": "A member's warns that still count",
+          "manager": true,
+          "options": [
+            {
+              "description": "Whose warns",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "warnings",
+          "usage": "/warnings <user>"
+        },
+        {
+          "description": "Take a warn back, so it no longer counts",
+          "manager": true,
+          "options": [
+            {
+              "description": "The warn's case number",
+              "name": "case",
+              "required": true
+            },
+            {
+              "description": "Why",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "unwarn",
+          "usage": "/unwarn <case> [reason]"
+        },
+        {
+          "description": "Delete recent messages here (up to 100)",
+          "manager": true,
+          "options": [
+            {
+              "description": "How many messages to delete",
+              "name": "count",
+              "required": true
+            },
+            {
+              "description": "Only messages from this member",
+              "name": "user",
+              "required": false
+            },
+            {
+              "description": "Only messages from bots",
+              "name": "bots",
+              "required": false
+            },
+            {
+              "description": "Only messages containing this text",
+              "name": "contains",
+              "required": false
+            },
+            {
+              "description": "Only messages with links",
+              "name": "links",
+              "required": false
+            },
+            {
+              "description": "Only messages with attachments",
+              "name": "attachments",
+              "required": false
+            },
+            {
+              "description": "Why",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "purge",
+          "usage": "/purge <count> [user] [bots] [contains] [links] [attachments] [reason]"
+        },
+        {
+          "description": "How long members wait between messages in a channel",
+          "manager": true,
+          "options": [
+            {
+              "description": "Like 5s, 30s, 2m or 1h (up to 6 hours), or off",
+              "name": "duration",
+              "required": true
+            },
+            {
+              "description": "The channel (default: this one)",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Why",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "slowmode",
+          "usage": "/slowmode <duration> [channel] [reason]"
+        },
+        {
+          "description": "Stop members from sending messages in a channel",
+          "manager": true,
+          "options": [
+            {
+              "description": "The channel (default: this one)",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Why",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "lock",
+          "usage": "/lock [channel] [reason]"
+        },
+        {
+          "description": "Let members send messages in a locked channel again",
+          "manager": true,
+          "options": [
+            {
+              "description": "The channel (default: this one)",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Why",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "unlock",
+          "usage": "/unlock [channel] [reason]"
+        },
+        {
+          "description": "Change or reset a member's nickname",
+          "manager": true,
+          "options": [
+            {
+              "description": "Whose nickname",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "The new nickname (leave it out to reset it)",
+              "name": "nickname",
+              "required": false
+            },
+            {
+              "description": "Why",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "nick",
+          "usage": "/nick <user> [nickname] [reason]"
+        },
+        {
+          "description": "Give a member a role",
+          "manager": true,
+          "options": [
+            {
+              "description": "Who gets it",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "The role (below yours and mine)",
+              "name": "role",
+              "required": true
+            },
+            {
+              "description": "Why",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "role add",
+          "usage": "/role add <user> <role> [reason]"
+        },
+        {
+          "description": "Take a role from a member",
+          "manager": true,
+          "options": [
+            {
+              "description": "Who loses it",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "The role (below yours and mine)",
+              "name": "role",
+              "required": true
+            },
+            {
+              "description": "Why",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "role remove",
+          "usage": "/role remove <user> <role> [reason]"
+        },
+        {
+          "description": "Look up a moderation case",
+          "manager": true,
+          "options": [
+            {
+              "description": "The case number",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "case",
+          "usage": "/case <id>"
+        },
+        {
+          "description": "Give a moderation case a new reason",
+          "manager": true,
+          "options": [
+            {
+              "description": "The case number",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "The reason",
+              "name": "reason",
+              "required": true
+            }
+          ],
+          "path": "reason",
+          "usage": "/reason <id> <reason>"
+        }
+      ],
+      "intro": "Bans, kicks, timeouts and warns, each a numbered case in the mod-log; cleaning up channels.",
+      "key": "moderation",
+      "title": "Moderation"
+    },
+    {
+      "commands": [
+        {
           "description": "Show the current settings",
           "manager": true,
           "options": [],
@@ -1803,52 +2166,6 @@
           "usage": "/config goodbye [channel] [message] [off]"
         },
         {
-          "description": "Log joins, name changes, bans and voice in a channel",
-          "manager": true,
-          "options": [
-            {
-              "description": "Channel for the server log (this turns it on)",
-              "name": "channel",
-              "required": false
-            },
-            {
-              "description": "Turn the server log off",
-              "name": "off",
-              "required": false
-            }
-          ],
-          "path": "config log",
-          "usage": "/config log [channel] [off]"
-        },
-        {
-          "description": "Pick what the server log reports",
-          "manager": true,
-          "options": [
-            {
-              "description": "Members joining and leaving",
-              "name": "members",
-              "required": false
-            },
-            {
-              "description": "Nickname and username changes",
-              "name": "names",
-              "required": false
-            },
-            {
-              "description": "Bans and unbans",
-              "name": "bans",
-              "required": false
-            },
-            {
-              "description": "Voice joins, leaves and moves",
-              "name": "voice",
-              "required": false
-            }
-          ],
-          "path": "config log-events",
-          "usage": "/config log-events [members] [names] [bans] [voice]"
-        },
-        {
           "description": "Where /suggest posts suggestions",
           "manager": true,
           "options": [
@@ -1885,9 +2202,202 @@
           "usage": "/config language <language>"
         }
       ],
-      "intro": "Welcome cards, goodbyes, the server log, the language, the text prefix and the settings overview.",
+      "intro": "Welcome cards, goodbyes, suggestions, the language, the text prefix and the settings overview.",
       "key": "server-setup",
       "title": "Server setup"
+    },
+    {
+      "commands": [
+        {
+          "description": "The server log's channel, or one category's",
+          "manager": true,
+          "options": [
+            {
+              "description": "Channel for the server log (this turns it on), or for the category you pick",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Turn the server log off, or send the category back to the log channel",
+              "name": "off",
+              "required": false
+            },
+            {
+              "choices": [
+                "Members",
+                "Messages",
+                "Roles",
+                "Channels and threads",
+                "Voice",
+                "Moderation",
+                "Server",
+                "Invites",
+                "Emojis and stickers"
+              ],
+              "description": "A category with a channel of its own",
+              "name": "category",
+              "required": false
+            }
+          ],
+          "path": "config log",
+          "usage": "/config log [channel] [off] [category]"
+        },
+        {
+          "description": "Pick what the server log reports",
+          "manager": true,
+          "options": [
+            {
+              "description": "Members joining and leaving",
+              "name": "members",
+              "required": false
+            },
+            {
+              "description": "Nickname and username changes",
+              "name": "names",
+              "required": false
+            },
+            {
+              "description": "Bans and unbans",
+              "name": "bans",
+              "required": false
+            },
+            {
+              "description": "Voice joins, leaves and moves",
+              "name": "voice",
+              "required": false
+            },
+            {
+              "description": "Message edits and deletes",
+              "name": "messages",
+              "required": false
+            },
+            {
+              "description": "Roles made, changed or deleted, and members' roles",
+              "name": "roles",
+              "required": false
+            },
+            {
+              "description": "Channels and threads made, changed or deleted, permissions included",
+              "name": "channels",
+              "required": false
+            },
+            {
+              "description": "Bans, kicks and timeouts, with who did them",
+              "name": "moderation",
+              "required": false
+            },
+            {
+              "description": "Server settings changes",
+              "name": "server",
+              "required": false
+            },
+            {
+              "description": "Invites made or deleted",
+              "name": "invites",
+              "required": false
+            },
+            {
+              "description": "Emojis and stickers added, changed or removed",
+              "name": "emojis",
+              "required": false
+            }
+          ],
+          "path": "config log-events",
+          "usage": "/config log-events [members] [names] [bans] [voice] [messages] [roles] [channels] [moderation] [server] [invites] [emojis]"
+        },
+        {
+          "description": "Who and where the server log leaves alone",
+          "manager": true,
+          "options": [
+            {
+              "description": "A channel (or category) to leave alone",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Members with this role are left alone",
+              "name": "role",
+              "required": false
+            },
+            {
+              "description": "A member to leave alone",
+              "name": "user",
+              "required": false
+            },
+            {
+              "description": "Leave every bot alone",
+              "name": "bots",
+              "required": false
+            },
+            {
+              "description": "Take the channel, role or member off the list instead",
+              "name": "remove",
+              "required": false
+            }
+          ],
+          "path": "config log-ignore",
+          "usage": "/config log-ignore [channel] [role] [user] [bots] [remove]"
+        },
+        {
+          "description": "Where cases go and whether members are told",
+          "manager": true,
+          "options": [
+            {
+              "description": "The mod-log channel for every case",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "No mod-log channel of its own: cases go to the server log's moderation channel",
+              "name": "off",
+              "required": false
+            },
+            {
+              "description": "Tell members by direct message when they are warned, timed out, kicked or banned",
+              "name": "dm",
+              "required": false
+            }
+          ],
+          "path": "config moderation",
+          "usage": "/config moderation [channel] [off] [dm]"
+        },
+        {
+          "description": "What a number of warns brings",
+          "manager": true,
+          "options": [
+            {
+              "description": "How many active warns",
+              "name": "warns",
+              "required": false
+            },
+            {
+              "choices": [
+                "Timeout",
+                "Kick",
+                "Ban"
+              ],
+              "description": "What happens (the same warn count again replaces it)",
+              "name": "action",
+              "required": false
+            },
+            {
+              "description": "How long, like 1h or 7d (needed for a timeout; a ban without one is for good)",
+              "name": "duration",
+              "required": false
+            },
+            {
+              "description": "Take the rung at this warn count off instead",
+              "name": "remove",
+              "required": false
+            }
+          ],
+          "path": "config warn-ladder",
+          "usage": "/config warn-ladder [warns] [action] [duration] [remove]"
+        }
+      ],
+      "intro": "The server log's channels, events and ignore lists; the mod-log and the warn ladder.",
+      "key": "log-and-moderation-setup",
+      "title": "Log & moderation setup"
     },
     {
       "commands": [
@@ -2283,5 +2793,5 @@
       "title": "Game & module setup"
     }
   ],
-  "count": 156
+  "count": 176
 }

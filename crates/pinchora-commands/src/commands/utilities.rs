@@ -1,11 +1,21 @@
 //! `/config join-role`, `goodbye`, `log` and `log-events`: what the bot does as members come and go.
 
-use pinchora_core::{i18n::Lang, settings::MessageKind, t};
+use pinchora_core::{
+    i18n::Lang,
+    logging::{Group, LogCategory, LogConfig, LogEvent},
+    settings::MessageKind,
+    t,
+};
 use pinchora_db::GuildSettings;
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::{application::interaction::InteractionChannel, guild::Role};
 
-use crate::{Cx, events::default_message, roles};
+use crate::{
+    Cx,
+    commands::moderation::setup::{LogCategoryChoice, ignore_summary},
+    events::default_message,
+    roles,
+};
 
 fn on_off(lang: Lang, on: bool) -> String {
     t!(lang, if on { "cfg.on" } else { "cfg.off" })
@@ -34,13 +44,15 @@ pub struct ConfigGoodbye {
 }
 
 #[derive(CommandModel, CreateCommand)]
-#[command(name = "log", desc = "Log joins, name changes, bans and voice in a channel")]
+#[command(name = "log", desc = "The server log's channel, or one category's")]
 pub struct ConfigLog {
-    /// Channel for the server log (this turns it on)
+    /// Channel for the server log (this turns it on), or for the category you pick
     #[command(channel_types = "guild_text guild_announcement")]
     channel: Option<InteractionChannel>,
-    /// Turn the server log off
+    /// Turn the server log off, or send the category back to the log channel
     off: Option<bool>,
+    /// A category with a channel of its own
+    category: Option<LogCategoryChoice>,
 }
 
 #[derive(CommandModel, CreateCommand)]
@@ -54,6 +66,20 @@ pub struct ConfigLogEvents {
     bans: Option<bool>,
     /// Voice joins, leaves and moves
     voice: Option<bool>,
+    /// Message edits and deletes
+    messages: Option<bool>,
+    /// Roles made, changed or deleted, and members' roles
+    roles: Option<bool>,
+    /// Channels and threads made, changed or deleted, permissions included
+    channels: Option<bool>,
+    /// Bans, kicks and timeouts, with who did them
+    moderation: Option<bool>,
+    /// Server settings changes
+    server: Option<bool>,
+    /// Invites made or deleted
+    invites: Option<bool>,
+    /// Emojis and stickers added, changed or removed
+    emojis: Option<bool>,
 }
 
 /// How `/config show` and the commands word each setting.
@@ -93,6 +119,35 @@ pub(crate) fn log_summary(lang: Lang, s: &GuildSettings) -> String {
         bans = on_off(lang, s.log_bans),
         voice = on_off(lang, s.log_voice)
     )
+}
+
+/// The detailed log in a few lines: the channel of each category and how many of its events are on.
+pub(crate) fn log_config_summary(lang: Lang, config: &LogConfig) -> String {
+    let head = match config.default_channel {
+        Some(channel) => t!(lang, "log.head-on", channel = format!("<#{channel}>")),
+        None => t!(lang, "log.head-off"),
+    };
+    let mut lines = vec![head];
+    for category in LogCategory::ALL {
+        let events: Vec<LogEvent> = category.events().collect();
+        let on = events.iter().filter(|e| config.enabled(**e)).count();
+        let channel = match (config.channels.get(&category), config.default_channel) {
+            (Some(own), _) => format!("<#{own}>"),
+            (None, Some(_)) => t!(lang, "log.log-channel"),
+            (None, None) => t!(lang, "log.no-channel"),
+        };
+        let name = t!(lang, &format!("log.category.{}", category.key()));
+        lines.push(t!(
+            lang,
+            "log.category-line",
+            category = name,
+            on = on,
+            total = events.len(),
+            channel = channel
+        ));
+    }
+    lines.push(ignore_summary(lang, config));
+    lines.join("\n")
 }
 
 impl ConfigJoinRole {
@@ -152,34 +207,73 @@ impl ConfigGoodbye {
 impl ConfigLog {
     pub async fn run(self, cx: &Cx, guild: u64) -> anyhow::Result<()> {
         let db = &cx.app.db;
-        let settings = match (self.channel, self.off == Some(true)) {
-            (Some(_), true) => return cx.reply_ephemeral(t!(cx.lang(), "cfg.log-both")).await,
-            (Some(channel), false) => db.set_log_channel(guild, Some(channel.id.get())).await?,
-            (None, true) => db.set_log_channel(guild, None).await?,
-            (None, false) => db.guild_settings(guild).await?,
+        let off = self.off == Some(true);
+        if self.channel.is_some() && off {
+            return cx.reply_ephemeral(t!(cx.lang(), "mod.setup.channel-or-off")).await;
+        }
+        let config = match (self.category.map(LogCategoryChoice::category), self.channel) {
+            (Some(category), channel) if channel.is_some() || off => {
+                db.update_log_config(guild, |config| match channel {
+                    Some(channel) => {
+                        config.channels.insert(category, channel.id.get());
+                    }
+                    None => {
+                        config.channels.remove(&category);
+                    }
+                })
+                .await?
+            }
+            (None, Some(channel)) => {
+                db.set_log_channel(guild, Some(channel.id.get())).await?;
+                db.log_config(guild).await?
+            }
+            (None, None) if off => {
+                db.set_log_channel(guild, None).await?;
+                db.log_config(guild).await?
+            }
+            _ => db.log_config(guild).await?,
         };
-        cx.app.forget_guild_settings(guild).await;
-        cx.reply_ephemeral(t!(
-            cx.lang(),
-            "cfg.log-current",
-            summary = log_summary(cx.lang(), &settings)
-        ))
-        .await
+        cx.app.announce_guild_change(guild).await;
+        let summary = log_config_summary(cx.lang(), &config);
+        cx.reply_ephemeral(t!(cx.lang(), "log.prefix", summary = summary)).await
     }
 }
 
 impl ConfigLogEvents {
     pub async fn run(self, cx: &Cx, guild: u64) -> anyhow::Result<()> {
-        let db = &cx.app.db;
-        let settings = db
-            .update_log_events(guild, self.members, self.names, self.bans, self.voice)
+        let groups = [
+            (Group::Members, self.members),
+            (Group::Names, self.names),
+            (Group::Bans, self.bans),
+            (Group::Voice, self.voice),
+        ];
+        let categories = [
+            (LogCategory::Messages, self.messages),
+            (LogCategory::Roles, self.roles),
+            (LogCategory::Channels, self.channels),
+            (LogCategory::Moderation, self.moderation),
+            (LogCategory::Server, self.server),
+            (LogCategory::Invites, self.invites),
+            (LogCategory::Emojis, self.emojis),
+        ];
+        let config = cx
+            .app
+            .db
+            .update_log_config(guild, |config| {
+                for (group, on) in groups {
+                    if let Some(on) = on {
+                        config.set_group(group, on);
+                    }
+                }
+                for (category, on) in categories {
+                    if let Some(on) = on {
+                        config.toggle_category(category, on);
+                    }
+                }
+            })
             .await?;
-        cx.app.forget_guild_settings(guild).await;
-        cx.reply_ephemeral(t!(
-            cx.lang(),
-            "cfg.log-current",
-            summary = log_summary(cx.lang(), &settings)
-        ))
-        .await
+        cx.app.announce_guild_change(guild).await;
+        let summary = log_config_summary(cx.lang(), &config);
+        cx.reply_ephemeral(t!(cx.lang(), "log.prefix", summary = summary)).await
     }
 }

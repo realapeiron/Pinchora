@@ -9,6 +9,7 @@ mod guilds;
 mod house;
 mod leveling;
 mod me;
+mod moderation;
 mod modules;
 mod overview;
 mod preview;

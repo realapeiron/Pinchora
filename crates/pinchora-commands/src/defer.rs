@@ -34,6 +34,7 @@ pub enum Deferral {
 const PRIVATE: &[&str] = &[
     "beachcomb",
     "bio",
+    "case",
     "character",
     "config",
     "crabpot",
@@ -54,6 +55,7 @@ const PRIVATE: &[&str] = &[
     "house edit",
     "house lock",
     "house upgrade",
+    "nick",
     "language",
     "partner leave",
     "party stop",
@@ -67,13 +69,17 @@ const PRIVATE: &[&str] = &[
     "play 2048",
     "poll",
     "privacy",
+    "purge",
     "quests",
+    "reason",
     "remind",
+    "role",
     "roles",
     "stall manage",
     "stall sell",
     "suggest",
     "suggestion",
+    "warnings",
 ];
 
 /// Slash commands that answer with a form, which only works as the first answer: never deferred.

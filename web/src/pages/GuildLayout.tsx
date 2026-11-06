@@ -39,12 +39,19 @@ export const NAV: NavGroup[] = [
     pages: [
       { to: "commands", label: "Custom commands" },
       { to: "responders", label: "Auto-responders" },
-      { to: "log", label: "Server log" },
       { to: "community", label: "Community" },
     ],
   },
   { group: "ROLES", pages: [] },
-  { group: "SAFETY", pages: [] },
+  {
+    group: "SAFETY",
+    pages: [
+      { to: "moderation", label: "Moderation" },
+      { to: "cases", label: "Cases" },
+      { to: "log", label: "Server log" },
+      { to: "staff-log", label: "Staff log" },
+    ],
+  },
   { group: "COMMUNITY", pages: [] },
   { group: "FEEDS", pages: [] },
   { group: "PLAYERS", pages: [] },

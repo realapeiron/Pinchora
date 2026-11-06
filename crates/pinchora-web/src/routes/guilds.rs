@@ -12,8 +12,8 @@ use serde::Serialize;
 use serde_json::Value;
 
 use super::{
-    audit_log, cards, commands, community, discord_info, leveling, me::icon_url, modules, overview, preview,
-    responders, settings, store,
+    audit_log, cards, commands, community, discord_info, leveling, me::icon_url, moderation, modules, overview,
+    preview, responders, settings, store,
 };
 use crate::state::WebState;
 
@@ -72,6 +72,14 @@ pub fn router() -> Router<WebState> {
         .route("/suggestions/settings", put(community::put_suggestions))
         .route("/critters/settings", put(community::put_critters))
         .route("/surge/settings", put(community::put_surge))
+        .route(
+            "/moderation",
+            get(moderation::moderation).put(moderation::put_moderation),
+        )
+        .route("/logs", get(moderation::logs).put(moderation::put_logs))
+        .route("/cases", get(moderation::cases))
+        .route("/cases/{case}", get(moderation::case).patch(moderation::patch_case))
+        .route("/staff-log", get(moderation::staff_log))
         .route("/preview/card", post(cards::preview))
         .route("/preview/message", post(preview::message))
         .route("/cards", get(cards::cards))

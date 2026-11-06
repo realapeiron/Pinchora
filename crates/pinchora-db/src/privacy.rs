@@ -111,6 +111,8 @@ pub const ID_LISTS: &[(&str, &str, ListEdit)] = &[
     ("giveaways", "winner_ids", ListEdit::Remove),
     // A critter drop's takers run in step with its cards.
     ("collection_drops", "takers", ListEdit::Blank),
+    // Members the server log leaves alone.
+    ("log_settings", "ignored_users", ListEdit::Remove),
 ];
 
 /// Columns that name a player on rows that belong to somebody else and go on without them: the
@@ -130,7 +132,14 @@ pub const DAILY_LIMITS: &[(&str, &str, &str)] = &[
 /// A server's own records that name the player who did something, as (table, id column, name
 /// column): the record stays and the player leaves it, the id becoming 0 and the name
 /// [`DELETED_NAME`].
-pub const ANONYMISED: &[(&str, &str, &str)] = &[("dashboard_audit", "actor_id", "actor_name")];
+///
+/// The moderation records name the member they are about too, and that stays: a case is the server's
+/// record of what happened, so a member cannot wipe their warns or their ban by deleting their data.
+pub const ANONYMISED: &[(&str, &str, &str)] = &[
+    ("dashboard_audit", "actor_id", "actor_name"),
+    ("mod_cases", "moderator_id", "moderator_name"),
+    ("staff_actions", "actor_id", "actor_name"),
+];
 
 /// The name a deleted player leaves on the records of [`ANONYMISED`].
 pub const DELETED_NAME: &str = "Deleted user";
@@ -160,6 +169,12 @@ pub const OTHER_TABLES: &[&str] = &[
     "collection_drops",
     "party_settings",
     "guild_modules",
+    "mod_settings",
+    "mod_case_counters",
+    "mod_warn_thresholds",
+    "log_channels",
+    // The ignore list of members is cleaned (see `ID_LISTS`).
+    "log_settings",
     "card_designs",
     "card_uploads",
 ];

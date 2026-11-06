@@ -1,0 +1,209 @@
+# Moderation: the commands' answers, the cases in the mod-log, the member's direct message, and the
+# moderation settings under /config. Case details (`[mod.details]`) are written once, in the server's
+# language, and kept with the case.
+
+[mod]
+guild-only = "Moderation only works inside a server."
+needs = "You need the {permission} permission to do that."
+no-roles = "I couldn't check the server's roles just now. Try again in a moment."
+not-a-member = "That user isn't a member of this server."
+ban-duration-format = "Write the duration like `12h`, `7d` or `30d`."
+admin-no-timeout = "Members with the Administrator permission can't be timed out."
+not-timed-out = "That member isn't timed out."
+already-has = "They already have {role}."
+lacks = "They don't have {role}."
+refused-ban = "Discord refused the ban: {why}."
+refused-unban = "Discord refused the unban: {why}."
+refused-kick = "Discord refused the kick: {why}."
+refused-timeout = "Discord refused the timeout: {why}."
+refused = "Discord refused it: {why}."
+refused-delete = "Discord refused to delete them: {why}."
+told-anyway = "They had already been told by direct message, so I told them it did not go through."
+warn-why = "Say why you are warning them."
+active-warns = { one = "They have **{count}** active warn.", other = "They have **{count}** active warns." }
+active-warns-now = { one = "They have **{count}** active warn now.", other = "They have **{count}** active warns now." }
+not-a-warn = "Case #{number} is not a warn that still counts."
+own-warn = "You can't take back a warn of your own."
+unwarn-above = "You can't take back that warn: their highest role is not below yours."
+unwarn-moderator = "That warn was given by {moderator}, whose highest role is not below yours."
+reason-moderator = "Only {moderator}, who opened case #{number}, or someone above them can change its reason."
+reason-target = "You can't change the reason of case #{number}: the member's highest role is not below yours."
+no-case = "There is no case #{number}."
+new-reason = "Write the new reason."
+no-warns = "No warns that count."
+warns-title = "Warns of {name} · {count}"
+warn-line = "**#{number}** · {when} · by {moderator}\n> {reason}"
+ladder = "Ladder: {rungs}"
+no-reason = "No reason given"
+which-channel = "I can't tell which channel this is."
+read-failed = "I couldn't read the channel: {why}."
+purge-none = "No messages from the last 14 days match that, so nothing was deleted."
+purge-needs-content = "The `contains`, `links` and `attachments` filters need to read messages, which this bot does not do. Use the member or bots filters instead."
+already-locked = "{channel} is already locked."
+not-locked = "{channel} is not locked."
+ladder-stopped = { one = "{count} warn reached. {why}", other = "{count} warns reached. {why}" }
+ladder-admin = { one = "{count} warn reached, but administrators can't be timed out.", other = "{count} warns reached, but administrators can't be timed out." }
+ladder-refused = { one = "{count} warn reached, but Discord refused it: {why}.", other = "{count} warns reached, but Discord refused it: {why}." }
+ladder-done = { one = "{count} warn reached: {what} · case #{number}", other = "{count} warns reached: {what} · case #{number}" }
+ladder-timed-out = "timed out for {duration}"
+ladder-banned-for = "banned for {duration}"
+ladder-banned = "banned"
+ladder-kicked = "kicked"
+automatic = "Automatic: {rung}"
+temp-ban-ended = "Temporary ban ended (case #{number})"
+temp-ban-ended-audit = "Temporary ban ended"
+audit-no-reason = "no reason given"
+
+# Why Discord said no, to follow "Discord refused it:".
+[mod.why]
+missing-permission = "I'm missing the permission for it, or my highest role is too low"
+unknown-member = "that member isn't in the server any more"
+unknown-user = "there is no such user"
+unknown-ban = "that user isn't banned"
+said-no = "it said no"
+unreachable = "Discord could not be reached"
+bad-time = "that time can't be sent to Discord"
+
+# Permission names, as Discord's own settings show them.
+[mod.perm]
+ban-members = "Ban Members"
+kick-members = "Kick Members"
+timeout-members = "Timeout Members"
+manage-messages = "Manage Messages"
+manage-channels = "Manage Channels"
+manage-nicknames = "Manage Nicknames"
+manage-roles = "Manage Roles"
+
+# What was tried, for the refusals below.
+[mod.verb]
+ban = "ban"
+kick = "kick"
+timeout = "time out"
+untimeout = "end the timeout of"
+warn = "warn"
+rename = "rename"
+
+[mod.refusal]
+yourself = "You can't {verb} yourself."
+me = "I can't {verb} myself."
+owner = "You can't {verb} the server owner."
+above = "You can't {verb} that member: their highest role is not below yours."
+above-me = "I can't {verb} that member: their highest role is not below mine. Drag my role above theirs in Server Settings > Roles, then try again."
+
+# The kinds of cases, by `CaseKind::key`.
+[mod.kind]
+ban = "Ban"
+unban = "Unban"
+kick = "Kick"
+timeout = "Timeout"
+untimeout = "Timeout removed"
+warn = "Warn"
+unwarn = "Warn removed"
+purge = "Purge"
+slowmode = "Slowmode"
+lock = "Lock"
+unlock = "Unlock"
+nick = "Nickname"
+role_add = "Role added"
+role_remove = "Role removed"
+
+# What a case did, in one line.
+[mod.summary]
+ban = "{who} was banned"
+ban-for = "{who} was banned for {duration}"
+unban = "{who} was unbanned"
+kick = "{who} was kicked"
+timeout = "{who} was timed out"
+timeout-for = "{who} was timed out for {duration}"
+untimeout = "{who}'s timeout was removed"
+warn = "{who} was warned"
+unwarn = "A warn of {who} was removed ({details})"
+purge = "{details} in {channel}"
+slowmode = "Slowmode in {channel}: {details}"
+lock = "{channel} was locked"
+unlock = "{channel} was unlocked"
+nick = "{who}: {details}"
+role_add = "{who} was given {details}"
+role_remove = "{who} lost {details}"
+other = "{kind} on {who}"
+
+[mod.details]
+unwarn = "case #{number}"
+purged = { one = "Deleted {count} message", other = "Deleted {count} messages" }
+filters = "{purged} ({filters})"
+from = "from {name}"
+from-bots = "from bots"
+containing = "containing {text}"
+with-links = "with links"
+with-attachments = "with attachments"
+slowmode-off = "off"
+slowmode-every = "one message every {duration}"
+nick-set = "nickname set to {nick}"
+nick-reset = "nickname reset"
+
+# The mod-log entry, and what /case shows.
+[mod.case]
+title = "Case #{number} · {label}"
+member = "Member"
+channel = "Channel"
+moderator = "Moderator"
+reason = "Reason"
+no-reason = "*No reason given*"
+duration = "Duration"
+ends = "{duration} · ends {when}"
+status = "Status"
+removed = "Removed"
+dm = "Direct message"
+not-delivered = "Not delivered"
+id = "ID {id}"
+reply = "{summary} · case #{number}"
+
+# The direct message to the member.
+[mod.dm]
+a-server = "a server"
+ban-for = "You were banned from **{server}** for a while"
+ban = "You were banned from **{server}**"
+kick = "You were kicked from **{server}**"
+timeout = "You were timed out in **{server}**"
+untimeout = "Your timeout in **{server}** was removed"
+warn = "You were warned in **{server}**"
+other = "A moderator acted on your membership of **{server}**"
+ban-failed = "A moderator of **{server}** tried to ban you, but it did not go through. You are still a member."
+kick-failed = "A moderator of **{server}** tried to kick you, but it did not go through. You are still a member."
+
+# Short durations: 1w 2d, 2h 30m, 45s.
+[mod.unit]
+w = "{n}w"
+d = "{n}d"
+h = "{n}h"
+m = "{n}m"
+s = "{n}s"
+
+# One rung of the warn ladder.
+[mod.rung]
+line = { one = "{count} warn → {what}", other = "{count} warns → {what}" }
+timeout-for = "{duration} timeout"
+timeout = "timeout"
+ban-for = "{duration} ban"
+ban = "permanent ban"
+kick = "kick"
+
+# /config moderation, /config warn-ladder and /config log-ignore.
+[mod.setup]
+field = "Moderation"
+channel-or-off = "Pick a channel or `off`, not both."
+summary = "Cases go to {channel} · direct messages **{dm}**\n> Warn ladder: {ladder}"
+log-moderation-channel = "the server log's moderation channel"
+on = "on"
+off = "off"
+none = "none"
+rung-removed = { one = "Removed the rung at {count} warn.", other = "Removed the rung at {count} warns." }
+no-rung = { one = "There is no rung at {count} warn.", other = "There is no rung at {count} warns." }
+duration-format = "Write the duration like `1h`, `12h` or `7d`."
+rung-added = "Added **{rung}**."
+ladder-full = "The warn ladder holds at most {max} rungs. Remove one first."
+ladder-usage = "Give `warns` and `action` to add a rung, `warns` and `remove` to take one off, or nothing to see the ladder."
+ignore-summary = "Ignored channels: {channels} · roles: {roles} · members: {members} · bots: **{bots}**"
+bots-ignored = "ignored"
+bots-logged = "logged"
+ignore-full = "An ignore list holds at most {max} entries."

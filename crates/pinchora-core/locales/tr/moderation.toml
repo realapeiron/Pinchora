@@ -1,0 +1,209 @@
+# Moderation: the commands' answers, the cases in the mod-log, the member's direct message, and the
+# moderation settings under /config. Case details (`[mod.details]`) are written once, in the server's
+# language, and kept with the case.
+
+[mod]
+guild-only = "Moderasyon yalnızca bir sunucunun içinde çalışır."
+needs = "Bunun için {permission} iznine ihtiyacın var."
+no-roles = "Sunucunun rollerine şu an bakamadım. Birazdan tekrar dene."
+not-a-member = "Bu kullanıcı bu sunucunun üyesi değil."
+ban-duration-format = "Süreyi `12h`, `7d` ya da `30d` gibi yaz."
+admin-no-timeout = "Yönetici iznine sahip üyeler susturulamaz."
+not-timed-out = "Bu üye susturulmuş değil."
+already-has = "Bu üyede {role} zaten var."
+lacks = "Bu üyede {role} yok."
+refused-ban = "Discord yasağı kabul etmedi: {why}."
+refused-unban = "Discord yasağın kaldırılmasını kabul etmedi: {why}."
+refused-kick = "Discord atmayı kabul etmedi: {why}."
+refused-timeout = "Discord susturmayı kabul etmedi: {why}."
+refused = "Discord bunu kabul etmedi: {why}."
+refused-delete = "Discord mesajları silmeyi kabul etmedi: {why}."
+told-anyway = "Üyeye özel mesajla haber verilmişti; işlemin gerçekleşmediğini de kendisine bildirdim."
+warn-why = "Neden uyardığını yaz."
+active-warns = { other = "Geçerli **{count}** uyarısı var." }
+active-warns-now = { other = "Artık geçerli **{count}** uyarısı var." }
+not-a-warn = "Vaka #{number}, hâlâ geçerli olan bir uyarı değil."
+own-warn = "Kendi aldığın bir uyarıyı geri alamazsın."
+unwarn-above = "Bu uyarıyı geri alamazsın: üyenin en yüksek rolü seninkinin altında değil."
+unwarn-moderator = "Bu uyarıyı {moderator} verdi ve onun en yüksek rolü seninkinin altında değil."
+reason-moderator = "Vaka #{number} için sebebi yalnızca vakayı açan {moderator} ya da ondan yukarıdaki biri değiştirebilir."
+reason-target = "Vaka #{number} için sebebi değiştiremezsin: üyenin en yüksek rolü seninkinin altında değil."
+no-case = "Vaka #{number} diye bir vaka yok."
+new-reason = "Yeni sebebi yaz."
+no-warns = "Geçerli bir uyarı yok."
+warns-title = "Uyarılar: {name} · {count}"
+warn-line = "**#{number}** · {when} · veren: {moderator}\n> {reason}"
+ladder = "Merdiven: {rungs}"
+no-reason = "Sebep belirtilmedi"
+which-channel = "Bunun hangi kanal olduğunu anlayamadım."
+read-failed = "Kanalı okuyamadım: {why}."
+purge-none = "Son 14 günde buna uyan mesaj yok, o yüzden hiçbir şey silinmedi."
+purge-needs-content = "`contains`, `links` ve `attachments` filtrelerinin mesajları okuması gerekir, bu bot ise mesaj okumuyor. Bunun yerine üye ya da bot filtresini kullan."
+already-locked = "{channel} zaten kilitli."
+not-locked = "{channel} kilitli değil."
+ladder-stopped = { other = "{count} uyarıya ulaşıldı. {why}" }
+ladder-admin = { other = "{count} uyarıya ulaşıldı ama yöneticiler susturulamaz." }
+ladder-refused = { other = "{count} uyarıya ulaşıldı ama Discord bunu kabul etmedi: {why}." }
+ladder-done = { other = "{count} uyarıya ulaşıldı: {what} · vaka #{number}" }
+ladder-timed-out = "{duration} süreyle susturuldu"
+ladder-banned-for = "{duration} süreyle yasaklandı"
+ladder-banned = "yasaklandı"
+ladder-kicked = "sunucudan atıldı"
+automatic = "Otomatik: {rung}"
+temp-ban-ended = "Süreli yasak bitti (vaka #{number})"
+temp-ban-ended-audit = "Süreli yasak bitti"
+audit-no-reason = "sebep belirtilmedi"
+
+# Why Discord said no, to follow "Discord refused it:".
+[mod.why]
+missing-permission = "bunun için gereken izin bende yok ya da en yüksek rolüm fazla aşağıda"
+unknown-member = "bu üye artık sunucuda değil"
+unknown-user = "böyle bir kullanıcı yok"
+unknown-ban = "bu kullanıcı yasaklı değil"
+said-no = "reddetti"
+unreachable = "Discord'a ulaşılamadı"
+bad-time = "bu zaman Discord'a gönderilemiyor"
+
+# Permission names, as Discord's own settings show them.
+[mod.perm]
+ban-members = "Üyeleri Yasakla"
+kick-members = "Üyeleri At"
+timeout-members = "Üyelere Zaman Aşımı Uygula"
+manage-messages = "Mesajları Yönet"
+manage-channels = "Kanalları Yönet"
+manage-nicknames = "Kullanıcı Adlarını Yönet"
+manage-roles = "Rolleri Yönet"
+
+# What was tried, for the refusals below.
+[mod.verb]
+ban = "yasaklamak"
+kick = "atmak"
+timeout = "susturmak"
+untimeout = "susturmadan çıkarmak"
+warn = "uyarmak"
+rename = "yeniden adlandırmak"
+
+[mod.refusal]
+yourself = "Kendini {verb} mümkün değil."
+me = "Beni {verb} mümkün değil."
+owner = "Sunucu sahibini {verb} mümkün değil."
+above = "Bu üyeyi {verb} için en yüksek rolünün onunkinden yukarıda olması gerekir."
+above-me = "Bu üyeyi {verb} için benim rolümün onunkinden yukarıda olması gerekir. Sunucu Ayarları > Roller bölümünde rolümü onunkinin üstüne sürükle, sonra tekrar dene."
+
+# The kinds of cases, by `CaseKind::key`.
+[mod.kind]
+ban = "Yasak"
+unban = "Yasak kaldırma"
+kick = "Atma"
+timeout = "Susturma"
+untimeout = "Susturma kaldırma"
+warn = "Uyarı"
+unwarn = "Uyarı kaldırma"
+purge = "Mesaj temizliği"
+slowmode = "Yavaş mod"
+lock = "Kilit"
+unlock = "Kilit açma"
+nick = "Takma ad"
+role_add = "Rol verme"
+role_remove = "Rol alma"
+
+# What a case did, in one line.
+[mod.summary]
+ban = "{who} yasaklandı"
+ban-for = "{who} {duration} süreyle yasaklandı"
+unban = "{who} artık yasaklı değil"
+kick = "{who} sunucudan atıldı"
+timeout = "{who} susturuldu"
+timeout-for = "{who} {duration} süreyle susturuldu"
+untimeout = "{who} için susturma kaldırıldı"
+warn = "{who} uyarıldı"
+unwarn = "{who} için bir uyarı geri alındı ({details})"
+purge = "{channel}: {details}"
+slowmode = "{channel} kanalında yavaş mod: {details}"
+lock = "{channel} kilitlendi"
+unlock = "{channel} kanalının kilidi açıldı"
+nick = "{who}: {details}"
+role_add = "{who} artık {details} rolüne sahip"
+role_remove = "{who} artık {details} rolüne sahip değil"
+other = "{who}: {kind}"
+
+[mod.details]
+unwarn = "vaka #{number}"
+purged = { other = "{count} mesaj silindi" }
+filters = "{purged} ({filters})"
+from = "gönderen: {name}"
+from-bots = "botlardan"
+containing = "içinde {text} geçen"
+with-links = "bağlantılı"
+with-attachments = "ekli"
+slowmode-off = "kapalı"
+slowmode-every = "{duration} aralıkla bir mesaj"
+nick-set = "takma adı {nick} oldu"
+nick-reset = "takma adı sıfırlandı"
+
+# The mod-log entry, and what /case shows.
+[mod.case]
+title = "Vaka #{number} · {label}"
+member = "Üye"
+channel = "Kanal"
+moderator = "Moderatör"
+reason = "Sebep"
+no-reason = "*Sebep belirtilmedi*"
+duration = "Süre"
+ends = "{duration} · bitiş {when}"
+status = "Durum"
+removed = "Geri alındı"
+dm = "Özel mesaj"
+not-delivered = "İletilemedi"
+id = "ID {id}"
+reply = "{summary} · vaka #{number}"
+
+# The direct message to the member.
+[mod.dm]
+a-server = "bir sunucu"
+ban-for = "**{server}** sunucusundan bir süreliğine yasaklandın"
+ban = "**{server}** sunucusundan yasaklandın"
+kick = "**{server}** sunucusundan atıldın"
+timeout = "**{server}** sunucusunda susturuldun"
+untimeout = "**{server}** sunucusundaki susturman kaldırıldı"
+warn = "**{server}** sunucusunda uyarı aldın"
+other = "Bir moderatör **{server}** sunucusundaki üyeliğinle ilgili işlem yaptı"
+ban-failed = "**{server}** sunucusunun bir moderatörü seni yasaklamaya çalıştı ama işlem gerçekleşmedi. Hâlâ üyesin."
+kick-failed = "**{server}** sunucusunun bir moderatörü seni sunucudan atmaya çalıştı ama işlem gerçekleşmedi. Hâlâ üyesin."
+
+# Short durations: 1 hafta 2 gün, 2 sa 30 dk, 45 sn.
+[mod.unit]
+w = "{n} hafta"
+d = "{n} gün"
+h = "{n} sa"
+m = "{n} dk"
+s = "{n} sn"
+
+# One rung of the warn ladder.
+[mod.rung]
+line = { other = "{count} uyarı → {what}" }
+timeout-for = "{duration} susturma"
+timeout = "susturma"
+ban-for = "{duration} yasak"
+ban = "kalıcı yasak"
+kick = "atma"
+
+# /config moderation, /config warn-ladder and /config log-ignore.
+[mod.setup]
+field = "Moderasyon"
+channel-or-off = "Ya bir kanal seç ya da `off`, ikisini birden değil."
+summary = "Vakalar {channel} kanalına gider · özel mesajlar **{dm}**\n> Uyarı merdiveni: {ladder}"
+log-moderation-channel = "sunucu kaydının moderasyon"
+on = "açık"
+off = "kapalı"
+none = "yok"
+rung-removed = { other = "{count} uyarıdaki basamak kaldırıldı." }
+no-rung = { other = "{count} uyarıda bir basamak yok." }
+duration-format = "Süreyi `1h`, `12h` ya da `7d` gibi yaz."
+rung-added = "Eklendi: **{rung}**."
+ladder-full = "Uyarı merdiveninde en fazla {max} basamak olabilir. Önce birini kaldır."
+ladder-usage = "Basamak eklemek için `warns` ve `action`, kaldırmak için `warns` ve `remove` ver; merdiveni görmek için hiçbirini verme."
+ignore-summary = "Yok sayılan kanallar: {channels} · roller: {roles} · üyeler: {members} · botlar: **{bots}**"
+bots-ignored = "yok sayılıyor"
+bots-logged = "kaydediliyor"
+ignore-full = "Bir yok sayma listesinde en fazla {max} kayıt olabilir."
