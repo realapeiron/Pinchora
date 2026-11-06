@@ -32,17 +32,32 @@ pub use style::{ACCENT_PRESETS, AccentError, Frame, Opacity, parse_accent, reada
 pub use svg::{compact, thousands};
 pub use theme::Theme;
 
+/// The font files the cards are drawn in, by file name; the web dashboard serves the same ones.
+pub const FONT_FILES: [(&str, &[u8]); 4] = [
+    (
+        "Silkscreen-Regular.ttf",
+        include_bytes!("../../../assets/fonts/Silkscreen-Regular.ttf"),
+    ),
+    (
+        "Silkscreen-Bold.ttf",
+        include_bytes!("../../../assets/fonts/Silkscreen-Bold.ttf"),
+    ),
+    (
+        "NotoSans-Regular.ttf",
+        include_bytes!("../../../assets/fonts/NotoSans-Regular.ttf"),
+    ),
+    (
+        "NotoSans-Bold.ttf",
+        include_bytes!("../../../assets/fonts/NotoSans-Bold.ttf"),
+    ),
+];
+
 /// The fonts the cards are drawn in, loaded once: the renderer draws with them and the text
 /// measuring in [`svg`] lays names out with them.
 pub(crate) fn fonts() -> &'static Arc<usvg::fontdb::Database> {
     static FONTS: LazyLock<Arc<usvg::fontdb::Database>> = LazyLock::new(|| {
         let mut db = usvg::fontdb::Database::new();
-        for font in [
-            &include_bytes!("../../../assets/fonts/Silkscreen-Regular.ttf")[..],
-            &include_bytes!("../../../assets/fonts/Silkscreen-Bold.ttf")[..],
-            &include_bytes!("../../../assets/fonts/NotoSans-Regular.ttf")[..],
-            &include_bytes!("../../../assets/fonts/NotoSans-Bold.ttf")[..],
-        ] {
+        for (_, font) in FONT_FILES {
             db.load_font_data(font.to_vec());
         }
         db.set_sans_serif_family("Noto Sans");

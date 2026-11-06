@@ -23,6 +23,12 @@ rust-toolchain.toml
 .vscode/
 .DS_Store
 
+# The dashboard is built inside the image (the `web` stage); never copy a local build.
+web/node_modules/
+web/dist/
+web/test-results/
+web/playwright-report/
+
 # GPT sprite sheets and logs; only the packed atlas is compiled in.
 tools/
 assets/sprites/src/

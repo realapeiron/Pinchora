@@ -1,0 +1,47 @@
+/* Design tokens: Theme::reef() from pinchora-render, so the dashboard matches the bot's cards. */
+
+@font-face {
+  font-family: "Silkscreen";
+  src: url("/assets/fonts/Silkscreen-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Silkscreen";
+  src: url("/assets/fonts/Silkscreen-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Noto Sans";
+  src: url("/assets/fonts/NotoSans-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Noto Sans";
+  src: url("/assets/fonts/NotoSans-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
+
+:root {
+  --bg-top: #1d2b53;
+  --bg-bottom: #0f1631;
+  --panel: #141b3d;
+  --panel-edge: #2e3d75;
+  --ink: #fff1e8;
+  --muted: #8fa0d8;
+  --accent: #ff6b4a;
+  --gold: #ffd166;
+  --mint: #06d6a0;
+  --heart: #ff4d6d;
+  --outline: #1b1d2b;
+
+  /* One art pixel; outlines, notches and bevels are whole multiples of it. */
+  --px: 4px;
+  --font-pixel: "Silkscreen", ui-monospace, monospace;
+  --font-body: "Noto Sans", system-ui, sans-serif;
+
+  color-scheme: dark;
+}

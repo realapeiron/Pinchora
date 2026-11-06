@@ -8,6 +8,7 @@ pinchora-core.workspace = true
 pinchora-db.workspace = true
 pinchora-cache.workspace = true
 pinchora-commands.workspace = true
+pinchora-web.workspace = true
 anyhow.workspace = true
 axum.workspace = true
 clap.workspace = true

@@ -33,6 +33,8 @@ enum Command {
     Gateway,
     /// Run the HTTP interactions endpoint (stateless, scale it horizontally).
     Interactions,
+    /// Run the web dashboard: Discord login, server settings, served on `web.bind`.
+    Web,
     /// Apply database migrations.
     Migrate,
     /// Register slash commands: to `discord.dev_guild_id` when set, else globally.
@@ -83,6 +85,10 @@ async fn run() -> anyhow::Result<()> {
             let (app, ready) = boot(&config, "interactions").await?;
             http::run(&config, app, ready).await?;
         }
+        Command::Web => {
+            let (app, ready) = boot(&config, "web").await?;
+            pinchora_web::run(&config, app, ready).await?;
+        }
         Command::Commands => unreachable!(),
     }
     Ok(())
@@ -115,6 +121,8 @@ async fn boot(config: &Config, role: &str) -> anyhow::Result<(Arc<App>, Readines
         node,
     );
     let app = Arc::new(app);
+    // Drops cached settings the moment the dashboard changes them, on every pod.
+    pinchora_commands::listen_for_invalidations(&app).await;
     // Ends duels and rounds whose clock ran out, so no wager stays held after a restart.
     pinchora_commands::spawn_game_janitor(app.clone());
     // Ends giveaways and closes polls when their time is up, on whichever pod gets there first.

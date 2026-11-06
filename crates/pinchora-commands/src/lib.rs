@@ -5,6 +5,7 @@ mod cx;
 mod defer;
 mod events;
 mod game;
+mod invalidations;
 mod leveling;
 mod responder;
 mod roles;
@@ -26,6 +27,7 @@ pub use events::{
     on_ban_add, on_ban_remove, on_guild_create, on_guild_delete, on_member_add, on_member_remove, on_member_update,
     on_message, on_voice_state_update,
 };
+pub use invalidations::listen as listen_for_invalidations;
 pub use responder::Responder;
 pub use server_events::{spawn_ticker as spawn_events_ticker, tick as events_tick};
 pub use voice_xp::{prune as voice_prune, spawn_ticker as spawn_voice_ticker, tick as voice_tick};

@@ -1,3 +1,4 @@
+mod audit;
 mod character;
 mod collection;
 mod contest;
@@ -29,6 +30,7 @@ use std::time::Duration;
 
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
+pub use audit::{AuditRow, AuditSource, NewAudit};
 pub use character::OutfitRow;
 pub use collection::{
     Award, BOTTLE as DROP_BOTTLE, BottleOpen, BottlePrize, CRITTERS as DROP_CRITTERS, CollectionSettings, Comb, Daily,

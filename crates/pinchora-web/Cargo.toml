@@ -1,0 +1,30 @@
+[package]
+name = "pinchora-web"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+pinchora-core.workspace = true
+pinchora-db.workspace = true
+pinchora-cache.workspace = true
+pinchora-commands.workspace = true
+pinchora-render.workspace = true
+anyhow.workspace = true
+axum.workspace = true
+base64.workspace = true
+chrono.workspace = true
+futures-util.workspace = true
+hex.workspace = true
+metrics.workspace = true
+rand.workspace = true
+reqwest = { workspace = true, features = ["form", "json"] }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+twilight-http.workspace = true
+twilight-model.workspace = true
+
+[dev-dependencies]
+tower.workspace = true

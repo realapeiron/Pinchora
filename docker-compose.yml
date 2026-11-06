@@ -1,7 +1,7 @@
 # Local development stack.
 #
 #   cp .env.example .env            # fill in the Discord values
-#   docker compose up --build       # postgres, redis, http-proxy, migrate, gateway
+#   docker compose up --build       # postgres, redis, http-proxy, migrate, gateway, web
 #   docker compose --profile endpoint up interactions   # + the HTTP interactions endpoint
 #   docker compose run --rm gateway register            # register slash commands
 #
@@ -82,6 +82,27 @@ services:
     stop_grace_period: 45s
     ports:
       - "127.0.0.1:9000:9000" # /metrics /healthz /readyz
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  # The web dashboard on http://localhost:8090. Without PINCHORA_WEB__CLIENT_SECRET in
+  # `.env` it serves a setup page instead of the login, so it never stops the stack.
+  web:
+    <<: *app
+    command: ["web"]
+    environment:
+      # Repeated from x-app: a service's own `environment` replaces the anchor's.
+      PINCHORA_LOG__FORMAT: pretty
+      PINCHORA_DATABASE__URL: postgres://pinchora:${POSTGRES_PASSWORD:-pinchora}@postgres:5432/pinchora
+      PINCHORA_REDIS__URL: redis://redis:6379
+      PINCHORA_WEB__BIND: 0.0.0.0:8090
+      PINCHORA_WEB__PUBLIC_URL: ${PINCHORA_WEB__PUBLIC_URL:-http://localhost:8090}
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8090}:8090" # the dashboard
+      - "127.0.0.1:9002:9000" # ops, next to gateway 9000 and interactions 9001
     depends_on:
       migrate:
         condition: service_completed_successfully

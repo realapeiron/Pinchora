@@ -1905,6 +1905,7 @@ dependencies = [
  "pinchora-commands",
  "pinchora-core",
  "pinchora-db",
+ "pinchora-web",
  "rustls",
  "serde_json",
  "tikv-jemallocator",
@@ -1931,6 +1932,7 @@ name = "pinchora-cache"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "futures-util",
  "redis",
  "serde",
  "serde_json",
@@ -1946,6 +1948,7 @@ dependencies = [
  "anyhow",
  "axum",
  "chrono",
+ "futures-util",
  "image",
  "metrics",
  "moka",
@@ -2019,6 +2022,34 @@ dependencies = [
  "serde",
  "serde_json",
  "unicode-segmentation",
+]
+
+[[package]]
+name = "pinchora-web"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "base64 0.23.1",
+ "chrono",
+ "futures-util",
+ "hex",
+ "metrics",
+ "pinchora-cache",
+ "pinchora-commands",
+ "pinchora-core",
+ "pinchora-db",
+ "pinchora-render",
+ "rand 0.10.3",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "tokio",
+ "tower",
+ "tracing",
+ "twilight-http",
+ "twilight-model",
 ]
 
 [[package]]
@@ -2375,6 +2406,9 @@ dependencies = [
  "rustls",
  "rustls-pki-types",
  "rustls-platform-verifier",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
  "sync_wrapper",
  "tokio",
  "tokio-rustls",

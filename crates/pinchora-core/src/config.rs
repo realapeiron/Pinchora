@@ -1,4 +1,4 @@
-use std::{fmt, net::SocketAddr};
+use std::{fmt, net::SocketAddr, path::PathBuf};
 
 use figment::{
     Figment,
@@ -24,6 +24,8 @@ pub struct Config {
     pub ops: OpsConfig,
     #[serde(default)]
     pub log: LogConfig,
+    #[serde(default)]
+    pub web: WebConfig,
 }
 
 impl Config {
@@ -44,6 +46,12 @@ pub struct Secret(String);
 impl Secret {
     pub fn expose(&self) -> &str {
         &self.0
+    }
+}
+
+impl From<String> for Secret {
+    fn from(value: String) -> Self {
+        Self(value)
     }
 }
 
@@ -135,6 +143,44 @@ impl Default for OpsConfig {
     fn default() -> Self {
         Self {
             bind: ([0, 0, 0, 0], 9000).into(),
+        }
+    }
+}
+
+/// The web dashboard (`pinchora web`). Only that role reads it; without a client secret it serves a
+/// setup page instead of the login.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(default)]
+pub struct WebConfig {
+    pub bind: SocketAddr,
+    /// Where browsers reach the dashboard; the OAuth redirect is `<public_url>/auth/callback`.
+    pub public_url: String,
+    /// The OAuth2 client id; defaults to `discord.application_id`.
+    pub client_id: Option<u64>,
+    /// The OAuth2 client secret from the Developer Portal.
+    pub client_secret: Option<Secret>,
+    /// Discord's REST base; tests point it at a mock.
+    pub discord_api_base: String,
+    /// Mark cookies `Secure`; defaults to whether `public_url` is https.
+    pub cookie_secure: Option<bool>,
+    /// Allow `POST /auth/dev-login` (sign in as anyone, without Discord). Only honoured by debug
+    /// builds on a loopback bind.
+    pub dev_login: bool,
+    /// Serve the SPA from this folder instead of the copy built into the binary.
+    pub static_dir: Option<PathBuf>,
+}
+
+impl Default for WebConfig {
+    fn default() -> Self {
+        Self {
+            bind: ([0, 0, 0, 0], 8090).into(),
+            public_url: "http://localhost:8090".into(),
+            client_id: None,
+            client_secret: None,
+            discord_api_base: "https://discord.com/api/v10".into(),
+            cookie_secure: None,
+            dev_login: false,
+            static_dir: None,
         }
     }
 }
