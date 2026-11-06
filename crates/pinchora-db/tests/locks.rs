@@ -15,6 +15,10 @@ use pinchora_db::{
     ShellPick, ShellStart, StallBuy, TripClaim, TripPayout, Wake, XpGrant,
 };
 
+// Global cleanup must not remove the sweep test's old fixtures before it can lock them.
+// Mixed-load sweeps share a read lock, so they still run concurrently with one another.
+static SWEEP_FIXTURES: tokio::sync::RwLock<()> = tokio::sync::RwLock::const_new(());
+
 async fn db_with(pool: u32) -> Option<Db> {
     let url = std::env::var("PINCHORA_TEST_DATABASE_URL").ok()?;
     let db = Db::connect_waiting(&url, pool, std::time::Duration::from_secs(60))
@@ -613,6 +617,7 @@ async fn opening_a_session_waits_for_its_host_to_finish_deleting() {
 #[tokio::test]
 async fn sweeps_leave_the_rows_somebody_holds_for_the_next_one() {
     let Some(db) = db_with(4).await else { return };
+    let _fixtures = SWEEP_FIXTURES.write().await;
     let [guild, host] = ids();
     let mut old = Vec::new();
     for _ in 0..2 {
@@ -652,7 +657,7 @@ async fn sweeps_leave_the_rows_somebody_holds_for_the_next_one() {
 
     // Neither sweep waits for what is held (a plain delete would wait here until the timeout).
     let wait = StdDuration::from_secs(10);
-    // (The mixed load's sweeps run the same deletes, so how many went here is not asserted.)
+    // Old rows from earlier runs may also be removed; only these fixtures are asserted below.
     let games = tokio::time::timeout(wait, db.forget_old_games()).await;
     let weeks_gone = tokio::time::timeout(
         wait,
@@ -1146,6 +1151,7 @@ async fn a_mixed_load_with_deletes_fails_nobody_and_keeps_the_books() {
                             db.clear_room(owner, 0).await.map(drop)
                         }
                         16 => {
+                            let _fixtures = SWEEP_FIXTURES.read().await;
                             db.forget_old_giveaways(Utc::now() + Duration::days(1)).await?;
                             db.forget_old_games().await?;
                             db.forget_old_parties(Utc::now() + Duration::days(1), 0).await?;
