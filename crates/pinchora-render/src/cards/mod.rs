@@ -23,6 +23,7 @@ mod poll;
 mod profile;
 mod rank;
 mod showcase;
+pub(crate) mod stats;
 mod tide2048;
 mod wallet;
 mod welcome;

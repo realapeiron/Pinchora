@@ -97,6 +97,7 @@ pub const USER_COLUMNS: &[(&str, &str)] = &[
     ("suggestions", "author_id"),
     ("poll_votes", "user_id"),
     ("polls", "author_id"),
+    ("member_activity_daily", "user_id"),
     ("users", "id"),
 ];
 
@@ -185,6 +186,12 @@ pub const OTHER_TABLES: &[&str] = &[
     "log_settings",
     "card_designs",
     "card_uploads",
+    // Stats: whole servers, channels and the bot, no player in them.
+    "guild_activity_hourly",
+    "channel_activity_daily",
+    "counter_channels",
+    "stats_flushes",
+    "global_stats_daily",
 ];
 
 /// What a player hides.
@@ -547,9 +554,8 @@ struct Used {
     has_pet: bool,
 }
 
-/// Writes (or brings up to date) the tombstone of a player about to be deleted. Nothing is written
-/// for a player who had used nothing up. Times only ever move forward: deleting twice keeps the
-/// later of each.
+/// Writes (or brings up to date) the tombstone of a player about to be deleted. Even a player
+/// with no cooldowns needs one to reject a sealed stats batch. Times only ever move forward.
 async fn leave_tombstone(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     id: i64,
@@ -576,20 +582,7 @@ async fn leave_tombstone(
     .bind(now)
     .fetch_one(&mut **tx)
     .await?;
-    if used.last_daily_at.is_none()
-        && used.last_rep_at.is_none()
-        && used.weekly_at.is_none()
-        && used.monthly_at.is_none()
-        && used.visits == 0
-        && used.liked.is_empty()
-        && used.wordle_day.is_none()
-        && used.picross_day.is_none()
-        && used.pet_wake_day.is_none()
-        && used.comb_ready_at.is_none()
-        && !used.has_pet
-    {
-        return Ok(());
-    }
+    // Stats batches may already be in flight even for a player with no cooldowns.
     sqlx::query(
         "INSERT INTO deleted_users
              (user_id, deleted_at, last_daily_at, last_rep_at, weekly_at, monthly_at, day, visits, liked, wordle_day,

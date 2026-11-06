@@ -139,6 +139,8 @@ async fn boot(config: &Config, role: &str) -> anyhow::Result<(Arc<App>, Readines
     pinchora_commands::spawn_party_ticker(app.clone());
     // Gives the auto roles that were waiting out a delay, and takes back the roles whose time ran out.
     pinchora_commands::spawn_roles_ticker(app.clone());
+    // Writes the server stats counted in Redis to Postgres every minute and keeps counter channels' names current.
+    pinchora_commands::spawn_stats_ticker(app.clone());
     // Voice states only arrive on the gateway; its ticker pays everyone sitting in voice.
     if role == "gateway" {
         pinchora_commands::spawn_voice_ticker(app.clone());

@@ -878,8 +878,8 @@ async fn channel_places_are_prefilled_remembered_when_missing_and_kept() {
             sim.channel_lookups(text),
             sim.channel_lookups(category)
         ),
-        (0, 0, 0),
-        "everything was in the GUILD_CREATE"
+        (1, 0, 0),
+        "stats checked current channel permissions; XP used the GUILD_CREATE"
     );
 
     // A channel Discord has never heard of is asked about once, not on every message.

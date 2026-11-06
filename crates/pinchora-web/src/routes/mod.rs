@@ -18,6 +18,7 @@ mod roles;
 mod settings;
 mod site;
 mod static_files;
+mod stats;
 mod store;
 mod tag_common;
 
@@ -51,6 +52,7 @@ pub fn router(state: WebState) -> Router {
         ));
     let public = Router::new()
         .route("/api/public/landing", get(site::landing))
+        .nest("/api/public/stats", stats::public_router())
         .route_layer(middleware::from_fn_with_state(
             state.clone(),
             ratelimit::public_by_address,

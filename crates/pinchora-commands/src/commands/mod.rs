@@ -54,6 +54,7 @@ pub(crate) mod shells;
 pub(crate) mod shop;
 mod social;
 pub(crate) mod stall;
+pub(crate) mod stats;
 pub(crate) mod store;
 pub(crate) mod suggest;
 pub(crate) mod surge;
@@ -164,4 +165,6 @@ commands!(
     tag::Tag,
     customcommand::CustomCommand,
     language::LanguageCommand,
+    stats::StatsCommand,
+    stats::CountersCommand,
 );

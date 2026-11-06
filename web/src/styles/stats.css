@@ -1,0 +1,565 @@
+/* Server stats: the charts and the Stats pages. The series colours and the busy-hours ramp are the
+   cards' own (pinchora-render cards/stats.rs), checked for colour-blind separation on the navy panel. */
+
+.stats-page,
+.stats-site {
+  --series-1: #4a8fe8;
+  --series-2: #0f9f77;
+  --series-3: #ec5f40;
+  --heat-empty: #1f2a55;
+  --heat-0: #184f95;
+  --heat-1: #256abf;
+  --heat-2: #3987e5;
+  --heat-3: #6da7ec;
+  --heat-4: #b7d3f6;
+  --grid: #24305e;
+  --good: #06d6a0;
+  --bad: #ff8a73;
+}
+
+.series-1 {
+  fill: var(--series-1);
+  background: var(--series-1);
+}
+.series-2 {
+  fill: var(--series-2);
+  background: var(--series-2);
+}
+.series-3 {
+  fill: var(--series-3);
+  background: var(--series-3);
+}
+
+/* /Period tabs */
+
+.period-tabs {
+  display: inline-flex;
+  gap: var(--px);
+  padding: var(--px);
+  background: var(--panel-edge);
+}
+.period-tab {
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 0;
+  background: var(--panel);
+  color: #8fd3ff;
+  font: 700 14px/1 var(--font-body);
+  cursor: pointer;
+}
+.period-tab:hover {
+  color: var(--ink);
+}
+.period-tab[aria-pressed="true"] {
+  background: var(--gold);
+  color: var(--outline);
+}
+
+/* /Tiles */
+
+.stat-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+.stat-tile {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  padding: 18px 20px;
+  background: var(--panel);
+  box-shadow: inset 0 0 0 var(--px) var(--panel-edge);
+}
+.stat-tile-value {
+  font: 400 clamp(26px, 2.6vw, 34px) / 1.05 var(--font-pixel);
+  color: var(--ink);
+  text-shadow: 3px 3px 0 var(--outline);
+  overflow-wrap: anywhere;
+}
+.stat-tile-delta,
+.stat-tile-note {
+  font-size: 14px;
+  line-height: 1.35;
+}
+.delta-short {
+  display: none;
+}
+.stat-tile-delta {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+.delta-mark {
+  font-size: 11px;
+  color: var(--muted);
+}
+.delta-mark.is-good {
+  color: var(--good);
+}
+.delta-mark.is-bad {
+  color: var(--bad);
+}
+
+.stats-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+/* /Charts */
+
+.chart {
+  position: relative;
+  min-width: 0;
+}
+.chart svg {
+  display: block;
+  max-width: 100%;
+  overflow: visible;
+}
+.chart svg:focus-visible,
+.heat-grid:focus-visible {
+  outline: var(--px) solid var(--gold);
+  outline-offset: 4px;
+}
+.chart-line {
+  fill: var(--grid);
+}
+.chart-base {
+  fill: #2e3d75;
+}
+.chart-tick {
+  font: 400 11px/1 var(--font-pixel);
+  letter-spacing: 1px;
+  fill: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.chart-peak {
+  font: 400 11px/1 var(--font-pixel);
+  fill: var(--ink);
+}
+.chart-column {
+  transition: opacity 120ms;
+}
+.chart svg:has(.chart-hit:hover) .chart-column:not(.is-active),
+.chart svg:focus-visible .chart-column:not(.is-active) {
+  opacity: 0.75;
+}
+g.is-active .chart-column,
+.chart-column.is-active {
+  opacity: 1;
+  filter: brightness(1.25);
+}
+.chart-hit {
+  fill: transparent;
+  cursor: crosshair;
+}
+.chart-crosshair {
+  fill: var(--muted);
+  pointer-events: none;
+}
+.chart-empty {
+  position: absolute;
+  inset: 42% 0 auto 44px;
+  text-align: center;
+  pointer-events: none;
+}
+.chart-empty span {
+  padding: 4px 12px;
+  background: var(--panel);
+}
+
+.chart-readout {
+  position: absolute;
+  top: 0;
+  display: grid;
+  gap: 2px;
+  min-width: 110px;
+  padding: 8px 12px;
+  background: #0b1029;
+  box-shadow: inset 0 0 0 2px var(--panel-edge);
+  font-size: 14px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 2;
+}
+.chart-readout strong {
+  font-size: 16px;
+  color: var(--ink);
+}
+.chart-readout-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.chart-readout-sub {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.chart-key {
+  display: inline-block;
+  flex: none;
+}
+.chart-key-line {
+  width: 14px;
+  height: 3px;
+}
+.chart-key-box {
+  width: 12px;
+  height: 12px;
+}
+
+.chart-legend {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  font-size: 14px;
+}
+.chart-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The space a readout needs above a chart. */
+.chart-room {
+  padding-top: 12px;
+}
+
+/* /Busiest hours */
+
+.heat-grid {
+  display: grid;
+  gap: 3px;
+}
+.heat-row,
+.heat-hours {
+  display: grid;
+  grid-template-columns: 40px repeat(24, minmax(0, 1fr));
+  gap: 3px;
+  align-items: center;
+}
+.heat-day {
+  color: var(--muted);
+}
+.heat-cell {
+  display: block;
+  height: 22px;
+  background: var(--heat-empty);
+}
+.heat-cell.is-active {
+  box-shadow: 0 0 0 2px var(--ink);
+  position: relative;
+}
+.heat-empty {
+  background: var(--heat-empty);
+}
+.heat-0 {
+  background: var(--heat-0);
+}
+.heat-1 {
+  background: var(--heat-1);
+}
+.heat-2 {
+  background: var(--heat-2);
+}
+.heat-3 {
+  background: var(--heat-3);
+}
+.heat-4 {
+  background: var(--heat-4);
+}
+.heat-hour {
+  color: var(--muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
+.heat-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-top: 14px;
+}
+.heat-readout {
+  min-height: 1.4em;
+}
+.heat-scale {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.heat-scale .heat-cell {
+  width: 14px;
+  height: 14px;
+}
+.heat-scale .pixel-label {
+  margin: 0 4px;
+  font-size: 10px;
+}
+
+/* /Ranked bars */
+
+.rank {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+}
+.rank-row {
+  display: grid;
+  grid-template-columns: 20px auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "place avatar name value"
+    ". track track track";
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 6px;
+}
+.rank-row:not(:has(.rank-avatar)) {
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  grid-template-areas:
+    "place name value"
+    ". track track";
+}
+.rank-place {
+  grid-area: place;
+}
+.rank-avatar {
+  grid-area: avatar;
+  width: 24px;
+  height: 24px;
+  background: var(--panel-edge);
+}
+.rank-name {
+  grid-area: name;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+}
+.rank-value {
+  grid-area: value;
+  font: 400 13px/1 var(--font-pixel);
+  font-variant-numeric: tabular-nums;
+}
+.rank-track {
+  grid-area: track;
+  display: block;
+  height: 6px;
+  background: var(--grid);
+}
+.rank-fill {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+}
+
+/* /Numbers tables */
+
+.chart-table {
+  margin-top: 14px;
+}
+.chart-table summary {
+  cursor: pointer;
+  color: var(--gold);
+  font-size: 14px;
+  width: max-content;
+}
+.chart-table-scroll {
+  max-height: 320px;
+  overflow: auto;
+  margin-top: 10px;
+}
+.chart-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.chart-table th,
+.chart-table td {
+  padding: 6px 10px;
+  text-align: right;
+  border-bottom: 1px solid var(--grid);
+}
+.chart-table th:first-child {
+  text-align: left;
+  white-space: nowrap;
+}
+.chart-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+  color: var(--muted);
+  font-weight: 400;
+}
+
+/* /Counters */
+
+.counter-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.counter-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px 16px;
+  padding: 12px 14px;
+  background: #0f1631;
+  box-shadow: inset 0 0 0 2px #232e5c;
+}
+.counter-name {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.counter-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 14px;
+}
+.counter-problem {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.add-row-counter {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.add-row-counter-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.add-row-counter .field-wide {
+  grid-column: 1 / -1;
+}
+.counter-preview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 14px;
+}
+.counter-preview-name {
+  padding: 6px 12px;
+  background: #0b1029;
+  box-shadow: inset 0 0 0 2px var(--panel-edge);
+  font-weight: 700;
+}
+
+.card-preview {
+  margin: 16px 0 0;
+}
+.card-preview img {
+  display: block;
+  width: 100%;
+  max-width: 900px;
+  height: auto;
+  image-rendering: auto;
+  background: #0f1631;
+}
+
+.is-refreshing {
+  opacity: 0.6;
+  transition: opacity 150ms;
+}
+
+/* /Public pages */
+
+.stats-site {
+  padding-bottom: 96px;
+}
+.stats-site .stat-tiles {
+  margin-bottom: 24px;
+}
+.stats-site .settings-page {
+  gap: 24px;
+}
+.stats-site-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.stats-site-head .server-icon {
+  flex: none;
+}
+
+@media (max-width: 1023px) {
+  .stat-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .stats-grid-2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .stat-tiles {
+    gap: 10px;
+  }
+  .stat-tile {
+    padding: 14px;
+  }
+  .heat-row,
+  .heat-hours {
+    grid-template-columns: 30px repeat(24, minmax(0, 1fr));
+    gap: 1px;
+  }
+  .heat-cell {
+    height: 16px;
+  }
+  .add-row-counter {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .delta-long {
+    display: none;
+  }
+  .delta-short {
+    display: inline;
+  }
+  .period-tab {
+    padding: 8px 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chart-column,
+  .is-refreshing {
+    transition: none;
+  }
+}
+
+.stat-tiles-6 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.stats-site-cta {
+  margin-top: 24px;
+}
+
+@media (max-width: 767px) {
+  .stat-tiles-6 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* A wide table of numbers scrolls inside its panel; it never widens the page. */
+.stats-page,
+.stats-page .settings-page,
+.stats-site .settings-page {
+  grid-template-columns: minmax(0, 1fr);
+}
+.stats-page .panel,
+.stats-site .panel {
+  min-width: 0;
+}

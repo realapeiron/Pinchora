@@ -1,5 +1,6 @@
 mod invalidate;
 mod queue;
+mod stats;
 
 use std::time::Duration;
 
@@ -8,6 +9,7 @@ use serde::{Deserialize, Serialize};
 
 pub use invalidate::{INVALIDATE_CHANNEL, Invalidation};
 pub use queue::RedisQueue;
+pub use stats::StatsBatch;
 
 const PREFIX: &str = "pinchora";
 

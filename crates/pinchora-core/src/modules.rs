@@ -119,11 +119,12 @@ pub enum Module {
     TextCommands,
     AutoRoles,
     ColorRoles,
+    Stats,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 31] = [
+    pub const ALL: [Self; 32] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -155,6 +156,7 @@ impl Module {
         Self::TextCommands,
         Self::AutoRoles,
         Self::ColorRoles,
+        Self::Stats,
     ];
 
     /// The key stored in the database and used in the API.
@@ -191,6 +193,7 @@ impl Module {
             Self::TextCommands => "text_commands",
             Self::AutoRoles => "autoroles",
             Self::ColorRoles => "color_roles",
+            Self::Stats => "stats",
         }
     }
 
@@ -231,6 +234,7 @@ impl Module {
             Self::TextCommands => "Text commands",
             Self::AutoRoles => "Auto roles",
             Self::ColorRoles => "Colour roles",
+            Self::Stats => "Stats",
         }
     }
 
@@ -286,6 +290,7 @@ impl Module {
             }
             Self::AutoRoles => "/autoroles: roles given to members who join, and roles kept for those who come back.",
             Self::ColorRoles => "/color: colour roles members pick for their names.",
+            Self::Stats => "/stats, /counters, the Stats page and counting messages, voice minutes, joins and leaves.",
         }
     }
 
@@ -313,6 +318,7 @@ impl Module {
             | Self::Gambling => Group::Games,
             Self::Moderation => Group::Safety,
             Self::RolePanels | Self::AutoRoles | Self::ColorRoles => Group::Roles,
+            Self::Stats => Group::Server,
         }
     }
 
@@ -363,6 +369,7 @@ impl Module {
             "dex" | "beachcomb" | "crabpot" | "critterdrop" => Self::Collection,
             "surge" => Self::Party,
             "party" => Self::PartyGames,
+            "stats" | "counters" => Self::Stats,
             "duel" => match sub {
                 Some("share") => Self::Party,
                 Some("tictactoe" | "connect4" | "rps") => Self::Duels,
@@ -404,6 +411,7 @@ impl Module {
             "tg" | "cm" => Self::CustomCommands,
             "sg" => Self::Suggestions,
             "pl" => Self::Polls,
+            "sc" => Self::Stats,
             _ => return None,
         })
     }

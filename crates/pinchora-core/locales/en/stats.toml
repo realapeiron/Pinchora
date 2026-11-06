@@ -1,0 +1,132 @@
+# Server stats (/stats, /counters) and the stats cards. Card labels are drawn in capitals by the pixel font.
+
+[module]
+stats = "Stats"
+
+[stats]
+expired = "These buttons have expired. Run /stats again."
+no-access = "You can no longer view that channel's stats."
+
+[stats.duration]
+minutes = "{minutes}m"
+hours-minutes = "{hours}h {minutes}m"
+hours = "{hours}h"
+
+[stats.kind]
+members = "Members"
+humans = "Humans"
+bots = "Bots"
+online = "Online now"
+boosts = "Boosts"
+roles = "Roles"
+channels = "Channels"
+role_members = "Members with a role"
+houses = "Pinchora houses"
+fish = "Fish caught"
+level_avg = "Average level"
+
+# What a new counter channel is called; {count} is the number.
+[stats.template]
+members = "👥 Members: {count}"
+humans = "🙂 Humans: {count}"
+bots = "🤖 Bots: {count}"
+online = "🟢 Online: {count}"
+boosts = "💎 Boosts: {count}"
+roles = "🏷️ Roles: {count}"
+channels = "💬 Channels: {count}"
+role_members = "⭐ Members: {count}"
+houses = "🏠 Houses: {count}"
+fish = "🐟 Fish caught: {count}"
+level_avg = "📈 Average level: {count}"
+
+[stats.month]
+1 = "Jan"
+2 = "Feb"
+3 = "Mar"
+4 = "Apr"
+5 = "May"
+6 = "Jun"
+7 = "Jul"
+8 = "Aug"
+9 = "Sep"
+10 = "Oct"
+11 = "Nov"
+12 = "Dec"
+
+[stats.weekday]
+1 = "Mon"
+2 = "Tue"
+3 = "Wed"
+4 = "Thu"
+5 = "Fri"
+6 = "Sat"
+7 = "Sun"
+
+[stats.card]
+day = "{day} {month}"
+range = "{from} – {to} {year}, UTC"
+period = { one = "Last {count} day", other = "Last {count} days" }
+this-server = "This server"
+server-kicker = "Server stats"
+member-kicker = "Member stats"
+channel-kicker = "Channel stats"
+messages = "Messages"
+voice = "Voice"
+voice-off = "Voice XP is off"
+joins = "Joins"
+leaves = "Leaves"
+net = "Net {net}"
+members-wrote = { one = "{count} member wrote", other = "{count} members wrote" }
+messages-per-day = "Messages per day"
+empty = "Nothing counted yet. Stats count from the moment Pinchora sees activity."
+joins-and-leaves = "Joins and leaves"
+joins-total = "Joins {count}"
+leaves-total = "Leaves {count}"
+busiest-hours = "Busiest hours, UTC"
+quiet = "Quiet"
+busy = "Busy"
+top-channels = "Top channels"
+top-members = "Top members"
+nobody-yet = "Nobody has written yet"
+unknown-channel = "#unknown-channel"
+unknown-member = "Unknown member"
+rank = "Rank"
+of-members = { one = "of {count} member", other = "of {count} members" }
+of-channels = { one = "of {count} channel", other = "of {count} channels" }
+no-rank = "No messages yet"
+active-days = "Active days"
+of-days = { one = "of {count} day", other = "of {count} days" }
+share = "Share"
+of-server = "of the server's messages"
+
+[stats.button]
+days = { one = "{count} day", other = "{count} days" }
+
+[stats.counters]
+needs-role = "Pick the role to count with `role:`."
+bad-template = "A counter's name needs `{count}` where the number goes, and at most {max} characters, e.g. `Members: {count}`."
+missing = "I need the **{permission}** permission in {channel} to rename it. Give it to my role there, then try again."
+full = "This server has {max} counter channels already. Remove one with `/counters remove` first."
+added = "{channel} is a counter now: it will read **{name}**. The name updates every 10 minutes when the number changes. ({used}/{max} used)"
+added-problem = "{channel} is a counter now, but it can't show its number yet: {problem}"
+added-later = "{channel} is a counter now. Discord didn't say the number just now, so it shows up within a few minutes."
+not-a-counter = "{channel} isn't a counter channel."
+removed = "{channel} is no longer a counter. It keeps its last name; rename it whenever you like."
+none = "No counter channels yet. Make one with `/counters add`: a locked voice channel works best."
+heading = "**Counter channels** ({used}/{max} used)"
+line = "• {channel} · {kind} · {name}"
+not-yet = "not renamed yet"
+
+[stats.permission]
+view_channel = "View Channel"
+manage_channels = "Manage Channels"
+connect = "Connect"
+
+[stats.problem]
+missing = "⚠️ I need the **{permission}** permission in that channel to rename it."
+too-many-members = "⚠️ This server has over 10,000 members, too many to count one by one. Members, Online now and Boosts still work."
+role-gone = "⚠️ The role it counted was deleted. Pick another with `/counters add`."
+other = "⚠️ The last rename didn't go through; it is tried again in 10 minutes."
+
+[module-blurb]
+stats = "/stats, /counters, the Stats page and counting messages, voice minutes, joins and leaves."

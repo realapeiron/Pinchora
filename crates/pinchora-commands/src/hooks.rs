@@ -52,9 +52,10 @@ pub enum ReactionEvent {
 
 /// A message from a human in a server (bots, webhooks and system messages are filtered out), judged
 /// before XP and before a text command reads it.
-pub(crate) async fn after_message(_app: &Arc<App>, _msg: &Message, _settings: &GuildSettings) -> Verdict {
+pub(crate) async fn after_message(app: &Arc<App>, msg: &Message, _settings: &GuildSettings) -> Verdict {
     // F1 automod goes first: a message it deletes is `Verdict::Blocked`, so it earns nothing.
     // F9 stats counts the message.
+    crate::stats::count_message(app, msg).await;
     // F19 AFK and sticky messages come after F1.
     // F15 AI characters answer mentions.
     Verdict::Continue
@@ -62,6 +63,8 @@ pub(crate) async fn after_message(_app: &Arc<App>, _msg: &Message, _settings: &G
 
 /// A member joined, before their join role and welcome.
 pub(crate) async fn on_member_join(app: &Arc<App>, event: &MemberAdd) -> JoinVerdict {
+    // F9 stats counts every join, held or not, so it comes before the gate.
+    crate::stats::count_member(app, event.guild_id.get(), true).await;
     // F10 join gate and captcha goes first: a member it holds is `JoinVerdict::Held`.
     // F2 auto roles (they honour Held).
     crate::commands::roles_pack::on_member_join(app, event).await;
@@ -74,6 +77,8 @@ pub(crate) async fn on_member_leave(app: &Arc<App>, event: &MemberRemove) {
     // F2 sticky roles remember what they held.
     crate::commands::roles_pack::on_member_leave(app, event).await;
     // F6 invite tracker takes the invite back.
+    // F9 stats counts the leave.
+    crate::stats::count_member(app, event.guild_id.get(), false).await;
 }
 
 /// A reaction changed on a message in a server.

@@ -22,6 +22,7 @@ mod responder;
 mod roles;
 mod server_events;
 mod server_log;
+mod stats;
 mod text;
 mod util;
 mod voice_xp;
@@ -67,6 +68,12 @@ pub use log_audit::on_audit_log_entry;
 pub use responder::Responder;
 pub use server_events::{spawn_ticker as spawn_events_ticker, tick as events_tick};
 pub use server_log::{on_message_delete, on_message_delete_bulk, on_message_update};
+pub use stats::{
+    cards::server_card_png as stats_card_png, counter_problem as stats_counter_problem,
+    counter_value as stats_counter_value, counters::missing_permission as stats_missing_permission,
+    flush as stats_flush, refresh_counters as stats_refresh_counters, spawn_ticker as spawn_stats_ticker,
+    sweep as stats_sweep,
+};
 pub use text::on_text_command;
 pub use util::fill;
 pub use voice_xp::{

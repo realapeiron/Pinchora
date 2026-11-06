@@ -136,6 +136,7 @@ pub(crate) const AREAS: &[Area] = &[
             "customcommand",
             "autoroles",
             "color",
+            "stats",
         ],
     },
     Area {
@@ -171,6 +172,7 @@ pub(crate) const AREAS: &[Area] = &[
             "config goodbye",
             "config suggestions",
             "config language",
+            "counters",
         ],
     },
     Area {

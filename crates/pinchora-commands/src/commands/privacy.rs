@@ -227,6 +227,7 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>) -> anyhow::
                 return cx.update(data).await;
             }
             let deleted = cx.app.db.delete_user_data(user, cx.app.now()).await?;
+            cx.app.cache.stats_forget_member(user).await?;
             tracing::info!(
                 user,
                 rows = deleted.rows,

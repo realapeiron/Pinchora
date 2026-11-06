@@ -261,6 +261,8 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         "INSERT INTO custom_commands (guild_id, name, responses, created_by) VALUES ($1, 'hello', ARRAY['hi'], $1)",
         "INSERT INTO custom_responders (guild_id, name, trigger_kind, responses, created_by)
          VALUES ($1, 'welcome', 'member_join', ARRAY['hi'], $1)",
+        // What they did in a server, counted for its stats ($1 doubles as the server).
+        "INSERT INTO member_activity_daily (guild_id, user_id, day, messages) VALUES ($1, $1, current_date, 3)",
     ];
     for sql in inserts {
         run(db, sql, user, other).await;
@@ -1007,7 +1009,8 @@ async fn deleting_and_coming_back_resets_no_cooldown() {
         PeriodOutcome::Claimed { .. }
     ));
 
-    // Deleting twice in a row keeps the later of each time, and a player with nothing leaves no trace.
+    // Deleting twice keeps the later time. Even an empty player needs a tombstone so a pending
+    // stats batch cannot restore their activity.
     db.delete_user_data(user, now).await.unwrap();
     db.delete_user_data(user, now + Duration::hours(1)).await.unwrap();
     assert!(matches!(
@@ -1017,7 +1020,7 @@ async fn deleting_and_coming_back_resets_no_cooldown() {
     let [nobody] = ids();
     db.user(nobody).await.unwrap();
     db.delete_user_data(nobody, now).await.unwrap();
-    assert_eq!(count(&db, "deleted_users", "user_id", nobody).await, 0);
+    assert_eq!(count(&db, "deleted_users", "user_id", nobody).await, 1);
 
     // Tombstones are dropped when the longest cooldown is long over.
     sqlx::query("UPDATE deleted_users SET deleted_at = $2 WHERE user_id = $1")

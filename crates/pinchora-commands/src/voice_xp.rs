@@ -453,6 +453,7 @@ async fn pay_guild(app: &Arc<App>, guild: u64) -> anyhow::Result<usize> {
         }
     };
     let earners = voice_earners(&present, afk);
+    crate::stats::count_voice(app, guild, &present, afk).await;
     if earners.is_empty() {
         return Ok(0);
     }

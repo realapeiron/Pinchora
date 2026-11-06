@@ -91,6 +91,7 @@ pub fn router() -> Router<WebState> {
         .route("/cards/{kind}", put(cards::put_card))
         .route("/cards/{kind}/test", post(cards::test))
         .nest("/roles", roles::router())
+        .nest("/stats", super::stats::router())
 }
 
 #[derive(Serialize)]

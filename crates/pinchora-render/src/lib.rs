@@ -19,6 +19,7 @@ use std::sync::{Arc, LazyLock};
 use resvg::{tiny_skia, usvg};
 
 pub use avatar::{placeholder_avatar, prepare_avatar};
+pub use cards::stats::{HEAT, HEAT_EMPTY, SERIES, StatFlows, StatHeat, StatList, StatRow, StatTile, StatsCard};
 pub use cards::{
     ABSENT, Backdrop, BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, CORRECT, CharacterCard, CheckersCard,
     ChessCard, Connect4Card, CrewView, DerbyCard, DerbyLane, EditorCell, EditorSection, FleetCard, GridSlot,

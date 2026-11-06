@@ -518,9 +518,31 @@ impl App {
     /// Where command permissions are looked up in a channel and which overwrites apply there, cached
     /// for a minute. Fails when Discord cannot say, which a text command answers by refusing.
     pub(crate) async fn channel_rules(&self, channel: u64) -> anyhow::Result<Arc<ChannelRules>> {
-        self.channel_rules
+        if self.channel_misses.contains_key(&channel) {
+            anyhow::bail!("channel lookup recently failed");
+        }
+        let result = self
+            .channel_rules
             .try_get_with(channel, async {
-                let found = self.http.channel(Id::new(channel.max(1))).await?.model().await?;
+                let response = match self.http.channel(Id::new(channel.max(1))).await {
+                    Ok(response) => response,
+                    Err(error) => {
+                        if crate::roles::error_code(&error) == Some(10003) {
+                            self.channel_misses.insert(channel, ()).await;
+                        }
+                        return Err(error.into());
+                    }
+                };
+                let found = response.model().await?;
+                self.channel_places
+                    .insert(
+                        channel,
+                        ChannelPlace {
+                            parent: found.parent_id.map(|id| id.get()),
+                            thread: found.kind.is_thread(),
+                        },
+                    )
+                    .await;
                 let mut lineage = vec![channel];
                 let mut overwrites = found.permission_overwrites.unwrap_or_default();
                 if found.kind.is_thread()
@@ -532,13 +554,14 @@ impl App {
                 }
                 anyhow::Ok(Arc::new(ChannelRules { lineage, overwrites }))
             })
-            .await
-            .map_err(|e| anyhow::anyhow!("{e:#}"))
+            .await;
+        result.map_err(|error| anyhow::anyhow!("{error:#}"))
     }
 
     /// Forgets what a channel's permissions were, when they changed.
     pub async fn forget_channel_rules(&self, channel: u64) {
         self.channel_rules.invalidate(&channel).await;
+        self.channel_misses.invalidate(&channel).await;
     }
 
     /// What a server set for the bot's commands under Server Settings, Integrations, cached for five

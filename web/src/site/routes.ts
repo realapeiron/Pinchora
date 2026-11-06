@@ -39,6 +39,14 @@ export const PUBLIC_ROUTES: PublicRoute[] = [
     changefreq: "weekly",
     priority: 0.8,
   },
+  {
+    path: "/stats",
+    title: "Pinchora in numbers | Pinchora",
+    description:
+      "How many servers, players, houses, pets and fish Pinchora has, and the messages it counts each day, brought up to date every few minutes.",
+    changefreq: "weekly",
+    priority: 0.5,
+  },
   ...FEATURES.map((f) => ({
     path: `/features/${f.slug}`,
     title: f.metaTitle,

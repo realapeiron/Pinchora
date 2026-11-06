@@ -1168,7 +1168,9 @@
       "reason",
       "tag",
       "customcommand",
-      "language"
+      "language",
+      "stats",
+      "counters"
     ],
     "responder_placeholders": {
       "keyword": [
