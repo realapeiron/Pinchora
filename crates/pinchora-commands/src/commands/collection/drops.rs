@@ -115,16 +115,16 @@ impl CritterDrop {
 /// the drop ends. Best effort: without it the buttons are only retired when somebody clicks.
 fn track_message(cx: &Cx, drop: i64) {
     let app = cx.app.clone();
-    let token = cx.interaction.token.clone();
+    let responder = cx.responder.clone();
     // The drop stays keyed to the channel it was called in, which `/critterdrop` checks for a waiting one.
     let channel = channel_of(cx);
     cx.app.spawn(async move {
         // The answer to the command may still be on its way to Discord.
         tokio::time::sleep(Duration::from_millis(1_500)).await;
-        let message = async { anyhow::Ok(app.interaction().response(&token).await?.model().await?) }.await;
+        let message = responder.original().await;
         match message {
-            Ok(message) => {
-                if let Err(error) = app.db.set_drop_message(drop, channel, message.id.get()).await {
+            Ok((_, message)) => {
+                if let Err(error) = app.db.set_drop_message(drop, channel, message).await {
                     tracing::debug!(%error, drop, "drop message not remembered");
                 }
             }

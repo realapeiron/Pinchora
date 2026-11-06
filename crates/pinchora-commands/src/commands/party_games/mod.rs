@@ -342,16 +342,16 @@ pub(crate) async fn remember(cx: &Cx, game: &PartyGame) {
 /// effort: without it nothing is shown until somebody clicks.
 pub(crate) fn track_message(cx: &Cx, game: i64) {
     let app = cx.app.clone();
-    let token = cx.interaction.token.clone();
+    let responder = cx.responder.clone();
     // The game stays keyed to the channel it was started in, which is what keeps a second one out of it.
     let channel = channel_of(cx);
     cx.app.spawn(async move {
         // The answer to the command may still be on its way to Discord.
         tokio::time::sleep(Duration::from_millis(1_500)).await;
-        let message = async { anyhow::Ok(app.interaction().response(&token).await?.model().await?) }.await;
+        let message = responder.original().await;
         match message {
-            Ok(message) => {
-                if let Err(error) = app.db.set_party_message(game, channel, message.id.get()).await {
+            Ok((_, message)) => {
+                if let Err(error) = app.db.set_party_message(game, channel, message).await {
                     tracing::debug!(%error, game, "party message not remembered");
                 }
             }

@@ -27,11 +27,18 @@ use crate::{
 
 pub use pinchora_core::settings::{DEFAULT_GOODBYE, DEFAULT_LEVELUP, DEFAULT_WELCOME};
 
-/// Grants chat XP (once per minute per member) and announces level-ups.
+/// Runs text commands, grants chat XP (once per minute per member) and announces level-ups.
 pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<()> {
     let msg = event.message;
     if msg.author.bot || msg.webhook_id.is_some() || !matches!(msg.kind, MessageType::Regular | MessageType::Reply) {
         return Ok(());
+    }
+    // A text command runs on its own; the message still counts as chat below.
+    if crate::text::calls_bot(&app, &msg).await {
+        let (app2, message) = (app.clone(), msg.clone());
+        app.spawn(async move {
+            crate::text::on_text_command(app2, &message).await;
+        });
     }
     let Some(guild) = msg.guild_id else {
         return Ok(());

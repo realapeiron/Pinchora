@@ -75,6 +75,9 @@ mod board;
 // The collection games' flows (Critter Drop, bottles, Beachcomb, Tide Pool Dex, Crab Pot).
 #[path = "simulate/collection.rs"]
 mod collection;
+// Text commands with a server's prefix, through the same handlers.
+#[path = "simulate/text.rs"]
+mod text;
 // The party games' flows (Hot Pearl, Acronym Tide, Caption the Postcard, Wordle Race, Would You Rather, Truth or Dare).
 #[path = "simulate/words.rs"]
 mod words;
@@ -941,6 +944,8 @@ impl Sim {
                 .build(),
         );
         let mut app = App::new(rest.clone(), rest, Id::new(APPLICATION_ID), db, cache, "sim".into());
+        // As on a bot with the Message Content intent: text commands answer to the server's prefix.
+        app.message_content = true;
         // Avatars come from Discord's CDN. The mock refuses the tunnel, so cards get the
         // placeholder avatar, offline and the same every run.
         app.web = reqwest::Client::builder()

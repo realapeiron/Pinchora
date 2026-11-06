@@ -9,7 +9,7 @@ use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::{
     application::command::{Command, CommandOption, CommandOptionType},
     channel::message::{
-        Component,
+        Component, MessageFlags,
         component::{ActionRow, Button, ButtonStyle, SelectMenu, SelectMenuOption, SelectMenuType},
     },
     http::interaction::InteractionResponseData,
@@ -24,7 +24,8 @@ pub struct Help;
 
 impl Help {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
-        let data = page_card(cx, 0).await?;
+        // Asked by text, the guide is posted for the channel: there is no private message to turn.
+        let data = page_card(cx, 0, !cx.responder.is_text()).await?;
         cx.reply(data).await
     }
 }
@@ -127,9 +128,10 @@ const AREAS: &[Area] = &[
     },
     Area {
         title: "Server setup",
-        intro: "Welcome cards, goodbyes, the server log and the settings overview.",
+        intro: "Welcome cards, goodbyes, the server log, the text prefix and the settings overview.",
         covers: &[
             "config show",
+            "config prefix",
             "config welcome",
             "config welcome-card",
             "config leveling",
@@ -385,9 +387,9 @@ fn controls(pages: &[Page], at: usize) -> Vec<Component> {
     ]
 }
 
-/// The card for page `at` (the last one when it is past the end), with its controls. Private: the
+/// The card for page `at` (the last one when it is past the end), with its controls. Private, the
 /// controls are one person's to turn.
-async fn page_card(cx: &Cx, at: usize) -> anyhow::Result<InteractionResponseData> {
+async fn page_card(cx: &Cx, at: usize, private: bool) -> anyhow::Result<InteractionResponseData> {
     let pages = &*PAGES;
     let at = at.min(pages.len().saturating_sub(1));
     let page = &pages[at];
@@ -400,14 +402,21 @@ async fn page_card(cx: &Cx, at: usize) -> anyhow::Result<InteractionResponseData
         theme: Theme::reef(),
     };
     let png = cx.app.render(move |r| r.help_card(&card)).await?;
+    let mut description = "Pick an area from the menu, or turn the pages with the buttons.".to_owned();
+    if let Some(guild) = cx.guild_id() {
+        let prefix = crate::text::shown_prefix(&cx.app, guild).await;
+        description.push_str(&format!(
+            "\nEvery command also works as text here: `{prefix}profile`, `{prefix}fish cast reef`."
+        ));
+    }
     let embed = EmbedBuilder::new()
         .color(BRAND)
         .title("Pinchora")
-        .description("Pick an area from the menu, or turn the pages with the buttons.")
+        .description(description)
         .footer(EmbedFooterBuilder::new(
             "A star marks commands for members who can manage the server.",
         ));
-    Ok(Cx::card(embed, "help.png", png, controls(pages, at), true))
+    Ok(Cx::card(embed, "help.png", png, controls(pages, at), private))
 }
 
 /// `hp:<page>` buttons and the `hp:s` menu, whose value is the page.
@@ -417,7 +426,13 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, value: Opti
         other => other,
     };
     let at = wanted.and_then(|p| p.parse().ok()).unwrap_or(0);
-    let data = page_card(cx, at).await?;
+    let private = cx
+        .interaction
+        .message
+        .as_ref()
+        .and_then(|m| m.flags)
+        .is_none_or(|flags| flags.contains(MessageFlags::EPHEMERAL));
+    let data = page_card(cx, at, private).await?;
     cx.update(data).await
 }
 

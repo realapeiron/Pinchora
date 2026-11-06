@@ -1,4 +1,7 @@
-use std::sync::Arc;
+use std::{
+    sync::{Arc, OnceLock},
+    time::Duration,
+};
 
 use tokio::sync::{Mutex, oneshot};
 use twilight_model::{
@@ -6,12 +9,28 @@ use twilight_model::{
         command::CommandOptionChoice,
         interaction::{Interaction, InteractionType},
     },
-    channel::message::MessageFlags,
+    channel::message::{AllowedMentions, MessageFlags},
     http::interaction::{InteractionResponse, InteractionResponseData, InteractionResponseType},
-    id::{Id, marker::InteractionMarker},
+    id::{
+        Id,
+        marker::{ChannelMarker, InteractionMarker, MessageMarker},
+    },
 };
 
 use crate::{App, Deferral};
+
+/// How long a private answer to a text command stays in the channel before it is deleted.
+pub const TEXT_PRIVATE_LINGER: Duration = Duration::from_secs(15);
+
+/// Where a text command answers: as replies to the member's message in its channel.
+struct TextTarget {
+    channel: Id<ChannelMarker>,
+    message: Id<MessageMarker>,
+    /// `house edit`, for the notice that sends a member to the slash command.
+    path: String,
+    /// The first answer posted, which [`Responder::edit`] edits.
+    first: OnceLock<Id<MessageMarker>>,
+}
 
 /// Answers one interaction, whichever way it arrived.
 ///
@@ -21,10 +40,16 @@ use crate::{App, Deferral};
 /// become edits of that message. Images always take the defer-then-edit path,
 /// because files cannot ride in a JSON response body. Over the gateway, [`Responder::defer_if_pending`]
 /// does the same for a handler that outlasts Discord's window.
+///
+/// A text command ([`Responder::text`]) has no interaction to answer: every answer is a reply to the
+/// member's message that pings nobody. A private answer is deleted after [`TEXT_PRIVATE_LINGER`],
+/// and a private panel or a form, which a channel reply cannot stand in for, becomes a notice to use
+/// the slash command.
 pub struct Responder {
     app: Arc<App>,
     id: Id<InteractionMarker>,
     token: String,
+    text: Option<TextTarget>,
     component: bool,
     deferral: Deferral,
     state: Mutex<State>,
@@ -48,11 +73,35 @@ impl Responder {
         Self::new(app, interaction, Some(tx))
     }
 
+    /// Answers a text command: `message` in `channel` is the member's, `path` the command it ran.
+    pub fn text(app: Arc<App>, channel: Id<ChannelMarker>, message: Id<MessageMarker>, path: String) -> Self {
+        Self {
+            app,
+            id: message.cast(),
+            token: format!("text-{message}"),
+            text: Some(TextTarget {
+                channel,
+                message,
+                path,
+                first: OnceLock::new(),
+            }),
+            component: false,
+            deferral: Deferral::Never,
+            state: Mutex::new(State::Pending(None)),
+        }
+    }
+
+    /// Whether this answers a text command rather than an interaction.
+    pub fn is_text(&self) -> bool {
+        self.text.is_some()
+    }
+
     fn new(app: Arc<App>, interaction: &Interaction, tx: Option<oneshot::Sender<InteractionResponse>>) -> Self {
         Self {
             app,
             id: interaction.id,
             token: interaction.token.clone(),
+            text: None,
             // A modal opened from a button answers by updating that button's message.
             component: interaction.kind == InteractionType::MessageComponent
                 || (interaction.kind == InteractionType::ModalSubmit && interaction.message.is_some()),
@@ -102,7 +151,7 @@ impl Responder {
     /// only works as the first answer. The state lock is held across the REST call, so an answer
     /// arriving now waits and becomes an edit.
     pub async fn defer_if_pending(&self) -> anyhow::Result<bool> {
-        if self.deferral == Deferral::Never {
+        if self.deferral == Deferral::Never || self.text.is_some() {
             return Ok(false);
         }
         let mut state = self.state.lock().await;
@@ -115,8 +164,14 @@ impl Responder {
         Ok(true)
     }
 
-    /// Shows "thinking…" (or, for buttons, acknowledges silently).
+    /// Shows "thinking…" (or, for buttons, acknowledges silently; for a text command, typing).
     pub async fn defer(&self, ephemeral: bool) -> anyhow::Result<()> {
+        if let Some(text) = &self.text {
+            if let Err(error) = self.app.http.create_typing_trigger(text.channel).await {
+                tracing::debug!(%error, "typing not shown");
+            }
+            return Ok(());
+        }
         let mut state = self.state.lock().await;
         if let State::Pending(tx) = &mut *state {
             self.initial(tx.take(), self.defer_response(ephemeral)).await?;
@@ -128,6 +183,13 @@ impl Responder {
     /// Sends a new message (commands) or replaces the clicked message (`update`, components).
     pub async fn respond(&self, data: InteractionResponseData, update: bool) -> anyhow::Result<()> {
         dump_attachments(&data);
+        if let Some(text) = &self.text {
+            let _order = self.state.lock().await;
+            return match text.first.get() {
+                Some(&first) if update => self.edit_text(text, first, &data).await,
+                _ => self.post_text(text, data).await,
+            };
+        }
         let mut state = self.state.lock().await;
         match &mut *state {
             State::Pending(tx) => {
@@ -179,6 +241,10 @@ impl Responder {
 
     /// Opens a modal. Discord only takes one as the first answer.
     pub async fn modal(&self, data: InteractionResponseData) -> anyhow::Result<()> {
+        if let Some(text) = &self.text {
+            let _order = self.state.lock().await;
+            return self.post_text(text, slash_only_notice(&text.path)).await;
+        }
         let mut state = self.state.lock().await;
         let State::Pending(tx) = &mut *state else {
             anyhow::bail!("a modal can only be the first answer");
@@ -232,7 +298,96 @@ impl Responder {
 
     /// Edits the first answer, e.g. to reveal something after a delay.
     pub async fn edit(&self, data: &InteractionResponseData) -> anyhow::Result<()> {
+        if let Some(text) = &self.text {
+            let first = text
+                .first
+                .get()
+                .ok_or_else(|| anyhow::anyhow!("nothing posted to edit"))?;
+            return self.edit_text(text, *first, data).await;
+        }
         self.edit_original(data).await
+    }
+
+    /// The channel and id of the message the first answer became, for handlers that edit it later.
+    pub async fn original(&self) -> anyhow::Result<(u64, u64)> {
+        if let Some(text) = &self.text {
+            let first = text.first.get().ok_or_else(|| anyhow::anyhow!("nothing posted yet"))?;
+            return Ok((text.channel.get(), first.get()));
+        }
+        let message = self.app.interaction().response(&self.token).await?.model().await?;
+        Ok((message.channel_id.get(), message.id.get()))
+    }
+
+    /// A text command's answer, as a reply to the member's message. Private panels become a notice.
+    async fn post_text(&self, text: &TextTarget, mut data: InteractionResponseData) -> anyhow::Result<()> {
+        let flags = data.flags.unwrap_or(MessageFlags::empty());
+        let private = flags.contains(MessageFlags::EPHEMERAL);
+        if private && data.components.as_ref().is_some_and(|c| !c.is_empty()) {
+            data = slash_only_notice(&text.path);
+        }
+        let none = AllowedMentions::default();
+        let mentions = data.allowed_mentions.as_ref().unwrap_or(&none);
+        let mut request = self
+            .app
+            .http
+            .create_message(text.channel)
+            .reply(text.message)
+            .fail_if_not_exists(false)
+            .allowed_mentions(Some(mentions));
+        if let Some(content) = &data.content {
+            request = request.content(content);
+        }
+        if let Some(embeds) = &data.embeds {
+            request = request.embeds(embeds);
+        }
+        if let Some(components) = &data.components {
+            request = request.components(components);
+        }
+        if let Some(attachments) = &data.attachments {
+            request = request.attachments(attachments);
+        }
+        let rest = flags - MessageFlags::EPHEMERAL;
+        if !rest.is_empty() {
+            request = request.flags(rest);
+        }
+        let posted = request.await?.model().await?;
+        let _ = text.first.set(posted.id);
+        if private {
+            let (app, channel, id) = (self.app.clone(), text.channel, posted.id);
+            tokio::spawn(async move {
+                tokio::time::sleep(TEXT_PRIVATE_LINGER).await;
+                if let Err(error) = app.http.delete_message(channel, id).await {
+                    tracing::debug!(%error, "private text answer not deleted");
+                }
+            });
+        }
+        Ok(())
+    }
+
+    async fn edit_text(
+        &self,
+        text: &TextTarget,
+        message: Id<MessageMarker>,
+        data: &InteractionResponseData,
+    ) -> anyhow::Result<()> {
+        let mut request = self.app.http.update_message(text.channel, message);
+        if let Some(content) = &data.content {
+            request = request.content(Some(content));
+        }
+        if let Some(embeds) = &data.embeds {
+            request = request.embeds(Some(embeds));
+        }
+        if let Some(components) = &data.components {
+            request = request.components(Some(components));
+        }
+        if let Some(attachments) = &data.attachments {
+            request = request.attachments(attachments);
+        }
+        if let Some(mentions) = &data.allowed_mentions {
+            request = request.allowed_mentions(Some(mentions));
+        }
+        request.await?;
+        Ok(())
     }
 
     async fn edit_original(&self, data: &InteractionResponseData) -> anyhow::Result<()> {
@@ -280,6 +435,15 @@ impl Responder {
         }
         request.await?;
         Ok(())
+    }
+}
+
+/// What a text command answers instead of a private panel or a form: the slash command to use.
+pub(crate) fn slash_only_notice(path: &str) -> InteractionResponseData {
+    InteractionResponseData {
+        content: Some(format!("This one only works as a slash command: use `/{path}`.")),
+        flags: Some(MessageFlags::EPHEMERAL),
+        ..Default::default()
     }
 }
 

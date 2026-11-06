@@ -21,6 +21,7 @@ use crate::{
         party::ConfigGambling,
         party_games::{ConfigPartyGames, party_summary},
         points::ConfigPoints,
+        prefix::{ConfigPrefix, prefix_summary},
         rep_roles::ConfigRepRoles,
         store::ConfigStore,
         suggest::{ConfigSuggestions, suggestions_summary},
@@ -85,6 +86,8 @@ pub enum ConfigCommand {
     PartyGames(ConfigPartyGames),
     #[command(name = "modules")]
     Modules(ConfigModules),
+    #[command(name = "prefix")]
+    Prefix(ConfigPrefix),
 }
 
 #[derive(CommandOption, CreateOption, Clone, Copy)]
@@ -243,6 +246,7 @@ impl ConfigCommand {
             Self::Surge(c) => return c.run(cx, guild).await,
             Self::PartyGames(c) => return c.run(cx, guild).await,
             Self::Modules(c) => return c.run(cx, guild).await,
+            Self::Prefix(c) => return c.run(cx, guild).await,
             Self::Points(c) => match c.apply(&cx.app.db, guild).await? {
                 Ok(settings) => settings,
                 Err(reason) => return cx.reply_ephemeral(reason).await,
@@ -267,6 +271,13 @@ impl ConfigCommand {
         embed
             .fields
             .push(EmbedFieldBuilder::new("Party games", party_summary(cx.app.db.party_strict(guild).await?)).build());
+        embed.fields.push(
+            EmbedFieldBuilder::new(
+                "Text commands",
+                prefix_summary(settings.prefix(), cx.app.message_content),
+            )
+            .build(),
+        );
         cx.reply(InteractionResponseData {
             embeds: Some(vec![embed]),
             flags: Some(MessageFlags::EPHEMERAL),

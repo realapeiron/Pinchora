@@ -13,6 +13,7 @@ mod responder;
 mod roles;
 mod server_events;
 mod server_log;
+mod text;
 mod util;
 mod voice_xp;
 
@@ -41,6 +42,7 @@ pub use house_view::{
 pub use invalidations::listen as listen_for_invalidations;
 pub use responder::Responder;
 pub use server_events::{spawn_ticker as spawn_events_ticker, tick as events_tick};
+pub use text::on_text_command;
 pub use util::fill;
 pub use voice_xp::{
     forget as forget_voice_presence, prune as voice_prune, spawn_ticker as spawn_voice_ticker, tick as voice_tick,

@@ -21,6 +21,7 @@ use tokio::sync::Semaphore;
 use tokio_util::task::TaskTracker;
 use twilight_http::{Client, client::InteractionClient};
 use twilight_model::{
+    guild::Role,
     id::{
         Id,
         marker::{ApplicationMarker, UserMarker},
@@ -45,6 +46,13 @@ pub(crate) struct VoiceGuild {
     pub rules: Arc<XpRules>,
 }
 
+/// What a text command needs about a server to stand in for Discord: who owns it and its roles with
+/// their permissions.
+pub(crate) struct GuildFacts {
+    pub owner: u64,
+    pub roles: Vec<Role>,
+}
+
 /// Everything a handler needs. Built once per process and shared as `Arc<App>`.
 pub struct App {
     /// REST client; goes through the shared http-proxy when one is configured.
@@ -56,12 +64,16 @@ pub struct App {
     pub cache: Cache,
     /// Shown by /ping, e.g. `gateway-2 (shards 32-47)` or `interactions`.
     pub node: String,
+    /// Whether the gateway reads message text (the Message Content intent), so text commands work
+    /// with a server's prefix; without it they need an @mention of the bot.
+    pub message_content: bool,
     pub web: reqwest::Client,
     pub sprites: Arc<crate::game::scene::Sprites>,
     renderer: Arc<Renderer>,
     render_slots: Arc<Semaphore>,
     guild_settings: Moka<u64, Arc<GuildSettings>>,
     guild_roles: Moka<u64, Arc<HashMap<u64, String>>>,
+    guild_facts: Moka<u64, Arc<GuildFacts>>,
     xp_rules: Moka<u64, Arc<XpRules>>,
     module_rules: Moka<u64, Arc<GuildModules>>,
     voice_guilds: Moka<u64, Arc<VoiceGuild>>,
@@ -93,6 +105,7 @@ impl App {
             db,
             cache,
             node,
+            message_content: false,
             web: reqwest::Client::builder()
                 .timeout(Duration::from_secs(5))
                 .user_agent("Pinchora (https://github.com/realapeiron/Pinchora)")
@@ -107,6 +120,10 @@ impl App {
                 .time_to_live(Duration::from_secs(60))
                 .build(),
             guild_roles: Moka::builder()
+                .max_capacity(10_000)
+                .time_to_live(Duration::from_secs(60))
+                .build(),
+            guild_facts: Moka::builder()
                 .max_capacity(10_000)
                 .time_to_live(Duration::from_secs(60))
                 .build(),
@@ -285,6 +302,22 @@ impl App {
             .await
             .map_err(|error| tracing::debug!(%error, guild_id, "role lookup failed"))
             .ok()
+    }
+
+    /// A server's owner and roles, cached for a minute; asked for by text commands only.
+    pub(crate) async fn guild_facts(&self, guild_id: u64) -> anyhow::Result<Arc<GuildFacts>> {
+        self.guild_facts
+            .try_get_with(guild_id, async {
+                let id = Id::new(guild_id.max(1));
+                let guild = self.http.guild(id).await?.model().await?;
+                let roles = self.http.roles(id).await?.models().await?;
+                anyhow::Ok(Arc::new(GuildFacts {
+                    owner: guild.owner_id.get(),
+                    roles,
+                }))
+            })
+            .await
+            .map_err(|e| anyhow::anyhow!("{e:#}"))
     }
 
     /// Counts progress on today's quest of `kind`, if the player has that quest today.
