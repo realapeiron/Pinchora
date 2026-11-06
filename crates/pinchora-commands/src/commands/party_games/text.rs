@@ -1,6 +1,6 @@
 //! Cleaning what members type into the party games before anybody sees it.
 
-use pinchora_core::i18n::Lang;
+use pinchora_core::{i18n::Lang, t};
 use pinchora_game::party::filter::is_profane_for;
 
 use crate::util::strip_mentions;
@@ -14,14 +14,10 @@ pub(crate) enum Refused {
 }
 
 impl Refused {
-    pub(crate) fn say(self) -> &'static str {
+    pub(crate) fn say(self, lang: Lang) -> String {
         match self {
-            Self::Empty => {
-                "There is nothing left to show once links, mentions and formatting are taken out. Try again with plain words!"
-            }
-            Self::Profane => {
-                "Let's keep it friendly: that one has a word this table doesn't allow. Try different words!"
-            }
+            Self::Empty => t!(lang, "party.refused.empty"),
+            Self::Profane => t!(lang, "party.refused.profane"),
         }
     }
 }
@@ -88,12 +84,12 @@ pub(crate) fn clean_for(text: &str, strict: bool, lang: Lang) -> Result<String, 
 }
 
 /// A name for the table: the member's own, cleaned and at most 24 characters; a rude one is swapped
-/// for a plain label rather than shown.
-pub(crate) fn name(raw: &str) -> String {
+/// for a plain label (in `lang`) rather than shown.
+pub(crate) fn name(raw: &str, lang: Lang) -> String {
     let cleaned = clean(raw, false).unwrap_or_default();
     let short: String = cleaned.chars().take(24).collect();
     if short.trim().is_empty() {
-        "Player".to_owned()
+        t!(lang, "party.player")
     } else {
         short
     }
@@ -143,6 +139,7 @@ mod tests {
 
     #[test]
     fn names_are_short_and_never_rude() {
+        let name = |raw: &str| super::name(raw, Lang::En);
         assert_eq!(name("Captain Pinch"), "Captain Pinch");
         assert_eq!(name(&"x".repeat(60)).chars().count(), 24);
         assert_eq!(name("<@5> "), "Player");
@@ -150,5 +147,6 @@ mod tests {
         assert_eq!(name("Matsushita"), "Matsushita");
         assert_eq!(name("f*ck"), "Player");
         assert_eq!(name("@everyone"), "everyone");
+        assert_eq!(super::name("<@5> ", Lang::Tr), "Oyuncu");
     }
 }

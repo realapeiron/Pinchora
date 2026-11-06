@@ -30,6 +30,7 @@ fn main() -> anyhow::Result<()> {
     pieces[6] = 0;
     pieces[21] = 2;
     let card = ChessCard {
+        lang: pinchora_core::i18n::Lang::En,
         pieces: &pieces,
         names: ["Captain Pinch", "Marlowe"],
         turn: Some(1),
@@ -78,6 +79,7 @@ fn main() -> anyhow::Result<()> {
     cells[9] = 4;
     cells[18] = 3;
     let card = CheckersCard {
+        lang: pinchora_core::i18n::Lang::En,
         cells: &cells,
         names: ["Captain Pinch", "Marlowe"],
         turn: Some(0),
@@ -132,6 +134,7 @@ fn main() -> anyhow::Result<()> {
         .filter(|s| s.sunk)
         .collect();
     let card = RadarCard {
+        lang: pinchora_core::i18n::Lang::En,
         seas: [
             SeaView {
                 name: "Captain Pinch",
@@ -155,6 +158,7 @@ fn main() -> anyhow::Result<()> {
     };
     std::fs::write(format!("{out}/radar.png"), r.radar_card(&card)?)?;
     let card = FleetCard {
+        lang: pinchora_core::i18n::Lang::En,
         title: "Your fleet",
         subtitle: "Marlowe's shots so far",
         sea: SeaView {
@@ -305,6 +309,7 @@ fn main() -> anyhow::Result<()> {
         creatures: &art,
         fresh: Some(15),
         status: "Biggest tile: 8192, the chest!",
+        lang: pinchora_core::i18n::Lang::En,
         theme: Theme::reef(),
     };
     std::fs::write(format!("{out}/tide2048.png"), r.tide2048_card(&card)?)?;

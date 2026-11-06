@@ -1,0 +1,11 @@
+# /play stats.
+
+[play.stats]
+bot = "Bots don't play games. They just referee."
+best = "\nBest score **{score}**"
+record = "**{won}** won of **{played}**\n{percent}% wins{best}"
+none = "Not played yet"
+title = "{name}'s games"
+no-games = "No games yet. Try `/duel connect4`, `/play wordle` or `/play trivia`!"
+summary = "**{won}** wins in **{played}** games."
+footer = "Counted when a game finishes; timeouts and declined challenges don't count."

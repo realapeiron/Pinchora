@@ -5,6 +5,7 @@
 
 use std::{str::Split, time::Duration};
 
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::PicrossGame;
 use pinchora_game::play::{
     Game,
@@ -95,7 +96,7 @@ pub(crate) async fn start(cx: &Cx, daily: bool) -> anyhow::Result<()> {
             None => new_practice(&cx.app, me).await?,
         }
     };
-    let data = view(&cx.app, &game, None, None, "").await?;
+    let data = view(&cx.app, cx.lang(), &game, None, None, "").await?;
     cx.reply(data).await
 }
 
@@ -129,18 +130,18 @@ fn clue_text(clue: &[u8]) -> String {
 }
 
 /// The menus and buttons under the board: pick a row, then its filled cells.
-fn controls(game: &PicrossGame, puzzle: &Puzzle, row: Option<usize>) -> Vec<Component> {
+fn controls(lang: Lang, game: &PicrossGame, puzzle: &Puzzle, row: Option<usize>) -> Vec<Component> {
     let daily = game.mode == DAILY;
     let tag = format!("{}:{}", game.mode, game.day);
     if game.solved() {
         let (id, label) = if daily {
-            (format!("pz:s:{tag}"), "Share result")
+            (format!("pz:s:{tag}"), t!(lang, "picross.share"))
         } else {
-            ("pz:n:practice:0".to_owned(), "New puzzle")
+            ("pz:n:practice:0".to_owned(), t!(lang, "picross.new-puzzle"))
         };
         return vec![Component::ActionRow(ActionRow {
             id: None,
-            components: vec![button(id, label, ButtonStyle::Success, false)],
+            components: vec![button(id, &label, ButtonStyle::Success, false)],
         })];
     }
     let grid = grid_of(game);
@@ -149,7 +150,7 @@ fn controls(game: &PicrossGame, puzzle: &Puzzle, row: Option<usize>) -> Vec<Comp
         .map(|y| {
             let done = grid.row_done(&clues, y);
             option(
-                format!("Row {}", y + 1),
+                t!(lang, "picross.row", number = y + 1),
                 y.to_string(),
                 Some(format!(
                     "{}{}",
@@ -160,7 +161,12 @@ fn controls(game: &PicrossGame, puzzle: &Puzzle, row: Option<usize>) -> Vec<Comp
             )
         })
         .collect();
-    let mut out = vec![select_row(format!("pz:r:{tag}"), "Pick a row to fill in", rows, (1, 1))];
+    let mut out = vec![select_row(
+        format!("pz:r:{tag}"),
+        &t!(lang, "picross.pick-row"),
+        rows,
+        (1, 1),
+    )];
     if let Some(y) = row {
         let cells = (0..SIZE)
             .map(|x| {
@@ -174,7 +180,7 @@ fn controls(game: &PicrossGame, puzzle: &Puzzle, row: Option<usize>) -> Vec<Comp
             .collect();
         out.push(select_row(
             format!("pz:c:{tag}:{y}"),
-            &format!("Filled cells in row {}", y + 1),
+            &t!(lang, "picross.row-cells", number = y + 1),
             cells,
             (0, SIZE as u8),
         ));
@@ -183,10 +189,15 @@ fn controls(game: &PicrossGame, puzzle: &Puzzle, row: Option<usize>) -> Vec<Comp
     out.push(Component::ActionRow(ActionRow {
         id: None,
         components: vec![
-            button(format!("pz:m:{tag}"), "Mark cells", ButtonStyle::Primary, false),
+            button(
+                format!("pz:m:{tag}"),
+                &t!(lang, "picross.mark-cells"),
+                ButtonStyle::Primary,
+                false,
+            ),
             button(
                 format!("pz:k:{tag}"),
-                &format!("Check ({left} left)"),
+                &t!(lang, "picross.check", left = left),
                 ButtonStyle::Secondary,
                 left == 0,
             ),
@@ -199,6 +210,7 @@ fn controls(game: &PicrossGame, puzzle: &Puzzle, row: Option<usize>) -> Vec<Comp
 /// found: how many marks are not part of the picture, never which.
 async fn view(
     app: &App,
+    lang: Lang,
     game: &PicrossGame,
     row: Option<usize>,
     wrong: Option<usize>,
@@ -209,24 +221,28 @@ async fn view(
     let clues: Clues = puzzle.clues();
     let daily = game.mode == DAILY;
     let title = if daily {
-        format!("Daily picross #{}", picross::puzzle_number(i64::from(game.day)))
+        t!(
+            lang,
+            "picross.title-daily",
+            number = picross::puzzle_number(i64::from(game.day))
+        )
     } else {
-        "Practice picross".to_owned()
+        t!(lang, "picross.title-practice")
     };
     let total = puzzle.solution().iter().filter(|&&c| c).count();
     let subtitle = if game.solved() {
-        "Solved!".to_owned()
+        t!(lang, "picross.subtitle-solved")
     } else {
-        format!("{} of {total}", grid.count())
+        t!(lang, "picross.subtitle-progress", count = grid.count(), total = total)
     };
     let footer = if game.solved() && daily {
-        "A new puzzle every day".to_owned()
+        t!(lang, "picross.footer-daily")
     } else if game.solved() {
-        "Press New puzzle for another".to_owned()
+        t!(lang, "picross.footer-practice")
     } else if let Some(wrong) = wrong {
-        format!("{wrong} wrong cell{}", if wrong == 1 { "" } else { "s" })
+        t!(lang, "picross.footer-wrong", count = wrong)
     } else {
-        "Pick a row, then its filled cells".to_owned()
+        t!(lang, "picross.footer-pick")
     };
     let row_done: [bool; SIZE] = std::array::from_fn(|y| grid.row_done(&clues, y));
     let col_done: [bool; SIZE] = std::array::from_fn(|x| grid.col_done(&clues, x));
@@ -251,10 +267,12 @@ async fn view(
     let color = format!("#{:06x}", puzzle.color());
     let accent = format!("#{:06x}", puzzle.accent());
     let solved = game.solved();
-    let name = puzzle.name();
+    let name = puzzle.name_in(lang);
     let cells = *grid.cells();
     let png = {
-        let title = title.clone();
+        // The card draws its words in capitals; Turkish needs its dotted İ.
+        let (title, subtitle, footer) = (lang.upper(&title), lang.upper(&subtitle), lang.upper(&footer));
+        let name = name.clone();
         app.render(move |r| {
             r.picross_card(&PicrossCard {
                 title: &title,
@@ -266,7 +284,7 @@ async fn view(
                 col_done,
                 footer: &footer,
                 reveal: solved.then_some(Reveal {
-                    name,
+                    name: &name,
                     color: &color,
                     accent: &accent,
                     cells: &paint,
@@ -277,14 +295,9 @@ async fn view(
         .await?
     };
     let description = if solved {
-        format!("You found a **{name}**! {note}")
+        t!(lang, "picross.found", name = name, note = note)
     } else {
-        format!(
-            "Each number is a run of filled cells in its row or column, in order, with a gap between runs. \
-             Pick a row and tick its filled cells, or **Mark cells** to type them (`A1 B3-B7 -C2`; a dash clears).\n\
-             **Check** says how many of your marks are wrong, not which ({MAX_CHECKS} times a puzzle), and a puzzle \
-             you checked pays less.\n{note}"
-        )
+        t!(lang, "picross.how-to", max = MAX_CHECKS, note = note)
     };
     let embed = EmbedBuilder::new()
         .color(if solved { SUCCESS } else { BRAND })
@@ -294,7 +307,7 @@ async fn view(
         embed,
         "picross.png",
         png,
-        controls(game, &puzzle_of(game), row),
+        controls(lang, game, &puzzle_of(game), row),
         true,
     ))
 }
@@ -304,32 +317,27 @@ async fn view(
 /// shares a solved daily and `pz:n:practice:0` starts another practice puzzle.
 pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[String]) -> anyhow::Result<()> {
     let me = cx.author()?.id.get();
+    let lang = cx.lang();
     let action = args.next();
     let (Some(mode), Some(day)) = (
         args.next().filter(|m| *m == DAILY || *m == PRACTICE),
         args.next().and_then(|d| d.parse::<i32>().ok()),
     ) else {
-        return cx.reply_ephemeral("This board has expired.").await;
+        return cx.reply_ephemeral(t!(lang, "picross.board-expired")).await;
     };
     if action == Some("n") {
         let game = new_practice(&cx.app, me).await?;
-        let data = view(&cx.app, &game, None, None, "").await?;
+        let data = view(&cx.app, lang, &game, None, None, "").await?;
         return cx.update(data).await;
     }
     let Some(game) = cx.app.db.picross_game(me, mode, day).await? else {
-        return cx
-            .reply_ephemeral("This puzzle isn't yours. Start one with `/play picross`!")
-            .await;
+        return cx.reply_ephemeral(t!(lang, "picross.not-yours")).await;
     };
     if mode == DAILY && i64::from(day) != today(&cx.app) && !game.solved() {
-        return cx
-            .reply_ephemeral("That puzzle has ended. Start today's with `/play picross`!")
-            .await;
+        return cx.reply_ephemeral(t!(lang, "picross.daily-ended")).await;
     }
     if practice_closed(&cx.app, &game) {
-        return cx
-            .reply_ephemeral("That practice puzzle has ended. Start another with `/play picross`!")
-            .await;
+        return cx.reply_ephemeral(t!(lang, "picross.practice-ended")).await;
     }
     match action {
         Some("r") => {
@@ -338,18 +346,18 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[S
                 .and_then(|v| v.parse::<usize>().ok())
                 .filter(|r| *r < SIZE)
             else {
-                return cx.reply_ephemeral("This menu has expired.").await;
+                return cx.reply_ephemeral(t!(lang, "picross.menu-expired")).await;
             };
             // Only the menus change, so the picture stays as it is.
             cx.update(InteractionResponseData {
-                components: Some(controls(&game, &puzzle_of(&game), Some(row))),
+                components: Some(controls(lang, &game, &puzzle_of(&game), Some(row))),
                 ..Default::default()
             })
             .await
         }
         Some("c") => {
             let Some(row) = args.next().and_then(|r| r.parse::<usize>().ok()).filter(|r| *r < SIZE) else {
-                return cx.reply_ephemeral("This menu has expired.").await;
+                return cx.reply_ephemeral(t!(lang, "picross.menu-expired")).await;
             };
             let picked: Vec<usize> = values.iter().filter_map(|v| v.parse().ok()).collect();
             mark(cx, me, mode, day, Some(row), move |grid| {
@@ -360,35 +368,35 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[S
             .await
         }
         Some("m") if !game.solved() => {
-            cx.modal(format!("pz:m:{mode}:{day}"), "Mark cells", vec![cells_field()])
-                .await
+            cx.modal(
+                format!("pz:m:{mode}:{day}"),
+                &t!(lang, "picross.mark-cells"),
+                vec![cells_field(lang)],
+            )
+            .await
         }
         Some("k") if !game.solved() => {
             let Some(checked) = cx.app.db.picross_check(me, mode, day, MAX_CHECKS).await? else {
-                return cx.reply_ephemeral("You have used every check on this puzzle.").await;
+                return cx.reply_ephemeral(t!(lang, "picross.no-checks")).await;
             };
             let wrong = grid_of(&checked).wrong(&puzzle_of(&checked));
             let left = (MAX_CHECKS - checked.checks).max(0);
             let note = match wrong {
-                0 => "No mistakes so far.".to_owned(),
-                1 => "**1** of your marks is not part of the picture.".to_owned(),
-                n => format!("**{n}** of your marks are not part of the picture."),
+                0 => t!(lang, "picross.no-mistakes"),
+                n => t!(lang, "picross.mistakes", count = n),
             };
-            let note = format!("{note} {left} check{} left.", if left == 1 { "" } else { "s" });
-            let data = view(&cx.app, &checked, None, Some(wrong), &note).await?;
+            let note = format!("{note} {}", t!(lang, "picross.checks-left", count = left));
+            let data = view(&cx.app, lang, &checked, None, Some(wrong), &note).await?;
             cx.update(data).await
         }
         Some("s") if game.solved() && mode == DAILY => share(cx, me, day).await,
-        Some("m" | "k" | "s") => {
-            cx.reply_ephemeral("This puzzle is finished. Start another with `/play picross`!")
-                .await
-        }
-        _ => cx.reply_ephemeral("This button has expired.").await,
+        Some("m" | "k" | "s") => cx.reply_ephemeral(t!(lang, "picross.finished")).await,
+        _ => cx.reply_ephemeral(t!(lang, "picross.button-expired")).await,
     }
 }
 
 #[allow(deprecated)] // the label belongs on the Label component, so the input's own stays empty
-fn cells_field() -> Component {
+fn cells_field(lang: Lang) -> Component {
     Component::Label(Label {
         component: Box::new(Component::TextInput(TextInput {
             custom_id: CELLS_FIELD.to_owned(),
@@ -401,9 +409,9 @@ fn cells_field() -> Component {
             style: TextInputStyle::Paragraph,
             value: None,
         })),
-        description: Some("Cells to fill (A1), runs along a row or column (B3-B7), a dash in front clears".to_owned()),
+        description: Some(t!(lang, "picross.cells-help")),
         id: None,
-        label: "Cells".to_owned(),
+        label: t!(lang, "picross.cells-label"),
     })
 }
 
@@ -414,19 +422,14 @@ pub(crate) async fn on_modal(cx: &Cx, mut args: Split<'_, char>, fields: &[(Stri
         args.next().filter(|m| *m == DAILY || *m == PRACTICE),
         args.next().and_then(|d| d.parse::<i32>().ok()),
     ) else {
-        return cx.reply_ephemeral("This form has expired.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "picross.form-expired")).await;
     };
     let text = fields
         .iter()
         .find(|(id, _)| id == CELLS_FIELD)
         .map_or("", |(_, value)| value.as_str());
     let Some(marks) = parse_marks(text) else {
-        return cx
-            .reply_ephemeral(
-                "I couldn't read that. Use cells like `A1`, runs along one row or column like `B3-B7`, \
-                 and a dash in front to clear: `-C2`.",
-            )
-            .await;
+        return cx.reply_ephemeral(t!(cx.lang(), "picross.unreadable")).await;
     };
     mark(cx, me, mode, day, None, move |grid| {
         for &cell in &marks.fill {
@@ -449,27 +452,20 @@ async fn mark(
     row: Option<usize>,
     edit: impl Fn(&mut Grid),
 ) -> anyhow::Result<()> {
+    let lang = cx.lang();
     for _ in 0..4 {
         let Some(game) = cx.app.db.picross_game(me, mode, day).await? else {
-            return cx
-                .reply_ephemeral("This puzzle isn't yours. Start one with `/play picross`!")
-                .await;
+            return cx.reply_ephemeral(t!(lang, "picross.not-yours")).await;
         };
         if game.solved() {
-            return cx
-                .reply_ephemeral("This puzzle is finished. Start another with `/play picross`!")
-                .await;
+            return cx.reply_ephemeral(t!(lang, "picross.finished")).await;
         }
         // A form opened before midnight may arrive after it; yesterday's daily is closed by then.
         if mode == DAILY && i64::from(day) != today(&cx.app) {
-            return cx
-                .reply_ephemeral("That puzzle has ended. Start today's with `/play picross`!")
-                .await;
+            return cx.reply_ephemeral(t!(lang, "picross.daily-ended")).await;
         }
         if practice_closed(&cx.app, &game) {
-            return cx
-                .reply_ephemeral("That practice puzzle has ended. Start another with `/play picross`!")
-                .await;
+            return cx.reply_ephemeral(t!(lang, "picross.practice-ended")).await;
         }
         let puzzle = puzzle_of(&game);
         let mut grid = grid_of(&game);
@@ -484,34 +480,32 @@ async fn mark(
             continue;
         };
         let note = if solved {
-            finish(&cx.app, me, &updated).await?
+            finish(&cx.app, lang, me, &updated).await?
         } else {
             String::new()
         };
-        let data = view(&cx.app, &updated, row, None, &note).await?;
+        let data = view(&cx.app, lang, &updated, row, None, &note).await?;
         return cx.update(data).await;
     }
-    cx.reply_ephemeral("The board changed while you marked. Try again.")
-        .await
+    cx.reply_ephemeral(t!(lang, "picross.board-changed")).await
 }
 
 /// Counts a solved puzzle and pays for it; returns what to tell the player.
-async fn finish(app: &App, me: u64, game: &PicrossGame) -> anyhow::Result<String> {
+async fn finish(app: &App, lang: Lang, me: u64, game: &PicrossGame) -> anyhow::Result<String> {
     record(app, Game::Picross, me, true).await;
     if game.mode == DAILY {
         // A daily solved before the player deleted their data was paid then.
         if app.db.daily_picross_solved_before_deleting(me, game.day).await? {
-            return Ok("(You solved today's puzzle before deleting your data, so it pays nothing again.)".to_owned());
+            return Ok(t!(lang, "picross.replayed"));
         }
         let days = app.db.picross_days_solved(me, 40).await?;
         let streak = streak(&days, today(app));
         let shells = daily_reward(streak, game.checks);
         app.db.earn_shells(me, shells, "picross_daily").await?;
-        let days = if streak == 1 { "" } else { "s" };
         return Ok(if game.checks > 0 {
-            format!("+**{shells}** shells (less, because you checked), a streak of **{streak}** day{days}!")
+            t!(lang, "picross.paid-daily-checked", shells = shells, count = streak)
         } else {
-            format!("+**{shells}** shells, a streak of **{streak}** day{days}!")
+            t!(lang, "picross.paid-daily", shells = shells, count = streak)
         });
     }
     let reward = if game.checks > 0 {
@@ -521,9 +515,9 @@ async fn finish(app: &App, me: u64, game: &PicrossGame) -> anyhow::Result<String
     };
     let paid = pay_win(app, me, Game::Picross, reward, "picross_win").await?;
     Ok(if paid > 0 {
-        format!("+**{paid}** shells!")
+        t!(lang, "picross.paid", paid = paid)
     } else {
-        "(Today's reward limit for practice is reached.)".to_owned()
+        t!(lang, "picross.limit-reached")
     })
 }
 
@@ -535,15 +529,17 @@ async fn share(cx: &Cx, me: u64, day: i32) -> anyhow::Result<()> {
         .once(&format!("picrossshare:{me}:{day}"), Duration::from_secs(2 * 86_400))
         .await?
     {
-        return cx.reply_ephemeral("You already shared this result.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "picross.already-shared")).await;
     }
     let days = cx.app.db.picross_days_solved(me, 40).await?;
     let streak = streak(&days, i64::from(day));
     cx.reply(InteractionResponseData {
-        content: Some(format!(
-            "🧩 {} solved the daily Pixel Picross #{}! 🔥 {streak} day streak",
-            mention(me),
-            picross::puzzle_number(i64::from(day))
+        content: Some(t!(
+            cx.lang(),
+            "picross.shared",
+            user = mention(me),
+            number = picross::puzzle_number(i64::from(day)),
+            streak = streak
         )),
         allowed_mentions: quiet(),
         ..Default::default()

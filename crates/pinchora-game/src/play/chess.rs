@@ -5,6 +5,8 @@
 
 use std::fmt;
 
+use pinchora_core::{i18n::Lang, t};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Color {
     White,
@@ -50,14 +52,15 @@ impl Kind {
         }
     }
 
-    pub fn name(self) -> &'static str {
+    /// The piece's name in `lang` (`chess.piece-<kind>`).
+    pub fn name(self, lang: Lang) -> String {
         match self {
-            Self::Pawn => "Pawn",
-            Self::Knight => "Knight",
-            Self::Bishop => "Bishop",
-            Self::Rook => "Rook",
-            Self::Queen => "Queen",
-            Self::King => "King",
+            Self::Pawn => t!(lang, "chess.piece-pawn"),
+            Self::Knight => t!(lang, "chess.piece-knight"),
+            Self::Bishop => t!(lang, "chess.piece-bishop"),
+            Self::Rook => t!(lang, "chess.piece-rook"),
+            Self::Queen => t!(lang, "chess.piece-queen"),
+            Self::King => t!(lang, "chess.piece-king"),
         }
     }
 
@@ -701,13 +704,14 @@ impl Outcome {
         }
     }
 
-    pub fn describe(self) -> &'static str {
+    /// Why the game is over, as a phrase in `lang` (`chess.how-<outcome>`).
+    pub fn describe(self, lang: Lang) -> String {
         match self {
-            Self::Checkmate { .. } => "checkmate",
-            Self::Stalemate => "stalemate",
-            Self::FiftyMoves => "the fifty-move rule",
-            Self::Repetition => "threefold repetition",
-            Self::Insufficient => "not enough pieces left to mate",
+            Self::Checkmate { .. } => t!(lang, "chess.how-checkmate"),
+            Self::Stalemate => t!(lang, "chess.how-stalemate"),
+            Self::FiftyMoves => t!(lang, "chess.how-fifty"),
+            Self::Repetition => t!(lang, "chess.how-repetition"),
+            Self::Insufficient => t!(lang, "chess.how-insufficient"),
         }
     }
 }
@@ -1119,5 +1123,22 @@ mod tests {
         let position = Position::from_fen("rnbqkbnr/ppp2ppp/8/8/8/8/PPPP1PPP/RNB1KBNR w KQkq - 0 1").expect("fen");
         assert_eq!(position.missing(Color::White), [1, 0, 0, 0, 1]);
         assert_eq!(position.missing(Color::Black), [2, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn pieces_and_endings_are_named_in_every_language() {
+        assert_eq!(Kind::Knight.name(Lang::En), "Knight");
+        assert_eq!(Kind::Knight.name(Lang::Tr), "At");
+        let mate = Outcome::Checkmate { winner: Color::White };
+        assert_eq!(mate.describe(Lang::En), "checkmate");
+        assert_eq!(mate.describe(Lang::Tr), "şah mat");
+        for outcome in [
+            Outcome::Stalemate,
+            Outcome::FiftyMoves,
+            Outcome::Repetition,
+            Outcome::Insufficient,
+        ] {
+            assert_ne!(outcome.describe(Lang::En), outcome.describe(Lang::Tr), "{outcome:?}");
+        }
     }
 }

@@ -3,6 +3,8 @@
 
 use std::fmt::Write;
 
+use pinchora_core::{i18n::Lang, t};
+
 use super::{PIXEL, SANS, text};
 use crate::{
     Theme,
@@ -44,7 +46,7 @@ fn background(out: &mut String, w: f32, h: f32, t: &Theme) {
     }
 }
 
-fn heading(s: &mut String, t: &Theme, title: &str, right: &str) {
+fn heading(s: &mut String, t: &Theme, lang: Lang, title: &str, right: &str) {
     text(
         s,
         36.0,
@@ -54,7 +56,7 @@ fn heading(s: &mut String, t: &Theme, title: &str, right: &str) {
         false,
         &t.ink,
         "start",
-        &escape(&title.to_uppercase()),
+        &escape(&lang.upper(title)),
     );
     if !right.is_empty() {
         let chip = pixel_width(right, 16.0) + 28.0;
@@ -68,12 +70,12 @@ fn heading(s: &mut String, t: &Theme, title: &str, right: &str) {
             false,
             &t.gold,
             "middle",
-            &escape(&right.to_uppercase()),
+            &escape(&lang.upper(right)),
         );
     }
 }
 
-fn footer(s: &mut String, t: &Theme, y: f32, line: &str) {
+fn footer(s: &mut String, t: &Theme, lang: Lang, y: f32, line: &str) {
     text(
         s,
         WIDTH / 2.0,
@@ -83,7 +85,7 @@ fn footer(s: &mut String, t: &Theme, y: f32, line: &str) {
         false,
         &t.muted,
         "middle",
-        &escape(&line.to_uppercase()),
+        &escape(&lang.upper(line)),
     );
 }
 
@@ -126,6 +128,8 @@ fn hearts(out: &mut String, t: &Theme, x_end: f32, y: f32, left: i32, total: i32
 
 /// 900-wide lobby: what the game is, who has joined, and how many more it needs.
 pub struct PartyLobbyCard<'a> {
+    /// The language of the labels on the card.
+    pub lang: Lang,
     pub title: &'a str,
     pub tagline: &'a str,
     pub players: &'a [String],
@@ -145,7 +149,13 @@ impl PartyLobbyCard<'_> {
         let h = top + rows as f32 * 56.0 + 70.0;
         let mut s = open(WIDTH, h);
         background(&mut s, WIDTH, h, t);
-        heading(&mut s, t, self.title, &format!("{}/{}", self.players.len(), max));
+        heading(
+            &mut s,
+            t,
+            self.lang,
+            self.title,
+            &format!("{}/{}", self.players.len(), max),
+        );
         for (i, line) in lines.iter().enumerate() {
             text(
                 &mut s,
@@ -206,7 +216,7 @@ impl PartyLobbyCard<'_> {
                     false,
                     &mix(&t.muted, &t.bg_bottom, 0.5),
                     "start",
-                    "open seat",
+                    &t!(self.lang, "party.card.open-seat"),
                 ),
             }
         }
@@ -214,9 +224,9 @@ impl PartyLobbyCard<'_> {
         let line = if need == 0 {
             self.footer.to_owned()
         } else {
-            format!("Waiting for {need} more player{}", if need == 1 { "" } else { "s" })
+            t!(self.lang, "party.card.waiting", count = need)
         };
-        footer(&mut s, t, h - 26.0, &line);
+        footer(&mut s, t, self.lang, h - 26.0, &line);
         s.push_str("</svg>");
         s
     }
@@ -236,6 +246,8 @@ pub struct PearlSeat<'a> {
 
 /// 900×560 Hot Pearl table: the pearl with its syllable in the middle, the players round it.
 pub struct PearlCard<'a> {
+    /// The language of the labels on the card.
+    pub lang: Lang,
     pub syllable: &'a str,
     pub seats: &'a [PearlSeat<'a>],
     /// The line under the pearl: whose turn it is and for how long, or what just happened.
@@ -272,7 +284,7 @@ impl PearlCard<'_> {
         rect(&mut s, cx - 6.0, cy - 112.0, 6.0, 30.0, "#c98a1e");
         rect(&mut s, cx - 6.0, cy - 112.0, 6.0, 6.0, "#ffd166");
         sprite(&mut s, STAR, cx - 15.0, cy - 138.0, 4.0, &t.accent, "#ffd166");
-        let syllable = self.syllable.to_uppercase();
+        let syllable = self.lang.upper(self.syllable);
         text(
             &mut s,
             cx - 2.0,
@@ -311,7 +323,17 @@ impl PearlCard<'_> {
                 &escape(&truncate_to(seat.name, 17.0, cw - 28.0)),
             );
             if seat.out {
-                text(&mut s, x + 14.0, y + 46.0, 12.0, PIXEL, false, &t.muted, "start", "OUT");
+                text(
+                    &mut s,
+                    x + 14.0,
+                    y + 46.0,
+                    12.0,
+                    PIXEL,
+                    false,
+                    &t.muted,
+                    "start",
+                    &t!(self.lang, "hotpearl.card.out"),
+                );
             } else {
                 hearts(&mut s, t, x + cw - 10.0, y + 31.0, seat.lives, seat.max_lives);
                 if seat.current {
@@ -324,7 +346,7 @@ impl PearlCard<'_> {
                         false,
                         &t.gold,
                         "start",
-                        "HOLDS THE PEARL",
+                        &t!(self.lang, "hotpearl.card.holds"),
                     );
                 }
             }
@@ -340,7 +362,7 @@ impl PearlCard<'_> {
             false,
             &t.gold,
             "middle",
-            &escape(&truncate_pixel(&self.banner.to_uppercase(), 15.0, 840.0)),
+            &escape(&truncate_pixel(&self.lang.upper(self.banner), 15.0, 840.0)),
         );
         if let Some(word) = self.last_word {
             text(
@@ -352,7 +374,7 @@ impl PearlCard<'_> {
                 false,
                 &t.muted,
                 "middle",
-                &escape(&format!("LAST WORD {}", word.to_uppercase())),
+                &escape(&t!(self.lang, "hotpearl.card.last-word", word = self.lang.upper(word))),
             );
         }
         s.push_str("</svg>");
@@ -392,7 +414,7 @@ impl StandingsCard<'_> {
         let h = 150.0 + self.rows.len().min(10) as f32 * 62.0 + 40.0;
         let mut s = open(WIDTH, h);
         background(&mut s, WIDTH, h, t);
-        heading(&mut s, t, self.title, "");
+        heading(&mut s, t, Lang::En, self.title, "");
         text(
             &mut s,
             36.0,
@@ -449,7 +471,7 @@ impl StandingsCard<'_> {
                 false,
                 &t.ink,
                 "end",
-                &escape(&row.score.to_uppercase()),
+                &escape(&Lang::En.upper(row.score)),
             );
             if !row.note.is_empty() {
                 text(
@@ -461,11 +483,11 @@ impl StandingsCard<'_> {
                     false,
                     &t.mint,
                     "end",
-                    &escape(&row.note.to_uppercase()),
+                    &escape(&Lang::En.upper(row.note)),
                 );
             }
         }
-        footer(&mut s, t, h - 16.0, self.footer);
+        footer(&mut s, t, Lang::En, h - 16.0, self.footer);
         s.push_str("</svg>");
         s
     }
@@ -489,7 +511,7 @@ impl LettersCard<'_> {
         let (w, h) = (WIDTH, 380.0);
         let mut s = open(w, h);
         background(&mut s, w, h, t);
-        heading(&mut s, t, self.title, self.round);
+        heading(&mut s, t, Lang::En, self.title, self.round);
         let n = self.letters.len().max(1) as f32;
         let (tile, gap) = (120.0, 22.0);
         let x0 = (w - (n * tile + (n - 1.0) * gap)) / 2.0;
@@ -531,7 +553,7 @@ impl LettersCard<'_> {
                 &escape(&truncate_to(line, 20.0, 828.0)),
             );
         }
-        footer(&mut s, t, 350.0, self.status);
+        footer(&mut s, t, Lang::En, 350.0, self.status);
         s.push_str("</svg>");
         s
     }
@@ -557,6 +579,8 @@ pub struct EntryRow<'a> {
 
 /// 900-wide list of numbered entries: anonymous while people vote, with names and votes at the reveal.
 pub struct EntriesCard<'a> {
+    /// The language of the labels on the card.
+    pub lang: Lang,
     pub title: &'a str,
     pub subtitle: &'a str,
     /// What the right-hand chip says, e.g. `ROUND 2/3`.
@@ -581,7 +605,7 @@ impl EntriesCard<'_> {
         let h = top + rows as f32 * 78.0 + 44.0;
         let mut s = open(WIDTH, h);
         background(&mut s, WIDTH, h, t);
-        heading(&mut s, t, self.title, self.chip);
+        heading(&mut s, t, self.lang, self.title, self.chip);
         text(
             &mut s,
             36.0,
@@ -665,14 +689,14 @@ impl EntriesCard<'_> {
                 );
             }
             if let Some(votes) = row.votes {
-                let label = format!("{votes} VOTE{}", if votes == 1 { "" } else { "S" });
+                let label = t!(self.lang, "party.card.votes", count = votes);
                 text(&mut s, 846.0, y + 56.0, 14.0, PIXEL, false, &t.mint, "end", &label);
             }
             if row.winner {
                 sprite(&mut s, STAR, 600.0, y + 24.0, 3.0, &t.gold, "#fff1e8");
             }
         }
-        footer(&mut s, t, h - 16.0, self.footer);
+        footer(&mut s, t, self.lang, h - 16.0, self.footer);
         s.push_str("</svg>");
         s
     }
@@ -697,6 +721,8 @@ pub struct Racer<'a> {
 
 /// 900×440 Wordle Race: a small board for each racer showing colours only.
 pub struct RaceCard<'a> {
+    /// The language of the labels on the card.
+    pub lang: Lang,
     pub title: &'a str,
     pub racers: &'a [Racer<'a>],
     pub footer: &'a str,
@@ -709,7 +735,7 @@ impl RaceCard<'_> {
         let (w, h) = (WIDTH, 440.0);
         let mut s = open(w, h);
         background(&mut s, w, h, t);
-        heading(&mut s, t, self.title, "");
+        heading(&mut s, t, self.lang, self.title, "");
         let n = self.racers.len().clamp(1, 4) as f32;
         let col_w = (w - 72.0 - (n - 1.0) * 16.0) / n;
         let (tile, gap) = (24.0, 4.0);
@@ -756,9 +782,16 @@ impl RaceCard<'_> {
                 }
             }
             let (label, colour) = match racer.state {
-                RacerState::Solved(tries) => (format!("SOLVED IN {tries}"), &t.mint),
-                RacerState::Failed => ("OUT OF TRIES".to_owned(), &t.muted),
-                RacerState::Playing => (format!("{} LEFT", 6usize.saturating_sub(racer.rows.len())), &t.gold),
+                RacerState::Solved(tries) => (t!(self.lang, "wordrace.card.solved", count = tries), &t.mint),
+                RacerState::Failed => (t!(self.lang, "wordrace.card.failed"), &t.muted),
+                RacerState::Playing => (
+                    t!(
+                        self.lang,
+                        "wordrace.card.left",
+                        count = 6usize.saturating_sub(racer.rows.len())
+                    ),
+                    &t.gold,
+                ),
             };
             text(
                 &mut s,
@@ -772,7 +805,7 @@ impl RaceCard<'_> {
                 &label,
             );
         }
-        footer(&mut s, t, 420.0, self.footer);
+        footer(&mut s, t, self.lang, 420.0, self.footer);
         s.push_str("</svg>");
         s
     }
@@ -782,6 +815,8 @@ impl RaceCard<'_> {
 
 /// A postcard: the scene (960×540 PNG) on cream paper with a stamp, a postmark and the place it greets from.
 pub struct PostcardCard<'a> {
+    /// The language of the labels on the card.
+    pub lang: Lang,
     pub scene: &'a [u8],
     pub place: &'a str,
     /// Stamped in the corner: `ROUND 2/3`.
@@ -818,7 +853,17 @@ impl PostcardCard<'_> {
             flip = !flip;
         }
         // The title: GREETINGS FROM, then the place in big letters.
-        text(&mut s, 44.0, 58.0, 18.0, PIXEL, false, red, "start", "GREETINGS FROM");
+        text(
+            &mut s,
+            44.0,
+            58.0,
+            18.0,
+            PIXEL,
+            false,
+            red,
+            "start",
+            &escape(&t!(self.lang, "postcard.card.greetings")),
+        );
         text(
             &mut s,
             44.0,
@@ -828,7 +873,7 @@ impl PostcardCard<'_> {
             true,
             ink,
             "start",
-            &escape(&truncate_pixel(&self.place.to_uppercase(), 48.0, 640.0)),
+            &escape(&truncate_pixel(&self.lang.upper(self.place), 48.0, 640.0)),
         );
         // The picture, one image pixel to one card pixel, in a white mount.
         rect(&mut s, 34.0, 128.0, 972.0, 552.0, "#ffffff");
@@ -862,7 +907,7 @@ impl PostcardCard<'_> {
             false,
             ink,
             "middle",
-            &escape(&self.stamp.to_uppercase()),
+            &escape(&self.lang.upper(self.stamp)),
         );
         // A postmark with wavy lines beside it.
         let _ = write!(
@@ -870,7 +915,17 @@ impl PostcardCard<'_> {
             r##"<circle cx="830" cy="58" r="34" fill="none" stroke="{ink}" stroke-opacity="0.55" stroke-width="3"/><path d="M650,40 h120 M650,56 h120 M650,72 h120" stroke="{ink}" stroke-opacity="0.45" stroke-width="3" stroke-dasharray="12 6"/>"##
         );
         text(&mut s, 830.0, 54.0, 10.0, PIXEL, false, ink, "middle", "PINCHORA");
-        text(&mut s, 830.0, 70.0, 10.0, PIXEL, false, ink, "middle", "REEF POST");
+        text(
+            &mut s,
+            830.0,
+            70.0,
+            10.0,
+            PIXEL,
+            false,
+            ink,
+            "middle",
+            &escape(&t!(self.lang, "postcard.card.post")),
+        );
         s.push_str("</svg>");
         s
     }
@@ -880,6 +935,8 @@ impl PostcardCard<'_> {
 
 /// 900×470 Would You Rather: the two sides, and the split once it is shown.
 pub struct RatherCard<'a> {
+    /// The language of the labels on the card.
+    pub lang: Lang,
     pub category: &'a str,
     pub a: &'a str,
     pub b: &'a str,
@@ -903,7 +960,7 @@ impl RatherCard<'_> {
         let (w, h) = (WIDTH, 470.0);
         let mut s = open(w, h);
         background(&mut s, w, h, t);
-        heading(&mut s, t, "Would you rather", self.category);
+        heading(&mut s, t, self.lang, &t!(self.lang, "rather.card.title"), self.category);
         let total = self.votes.map_or(0, |(a, b)| a + b);
         for (i, (label, tone)) in [(self.a, &t.accent), (self.b, &t.mint)].into_iter().enumerate() {
             let x = 36.0 + i as f32 * 424.0;
@@ -969,11 +1026,11 @@ impl RatherCard<'_> {
             }
         }
         let line = match self.votes {
-            Some((a, b)) if self.closed => format!("Final: {} vote{}", a + b, if a + b == 1 { "" } else { "s" }),
-            Some(_) => "Results so far".to_owned(),
-            None => "Pick a side with the buttons".to_owned(),
+            Some((a, b)) if self.closed => t!(self.lang, "rather.card.final", count = a + b),
+            Some(_) => t!(self.lang, "rather.card.so-far"),
+            None => t!(self.lang, "rather.card.pick"),
         };
-        footer(&mut s, t, 430.0, &line);
+        footer(&mut s, t, self.lang, 430.0, &line);
         s.push_str("</svg>");
         s
     }
@@ -992,6 +1049,8 @@ pub enum PromptTone {
 
 /// 900-wide card of Truth or Dare: whose turn it is, and the truth or the dare they got.
 pub struct PromptCard<'a> {
+    /// The language of the labels on the card.
+    pub lang: Lang,
     pub tone: PromptTone,
     pub name: &'a str,
     /// The truth or dare; for a turn card, a line asking which they pick.
@@ -1005,15 +1064,15 @@ impl PromptCard<'_> {
     pub fn to_svg(&self) -> String {
         let t = &self.theme;
         let (badge, tone) = match self.tone {
-            PromptTone::Turn => ("YOUR TURN", t.gold.clone()),
-            PromptTone::Truth => ("TRUTH", t.mint.clone()),
-            PromptTone::Dare => ("DARE", t.accent.clone()),
+            PromptTone::Turn => (t!(self.lang, "dare.card.turn"), t.gold.clone()),
+            PromptTone::Truth => (t!(self.lang, "dare.card.truth"), t.mint.clone()),
+            PromptTone::Dare => (t!(self.lang, "dare.card.dare"), t.accent.clone()),
         };
         let lines = wrap_laid_out(self.text, SANS, true, 30.0, 780.0, 4);
         let h = 250.0 + lines.len() as f32 * 44.0;
         let mut s = open(WIDTH, h);
         background(&mut s, WIDTH, h, t);
-        let chip = pixel_width(badge, 22.0) + 40.0;
+        let chip = pixel_width(&badge, 22.0) + 40.0;
         panel(&mut s, 36.0, 32.0, chip, 48.0, 4.0, &mix(&t.panel, &tone, 0.2), &tone);
         text(
             &mut s,
@@ -1024,7 +1083,7 @@ impl PromptCard<'_> {
             true,
             &tone,
             "middle",
-            badge,
+            &escape(&badge),
         );
         if !self.category.is_empty() {
             let c = pixel_width(self.category, 15.0) + 28.0;
@@ -1038,7 +1097,7 @@ impl PromptCard<'_> {
                 false,
                 &t.muted,
                 "middle",
-                &escape(&self.category.to_uppercase()),
+                &escape(&self.lang.upper(self.category)),
             );
         }
         text(
@@ -1075,7 +1134,7 @@ impl PromptCard<'_> {
                 &escape(line),
             );
         }
-        footer(&mut s, t, h - 20.0, self.footer);
+        footer(&mut s, t, self.lang, h - 20.0, self.footer);
         s.push_str("</svg>");
         s
     }
@@ -1106,6 +1165,7 @@ mod tests {
     fn the_lobby_shows_seats_and_what_is_missing() {
         let players = names(2);
         let card = PartyLobbyCard {
+            lang: Lang::En,
             title: "Hot Pearl",
             tagline: "Type a word with the syllable before the pearl pops.",
             players: &players,
@@ -1137,6 +1197,7 @@ mod tests {
                 })
                 .collect();
             let card = PearlCard {
+                lang: Lang::En,
                 syllable: "ear",
                 seats: &seats,
                 banner: "Somebody has 25 seconds",
@@ -1210,6 +1271,7 @@ mod tests {
             },
         ];
         let anonymous = EntriesCard {
+            lang: Lang::En,
             title: "Which is best",
             subtitle: "Pick the best",
             chip: "Round 1/3",
@@ -1239,6 +1301,7 @@ mod tests {
             },
         ];
         let reveal = EntriesCard {
+            lang: Lang::En,
             header: Some(EntryHeader {
                 png: &png,
                 w: 960,
@@ -1276,6 +1339,7 @@ mod tests {
             },
         ];
         let card = RaceCard {
+            lang: Lang::En,
             title: "Wordle Race",
             racers: &racers,
             footer: "First to solve wins",
@@ -1290,6 +1354,7 @@ mod tests {
     fn a_postcard_keeps_its_picture_pixel_for_pixel() {
         let png = scene();
         let svg = PostcardCard {
+            lang: Lang::En,
             scene: &png,
             place: "Driftwood Dunes",
             stamp: "Round 1/3",
@@ -1304,6 +1369,7 @@ mod tests {
     #[test]
     fn would_you_rather_shows_the_split_only_when_asked() {
         let open = RatherCard {
+            lang: Lang::En,
             category: "Silly",
             a: "Have hiccups that sound like a duck",
             b: "Sneeze glitter",
@@ -1314,6 +1380,7 @@ mod tests {
         let svg = open.to_svg();
         assert!(svg.contains("PICK A SIDE") && !svg.contains('%'));
         let result = RatherCard {
+            lang: Lang::En,
             votes: Some((3, 1)),
             closed: true,
             ..open
@@ -1328,6 +1395,7 @@ mod tests {
     #[test]
     fn prompt_cards_grow_with_their_text() {
         let short = PromptCard {
+            lang: Lang::En,
             tone: PromptTone::Turn,
             name: "Ada",
             text: "Truth or dare?",
@@ -1336,6 +1404,7 @@ mod tests {
             theme: Theme::reef(),
         };
         let long = PromptCard {
+            lang: Lang::En,
             tone: PromptTone::Dare,
             text: "Describe your perfect cozy night in four sentences, and make every one of them rhyme with the last.",
             category: "Cozy",
@@ -1343,6 +1412,7 @@ mod tests {
         };
         let (short_svg, long_svg) = (
             PromptCard {
+                lang: Lang::En,
                 tone: PromptTone::Truth,
                 name: "Ada",
                 text: "Truth or dare?",
@@ -1355,5 +1425,166 @@ mod tests {
         );
         assert!(short_svg.contains(">TRUTH<") && long_svg.contains(">DARE<") && long_svg.contains("COZY"));
         assert!(size(&long_svg).1 > size(&short_svg).1);
+    }
+    /// The Turkish labels are drawn in capitals with the letters the pixel font has, and fit their places.
+    #[test]
+    fn turkish_cards_say_their_labels_and_still_fit() {
+        let tr = Lang::Tr;
+        let players = names(2);
+        let lobby = PartyLobbyCard {
+            lang: tr,
+            title: "SICAK İNCİ",
+            tagline: "Bir hece çıkar. İnci patlamadan onu içeren bir kelime yaz!",
+            players: &players,
+            min: 3,
+            max: 8,
+            footer: "HAZIR: KURUCU BAŞLAT DÜĞMESİNE BASABİLİR",
+            theme: Theme::reef(),
+        }
+        .to_svg();
+        assert!(lobby.contains("boş yer") && lobby.contains("1 OYUNCU DAHA BEKLENİYOR"));
+        assert_eq!(size(&lobby).0, 900);
+
+        let seats = [
+            PearlSeat {
+                name: "Ada",
+                lives: 1,
+                max_lives: 2,
+                out: false,
+                current: true,
+            },
+            PearlSeat {
+                name: "Bo",
+                lives: 0,
+                max_lives: 2,
+                out: true,
+                current: false,
+            },
+        ];
+        let pearl = PearlCard {
+            lang: tr,
+            syllable: "İŞ",
+            seats: &seats,
+            banner: "ADA ÇAĞLAYAN YAZDI  ·  SIRA BO KULLANICISINDA",
+            last_word: Some("ışık"),
+            theme: Theme::reef(),
+        }
+        .to_svg();
+        assert!(pearl.contains("İNCİ ONDA") && pearl.contains("ELENDİ") && pearl.contains("SON KELİME IŞIK"));
+        assert_eq!(size(&pearl), (900, 560));
+
+        let rows = [[1u8, 2, 3, 1, 1]];
+        let racers = [
+            Racer {
+                name: "Ada",
+                rows: &rows,
+                state: RacerState::Solved(6),
+            },
+            Racer {
+                name: "Bo",
+                rows: &rows,
+                state: RacerState::Playing,
+            },
+            Racer {
+                name: "Cy",
+                rows: &[],
+                state: RacerState::Failed,
+            },
+            Racer {
+                name: "Di",
+                rows: &[],
+                state: RacerState::Solved(1),
+            },
+        ];
+        let race = RaceCard {
+            lang: tr,
+            title: "WORDLE YARIŞI",
+            racers: &racers,
+            footer: "KELİMEYİ İLK BULAN KAZANIR",
+            theme: Theme::reef(),
+        }
+        .to_svg();
+        assert!(race.contains("6 DENEMEDE ÇÖZDÜ") && race.contains("5 HAK KALDI") && race.contains("HAKKI BİTTİ"));
+        assert_eq!(size(&race), (900, 440));
+
+        let entries = [EntryRow {
+            text: "Minik balinalar kızakla kayıyor",
+            author: Some("Ada"),
+            votes: Some(2),
+            winner: true,
+        }];
+        let reveal = EntriesCard {
+            lang: tr,
+            title: "KISALTMA GELGİTİ",
+            subtitle: "Harfler: T · W · R",
+            chip: "TUR 1/3",
+            header: None,
+            rows: &entries,
+            footer: "OY BAŞINA 1 PUAN, KAZANANA 2 PUAN DAHA",
+            theme: Theme::reef(),
+        }
+        .to_svg();
+        assert!(reveal.contains("2 OY") && reveal.contains("TUR 1/3"));
+
+        let postcard = PostcardCard {
+            lang: tr,
+            scene: &scene(),
+            place: "ATEŞBÖCEĞİ PİKNİĞİ",
+            stamp: "TUR 1/3",
+            theme: Theme::reef(),
+        }
+        .to_svg();
+        assert!(postcard.contains("SELAMLAR") && postcard.contains("POSTA"));
+        assert_eq!(size(&postcard), (1040, 700));
+
+        let rather = RatherCard {
+            lang: tr,
+            category: "OKYANUS",
+            a: "Bir yunusla yarışmak",
+            b: "Bir deniz kaplumbağasıyla yarışmak",
+            votes: Some((1, 2)),
+            closed: true,
+            theme: Theme::reef(),
+        };
+        let svg = rather.to_svg();
+        assert!(svg.contains("HANGİSİNİ SEÇERDİN") && svg.contains("SON SONUÇ: 3 OY") && svg.contains("67%"));
+        let open = RatherCard {
+            votes: None,
+            closed: false,
+            ..rather
+        };
+        assert!(open.to_svg().contains("DÜĞMELERLE BİR TARAF SEÇ"));
+
+        let badges: Vec<String> = [PromptTone::Turn, PromptTone::Truth, PromptTone::Dare]
+            .into_iter()
+            .map(|tone| {
+                PromptCard {
+                    lang: tr,
+                    tone,
+                    name: "Ada",
+                    text: "Doğruluk mu, cesaret mi?",
+                    category: "",
+                    footer: "YALNIZCA SIRASI GELEN OYUNCU SEÇEBİLİR",
+                    theme: Theme::reef(),
+                }
+                .to_svg()
+            })
+            .collect();
+        assert!(badges[0].contains("SIRA SENDE") && badges[1].contains("DOĞRULUK") && badges[2].contains("CESARET"));
+
+        // `PINCHORA_PREVIEW_DIR=some/dir cargo test -p pinchora-render turkish_cards` saves the pictures to look at.
+        if let Some(dir) = std::env::var_os("PINCHORA_PREVIEW_DIR").map(std::path::PathBuf::from) {
+            std::fs::create_dir_all(&dir).expect("preview dir");
+            let named = [
+                ("lobby", &lobby),
+                ("pearl", &pearl),
+                ("race", &race),
+                ("reveal", &reveal),
+            ];
+            for (name, svg) in named.into_iter().chain([("postcard", &postcard), ("rather", &svg)]) {
+                let png = Renderer::new().svg_to_png(svg).expect("renders");
+                std::fs::write(dir.join(format!("party-tr-{name}.png")), png).expect("saves");
+            }
+        }
     }
 }

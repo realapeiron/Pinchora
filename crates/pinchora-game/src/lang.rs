@@ -46,21 +46,6 @@ pub fn upper_char(lang: Lang, c: char) -> char {
     }
 }
 
-/// Capitals for a whole text (letters only change; digits and signs stay).
-pub fn upper(lang: Lang, text: &str) -> String {
-    match lang {
-        Lang::En => text.to_uppercase(),
-        Lang::Tr => text
-            .chars()
-            .flat_map(|c| match c {
-                'i' => 'İ'.to_uppercase(),
-                'ı' => 'I'.to_uppercase(),
-                c => c.to_uppercase(),
-            })
-            .collect(),
-    }
-}
-
 /// The keyboard a wordle card draws, three rows of lowercase letters: QWERTY, or the Turkish Q layout
 /// without the keys Turkish words never use (q, w, x).
 pub fn keyboard_rows(lang: Lang) -> [&'static str; 3] {
@@ -89,13 +74,13 @@ mod tests {
 
     #[test]
     fn the_two_turkish_i_letters_keep_their_dots() {
-        assert_eq!(upper(Lang::Tr, "ışık iyi çiçek"), "IŞIK İYİ ÇİÇEK");
+        assert_eq!(Lang::Tr.upper("ışık iyi çiçek"), "IŞIK İYİ ÇİÇEK");
         assert_eq!(lower(Lang::Tr, "IŞIK İYİ ÇİÇEK"), "ışık iyi çiçek");
         assert_eq!(upper_char(Lang::Tr, 'i'), 'İ');
         assert_eq!(upper_char(Lang::Tr, 'ı'), 'I');
         assert_eq!(upper_char(Lang::Tr, 'ğ'), 'Ğ');
         assert_eq!(lower(Lang::En, "PeArL"), "pearl");
         assert_eq!(upper_char(Lang::En, 'i'), 'I');
-        assert_eq!(upper(Lang::En, "pearl"), "PEARL");
+        assert_eq!(Lang::En.upper("pearl"), "PEARL");
     }
 }

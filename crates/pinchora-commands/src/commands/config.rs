@@ -248,14 +248,14 @@ impl ConfigCommand {
         embed.fields.push(
             EmbedFieldBuilder::new(
                 t!(lang, "cfg.critter-drops"),
-                critters_summary(&cx.app.db.collection_settings(guild).await?),
+                critters_summary(&cx.app.db.collection_settings(guild).await?, lang),
             )
             .build(),
         );
         embed.fields.push(
             EmbedFieldBuilder::new(
                 t!(lang, "cfg.party-games"),
-                party_summary(cx.app.db.party_strict(guild).await?),
+                party_summary(lang, cx.app.db.party_strict(guild).await?),
             )
             .build(),
         );

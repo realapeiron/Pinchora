@@ -1,5 +1,7 @@
 use std::fmt::Write;
 
+use pinchora_core::{i18n::Lang, t};
+
 use super::boards::{self, Marks, OUTLINE, SQUARE};
 use crate::{Theme, svg::background};
 
@@ -61,6 +63,8 @@ fn pearl_color(c: char, (body, light, shade): (&str, &str, &str)) -> Option<Stri
 
 /// 580×730 draughts board on the 32 dark squares, with pearls for pieces.
 pub struct CheckersCard<'a> {
+    /// The language of the labels; the status line comes translated, and in capitals.
+    pub lang: Lang,
     /// The 32 playing squares from the top left: 0 empty, 1 and 2 a man of the first or second
     /// player, 3 and 4 their kings.
     pub cells: &'a [u8; 32],
@@ -133,13 +137,12 @@ impl CheckersCard<'_> {
             let x = 24.0 + side as f32 * 270.0;
             let active = self.turn == Some(side as u8);
             let won = self.winner == Some(side as u8);
-            let left = format!("{count} LEFT");
             let (note, color) = if won {
-                ("WINNER!", t.gold.as_str())
+                (t!(self.lang, "board.card.winner"), t.gold.as_str())
             } else if active {
-                ("YOUR MOVE", t.mint.as_str())
+                (t!(self.lang, "board.card.your-move"), t.mint.as_str())
             } else {
-                (left.as_str(), t.muted.as_str())
+                (t!(self.lang, "checkers.card.left", count = count), t.muted.as_str())
             };
             boards::player_panel(
                 &mut s,
@@ -147,7 +150,7 @@ impl CheckersCard<'_> {
                 (x, 20.0),
                 (active, won),
                 self.names[side],
-                (note, color),
+                (&note, color),
                 |out, ix, iy| {
                     let _ = write!(
                         out,
@@ -198,6 +201,7 @@ mod tests {
 
     fn card<'a>(cells: &'a [u8; 32], last: &'a [u8], targets: &'a [u8]) -> CheckersCard<'a> {
         CheckersCard {
+            lang: Lang::En,
             cells,
             names: ["Marlowe", "Cap"],
             turn: Some(0),

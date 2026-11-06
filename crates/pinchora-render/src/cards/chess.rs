@@ -1,5 +1,7 @@
 use std::fmt::Write;
 
+use pinchora_core::{i18n::Lang, t};
+
 use super::boards::{self, COLORS, Marks, OUTLINE, SQUARE};
 use crate::{Theme, svg::background};
 
@@ -110,6 +112,8 @@ const PIECES: [[&str; 14]; 6] = [
 /// Pieces are numbered 1 to 6 (pawn, knight, bishop, rook, queen, king) for the first player, coral,
 /// and 7 to 12 for the second, sky blue; 0 is an empty square.
 pub struct ChessCard<'a> {
+    /// The language of the labels; the status line comes translated, and in capitals.
+    pub lang: Lang,
     /// The 64 squares from a1 (index 0) along the rank to h8 (index 63).
     pub pieces: &'a [u8; 64],
     pub names: [&'a str; 2],
@@ -165,27 +169,26 @@ impl ChessCard<'_> {
         }
         s.push_str("</defs>");
 
-        let names = ["CORAL", "SKY"];
-        for side in 0..2usize {
+        for (side, name) in self.names.iter().enumerate() {
             let x = 24.0 + side as f32 * 270.0;
             let active = self.turn == Some(side as u8);
             let won = self.winner == Some(side as u8);
             let (note, color) = if won {
-                ("WINNER!", &t.gold)
+                (t!(self.lang, "board.card.winner"), &t.gold)
             } else if active {
-                ("YOUR MOVE", &t.mint)
+                (t!(self.lang, "board.card.your-move"), &t.mint)
             } else if side == 0 {
-                ("CORAL, FIRST", &t.muted)
+                (t!(self.lang, "chess.card.coral-first"), &t.muted)
             } else {
-                (names[side], &t.muted)
+                (t!(self.lang, "chess.card.sky"), &t.muted)
             };
             boards::player_panel(
                 &mut s,
                 t,
                 (x, 20.0),
                 (active, won),
-                self.names[side],
-                (note, color),
+                name,
+                (&note, color),
                 |out, ix, iy| {
                     let (body, light) = COLORS[side];
                     let _ = write!(out, r#"<g transform="translate({ix} {iy})">"#);
@@ -249,6 +252,7 @@ mod tests {
 
     fn card<'a>(pieces: &'a [u8; 64], targets: &'a [u8]) -> ChessCard<'a> {
         ChessCard {
+            lang: Lang::En,
             pieces,
             names: ["Marlowe", "Cap"],
             turn: Some(0),

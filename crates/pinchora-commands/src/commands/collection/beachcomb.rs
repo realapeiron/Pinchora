@@ -2,10 +2,11 @@
 //! critter) for the dex.
 
 use chrono::{Duration, Timelike};
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::Comb;
 use pinchora_game::{
     collection::{self, COMB_COOLDOWN_MINUTES},
-    fishing,
+    fishing, lang as letters,
     play::Game,
 };
 use pinchora_render::{HaulCard, Theme};
@@ -27,12 +28,12 @@ use crate::{
 pub struct Beachcomb;
 
 /// How the shore looks at a part of the day, for the card's corner.
-fn shore(part: &str) -> &'static str {
+fn shore(lang: Lang, part: &str) -> String {
     match part {
-        "dawn" => "Sunrise shore",
-        "day" => "Bright shore",
-        "dusk" => "Sunset shore",
-        _ => "Moonlit shore",
+        "dawn" => t!(lang, "beach.shore-dawn"),
+        "day" => t!(lang, "beach.shore-day"),
+        "dusk" => t!(lang, "beach.shore-dusk"),
+        _ => t!(lang, "beach.shore-night"),
     }
 }
 
@@ -40,9 +41,10 @@ impl Beachcomb {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
         let app = &cx.app;
         let user = cx.author()?.id.get();
+        let lang = cx.lang();
         let now = app.now();
         let Some(entry) = collection::comb(now.hour(), chrono::Datelike::month(&now), &mut dice()) else {
-            return cx.reply_ephemeral("The tide is out of ideas. Try again soon.").await;
+            return cx.reply_ephemeral(t!(lang, "beach.nothing")).await;
         };
         let wait = Duration::minutes(COMB_COOLDOWN_MINUTES);
         let outcome = app
@@ -51,38 +53,35 @@ impl Beachcomb {
             .await?;
         let (granted, paid) = match outcome {
             Comb::Wait { ready_at } => {
-                return cx
-                    .reply_ephemeral(format!(
-                        "You walked the shore a moment ago. The tide brings more <t:{}:R>.",
-                        ready_at.timestamp()
-                    ))
-                    .await;
+                let when = format!("<t:{}:R>", ready_at.timestamp());
+                return cx.reply_ephemeral(t!(lang, "beach.wait", when = when)).await;
             }
             Comb::Found { granted, paid } => (granted, paid),
         };
         record(app, Game::Beachcomb, user, true).await;
-        let tile = haul_tile(app, entry, Some(&granted), HaulCard::SINGLE_ART_BOX);
+        let tile = haul_tile(app, lang, entry, Some(&granted), HaulCard::SINGLE_ART_BOX);
         let footer = if paid {
-            format!("Next walk in {COMB_COOLDOWN_MINUTES} minutes")
+            t!(lang, "beach.next", minutes = COMB_COOLDOWN_MINUTES)
         } else {
-            "Daily limit reached: finds still fill your dex, shells wait for tomorrow".to_owned()
+            t!(lang, "beach.limit")
         };
         let part = fishing::time_of_day(now.hour());
         let card = HaulCard {
-            title: "Beachcomb".to_owned(),
-            subtitle: shore(part).to_uppercase(),
+            title: Game::Beachcomb.name(lang),
+            subtitle: lang.upper(&shore(lang, part)),
             tiles: vec![tile],
             footer,
             theme: Theme::reef(),
         };
         let png = app.render(move |r| r.haul_card(&card)).await?;
-        let pay = money(&granted);
-        let summary = format!(
-            "{}**{}** ({}){}",
-            if granted.new { "🆕 " } else { "" },
-            entry.name,
-            entry.rarity.label().to_lowercase(),
-            if pay.is_empty() {
+        let pay = money(lang, &granted);
+        let summary = t!(
+            lang,
+            "beach.summary",
+            new = if granted.new { "🆕 " } else { "" },
+            name = entry.name_in(lang),
+            rarity = letters::lower(lang, entry.rarity.label_in(lang)),
+            pay = if pay.is_empty() {
                 String::new()
             } else {
                 format!(" · {pay}")

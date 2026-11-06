@@ -375,6 +375,20 @@ mode `daily-tr`/`practice-tr`), so no migration is needed. The party filter read
 disguises (`party/filter_tr.rs`: `ş`/`s`, `ğ`/`g` swaps, numbers, spacing, stars), and never reads the Turkish
 `gün` as the English `gun`. `tests/play_content_tr.rs` and `content/check.py` check every list.
 
+**Turkish game chrome.** Everything a game says besides its content (replies, embeds, buttons, menus, forms, refusals and
+the words on its pixel cards) is in the catalogs `locales/{en,tr}/`: `games.toml` (the games' names, `Game::name(lang)`,
+also what `/play stats` lists), `play.toml` (`/play stats`), `duel.toml` (every `/duel` game and the board helpers),
+`solo.toml` (wordle, hangman, trivia, Pixel Picross, Tide 2048), `collect.toml` (critter drops, bottles, `/dex`,
+`/beachcomb`, `/crabpot`), `party.toml` (`/party`) and `arcade.toml` (the crab derby, treasure heist, shell game and storm
+surge, including the derby GIF's own 3x5 font, which folds Ç Ğ İ Ö Ş Ü to plain letters). A public message in a channel
+(a challenge, a duel or board game's board, a party, derby, heist or storm lobby, the shell game's table, a critter drop or
+bottle) is drawn in the server's language (`/config language`, English when unset) for its whole life, whoever clicks it:
+the duel and board-game boards ask `App::guild_lang`, and a lobby locks the server's language when it opens (the derby,
+heist, storm and shell game states end in `|<code>`, the party games' JSON state holds `lang`) so the janitor does not
+switch it. What only the clicker sees (a refusal, a menu, a private picker, "not your turn") is in the clicker's own
+language; what the bot edits in by itself (a time-out, a secret pick) is in the server's. Pixel-font labels are kept in the
+catalog already in capitals, and text a card capitalises is capitalised with `Lang::upper` first (Turkish
+`i` is `İ`). The Turkish simulator flows are `tests/simulate/turkish_{duel,solo,party,arcade}.rs`.
 **Turkish pets, fishing, shops and cards.** `/pet` (with trips and the nursery), `/fish`, `/shop`, `/inventory`, `/gift`,
 `/stall`, `/plaza`, `/quests`, `/points`, `/store`, `/leaderboard`, `/wrapped`, `/remind` and the `/customize` title, style
 and showcase editors answer in the player's language: their texts are the keys of `locales/{en,tr}/{pets,fish,shop,

@@ -1,5 +1,6 @@
 //! Renders the game cards with sample data: `cargo run -p pinchora-render --example games -- <out-dir>`.
 
+use pinchora_core::i18n::Lang;
 use pinchora_render::{
     ABSENT, CORRECT, Connect4Card, HangmanCard, HangmanLetter, PRESENT, Renderer, Theme, WordleCard, WordleRow,
 };
@@ -19,6 +20,7 @@ fn main() -> anyhow::Result<()> {
     };
     let midgame = board([".......", ".......", "...2...", "...1...", "..212..", ".12121."]);
     let card = Connect4Card {
+        lang: pinchora_core::i18n::Lang::En,
         cells: &midgame,
         names: ["Captain Pinch", "Marlowe"],
         turn: Some(1),
@@ -32,6 +34,7 @@ fn main() -> anyhow::Result<()> {
     std::fs::write(format!("{out}/connect4-midgame.png"), r.connect4_card(&card)?)?;
     let won = board([".......", ".......", "...1...", "..12...", ".122...", "12121.."]);
     let card = Connect4Card {
+        lang: pinchora_core::i18n::Lang::En,
         cells: &won,
         names: ["Captain Pinch", "A very long display name"],
         turn: None,
@@ -71,6 +74,7 @@ fn main() -> anyhow::Result<()> {
             } else {
                 "Pick a letter below"
             },
+            lang: Lang::En,
             theme: Theme::reef(),
         };
         std::fs::write(format!("{out}/hangman-{misses}.png"), r.hangman_card(&card)?)?;
@@ -82,6 +86,7 @@ fn main() -> anyhow::Result<()> {
         wrong: &['x'],
         misses: 1,
         status: "Pick a letter below",
+        lang: Lang::En,
         theme: Theme::reef(),
     };
     std::fs::write(format!("{out}/hangman-long.png"), r.hangman_card(&card)?)?;

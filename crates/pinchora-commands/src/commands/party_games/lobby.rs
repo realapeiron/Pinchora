@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{Commit, LOBBY, NewParty, PartyGame, PartyJoin, PartyLeave, PartyPlayer};
 use pinchora_game::party::Party;
 use pinchora_render::PartyLobbyCard;
@@ -9,8 +10,8 @@ use twilight_model::{channel::message::component::ButtonStyle, http::interaction
 use twilight_util::builder::embed::EmbedBuilder;
 
 use super::{
-    after, card, custom_id, dare, edit_card, names, pearl, push_button, race, remember, row, snapshot, text, theme,
-    track_message, writing,
+    after, card, custom_id, dare, edit_card, game_lang, names, pearl, push_button, race, remember, row, snapshot, text,
+    theme, track_message, writing,
 };
 use crate::{
     App, Cx,
@@ -26,42 +27,26 @@ pub(crate) enum Started {
     Stale,
 }
 
-/// What a lobby tells players about its game.
-fn blurb(party: Party, game: &PartyGame) -> (&'static str, String) {
+/// What a lobby tells players about its game: a line about it, and the rules in a few words.
+fn blurb(lang: Lang, party: Party, game: &PartyGame) -> (String, String) {
     let (min, max) = party.players();
-    let table = format!("{min}-{max} players");
+    let table = t!(lang, "party.players-range", min = min, max = max);
     match party {
         Party::HotPearl => (
-            "A syllable appears. Type a word that contains it before the pearl pops!",
-            format!(
-                "{table} · {} li{} each · every pop costs a life · the last player with lives wins",
-                game.rounds,
-                if game.rounds == 1 { "fe" } else { "ves" }
-            ),
+            t!(lang, "hotpearl.blurb"),
+            t!(lang, "hotpearl.rules", table = table, count = game.rounds),
         ),
         Party::Acronym => (
-            "Letters appear. Write a phrase whose words start with them in order, then vote for the best one.",
-            format!(
-                "{table} · {} rounds · votes are anonymous until the reveal",
-                game.rounds
-            ),
+            t!(lang, "acronym.blurb"),
+            t!(lang, "acronym.rules", table = table, rounds = game.rounds),
         ),
         Party::Postcard => (
-            "A pixel postcard appears. Write the funniest caption, then vote for your favourite.",
-            format!(
-                "{table} · {} rounds · votes are anonymous until the reveal",
-                game.rounds
-            ),
+            t!(lang, "postcard.blurb"),
+            t!(lang, "postcard.rules", table = table, rounds = game.rounds),
         ),
-        Party::WordRace => (
-            "Everyone races to find the same five-letter word on a private board. First to solve it wins.",
-            format!("{table} · six guesses each · you only see colours on the other boards"),
-        ),
-        Party::TruthOrDare => (
-            "Take turns: a random player picks truth or dare. Everything here is family friendly.",
-            format!("{table} · the host ends the game when everybody has had enough"),
-        ),
-        Party::WouldYouRather => ("", String::new()),
+        Party::WordRace => (t!(lang, "wordrace.blurb"), t!(lang, "wordrace.rules", table = table)),
+        Party::TruthOrDare => (t!(lang, "dare.blurb"), t!(lang, "dare.rules", table = table)),
+        Party::WouldYouRather => (String::new(), String::new()),
     }
 }
 
@@ -82,10 +67,9 @@ pub(crate) async fn open(cx: &Cx, party: Party, rounds: i32, state: String) -> a
     let app = &cx.app;
     let channel = channel_of(cx);
     if let Some(busy) = app.db.party_in_channel(channel, app.now()).await? {
-        let what = Party::from_key(&busy.kind).map_or("A party game", Party::label);
-        return cx
-            .reply_ephemeral(format!("{what} is already going in this channel. Let it finish first!"))
-            .await;
+        let lang = cx.lang();
+        let what = Party::from_key(&busy.kind).map_or_else(|| t!(lang, "party.a-party-game"), |p| p.label_in(lang));
+        return cx.reply_ephemeral(t!(lang, "party.busy", what = what)).await;
     }
     let host = cx.author()?.id.get();
     let game = app
@@ -95,7 +79,7 @@ pub(crate) async fn open(cx: &Cx, party: Party, rounds: i32, state: String) -> a
             guild_id: cx.guild_id().unwrap_or(0),
             channel_id: channel,
             host,
-            host_name: &text::name(&cx.author_display_name()),
+            host_name: &text::name(&cx.author_display_name(), cx.lang()),
             rounds,
             status: LOBBY,
             phase: "lobby",
@@ -116,19 +100,24 @@ pub(crate) async fn view(
     players: &[PartyPlayer],
 ) -> anyhow::Result<InteractionResponseData> {
     let party = Party::from_key(&game.kind).ok_or_else(|| anyhow::anyhow!("lobby of an unknown game"))?;
+    let lang = game_lang(game);
     let (min, max) = party.players();
-    let (tagline, rules) = blurb(party, game);
+    let (tagline, rules) = blurb(lang, party, game);
     let shown = names(players);
+    let label = party.label_in(lang);
     let png = {
-        let (title, tagline, shown) = (party.label().to_owned(), tagline.to_owned(), shown.clone());
+        // The card draws its title and footer in capitals, which Turkish spells with its own İ.
+        let (title, tagline, shown) = (lang.upper(&label), tagline.clone(), shown.clone());
+        let footer = lang.upper(&t!(lang, "party.lobby.ready"));
         app.render(move |r| {
             r.party_lobby_card(&PartyLobbyCard {
+                lang,
                 title: &title,
                 tagline: &tagline,
                 players: &shown,
                 min,
                 max,
-                footer: "Ready: the host can press start",
+                footer: &footer,
                 theme: theme(),
             })
         })
@@ -137,11 +126,16 @@ pub(crate) async fn view(
     let id = game.id;
     let enough = players.len() >= min;
     let components = vec![row(vec![
-        push_button(party, &[&"j", &id], "Join", ButtonStyle::Primary),
-        push_button(party, &[&"l", &id], "Leave", ButtonStyle::Secondary),
+        push_button(party, &[&"j", &id], &t!(lang, "party.btn.join"), ButtonStyle::Primary),
+        push_button(
+            party,
+            &[&"l", &id],
+            &t!(lang, "party.btn.leave"),
+            ButtonStyle::Secondary,
+        ),
         crate::commands::games::button(
             custom_id(party, &[&"s", &id]),
-            "Start",
+            &t!(lang, "party.btn.start"),
             if enough {
                 ButtonStyle::Success
             } else {
@@ -149,23 +143,28 @@ pub(crate) async fn view(
             },
             false,
         ),
-        push_button(party, &[&"x", &id], "Cancel", ButtonStyle::Danger),
+        push_button(party, &[&"x", &id], &t!(lang, "party.btn.cancel"), ButtonStyle::Danger),
     ])];
     let embed = EmbedBuilder::new()
         .color(BRAND)
-        .title(format!("{} {}", party.emoji(), party.label()))
-        .description(format!(
-            "{tagline}\n\n{rules}\nHost: {} · closes {}",
-            mention(game.host()),
-            relative(game.deadline)
+        .title(format!("{} {}", party.emoji(), label))
+        .description(t!(
+            lang,
+            "party.lobby.description",
+            tagline = tagline,
+            rules = rules,
+            host = mention(game.host()),
+            when = relative(game.deadline)
         ));
     Ok(card(
-        Some(format!(
-            "{} {} opened a **{}** lobby! Press **Join** ({}/{max}).",
-            party.emoji(),
-            mention(game.host()),
-            party.label(),
-            players.len()
+        Some(t!(
+            lang,
+            "party.lobby.opened",
+            emoji = party.emoji(),
+            host = mention(game.host()),
+            label = label,
+            n = players.len(),
+            max = max
         )),
         embed,
         "lobby.png",
@@ -182,7 +181,7 @@ pub(crate) async fn on_button(cx: &Cx, party: Party, action: &str, id: i64) -> a
     // Another game's button with this lobby's id (a forged custom id) would start that game here or seat
     // more players than this one takes.
     if cx.app.db.party(id).await?.is_some_and(|game| game.kind != party.key()) {
-        cx.reply_ephemeral("This lobby has closed.").await?;
+        cx.reply_ephemeral(t!(cx.lang(), "party.lobby.closed")).await?;
         return Ok(true);
     }
     match action {
@@ -196,7 +195,7 @@ pub(crate) async fn on_button(cx: &Cx, party: Party, action: &str, id: i64) -> a
 
 async fn refresh(cx: &Cx, party: Party, id: i64) -> anyhow::Result<()> {
     let Some((game, players)) = snapshot(&cx.app, party, id).await? else {
-        return cx.reply_ephemeral("This lobby has expired.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "party.lobby.expired")).await;
     };
     remember(cx, &game).await;
     cx.update(view(&cx.app, &game, &players).await?).await
@@ -204,7 +203,7 @@ async fn refresh(cx: &Cx, party: Party, id: i64) -> anyhow::Result<()> {
 
 async fn join(cx: &Cx, party: Party, id: i64) -> anyhow::Result<()> {
     let user = cx.author()?.id.get();
-    let name = text::name(&cx.author_display_name());
+    let name = text::name(&cx.author_display_name(), cx.lang());
     match cx
         .app
         .db
@@ -212,12 +211,9 @@ async fn join(cx: &Cx, party: Party, id: i64) -> anyhow::Result<()> {
         .await?
     {
         PartyJoin::Joined => refresh(cx, party, id).await,
-        PartyJoin::Already => {
-            cx.reply_ephemeral("You are already in. Wait for the host to press Start!")
-                .await
-        }
-        PartyJoin::Full => cx.reply_ephemeral("This lobby is full.").await,
-        PartyJoin::Closed => cx.reply_ephemeral("This lobby has closed.").await,
+        PartyJoin::Already => cx.reply_ephemeral(t!(cx.lang(), "party.lobby.already-in")).await,
+        PartyJoin::Full => cx.reply_ephemeral(t!(cx.lang(), "party.lobby.full")).await,
+        PartyJoin::Closed => cx.reply_ephemeral(t!(cx.lang(), "party.lobby.closed")).await,
     }
 }
 
@@ -225,27 +221,28 @@ async fn leave(cx: &Cx, party: Party, id: i64) -> anyhow::Result<()> {
     let user = cx.author()?.id.get();
     match cx.app.db.leave_party(id, user, cx.app.now()).await? {
         PartyLeave::Left => refresh(cx, party, id).await,
-        PartyLeave::NotIn => cx.reply_ephemeral("You are not in this lobby.").await,
-        PartyLeave::Host => {
-            cx.reply_ephemeral("You are the host: press Cancel to close the lobby instead.")
-                .await
-        }
-        PartyLeave::Closed => cx.reply_ephemeral("This lobby has closed.").await,
+        PartyLeave::NotIn => cx.reply_ephemeral(t!(cx.lang(), "party.lobby.not-in")).await,
+        PartyLeave::Host => cx.reply_ephemeral(t!(cx.lang(), "party.lobby.host-leaves")).await,
+        PartyLeave::Closed => cx.reply_ephemeral(t!(cx.lang(), "party.lobby.closed")).await,
     }
 }
 
 async fn cancel(cx: &Cx, id: i64) -> anyhow::Result<()> {
     let user = cx.author()?.id.get();
     let Some(game) = cx.app.db.party(id).await? else {
-        return cx.reply_ephemeral("This lobby has expired.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "party.lobby.expired")).await;
     };
     if user != game.host() && !cx.can_manage_guild() {
         return cx
-            .reply_ephemeral(format!("Only {} can cancel this lobby.", mention(game.host())))
+            .reply_ephemeral(t!(
+                cx.lang(),
+                "party.lobby.only-host-cancels",
+                host = mention(game.host())
+            ))
             .await;
     }
     if !game.in_lobby() {
-        return cx.reply_ephemeral("This game has already started.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "party.lobby.started")).await;
     }
     let commit = Commit {
         phase: "done",
@@ -258,36 +255,45 @@ async fn cancel(cx: &Cx, id: i64) -> anyhow::Result<()> {
         pay: None,
     };
     if cx.app.db.commit_party(id, game.seq, commit).await?.is_none() {
-        return cx
-            .reply_ephemeral("Somebody changed the lobby just now. Try again!")
-            .await;
+        return cx.reply_ephemeral(t!(cx.lang(), "party.lobby.changed")).await;
     }
     remember(cx, &game).await;
-    cx.update(closed(format!("🚫 {} cancelled the lobby.", mention(user))))
-        .await
+    cx.update(closed(t!(
+        game_lang(&game),
+        "party.lobby.cancelled",
+        user = mention(user)
+    )))
+    .await
 }
 
 async fn start(cx: &Cx, party: Party, id: i64) -> anyhow::Result<()> {
     let user = cx.author()?.id.get();
     for _ in 0..3 {
         let Some((game, players)) = snapshot(&cx.app, party, id).await? else {
-            return cx.reply_ephemeral("This lobby has expired.").await;
+            return cx.reply_ephemeral(t!(cx.lang(), "party.lobby.expired")).await;
         };
         if !game.in_lobby() || game.late(cx.app.now()) {
-            return cx.reply_ephemeral("This lobby has closed.").await;
+            return cx.reply_ephemeral(t!(cx.lang(), "party.lobby.closed")).await;
         }
         if user != game.host() {
             return cx
-                .reply_ephemeral(format!("Only {} can start this game.", mention(game.host())))
+                .reply_ephemeral(t!(
+                    cx.lang(),
+                    "party.lobby.only-host-starts",
+                    host = mention(game.host())
+                ))
                 .await;
         }
         let (min, _) = party.players();
         if players.len() < min {
+            let lang = cx.lang();
             return cx
-                .reply_ephemeral(format!(
-                    "{} needs at least {min} players, and only {} joined so far.",
-                    party.label(),
-                    players.len()
+                .reply_ephemeral(t!(
+                    lang,
+                    "party.lobby.too-few",
+                    label = party.label_in(lang),
+                    min = min,
+                    n = players.len()
                 ))
                 .await;
         }
@@ -297,14 +303,13 @@ async fn start(cx: &Cx, party: Party, id: i64) -> anyhow::Result<()> {
             Party::Acronym | Party::Postcard => writing::start(cx, &game, &players).await?,
             Party::WordRace => race::start(cx, &game, &players).await?,
             Party::TruthOrDare => dare::start(cx, &game, &players).await?,
-            Party::WouldYouRather => return cx.reply_ephemeral("This one has no lobby.").await,
+            Party::WouldYouRather => return cx.reply_ephemeral(t!(cx.lang(), "party.lobby.none")).await,
         };
         if matches!(started, Started::Yes) {
             return Ok(());
         }
     }
-    cx.reply_ephemeral("The lobby kept changing. Press Start again in a moment!")
-        .await
+    cx.reply_ephemeral(t!(cx.lang(), "party.lobby.kept-changing")).await
 }
 
 /// Closes a lobby nobody started in time.
@@ -325,7 +330,7 @@ pub(crate) async fn expire(app: &Arc<App>, game: PartyGame) -> anyhow::Result<bo
     edit_card(
         app,
         &done.game,
-        &closed("⌛ Nobody started this lobby in time, so it was closed."),
+        &closed(t!(game_lang(&done.game), "party.lobby.timed-out")),
     )
     .await;
     Ok(true)

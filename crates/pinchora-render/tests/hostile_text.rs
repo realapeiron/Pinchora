@@ -364,6 +364,7 @@ fn hostile_text_renders_on_every_card() {
                 caught: 2,
             }],
             footer: hostile(),
+            lang: pinchora_core::i18n::Lang::En,
             theme: t(),
         }),
     ));
@@ -423,6 +424,7 @@ fn hostile_text_renders_on_every_card() {
             },
             rate: hostile(),
             upgrade: hostile(),
+            lang: pinchora_core::i18n::Lang::En,
             theme: t(),
         }),
     ));
@@ -432,6 +434,7 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "connect four",
         r.connect4_card(&Connect4Card {
+            lang: pinchora_core::i18n::Lang::En,
             cells: &[0u8; 42],
             names,
             turn: Some(0),
@@ -446,6 +449,7 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "checkers",
         r.checkers_card(&CheckersCard {
+            lang: pinchora_core::i18n::Lang::En,
             cells: &[0u8; 32],
             names,
             turn: Some(1),
@@ -461,6 +465,7 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "chess",
         r.chess_card(&ChessCard {
+            lang: pinchora_core::i18n::Lang::En,
             pieces: &[0u8; 64],
             names,
             turn: Some(0),
@@ -488,6 +493,7 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "radar",
         r.radar_card(&RadarCard {
+            lang: pinchora_core::i18n::Lang::Tr,
             seas: [sea(), sea()],
             turn: Some(0),
             winner: None,
@@ -500,6 +506,7 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "fleet",
         r.fleet_card(&FleetCard {
+            lang: pinchora_core::i18n::Lang::Tr,
             title: HOSTILE,
             subtitle: HOSTILE,
             sea: sea(),
@@ -546,6 +553,7 @@ fn hostile_text_renders_on_every_card() {
             creatures: &creatures,
             fresh: Some(1),
             status: HOSTILE,
+            lang: pinchora_core::i18n::Lang::En,
             theme: t(),
         }),
     ));
@@ -562,6 +570,7 @@ fn hostile_text_renders_on_every_card() {
             wrong: &[BAD_CHAR, 'x'],
             misses: 2,
             status: HOSTILE,
+            lang: pinchora_core::i18n::Lang::En,
             theme: t(),
         }),
     ));
@@ -599,6 +608,7 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "derby",
         r.derby_card(&DerbyCard {
+            lang: pinchora_core::i18n::Lang::En,
             lanes: &lanes,
             stake: 50,
             racers: 2,
@@ -609,6 +619,7 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "share or grab",
         r.share_grab_card(&ShareGrabCard {
+            lang: pinchora_core::i18n::Lang::Tr,
             names,
             picks: [PickView::Locked, PickView::Thinking],
             pool: 100,
@@ -621,6 +632,7 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "shell game",
         r.shell_card(&ShellCard {
+            lang: pinchora_core::i18n::Lang::En,
             stake: 10,
             picked: Some(1),
             pearl: Some(2),
@@ -639,6 +651,7 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "heist",
         r.heist_card(&HeistCard {
+            lang: pinchora_core::i18n::Lang::En,
             crew: &crew,
             stages: [stage(Some(true)), stage(Some(false)), stage(None)],
             headline: HOSTILE,
@@ -674,6 +687,7 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "storm surge",
         r.surge_card(&SurgeCard {
+            lang: pinchora_core::i18n::Lang::En,
             wall: 5,
             goal: 10,
             helpers: 2,
@@ -686,6 +700,7 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "party lobby",
         r.party_lobby_card(&PartyLobbyCard {
+            lang: pinchora_core::i18n::Lang::En,
             title: HOSTILE,
             tagline: HOSTILE,
             players: &players,
@@ -714,6 +729,7 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "hot pearl",
         r.pearl_card(&PearlCard {
+            lang: pinchora_core::i18n::Lang::En,
             syllable: HOSTILE,
             seats: &seats,
             banner: HOSTILE,
@@ -766,6 +782,7 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "entries",
         r.entries_card(&EntriesCard {
+            lang: pinchora_core::i18n::Lang::En,
             title: HOSTILE,
             subtitle: HOSTILE,
             chip: HOSTILE,
@@ -795,6 +812,7 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "wordle race",
         r.race_card(&RaceCard {
+            lang: pinchora_core::i18n::Lang::En,
             title: HOSTILE,
             racers: &racers,
             footer: HOSTILE,
@@ -804,6 +822,7 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "postcard",
         r.postcard_card(&PostcardCard {
+            lang: pinchora_core::i18n::Lang::En,
             scene: &png,
             place: HOSTILE,
             stamp: HOSTILE,
@@ -813,6 +832,7 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "would you rather",
         r.rather_card(&RatherCard {
+            lang: pinchora_core::i18n::Lang::En,
             category: HOSTILE,
             a: HOSTILE,
             b: HOSTILE,
@@ -825,6 +845,7 @@ fn hostile_text_renders_on_every_card() {
         drawn.push((
             "truth or dare",
             r.prompt_card(&PromptCard {
+                lang: pinchora_core::i18n::Lang::En,
                 tone,
                 name: HOSTILE,
                 text: HOSTILE,

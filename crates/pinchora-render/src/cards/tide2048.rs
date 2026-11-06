@@ -1,5 +1,7 @@
 use std::fmt::Write;
 
+use pinchora_core::{i18n::Lang, t};
+
 use super::{PIXEL, SpriteArt, text};
 use crate::{
     Theme,
@@ -27,6 +29,8 @@ pub struct Tide2048Card<'a> {
     /// The tile that has just appeared, marked with a small spark.
     pub fresh: Option<usize>,
     pub status: &'a str,
+    /// The language of the labels; the status comes written.
+    pub lang: Lang,
     pub theme: Theme,
 }
 
@@ -44,7 +48,11 @@ impl Tide2048Card<'_> {
         );
         background(&mut s, w, h, &t.bg_top, &t.bg_bottom);
 
-        for (i, (label, value)) in [("SCORE", self.score), ("BEST", self.best)].into_iter().enumerate() {
+        let labels = [
+            (t!(self.lang, "tide.card.score"), self.score),
+            (t!(self.lang, "tide.card.best"), self.best),
+        ];
+        for (i, (label, value)) in labels.iter().enumerate() {
             let x = 26.0 + i as f32 * 262.0;
             panel(&mut s, x, 20.0, 246.0, 70.0, 4.0, &t.panel, &t.panel_edge);
             text(&mut s, x + 18.0, 46.0, 12.0, PIXEL, false, &t.muted, "start", label);
@@ -57,7 +65,7 @@ impl Tide2048Card<'_> {
                 false,
                 &t.gold,
                 "start",
-                &compact(i64::from(value)),
+                &compact(i64::from(*value)),
             );
         }
 
@@ -158,6 +166,7 @@ mod tests {
             creatures,
             fresh: Some(0),
             status: "Swipe with the arrows",
+            lang: Lang::En,
             theme: Theme::reef(),
         }
     }

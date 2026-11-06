@@ -140,6 +140,7 @@ fn main() -> anyhow::Result<()> {
         pages: 3,
         cells,
         footer: "FRAGMENTS 134".into(),
+        lang: pinchora_core::i18n::Lang::En,
         theme: Theme::reef(),
     };
     std::fs::write(format!("{out}/collection-dex.png"), r.dex_card(&dex)?)?;
@@ -208,6 +209,7 @@ fn main() -> anyhow::Result<()> {
             state,
             rate: "1.75 catches an hour".into(),
             upgrade: "Level 3 costs 1,000 shells".into(),
+            lang: pinchora_core::i18n::Lang::En,
             theme: Theme::reef(),
         };
         std::fs::write(format!("{out}/collection-pot-{name}.png"), r.pot_card(&pot)?)?;
