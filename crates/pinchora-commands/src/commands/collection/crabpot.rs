@@ -3,9 +3,11 @@
 use std::{collections::HashMap, str::Split, sync::Arc};
 
 use chrono::{Datelike, Duration, Timelike};
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{Granted, PotHaul, PotRow, PotUpgrade};
 use pinchora_game::{
     collection::{self, Collection, POT_HOURS, POT_MAX_LEVEL},
+    lang as letters,
     play::Game,
 };
 use pinchora_render::{HaulCard, PotCard, PotState, Theme};
@@ -30,30 +32,35 @@ pub struct CrabPot;
 
 impl CrabPot {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
-        let data = view(&cx.app, cx.author()?.id.get(), None, true).await?;
+        let data = view(&cx.app, cx.lang(), cx.author()?.id.get(), None, true).await?;
         cx.reply(data).await
     }
 }
 
 /// "3 h 20 m", "45 m", "under a minute".
-fn span(left: Duration) -> String {
+fn span(lang: Lang, left: Duration) -> String {
     let minutes = (left.num_seconds() + 59) / 60;
     match minutes {
-        ..=0 => "under a minute".to_owned(),
-        1..=59 => format!("{minutes} m"),
-        _ if minutes % 60 == 0 => format!("{} h", minutes / 60),
-        _ => format!("{} h {} m", minutes / 60, minutes % 60),
+        ..=0 => t!(lang, "crabpot.span-short"),
+        1..=59 => t!(lang, "crabpot.span-minutes", minutes = minutes),
+        _ if minutes % 60 == 0 => t!(lang, "crabpot.span-hours", hours = minutes / 60),
+        _ => t!(
+            lang,
+            "crabpot.span-hours-minutes",
+            hours = minutes / 60,
+            minutes = minutes % 60
+        ),
     }
 }
 
 /// What the pot is doing at `now`.
-fn state(pot: &PotRow, now: chrono::DateTime<chrono::Utc>) -> PotState {
+fn state(lang: Lang, pot: &PotRow, now: chrono::DateTime<chrono::Utc>) -> PotState {
     match (pot.hours, pot.ends_at) {
         (Some(hours), Some(end)) if end > now => {
             let total = Duration::hours(i64::from(hours)).num_seconds() as f32;
             let left = (end - now).num_seconds() as f32;
             PotState::Soaking {
-                left: span(end - now),
+                left: span(lang, end - now),
                 fraction: (1.0 - left / total).clamp(0.0, 1.0),
                 hours: hours as u32,
             }
@@ -66,21 +73,27 @@ fn state(pot: &PotRow, now: chrono::DateTime<chrono::Utc>) -> PotState {
 /// The pot card with the buttons that fit what it is doing; `note` goes in the text above it.
 async fn view(
     app: &Arc<App>,
+    lang: Lang,
     user: u64,
     note: Option<&str>,
     ephemeral: bool,
 ) -> anyhow::Result<InteractionResponseData> {
     let pot = app.db.pot(user).await?;
-    let state = state(&pot, app.now());
+    let state = state(lang, &pot, app.now());
     let cost = collection::pot_upgrade_cost(pot.level);
     let card = PotCard {
         level: pot.level as u8,
         max_level: POT_MAX_LEVEL as u8,
         state: state.clone(),
-        rate: format!("{:.1} catches an hour", collection::pot_rate(pot.level)),
+        rate: t!(
+            lang,
+            "crabpot.rate",
+            rate = format!("{:.1}", collection::pot_rate(pot.level))
+        ),
         upgrade: cost.map_or(String::new(), |c| {
-            format!("Level {} costs {} shells", pot.level + 1, thousands(c))
+            t!(lang, "crabpot.upgrade-line", level = pot.level + 1, cost = thousands(c))
         }),
+        lang,
         theme: Theme::reef(),
     };
     let png = app.render(move |r| r.pot_card(&card)).await?;
@@ -90,7 +103,7 @@ async fn view(
             .map(|h| {
                 button(
                     format!("kp:s:{user}:{h}"),
-                    &format!("Set for {h} h"),
+                    &t!(lang, "crabpot.set-for", hours = h),
                     Some("🪤"),
                     ButtonStyle::Primary,
                     false,
@@ -99,14 +112,14 @@ async fn view(
             .collect(),
         PotState::Soaking { .. } => vec![button(
             format!("kp:r:{user}"),
-            "Check the tide",
+            &t!(lang, "crabpot.check"),
             Some("🌊"),
             ButtonStyle::Secondary,
             false,
         )],
         PotState::Ready { .. } => vec![button(
             format!("kp:h:{user}"),
-            "Haul it in!",
+            &t!(lang, "crabpot.haul"),
             Some("🦀"),
             ButtonStyle::Success,
             false,
@@ -115,20 +128,21 @@ async fn view(
     if let Some(cost) = cost {
         buttons.push(button(
             format!("kp:u:{user}:{}", pot.level),
-            &format!("Upgrade ({} shells)", thousands(cost)),
+            &t!(lang, "crabpot.upgrade", cost = thousands(cost)),
             Some("⬆️"),
             ButtonStyle::Secondary,
             false,
         ));
     }
     let status = match &state {
-        PotState::Empty => "empty".to_owned(),
-        PotState::Soaking { left, .. } => format!("soaking, {left} left"),
-        PotState::Ready { .. } => "ready to haul".to_owned(),
+        PotState::Empty => t!(lang, "crabpot.status-empty"),
+        PotState::Soaking { left, .. } => t!(lang, "crabpot.status-soaking", left = left),
+        PotState::Ready { .. } => t!(lang, "crabpot.status-ready"),
     };
+    let text = t!(lang, "crabpot.text", level = pot.level, status = status);
     let text = match note {
-        Some(note) => format!("{note}\n\nCrab pot, level {}: {status}.", pot.level),
-        None => format!("Crab pot, level {}: {status}.", pot.level),
+        Some(note) => format!("{note}\n\n{text}"),
+        None => text,
     };
     Ok(Cx::card(
         EmbedBuilder::new().color(BRAND).description(text),
@@ -140,8 +154,8 @@ async fn view(
 }
 
 /// "1 catch", "10 catches".
-fn catches(n: usize) -> String {
-    format!("{n} catch{}", if n == 1 { "" } else { "es" })
+fn catches(lang: Lang, n: usize) -> String {
+    t!(lang, "crabpot.catches", count = n)
 }
 
 /// One kind of critter or find in a haul.
@@ -154,7 +168,7 @@ struct Catch {
 }
 
 /// The haul as a card: each kind once with how many of it, the rarest first.
-fn haul_card(app: &App, granted: &[Granted], paid: bool, hours: i16) -> HaulCard {
+fn haul_card(app: &App, lang: Lang, granted: &[Granted], paid: bool, hours: i16) -> HaulCard {
     let mut kinds: HashMap<&str, Catch> = HashMap::new();
     for g in granted {
         let Some(entry) = Collection::get().entry(&g.entry) else {
@@ -177,7 +191,7 @@ fn haul_card(app: &App, granted: &[Granted], paid: bool, hours: i16) -> HaulCard
         b.entry
             .rarity
             .cmp(&a.entry.rarity)
-            .then(a.entry.name.cmp(&b.entry.name))
+            .then(a.entry.name_in(lang).cmp(&b.entry.name_in(lang)))
     });
     let (shells, fragments): (i64, i64) = kinds
         .iter()
@@ -192,40 +206,46 @@ fn haul_card(app: &App, granted: &[Granted], paid: bool, hours: i16) -> HaulCard
             } else {
                 HaulCard::GRID_ART_BOX
             };
-            let mut tile = haul_tile(app, k.entry, None, size);
-            tile.tag = match (k.new, k.count) {
-                (true, 1) => "NEW".to_owned(),
-                (true, n) => format!("NEW x{n}"),
-                (false, 1) => "SPARE".to_owned(),
-                (false, n) => format!("SPARE x{n}"),
+            let mut tile = haul_tile(app, lang, k.entry, None, size);
+            let tag = if k.new {
+                t!(lang, "collect.tag-new")
+            } else {
+                t!(lang, "collect.tag-spare")
             };
-            tile.line = money(&Granted {
-                entry: String::new(),
-                new: false,
-                caught: 0,
-                shells: k.shells,
-                fragments: k.fragments,
-            });
+            tile.tag = match k.count {
+                1 => tag,
+                n => format!("{tag} x{n}"),
+            };
+            tile.line = money(
+                lang,
+                &Granted {
+                    entry: String::new(),
+                    new: false,
+                    caught: 0,
+                    shells: k.shells,
+                    fragments: k.fragments,
+                },
+            );
             tile
         })
         .collect();
-    let mut parts = vec![catches(granted.len())];
+    let mut parts = vec![catches(lang, granted.len())];
     if shells > 0 {
-        parts.push(format!("+{} shells", thousands(shells)));
+        parts.push(t!(lang, "crabpot.footer-shells", shells = thousands(shells)));
     }
     if fragments > 0 {
-        parts.push(format!("+{} fragments", thousands(fragments)));
+        parts.push(t!(lang, "crabpot.footer-fragments", fragments = thousands(fragments)));
     }
     if more > 0 {
-        parts.push(format!("{more} more kind{}", if more == 1 { "" } else { "s" }));
+        parts.push(t!(lang, "crabpot.footer-more", count = more));
     }
     let mut footer = parts.join(" · ");
     if !paid {
-        footer = "Daily haul limit reached: the catch fills your dex, shells wait for tomorrow".to_owned();
+        footer = t!(lang, "crabpot.footer-limit");
     }
     HaulCard {
-        title: "Crab pot".to_owned(),
-        subtitle: format!("{hours} h soak").to_uppercase(),
+        title: Game::CrabPot.name(lang),
+        subtitle: letters::upper(lang, &t!(lang, "crabpot.soak", hours = hours)),
         tiles,
         footer,
         theme: Theme::reef(),
@@ -237,11 +257,9 @@ fn haul_card(app: &App, granted: &[Granted], paid: bool, hours: i16) -> HaulCard
 pub(crate) async fn on_component(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::Result<()> {
     let action = parts.next().unwrap_or_default();
     let owner: u64 = parts.next().and_then(|v| v.parse().ok()).unwrap_or(0);
-    let (app, me) = (&cx.app, cx.author()?.id.get());
+    let (app, me, lang) = (&cx.app, cx.author()?.id.get(), cx.lang());
     if owner != me {
-        return cx
-            .reply_ephemeral("That is not your pot. Set your own with `/crabpot`.")
-            .await;
+        return cx.reply_ephemeral(t!(lang, "crabpot.not-yours")).await;
     }
     let now = app.now();
     let note = match action {
@@ -249,34 +267,31 @@ pub(crate) async fn on_component(cx: &Cx, mut parts: Split<'_, char>) -> anyhow:
         "s" => {
             let hours: i16 = parts.next().and_then(|v| v.parse().ok()).unwrap_or(0);
             if !POT_HOURS.contains(&hours) {
-                return cx.reply_ephemeral("This button has expired.").await;
+                return cx.reply_ephemeral(t!(lang, "crabpot.button-expired")).await;
             }
             if app.db.start_pot(me, hours, now).await? {
-                Some(format!(
-                    "The pot is in the water for {hours} h. Come back to haul it in."
-                ))
+                Some(t!(lang, "crabpot.set", hours = hours))
             } else {
-                Some("The pot is already in the water. Haul it in first.".to_owned())
+                Some(t!(lang, "crabpot.already-set"))
             }
         }
         "u" => {
             let from: i16 = parts.next().and_then(|v| v.parse().ok()).unwrap_or(0);
             let Some(cost) = collection::pot_upgrade_cost(from) else {
-                return cx
-                    .update(view(app, me, Some("Your pot is already the best there is."), false).await?)
-                    .await;
+                let best = t!(lang, "crabpot.best");
+                return cx.update(view(app, lang, me, Some(&best), false).await?).await;
             };
             Some(match app.db.upgrade_pot(me, from, cost).await? {
-                PotUpgrade::Upgraded { level, balance } => format!(
-                    "Your pot is now **level {level}**: it catches more, and luckier. You have {} shells left.",
-                    thousands(balance)
-                ),
-                PotUpgrade::Stale => "Your pot is not at that level any more.".to_owned(),
+                PotUpgrade::Upgraded { level, balance } => {
+                    t!(lang, "crabpot.upgraded", level = level, balance = thousands(balance))
+                }
+                PotUpgrade::Stale => t!(lang, "crabpot.stale"),
                 PotUpgrade::Poor { balance } => {
-                    format!(
-                        "An upgrade costs **{}** shells and you have {}.",
-                        thousands(cost),
-                        thousands(balance)
+                    t!(
+                        lang,
+                        "crabpot.poor",
+                        cost = thousands(cost),
+                        balance = thousands(balance)
                     )
                 }
             })
@@ -300,33 +315,36 @@ pub(crate) async fn on_component(cx: &Cx, mut parts: Split<'_, char>) -> anyhow:
                 })
                 .await?;
             match haul {
-                PotHaul::Empty => Some("Your pot is empty. Set it for 1, 4 or 8 hours.".to_owned()),
-                PotHaul::Soaking { ends_at } => Some(format!("Still soaking: ready <t:{}:R>.", ends_at.timestamp())),
+                PotHaul::Empty => Some(t!(lang, "crabpot.empty")),
+                PotHaul::Soaking { ends_at } => {
+                    let when = format!("<t:{}:R>", ends_at.timestamp());
+                    Some(t!(lang, "crabpot.soaking", when = when))
+                }
                 PotHaul::Hauled {
                     granted, paid, hours, ..
                 } => {
                     record(app, Game::CrabPot, me, true).await;
-                    let card = haul_card(app, &granted, paid, hours);
+                    let card = haul_card(app, lang, &granted, paid, hours);
                     let png = app.render(move |r| r.haul_card(&card)).await?;
                     let new = granted.iter().filter(|g| g.new).count();
-                    let embed = EmbedBuilder::new().color(SUCCESS).description(format!(
-                        "You hauled in **{}** catch{}{}.{}",
-                        granted.len(),
-                        if granted.len() == 1 { "" } else { "es" },
-                        if new > 0 {
-                            format!(", {new} new for your dex")
+                    let embed = EmbedBuilder::new().color(SUCCESS).description(t!(
+                        lang,
+                        "crabpot.hauled",
+                        count = granted.len(),
+                        new = if new > 0 {
+                            t!(lang, "crabpot.hauled-new", new = new)
                         } else {
                             String::new()
                         },
-                        if paid {
-                            ""
+                        limit = if paid {
+                            String::new()
                         } else {
-                            " Daily haul limit reached: the catch is in your dex, but shells and fragments wait for tomorrow."
+                            t!(lang, "crabpot.hauled-limit")
                         }
                     ));
                     let back = row(vec![button(
                         format!("kp:r:{me}"),
-                        "Back to the pot",
+                        &t!(lang, "crabpot.back"),
                         None,
                         ButtonStyle::Secondary,
                         false,
@@ -335,7 +353,7 @@ pub(crate) async fn on_component(cx: &Cx, mut parts: Split<'_, char>) -> anyhow:
                 }
             }
         }
-        _ => return cx.reply_ephemeral("This button has expired.").await,
+        _ => return cx.reply_ephemeral(t!(lang, "crabpot.button-expired")).await,
     };
-    cx.update(view(app, me, note.as_deref(), false).await?).await
+    cx.update(view(app, lang, me, note.as_deref(), false).await?).await
 }

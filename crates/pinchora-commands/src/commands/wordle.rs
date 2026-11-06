@@ -2,7 +2,7 @@
 
 use std::{str::Split, time::Duration};
 
-use pinchora_core::i18n::Lang;
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::WordleGame;
 use pinchora_game::{
     lang,
@@ -49,11 +49,6 @@ fn parse_mode(mode: &str) -> Option<(&'static str, Lang)> {
         "practice-tr" => Some((PRACTICE, Lang::Tr)),
         _ => None,
     }
-}
-
-/// English or Turkish text, by the board's language.
-fn say<'a>(lang: Lang, en: &'a str, tr: &'a str) -> &'a str {
-    if lang == Lang::Tr { tr } else { en }
 }
 
 fn mark(tile: Tile) -> u8 {
@@ -132,26 +127,24 @@ async fn view(app: &App, game: &WordleGame, note: &str) -> anyhow::Result<Intera
         })
         .collect();
     let tries = game.guesses.len();
-    let title = match (daily, lang) {
-        (true, Lang::En) => format!("Daily wordle #{}", wordle::puzzle_number(i64::from(game.day))),
-        (true, Lang::Tr) => format!("Günlük wordle #{}", wordle::puzzle_number(i64::from(game.day))),
-        (false, Lang::En) => "Practice wordle".to_owned(),
-        (false, Lang::Tr) => "Serbest wordle".to_owned(),
+    let title = if daily {
+        t!(
+            lang,
+            "wordle.title-daily",
+            number = wordle::puzzle_number(i64::from(game.day))
+        )
+    } else {
+        t!(lang, "wordle.title-practice")
     };
-    let shown_word = lang::upper(lang, &game.word);
+    // English shows the word as it is stored; Turkish in capitals with the dotted İ.
+    let shown_word = match lang {
+        Lang::En => game.word.clone(),
+        Lang::Tr => lang::upper(lang, &game.word),
+    };
     let footer = match game.status.as_str() {
-        "won" => match lang {
-            Lang::En => format!("Solved in {tries}/{MAX_TRIES}!"),
-            Lang::Tr => format!("{tries}/{MAX_TRIES} ile çözüldü!"),
-        },
-        "lost" => match lang {
-            Lang::En => format!("The word was {}", game.word),
-            Lang::Tr => format!("Kelime: {shown_word}"),
-        },
-        _ => match lang {
-            Lang::En => format!("Try {} of {MAX_TRIES}", tries + 1),
-            Lang::Tr => format!("Deneme {} / {MAX_TRIES}", tries + 1),
-        },
+        "won" => t!(lang, "wordle.footer-won", tries = tries, max = MAX_TRIES),
+        "lost" => t!(lang, "wordle.footer-lost", word = shown_word),
+        _ => t!(lang, "wordle.footer-playing", number = tries + 1, max = MAX_TRIES),
     };
     let png = {
         let (title, footer) = (lang::upper(lang, &title), lang::upper(lang, &footer));
@@ -166,34 +159,25 @@ async fn view(app: &App, game: &WordleGame, note: &str) -> anyhow::Result<Intera
         })
         .await?
     };
-    let (color, text) = match (game.status.as_str(), lang) {
-        ("won", Lang::En) => (SUCCESS, format!("You got it in **{tries}**! {note}")),
-        ("won", Lang::Tr) => (SUCCESS, format!("**{tries}** denemede buldun! {note}")),
-        ("lost", Lang::En) => (WARN, format!("Out of tries. The word was **{}**. {note}", game.word)),
-        ("lost", Lang::Tr) => (WARN, format!("Hakkın bitti. Kelime **{shown_word}** idi. {note}")),
-        (_, Lang::En) => (
-            BRAND,
-            format!("Guess the five-letter word. 🟩 right spot · 🟨 wrong spot · ⬛ not in the word.\n{note}"),
-        ),
-        (_, Lang::Tr) => (
-            BRAND,
-            format!("Beş harfli kelimeyi tahmin et. 🟩 doğru yer · 🟨 yanlış yer · ⬛ kelimede yok.\n{note}"),
-        ),
+    let (color, text) = match game.status.as_str() {
+        "won" => (SUCCESS, t!(lang, "wordle.won", tries = tries, note = note)),
+        "lost" => (WARN, t!(lang, "wordle.lost", word = shown_word, note = note)),
+        _ => (BRAND, t!(lang, "wordle.playing", note = note)),
     };
     let components = match (game.status.as_str(), daily) {
         ("playing", _) => vec![button_row(
             format!("wo:g:{}:{}", game.mode, game.day),
-            say(lang, "Guess", "Tahmin et"),
+            &t!(lang, "wordle.guess"),
             ButtonStyle::Primary,
         )],
         (_, true) => vec![button_row(
             format!("wo:s:{}:{}", game.mode, game.day),
-            say(lang, "Share result", "Sonucu paylaş"),
+            &t!(lang, "wordle.share"),
             ButtonStyle::Success,
         )],
         (_, false) => vec![button_row(
             format!("wo:n:{}", game.mode),
-            say(lang, "New word", "Yeni kelime"),
+            &t!(lang, "wordle.new-word"),
             ButtonStyle::Primary,
         )],
     };
@@ -215,26 +199,20 @@ pub(crate) async fn on_button(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Res
         Some("g") => {
             let (mode, day) = (args.next().unwrap_or_default(), args.next().unwrap_or_default());
             let Ok(day_no) = day.parse::<i32>() else {
-                return cx.reply_ephemeral("This board has expired.").await;
+                return cx.reply_ephemeral(t!(cx.lang(), "wordle.board-expired")).await;
             };
             let Some((kind, lang)) = parse_mode(mode) else {
-                return cx.reply_ephemeral("This board has expired.").await;
+                return cx.reply_ephemeral(t!(cx.lang(), "wordle.board-expired")).await;
             };
             if kind == DAILY && i64::from(day_no) != today() {
-                return cx
-                    .reply_ephemeral(say(
-                        lang,
-                        "That puzzle has ended. Start today's with `/play wordle`!",
-                        "Bu bulmaca sona erdi. Bugünküyü `/play wordle` ile başlat!",
-                    ))
-                    .await;
+                return cx.reply_ephemeral(t!(lang, "wordle.puzzle-ended")).await;
             }
             // The form opens first, before anything is read: over the HTTP endpoint a slow read would make the
             // responder defer, and a modal can only be the first answer. A board that is over is told when the
             // guess is sent (`on_guess`).
             cx.modal(
                 format!("wo:m:{mode}:{day_no}"),
-                say(lang, "Wordle guess", "Wordle tahmini"),
+                &t!(lang, "wordle.modal-title"),
                 vec![guess_field(lang)],
             )
             .await
@@ -256,11 +234,11 @@ pub(crate) async fn on_button(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Res
                 Err(_) => (first, args.next().and_then(|v| v.parse::<i32>().ok())),
             };
             let (Some(day), Some(_)) = (day, parse_mode(mode)) else {
-                return cx.reply_ephemeral("This board has expired.").await;
+                return cx.reply_ephemeral(t!(cx.lang(), "wordle.board-expired")).await;
             };
             share(cx, me, mode, day).await
         }
-        _ => cx.reply_ephemeral("This button has expired.").await,
+        _ => cx.reply_ephemeral(t!(cx.lang(), "wordle.button-expired")).await,
     }
 }
 
@@ -273,14 +251,14 @@ fn guess_field(lang: Lang) -> Component {
             label: None,
             max_length: Some(5),
             min_length: Some(5),
-            placeholder: Some(say(lang, "pearl", "inci").to_owned()),
+            placeholder: Some(t!(lang, "wordle.modal-placeholder")),
             required: Some(true),
             style: TextInputStyle::Short,
             value: None,
         })),
         description: None,
         id: None,
-        label: say(lang, "Your five-letter guess", "Beş harfli tahminin").to_owned(),
+        label: t!(lang, "wordle.modal-label"),
     })
 }
 
@@ -294,13 +272,7 @@ async fn share(cx: &Cx, me: u64, mode: &str, day: i32) -> anyhow::Result<()> {
         .await?
         .filter(|g| g.status != "playing")
     else {
-        return cx
-            .reply_ephemeral(say(
-                lang,
-                "Finish today's wordle first!",
-                "Önce bugünkü kelimeyi bitir!",
-            ))
-            .await;
+        return cx.reply_ephemeral(t!(lang, "wordle.finish-first")).await;
     };
     if !cx
         .app
@@ -311,21 +283,14 @@ async fn share(cx: &Cx, me: u64, mode: &str, day: i32) -> anyhow::Result<()> {
         )
         .await?
     {
-        return cx
-            .reply_ephemeral(say(
-                lang,
-                "You already shared this result.",
-                "Bu sonucu zaten paylaştın.",
-            ))
-            .await;
+        return cx.reply_ephemeral(t!(lang, "wordle.already-shared")).await;
     }
     let rows: Vec<[Tile; 5]> = game.guesses.iter().map(|g| wordle::score(g, &game.word)).collect();
     let solved = (game.status == "won").then_some(game.guesses.len());
     cx.reply(InteractionResponseData {
         content: Some(format!(
-            "{} {}\n{}",
-            mention(me),
-            say(lang, "played the daily wordle.", "günlük kelime oyununu oynadı."),
+            "{}\n{}",
+            t!(lang, "wordle.shared", user = mention(me)),
             wordle::share_text(lang, wordle::puzzle_number(i64::from(day)), solved, &rows)
         )),
         allowed_mentions: quiet(),
@@ -342,36 +307,18 @@ pub(crate) async fn on_guess(cx: &Cx, mut args: Split<'_, char>, text: &str) -> 
         args.next().and_then(|v| v.parse::<i32>().ok()),
     );
     let (Some(day), Some((kind, lang))) = (day, parse_mode(mode)) else {
-        return cx.reply_ephemeral("This board has expired.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "wordle.board-expired")).await;
     };
     let Some(guess) = wordle::normalize(lang, text) else {
-        return cx
-            .reply_ephemeral(say(
-                lang,
-                "A guess is exactly five letters, a to z.",
-                "Bir tahmin tam olarak beş harf olmalı (Türk alfabesi).",
-            ))
-            .await;
+        return cx.reply_ephemeral(t!(lang, "wordle.bad-guess")).await;
     };
     if !PlayContent::for_lang(lang).words.is_allowed(&guess) {
         return cx
-            .reply_ephemeral(match lang {
-                Lang::En => format!("**{}** isn't in my word list. Try another word!", guess.to_uppercase()),
-                Lang::Tr => format!(
-                    "**{}** kelime listemde yok. Başka bir kelime dene!",
-                    lang::upper(lang, &guess)
-                ),
-            })
+            .reply_ephemeral(t!(lang, "wordle.not-listed", word = lang::upper(lang, &guess)))
             .await;
     }
     let Some(game) = cx.app.db.wordle_guess(me, mode, day, &guess).await? else {
-        return cx
-            .reply_ephemeral(say(
-                lang,
-                "This board is finished. Start another with `/play wordle`!",
-                "Bu tahta bitti. `/play wordle` ile yenisini başlat!",
-            ))
-            .await;
+        return cx.reply_ephemeral(t!(lang, "wordle.board-finished")).await;
     };
     let mut note = String::new();
     if game.status != "playing" {
@@ -400,31 +347,13 @@ pub(crate) async fn on_guess(cx: &Cx, mut args: Split<'_, char>, text: &str) -> 
                 pay_win(&cx.app, me, Game::Wordle, wordle::reward(false, tries), "wordle_win").await?
             };
             note = if paid > 0 {
-                match lang {
-                    Lang::En => format!("+**{paid}** shells!"),
-                    Lang::Tr => format!("+**{paid}** deniz kabuğu!"),
-                }
+                t!(lang, "wordle.paid", paid = paid)
             } else if twin {
-                say(
-                    lang,
-                    "(You already earned today's daily reward in the other language.)",
-                    "(Bugünün günlük ödülünü diğer dilde zaten aldın.)",
-                )
-                .to_owned()
+                t!(lang, "wordle.other-language")
             } else if replayed {
-                say(
-                    lang,
-                    "(You played today's daily before deleting your data, so it pays nothing again.)",
-                    "(Bugünkü günlüğü verilerini silmeden önce oynadın, bu yüzden tekrar ödül vermez.)",
-                )
-                .to_owned()
+                t!(lang, "wordle.replayed")
             } else {
-                say(
-                    lang,
-                    "(Today's reward limit for practice is reached.)",
-                    "(Alıştırma için bugünkü ödül sınırına ulaşıldı.)",
-                )
-                .to_owned()
+                t!(lang, "wordle.limit-reached")
             };
         }
     }

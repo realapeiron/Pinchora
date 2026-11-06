@@ -1,5 +1,7 @@
 use std::fmt::Write;
 
+use pinchora_core::{i18n::Lang, t};
+
 use super::{PIXEL, text};
 use crate::{
     Theme,
@@ -27,6 +29,8 @@ pub struct HangmanCard<'a> {
     /// 0 to 6; how far the sea has come.
     pub misses: usize,
     pub status: &'a str,
+    /// The language of the labels; the category and the status come written.
+    pub lang: Lang,
     pub theme: Theme,
 }
 
@@ -203,7 +207,17 @@ impl HangmanCard<'_> {
         }
 
         // Lives left, as shells that go dark.
-        text(&mut s, 28.0, 258.0, 14.0, PIXEL, false, &t.muted, "start", "LIVES");
+        text(
+            &mut s,
+            28.0,
+            258.0,
+            14.0,
+            PIXEL,
+            false,
+            &t.muted,
+            "start",
+            &t!(self.lang, "hangman.card.lives"),
+        );
         for i in 0..6usize {
             let lost = i >= 6usize.saturating_sub(self.misses);
             let color = if lost { "#2e3d75" } else { t.gold.as_str() };
@@ -279,7 +293,17 @@ impl HangmanCard<'_> {
             .map(|c| c.to_ascii_uppercase().to_string())
             .collect::<Vec<_>>()
             .join(" ");
-        text(&mut s, 384.0, 228.0, 14.0, PIXEL, false, &t.muted, "start", "WRONG");
+        text(
+            &mut s,
+            384.0,
+            228.0,
+            14.0,
+            PIXEL,
+            false,
+            &t.muted,
+            "start",
+            &t!(self.lang, "hangman.card.wrong"),
+        );
         text(
             &mut s,
             470.0,
@@ -319,6 +343,7 @@ mod tests {
             wrong: &[],
             misses,
             status: "Pick a letter",
+            lang: Lang::En,
             theme: Theme::reef(),
         }
     }

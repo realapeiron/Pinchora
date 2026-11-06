@@ -3,6 +3,8 @@
 
 use std::fmt::Write;
 
+use pinchora_core::{i18n::Lang, t};
+
 use super::{PIXEL, SANS, text};
 use crate::{
     Theme,
@@ -335,6 +337,8 @@ pub struct DexCard {
     pub pages: usize,
     pub cells: Vec<DexCell>,
     pub footer: String,
+    /// The language of the labels; the title, tab and footer come written.
+    pub lang: Lang,
     pub theme: Theme,
 }
 
@@ -464,7 +468,12 @@ impl DexCard {
             false,
             &t.muted,
             "end",
-            &format!("PAGE {}/{}", self.page + 1, self.pages.max(1)),
+            &t!(
+                self.lang,
+                "dex.card.page",
+                page = self.page + 1,
+                pages = self.pages.max(1)
+            ),
         );
         t.draw_frame(&mut s, w, h);
         s.push_str("</svg>");
@@ -758,6 +767,8 @@ pub struct PotCard {
     pub rate: String,
     /// The next upgrade, e.g. `Level 2 for 400 shells`; empty at the top.
     pub upgrade: String,
+    /// The language of the labels; the rate and the upgrade come written.
+    pub lang: Lang,
     pub theme: Theme,
 }
 
@@ -788,8 +799,13 @@ impl PotCard {
         header(
             &mut s,
             t,
-            "Crab pot",
-            &format!("LEVEL {}/{}", self.level, self.max_level),
+            &t!(self.lang, "crabpot.card.title"),
+            &t!(
+                self.lang,
+                "crabpot.card.level",
+                level = self.level,
+                max = self.max_level
+            ),
             764.0,
         );
         // The sea: a lighter band at the top, the sea floor in sand at the bottom.
@@ -856,11 +872,11 @@ impl PotCard {
         // The panel on the right.
         panel(&mut s, 430.0, 96.0, 334.0, 214.0, 4.0, &t.panel, &t.panel_edge);
         let (status, color) = match &self.state {
-            PotState::Empty => ("EMPTY", t.muted.clone()),
-            PotState::Soaking { .. } => ("SOAKING", t.accent.clone()),
-            PotState::Ready { .. } => ("READY TO HAUL", t.mint.clone()),
+            PotState::Empty => (t!(self.lang, "crabpot.card.empty"), t.muted.clone()),
+            PotState::Soaking { .. } => (t!(self.lang, "crabpot.card.soaking"), t.accent.clone()),
+            PotState::Ready { .. } => (t!(self.lang, "crabpot.card.ready"), t.mint.clone()),
         };
-        text(&mut s, 454.0, 140.0, 24.0, PIXEL, false, &color, "start", status);
+        text(&mut s, 454.0, 140.0, 24.0, PIXEL, false, &color, "start", &status);
         match &self.state {
             PotState::Empty => {
                 text(
@@ -872,7 +888,7 @@ impl PotCard {
                     false,
                     &t.ink,
                     "start",
-                    "Set it for 1, 4 or 8 hours.",
+                    &escape(&t!(self.lang, "crabpot.card.set-hint")),
                 );
             }
             PotState::Soaking { left, fraction, hours } => {
@@ -885,7 +901,7 @@ impl PotCard {
                     false,
                     &t.ink,
                     "start",
-                    &escape(&format!("{left} left of {hours} h")),
+                    &escape(&t!(self.lang, "crabpot.card.soak-left", left = left, hours = hours)),
                 );
                 segment_bar(
                     &mut s,
@@ -910,7 +926,7 @@ impl PotCard {
                     false,
                     &t.ink,
                     "start",
-                    &escape(&format!("A {hours} h soak is done.")),
+                    &escape(&t!(self.lang, "crabpot.card.soak-done", hours = hours)),
                 );
             }
         }
@@ -926,7 +942,7 @@ impl PotCard {
             &escape(&self.rate.to_uppercase()),
         );
         let upgrade = if self.upgrade.is_empty() {
-            "TOP LEVEL POT".to_owned()
+            t!(self.lang, "crabpot.card.top-level")
         } else {
             self.upgrade.to_uppercase()
         };
@@ -988,6 +1004,7 @@ mod tests {
                 },
             ],
             footer: String::new(),
+            lang: Lang::En,
             theme: Theme::reef(),
         };
         let svg = card.to_svg();
