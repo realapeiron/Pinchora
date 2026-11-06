@@ -11,7 +11,7 @@ export const OG_IMAGE = {
   path: "/og.png",
   width: 1200,
   height: 630,
-  alt: "Pinchora: a cozy pixel world for your Discord server. A pixel room, a profile card and a crab.",
+  alt: "Pinchora crab logo above a pixel reef town at dusk. Build your reef. Play with your server.",
 };
 
 export interface PublicRoute {
