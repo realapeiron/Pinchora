@@ -1,0 +1,80 @@
+# /leaderboard and /wrapped: the replies, the board titles, and the words drawn on their cards.
+# Card labels are drawn in capitals in a pixel font: keep them short.
+
+[leaderboard]
+server = "Server leaderboard"
+weekly = "Weekly XP"
+catch = "Weekly catch"
+points = "Top {name}"
+shells = "Richest shell collectors"
+global = "Global leaderboard"
+unknown-user = "Unknown user"
+a-fish = "a fish"
+empty = "Nobody here yet. Chat a bit and check again!"
+empty-catch = "No catches this week yet. Cast a line with /fish cast!"
+# The figure and the small line under it on a row.
+shells-unit = "SHELLS"
+weekly-unit = "XP THIS WEEK"
+level = "LV {level}"
+xp = "{xp} XP"
+size = "{size} CM"
+usual = "{fish} · {percent}% OF USUAL"
+# One place of last week's catch podium.
+catch-size = "{name} {size} cm"
+
+[card.leaderboard]
+page = "PAGE {page}"
+last-week = "LAST WEEK'S TOP 3"
+
+[wrapped]
+not-open = "Wrapped isn't open yet. It opens on <t:{ts}:D> ({when}) and stays open until the end of January.\nUntil then Pinchora keeps counting: messages, XP, shells, fish, visits, likes and pet care."
+not-yet = "{year} hasn't been wrapped up yet. The latest Wrapped is {open}."
+nothing = "Nothing was counted for you in {year}."
+friendly-crab = "A friendly crab"
+
+# The line under the player's name.
+[wrapped.title]
+chatterbox = "The Chatterbox"
+tide-whisperer = "Tide Whisperer"
+social-butterfly = "Social Butterfly"
+house-cheerleader = "House Cheerleader"
+pet-whisperer = "Pet Whisperer"
+shell-tycoon = "Shell Tycoon"
+fresh-pearl = "Fresh Pearl"
+
+[card.wrapped]
+subtitle = "YOUR YEAR ON THE REEF"
+busiest = "BUSIEST MONTH"
+things-done = "{num} THINGS DONE"
+quiet = "A QUIET YEAR"
+messages = "MESSAGES"
+xp = "SERVER XP"
+shells = "SHELLS EARNED"
+fish = "FISH CAUGHT"
+houses = "HOUSES VISITED"
+pets = "PETS CARED FOR"
+likes-given = "LIKES GIVEN"
+likes-received = "LIKES RECEIVED"
+favourite = "FAVOURITE CATCH"
+caught = { one = "caught {num} time", other = "caught {num} times" }
+no-fish = "NO FISH YET"
+house = "MOST VISITED HOUSE"
+house-friend = "MOST VISITED FRIEND'S HOUSE"
+visits = { one = "{num} visit", other = "{num} visits" }
+no-visits = "NO VISITS YET"
+footer = "/WRAPPED · SEE YOU NEXT YEAR"
+
+# The bars: each month's name in capitals; the chart writes only the first letter.
+[card.wrapped.month]
+1 = "JANUARY"
+2 = "FEBRUARY"
+3 = "MARCH"
+4 = "APRIL"
+5 = "MAY"
+6 = "JUNE"
+7 = "JULY"
+8 = "AUGUST"
+9 = "SEPTEMBER"
+10 = "OCTOBER"
+11 = "NOVEMBER"
+12 = "DECEMBER"

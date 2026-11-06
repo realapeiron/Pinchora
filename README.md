@@ -375,6 +375,16 @@ mode `daily-tr`/`practice-tr`), so no migration is needed. The party filter read
 disguises (`party/filter_tr.rs`: `ş`/`s`, `ğ`/`g` swaps, numbers, spacing, stars), and never reads the Turkish
 `gün` as the English `gun`. `tests/play_content_tr.rs` and `content/check.py` check every list.
 
+**Turkish pets, fishing, shops and cards.** `/pet` (with trips and the nursery), `/fish`, `/shop`, `/inventory`, `/gift`,
+`/stall`, `/plaza`, `/quests`, `/points`, `/store`, `/leaderboard`, `/wrapped`, `/remind` and the `/customize` title, style
+and showcase editors answer in the player's language: their texts are the keys of `locales/{en,tr}/{pets,fish,shop,
+quests,points,remind,boards,cosmetics}.toml`, and the pet, nursery, wrapped, leaderboard and badge-collection cards take
+a `lang` for the words they draw. A new pet is named after its species in the adopter's language. `/remind` also
+understands Turkish units (`2sa30dk`, `3g`, `1hf`). The direct messages a reminder sends have no interaction to take a
+language from: they use the player's `/language` pick, else the language the notification was switched on or last
+refreshed in (kept in the reminder's `body`), else English. `tests/simulate/turkish_{pets,fish,shop,remind}.rs` play
+each group in Turkish.
+
 ### Text commands
 
 Every command also works as a message: `p!profile`, `p!fish cast reef`, `p!duel connect4 @Sam bet:50`, or the

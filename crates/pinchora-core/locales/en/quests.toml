@@ -1,0 +1,12 @@
+# /quests: the daily board, its claim button and what a claim says.
+
+[quests]
+title = "Today's quests"
+line = "{mark} **{text}** — {bar} `{progress}/{target}` · +{reward} shells"
+all-clear = "Finish all three for **{pearls} pearls**."
+footer = "New quests in {hours}h {minutes}m"
+claim = "Claim rewards"
+expired = "That board is from an earlier day, so its button has expired. Here are today's quests."
+shells = "+{shells} shells"
+pearls = "+{pearls} pearls for clearing the day!"
+nothing = "Nothing new to claim."

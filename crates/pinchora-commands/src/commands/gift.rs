@@ -1,3 +1,4 @@
+use pinchora_core::t;
 use pinchora_game::Content;
 use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
 use twilight_model::{
@@ -10,10 +11,7 @@ use twilight_model::{
 
 use crate::{
     Cx,
-    commands::{
-        collection::{SOULBOUND_RULE, giveable},
-        social::ping_only,
-    },
+    commands::{collection::giveable, shop::soulbound_rule, social::ping_only},
     util::mention,
 };
 
@@ -28,11 +26,11 @@ impl Gift {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
         let author = cx.author()?.id;
         let target = &self.user.resolved;
+        let lang = cx.lang();
         if target.bot || target.id == author {
-            return cx.reply_ephemeral("Gifts are for friends!").await;
+            return cx.reply_ephemeral(t!(lang, "gift.for-friends")).await;
         }
         let content = Content::get();
-        let lang = cx.lang();
         let (rows, kept_back) = giveable(cx.app.db.inventory(author.get()).await?);
         let options: Vec<SelectMenuOption> = rows
             .into_iter()
@@ -40,7 +38,7 @@ impl Gift {
                 let item = content.item(&row.item_id)?;
                 Some(SelectMenuOption {
                     default: false,
-                    description: Some(format!("You have {}", row.quantity)),
+                    description: Some(t!(lang, "gift.you-have", count = row.quantity)),
                     emoji: None,
                     label: item.name_in(lang),
                     value: row.item_id,
@@ -50,14 +48,14 @@ impl Gift {
         if options.is_empty() {
             return cx
                 .reply_ephemeral(if kept_back {
-                    format!("Nothing in your inventory can be sent as a gift. {SOULBOUND_RULE}")
+                    t!(lang, "gift.nothing-giveable", rule = soulbound_rule(lang))
                 } else {
-                    "Your inventory is empty. Pick up something in `/house edit` or visit `/shop`.".to_owned()
+                    t!(lang, "gift.empty")
                 })
                 .await;
         }
         cx.reply(InteractionResponseData {
-            content: Some(format!("What do you want to send to {}?", mention(target.id))),
+            content: Some(t!(lang, "gift.prompt", user = mention(target.id))),
             components: Some(vec![Component::ActionRow(ActionRow {
                 id: None,
                 components: vec![Component::SelectMenu(SelectMenu {
@@ -70,7 +68,7 @@ impl Gift {
                     max_values: Some(1),
                     min_values: Some(1),
                     options: Some(options),
-                    placeholder: Some("Choose a gift…".to_owned()),
+                    placeholder: Some(t!(lang, "gift.placeholder")),
                     required: None,
                 })],
             })]),
@@ -85,39 +83,42 @@ impl Gift {
 pub(crate) async fn on_gift(cx: &Cx, mut args: std::str::Split<'_, char>, value: Option<&str>) -> anyhow::Result<()> {
     let to: u64 = args.next().and_then(|v| v.parse().ok()).unwrap_or(0);
     let from = cx.author()?.id.get();
+    let lang = cx.lang();
     let Some(item) = value.and_then(|v| Content::get().item(v)) else {
-        return cx.reply_ephemeral("Pick something to send.").await;
+        return cx.reply_ephemeral(t!(lang, "gift.pick-something")).await;
     };
     if to == 0 || to == from {
-        return cx.reply_ephemeral("Gifts are for friends!").await;
+        return cx.reply_ephemeral(t!(lang, "gift.for-friends")).await;
     }
-    let lang = cx.lang();
     if item.bound {
         return cx
-            .reply_ephemeral(format!(
-                "**{}** can't be given away. {SOULBOUND_RULE}",
-                item.name_in(lang)
+            .reply_ephemeral(t!(
+                lang,
+                "gift.cant-give",
+                name = item.name_in(lang),
+                rule = soulbound_rule(lang)
             ))
             .await;
     }
     if !cx.app.db.gift_item(from, to, &item.id()).await? {
         return cx
-            .reply_ephemeral(format!("You don't have a **{}** anymore.", item.name_in(lang)))
+            .reply_ephemeral(t!(lang, "gift.none-left", name = item.name_in(lang)))
             .await;
     }
     cx.update(InteractionResponseData {
-        content: Some("🎁 Sent!".to_owned()),
+        content: Some(t!(lang, "gift.sent")),
         components: Some(Vec::new()),
         ..Default::default()
     })
     .await?;
     // The one who gets the gift is told; the sender is not pinged for their own gift.
     cx.reply(InteractionResponseData {
-        content: Some(format!(
-            "🎁 {} sent {} a **{}**! It's waiting in their `/inventory`.",
-            mention(from),
-            mention(to),
-            item.name_in(lang)
+        content: Some(t!(
+            lang,
+            "gift.announce",
+            giver = mention(from),
+            friend = mention(to),
+            name = item.name_in(lang)
         )),
         allowed_mentions: ping_only(to),
         ..Default::default()

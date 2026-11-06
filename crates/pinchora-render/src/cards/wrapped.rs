@@ -1,5 +1,7 @@
 use std::fmt::Write;
 
+use pinchora_core::{i18n::Lang, t};
+
 use super::{Backdrop, PIXEL, SANS, SpriteArt, avatar_frame, backdrop, text};
 use crate::{
     Theme,
@@ -46,6 +48,8 @@ pub struct WrappedHouse<'a> {
 
 /// 640×1164 Wrapped card: the year in numbers.
 pub struct WrappedCard<'a> {
+    /// The language of the labels; the title and the names come translated.
+    pub lang: Lang,
     pub year: i32,
     pub display_name: &'a str,
     /// PNG, 128×128.
@@ -61,21 +65,6 @@ pub struct WrappedCard<'a> {
     pub theme: Theme,
 }
 
-const MONTHS: [&str; 12] = [
-    "JANUARY",
-    "FEBRUARY",
-    "MARCH",
-    "APRIL",
-    "MAY",
-    "JUNE",
-    "JULY",
-    "AUGUST",
-    "SEPTEMBER",
-    "OCTOBER",
-    "NOVEMBER",
-    "DECEMBER",
-];
-
 impl WrappedCard<'_> {
     pub const AVATAR_SIZE: u32 = 128;
     pub const WIDTH: f32 = 640.0;
@@ -89,6 +78,11 @@ impl WrappedCard<'_> {
             .filter(|(_, n)| **n > 0)
             .max_by_key(|(i, n)| (**n, *i))
             .map(|(i, n)| (i + 1, *n))
+    }
+
+    /// The name of `month` (1-12) in capitals, in the card's language.
+    fn month_name(&self, month: usize) -> String {
+        t!(self.lang, &format!("card.wrapped.month.{month}"))
     }
 
     pub fn to_svg(&self) -> String {
@@ -158,7 +152,7 @@ impl WrappedCard<'_> {
             false,
             &t.gold,
             "start",
-            &escape(&truncate(&self.title.to_uppercase(), 22)),
+            &escape(&truncate(&self.lang.upper(self.title), 22)),
         );
         text(
             &mut s,
@@ -169,7 +163,7 @@ impl WrappedCard<'_> {
             false,
             &t.muted,
             "start",
-            "YOUR YEAR ON THE REEF",
+            &t!(self.lang, "card.wrapped.subtitle"),
         );
 
         // The busiest month, with a bar for each month under it.
@@ -183,7 +177,7 @@ impl WrappedCard<'_> {
             false,
             &t.muted,
             "start",
-            "BUSIEST MONTH",
+            &t!(self.lang, "card.wrapped.busiest"),
         );
         match Self::top_month(&self.months) {
             Some((month, n)) => {
@@ -196,7 +190,7 @@ impl WrappedCard<'_> {
                     false,
                     &t.accent,
                     "start",
-                    MONTHS[month - 1],
+                    &self.month_name(month),
                 );
                 text(
                     &mut s,
@@ -207,10 +201,20 @@ impl WrappedCard<'_> {
                     false,
                     &t.ink,
                     "end",
-                    &format!("{} THINGS DONE", compact(n)),
+                    &t!(self.lang, "card.wrapped.things-done", num = compact(n)),
                 );
             }
-            None => text(&mut s, 44.0, 398.0, 28.0, PIXEL, false, &t.ink, "start", "A QUIET YEAR"),
+            None => text(
+                &mut s,
+                44.0,
+                398.0,
+                28.0,
+                PIXEL,
+                false,
+                &t.ink,
+                "start",
+                &t!(self.lang, "card.wrapped.quiet"),
+            ),
         }
         let top = Self::top_month(&self.months).map(|(m, _)| m);
         let tallest = self.months.iter().copied().max().unwrap_or(0).max(1) as f32;
@@ -239,7 +243,8 @@ impl WrappedCard<'_> {
                     base - 16.0 - bar,
                 );
             }
-            let letter = &MONTHS[i][..1];
+            let month = self.month_name(i + 1);
+            let letter: String = month.chars().take(1).collect();
             text(
                 &mut s,
                 x + 17.0,
@@ -249,22 +254,58 @@ impl WrappedCard<'_> {
                 false,
                 if best { &t.gold } else { &t.muted },
                 "middle",
-                letter,
+                &letter,
             );
         }
 
         // The numbers, two to a row.
         let m = &self.totals;
         // Each number has a picture of its own: (what it counts, how many, the icon and its colours).
-        let tiles: [(&str, i64, &[&str], &str, &str); 8] = [
-            ("MESSAGES", m.messages, BUBBLE, &t.accent, "#ffffff"),
-            ("SERVER XP", m.xp, STAR, &t.gold, "#fff7d6"),
-            ("SHELLS EARNED", m.shells, SHELL, &t.gold, "#ffffff"),
-            ("FISH CAUGHT", m.fish, FISH, &t.mint, "#ffffff"),
-            ("HOUSES VISITED", m.visits, HOUSE, &t.gold, "#ffffff"),
-            ("PETS CARED FOR", m.pet_care, CRAB, &t.accent, "#ffffff"),
-            ("LIKES GIVEN", m.likes_given, HEART_OUTLINE, &t.heart, "#ffc2cf"),
-            ("LIKES RECEIVED", m.likes_received, HEART, &t.heart, "#ffc2cf"),
+        let tiles: [(String, i64, &[&str], &str, &str); 8] = [
+            (
+                t!(self.lang, "card.wrapped.messages"),
+                m.messages,
+                BUBBLE,
+                &t.accent,
+                "#ffffff",
+            ),
+            (t!(self.lang, "card.wrapped.xp"), m.xp, STAR, &t.gold, "#fff7d6"),
+            (
+                t!(self.lang, "card.wrapped.shells"),
+                m.shells,
+                SHELL,
+                &t.gold,
+                "#ffffff",
+            ),
+            (t!(self.lang, "card.wrapped.fish"), m.fish, FISH, &t.mint, "#ffffff"),
+            (
+                t!(self.lang, "card.wrapped.houses"),
+                m.visits,
+                HOUSE,
+                &t.gold,
+                "#ffffff",
+            ),
+            (
+                t!(self.lang, "card.wrapped.pets"),
+                m.pet_care,
+                CRAB,
+                &t.accent,
+                "#ffffff",
+            ),
+            (
+                t!(self.lang, "card.wrapped.likes-given"),
+                m.likes_given,
+                HEART_OUTLINE,
+                &t.heart,
+                "#ffc2cf",
+            ),
+            (
+                t!(self.lang, "card.wrapped.likes-received"),
+                m.likes_received,
+                HEART,
+                &t.heart,
+                "#ffc2cf",
+            ),
         ];
         for (i, (label, value, icon, color, highlight)) in tiles.iter().enumerate() {
             let (x, y) = (20.0 + (i % 2) as f32 * 308.0, 548.0 + (i / 2) as f32 * 88.0);
@@ -306,7 +347,7 @@ impl WrappedCard<'_> {
             false,
             &t.muted,
             "start",
-            "FAVOURITE CATCH",
+            &t!(self.lang, "card.wrapped.favourite"),
         );
         match &self.fish {
             Some(fish) => {
@@ -330,10 +371,11 @@ impl WrappedCard<'_> {
                     false,
                     &t.muted,
                     "start",
-                    &format!(
-                        "caught {} time{}",
-                        thousands(fish.caught),
-                        if fish.caught == 1 { "" } else { "s" }
+                    &t!(
+                        self.lang,
+                        "card.wrapped.caught",
+                        count = fish.caught,
+                        num = thousands(fish.caught)
                     ),
                 );
                 if let Some(art) = &fish.art {
@@ -360,7 +402,7 @@ impl WrappedCard<'_> {
                 false,
                 &t.ink,
                 "start",
-                "NO FISH YET",
+                &t!(self.lang, "card.wrapped.no-fish"),
             ),
         }
 
@@ -368,10 +410,10 @@ impl WrappedCard<'_> {
         let y = 1020.0;
         t.panel(&mut s, 20.0, y, 600.0, 98.0, 4.0);
         let label = match &self.house {
-            Some(house) if house.friend => "MOST VISITED FRIEND'S HOUSE",
-            _ => "MOST VISITED HOUSE",
+            Some(house) if house.friend => t!(self.lang, "card.wrapped.house-friend"),
+            _ => t!(self.lang, "card.wrapped.house"),
         };
-        text(&mut s, 44.0, y + 30.0, 13.0, PIXEL, false, &t.muted, "start", label);
+        text(&mut s, 44.0, y + 30.0, 13.0, PIXEL, false, &t.muted, "start", &label);
         match &self.house {
             Some(house) => {
                 text(
@@ -394,10 +436,11 @@ impl WrappedCard<'_> {
                     false,
                     &t.muted,
                     "start",
-                    &format!(
-                        "{} visit{}",
-                        thousands(house.visits),
-                        if house.visits == 1 { "" } else { "s" }
+                    &t!(
+                        self.lang,
+                        "card.wrapped.visits",
+                        count = house.visits,
+                        num = thousands(house.visits)
                     ),
                 );
                 sprite(&mut s, HOUSE, 548.0, y + 34.0, 6.0, &t.gold, "#ffffff");
@@ -411,7 +454,7 @@ impl WrappedCard<'_> {
                 false,
                 &t.ink,
                 "start",
-                "NO VISITS YET",
+                &t!(self.lang, "card.wrapped.no-visits"),
             ),
         }
         text(
@@ -423,7 +466,7 @@ impl WrappedCard<'_> {
             false,
             &t.muted,
             "middle",
-            "/WRAPPED · SEE YOU NEXT YEAR",
+            &t!(self.lang, "card.wrapped.footer"),
         );
         t.draw_frame(&mut s, w, h);
         s.push_str("</svg>");

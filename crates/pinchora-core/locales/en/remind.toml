@@ -1,0 +1,83 @@
+# /remind: the replies, the list, the cancel menu and the direct messages the ticker sends.
+
+[remind]
+# /remind me when
+off = "Okay, no more messages about {thing}."
+on-hint = "{note}\nI send these as direct messages, so keep your DMs open. Turn it off with `/remind me when {what} off`."
+next-ready = "Your next {kind} is ready {when}. I'll message you then."
+ready-now = "Your {kind} is ready to collect now. I'll message you the next time, once you've collected it."
+trip-none = "None of your pets is on a trip. I'll message you when one you send off is home."
+trip-one = "**{name}** is on a trip. I'll message you when it is home."
+trip-many = "{count} of your pets are on trips. I'll message you as each one gets home."
+pet-none = "You have no pet yet (`/pet adopt`). I'll message you when your active pet needs looking after."
+pet-at = "I'll message you when **{name}** needs looking after, around {when}."
+pet-later = "I'll message you when **{name}** needs looking after, once it is home and awake."
+
+# /remind me in
+write-text = "Write what to remind you of (mentions are left out of reminders)."
+too-many = "You already have {max} reminders open. Cancel one with `/remind list` first."
+set-title = "⏰ Reminder set"
+set-text = "I'll message you {when}:\n{body}"
+set-footer = "#{id} · cancel with /remind cancel or /remind list · sent as a direct message"
+# The times it could not read (the parser answers with these keys).
+bad-time = "I couldn't read that time. Write it like `45m`, `2h30m` or `3d` (units: w, d, h, m, s)."
+time-too-long = "That is too long a time."
+time-year = "I can only remind you up to a year ahead."
+time-too-soon = "That is too soon: reminders are at least a minute away."
+
+# /remind list and cancel
+list-title = "⏰ Your reminders"
+list-notifications = "Messages when something is ready"
+list-reminders = "Reminders"
+list-none = "None. Set one with `/remind me in 2h30m <text>`."
+list-more = "…and {count} more in the menu below"
+list-footer = "{count} of {max} reminders · change notifications with /remind me when"
+list-placeholder = "Cancel a reminder…"
+cancelled = "Cancelled reminder **#{id}**."
+no-such = "You have no reminder **#{id}**. See your numbers with `/remind list`."
+already-gone = "That reminder was already gone."
+expired = "This menu has expired."
+
+# The direct messages.
+text-title = "⏰ Reminder"
+collect = "Collect your shells with `/{cmd}`."
+turn-off = "Turn these messages off with `/remind me when {what} off`."
+trip-title = "{name} is home"
+trip-text = "It is back from its trip with a souvenir. Collect it with `/pet trip claim`."
+pet-title = "{name} needs you"
+pet-text = "It could use {wants}. Look after it with `/pet view`."
+
+# What `/remind me when` is about, in a sentence ("messages about ...").
+[remind.thing]
+daily = "your daily reward"
+weekly = "your weekly reward"
+monthly = "your monthly reward"
+pet = "your pet needing care"
+trip = "your pets coming home from trips"
+
+# The reward's name inside a sentence.
+[remind.kind]
+daily = "daily"
+weekly = "weekly"
+monthly = "monthly"
+
+# The notifications on the list.
+[remind.label]
+daily = "Daily reward"
+weekly = "Weekly reward"
+monthly = "Monthly reward"
+pet = "Pet needs looking after"
+trip = "Pet back from a trip"
+
+# The title of the direct message for each reward.
+[remind.title]
+daily = "Your daily is ready"
+weekly = "Your weekly is ready"
+monthly = "Your monthly is ready"
+
+# What the pet wants most (`Needs::want_key` names these).
+[remind.wants]
+food = "something to eat"
+play = "someone to play with"
+bath = "a bath"
+care = "some care"

@@ -229,7 +229,7 @@ impl ConfigCommand {
             Self::Modules(c) => return c.run(cx, guild).await,
             Self::Language(c) => return c.run(cx, guild).await,
             Self::Prefix(c) => return c.run(cx, guild).await,
-            Self::Points(c) => match c.apply(&cx.app.db, guild).await? {
+            Self::Points(c) => match c.apply(&cx.app.db, guild, cx.lang()).await? {
                 Ok(settings) => settings,
                 Err(reason) => return cx.reply_ephemeral(reason).await,
             },

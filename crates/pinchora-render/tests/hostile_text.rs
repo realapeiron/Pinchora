@@ -196,6 +196,7 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "badge collection",
         r.badge_collection(&BadgeCollectionCard {
+            lang: pinchora_core::i18n::Lang::En,
             cells: &cells,
             legend: &[(HOSTILE, 0x3a9bdc)],
             theme: t(),
@@ -204,6 +205,7 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "leaderboard",
         r.leaderboard_card(&LeaderboardCard {
+            lang: pinchora_core::i18n::Lang::Tr,
             title: hostile(),
             entries: vec![LeaderboardEntry {
                 rank: 1,
@@ -218,7 +220,7 @@ fn hostile_text_renders_on_every_card() {
                 name: hostile(),
                 value: hostile(),
             }],
-            empty: "nobody",
+            empty: "nobody".to_owned(),
             theme: t(),
         }),
     ));
@@ -247,6 +249,7 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "pet",
         r.pet_card(&PetCard {
+            lang: pinchora_core::i18n::Lang::En,
             sprite_png: png.clone(),
             sprite_w: 16,
             sprite_h: 16,
@@ -269,6 +272,7 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "nursery",
         r.nursery_card(&NurseryCard {
+            lang: pinchora_core::i18n::Lang::En,
             title: hostile(),
             subtitle: hostile(),
             pets: vec![NurseryPet {
@@ -835,6 +839,7 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "wrapped",
         r.wrapped_card(&WrappedCard {
+            lang: pinchora_core::i18n::Lang::Tr,
             year: 2026,
             display_name: HOSTILE,
             avatar_png: &[],

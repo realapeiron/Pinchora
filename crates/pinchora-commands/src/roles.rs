@@ -39,12 +39,7 @@ pub(crate) fn member_is_gone(error: &Error) -> bool {
     error_code(error) == Some(UNKNOWN_MEMBER)
 }
 
-/// Why Discord refused to give a role, worded to follow "I couldn't give you <role>:".
-pub(crate) fn refusal(error: &Error) -> String {
-    refusal_in(Lang::En, error)
-}
-
-/// [`refusal`] in `lang`.
+/// Why Discord refused to give a role, in `lang`, worded to follow "I couldn't give you <role>:".
 pub(crate) fn refusal_in(lang: Lang, error: &Error) -> String {
     t!(
         lang,

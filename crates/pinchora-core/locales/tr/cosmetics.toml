@@ -1,0 +1,134 @@
+# /customize: titles, style and showcase, the badge lines and the "badge unlocked" notices.
+
+[customize.line]
+worn = " *(takılı)*"
+bought = "alındı"
+price = "{price} kabuk"
+
+[customize.badges]
+shop = "Mağaza"
+buy-option = "{price} kabuk · {description}"
+
+[customize.title]
+title = "Unvanların"
+your-title = "Unvanın: **{name}**."
+no-title = "Henüz bir unvanın yok."
+unlocked-count = " {count}/{total} unvanın kilidini açtın; aşağıdan birini seç."
+heading-unlocked = "Açılanlar"
+heading-locked = "Kazanılacaklar"
+placeholder = "Bir unvan seç…"
+nothing-unlocked = "Henüz açılan yok"
+saved = "Kaydedildi. **{name}** artık profil ve sıra kartlarında adının altında."
+removed = "Çıkarıldı. Adın yine tek başına duruyor."
+expired = "Bu düğmenin süresi doldu."
+
+[customize.style]
+title = "Kart stili"
+refusal-malformed = "Bu bir renk kodu değil. `#ff6b4a` gibi altı ya da `#f64` gibi üç onaltılık rakam yaz."
+refusal-dark = "Bu renk kartın lacivert panellerinde okunamayacak kadar koyu. `#ff6b4a` gibi daha parlak bir renk dene."
+frame-worn = "Şu an kartlarında"
+frame-free = "Ücretsiz"
+frame-unlocked = "{level}. seviyede açıldı"
+frame-locked = "Kilitli · {at}. seviyeye ulaş (sen {level}. seviyedesin)"
+auto = "Otomatik"
+auto-hint = "Arka planından, yoksa mercan"
+accent-auto-background = "Otomatik (arka planın)"
+accent-auto = "Otomatik (mercan)"
+summary = "**Vurgu** {accent} · **Paneller** {panels} · **Çerçeve** {frame}\nStil profil, sıra ve cüzdan kartlarında."
+opacity-hint = "\nPanel saydamlığı arka plan resminin üstünde görünür: `/customize background` ile bir tane seç."
+locked-frame = "🔒 {name} · {level}. seviye"
+hex-button = "Hex kodu…"
+reset-button = "Stili sıfırla"
+accent-menu = "Vurgu rengi…"
+frame-menu = "Çerçeve…"
+saved-auto = "Kaydedildi. Vurgu rengin yine arka planını izliyor."
+saved-accent = "Kaydedildi. Vurgu rengin `{code}`."
+saved-frame = "Kaydedildi. **{frame}** çerçevesi kartlarında."
+frame-refused = "**{frame}** çerçevesi {at}. seviyede açılır. Sen {level}. seviyedesin."
+saved-opacity = "Kaydedildi. Paneller **{opacity}**."
+reset-done = "Tamam. Kartların her oyuncunun başladığı stile döndü."
+expired = "Bu düğmenin süresi doldu."
+form-expired = "Bu formun süresi doldu."
+modal-title = "Vurgu rengi"
+hex-label = "Hex renk kodu"
+
+[customize.style.accent]
+coral = "Mercan"
+peach = "Şeftali"
+honey = "Bal"
+meadow = "Çayır"
+moss = "Yosun"
+mint = "Nane"
+sky = "Gök"
+ocean = "Okyanus"
+periwinkle = "Lavanta mavisi"
+violet = "Mor"
+rose = "Gül pembesi"
+cream = "Krem"
+
+[customize.style.frame]
+plain = "Sade"
+rope = "Halat"
+coral = "Mercan"
+pearl = "İnci"
+gold = "Altın"
+neon = "Neon"
+
+[customize.style.opacity]
+light = "Hafif"
+normal = "Normal"
+solid = "Dolu"
+
+[customize.showcase]
+title = "Profil vitrini"
+empty = "Boş"
+soulbound = "{rarity} · Ruh bağlı"
+fish-description = "{rarity} · en iyi {best} cm · {caught} kez tutuldu"
+pet-description = "{species} · {level}. seviye"
+summary = "**Balık** {fish} · **Hayvan** {pet} · **Mobilya** {furniture} · **Ev** {house}"
+house-shown = "gösteriliyor"
+house-hidden = "gizli"
+empty-showcase = "\nVitrinin boş, o yüzden kartın hep olduğu gibi görünüyor."
+clear-slot = "Alanı temizle"
+hide-house = "Evi gizle"
+show-house = "Evi göster"
+clear-all = "Hepsini temizle"
+slot-menu = "Düzenlenecek alan…"
+saved = "Kaydedildi. **{name}** profil kartında."
+cleared-slot = "Temizlendi. {slot} artık kartında değil."
+no-house = "Henüz bir evin yok. Önce `/house edit` ile aç."
+house-off = "Evin artık kartında değil."
+house-on = "Evin artık kartında."
+cleared-all = "Temizlendi. Kartın hep olduğu gibi görünüyor."
+expired = "Bu düğmenin süresi doldu."
+
+[customize.showcase.slot]
+fish = "Favori balık"
+pet = "Hayvan"
+furniture = "Mobilya"
+
+[customize.showcase.placeholder]
+fish = "Favori balığını seç…"
+pet = "Bir hayvan seç…"
+furniture = "Bir mobilya seç…"
+
+[customize.showcase.nothing]
+fish = "Önce /fish ile bir balık tut"
+pet = "Önce /pet ile bir hayvan sahiplen"
+furniture = "Önce /shop ile mobilya al"
+
+[customize.unlock]
+title = "Rozet açıldı: {name}"
+more = "…ve {count} tane daha. "
+hint = "Koleksiyonunu /customize badges ile gör"
+announce = "{user} bir rozetin kilidini açtı!"
+
+# Words the cards draw themselves, in capitals.
+[card.badges]
+title = "ROZETLER"
+
+[card.showcase]
+fish = "BALIK"
+pet = "HAYVAN"
+furniture = "MOBİLYA"
+house = "EV"

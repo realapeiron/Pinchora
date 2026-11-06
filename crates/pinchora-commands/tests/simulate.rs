@@ -103,6 +103,15 @@ mod grants;
 // What reaches the (still empty) feature hooks.
 #[path = "simulate/hooks.rs"]
 mod hooks;
+// Turkish for fishing, shops and stalls, reminders, pets and the card editors, one file per group.
+#[path = "simulate/turkish_fish.rs"]
+mod turkish_fish;
+#[path = "simulate/turkish_pets.rs"]
+mod turkish_pets;
+#[path = "simulate/turkish_remind.rs"]
+mod turkish_remind;
+#[path = "simulate/turkish_shop.rs"]
+mod turkish_shop;
 
 const APPLICATION_ID: u64 = 1;
 const CHANNEL_ID: u64 = 2;
