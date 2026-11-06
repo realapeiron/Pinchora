@@ -83,17 +83,15 @@ impl CritterDrop {
 fn track_message(cx: &Cx, drop: i64) {
     let app = cx.app.clone();
     let token = cx.interaction.token.clone();
+    // The drop stays keyed to the channel it was called in, which `/critterdrop` checks for a waiting one.
+    let channel = channel_of(cx);
     cx.app.spawn(async move {
         // The answer to the command may still be on its way to Discord.
         tokio::time::sleep(Duration::from_millis(1_500)).await;
         let message = async { anyhow::Ok(app.interaction().response(&token).await?.model().await?) }.await;
         match message {
             Ok(message) => {
-                if let Err(error) = app
-                    .db
-                    .set_drop_message(drop, message.channel_id.get(), message.id.get())
-                    .await
-                {
+                if let Err(error) = app.db.set_drop_message(drop, channel, message.id.get()).await {
                     tracing::debug!(%error, drop, "drop message not remembered");
                 }
             }
@@ -180,7 +178,9 @@ fn critter_embed(row: &DropRow, over: bool) -> Embed {
         })
         .collect();
     let all_gone = row.takers.iter().all(|t| *t != 0);
-    let (title, intro, color) = if over {
+    let (title, intro, color) = if over && all_gone {
+        ("🦀 Critter drop over", "Every card found a home.".to_owned(), SUCCESS)
+    } else if over {
         (
             "🦀 Critter drop over",
             "The tide took what nobody grabbed.".to_owned(),
@@ -452,7 +452,11 @@ fn bottle_embed(row: &DropRow, opened: Option<&Opened>) -> Embed {
 fn bottle_buttons(row: &DropRow, over: bool) -> Vec<Component> {
     vec![button_row(vec![button(
         format!("mb:o:{}", row.id),
-        if over { "Opened" } else { "Open the bottle" },
+        match (over, row.takers.first().is_some_and(|t| *t != 0)) {
+            (false, _) => "Open the bottle",
+            (true, true) => "Opened",
+            (true, false) => "Drifted away",
+        },
         Some("🍾"),
         if over {
             ButtonStyle::Secondary

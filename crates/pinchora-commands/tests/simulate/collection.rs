@@ -391,7 +391,7 @@ async fn a_bottle_is_opened_by_the_first_who_clicks_and_the_message_is_read_alou
         .find(|p| p.message == second && p.method == Method::PATCH)
         .expect("the bottle's message is edited");
     assert_eq!(gone.title(), "🍾 The bottle drifted away");
-    assert!(reply_of(gone).button("Opened").disabled);
+    assert!(reply_of(gone).button("Drifted away").disabled);
 }
 
 #[tokio::test]
