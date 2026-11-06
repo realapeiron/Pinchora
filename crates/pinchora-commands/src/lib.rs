@@ -23,11 +23,12 @@ pub use commands::{
 pub use cx::Cx;
 pub use defer::Deferral;
 pub use events::{
-    on_ban_add, on_ban_remove, on_member_add, on_member_remove, on_member_update, on_message, on_voice_state_update,
+    on_ban_add, on_ban_remove, on_guild_create, on_guild_delete, on_member_add, on_member_remove, on_member_update,
+    on_message, on_voice_state_update,
 };
 pub use responder::Responder;
 pub use server_events::{spawn_ticker as spawn_events_ticker, tick as events_tick};
-pub use voice_xp::{spawn_ticker as spawn_voice_ticker, tick as voice_tick};
+pub use voice_xp::{prune as voice_prune, spawn_ticker as spawn_voice_ticker, tick as voice_tick};
 
 use std::{sync::Arc, time::Instant};
 

@@ -139,7 +139,19 @@ impl XpRules {
     /// A role set to 0 always wins, so a no-XP role cannot be outvoted by a booster role. `@everyone`
     /// counts for every member.
     pub fn multiplier(&self, channel: u64, held: &[u64]) -> f64 {
-        let channel = self.channels.get(&channel).copied().unwrap_or(1.0);
+        self.multiplier_in(&[channel], held)
+    }
+
+    /// [`XpRules::multiplier`] for a channel that sits under others: `lineage` is the channel first,
+    /// then what it is in, nearest first (a thread or forum post, its channel, that channel's
+    /// category). The first one with a rule decides, so a thread's own rule beats its channel's, and a
+    /// channel's beats its category's.
+    pub fn multiplier_in(&self, lineage: &[u64], held: &[u64]) -> f64 {
+        let channel = lineage
+            .iter()
+            .find_map(|id| self.channels.get(id))
+            .copied()
+            .unwrap_or(1.0);
         let mut roles = self
             .roles
             .iter()
@@ -294,6 +306,39 @@ mod tests {
         assert_eq!(r.multiplier(5, &[10, 11, 12]), 6.0, "channel 2 x highest role 3");
         assert_eq!(r.multiplier(6, &[12]), 0.5, "a lone small role still counts");
         assert_eq!(r.multiplier(6, &[10, 12]), 1.5);
+    }
+
+    #[test]
+    fn the_nearest_channel_with_a_rule_decides() {
+        // 5 is a thread in channel 6, which sits in category 7.
+        let lineage = [5, 6, 7];
+        let r = rules(&[(7, 2.0)], &[]);
+        assert_eq!(r.multiplier_in(&lineage, &[]), 2.0, "only the category has a rule");
+        assert_eq!(r.multiplier_in(&lineage[1..], &[]), 2.0, "a channel in the category");
+        assert_eq!(r.multiplier_in(&[8], &[]), 1.0, "a channel somewhere else");
+        let r = rules(&[(7, 2.0), (6, 3.0)], &[]);
+        assert_eq!(r.multiplier_in(&lineage, &[]), 3.0, "the channel beats its category");
+        assert_eq!(
+            r.multiplier_in(&[8, 7], &[]),
+            2.0,
+            "a channel without a rule uses the category"
+        );
+        let r = rules(&[(7, 2.0), (6, 3.0), (5, 4.0)], &[]);
+        assert_eq!(r.multiplier_in(&lineage, &[]), 4.0, "the thread beats its channel");
+        assert_eq!(r.multiplier_in(&[], &[]), 1.0);
+    }
+
+    #[test]
+    fn a_rule_of_zero_on_a_parent_reaches_its_threads_and_roles_still_multiply() {
+        let r = rules(&[(6, 0.0), (7, 2.0)], &[(10, 3.0)]);
+        assert_eq!(
+            r.multiplier_in(&[5, 6, 7], &[10]),
+            0.0,
+            "no XP in the channel, no XP in its threads"
+        );
+        let r = rules(&[(7, 2.0)], &[(10, 3.0)]);
+        assert_eq!(r.multiplier_in(&[5, 6, 7], &[10]), 6.0, "category 2 x role 3");
+        assert_eq!(r.multiplier(5, &[10]), 3.0, "the plain call looks at one channel only");
     }
 
     #[test]

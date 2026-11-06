@@ -36,6 +36,8 @@ pub struct LeaderboardCard {
     pub page: u32,
     /// The previous period's top places (up to three); empty leaves the panel out.
     pub last_week: Vec<LastWeekEntry>,
+    /// What a page with no rows says.
+    pub empty: &'static str,
     pub theme: Theme,
 }
 
@@ -87,7 +89,7 @@ impl LeaderboardCard {
                 false,
                 &t.muted,
                 "middle",
-                "Nobody here yet. Chat a bit and check again!",
+                &escape(self.empty),
             );
         }
         let medals = [t.gold.as_str(), "#c9d1e6", "#d08a52"];
@@ -261,6 +263,7 @@ mod tests {
             entries,
             page: 3,
             last_week: Vec::new(),
+            empty: "Nobody here yet.",
             theme: Theme::reef(),
         };
         let full = (1..=10)
@@ -286,6 +289,7 @@ mod tests {
             entries: (1..=3).map(|n| entry(n, "Tide")).collect(),
             page: 0,
             last_week,
+            empty: "Nobody here yet.",
             theme: Theme::reef(),
         };
         let plain = r.leaderboard_card(&card(Vec::new())).expect("renders");

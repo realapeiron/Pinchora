@@ -55,7 +55,11 @@ fn shipped_content_is_consistent() {
     let odds: f64 = pets::odds(c).iter().map(|(_, p)| p).sum();
     assert!((odds - 1.0).abs() < 1e-9);
     assert!(c.fish.len() >= 60);
-    assert!(c.fish.iter().all(|f| f.min_cm <= f.max_cm && f.weight > 0));
+    assert!(
+        c.fish
+            .iter()
+            .all(|f| f.min_cm <= f.max_cm && f.spots.values().all(|w| *w > 0))
+    );
 
     // Look ids end up in saved character codes, so they must stay plain words.
     assert!(

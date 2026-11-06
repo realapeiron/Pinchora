@@ -1,6 +1,11 @@
-use std::{collections::HashMap, sync::LazyLock};
+use std::{
+    collections::{BTreeMap, HashMap},
+    sync::LazyLock,
+};
 
 use serde::Deserialize;
+
+use crate::fishing::Gear;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -275,9 +280,13 @@ pub struct Fish {
     pub base_value: i64,
     pub time: String,
     pub season: String,
-    pub weight: u32,
+    /// The spots the fish lives in (`fishing_gear.json` names them) and its draw weight at each.
+    pub spots: BTreeMap<String, u32>,
     pub flavor: String,
     pub sprite_brief: String,
+    /// Boots, tins and the like: worth a few shells, and not a fish for the weekly board.
+    #[serde(default)]
+    pub junk: bool,
 }
 
 /// A picture behind the profile, rank and wallet cards, bought with shells.
@@ -442,6 +451,8 @@ pub struct Content {
     pub backgrounds: Vec<Background>,
     pub badges: Vec<Badge>,
     pub titles: Vec<Title>,
+    /// Fishing spots, rods, baits and book milestones.
+    pub fishing: Gear,
     furniture_index: HashMap<String, usize>,
 }
 
@@ -462,6 +473,7 @@ static EMBEDDED: LazyLock<Content> = LazyLock::new(|| {
             include_str!("../../../content/titles.json"),
         )
     })
+    .and_then(|content| content.with_fishing(include_str!("../../../content/fishing_gear.json")))
     .expect("embedded content must parse; run `cargo test -p pinchora-game`")
 });
 
@@ -493,6 +505,7 @@ impl Content {
             backgrounds: Vec::new(),
             badges: Vec::new(),
             titles: Vec::new(),
+            fishing: Gear::default(),
             furniture_index,
         })
     }
@@ -502,6 +515,12 @@ impl Content {
         self.backgrounds = serde_json::from_str(backgrounds)?;
         self.badges = serde_json::from_str(badges)?;
         self.titles = serde_json::from_str(titles)?;
+        Ok(self)
+    }
+
+    /// Adds the fishing spots, rods, baits and milestones, which `from_json` leaves empty.
+    pub fn with_fishing(mut self, gear: &str) -> anyhow::Result<Self> {
+        self.fishing = serde_json::from_str(gear)?;
         Ok(self)
     }
 

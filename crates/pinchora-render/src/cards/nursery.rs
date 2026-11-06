@@ -26,7 +26,8 @@ pub struct NurseryPet {
     pub badge: String,
 }
 
-/// 1000×600 card with up to 8 pets in a 4×2 grid: the nursery.
+/// 1000 px wide card with up to 8 pets in a 4×2 grid, tall enough for the rows it has (352 px for
+/// one row, 600 px for two): the nursery.
 pub struct NurseryCard {
     pub title: String,
     pub subtitle: String,
@@ -46,10 +47,26 @@ const CLEAN: &[&str] = &[
 
 impl NurseryCard {
     pub const SPRITE_BOX: (u32, u32) = (96, 84);
+    /// Pets in a row of the grid, and rows on a card.
+    const PER_ROW: usize = 4;
+    const MAX_ROWS: usize = 2;
+
+    /// Rows of cells the card draws: one for an empty nursery too, which shows a note instead.
+    fn rows(&self) -> usize {
+        self.pets.len().div_ceil(Self::PER_ROW).clamp(1, Self::MAX_ROWS)
+    }
+
+    /// The card's width and height in px.
+    pub fn size(&self) -> (u32, u32) {
+        (1000, 104 + 248 * self.rows() as u32)
+    }
 
     pub fn to_svg(&self) -> String {
         let t = &self.theme;
-        let (w, h) = (1000.0, 600.0);
+        let (w, h) = {
+            let (w, h) = self.size();
+            (w as f32, h as f32)
+        };
         let mut s = String::with_capacity(96 * 1024);
         let _ = write!(
             s,
@@ -85,8 +102,8 @@ impl NurseryCard {
             (ENERGY, &t.mint),
             (CLEAN, "#8fd3ff"),
         ];
-        for (i, pet) in self.pets.iter().take(8).enumerate() {
-            let (col, row) = ((i % 4) as f32, (i / 4) as f32);
+        for (i, pet) in self.pets.iter().take(Self::PER_ROW * Self::MAX_ROWS).enumerate() {
+            let (col, row) = ((i % Self::PER_ROW) as f32, (i / Self::PER_ROW) as f32);
             let (x, y) = (36.0 + col * 236.0, 88.0 + row * 248.0);
             let frame = format!("#{:06x}", pet.frame);
             let opacity = match pet.status {
@@ -220,7 +237,7 @@ impl NurseryCard {
             text(
                 &mut s,
                 500.0,
-                330.0,
+                h / 2.0 + 40.0,
                 22.0,
                 PIXEL,
                 false,
@@ -232,7 +249,7 @@ impl NurseryCard {
         text(
             &mut s,
             964.0,
-            588.0,
+            h - 12.0,
             13.0,
             PIXEL,
             false,
@@ -242,5 +259,60 @@ impl NurseryCard {
         );
         s.push_str("</svg>");
         s
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use image::RgbaImage;
+
+    use super::*;
+    use crate::{Renderer, encode_png};
+
+    fn card(pets: usize) -> NurseryCard {
+        let sprite = encode_png(&RgbaImage::from_pixel(48, 48, image::Rgba([200, 90, 60, 255]))).expect("encodes");
+        NurseryCard {
+            title: "Nursery".to_owned(),
+            subtitle: "PAGE 1/1".to_owned(),
+            pets: (0..pets)
+                .map(|n| NurseryPet {
+                    sprite_png: sprite.clone(),
+                    sprite_w: 48,
+                    sprite_h: 48,
+                    name: format!("Pet {n}"),
+                    level: 10 + n as i32,
+                    xp: 0.5,
+                    needs: [80, 70, 60, 50],
+                    frame: 0x8fa0d8,
+                    active: n == 0,
+                    status: PetStatus::Awake,
+                    badge: String::new(),
+                })
+                .collect(),
+            footer: format!("{pets} PETS"),
+            theme: Theme::reef(),
+        }
+    }
+
+    #[test]
+    fn the_card_is_as_tall_as_its_rows() {
+        for (pets, height) in [(0, 352), (1, 352), (4, 352), (5, 600), (8, 600), (12, 600)] {
+            let card = card(pets);
+            assert_eq!(card.size(), (1000, height), "{pets} pets");
+            let svg = card.to_svg();
+            assert!(svg.contains(&format!(r#"height="{height}""#)), "{pets} pets");
+            // The footer sits just above the bottom edge, whatever the height.
+            assert!(svg.contains(&format!(r#"y="{}""#, height - 12)), "{pets} pets");
+        }
+    }
+
+    #[test]
+    fn a_short_card_renders_at_its_own_size() {
+        let r = Renderer::new();
+        for (pets, height) in [(0, 352), (3, 352), (6, 600)] {
+            let png = r.nursery_card(&card(pets)).expect("renders");
+            let image = image::load_from_memory(&png).expect("a png");
+            assert_eq!((image.width(), image.height()), (1000, height), "{pets} pets");
+        }
     }
 }

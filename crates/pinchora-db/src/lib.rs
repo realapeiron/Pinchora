@@ -2,6 +2,7 @@ mod activity;
 mod contest;
 mod customize;
 mod economy;
+mod fishing;
 mod friends;
 mod games;
 mod giveaways;
@@ -34,6 +35,10 @@ pub use activity::{Activity, Counter};
 pub use contest::{ContestEntry, ContestResult};
 pub use customize::{CustomizeBuy, MAX_BADGES, PlayerStats};
 pub use economy::{DailyOutcome, RepOutcome, TransferOutcome};
+pub use fishing::{
+    BucketRow, CatchBoardRow, CatchLog, Cosmetic, DEFAULT_ROD, DEFAULT_SPOT, GearBuy, GearRow, MilestonePaid,
+    MilestoneReward, NewCatch, Sold,
+};
 pub use friends::{BefriendOutcome, FriendRow, MAX_FRIENDS};
 pub use games::{ACTIVE, DONE, DuelStart, GameSession, GameStat, NewGame, PENDING, Payout, WordleGame};
 pub use giveaways::{
