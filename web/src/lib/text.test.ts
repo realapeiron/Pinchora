@@ -39,6 +39,56 @@ describe("text", () => {
     expect(describeChange({ ...entry({ level: 5 }), action: "level_roles.put" })).toBe("set a level role");
   });
 
+  it("describes custom commands and auto-responders", () => {
+    const tag = (action: string, target: string, after: Record<string, unknown> | null) => ({
+      ...entry(after),
+      action,
+      target,
+    });
+    expect(describeChange(tag("command.create", "rules", { name: "rules" }))).toBe(
+      "wrote the custom command /tag rules",
+    );
+    expect(describeChange(tag("command.delete", "rules", null))).toBe("deleted /tag rules");
+    expect(describeChange(tag("command.update", "rules", { enabled: false }))).toBe("turned /tag rules off");
+    expect(describeChange(tag("command.update", "rules", { responses: ["x"], cooldown_secs: 5 }))).toBe(
+      "changed /tag rules: the replies, the cooldown",
+    );
+    expect(describeChange(tag("responder.create", "Welcome", {}))).toBe("wrote the auto-responder “Welcome”");
+    expect(describeChange(tag("responder.update", "Welcome", { enabled: true }))).toBe(
+      "turned the auto-responder “Welcome” on",
+    );
+    expect(describeChange(tag("commands.import", "", { created: ["a", "b"], replaced: ["c"] }))).toBe(
+      "imported custom commands (2 new, 1 replaced)",
+    );
+    expect(describeChange(tag("responders.import", "", { created: ["a"] }))).toBe(
+      "imported auto-responders (1 new)",
+    );
+  });
+
+  it("shows the lists of a command change as words", () => {
+    const names: Names = {
+      channel: (id) => (id === "7" ? "#general" : "a deleted channel"),
+      role: (id) => (id === "5" ? "@Fan" : "a deleted role"),
+      module: (key) => key,
+    };
+    expect(showValue("allow_roles", ["5", "6"], names)).toBe("@Fan, a deleted role");
+    expect(showValue("deny_channels", ["7"], names)).toBe("#general");
+    expect(showValue("allow_roles", [], names)).toBe("none");
+    expect(showValue("responses", ["Hi", "Hello"], names)).toBe("“Hi” · “Hello”");
+    expect(
+      showValue(
+        "actions",
+        [
+          { kind: "give_points", amount: 5 },
+          { kind: "dm", text: "x" },
+        ],
+        names,
+      ),
+    ).toBe("gives 5 points, sends a direct message");
+    expect(showValue("embed", { title: "x" }, names)).toBe("an embed");
+    expect(targetLabel({ ...entry({}), action: "command.update", target: "rules" })).toBeNull();
+  });
+
   const names: Names = {
     channel: (id) => (id === "7010" ? "#welcome" : "a deleted channel"),
     role: (id) => (id === "55" ? "@Regulars" : "a deleted role"),

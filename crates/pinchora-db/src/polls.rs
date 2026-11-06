@@ -2,7 +2,7 @@
 
 use chrono::{DateTime, Utc};
 
-use crate::{Db, sql_id};
+use crate::{Db, giveaways::Due, sql_id};
 
 pub const OPEN: &str = "open";
 
@@ -204,15 +204,16 @@ impl Db {
         Ok(row.and_then(|(c,)| usize::try_from(c).ok()))
     }
 
-    /// Ids of open polls whose time is up at `now`, soonest first.
-    pub async fn due_polls(&self, now: DateTime<Utc>, limit: i64) -> anyhow::Result<Vec<i64>> {
-        let rows: Vec<(i64,)> =
-            sqlx::query_as("SELECT id FROM polls WHERE status = 'open' AND ends_at <= $1 ORDER BY ends_at LIMIT $2")
-                .bind(now)
-                .bind(limit)
-                .fetch_all(self.pool())
-                .await?;
-        Ok(rows.into_iter().map(|(id,)| id).collect())
+    /// Open polls whose time is up at `now`, soonest first, with the server and channel they live in.
+    pub async fn due_polls(&self, now: DateTime<Utc>, limit: i64) -> anyhow::Result<Vec<Due>> {
+        Ok(sqlx::query_as(
+            "SELECT id, guild_id, channel_id FROM polls
+             WHERE status = 'open' AND ends_at <= $1 ORDER BY ends_at LIMIT $2",
+        )
+        .bind(now)
+        .bind(limit)
+        .fetch_all(self.pool())
+        .await?)
     }
 
     /// Closes a poll that is due at `now`, once; `None` when somebody closed it first.

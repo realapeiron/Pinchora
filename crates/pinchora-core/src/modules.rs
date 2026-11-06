@@ -65,6 +65,7 @@ pub enum Module {
     Suggestions,
     Polls,
     Giveaways,
+    CustomCommands,
     Profile,
     Economy,
     Shop,
@@ -85,7 +86,7 @@ pub enum Module {
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 26] = [
+    pub const ALL: [Self; 27] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -96,6 +97,7 @@ impl Module {
         Self::Suggestions,
         Self::Polls,
         Self::Giveaways,
+        Self::CustomCommands,
         Self::Profile,
         Self::Economy,
         Self::Shop,
@@ -127,6 +129,7 @@ impl Module {
             Self::Suggestions => "suggestions",
             Self::Polls => "polls",
             Self::Giveaways => "giveaways",
+            Self::CustomCommands => "custom_commands",
             Self::Profile => "profile",
             Self::Economy => "economy",
             Self::Shop => "shop",
@@ -162,6 +165,7 @@ impl Module {
             Self::Suggestions => "Suggestions",
             Self::Polls => "Polls",
             Self::Giveaways => "Giveaways",
+            Self::CustomCommands => "Custom commands",
             Self::Profile => "Profiles and ranks",
             Self::Economy => "Shell economy",
             Self::Shop => "Shops and gifts",
@@ -194,6 +198,9 @@ impl Module {
             Self::Suggestions => "/suggest and its voting buttons.",
             Self::Polls => "/poll and its voting buttons.",
             Self::Giveaways => "/giveaway and its entry button.",
+            Self::CustomCommands => {
+                "/tag and /customcommand, and the auto-responders (joins, level-ups, roles, keywords)."
+            }
             Self::Profile => "/profile, /rank, /leaderboard, /bio, /customize, /character and game stats.",
             Self::Economy => "/daily, /balance, /give and /rep.",
             Self::Shop => "/shop, /inventory, /gift and player stalls.",
@@ -226,7 +233,8 @@ impl Module {
             | Self::Store
             | Self::Suggestions
             | Self::Polls
-            | Self::Giveaways => Group::Server,
+            | Self::Giveaways
+            | Self::CustomCommands => Group::Server,
             Self::Profile | Self::Economy | Self::Shop | Self::Quests | Self::Social => Group::Players,
             Self::House | Self::Plaza | Self::Pets | Self::Fishing => Group::Home,
             Self::Duels
@@ -274,6 +282,7 @@ impl Module {
             "roles" => Self::RolePanels,
             "partner" | "friends" | "hug" | "pat" | "wave" | "highfive" => Self::Social,
             "giveaway" => Self::Giveaways,
+            "tag" | "customcommand" => Self::CustomCommands,
             "suggest" | "suggestion" => Self::Suggestions,
             "poll" => Self::Polls,
             "dex" | "beachcomb" | "crabpot" | "critterdrop" => Self::Collection,
@@ -316,6 +325,7 @@ impl Module {
             "rr" => Self::RolePanels,
             "pt" | "fd" | "hg" => Self::Social,
             "gw" => Self::Giveaways,
+            "tg" | "cm" => Self::CustomCommands,
             "sg" => Self::Suggestions,
             "pl" => Self::Polls,
             _ => return None,
@@ -617,6 +627,13 @@ mod tests {
                 "{prefix}"
             );
         }
+        assert_eq!(Module::of_command("tag", None), Some(Module::CustomCommands));
+        assert_eq!(
+            Module::of_command("customcommand", Some("create")),
+            Some(Module::CustomCommands)
+        );
+        assert_eq!(Module::of_component_prefix("tg"), Some(Module::CustomCommands));
+        assert_eq!(Module::of_component_prefix("cm"), Some(Module::CustomCommands));
         assert_eq!(Module::of_component_prefix("zz"), None);
     }
 

@@ -17,6 +17,7 @@ import {
   checkTitle,
   checkVoiceAmount,
 } from "./rules";
+import { checkCommandName } from "./tags";
 
 type Input = unknown;
 
@@ -39,6 +40,7 @@ const checks: Record<string, (input: Input) => Check<unknown>> = {
   reputation: (n) => checkReputation(n as number),
   price: (n) => checkPrice(n as number),
   stock: (n) => checkStock(n as number),
+  command_name: (s) => checkCommandName(s as string),
 };
 
 describe("the browser's checks answer like the server's", () => {

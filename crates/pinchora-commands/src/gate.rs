@@ -174,6 +174,8 @@ mod tests {
             ("bc", "dex", ""),
             ("kp", "crabpot", ""),
             ("mb", "critterdrop", ""),
+            ("tg", "customcommand", "list"),
+            ("cm", "customcommand", "create"),
         ] {
             let sub = Some(sub).filter(|s| !s.is_empty());
             assert_eq!(

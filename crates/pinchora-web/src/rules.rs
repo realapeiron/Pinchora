@@ -8,6 +8,7 @@
 use pinchora_core::{
     leveling::{MAX_MULTIPLIER, VOICE_XP_RANGE},
     settings::{self, FieldError, MessageKind},
+    tags::{self, MatchKind, TriggerKind},
 };
 use pinchora_db::{MAX_LEVEL_ROLES, MAX_REP_ROLES, MAX_STORE_ITEMS, MAX_XP_RULES};
 use pinchora_render::{ACCENT_PRESETS, Theme};
@@ -83,7 +84,66 @@ fn cases() -> Vec<Value> {
     for input in [1, 1_000_000, 0] {
         case("stock", json!(input), answer(settings::check_stock(input)));
     }
+    let reserved = pinchora_commands::reserved_command_names();
+    for input in [
+        "rules",
+        " Rules ",
+        "/slash",
+        "my-cmd_2",
+        "0day",
+        "has space",
+        "-x",
+        "_x",
+        "help",
+        "tag",
+        "",
+        "ünï",
+        &"x".repeat(33),
+    ] {
+        case("command_name", json!(input), answer(tags::check_name(input, reserved)));
+    }
     cases
+}
+
+fn tag_rules() -> Value {
+    let range = |r: &std::ops::RangeInclusive<i64>| json!([r.start(), r.end()]);
+    json!({
+        "limits": {
+            "max_commands": tags::MAX_COMMANDS,
+            "max_responders": tags::MAX_RESPONDERS,
+            "max_responses": tags::MAX_RESPONSES,
+            "response_max": tags::RESPONSE_MAX,
+            "name_max": tags::NAME_MAX,
+            "description_max": tags::DESCRIPTION_MAX,
+            "responder_name_max": tags::RESPONDER_NAME_MAX,
+            "keyword_max": tags::KEYWORD_MAX,
+            "max_actions": tags::MAX_ACTIONS,
+            "max_list": tags::MAX_LIST,
+            "command_cooldown_max": tags::COMMAND_COOLDOWN_MAX,
+            "responder_cooldown_max": tags::RESPONDER_COOLDOWN_MAX,
+            "points_action": range(&tags::POINTS_ACTION),
+            "args_max": tags::ARGS_MAX,
+            "embed_title_max": tags::EMBED_TITLE_MAX,
+            "embed_description_max": tags::EMBED_DESCRIPTION_MAX,
+            "embed_author_max": tags::EMBED_AUTHOR_MAX,
+            "embed_footer_max": tags::EMBED_FOOTER_MAX,
+            "embed_field_name_max": tags::EMBED_FIELD_NAME_MAX,
+            "embed_field_value_max": tags::EMBED_FIELD_VALUE_MAX,
+            "embed_fields_max": tags::EMBED_FIELDS_MAX,
+            "embed_total_max": tags::EMBED_TOTAL_MAX,
+        },
+        "reserved": pinchora_commands::reserved_command_names(),
+        "triggers": TriggerKind::ALL
+            .iter()
+            .map(|k| json!({ "key": k.key(), "label": k.label(), "needs_message_content": k.needs_message_content() }))
+            .collect::<Vec<_>>(),
+        "match_kinds": MatchKind::ALL.iter().map(|k| k.key()).collect::<Vec<_>>(),
+        "command_placeholders": tags::command_placeholders(),
+        "responder_placeholders": TriggerKind::ALL
+            .iter()
+            .map(|k| (k.key().to_owned(), json!(tags::responder_placeholders(*k))))
+            .collect::<serde_json::Map<_, _>>(),
+    })
 }
 
 fn rules() -> Value {
@@ -139,6 +199,7 @@ fn rules() -> Value {
             .collect::<Vec<_>>(),
         "levelup_modes": settings::LEVELUP_MODES.map(|m| m.key()),
         "messages": messages,
+        "tags": tag_rules(),
         "defaults": {
             "theme": settings::DEFAULT_THEME,
             "welcome_title": settings::DEFAULT_WELCOME_TITLE,

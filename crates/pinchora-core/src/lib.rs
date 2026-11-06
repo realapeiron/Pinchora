@@ -8,6 +8,7 @@ pub mod server_events;
 pub mod settings;
 pub mod snowflake;
 pub mod stats;
+pub mod tags;
 pub mod telemetry;
 
 pub use config::Config;

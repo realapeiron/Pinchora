@@ -27,6 +27,7 @@ mod showcase;
 mod social;
 mod stalls;
 mod suggestions;
+mod tags;
 mod users;
 mod xp;
 
@@ -51,7 +52,7 @@ pub use fishing::{
 pub use friends::{BefriendOutcome, FriendRow, MAX_FRIENDS};
 pub use games::{ACTIVE, DONE, DuelStart, GameSession, GameStat, NewGame, PENDING, Payout, WordleGame};
 pub use giveaways::{
-    EndedGiveaway, EntryToggle, GiveawayOpen, GiveawayRow, MAX_RUNNING_GIVEAWAYS, NewGiveaway, Reroll,
+    Due, EndedGiveaway, EntryToggle, GiveawayOpen, GiveawayRow, MAX_RUNNING_GIVEAWAYS, NewGiveaway, Reroll,
 };
 pub use guestbook::{NoteRow, SignOutcome, VisitorRow};
 pub use guilds::{GuildSettings, LogKind, PatchRefused};
@@ -80,6 +81,7 @@ pub use stalls::{ListingRow, MAX_LISTINGS, STALL_FEE_PERCENT, StallBuy};
 pub use suggestions::{
     APPROVED as SUGGESTION_APPROVED, DENIED as SUGGESTION_DENIED, Decision, SuggestionRow, SuggestionVote,
 };
+pub use tags::{CommandRow, ResponderRow, TagSet, TagWrite};
 pub use users::UserRow;
 pub use xp::{MAX_XP_RULES, XpTarget};
 

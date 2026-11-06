@@ -27,6 +27,9 @@ pub struct WebSettings {
     /// release build never has it: a loopback bind is still reachable through a same-host proxy).
     pub dev_login: bool,
     pub static_dir: Option<PathBuf>,
+    /// Whether the gateway runs with the privileged Message Content intent, without which the bot cannot
+    /// read chat and keyword auto-responders stay locked. Read from the same `gateway.message_content`.
+    pub message_content: bool,
     /// Proxies whose `X-Forwarded-For` names the client.
     pub trusted_proxies: TrustedProxies,
     /// Environment variables still needed before anyone can log in.
@@ -59,6 +62,7 @@ impl WebSettings {
             cookie_secure: web.cookie_secure.unwrap_or(public.scheme() == "https"),
             dev_login: cfg!(debug_assertions) && web.dev_login && web.bind.ip().is_loopback(),
             static_dir: web.static_dir.clone(),
+            message_content: false,
             trusted_proxies: TrustedProxies::parse(&web.trusted_proxies)?,
             missing,
         })

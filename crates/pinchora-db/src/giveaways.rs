@@ -11,6 +11,14 @@ pub const ENDED: &str = "ended";
 /// Most giveaways one server can run at once.
 pub const MAX_RUNNING_GIVEAWAYS: i64 = 20;
 
+/// A giveaway or poll whose time is up, and where it lives.
+#[derive(Debug, Clone, Copy, sqlx::FromRow)]
+pub struct Due {
+    pub id: i64,
+    pub guild_id: i64,
+    pub channel_id: i64,
+}
+
 /// A giveaway, running or over.
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct GiveawayRow {
@@ -280,16 +288,16 @@ impl Db {
         })
     }
 
-    /// Ids of running giveaways whose time is up at `now`, soonest first.
-    pub async fn due_giveaways(&self, now: DateTime<Utc>, limit: i64) -> anyhow::Result<Vec<i64>> {
-        let rows: Vec<(i64,)> = sqlx::query_as(
-            "SELECT id FROM giveaways WHERE status = 'running' AND ends_at <= $1 ORDER BY ends_at LIMIT $2",
+    /// Running giveaways whose time is up at `now`, soonest first, with the server and channel they live in.
+    pub async fn due_giveaways(&self, now: DateTime<Utc>, limit: i64) -> anyhow::Result<Vec<Due>> {
+        Ok(sqlx::query_as(
+            "SELECT id, guild_id, channel_id FROM giveaways
+             WHERE status = 'running' AND ends_at <= $1 ORDER BY ends_at LIMIT $2",
         )
         .bind(now)
         .bind(limit)
         .fetch_all(self.pool())
-        .await?;
-        Ok(rows.into_iter().map(|(id,)| id).collect())
+        .await?)
     }
 
     /// Ends a running giveaway, once: `pick(entrants, count)` chooses the winners, each is paid

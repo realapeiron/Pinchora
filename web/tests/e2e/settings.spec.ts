@@ -40,6 +40,8 @@ const PAGES = [
   { path: "/points", name: "points", heading: "POINTS" },
   { path: "/log", name: "server-log", heading: "SERVER LOG" },
   { path: "/community", name: "community", heading: "COMMUNITY" },
+  { path: "/commands", name: "commands", heading: "CUSTOM COMMANDS" },
+  { path: "/responders", name: "responders", heading: "AUTO-RESPONDERS" },
   { path: "/audit", name: "audit-log", heading: "AUDIT LOG" },
 ];
 

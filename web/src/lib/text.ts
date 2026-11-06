@@ -1,6 +1,7 @@
 // Small wording helpers shared by the pages.
 
-import type { AuditEntry } from "./api";
+import type { AuditEntry, TagAction } from "./api";
+import { describeAction } from "./tags";
 
 /** "just now", "5 min ago", "3 h ago", "2 d ago", then the date. */
 export function timeAgo(iso: string, now: Date = new Date()): string {
@@ -59,6 +60,29 @@ const FIELD_NAMES: Record<string, string> = {
   log_voice: "voice logs",
 };
 
+/** What the fields of a custom command or an auto-responder are called in the log. */
+const TAG_FIELDS: Record<string, string> = {
+  name: "the name",
+  description: "the description",
+  responses: "the replies",
+  embed: "the embed",
+  reply_mode: "who sees the answer",
+  actions: "the actions",
+  allow_roles: "the roles that may use it",
+  deny_roles: "the roles that may not",
+  allow_channels: "the channels it works in",
+  deny_channels: "the channels it doesn't work in",
+  cooldown_secs: "the cooldown",
+  enabled: "the switch",
+  allow_mentions: "mentions",
+  trigger_kind: "the trigger",
+  trigger_value: "the trigger's word, level or role",
+  match_kind: "how it matches",
+  destination: "where it answers",
+  channel_id: "the channel it answers in",
+  chance: "the chance",
+};
+
 /** Fields whose meaning depends on the action that wrote them. */
 const ACTION_FIELDS: Record<string, Record<string, string>> = {
   "critters.set": { enabled: "critter drops", channel_id: "the critter channel" },
@@ -73,6 +97,8 @@ const ACTION_FIELDS: Record<string, Record<string, string>> = {
   "rep_roles.put": { reputation: "the reputation" },
   "xp_rules.put": { multiplier: "the multiplier" },
   "store.put": { price: "the price", stock: "the stock" },
+  "command.update": TAG_FIELDS,
+  "responder.update": TAG_FIELDS,
 };
 
 /** What a field is called, in words. */
@@ -109,6 +135,14 @@ export function showValue(field: string, value: unknown, names: Names = plainNam
   if (field === "channels" && Array.isArray(value)) {
     return value.length === 0 ? "none" : value.map((id) => names.channel(String(id))).join(", ");
   }
+  if (field === "embed") return "an embed";
+  if (Array.isArray(value)) {
+    if (value.length === 0) return "none";
+    if (field.endsWith("_roles")) return value.map((id) => names.role(String(id))).join(", ");
+    if (field.endsWith("_channels")) return value.map((id) => names.channel(String(id))).join(", ");
+    if (field === "actions") return value.map((a) => describeAction(a as TagAction)).join(", ");
+    if (value.every((v) => typeof v === "string")) return value.map((v) => `“${v}”`).join(" · ");
+  }
   if (field === "channel_mode" && typeof value === "string") return MODES[value] ?? value;
   if (typeof value === "string" && /^\d+$/.test(value)) {
     if (field.endsWith("channel_id")) return names.channel(value);
@@ -124,6 +158,8 @@ export function targetLabel(entry: AuditEntry, names: Names = plainNames): strin
   const target = entry.target;
   if (!target) return null;
   if (entry.action === "module.set") return names.module(target);
+  // Custom commands and responders are named in the sentence itself.
+  if (/^(command|responder)\./.test(entry.action)) return null;
   const [kind, id] = target.split(":");
   if (id && (kind === "channel" || kind === "role"))
     return kind === "channel" ? names.channel(id) : names.role(id);
@@ -134,6 +170,8 @@ export function targetLabel(entry: AuditEntry, names: Names = plainNames): strin
 /** What an audit row did, as a sentence after the actor's name. */
 export function describeChange(entry: AuditEntry, names: Names = plainNames): string {
   if (entry.action === "module.set" && entry.target) return describeModule(entry, names);
+  const tag = describeTag(entry);
+  if (tag) return tag;
   const action = ACTIONS[entry.action];
   if (action) return action;
   const after = entry.after ?? {};
@@ -145,6 +183,43 @@ export function describeChange(entry: AuditEntry, names: Names = plainNames): st
   if (parts.length === 0) return `made a change (${entry.action})`;
   if (parts.length > 3) return `${parts.slice(0, 2).join(", ")} and ${parts.length - 2} more`;
   return parts.join(", ");
+}
+
+/** Custom commands and auto-responders: "wrote /tag rules", "changed /tag rules: the replies, the cooldown". */
+function describeTag(entry: AuditEntry): string | null {
+  const after = entry.after ?? {};
+  const name = entry.target ?? "";
+  const count = (key: string) => (Array.isArray(after[key]) ? (after[key] as unknown[]).length : 0);
+  const [kind] = entry.action.split(".");
+  if (kind !== "command" && kind !== "responder" && kind !== "commands" && kind !== "responders") return null;
+  const what = kind.startsWith("command") ? `/tag ${name}` : `the auto-responder “${name}”`;
+  switch (entry.action) {
+    case "command.create":
+      return `wrote the custom command ${what}`;
+    case "responder.create":
+      return `wrote ${what}`;
+    case "command.delete":
+    case "responder.delete":
+      return `deleted ${what}`;
+    case "commands.import":
+    case "responders.import": {
+      const noun = kind === "commands" ? "custom command" : "auto-responder";
+      const added = count("created");
+      const replaced = count("replaced");
+      const parts = [added > 0 && `${added} new`, replaced > 0 && `${replaced} replaced`].filter(Boolean);
+      return `imported ${noun}s (${parts.join(", ") || "none"})`;
+    }
+    case "command.update":
+    case "responder.update": {
+      if (typeof after.enabled === "boolean" && Object.keys(after).length === 1) {
+        return `turned ${what} ${after.enabled ? "on" : "off"}`;
+      }
+      const fields = Object.keys(after).map((f) => fieldLabel(entry.action, f));
+      return `changed ${what}: ${fields.join(", ")}`;
+    }
+    default:
+      return null;
+  }
 }
 
 /** "turned Pets off", "kept Pets to 2 channels", "moved Pets back to all channels". */

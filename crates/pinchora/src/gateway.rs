@@ -78,6 +78,10 @@ pub async fn run(config: &Config, app: Arc<App>, ready: Readiness) -> anyhow::Re
     if config.gateway.member_events {
         intents |= Intents::GUILD_MEMBERS;
     }
+    // Keyword auto-responders read chat; the intent is privileged, so it is off until the operator turns it on.
+    if config.gateway.message_content {
+        intents |= Intents::MESSAGE_CONTENT;
+    }
     let presence = UpdatePresencePayload::new(
         vec![
             MinimalActivity {

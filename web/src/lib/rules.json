@@ -633,6 +633,118 @@
         "message": "Stock goes from 1 to 1000000.",
         "ok": false
       }
+    },
+    {
+      "check": "command_name",
+      "input": "rules",
+      "result": {
+        "ok": true,
+        "value": "rules"
+      }
+    },
+    {
+      "check": "command_name",
+      "input": " Rules ",
+      "result": {
+        "ok": true,
+        "value": "rules"
+      }
+    },
+    {
+      "check": "command_name",
+      "input": "/slash",
+      "result": {
+        "ok": true,
+        "value": "slash"
+      }
+    },
+    {
+      "check": "command_name",
+      "input": "my-cmd_2",
+      "result": {
+        "ok": true,
+        "value": "my-cmd_2"
+      }
+    },
+    {
+      "check": "command_name",
+      "input": "0day",
+      "result": {
+        "ok": true,
+        "value": "0day"
+      }
+    },
+    {
+      "check": "command_name",
+      "input": "has space",
+      "result": {
+        "field": "name",
+        "message": "A name is 1 to 32 characters: lowercase letters, numbers, `-` and `_`, starting with a letter or number.",
+        "ok": false
+      }
+    },
+    {
+      "check": "command_name",
+      "input": "-x",
+      "result": {
+        "field": "name",
+        "message": "A name is 1 to 32 characters: lowercase letters, numbers, `-` and `_`, starting with a letter or number.",
+        "ok": false
+      }
+    },
+    {
+      "check": "command_name",
+      "input": "_x",
+      "result": {
+        "field": "name",
+        "message": "A name is 1 to 32 characters: lowercase letters, numbers, `-` and `_`, starting with a letter or number.",
+        "ok": false
+      }
+    },
+    {
+      "check": "command_name",
+      "input": "help",
+      "result": {
+        "field": "name",
+        "message": "That name belongs to one of Pinchora's own commands.",
+        "ok": false
+      }
+    },
+    {
+      "check": "command_name",
+      "input": "tag",
+      "result": {
+        "field": "name",
+        "message": "That name belongs to one of Pinchora's own commands.",
+        "ok": false
+      }
+    },
+    {
+      "check": "command_name",
+      "input": "",
+      "result": {
+        "field": "name",
+        "message": "A name is 1 to 32 characters: lowercase letters, numbers, `-` and `_`, starting with a letter or number.",
+        "ok": false
+      }
+    },
+    {
+      "check": "command_name",
+      "input": "ünï",
+      "result": {
+        "field": "name",
+        "message": "A name is 1 to 32 characters: lowercase letters, numbers, `-` and `_`, starting with a letter or number.",
+        "ok": false
+      }
+    },
+    {
+      "check": "command_name",
+      "input": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "result": {
+        "field": "name",
+        "message": "A name is 1 to 32 characters: lowercase letters, numbers, `-` and `_`, starting with a letter or number.",
+        "ok": false
+      }
     }
   ],
   "defaults": {
@@ -712,6 +824,448 @@
         "{count}"
       ]
     }
+  },
+  "tags": {
+    "command_placeholders": [
+      {
+        "hint": "Everything typed after the command",
+        "token": "{args}"
+      },
+      {
+        "hint": "The first word typed (up to {5})",
+        "token": "{1}"
+      },
+      {
+        "hint": "The first word, or `friend` when none",
+        "token": "{1:friend}"
+      },
+      {
+        "hint": "Mentions the member",
+        "token": "{user}"
+      },
+      {
+        "hint": "Their name, without a mention",
+        "token": "{user.name}"
+      },
+      {
+        "hint": "Their Discord id",
+        "token": "{user.id}"
+      },
+      {
+        "hint": "A link to their avatar",
+        "token": "{user.avatar}"
+      },
+      {
+        "hint": "The server's name",
+        "token": "{server}"
+      },
+      {
+        "hint": "How many members the server has",
+        "token": "{server.members}"
+      },
+      {
+        "hint": "The channel it happens in",
+        "token": "{channel}"
+      },
+      {
+        "hint": "One of the choices, at random",
+        "token": "{random:a|b|c}"
+      },
+      {
+        "hint": "The member's points after a give points action",
+        "token": "{points}"
+      },
+      {
+        "hint": "What the server calls its points",
+        "token": "{points.name}"
+      }
+    ],
+    "limits": {
+      "args_max": 200,
+      "command_cooldown_max": 3600,
+      "description_max": 100,
+      "embed_author_max": 256,
+      "embed_description_max": 4096,
+      "embed_field_name_max": 256,
+      "embed_field_value_max": 1024,
+      "embed_fields_max": 25,
+      "embed_footer_max": 2048,
+      "embed_title_max": 256,
+      "embed_total_max": 6000,
+      "keyword_max": 100,
+      "max_actions": 3,
+      "max_commands": 50,
+      "max_list": 25,
+      "max_responders": 25,
+      "max_responses": 5,
+      "name_max": 32,
+      "points_action": [
+        -1000,
+        1000
+      ],
+      "responder_cooldown_max": 86400,
+      "responder_name_max": 40,
+      "response_max": 2000
+    },
+    "match_kinds": [
+      "contains",
+      "exact",
+      "starts_with",
+      "ends_with"
+    ],
+    "reserved": [
+      "ping",
+      "help",
+      "profile",
+      "rank",
+      "leaderboard",
+      "daily",
+      "balance",
+      "give",
+      "rep",
+      "bio",
+      "config",
+      "house",
+      "shop",
+      "inventory",
+      "pet",
+      "fish",
+      "gift",
+      "duel",
+      "quests",
+      "stall",
+      "plaza",
+      "character",
+      "points",
+      "store",
+      "customize",
+      "roles",
+      "play",
+      "partner",
+      "friends",
+      "hug",
+      "pat",
+      "wave",
+      "highfive",
+      "giveaway",
+      "suggest",
+      "suggestion",
+      "poll",
+      "dex",
+      "beachcomb",
+      "crabpot",
+      "critterdrop",
+      "surge",
+      "party",
+      "tag",
+      "customcommand"
+    ],
+    "responder_placeholders": {
+      "keyword": [
+        {
+          "hint": "Mentions the member",
+          "token": "{user}"
+        },
+        {
+          "hint": "Their name, without a mention",
+          "token": "{user.name}"
+        },
+        {
+          "hint": "Their Discord id",
+          "token": "{user.id}"
+        },
+        {
+          "hint": "A link to their avatar",
+          "token": "{user.avatar}"
+        },
+        {
+          "hint": "The server's name",
+          "token": "{server}"
+        },
+        {
+          "hint": "How many members the server has",
+          "token": "{server.members}"
+        },
+        {
+          "hint": "The channel it happens in",
+          "token": "{channel}"
+        },
+        {
+          "hint": "One of the choices, at random",
+          "token": "{random:a|b|c}"
+        },
+        {
+          "hint": "The member's points after a give points action",
+          "token": "{points}"
+        },
+        {
+          "hint": "What the server calls its points",
+          "token": "{points.name}"
+        }
+      ],
+      "level_up": [
+        {
+          "hint": "Mentions the member",
+          "token": "{user}"
+        },
+        {
+          "hint": "Their name, without a mention",
+          "token": "{user.name}"
+        },
+        {
+          "hint": "Their Discord id",
+          "token": "{user.id}"
+        },
+        {
+          "hint": "A link to their avatar",
+          "token": "{user.avatar}"
+        },
+        {
+          "hint": "The server's name",
+          "token": "{server}"
+        },
+        {
+          "hint": "How many members the server has",
+          "token": "{server.members}"
+        },
+        {
+          "hint": "The channel it happens in",
+          "token": "{channel}"
+        },
+        {
+          "hint": "One of the choices, at random",
+          "token": "{random:a|b|c}"
+        },
+        {
+          "hint": "The level they reached",
+          "token": "{level}"
+        },
+        {
+          "hint": "The level role they earned, if any",
+          "token": "{role}"
+        },
+        {
+          "hint": "The member's points after a give points action",
+          "token": "{points}"
+        },
+        {
+          "hint": "What the server calls its points",
+          "token": "{points.name}"
+        }
+      ],
+      "member_join": [
+        {
+          "hint": "Mentions the member",
+          "token": "{user}"
+        },
+        {
+          "hint": "Their name, without a mention",
+          "token": "{user.name}"
+        },
+        {
+          "hint": "Their Discord id",
+          "token": "{user.id}"
+        },
+        {
+          "hint": "A link to their avatar",
+          "token": "{user.avatar}"
+        },
+        {
+          "hint": "The server's name",
+          "token": "{server}"
+        },
+        {
+          "hint": "How many members the server has",
+          "token": "{server.members}"
+        },
+        {
+          "hint": "The channel it happens in",
+          "token": "{channel}"
+        },
+        {
+          "hint": "One of the choices, at random",
+          "token": "{random:a|b|c}"
+        },
+        {
+          "hint": "Which member number this is",
+          "token": "{count}"
+        },
+        {
+          "hint": "The member's points after a give points action",
+          "token": "{points}"
+        },
+        {
+          "hint": "What the server calls its points",
+          "token": "{points.name}"
+        }
+      ],
+      "member_leave": [
+        {
+          "hint": "Mentions the member",
+          "token": "{user}"
+        },
+        {
+          "hint": "Their name, without a mention",
+          "token": "{user.name}"
+        },
+        {
+          "hint": "Their Discord id",
+          "token": "{user.id}"
+        },
+        {
+          "hint": "A link to their avatar",
+          "token": "{user.avatar}"
+        },
+        {
+          "hint": "The server's name",
+          "token": "{server}"
+        },
+        {
+          "hint": "How many members the server has",
+          "token": "{server.members}"
+        },
+        {
+          "hint": "The channel it happens in",
+          "token": "{channel}"
+        },
+        {
+          "hint": "One of the choices, at random",
+          "token": "{random:a|b|c}"
+        },
+        {
+          "hint": "The member's points after a give points action",
+          "token": "{points}"
+        },
+        {
+          "hint": "What the server calls its points",
+          "token": "{points.name}"
+        }
+      ],
+      "role_added": [
+        {
+          "hint": "Mentions the member",
+          "token": "{user}"
+        },
+        {
+          "hint": "Their name, without a mention",
+          "token": "{user.name}"
+        },
+        {
+          "hint": "Their Discord id",
+          "token": "{user.id}"
+        },
+        {
+          "hint": "A link to their avatar",
+          "token": "{user.avatar}"
+        },
+        {
+          "hint": "The server's name",
+          "token": "{server}"
+        },
+        {
+          "hint": "How many members the server has",
+          "token": "{server.members}"
+        },
+        {
+          "hint": "The channel it happens in",
+          "token": "{channel}"
+        },
+        {
+          "hint": "One of the choices, at random",
+          "token": "{random:a|b|c}"
+        },
+        {
+          "hint": "The role",
+          "token": "{role}"
+        },
+        {
+          "hint": "The member's points after a give points action",
+          "token": "{points}"
+        },
+        {
+          "hint": "What the server calls its points",
+          "token": "{points.name}"
+        }
+      ],
+      "role_removed": [
+        {
+          "hint": "Mentions the member",
+          "token": "{user}"
+        },
+        {
+          "hint": "Their name, without a mention",
+          "token": "{user.name}"
+        },
+        {
+          "hint": "Their Discord id",
+          "token": "{user.id}"
+        },
+        {
+          "hint": "A link to their avatar",
+          "token": "{user.avatar}"
+        },
+        {
+          "hint": "The server's name",
+          "token": "{server}"
+        },
+        {
+          "hint": "How many members the server has",
+          "token": "{server.members}"
+        },
+        {
+          "hint": "The channel it happens in",
+          "token": "{channel}"
+        },
+        {
+          "hint": "One of the choices, at random",
+          "token": "{random:a|b|c}"
+        },
+        {
+          "hint": "The role",
+          "token": "{role}"
+        },
+        {
+          "hint": "The member's points after a give points action",
+          "token": "{points}"
+        },
+        {
+          "hint": "What the server calls its points",
+          "token": "{points.name}"
+        }
+      ]
+    },
+    "triggers": [
+      {
+        "key": "member_join",
+        "label": "A member joins",
+        "needs_message_content": false
+      },
+      {
+        "key": "member_leave",
+        "label": "A member leaves",
+        "needs_message_content": false
+      },
+      {
+        "key": "level_up",
+        "label": "A member levels up",
+        "needs_message_content": false
+      },
+      {
+        "key": "role_added",
+        "label": "A member gets a role",
+        "needs_message_content": false
+      },
+      {
+        "key": "role_removed",
+        "label": "A member loses a role",
+        "needs_message_content": false
+      },
+      {
+        "key": "keyword",
+        "label": "A message has a keyword",
+        "needs_message_content": true
+      }
+    ]
   },
   "themes": [
     {

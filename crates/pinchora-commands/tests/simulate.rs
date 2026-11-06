@@ -75,6 +75,12 @@ mod collection;
 // The party games' flows (Hot Pearl, Acronym Tide, Caption the Postcard, Wordle Race, Would You Rather, Truth or Dare).
 #[path = "simulate/words.rs"]
 mod words;
+// Custom commands (/customcommand, /tag) and auto-responders.
+#[path = "simulate/tags.rs"]
+mod tags;
+// What a switched-off module still did: timers, the chat XP minute, quests, the level-up channel.
+#[path = "simulate/carryover.rs"]
+mod carryover;
 
 const APPLICATION_ID: u64 = 1;
 const CHANNEL_ID: u64 = 2;

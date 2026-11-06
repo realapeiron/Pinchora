@@ -29,7 +29,7 @@ use twilight_model::{
     util::ImageHash,
 };
 
-use crate::server_log::LogState;
+use crate::{custom::CustomState, server_log::LogState};
 
 /// Where a channel sits, for XP multipliers that follow a thread to its channel and a channel to its category.
 #[derive(Debug, Clone, Copy)]
@@ -74,6 +74,8 @@ pub struct App {
     pub(crate) log_state: LogState,
     /// Seconds added to the clock by [`App::shift_clock`].
     clock_shift: AtomicI64,
+    /// Custom commands and auto-responders, and what they remember.
+    pub(crate) custom: CustomState,
 }
 
 impl App {
@@ -140,6 +142,7 @@ impl App {
             event_slots: Arc::new(Semaphore::new(1024)),
             log_state: LogState::new(),
             clock_shift: AtomicI64::new(0),
+            custom: CustomState::new(),
         }
     }
 
@@ -240,7 +243,7 @@ impl App {
 
     /// [`App::xp_lineage`] for any rule: `none` says the server has no channel rules at all, `has_rule`
     /// whether a channel has its own.
-    async fn lineage(&self, channel: u64, none: bool, has_rule: impl Fn(u64) -> bool) -> Vec<u64> {
+    pub(crate) async fn lineage(&self, channel: u64, none: bool, has_rule: impl Fn(u64) -> bool) -> Vec<u64> {
         let mut lineage = vec![channel];
         if none || has_rule(channel) {
             return lineage;
@@ -340,6 +343,7 @@ impl App {
         self.guild_settings.invalidate(&guild_id).await;
         self.module_rules.invalidate(&guild_id).await;
         self.voice_guilds.invalidate(&guild_id).await;
+        self.custom.forget(guild_id).await;
     }
 
     /// Runs a render job on the blocking pool, at most one per CPU at a time.
