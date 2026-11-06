@@ -24,6 +24,15 @@ impl Db {
         Ok(Some((house, rooms)))
     }
 
+    /// Whether the id is a server the bot has settings for. A server's plaza is a house owned by the
+    /// server's id, and that id is nobody's to visit by name.
+    pub async fn is_guild(&self, id: u64) -> anyhow::Result<bool> {
+        Ok(sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM guilds WHERE id = $1)")
+            .bind(sql_id(id))
+            .fetch_one(self.pool())
+            .await?)
+    }
+
     /// How many things stand or hang in each of the player's rooms: `(room index, count)`.
     pub async fn placement_counts(&self, user_id: u64) -> anyhow::Result<Vec<(i16, i64)>> {
         Ok(sqlx::query_as::<_, (i16, i64)>(

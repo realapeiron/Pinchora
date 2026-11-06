@@ -405,7 +405,8 @@ For UI work against a running server, set `PINCHORA_WEB__PUBLIC_URL=http://local
 ### House viewer (read-only)
 
 Players open **My house** (`/me/house`, in the top bar) to look at their rooms, and any player's unlocked
-house at `/house/<player id>` (a locked house answers with the same sentence `/house visit` does). Pick a room, pan,
+house at `/house/<player id>` (a locked or hidden house answers with the same sentence `/house visit` does, hidden
+first; a server's plaza is never served by id). Pick a room, pan,
 zoom in whole steps, hover or tap a piece to see its name, switch the tile grid on, and press **Compare
 with Discord** to lay the bot's own picture of the room over the browser's and see how many pixels differ
 (none). Looking never moves anyone in: no house means a 404 telling the player to run `/house`, and nothing

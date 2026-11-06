@@ -2,8 +2,9 @@
 //! `web/src/iso`), the catalogue and the sprite sheet it draws with, and the bot's own picture of a
 //! room for comparing. Nothing here writes, so looking at a house never moves anyone in.
 //!
-//! `/api/house` is the logged-in player's house. `/api/house/visit/{user}` is anybody else's, unless they
-//! locked it, exactly as `/house visit` turns visitors away.
+//! `/api/house` is the logged-in player's house. `/api/house/visit/{user}` is any other player's, unless
+//! they hid it or locked it, exactly as `/house visit` turns visitors away. A server's plaza is not a
+//! player's house and is never served here.
 
 use std::{sync::LazyLock, time::Duration};
 
@@ -153,8 +154,22 @@ fn no_house(whose: Whose) -> ApiError {
     ApiError::new(StatusCode::NOT_FOUND, "no_house", message)
 }
 
-/// The house and its rooms, or why they cannot be shown: no house, or a locked door for a visitor.
+/// The house and its rooms, or why they cannot be shown: no house, a hidden one, or a locked door for a visitor.
 async fn open(state: &WebState, whose: Whose) -> ApiResult<(HouseRow, Vec<RoomRow>)> {
+    if whose.scope() == "visit" {
+        // The bot's order: a hidden house is not there at all, so it comes before missing or locked. And a
+        // server's plaza (a house owned by the server's id) is only ever reached through the server.
+        if state.app.db.privacy(whose.owner()).await?.hide_house {
+            return Err(ApiError::new(
+                StatusCode::FORBIDDEN,
+                "private",
+                "This house is private.",
+            ));
+        }
+        if state.app.db.is_guild(whose.owner()).await? {
+            return Err(no_house(whose));
+        }
+    }
     let Some((house, rooms)) = state.app.db.house_if_any(whose.owner()).await? else {
         return Err(no_house(whose));
     };

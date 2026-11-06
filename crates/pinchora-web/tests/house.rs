@@ -24,7 +24,7 @@ use axum::{
 use pinchora_cache::Cache;
 use pinchora_commands::{App, RoomData, render_room_png};
 use pinchora_core::config::WebConfig;
-use pinchora_db::{Db, NewRoom};
+use pinchora_db::{Db, Hide, NewRoom};
 use pinchora_game::{Content, character::Character, house::tier};
 use pinchora_render::sprites::{ATLAS_JSON, ATLAS_PNG};
 use pinchora_web::{WebSettings, WebState};
@@ -586,6 +586,69 @@ async fn visitors_see_unlocked_houses_and_locked_doors_stay_shut() {
         .await
         .expect("a count");
     assert_eq!(visits, 0);
+}
+
+#[tokio::test]
+async fn hidden_houses_and_server_plazas_are_not_shown_to_visitors() {
+    let Some(site) = Site::new("hidden_houses_and_server_plazas").await else {
+        return;
+    };
+    let (host, guest, guild) = (unique(), unique(), unique());
+    site.move_in(host, 2, &SHOWCASE[5..9]).await;
+    site.app.db.remember_name(host, "Captain Crab").await.expect("a name");
+    let mut browser = site.browser();
+    browser.login(guest).await;
+    let paths = [
+        format!("/api/house/visit/{host}"),
+        format!("/api/house/visit/{host}/rooms/0"),
+        format!("/api/house/visit/{host}/rooms/0/render.png"),
+    ];
+    for path in &paths {
+        assert_eq!(browser.get(path).await.status, StatusCode::OK, "{path}");
+    }
+
+    // Hidden: refused before the lock is even looked at, the same sentence the bot answers with.
+    site.app.db.set_privacy(host, Hide::House, true).await.expect("hide");
+    site.app.db.set_house_locked(host, true).await.expect("lock");
+    for path in &paths {
+        let response = browser.get(path).await;
+        assert_eq!(response.status, StatusCode::FORBIDDEN, "{path}");
+        assert_eq!(response.code(), "private", "{path}");
+        assert_eq!(response.json()["error"]["message"], "This house is private.");
+    }
+    // The owner still sees their own house, hidden and locked, through either door.
+    let mut owner = site.browser();
+    owner.login(host).await;
+    assert_eq!(owner.get("/api/house").await.status, StatusCode::OK);
+    assert_eq!(owner.get(&paths[1]).await.status, StatusCode::OK);
+    // Hidden comes before missing, as in the bot: a hidden player without a house looks no different.
+    let hermit = unique();
+    site.app.db.set_privacy(hermit, Hide::House, true).await.expect("hide");
+    assert_eq!(
+        browser.get(&format!("/api/house/visit/{hermit}")).await.code(),
+        "private"
+    );
+    // Showing it again opens it up to the lock alone.
+    site.app.db.set_privacy(host, Hide::House, false).await.expect("show");
+    assert_eq!(browser.get(&paths[0]).await.code(), "locked");
+    // Hiding the profile or the leaderboard says nothing about the house.
+    site.app.db.set_privacy(host, Hide::Profile, true).await.expect("hide");
+    site.app.db.set_house_locked(host, false).await.expect("unlock");
+    assert_eq!(browser.get(&paths[0]).await.status, StatusCode::OK);
+
+    // A server's plaza is a house owned by the server's id; nobody visits it by that id, not even a
+    // member, and it looks like any id with no house.
+    site.app.db.guild_settings(guild).await.expect("a server");
+    site.move_in(guild, 2, &SHOWCASE[5..9]).await;
+    for path in [
+        format!("/api/house/visit/{guild}"),
+        format!("/api/house/visit/{guild}/rooms/0"),
+        format!("/api/house/visit/{guild}/rooms/0/render.png"),
+    ] {
+        let response = browser.get(&path).await;
+        assert_eq!(response.status, StatusCode::NOT_FOUND, "{path}");
+        assert_eq!(response.code(), "no_house", "{path}");
+    }
 }
 
 /// Leaves a furnished house for the Playwright screenshots: `cargo test -p pinchora-web --test house
