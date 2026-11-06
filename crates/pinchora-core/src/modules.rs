@@ -39,6 +39,11 @@ impl Group {
         }
     }
 
+    /// [`Group::label`] in `lang`.
+    pub fn name(self, lang: Lang) -> String {
+        t!(lang, &format!("module-group.{}", self.key()))
+    }
+
     pub const fn label(self) -> &'static str {
         match self {
             Self::Server => "Server tools",
@@ -194,6 +199,11 @@ impl Module {
     /// [`Module::label`] in `lang`.
     pub fn name(self, lang: Lang) -> String {
         t!(lang, &format!("module.{}", self.key()))
+    }
+
+    /// [`Module::blurb`] in `lang`.
+    pub fn blurb_in(self, lang: Lang) -> String {
+        t!(lang, &format!("module-blurb.{}", self.key()))
     }
 
     /// One line on what the module covers, for the dashboard and `/config modules show`.
@@ -472,28 +482,30 @@ pub fn check_channels(module: Module, mode: ChannelMode, channels: &[u64]) -> Re
                 "{} works for the whole server, so it can't be limited to channels.",
                 module.label()
             ),
-        ));
+        )
+        .keyed("whole-server", [("module", module.label().to_owned())]));
     }
     let mut clean: Vec<u64> = Vec::with_capacity(channels.len());
     for &id in channels {
         if id == 0 {
-            return Err(FieldError::new("channels", "That isn't a Discord id."));
+            return Err(FieldError::new("channels", "That isn't a Discord id.").keyed("not-an-id", []));
         }
         if !clean.contains(&id) {
             clean.push(id);
         }
     }
     if clean.is_empty() {
-        return Err(FieldError::new(
-            "channels",
-            "Pick at least one channel, or choose all channels.",
-        ));
+        return Err(
+            FieldError::new("channels", "Pick at least one channel, or choose all channels.")
+                .keyed("pick-channels", []),
+        );
     }
     if clean.len() > MAX_CHANNELS {
         return Err(FieldError::new(
             "channels",
             format!("A module can name at most {MAX_CHANNELS} channels."),
-        ));
+        )
+        .keyed("too-many-channels", [("max", MAX_CHANNELS.to_string())]));
     }
     Ok(clean)
 }
@@ -511,10 +523,9 @@ pub fn edit_channels(
         return Ok((ChannelMode::All, Vec::new()));
     }
     let Some(channel) = channel else {
-        return Err(FieldError::new(
-            "channel",
-            "Pick a channel to add, or choose all channels.",
-        ));
+        return Err(
+            FieldError::new("channel", "Pick a channel to add, or choose all channels.").keyed("pick-a-channel", []),
+        );
     };
     // Taking a channel off a list the module does not use changes nothing (rather than wiping the one it does).
     if remove && now.mode != mode {
@@ -551,15 +562,19 @@ pub fn refusal(module: Module, access: Access, manager: bool, lang: Lang) -> Str
 
 /// A rule in a few words, for lists: "on", "off", "only in 3 channels", "off in 2 channels".
 pub fn summary(rule: &ModuleRule) -> String {
+    summary_in(Lang::En, rule)
+}
+
+/// [`summary`] in `lang`.
+pub fn summary_in(lang: Lang, rule: &ModuleRule) -> String {
     if !rule.enabled {
-        return "off".to_owned();
+        return t!(lang, "module-summary.off");
     }
     let n = rule.channels.len();
-    let channels = if n == 1 { "channel" } else { "channels" };
     match rule.mode {
-        ChannelMode::All => "on".to_owned(),
-        ChannelMode::Only => format!("only in {n} {channels}"),
-        ChannelMode::Except => format!("off in {n} {channels}"),
+        ChannelMode::All => t!(lang, "module-summary.on"),
+        ChannelMode::Only => t!(lang, "module-summary.only", count = n),
+        ChannelMode::Except => t!(lang, "module-summary.except", count = n),
     }
 }
 

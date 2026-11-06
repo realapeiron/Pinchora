@@ -1,0 +1,21 @@
+# /config modules, and the words the core uses for module groups and rules.
+
+[module-group]
+server = "Server tools"
+players = "Players"
+home = "Home, pets and fishing"
+games = "Games"
+
+[module-summary]
+on = "on"
+off = "off"
+only = { one = "only in {count} channel", other = "only in {count} channels" }
+except = { one = "off in {count} channel", other = "off in {count} channels" }
+
+[modules]
+not-a-module = "That isn't a module. Start typing a name and pick one from the list, or see them all with `/config modules show`."
+more = " and {count} more"
+limit = "Up to {max} channels; a category covers the channels and threads under it."
+title = "Modules"
+about = "Which parts of Pinchora this server uses. `/config`, `/help` and `/ping` always work."
+footer = "Change them with /config modules toggle and channels, or on the dashboard."
