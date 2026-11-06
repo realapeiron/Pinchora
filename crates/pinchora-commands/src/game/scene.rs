@@ -339,7 +339,7 @@ pub fn render_view(sprites: &Sprites, view: &RoomView) -> anyhow::Result<Vec<u8>
 }
 
 /// The room as a picture, each art pixel `scale` pixels wide.
-fn room_image(sprites: &Sprites, view: &RoomView, scale: u32) -> RgbaImage {
+pub(crate) fn room_image(sprites: &Sprites, view: &RoomView, scale: u32) -> RgbaImage {
     let content = Content::get();
     let placed = placed(view);
     let mut items: Vec<SceneItem> = view

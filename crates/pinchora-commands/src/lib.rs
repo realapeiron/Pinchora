@@ -6,6 +6,7 @@ mod defer;
 mod events;
 mod game;
 mod gate;
+mod house_view;
 mod invalidations;
 mod leveling;
 mod responder;
@@ -31,6 +32,10 @@ pub use defer::Deferral;
 pub use events::{
     on_ban_add, on_ban_remove, on_guild_create, on_guild_delete, on_member_add, on_member_remove, on_member_update,
     on_message, on_voice_state_update,
+};
+pub use house_view::{
+    RoomData, catalog as house_catalog, character_png, render_png as render_room_png, room_name as house_room_name,
+    seed_at as house_seed_at,
 };
 pub use invalidations::listen as listen_for_invalidations;
 pub use responder::Responder;

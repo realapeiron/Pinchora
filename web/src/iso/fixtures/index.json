@@ -1,0 +1,11 @@
+{
+  "scenes": [
+    "empty_8x8",
+    "furnished_10x9",
+    "edit_grid_cursor",
+    "edit_floor_cursor",
+    "sleepers_and_walkers",
+    "crowded_9x8",
+    "crowded_14x12"
+  ]
+}

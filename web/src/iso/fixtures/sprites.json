@@ -1,0 +1,815 @@
+[
+  {
+    "d": 1,
+    "hash": "a9adca7b",
+    "id": "chair",
+    "iso_width": null,
+    "kind": "placeholder_item",
+    "layer": "floor",
+    "size": [
+      64,
+      59
+    ],
+    "w": 1
+  },
+  {
+    "d": 1,
+    "hash": "564f42db",
+    "id": "sofa",
+    "iso_width": 96,
+    "kind": "placeholder_item",
+    "layer": "floor",
+    "size": [
+      96,
+      83
+    ],
+    "w": 2
+  },
+  {
+    "d": 2,
+    "hash": "9306983b",
+    "id": "bed",
+    "iso_width": 160,
+    "kind": "placeholder_item",
+    "layer": "floor",
+    "size": [
+      128,
+      115
+    ],
+    "w": 2
+  },
+  {
+    "d": 2,
+    "hash": "2f65da15",
+    "id": "wide_table",
+    "iso_width": null,
+    "kind": "placeholder_item",
+    "layer": "floor",
+    "size": [
+      160,
+      128
+    ],
+    "w": 3
+  },
+  {
+    "d": 1,
+    "hash": "4cec01e3",
+    "id": "vase",
+    "iso_width": null,
+    "kind": "placeholder_item",
+    "layer": "surface",
+    "size": [
+      24,
+      20
+    ],
+    "w": 1
+  },
+  {
+    "d": 1,
+    "hash": "b5919a61",
+    "id": "lamp",
+    "iso_width": 20,
+    "kind": "placeholder_item",
+    "layer": "surface",
+    "size": [
+      20,
+      17
+    ],
+    "w": 1
+  },
+  {
+    "d": 2,
+    "hash": "862a6abd",
+    "id": "poster",
+    "iso_width": null,
+    "kind": "placeholder_item",
+    "layer": "wall",
+    "size": [
+      28,
+      60
+    ],
+    "w": 1
+  },
+  {
+    "d": 1,
+    "hash": "b9c4703d",
+    "id": "shelf",
+    "iso_width": null,
+    "kind": "placeholder_item",
+    "layer": "wall",
+    "size": [
+      92,
+      28
+    ],
+    "w": 3
+  },
+  {
+    "d": 1,
+    "hash": "d6142009",
+    "id": "runner",
+    "iso_width": null,
+    "kind": "placeholder_item",
+    "layer": "rug",
+    "size": [
+      128,
+      32
+    ],
+    "w": 4
+  },
+  {
+    "d": 3,
+    "hash": "68f32cd9",
+    "id": "big_rug",
+    "iso_width": null,
+    "kind": "placeholder_item",
+    "layer": "rug",
+    "size": [
+      96,
+      96
+    ],
+    "w": 3
+  },
+  {
+    "hash": "a1a43fc5",
+    "id": "oak",
+    "kind": "placeholder_tile",
+    "size": [
+      16,
+      16
+    ],
+    "wall": true
+  },
+  {
+    "hash": "67090fc5",
+    "id": "birch",
+    "kind": "placeholder_tile",
+    "size": [
+      16,
+      16
+    ],
+    "wall": true
+  },
+  {
+    "hash": "8785cb15",
+    "id": "pine",
+    "kind": "placeholder_tile",
+    "size": [
+      16,
+      16
+    ],
+    "wall": false
+  },
+  {
+    "hash": "482a6425",
+    "id": "slate",
+    "kind": "placeholder_tile",
+    "size": [
+      16,
+      16
+    ],
+    "wall": false
+  },
+  {
+    "hash": "67090fc5",
+    "id": "reef",
+    "kind": "placeholder_tile",
+    "size": [
+      16,
+      16
+    ],
+    "wall": true
+  },
+  {
+    "hash": "23de0cdf",
+    "id": "blobfish",
+    "kind": "placeholder_pet",
+    "size": [
+      36,
+      27
+    ]
+  },
+  {
+    "hash": "23de0cdf",
+    "id": "sprite",
+    "kind": "placeholder_pet",
+    "size": [
+      36,
+      27
+    ]
+  },
+  {
+    "hash": "2336adca",
+    "id": "moss",
+    "kind": "placeholder_pet",
+    "size": [
+      36,
+      27
+    ]
+  },
+  {
+    "at": [
+      4,
+      2
+    ],
+    "body": [
+      12,
+      26
+    ],
+    "frame": [
+      20,
+      30
+    ],
+    "hash": "e705a2ad",
+    "kind": "sleeping_pet",
+    "left": true,
+    "size": [
+      26,
+      29
+    ]
+  },
+  {
+    "at": [
+      4,
+      2
+    ],
+    "body": [
+      12,
+      26
+    ],
+    "frame": [
+      20,
+      30
+    ],
+    "hash": "83f969ad",
+    "kind": "sleeping_pet",
+    "left": false,
+    "size": [
+      26,
+      29
+    ]
+  },
+  {
+    "at": [
+      2,
+      4
+    ],
+    "body": [
+      26,
+      16
+    ],
+    "frame": [
+      30,
+      20
+    ],
+    "hash": "61b9b635",
+    "kind": "sleeping_pet",
+    "left": true,
+    "size": [
+      26,
+      28
+    ]
+  },
+  {
+    "at": [
+      2,
+      4
+    ],
+    "body": [
+      26,
+      16
+    ],
+    "frame": [
+      30,
+      20
+    ],
+    "hash": "0c721545",
+    "kind": "sleeping_pet",
+    "left": false,
+    "size": [
+      26,
+      28
+    ]
+  },
+  {
+    "at": [
+      0,
+      0
+    ],
+    "body": [
+      0,
+      0
+    ],
+    "frame": [
+      8,
+      8
+    ],
+    "hash": "8bc3caf1",
+    "kind": "sleeping_pet",
+    "left": true,
+    "size": [
+      24,
+      18
+    ]
+  },
+  {
+    "at": [
+      0,
+      0
+    ],
+    "body": [
+      0,
+      0
+    ],
+    "frame": [
+      8,
+      8
+    ],
+    "hash": "8bc3caf1",
+    "kind": "sleeping_pet",
+    "left": false,
+    "size": [
+      24,
+      18
+    ]
+  },
+  {
+    "d": 1,
+    "hash": "d0b52657",
+    "id": "sofa",
+    "iso_width": 96,
+    "kind": "recolor",
+    "name": "mint",
+    "ramp": [
+      [
+        11,
+        94,
+        76
+      ],
+      [
+        7,
+        155,
+        116
+      ],
+      [
+        6,
+        214,
+        160
+      ],
+      [
+        111,
+        240,
+        200
+      ],
+      [
+        201,
+        255,
+        240
+      ]
+    ],
+    "size": [
+      96,
+      83
+    ],
+    "w": 2
+  },
+  {
+    "d": 1,
+    "hash": "b751ee15",
+    "id": "sofa",
+    "iso_width": 96,
+    "kind": "recolor",
+    "name": "navy",
+    "ramp": [
+      [
+        15,
+        22,
+        49
+      ],
+      [
+        29,
+        43,
+        83
+      ],
+      [
+        46,
+        61,
+        117
+      ],
+      [
+        74,
+        91,
+        163
+      ],
+      [
+        143,
+        160,
+        216
+      ]
+    ],
+    "size": [
+      96,
+      83
+    ],
+    "w": 2
+  },
+  {
+    "d": 1,
+    "hash": "db443215",
+    "id": "sofa",
+    "iso_width": 96,
+    "kind": "recolor",
+    "name": "cream",
+    "ramp": [
+      [
+        125,
+        106,
+        95
+      ],
+      [
+        184,
+        160,
+        143
+      ],
+      [
+        230,
+        211,
+        195
+      ],
+      [
+        244,
+        230,
+        218
+      ],
+      [
+        255,
+        241,
+        232
+      ]
+    ],
+    "size": [
+      96,
+      83
+    ],
+    "w": 2
+  },
+  {
+    "d": 1,
+    "hash": "735a55eb",
+    "id": "sofa",
+    "iso_width": 96,
+    "kind": "recolor",
+    "name": "plum",
+    "ramp": [
+      [
+        58,
+        35,
+        80
+      ],
+      [
+        90,
+        58,
+        122
+      ],
+      [
+        125,
+        85,
+        163
+      ],
+      [
+        155,
+        107,
+        196
+      ],
+      [
+        207,
+        178,
+        234
+      ]
+    ],
+    "size": [
+      96,
+      83
+    ],
+    "w": 2
+  },
+  {
+    "d": 1,
+    "hash": "56579f53",
+    "id": "sofa",
+    "iso_width": 96,
+    "kind": "recolor",
+    "name": "gold",
+    "ramp": [
+      [
+        107,
+        68,
+        16
+      ],
+      [
+        160,
+        106,
+        20
+      ],
+      [
+        201,
+        138,
+        30
+      ],
+      [
+        255,
+        209,
+        102
+      ],
+      [
+        255,
+        240,
+        184
+      ]
+    ],
+    "size": [
+      96,
+      83
+    ],
+    "w": 2
+  },
+  {
+    "d": 1,
+    "hash": "5d4aba51",
+    "id": "sofa",
+    "iso_width": 96,
+    "kind": "recolor",
+    "name": "sky",
+    "ramp": [
+      [
+        31,
+        95,
+        139
+      ],
+      [
+        44,
+        127,
+        184
+      ],
+      [
+        58,
+        155,
+        220
+      ],
+      [
+        143,
+        211,
+        255
+      ],
+      [
+        214,
+        241,
+        255
+      ]
+    ],
+    "size": [
+      96,
+      83
+    ],
+    "w": 2
+  },
+  {
+    "d": 1,
+    "hash": "2aae8d71",
+    "id": "sofa",
+    "iso_width": 96,
+    "kind": "recolor",
+    "name": "moss",
+    "ramp": [
+      [
+        31,
+        77,
+        58
+      ],
+      [
+        47,
+        125,
+        79
+      ],
+      [
+        79,
+        159,
+        90
+      ],
+      [
+        91,
+        191,
+        106
+      ],
+      [
+        166,
+        227,
+        154
+      ]
+    ],
+    "size": [
+      96,
+      83
+    ],
+    "w": 2
+  },
+  {
+    "d": 1,
+    "hash": "fe20a3a7",
+    "id": "sofa",
+    "iso_width": 96,
+    "kind": "recolor",
+    "name": "rose",
+    "ramp": [
+      [
+        122,
+        42,
+        79
+      ],
+      [
+        184,
+        67,
+        111
+      ],
+      [
+        232,
+        106,
+        146
+      ],
+      [
+        255,
+        143,
+        177
+      ],
+      [
+        255,
+        208,
+        223
+      ]
+    ],
+    "size": [
+      96,
+      83
+    ],
+    "w": 2
+  },
+  {
+    "d": 1,
+    "hash": "c0dabd13",
+    "id": "sofa",
+    "iso_width": 96,
+    "kind": "recolor",
+    "name": "charcoal",
+    "ramp": [
+      [
+        27,
+        29,
+        43
+      ],
+      [
+        44,
+        47,
+        63
+      ],
+      [
+        69,
+        73,
+        92
+      ],
+      [
+        106,
+        111,
+        134
+      ],
+      [
+        163,
+        168,
+        189
+      ]
+    ],
+    "size": [
+      96,
+      83
+    ],
+    "w": 2
+  },
+  {
+    "d": 1,
+    "hash": "22212d58",
+    "id": "sofa",
+    "iso_width": 96,
+    "kind": "recolor",
+    "name": "sand",
+    "ramp": [
+      [
+        125,
+        106,
+        74
+      ],
+      [
+        168,
+        141,
+        95
+      ],
+      [
+        210,
+        183,
+        127
+      ],
+      [
+        232,
+        211,
+        163
+      ],
+      [
+        248,
+        237,
+        208
+      ]
+    ],
+    "size": [
+      96,
+      83
+    ],
+    "w": 2
+  },
+  {
+    "d": 1,
+    "hash": "2c2dcbf2",
+    "id": "sofa",
+    "iso_width": 96,
+    "kind": "recolor",
+    "name": "lilac",
+    "ramp": [
+      [
+        75,
+        61,
+        107
+      ],
+      [
+        111,
+        92,
+        153
+      ],
+      [
+        154,
+        134,
+        199
+      ],
+      [
+        194,
+        179,
+        230
+      ],
+      [
+        232,
+        224,
+        251
+      ]
+    ],
+    "size": [
+      96,
+      83
+    ],
+    "w": 2
+  },
+  {
+    "d": 1,
+    "hash": "564f42db",
+    "id": "sofa",
+    "iso_width": 96,
+    "kind": "recolor",
+    "name": "coral",
+    "ramp": [
+      [
+        122,
+        42,
+        58
+      ],
+      [
+        194,
+        65,
+        63
+      ],
+      [
+        255,
+        107,
+        74
+      ],
+      [
+        255,
+        158,
+        122
+      ],
+      [
+        255,
+        210,
+        192
+      ]
+    ],
+    "size": [
+      96,
+      83
+    ],
+    "w": 2
+  }
+]

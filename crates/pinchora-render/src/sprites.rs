@@ -65,6 +65,11 @@ struct AtlasEntry {
     h: u32,
 }
 
+/// The sprite sheet compiled into the binary, and its index. The dashboard serves both as they are, so
+/// the browser cuts the same sprites out of the same sheet as the renderer.
+pub const ATLAS_PNG: &[u8] = include_bytes!("../../../assets/sprites/atlas.png");
+pub const ATLAS_JSON: &str = include_str!("../../../assets/sprites/atlas.json");
+
 /// Sprites cut from `assets/sprites/atlas.png` by `assets/sprites/atlas.json`
 /// (`{"name": {"x":..,"y":..,"w":..,"h":..}}`). Missing names fall back to placeholders.
 pub struct SpriteStore {
@@ -73,11 +78,7 @@ pub struct SpriteStore {
 
 impl SpriteStore {
     pub fn embedded() -> Self {
-        Self::from_atlas(
-            include_bytes!("../../../assets/sprites/atlas.png"),
-            include_str!("../../../assets/sprites/atlas.json"),
-        )
-        .unwrap_or_else(|_| Self {
+        Self::from_atlas(ATLAS_PNG, ATLAS_JSON).unwrap_or_else(|_| Self {
             sprites: HashMap::new(),
         })
     }

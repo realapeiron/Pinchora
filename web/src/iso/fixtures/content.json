@@ -1,0 +1,2832 @@
+{
+  "base_ramp": [
+    [
+      122,
+      42,
+      58
+    ],
+    [
+      194,
+      65,
+      63
+    ],
+    [
+      255,
+      107,
+      74
+    ],
+    [
+      255,
+      158,
+      122
+    ],
+    [
+      255,
+      210,
+      192
+    ]
+  ],
+  "floors": [
+    {
+      "id": "sandsettle_boards",
+      "name": "Sandsettle Boards"
+    },
+    {
+      "id": "mossrest_matting",
+      "name": "Mossrest Matting"
+    },
+    {
+      "id": "rosewarm_cork",
+      "name": "Rosewarm Cork"
+    },
+    {
+      "id": "pebblewake_deck",
+      "name": "Pebblewake Deck"
+    },
+    {
+      "id": "blushbutton_foam",
+      "name": "Blushbutton Foam"
+    },
+    {
+      "id": "fizzfern_specimen_tile",
+      "name": "Fizzfern Specimen Tile"
+    }
+  ],
+  "furniture": [
+    {
+      "category": "seating",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "hemloop_chair",
+      "iso_width": 64,
+      "layer": "floor",
+      "name": "Hemloop Chair",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "seat",
+        "wood",
+        "woven"
+      ],
+      "variants": []
+    },
+    {
+      "category": "seating",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "pebblerest_stool",
+      "iso_width": 64,
+      "layer": "floor",
+      "name": "Pebblerest Stool",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "seat",
+        "wood"
+      ],
+      "variants": [
+        "sand",
+        "navy",
+        "coral",
+        "cream"
+      ]
+    },
+    {
+      "category": "seating",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "plainwhorl_chair",
+      "iso_width": 64,
+      "layer": "floor",
+      "name": "Plainwhorl Chair",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "seat",
+        "wood"
+      ],
+      "variants": [
+        "cream",
+        "sand",
+        "mint",
+        "navy"
+      ]
+    },
+    {
+      "category": "seating",
+      "footprint": [
+        2,
+        1
+      ],
+      "id": "crumbrail_bench",
+      "iso_width": 96,
+      "layer": "floor",
+      "name": "Crumbrail Bench",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "seat",
+        "wood"
+      ],
+      "variants": [
+        "cream",
+        "sand",
+        "moss",
+        "coral"
+      ]
+    },
+    {
+      "category": "seating",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "mosshem_pouf",
+      "iso_width": 64,
+      "layer": "floor",
+      "name": "Mosshem Pouf",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "seat",
+        "fabric"
+      ],
+      "variants": [
+        "cream",
+        "moss",
+        "coral",
+        "sand"
+      ]
+    },
+    {
+      "category": "seating",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "duneplait_stool",
+      "iso_width": 64,
+      "layer": "floor",
+      "name": "Duneplait Stool",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "seat",
+        "woven"
+      ],
+      "variants": [
+        "sand",
+        "coral",
+        "navy",
+        "gold"
+      ]
+    },
+    {
+      "category": "seating",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "spoolback_chair",
+      "iso_width": 64,
+      "layer": "floor",
+      "name": "Spoolback Chair",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "seat",
+        "wood"
+      ],
+      "variants": [
+        "plum",
+        "gold",
+        "navy",
+        "sand",
+        "cream"
+      ]
+    },
+    {
+      "category": "seating",
+      "footprint": [
+        3,
+        1
+      ],
+      "id": "pagecurl_chaise",
+      "iso_width": 128,
+      "layer": "floor",
+      "name": "Pagecurl Chaise",
+      "rarity": "Uncommon",
+      "surface_height": null,
+      "tags": [
+        "seat",
+        "fabric"
+      ],
+      "variants": [
+        "moss",
+        "cream",
+        "gold"
+      ]
+    },
+    {
+      "category": "seating",
+      "footprint": [
+        2,
+        2
+      ],
+      "id": "frostweave_rocker",
+      "iso_width": 128,
+      "layer": "floor",
+      "name": "Frostweave Rocker",
+      "rarity": "Uncommon",
+      "surface_height": null,
+      "tags": [
+        "seat",
+        "wood"
+      ],
+      "variants": [
+        "cream",
+        "navy",
+        "coral",
+        "gold"
+      ]
+    },
+    {
+      "category": "seating",
+      "footprint": [
+        2,
+        2
+      ],
+      "id": "clicknest_chair",
+      "iso_width": 128,
+      "layer": "floor",
+      "name": "Clicknest Chair",
+      "rarity": "Rare",
+      "surface_height": null,
+      "tags": [
+        "seat",
+        "fabric"
+      ],
+      "variants": [
+        "charcoal",
+        "mint",
+        "sky",
+        "coral"
+      ]
+    },
+    {
+      "category": "tables",
+      "footprint": [
+        2,
+        2
+      ],
+      "id": "crumbcorner_table",
+      "iso_width": 128,
+      "layer": "floor",
+      "name": "Crumbcorner Table",
+      "rarity": "Common",
+      "surface_height": 30,
+      "tags": [
+        "surface",
+        "wood",
+        "dining"
+      ],
+      "variants": [
+        "cream",
+        "moss",
+        "coral",
+        "sand"
+      ]
+    },
+    {
+      "category": "tables",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "pebblepad_table",
+      "iso_width": 64,
+      "layer": "floor",
+      "name": "Pebblepad Table",
+      "rarity": "Common",
+      "surface_height": 24,
+      "tags": [
+        "surface",
+        "wood"
+      ],
+      "variants": [
+        "sand",
+        "navy",
+        "coral",
+        "cream"
+      ]
+    },
+    {
+      "category": "tables",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "stillstep_nightstand",
+      "iso_width": 64,
+      "layer": "floor",
+      "name": "Stillstep Nightstand",
+      "rarity": "Common",
+      "surface_height": 24,
+      "tags": [
+        "surface",
+        "wood"
+      ],
+      "variants": [
+        "cream",
+        "charcoal",
+        "mint"
+      ]
+    },
+    {
+      "category": "tables",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "rivetend_table",
+      "iso_width": 64,
+      "layer": "floor",
+      "name": "Rivetend Table",
+      "rarity": "Common",
+      "surface_height": 24,
+      "tags": [
+        "surface",
+        "metal"
+      ],
+      "variants": [
+        "charcoal",
+        "sand",
+        "moss",
+        "navy"
+      ]
+    },
+    {
+      "category": "tables",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "dunecup_table",
+      "iso_width": 64,
+      "layer": "floor",
+      "name": "Dunecup Table",
+      "rarity": "Common",
+      "surface_height": 24,
+      "tags": [
+        "surface",
+        "clay"
+      ],
+      "variants": [
+        "sand",
+        "coral",
+        "navy",
+        "gold"
+      ]
+    },
+    {
+      "category": "tables",
+      "footprint": [
+        2,
+        2
+      ],
+      "id": "pageledge_table",
+      "iso_width": 128,
+      "layer": "floor",
+      "name": "Pageledge Table",
+      "rarity": "Uncommon",
+      "surface_height": 30,
+      "tags": [
+        "surface",
+        "wood"
+      ],
+      "variants": [
+        "moss",
+        "cream",
+        "gold",
+        "navy"
+      ]
+    },
+    {
+      "category": "tables",
+      "footprint": [
+        3,
+        1
+      ],
+      "id": "clickspan_desk",
+      "iso_width": 128,
+      "layer": "floor",
+      "name": "Clickspan Desk",
+      "rarity": "Uncommon",
+      "surface_height": 34,
+      "tags": [
+        "surface",
+        "metal"
+      ],
+      "variants": [
+        "charcoal",
+        "mint",
+        "sky",
+        "coral"
+      ]
+    },
+    {
+      "category": "tables",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "beambox_nightstand",
+      "iso_width": 64,
+      "layer": "floor",
+      "name": "Beambox Nightstand",
+      "rarity": "Uncommon",
+      "surface_height": 24,
+      "tags": [
+        "surface",
+        "wood"
+      ],
+      "variants": [
+        "navy",
+        "sand",
+        "moss"
+      ]
+    },
+    {
+      "category": "tables",
+      "footprint": [
+        3,
+        1
+      ],
+      "id": "fizzproof_counter",
+      "iso_width": 128,
+      "layer": "floor",
+      "name": "Fizzproof Counter",
+      "rarity": "Rare",
+      "surface_height": 38,
+      "tags": [
+        "surface",
+        "metal"
+      ],
+      "variants": [
+        "mint",
+        "cream",
+        "charcoal",
+        "lilac"
+      ]
+    },
+    {
+      "category": "tables",
+      "footprint": [
+        3,
+        1
+      ],
+      "id": "humskein_mix_desk",
+      "iso_width": 128,
+      "layer": "floor",
+      "name": "Humskein Mix Desk",
+      "rarity": "Rare",
+      "surface_height": 34,
+      "tags": [
+        "surface",
+        "wood"
+      ],
+      "variants": [
+        "plum",
+        "gold",
+        "navy",
+        "sand",
+        "cream"
+      ]
+    },
+    {
+      "category": "beds",
+      "footprint": [
+        2,
+        3
+      ],
+      "id": "patchpillow_bed",
+      "iso_width": 160,
+      "layer": "floor",
+      "name": "Patchpillow Bed",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "sleep",
+        "fabric"
+      ],
+      "variants": [
+        "cream",
+        "moss",
+        "coral",
+        "sand",
+        "sky"
+      ]
+    },
+    {
+      "category": "beds",
+      "footprint": [
+        1,
+        3
+      ],
+      "id": "foldfern_cot",
+      "iso_width": 128,
+      "layer": "floor",
+      "name": "Foldfern Cot",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "sleep",
+        "canvas"
+      ],
+      "variants": [
+        "moss",
+        "sand",
+        "navy",
+        "coral"
+      ]
+    },
+    {
+      "category": "storage",
+      "footprint": [
+        2,
+        1
+      ],
+      "id": "hemgrain_dresser",
+      "iso_width": 96,
+      "layer": "floor",
+      "name": "Hemgrain Dresser",
+      "rarity": "Common",
+      "surface_height": 38,
+      "tags": [
+        "surface",
+        "wood"
+      ],
+      "variants": [
+        "cream",
+        "moss",
+        "coral",
+        "sand"
+      ]
+    },
+    {
+      "category": "storage",
+      "footprint": [
+        2,
+        1
+      ],
+      "id": "pebblepeg_cabinet",
+      "iso_width": 96,
+      "layer": "floor",
+      "name": "Pebblepeg Cabinet",
+      "rarity": "Common",
+      "surface_height": 38,
+      "tags": [
+        "surface",
+        "wood"
+      ],
+      "variants": [
+        "sand",
+        "navy",
+        "coral",
+        "cream",
+        "sky"
+      ]
+    },
+    {
+      "category": "storage",
+      "footprint": [
+        2,
+        1
+      ],
+      "id": "mossbasket_chest",
+      "iso_width": 96,
+      "layer": "floor",
+      "name": "Mossbasket Chest",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "woven",
+        "storage"
+      ],
+      "variants": [
+        "moss",
+        "sand",
+        "cream",
+        "mint"
+      ]
+    },
+    {
+      "category": "storage",
+      "footprint": [
+        2,
+        1
+      ],
+      "id": "dewstrap_trunk",
+      "iso_width": 96,
+      "layer": "floor",
+      "name": "Dewstrap Trunk",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "wood",
+        "storage"
+      ],
+      "variants": [
+        "moss",
+        "sand",
+        "navy",
+        "coral"
+      ]
+    },
+    {
+      "category": "storage",
+      "footprint": [
+        2,
+        1
+      ],
+      "id": "spoolshoe_rack",
+      "iso_width": 96,
+      "layer": "floor",
+      "name": "Spoolshoe Rack",
+      "rarity": "Common",
+      "surface_height": 24,
+      "tags": [
+        "surface",
+        "wood"
+      ],
+      "variants": [
+        "cream",
+        "moss",
+        "coral"
+      ]
+    },
+    {
+      "category": "storage",
+      "footprint": [
+        2,
+        1
+      ],
+      "id": "marginrow_bookcase",
+      "iso_width": 96,
+      "layer": "floor",
+      "name": "Marginrow Bookcase",
+      "rarity": "Uncommon",
+      "surface_height": 70,
+      "tags": [
+        "surface",
+        "wood"
+      ],
+      "variants": [
+        "moss",
+        "cream",
+        "gold",
+        "navy"
+      ]
+    },
+    {
+      "category": "storage",
+      "footprint": [
+        2,
+        2
+      ],
+      "id": "stillpanel_wardrobe",
+      "iso_width": 128,
+      "layer": "floor",
+      "name": "Stillpanel Wardrobe",
+      "rarity": "Uncommon",
+      "surface_height": null,
+      "tags": [
+        "wood",
+        "storage"
+      ],
+      "variants": [
+        "cream",
+        "charcoal",
+        "mint",
+        "sand"
+      ]
+    },
+    {
+      "category": "storage",
+      "footprint": [
+        2,
+        1
+      ],
+      "id": "beamhold_chest",
+      "iso_width": 96,
+      "layer": "floor",
+      "name": "Beamhold Chest",
+      "rarity": "Uncommon",
+      "surface_height": null,
+      "tags": [
+        "wood",
+        "storage"
+      ],
+      "variants": [
+        "navy",
+        "sand",
+        "moss",
+        "gold"
+      ]
+    },
+    {
+      "category": "storage",
+      "footprint": [
+        2,
+        2
+      ],
+      "id": "dunemarrow_armoire",
+      "iso_width": 128,
+      "layer": "floor",
+      "name": "Dunemarrow Armoire",
+      "rarity": "Rare",
+      "surface_height": null,
+      "tags": [
+        "wood",
+        "storage"
+      ],
+      "variants": [
+        "sand",
+        "coral",
+        "navy",
+        "gold"
+      ]
+    },
+    {
+      "category": "lighting",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "pebblecap_lamp",
+      "iso_width": 26,
+      "layer": "surface",
+      "name": "Pebblecap Lamp",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "light",
+        "stone"
+      ],
+      "variants": [
+        "sand",
+        "navy",
+        "coral",
+        "cream",
+        "sky"
+      ]
+    },
+    {
+      "category": "lighting",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "quietdot_lamp",
+      "iso_width": 26,
+      "layer": "surface",
+      "name": "Quietdot Lamp",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "light",
+        "metal"
+      ],
+      "variants": [
+        "cream",
+        "charcoal",
+        "mint",
+        "sand"
+      ]
+    },
+    {
+      "category": "lighting",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "wickcrumb_candle",
+      "iso_width": 18,
+      "layer": "surface",
+      "name": "Wickcrumb Candle",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "light",
+        "wax"
+      ],
+      "variants": [
+        "cream",
+        "sand",
+        "moss",
+        "coral"
+      ]
+    },
+    {
+      "category": "lighting",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "reedcap_lamp",
+      "iso_width": 26,
+      "layer": "surface",
+      "name": "Reedcap Lamp",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "light",
+        "woven"
+      ],
+      "variants": [
+        "sand",
+        "moss",
+        "cream",
+        "charcoal",
+        "sky"
+      ]
+    },
+    {
+      "category": "lighting",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "dunewick_candle",
+      "iso_width": 18,
+      "layer": "surface",
+      "name": "Dunewick Candle",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "light",
+        "wax"
+      ],
+      "variants": [
+        "sand",
+        "coral",
+        "navy"
+      ]
+    },
+    {
+      "category": "lighting",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "rivetarm_floor_lamp",
+      "iso_width": 28,
+      "layer": "floor",
+      "name": "Rivetarm Floor Lamp",
+      "rarity": "Uncommon",
+      "surface_height": null,
+      "tags": [
+        "light",
+        "metal"
+      ],
+      "variants": [
+        "charcoal",
+        "sand",
+        "moss",
+        "navy"
+      ]
+    },
+    {
+      "category": "lighting",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "blushcheek_lamp",
+      "iso_width": 26,
+      "layer": "surface",
+      "name": "Blushcheek Lamp",
+      "rarity": "Uncommon",
+      "surface_height": null,
+      "tags": [
+        "light",
+        "glass"
+      ],
+      "variants": [
+        "rose",
+        "cream",
+        "mint",
+        "lilac",
+        "sky"
+      ]
+    },
+    {
+      "category": "lighting",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "frosttin_lantern",
+      "iso_width": 26,
+      "layer": "surface",
+      "name": "Frosttin Lantern",
+      "rarity": "Uncommon",
+      "surface_height": null,
+      "tags": [
+        "light",
+        "metal"
+      ],
+      "variants": [
+        "cream",
+        "navy",
+        "coral",
+        "gold"
+      ]
+    },
+    {
+      "category": "lighting",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "reefbubble_lamp",
+      "iso_width": 26,
+      "layer": "surface",
+      "name": "Reefbubble Lamp",
+      "rarity": "Rare",
+      "surface_height": null,
+      "tags": [
+        "light",
+        "glass"
+      ],
+      "variants": [
+        "coral",
+        "lilac",
+        "sky",
+        "cream"
+      ]
+    },
+    {
+      "category": "kitchen",
+      "footprint": [
+        2,
+        1
+      ],
+      "id": "stillwarm_stove",
+      "iso_width": 96,
+      "layer": "floor",
+      "name": "Stillwarm Stove",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "heat",
+        "kitchen"
+      ],
+      "variants": [
+        "cream",
+        "charcoal",
+        "mint",
+        "sand"
+      ]
+    },
+    {
+      "category": "kitchen",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "tidechip_mug",
+      "iso_width": 20,
+      "layer": "surface",
+      "name": "Tidechip Mug",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "ceramic",
+        "kitchen"
+      ],
+      "variants": [
+        "sand",
+        "navy",
+        "coral",
+        "cream"
+      ]
+    },
+    {
+      "category": "kitchen",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "reedrest_breadbox",
+      "iso_width": 32,
+      "layer": "surface",
+      "name": "Reedrest Breadbox",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "wood",
+        "kitchen"
+      ],
+      "variants": [
+        "sand",
+        "moss",
+        "cream",
+        "charcoal"
+      ]
+    },
+    {
+      "category": "kitchen",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "crumbscale_set",
+      "iso_width": 26,
+      "layer": "surface",
+      "name": "Crumbscale Set",
+      "rarity": "Uncommon",
+      "surface_height": null,
+      "tags": [
+        "metal",
+        "kitchen"
+      ],
+      "variants": [
+        "cream",
+        "sand",
+        "moss",
+        "coral",
+        "navy"
+      ]
+    },
+    {
+      "category": "kitchen",
+      "footprint": [
+        2,
+        2
+      ],
+      "id": "fizzchill_cabinet",
+      "iso_width": 128,
+      "layer": "floor",
+      "name": "Fizzchill Cabinet",
+      "rarity": "Rare",
+      "surface_height": null,
+      "tags": [
+        "cold",
+        "metal",
+        "kitchen"
+      ],
+      "variants": [
+        "mint",
+        "cream",
+        "charcoal",
+        "lilac"
+      ]
+    },
+    {
+      "category": "kitchen",
+      "footprint": [
+        3,
+        1
+      ],
+      "id": "wishfeast_counter",
+      "iso_width": 128,
+      "layer": "floor",
+      "name": "Wishfeast Counter",
+      "rarity": "Rare",
+      "surface_height": 38,
+      "tags": [
+        "surface",
+        "wood",
+        "kitchen"
+      ],
+      "variants": [
+        "coral",
+        "gold",
+        "cream",
+        "plum"
+      ]
+    },
+    {
+      "category": "bathroom",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "dunepot_hamper",
+      "iso_width": 64,
+      "layer": "floor",
+      "name": "Dunepot Hamper",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "woven",
+        "bath"
+      ],
+      "variants": [
+        "sand",
+        "coral",
+        "navy",
+        "gold"
+      ]
+    },
+    {
+      "category": "electronics",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "pagecount_calculator",
+      "iso_width": 20,
+      "layer": "surface",
+      "name": "Pagecount Calculator",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "plastic",
+        "study"
+      ],
+      "variants": [
+        "moss",
+        "cream",
+        "gold",
+        "navy"
+      ]
+    },
+    {
+      "category": "electronics",
+      "footprint": [
+        2,
+        2
+      ],
+      "id": "blinkslot_cabinet",
+      "iso_width": 128,
+      "layer": "floor",
+      "name": "Blinkslot Cabinet",
+      "rarity": "Uncommon",
+      "surface_height": null,
+      "tags": [
+        "light",
+        "game",
+        "screen"
+      ],
+      "variants": [
+        "plum",
+        "sky",
+        "coral",
+        "charcoal"
+      ]
+    },
+    {
+      "category": "electronics",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "fizzscan_terminal",
+      "iso_width": 36,
+      "layer": "surface",
+      "name": "Fizzscan Terminal",
+      "rarity": "Rare",
+      "surface_height": null,
+      "tags": [
+        "light",
+        "screen",
+        "study"
+      ],
+      "variants": [
+        "mint",
+        "cream",
+        "charcoal",
+        "lilac",
+        "sky"
+      ]
+    },
+    {
+      "category": "electronics",
+      "footprint": [
+        3,
+        1
+      ],
+      "id": "orbitview_console",
+      "iso_width": 128,
+      "layer": "floor",
+      "name": "Orbitview Console",
+      "rarity": "Epic",
+      "surface_height": null,
+      "tags": [
+        "light",
+        "screen"
+      ],
+      "variants": [
+        "sky",
+        "cream",
+        "navy",
+        "gold"
+      ]
+    },
+    {
+      "category": "rugs",
+      "footprint": [
+        3,
+        1
+      ],
+      "id": "duneline_runner",
+      "iso_width": null,
+      "layer": "rug",
+      "name": "Duneline Runner",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "fabric",
+        "woven"
+      ],
+      "variants": [
+        "sand",
+        "coral",
+        "navy"
+      ]
+    },
+    {
+      "category": "rugs",
+      "footprint": [
+        3,
+        2
+      ],
+      "id": "rivetgrid_rug",
+      "iso_width": null,
+      "layer": "rug",
+      "name": "Rivetgrid Rug",
+      "rarity": "Uncommon",
+      "surface_height": null,
+      "tags": [
+        "fabric",
+        "woven"
+      ],
+      "variants": [
+        "charcoal",
+        "sand",
+        "moss",
+        "navy",
+        "cream"
+      ]
+    },
+    {
+      "category": "wall_decor",
+      "footprint": [
+        2,
+        1
+      ],
+      "id": "hemhill_painting",
+      "iso_width": null,
+      "layer": "wall",
+      "name": "Hemhill Painting",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "art",
+        "wood"
+      ],
+      "variants": [
+        "cream",
+        "moss",
+        "coral",
+        "sand"
+      ]
+    },
+    {
+      "category": "wall_decor",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "pebblehour_clock",
+      "iso_width": null,
+      "layer": "wall",
+      "name": "Pebblehour Clock",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "time",
+        "wood"
+      ],
+      "variants": [
+        "sand",
+        "navy",
+        "coral",
+        "cream"
+      ]
+    },
+    {
+      "category": "wall_decor",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "pagepair_books",
+      "iso_width": 26,
+      "layer": "surface",
+      "name": "Pagepair Books",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "paper",
+        "study"
+      ],
+      "variants": [
+        "moss",
+        "cream",
+        "gold"
+      ]
+    },
+    {
+      "category": "windows_doors",
+      "footprint": [
+        2,
+        2
+      ],
+      "id": "pebblepane_window",
+      "iso_width": null,
+      "layer": "wall",
+      "name": "Pebblepane Window",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "glass",
+        "wood"
+      ],
+      "variants": [
+        "sand",
+        "navy",
+        "coral",
+        "cream"
+      ]
+    },
+    {
+      "category": "windows_doors",
+      "footprint": [
+        1,
+        2
+      ],
+      "id": "stillframe_door",
+      "iso_width": null,
+      "layer": "wall",
+      "name": "Stillframe Door",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "wood",
+        "entry"
+      ],
+      "variants": [
+        "cream",
+        "charcoal",
+        "mint",
+        "sand"
+      ]
+    },
+    {
+      "category": "windows_doors",
+      "footprint": [
+        2,
+        2
+      ],
+      "id": "dunearc_window",
+      "iso_width": null,
+      "layer": "wall",
+      "name": "Dunearc Window",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "glass",
+        "clay"
+      ],
+      "variants": [
+        "sand",
+        "coral",
+        "navy",
+        "gold"
+      ]
+    },
+    {
+      "category": "plants",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "sprigcup_fern",
+      "iso_width": 24,
+      "layer": "surface",
+      "name": "Sprigcup Fern",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "leaf",
+        "ceramic"
+      ],
+      "variants": [
+        "moss",
+        "sand",
+        "cream",
+        "mint"
+      ]
+    },
+    {
+      "category": "plants",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "stillstem_rubber_tree",
+      "iso_width": 44,
+      "layer": "floor",
+      "name": "Stillstem Rubber Tree",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "leaf",
+        "ceramic"
+      ],
+      "variants": [
+        "cream",
+        "charcoal",
+        "mint",
+        "sand",
+        "navy"
+      ]
+    },
+    {
+      "category": "plants",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "crumbmint_pot",
+      "iso_width": 24,
+      "layer": "surface",
+      "name": "Crumbmint Pot",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "leaf",
+        "herb"
+      ],
+      "variants": [
+        "cream",
+        "sand",
+        "moss",
+        "coral"
+      ]
+    },
+    {
+      "category": "plants",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "boltleaf_planter",
+      "iso_width": 40,
+      "layer": "floor",
+      "name": "Boltleaf Planter",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "leaf",
+        "metal"
+      ],
+      "variants": [
+        "charcoal",
+        "sand",
+        "moss",
+        "navy"
+      ]
+    },
+    {
+      "category": "plants",
+      "footprint": [
+        1,
+        2
+      ],
+      "id": "kettlebloom_stand",
+      "iso_width": 40,
+      "layer": "floor",
+      "name": "Kettlebloom Stand",
+      "rarity": "Uncommon",
+      "surface_height": null,
+      "tags": [
+        "flower",
+        "wood"
+      ],
+      "variants": [
+        "cream",
+        "sand",
+        "moss",
+        "coral"
+      ]
+    },
+    {
+      "category": "plants",
+      "footprint": [
+        2,
+        2
+      ],
+      "id": "wishcitrus_tree",
+      "iso_width": 48,
+      "layer": "floor",
+      "name": "Wishcitrus Tree",
+      "rarity": "Rare",
+      "surface_height": null,
+      "tags": [
+        "leaf",
+        "fruit"
+      ],
+      "variants": [
+        "coral",
+        "gold",
+        "cream",
+        "plum",
+        "rose"
+      ]
+    },
+    {
+      "category": "pet_items",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "drowsepatch_basket",
+      "iso_width": 64,
+      "layer": "floor",
+      "name": "Drowsepatch Basket",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "pet",
+        "sleep"
+      ],
+      "variants": [
+        "cream",
+        "moss",
+        "coral",
+        "sand",
+        "sky"
+      ]
+    },
+    {
+      "category": "pet_items",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "reedroll_scratch_post",
+      "iso_width": 28,
+      "layer": "floor",
+      "name": "Reedroll Scratch Post",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "pet",
+        "woven"
+      ],
+      "variants": [
+        "sand",
+        "moss",
+        "cream"
+      ]
+    },
+    {
+      "category": "pet_items",
+      "footprint": [
+        2,
+        1
+      ],
+      "id": "buttonburrow_house",
+      "iso_width": 96,
+      "layer": "floor",
+      "name": "Buttonburrow House",
+      "rarity": "Uncommon",
+      "surface_height": null,
+      "tags": [
+        "pet",
+        "sleep"
+      ],
+      "variants": [
+        "rose",
+        "cream",
+        "mint",
+        "lilac"
+      ]
+    },
+    {
+      "category": "pet_items",
+      "footprint": [
+        2,
+        1
+      ],
+      "id": "dewdash_tunnel",
+      "iso_width": 96,
+      "layer": "floor",
+      "name": "Dewdash Tunnel",
+      "rarity": "Uncommon",
+      "surface_height": null,
+      "tags": [
+        "pet",
+        "play"
+      ],
+      "variants": [
+        "moss",
+        "sand",
+        "navy",
+        "coral",
+        "cream"
+      ]
+    },
+    {
+      "category": "pet_items",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "sprigpaw_toy_basket",
+      "iso_width": 64,
+      "layer": "floor",
+      "name": "Sprigpaw Toy Basket",
+      "rarity": "Uncommon",
+      "surface_height": null,
+      "tags": [
+        "pet",
+        "play"
+      ],
+      "variants": [
+        "moss",
+        "sand",
+        "cream",
+        "mint"
+      ]
+    },
+    {
+      "category": "pet_items",
+      "footprint": [
+        2,
+        1
+      ],
+      "id": "fizzpaw_care_station",
+      "iso_width": 96,
+      "layer": "floor",
+      "name": "Fizzpaw Care Station",
+      "rarity": "Rare",
+      "surface_height": null,
+      "tags": [
+        "pet",
+        "water"
+      ],
+      "variants": [
+        "mint",
+        "cream",
+        "charcoal",
+        "lilac"
+      ]
+    },
+    {
+      "category": "toys_games",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "crumbfit_puzzle",
+      "iso_width": 32,
+      "layer": "surface",
+      "name": "Crumbfit Puzzle",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "play",
+        "paper"
+      ],
+      "variants": [
+        "cream",
+        "sand",
+        "moss",
+        "coral"
+      ]
+    },
+    {
+      "category": "toys_games",
+      "footprint": [
+        1,
+        2
+      ],
+      "id": "dewkite_bundle",
+      "iso_width": 96,
+      "layer": "floor",
+      "name": "Dewkite Bundle",
+      "rarity": "Uncommon",
+      "surface_height": null,
+      "tags": [
+        "play",
+        "fabric"
+      ],
+      "variants": [
+        "moss",
+        "sand",
+        "navy",
+        "coral"
+      ]
+    },
+    {
+      "category": "music",
+      "footprint": [
+        3,
+        2
+      ],
+      "id": "humskein_upright",
+      "iso_width": 160,
+      "layer": "floor",
+      "name": "Humskein Upright",
+      "rarity": "Rare",
+      "surface_height": null,
+      "tags": [
+        "audio",
+        "wood"
+      ],
+      "variants": [
+        "plum",
+        "gold",
+        "navy",
+        "sand"
+      ]
+    },
+    {
+      "category": "outdoor",
+      "footprint": [
+        2,
+        1
+      ],
+      "id": "sprigstep_planter_box",
+      "iso_width": 96,
+      "layer": "floor",
+      "name": "Sprigstep Planter Box",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "wood",
+        "garden"
+      ],
+      "variants": [
+        "moss",
+        "sand",
+        "cream",
+        "mint"
+      ]
+    },
+    {
+      "category": "seasonal",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "hushpatch_pumpkin",
+      "iso_width": 40,
+      "layer": "floor",
+      "name": "Hushpatch Pumpkin",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "autumn",
+        "clay"
+      ],
+      "variants": [
+        "plum",
+        "charcoal",
+        "lilac",
+        "gold"
+      ]
+    },
+    {
+      "category": "seasonal",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "budwhistle_egg_bowl",
+      "iso_width": 26,
+      "layer": "surface",
+      "name": "Budwhistle Egg Bowl",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "spring",
+        "ceramic"
+      ],
+      "variants": [
+        "rose",
+        "mint",
+        "lilac",
+        "cream",
+        "sky"
+      ]
+    },
+    {
+      "category": "seasonal",
+      "footprint": [
+        1,
+        2
+      ],
+      "id": "budbasket_stand",
+      "iso_width": 40,
+      "layer": "floor",
+      "name": "Budbasket Stand",
+      "rarity": "Uncommon",
+      "surface_height": null,
+      "tags": [
+        "spring",
+        "flower"
+      ],
+      "variants": [
+        "rose",
+        "mint",
+        "lilac",
+        "cream"
+      ]
+    },
+    {
+      "category": "seating",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "hushpurl_pouf",
+      "iso_width": 52,
+      "layer": "floor",
+      "name": "Hushpurl Pouf",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "seat",
+        "fabric"
+      ],
+      "variants": []
+    },
+    {
+      "category": "tables",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "nestnib_side_table",
+      "iso_width": 64,
+      "layer": "floor",
+      "name": "Nestnib Side Table",
+      "rarity": "Common",
+      "surface_height": 24,
+      "tags": [
+        "surface",
+        "wood"
+      ],
+      "variants": [
+        "coral",
+        "charcoal",
+        "cream"
+      ]
+    },
+    {
+      "category": "storage",
+      "footprint": [
+        1,
+        2
+      ],
+      "id": "quayfold_locker",
+      "iso_width": 96,
+      "layer": "floor",
+      "name": "Quayfold Locker",
+      "rarity": "Uncommon",
+      "surface_height": null,
+      "tags": [
+        "metal",
+        "storage"
+      ],
+      "variants": [
+        "coral",
+        "gold"
+      ]
+    },
+    {
+      "category": "storage",
+      "footprint": [
+        2,
+        2
+      ],
+      "id": "glazepocket_vitrine",
+      "iso_width": 128,
+      "layer": "floor",
+      "name": "Glazepocket Vitrine",
+      "rarity": "Rare",
+      "surface_height": null,
+      "tags": [
+        "glass",
+        "storage"
+      ],
+      "variants": []
+    },
+    {
+      "category": "lighting",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "reedflare_tripod_lamp",
+      "iso_width": 30,
+      "layer": "floor",
+      "name": "Reedflare Tripod Lamp",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "light",
+        "woven"
+      ],
+      "variants": [
+        "coral",
+        "cream",
+        "mint",
+        "moss"
+      ]
+    },
+    {
+      "category": "bathroom",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "linenpearl_towels",
+      "iso_width": 28,
+      "layer": "surface",
+      "name": "Linenpearl Towels",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "fabric",
+        "water"
+      ],
+      "variants": []
+    },
+    {
+      "category": "wall_decor",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "pagecove_books",
+      "iso_width": 28,
+      "layer": "surface",
+      "name": "Pagecove Books",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "paper",
+        "study"
+      ],
+      "variants": [
+        "coral",
+        "lilac",
+        "moss",
+        "navy"
+      ]
+    },
+    {
+      "category": "toys_games",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "ringripple_toss",
+      "iso_width": 52,
+      "layer": "floor",
+      "name": "Ringripple Toss",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "play",
+        "wood"
+      ],
+      "variants": []
+    },
+    {
+      "category": "outdoor",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "rainpocket_barrel",
+      "iso_width": 56,
+      "layer": "floor",
+      "name": "Rainpocket Barrel",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "water",
+        "wood"
+      ],
+      "variants": [
+        "coral",
+        "plum",
+        "navy",
+        "moss"
+      ]
+    },
+    {
+      "category": "outdoor",
+      "footprint": [
+        2,
+        2
+      ],
+      "id": "coastcurl_firepit",
+      "iso_width": 112,
+      "layer": "floor",
+      "name": "Coastcurl Firepit",
+      "rarity": "Rare",
+      "surface_height": null,
+      "tags": [
+        "light",
+        "heat",
+        "stone"
+      ],
+      "variants": [
+        "coral",
+        "plum"
+      ]
+    },
+    {
+      "category": "seasonal",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "hushknit_scarecrow",
+      "iso_width": 44,
+      "layer": "floor",
+      "name": "Hushknit Scarecrow",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "autumn",
+        "fabric"
+      ],
+      "variants": [
+        "coral",
+        "lilac"
+      ]
+    },
+    {
+      "category": "office",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "clipcoil_stapler",
+      "iso_width": 18,
+      "layer": "surface",
+      "name": "Clipcoil Stapler",
+      "rarity": "Uncommon",
+      "surface_height": null,
+      "tags": [
+        "study",
+        "metal"
+      ],
+      "variants": [
+        "coral",
+        "mint",
+        "sky",
+        "gold"
+      ]
+    },
+    {
+      "category": "cafe",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "sipspool_bar_stool",
+      "iso_width": 64,
+      "layer": "floor",
+      "name": "Sipspool Bar Stool",
+      "rarity": "Uncommon",
+      "surface_height": null,
+      "tags": [
+        "seat",
+        "metal",
+        "food"
+      ],
+      "variants": [
+        "coral",
+        "mint",
+        "gold",
+        "cream"
+      ]
+    },
+    {
+      "category": "cafe",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "beanwhirl_grinder",
+      "iso_width": 28,
+      "layer": "surface",
+      "name": "Beanwhirl Grinder",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "metal",
+        "food"
+      ],
+      "variants": [
+        "coral",
+        "mint",
+        "sky",
+        "gold"
+      ]
+    },
+    {
+      "category": "hobbies",
+      "footprint": [
+        1,
+        2
+      ],
+      "id": "starpetal_telescope",
+      "iso_width": 40,
+      "layer": "floor",
+      "name": "Starpetal Telescope",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "glass",
+        "study"
+      ],
+      "variants": []
+    },
+    {
+      "category": "hobbies",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "paintpearl_palette",
+      "iso_width": 26,
+      "layer": "surface",
+      "name": "Paintpearl Palette",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "craft",
+        "wood"
+      ],
+      "variants": []
+    },
+    {
+      "category": "fitness",
+      "footprint": [
+        2,
+        1
+      ],
+      "id": "barbellbloom_rack",
+      "iso_width": 96,
+      "layer": "floor",
+      "name": "Barbellbloom Rack",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "fitness",
+        "metal"
+      ],
+      "variants": []
+    },
+    {
+      "category": "partitions",
+      "footprint": [
+        3,
+        1
+      ],
+      "id": "plasterpurl_half_wall",
+      "iso_width": 128,
+      "layer": "floor",
+      "name": "Plasterpurl Half Wall",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "structure",
+        "stone"
+      ],
+      "variants": []
+    },
+    {
+      "category": "partitions",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "flutebud_column",
+      "iso_width": 40,
+      "layer": "floor",
+      "name": "Flutebud Column",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "structure",
+        "stone"
+      ],
+      "variants": [
+        "coral",
+        "cream",
+        "rose",
+        "charcoal"
+      ]
+    },
+    {
+      "category": "partitions",
+      "footprint": [
+        3,
+        1
+      ],
+      "id": "ropewake_railing",
+      "iso_width": 128,
+      "layer": "floor",
+      "name": "Ropewake Railing",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "structure",
+        "woven"
+      ],
+      "variants": [
+        "coral",
+        "navy",
+        "gold",
+        "lilac"
+      ]
+    },
+    {
+      "category": "partitions",
+      "footprint": [
+        2,
+        1
+      ],
+      "id": "canvasquill_divider",
+      "iso_width": 96,
+      "layer": "floor",
+      "name": "Canvasquill Divider",
+      "rarity": "Uncommon",
+      "surface_height": null,
+      "tags": [
+        "structure",
+        "fabric"
+      ],
+      "variants": [
+        "coral",
+        "charcoal",
+        "moss",
+        "mint"
+      ]
+    },
+    {
+      "category": "nautical",
+      "footprint": [
+        2,
+        1
+      ],
+      "id": "chartcoil_captain_desk",
+      "iso_width": 96,
+      "layer": "floor",
+      "name": "Chartcoil Captain Desk",
+      "rarity": "Common",
+      "surface_height": 34,
+      "tags": [
+        "surface",
+        "wood",
+        "nautical"
+      ],
+      "variants": []
+    },
+    {
+      "category": "nautical",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "anchorpurl_capstan",
+      "iso_width": 46,
+      "layer": "floor",
+      "name": "Anchorpurl Capstan",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "metal",
+        "nautical"
+      ],
+      "variants": []
+    },
+    {
+      "category": "nautical",
+      "footprint": [
+        1,
+        2
+      ],
+      "id": "sailparcel_mast",
+      "iso_width": 40,
+      "layer": "floor",
+      "name": "Sailparcel Mast",
+      "rarity": "Uncommon",
+      "surface_height": null,
+      "tags": [
+        "fabric",
+        "nautical"
+      ],
+      "variants": [
+        "coral",
+        "rose",
+        "cream",
+        "sand"
+      ]
+    },
+    {
+      "category": "nautical",
+      "footprint": [
+        1,
+        1
+      ],
+      "id": "keelguard_figurehead",
+      "iso_width": 40,
+      "layer": "floor",
+      "name": "Keelguard Figurehead",
+      "rarity": "Common",
+      "surface_height": null,
+      "tags": [
+        "art",
+        "wood",
+        "nautical"
+      ],
+      "variants": [
+        "coral",
+        "cream",
+        "lilac"
+      ]
+    }
+  ],
+  "pets": [
+    {
+      "id": "crumbclaw_crab",
+      "name": "Crumbclaw Crab"
+    },
+    {
+      "id": "ribbonfin_guppy",
+      "name": "Ribbonfin Guppy"
+    },
+    {
+      "id": "noodlenose_seahorse",
+      "name": "Noodlenose Seahorse"
+    },
+    {
+      "id": "buttonbell_jelly",
+      "name": "Buttonbell Jelly"
+    },
+    {
+      "id": "tumblebutton_pup",
+      "name": "Tumblebutton Pup"
+    },
+    {
+      "id": "mittensprout_mouse",
+      "name": "Mittensprout Mouse"
+    },
+    {
+      "id": "coppercup_fiddler",
+      "name": "Coppercup Fiddler"
+    },
+    {
+      "id": "velvetloop_ray",
+      "name": "Velvetloop Ray"
+    },
+    {
+      "id": "acornpocket_squirrel",
+      "name": "Acornpocket Squirrel"
+    },
+    {
+      "id": "tinkertrot_ferret",
+      "name": "Tinkertrot Ferret"
+    },
+    {
+      "id": "marmalade_mothkit",
+      "name": "Marmalade Mothkit"
+    },
+    {
+      "id": "crowncurl_dragonet",
+      "name": "Crowncurl Dragonet"
+    }
+  ],
+  "room_types": [
+    {
+      "id": "living",
+      "name": "Pebblewelcome Lounge"
+    }
+  ],
+  "tiers": [
+    {
+      "depth": 8,
+      "name": "Tide Pool Shack",
+      "rooms": 1,
+      "tier": 1,
+      "width": 8
+    },
+    {
+      "depth": 8,
+      "name": "Beach Cottage",
+      "rooms": 2,
+      "tier": 2,
+      "width": 9
+    },
+    {
+      "depth": 9,
+      "name": "Reef House",
+      "rooms": 3,
+      "tier": 3,
+      "width": 10
+    },
+    {
+      "depth": 10,
+      "name": "Coral Villa",
+      "rooms": 4,
+      "tier": 4,
+      "width": 11
+    },
+    {
+      "depth": 11,
+      "name": "Lighthouse Loft",
+      "rooms": 5,
+      "tier": 5,
+      "width": 12
+    },
+    {
+      "depth": 12,
+      "name": "Sunken Palace",
+      "rooms": 6,
+      "tier": 6,
+      "width": 14
+    }
+  ],
+  "variant_ramps": {
+    "charcoal": [
+      [
+        27,
+        29,
+        43
+      ],
+      [
+        44,
+        47,
+        63
+      ],
+      [
+        69,
+        73,
+        92
+      ],
+      [
+        106,
+        111,
+        134
+      ],
+      [
+        163,
+        168,
+        189
+      ]
+    ],
+    "coral": [
+      [
+        122,
+        42,
+        58
+      ],
+      [
+        194,
+        65,
+        63
+      ],
+      [
+        255,
+        107,
+        74
+      ],
+      [
+        255,
+        158,
+        122
+      ],
+      [
+        255,
+        210,
+        192
+      ]
+    ],
+    "cream": [
+      [
+        125,
+        106,
+        95
+      ],
+      [
+        184,
+        160,
+        143
+      ],
+      [
+        230,
+        211,
+        195
+      ],
+      [
+        244,
+        230,
+        218
+      ],
+      [
+        255,
+        241,
+        232
+      ]
+    ],
+    "gold": [
+      [
+        107,
+        68,
+        16
+      ],
+      [
+        160,
+        106,
+        20
+      ],
+      [
+        201,
+        138,
+        30
+      ],
+      [
+        255,
+        209,
+        102
+      ],
+      [
+        255,
+        240,
+        184
+      ]
+    ],
+    "lilac": [
+      [
+        75,
+        61,
+        107
+      ],
+      [
+        111,
+        92,
+        153
+      ],
+      [
+        154,
+        134,
+        199
+      ],
+      [
+        194,
+        179,
+        230
+      ],
+      [
+        232,
+        224,
+        251
+      ]
+    ],
+    "mint": [
+      [
+        11,
+        94,
+        76
+      ],
+      [
+        7,
+        155,
+        116
+      ],
+      [
+        6,
+        214,
+        160
+      ],
+      [
+        111,
+        240,
+        200
+      ],
+      [
+        201,
+        255,
+        240
+      ]
+    ],
+    "moss": [
+      [
+        31,
+        77,
+        58
+      ],
+      [
+        47,
+        125,
+        79
+      ],
+      [
+        79,
+        159,
+        90
+      ],
+      [
+        91,
+        191,
+        106
+      ],
+      [
+        166,
+        227,
+        154
+      ]
+    ],
+    "navy": [
+      [
+        15,
+        22,
+        49
+      ],
+      [
+        29,
+        43,
+        83
+      ],
+      [
+        46,
+        61,
+        117
+      ],
+      [
+        74,
+        91,
+        163
+      ],
+      [
+        143,
+        160,
+        216
+      ]
+    ],
+    "plum": [
+      [
+        58,
+        35,
+        80
+      ],
+      [
+        90,
+        58,
+        122
+      ],
+      [
+        125,
+        85,
+        163
+      ],
+      [
+        155,
+        107,
+        196
+      ],
+      [
+        207,
+        178,
+        234
+      ]
+    ],
+    "rose": [
+      [
+        122,
+        42,
+        79
+      ],
+      [
+        184,
+        67,
+        111
+      ],
+      [
+        232,
+        106,
+        146
+      ],
+      [
+        255,
+        143,
+        177
+      ],
+      [
+        255,
+        208,
+        223
+      ]
+    ],
+    "sand": [
+      [
+        125,
+        106,
+        74
+      ],
+      [
+        168,
+        141,
+        95
+      ],
+      [
+        210,
+        183,
+        127
+      ],
+      [
+        232,
+        211,
+        163
+      ],
+      [
+        248,
+        237,
+        208
+      ]
+    ],
+    "sky": [
+      [
+        31,
+        95,
+        139
+      ],
+      [
+        44,
+        127,
+        184
+      ],
+      [
+        58,
+        155,
+        220
+      ],
+      [
+        143,
+        211,
+        255
+      ],
+      [
+        214,
+        241,
+        255
+      ]
+    ]
+  },
+  "wallpapers": [
+    {
+      "id": "creamcalm_plaster",
+      "name": "Creamcalm Plaster"
+    },
+    {
+      "id": "skyrest_paper",
+      "name": "Skyrest Paper"
+    },
+    {
+      "id": "mosswhisper_wash",
+      "name": "Mosswhisper Wash"
+    },
+    {
+      "id": "blinkberry_dots",
+      "name": "Blinkberry Dots"
+    },
+    {
+      "id": "blushbutton_spots",
+      "name": "Blushbutton Spots"
+    },
+    {
+      "id": "pebblewake_ropework",
+      "name": "Pebblewake Ropework"
+    }
+  ]
+}

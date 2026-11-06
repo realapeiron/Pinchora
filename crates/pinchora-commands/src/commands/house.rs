@@ -314,7 +314,7 @@ pub(crate) fn room_title(content: &Content, room: &RoomRow) -> String {
 
 /// The owner's pets that are in the house: the active one first, up to [`DAYCARE`], and none that
 /// is away on a field trip. A pet that fell asleep lies in the room instead of wandering.
-fn home_pets(mut owned: Vec<PetRow>, now: DateTime<Utc>) -> Vec<RoomPet> {
+pub(crate) fn home_pets(mut owned: Vec<PetRow>, now: DateTime<Utc>) -> Vec<RoomPet> {
     owned.retain(|p| !p.is_away(now));
     owned.sort_by_key(|p| !p.active);
     owned

@@ -1,0 +1,184 @@
+{
+  "character_sprites": {
+    "tidewalker.2.1.1.2.0.0": "furnished_10x9.character0.png"
+  },
+  "hash": "bd80c0aa",
+  "name": "furnished_10x9",
+  "options": {
+    "cursor": null,
+    "edit": false,
+    "selected": null
+  },
+  "png": "furnished_10x9.png",
+  "room": {
+    "characters": [
+      "tidewalker.2.1.1.2.0.0"
+    ],
+    "depth": 9,
+    "floor": "sandsettle_boards",
+    "idx": 0,
+    "pets": [
+      {
+        "asleep": false,
+        "species": "crumbclaw_crab"
+      }
+    ],
+    "placements": [
+      {
+        "flipped": false,
+        "id": "1",
+        "item_id": "pebblepane_window__sand",
+        "x": 1,
+        "y": 0
+      },
+      {
+        "flipped": false,
+        "id": "2",
+        "item_id": "hemhill_painting__cream",
+        "x": 4,
+        "y": 0
+      },
+      {
+        "flipped": false,
+        "id": "3",
+        "item_id": "pebblehour_clock__navy",
+        "x": 7,
+        "y": 0
+      },
+      {
+        "flipped": true,
+        "id": "4",
+        "item_id": "dunearc_window__coral",
+        "x": 2,
+        "y": 0
+      },
+      {
+        "flipped": true,
+        "id": "5",
+        "item_id": "stillframe_door__cream",
+        "x": 6,
+        "y": 1
+      },
+      {
+        "flipped": false,
+        "id": "6",
+        "item_id": "stillpanel_wardrobe__cream",
+        "x": 0,
+        "y": 0
+      },
+      {
+        "flipped": false,
+        "id": "7",
+        "item_id": "stillstep_nightstand__cream",
+        "x": 6,
+        "y": 0
+      },
+      {
+        "flipped": false,
+        "id": "8",
+        "item_id": "pebblecap_lamp__sand",
+        "x": 6,
+        "y": 0
+      },
+      {
+        "flipped": false,
+        "id": "9",
+        "item_id": "patchpillow_bed__cream",
+        "x": 7,
+        "y": 0
+      },
+      {
+        "flipped": true,
+        "id": "10",
+        "item_id": "humskein_upright__plum",
+        "x": 0,
+        "y": 3
+      },
+      {
+        "flipped": false,
+        "id": "11",
+        "item_id": "rivetgrid_rug__sand",
+        "x": 2,
+        "y": 4
+      },
+      {
+        "flipped": false,
+        "id": "12",
+        "item_id": "crumbcorner_table__moss",
+        "x": 3,
+        "y": 4
+      },
+      {
+        "flipped": false,
+        "id": "13",
+        "item_id": "pagepair_books__moss",
+        "x": 3,
+        "y": 4
+      },
+      {
+        "flipped": false,
+        "id": "14",
+        "item_id": "sprigcup_fern__moss",
+        "x": 4,
+        "y": 5
+      },
+      {
+        "flipped": false,
+        "id": "15",
+        "item_id": "plainwhorl_chair__sand",
+        "x": 5,
+        "y": 4
+      },
+      {
+        "flipped": true,
+        "id": "16",
+        "item_id": "plainwhorl_chair__sand",
+        "x": 3,
+        "y": 6
+      },
+      {
+        "flipped": false,
+        "id": "17",
+        "item_id": "crumbrail_bench__sand",
+        "x": 6,
+        "y": 7
+      },
+      {
+        "flipped": false,
+        "id": "18",
+        "item_id": "stillstem_rubber_tree__cream",
+        "x": 0,
+        "y": 7
+      },
+      {
+        "flipped": false,
+        "id": "19",
+        "item_id": "rivetarm_floor_lamp__charcoal",
+        "x": 9,
+        "y": 4
+      },
+      {
+        "flipped": false,
+        "id": "20",
+        "item_id": "blinkslot_cabinet__plum",
+        "x": 8,
+        "y": 7
+      },
+      {
+        "flipped": false,
+        "id": "21",
+        "item_id": "duneline_runner__coral",
+        "x": 6,
+        "y": 3
+      }
+    ],
+    "room_type": "living",
+    "seed": 3,
+    "wallpaper": "creamcalm_plaster",
+    "width": 10
+  },
+  "size": [
+    636,
+    456
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "character_sprites": {},
+  "hash": "ef2840b9",
+  "name": "edit_floor_cursor",
+  "options": {
+    "cursor": {
+      "d": 2,
+      "ok": true,
+      "w": 2,
+      "wall": null,
+      "x": 5,
+      "y": 2
+    },
+    "edit": true,
+    "selected": "3"
+  },
+  "png": "edit_floor_cursor.png",
+  "room": {
+    "characters": [],
+    "depth": 8,
+    "floor": "mossrest_matting",
+    "idx": 0,
+    "pets": [],
+    "placements": [
+      {
+        "flipped": false,
+        "id": "1",
+        "item_id": "rivetgrid_rug__sand",
+        "x": 2,
+        "y": 4
+      },
+      {
+        "flipped": false,
+        "id": "2",
+        "item_id": "crumbcorner_table__moss",
+        "x": 3,
+        "y": 4
+      },
+      {
+        "flipped": false,
+        "id": "3",
+        "item_id": "pagepair_books__moss",
+        "x": 3,
+        "y": 4
+      },
+      {
+        "flipped": false,
+        "id": "4",
+        "item_id": "sprigcup_fern__moss",
+        "x": 4,
+        "y": 5
+      },
+      {
+        "flipped": false,
+        "id": "5",
+        "item_id": "plainwhorl_chair__sand",
+        "x": 5,
+        "y": 4
+      },
+      {
+        "flipped": true,
+        "id": "6",
+        "item_id": "plainwhorl_chair__sand",
+        "x": 3,
+        "y": 6
+      }
+    ],
+    "room_type": "living",
+    "seed": 1,
+    "wallpaper": "mosswhisper_wash",
+    "width": 8
+  },
+  "size": [
+    568,
+    425
+  ]
+}

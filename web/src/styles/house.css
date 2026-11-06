@@ -1,0 +1,189 @@
+/* /House viewer: rooms drawn at their native size and shown at a whole-number zoom, never blurred. */
+
+.top-bar-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.top-bar-link {
+  padding: 8px 12px;
+  color: var(--ink);
+  text-decoration: none;
+  font: 700 12px/1 var(--font-pixel);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border-bottom: var(--px) solid transparent;
+}
+.top-bar-link:hover {
+  border-bottom-color: var(--accent);
+}
+
+.content-wide {
+  max-width: 1480px;
+  /* The tab strip and the room scroll inside their own frames; they must not widen the page. */
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.house-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+}
+
+.house-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.house-tab-count {
+  opacity: 0.7;
+}
+
+.room-stage {
+  display: grid;
+  gap: 8px;
+}
+
+.room-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.room-zoom {
+  min-width: 36px;
+  text-align: center;
+  color: var(--gold);
+}
+
+.room-viewport {
+  position: relative;
+  overflow: auto;
+  max-height: 78vh;
+  background: var(--bg-bottom);
+  outline: var(--px) solid var(--outline);
+  box-shadow: 0 0 0 calc(var(--px) * 2) var(--panel-edge);
+  cursor: crosshair;
+}
+.room-viewport.is-panning {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.room-sheet {
+  position: relative;
+  margin: 0 auto;
+}
+
+.room-canvas,
+.room-bot {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+}
+
+.room-outline {
+  pointer-events: none;
+}
+
+.room-bot {
+  pointer-events: none;
+}
+
+.house-info {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  background: var(--panel);
+  box-shadow: inset 0 0 0 2px var(--panel-edge);
+}
+
+.house-info-name {
+  font: 700 14px/1.2 var(--font-pixel);
+  color: var(--gold);
+  letter-spacing: 1px;
+}
+
+.house-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+}
+
+.house-options {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.house-contents {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 4px 24px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.house-contents li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.house-visit {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.house-visit input {
+  min-height: 40px;
+  padding: 8px 12px;
+  font: 400 14px/1 var(--font-body);
+  color: var(--ink);
+  background: var(--bg-bottom);
+  border: 0;
+  box-shadow: inset 0 0 0 2px var(--panel-edge);
+  width: 240px;
+  max-width: 100%;
+}
+.house-visit input:focus-visible {
+  outline: var(--px) solid var(--gold);
+}
+
+@media (max-width: 479px) {
+  /* The top bar gained a link; on a phone the crab alone is the brand so everything still fits. */
+  .brand-name {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .content-wide {
+    padding: 16px 16px 96px;
+  }
+  .top-bar {
+    padding: 8px 16px;
+  }
+  .top-bar-name,
+  .brand-tag {
+    display: none;
+  }
+  .room-viewport {
+    max-height: 70vh;
+  }
+}

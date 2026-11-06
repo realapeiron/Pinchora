@@ -12,6 +12,7 @@ mod giveaways;
 mod guestbook;
 mod guilds;
 mod house;
+mod house_read;
 mod interactions;
 mod members;
 mod modules;

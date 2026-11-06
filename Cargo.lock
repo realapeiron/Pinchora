@@ -2035,6 +2035,7 @@ dependencies = [
  "chrono",
  "futures-util",
  "hex",
+ "image",
  "metrics",
  "pinchora-cache",
  "pinchora-commands",
