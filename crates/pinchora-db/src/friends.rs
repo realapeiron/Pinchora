@@ -139,10 +139,11 @@ impl Db {
         Ok((rows.into_iter().map(friend).collect(), self.friend_count(user).await?))
     }
 
-    /// Friends whose houses are open, the most liked first: who `/house visit` offers.
+    /// Friends whose houses are open (not locked, not hidden), the most liked first: who `/house visit` offers.
     pub async fn visitable_friends(&self, user: u64, limit: i64) -> anyhow::Result<Vec<FriendRow>> {
         let rows = sqlx::query_as::<_, RawFriend>(friend_sql!(
             "WHERE f.user_id = $1 AND NOT COALESCE(h.locked, false)
+             AND NOT EXISTS (SELECT 1 FROM user_privacy p WHERE p.user_id = f.friend_id AND p.hide_house)
              ORDER BY COALESCE(h.likes, 0) DESC, f.since DESC, f.friend_id LIMIT $2"
         ))
         .bind(sql_id(user))

@@ -122,6 +122,10 @@ impl Db {
                  INSERT INTO weekly_xp (guild_id, week, user_id, xp)
                  SELECT $1, $4, user_id, amount FROM g
                  ON CONFLICT (guild_id, week, user_id) DO UPDATE SET xp = weekly_xp.xp + EXCLUDED.xp
+             ), a AS (
+                 INSERT INTO activity_monthly (user_id, month, xp)
+                 SELECT user_id, date_trunc('month', now() AT TIME ZONE 'UTC')::date, amount FROM g
+                 ON CONFLICT (user_id, month) DO UPDATE SET xp = activity_monthly.xp + EXCLUDED.xp
              )
              SELECT m.user_id, m.xp, g.amount FROM m JOIN g USING (user_id)",
         )

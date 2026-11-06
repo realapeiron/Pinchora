@@ -4,5 +4,6 @@ pub mod economy;
 pub mod leveling;
 pub mod snowflake;
 pub mod telemetry;
+pub mod wrapped;
 
 pub use config::Config;

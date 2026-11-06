@@ -16,6 +16,7 @@ pub use commands::{
     definitions as command_definitions,
     games::{spawn_janitor as spawn_game_janitor, sweep as sweep_games},
     partner::partner_name,
+    remind::{spawn_ticker as spawn_reminder_ticker, tick as reminder_tick},
 };
 pub use cx::Cx;
 pub use events::{

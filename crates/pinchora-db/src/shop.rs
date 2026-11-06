@@ -142,6 +142,7 @@ impl Db {
             tx.commit().await?;
             return Ok(VisitOutcome::AlreadyToday);
         }
+        crate::activity::bump(&mut tx, guest, crate::Counter::Visits, 1, None).await?;
         let (today,): (i64,) = sqlx::query_as("SELECT count(*) FROM visits WHERE guest_id = $1 AND day = $2")
             .bind(guest)
             .bind(day)

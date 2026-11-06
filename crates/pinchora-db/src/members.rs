@@ -74,6 +74,11 @@ impl Db {
                  INSERT INTO weekly_xp (guild_id, week, user_id, xp)
                  SELECT $1, $6, $2, $3::BIGINT WHERE $3::BIGINT > 0
                  ON CONFLICT (guild_id, week, user_id) DO UPDATE SET xp = weekly_xp.xp + EXCLUDED.xp
+             ), a AS (
+                 INSERT INTO activity_monthly (user_id, month, messages, xp)
+                 VALUES ($2, date_trunc('month', now() AT TIME ZONE 'UTC')::date, 1, $5)
+                 ON CONFLICT (user_id, month) DO UPDATE
+                 SET messages = activity_monthly.messages + 1, xp = activity_monthly.xp + EXCLUDED.xp
              )
              SELECT xp FROM m",
         )
@@ -133,7 +138,9 @@ impl Db {
 
     pub async fn global_xp_leaderboard(&self, limit: i64, offset: i64) -> anyhow::Result<Vec<LeaderboardRow>> {
         Ok(sqlx::query_as::<_, LeaderboardRow>(
-            "SELECT id AS user_id, xp AS value FROM users ORDER BY xp DESC, id LIMIT $1 OFFSET $2",
+            "SELECT id AS user_id, xp AS value FROM users u
+             WHERE NOT EXISTS (SELECT 1 FROM user_privacy p WHERE p.user_id = u.id AND p.hide_leaderboard)
+             ORDER BY xp DESC, id LIMIT $1 OFFSET $2",
         )
         .bind(limit)
         .bind(offset)
@@ -143,7 +150,9 @@ impl Db {
 
     pub async fn global_credits_leaderboard(&self, limit: i64, offset: i64) -> anyhow::Result<Vec<LeaderboardRow>> {
         Ok(sqlx::query_as::<_, LeaderboardRow>(
-            "SELECT id AS user_id, credits AS value FROM users ORDER BY credits DESC, id LIMIT $1 OFFSET $2",
+            "SELECT id AS user_id, credits AS value FROM users u
+             WHERE NOT EXISTS (SELECT 1 FROM user_privacy p WHERE p.user_id = u.id AND p.hide_leaderboard)
+             ORDER BY credits DESC, id LIMIT $1 OFFSET $2",
         )
         .bind(limit)
         .bind(offset)

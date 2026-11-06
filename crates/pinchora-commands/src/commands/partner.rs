@@ -122,6 +122,9 @@ impl PartnerCommand {
                     return cx.reply_ephemeral("Bots don't have partners.").await;
                 }
                 let owner = c.user.as_ref().map_or(me, |u| u.resolved.id.get());
+                if super::privacy::private_profile(cx, owner).await? {
+                    return Ok(());
+                }
                 match &c.user {
                     Some(other) => social::remember(cx, &other.resolved).await?,
                     None => cx.app.db.remember_name(me, &social::plain_name(cx.author()?)).await?,

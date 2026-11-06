@@ -23,11 +23,15 @@ impl Help {
             ))
             .field(EmbedFieldBuilder::new(
                 "Shells",
-                "`/daily` daily shells with streak bonus\n`/balance` your wallet\n`/give` send shells to a friend",
+                "`/daily` daily shells with streak bonus\n`/weekly` and `/monthly` bigger rewards, every 7 and 30 days\n`/balance` your wallet and reward timers\n`/give` send shells to a friend\n`/remind me when` a direct message when a reward, your pet or a trip is ready\n`/remind me in` a note to yourself, e.g. `2h30m`",
             ))
             .field(EmbedFieldBuilder::new(
                 "Games",
                 "`/duel connect4`, `/duel rps` and `/duel tictactoe` challenge a friend (optional wager)\n`/play hangman`, `/play wordle` and `/play trivia` play on your own or with the channel\n`/play stats` your wins",
+            ))
+            .field(EmbedFieldBuilder::new(
+                "Privacy & your year",
+                "`/privacy` hide your profile, your place on the global boards or your house, or delete your data\n`/wrapped` your year in numbers (December and January)",
             ))
             .field(EmbedFieldBuilder::new(
                 "Leaderboards",

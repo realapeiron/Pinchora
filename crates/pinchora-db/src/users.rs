@@ -56,12 +56,15 @@ impl Db {
         Ok(row)
     }
 
-    /// 1-based position on the global XP leaderboard.
+    /// 1-based position on the global XP leaderboard, which leaves out players who hide from it.
     pub async fn global_xp_rank(&self, xp: i64) -> anyhow::Result<i64> {
-        let (above,): (i64,) = sqlx::query_as("SELECT count(*) FROM users WHERE xp > $1")
-            .bind(xp)
-            .fetch_one(self.pool())
-            .await?;
+        let (above,): (i64,) = sqlx::query_as(
+            "SELECT count(*) FROM users u WHERE u.xp > $1
+             AND NOT EXISTS (SELECT 1 FROM user_privacy p WHERE p.user_id = u.id AND p.hide_leaderboard)",
+        )
+        .bind(xp)
+        .fetch_one(self.pool())
+        .await?;
         Ok(above + 1)
     }
 

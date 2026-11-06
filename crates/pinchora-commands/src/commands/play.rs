@@ -118,6 +118,9 @@ async fn stats(cx: &Cx, user: Option<ResolvedUser>) -> anyhow::Result<()> {
     if user.as_ref().is_some_and(|u| u.resolved.bot) {
         return cx.reply_ephemeral("Bots don't play games. They just referee.").await;
     }
+    if super::privacy::private_profile(cx, id).await? {
+        return Ok(());
+    }
     let rows = cx.app.db.game_stats(id).await?;
     let (mut played, mut won) = (0, 0);
     let mut embed = EmbedBuilder::new().color(BRAND).title(format!("{name}'s games"));

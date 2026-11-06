@@ -11,6 +11,7 @@ use crate::{
     commands::{
         customize::{self, Cosmetics, Showcase},
         partner::partner_name,
+        privacy,
     },
     game::scene::scaled_png,
     util::resolved_display_name,
@@ -31,6 +32,9 @@ impl Profile {
         };
         if user.bot {
             return cx.reply_ephemeral("Bots don't have profiles.").await;
+        }
+        if privacy::private_profile(cx, user.id.get()).await? {
+            return Ok(());
         }
         let row = cx.app.db.user(user.id.get()).await?;
         let background = row.background.as_deref().and_then(|id| Content::get().background(id));

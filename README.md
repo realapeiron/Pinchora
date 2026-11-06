@@ -26,7 +26,13 @@ Written in Rust and built to run sharded on Kubernetes.
 | Badge unlocked notices | When a command or chat level-up earns you an achievement badge (`/daily`, `/fish`, `/pet`, placing furniture, `/give`, a new chat level), a short "Badge unlocked" embed with the badge art follows the reply, once per badge |
 | `/leaderboard [board]` | Server XP, server points, **Weekly XP** (resets Monday 00:00 UTC, with last week's top three in a panel under the board), global XP or global shells as a pixel-art card, with page buttons |
 | `/daily` | Daily shells; the streak bonus grows for 20 days |
-| `/balance [user]`, `/give user amount` | Wallet and transfers |
+| `/weekly`, `/monthly` | A bigger reward each, on a cooldown of their own: 1,500 shells every 7 days and 6,500 every 30. The cooldown counts from the claim, and a claim made at the same moment as another pays once |
+| `/balance [user]`, `/give user amount` | Wallet and transfers. The wallet card shows the time left on the daily, weekly and monthly reward side by side (`ready` in green once it can be collected) |
+| `/remind me when daily\|weekly\|monthly\|pet\|trip on\|off` | Opt in to a direct message when a reward is ready again (scheduled when you collect it, or at once for one already counting down), when your active pet needs looking after (hunger, fun or hygiene down to 30, no sooner than two hours after you last looked after it; not while it is away or asleep) or when a pet is home from a trip. One message each time, then it waits for the next claim, trip or care |
+| `/remind me in duration text` | A note to yourself by direct message: `45m`, `2h30m`, `1d 12h` (a minute to a year; units w d h m s). The text is up to 200 characters and loses any mention (users, roles, channels, `@everyone`, `@here`). Up to 25 open at a time |
+| `/remind list`, `/remind cancel id` | Which notifications are on and the reminders still to come, with a menu to cancel one; or cancel by the number the list shows |
+| `/privacy` | Private panel with three switches and a delete button. **Profile** private: others who look you up with `/profile`, `/rank`, `/balance`, `/friends list`, `/partner view` or `/play stats` see "This profile is private." (your own cards are never hidden from you). **Boards** hidden: you are left off the global XP and shell leaderboards, and the ranks of others count without you. **House** hidden: not offered in the `/house visit` shortlist and refused by name too (stronger than `/house lock`). **Delete my data…** asks twice (the second button works for two minutes) and removes every row about you in every table: account, house, pets, friends, notes, votes, history and the rest. A running duel's wager goes back to the other player |
+| `/wrapped [year]` | A tall card with your year: the busiest month and a bar for each, messages, XP, shells earned, fish caught, houses visited, pets cared for, likes given and received, your favourite fish, the house you visited most (a friend's first) and a fun title. Open from 1 December to 31 January; outside that it says when it opens. Pinchora has counted per month since this feature began, so earlier months of your year only fill in as you play |
 | `/rep user` | One reputation point per day; a server's reputation roles are given the moment the receiver's total reaches them, and the reply says so |
 | `/bio text` | About-me text on the profile card |
 | `/config welcome\|leveling\|show` | Welcome cards and level-up messages. `/config leveling` takes `enabled`, `channel`, `message` (placeholders `{user}` `{level}` `{server}` `{role}`, the last being the reward role just earned, empty when none) and `mode`: `channel` (the level-up channel, else where they chatted), `current` (always where they chatted), `dm` (a direct message; closed DMs are skipped quietly) or `off` (no message, roles still given) (Manage Server) |
@@ -55,6 +61,19 @@ hands out; roles the bot can't give (@everyone, integration-managed roles, roles
 are refused when they are added to the level roles, the store, the join role or a role panel. If
 Discord refuses a store role at purchase time, the points and stock are returned. New members get a
 welcome card when enabled.
+
+Reminders wait in a table (`reminders`), one row per message with the time it is due. One ticker on
+every pod looks every 30 seconds, takes the due rows in batches with `FOR UPDATE SKIP LOCKED`, leases them
+for two minutes while the messages go out and deletes each one once sent, so a restart delays a message
+and two pods never send the same one. A player with closed direct messages is logged at debug level and the
+reminder is dropped. A message about a reward, a pet or a trip is checked again just before it is sent: if
+the player switched it off, claimed the trip or looked after the pet meanwhile, it is dropped or moved
+instead of sent.
+
+Wrapped counts per user and calendar month (UTC) in `activity_monthly`, bumped where things already
+happen: chat and voice XP, every positive ledger entry that is not a transfer from another player or a refund,
+fish caught, the first visit to a house each day, house likes, and pet care. The favourite fish comes from
+the fish book and the most visited house from the visit log, which has history of its own.
 
 Voice XP keeps who is in voice in Redis, written from the voice-state events, and one ticker on the
 gateway pays every guild once a minute behind a per-minute lock, so a restart or a second gateway pod
@@ -157,7 +176,8 @@ cargo run -p pinchora -- commands         # print slash command JSON
 cargo run -p pinchora-render --example samples   # render sample cards to target/render-samples
                                                  # (profile-background/-badges/-placeholder, rank-background, wallet-background show /customize;
                                                  #  the profile and rank samples carry a title; profile-showcase-*, profile-bg-<white|black|stripes|beach>-<opacity>,
-                                                 #  profile-nobg-*, profile-unicode/-wide/-cyrillic/-shout and profile-frame-* are the stress variants)
+                                                 #  profile-nobg-*, profile-unicode/-wide/-cyrillic/-shout and profile-frame-* are the stress variants;
+                                                 #  wrapped and wrapped-quiet are the year card for a busy player and for one with nothing)
 cargo run -p pinchora-render --example games     # connect four, hangman and wordle sample cards
 ```
 

@@ -1,10 +1,11 @@
+use pinchora_core::economy::DAILY_COOLDOWN;
 use pinchora_db::DailyOutcome;
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_util::builder::embed::EmbedBuilder;
 
 use crate::{
     Cx,
-    commands::customize,
+    commands::{customize, remind},
     util::{SUCCESS, WARN, relative, thousands},
 };
 
@@ -20,6 +21,8 @@ impl Daily {
             cx.app
                 .quest(cx.author()?.id.get(), pinchora_game::quests::QuestKind::Daily)
                 .await;
+            let ready = chrono::Utc::now() + DAILY_COOLDOWN;
+            remind::after_claim(&cx.app, cx.author()?.id.get(), "daily", ready).await;
         }
         let embed = match outcome {
             DailyOutcome::Claimed {

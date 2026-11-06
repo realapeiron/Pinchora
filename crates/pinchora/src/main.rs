@@ -117,6 +117,9 @@ async fn boot(config: &Config, role: &str) -> anyhow::Result<(Arc<App>, Readines
     let app = Arc::new(app);
     // Ends duels and rounds whose clock ran out, so no wager stays held after a restart.
     pinchora_commands::spawn_game_janitor(app.clone());
+    // Sends the reminders that came due; every pod runs it and the table's leases keep one from
+    // repeating another.
+    pinchora_commands::spawn_reminder_ticker(app.clone());
     // Voice states only arrive on the gateway; its ticker pays everyone sitting in voice.
     if role == "gateway" {
         pinchora_commands::spawn_voice_ticker(app.clone());

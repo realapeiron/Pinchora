@@ -18,6 +18,8 @@ pub const DUPLICATE_REFUND: i64 = 400;
 pub const MAX_LEVEL: i32 = 30;
 /// Hours with hunger, fun and hygiene all at zero before a pet falls asleep.
 pub const SLEEP_AFTER_HOURS: f32 = 24.0;
+/// Hunger, fun or hygiene at or below this and a pet needs looking after: what the pet reminder tells.
+pub const LOW_AT: i16 = 30;
 /// Shells a wake-up costs once the free one of the day is used.
 pub const WAKE_FEE: i64 = 75;
 /// How a pet feels when it wakes up: rested and half full.
@@ -58,6 +60,31 @@ impl Needs {
         ]
         .into_iter()
         .fold(0.0, f32::max)
+    }
+
+    /// Hours from now until the first of hunger, fun and hygiene is down to [`LOW_AT`]: 0 when one
+    /// already is. Energy is left out, it refills by itself.
+    pub fn hours_until_low(self) -> f32 {
+        [
+            (f32::from(self.hunger) - f32::from(LOW_AT)) / HUNGER_DECAY,
+            (f32::from(self.fun) - f32::from(LOW_AT)) / FUN_DECAY,
+            (f32::from(self.hygiene) - f32::from(LOW_AT)) / HYGIENE_DECAY,
+        ]
+        .into_iter()
+        .fold(f32::INFINITY, f32::min)
+        .max(0.0)
+    }
+
+    /// What the pet wants most: the lowest of hunger, fun and hygiene, as a short phrase.
+    pub fn wants(self) -> &'static str {
+        let lowest = [
+            (self.hunger, "something to eat"),
+            (self.fun, "someone to play with"),
+            (self.hygiene, "a bath"),
+        ]
+        .into_iter()
+        .min_by_key(|(value, _)| *value);
+        lowest.map_or("some care", |(_, phrase)| phrase)
     }
 
     /// Hours after these needs were stored when a pet nobody looked after falls asleep.
@@ -239,6 +266,23 @@ mod tests {
         assert!(Care::Play.apply(Needs { energy: 10, ..n }).is_none());
         assert_eq!(Care::Play.apply(n).unwrap().energy, 5);
         assert_eq!(Needs { hunger: 10, ..n }.mood(), "miserable");
+    }
+
+    #[test]
+    fn a_pet_gets_low_when_the_first_of_its_needs_does() {
+        let n = Needs {
+            hunger: 80,
+            fun: 80,
+            energy: 100,
+            hygiene: 80,
+        };
+        // Hunger loses 4 an hour and reaches 30 after 12.5 h, fun loses 5 and gets there after 10 h.
+        assert!((n.hours_until_low() - 10.0).abs() < 0.01);
+        assert_eq!(n.after(10.0).fun, 30);
+        assert_eq!(Needs { fun: 20, ..n }.hours_until_low(), 0.0);
+        assert_eq!(Needs { hunger: 10, ..n }.wants(), "something to eat");
+        assert_eq!(Needs { fun: 10, ..n }.wants(), "someone to play with");
+        assert_eq!(Needs { hygiene: 10, ..n }.wants(), "a bath");
     }
 
     #[test]

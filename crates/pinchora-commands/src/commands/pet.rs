@@ -20,7 +20,7 @@ use twilight_util::builder::embed::EmbedBuilder;
 
 use crate::{
     App, Cx,
-    commands::customize,
+    commands::{customize, remind},
     game::scene::Sprites,
     util::{BRAND, WARN, thousands},
 };
@@ -124,7 +124,7 @@ fn current_needs(pet: &PetRow, now: DateTime<Utc>) -> Needs {
 
 /// Whether the pet fell asleep: nobody looked after it from the day its hunger, fun and hygiene
 /// all ran out until a day later. Worked out from the stored needs, so no job has to watch for it.
-fn is_asleep(pet: &PetRow, now: DateTime<Utc>) -> bool {
+pub(crate) fn is_asleep(pet: &PetRow, now: DateTime<Utc>) -> bool {
     if pet.is_away(now) {
         return false;
     }
@@ -317,6 +317,8 @@ fn status_note(pet: &PetRow, now: DateTime<Utc>) -> Option<String> {
 
 /// The card for a pet with its buttons: care, and by state the claim, wake-up and trip buttons.
 async fn pet_card(app: &App, pet: &PetRow, note: Option<String>) -> anyhow::Result<InteractionResponseData> {
+    // Showing a pet is how its state changes reach the reminders about it.
+    remind::refresh_pet(app, pet).await;
     let png = pet_png(app, pet).await?;
     let now = app.now();
     let state = status(pet, now);
@@ -453,6 +455,7 @@ pub(crate) async fn on_care(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
         )
         .await?;
     cx.app.quest(user, pinchora_game::quests::QuestKind::Care).await;
+    cx.app.count(user, pinchora_db::Counter::PetCare, 1).await;
     let verb = match action {
         Care::Feed => "munches happily",
         Care::Play => "bounces around with you",

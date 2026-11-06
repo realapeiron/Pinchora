@@ -4,7 +4,8 @@ use crate::{
     Cx,
     commands::{
         character, connect4, contest, customize, decorate, duel, fish, friends, gift, guestbook, hangman, house,
-        interact, leaderboard, partner, pet, plaza, quests, role_panels, rps, shop, stall, store, trivia, wordle,
+        interact, leaderboard, partner, pet, plaza, privacy, quests, remind, role_panels, rps, shop, stall, store,
+        trivia, wordle,
     },
 };
 
@@ -55,6 +56,8 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
         Some("pt") => partner::on_component(cx, parts, values.first().map(String::as_str)).await,
         Some("fd") => friends::on_component(cx, parts, values.first().map(String::as_str)).await,
         Some("hg") => interact::on_component(cx, parts).await,
+        Some("rm") => remind::on_component(cx, parts, values.first().map(String::as_str)).await,
+        Some("pr") => privacy::on_component(cx, parts).await,
         _ => cx.reply_ephemeral("This button has expired.").await,
     }
 }

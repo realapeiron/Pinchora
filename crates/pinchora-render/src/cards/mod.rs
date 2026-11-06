@@ -14,6 +14,7 @@ mod showcase;
 mod wallet;
 mod welcome;
 mod wordle;
+mod wrapped;
 
 pub use badges::{BadgeCell, BadgeCollectionCard, BadgeState};
 pub use character::CharacterCard;
@@ -30,6 +31,7 @@ pub use showcase::{ShowcaseKind, ShowcaseSlot};
 pub use wallet::WalletCard;
 pub use welcome::WelcomeCard;
 pub use wordle::{ABSENT, CORRECT, PRESENT, WordleCard, WordleRow};
+pub use wrapped::{WrappedCard, WrappedFish, WrappedHouse, WrappedTotals};
 
 use std::fmt::Write;
 
@@ -284,6 +286,8 @@ mod tests {
                 pearls: 1,
                 streak: 1,
                 next_daily: "ready",
+                next_weekly: "ready",
+                next_monthly: "ready",
                 pets: 1,
                 fish_found: 1,
                 fish_total: 2,
@@ -995,6 +999,8 @@ mod tests {
             pearls: 1,
             streak: 1,
             next_daily: "ready",
+            next_weekly: "ready",
+            next_monthly: "ready",
             pets: 1,
             fish_found: 1,
             fish_total: 2,

@@ -411,6 +411,10 @@ impl Db {
         .bind(size_cm)
         .fetch_one(self.pool())
         .await?;
+        // The count is for /wrapped; a catch that is logged is not undone by it.
+        if let Err(error) = self.bump_activity(user, crate::Counter::Fish, 1).await {
+            tracing::debug!(%error, user, "catch not counted");
+        }
         Ok(caught == 1)
     }
 

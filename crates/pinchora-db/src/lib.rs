@@ -1,3 +1,4 @@
+mod activity;
 mod contest;
 mod customize;
 mod economy;
@@ -10,7 +11,10 @@ mod interactions;
 mod members;
 mod panels;
 mod partners;
+mod periodic;
 mod pets;
+mod privacy;
+mod reminders;
 mod rewards;
 mod shop;
 mod showcase;
@@ -23,6 +27,7 @@ use std::time::Duration;
 
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
+pub use activity::{Activity, Counter};
 pub use contest::{ContestEntry, ContestResult};
 pub use customize::{CustomizeBuy, MAX_BADGES, PlayerStats};
 pub use economy::{DailyOutcome, RepOutcome, TransferOutcome};
@@ -38,7 +43,10 @@ pub use interactions::Tally;
 pub use members::{LeaderboardRow, MemberRank, XpGain, XpGrant};
 pub use panels::{MAX_PANEL_ROLES, PanelRoleRow, PanelRow};
 pub use partners::{PairOutcome, PartnerRow};
+pub use periodic::PeriodOutcome;
 pub use pets::{PetRow, TripClaim, TripPayout, Wake};
+pub use privacy::{Deleted, Hide, ID_LISTS, OTHER_TABLES, Privacy, USER_COLUMNS};
+pub use reminders::{MAX_TEXT_REMINDERS, OPT_IN_KINDS, ReminderRow, TEXT as TEXT_REMINDER};
 pub use rewards::{LevelRoleRow, MAX_LEVEL_ROLES, MAX_REP_ROLES, MAX_STORE_ITEMS, RepRoleRow, StoreBuy, StoreItem};
 pub use shop::{BuyOutcome, Currency, MarketRow, VisitOutcome};
 pub use showcase::{FishBookRow, HousePreview};

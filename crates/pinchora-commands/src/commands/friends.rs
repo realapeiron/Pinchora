@@ -132,6 +132,9 @@ impl FriendsCommand {
                     return cx.reply_ephemeral("Bots don't have friends.").await;
                 }
                 let owner = c.user.as_ref().map_or(me, |u| u.resolved.id.get());
+                if super::privacy::private_profile(cx, owner).await? {
+                    return Ok(());
+                }
                 match &c.user {
                     Some(other) => social::remember(cx, &other.resolved).await?,
                     None => {
@@ -222,7 +225,7 @@ pub(crate) async fn visit_shortlist(cx: &Cx, room: i16) -> anyhow::Result<()> {
     if friends.is_empty() {
         return cx
             .reply_ephemeral(
-                "Name whose house to visit: `/house visit user:@someone`. Friends you add with `/friends add` show up here as a shortlist (houses they have locked are left out).",
+                "Name whose house to visit: `/house visit user:@someone`. Friends you add with `/friends add` show up here as a shortlist (houses they have locked or hidden are left out).",
             )
             .await;
     }

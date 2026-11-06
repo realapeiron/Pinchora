@@ -50,6 +50,8 @@ impl Db {
             .bind(host)
             .fetch_one(&mut *tx)
             .await?;
+        crate::activity::bump(&mut tx, liker, crate::Counter::LikesGiven, 1, None).await?;
+        crate::activity::bump(&mut tx, host, crate::Counter::LikesReceived, 1, None).await?;
         tx.commit().await?;
         Ok(Some(likes))
     }
