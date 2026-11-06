@@ -37,7 +37,10 @@ use pinchora_game::{
     character::Character,
     play::{PlayContent, hangman::Hangman, trivia, wordle},
 };
-use pinchora_render::BadgeCollectionCard;
+use pinchora_render::{
+    BadgeCollectionCard,
+    character::{Paint, Slot},
+};
 use serde_json::{Value, json};
 use tokio::{net::TcpListener, sync::oneshot};
 use tracing::{
@@ -3657,6 +3660,175 @@ fn profile_accent(reply: &Reply) -> [u8; 4] {
 /// The same border on the rank card.
 fn rank_accent(reply: &Reply) -> [u8; 4] {
     pixel(&card_pixels(reply, (934, 282)), 37, 140)
+}
+
+#[tokio::test]
+async fn the_character_editor_steps_dyes_buys_keeps_outfits_and_saves() {
+    let Some(mut sim) = Sim::new("the_character_editor_steps_dyes_buys_keeps_outfits_and_saves").await else {
+        return;
+    };
+    let user = unique();
+    let db = sim.app.db.clone();
+    let content = Content::get();
+    let default_value = |reply: &Reply, menu: &str| {
+        reply
+            .options(menu)
+            .iter()
+            .find(|o| o.default)
+            .map(|o| o.value.clone())
+            .unwrap_or_default()
+    };
+
+    // One private message: the card, a category menu, a jump menu, the step row and Save/Cancel.
+    let editor = sim.command(user, "character", json!([])).await;
+    assert!(editor.ephemeral, "the editor is private");
+    assert_eq!(editor.title(), "Your character");
+    card_image(&editor, (960, 540));
+    assert_eq!(editor.rows(), 4);
+    assert_eq!(editor.options("ca:tab").len(), 10);
+    assert_eq!(editor.options("ca:pick").len(), content.looks.len());
+    assert_eq!(default_value(&editor, "ca:pick"), content.looks[0].id);
+    assert!(editor.button("Undo").disabled, "nothing to undo yet");
+
+    // ◀ ▶ step the look one click at a time; Undo goes back a step.
+    let next = sim.click(user, &editor, "▶").await;
+    assert_eq!(default_value(&next, "ca:pick"), content.looks[1].id);
+    let first = sim.click(user, &next, "◀").await;
+    assert_eq!(default_value(&first, "ca:pick"), content.looks[0].id);
+    let wrapped = sim.click(user, &first, "◀").await;
+    assert_eq!(default_value(&wrapped, "ca:pick"), content.looks.last().unwrap().id);
+    let undone = sim.click(user, &wrapped, "Undo").await;
+    assert_eq!(default_value(&undone, "ca:pick"), content.looks[0].id);
+    assert!(undone.description().contains("Undone"), "{}", undone.description());
+
+    // A colour tab: twenty swatches, ◀ ▶ and a typed hex code, refused when it is not one and
+    // nudged when it is too dark to shade.
+    let hair = sim.pick(user, &undone, "ca:tab", "hair").await;
+    assert_eq!(hair.options("ca:pick").len(), 20);
+    let hazel = sim.click(user, &hair, "▶").await;
+    assert_eq!(default_value(&hazel, "ca:pick"), "2");
+    let form = sim.click(user, &hazel, "Hex…").await;
+    let (modal, title) = form.modal.clone().expect("a form");
+    assert!(modal.starts_with("ca:hexm:"), "{modal}");
+    assert_eq!(title, "Hair colour");
+    assert_eq!(form.modal_inputs, [("hex".to_owned(), Some("#a0743c".to_owned()))]);
+    let green = sim.submit_fields(user, &form, &[("hex", "#2fb87a")]).await;
+    assert!(green.description().contains("#2fb87a"), "{}", green.description());
+    assert_eq!(default_value(&green, "ca:pick"), "custom");
+    let junk = sim.submit_fields(user, &form, &[("hex", "banana")]).await;
+    assert!(
+        junk.description().contains("not a colour code"),
+        "{}",
+        junk.description()
+    );
+    let dark = sim.submit_fields(user, &form, &[("hex", "#050505")]).await;
+    assert!(dark.description().contains("nudged"), "{}", dark.description());
+    assert_eq!(db.character(user).await.unwrap(), None, "nothing is saved before Save");
+
+    // Accessories: a slot row, free things go straight on, a dye cycles its colour.
+    let gear = sim.pick(user, &dark, "ca:tab", "gear").await;
+    assert_eq!(gear.rows(), 5, "the slot buttons get a row");
+    assert!(gear.button("Dye ▶").disabled, "nothing worn to dye");
+    let hat = sim.pick(user, &gear, "ca:pick", "straw_hat").await;
+    let dyed = sim.click(user, &hat, "Dye ▶").await;
+    assert!(dyed.description().contains("Straw Sun Hat"), "{}", dyed.description());
+    // A crown needs level 30: it shows locked and has no Buy button.
+    let crown = dyed
+        .options("ca:pick")
+        .iter()
+        .find(|o| o.value == "crown")
+        .expect("the crown is listed");
+    assert!(crown.emoji.is_some() && crown.description.as_deref() == Some("Reach level 30"));
+    // A top hat can be tried on, but Save waits until it is bought.
+    let top = sim.pick(user, &dyed, "ca:pick", "top_hat").await;
+    let buy = "Buy Top Hat · 900 shells";
+    assert!(top.has_button(buy));
+    let refused = sim.click(user, &top, "Save").await;
+    assert!(refused.description().contains("Not saved"), "{}", refused.description());
+    assert_eq!(db.character(user).await.unwrap(), None);
+    let poor = sim.click(user, &refused, buy).await;
+    assert!(poor.description().contains("you have 0"), "{}", poor.description());
+    fund(&sim, user, 1_000).await;
+    let bought = sim.click(user, &poor, buy).await;
+    assert!(
+        bought.description().contains("Bought **Top Hat**"),
+        "{}",
+        bought.description()
+    );
+    assert_eq!(shells(&sim, user).await, 100);
+    assert!(!bought.has_button(buy), "owned now");
+    let hand = sim.click(user, &bought, "Hand").await;
+    let balloon = sim.pick(user, &hand, "ca:pick", "balloon").await;
+    let red = sim.click(user, &balloon, "Dye ▶").await;
+
+    // Save keeps all of it.
+    let saved = sim.click(user, &red, "Save").await;
+    assert!(saved.description().contains("Saved!"), "{}", saved.description());
+    assert!(saved.button("Save").disabled, "nothing new to save");
+    let code = db.character(user).await.unwrap().expect("saved");
+    let character = Character::decode(content, &code).expect("a valid code");
+    assert_eq!(character.look, content.looks[0].id);
+    assert_eq!(character.worn(Slot::Head).map(|w| w.id.as_str()), Some("top_hat"));
+    let worn_balloon = character.worn(Slot::Hand).expect("a balloon");
+    assert_eq!(
+        (worn_balloon.id.as_str(), worn_balloon.tint),
+        ("balloon", Some(Paint::Swatch(0)))
+    );
+    assert!(matches!(character.colors.hair, Paint::Custom(v) if v != 0x050505));
+
+    // Outfits: keep the look in slot 2, name it, try a preset, then put the outfit back on.
+    let outfits = sim.pick(user, &saved, "ca:tab", "outfits").await;
+    assert!(outfits.button("Rename…").disabled, "nothing to name yet");
+    let kept = sim.click(user, &outfits, "Keep in 2").await;
+    assert_eq!(db.outfits(user).await.unwrap()[0].code, code);
+    let names = sim.click(user, &kept, "Rename…").await;
+    assert!(names.modal.as_ref().is_some_and(|m| m.0.starts_with("ca:namem:")));
+    assert_eq!(names.modal_inputs, [("slot2".to_owned(), Some("Outfit 2".to_owned()))]);
+    let named = sim.submit_fields(user, &names, &[("slot2", "Beach day")]).await;
+    assert_eq!(db.outfits(user).await.unwrap()[0].name, "Beach day");
+    assert!(
+        named
+            .options("ca:pick")
+            .iter()
+            .any(|o| o.label == "2 · Beach day" && o.default)
+    );
+    let presets = sim.pick(user, &named, "ca:tab", "presets").await;
+    assert_eq!(presets.options("ca:pick").len(), 10);
+    let surfer = sim.pick(user, &presets, "ca:pick", "beach_surfer").await;
+    assert!(
+        surfer.description().contains("Beach Surfer"),
+        "{}",
+        surfer.description()
+    );
+    let witch = sim.click(user, &surfer, "▶").await;
+    assert_eq!(default_value(&witch, "ca:pick"), "ship_captain");
+    let back = sim.pick(user, &witch, "ca:tab", "outfits").await;
+    let worn = sim.pick(user, &back, "ca:pick", "2").await;
+    assert!(worn.description().contains("Beach day"), "{}", worn.description());
+    assert!(worn.button("Save").disabled, "the outfit is what is saved");
+    let random = sim.click(user, &worn, "Randomise").await;
+    assert!(random.description().contains("Randomised"), "{}", random.description());
+
+    // Cancel closes the editor without saving.
+    let closed = sim.click(user, &random, "Cancel").await;
+    assert_eq!(closed.rows(), 0);
+    assert!(closed.description().contains("Closed without saving"));
+    assert_eq!(db.character(user).await.unwrap().as_deref(), Some(code.as_str()));
+    let stale = sim.click(user, &random, "▶").await;
+    assert!(stale.content().contains("expired"), "{}", stale.content());
+
+    // A newer editor makes an older message stale; the saved character opens it.
+    let first = sim.command(user, "character", json!([])).await;
+    let second = sim.command(user, "character", json!([])).await;
+    assert!(second.button("Save").disabled, "it opens on what is saved");
+    let stale = sim.click(user, &first, "▶").await;
+    assert!(stale.content().contains("expired"), "{}", stale.content());
+    let old = sim.component(user, "ch:look", &["tidewalker"], &second).await;
+    assert!(old.content().contains("expired"), "{}", old.content());
+
+    // The saved character, hat and balloon, is on the profile and in the house.
+    sim.command(user, "profile", json!([])).await;
+    sim.command(user, "house", json!([{ "name": "view", "type": 1 }])).await;
 }
 
 #[tokio::test]

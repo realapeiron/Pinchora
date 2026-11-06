@@ -334,6 +334,13 @@ impl Wardrobe {
 
 /// The badges a profile card shows for `user`: the ones saved as worn that they still may wear,
 /// or their best earned ones until they have chosen.
+/// Ids of every badge the player has: achievements reached and shop badges bought.
+pub(crate) async fn earned_badges(app: &App, user: u64) -> anyhow::Result<Vec<String>> {
+    let row = app.db.user(user).await?;
+    let wardrobe = Wardrobe::load(app, user, &row).await?;
+    Ok(wardrobe.wearable().into_iter().map(|b| b.id.clone()).collect())
+}
+
 pub(crate) async fn worn_badges(app: &App, user: u64, row: &UserRow) -> anyhow::Result<Vec<&'static Badge>> {
     if row.badges_set && row.badges.is_empty() {
         return Ok(Vec::new());

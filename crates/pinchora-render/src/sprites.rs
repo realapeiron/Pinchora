@@ -103,6 +103,11 @@ impl SpriteStore {
         self.sprites.len()
     }
 
+    /// Every sprite name in the atlas.
+    pub fn names(&self) -> impl Iterator<Item = &str> {
+        self.sprites.keys().map(String::as_str)
+    }
+
     pub fn is_empty(&self) -> bool {
         self.sprites.is_empty()
     }

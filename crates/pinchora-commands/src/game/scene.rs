@@ -14,7 +14,7 @@ use pinchora_game::{
 };
 use pinchora_render::{
     Backdrop, BadgeIcon, ShowcaseSlot,
-    character::{placeholder_character, recolor_character},
+    character::render_character,
     encode_png,
     room::{Cursor, RoomScene, SceneItem, SceneLayer, render_room},
     sprites::{SpriteStore, placeholder_item, placeholder_pet, placeholder_tile, recolor, variant_ramp},
@@ -38,7 +38,8 @@ pub struct ScaledArt {
 
 /// Sprites by name, with palette variants and placeholders made on first use.
 pub struct Sprites {
-    store: SpriteStore,
+    /// The atlas the character renderer uses too, decoded once for the process.
+    store: &'static SpriteStore,
     made: Mutex<HashMap<String, Arc<RgbaImage>>>,
     /// Background and badge art, scaled for cards; `None` while the art is not drawn yet.
     scaled: Mutex<HashMap<String, Option<Arc<ScaledArt>>>>,
@@ -52,7 +53,7 @@ pub struct Sprites {
 impl Default for Sprites {
     fn default() -> Self {
         Self {
-            store: SpriteStore::embedded(),
+            store: pinchora_render::character::atlas(),
             made: Mutex::new(HashMap::new()),
             scaled: Mutex::new(HashMap::new()),
             characters: Mutex::new(HashMap::new()),
@@ -106,26 +107,14 @@ impl Sprites {
         })
     }
 
-    /// The look as drawn, in the key colours before a player's own are swapped in: the atlas
-    /// sprite `a_<look>`, or a placeholder figure until that art exists.
-    pub fn look(&self, look: &str) -> Arc<RgbaImage> {
-        self.store
-            .get(&format!("a_{look}"))
-            .unwrap_or_else(|| Arc::new(placeholder_character()))
-    }
-
-    /// The character's look in its colours: the atlas sprite `a_<look>`, or a placeholder
-    /// figure until that art exists.
+    /// The character as `render_character` draws it at scale 1: its look in its colours with
+    /// its accessories on, the feet on the bottom row and the look centred.
     pub fn character(&self, character: &Character) -> Arc<RgbaImage> {
         let code = character.encode();
         if let Some(s) = self.characters.lock().expect("character cache").get(&code) {
             return s.clone();
         }
-        let look = self
-            .store
-            .get(&format!("a_{}", character.look))
-            .map_or_else(placeholder_character, |s| (*s).clone());
-        let sprite = Arc::new(recolor_character(&look, character.colors));
+        let sprite = Arc::new(render_character(&character.spec(), 1));
         let mut cache = self.characters.lock().expect("character cache");
         if cache.len() >= CHARACTER_CACHE {
             cache.clear();
@@ -402,13 +391,14 @@ pub fn slot_sprite(sprites: &Sprites, content: &Content, item_id: &str, max_w: u
 
 #[cfg(test)]
 mod tests {
-    use pinchora_render::character::Colors;
+    use pinchora_render::character::{Paint, Slot};
 
     use super::*;
 
-    fn character(content: &Content, skin: usize, top: usize) -> Character {
+    fn character(content: &Content, skin: u8, top: u8) -> Character {
         let mut c = Character::starter(content);
-        c.colors = Colors { skin, top, ..c.colors };
+        c.colors.skin = Paint::Swatch(skin);
+        c.colors.top = Paint::Swatch(top);
         c
     }
 
@@ -420,6 +410,10 @@ mod tests {
         let (art_a, art_b) = (sprites.character(&a), sprites.character(&b));
         assert_ne!(art_a.as_ref(), art_b.as_ref(), "different colours, different pixels");
         assert!(Arc::ptr_eq(&art_a, &sprites.character(&a)), "the second call is cached");
+        let mut hatted = a.clone();
+        hatted.wear(Slot::Head, Some("top_hat"), None);
+        let art_hat = sprites.character(&hatted);
+        assert_ne!(art_hat.as_ref(), art_a.as_ref(), "a top hat is on the head");
         let (png, w, h) = scaled_png(&art_a, 3).expect("encodes");
         assert_eq!((w, h), (art_a.width() * 3, art_a.height() * 3));
         assert!(png.starts_with(b"\x89PNG"));

@@ -17,7 +17,7 @@ mod welcome;
 mod wordle;
 
 pub use badges::{BadgeCell, BadgeCollectionCard, BadgeState};
-pub use character::CharacterCard;
+pub use character::{CharacterCard, EditorCell, EditorSection};
 pub use connect4::Connect4Card;
 pub use grid::{GridSlot, ItemGridCard};
 pub use hangman::{HangmanCard, HangmanLetter};
