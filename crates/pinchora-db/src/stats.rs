@@ -6,6 +6,7 @@ use pinchora_core::server_stats::{HourRow, HourTally, MAX_COUNTERS};
 
 use crate::{
     Db,
+    audit::NewAudit,
     locks::{lock_users, retry},
     sql_id,
 };
@@ -110,9 +111,14 @@ impl Db {
         let channels: Vec<i64> = tally.channels.keys().map(|c| sql_id(*c)).collect();
         let channel_messages: Vec<i32> = tally.channels.values().map(|p| clamp(p.messages)).collect();
         let channel_voice: Vec<i32> = tally.channels.values().map(|p| clamp(p.voice_minutes)).collect();
+        // A negative guild key keeps public-safe counts separate without mixing old parent/thread rows.
+        let public_channels: Vec<i64> = tally.public_channels.keys().map(|c| sql_id(*c)).collect();
+        let public_messages: Vec<i32> = tally.public_channels.values().map(|p| clamp(p.messages)).collect();
+        let public_voice: Vec<i32> = tally.public_channels.values().map(|p| clamp(p.voice_minutes)).collect();
         let day = hour.date_naive();
         let (users, user_messages, user_voice) = (&users, &user_messages, &user_voice);
         let (channels, channel_messages, channel_voice) = (&channels, &channel_messages, &channel_voice);
+        let (public_channels, public_messages, public_voice) = (&public_channels, &public_messages, &public_voice);
         retry("write_stats_batch", || async move {
             let mut tx = self.pool().begin().await?;
             lock_users(&mut tx, users).await?;
@@ -142,10 +148,20 @@ impl Db {
                      ON CONFLICT (guild_id, channel_id, day) DO UPDATE SET
                          messages = channel_activity_daily.messages + EXCLUDED.messages,
                          voice_minutes = channel_activity_daily.voice_minutes + EXCLUDED.voice_minutes
+                 ), pc AS (
+                     INSERT INTO channel_activity_daily (guild_id, channel_id, day, messages, voice_minutes)
+                     SELECT -$1, channel_id, $8, messages, voice_minutes
+                     FROM UNNEST($15::BIGINT[], $16::INT[], $17::INT[]) AS t(channel_id, messages, voice_minutes)
+                     ON CONFLICT (guild_id, channel_id, day) DO UPDATE SET
+                         messages = channel_activity_daily.messages + EXCLUDED.messages,
+                         voice_minutes = channel_activity_daily.voice_minutes + EXCLUDED.voice_minutes
                  )
                  INSERT INTO member_activity_daily (guild_id, user_id, day, messages, voice_minutes)
                  SELECT $1, user_id, $8, messages, voice_minutes
                  FROM UNNEST($12::BIGINT[], $13::INT[], $14::INT[]) AS t(user_id, messages, voice_minutes)
+                 WHERE NOT EXISTS (
+                     SELECT 1 FROM deleted_users d WHERE d.user_id = t.user_id AND d.deleted_at >= $2
+                 )
                  ON CONFLICT (guild_id, user_id, day) DO UPDATE SET
                      messages = member_activity_daily.messages + EXCLUDED.messages,
                      voice_minutes = member_activity_daily.voice_minutes + EXCLUDED.voice_minutes",
@@ -164,6 +180,9 @@ impl Db {
             .bind(users)
             .bind(user_messages)
             .bind(user_voice)
+            .bind(public_channels)
+            .bind(public_messages)
+            .bind(public_voice)
             .execute(&mut *tx)
             .await?;
             tx.commit().await?;
@@ -251,6 +270,71 @@ impl Db {
              GROUP BY channel_id ORDER BY messages DESC, voice_minutes DESC, channel_id LIMIT $3",
         )
         .bind(sql_id(guild))
+        .bind(from)
+        .bind(limit)
+        .fetch_all(self.pool())
+        .await?)
+    }
+
+    /// Daily message and voice totals for channels the reader may see.
+    pub async fn visible_channel_days(
+        &self,
+        guild: u64,
+        from: NaiveDate,
+        channels: &[i64],
+    ) -> anyhow::Result<Vec<ActivityDay>> {
+        Ok(sqlx::query_as(
+            "SELECT day, sum(messages)::BIGINT AS messages, sum(voice_minutes)::BIGINT AS voice_minutes
+             FROM channel_activity_daily WHERE guild_id = $1 AND day >= $2 AND channel_id = ANY($3)
+             GROUP BY day ORDER BY day",
+        )
+        .bind(sql_id(guild))
+        .bind(from)
+        .bind(channels)
+        .fetch_all(self.pool())
+        .await?)
+    }
+
+    /// Only the separately counted public scope; older mixed thread rows are never read here.
+    pub async fn public_visible_channel_days(
+        &self,
+        guild: u64,
+        from: NaiveDate,
+        channels: &[i64],
+    ) -> anyhow::Result<Vec<ActivityDay>> {
+        self.visible_channel_days_by_guild(-sql_id(guild), from, channels).await
+    }
+
+    async fn visible_channel_days_by_guild(
+        &self,
+        guild: i64,
+        from: NaiveDate,
+        channels: &[i64],
+    ) -> anyhow::Result<Vec<ActivityDay>> {
+        Ok(sqlx::query_as(
+            "SELECT day, sum(messages)::BIGINT AS messages, sum(voice_minutes)::BIGINT AS voice_minutes
+             FROM channel_activity_daily WHERE guild_id = $1 AND day >= $2 AND channel_id = ANY($3)
+             GROUP BY day ORDER BY day",
+        )
+        .bind(guild)
+        .bind(from)
+        .bind(channels)
+        .fetch_all(self.pool())
+        .await?)
+    }
+
+    pub async fn public_top_channels(
+        &self,
+        guild: u64,
+        from: NaiveDate,
+        limit: i64,
+    ) -> anyhow::Result<Vec<ActivityRank>> {
+        Ok(sqlx::query_as(
+            "SELECT channel_id AS id, sum(messages)::BIGINT AS messages, sum(voice_minutes)::BIGINT AS voice_minutes
+             FROM channel_activity_daily WHERE guild_id = $1 AND day >= $2
+             GROUP BY channel_id ORDER BY messages DESC, voice_minutes DESC, channel_id LIMIT $3",
+        )
+        .bind(-sql_id(guild))
         .bind(from)
         .bind(limit)
         .fetch_all(self.pool())
@@ -370,6 +454,44 @@ impl Db {
             .execute(self.pool())
             .await?;
         Ok(())
+    }
+
+    /// Change publication and record who did it in the same transaction.
+    pub async fn set_stats_public_audited(
+        &self,
+        guild: u64,
+        public: bool,
+        actor: u64,
+        actor_name: &str,
+    ) -> anyhow::Result<bool> {
+        self.guild_settings(guild).await?;
+        let mut tx = self.pool().begin().await?;
+        let (was,): (bool,) = sqlx::query_as("SELECT stats_public FROM guilds WHERE id = $1 FOR UPDATE")
+            .bind(sql_id(guild))
+            .fetch_one(&mut *tx)
+            .await?;
+        if was != public {
+            sqlx::query("UPDATE guilds SET stats_public = $2 WHERE id = $1")
+                .bind(sql_id(guild))
+                .bind(public)
+                .execute(&mut *tx)
+                .await?;
+            let before = serde_json::json!({"public": was}).to_string();
+            let after = serde_json::json!({"public": public}).to_string();
+            let audit = NewAudit {
+                guild,
+                actor,
+                actor_name,
+                source: crate::AuditSource::Web,
+                action: "stats.public",
+                target: None,
+                before: Some(&before),
+                after: Some(&after),
+            };
+            crate::audit::insert_in(&mut tx, &audit).await?;
+        }
+        tx.commit().await?;
+        Ok(was != public)
     }
 
     /// The server's counter channels, oldest first.
@@ -556,6 +678,20 @@ impl Db {
         .bind(totals.fish)
         .bind(totals.games)
         .bind(start)
+        .execute(self.pool())
+        .await?;
+        Ok(())
+    }
+
+    /// Recompute messages in retained snapshots after late or retried hourly batches.
+    pub async fn refresh_global_message_history(&self, from: NaiveDate) -> anyhow::Result<()> {
+        sqlx::query(
+            "UPDATE global_stats_daily d SET messages = (
+                 SELECT coalesce(sum(h.messages), 0)::BIGINT FROM guild_activity_hourly h
+                 WHERE h.hour >= d.day::timestamptz AND h.hour < (d.day + 1)::timestamptz
+             ) WHERE d.day >= $1",
+        )
+        .bind(from)
         .execute(self.pool())
         .await?;
         Ok(())

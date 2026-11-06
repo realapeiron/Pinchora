@@ -73,6 +73,7 @@ const PRIVATE: &[&str] = &[
     "roles",
     "stall manage",
     "stall sell",
+    "stats",
     "suggest",
     "suggestion",
 ];

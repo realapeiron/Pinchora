@@ -252,6 +252,16 @@ pub mod field {
         format!("cv:{id}")
     }
 
+    /// Messages known to be in a channel visible to @everyone when counted.
+    pub fn public_channel(id: u64) -> String {
+        format!("pc:{id}")
+    }
+
+    /// Voice minutes known to be in a channel visible to @everyone when counted.
+    pub fn public_channel_voice(id: u64) -> String {
+        format!("pcv:{id}")
+    }
+
     /// Messages of one member.
     pub fn member(id: u64) -> String {
         format!("u:{id}")
@@ -307,6 +317,7 @@ pub struct HourTally {
     pub leaves: i64,
     pub commands: i64,
     pub channels: BTreeMap<u64, Pair>,
+    pub public_channels: BTreeMap<u64, Pair>,
     pub members: BTreeMap<u64, Pair>,
 }
 
@@ -328,6 +339,10 @@ impl HourTally {
                         tally.channels.entry(channel).or_default().messages += value;
                     } else if let Some(channel) = id("cv:") {
                         tally.channels.entry(channel).or_default().voice_minutes += value;
+                    } else if let Some(channel) = id("pc:") {
+                        tally.public_channels.entry(channel).or_default().messages += value;
+                    } else if let Some(channel) = id("pcv:") {
+                        tally.public_channels.entry(channel).or_default().voice_minutes += value;
                     } else if let Some(user) = id("u:") {
                         tally.members.entry(user).or_default().messages += value;
                     } else if let Some(user) = id("uv:") {
@@ -422,12 +437,17 @@ pub fn totals(days: &[DayTotals]) -> DayTotals {
 }
 
 /// Minutes as a short duration: `45m`, `3h 20m`, `1,204h`.
-pub fn minutes_text(minutes: i64) -> String {
+pub fn minutes_text(minutes: i64, lang: Lang) -> String {
     let minutes = minutes.max(0);
     match minutes {
-        0..60 => format!("{minutes}m"),
-        60..6000 if minutes % 60 != 0 => format!("{}h {}m", minutes / 60, minutes % 60),
-        _ => format!("{}h", grouped(minutes / 60)),
+        0..60 => t!(lang, "stats.duration.minutes", minutes = minutes),
+        60..6000 if minutes % 60 != 0 => t!(
+            lang,
+            "stats.duration.hours-minutes",
+            hours = minutes / 60,
+            minutes = minutes % 60
+        ),
+        _ => t!(lang, "stats.duration.hours", hours = grouped(minutes / 60)),
     }
 }
 
@@ -612,9 +632,27 @@ mod tests {
         assert_eq!(grouped(999), "999");
         assert_eq!(grouped(1_000), "1,000");
         assert_eq!(grouped(1_234_567), "1,234,567");
-        assert_eq!(minutes_text(45), "45m");
-        assert_eq!(minutes_text(200), "3h 20m");
-        assert_eq!(minutes_text(120), "2h");
-        assert_eq!(minutes_text(72_240), "1,204h");
+        assert_eq!(minutes_text(45, Lang::En), "45m");
+        assert_eq!(minutes_text(200, Lang::En), "3h 20m");
+        assert_eq!(minutes_text(120, Lang::En), "2h");
+        assert_eq!(minutes_text(72_240, Lang::En), "1,204h");
+        assert_eq!(minutes_text(200, Lang::Tr), "3 sa 20 dk");
+    }
+
+    #[test]
+    fn public_channel_fields_stay_separate_from_mixed_history() {
+        let tally = HourTally::from_fields(&[
+            (field::channel(42), 9),
+            (field::public_channel(42), 2),
+            (field::public_channel_voice(42), 3),
+        ]);
+        assert_eq!(tally.channels[&42].messages, 9);
+        assert_eq!(
+            tally.public_channels[&42],
+            Pair {
+                messages: 2,
+                voice_minutes: 3
+            }
+        );
     }
 }

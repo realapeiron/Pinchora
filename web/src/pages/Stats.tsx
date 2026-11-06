@@ -204,8 +204,8 @@ export function Activity({ stats, showMembers = true }: { stats: PeriodStats; sh
             label="Top channels"
             empty="Nobody has written anywhere yet."
             rows={stats.top_channels.map((c) => ({
-              id: c.id,
-              name: c.name ? `#${c.name}` : "A thread or a deleted channel",
+              id: c.id ?? "other",
+              name: c.id ? (c.name ? `#${c.name}` : "A thread or a deleted channel") : "Other",
               value: c.messages,
               shown: `${thousands(c.messages)} msgs`,
             }))}

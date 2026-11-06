@@ -6,7 +6,12 @@
 //! Redis until Postgres has it; Postgres remembers which batches it already took, so a flush cut short
 //! and run again never counts anything twice.
 
-use std::{collections::HashMap, time::Duration};
+use std::{
+    collections::{HashMap, hash_map::RandomState},
+    hash::{BuildHasher, Hasher},
+    sync::atomic::{AtomicU64, Ordering},
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
 use redis::AsyncCommands;
 
@@ -15,6 +20,17 @@ use crate::{Cache, PREFIX};
 /// How long counts wait for a flush at most: well past a stopped bot's restart, short enough that
 /// Redis never fills up with them.
 const KEEP: Duration = Duration::from_secs(3 * 86_400);
+static SEAL_NONCE: AtomicU64 = AtomicU64::new(0);
+
+fn seal_nonce() -> String {
+    let time = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    let random = RandomState::new().build_hasher().finish();
+    let local = SEAL_NONCE.fetch_add(1, Ordering::Relaxed);
+    format!("{time:x}-{random:x}-{:x}-{local:x}", std::process::id())
+}
 
 fn dirty() -> String {
     format!("{PREFIX}:stats:dirty")
@@ -52,6 +68,41 @@ impl StatsBatch {
 }
 
 impl Cache {
+    /// One pod owns the stats flush until it releases this token or the lease expires.
+    pub async fn stats_claim_flush(&self) -> anyhow::Result<Option<String>> {
+        let token = seal_nonce();
+        let set: Option<String> = redis::cmd("SET")
+            .arg(format!("{PREFIX}:stats:flush-owner"))
+            .arg(&token)
+            .arg("NX")
+            .arg("EX")
+            .arg(90)
+            .query_async(&mut self.conn())
+            .await?;
+        Ok(set.map(|_| token))
+    }
+
+    pub async fn stats_release_flush(&self, token: &str) -> anyhow::Result<()> {
+        const SCRIPT: &str =
+            "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) else return 0 end";
+        let _: i64 = redis::Script::new(SCRIPT)
+            .key(format!("{PREFIX}:stats:flush-owner"))
+            .arg(token)
+            .invoke_async(&mut self.conn())
+            .await?;
+        Ok(())
+    }
+
+    pub async fn stats_extend_flush(&self, token: &str) -> anyhow::Result<bool> {
+        const SCRIPT: &str =
+            "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('EXPIRE', KEYS[1], 90) else return 0 end";
+        let renewed: i64 = redis::Script::new(SCRIPT)
+            .key(format!("{PREFIX}:stats:flush-owner"))
+            .arg(token)
+            .invoke_async(&mut self.conn())
+            .await?;
+        Ok(renewed == 1)
+    }
     /// Adds `fields` to what `guild` did in `hour` (hours since the Unix epoch), in one round trip.
     pub async fn stats_add(&self, guild: u64, hour: i64, fields: &[(String, i64)]) -> anyhow::Result<()> {
         if fields.is_empty() {
@@ -60,6 +111,7 @@ impl Cache {
         let member = format!("{guild}:{hour}");
         let key = format!("{}{member}", hash_prefix());
         let mut pipe = redis::pipe();
+        pipe.atomic();
         for (field, by) in fields {
             pipe.hincr(&key, field, *by).ignore();
         }
@@ -80,7 +132,7 @@ impl Cache {
                 local source = ARGV[2] .. member
                 if redis.call('EXISTS', source) == 1 then
                     local seq = redis.call('INCR', KEYS[3])
-                    local target = ARGV[3] .. member .. ':' .. seq
+                    local target = ARGV[3] .. member .. ':' .. ARGV[5] .. ':' .. seq
                     redis.call('RENAME', source, target)
                     redis.call('EXPIRE', target, tonumber(ARGV[4]))
                     redis.call('SADD', KEYS[2], target)
@@ -97,6 +149,7 @@ impl Cache {
             .arg(hash_prefix())
             .arg(batch_prefix())
             .arg(KEEP.as_secs())
+            .arg(seal_nonce())
             .invoke_async(&mut self.conn())
             .await?;
         Ok(sealed)
@@ -140,6 +193,28 @@ impl Cache {
             .await?;
         Ok(())
     }
+
+    /// Remove a deleted member's pending counts from live and sealed hashes.
+    pub async fn stats_forget_member(&self, user: u64) -> anyhow::Result<()> {
+        const SCRIPT: &str = r#"
+            for _, member in ipairs(redis.call('SMEMBERS', KEYS[1])) do
+                redis.call('HDEL', ARGV[1] .. member, ARGV[2], ARGV[3])
+            end
+            for _, batch in ipairs(redis.call('SMEMBERS', KEYS[2])) do
+                redis.call('HDEL', batch, ARGV[2], ARGV[3])
+            end
+            return 1
+        "#;
+        let _: i64 = redis::Script::new(SCRIPT)
+            .key(dirty())
+            .key(pending())
+            .arg(hash_prefix())
+            .arg(format!("u:{user}"))
+            .arg(format!("uv:{user}"))
+            .invoke_async(&mut self.conn())
+            .await?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -152,5 +227,72 @@ mod tests {
         assert_eq!(StatsBatch::parse(&key), Some((42, 493_000)));
         assert_eq!(StatsBatch::parse("pinchora:stats:h:42:1"), None);
         assert_eq!(StatsBatch::parse(&format!("{}x:1:1", batch_prefix())), None);
+    }
+
+    #[test]
+    fn seal_ids_have_a_process_independent_nonce() {
+        assert_ne!(seal_nonce(), seal_nonce());
+    }
+
+    #[tokio::test]
+    async fn deleting_a_member_clears_live_and_sealed_fields() {
+        let Ok(url) = std::env::var("PINCHORA_TEST_REDIS_URL") else {
+            return;
+        };
+        let cache = Cache::connect(&url).await.unwrap();
+        let guild = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos() as u64;
+        let user = guild + 1;
+        cache
+            .stats_add(guild, 123, &[(format!("u:{user}"), 1), (format!("uv:{user}"), 2)])
+            .await
+            .unwrap();
+        cache.stats_seal(100_000).await.unwrap();
+        cache.stats_add(guild, 123, &[(format!("u:{user}"), 3)]).await.unwrap();
+        cache.stats_forget_member(user).await.unwrap();
+        cache.stats_seal(100_000).await.unwrap();
+        for batch in cache
+            .stats_pending(100_000)
+            .await
+            .unwrap()
+            .into_iter()
+            .filter(|b| b.guild == guild)
+        {
+            assert!(
+                batch
+                    .fields
+                    .iter()
+                    .all(|(name, _)| name != &format!("u:{user}") && name != &format!("uv:{user}"))
+            );
+            cache.stats_done(&batch.key).await.unwrap();
+        }
+    }
+
+    #[tokio::test]
+    async fn channel_rename_claim_survives_a_configuration_reset() {
+        let Ok(url) = std::env::var("PINCHORA_TEST_REDIS_URL") else {
+            return;
+        };
+        let cache = Cache::connect(&url).await.unwrap();
+        let channel = seal_nonce();
+        let key = format!("counter-rename:{channel}");
+        assert!(cache.once(&key, Duration::from_secs(600)).await.unwrap());
+        assert!(!cache.once(&key, Duration::from_secs(600)).await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn overlapping_flush_claims_are_exclusive_and_releasable() {
+        let Ok(url) = std::env::var("PINCHORA_TEST_REDIS_URL") else {
+            return;
+        };
+        let cache = Cache::connect(&url).await.unwrap();
+        let first = cache.stats_claim_flush().await.unwrap().expect("first claim");
+        assert!(cache.stats_claim_flush().await.unwrap().is_none());
+        assert!(cache.stats_extend_flush(&first).await.unwrap());
+        assert!(!cache.stats_extend_flush("wrong-owner").await.unwrap());
+        cache.stats_release_flush("wrong-owner").await.unwrap();
+        assert!(cache.stats_claim_flush().await.unwrap().is_none());
+        cache.stats_release_flush(&first).await.unwrap();
+        let second = cache.stats_claim_flush().await.unwrap().expect("claim after release");
+        cache.stats_release_flush(&second).await.unwrap();
     }
 }

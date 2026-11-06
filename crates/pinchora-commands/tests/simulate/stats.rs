@@ -2,7 +2,7 @@
 //! `/stats` cards and their period buttons, and `/counters` with its limit and permission checks.
 
 use chrono::Utc;
-use pinchora_commands::stats_flush;
+use pinchora_commands::{stats_flush, stats_refresh_counters};
 use pinchora_core::server_stats::{HourTally, hour_of, hour_start, message_fields};
 
 use super::*;
@@ -30,6 +30,7 @@ async fn chat_is_counted_once_and_drawn_on_the_stats_cards() {
         return;
     };
     let (talker, quiet, newcomer) = (unique(), unique(), unique());
+    sim.mock.everyone_role.store(true, Ordering::SeqCst);
     sim.channel_is(CHANNEL_ID, 0, None);
     for _ in 0..3 {
         sim.say(talker, &[]).await;
@@ -52,7 +53,7 @@ async fn chat_is_counted_once_and_drawn_on_the_stats_cards() {
     assert_eq!((top[0].id as u64, top[0].messages), (CHANNEL_ID, 4));
 
     let server = sim.command(talker, "stats", json!([sub("server", vec![])])).await;
-    assert!(!server.ephemeral, "the card is for the whole channel");
+    assert!(server.ephemeral, "stats cards contain viewer-scoped activity");
     assert_eq!(server.files.len(), 1, "{server}");
     let card = image::load_from_memory(&server.files[0].1).expect("a png");
     assert_eq!(card.width(), 900);
@@ -88,6 +89,49 @@ async fn chat_is_counted_once_and_drawn_on_the_stats_cards() {
     let turkish = sim.command(talker, "stats", json!([sub("server", vec![])])).await;
     assert_eq!(turkish.files.len(), 1, "{turkish}");
     assert!(turkish.button("30 gün").disabled);
+    stats_flush(&sim.app).await.unwrap();
+    let commands: i64 = sim
+        .app
+        .db
+        .guild_hours(sim.guild, Utc::now() - chrono::Duration::days(2))
+        .await
+        .unwrap()
+        .iter()
+        .map(|hour| hour.commands)
+        .sum();
+    assert_eq!(commands, 4, "the command dispatch hook still counts accepted commands");
+}
+
+#[tokio::test]
+async fn channel_stats_and_period_buttons_recheck_the_viewer() {
+    let Some(mut sim) = Sim::new("channel_stats_and_period_buttons_recheck_the_viewer").await else {
+        return;
+    };
+    let viewer = unique();
+    let channel = unique();
+    sim.mock.everyone_role.store(true, Ordering::SeqCst);
+    sim.channel_is(channel, 0, None);
+    let options = json!([sub("channel", vec![channel_option("channel", channel)])]);
+    let resolved = resolved_channels(&[channel]);
+    let allowed = sim
+        .command_resolved(viewer, "stats", options.clone(), resolved.clone())
+        .await;
+    assert!(allowed.ephemeral);
+    assert_eq!(allowed.files.len(), 1, "{allowed}");
+
+    let deny = json!([{
+        "id": sim.guild.to_string(),
+        "type": 0,
+        "allow": "0",
+        "deny": (1u64 << 10).to_string(),
+    }]);
+    sim.mock.channels.lock().unwrap().get_mut(&channel).unwrap()["permission_overwrites"] = deny;
+    let refused = sim.command_resolved(viewer, "stats", options, resolved).await;
+    assert!(refused.ephemeral);
+    assert!(refused.files.is_empty(), "private channel card was rendered");
+    let click = sim.click(viewer, &allowed, "7 days").await;
+    assert!(click.ephemeral);
+    assert!(click.files.is_empty(), "button revealed a private channel");
 }
 
 #[tokio::test]
@@ -199,8 +243,10 @@ async fn counter_channels_are_added_listed_limited_and_removed() {
     assert!(no_role.content().contains("role:"), "{no_role}");
 
     // Ten at most; the one already there can still be changed.
+    let mut ghost = 0;
     for _ in 0..9 {
         let id = unique();
+        ghost = id;
         sim.channel_is(id, 2, None);
         sim.command_resolved(manager, "counters", add_counter(id, "boosts"), resolved_voice(id))
             .await;
@@ -222,6 +268,10 @@ async fn counter_channels_are_added_listed_limited_and_removed() {
         .await;
     assert!(changed.content().contains("People: 42"), "{changed}");
     assert!(changed.content().contains("10/10"), "{changed}");
+    // A deleted channel frees a slot even when its number and name would not change.
+    sim.mock.channels.lock().unwrap().remove(&ghost);
+    stats_refresh_counters(&sim.app, sim.guild).await.unwrap();
+    assert_eq!(sim.app.db.counters(sim.guild).await.unwrap().len(), 9);
     // A template without the number is refused.
     let bare = json!([sub(
         "add",

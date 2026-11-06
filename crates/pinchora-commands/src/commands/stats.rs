@@ -1,6 +1,8 @@
 //! `/stats` (a server's, a member's or a channel's activity as a card) and `/counters` (channels
 //! whose name shows a live number). The counting, the flush and the renaming are in `crate::stats`.
 
+use std::collections::HashSet;
+
 use pinchora_core::{
     server_stats::{self, CounterKind, MAX_COUNTERS, Period, TEMPLATE_MAX, counter_name},
     t,
@@ -10,7 +12,9 @@ use serde_json::json;
 use twilight_interactions::command::{CommandModel, CommandOption, CreateCommand, CreateOption};
 use twilight_model::{
     application::interaction::InteractionChannel,
+    channel::{ChannelType, permission_overwrite::PermissionOverwrite},
     guild::{Permissions, Role},
+    id::Id,
 };
 
 use crate::{
@@ -21,6 +25,107 @@ use crate::{
     },
     util::display_name,
 };
+
+fn may_view(base: Permissions, guild: u64, user: u64, held: &[u64], overwrites: &[PermissionOverwrite]) -> bool {
+    crate::text::access::channel_permissions(base, guild, user, held, overwrites).contains(Permissions::VIEW_CHANNEL)
+}
+
+fn viewer_base(facts: &crate::app::PermissionFacts, guild: u64, user: u64, held: &[u64]) -> Permissions {
+    if facts.owner == user {
+        return Permissions::all();
+    }
+    let base = facts
+        .roles
+        .iter()
+        .filter(|r| r.id.get() == guild || held.contains(&r.id.get()))
+        .fold(Permissions::empty(), |p, r| p | r.permissions);
+    if base.contains(Permissions::ADMINISTRATOR) {
+        Permissions::all()
+    } else {
+        base
+    }
+}
+
+async fn visible_channels(cx: &Cx, guild: u64) -> anyhow::Result<HashSet<u64>> {
+    let member = cx
+        .interaction
+        .member
+        .as_ref()
+        .ok_or_else(|| anyhow::anyhow!("member unavailable"))?;
+    let held: Vec<u64> = member.roles.iter().map(|r| r.get()).collect();
+    let user = cx.author()?.id.get();
+    let facts = cx.app.permission_facts(guild).await?;
+    let base = viewer_base(&facts, guild, user, &held);
+    if let Ok(response) = cx.app.http.guild_channels(Id::new(guild)).await
+        && let Ok(channels) = response.models().await
+    {
+        return Ok(channels
+            .iter()
+            .filter(|ch| {
+                !ch.kind.is_thread()
+                    && may_view(
+                        base,
+                        guild,
+                        user,
+                        &held,
+                        ch.permission_overwrites.as_deref().unwrap_or(&[]),
+                    )
+            })
+            .map(|ch| ch.id.get())
+            .collect());
+    }
+    // A guild listing can be unavailable while individual channels remain readable.
+    // The fallback still checks every channel's current overwrites and fails closed.
+    let mut visible = HashSet::new();
+    for rank in cx
+        .app
+        .db
+        .top_channels(
+            guild,
+            chrono::Utc::now().date_naive() - chrono::Duration::days(90),
+            100_000,
+        )
+        .await?
+    {
+        let channel = rank.id as u64;
+        if can_view_channel(cx, guild, channel).await.unwrap_or(false) {
+            visible.insert(channel);
+        }
+    }
+    Ok(visible)
+}
+
+async fn can_view_channel(cx: &Cx, guild: u64, channel: u64) -> anyhow::Result<bool> {
+    let member = cx
+        .interaction
+        .member
+        .as_ref()
+        .ok_or_else(|| anyhow::anyhow!("member unavailable"))?;
+    let held: Vec<u64> = member.roles.iter().map(|r| r.get()).collect();
+    let user = cx.author()?.id.get();
+    let facts = cx.app.permission_facts(guild).await?;
+    let base = viewer_base(&facts, guild, user, &held);
+    let found = cx.app.http.channel(Id::new(channel)).await?.model().await?;
+    if found.guild_id.is_none_or(|id| id.get() != guild) || found.kind == ChannelType::PrivateThread {
+        return Ok(false);
+    }
+    let overwrites = if found.kind.is_thread() {
+        let Some(parent) = found.parent_id else {
+            return Ok(false);
+        };
+        cx.app
+            .http
+            .channel(parent)
+            .await?
+            .model()
+            .await?
+            .permission_overwrites
+            .unwrap_or_default()
+    } else {
+        found.permission_overwrites.unwrap_or_default()
+    };
+    Ok(may_view(base, guild, user, &held, &overwrites))
+}
 
 /// How far back a card looks.
 #[derive(CommandOption, CreateOption, Clone, Copy, Debug, PartialEq, Eq)]
@@ -100,8 +205,13 @@ impl StatsCommand {
                 Some(c.channel.name.clone()),
             ),
         };
+        if let Scope::Channel(channel) = scope
+            && !can_view_channel(cx, guild, channel).await.unwrap_or(false)
+        {
+            return cx.reply_ephemeral(t!(cx.lang(), "stats.no-access")).await;
+        }
         // The names and the drawing can outlast Discord's first-answer window.
-        cx.responder.defer(false).await?;
+        cx.responder.defer(true).await?;
         let data = render(cx, guild, scope, period, name).await?;
         cx.reply(data).await
     }
@@ -117,8 +227,14 @@ async fn render(
 ) -> anyhow::Result<twilight_model::http::interaction::InteractionResponseData> {
     let (app, lang) = (&cx.app, cx.lang());
     let card = match scope {
-        Scope::Server => cards::server_card(app, guild, period, lang).await?,
+        Scope::Server => {
+            let visible = visible_channels(cx, guild).await?;
+            cards::server_card_for(app, guild, period, lang, Some(&visible)).await?
+        }
         Scope::Member(user) => {
+            if user != cx.author()?.id.get() {
+                anyhow::bail!("stats member card belongs to another viewer");
+            }
             let name = match name {
                 Some(name) => name,
                 None => app
@@ -129,6 +245,9 @@ async fn render(
             cards::member_card(app, guild, user, name, period, lang).await?
         }
         Scope::Channel(channel) => {
+            if !can_view_channel(cx, guild, channel).await? {
+                anyhow::bail!("viewer cannot see stats channel");
+            }
             let name = match name {
                 Some(name) => name,
                 None => cards::channel_names(app, &[channel])
@@ -136,7 +255,22 @@ async fn render(
                     .remove(&channel)
                     .unwrap_or_else(|| t!(lang, "stats.card.unknown-channel")),
             };
-            cards::channel_card(app, guild, channel, &name, period, lang).await?
+            let mut visible = visible_channels(cx, guild).await?;
+            visible.insert(channel);
+            let safe_public = crate::stats::everyone_can_view(app, guild, channel).await;
+            cards::channel_card(
+                app,
+                guild,
+                channel,
+                &name,
+                period,
+                lang,
+                cards::ChannelAudience {
+                    visible: &visible,
+                    safe_public,
+                },
+            )
+            .await?
         }
     };
     let png = app.render(move |r| r.stats_card(&card)).await?;
@@ -152,7 +286,17 @@ pub(crate) async fn on_component(cx: &Cx, mut parts: std::str::Split<'_, char>) 
         return cx.reply_ephemeral(t!(cx.lang(), "stats.expired")).await;
     };
     let period = parts.next().and_then(Period::parse).unwrap_or_default();
-    cx.responder.defer(false).await?;
+    if let Scope::Member(user) = scope
+        && user != cx.author()?.id.get()
+    {
+        return cx.reply_ephemeral(t!(cx.lang(), "stats.no-access")).await;
+    }
+    if let Scope::Channel(channel) = scope
+        && !can_view_channel(cx, guild, channel).await.unwrap_or(false)
+    {
+        return cx.reply_ephemeral(t!(cx.lang(), "stats.no-access")).await;
+    }
+    cx.responder.defer(true).await?;
     let data = render(cx, guild, scope, period, None).await?;
     cx.update(data).await
 }
@@ -475,5 +619,19 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn channel_cards_obey_viewer_overwrites() {
+        use twilight_model::channel::permission_overwrite::PermissionOverwriteType;
+        let guild = 123;
+        let hidden = PermissionOverwrite {
+            allow: Permissions::empty(),
+            deny: Permissions::VIEW_CHANNEL,
+            id: Id::new(guild),
+            kind: PermissionOverwriteType::Role,
+        };
+        assert!(!may_view(Permissions::VIEW_CHANNEL, guild, 456, &[], &[hidden]));
+        assert!(may_view(Permissions::VIEW_CHANNEL, guild, 456, &[], &[]));
     }
 }

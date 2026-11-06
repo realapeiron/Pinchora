@@ -82,7 +82,6 @@ macro_rules! commands {
             if crate::gate::refuses_command(cx, &data).await? {
                 return Ok(());
             }
-            crate::stats::count_command(cx).await;
             let name = data.name.clone();
             $(
                 if name == <$ty as CreateCommand>::NAME {

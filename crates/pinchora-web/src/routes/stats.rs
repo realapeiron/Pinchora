@@ -2,7 +2,10 @@
 //! channels, the public switch and the `/stats` card; and on the public site (`/api/public/stats…`):
 //! the whole bot's totals and the page of a server that opened its stats to everyone.
 
-use std::{collections::HashMap, time::Duration};
+use std::{
+    collections::{HashMap, HashSet},
+    time::Duration,
+};
 
 use axum::{
     Json, Router,
@@ -25,7 +28,11 @@ use pinchora_core::{
 use pinchora_db::{CounterRow, CounterSave};
 use serde::Deserialize;
 use serde_json::{Value, json};
-use twilight_model::{channel::ChannelType, id::Id};
+use twilight_model::{
+    channel::{ChannelType, permission_overwrite::PermissionOverwriteType},
+    guild::Permissions,
+    id::Id,
+};
 
 use super::{me::icon_url, settings::parse_id};
 use crate::{
@@ -100,7 +107,13 @@ fn midnight(day: NaiveDate) -> chrono::DateTime<chrono::Utc> {
 
 /// What a server did over `period`, as both pages show it. `members` adds the busiest members (the
 /// dashboard only: the public page names no one).
-async fn period_json(state: &WebState, guild: u64, period: Period, members: bool) -> ApiResult<Value> {
+async fn period_json(
+    state: &WebState,
+    guild: u64,
+    period: Period,
+    members: bool,
+    public_channels: Option<&HashSet<u64>>,
+) -> ApiResult<Value> {
     let db = &state.app.db;
     let today = state.app.now().date_naive();
     let first = period.first_day(today);
@@ -108,15 +121,39 @@ async fn period_json(state: &WebState, guild: u64, period: Period, members: bool
     let before = (period != Period::Quarter).then(|| first - Span::days(period.days()));
     let hours = db.guild_hours(guild, midnight(before.unwrap_or(first))).await?;
     let (earlier, current): (Vec<_>, Vec<_>) = hours.into_iter().partition(|h| h.hour < midnight(first));
-    let days = server_stats::daily(&current, first, period.days());
+    let mut days = server_stats::daily(&current, first, period.days());
+    if let Some(visible) = public_channels {
+        let ids: Vec<i64> = visible.iter().map(|id| *id as i64).collect();
+        let safe = db.public_visible_channel_days(guild, first, &ids).await?;
+        let by_day: HashMap<_, _> = safe.into_iter().map(|d| (d.day, d)).collect();
+        for day in &mut days {
+            let counts = by_day.get(&day.day);
+            day.messages = counts.map_or(0, |d| d.messages);
+            day.voice_minutes = counts.map_or(0, |d| d.voice_minutes);
+        }
+    }
     let totals = server_stats::totals(&days);
-    let previous = before.map(|b| server_stats::totals(&server_stats::daily(&earlier, b, period.days())));
-    let active = db.active_members(guild, first).await?;
-    let channels = db.top_channels(guild, first, TOP).await?;
+    let previous = if public_channels.is_some() {
+        None
+    } else {
+        before.map(|b| server_stats::totals(&server_stats::daily(&earlier, b, period.days())))
+    };
+    let active = if public_channels.is_some() {
+        None
+    } else {
+        Some(db.active_members(guild, first).await?)
+    };
+    let channels = if public_channels.is_some() {
+        db.public_top_channels(guild, first, 100_000).await?
+    } else {
+        db.top_channels(guild, first, TOP).await?
+    };
     // Names as the server has them now; one that is gone keeps its id.
     let info = guild_info::get(state, guild, false).await.ok();
-    let top_channels: Vec<Value> = channels
+    let mut top_channels: Vec<Value> = channels
         .iter()
+        .filter(|c| public_channels.is_none_or(|visible| visible.contains(&(c.id as u64))))
+        .take(TOP as usize)
         .map(|c| {
             let name = info
                 .as_ref()
@@ -130,14 +167,28 @@ async fn period_json(state: &WebState, guild: u64, period: Period, members: bool
             })
         })
         .collect();
+    if let Some(visible) = public_channels {
+        let all = db.top_channels(guild, first, 100_000).await?;
+        let (all_messages, all_voice) = all
+            .iter()
+            .fold((0_i64, 0_i64), |(m, v), c| (m + c.messages, v + c.voice_minutes));
+        let (safe_messages, safe_voice) = channels
+            .iter()
+            .filter(|c| visible.contains(&(c.id as u64)))
+            .fold((0_i64, 0_i64), |(m, v), c| (m + c.messages, v + c.voice_minutes));
+        let (messages, voice) = ((all_messages - safe_messages).max(0), (all_voice - safe_voice).max(0));
+        if messages > 0 || voice > 0 {
+            top_channels.push(json!({"id": null, "name": "Other", "messages": messages, "voice_minutes": voice}));
+        }
+    }
     let mut out = json!({
         "days": period.days(),
         "from": first,
         "to": today,
-        "totals": totals_json(&totals, Some(active)),
+        "totals": totals_json(&totals, active),
         "previous": previous.as_ref().map(|p| totals_json(p, None)),
         "daily": days.iter().map(day_json).collect::<Vec<_>>(),
-        "heatmap": server_stats::heatmap(&current),
+        "heatmap": if public_channels.is_some() { [[0_i64; 24]; 7] } else { server_stats::heatmap(&current) },
         "top_channels": top_channels,
     });
     if members {
@@ -169,7 +220,7 @@ pub async fn summary(
 ) -> ApiResult<Json<Value>> {
     let period = period_of(&query)?;
     let guild = managed.id;
-    let mut out = period_json(&state, guild, period, true).await?;
+    let mut out = period_json(&state, guild, period, true, None).await?;
     let settings = state.app.db.guild_settings(guild).await?;
     out["public"] = json!(state.app.db.stats_public(guild).await?);
     out["voice_counted"] = json!(settings.voice_xp_enabled && settings.leveling_enabled);
@@ -190,23 +241,19 @@ pub async fn put_settings(
     ApiJson(body): ApiJson<SettingsBody>,
 ) -> ApiResult<Json<Value>> {
     let guild = managed.id;
-    let was = state.app.db.stats_public(guild).await?;
-    if was != body.public {
-        state.app.db.set_stats_public(guild, body.public).await?;
-        state.app.cache.forget(&public_key(guild)).await?;
-        audit::finish(
-            &state,
-            &managed.current.session,
-            Change {
-                guild,
-                action: "stats.public",
-                target: None,
-                before: json!({ "public": was }),
-                after: json!({ "public": body.public }),
-            },
-            None,
+    if state
+        .app
+        .db
+        .set_stats_public_audited(
+            guild,
+            body.public,
+            managed.current.session.user_id,
+            managed.current.session.display_name(),
         )
-        .await;
+        .await?
+        && let Err(error) = state.app.cache.forget(&public_key(guild)).await
+    {
+        tracing::warn!(%error, guild, "public stats cache not cleared");
     }
     Ok(Json(json!({ "public": body.public })))
 }
@@ -480,7 +527,65 @@ fn global_key() -> String {
 }
 
 fn public_key(guild: u64) -> String {
-    format!("web:stats:public:{guild}")
+    format!("web:stats:public:v2:{guild}")
+}
+
+fn everyone_can_view(
+    base: Permissions,
+    guild: u64,
+    overwrites: &[twilight_model::channel::permission_overwrite::PermissionOverwrite],
+) -> bool {
+    if base.contains(Permissions::ADMINISTRATOR) {
+        return true;
+    }
+    let here = overwrites
+        .iter()
+        .find(|o| o.kind == PermissionOverwriteType::Role && o.id.get() == guild);
+    let effective = here.map_or(base, |o| (base - o.deny) | o.allow);
+    effective.contains(Permissions::VIEW_CHANNEL)
+}
+
+async fn public_channels(state: &WebState, guild: u64) -> ApiResult<HashSet<u64>> {
+    let id = Id::new(guild);
+    let (channels, roles) = tokio::try_join!(
+        async {
+            Ok::<_, ApiError>(
+                state
+                    .app
+                    .http
+                    .guild_channels(id)
+                    .await
+                    .map_err(anyhow::Error::from)?
+                    .models()
+                    .await
+                    .map_err(anyhow::Error::from)?,
+            )
+        },
+        async {
+            Ok::<_, ApiError>(
+                state
+                    .app
+                    .http
+                    .roles(id)
+                    .await
+                    .map_err(anyhow::Error::from)?
+                    .models()
+                    .await
+                    .map_err(anyhow::Error::from)?,
+            )
+        },
+    )?;
+    let base = roles
+        .iter()
+        .find(|r| r.id.get() == guild)
+        .map_or(Permissions::empty(), |r| r.permissions);
+    Ok(channels
+        .iter()
+        .filter(|ch| {
+            !ch.kind.is_thread() && everyone_can_view(base, guild, ch.permission_overwrites.as_deref().unwrap_or(&[]))
+        })
+        .map(|ch| ch.id.get())
+        .collect())
 }
 
 async fn cached(state: &WebState, key: &str) -> Option<Value> {
@@ -528,13 +633,11 @@ pub async fn global(State(state): State<WebState>) -> ApiResult<Json<Value>> {
 /// 404, the same as a server Pinchora has never heard of). No member is named.
 pub async fn public_guild(State(state): State<WebState>, Path(raw): Path<String>) -> ApiResult<Json<Value>> {
     let guild = parse_id(&raw).ok_or_else(ApiError::not_found)?;
-    if let Some(known) = cached(&state, &public_key(guild)).await {
-        return Ok(Json(known));
-    }
     if !state.app.db.stats_public(guild).await? || !state.app.module_allowed(guild, None, Module::Stats).await {
         return Err(ApiError::not_found());
     }
-    let mut value = period_json(&state, guild, Period::Month, false).await?;
+    let visible = public_channels(&state, guild).await?;
+    let mut value = period_json(&state, guild, Period::Month, false, Some(&visible)).await?;
     let found = state
         .app
         .http
@@ -549,6 +652,31 @@ pub async fn public_guild(State(state): State<WebState>, Path(raw): Path<String>
         "name": found.name,
         "icon_url": icon_url(guild, found.icon.map(|i| i.to_string()).as_deref()),
     });
-    keep(&state, &public_key(guild), &value).await;
+    if !state.app.db.stats_public(guild).await? || !state.app.module_allowed(guild, None, Module::Stats).await {
+        return Err(ApiError::not_found());
+    }
+    if public_channels(&state, guild).await? != visible {
+        return Err(ApiError::not_found());
+    }
     Ok(Json(value))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use twilight_model::channel::permission_overwrite::PermissionOverwrite;
+
+    #[test]
+    fn everyone_denial_hides_a_channel_even_when_the_bot_can_read_it() {
+        let guild = 700;
+        let denied = PermissionOverwrite {
+            allow: Permissions::empty(),
+            deny: Permissions::VIEW_CHANNEL,
+            id: Id::new(guild),
+            kind: PermissionOverwriteType::Role,
+        };
+        assert!(!everyone_can_view(Permissions::VIEW_CHANNEL, guild, &[denied]));
+        assert!(everyone_can_view(Permissions::VIEW_CHANNEL, guild, &[]));
+        assert!(!everyone_can_view(Permissions::empty(), guild, &[]));
+    }
 }

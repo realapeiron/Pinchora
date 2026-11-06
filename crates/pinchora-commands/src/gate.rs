@@ -22,7 +22,11 @@ fn subcommand(data: &CommandData) -> Option<&str> {
 /// Whether the command's module is off here; if so, the invoker has been told and the command must
 /// not run.
 pub(crate) async fn refuses_command(cx: &Cx, data: &CommandData) -> anyhow::Result<bool> {
-    refuses(cx, Module::of_command(&data.name, subcommand(data))).await
+    let refused = refuses(cx, Module::of_command(&data.name, subcommand(data))).await?;
+    if !refused {
+        crate::stats::count_command(cx).await;
+    }
+    Ok(refused)
 }
 
 /// [`refuses_command`] for a button, select or form, by the prefix of its custom id.

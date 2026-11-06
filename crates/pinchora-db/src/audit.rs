@@ -55,22 +55,34 @@ pub struct AuditRow {
 impl Db {
     /// Records a change; returns the row's id.
     pub async fn audit(&self, entry: &NewAudit<'_>) -> anyhow::Result<i64> {
-        Ok(sqlx::query_scalar(
-            "INSERT INTO dashboard_audit (guild_id, actor_id, actor_name, source, action, target, before, after)
-             VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb) RETURNING id",
-        )
-        .bind(sql_id(entry.guild))
-        .bind(sql_id(entry.actor))
-        .bind(entry.actor_name)
-        .bind(entry.source.key())
-        .bind(entry.action)
-        .bind(entry.target)
-        .bind(entry.before)
-        .bind(entry.after)
-        .fetch_one(self.pool())
-        .await?)
+        let mut tx = self.pool().begin().await?;
+        let id = insert_in(&mut tx, entry).await?;
+        tx.commit().await?;
+        Ok(id)
     }
+}
 
+pub(crate) async fn insert_in(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    entry: &NewAudit<'_>,
+) -> anyhow::Result<i64> {
+    Ok(sqlx::query_scalar(
+        "INSERT INTO dashboard_audit (guild_id, actor_id, actor_name, source, action, target, before, after)
+             VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb) RETURNING id",
+    )
+    .bind(sql_id(entry.guild))
+    .bind(sql_id(entry.actor))
+    .bind(entry.actor_name)
+    .bind(entry.source.key())
+    .bind(entry.action)
+    .bind(entry.target)
+    .bind(entry.before)
+    .bind(entry.after)
+    .fetch_one(&mut **tx)
+    .await?)
+}
+
+impl Db {
     /// A server's changes, newest first: up to `limit` older than `before_id` (all when `None`).
     pub async fn audit_page(&self, guild: u64, before_id: Option<i64>, limit: i64) -> anyhow::Result<Vec<AuditRow>> {
         Ok(sqlx::query_as(

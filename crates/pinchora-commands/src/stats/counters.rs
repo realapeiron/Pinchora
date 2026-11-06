@@ -3,7 +3,7 @@
 //! member and online counts) and only the channels whose name changes are renamed, never twice within
 //! [`RENAME_GAP`](pinchora_core::server_stats::RENAME_GAP).
 
-use std::{collections::BTreeMap, sync::Arc};
+use std::{collections::BTreeMap, sync::Arc, time::Duration};
 
 use pinchora_core::{
     leveling::level_of,
@@ -97,6 +97,14 @@ pub(crate) async fn refresh(app: &App, guild: u64, rows: &[CounterRow]) -> usize
 /// Shows `value` on the counter `row`: renames its channel when the name changes and the last rename
 /// is ten minutes old, and notes what came of it. Returns whether the channel was renamed.
 pub(crate) async fn apply(app: &App, guild: u64, row: &CounterRow, value: Value) -> anyhow::Result<bool> {
+    let channel = Id::new((row.channel_id as u64).max(1));
+    // Reconcile deleted channels even when their calculated name did not change.
+    if let Err(error) = app.http.channel(channel).await
+        && error_code(&error) == Some(UNKNOWN_CHANNEL)
+    {
+        app.db.remove_counter(guild, row.channel_id as u64).await?;
+        return Ok(false);
+    }
     let number = match value {
         Value::Number(n) => n,
         Value::Problem(problem) => {
@@ -117,7 +125,16 @@ pub(crate) async fn apply(app: &App, guild: u64, row: &CounterRow, value: Value)
         app.db.record_counter(row.id, Some(number), None, problem).await?;
         return Ok(false);
     }
-    let channel = Id::new((row.channel_id as u64).max(1));
+    if !app
+        .cache
+        .once(
+            &format!("counter-rename:{}", row.channel_id),
+            Duration::from_secs(pinchora_core::server_stats::RENAME_GAP.num_seconds() as u64),
+        )
+        .await?
+    {
+        return Ok(false);
+    }
     match app.http.update_channel(channel).name(&name).await {
         Ok(_) => {
             app.db

@@ -8049,13 +8049,13 @@ async fn multipliers_reach_threads_forum_posts_and_channels_in_a_category() {
         assert_eq!(sim.server_xp(user).await, global * times, "{why}");
     }
 
-    // Discord is asked once per channel, and not at all where the channel has a rule of its own.
+    // Stats also checks channel visibility once; XP's channel-place lookups stay cached.
     for _ in 0..3 {
         sim.say_in(unique(), thread, &[]).await;
     }
     assert_eq!(sim.channel_lookups(thread), 1);
-    assert_eq!(sim.channel_lookups(text), 0, "its own rule: nothing to look up");
-    assert_eq!((sim.channel_lookups(post), sim.channel_lookups(forum)), (1, 1));
+    assert_eq!(sim.channel_lookups(text), 3, "stats checked each thread's parent");
+    assert_eq!((sim.channel_lookups(post), sim.channel_lookups(forum)), (1, 2));
     assert_eq!(sim.channel_lookups(category), 0, "a category's parent is never asked");
 
     // Voice follows the category too: the lounge with a category earns double, one without does not.
@@ -8089,7 +8089,11 @@ async fn multipliers_reach_threads_forum_posts_and_channels_in_a_category() {
     let user = unique();
     plain.say_in(user, text, &[]).await;
     assert_eq!(plain.server_xp(user).await, plain.global_xp(user).await * 2);
-    assert_eq!(plain.channel_lookups(text), 0);
+    assert_eq!(
+        plain.channel_lookups(text),
+        1,
+        "stats checks visibility; XP needs no channel rule"
+    );
 }
 
 #[tokio::test]

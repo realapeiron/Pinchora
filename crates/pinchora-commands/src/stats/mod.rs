@@ -19,13 +19,12 @@ use pinchora_core::{
     server_stats::{self, HourTally, KEEP_DAYS, field},
 };
 use twilight_model::channel::Message;
+use twilight_model::guild::Permissions;
 
-use crate::{App, Cx};
+use crate::{App, Cx, text::access::channel_permissions};
 
 /// The ticker wakes this often; the first wake of each minute flushes.
 const WAKE: Duration = Duration::from_secs(20);
-/// How long one minute's flush stays claimed by the pod that took it.
-const FLUSH_CLAIM: Duration = Duration::from_secs(90);
 /// Hashes sealed per flush, and batches written per flush, at most: a backlog drains over a few minutes.
 const SEAL_LIMIT: usize = 2_000;
 const WRITE_LIMIT: usize = 2_000;
@@ -38,12 +37,33 @@ pub(crate) async fn count_message(app: &Arc<App>, msg: &Message) {
     let Some(guild) = msg.guild_id.map(|g| g.get()) else {
         return;
     };
-    let channel = home(app, msg.channel_id.get()).await;
+    let channel = msg.channel_id.get();
     if !app.module_allowed(guild, Some(channel), Module::Stats).await {
         return;
     }
-    let fields = server_stats::message_fields(channel, msg.author.id.get());
+    let mut fields = server_stats::message_fields(channel, msg.author.id.get());
+    if everyone_can_view(app, guild, channel).await {
+        fields.push((field::public_channel(channel), 1));
+    }
     add(app, guild, &fields).await;
+}
+
+pub(crate) async fn everyone_can_view(app: &App, guild: u64, channel: u64) -> bool {
+    let Ok(facts) = app.permission_facts(guild).await else {
+        return false;
+    };
+    let Ok(rules) = app.channel_rules(channel).await else {
+        return false;
+    };
+    if rules.lineage.len() > 1 {
+        return false;
+    } // threads can be private
+    let base = facts
+        .roles
+        .iter()
+        .find(|r| r.id.get() == guild)
+        .map_or(Permissions::empty(), |r| r.permissions);
+    channel_permissions(base, guild, 0, &[], &rules.overwrites).contains(Permissions::VIEW_CHANNEL)
 }
 
 /// Counts a member joining (or, with `joined` false, leaving) a server.
@@ -83,17 +103,22 @@ pub(crate) async fn count_voice(app: &Arc<App>, guild: u64, present: &[VoicePres
             here.push((member.user, member.channel));
         }
     }
-    add(app, guild, &server_stats::voice_fields(&here)).await;
-}
-
-/// The channel a message counts in: a thread's own channel, else the channel itself. Where a channel sits
-/// is known from GUILD_CREATE (threads included); counting never asks Discord, so a thread the bot has
-/// not heard of yet counts on its own.
-async fn home(app: &App, channel: u64) -> u64 {
-    match app.known_channel_place(channel).await {
-        Some(place) if place.thread => place.parent.unwrap_or(channel),
-        _ => channel,
+    let mut fields = server_stats::voice_fields(&here);
+    let mut public = HashMap::new();
+    for &(_, channel) in &here {
+        let on = match public.get(&channel) {
+            Some(on) => *on,
+            None => {
+                let on = everyone_can_view(app, guild, channel).await;
+                public.insert(channel, on);
+                on
+            }
+        };
+        if on {
+            fields.push((field::public_channel_voice(channel), 1));
+        }
     }
+    add(app, guild, &fields).await;
 }
 
 async fn add(app: &App, guild: u64, fields: &[(String, i64)]) {
@@ -178,13 +203,40 @@ pub fn spawn_ticker(app: Arc<App>) {
                 continue;
             }
             last_minute = minute;
-            match app.cache.once(&format!("stats-flush:{minute}"), FLUSH_CLAIM).await {
-                Ok(true) => {
-                    if let Err(error) = flush(&app).await {
-                        tracing::warn!(%error, "stats flush failed");
+            match app.cache.stats_claim_flush().await {
+                Ok(Some(token)) => {
+                    let work = flush(&app);
+                    tokio::pin!(work);
+                    let mut renew = tokio::time::interval(Duration::from_secs(30));
+                    renew.tick().await;
+                    loop {
+                        tokio::select! {
+                            result = &mut work => {
+                                if let Err(error) = result {
+                                    tracing::warn!(%error, "stats flush failed");
+                                }
+                                break;
+                            }
+                            _ = renew.tick() => {
+                                match app.cache.stats_extend_flush(&token).await {
+                                    Ok(true) => {}
+                                    Ok(false) => {
+                                        tracing::warn!("stats flush lease was lost");
+                                        break;
+                                    }
+                                    Err(error) => {
+                                        tracing::warn!(%error, "stats flush lease not renewed");
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if let Err(error) = app.cache.stats_release_flush(&token).await {
+                        tracing::warn!(%error, "stats flush lease not released");
                     }
                 }
-                Ok(false) => {}
+                Ok(None) => {}
                 Err(error) => tracing::warn!(%error, "stats flush not claimed"),
             }
             if let Err(error) = Box::pin(counters::tick(&app, COUNTER_GUILDS)).await {
@@ -202,8 +254,21 @@ pub fn spawn_ticker(app: Arc<App>) {
                     Ok(_) => {}
                     Err(error) => tracing::warn!(%error, "old stats not forgotten"),
                 }
-                if let Err(error) = app.db.snapshot_global_stats(app.now().date_naive()).await {
+                let today = app.now().date_naive();
+                if hour.rem_euclid(24) == 0
+                    && let Err(error) = app.db.snapshot_global_stats(today - Span::days(1)).await
+                {
+                    tracing::warn!(%error, "yesterday's totals were not finalised");
+                }
+                if let Err(error) = app.db.snapshot_global_stats(today).await {
                     tracing::warn!(%error, "the day's totals were not written");
+                }
+                if let Err(error) = app
+                    .db
+                    .refresh_global_message_history(today - Span::days(KEEP_DAYS))
+                    .await
+                {
+                    tracing::warn!(%error, "late global messages were not backfilled");
                 }
             }
         }

@@ -1,7 +1,7 @@
 //! The `/stats` cards, put together from the stored numbers: the server's, a member's and a
 //! channel's, each over 7, 30 or 90 days, with the buttons that switch between them.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use chrono::{Datelike, NaiveDate, NaiveTime};
 use futures_util::future::join_all;
@@ -177,16 +177,48 @@ fn tile(lang: Lang, label: &str, value: String, note: Option<String>) -> StatTil
 
 /// The server card.
 pub(crate) async fn server_card(app: &App, guild: u64, period: Period, lang: Lang) -> anyhow::Result<StatsCard> {
+    server_card_for(app, guild, period, lang, None).await
+}
+
+pub(crate) async fn server_card_for(
+    app: &App,
+    guild: u64,
+    period: Period,
+    lang: Lang,
+    visible: Option<&HashSet<u64>>,
+) -> anyhow::Result<StatsCard> {
     let frame = Frame::new(app, period);
     let hours = app.db.guild_hours(guild, first_moment(frame.first)).await?;
-    let days: Vec<DayTotals> = server_stats::daily(&hours, frame.first, frame.days);
+    let mut days: Vec<DayTotals> = server_stats::daily(&hours, frame.first, frame.days);
+    if let Some(visible) = visible {
+        let ids: Vec<i64> = visible.iter().map(|id| *id as i64).collect();
+        let safe = app.db.public_visible_channel_days(guild, frame.first, &ids).await?;
+        let by_day: HashMap<_, _> = safe.into_iter().map(|d| (d.day, d)).collect();
+        for day in &mut days {
+            day.messages = by_day.get(&day.day).map_or(0, |d| d.messages);
+            day.voice_minutes = by_day.get(&day.day).map_or(0, |d| d.voice_minutes);
+        }
+    }
     let sum = server_stats::totals(&days);
     let (active, channels, members, settings) = tokio::try_join!(
         app.db.active_members(guild, frame.first),
-        app.db.top_channels(guild, frame.first, TOP),
+        async {
+            if visible.is_some() {
+                app.db.public_top_channels(guild, frame.first, 100_000).await
+            } else {
+                app.db.top_channels(guild, frame.first, TOP).await
+            }
+        },
         app.db.top_members(guild, frame.first, TOP),
         app.guild_settings(guild),
     )?;
+    let channels: Vec<_> = channels
+        .into_iter()
+        .filter(|c| visible.is_none_or(|ids| ids.contains(&(c.id as u64))))
+        .take(TOP as usize)
+        .collect();
+    let members = if visible.is_some() { Vec::new() } else { members };
+    let active = if visible.is_some() { 0 } else { active };
     let channel_ids: Vec<u64> = channels.iter().map(|c| c.id as u64).collect();
     let member_ids: Vec<u64> = members.iter().map(|m| m.id as u64).collect();
     let (title, channel_names, member_names) = tokio::join!(
@@ -201,9 +233,16 @@ pub(crate) async fn server_card(app: &App, guild: u64, period: Period, lang: Lan
             lang,
             "stats.card.messages",
             grouped(sum.messages),
-            Some(t!(lang, "stats.card.members-wrote", count = active)),
+            visible
+                .is_none()
+                .then(|| t!(lang, "stats.card.members-wrote", count = active)),
         ),
-        tile(lang, "stats.card.voice", minutes_text(sum.voice_minutes), voice_note),
+        tile(
+            lang,
+            "stats.card.voice",
+            minutes_text(sum.voice_minutes, lang),
+            voice_note,
+        ),
         tile(lang, "stats.card.joins", grouped(sum.joins), None),
         tile(
             lang,
@@ -220,9 +259,13 @@ pub(crate) async fn server_card(app: &App, guild: u64, period: Period, lang: Lan
         joins_label: pixel(t!(lang, "stats.card.joins-total", count = grouped(sum.joins))),
         leaves_label: pixel(t!(lang, "stats.card.leaves-total", count = grouped(sum.leaves))),
     });
-    card.heat = Some(StatHeat {
+    card.heat = visible.is_none().then(|| StatHeat {
         title: pixel(t!(lang, "stats.card.busiest-hours")),
-        grid: server_stats::heatmap(&hours),
+        grid: if visible.is_some() {
+            [[0_i64; 24]; 7]
+        } else {
+            server_stats::heatmap(&hours)
+        },
         weekdays: std::array::from_fn(|d| pixel(t!(lang, &format!("stats.weekday.{}", d + 1)))),
         less: pixel(t!(lang, "stats.card.quiet")),
         more: pixel(t!(lang, "stats.card.busy")),
@@ -260,6 +303,9 @@ pub(crate) async fn server_card(app: &App, guild: u64, period: Period, lang: Lan
             empty: t!(lang, "stats.card.nobody-yet"),
         },
     ];
+    if visible.is_some() {
+        card.lists.truncate(1);
+    }
     Ok(card)
 }
 
@@ -288,7 +334,7 @@ pub(crate) async fn member_card(
     let mut card = base(lang, &frame, "stats.card.member-kicker", name, period);
     card.tiles = vec![
         tile(lang, "stats.card.messages", grouped(messages), None),
-        tile(lang, "stats.card.voice", minutes_text(voice), None),
+        tile(lang, "stats.card.voice", minutes_text(voice, lang), None),
         rank_tile(lang, place, "stats.card.of-members"),
         tile(
             lang,
@@ -318,6 +364,12 @@ fn rank_tile(lang: Lang, place: Option<(i64, i64)>, of: &str) -> StatTile {
     }
 }
 
+/// Channels the viewer may see, and whether this channel's public tally is safe to show.
+pub(crate) struct ChannelAudience<'a> {
+    pub visible: &'a HashSet<u64>,
+    pub safe_public: bool,
+}
+
 /// A channel's card: `name` is the channel's name without the `#`.
 pub(crate) async fn channel_card(
     app: &App,
@@ -326,17 +378,30 @@ pub(crate) async fn channel_card(
     name: &str,
     period: Period,
     lang: Lang,
+    audience: ChannelAudience<'_>,
 ) -> anyhow::Result<StatsCard> {
     let frame = Frame::new(app, period);
-    let (rows, place, hours) = tokio::try_join!(
-        app.db.channel_days(guild, channel, frame.first),
-        app.db.channel_place(guild, channel, frame.first),
-        app.db.guild_hours(guild, first_moment(frame.first)),
-    )?;
+    let rows = if audience.safe_public {
+        app.db
+            .public_visible_channel_days(guild, frame.first, &[channel as i64])
+            .await?
+    } else {
+        app.db.channel_days(guild, channel, frame.first).await?
+    };
     let days = fill(&rows, frame.first, frame.days);
     let messages: i64 = days.iter().map(|d| d.messages).sum();
     let voice: i64 = days.iter().map(|d| d.voice_minutes).sum();
-    let server: i64 = hours.iter().map(|h| h.messages).sum();
+    let ids: Vec<i64> = audience.visible.iter().map(|id| *id as i64).collect();
+    let server: i64 = if audience.safe_public {
+        app.db
+            .public_visible_channel_days(guild, frame.first, &ids)
+            .await?
+            .iter()
+            .map(|d| d.messages)
+            .sum()
+    } else {
+        0
+    };
     let share = if server > 0 {
         (messages * 100 + server / 2) / server
     } else {
@@ -345,8 +410,8 @@ pub(crate) async fn channel_card(
     let mut card = base(lang, &frame, "stats.card.channel-kicker", format!("#{name}"), period);
     card.tiles = vec![
         tile(lang, "stats.card.messages", grouped(messages), None),
-        tile(lang, "stats.card.voice", minutes_text(voice), None),
-        rank_tile(lang, place, "stats.card.of-channels"),
+        tile(lang, "stats.card.voice", minutes_text(voice, lang), None),
+        rank_tile(lang, None, "stats.card.of-channels"),
         tile(
             lang,
             "stats.card.share",

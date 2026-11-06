@@ -84,6 +84,97 @@ async fn a_batch_is_written_once_and_adds_to_the_hour() {
 }
 
 #[tokio::test]
+async fn deletion_rejects_member_rows_from_an_already_sealed_batch() {
+    let Some(db) = db().await else { return };
+    let [guild, channel, user] = ids();
+    let hour = Utc::now() - Duration::minutes(1);
+    db.delete_user_data(user, Utc::now()).await.unwrap();
+    db.write_stats_batch(&format!("deleted:{guild}"), guild, hour, &tally(1, channel, user))
+        .await
+        .unwrap();
+    assert!(db.member_days(guild, user, hour.date_naive()).await.unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn late_hourly_batches_recompute_yesterdays_global_messages() {
+    let Some(db) = db().await else { return };
+    let [guild, channel, user] = ids();
+    let yesterday = Utc::now().date_naive() - Duration::days(1);
+    db.snapshot_global_stats(yesterday).await.unwrap();
+    let hour = yesterday.and_hms_opt(23, 0, 0).unwrap().and_utc();
+    let before = db
+        .global_days(yesterday)
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|d| d.day == yesterday)
+        .unwrap()
+        .messages;
+    db.write_stats_batch(&format!("late:{guild}"), guild, hour, &tally(3, channel, user))
+        .await
+        .unwrap();
+    db.refresh_global_message_history(yesterday).await.unwrap();
+    let after = db
+        .global_days(yesterday)
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|d| d.day == yesterday)
+        .unwrap()
+        .messages;
+    assert!(after >= before + 3);
+}
+
+#[tokio::test]
+async fn publication_and_audit_commit_together() {
+    let Some(db) = db().await else { return };
+    let [guild, actor] = ids();
+    db.guild_settings(guild).await.unwrap();
+    assert!(
+        db.set_stats_public_audited(guild, true, actor, "Test manager")
+            .await
+            .unwrap()
+    );
+    assert!(db.stats_public(guild).await.unwrap());
+    let audit = db.audit_page(guild, None, 10).await.unwrap();
+    assert_eq!(audit[0].action, "stats.public");
+    assert_eq!(audit[0].actor_id, actor as i64);
+}
+
+#[tokio::test]
+async fn public_daily_totals_exclude_hidden_channels() {
+    let Some(db) = db().await else { return };
+    let [guild, public, hidden, user] = ids();
+    let hour = Utc::now() - Duration::minutes(1);
+    let mut safe = tally(2, public, user);
+    safe.public_channels.insert(
+        public,
+        Pair {
+            messages: 2,
+            voice_minutes: 0,
+        },
+    );
+    db.write_stats_batch(&format!("public:{guild}"), guild, hour, &safe)
+        .await
+        .unwrap();
+    db.write_stats_batch(&format!("hidden:{guild}"), guild, hour, &tally(9, hidden, user))
+        .await
+        .unwrap();
+    let days = db
+        .public_visible_channel_days(guild, hour.date_naive(), &[public as i64])
+        .await
+        .unwrap();
+    assert_eq!(days.iter().map(|d| d.messages).sum::<i64>(), 2);
+    assert!(
+        db.public_top_channels(guild, hour.date_naive(), 8)
+            .await
+            .unwrap()
+            .iter()
+            .all(|rank| rank.id != hidden as i64)
+    );
+}
+
+#[tokio::test]
 async fn the_sweep_forgets_old_days_and_skips_rows_somebody_holds() {
     let Some(db) = db().await else { return };
     let [guild, channel, held_user, free_user] = ids();

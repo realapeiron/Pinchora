@@ -40,6 +40,8 @@ use twilight_http::Client;
 use twilight_model::{gateway::payload::incoming::MessageCreate, id::Id};
 
 // Custom commands and auto-responders.
+#[path = "api/stats.rs"]
+mod stats;
 #[path = "api/tags.rs"]
 mod tags;
 
@@ -112,6 +114,10 @@ struct Mock {
     role_calls: Arc<Mutex<Vec<String>>>,
     /// How many times a server's channels were asked for.
     channel_lookups: Arc<AtomicUsize>,
+    guild_lookups: Arc<AtomicUsize>,
+    guild_delay_ms: Arc<AtomicU64>,
+    /// Give @everyone View Channel but deny it on GENERAL for public-stats tests.
+    stats_public_channels: Arc<AtomicBool>,
     /// Where the bot's own role sits, so a test can move it between two saves.
     bot_position: Arc<AtomicI64>,
 }
@@ -359,14 +365,21 @@ async fn discord(State(mock): State<Mock>, method: Method, uri: Uri, headers: He
         (&Method::GET, [.., "guilds", guild, "channels"]) => {
             mock.channel_lookups.fetch_add(1, Ordering::SeqCst);
             let id = guild.parse::<u64>().unwrap_or(0);
-            (StatusCode::OK, channels_json(id).to_string())
+            let mut channels = channels_json(id);
+            if mock.stats_public_channels.load(Ordering::SeqCst) {
+                channels[1]["permission_overwrites"] = json!([{
+                    "id": id.to_string(), "type": 0, "allow": "0", "deny": (1u64 << 10).to_string()
+                }]);
+            }
+            (StatusCode::OK, channels.to_string())
         }
         (&Method::GET, [.., "guilds", guild, "roles"]) => {
             let id = guild.parse::<u64>().unwrap_or(0);
-            (
-                StatusCode::OK,
-                roles_json(id, mock.bot_position.load(Ordering::SeqCst)).to_string(),
-            )
+            let mut roles = roles_json(id, mock.bot_position.load(Ordering::SeqCst));
+            if mock.stats_public_channels.load(Ordering::SeqCst) {
+                roles[0]["permissions"] = json!((SEND_MESSAGES | (1u64 << 10)).to_string());
+            }
+            (StatusCode::OK, roles.to_string())
         }
         (&Method::GET, [.., "guilds", _, "members", user]) => {
             let user = user.parse::<u64>().unwrap_or(0);
@@ -394,6 +407,11 @@ async fn discord(State(mock): State<Mock>, method: Method, uri: Uri, headers: He
             (StatusCode::NO_CONTENT, String::new())
         }
         (&Method::GET, [.., "guilds", guild]) => {
+            mock.guild_lookups.fetch_add(1, Ordering::SeqCst);
+            let delay = mock.guild_delay_ms.load(Ordering::SeqCst);
+            if delay > 0 {
+                tokio::time::sleep(Duration::from_millis(delay)).await;
+            }
             let id = guild.parse::<u64>().unwrap_or(0);
             if mock.bot_guilds.lock().unwrap().contains(&id) {
                 (StatusCode::OK, guild_json(id).to_string())

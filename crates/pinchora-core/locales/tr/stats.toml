@@ -5,6 +5,12 @@ stats = "İstatistikler"
 
 [stats]
 expired = "Bu düğmelerin süresi doldu. /stats komutunu yeniden çalıştır."
+no-access = "Bu kanalın istatistiklerini artık göremiyorsun."
+
+[stats.duration]
+minutes = "{minutes} dk"
+hours-minutes = "{hours} sa {minutes} dk"
+hours = "{hours} sa"
 
 [stats.kind]
 members = "Üyeler"

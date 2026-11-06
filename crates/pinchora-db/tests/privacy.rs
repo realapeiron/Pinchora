@@ -999,7 +999,8 @@ async fn deleting_and_coming_back_resets_no_cooldown() {
         PeriodOutcome::Claimed { .. }
     ));
 
-    // Deleting twice in a row keeps the later of each time, and a player with nothing leaves no trace.
+    // Deleting twice keeps the later time. Even an empty player needs a tombstone so a pending
+    // stats batch cannot restore their activity.
     db.delete_user_data(user, now).await.unwrap();
     db.delete_user_data(user, now + Duration::hours(1)).await.unwrap();
     assert!(matches!(
@@ -1009,7 +1010,7 @@ async fn deleting_and_coming_back_resets_no_cooldown() {
     let [nobody] = ids();
     db.user(nobody).await.unwrap();
     db.delete_user_data(nobody, now).await.unwrap();
-    assert_eq!(count(&db, "deleted_users", "user_id", nobody).await, 0);
+    assert_eq!(count(&db, "deleted_users", "user_id", nobody).await, 1);
 
     // Tombstones are dropped when the longest cooldown is long over.
     sqlx::query("UPDATE deleted_users SET deleted_at = $2 WHERE user_id = $1")

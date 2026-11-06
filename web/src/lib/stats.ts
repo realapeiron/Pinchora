@@ -26,7 +26,7 @@ export interface Totals {
 }
 
 export interface TopChannel {
-  id: string;
+  id: string | null;
   name: string | null;
   messages: number;
   voice_minutes: number;

@@ -5,6 +5,12 @@ stats = "Stats"
 
 [stats]
 expired = "These buttons have expired. Run /stats again."
+no-access = "You can no longer view that channel's stats."
+
+[stats.duration]
+minutes = "{minutes}m"
+hours-minutes = "{hours}h {minutes}m"
+hours = "{hours}h"
 
 [stats.kind]
 members = "Members"
