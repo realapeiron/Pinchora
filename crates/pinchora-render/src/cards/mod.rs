@@ -273,7 +273,6 @@ mod tests {
     fn profile<'a>(backdrop: Option<Backdrop<'a>>, badges: &'a [BadgeIcon<'a>]) -> ProfileCard<'a> {
         ProfileCard {
             lang: pinchora_core::i18n::Lang::En,
-            lang: pinchora_core::i18n::Lang::En,
             display_name: "Captain Pinch",
             title: None,
             username: "captain.pinch",
@@ -302,7 +301,6 @@ mod tests {
         let plain = [
             profile(None, &[]).to_svg(),
             RankCard {
-                lang: pinchora_core::i18n::Lang::En,
                 lang: pinchora_core::i18n::Lang::En,
                 display_name: "A",
                 title: None,
@@ -410,7 +408,6 @@ mod tests {
 
     fn rank(title: Option<&str>) -> RankCard<'_> {
         RankCard {
-            lang: pinchora_core::i18n::Lang::En,
             lang: pinchora_core::i18n::Lang::En,
             display_name: "Captain Pinch",
             title,
