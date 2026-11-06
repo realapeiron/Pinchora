@@ -1,8 +1,9 @@
 import { useCallback, useState } from "react";
 import { Link, useOutletContext } from "react-router";
 
+import { Field } from "../components/Field";
 import { Panel } from "../components/Panel";
-import { PixelLink } from "../components/PixelButton";
+import { PixelButton, PixelLink } from "../components/PixelButton";
 import { PixelToggle } from "../components/PixelToggle";
 import { SaveBar } from "../components/SaveBar";
 import { Toast } from "../components/Toast";
@@ -10,6 +11,7 @@ import type { Overview as OverviewData, Settings } from "../lib/api";
 import { changedFields, patchOf } from "../lib/draft";
 import { badge } from "../lib/modules";
 import { useNames, useSaveSettings } from "../lib/queries";
+import { DEFAULTS, LIMITS, checkPrefix } from "../lib/rules";
 import { describeChange, timeAgo } from "../lib/text";
 
 const MODE_WORDS: Record<string, string> = {
@@ -70,15 +72,20 @@ export function Overview() {
   const saved = data.settings;
   const changes = changedFields(saved, draft).length;
   const leveling = (draft.leveling_enabled ?? saved.leveling_enabled) as boolean;
+  const prefix = draft.prefix ?? saved.prefix;
+  const prefixCheck = checkPrefix(prefix);
+  const prefixError = draft.prefix !== undefined && !prefixCheck.ok ? prefixCheck.message : null;
   const clearToast = useCallback(() => setToast(null), []);
 
-  const onSave = () =>
+  const onSave = () => {
+    if (prefixError) return;
     save.mutate(patchOf(saved, draft), {
       onSuccess: () => {
         setDraft({});
         setToast("Saved. The bot uses it from the next message.");
       },
     });
+  };
 
   return (
     <div className="overview">
@@ -117,6 +124,37 @@ export function Overview() {
             disabled={save.isPending}
           />
         </div>
+      </Panel>
+
+      <Panel title="TEXT COMMANDS">
+        <Field
+          label="Prefix"
+          htmlFor="text-prefix"
+          error={prefixError}
+          hint={`Every command also works as text: ${prefix.trim() || DEFAULTS.prefix}profile, or @Pinchora profile.`}
+          aside={
+            prefix !== DEFAULTS.prefix && (
+              <PixelButton
+                variant="ghost"
+                className="button-small"
+                onClick={() => setDraft((d) => ({ ...d, prefix: DEFAULTS.prefix }))}
+                disabled={save.isPending}
+              >
+                Default
+              </PixelButton>
+            )
+          }
+        >
+          <input
+            id="text-prefix"
+            className="pixel-input input-short"
+            value={prefix}
+            maxLength={LIMITS.prefix_max + 8}
+            onChange={(event) => setDraft((d) => ({ ...d, prefix: event.target.value }))}
+            aria-invalid={prefixError ? true : undefined}
+            disabled={save.isPending}
+          />
+        </Field>
       </Panel>
 
       <Panel title="AT A GLANCE">

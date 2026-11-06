@@ -367,6 +367,76 @@
       }
     },
     {
+      "check": "prefix",
+      "input": "p!",
+      "result": {
+        "ok": true,
+        "value": "p!"
+      }
+    },
+    {
+      "check": "prefix",
+      "input": " ? ",
+      "result": {
+        "ok": true,
+        "value": "?"
+      }
+    },
+    {
+      "check": "prefix",
+      "input": "",
+      "result": {
+        "field": "prefix",
+        "message": "A prefix is 1 to 5 characters, e.g. p! or ?.",
+        "ok": false
+      }
+    },
+    {
+      "check": "prefix",
+      "input": "toolong",
+      "result": {
+        "field": "prefix",
+        "message": "A prefix is 1 to 5 characters, e.g. p! or ?.",
+        "ok": false
+      }
+    },
+    {
+      "check": "prefix",
+      "input": "p !",
+      "result": {
+        "field": "prefix",
+        "message": "A prefix can't hold spaces, @, # or backticks.",
+        "ok": false
+      }
+    },
+    {
+      "check": "prefix",
+      "input": "@p",
+      "result": {
+        "field": "prefix",
+        "message": "A prefix can't hold spaces, @, # or backticks.",
+        "ok": false
+      }
+    },
+    {
+      "check": "prefix",
+      "input": "#",
+      "result": {
+        "field": "prefix",
+        "message": "A prefix can't hold spaces, @, # or backticks.",
+        "ok": false
+      }
+    },
+    {
+      "check": "prefix",
+      "input": "`",
+      "result": {
+        "field": "prefix",
+        "message": "A prefix can't hold spaces, @, # or backticks.",
+        "ok": false
+      }
+    },
+    {
       "check": "points",
       "input": [
         1,
@@ -636,6 +706,7 @@
     }
   ],
   "defaults": {
+    "prefix": "p!",
     "theme": "reef",
     "welcome_title": "Welcome"
   },
@@ -665,6 +736,7 @@
     ],
     "points_emoji_max": 64,
     "points_name_max": 32,
+    "prefix_max": 5,
     "price": [
       1,
       1000000000

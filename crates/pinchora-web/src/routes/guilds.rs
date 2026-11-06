@@ -93,6 +93,8 @@ pub struct SettingsView {
     pub log_names: bool,
     pub log_bans: bool,
     pub log_voice: bool,
+    /// The prefix text commands start with, the default when the server picked none.
+    pub prefix: String,
 }
 
 fn id(value: Option<i64>) -> Option<String> {
@@ -101,6 +103,7 @@ fn id(value: Option<i64>) -> Option<String> {
 
 impl From<GuildSettings> for SettingsView {
     fn from(s: GuildSettings) -> Self {
+        let prefix = s.prefix().to_owned();
         Self {
             leveling_enabled: s.leveling_enabled,
             levelup_channel_id: id(s.levelup_channel_id),
@@ -128,6 +131,7 @@ impl From<GuildSettings> for SettingsView {
             log_names: s.log_names,
             log_bans: s.log_bans,
             log_voice: s.log_voice,
+            prefix,
         }
     }
 }

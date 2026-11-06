@@ -436,9 +436,10 @@ pub fn check_patch(
             Err(error) => note(Err(error)),
         }
     }
-    if let Some(Some(prefix)) = &mut patch.prefix {
+    if let Some(Some(prefix)) = &patch.prefix {
         match check_prefix(prefix) {
-            Ok(clean) => *prefix = clean,
+            // The default is stored as no prefix, as `/config prefix reset` leaves it.
+            Ok(clean) => patch.prefix = Some(Some(clean).filter(|p| p != DEFAULT_PREFIX)),
             Err(error) => note(Err(error)),
         }
     }
@@ -596,6 +597,16 @@ mod tests {
         };
         let clean = check_patch(patch, (1, 3)).unwrap();
         assert_eq!(clean.welcome_title, Some(Some("HELLO".into())));
+        let prefix = |p: &str| GuildSettingsPatch {
+            prefix: Some(Some(p.into())),
+            ..Default::default()
+        };
+        assert_eq!(
+            check_patch(prefix(" z! "), (1, 3)).unwrap().prefix,
+            Some(Some("z!".into()))
+        );
+        assert_eq!(check_patch(prefix("p!"), (1, 3)).unwrap().prefix, Some(None));
+        assert_eq!(check_patch(prefix("@"), (1, 3)).unwrap_err()[0].field, "prefix");
         assert_eq!(clean.points_name.as_deref(), Some("shells"));
 
         let bad = GuildSettingsPatch {

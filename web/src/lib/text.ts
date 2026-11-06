@@ -57,6 +57,7 @@ const FIELD_NAMES: Record<string, string> = {
   log_names: "name change logs",
   log_bans: "ban logs",
   log_voice: "voice logs",
+  prefix: "the text command prefix",
 };
 
 /** Fields whose meaning depends on the action that wrote them. */

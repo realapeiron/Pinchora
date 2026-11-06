@@ -11,6 +11,7 @@ import {
   checkPoints,
   checkPointsEmoji,
   checkPointsName,
+  checkPrefix,
   checkPrice,
   checkReputation,
   checkStock,
@@ -29,6 +30,7 @@ const checks: Record<string, (input: Input) => Check<unknown>> = {
   title: (s) => checkTitle(s as string),
   points_name: (s) => checkPointsName(s as string),
   points_emoji: (s) => checkPointsEmoji(s as string),
+  prefix: (s) => checkPrefix(s as string),
   points: (pair) => {
     const [min, max] = pair as [number, number];
     return checkPoints(min, max);

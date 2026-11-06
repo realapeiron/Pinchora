@@ -64,6 +64,9 @@ pub struct SettingsBody {
     log_names: Option<bool>,
     log_bans: Option<bool>,
     log_voice: Option<bool>,
+    /// `null` goes back to the default prefix.
+    #[serde(default, deserialize_with = "present")]
+    prefix: Option<Option<String>>,
 }
 
 /// A Discord id from a form: digits, not zero.
@@ -130,6 +133,7 @@ impl SettingsBody {
             log_names: self.log_names,
             log_bans: self.log_bans,
             log_voice: self.log_voice,
+            prefix: self.prefix,
         };
         if errors.is_empty() { Ok(patch) } else { Err(errors) }
     }
