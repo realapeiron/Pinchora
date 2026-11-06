@@ -120,6 +120,8 @@ async fn boot(config: &Config, role: &str) -> anyhow::Result<(Arc<App>, Readines
     // Sends the reminders that came due; every pod runs it and the table's leases keep one from
     // repeating another.
     pinchora_commands::spawn_reminder_ticker(app.clone());
+    // Ends giveaways and closes polls when their time is up, on whichever pod gets there first.
+    pinchora_commands::spawn_events_ticker(app.clone());
     // Voice states only arrive on the gateway; its ticker pays everyone sitting in voice.
     if role == "gateway" {
         pinchora_commands::spawn_voice_ticker(app.clone());

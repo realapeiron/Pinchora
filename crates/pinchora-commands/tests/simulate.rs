@@ -28,8 +28,8 @@ use axum::{
 };
 use pinchora_cache::Cache;
 use pinchora_commands::{
-    App, Responder, handle_interaction, on_ban_add, on_ban_remove, on_member_add, on_member_remove, on_member_update,
-    on_message, on_voice_state_update, reminder_tick, sweep_games,
+    App, Deferral, Responder, handle_interaction, on_ban_add, on_ban_remove, on_member_add, on_member_remove,
+    on_member_update, on_message, on_voice_state_update, reminder_tick, sweep_games,
 };
 use pinchora_db::{Counter, Db};
 use pinchora_game::{
@@ -119,6 +119,8 @@ struct Mock {
     deleted: Arc<Mutex<Vec<u64>>>,
     /// Roles somebody deleted: changing one answers Unknown Role.
     deleted_roles: Arc<Mutex<Vec<u64>>>,
+    /// Channels the bot may not post in: posting answers Missing Permissions.
+    blocked: Arc<Mutex<Vec<u64>>>,
 }
 
 /// A message a handler posted to a channel (`POST`) or edited there (`PATCH`).
@@ -127,6 +129,8 @@ struct Post {
     channel: u64,
     message: u64,
     body: Value,
+    /// Images that came with it.
+    files: Vec<File>,
 }
 
 impl Post {
@@ -313,15 +317,23 @@ async fn discord(
             return (StatusCode::NO_CONTENT, String::new());
         }
         (&Method::GET, [.., "guilds", guild]) => return (StatusCode::OK, guild_json(number(guild)).to_string()),
-        (&Method::POST, [.., "users", "@me", "channels"]) => return open_direct_message(&body),
-        (&Method::POST, [.., "channels", channel, "messages"]) => {
+        (&Method::POST, [.., "users", "@me", "channels"]) => {
             let (body, _) = request_body(&headers, &body);
+            return open_direct_message(number(body["recipient_id"].as_str().unwrap_or_default()));
+        }
+        (&Method::POST, [.., "channels", channel, "messages"]) => {
+            let (body, files) = request_body(&headers, &body);
             let (channel, id) = (number(channel), unique());
+            if mock.blocked.lock().unwrap().contains(&channel) {
+                let refusal = json!({ "message": "Missing Permissions", "code": 50013 });
+                return (StatusCode::FORBIDDEN, refusal.to_string());
+            }
             mock.posts.lock().unwrap().push(Post {
                 method: method.clone(),
                 channel,
                 message: id,
                 body,
+                files,
             });
             return (StatusCode::OK, message_json(channel, id).to_string());
         }
@@ -331,12 +343,13 @@ async fn discord(
                 let gone = json!({ "message": "Unknown Message", "code": 10008 });
                 return (StatusCode::NOT_FOUND, gone.to_string());
             }
-            let (body, _) = request_body(&headers, &body);
+            let (body, files) = request_body(&headers, &body);
             mock.posts.lock().unwrap().push(Post {
                 method: method.clone(),
                 channel,
                 message: id,
                 body,
+                files,
             });
             return (StatusCode::OK, message_json(channel, id).to_string());
         }
@@ -471,6 +484,8 @@ struct Reply {
     modal: Option<(String, String)>,
     /// The text boxes of that form as (custom id, prefilled value).
     modal_inputs: Vec<(String, Option<String>)>,
+    /// The `allowed_mentions` the handler sent with its last answer, if it sent any.
+    mentions: Option<Value>,
 }
 
 impl Reply {
@@ -485,7 +500,13 @@ impl Reply {
             followups: Vec::new(),
             modal: None,
             modal_inputs: Vec::new(),
+            mentions: None,
         }
+    }
+
+    /// Whether the handler told Discord to ping nobody: `allowed_mentions` is there and parses nothing.
+    fn pings_nobody(&self) -> bool {
+        self.mentions == Some(json!({ "parse": [] }))
     }
 
     /// Applies what the handler sent; fields it left out stay as they were.
@@ -509,6 +530,7 @@ impl Reply {
                 followups: Vec::new(),
                 modal: None,
                 modal_inputs: Vec::new(),
+                mentions: None,
                 ..on.clone()
             },
             _ => Self::new(first.kind),
@@ -533,6 +555,9 @@ impl Reply {
             if let Some(flags) = data.flags {
                 reply.ephemeral = flags.contains(MessageFlags::EPHEMERAL);
             }
+            reply.mentions = data
+                .allowed_mentions
+                .map(|m| serde_json::to_value(m).expect("mentions as JSON"));
             reply.edit(data.content, data.embeds, data.components);
             reply.files = data
                 .attachments
@@ -552,12 +577,14 @@ impl Reply {
             let content = body.get("content").and_then(Value::as_str).map(str::to_owned);
             if call.method == Method::PATCH && call.path.ends_with("/messages/@original") {
                 reply.edit(content, embeds, components);
+                reply.mentions = body.get("allowed_mentions").cloned();
                 if body.get("attachments").is_some() {
                     reply.files = call.files;
                 }
             } else {
                 let mut followup = Self::new(InteractionResponseType::ChannelMessageWithSource);
                 followup.ephemeral = body["flags"].as_u64().is_some_and(|f| f & 64 != 0);
+                followup.mentions = body.get("allowed_mentions").cloned();
                 followup.edit(content, embeds, components);
                 followup.files = call.files;
                 reply.followups.push(followup);
@@ -817,6 +844,7 @@ impl Sim {
             posts: Arc::default(),
             deleted: Arc::default(),
             deleted_roles: Arc::default(),
+            blocked: Arc::default(),
         };
         let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind the mock");
         let mock = listener.local_addr().expect("mock address");
@@ -899,6 +927,13 @@ impl Sim {
     fn posts(&self) -> Vec<Post> {
         let posts = std::mem::take(&mut *self.mock.posts.lock().unwrap());
         for post in &posts {
+            for (filename, bytes) in &post.files {
+                let path = self.dir.join(format!("post-{}-{filename}", post.message));
+                std::fs::write(&path, bytes).expect("save the image");
+                let image =
+                    image::load_from_memory(bytes).unwrap_or_else(|e| panic!("{filename} is not a valid image: {e}"));
+                println!("  image: {} ({}x{})", path.display(), image.width(), image.height());
+            }
             let text = [post.title(), post.content()]
                 .iter()
                 .filter(|t| !t.is_empty())
@@ -921,6 +956,11 @@ impl Sim {
     /// Makes a role disappear, as if a moderator had deleted it.
     fn delete_role(&self, id: u64) {
         self.mock.deleted_roles.lock().unwrap().push(id);
+    }
+
+    /// Takes away the bot's right to post in `channel`: posting there answers Missing Permissions.
+    fn block_channel(&self, channel: u64) {
+        self.mock.blocked.lock().unwrap().push(channel);
     }
 
     /// Makes a posted message disappear, as if a moderator had deleted it.
@@ -1189,6 +1229,7 @@ impl Sim {
 
         let (tx, mut rx) = oneshot::channel();
         let responder = Arc::new(Responder::http(self.app.clone(), &interaction, tx));
+        let deferral = responder.deferral();
         handle_interaction(self.app.clone(), interaction, responder).await;
 
         let errors = ERRORS.take();
@@ -1202,6 +1243,21 @@ impl Sim {
             .unwrap_or_else(|_| panic!("step {step} ({label}): the handler never answered"));
         let calls = std::mem::take(&mut *self.calls.lock().unwrap());
         let reply = Reply::build(first, on, calls);
+        // What the gateway's slow-handler defer assumes: a command it makes private never answers
+        // publicly, and a form can only follow an answer that is no defer.
+        if kind == 2 && deferral == Deferral::Private {
+            assert!(
+                reply.ephemeral,
+                "step {step} ({label}): listed as answering privately, but answered publicly"
+            );
+        }
+        if reply.modal.is_some() {
+            assert_eq!(
+                deferral,
+                Deferral::Never,
+                "step {step} ({label}): opened a form, which a defer would have broken"
+            );
+        }
         self.report(step, &label, &reply);
         reply
     }
@@ -6316,8 +6372,11 @@ fn content_emoji(key: &str) -> &'static str {
 
 // /Leveling toolkit
 
-/// The direct message channel the mock opens when it is not told who for.
-const DM_CHANNEL_ID: u64 = 9_100_000_000_001;
+/// Whether the mock refuses to open direct messages (the member closed them).
+static DMS_CLOSED: AtomicBool = AtomicBool::new(false);
+/// Members whose direct messages are open (`false`) or closed (`true`) whatever [`DMS_CLOSED`] says, so
+/// a test of its own can rely on them.
+static DM_OVERRIDES: LazyLock<Mutex<HashMap<u64, bool>>> = LazyLock::new(Mutex::default);
 /// The AFK voice channel of each mock server.
 static AFK_CHANNELS: LazyLock<Mutex<HashMap<u64, u64>>> = LazyLock::new(Mutex::default);
 
@@ -6325,20 +6384,20 @@ fn afk_channel(guild: u64) -> Option<u64> {
     AFK_CHANNELS.lock().unwrap().get(&guild).copied()
 }
 
-/// Players whose direct messages the mock refuses to open (they closed them).
-static CLOSED_FOR: LazyLock<Mutex<std::collections::HashSet<u64>>> = LazyLock::new(Mutex::default);
-
 /// `POST /users/@me/channels`.
-fn open_direct_message(body: &[u8]) -> (StatusCode, String) {
-    let recipient = serde_json::from_slice::<Value>(body)
-        .ok()
-        .and_then(|b| b["recipient_id"].as_str().and_then(|id| id.parse::<u64>().ok()));
-    if recipient.is_some_and(|id| CLOSED_FOR.lock().unwrap().contains(&id)) {
+fn open_direct_message(recipient: u64) -> (StatusCode, String) {
+    let closed = DM_OVERRIDES
+        .lock()
+        .unwrap()
+        .get(&recipient)
+        .copied()
+        .unwrap_or_else(|| DMS_CLOSED.load(Ordering::SeqCst));
+    if closed {
         let refusal = json!({ "message": "Cannot send messages to this user", "code": 50007 });
         return (StatusCode::FORBIDDEN, refusal.to_string());
     }
     // The channel is the recipient's own id, so a test can tell whose messages are whose.
-    let channel = json!({ "id": recipient.unwrap_or(DM_CHANNEL_ID).to_string(), "type": 1, "recipients": [] });
+    let channel = json!({ "id": recipient.to_string(), "type": 1, "recipients": [] });
     (StatusCode::OK, channel.to_string())
 }
 
@@ -7058,10 +7117,10 @@ async fn level_ups_follow_the_mode_and_fill_their_placeholders() {
 
     // Closed direct messages are not an error, and the level still counts.
     let sixth = unique();
-    CLOSED_FOR.lock().unwrap().insert(sixth);
+    DM_OVERRIDES.lock().unwrap().insert(sixth, true);
     level_up(&sim, sixth).await;
     sim.say_in(sixth, chatty, &[]).await;
-    CLOSED_FOR.lock().unwrap().remove(&sixth);
+    DM_OVERRIDES.lock().unwrap().remove(&sixth);
     assert!(sim.posts().is_empty());
     assert!(sim.server_xp(sixth).await >= 100);
     assert_eq!(
@@ -8125,6 +8184,8 @@ async fn reminders_arrive_once_after_their_time() {
     };
     let _turn = REMINDERS.lock().await;
     let user = unique();
+    // The level-up test closes everyone's DMs for a while; this member's stay open.
+    DM_OVERRIDES.lock().unwrap().insert(user, false);
     let hours = chrono::Duration::hours;
     let minutes = chrono::Duration::minutes;
     reminder_tick(&sim.app).await.unwrap();
@@ -8271,10 +8332,10 @@ async fn reminders_arrive_once_after_their_time() {
 
     // Closed direct messages: logged quietly, the reminder is dropped and not tried again.
     sim.command(user, "remind", remind_in("5m", "closed door")).await;
-    CLOSED_FOR.lock().unwrap().insert(user);
+    DM_OVERRIDES.lock().unwrap().insert(user, true);
     sim.app.shift_clock(minutes(6));
     reminder_tick(&sim.app).await.unwrap();
-    CLOSED_FOR.lock().unwrap().remove(&user);
+    DM_OVERRIDES.lock().unwrap().insert(user, false);
     assert!(dms_of(&sim.posts(), user).is_empty());
     assert!(sim.app.db.text_reminders(user).await.unwrap().is_empty(), "dropped");
     reminder_tick(&sim.app).await.unwrap();
@@ -8321,6 +8382,7 @@ async fn pet_and_trip_reminders_follow_the_pet() {
     };
     let _turn = REMINDERS.lock().await;
     let (user, db) = (unique(), sim.app.db.clone());
+    DM_OVERRIDES.lock().unwrap().insert(user, false);
     reminder_tick(&sim.app).await.unwrap();
     sim.posts();
     let content = Content::get();
@@ -8716,5 +8778,1052 @@ async fn wrapped_opens_in_december_and_stays_open_through_january() {
         shut.content().contains(&format!("<t:{reopens}:D>")),
         "{}",
         shut.content()
+    );
+}
+
+// /Server events
+
+/// The events tests take turns: a tick ends every giveaway and poll that is due in the database, and
+/// these tests shift their clock far enough to end each other's.
+static EVENTS: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+/// A message the handlers posted, as a member sees it: its text, embeds and buttons.
+fn reply_of(post: &Post) -> Reply {
+    let mut reply = Reply::new(InteractionResponseType::ChannelMessageWithSource);
+    reply.content = post.body["content"].as_str().map(str::to_owned);
+    reply.embeds = post
+        .body
+        .get("embeds")
+        .and_then(|v| serde_json::from_value(v.clone()).ok())
+        .unwrap_or_default();
+    reply.components = post
+        .body
+        .get("components")
+        .and_then(|v| serde_json::from_value(v.clone()).ok())
+        .unwrap_or_default();
+    reply
+}
+
+/// Whether a posted message told Discord to ping nobody.
+fn pings_nobody(post: &Post) -> bool {
+    post.body["allowed_mentions"] == json!({ "parse": [] })
+}
+
+/// The one message of `method` a step left in `channel`.
+fn only(posts: &[Post], channel: u64, method: Method) -> &Post {
+    let found: Vec<&Post> = posts
+        .iter()
+        .filter(|p| p.channel == channel && p.method == method)
+        .collect();
+    match found.as_slice() {
+        [post] => post,
+        other => panic!("expected one {method} in channel {channel}, found {}", other.len()),
+    }
+}
+
+fn giveaway_start(duration: &str, winners: i64, prize: &str, shells: Option<i64>) -> Vec<Value> {
+    let mut options = vec![
+        text_option("duration", duration),
+        int_option("winners", winners),
+        text_option("prize", prize),
+    ];
+    options.extend(shells.map(|s| int_option("shells", s)));
+    options
+}
+
+/// `/giveaway <sub> options`.
+async fn giveaway_cmd(sim: &mut Sim, user: u64, name: &str, options: Vec<Value>) -> Reply {
+    sim.command(user, "giveaway", json!([sub(name, options)])).await
+}
+
+async fn running_giveaways(sim: &Sim) -> usize {
+    sim.app.db.running_giveaways(sim.guild).await.expect("giveaways").len()
+}
+
+#[tokio::test]
+async fn giveaways_run_pay_once_and_survive_restarts() {
+    let Some(mut sim) = Sim::new("giveaways_run_pay_once_and_survive_restarts").await else {
+        return;
+    };
+    let _turn = EVENTS.lock().await;
+    sim.channel = unique();
+    let channel = sim.channel;
+    let (host, poor, alice, bob, carol, dave, eve) =
+        (unique(), unique(), unique(), unique(), unique(), unique(), unique());
+    fund(&sim, host, 1_000).await;
+    fund(&sim, poor, 10).await;
+    let tick = |sim: &Sim| {
+        let app = sim.app.clone();
+        async move { pinchora_commands::events_tick(&app).await.expect("tick") }
+    };
+
+    // Only managers start giveaways.
+    let denied = giveaway_cmd(
+        &mut sim,
+        host,
+        "start",
+        giveaway_start("2h", 2, "Golden shell", Some(50)),
+    )
+    .await;
+    assert!(denied.content().contains("Manage Server"), "{}", denied.content());
+    assert!(denied.pings_nobody(), "every answer sets allowed_mentions");
+    assert_eq!(running_giveaways(&sim).await, 0);
+    sim.permissions = MANAGE_GUILD;
+
+    // Bad durations and an empty prize.
+    for (duration, expected) in [
+        ("soon", "couldn't read"),
+        ("10s", "1 minute to 30 days"),
+        ("45d", "1 minute to 30 days"),
+    ] {
+        let bad = giveaway_cmd(&mut sim, host, "start", giveaway_start(duration, 1, "x", None)).await;
+        assert!(bad.content().contains(expected), "{duration}: {}", bad.content());
+    }
+    let empty = giveaway_cmd(&mut sim, host, "start", giveaway_start("1h", 1, "<@1>", None)).await;
+    assert!(empty.content().contains("a prize"), "{}", empty.content());
+    assert_eq!(running_giveaways(&sim).await, 0);
+
+    // A shells prize is held from the host, and the prize text cannot carry a mention.
+    let started = giveaway_cmd(
+        &mut sim,
+        host,
+        "start",
+        giveaway_start("2h", 2, "Golden <@42> shell @everyone", Some(50)),
+    )
+    .await;
+    assert!(
+        started.ephemeral && started.content().contains("is live in"),
+        "{}",
+        started.content()
+    );
+    assert!(
+        started.content().contains("100 shells were taken from you"),
+        "{}",
+        started.content()
+    );
+    assert_eq!(shells(&sim, host).await, 900);
+    let posts = sim.posts();
+    let post = only(&posts, channel, Method::POST);
+    assert_eq!(post.title(), "Golden shell everyone");
+    assert!(pings_nobody(post), "{}", post.body);
+    let text = post.embed()["description"].as_str().unwrap();
+    assert!(
+        text.contains("Winners: **2**") && text.contains("**50** shells each"),
+        "{text}"
+    );
+    let first = sim.app.db.running_giveaways(sim.guild).await.unwrap()[0].clone();
+    assert_eq!(first.message_id, Some(post.message as i64));
+    let message = reply_of(post);
+
+    // A host who cannot cover the prize starts nothing and loses nothing.
+    let broke = giveaway_cmd(&mut sim, poor, "start", giveaway_start("1h", 1, "Big prize", Some(50))).await;
+    assert!(
+        broke.content().contains("You have 10") && broke.content().contains("**50** shells"),
+        "{}",
+        broke.content()
+    );
+    assert_eq!((shells(&sim, poor).await, running_giveaways(&sim).await), (10, 1));
+    assert!(sim.posts().is_empty());
+
+    // A channel the bot cannot post in: the host gets the held shells back.
+    let walled = unique();
+    sim.block_channel(walled);
+    let mut options = giveaway_start("1h", 1, "Walled prize", Some(40));
+    options.push(channel_option("channel", walled));
+    let refused = sim
+        .command_resolved(
+            host,
+            "giveaway",
+            json!([sub("start", options)]),
+            resolved_channels(&[walled]),
+        )
+        .await;
+    assert!(refused.content().contains("I can't post in"), "{}", refused.content());
+    assert_eq!((shells(&sim, host).await, running_giveaways(&sim).await), (900, 1));
+
+    // Entering: a toggle, an ephemeral answer, and one message edit per five seconds.
+    let hosting = sim.click(host, &message, "Enter").await;
+    assert!(hosting.content().contains("can't enter"), "{}", hosting.content());
+    let entered = sim.click(alice, &message, "Enter").await;
+    assert!(
+        entered.ephemeral && entered.pings_nobody() && entered.content().contains("1 entry so far"),
+        "{}",
+        entered.content()
+    );
+    let posts = sim.posts();
+    let edit = only(&posts, channel, Method::PATCH);
+    assert_eq!(edit.message, post.message);
+    assert_eq!(edit.field("Entries"), "1", "the first entry shows at once");
+    let (second, third) = (
+        sim.click(bob, &message, "Enter").await,
+        sim.click(carol, &message, "Enter").await,
+    );
+    assert!(second.content().contains("2 entries so far"), "{}", second.content());
+    assert!(third.content().contains("3 entries so far"), "{}", third.content());
+    let left = sim.click(alice, &message, "Enter").await;
+    assert!(left.content().contains("You left"), "{}", left.content());
+    let back = sim.click(alice, &message, "Enter").await;
+    assert!(back.content().contains("3 entries so far"), "{}", back.content());
+    tick(&sim).await;
+    assert!(
+        in_channel(&sim.posts(), channel).is_empty(),
+        "inside the five seconds nothing is edited, not even by the ticker"
+    );
+    tokio::time::sleep(std::time::Duration::from_millis(5_200)).await;
+    tick(&sim).await;
+    let posts = sim.posts();
+    assert_eq!(
+        only(&posts, channel, Method::PATCH).field("Entries"),
+        "3",
+        "the ticker catches up"
+    );
+    tick(&sim).await;
+    assert!(in_channel(&sim.posts(), channel).is_empty(), "and only once");
+
+    // A required role is checked when a member presses Enter.
+    let vip_id = unique();
+    let vip = sim.guild_role(vip_id, "VIP", 2);
+    let mut options = giveaway_start("5h", 2, "VIP cake", Some(10));
+    options.push(role_option("required_role", &vip));
+    let started = sim
+        .command_resolved(host, "giveaway", json!([sub("start", options)]), resolved(&[], &[&vip]))
+        .await;
+    assert!(started.content().contains("20 shells"), "{}", started.content());
+    let posts = sim.posts();
+    let vip_post = only(&posts, channel, Method::POST);
+    assert!(
+        vip_post.embed()["description"]
+            .as_str()
+            .unwrap()
+            .contains(&format!("Requires <@&{vip_id}>")),
+        "{}",
+        vip_post.embed()
+    );
+    let vip_message = reply_of(vip_post);
+    let vip_giveaway = sim
+        .app
+        .db
+        .running_giveaways(sim.guild)
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|g| g.prize == "VIP cake")
+        .expect("the VIP giveaway");
+    let shut_out = sim.click(dave, &vip_message, "Enter").await;
+    assert!(
+        shut_out.content().contains(&format!("<@&{vip_id}>")),
+        "{}",
+        shut_out.content()
+    );
+    sim.roles = vec![vip_id];
+    let welcomed = sim.click(eve, &vip_message, "Enter").await;
+    sim.roles.clear();
+    assert!(welcomed.content().contains("You're in"), "{}", welcomed.content());
+    assert_eq!(shells(&sim, host).await, 880);
+    let posts = sim.posts();
+    assert_eq!(
+        only(&posts, channel, Method::PATCH).field("Entries"),
+        "1",
+        "its own five seconds"
+    );
+
+    // /giveaway list shows what is running.
+    let list = giveaway_cmd(&mut sim, host, "list", vec![]).await;
+    assert!(list.ephemeral && list.pings_nobody());
+    let lines = list.description();
+    assert!(
+        lines.contains(&format!("**#{}**", first.id))
+            && lines.contains("Golden shell everyone")
+            && lines.contains(&format!("**#{}**", vip_giveaway.id))
+            && lines.contains("3 entries")
+            && lines.contains("1 entry"),
+        "{lines}"
+    );
+
+    // Time passes: the first giveaway (2 hours) is over, the VIP one (5 hours) is not.
+    sim.app.shift_clock(chrono::Duration::hours(3));
+    let late = sim.click(dave, &message, "Enter").await;
+    assert!(late.content().contains("has ended"), "{}", late.content());
+    tick(&sim).await;
+    let ended = sim.app.db.giveaway(first.id).await.unwrap().unwrap();
+    assert_eq!(ended.status, "ended");
+    assert!(ended.announced);
+    assert_eq!(ended.winner_ids.len(), 2, "two winners from three entrants");
+    let entrants = [alice, bob, carol];
+    assert!(ended.winner_ids.iter().all(|w| entrants.contains(&(*w as u64))));
+    for entrant in entrants {
+        let won = ended.winner_ids.contains(&(entrant as i64));
+        assert_eq!(
+            shells(&sim, entrant).await,
+            if won { 50 } else { 0 },
+            "payout of {entrant}"
+        );
+    }
+    assert_eq!(
+        shells(&sim, host).await,
+        880,
+        "both prizes were won, nothing comes back"
+    );
+    let posts = sim.posts();
+    let result = only(&posts, channel, Method::POST);
+    assert!(pings_nobody(result), "{}", result.body);
+    for winner in &ended.winner_ids {
+        assert!(
+            result.content().contains(&format!("<@{winner}>")),
+            "{}",
+            result.content()
+        );
+    }
+    assert!(
+        result.content().contains("Congratulations") && result.content().contains("50 shells were paid"),
+        "{}",
+        result.content()
+    );
+    let locked = only(&posts, channel, Method::PATCH);
+    assert_eq!(locked.message, post.message);
+    assert_eq!(locked.body["components"][0]["components"][0]["disabled"], json!(true));
+    assert_eq!(locked.field("Winners").matches("<@").count(), 2);
+    assert_eq!(
+        sim.app.db.giveaway(vip_giveaway.id).await.unwrap().unwrap().status,
+        "running"
+    );
+    tick(&sim).await;
+    assert!(
+        in_channel(&sim.posts(), channel).is_empty(),
+        "a giveaway ends exactly once"
+    );
+    for entrant in entrants {
+        assert!(shells(&sim, entrant).await <= 50, "nobody was paid twice");
+    }
+
+    // A reroll picks someone who has not won, pays nothing, and runs out of people.
+    let leftover = entrants
+        .into_iter()
+        .find(|e| !ended.winner_ids.contains(&(*e as i64)))
+        .expect("one entrant did not win");
+    let id = int_option("id", first.id);
+    let rerolled = giveaway_cmd(&mut sim, host, "reroll", vec![id.clone()]).await;
+    assert!(
+        rerolled.content().contains(&format!("<@{leftover}>")),
+        "{}",
+        rerolled.content()
+    );
+    let posts = sim.posts();
+    let announced = only(&posts, channel, Method::POST);
+    assert!(
+        announced.content().contains(&format!("<@{leftover}>")) && pings_nobody(announced),
+        "{}",
+        announced.body
+    );
+    assert_eq!(shells(&sim, leftover).await, 0, "a reroll does not pay shells");
+    let none_left = giveaway_cmd(&mut sim, host, "reroll", vec![id]).await;
+    assert!(
+        none_left.content().contains("Nobody is left"),
+        "{}",
+        none_left.content()
+    );
+    let running = giveaway_cmd(&mut sim, host, "reroll", vec![int_option("id", vip_giveaway.id)]).await;
+    assert!(running.content().contains("still running"), "{}", running.content());
+
+    // Ending early: the winner is paid and the prize nobody won goes back to the host.
+    let early = giveaway_cmd(&mut sim, host, "end", vec![int_option("id", vip_giveaway.id)]).await;
+    assert!(
+        early.content().contains("Ended giveaway") && early.content().contains(&format!("<@{eve}>")),
+        "{}",
+        early.content()
+    );
+    assert_eq!((shells(&sim, eve).await, shells(&sim, host).await), (10, 890));
+    let posts = sim.posts();
+    let result = only(&posts, channel, Method::POST);
+    assert!(
+        result.content().contains("10 unclaimed shells went back"),
+        "{}",
+        result.content()
+    );
+    let again = giveaway_cmd(&mut sim, host, "end", vec![int_option("id", vip_giveaway.id)]).await;
+    assert!(again.content().contains("already ended"), "{}", again.content());
+    let other = giveaway_cmd(&mut sim, host, "end", vec![int_option("id", 999_999_999)]).await;
+    assert!(other.content().contains("no giveaway"), "{}", other.content());
+
+    // Another server's giveaway cannot be reached by its number.
+    let elsewhere = match sim
+        .app
+        .db
+        .create_giveaway(pinchora_db::NewGiveaway {
+            guild_id: unique(),
+            channel_id: unique(),
+            host: unique(),
+            prize: "Elsewhere",
+            shells: 0,
+            winners: 1,
+            required_role: None,
+            ends_at: sim.app.now() + chrono::Duration::hours(1),
+        })
+        .await
+        .unwrap()
+    {
+        pinchora_db::GiveawayOpen::Started(g) => *g,
+        other => panic!("{other:?}"),
+    };
+    let foreign = giveaway_cmd(&mut sim, host, "end", vec![int_option("id", elsewhere.id)]).await;
+    assert!(foreign.content().contains("no giveaway"), "{}", foreign.content());
+    sim.app.db.abort_giveaway(elsewhere.id).await.unwrap();
+    let forged = sim
+        .component(alice, &format!("gw:e:{}", elsewhere.id), &[], &message)
+        .await;
+    assert!(forged.content().contains("no longer exists"), "{}", forged.content());
+    let junk = sim.component(alice, "gw:e:x", &[], &message).await;
+    assert!(junk.content().contains("expired"), "{}", junk.content());
+
+    // Two ticks at once pay a giveaway once and announce it once.
+    let (x, y) = (unique(), unique());
+    giveaway_cmd(&mut sim, host, "start", giveaway_start("1h", 1, "Race", Some(25))).await;
+    let posts = sim.posts();
+    let race = reply_of(only(&posts, channel, Method::POST));
+    sim.click(x, &race, "Enter").await;
+    sim.click(y, &race, "Enter").await;
+    assert_eq!(shells(&sim, host).await, 865);
+    sim.app.shift_clock(chrono::Duration::hours(2));
+    let (a, b) = tokio::join!(tick(&sim), tick(&sim));
+    assert!(a + b >= 1, "somebody ended it");
+    let balances = (shells(&sim, x).await, shells(&sim, y).await);
+    assert!(balances == (25, 0) || balances == (0, 25), "paid once: {balances:?}");
+    assert_eq!(shells(&sim, host).await, 865, "nothing came back: it was won");
+    let posts = sim.posts();
+    let announcements = posts
+        .iter()
+        .filter(|p| p.channel == channel && p.method == Method::POST)
+        .count();
+    assert_eq!(announcements, 1, "announced once");
+
+    // Nobody entered: the whole prize goes back.
+    giveaway_cmd(&mut sim, host, "start", giveaway_start("1h", 1, "Lonely", Some(30))).await;
+    assert_eq!(shells(&sim, host).await, 835);
+    sim.posts();
+    sim.app.shift_clock(chrono::Duration::hours(2));
+    tick(&sim).await;
+    let posts = sim.posts();
+    let result = only(&posts, channel, Method::POST);
+    assert!(
+        result.content().contains("Nobody entered") && result.content().contains("30 unclaimed shells"),
+        "{}",
+        result.content()
+    );
+    assert_eq!(shells(&sim, host).await, 865);
+
+    // A pod that ended a giveaway and died before announcing it: the next tick announces it.
+    giveaway_cmd(&mut sim, host, "start", giveaway_start("1h", 1, "Orphan", Some(5))).await;
+    let posts = sim.posts();
+    let orphan = reply_of(only(&posts, channel, Method::POST));
+    let z = unique();
+    sim.click(z, &orphan, "Enter").await;
+    sim.posts();
+    sim.app.shift_clock(chrono::Duration::hours(2));
+    let mine = sim.app.db.running_giveaways(sim.guild).await.unwrap().remove(0);
+    assert_eq!(mine.prize, "Orphan");
+    let ended = sim
+        .app
+        .db
+        .end_giveaway(mine.id, sim.app.now(), false, |pool, n| {
+            pool.iter().copied().take(n).collect()
+        })
+        .await
+        .unwrap()
+        .expect("ended by the pod that then died");
+    assert_eq!(ended.winners, [z]);
+    assert!(in_channel(&sim.posts(), channel).is_empty());
+    assert!(!sim.app.db.giveaway(mine.id).await.unwrap().unwrap().announced);
+    tick(&sim).await;
+    let posts = sim.posts();
+    let late_news = only(&posts, channel, Method::POST);
+    assert!(
+        late_news.content().contains(&format!("<@{z}>")),
+        "{}",
+        late_news.content()
+    );
+    assert_eq!(shells(&sim, z).await, 5);
+    tick(&sim).await;
+    assert!(in_channel(&sim.posts(), channel).is_empty(), "announced once");
+}
+
+/// The ids of the 👍 and 👎 buttons of a suggestion message.
+fn vote_buttons(reply: &Reply) -> (String, String) {
+    let ids: Vec<String> = reply
+        .controls()
+        .filter_map(|c| match c {
+            Component::Button(b) => b.custom_id.clone(),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(ids.len(), 2, "a suggestion has two buttons: {ids:?}");
+    (ids[0].clone(), ids[1].clone())
+}
+
+/// The counts on the 👍 and 👎 buttons.
+fn vote_counts(reply: &Reply) -> (String, String) {
+    let labels: Vec<String> = reply
+        .controls()
+        .filter_map(|c| match c {
+            Component::Button(b) => b.label.clone(),
+            _ => None,
+        })
+        .collect();
+    (labels[0].clone(), labels[1].clone())
+}
+
+#[tokio::test]
+async fn suggestions_collect_votes_and_managers_decide() {
+    let Some(mut sim) = Sim::new("suggestions_collect_votes_and_managers_decide").await else {
+        return;
+    };
+    let (admin, author, second_author, alice, bob) = (unique(), unique(), unique(), unique(), unique());
+    let (ideas, walled) = (unique(), unique());
+    // The mock opens these members' DMs, whatever the level-up test does to the shared flag; the
+    // second author has closed theirs.
+    DM_OVERRIDES.lock().unwrap().insert(author, false);
+    DM_OVERRIDES.lock().unwrap().insert(second_author, true);
+    let suggest = |text: &str| json!([text_option("text", text)]);
+
+    // Nothing to post to until a manager picks a channel.
+    let unset = sim.command(author, "suggest", suggest("Add a garden")).await;
+    assert!(unset.content().contains("aren't set up"), "{}", unset.content());
+    assert!(unset.pings_nobody());
+
+    sim.permissions = MANAGE_GUILD;
+    let shown = sim.command(admin, "config", json!([sub("suggestions", vec![])])).await;
+    assert!(shown.content().contains("**off**"), "{}", shown.content());
+    let both = sim
+        .command_resolved(
+            admin,
+            "config",
+            json!([sub(
+                "suggestions",
+                vec![channel_option("channel", ideas), bool_option("off", true)]
+            )]),
+            resolved_channels(&[ideas]),
+        )
+        .await;
+    assert!(both.content().contains("not both"), "{}", both.content());
+    let set = sim
+        .command_resolved(
+            admin,
+            "config",
+            json!([sub("suggestions", vec![channel_option("channel", ideas)])]),
+            resolved_channels(&[ideas]),
+        )
+        .await;
+    assert!(
+        set.content().contains(&format!("**on** · <#{ideas}>")),
+        "{}",
+        set.content()
+    );
+    let settings = sim.command(admin, "config", json!([sub("show", vec![])])).await;
+    assert!(
+        settings.field("Suggestions").contains(&format!("<#{ideas}>")),
+        "{}",
+        settings.field("Suggestions")
+    );
+    sim.permissions = 0;
+
+    // A suggestion: mentions stripped, 👍 and 👎 buttons at zero, nobody pinged.
+    let posted = sim
+        .command(author, "suggest", suggest("Add a <@42> garden\n@everyone please"))
+        .await;
+    assert!(
+        posted.ephemeral && posted.content().contains("up as **#1**"),
+        "{}",
+        posted.content()
+    );
+    let posts = sim.posts();
+    let post = only(&posts, ideas, Method::POST);
+    assert_eq!(post.title(), "Suggestion #1");
+    assert_eq!(post.embed()["description"], "Add a garden\neveryone please");
+    assert!(pings_nobody(post), "{}", post.body);
+    let message = reply_of(post);
+    assert_eq!(vote_counts(&message), ("0".to_owned(), "0".to_owned()));
+    let (up, down) = vote_buttons(&message);
+    assert_eq!(
+        message.field("Suggested by"),
+        format!("<@{author}>"),
+        "the author is named, not pinged"
+    );
+    let slow = sim.command(author, "suggest", suggest("And a pond")).await;
+    assert!(slow.content().contains("Give it a moment"), "{}", slow.content());
+
+    // Votes are live on the buttons, one per member, switchable and withdrawable.
+    let one = sim.component(alice, &up, &[], &message).await;
+    assert_eq!(vote_counts(&one), ("1".to_owned(), "0".to_owned()));
+    assert!(!one.ephemeral && one.pings_nobody());
+    assert_eq!(one.title(), "Suggestion #1", "the text stays");
+    let two = sim.component(bob, &up, &[], &one).await;
+    assert_eq!(vote_counts(&two), ("2".to_owned(), "0".to_owned()));
+    let switched = sim.component(alice, &down, &[], &two).await;
+    assert_eq!(
+        vote_counts(&switched),
+        ("1".to_owned(), "1".to_owned()),
+        "alice moved sides"
+    );
+    let again = sim.component(alice, &down, &[], &switched).await;
+    assert_eq!(
+        vote_counts(&again),
+        ("1".to_owned(), "0".to_owned()),
+        "the same side again takes it back"
+    );
+    let bob_again = sim.component(bob, &up, &[], &again).await;
+    assert_eq!(vote_counts(&bob_again), ("0".to_owned(), "0".to_owned()));
+    let revote = sim.component(bob, &up, &[], &bob_again).await;
+    assert_eq!(vote_counts(&revote), ("1".to_owned(), "0".to_owned()));
+
+    // Only managers decide.
+    let refused = sim
+        .command(alice, "suggestion", json!([sub("approve", vec![int_option("id", 1)])]))
+        .await;
+    assert!(refused.content().contains("Manage Server"), "{}", refused.content());
+    sim.permissions = MANAGE_GUILD;
+    let missing = sim
+        .command(admin, "suggestion", json!([sub("approve", vec![int_option("id", 77)])]))
+        .await;
+    assert!(missing.content().contains("no suggestion #77"), "{}", missing.content());
+
+    // Approving edits the message (colour, who, why, locked buttons) and DMs the author.
+    let approved = sim
+        .command(
+            admin,
+            "suggestion",
+            json!([sub(
+                "approve",
+                vec![int_option("id", 1), text_option("reason", "Great <@5> idea")]
+            )]),
+        )
+        .await;
+    assert!(
+        approved.content().contains("approved") && approved.content().contains("I told them"),
+        "{}",
+        approved.content()
+    );
+    let posts = sim.posts();
+    let edit = only(&posts, ideas, Method::PATCH);
+    assert_eq!(edit.message, post.message);
+    assert_eq!(edit.embed()["color"], json!(0x06d6a0));
+    assert_eq!(edit.field("Approved by"), format!("<@{admin}>"));
+    assert_eq!(edit.field("Reason"), "Great idea");
+    let locked: Vec<&Value> = edit.body["components"][0]["components"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .collect();
+    assert!(locked.iter().all(|b| b["disabled"] == json!(true)), "{locked:?}");
+    assert_eq!(locked[0]["label"], "1", "the final count stays on the button");
+    let dm = only(&posts, author, Method::POST);
+    assert_eq!(dm.title(), "Your suggestion #1 was approved");
+    assert!(
+        dm.embed()["description"].as_str().unwrap().contains("Add a garden") && pings_nobody(dm),
+        "{}",
+        dm.body
+    );
+    assert_eq!(dm.field("Reason"), "Great idea");
+    let late = sim.component(alice, &up, &[], &revote).await;
+    assert!(
+        late.ephemeral && late.content().contains("already decided"),
+        "{}",
+        late.content()
+    );
+    let twice = sim
+        .command(admin, "suggestion", json!([sub("deny", vec![int_option("id", 1)])]))
+        .await;
+    assert!(twice.content().contains("already approved"), "{}", twice.content());
+
+    // Denying with closed DMs still works; the manager is told the author was not reached.
+    sim.permissions = 0;
+    let second = sim
+        .command(second_author, "suggest", suggest("Remove the garden"))
+        .await;
+    assert!(second.content().contains("up as **#2**"), "{}", second.content());
+    sim.posts();
+    sim.permissions = MANAGE_GUILD;
+    let denied = sim
+        .command(admin, "suggestion", json!([sub("deny", vec![int_option("id", 2)])]))
+        .await;
+    assert!(
+        denied.content().contains("denied") && denied.content().contains("DMs are closed"),
+        "{}",
+        denied.content()
+    );
+    let posts = sim.posts();
+    let edit = only(&posts, ideas, Method::PATCH);
+    assert_eq!(edit.embed()["color"], json!(0xef476f));
+    assert_eq!(edit.field("Denied by"), format!("<@{admin}>"));
+    assert!(in_channel(&posts, second_author).is_empty());
+
+    // Another server's suggestion cannot be voted on from here.
+    let foreign = sim
+        .app
+        .db
+        .create_suggestion(unique(), author, "Elsewhere")
+        .await
+        .unwrap();
+    let forged = sim
+        .component(alice, &format!("sg:v:{}:u", foreign.id), &[], &message)
+        .await;
+    assert!(forged.content().contains("no longer exists"), "{}", forged.content());
+    let junk = sim.component(alice, "sg:v:x:u", &[], &message).await;
+    assert!(junk.content().contains("expired"), "{}", junk.content());
+
+    // A channel the bot cannot post in leaves no half-made suggestion behind.
+    sim.permissions = MANAGE_GUILD;
+    sim.command_resolved(
+        admin,
+        "config",
+        json!([sub("suggestions", vec![channel_option("channel", walled)])]),
+        resolved_channels(&[walled]),
+    )
+    .await;
+    sim.block_channel(walled);
+    sim.permissions = 0;
+    let third = unique();
+    let blocked = sim.command(third, "suggest", suggest("Anything at all")).await;
+    assert!(blocked.content().contains("I can't post in"), "{}", blocked.content());
+    let (stuck,): (i64,) =
+        sqlx::query_as("SELECT count(*) FROM suggestions WHERE guild_id = $1 AND message_id IS NULL")
+            .bind(sim.guild as i64)
+            .fetch_one(sim.app.db.pool())
+            .await
+            .unwrap();
+    assert_eq!(stuck, 0);
+}
+
+/// `/poll question options [duration]`.
+async fn poll_cmd(sim: &mut Sim, user: u64, question: &str, options: &str, duration: Option<&str>) -> Reply {
+    let mut all = vec![text_option("question", question), text_option("options", options)];
+    all.extend(duration.map(|d| text_option("duration", d)));
+    sim.command(user, "poll", json!(all)).await
+}
+
+#[tokio::test]
+async fn polls_collect_one_vote_each_and_close_into_a_chart() {
+    let Some(mut sim) = Sim::new("polls_collect_one_vote_each_and_close_into_a_chart").await else {
+        return;
+    };
+    let _turn = EVENTS.lock().await;
+    sim.channel = unique();
+    let channel = sim.channel;
+    let author = unique();
+    let [alice, bob, carol, dave, erin, frank, grace, zed] = std::array::from_fn(|_| unique());
+    let tick = |sim: &Sim| {
+        let app = sim.app.clone();
+        async move { pinchora_commands::events_tick(&app).await.expect("tick") }
+    };
+
+    // Bad polls are refused before anything is posted.
+    let long = format!("a | {}", "x".repeat(81));
+    for (options, duration, expected) in [
+        ("Only one", None, "two to five answers"),
+        ("a | b | c | d | e | f", None, "two to five answers"),
+        ("a | <@1> | ", None, "two to five answers"),
+        ("Same | same", None, "different"),
+        (long.as_str(), None, "80 characters"),
+        ("a | b", Some("later"), "couldn't read"),
+        ("a | b", Some("30s"), "1 minute to 14 days"),
+        ("a | b", Some("20d"), "1 minute to 14 days"),
+    ] {
+        let bad = poll_cmd(&mut sim, author, "Question?", options, duration).await;
+        assert!(bad.content().contains(expected), "{options:?}: {}", bad.content());
+        assert!(bad.ephemeral && bad.pings_nobody());
+    }
+    let nothing = poll_cmd(&mut sim, author, "<@1>", "a | b", None).await;
+    assert!(nothing.content().contains("Ask a question"), "{}", nothing.content());
+    assert!(sim.posts().is_empty());
+
+    // A poll: question and answers with mentions stripped, a button per answer and Results.
+    let opened = poll_cmd(
+        &mut sim,
+        author,
+        "Pizza <@7> or tacos? @everyone",
+        "Pizza | Tacos | Sushi",
+        Some("1h"),
+    )
+    .await;
+    assert!(
+        opened.ephemeral && opened.content().contains("is open in"),
+        "{}",
+        opened.content()
+    );
+    let posts = sim.posts();
+    let post = only(&posts, channel, Method::POST);
+    assert_eq!(post.title(), "Pizza or tacos? everyone");
+    assert!(pings_nobody(post), "{}", post.body);
+    let text = post.embed()["description"].as_str().unwrap();
+    assert!(
+        text.starts_with("**1** · Pizza\n**2** · Tacos\n**3** · Sushi")
+            && text.contains(&format!("Asked by <@{author}>")),
+        "{text}"
+    );
+    let message = reply_of(post);
+    let labels: Vec<_> = message
+        .controls()
+        .filter_map(|c| match c {
+            Component::Button(b) => b.label.clone(),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(labels, ["Pizza", "Tacos", "Sushi", "Results"]);
+    let poll_id: i64 = message
+        .button("Pizza")
+        .custom_id
+        .as_deref()
+        .and_then(|id| id.split(':').nth(2))
+        .and_then(|id| id.parse().ok())
+        .expect("a poll id in the button");
+
+    // One vote each: a first vote, a move, taking it back.
+    let cast = sim.click(alice, &message, "Pizza").await;
+    assert!(cast.ephemeral && cast.pings_nobody(), "answers are private and quiet");
+    assert!(
+        cast.content().contains("vote for **Pizza** is in"),
+        "{}",
+        cast.content()
+    );
+    let moved = sim.click(alice, &message, "Tacos").await;
+    assert!(
+        moved.content().contains("Moved your vote to **Tacos**"),
+        "{}",
+        moved.content()
+    );
+    sim.click(bob, &message, "Pizza").await;
+    let withdrawn = sim.click(bob, &message, "Pizza").await;
+    assert!(
+        withdrawn.content().contains("Took your vote back"),
+        "{}",
+        withdrawn.content()
+    );
+    for (voter, answer) in [
+        (carol, "Tacos"),
+        (dave, "Sushi"),
+        (erin, "Pizza"),
+        (frank, "Pizza"),
+        (grace, "Tacos"),
+    ] {
+        sim.click(voter, &message, answer).await;
+    }
+    assert_eq!(sim.app.db.poll_tally(poll_id, 3).await.unwrap(), [2, 3, 1]);
+
+    // Results while it runs: a private card, drawn at most every ten seconds.
+    let first = sim.click(zed, &message, "Results").await;
+    assert!(first.ephemeral && first.pings_nobody(), "the card is private and quiet");
+    assert_eq!(
+        first.kind,
+        InteractionResponseType::DeferredChannelMessageWithSource,
+        "a new private message, not an edit of the poll"
+    );
+    assert_eq!((first.files.len(), first.files[0].0.as_str()), (1, "poll.png"));
+    assert_png(&first, 900, 432);
+    sim.click(zed, &message, "Sushi").await;
+    let cached = sim.click(erin, &message, "Results").await;
+    assert_eq!(cached.files[0].1, first.files[0].1, "the same card inside ten seconds");
+    sim.app.shift_clock(chrono::Duration::seconds(11));
+    let fresh = sim.click(erin, &message, "Results").await;
+    assert_ne!(
+        fresh.files[0].1, first.files[0].1,
+        "a new card once ten seconds are over"
+    );
+
+    // Members have at most three polls open at once.
+    let coffee = poll_cmd(&mut sim, author, "Coffee or tea?", "Coffee | Tea", Some("30m")).await;
+    assert!(coffee.content().contains("is open in"), "{}", coffee.content());
+    let cats = poll_cmd(&mut sim, author, "Cats or dogs?", "Cats | Dogs", Some("45m")).await;
+    assert!(cats.content().contains("is open in"), "{}", cats.content());
+    let posts = sim.posts();
+    let cats_message = reply_of(
+        posts
+            .iter()
+            .rfind(|p| p.channel == channel && p.title() == "Cats or dogs?")
+            .expect("the cats poll"),
+    );
+    sim.click(alice, &cats_message, "Cats").await;
+    sim.click(bob, &cats_message, "Dogs").await;
+    let capped = poll_cmd(&mut sim, author, "One more?", "Yes | No", None).await;
+    assert!(
+        capped.content().contains("already have 3 polls open"),
+        "{}",
+        capped.content()
+    );
+    assert!(sim.posts().is_empty());
+
+    // Time passes: the tick closes all three, once, each with its chart and a spoken result.
+    sim.app.shift_clock(chrono::Duration::hours(2));
+    let late = sim.click(zed, &message, "Tacos").await;
+    assert!(late.content().contains("closed"), "{}", late.content());
+    tick(&sim).await;
+    let posts = sim.posts();
+    let results: Vec<&Post> = posts
+        .iter()
+        .filter(|p| p.channel == channel && p.method == Method::POST)
+        .collect();
+    assert_eq!(results.len(), 3, "one result per poll");
+    let by_title = |title: &str| {
+        results
+            .iter()
+            .find(|p| p.title() == title)
+            .unwrap_or_else(|| panic!("no result titled {title:?}"))
+    };
+    let pizza = by_title("Poll closed: Pizza or tacos? everyone");
+    assert_eq!(pizza.embed()["description"], "**Tacos** wins with 3 votes (43%).");
+    assert_eq!((pizza.files.len(), pizza.files[0].0.as_str()), (1, "poll.png"));
+    assert!(pings_nobody(pizza), "{}", pizza.body);
+    assert_eq!(
+        by_title("Poll closed: Coffee or tea?").embed()["description"],
+        "Nobody voted."
+    );
+    assert_eq!(
+        by_title("Poll closed: Cats or dogs?").embed()["description"],
+        "A tie between **Cats** and **Dogs** with 1 vote each."
+    );
+    let closed: Vec<&Post> = posts
+        .iter()
+        .filter(|p| p.channel == channel && p.method == Method::PATCH)
+        .collect();
+    assert_eq!(closed.len(), 3, "each poll message loses its buttons");
+    for edit in &closed {
+        assert_eq!(edit.body["components"], json!([]));
+        assert!(
+            edit.embed()["description"]
+                .as_str()
+                .unwrap()
+                .contains("This poll is closed."),
+            "{}",
+            edit.embed()
+        );
+    }
+    tick(&sim).await;
+    assert!(
+        in_channel(&sim.posts(), channel).is_empty(),
+        "a poll closes exactly once"
+    );
+
+    // After closing: no votes, and Results is the final card.
+    let after = sim.click(zed, &message, "Tacos").await;
+    assert!(after.content().contains("has closed"), "{}", after.content());
+    assert_eq!(sim.app.db.poll_tally(poll_id, 3).await.unwrap(), [2, 3, 2]);
+    let final_card = sim.click(erin, &message, "Results").await;
+    assert!(
+        final_card.description().contains("closed"),
+        "{}",
+        final_card.description()
+    );
+    assert_eq!(final_card.files.len(), 1);
+
+    // A forged id from another server's poll gives nothing.
+    let foreign = match sim
+        .app
+        .db
+        .create_poll(pinchora_db::NewPoll {
+            guild_id: unique(),
+            channel_id: unique(),
+            author: unique(),
+            question: "Elsewhere?",
+            options: &["a".to_owned(), "b".to_owned()],
+            ends_at: sim.app.now() + chrono::Duration::hours(1),
+        })
+        .await
+        .unwrap()
+    {
+        pinchora_db::PollOpen::Started(p) => p,
+        other => panic!("{other:?}"),
+    };
+    let forged = sim
+        .component(alice, &format!("pl:v:{}:0", foreign.id), &[], &message)
+        .await;
+    assert!(forged.content().contains("no longer exists"), "{}", forged.content());
+    let junk = sim.component(alice, "pl:v:x:0", &[], &message).await;
+    assert!(junk.content().contains("expired"), "{}", junk.content());
+    let beyond = sim.component(alice, &format!("pl:v:{poll_id}:4"), &[], &message).await;
+    assert!(
+        beyond.content().contains("expired"),
+        "an option the poll does not have: {}",
+        beyond.content()
+    );
+
+    // A pod that closed a poll and died before announcing it: the next tick announces it.
+    poll_cmd(&mut sim, author, "Tea or juice?", "Tea | Juice", Some("1h")).await;
+    let posts = sim.posts();
+    let orphan = reply_of(only(&posts, channel, Method::POST));
+    sim.click(alice, &orphan, "Tea").await;
+    sim.app.shift_clock(chrono::Duration::hours(2));
+    let orphan_id: i64 = orphan
+        .button("Tea")
+        .custom_id
+        .as_deref()
+        .and_then(|id| id.split(':').nth(2))
+        .and_then(|id| id.parse().ok())
+        .expect("a poll id");
+    assert!(sim.app.db.close_poll(orphan_id, sim.app.now()).await.unwrap().is_some());
+    assert!(in_channel(&sim.posts(), channel).is_empty());
+    tick(&sim).await;
+    let posts = sim.posts();
+    let news = only(&posts, channel, Method::POST);
+    assert_eq!(news.embed()["description"], "**Tea** wins with 1 vote (100%).");
+    tick(&sim).await;
+    assert!(in_channel(&sim.posts(), channel).is_empty(), "announced once");
+
+    // A channel the bot cannot post in leaves no half-made poll behind.
+    let walled = unique();
+    sim.block_channel(walled);
+    sim.channel = walled;
+    let refused = poll_cmd(&mut sim, author, "Hello?", "Yes | No", None).await;
+    assert!(refused.content().contains("I can't post in"), "{}", refused.content());
+    let (stuck,): (i64,) = sqlx::query_as("SELECT count(*) FROM polls WHERE channel_id = $1")
+        .bind(walled as i64)
+        .fetch_one(sim.app.db.pool())
+        .await
+        .unwrap();
+    assert_eq!(stuck, 0);
+}
+
+#[tokio::test]
+async fn replies_after_a_defer_keep_allowed_mentions() {
+    let Some(sim) = Sim::new("replies_after_a_defer_keep_allowed_mentions").await else {
+        return;
+    };
+    let data = json!({ "id": unique().to_string(), "name": "x", "type": 1 });
+    let interaction = sim.interaction(unique(), 2, data, None);
+    let (tx, _rx) = oneshot::channel();
+    let responder = Responder::http(sim.app.clone(), &interaction, tx);
+    let answer = |text: &str, quiet: bool| twilight_model::http::interaction::InteractionResponseData {
+        content: Some(text.to_owned()),
+        allowed_mentions: quiet.then(twilight_model::channel::message::AllowedMentions::default),
+        ..Default::default()
+    };
+    sim.calls.lock().unwrap().clear();
+    responder.defer(false).await.expect("defer");
+    responder
+        .respond(answer("edit", true), false)
+        .await
+        .expect("edit the deferred answer");
+    responder
+        .respond(answer("follow-up", true), false)
+        .await
+        .expect("follow-up");
+    responder
+        .respond(answer("loud", false), false)
+        .await
+        .expect("follow-up");
+    let calls = std::mem::take(&mut *sim.calls.lock().unwrap());
+    assert_eq!(calls.len(), 3);
+    assert!(calls[0].method == Method::PATCH && calls[0].path.ends_with("/messages/@original"));
+    assert_eq!(
+        calls[0].body["allowed_mentions"],
+        json!({ "parse": [] }),
+        "the edit of the deferred answer"
+    );
+    assert!(calls[1].method == Method::POST);
+    assert_eq!(
+        calls[1].body["allowed_mentions"],
+        json!({ "parse": [] }),
+        "the follow-up"
+    );
+    assert!(
+        calls[2].body.get("allowed_mentions").is_none(),
+        "unset stays unset: {}",
+        calls[2].body
     );
 }

@@ -12,6 +12,7 @@ pub(crate) mod fish;
 pub(crate) mod friends;
 pub(crate) mod games;
 pub(crate) mod gift;
+pub(crate) mod giveaway;
 pub(crate) mod guestbook;
 pub(crate) mod hangman;
 mod help;
@@ -26,6 +27,7 @@ mod ping;
 pub(crate) mod play;
 pub(crate) mod plaza;
 mod points;
+pub(crate) mod poll;
 pub(crate) mod privacy;
 pub(crate) mod profile;
 pub(crate) mod quests;
@@ -39,6 +41,7 @@ pub(crate) mod shop;
 mod social;
 pub(crate) mod stall;
 pub(crate) mod store;
+pub(crate) mod suggest;
 pub(crate) mod trivia;
 mod undo;
 mod utilities;
@@ -109,4 +112,8 @@ commands!(
     remind::RemindCommand,
     privacy::PrivacyCommand,
     wrapped::Wrapped,
+    giveaway::GiveawayCommand,
+    suggest::Suggest,
+    suggest::SuggestionCommand,
+    poll::Poll,
 );

@@ -53,6 +53,12 @@ Written in Rust and built to run sharded on Kubernetes.
 | `/config points [enabled] [name] [emoji] [min] [max]` | Turn server points on or off, rename them, and set what a message earns (Manage Server) |
 | `/store` | The server's role store: pick a role from the menu to buy it with server points |
 | `/config store add\|remove\|list` | Put roles on sale for points, with optional stock (up to 25); adding a role again updates its price and stock (Manage Server) |
+| `/giveaway start duration winners prize [shells] [channel] [required_role]` | Post a giveaway with an **Enter** button (press again to leave): `duration` like `30m`, `2h`, `1d12h` (1 minute to 30 days), 1 to 20 `winners`, an optional `shells` prize **per winner**, a `channel` (default: here) and a `required_role`. Up to 20 run at once per server (Manage Server) |
+| `/giveaway end id`, `/giveaway reroll id [winners]`, `/giveaway list` | End one now and pick its winners; pick new winners from the entrants who have not won yet (a reroll never pays shells); list the running ones with entries and links. `id` is the number in the giveaway's footer (Manage Server) |
+| `/config suggestions [channel] [off]` | Where `/suggest` posts; with neither option it shows the setting, and `/config show` lists it (Manage Server) |
+| `/suggest text` | Post a suggestion (up to 1000 characters) in the server's suggestion channel as an embed with 👍 and 👎 buttons showing live counts. One vote per member: press the other side to switch, the same side again to take the vote back. One suggestion per 30 seconds |
+| `/suggestion approve\|deny id [reason]` | Decide on the server's suggestion number `id` (the `#n` in its title): the embed turns green or red with who decided and why, its buttons lock with the final counts, and the author gets a direct message (closed DMs are reported to you, not an error). Decided once (Manage Server) |
+| `/poll question options [duration]` | A question with two to five answers separated by `\|`, up to 80 characters each; `duration` like `30m`, `6h`, `1d` (default 1 day, 1 minute to 14 days). One button per answer plus **Results**; one vote per member, the same switch/take-back rule as suggestions. Votes stay hidden while it runs, **Results** shows a private pixel bar-chart card (drawn at most every 10 seconds per poll), and when it closes the channel gets the final card and a line saying who won (or the tie). Three open polls per member |
 | `/ping`, `/help` | Health and command list |
 
 Chatting earns 15–25 XP and, by default, 1–3 server points per minute per server. Level roles are
@@ -81,6 +87,21 @@ never pays a minute twice. Members already in voice when the bot first starts ar
 state changes, and a member the bot has not heard from for eight hours is dropped, in case it was
 away when they left. A voice multiplier by role uses the roles the member had at their last voice
 event. Weekly XP counts every chat and voice XP grant under the Monday of its week.
+
+Giveaways, suggestions and polls: a shells prize is paid by the **host**. `winners` x `shells` comes off
+the host's balance in the transaction that starts the giveaway (so a server can never mint shells), each
+winner is paid when it ends, and whatever nobody won (fewer entrants than winners, or none) goes back to
+the host. A host who cannot cover it starts nothing. Winners are drawn uniformly without replacement,
+the host cannot enter their own giveaway, and a required role is checked when a member presses Enter.
+One ticker on every pod (gateway and interactions) wakes every 5 seconds; a giveaway ends and a poll
+closes inside one database transaction that only one pod wins, so each ends exactly once, payouts
+included, even across restarts, and the announcement is claimed before it is sent (a pod that dies
+between the two is covered by the next tick, which tells the channel once the claim lapses after 2
+minutes). The entrant count on a giveaway message changes at most every 5 seconds: the first entry shows
+at once, quicker ones are shown by the ticker once the window is over. Everything members type
+(prizes, questions, answers, suggestions, reasons) has user and role mentions removed and `@everyone` and
+`@here` defused, and every message and reply these commands send sets `allowed_mentions` to none, so
+winners are named but not pinged. Ended giveaways and closed polls are forgotten after 60 days.
 
 Role panel buttons toggle the role and answer privately ("Added @Role" / "Removed @Role"). A button
 only works while its role is still on that panel, so removing a role from a panel stops old
