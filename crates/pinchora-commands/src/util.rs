@@ -74,6 +74,49 @@ pub fn resolved_display_name(resolved: &ResolvedUser) -> String {
 
 pub use pinchora_render::thousands;
 
+/// The length of the user or role mention (`<@1>`, `<@!1>`, `<@&1>`) at the start of `text`, if any.
+fn mention_len(text: &str) -> Option<usize> {
+    let inner = text.strip_prefix("<@")?;
+    let digits = inner.strip_prefix(['!', '&']).unwrap_or(inner);
+    let end = digits.find('>')?;
+    (end > 0 && digits[..end].bytes().all(|b| b.is_ascii_digit())).then(|| text.len() - digits.len() + end + 1)
+}
+
+/// Member text made safe to show: user and role mentions are dropped and `@everyone` and `@here` lose
+/// their `@`, so nothing in it can ping. Spaces are tidied per line and the ends trimmed; line
+/// breaks stay.
+pub fn strip_mentions(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(at) = rest.find(['<', '@']) {
+        out.push_str(&rest[..at]);
+        let here = &rest[at..];
+        if let Some(len) = mention_len(here) {
+            rest = &here[len..];
+            continue;
+        }
+        let lower = here.to_ascii_lowercase();
+        if here.starts_with('@') && (lower.starts_with("@everyone") || lower.starts_with("@here")) {
+            rest = &here[1..];
+            continue;
+        }
+        out.push_str(&here[..1]);
+        rest = &here[1..];
+    }
+    out.push_str(rest);
+    out.lines()
+        .map(|line| line.split_whitespace().collect::<Vec<_>>().join(" "))
+        .collect::<Vec<_>>()
+        .join("\n")
+        .trim()
+        .to_owned()
+}
+
+/// Text on one line: every run of whitespace, line breaks included, becomes one space.
+pub fn single_line(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -100,6 +143,40 @@ mod tests {
     fn values_are_not_filled_again() {
         let text = fill("{user} left {server}", &[("user", "{server}"), ("server", "Reef")]);
         assert_eq!(text, "{server} left Reef");
+    }
+
+    #[test]
+    fn mentions_are_dropped_and_broadcasts_defanged() {
+        assert_eq!(
+            strip_mentions("hi <@123> and <@!456> and <@&789>, @everyone @here @Everyone!"),
+            "hi and and , everyone here Everyone!"
+        );
+        assert_eq!(strip_mentions("<@1><@2>"), "");
+        assert_eq!(strip_mentions("a  b \n\n  c  "), "a b\n\nc");
+    }
+
+    #[test]
+    fn things_that_only_look_like_mentions_stay() {
+        for text in [
+            "<@>",
+            "<@abc>",
+            "<@!>",
+            "<@&>",
+            "<@!&1>",
+            "<@12",
+            "a < b @ c",
+            "<#123> is a channel",
+            "a <@1x> b",
+        ] {
+            assert_eq!(strip_mentions(text), text, "{text:?}");
+        }
+        assert_eq!(strip_mentions("Zoë <@1> 🎉"), "Zoë 🎉");
+    }
+
+    #[test]
+    fn single_line_flattens_whitespace() {
+        assert_eq!(single_line("  one\n two\t\tthree  "), "one two three");
+        assert_eq!(single_line(""), "");
     }
 
     #[test]

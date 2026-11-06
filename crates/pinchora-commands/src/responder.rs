@@ -197,6 +197,9 @@ impl Responder {
         if let Some(attachments) = &data.attachments {
             request = request.attachments(attachments);
         }
+        if let Some(mentions) = &data.allowed_mentions {
+            request = request.allowed_mentions(Some(mentions));
+        }
         request.await?;
         Ok(())
     }
@@ -218,6 +221,9 @@ impl Responder {
         }
         if let Some(flags) = data.flags {
             request = request.flags(flags);
+        }
+        if let Some(mentions) = &data.allowed_mentions {
+            request = request.allowed_mentions(Some(mentions));
         }
         request.await?;
         Ok(())

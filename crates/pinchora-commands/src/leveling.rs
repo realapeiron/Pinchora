@@ -134,7 +134,7 @@ pub(crate) async fn level_up(app: &Arc<App>, settings: &GuildSettings, up: Level
 }
 
 /// The direct message channel with `user`, or `None` when Discord will not open one.
-async fn private_channel(app: &App, user: u64) -> Option<Id<ChannelMarker>> {
+pub(crate) async fn private_channel(app: &App, user: u64) -> Option<Id<ChannelMarker>> {
     let opened = async {
         anyhow::Ok(
             app.http

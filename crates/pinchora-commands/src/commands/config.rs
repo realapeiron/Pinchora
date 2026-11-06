@@ -17,6 +17,7 @@ use crate::{
         points::ConfigPoints,
         rep_roles::ConfigRepRoles,
         store::ConfigStore,
+        suggest::{ConfigSuggestions, suggestions_summary},
         utilities::{
             ConfigGoodbye, ConfigJoinRole, ConfigLog, ConfigLogEvents, goodbye_summary, join_role_summary, log_summary,
         },
@@ -65,6 +66,8 @@ pub enum ConfigCommand {
     Log(ConfigLog),
     #[command(name = "log-events")]
     LogEvents(ConfigLogEvents),
+    #[command(name = "suggestions")]
+    Suggestions(ConfigSuggestions),
 }
 
 #[derive(CommandOption, CreateOption, Clone, Copy)]
@@ -173,14 +176,23 @@ impl ConfigCommand {
             Self::Goodbye(c) => return c.run(cx, guild).await,
             Self::Log(c) => return c.run(cx, guild).await,
             Self::LogEvents(c) => return c.run(cx, guild).await,
+            Self::Suggestions(c) => return c.run(cx, guild).await,
             Self::Points(c) => match c.apply(&cx.app.db, guild).await? {
                 Ok(settings) => settings,
                 Err(reason) => return cx.reply_ephemeral(reason).await,
             },
         };
         cx.app.forget_guild_settings(guild).await;
+        let mut embed = settings_embed(&settings);
+        embed.fields.push(
+            EmbedFieldBuilder::new(
+                "Suggestions",
+                suggestions_summary(cx.app.db.suggestion_channel(guild).await?),
+            )
+            .build(),
+        );
         cx.reply(InteractionResponseData {
-            embeds: Some(vec![settings_embed(&settings)]),
+            embeds: Some(vec![embed]),
             flags: Some(MessageFlags::EPHEMERAL),
             ..Default::default()
         })
