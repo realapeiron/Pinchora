@@ -236,6 +236,7 @@ permission gets a private refusal and nothing changes.
 | `/config partygames [strict]` | How strict the filter on what members type is (Manage Server). The base filter always blocks strong words and slurs (it reads whole words, undoes disguises like `sh!t`, `f u c k`, `f*ck`, `s1ut` and common misspellings, and lets names like Matsushita through); `strict:true` adds mild words and name-calling. Mentions, links, invites and formatting are always taken out of typed text |
 | `/config modules show\|toggle\|channels` | Switch parts of Pinchora off for the whole server (`toggle module enabled`) or per channel (`channels module where [channel] [remove]`: `where` is all channels, only these, or everywhere except these, and the list grows one channel at a time; a category covers the channels and threads under it; up to 50 channels). A switched-off module answers its commands, buttons and forms with a private "This feature is turned off on this server" (or "in this channel"), stops its chat XP, points, critter drops, goodbyes, log lines or timed storms, and `/config`, `/help`, `/ping`, `/privacy` and `/remind` (with their buttons) are never switched off; `/weekly` and `/monthly` belong to the economy module and `/wrapped` to profiles. The 26 modules are listed with `show`, and `module` suggests them as you type (start with part of a name, or of a game such as `chess`); leveling, points, welcome and gambling keep their switch where it already was (`/config leveling`, `points`, `welcome`, `gambling`). The dashboard's Modules page does the same (Manage Server) |
 | `/config welcome-card` | Design the welcome card (theme, headline, accent colour) with a live preview |
+| `/config prefix set\|reset\|show` | What text commands start with here: 1 to 5 characters without spaces, `@`, `#` or backticks; `reset` goes back to `p!`. `/config show` and the dashboard's Overview show it too (Manage Server) |
 
 Duel wagers (`bet`, 10 to 500 shells each) are optional and off by default. Nothing is held until the
 challenged player accepts; then both bets leave the balances in one transaction and sit in the database
@@ -315,12 +316,41 @@ badges, titles, trivia, hangman words and the wordle lists) lives in
 [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md). Sprites are drawn by GPT and imported with
 `tools/art/` (see below).
 
+### Text commands
+
+Every command also works as a message: `p!profile`, `p!fish cast reef`, `p!duel connect4 @Sam bet:50`, or the
+same after the bot's mention (`@Pinchora fish cast reef`), which always works whatever the prefix. The message
+is read against the registered slash commands and runs the very same handler, so the module switches, the
+Manage Server checks (from the member's roles), cooldowns and wagers are those of the slash command.
+
+- Command and subcommand names are any case; `bal`, `lb` (or `top`), `h` and `inv` stand for `balance`,
+  `leaderboard`, `help` and `inventory`.
+- Options go in their order, or as `name:value` in any order. Words with spaces go in quotes
+  (`text:"two words"`); the last free-text option takes the rest of the line. Members, roles and channels are
+  mentions or raw ids; a choice is its value or its name (`kelp`, `"Kelp Forest"`); `yes`/`no` for switches.
+- A wrong call answers with the problem and a usage line from the schema, e.g.
+  ``Usage: `p!duel connect4 <user> [bet]` ``. Words that name no command (another bot's) get no answer.
+- Answers are replies to the message that ping nobody (a challenge still pings the member it names). A
+  private answer (a refusal, `/config`) is posted the same way and deleted after 15 seconds. Buttons and
+  menus on a reply work as on the slash command's message and check the member who typed the command.
+- Private panels and forms stay slash-only: `/house edit`, `/house decorate`, `/customize`, `/character`,
+  `/plaza edit`, `/stall manage`, `/play picross`, `/play wordle` and `/play 2048` (and any other command
+  whose first answer is a private panel) answer "This one only works as a slash command: use `/…`".
+- Bots, webhooks and direct messages are ignored, and a member's text commands count at most once every
+  1.5 seconds.
+
+The bot owner turns this on in two places: **Message Content Intent** on the Bot page of the Discord Developer
+Portal, and `PINCHORA_GATEWAY__MESSAGE_CONTENT=true`. Without them Discord only sends the text of messages that
+mention the bot, so text commands work as `@Pinchora profile` and `/help` says so.
+
 ## Quick start (Docker)
 
 1. Create an application at <https://discord.com/developers/applications>, add a bot, and turn
    on **Server Members Intent** (for welcome cards, join roles, goodbye messages and the member, nickname and
    username entries of the server log; or set `PINCHORA_GATEWAY__MEMBER_EVENTS=false`). The server log's ban and voice
    entries use the non-privileged Guild Moderation and Guild Voice States intents.
+   For text commands with a prefix (`p!profile`) also turn on **Message Content Intent** and set
+   `PINCHORA_GATEWAY__MESSAGE_CONTENT=true`; without it they work after an @mention of the bot.
 2. `cp .env.example .env` and fill in the token and application id.
 3. Start everything:
 
@@ -351,7 +381,7 @@ so every bot pod uses it from the next message instead of after its one-minute c
 
 | Page | What it sets | Same as |
 |---|---|---|
-| Overview | Chat XP on/off, every page's state at a glance, every module's state, the latest changes | `/config show`, `/config leveling enabled`, `/config modules show` |
+| Overview | Chat XP on/off, the text command prefix, every page's state at a glance, every module's state, the latest changes | `/config show`, `/config leveling enabled`, `/config prefix`, `/config modules show` |
 | Modules | Each part of Pinchora (leveling, points, welcome, goodbye, log, role panels, store, suggestions, polls, giveaways, profiles, economy, shops, quests, social, houses, plaza, pets, fishing, duels, board and puzzle games, word and trivia games, party games, word party games, critter drops, gambling) on or off, and where it works: all channels, only some, or all but some | `/config modules` |
 | Welcome & goodbye | Welcome cards (channel, text with placeholder chips), the card designer (theme, headline, accent, live preview drawn by the bot), join role, goodbye channel and text | `/config welcome`, `welcome-card`, `join-role`, `goodbye` |
 | Leveling | Leveling, where level-ups go, level-up channel and text, voice XP, XP multipliers, level roles (stack/replace, **Sync members**), reputation roles | `/config leveling`, `xp`, `level-roles`, `rep-roles` |

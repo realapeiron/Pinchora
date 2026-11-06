@@ -291,7 +291,8 @@ fn leaf<'a>(
             if rest.is_empty() {
                 waiting = Some(at);
             }
-            last = None;
+            // `text:two words` without quotes: free text goes on here too.
+            last = Some(at);
             continue;
         }
         while next < options.len() && given[next].is_some() {
@@ -552,6 +553,9 @@ mod tests {
         // A colon that names no option is just part of the word.
         let parsed = ok(&tree, "suggest text:\"open at 10:30\"");
         assert!(matches!(&leaf_options(&parsed.data)[0].value, CommandOptionValue::String(s) if s == "open at 10:30"));
+        // Free text given by name goes on without quotes too.
+        let parsed = ok(&tree, "suggest text:let us party");
+        assert!(matches!(&leaf_options(&parsed.data)[0].value, CommandOptionValue::String(s) if s == "let us party"));
     }
 
     #[test]

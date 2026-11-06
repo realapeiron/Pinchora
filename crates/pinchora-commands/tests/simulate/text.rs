@@ -193,6 +193,13 @@ async fn text_commands_run_the_slash_handlers() {
         "This one only works as a slash command: use `/house edit`."
     );
     assert!(editor.components.is_empty());
+    // So does any other private panel, caught as it is answered: nobody else may click it.
+    let gear = sim.text_one(unique(), &[], "p!fish gear", &[]).await;
+    assert_eq!(
+        gear.content(),
+        "This one only works as a slash command: use `/fish gear`."
+    );
+    assert!(gear.components.is_empty());
 
     // Just the mention: how to start.
     let hello = sim.text_one(unique(), &[], BOT_MENTION, &[]).await;
@@ -271,6 +278,9 @@ async fn text_commands_keep_permissions_and_modules() {
         "You need the Manage Server permission to use `config`."
     );
     let set = sim.text_one(manager, &[staff], "p!config prefix set z!", &[]).await;
+    // A private answer without buttons is posted for its 15 seconds.
+    let settings = sim.text_one(manager, &[staff], "z!config show", &[]).await;
+    assert_eq!(settings.title(), "Server settings");
     assert!(
         set.content().starts_with("Text commands now start with `z!`"),
         "{}",
