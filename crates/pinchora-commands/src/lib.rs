@@ -1,5 +1,6 @@
 mod app;
 mod auto;
+mod catalog;
 mod commands;
 mod components;
 mod custom;
@@ -10,6 +11,8 @@ mod game;
 mod gate;
 mod house_view;
 mod invalidations;
+#[cfg(test)]
+mod landing_assets;
 mod lang;
 mod leveling;
 mod responder;
@@ -21,6 +24,7 @@ mod util;
 mod voice_xp;
 
 pub use app::App;
+pub use catalog::{command_catalog, site_facts};
 pub use commands::{
     collection::{post_bottle, post_critter_drop, spawn_ticker as spawn_collection_ticker, tick as collection_tick},
     config::{WelcomeDesign, welcome_card_png},

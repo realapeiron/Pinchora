@@ -9,7 +9,7 @@ use std::{
 
 use axum::{
     Router,
-    body::Body,
+    body::Bytes,
     extract::{Path as UrlPath, State},
     http::{HeaderMap, HeaderValue, Method, StatusCode, Uri, header},
     response::{IntoResponse, Response},
@@ -68,12 +68,18 @@ async fn font(UrlPath(name): UrlPath<String>, headers: HeaderMap) -> Response {
     response
 }
 
-/// Every other GET: a built file when one matches, else `index.html` for the SPA's router to handle.
+/// Text files of the build that name the site's own address (canonical links, the sitemap): this
+/// word in them becomes the public URL, so one build serves any domain.
+const ORIGIN_PLACEHOLDER: &str = "__ORIGIN__";
+
+/// Every other GET: a built file when one matches, a page of the public site (`/` is `index.html`, `/commands`
+/// is `commands/index.html`, written out at build time so crawlers and link previews see each page's own
+/// title and tags), else `index.html` for the dashboard's router to handle.
 async fn spa(State(state): State<WebState>, method: Method, uri: Uri) -> Response {
     if method != Method::GET && method != Method::HEAD {
         return StatusCode::METHOD_NOT_ALLOWED.into_response();
     }
-    let path = uri.path().trim_start_matches('/');
+    let path = uri.path().trim_matches('/');
     if !path.is_empty()
         && let Some(bytes) = file(&state, path).await
     {
@@ -82,6 +88,7 @@ async fn spa(State(state): State<WebState>, method: Method, uri: Uri) -> Respons
         } else {
             "public, max-age=3600"
         };
+        let bytes = with_origin(&state, path, bytes);
         return (
             [(header::CONTENT_TYPE, mime(path)), (header::CACHE_CONTROL, cache)],
             bytes,
@@ -92,36 +99,69 @@ async fn spa(State(state): State<WebState>, method: Method, uri: Uri) -> Respons
     if path.starts_with("assets/") || path.rsplit('/').next().is_some_and(|last| last.contains('.')) {
         return StatusCode::NOT_FOUND.into_response();
     }
+    let page = if path.is_empty() {
+        "index.html".to_owned()
+    } else {
+        format!("{path}/index.html")
+    };
+    if let Some(bytes) = file(&state, &page).await {
+        return html(with_origin(&state, &page, bytes), false);
+    }
     if !state.settings.login_ready() && !state.settings.dev_login {
         return setup_page(&state);
     }
     match file(&state, "index.html").await {
-        Some(bytes) => (
-            [
-                (header::CONTENT_TYPE, "text/html; charset=utf-8"),
-                (header::CACHE_CONTROL, "no-cache"),
-            ],
-            bytes,
-        )
-            .into_response(),
+        // The shell for the dashboard's own pages: nothing there is for a search engine.
+        Some(bytes) => html(with_origin(&state, "index.html", bytes), true),
         None => StatusCode::NOT_FOUND.into_response(),
     }
 }
 
+fn html(body: Bytes, noindex: bool) -> Response {
+    let mut response = (
+        [
+            (header::CONTENT_TYPE, "text/html; charset=utf-8"),
+            (header::CACHE_CONTROL, "no-cache"),
+        ],
+        body,
+    )
+        .into_response();
+    if noindex {
+        response
+            .headers_mut()
+            .insert("x-robots-tag", HeaderValue::from_static("noindex, nofollow"));
+    }
+    response
+}
+
+/// `bytes` with [`ORIGIN_PLACEHOLDER`] replaced, for the text files that carry it.
+fn with_origin(state: &WebState, path: &str, bytes: Bytes) -> Bytes {
+    let text = matches!(path.rsplit('.').next(), Some("html" | "xml" | "txt" | "webmanifest"));
+    if !text {
+        return bytes;
+    }
+    match std::str::from_utf8(&bytes) {
+        Ok(page) if page.contains(ORIGIN_PLACEHOLDER) => {
+            Bytes::from(page.replace(ORIGIN_PLACEHOLDER, &state.settings.origin))
+        }
+        _ => bytes,
+    }
+}
+
 /// A file of the SPA: from disk when `static_dir` is set, else from the binary.
-async fn file(state: &WebState, path: &str) -> Option<Body> {
+async fn file(state: &WebState, path: &str) -> Option<Bytes> {
     match &state.settings.static_dir {
         Some(dir) => {
             let relative = Path::new(path);
             if !relative.components().all(|c| matches!(c, Component::Normal(_))) {
                 return None;
             }
-            tokio::fs::read(dir.join(relative)).await.ok().map(Body::from)
+            tokio::fs::read(dir.join(relative)).await.ok().map(Bytes::from)
         }
         None => embedded::SPA
             .iter()
             .find(|(name, _)| *name == path)
-            .map(|(_, bytes)| Body::from(*bytes)),
+            .map(|(_, bytes)| Bytes::from_static(bytes)),
     }
 }
 
@@ -135,6 +175,8 @@ fn mime(path: &str) -> &'static str {
         "png" => "image/png",
         "ico" => "image/x-icon",
         "webp" => "image/webp",
+        "xml" => "application/xml; charset=utf-8",
+        "webmanifest" => "application/manifest+json",
         "woff2" => "font/woff2",
         "ttf" => "font/ttf",
         "txt" => "text/plain; charset=utf-8",

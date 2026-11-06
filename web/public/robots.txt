@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /auth/
+Disallow: /invite
+Disallow: /login
+Disallow: /servers
+Disallow: /g/
+Disallow: /me/
+Disallow: /house/
+
+Sitemap: __ORIGIN__/sitemap.xml

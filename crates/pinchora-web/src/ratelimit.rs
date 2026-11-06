@@ -13,6 +13,8 @@ use crate::{error::ApiError, state::WebState};
 
 /// Login attempts per address per minute.
 const AUTH_PER_MINUTE: i64 = 10;
+/// Reads of the public landing data per address per minute.
+const PUBLIC_PER_MINUTE: i64 = 60;
 
 /// Counts one hit on `scope` for `who`; 429 once more than `limit` land in one `window`. When Redis
 /// cannot count, the request goes through: a limiter must not take the dashboard down.
@@ -30,9 +32,9 @@ pub async fn check(cache: &Cache, scope: &str, who: &str, limit: i64, window: Du
     }
 }
 
-/// Limits `/auth/*` per client address: the connection's, or what a trusted proxy says it is.
-pub async fn auth_by_address(State(state): State<WebState>, request: Request, next: Next) -> Response {
-    let address = request.extensions().get::<ConnectInfo<SocketAddr>>().map_or_else(
+/// Who a request comes from: the connection's address, or what a trusted proxy says it is.
+fn address_of(state: &WebState, request: &Request) -> String {
+    request.extensions().get::<ConnectInfo<SocketAddr>>().map_or_else(
         || "unknown".to_owned(),
         |info| {
             state
@@ -41,12 +43,34 @@ pub async fn auth_by_address(State(state): State<WebState>, request: Request, ne
                 .client(info.0.ip(), request.headers())
                 .to_string()
         },
-    );
+    )
+}
+
+/// Limits `/auth/*` per client address: the connection's, or what a trusted proxy says it is.
+pub async fn auth_by_address(State(state): State<WebState>, request: Request, next: Next) -> Response {
+    let address = address_of(&state, &request);
     match check(
         &state.app.cache,
         "auth",
         &address,
         AUTH_PER_MINUTE,
+        Duration::from_secs(60),
+    )
+    .await
+    {
+        Ok(()) => next.run(request).await,
+        Err(error) => error.into_response(),
+    }
+}
+
+/// Limits the public, logged-out API (`/api/public/*`) per client address.
+pub async fn public_by_address(State(state): State<WebState>, request: Request, next: Next) -> Response {
+    let address = address_of(&state, &request);
+    match check(
+        &state.app.cache,
+        "public",
+        &address,
+        PUBLIC_PER_MINUTE,
         Duration::from_secs(60),
     )
     .await

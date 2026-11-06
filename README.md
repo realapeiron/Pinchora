@@ -556,6 +556,39 @@ cargo build -p pinchora && PINCHORA_TEST_DATABASE_URL=... PINCHORA_TEST_REDIS_UR
 For UI work against a running server, set `PINCHORA_WEB__PUBLIC_URL=http://localhost:5173` on the Rust side
 (`cargo run -p pinchora -- web`).
 
+### Public website
+
+The same server (`pinchora web`) is the bot's public site. `/` is the landing page for everyone (a logged-in visitor
+sees a **Dashboard** button in the header instead of **Log in**; the dashboard keeps its own paths: `/servers`,
+`/g/<id>`, `/me/house`, `/login`), `/commands` is the searchable command list, `/features/<area>` has a page for each
+of the six areas, `/privacy` and `/terms` are plain-language drafts to review before launch, and anything else is a
+404 page. The pages are in `web/src/site` (the words and links of the landing page in `content.ts`, the areas in
+`features.ts`, the styles in `web/src/styles/site.css`).
+
+| Address | What it is |
+|---|---|
+| `/invite` | Redirects to Discord's page for adding the bot, with the `bot applications.commands` scopes and the permissions it uses; every **Add to Discord** button points here |
+| `/api/public/landing` | `{ stats, viewer }`: servers, players, houses and pets counted in the database (cached in Redis for ten minutes, one refresh at a time), and the logged-in visitor's name and avatar, or `null`. Rate limited per address |
+| `/robots.txt`, `/sitemap.xml`, `/og.png`, the favicon set, `/site.webmanifest` | Written by the build or generated (below); `__ORIGIN__` in them becomes `PINCHORA_WEB__PUBLIC_URL` when served, so one build serves any domain |
+
+Search engines and link previews do not run scripts, so the build writes each public page's own title, description,
+canonical link and Open Graph / Twitter tags into its HTML (`commands/index.html`, `features/games/index.html`, ...,
+from `web/src/site/routes.ts`; the Vite plugin in `web/vite.config.ts` does it) and the server answers
+`/commands` with that file. The dashboard's pages get the shell with `X-Robots-Tag: noindex`. The public pages work
+before login is set up; only the dashboard shows the setup page. The support server link in the footer is a placeholder:
+build with `VITE_SUPPORT_URL=https://discord.gg/<invite>` to set it.
+
+Nothing on the page is a screenshot. Every card and room is drawn by the bot's own renderer from sample data
+(`crates/pinchora-commands/src/landing_assets.rs`: the profile card with real backgrounds, badges, showcase tiles and
+character, an isometric room, chess, connect four, wordle, the rank, wallet, welcome, level-up, leaderboard, pet and
+badge cards, the 1200x630 link preview and the favicons), committed in `web/src/site/showcase` and `web/public`.
+`landing_assets_match` fails when a card, the art or the catalogue changes what these look like; regenerate with
+`cargo test -p pinchora-commands write_landing_assets -- --ignored`. The command list and the content counts on the
+landing page come from the registered command tree and the content files, in `web/src/lib/commands.json` and
+`facts.json`; `committed_site_data_matches` fails while they are out of date and
+`cargo test -p pinchora-web commands_catalog -- --ignored write_site_data` rewrites them. A new command needs an area in
+`/help`'s `AREAS`, and then shows on the site by itself.
+
 ### House viewer (read-only)
 
 Players open **My house** (`/me/house`, in the top bar) to look at their rooms, and any player's unlocked
@@ -630,8 +663,8 @@ crates/
   pinchora-cache/     Redis: cooldowns, gateway sessions, cross-pod identify queue, invalidation pub/sub
   pinchora-render/    pixel-art cards (SVG → PNG with resvg)
   pinchora-commands/  slash commands, buttons, gateway event handlers
-  pinchora-web/       web dashboard API (axum): Discord OAuth, sessions, CSRF, server settings, modules, the house viewer, the SPA
-web/                  dashboard UI (Vite + React + TypeScript), embedded into the binary
+  pinchora-web/       web dashboard API (axum): Discord OAuth, sessions, CSRF, server settings, modules, the house viewer, the public site's data and invite link, the SPA
+web/                  dashboard and public site UI (Vite + React + TypeScript), embedded into the binary
 migrations/           SQL migrations
 assets/fonts/         Silkscreen + Noto Sans, and Noto Sans CJK + Noto Emoji subsets as fallback (SIL OFL)
 deploy/               Kubernetes (kustomize)
