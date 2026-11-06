@@ -357,6 +357,19 @@ mode `daily-tr`/`practice-tr`), so no migration is needed. The party filter read
 disguises (`party/filter_tr.rs`: `ş`/`s`, `ğ`/`g` swaps, numbers, spacing, stars), and never reads the Turkish
 `gün` as the English `gun`. `tests/play_content_tr.rs` and `content/check.py` check every list.
 
+**Turkish game chrome.** Everything a game says besides its content (replies, embeds, buttons, menus, forms, refusals and
+the words on its pixel cards) is in the catalogs `locales/{en,tr}/`: `games.toml` (the games' names, `Game::name(lang)`,
+also what `/play stats` lists), `play.toml` (`/play stats`), `duel.toml` (every `/duel` game and the board helpers),
+`solo.toml` (wordle, hangman, trivia, Pixel Picross, Tide 2048), `collect.toml` (critter drops, bottles, `/dex`,
+`/beachcomb`, `/crabpot`), `party.toml` (`/party`) and `arcade.toml` (the crab derby, treasure heist, shell game and storm
+surge, including the derby GIF's own 3x5 font, which folds Ç Ğ İ Ö Ş Ü to plain letters). A click is answered in the
+clicker's language; a lobby everybody shares keeps the language it was opened in (the derby, heist and storm states end
+in `|<code>`, the party games' JSON state holds `lang`) so the janitor does not switch it; what the bot edits in by
+itself elsewhere (duel time-outs, a secret pick, the shell game's refund) uses the player's own `/language` pick or the
+server's default. Pixel-font labels are kept in the
+catalog already in capitals, and text a card capitalises is capitalised with `pinchora_game::lang::upper` first (Turkish
+`i` is `İ`). The Turkish simulator flows are `tests/simulate/turkish_{duel,solo,party,arcade}.rs`.
+
 ## Quick start (Docker)
 
 1. Create an application at <https://discord.com/developers/applications>, add a bot, and turn

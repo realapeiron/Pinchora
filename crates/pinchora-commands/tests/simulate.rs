@@ -81,6 +81,18 @@ mod w9a;
 // The party games' flows (Hot Pearl, Acronym Tide, Caption the Postcard, Wordle Race, Would You Rather, Truth or Dare).
 #[path = "simulate/turkish.rs"]
 mod turkish;
+// The solo puzzle games and the collection games in Turkish.
+#[path = "simulate/turkish_solo.rs"]
+mod turkish_solo;
+// The party games in Turkish: lobby, Hot Pearl, Acronym Tide, postcards, Wordle Race, polls, dares, stop.
+#[path = "simulate/turkish_party.rs"]
+mod turkish_party;
+// The two-player duels in Turkish: challenges, moves, endings, time-outs and refusals.
+#[path = "simulate/turkish_duel.rs"]
+mod turkish_duel;
+// The crab derby, treasure heist, shell game, storm surge and /play stats in Turkish.
+#[path = "simulate/turkish_arcade.rs"]
+mod turkish_arcade;
 #[path = "simulate/words.rs"]
 mod words;
 // Custom commands (/customcommand, /tag) and auto-responders.
@@ -12652,16 +12664,21 @@ fn play_sub(name: &str, options: Vec<Value>) -> Value {
     json!([sub(name, options)])
 }
 
-/// The seed a derby or heist lobby was opened with, which decides how it will go.
+/// The seed a derby or heist lobby was opened with, which decides how it will go. The state is the seed,
+/// then `|` and the language the lobby speaks.
 async fn seed_of(sim: &Sim, session: i64) -> u64 {
-    sim.app
+    let state = sim
+        .app
         .db
         .game(session)
         .await
         .expect("session")
         .expect("the lobby exists")
-        .state
-        .parse()
+        .state;
+    state
+        .split('|')
+        .next()
+        .and_then(|seed| seed.parse().ok())
         .expect("a lobby's state is its seed")
 }
 

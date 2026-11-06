@@ -4,8 +4,10 @@
 
 use std::{str::Split, sync::Arc};
 
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{GameSession, NewGame, ShellDone, ShellLimits, ShellPick, ShellStart};
 use pinchora_game::{
+    lang::upper,
     party::shells::{
         COOLDOWN_SECS, DAILY_LOSS_LIMIT, DAILY_PLAYS, DAILY_WIN_LIMIT, GUESS_SECS, MAX_STAKE, MIN_STAKE, SHELLS,
         payout, pearl,
@@ -20,8 +22,8 @@ use twilight_model::{
 use twilight_util::builder::embed::EmbedBuilder;
 
 use super::{
-    games::{channel_of, edit_message, location, quiet},
-    party::{count, edit_card, rest, resting, track_message, wait_text},
+    games::{channel_of, edit_message, lang_for, location, quiet},
+    party::{count, edit_card, rest, resting, track_message, wait_text_in},
 };
 use crate::{
     App, Cx,
@@ -30,24 +32,27 @@ use crate::{
 };
 
 /// What a game that has not been guessed yet shows, and what a finished one shows.
-struct Table<'a> {
+struct Table {
     picked: Option<usize>,
     pearl: Option<usize>,
-    status: &'a str,
+    /// The line on the card, translated.
+    status: String,
 }
 
 /// The table as a message: the card, and the three shells to pick from while the game runs.
 async fn message(
     app: &App,
     session: &GameSession,
-    table: Table<'_>,
+    table: Table,
     content: String,
+    lang: Lang,
 ) -> anyhow::Result<InteractionResponseData> {
     let (stake, picked, pearl) = (session.bet, table.picked, table.pearl);
-    let status = table.status.to_owned();
+    let status = upper(lang, &table.status);
     let png = app
         .render(move |r| {
             r.shell_card(&ShellCard {
+                lang,
                 stake,
                 picked,
                 pearl,
@@ -64,7 +69,7 @@ async fn message(
             (true, true) => SUCCESS,
             (true, false) => DANGER,
         })
-        .title("Shell game");
+        .title(t!(lang, "shells.title"));
     let components = if over {
         Vec::new()
     } else {
@@ -72,7 +77,7 @@ async fn message(
             .map(|n| {
                 button(
                     format!("sz:p:{}:{n}", session.id),
-                    &format!("Shell {}", n + 1),
+                    &t!(lang, "shells.shell-button", n = n + 1),
                     Some("🐚"),
                     ButtonStyle::Secondary,
                     false,
@@ -97,29 +102,21 @@ fn limits() -> ShellLimits {
 /// `/play shells`: sits the player down at the table.
 pub(crate) async fn start(cx: &Cx, stake: i64) -> anyhow::Result<()> {
     let me = cx.author()?.id.get();
+    let lang = cx.lang();
     let Some(guild) = cx.guild_id() else {
-        return cx.reply_ephemeral("The shell table is inside a server.").await;
+        return cx.reply_ephemeral(t!(lang, "shells.server-only")).await;
     };
     if !cx.app.db.gambling_enabled(guild).await? {
-        return cx
-            .reply_ephemeral(
-                "🎲 Gambling-style games are **off** on this server. A manager can switch them on with `/config gambling`.",
-            )
-            .await;
+        return cx.reply_ephemeral(t!(lang, "shells.gambling-off")).await;
     }
     if !(MIN_STAKE..=MAX_STAKE).contains(&stake) {
         return cx
-            .reply_ephemeral(format!(
-                "A stake at the shell table is {MIN_STAKE} to {MAX_STAKE} shells."
-            ))
+            .reply_ephemeral(t!(lang, "shells.stake-range", min = MIN_STAKE, max = MAX_STAKE))
             .await;
     }
     if let Some(left) = resting(&cx.app, "shellsstart", me).await? {
         return cx
-            .reply_ephemeral(format!(
-                "The crab is still shuffling. Sit down again in {}.",
-                wait_text(left)
-            ))
+            .reply_ephemeral(t!(lang, "shells.shuffling", wait = wait_text_in(lang, left)))
             .await;
     }
     let seed: u64 = rand::random();
@@ -148,45 +145,35 @@ pub(crate) async fn start(cx: &Cx, stake: i64) -> anyhow::Result<()> {
         }
         ShellStart::Broke { balance } => {
             return cx
-                .reply_ephemeral(format!(
-                    "You only have **{}** shells, so you can't stake {}. Try `/daily`!",
-                    thousands(balance),
-                    thousands(stake)
+                .reply_ephemeral(t!(
+                    lang,
+                    "shells.broke",
+                    balance = thousands(balance),
+                    stake = thousands(stake)
                 ))
                 .await;
         }
         ShellStart::TooMany => {
             return cx
-                .reply_ephemeral(format!(
-                    "You've played {DAILY_PLAYS} games at the table today. The crab needs a nap; come back tomorrow."
-                ))
+                .reply_ephemeral(t!(lang, "shells.too-many", plays = DAILY_PLAYS))
                 .await;
         }
         ShellStart::Down { net } => {
             return cx
-                .reply_ephemeral(format!(
-                    "That stake would take you past today's loss limit of **{DAILY_LOSS_LIMIT}** shells \
-                     (you're at {}). Try a smaller one, or come back tomorrow.",
-                    thousands(net)
-                ))
+                .reply_ephemeral(t!(lang, "shells.down", limit = DAILY_LOSS_LIMIT, net = thousands(net)))
                 .await;
         }
         ShellStart::Up { net } => {
-            return cx
-                .reply_ephemeral(format!(
-                    "You're up **{}** shells today, as far as the table lets anyone go. Come back tomorrow!",
-                    thousands(net)
-                ))
-                .await;
+            return cx.reply_ephemeral(t!(lang, "shells.up", net = thousands(net))).await;
         }
     };
-    let content = format!(
-        "🐚 {} sits down at the shell table with **{}** shells. The pearl is under one shell: pick one {}! \
-         A right guess pays **{}** shells.",
-        mention(me),
-        thousands(stake),
-        relative(session.expires_at),
-        thousands(payout(stake))
+    let content = t!(
+        lang,
+        "shells.sits",
+        player = mention(me),
+        stake = thousands(stake),
+        when = relative(session.expires_at),
+        payout = thousands(payout(stake))
     );
     let data = message(
         &cx.app,
@@ -194,9 +181,10 @@ pub(crate) async fn start(cx: &Cx, stake: i64) -> anyhow::Result<()> {
         Table {
             picked: None,
             pearl: None,
-            status: "Where is the pearl?",
+            status: t!(lang, "shells.status-start"),
         },
         content,
+        lang,
     )
     .await?;
     cx.reply(data).await?;
@@ -213,32 +201,30 @@ pub(crate) async fn on_button(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Res
             .and_then(|v| v.parse::<u8>().ok())
             .filter(|s| usize::from(*s) < SHELLS),
     ) else {
-        return cx.reply_ephemeral("This button has expired.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "arcade.button-expired")).await;
     };
     let me = cx.author()?.id.get();
+    let lang = cx.lang();
     match cx.app.db.shell_pick(id, me, shell, payout).await? {
         ShellPick::Done(done) => {
             count(&cx.app, Game::ShellGame, &[(me, done.paid > 0)]).await;
-            let (table, content) = ending(&done);
-            let data = message(&cx.app, &done.session, table, content).await?;
+            let (table, content) = ending(&done, lang);
+            let data = message(&cx.app, &done.session, table, content, lang).await?;
             cx.update(data).await
         }
-        ShellPick::NotYours => {
-            cx.reply_ephemeral("This isn't your table. Sit down at your own with `/play shells`!")
-                .await
-        }
+        ShellPick::NotYours => cx.reply_ephemeral(t!(lang, "shells.not-yours")).await,
         ShellPick::Gone => {
             // Out of time: give the stake back right here instead of waiting for the janitor.
             match cx.app.db.shell_refund(id).await? {
-                Some(session) => cx.update(timeout_message(&cx.app, &session).await?).await,
-                None => cx.reply_ephemeral("This game is over.").await,
+                Some(session) => cx.update(timeout_message(&cx.app, &session, lang).await?).await,
+                None => cx.reply_ephemeral(t!(lang, "shells.over")).await,
             }
         }
     }
 }
 
 /// What the table shows once the guess is in, and the line under it.
-fn ending(done: &ShellDone) -> (Table<'static>, String) {
+fn ending(done: &ShellDone, lang: Lang) -> (Table, String) {
     let player = mention(done.session.host_id);
     let stake = thousands(done.session.bet);
     if done.paid > 0 {
@@ -246,12 +232,15 @@ fn ending(done: &ShellDone) -> (Table<'static>, String) {
             Table {
                 picked: Some(usize::from(done.picked)),
                 pearl: Some(usize::from(done.pearl)),
-                status: "You found the pearl!",
+                status: t!(lang, "shells.status-found"),
             },
-            format!(
-                "🎉 {player} found the pearl under shell {} and takes **{}** shells for the **{stake}** staked!",
-                done.pearl + 1,
-                thousands(done.paid)
+            t!(
+                lang,
+                "shells.found",
+                player = player,
+                pearl = done.pearl + 1,
+                paid = thousands(done.paid),
+                stake = stake
             ),
         )
     } else {
@@ -259,22 +248,26 @@ fn ending(done: &ShellDone) -> (Table<'static>, String) {
             Table {
                 picked: Some(usize::from(done.picked)),
                 pearl: Some(usize::from(done.pearl)),
-                status: "Not under that one",
+                status: t!(lang, "shells.status-missed"),
             },
-            format!(
-                "🐚 {player} picked shell {}, but the pearl was under shell {}. The sea keeps the **{stake}** shells.",
-                done.picked + 1,
-                done.pearl + 1
+            t!(
+                lang,
+                "shells.missed",
+                player = player,
+                picked = done.picked + 1,
+                pearl = done.pearl + 1,
+                stake = stake
             ),
         )
     }
 }
 
-async fn timeout_message(app: &App, session: &GameSession) -> anyhow::Result<InteractionResponseData> {
-    let content = format!(
-        "⌛ {} never picked a shell, so the **{}** shells staked went back.",
-        mention(session.host_id),
-        thousands(session.bet)
+async fn timeout_message(app: &App, session: &GameSession, lang: Lang) -> anyhow::Result<InteractionResponseData> {
+    let content = t!(
+        lang,
+        "shells.timeout",
+        player = mention(session.host_id),
+        stake = thousands(session.bet)
     );
     // The pearl stays hidden: nothing was guessed.
     let mut data = message(
@@ -283,9 +276,10 @@ async fn timeout_message(app: &App, session: &GameSession) -> anyhow::Result<Int
         Table {
             picked: None,
             pearl: None,
-            status: "Stake returned",
+            status: t!(lang, "shells.status-returned"),
         },
         content,
+        lang,
     )
     .await?;
     data.components = Some(Vec::<Component>::new());
@@ -298,7 +292,8 @@ pub(crate) async fn time_out(app: &Arc<App>, session: &GameSession) -> anyhow::R
         return Ok(false);
     };
     if let Some(at) = location(session) {
-        match timeout_message(app, &before).await {
+        let lang = lang_for(app, session.host_id as u64, session.guild_id as u64).await;
+        match timeout_message(app, &before, lang).await {
             Ok(data) => {
                 if let (Some(embeds), Some(files)) = (data.embeds, data.attachments)
                     && let (Some(embed), Some(file)) = (embeds.into_iter().next(), files.into_iter().next())
@@ -351,10 +346,10 @@ mod tests {
 
     #[test]
     fn a_win_and_a_loss_say_where_the_pearl_was() {
-        let (table, line) = ending(&done(1, 1, 50));
+        let (table, line) = ending(&done(1, 1, 50), Lang::En);
         assert_eq!((table.picked, table.pearl), (Some(1), Some(1)));
         assert!(line.contains("found the pearl under shell 2") && line.contains("**50** shells"));
-        let (table, line) = ending(&done(0, 2, 0));
+        let (table, line) = ending(&done(0, 2, 0), Lang::En);
         assert_eq!((table.picked, table.pearl), (Some(0), Some(2)));
         assert!(line.contains("picked shell 1") && line.contains("under shell 3") && line.contains("keeps"));
     }

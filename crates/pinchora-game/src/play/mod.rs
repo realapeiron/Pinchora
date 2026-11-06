@@ -16,6 +16,8 @@ pub mod wordle;
 
 pub use content::*;
 
+use pinchora_core::{i18n::Lang, t};
+
 use crate::party;
 
 /// Every game that keeps win counts in `/play stats`.
@@ -140,6 +142,11 @@ impl Game {
             Self::WouldYouRather => "Would You Rather",
             Self::TruthOrDare => "Truth or Dare",
         }
+    }
+
+    /// The game's name in `lang` (`game.<key>` in the catalogs); in English it is [`Game::label`].
+    pub fn name(self, lang: Lang) -> String {
+        t!(lang, &format!("game.{}", self.key()))
     }
 
     pub fn emoji(self) -> &'static str {
@@ -271,6 +278,14 @@ mod tests {
             assert!(game.win_reward() > 0 && game.daily_cap() > 0);
         }
         assert_eq!(Game::from_key("poker"), None);
+    }
+
+    #[test]
+    fn every_game_has_a_name_in_every_language() {
+        for game in Game::ALL {
+            assert_eq!(game.name(Lang::En), game.label());
+            assert_ne!(game.name(Lang::Tr), format!("game.{}", game.key()));
+        }
     }
 
     #[test]

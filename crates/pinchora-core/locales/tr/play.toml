@@ -1,0 +1,11 @@
+# /play stats.
+
+[play.stats]
+bot = "Botlar oyun oynamaz, sadece hakemlik yapar."
+best = "\nEn yüksek skor **{score}**"
+record = "**{played}** oyunun **{won}** tanesi galibiyet\n%{percent} galibiyet oranı{best}"
+none = "Henüz oynanmadı"
+title = "{name} kullanıcısının oyunları"
+no-games = "Henüz oyun yok. `/duel connect4`, `/play wordle` ya da `/play trivia` dene!"
+summary = "**{played}** oyunda **{won}** galibiyet."
+footer = "Oyun bittiğinde sayılır; zaman aşımları ve reddedilen meydan okumalar sayılmaz."

@@ -1,0 +1,215 @@
+# The crab derby, the treasure heist, the shell game and the storm surge.
+
+[arcade]
+button-expired = "Bu düğmenin süresi dolmuş."
+
+# Crab Derby.
+[derby]
+title = "Keşiş Yengeç Yarışı"
+server-only = "Yarışlar bir sunucunun içinde yapılır."
+gambling-off = "🎲 Kabuk yatırılan yarışlar bir şans oyunudur ve bu sunucuda **kapalı**. Bir yönetici bunları `/config gambling` ile açabilir. Eğlencesine bir yarış için yatırım gerekmez: `bet` alanını boş bırak."
+stake-range = "Yatırım {min} ile {max} kabuk arasında olmalı."
+easy = "Yavaş ol! Yeni bir yarışı {wait} sonra açabilirsin."
+already-open = "Bu kanalda zaten açık bir yarış var. Ona katıl ya da sıradakini bekle!"
+lobby-status = "Yengecini seç, başlayana kadar değiştirebilirsin"
+lobby-footer = "Bir yengeç seç, sonra yarışı izle."
+lobby-stake = "Herkes yengecine **{stake}** kabuk yatırıyor; kazanan yengeci tutanlar havuzu paylaşır. Kimse onu tutmadıysa herkesin kabuğu geri döner."
+lobby-free = "Yatırım yok, sadece övünme hakkı (kazananı tutarsan birkaç kabuk da var)."
+lobby = "🦀 {host} bir **Keşiş Yengeç Yarışı** açtı! {stake_line}\nYarış {when} başlıyor."
+start-button = "Yarışı başlat"
+leave-button = "Ayrıl"
+expired = "Bu yarışın süresi dolmuş."
+gates-closing = "Yarış birazdan başlıyor, kapılar kapandı!"
+over = "Bu yarış bitti."
+gates-closed = "Kapılar az önce kapandı, yarış başlıyor!"
+full = "Bu yarış dolu: en fazla {max} yarışçı katılabilir."
+broke = "Yalnızca **{balance}** kabuğun var ama yatırım **{stake}** kabuk. `/daily` dene ya da eğlencesine bir yarışa katıl!"
+down = "Bu yatırım, bahisli yarışlarda bugünkü **{limit}** kabukluk zarar sınırını aşmana yol açar (şu an {net} durumdasın). Eğlencesine bir yarışa katıl ya da yarın tekrar gel."
+not-in = "Bu yarışta henüz bir yengeç seçmedin."
+host-only = "Yarışı erkenden yalnızca {host} başlatabilir. Yarış {when} kendiliğinden başlar."
+need-racers = { other = "Önce bir yengeç seç: yarışın başlaması için en az {count} yarışçı gerekiyor, şu an {racers} yarışçı var. Yarış her durumda {when} kendiliğinden başlar." }
+already-running = "Bu yarış zaten sürüyor."
+result-footer = "Yengeçler bitirince gizli metne tıkla."
+called-off = "🦀 {host} kullanıcısının yarışı iptal edildi: {why}.{back}"
+why-nobody = "kimse yengeç seçmedi"
+why-few = "kabuk yatırılan bir yarış için en az {min} yarışçı gerekir"
+stake-back = " Yatırılan kabuklar geri döndü."
+and-more = "{shown} ve {more} kişi daha"
+paid = "💰 **{crab}** yengecini tutanlar **{pool}** kabukluk havuzu paylaşıyor: {list}"
+refunded = "Kimse **{crab}** yengecini tutmadı, bu yüzden bütün yatırımlar geri döndü."
+nobody-friendly = "Kimse **{crab}** yengecini tutmadı."
+friendly = "🎉 **{crab}** yengecini tutanlar: {list}"
+result = "🏁 {host} kullanıcısının **Keşiş Yengeç Yarışı** başladı, işte gidiyorlar!\n||{placings}\n{backers}||"
+
+[derby.card]
+title = "KEŞİŞ YENGEÇ YARIŞI"
+pool = "HAVUZ {pool}"
+entry = "KİŞİ BAŞI {stake}, KAZANANLAR PAYLAŞIR"
+for-fun = "EĞLENCESİNE"
+no-stakes = "YATIRIM YOK, SADECE ÖVÜNME HAKKI"
+lane = "ŞERİT {n}"
+no-backers = "DESTEKÇİ YOK"
+backers = { other = "{count} DESTEKÇİ" }
+
+# Drawn into the race GIF by a 3x5 pixel font (capitals and digits; Turkish letters are folded to plain ones).
+[derby.gif]
+title = "KEŞİŞ YENGEÇ YARIŞI"
+ready = "HAZIR"
+go = "BAŞLA!"
+finish = "SON"
+
+# Treasure Heist.
+[heist]
+title = "Hazine Soygunu"
+server-only = "Soygunlar bir sunucunun içinde yapılır."
+laying-low = "Son soygunundan sonra ortalıkta görünmüyorsun. Bekçi yengeçler seni {wait} sonra unutur."
+already-planned = "Bu kanalda zaten bir soygun planlanıyor. Ekibe katıl!"
+lobby = "💰 {host} bir **Hazine Soygunu** planlıyor! Düğmelerle bir rol seç: üç rolü de kapsayan ekibin şansı en yüksek olur. Kimse kabuk kaybetmez; kasa ekibe öder ya da kimseye ödemez. En az {min} kişilik ekip gerekiyor ve soygun {when} başlıyor."
+role-line = "{emoji} **{role}** {job}"
+set-off = "Hemen yola çık"
+leave = "Ayrıl"
+expired = "Bu soygunun süresi dolmuş."
+setting-off = "Ekip zaten yola çıkıyor!"
+over = "Bu soygun bitti."
+closed = "Ekip sensiz yola çıktı!"
+full = "Ekip dolu: bir soygun en fazla {max} kişi alır."
+not-in = "Bu ekipte değilsin."
+host-only = "Ekibi erkenden yalnızca {host} yola çıkarabilir. Ekip {when} kendiliğinden yola çıkar."
+too-few = "Bir soygun için en az {min} kişi gerekiyor, ekibinde {crew} kişi var. Kendin bir rol seç ya da daha çok kişinin katılmasını bekle; ekip her durumda {when} yola çıkar."
+under-way = "Bu soygun zaten başladı."
+called-off = "🏴‍☠️ {host} kullanıcısının soygunu iptal edildi: bir soygun için en az {min} kişi gerekir."
+limit-reached = "(bugünkü sınıra ulaştı)"
+done = "💰 {host} kullanıcısının soygunu bitti: **{headline}**!\n{lines}"
+
+[heist.role]
+lookout = "Gözcü"
+locksmith = "Çilingir"
+diver = "Dalgıç"
+
+[heist.job]
+lookout = "bekçi yengeçlerin başka yöne bakmasını sağlar"
+locksmith = "istiridye kilidini açar"
+diver = "ganimeti yüzeye çıkarır"
+
+[heist.stage]
+0 = "Bekçilerin yanından sıvış"
+1 = "İstiridye kilidini aç"
+2 = "Ganimeti çıkar"
+
+# The result, in capitals: it heads the card, and in lower case it ends the message's first line.
+[heist.headline]
+vault = "KASA AÇILDI"
+haul = "BOL KAZANÇ"
+scraps = "SADECE KIRINTILAR"
+busted = "YAKALANDILAR"
+
+[heist.card]
+title = "HAZİNE SOYGUNU"
+crew-count = "EKİP {n}/{max}"
+open = "AÇILDI!"
+shut = "KAPALI KALDI"
+sealed = "MÜHÜRLÜ"
+passed = "BAŞARILI"
+failed = "BAŞARISIZ"
+to-come = "SIRADA"
+stage = "AŞAMA {n}"
+chance = "%{chance} ŞANS"
+crew = "EKİP ({count})"
+each = "KİŞİ BAŞI {amount}"
+nobody = "HENÜZ KİMSE KATILMADI"
+lookout = "GÖZCÜ"
+locksmith = "ÇİLİNGİR"
+diver = "DALGIÇ"
+
+[heist.line.pass.0]
+0 = "Bekçi yengeçler öğle yemeğini tartışıyor, kafalarını bile kaldırmıyor."
+1 = "İyi zamanlanmış bir kabarcık perdesi bütün ekibi gizliyor."
+2 = "Gözcü bir kez ıslık çalıyor; bekçiler başka yöne dalıp gidiyor."
+
+[heist.line.pass.1]
+0 = "Tık, tık, tak: istiridye kilidi esneyerek açılıyor."
+1 = "Çilingir bir ninni mırıldanıyor, kilit uykuya dalıyor."
+2 = "Minik bir kıskaç, kusursuz bir çevirme ve kapı açılıyor."
+
+[heist.line.pass.2]
+0 = "Hazine, deniz yosunu asansörüyle yukarı kadar çıkıyor."
+1 = "Çuval çuval ganimet, kabarcık izleriyle dışarı süzülüyor."
+2 = "Dalgıç ayaklarını çırpıyor ve ganimet eve geliyor."
+
+[heist.line.fail.0]
+0 = "Bir bekçi yengeç hapşırıyor ve bütün devriye arkasını dönüyor."
+1 = "Ekip gıcırdayarak kumun üstünden geçiyor. Resifteki her kıskaç duyuyor."
+2 = "Biri öten bir süngere basıyor."
+
+[heist.line.fail.1]
+0 = "Kilit bir kıskacın üstüne kapanıyor ve alarmı çaldırıyor."
+1 = "Yanlış anahtar. Yanlış anahtar. Hem de yanlış kilit."
+2 = "İstiridye kilidi ziyaretçilerden bıktığına karar veriyor."
+
+[heist.line.fail.2]
+0 = "Çuvallar göründüğünden ağır ve dümdüz dibe batıyor."
+1 = "Meraklı bir ahtapot ganimetin üstüne oturuyor ve kıpırdamıyor."
+2 = "Yosun asansörü hüzünlü bir şangırtıyla kopuyor."
+
+# Shell Game.
+[shells]
+title = "Kabuk oyunu"
+server-only = "Kabuk masası bir sunucunun içinde."
+gambling-off = "🎲 Şans oyunları bu sunucuda **kapalı**. Bir yönetici bunları `/config gambling` ile açabilir."
+stake-range = "Kabuk masasında yatırım {min} ile {max} kabuk arasında olmalı."
+shuffling = "Yengeç hâlâ kabukları karıştırıyor. {wait} sonra tekrar otur."
+broke = "Yalnızca **{balance}** kabuğun var, bu yüzden {stake} kabuk yatıramazsın. `/daily` dene!"
+too-many = "Bugün masada {plays} oyun oynadın. Yengecin şekerleme yapması lazım; yarın tekrar gel."
+down = "Bu yatırım, bugünkü **{limit}** kabukluk kayıp sınırını aşmana yol açar (şu an {net} durumdasın). Daha küçük bir yatırım dene ya da yarın tekrar gel."
+up = "Bugün **{net}** kabuk öndesin; masanın kimseye izin verdiği en yüksek nokta bu. Yarın tekrar gel!"
+sits = "🐚 {player} kabuk masasına **{stake}** kabukla oturdu. İnci kabuklardan birinin altında: {when} birini seç! Doğru tahmin **{payout}** kabuk öder."
+shell-button = "{n}. kabuk"
+status-start = "İnci nerede?"
+status-found = "İnciyi buldun!"
+status-missed = "Altında değilmiş"
+status-returned = "Yatırım iade edildi"
+found = "🎉 {player} inciyi {pearl}. kabuğun altında buldu ve yatırdığı **{stake}** kabuk karşılığında **{paid}** kabuk kazandı!"
+missed = "🐚 {player} {picked}. kabuğu seçti ama inci {pearl}. kabuğun altındaydı. Deniz **{stake}** kabuğu alıyor."
+timeout = "⌛ {player} hiç kabuk seçmedi, bu yüzden yatırılan **{stake}** kabuk geri döndü."
+not-yours = "Bu senin masan değil. `/play shells` ile kendi masana otur!"
+over = "Bu oyun bitti."
+
+[shells.card]
+title = "KABUK OYUNU"
+stake = "YATIRIM {stake} ÖDÜL {payout}"
+your-pick = "SENİN SEÇİMİN"
+
+# Storm Surge.
+[surge]
+title = "Fırtına Kabarması"
+server-only = "Fırtınalar sunuculara gelir."
+denied = "Fırtına çağırmak için Sunucuyu Yönet iznine sahip olmak gerekir."
+breather = "Denizin nefes alması lazım: sıradaki fırtına {wait} sonra çağrılabilir."
+raging = "Bu sunucuda zaten bir fırtına kopuyor. Mücadeleye katıl!"
+button = "Kum torbası yığ"
+announcement = "⛈️ **Fırtına kabarması!** Dev bir dalga geliyor. Herkes duvarı tutmak için kum torbası yığsın! Deniz her {secs} saniyede bir torbayı alıp götürüyor ve duvarın hedefi katılan her yardımcıyla büyüyor. Fırtına {when} dinecek."
+claws = "Kıskaçlarının dinlenmesi lazım: sıradaki torbayı {wait} sonra yığabilirsin."
+passed = "Bu fırtına geçti."
+capped = "**{max}** kum torbası yığdın; bir yengeç en fazla bu kadar yığabilir. Diğerlerine tezahürat yap!"
+stacked = "🧱 **{mine}.** kum torbası yığıldı! Duvar **{goal}** hedefin **{wall}** seviyesinde."
+holds = "Duvar zaten dayanıyor, güzel iş!"
+more = "\n…ve {n} yardımcı daha."
+held = "🌤️ **Duvar dayandı!** Deniz pes etti ve yardım eden herkesin ödemesi yapıldı:"
+broke-nobody = "🌊 **Deniz duvarı aştı.** Bu sefer yardıma gelen olmadı."
+broke = "🌊 **Deniz duvarı aştı.** Denediğiniz için teşekkürler, yardımcılara küçük bir şeyler düştü:"
+
+[surge.config]
+denied = "Zamanlı fırtınaları yalnızca Sunucuyu Yönet iznine sahip olanlar değiştirebilir."
+on = "⛈️ Zamanlı fırtına kabarmaları **açık**: <#{channel}> kanalına her **{hours}** saatte bir fırtına gelir.{when}"
+next = " Sıradaki fırtına {when} geliyor."
+on-no-channel = "⛈️ Zamanlı fırtına kabarmaları **açık** ama bir kanal gerekiyor: `channel:` ile birini seç."
+off = "⛈️ Zamanlı fırtına kabarmaları **kapalı**. Yöneticiler yine de `/surge` ile fırtına çağırabilir."
+
+[surge.card]
+title = "FIRTINA KABARMASI"
+rolling = "DUVARI TUT"
+held = "DUVAR DAYANDI"
+broken = "DENİZ KAZANDI"
+wall = "DUVAR {wall} / {goal}"
+helping = { other = "{count} YENGEÇ YARDIM EDİYOR" }
+bags = "{bags} TORBA"

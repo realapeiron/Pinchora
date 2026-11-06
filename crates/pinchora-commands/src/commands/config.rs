@@ -263,13 +263,17 @@ impl ConfigCommand {
         embed.fields.push(
             EmbedFieldBuilder::new(
                 "Critter drops",
-                critters_summary(&cx.app.db.collection_settings(guild).await?),
+                critters_summary(&cx.app.db.collection_settings(guild).await?, cx.lang()),
             )
             .build(),
         );
-        embed
-            .fields
-            .push(EmbedFieldBuilder::new("Party games", party_summary(cx.app.db.party_strict(guild).await?)).build());
+        embed.fields.push(
+            EmbedFieldBuilder::new(
+                "Party games",
+                party_summary(cx.lang(), cx.app.db.party_strict(guild).await?),
+            )
+            .build(),
+        );
         let language = match cx.app.guild_lang_choice(guild).await {
             Some(lang) => lang.native_name().to_owned(),
             None => t!(cx.lang(), "config.language-default"),
