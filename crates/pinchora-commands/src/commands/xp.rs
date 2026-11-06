@@ -130,7 +130,7 @@ async fn multiplier(cx: &Cx, guild: u64, c: XpMultiplier) -> anyhow::Result<()> 
     } else {
         format!("{who} now earns **×{value}** XP and points.")
     };
-    cx.app.forget_xp_rules(guild).await;
+    cx.app.announce_xp_change(guild).await;
     cx.reply_ephemeral(text).await
 }
 
@@ -157,7 +157,7 @@ async fn clear(cx: &Cx, guild: u64, c: XpClear) -> anyhow::Result<()> {
             }
         }
     };
-    cx.app.forget_xp_rules(guild).await;
+    cx.app.announce_xp_change(guild).await;
     cx.reply_ephemeral(text).await
 }
 
@@ -214,12 +214,21 @@ async fn voice(cx: &Cx, guild: u64, c: XpVoice) -> anyhow::Result<()> {
     } else {
         cx.app.db.update_voice_xp(guild, c.enabled, amount).await?
     };
-    cx.app.forget_guild_settings(guild).await;
-    // Other pods' caches lag the switch by minutes; with nobody remembered, none of them pays.
-    if c.enabled == Some(false)
-        && let Err(error) = crate::voice_xp::forget(&cx.app, guild).await
-    {
-        tracing::warn!(guild, %error, "voice presence not forgotten");
+    cx.app.announce_guild_change(guild).await;
+    // Other pods' caches can lag the switch: with nobody remembered, and writes refused until it is switched
+    // on again, none of them pays.
+    match c.enabled {
+        Some(false) => {
+            if let Err(error) = crate::voice_xp::switched_off(&cx.app, guild).await {
+                tracing::warn!(guild, %error, "voice presence not forgotten");
+            }
+        }
+        Some(true) => {
+            if let Err(error) = crate::voice_xp::switched_on(&cx.app, guild).await {
+                tracing::warn!(guild, %error, "voice switch not cleared");
+            }
+        }
+        None => {}
     }
     let mut text = voice_summary(&settings);
     if c.enabled == Some(true) {

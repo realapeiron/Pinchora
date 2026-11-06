@@ -33,10 +33,20 @@ use crate::server_log::LogState;
 
 /// Where a channel sits, for XP multipliers that follow a thread to its channel and a channel to its category.
 #[derive(Debug, Clone, Copy)]
-struct ChannelPlace {
-    parent: Option<u64>,
-    thread: bool,
+pub(crate) struct ChannelPlace {
+    pub(crate) parent: Option<u64>,
+    pub(crate) thread: bool,
 }
+
+/// How long a channel's place is kept. A channel rarely moves, and Discord is asked once per channel, so
+/// this is hours; GUILD_CREATE fills the places in anyway.
+const CHANNEL_PLACE_KEPT: Duration = Duration::from_secs(6 * 3600);
+/// How long a channel Discord could not tell us about (deleted, hidden from the bot) is left alone before
+/// it is asked about again.
+const CHANNEL_MISS_KEPT: Duration = Duration::from_secs(10 * 60);
+/// How many guild rebuilds (voice presence from GUILD_CREATE) run at once: a small share of the work, so an
+/// identify storm cannot crowd the message and member events out of their slots.
+const REBUILD_SLOTS: usize = 16;
 
 /// What the voice XP ticker needs about a server, kept for minutes so a tick every minute does not ask
 /// the database every time.
@@ -66,10 +76,12 @@ pub struct App {
     module_rules: Moka<u64, Arc<GuildModules>>,
     voice_guilds: Moka<u64, Arc<VoiceGuild>>,
     channel_places: Moka<u64, ChannelPlace>,
+    channel_misses: Moka<u64, ()>,
     avatars: Moka<String, Arc<Vec<u8>>>,
     users: Moka<u64, Arc<User>>,
     tasks: TaskTracker,
     event_slots: Arc<Semaphore>,
+    rebuild_slots: Arc<Semaphore>,
     /// Last-seen names and voice channels, so the server log can say what changed.
     pub(crate) log_state: LogState,
     /// Seconds added to the clock by [`App::shift_clock`].
@@ -124,8 +136,12 @@ impl App {
                 .time_to_live(Duration::from_secs(300))
                 .build(),
             channel_places: Moka::builder()
+                .max_capacity(500_000)
+                .time_to_live(CHANNEL_PLACE_KEPT)
+                .build(),
+            channel_misses: Moka::builder()
                 .max_capacity(100_000)
-                .time_to_live(Duration::from_secs(600))
+                .time_to_live(CHANNEL_MISS_KEPT)
                 .build(),
             avatars: Moka::builder()
                 .weigher(|_k: &String, v: &Arc<Vec<u8>>| v.len().try_into().unwrap_or(u32::MAX))
@@ -138,6 +154,7 @@ impl App {
                 .build(),
             tasks: TaskTracker::new(),
             event_slots: Arc::new(Semaphore::new(1024)),
+            rebuild_slots: Arc::new(Semaphore::new(REBUILD_SLOTS)),
             log_state: LogState::new(),
             clock_shift: AtomicI64::new(0),
         }
@@ -182,6 +199,22 @@ impl App {
         }
     }
 
+    /// Spawns a guild rebuild: it waits for one of a few slots of its own (the event slots are for events), so
+    /// a storm of GUILD_CREATEs at identify queues up here, as small snapshots, instead of using every slot
+    /// the message and member events need.
+    pub fn spawn_rebuild<F>(&self, future: F)
+    where
+        F: Future<Output = ()> + Send + 'static,
+    {
+        let slots = self.rebuild_slots.clone();
+        self.tasks.spawn(async move {
+            let Ok(_slot) = slots.acquire_owned().await else {
+                return;
+            };
+            future.await;
+        });
+    }
+
     /// Waits up to `limit` for spawned tasks to finish.
     pub async fn drain(&self, limit: Duration) {
         self.tasks.close();
@@ -206,6 +239,26 @@ impl App {
     pub async fn forget_xp_rules(&self, guild_id: u64) {
         self.xp_rules.invalidate(&guild_id).await;
         self.voice_guilds.invalidate(&guild_id).await;
+    }
+
+    /// A server's settings changed here: forgets this pod's copy and tells every other pod through Redis to
+    /// forget theirs, so the change counts from their next message (and voice minute) instead of after their
+    /// caches run out. A failed announcement is only logged: the caches run out within minutes.
+    pub async fn announce_guild_change(&self, guild_id: u64) {
+        self.forget_guild_settings(guild_id).await;
+        self.publish(pinchora_cache::Invalidation::Guild(guild_id)).await;
+    }
+
+    /// [`App::announce_guild_change`] for a server's XP multipliers.
+    pub async fn announce_xp_change(&self, guild_id: u64) {
+        self.forget_xp_rules(guild_id).await;
+        self.publish(pinchora_cache::Invalidation::XpRules(guild_id)).await;
+    }
+
+    async fn publish(&self, what: pinchora_cache::Invalidation) {
+        if let Err(error) = self.cache.publish_invalidation(what).await {
+            tracing::warn!(%error, ?what, "invalidation not published; other pods catch up as their caches run out");
+        }
     }
 
     /// The settings and multipliers voice XP is paid by, cached for five minutes.
@@ -262,7 +315,15 @@ impl App {
     }
 
     async fn channel_place(&self, id: u64) -> Option<ChannelPlace> {
-        self.channel_places
+        if let Some(place) = self.channel_places.get(&id).await {
+            return Some(place);
+        }
+        // A channel Discord could not tell us about a moment ago is not asked about again on every message.
+        if self.channel_misses.contains_key(&id) {
+            return None;
+        }
+        let asked = self
+            .channel_places
             .try_get_with(id, async {
                 let channel = self.http.channel(Id::new(id.max(1))).await?.model().await?;
                 anyhow::Ok(ChannelPlace {
@@ -270,9 +331,29 @@ impl App {
                     thread: channel.kind.is_thread(),
                 })
             })
-            .await
-            .map_err(|error| tracing::debug!(%error, id, "channel lookup failed"))
-            .ok()
+            .await;
+        match asked {
+            Ok(place) => Some(place),
+            Err(error) => {
+                tracing::debug!(%error, id, "channel lookup failed");
+                self.channel_misses.insert(id, ()).await;
+                None
+            }
+        }
+    }
+
+    /// Remembers where channels and threads sit, as GUILD_CREATE lists them, so Discord is never asked
+    /// about them.
+    pub(crate) async fn prefill_channel_places(&self, places: Vec<(u64, ChannelPlace)>) {
+        for (id, place) in places {
+            self.channel_places.insert(id, place).await;
+            self.channel_misses.invalidate(&id).await;
+        }
+    }
+
+    /// Whether `id`'s place is known without asking Discord, for tests.
+    pub fn knows_channel_place(&self, id: u64) -> bool {
+        self.channel_places.contains_key(&id)
     }
 
     /// A server's role names by id, cached for a minute; `None` when Discord cannot be asked.

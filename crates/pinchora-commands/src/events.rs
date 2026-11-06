@@ -258,10 +258,20 @@ pub async fn on_voice_state_update(app: Arc<App>, event: VoiceStateUpdate) -> an
 /// Rebuilds who is in voice from the server's voice states, which Discord sends once per session in
 /// GUILD_CREATE: a leave or join missed while the bot was away is put right here.
 pub async fn on_guild_create(app: Arc<App>, event: GuildCreate) -> anyhow::Result<()> {
+    match voice_snapshot(&app, event) {
+        Some(snapshot) => voice_xp::rebuild(&app, snapshot).await,
+        None => Ok(()),
+    }
+}
+
+/// What the rebuild of a GUILD_CREATE needs, taken at once and without awaiting anything: the guild itself
+/// (its members, roles and emojis, big on a big server) is dropped here, so a rebuild waiting for its slot or
+/// for the database holds only the snapshot. `None` for a server that is unavailable.
+pub fn voice_snapshot(app: &App, event: GuildCreate) -> Option<voice_xp::VoiceSnapshot> {
     let GuildCreate::Available(guild) = event else {
-        return Ok(());
+        return None;
     };
-    voice_xp::rebuild(&app, &guild).await
+    Some(voice_xp::VoiceSnapshot::of(&guild, app.now().timestamp()))
 }
 
 /// Forgets who was in voice in a server the bot lost, or that went down: it starts over from the

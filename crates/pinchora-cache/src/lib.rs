@@ -216,6 +216,52 @@ impl Cache {
         Ok(())
     }
 
+    /// Replaces a hash of voice presence records with `entries`, except for the fields written at or after
+    /// `newer_than` (Unix seconds): those, whoever wrote them, stay exactly as they are, and a field of
+    /// `entries` they cover is not written. A record is `channel|flags|seen|...`, and its third part is
+    /// when it was written. Done in one step on the server, so an event that lands in between is not lost.
+    /// The hash expires `ttl` after this write; no fields left deletes it.
+    pub async fn map_merge(
+        &self,
+        key: &str,
+        entries: &[(String, String)],
+        newer_than: i64,
+        ttl: Duration,
+    ) -> anyhow::Result<()> {
+        const SCRIPT: &str = r#"
+            local newer = tonumber(ARGV[1])
+            local kept = {}
+            local fields = redis.call('HGETALL', KEYS[1])
+            for i = 1, #fields, 2 do
+                local seen = tonumber(string.match(fields[i + 1], '^[^|]*|[^|]*|(%-?%d+)'))
+                if seen and seen >= newer then kept[fields[i]] = fields[i + 1] end
+            end
+            redis.call('DEL', KEYS[1])
+            local written = 0
+            for i = 3, #ARGV, 2 do
+                if not kept[ARGV[i]] then
+                    redis.call('HSET', KEYS[1], ARGV[i], ARGV[i + 1])
+                    written = written + 1
+                end
+            end
+            for field, value in pairs(kept) do
+                redis.call('HSET', KEYS[1], field, value)
+                written = written + 1
+            end
+            if written > 0 then redis.call('EXPIRE', KEYS[1], tonumber(ARGV[2])) end
+            return written
+        "#;
+        let key = format!("{PREFIX}:h:{key}");
+        let script = redis::Script::new(SCRIPT);
+        let mut call = script.key(&key);
+        call.arg(newer_than).arg(ttl.as_secs().max(1));
+        for (field, value) in entries {
+            call.arg(field).arg(value);
+        }
+        let _: i64 = call.invoke_async(&mut self.conn()).await?;
+        Ok(())
+    }
+
     /// Removes one field of a hash.
     pub async fn map_remove(&self, key: &str, field: &str) -> anyhow::Result<()> {
         let _: () = self.conn().hdel(format!("{PREFIX}:h:{key}"), field).await?;

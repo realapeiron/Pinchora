@@ -248,7 +248,8 @@ impl ConfigCommand {
                 Err(reason) => return cx.reply_ephemeral(reason).await,
             },
         };
-        cx.app.forget_guild_settings(guild).await;
+        // Leveling on or off (and the rest of these settings) counts on every pod at once, voice XP included.
+        cx.app.announce_guild_change(guild).await;
         let mut embed = settings_embed(&settings);
         embed.fields.push(
             EmbedFieldBuilder::new(

@@ -2,8 +2,8 @@ use std::{sync::Arc, time::Duration};
 
 use pinchora_cache::{RedisQueue, StoredSession};
 use pinchora_commands::{
-    App, Responder, handle_gateway_interaction, on_ban_add, on_ban_remove, on_guild_create, on_guild_delete,
-    on_member_add, on_member_remove, on_member_update, on_message, on_voice_state_update,
+    App, Responder, handle_gateway_interaction, on_ban_add, on_ban_remove, on_guild_delete, on_member_add,
+    on_member_remove, on_member_update, on_message, on_voice_state_update, rebuild_voice, voice_snapshot,
 };
 use pinchora_core::{
     Config, cluster,
@@ -241,12 +241,18 @@ fn dispatch(app: &Arc<App>, shard: u32, event: Event) {
             });
         }
         Event::GuildCreate(event) => {
-            let app2 = app.clone();
-            app.spawn_event("guild_create", async move {
-                if let Err(error) = on_guild_create(app2, *event).await {
-                    tracing::warn!(%error, "guild create handler failed");
-                }
-            });
+            // Everything the rebuild needs is taken here, and the guild is dropped: a storm of them at
+            // identify must not sit in the event slots (a message or a member joining would be dropped)
+            // holding every server's member list while the database answers.
+            if let Some(snapshot) = voice_snapshot(app, *event) {
+                let app2 = app.clone();
+                app.spawn_rebuild(async move {
+                    let guild = snapshot.guild();
+                    if let Err(error) = rebuild_voice(&app2, snapshot).await {
+                        tracing::warn!(guild, %error, "guild create handler failed");
+                    }
+                });
+            }
         }
         Event::GuildDelete(event) => {
             let app2 = app.clone();
