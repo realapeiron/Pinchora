@@ -11737,6 +11737,14 @@ async fn share_or_grab_hides_the_picks_and_pays_the_sea_s_pool_by_what_they_pick
         "{}",
         challenge.content()
     );
+    // A duel's Accept with this id is not a way in (nor past the party games' module switch).
+    let forged = format!("c4:y:{}", session_of(&challenge));
+    let forged = sim.component(b, &forged, &[], &challenge).await;
+    assert!(
+        forged.ephemeral && forged.content().contains("expired"),
+        "{}",
+        forged.content()
+    );
     let board = sim.click(b, &challenge, "Accept").await;
     assert_png(&board, 580, 350);
     assert!(

@@ -463,7 +463,8 @@ async fn challenge(cx: &Cx, kind: Kind, opponent: &ResolvedUser, rounds: u8, bet
 /// A click on a challenge's Accept (`accept`) or Decline.
 pub(crate) async fn answer(cx: &Cx, kind: Kind, id: i64, accept: bool) -> anyhow::Result<()> {
     let me = cx.author()?.id.get();
-    let Some(session) = cx.app.db.game(id).await? else {
+    // Another kind's id is not this challenge: its buttons pass another module's switch.
+    let Some(session) = cx.app.db.game(id).await?.filter(|s| s.kind == kind.key()) else {
         return cx.reply_ephemeral("This challenge has expired.").await;
     };
     let (host, guest) = (session.host_id as u64, session.guest_id.unwrap_or(0) as u64);
