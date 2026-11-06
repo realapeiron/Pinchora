@@ -500,11 +500,14 @@ impl Db {
     }
 
     /// The entries of a round, in an order that does not tell who wrote what (it is stable, so numbers
-    /// shown to voters mean the same thing every time).
+    /// shown to voters mean the same thing every time). The game's creation time, to the microsecond,
+    /// salts it: the game id and the players' ids are in plain sight, so they alone would let anyone work
+    /// the order out.
     pub async fn party_entries(&self, id: i64, round: i32) -> anyhow::Result<Vec<PartyEntry>> {
         Ok(sqlx::query_as::<_, PartyEntry>(
-            "SELECT round, user_id, text FROM party_entries WHERE game_id = $1 AND round = $2
-             ORDER BY md5(game_id::text || ':' || round::text || ':' || user_id::text)",
+            "SELECT e.round, e.user_id, e.text FROM party_entries e JOIN party_games g ON g.id = e.game_id
+             WHERE e.game_id = $1 AND e.round = $2
+             ORDER BY md5(g.created_at::text || ':' || e.round::text || ':' || e.user_id::text)",
         )
         .bind(id)
         .bind(round)

@@ -52,6 +52,8 @@ const EASY_MIN: u32 = 2_500;
 const MEDIUM_MIN: u32 = 1_500;
 const MEDIUM_MIN_SHORT: u32 = 800;
 const HARD_MIN: u32 = 400;
+/// Fragments common enough to be syllables that a family table should not see in big letters.
+const NOT_SHOWN: &[&str] = &["ass", "tit", "cum", "sex", "fag", "nig"];
 
 pub struct Dictionary {
     words: HashSet<&'static str>,
@@ -90,7 +92,7 @@ impl Dictionary {
         let mut easy = Vec::new();
         let mut medium = Vec::new();
         let mut hard = Vec::new();
-        for (&part, &n) in &counts {
+        for (&part, &n) in counts.iter().filter(|(part, _)| !NOT_SHOWN.contains(*part)) {
             match (part.len(), n) {
                 (2, n) if n >= EASY_MIN => easy.push(part),
                 (2, n) if n >= MEDIUM_MIN_SHORT => medium.push(part),
@@ -269,7 +271,9 @@ mod tests {
         ] {
             assert!(d.accepts(word), "{word}");
         }
-        for word in ["qzxv", "fuck", "shitty", "negro", "jumpedly", "xyzzy"] {
+        for word in [
+            "qzxv", "fuck", "shitty", "negro", "jumpedly", "xyzzy", "wetback", "squaw", "chinks", "erotic", "orgies",
+        ] {
             assert!(!d.accepts(word), "{word}");
         }
     }
@@ -295,6 +299,10 @@ mod tests {
         );
         assert!(d.tier(Tier::Hard).iter().all(|s| s.len() == 3));
         assert!(d.count("er") > d.count("zz"));
+        assert!(d.count("ass") >= HARD_MIN, "common enough, and still never shown");
+        for tier in [Tier::Easy, Tier::Medium, Tier::Hard] {
+            assert!(d.tier(tier).iter().all(|s| !NOT_SHOWN.contains(s)));
+        }
     }
 
     #[test]

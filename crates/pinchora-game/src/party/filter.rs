@@ -1,7 +1,7 @@
 //! The small profanity filter the party games run member text through. A base list (strong words and
 //! slurs) always applies; a server's strict mode adds mild words and insults. It reads whole words,
 //! so "class" and "this hit" pass, and it undoes the usual disguises: numbers for letters, stretched
-//! letters, and words spelled out with dots or spaces.
+//! letters, words spelled out with dots or spaces, accented and look-alike letters, invisible characters.
 
 /// Words nobody types in a family friendly game: strong profanity and slurs.
 const BASE: &[&str] = &[
@@ -62,10 +62,43 @@ fn disguise(c: char) -> Option<char> {
     })
 }
 
-/// The words of `text` as the filter reads them: lowercase, disguises undone, runs of single letters
-/// joined ("f u c k"), and any letter repeated three or more times cut to one.
+/// The plain letter a look-alike stands for, so "fück", "fuсk" (a Cyrillic с) and "ｆｕｃｋ" read as
+/// "fuck"; `None` for an invisible character (zero-width space, soft hyphen, combining mark), which is dropped.
+fn plain(c: char) -> Option<char> {
+    Some(match c {
+        '\u{AD}'
+        | '\u{300}'..='\u{36F}'
+        | '\u{180E}'
+        | '\u{200B}'..='\u{200F}'
+        | '\u{2060}'..='\u{2064}'
+        | '\u{FEFF}' => {
+            return None;
+        }
+        '\u{FF01}'..='\u{FF5E}' => char::from_u32(c as u32 - 0xFEE0).unwrap_or(c),
+        'à'..='å' | 'а' | 'α' => 'a',
+        'ç' | 'с' => 'c',
+        'è'..='ë' | 'е' | 'ё' | 'ε' => 'e',
+        'ì'..='ï' | 'і' | 'ї' | 'ι' => 'i',
+        'ò'..='ö' | 'ø' | 'о' | 'ο' => 'o',
+        'ù'..='ü' | 'υ' => 'u',
+        'ñ' => 'n',
+        'ý' | 'ÿ' | 'у' => 'y',
+        'к' | 'κ' => 'k',
+        'р' | 'ρ' => 'p',
+        'х' | 'χ' => 'x',
+        'ѕ' => 's',
+        'ј' => 'j',
+        _ => c,
+    })
+}
+
+/// The words of `text` as the filter reads them: lowercase, look-alikes and disguises undone, runs of
+/// single letters joined ("f u c k"), and any letter repeated three or more times cut to one.
 fn words(text: &str) -> Vec<String> {
-    let chars: Vec<char> = text.chars().map(|c| c.to_lowercase().next().unwrap_or(c)).collect();
+    let chars: Vec<char> = text
+        .chars()
+        .filter_map(|c| plain(c.to_lowercase().next().unwrap_or(c)))
+        .collect();
     let mut raw: Vec<String> = Vec::new();
     let mut current = String::new();
     for (i, &c) in chars.iter().enumerate() {
@@ -191,6 +224,23 @@ mod tests {
         // Hell inside a word is a place, not a curse.
         assert!(!is_profane("hello shell helloween", true));
         assert!(!is_profane("assistant classes", true));
+    }
+
+    #[test]
+    fn look_alike_and_invisible_letters_are_read_as_plain_ones() {
+        for text in [
+            "fück",
+            "fu\u{441}k",
+            "ｆｕｃｋ",
+            "fu\u{200B}ck",
+            "f\u{AD}uck",
+            "fu\u{308}ck",
+            "sh\u{456}t",
+            "n\u{456}gger",
+        ] {
+            assert!(is_profane(text, false), "{text:?}");
+        }
+        assert!(!is_profane("Café crème brûlée, Ελλάδα, Привет", false));
     }
 
     #[test]

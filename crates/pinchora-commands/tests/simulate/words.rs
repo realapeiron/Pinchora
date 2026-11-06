@@ -238,6 +238,29 @@ async fn hot_pearl_goes_from_lobby_to_a_paid_winner() {
         "{}",
         unknown.content()
     );
+    // The list holds mild words; a strict server turns them away. "ell" is put on the pearl for this.
+    let syl = "UPDATE party_games SET state = jsonb_set(state::jsonb, '{syl}', to_jsonb($2::text))::text WHERE id = $1";
+    sqlx::query(syl)
+        .bind(id)
+        .bind("ell")
+        .execute(sim.app.db.pool())
+        .await
+        .expect("syllable");
+    let config = |on: bool| json!([sub("partygames", vec![bool_option("strict", on)])]);
+    assert!(sim.command(host, "config", config(true)).await.ephemeral);
+    let mild = sim.submit_fields(cur, &form, &[("word", "hell")]).await;
+    assert!(
+        mild.ephemeral && mild.content().contains("friendly"),
+        "{}",
+        mild.content()
+    );
+    assert!(sim.command(host, "config", config(false)).await.ephemeral);
+    sqlx::query(syl)
+        .bind(id)
+        .bind(&syllable)
+        .execute(sim.app.db.pool())
+        .await
+        .expect("syllable");
     let good = word_with(&syllable);
     let played = sim.submit_fields(cur, &form, &[("word", good.as_str())]).await;
     assert!(!played.ephemeral, "{}", played.content());

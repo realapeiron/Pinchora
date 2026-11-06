@@ -546,7 +546,8 @@ pub struct EntriesCard<'a> {
 }
 
 impl EntriesCard<'_> {
-    const HEADER_W: f32 = 520.0;
+    /// Twice the 240-pixel backdrop, so every pixel of the scene stays a 2×2 block.
+    const HEADER_W: f32 = 480.0;
 
     pub fn to_svg(&self) -> String {
         let t = &self.theme;

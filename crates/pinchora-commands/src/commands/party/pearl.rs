@@ -7,6 +7,7 @@ use std::{str::Split, sync::Arc};
 use pinchora_db::{Commit, NewEntry, PartyGame, PartyPlayer, Pay, PlayerChange};
 use pinchora_game::party::{
     Dice, Party,
+    filter::is_profane,
     hotpearl::{self, check_word, dictionary, next_player, turn_secs},
     pearl_reward,
 };
@@ -23,7 +24,7 @@ use twilight_util::builder::embed::EmbedBuilder;
 
 use super::{
     after, card, count_games, day, edit_card, lobby, name_of, paid_note, push_button, remember, row, snapshot,
-    standings_png, theme,
+    standings_png, strict, text, theme,
 };
 use crate::{
     App, Cx,
@@ -294,6 +295,10 @@ pub(crate) async fn on_modal(cx: &Cx, mut parts: Split<'_, char>, fields: &[(Str
         Ok(word) => word,
         Err(refusal) => return cx.reply_ephemeral(refusal.say(&state.syl)).await,
     };
+    // The list holds mild words ("damn" is out, "hell" is not); a strict server turns those away too.
+    if is_profane(&word, true) && strict(app, game.guild_id as u64).await {
+        return cx.reply_ephemeral(text::Refused::Profane.say()).await;
+    }
     let order: Vec<(u64, bool)> = players.iter().map(|p| (p.id(), !p.eliminated)).collect();
     let Some(next) = next_player(&order, state.cur) else {
         return cx.reply_ephemeral("Nobody is left to pass the pearl to.").await;
