@@ -1518,13 +1518,8 @@ async fn the_party_commands_fit_discords_limits_and_help_knows_them() {
         return;
     };
     let help = sim.command(unique(), "help", json!([])).await;
-    assert!(
-        help.field("Party games").contains("/party hotpearl"),
-        "{}",
-        help.field("Party games")
-    );
-    assert!(help.field("Party games").contains("/party truthordare"));
-    assert!(help.field("Party games").contains("/party stop"));
+    let areas = super::help_areas(&help);
+    assert!(areas.iter().any(|a| a == "Puzzles & word games"), "{areas:?}");
     // Like the rest of /config, it is for managers: Discord keeps it from everyone else.
     assert!(config["default_member_permissions"].is_string(), "{config}");
 }

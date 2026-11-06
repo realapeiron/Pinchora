@@ -105,9 +105,16 @@ pub struct Db {
 
 impl Db {
     pub async fn connect(url: &str, max_connections: u32) -> anyhow::Result<Self> {
+        Self::connect_waiting(url, max_connections, Duration::from_secs(5)).await
+    }
+
+    /// Like [`Db::connect`], with `acquire_timeout` as the time a query may wait for a free connection
+    /// before it fails. The tests give it a minute: on a machine running several test suites at once a
+    /// query can wait for its turn that long without anything being wrong.
+    pub async fn connect_waiting(url: &str, max_connections: u32, acquire_timeout: Duration) -> anyhow::Result<Self> {
         let pool = PgPoolOptions::new()
             .max_connections(max_connections)
-            .acquire_timeout(Duration::from_secs(5))
+            .acquire_timeout(acquire_timeout)
             .connect(url)
             .await?;
         Ok(Self { pool })

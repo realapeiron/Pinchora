@@ -13,7 +13,9 @@ use pinchora_db::{
 
 async fn db() -> Option<Db> {
     let url = std::env::var("PINCHORA_TEST_DATABASE_URL").ok()?;
-    let db = Db::connect(&url, 8).await.expect("connect");
+    let db = Db::connect_waiting(&url, 8, std::time::Duration::from_secs(60))
+        .await
+        .expect("connect");
     db.migrate().await.expect("migrate");
     Some(db)
 }
@@ -1445,7 +1447,9 @@ async fn claims_spread_over_a_delete_pay_nothing_and_never_fail() {
     let Ok(url) = std::env::var("PINCHORA_TEST_DATABASE_URL") else {
         return;
     };
-    let db = Db::connect(&url, 32).await.expect("connect");
+    let db = Db::connect_waiting(&url, 32, std::time::Duration::from_secs(60))
+        .await
+        .expect("connect");
     db.migrate().await.expect("migrate");
 
     // How long a delete takes on this machine, to spread the claims over a little more than that.

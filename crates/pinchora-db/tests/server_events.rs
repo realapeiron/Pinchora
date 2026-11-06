@@ -9,7 +9,9 @@ use pinchora_db::{
 
 async fn db() -> Option<Db> {
     let url = std::env::var("PINCHORA_TEST_DATABASE_URL").ok()?;
-    let db = Db::connect(&url, 10).await.expect("connect");
+    let db = Db::connect_waiting(&url, 10, std::time::Duration::from_secs(60))
+        .await
+        .expect("connect");
     db.migrate().await.expect("migrate");
     Some(db)
 }

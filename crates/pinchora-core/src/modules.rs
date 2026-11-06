@@ -16,7 +16,7 @@ pub const NEVER_GATED: [&str; 5] = ["config", "help", "ping", "privacy", "remind
 
 /// The custom-id prefixes of the buttons and menus the [`NEVER_GATED`] commands send: they have no
 /// module either.
-pub const NEVER_GATED_PREFIXES: [&str; 2] = ["pr", "rm"];
+pub const NEVER_GATED_PREFIXES: [&str; 3] = ["hp", "pr", "rm"];
 
 /// Where a module's settings are shown together.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

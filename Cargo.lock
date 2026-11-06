@@ -1958,6 +1958,7 @@ dependencies = [
  "pinchora-game",
  "pinchora-render",
  "rand 0.10.3",
+ "redis",
  "reqwest",
  "serde",
  "serde_json",

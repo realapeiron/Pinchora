@@ -67,9 +67,12 @@ use twilight_model::{
     id::Id,
 };
 
-// The collection games' flows (Critter Drop, bottles, Beachcomb, Tide Pool Dex, Crab Pot).
+// The everyday commands (ping, help, bio, rep, give, the shops, stalls, the plaza, quests, house and config basics).
+#[path = "simulate/basics.rs"]
+mod basics;
 #[path = "simulate/board.rs"]
 mod board;
+// The collection games' flows (Critter Drop, bottles, Beachcomb, Tide Pool Dex, Crab Pot).
 #[path = "simulate/collection.rs"]
 mod collection;
 // The party games' flows (Hot Pearl, Acronym Tide, Caption the Postcard, Wordle Race, Would You Rather, Truth or Dare).
@@ -100,6 +103,48 @@ fn unique() -> u64 {
         AtomicU64::new((nanos as u64) >> 4)
     });
     NEXT.fetch_add(1, Ordering::Relaxed)
+}
+
+/// The seconds a countdown such as "2 h 5 min" or "1 h" names at the start of `text`: the game writes
+/// remaining time rounded up to the minute.
+fn span_secs(text: &str) -> i64 {
+    let words: Vec<&str> = text.split_whitespace().collect();
+    let (mut secs, mut at) = (0, 0);
+    while let (Some(number), Some(unit)) = (words.get(at), words.get(at + 1)) {
+        let Ok(number) = number.parse::<i64>() else { break };
+        match unit.trim_end_matches(['.', ',']) {
+            "h" => secs += number * 3600,
+            "min" => secs += number * 60,
+            _ => break,
+        }
+        at += 2;
+    }
+    secs
+}
+
+/// Checks that `text` has a countdown after `marker` that started at `full` seconds and has run down by
+/// no more than this test has been running since `began` (plus the minute it is rounded up to). The
+/// game counts down in real time, so on a slow machine "1 h" is a minute short by the time it is read.
+fn assert_counting_down(text: &str, marker: &str, full: i64, began: std::time::Instant) {
+    let (_, rest) = text
+        .split_once(marker)
+        .unwrap_or_else(|| panic!("no {marker:?} in {text:?}"));
+    let left = span_secs(rest);
+    let ran = began.elapsed().as_secs() as i64;
+    assert!(
+        left <= full && left >= full - ran - 60,
+        "{marker}{left} s left of {full} s after {ran} s: {text}"
+    );
+}
+
+/// Closes the games earlier runs left late in the database. The janitor takes the oldest fifty late
+/// games of the whole database, so enough leftovers would keep it from ever reaching a test's own
+/// game; and what it does to them is nobody's business here. Call it with the sweep turn held.
+async fn forget_late_games(sim: &Sim) {
+    sqlx::query("UPDATE game_sessions SET status = 'done' WHERE status <> 'done' AND expires_at < now()")
+        .execute(sim.app.db.pool())
+        .await
+        .expect("close the late games of earlier runs");
 }
 
 // /Mock Discord
@@ -863,7 +908,9 @@ impl Sim {
             return None;
         };
         init_logging();
-        let db = Db::connect(&database, 5).await.expect("connect to the database");
+        let db = Db::connect_waiting(&database, 5, std::time::Duration::from_secs(60))
+            .await
+            .expect("connect to the database");
         db.migrate().await.expect("migrate");
         let cache = Cache::connect(&redis).await.expect("connect to redis");
 
@@ -1759,6 +1806,7 @@ async fn connect_four_timeouts_give_the_bets_back_even_after_a_restart() {
     let Some(mut sim) = Sim::new("connect_four_timeouts_give_the_bets_back_even_after_a_restart").await else {
         return;
     };
+    forget_late_games(&sim).await;
     let (a, b, c, d, e) = (unique(), unique(), unique(), unique(), unique());
     for user in [a, b, c, d, e] {
         fund(&sim, user, 300).await;
@@ -1841,6 +1889,7 @@ async fn unanswered_challenges_expire_without_touching_shells() {
     let Some(mut sim) = Sim::new("unanswered_challenges_expire_without_touching_shells").await else {
         return;
     };
+    forget_late_games(&sim).await;
     let (a, b) = (unique(), unique());
     fund(&sim, a, 100).await;
     fund(&sim, b, 100).await;
@@ -2141,6 +2190,7 @@ async fn an_abandoned_hangman_game_is_closed_by_the_janitor() {
     let Some(mut sim) = Sim::new("an_abandoned_hangman_game_is_closed_by_the_janitor").await else {
         return;
     };
+    forget_late_games(&sim).await;
     let player = unique();
     let start = sim.command(player, "play", json!([sub("hangman", vec![])])).await;
     let id = session_of(&start);
@@ -2359,6 +2409,7 @@ async fn a_trivia_round_collects_answers_then_reveals_and_pays() {
     let Some(mut sim) = Sim::new("a_trivia_round_collects_answers_then_reveals_and_pays").await else {
         return;
     };
+    forget_late_games(&sim).await;
     // Rounds are limited per channel, so this test has a channel to itself.
     sim.channel = unique();
     let (starter, right, wrong, late) = (unique(), unique(), unique(), unique());
@@ -4363,10 +4414,16 @@ async fn the_showcase_editor_picks_fish_pet_furniture_and_house() {
         260..356
     ));
     let again = profile_of(&mut sim, viewer, user, "Sim").await;
-    assert_eq!(
-        card_image(&seen, (960, 540)),
-        card_image(&again, (960, 540)),
-        "drawn from the same things, it is drawn the same"
+    // Only the showcase is compared: the card also shows a global rank, which moves while the other tests
+    // in this binary earn XP.
+    assert!(
+        !differ_in(
+            &card_pixels(&seen, (960, 540)),
+            &card_pixels(&again, (960, 540)),
+            296..920,
+            260..356
+        ),
+        "drawn from the same things, the showcase is drawn the same"
     );
 
     // Hiding the house, clearing one slot and clearing everything, each undoes its part.
@@ -7579,6 +7636,21 @@ async fn one_pod_prunes_old_weekly_xp_per_hour() {
     let Some(other) = Sim::new("one_pod_prunes_old_weekly_xp_per_hour_other_pod").await else {
         return;
     };
+    // The hour locks live two hours in Redis, and this test sends its clocks to hours ahead: the ones
+    // earlier runs took would be found taken.
+    let mut redis = sim.app.cache.conn();
+    let taken: Vec<String> = redis::cmd("KEYS")
+        .arg("pinchora:once:weekly-prune:*")
+        .query_async(&mut redis)
+        .await
+        .expect("list the locks");
+    if !taken.is_empty() {
+        let _: i64 = redis::cmd("DEL")
+            .arg(&taken)
+            .query_async(&mut redis)
+            .await
+            .expect("forget the locks");
+    }
     let guild = sim.guild;
     let (old_user, recent_user, later_user) = (unique(), unique(), unique());
     let this_week = pinchora_core::leveling::week_start(chrono::Utc::now());
@@ -8474,6 +8546,7 @@ async fn a_pet_goes_on_a_trip_and_its_souvenir_is_claimed_once() {
     let Some(mut sim) = Sim::new("a_pet_goes_on_a_trip_and_its_souvenir_is_claimed_once").await else {
         return;
     };
+    let began = std::time::Instant::now();
     let (user, db, app) = (unique(), sim.app.db.clone(), sim.app.clone());
     let pet = db.adopt(user, "crumbclaw_crab", "Pip").await.unwrap();
     let second = db.adopt(user, "ribbonfin_guppy", "Bub").await.unwrap();
@@ -8529,9 +8602,21 @@ async fn a_pet_goes_on_a_trip_and_its_souvenir_is_claimed_once() {
         gone.description()
     );
     assert_png(&gone, 860, 420);
-    for label in ["Play", "Walk", "Bath", "Feed (20 shells)", "Back in 1 h"] {
+    for label in ["Play", "Walk", "Bath", "Feed (20 shells)"] {
         assert!(gone.button(label).disabled, "{label}");
     }
+    // The countdown button is the hour, less what the test has used since the pet left.
+    let countdown = gone
+        .controls()
+        .find_map(|c| match c {
+            Component::Button(b) if b.label.as_deref().is_some_and(|l| l.starts_with("Back in ")) => {
+                Some((b.label.clone().unwrap_or_default(), b.disabled))
+            }
+            _ => None,
+        })
+        .expect("a countdown button");
+    assert!(countdown.1, "the countdown is not a button to press");
+    assert_counting_down(&countdown.0, "Back in ", 3600, began);
     let row = pet_row(&db, user, pet.id).await;
     assert_eq!(row.trip_dest.as_deref(), Some("tidepool_meadow"));
 
@@ -8550,10 +8635,11 @@ async fn a_pet_goes_on_a_trip_and_its_souvenir_is_claimed_once() {
     );
     let early = sim.command(user, "pet", trip_claim()).await;
     assert!(
-        early.ephemeral && early.content().contains("**Pip** is at Tidepool Meadow, back in 1 h"),
+        early.ephemeral && early.content().contains("**Pip** is at Tidepool Meadow, back in "),
         "{}",
         early.content()
     );
+    assert_counting_down(early.content(), "back in ", 3600, began);
     let impatient = sim.component(user, &format!("py:cl:{}", pet.id), &[], &gone).await;
     assert!(
         impatient.ephemeral && impatient.content().contains("still at Tidepool Meadow"),
@@ -8655,6 +8741,7 @@ async fn a_high_level_trip_can_bring_home_furniture_and_several_pets_claim_toget
     else {
         return;
     };
+    let began = std::time::Instant::now();
     let (user, db, app) = (unique(), sim.app.db.clone(), sim.app.clone());
     let content = Content::get();
     let (pip, bub) = (
@@ -8678,7 +8765,7 @@ async fn a_high_level_trip_can_bring_home_furniture_and_several_pets_claim_toget
     );
     app.shift_clock(chrono::Duration::hours(7));
     let early = sim.command(user, "pet", trip_claim()).await;
-    assert!(early.content().contains("back in 1 h"), "{}", early.content());
+    assert_counting_down(early.content(), "back in ", 3600, began);
     app.shift_clock(chrono::Duration::hours(1) + chrono::Duration::minutes(1));
 
     let before = db.user(user).await.unwrap().credits;
@@ -8738,6 +8825,7 @@ async fn the_nursery_is_a_paged_grid_that_opens_one_pet() {
     let Some(mut sim) = Sim::new("the_nursery_is_a_paged_grid_that_opens_one_pet").await else {
         return;
     };
+    let began = std::time::Instant::now();
     let (user, stranger, db, app) = (unique(), unique(), sim.app.db.clone(), sim.app.clone());
     let content = Content::get();
 
@@ -8851,16 +8939,14 @@ async fn the_nursery_is_a_paged_grid_that_opens_one_pet() {
 
     // The cards of the away, sleeping and returned pets.
     let away = sim.pick(user, &page1, "pn:o:", &pets[3].id.to_string()).await;
-    // Three hours out, less what a slow machine took since the trip was sent.
+    // Three hours out, less what the test has used since the trip was sent.
     assert!(
         away.description()
-            .contains("is away at **Kelp Forest Library**, back in 3 h")
-            || away
-                .description()
-                .contains("is away at **Kelp Forest Library**, back in 2 h 5"),
+            .contains("is away at **Kelp Forest Library**, back in "),
         "{}",
         away.description()
     );
+    assert_counting_down(away.description(), "back in ", 3 * 3600, began);
     assert_png(&away, 860, 420);
     let asleep = sim.pick(user, &page1, "pn:o:", &pets[2].id.to_string()).await;
     assert!(asleep.description().contains("dozed off"), "{}", asleep.description());
@@ -10003,6 +10089,19 @@ async fn giveaways_run_pay_once_and_survive_restarts() {
     let edit = only(&posts, channel, Method::PATCH);
     assert_eq!(edit.message, post.message);
     assert_eq!(edit.field("Entries"), "1", "the first entry shows at once");
+    // The five seconds are real time, and a loaded machine can spend more than that between two clicks.
+    // So the window is held open by hand from here to the tick, and closed by hand to end it.
+    let window = format!("gw-refresh:{}", first.id);
+    sim.app.cache.release_cooldown(&window).await.unwrap();
+    assert!(
+        sim.app
+            .cache
+            .try_cooldown(&window, std::time::Duration::from_secs(600))
+            .await
+            .unwrap()
+            .is_none(),
+        "the window was taken by nobody else"
+    );
     let (second, third) = (
         sim.click(bob, &message, "Enter").await,
         sim.click(carol, &message, "Enter").await,
@@ -10018,7 +10117,7 @@ async fn giveaways_run_pay_once_and_survive_restarts() {
         in_channel(&sim.posts(), channel).is_empty(),
         "inside the five seconds nothing is edited, not even by the ticker"
     );
-    tokio::time::sleep(std::time::Duration::from_millis(5_200)).await;
+    sim.app.cache.release_cooldown(&window).await.unwrap();
     tick(&sim).await;
     let posts = sim.posts();
     assert_eq!(
@@ -12408,6 +12507,7 @@ async fn a_staked_derby_shares_the_pool_between_the_backers_and_the_janitor_runs
     else {
         return;
     };
+    forget_late_games(&sim).await;
     sim.channel = unique();
     let (host, a, b, c, broke) = (unique(), unique(), unique(), unique(), unique());
     gambling(&mut sim, unique(), true).await;
@@ -12486,6 +12586,7 @@ async fn a_derby_nobody_won_or_too_few_joined_gives_every_stake_back() {
     let Some(mut sim) = Sim::new("a_derby_nobody_won_or_too_few_joined_gives_every_stake_back").await else {
         return;
     };
+    forget_late_games(&sim).await;
     sim.channel = unique();
     let (host, a, b) = (unique(), unique(), unique());
     gambling(&mut sim, unique(), true).await;
@@ -12563,6 +12664,7 @@ async fn staked_derbies_need_the_gambling_switch_and_stop_at_the_daily_loss_limi
     else {
         return;
     };
+    forget_late_games(&sim).await;
     let (manager, rich, other) = (unique(), unique(), unique());
     fund(&sim, rich, 5_000).await;
     fund(&sim, other, 5_000).await;
@@ -12781,6 +12883,7 @@ async fn share_or_grab_wagers_go_by_the_picks_and_a_player_who_never_picks_forfe
     else {
         return;
     };
+    forget_late_games(&sim).await;
     let users: Vec<u64> = (0..8).map(|_| unique()).collect();
     for user in &users {
         fund(&sim, *user, 200).await;
@@ -13104,6 +13207,7 @@ async fn a_forgotten_shell_game_gives_the_stake_back_and_the_tables_have_daily_l
     else {
         return;
     };
+    forget_late_games(&sim).await;
     let (manager, player, late) = (unique(), unique(), unique());
     fund(&sim, player, 100).await;
     fund(&sim, late, 100).await;
@@ -13278,6 +13382,7 @@ async fn a_busted_heist_pays_nobody_and_a_lone_crew_member_is_called_off_by_the_
     else {
         return;
     };
+    forget_late_games(&sim).await;
     sim.channel = unique();
     let (host, a, loner) = (unique(), unique(), unique());
     let lobby = open_heist(&mut sim, host).await;
@@ -13471,6 +13576,7 @@ async fn the_janitor_keeps_the_storm_card_fresh_and_the_sea_wins_when_time_runs_
     else {
         return;
     };
+    forget_late_games(&sim).await;
     sim.channel = unique();
     let (manager, a, b) = (unique(), unique(), unique());
     let storm = call_storm(&mut sim, manager).await;
@@ -13546,6 +13652,7 @@ async fn timed_storm_surges_are_switched_on_per_server_and_come_when_they_are_du
     else {
         return;
     };
+    forget_late_games(&sim).await;
     let (manager, helper, lounge) = (unique(), unique(), unique());
     sim.permissions = MANAGE_GUILD;
     let config = |options: Vec<Value>| json!([sub("surge", options)]);
@@ -13651,28 +13758,21 @@ async fn the_party_games_are_in_the_stats_and_the_help() {
     ] {
         assert!(fields.iter().any(|f| f.contains(game)), "{game} in {fields:?}");
     }
+    // /help lists them on its pages (every command is checked against the registered tree by a unit
+    // test); here the pages that hold them exist and open.
     let help = sim.command(player, "help", json!([])).await;
-    let text: String = help.embeds[0]
-        .fields
-        .iter()
-        .map(|f| f.value.as_str())
-        .collect::<Vec<_>>()
-        .join("\n");
-    for command in [
-        "/play derby",
-        "/play heist",
-        "/play shells",
-        "/duel share",
-        "/surge",
-        "/config gambling",
-        "/config surge",
-    ] {
-        assert!(text.contains(command), "{command}");
+    let areas = help_areas(&help);
+    for area in ["Crowd games & collecting", "Duels", "Game & module setup"] {
+        assert!(areas.iter().any(|a| a == area), "{area} in {areas:?}");
     }
-    assert!(
-        help.embeds[0].fields.iter().all(|f| f.value.chars().count() <= 1024),
-        "a help field is too long"
-    );
+}
+
+/// The areas the help menu lists, once /help is seen to answer privately with a card and controls.
+fn help_areas(help: &Reply) -> Vec<String> {
+    assert!(help.ephemeral, "the help is for the one who asked");
+    assert_eq!(help.files.len(), 1, "one card");
+    assert!(help.button("Next ▶").custom_id.is_some());
+    help.options("hp:s").iter().map(|o| o.label.clone()).collect()
 }
 
 // /Modules
