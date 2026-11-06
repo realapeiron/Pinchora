@@ -389,6 +389,12 @@ async fn a_bottle_is_opened_by_the_first_who_clicks_and_the_message_is_read_alou
         slow.content()
     );
     assert_eq!(shells(&sim, b).await, 0);
+    let again = sim.click(a, &bottle, "Open the bottle").await;
+    assert!(
+        again.ephemeral && again.content().contains("already opened"),
+        "{}",
+        again.content()
+    );
     let stats = sim.app.db.game_stats(a).await.unwrap();
     assert!(stats.iter().any(|s| s.game == "bottle" && s.played == 1 && s.won == 1));
 

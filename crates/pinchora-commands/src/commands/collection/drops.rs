@@ -529,6 +529,10 @@ pub(crate) async fn on_open(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::Resu
         .await?;
     let (drop, shells, fragments, granted, paid) = match outcome {
         BottleOpen::Gone => return cx.reply_ephemeral("That bottle has drifted off.").await,
+        // A second click of the one who opened it (both sent before the button went grey).
+        BottleOpen::Lost { by } if by == user => {
+            return cx.reply_ephemeral("You already opened this bottle.").await;
+        }
         BottleOpen::Lost { by } => {
             return cx
                 .reply_ephemeral(format!("Too slow! {} opened it first.", mention(by)))
