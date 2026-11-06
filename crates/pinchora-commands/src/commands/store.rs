@@ -1,3 +1,4 @@
+use pinchora_core::settings;
 use pinchora_db::{MAX_STORE_ITEMS, StoreBuy, StoreItem};
 use twilight_http::request::AuditLogReason;
 use twilight_interactions::command::{CommandModel, CreateCommand};
@@ -138,11 +139,16 @@ impl ConfigStore {
         let db = &cx.app.db;
         match self {
             Self::Add(c) => {
+                let checked = settings::check_price(c.price)
+                    .and_then(|price| Ok((price, c.stock.map(settings::check_stock).transpose()?)));
+                let (price, stock) = match checked {
+                    Ok(values) => values,
+                    Err(error) => return cx.reply_ephemeral(error.message).await,
+                };
                 if let Some(why) = roles::unassignable(&cx.app, guild, &c.role).await {
                     return cx.reply_ephemeral(why).await;
                 }
-                let stock = c.stock.map(|s| s as i32);
-                let Some(item) = db.add_store_item(guild, c.role.id.get(), c.price, stock).await? else {
+                let Some(item) = db.add_store_item(guild, c.role.id.get(), price, stock).await? else {
                     return cx
                         .reply_ephemeral(format!(
                             "A store holds at most {MAX_STORE_ITEMS} roles. Remove one with `/config store remove` first."

@@ -6,13 +6,17 @@
 
 mod audit;
 mod auth;
+mod client_ip;
 mod config;
 mod discord;
 mod error;
 mod extract;
+mod guild_info;
 mod invalidate;
 mod ratelimit;
 mod routes;
+#[cfg(test)]
+mod rules;
 mod state;
 
 use std::{net::SocketAddr, sync::Arc, time::Duration};

@@ -37,6 +37,11 @@ pub(crate) async fn settings(app: &App, guild: u64) -> anyhow::Result<Collection
         .map_err(|e| anyhow::anyhow!("{e:#}"))
 }
 
+/// Drops this pod's copy of a server's settings (the dashboard announces its changes).
+pub(crate) async fn forget(guild: u64) {
+    SETTINGS.invalidate(&guild).await;
+}
+
 /// How `/config show` and `/config critters` word the setting.
 pub(crate) fn critters_summary(s: &CollectionSettings) -> String {
     match (s.enabled, s.channel_id) {
@@ -57,7 +62,7 @@ impl ConfigCritters {
             _ => None,
         };
         let settings = cx.app.db.set_collection_settings(guild, self.enabled, channel).await?;
-        SETTINGS.invalidate(&guild).await;
+        forget(guild).await;
         tell(cx, format!("Critter drops: {}", critters_summary(&settings))).await
     }
 }

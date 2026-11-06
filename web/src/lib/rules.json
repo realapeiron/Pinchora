@@ -1,0 +1,758 @@
+{
+  "accents": [
+    {
+      "hex": "#ff6b4a",
+      "name": "Coral"
+    },
+    {
+      "hex": "#ff9e7a",
+      "name": "Peach"
+    },
+    {
+      "hex": "#ffd166",
+      "name": "Honey"
+    },
+    {
+      "hex": "#a6e39a",
+      "name": "Meadow"
+    },
+    {
+      "hex": "#5bbf6a",
+      "name": "Moss"
+    },
+    {
+      "hex": "#06d6a0",
+      "name": "Mint"
+    },
+    {
+      "hex": "#8fd3ff",
+      "name": "Sky"
+    },
+    {
+      "hex": "#3a9bdc",
+      "name": "Ocean"
+    },
+    {
+      "hex": "#8fa0d8",
+      "name": "Periwinkle"
+    },
+    {
+      "hex": "#9b6bc4",
+      "name": "Violet"
+    },
+    {
+      "hex": "#ff8fb1",
+      "name": "Rose"
+    },
+    {
+      "hex": "#fff1e8",
+      "name": "Cream"
+    }
+  ],
+  "cases": [
+    {
+      "check": "accent",
+      "input": "#ff6b4a",
+      "result": {
+        "ok": true,
+        "value": 16739146
+      }
+    },
+    {
+      "check": "accent",
+      "input": "06d6a0",
+      "result": {
+        "ok": true,
+        "value": 448160
+      }
+    },
+    {
+      "check": "accent",
+      "input": " #FFD166 ",
+      "result": {
+        "ok": true,
+        "value": 16765286
+      }
+    },
+    {
+      "check": "accent",
+      "input": "#fff",
+      "result": {
+        "field": "welcome_accent",
+        "message": "Colours look like `#ff6b4a`.",
+        "ok": false
+      }
+    },
+    {
+      "check": "accent",
+      "input": "red",
+      "result": {
+        "field": "welcome_accent",
+        "message": "Colours look like `#ff6b4a`.",
+        "ok": false
+      }
+    },
+    {
+      "check": "accent",
+      "input": "#gg0000",
+      "result": {
+        "field": "welcome_accent",
+        "message": "Colours look like `#ff6b4a`.",
+        "ok": false
+      }
+    },
+    {
+      "check": "message",
+      "input": {
+        "kind": "welcome",
+        "text": "Hi {user}!"
+      },
+      "result": {
+        "ok": true,
+        "value": true
+      }
+    },
+    {
+      "check": "message",
+      "input": {
+        "kind": "welcome",
+        "text": "   "
+      },
+      "result": {
+        "field": "welcome_message",
+        "message": "Write a message, or reset it to use the default.",
+        "ok": false
+      }
+    },
+    {
+      "check": "message",
+      "input": {
+        "kind": "welcome",
+        "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "result": {
+        "field": "welcome_message",
+        "message": "A message is at most 500 characters; this one has 501.",
+        "ok": false
+      }
+    },
+    {
+      "check": "message",
+      "input": {
+        "kind": "welcome",
+        "text": "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé"
+      },
+      "result": {
+        "ok": true,
+        "value": true
+      }
+    },
+    {
+      "check": "message",
+      "input": {
+        "kind": "goodbye",
+        "text": "Hi {user}!"
+      },
+      "result": {
+        "ok": true,
+        "value": true
+      }
+    },
+    {
+      "check": "message",
+      "input": {
+        "kind": "goodbye",
+        "text": "   "
+      },
+      "result": {
+        "field": "goodbye_message",
+        "message": "Write a message, or reset it to use the default.",
+        "ok": false
+      }
+    },
+    {
+      "check": "message",
+      "input": {
+        "kind": "goodbye",
+        "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "result": {
+        "field": "goodbye_message",
+        "message": "A message is at most 500 characters; this one has 501.",
+        "ok": false
+      }
+    },
+    {
+      "check": "message",
+      "input": {
+        "kind": "goodbye",
+        "text": "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé"
+      },
+      "result": {
+        "ok": true,
+        "value": true
+      }
+    },
+    {
+      "check": "message",
+      "input": {
+        "kind": "levelup",
+        "text": "Hi {user}!"
+      },
+      "result": {
+        "ok": true,
+        "value": true
+      }
+    },
+    {
+      "check": "message",
+      "input": {
+        "kind": "levelup",
+        "text": "   "
+      },
+      "result": {
+        "field": "levelup_message",
+        "message": "Write a message, or reset it to use the default.",
+        "ok": false
+      }
+    },
+    {
+      "check": "message",
+      "input": {
+        "kind": "levelup",
+        "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "result": {
+        "field": "levelup_message",
+        "message": "A message is at most 500 characters; this one has 501.",
+        "ok": false
+      }
+    },
+    {
+      "check": "message",
+      "input": {
+        "kind": "levelup",
+        "text": "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé"
+      },
+      "result": {
+        "ok": true,
+        "value": true
+      }
+    },
+    {
+      "check": "title",
+      "input": "WELCOME",
+      "result": {
+        "ok": true,
+        "value": "WELCOME"
+      }
+    },
+    {
+      "check": "title",
+      "input": "  hi there ",
+      "result": {
+        "ok": true,
+        "value": "hi there"
+      }
+    },
+    {
+      "check": "title",
+      "input": "",
+      "result": {
+        "field": "welcome_title",
+        "message": "Write a headline, e.g. WELCOME.",
+        "ok": false
+      }
+    },
+    {
+      "check": "title",
+      "input": "THIS IS FAR TOO LONG",
+      "result": {
+        "field": "welcome_title",
+        "message": "A headline is at most 18 characters.",
+        "ok": false
+      }
+    },
+    {
+      "check": "points_name",
+      "input": "coins",
+      "result": {
+        "ok": true,
+        "value": "coins"
+      }
+    },
+    {
+      "check": "points_name",
+      "input": " shells ",
+      "result": {
+        "ok": true,
+        "value": "shells"
+      }
+    },
+    {
+      "check": "points_name",
+      "input": "",
+      "result": {
+        "field": "points_name",
+        "message": "Points need a name of 1 to 32 characters, e.g. coins.",
+        "ok": false
+      }
+    },
+    {
+      "check": "points_name",
+      "input": "ppppppppppppppppppppppppppppppppp",
+      "result": {
+        "field": "points_name",
+        "message": "Points need a name of 1 to 32 characters, e.g. coins.",
+        "ok": false
+      }
+    },
+    {
+      "check": "points_emoji",
+      "input": "⭐",
+      "result": {
+        "ok": true,
+        "value": "⭐"
+      }
+    },
+    {
+      "check": "points_emoji",
+      "input": " 🪙 ",
+      "result": {
+        "ok": true,
+        "value": "🪙"
+      }
+    },
+    {
+      "check": "points_emoji",
+      "input": "🇹🇷",
+      "result": {
+        "ok": true,
+        "value": "🇹🇷"
+      }
+    },
+    {
+      "check": "points_emoji",
+      "input": "<:coin:123456789012345678>",
+      "result": {
+        "ok": true,
+        "value": "<:coin:123456789012345678>"
+      }
+    },
+    {
+      "check": "points_emoji",
+      "input": "coins",
+      "result": {
+        "field": "points_emoji",
+        "message": "Use one emoji: a Unicode one like 🪙, or a custom one like <:coin:123456789012345678>.",
+        "ok": false
+      }
+    },
+    {
+      "check": "points_emoji",
+      "input": "⭐⭐",
+      "result": {
+        "field": "points_emoji",
+        "message": "Use one emoji: a Unicode one like 🪙, or a custom one like <:coin:123456789012345678>.",
+        "ok": false
+      }
+    },
+    {
+      "check": "points_emoji",
+      "input": "",
+      "result": {
+        "field": "points_emoji",
+        "message": "Use one emoji: a Unicode one like 🪙, or a custom one like <:coin:123456789012345678>.",
+        "ok": false
+      }
+    },
+    {
+      "check": "points",
+      "input": [
+        1,
+        3
+      ],
+      "result": {
+        "ok": true,
+        "value": true
+      }
+    },
+    {
+      "check": "points",
+      "input": [
+        0,
+        1000
+      ],
+      "result": {
+        "ok": true,
+        "value": true
+      }
+    },
+    {
+      "check": "points",
+      "input": [
+        5,
+        4
+      ],
+      "result": {
+        "field": "points_min",
+        "message": "The least points per message can't be above the most.",
+        "ok": false
+      }
+    },
+    {
+      "check": "points",
+      "input": [
+        -1,
+        3
+      ],
+      "result": {
+        "field": "points_min",
+        "message": "Points per message go from 0 to 1000.",
+        "ok": false
+      }
+    },
+    {
+      "check": "points",
+      "input": [
+        0,
+        1001
+      ],
+      "result": {
+        "field": "points_max",
+        "message": "Points per message go from 0 to 1000.",
+        "ok": false
+      }
+    },
+    {
+      "check": "multiplier",
+      "input": 1.5,
+      "result": {
+        "ok": true,
+        "value": 1.5
+      }
+    },
+    {
+      "check": "multiplier",
+      "input": 0.0,
+      "result": {
+        "ok": true,
+        "value": 0.0
+      }
+    },
+    {
+      "check": "multiplier",
+      "input": 1.234,
+      "result": {
+        "ok": true,
+        "value": 1.23
+      }
+    },
+    {
+      "check": "multiplier",
+      "input": 5.004,
+      "result": {
+        "ok": true,
+        "value": 5.0
+      }
+    },
+    {
+      "check": "multiplier",
+      "input": 5.01,
+      "result": {
+        "field": "multiplier",
+        "message": "A multiplier goes from 0 to 5.",
+        "ok": false
+      }
+    },
+    {
+      "check": "multiplier",
+      "input": -1.0,
+      "result": {
+        "field": "multiplier",
+        "message": "A multiplier goes from 0 to 5.",
+        "ok": false
+      }
+    },
+    {
+      "check": "voice_xp_amount",
+      "input": 10,
+      "result": {
+        "ok": true,
+        "value": 10
+      }
+    },
+    {
+      "check": "voice_xp_amount",
+      "input": 1,
+      "result": {
+        "ok": true,
+        "value": 1
+      }
+    },
+    {
+      "check": "voice_xp_amount",
+      "input": 100,
+      "result": {
+        "ok": true,
+        "value": 100
+      }
+    },
+    {
+      "check": "voice_xp_amount",
+      "input": 0,
+      "result": {
+        "field": "voice_xp_amount",
+        "message": "Voice XP is 1 to 100 a minute.",
+        "ok": false
+      }
+    },
+    {
+      "check": "voice_xp_amount",
+      "input": 101,
+      "result": {
+        "field": "voice_xp_amount",
+        "message": "Voice XP is 1 to 100 a minute.",
+        "ok": false
+      }
+    },
+    {
+      "check": "level",
+      "input": 1,
+      "result": {
+        "ok": true,
+        "value": 1
+      }
+    },
+    {
+      "check": "level",
+      "input": 1000,
+      "result": {
+        "ok": true,
+        "value": 1000
+      }
+    },
+    {
+      "check": "level",
+      "input": 0,
+      "result": {
+        "field": "level",
+        "message": "A level role's level goes from 1 to 1000.",
+        "ok": false
+      }
+    },
+    {
+      "check": "level",
+      "input": 1001,
+      "result": {
+        "field": "level",
+        "message": "A level role's level goes from 1 to 1000.",
+        "ok": false
+      }
+    },
+    {
+      "check": "reputation",
+      "input": 1,
+      "result": {
+        "ok": true,
+        "value": 1
+      }
+    },
+    {
+      "check": "reputation",
+      "input": 100000,
+      "result": {
+        "ok": true,
+        "value": 100000
+      }
+    },
+    {
+      "check": "reputation",
+      "input": 0,
+      "result": {
+        "field": "reputation",
+        "message": "A reputation role's count goes from 1 to 100000.",
+        "ok": false
+      }
+    },
+    {
+      "check": "price",
+      "input": 1,
+      "result": {
+        "ok": true,
+        "value": 1
+      }
+    },
+    {
+      "check": "price",
+      "input": 1000000000,
+      "result": {
+        "ok": true,
+        "value": 1000000000
+      }
+    },
+    {
+      "check": "price",
+      "input": 0,
+      "result": {
+        "field": "price",
+        "message": "A price goes from 1 to 1000000000.",
+        "ok": false
+      }
+    },
+    {
+      "check": "price",
+      "input": 1000000001,
+      "result": {
+        "field": "price",
+        "message": "A price goes from 1 to 1000000000.",
+        "ok": false
+      }
+    },
+    {
+      "check": "stock",
+      "input": 1,
+      "result": {
+        "ok": true,
+        "value": 1
+      }
+    },
+    {
+      "check": "stock",
+      "input": 1000000,
+      "result": {
+        "ok": true,
+        "value": 1000000
+      }
+    },
+    {
+      "check": "stock",
+      "input": 0,
+      "result": {
+        "field": "stock",
+        "message": "Stock goes from 1 to 1000000.",
+        "ok": false
+      }
+    }
+  ],
+  "defaults": {
+    "theme": "reef",
+    "welcome_title": "Welcome"
+  },
+  "levelup_modes": [
+    "channel",
+    "current",
+    "dm",
+    "off"
+  ],
+  "limits": {
+    "level": [
+      1,
+      1000
+    ],
+    "max_level_roles": 25,
+    "max_rep_roles": 25,
+    "max_store_items": 25,
+    "max_xp_rules": 50,
+    "message_max": 500,
+    "multiplier": [
+      0.0,
+      5.0
+    ],
+    "points": [
+      0,
+      1000
+    ],
+    "points_emoji_max": 64,
+    "points_name_max": 32,
+    "price": [
+      1,
+      1000000000
+    ],
+    "reputation": [
+      1,
+      100000
+    ],
+    "stock": [
+      1,
+      1000000
+    ],
+    "voice_xp": [
+      1,
+      100
+    ],
+    "welcome_title_max": 18
+  },
+  "messages": {
+    "goodbye": {
+      "default": "👋 **{user}** has left **{server}**.",
+      "field": "goodbye_message",
+      "placeholders": [
+        "{user}",
+        "{server}",
+        "{members}"
+      ]
+    },
+    "levelup": {
+      "default": "🎉 {user} reached **level {level}**!",
+      "field": "levelup_message",
+      "placeholders": [
+        "{user}",
+        "{level}",
+        "{server}",
+        "{role}"
+      ]
+    },
+    "welcome": {
+      "default": "Welcome to **{server}**, {user}!",
+      "field": "welcome_message",
+      "placeholders": [
+        "{user}",
+        "{server}",
+        "{count}"
+      ]
+    }
+  },
+  "themes": [
+    {
+      "accent": "#ff6b4a",
+      "bottom": "#0f1631",
+      "edge": "#2e3d75",
+      "key": "reef",
+      "name": "Reef (navy & coral)",
+      "top": "#1d2b53"
+    },
+    {
+      "accent": "#ffd166",
+      "bottom": "#2b1330",
+      "edge": "#c2413f",
+      "key": "sunset",
+      "name": "Sunset",
+      "top": "#7a2a3a"
+    },
+    {
+      "accent": "#a6e39a",
+      "bottom": "#0e2419",
+      "edge": "#2f7d4f",
+      "key": "forest",
+      "name": "Forest",
+      "top": "#1f4d3a"
+    },
+    {
+      "accent": "#fff1e8",
+      "bottom": "#5a3a7a",
+      "edge": "#ff8fb1",
+      "key": "candy",
+      "name": "Candy",
+      "top": "#9b6bc4"
+    },
+    {
+      "accent": "#8fd3ff",
+      "bottom": "#05070f",
+      "edge": "#2e3d75",
+      "key": "midnight",
+      "name": "Midnight",
+      "top": "#0f1631"
+    }
+  ]
+}

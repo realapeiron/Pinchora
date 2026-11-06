@@ -22,9 +22,7 @@ use crate::{
     voice_xp,
 };
 
-pub const DEFAULT_LEVELUP: &str = "🎉 {user} reached **level {level}**!";
-pub const DEFAULT_WELCOME: &str = "Welcome to **{server}**, {user}!";
-pub const DEFAULT_GOODBYE: &str = "👋 **{user}** has left **{server}**.";
+pub use pinchora_core::settings::{DEFAULT_GOODBYE, DEFAULT_LEVELUP, DEFAULT_WELCOME};
 
 /// Grants chat XP (once per minute per member) and announces level-ups.
 pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<()> {

@@ -1,3 +1,4 @@
+use pinchora_core::settings::{self, FieldError};
 use pinchora_db::{Db, GuildSettings};
 use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
 use twilight_util::builder::embed::{EmbedBuilder, EmbedFooterBuilder};
@@ -69,22 +70,28 @@ pub struct ConfigPoints {
 }
 
 impl ConfigPoints {
-    /// Stores what was given. `Err` carries the reason when the result would make no sense.
-    pub async fn apply(self, db: &Db, guild: u64) -> anyhow::Result<Result<GuildSettings, &'static str>> {
+    /// Stores what was given. `Err` carries the reason when the result would make no sense; the
+    /// rules are the dashboard's too (`pinchora_core::settings`).
+    pub async fn apply(self, db: &Db, guild: u64) -> anyhow::Result<Result<GuildSettings, String>> {
         let current = db.guild_settings(guild).await?;
-        let min = self.min.map_or(current.points_min, |v| v as i32);
-        let max = self.max.map_or(current.points_max, |v| v as i32);
-        if min > max {
-            return Ok(Err("The least points per message can't be above the most."));
-        }
-        let name = self.name.as_deref().map(str::trim).filter(|n| !n.is_empty());
-        let emoji = self.emoji.as_deref().map(str::trim).filter(|e| !e.is_empty());
+        let min = self.min.unwrap_or(current.points_min.into());
+        let max = self.max.unwrap_or(current.points_max.into());
+        let checked = (|| {
+            settings::check_points(min, max)?;
+            let name = self.name.as_deref().map(settings::check_points_name).transpose()?;
+            let emoji = self.emoji.as_deref().map(settings::check_points_emoji).transpose()?;
+            Ok::<_, FieldError>((name, emoji))
+        })();
+        let (name, emoji) = match checked {
+            Ok(values) => values,
+            Err(error) => return Ok(Err(error.message)),
+        };
         Ok(Ok(db
             .update_points(
                 guild,
                 self.enabled,
-                name,
-                emoji,
+                name.as_deref(),
+                emoji.as_deref(),
                 self.min.map(|v| v as i32),
                 self.max.map(|v| v as i32),
             )

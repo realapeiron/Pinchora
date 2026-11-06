@@ -12,6 +12,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use base64::Engine;
+use pinchora_core::config::Secret;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -140,7 +141,7 @@ pub async fn callback(
     };
     let now = chrono::Utc::now().timestamp();
     let session = discord::session_for(user, tokens, now)?;
-    let sid = session::create(&state.app.cache, &session).await?;
+    let sid = replace_session(&state, &headers, &session).await?;
     tracing::info!(user_id = session.user_id, "dashboard login");
     Ok(redirect(
         &pending.next,
@@ -171,7 +172,11 @@ pub struct DevLogin {
 
 /// `POST /auth/dev-login`: a session without Discord, for tests and local UI work. Only exists
 /// when `PINCHORA_WEB__DEV_LOGIN=true` on a loopback bind.
-pub async fn dev_login(State(state): State<WebState>, ApiJson(body): ApiJson<DevLogin>) -> ApiResult<Response> {
+pub async fn dev_login(
+    State(state): State<WebState>,
+    headers: HeaderMap,
+    ApiJson(body): ApiJson<DevLogin>,
+) -> ApiResult<Response> {
     if !state.settings.dev_login {
         return Err(ApiError::not_found());
     }
@@ -185,7 +190,7 @@ pub async fn dev_login(State(state): State<WebState>, ApiJson(body): ApiJson<Dev
         username: body.username,
         global_name: None,
         avatar: None,
-        access_token: String::new(),
+        access_token: Secret::from(String::new()),
         refresh_token: None,
         token_expires_at: i64::MAX,
         csrf: session::random_token(32),
@@ -193,13 +198,22 @@ pub async fn dev_login(State(state): State<WebState>, ApiJson(body): ApiJson<Dev
         last_seen_at: now,
         dev_guilds: Some(body.guilds),
     };
-    let sid = session::create(&state.app.cache, &session).await?;
+    let sid = replace_session(&state, &headers, &session).await?;
     tracing::warn!(user_id, "dev login");
     let mut response = Json(json!({ "csrf": session.csrf })).into_response();
     response
         .headers_mut()
         .insert(SET_COOKIE, session_cookie(&state, &sid, LIFETIME_SECS));
     Ok(response)
+}
+
+/// Stores a new session for a login and ends the one this browser had before, so an old cookie
+/// (copied, or left on a shared machine) stops working the moment someone logs in again.
+async fn replace_session(state: &WebState, headers: &HeaderMap, session: &Session) -> ApiResult<String> {
+    if let Some(old) = session::cookie(headers, SESSION_COOKIE) {
+        session::delete(&state.app.cache, old).await?;
+    }
+    Ok(session::create(&state.app.cache, session).await?)
 }
 
 fn session_cookie(state: &WebState, sid: &str, max_age: i64) -> HeaderValue {

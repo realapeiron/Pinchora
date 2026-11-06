@@ -1,16 +1,22 @@
 //! The dashboard's routes and the headers every response carries.
 
+mod audit_log;
+mod community;
+mod discord_info;
 mod guilds;
+mod leveling;
 mod me;
 mod overview;
+mod preview;
 mod settings;
 mod static_files;
+mod store;
 
 use std::time::Instant;
 
 use axum::{
     Router,
-    extract::{MatchedPath, Request},
+    extract::{MatchedPath, Request, State},
     http::{HeaderName, HeaderValue, header},
     middleware::{self, Next},
     response::Response,
@@ -44,12 +50,16 @@ pub fn router(state: WebState) -> Router {
         .merge(auth)
         .merge(api)
         .merge(static_files::router())
-        .layer(middleware::from_fn(headers))
+        .layer(middleware::from_fn_with_state(state.clone(), headers))
         .with_state(state)
 }
 
-/// Security headers on everything, `no-store` on the API, and request metrics.
-async fn headers(request: Request, next: Next) -> Response {
+/// Browsers that saw the dashboard over HTTPS keep to HTTPS for a year.
+const HSTS: &str = "max-age=31536000; includeSubDomains";
+
+/// Security headers on everything (HSTS too when cookies are `Secure`, i.e. served over HTTPS),
+/// `no-store` on the API, and request metrics.
+async fn headers(State(state): State<WebState>, request: Request, next: Next) -> Response {
     let started = Instant::now();
     let route = request
         .extensions()
@@ -67,8 +77,11 @@ async fn headers(request: Request, next: Next) -> Response {
         HeaderName::from_static("permissions-policy"),
         HeaderValue::from_static("camera=(), microphone=(), geolocation=(), payment=()"),
     );
-    if dynamic {
+    if dynamic && !headers.contains_key(header::CACHE_CONTROL) {
         headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+    }
+    if state.settings.cookie_secure {
+        headers.insert(header::STRICT_TRANSPORT_SECURITY, HeaderValue::from_static(HSTS));
     }
     let status = response.status().as_u16().to_string();
     metrics::counter!("pinchora_web_requests_total", "route" => route.clone(), "status" => status).increment(1);

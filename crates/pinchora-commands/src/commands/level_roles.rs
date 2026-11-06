@@ -1,6 +1,9 @@
 use std::time::{Duration, Instant};
 
-use pinchora_core::leveling::level_of;
+use pinchora_core::{
+    leveling::{LevelReward, level_of},
+    settings,
+};
 use pinchora_db::MAX_LEVEL_ROLES;
 use twilight_interactions::command::{CommandModel, CommandOption, CreateCommand, CreateOption};
 use twilight_model::{
@@ -11,7 +14,7 @@ use twilight_model::{
 };
 use twilight_util::builder::embed::{EmbedBuilder, EmbedFooterBuilder};
 
-use crate::{Cx, roles, util::BRAND};
+use crate::{App, Cx, roles, util::BRAND};
 
 /// Members checked per `sync` run, newest XP first.
 const SYNC_LIMIT: i64 = 1_000;
@@ -82,10 +85,14 @@ impl ConfigLevelRoles {
         let db = &cx.app.db;
         match self {
             Self::Add(c) => {
+                let level = match settings::check_level(c.level) {
+                    Ok(level) => level,
+                    Err(error) => return cx.reply_ephemeral(error.message).await,
+                };
                 if let Some(why) = roles::unassignable(&cx.app, guild, &c.role).await {
                     return cx.reply_ephemeral(why).await;
                 }
-                if !db.add_level_role(guild, c.level as i32, c.role.id.get()).await? {
+                if !db.add_level_role(guild, level, c.role.id.get()).await? {
                     return cx
                         .reply_ephemeral(format!(
                             "A server can have {MAX_LEVEL_ROLES} level roles. Remove one with `/config level-roles remove` first."
@@ -168,21 +175,79 @@ async fn sync(cx: &Cx, guild: u64) -> anyhow::Result<()> {
     }
     // One lookup and a few role changes per member, so this outlasts Discord's first-answer window.
     cx.responder.defer(true).await?;
-    let stack = cx.app.db.guild_settings(guild).await?.level_roles_stack;
-    let members = cx.app.db.recent_xp_members(guild, SYNC_LIMIT).await?;
+    let report = sync_with(&cx.app, guild, &rewards, |_| {}).await?;
+    cx.reply_ephemeral(report.summary()).await
+}
+
+/// What a level role sync did, so far or in the end.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct SyncReport {
+    /// Members looked at.
+    pub checked: usize,
+    /// Members whose roles changed.
+    pub updated: usize,
+    /// Members with XP here, up to the per-run limit.
+    pub total: usize,
+}
+
+impl SyncReport {
+    /// The sentence `/config level-roles sync` ends with.
+    pub fn summary(&self) -> String {
+        let early = if self.checked < self.total {
+            format!(
+                " Stopped early after {} of {} members; it was taking too long.",
+                self.checked, self.total
+            )
+        } else {
+            String::new()
+        };
+        format!(
+            "Checked **{}** members and updated the level roles of **{}**.{early}",
+            self.checked, self.updated
+        )
+    }
+}
+
+/// `/config level-roles sync` for anyone holding an [`App`] (the dashboard runs it as a job):
+/// `None` when the server has no level roles. `progress` hears the count after every member.
+pub async fn sync_level_roles(
+    app: &App,
+    guild: u64,
+    progress: impl FnMut(SyncReport),
+) -> anyhow::Result<Option<SyncReport>> {
+    let rewards = roles::level_rewards(app, guild).await?;
+    if rewards.is_empty() {
+        return Ok(None);
+    }
+    sync_with(app, guild, &rewards, progress).await.map(Some)
+}
+
+async fn sync_with(
+    app: &App,
+    guild: u64,
+    rewards: &[LevelReward],
+    mut progress: impl FnMut(SyncReport),
+) -> anyhow::Result<SyncReport> {
+    let stack = app.db.guild_settings(guild).await?.level_roles_stack;
+    let members = app.db.recent_xp_members(guild, SYNC_LIMIT).await?;
     let started = Instant::now();
-    let (mut checked, mut updated) = (0usize, 0usize);
+    let mut report = SyncReport {
+        total: members.len(),
+        ..Default::default()
+    };
+    progress(report);
     for member in &members {
         if started.elapsed() > SYNC_BUDGET {
             break;
         }
-        checked += 1;
+        report.checked += 1;
         let user = member.user_id as u64;
-        let current: Vec<u64> = match cx.app.http.guild_member(Id::new(guild), Id::new(user)).await {
+        let current: Vec<u64> = match app.http.guild_member(Id::new(guild), Id::new(user)).await {
             Ok(response) => match response.model().await {
                 Ok(m) => m.roles.iter().map(|r| r.get()).collect(),
                 Err(error) => {
                     tracing::warn!(guild, user, %error, "could not read a member during a level role sync");
+                    progress(report);
                     continue;
                 }
             },
@@ -190,25 +255,16 @@ async fn sync(cx: &Cx, guild: u64) -> anyhow::Result<()> {
                 if !roles::member_is_gone(&error) {
                     tracing::warn!(guild, user, %error, "could not look up a member during a level role sync");
                 }
+                progress(report);
                 continue;
             }
         };
         let (added, removed) =
-            roles::apply_level_roles(&cx.app, guild, user, level_of(member.value), &current, &rewards, stack).await;
+            roles::apply_level_roles(app, guild, user, level_of(member.value), &current, rewards, stack).await;
         if added.len() + removed > 0 {
-            updated += 1;
+            report.updated += 1;
         }
+        progress(report);
     }
-    let early = if checked < members.len() {
-        format!(
-            " Stopped early after {checked} of {} members; it was taking too long.",
-            members.len()
-        )
-    } else {
-        String::new()
-    };
-    cx.reply_ephemeral(format!(
-        "Checked **{checked}** members and updated the level roles of **{updated}**.{early}"
-    ))
-    .await
+    Ok(report)
 }

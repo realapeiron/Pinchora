@@ -1,4 +1,4 @@
-use pinchora_core::leveling::LevelUpMode;
+use pinchora_core::{leveling::LevelUpMode, settings};
 use pinchora_db::GuildSettings;
 use pinchora_render::{Theme, WelcomeCard};
 use twilight_interactions::command::{CommandModel, CommandOption, CreateCommand, CreateOption};
@@ -7,11 +7,13 @@ use twilight_model::{
     channel::message::{Embed, MessageFlags},
     guild::Permissions,
     http::interaction::InteractionResponseData,
+    id::{Id, marker::UserMarker},
+    util::ImageHash,
 };
 use twilight_util::builder::embed::{EmbedBuilder, EmbedFieldBuilder};
 
 use crate::{
-    Cx,
+    App, Cx,
     commands::{
         collection::settings::{ConfigCritters, critters_summary},
         level_roles::ConfigLevelRoles,
@@ -100,51 +102,88 @@ pub struct ConfigWelcomeCard {
     color: Option<String>,
 }
 
-fn parse_hex(s: &str) -> Option<i32> {
-    let s = s.trim().trim_start_matches('#');
-    (s.len() == 6).then(|| i32::from_str_radix(s, 16).ok()).flatten()
-}
-
 impl ConfigWelcomeCard {
     async fn run(self, cx: &Cx, guild: u64) -> anyhow::Result<()> {
-        let accent = match self.color.as_deref() {
-            Some(c) => match parse_hex(c) {
-                Some(v) => Some(v),
-                None => return cx.reply_ephemeral("Colours look like `#ff6b4a`.").await,
-            },
+        let accent = match self.color.as_deref().map(settings::check_accent) {
+            Some(Ok(rgb)) => Some(rgb as i32),
+            Some(Err(error)) => return cx.reply_ephemeral(error.message).await,
             None => None,
         };
-        let settings = cx
+        let title = match self.title.as_deref().map(settings::check_welcome_title) {
+            Some(Ok(title)) => Some(title),
+            Some(Err(error)) => return cx.reply_ephemeral(error.message).await,
+            None => None,
+        };
+        let stored = cx
             .app
             .db
-            .update_welcome_card(guild, self.theme.map(|t| t.value()), self.title.as_deref(), accent)
+            .update_welcome_card(guild, self.theme.map(|t| t.value()), title.as_deref(), accent)
             .await?;
         cx.app.forget_guild_settings(guild).await;
         let author = cx.author()?.clone();
-        let name = cx.author_display_name();
-        let avatar = cx.app.avatar(&author, WelcomeCard::AVATAR_SIZE, Some(44)).await;
-        let title = settings.welcome_title.clone().unwrap_or_else(|| "Welcome".to_owned());
-        let theme = Theme::preset(settings.welcome_theme.as_deref().unwrap_or("reef"))
-            .with_accent(settings.welcome_accent.map(|c| c as u32));
-        let png = cx
-            .app
-            .render(move |r| {
-                r.welcome_card(&WelcomeCard {
-                    display_name: &name,
-                    avatar_png: &avatar,
-                    server_name: "your server",
-                    member_number: Some(1234),
-                    title: &title,
-                    theme,
-                })
-            })
-            .await?;
+        let png = welcome_card_png(
+            &cx.app,
+            author.id,
+            author.avatar,
+            &cx.author_display_name(),
+            "your server",
+            &WelcomeDesign::of(&stored),
+        )
+        .await?;
         let embed = EmbedBuilder::new()
             .color(BRAND)
             .title("Welcome card preview")
             .description("New members will see this card. Turn it on and pick a channel with `/config welcome`.");
         cx.reply(Cx::card(embed, "welcome.png", png, Vec::new(), true)).await
     }
+}
+
+/// How a server's welcome card looks: theme key, headline and accent, each `None` for the default.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct WelcomeDesign {
+    pub theme: Option<String>,
+    pub title: Option<String>,
+    pub accent: Option<u32>,
+}
+
+impl WelcomeDesign {
+    pub fn of(settings: &GuildSettings) -> Self {
+        Self {
+            theme: settings.welcome_theme.clone(),
+            title: settings.welcome_title.clone(),
+            accent: settings.welcome_accent.map(|c| c as u32),
+        }
+    }
+}
+
+/// The welcome card preview `/config welcome-card` shows: the card for `name` (with their avatar)
+/// joining `server` as member #1234. The dashboard's live preview draws through this too.
+pub async fn welcome_card_png(
+    app: &App,
+    user: Id<UserMarker>,
+    avatar: Option<ImageHash>,
+    name: &str,
+    server: &str,
+    design: &WelcomeDesign,
+) -> anyhow::Result<Vec<u8>> {
+    let avatar = app.avatar_of(user, avatar, WelcomeCard::AVATAR_SIZE, Some(44)).await;
+    let title = design
+        .title
+        .clone()
+        .unwrap_or_else(|| settings::DEFAULT_WELCOME_TITLE.to_owned());
+    let theme = Theme::preset(design.theme.as_deref().unwrap_or(settings::DEFAULT_THEME)).with_accent(design.accent);
+    let (name, server) = (name.to_owned(), server.to_owned());
+    app.render(move |r| {
+        r.welcome_card(&WelcomeCard {
+            display_name: &name,
+            avatar_png: &avatar,
+            server_name: &server,
+            member_number: Some(1234),
+            title: &title,
+            theme,
+        })
+    })
+    .await
 }
 
 impl ConfigCommand {
@@ -321,4 +360,98 @@ fn settings_embed(s: &GuildSettings) -> Embed {
         .field(EmbedFieldBuilder::new("Goodbye", goodbye_summary(s)))
         .field(EmbedFieldBuilder::new("Server log", log_summary(s)))
         .build()
+}
+
+#[cfg(test)]
+mod tests {
+    use std::ops::RangeInclusive;
+
+    use pinchora_core::leveling::{MAX_MULTIPLIER, VOICE_XP_RANGE};
+    use twilight_model::application::command::{CommandOption, CommandOptionChoiceValue, CommandOptionValue};
+
+    use super::*;
+
+    fn find<'a>(options: &'a [CommandOption], path: &[&str]) -> &'a CommandOption {
+        let (first, rest) = path.split_first().expect("a path");
+        let found = options
+            .iter()
+            .find(|o| o.name == *first)
+            .unwrap_or_else(|| panic!("no option {first}"));
+        if rest.is_empty() {
+            found
+        } else {
+            find(found.options.as_deref().unwrap_or_default(), rest)
+        }
+    }
+
+    fn integer(value: Option<CommandOptionValue>) -> Option<i64> {
+        match value {
+            Some(CommandOptionValue::Integer(n)) => Some(n),
+            _ => None,
+        }
+    }
+
+    /// The `max_length`, `min_value` and `max_value` on the options only shape Discord's form; the
+    /// rules themselves live in `pinchora_core::settings`, and the two must agree.
+    #[test]
+    fn discord_limits_match_the_shared_rules() {
+        let command = ConfigCommand::create_command();
+        let option = |path: &[&str]| find(&command.options, path).clone();
+        for path in [["welcome", "message"], ["leveling", "message"], ["goodbye", "message"]] {
+            assert_eq!(
+                option(&path).max_length.map(usize::from),
+                Some(settings::MESSAGE_MAX),
+                "{path:?}"
+            );
+        }
+        assert_eq!(
+            option(&["welcome-card", "title"]).max_length.map(usize::from),
+            Some(settings::WELCOME_TITLE_MAX)
+        );
+        assert_eq!(
+            option(&["points", "name"]).max_length.map(usize::from),
+            Some(settings::POINTS_NAME_MAX)
+        );
+        assert_eq!(
+            option(&["points", "emoji"]).max_length.map(usize::from),
+            Some(settings::POINTS_EMOJI_MAX)
+        );
+        let range = |path: &[&str], expected: &RangeInclusive<i64>| {
+            let o = option(path);
+            assert_eq!(
+                (integer(o.min_value), integer(o.max_value)),
+                (Some(*expected.start()), Some(*expected.end())),
+                "{path:?}"
+            );
+        };
+        range(&["points", "min"], &settings::POINTS_RANGE);
+        range(&["points", "max"], &settings::POINTS_RANGE);
+        range(&["level-roles", "add", "level"], &settings::LEVEL_RANGE);
+        range(&["rep-roles", "add", "reputation"], &settings::REPUTATION_RANGE);
+        range(&["store", "add", "price"], &settings::PRICE_RANGE);
+        range(&["store", "add", "stock"], &settings::STOCK_RANGE);
+        range(&["xp", "voice", "amount"], &VOICE_XP_RANGE);
+        assert!(matches!(
+            option(&["xp", "multiplier", "value"]).max_value,
+            Some(CommandOptionValue::Number(m)) if m == MAX_MULTIPLIER
+        ));
+        let themes: Vec<(String, String)> = option(&["welcome-card", "theme"])
+            .choices
+            .unwrap_or_default()
+            .into_iter()
+            .map(|c| match c.value {
+                CommandOptionChoiceValue::String(key) => (key, c.name),
+                other => panic!("{other:?}"),
+            })
+            .collect();
+        let shared: Vec<(String, String)> = settings::WELCOME_THEMES
+            .iter()
+            .map(|(k, n)| ((*k).to_owned(), (*n).to_owned()))
+            .collect();
+        assert_eq!(themes, shared);
+        assert_eq!(
+            Theme::PRESETS.to_vec(),
+            settings::WELCOME_THEMES.map(|(k, _)| k).to_vec()
+        );
+    }
 }

@@ -1,7 +1,7 @@
 mod bio;
 pub(crate) mod character;
 pub(crate) mod collection;
-mod config;
+pub(crate) mod config;
 pub(crate) mod connect4;
 pub(crate) mod contest;
 pub(crate) mod customize;
@@ -20,7 +20,7 @@ mod help;
 pub(crate) mod house;
 pub(crate) mod interact;
 pub(crate) mod leaderboard;
-mod level_roles;
+pub(crate) mod level_roles;
 pub(crate) mod partner;
 pub(crate) mod pet;
 mod ping;

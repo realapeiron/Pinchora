@@ -166,7 +166,7 @@ pub(crate) async fn rebuild(app: &App, guild: &Guild) -> anyhow::Result<()> {
 }
 
 /// Forgets everyone in voice in `guild`.
-pub(crate) async fn forget(app: &App, guild: u64) -> anyhow::Result<()> {
+pub async fn forget(app: &App, guild: u64) -> anyhow::Result<()> {
     app.cache.map_replace(&members_key(guild), &[], KEEP).await?;
     app.cache.set_remove(GUILDS, &guild.to_string()).await
 }

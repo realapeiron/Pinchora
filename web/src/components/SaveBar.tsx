@@ -12,12 +12,15 @@ export function SaveBar({
   count,
   saving,
   error,
+  blocked = false,
   onSave,
   onReset,
 }: {
   count: number;
   saving: boolean;
   error?: string | null;
+  /** Saving waits until the marked fields are fixed. */
+  blocked?: boolean;
   onSave: () => void;
   onReset: () => void;
 }) {
@@ -50,7 +53,7 @@ export function SaveBar({
             <PixelButton variant="ghost" onClick={onReset} disabled={saving || !dirty}>
               Reset
             </PixelButton>
-            <PixelButton onClick={onSave} disabled={saving || !dirty}>
+            <PixelButton onClick={onSave} disabled={saving || !dirty || blocked}>
               {saving ? "Saving…" : "Save changes"}
             </PixelButton>
           </div>

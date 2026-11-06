@@ -38,7 +38,10 @@ pub async fn listen(app: &Arc<App>) {
 async fn forget(app: &App, what: Invalidation) {
     tracing::debug!(?what, "cache invalidated");
     match what {
-        Invalidation::Guild(guild) => app.forget_guild_settings(guild).await,
+        Invalidation::Guild(guild) => {
+            app.forget_guild_settings(guild).await;
+            crate::commands::collection::settings::forget(guild).await;
+        }
         Invalidation::XpRules(guild) => app.forget_xp_rules(guild).await,
     }
 }

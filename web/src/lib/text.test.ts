@@ -34,6 +34,8 @@ describe("text", () => {
       "turned leveling on, changed levelup mode",
     );
     expect(describeChange(entry(null))).toBe("made a change (settings.patch)");
+    expect(describeChange(entry({ a: 1, b: 2, c: 3, d: 4 }))).toBe("changed a, changed b and 2 more");
+    expect(describeChange({ ...entry({ level: 5 }), action: "level_roles.put" })).toBe("set a level role");
   });
 
   it("makes initials", () => {
