@@ -1,7 +1,9 @@
 //! Character 2.0: the accessories a player bought and their saved outfits. The character code
 //! itself is `users.avatar` (see [`Db::character`]).
 
-use crate::{CustomizeBuy, Db, PlayerStats, sql_id};
+use pinchora_core::stats::WardrobeFacts;
+
+use crate::{CustomizeBuy, Db, sql_id};
 
 /// One saved outfit.
 #[derive(Debug, Clone, PartialEq, Eq, sqlx::FromRow)]
@@ -11,18 +13,6 @@ pub struct OutfitRow {
     pub name: String,
     /// A character code, as `users.avatar` holds it.
     pub code: String,
-}
-
-/// What the rule for wearing an accessory needs to know about a player (see
-/// `pinchora_game::character::Shelf`): their numbers (the level and what achievement badges count)
-/// and what they bought.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct WardrobeFacts {
-    pub stats: PlayerStats,
-    /// Shop badge ids they bought.
-    pub bought_badges: Vec<String>,
-    /// Accessory ids they bought.
-    pub bought_accessories: Vec<String>,
 }
 
 impl Db {

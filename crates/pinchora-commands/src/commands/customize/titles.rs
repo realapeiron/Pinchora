@@ -180,7 +180,7 @@ pub(crate) async fn on_title(cx: &Cx, mut args: Split<'_, char>, values: &[Strin
 
 #[cfg(test)]
 mod tests {
-    use pinchora_db::PlayerStats;
+    use pinchora_core::stats::PlayerStats;
 
     use super::*;
 

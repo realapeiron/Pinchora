@@ -4,7 +4,7 @@
 
 use std::sync::LazyLock;
 
-use pinchora_db::WardrobeFacts;
+use pinchora_core::stats::WardrobeFacts;
 use pinchora_render::character::{ACCESSORY_TINTS, Channel, CharacterSpec, Colors, Paint, Pose, Slot, Worn};
 use serde::Deserialize;
 
@@ -435,7 +435,7 @@ mod tests {
 
     #[test]
     fn the_shelf_works_out_what_a_player_may_wear_from_the_database_facts() {
-        use pinchora_db::{PlayerStats, WardrobeFacts};
+        use pinchora_core::stats::{PlayerStats, WardrobeFacts};
 
         use crate::{BadgeKind, BadgeStat};
 

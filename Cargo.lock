@@ -2001,7 +2001,7 @@ name = "pinchora-game"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "pinchora-db",
+ "pinchora-core",
  "pinchora-render",
  "serde",
  "serde_json",

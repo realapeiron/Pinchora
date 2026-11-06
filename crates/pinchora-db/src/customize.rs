@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use pinchora_core::{economy::DAILY_STREAK_WINDOW, leveling};
+use pinchora_core::{economy::DAILY_STREAK_WINDOW, leveling, stats::PlayerStats};
 
 use crate::{
     Db,
@@ -15,24 +15,6 @@ pub enum CustomizeBuy {
     Bought { balance: i64 },
     AlreadyOwned,
     Insufficient { balance: i64 },
-}
-
-/// The numbers achievement badges are earned from. All zero for a player never seen before.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct PlayerStats {
-    /// From their total XP.
-    pub level: i64,
-    /// Different fish in the fish book.
-    pub fish_species: i64,
-    /// Likes their house has received.
-    pub house_likes: i64,
-    pub pets: i64,
-    /// The daily streak as it stands now: 0 once they missed the window to extend it.
-    pub streak: i64,
-    /// Furniture standing in their rooms.
-    pub placed: i64,
-    pub reputation: i64,
-    pub shells: i64,
 }
 
 #[derive(sqlx::FromRow)]

@@ -4,6 +4,7 @@ pub mod economy;
 pub mod leveling;
 pub mod server_events;
 pub mod snowflake;
+pub mod stats;
 pub mod telemetry;
 
 pub use config::Config;

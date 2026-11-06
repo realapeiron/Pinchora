@@ -28,9 +28,9 @@ use std::time::Duration;
 
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
-pub use character::{OutfitRow, WardrobeFacts};
+pub use character::OutfitRow;
 pub use contest::{ContestEntry, ContestResult};
-pub use customize::{CustomizeBuy, MAX_BADGES, PlayerStats};
+pub use customize::{CustomizeBuy, MAX_BADGES};
 pub use economy::{DailyOutcome, RepOutcome, TransferOutcome};
 pub use fishing::{
     BucketRow, CatchBoardRow, CatchLog, Cosmetic, DEFAULT_ROD, DEFAULT_SPOT, GearBuy, GearRow, MilestonePaid,

@@ -1,7 +1,7 @@
 use std::{collections::HashSet, str::Split, sync::Arc};
 
-use pinchora_core::leveling;
-use pinchora_db::{CustomizeBuy, MAX_BADGES, PlayerStats, UserRow};
+use pinchora_core::{leveling, stats::PlayerStats};
+use pinchora_db::{CustomizeBuy, MAX_BADGES, UserRow};
 use pinchora_game::{Background, Badge, BadgeKind, BadgeStat, Content, Rarity, TitleKind, stat_value};
 use pinchora_render::{
     Backdrop, BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, Frame, Opacity, SpriteArt, Theme, parse_accent,

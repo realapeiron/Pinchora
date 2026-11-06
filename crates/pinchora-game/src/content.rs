@@ -3,7 +3,7 @@ use std::{
     sync::LazyLock,
 };
 
-use pinchora_db::PlayerStats;
+use pinchora_core::stats::PlayerStats;
 use serde::Deserialize;
 
 use crate::fishing::Gear;
