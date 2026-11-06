@@ -345,6 +345,20 @@ no duplicate names, the glossary, the furniture noun table (`_furniture_nouns.js
 `content/i18n/tr/`, translate it, add the files to `TR_FILES`-style tables in `crates/pinchora-game/src/overlay.rs` and
 an arm to `overlay()`.
 
+**Turkish social and server tools.** `/partner`, `/friends`, `/hug` `/pat` `/wave` `/highfive`, `/rep`, `/bio`, `/ping`,
+the house guestbook and room contest, `/giveaway`, `/suggest`, `/poll`, `/roles`, `/tag` and `/customcommand`, every
+`/config` subcommand's replies (`show`, `xp`, `level-roles`, `rep-roles`, `modules`, `join-role`, `goodbye`, `log`,
+`suggestions`, `welcome-card`) and the messages a server sends on its own (welcome card, goodbye, level-up banner, server
+log, giveaway, suggestion and poll messages) speak Turkish: the catalogs are `locales/<code>/social.toml`, `guestbook.toml`
+(+ contest), `giveaway.toml`, `suggest.toml` (+ poll), `roles.toml`, `tags.toml`, `modules.toml`, `serverconfig.toml`
+and `settings.toml`. Replies use the member's language; what answers nobody in particular (the giveaway, suggestion, poll and
+role-panel messages, welcome, goodbye, level-ups in a channel, the server log) uses the server's default (`/config
+language`), and a direct message (a level-up by DM, a suggestion's verdict) uses its recipient's own pick. The checks that
+refuse a setting (`pinchora_core::settings::FieldError`) carry a catalog key beside their English text: ask
+`error.text(lang)`; role refusals have `*_in(lang, …)` twins (`role_refusal_in`, `grant_refusal_in`, …) and the pixel cards
+(`PollCard`, `WelcomeCard`, `LevelUpCard`) take a `lang`. A server's own welcome/goodbye/level-up text and custom
+commands stay as the server wrote them; only the defaults (`events.default-*`) are translated.
+
 **Turkish games.** The word and quiz games speak Turkish to a player whose Discord locale is Turkish (the games
 ask `cx.lang()`, so a `/language` choice and the server default count too). Their content sits beside
 the English files: `words_tr.json` (wordle answers and guesses), `hangman_tr.json`, `trivia_tr.json` (ids
