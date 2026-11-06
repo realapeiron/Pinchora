@@ -5,6 +5,8 @@
 //! a few misspellings and letters starred out ("f*ck"). Short stems are only caught where a swear word
 //! really carries them (the start of "shitty", the end of "bullshit"), never in the middle of a name.
 
+use pinchora_core::i18n::Lang;
+
 /// Words nobody types in a family friendly game: strong profanity and slurs.
 const BASE: &[&str] = &[
     "fuck",
@@ -293,6 +295,23 @@ fn masked(text: &str, strict: bool) -> bool {
             .any(|stem| pattern.len() >= stem.len() && starred(&pattern[pattern.len() - stem.len()..], stem));
         whole || anywhere || starts || ends
     })
+}
+
+/// Whether `text`, typed in a game in `lang`, holds a word the filter blocks. Turkish text goes through the
+/// Turkish filter, and through the English one with its words that carry Turkish letters left out: the
+/// English filter reads `ü` as `u`, which would make the Turkish "gün" (day) the English "gun".
+pub fn is_profane_for(text: &str, strict: bool, lang: Lang) -> bool {
+    match lang {
+        Lang::En => is_profane(text, strict),
+        Lang::Tr => {
+            let english: String = text
+                .split_whitespace()
+                .filter(|chunk| !chunk.chars().any(|c| "çğıöşüÇĞİÖŞÜ".contains(c)))
+                .collect::<Vec<_>>()
+                .join(" ");
+            super::filter_tr::is_profane(text, strict) || is_profane(&english, strict)
+        }
+    }
 }
 
 /// Whether `text` holds a word the filter blocks; `strict` adds the milder list.
