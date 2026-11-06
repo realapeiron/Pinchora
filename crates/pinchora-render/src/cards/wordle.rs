@@ -6,6 +6,12 @@ use crate::{
     svg::{background, escape, mix, panel},
 };
 
+/// The fill of a tile whose letter is not in the word: a neutral grey. It used to be a slate blue so close to
+/// the blue of a key nobody has tried ([`IDLE_KEY`]) that the two read as the same thing.
+pub const WRONG_LETTER: &str = "#6b7186";
+/// The fill of a keyboard key nobody has tried.
+pub const IDLE_KEY: &str = "#2e3d75";
+
 /// How a letter matched: used for guess tiles and keyboard keys.
 pub const ABSENT: u8 = 1;
 pub const PRESENT: u8 = 2;
@@ -42,7 +48,7 @@ impl WordleCard<'_> {
         match mark {
             CORRECT => (t.mint.clone(), mix(&t.mint, "#000000", 0.4), "#0b1029".into()),
             PRESENT => (t.gold.clone(), mix(&t.gold, "#000000", 0.4), "#0b1029".into()),
-            ABSENT => ("#3b4676".into(), "#262f55".into(), t.ink.clone()),
+            ABSENT => (WRONG_LETTER.into(), "#454b5e".into(), t.ink.clone()),
             _ => (t.panel.clone(), t.panel_edge.clone(), t.ink.clone()),
         }
     }
@@ -115,7 +121,7 @@ impl WordleCard<'_> {
             for (i, letter) in keys.chars().enumerate() {
                 let mark = self.keys[(letter as u8 - b'a') as usize];
                 let (fill, edge, ink) = match mark {
-                    0 => ("#2e3d75".into(), "#1d2b53".into(), t.ink.clone()),
+                    0 => (IDLE_KEY.into(), "#1d2b53".into(), t.ink.clone()),
                     ABSENT => ("#141b3d".into(), "#0b1029".into(), t.muted.clone()),
                     other => self.colors(other),
                 };

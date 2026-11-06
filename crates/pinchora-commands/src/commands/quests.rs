@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{str::Split, time::Duration};
 
 use chrono::Utc;
 use pinchora_game::quests::{self, ALL_CLEAR_PEARLS};
@@ -106,10 +106,19 @@ async fn board(cx: &Cx, note: Option<String>) -> anyhow::Result<InteractionRespo
     })
 }
 
-/// `qc:<day>`: pays every finished, unclaimed quest once; all three pay pearls.
-pub(crate) async fn on_claim(cx: &Cx) -> anyhow::Result<()> {
+/// `qc:<day>`: pays every finished, unclaimed quest of that day once; all three pay pearls. A board from an
+/// earlier day has nothing to claim any more, and says so instead of paying today's quests.
+pub(crate) async fn on_claim(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Result<()> {
     let user = cx.author()?.id.get();
     let day = today();
+    if args.next().and_then(|v| v.parse::<i64>().ok()) != Some(day) {
+        let data = board(
+            cx,
+            Some("That board is from an earlier day, so its button has expired. Here are today's quests.".to_owned()),
+        )
+        .await?;
+        return cx.update(data).await;
+    }
     let ttl = Duration::from_secs(2 * 86_400);
     let (mut shells, mut finished) = (0, 0);
     for q in quests::for_day(user, day) {

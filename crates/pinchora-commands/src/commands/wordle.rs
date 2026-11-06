@@ -52,17 +52,18 @@ pub(crate) async fn start(cx: &Cx, daily: bool) -> anyhow::Result<()> {
             .filter(|g| g.status == "playing")
         {
             Some(unfinished) => unfinished,
-            None => new_practice(&cx.app, me).await?,
+            None => new_practice(&cx.app, me).await?.0,
         }
     };
     let data = view(&cx.app, &game, "").await?;
     cx.reply(data).await
 }
 
-async fn new_practice(app: &App, user: u64) -> anyhow::Result<WordleGame> {
+/// A fresh practice board, and whether it replaced one that was being played (a guess in, not finished).
+async fn new_practice(app: &App, user: u64) -> anyhow::Result<(WordleGame, bool)> {
     let answers = &PlayContent::get().words.answers;
     let word = &answers[rand::random_range(0..answers.len())];
-    app.db.start_wordle(user, PRACTICE, 0, word, true).await
+    app.db.restart_practice_wordle(user, word).await
 }
 
 /// The private board: tiles, keyboard and the button for what comes next.
@@ -156,19 +157,18 @@ pub(crate) async fn on_button(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Res
                     .reply_ephemeral("That puzzle has ended. Start today's with `/play wordle`!")
                     .await;
             }
-            match cx.app.db.wordle_game(me, mode, day_no).await? {
-                Some(game) if game.status == "playing" => {
-                    cx.modal(format!("wo:m:{mode}:{day_no}"), "Wordle guess", vec![guess_field()])
-                        .await
-                }
-                _ => {
-                    cx.reply_ephemeral("This board is finished. Start another with `/play wordle`!")
-                        .await
-                }
-            }
+            // The form opens first, before anything is read: over the HTTP endpoint a slow read would make the
+            // responder defer, and a modal can only be the first answer. A board that is over is told when the
+            // guess is sent (`on_guess`).
+            cx.modal(format!("wo:m:{mode}:{day_no}"), "Wordle guess", vec![guess_field()])
+                .await
         }
         Some("n") => {
-            let game = new_practice(&cx.app, me).await?;
+            let (game, abandoned) = new_practice(&cx.app, me).await?;
+            if abandoned {
+                // The board it replaced was being played: walking away from it is a lost game.
+                record(&cx.app, Game::Wordle, me, false).await;
+            }
             let data = view(&cx.app, &game, "").await?;
             cx.update(data).await
         }

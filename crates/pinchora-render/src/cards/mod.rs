@@ -57,7 +57,7 @@ pub use showcase::{ShowcaseKind, ShowcaseSlot};
 pub use tide2048::Tide2048Card;
 pub use wallet::WalletCard;
 pub use welcome::WelcomeCard;
-pub use wordle::{ABSENT, CORRECT, PRESENT, WordleCard, WordleRow};
+pub use wordle::{ABSENT, CORRECT, IDLE_KEY, PRESENT, WRONG_LETTER, WordleCard, WordleRow};
 pub use wrapped::{WrappedCard, WrappedFish, WrappedHouse, WrappedTotals};
 
 use std::fmt::Write;

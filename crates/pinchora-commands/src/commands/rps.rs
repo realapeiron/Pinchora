@@ -236,7 +236,14 @@ pub(crate) async fn on_button(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Res
 /// An open, running match the clicker plays in.
 async fn running(cx: &Cx, id: i64) -> anyhow::Result<Option<GameSession>> {
     let me = cx.author()?.id.get();
-    let Some(session) = cx.app.db.game(id).await?.filter(|s| s.is_active()) else {
+    // Another kind's id is not this match: its buttons pass another module's switch.
+    let Some(session) = cx
+        .app
+        .db
+        .game(id)
+        .await?
+        .filter(|s| s.is_active() && s.kind == Kind::Rps.key())
+    else {
         cx.reply_ephemeral("This match is over.").await?;
         return Ok(None);
     };
