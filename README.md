@@ -417,6 +417,23 @@ no duplicate names, the glossary, the furniture noun table (`_furniture_nouns.js
 `content/i18n/tr/`, translate it, add the files to `TR_FILES`-style tables in `crates/pinchora-game/src/overlay.rs` and
 an arm to `overlay()`.
 
+**Turkish social and server tools.** `/partner`, `/friends`, `/hug` `/pat` `/wave` `/highfive`, `/rep`, `/bio`, `/ping`,
+the house guestbook and room contest, `/giveaway`, `/suggest`, `/poll`, `/roles`, `/tag` and `/customcommand`, every
+`/config` subcommand's replies (`show`, `xp`, `level-roles`, `rep-roles`, `modules`, `join-role`, `goodbye`, `log`,
+`suggestions`, `welcome-card`) and the messages a server sends on its own (welcome card, goodbye, level-up banner, server
+log, giveaway, suggestion and poll messages) speak Turkish: the catalogs are `locales/<code>/social.toml`, `guestbook.toml`
+(+ contest), `giveaway.toml`, `suggest.toml` (+ poll), `roles.toml`, `tags.toml`, `modules.toml`, `serverconfig.toml`
+and `settings.toml`. Replies use the member's language; what answers nobody in particular (the giveaway, suggestion, poll and
+role-panel messages, welcome, goodbye, level-ups in a channel, the server log) uses the server's default (`/config
+language`), and a direct message (a level-up by DM, a suggestion's verdict) uses its recipient's own pick. The checks that
+refuse a setting (`pinchora_core::settings::FieldError`) carry a catalog key beside their English text: ask
+`error.text(lang)`; role refusals have `*_in(lang, …)` twins (`role_refusal_in`, `grant_refusal_in`, …) and the pixel cards
+(`PollCard`, `LevelUpCard`) take a `lang`. The classic welcome and goodbye card (`templates::classic`, what a server that
+never opened the card editor sends) draws its default headline (`HOŞ GELDİN`, Turkish capitals by `Lang::upper`) and its
+line in the server's language; a design saved in the editor keeps the words it was given. A server's own
+welcome/goodbye/level-up text and custom commands stay as the server wrote them; only the defaults (`events.default-*`)
+are translated.
+
 **Turkish games.** The word and quiz games speak Turkish to a player whose Discord locale is Turkish (the games
 ask `cx.lang()`, so a `/language` choice and the server default count too). Their content sits beside
 the English files: `words_tr.json` (wordle answers and guesses), `hangman_tr.json`, `trivia_tr.json` (ids
@@ -428,6 +445,16 @@ language (hangman's state ends in `|tr`, the party games' JSON state holds `lang
 mode `daily-tr`/`practice-tr`), so no migration is needed. The party filter reads Turkish with its own list and
 disguises (`party/filter_tr.rs`: `ş`/`s`, `ğ`/`g` swaps, numbers, spacing, stars), and never reads the Turkish
 `gün` as the English `gun`. `tests/play_content_tr.rs` and `content/check.py` check every list.
+
+**Turkish pets, fishing, shops and cards.** `/pet` (with trips and the nursery), `/fish`, `/shop`, `/inventory`, `/gift`,
+`/stall`, `/plaza`, `/quests`, `/points`, `/store`, `/leaderboard`, `/wrapped`, `/remind` and the `/customize` title, style
+and showcase editors answer in the player's language: their texts are the keys of `locales/{en,tr}/{pets,fish,shop,
+quests,points,remind,boards,cosmetics}.toml`, and the pet, nursery, wrapped, leaderboard and badge-collection cards take
+a `lang` for the words they draw. A new pet is named after its species in the adopter's language. `/remind` also
+understands Turkish units (`2sa30dk`, `3g`, `1hf`). The direct messages a reminder sends have no interaction to take a
+language from: they use the player's `/language` pick, else the language the notification was switched on or last
+refreshed in (kept in the reminder's `body`), else English. `tests/simulate/turkish_{pets,fish,shop,remind}.rs` play
+each group in Turkish.
 
 ### Text commands
 

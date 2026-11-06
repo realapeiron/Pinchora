@@ -87,6 +87,14 @@ impl Needs {
         lowest.map_or("some care", |(_, phrase)| phrase)
     }
 
+    /// What the pet wants most (see [`Needs::wants`]) as a catalog key: `food`, `play`, `bath` or `care`.
+    pub fn want_key(self) -> &'static str {
+        let lowest = [(self.hunger, "food"), (self.fun, "play"), (self.hygiene, "bath")]
+            .into_iter()
+            .min_by_key(|(value, _)| *value);
+        lowest.map_or("care", |(_, key)| key)
+    }
+
     /// Hours after these needs were stored when a pet nobody looked after falls asleep.
     pub fn sleeps_after_hours(self) -> f32 {
         self.hours_until_drained() + SLEEP_AFTER_HOURS

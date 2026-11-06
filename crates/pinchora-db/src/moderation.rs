@@ -455,6 +455,16 @@ impl Db {
         Ok(sql.build_query_as::<CaseRow>().fetch_all(self.pool()).await?)
     }
 
+    /// Serializes Discord ban changes for a member across pods. Hold through the HTTP call and case write.
+    pub async fn lock_ban(&self, guild: u64, target: u64) -> anyhow::Result<sqlx::Transaction<'_, Postgres>> {
+        let mut tx = self.pool().begin().await?;
+        sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))")
+            .bind(format!("moderation-ban:{guild}:{target}"))
+            .execute(&mut *tx)
+            .await?;
+        Ok(tx)
+    }
+
     /// Takes temporary bans whose time is up, leasing each for two minutes so no other pod lifts it.
     pub async fn claim_expired_bans(&self, now: DateTime<Utc>, limit: i64) -> anyhow::Result<Vec<CaseRow>> {
         Ok(sqlx::query_as::<_, CaseRow>(concat!(
@@ -478,13 +488,19 @@ impl Db {
 
     /// Ends a temporary ban the ticker is about to lift, right before it asks Discord: `false` when the
     /// ban no longer stands (lifted by someone, or replaced by a newer ban), so it is left alone.
-    pub async fn close_ban(&self, guild: u64, number: i32) -> anyhow::Result<bool> {
+    pub async fn close_ban(&self, ban: &CaseRow) -> anyhow::Result<bool> {
         let closed = sqlx::query(
             "UPDATE mod_cases SET active = FALSE, updated_at = now()
-             WHERE guild_id = $1 AND number = $2 AND kind = 'ban' AND active RETURNING number",
+             WHERE guild_id = $1 AND number = $2 AND created_at = $3 AND kind = 'ban' AND active
+               AND NOT EXISTS (SELECT 1 FROM mod_cases newer
+                   WHERE newer.guild_id = $1 AND newer.target_id = $4
+                     AND newer.kind = 'ban' AND newer.active AND newer.number > $2)
+             RETURNING number",
         )
-        .bind(sql_id(guild))
-        .bind(number)
+        .bind(ban.guild_id)
+        .bind(ban.number)
+        .bind(ban.created_at)
+        .bind(ban.target_id)
         .fetch_optional(self.pool())
         .await?;
         Ok(closed.is_some())
@@ -492,18 +508,19 @@ impl Db {
 
     /// Puts back a temporary ban Discord would not lift, to be tried again in an hour: unless a newer
     /// ban or unban of the member came since, which decides instead.
-    pub async fn postpone_lift(&self, guild: u64, number: i32) -> anyhow::Result<()> {
+    pub async fn postpone_lift(&self, ban: &CaseRow) -> anyhow::Result<()> {
         sqlx::query(
             "UPDATE mod_cases m SET active = TRUE, updated_at = now(), expire_lease = now() + interval '1 hour'
-             WHERE m.guild_id = $1 AND m.number = $2 AND m.kind = 'ban'
+             WHERE m.guild_id = $1 AND m.number = $2 AND m.kind = 'ban' AND m.created_at = $3
                AND NOT EXISTS (
                    SELECT 1 FROM mod_cases n
                    WHERE n.guild_id = m.guild_id AND n.target_id = m.target_id AND n.number > m.number
                      AND n.kind IN ('ban', 'unban')
                )",
         )
-        .bind(sql_id(guild))
-        .bind(number)
+        .bind(ban.guild_id)
+        .bind(ban.number)
+        .bind(ban.created_at)
         .execute(self.pool())
         .await?;
         Ok(())
@@ -540,21 +557,26 @@ impl Db {
         })
     }
 
-    /// Ends the member's bans opened up to `until` (`None`: up to now, on the database's clock): someone
+    /// Ends the member's bans opened strictly before the audit entry's timestamp: someone
     /// lifted their ban on Discord, so none of them stands any more and the ticker must not lift a ban
     /// made since. How many ended.
-    pub async fn end_bans(&self, guild: u64, target: u64, until: Option<DateTime<Utc>>) -> anyhow::Result<u64> {
+    pub async fn end_bans(&self, guild: u64, target: u64, until: DateTime<Utc>) -> anyhow::Result<u64> {
         let ended = sqlx::query(
-            "UPDATE mod_cases SET active = FALSE, updated_at = now()
-             WHERE guild_id = $1 AND target_id = $2 AND kind = 'ban' AND active
-               AND created_at <= COALESCE($3, now())",
+            "WITH candidates AS (
+                 SELECT guild_id, number, created_at FROM mod_cases
+                 WHERE guild_id = $1 AND target_id = $2 AND kind = 'ban' AND active AND created_at < $3
+             )
+             UPDATE mod_cases c SET active = FALSE, updated_at = now()
+             FROM candidates b
+             WHERE c.guild_id = b.guild_id AND c.number = b.number AND c.created_at = b.created_at AND c.active
+             RETURNING c.number",
         )
         .bind(sql_id(guild))
         .bind(sql_id(target))
         .bind(until)
-        .execute(self.pool())
+        .fetch_all(self.pool())
         .await?;
-        Ok(ended.rows_affected())
+        Ok(ended.len() as u64)
     }
 
     /// Puts an action in the staff log.

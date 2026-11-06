@@ -6,7 +6,11 @@ use std::ops::RangeInclusive;
 use serde::Serialize;
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::leveling::{LevelUpMode, MAX_MULTIPLIER, VOICE_XP_RANGE};
+use crate::{
+    i18n::{self, Lang},
+    leveling::{LevelUpMode, MAX_MULTIPLIER, VOICE_XP_RANGE},
+    t,
+};
 
 /// Welcome, goodbye and level-up messages, in characters.
 pub const MESSAGE_MAX: usize = 500;
@@ -58,6 +62,12 @@ pub const LEVELUP_MODES: [LevelUpMode; 4] = [
 pub struct FieldError {
     pub field: &'static str,
     pub message: String,
+    /// The catalog key of this error's text and its arguments, for [`FieldError::text`]; empty for an
+    /// error that only has the English `message`. Not part of the API.
+    #[serde(skip)]
+    key: &'static str,
+    #[serde(skip)]
+    args: Vec<(&'static str, String)>,
 }
 
 impl FieldError {
@@ -65,7 +75,46 @@ impl FieldError {
         Self {
             field,
             message: message.into(),
+            key: "",
+            args: Vec::new(),
         }
+    }
+
+    /// Says where the error's text lives in the catalogs (`settings-error.<key>`), with the values its
+    /// `{arguments}` take. `message` stays the English text the dashboard shows.
+    #[must_use]
+    pub fn keyed<const N: usize>(mut self, key: &'static str, args: [(&'static str, String); N]) -> Self {
+        self.key = key;
+        self.args = args.into();
+        self
+    }
+
+    /// The error worded in `lang`; English (and any error without a key) is `message`.
+    pub fn text(&self, lang: Lang) -> String {
+        if lang == Lang::En || self.key.is_empty() {
+            return self.message.clone();
+        }
+        let args: Vec<(&str, &dyn std::fmt::Display)> = self
+            .args
+            .iter()
+            .map(|(k, v)| (*k, v as &dyn std::fmt::Display))
+            .collect();
+        i18n::text(lang, &format!("settings-error.{}", self.key), &args)
+    }
+
+    /// The catalog key and arguments, for the test that keeps every English catalog text equal to
+    /// `message`.
+    #[cfg(test)]
+    fn catalog_text(&self) -> Option<String> {
+        if self.key.is_empty() {
+            return None;
+        }
+        let args: Vec<(&str, &dyn std::fmt::Display)> = self
+            .args
+            .iter()
+            .map(|(k, v)| (*k, v as &dyn std::fmt::Display))
+            .collect();
+        Some(i18n::text(Lang::En, &format!("settings-error.{}", self.key), &args))
     }
 }
 
@@ -131,23 +180,27 @@ pub fn parse_hex_color(s: &str) -> Option<u32> {
 }
 
 pub fn check_accent(s: &str) -> Result<u32, FieldError> {
-    parse_hex_color(s).ok_or_else(|| FieldError::new("welcome_accent", "Colours look like `#ff6b4a`."))
+    parse_hex_color(s)
+        .ok_or_else(|| FieldError::new("welcome_accent", "Colours look like `#ff6b4a`.").keyed("accent", []))
 }
 
 /// A welcome, goodbye or level-up message: something to say, at most [`MESSAGE_MAX`] characters.
 pub fn check_message(kind: MessageKind, s: &str) -> Result<(), FieldError> {
     let field = kind.field();
     if s.trim().is_empty() {
-        return Err(FieldError::new(
-            field,
-            "Write a message, or reset it to use the default.",
-        ));
+        return Err(
+            FieldError::new(field, "Write a message, or reset it to use the default.").keyed("message-empty", []),
+        );
     }
     let length = s.chars().count();
     if length > MESSAGE_MAX {
         return Err(FieldError::new(
             field,
             format!("A message is at most {MESSAGE_MAX} characters; this one has {length}."),
+        )
+        .keyed(
+            "message-long",
+            [("max", MESSAGE_MAX.to_string()), ("length", length.to_string())],
         ));
     }
     Ok(())
@@ -157,13 +210,14 @@ pub fn check_message(kind: MessageKind, s: &str) -> Result<(), FieldError> {
 pub fn check_welcome_title(s: &str) -> Result<String, FieldError> {
     let title = s.trim();
     if title.is_empty() {
-        return Err(FieldError::new("welcome_title", "Write a headline, e.g. WELCOME."));
+        return Err(FieldError::new("welcome_title", "Write a headline, e.g. WELCOME.").keyed("title-empty", []));
     }
     if title.chars().count() > WELCOME_TITLE_MAX {
         return Err(FieldError::new(
             "welcome_title",
             format!("A headline is at most {WELCOME_TITLE_MAX} characters."),
-        ));
+        )
+        .keyed("title-long", [("max", WELCOME_TITLE_MAX.to_string())]));
     }
     Ok(title.to_owned())
 }
@@ -175,7 +229,8 @@ pub fn check_theme(key: &str) -> Result<(), FieldError> {
         Err(FieldError::new(
             "welcome_theme",
             "Pick one of the card themes: reef, sunset, forest, candy or midnight.",
-        ))
+        )
+        .keyed("theme", []))
     }
 }
 
@@ -185,6 +240,7 @@ pub fn parse_levelup_mode(key: &str) -> Result<LevelUpMode, FieldError> {
             "levelup_mode",
             "Level-ups go to the level-up channel, the current channel, a DM, or nowhere.",
         )
+        .keyed("levelup-mode", [])
     })
 }
 
@@ -218,7 +274,8 @@ pub fn check_points_name(s: &str) -> Result<String, FieldError> {
         return Err(FieldError::new(
             "points_name",
             format!("Points need a name of 1 to {POINTS_NAME_MAX} characters, e.g. coins."),
-        ));
+        )
+        .keyed("points-name", [("max", POINTS_NAME_MAX.to_string())]));
     }
     Ok(name.to_owned())
 }
@@ -231,7 +288,8 @@ pub fn check_points_emoji(s: &str) -> Result<String, FieldError> {
         return Err(FieldError::new(
             "points_emoji",
             "Use one emoji: a Unicode one like 🪙, or a custom one like <:coin:123456789012345678>.",
-        ));
+        )
+        .keyed("points-emoji", []));
     }
     Ok(emoji.to_owned())
 }
@@ -256,17 +314,17 @@ pub fn check_points(min: i64, max: i64) -> Result<(), FieldError> {
     let (low, high) = (POINTS_RANGE.start(), POINTS_RANGE.end());
     for (field, value) in [("points_min", min), ("points_max", max)] {
         if !POINTS_RANGE.contains(&value) {
-            return Err(FieldError::new(
-                field,
-                format!("Points per message go from {low} to {high}."),
-            ));
+            return Err(
+                FieldError::new(field, format!("Points per message go from {low} to {high}."))
+                    .keyed("points-range", [("low", low.to_string()), ("high", high.to_string())]),
+            );
         }
     }
     if min > max {
-        return Err(FieldError::new(
-            "points_min",
-            "The least points per message can't be above the most.",
-        ));
+        return Err(
+            FieldError::new("points_min", "The least points per message can't be above the most.")
+                .keyed("points-order", []),
+        );
     }
     Ok(())
 }
@@ -275,10 +333,10 @@ pub fn check_points(min: i64, max: i64) -> Result<(), FieldError> {
 pub fn check_multiplier(m: f64) -> Result<f64, FieldError> {
     let value = (m * 100.0).round() / 100.0;
     if !value.is_finite() || !(0.0..=MAX_MULTIPLIER).contains(&value) {
-        return Err(FieldError::new(
-            "multiplier",
-            format!("A multiplier goes from 0 to {MAX_MULTIPLIER}."),
-        ));
+        return Err(
+            FieldError::new("multiplier", format!("A multiplier goes from 0 to {MAX_MULTIPLIER}."))
+                .keyed("multiplier", [("max", MAX_MULTIPLIER.to_string())]),
+        );
     }
     Ok(value)
 }
@@ -293,6 +351,13 @@ pub fn check_voice_amount(n: i64) -> Result<i32, FieldError> {
                 VOICE_XP_RANGE.start(),
                 VOICE_XP_RANGE.end()
             ),
+        )
+        .keyed(
+            "voice-amount",
+            [
+                ("low", VOICE_XP_RANGE.start().to_string()),
+                ("high", VOICE_XP_RANGE.end().to_string()),
+            ],
         ));
     }
     Ok(n as i32)
@@ -302,10 +367,17 @@ fn in_range(field: &'static str, n: i64, range: &RangeInclusive<i64>, what: &str
     if range.contains(&n) {
         Ok(n)
     } else {
-        Err(FieldError::new(
-            field,
-            format!("{what} goes from {} to {}.", range.start(), range.end()),
-        ))
+        Err(
+            FieldError::new(field, format!("{what} goes from {} to {}.", range.start(), range.end())).keyed(
+                match field {
+                    "level" => "level-range",
+                    "reputation" => "reputation-range",
+                    "price" => "price-range",
+                    _ => "stock-range",
+                },
+                [("low", range.start().to_string()), ("high", range.end().to_string())],
+            ),
+        )
     }
 }
 
@@ -361,6 +433,30 @@ pub fn dangerous_permissions(bits: u64) -> Vec<&'static str> {
         .collect()
 }
 
+/// Catalog keys (`perm.<key>`) of [`DANGEROUS_PERMISSIONS`], in the same order.
+const PERMISSION_KEYS: [&str; 10] = [
+    "administrator",
+    "manage-server",
+    "manage-roles",
+    "manage-channels",
+    "manage-webhooks",
+    "ban-members",
+    "kick-members",
+    "timeout-members",
+    "mention-everyone",
+    "manage-messages",
+];
+
+/// [`dangerous_permissions`] named the way Discord's own settings word them in `lang`.
+pub fn dangerous_permissions_in(lang: Lang, bits: u64) -> Vec<String> {
+    DANGEROUS_PERMISSIONS
+        .iter()
+        .zip(PERMISSION_KEYS)
+        .filter(|((bit, _), _)| bits & bit != 0)
+        .map(|(_, key)| t!(lang, &format!("perm.{key}")))
+        .collect()
+}
+
 /// Who is setting a role up to be handed out (a level, reputation, store, join or panel role, or a
 /// custom action): what decides which roles they may.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -373,13 +469,13 @@ pub struct Grantor {
     pub top_role: Option<i64>,
 }
 
-fn powers(role: &RoleFacts) -> Option<String> {
-    let names = dangerous_permissions(role.permissions);
+fn powers(lang: Lang, role: &RoleFacts) -> Option<String> {
+    let names = dangerous_permissions_in(lang, role.permissions);
     match names.as_slice() {
         [] => None,
-        [one] => Some((*one).to_owned()),
-        [first, second] => Some(format!("{first} and {second}")),
-        [first, ..] => Some(format!("{first} and {} more", names.len() - 1)),
+        [one] => Some(one.clone()),
+        [first, second] => Some(t!(lang, "refusal.powers-two", first = first, second = second)),
+        [first, ..] => Some(t!(lang, "refusal.powers-more", first = first, count = names.len() - 1)),
     }
 }
 
@@ -388,26 +484,27 @@ fn powers(role: &RoleFacts) -> Option<String> {
 /// above the grantor's own highest role needs the owner, as Discord's own role settings do.
 /// `label` names the role in the sentence.
 pub fn grant_refusal(role: RoleFacts, grantor: Grantor, label: &str) -> Option<String> {
-    if !(grantor.owner || grantor.administrator)
-        && let Some(powers) = powers(&role)
-    {
-        return Some(format!(
-            "{label} has {powers}, so only the server owner or an administrator can set it to be handed out."
-        ));
-    }
-    hierarchy_refusal(role, grantor, label)
+    grant_refusal_in(Lang::En, role, grantor, label)
 }
 
-fn hierarchy_refusal(role: RoleFacts, grantor: Grantor, label: &str) -> Option<String> {
+/// [`grant_refusal`] worded in `lang`.
+pub fn grant_refusal_in(lang: Lang, role: RoleFacts, grantor: Grantor, label: &str) -> Option<String> {
+    if !(grantor.owner || grantor.administrator)
+        && let Some(powers) = powers(lang, &role)
+    {
+        return Some(t!(lang, "refusal.grant-powers", label = label, powers = powers));
+    }
+    hierarchy_refusal(lang, role, grantor, label)
+}
+
+fn hierarchy_refusal(lang: Lang, role: RoleFacts, grantor: Grantor, label: &str) -> Option<String> {
     if grantor.owner {
         return None;
     }
     match grantor.top_role {
         Some(top) if role.position < top => None,
-        Some(_) => Some(format!(
-            "{label} is not below your highest role, so you can't set it to be handed out."
-        )),
-        None => Some("I couldn't check your roles just now. Try again in a moment.".to_owned()),
+        Some(_) => Some(t!(lang, "refusal.not-below", label = label)),
+        None => Some(t!(lang, "refusal.roles-unchecked")),
     }
 }
 
@@ -415,40 +512,50 @@ fn hierarchy_refusal(role: RoleFacts, grantor: Grantor, label: &str) -> Option<S
 /// whenever they like, so a role with a dangerous permission is refused whoever writes it, and the bot
 /// checks it again every time it runs ([`run_time_refusal`]).
 pub fn action_role_refusal(role: RoleFacts, grantor: Grantor, label: &str) -> Option<String> {
-    run_time_refusal(role.permissions, label).or_else(|| hierarchy_refusal(role, grantor, label))
+    action_role_refusal_in(Lang::En, role, grantor, label)
+}
+
+/// [`action_role_refusal`] worded in `lang`.
+pub fn action_role_refusal_in(lang: Lang, role: RoleFacts, grantor: Grantor, label: &str) -> Option<String> {
+    run_time_refusal_in(lang, role.permissions, label).or_else(|| hierarchy_refusal(lang, role, grantor, label))
 }
 
 /// Why a custom action may not hand out a role with these permissions now, or `None` when it may:
 /// permissions can change after the action was written.
 pub fn run_time_refusal(permissions: u64, label: &str) -> Option<String> {
+    run_time_refusal_in(Lang::En, permissions, label)
+}
+
+/// [`run_time_refusal`] worded in `lang`.
+pub fn run_time_refusal_in(lang: Lang, permissions: u64, label: &str) -> Option<String> {
     let role = RoleFacts {
         everyone: false,
         managed: false,
         position: 0,
         permissions,
     };
-    powers(&role)
-        .map(|powers| format!("{label} has {powers}, so custom commands and auto-responders can't hand it out."))
+    powers(lang, &role).map(|powers| t!(lang, "refusal.run-time", label = label, powers = powers))
 }
 
 /// Why the bot cannot hand out a role, or `None` when it can. `bot_top` is the position of the
 /// bot's highest role (`None` when it could not be looked up); `label` names the role in the
 /// sentence (a mention in Discord, `@name` on the web).
 pub fn role_refusal(role: RoleFacts, bot_top: Option<i64>, label: &str) -> Option<String> {
+    role_refusal_in(Lang::En, role, bot_top, label)
+}
+
+/// [`role_refusal`] worded in `lang`.
+pub fn role_refusal_in(lang: Lang, role: RoleFacts, bot_top: Option<i64>, label: &str) -> Option<String> {
     if role.everyone {
-        return Some("@everyone can't be handed out: every member already has it.".to_owned());
+        return Some(t!(lang, "refusal.everyone"));
     }
     if role.managed {
-        return Some(format!(
-            "{label} is managed by an integration or a bot, so it can't be handed out."
-        ));
+        return Some(t!(lang, "refusal.managed", label = label));
     }
     match bot_top {
         Some(top) if role.position < top => None,
-        Some(_) => Some(format!(
-            "{label} is above my highest role. Drag my role above it in Server Settings > Roles, then try again."
-        )),
-        None => Some("I couldn't check my own role position just now. Try again in a moment.".to_owned()),
+        Some(_) => Some(t!(lang, "refusal.above-bot", label = label)),
+        None => Some(t!(lang, "refusal.bot-unchecked")),
     }
 }
 
@@ -550,6 +657,76 @@ pub fn check_patch(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Every error with a catalog key says in English what its message says, and has Turkish too.
+    #[test]
+    fn keyed_errors_read_the_same_in_the_english_catalog() {
+        let long = "x".repeat(MESSAGE_MAX + 1);
+        let errors = [
+            check_accent("zzz").unwrap_err(),
+            check_message(MessageKind::Welcome, " ").unwrap_err(),
+            check_message(MessageKind::Goodbye, &long).unwrap_err(),
+            check_welcome_title(" ").unwrap_err(),
+            check_welcome_title(&"y".repeat(WELCOME_TITLE_MAX + 1)).unwrap_err(),
+            check_theme("neon").unwrap_err(),
+            parse_levelup_mode("somewhere").unwrap_err(),
+            check_points_name("").unwrap_err(),
+            check_points_emoji("abc").unwrap_err(),
+            check_points(-5, 5).unwrap_err(),
+            check_points(9, 3).unwrap_err(),
+            check_multiplier(9.0).unwrap_err(),
+            check_voice_amount(0).unwrap_err(),
+            check_level(0).unwrap_err(),
+            check_reputation(0).unwrap_err(),
+            check_price(0).unwrap_err(),
+            check_stock(-1).unwrap_err(),
+            crate::modules::check_channels(crate::modules::Module::Welcome, crate::modules::ChannelMode::Only, &[1])
+                .unwrap_err(),
+            crate::modules::check_channels(crate::modules::Module::Pets, crate::modules::ChannelMode::Only, &[0])
+                .unwrap_err(),
+            crate::modules::check_channels(crate::modules::Module::Pets, crate::modules::ChannelMode::Only, &[])
+                .unwrap_err(),
+        ];
+        for error in errors {
+            assert_eq!(
+                error.catalog_text().as_deref(),
+                Some(error.message.as_str()),
+                "{error:?}"
+            );
+            let turkish = error.text(Lang::Tr);
+            assert_ne!(turkish, error.message, "{error:?} has no Turkish yet");
+            assert!(!turkish.contains("settings-error"), "{turkish}");
+        }
+        assert_eq!(
+            FieldError::new("x", "Plain").text(Lang::Tr),
+            "Plain",
+            "no key: the English message"
+        );
+    }
+
+    #[test]
+    fn role_refusals_have_twin_words_in_turkish() {
+        let managed = RoleFacts {
+            everyone: false,
+            managed: true,
+            position: 1,
+            permissions: 0,
+        };
+        assert_eq!(
+            role_refusal_in(Lang::En, managed, Some(5), "<@&1>"),
+            role_refusal(managed, Some(5), "<@&1>")
+        );
+        assert!(
+            role_refusal_in(Lang::Tr, managed, Some(5), "<@&1>")
+                .unwrap()
+                .contains("yönetiliyor")
+        );
+        let admin = (1u64 << 3) | (1 << 5);
+        let powers = dangerous_permissions_in(Lang::Tr, admin);
+        assert_eq!(powers, ["Yönetici", "Sunucuyu Yönet"]);
+        let refusal = run_time_refusal_in(Lang::Tr, admin, "<@&2>").unwrap();
+        assert!(refusal.contains("Yönetici ve Sunucuyu Yönet"), "{refusal}");
+    }
 
     #[test]
     fn colours_need_six_hex_digits() {

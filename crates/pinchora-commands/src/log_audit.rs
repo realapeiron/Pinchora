@@ -374,9 +374,10 @@ pub async fn on_audit_log_entry(app: Arc<App>, event: GuildAuditLogEntryCreate) 
         app.log_state
             .note_ban(guild, target, kind == AuditLogEventType::MemberBanAdd, by)
             .await;
-        if kind == AuditLogEventType::MemberBanRemove {
+        // An external ban replaces any older temporary ban too, even if its unban event is delayed.
+        if actor != me {
             let at = snowflake::timestamp(entry.id.get());
-            crate::commands::moderation::unbanned_by(&app, guild, target, actor, at).await;
+            crate::commands::moderation::external_ban_change(&app, guild, target, actor, at).await;
         }
     }
     let actor_user = match actor {

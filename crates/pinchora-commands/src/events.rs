@@ -2,8 +2,11 @@ use std::{sync::Arc, time::Duration};
 
 use pinchora_core::{
     card_design::{CardKind, Delivery},
+    i18n::Lang,
     leveling::{MESSAGE_XP, MESSAGE_XP_COOLDOWN_SECS, level_of, scale, week_start},
     modules::Module,
+    settings::MessageKind,
+    t,
 };
 use pinchora_db::XpGrant;
 use twilight_model::{
@@ -19,14 +22,17 @@ use crate::hooks::{self, JoinVerdict, ReactionEvent, Verdict};
 use crate::{
     App, auto,
     card_images::{CardSubject, card_png, deliver, server_card},
-    commands::{self, collection},
+    commands::collection,
     leveling::{self, LevelUp},
     roles, server_log,
     util::{display_name, fill, mention},
     voice_xp,
 };
 
-pub use pinchora_core::settings::{DEFAULT_GOODBYE, DEFAULT_LEVELUP, DEFAULT_WELCOME};
+/// What the bot says in `lang` when a server wrote no message of its own (English is the `DEFAULT_*` text).
+pub fn default_message(lang: Lang, kind: MessageKind) -> String {
+    t!(lang, &format!("events.default-{}", kind.key()))
+}
 
 /// Runs text commands, grants chat XP (once per minute per member) and announces level-ups.
 pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<()> {
@@ -172,11 +178,13 @@ pub async fn on_member_add(app: Arc<App>, event: MemberAdd) -> anyhow::Result<()
         },
     };
     let guild = app.http.guild(guild_id).with_counts(true).await?.model().await?;
+    // The welcome answers nobody in particular: it speaks the server's language.
+    let lang = app.guild_lang(guild_id.get()).await;
     let count = guild.approximate_member_count;
     let text = settings
         .welcome_message
-        .as_deref()
-        .unwrap_or(DEFAULT_WELCOME)
+        .clone()
+        .unwrap_or_else(|| default_message(lang, MessageKind::Welcome))
         .replace("{user}", &mention(member.user.id))
         .replace("{server}", &guild.name)
         .replace("{count}", &count.map(|c| c.to_string()).unwrap_or_default());
@@ -230,7 +238,12 @@ pub async fn on_member_remove(app: Arc<App>, event: MemberRemove) -> anyhow::Res
         return Ok(());
     };
     let card = server_card(&app, &settings, guild_id.get(), CardKind::Goodbye).await?;
-    let template = settings.goodbye_message.as_deref().unwrap_or(DEFAULT_GOODBYE);
+    let lang = app.guild_lang(guild_id.get()).await;
+    let template = settings
+        .goodbye_message
+        .clone()
+        .unwrap_or_else(|| default_message(lang, MessageKind::Goodbye));
+    let template = template.as_str();
     let needs_server = card.delivery.has_image() || template.contains("{server}") || template.contains("{members}");
     // Only ask Discord for the server when the message or the image uses it.
     let (server, members) = if needs_server {
@@ -308,9 +321,8 @@ pub async fn on_ban_add(app: Arc<App>, event: BanAdd) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Logs an unban, and ends the member's ban cases so the temporary ban ticker leaves them be.
+/// Logs an unban. Only its timestamped audit entry may close cases: gateway delivery can be delayed.
 pub async fn on_ban_remove(app: Arc<App>, event: BanRemove) -> anyhow::Result<()> {
-    commands::moderation::ban_removed(&app, event.guild_id.get(), event.user.id.get()).await;
     server_log::ban_changed(&app, event.guild_id.get(), &event.user, false).await;
     Ok(())
 }
@@ -350,4 +362,30 @@ pub fn voice_snapshot(app: &App, event: GuildCreate) -> Option<voice_xp::VoiceSn
 /// GUILD_CREATE that follows when it comes back.
 pub async fn on_guild_delete(app: Arc<App>, event: GuildDelete) -> anyhow::Result<()> {
     voice_xp::forget(&app, event.id.get()).await
+}
+
+#[cfg(test)]
+mod tests {
+    use pinchora_core::settings::{DEFAULT_GOODBYE, DEFAULT_LEVELUP, DEFAULT_WELCOME, DEFAULT_WELCOME_TITLE};
+
+    use super::*;
+
+    /// The English catalog and the constants the dashboard shows say the same, and Turkish keeps every
+    /// placeholder the message fills in.
+    #[test]
+    fn default_messages_match_the_constants_and_keep_their_placeholders() {
+        for (kind, constant) in [
+            (MessageKind::Welcome, DEFAULT_WELCOME),
+            (MessageKind::Goodbye, DEFAULT_GOODBYE),
+            (MessageKind::LevelUp, DEFAULT_LEVELUP),
+        ] {
+            assert_eq!(default_message(Lang::En, kind), constant);
+            assert_eq!(kind.default_message(), constant);
+            let turkish = default_message(Lang::Tr, kind);
+            for placeholder in constant.split('{').skip(1).filter_map(|rest| rest.split('}').next()) {
+                assert!(turkish.contains(&format!("{{{placeholder}}}")), "{turkish}");
+            }
+        }
+        assert_eq!(t!(Lang::En, "events.default-welcome-title"), DEFAULT_WELCOME_TITLE);
+    }
 }

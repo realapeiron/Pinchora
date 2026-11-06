@@ -110,6 +110,11 @@ async fn climb(
     } else {
         None
     };
+    let _guard = if kind == CaseKind::Ban {
+        Some(cx.app.db.lock_ban(guild, act.target).await?)
+    } else {
+        None
+    };
     let http = &cx.app.http;
     let done = match rung.action {
         Punishment::Timeout => {

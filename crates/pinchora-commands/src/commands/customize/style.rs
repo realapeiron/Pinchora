@@ -3,7 +3,7 @@
 
 use std::str::Split;
 
-use pinchora_core::leveling;
+use pinchora_core::{i18n::Lang, leveling, t};
 use pinchora_db::UserRow;
 use pinchora_game::Content;
 use pinchora_render::{ACCENT_PRESETS, AccentError, Frame, Opacity, parse_accent};
@@ -33,15 +33,29 @@ fn chosen_accent(row: &UserRow) -> Option<String> {
 }
 
 /// What a typed colour was refused for, in words the player can act on.
-fn refusal(error: AccentError) -> &'static str {
+fn refusal(error: AccentError, lang: Lang) -> String {
     match error {
-        AccentError::Malformed => {
-            "That is not a colour code. Type six hex digits such as `#ff6b4a`, or three such as `#f64`."
-        }
-        AccentError::TooDark => {
-            "That colour is too dark to read on the card's navy panels. Try a brighter one, such as `#ff6b4a`."
-        }
+        AccentError::Malformed => t!(lang, "customize.style.refusal-malformed"),
+        AccentError::TooDark => t!(lang, "customize.style.refusal-dark"),
     }
+}
+
+/// The name of an accent preset in `lang`.
+fn accent_name(name: &str, lang: Lang) -> String {
+    t!(lang, &format!("customize.style.accent.{}", name.to_lowercase()))
+}
+
+/// The name of a frame in `lang`.
+fn frame_name(frame: Frame, lang: Lang) -> String {
+    t!(lang, &format!("customize.style.frame.{}", frame.id()))
+}
+
+/// The name of a panel opacity in `lang`.
+fn opacity_name(opacity: Opacity, lang: Lang) -> String {
+    t!(
+        lang,
+        &format!("customize.style.opacity.{}", opacity.label().to_lowercase())
+    )
 }
 
 /// Whether what is stored for the player is the style every player starts with. The stored
@@ -52,12 +66,12 @@ fn is_default_style(row: &UserRow) -> bool {
 }
 
 /// How a frame shows in the menu: free, worn, or locked until a level.
-fn frame_note(frame: Frame, level: u32, worn: bool) -> String {
+fn frame_note(frame: Frame, level: u32, worn: bool, lang: Lang) -> String {
     match (frame.unlock_level(), worn) {
-        (_, true) => "On your cards now".to_owned(),
-        (0, false) => "Free".to_owned(),
-        (at, false) if frame.is_unlocked(level) => format!("Unlocked at level {at}"),
-        (at, false) => format!("Locked · reach level {at} (you are level {level})"),
+        (_, true) => t!(lang, "customize.style.frame-worn"),
+        (0, false) => t!(lang, "customize.style.frame-free"),
+        (at, false) if frame.is_unlocked(level) => t!(lang, "customize.style.frame-unlocked", level = at),
+        (at, false) => t!(lang, "customize.style.frame-locked", at = at, level = level),
     }
 }
 
@@ -65,6 +79,7 @@ fn frame_note(frame: Frame, level: u32, worn: bool) -> String {
 /// a menu of frames (the locked ones say which level opens them), buttons for the panel opacity
 /// and a button that asks for a colour code.
 pub(super) async fn panel(cx: &Cx, note: &str) -> anyhow::Result<InteractionResponseData> {
+    let lang = cx.lang();
     let content = Content::get();
     let user = cx.author()?;
     let id = user.id.get();
@@ -76,19 +91,29 @@ pub(super) async fn panel(cx: &Cx, note: &str) -> anyhow::Result<InteractionResp
     let background = player.background.as_deref().and_then(|e| content.background(e));
 
     let mut accents = vec![option(
-        "Auto",
+        &t!(lang, "customize.style.auto"),
         "auto",
-        "From your background, else coral".to_owned(),
+        t!(lang, "customize.style.auto-hint"),
         accent.is_none(),
     )];
     accents.extend(ACCENT_PRESETS.iter().map(|(name, rgb)| {
         let code = format!("#{rgb:06x}");
-        option(name, &code[1..], code.clone(), accent.as_deref() == Some(code.as_str()))
+        option(
+            &accent_name(name, lang),
+            &code[1..],
+            code.clone(),
+            accent.as_deref() == Some(code.as_str()),
+        )
     }));
     let frames = Frame::ALL
         .iter()
         .map(|f| {
-            let mut entry = option(f.name(), f.id(), frame_note(*f, level, *f == frame), *f == frame);
+            let mut entry = option(
+                &frame_name(*f, lang),
+                f.id(),
+                frame_note(*f, level, *f == frame, lang),
+                *f == frame,
+            );
             if !f.is_unlocked(level) {
                 entry.emoji = Some(EmojiReactionType::Unicode {
                     name: "🔒".to_owned()
@@ -121,25 +146,34 @@ pub(super) async fn panel(cx: &Cx, note: &str) -> anyhow::Result<InteractionResp
     let accent_text = accent.as_deref().map_or_else(
         || {
             if background.is_some() {
-                "Auto (your background's)".to_owned()
+                t!(lang, "customize.style.accent-auto-background")
             } else {
-                "Auto (coral)".to_owned()
+                t!(lang, "customize.style.accent-auto")
             }
         },
         |a| format!("`{a}`"),
     );
-    text.push_str(&format!(
-        "**Accent** {accent_text} · **Panels** {} · **Frame** {}\nThe style is on your profile, rank and wallet cards.",
-        opacity.label(),
-        frame.name()
+    text.push_str(&t!(
+        lang,
+        "customize.style.summary",
+        accent = accent_text,
+        panels = opacity_name(opacity, lang),
+        frame = frame_name(frame, lang)
     ));
     if !show_opacity {
-        text.push_str("\nPanel opacity shows over a background picture: pick one with `/customize background`.");
+        text.push_str(&t!(lang, "customize.style.opacity-hint"));
     }
     let locked: Vec<String> = Frame::ALL
         .iter()
         .filter(|f| !f.is_unlocked(level))
-        .map(|f| format!("🔒 {} · level {}", f.name(), f.unlock_level()))
+        .map(|f| {
+            t!(
+                lang,
+                "customize.style.locked-frame",
+                name = frame_name(*f, lang),
+                level = f.unlock_level()
+            )
+        })
         .collect();
     if !locked.is_empty() {
         text.push_str(&format!("\n{}", locked.join("  ")));
@@ -148,7 +182,7 @@ pub(super) async fn panel(cx: &Cx, note: &str) -> anyhow::Result<InteractionResp
     let opacity_button = |o: Opacity| {
         button(
             format!("cs:o:{}", o.index()),
-            o.label(),
+            &opacity_name(o, lang),
             if o == opacity {
                 ButtonStyle::Primary
             } else {
@@ -161,31 +195,47 @@ pub(super) async fn panel(cx: &Cx, note: &str) -> anyhow::Result<InteractionResp
     if show_opacity {
         buttons.extend(Opacity::ALL.map(opacity_button));
     }
-    buttons.push(button("cs:h".to_owned(), "Hex code…", ButtonStyle::Secondary, false));
+    buttons.push(button(
+        "cs:h".to_owned(),
+        &t!(lang, "customize.style.hex-button"),
+        ButtonStyle::Secondary,
+        false,
+    ));
     buttons.push(button(
         "cs:r".to_owned(),
-        "Reset style",
+        &t!(lang, "customize.style.reset-button"),
         ButtonStyle::Danger,
         is_default,
     ));
     let components = vec![
         row(vec![menu(
             "cs:a".to_owned(),
-            "Accent colour…",
+            &t!(lang, "customize.style.accent-menu"),
             accents,
             1,
             1,
-            "Nothing to show",
+            &t!(lang, "customize.nothing-to-show"),
         )]),
-        row(vec![menu("cs:f".to_owned(), "Frame…", frames, 1, 1, "Nothing to show")]),
+        row(vec![menu(
+            "cs:f".to_owned(),
+            &t!(lang, "customize.style.frame-menu"),
+            frames,
+            1,
+            1,
+            &t!(lang, "customize.nothing-to-show"),
+        )]),
         row(buttons),
     ];
-    let embed = EmbedBuilder::new().color(BRAND).title("Card style").description(text);
+    let embed = EmbedBuilder::new()
+        .color(BRAND)
+        .title(t!(lang, "customize.style.title"))
+        .description(text);
     Ok(Cx::card(embed, "profile.png", png, components, true))
 }
 
 /// `cs:<what>:...` selects and buttons of the style editor.
 pub(crate) async fn on_style(cx: &Cx, mut args: Split<'_, char>, values: &[String]) -> anyhow::Result<()> {
+    let lang = cx.lang();
     let id = cx.author()?.id.get();
     let value = values.first().map(String::as_str);
     match args.next() {
@@ -193,14 +243,14 @@ pub(crate) async fn on_style(cx: &Cx, mut args: Split<'_, char>, values: &[Strin
             let note = match value {
                 Some("auto") => {
                     cx.app.db.set_accent(id, None).await?;
-                    "Saved. Your accent follows your background again.".to_owned()
+                    t!(lang, "customize.style.saved-auto")
                 }
                 // A hand-made value is checked like a typed code.
                 Some(code) => match parse_accent(&format!("#{code}")) {
                     Ok(rgb) => {
                         let code = format!("#{rgb:06x}");
                         cx.app.db.set_accent(id, Some(&code)).await?;
-                        format!("Saved. Your accent is `{code}`.")
+                        t!(lang, "customize.style.saved-accent", code = code)
                     }
                     Err(_) => return expired(cx, "style").await,
                 },
@@ -216,13 +266,15 @@ pub(crate) async fn on_style(cx: &Cx, mut args: Split<'_, char>, values: &[Strin
             let level = leveling::level_of(cx.app.db.user(id).await?.xp);
             let note = if frame.is_unlocked(level) {
                 cx.app.db.set_frame(id, frame.id()).await?;
-                format!("Saved. The **{}** frame is on your cards.", frame.name())
+                t!(lang, "customize.style.saved-frame", frame = frame_name(frame, lang))
             } else {
                 // The click is refused, however it was made: a locked frame is never saved.
-                format!(
-                    "The **{}** frame unlocks at level {}. You are level {level}.",
-                    frame.name(),
-                    frame.unlock_level()
+                t!(
+                    lang,
+                    "customize.style.frame-refused",
+                    frame = frame_name(frame, lang),
+                    at = frame.unlock_level(),
+                    level = level
                 )
             };
             let data = panel(cx, &note).await?;
@@ -238,30 +290,35 @@ pub(crate) async fn on_style(cx: &Cx, mut args: Split<'_, char>, values: &[Strin
                 return expired(cx, "style").await;
             };
             cx.app.db.set_panel_opacity(id, opacity.index()).await?;
-            let data = panel(cx, &format!("Saved. Panels are **{}**.", opacity.label())).await?;
+            let note = t!(
+                lang,
+                "customize.style.saved-opacity",
+                opacity = opacity_name(opacity, lang)
+            );
+            let data = panel(cx, &note).await?;
             cx.update(data).await
         }
         Some("h") => {
             let player = cx.app.db.user(id).await?;
             cx.modal(
                 "cs:hx".to_owned(),
-                "Accent colour",
-                vec![hex_field(chosen_accent(&player).as_deref())],
+                &t!(lang, "customize.style.modal-title"),
+                vec![hex_field(chosen_accent(&player).as_deref(), lang)],
             )
             .await
         }
         Some("r") => {
             cx.app.db.reset_card_style(id).await?;
-            let data = panel(cx, "Done. Your cards have the style every player starts with.").await?;
+            let data = panel(cx, &t!(lang, "customize.style.reset-done")).await?;
             cx.update(data).await
         }
-        _ => cx.reply_ephemeral("This button has expired.").await,
+        _ => cx.reply_ephemeral(t!(lang, "customize.style.expired")).await,
     }
 }
 
 /// The colour box of the accent modal, filled with the current accent when there is one.
 #[allow(deprecated)] // TextInput::label: the Label around it carries the label now
-fn hex_field(value: Option<&str>) -> Component {
+fn hex_field(value: Option<&str>, lang: Lang) -> Component {
     Component::Label(Label {
         component: Box::new(Component::TextInput(TextInput {
             custom_id: HEX_FIELD.to_owned(),
@@ -276,7 +333,7 @@ fn hex_field(value: Option<&str>) -> Component {
         })),
         description: None,
         id: None,
-        label: "Hex colour code".to_owned(),
+        label: t!(lang, "customize.style.hex-label"),
     })
 }
 
@@ -286,6 +343,7 @@ pub(crate) async fn on_style_modal(
     mut args: Split<'_, char>,
     fields: &[(String, String)],
 ) -> anyhow::Result<()> {
+    let lang = cx.lang();
     match args.next() {
         Some("hx") => {
             let typed = fields
@@ -296,14 +354,14 @@ pub(crate) async fn on_style_modal(
                 Ok(rgb) => {
                     let code = format!("#{rgb:06x}");
                     cx.app.db.set_accent(cx.author()?.id.get(), Some(&code)).await?;
-                    format!("Saved. Your accent is `{code}`.")
+                    t!(lang, "customize.style.saved-accent", code = code)
                 }
-                Err(error) => refusal(error).to_owned(),
+                Err(error) => refusal(error, lang),
             };
             let data = panel(cx, &note).await?;
             cx.update(data).await
         }
-        _ => cx.reply_ephemeral("This form has expired.").await,
+        _ => cx.reply_ephemeral(t!(lang, "customize.style.form-expired")).await,
     }
 }
 
@@ -313,31 +371,53 @@ mod tests {
 
     #[test]
     fn locked_frames_say_their_level() {
-        assert_eq!(frame_note(Frame::Plain, 1, false), "Free");
-        assert_eq!(frame_note(Frame::Rope, 1, true), "On your cards now");
+        assert_eq!(frame_note(Frame::Plain, 1, false, Lang::En), "Free");
+        assert_eq!(frame_note(Frame::Rope, 1, true, Lang::En), "On your cards now");
         assert_eq!(
-            frame_note(Frame::Pearl, 12, false),
+            frame_note(Frame::Pearl, 12, false, Lang::En),
             "Locked · reach level 20 (you are level 12)"
         );
-        assert_eq!(frame_note(Frame::Coral, 12, false), "Unlocked at level 10");
+        assert_eq!(frame_note(Frame::Coral, 12, false, Lang::En), "Unlocked at level 10");
+        assert_eq!(
+            frame_note(Frame::Pearl, 12, false, Lang::Tr),
+            "Kilitli · 20. seviyeye ulaş (sen 12. seviyedesin)"
+        );
     }
 
     #[test]
     fn every_menu_value_and_label_fits_discord() {
-        for (name, rgb) in ACCENT_PRESETS {
-            let code = format!("#{rgb:06x}");
-            let entry = option(name, &code[1..], code.clone(), false);
-            assert!(entry.label.chars().count() <= 100 && entry.value.len() <= 100);
+        for lang in Lang::ALL {
+            for (name, rgb) in ACCENT_PRESETS {
+                let code = format!("#{rgb:06x}");
+                let entry = option(&accent_name(name, lang), &code[1..], code.clone(), false);
+                assert!(entry.label.chars().count() <= 100 && entry.value.len() <= 100);
+                assert_ne!(
+                    entry.label,
+                    format!("customize.style.accent.{}", name.to_lowercase()),
+                    "{name} is in the catalog"
+                );
+            }
+            for frame in Frame::ALL {
+                assert!(frame_note(frame, 1, false, lang).chars().count() <= 100);
+                assert!(
+                    !frame_name(frame, lang).starts_with("customize."),
+                    "{frame:?} is in the catalog"
+                );
+            }
+            for opacity in Opacity::ALL {
+                assert!(!opacity_name(opacity, lang).starts_with("customize."), "{opacity:?}");
+            }
         }
         assert!(ACCENT_PRESETS.len() < 25, "Auto and the presets fit one menu");
-        for frame in Frame::ALL {
-            assert!(frame_note(frame, 1, false).chars().count() <= 100);
-        }
     }
 
     #[test]
     fn refusals_explain_what_to_do() {
-        assert!(refusal(AccentError::TooDark).contains("too dark"));
-        assert!(refusal(AccentError::Malformed).contains("#ff6b4a"));
+        assert!(refusal(AccentError::TooDark, Lang::En).contains("too dark"));
+        assert!(refusal(AccentError::Malformed, Lang::En).contains("#ff6b4a"));
+        assert!(
+            refusal(AccentError::TooDark, Lang::Tr).contains("çok koyu")
+                || refusal(AccentError::TooDark, Lang::Tr).contains("koyu")
+        );
     }
 }

@@ -527,6 +527,7 @@ mod tests {
         let png = scene();
         let cells = collection(&png);
         let card = BadgeCollectionCard {
+            lang: pinchora_core::i18n::Lang::En,
             cells: &cells,
             legend: &LEGEND,
             theme: Theme::reef(),
@@ -550,6 +551,7 @@ mod tests {
         let mut locked = collection(&png);
         locked[0].state = BadgeState::Locked { have: 1, at: 5 };
         let svg = BadgeCollectionCard {
+            lang: pinchora_core::i18n::Lang::En,
             cells: &locked,
             legend: &LEGEND,
             theme: Theme::reef(),
@@ -603,6 +605,7 @@ mod tests {
         }
         assert_eq!(cells.len(), 40);
         let card = BadgeCollectionCard {
+            lang: pinchora_core::i18n::Lang::En,
             cells: &cells,
             legend: &LEGEND,
             theme: Theme::reef(),
@@ -712,7 +715,15 @@ mod tests {
             .map(|kind| tile(kind, &png, long))
             .collect();
             let mut svg = String::new();
-            showcase::draw_row(&mut svg, &Theme::reef(), &slots, 296.0, 260.0, 624.0);
+            showcase::draw_row(
+                &mut svg,
+                &Theme::reef(),
+                pinchora_core::i18n::Lang::En,
+                &slots,
+                296.0,
+                260.0,
+                624.0,
+            );
             // Every panel edge path starts at its left corner and stays within the 624 px.
             let mut right = 0.0f32;
             for path in svg.split("<path d=\"M").skip(1) {
@@ -726,7 +737,15 @@ mod tests {
             assert!(!svg.contains(long));
         }
         let mut none = String::new();
-        showcase::draw_row(&mut none, &Theme::reef(), &[], 296.0, 260.0, 624.0);
+        showcase::draw_row(
+            &mut none,
+            &Theme::reef(),
+            pinchora_core::i18n::Lang::En,
+            &[],
+            296.0,
+            260.0,
+            624.0,
+        );
         assert!(none.is_empty(), "no tiles, no row");
     }
 
@@ -1002,7 +1021,15 @@ mod tests {
             .map(|kind| tile(kind, &png, "Name"))
             .collect();
             let mut svg = String::new();
-            showcase::draw_row(&mut svg, &Theme::reef(), &slots, 296.0, 254.0, 624.0);
+            showcase::draw_row(
+                &mut svg,
+                &Theme::reef(),
+                pinchora_core::i18n::Lang::En,
+                &slots,
+                296.0,
+                254.0,
+                624.0,
+            );
             // Every image and every shadow band starts on a whole pixel and keeps whole sizes.
             for tag in svg.split("<image ").skip(1) {
                 let head = tag.split("href=").next().expect("attributes");

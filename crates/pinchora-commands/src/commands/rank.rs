@@ -47,16 +47,16 @@ impl Rank {
         let background = row.background.as_deref().and_then(|id| Content::get().background(id));
         let cosmetics = Cosmetics::new(&cx.app.sprites, background, &[]);
         let theme = theme(&row, background);
-        let title = title_name(&row);
-        let username = user.name.clone();
         let lang = cx.lang();
+        let title = title_name(&row, lang);
+        let username = user.name.clone();
         let png = cx
             .app
             .render(move |r| {
                 r.rank_card(&RankCard {
                     lang,
                     display_name: &name,
-                    title,
+                    title: title.as_deref(),
                     username: &username,
                     avatar_png: &avatar,
                     level: progress.level,

@@ -8,7 +8,11 @@
 use std::path::{Path, PathBuf};
 
 use image::{RgbaImage, imageops::FilterType};
-use pinchora_core::card_design::{Background, CardDesign, CardKind, Direction, check_design};
+use pinchora_core::{
+    card_design::{Background, CardDesign, CardKind, Content, Direction, check_design},
+    i18n::Lang,
+    t,
+};
 use pinchora_render::{
     CardFill, DesignedCard, Renderer, Theme, WelcomeCard, character::atlas, fill_placeholders, ordinal,
     placeholder_avatar, templates,
@@ -57,22 +61,61 @@ fn the_classic_template_is_the_old_welcome_card() {
     let r = Renderer::new();
     let avatar = placeholder_avatar(7, WelcomeCard::AVATAR_SIZE);
     for theme in Theme::PRESETS {
-        for (title, accent) in [(None, None), (Some("Hi there"), Some(0x06d6a0))] {
+        for (title, accent, lang) in [
+            (None, None, Lang::En),
+            (Some("Hi there"), Some(0x06d6a0), Lang::En),
+            (None, None, Lang::Tr),
+            (Some("İyi ki geldin"), None, Lang::Tr),
+        ] {
             let old = WelcomeCard {
                 display_name: FILL.user,
                 avatar_png: &avatar,
                 server_name: FILL.server,
                 member_number: FILL.members,
-                title: title.unwrap_or("Welcome"),
+                title: &title.map_or_else(|| t!(lang, "events.default-welcome-title"), str::to_owned),
+                lang,
                 theme: Theme::preset(theme).with_accent(accent),
             };
             let old = image::load_from_memory(&r.welcome_card(&old).expect("renders"))
                 .expect("a png")
                 .to_rgba8();
-            let design = templates::classic(CardKind::Welcome, theme, title, accent);
+            let design = templates::classic(CardKind::Welcome, theme, title, accent, lang);
             let new = draw(&design, &FILL);
-            assert_eq!(differing(&old, &new, 0), 0, "{theme} {title:?} {accent:?}");
+            assert_eq!(differing(&old, &new, 0), 0, "{theme} {title:?} {accent:?} {lang:?}");
         }
+    }
+}
+
+/// A Turkish server's classic cards: the default headline in Turkish capitals (the dotted `İ`) and the line in
+/// Turkish, the member placeholders kept for the fill. Saved under `target/designed/` to look at.
+#[test]
+fn the_classic_card_speaks_the_server_language() {
+    let texts = |design: &CardDesign| -> Vec<String> {
+        design
+            .layers
+            .iter()
+            .filter_map(|layer| match &layer.content {
+                Content::Text { text, .. } => Some(text.clone()),
+                _ => None,
+            })
+            .collect()
+    };
+    let welcome = templates::classic(CardKind::Welcome, "reef", None, None, Lang::Tr);
+    assert_eq!(texts(&welcome), ["HOŞ GELDİN", "{user}", "{server} · {members}. üye"]);
+    let goodbye = templates::classic(CardKind::Goodbye, "sunset", None, None, Lang::Tr);
+    assert_eq!(
+        texts(&goodbye),
+        [
+            "GÜLE GÜLE",
+            "{user}",
+            "{server} sunucusundan ayrıldı · artık {members} üye"
+        ]
+    );
+    // A headline the server wrote keeps its words, in Turkish capitals.
+    let own = templates::classic(CardKind::Welcome, "reef", Some("Aramıza hoş geldin"), None, Lang::Tr);
+    assert_eq!(texts(&own)[0], "ARAMIZA HOŞ GELDİN");
+    for (design, name) in [(welcome, "classic-tr-welcome.png"), (goodbye, "classic-tr-goodbye.png")] {
+        draw(&design, &FILL).save(out_dir().join(name)).expect("saved");
     }
 }
 

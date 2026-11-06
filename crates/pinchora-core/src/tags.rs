@@ -6,7 +6,11 @@ use std::ops::RangeInclusive;
 
 use serde::{Deserialize, Serialize};
 
-use crate::settings::{FieldError, LEVEL_RANGE, check_points_emoji, parse_hex_color};
+use crate::{
+    i18n::Lang,
+    settings::{FieldError, LEVEL_RANGE, check_points_emoji, parse_hex_color},
+    t,
+};
 
 // /Limits
 
@@ -601,28 +605,44 @@ pub fn clean_actions(actions: Vec<Action>, keyword: bool, member: bool) -> Resul
 fn clean_responses(responses: Vec<String>, has_embed: bool, errors: &mut Vec<FieldError>) -> Vec<String> {
     let responses: Vec<String> = responses.into_iter().map(|r| r.trim().to_owned()).collect();
     if responses.is_empty() {
-        errors.push(FieldError::new("responses", "Write at least one reply."));
+        errors.push(FieldError::new("responses", "Write at least one reply.").keyed("tag-no-reply", []));
         return responses;
     }
     if responses.len() > MAX_RESPONSES {
-        errors.push(FieldError::new(
-            "responses",
-            format!("A command has at most {MAX_RESPONSES} replies; one is picked at random."),
-        ));
+        errors.push(
+            FieldError::new(
+                "responses",
+                format!("A command has at most {MAX_RESPONSES} replies; one is picked at random."),
+            )
+            .keyed("tag-too-many-replies", [("max", MAX_RESPONSES.to_string())]),
+        );
     }
     for (n, response) in responses.iter().enumerate() {
         if response.is_empty() && !has_embed {
-            errors.push(FieldError::new("responses", format!("Reply {} is empty.", n + 1)));
+            errors.push(
+                FieldError::new("responses", format!("Reply {} is empty.", n + 1))
+                    .keyed("tag-reply-empty", [("number", (n + 1).to_string())]),
+            );
         }
         let length = response.chars().count();
         if length > RESPONSE_MAX {
-            errors.push(FieldError::new(
-                "responses",
-                format!(
-                    "Reply {} is {length} characters; a reply is at most {RESPONSE_MAX}.",
-                    n + 1
+            errors.push(
+                FieldError::new(
+                    "responses",
+                    format!(
+                        "Reply {} is {length} characters; a reply is at most {RESPONSE_MAX}.",
+                        n + 1
+                    ),
+                )
+                .keyed(
+                    "tag-reply-long",
+                    [
+                        ("number", (n + 1).to_string()),
+                        ("length", length.to_string()),
+                        ("max", RESPONSE_MAX.to_string()),
+                    ],
                 ),
-            ));
+            );
         }
     }
     responses
@@ -648,17 +668,18 @@ fn clean_list(name: &'static str, ids: Vec<u64>, errors: &mut Vec<FieldError>) -
 
 fn clean_cooldown(seconds: i64, max: i64, has_actions: bool, errors: &mut Vec<FieldError>) -> i64 {
     if !(0..=max).contains(&seconds) {
-        errors.push(FieldError::new(
-            "cooldown_secs",
-            format!("A cooldown goes from 0 to {max} seconds."),
-        ));
+        errors.push(
+            FieldError::new("cooldown_secs", format!("A cooldown goes from 0 to {max} seconds."))
+                .keyed("tag-cooldown-range", [("max", max.to_string())]),
+        );
     } else if has_actions && seconds < ACTION_COOLDOWN_MIN {
         errors.push(FieldError::new(
             "cooldown_secs",
             format!(
                 "With actions, a member waits at least {ACTION_COOLDOWN_MIN} seconds between uses: set the cooldown to {ACTION_COOLDOWN_MIN} or more, or remove the actions."
             ),
-        ));
+        )
+        .keyed("tag-cooldown-actions", [("min", ACTION_COOLDOWN_MIN.to_string())]));
     }
     seconds.clamp(0, max)
 }
@@ -743,10 +764,11 @@ pub fn check_name(name: &str, reserved: &[String]) -> Result<String, FieldError>
             format!(
                 "A name is 1 to {NAME_MAX} characters: lowercase letters, numbers, `-` and `_`, starting with a letter or number."
             ),
-        ));
+        )
+        .keyed("tag-name", [("max", NAME_MAX.to_string())]));
     }
     if reserved.contains(&name) {
-        return Err(FieldError::new("name", RESERVED_NOTE));
+        return Err(FieldError::new("name", RESERVED_NOTE).keyed("tag-reserved", []));
     }
     Ok(name)
 }
@@ -761,10 +783,13 @@ impl CommandDef {
         }
         self.description = self.description.split_whitespace().collect::<Vec<_>>().join(" ");
         if self.description.chars().count() > DESCRIPTION_MAX {
-            errors.push(FieldError::new(
-                "description",
-                format!("A description is at most {DESCRIPTION_MAX} characters."),
-            ));
+            errors.push(
+                FieldError::new(
+                    "description",
+                    format!("A description is at most {DESCRIPTION_MAX} characters."),
+                )
+                .keyed("tag-description", [("max", DESCRIPTION_MAX.to_string())]),
+            );
         }
         self.embed = absorb(clean_embed(self.embed.take()), &mut errors);
         self.responses = clean_responses(std::mem::take(&mut self.responses), self.embed.is_some(), &mut errors);
@@ -787,6 +812,20 @@ impl CommandDef {
 
     /// Whether a member with `roles`, in a place described by `lineage` (the channel and what it sits
     /// under), may run the command; otherwise why not.
+    pub fn allows_in(&self, lang: Lang, roles: &[u64], lineage: &[u64]) -> Result<(), String> {
+        self.allows(roles, lineage).map_err(|why| {
+            t!(
+                lang,
+                match why {
+                    "That command can't be used in this channel." => "tag.not-here",
+                    "Your roles don't allow that command." => "tag.roles-no",
+                    _ => "tag.role-needed",
+                }
+            )
+        })
+    }
+
+    /// [`CommandDef::allows_in`] in English.
     pub fn allows(&self, roles: &[u64], lineage: &[u64]) -> Result<(), &'static str> {
         let any = |list: &[u64], held: &[u64]| held.iter().any(|id| list.contains(id));
         if any(&self.deny_channels, lineage) {

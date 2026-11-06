@@ -2,9 +2,13 @@
 //! Pinchora always drew, one per theme, layer for layer; a server that never opened the editor gets the
 //! classic card in its theme, headline and accent.
 
-use pinchora_core::card_design::{
-    Align, AvatarShape, Background, CardDesign, CardKind, Content, DESIGN_VERSION, Direction, Font, Layer, ShapeKind,
-    text_height,
+use pinchora_core::{
+    card_design::{
+        Align, AvatarShape, Background, CardDesign, CardKind, Content, DESIGN_VERSION, Direction, Font, Layer,
+        ShapeKind, text_height,
+    },
+    i18n::Lang,
+    t,
 };
 
 use crate::{Theme, svg::truncate};
@@ -29,7 +33,7 @@ pub fn template(key: &str, kind: CardKind) -> Option<CardDesign> {
     if let Some(theme) = key.strip_prefix("classic-") {
         return Theme::PRESETS
             .contains(&theme)
-            .then(|| classic(kind, theme, None, None));
+            .then(|| classic(kind, theme, None, None, Lang::En));
     }
     match key {
         "starlit-banner" => Some(starlit_banner(kind)),
@@ -41,16 +45,26 @@ pub fn template(key: &str, kind: CardKind) -> Option<CardDesign> {
 
 /// The classic card: the night-sea gradient of `theme`, a stage floor with two crabs, the pixelated
 /// avatar in a notched frame, the headline, the name and a line about the server. `title` and `accent`
-/// replace the theme's headline and accent colour, as `/config welcome-card` sets them.
-pub fn classic(kind: CardKind, theme: &str, title: Option<&str>, accent: Option<u32>) -> CardDesign {
+/// replace the theme's headline and accent colour, as `/config welcome-card` sets them; the default
+/// headline, the line and the headline's capitals are in `lang`, the server's language.
+pub fn classic(kind: CardKind, theme: &str, title: Option<&str>, accent: Option<u32>, lang: Lang) -> CardDesign {
     let t = Theme::preset(theme).with_accent(accent);
-    let headline = title.unwrap_or(match kind {
-        CardKind::Welcome => pinchora_core::settings::DEFAULT_WELCOME_TITLE,
-        CardKind::Goodbye => "Goodbye",
-    });
+    let headline = title.map_or_else(
+        || match kind {
+            CardKind::Welcome => t!(lang, "events.default-welcome-title"),
+            CardKind::Goodbye => t!(lang, "card.goodbye.title"),
+        },
+        str::to_owned,
+    );
+    // The fill's own placeholders, kept for the renderer to fill per member.
     let line = match kind {
-        CardKind::Welcome => "to {server} · member #{members}",
-        CardKind::Goodbye => "left {server} · {members} members now",
+        CardKind::Welcome => t!(
+            lang,
+            "card.welcome.to-member",
+            server = "{server}",
+            number = "{members}"
+        ),
+        CardKind::Goodbye => t!(lang, "card.goodbye.line", server = "{server}", members = "{members}"),
     };
     CardDesign {
         version: DESIGN_VERSION,
@@ -71,7 +85,7 @@ pub fn classic(kind: CardKind, theme: &str, title: Option<&str>, accent: Option<
             avatar("avatar", AvatarShape::Notched, (450, 36, 200), 12, &t.accent, true),
             text(
                 "title",
-                &truncate(headline, TITLE_MAX).to_uppercase(),
+                &lang.upper(&truncate(&headline, TITLE_MAX)),
                 Font::Pixel,
                 false,
                 64,
@@ -79,7 +93,7 @@ pub fn classic(kind: CardKind, theme: &str, title: Option<&str>, accent: Option<
                 (50, 252, 1000),
             ),
             text("name", "{user}", Font::Sans, true, 36, &t.accent, (50, 332, 1000)),
-            text("line", line, Font::Sans, false, 22, &t.muted, (50, 388, 1000)),
+            text("line", &line, Font::Sans, false, 22, &t.muted, (50, 388, 1000)),
         ],
     }
 }

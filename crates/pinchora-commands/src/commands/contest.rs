@@ -3,6 +3,8 @@
 
 use std::str::Split;
 
+use chrono::DateTime;
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{ContestEntry, ContestResult, RoomRow};
 use pinchora_game::{
     Content,
@@ -22,6 +24,7 @@ use twilight_util::builder::embed::{EmbedBuilder, EmbedFieldBuilder, EmbedFooter
 use super::{
     guestbook::plain,
     house::{ensure_house, render_room, room_index},
+    social::short_date,
 };
 use crate::{
     Cx,
@@ -70,7 +73,7 @@ pub struct ContestWinners;
 impl HouseContest {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
         let Some(guild) = cx.guild_id() else {
-            return cx.reply_ephemeral("The room contest runs inside servers.").await;
+            return cx.reply_ephemeral(t!(cx.lang(), "contest.guild-only")).await;
         };
         let week = settle(cx, guild).await?;
         let user = cx.author()?.id.get();
@@ -95,14 +98,24 @@ async fn settle(cx: &Cx, guild: u64) -> anyhow::Result<i32> {
     Ok(week)
 }
 
-fn room_name(room_type: &str) -> String {
-    Content::get()
-        .room_type(room_type)
-        .map_or_else(|| room_type.to_owned(), |r| r.name.clone())
+fn room_name(lang: Lang, room_type: &str) -> String {
+    Content::get().name(room_type, lang).into_owned()
 }
 
-fn plural(n: i64, one: &str, many: &str) -> String {
-    format!("{n} {}", if n == 1 { one } else { many })
+/// The week's theme name and blurb in `lang`.
+fn theme_text(lang: Lang, theme: &contest::Theme) -> (String, String) {
+    let content = Content::get();
+    (
+        content.name(&theme.id, lang).into_owned(),
+        content
+            .description(&theme.id, lang)
+            .map_or_else(|| theme.description.clone(), std::borrow::Cow::into_owned),
+    )
+}
+
+/// "3 votes", from the plural entry `key`.
+fn counted(lang: Lang, key: &str, n: i64) -> String {
+    t!(lang, key, count = n)
 }
 
 fn button(label: &str, custom_id: String, style: ButtonStyle, disabled: bool) -> Component {
@@ -163,10 +176,12 @@ async fn render_entry(cx: &Cx, guild: u64, week: i32, entry: &ContestEntry) -> a
 
 /// "🥇 **Sim** · 3 votes · +500 shells", one line per winner.
 async fn podium(cx: &Cx, guild: u64, result: &ContestResult) -> anyhow::Result<String> {
+    let lang = cx.lang();
     if result.winner_ids.is_empty() {
-        return Ok(format!(
-            "{} entered but nobody got a vote, so nobody won.",
-            plural(result.entries.into(), "room", "rooms")
+        return Ok(t!(
+            lang,
+            "contest.no-winners",
+            rooms = counted(lang, "contest.rooms", result.entries.into())
         ));
     }
     let entries = cx
@@ -183,11 +198,14 @@ async fn podium(cx: &Cx, guild: u64, result: &ContestResult) -> anyhow::Result<S
             let name = entries
                 .iter()
                 .find(|e| e.user_id == *id)
-                .map_or_else(|| "Someone".to_owned(), |e| plain(&e.owner_name));
-            format!(
-                "{medal} **{name}** · {} · +{} shells",
-                plural((*votes).into(), "vote", "votes"),
-                thousands(prize)
+                .map_or_else(|| t!(lang, "interact.someone"), |e| plain(&e.owner_name));
+            t!(
+                lang,
+                "contest.podium-line",
+                medal = medal,
+                name = name,
+                votes = counted(lang, "contest.votes", (*votes).into()),
+                prize = thousands(prize)
             )
         })
         .collect();
@@ -196,7 +214,9 @@ async fn podium(cx: &Cx, guild: u64, result: &ContestResult) -> anyhow::Result<S
 
 async fn overview(cx: &Cx, guild: u64, week: i32, user: u64) -> anyhow::Result<InteractionResponseData> {
     let db = &cx.app.db;
+    let lang = cx.lang();
     let theme = contest::theme(week.into());
+    let (theme_name, theme_description) = theme_text(lang, theme);
     let ends = contest::week_start(i64::from(week) + 1);
     let (entries, mine, last) = tokio::try_join!(
         db.contest_entry_count(guild, week),
@@ -204,36 +224,48 @@ async fn overview(cx: &Cx, guild: u64, week: i32, user: u64) -> anyhow::Result<I
         db.last_contest_result(guild, week),
     )?;
     let mine = match mine {
-        Some(e) => format!(
-            "Room {} · {} · 💖 {}",
-            e.room_idx + 1,
-            room_name(&e.room_type),
-            plural(e.votes, "vote", "votes")
+        Some(e) => t!(
+            lang,
+            "contest.mine",
+            room = e.room_idx + 1,
+            name = room_name(lang, &e.room_type),
+            votes = counted(lang, "contest.votes", e.votes)
         ),
-        None => "Not entered yet: `/house contest enter [room]`".to_owned(),
+        None => t!(lang, "contest.not-entered"),
     };
     let (last_title, last_text) = match &last {
-        Some(r) if r.week + 1 == week => ("Last week".to_owned(), podium(cx, guild, r).await?),
-        Some(r) => (format!("Week of {}", short_date(r.week)), podium(cx, guild, r).await?),
-        None => ("Last week".to_owned(), "No contest has finished here yet.".to_owned()),
+        Some(r) if r.week + 1 == week => (t!(lang, "contest.last-week"), podium(cx, guild, r).await?),
+        Some(r) => (
+            t!(lang, "contest.week-of", date = week_date(lang, r.week)),
+            podium(cx, guild, r).await?,
+        ),
+        None => (t!(lang, "contest.last-week"), t!(lang, "contest.none-finished")),
     };
     let embed = EmbedBuilder::new()
         .color(BRAND)
-        .title(format!("🏆 Room contest: {}", theme.name))
-        .description(format!(
-            "{}\n\nEnter one room with `/house contest enter`, judge the others with `/house contest vote`. \
-             Prizes: 🥇 {} · 🥈 {} · 🥉 {} shells, and the winner becomes **House of the Week**.",
-            theme.description, PRIZES[0], PRIZES[1], PRIZES[2]
+        .title(t!(lang, "contest.title", theme = theme_name))
+        .description(t!(
+            lang,
+            "contest.about",
+            description = theme_description,
+            first = PRIZES[0],
+            second = PRIZES[1],
+            third = PRIZES[2]
         ))
-        .field(EmbedFieldBuilder::new("Ends", format!("<t:{ends}:R>")).inline())
-        .field(EmbedFieldBuilder::new("Entries", entries.to_string()).inline())
-        .field(EmbedFieldBuilder::new("Your entry", mine))
+        .field(EmbedFieldBuilder::new(t!(lang, "contest.ends"), format!("<t:{ends}:R>")).inline())
+        .field(EmbedFieldBuilder::new(t!(lang, "contest.entries"), entries.to_string()).inline())
+        .field(EmbedFieldBuilder::new(t!(lang, "contest.your-entry"), mine))
         .field(EmbedFieldBuilder::new(last_title, last_text))
         .build();
     let components = vec![row(vec![
-        button("Vote", "rc:o".to_owned(), ButtonStyle::Success, false),
         button(
-            "Last winners",
+            &t!(lang, "contest.vote"),
+            "rc:o".to_owned(),
+            ButtonStyle::Success,
+            false,
+        ),
+        button(
+            &t!(lang, "contest.last-winners"),
             "rc:w".to_owned(),
             ButtonStyle::Secondary,
             last.is_none(),
@@ -247,24 +279,21 @@ async fn overview(cx: &Cx, guild: u64, week: i32, user: u64) -> anyhow::Result<I
 }
 
 /// "Nov 2", the Monday a week starts.
-fn short_date(week: i32) -> String {
-    chrono::DateTime::from_timestamp(contest::week_start(week.into()), 0)
-        .map_or_else(String::new, |d| d.format("%b %-d").to_string())
+fn week_date(lang: Lang, week: i32) -> String {
+    DateTime::from_timestamp(contest::week_start(week.into()), 0).map_or_else(String::new, |d| short_date(lang, d))
 }
 
 async fn enter(cx: &Cx, guild: u64, week: i32, user: u64, room: i16) -> anyhow::Result<()> {
     let (_, rooms) = ensure_house(&cx.app, user).await?;
     let room = room.clamp(0, rooms.len().saturating_sub(1) as i16);
+    let lang = cx.lang();
     let db = &cx.app.db;
     let again = db.contest_entry(guild, week, user).await?.is_some();
     let name = cx.author_display_name();
     let pieces = db.enter_contest(guild, week, user, &name, room).await?;
     if pieces == 0 {
         return cx
-            .reply_ephemeral(format!(
-                "Room {} is empty. Decorate it with `/house edit` first.",
-                room + 1
-            ))
+            .reply_ephemeral(t!(lang, "contest.room-empty", room = room + 1))
             .await;
     }
     let entry = db
@@ -272,23 +301,25 @@ async fn enter(cx: &Cx, guild: u64, week: i32, user: u64, room: i16) -> anyhow::
         .await?
         .ok_or_else(|| anyhow::anyhow!("contest entry missing right after entering"))?;
     let png = render_entry(cx, guild, week, &entry).await?;
-    let theme = contest::theme(week.into());
+    let (theme_name, _) = theme_text(lang, contest::theme(week.into()));
     let ends = contest::week_start(i64::from(week) + 1);
     let embed = EmbedBuilder::new()
         .color(SUCCESS)
         .title(if again {
-            format!("{} updated their contest entry", plain(&name))
+            t!(lang, "contest.updated", name = plain(&name))
         } else {
-            format!("{} entered the room contest!", plain(&name))
+            t!(lang, "contest.entered", name = plain(&name))
         })
-        .description(format!(
-            "**{}** for the theme **{}** · {}\nVoting is open until <t:{ends}:f>. Changed the room? Enter again to update it.",
-            room_name(&entry.room_type),
-            theme.name,
-            plural(pieces as i64, "piece", "pieces")
+        .description(t!(
+            lang,
+            "contest.entered-about",
+            room = room_name(lang, &entry.room_type),
+            theme = theme_name,
+            pieces = counted(lang, "contest.pieces", pieces as i64),
+            ends = ends
         ));
     let components = vec![row(vec![button(
-        "Vote on entries",
+        &t!(lang, "contest.vote-entries"),
         "rc:o".to_owned(),
         ButtonStyle::Success,
         false,
@@ -306,14 +337,15 @@ async fn ballot(
     note: &str,
 ) -> anyhow::Result<InteractionResponseData> {
     let db = &cx.app.db;
+    let lang = cx.lang();
     let (entry, left) = db.next_ballot(guild, week, voter, skip).await?;
     let Some(entry) = entry else {
         let entries = db.contest_entry_count(guild, week).await?;
         let own = db.contest_entry(guild, week, voter).await?.is_some();
         let why = if entries - i64::from(own) == 0 {
-            "There are no other entries to judge yet. Check back later, or enter your own room with `/house contest enter`."
+            t!(lang, "contest.no-others")
         } else {
-            "You have judged every entry this week. The winners are announced on Monday!"
+            t!(lang, "contest.all-judged")
         };
         let note = if note.is_empty() {
             String::new()
@@ -323,29 +355,41 @@ async fn ballot(
         return Ok(text(format!("{note}{why}"), true));
     };
     let png = render_entry(cx, guild, week, &entry).await?;
-    let theme = contest::theme(week.into());
+    let (theme_name, _) = theme_text(lang, contest::theme(week.into()));
     let mut lines = Vec::new();
     if !note.is_empty() {
         lines.push(note.to_owned());
     }
-    lines.push(format!(
-        "Theme: **{}** · {}",
-        theme.name,
-        plural(left, "entry left to judge", "entries left to judge")
+    lines.push(t!(
+        lang,
+        "contest.ballot-about",
+        theme = theme_name,
+        left = counted(lang, "contest.left", left)
     ));
     let embed = EmbedBuilder::new()
         .color(WARN)
-        .title(format!(
-            "{}'s {}",
-            plain(&entry.owner_name),
-            room_name(&entry.room_type)
+        .title(t!(
+            lang,
+            "contest.ballot-title",
+            owner = plain(&entry.owner_name),
+            room = room_name(lang, &entry.room_type)
         ))
         .description(lines.join("\n"))
-        .footer(EmbedFooterBuilder::new("One vote per room. Skip to see another."));
+        .footer(EmbedFooterBuilder::new(t!(lang, "contest.ballot-footer")));
     let owner = entry.user_id;
     let components = vec![row(vec![
-        button("💖 Vote", format!("rc:v:{week}:{owner}"), ButtonStyle::Success, false),
-        button("Skip", format!("rc:k:{week}:{owner}"), ButtonStyle::Secondary, left < 2),
+        button(
+            &t!(lang, "contest.ballot-vote"),
+            format!("rc:v:{week}:{owner}"),
+            ButtonStyle::Success,
+            false,
+        ),
+        button(
+            &t!(lang, "contest.ballot-skip"),
+            format!("rc:k:{week}:{owner}"),
+            ButtonStyle::Secondary,
+            left < 2,
+        ),
     ])];
     Ok(Cx::card(embed, "contest.png", png, components, true))
 }
@@ -353,11 +397,13 @@ async fn ballot(
 /// The newest finished week's winning room, drawn from its snapshot, with the podium.
 async fn winners(cx: &Cx, guild: u64, week: i32, ephemeral: bool) -> anyhow::Result<InteractionResponseData> {
     let db = &cx.app.db;
+    let lang = cx.lang();
     let Some(result) = db.last_contest_result(guild, week).await? else {
         return Ok(text(
-            format!(
-                "No contest week has finished in this server yet. This week's theme is **{}**.",
-                contest::theme(week.into()).name
+            t!(
+                lang,
+                "contest.none-yet",
+                theme = theme_text(lang, contest::theme(week.into())).0
             ),
             ephemeral,
         ));
@@ -368,13 +414,15 @@ async fn winners(cx: &Cx, guild: u64, week: i32, ephemeral: bool) -> anyhow::Res
         Some(id) => db.contest_entry(guild, result.week, id).await?,
         None => None,
     };
-    let theme = contest::theme(result.week.into());
+    let (theme_name, _) = theme_text(lang, contest::theme(result.week.into()));
     let Some(winner) = winner else {
         return Ok(text(
-            format!(
-                "**{}** (week of {}): {podium_text}",
-                theme.name,
-                short_date(result.week)
+            t!(
+                lang,
+                "contest.week-podium",
+                theme = theme_name,
+                date = week_date(lang, result.week),
+                podium = podium_text
             ),
             ephemeral,
         ));
@@ -382,16 +430,19 @@ async fn winners(cx: &Cx, guild: u64, week: i32, ephemeral: bool) -> anyhow::Res
     let png = render_entry(cx, guild, result.week, &winner).await?;
     let embed = EmbedBuilder::new()
         .color(SUCCESS)
-        .title(format!("🏆 House of the Week: {}", plain(&winner.owner_name)))
-        .description(format!(
-            "{} · theme **{}** · week of {}\n\n{podium_text}",
-            room_name(&winner.room_type),
-            theme.name,
-            short_date(result.week)
+        .title(t!(lang, "contest.winner-title", name = plain(&winner.owner_name)))
+        .description(t!(
+            lang,
+            "contest.winner-about",
+            room = room_name(lang, &winner.room_type),
+            theme = theme_name,
+            date = week_date(lang, result.week),
+            podium = podium_text
         ))
-        .footer(EmbedFooterBuilder::new(format!(
-            "{} entered that week",
-            plural(result.entries.into(), "room", "rooms")
+        .footer(EmbedFooterBuilder::new(t!(
+            lang,
+            "contest.winner-footer",
+            rooms = counted(lang, "contest.rooms", result.entries.into())
         )));
     Ok(Cx::card(embed, "winner.png", png, Vec::new(), ephemeral))
 }
@@ -400,7 +451,7 @@ async fn winners(cx: &Cx, guild: u64, week: i32, ephemeral: bool) -> anyhow::Res
 /// `rc:k:<week>:<entry>` skips to another entry.
 pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Result<()> {
     let Some(guild) = cx.guild_id() else {
-        return cx.reply_ephemeral("The room contest runs inside servers.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "contest.guild-only")).await;
     };
     let week = settle(cx, guild).await?;
     let voter = cx.author()?.id.get();
@@ -417,22 +468,19 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>) -> anyhow::
             let shown: i32 = args.next().and_then(|v| v.parse().ok()).unwrap_or(-1);
             let entry: u64 = args.next().and_then(|v| v.parse().ok()).unwrap_or(0);
             if shown != week {
-                return cx
-                    .update(text(
-                        "That contest week is over. See who won with `/house contest winners`.".to_owned(),
-                        true,
-                    ))
-                    .await;
+                return cx.update(text(t!(cx.lang(), "contest.week-over"), true)).await;
             }
             let note = match kind {
-                "v" if cx.app.db.contest_vote(guild, week, entry, voter).await? => "💖 Vote counted!",
-                "v" => "You already voted for that room.",
-                _ => "Skipped.",
+                "v" if cx.app.db.contest_vote(guild, week, entry, voter).await? => {
+                    t!(cx.lang(), "contest.counted")
+                }
+                "v" => t!(cx.lang(), "contest.already-voted"),
+                _ => t!(cx.lang(), "contest.skipped"),
             };
             let skip = (kind == "k").then_some(entry);
-            let data = ballot(cx, guild, week, voter, skip, note).await?;
+            let data = ballot(cx, guild, week, voter, skip, &note).await?;
             cx.update(data).await
         }
-        _ => cx.reply_ephemeral("This button has expired.").await,
+        _ => cx.reply_ephemeral(t!(cx.lang(), "social.button-expired")).await,
     }
 }

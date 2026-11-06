@@ -1,6 +1,6 @@
-use std::{collections::HashSet, str::Split, sync::Arc};
+use std::{borrow::Cow, collections::HashSet, str::Split, sync::Arc};
 
-use pinchora_core::{leveling, stats::PlayerStats, t};
+use pinchora_core::{i18n::Lang, leveling, stats::PlayerStats, t};
 use pinchora_db::{CustomizeBuy, MAX_BADGES, UserRow};
 use pinchora_game::{Background, Badge, BadgeKind, BadgeStat, Content, Rarity, TitleKind, stat_value};
 use pinchora_render::{
@@ -257,29 +257,38 @@ impl Wardrobe {
     }
 
     /// `✅ Name · Reach level 5.` once it is theirs, `🔒 Name · 3/5 levels` before.
-    fn line(&self, badge: &Badge, worn: &[&Badge]) -> String {
+    fn line(&self, badge: &Badge, worn: &[&Badge], lang: Lang) -> String {
+        let content = Content::get();
+        let name = content.name(&badge.id, lang);
         let worn = if worn.iter().any(|w| w.id == badge.id) {
-            " *(worn)*"
+            t!(lang, "customize.line.worn")
         } else {
-            ""
+            String::new()
         };
         match badge.kind {
             BadgeKind::Achievement { stat, at } => {
                 let have = stat_value(&self.stats, stat);
                 if have >= at {
-                    format!("✅ **{}** · {}{worn}", badge.name, badge.description)
+                    format!(
+                        "✅ **{name}** · {}{worn}",
+                        content.description(&badge.id, lang).unwrap_or_default()
+                    )
                 } else {
                     format!(
-                        "🔒 **{}** · {}/{} {}",
-                        badge.name,
+                        "🔒 **{name}** · {}/{} {}",
                         thousands(have.max(0)),
                         thousands(at),
-                        stat.noun()
+                        stat.noun_in(lang)
                     )
                 }
             }
-            BadgeKind::Shop { .. } if self.has(badge) => format!("✅ **{}** · bought{worn}", badge.name),
-            BadgeKind::Shop { price } => format!("🛒 **{}** · {} shells", badge.name, thousands(price)),
+            BadgeKind::Shop { .. } if self.has(badge) => {
+                format!("✅ **{name}** · {}{worn}", t!(lang, "customize.line.bought"))
+            }
+            BadgeKind::Shop { price } => format!(
+                "🛒 **{name}** · {}",
+                t!(lang, "customize.line.price", price = thousands(price))
+            ),
         }
     }
 
@@ -294,24 +303,26 @@ impl Wardrobe {
     }
 
     /// `✅ **Tide Angler** · Catch 5 different fish species.` once unlocked, else how far they are.
-    fn title_line(&self, title: &pinchora_game::Title, equipped: Option<&str>) -> String {
+    fn title_line(&self, title: &pinchora_game::Title, equipped: Option<&str>, lang: Lang) -> String {
+        let content = Content::get();
+        let name = content.name(&title.id, lang);
+        let description = content.description(&title.id, lang).unwrap_or_default();
         let worn = if equipped == Some(title.id.as_str()) {
-            " *(worn)*"
+            t!(lang, "customize.line.worn")
         } else {
-            ""
+            String::new()
         };
         if self.has_title(title) {
-            return format!("✅ **{}** · {}{worn}", title.name, title.description);
+            return format!("✅ **{name}** · {description}{worn}");
         }
         match &title.kind {
             TitleKind::Stat { stat, at } => format!(
-                "🔒 **{}** · {}/{} {}",
-                title.name,
+                "🔒 **{name}** · {}/{} {}",
                 thousands(stat_value(&self.stats, *stat).max(0)),
                 thousands(*at),
-                stat.noun()
+                stat.noun_in(lang)
             ),
-            _ => format!("🔒 **{}** · {}", title.name, title.description),
+            _ => format!("🔒 **{name}** · {description}"),
         }
     }
 }
@@ -326,11 +337,12 @@ pub(crate) async fn worn_badges(app: &App, user: u64, row: &UserRow) -> anyhow::
 }
 
 /// The name of the title under the player's name, if they have one and it still exists.
-pub(crate) fn title_name(row: &UserRow) -> Option<&'static str> {
+pub(crate) fn title_name(row: &UserRow, lang: Lang) -> Option<Cow<'static, str>> {
+    let content = Content::get();
     row.title
         .as_deref()
-        .and_then(|id| Content::get().title(id))
-        .map(|t| t.name.as_str())
+        .and_then(|id| content.title(id))
+        .map(|t| content.name(&t.id, lang))
 }
 
 // /Components
@@ -467,9 +479,9 @@ async fn background_panel(
                 t!(lang, "customize.price", price = thousands(b.price))
             };
             option(
-                &b.name,
+                &content.name(&b.id, lang),
                 &b.id,
-                format!("{} · {status}", b.rarity.label()),
+                format!("{} · {status}", b.rarity.label_in(lang)),
                 shown.is_some_and(|s| s.id == b.id),
             )
         })
@@ -493,7 +505,11 @@ async fn background_panel(
             } else {
                 t!(lang, "customize.price", price = thousands(b.price))
             };
-            text.push_str(&format!("**{}** · {} · {status}", b.name, b.rarity.label()));
+            text.push_str(&format!(
+                "**{}** · {} · {status}",
+                content.name(&b.id, lang),
+                b.rarity.label_in(lang)
+            ));
         }
         None => text.push_str(&t!(lang, "customize.background.pick-hint")),
     }
@@ -570,15 +586,19 @@ async fn buy_background(cx: &Cx, id: &str) -> anyhow::Result<()> {
         CustomizeBuy::Bought { balance } => t!(
             cx.lang(),
             "customize.background.bought",
-            item = background.name,
+            item = Content::get().name(&background.id, cx.lang()),
             price = thousands(background.price),
             balance = thousands(balance)
         ),
-        CustomizeBuy::AlreadyOwned => t!(cx.lang(), "customize.already-own", item = background.name),
+        CustomizeBuy::AlreadyOwned => t!(
+            cx.lang(),
+            "customize.already-own",
+            item = Content::get().name(&background.id, cx.lang())
+        ),
         CustomizeBuy::Insufficient { balance } => t!(
             cx.lang(),
             "customize.costs",
-            item = background.name,
+            item = Content::get().name(&background.id, cx.lang()),
             price = thousands(background.price),
             balance = thousands(balance)
         ),
@@ -597,9 +617,17 @@ async fn equip_background(cx: &Cx, id: &str) -> anyhow::Result<()> {
         .equip_background(cx.author()?.id.get(), &background.id)
         .await?
     {
-        t!(cx.lang(), "customize.background.equipped", item = background.name)
+        t!(
+            cx.lang(),
+            "customize.background.equipped",
+            item = Content::get().name(&background.id, cx.lang())
+        )
     } else {
-        t!(cx.lang(), "customize.background.not-owned", item = background.name)
+        t!(
+            cx.lang(),
+            "customize.background.not-owned",
+            item = Content::get().name(&background.id, cx.lang())
+        )
     };
     let data = background_panel(cx, Highlight::Id(&background.id), None, &note).await?;
     cx.update(data).await
@@ -608,7 +636,7 @@ async fn equip_background(cx: &Cx, id: &str) -> anyhow::Result<()> {
 // /Badges panel
 
 /// One embed field per thing achievements count, then the shop: a line for every badge.
-fn badge_fields(wardrobe: &Wardrobe) -> Vec<(&'static str, String)> {
+fn badge_fields(wardrobe: &Wardrobe, lang: Lang) -> Vec<(String, String)> {
     let badges = &Content::get().badges;
     let worn = wardrobe.worn();
     let mut fields: Vec<_> = BadgeStat::ALL
@@ -617,17 +645,17 @@ fn badge_fields(wardrobe: &Wardrobe) -> Vec<(&'static str, String)> {
             let lines: Vec<_> = badges
                 .iter()
                 .filter(|b| matches!(b.kind, BadgeKind::Achievement { stat: s, .. } if s == stat))
-                .map(|b| wardrobe.line(b, &worn))
+                .map(|b| wardrobe.line(b, &worn, lang))
                 .collect();
-            (stat.label(), lines.join("\n"))
+            (stat.label_in(lang).to_owned(), lines.join("\n"))
         })
         .collect();
     let shop: Vec<_> = badges
         .iter()
         .filter(|b| matches!(b.kind, BadgeKind::Shop { .. }))
-        .map(|b| wardrobe.line(b, &worn))
+        .map(|b| wardrobe.line(b, &worn, lang))
         .collect();
-    fields.push(("Shop", shop.join("\n")));
+    fields.push((t!(lang, "customize.badges.shop"), shop.join("\n")));
     fields.retain(|(_, lines)| !lines.is_empty());
     fields
 }
@@ -666,14 +694,21 @@ struct CollectionCell {
     letter: char,
     color: u32,
     rarity: u32,
-    name: &'static str,
+    name: Cow<'static, str>,
     rarity_label: &'static str,
     state: BadgeState,
 }
 
 /// Every badge in the order of `content/badges.json`, as the collection card shows it.
-fn collection_cells(sprites: &Sprites, wardrobe: &Wardrobe, worn: &[&Badge], fresh: u128) -> Vec<CollectionCell> {
-    Content::get()
+fn collection_cells(
+    sprites: &Sprites,
+    wardrobe: &Wardrobe,
+    worn: &[&Badge],
+    fresh: u128,
+    lang: Lang,
+) -> Vec<CollectionCell> {
+    let content = Content::get();
+    content
         .badges
         .iter()
         .enumerate()
@@ -694,8 +729,8 @@ fn collection_cells(sprites: &Sprites, wardrobe: &Wardrobe, worn: &[&Badge], fre
                 letter: letter_of(b),
                 color: placeholder_badge_color(&b.id),
                 rarity: b.rarity.color(),
-                name: &b.name,
-                rarity_label: b.rarity.label(),
+                name: content.name(&b.id, lang),
+                rarity_label: b.rarity.label_in(lang),
                 state,
             }
         })
@@ -706,6 +741,7 @@ fn collection_cells(sprites: &Sprites, wardrobe: &Wardrobe, worn: &[&Badge], fre
 /// dark with their progress, NEW on the latest), what the profile card shows, a menu to put up to
 /// six on, a menu to buy shop badges, and buttons to take them off or let the card pick.
 async fn badges_panel(cx: &Cx, page: usize, note: &str, fresh: Fresh) -> anyhow::Result<InteractionResponseData> {
+    let lang = cx.lang();
     let content = Content::get();
     let user = cx.author()?;
     let id = user.id.get();
@@ -736,9 +772,13 @@ async fn badges_panel(cx: &Cx, page: usize, note: &str, fresh: Fresh) -> anyhow:
         .take(PER_PAGE)
         .map(|b| {
             option(
-                &b.name,
+                &content.name(&b.id, lang),
                 &b.id,
-                format!("{} · {}", b.rarity.label(), b.description),
+                format!(
+                    "{} · {}",
+                    b.rarity.label_in(lang),
+                    content.description(&b.id, lang).unwrap_or_default()
+                ),
                 worn.iter().any(|w| w.id == b.id),
             )
         })
@@ -748,9 +788,14 @@ async fn badges_panel(cx: &Cx, page: usize, note: &str, fresh: Fresh) -> anyhow:
         .iter()
         .filter_map(|b| match b.kind {
             BadgeKind::Shop { price } if !wardrobe.has(b) => Some(option(
-                &b.name,
+                &content.name(&b.id, lang),
                 &b.id,
-                format!("{} shells · {}", thousands(price), b.description),
+                t!(
+                    lang,
+                    "customize.badges.buy-option",
+                    price = thousands(price),
+                    description = content.description(&b.id, lang).unwrap_or_default()
+                ),
                 false,
             )),
             _ => None,
@@ -760,7 +805,7 @@ async fn badges_panel(cx: &Cx, page: usize, note: &str, fresh: Fresh) -> anyhow:
     let background = player.background.as_deref().and_then(|e| content.background(e));
     let (credits, saved_empty) = (player.credits, player.badges.is_empty());
     let theme = theme(&player, background);
-    let cells = collection_cells(&cx.app.sprites, &wardrobe, &worn, mask);
+    let cells = collection_cells(&cx.app.sprites, &wardrobe, &worn, mask, lang);
     let png = cx
         .app
         .render(move |r| {
@@ -777,13 +822,14 @@ async fn badges_panel(cx: &Cx, page: usize, note: &str, fresh: Fresh) -> anyhow:
                         color: c.color,
                         rarity: c.rarity,
                     },
-                    name: c.name,
+                    name: &c.name,
                     rarity: c.rarity_label,
                     state: c.state,
                 })
                 .collect();
-            let legend: Vec<(&str, u32)> = Rarity::ALL.iter().map(|r| (r.label(), r.color())).collect();
+            let legend: Vec<(&str, u32)> = Rarity::ALL.iter().map(|r| (r.label_in(lang), r.color())).collect();
             r.badge_collection(&BadgeCollectionCard {
+                lang,
                 cells: &boxed,
                 legend: &legend,
                 theme,
@@ -796,8 +842,10 @@ async fn badges_panel(cx: &Cx, page: usize, note: &str, fresh: Fresh) -> anyhow:
         text.push_str(note);
         text.push_str("\n\n");
     }
-    let lang = cx.lang();
-    let names: Vec<_> = worn.iter().map(|b| format!("**{}**", b.name)).collect();
+    let names: Vec<_> = worn
+        .iter()
+        .map(|b| format!("**{}**", content.name(&b.id, lang)))
+        .collect();
     let (count, names) = (worn.len(), names.join(", "));
     text.push_str(&if worn.is_empty() && wardrobe.chosen {
         t!(lang, "customize.badges.none-worn")
@@ -827,7 +875,7 @@ async fn badges_panel(cx: &Cx, page: usize, note: &str, fresh: Fresh) -> anyhow:
         .color(BRAND)
         .title(t!(lang, "customize.badges.title"))
         .description(text);
-    for (name, lines) in badge_fields(&wardrobe) {
+    for (name, lines) in badge_fields(&wardrobe, lang) {
         embed = embed.field(EmbedFieldBuilder::new(name, lines));
     }
 
@@ -932,15 +980,19 @@ async fn buy_badge(cx: &Cx, id: &str, fresh: u128) -> anyhow::Result<()> {
         CustomizeBuy::Bought { balance } => t!(
             cx.lang(),
             "customize.badges.bought",
-            item = badge.name,
+            item = Content::get().name(&badge.id, cx.lang()),
             price = thousands(price),
             balance = thousands(balance)
         ),
-        CustomizeBuy::AlreadyOwned => t!(cx.lang(), "customize.already-own", item = badge.name),
+        CustomizeBuy::AlreadyOwned => t!(
+            cx.lang(),
+            "customize.already-own",
+            item = Content::get().name(&badge.id, cx.lang())
+        ),
         CustomizeBuy::Insufficient { balance } => t!(
             cx.lang(),
             "customize.costs",
-            item = badge.name,
+            item = Content::get().name(&badge.id, cx.lang()),
             price = thousands(price),
             balance = thousands(balance)
         ),
@@ -1074,7 +1126,7 @@ mod tests {
             "but not the 24-species one"
         );
 
-        let line = |id: &str| w.line(content.badge(id).expect("a badge"), &w.worn());
+        let line = |id: &str| w.line(content.badge(id).expect("a badge"), &w.worn(), Lang::En);
         assert_eq!(line("bright_beacon"), "🔒 **Bright Beacon** · 7/10 levels");
         assert_eq!(line("reef_regular"), "🔒 **Reef Regular** · 12/24 fish species");
         assert_eq!(line("little_beacon"), "✅ **Little Beacon** · Reach level 5. *(worn)*");
@@ -1158,7 +1210,7 @@ mod tests {
             "tiny_tide".to_owned(),
             "not_a_badge".to_owned(),
         ]);
-        let cells = collection_cells(&Sprites::default(), &w, &w.worn(), new);
+        let cells = collection_cells(&Sprites::default(), &w, &w.worn(), new, Lang::En);
         let content = Content::get();
         assert_eq!(cells.len(), content.badges.len(), "every badge has a cell");
         let state = |id: &str| {
@@ -1214,11 +1266,13 @@ mod tests {
         };
         let bought: Vec<_> = Content::get().badges.iter().map(|b| b.id.as_str()).collect();
         let worn: Vec<_> = bought.iter().copied().take(MAX_BADGES).collect();
-        for w in [
-            wardrobe(PlayerStats::default(), &[], &[]),
-            wardrobe(everything, &bought, &worn),
-        ] {
-            let fields = badge_fields(&w);
+        for (lang, w) in Lang::ALL.into_iter().flat_map(|lang| {
+            [
+                (lang, wardrobe(PlayerStats::default(), &[], &[])),
+                (lang, wardrobe(everything, &bought, &worn)),
+            ]
+        }) {
+            let fields = badge_fields(&w, lang);
             assert_eq!(fields.len(), BadgeStat::ALL.len() + 1);
             assert!(
                 fields.iter().all(|(_, lines)| lines.chars().count() <= 1024),

@@ -2070,7 +2070,7 @@ async fn the_card_editor_previews_saves_uploads_and_tests_designs() {
     let cards = browser.get(&format!("{base}/cards")).await;
     assert_eq!(cards.status, StatusCode::OK, "{}", cards.text());
     let cards = cards.json();
-    let classic = pinchora_render::templates::classic(CardKind::Welcome, "reef", None, None);
+    let classic = pinchora_render::templates::classic(CardKind::Welcome, "reef", None, None, Lang::En);
     assert_eq!(cards["welcome"]["design"], json!(classic));
     assert_eq!(
         (&cards["welcome"]["custom"], &cards["welcome"]["delivery"]),
@@ -3739,4 +3739,73 @@ async fn the_landing_data_is_public_cached_and_knows_who_is_looking() {
         }
     }
     assert!(refused > 0, "an address that asks 125 times a minute is slowed down");
+}
+
+#[tokio::test]
+async fn case_reason_edits_require_the_author_or_a_higher_moderator() {
+    use pinchora_core::moderation::CaseKind;
+    let Some(h) = Harness::new("reason_hierarchy").await else {
+        return;
+    };
+    let (guild, junior, senior, target) = (unique(), unique(), unique(), unique());
+    h.mock.bot_guilds.lock().unwrap().insert(guild);
+    h.mock
+        .member_roles
+        .lock()
+        .unwrap()
+        .extend([(junior, vec![FAN]), (senior, vec![REGULAR]), (target, vec![REGULAR])]);
+    let mut browser = h.browser();
+    browser
+        .login(
+            &h,
+            junior,
+            vec![guild_entry(guild, "Reef", false, MANAGE_GUILD | ADMINISTRATOR)],
+        )
+        .await;
+    let db = &h.state.app.db;
+    for moderator in [senior, junior, APPLICATION_ID, 0] {
+        db.open_case(&pinchora_db::NewCase {
+            guild,
+            kind: CaseKind::Warn,
+            target,
+            target_name: "Mia",
+            moderator,
+            moderator_name: "Mod",
+            reason: Some("original"),
+            duration: None,
+            expires_at: None,
+            details: None,
+        })
+        .await
+        .unwrap();
+    }
+    let path = |number| format!("/api/guilds/{guild}/cases/{number}");
+    for number in [1, 3, 4] {
+        let denied = browser
+            .write(Method::PATCH, &path(number), json!({"reason": "bypass"}))
+            .await;
+        assert_eq!(denied.status, StatusCode::FORBIDDEN, "{}", denied.json());
+        assert_eq!(denied.json()["error"]["code"], "hierarchy");
+        assert_eq!(
+            db.case(guild, number).await.unwrap().unwrap().reason.as_deref(),
+            Some("original")
+        );
+    }
+    let own = browser.write(Method::PATCH, &path(2), json!({"reason": "own"})).await;
+    assert_eq!(own.status, StatusCode::OK);
+    h.mock.member_roles.lock().unwrap().insert(junior, vec![REGULAR]);
+    assert_eq!(
+        browser
+            .write(Method::PATCH, &path(1), json!({"reason": "peer"}))
+            .await
+            .status,
+        StatusCode::FORBIDDEN
+    );
+    h.mock.member_roles.lock().unwrap().insert(junior, vec![ADMIN]);
+    for number in [1, 3, 4] {
+        let higher = browser
+            .write(Method::PATCH, &path(number), json!({"reason": "higher"}))
+            .await;
+        assert_eq!(higher.status, StatusCode::OK, "{}", higher.json());
+    }
 }

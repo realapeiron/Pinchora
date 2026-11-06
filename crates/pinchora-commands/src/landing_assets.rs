@@ -267,6 +267,7 @@ fn welcome(r: &Renderer) -> anyhow::Result<RgbaImage> {
         server_name: "The Tide Pool",
         member_number: Some(12_345),
         title: "Welcome",
+        lang: Lang::En,
         theme: Theme::reef(),
     })?;
     Ok(decode(&png))
@@ -278,6 +279,7 @@ fn level_up(r: &Renderer) -> anyhow::Result<RgbaImage> {
         avatar_png: &placeholder_avatar(42, LevelUpCard::AVATAR_SIZE),
         from: 26,
         to: 27,
+        lang: Lang::En,
         theme: Theme::reef(),
     })?;
     Ok(decode(&png))
@@ -308,11 +310,12 @@ fn leaderboard(r: &Renderer) -> anyhow::Result<RgbaImage> {
         })
         .collect();
     let png = r.leaderboard_card(&LeaderboardCard {
+        lang: Lang::En,
         title: "Server leaderboard".into(),
         entries,
         page: 0,
         last_week: Vec::new(),
-        empty: "Nobody here yet. Chat a bit and check again!",
+        empty: "Nobody here yet. Chat a bit and check again!".to_owned(),
         theme: Theme::reef(),
     })?;
     Ok(decode(&png))
@@ -362,6 +365,7 @@ fn badges(r: &Renderer, sprites: &Sprites) -> anyhow::Result<RgbaImage> {
         ("Legendary", 0xffd166),
     ];
     let png = r.badge_collection(&BadgeCollectionCard {
+        lang: Lang::En,
         cells: &cells,
         legend: &legend,
         theme: Theme::reef(),
@@ -378,6 +382,7 @@ fn pet(r: &Renderer, sprites: &Sprites) -> anyhow::Result<RgbaImage> {
         .clamp(1, 16);
     let (png, w, h) = scaled_png(&sprite, factor)?;
     let card = r.pet_card(&PetCard {
+        lang: Lang::En,
         sprite_png: png,
         sprite_w: w,
         sprite_h: h,

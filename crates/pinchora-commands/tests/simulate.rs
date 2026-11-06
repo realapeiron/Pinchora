@@ -90,6 +90,8 @@ mod text;
 // The party games' flows (Hot Pearl, Acronym Tide, Caption the Postcard, Wordle Race, Would You Rather, Truth or Dare).
 #[path = "simulate/turkish.rs"]
 mod turkish;
+#[path = "simulate/turkish_social.rs"]
+mod turkish_social;
 #[path = "simulate/words.rs"]
 mod words;
 // Custom commands (/customcommand, /tag) and auto-responders.
@@ -104,6 +106,15 @@ mod grants;
 // What reaches the (still empty) feature hooks.
 #[path = "simulate/hooks.rs"]
 mod hooks;
+// Turkish for fishing, shops and stalls, reminders, pets and the card editors, one file per group.
+#[path = "simulate/turkish_fish.rs"]
+mod turkish_fish;
+#[path = "simulate/turkish_pets.rs"]
+mod turkish_pets;
+#[path = "simulate/turkish_remind.rs"]
+mod turkish_remind;
+#[path = "simulate/turkish_shop.rs"]
+mod turkish_shop;
 
 const APPLICATION_ID: u64 = 1;
 const CHANNEL_ID: u64 = 2;

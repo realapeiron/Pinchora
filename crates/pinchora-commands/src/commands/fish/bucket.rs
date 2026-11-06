@@ -2,6 +2,7 @@
 
 use std::str::Split;
 
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::BucketRow;
 use pinchora_game::{Content, Fish, fishing};
 use twilight_model::{
@@ -116,11 +117,12 @@ fn total(sales: &[(i64, i64)]) -> i64 {
 }
 
 pub(super) async fn sell(cx: &Cx) -> anyhow::Result<()> {
-    let data = panel(&cx.app, cx.author()?.id.get(), 0, "").await?;
+    let data = panel(&cx.app, cx.lang(), cx.author()?.id.get(), 0, "").await?;
     cx.reply(data).await
 }
 
-async fn panel(app: &App, user: u64, page: usize, note: &str) -> anyhow::Result<InteractionResponseData> {
+async fn panel(app: &App, lang: Lang, user: u64, page: usize, note: &str) -> anyhow::Result<InteractionResponseData> {
+    let content = Content::get();
     let bucket = bucket_of(app.db.bucket(user).await?);
     let count = bucket.count();
     let pages = bucket.groups.len().div_ceil(PER_PAGE).max(1);
@@ -137,32 +139,42 @@ async fn panel(app: &App, user: u64, page: usize, note: &str) -> anyhow::Result<
                 id: g.fish.id.clone(),
                 hidden: false,
             },
-            name: g.fish.name.clone(),
+            name: content.name(&g.fish.id, lang).into_owned(),
             line1: thousands(g.value()),
-            line2: format!("×{} · BIGGEST {:.1} CM", g.rows.len(), g.rows[0].size_cm),
+            line2: t!(
+                lang,
+                "fish.bucket.slot",
+                fish = g.rows.len(),
+                size = format!("{:.1}", g.rows[0].size_cm)
+            ),
             bar: None,
             frame: g.fish.rarity.color(),
-            badge: g.fish.rarity.label().to_uppercase(),
+            badge: lang.upper(g.fish.rarity.label_in(lang)),
             shell_price: true,
         })
         .collect();
     let png = grid_png(
         app,
-        "Fish bucket".to_owned(),
-        format!("{count}/{} FISH · PAGE {}/{pages}", fishing::BUCKET_CAPACITY, page + 1),
-        format!("EVERYTHING SELLS FOR {} SHELLS", thousands(total(&all))),
+        lang.upper(&t!(lang, "fish.bucket.title")),
+        t!(
+            lang,
+            "fish.bucket.subtitle",
+            fish = count,
+            capacity = fishing::BUCKET_CAPACITY,
+            page = page + 1,
+            pages = pages
+        ),
+        t!(lang, "fish.bucket.footer", shells = thousands(total(&all))),
         slots,
     )
     .await?;
     let description = if note.is_empty() {
         if count == 0 && !bucket.strays.is_empty() {
-            "Only fish the sea no longer holds are left. Sell all clears them away.".to_owned()
+            t!(lang, "fish.bucket.only-strays")
         } else if count == 0 {
-            "The bucket is empty. Cast a line with `/fish cast`!".to_owned()
+            t!(lang, "fish.bucket.empty")
         } else {
-            "Sell it all, or keep the biggest of each kind and sell the duplicates. \
-             Your fish book keeps every species and record size for good."
-                .to_owned()
+            t!(lang, "fish.bucket.intro")
         }
     } else {
         note.to_owned()
@@ -196,16 +208,22 @@ async fn panel(app: &App, user: u64, page: usize, note: &str) -> anyhow::Result<
             ),
             button(
                 format!("fz:s:{user}:{}", Mode::All.key()),
-                format!("Sell all ({} · {} shells)", all.len(), thousands(total(&all))),
+                t!(
+                    lang,
+                    "fish.bucket.sell-all",
+                    fish = all.len(),
+                    shells = thousands(total(&all))
+                ),
                 ButtonStyle::Success,
                 all.is_empty(),
             ),
             button(
                 format!("fz:s:{user}:{}", Mode::Duplicates.key()),
-                format!(
-                    "Sell duplicates ({} · {} shells)",
-                    duplicates.len(),
-                    thousands(total(&duplicates))
+                t!(
+                    lang,
+                    "fish.bucket.sell-duplicates",
+                    fish = duplicates.len(),
+                    shells = thousands(total(&duplicates))
                 ),
                 ButtonStyle::Primary,
                 duplicates.is_empty(),
@@ -214,7 +232,7 @@ async fn panel(app: &App, user: u64, page: usize, note: &str) -> anyhow::Result<
     })];
     let embed = EmbedBuilder::new()
         .color(BRAND)
-        .title("🪣 Your fish bucket")
+        .title(t!(lang, "fish.bucket.embed-title"))
         .description(description);
     let mut data = Cx::card(embed, "bucket.png", png, components, true);
     data.flags = Some(MessageFlags::EPHEMERAL);
@@ -229,15 +247,14 @@ pub(crate) async fn on_bucket(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Res
     }
     let owner: u64 = args.next().and_then(|v| v.parse().ok()).unwrap_or(0);
     let user = cx.author()?.id.get();
+    let lang = cx.lang();
     if user != owner {
-        return cx
-            .reply_ephemeral("That's someone else's bucket. Open yours with `/fish sell`.")
-            .await;
+        return cx.reply_ephemeral(t!(lang, "fish.bucket.not-yours")).await;
     }
     match what {
         "k" => {
             let page: usize = args.next().and_then(|v| v.parse().ok()).unwrap_or(0);
-            cx.update(panel(&cx.app, user, page, "").await?).await
+            cx.update(panel(&cx.app, lang, user, page, "").await?).await
         }
         "s" => {
             let mode = if args.next() == Some(Mode::Duplicates.key()) {
@@ -248,22 +265,23 @@ pub(crate) async fn on_bucket(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Res
             let bucket = bucket_of(cx.app.db.bucket(user).await?);
             let sales = sales(&bucket, mode);
             let note = if sales.is_empty() {
-                "Nothing to sell right now.".to_owned()
+                t!(lang, "fish.bucket.nothing")
             } else {
                 let sold = cx.app.db.sell_fish(user, &sales).await?;
-                format!(
-                    "Sold **{} fish** for **{} shells**. You have {}.",
-                    sold.fish,
-                    thousands(sold.shells),
-                    thousands(sold.balance)
+                t!(
+                    lang,
+                    "fish.bucket.sold",
+                    fish = sold.fish,
+                    shells = thousands(sold.shells),
+                    balance = thousands(sold.balance)
                 )
             };
-            cx.update(panel(&cx.app, user, 0, &note).await?).await?;
+            cx.update(panel(&cx.app, lang, user, 0, &note).await?).await?;
             // The shells may have just earned a badge.
             customize::announce(cx).await;
             Ok(())
         }
-        _ => cx.reply_ephemeral("This button has expired.").await,
+        _ => cx.reply_ephemeral(t!(lang, "fish.bucket.expired")).await,
     }
 }
 

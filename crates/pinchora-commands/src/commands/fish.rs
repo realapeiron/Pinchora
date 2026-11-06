@@ -1,7 +1,11 @@
 use std::{str::Split, sync::Arc, time::Duration};
 
 use chrono::{Timelike, Utc};
-use pinchora_core::leveling::{self, week_start};
+use pinchora_core::{
+    i18n::Lang,
+    leveling::{self, week_start},
+    t,
+};
 use pinchora_db::{Cosmetic, MilestonePaid, MilestoneReward, NewCatch};
 use pinchora_game::{
     Content, Rarity,
@@ -132,15 +136,25 @@ fn milestone_rewards(gear: &Gear) -> Vec<MilestoneReward> {
 }
 
 /// "Reef · Reedline Rod · Glow Worm ×4 left": what is on the line.
-fn tackle_line(spot: &Spot, rod: &Rod, bait: Option<(&Bait, i32)>) -> String {
+fn tackle_line(lang: Lang, spot: &Spot, rod: &Rod, bait: Option<(&Bait, i32)>) -> String {
+    let content = Content::get();
     let bait = match bait {
-        Some((bait, left)) => format!("{} ×{left} left", bait.name),
-        None => "Plain bait".to_owned(),
+        Some((bait, left)) => t!(
+            lang,
+            "fish.cast.bait-left",
+            bait = content.name(&bait.id, lang),
+            left = left
+        ),
+        None => t!(lang, "fish.plain-bait"),
     };
-    format!("{} · {} · {bait}", spot.name, rod.name)
+    format!(
+        "{} · {} · {bait}",
+        content.name(&spot.id, lang),
+        content.name(&rod.id, lang)
+    )
 }
 
-fn reel_row(custom_id: String, enabled: bool) -> Vec<Component> {
+fn reel_row(lang: Lang, custom_id: String, enabled: bool) -> Vec<Component> {
     vec![Component::ActionRow(ActionRow {
         id: None,
         components: vec![Component::Button(Button {
@@ -148,7 +162,7 @@ fn reel_row(custom_id: String, enabled: bool) -> Vec<Component> {
             disabled: !enabled,
             emoji: None,
             id: None,
-            label: Some("Reel!".to_owned()),
+            label: Some(t!(lang, "fish.cast.reel-button")),
             sku_id: None,
             style: ButtonStyle::Success,
             url: None,
@@ -160,6 +174,7 @@ fn reel_row(custom_id: String, enabled: bool) -> Vec<Component> {
 
 async fn cast(cx: &Cx, choice: Option<SpotChoice>) -> anyhow::Result<()> {
     let user = cx.author()?.id.get();
+    let lang = cx.lang();
     let content = Content::get();
     let gear = &content.fishing;
     let saved = cx.app.db.fishing_gear(user).await?;
@@ -170,9 +185,13 @@ async fn cast(cx: &Cx, choice: Option<SpotChoice>) -> anyhow::Result<()> {
         && let Some(wanted) = gear.spot(choice.value())
     {
         return cx
-            .reply_ephemeral(format!(
-                "The **{}** opens at level {} and you are level {level}. Until then the **{}** is yours.",
-                wanted.name, wanted.level, spot.name
+            .reply_ephemeral(t!(
+                lang,
+                "fish.cast.locked",
+                wanted = content.name(&wanted.id, lang),
+                need = wanted.level,
+                level = level,
+                current = content.name(&spot.id, lang)
             ))
             .await;
     }
@@ -182,9 +201,7 @@ async fn cast(cx: &Cx, choice: Option<SpotChoice>) -> anyhow::Result<()> {
     let rod = gear.rod(&saved.rod).unwrap_or_else(|| gear.starter_rod());
     if cx.app.db.bucket_count(user, &known_fish()).await? >= BUCKET_CAPACITY {
         return cx
-            .reply_ephemeral(format!(
-                "Your bucket is full ({BUCKET_CAPACITY}/{BUCKET_CAPACITY}). Sell some fish with `/fish sell` first."
-            ))
+            .reply_ephemeral(t!(lang, "fish.cast.bucket-full", capacity = BUCKET_CAPACITY))
             .await;
     }
     if let Some(left) = cx
@@ -194,10 +211,7 @@ async fn cast(cx: &Cx, choice: Option<SpotChoice>) -> anyhow::Result<()> {
         .await?
     {
         return cx
-            .reply_ephemeral(format!(
-                "Your line is still drying. Cast again in {} s.",
-                left.as_secs() + 1
-            ))
+            .reply_ephemeral(t!(lang, "fish.cast.cooldown", secs = left.as_secs() + 1))
             .await;
     }
     // A bait on the hook is used up instead of plain bait; when it has run out, plain bait it is.
@@ -209,7 +223,7 @@ async fn cast(cx: &Cx, choice: Option<SpotChoice>) -> anyhow::Result<()> {
     }
     if bait.is_none() && cx.app.db.spend_shells(user, BAIT_PRICE, "bait").await?.is_none() {
         return cx
-            .reply_ephemeral(format!("Plain bait costs {BAIT_PRICE} shells. Try `/daily`!"))
+            .reply_ephemeral(t!(lang, "fish.cast.no-bait", price = BAIT_PRICE))
             .await;
     }
     let nonce: u32 = rand::random();
@@ -231,21 +245,23 @@ async fn cast(cx: &Cx, choice: Option<SpotChoice>) -> anyhow::Result<()> {
         )
         .await?;
     let custom_id = format!("fr:{user}:{nonce}");
-    let footer = tackle_line(spot, rod, bait);
+    let footer = tackle_line(lang, spot, rod, bait);
     let waiting = EmbedBuilder::new()
         .color(BRAND)
-        .title("🎣 Line in the water…")
-        .description("Wait for the bite, then press **Reel!** Too early scares the fish away.")
+        .title(t!(lang, "fish.cast.waiting-title"))
+        .description(t!(lang, "fish.cast.waiting"))
         .footer(EmbedFooterBuilder::new(footer.clone()))
         .build();
     cx.reply(InteractionResponseData {
         embeds: Some(vec![waiting]),
-        components: Some(reel_row(custom_id.clone(), true)),
+        components: Some(reel_row(lang, custom_id.clone(), true)),
         ..Default::default()
     })
     .await?;
 
     // Reveal the bite at the bite time by editing the message, unless Reel! was already pressed too early.
+    // The language is read now: the task below has no interaction to ask.
+    let bite_title = t!(lang, "fish.cast.bite-title");
     let (responder, app) = (Arc::clone(&cx.responder), Arc::clone(&cx.app));
     cx.app.spawn(async move {
         let wait = bite_at - Utc::now().timestamp_millis();
@@ -255,13 +271,13 @@ async fn cast(cx: &Cx, choice: Option<SpotChoice>) -> anyhow::Result<()> {
         }
         let bite = EmbedBuilder::new()
             .color(WARN)
-            .title("❗ Something bit! REEL IT IN!")
+            .title(bite_title)
             .footer(EmbedFooterBuilder::new(footer))
             .build();
         let _ = responder
             .edit(&InteractionResponseData {
                 embeds: Some(vec![bite]),
-                components: Some(reel_row(custom_id, true)),
+                components: Some(reel_row(lang, custom_id, true)),
                 ..Default::default()
             })
             .await;
@@ -276,22 +292,17 @@ pub(crate) async fn on_reel(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
     let caster: u64 = args.next().and_then(|v| v.parse().ok()).unwrap_or(0);
     let nonce = args.next().unwrap_or_default();
     let user = cx.author()?.id.get();
+    let lang = cx.lang();
     if user != caster {
-        return cx
-            .reply_ephemeral("That's someone else's line! Cast your own with `/fish cast`.")
-            .await;
+        return cx.reply_ephemeral(t!(lang, "fish.reel.not-yours")).await;
     }
     let Some(state) = cx.app.cache.take(&format!("cast:{user}:{nonce}")).await? else {
-        return cx
-            .reply_ephemeral("This line is gone. Cast again with `/fish cast`.")
-            .await;
+        return cx.reply_ephemeral(t!(lang, "fish.reel.gone")).await;
     };
     // `<bite time>[:<spot>:<rod>:<bait>]`; a cast without the rest is fished with what the player has now.
     let mut parts = state.split(':');
     let Some(bite_at) = parts.next().and_then(|v| v.parse::<i64>().ok()) else {
-        return cx
-            .reply_ephemeral("This line is gone. Cast again with `/fish cast`.")
-            .await;
+        return cx.reply_ephemeral(t!(lang, "fish.reel.gone")).await;
     };
     let content = Content::get();
     let gear = &content.fishing;
@@ -321,16 +332,16 @@ pub(crate) async fn on_reel(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
         Reel::Early => {
             return cx
                 .update(miss(
-                    "Too early!",
-                    "The splash scared the fish away. Cast again with `/fish cast`.",
+                    &t!(lang, "fish.reel.too-early"),
+                    &t!(lang, "fish.reel.too-early-text"),
                 ))
                 .await;
         }
         Reel::Late => {
             return cx
                 .update(miss(
-                    "Too slow!",
-                    "It slipped off the hook. Cast again with `/fish cast`.",
+                    &t!(lang, "fish.reel.too-slow"),
+                    &t!(lang, "fish.reel.too-slow-text"),
                 ))
                 .await;
         }
@@ -347,7 +358,10 @@ pub(crate) async fn on_reel(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
         rand::random::<f64>(),
     ) else {
         return cx
-            .update(miss("Nothing bites today", "The sea is quiet. Try again later."))
+            .update(miss(
+                &t!(lang, "fish.reel.nothing"),
+                &t!(lang, "fish.reel.nothing-text"),
+            ))
             .await;
     };
     let size = fishing::roll_size(fish, rand::random::<f64>(), rand::random::<f64>());
@@ -390,53 +404,74 @@ pub(crate) async fn on_reel(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
         .await?;
     let mut notes = Vec::new();
     if log.first {
-        notes.push("A new species for your fish book!".to_owned());
+        notes.push(t!(lang, "fish.catch.new-species"));
     } else if log.record {
-        notes.push(format!(
-            "🏆 A new record! Your biggest was {:.1} cm.",
-            log.previous_best
+        notes.push(t!(
+            lang,
+            "fish.catch.record",
+            best = format!("{:.1}", log.previous_best)
         ));
     }
     if log.week_best && ratio >= 1.15 {
-        notes.push("📏 A big one: top of your week here so far.".to_owned());
+        notes.push(t!(lang, "fish.catch.week-best"));
     }
     if log.bucket >= BUCKET_CAPACITY {
-        notes.push("Your bucket is full. Sell some fish with `/fish sell`.".to_owned());
+        notes.push(t!(lang, "fish.catch.bucket-full"));
     }
     let notes = if notes.is_empty() {
         String::new()
     } else {
         format!("\n{}", notes.join("\n"))
     };
-    let reaction = format!("{:.2} s", late_by as f64 / 1000.0);
+    let reaction = format!("{:.2}", late_by as f64 / 1000.0);
+    let flavor = content
+        .description(&fish.id, lang)
+        .map_or_else(|| fish.flavor.clone(), |text| text.into_owned());
+    let (new, rarity) = (
+        if log.first { "🆕 " } else { "" },
+        pinchora_game::lang::lower(lang, fish.rarity.label_in(lang)),
+    );
+    let title = if matches!(fish.rarity, Rarity::Uncommon | Rarity::Epic) {
+        t!(
+            lang,
+            "fish.catch.title-an",
+            new = new,
+            rarity = rarity,
+            fish = content.name(&fish.id, lang)
+        )
+    } else {
+        t!(
+            lang,
+            "fish.catch.title-a",
+            new = new,
+            rarity = rarity,
+            fish = content.name(&fish.id, lang)
+        )
+    };
     let embed = EmbedBuilder::new()
         .color(if log.first { SUCCESS } else { fish.rarity.color() })
-        .title(format!(
-            "{}You caught {} {} {}!",
-            if log.first { "🆕 " } else { "" },
-            if matches!(fish.rarity, Rarity::Uncommon | Rarity::Epic) {
-                "an"
-            } else {
-                "a"
-            },
-            fish.rarity.label().to_lowercase(),
-            fish.name
+        .title(title)
+        .description(t!(
+            lang,
+            "fish.catch.body",
+            flavor = flavor,
+            size = format!("{size:.1}"),
+            value = thousands(value),
+            notes = notes
         ))
-        .description(format!(
-            "*{}*\n**{size:.1} cm** · worth **{}** shells in your bucket{notes}",
-            fish.flavor,
-            thousands(value),
-        ))
-        .footer(EmbedFooterBuilder::new(format!(
-            "{} · Reaction {reaction} · Fish book {}/{} · Bucket {}/{BUCKET_CAPACITY}",
-            spot.name,
-            log.species,
-            content.fish.len(),
-            log.bucket
+        .footer(EmbedFooterBuilder::new(t!(
+            lang,
+            "fish.catch.footer",
+            spot = content.name(&spot.id, lang),
+            reaction = reaction,
+            species = log.species,
+            total = content.fish.len(),
+            bucket = log.bucket,
+            capacity = BUCKET_CAPACITY
         )));
     let mut data = Cx::card(embed, "catch.png", png, Vec::new(), false);
     if let Some(embeds) = data.embeds.as_mut() {
-        embeds.extend(log.paid.iter().map(milestone_embed));
+        embeds.extend(log.paid.iter().map(|paid| milestone_embed(lang, paid)));
     }
     cx.update(data).await?;
     // A new species in the fish book may have just earned a badge.
@@ -445,29 +480,28 @@ pub(crate) async fn on_reel(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
 }
 
 /// The embed that tells of a fish-book milestone just paid.
-fn milestone_embed(paid: &MilestonePaid) -> Embed {
+fn milestone_embed(lang: Lang, paid: &MilestonePaid) -> Embed {
     let content = Content::get();
-    let (kind, name, hint) = match &paid.reward.cosmetic {
-        Cosmetic::Badge(id) => (
-            "badge",
-            content.badge(id).map_or(id.as_str(), |b| b.name.as_str()),
-            "/customize badges",
-        ),
-        Cosmetic::Background(id) => (
-            "profile background",
-            content.background(id).map_or(id.as_str(), |b| b.name.as_str()),
-            "/customize background",
-        ),
+    let (id, hint) = match &paid.reward.cosmetic {
+        Cosmetic::Badge(id) => (id, "/customize badges"),
+        Cosmetic::Background(id) => (id, "/customize background"),
     };
-    let gift = if paid.cosmetic_new {
-        format!("the **{name}** {kind}, yours to wear with `{hint}`")
-    } else {
-        format!("the **{name}** {kind}, which you already had")
+    let key = match (&paid.reward.cosmetic, paid.cosmetic_new) {
+        (Cosmetic::Badge(_), true) => "fish.milestone.badge-new",
+        (Cosmetic::Badge(_), false) => "fish.milestone.badge-old",
+        (Cosmetic::Background(_), true) => "fish.milestone.background-new",
+        (Cosmetic::Background(_), false) => "fish.milestone.background-old",
     };
     EmbedBuilder::new()
         .color(Rarity::Legendary.color())
-        .title(format!("📖 Fish book milestone: {} species!", paid.reward.species))
-        .description(format!("**+{} shells** and {gift}.", thousands(paid.reward.shells)))
+        .title(t!(lang, "fish.milestone.title", species = paid.reward.species))
+        .description(t!(
+            lang,
+            key,
+            shells = thousands(paid.reward.shells),
+            name = content.name(id, lang),
+            hint = hint
+        ))
         .build()
 }
 

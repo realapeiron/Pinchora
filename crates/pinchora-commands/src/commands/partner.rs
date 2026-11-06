@@ -3,6 +3,7 @@
 use std::str::Split;
 
 use chrono::Utc;
+use pinchora_core::t;
 use pinchora_db::PairOutcome;
 use pinchora_render::{
     encode_png,
@@ -76,21 +77,16 @@ impl PartnerCommand {
                 let other = &c.user.resolved;
                 let to = other.id.get();
                 if other.bot || to == me {
-                    return cx
-                        .reply_ephemeral("A partner is somebody else. Ask someone from the server!")
-                        .await;
+                    return cx.reply_ephemeral(t!(cx.lang(), "partner.not-self")).await;
                 }
                 if let Some(p) = cx.app.db.partner(me).await? {
                     return cx
-                        .reply_ephemeral(format!(
-                            "You already have a partner: {}. End it with `/partner leave` first.",
-                            mention(p.partner_id)
-                        ))
+                        .reply_ephemeral(t!(cx.lang(), "partner.you-have", partner = mention(p.partner_id)))
                         .await;
                 }
                 if cx.app.db.partner(to).await?.is_some() {
                     return cx
-                        .reply_ephemeral(format!("{} already has a partner.", mention(to)))
+                        .reply_ephemeral(t!(cx.lang(), "partner.they-have", user = mention(to)))
                         .await;
                 }
                 if social::asked_too_soon(cx, "partner", me, to).await? {
@@ -104,18 +100,19 @@ impl PartnerCommand {
                 };
                 let embed = EmbedBuilder::new()
                     .color(BRAND)
-                    .title("💞 Partner request")
-                    .description(format!(
-                        "{} asks {} to be partners!\nPartners decorate each other's house (`/house edit owner:`), show on each other's profile and share a page of their own in `/partner view`.\nThis request expires <t:{}:R>.",
-                        mention(me),
-                        mention(to),
-                        request.until
+                    .title(t!(cx.lang(), "partner.request-title"))
+                    .description(t!(
+                        cx.lang(),
+                        "partner.request",
+                        from = mention(me),
+                        to = mention(to),
+                        until = request.until
                     ))
                     .build();
                 cx.reply(InteractionResponseData {
                     content: Some(mention(to)),
                     embeds: Some(vec![embed]),
-                    components: Some(vec![request.buttons("pt", "Accept")]),
+                    components: Some(vec![request.buttons(cx.lang(), "pt", &t!(cx.lang(), "partner.accept"))]),
                     allowed_mentions: social::ping_only(to),
                     ..Default::default()
                 })
@@ -123,7 +120,7 @@ impl PartnerCommand {
             }
             Self::View(c) => {
                 if c.user.as_ref().is_some_and(|u| u.resolved.bot) {
-                    return cx.reply_ephemeral("Bots don't have partners.").await;
+                    return cx.reply_ephemeral(t!(cx.lang(), "partner.bot")).await;
                 }
                 let owner = c.user.as_ref().map_or(me, |u| u.resolved.id.get());
                 if super::privacy::private_profile(cx, owner).await? {
@@ -135,9 +132,9 @@ impl PartnerCommand {
                 }
                 let Some(pair) = cx.app.db.partner(owner).await? else {
                     let text = if owner == me {
-                        "You don't have a partner yet. Ask someone with `/partner propose`.".to_owned()
+                        t!(cx.lang(), "partner.none-self")
                     } else {
-                        format!("{} doesn't have a partner.", mention(owner))
+                        t!(cx.lang(), "partner.none-other", user = mention(owner))
                     };
                     return cx.reply_ephemeral(text).await;
                 };
@@ -146,25 +143,26 @@ impl PartnerCommand {
             }
             Self::Leave(_) => {
                 let Some(pair) = cx.app.db.partner(me).await? else {
-                    return cx.reply_ephemeral("You don't have a partner.").await;
+                    return cx.reply_ephemeral(t!(cx.lang(), "partner.none")).await;
                 };
                 let embed = EmbedBuilder::new()
                     .color(DANGER)
-                    .title("Leave your partnership?")
-                    .description(format!(
-                        "You and {} will no longer decorate each other's houses. Everything in a house stays with the house's owner, whoever placed it.",
-                        mention(pair.partner_id)
-                    ))
+                    .title(t!(cx.lang(), "partner.leave-title"))
+                    .description(t!(cx.lang(), "partner.leave-body", partner = mention(pair.partner_id)))
                     .build();
                 cx.reply(InteractionResponseData {
                     embeds: Some(vec![embed]),
                     components: Some(vec![row(vec![
                         button(
-                            "Leave",
+                            &t!(cx.lang(), "partner.leave"),
                             format!("pt:leave:{me}:{}", pair.partner_id),
                             ButtonStyle::Danger,
                         ),
-                        button("Stay together", "pt:stay".to_owned(), ButtonStyle::Secondary),
+                        button(
+                            &t!(cx.lang(), "partner.stay"),
+                            "pt:stay".to_owned(),
+                            ButtonStyle::Secondary,
+                        ),
                     ])]),
                     flags: Some(MessageFlags::EPHEMERAL),
                     ..Default::default()
@@ -178,9 +176,14 @@ impl PartnerCommand {
 /// The pair's page: both characters together, since when, and what they share.
 async fn card(cx: &Cx, a: u64, b: u64, since: chrono::DateTime<Utc>) -> anyhow::Result<InteractionResponseData> {
     let db = &cx.app.db;
+    let lang = cx.lang();
     let (name_a, name_b) = (
-        db.remembered_name(a).await?.unwrap_or_else(|| "Partner".to_owned()),
-        db.remembered_name(b).await?.unwrap_or_else(|| "Partner".to_owned()),
+        db.remembered_name(a)
+            .await?
+            .unwrap_or_else(|| t!(lang, "partner.fallback-name")),
+        db.remembered_name(b)
+            .await?
+            .unwrap_or_else(|| t!(lang, "partner.fallback-name")),
     );
     let days = (cx.app.now() - since).num_days().max(0) + 1;
     let sent = db.exchanged(a, b).await?;
@@ -194,39 +197,25 @@ async fn card(cx: &Cx, a: u64, b: u64, since: chrono::DateTime<Utc>) -> anyhow::
     let embed = EmbedBuilder::new()
         .color(BRAND)
         .title(format!("💞 {name_a} & {name_b}"))
-        .field(EmbedFieldBuilder::new("Together since", format!("<t:{}:D>", since.timestamp())).inline())
-        .field(EmbedFieldBuilder::new("Days together", thousands(days)).inline())
+        .field(EmbedFieldBuilder::new(t!(lang, "partner.card-since"), format!("<t:{}:D>", since.timestamp())).inline())
+        .field(EmbedFieldBuilder::new(t!(lang, "partner.card-days"), thousands(days)).inline())
         .field(EmbedFieldBuilder::new(
-            "Sent to each other",
+            t!(lang, "partner.card-sent"),
             Interaction::ALL
-                .map(|k| {
-                    let n = count(k);
-                    format!(
-                        "{} {} {}",
-                        k.emoji(),
-                        thousands(n),
-                        if n == 1 { k.noun() } else { plural(k) }
-                    )
-                })
+                .map(|k| format!("{} {}", k.emoji(), super::interact::count_text(lang, k, count(k))))
                 .join(" · "),
         ))
         .field(EmbedFieldBuilder::new(
-            "Their houses",
-            format!("💖 {} likes · 🪑 {} pieces", thousands(likes), thousands(pieces)),
+            t!(lang, "partner.card-houses"),
+            t!(
+                lang,
+                "partner.card-houses-value",
+                likes = thousands(likes),
+                pieces = thousands(pieces)
+            ),
         ))
-        .footer(EmbedFooterBuilder::new(
-            "Decorate each other's house with /house edit and the owner option.",
-        ));
+        .footer(EmbedFooterBuilder::new(t!(lang, "partner.card-footer")));
     Ok(Cx::card(embed, "partners.png", png, Vec::new(), false))
-}
-
-fn plural(kind: Interaction) -> &'static str {
-    match kind {
-        Interaction::Hug => "hugs",
-        Interaction::Pat => "pats",
-        Interaction::Wave => "waves",
-        Interaction::HighFive => "high fives",
-    }
 }
 
 /// Both characters in each other's arms, as a picture.
@@ -255,14 +244,14 @@ pub(crate) async fn on_component(cx: &Cx, args: Split<'_, char>, value: Option<&
             args.next();
             match Request::parse(&mut args) {
                 Some(request) => on_answer(cx, answer == "yes", request).await,
-                None => closed(cx, "This partner request has expired.").await,
+                None => closed(cx, t!(cx.lang(), "partner.expired")).await,
             }
         }
         Some("leave") => {
             args.next();
             on_leave(cx, &mut args).await
         }
-        Some("stay") => closed(cx, "You're still partners. 💞").await,
+        Some("stay") => closed(cx, t!(cx.lang(), "partner.stayed")).await,
         _ => house::on_edit(cx, "pt", args, value).await,
     }
 }
@@ -281,16 +270,21 @@ async fn closed(cx: &Cx, text: impl Into<String>) -> anyhow::Result<()> {
 async fn on_answer(cx: &Cx, accept: bool, request: Request) -> anyhow::Result<()> {
     let me = cx.author()?.id.get();
     if me != request.to && !(me == request.from && !accept) {
-        return cx.reply_ephemeral("This request isn't for you.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "social.not-for-you")).await;
     }
     if request.expired(&cx.app) {
-        return closed(cx, "This partner request has expired.").await;
+        return closed(cx, t!(cx.lang(), "partner.expired")).await;
     }
     if !accept {
         let text = if me == request.from {
-            format!("{} took the partner request back.", mention(request.from))
+            t!(cx.lang(), "partner.withdrawn", from = mention(request.from))
         } else {
-            format!("{} said no thanks to {}.", mention(request.to), mention(request.from))
+            t!(
+                cx.lang(),
+                "social.said-no",
+                to = mention(request.to),
+                from = mention(request.from)
+            )
         };
         return closed(cx, text).await;
     }
@@ -301,11 +295,12 @@ async fn on_answer(cx: &Cx, accept: bool, request: Request) -> anyhow::Result<()
             let png = together(&cx.app, request.from, request.to).await?;
             let embed = EmbedBuilder::new()
                 .color(SUCCESS)
-                .title("💞 New partners")
-                .description(format!(
-                    "{} and {} are partners now!\nDecorate each other's house with `/house edit` and the `owner` option.",
-                    mention(request.from),
-                    mention(request.to)
+                .title(t!(cx.lang(), "partner.new-title"))
+                .description(t!(
+                    cx.lang(),
+                    "partner.new",
+                    from = mention(request.from),
+                    to = mention(request.to)
                 ));
             let mut data = Cx::card(embed, "partners.png", png, Vec::new(), false);
             data.content = Some(String::new());
@@ -320,16 +315,14 @@ async fn on_answer(cx: &Cx, accept: bool, request: Request) -> anyhow::Result<()
                 .await?
                 .is_some_and(|p| p.partner_id == request.to);
             let text = if together {
-                format!(
-                    "{} and {} are partners already.",
-                    mention(request.from),
-                    mention(request.to)
+                t!(
+                    cx.lang(),
+                    "partner.already-partners",
+                    from = mention(request.from),
+                    to = mention(request.to)
                 )
             } else {
-                format!(
-                    "{} already has a partner, so this request can't be accepted.",
-                    mention(user)
-                )
+                t!(cx.lang(), "partner.taken", user = mention(user))
             };
             closed(cx, text).await
         }
@@ -341,13 +334,13 @@ async fn on_leave(cx: &Cx, args: &mut Split<'_, char>) -> anyhow::Result<()> {
     let user: u64 = args.next().and_then(|v| v.parse().ok()).unwrap_or(0);
     let partner: u64 = args.next().and_then(|v| v.parse().ok()).unwrap_or(0);
     if user != me {
-        return cx.reply_ephemeral("This button isn't yours.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "partner.not-yours")).await;
     }
     match cx.app.db.partner(me).await? {
         Some(p) if p.partner_id == partner => {
             cx.app.db.leave_partner(me).await?;
-            closed(cx, format!("💔 You and {} are not partners anymore.", mention(partner))).await
+            closed(cx, t!(cx.lang(), "partner.left", partner = mention(partner))).await
         }
-        _ => closed(cx, "You are not partners with them anymore.").await,
+        _ => closed(cx, t!(cx.lang(), "partner.not-partners")).await,
     }
 }

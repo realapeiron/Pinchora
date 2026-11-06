@@ -97,7 +97,7 @@ pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, res
         if let Some(InteractionData::ApplicationCommand(command)) = data {
             let choices = match command.name.as_str() {
                 "tag" | "customcommand" => commands::tag::autocomplete(&cx, &command).await,
-                _ => commands::modules::autocomplete(&command),
+                _ => commands::modules::autocomplete(cx.lang(), &command),
             };
             if let Err(error) = cx.responder.suggest(choices).await {
                 tracing::warn!(%error, name = %command.name, "could not answer an autocomplete");

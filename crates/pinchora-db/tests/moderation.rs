@@ -182,7 +182,7 @@ async fn temporary_bans_are_lifted_once_and_a_new_ban_replaces_the_old_end() {
         .collect();
     assert_eq!(ours, [late as i64], "only the ban whose time came since");
     // One Discord would not lift waits an hour.
-    db.postpone_lift(guild, later.iter().find(|c| c.target_id == late as i64).unwrap().number)
+    db.postpone_lift(later.iter().find(|c| c.target_id == late as i64).unwrap())
         .await
         .unwrap();
     let soon = db.claim_expired_bans(now + Duration::hours(3), 100).await.unwrap();
@@ -208,26 +208,26 @@ async fn the_ticker_rechecks_each_ban_and_a_hand_unban_ends_the_older_ones() {
     assert_eq!(claimed.iter().filter(|c| c.guild_id == guild as i64).count(), 2);
 
     // Mia was unbanned by hand after the claim: nothing left for the ticker to lift.
-    assert_eq!(db.end_bans(guild, mia, None).await.unwrap(), 1);
-    assert!(!db.close_ban(guild, mia_ban.number).await.unwrap());
+    assert_eq!(db.end_bans(guild, mia, Utc::now()).await.unwrap(), 1);
+    assert!(!db.close_ban(&mia_ban).await.unwrap());
     // Ana's is taken off once, never twice.
-    assert!(db.close_ban(guild, ana_ban.number).await.unwrap());
-    assert!(!db.close_ban(guild, ana_ban.number).await.unwrap());
+    assert!(db.close_ban(&ana_ban).await.unwrap());
+    assert!(!db.close_ban(&ana_ban).await.unwrap());
     // Discord refused to lift it: it stands again, leased for an hour.
-    db.postpone_lift(guild, ana_ban.number).await.unwrap();
+    db.postpone_lift(&ana_ban).await.unwrap();
     assert!(db.case(guild, ana_ban.number).await.unwrap().unwrap().active);
     let soon = db.claim_expired_bans(now + Duration::minutes(5), 100).await.unwrap();
     assert!(soon.iter().all(|c| c.guild_id != guild as i64));
     // Refused again, but banned for good meanwhile: the newer ban decides.
-    assert!(db.close_ban(guild, ana_ban.number).await.unwrap());
+    assert!(db.close_ban(&ana_ban).await.unwrap());
     let newer = db.open_case(&case(guild, CaseKind::Ban, ana)).await.unwrap().case;
-    db.postpone_lift(guild, ana_ban.number).await.unwrap();
+    db.postpone_lift(&ana_ban).await.unwrap();
     assert!(!db.case(guild, ana_ban.number).await.unwrap().unwrap().active);
     // An unban by hand from before the newer ban leaves it standing; one after it ends it.
     let before = newer.created_at - Duration::milliseconds(1);
-    assert_eq!(db.end_bans(guild, ana, Some(before)).await.unwrap(), 0);
+    assert_eq!(db.end_bans(guild, ana, before).await.unwrap(), 0);
     assert!(db.case(guild, newer.number).await.unwrap().unwrap().active);
-    assert_eq!(db.end_bans(guild, ana, None).await.unwrap(), 1);
+    assert_eq!(db.end_bans(guild, ana, Utc::now()).await.unwrap(), 1);
 }
 
 /// What a lock took is remembered on its case and read back by the next unlock, until an unlock comes.
@@ -559,4 +559,53 @@ async fn log_settings_keep_the_old_switches_and_add_channels_events_and_ignores(
         .unwrap();
     assert!(db.guild_settings(guild).await.unwrap().log_names);
     assert_eq!(config, db.log_config(guild).await.unwrap(), "stored as returned");
+}
+
+/// A stale lease and a delayed audit entry must never close a replacement case, even if privacy
+/// deletion caused its case number to be reused. Two tickers can close the exact case only once.
+#[tokio::test]
+async fn stale_ban_identity_and_delayed_unban_cannot_close_a_replacement() {
+    let Some(db) = db().await else { return };
+    let [guild, target] = ids();
+    let old = db.open_case(&case(guild, CaseKind::Ban, target)).await.unwrap().case;
+    let at = old.created_at + Duration::milliseconds(1);
+    sqlx::query("UPDATE mod_cases SET created_at = $3 WHERE guild_id = $1 AND number = $2")
+        .bind(guild as i64)
+        .bind(old.number)
+        .bind(at + Duration::seconds(1))
+        .execute(db.pool())
+        .await
+        .unwrap();
+    assert!(
+        !db.close_ban(&old).await.unwrap(),
+        "the same id with a new creation time is not our ban"
+    );
+    db.postpone_lift(&old).await.unwrap();
+    assert_eq!(db.end_bans(guild, target, at).await.unwrap(), 0);
+    let replacement = db.case(guild, old.number).await.unwrap().unwrap();
+    assert!(replacement.active);
+    assert_eq!(
+        db.end_bans(guild, target, replacement.created_at).await.unwrap(),
+        0,
+        "a case must be strictly older than the audit entry"
+    );
+    let (one, two) = tokio::join!(db.close_ban(&replacement), db.close_ban(&replacement));
+    assert_ne!(one.unwrap(), two.unwrap(), "only one ticker may call Discord");
+    let newest = db.open_case(&case(guild, CaseKind::Ban, target)).await.unwrap().case;
+    assert!(!db.close_ban(&replacement).await.unwrap());
+    assert!(db.case(guild, newest.number).await.unwrap().unwrap().active);
+}
+
+#[tokio::test]
+async fn ban_http_operations_are_serialized_across_pods() {
+    let Some(db) = db().await else { return };
+    let [guild, target] = ids();
+    let guard = db.lock_ban(guild, target).await.unwrap();
+    assert!(
+        tokio::time::timeout(std::time::Duration::from_millis(100), db.lock_ban(guild, target))
+            .await
+            .is_err()
+    );
+    guard.rollback().await.unwrap();
+    db.lock_ban(guild, target).await.unwrap().rollback().await.unwrap();
 }

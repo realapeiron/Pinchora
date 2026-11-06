@@ -703,12 +703,13 @@ pub async fn lift_expired_bans(app: &Arc<App>) -> anyhow::Result<usize> {
         let full = due.len() as i64 == BATCH;
         for ban in due {
             let guild = ban.guild_id as u64;
-            // Taken off right before Discord is asked: a ban lifted or replaced since the claim stays.
-            if !app.db.close_ban(guild, ban.number).await? {
-                continue;
-            }
+            let _guard = app.db.lock_ban(guild, ban.target_id as u64).await?;
             let lang = app.guild_lang(guild).await;
             let audit = t!(lang, "mod.temp-ban-ended-audit");
+            // Taken off right before Discord is asked: a ban lifted or replaced since the claim stays.
+            if !app.db.close_ban(&ban).await? {
+                continue;
+            }
             let done = app
                 .http
                 .delete_ban(Id::new(guild.max(1)), Id::new((ban.target_id as u64).max(1)))
@@ -719,7 +720,7 @@ pub async fn lift_expired_bans(app: &Arc<App>) -> anyhow::Result<usize> {
                 Err(error) if error_code(&error) == Some(UNKNOWN_BAN) => {}
                 Err(error) => {
                     tracing::warn!(%error, guild, case = ban.number, "could not lift a temporary ban");
-                    app.db.postpone_lift(guild, ban.number).await?;
+                    app.db.postpone_lift(&ban).await?;
                     continue;
                 }
             }
@@ -742,27 +743,13 @@ pub async fn lift_expired_bans(app: &Arc<App>) -> anyhow::Result<usize> {
     Ok(lifted)
 }
 
-/// Someone lifted a member's ban on Discord: by hand, another bot or Pinchora. Unless the member is
-/// banned again by now, none of their ban cases stands any more, so the ticker never lifts a ban made
-/// after this one ended. A ban that stands again is left to the audit log entry ([`unbanned_by`]).
-pub(crate) async fn ban_removed(app: &App, guild: u64, user: u64) {
-    match app.http.ban(Id::new(guild.max(1)), Id::new(user.max(1))).await {
-        Ok(_) => return,
-        Err(error) if error_code(&error) == Some(UNKNOWN_BAN) => {}
-        Err(error) => tracing::debug!(%error, guild, "could not check the ban; ending the cases anyway"),
-    }
-    if let Err(error) = app.db.end_bans(guild, user, None).await {
-        tracing::warn!(%error, guild, "ban cases not ended");
-    }
-}
-
-/// The audit log says `actor` lifted a member's ban at `at`. When that was not Pinchora (whose own
-/// unbans close their cases), the bans opened before it end: a ban made since, by anyone, stands.
-pub(crate) async fn unbanned_by(app: &App, guild: u64, user: u64, actor: u64, at: DateTime<Utc>) {
+/// An external audit entry lifted or replaced a ban at `at`. Only older cases end; delayed entries
+/// cannot close a newer case. Pinchora records its own changes under the member's ban lock.
+pub(crate) async fn external_ban_change(app: &App, guild: u64, user: u64, actor: u64, at: DateTime<Utc>) {
     if actor == app.application_id.get() {
         return;
     }
-    if let Err(error) = app.db.end_bans(guild, user, Some(at)).await {
+    if let Err(error) = app.db.end_bans(guild, user, at).await {
         tracing::warn!(%error, guild, "ban cases not ended");
     }
 }

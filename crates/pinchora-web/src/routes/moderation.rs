@@ -12,13 +12,15 @@ use chrono::{DateTime, Utc};
 use pinchora_cache::Invalidation;
 use pinchora_core::{
     logging::{LogCategory, LogConfig, LogEvent, MAX_IGNORED, check_ignored},
-    moderation::{CaseKind, MAX_THRESHOLDS, Threshold, check_reason, check_threshold, format_duration},
+    moderation::{CaseKind, MAX_THRESHOLDS, Rank, Threshold, check_reason, check_threshold, format_duration, outranks},
     server_events::parse_duration,
     settings::FieldError,
+    t,
 };
 use pinchora_db::{CaseFilter, CaseRow, ModSettings, StaffActionRow, StaffFilter};
 use serde::Deserialize;
 use serde_json::{Value, json};
+use twilight_model::id::Id;
 
 use super::settings::{parse_id, present};
 use crate::{
@@ -541,6 +543,82 @@ pub struct ReasonBody {
     reason: Option<String>,
 }
 
+/// Read the hierarchy live for a reason edit; failed lookups never grant permission.
+async fn check_reason_editor(state: &WebState, managed: &ManagedGuild, case: &CaseRow) -> ApiResult<()> {
+    let actor = managed.current.session.user_id;
+    let opened_by = case.moderator_id as u64;
+    if actor == opened_by || managed.guild.owner {
+        return Ok(());
+    }
+    let lang = state.app.guild_lang(managed.id).await;
+    let unavailable = || ApiError::blocked(t!(lang, "mod.no-roles"));
+    let by_bot = opened_by == state.app.application_id.get() || opened_by == 0;
+    let other = if by_bot {
+        if case.kind().is_some_and(CaseKind::on_channel) {
+            return Ok(());
+        }
+        case.target_id as u64
+    } else {
+        opened_by
+    };
+    let guild = Id::new(managed.id);
+    let facts = state
+        .app
+        .http
+        .guild(guild)
+        .await
+        .map_err(|_| unavailable())?
+        .model()
+        .await
+        .map_err(|_| unavailable())?;
+    let roles = state
+        .app
+        .http
+        .roles(guild)
+        .await
+        .map_err(|_| unavailable())?
+        .models()
+        .await
+        .map_err(|_| unavailable())?;
+    let rank = async |user| -> ApiResult<Rank> {
+        match state.app.http.guild_member(guild, Id::new(user)).await {
+            Ok(response) => {
+                let member = response.model().await.map_err(|_| unavailable())?;
+                let top = roles
+                    .iter()
+                    .filter(|r| member.roles.contains(&r.id))
+                    .map(|r| r.position)
+                    .max()
+                    .unwrap_or(0);
+                Ok(Rank { id: user, top })
+            }
+            Err(error) if matches!(error.kind(), twilight_http::error::ErrorType::Response { error: twilight_http::api_error::ApiError::General(error), .. } if error.code == 10007) => {
+                Ok(Rank { id: user, top: -1 })
+            }
+            Err(_) => Err(unavailable()),
+        }
+    };
+    let actor_rank = rank(actor).await?;
+    let other_rank = rank(other).await?;
+    if !outranks(facts.owner_id.get(), actor_rank, other_rank) {
+        return Err(ApiError::new(
+            axum::http::StatusCode::FORBIDDEN,
+            "hierarchy",
+            t!(
+                lang,
+                if by_bot {
+                    "mod.reason-target"
+                } else {
+                    "mod.reason-moderator"
+                },
+                number = case.number,
+                moderator = format!("<@{opened_by}>")
+            ),
+        ));
+    }
+    Ok(())
+}
+
 /// `PATCH /cases/{case}`: a new reason. The mod-log entry is edited to match, and the staff log notes it.
 pub async fn patch_case(
     State(state): State<WebState>,
@@ -551,6 +629,13 @@ pub async fn patch_case(
     let number = case_number(&params)?;
     let reason = check_reason(body.reason.as_deref())?;
     let session = &managed.current.session;
+    let original = state
+        .app
+        .db
+        .case(managed.id, number)
+        .await?
+        .ok_or_else(ApiError::not_found)?;
+    check_reason_editor(&state, &managed, &original).await?;
     let case = state
         .app
         .db

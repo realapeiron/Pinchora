@@ -1483,3 +1483,51 @@ async fn without_message_content_the_log_keeps_no_text_and_purge_filters_nothing
     assert!(words.ephemeral && words.content().contains("need to read messages"));
     assert!(sim.mod_calls().is_empty());
 }
+
+/// A gateway unban has no timestamp; neither it nor its late audit entry may close a newer bot ban.
+#[tokio::test]
+async fn delayed_unban_events_preserve_the_exact_newer_ban() {
+    let _serial = BAN_TICKS.lock().await;
+    let Some(mut sim) = Sim::new("delayed_unban_events_preserve_the_exact_newer_ban").await else {
+        return;
+    };
+    let (moderator, target, mod_role) = (unique(), unique(), unique());
+    sim.guild_role(mod_role, "Moderators", 5);
+    sim.roles = vec![mod_role];
+    sim.permissions = STAFF;
+    sim.command_resolved(
+        moderator,
+        "ban",
+        json!([user_option("user", target), text_option("duration", "1m")]),
+        member(target, "Mia"),
+    )
+    .await;
+    let old = sim.cases().await.remove(0);
+    // This event belongs to the earlier ban, but is delivered after the replacement is recorded.
+    let at = old.created_at;
+    sim.mock.bans.lock().unwrap().retain(|b| *b != target);
+    sim.command_resolved(
+        moderator,
+        "ban",
+        json!([user_option("user", target)]),
+        member(target, "Mia"),
+    )
+    .await;
+    let newer = sim.cases().await.remove(0);
+    assert!(newer.created_at > at);
+    sim.ban(target, "Mia", false).await;
+    let id = (((at.timestamp_millis() - 1_420_070_400_000) as u64) << 22) | 1;
+    let event = serde_json::from_value(json!({
+        "action_type": 23, "changes": [], "guild_id": sim.guild.to_string(),
+        "id": id.to_string(), "target_id": target.to_string(), "user_id": moderator.to_string(),
+    }))
+    .unwrap();
+    on_audit_log_entry(sim.app.clone(), event).await.unwrap();
+    assert!(sim.app.db.case(sim.guild, newer.number).await.unwrap().unwrap().active);
+    sim.mod_calls();
+    sim.app.shift_clock(chrono::Duration::minutes(2));
+    lift_expired_bans(&sim.app).await.unwrap();
+    sim.app.shift_clock(chrono::Duration::minutes(-2));
+    assert!(!sim.mod_calls().iter().any(|call| call == &format!("unban {target}")));
+    assert!(sim.mock.bans.lock().unwrap().contains(&target));
+}

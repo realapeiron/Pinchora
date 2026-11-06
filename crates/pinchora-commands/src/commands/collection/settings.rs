@@ -3,6 +3,7 @@
 use std::{sync::LazyLock, time::Duration};
 
 use moka::future::Cache as Moka;
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::CollectionSettings;
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::application::interaction::InteractionChannel;
@@ -43,18 +44,18 @@ pub(crate) async fn forget(guild: u64) {
 }
 
 /// How `/config show` and `/config critters` word the setting.
-pub(crate) fn critters_summary(s: &CollectionSettings) -> String {
+pub(crate) fn critters_summary(lang: Lang, s: &CollectionSettings) -> String {
     match (s.enabled, s.channel_id) {
-        (false, _) => "**off** · turn it on with `/config critters enabled:true`".to_owned(),
-        (true, Some(channel)) => format!("**on** · drops land in <#{channel}>, where chat counts"),
-        (true, None) => "**on** · drops land in whichever channel is busy".to_owned(),
+        (false, _) => t!(lang, "cfg.critters-off"),
+        (true, Some(channel)) => t!(lang, "cfg.critters-channel", channel = format!("<#{channel}>")),
+        (true, None) => t!(lang, "cfg.critters-anywhere"),
     }
 }
 
 impl ConfigCritters {
     pub async fn run(self, cx: &Cx, guild: u64) -> anyhow::Result<()> {
         if self.channel.is_some() && self.anywhere == Some(true) {
-            return tell(cx, "Pick a channel or `anywhere`, not both.").await;
+            return tell(cx, t!(cx.lang(), "cfg.critters-both")).await;
         }
         let channel = match (self.channel, self.anywhere) {
             (Some(channel), _) => Some(Some(channel.id.get())),
@@ -63,6 +64,14 @@ impl ConfigCritters {
         };
         let settings = cx.app.db.set_collection_settings(guild, self.enabled, channel).await?;
         forget(guild).await;
-        tell(cx, format!("Critter drops: {}", critters_summary(&settings))).await
+        tell(
+            cx,
+            t!(
+                cx.lang(),
+                "cfg.critters-current",
+                summary = critters_summary(cx.lang(), &settings)
+            ),
+        )
+        .await
     }
 }

@@ -1,5 +1,7 @@
 use std::fmt::Write;
 
+use pinchora_core::{i18n::Lang, t};
+
 use super::{PIXEL, SANS, avatar_frame, text};
 use crate::{
     Theme,
@@ -13,6 +15,8 @@ pub struct LevelUpCard<'a> {
     pub avatar_png: &'a [u8],
     pub from: u32,
     pub to: u32,
+    /// The language of the banner.
+    pub lang: Lang,
     pub theme: Theme,
 }
 
@@ -32,7 +36,17 @@ impl LevelUpCard<'_> {
         for (x, y, scale) in [(560.0, 30.0, 6.0), (640.0, 120.0, 4.0), (214.0, 150.0, 3.0)] {
             sprite(&mut s, STAR, x, y, scale, &t.gold, "#fff7d6");
         }
-        text(&mut s, 214.0, 92.0, 46.0, PIXEL, false, &t.gold, "start", "LEVEL UP!");
+        text(
+            &mut s,
+            214.0,
+            92.0,
+            46.0,
+            PIXEL,
+            false,
+            &t.gold,
+            "start",
+            &t!(self.lang, "card.levelup.title"),
+        );
         text(
             &mut s,
             216.0,
@@ -44,7 +58,7 @@ impl LevelUpCard<'_> {
             "start",
             &escape(&truncate(self.display_name, 22)),
         );
-        let jump = format!("LV {} >> {}", self.from, self.to);
+        let jump = t!(self.lang, "card.levelup.jump", from = self.from, to = self.to);
         text(&mut s, 250.0, 186.0, 26.0, PIXEL, false, &t.accent, "start", &jump);
         s.push_str("</svg>");
         s

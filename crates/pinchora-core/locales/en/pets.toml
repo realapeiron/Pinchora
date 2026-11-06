@@ -1,0 +1,179 @@
+# /pet (view, adopt, capsule, list, rename, trip), the nursery and the pet cards.
+
+[pet]
+no-pet = "You don't have a pet yet. Get one with `/pet adopt`."
+no-pet-short = "You don't have a pet yet."
+renamed = "Your pet is now called **{name}**."
+somewhere = "somewhere nice"
+species-fallback = "pet"
+title = "{name} the {species}"
+back-in = "in {span}"
+level-up = "🎉 **{name} reached level {level}!**"
+trip-unlocked = "New trip unlocked: **{trip}**."
+
+[pet.status]
+asleep = "**{name}** has dozed off after a long time with nothing to eat, play with or wash off. It earns no XP and stays home until you wake it up."
+away = "**{name}** is away at **{place}**, back in {span}. It can't be looked after until then."
+back = "**{name}** is back from **{place}** with a souvenir. Press **Claim souvenir**!"
+
+# How long, as the pet card and the messages write it.
+[pet.span]
+under-minute = "under a minute"
+minutes = "{m} min"
+hours = "{h} h"
+hours-minutes = "{h} h {m} min"
+
+# The same for the corner of a nursery cell: `2H5M`.
+[pet.span-short]
+minutes = "{m}M"
+hours = "{h}H"
+hours-minutes = "{h}H{m}M"
+
+[pet.mood]
+miserable = "miserable"
+grumpy = "grumpy"
+content = "content"
+delighted = "delighted"
+
+[pet.button]
+feed = "Feed ({price} shells)"
+play = "Play"
+walk = "Walk"
+bath = "Bath"
+back-in = "Back in {span}"
+wake-free = "Wake up (free today)"
+wake-fee = "Wake up ({fee} shells)"
+claim = "Claim souvenir"
+trip = "Trip"
+make-active = "Make active"
+nursery = "Nursery"
+
+[pet.care]
+stale = "That button doesn't do anything any more. Open your pet again with `/pet view`."
+not-yours = "That's not your pet. Get your own with `/pet adopt`!"
+away = "{name} is away at {place}, back in {span}. It can't be looked after until then."
+asleep = "{name} is fast asleep. Wake it up first."
+break = "{name} needs a break. Try again in {minutes} min."
+food-price = "Pet food costs {price} shells."
+too-tired = "{name} is too tired for that. Let it rest."
+left-on-trip = "{name} just left on a trip. It can't be looked after until it is back."
+changed = "{name} changed while you clicked, so nothing was done. Open it again with `/pet view`."
+note-xp = "{name} {verb}. +{xp} XP"
+note = "{name} {verb}."
+found = "\nFound **{found}** shells on the walk!"
+
+[pet.care.verb]
+feed = "munches happily"
+play = "bounces around with you"
+clean = "is squeaky clean"
+walk = "trots along the shore with you"
+
+[pet.wake]
+awake = "{name} is already awake."
+free = "{name} stretches, yawns and is awake again! That was your free wake-up for today."
+paid = "{name} stretches, yawns and is awake again! The wake-up cost {fee} shells ({balance} left)."
+poor = "Your free wake-up for today is used, and another costs {fee} shells (you have {balance}). Your free one comes back tomorrow, and {name} can sleep as long as it likes."
+
+[pet.adopt]
+have-one = "You already have a pet. More come from `/pet capsule`."
+none-ready = "No pets are ready for adoption yet."
+title = "Adopt a pet"
+description = "Pick your first companion. It will live in your house and follow you on visits."
+placeholder = "Choose a starter pet…"
+pick-starter = "Pick one of the starter pets."
+already-adopted = "You already adopted a pet."
+welcome = "Welcome home, **{name}**! Rename it with `/pet rename`."
+
+[pet.capsule]
+odds = "A capsule costs {price} shells.\nOdds: {odds}"
+restocking = "The capsules are still being restocked."
+duplicate-title = "A {rarity} {name}!"
+duplicate = "You already have one, so it went to a friend's house and left you {refund} shells. Balance: {balance}."
+opened = "✨ The capsule cracks open… a **{rarity}** {name}! ({balance} shells left)\nMake it your active pet from `/pet list`."
+
+[pet.switch]
+changed = "Active pet changed. It will greet visitors in your house."
+not-yours = "That pet isn't yours."
+
+[nursery]
+title = "Your nursery"
+card-title = "Nursery"
+placeholder = "Open a pet…"
+none = "No pets yet. Start with `/pet adopt`."
+not-yours = "That pet isn't yours."
+expired = "This button has expired."
+option = "Lv {level} · {species} · {feeling}"
+count = "**{count}** pets"
+away = " · {count} away"
+asleep = " · {count} asleep"
+back = " · {count} back with a souvenir"
+hint = ".\nPick one below to open its card. ★ marks your active pet."
+
+# The badge in a cell's corner, drawn in capitals.
+[nursery.badge]
+asleep = "ASLEEP"
+away = "AWAY {span}"
+back = "BACK!"
+
+[nursery.feeling]
+asleep = "asleep"
+away = "away on a trip"
+back = "souvenir waiting"
+
+[nursery.footer]
+pets = "{count} PETS"
+away = "{count} AWAY"
+asleep = "{count} ASLEEP"
+back = "{count} WITH A SOUVENIR"
+
+[trip]
+not-on-map = "That place isn't on the map yet."
+none-called = "None of your pets is called **{name}**. You have {names}."
+already-away = "**{name}** is already away at **{place}**, back in {span}."
+has-souvenir = "**{name}** is back from **{place}** with a souvenir. Claim it first with `/pet trip claim`."
+asleep = "**{name}** is fast asleep. Wake it up before it travels."
+locked = "**{trip}** opens when {name} reaches level {unlock} (it is level {level}). Care, walks and trips all earn XP."
+cant-leave = "**{name}** can't set off right now."
+departure = "**{name}** packs a tiny bag and sets off for **{trip}**. Back in {hours} h.\n*{blurb}*"
+length = "{hours} h"
+finds = "shells, sometimes {places}"
+picker-open = "**{name}** · {length} · level {level}\n{blurb} Finds {finds}."
+picker-locked = "🔒 **{name}** · {length} · opens at level {level}\n{blurb}"
+option-open = "{length} · {blurb}"
+option-locked = "Opens at level {level} (now {now})"
+picker-title = "Where should {pet} go?"
+picker-placeholder = "Choose a destination…"
+stay-home = "Stay home"
+not-yours = "That's not your pet."
+still-away = "That pet is still at {place}, back in {span}."
+its-trip = "its trip"
+home = "**{name}** is back from **{trip}**!\n*{story}*\n**+{shells}** shells"
+home-xp = " · **+{xp}** XP"
+home-found = "\nIt also found a **{item}** ({rarity}), now in your `/inventory`."
+no-souvenir = "**{name}** has no souvenir waiting."
+list-away = "**{name}** is at {place}, back in {span}."
+none-away = "None of your pets is on a trip. Send one with `/pet trip go`."
+already-collected = "Those souvenirs were already collected."
+many-title = "{count} pets are home"
+many-total = "**+{total}** shells in all. Balance: {balance}."
+expired = "This button has expired."
+
+# Words the pet and nursery cards draw themselves, in capitals.
+[card.pet]
+on-trip = "ON A TRIP"
+max-level = "MAX LEVEL"
+no-xp-asleep = "NO XP WHILE ASLEEP"
+xp = "{xp} / {needed} XP"
+hunger = "HUNGER"
+fun = "FUN"
+energy = "ENERGY"
+clean = "CLEAN"
+feeling = "FEELING {mood}"
+asleep-line = "FAST ASLEEP, WAKE IT UP"
+away-line = "BACK {back}"
+back-line = "BACK HOME, SOUVENIR WAITING"
+
+[card.nursery]
+away = "AWAY"
+none = "NO PETS YET"
+level = "LV {level}"

@@ -141,6 +141,7 @@ impl Ban {
             None => None,
         };
         let audit = audit_reason(lang, &moderator, act.reason.as_deref());
+        let _guard = cx.app.db.lock_ban(guild, act.target).await?;
         let days = self.delete_days.unwrap_or(0).clamp(0, 7) as u32;
         if let Err(error) = cx
             .app
@@ -191,6 +192,7 @@ impl Unban {
         };
         let moderator = Moderator::of(cx)?;
         let act = Act::on(CaseKind::Unban, &self.user, reason);
+        let _guard = cx.app.db.lock_ban(guild, act.target).await?;
         let audit = audit_reason(lang, &moderator, act.reason.as_deref());
         if let Err(error) = cx
             .app

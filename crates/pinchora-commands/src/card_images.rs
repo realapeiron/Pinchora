@@ -2,7 +2,10 @@
 //! for one member, and sent the way the server chose. The member events, `/config welcome-card` and the
 //! dashboard's preview and test message all go through here, so they draw the same picture.
 
-use pinchora_core::card_design::{CardDesign, CardKind, Delivery, parse_design};
+use pinchora_core::{
+    card_design::{CardDesign, CardKind, Delivery, parse_design},
+    i18n::Lang,
+};
 use pinchora_db::GuildSettings;
 use pinchora_render::{CardFill, DesignedCard, Renderer, character::atlas, templates};
 use twilight_model::{
@@ -38,8 +41,8 @@ pub fn atlas_has(id: &str) -> bool {
 }
 
 /// The classic card in the server's welcome theme, headline and accent; goodbyes share the theme and
-/// accent with their own headline.
-pub fn classic_card(settings: &GuildSettings, kind: CardKind) -> CardDesign {
+/// accent with their own headline. Its words are in `lang`, the server's language.
+pub fn classic_card(settings: &GuildSettings, kind: CardKind, lang: Lang) -> CardDesign {
     let theme = settings
         .welcome_theme
         .as_deref()
@@ -48,7 +51,7 @@ pub fn classic_card(settings: &GuildSettings, kind: CardKind) -> CardDesign {
         CardKind::Welcome => settings.welcome_title.as_deref(),
         CardKind::Goodbye => None,
     };
-    templates::classic(kind, theme, title, settings.welcome_accent.map(|c| c as u32))
+    templates::classic(kind, theme, title, settings.welcome_accent.map(|c| c as u32), lang)
 }
 
 /// What the server sends for `kind`: its saved design, or the classic card when it has none (or what is
@@ -76,7 +79,7 @@ pub async fn server_card(
             custom: true,
         },
         None => ServerCard {
-            design: classic_card(settings, kind),
+            design: classic_card(settings, kind, app.guild_lang(guild).await),
             delivery,
             custom: false,
         },

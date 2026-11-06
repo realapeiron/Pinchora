@@ -1,5 +1,7 @@
 use std::fmt::Write;
 
+use pinchora_core::{i18n::Lang, t};
+
 use super::{PIXEL, SANS, text};
 use crate::{
     Theme,
@@ -22,6 +24,8 @@ pub struct PollCard {
     pub options: Vec<PollOption>,
     /// Closed polls say `CLOSED` and show final results; open ones say `OPEN`.
     pub closed: bool,
+    /// The language of the labels.
+    pub lang: Lang,
     pub theme: Theme,
 }
 
@@ -67,13 +71,14 @@ impl PollCard {
             false,
             &t.muted,
             "start",
-            &format!("POLL #{}", self.number),
+            &t!(self.lang, "card.poll.number", number = self.number),
         );
         let (status, color) = if self.closed {
-            ("CLOSED", &t.gold)
+            (t!(self.lang, "card.poll.closed"), &t.gold)
         } else {
-            ("OPEN", &t.mint)
+            (t!(self.lang, "card.poll.open"), &t.mint)
         };
+        let status = status.as_str();
         // On a plate, so the card's sparkles never land on the letters.
         let chip = pixel_width(status, 16.0) + 24.0;
         panel(&mut s, 864.0 - chip, 24.0, chip, 32.0, 4.0, &t.panel, color);
@@ -135,9 +140,9 @@ impl PollCard {
                 &t.ink,
                 "end",
                 &format!(
-                    "{votes} VOTE{}   {}%",
-                    if votes == 1 { "" } else { "S" },
-                    Self::percent(votes, total)
+                    "{}   {}",
+                    t!(self.lang, "card.poll.votes", count = votes),
+                    t!(self.lang, "card.poll.share", percent = Self::percent(votes, total))
                 ),
             );
             let fraction = if total > 0 { votes as f32 / total as f32 } else { 0.0 };
@@ -165,7 +170,7 @@ impl PollCard {
             false,
             &t.muted,
             "start",
-            &format!("{total} VOTE{} IN ALL", if total == 1 { "" } else { "S" }),
+            &t!(self.lang, "card.poll.total", count = total),
         );
         sprite(&mut s, CRAB, 752.0, footer - 12.0, 2.0, &t.accent, "#fff1e8");
         text(&mut s, 864.0, footer, 14.0, PIXEL, false, &t.muted, "end", "PINCHORA");
@@ -193,6 +198,7 @@ mod tests {
                 })
                 .collect(),
             closed,
+            lang: Lang::En,
             theme: Theme::reef(),
         }
     }

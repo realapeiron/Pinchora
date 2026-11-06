@@ -261,6 +261,7 @@ fn main() -> anyhow::Result<()> {
     std::fs::write(
         format!("{out}/badge-collection.png"),
         r.badge_collection(&BadgeCollectionCard {
+            lang: pinchora_core::i18n::Lang::En,
             cells: &cells,
             legend: &legend,
             theme: Theme::reef(),
@@ -340,6 +341,7 @@ fn main() -> anyhow::Result<()> {
         server_name: "The Tide Pool",
         member_number: Some(12_345),
         title: "Welcome",
+        lang: pinchora_core::i18n::Lang::En,
         theme: Theme::reef(),
     })?;
     std::fs::write(format!("{out}/welcome.png"), &welcome)?;
@@ -349,6 +351,7 @@ fn main() -> anyhow::Result<()> {
         avatar_png: &placeholder_avatar(5, LevelUpCard::AVATAR_SIZE),
         from: 26,
         to: 27,
+        lang: pinchora_core::i18n::Lang::En,
         theme: Theme::reef(),
     })?;
     std::fs::write(format!("{out}/levelup.png"), &level_up)?;
@@ -423,20 +426,22 @@ fn main() -> anyhow::Result<()> {
             .collect::<Vec<_>>()
     };
     let board = r.leaderboard_card(&LeaderboardCard {
+        lang: pinchora_core::i18n::Lang::En,
         title: "Server leaderboard".into(),
         entries: entries(false),
         page: 0,
         last_week: Vec::new(),
-        empty: "Nobody here yet. Chat a bit and check again!",
+        empty: "Nobody here yet. Chat a bit and check again!".to_owned(),
         theme: Theme::reef(),
     })?;
     std::fs::write(format!("{out}/leaderboard.png"), &board)?;
     let shells = r.leaderboard_card(&LeaderboardCard {
+        lang: pinchora_core::i18n::Lang::En,
         title: "Richest shell collectors".into(),
         entries: entries(true).into_iter().skip(3).collect(),
         page: 4,
         last_week: Vec::new(),
-        empty: "Nobody here yet. Chat a bit and check again!",
+        empty: "Nobody here yet. Chat a bit and check again!".to_owned(),
         theme: Theme::reef(),
     })?;
     std::fs::write(format!("{out}/leaderboard-shells.png"), &shells)?;
@@ -531,6 +536,7 @@ fn main() -> anyhow::Result<()> {
     ];
     // Wrapped: a busy year, and a year with nothing in it.
     let busy = WrappedCard {
+        lang: pinchora_core::i18n::Lang::En,
         year: 2026,
         display_name: "Captain Pinch",
         avatar_png: &placeholder_avatar(7, WrappedCard::AVATAR_SIZE),

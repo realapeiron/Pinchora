@@ -2,6 +2,7 @@
 //! managers arrange it with the same editor as houses. Discord ids never collide
 //! across entity types, so the plaza is simply a house owned by the guild id.
 
+use pinchora_core::t;
 use pinchora_game::Content;
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::{
@@ -15,8 +16,9 @@ use twilight_model::{
 };
 
 use super::{
-    collection::{SOULBOUND_RULE, giveable},
+    collection::giveable,
     house::{CursorMode, EditState, editor, ensure_house, room_card},
+    shop::soulbound_rule,
 };
 use crate::{Cx, util::mention};
 
@@ -44,9 +46,10 @@ pub struct PlazaDonate;
 pub struct PlazaEdit;
 
 pub(crate) async fn guild_name(cx: &Cx, guild: u64) -> String {
+    let fallback = t!(cx.lang(), "plaza.default-name");
     match cx.app.http.guild(Id::new(guild.max(1))).await {
-        Ok(response) => response.model().await.map_or_else(|_| "Server".to_owned(), |g| g.name),
-        Err(_) => "Server".to_owned(),
+        Ok(response) => response.model().await.map_or_else(|_| fallback, |g| g.name),
+        Err(_) => fallback,
     }
 }
 
@@ -60,8 +63,9 @@ pub(crate) fn editable_plaza(cx: &Cx) -> Option<u64> {
 
 impl PlazaCommand {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
+        let lang = cx.lang();
         let Some(guild) = cx.guild_id() else {
-            return cx.reply_ephemeral("Plazas live inside servers.").await;
+            return cx.reply_ephemeral(t!(lang, "plaza.guild-only")).await;
         };
         match self {
             Self::View(_) => {
@@ -71,7 +75,7 @@ impl PlazaCommand {
             }
             Self::Edit(_) => {
                 if editable_plaza(cx).is_none() {
-                    return cx.reply_ephemeral("Only server managers can arrange the plaza.").await;
+                    return cx.reply_ephemeral(t!(lang, "plaza.managers-only")).await;
                 }
                 ensure_house(&cx.app, guild).await?;
                 let state = EditState {
@@ -84,19 +88,11 @@ impl PlazaCommand {
                     mode: CursorMode::Floor,
                     item: None,
                 };
-                let data = editor(
-                    cx,
-                    guild,
-                    state,
-                    "Arranging the plaza. The menu lists donated furniture.",
-                    None,
-                )
-                .await?;
+                let data = editor(cx, guild, state, &t!(lang, "plaza.editing"), None).await?;
                 cx.reply(data).await
             }
             Self::Donate(_) => {
                 let content = Content::get();
-                let lang = cx.lang();
                 let (rows, kept_back) = giveable(cx.app.db.inventory(cx.author()?.id.get()).await?);
                 let options: Vec<SelectMenuOption> = rows
                     .into_iter()
@@ -104,7 +100,7 @@ impl PlazaCommand {
                         let item = content.item(&row.item_id)?;
                         Some(SelectMenuOption {
                             default: false,
-                            description: Some(format!("You have {}", row.quantity)),
+                            description: Some(t!(lang, "plaza.you-have", count = row.quantity)),
                             emoji: None,
                             label: item.name_in(lang),
                             value: row.item_id,
@@ -114,14 +110,14 @@ impl PlazaCommand {
                 if options.is_empty() {
                     return cx
                         .reply_ephemeral(if kept_back {
-                            format!("Nothing in your inventory can be donated. {SOULBOUND_RULE}")
+                            t!(lang, "plaza.nothing-donatable", rule = soulbound_rule(lang))
                         } else {
-                            "Your inventory is empty.".to_owned()
+                            t!(lang, "inventory.empty")
                         })
                         .await;
                 }
                 cx.reply(InteractionResponseData {
-                    content: Some("What do you want to donate to the plaza?".to_owned()),
+                    content: Some(t!(lang, "plaza.donate-prompt")),
                     components: Some(vec![Component::ActionRow(ActionRow {
                         id: None,
                         components: vec![Component::SelectMenu(SelectMenu {
@@ -134,7 +130,7 @@ impl PlazaCommand {
                             max_values: Some(1),
                             min_values: Some(1),
                             options: Some(options),
-                            placeholder: Some("Choose a donation…".to_owned()),
+                            placeholder: Some(t!(lang, "plaza.donate-placeholder")),
                             required: None,
                         })],
                     })]),
@@ -149,35 +145,41 @@ impl PlazaCommand {
 
 /// `pd` select: move one item into the plaza's inventory.
 pub(crate) async fn on_donate(cx: &Cx, value: Option<&str>) -> anyhow::Result<()> {
+    let lang = cx.lang();
     let Some(guild) = cx.guild_id() else {
-        return cx.reply_ephemeral("Plazas live inside servers.").await;
+        return cx.reply_ephemeral(t!(lang, "plaza.guild-only")).await;
     };
     let Some(item) = value.and_then(|v| Content::get().item(v)) else {
-        return cx.reply_ephemeral("Pick something to donate.").await;
+        return cx.reply_ephemeral(t!(lang, "plaza.pick-something")).await;
     };
     let donor = cx.author()?.id.get();
-    let lang = cx.lang();
     if item.bound {
         return cx
-            .reply_ephemeral(format!("**{}** can't be donated. {SOULBOUND_RULE}", item.name_in(lang)))
+            .reply_ephemeral(t!(
+                lang,
+                "plaza.cant-donate",
+                name = item.name_in(lang),
+                rule = soulbound_rule(lang)
+            ))
             .await;
     }
     ensure_house(&cx.app, guild).await?;
     if !cx.app.db.gift_item(donor, guild, &item.id()).await? {
         return cx
-            .reply_ephemeral(format!("You don't have a **{}** anymore.", item.name_in(lang)))
+            .reply_ephemeral(t!(lang, "plaza.none-left", name = item.name_in(lang)))
             .await;
     }
     cx.update(InteractionResponseData {
-        content: Some("💝 Donated!".to_owned()),
+        content: Some(t!(lang, "plaza.donated")),
         components: Some(Vec::new()),
         ..Default::default()
     })
     .await?;
-    cx.reply_text(format!(
-        "💝 {} donated a **{}** to the plaza! Managers can place it with `/plaza edit`.",
-        mention(donor),
-        item.name_in(lang)
+    cx.reply_text(t!(
+        lang,
+        "plaza.donated-news",
+        donor = mention(donor),
+        name = item.name_in(lang)
     ))
     .await
 }

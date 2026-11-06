@@ -3,6 +3,7 @@
 use std::{sync::LazyLock, time::Duration};
 
 use moka::future::Cache as Moka;
+use pinchora_core::{i18n::Lang, t};
 use twilight_interactions::command::{CommandModel, CreateCommand};
 
 use crate::{App, Cx, server_events::tell};
@@ -34,12 +35,8 @@ pub(crate) async fn strict(app: &App, guild: u64) -> bool {
 }
 
 /// How `/config show` and `/config partygames` word the setting.
-pub(crate) fn party_summary(strict: bool) -> String {
-    if strict {
-        "**strict** · mild words and name-calling are blocked too".to_owned()
-    } else {
-        "**normal** · strong words and slurs are blocked · `/config partygames strict:true` blocks more".to_owned()
-    }
+pub(crate) fn party_summary(lang: Lang, strict: bool) -> String {
+    t!(lang, if strict { "cfg.party-strict" } else { "cfg.party-normal" })
 }
 
 impl ConfigPartyGames {
@@ -49,6 +46,14 @@ impl ConfigPartyGames {
             STRICT.invalidate(&guild).await;
         }
         let strict = cx.app.db.party_strict(guild).await?;
-        tell(cx, format!("Party games filter: {}", party_summary(strict))).await
+        tell(
+            cx,
+            t!(
+                cx.lang(),
+                "cfg.party-current",
+                summary = party_summary(cx.lang(), strict)
+            ),
+        )
+        .await
     }
 }

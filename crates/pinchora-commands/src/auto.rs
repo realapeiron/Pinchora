@@ -5,6 +5,7 @@
 use std::{sync::Arc, time::Duration};
 
 use pinchora_core::{
+    i18n::Lang,
     modules::Module,
     tags::{Destination, TriggerKind, run_cooldown},
 };
@@ -316,7 +317,7 @@ async fn try_fire(app: &Arc<App>, row: &ResponderRow, m: &Moment<'_>) -> anyhow:
         }
     }
 
-    let points = run_points(app, guild, user, &def.actions).await;
+    let points = run_points(app, Lang::En, guild, user, &def.actions).await;
     if let Some(note) = &points.capped {
         tracing::debug!(
             guild,
@@ -359,6 +360,7 @@ async fn try_fire(app: &Arc<App>, row: &ResponderRow, m: &Moment<'_>) -> anyhow:
         user,
         held: m.held,
         message: m.here.zip(m.message).map(|(c, msg)| (Id::new(c.max(1)), msg)),
+        lang: Lang::En,
         responder: true,
     };
     // Nobody ran this, so there is nobody to tell about an action that did not work.
