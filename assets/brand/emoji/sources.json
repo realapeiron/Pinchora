@@ -1,0 +1,66 @@
+{
+  "shell": {
+    "source": "assets/sprites/src/b_community_pearl.png",
+    "method": "transparent trim and nearest-neighbour contain"
+  },
+  "crab": {
+    "source": "assets/sprites/src/p_crumbclaw_crab.png",
+    "method": "transparent trim and nearest-neighbour contain"
+  },
+  "pearl": {
+    "source": "assets/sprites/src/b_community_pearl.png",
+    "method": "pearl crop [8,9,17,16] from shell badge; hard pixel ellipse mask"
+  },
+  "fish": {
+    "source": "assets/sprites/src/c_pearlpatch_koi.png",
+    "method": "transparent trim and nearest-neighbour contain"
+  },
+  "heart": {
+    "source": "assets/sprites/src/b_heartfelt_home.png",
+    "method": "coral heart pixels extracted from home badge [8,13,16,20]"
+  },
+  "star": {
+    "source": "assets/sprites/src/b_snoozy_star.png",
+    "method": "transparent trim and nearest-neighbour contain"
+  },
+  "house": {
+    "source": "assets/sprites/src/f_buttonburrow_house.png",
+    "method": "transparent trim and nearest-neighbour contain"
+  },
+  "rod": {
+    "source": "assets/sprites/src/c_shellscript_key.png",
+    "method": "remix of key shaft [9,3,24,5], nearest 45-degree rotation; scripted line/reel/bobber"
+  },
+  "coin": {
+    "source": "assets/sprites/src/c_brinebell_coin.png",
+    "method": "transparent trim and nearest-neighbour contain"
+  },
+  "chest": {
+    "source": "assets/sprites/src/c_moonkeel_chest.png",
+    "method": "transparent trim and nearest-neighbour contain"
+  },
+  "key": {
+    "source": "assets/sprites/src/c_shellscript_key.png",
+    "method": "transparent trim and nearest-neighbour contain"
+  },
+  "bunny": {
+    "source": "assets/sprites/src/p_cloverpuff_bun.png",
+    "method": "transparent trim and nearest-neighbour contain"
+  },
+  "seal": {
+    "source": "assets/sprites/src/p_pearlwhisk_seal.png",
+    "method": "transparent trim and nearest-neighbour contain"
+  },
+  "squid": {
+    "source": "assets/sprites/src/p_starstitch_squid.png",
+    "method": "transparent trim and nearest-neighbour contain"
+  },
+  "wave": {
+    "source": "assets/sprites/src/b_tiny_tide.png",
+    "method": "transparent trim and nearest-neighbour contain"
+  },
+  "lantern": {
+    "source": "assets/sprites/src/b_little_beacon.png",
+    "method": "transparent trim and nearest-neighbour contain"
+  }
+}

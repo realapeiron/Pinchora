@@ -1,0 +1,312 @@
+{
+  "tagline": "Build your reef. Play with your server.",
+  "youtube_safe_area": [
+    507,
+    508,
+    2053,
+    931
+  ],
+  "pngs": [
+    {
+      "path": "assets/brand/mascot.png",
+      "width": 432,
+      "height": 304,
+      "origin": "AI icon; palette and background extraction",
+      "sha256": "bdd5b23e6af7309437708b3f03f56d9f7fa94dad60adf0670ba4e2e0ba545a5c"
+    },
+    {
+      "path": "web/public/mascot.png",
+      "width": 432,
+      "height": 304,
+      "origin": "Identical mascot for existing Crab component",
+      "sha256": "bdd5b23e6af7309437708b3f03f56d9f7fa94dad60adf0670ba4e2e0ba545a5c"
+    },
+    {
+      "path": "assets/brand/icon-1024.png",
+      "width": 1024,
+      "height": 1024,
+      "origin": "AI icon; scripted tile and nearest-neighbour export",
+      "sha256": "afe783235c028de465561113cc523fbb96104b12158f2f037bc8d17d30f7f1d8"
+    },
+    {
+      "path": "assets/brand/icon-512.png",
+      "width": 512,
+      "height": 512,
+      "origin": "AI icon; scripted tile and nearest-neighbour export",
+      "sha256": "c9a4124a83b52a738c51d4f66f477d52c947d87888642d06a289ebd618200fca"
+    },
+    {
+      "path": "assets/brand/icon-256.png",
+      "width": 256,
+      "height": 256,
+      "origin": "AI icon; scripted tile and nearest-neighbour export",
+      "sha256": "0797338e7fe3696f1d26838e8abfe89780b1f0e530e68338e2d7c505b282f7af"
+    },
+    {
+      "path": "assets/brand/icon-round.png",
+      "width": 1024,
+      "height": 1024,
+      "origin": "AI icon; scripted circular mask",
+      "sha256": "63c2cbb3b437d4ac46975eb09821681f111c7ba9acc7f64da8882bb767c42817"
+    },
+    {
+      "path": "assets/brand/icon-monochrome.png",
+      "width": 1024,
+      "height": 1024,
+      "origin": "AI silhouette; scripted one-ink cream variant",
+      "sha256": "c6162719898233bedfa2b18795556a4b74c81ea77942567d6ba99080809c2d95"
+    },
+    {
+      "path": "assets/brand/wordmark.png",
+      "width": 2048,
+      "height": 576,
+      "origin": "AI mascot and PINCHORA lettering; scripted palette, alpha, margins",
+      "sha256": "96da20375af0cca874e837f35253b027ba21b1beb23d531ca5157b3036dcde00"
+    },
+    {
+      "path": "assets/brand/hero.png",
+      "width": 2172,
+      "height": 724,
+      "origin": "AI reef panorama; scripted palette and pixel grid",
+      "sha256": "6f573577a44a0abf75e9d41be97b4c538513d1cb4c3a40e238d4a5a91839970c"
+    },
+    {
+      "path": "assets/brand/discord-app-banner.png",
+      "width": 680,
+      "height": 240,
+      "origin": "Scripted hero crop + AI wordmark",
+      "sha256": "9281a79cd522ac5a2ecb361550206fb3cb555d2c4872a8e35aeaf5b7d15f74e2"
+    },
+    {
+      "path": "assets/brand/x-banner.png",
+      "width": 1500,
+      "height": 500,
+      "origin": "Scripted hero crop + AI wordmark",
+      "sha256": "27b78d73147cacb9deafb12fc67a91d5ceac6a294d6387e2fa4c4e8fdea5ec2b"
+    },
+    {
+      "path": "assets/brand/server-banner.png",
+      "width": 960,
+      "height": 540,
+      "origin": "Scripted complete panorama + AI wordmark",
+      "sha256": "f906ba7001e96b60ddc80789bbca1cea391fd89a523ab628eb7480a68c6af8ac"
+    },
+    {
+      "path": "assets/brand/youtube-banner.png",
+      "width": 2560,
+      "height": 1440,
+      "origin": "Scripted hero + AI wordmark + Silkscreen; centered 1546x423 safe area",
+      "sha256": "1fe96c9924002ca94115179761592eafb32d4427b676401f5209db8f6e94fbdd"
+    },
+    {
+      "path": "assets/brand/og.png",
+      "width": 1200,
+      "height": 630,
+      "origin": "Scripted composition; AI scene/logo; exact Silkscreen tagline",
+      "sha256": "643007f86bef812a37c5272735b450bd62ff14c92f29f4b5e0feb5862568415a"
+    },
+    {
+      "path": "web/public/og.png",
+      "width": 1200,
+      "height": 630,
+      "origin": "Identical brand OG image; existing web path",
+      "sha256": "643007f86bef812a37c5272735b450bd62ff14c92f29f4b5e0feb5862568415a"
+    },
+    {
+      "path": "assets/brand/channels/rules.png",
+      "width": 1920,
+      "height": 480,
+      "origin": "AI scene; scripted palette/grid and empty-water extension",
+      "sha256": "f31304e7f6df21b89e335a7c0ac94a87f541b3fd65349f5eeafe576aa658b438"
+    },
+    {
+      "path": "assets/brand/channels/announcements.png",
+      "width": 1920,
+      "height": 480,
+      "origin": "AI scene; scripted palette/grid and empty-water extension",
+      "sha256": "7c671d09ec3c9a47dcb57bceeb46676407ebe35d85d995a9fc2f661de56e552b"
+    },
+    {
+      "path": "assets/brand/channels/support.png",
+      "width": 1920,
+      "height": 480,
+      "origin": "AI scene; scripted palette/grid and empty-water extension",
+      "sha256": "1d1ff4041d585fb2a0c04ffa18adf2e9abfd7abc076724c4a98b1f6999b7db98"
+    },
+    {
+      "path": "assets/brand/channels/showcase.png",
+      "width": 1920,
+      "height": 480,
+      "origin": "AI scene; scripted palette/grid and empty-water extension",
+      "sha256": "dab71e9cd9c69a8db184109d95b7ad46e47ca74e809555ff05375ac66ab3c59c"
+    },
+    {
+      "path": "assets/brand/channels/games.png",
+      "width": 1920,
+      "height": 480,
+      "origin": "AI scene; scripted palette/grid and empty-water extension",
+      "sha256": "ab2ef1a8605d44e8a4f6db08893f0061fe9dd05e31a8c9b7a194faf389df3db0"
+    },
+    {
+      "path": "assets/brand/channels/fishing.png",
+      "width": 1920,
+      "height": 480,
+      "origin": "AI scene; scripted palette/grid and empty-water extension",
+      "sha256": "3c9c0ad31f1d2621e340327595a08135662cca25f8a9a5f3ca77661bc96cb854"
+    },
+    {
+      "path": "web/public/favicon-16x16.png",
+      "width": 16,
+      "height": 16,
+      "origin": "AI mascot; scripted opaque navy favicon/PWA tile",
+      "sha256": "abc39684a9ddb541f8cbfbf49740d287ea0e8ba8a5b36ecdfad70298855e9f45"
+    },
+    {
+      "path": "web/public/favicon-32x32.png",
+      "width": 32,
+      "height": 32,
+      "origin": "AI mascot; scripted opaque navy favicon/PWA tile",
+      "sha256": "5c6f2c8a7fa17865abfc73a1255a2b1e26082b4349df6936862047f057d14479"
+    },
+    {
+      "path": "web/public/favicon-48x48.png",
+      "width": 48,
+      "height": 48,
+      "origin": "AI mascot; scripted opaque navy favicon/PWA tile",
+      "sha256": "8bb1afd4cab16acedc5e9545e92c21d4e9fed11ce6954502b33dce3b424e7c79"
+    },
+    {
+      "path": "web/public/apple-touch-icon.png",
+      "width": 180,
+      "height": 180,
+      "origin": "AI mascot; scripted opaque navy favicon/PWA tile",
+      "sha256": "1b38479e3c7f139c1f35127cfd3487b4c0b606459352ada62d50cfeec8a4efb8"
+    },
+    {
+      "path": "web/public/icon-192.png",
+      "width": 192,
+      "height": 192,
+      "origin": "AI mascot; scripted opaque navy favicon/PWA tile",
+      "sha256": "dfc877fc7f98ddbbe8b779b29506c42b969a4c809df3d21d54887d500f0daeab"
+    },
+    {
+      "path": "web/public/icon-512.png",
+      "width": 512,
+      "height": 512,
+      "origin": "AI mascot; scripted opaque navy favicon/PWA tile",
+      "sha256": "7322e0c0052d810aced344cc7d70b0bd6bfa4a2ca92fdd2be82794fd8075d7a8"
+    },
+    {
+      "path": "assets/brand/emoji/shell.png",
+      "width": 32,
+      "height": 32,
+      "origin": "Existing sprite b_community_pearl; transparent trim and nearest-neighbour contain",
+      "sha256": "e7b8f0dbca530158185bef78b1657f4994a416276093f33e8eb8069790aec86e"
+    },
+    {
+      "path": "assets/brand/emoji/crab.png",
+      "width": 32,
+      "height": 32,
+      "origin": "Existing sprite p_crumbclaw_crab; transparent trim and nearest-neighbour contain",
+      "sha256": "c77990903591f6e28da60bd78b0623f6ab22137b145bf1aed5bc768f78e53bcf"
+    },
+    {
+      "path": "assets/brand/emoji/pearl.png",
+      "width": 32,
+      "height": 32,
+      "origin": "Existing sprite b_community_pearl; pearl crop [8,9,17,16] from shell badge; hard pixel ellipse mask",
+      "sha256": "e8dd55c1ff7090a1cd9e87f4ff5a7120fc89cccb9714f050a724ea33fa03ed22"
+    },
+    {
+      "path": "assets/brand/emoji/fish.png",
+      "width": 32,
+      "height": 32,
+      "origin": "Existing sprite c_pearlpatch_koi; transparent trim and nearest-neighbour contain",
+      "sha256": "f217d015effbf1ed73209616cc319615fda041a36192a89ec507fa68788a34b4"
+    },
+    {
+      "path": "assets/brand/emoji/heart.png",
+      "width": 32,
+      "height": 32,
+      "origin": "Existing sprite b_heartfelt_home; coral heart pixels extracted from home badge [8,13,16,20]",
+      "sha256": "3dba50bcaf361f94596210f20b8bf4b8b88e42cf8014e8e70282c4af50c83446"
+    },
+    {
+      "path": "assets/brand/emoji/star.png",
+      "width": 32,
+      "height": 32,
+      "origin": "Existing sprite b_snoozy_star; transparent trim and nearest-neighbour contain",
+      "sha256": "6915eec831a2a4b90eacd287e4a6500cb4f9257ab5c1ec3c9000beb378f82f00"
+    },
+    {
+      "path": "assets/brand/emoji/house.png",
+      "width": 32,
+      "height": 32,
+      "origin": "Existing sprite f_buttonburrow_house; transparent trim and nearest-neighbour contain",
+      "sha256": "fecbbcb038e47420ea9d922dd75eb0582e2810a4467c64856c706cdf76bad452"
+    },
+    {
+      "path": "assets/brand/emoji/rod.png",
+      "width": 32,
+      "height": 32,
+      "origin": "Existing sprite c_shellscript_key; remix of key shaft [9,3,24,5], nearest 45-degree rotation; scripted line/reel/bobber",
+      "sha256": "60cacd1e927cdfa84f15f27f020b3d470fec4536727154b53185260a1671a11a"
+    },
+    {
+      "path": "assets/brand/emoji/coin.png",
+      "width": 32,
+      "height": 32,
+      "origin": "Existing sprite c_brinebell_coin; transparent trim and nearest-neighbour contain",
+      "sha256": "1e3c365f78ca12fa4c8ed45d42650fc212b02fbb921da55433964294bcfecfb2"
+    },
+    {
+      "path": "assets/brand/emoji/chest.png",
+      "width": 32,
+      "height": 32,
+      "origin": "Existing sprite c_moonkeel_chest; transparent trim and nearest-neighbour contain",
+      "sha256": "0c90de86c00f69fb07a697b2d3f334686146f61ae3dd775b90173a1f43692567"
+    },
+    {
+      "path": "assets/brand/emoji/key.png",
+      "width": 32,
+      "height": 32,
+      "origin": "Existing sprite c_shellscript_key; transparent trim and nearest-neighbour contain",
+      "sha256": "d117df1015a84d4460b44016d0ae454b5629305e20d4c9bc4ee52ce3a4abc4ad"
+    },
+    {
+      "path": "assets/brand/emoji/bunny.png",
+      "width": 32,
+      "height": 32,
+      "origin": "Existing sprite p_cloverpuff_bun; transparent trim and nearest-neighbour contain",
+      "sha256": "7f6d6b7533a430ec5809ed9ba3605ff0a975eb3507618126f84725dcc67e39a7"
+    },
+    {
+      "path": "assets/brand/emoji/seal.png",
+      "width": 32,
+      "height": 32,
+      "origin": "Existing sprite p_pearlwhisk_seal; transparent trim and nearest-neighbour contain",
+      "sha256": "107528df5c23563844060a7096b6827e9931f6d8f778e84486a3fdadc42f7543"
+    },
+    {
+      "path": "assets/brand/emoji/squid.png",
+      "width": 32,
+      "height": 32,
+      "origin": "Existing sprite p_starstitch_squid; transparent trim and nearest-neighbour contain",
+      "sha256": "18c9001f00e6f7b31123e308589fc03e978beac38d881e10200d1d0eac298882"
+    },
+    {
+      "path": "assets/brand/emoji/wave.png",
+      "width": 32,
+      "height": 32,
+      "origin": "Existing sprite b_tiny_tide; transparent trim and nearest-neighbour contain",
+      "sha256": "c61fede80a1ce642a736bc2a94b2e070923364c8d07ea4f93ca74626953a73be"
+    },
+    {
+      "path": "assets/brand/emoji/lantern.png",
+      "width": 32,
+      "height": 32,
+      "origin": "Existing sprite b_little_beacon; transparent trim and nearest-neighbour contain",
+      "sha256": "9bd6c21e7207d0e19508c9cab7009b03ddec3f6e91c988f8696e27ccd63bdfba"
+    }
+  ]
+}

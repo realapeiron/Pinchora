@@ -1,10 +1,10 @@
 //! The pictures on the public website, drawn by the bot's own renderer from sample data: the profile
-//! card, a room, a few game boards, the welcome, rank and wallet cards, the Open Graph image for link
-//! previews and the favicons. They are committed under `web/` so the site needs no bot to run, and
+//! card, a room, a few game boards, and the welcome, rank and wallet cards. They are committed under
+//! `web/` so the site needs no bot to run, and
 //! `landing_assets_match` fails as soon as a card, the art or the catalogue moves away from what is committed.
 //!
 //! Regenerate with `cargo test -p pinchora-commands write_landing_assets -- --ignored` and commit
-//! `web/src/site/showcase` and `web/public`.
+//! `web/src/site/showcase`. Brand icons and link previews belong to `tools/brand/build.py`.
 
 use std::{
     fs,
@@ -12,9 +12,8 @@ use std::{
 };
 
 use image::{
-    ExtendedColorType, ImageEncoder, Rgba, RgbaImage,
+    ExtendedColorType, ImageEncoder, RgbaImage,
     codecs::png::{CompressionType, FilterType, PngEncoder},
-    imageops,
 };
 use pinchora_core::i18n::Lang;
 use pinchora_db::{PlacementRow, RoomRow};
@@ -32,7 +31,8 @@ use crate::{
     house_view::RoomData,
 };
 
-const REGENERATE: &str = "run `cargo test -p pinchora-commands write_landing_assets -- --ignored` and commit web/src/site/showcase and web/public";
+const REGENERATE: &str =
+    "run `cargo test -p pinchora-commands write_landing_assets -- --ignored` and commit web/src/site/showcase";
 
 fn web() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../web")
@@ -494,105 +494,6 @@ fn wordle(r: &Renderer) -> anyhow::Result<RgbaImage> {
     Ok(decode(&png))
 }
 
-// /Link preview and icons
-
-const NAVY_TOP: [u8; 3] = [0x1d, 0x2b, 0x53];
-const NAVY_BOTTOM: [u8; 3] = [0x0f, 0x16, 0x31];
-const CORAL: Rgba<u8> = Rgba([0xff, 0x6b, 0x4a, 255]);
-const INK: Rgba<u8> = Rgba([0xff, 0xf1, 0xe8, 255]);
-
-/// The crab of the cards' footer, as `Crab.tsx` draws it.
-const CRAB: [&str; 6] = [
-    "#.......#",
-    "##.....##",
-    ".#.o.o.#.",
-    ".#######.",
-    "#########",
-    ".#.#.#.#.",
-];
-
-/// The crab at `scale` pixels to the art pixel, with its top left corner at `(x, y)`.
-fn draw_crab(canvas: &mut RgbaImage, x: u32, y: u32, scale: u32) {
-    for (row, line) in CRAB.iter().enumerate() {
-        for (col, c) in line.chars().enumerate() {
-            let colour = match c {
-                '#' => CORAL,
-                'o' => INK,
-                _ => continue,
-            };
-            for dy in 0..scale {
-                for dx in 0..scale {
-                    canvas.put_pixel(x + col as u32 * scale + dx, y + row as u32 * scale + dy, colour);
-                }
-            }
-        }
-    }
-}
-
-fn gradient(w: u32, h: u32) -> RgbaImage {
-    RgbaImage::from_fn(w, h, |_, y| {
-        let t = y as f32 / (h - 1) as f32;
-        let mix = |i: usize| (NAVY_TOP[i] as f32 + (NAVY_BOTTOM[i] as f32 - NAVY_TOP[i] as f32) * t).round() as u8;
-        Rgba([mix(0), mix(1), mix(2), 255])
-    })
-}
-
-/// 1200x630 for link previews: the name, the line under it, a room and a profile card on the cards' own gradient.
-fn og_image(r: &Renderer, room: &RgbaImage, profile: &RgbaImage) -> anyhow::Result<RgbaImage> {
-    let mut canvas = gradient(1200, 630);
-    for (x, y) in [(46, 40), (1120, 56), (1140, 560), (610, 24), (30, 380), (1060, 330)] {
-        for dy in 0..4 {
-            for dx in 0..4 {
-                canvas.put_pixel(x + dx, y + dy, Rgba([255, 255, 255, 90]));
-            }
-        }
-    }
-    let room = imageops::resize(room, 520, 373, imageops::FilterType::Triangle);
-    let profile = imageops::resize(profile, 380, 214, imageops::FilterType::Triangle);
-    imageops::overlay(&mut canvas, &room, 650, 60);
-    imageops::overlay(&mut canvas, &profile, 760, 368);
-    let text = r##"<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
-<text x="68" y="246" font-family="Silkscreen" font-weight="700" font-size="72" letter-spacing="2" fill="#1b1d2b">PINCHORA</text>
-<text x="64" y="242" font-family="Silkscreen" font-weight="700" font-size="72" letter-spacing="2" fill="#ff6b4a">PINCHORA</text>
-<text x="64" y="316" font-family="Noto Sans" font-weight="700" font-size="40" fill="#fff1e8">A cozy pixel world</text>
-<text x="64" y="366" font-family="Noto Sans" font-weight="700" font-size="40" fill="#fff1e8">for your Discord server.</text>
-<text x="64" y="448" font-family="Silkscreen" font-size="20" letter-spacing="2" fill="#8fa0d8">HOUSES  PETS  FISHING  GAMES  CARDS</text>
-</svg>"##;
-    imageops::overlay(&mut canvas, &decode(&r.svg_to_png(text)?), 0, 0);
-    draw_crab(&mut canvas, 64, 520, 10);
-    Ok(canvas)
-}
-
-/// The crab on a square of `size` pixels, `scale` pixels to the art pixel, on the page colour or see-through.
-fn icon(size: u32, scale: u32, background: bool) -> RgbaImage {
-    let mut canvas = if background {
-        RgbaImage::from_pixel(size, size, Rgba([NAVY_TOP[0], NAVY_TOP[1], NAVY_TOP[2], 255]))
-    } else {
-        RgbaImage::new(size, size)
-    };
-    let (w, h) = (9 * scale, 6 * scale);
-    draw_crab(&mut canvas, (size - w) / 2, (size - h) / 2, scale);
-    canvas
-}
-
-/// A `.ico` holding one PNG per size.
-fn ico_file(pictures: &[RgbaImage]) -> anyhow::Result<Vec<u8>> {
-    let pngs: Vec<Vec<u8>> = pictures.iter().map(encode_png).collect::<anyhow::Result<_>>()?;
-    let mut out = vec![0, 0, 1, 0];
-    out.extend((pictures.len() as u16).to_le_bytes());
-    let mut offset = 6 + 16 * pictures.len() as u32;
-    for (picture, png) in pictures.iter().zip(&pngs) {
-        out.extend([picture.width() as u8, picture.height() as u8, 0, 0, 1, 0, 32, 0]);
-        out.extend((png.len() as u32).to_le_bytes());
-        out.extend(offset.to_le_bytes());
-        offset += png.len() as u32;
-    }
-    for png in pngs {
-        out.extend(png);
-    }
-    Ok(out)
-}
-
 // /Everything
 
 /// Every picture, rendered now.
@@ -601,7 +502,6 @@ fn assets() -> anyhow::Result<Vec<Asset>> {
     let sprites = Sprites::default();
     let room = room_image(&sprites, &room_view(), 1);
     let profile = profile(&r, &sprites)?;
-    let og = og_image(&r, &room, &profile)?;
     let shots = "src/site/showcase";
     Ok(vec![
         asset(&format!("{shots}/profile.png"), profile),
@@ -616,12 +516,6 @@ fn assets() -> anyhow::Result<Vec<Asset>> {
         asset(&format!("{shots}/chess.png"), chess(&r)?),
         asset(&format!("{shots}/connect4.png"), connect4(&r)?),
         asset(&format!("{shots}/wordle.png"), wordle(&r)?),
-        asset("public/og.png", og),
-        asset("public/favicon-16x16.png", icon(16, 1, false)),
-        asset("public/favicon-32x32.png", icon(32, 3, false)),
-        asset("public/apple-touch-icon.png", icon(180, 16, true)),
-        asset("public/icon-192.png", icon(192, 16, true)),
-        asset("public/icon-512.png", icon(512, 48, true)),
     ])
 }
 
@@ -673,22 +567,15 @@ fn landing_assets_match() {
             Err(_) => stale.push(format!("{path} is missing")),
         }
     }
-    let ico = web().join("public/favicon.ico");
-    let expected = ico_file(&[icon(16, 1, false), icon(32, 3, false)]).expect("ico");
-    if fs::read(&ico).ok().as_deref() != Some(expected.as_slice()) {
-        stale.push("public/favicon.ico is out of date".to_owned());
-    }
     assert!(stale.is_empty(), "{}; {REGENERATE}", stale.join("; "));
 }
 
 #[test]
-#[ignore = "writes web/src/site/showcase and web/public"]
+#[ignore = "writes web/src/site/showcase"]
 fn write_landing_assets() {
     for Asset { path, image } in assets().expect("render the pictures") {
         write(&web().join(path), &compact_png(&image));
     }
-    let ico = ico_file(&[icon(16, 1, false), icon(32, 3, false)]).expect("ico");
-    write(&web().join("public/favicon.ico"), &ico);
 }
 
 #[test]
@@ -699,8 +586,51 @@ fn the_pictures_are_the_sizes_the_site_expects() {
         .map(|a| (a.path, a.image.dimensions()))
         .collect();
     let size = |name: &str| sizes.iter().find(|(p, _)| p.ends_with(name)).expect(name).1;
-    assert_eq!(size("og.png"), (1200, 630), "link previews are 1200x630");
     assert_eq!(size("profile.png"), (960, 540));
-    assert_eq!(size("icon-512.png"), (512, 512));
-    assert_eq!(size("apple-touch-icon.png"), (180, 180));
+}
+
+/// Brand exports are owned by the brand builder, so refreshing cards cannot replace the site's identity.
+#[test]
+fn brand_assets_match() {
+    const REBUILD: &str = "run `python3 tools/brand/build.py` and commit assets/brand and web/public";
+    let web = web();
+    for name in ["og.png", "mascot.png"] {
+        assert_eq!(
+            fs::read(web.join("public").join(name)).expect("public brand image"),
+            fs::read(web.join("../assets/brand").join(name)).expect("brand master"),
+            "{name} differs from the brand kit; {REBUILD}"
+        );
+    }
+    for (name, size) in [
+        ("og.png", (1200, 630)),
+        ("mascot.png", (432, 304)),
+        ("favicon-16x16.png", (16, 16)),
+        ("favicon-32x32.png", (32, 32)),
+        ("favicon-48x48.png", (48, 48)),
+        ("apple-touch-icon.png", (180, 180)),
+        ("icon-192.png", (192, 192)),
+        ("icon-512.png", (512, 512)),
+    ] {
+        assert_eq!(
+            image::image_dimensions(web.join("public").join(name)).unwrap(),
+            size,
+            "{name}; {REBUILD}"
+        );
+    }
+    let ico = fs::read(web.join("public/favicon.ico")).expect("brand favicon");
+    assert_eq!(&ico[..6], &[0, 0, 1, 0, 3, 0], "three favicon frames; {REBUILD}");
+    for (i, size) in [16u8, 32, 48].into_iter().enumerate() {
+        let entry = &ico[6 + i * 16..6 + (i + 1) * 16];
+        assert_eq!(&entry[..2], &[size, size], "favicon frame size; {REBUILD}");
+        let len = u32::from_le_bytes(entry[8..12].try_into().unwrap()) as usize;
+        let offset = u32::from_le_bytes(entry[12..16].try_into().unwrap()) as usize;
+        let png = image::open(web.join(format!("public/favicon-{size}x{size}.png")))
+            .unwrap()
+            .to_rgba8();
+        assert_eq!(
+            decode(&ico[offset..offset + len]),
+            png,
+            "ICO and PNG icons differ; {REBUILD}"
+        );
+    }
 }

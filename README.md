@@ -951,10 +951,12 @@ from `web/src/site/routes.ts`; the Vite plugin in `web/vite.config.ts` does it) 
 before login is set up; only the dashboard shows the setup page. The support server link in the footer is a placeholder:
 build with `VITE_SUPPORT_URL=https://discord.gg/<invite>` to set it.
 
-Nothing on the page is a screenshot. Every card and room is drawn by the bot's own renderer from sample data
+The showcase cards and rooms are drawn by the bot's own renderer from sample data
 (`crates/pinchora-commands/src/landing_assets.rs`: the profile card with real backgrounds, badges, showcase tiles and
 character, an isometric room, chess, connect four, wordle, the rank, wallet, welcome, level-up, leaderboard, pet and
-badge cards, the 1200x630 link preview and the favicons), committed in `web/src/site/showcase` and `web/public`.
+badge cards), committed in `web/src/site/showcase`. The [brand kit](docs/BRAND.md) supplies the mascot,
+favicons and 1200x630 link preview in `web/public`, built with `python3 tools/brand/build.py`.
+Refreshing showcase cards leaves those brand exports alone.
 `landing_assets_match` fails when a card, the art or the catalogue changes what these look like; regenerate with
 `cargo test -p pinchora-commands write_landing_assets -- --ignored`. The command list and the content counts on the
 landing page come from the registered command tree and the content files, in `web/src/lib/commands.json` and
