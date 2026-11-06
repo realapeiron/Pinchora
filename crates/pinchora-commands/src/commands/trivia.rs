@@ -186,7 +186,14 @@ pub(crate) async fn on_answer(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Res
     ) else {
         return cx.reply_ephemeral("This round has expired.").await;
     };
-    let Some(session) = cx.app.db.game(id).await?.filter(|s| s.is_active() && !s.expired()) else {
+    // Only a trivia round: another game's id would pass another module's switch.
+    let Some(session) = cx
+        .app
+        .db
+        .game(id)
+        .await?
+        .filter(|s| s.kind == "trivia" && s.is_active() && !s.expired())
+    else {
         return cx.reply_ephemeral("⏱️ Time's up for this round!").await;
     };
     if session.message_id.is_none()

@@ -11752,6 +11752,12 @@ async fn share_or_grab_hides_the_picks_and_pays_the_sea_s_pool_by_what_they_pick
         "{}",
         board.content()
     );
+    // Nor is a trivia answer or a hangman letter with this id: those buttons pass the word games' switch.
+    let id = session_of(&challenge);
+    let forged = sim.component(a, &format!("tv:{id}:0"), &[], &board).await;
+    assert!(!forged.content().contains("Locked in"), "{}", forged.content());
+    let forged = sim.component(a, &format!("hm:{id}:0"), &["a"], &board).await;
+    assert!(forged.content().contains("over"), "{}", forged.content());
     let refused = sim.click(bystander, &board, "Choose in secret").await;
     assert!(
         refused.ephemeral && refused.content().contains("not in this game"),
