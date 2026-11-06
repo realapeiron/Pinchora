@@ -221,29 +221,52 @@ fn bait_icon(kind: BaitArt) -> RgbaImage {
     let mut img = RgbaImage::new(SIZE, SIZE);
     match kind {
         BaitArt::Worm => {
-            // A soft glow, then a wriggling worm in segments with a bright head.
-            blob(&mut img, (12.0, 12.0), (10.5, 8.5), [0x3d, 0x3a, 0x5c]);
-            blob(&mut img, (12.0, 12.0), (8.5, 6.5), [0x6a, 0x55, 0x62]);
-            for (i, x) in (3..21).enumerate() {
-                let y = 12 + ((i as f32 * 0.7).sin() * 3.0).round() as i32;
-                let color = if i % 3 == 0 {
-                    [0xff, 0xb0, 0xc0]
-                } else {
-                    [0xff, 0x8f, 0xa8]
-                };
-                for dy in -1..=1 {
-                    put(&mut img, x, y + dy, color);
+            // A glowing worm bending in an S: a soft halo hugging the body, two tones of segments, a
+            // bright tail tip, and a face with feelers at the head end.
+            const STEPS: usize = 48;
+            let path: Vec<(f32, f32)> = (0..=STEPS)
+                .map(|i| {
+                    let t = i as f32 / STEPS as f32;
+                    (3.5 + 16.0 * t, 12.0 - 4.6 * (t * std::f32::consts::TAU * 0.92).sin())
+                })
+                .collect();
+            for (radius, color) in [(4.5, [0x2e, 0x55, 0x40]), (3.6, [0x6c, 0xa6, 0x4e])] {
+                for &(x, y) in &path {
+                    blob(&mut img, (x, y), (radius, radius), color);
                 }
             }
-            blob(
-                &mut img,
-                (20.0, 12.0 + (17.0f32 * 0.7).sin() * 3.0),
-                (2.0, 2.0),
-                [0xff, 0xe0, 0x70],
-            );
-            put(&mut img, 21, 11, [0x2a, 0x2f, 0x5c]);
-            for (x, y) in [(5, 4), (18, 5), (8, 20), (16, 19)] {
-                put(&mut img, x, y, [0xff, 0xf0, 0xa0]);
+            for (i, &(x, y)) in path.iter().enumerate() {
+                let color = if (i / 5) % 2 == 0 {
+                    [0xd2, 0xf5, 0x72]
+                } else {
+                    [0xa8, 0xdf, 0x4c]
+                };
+                blob(&mut img, (x, y), (2.4, 2.4), color);
+            }
+            // A light stripe along the top of the body, and a glowing tail tip.
+            for &(x, y) in path.iter().skip(2) {
+                put(&mut img, x.round() as i32, (y - 1.4).round() as i32, [0xf0, 0xff, 0xb4]);
+            }
+            let (tail_x, tail_y) = path[0];
+            blob(&mut img, (tail_x, tail_y), (1.7, 1.7), [0xff, 0xff, 0xd0]);
+            let (head_x, head_y) = path[STEPS];
+            blob(&mut img, (head_x + 0.4, head_y), (3.0, 2.8), [0xd2, 0xf5, 0x72]);
+            let (hx, hy) = (head_x.round() as i32, head_y.round() as i32);
+            for (dx, dy) in [(1, -1), (3, -1)] {
+                put(&mut img, hx + dx, hy + dy, [0x22, 0x2a, 0x4c]);
+            }
+            put(&mut img, hx + 1, hy + 1, [0xff, 0x9a, 0xa8]);
+            put(&mut img, hx + 2, hy + 1, [0xff, 0x9a, 0xa8]);
+            line(&mut img, (hx, hy - 3), (hx - 1, hy - 5), [0xd2, 0xf5, 0x72]);
+            line(&mut img, (hx + 2, hy - 3), (hx + 3, hy - 5), [0xd2, 0xf5, 0x72]);
+            put(&mut img, hx - 1, hy - 6, [0xff, 0xff, 0xd0]);
+            put(&mut img, hx + 3, hy - 6, [0xff, 0xff, 0xd0]);
+            for (x, y) in [(2, 5), (9, 3), (3, 20)] {
+                put(&mut img, x, y, [0xe8, 0xff, 0x9a]);
+                put(&mut img, x - 1, y, [0x9c, 0xd0, 0x6a]);
+                put(&mut img, x + 1, y, [0x9c, 0xd0, 0x6a]);
+                put(&mut img, x, y - 1, [0x9c, 0xd0, 0x6a]);
+                put(&mut img, x, y + 1, [0x9c, 0xd0, 0x6a]);
             }
         }
         BaitArt::Lure => {
@@ -269,22 +292,60 @@ fn bait_icon(kind: BaitArt) -> RgbaImage {
             }
         }
         BaitArt::Crumbs => {
-            // A little heap of golden crumbs with a sparkle.
-            for (x, y, r, c) in [
-                (12.0, 16.0, 4.0, [0xd8, 0xa8, 0x5a]),
-                (7.5, 17.5, 3.0, [0xc8, 0x92, 0x48]),
-                (16.5, 17.5, 3.2, [0xe6, 0xbc, 0x70]),
-                (10.0, 12.0, 2.6, [0xe6, 0xbc, 0x70]),
-                (14.5, 12.5, 2.4, [0xd8, 0xa8, 0x5a]),
-                (12.5, 9.0, 2.0, [0xf2, 0xd2, 0x88]),
+            // A small heap of bread crumbs: lots of little uneven bits, each with a light top and a
+            // shaded underside, a few more loose above the heap, and a ripple of tide below.
+            const LIGHT: [u8; 3] = [0xfa, 0xe2, 0xa4];
+            const BODY: [u8; 3] = [0xe6, 0xb2, 0x62];
+            const SHADE: [u8; 3] = [0xb0, 0x76, 0x3a];
+            const TOAST: [u8; 3] = [0xa0, 0x62, 0x2e];
+            // Crumbs as (x, y, width, height, toasted), back to front.
+            for (x, y, w, h, toasted) in [
+                (11, 8, 3, 3, false),
+                (8, 11, 3, 3, true),
+                (14, 11, 3, 3, false),
+                (11, 12, 3, 3, false),
+                (5, 14, 4, 3, false),
+                (16, 14, 3, 3, true),
+                (9, 15, 3, 3, true),
+                (13, 15, 4, 3, false),
+                (3, 17, 3, 3, false),
+                (7, 18, 3, 2, false),
+                (12, 18, 3, 2, true),
+                (16, 17, 3, 3, false),
+                (19, 18, 2, 2, false),
             ] {
-                blob(&mut img, (x, y), (r, r * 0.8), c);
+                let (body, shade) = if toasted { (SHADE, TOAST) } else { (BODY, SHADE) };
+                for py in y..y + h {
+                    for px in x..x + w {
+                        // Cut one corner of each crumb, a different one for each, so none is a square.
+                        let corner = [(x, y), (x + w - 1, y), (x, y + h - 1), (x + w - 1, y + h - 1)];
+                        if (px, py) == corner[(x + y) as usize % 4] && w * h > 4 {
+                            continue;
+                        }
+                        let color = if py == y + h - 1 {
+                            shade
+                        } else if py == y || px == x {
+                            if toasted { BODY } else { LIGHT }
+                        } else {
+                            body
+                        };
+                        put(&mut img, px, py, color);
+                    }
+                }
             }
-            for (x, y) in [(5, 8), (19, 8), (12, 4)] {
-                put(&mut img, x, y, [0xff, 0xf0, 0xa0]);
-                put(&mut img, x, y + 1, [0xff, 0xf0, 0xa0]);
-                put(&mut img, x - 1, y, [0xff, 0xf0, 0xa0]);
-                put(&mut img, x + 1, y, [0xff, 0xf0, 0xa0]);
+            // Loose bits above the heap.
+            for (x, y) in [(5, 10), (19, 12), (14, 5), (8, 6), (18, 7)] {
+                put(&mut img, x, y, LIGHT);
+                put(&mut img, x, y + 1, BODY);
+            }
+            // The tide lapping at the foot of the heap.
+            for x in 1..23 {
+                let y = 21 + ((x as f32 * 0.9).sin() * 0.8).round() as i32;
+                put(&mut img, x, y, [0x4f, 0xb8, 0xc4]);
+                put(&mut img, x, y + 1, [0x2f, 0x7a, 0x9a]);
+                if x % 4 == 0 {
+                    put(&mut img, x, y - 1, [0xb8, 0xf4, 0xff]);
+                }
             }
         }
     }

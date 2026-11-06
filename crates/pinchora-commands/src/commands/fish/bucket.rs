@@ -55,13 +55,31 @@ impl Mode {
     }
 }
 
-/// The bucket by species, the most valuable first. Rows come from the database species by species,
-/// the biggest first within each.
-fn groups(rows: Vec<BucketRow>) -> Vec<Group> {
+/// The bucket as the game sees it: fish by species, plus any left of a species the game no longer has.
+struct Bucket {
+    /// By species, the most valuable first.
+    groups: Vec<Group>,
+    /// Fish of species taken out of the game: they count for nothing and sell for nothing, but
+    /// Sell all clears them away.
+    strays: Vec<BucketRow>,
+}
+
+impl Bucket {
+    /// Fish of known species, which is what the bucket's size is counted in.
+    fn count(&self) -> usize {
+        self.groups.iter().map(|g| g.rows.len()).sum()
+    }
+}
+
+/// Sorts the bucket's rows into species, the most valuable first. Rows come from the database species
+/// by species, the biggest first within each.
+fn bucket_of(rows: Vec<BucketRow>) -> Bucket {
     let content = Content::get();
     let mut groups: Vec<Group> = Vec::new();
+    let mut strays = Vec::new();
     for row in rows {
         let Some(fish) = content.fish(&row.fish_id) else {
+            strays.push(row);
             continue;
         };
         match groups.last_mut() {
@@ -70,12 +88,14 @@ fn groups(rows: Vec<BucketRow>) -> Vec<Group> {
         }
     }
     groups.sort_by_key(|g| std::cmp::Reverse((g.fish.rarity, g.value())));
-    groups
+    Bucket { groups, strays }
 }
 
-/// The (fish, shells) pairs a sale of `mode` would sell.
-fn sales(groups: &[Group], mode: Mode) -> Vec<(i64, i64)> {
-    groups
+/// The (fish, shells) pairs a sale of `mode` would sell. Selling everything also clears the strays,
+/// for nothing.
+fn sales(bucket: &Bucket, mode: Mode) -> Vec<(i64, i64)> {
+    let mut sales: Vec<(i64, i64)> = bucket
+        .groups
         .iter()
         .flat_map(|g| {
             let skip = usize::from(mode == Mode::Duplicates);
@@ -84,7 +104,11 @@ fn sales(groups: &[Group], mode: Mode) -> Vec<(i64, i64)> {
                 .skip(skip)
                 .map(|r| (r.id, fishing::sale_value(g.fish, r.size_cm)))
         })
-        .collect()
+        .collect();
+    if mode == Mode::All {
+        sales.extend(bucket.strays.iter().map(|r| (r.id, 0)));
+    }
+    sales
 }
 
 fn total(sales: &[(i64, i64)]) -> i64 {
@@ -97,13 +121,14 @@ pub(super) async fn sell(cx: &Cx) -> anyhow::Result<()> {
 }
 
 async fn panel(app: &App, user: u64, page: usize, note: &str) -> anyhow::Result<InteractionResponseData> {
-    let groups = groups(app.db.bucket(user).await?);
-    let count: usize = groups.iter().map(|g| g.rows.len()).sum();
-    let pages = groups.len().div_ceil(PER_PAGE).max(1);
+    let bucket = bucket_of(app.db.bucket(user).await?);
+    let count = bucket.count();
+    let pages = bucket.groups.len().div_ceil(PER_PAGE).max(1);
     let page = page.min(pages - 1);
-    let (all, duplicates) = (sales(&groups, Mode::All), sales(&groups, Mode::Duplicates));
+    let (all, duplicates) = (sales(&bucket, Mode::All), sales(&bucket, Mode::Duplicates));
 
-    let slots = groups
+    let slots = bucket
+        .groups
         .iter()
         .skip(page * PER_PAGE)
         .take(PER_PAGE)
@@ -130,7 +155,9 @@ async fn panel(app: &App, user: u64, page: usize, note: &str) -> anyhow::Result<
     )
     .await?;
     let description = if note.is_empty() {
-        if count == 0 {
+        if count == 0 && !bucket.strays.is_empty() {
+            "Only fish the sea no longer holds are left. Sell all clears them away.".to_owned()
+        } else if count == 0 {
             "The bucket is empty. Cast a line with `/fish cast`!".to_owned()
         } else {
             "Sell it all, or keep the biggest of each kind and sell the duplicates. \
@@ -218,8 +245,8 @@ pub(crate) async fn on_bucket(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Res
             } else {
                 Mode::All
             };
-            let groups = groups(cx.app.db.bucket(user).await?);
-            let sales = sales(&groups, mode);
+            let bucket = bucket_of(cx.app.db.bucket(user).await?);
+            let sales = sales(&bucket, mode);
             let note = if sales.is_empty() {
                 "Nothing to sell right now.".to_owned()
             } else {
@@ -261,12 +288,13 @@ mod tests {
             row(3, "pearlpatch_koi", 30.0),
             row(4, "toaststripe_minnow", 6.0),
         ];
-        let groups = groups(rows);
+        let bucket = bucket_of(rows);
+        let groups = &bucket.groups;
         assert_eq!(groups.len(), 2);
         assert_eq!(groups[0].fish.id, "pearlpatch_koi", "the dearer species leads");
-        let all = sales(&groups, Mode::All);
+        let all = sales(&bucket, Mode::All);
         assert_eq!(all.len(), 4);
-        let duplicates = sales(&groups, Mode::Duplicates);
+        let duplicates = sales(&bucket, Mode::Duplicates);
         assert_eq!(duplicates.iter().map(|(id, _)| *id).collect::<Vec<_>>(), [2, 3]);
         assert!(total(&duplicates) < total(&all));
         assert_eq!(groups[0].value(), all[..3].iter().map(|(_, v)| v).sum::<i64>());
@@ -275,7 +303,35 @@ mod tests {
     }
 
     #[test]
-    fn fish_the_game_no_longer_knows_are_left_in_the_bucket() {
-        assert!(groups(vec![row(1, "not_a_fish", 10.0)]).is_empty());
+    fn fish_the_game_no_longer_knows_do_not_count_and_sell_all_clears_them_for_nothing() {
+        let bucket = bucket_of(vec![
+            row(1, "not_a_fish", 10.0),
+            row(2, "pearlpatch_koi", 40.0),
+            row(3, "gone_too", 3.0),
+            row(4, "pearlpatch_koi", 30.0),
+        ]);
+        assert!(
+            bucket.groups.len() == 1 && bucket.count() == 2,
+            "only known species count"
+        );
+        assert_eq!(bucket.strays.iter().map(|r| r.id).collect::<Vec<_>>(), [1, 3]);
+        // Sell all takes the strays along at 0 shells, so their total is just the known fish's.
+        let all = sales(&bucket, Mode::All);
+        assert_eq!(all.iter().map(|(id, _)| *id).collect::<Vec<_>>(), [2, 4, 1, 3]);
+        assert_eq!(all[2..], [(1, 0), (3, 0)]);
+        assert_eq!(total(&all), bucket.groups[0].value());
+        // Selling duplicates leaves them where they are.
+        assert_eq!(
+            sales(&bucket, Mode::Duplicates)
+                .iter()
+                .map(|(id, _)| *id)
+                .collect::<Vec<_>>(),
+            [4]
+        );
+        // A bucket of nothing but strays is empty to the count and still has something to clear.
+        let only = bucket_of(vec![row(9, "not_a_fish", 1.0)]);
+        assert_eq!((only.count(), only.groups.len()), (0, 0));
+        assert_eq!(sales(&only, Mode::All), [(9, 0)]);
+        assert!(sales(&only, Mode::Duplicates).is_empty());
     }
 }

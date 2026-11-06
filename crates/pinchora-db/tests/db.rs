@@ -1831,6 +1831,7 @@ async fn a_catch_goes_to_the_book_the_bucket_and_the_weekly_board() {
         ratio,
         weekly: Some((guild, this_week)),
         milestones: &[],
+        known: &["koi"],
     };
 
     // A first of its kind: in the book, the bucket and on the board, no record to beat.
@@ -1930,6 +1931,7 @@ async fn book_milestones_pay_once_and_selling_keeps_the_book() {
         ratio: 1.0,
         weekly: Some((guild, week(2))),
         milestones: &milestones,
+        known: &["a", "b", "c"],
     };
 
     // One species: nothing yet. The second pays its milestone.
@@ -1979,7 +1981,7 @@ async fn book_milestones_pay_once_and_selling_keeps_the_book() {
     // Selling empties the bucket for shells, never the book, and a second sale of the same fish pays nothing.
     let bucket = db.bucket(alice).await.unwrap();
     assert_eq!(bucket.len(), 5);
-    assert_eq!(db.bucket_count(alice).await.unwrap(), 5);
+    assert_eq!(db.bucket_count(alice, &["a", "b", "c"]).await.unwrap(), 5);
     assert!(
         bucket.windows(2).all(|w| w[0].fish_id <= w[1].fish_id),
         "species by species"
@@ -1990,17 +1992,38 @@ async fn book_milestones_pay_once_and_selling_keeps_the_book() {
     assert_eq!((sold.fish, sold.shells, sold.balance), (3, 30, before + 30));
     let again = db.sell_fish(alice, &sales[..3]).await.unwrap();
     assert_eq!((again.fish, again.shells, again.balance), (0, 0, before + 30));
-    assert_eq!(db.bucket_count(alice).await.unwrap(), 2);
+    assert_eq!(db.bucket_count(alice, &["a", "b", "c"]).await.unwrap(), 2);
     // Someone else's fish cannot be sold.
     let theirs = db.sell_fish(veteran, &sales[3..]).await.unwrap();
     assert_eq!((theirs.fish, theirs.shells), (0, 0));
-    assert_eq!(db.bucket_count(alice).await.unwrap(), 2);
+    assert_eq!(db.bucket_count(alice, &["a", "b", "c"]).await.unwrap(), 2);
     let rest = db.sell_fish(alice, &sales[3..]).await.unwrap();
     assert_eq!((rest.fish, rest.shells), (2, 20));
-    assert_eq!(db.bucket_count(alice).await.unwrap(), 0);
+    assert_eq!(db.bucket_count(alice, &["a", "b", "c"]).await.unwrap(), 0);
     assert_eq!(
         db.fish_book(alice).await.unwrap().len(),
         3,
         "the book keeps every species"
     );
+
+    // A species the game no longer knows does not count towards the bucket (not in the catch's count
+    // either), and selling it for nothing clears it.
+    let credits = db.user(alice).await.unwrap().credits;
+    let log = db.record_catch(alice, catch("a", 9.0)).await.unwrap();
+    assert_eq!(log.bucket, 1);
+    let gone = db.record_catch(alice, catch("gone", 9.0)).await.unwrap();
+    assert_eq!(gone.bucket, 1, "the dropped species is not counted");
+    assert_eq!(db.bucket(alice).await.unwrap().len(), 2);
+    assert_eq!(db.bucket_count(alice, &["a", "b", "c"]).await.unwrap(), 1);
+    assert_eq!(db.bucket_count(alice, &["a", "b", "c", "gone"]).await.unwrap(), 2);
+    let stray = db
+        .bucket(alice)
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|r| r.fish_id == "gone")
+        .unwrap();
+    let cleared = db.sell_fish(alice, &[(stray.id, 0)]).await.unwrap();
+    assert_eq!((cleared.fish, cleared.shells, cleared.balance), (1, 0, credits));
+    assert_eq!(db.bucket(alice).await.unwrap().len(), 1);
 }

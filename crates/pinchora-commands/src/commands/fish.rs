@@ -5,7 +5,7 @@ use pinchora_core::leveling::{self, week_start};
 use pinchora_db::{Cosmetic, MilestonePaid, MilestoneReward, NewCatch};
 use pinchora_game::{
     Content, Rarity,
-    fishing::{self, BAIT_PRICE, BUCKET_CAPACITY, Bait, CAST_COOLDOWN_SECS, Gear, Reward, Rod, Spot, Tackle},
+    fishing::{self, BAIT_PRICE, BUCKET_CAPACITY, Bait, CAST_COOLDOWN_SECS, Gear, Reel, Reward, Rod, Spot, Tackle},
 };
 use twilight_interactions::command::{CommandModel, CommandOption, CreateCommand, CreateOption};
 use twilight_model::{
@@ -111,6 +111,11 @@ pub(super) async fn player_level(app: &App, user: u64) -> anyhow::Result<u32> {
     Ok(leveling::level_of(app.db.user(user).await?.xp))
 }
 
+/// The ids of the species in the game: the fish in a bucket that are not among them do not count.
+fn known_fish() -> Vec<&'static str> {
+    Content::get().fish.iter().map(|f| f.id.as_str()).collect()
+}
+
 /// The book milestones in the form the database pays them.
 fn milestone_rewards(gear: &Gear) -> Vec<MilestoneReward> {
     gear.milestones
@@ -175,7 +180,7 @@ async fn cast(cx: &Cx, choice: Option<SpotChoice>) -> anyhow::Result<()> {
         cx.app.db.set_fishing_spot(user, &spot.id).await?;
     }
     let rod = gear.rod(&saved.rod).unwrap_or_else(|| gear.starter_rod());
-    if cx.app.db.bucket_count(user).await? >= BUCKET_CAPACITY {
+    if cx.app.db.bucket_count(user, &known_fish()).await? >= BUCKET_CAPACITY {
         return cx
             .reply_ephemeral(format!(
                 "Your bucket is full ({BUCKET_CAPACITY}/{BUCKET_CAPACITY}). Sell some fish with `/fish sell` first."
@@ -208,7 +213,7 @@ async fn cast(cx: &Cx, choice: Option<SpotChoice>) -> anyhow::Result<()> {
             .await;
     }
     let nonce: u32 = rand::random();
-    let delay_ms: i64 = rand::random_range(1_500..4_500);
+    let delay_ms = fishing::bite_delay_ms(rand::random::<f64>());
     let bite_at = Utc::now().timestamp_millis() + delay_ms;
     // What the cast was made with: the reel works from this, so a gear change in between counts next time.
     let state = format!(
@@ -219,7 +224,11 @@ async fn cast(cx: &Cx, choice: Option<SpotChoice>) -> anyhow::Result<()> {
     );
     cx.app
         .cache
-        .put(&format!("cast:{user}:{nonce}"), &state, Duration::from_secs(30))
+        .put(
+            &format!("cast:{user}:{nonce}"),
+            &state,
+            Duration::from_secs(fishing::LINE_TTL_SECS),
+        )
         .await?;
     let custom_id = format!("fr:{user}:{nonce}");
     let footer = tackle_line(spot, rod, bait);
@@ -304,21 +313,24 @@ pub(crate) async fn on_reel(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
         components: Some(Vec::new()),
         ..Default::default()
     };
-    if late_by < 0 {
-        return cx
-            .update(miss(
-                "Too early!",
-                "The splash scared the fish away. Cast again with `/fish cast`.",
-            ))
-            .await;
-    }
-    if late_by > rod.window_ms {
-        return cx
-            .update(miss(
-                "Too slow!",
-                "It slipped off the hook. Cast again with `/fish cast`.",
-            ))
-            .await;
+    match fishing::reel_result(late_by, rod.window_ms) {
+        Reel::Early => {
+            return cx
+                .update(miss(
+                    "Too early!",
+                    "The splash scared the fish away. Cast again with `/fish cast`.",
+                ))
+                .await;
+        }
+        Reel::Late => {
+            return cx
+                .update(miss(
+                    "Too slow!",
+                    "It slipped off the hook. Cast again with `/fish cast`.",
+                ))
+                .await;
+        }
+        Reel::Caught => {}
     }
     let clock = cx.app.now();
     let pool = fishing::odds(
@@ -337,6 +349,7 @@ pub(crate) async fn on_reel(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
     let ratio = fishing::size_ratio(fish, size);
     let value = fishing::sale_value(fish, size);
     let milestones = milestone_rewards(gear);
+    let known = known_fish();
     let log = cx
         .app
         .db
@@ -349,6 +362,7 @@ pub(crate) async fn on_reel(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
                 // Boots and tins are no catch to brag about.
                 weekly: cx.guild_id().filter(|_| !fish.junk).map(|g| (g, week_start(clock))),
                 milestones: &milestones,
+                known: &known,
             },
         )
         .await?;

@@ -50,7 +50,7 @@
       "name": "Reedline Rod",
       "price": 800,
       "window_ms": 3000,
-      "luck": 1.1,
+      "luck": 1.06,
       "blurb": "Light and springy. The line stays calm a little longer."
     },
     {
@@ -58,7 +58,7 @@
       "name": "Pearlwhip Rod",
       "price": 3500,
       "window_ms": 3600,
-      "luck": 1.25,
+      "luck": 1.15,
       "blurb": "A pearl-wrapped grip that fish seem to admire."
     },
     {
@@ -66,7 +66,7 @@
       "name": "Tidecaller Rod",
       "price": 12000,
       "window_ms": 4300,
-      "luck": 1.45,
+      "luck": 1.27,
       "blurb": "Hums softly whenever the tide is turning."
     },
     {
@@ -74,7 +74,7 @@
       "name": "Starweave Rod",
       "price": 40000,
       "window_ms": 5000,
-      "luck": 1.7,
+      "luck": 1.4,
       "blurb": "Spun from night sky. Patient, steady and a little magic."
     }
   ],
@@ -83,15 +83,15 @@
       "id": "glow_worm",
       "name": "Glow Worm",
       "pack": 5,
-      "price": 60,
-      "boost": { "kind": "rarity", "rarity": "uncommon", "factor": 3.0 },
+      "price": 65,
+      "boost": { "kind": "rarity", "rarity": "uncommon", "factor": 2.5 },
       "blurb": "A cheerful little glow. Uncommon fish adore it."
     },
     {
       "id": "silver_lure",
       "name": "Silver Lure",
       "pack": 5,
-      "price": 175,
+      "price": 140,
       "boost": { "kind": "rarity", "rarity": "rare", "factor": 2.5 },
       "blurb": "One flash of silver that rare fish cannot ignore."
     },
@@ -99,8 +99,8 @@
       "id": "tide_crumbs",
       "name": "Tide Crumbs",
       "pack": 5,
-      "price": 225,
-      "boost": { "kind": "specials", "factor": 4.0 },
+      "price": 120,
+      "boost": { "kind": "specials", "factor": 3.0 },
       "blurb": "A sprinkle of treats for the spot's own favourites."
     }
   ],

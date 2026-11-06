@@ -163,8 +163,10 @@ Every movement is written to `credit_ledger` (pearls get their own ledger).
 ## Fishing
 
 `/fish cast` costs a bait (10 shells plain, or one piece of a bought bait), shows a cast message, and
-a **Reel!** button works once the fish has bitten, a random 1.5–4.5 s later; reacting inside the rod's
-window (2.5 s for the starter rod, up to 5 s) catches a fish. The cast keeps what it was made with in
+a **Reel!** button works once the fish has bitten, a random 2–17 s later (`BITE_MIN_MS`..`BITE_MAX_MS`, spread
+evenly); reacting inside the rod's window (2.5 s for the starter rod, up to 5 s) catches a fish, pressing before
+the bite is an early miss. The spread is much wider than the longest window, so pressing blind at one fixed moment
+catches at most about a third of casts with the best rod (a game test checks it). The cast keeps what it was made with in
 Redis (`cast:<user>:<nonce>` = `<bite ms>:<spot>:<rod>:<bait>`), so the reel does not depend on the
 player's gear at that moment.
 
@@ -173,14 +175,26 @@ player's gear at that moment.
   `spots`: the spots it lives in and its draw weight at each. Within one spot a rarer fish always has a
   smaller weight than a commoner one (`content/check.py` and the game tests check it); the depth shifts the
   mix, not the order. Time of day and season still filter who bites, so a pool is never empty (junk lives
-  everywhere). Base odds work out to roughly 17 / 27 / 44 / 100 / 160 shells of fish per cast at the five spots.
-- **Gear**: five rods (`window_ms`, `luck` multiplies the weight of rare and better fish) and three baits
-  (a rarity tier's weight ×3 or ×2.5, or a spot's signature `specials` ×4); a bait replaces the plain-bait fee.
+  everywhere). Weights run on a scale where a common is 1000 so a legendary can be 8. Base odds work out to
+  roughly 17 / 20 / 23 / 27 / 32 shells of fish per cast at the five spots with the starter rod.
+- **Gear**: five rods (`window_ms`, `luck` multiplies the weight of rare and better fish, 1.0 to 1.4) and three
+  baits (a rarity tier's weight ×2.5, or a spot's signature `specials` ×3); a bait replaces the plain-bait fee.
   Tables `fishing_gear`, `user_rods`, `user_baits`; no row means the shore, the starter rod and plain bait.
+- **Economy**: shells an hour is worked out from the real tables as casting every 30 s (120 casts), every reel
+  caught, every fish sold at its usual size and the bait paid for, averaged over the hours and months. The
+  starter rod with plain bait pays about 810 / 1,150 / 1,575 / 2,030 / 2,625 an hour at the five spots; the best
+  rod and bait about 1,085 / 1,530 / 2,180 / 2,760 / 3,815. `fishing::tests` fails if any rod and bait pays more
+  than 1,200 / 1,700 / 2,300 / 3,000 / 4,000 at the five spots, if the Shore starter wage leaves 700–900, if a
+  deeper spot or better gear stops being clearly better, if the 40,000-shell rod pays for itself in under 15 hours
+  of Abyss fishing (it takes 27–41) or if legendaries pass 0.3% of Abyss catches with the best rod (about 0.2%).
+  For comparison `/daily` pays 250–750 a day. Baits mostly shift the odds rather than the wage: they cost
+  13 / 28 / 24 shells a cast against 10 for plain bait.
 - **Sizes and selling**: a size is normal around the middle of the species' range, three deviations to either
   end of it. A catch goes to `fish_bucket` (60 fish at most) and to the fish book, which keeps the count and the
   record size for good; `/fish sell` sells all or all but the biggest of each species, for the species' worth
-  scaled by size. `fish_bucket` rows are deleted and paid in one transaction, so a double click pays once.
+  scaled by size. `fish_bucket` rows are deleted and paid in one transaction, so a double click pays once. Fish of a
+  species later removed from `fish.json` are not counted towards the 60 (the count takes the known ids) and
+  Sell all clears them for 0 shells.
 - **Book milestones**: 10 / 25 / 50 / 72 species pay shells and a shop badge or a background that already
   exists. `fish_milestones` makes each pay once; the claim runs in the catch's transaction and also catches up
   players who passed a milestone before it existed.

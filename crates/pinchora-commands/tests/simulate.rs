@@ -7234,6 +7234,11 @@ fn fish_sub(name: &str) -> Value {
     json!([sub(name, Vec::new())])
 }
 
+/// The ids of every species in the game, as the catch counts the bucket by.
+fn known_fish() -> Vec<&'static str> {
+    Content::get().fish.iter().map(|f| f.id.as_str()).collect()
+}
+
 /// Total XP at the start of `level`.
 fn xp_for_level(level: u32) -> i64 {
     (0..level).map(|l| pinchora_core::leveling::xp_to_next(l) as i64).sum()
@@ -7492,16 +7497,16 @@ async fn rods_and_bait_are_bought_equipped_and_used_up() {
     assert!(
         worms
             .description()
-            .contains("Bought 5 **Glow Worm** for 60 shells; you have 5"),
+            .contains("Bought 5 **Glow Worm** for 65 shells; you have 5"),
         "{}",
         worms.description()
     );
     let worms = sim.pick(angler, &worms, "fx:p:", "b:glow_worm").await;
     assert!(worms.description().contains("you have 10"), "{}", worms.description());
-    assert_eq!(shells(&sim, angler).await, 80);
+    assert_eq!(shells(&sim, angler).await, 70);
     let broke = sim.pick(angler, &worms, "fx:p:", "b:silver_lure").await;
     assert!(
-        broke.description().contains("costs 175 shells and you have 80"),
+        broke.description().contains("costs 140 shells and you have 70"),
         "{}",
         broke.description()
     );
@@ -7519,7 +7524,7 @@ async fn rods_and_bait_are_bought_equipped_and_used_up() {
         "{}",
         stranger.content()
     );
-    assert_eq!(shells(&sim, angler).await, 80);
+    assert_eq!(shells(&sim, angler).await, 70);
 
     // /fish gear: only owned rods and bait are offered; putting them on is saved.
     let gear = sim.command(angler, "fish", fish_sub("gear")).await;
@@ -7536,7 +7541,7 @@ async fn rods_and_bait_are_bought_equipped_and_used_up() {
         "{}",
         rod.description()
     );
-    assert!(rod.field("Rod").contains("reel 3.0 s") && rod.field("Rod").contains("rare luck +10%"));
+    assert!(rod.field("Rod").contains("reel 3.0 s") && rod.field("Rod").contains("rare luck +6%"));
     let hook = sim.pick(angler, &rod, "fx:b:", "glow_worm").await;
     assert!(
         hook.description().contains("**Glow Worm** is on the hook"),
@@ -7567,7 +7572,7 @@ async fn rods_and_bait_are_bought_equipped_and_used_up() {
     // A cast with bait on the hook uses one piece and no plain bait.
     let cast = sim.command(angler, "fish", fish_cast(None)).await;
     assert_eq!(footer(&cast), "Shore · Reedline Rod · Glow Worm ×9 left");
-    assert_eq!(shells(&sim, angler).await, 80, "the worm paid for the cast");
+    assert_eq!(shells(&sim, angler).await, 70, "the worm paid for the cast");
     assert_eq!(db.bait_stock(angler).await.unwrap(), [("glow_worm".to_owned(), 9)]);
     // Back to plain bait.
     let plain = sim.pick(angler, &hook, "fx:b:", "plain").await;
@@ -7719,11 +7724,12 @@ async fn a_catch_has_a_size_waits_in_the_bucket_and_beats_records() {
         db.record_catch(
             hoarder,
             pinchora_db::NewCatch {
-                fish_id: &format!("fish{}", n % 7),
+                fish_id: &Content::get().fish[n % 7].id,
                 size_cm: 10.0,
                 ratio: 1.0,
                 weekly: None,
                 milestones: &[],
+                known: &known_fish(),
             },
         )
         .await
@@ -7736,17 +7742,39 @@ async fn a_catch_has_a_size_waits_in_the_bucket_and_beats_records() {
         full.content()
     );
     assert_eq!(shells(&sim, hoarder).await, 100);
+    // Fish of a species the game dropped do not count towards the 60: a bucket of them casts freely.
+    let strayer = unique();
+    fund(&sim, strayer, 100).await;
+    for n in 0..60 {
+        db.record_catch(
+            strayer,
+            pinchora_db::NewCatch {
+                fish_id: &format!("vanished{}", n % 7),
+                size_cm: 10.0,
+                ratio: 1.0,
+                weekly: None,
+                milestones: &[],
+                known: &known_fish(),
+            },
+        )
+        .await
+        .unwrap();
+    }
+    assert_eq!(db.bucket(strayer).await.unwrap().len(), 60);
+    let freely = sim.command(strayer, "fish", fish_cast(None)).await;
+    assert_eq!(freely.title(), "🎣 Line in the water…", "{}", freely.content());
     // Their bucket is the player's own: it fills with a catch made right at the brim, then warns.
     let last = unique();
     for n in 0..59 {
         db.record_catch(
             last,
             pinchora_db::NewCatch {
-                fish_id: &format!("fish{}", n % 7),
+                fish_id: &Content::get().fish[n % 7].id,
                 size_cm: 10.0,
                 ratio: 1.0,
                 weekly: None,
                 milestones: &[],
+                known: &known_fish(),
             },
         )
         .await
@@ -7929,6 +7957,7 @@ async fn catch_for_board(sim: &Sim, user: u64, fish: &str, size: f32, week: chro
                 ratio: f64::from(pinchora_game::fishing::size_ratio(fish, size)),
                 weekly: Some((sim.guild, week)),
                 milestones: &[],
+                known: &known_fish(),
             },
         )
         .await
@@ -8058,7 +8087,7 @@ async fn selling_empties_the_bucket_for_shells_and_keeps_the_book() {
         "{}",
         stale.description()
     );
-    assert_eq!(db.bucket_count(seller).await.unwrap(), 10);
+    assert_eq!(db.bucket_count(seller, &known_fish()).await.unwrap(), 10);
 
     // Somebody else's bucket is not theirs to sell.
     let thief = sim
@@ -8072,7 +8101,7 @@ async fn selling_empties_the_bucket_for_shells_and_keeps_the_book() {
         )
         .await;
     assert!(thief.content().contains("someone else's bucket"), "{}", thief.content());
-    assert_eq!(db.bucket_count(seller).await.unwrap(), 10);
+    assert_eq!(db.bucket_count(seller, &known_fish()).await.unwrap(), 10);
 
     // Sell the rest.
     let rest = everything - spare;
@@ -8085,7 +8114,7 @@ async fn selling_empties_the_bucket_for_shells_and_keeps_the_book() {
         .await;
     assert!(all.description().contains("Sold **10 fish**"), "{}", all.description());
     assert_eq!(shells(&sim, seller).await, before + everything);
-    assert_eq!(db.bucket_count(seller).await.unwrap(), 0);
+    assert_eq!(db.bucket_count(seller, &known_fish()).await.unwrap(), 0);
     assert!(all.button("Sell all (0 · 0 shells)").disabled);
     assert_eq!(db.fish_book(seller).await.unwrap().len(), 10);
     assert_eq!(
@@ -8101,6 +8130,42 @@ async fn selling_empties_the_bucket_for_shells_and_keeps_the_book() {
         "{}",
         empty.description()
     );
+
+    // Fish of a species the game dropped later sit in the bucket for nothing: they are not counted,
+    // and Sell all clears them away at 0 shells.
+    for n in 0..3 {
+        db.record_catch(
+            seller,
+            pinchora_db::NewCatch {
+                fish_id: &format!("vanished{n}"),
+                size_cm: 12.0,
+                ratio: 1.0,
+                weekly: None,
+                milestones: &[],
+                known: &known_fish(),
+            },
+        )
+        .await
+        .unwrap();
+    }
+    assert_eq!(db.bucket_count(seller, &known_fish()).await.unwrap(), 0);
+    let strays = sim.command(seller, "fish", fish_sub("sell")).await;
+    assert!(
+        strays.description().contains("no longer holds"),
+        "{}",
+        strays.description()
+    );
+    assert!(strays.button("Sell duplicates (0 · 0 shells)").disabled);
+    let credits = shells(&sim, seller).await;
+    let cleared = sim.click(seller, &strays, "Sell all (3 · 0 shells)").await;
+    assert!(
+        cleared.description().contains("Sold **3 fish** for **0 shells**"),
+        "{}",
+        cleared.description()
+    );
+    assert_eq!(shells(&sim, seller).await, credits);
+    assert!(db.bucket(seller).await.unwrap().is_empty());
+    assert!(cleared.button("Sell all (0 · 0 shells)").disabled);
 }
 
 #[tokio::test]

@@ -9,8 +9,8 @@
     "time": "any",
     "season": "any",
     "spots": {
-      "shore": 100,
-      "reef": 100
+      "shore": 1000,
+      "reef": 1000
     },
     "flavor": "Looks like it has been lightly toasted along the edges.",
     "sprite_brief": "Small sand fish, cream belly, coral lateral stripe, rounded navy eye, forked tail."
@@ -25,7 +25,7 @@
     "time": "day",
     "season": "any",
     "spots": {
-      "shore": 100
+      "shore": 1000
     },
     "flavor": "Investigates every pebble as if it might be breakfast.",
     "sprite_brief": "Slim moss fish, sand lips, cream flank dots, sky fins, short forked tail."
@@ -40,8 +40,8 @@
     "time": "dawn",
     "season": "spring",
     "spots": {
-      "shore": 100,
-      "reef": 80
+      "shore": 1000,
+      "reef": 800
     },
     "flavor": "A tiny green comma in the river's long sentence.",
     "sprite_brief": "Mint curved body, cream belly, navy comma spot, clear sky fins."
@@ -56,8 +56,8 @@
     "time": "day",
     "season": "summer",
     "spots": {
-      "shore": 100,
-      "reef": 100
+      "shore": 1000,
+      "reef": 1000
     },
     "flavor": "Hops along the bottom with absolutely nowhere urgent to be.",
     "sprite_brief": "Sand stout goby, moss freckles, cream round cheeks, wide coral pectoral fins."
@@ -72,9 +72,9 @@
     "time": "any",
     "season": "any",
     "spots": {
-      "shore": 100,
-      "reef": 100,
-      "kelp_forest": 80
+      "shore": 1000,
+      "reef": 1000,
+      "kelp_forest": 800
     },
     "flavor": "Follows picnics with suspicious dedication.",
     "sprite_brief": "Deep cream oval fish, moss back, coral blunt fins, sand cheek scales."
@@ -89,7 +89,7 @@
     "time": "day",
     "season": "spring",
     "spots": {
-      "shore": 100
+      "shore": 1000
     },
     "flavor": "Flashes a friendly little wink whenever it turns.",
     "sprite_brief": "Sky slender shiner, bright cream side stripe, lilac tail, navy round eye."
@@ -104,8 +104,8 @@
     "time": "dusk",
     "season": "autumn",
     "spots": {
-      "shore": 100,
-      "kelp_forest": 80
+      "shore": 1000,
+      "kelp_forest": 800
     },
     "flavor": "Settles into the silt like a biscuit into a cup.",
     "sprite_brief": "Sand long loach, moss saddle marks, cream barbels, coral rounded tail."
@@ -120,8 +120,8 @@
     "time": "day",
     "season": "any",
     "spots": {
-      "shore": 100,
-      "kelp_forest": 100
+      "shore": 1000,
+      "kelp_forest": 1000
     },
     "flavor": "Wears its spots like a very tidy set of buttons.",
     "sprite_brief": "Moss oval perch, cream button spots, navy dorsal spikes, sand belly, coral fins."
@@ -136,8 +136,8 @@
     "time": "any",
     "season": "spring",
     "spots": {
-      "shore": 100,
-      "kelp_forest": 80
+      "shore": 1000,
+      "kelp_forest": 800
     },
     "flavor": "A patchwork shimmer in the shallows.",
     "sprite_brief": "Rounded sand carp, mint and cream square scales, moss whiskers, coral tail."
@@ -152,8 +152,8 @@
     "time": "dawn",
     "season": "winter",
     "spots": {
-      "shore": 100,
-      "kelp_forest": 80
+      "shore": 1000,
+      "kelp_forest": 800
     },
     "flavor": "Stitches a thin blue line through cold water.",
     "sprite_brief": "Long sky fish, cream narrow belly, navy eye, translucent mint forked tail."
@@ -168,8 +168,8 @@
     "time": "day",
     "season": "summer",
     "spots": {
-      "shore": 100,
-      "reef": 100
+      "shore": 1000,
+      "reef": 1000
     },
     "flavor": "Always seems to have a few crumbs stuck to its scales.",
     "sprite_brief": "Sand broad fish, cream scattered scale flecks, moss back stripe, blunt navy nose."
@@ -184,7 +184,7 @@
     "time": "dusk",
     "season": "autumn",
     "spots": {
-      "shore": 100
+      "shore": 1000
     },
     "flavor": "Searches the riverbed with two very serious whiskers.",
     "sprite_brief": "Lilac slim fish, cream chin barbels, sand speckles, moss small fins."
@@ -199,8 +199,8 @@
     "time": "night",
     "season": "winter",
     "spots": {
-      "kelp_forest": 100,
-      "deep_sea": 80
+      "kelp_forest": 1000,
+      "deep_sea": 800
     },
     "flavor": "Its broad little face looks ready for a warm drink.",
     "sprite_brief": "Sand broad headed sculpin, moss mottled back, cream cup shaped mouth, wide navy fins."
@@ -215,7 +215,7 @@
     "time": "day",
     "season": "spring",
     "spots": {
-      "shore": 100
+      "shore": 1000
     },
     "flavor": "The reeds always seem livelier after it passes.",
     "sprite_brief": "Mint small diamond fish, coral side dash, cream translucent fins, navy eye."
@@ -230,8 +230,8 @@
     "time": "any",
     "season": "summer",
     "spots": {
-      "reef": 100,
-      "kelp_forest": 100
+      "reef": 1000,
+      "kelp_forest": 1000
     },
     "flavor": "Travels in a crowd and still brings its own snack.",
     "sprite_brief": "Slender coral sardine, cream belly, sky back line, tiny sand forked tail."
@@ -246,8 +246,8 @@
     "time": "dawn",
     "season": "spring",
     "spots": {
-      "shore": 100,
-      "kelp_forest": 80
+      "shore": 1000,
+      "kelp_forest": 800
     },
     "flavor": "Its brave little spines never quite spoil its sweet face.",
     "sprite_brief": "Moss tiny fish, three cream dorsal spines, rose throat, sky rounded fins."
@@ -262,7 +262,7 @@
     "time": "day",
     "season": "summer",
     "spots": {
-      "shore": 100
+      "shore": 1000
     },
     "flavor": "Leaves a warm gold flicker in the afternoon water.",
     "sprite_brief": "Slim gold fish, cream side sheen, sand dorsal line, coral split tail."
@@ -277,9 +277,9 @@
     "time": "night",
     "season": "autumn",
     "spots": {
-      "reef": 100,
-      "kelp_forest": 100,
-      "deep_sea": 80
+      "reef": 1000,
+      "kelp_forest": 1000,
+      "deep_sea": 800
     },
     "flavor": "Arrives quietly, usually with a hundred equally quiet cousins.",
     "sprite_brief": "Sky herring, navy rounded snout, cream belly, gold eye ring, narrow forked tail."
@@ -294,10 +294,10 @@
     "time": "any",
     "season": "any",
     "spots": {
-      "shore": 100,
-      "reef": 100,
-      "kelp_forest": 100,
-      "deep_sea": 80
+      "shore": 1000,
+      "reef": 1000,
+      "kelp_forest": 1000,
+      "deep_sea": 800
     },
     "flavor": "Carries its elbows very politely.",
     "sprite_brief": "Tiny translucent sand shrimp, coral joints, cream antennae, moss tail fan."
@@ -312,8 +312,8 @@
     "time": "day",
     "season": "any",
     "spots": {
-      "reef": 100,
-      "kelp_forest": 100
+      "reef": 1000,
+      "kelp_forest": 1000
     },
     "flavor": "Sticks to its plans with admirable confidence.",
     "sprite_brief": "Low mint cone shell, cream radial ridges, sand oval foot, navy rim shadow."
@@ -328,8 +328,8 @@
     "time": "dusk",
     "season": "summer",
     "spots": {
-      "shore": 100,
-      "reef": 100
+      "shore": 1000,
+      "reef": 1000
     },
     "flavor": "Keeps a small seaside secret behind its ridged shell.",
     "sprite_brief": "Sand heart shaped shell, cream radiating ribs, coral hinge, navy outline."
@@ -344,10 +344,10 @@
     "time": "night",
     "season": "autumn",
     "spots": {
-      "reef": 100,
-      "kelp_forest": 100,
-      "deep_sea": 100,
-      "abyss": 80
+      "reef": 1000,
+      "kelp_forest": 1000,
+      "deep_sea": 1000,
+      "abyss": 800
     },
     "flavor": "A little spiral with nowhere it would rather be.",
     "sprite_brief": "Cream spiral shell, moss mottled bands, sand opening, coral soft foot."
@@ -362,8 +362,8 @@
     "time": "any",
     "season": "any",
     "spots": {
-      "shore": 100,
-      "reef": 100
+      "shore": 1000,
+      "reef": 1000
     },
     "flavor": "One well-traveled boot, still hoping to meet its other half.",
     "sprite_brief": "Old sand ankle boot, navy cracked sole, moss silt patches, coral broken lace.",
@@ -379,8 +379,8 @@
     "time": "any",
     "season": "any",
     "spots": {
-      "reef": 100,
-      "kelp_forest": 100
+      "reef": 1000,
+      "kelp_forest": 1000
     },
     "flavor": "A dented tin with a very modest underwater music career.",
     "sprite_brief": "Dented charcoal tin can, cream torn label, coral rust patches, bent gold pull ring.",
@@ -396,10 +396,10 @@
     "time": "any",
     "season": "any",
     "spots": {
-      "reef": 100,
-      "kelp_forest": 100,
-      "deep_sea": 100,
-      "abyss": 100
+      "reef": 1000,
+      "kelp_forest": 1000,
+      "deep_sea": 1000,
+      "abyss": 1000
     },
     "flavor": "Too frayed for sailing, just right for a very untidy bow.",
     "sprite_brief": "Coiled sand rope, moss algae tufts, cream frayed ends, navy wet shadow.",
@@ -415,9 +415,9 @@
     "time": "any",
     "season": "any",
     "spots": {
-      "kelp_forest": 100,
-      "deep_sea": 100,
-      "abyss": 80
+      "kelp_forest": 1000,
+      "deep_sea": 1000,
+      "abyss": 800
     },
     "flavor": "A toy wagon wheel that took the scenic route to the shore.",
     "sprite_brief": "Small worn wooden wheel, sand broken spokes, charcoal hub, moss seaweed strand.",
@@ -433,7 +433,7 @@
     "time": "any",
     "season": "any",
     "spots": {
-      "shore": 100
+      "shore": 1000
     },
     "flavor": "A chipped cup with enough dignity left for holding pebbles.",
     "sprite_brief": "Cream cracked cup, coral chipped handle, navy faded stripe, sand sediment inside.",
@@ -449,9 +449,9 @@
     "time": "any",
     "season": "any",
     "spots": {
-      "shore": 100,
-      "reef": 100,
-      "kelp_forest": 100
+      "shore": 1000,
+      "reef": 1000,
+      "kelp_forest": 1000
     },
     "flavor": "The sea has officially declined to keep this sock.",
     "sprite_brief": "Limp navy sock, cream worn toe hole, coral stripe, moss tangled thread.",
@@ -467,7 +467,7 @@
     "time": "dawn",
     "season": "spring",
     "spots": {
-      "shore": 79
+      "shore": 790
     },
     "flavor": "Finds the warmest patch of water and stays for tea.",
     "sprite_brief": "Plump gold tench, moss back patches, cream lips, coral rounded fins."
@@ -482,8 +482,8 @@
     "time": "night",
     "season": "summer",
     "spots": {
-      "shore": 79,
-      "kelp_forest": 78
+      "shore": 790,
+      "kelp_forest": 700
     },
     "flavor": "Slips through the reeds like a ribbon looking for a parcel.",
     "sprite_brief": "Long moss eel, cream ribbon side stripe, sand fin fringe, navy nose."
@@ -498,7 +498,7 @@
     "time": "day",
     "season": "spring",
     "spots": {
-      "shore": 79
+      "shore": 790
     },
     "flavor": "A rosy splash beneath the first drifting petals.",
     "sprite_brief": "Sand sturdy chub, rose fins, cream belly, moss large scales, navy eye."
@@ -513,7 +513,7 @@
     "time": "dusk",
     "season": "summer",
     "spots": {
-      "reef": 78
+      "reef": 780
     },
     "flavor": "Raises its little sail whenever the evening breeze arrives.",
     "sprite_brief": "Slim sky garlet, navy long snout, coral sail dorsal fin, cream dotted sides."
@@ -528,8 +528,8 @@
     "time": "day",
     "season": "autumn",
     "spots": {
-      "shore": 79,
-      "kelp_forest": 62
+      "shore": 790,
+      "kelp_forest": 560
     },
     "flavor": "Rootles through stones as though hunting a lost button.",
     "sprite_brief": "Moss barbel, sand cobble spots, cream four chin barbels, coral tail."
@@ -544,8 +544,8 @@
     "time": "dawn",
     "season": "any",
     "spots": {
-      "reef": 78,
-      "kelp_forest": 78
+      "reef": 780,
+      "kelp_forest": 700
     },
     "flavor": "Its tidy stripes make the whole pond look better dressed.",
     "sprite_brief": "Navy thick bass, cream broken stripes, moss dorsal fin, sand jaw, coral gills."
@@ -560,8 +560,8 @@
     "time": "day",
     "season": "winter",
     "spots": {
-      "shore": 79,
-      "kelp_forest": 62
+      "shore": 790,
+      "kelp_forest": 560
     },
     "flavor": "Each pale spot looks like a tiny reflection of the sky.",
     "sprite_brief": "Sky trout, cream round dimples, lilac lateral wash, navy fins, coral gill mark."
@@ -576,8 +576,8 @@
     "time": "day",
     "season": "summer",
     "spots": {
-      "reef": 78,
-      "kelp_forest": 78
+      "reef": 780,
+      "kelp_forest": 700
     },
     "flavor": "Hides under sand with the confidence of a misplaced spoon.",
     "sprite_brief": "Flat sand oval flounder, cream pebble spots, moss rim fins, two navy upper eyes."
@@ -592,7 +592,7 @@
     "time": "dusk",
     "season": "spring",
     "spots": {
-      "shore": 79
+      "shore": 790
     },
     "flavor": "Wears a little leaf-shaped mark beside its grin.",
     "sprite_brief": "Mint deep fish, moss clover cheek patch, cream belly, coral fin tips."
@@ -607,9 +607,9 @@
     "time": "day",
     "season": "autumn",
     "spots": {
-      "reef": 78,
-      "kelp_forest": 78,
-      "deep_sea": 76
+      "reef": 780,
+      "kelp_forest": 700,
+      "deep_sea": 600
     },
     "flavor": "A row of little spots keeps its stripes from getting too serious.",
     "sprite_brief": "Navy mackerel, sky back bars, cream side buttons, sand pointed head."
@@ -624,8 +624,8 @@
     "time": "day",
     "season": "summer",
     "spots": {
-      "reef": 78,
-      "kelp_forest": 78
+      "reef": 780,
+      "kelp_forest": 700
     },
     "flavor": "Dances around rocks to a tune only it can hear.",
     "sprite_brief": "Coral slim wrasse, mint curved stripes, cream lower jaw, lilac rounded fins."
@@ -640,8 +640,8 @@
     "time": "dawn",
     "season": "spring",
     "spots": {
-      "reef": 78,
-      "kelp_forest": 78
+      "reef": 780,
+      "kelp_forest": 700
     },
     "flavor": "Practices looking like a reed, then forgets and wiggles.",
     "sprite_brief": "Thin gold pipefish, moss ring bands, cream long snout, coral curled tail tip."
@@ -656,9 +656,9 @@
     "time": "night",
     "season": "winter",
     "spots": {
-      "kelp_forest": 78,
-      "deep_sea": 76,
-      "abyss": 60
+      "kelp_forest": 700,
+      "deep_sea": 600,
+      "abyss": 400
     },
     "flavor": "One small chin whisker is all the winter coat it needs.",
     "sprite_brief": "Sky stocky codlet, navy speckles, cream chin barbel, sand broad tail."
@@ -673,8 +673,8 @@
     "time": "dusk",
     "season": "summer",
     "spots": {
-      "reef": 78,
-      "kelp_forest": 78
+      "reef": 780,
+      "kelp_forest": 700
     },
     "flavor": "Gets rounder when surprised by its own reflection.",
     "sprite_brief": "Cream round puffer, plum large spots, mint tiny spines, coral puckered mouth."
@@ -689,8 +689,8 @@
     "time": "dawn",
     "season": "spring",
     "spots": {
-      "shore": 79,
-      "reef": 78
+      "shore": 790,
+      "reef": 780
     },
     "flavor": "Looks as though someone forgot to finish painting it.",
     "sprite_brief": "Transparent mint fish, cream fine spine, sky fin outlines, navy eye, coral heart dot."
@@ -705,8 +705,8 @@
     "time": "day",
     "season": "summer",
     "spots": {
-      "shore": 79,
-      "reef": 78
+      "shore": 790,
+      "reef": 780
     },
     "flavor": "A tiny bright curl in the edge of the pond.",
     "sprite_brief": "Coral small killi, cream diagonal scale marks, gold tail fan, moss dorsal stripe."
@@ -721,9 +721,9 @@
     "time": "night",
     "season": "autumn",
     "spots": {
-      "kelp_forest": 78,
-      "deep_sea": 76,
-      "abyss": 60
+      "kelp_forest": 700,
+      "deep_sea": 600,
+      "abyss": 400
     },
     "flavor": "Blinks amber when it has a particularly good idea.",
     "sprite_brief": "Gold short squid, cream dotted mantle, coral fins, moss curled arms, navy eyes."
@@ -738,9 +738,9 @@
     "time": "dusk",
     "season": "summer",
     "spots": {
-      "reef": 78,
-      "kelp_forest": 78,
-      "deep_sea": 61
+      "reef": 780,
+      "kelp_forest": 700,
+      "deep_sea": 480
     },
     "flavor": "Its antennae make every entrance feel like a flourish.",
     "sprite_brief": "Coral curved prawn, cream segmented bands, navy tail fan, gold long antennae."
@@ -755,9 +755,9 @@
     "time": "any",
     "season": "winter",
     "spots": {
-      "reef": 78,
-      "kelp_forest": 78,
-      "deep_sea": 76
+      "reef": 780,
+      "kelp_forest": 700,
+      "deep_sea": 600
     },
     "flavor": "A modest shell with a surprisingly polished lining.",
     "sprite_brief": "Navy oval mussel, sand oat shaped freckles, cream open lip, lilac inner sheen."
@@ -772,8 +772,8 @@
     "time": "night",
     "season": "autumn",
     "spots": {
-      "shore": 79,
-      "kelp_forest": 78
+      "shore": 790,
+      "kelp_forest": 700
     },
     "flavor": "Keeps both claws busy with absolutely confidential pond business.",
     "sprite_brief": "Moss crayfish, sand rope patterned claws, coral joints, cream belly plates, navy tail."
@@ -788,8 +788,8 @@
     "time": "dusk",
     "season": "autumn",
     "spots": {
-      "shore": 40,
-      "kelp_forest": 56
+      "shore": 400,
+      "kelp_forest": 140
     },
     "flavor": "A bright stripe arrives before the rest of its long shadow.",
     "sprite_brief": "Long navy pike, gold side stripe, cream jaw, moss pointed fins, coral eye ring."
@@ -804,8 +804,8 @@
     "time": "dawn",
     "season": "spring",
     "spots": {
-      "shore": 40,
-      "reef": 52
+      "shore": 400,
+      "reef": 270
     },
     "flavor": "Every turn unfolds another small bouquet of fins.",
     "sprite_brief": "Rose small fish, wide lilac petal fins, cream scalloped edges, mint body stripe."
@@ -820,8 +820,8 @@
     "time": "day",
     "season": "spring",
     "spots": {
-      "shore": 40,
-      "reef": 52
+      "shore": 400,
+      "reef": 270
     },
     "flavor": "Looks carefully patched together from pieces of moonlit cloud.",
     "sprite_brief": "Cream rounded koi, sky pearl patches, gold scales, coral fin tips, moss barbels."
@@ -836,9 +836,9 @@
     "time": "night",
     "season": "summer",
     "spots": {
-      "kelp_forest": 56,
-      "deep_sea": 58,
-      "abyss": 46
+      "kelp_forest": 140,
+      "deep_sea": 120,
+      "abyss": 85
     },
     "flavor": "A velvety shadow with whiskers fit for a grand storyteller.",
     "sprite_brief": "Plum broad catfish, cream long whiskers, navy back, gold eye rings, sand fins."
@@ -853,9 +853,9 @@
     "time": "dawn",
     "season": "any",
     "spots": {
-      "shore": 40,
-      "reef": 52,
-      "kelp_forest": 56
+      "shore": 400,
+      "reef": 270,
+      "kelp_forest": 140
     },
     "flavor": "Inside is a tiny empty frame, ready for a new happy memory.",
     "sprite_brief": "Gold oval locket, coral hinge, cream blank inset, navy tarnish along scalloped rim."
@@ -870,10 +870,10 @@
     "time": "any",
     "season": "any",
     "spots": {
-      "reef": 42,
-      "kelp_forest": 56,
-      "deep_sea": 58,
-      "abyss": 58
+      "reef": 220,
+      "kelp_forest": 140,
+      "deep_sea": 120,
+      "abyss": 110
     },
     "flavor": "A worn coin from a harbor whose name the waves have forgotten.",
     "sprite_brief": "Round gold coin, cream bell relief, moss patina pits, navy uneven edge."
@@ -888,8 +888,8 @@
     "time": "day",
     "season": "summer",
     "spots": {
-      "reef": 52,
-      "kelp_forest": 56
+      "reef": 270,
+      "kelp_forest": 140
     },
     "flavor": "So clear and sandy that the sun seems to pass right through.",
     "sprite_brief": "Flat translucent sand sole, cream edge glints, sky internal swirls, two navy eyes."
@@ -904,10 +904,10 @@
     "time": "night",
     "season": "autumn",
     "spots": {
-      "reef": 52,
-      "kelp_forest": 56,
-      "deep_sea": 58,
-      "abyss": 46
+      "reef": 270,
+      "kelp_forest": 140,
+      "deep_sea": 120,
+      "abyss": 85
     },
     "flavor": "A ribbon of shadow with a surprisingly shy smile.",
     "sprite_brief": "Long charcoal moray, plum ribbon bands, lilac fin edge, cream small jaw teeth."
@@ -922,8 +922,8 @@
     "time": "day",
     "season": "winter",
     "spots": {
-      "kelp_forest": 56,
-      "deep_sea": 58
+      "kelp_forest": 140,
+      "deep_sea": 120
     },
     "flavor": "Round enough to look like the pond lost a very large button.",
     "sprite_brief": "Cream round sunfish, sky circular spots, navy tall fins, gold tiny mouth."
@@ -938,8 +938,8 @@
     "time": "dusk",
     "season": "summer",
     "spots": {
-      "reef": 52,
-      "kelp_forest": 56
+      "reef": 270,
+      "kelp_forest": 140
     },
     "flavor": "A fancy fan of spines with an admirably unhurried fan dance.",
     "sprite_brief": "Coral lionfish, cream stripes, lilac long fin rays, navy eye, sand wide pectoral fans."
@@ -954,8 +954,8 @@
     "time": "night",
     "season": "winter",
     "spots": {
-      "deep_sea": 58,
-      "abyss": 58
+      "deep_sea": 120,
+      "abyss": 110
     },
     "flavor": "Its spiral seems to contain a map of every tide.",
     "sprite_brief": "Cream spiral shell, navy chartlike bands, gold central whorl, coral short tentacles."
@@ -970,8 +970,8 @@
     "time": "dawn",
     "season": "spring",
     "spots": {
-      "reef": 52,
-      "kelp_forest": 56
+      "reef": 270,
+      "kelp_forest": 140
     },
     "flavor": "Every pale scale seems to hold a small hopeful thought.",
     "sprite_brief": "Mint deep gourami, gold diamond scales, cream feeler fins, coral tail edging."
@@ -986,8 +986,8 @@
     "time": "day",
     "season": "summer",
     "spots": {
-      "reef": 52,
-      "kelp_forest": 56
+      "reef": 270,
+      "kelp_forest": 140
     },
     "flavor": "Bright as a sweet wrapper and twice as difficult to fold.",
     "sprite_brief": "Plum diamond fish, rose diagonal bands, cream angular fins, gold beak, mint tail."
@@ -1002,9 +1002,9 @@
     "time": "dusk",
     "season": "autumn",
     "spots": {
-      "kelp_forest": 56,
-      "deep_sea": 58,
-      "abyss": 46
+      "kelp_forest": 140,
+      "deep_sea": 120,
+      "abyss": 85
     },
     "flavor": "Wears a mosaic coat to every quiet seabed gathering.",
     "sprite_brief": "Moss lobster, cream mosaic shell patches, coral joints, gold broad claws, navy antennae."
@@ -1019,8 +1019,8 @@
     "time": "night",
     "season": "winter",
     "spots": {
-      "deep_sea": 28,
-      "abyss": 34
+      "deep_sea": 55,
+      "abyss": 55
     },
     "flavor": "A long silver ribbon carrying a pocketful of starlight.",
     "sprite_brief": "Long cream ribbon fish, sky flank stars, coral crest, gold fin rays, navy eyes."
@@ -1035,8 +1035,8 @@
     "time": "dawn",
     "season": "summer",
     "spots": {
-      "reef": 16,
-      "deep_sea": 28
+      "reef": 65,
+      "deep_sea": 55
     },
     "flavor": "Its great sail looks ready to lead the morning's first song.",
     "sprite_brief": "Navy sleek sailfish, coral broad sail, cream wave marks, gold bill, sky tail."
@@ -1051,9 +1051,9 @@
     "time": "dusk",
     "season": "winter",
     "spots": {
-      "kelp_forest": 26,
-      "deep_sea": 28,
-      "abyss": 27
+      "kelp_forest": 55,
+      "deep_sea": 55,
+      "abyss": 44
     },
     "flavor": "Its pale armor looks knitted by the coldest tide.",
     "sprite_brief": "Sky sturgeon, cream lace patterned scutes, navy pointed snout, gold barbels, lilac tail."
@@ -1068,8 +1068,8 @@
     "time": "night",
     "season": "autumn",
     "spots": {
-      "deep_sea": 28,
-      "abyss": 34
+      "deep_sea": 55,
+      "abyss": 55
     },
     "flavor": "Rings no bell, but its little light still invites curious company.",
     "sprite_brief": "Plum round anglerfish, cream lure bulb on gold stalk, charcoal fins, lilac small teeth."
@@ -1084,8 +1084,8 @@
     "time": "dawn",
     "season": "spring",
     "spots": {
-      "reef": 20,
-      "deep_sea": 28
+      "reef": 80,
+      "deep_sea": 55
     },
     "flavor": "Glides beneath drifting petals without disturbing a single one.",
     "sprite_brief": "Wide rose manta, cream underside, mint petal back marks, navy long tail, gold eyes."
@@ -1100,7 +1100,7 @@
     "time": "day",
     "season": "summer",
     "spots": {
-      "kelp_forest": 26
+      "kelp_forest": 55
     },
     "flavor": "A golden thread stitching slow circles across the pond.",
     "sprite_brief": "Long gold arowana, cream plate scales, coral barbels, plum narrow fins, navy eye."
@@ -1115,9 +1115,9 @@
     "time": "dusk",
     "season": "any",
     "spots": {
-      "kelp_forest": 26,
-      "deep_sea": 28,
-      "abyss": 34
+      "kelp_forest": 55,
+      "deep_sea": 55,
+      "abyss": 55
     },
     "flavor": "A shell-shaped key still waiting for its little seaside door.",
     "sprite_brief": "Gold ornate key, cream shell bow, coral enamel grooves, moss patina teeth."
@@ -1128,12 +1128,12 @@
     "rarity": "legendary",
     "min_cm": 280,
     "max_cm": 620,
-    "base_value": 5800,
+    "base_value": 3500,
     "time": "night",
     "season": "winter",
     "spots": {
-      "deep_sea": 6,
-      "abyss": 10
+      "deep_sea": 5,
+      "abyss": 8
     },
     "flavor": "A ribbon of northern light that briefly forgot to be a sky.",
     "sprite_brief": "Long sky whale-fish, mint aurora bands, lilac streaming fins, cream belly, gold star flecks."
@@ -1144,12 +1144,12 @@
     "rarity": "legendary",
     "min_cm": 110,
     "max_cm": 235,
-    "base_value": 4200,
+    "base_value": 2500,
     "time": "dawn",
     "season": "spring",
     "spots": {
-      "deep_sea": 8,
-      "abyss": 10
+      "deep_sea": 7,
+      "abyss": 8
     },
     "flavor": "Carries a quiet crown of light from an age of slower mornings.",
     "sprite_brief": "Plum heavy fish, gold crownlike dorsal lobes, cream scale rings, coral fleshy fins, sky eyes."
@@ -1160,12 +1160,12 @@
     "rarity": "legendary",
     "min_cm": 32,
     "max_cm": 74,
-    "base_value": 5200,
+    "base_value": 3000,
     "time": "night",
     "season": "any",
     "spots": {
-      "deep_sea": 6,
-      "abyss": 10
+      "deep_sea": 5,
+      "abyss": 8
     },
     "flavor": "The tide has polished its corners through a thousand sleepy evenings.",
     "sprite_brief": "Navy small sea chest, gold crescent latch, cream shell inlays, coral hinge bands, moss barnacle dots."

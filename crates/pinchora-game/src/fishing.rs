@@ -11,6 +11,14 @@ pub const BAIT_PRICE: i64 = 10;
 pub const CAST_COOLDOWN_SECS: u64 = 30;
 /// Fish the bucket holds; a full one stops the next cast until something is sold.
 pub const BUCKET_CAPACITY: i64 = 60;
+/// How long a cast stays valid, in seconds: the bite and the longest Reel! window must fit inside.
+pub const LINE_TTL_SECS: u64 = 30;
+/// The earliest a bite comes after the cast, in milliseconds.
+pub const BITE_MIN_MS: i64 = 2_000;
+/// The latest a bite comes after the cast. The span from the earliest is much wider than the longest
+/// Reel! window, so pressing the button blind at one fixed moment lands inside a window for only a
+/// minority of casts, whatever the rod.
+pub const BITE_MAX_MS: i64 = 17_000;
 
 // /Content
 
@@ -231,6 +239,38 @@ pub fn pick<'a>(odds: &[(&'a Fish, f64)], roll: f64) -> Option<&'a Fish> {
         target -= weight;
     }
     odds.last().map(|(fish, _)| *fish)
+}
+
+// /Reel
+
+/// The delay between a cast and its bite from a 0..1 roll, spread evenly over
+/// [`BITE_MIN_MS`]..[`BITE_MAX_MS`].
+pub fn bite_delay_ms(roll: f64) -> i64 {
+    let span = (BITE_MAX_MS - BITE_MIN_MS) as f64;
+    BITE_MIN_MS + (roll.clamp(0.0, 0.999_999) * span) as i64
+}
+
+/// How a press of Reel! turned out.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Reel {
+    /// Pressed before the bite: the splash scares the fish away.
+    Early,
+    /// Pressed inside the rod's window after the bite.
+    Caught,
+    /// Pressed after the window closed.
+    Late,
+}
+
+/// The outcome of pressing Reel! `late_by_ms` after the bite (negative before it) with a rod whose
+/// window is `window_ms`.
+pub fn reel_result(late_by_ms: i64, window_ms: i64) -> Reel {
+    if late_by_ms < 0 {
+        Reel::Early
+    } else if late_by_ms > window_ms {
+        Reel::Late
+    } else {
+        Reel::Caught
+    }
 }
 
 // /Sizes
@@ -626,6 +666,228 @@ mod tests {
         assert_eq!(gear.milestones_reached(25).count(), 2);
         assert_eq!(gear.next_milestone(25).map(|m| m.species), Some(50));
         assert!(gear.next_milestone(72).is_none());
+    }
+
+    // /Economy
+
+    /// The most a spot may pay an hour of constant casting with every reel caught, with any rod and bait.
+    const CEILINGS: [(&str, f64); 5] = [
+        ("shore", 1_200.0),
+        ("reef", 1_700.0),
+        ("kelp_forest", 2_300.0),
+        ("deep_sea", 3_000.0),
+        ("abyss", 4_000.0),
+    ];
+
+    /// What a fish is worth on average over the sizes it rolls.
+    fn expected_sale(fish: &Fish) -> f64 {
+        static WORTH: std::sync::OnceLock<std::collections::HashMap<String, f64>> = std::sync::OnceLock::new();
+        const STEPS: u32 = 40;
+        let worth = WORTH.get_or_init(|| {
+            content()
+                .fish
+                .iter()
+                .map(|fish| {
+                    let mut sum = 0.0;
+                    for a in 0..STEPS {
+                        for b in 0..STEPS {
+                            let size = roll_size(
+                                fish,
+                                (f64::from(a) + 0.5) / f64::from(STEPS),
+                                (f64::from(b) + 0.5) / f64::from(STEPS),
+                            );
+                            sum += sale_value(fish, size) as f64;
+                        }
+                    }
+                    (fish.id.clone(), sum / f64::from(STEPS * STEPS))
+                })
+                .collect()
+        });
+        worth[&fish.id]
+    }
+
+    /// What one cast at `spot` brings in on average over every hour of the day and month of the year,
+    /// before the bait is paid, and the share of casts that bring in a fish of each rarity.
+    fn average_cast(spot: &Spot, tackle: Tackle<'_>) -> (f64, [f64; 5]) {
+        let (mut shells, mut shares, mut cells) = (0.0, [0.0; 5], 0.0);
+        for hour in 0..24 {
+            for month in 1..=12 {
+                let pool = odds(content(), spot, hour, month, tackle);
+                let total: f64 = pool.iter().map(|(_, w)| w).sum();
+                for (fish, weight) in &pool {
+                    shells += weight / total * expected_sale(fish);
+                    shares[fish.rarity as usize] += weight / total;
+                }
+                cells += 1.0;
+            }
+        }
+        (shells / cells, shares.map(|share| share / cells))
+    }
+
+    /// Shells an hour at `spot` with `rod` and `bait` (plain bait for `None`): casting every
+    /// [`CAST_COOLDOWN_SECS`], every reel caught, every fish sold, the bait paid for.
+    fn shells_per_hour(spot: &Spot, rod: &Rod, bait: Option<&Bait>) -> f64 {
+        let (shells, _) = average_cast(spot, Tackle { luck: rod.luck, bait });
+        let bait_cost = bait.map_or(BAIT_PRICE as f64, |b| b.price as f64 / b.pack as f64);
+        (shells - bait_cost) * 3_600.0 / CAST_COOLDOWN_SECS as f64
+    }
+
+    /// Every way to fit out a rod: each rod with plain bait and with each bait.
+    fn all_tackle(gear: &Gear) -> Vec<(&Rod, Option<&Bait>)> {
+        let baits = std::iter::once(None).chain(gear.baits.iter().map(Some));
+        baits
+            .flat_map(|bait| gear.rods.iter().map(move |rod| (rod, bait)))
+            .collect()
+    }
+
+    #[test]
+    fn no_spot_pays_more_than_its_ceiling_with_any_gear() {
+        let gear = &content().fishing;
+        for (id, ceiling) in CEILINGS {
+            let spot = gear.spot(id).expect("spot");
+            for (rod, bait) in all_tackle(gear) {
+                let pay = shells_per_hour(spot, rod, bait);
+                assert!(
+                    pay <= ceiling,
+                    "{id} pays {pay:.0} shells an hour with {} and {:?}: the ceiling is {ceiling}",
+                    rod.id,
+                    bait.map(|b| &b.id)
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn the_shore_with_the_starter_gear_pays_a_modest_wage() {
+        let gear = &content().fishing;
+        let pay = shells_per_hour(gear.first_spot(), gear.starter_rod(), None);
+        assert!((700.0..=900.0).contains(&pay), "{pay:.0}");
+    }
+
+    #[test]
+    fn deeper_spots_and_better_gear_each_pay_clearly_more() {
+        let gear = &content().fishing;
+        let starter = |spot: &Spot| shells_per_hour(spot, gear.starter_rod(), None);
+        let best = |spot: &Spot| {
+            all_tackle(gear)
+                .into_iter()
+                .map(|(rod, bait)| shells_per_hour(spot, rod, bait))
+                .fold(f64::MIN, f64::max)
+        };
+        for pair in gear.spots.windows(2) {
+            let (up, down) = (&pair[0], &pair[1]);
+            assert!(
+                starter(down) > 1.2 * starter(up),
+                "starter gear: {} vs {}",
+                down.id,
+                up.id
+            );
+            assert!(best(down) > 1.2 * best(up), "best gear: {} vs {}", down.id, up.id);
+        }
+        for spot in &gear.spots {
+            assert!(best(spot) > 1.25 * starter(spot), "{}: gear barely matters", spot.id);
+        }
+    }
+
+    #[test]
+    fn the_top_rod_takes_many_hours_in_the_abyss_to_pay_for_itself() {
+        let gear = &content().fishing;
+        let abyss = gear.spot("abyss").expect("abyss");
+        let top = gear.rods.last().expect("a rod");
+        for bait in std::iter::once(None).chain(gear.baits.iter().map(Some)) {
+            let gain = shells_per_hour(abyss, top, bait) - shells_per_hour(abyss, gear.starter_rod(), bait);
+            assert!(gain > 0.0);
+            let hours = top.price as f64 / gain;
+            assert!(
+                hours >= 15.0,
+                "{} pays for itself in {hours:.1} h with {:?}",
+                top.id,
+                bait.map(|b| &b.id)
+            );
+        }
+    }
+
+    #[test]
+    fn legendaries_stay_rare_even_with_the_best_rod() {
+        let gear = &content().fishing;
+        let top = gear.rods.last().expect("a rod");
+        for spot in &gear.spots {
+            for bait in std::iter::once(None).chain(gear.baits.iter().map(Some)) {
+                let (_, shares) = average_cast(spot, Tackle { luck: top.luck, bait });
+                let legendary = shares[Rarity::Legendary as usize];
+                assert!(legendary <= 0.003, "{}: {:.3}% legendary", spot.id, legendary * 100.0);
+                if spot.id == "abyss" {
+                    assert!(
+                        legendary >= 0.001,
+                        "abyss legendaries are out of reach: {:.3}%",
+                        legendary * 100.0
+                    );
+                }
+            }
+        }
+    }
+
+    // /Reel
+
+    /// The share of casts a press at `press_ms` after the cast catches with a rod of `window_ms`, over
+    /// the whole range of bite delays.
+    fn blind_catch_share(press_ms: i64, window_ms: i64) -> f64 {
+        const ROLLS: u32 = 3_000;
+        let caught = (0..ROLLS)
+            .filter(|n| {
+                let bite = bite_delay_ms((f64::from(*n) + 0.5) / f64::from(ROLLS));
+                reel_result(press_ms - bite, window_ms) == Reel::Caught
+            })
+            .count();
+        caught as f64 / f64::from(ROLLS)
+    }
+
+    #[test]
+    fn pressing_blind_at_any_fixed_moment_rarely_catches() {
+        let gear = &content().fishing;
+        for rod in &gear.rods {
+            let best = (0..=25_000)
+                .step_by(50)
+                .map(|press| blind_catch_share(press, rod.window_ms))
+                .fold(0.0, f64::max);
+            assert!(
+                best < 0.4,
+                "{}: a fixed press catches {:.0}% of casts",
+                rod.id,
+                best * 100.0
+            );
+        }
+        // The press that used to catch everything with a wide window: the last moment a bite could come.
+        let top = gear.rods.last().expect("a rod");
+        assert!(blind_catch_share(BITE_MAX_MS, top.window_ms) < 0.4);
+        assert!(
+            blind_catch_share(0, top.window_ms) == 0.0,
+            "before any bite is an early miss"
+        );
+    }
+
+    #[test]
+    fn answering_the_bite_always_catches_and_the_line_outlasts_it() {
+        let gear = &content().fishing;
+        for rod in &gear.rods {
+            for n in 0..200 {
+                let bite = bite_delay_ms(f64::from(n) / 200.0);
+                assert!((BITE_MIN_MS..=BITE_MAX_MS).contains(&bite));
+                // A second after the bite, well inside the shortest window.
+                assert_eq!(reel_result(1_000, rod.window_ms), Reel::Caught);
+                assert!(
+                    (bite + rod.window_ms) as u64 <= LINE_TTL_SECS * 1_000,
+                    "the line is gone before the {} window ends",
+                    rod.id
+                );
+            }
+            assert_eq!(reel_result(-1, rod.window_ms), Reel::Early);
+            assert_eq!(reel_result(rod.window_ms, rod.window_ms), Reel::Caught);
+            assert_eq!(reel_result(rod.window_ms + 1, rod.window_ms), Reel::Late);
+        }
+        assert_eq!(bite_delay_ms(0.0), BITE_MIN_MS);
+        assert_eq!(bite_delay_ms(1.0), BITE_MAX_MS - 1);
+        assert!(CAST_COOLDOWN_SECS * 1_000 > (BITE_MAX_MS + gear.rods.last().expect("a rod").window_ms) as u64);
     }
 
     #[test]

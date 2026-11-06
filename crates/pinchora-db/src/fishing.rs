@@ -103,6 +103,9 @@ pub struct NewCatch<'a> {
     pub weekly: Option<(u64, NaiveDate)>,
     /// Every milestone there is; the ones the book has reached and not been paid are paid now.
     pub milestones: &'a [MilestoneReward],
+    /// The species the game knows. Fish of any other species in the bucket (a species taken out of
+    /// the game later) do not count towards the bucket's size.
+    pub known: &'a [&'a str],
 }
 
 /// What putting a catch away changed.
@@ -116,7 +119,7 @@ pub struct CatchLog {
     pub record: bool,
     /// Species in the book now.
     pub species: i64,
-    /// Fish in the bucket now.
+    /// Fish of known species in the bucket now.
     pub bucket: i64,
     /// This is their best catch of the week in that server.
     pub week_best: bool,
@@ -396,10 +399,12 @@ impl Db {
                 cosmetic_new,
             });
         }
-        let (bucket,): (i64,) = sqlx::query_as("SELECT count(*) FROM fish_bucket WHERE user_id = $1")
-            .bind(id)
-            .fetch_one(&mut *tx)
-            .await?;
+        let (bucket,): (i64,) =
+            sqlx::query_as("SELECT count(*) FROM fish_bucket WHERE user_id = $1 AND fish_id = ANY($2)")
+                .bind(id)
+                .bind(catch.known)
+                .fetch_one(&mut *tx)
+                .await?;
         tx.commit().await?;
         Ok(CatchLog {
             first,
@@ -422,9 +427,11 @@ impl Db {
         .await?)
     }
 
-    pub async fn bucket_count(&self, user: u64) -> anyhow::Result<i64> {
-        let (n,): (i64,) = sqlx::query_as("SELECT count(*) FROM fish_bucket WHERE user_id = $1")
+    /// How many fish of the `known` species are in the bucket; the rest are not counted.
+    pub async fn bucket_count(&self, user: u64, known: &[&str]) -> anyhow::Result<i64> {
+        let (n,): (i64,) = sqlx::query_as("SELECT count(*) FROM fish_bucket WHERE user_id = $1 AND fish_id = ANY($2)")
             .bind(sql_id(user))
+            .bind(known)
             .fetch_one(self.pool())
             .await?;
         Ok(n)
