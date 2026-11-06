@@ -340,14 +340,17 @@ async fn turkish_critter_drops_and_bottles_wash_up_get_taken_and_drift_away() {
         over.description()
     );
 
-    // A bottle: the first opener reads it in Turkish, a late one is told so, an unopened one drifts away.
+    // A bottle: the channel reads it in the server's Turkish even when an English player opens it, a late one
+    // is told so, an unopened one drifts away.
     assert!(post_bottle(&sim.app, sim.guild, channel).await.expect("posts"));
     let posts = sim.posts();
     let post = only(&posts, channel, Method::POST);
     assert_eq!(post.title(), "🍾 Kıyıya bir şişe vurdu!");
     let bottle = reply_of(post);
     assert!(bottle.has_button("Şişeyi aç"));
+    sim.locale = "en-US";
     let opened = sim.click(a, &bottle, "Şişeyi aç").await;
+    sim.locale = "tr";
     assert_eq!(opened.title(), "🍾 Şişe açıldı");
     assert!(
         opened.description().contains(&format!("Şişeyi açan: {}", mention(a))),
@@ -470,6 +473,11 @@ async fn turkish_critterdrop_command_and_settings_answer_in_turkish() {
         shown.field("Critter drops")
     );
 
+    // The drop is posted for the whole channel, so it speaks the server's language.
+    sim.app
+        .set_guild_lang(sim.guild, Some(Lang::Tr))
+        .await
+        .expect("language");
     let drop = sim.command(host, "critterdrop", json!([])).await;
     assert!(!drop.ephemeral);
     assert_eq!(drop.title(), "🦀 Kıyıya canlılar vurdu!");

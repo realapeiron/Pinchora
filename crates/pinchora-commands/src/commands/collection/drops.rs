@@ -85,7 +85,8 @@ impl CritterDrop {
                 .await;
         }
         let row = create_critter_drop(app, guild, channel, Some(user)).await?;
-        let (embed, png, buttons) = critter_message(app, lang, &row).await?;
+        // The drop is the channel's, so it speaks the server's language from its first post to its close.
+        let (embed, png, buttons) = critter_message(app, app.guild_lang(guild).await, &row).await?;
         cx.reply(InteractionResponseData {
             embeds: Some(vec![embed]),
             attachments: Some(vec![Attachment::from_bytes("drop.png".to_owned(), png, 1)]),
@@ -348,9 +349,11 @@ pub(crate) async fn on_grab(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::Resu
         Grab::Taken { granted, drop, paid } => (granted, drop, paid),
     };
     record(app, Game::CritterDrop, user, true).await;
-    // The card first, for everyone who is watching; the details are only for the one who grabbed it.
+    // The card first, for everyone who is watching (in the server's language); the details are only for the one
+    // who grabbed it.
+    let table = app.guild_lang(drop.guild_id as u64).await;
     cx.update(InteractionResponseData {
-        embeds: Some(vec![critter_embed(&drop, false, lang)]),
+        embeds: Some(vec![critter_embed(&drop, false, table)]),
         components: Some(critter_buttons(&drop, false)),
         allowed_mentions: quiet(),
         ..Default::default()
@@ -501,11 +504,13 @@ pub(crate) async fn on_open(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::Resu
     let Some(row) = app.db.drop_row(id).await?.filter(|r| r.kind == DROP_BOTTLE) else {
         return cx.reply_ephemeral(t!(lang, "bottle.drifted")).await;
     };
+    // The opened bottle replaces the channel's post: it is told in the server's language.
+    let table = app.guild_lang(row.guild_id as u64).await;
     let text = row
         .cards
         .first()
-        .and_then(|id| Collection::get().bottle_text(id, lang))
-        .map_or_else(|| t!(lang, "bottle.faded"), str::to_owned);
+        .and_then(|id| Collection::get().bottle_text(id, table))
+        .map_or_else(|| t!(table, "bottle.faded"), str::to_owned);
     let prize = collection::open_bottle(&mut dice());
     let held = match prize {
         Prize::Shells(n) => BottlePrize::Shells(n),
@@ -537,6 +542,7 @@ pub(crate) async fn on_open(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::Resu
         } => (drop, shells, fragments, granted, paid),
     };
     record(app, Game::Bottle, user, true).await;
+    let lang = table;
     let found = if !paid {
         t!(lang, "bottle.found-limit")
     } else {

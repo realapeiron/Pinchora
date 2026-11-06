@@ -61,7 +61,7 @@ wrong = "YANLIŞ"
 
 # /Trivia
 [trivia]
-cooldown = "Bu kanalda az önce bir tur oynandı. Sonraki {secs} sn sonra başlayabilir."
+cooldown = "Bu kanalda az önce bir tur oynandı. Sonraki tur {secs} sn sonra başlayabilir."
 started = "🧠 {user} bir bilgi yarışması turu başlattı! {when} cevapla."
 got-it = "Doğru bilenler"
 expired = "Bu turun süresi doldu."

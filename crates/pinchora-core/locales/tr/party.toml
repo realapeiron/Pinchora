@@ -256,7 +256,7 @@ left = "{count} HAK KALDI"
 title = "{emoji} Hangisini seçerdin?"
 open = "Bir taraf seç. Fikrini değiştirebilirsin; dağılım anket {when} kapanınca gösterilir."
 closed = { other = "Anket kapandı: toplam **{count}** oy." }
-cooldown = "Bu kanala az önce bir soru gönderildi. Sonraki {secs} sn içinde gelebilir."
+cooldown = "Bu kanala az önce bir soru gönderildi. Sonraki soru {secs} sn sonra gelebilir."
 expired = "Bu anketin süresi doldu."
 poll-closed = "Bu anket kapandı."
 picked = "**{letter}** seçtin: {chosen}."

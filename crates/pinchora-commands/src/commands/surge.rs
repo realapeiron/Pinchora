@@ -309,8 +309,9 @@ pub(crate) async fn on_button(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Res
             .reply_ephemeral(t!(lang, "surge.stacked", mine = mine, wall = wall, goal = goal))
             .await;
     }
-    // The wall holds: end the storm now and pay everyone.
-    match finish(&cx.app, &session, true, false, lang).await? {
+    // The wall holds: end the storm now and pay everyone, on the card in the storm's own language.
+    let table = session_lang(&cx.app, &session).await;
+    match finish(&cx.app, &session, true, false, table).await? {
         Some(data) => cx.update(data).await,
         None => cx.reply_ephemeral(t!(lang, "surge.holds")).await,
     }

@@ -366,7 +366,8 @@ surge, including the derby GIF's own 3x5 font, which folds Ç Ğ İ Ö Ş Ü to 
 clicker's language; a lobby everybody shares keeps the language it was opened in (the derby, heist and storm states end
 in `|<code>`, the party games' JSON state holds `lang`) so the janitor does not switch it; what the bot edits in by
 itself elsewhere (duel time-outs, a secret pick, the shell game's refund) uses the player's own `/language` pick or the
-server's default. Pixel-font labels are kept in the
+server's default. Critter drops and bottles belong to the channel: their post, every grab or opening and the close are
+in the server's language. Pixel-font labels are kept in the
 catalog already in capitals, and text a card capitalises is capitalised with `pinchora_game::lang::upper` first (Turkish
 `i` is `İ`). The Turkish simulator flows are `tests/simulate/turkish_{duel,solo,party,arcade}.rs`.
 
