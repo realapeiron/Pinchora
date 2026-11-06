@@ -6,7 +6,7 @@ use twilight_model::{
         command::CommandOptionChoice,
         interaction::{Interaction, InteractionType},
     },
-    channel::message::MessageFlags,
+    channel::message::{AllowedMentions, MessageFlags},
     http::interaction::{InteractionResponse, InteractionResponseData, InteractionResponseType},
     id::{Id, marker::InteractionMarker},
 };
@@ -125,8 +125,11 @@ impl Responder {
         Ok(())
     }
 
-    /// Sends a new message (commands) or replaces the clicked message (`update`, components).
-    pub async fn respond(&self, data: InteractionResponseData, update: bool) -> anyhow::Result<()> {
+    /// Sends a new message (commands) or replaces the clicked message (`update`, components). A reply that
+    /// sets no `allowed_mentions` pings nobody, so a name or a role in its text (a member's note, a role the
+    /// server configured) never pings by accident; the replies that mean to ping say whom.
+    pub async fn respond(&self, mut data: InteractionResponseData, update: bool) -> anyhow::Result<()> {
+        data.allowed_mentions.get_or_insert_with(AllowedMentions::default);
         dump_attachments(&data);
         let mut state = self.state.lock().await;
         match &mut *state {
@@ -230,9 +233,17 @@ impl Responder {
         }
     }
 
-    /// Edits the first answer, e.g. to reveal something after a delay.
+    /// Edits the first answer, e.g. to reveal something after a delay. Like [`Responder::respond`], it pings
+    /// nobody unless `data` says whom.
     pub async fn edit(&self, data: &InteractionResponseData) -> anyhow::Result<()> {
-        self.edit_original(data).await
+        if data.allowed_mentions.is_some() {
+            return self.edit_original(data).await;
+        }
+        let quiet = InteractionResponseData {
+            allowed_mentions: Some(AllowedMentions::default()),
+            ..data.clone()
+        };
+        self.edit_original(&quiet).await
     }
 
     async fn edit_original(&self, data: &InteractionResponseData) -> anyhow::Result<()> {

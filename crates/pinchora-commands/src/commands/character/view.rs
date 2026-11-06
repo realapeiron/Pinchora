@@ -1,6 +1,7 @@
 //! The editor message: the preview card with the open tab's choices, and its menus and buttons.
 
 use image::{RgbaImage, imageops};
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::OutfitRow;
 use pinchora_game::{
     Content,
@@ -97,15 +98,15 @@ pub(super) async fn editor(cx: &Cx, draft: &Draft, note: &str) -> anyhow::Result
     let shelf = load_shelf(&cx.app, user).await?;
     let outfits = cx.app.db.outfits(user).await?;
     let character = draft.character();
-    let components = controls(draft, &character, &shelf, &outfits);
+    let components = controls(draft, &character, &shelf, &outfits, cx.lang());
     let png = {
-        let (draft, name) = (draft.clone(), cx.author_display_name());
+        let (draft, name, lang) = (draft.clone(), cx.author_display_name(), cx.lang());
         let accesses: Vec<(String, Access)> = pinchora_game::character::accessories()
             .iter()
             .map(|a| (a.id.clone(), shelf.access(a)))
             .collect();
         cx.app
-            .render(move |r| r.character_card(&card(&draft, &character, name, &accesses, &outfits)))
+            .render(move |r| r.character_card(&card(&draft, &character, name, &accesses, &outfits, lang)))
             .await?
     };
     let mut text = note.to_owned();
@@ -113,11 +114,11 @@ pub(super) async fn editor(cx: &Cx, draft: &Draft, note: &str) -> anyhow::Result
         if !text.is_empty() {
             text.push('\n');
         }
-        text.push_str("-# Changes are a draft until you press **Save**.");
+        text.push_str(&t!(cx.lang(), "character.draft"));
     }
     let embed = EmbedBuilder::new()
         .color(BRAND)
-        .title("Your character")
+        .title(t!(cx.lang(), "character.title"))
         .description(text);
     Ok(Cx::card(embed, "character.png", png, components, true))
 }
@@ -130,40 +131,51 @@ pub(super) async fn closed(cx: &Cx, saved: Option<&str>, lost: bool) -> anyhow::
         .and_then(|c| Character::decode(content, c))
         .unwrap_or_else(|| Character::starter(content));
     let name = cx.author_display_name();
+    let lang = cx.lang();
     let png = cx
         .app
         .render(move |r| {
             r.character_card(&CharacterCard {
                 character: render_character(&character.spec(), 1),
                 name,
-                status: ("CLOSED".to_owned(), true),
+                status: (t!(lang, "character.closed-status"), true),
                 tabs: Vec::new(),
                 tab: usize::MAX,
-                caption: if lost { "Closed without saving" } else { "Closed" }.to_owned(),
+                caption: t!(
+                    lang,
+                    if lost {
+                        "character.closed-lost"
+                    } else {
+                        "character.closed"
+                    }
+                ),
                 sections: Vec::new(),
-                hint: "/character opens the editor again".to_owned(),
+                hint: t!(lang, "character.closed-hint"),
                 theme: Theme::reef(),
             })
         })
         .await?;
     let embed = EmbedBuilder::new()
         .color(BRAND)
-        .title("Your character")
-        .description(if lost {
-            "Closed without saving: your character is as it was."
-        } else {
-            "Closed: your character is saved as it is."
-        });
+        .title(t!(lang, "character.title"))
+        .description(t!(
+            lang,
+            if lost {
+                "character.closed-lost-text"
+            } else {
+                "character.closed-text"
+            }
+        ));
     Ok(Cx::card(embed, "character.png", png, Vec::new(), true))
 }
 
 /// Menus and buttons for the open tab.
-fn controls(draft: &Draft, character: &Character, shelf: &Shelf, outfits: &[OutfitRow]) -> Vec<Component> {
+fn controls(draft: &Draft, character: &Character, shelf: &Shelf, outfits: &[OutfitRow], lang: Lang) -> Vec<Component> {
     let s = draft.session;
     let content = Content::get();
     let tabs = Tab::ALL
         .iter()
-        .map(|t| option(t.label(), t.key(), None, *t == draft.tab))
+        .map(|t| option(&t.name(lang), t.key(), None, *t == draft.tab))
         .collect();
     let jump: Vec<SelectMenuOption> = match draft.tab {
         Tab::Look => content
@@ -179,7 +191,7 @@ fn controls(draft: &Draft, character: &Character, shelf: &Shelf, outfits: &[Outf
                 .enumerate()
                 .map(|(i, sw)| {
                     let note = if sw.is_natural() {
-                        "The colours it was drawn in".to_owned()
+                        t!(lang, "character.natural")
                     } else {
                         format!("#{:06x}", sw.rgb)
                     };
@@ -188,9 +200,9 @@ fn controls(draft: &Draft, character: &Character, shelf: &Shelf, outfits: &[Outf
                 .collect();
             if let Paint::Custom(v) = now {
                 options.push(option(
-                    &format!("Custom #{v:06x}"),
+                    &t!(lang, "character.custom", hex = format!("#{v:06x}")),
                     "custom",
-                    Some("Typed in".to_owned()),
+                    Some(t!(lang, "character.typed")),
                     true,
                 ));
             }
@@ -198,13 +210,13 @@ fn controls(draft: &Draft, character: &Character, shelf: &Shelf, outfits: &[Outf
         }
         Tab::Gear => {
             let worn = character.worn(draft.slot).map(|w| w.id.clone());
-            std::iter::once(option("Nothing", "none", None, worn.is_none()))
+            std::iter::once(option(&t!(lang, "character.nothing"), "none", None, worn.is_none()))
                 .chain(accessories_in(draft.slot).map(|a| {
                     let access = shelf.access(a);
                     let o = option(
                         &a.name,
                         &a.id,
-                        Some(access_note(&access)),
+                        Some(access_note(&access, lang)),
                         worn.as_deref() == Some(&a.id),
                     );
                     if access == Access::Owned { o } else { locked(o) }
@@ -221,51 +233,68 @@ fn controls(draft: &Draft, character: &Character, shelf: &Shelf, outfits: &[Outf
             (1..=OUTFIT_SLOTS)
                 .map(|slot| {
                     let saved = outfits.iter().find(|o| o.slot == slot);
-                    let label = saved.map_or_else(|| format!("{slot} · Empty"), |o| format!("{slot} · {}", o.name));
+                    let label = saved.map_or_else(
+                        || t!(lang, "character.slot-empty", slot = slot),
+                        |o| format!("{slot} · {}", o.name),
+                    );
                     let worn = worn == Some(slot);
                     option(
                         &label,
                         &slot.to_string(),
-                        Some(
+                        Some(t!(
+                            lang,
                             if saved.is_some() {
-                                "Put it on"
+                                "character.put-on"
                             } else {
-                                "Nothing kept here yet"
+                                "character.nothing-kept"
                             }
-                            .to_owned(),
-                        ),
+                        )),
                         worn,
                     )
                 })
                 .collect()
         }
     };
-    let placeholder = match draft.tab {
-        Tab::Look => "Jump to a look…",
-        Tab::Paint(_) => "Jump to a colour…",
-        Tab::Gear => "Pick an accessory…",
-        Tab::Presets => "Try a ready-made character…",
-        Tab::Outfits => "Put on a kept outfit…",
-    };
+    let placeholder = t!(
+        lang,
+        match draft.tab {
+            Tab::Look => "character.jump-look",
+            Tab::Paint(_) => "character.jump-colour",
+            Tab::Gear => "character.jump-gear",
+            Tab::Presets => "character.jump-preset",
+            Tab::Outfits => "character.jump-outfit",
+        }
+    );
+    let label = |key: &str| t!(lang, &format!("character.button.{key}"));
     let mut step_row = vec![
         button(format!("ca:prev:{s}"), "◀", ButtonStyle::Secondary, false),
         button(format!("ca:next:{s}"), "▶", ButtonStyle::Secondary, false),
         button(
             format!("ca:undo:{s}"),
-            "Undo",
+            &label("undo"),
             ButtonStyle::Secondary,
             draft.undo.is_empty(),
         ),
-        button(format!("ca:rand:{s}"), "Randomise", ButtonStyle::Secondary, false),
+        button(
+            format!("ca:rand:{s}"),
+            &label("randomise"),
+            ButtonStyle::Secondary,
+            false,
+        ),
     ];
     let worn = character.worn(draft.slot);
     match draft.tab {
-        Tab::Paint(_) => step_row.push(button(format!("ca:hex:{s}"), "Hex…", ButtonStyle::Secondary, false)),
+        Tab::Paint(_) => step_row.push(button(
+            format!("ca:hex:{s}"),
+            &label("hex"),
+            ButtonStyle::Secondary,
+            false,
+        )),
         Tab::Gear => {
             let dyeable = worn.and_then(|w| accessory(&w.id)).is_some_and(|a| a.tintable);
             step_row.push(button(
                 format!("ca:tint:{s}"),
-                "Dye ▶",
+                &label("dye"),
                 ButtonStyle::Secondary,
                 !dyeable,
             ));
@@ -273,8 +302,8 @@ fn controls(draft: &Draft, character: &Character, shelf: &Shelf, outfits: &[Outf
         _ => {}
     }
     let mut rows = vec![
-        row(vec![menu(format!("ca:tab:{s}"), "Category…", tabs)]),
-        row(vec![menu(format!("ca:pick:{s}"), placeholder, jump)]),
+        row(vec![menu(format!("ca:tab:{s}"), &label("category"), tabs)]),
+        row(vec![menu(format!("ca:pick:{s}"), &placeholder, jump)]),
         row(step_row),
     ];
     match draft.tab {
@@ -294,7 +323,7 @@ fn controls(draft: &Draft, character: &Character, shelf: &Shelf, outfits: &[Outf
                 .map(|n| {
                     button(
                         format!("ca:keep:{s}:{n}"),
-                        &format!("Keep in {n}"),
+                        &t!(lang, "character.button.keep", slot = n),
                         ButtonStyle::Secondary,
                         false,
                     )
@@ -302,7 +331,7 @@ fn controls(draft: &Draft, character: &Character, shelf: &Shelf, outfits: &[Outf
                 .collect();
             keep.push(button(
                 format!("ca:name:{s}"),
-                "Rename…",
+                &label("rename"),
                 ButtonStyle::Secondary,
                 outfits.is_empty(),
             ));
@@ -312,7 +341,7 @@ fn controls(draft: &Draft, character: &Character, shelf: &Shelf, outfits: &[Outf
     }
     let mut last = vec![button(
         format!("ca:save:{s}"),
-        "Save",
+        &label("save"),
         ButtonStyle::Success,
         draft.is_saved(),
     )];
@@ -320,10 +349,20 @@ fn controls(draft: &Draft, character: &Character, shelf: &Shelf, outfits: &[Outf
         && let Some(item) = worn.and_then(|w| accessory(&w.id))
         && let Access::Buy(price) = shelf.access(item)
     {
-        let label = format!("Buy {} · {} shells", item.name, crate::util::thousands(price));
-        last.push(button(format!("ca:buy:{s}"), &label, ButtonStyle::Primary, false));
+        let buy = t!(
+            lang,
+            "character.button.buy",
+            item = item.name,
+            price = crate::util::thousands(price)
+        );
+        last.push(button(format!("ca:buy:{s}"), &buy, ButtonStyle::Primary, false));
     }
-    last.push(button(format!("ca:cancel:{s}"), "Cancel", ButtonStyle::Danger, false));
+    last.push(button(
+        format!("ca:cancel:{s}"),
+        &label("cancel"),
+        ButtonStyle::Danger,
+        false,
+    ));
     rows.push(row(last));
     rows
 }
@@ -349,6 +388,7 @@ fn card(
     name: String,
     accesses: &[(String, Access)],
     outfits: &[OutfitRow],
+    lang: Lang,
 ) -> CharacterCard {
     let content = Content::get();
     let access_of = |id: &str| {
@@ -378,9 +418,9 @@ fn card(
                 .collect();
             let name = content.look(&character.look).map_or("?", |l| l.name.as_str());
             (
-                format!("Look · {name}  ({} of {n})", at + 1),
+                t!(lang, "character.card.look", name = name, at = at + 1, count = n),
                 vec![EditorSection {
-                    title: format!("< > step through all {n} looks"),
+                    title: t!(lang, "character.card.look-hint", count = n),
                     cols: 4,
                     cells,
                 }],
@@ -400,9 +440,13 @@ fn card(
                 })
                 .collect();
             (
-                format!("{} · {}", channel.label(), channel.name_of(now)),
+                format!("{} · {}", super::channel_name(channel, lang), channel.name_of(now)),
                 vec![EditorSection {
-                    title: format!("{} colour · or type your own with Hex…", channel.label()),
+                    title: t!(
+                        lang,
+                        "character.card.colour-hint",
+                        channel = super::channel_name(channel, lang)
+                    ),
                     cols: 5,
                     cells,
                 }],
@@ -423,7 +467,7 @@ fn card(
                 .collect();
             let worn = character.worn(draft.slot);
             let items = std::iter::once(EditorCell {
-                label: "Nothing".to_owned(),
+                label: t!(lang, "character.nothing"),
                 current: worn.is_none(),
                 ..Default::default()
             })
@@ -436,8 +480,8 @@ fn card(
                     note: match &access {
                         Access::Owned => String::new(),
                         Access::Buy(p) => compact_price(*p),
-                        Access::Level(at) => format!("LV {at}"),
-                        Access::Badge(_) => "BADGE".to_owned(),
+                        Access::Level(at) => t!(lang, "character.card.level", level = at),
+                        Access::Badge(_) => t!(lang, "character.card.badge"),
                     },
                     current: worn.is_some_and(|w| w.id == a.id),
                     locked: !matches!(access, Access::Owned | Access::Buy(_)),
@@ -447,7 +491,7 @@ fn card(
             .collect();
             let worn_name = worn
                 .and_then(|w| accessory(&w.id))
-                .map_or_else(|| "nothing".to_owned(), |a| a.name.clone());
+                .map_or_else(|| t!(lang, "house.editor.nothing"), |a| a.name.clone());
             let dye = worn
                 .and_then(|w| w.tint)
                 .and_then(|t| match t {
@@ -459,12 +503,12 @@ fn card(
                 format!("{} · {worn_name}{dye}", draft.slot.label()),
                 vec![
                     EditorSection {
-                        title: "Wearing".to_owned(),
+                        title: t!(lang, "character.card.wearing"),
                         cols: 5,
                         cells: wearing,
                     },
                     EditorSection {
-                        title: format!("{} · try anything on, Save needs it to be yours", draft.slot.label()),
+                        title: t!(lang, "character.card.try-on", slot = draft.slot.label()),
                         cols: 5,
                         cells: items,
                     },
@@ -482,9 +526,9 @@ fn card(
                 })
                 .collect();
             (
-                "Presets · ready-made characters".to_owned(),
+                t!(lang, "character.card.presets"),
                 vec![EditorSection {
-                    title: "Pick one, then make it your own".to_owned(),
+                    title: t!(lang, "character.card.presets-hint"),
                     cols: 5,
                     cells,
                 }],
@@ -499,7 +543,7 @@ fn card(
                         .map(|c| render_character(&c.spec(), 1));
                     EditorCell {
                         art,
-                        label: saved.map_or_else(|| "Empty".to_owned(), |o| o.name.clone()),
+                        label: saved.map_or_else(|| t!(lang, "character.card.empty"), |o| o.name.clone()),
                         note: slot.to_string(),
                         current: saved.is_some_and(|o| o.code == draft.code),
                         ..Default::default()
@@ -507,9 +551,14 @@ fn card(
                 })
                 .collect();
             (
-                format!("Outfits · {} of {OUTFIT_SLOTS} kept", outfits.len()),
+                t!(
+                    lang,
+                    "character.card.outfits",
+                    kept = outfits.len(),
+                    slots = OUTFIT_SLOTS
+                ),
                 vec![EditorSection {
-                    title: "Keep the draft in a slot, wear a kept one with the menu".to_owned(),
+                    title: t!(lang, "character.card.outfits-hint"),
                     cols: 3,
                     cells,
                 }],
@@ -520,15 +569,15 @@ fn card(
         character: render_character(&character.spec(), 1),
         name,
         status: if draft.is_saved() {
-            ("SAVED".to_owned(), true)
+            (t!(lang, "character.card.saved"), true)
         } else {
-            ("DRAFT".to_owned(), false)
+            (t!(lang, "character.card.draft"), false)
         },
-        tabs: Tab::ALL.iter().map(|t| t.label().to_owned()).collect(),
+        tabs: Tab::ALL.iter().map(|t| t.name(lang)).collect(),
         tab: tab_index,
         caption,
         sections,
-        hint: "< > step · the menu jumps · save keeps it".to_owned(),
+        hint: t!(lang, "character.card.hint"),
         theme: Theme::reef(),
     }
 }
@@ -587,7 +636,7 @@ mod tests {
                     tab,
                     slot,
                 };
-                let rows = controls(&draft, &character, &shelf, &outfits);
+                let rows = controls(&draft, &character, &shelf, &outfits, Lang::Tr);
                 assert!(rows.len() <= 5, "{tab:?}: {} rows", rows.len());
                 for r in &rows {
                     let Component::ActionRow(r) = r else {

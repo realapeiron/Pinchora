@@ -115,6 +115,9 @@ BANNED_WORDS = {
 }
 WORD5 = re.compile(r"[a-z]{5}\Z")
 HANGMAN_WORD = re.compile(r"[a-z]+(?: [a-z]+)?\Z")
+TR_ALPHABET = "abcçdefgğhıijklmnoöprsştuüvyz"
+WORD5_TR = re.compile(f"[{TR_ALPHABET}]{{5}}\\Z")
+HANGMAN_WORD_TR = re.compile(f"[{TR_ALPHABET}]+(?: [{TR_ALPHABET}]+)?\\Z")
 ERRORS = []
 
 
@@ -1019,11 +1022,336 @@ def check_words(raw):
     return lists["answers"], lists["allowed"]
 
 
+# --- Turkish overlay (content/i18n/tr) -------------------------------------------------------------------------
+TR_DIR = ROOT / "i18n" / "tr"
+# overlay file -> (English source file, key inside it or None, id field)
+TR_SOURCES = {
+    "furniture": ("furniture.json", None, "description"),
+    "sets": ("sets.json", None, "description"),
+    "surfaces": ("surfaces.json", ("wallpapers", "floors"), None),
+    "rooms": ("rooms.json", None, "description"),
+    "pets": ("pets.json", None, "personality"),
+    "fish": ("fish.json", None, "flavor"),
+    "looks": ("looks.json", None, None),
+    "accessories": ("accessories.json", None, None),
+    "presets": ("character_presets.json", None, None),
+    "backgrounds": ("backgrounds.json", None, None),
+    "badges": ("badges.json", None, "description"),
+    "titles": ("titles.json", None, "description"),
+    "contest_themes": ("contest_themes.json", None, "description"),
+    "critters": ("critters.json", None, "flavor"),
+    "finds": ("finds.json", None, "flavor"),
+    "pet_trips": ("pet_trips.json", None, "blurb"),
+    "fishing_gear": ("fishing_gear.json", ("spots", "rods", "baits"), "blurb"),
+}
+# every id in terms.json: the words the code asks for by key
+TR_TERM_KEYS = (
+    {f"rarity.{r}" for r in RARITIES}
+    | {f"category.{c}" for c in CATEGORY_MIN}
+    | {f"slot.{s}" for s in ("head", "face", "neck", "back", "hand")}
+    | {f"habitat.{h}" for h in ("shore", "tidepool", "kelp", "reef", "deep", "washed_up")}
+    | {"kind.critter", "kind.find"}
+    | {f"stat.{s}" for s in BADGE_STATS} | {f"stat.{s}.noun" for s in BADGE_STATS}
+    | {f"time.{t}" for t in ("any",) + DAY_PARTS} | {f"season.{t}" for t in ("any",) + SEASONS}
+    | {f"tier.{n}" for n in range(1, 7)}
+    | {f"quest.{q}" for q in ("chat", "fish", "visit", "care", "place", "buy", "like", "daily")}
+    | {f"currency.{c}" for c in ("shells", "pearls", "fragments")}
+)
+TR_QUEST_NUMBERS = {"chat": "10", "fish": "3", "visit": "2", "care": "3", "place": "2"}
+TR_NAME_SLACK = 2  # characters on top of English's longest name + 30% for the suffix a Turkish noun takes
+TR_FIRST_WORDS = {"Revolving": "Dönen"}  # real English adjectives that open a furniture name: translated, not coined
+
+
+def tr_lower(text):
+    """Lower-case with Turkish dotted/dotless I rules."""
+    return text.replace("I", "\u0131").replace("\u0130", "i").lower()
+
+
+def tr_words(text):
+    return " " + " ".join(re.findall(r"[^\W\d_]+", text.lower())) + " "
+
+
+def tr_has_term(words, term):
+    return any(f" {term}{plural} " in words for plural in ("", "s", "es"))
+
+
+def read_tr(filename):
+    try:
+        with (TR_DIR / filename).open(encoding="utf-8") as handle:
+            return json.load(handle)
+    except (OSError, ValueError) as exc:
+        problem(f"i18n/tr/{filename}", str(exc))
+        return None
+
+
+def tr_sources():
+    """overlay file -> list of (id, English name, English description or None)."""
+    result = {}
+    for name, (source, keys, desc_key) in TR_SOURCES.items():
+        raw = read_file(source)
+        if raw is None:
+            continue
+        lists = [raw] if keys is None else [raw.get(key, []) for key in keys]
+        result[name] = [(item["id"], item["name"], item.get(desc_key) if desc_key else None)
+                        for items in lists for item in items if isinstance(item, dict) and "id" in item]
+    return result
+
+
+def check_turkish():
+    """Every content id has a natural-length, unique, glossary-respecting Turkish name (and description)."""
+    sources = tr_sources()
+    glossary = read_tr("_glossary.json") or {"terms": [], "exempt": {}}
+    nouns = read_tr("_furniture_nouns.json") or {}
+    exempt = glossary.get("exempt", {})
+    all_ids, checks = {}, 0
+    for name, english in sources.items():
+        overlay = read_tr(name + ".json")
+        if not isinstance(overlay, dict):
+            continue
+        where = f"i18n/tr/{name}.json"
+        en_ids = {item[0] for item in english}
+        for missing in sorted(en_ids - overlay.keys()):
+            problem(where, f"missing Turkish text for {missing!r}")
+        for extra in sorted(overlay.keys() - en_ids):
+            problem(where, f"Turkish text for unknown id {extra!r}")
+        limit = max((len(item[1]) for item in english), default=0) * 13 // 10 + TR_NAME_SLACK
+        seen = {}
+        for ident, en_name, en_desc in english:
+            text = overlay.get(ident)
+            if not isinstance(text, dict):
+                continue
+            here = f"{where}:{ident}"
+            if ident in all_ids:
+                problem(here, f"id also in {all_ids[ident]}")
+            all_ids[ident] = name
+            fields(text, here, ("name",), ("description", "food", "stories"))
+            for key in ("name", "description", "food"):
+                value = text.get(key)
+                if value is None:
+                    continue
+                if not nonempty(value) or value != value.strip() or "\n" in value:
+                    problem(here, f"{key} must be trimmed single-line text")
+                elif len(value) > 100:
+                    problem(here, f"{key} is {len(value)} characters; Discord labels stop at 100")
+            tr_name = text.get("name", "")
+            if nonempty(tr_name):
+                if len(tr_name) > limit:
+                    problem(here, f"name {tr_name!r} is {len(tr_name)} characters; limit {limit} for {name}")
+                folded = tr_lower(tr_name)
+                if folded in seen:
+                    problem(here, f"duplicate name {tr_name!r}; first used by {seen[folded]}")
+                seen[folded] = ident
+            if (text.get("description") is None) != (en_desc is None):
+                problem(here, "description must exist exactly when the English has one")
+            elif en_desc is not None and len(text["description"]) > len(en_desc) * 14 // 10 + 12:
+                problem(here, "description is far longer than the English one")
+            if ident not in exempt:
+                for term in glossary["terms"]:
+                    pairs = [(en_name, tr_name)]
+                    if term.get("scope") == "all" and en_desc is not None:
+                        pairs.append((en_desc, text.get("description") or ""))
+                    for english_text, turkish in pairs:
+                        if tr_has_term(tr_words(english_text), term["en"]):
+                            checks += 1
+                            if not any(stem in tr_lower(turkish) for stem in term["match"]):
+                                problem(here, f"English has {term['en']!r} but {turkish!r} lacks {term['match']}")
+        if name == "pets":
+            for ident, text in overlay.items():
+                if not nonempty(text.get("food")):
+                    problem(f"{where}:{ident}", "a pet needs a food")
+        if name == "pet_trips":
+            trips = {item["id"]: item for item in read_file("pet_trips.json") or []}
+            for ident, text in overlay.items():
+                stories = text.get("stories", [])
+                if ident in trips and len(stories) != len(trips[ident]["stories"]):
+                    problem(f"{where}:{ident}", "needs one Turkish story per English story")
+                for story in stories:
+                    if story.count("{pet}") != 1 or len(story) > 100:
+                        problem(f"{where}:{ident}", f"story must hold {{pet}} once and fit 100 characters: {story!r}")
+        if name == "furniture":
+            for item in read_file("furniture.json") or []:
+                first, _, tail = item["name"].partition(" ")
+                first = TR_FIRST_WORDS.get(first, first)
+                noun = nouns.get(tail)
+                if isinstance(noun, dict):
+                    noun = noun.get(item["category"], noun.get("*"))
+                text = overlay.get(item["id"])
+                if noun is None:
+                    problem("i18n/tr/_furniture_nouns.json", f"no Turkish noun for {tail!r}")
+                elif isinstance(text, dict) and text.get("name") != f"{first} {noun}":
+                    problem(f"{where}:{item['id']}", f"name must be {first} {noun}")
+    terms = read_tr("terms.json") or {}
+    if set(terms) != TR_TERM_KEYS:
+        problem("i18n/tr/terms.json", f"keys differ: missing {sorted(TR_TERM_KEYS - set(terms))[:5]}, "
+                                      f"extra {sorted(set(terms) - TR_TERM_KEYS)[:5]}")
+    for key, line in terms.items():
+        if not isinstance(line, dict) or not nonempty(line.get("name")) or len(line["name"]) > 100:
+            problem("i18n/tr/terms.json", f"{key} needs a name of at most 100 characters")
+    for quest, number in TR_QUEST_NUMBERS.items():
+        if number not in str(terms.get(f"quest.{quest}", {}).get("name", "")):
+            problem("i18n/tr/terms.json", f"quest.{quest} must keep the number {number}")
+    colors = read_tr("colors.json") or {}
+    for palette in sorted(PALETTES):
+        if palette not in colors:
+            problem("i18n/tr/colors.json", f"no Turkish word for the variant colour {palette!r}")
+    for key, line in colors.items():
+        if not isinstance(line, dict) or not nonempty(line.get("name")):
+            problem("i18n/tr/colors.json", f"{key} needs a name")
+    return checks
+
+
+def check_trivia_tr(raw, english):
+    records = entries(raw, "trivia_tr.json", len(english) + 100)
+    ids, questions, slots = {}, {}, Counter()
+    per_category = Counter()
+    for item, where in records:
+        fields(item, where, ("id", "category", "difficulty", "question", "options", "answer"))
+        enum(item, "category", TRIVIA_CATEGORIES, where)
+        enum(item, "difficulty", TRIVIA_DIFFICULTIES, where)
+        string(item, "question", where, limit=110)
+        identifier, category = item.get("id"), item.get("category")
+        if not isinstance(identifier, str) or not SNAKE.fullmatch(identifier):
+            problem(where, "id must be snake_case")
+        elif identifier in ids:
+            problem(where, f"duplicate id {identifier!r}; first used at {ids[identifier]}")
+        else:
+            ids[identifier] = where
+            if isinstance(category, str) and not identifier.startswith(category + "_tr_"):
+                problem(where, f"id must start with {category + '_tr_'!r}")
+        question = item.get("question")
+        if nonempty(question):
+            key = " ".join(question.casefold().split())
+            if key in questions:
+                problem(where, f"duplicate question; first used at {questions[key]}")
+            questions[key] = where
+        options = item.get("options")
+        if not isinstance(options, list) or len(options) != 4:
+            problem(where, "options must be exactly four strings")
+            continue
+        if not all(nonempty(option) and len(option) <= 28 for option in options):
+            problem(where, "every option must be a nonempty string of at most 28 characters")
+            continue
+        if len({option.casefold() for option in options}) != 4:
+            problem(where, "options must all differ")
+        answer = item.get("answer")
+        if options.count(answer) != 1:
+            problem(where, "answer must be exactly one of the options")
+        else:
+            slots[options.index(answer)] += 1
+        per_category[category] += 1
+    for item, _ in english:
+        twin = item.get("id", "").replace("_", "_tr_", 1)
+        if twin not in ids:
+            problem("trivia_tr.json", f"{item.get('id')!r} has no Turkish twin {twin!r}")
+    for category in TRIVIA_CATEGORIES:
+        if per_category[category] < 55:
+            problem("trivia_tr.json", f"needs at least 55 {category} questions; found {per_category[category]}")
+    total = sum(slots.values())
+    if total and min(slots[slot] for slot in range(4)) * 100 < total * 15:
+        problem("trivia_tr.json", f"right answers are lopsided by option position: {dict(sorted(slots.items()))}")
+    return records
+
+
+def check_hangman_tr(raw):
+    records = entries(raw, "hangman_tr.json", 500)
+    seen, per_category = {}, Counter()
+    for item, where in records:
+        fields(item, where, ("category", "word"))
+        enum(item, "category", HANGMAN_CATEGORIES, where)
+        word = item.get("word")
+        if not isinstance(word, str) or not HANGMAN_WORD_TR.fullmatch(word):
+            problem(where, "word must be lowercase Turkish letters with at most one space")
+            continue
+        if not 4 <= len(word.replace(" ", "")) <= 16:
+            problem(where, f"word has {len(word.replace(' ', ''))} letters; allowed 4..16")
+        if word in seen:
+            problem(where, f"duplicate word {word!r}; first used at {seen[word]}")
+        seen[word] = where
+        per_category[item.get("category")] += 1
+    for category in HANGMAN_CATEGORIES:
+        if per_category[category] < 100:
+            problem("hangman_tr.json", f"needs at least 100 {category} words; found {per_category[category]}")
+    return records
+
+
+def check_words_tr(raw):
+    if not isinstance(raw, dict):
+        problem("words_tr.json", "must be an object with answers and allowed")
+        return [], []
+    fields(raw, "words_tr.json", ("answers", "allowed"))
+    lists = {}
+    for key, minimum in (("answers", 800), ("allowed", 4000)):
+        words = raw.get(key)
+        if not isinstance(words, list):
+            problem("words_tr.json", f"{key} must be an array")
+            lists[key] = []
+            continue
+        if len(words) < minimum:
+            problem("words_tr.json", f"{key} needs at least {minimum} words; found {len(words)}")
+        bad = [w for w in words if not isinstance(w, str) or not WORD5_TR.fullmatch(w)]
+        if bad:
+            problem("words_tr.json", f"{key} must be five lowercase Turkish letters; first bad: {bad[0]!r}")
+        good = [w for w in words if isinstance(w, str)]
+        if good != sorted(set(good)):
+            problem("words_tr.json", f"{key} must be sorted with no repeats")
+        lists[key] = good
+    missing = sorted(set(lists["answers"]) - set(lists["allowed"]))
+    if missing:
+        problem("words_tr.json", f"{len(missing)} answers are not allowed guesses, e.g. {missing[0]!r}")
+    return lists["answers"], lists["allowed"]
+
+
+def check_party_tr():
+    english, turkish = read_file("party.json"), read_file("party_tr.json")
+    if not isinstance(english, dict) or not isinstance(turkish, dict):
+        problem("party_tr.json", "must be an object like party.json")
+        return 0
+    for key in ("wyr", "truths", "dares"):
+        was, now = english.get(key, []), turkish.get(key, [])
+        count = Counter(item.get("category") for item in was)
+        if Counter(item.get("category") for item in now) != count:
+            problem("party_tr.json", f"{key} must have the same number per category as party.json")
+        seen = set()
+        for item in now:
+            where = f"party_tr.json {item.get('id')}"
+            if not isinstance(item.get("id"), str) or f"_{item.get('category')}_tr_" not in item["id"]:
+                problem(where, "id must look like wyr_<category>_tr_NN")
+            if item.get("id") in seen:
+                problem(where, "duplicate id")
+            seen.add(item.get("id"))
+            for field in ("a", "b") if key == "wyr" else ("text",):
+                text = item.get(field)
+                if not nonempty(text) or text != text.strip():
+                    problem(where, f"{field} must be trimmed text")
+                elif key == "wyr" and not text.endswith(("mak", "mek")):
+                    problem(where, f"{field} must be an infinitive phrase ending in -mak/-mek")
+    return len(turkish.get("wyr", [])) + len(turkish.get("truths", [])) + len(turkish.get("dares", []))
+
+
+def check_bottles_tr():
+    english, turkish = read_file("bottles.json"), read_file("bottles_tr.json")
+    if not isinstance(english, list) or not isinstance(turkish, list):
+        problem("bottles_tr.json", "must be an array like bottles.json")
+        return 0
+    if [b.get("id") for b in english] != [b.get("id") for b in turkish]:
+        problem("bottles_tr.json", "must have the same ids in the same order as bottles.json")
+    for item in turkish:
+        if not nonempty(item.get("text")) or len(item["text"]) > 95:
+            problem(f"bottles_tr.json {item.get('id')}", "text must be 1..95 characters")
+    return len(turkish)
+
+
 def check_games():
+    english_trivia = entries(read_file("trivia.json"), "trivia.json", 0)
     trivia = check_trivia(read_file("trivia.json"))
     hangman = check_hangman(read_file("hangman.json"))
     answers, allowed = check_words(read_file("words.json"))
-    return trivia, hangman, answers, allowed
+    trivia_tr = check_trivia_tr(read_file("trivia_tr.json"), english_trivia)
+    hangman_tr = check_hangman_tr(read_file("hangman_tr.json"))
+    answers_tr, allowed_tr = check_words_tr(read_file("words_tr.json"))
+    party_tr = check_party_tr()
+    bottles_tr = check_bottles_tr()
+    return (trivia, hangman, answers, allowed), (trivia_tr, hangman_tr, answers_tr, allowed_tr, party_tr, bottles_tr)
 
 
 def table(title, rows):
@@ -1069,7 +1397,8 @@ def main():
     check_fishing(raw["fishing_gear"], fish, backgrounds, badges)
     accessories = check_accessories(raw["accessories"], badges)
     character_presets = check_presets(raw["character_presets"], raw["looks"], accessories)
-    trivia, hangman, answers, allowed = check_games()
+    (trivia, hangman, answers, allowed), turkish = check_games()
+    glossary_checks = check_turkish()
     share(furniture + surfaces["wallpapers"] + surfaces["floors"], "all purchasable designs")
     table("Catalog", [("Furniture sets", len(sets)), ("Furniture bases", len(furniture)),
                       ("Playable furniture items", playable), ("Wallpapers", len(surfaces["wallpapers"])),
@@ -1080,6 +1409,9 @@ def main():
                       ("Accessories", len(accessories)), ("Character presets", len(character_presets))])
     table("Games", [("Trivia questions", len(trivia)), ("Hangman words", len(hangman)),
                     ("Wordle answers", len(answers)), ("Wordle allowed guesses", len(allowed))])
+    table("Turkish games", [("Trivia questions", len(turkish[0])), ("Hangman words", len(turkish[1])),
+                            ("Wordle answers", len(turkish[2])), ("Wordle allowed guesses", len(turkish[3])),
+                            ("Would you rather, truths and dares", turkish[4]), ("Bottle messages", turkish[5])])
     for key, order in (("category", CATEGORY_MIN), ("rarity", RARITIES), ("availability", AVAILABILITY), ("layer", LAYERS)):
         if key in ("category", "layer"):
             furniture_table(f"Furniture by {key}", furniture, key, order)
@@ -1087,6 +1419,7 @@ def main():
             counts = tally(furniture, key)
             table(f"Furniture by {key}", [(label, counts[label]) for label in order])
     print(f"\nPearl furniture: {tally(furniture, 'currency')['pearls']} / {len(furniture)} bases")
+    print(f"Turkish overlay: {glossary_checks} glossary checks")
     if ERRORS:
         print(f"\n{len(ERRORS)} problem(s):")
         for error in ERRORS:

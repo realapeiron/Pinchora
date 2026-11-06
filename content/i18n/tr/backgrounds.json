@@ -1,0 +1,110 @@
+{
+ "shellwash_morning": {
+  "name": "Shellwash Sabahı"
+ },
+ "tideglass_noon": {
+  "name": "Tideglass Öğle Vakti"
+ },
+ "honeywake_sunset": {
+  "name": "Honeywake Gün Batımı"
+ },
+ "moonpool_shore": {
+  "name": "Moonpool Kıyısı"
+ },
+ "driftwood_dunes": {
+  "name": "Deniz Odunu Kumulları"
+ },
+ "clovercap_bluff": {
+  "name": "Clovercap Yamacı"
+ },
+ "saltpetal_lane": {
+  "name": "Saltpetal Sokağı"
+ },
+ "lantern_nook": {
+  "name": "Fener Köşesi"
+ },
+ "teacup_window": {
+  "name": "Çay Fincanı Penceresi"
+ },
+ "hearthside_paws": {
+  "name": "Ocak Başında Patiler"
+ },
+ "misty_boardwalk": {
+  "name": "Sisli Sahil Yolu"
+ },
+ "starlit_jetty": {
+  "name": "Yıldızlı İskele"
+ },
+ "silverdrizzle_docks": {
+  "name": "Silverdrizzle Rıhtımları"
+ },
+ "brinebell_market": {
+  "name": "Brinebell Pazarı"
+ },
+ "cherryfoam_garden": {
+  "name": "Cherryfoam Bahçesi"
+ },
+ "amberleaf_trail": {
+  "name": "Amberleaf Patikası"
+ },
+ "snowmuffin_village": {
+  "name": "Snowmuffin Köyü"
+ },
+ "palmcup_oasis": {
+  "name": "Palmcup Vahası"
+ },
+ "bamboo_hush": {
+  "name": "Bambu Sessizliği"
+ },
+ "coralnap_garden": {
+  "name": "Coralnap Bahçesi"
+ },
+ "beacon_bend": {
+  "name": "Fener Dönemeci"
+ },
+ "firefly_picnic": {
+  "name": "Ateş Böceği Pikniği"
+ },
+ "ribbonfin_festival": {
+  "name": "Ribbonfin Şenliği"
+ },
+ "buttonbay_arcade": {
+  "name": "Buttonbay Oyun Salonu"
+ },
+ "pearlvolt_city": {
+  "name": "Pearlvolt Şehri"
+ },
+ "sleepy_hull": {
+  "name": "Uykulu Gemi Gövdesi"
+ },
+ "biscuit_cove": {
+  "name": "Bisküvi Koyu"
+ },
+ "glowtide_inlet": {
+  "name": "Glowtide Körfezi"
+ },
+ "lotusdrift_pond": {
+  "name": "Lotusdrift Göleti"
+ },
+ "fernlight_grotto": {
+  "name": "Fernlight Mağarası"
+ },
+ "ribbonlight_aurora": {
+  "name": "Ribbonlight Kutup Işığı"
+ },
+ "pillowcloud_court": {
+  "name": "Pillowcloud Avlusu"
+ },
+ "emberhug_caldera": {
+  "name": "Emberhug Kalderası"
+ },
+ "pocket_constellations": {
+  "name": "Cep Takımyıldızları"
+ },
+ "moonwhale_crossing": {
+  "name": "Moonwhale Geçidi"
+ },
+ "dawnreef_palace": {
+  "name": "Dawnreef Sarayı"
+ }
+}

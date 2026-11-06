@@ -96,6 +96,7 @@ impl PlazaCommand {
             }
             Self::Donate(_) => {
                 let content = Content::get();
+                let lang = cx.lang();
                 let (rows, kept_back) = giveable(cx.app.db.inventory(cx.author()?.id.get()).await?);
                 let options: Vec<SelectMenuOption> = rows
                     .into_iter()
@@ -105,7 +106,7 @@ impl PlazaCommand {
                             default: false,
                             description: Some(format!("You have {}", row.quantity)),
                             emoji: None,
-                            label: item.name(),
+                            label: item.name_in(lang),
                             value: row.item_id,
                         })
                     })
@@ -155,15 +156,16 @@ pub(crate) async fn on_donate(cx: &Cx, value: Option<&str>) -> anyhow::Result<()
         return cx.reply_ephemeral("Pick something to donate.").await;
     };
     let donor = cx.author()?.id.get();
+    let lang = cx.lang();
     if item.bound {
         return cx
-            .reply_ephemeral(format!("**{}** can't be donated. {SOULBOUND_RULE}", item.name()))
+            .reply_ephemeral(format!("**{}** can't be donated. {SOULBOUND_RULE}", item.name_in(lang)))
             .await;
     }
     ensure_house(&cx.app, guild).await?;
     if !cx.app.db.gift_item(donor, guild, &item.id()).await? {
         return cx
-            .reply_ephemeral(format!("You don't have a **{}** anymore.", item.name()))
+            .reply_ephemeral(format!("You don't have a **{}** anymore.", item.name_in(lang)))
             .await;
     }
     cx.update(InteractionResponseData {
@@ -175,7 +177,7 @@ pub(crate) async fn on_donate(cx: &Cx, value: Option<&str>) -> anyhow::Result<()
     cx.reply_text(format!(
         "💝 {} donated a **{}** to the plaza! Managers can place it with `/plaza edit`.",
         mention(donor),
-        item.name()
+        item.name_in(lang)
     ))
     .await
 }

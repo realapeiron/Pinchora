@@ -469,31 +469,38 @@ impl Db {
             .ok_or_else(|| anyhow::anyhow!("wordle board vanished"))
     }
 
-    /// Starts the next practice board with `word`, replacing the one in the slot, and says whether that one was
-    /// being played (a guess in, not finished): walking away from it counts as a loss. One statement, so two
-    /// clicks at once count it once.
-    pub async fn restart_practice_wordle(&self, user: u64, word: &str) -> anyhow::Result<(WordleGame, bool)> {
+    /// Starts the next practice board with `word` in the `mode` slot (`practice`, or a language's own such as
+    /// `practice-tr`), replacing the one there, and says whether that one was being played (a guess in, not
+    /// finished): walking away from it counts as a loss. One statement, so two clicks at once count it once.
+    pub async fn restart_practice_wordle(
+        &self,
+        user: u64,
+        mode: &str,
+        word: &str,
+    ) -> anyhow::Result<(WordleGame, bool)> {
         let mut tx = self.pool().begin().await?;
         // The row is locked while the new word goes in, so two clicks at once see the old board once.
         let seen: Option<(bool,)> = sqlx::query_as(
             "SELECT status = 'playing' AND cardinality(guesses) > 0 FROM wordle_games
-             WHERE user_id = $1 AND mode = 'practice' AND day = 0 FOR UPDATE",
+             WHERE user_id = $1 AND mode = $2 AND day = 0 FOR UPDATE",
         )
         .bind(sql_id(user))
+        .bind(mode)
         .fetch_optional(&mut *tx)
         .await?;
         sqlx::query(
-            "INSERT INTO wordle_games (user_id, mode, day, word) VALUES ($1, 'practice', 0, $2)
+            "INSERT INTO wordle_games (user_id, mode, day, word) VALUES ($1, $2, 0, $3)
              ON CONFLICT (user_id, mode, day) DO UPDATE
              SET word = EXCLUDED.word, guesses = '{}', status = 'playing', updated_at = now()",
         )
         .bind(sql_id(user))
+        .bind(mode)
         .bind(word)
         .execute(&mut *tx)
         .await?;
         tx.commit().await?;
         let game = self
-            .wordle_game(user, "practice", 0)
+            .wordle_game(user, mode, 0)
             .await?
             .ok_or_else(|| anyhow::anyhow!("wordle board vanished"))?;
         Ok((game, seen.is_some_and(|(abandoned,)| abandoned)))

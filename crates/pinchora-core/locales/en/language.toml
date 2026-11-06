@@ -1,0 +1,7 @@
+# /language and /config language.
+
+[language]
+set = "Done: I'll speak **{language}** with you from now on, on every server."
+auto = "Done: I'll follow your Discord language again (**{language}** right now)."
+server-set = "This server's default language is now **{language}**. It is used for messages that answer no one in particular, like welcome cards, level-ups and giveaways; everyone still gets replies in their own language."
+server-auto = "This server has no default language any more: those messages are in English."

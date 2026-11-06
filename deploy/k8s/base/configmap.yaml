@@ -13,6 +13,9 @@ data:
   PINCHORA_INTERACTIONS__BIND: 0.0.0.0:8080
   PINCHORA_DATABASE__MAX_CONNECTIONS: "20"
   PINCHORA_GATEWAY__MEMBER_EVENTS: "true"
+  # Privileged "Message Content" intent, read by the gateway (keyword auto-responders) and by the web
+  # pods (to unlock the keyword trigger in the editor): keep them in agreement. Off until verified.
+  PINCHORA_GATEWAY__MESSAGE_CONTENT: "false"
   # Shared REST ratelimit view. Delete this line to talk to Discord directly
   # (and drop http-proxy.yaml from kustomization.yaml).
   PINCHORA_DISCORD__HTTP_PROXY: pinchora-http-proxy:3000

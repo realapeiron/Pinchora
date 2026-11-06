@@ -99,8 +99,10 @@ export function roleColor(role: Pick<Role, "color"> | undefined): string {
 }
 
 /**
- * A role `<select>`. With `assignable`, roles the bot cannot hand out are listed but disabled, and
- * the sentence `/config` would answer with shows under the picker when one is picked anyway.
+ * A role `<select>`. With `assignable`, roles you may not set up to be handed out (the bot cannot give
+ * them, they sit at or above your highest role, or they carry powers only an administrator hands out)
+ * are listed but disabled, and the sentence `/config` would answer with shows under the picker when one
+ * is picked anyway. `forActions` applies a custom action's stricter rule: never a role with powers.
  */
 export function RolePicker({
   id,
@@ -109,6 +111,7 @@ export function RolePicker({
   onChange,
   none,
   assignable = false,
+  forActions = false,
   everyone = false,
   disabled,
   invalid,
@@ -119,10 +122,12 @@ export function RolePicker({
   onChange: (id: string | null) => void;
   none?: string;
   assignable?: boolean;
+  forActions?: boolean;
   everyone?: boolean;
   disabled?: boolean;
   invalid?: boolean;
 }) {
+  const refused = (r: Role) => assignable && !(forActions ? r.action_ok : r.assignable);
   const roles = (info?.roles ?? []).filter((r) => everyone || !r.everyone);
   const known = !value || roles.some((r) => r.id === value);
   return (
@@ -142,8 +147,8 @@ export function RolePicker({
       )}
       {!known && <option value={value!}>Deleted role ({value})</option>}
       {roles.map((r) => (
-        <option key={r.id} value={r.id} disabled={assignable && !r.assignable}>
-          {(r.everyone ? "@everyone" : `@${r.name}`) + (assignable && !r.assignable ? why(r, info) : "")}
+        <option key={r.id} value={r.id} disabled={refused(r)}>
+          {(r.everyone ? "@everyone" : `@${r.name}`) + (refused(r) ? why(r, info, forActions) : "")}
         </option>
       ))}
     </select>
@@ -151,12 +156,21 @@ export function RolePicker({
 }
 
 /** A short reason for a disabled option; the full sentence shows under the picker. */
-export function why(role: Role, info: GuildInfo | undefined): string {
+export function why(role: Role, info: GuildInfo | undefined, forActions = false): string {
   if (role.everyone) return " — everyone has it";
   if (role.managed) return " — managed by an integration";
   // Discord would not say where the bot's own role sits: it may not be above anything.
-  if (info?.bot.top_role_position === null) return " — can't check my role yet";
-  return " — above my role";
+  const bot = info?.bot.top_role_position;
+  if (bot === null) return " — can't check my role yet";
+  if (bot !== undefined && role.position >= bot) return " — above my role";
+  const you = info?.you;
+  if (role.powers.length > 0 && (forActions || !(you?.owner || you?.administrator)))
+    return " — has admin powers";
+  if (you && !you.owner) {
+    if (you.top_role_position === null) return " — can't check your roles yet";
+    if (role.position >= you.top_role_position) return " — not below your top role";
+  }
+  return " — not allowed";
 }
 
 /** A role name in its colour, for lists. */

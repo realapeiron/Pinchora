@@ -3,9 +3,10 @@
 use std::{str::Split, sync::Arc, time::Duration};
 
 use chrono::{Duration as Span, Utc};
+use pinchora_core::i18n::Lang;
 use pinchora_db::{ACTIVE, NewGame, Payout};
 use pinchora_game::play::{
-    Game, PlayContent, Question, TriviaCategory,
+    Game, PlayContent, Question, TriviaCategory, find_question,
     trivia::{decode_order, encode_order, permutation},
 };
 use twilight_model::{
@@ -29,15 +30,21 @@ const LETTERS: [char; 4] = ['A', 'B', 'C', 'D'];
 /// Winners named on the reveal; an embed field holds 1,024 characters.
 const MAX_LISTED: usize = 25;
 
+/// English or Turkish text, by the round's language.
+fn say<'a>(lang: Lang, en: &'a str, tr: &'a str) -> &'a str {
+    if lang == Lang::Tr { tr } else { en }
+}
+
 /// A session's state: the question id and the order its options are shown in.
 fn decode(state: &str) -> Option<(&'static Question, [usize; 4])> {
     let (id, order) = state.split_once(':')?;
-    Some((PlayContent::get().question(id)?, decode_order(order)?))
+    Some((find_question(id)?, decode_order(order)?))
 }
 
 pub(crate) async fn start(cx: &Cx, category: Option<TriviaCategory>) -> anyhow::Result<()> {
     let me = cx.author()?.id.get();
     let channel = channel_of(cx);
+    let lang = cx.lang();
     if let Some(left) = cx
         .app
         .cache
@@ -48,13 +55,19 @@ pub(crate) async fn start(cx: &Cx, category: Option<TriviaCategory>) -> anyhow::
         .await?
     {
         return cx
-            .reply_ephemeral(format!(
-                "A round just ran in this channel. The next one can start in {} s.",
-                left.as_secs() + 1
-            ))
+            .reply_ephemeral(match lang {
+                Lang::En => format!(
+                    "A round just ran in this channel. The next one can start in {} s.",
+                    left.as_secs() + 1
+                ),
+                Lang::Tr => format!(
+                    "Bu kanalda az önce bir tur oynandı. Sonraki {} sn sonra başlayabilir.",
+                    left.as_secs() + 1
+                ),
+            })
             .await;
     }
-    let pool: Vec<&Question> = PlayContent::get()
+    let pool: Vec<&Question> = PlayContent::for_lang(lang)
         .trivia
         .iter()
         .filter(|q| category.is_none_or(|c| q.category == c))
@@ -95,11 +108,18 @@ pub(crate) async fn start(cx: &Cx, category: Option<TriviaCategory>) -> anyhow::
         .await?;
     let deadline = Utc::now() + Span::seconds(ROUND_SECS);
     cx.reply(InteractionResponseData {
-        content: Some(format!(
-            "🧠 {} started a trivia round! Answer {}.",
-            mention(me),
-            relative(deadline)
-        )),
+        content: Some(match lang {
+            Lang::En => format!(
+                "🧠 {} started a trivia round! Answer {}.",
+                mention(me),
+                relative(deadline)
+            ),
+            Lang::Tr => format!(
+                "🧠 {} bir bilgi yarışması turu başlattı! {} cevapla.",
+                mention(me),
+                relative(deadline)
+            ),
+        }),
         embeds: Some(vec![question_embed(question, order, None)]),
         components: Some(answer_row(session.id, question, order, None)),
         allowed_mentions: quiet(),
@@ -136,12 +156,15 @@ fn question_embed(q: &Question, order: [usize; 4], reveal: Option<&Reveal>) -> E
         .title(format!(
             "{} {} · {}",
             q.category.emoji(),
-            q.category.label(),
-            q.difficulty.label()
+            q.category.label_in(q.lang),
+            q.difficulty.label_in(q.lang)
         ))
         .description(format!("**{}**\n\n{}", q.question, options.join("\n")));
     if let Some(reveal) = reveal {
-        embed = embed.field(EmbedFieldBuilder::new("Got it right", reveal.winners.clone()));
+        embed = embed.field(EmbedFieldBuilder::new(
+            say(q.lang, "Got it right", "Doğru bilenler"),
+            reveal.winners.clone(),
+        ));
     }
     embed.build()
 }
@@ -223,6 +246,7 @@ pub(crate) async fn finish(app: &Arc<App>, id: i64, fallback: Option<Arc<Respond
     let Some((q, order)) = decode(&session.state) else {
         anyhow::bail!("bad trivia state {:?}", session.state);
     };
+    let lang = q.lang;
     let right = q.correct_slot(order).map(|s| s as i16);
     let answers = app.db.game_answers(id).await?;
     let mut winners = Vec::new();
@@ -245,19 +269,25 @@ pub(crate) async fn finish(app: &Arc<App>, id: i64, fallback: Option<Arc<Respond
             format!("{}\nand {more} more", winners.join("\n"))
         } else if winners.is_empty() {
             if answers.is_empty() {
-                "Nobody answered this time.".to_owned()
+                say(lang, "Nobody answered this time.", "Bu sefer kimse cevap vermedi.").to_owned()
             } else {
-                "Nobody got it this time.".to_owned()
+                say(lang, "Nobody got it this time.", "Bu sefer kimse bilemedi.").to_owned()
             }
         } else {
             winners.join("\n")
         },
         answered: answers.len(),
     };
-    let content = format!(
-        "🧠 Time's up! **{}** answered, the answer was **{}**.",
-        reveal.answered, q.answer
-    );
+    let content = match lang {
+        Lang::En => format!(
+            "🧠 Time's up! **{}** answered, the answer was **{}**.",
+            reveal.answered, q.answer
+        ),
+        Lang::Tr => format!(
+            "🧠 Süre doldu! **{}** kişi cevapladı, doğru cevap **{}** idi.",
+            reveal.answered, q.answer
+        ),
+    };
     let embeds = [question_embed(q, order, Some(&reveal))];
     let components = answer_row(id, q, order, Some(&reveal));
     let mut edited = false;

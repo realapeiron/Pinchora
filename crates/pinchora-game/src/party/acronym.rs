@@ -1,7 +1,10 @@
 //! Acronym Tide: a few letters come up, everyone writes a phrase whose words start with them in
 //! order, and the table votes for the best one without knowing who wrote what.
 
+use pinchora_core::i18n::Lang;
+
 use super::Dice;
+use crate::lang;
 
 /// Rounds a game plays unless the host picks another number, and the range they may pick from.
 pub const DEFAULT_ROUNDS: i32 = 3;
@@ -18,14 +21,25 @@ pub const MAX_WORD: usize = 20;
 /// Letters that make a good acronym, the easy ones more often. No Q, X or Z.
 const POOL: &str = "AAABBCCCDDDEEFFGGHHIIJKLLLMMMNNOOOPPPRRRSSSTTTUVWWY";
 
+/// The same for Turkish: no Ğ (no word starts with it), no dotless I, J, Q, W or X, and the letters with
+/// marks (Ç, Ö, Ş, Ü) once each. The dotted İ is the capital of `i`.
+const POOL_TR: &str = "AAAABBBCCÇDDDEEEFGGHHİİİKKKKLLLMMMNNOÖPPRRRSSSŞTTTUÜVYZ";
+
+fn pool(lang: Lang) -> Vec<char> {
+    match lang {
+        Lang::En => POOL.chars().collect(),
+        Lang::Tr => POOL_TR.chars().collect(),
+    }
+}
+
 /// How many letters round `round` (counted from 0) shows: 3, 4, 5, then round again.
 pub fn letter_count(round: i32) -> usize {
     3 + round.rem_euclid(3) as usize
 }
 
 /// Distinct letters for a round, in the order they must be used.
-pub fn draw_letters(dice: &mut Dice, count: usize) -> Vec<char> {
-    let pool: Vec<char> = POOL.chars().collect();
+pub fn draw_letters(lang: Lang, dice: &mut Dice, count: usize) -> Vec<char> {
+    let pool = pool(lang);
     let mut letters: Vec<char> = Vec::with_capacity(count);
     while letters.len() < count {
         let pick = pool[dice.below(pool.len())];
@@ -71,7 +85,7 @@ impl PhraseError {
 
 /// Checks a phrase against the letters: one word per letter, each starting with it, case ignored.
 /// Returns the phrase with single spaces between the words.
-pub fn check_phrase(text: &str, letters: &[char]) -> Result<String, PhraseError> {
+pub fn check_phrase(lang: Lang, text: &str, letters: &[char]) -> Result<String, PhraseError> {
     let words: Vec<&str> = text.split_whitespace().collect();
     if words.is_empty() {
         return Err(PhraseError::Empty);
@@ -85,7 +99,7 @@ pub fn check_phrase(text: &str, letters: &[char]) -> Result<String, PhraseError>
     for (index, (word, want)) in words.iter().zip(letters).enumerate() {
         // Quotes and brackets before the first letter do not count.
         let first = word.chars().find(|c| c.is_alphanumeric());
-        if first.map(|c| c.to_ascii_uppercase()) != Some(want.to_ascii_uppercase()) {
+        if first.map(|c| lang::upper_char(lang, c)) != Some(lang::upper_char(lang, *want)) {
             return Err(PhraseError::Letter { index, want: *want });
         }
         if word.chars().count() > MAX_WORD {
@@ -113,7 +127,7 @@ mod tests {
         for seed in 0..200 {
             let mut dice = Dice::new(seed);
             for count in 3..=5 {
-                let letters = draw_letters(&mut dice, count);
+                let letters = draw_letters(Lang::En, &mut dice, count);
                 assert_eq!(letters.len(), count);
                 let mut sorted = letters.clone();
                 sorted.sort_unstable();
@@ -122,36 +136,39 @@ mod tests {
                 assert!(letters.iter().all(|c| c.is_ascii_uppercase() && !"QXZ".contains(*c)));
             }
         }
-        assert_eq!(draw_letters(&mut Dice::new(9), 4), draw_letters(&mut Dice::new(9), 4));
+        assert_eq!(
+            draw_letters(Lang::En, &mut Dice::new(9), 4),
+            draw_letters(Lang::En, &mut Dice::new(9), 4)
+        );
     }
 
     #[test]
     fn a_phrase_needs_one_word_per_letter_in_order() {
         let letters = ['T', 'W', 'R'];
         assert_eq!(
-            check_phrase("  Tiny   whales  RIDE ", &letters),
+            check_phrase(Lang::En, "  Tiny   whales  RIDE ", &letters),
             Ok("Tiny whales RIDE".to_owned())
         );
-        assert!(check_phrase("\"Tiny\" (whales) 'ride'", &letters).is_ok());
-        assert_eq!(check_phrase("", &letters), Err(PhraseError::Empty));
+        assert!(check_phrase(Lang::En, "\"Tiny\" (whales) 'ride'", &letters).is_ok());
+        assert_eq!(check_phrase(Lang::En, "", &letters), Err(PhraseError::Empty));
         assert_eq!(
-            check_phrase("Tiny whales", &letters),
+            check_phrase(Lang::En, "Tiny whales", &letters),
             Err(PhraseError::Count { want: 3, got: 2 })
         );
         assert_eq!(
-            check_phrase("Tiny whales swim", &letters),
+            check_phrase(Lang::En, "Tiny whales swim", &letters),
             Err(PhraseError::Letter { index: 2, want: 'R' })
         );
         assert_eq!(
-            check_phrase("Whales tiny ride", &letters),
+            check_phrase(Lang::En, "Whales tiny ride", &letters),
             Err(PhraseError::Letter { index: 0, want: 'T' })
         );
         assert_eq!(
-            check_phrase(&format!("T{} w r", "t".repeat(30)), &letters),
+            check_phrase(Lang::En, &format!("T{} w r", "t".repeat(30)), &letters),
             Err(PhraseError::TooLong)
         );
         assert_eq!(
-            check_phrase(&format!("{0} {0} {0}", "t".repeat(19)), &['T', 'T', 'T']).map(|_| ()),
+            check_phrase(Lang::En, &format!("{0} {0} {0}", "t".repeat(19)), &['T', 'T', 'T']).map(|_| ()),
             Ok(())
         );
     }
@@ -160,7 +177,7 @@ mod tests {
     fn a_phrase_has_a_total_limit_too() {
         let long = vec!["a".repeat(19); 6].join(" ");
         assert!(long.chars().count() > MAX_PHRASE);
-        assert_eq!(check_phrase(&long, &['A'; 6]), Err(PhraseError::TooLong));
+        assert_eq!(check_phrase(Lang::En, &long, &['A'; 6]), Err(PhraseError::TooLong));
     }
 
     #[test]
@@ -172,5 +189,33 @@ mod tests {
                 .say(&letters)
                 .contains("Word 2")
         );
+    }
+
+    #[test]
+    fn turkish_letters_are_easy_ones_and_the_dotted_i_is_its_own_letter() {
+        for seed in 0..200 {
+            let mut dice = Dice::new(seed);
+            for count in 3..=5 {
+                let letters = draw_letters(Lang::Tr, &mut dice, count);
+                let mut sorted = letters.clone();
+                sorted.sort_unstable();
+                sorted.dedup();
+                assert_eq!(sorted.len(), count, "{letters:?}");
+                assert!(
+                    letters.iter().all(|c| "ABCÇDEFGHİKLMNOÖPRSŞTUÜVYZ".contains(*c)),
+                    "no Ğ, I, J, Q, W or X: {letters:?}"
+                );
+            }
+        }
+        let letters = ['İ', 'K', 'Ş'];
+        assert!(check_phrase(Lang::Tr, "iyi kediler şimdi", &letters).is_ok());
+        assert!(check_phrase(Lang::Tr, "\"İnce\" kuşlar (şarkı)", &letters).is_ok());
+        assert_eq!(
+            check_phrase(Lang::Tr, "ışık kuşlar şarkı", &letters),
+            Err(PhraseError::Letter { index: 0, want: 'İ' }),
+            "ışık starts with the dotless I"
+        );
+        assert!(check_phrase(Lang::Tr, "Işık Kuşlar Şarkı", &['I', 'K', 'Ş']).is_ok());
+        assert!(check_phrase(Lang::Tr, "çiçek ödül", &['Ç', 'Ö']).is_ok());
     }
 }

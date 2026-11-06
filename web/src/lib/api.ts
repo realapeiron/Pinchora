@@ -109,6 +109,8 @@ export function needsLogin(error: unknown): boolean {
 export interface Me {
   user: { id: string; username: string; global_name: string | null; avatar_url: string };
   csrf: string;
+  /** What the bot runs with: keyword auto-responders need the Message Content intent. */
+  capabilities: { message_content: boolean };
 }
 
 export interface GuildEntry {
@@ -215,14 +217,24 @@ export interface Role {
   position: number;
   managed: boolean;
   everyone: boolean;
+  /** Discord's permission bits, as a string. */
+  permissions: string;
+  /** The powerful permissions it has (Administrator, Manage Messages, ...), by name. */
+  powers: string[];
+  /** Whether you may set it up as a level, reputation, store or join role; `why_not` says why not. */
   assignable: boolean;
   why_not: string | null;
+  /** The same for a custom command's or auto-responder's role action, which never hands out powers. */
+  action_ok: boolean;
+  action_why_not: string | null;
 }
 
 export interface GuildInfo {
   channels: Channel[];
   roles: Role[];
   bot: { top_role_position: number | null; manage_roles: boolean };
+  /** Who is asking: what decides the roles they may set up. */
+  you?: { owner: boolean; administrator: boolean; top_role_position: number | null };
 }
 
 export interface XpRule {
@@ -399,4 +411,113 @@ export interface StaffEntry {
 export interface StaffPage {
   items: StaffEntry[];
   next: string | null;
+}
+
+// /Custom commands and auto-responders
+
+export interface EmbedField {
+  name: string;
+  value: string;
+  inline: boolean;
+}
+
+/** A Discord embed as far as a server can write one. `null` is unset. */
+export interface EmbedSpec {
+  title: string | null;
+  description: string | null;
+  url: string | null;
+  /** `#rrggbb`. */
+  color: string | null;
+  author: string | null;
+  footer: string | null;
+  image: string | null;
+  thumbnail: string | null;
+  fields: EmbedField[];
+}
+
+export type TagAction =
+  | { kind: "add_role"; role_id: string }
+  | { kind: "remove_role"; role_id: string }
+  | { kind: "toggle_role"; role_id: string }
+  | { kind: "give_points"; amount: number }
+  | { kind: "dm"; text: string }
+  | { kind: "react"; emoji: string };
+
+export type ReplyMode = "public" | "ephemeral";
+
+/** A custom command as a server writes it (and as an export holds it). */
+export interface CommandDef {
+  name: string;
+  description: string;
+  responses: string[];
+  embed: EmbedSpec | null;
+  reply_mode: ReplyMode;
+  actions: TagAction[];
+  allow_roles: string[];
+  deny_roles: string[];
+  allow_channels: string[];
+  deny_channels: string[];
+  cooldown_secs: number;
+  enabled: boolean;
+  allow_mentions: boolean;
+}
+
+export interface CustomCommand extends CommandDef {
+  id: string;
+  uses: number;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export type TriggerKind =
+  "member_join" | "member_leave" | "level_up" | "role_added" | "role_removed" | "keyword";
+export type MatchKind = "contains" | "exact" | "starts_with" | "ends_with";
+export type Destination = "current" | "channel" | "dm";
+
+export interface ResponderDef {
+  name: string;
+  trigger_kind: TriggerKind;
+  trigger_value: string | null;
+  match_kind: MatchKind | null;
+  responses: string[];
+  embed: EmbedSpec | null;
+  destination: Destination;
+  channel_id: string | null;
+  actions: TagAction[];
+  chance: number;
+  cooldown_secs: number;
+  allow_channels: string[];
+  deny_channels: string[];
+  enabled: boolean;
+  allow_mentions: boolean;
+}
+
+export interface AutoResponder extends ResponderDef {
+  id: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TagList<T> {
+  items: T[];
+  max: number;
+  /** Responders only: whether keyword triggers can work. */
+  message_content?: boolean;
+}
+
+/** A message as the bot would send it, from the preview and test endpoints. */
+export interface Preview {
+  text: string;
+  embed: EmbedSpec | null;
+  ephemeral: boolean;
+  notes: string[];
+}
+
+export interface ImportReport {
+  created: string[];
+  replaced: string[];
+  skipped: string[];
+  failed: { index: number; name: string; message: string }[];
 }

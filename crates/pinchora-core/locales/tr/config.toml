@@ -1,0 +1,7 @@
+# /config replies.
+
+[config]
+guild-only = "Ayarlar yalnızca bir sunucunun içinde var."
+needs-manage-server = "Bu sunucunun ayarlarını değiştirmek için Sunucuyu Yönet iznine ihtiyacın var."
+language-field = "Dil"
+language-default = "İngilizce (varsayılan)"

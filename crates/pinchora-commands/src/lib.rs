@@ -1,6 +1,8 @@
 mod app;
+mod auto;
 mod commands;
 mod components;
+mod custom;
 mod cx;
 mod defer;
 mod events;
@@ -8,6 +10,7 @@ mod game;
 mod gate;
 mod house_view;
 mod invalidations;
+mod lang;
 mod leveling;
 mod log_audit;
 mod responder;
@@ -21,6 +24,7 @@ pub use app::App;
 pub use commands::{
     collection::{post_bottle, post_critter_drop, spawn_ticker as spawn_collection_ticker, tick as collection_tick},
     config::{WelcomeDesign, welcome_card_png},
+    customcommand::reserved_names as reserved_command_names,
     definitions as command_definitions,
     games::{spawn_janitor as spawn_game_janitor, sweep as sweep_games},
     level_roles::{SyncOutcome, SyncReport, sync_level_roles, sync_resting},
@@ -29,6 +33,9 @@ pub use commands::{
     partner::partner_name,
     party_games::{spawn_ticker as spawn_party_ticker, tick as party_tick},
     remind::{spawn_ticker as spawn_reminder_ticker, tick as reminder_tick},
+};
+pub use custom::{
+    Rendered, Spec, def_diff, escape_markdown, mention_ids, pick as pick_random, render_message, scrub_value, templates,
 };
 pub use cx::Cx;
 pub use defer::Deferral;
@@ -67,16 +74,21 @@ pub async fn handle_gateway_interaction(app: Arc<App>, interaction: Interaction,
 pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, responder: Arc<Responder>) {
     let started = Instant::now();
     let data = interaction.data.take();
+    let lang = lang::resolve(&app, &interaction).await;
     let cx = Cx {
         app,
         interaction,
         responder,
+        lang,
     };
     // Typing into an option that suggests: only suggestions go back, and the command itself neither
     // runs nor passes a module's switch.
     if cx.interaction.kind == InteractionType::ApplicationCommandAutocomplete {
         if let Some(InteractionData::ApplicationCommand(command)) = data {
-            let choices = commands::modules::autocomplete(&command);
+            let choices = match command.name.as_str() {
+                "tag" | "customcommand" => commands::tag::autocomplete(&cx, &command).await,
+                _ => commands::modules::autocomplete(&command),
+            };
             if let Err(error) = cx.responder.suggest(choices).await {
                 tracing::warn!(%error, name = %command.name, "could not answer an autocomplete");
             }
@@ -113,8 +125,6 @@ pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, res
         .record(started.elapsed().as_secs_f64());
     if let Err(error) = result {
         tracing::error!(name = %label, error = ?error, "interaction failed");
-        let _ = cx
-            .reply_ephemeral("Something went wrong on our side. Please try again in a moment.")
-            .await;
+        let _ = cx.reply_ephemeral(pinchora_core::t!(cx.lang(), "error.generic")).await;
     }
 }

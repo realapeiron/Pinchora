@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use pinchora_core::i18n::Lang;
+
 use twilight_model::{
     application::interaction::Interaction,
     channel::message::{Component, Embed, MessageFlags},
@@ -18,9 +20,17 @@ pub struct Cx {
     /// The interaction, with `data` already taken out for parsing.
     pub interaction: Interaction,
     pub responder: Arc<Responder>,
+    /// The language to answer in, resolved before the handler runs.
+    pub(crate) lang: Lang,
 }
 
 impl Cx {
+    /// The language this interaction is answered in: the player's `/language` choice, their
+    /// Discord language, the server's default, English. Use it with [`pinchora_core::t!`].
+    pub fn lang(&self) -> Lang {
+        self.lang
+    }
+
     pub fn author(&self) -> anyhow::Result<&User> {
         self.interaction
             .author()

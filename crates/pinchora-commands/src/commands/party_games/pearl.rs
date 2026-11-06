@@ -4,11 +4,13 @@
 
 use std::{str::Split, sync::Arc};
 
+use pinchora_core::i18n::Lang;
 use pinchora_db::{Commit, NewEntry, PartyEntry, PartyGame, PartyPlayer, Pay, PlayerChange};
+use pinchora_game::lang;
 use pinchora_game::party::{
     Dice, Party,
-    filter::is_profane,
-    hotpearl::{self, check_word, dictionary, earns_reward, next_player, turn_secs},
+    filter::is_profane_for,
+    hotpearl::{self, check_word, dictionary_for, earns_reward, next_player, turn_secs},
     pearl_reward,
 };
 use pinchora_render::{PearlCard, PearlSeat};
@@ -37,6 +39,9 @@ pub(crate) const WORD_FIELD: &str = "word";
 /// A game's own state, kept as JSON in `party_games.state`.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 struct State {
+    /// The language of the game: its words and syllables.
+    #[serde(default)]
+    lang: Lang,
     /// Lives everyone started with.
     lives: i32,
     /// The syllable on the pearl, lowercase.
@@ -59,14 +64,15 @@ fn encode(state: &State) -> anyhow::Result<String> {
 }
 
 /// The syllable for turn `turn`: fixed by the game's seed, and never the one before it.
-fn syllable(seed: u64, turn: u32, avoid: Option<&str>) -> String {
+fn syllable(lang: Lang, seed: u64, turn: u32, avoid: Option<&str>) -> String {
     let mut dice = Dice::new(seed ^ u64::from(turn).wrapping_mul(0x9e37_79b9_7f4a_7c15));
-    dictionary().syllable(turn, &mut dice, avoid).to_owned()
+    dictionary_for(lang).syllable(turn, &mut dice, avoid).to_owned()
 }
 
 pub(crate) async fn open(cx: &Cx, lives: i32) -> anyhow::Result<()> {
     let lives = lives.clamp(*hotpearl::LIVES.start(), *hotpearl::LIVES.end());
     let state = encode(&State {
+        lang: cx.lang(),
         lives,
         ..Default::default()
     })?;
@@ -83,7 +89,7 @@ pub(crate) async fn start(cx: &Cx, game: &PartyGame, players: &[PartyPlayer]) ->
     let first = order[0];
     state.cur = first.id();
     state.turn = 0;
-    state.syl = syllable(state.seed, 0, None);
+    state.syl = syllable(state.lang, state.seed, 0, None);
     state.note = format!("{} goes first", first.name);
     let seats: Vec<PlayerChange> = order
         .iter()
@@ -128,7 +134,7 @@ async fn view(
         state.note.clone()
     };
     let png = {
-        let (syllable, banner, last) = (state.syl.clone(), banner.clone(), state.last.clone());
+        let (syllable, banner, last) = (lang::upper(state.lang, &state.syl), banner.clone(), state.last.clone());
         let seats: Vec<(String, i32, bool, bool)> = players
             .iter()
             .map(|p| {
@@ -166,13 +172,22 @@ async fn view(
     let embed = EmbedBuilder::new()
         .color(BRAND)
         .title(format!("{} Hot Pearl", Party::HotPearl.emoji()))
-        .description(format!(
-            "{}\n{}, type a word with **{}** before the pearl pops {}! ({secs} seconds a turn)",
-            headline.unwrap_or(&banner),
-            mention(state.cur),
-            state.syl.to_uppercase(),
-            relative(game.deadline)
-        ));
+        .description(match state.lang {
+            Lang::En => format!(
+                "{}\n{}, type a word with **{}** before the pearl pops {}! ({secs} seconds a turn)",
+                headline.unwrap_or(&banner),
+                mention(state.cur),
+                state.syl.to_uppercase(),
+                relative(game.deadline)
+            ),
+            Lang::Tr => format!(
+                "{}\n{}, inci patlamadan {} içinde **{}** geçen bir kelime yaz! (turu {secs} saniye)",
+                headline.unwrap_or(&banner),
+                mention(state.cur),
+                relative(game.deadline),
+                lang::upper(Lang::Tr, &state.syl)
+            ),
+        });
     let button = push_button(
         Party::HotPearl,
         &[&"w", &game.id, &state.turn],
@@ -183,7 +198,7 @@ async fn view(
 }
 
 #[allow(deprecated)] // the label belongs on the Label component, so the input's own stays empty
-fn word_field(syllable: &str) -> Component {
+fn word_field(lang: Lang, syllable: &str) -> Component {
     Component::Label(Label {
         component: Box::new(Component::TextInput(TextInput {
             custom_id: WORD_FIELD.to_owned(),
@@ -191,14 +206,17 @@ fn word_field(syllable: &str) -> Component {
             label: None,
             max_length: Some(hotpearl::MAX_WORD as u16),
             min_length: Some(1),
-            placeholder: Some("pearl".to_owned()),
+            placeholder: Some(if lang == Lang::Tr { "inci" } else { "pearl" }.to_owned()),
             required: Some(true),
             style: TextInputStyle::Short,
             value: None,
         })),
         description: None,
         id: None,
-        label: format!("A word with {}", syllable.to_uppercase()),
+        label: match lang {
+            Lang::En => format!("A word with {}", syllable.to_uppercase()),
+            Lang::Tr => format!("{} içeren bir kelime", lang::upper(lang, syllable)),
+        },
     })
 }
 
@@ -213,7 +231,7 @@ enum Turn {
 /// click never plays on after the clock: after the answer for the button that opens the form (`opens_form`,
 /// which has to be answered in time), and before it for the form itself, which can be deferred.
 async fn check(cx: &Cx, id: i64, turn: u32, user: u64, opens_form: bool) -> anyhow::Result<Turn> {
-    let Some((game, players)) = snapshot(&cx.app, id).await? else {
+    let Some((game, players)) = snapshot(&cx.app, Party::HotPearl, id).await? else {
         return Ok(Turn::Refused("This game has expired.".to_owned()));
     };
     let state = decode(&game)?;
@@ -267,8 +285,12 @@ pub(crate) async fn on_button(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::Re
         Turn::Live(live) => {
             let (game, _, state) = *live;
             remember(cx, &game).await;
-            cx.modal(format!("hl:m:{id}:{turn}"), "Hot Pearl", vec![word_field(&state.syl)])
-                .await
+            cx.modal(
+                format!("hl:m:{id}:{turn}"),
+                "Hot Pearl",
+                vec![word_field(state.lang, &state.syl)],
+            )
+            .await
         }
     }
 }
@@ -296,12 +318,12 @@ pub(crate) async fn on_modal(cx: &Cx, mut parts: Split<'_, char>, fields: &[(Str
         .into_iter()
         .map(|e| e.text)
         .collect();
-    let word = match check_word(dictionary(), &state.syl, typed, &used) {
+    let word = match check_word(dictionary_for(state.lang), &state.syl, typed, &used) {
         Ok(word) => word,
-        Err(refusal) => return cx.reply_ephemeral(refusal.say(&state.syl)).await,
+        Err(refusal) => return cx.reply_ephemeral(refusal.say_in(state.lang, &state.syl)).await,
     };
     // The list holds mild words ("damn" is out, "hell" is not); a strict server turns those away too.
-    if is_profane(&word, true) && strict(app, game.guild_id as u64).await {
+    if is_profane_for(&word, true, state.lang) && strict(app, game.guild_id as u64).await {
         return cx.reply_ephemeral(text::Refused::Profane.say()).await;
     }
     let order: Vec<(u64, bool)> = players.iter().map(|p| (p.id(), !p.eliminated)).collect();
@@ -311,7 +333,7 @@ pub(crate) async fn on_modal(cx: &Cx, mut parts: Split<'_, char>, fields: &[(Str
     let mut after_state = state.clone();
     after_state.cur = next;
     after_state.turn = state.turn + 1;
-    after_state.syl = syllable(state.seed, after_state.turn, Some(&state.syl));
+    after_state.syl = syllable(state.lang, state.seed, after_state.turn, Some(&state.syl));
     after_state.note = format!(
         "{} played {}  ·  {} is up",
         name_of(&players, me),
@@ -469,7 +491,7 @@ pub(crate) async fn pop(app: &Arc<App>, game: PartyGame) -> anyhow::Result<bool>
     let mut next = state.clone();
     next.cur = next_holder;
     next.turn = state.turn + 1;
-    next.syl = syllable(state.seed, next.turn, Some(&state.syl));
+    next.syl = syllable(state.lang, state.seed, next.turn, Some(&state.syl));
     next.note = format!("BOOM! {name} {}", if out { "is out" } else { "lost a life" });
     let commit = Commit {
         phase: "turn",

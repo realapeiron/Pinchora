@@ -5,7 +5,7 @@ use std::ops::RangeInclusive;
 
 use chrono::Duration;
 
-use crate::settings::{FieldError, RoleFacts, role_refusal};
+use crate::settings::{FieldError, Grantor, RoleFacts, grant_refusal, role_refusal};
 
 /// Longest reason a case keeps (Discord's audit log takes 512 characters).
 pub const REASON_MAX: usize = 512;
@@ -188,14 +188,12 @@ pub fn may_act(owner: u64, actor: Rank, bot: Rank, target: Rank) -> Result<(), R
     Ok(())
 }
 
-/// Why `actor` may not hand out or take `role`, or `None` when they may: the role must be one the bot
-/// can give ([`role_refusal`]) and, unless the actor owns the server, below the actor's highest role.
-pub fn role_refusal_for(owner: u64, actor: Rank, role: RoleFacts, bot_top: Option<i64>, label: &str) -> Option<String> {
-    if let Some(why) = role_refusal(role, bot_top, label) {
-        return Some(why);
-    }
-    (actor.id != owner && role.position >= actor.top)
-        .then(|| format!("{label} is not below your highest role, so you can't hand it out or take it."))
+/// Why `grantor` may not hand out or take `role`, or `None` when they may: the same rule as every role
+/// Pinchora hands out. The bot must be able to give it ([`role_refusal`]), and the grantor may only
+/// move roles below their own highest one and, unless they own the server or are an administrator,
+/// none with a dangerous permission ([`grant_refusal`]).
+pub fn role_refusal_for(role: RoleFacts, grantor: Grantor, bot_top: Option<i64>, label: &str) -> Option<String> {
+    role_refusal(role, bot_top, label).or_else(|| grant_refusal(role, grantor, label))
 }
 
 /// What a number of warns brings.
@@ -412,37 +410,54 @@ mod tests {
         assert!(Refusal::Above.text("time out").starts_with("You can't time out"));
     }
 
+    /// The shared role rule, row by row: (role position, permissions, grantor, bot top, refused with).
     #[test]
     fn roles_must_sit_below_the_moderator_and_the_bot() {
-        let role = |position| RoleFacts {
+        const BAN: u64 = 1 << 2;
+        let role = |position, permissions| RoleFacts {
             everyone: false,
             managed: false,
             position,
+            permissions,
         };
-        let moderator = rank(10, 5);
-        assert_eq!(role_refusal_for(OWNER, moderator, role(3), Some(9), "@R"), None);
-        assert!(
-            role_refusal_for(OWNER, moderator, role(5), Some(9), "@R")
-                .unwrap()
-                .contains("below your")
-        );
-        assert!(
-            role_refusal_for(OWNER, moderator, role(7), Some(9), "@R")
-                .unwrap()
-                .contains("below your")
-        );
-        assert!(
-            role_refusal_for(OWNER, moderator, role(3), Some(3), "@R")
-                .unwrap()
-                .contains("above my")
-        );
-        assert_eq!(role_refusal_for(OWNER, rank(OWNER, 0), role(7), Some(9), "@R"), None);
+        let moderator = Grantor {
+            owner: false,
+            administrator: false,
+            top_role: Some(5),
+        };
+        let admin = Grantor {
+            administrator: true,
+            ..moderator
+        };
+        let owner = Grantor {
+            owner: true,
+            administrator: true,
+            top_role: Some(0),
+        };
+        type Row = (&'static str, RoleFacts, Grantor, Option<&'static str>);
+        let rows: &[Row] = &[
+            ("below both", role(3, 0), moderator, None),
+            ("equal to the moderator", role(5, 0), moderator, Some("not below your")),
+            ("above the moderator", role(7, 0), moderator, Some("not below your")),
+            ("a ban role for a moderator", role(3, BAN), moderator, Some("Ban Members")),
+            ("a ban role for an administrator", role(3, BAN), admin, None),
+            ("the owner, above their own roles", role(7, BAN), owner, None),
+            ("not below the bot", role(9, 0), owner, Some("above my")),
+            ("unknown roles", role(3, 0), Grantor { top_role: None, ..moderator }, Some("couldn't check")),
+        ];
+        for (label, facts, grantor, refused) in rows {
+            let why = role_refusal_for(*facts, *grantor, Some(9), "@R");
+            match refused {
+                None => assert_eq!(why, None, "{label}"),
+                Some(part) => assert!(why.as_deref().is_some_and(|w| w.contains(part)), "{label}: {why:?}"),
+            }
+        }
         let managed = RoleFacts {
             managed: true,
-            ..role(1)
+            ..role(1, 0)
         };
         assert!(
-            role_refusal_for(OWNER, moderator, managed, Some(9), "@R")
+            role_refusal_for(managed, owner, Some(9), "@R")
                 .unwrap()
                 .contains("managed")
         );

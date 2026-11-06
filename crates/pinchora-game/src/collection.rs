@@ -5,6 +5,7 @@
 
 use std::{collections::HashMap, sync::LazyLock};
 
+use pinchora_core::i18n::Lang;
 use serde::Deserialize;
 
 use crate::{Availability, Content, Currency, Furniture, Rarity, fishing};
@@ -194,9 +195,27 @@ static EMBEDDED: LazyLock<Collection> = LazyLock::new(|| {
     .expect("embedded collection content must parse; run `cargo test -p pinchora-game`")
 });
 
+/// The Turkish text of each bottle message, by the id the English one has.
+static BOTTLES_TR: LazyLock<HashMap<String, String>> = LazyLock::new(|| {
+    serde_json::from_str::<Vec<Bottle>>(include_str!("../../../content/bottles_tr.json"))
+        .expect("embedded Turkish bottle messages must parse; run `cargo test -p pinchora-game`")
+        .into_iter()
+        .map(|b| (b.id, b.text))
+        .collect()
+});
+
 impl Collection {
     pub fn get() -> &'static Collection {
         &EMBEDDED
+    }
+
+    /// The text of bottle `id` in `lang`; the English one when there is no translation.
+    pub fn bottle_text(&self, id: &str, lang: Lang) -> Option<&str> {
+        let english = self.bottle(id)?;
+        match lang {
+            Lang::En => Some(english.text.as_str()),
+            Lang::Tr => Some(BOTTLES_TR.get(id).map_or(english.text.as_str(), String::as_str)),
+        }
     }
 
     pub fn from_json(critters: &str, finds: &str, bottles: &str) -> anyhow::Result<Self> {
@@ -618,6 +637,20 @@ mod tests {
         assert!(c.bottles.len() >= 40);
         let texts: HashSet<_> = c.bottles.iter().map(|b| b.text.as_str()).collect();
         assert_eq!(texts.len(), c.bottles.len(), "no message twice");
+        // Each message has a Turkish text, written for Turkish readers and clean for a strict server.
+        let mut turkish = HashSet::new();
+        for b in &c.bottles {
+            let tr = c.bottle_text(&b.id, Lang::Tr).expect("a Turkish text");
+            assert_ne!(tr, b.text, "{}: not translated", b.id);
+            assert!(tr.chars().count() <= 95 && turkish.insert(tr), "{}: {tr}", b.id);
+            assert!(
+                !crate::party::filter::is_profane_for(tr, true, Lang::Tr),
+                "{}: {tr}",
+                b.id
+            );
+            assert_eq!(c.bottle_text(&b.id, Lang::En), Some(b.text.as_str()));
+        }
+        assert_eq!(c.bottle_text("nope", Lang::Tr), None);
         assert_eq!(c.entry("pebblesnap_crab").map(|e| e.kind), Some(Kind::Critter));
         assert_eq!(c.entry("sand_dollar").map(|e| e.kind), Some(Kind::Find));
         assert!(c.entry("nonsense").is_none());

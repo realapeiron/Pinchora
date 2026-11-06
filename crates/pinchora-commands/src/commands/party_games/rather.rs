@@ -36,9 +36,7 @@ struct State {
 
 fn question(game: &PartyGame) -> anyhow::Result<&'static Rather> {
     let state: State = serde_json::from_str(&game.state)?;
-    PartyContent::get()
-        .rather(&state.q)
-        .ok_or_else(|| anyhow::anyhow!("unknown would-you-rather question {}", state.q))
+    PartyContent::find_rather(&state.q).ok_or_else(|| anyhow::anyhow!("unknown would-you-rather question {}", state.q))
 }
 
 /// A button label: `A · the first thing`, cut to what a button holds.
@@ -61,7 +59,7 @@ pub(crate) async fn open(cx: &Cx, topic: Option<Category>) -> anyhow::Result<()>
             ))
             .await;
     }
-    let pool = PartyContent::get().questions(topic);
+    let pool = PartyContent::for_lang(cx.lang()).questions(topic);
     anyhow::ensure!(!pool.is_empty(), "no questions in this category");
     // Skip questions this channel saw lately, a few tries deep.
     let mut chosen = pool[rand::random_range(0..pool.len())];

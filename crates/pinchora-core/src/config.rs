@@ -84,9 +84,8 @@ pub struct GatewayConfig {
     pub cluster_count: u16,
     /// Listen for `GUILD_MEMBER_ADD` (privileged "Server Members" intent) for welcome cards.
     pub member_events: bool,
-    /// Ask for message content (privileged "Message Content" intent) and keep recent messages in Redis
-    /// for a day, so the server log can show what an edited or deleted message said. Off: the log
-    /// shows who, where and when, without the text.
+    /// Listen for message text (privileged "Message Content" intent): without it the bot cannot read chat,
+    /// so keyword auto-responders stay locked. Discord needs verification for it above 100 servers.
     pub message_content: bool,
 }
 

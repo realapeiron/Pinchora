@@ -1,0 +1,30 @@
+# /help: the guide's areas, in the order AREAS in commands/help.rs lists them.
+
+[help]
+title = "Pinchora"
+description = "Menüden bir bölüm seç ya da düğmelerle sayfaları çevir."
+footer = "Yıldızlı komutlar sunucuyu yönetebilen üyeler içindir."
+jump = "Bir bölüme atla…"
+previous = "◀ Önceki"
+next = "Sonraki ▶"
+page-of = "{title} ({page}/{pages})"
+
+[help.area]
+start = { title = "Buradan başla", intro = "Her günün temelleri. Geri kalan her şey için menüden bir bölüm seç." }
+profile = { title = "Profil ve kartlar", intro = "Görünüşün, karakterin ve başkalarının senden neler görebileceği." }
+rewards = { title = "Kabuklar ve ödüller", intro = "Her hafta ve ay daha büyük ödüller, arkadaşlara kabuk, itibar ve hatırlatıcılar." }
+shops = { title = "Mağaza ve ticaret", intro = "Mobilya al, envanterinde sakla, hediye et ya da kendi tezgâhında sat." }
+house = { title = "Ev ve meydan", intro = "Kendi piksel evin, haftalık oda yarışması ve tüm sunucunun paylaştığı meydan." }
+pets = { title = "Evcil hayvanlar", intro = "Bir hayvan sahiplen, ona iyi bak ve eve hatıra getirdiği gezilere gönder." }
+fishing = { title = "Balıkçılık", intro = "Oltanı at, kovanı doldur, avını sat ve balık defterini tamamla." }
+friends = { title = "Arkadaşlar ve partnerler", intro = "Arkadaş ekle, bir partnerle eşleş ve hareketli selamlar gönder." }
+duels = { title = "Düellolar", intro = "Bir arkadaşına hızlı bir oyun için meydan oku. Çoğunda isteğe bağlı bahis var." }
+puzzles = { title = "Bulmacalar ve kelime oyunları", intro = "Tek başına oyna ya da tüm kanal için bir parti oyunu başlat." }
+crowd = { title = "Kalabalık oyunları ve koleksiyon", intro = "Kanal için yarışlar, soygunlar ve fırtınalar; kıyıda bulunacak minik canlılar." }
+community = { title = "Topluluk", intro = "Anketler, öneriler, çekilişler, rol düğmeleri, sunucu puanları ve özel komutlar." }
+moderation = { title = "Moderasyon", intro = "Yasaklar, atmalar, susturmalar ve uyarılar; her biri mod kaydında numaralı bir vaka. Kanal temizliği de burada." }
+setup = { title = "Sunucu kurulumu", intro = "Karşılama kartları, vedalar, öneriler, dil ve ayarlara genel bakış." }
+logsetup = { title = "Kayıt ve moderasyon ayarları", intro = "Sunucu kaydının kanalları, olayları ve yok sayma listeleri; mod kaydı ve uyarı merdiveni." }
+levels = { title = "Seviye, XP ve puan ayarları", intro = "Seviye rolleri, XP çarpanları, ses XP'si, itibar rolleri ve puan mağazası." }
+modules = { title = "Oyun ve modül ayarları", intro = "Oyunları ve Pinchora'nın bütün bölümlerini sunucu ya da kanal bazında aç veya kapat." }
+more = { title = "Diğer komutlar", intro = "Geri kalan her şey." }

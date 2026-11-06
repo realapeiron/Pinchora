@@ -1,0 +1,290 @@
+{
+ "toaststripe_minnow": {
+  "name": "Toaststripe Sazancığı",
+  "description": "Kenarlarından hafifçe kızartılmış gibi görünür."
+ },
+ "pebblelip_dace": {
+  "name": "Pebblelip Dere Balığı",
+  "description": "Her çakılı kahvaltı olabilirmiş gibi inceler."
+ },
+ "mintcomma_sprat": {
+  "name": "Mintcomma Çaçası",
+  "description": "Nehrin uzun cümlesinde minik yeşil bir virgül."
+ },
+ "sandskip_goby": {
+  "name": "Sandskip Kaya Balığı",
+  "description": "Dipte hoplayıp zıplar, hiç acelesi yok."
+ },
+ "crumbfin_bream": {
+  "name": "Crumbfin Çipurası",
+  "description": "Pikniklerin peşinden şüpheli bir bağlılıkla gider."
+ },
+ "ribbonwink_shiner": {
+  "name": "Ribbonwink Işıltı Balığı",
+  "description": "Her dönüşünde dostça bir göz kırpar."
+ },
+ "teadrop_loach": {
+  "name": "Teadrop Çamur Balığı",
+  "description": "Fincana batan bisküvi gibi çamura yerleşir."
+ },
+ "mossbutton_perch": {
+  "name": "Mossbutton Tatlısu Levreği",
+  "description": "Benekleri çok düzgün dizilmiş düğmeler gibi taşır."
+ },
+ "puddlequilt_carp": {
+  "name": "Puddlequilt Sazanı",
+  "description": "Sığlıkta yamalı bir ışıltı."
+ },
+ "skythread_smelt": {
+  "name": "Skythread Gümüş Balığı",
+  "description": "Soğuk suya ince mavi bir çizgi diker."
+ },
+ "oatflake_mullet": {
+  "name": "Oatflake Kefali",
+  "description": "Pullarına hep birkaç kırıntı yapışmış gibidir."
+ },
+ "lilacwhisk_gudgeon": {
+  "name": "Lilacwhisk Kum Sazanı",
+  "description": "Nehir yatağını iki ciddi bıyığıyla arar."
+ },
+ "cupnose_sculpin": {
+  "name": "Cupnose Boğa Balığı",
+  "description": "Geniş, minik yüzü sıcak bir içeceğe hazır gibi görünür."
+ },
+ "reedflash_tetra": {
+  "name": "Reedflash Tetrası",
+  "description": "O geçtikten sonra kamışlar hep daha capcanlı görünür."
+ },
+ "coralcrumb_sardine": {
+  "name": "Coralcrumb Sardalyası",
+  "description": "Kalabalıkla yolculuk eder ama yine de kendi çerezini getirir."
+ },
+ "softspine_stickleback": {
+  "name": "Softspine Dikenli Balığı",
+  "description": "Cesur küçük dikenleri tatlı yüzünü asla bozmaz."
+ },
+ "butterwake_bleak": {
+  "name": "Butterwake Çapağı",
+  "description": "Öğleden sonra suyunda sıcak, altın bir pırıltı bırakır."
+ },
+ "navynose_herring": {
+  "name": "Navynose Ringası",
+  "description": "Sessizce gelir, genelde yüz tane aynı kadar sessiz kuzeniyle."
+ },
+ "pebblepin_shrimp": {
+  "name": "Pebblepin Karidesi",
+  "description": "Dirseklerini çok nazikçe taşır."
+ },
+ "mintcap_limpet": {
+  "name": "Mintcap Patellası",
+  "description": "Planlarına hayranlık uyandıran bir güvenle yapışır."
+ },
+ "sandloop_cockle": {
+  "name": "Sandloop Kalp Midyesi",
+  "description": "Oluklu deniz kabuğunun ardında küçük bir deniz kenarı sırrı saklar."
+ },
+ "creamcurl_whelk": {
+  "name": "Creamcurl Deniz Salyangozu",
+  "description": "Başka hiçbir yerde olmak istemeyen küçük bir sarmal."
+ },
+ "siltstep_boot": {
+  "name": "Siltstep Çizmesi",
+  "description": "Çok gezmiş bir çizme, diğer yarısıyla buluşmayı hâlâ umuyor."
+ },
+ "rattlelip_tin": {
+  "name": "Rattlelip Tenekesi",
+  "description": "Su altında çok mütevazı bir müzik kariyeri olan ezilmiş bir teneke."
+ },
+ "frayloop_rope": {
+  "name": "Frayloop Halatı",
+  "description": "Seyir için fazla yıpranmış, dağınık bir fiyonk için ise tam kıvamında."
+ },
+ "driftspoke_wheel": {
+  "name": "Driftspoke Tekerleği",
+  "description": "Kıyıya manzaralı yoldan gelen oyuncak bir vagon tekerleği."
+ },
+ "chipwink_cup": {
+  "name": "Chipwink Fincanı",
+  "description": "Çakıl tutmaya yetecek kadar onuru kalmış çentikli bir fincan."
+ },
+ "snaggletoe_sock": {
+  "name": "Snaggletoe Çorabı",
+  "description": "Deniz bu çorabı tutmayı resmen reddetti."
+ },
+ "honeypatch_tench": {
+  "name": "Honeypatch Kadife Balığı",
+  "description": "Suyun en sıcak yerini bulup çaya kalır."
+ },
+ "reedribbon_eel": {
+  "name": "Reedribbon Yılanbalığı",
+  "description": "Kamışların arasından, paket arayan bir kurdele gibi kayar."
+ },
+ "rosefin_chub": {
+  "name": "Rosefin Tatlısu Kefali",
+  "description": "İlk sürüklenen taç yaprakların altında pembe bir sıçrayış."
+ },
+ "tinysail_garlet": {
+  "name": "Tinysail Çıtır Balığı",
+  "description": "Akşam esintisi gelince minik yelkenini açar."
+ },
+ "cobbleback_barbel": {
+  "name": "Cobbleback Bıyıklı Balığı",
+  "description": "Taşların arasını kayıp bir düğme arıyormuş gibi karıştırır."
+ },
+ "quiltstripe_bass": {
+  "name": "Quiltstripe Levreği",
+  "description": "Düzgün çizgileri koca göleti daha şık giyinmiş gösterir."
+ },
+ "skydimple_trout": {
+  "name": "Skydimple Alabalığı",
+  "description": "Her soluk benek, göğün minik bir yansıması gibi durur."
+ },
+ "sandspoon_flounder": {
+  "name": "Sandspoon Pisi Balığı",
+  "description": "Kumun altına, yanlış yere konmuş bir kaşık özgüveniyle saklanır."
+ },
+ "clovercheek_bluegill": {
+  "name": "Clovercheek Mavi Solungacı",
+  "description": "Sırıtışının yanında yaprak biçimli küçük bir iz taşır."
+ },
+ "brinebutton_mackerel": {
+  "name": "Brinebutton Uskumrusu",
+  "description": "Bir sıra minik benek, çizgilerinin fazla ciddileşmesini önler."
+ },
+ "liltfin_wrasse": {
+  "name": "Liltfin Lapinası",
+  "description": "Kayaların çevresinde yalnızca kendisinin duyduğu bir ezgiyle dans eder."
+ },
+ "ochrecurl_pipefish": {
+  "name": "Ochrecurl İğne Balığı",
+  "description": "Kamış gibi durmayı dener, sonra unutup kıpırdanır."
+ },
+ "frostwhisk_codlet": {
+  "name": "Frostwhisk Morinacığı",
+  "description": "Tek bir minik çene bıyığı, kışlık paltosu olarak yeter."
+ },
+ "plumspot_puffer": {
+  "name": "Plumspot Balon Balığı",
+  "description": "Kendi yansımasına şaşırınca daha da yuvarlaklaşır."
+ },
+ "reedlace_glassfish": {
+  "name": "Reedlace Cam Balığı",
+  "description": "Biri boyamayı bitirmeyi unutmuş gibi görünür."
+ },
+ "peachpeel_killi": {
+  "name": "Peachpeel Dişli Balığı",
+  "description": "Gölet kenarında minik, parlak bir kıvrım."
+ },
+ "amberwink_squidlet": {
+  "name": "Amberwink Kalamarcığı",
+  "description": "Özellikle iyi bir fikri olunca kehribar rengi göz kırpar."
+ },
+ "brinebow_prawn": {
+  "name": "Brinebow Karidesi",
+  "description": "Duyargaları her girişi gösterişli bir selama çevirir."
+ },
+ "oatstone_mussel": {
+  "name": "Oatstone Midyesi",
+  "description": "Mütevazı bir deniz kabuğu, ama içi şaşırtıcı derecede cilalı."
+ },
+ "twineclaw_crayfish": {
+  "name": "Twineclaw Kerevidi",
+  "description": "İki kıskacını da kesinlikle gizli gölet işleriyle meşgul tutar."
+ },
+ "lanternstripe_pike": {
+  "name": "Lanternstripe Turna Balığı",
+  "description": "Uzun gölgesinin geri kalanından önce parlak bir çizgi gelir."
+ },
+ "petalveil_betta": {
+  "name": "Petalveil Betta Balığı",
+  "description": "Her dönüşünde yüzgeçlerinden başka bir minik buket açılır."
+ },
+ "pearlpatch_koi": {
+  "name": "Pearlpatch Koi Balığı",
+  "description": "Ay ışıklı bulut parçalarından özenle yamanmış gibi görünür."
+ },
+ "velvetwake_catfish": {
+  "name": "Velvetwake Yayın Balığı",
+  "description": "Büyük bir hikâye anlatıcısına yakışır bıyıklı, kadife gibi bir gölge."
+ },
+ "tidefold_locket": {
+  "name": "Tidefold Madalyonu",
+  "description": "İçinde minik boş bir çerçeve, yeni bir mutlu anıya hazır bekliyor."
+ },
+ "brinebell_coin": {
+  "name": "Brinebell Sikkesi",
+  "description": "Adını dalgaların unuttuğu bir limandan gelen eskimiş bir sikke."
+ },
+ "duneglass_sole": {
+  "name": "Duneglass Dil Balığı",
+  "description": "O kadar berrak ve kumlu ki güneş içinden geçip gidiyor sanki."
+ },
+ "hushribbon_moray": {
+  "name": "Hushribbon Murana Balığı",
+  "description": "Şaşırtıcı derecede utangaç bir gülümsemesi olan gölge kurdelesi."
+ },
+ "moonbutton_sunfish": {
+  "name": "Moonbutton Güneş Balığı",
+  "description": "Gölet kocaman bir düğmesini kaybetmiş gibi görünecek kadar yuvarlak."
+ },
+ "reefruff_lionfish": {
+  "name": "Reefruff Aslan Balığı",
+  "description": "Gösterişli diken yelpazesi, takdire değer bir telaşsızlıkla dans eder."
+ },
+ "chartcurl_nautilus": {
+  "name": "Chartcurl Nautilusu",
+  "description": "Sarmalı her gelgitin haritasını taşıyor gibi."
+ },
+ "wishscale_gourami": {
+  "name": "Wishscale Guramisi",
+  "description": "Her soluk pul küçük, umutlu bir düşünce taşıyor gibi."
+ },
+ "sugarfin_trigger": {
+  "name": "Sugarfin Tetik Balığı",
+  "description": "Şeker ambalajı kadar parlak, katlaması ise iki kat zor."
+ },
+ "mossmosaic_lobster": {
+  "name": "Mossmosaic Istakozu",
+  "description": "Her sessiz deniz dibi buluşmasına mozaik bir paltoyla gelir."
+ },
+ "orbitglow_oarfish": {
+  "name": "Orbitglow Kürek Balığı",
+  "description": "Cebi dolusu yıldız ışığı taşıyan uzun gümüş bir kurdele."
+ },
+ "coralchorus_sailfish": {
+  "name": "Coralchorus Yelkenli Balığı",
+  "description": "Koca yelkeni sabahın ilk şarkısına öncülük etmeye hazır görünür."
+ },
+ "frostlace_sturgeon": {
+  "name": "Frostlace Mersin Balığı",
+  "description": "Soluk zırhı en soğuk gelgitin ördüğü gibi görünür."
+ },
+ "hushbell_angler": {
+  "name": "Hushbell Fener Balığı",
+  "description": "Zil çalmaz ama minik ışığı yine de meraklı arkadaşları çağırır."
+ },
+ "petalwake_manta": {
+  "name": "Petalwake Mantası",
+  "description": "Süzülen taç yaprakların altından hiçbirini rahatsız etmeden geçer."
+ },
+ "giltthread_arowana": {
+  "name": "Giltthread Arowanası",
+  "description": "Gölette yavaş daireler diken altın bir iplik."
+ },
+ "shellscript_key": {
+  "name": "Shellscript Anahtarı",
+  "description": "Deniz kabuğu biçimli bir anahtar, minik deniz kenarı kapısını bekliyor."
+ },
+ "aurorawoven_leviathan": {
+  "name": "Aurorawoven Leviyatanı",
+  "description": "Bir an gök olmayı unutmuş kuzey ışıklarından bir kurdele."
+ },
+ "dawncrown_coelacanth": {
+  "name": "Dawncrown Selakantı",
+  "description": "Daha yavaş sabahların çağından sessiz bir ışık tacı taşır."
+ },
+ "moonkeel_chest": {
+  "name": "Moonkeel Sandığı",
+  "description": "Gelgit köşelerini binlerce uykulu akşam boyunca cilalamış."
+ }
+}

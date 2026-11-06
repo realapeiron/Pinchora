@@ -10,7 +10,8 @@ use serde::Serialize;
 use serde_json::Value;
 
 use super::{
-    audit_log, community, discord_info, leveling, me::icon_url, moderation, modules, overview, preview, settings, store,
+    audit_log, commands, community, discord_info, leveling, me::icon_url, moderation, modules, overview, preview,
+    responders, settings, store,
 };
 use crate::state::WebState;
 
@@ -41,6 +42,30 @@ pub fn router() -> Router<WebState> {
         .route("/store/{role}", put(store::put_item).delete(store::delete_item))
         .route("/modules", get(modules::modules))
         .route("/modules/{module}", put(modules::put_module))
+        .route("/commands", get(commands::list).post(commands::create))
+        .route("/commands/export", get(commands::export))
+        .route("/commands/import", post(commands::import))
+        .route("/commands/preview", post(commands::preview))
+        .route(
+            "/commands/{id}",
+            get(commands::get)
+                .put(commands::replace)
+                .patch(commands::set_enabled)
+                .delete(commands::delete),
+        )
+        .route("/commands/{id}/test", post(commands::test))
+        .route("/responders", get(responders::list).post(responders::create))
+        .route("/responders/export", get(responders::export))
+        .route("/responders/import", post(responders::import))
+        .route("/responders/preview", post(responders::preview))
+        .route(
+            "/responders/{id}",
+            get(responders::get)
+                .put(responders::replace)
+                .patch(responders::set_enabled)
+                .delete(responders::delete),
+        )
+        .route("/responders/{id}/test", post(responders::test))
         .route("/community", get(community::community))
         .route("/suggestions/settings", put(community::put_suggestions))
         .route("/critters/settings", put(community::put_critters))

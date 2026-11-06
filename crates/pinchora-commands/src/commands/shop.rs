@@ -1,9 +1,9 @@
 use std::str::Split;
 
 use chrono::Utc;
-use pinchora_core::items::is_soulbound;
+use pinchora_core::{i18n::Lang, items::is_soulbound};
 use pinchora_db::{BuyOutcome, Currency as DbCurrency};
-use pinchora_game::{Availability, Category, Content, Currency, market};
+use pinchora_game::{Availability, Category, Content, Currency, market, overlay::upper};
 use pinchora_render::{GridSlot, ItemGridCard, Theme};
 use twilight_interactions::command::{CommandModel, CommandOption, CreateCommand, CreateOption};
 use twilight_model::{
@@ -107,12 +107,14 @@ impl ShopCommand {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
         match self {
             Self::Market(_) => {
-                let data = market_card(&cx.app).await?;
+                let lang = cx.lang();
+                let data = market_card(&cx.app, lang).await?;
                 cx.reply(data).await
             }
             Self::Catalog(c) => {
                 let category = c.category.map_or(Category::Seating, CategoryOption::category);
-                let data = catalog_card(&cx.app, category, 0).await?;
+                let lang = cx.lang();
+                let data = catalog_card(&cx.app, lang, category, 0).await?;
                 cx.reply(data).await
             }
         }
@@ -121,7 +123,8 @@ impl ShopCommand {
 
 impl Inventory {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
-        let data = inventory_card(&cx.app, cx.author()?.id.get(), 0).await?;
+        let lang = cx.lang();
+        let data = inventory_card(&cx.app, lang, cx.author()?.id.get(), 0).await?;
         cx.reply(data).await
     }
 }
@@ -181,6 +184,7 @@ pub(crate) struct SlotSpec {
 
 pub(crate) async fn grid_png(
     app: &App,
+    lang: Lang,
     title: String,
     subtitle: String,
     footer: String,
@@ -199,7 +203,7 @@ pub(crate) async fn grid_png(
                     sprite_png: png,
                     sprite_w: w,
                     sprite_h: h,
-                    name: item.map_or_else(|| s.item_id.clone(), |i| i.name()),
+                    name: item.map_or_else(|| s.item_id.clone(), |i| i.name_in(lang)),
                     line1: s.line1,
                     line2: s.line2,
                     bar: s.bar,
@@ -227,7 +231,7 @@ fn price_label(price: i64, currency: Currency) -> String {
     }
 }
 
-async fn market_card(app: &App) -> anyhow::Result<InteractionResponseData> {
+async fn market_card(app: &App, lang: Lang) -> anyhow::Result<InteractionResponseData> {
     let content = Content::get();
     let now = Utc::now().timestamp();
     let hour = market::hour_of(now);
@@ -262,17 +266,18 @@ async fn market_card(app: &App) -> anyhow::Result<InteractionResponseData> {
                 description: Some(format!(
                     "{} shells · {} · {} left",
                     thousands(r.price),
-                    item.base.rarity.label(),
+                    item.base.rarity.label_in(lang),
                     r.stock - r.sold
                 )),
                 emoji: None,
-                label: item.name(),
+                label: item.name_in(lang),
                 value: r.item_id.clone(),
             })
         })
         .collect();
     let png = grid_png(
         app,
+        lang,
         "Hourly market".to_owned(),
         format!("RESTOCKS IN {minutes_left} MIN"),
         "STOCK IS SHARED BY EVERY PLAYER".to_owned(),
@@ -306,7 +311,12 @@ fn catalog_items(content: &Content, category: Category) -> Vec<pinchora_game::It
     items
 }
 
-async fn catalog_card(app: &App, category: Category, page: usize) -> anyhow::Result<InteractionResponseData> {
+async fn catalog_card(
+    app: &App,
+    lang: Lang,
+    category: Category,
+    page: usize,
+) -> anyhow::Result<InteractionResponseData> {
     let content = Content::get();
     let items = catalog_items(content, category);
     let pages = items.len().div_ceil(PER_PAGE).max(1);
@@ -319,12 +329,12 @@ async fn catalog_card(app: &App, category: Category, page: usize) -> anyhow::Res
             line1: price_label(i.base.price, i.base.currency),
             line2: format!(
                 "{} · {}×{}",
-                i.base.rarity.label().to_uppercase(),
+                upper(i.base.rarity.label_in(lang), lang),
                 i.base.footprint[0],
                 i.base.footprint[1]
             ),
             bar: None,
-            badge: i.base.category.label().to_uppercase(),
+            badge: upper(i.base.category.label_in(lang), lang),
             shell_price: i.base.currency == Currency::Shells,
         })
         .collect();
@@ -335,17 +345,23 @@ async fn catalog_card(app: &App, category: Category, page: usize) -> anyhow::Res
             description: Some(format!(
                 "{} · {}",
                 price_label(i.base.price, i.base.currency).to_lowercase(),
-                i.base.description.chars().take(80).collect::<String>()
+                content
+                    .description(&i.base.id, lang)
+                    .unwrap_or_default()
+                    .chars()
+                    .take(80)
+                    .collect::<String>()
             )),
             emoji: None,
-            label: i.name(),
+            label: i.name_in(lang),
             value: i.id(),
         })
         .collect();
     let key = category.key();
     let png = grid_png(
         app,
-        format!("{} catalog", category.label()),
+        lang,
+        format!("{} catalog", category.label_in(lang)),
         format!("PAGE {}/{pages}", page + 1),
         format!("{} ITEMS IN THIS AISLE", items.len()),
         specs,
@@ -353,7 +369,7 @@ async fn catalog_card(app: &App, category: Category, page: usize) -> anyhow::Res
     .await?;
     let embed = EmbedBuilder::new()
         .color(BRAND)
-        .title(format!("{} catalog", category.label()))
+        .title(format!("{} catalog", category.label_in(lang)))
         .description(
             "Pick an item below to buy one. Bought furniture goes to `/inventory`; place it with `/house edit`.",
         );
@@ -372,7 +388,7 @@ async fn catalog_card(app: &App, category: Category, page: usize) -> anyhow::Res
     ))
 }
 
-async fn inventory_card(app: &App, user_id: u64, page: usize) -> anyhow::Result<InteractionResponseData> {
+async fn inventory_card(app: &App, lang: Lang, user_id: u64, page: usize) -> anyhow::Result<InteractionResponseData> {
     let content = Content::get();
     let rows = app.db.inventory(user_id).await?;
     let pages = rows.len().div_ceil(PER_PAGE).max(1);
@@ -387,7 +403,7 @@ async fn inventory_card(app: &App, user_id: u64, page: usize) -> anyhow::Result<
             line1: format!("X{}", r.quantity),
             line2: content
                 .item(&r.item_id)
-                .map_or_else(String::new, |i| i.base.category.label().to_uppercase()),
+                .map_or_else(String::new, |i| upper(i.base.category.label_in(lang), lang)),
             bar: None,
             badge: if is_soulbound(&r.item_id) { "SOULBOUND" } else { "" }.to_owned(),
             shell_price: false,
@@ -395,6 +411,7 @@ async fn inventory_card(app: &App, user_id: u64, page: usize) -> anyhow::Result<
         .collect();
     let png = grid_png(
         app,
+        lang,
         "Inventory".to_owned(),
         format!("PAGE {}/{pages}", page + 1),
         format!("{total} PIECES READY TO PLACE"),
@@ -467,7 +484,8 @@ pub(crate) async fn on_market_buy(cx: &Cx, mut args: Split<'_, char>, value: Opt
         .into_iter()
         .find(|r| r.item_id == item_id)
         .map_or(item.base.price, |r| r.price);
-    cx.reply_ephemeral(buy_text(outcome, &item.name(), price, Currency::Shells))
+    let lang = cx.lang();
+    cx.reply_ephemeral(buy_text(outcome, &item.name_in(lang), price, Currency::Shells))
         .await
 }
 
@@ -494,21 +512,29 @@ pub(crate) async fn on_catalog_buy(cx: &Cx, value: Option<&str>) -> anyhow::Resu
             .quest(cx.author()?.id.get(), pinchora_game::quests::QuestKind::Buy)
             .await;
     }
-    cx.reply_ephemeral(buy_text(outcome, &item.name(), item.base.price, item.base.currency))
-        .await
+    let lang = cx.lang();
+    cx.reply_ephemeral(buy_text(
+        outcome,
+        &item.name_in(lang),
+        item.base.price,
+        item.base.currency,
+    ))
+    .await
 }
 
 /// `cp:<category>:<page>` buttons.
 pub(crate) async fn on_catalog_page(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Result<()> {
     let category = args.next().and_then(Category::from_key).unwrap_or(Category::Seating);
     let page = args.next().and_then(|p| p.parse().ok()).unwrap_or(0);
-    let data = catalog_card(&cx.app, category, page).await?;
+    let lang = cx.lang();
+    let data = catalog_card(&cx.app, lang, category, page).await?;
     cx.update(data).await
 }
 
 /// `iv:<page>` buttons.
 pub(crate) async fn on_inventory_page(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Result<()> {
     let page = args.next().and_then(|p| p.parse().ok()).unwrap_or(0);
-    let data = inventory_card(&cx.app, cx.author()?.id.get(), page).await?;
+    let lang = cx.lang();
+    let data = inventory_card(&cx.app, lang, cx.author()?.id.get(), page).await?;
     cx.update(data).await
 }

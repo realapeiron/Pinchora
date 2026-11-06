@@ -5,7 +5,7 @@ use chrono::Duration;
 use pinchora_core::{
     moderation::{CaseKind, check_reason, check_temp_ban, check_timeout, role_refusal_for},
     server_events::parse_duration,
-    settings::RoleFacts,
+    settings::{Grantor, RoleFacts},
 };
 use twilight_http::request::AuditLogReason;
 use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
@@ -17,7 +17,7 @@ use twilight_model::{
     util::Timestamp,
 };
 
-use super::{Act, Moderator, NO_ROLES, Ranks, permitted, record, reply_embed, tell};
+use super::{Act, Moderator, NO_ROLES, Ranks, administrator, permitted, record, reply_embed, tell};
 use crate::{Cx, roles::error_code};
 
 fn ban_members() -> Permissions {
@@ -514,13 +514,20 @@ impl RoleCommand {
         let Some(ranks) = Ranks::read(&cx.app, guild, &moderator).await else {
             return cx.reply_ephemeral(NO_ROLES).await;
         };
+        let known = ranks.table.get(&role.id.get());
         let facts = RoleFacts {
             everyone: role.id.get() == guild,
             managed: role.managed,
-            position: ranks.table.get(&role.id.get()).map_or(role.position, |r| r.position),
+            position: known.map_or(role.position, |r| r.position),
+            permissions: known.map_or(role.permissions, |r| r.permissions).bits(),
+        };
+        let grantor = Grantor {
+            owner: ranks.owner == moderator.id,
+            administrator: administrator(cx),
+            top_role: Some(ranks.actor.top),
         };
         let label = format!("<@&{}>", role.id);
-        if let Some(why) = role_refusal_for(ranks.owner, ranks.actor, facts, Some(ranks.bot.top), &label) {
+        if let Some(why) = role_refusal_for(facts, grantor, Some(ranks.bot.top), &label) {
             return cx.reply_ephemeral(why).await;
         }
         let kind = if add { CaseKind::RoleAdd } else { CaseKind::RoleRemove };

@@ -17,7 +17,7 @@ use crate::{
 const REFRESH_COOLDOWN: Duration = Duration::from_secs(10);
 
 /// `GET /api/me`: who is logged in, and the token writes must carry.
-pub async fn me(current: CurrentSession) -> Json<Value> {
+pub async fn me(State(state): State<WebState>, current: CurrentSession) -> Json<Value> {
     let s = &current.session;
     let avatar_url = match &s.avatar {
         Some(hash) => format!("https://cdn.discordapp.com/avatars/{}/{hash}.png?size=64", s.user_id),
@@ -31,6 +31,7 @@ pub async fn me(current: CurrentSession) -> Json<Value> {
             "avatar_url": avatar_url,
         },
         "csrf": s.csrf,
+        "capabilities": { "message_content": state.settings.message_content },
     }))
 }
 

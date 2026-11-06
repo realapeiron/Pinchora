@@ -1,14 +1,18 @@
-//! Handing roles out on Discord: level rewards and what the server store sells.
+//! Handing roles out on Discord: level rewards and what the server store sells, and who may set a role up
+//! to be handed out.
 
 use pinchora_core::{
     leveling::{self, LevelReward},
-    settings::{self, RoleFacts},
+    settings::{self, Grantor, RoleFacts},
 };
 use pinchora_db::LevelRoleRow;
 use twilight_http::{Error, api_error::ApiError, error::ErrorType, request::AuditLogReason};
-use twilight_model::{guild::Role, id::Id};
+use twilight_model::{
+    guild::{Permissions, Role},
+    id::Id,
+};
 
-use crate::App;
+use crate::{App, Cx};
 
 const UNKNOWN_MEMBER: u64 = 10007;
 const UNKNOWN_ROLE: u64 = 10011;
@@ -58,8 +62,9 @@ pub(crate) async fn level_rewards(app: &App, guild: u64) -> anyhow::Result<Vec<L
     Ok(rewards(&app.db.level_roles(guild).await?))
 }
 
-/// The roles the bot's own highest role sits above are the ones it can hand out.
-async fn bot_position(app: &App, guild: u64) -> anyhow::Result<i64> {
+/// The server's roles, and the position of the bot's highest one: the roles below it are the ones it can
+/// hand out.
+async fn roles_and_bot_position(app: &App, guild: u64) -> anyhow::Result<(Vec<Role>, i64)> {
     let guild = Id::new(guild.max(1));
     let me = app
         .http
@@ -68,34 +73,67 @@ async fn bot_position(app: &App, guild: u64) -> anyhow::Result<i64> {
         .model()
         .await?;
     let roles = app.http.roles(guild).await?.models().await?;
-    Ok(roles
+    let top = roles
         .iter()
         .filter(|r| me.roles.contains(&r.id))
         .map(|r| r.position)
         .max()
-        .unwrap_or(0))
+        .unwrap_or(0);
+    Ok((roles, top))
 }
 
-/// Why the bot cannot hand out `role`, or `None` when it can. The rule is
-/// [`settings::role_refusal`], which the dashboard's role pickers use too.
-pub(crate) async fn unassignable(app: &App, guild: u64, role: &Role) -> Option<String> {
+/// The member running the command as a [`Grantor`], from what the interaction says about them; whether
+/// they own the server is left for [`unassignable`] to ask only when it matters.
+fn grantor(cx: &Cx, roles: &[Role]) -> Grantor {
+    let member = cx.interaction.member.as_ref();
+    Grantor {
+        owner: false,
+        administrator: member
+            .and_then(|m| m.permissions)
+            .is_some_and(|p| p.contains(Permissions::ADMINISTRATOR)),
+        top_role: member.map(|m| {
+            roles
+                .iter()
+                .filter(|r| m.roles.contains(&r.id))
+                .map(|r| r.position)
+                .max()
+                .unwrap_or(0)
+        }),
+    }
+}
+
+/// Why `role` cannot be set up to be handed out by the member running the command, or `None` when it can:
+/// the bot must be able to give it ([`settings::role_refusal`], which the dashboard's role pickers use too),
+/// and the member may only set up roles below their own highest role and, unless they are an administrator,
+/// none with a dangerous permission ([`settings::grant_refusal`]). The server owner may set up any role
+/// the bot can give.
+pub(crate) async fn unassignable(cx: &Cx, guild: u64, role: &Role) -> Option<String> {
     let facts = RoleFacts {
         everyone: role.id.get() == guild,
         managed: role.managed,
         position: role.position,
+        permissions: role.permissions.bits(),
     };
-    let top = if facts.everyone || facts.managed {
-        None
-    } else {
-        match bot_position(app, guild).await {
-            Ok(top) => Some(top),
-            Err(error) => {
-                tracing::warn!(guild, %error, "could not look up the bot's roles");
-                None
-            }
+    let label = format!("<@&{}>", role.id);
+    if facts.everyone || facts.managed {
+        return settings::role_refusal(facts, None, &label);
+    }
+    let (roles, top) = match roles_and_bot_position(&cx.app, guild).await {
+        Ok(found) => found,
+        Err(error) => {
+            tracing::warn!(guild, %error, "could not look up the bot's roles");
+            return settings::role_refusal(facts, None, &label);
         }
     };
-    settings::role_refusal(facts, top, &format!("<@&{}>", role.id))
+    if let Some(why) = settings::role_refusal(facts, Some(top), &label) {
+        return Some(why);
+    }
+    let why = settings::grant_refusal(facts, grantor(cx, &roles), &label)?;
+    let user = cx.author().map(|u| u.id.get()).unwrap_or(0);
+    match cx.app.guild_facts(guild).await {
+        Some(facts) if facts.owner == user => None,
+        _ => Some(why),
+    }
 }
 
 /// Gives and takes the level roles a member at `level` should hold, as the roles given and how many

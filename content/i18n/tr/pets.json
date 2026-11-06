@@ -1,0 +1,212 @@
+{
+ "crumbclaw_crab": {
+  "name": "Crumbclaw Yengeci",
+  "description": "Çerez konusunda cesur, dalga konusunda utangaç.",
+  "food": "Deniz Yosunu Çıtırları"
+ },
+ "pebblepouch_hermit": {
+  "name": "Pebblepouch Keşiş Yengeci",
+  "description": "Evini ve yedek özgüvenini yanında taşır.",
+  "food": "Alg Gofretleri"
+ },
+ "ribbonfin_guppy": {
+  "name": "Ribbonfin Lepistesi",
+  "description": "Herkese, ama gerçekten herkese kıpırdanarak merhaba der.",
+  "food": "Gölet Pul Yemi Karışımı"
+ },
+ "noodlenose_seahorse": {
+  "name": "Noodlenose Denizatı",
+  "description": "Her köşeye sabırla burnunu sokar.",
+  "food": "Tuzlu Su Atıştırmalıkları"
+ },
+ "puddlesock_otter": {
+  "name": "Puddlesock Su Samuru",
+  "description": "Pürüzsüz taşlar ve iltifatlar biriktirir.",
+  "food": "Nehir Lokma Karışımı"
+ },
+ "buttonbell_jelly": {
+  "name": "Buttonbell Denizanası",
+  "description": "Kendi yumuşak temposunda sallanıp gider.",
+  "food": "Plankton İncileri"
+ },
+ "sprinklearm_octopus": {
+  "name": "Sprinklearm Ahtapotu",
+  "description": "Önce sarılır, sonra çerezi sorar.",
+  "food": "Gelgit Mantıları"
+ },
+ "drowsepatch_cat": {
+  "name": "Drowsepatch Kedisi",
+  "description": "Tam zamanında yapılan minik şekerlemelerin şampiyonu.",
+  "food": "Sıcacık Mama Parçaları"
+ },
+ "cloverpuff_bun": {
+  "name": "Cloverpuff Tavşanı",
+  "description": "Önce zıplar, nereye ineceğini sonra düşünür.",
+  "food": "Yonca Cipsleri"
+ },
+ "tumblebutton_pup": {
+  "name": "Tumblebutton Köpek Yavrusu",
+  "description": "Yanlış oyuncağı gururla geri getirir.",
+  "food": "Oatbone Lokmaları"
+ },
+ "teacup_toadlet": {
+  "name": "Çay Fincanı Kurbağacığı",
+  "description": "Her hikâyeyi sır dinler gibi dinler.",
+  "food": "Su Birikintisi Peletleri"
+ },
+ "mittensprout_mouse": {
+  "name": "Mittensprout Faresi",
+  "description": "Kırıntıları etkileyici yığınlar halinde toplar.",
+  "food": "Seedwheel Lokmaları"
+ },
+ "pipstitch_finch": {
+  "name": "Pipstitch İspinozu",
+  "description": "Her şey hakkında minik bir şarkı söyler.",
+  "food": "Darı Lokmacıkları"
+ },
+ "chirrupfold_budgie": {
+  "name": "Chirrupfold Muhabbet Kuşu",
+  "description": "Neşeli sohbetin ritmini tekrar eder.",
+  "food": "Sproutseed Karışımı"
+ },
+ "coppercup_fiddler": {
+  "name": "Coppercup Kemancı Yengeci",
+  "description": "Her misafire kocaman bir kıskaç sallar.",
+  "food": "Deniz Yosunu Düğümleri"
+ },
+ "mossmitten_crab": {
+  "name": "Mossmitten Yengeci",
+  "description": "Yavaş ve düşünceli küçük alkışlar sunar.",
+  "food": "Resif Kırıntısı"
+ },
+ "rufflebranch_axolotl": {
+  "name": "Rufflebranch Aksolotlu",
+  "description": "Her küçük sürprizde gülümser.",
+  "food": "Gölet Atıştırmalıkları"
+ },
+ "velvetloop_ray": {
+  "name": "Velvetloop Vatozu",
+  "description": "Kusursuz bir nezaketle süzülüp geçer.",
+  "food": "Kum Yatağı Çerezleri"
+ },
+ "pearlwhisk_seal": {
+  "name": "Pearlwhisk Foku",
+  "description": "Yemek daha gelmeden alkışlar.",
+  "food": "Liman Lokmaları"
+ },
+ "dapplespoon_newt": {
+  "name": "Dapplespoon Semenderi",
+  "description": "Su birikintilerini büyük bir titizlikle inceler.",
+  "food": "Dere Çıtırı"
+ },
+ "quiltquill_hedgehog": {
+  "name": "Quiltquill Kirpisi",
+  "description": "Güvendiği dostlar için yavaşça açılır.",
+  "food": "Bahçe Atıştırmalık Karışımı"
+ },
+ "acornpocket_squirrel": {
+  "name": "Acornpocket Sincabı",
+  "description": "Saklama yerlerini unutur, yüzleri unutmaz.",
+  "food": "Meşe Palamudu Kırıntıları"
+ },
+ "puffsole_guinea_pig": {
+  "name": "Puffsole Kobayı",
+  "description": "Minicik bir çaydanlık gibi ıslık çalar.",
+  "food": "Hayflower Çiğnemelikleri"
+ },
+ "tinkertrot_ferret": {
+  "name": "Tinkertrot Yaban Gelinciği",
+  "description": "Her çorabı yeni bir proje sayar.",
+  "food": "Yuva Lokma Karışımı"
+ },
+ "tasselcrest_cockatiel": {
+  "name": "Tasselcrest Sultan Papağanı",
+  "description": "Her minik gösteriden önce eğilip selam verir.",
+  "food": "Güneş Tohumu Serpintisi"
+ },
+ "hoothem_owlet": {
+  "name": "Hoothem Minik Baykuşu",
+  "description": "Alacakaranlıkta meraklı, şafakta sarılgan.",
+  "food": "Moonmorsel Karışımı"
+ },
+ "lanternclasp_crab": {
+  "name": "Lanternclasp Yengeci",
+  "description": "Utangaç dostları partiye doğru yönlendirir.",
+  "food": "Glowkelp Cipsleri"
+ },
+ "lacefloat_cuttle": {
+  "name": "Lacefloat Mürekkep Balığı",
+  "description": "Ruh halini çizgi çizgi değiştirir.",
+  "food": "Driftflake Lokmaları"
+ },
+ "thimblehorn_narwhal": {
+  "name": "Thimblehorn Narvalı",
+  "description": "Çok küçük boynuzuyla çok gurur duyar.",
+  "food": "Frostfin Peletleri"
+ },
+ "meadowgill_nudibranch": {
+  "name": "Meadowgill Deniz Sümüklüsü",
+  "description": "Kendine hayran kalacak kadar yavaş ilerler.",
+  "food": "Reefleaf Pul Yemi"
+ },
+ "dunetuft_fennec": {
+  "name": "Dunetuft Fennek Tilkisi",
+  "description": "Çerez dolabını her yerden duyar.",
+  "food": "Kumul Atıştırmalık Karışımı"
+ },
+ "marmalade_mothkit": {
+  "name": "Marmelat Güve Yavrusu",
+  "description": "Uçmayı hayal eder, sarılmada üstüne yoktur.",
+  "food": "Bıyık Yulaf Lokmaları"
+ },
+ "reedskip_kangaroo_rat": {
+  "name": "Reedskip Kanguru Faresi",
+  "description": "Minik sıçramaları kocaman atlayışlara çevirir.",
+  "food": "Grassseed Kümeleri"
+ },
+ "velvetloop_moth": {
+  "name": "Velvetloop Güvesi",
+  "description": "Ziyaret edecek sıcak bir köşeyi mutlaka bulur.",
+  "food": "Nektar Boncukları"
+ },
+ "cloudthimble_dove": {
+  "name": "Cloudthimble Güvercini",
+  "description": "Öğüt yerine yumuşak bir gu gu sunar.",
+  "food": "Petalseed Karışımı"
+ },
+ "glassgarden_shrimp": {
+  "name": "Glassgarden Karidesi",
+  "description": "Görünmez küçük bahçelere gururla bakar.",
+  "food": "Bloomalgae Lokmaları"
+ },
+ "starstitch_squid": {
+  "name": "Starstitch Kalamarı",
+  "description": "Mutlu olduğunda küçük halkalar çizer.",
+  "food": "Yıldızlı Plankton"
+ },
+ "crowncurl_dragonet": {
+  "name": "Crowncurl Ejderhacığı",
+  "description": "Bir baloncuk süzülene kadar asil davranır.",
+  "food": "Resif Kurdele Karışımı"
+ },
+ "hushpocket_bat": {
+  "name": "Hushpocket Yarasası",
+  "description": "Baş aşağı sarılma meraklısı utangaç biri.",
+  "food": "Duskfruit Çiğnemelikleri"
+ },
+ "moonbutton_chinchilla": {
+  "name": "Moonbutton Şinşillası",
+  "description": "Pofuduk işlerle dolu yoğun bir programı var.",
+  "food": "Haymoon Bisküvileri"
+ },
+ "auroraclaw_crab": {
+  "name": "Auroraclaw Yengeci",
+  "description": "Işıltısını tedirgin komşularıyla paylaşır.",
+  "food": "Prismkelp Gofretleri"
+ },
+ "wishroot_tortoise": {
+  "name": "Wishroot Kara Kaplumbağası",
+  "description": "Sabırlı küçük bir bahçeyi sırtında eve taşır.",
+  "food": "Clovermoon Yeşillikleri"
+ }
+}

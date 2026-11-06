@@ -1,0 +1,32 @@
+# /daily, /weekly, /monthly, /balance, /give.
+
+[daily]
+streak-days = { other = "{count} gün" }
+
+claimed-title = "+{amount} kabuk"
+claimed = "Serinin **{streak}**. günü. Artık **{balance}** kabuğun var.\nYarın yine gel; seri bonusu 20 gün boyunca büyüyor."
+cooldown-title = "Bugünkünü zaten aldın"
+cooldown = "Sonraki günlük ödülün {when} hazır."
+
+[weekly]
+claimed = "Haftalık ödülün geldi. Artık **{balance}** kabuğun var.\nSonraki {when} hazır."
+cooldown-title = "Bu haftakini zaten aldın"
+cooldown = "Sonraki haftalık ödülün {when} hazır."
+
+[monthly]
+claimed = "Aylık ödülün geldi. Artık **{balance}** kabuğun var.\nSonraki {when} hazır."
+cooldown-title = "Bu ayınkini zaten aldın"
+cooldown = "Sonraki aylık ödülün {when} hazır."
+
+[give]
+self = "Kendine kabuk gönderemezsin."
+bot = "Botların kabukla bir işi olmaz."
+sent = "{user} için **{amount}** kabuk gönderdin. Geriye **{balance}** kabuğun kaldı."
+insufficient = "Yalnızca {balance} kabuğun var."
+
+# How long until something is ready, as the wallet card writes it: `3h 20m`, `12d 4h`.
+[time]
+ready = "hazır"
+days = "{n}g"
+hours = "{n}sa"
+minutes = "{n}dk"

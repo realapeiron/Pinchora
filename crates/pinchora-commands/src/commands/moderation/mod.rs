@@ -55,10 +55,9 @@ const FORGET_EVERY: u32 = 120;
 const UNKNOWN_BAN: u64 = 10026;
 const CANNOT_DM: u64 = 50007;
 
-/// What moderation remembers about servers for a little while: the owner and name, the roles with
-/// their positions, and the bot's own roles.
+/// What moderation remembers about servers for a little while: the roles with their positions, and
+/// the bot's own roles. The owner comes from [`App::guild_facts`].
 pub(crate) struct ModState {
-    guilds: Moka<u64, Arc<GuildFacts>>,
     roles: Moka<u64, Arc<HashMap<u64, RoleInfo>>>,
     mine: Moka<u64, Arc<Vec<u64>>>,
 }
@@ -66,10 +65,6 @@ pub(crate) struct ModState {
 impl ModState {
     pub(crate) fn new() -> Self {
         Self {
-            guilds: Moka::builder()
-                .max_capacity(20_000)
-                .time_to_live(StdDuration::from_secs(300))
-                .build(),
             roles: Moka::builder()
                 .max_capacity(20_000)
                 .time_to_live(StdDuration::from_secs(30))
@@ -82,33 +77,14 @@ impl ModState {
     }
 }
 
-/// A server's owner and name.
-pub(crate) struct GuildFacts {
-    pub(crate) owner: u64,
-    pub(crate) name: String,
-}
-
-/// One role, as the hierarchy sees it.
+/// One role, as the hierarchy and the staff check see it.
 #[derive(Debug, Clone)]
 pub(crate) struct RoleInfo {
     pub(crate) position: i64,
+    pub(crate) permissions: Permissions,
 }
 
 impl App {
-    pub(crate) async fn guild_facts(&self, guild: u64) -> anyhow::Result<Arc<GuildFacts>> {
-        self.moderation
-            .guilds
-            .try_get_with(guild, async {
-                let g = self.http.guild(Id::new(guild.max(1))).await?.model().await?;
-                anyhow::Ok(Arc::new(GuildFacts {
-                    owner: g.owner_id.get(),
-                    name: g.name,
-                }))
-            })
-            .await
-            .map_err(|e| anyhow::anyhow!("{e:#}"))
-    }
-
     pub(crate) async fn role_table(&self, guild: u64) -> anyhow::Result<Arc<HashMap<u64, RoleInfo>>> {
         self.moderation
             .roles
@@ -117,7 +93,13 @@ impl App {
                 anyhow::Ok(Arc::new(
                     roles
                         .into_iter()
-                        .map(|r| (r.id.get(), RoleInfo { position: r.position }))
+                        .map(|r| {
+                            let info = RoleInfo {
+                                position: r.position,
+                                permissions: r.permissions,
+                            };
+                            (r.id.get(), info)
+                        })
                         .collect(),
                 ))
             })
@@ -158,6 +140,15 @@ pub(crate) fn allowed(cx: &Cx, needed: Permissions) -> bool {
         .as_ref()
         .and_then(|m| m.permissions)
         .is_some_and(|p| p.intersects(needed) || p.contains(Permissions::ADMINISTRATOR))
+}
+
+/// Whether the invoker holds Administrator here.
+pub(crate) fn administrator(cx: &Cx) -> bool {
+    cx.interaction
+        .member
+        .as_ref()
+        .and_then(|m| m.permissions)
+        .is_some_and(|p| p.contains(Permissions::ADMINISTRATOR))
 }
 
 /// The server, when the invoker has one of `needed`; otherwise they are refused privately (`name` names
@@ -212,9 +203,9 @@ impl Ranks {
     pub(crate) async fn read(app: &App, guild: u64, moderator: &Moderator) -> Option<Self> {
         let (facts, table, mine) = tokio::join!(app.guild_facts(guild), app.role_table(guild), app.my_roles(guild));
         let (facts, table, mine) = match (facts, table, mine) {
-            (Ok(f), Ok(t), Ok(m)) => (f, t, m),
+            (Some(f), Ok(t), Ok(m)) => (f, t, m),
             (f, t, m) => {
-                tracing::warn!(guild, facts = ?f.err(), roles = ?t.err(), mine = ?m.err(), "could not read the hierarchy");
+                tracing::warn!(guild, facts = f.is_some(), roles = ?t.err(), mine = ?m.err(), "could not read the hierarchy");
                 return None;
             }
         };
@@ -343,8 +334,8 @@ pub(crate) async fn tell(app: &App, guild: u64, act: &Act) -> bool {
         }
     }
     let server = match app.guild_facts(guild).await {
-        Ok(facts) => facts.name.clone(),
-        Err(_) => "a server".to_owned(),
+        Some(facts) => facts.name.clone(),
+        None => "a server".to_owned(),
     };
     let embed = dm_embed(act, &server, app.now());
     let sent = async {

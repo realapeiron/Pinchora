@@ -136,7 +136,7 @@ impl ConfigJoinRole {
         let text = match (self.role, self.off == Some(true)) {
             (Some(_), true) => "Pick a role or `off`, not both.".to_owned(),
             (Some(role), false) => {
-                if let Some(why) = roles::unassignable(&cx.app, guild, &role).await {
+                if let Some(why) = roles::unassignable(cx, guild, &role).await {
                     return cx.reply_ephemeral(why).await;
                 }
                 db.set_join_role(guild, Some(role.id.get())).await?;

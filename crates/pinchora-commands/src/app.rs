@@ -29,7 +29,7 @@ use twilight_model::{
     util::ImageHash,
 };
 
-use crate::{commands::moderation::ModState, server_log::LogState};
+use crate::{commands::moderation::ModState, custom::CustomState, server_log::LogState};
 
 /// Where a channel sits, for XP multipliers that follow a thread to its channel and a channel to its category.
 #[derive(Debug, Clone, Copy)]
@@ -79,6 +79,7 @@ pub struct App {
     channel_misses: Moka<u64, ()>,
     avatars: Moka<String, Arc<Vec<u8>>>,
     users: Moka<u64, Arc<User>>,
+    pub(crate) languages: crate::lang::Languages,
     tasks: TaskTracker,
     event_slots: Arc<Semaphore>,
     rebuild_slots: Arc<Semaphore>,
@@ -91,6 +92,8 @@ pub struct App {
     pub message_content: bool,
     /// Seconds added to the clock by [`App::shift_clock`].
     clock_shift: AtomicI64,
+    /// Custom commands and auto-responders, and what they remember.
+    pub(crate) custom: CustomState,
 }
 
 impl App {
@@ -157,6 +160,7 @@ impl App {
                 .max_capacity(10_000)
                 .time_to_live(Duration::from_secs(600))
                 .build(),
+            languages: crate::lang::Languages::new(),
             tasks: TaskTracker::new(),
             event_slots: Arc::new(Semaphore::new(1024)),
             rebuild_slots: Arc::new(Semaphore::new(REBUILD_SLOTS)),
@@ -164,6 +168,7 @@ impl App {
             moderation: ModState::new(),
             message_content: false,
             clock_shift: AtomicI64::new(0),
+            custom: CustomState::new(),
         }
     }
 
@@ -306,7 +311,7 @@ impl App {
 
     /// [`App::xp_lineage`] for any rule: `none` says the server has no channel rules at all, `has_rule`
     /// whether a channel has its own.
-    async fn lineage(&self, channel: u64, none: bool, has_rule: impl Fn(u64) -> bool) -> Vec<u64> {
+    pub(crate) async fn lineage(&self, channel: u64, none: bool, has_rule: impl Fn(u64) -> bool) -> Vec<u64> {
         let mut lineage = vec![channel];
         if none || has_rule(channel) {
             return lineage;
@@ -443,6 +448,7 @@ impl App {
         self.log_state.forget_config(guild_id).await;
         self.module_rules.invalidate(&guild_id).await;
         self.voice_guilds.invalidate(&guild_id).await;
+        self.custom.forget(guild_id).await;
     }
 
     /// Runs a render job on the blocking pool, at most one per CPU at a time.

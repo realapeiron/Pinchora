@@ -1,0 +1,44 @@
+# Text many commands share: errors, refusals, the words for the bot's money.
+
+[error]
+generic = "Something went wrong on our side. Please try again in a moment."
+guild-only = "This only works inside a server."
+bot-no-profile = "Bots don't have profiles."
+bot-no-xp = "Bots don't earn XP."
+needs-manage-server = "You need the **Manage Server** permission for that."
+
+[gate]
+server-off = "This feature is turned off on this server."
+channel-off = "This feature is turned off in this channel."
+how-to-enable = " It is the **{module}** module: switch it on with `/config modules` or on the dashboard."
+
+# Module names, by `Module::key`, as `/config modules` and refusals name them.
+[module]
+leveling = "Leveling"
+points = "Chat points"
+welcome = "Welcome cards"
+goodbye = "Goodbye messages"
+log = "Server log"
+moderation = "Moderation"
+role_panels = "Role panels"
+store = "Points store"
+suggestions = "Suggestions"
+polls = "Polls"
+giveaways = "Giveaways"
+custom_commands = "Custom commands"
+profile = "Profiles and ranks"
+economy = "Shell economy"
+shop = "Shops and gifts"
+quests = "Daily quests"
+social = "Friends and hugs"
+house = "Houses"
+plaza = "Plaza"
+pets = "Pets"
+fishing = "Fishing"
+duels = "Duels"
+board_games = "Board and puzzle games"
+puzzles = "Word and trivia games"
+party = "Party games"
+party_games = "Word party games"
+collection = "Critter drops and beachcombing"
+gambling = "Gambling-style games"

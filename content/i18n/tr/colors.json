@@ -1,0 +1,185 @@
+{
+ "amber": {
+  "name": "Kehribar"
+ },
+ "auburn": {
+  "name": "Kızıl Kahve"
+ },
+ "black": {
+  "name": "Siyah"
+ },
+ "blue": {
+  "name": "Mavi"
+ },
+ "bronze": {
+  "name": "Bronz"
+ },
+ "brown": {
+  "name": "Kahverengi"
+ },
+ "bubblegum": {
+  "name": "Sakız Pembesi"
+ },
+ "caramel": {
+  "name": "Karamel"
+ },
+ "charcoal": {
+  "name": "Kömür Grisi"
+ },
+ "cherry": {
+  "name": "Kiraz"
+ },
+ "chestnut": {
+  "name": "Kestane"
+ },
+ "cocoa": {
+  "name": "Kakao"
+ },
+ "coral": {
+  "name": "Mercan"
+ },
+ "cream": {
+  "name": "Krem"
+ },
+ "denim": {
+  "name": "Kot"
+ },
+ "ebony": {
+  "name": "Abanoz"
+ },
+ "emerald": {
+  "name": "Zümrüt"
+ },
+ "espresso": {
+  "name": "Espresso"
+ },
+ "forest": {
+  "name": "Orman"
+ },
+ "ginger": {
+  "name": "Kızıl"
+ },
+ "gold": {
+  "name": "Altın"
+ },
+ "golden": {
+  "name": "Altın Sarısı"
+ },
+ "green": {
+  "name": "Yeşil"
+ },
+ "grey": {
+  "name": "Gri"
+ },
+ "hazel": {
+  "name": "Ela"
+ },
+ "honey": {
+  "name": "Bal"
+ },
+ "honey_blonde": {
+  "name": "Bal Sarısı"
+ },
+ "ink": {
+  "name": "Mürekkep"
+ },
+ "ivory": {
+  "name": "Fildişi"
+ },
+ "kelp": {
+  "name": "Deniz Yosunu"
+ },
+ "lavender": {
+  "name": "Lavanta"
+ },
+ "lemon": {
+  "name": "Limon"
+ },
+ "lilac": {
+  "name": "Leylak"
+ },
+ "mahogany": {
+  "name": "Maun"
+ },
+ "mint": {
+  "name": "Nane"
+ },
+ "moss": {
+  "name": "Yosun Yeşili"
+ },
+ "natural": {
+  "name": "Doğal"
+ },
+ "navy": {
+  "name": "Lacivert"
+ },
+ "ocean": {
+  "name": "Okyanus"
+ },
+ "olive": {
+  "name": "Zeytin"
+ },
+ "orange": {
+  "name": "Turuncu"
+ },
+ "peach": {
+  "name": "Şeftali"
+ },
+ "pink": {
+  "name": "Pembe"
+ },
+ "platinum": {
+  "name": "Platin"
+ },
+ "plum": {
+  "name": "Erik Moru"
+ },
+ "porcelain": {
+  "name": "Porselen"
+ },
+ "red": {
+  "name": "Kırmızı"
+ },
+ "rose": {
+  "name": "Gül"
+ },
+ "rosy": {
+  "name": "Gül Pembesi"
+ },
+ "sand": {
+  "name": "Kum"
+ },
+ "seafoam": {
+  "name": "Deniz Köpüğü"
+ },
+ "silver": {
+  "name": "Gümüş"
+ },
+ "sky": {
+  "name": "Gök Mavisi"
+ },
+ "snow": {
+  "name": "Kar"
+ },
+ "stone": {
+  "name": "Taş"
+ },
+ "strawberry": {
+  "name": "Çilek"
+ },
+ "tan": {
+  "name": "Taba"
+ },
+ "tangerine": {
+  "name": "Mandalina"
+ },
+ "teal": {
+  "name": "Petrol Mavisi"
+ },
+ "violet": {
+  "name": "Menekşe"
+ },
+ "white": {
+  "name": "Beyaz"
+ }
+}

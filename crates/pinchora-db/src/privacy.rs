@@ -19,7 +19,7 @@ const WALK_LOCK: Duration = Duration::minutes(45);
 /// Every column that holds a player's id, as (table, column), children before the tables they
 /// point at. "Delete my data" removes the player's rows from all of them, and a test reads the
 /// schema to make sure a table added by a later migration is listed here (or in
-/// [`OTHER_TABLES`], [`ID_LISTS`], [`CLEARED_COLUMNS`], [`DAILY_LIMITS`] or [`ANONYMISED`]) before it
+/// [`OTHER_TABLES`], [`ID_LISTS`], [`CLEARED_COLUMNS`], [`DAILY_LIMITS`], [`ANONYMISED`] or [`ZEROED_COLUMNS`]) before it
 /// can ship.
 pub const USER_COLUMNS: &[(&str, &str)] = &[
     ("placements", "user_id"),
@@ -143,6 +143,11 @@ pub const ANONYMISED: &[(&str, &str, &str)] = &[
 
 /// The name a deleted player leaves on the records of [`ANONYMISED`].
 pub const DELETED_NAME: &str = "Deleted user";
+
+/// A server's own records that remember who made them, as (table, id column) and nothing else about
+/// the player: the record stays (a server's custom commands outlive the manager who wrote them) and
+/// the id becomes 0.
+pub const ZEROED_COLUMNS: &[(&str, &str)] = &[("custom_commands", "created_by"), ("custom_responders", "created_by")];
 
 /// Tables that belong to no player: server settings and shared stock.
 pub const OTHER_TABLES: &[&str] = &[
@@ -351,6 +356,14 @@ impl Db {
                 .await?;
         }
 
+        for (table, column) in ZEROED_COLUMNS {
+            let sql = format!("UPDATE {table} SET {column} = 0 WHERE {column} = $1");
+            sqlx::query(sqlx::AssertSqlSafe(sql))
+                .bind(id)
+                .execute(&mut **tx)
+                .await?;
+        }
+
         // A guest's paid visits of the day stay counted when the host they went to is deleted, under
         // a number that is nobody's.
         sqlx::query("UPDATE visits SET host_id = -nextval('deleted_ids') WHERE host_id = $1 AND day >= $2")
@@ -540,7 +553,7 @@ async fn leave_tombstone(
                 (SELECT claimed_at FROM reward_claims WHERE user_id = $1 AND kind = 'monthly') AS monthly_at,
                 (SELECT count(*) FROM visits WHERE guest_id = $1 AND day = $2) AS visits,
                 COALESCE((SELECT array_agg(host_id) FROM house_likes WHERE liker_id = $1 AND day = $2), '{}'::BIGINT[]) AS liked,
-                (SELECT max(day) FROM wordle_games WHERE user_id = $1 AND mode = 'daily') AS wordle_day,
+                (SELECT max(day) FROM wordle_games WHERE user_id = $1 AND mode IN ('daily', 'daily-tr')) AS wordle_day,
                 (SELECT max(day) FROM picross_games WHERE user_id = $1 AND mode = 'daily' AND status = 'solved')
                     AS picross_day,
                 (SELECT pet_wake_day FROM users WHERE id = $1) AS pet_wake_day,

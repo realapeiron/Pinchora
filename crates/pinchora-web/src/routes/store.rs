@@ -71,7 +71,8 @@ pub async fn put_item(
         (price, stock) => return Err(ApiError::invalid(price.err().into_iter().chain(stock.err()).collect())),
     };
     let info = guild_info::live(&state, guild).await?;
-    info.check_assignable("role_id", role)?;
+    let grantor = guild_info::grantor(&state, &managed, &info.roles, true).await?;
+    info.check_grant("role_id", role, grantor)?;
     let db = &state.app.db;
     let was = db
         .store_items(guild)
