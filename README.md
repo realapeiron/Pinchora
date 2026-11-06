@@ -43,8 +43,11 @@ Written in Rust and built to run sharded on Kubernetes.
 | `/config rep-roles add\|remove\|list` | Roles given at a reputation count (up to 25, same safety checks as level roles); they always stack and are given when a `/rep` point lands (Manage Server) |
 | `/config join-role [role] [off]` | A role every new member gets, bots excepted; with neither option it shows the current setting (Manage Server) |
 | `/config goodbye [channel] [message] [off]` | Goodbye message in a channel when a member leaves; placeholders `{user}` `{server}` `{members}` (Manage Server) |
-| `/config log [channel] [off]` | Server log: compact embeds with the member, their avatar and the time for joins and leaves, nickname and username changes, bans and unbans, and voice joins, leaves and moves (Manage Server) |
-| `/config log-events [members] [names] [bans] [voice]` | Switch kinds of log entries on or off; all start on, so picking a log channel is enough (Manage Server) |
+| `/config log [channel] [off] [category]` | The server log's channel (this turns it on), or with `category` a channel of its own for one of the nine categories (members, messages, roles, channels and threads, voice, moderation, server, invites, emojis and stickers); `off` with a category sends it back to the log channel (Manage Server) |
+| `/config log-events [members] [names] [bans] [voice] [messages] [roles] [channels] [moderation] [server] [invites] [emojis]` | Switch kinds of log entries on or off; all start on except self mutes, so picking a log channel is enough. Single events are switched on the dashboard (Manage Server) |
+| `/config log-ignore [channel] [role] [user] [bots] [remove]` | Members, members with a role, channels (a category covers its channels, a channel its threads) and bots the server log leaves alone, up to 50 of each; `remove` takes one off; no options shows the lists (Manage Server) |
+| `/config moderation [channel] [off] [dm]` | The mod-log channel every case is posted to (`off`: the server log's moderation channel), and whether members are told by direct message (Manage Server) |
+| `/config warn-ladder [warns] [action] [duration] [remove]` | What a number of active warns brings: a timeout (with a duration), a kick, or a ban (temporary with a duration); up to 10 rungs, the same count again replaces one; `remove` takes one off; no options shows the ladder (Manage Server) |
 | `/roles panel title [description]` | Start a panel of role buttons (a draft); the same title again only changes the description (Manage Server) |
 | `/roles add panel role label [emoji]` | Put a role button on a panel (up to 25); adding a role again changes its label and emoji. `panel` is the title or the number (Manage Server) |
 | `/roles remove panel role`, `/roles post panel channel` | Take a button off, or post the panel; posting again in the same channel updates the message in place (Manage Server) |
@@ -60,8 +63,18 @@ Written in Rust and built to run sharded on Kubernetes.
 | `/suggest text` | Post a suggestion (up to 1000 characters) in the server's suggestion channel as an embed with 👍 and 👎 buttons showing live counts. One vote per member: press the other side to switch, the same side again to take the vote back. One suggestion per 30 seconds |
 | `/suggestion approve\|deny id [reason]` | Decide on the server's suggestion number `id` (the `#n` in its title): the embed turns green or red with who decided and why, its buttons lock with the final counts, and the author gets a direct message (closed DMs are reported to you, not an error). Decided once (Manage Server) |
 | `/poll question options [duration]` | A question with two to five answers separated by `\|`, up to 80 characters each; `duration` like `30m`, `6h`, `1d` (default 1 day, 1 minute to 14 days). One button per answer plus **Results**; one vote per member, the same switch/take-back rule as suggestions. Votes stay hidden while it runs, **Results** shows a private pixel bar-chart card (drawn at most every 10 seconds per poll), and when it closes the channel gets the final card and a line saying who won (or the tie). Three open polls per member |
+| `/ban user [reason] [duration] [delete_days]` | Ban a member, or anyone by user id: for good, or for a while (`12h`, `7d`, a minute to a year; the ban is lifted on its own), deleting 0 to 7 days of their messages (Ban Members) |
+| `/unban user [reason]`, `/kick user [reason]` | Lift a ban (paste the user id); remove a member, who can join again (Ban Members, Kick Members) |
+| `/timeout user duration [reason]`, `/untimeout user [reason]` | Time a member out for a minute to 28 days, or end it early; administrators can't be timed out (Timeout Members) |
+| `/warn user reason`, `/warnings user`, `/unwarn case [reason]` | Warn a member (the answer says how many warns they have, and the warn ladder acts when a count is reached); a private list of the warns that still count; take a warn back so it stops counting (Timeout Members) |
+| `/purge count [user] [bots] [contains] [links] [attachments] [reason]` | Delete up to 100 recent messages here, never pinned ones or ones older than 14 days, matching every filter given; `contains` and `links` need the message content switch (Manage Messages) |
+| `/slowmode duration [channel] [reason]` | One message every `5s` to `6h` per member in a channel, or `off` (Manage Channels) |
+| `/lock [channel] [reason]`, `/unlock [channel] [reason]` | Take sending messages, sending in threads and making threads from @everyone in a channel, or give them back (Manage Channels; the bot needs Manage Roles there) |
+| `/nick user [nickname] [reason]` | Change or reset a member's nickname (Manage Nicknames) |
+| `/role add\|remove user role [reason]` | Give or take a role below both your highest role and the bot's; managed roles and @everyone are refused (Manage Roles) |
+| `/case id`, `/reason id reason` | Look a case up privately; give it a new reason, which edits its mod-log entry too (any of Ban, Kick or Timeout Members, Manage Messages or Manage Server) |
 | `/ping` | Health: how fast the interaction, the database and Redis answer |
-| `/help` | A private guide drawn as pixel cards, one area at a time (profile, shells, shops, house, pets, fishing, friends, duels, puzzles and party games, crowd games and collecting, community tools, three pages of server setup). Every command and subcommand has its own line with what it does, and a star marks the ones for members who can manage the server. Jump to an area with the menu or turn the pages with the buttons; the pages are built from the registered command tree, and a unit test fails until a new command is given an area |
+| `/help` | A private guide drawn as pixel cards, one area at a time (profile, shells, shops, house, pets, fishing, friends, duels, puzzles and party games, crowd games and collecting, community tools, moderation, four pages of server setup). Every command and subcommand has its own line with what it does, and a star marks the ones for members who can manage the server. Jump to an area with the menu or turn the pages with the buttons; the pages are built from the registered command tree, and a unit test fails until a new command is given an area |
 
 Chatting earns 15–25 XP and, by default, 1–3 server points per minute per server. Level roles are
 given on level-up, and the bot needs the Manage Roles permission with its role above the roles it
@@ -172,6 +185,45 @@ messages from handing it out. The server log remembers each member's last-seen n
 in memory to show "old → new"; after a restart, or for a member it has not seen yet, a nickname
 change is logged as just the new value. Voice moves work the same way: a member already in a voice
 channel when the bot starts is only noticed once their state changes.
+
+Moderation commands check the moderator's own permission (the one Discord would ask for: Ban Members for
+`/ban`, Manage Channels in the channel named for `/lock`, and so on; Administrator stands for all of them)
+from the member permissions Discord sends with the interaction, and the role hierarchy the way Discord does
+(`pinchora_core::moderation::may_act`): nobody acts on the owner, on themselves or on the bot, and both the
+moderator (unless they own the server) and the bot must sit strictly above the member. A refusal is private
+and nothing reaches Discord. Every action opens a case numbered per server (`mod_cases`; the counter row in
+`mod_case_counters` is taken by each insert and held to the end of its transaction, so moderators acting at
+once get consecutive numbers, and the warn count read after it sees every earlier warn, so a ladder rung
+fires exactly once), writes a line to the staff log, tells the member by direct message (warns, timeouts,
+kicks and bans; before a kick or ban, since afterwards the member shares no server with the bot; a server
+can switch this off, and a closed DM is noted on the case) and posts the case to the mod-log (its own
+channel, else the server log's moderation channel). Audit log reasons read `moderator: reason`. The warn
+ladder (`mod_warn_thresholds`) acts as the bot, as a case of its own, when a warn brings a member's active
+warns to a rung's count. Temporary bans are lifted by a ticker on every pod every 30 seconds: due bans are
+leased for two minutes with `FOR UPDATE SKIP LOCKED`, lifted, and closed with an unban case; a ban Discord no
+longer has counts as lifted, one it refuses to lift waits an hour, and a new ban or an unban ends the old
+ban's clock. Cases stay when a member deletes their data (they are the server's record, so warns and bans
+cannot be wiped that way); the moderator's name is replaced by "Deleted user", as in the dashboard audit log.
+
+The server log routes every event through `pinchora_core::logging`: an event is logged when its group's
+older switch (members, names, bans, voice) is on and the event is not switched off on its own, into its
+category's channel or the log channel, unless the ignore lists (members, roles, channels with what sits under
+them, bots) leave it alone. Joins, leaves, names, avatars, voice (joins, leaves, moves, server mutes and
+deafens, self mutes and deafens, the last off by default), bans and message edits, deletes and bulk deletes
+come from the gateway events; roles, member roles, channels and threads (permission overwrites included),
+the server's settings, invites, emojis, stickers, kicks and timeouts come from Discord's audit log as it
+happens (`GUILD_AUDIT_LOG_ENTRY_CREATE`, which needs the bot to have View Audit Log), with who did it and what
+changed; a ban waits a moment for the audit log to name who did it. What Pinchora did itself is left to its
+case in the mod-log. Without the privileged Message Content intent the log says who edited or deleted a
+message, where and when; with `PINCHORA_GATEWAY__MESSAGE_CONTENT=true` (and the intent switched on in the
+Developer Portal) the gateway asks for message content, recent messages are kept in Redis for a day (only for
+servers that log message edits or deletes, 1,000 characters each), and the entries show the text before and
+after, the deleted text and attachment names, and the kept lines of a bulk delete. The staff log
+(`staff_actions`, 180 days) holds every moderation command and every audit log entry a member made by hand
+(not Pinchora's own, not a member's own nickname), and the dashboard reads it together with its own audit
+log. No new gateway intent is needed: Guild Moderation (bans and audit log entries), Guild Messages (edits
+and deletes) and Guild Voice States were there already; Server Members and Message Content are privileged and
+each has its own switch.
 
 Admin commands check the permission themselves. `/config` (every subcommand), `/roles`, `/giveaway`,
 `/suggestion`, `/points give|take` and `/plaza edit` (with the buttons and menus of its editor) need
@@ -331,8 +383,13 @@ badges, titles, trivia, hangman words and the wordle lists) lives in
 
 1. Create an application at <https://discord.com/developers/applications>, add a bot, and turn
    on **Server Members Intent** (for welcome cards, join roles, goodbye messages and the member, nickname and
-   username entries of the server log; or set `PINCHORA_GATEWAY__MEMBER_EVENTS=false`). The server log's ban and voice
-   entries use the non-privileged Guild Moderation and Guild Voice States intents.
+   username entries of the server log; or set `PINCHORA_GATEWAY__MEMBER_EVENTS=false`). The server log's ban, audit
+   log, message and voice entries use the non-privileged Guild Moderation, Guild Messages and Guild Voice States
+   intents. For the text of edited and deleted messages in the log (and `/purge contains|links`), also turn on
+   **Message Content Intent** and set `PINCHORA_GATEWAY__MESSAGE_CONTENT=true`. Give the bot **View Audit Log**
+   for the role, channel, server, invite, emoji, kick and timeout entries, and Ban Members, Kick Members,
+   Moderate Members, Manage Messages, Manage Channels, Manage Nicknames and Manage Roles for the moderation
+   commands it should carry out.
 2. `cp .env.example .env` and fill in the token and application id.
 3. Start everything:
 
@@ -364,11 +421,14 @@ so every bot pod uses it from the next message instead of after its one-minute c
 | Page | What it sets | Same as |
 |---|---|---|
 | Overview | Chat XP on/off, every page's state at a glance, every module's state, the latest changes | `/config show`, `/config leveling enabled`, `/config modules show` |
-| Modules | Each part of Pinchora (leveling, points, welcome, goodbye, log, role panels, store, suggestions, polls, giveaways, profiles, economy, shops, quests, social, houses, plaza, pets, fishing, duels, board and puzzle games, word and trivia games, party games, word party games, critter drops, gambling) on or off, and where it works: all channels, only some, or all but some | `/config modules` |
+| Modules | Each part of Pinchora (leveling, points, welcome, goodbye, log, moderation, role panels, store, suggestions, polls, giveaways, profiles, economy, shops, quests, social, houses, plaza, pets, fishing, duels, board and puzzle games, word and trivia games, party games, word party games, critter drops, gambling) on or off, and where it works: all channels, only some, or all but some | `/config modules` |
 | Welcome & goodbye | Welcome cards (channel, text with placeholder chips), the card designer (theme, headline, accent, live preview drawn by the bot), join role, goodbye channel and text | `/config welcome`, `welcome-card`, `join-role`, `goodbye` |
 | Leveling | Leveling, where level-ups go, level-up channel and text, voice XP, XP multipliers, level roles (stack/replace, **Sync members**), reputation roles | `/config leveling`, `xp`, `level-roles`, `rep-roles` |
 | Points & store | Points on/off, name, emoji, points per message; roles on sale with price and stock | `/config points`, `/config store` |
-| Server log | Log channel and the four kinds of events | `/config log`, `/config log-events` |
+| Moderation | The mod-log channel, direct messages to members, and the warn ladder | `/config moderation`, `/config warn-ladder` |
+| Cases | Every case, searchable by name, reason or id and filtered by kind or what still stands; a case opens whole with the member's other cases, and its reason can be changed (the mod-log entry follows) | `/case`, `/reason` |
+| Server log | The log channel, a channel per category, every event on or off (marked when it needs View Audit Log), and the ignore lists | `/config log`, `/config log-events`, `/config log-ignore` |
+| Staff log | What staff did with Pinchora's commands, on the dashboard and by hand in Discord, searchable and filtered by where (kept 180 days) | |
 | Community | The `/suggest` channel; critter drops on/off and where they land; timed storm surges (on/off, channel, how often) | `/config suggestions`, `/config critters`, `/config surge` |
 | Audit log | Every dashboard change: who, what, before and after (kept 180 days) | |
 
