@@ -209,9 +209,13 @@ impl Db {
         .bind(sql_id(entry))
         .bind(sql_id(voter))
         .execute(self.pool())
-        .await?
-        .rows_affected();
-        Ok(n == 1)
+        .await;
+        match n {
+            Ok(done) => Ok(done.rows_affected() == 1),
+            // The entry's owner deleted their data while the vote went in: the entry is gone, nothing counted.
+            Err(error) if error.as_database_error().is_some_and(|e| e.is_foreign_key_violation()) => Ok(false),
+            Err(error) => Err(error.into()),
+        }
     }
 
     /// Closes every week of the server before `current` that has entries but no result: the

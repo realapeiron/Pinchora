@@ -1528,3 +1528,36 @@ async fn the_party_commands_fit_discords_limits_and_help_knows_them() {
     // Like the rest of /config, it is for managers: Discord keeps it from everyone else.
     assert!(config["default_member_permissions"].is_string(), "{config}");
 }
+
+#[tokio::test]
+async fn a_lobby_button_of_another_party_game_is_refused() {
+    let _alone = PARTY.lock().await;
+    let Some(mut sim) = Sim::new("a_lobby_button_of_another_party_game_is_refused").await else {
+        return;
+    };
+    fresh(&sim).await;
+    sim.channel = unique();
+    let (ada, bo) = (unique(), unique());
+    let (lobby, id) = lobby_of(&mut sim, "hotpearl", vec![], ada, &[bo]).await;
+    // The host presses a Wordle Race Start carrying the Hot Pearl lobby's id: no race starts in it (the clock
+    // could never move a Hot Pearl game that holds a race).
+    let forged = sim.component(ada, &format!("wx:s:{id}"), &[], &lobby).await;
+    assert!(
+        forged.ephemeral && forged.content().contains("closed"),
+        "{}",
+        forged.content()
+    );
+    assert!(game(&sim, id).await.in_lobby(), "the lobby is as it was");
+
+    // A full Wordle Race lobby (four of four) cannot be joined through the Join of a game that seats ten.
+    sim.channel = unique();
+    let (c, d, e, f, g) = (unique(), unique(), unique(), unique(), unique());
+    let (race, race_id) = lobby_of(&mut sim, "wordrace", vec![], c, &[d, e, f]).await;
+    let forged = sim.component(g, &format!("ac:j:{race_id}"), &[], &race).await;
+    assert!(
+        forged.ephemeral && forged.content().contains("closed"),
+        "{}",
+        forged.content()
+    );
+    assert_eq!(sim.app.db.party_players(race_id).await.unwrap().len(), 4);
+}

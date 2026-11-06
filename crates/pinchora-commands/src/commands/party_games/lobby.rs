@@ -179,6 +179,12 @@ pub(crate) async fn on_button(cx: &Cx, party: Party, action: &str, id: i64) -> a
     if !matches!(action, "j" | "l" | "s" | "x") {
         return Ok(false);
     }
+    // Another game's button with this lobby's id (a forged custom id) would start that game here or seat
+    // more players than this one takes.
+    if cx.app.db.party(id).await?.is_some_and(|game| game.kind != party.key()) {
+        cx.reply_ephemeral("This lobby has closed.").await?;
+        return Ok(true);
+    }
     match action {
         "j" => join(cx, party, id).await?,
         "l" => leave(cx, id).await?,

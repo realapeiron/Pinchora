@@ -814,6 +814,11 @@ async fn grabbing_a_card_while_the_player_deletes_their_data() {
     // The delete came after the grab, so nothing of the grabber is left, not even the shells it paid.
     assert_eq!(credits(&db, grabber).await, 0);
     assert_eq!(ledger(&db, grabber).await, 0);
+    sqlx::query("DELETE FROM collection_drops WHERE id = $1")
+        .bind(id)
+        .execute(db.pool())
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -935,6 +940,29 @@ async fn closing_a_contest_week_while_a_winner_deletes_their_data() {
     for user in [second, third, voter] {
         db.delete_user_data(user, Utc::now()).await.unwrap();
     }
+}
+
+#[tokio::test]
+async fn voting_for_an_entry_while_its_owner_deletes_their_data() {
+    let Some(db) = db_with(4).await else { return };
+    let [owner, voter, guild] = ids();
+    sqlx::query(
+        "INSERT INTO contest_entries (guild_id, week, user_id, owner_name, room_idx, tier, room_type, wallpaper, floor)
+         VALUES ($1, 7, $2, 'Name', 0, 1, 'living', 'w', 'f')",
+    )
+    .bind(guild as i64)
+    .bind(owner as i64)
+    .execute(db.pool())
+    .await
+    .unwrap();
+    // The owner's delete has taken the entry; the vote, sent just before, waits for it and finds it gone.
+    let mut delete = db.pool().begin().await.unwrap();
+    Db::delete_user_data_in(&mut delete, owner, Utc::now()).await.unwrap();
+    let (voting, voting_pid) = side().await;
+    let vote = tokio::spawn(async move { voting.contest_vote(guild, 7, owner, voter).await });
+    queued(&db, voting_pid, "the vote").await;
+    delete.commit().await.unwrap();
+    assert!(!vote.await.unwrap().expect("the vote fails nowhere"), "nothing counted");
 }
 
 // ---------------------------------------------------------------- mixed load
@@ -1385,6 +1413,12 @@ async fn a_mixed_load_with_deletes_fails_nobody_and_keeps_the_books() {
     for user in users.iter().chain(owners.iter()) {
         db.delete_user_data(*user, Utc::now()).await.unwrap();
     }
+    // The drops stay open for an hour, and the simulator's collection tick closes the oldest due ones first.
+    sqlx::query("DELETE FROM collection_drops WHERE guild_id = $1")
+        .bind(guild as i64)
+        .execute(db.pool())
+        .await
+        .unwrap();
     let failed: u64 = total.iter().map(|t| t.failed).sum();
     assert_eq!(failed, 0, "calls failed under the mixed load:\n{report}");
     assert!(
