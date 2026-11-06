@@ -18,7 +18,7 @@ use twilight_model::{
 
 use crate::{
     App, auto,
-    commands::collection,
+    commands::{self, collection},
     leveling::{self, LevelUp},
     roles, server_log,
     util::{display_name, fill, mention},
@@ -240,8 +240,9 @@ pub async fn on_ban_add(app: Arc<App>, event: BanAdd) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Logs an unban.
+/// Logs an unban, and ends the member's ban cases so the temporary ban ticker leaves them be.
 pub async fn on_ban_remove(app: Arc<App>, event: BanRemove) -> anyhow::Result<()> {
+    commands::moderation::ban_removed(&app, event.guild_id.get(), event.user.id.get()).await;
     server_log::ban_changed(&app, event.guild_id.get(), &event.user, false).await;
     Ok(())
 }

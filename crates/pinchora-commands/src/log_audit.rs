@@ -5,7 +5,11 @@
 
 use std::sync::Arc;
 
-use pinchora_core::logging::{LogEvent, Subject};
+use pinchora_core::{
+    i18n::Lang,
+    logging::{LogEvent, Subject},
+    snowflake, t,
+};
 use pinchora_db::NewStaffAction;
 use twilight_model::{
     gateway::payload::incoming::GuildAuditLogEntryCreate,
@@ -18,7 +22,7 @@ use twilight_util::builder::embed::EmbedFieldBuilder;
 
 use crate::{
     App,
-    server_log::{Attribution, clip, code, entry, post, route},
+    server_log::{Attribution, clip, code, entry, post, route, title},
     util::{BRAND, DANGER, SUCCESS, WARN, display_name, mention, relative},
 };
 
@@ -115,90 +119,93 @@ pub(crate) fn permission_diff(old: Permissions, new: Permissions) -> (Vec<String
     (names(new - old), names(old - new))
 }
 
-fn shown<T: ToString>(value: &Option<T>) -> String {
+fn shown<T: ToString>(lang: Lang, value: &Option<T>) -> String {
     value
         .as_ref()
-        .map_or_else(|| "*none*".to_owned(), |v| code(&clip(&v.to_string(), 200)))
+        .map_or_else(|| t!(lang, "log.none"), |v| code(&clip(&v.to_string(), 200)))
 }
 
-fn yes_no(value: &Option<bool>) -> &'static str {
+fn yes_no(lang: Lang, value: &Option<bool>) -> String {
     match value {
-        Some(true) => "yes",
-        Some(false) => "no",
-        None => "*none*",
+        Some(true) => t!(lang, "log.yes"),
+        Some(false) => t!(lang, "log.no"),
+        None => t!(lang, "log.none"),
     }
 }
 
-fn channel(value: &Option<twilight_model::id::Id<twilight_model::id::marker::ChannelMarker>>) -> String {
-    value.map_or_else(|| "*none*".to_owned(), |c| format!("<#{c}>"))
+fn channel(lang: Lang, value: &Option<twilight_model::id::Id<twilight_model::id::marker::ChannelMarker>>) -> String {
+    value.map_or_else(|| t!(lang, "log.none"), |c| format!("<#{c}>"))
 }
 
 /// One change in words: `**Name**: `old` → `new``. `None` for a change not worth a line (a channel
 /// moving position) or one Pinchora does not read.
-pub(crate) fn change_line(change: &AuditLogChange) -> Option<String> {
+pub(crate) fn change_line(lang: Lang, change: &AuditLogChange) -> Option<String> {
     use AuditLogChange as C;
-    let pair = |what: &str, old: String, new: String| Some(format!("**{what}**: {old} → {new}"));
+    let pair = |what: &str, old: String, new: String| {
+        let what = t!(lang, &format!("log.change.{what}"));
+        Some(format!("**{what}**: {old} → {new}"))
+    };
+    let one = |what: &str, value: String| {
+        let what = t!(lang, &format!("log.change.{what}"));
+        Some(format!("**{what}**: {value}"))
+    };
+    let roles = |list: &[twilight_model::guild::audit_log::AffectedRole]| {
+        list.iter()
+            .map(|r| format!("<@&{}>", r.id))
+            .collect::<Vec<_>>()
+            .join(" ")
+    };
     match change {
-        C::Name { old, new } => pair("Name", shown(old), shown(new)),
-        C::Topic { old, new } => pair("Topic", shown(old), shown(new)),
-        C::Description { old, new } => pair("Description", shown(old), shown(new)),
-        C::Nsfw { old, new } => pair("Age-restricted", yes_no(old).into(), yes_no(new).into()),
-        C::RateLimitPerUser { old, new } => pair("Slowmode (seconds)", shown(old), shown(new)),
-        C::Bitrate { old, new } => pair("Bitrate", shown(old), shown(new)),
-        C::UserLimit { old, new } => pair("User limit", shown(old), shown(new)),
-        C::Color { old, new } => pair(
-            "Colour",
-            old.map_or("*none*".into(), |c| format!("`#{c:06x}`")),
-            new.map_or("*none*".into(), |c| format!("`#{c:06x}`")),
-        ),
-        C::Hoist { old, new } => pair("Shown separately", yes_no(old).into(), yes_no(new).into()),
-        C::Mentionable { old, new } => pair("Mentionable", yes_no(old).into(), yes_no(new).into()),
-        C::Archived { old, new } => pair("Archived", yes_no(old).into(), yes_no(new).into()),
-        C::Locked { old, new } => pair("Locked", yes_no(old).into(), yes_no(new).into()),
-        C::Code { new, old } => Some(format!("**Code**: {}", shown(&new.clone().or(old.clone())))),
-        C::ChannelId { new, old } => Some(format!("**Channel**: {}", channel(&new.or(*old)))),
-        C::MaxUses { new, .. } => Some(format!(
-            "**Uses**: {}",
-            new.filter(|n| *n > 0).map_or("no limit".to_owned(), |n| n.to_string())
-        )),
-        C::MaxAge { new, .. } => Some(format!(
-            "**Expires**: {}",
+        C::Name { old, new } => pair("name", shown(lang, old), shown(lang, new)),
+        C::Topic { old, new } => pair("topic", shown(lang, old), shown(lang, new)),
+        C::Description { old, new } => pair("description", shown(lang, old), shown(lang, new)),
+        C::Nsfw { old, new } => pair("nsfw", yes_no(lang, old), yes_no(lang, new)),
+        C::RateLimitPerUser { old, new } => pair("slowmode", shown(lang, old), shown(lang, new)),
+        C::Bitrate { old, new } => pair("bitrate", shown(lang, old), shown(lang, new)),
+        C::UserLimit { old, new } => pair("user-limit", shown(lang, old), shown(lang, new)),
+        C::Color { old, new } => {
+            let colour = |c: &Option<u64>| c.map_or_else(|| t!(lang, "log.none"), |c| format!("`#{c:06x}`"));
+            pair("colour", colour(old), colour(new))
+        }
+        C::Hoist { old, new } => pair("hoist", yes_no(lang, old), yes_no(lang, new)),
+        C::Mentionable { old, new } => pair("mentionable", yes_no(lang, old), yes_no(lang, new)),
+        C::Archived { old, new } => pair("archived", yes_no(lang, old), yes_no(lang, new)),
+        C::Locked { old, new } => pair("locked", yes_no(lang, old), yes_no(lang, new)),
+        C::Code { new, old } => one("code", shown(lang, &new.clone().or(old.clone()))),
+        C::ChannelId { new, old } => one("channel", channel(lang, &new.or(*old))),
+        C::MaxUses { new, .. } => one(
+            "uses",
             new.filter(|n| *n > 0)
-                .map_or("never".to_owned(), |n| format!("after {n} seconds"))
-        )),
-        C::Temporary { new, .. } => Some(format!("**Temporary membership**: {}", yes_no(new))),
-        C::IconHash { .. } => Some("**Icon** changed".to_owned()),
-        C::VanityUrlCode { old, new } => pair("Vanity link", shown(old), shown(new)),
-        C::AfkChannelId { old, new } => pair("AFK channel", channel(old), channel(new)),
-        C::SystemChannelId { old, new } => pair("System channel", channel(old), channel(new)),
-        C::RulesChannelId { old, new } => pair("Rules channel", channel(old), channel(new)),
-        C::Nick { old, new } => pair("Nickname", shown(old), shown(new)),
+                .map_or_else(|| t!(lang, "log.change.no-limit"), |n| n.to_string()),
+        ),
+        C::MaxAge { new, .. } => one(
+            "expires",
+            new.filter(|n| *n > 0).map_or_else(
+                || t!(lang, "log.change.never"),
+                |n| t!(lang, "log.change.after-seconds", count = n),
+            ),
+        ),
+        C::Temporary { new, .. } => one("temporary", yes_no(lang, new)),
+        C::IconHash { .. } => Some(t!(lang, "log.change.icon")),
+        C::VanityUrlCode { old, new } => pair("vanity", shown(lang, old), shown(lang, new)),
+        C::AfkChannelId { old, new } => pair("afk-channel", channel(lang, old), channel(lang, new)),
+        C::SystemChannelId { old, new } => pair("system-channel", channel(lang, old), channel(lang, new)),
+        C::RulesChannelId { old, new } => pair("rules-channel", channel(lang, old), channel(lang, new)),
+        C::Nick { old, new } => pair("nickname", shown(lang, old), shown(lang, new)),
         C::CommunicationDisabledUntil { new, .. } => Some(match new {
             Some(until) => match chrono::DateTime::from_timestamp(until.as_secs(), 0) {
-                Some(at) => format!("**Timed out** until {}", relative(at)),
-                None => "**Timed out**".to_owned(),
+                Some(at) => t!(lang, "log.change.timed-out-until", when = relative(at)),
+                None => t!(lang, "log.change.timed-out"),
             },
-            None => "**Timeout** removed".to_owned(),
+            None => t!(lang, "log.change.timeout-removed"),
         }),
-        C::RoleAdded { new, .. } => Some(format!(
-            "**Given**: {}",
-            new.iter()
-                .map(|r| format!("<@&{}>", r.id))
-                .collect::<Vec<_>>()
-                .join(" ")
-        )),
-        C::RoleRemoved { new, .. } => Some(format!(
-            "**Taken**: {}",
-            new.iter()
-                .map(|r| format!("<@&{}>", r.id))
-                .collect::<Vec<_>>()
-                .join(" ")
-        )),
+        C::RoleAdded { new, .. } => one("given", roles(new)),
+        C::RoleRemoved { new, .. } => one("taken", roles(new)),
         C::Permissions { old, new } | C::Allow { old, new } | C::Deny { old, new } => {
             let what = match change {
-                C::Allow { .. } => "Allowed",
-                C::Deny { .. } => "Denied",
-                _ => "Permissions",
+                C::Allow { .. } => "allowed",
+                C::Deny { .. } => "denied",
+                _ => "permissions",
             };
             let (added, removed) = permission_diff(
                 old.unwrap_or_else(Permissions::empty),
@@ -211,7 +218,7 @@ pub(crate) fn change_line(change: &AuditLogChange) -> Option<String> {
             if !removed.is_empty() {
                 parts.push(format!("− {}", removed.join(", ")));
             }
-            (!parts.is_empty()).then(|| format!("**{what}**: {}", parts.join(" · ")))
+            (!parts.is_empty()).then(|| one(what, parts.join(" · "))).flatten()
         }
         C::Position { .. } => None,
         _ => None,
@@ -229,9 +236,9 @@ fn only_moves(entry: &AuditLogEntry) -> bool {
 }
 
 /// The thing an entry is about, as Discord markup.
-fn target_text(entry: &AuditLogEntry, event: LogEvent) -> String {
+fn target_text(lang: Lang, entry: &AuditLogEntry, event: LogEvent) -> String {
     let Some(target) = entry.target_id.map(|t| t.get()) else {
-        return "the server".to_owned();
+        return t!(lang, "log.the-server");
     };
     let named = entry.changes.iter().find_map(|c| match c {
         AuditLogChange::Name { new, old } => new.clone().or(old.clone()),
@@ -245,7 +252,7 @@ fn target_text(entry: &AuditLogEntry, event: LogEvent) -> String {
         AuditLogEventType::EmojiDelete | AuditLogEventType::StickerDelete
     );
     match event {
-        LogEvent::ServerUpdate => "the server".to_owned(),
+        LogEvent::ServerUpdate => t!(lang, "log.the-server"),
         LogEvent::MemberRoles | LogEvent::Kick | LogEvent::Timeout => mention(target),
         LogEvent::RoleCreate | LogEvent::RoleUpdate if !deleted => format!("<@&{target}>"),
         LogEvent::ChannelCreate
@@ -262,14 +269,14 @@ fn target_text(entry: &AuditLogEntry, event: LogEvent) -> String {
 }
 
 /// Whose permissions an overwrite entry is about.
-fn overwrite_text(entry: &AuditLogEntry) -> Option<String> {
+fn overwrite_text(lang: Lang, entry: &AuditLogEntry) -> Option<String> {
     let options = entry.options.as_ref()?;
     let id = options.id?;
     Some(match options.kind.as_deref() {
-        Some("1") => format!("for {}", mention(id)),
+        Some("1") => t!(lang, "log.for", who = mention(id)),
         _ => match &options.role_name {
-            Some(name) if name == "@everyone" => "for @everyone".to_owned(),
-            _ => format!("for <@&{id}>"),
+            Some(name) if name == "@everyone" => t!(lang, "log.for-everyone"),
+            _ => t!(lang, "log.for", who = format!("<@&{id}>")),
         },
     })
 }
@@ -297,22 +304,26 @@ fn color_of(kind: AuditLogEventType) -> u32 {
     }
 }
 
-/// The server log entry for an audit log entry.
-pub(crate) fn log_embed(entry_: &AuditLogEntry, event: LogEvent) -> twilight_model::channel::message::Embed {
+/// The server log entry for an audit log entry, in `lang`.
+pub(crate) fn log_embed(
+    lang: Lang,
+    entry_: &AuditLogEntry,
+    event: LogEvent,
+) -> twilight_model::channel::message::Embed {
     let actor = entry_.user_id.map(|u| u.get());
-    let mut text = target_text(entry_, event);
-    if let Some(whose) = overwrite_text(entry_) {
+    let mut text = target_text(lang, entry_, event);
+    if let Some(whose) = overwrite_text(lang, entry_) {
         text.push(' ');
         text.push_str(&whose);
     }
     if let Some(actor) = actor {
-        text.push_str(&format!(" · by {}", mention(actor)));
+        text = t!(lang, "log.by-actor", target = text, actor = mention(actor));
     }
-    let mut lines: Vec<String> = entry_.changes.iter().filter_map(change_line).collect();
+    let mut lines: Vec<String> = entry_.changes.iter().filter_map(|c| change_line(lang, c)).collect();
     let more = lines.len().saturating_sub(MAX_LINES);
     lines.truncate(MAX_LINES);
     if more > 0 {
-        lines.push(format!("and {more} more"));
+        lines.push(t!(lang, "log.more", count = more));
     }
     if !lines.is_empty() {
         text.push_str("\n\n");
@@ -320,21 +331,22 @@ pub(crate) fn log_embed(entry_: &AuditLogEntry, event: LogEvent) -> twilight_mod
     }
     let id = entry_.target_id.map_or(0, |t| t.get());
     let mut embed = entry(
-        event.label(),
+        lang,
+        title(lang, event),
         color_of(entry_.action_type),
         id,
         None,
         clip(&text, 4_000),
     );
     if let Some(reason) = &entry_.reason {
-        embed = embed.field(EmbedFieldBuilder::new("Reason", clip(reason, 1_000)));
+        embed = embed.field(EmbedFieldBuilder::new(t!(lang, "log.reason"), clip(reason, 1_000)));
     }
     embed.build()
 }
 
-/// The staff log line's details: what changed, on one line.
+/// The staff log line's details: what changed, on one line (in English, like the dashboard).
 fn details(entry: &AuditLogEntry) -> Option<String> {
-    let lines: Vec<String> = entry.changes.iter().filter_map(change_line).collect();
+    let lines: Vec<String> = entry.changes.iter().filter_map(|c| change_line(Lang::En, c)).collect();
     (!lines.is_empty()).then(|| clip(&lines.join(" · ").replace("**", ""), 500))
 }
 
@@ -362,16 +374,22 @@ pub async fn on_audit_log_entry(app: Arc<App>, event: GuildAuditLogEntryCreate) 
         app.log_state
             .note_ban(guild, target, kind == AuditLogEventType::MemberBanAdd, by)
             .await;
+        if kind == AuditLogEventType::MemberBanRemove {
+            let at = snowflake::timestamp(entry.id.get());
+            crate::commands::moderation::unbanned_by(&app, guild, target, actor, at).await;
+        }
     }
     let actor_user = match actor {
         Some(actor) if actor != me => app.user(actor).await,
         _ => None,
     };
-    // Staff: what a member did to the server or to somebody else. Pinchora's own actions are in the
-    // log already, with the moderator who asked for them.
+    // Staff: what a member with a staff permission did to the server or to somebody else. Pinchora's
+    // own actions are in the log already, with the moderator who asked for them; members without one
+    // (an invite, a thread of their own) are not staff.
     if let (Some(actor), Some(action)) = (actor, action_key(kind))
         && actor != me
         && !(kind == AuditLogEventType::MemberUpdate && target == Some(actor))
+        && app.is_staff(guild, actor).await
     {
         let actor_name = actor_user
             .as_deref()
@@ -434,8 +452,8 @@ pub async fn on_audit_log_entry(app: Arc<App>, event: GuildAuditLogEntryCreate) 
         }),
         _ => None,
     };
-    if let Some(to) = route(&app, guild, event, subject, place).await {
-        post(&app, to, log_embed(&entry, event)).await;
+    if let Some((to, lang)) = route(&app, guild, event, subject, place).await {
+        post(&app, to, log_embed(lang, &entry, event)).await;
     }
     Ok(())
 }
@@ -474,7 +492,7 @@ mod tests {
             "user_id": "7",
         }));
         assert_eq!(log_event(&entry), Some(LogEvent::ChannelUpdate));
-        let embed = log_embed(&entry, LogEvent::ChannelUpdate);
+        let embed = log_embed(Lang::En, &entry, LogEvent::ChannelUpdate);
         let text = embed.description.unwrap();
         assert!(text.starts_with("<#55> · by <@7>"), "{text}");
         assert!(text.contains("**Name**: `general` → `lobby`"), "{text}");
@@ -490,7 +508,7 @@ mod tests {
             "guild_id": "1", "id": "101", "target_id": "8", "user_id": "7", "reason": "spam",
         }));
         assert_eq!(log_event(&timeout), Some(LogEvent::Timeout));
-        let embed = log_embed(&timeout, LogEvent::Timeout);
+        let embed = log_embed(Lang::En, &timeout, LogEvent::Timeout);
         assert!(embed.description.as_deref().unwrap().contains("**Timed out** until"));
         assert_eq!(embed.fields[0].value, "spam");
         let nick = audit(json!({
@@ -509,7 +527,7 @@ mod tests {
             "changes": [{ "key": "$add", "new_value": [{ "id": "40", "name": "Helper" }] }],
             "guild_id": "1", "id": "103", "target_id": "8", "user_id": "7",
         }));
-        let text = log_embed(&roles, LogEvent::MemberRoles).description.unwrap();
+        let text = log_embed(Lang::En, &roles, LogEvent::MemberRoles).description.unwrap();
         assert!(
             text.starts_with("<@8> · by <@7>") && text.contains("**Given**: <@&40>"),
             "{text}"
@@ -520,7 +538,9 @@ mod tests {
             "options": { "id": "1", "type": "0", "role_name": "@everyone" },
             "guild_id": "1", "id": "104", "target_id": "55", "user_id": "7",
         }));
-        let text = log_embed(&overwrite, LogEvent::ChannelPermissions).description.unwrap();
+        let text = log_embed(Lang::En, &overwrite, LogEvent::ChannelPermissions)
+            .description
+            .unwrap();
         assert!(text.starts_with("<#55> for @everyone · by <@7>"), "{text}");
         assert!(text.contains("**Denied**: + Send messages"), "{text}");
     }
@@ -533,7 +553,7 @@ mod tests {
             "guild_id": "1", "id": "105", "target_id": "56", "user_id": "7",
         }));
         assert!(
-            log_embed(&deleted, LogEvent::ChannelDelete)
+            log_embed(Lang::En, &deleted, LogEvent::ChannelDelete)
                 .description
                 .unwrap()
                 .starts_with("`old-news`")

@@ -1,7 +1,10 @@
 //! `/warn`, `/warnings` and `/unwarn`, and the warn ladder: a number of warns that brings a timeout,
 //! a kick or a ban, given by the bot itself.
 
-use pinchora_core::moderation::{CaseKind, Punishment, Threshold, check_reason, format_duration, reached};
+use pinchora_core::{
+    moderation::{CaseKind, Punishment, Threshold, check_reason, outranks, reached},
+    t,
+};
 use pinchora_db::NewCase;
 use twilight_http::request::AuditLogReason;
 use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
@@ -9,13 +12,13 @@ use twilight_model::{guild::Permissions, id::Id};
 use twilight_util::builder::embed::{EmbedBuilder, EmbedFooterBuilder};
 
 use super::{
-    Act, BOT_NAME, Moderator, NO_ROLES, Ranks, color,
+    Act, BOT_NAME, Moderator, Ranks, color,
     members::{private, public, refusal, set_timeout},
-    permitted, record, reply_embed, tell,
+    permitted, record, reply_embed, take_back, tell, words,
 };
 use crate::{
     Cx,
-    util::{WARN, relative, resolved_display_name},
+    util::{WARN, mention, relative, resolved_display_name},
 };
 
 fn moderate_members() -> Permissions {
@@ -39,36 +42,34 @@ pub struct Warn {
 
 impl Warn {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
-        let Some(guild) = permitted(cx, Permissions::MODERATE_MEMBERS, "Timeout Members").await? else {
+        let lang = cx.lang();
+        let Some(guild) = permitted(cx, Permissions::MODERATE_MEMBERS, "timeout-members").await? else {
             return Ok(());
         };
         let reason = match check_reason(Some(&self.reason)) {
             Ok(Some(reason)) => reason,
-            Ok(None) => return cx.reply_ephemeral("Say why you are warning them.").await,
+            Ok(None) => return cx.reply_ephemeral(t!(lang, "mod.warn-why")).await,
             Err(error) => return cx.reply_ephemeral(error.message).await,
         };
         if self.user.member.is_none() {
-            return cx.reply_ephemeral("That user isn't a member of this server.").await;
+            return cx.reply_ephemeral(t!(lang, "mod.not-a-member")).await;
         }
         let moderator = Moderator::of(cx)?;
         let Some(ranks) = Ranks::read(&cx.app, guild, &moderator).await else {
-            return cx.reply_ephemeral(NO_ROLES).await;
+            return cx.reply_ephemeral(t!(lang, "mod.no-roles")).await;
         };
-        if let Some(why) = ranks.refusal(&self.user, "warn") {
+        if let Some(why) = ranks.refusal(lang, &self.user, "warn") {
             return cx.reply_ephemeral(why).await;
         }
         let act = Act::on(CaseKind::Warn, &self.user, Some(reason));
         let opened = record(&cx.app, guild, (moderator.id, &moderator.name), &act, None).await?;
         let warns = opened.active_warns;
-        let mut lines = vec![format!(
-            "They have **{warns}** active warn{}.",
-            if warns == 1 { "" } else { "s" }
-        )];
+        let mut lines = vec![t!(lang, "mod.active-warns", count = warns)];
         let ladder = cx.app.db.warn_thresholds(guild).await?;
         if let Some(rung) = reached(&ladder, warns) {
             lines.push(climb(cx, guild, &ranks, &self.user, rung, warns).await?);
         }
-        cx.reply(public(reply_embed(&opened.case, &lines))).await
+        cx.reply(public(reply_embed(&opened.case, &lines, lang))).await
     }
 }
 
@@ -81,14 +82,14 @@ async fn climb(
     rung: Threshold,
     warns: i64,
 ) -> anyhow::Result<String> {
+    let lang = cx.lang();
     let (kind, verb) = match rung.action {
-        Punishment::Timeout => (CaseKind::Timeout, "time out"),
+        Punishment::Timeout => (CaseKind::Timeout, "timeout"),
         Punishment::Kick => (CaseKind::Kick, "kick"),
         Punishment::Ban => (CaseKind::Ban, "ban"),
     };
-    let reached_text = format!("{warns} warns reached");
-    if let Some(why) = ranks.bot_may(user, verb) {
-        return Ok(format!("{reached_text}, but {}", lowercase_first(&why)));
+    if let Some(why) = ranks.bot_may(lang, user, verb) {
+        return Ok(t!(lang, "mod.ladder-stopped", count = warns, why = why));
     }
     if kind == CaseKind::Timeout
         && user
@@ -96,13 +97,16 @@ async fn climb(
             .as_ref()
             .is_some_and(|m| m.permissions.contains(Permissions::ADMINISTRATOR))
     {
-        return Ok(format!("{reached_text}, but administrators can't be timed out."));
+        return Ok(t!(lang, "mod.ladder-admin", count = warns));
     }
-    let mut act = Act::on(kind, user, Some(format!("Automatic: {}", rung.describe())));
+    // The case and the audit log are the server's record, in the server's language.
+    let server = cx.app.guild_lang(guild).await;
+    let described = words::rung(server, &rung);
+    let mut act = Act::on(kind, user, Some(t!(server, "mod.automatic", rung = described)));
     act.duration = rung.duration;
-    let audit = format!("{BOT_NAME}: {}", rung.describe());
+    let audit = format!("{BOT_NAME}: {described}");
     let told = if kind.tells_first() {
-        Some(tell(&cx.app, guild, &act).await)
+        tell(&cx.app, guild, &act).await
     } else {
         None
     };
@@ -117,33 +121,35 @@ async fn climb(
             .reason(&audit)
             .await
             .map(drop)
-            .map_err(|e| refusal(&e).to_owned()),
+            .map_err(|e| refusal(lang, &e)),
         Punishment::Ban => http
             .create_ban(Id::new(guild), user.resolved.id)
             .reason(&audit)
             .await
             .map(drop)
-            .map_err(|e| refusal(&e).to_owned()),
+            .map_err(|e| refusal(lang, &e)),
     };
     if let Err(why) = done {
-        return Ok(format!("{reached_text}, but Discord refused to {verb} them: {why}."));
+        if let Some(told) = &told {
+            take_back(&cx.app, told, kind).await;
+        }
+        return Ok(t!(lang, "mod.ladder-refused", count = warns, why = why));
     }
+    let told = kind.tells_first().then_some(told.is_some());
     let opened = record(&cx.app, guild, (cx.app.application_id.get(), BOT_NAME), &act, told).await?;
     let what = match (rung.action, rung.duration) {
-        (Punishment::Timeout, Some(d)) => format!("timed out for {}", format_duration(d)),
-        (Punishment::Ban, Some(d)) => format!("banned for {}", format_duration(d)),
-        (Punishment::Ban, None) => "banned".to_owned(),
-        _ => "kicked".to_owned(),
+        (Punishment::Timeout, Some(d)) => t!(lang, "mod.ladder-timed-out", duration = words::duration(lang, d)),
+        (Punishment::Ban, Some(d)) => t!(lang, "mod.ladder-banned-for", duration = words::duration(lang, d)),
+        (Punishment::Ban, None) => t!(lang, "mod.ladder-banned"),
+        _ => t!(lang, "mod.ladder-kicked"),
     };
-    Ok(format!("{reached_text}: {what} · case #{}", opened.case.number))
-}
-
-fn lowercase_first(text: &str) -> String {
-    let mut chars = text.chars();
-    match chars.next() {
-        Some(first) => first.to_lowercase().chain(chars).collect(),
-        None => String::new(),
-    }
+    Ok(t!(
+        lang,
+        "mod.ladder-done",
+        count = warns,
+        what = what,
+        number = opened.case.number
+    ))
 }
 
 #[derive(CommandModel, CreateCommand)]
@@ -160,37 +166,47 @@ pub struct Warnings {
 
 impl Warnings {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
-        let Some(guild) = permitted(cx, Permissions::MODERATE_MEMBERS, "Timeout Members").await? else {
+        let lang = cx.lang();
+        let Some(guild) = permitted(cx, Permissions::MODERATE_MEMBERS, "timeout-members").await? else {
             return Ok(());
         };
         let warns = cx.app.db.active_warns(guild, self.user.resolved.id.get()).await?;
         let name = resolved_display_name(&self.user);
         let text = if warns.is_empty() {
-            "No warns that count.".to_owned()
+            t!(lang, "mod.no-warns")
         } else {
             warns
                 .iter()
                 .take(20)
                 .map(|w| {
-                    format!(
-                        "**#{}** · {} · by {}\n> {}",
-                        w.number,
-                        relative(w.created_at),
-                        w.moderator_name,
-                        w.reason.as_deref().unwrap_or("No reason given").replace('\n', " ")
+                    let reason = match &w.reason {
+                        Some(reason) => reason.replace('\n', " "),
+                        None => t!(lang, "mod.no-reason"),
+                    };
+                    t!(
+                        lang,
+                        "mod.warn-line",
+                        number = w.number,
+                        when = relative(w.created_at),
+                        moderator = w.moderator_name,
+                        reason = reason
                     )
                 })
                 .collect::<Vec<_>>()
                 .join("\n")
         };
         let ladder = cx.app.db.warn_thresholds(guild).await?;
-        let mut embed = EmbedBuilder::new()
-            .color(WARN)
-            .title(format!("Warns of {} · {}", name.replace('*', ""), warns.len()))
-            .description(text);
+        let title = t!(
+            lang,
+            "mod.warns-title",
+            name = name.replace('*', ""),
+            count = warns.len()
+        );
+        let mut embed = EmbedBuilder::new().color(WARN).title(title).description(text);
         if !ladder.is_empty() {
-            let rungs: Vec<String> = ladder.iter().map(Threshold::describe).collect();
-            embed = embed.footer(EmbedFooterBuilder::new(format!("Ladder: {}", rungs.join(" · "))));
+            let rungs: Vec<String> = ladder.iter().map(|r| words::rung(lang, r)).collect();
+            let footer = t!(lang, "mod.ladder", rungs = rungs.join(" · "));
+            embed = embed.footer(EmbedFooterBuilder::new(footer));
         }
         cx.reply(private(embed.build())).await
     }
@@ -214,7 +230,8 @@ pub struct Unwarn {
 
 impl Unwarn {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
-        let Some(guild) = permitted(cx, Permissions::MODERATE_MEMBERS, "Timeout Members").await? else {
+        let lang = cx.lang();
+        let Some(guild) = permitted(cx, Permissions::MODERATE_MEMBERS, "timeout-members").await? else {
             return Ok(());
         };
         let reason = match check_reason(self.reason.as_deref()) {
@@ -223,17 +240,37 @@ impl Unwarn {
         };
         let moderator = Moderator::of(cx)?;
         let number = self.case.clamp(1, i64::from(i32::MAX)) as i32;
+        let warn = cx.app.db.case(guild, number).await?;
+        let Some(warn) = warn.filter(|c| c.kind() == Some(CaseKind::Warn) && c.active) else {
+            return cx.reply_ephemeral(t!(lang, "mod.not-a-warn", number = number)).await;
+        };
         // A moderator's own warns are for someone else to take back.
-        if cx
-            .app
-            .db
-            .case(guild, number)
-            .await?
-            .is_some_and(|c| c.target_id as u64 == moderator.id)
-        {
-            return cx.reply_ephemeral("You can't take back a warn of your own.").await;
+        let target = warn.target_id as u64;
+        if target == moderator.id {
+            return cx.reply_ephemeral(t!(lang, "mod.own-warn")).await;
         }
-        let details = format!("case #{number}");
+        // Like the warn itself: only over a member below you, and a warn given by someone below you.
+        let Some(ranks) = Ranks::read(&cx.app, guild, &moderator).await else {
+            return cx.reply_ephemeral(t!(lang, "mod.no-roles")).await;
+        };
+        let Some(member) = ranks.of(&cx.app, guild, target).await else {
+            return cx.reply_ephemeral(t!(lang, "mod.no-roles")).await;
+        };
+        if !outranks(ranks.owner, ranks.actor, member) {
+            return cx.reply_ephemeral(t!(lang, "mod.unwarn-above")).await;
+        }
+        let given_by = warn.moderator_id as u64;
+        if given_by != moderator.id && given_by != ranks.bot.id && given_by != 0 {
+            let Some(giver) = ranks.of(&cx.app, guild, given_by).await else {
+                return cx.reply_ephemeral(t!(lang, "mod.no-roles")).await;
+            };
+            if !outranks(ranks.owner, ranks.actor, giver) {
+                let text = t!(lang, "mod.unwarn-moderator", moderator = mention(given_by));
+                return cx.reply_ephemeral(text).await;
+            }
+        }
+        let server = cx.app.guild_lang(guild).await;
+        let details = t!(server, "mod.details.unwarn", number = number);
         let removed = cx
             .app
             .db
@@ -254,17 +291,11 @@ impl Unwarn {
             )
             .await?;
         let Some((_, opened)) = removed else {
-            return cx
-                .reply_ephemeral(format!("Case #{number} is not a warn that still counts."))
-                .await;
+            return cx.reply_ephemeral(t!(lang, "mod.not-a-warn", number = number)).await;
         };
         super::post_case(&cx.app, guild, &opened.case).await;
-        let warns = opened.active_warns;
-        let line = format!(
-            "They have **{warns}** active warn{} now.",
-            if warns == 1 { "" } else { "s" }
-        );
-        let mut embed = reply_embed(&opened.case, &[line]);
+        let line = t!(lang, "mod.active-warns-now", count = opened.active_warns);
+        let mut embed = reply_embed(&opened.case, &[line], lang);
         embed.color = Some(color(Some(CaseKind::Unwarn)));
         cx.reply(public(embed)).await
     }

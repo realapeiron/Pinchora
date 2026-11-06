@@ -11,14 +11,17 @@ mod channels;
 mod members;
 pub(crate) mod setup;
 mod warns;
+pub(crate) mod words;
 
 use std::{collections::HashMap, sync::Arc, time::Duration as StdDuration};
 
 use chrono::{DateTime, Duration, Utc};
 use moka::future::Cache as Moka;
 use pinchora_core::{
+    i18n::Lang,
     logging::LogCategory,
-    moderation::{CaseKind, Rank, format_duration, may_act},
+    moderation::{CaseKind, Rank, may_act},
+    t,
 };
 use pinchora_db::{CaseRow, NewCase, OpenedCase};
 use twilight_http::request::AuditLogReason;
@@ -26,7 +29,10 @@ use twilight_interactions::command::ResolvedUser;
 use twilight_model::{
     channel::message::{AllowedMentions, Embed},
     guild::Permissions,
-    id::Id,
+    id::{
+        Id,
+        marker::{ChannelMarker, MessageMarker},
+    },
     util::Timestamp,
 };
 use twilight_util::builder::embed::{EmbedBuilder, EmbedFieldBuilder, EmbedFooterBuilder};
@@ -38,6 +44,7 @@ pub(crate) use warns::{Unwarn, Warn, Warnings};
 
 use crate::{
     App, Cx,
+    leveling::private_channel,
     roles::error_code,
     util::{BRAND, DANGER, SUCCESS, WARN, mention, relative, resolved_display_name},
 };
@@ -53,13 +60,30 @@ const STAFF_LOG_DAYS: i64 = 180;
 const FORGET_EVERY: u32 = 120;
 
 const UNKNOWN_BAN: u64 = 10026;
+const UNKNOWN_MEMBER: u64 = 10007;
 const CANNOT_DM: u64 = 50007;
 
-/// What moderation remembers about servers for a little while: the roles with their positions, and
-/// the bot's own roles. The owner comes from [`App::guild_facts`].
+/// Permissions that make a member staff for the staff log: the ones that run or police a server.
+const STAFF_PERMISSIONS: Permissions = Permissions::ADMINISTRATOR
+    .union(Permissions::MANAGE_GUILD)
+    .union(Permissions::MANAGE_ROLES)
+    .union(Permissions::MANAGE_CHANNELS)
+    .union(Permissions::MANAGE_WEBHOOKS)
+    .union(Permissions::MANAGE_GUILD_EXPRESSIONS)
+    .union(Permissions::MANAGE_EVENTS)
+    .union(Permissions::MANAGE_THREADS)
+    .union(Permissions::MANAGE_MESSAGES)
+    .union(Permissions::MANAGE_NICKNAMES)
+    .union(Permissions::KICK_MEMBERS)
+    .union(Permissions::BAN_MEMBERS)
+    .union(Permissions::MODERATE_MEMBERS);
+
+/// What moderation remembers about servers for a little while: the roles with their positions and
+/// permissions, the bot's own roles, and who is staff. The owner comes from [`App::guild_facts`].
 pub(crate) struct ModState {
     roles: Moka<u64, Arc<HashMap<u64, RoleInfo>>>,
     mine: Moka<u64, Arc<Vec<u64>>>,
+    staff: Moka<(u64, u64), bool>,
 }
 
 impl ModState {
@@ -71,6 +95,10 @@ impl ModState {
                 .build(),
             mine: Moka::builder()
                 .max_capacity(20_000)
+                .time_to_live(StdDuration::from_secs(60))
+                .build(),
+            staff: Moka::builder()
+                .max_capacity(50_000)
                 .time_to_live(StdDuration::from_secs(60))
                 .build(),
         }
@@ -123,6 +151,41 @@ impl App {
             .await
             .map_err(|e| anyhow::anyhow!("{e:#}"))
     }
+
+    /// Whether `user` is staff on `guild`: the owner, or a member whose roles (with @everyone's) hold
+    /// one of [`STAFF_PERMISSIONS`]. Kept a minute; `false` when Discord could not say.
+    pub(crate) async fn is_staff(&self, guild: u64, user: u64) -> bool {
+        if let Some(known) = self.moderation.staff.get(&(guild, user)).await {
+            return known;
+        }
+        let found = async {
+            if self.guild_facts(guild).await.is_some_and(|f| f.owner == user) {
+                return Some(true);
+            }
+            let table = self.role_table(guild).await.ok()?;
+            let member = self
+                .http
+                .guild_member(Id::new(guild.max(1)), Id::new(user.max(1)))
+                .await
+                .ok()?
+                .model()
+                .await
+                .ok()?;
+            let held = member.roles.iter().map(|r| r.get()).chain([guild]);
+            let permissions = held
+                .filter_map(|r| table.get(&r))
+                .fold(Permissions::empty(), |all, r| all | r.permissions);
+            Some(permissions.intersects(STAFF_PERMISSIONS))
+        }
+        .await;
+        match found {
+            Some(staff) => {
+                self.moderation.staff.insert((guild, user), staff).await;
+                staff
+            }
+            None => false,
+        }
+    }
 }
 
 /// The position of the highest of `held` that the server has; 0 for none.
@@ -151,17 +214,18 @@ pub(crate) fn administrator(cx: &Cx) -> bool {
         .is_some_and(|p| p.contains(Permissions::ADMINISTRATOR))
 }
 
-/// The server, when the invoker has one of `needed`; otherwise they are refused privately (`name` names
-/// the permission) and `None` comes back. Outside a server everybody is refused.
+/// The server, when the invoker has one of `needed`; otherwise they are refused privately (`name` is
+/// the permission's key in `[mod.perm]`) and `None` comes back. Outside a server everybody is refused.
 pub(crate) async fn permitted(cx: &Cx, needed: Permissions, name: &str) -> anyhow::Result<Option<u64>> {
     let Some(guild) = cx.guild_id() else {
-        cx.reply_ephemeral("Moderation only works inside a server.").await?;
+        cx.reply_ephemeral(t!(cx.lang(), "mod.guild-only")).await?;
         return Ok(None);
     };
     if allowed(cx, needed) {
         return Ok(Some(guild));
     }
-    cx.reply_ephemeral(format!("You need the {name} permission to do that."))
+    let permission = words::permission(cx.lang(), name);
+    cx.reply_ephemeral(t!(cx.lang(), "mod.needs", permission = permission))
         .await?;
     Ok(None)
 }
@@ -196,9 +260,6 @@ pub(crate) struct Ranks {
     pub(crate) table: Arc<HashMap<u64, RoleInfo>>,
 }
 
-/// The sentence for a server whose roles could not be read.
-pub(crate) const NO_ROLES: &str = "I couldn't check the server's roles just now. Try again in a moment.";
-
 impl Ranks {
     pub(crate) async fn read(app: &App, guild: u64, moderator: &Moderator) -> Option<Self> {
         let (facts, table, mine) = tokio::join!(app.guild_facts(guild), app.role_table(guild), app.my_roles(guild));
@@ -223,9 +284,10 @@ impl Ranks {
         })
     }
 
-    /// Why the moderator may not `verb` `target`, if they may not. A user who is not a member is
-    /// below everyone (a ban by id); the owner, the moderator and the bot stay out of reach.
-    pub(crate) fn refusal(&self, target: &ResolvedUser, verb: &str) -> Option<String> {
+    /// Why the moderator may not `verb` (a key of `[mod.verb]`) `target`, if they may not. A user who
+    /// is not a member is below everyone (a ban by id); the owner, the moderator and the bot stay out of
+    /// reach.
+    pub(crate) fn refusal(&self, lang: Lang, target: &ResolvedUser, verb: &str) -> Option<String> {
         let top = match &target.member {
             Some(member) => self::top(&self.table, member.roles.iter().map(|r| r.get())),
             None => -1,
@@ -236,11 +298,11 @@ impl Ranks {
         };
         may_act(self.owner, self.actor, self.bot, rank)
             .err()
-            .map(|r| r.text(verb))
+            .map(|r| words::refusal(lang, r, verb))
     }
 
     /// Whether the bot itself may act on `target` (the warn ladder, where the bot is the moderator).
-    pub(crate) fn bot_may(&self, target: &ResolvedUser, verb: &str) -> Option<String> {
+    pub(crate) fn bot_may(&self, lang: Lang, target: &ResolvedUser, verb: &str) -> Option<String> {
         let top = target
             .member
             .as_ref()
@@ -251,7 +313,24 @@ impl Ranks {
         };
         may_act(self.owner, self.bot, self.bot, rank)
             .err()
-            .map(|r| r.text(verb))
+            .map(|r| words::refusal(lang, r, verb))
+    }
+
+    /// Where `user` stands, asked of Discord: their highest role, or below everyone when they are not
+    /// a member (any more). `None` when Discord could not say.
+    pub(crate) async fn of(&self, app: &App, guild: u64, user: u64) -> Option<Rank> {
+        match app.http.guild_member(Id::new(guild.max(1)), Id::new(user.max(1))).await {
+            Ok(response) => {
+                let member = response.model().await.ok()?;
+                let top = self::top(&self.table, member.roles.iter().map(|r| r.get()));
+                Some(Rank { id: user, top })
+            }
+            Err(error) if error_code(&error) == Some(UNKNOWN_MEMBER) => Some(Rank { id: user, top: -1 }),
+            Err(error) => {
+                tracing::debug!(%error, guild, "could not look a member up");
+                None
+            }
+        }
     }
 }
 
@@ -310,7 +389,7 @@ pub(crate) async fn record(
     let case = &opened.case;
     let told = match told {
         Some(told) => Some(told),
-        None if act.kind.tells_member() => Some(tell(app, guild, act).await),
+        None if act.kind.tells_member() => Some(tell(app, guild, act).await.is_some()),
         None => None,
     };
     if let Some(told) = told
@@ -323,47 +402,79 @@ pub(crate) async fn record(
     Ok(opened)
 }
 
-/// Writes to the member about what was done, when the server lets Pinchora. Whether it went out.
-pub(crate) async fn tell(app: &App, guild: u64, act: &Act) -> bool {
+/// A direct message that went out, so it can be taken back when the action fails after it.
+pub(crate) struct Told {
+    channel: Id<ChannelMarker>,
+    message: Id<MessageMarker>,
+    lang: Lang,
+    server: String,
+}
+
+/// The language a member reads Pinchora in: their own pick, else the server's.
+async fn member_lang(app: &App, guild: u64, user: u64) -> Lang {
+    match app.user_lang_choice(user).await {
+        Some(lang) => lang,
+        None => app.guild_lang(guild).await,
+    }
+}
+
+/// Writes to the member about what was done, when the server lets Pinchora and the member takes
+/// direct messages from servers (`/privacy`). The message, when it went out.
+pub(crate) async fn tell(app: &App, guild: u64, act: &Act) -> Option<Told> {
     match app.db.mod_settings(guild).await {
-        Ok(settings) if !settings.dm_members => return false,
+        Ok(settings) if !settings.dm_members => return None,
         Ok(_) => {}
         Err(error) => {
             tracing::warn!(%error, guild, "mod settings unavailable");
-            return false;
+            return None;
         }
     }
+    let channel = private_channel(app, act.target).await?;
+    let lang = member_lang(app, guild, act.target).await;
     let server = match app.guild_facts(guild).await {
-        Some(facts) => facts.name.clone(),
-        None => "a server".to_owned(),
+        Some(facts) => facts.name.replace('*', ""),
+        None => t!(lang, "mod.dm.a-server"),
     };
-    let embed = dm_embed(act, &server, app.now());
-    let sent = async {
-        let channel = app
-            .http
-            .create_private_channel(Id::new(act.target.max(1)))
-            .await?
-            .model()
-            .await?;
-        let mentions = AllowedMentions::default();
-        app.http
-            .create_message(channel.id)
-            .embeds(&[embed])
-            .allowed_mentions(Some(&mentions))
-            .await?;
-        anyhow::Ok(())
-    }
-    .await;
-    match sent {
-        Ok(()) => true,
+    let embed = dm_embed(act, &server, app.now(), lang);
+    let mentions = AllowedMentions::default();
+    let sent = app
+        .http
+        .create_message(channel)
+        .embeds(&[embed])
+        .allowed_mentions(Some(&mentions))
+        .await;
+    let message = match sent {
+        Ok(response) => response.model().await.ok()?,
         Err(error) => {
-            let closed = error
-                .downcast_ref::<twilight_http::Error>()
-                .and_then(error_code)
-                .is_some_and(|code| code == CANNOT_DM);
+            let closed = error_code(&error) == Some(CANNOT_DM);
             tracing::debug!(%error, closed, guild, "could not tell the member");
-            false
+            return None;
         }
+    };
+    Some(Told {
+        channel,
+        message: message.id,
+        lang,
+        server,
+    })
+}
+
+/// Turns a direct message sent before a ban or kick into one that says it did not go through.
+pub(crate) async fn take_back(app: &App, told: &Told, kind: CaseKind) {
+    let key = if kind == CaseKind::Kick {
+        "mod.dm.kick-failed"
+    } else {
+        "mod.dm.ban-failed"
+    };
+    let text = t!(told.lang, key, server = told.server);
+    let embed = EmbedBuilder::new().color(BRAND).description(text).build();
+    if let Err(error) = app
+        .http
+        .update_message(told.channel, told.message)
+        .embeds(Some(&[embed]))
+        .await
+    {
+        tracing::debug!(%error, "could not take the direct message back");
     }
 }
 
@@ -383,16 +494,18 @@ async fn mod_log_channel(app: &App, guild: u64) -> Option<u64> {
     }
 }
 
-/// Posts a case to the mod-log and remembers the post. A mod-log that is gone or closed is skipped.
+/// Posts a case to the mod-log, in the server's language, and remembers the post. A mod-log that is
+/// gone or closed is skipped.
 pub(crate) async fn post_case(app: &App, guild: u64, case: &CaseRow) {
     let Some(channel) = mod_log_channel(app, guild).await else {
         return;
     };
+    let embed = case_embed(case, app.guild_lang(guild).await);
     let mentions = AllowedMentions::default();
     let posted = app
         .http
         .create_message(Id::new(channel.max(1)))
-        .embeds(&[case_embed(case)])
+        .embeds(&[embed])
         .allowed_mentions(Some(&mentions))
         .await;
     match posted {
@@ -417,7 +530,7 @@ pub async fn refresh_post(app: &App, case: &CaseRow) {
     let (Some(channel), Some(message)) = (case.log_channel_id, case.log_message_id) else {
         return;
     };
-    let embed = case_embed(case);
+    let embed = case_embed(case, app.guild_lang(case.guild_id as u64).await);
     if let Err(error) = app
         .http
         .update_message(Id::new((channel as u64).max(1)), Id::new((message as u64).max(1)))
@@ -439,30 +552,27 @@ pub(crate) fn color(kind: Option<CaseKind>) -> u32 {
 }
 
 /// What a case did, in one line: "**Mia** was banned for 7d".
-pub(crate) fn summary(case: &CaseRow) -> String {
+pub(crate) fn summary(case: &CaseRow, lang: Lang) -> String {
     let who = format!("**{}**", case.target_name.replace('*', ""));
     let channel = format!("<#{}>", case.target_id);
-    let for_how_long = case
-        .duration()
-        .map(|d| format!(" for {}", format_duration(d)))
-        .unwrap_or_default();
     let details = case.details.as_deref().unwrap_or_default();
-    match case.kind() {
-        Some(CaseKind::Ban) => format!("{who} was banned{for_how_long}"),
-        Some(CaseKind::Unban) => format!("{who} was unbanned"),
-        Some(CaseKind::Kick) => format!("{who} was kicked"),
-        Some(CaseKind::Timeout) => format!("{who} was timed out{for_how_long}"),
-        Some(CaseKind::Untimeout) => format!("{who}'s timeout was removed"),
-        Some(CaseKind::Warn) => format!("{who} was warned"),
-        Some(CaseKind::Unwarn) => format!("A warn of {who} was removed ({details})"),
-        Some(CaseKind::Purge) => format!("{details} in {channel}"),
-        Some(CaseKind::Slowmode) => format!("Slowmode in {channel}: {details}"),
-        Some(CaseKind::Lock) => format!("{channel} was locked"),
-        Some(CaseKind::Unlock) => format!("{channel} was unlocked"),
-        Some(CaseKind::Nick) => format!("{who}: {details}"),
-        Some(CaseKind::RoleAdd) => format!("{who} was given {details}"),
-        Some(CaseKind::RoleRemove) => format!("{who} lost {details}"),
-        None => format!("{} on {who}", case.kind),
+    let for_how_long = case.duration().map(|d| words::duration(lang, d));
+    match (case.kind(), for_how_long) {
+        (Some(CaseKind::Ban), Some(duration)) => t!(lang, "mod.summary.ban-for", who = who, duration = duration),
+        (Some(CaseKind::Timeout), Some(duration)) => {
+            t!(lang, "mod.summary.timeout-for", who = who, duration = duration)
+        }
+        (Some(CaseKind::Purge | CaseKind::Slowmode | CaseKind::Lock | CaseKind::Unlock), _) => {
+            let key = format!("mod.summary.{}", case.kind);
+            t!(lang, &key, channel = channel, details = details)
+        }
+        (Some(kind), _) => t!(
+            lang,
+            &format!("mod.summary.{}", kind.key()),
+            who = who,
+            details = details
+        ),
+        (None, _) => t!(lang, "mod.summary.other", kind = case.kind, who = who),
     }
 }
 
@@ -471,13 +581,11 @@ fn timestamp(at: DateTime<Utc>) -> Option<Timestamp> {
 }
 
 /// The mod-log entry, and what `/case` shows.
-pub(crate) fn case_embed(case: &CaseRow) -> Embed {
+pub(crate) fn case_embed(case: &CaseRow, lang: Lang) -> Embed {
     let kind = case.kind();
-    let label: &str = match kind {
-        Some(kind) => kind.label(),
-        None => &case.kind,
-    };
-    let target = if kind.is_some_and(CaseKind::on_channel) {
+    let label = words::kind(lang, kind, &case.kind);
+    let on_channel = kind.is_some_and(CaseKind::on_channel);
+    let target = if on_channel {
         format!("<#{}>", case.target_id)
     } else {
         format!("{} · {}", mention(case.target_id), case.target_name)
@@ -489,38 +597,47 @@ pub(crate) fn case_embed(case: &CaseRow) -> Embed {
     };
     let mut embed = EmbedBuilder::new()
         .color(color(kind))
-        .title(format!("Case #{} · {label}", case.number))
-        .description(summary(case))
+        .title(t!(lang, "mod.case.title", number = case.number, label = label))
+        .description(summary(case, lang))
         .field(
             EmbedFieldBuilder::new(
-                if kind.is_some_and(CaseKind::on_channel) {
-                    "Channel"
-                } else {
-                    "Member"
-                },
+                t!(
+                    lang,
+                    if on_channel {
+                        "mod.case.channel"
+                    } else {
+                        "mod.case.member"
+                    }
+                ),
                 target,
             )
             .inline(),
         )
-        .field(EmbedFieldBuilder::new("Moderator", moderator).inline())
+        .field(EmbedFieldBuilder::new(t!(lang, "mod.case.moderator"), moderator).inline())
         .field(EmbedFieldBuilder::new(
-            "Reason",
-            case.reason.clone().unwrap_or_else(|| "*No reason given*".to_owned()),
+            t!(lang, "mod.case.reason"),
+            case.reason.clone().unwrap_or_else(|| t!(lang, "mod.case.no-reason")),
         ));
     if let Some(duration) = case.duration() {
-        let mut text = format_duration(duration);
-        if let Some(ends) = case.expires_at {
-            text.push_str(&format!(" · ends {}", relative(ends)));
-        }
-        embed = embed.field(EmbedFieldBuilder::new("Duration", text).inline());
+        let text = match case.expires_at {
+            Some(ends) => t!(
+                lang,
+                "mod.case.ends",
+                duration = words::duration(lang, duration),
+                when = relative(ends)
+            ),
+            None => words::duration(lang, duration),
+        };
+        embed = embed.field(EmbedFieldBuilder::new(t!(lang, "mod.case.duration"), text).inline());
     }
     if case.kind() == Some(CaseKind::Warn) && !case.active {
-        embed = embed.field(EmbedFieldBuilder::new("Status", "Removed").inline());
+        embed = embed.field(EmbedFieldBuilder::new(t!(lang, "mod.case.status"), t!(lang, "mod.case.removed")).inline());
     }
     if case.dm_sent == Some(false) {
-        embed = embed.field(EmbedFieldBuilder::new("Direct message", "Not delivered").inline());
+        embed =
+            embed.field(EmbedFieldBuilder::new(t!(lang, "mod.case.dm"), t!(lang, "mod.case.not-delivered")).inline());
     }
-    embed = embed.footer(EmbedFooterBuilder::new(format!("ID {}", case.target_id)));
+    embed = embed.footer(EmbedFooterBuilder::new(t!(lang, "mod.case.id", id = case.target_id)));
     if let Some(at) = timestamp(case.created_at) {
         embed = embed.timestamp(at);
     }
@@ -528,8 +645,13 @@ pub(crate) fn case_embed(case: &CaseRow) -> Embed {
 }
 
 /// The answer in the channel: what was done, the case number, and anything else worth a line.
-pub(crate) fn reply_embed(case: &CaseRow, extra: &[String]) -> Embed {
-    let mut text = format!("{} · case #{}", summary(case), case.number);
+pub(crate) fn reply_embed(case: &CaseRow, extra: &[String], lang: Lang) -> Embed {
+    let mut text = t!(
+        lang,
+        "mod.case.reply",
+        summary = summary(case, lang),
+        number = case.number
+    );
     if let Some(reason) = &case.reason {
         text.push_str(&format!("\n> {}", reason.replace('\n', " ")));
     }
@@ -541,36 +663,39 @@ pub(crate) fn reply_embed(case: &CaseRow, extra: &[String]) -> Embed {
 }
 
 /// The direct message to the member.
-fn dm_embed(act: &Act, server: &str, now: DateTime<Utc>) -> Embed {
-    let server = format!("**{}**", server.replace('*', ""));
-    let (title, color) = match act.kind {
-        CaseKind::Ban if act.duration.is_some() => (format!("You were banned from {server} for a while"), DANGER),
-        CaseKind::Ban => (format!("You were banned from {server}"), DANGER),
-        CaseKind::Kick => (format!("You were kicked from {server}"), DANGER),
-        CaseKind::Timeout => (format!("You were timed out in {server}"), WARN),
-        CaseKind::Untimeout => (format!("Your timeout in {server} was removed"), SUCCESS),
-        CaseKind::Warn => (format!("You were warned in {server}"), WARN),
-        _ => (format!("A moderator acted on your membership of {server}"), BRAND),
+fn dm_embed(act: &Act, server: &str, now: DateTime<Utc>, lang: Lang) -> Embed {
+    let (key, color) = match act.kind {
+        CaseKind::Ban if act.duration.is_some() => ("mod.dm.ban-for", DANGER),
+        CaseKind::Ban => ("mod.dm.ban", DANGER),
+        CaseKind::Kick => ("mod.dm.kick", DANGER),
+        CaseKind::Timeout => ("mod.dm.timeout", WARN),
+        CaseKind::Untimeout => ("mod.dm.untimeout", SUCCESS),
+        CaseKind::Warn => ("mod.dm.warn", WARN),
+        _ => ("mod.dm.other", BRAND),
     };
     let mut embed = EmbedBuilder::new()
         .color(color)
-        .description(title)
+        .description(t!(lang, key, server = server))
         .field(EmbedFieldBuilder::new(
-            "Reason",
-            act.reason.clone().unwrap_or_else(|| "*No reason given*".to_owned()),
+            t!(lang, "mod.case.reason"),
+            act.reason.clone().unwrap_or_else(|| t!(lang, "mod.case.no-reason")),
         ));
     if let Some(duration) = act.duration {
-        embed = embed.field(EmbedFieldBuilder::new(
-            "Duration",
-            format!("{} · ends {}", format_duration(duration), relative(now + duration)),
-        ));
+        let text = t!(
+            lang,
+            "mod.case.ends",
+            duration = words::duration(lang, duration),
+            when = relative(now + duration)
+        );
+        embed = embed.field(EmbedFieldBuilder::new(t!(lang, "mod.case.duration"), text));
     }
     embed.build()
 }
 
-/// Lifts the temporary bans whose time is up: each is claimed by one pod, lifted on Discord, and
+/// Lifts the temporary bans whose time is up: each is claimed by one pod, ended in the database right
+/// before Discord is asked (a ban lifted or replaced meanwhile is skipped), lifted on Discord, and
 /// closed with an unban case. A ban Discord no longer has counts as lifted; one Discord refuses to
-/// lift waits an hour.
+/// lift stands again and waits an hour.
 pub async fn lift_expired_bans(app: &Arc<App>) -> anyhow::Result<usize> {
     let mut lifted = 0;
     loop {
@@ -578,10 +703,16 @@ pub async fn lift_expired_bans(app: &Arc<App>) -> anyhow::Result<usize> {
         let full = due.len() as i64 == BATCH;
         for ban in due {
             let guild = ban.guild_id as u64;
+            // Taken off right before Discord is asked: a ban lifted or replaced since the claim stays.
+            if !app.db.close_ban(guild, ban.number).await? {
+                continue;
+            }
+            let lang = app.guild_lang(guild).await;
+            let audit = t!(lang, "mod.temp-ban-ended-audit");
             let done = app
                 .http
                 .delete_ban(Id::new(guild.max(1)), Id::new((ban.target_id as u64).max(1)))
-                .reason("Temporary ban ended")
+                .reason(&audit)
                 .await;
             match done {
                 Ok(_) => {}
@@ -596,7 +727,7 @@ pub async fn lift_expired_bans(app: &Arc<App>) -> anyhow::Result<usize> {
                 kind: CaseKind::Unban,
                 target: ban.target_id as u64,
                 target_name: ban.target_name.clone(),
-                reason: Some(format!("Temporary ban ended (case #{})", ban.number)),
+                reason: Some(t!(lang, "mod.temp-ban-ended", number = ban.number)),
                 duration: None,
                 details: None,
             };
@@ -609,6 +740,31 @@ pub async fn lift_expired_bans(app: &Arc<App>) -> anyhow::Result<usize> {
     }
     metrics::counter!("pinchora_temp_bans_lifted_total").increment(lifted as u64);
     Ok(lifted)
+}
+
+/// Someone lifted a member's ban on Discord: by hand, another bot or Pinchora. Unless the member is
+/// banned again by now, none of their ban cases stands any more, so the ticker never lifts a ban made
+/// after this one ended. A ban that stands again is left to the audit log entry ([`unbanned_by`]).
+pub(crate) async fn ban_removed(app: &App, guild: u64, user: u64) {
+    match app.http.ban(Id::new(guild.max(1)), Id::new(user.max(1))).await {
+        Ok(_) => return,
+        Err(error) if error_code(&error) == Some(UNKNOWN_BAN) => {}
+        Err(error) => tracing::debug!(%error, guild, "could not check the ban; ending the cases anyway"),
+    }
+    if let Err(error) = app.db.end_bans(guild, user, None).await {
+        tracing::warn!(%error, guild, "ban cases not ended");
+    }
+}
+
+/// The audit log says `actor` lifted a member's ban at `at`. When that was not Pinchora (whose own
+/// unbans close their cases), the bans opened before it end: a ban made since, by anyone, stands.
+pub(crate) async fn unbanned_by(app: &App, guild: u64, user: u64, actor: u64, at: DateTime<Utc>) {
+    if actor == app.application_id.get() {
+        return;
+    }
+    if let Err(error) = app.db.end_bans(guild, user, Some(at)).await {
+        tracing::warn!(%error, guild, "ban cases not ended");
+    }
 }
 
 /// Runs [`lift_expired_bans`] every 30 seconds on every pod, and forgets old staff log lines now and then.
@@ -661,28 +817,31 @@ mod tests {
 
     #[test]
     fn every_kind_reads_as_a_sentence() {
-        assert_eq!(summary(&case("ban", None, Some(604_800))), "**Mia** was banned for 1w");
         assert_eq!(
-            summary(&case("timeout", None, Some(3_600))),
+            summary(&case("ban", None, Some(604_800)), Lang::En),
+            "**Mia** was banned for 1w"
+        );
+        assert_eq!(
+            summary(&case("timeout", None, Some(3_600)), Lang::En),
             "**Mia** was timed out for 1h"
         );
         assert_eq!(
-            summary(&case("purge", Some("Deleted 12 messages"), None)),
+            summary(&case("purge", Some("Deleted 12 messages"), None), Lang::En),
             "Deleted 12 messages in <#42>"
         );
-        assert_eq!(summary(&case("lock", None, None)), "<#42> was locked");
+        assert_eq!(summary(&case("lock", None, None), Lang::En), "<#42> was locked");
         assert_eq!(
-            summary(&case("role_add", Some("<@&5>"), None)),
+            summary(&case("role_add", Some("<@&5>"), None), Lang::En),
             "**Mia** was given <@&5>"
         );
         for kind in CaseKind::ALL {
-            assert!(!summary(&case(kind.key(), Some("x"), None)).is_empty());
+            assert!(!summary(&case(kind.key(), Some("x"), None), Lang::En).is_empty());
         }
     }
 
     #[test]
     fn the_mod_log_entry_has_the_case_number_moderator_and_reason() {
-        let embed = case_embed(&case("ban", None, Some(86_400)));
+        let embed = case_embed(&case("ban", None, Some(86_400)), Lang::En);
         assert_eq!(embed.title.as_deref(), Some("Case #7 · Ban"));
         let field = |name: &str| embed.fields.iter().find(|f| f.name == name).map(|f| f.value.clone());
         assert_eq!(field("Member").as_deref(), Some("<@42> · Mia"));
@@ -690,7 +849,10 @@ mod tests {
         assert_eq!(field("Reason").as_deref(), Some("spam"));
         assert_eq!(field("Duration").as_deref(), Some("1d"));
         assert_eq!(field("Direct message").as_deref(), Some("Not delivered"));
-        let channel = case_embed(&case("lock", None, None));
+        let channel = case_embed(&case("lock", None, None), Lang::En);
         assert_eq!(channel.fields[0].name, "Channel");
+        let turkish = case_embed(&case("ban", None, Some(86_400)), Lang::Tr);
+        assert_eq!(turkish.title.as_deref(), Some("Vaka #7 · Yasak"));
+        assert_eq!(turkish.description.as_deref(), Some("**Mia** 1 gün süreyle yasaklandı"));
     }
 }

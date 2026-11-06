@@ -189,6 +189,88 @@ async fn temporary_bans_are_lifted_once_and_a_new_ban_replaces_the_old_end() {
     assert!(soon.iter().all(|c| c.guild_id != guild as i64));
 }
 
+/// The ticker takes a ban off right before it asks Discord, so a ban lifted (or replaced) after the claim
+/// is left alone and none is lifted twice; one Discord refused stands again unless a newer ban came; and a
+/// ban lifted by hand ends only the bans opened before it.
+#[tokio::test]
+async fn the_ticker_rechecks_each_ban_and_a_hand_unban_ends_the_older_ones() {
+    let Some(db) = db().await else { return };
+    let [guild, mia, ana] = ids();
+    let now = Utc::now();
+    let temp = |target| NewCase {
+        duration: Some(Duration::minutes(1)),
+        expires_at: Some(now - Duration::seconds(1)),
+        ..case(guild, CaseKind::Ban, target)
+    };
+    let mia_ban = db.open_case(&temp(mia)).await.unwrap().case;
+    let ana_ban = db.open_case(&temp(ana)).await.unwrap().case;
+    let claimed = db.claim_expired_bans(now, 100).await.unwrap();
+    assert_eq!(claimed.iter().filter(|c| c.guild_id == guild as i64).count(), 2);
+
+    // Mia was unbanned by hand after the claim: nothing left for the ticker to lift.
+    assert_eq!(db.end_bans(guild, mia, None).await.unwrap(), 1);
+    assert!(!db.close_ban(guild, mia_ban.number).await.unwrap());
+    // Ana's is taken off once, never twice.
+    assert!(db.close_ban(guild, ana_ban.number).await.unwrap());
+    assert!(!db.close_ban(guild, ana_ban.number).await.unwrap());
+    // Discord refused to lift it: it stands again, leased for an hour.
+    db.postpone_lift(guild, ana_ban.number).await.unwrap();
+    assert!(db.case(guild, ana_ban.number).await.unwrap().unwrap().active);
+    let soon = db.claim_expired_bans(now + Duration::minutes(5), 100).await.unwrap();
+    assert!(soon.iter().all(|c| c.guild_id != guild as i64));
+    // Refused again, but banned for good meanwhile: the newer ban decides.
+    assert!(db.close_ban(guild, ana_ban.number).await.unwrap());
+    let newer = db.open_case(&case(guild, CaseKind::Ban, ana)).await.unwrap().case;
+    db.postpone_lift(guild, ana_ban.number).await.unwrap();
+    assert!(!db.case(guild, ana_ban.number).await.unwrap().unwrap().active);
+    // An unban by hand from before the newer ban leaves it standing; one after it ends it.
+    let before = newer.created_at - Duration::milliseconds(1);
+    assert_eq!(db.end_bans(guild, ana, Some(before)).await.unwrap(), 0);
+    assert!(db.case(guild, newer.number).await.unwrap().unwrap().active);
+    assert_eq!(db.end_bans(guild, ana, None).await.unwrap(), 1);
+}
+
+/// What a lock took is remembered on its case and read back by the next unlock, until an unlock comes.
+#[tokio::test]
+async fn a_lock_remembers_what_it_took() {
+    let Some(db) = db().await else { return };
+    let [guild, channel] = ids();
+    assert_eq!(db.lock_state(guild, channel).await.unwrap(), None, "never locked here");
+    let lock = db.open_case(&case(guild, CaseKind::Lock, channel)).await.unwrap().case;
+    assert_eq!(
+        db.lock_state(guild, channel).await.unwrap(),
+        None,
+        "nothing remembered yet"
+    );
+    db.set_lock_state(guild, lock.number, 2048, 1 << 35).await.unwrap();
+    assert_eq!(db.lock_state(guild, channel).await.unwrap(), Some((2048, 1 << 35)));
+    db.open_case(&case(guild, CaseKind::Unlock, channel)).await.unwrap();
+    assert_eq!(db.lock_state(guild, channel).await.unwrap(), None, "unlocked since");
+}
+
+/// Servers that logged before the detailed log keep their four old groups and nothing newer: the
+/// migration switches off exactly the events no older switch covers.
+#[test]
+fn servers_that_logged_before_keep_only_the_old_four_on() {
+    let sql = include_str!("../../../migrations/0044_moderation.sql");
+    let list = sql
+        .split("SELECT id, ARRAY[")
+        .nth(1)
+        .and_then(|rest| rest.split(']').next())
+        .expect("the backfill's list");
+    let off: Vec<&str> = list
+        .split(',')
+        .map(|key| key.trim().trim_matches('\''))
+        .filter(|key| !key.is_empty())
+        .collect();
+    let newer: Vec<&str> = LogEvent::ALL
+        .into_iter()
+        .filter(|e| e.group().is_none())
+        .map(LogEvent::key)
+        .collect();
+    assert_eq!(off, newer);
+}
+
 #[tokio::test]
 async fn the_warn_ladder_holds_ten_rungs_one_per_count() {
     let Some(db) = db().await else { return };

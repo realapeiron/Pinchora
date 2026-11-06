@@ -72,12 +72,15 @@ impl Sim {
         message
     }
 
+    /// An audit log entry made now (its id is a snowflake of this moment).
     async fn audit(&self, kind: u16, actor: u64, target: u64, changes: Value, reason: Option<&str>) {
+        let now = self.app.now().timestamp_millis() - 1_420_070_400_000;
+        let id = ((now as u64) << 22) | (unique() & 0x3f_ffff);
         let entry: GuildAuditLogEntryCreate = serde_json::from_value(json!({
             "action_type": kind,
             "changes": changes,
             "guild_id": self.guild.to_string(),
-            "id": unique().to_string(),
+            "id": id.to_string(),
             "target_id": target.to_string(),
             "user_id": actor.to_string(),
             "reason": reason,
@@ -923,18 +926,242 @@ async fn temporary_bans_end_on_the_ticker_with_a_case_of_their_own() {
     sim.app.shift_clock(chrono::Duration::minutes(-2));
 }
 
+/// `/unwarn` and `/reason` follow the hierarchy of the case: a junior moderator can neither take back nor
+/// reword a senior's warn, the senior can do both to the junior's, and everyone may reword their own.
+#[tokio::test]
+async fn unwarn_and_reason_follow_the_hierarchy_of_the_case() {
+    let Some(mut sim) = Sim::new("unwarn_and_reason_follow_the_hierarchy_of_the_case").await else {
+        return;
+    };
+    let (senior, junior, mia, boss) = (unique(), unique(), unique(), unique());
+    let (senior_role, junior_role, boss_role) = (unique(), unique(), unique());
+    sim.guild_role(senior_role, "Senior", 8);
+    sim.guild_role(junior_role, "Junior", 5);
+    sim.guild_role(boss_role, "Boss", 6);
+    for (who, role) in [(senior, senior_role), (junior, junior_role), (boss, boss_role)] {
+        sim.mock.member_roles.lock().unwrap().insert(who, vec![role]);
+    }
+    sim.permissions = STAFF;
+    let warn = |user: u64| json!([user_option("user", user), text_option("reason", "Spam")]);
+    let as_senior = |sim: &mut Sim| sim.roles = vec![senior_role];
+    let as_junior = |sim: &mut Sim| sim.roles = vec![junior_role];
+
+    as_senior(&mut sim);
+    sim.command_resolved(senior, "warn", warn(mia), member(mia, "Mia"))
+        .await;
+    let boss_member = someone(boss, "Boss", Some((&[boss_role], 0, None)));
+    sim.command_resolved(senior, "warn", warn(boss), boss_member).await;
+    as_junior(&mut sim);
+    sim.command_resolved(junior, "warn", warn(mia), member(mia, "Mia"))
+        .await;
+
+    // The junior and the senior's warn of Mia (case #1), and the warn of someone above the junior (#2).
+    let unwarn = |case: i64| json!([int_option("case", case)]);
+    let reason = |case: i64| json!([int_option("id", case), text_option("reason", "Reworded")]);
+    let refused = sim.command(junior, "unwarn", unwarn(1)).await;
+    assert!(
+        refused.ephemeral && refused.content().contains(&format!("given by <@{senior}>")),
+        "{}",
+        refused.content()
+    );
+    let refused = sim.command(junior, "unwarn", unwarn(2)).await;
+    assert!(
+        refused.content().contains("their highest role is not below yours"),
+        "{}",
+        refused.content()
+    );
+    let refused = sim.command(junior, "reason", reason(1)).await;
+    assert!(
+        refused.ephemeral
+            && refused
+                .content()
+                .contains(&format!("Only <@{senior}>, who opened case #1")),
+        "{}",
+        refused.content()
+    );
+    // Their own case is theirs to reword.
+    let own = sim.command(junior, "reason", reason(3)).await;
+    assert_eq!((own.ephemeral, own.title()), (true, "Case #3 · Warn"));
+    assert_eq!(own.field("Reason"), "Reworded");
+
+    // The senior sits above the junior and both members.
+    as_senior(&mut sim);
+    let taken = sim.command(senior, "unwarn", unwarn(3)).await;
+    assert!(
+        taken.description().contains("A warn of **Mia** was removed (case #3)"),
+        "{}",
+        taken.description()
+    );
+    let reworded = sim.command(senior, "reason", reason(1)).await;
+    assert_eq!(reworded.field("Reason"), "Reworded");
+    let warns = sim.cases().await;
+    let active: Vec<i32> = warns
+        .iter()
+        .filter(|c| c.kind == "warn" && c.active)
+        .map(|c| c.number)
+        .collect();
+    assert_eq!(active, [2, 1], "only the junior's warn was taken back");
+}
+
+/// A ban Discord refuses after the member was told turns the message into one that says so; a member
+/// who switched server DMs off (`/privacy`) is not written to at all.
+#[tokio::test]
+async fn a_refused_ban_takes_its_message_back_and_server_dms_off_is_honoured() {
+    let Some(mut sim) = Sim::new("a_refused_ban_takes_its_message_back_and_server_dms_off_is_honoured").await else {
+        return;
+    };
+    let (moderator, mia, quiet, mod_role) = (unique(), unique(), unique(), unique());
+    sim.guild_role(mod_role, "Moderators", 5);
+    sim.roles = vec![mod_role];
+    sim.permissions = STAFF;
+    sim.mock.bans_refused.store(true, Ordering::SeqCst);
+    let ban = |user: u64| json!([user_option("user", user), text_option("reason", "Raid")]);
+    let refused = sim
+        .command_resolved(moderator, "ban", ban(mia), member(mia, "Mia"))
+        .await;
+    sim.mock.bans_refused.store(false, Ordering::SeqCst);
+    assert!(
+        refused.ephemeral
+            && refused.content().contains("Discord refused the ban")
+            && refused.content().contains("told them it did not go through"),
+        "{}",
+        refused.content()
+    );
+    let posts = sim.posts();
+    let to_mia: Vec<&Post> = posts.iter().filter(|p| p.channel == mia).collect();
+    assert_eq!(to_mia.len(), 2, "the message, then its correction");
+    assert!(
+        to_mia[0].embed()["description"]
+            .as_str()
+            .unwrap()
+            .contains("You were banned from")
+    );
+    assert_eq!(to_mia[1].method, Method::PATCH);
+    assert!(
+        to_mia[1].embed()["description"]
+            .as_str()
+            .unwrap()
+            .contains("tried to ban you, but it did not go through")
+    );
+    assert!(sim.cases().await.is_empty(), "no case for a ban that did not happen");
+
+    sim.command(quiet, "privacy", json!([bool_option("server_dms", false)]))
+        .await;
+    sim.posts();
+    let warned = sim
+        .command_resolved(
+            moderator,
+            "warn",
+            json!([user_option("user", quiet), text_option("reason", "Spam")]),
+            member(quiet, "Quiet"),
+        )
+        .await;
+    assert!(warned.description().contains("was warned"), "{}", warned.description());
+    assert!(
+        sim.posts().iter().all(|p| p.channel != quiet),
+        "server DMs are off for them"
+    );
+    assert_eq!(sim.cases().await[0].dm_sent, Some(false));
+}
+
+/// `/unlock` gives @everyone back exactly what the lock took: here an explicit Send Messages.
+#[tokio::test]
+async fn unlock_puts_back_what_everyone_had() {
+    let Some(mut sim) = Sim::new("unlock_puts_back_what_everyone_had").await else {
+        return;
+    };
+    let moderator = unique();
+    sim.permissions = STAFF;
+    let here = sim.channel;
+    let send = 1u64 << 11;
+    let channel = json!({
+        "id": here.to_string(), "type": 0, "name": "general", "guild_id": sim.guild.to_string(),
+        "permission_overwrites": [{ "id": sim.guild.to_string(), "type": 0, "allow": send.to_string(), "deny": "0" }],
+    });
+    sim.mock.channels.lock().unwrap().insert(here, channel);
+    sim.command(moderator, "lock", json!([])).await;
+    let calls = sim.mod_calls();
+    assert!(calls[0].contains("allow=\"0\""), "the lock takes the allow: {calls:?}");
+    let unlocked = sim.command(moderator, "unlock", json!([])).await;
+    assert!(
+        unlocked.description().contains("was unlocked"),
+        "{}",
+        unlocked.description()
+    );
+    assert_eq!(
+        sim.mod_calls(),
+        [format!("overwrite {here} {} allow=\"{send}\" deny=\"0\"", sim.guild)],
+        "Send Messages is allowed again, nothing denied"
+    );
+}
+
+/// A temporary ban someone lifted by hand is over: banned again by hand (for good), the member stays
+/// banned when the first ban's time comes, whichever of Discord's two signals arrives first.
+#[tokio::test]
+async fn a_temporary_ban_lifted_by_hand_never_lifts_a_newer_ban() {
+    let Some(mut sim) = Sim::new("a_temporary_ban_lifted_by_hand_never_lifts_a_newer_ban").await else {
+        return;
+    };
+    let (moderator, owner, mia, ana, mod_role) = (unique(), unique(), unique(), unique(), unique());
+    sim.guild_role(mod_role, "Moderators", 5);
+    sim.roles = vec![mod_role];
+    sim.permissions = STAFF;
+    for who in [mia, ana] {
+        sim.command_resolved(
+            moderator,
+            "ban",
+            json!([user_option("user", who), text_option("duration", "1m")]),
+            member(who, "Mia"),
+        )
+        .await;
+    }
+    let banned = |sim: &Sim, who: u64| sim.mock.bans.lock().unwrap().contains(&who);
+    assert!(banned(&sim, mia) && banned(&sim, ana));
+
+    // Mia: unbanned by hand (the gateway's event, then the audit log's entry), then banned again.
+    sim.mock.bans.lock().unwrap().retain(|b| *b != mia);
+    sim.ban(mia, "mia", false).await;
+    sim.audit(23, owner, mia, json!([]), None).await;
+    sim.mock.bans.lock().unwrap().push(mia);
+    sim.ban(mia, "mia", true).await;
+    // Ana: unbanned and banned again before the unban's event arrives; only the audit log can tell.
+    sim.mock.bans.lock().unwrap().retain(|b| *b != ana);
+    sim.mock.bans.lock().unwrap().push(ana);
+    sim.ban(ana, "ana", false).await;
+    let standing = sim.cases().await.iter().filter(|c| c.kind == "ban" && c.active).count();
+    assert_eq!(standing, 1, "Ana's ban still looks like it stands");
+    sim.audit(23, owner, ana, json!([]), None).await;
+
+    sim.mod_calls();
+    sim.app.shift_clock(chrono::Duration::minutes(2));
+    let lifted = lift_expired_bans(&sim.app).await.unwrap();
+    sim.app.shift_clock(chrono::Duration::minutes(-2));
+    assert_eq!(lifted, 0);
+    assert!(
+        sim.mod_calls().iter().all(|c| !c.starts_with("unban")),
+        "nobody was unbanned"
+    );
+    assert!(banned(&sim, mia) && banned(&sim, ana), "the newer bans stand");
+    assert!(sim.cases().await.iter().all(|c| !(c.kind == "ban" && c.active)));
+}
+
 #[tokio::test]
 async fn the_server_log_reports_messages_audit_entries_and_voice_and_leaves_the_ignored_alone() {
-    let Some(mut sim) = Sim::with(
-        "the_server_log_reports_messages_audit_entries_and_voice_and_leaves_the_ignored_alone",
-        |app| app.message_content = true,
-    )
-    .await
+    let Some(mut sim) =
+        Sim::new("the_server_log_reports_messages_audit_entries_and_voice_and_leaves_the_ignored_alone").await
     else {
         return;
     };
     let (admin, alice, bob, moderator) = (unique(), unique(), unique(), unique());
     let (log, channels_log, renamed) = (unique(), unique(), unique());
+    // The moderator is staff (a role with Manage Channels); Alice is not.
+    let staff_role = unique();
+    sim.guild_role_with(staff_role, "Staff", 4, MANAGE_CHANNELS);
+    sim.mock
+        .member_roles
+        .lock()
+        .unwrap()
+        .insert(moderator, vec![staff_role]);
     sim.permissions = MANAGE_GUILD;
     let config = |options: Vec<Value>| json!([sub("log", options)]);
     sim.command_resolved(
@@ -1050,7 +1277,16 @@ async fn the_server_log_reports_messages_audit_entries_and_voice_and_leaves_the_
         (mention(moderator).as_str(), "raid")
     );
 
-    // What the moderator did by hand is in the staff log.
+    // What the moderator did by hand is in the staff log; Alice's thread is no staff's doing.
+    sim.audit(
+        110,
+        alice,
+        unique(),
+        json!([{ "key": "name", "new_value": "chat" }]),
+        None,
+    )
+    .await;
+    sim.posts();
     let staff = sim
         .app
         .db

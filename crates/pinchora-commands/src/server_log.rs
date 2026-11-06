@@ -7,9 +7,10 @@ use std::{sync::Arc, time::Duration};
 
 use moka::future::Cache as Moka;
 use pinchora_core::{
+    i18n::Lang,
     logging::{LogConfig, LogEvent, Subject},
     modules::Module,
-    snowflake,
+    snowflake, t,
 };
 use serde::{Deserialize, Serialize};
 use twilight_model::{
@@ -27,7 +28,8 @@ use crate::{
     util::{BRAND, DANGER, SUCCESS, WARN, avatar_url, display_name, mention, relative},
 };
 
-/// How long a message is kept for the log when message content is on.
+/// How long a message is kept for the log (only with message content on: the gateway clears the text
+/// of chat without the Message Content intent).
 const MESSAGE_KEPT: Duration = Duration::from_secs(24 * 3_600);
 /// The longest message text kept and shown.
 const MESSAGE_TEXT_MAX: usize = 1_000;
@@ -141,6 +143,7 @@ impl Seen {
 /// One name that changed. `known` is false when the earlier value was never seen.
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct NameChange {
+    /// `nickname`, `username` or `display-name`: its key in `[log.name]`.
     what: &'static str,
     old: Option<String>,
     new: Option<String>,
@@ -149,8 +152,8 @@ pub(crate) struct NameChange {
 
 impl NameChange {
     /// `old → new`, or just the new value when the old one is unknown.
-    fn text(&self) -> String {
-        let show = |name: &Option<String>| name.as_deref().map_or_else(|| "*none*".to_owned(), code);
+    fn text(&self, lang: Lang) -> String {
+        let show = |name: &Option<String>| name.as_deref().map_or_else(|| t!(lang, "log.none"), code);
         if self.known {
             format!("{} → {}", show(&self.old), show(&self.new))
         } else {
@@ -159,7 +162,7 @@ impl NameChange {
     }
 
     fn event(&self) -> LogEvent {
-        if self.what == "Nickname" {
+        if self.what == "nickname" {
             LogEvent::Nickname
         } else {
             LogEvent::Username
@@ -189,12 +192,12 @@ pub(crate) fn name_changes(before: Option<&Seen>, now: &Seen) -> Vec<NameChange>
                     });
                 }
             };
-            push("Nickname", before.nick.as_ref(), now.nick.as_ref());
-            push("Username", Some(&before.username), Some(&now.username));
-            push("Display name", before.display_name.as_ref(), now.display_name.as_ref());
+            push("nickname", before.nick.as_ref(), now.nick.as_ref());
+            push("username", Some(&before.username), Some(&now.username));
+            push("display-name", before.display_name.as_ref(), now.display_name.as_ref());
         }
         None if now.nick.is_some() => changes.push(NameChange {
-            what: "Nickname",
+            what: "nickname",
             old: None,
             new: now.nick.clone(),
             known: false,
@@ -235,7 +238,7 @@ pub(crate) enum VoiceChange {
         from: u64,
         to: u64,
     },
-    /// A server mute or deafen, given or taken: (channel, what, on).
+    /// A server mute or deafen, given or taken: (channel, `muted` or `deafened`, on).
     Server(u64, &'static str, bool),
     /// The member muted or deafened themselves, or stopped.
     Own(u64, &'static str, bool),
@@ -297,6 +300,7 @@ pub(crate) fn voice_changes(before: Option<VoiceSeen>, now: VoiceSeen) -> Vec<Vo
 
 /// The start of every entry: title, who it is about, their avatar, and the time.
 pub(crate) fn entry(
+    lang: Lang,
     title: impl Into<String>,
     color: u32,
     user_id: u64,
@@ -307,7 +311,7 @@ pub(crate) fn entry(
         .color(color)
         .title(title)
         .description(text)
-        .footer(EmbedFooterBuilder::new(format!("ID {user_id}")));
+        .footer(EmbedFooterBuilder::new(t!(lang, "log.id", id = user_id)));
     if let Some(Ok(avatar)) = user.map(|u| ImageSource::url(avatar_url(u))) {
         embed = embed.thumbnail(avatar);
     }
@@ -321,80 +325,115 @@ fn who(user: &User) -> String {
     format!("{} · {}", mention(user.id), display_name(user, None))
 }
 
-fn joined_embed(user: &User) -> Embed {
-    let title = if user.bot { "Bot joined" } else { "Member joined" };
-    entry(title, SUCCESS, user.id.get(), Some(user), who(user))
+/// An event's title in `lang`.
+pub(crate) fn title(lang: Lang, event: LogEvent) -> String {
+    t!(lang, &format!("log.event.{}", event.key()))
+}
+
+fn joined_embed(lang: Lang, user: &User) -> Embed {
+    let title = if user.bot {
+        t!(lang, "log.entry.bot-joined")
+    } else {
+        self::title(lang, LogEvent::MemberJoin)
+    };
+    entry(lang, title, SUCCESS, user.id.get(), Some(user), who(user))
         .field(EmbedFieldBuilder::new(
-            "Account created",
+            t!(lang, "log.entry.account-created"),
             relative(snowflake::timestamp(user.id.get())),
         ))
         .build()
 }
 
-fn left_embed(user: &User) -> Embed {
-    let title = if user.bot { "Bot left" } else { "Member left" };
-    entry(title, DANGER, user.id.get(), Some(user), who(user)).build()
+fn left_embed(lang: Lang, user: &User) -> Embed {
+    let title = if user.bot {
+        t!(lang, "log.entry.bot-left")
+    } else {
+        self::title(lang, LogEvent::MemberLeave)
+    };
+    entry(lang, title, DANGER, user.id.get(), Some(user), who(user)).build()
 }
 
-fn ban_embed(user: &User, banned: bool, by: Option<&Attribution>) -> Embed {
-    let mut embed = if banned {
-        entry("Member banned", DANGER, user.id.get(), Some(user), who(user))
+fn ban_embed(lang: Lang, user: &User, banned: bool, by: Option<&Attribution>) -> Embed {
+    let (event, color) = if banned {
+        (LogEvent::Ban, DANGER)
     } else {
-        entry("Member unbanned", SUCCESS, user.id.get(), Some(user), who(user))
+        (LogEvent::Unban, SUCCESS)
     };
+    let mut embed = entry(lang, title(lang, event), color, user.id.get(), Some(user), who(user));
     if let Some(by) = by {
-        embed = embed.field(EmbedFieldBuilder::new("By", mention(by.actor)).inline());
+        embed = embed.field(EmbedFieldBuilder::new(t!(lang, "log.by"), mention(by.actor)).inline());
         if let Some(reason) = &by.reason {
-            embed = embed.field(EmbedFieldBuilder::new("Reason", clip(reason, 1_000)));
+            embed = embed.field(EmbedFieldBuilder::new(t!(lang, "log.reason"), clip(reason, 1_000)));
         }
     }
     embed.build()
 }
 
-fn names_embed(user: &User, changes: &[&NameChange]) -> Embed {
+fn names_embed(lang: Lang, user: &User, changes: &[&NameChange]) -> Embed {
+    let name = |change: &NameChange| t!(lang, &format!("log.name.{}", change.what));
     let title = match changes {
-        [one] => format!("{} changed", one.what),
-        _ => "Names changed".to_owned(),
+        [one] => t!(lang, "log.entry.changed", what = name(one)),
+        _ => t!(lang, "log.entry.names-changed"),
     };
-    let mut embed = entry(title, WARN, user.id.get(), Some(user), who(user));
+    let mut embed = entry(lang, title, WARN, user.id.get(), Some(user), who(user));
     for change in changes {
-        embed = embed.field(EmbedFieldBuilder::new(change.what, change.text()));
+        embed = embed.field(EmbedFieldBuilder::new(name(change), change.text(lang)));
     }
     embed.build()
 }
 
-fn avatar_embed(user: &User) -> Embed {
-    let mut embed = entry("Avatar changed", BRAND, user.id.get(), None, who(user));
+fn avatar_embed(lang: Lang, user: &User) -> Embed {
+    let title = title(lang, LogEvent::Avatar);
+    let mut embed = entry(lang, title, BRAND, user.id.get(), None, who(user));
     if let Ok(image) = ImageSource::url(avatar_url(user)) {
         embed = embed.image(image);
     }
     embed.build()
 }
 
-fn voice_embed(user_id: u64, user: Option<&User>, change: &VoiceChange) -> Embed {
+fn voice_embed(lang: Lang, user_id: u64, user: Option<&User>, change: &VoiceChange) -> Embed {
     let member = mention(user_id);
+    let at = |c: &u64| format!("<#{c}>");
     let (title, color, text) = match change {
-        VoiceChange::Joined(channel) => ("Joined voice", SUCCESS, format!("{member} joined <#{channel}>")),
-        VoiceChange::Left(channel) => ("Left voice", DANGER, format!("{member} left <#{channel}>")),
-        VoiceChange::Moved { from, to } => ("Moved voice", WARN, format!("{member} moved from <#{from}> to <#{to}>")),
+        VoiceChange::Joined(channel) => (
+            self::title(lang, LogEvent::VoiceJoin),
+            SUCCESS,
+            t!(lang, "log.entry.joined-voice", member = member, channel = at(channel)),
+        ),
+        VoiceChange::Left(channel) => (
+            self::title(lang, LogEvent::VoiceLeave),
+            DANGER,
+            t!(lang, "log.entry.left-voice", member = member, channel = at(channel)),
+        ),
+        VoiceChange::Moved { from, to } => (
+            self::title(lang, LogEvent::VoiceMove),
+            WARN,
+            t!(
+                lang,
+                "log.entry.moved-voice",
+                member = member,
+                from = at(from),
+                to = at(to)
+            ),
+        ),
         VoiceChange::Server(channel, what, on) => {
-            let un = if *on { "" } else { "un" };
+            let key = format!("log.entry.server-{}{what}", if *on { "" } else { "un" });
             (
-                "Server voice change",
+                t!(lang, "log.entry.server-voice"),
                 WARN,
-                format!("{member} was server {un}{what} in <#{channel}>"),
+                t!(lang, &key, member = member, channel = at(channel)),
             )
         }
         VoiceChange::Own(channel, what, on) => {
-            let un = if *on { "" } else { "un" };
+            let key = format!("log.entry.self-{}{what}", if *on { "" } else { "un" });
             (
-                "Voice change",
+                t!(lang, "log.entry.own-voice"),
                 BRAND,
-                format!("{member} {un}{what} themselves in <#{channel}>"),
+                t!(lang, &key, member = member, channel = at(channel)),
             )
         }
     };
-    entry(title, color, user_id, user, text).build()
+    entry(lang, title, color, user_id, user, text).build()
 }
 
 /// `text` cut to `max` characters, with an ellipsis when it was longer.
@@ -423,14 +462,14 @@ pub(crate) async fn post(app: &App, channel: u64, embed: Embed) {
 
 /// Where `event` goes in `guild`, if it is logged at all and its subject is not ignored: the event's
 /// switch, its category channel, the ignore lists and the log module. `channel` is where it
-/// happened, for the channel ignore list.
+/// happened, for the channel ignore list. Comes with the server's language, which the entry is in.
 pub(crate) async fn route(
     app: &App,
     guild: u64,
     event: LogEvent,
     subject: Subject<'_>,
     channel: Option<u64>,
-) -> Option<u64> {
+) -> Option<(u64, Lang)> {
     let config = match app.log_config(guild).await {
         Ok(config) => config,
         Err(error) => {
@@ -456,7 +495,7 @@ pub(crate) async fn route(
     if config.ignores(&subject) || !app.module_allowed(guild, None, Module::Log).await {
         return None;
     }
-    Some(to)
+    Some((to, app.guild_lang(guild).await))
 }
 
 fn user_subject(user: &User) -> Subject<'static> {
@@ -472,14 +511,14 @@ pub(crate) async fn member_joined(app: &App, guild: u64, user: &User, roles: &[u
         roles,
         ..user_subject(user)
     };
-    if let Some(channel) = route(app, guild, LogEvent::MemberJoin, subject, None).await {
-        post(app, channel, joined_embed(user)).await;
+    if let Some((channel, lang)) = route(app, guild, LogEvent::MemberJoin, subject, None).await {
+        post(app, channel, joined_embed(lang, user)).await;
     }
 }
 
 pub(crate) async fn member_left(app: &App, guild: u64, user: &User) {
-    if let Some(channel) = route(app, guild, LogEvent::MemberLeave, user_subject(user), None).await {
-        post(app, channel, left_embed(user)).await;
+    if let Some((channel, lang)) = route(app, guild, LogEvent::MemberLeave, user_subject(user), None).await {
+        post(app, channel, left_embed(lang, user)).await;
     }
 }
 
@@ -487,7 +526,7 @@ pub(crate) async fn member_left(app: &App, guild: u64, user: &User) {
 /// once; one done through Pinchora is left to its case in the mod-log.
 pub(crate) async fn ban_changed(app: &App, guild: u64, user: &User, banned: bool) {
     let event = if banned { LogEvent::Ban } else { LogEvent::Unban };
-    let Some(channel) = route(app, guild, event, user_subject(user), None).await else {
+    let Some((channel, lang)) = route(app, guild, event, user_subject(user), None).await else {
         return;
     };
     let key = (guild, user.id.get(), banned);
@@ -499,7 +538,7 @@ pub(crate) async fn ban_changed(app: &App, guild: u64, user: &User, banned: bool
     if by.as_ref().is_some_and(|b| b.actor == app.application_id.get()) {
         return;
     }
-    post(app, channel, ban_embed(user, banned, by.as_ref())).await;
+    post(app, channel, ban_embed(lang, user, banned, by.as_ref())).await;
 }
 
 /// Whether the log reports anything about names or avatars, so they are worth remembering.
@@ -539,14 +578,14 @@ pub(crate) async fn names_updated(app: &App, guild: u64, user: &User, nick: Opti
         if these.is_empty() {
             continue;
         }
-        if let Some(channel) = route(app, guild, event, subject, None).await {
-            post(app, channel, names_embed(user, &these)).await;
+        if let Some((channel, lang)) = route(app, guild, event, subject, None).await {
+            post(app, channel, names_embed(lang, user, &these)).await;
         }
     }
     if before.is_some_and(|b| b.avatar != now.avatar)
-        && let Some(channel) = route(app, guild, LogEvent::Avatar, subject, None).await
+        && let Some((channel, lang)) = route(app, guild, LogEvent::Avatar, subject, None).await
     {
-        post(app, channel, avatar_embed(user)).await;
+        post(app, channel, avatar_embed(lang, user)).await;
     }
 }
 
@@ -571,13 +610,13 @@ pub(crate) async fn voice_updated(app: &App, guild: u64, state: &VoiceState) {
             roles: &roles,
             ..Subject::default()
         };
-        if let Some(channel) = route(app, guild, change.event(), subject, Some(change.channel())).await {
-            post(app, channel, voice_embed(user_id, user, &change)).await;
+        if let Some((channel, lang)) = route(app, guild, change.event(), subject, Some(change.channel())).await {
+            post(app, channel, voice_embed(lang, user_id, user, &change)).await;
         }
     }
 }
 
-/// A message as the log keeps it while message content is on.
+/// A message as the log keeps it.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub(crate) struct KeptMessage {
     pub(crate) author: u64,
@@ -591,10 +630,11 @@ fn kept_key(id: u64) -> String {
     format!("logmsg:{id}")
 }
 
-/// Keeps a message for a day, so its edit or delete can show what it said. Only with message
-/// content on, and only where the log reports message edits or deletes.
+/// Keeps a message for a day, so its edit or delete can show what it said and who sent it. Only a
+/// message with text or files (the gateway clears the text without the Message Content intent, and
+/// Discord sends no files then), and only where the log reports message edits or deletes.
 pub(crate) async fn keep_message(app: &App, guild: u64, message: &Message) {
-    if !app.message_content {
+    if message.content.is_empty() && message.attachments.is_empty() {
         return;
     }
     let logged = match app.log_config(guild).await {
@@ -624,9 +664,6 @@ pub(crate) async fn keep_message(app: &App, guild: u64, message: &Message) {
 }
 
 async fn kept(app: &App, id: u64) -> Option<KeptMessage> {
-    if !app.message_content {
-        return None;
-    }
     let json = app.cache.get(&kept_key(id)).await.ok().flatten()?;
     serde_json::from_str(&json).ok()
 }
@@ -636,9 +673,9 @@ fn jump(guild: u64, channel: u64, message: u64) -> String {
 }
 
 /// Message text for a field: clipped, and something when it is empty.
-fn shown(text: &str) -> String {
+fn shown(lang: Lang, text: &str) -> String {
     if text.trim().is_empty() {
-        "*no text*".to_owned()
+        t!(lang, "log.entry.no-text")
     } else {
         clip(text, 1_000)
     }
@@ -668,24 +705,34 @@ pub async fn on_message_update(app: Arc<App>, event: MessageUpdate) -> anyhow::R
         ..user_subject(&message.author)
     };
     let channel_id = message.channel_id.get();
-    if let Some(to) = route(&app, guild, LogEvent::MessageEdit, subject, Some(channel_id)).await {
-        let text = format!(
-            "{} edited [a message]({}) in <#{channel_id}>",
-            mention(message.author.id),
-            jump(guild, channel_id, message.id.get())
+    if let Some((to, lang)) = route(&app, guild, LogEvent::MessageEdit, subject, Some(channel_id)).await {
+        let text = t!(
+            lang,
+            "log.entry.edited",
+            member = mention(message.author.id),
+            link = jump(guild, channel_id, message.id.get()),
+            channel = format!("<#{channel_id}>")
         );
         let mut embed = entry(
-            "Message edited",
+            lang,
+            title(lang, LogEvent::MessageEdit),
             WARN,
             message.author.id.get(),
             Some(&message.author),
             text,
         );
         if let Some(before) = &before {
-            embed = embed.field(EmbedFieldBuilder::new("Before", shown(&before.content)));
+            embed = embed.field(EmbedFieldBuilder::new(
+                t!(lang, "log.entry.before"),
+                shown(lang, &before.content),
+            ));
         }
-        if app.message_content {
-            embed = embed.field(EmbedFieldBuilder::new("After", shown(&message.content)));
+        // Without the Message Content intent the new text is not known either.
+        if before.is_some() || !message.content.is_empty() {
+            embed = embed.field(EmbedFieldBuilder::new(
+                t!(lang, "log.entry.after"),
+                shown(lang, &message.content),
+            ));
         }
         post(&app, to, embed.build()).await;
     }
@@ -704,33 +751,42 @@ pub async fn on_message_delete(app: Arc<App>, event: MessageDelete) -> anyhow::R
         user: message.as_ref().map(|m| m.author),
         ..Subject::default()
     };
-    let Some(to) = route(&app, guild, LogEvent::MessageDelete, subject, Some(channel_id)).await else {
+    let Some((to, lang)) = route(&app, guild, LogEvent::MessageDelete, subject, Some(channel_id)).await else {
         return Ok(());
     };
     let sent = relative(snowflake::timestamp(id));
+    let channel = format!("<#{channel_id}>");
+    let title = title(lang, LogEvent::MessageDelete);
     let embed = match &message {
         Some(message) => {
-            let text = format!(
-                "A message by {} was deleted in <#{channel_id}>",
-                mention(message.author)
+            let text = t!(
+                lang,
+                "log.entry.deleted-by",
+                member = mention(message.author),
+                channel = channel
             );
-            let mut embed = entry("Message deleted", DANGER, message.author, None, text)
-                .field(EmbedFieldBuilder::new("Message", shown(&message.content)))
-                .field(EmbedFieldBuilder::new("Sent", sent).inline());
+            let mut embed = entry(lang, title, DANGER, message.author, None, text)
+                .field(EmbedFieldBuilder::new(
+                    t!(lang, "log.entry.message"),
+                    shown(lang, &message.content),
+                ))
+                .field(EmbedFieldBuilder::new(t!(lang, "log.entry.sent"), sent).inline());
             if !message.attachments.is_empty() {
                 let files: Vec<String> = message.attachments.iter().map(|f| code(f)).collect();
-                embed = embed.field(EmbedFieldBuilder::new("Attachments", clip(&files.join(" "), 1_000)));
+                let files = clip(&files.join(" "), 1_000);
+                embed = embed.field(EmbedFieldBuilder::new(t!(lang, "log.entry.attachments"), files));
             }
             embed
         }
         None => entry(
-            "Message deleted",
+            lang,
+            title,
             DANGER,
             id,
             None,
-            format!("A message was deleted in <#{channel_id}>"),
+            t!(lang, "log.entry.deleted", channel = channel),
         )
-        .field(EmbedFieldBuilder::new("Sent", sent).inline()),
+        .field(EmbedFieldBuilder::new(t!(lang, "log.entry.sent"), sent).inline()),
     };
     post(&app, to, embed.build()).await;
     Ok(())
@@ -742,7 +798,7 @@ pub async fn on_message_delete_bulk(app: Arc<App>, event: MessageDeleteBulk) -> 
         return Ok(());
     };
     let channel_id = event.channel_id.get();
-    let Some(to) = route(
+    let Some((to, lang)) = route(
         &app,
         guild,
         LogEvent::MessageBulkDelete,
@@ -765,16 +821,18 @@ pub async fn on_message_delete_bulk(app: Arc<App>, event: MessageDeleteBulk) -> 
             ));
         }
     }
-    let n = ids.len();
-    let mut text = format!(
-        "{n} message{} deleted in <#{channel_id}>",
-        if n == 1 { " was" } else { "s were" }
+    let mut text = t!(
+        lang,
+        "log.entry.bulk",
+        count = ids.len(),
+        channel = format!("<#{channel_id}>")
     );
     if !lines.is_empty() {
         text.push_str("\n\n");
         text.push_str(&clip(&lines.join("\n"), 3_500));
     }
-    let embed = entry("Messages bulk deleted", DANGER, channel_id, None, text).build();
+    let title = title(lang, LogEvent::MessageBulkDelete);
+    let embed = entry(lang, title, DANGER, channel_id, None, text).build();
     post(&app, to, embed).await;
     Ok(())
 }
@@ -806,16 +864,16 @@ mod tests {
         let now = seen(Some("New"), "sim", None);
         let changes = name_changes(Some(&before), &now);
         assert_eq!(changes.len(), 1);
-        assert_eq!(changes[0].what, "Nickname");
-        assert_eq!(changes[0].text(), "`Old` → `New`");
+        assert_eq!(changes[0].what, "nickname");
+        assert_eq!(changes[0].text(Lang::En), "`Old` → `New`");
     }
 
     #[test]
     fn setting_and_clearing_a_nickname() {
         let plain = seen(None, "sim", None);
         let nicked = seen(Some("Zed"), "sim", None);
-        assert_eq!(name_changes(Some(&plain), &nicked)[0].text(), "*none* → `Zed`");
-        assert_eq!(name_changes(Some(&nicked), &plain)[0].text(), "`Zed` → *none*");
+        assert_eq!(name_changes(Some(&plain), &nicked)[0].text(Lang::En), "*none* → `Zed`");
+        assert_eq!(name_changes(Some(&nicked), &plain)[0].text(Lang::En), "`Zed` → *none*");
     }
 
     #[test]
@@ -824,8 +882,8 @@ mod tests {
         let now = seen(None, "sim2", Some("Simmy"));
         let changes = name_changes(Some(&before), &now);
         let whats: Vec<_> = changes.iter().map(|c| c.what).collect();
-        assert_eq!(whats, ["Username", "Display name"]);
-        assert_eq!(changes[0].text(), "`sim` → `sim2`");
+        assert_eq!(whats, ["username", "display-name"]);
+        assert_eq!(changes[0].text(Lang::En), "`sim` → `sim2`");
         assert!(changes.iter().all(|c| c.event() == LogEvent::Username));
     }
 
@@ -840,7 +898,7 @@ mod tests {
         let nicked = seen(Some("Zed"), "sim", Some("Sim"));
         let changes = name_changes(None, &nicked);
         assert_eq!(changes.len(), 1);
-        assert_eq!(changes[0].text(), "`Zed`", "just the new value, no arrow");
+        assert_eq!(changes[0].text(Lang::En), "`Zed`", "just the new value, no arrow");
         assert!(name_changes(None, &seen(None, "sim", Some("Sim"))).is_empty());
     }
 
@@ -904,26 +962,35 @@ mod tests {
     #[test]
     fn entries_say_what_happened_and_to_whom() {
         let sim = user(42, "sim", Some("Sim"));
-        let joined = joined_embed(&sim);
+        let joined = joined_embed(Lang::En, &sim);
         assert_eq!(joined.title.as_deref(), Some("Member joined"));
         assert!(joined.description.as_deref().unwrap().contains("<@42>"));
         assert_eq!(joined.fields[0].name, "Account created");
         assert!(joined.thumbnail.is_some() && joined.timestamp.is_some());
-        assert_eq!(ban_embed(&sim, true, None).title.as_deref(), Some("Member banned"));
-        assert_eq!(ban_embed(&sim, false, None).title.as_deref(), Some("Member unbanned"));
+        assert_eq!(
+            ban_embed(Lang::En, &sim, true, None).title.as_deref(),
+            Some("Member banned")
+        );
+        assert_eq!(
+            ban_embed(Lang::En, &sim, false, None).title.as_deref(),
+            Some("Member unbanned")
+        );
         let by = Attribution {
             actor: 7,
             reason: Some("spam".into()),
         };
-        let attributed = ban_embed(&sim, true, Some(&by));
+        let attributed = ban_embed(Lang::En, &sim, true, Some(&by));
         assert_eq!(attributed.fields[0].value, "<@7>");
         assert_eq!(attributed.fields[1].value, "spam");
-        assert_eq!(left_embed(&sim).title.as_deref(), Some("Member left"));
-        let moved = voice_embed(42, None, &VoiceChange::Moved { from: 1, to: 2 });
+        assert_eq!(left_embed(Lang::En, &sim).title.as_deref(), Some("Member left"));
+        let moved = voice_embed(Lang::En, 42, None, &VoiceChange::Moved { from: 1, to: 2 });
         assert!(moved.description.as_deref().unwrap().contains("<#1> to <#2>"));
         assert!(moved.thumbnail.is_none(), "no user, no avatar");
-        let unmuted = voice_embed(42, None, &VoiceChange::Server(1, "muted", false));
+        let unmuted = voice_embed(Lang::En, 42, None, &VoiceChange::Server(1, "muted", false));
         assert!(unmuted.description.as_deref().unwrap().contains("was server unmuted"));
+        let turkish = voice_embed(Lang::Tr, 42, None, &VoiceChange::Own(1, "deafened", true));
+        assert_eq!(turkish.title.as_deref(), Some("Ses değişikliği"));
+        assert!(turkish.description.as_deref().unwrap().contains("kendi sesini kapattı"));
     }
 
     #[test]
@@ -931,16 +998,22 @@ mod tests {
         let sim = user(1, "sim", None);
         let one = name_changes(Some(&seen(None, "sim", None)), &seen(Some("Zed"), "sim", None));
         let one: Vec<&NameChange> = one.iter().collect();
-        assert_eq!(names_embed(&sim, &one).title.as_deref(), Some("Nickname changed"));
+        assert_eq!(
+            names_embed(Lang::En, &sim, &one).title.as_deref(),
+            Some("Nickname changed")
+        );
         let two = name_changes(Some(&seen(None, "sim", None)), &seen(None, "sam", Some("Sam")));
         let two: Vec<&NameChange> = two.iter().collect();
-        assert_eq!(names_embed(&sim, &two).title.as_deref(), Some("Names changed"));
+        assert_eq!(
+            names_embed(Lang::En, &sim, &two).title.as_deref(),
+            Some("Names changed")
+        );
     }
 
     #[test]
     fn long_text_is_clipped_with_an_ellipsis() {
         assert_eq!(clip("hello", 10), "hello");
         assert_eq!(clip("hello world", 6), "hello…");
-        assert_eq!(shown("  "), "*no text*");
+        assert_eq!(shown(Lang::En, "  "), "*no text*");
     }
 }

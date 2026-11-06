@@ -476,16 +476,85 @@ impl Db {
         .await?)
     }
 
-    /// Leaves a temporary ban that could not be lifted for an hour before it is tried again.
+    /// Ends a temporary ban the ticker is about to lift, right before it asks Discord: `false` when the
+    /// ban no longer stands (lifted by someone, or replaced by a newer ban), so it is left alone.
+    pub async fn close_ban(&self, guild: u64, number: i32) -> anyhow::Result<bool> {
+        let closed = sqlx::query(
+            "UPDATE mod_cases SET active = FALSE, updated_at = now()
+             WHERE guild_id = $1 AND number = $2 AND kind = 'ban' AND active RETURNING number",
+        )
+        .bind(sql_id(guild))
+        .bind(number)
+        .fetch_optional(self.pool())
+        .await?;
+        Ok(closed.is_some())
+    }
+
+    /// Puts back a temporary ban Discord would not lift, to be tried again in an hour: unless a newer
+    /// ban or unban of the member came since, which decides instead.
     pub async fn postpone_lift(&self, guild: u64, number: i32) -> anyhow::Result<()> {
         sqlx::query(
-            "UPDATE mod_cases SET expire_lease = now() + interval '1 hour' WHERE guild_id = $1 AND number = $2",
+            "UPDATE mod_cases m SET active = TRUE, updated_at = now(), expire_lease = now() + interval '1 hour'
+             WHERE m.guild_id = $1 AND m.number = $2 AND m.kind = 'ban'
+               AND NOT EXISTS (
+                   SELECT 1 FROM mod_cases n
+                   WHERE n.guild_id = m.guild_id AND n.target_id = m.target_id AND n.number > m.number
+                     AND n.kind IN ('ban', 'unban')
+               )",
         )
         .bind(sql_id(guild))
         .bind(number)
         .execute(self.pool())
         .await?;
         Ok(())
+    }
+
+    /// Remembers what @everyone's overwrite allowed and denied of the locked permissions before the
+    /// lock of case `number`, for the unlock to put back.
+    pub async fn set_lock_state(&self, guild: u64, number: i32, allowed: u64, denied: u64) -> anyhow::Result<()> {
+        sqlx::query("UPDATE mod_cases SET lock_allow = $3, lock_deny = $4 WHERE guild_id = $1 AND number = $2")
+            .bind(sql_id(guild))
+            .bind(number)
+            .bind(allowed as i64)
+            .bind(denied as i64)
+            .execute(self.pool())
+            .await?;
+        Ok(())
+    }
+
+    /// What the channel's last lock took, as (allowed, denied) before it, when the channel's last lock
+    /// or unlock through Pinchora is a lock that remembered it.
+    pub async fn lock_state(&self, guild: u64, channel: u64) -> anyhow::Result<Option<(u64, u64)>> {
+        let row: Option<(String, Option<i64>, Option<i64>)> = sqlx::query_as(
+            "SELECT kind, lock_allow, lock_deny FROM mod_cases
+             WHERE guild_id = $1 AND target_id = $2 AND kind IN ('lock', 'unlock')
+             ORDER BY number DESC LIMIT 1",
+        )
+        .bind(sql_id(guild))
+        .bind(sql_id(channel))
+        .fetch_optional(self.pool())
+        .await?;
+        Ok(match row {
+            Some((kind, Some(allowed), Some(denied))) if kind == "lock" => Some((allowed as u64, denied as u64)),
+            _ => None,
+        })
+    }
+
+    /// Ends the member's bans opened up to `until` (`None`: up to now, on the database's clock): someone
+    /// lifted their ban on Discord, so none of them stands any more and the ticker must not lift a ban
+    /// made since. How many ended.
+    pub async fn end_bans(&self, guild: u64, target: u64, until: Option<DateTime<Utc>>) -> anyhow::Result<u64> {
+        let ended = sqlx::query(
+            "UPDATE mod_cases SET active = FALSE, updated_at = now()
+             WHERE guild_id = $1 AND target_id = $2 AND kind = 'ban' AND active
+               AND created_at <= COALESCE($3, now())",
+        )
+        .bind(sql_id(guild))
+        .bind(sql_id(target))
+        .bind(until)
+        .execute(self.pool())
+        .await?;
+        Ok(ended.rows_affected())
     }
 
     /// Puts an action in the staff log.

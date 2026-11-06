@@ -1,14 +1,17 @@
 //! `/config moderation` (the mod-log and direct messages), `/config warn-ladder` and `/config log-ignore`.
 
 use pinchora_core::{
+    i18n::Lang,
     logging::{LogCategory, MAX_IGNORED},
     moderation::{MAX_THRESHOLDS, Threshold, check_threshold},
     server_events::parse_duration,
+    t,
 };
 use pinchora_db::ModSettings;
 use twilight_interactions::command::{CommandModel, CommandOption, CreateCommand, CreateOption, ResolvedUser};
 use twilight_model::{application::interaction::InteractionChannel, guild::Role};
 
+use super::words;
 use crate::Cx;
 
 #[derive(CommandModel, CreateCommand)]
@@ -49,25 +52,36 @@ pub struct ConfigWarnLadder {
 }
 
 /// The settings in a few lines.
-pub(crate) fn moderation_summary(settings: &ModSettings, ladder: &[Threshold]) -> String {
-    let channel = settings.log_channel_id.map_or_else(
-        || "the server log's moderation channel".to_owned(),
-        |c| format!("<#{c}>"),
-    );
-    let dm = if settings.dm_members { "on" } else { "off" };
-    let ladder = if ladder.is_empty() {
-        "none".to_owned()
-    } else {
-        ladder.iter().map(Threshold::describe).collect::<Vec<_>>().join(" · ")
+pub(crate) fn moderation_summary(lang: Lang, settings: &ModSettings, ladder: &[Threshold]) -> String {
+    let channel = match settings.log_channel_id {
+        Some(c) => format!("<#{c}>"),
+        None => t!(lang, "mod.setup.log-moderation-channel"),
     };
-    format!("Cases go to {channel} · direct messages **{dm}**\n> Warn ladder: {ladder}")
+    let dm = t!(
+        lang,
+        if settings.dm_members {
+            "mod.setup.on"
+        } else {
+            "mod.setup.off"
+        }
+    );
+    let ladder = if ladder.is_empty() {
+        t!(lang, "mod.setup.none")
+    } else {
+        ladder
+            .iter()
+            .map(|r| words::rung(lang, r))
+            .collect::<Vec<_>>()
+            .join(" · ")
+    };
+    t!(lang, "mod.setup.summary", channel = channel, dm = dm, ladder = ladder)
 }
 
 impl ConfigModeration {
     pub async fn run(self, cx: &Cx, guild: u64) -> anyhow::Result<()> {
-        let db = &cx.app.db;
+        let (db, lang) = (&cx.app.db, cx.lang());
         let channel = match (self.channel, self.off == Some(true)) {
-            (Some(_), true) => return cx.reply_ephemeral("Pick a channel or `off`, not both.").await,
+            (Some(_), true) => return cx.reply_ephemeral(t!(lang, "mod.setup.channel-or-off")).await,
             (Some(channel), false) => Some(Some(channel.id.get())),
             (None, true) => Some(None),
             (None, false) => None,
@@ -77,16 +91,17 @@ impl ConfigModeration {
         } else {
             db.mod_settings(guild).await?
         };
-        let text = moderation_summary(&settings, &db.warn_thresholds(guild).await?);
+        let text = moderation_summary(lang, &settings, &db.warn_thresholds(guild).await?);
         cx.reply_ephemeral(text).await
     }
 }
 
 impl ConfigWarnLadder {
     pub async fn run(self, cx: &Cx, guild: u64) -> anyhow::Result<()> {
-        let db = &cx.app.db;
+        let (db, lang) = (&cx.app.db, cx.lang());
         let summary = async || -> anyhow::Result<String> {
             Ok(moderation_summary(
+                lang,
                 &db.mod_settings(guild).await?,
                 &db.warn_thresholds(guild).await?,
             ))
@@ -94,14 +109,22 @@ impl ConfigWarnLadder {
         let text = match (self.warns, self.action, self.remove == Some(true)) {
             (Some(warns), None, true) => {
                 let gone = db.delete_warn_threshold(guild, warns as i32).await?;
-                let what = if gone { "Removed the rung at" } else { "There is no rung at" };
-                format!("{what} {warns} warns.\n{}", summary().await?)
+                let what = t!(
+                    lang,
+                    if gone {
+                        "mod.setup.rung-removed"
+                    } else {
+                        "mod.setup.no-rung"
+                    },
+                    count = warns
+                );
+                format!("{what}\n{}", summary().await?)
             }
             (Some(warns), Some(action), false) => {
                 let duration = match self.duration.as_deref().map(str::trim).filter(|d| !d.is_empty()) {
                     Some(text) => match parse_duration(text) {
                         Some(d) => Some(d),
-                        None => return cx.reply_ephemeral("Write the duration like `1h`, `12h` or `7d`.").await,
+                        None => return cx.reply_ephemeral(t!(lang, "mod.setup.duration-format")).await,
                     },
                     None => None,
                 };
@@ -110,15 +133,15 @@ impl ConfigWarnLadder {
                     Err(error) => return cx.reply_ephemeral(error.message).await,
                 };
                 match db.put_warn_threshold(guild, rung).await? {
-                    Ok(_) => format!("Added **{}**.\n{}", rung.describe(), summary().await?),
-                    Err(_) => format!("The warn ladder holds at most {MAX_THRESHOLDS} rungs. Remove one first."),
+                    Ok(_) => {
+                        let added = t!(lang, "mod.setup.rung-added", rung = words::rung(lang, &rung));
+                        format!("{added}\n{}", summary().await?)
+                    }
+                    Err(_) => t!(lang, "mod.setup.ladder-full", max = MAX_THRESHOLDS),
                 }
             }
             (None, None, false) => summary().await?,
-            _ => {
-                "Give `warns` and `action` to add a rung, `warns` and `remove` to take one off, or nothing to see the ladder."
-                    .to_owned()
-            }
+            _ => t!(lang, "mod.setup.ladder-usage"),
         };
         cx.reply_ephemeral(text).await
     }
@@ -140,20 +163,29 @@ pub struct ConfigLogIgnore {
 }
 
 /// The ignore lists in a line.
-pub(crate) fn ignore_summary(config: &pinchora_core::logging::LogConfig) -> String {
+pub(crate) fn ignore_summary(lang: Lang, config: &pinchora_core::logging::LogConfig) -> String {
     let list = |ids: &[u64], f: fn(u64) -> String| {
         if ids.is_empty() {
-            "none".to_owned()
+            t!(lang, "mod.setup.none")
         } else {
             ids.iter().map(|id| f(*id)).collect::<Vec<_>>().join(" ")
         }
     };
-    format!(
-        "Ignored channels: {} · roles: {} · members: {} · bots: **{}**",
-        list(&config.ignored_channels, |id| format!("<#{id}>")),
-        list(&config.ignored_roles, |id| format!("<@&{id}>")),
-        list(&config.ignored_users, |id| format!("<@{id}>")),
-        if config.ignore_bots { "ignored" } else { "logged" }
+    let bots = t!(
+        lang,
+        if config.ignore_bots {
+            "mod.setup.bots-ignored"
+        } else {
+            "mod.setup.bots-logged"
+        }
+    );
+    t!(
+        lang,
+        "mod.setup.ignore-summary",
+        channels = list(&config.ignored_channels, |id| format!("<#{id}>")),
+        roles = list(&config.ignored_roles, |id| format!("<@&{id}>")),
+        members = list(&config.ignored_users, |id| format!("<@{id}>")),
+        bots = bots
     )
 }
 
@@ -190,9 +222,9 @@ impl ConfigLogIgnore {
             })
             .await?;
         cx.app.announce_guild_change(guild).await;
-        let mut text = ignore_summary(&config);
+        let mut text = ignore_summary(cx.lang(), &config);
         if full {
-            text = format!("An ignore list holds at most {MAX_IGNORED} entries.\n{text}");
+            text = format!("{}\n{text}", t!(cx.lang(), "mod.setup.ignore-full", max = MAX_IGNORED));
         }
         cx.reply_ephemeral(text).await
     }

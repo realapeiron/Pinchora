@@ -280,16 +280,14 @@ impl ConfigCommand {
         embed
             .fields
             .push(EmbedFieldBuilder::new("Party games", party_summary(cx.app.db.party_strict(guild).await?)).build());
-        embed.fields.push(
-            EmbedFieldBuilder::new(
-                "Moderation",
-                moderation_summary(
-                    &cx.app.db.mod_settings(guild).await?,
-                    &cx.app.db.warn_thresholds(guild).await?,
-                ),
-            )
-            .build(),
+        let moderation = moderation_summary(
+            cx.lang(),
+            &cx.app.db.mod_settings(guild).await?,
+            &cx.app.db.warn_thresholds(guild).await?,
         );
+        embed
+            .fields
+            .push(EmbedFieldBuilder::new(t!(cx.lang(), "mod.setup.field"), moderation).build());
         let language = match cx.app.guild_lang_choice(guild).await {
             Some(lang) => lang.native_name().to_owned(),
             None => t!(cx.lang(), "config.language-default"),

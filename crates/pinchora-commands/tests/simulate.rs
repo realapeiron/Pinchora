@@ -206,6 +206,8 @@ struct Mock {
     owner: Arc<AtomicU64>,
     /// Users the server has banned.
     bans: Arc<Mutex<Vec<u64>>>,
+    /// Whether bans are refused (Missing Permissions).
+    bans_refused: Arc<AtomicBool>,
     /// Moderation calls seen: bans, kicks, member edits, deletes, channel edits and overwrites.
     mod_calls: Arc<Mutex<Vec<String>>>,
     /// A channel's recent messages, newest first, as `GET /channels/{id}/messages` answers them.
@@ -406,11 +408,23 @@ async fn discord(
             return (StatusCode::NO_CONTENT, String::new());
         }
         (&Method::PUT, [.., "guilds", _, "bans", user]) => {
+            if mock.bans_refused.load(Ordering::SeqCst) {
+                let refusal = json!({ "message": "Missing Permissions", "code": 50013 });
+                return (StatusCode::FORBIDDEN, refusal.to_string());
+            }
             let (body, _) = request_body(&headers, &body);
             mock.bans.lock().unwrap().push(number(user));
             let seconds = body["delete_message_seconds"].as_u64().unwrap_or(0);
             mock.mod_calls.lock().unwrap().push(format!("ban {user} {seconds}"));
             return (StatusCode::NO_CONTENT, String::new());
+        }
+        (&Method::GET, [.., "guilds", _, "bans", user]) => {
+            if !mock.bans.lock().unwrap().contains(&number(user)) {
+                let gone = json!({ "message": "Unknown Ban", "code": 10026 });
+                return (StatusCode::NOT_FOUND, gone.to_string());
+            }
+            let ban = json!({ "reason": null, "user": person_json(number(user), "banned", None, false) });
+            return (StatusCode::OK, ban.to_string());
         }
         (&Method::DELETE, [.., "guilds", _, "bans", user]) => {
             let mut bans = mock.bans.lock().unwrap();
@@ -1058,6 +1072,7 @@ impl Sim {
             guild_lookup_fails: Arc::default(),
             owner: Arc::new(AtomicU64::new(APPLICATION_ID)),
             bans: Arc::default(),
+            bans_refused: Arc::default(),
             mod_calls: Arc::default(),
             history: Arc::default(),
         };

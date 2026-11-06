@@ -1,11 +1,14 @@
 //! `/case` and `/reason`: look a case up, and give it a reason after the fact.
 
-use pinchora_core::moderation::check_reason;
+use pinchora_core::{
+    moderation::{CaseKind, check_reason, outranks},
+    t,
+};
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::guild::Permissions;
 
-use super::{Moderator, case_embed, members::private, permitted, refresh_post};
-use crate::Cx;
+use super::{Moderator, Ranks, case_embed, members::private, permitted, refresh_post};
+use crate::{Cx, util::mention};
 
 /// Anyone who can do one of the moderation commands may read and annotate the cases.
 const STAFF: Permissions = Permissions::BAN_MEMBERS
@@ -33,13 +36,13 @@ pub struct CaseCommand {
 
 impl CaseCommand {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
-        let Some(guild) = permitted(cx, STAFF, "Timeout Members").await? else {
+        let Some(guild) = permitted(cx, STAFF, "timeout-members").await? else {
             return Ok(());
         };
         let number = self.id.clamp(1, i64::from(i32::MAX)) as i32;
         match cx.app.db.case(guild, number).await? {
-            Some(case) => cx.reply(private(case_embed(&case))).await,
-            None => cx.reply_ephemeral(format!("There is no case #{number}.")).await,
+            Some(case) => cx.reply(private(case_embed(&case, cx.lang()))).await,
+            None => cx.reply_ephemeral(t!(cx.lang(), "mod.no-case", number = number)).await,
         }
     }
 }
@@ -62,25 +65,53 @@ pub struct ReasonCommand {
 
 impl ReasonCommand {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
-        let Some(guild) = permitted(cx, STAFF, "Timeout Members").await? else {
+        let lang = cx.lang();
+        let Some(guild) = permitted(cx, STAFF, "timeout-members").await? else {
             return Ok(());
         };
         let reason = match check_reason(Some(&self.reason)) {
             Ok(Some(reason)) => reason,
-            Ok(None) => return cx.reply_ephemeral("Write the new reason.").await,
+            Ok(None) => return cx.reply_ephemeral(t!(lang, "mod.new-reason")).await,
             Err(error) => return cx.reply_ephemeral(error.message).await,
         };
         let number = self.id.clamp(1, i64::from(i32::MAX)) as i32;
         let moderator = Moderator::of(cx)?;
+        let Some(case) = cx.app.db.case(guild, number).await? else {
+            return cx.reply_ephemeral(t!(lang, "mod.no-case", number = number)).await;
+        };
+        // A case's reason is its moderator's word: theirs to change, or someone's above them. A case the
+        // bot opened (the warn ladder, a temporary ban that ended) is open to whoever is above its member.
+        let opened_by = case.moderator_id as u64;
+        if opened_by != moderator.id {
+            let Some(ranks) = Ranks::read(&cx.app, guild, &moderator).await else {
+                return cx.reply_ephemeral(t!(lang, "mod.no-roles")).await;
+            };
+            let by_bot = opened_by == ranks.bot.id || opened_by == 0;
+            let on_member = !case.kind().is_some_and(CaseKind::on_channel);
+            let (other, refusal) = if by_bot {
+                (on_member.then_some(case.target_id as u64), "mod.reason-target")
+            } else {
+                (Some(opened_by), "mod.reason-moderator")
+            };
+            if let Some(other) = other {
+                let Some(rank) = ranks.of(&cx.app, guild, other).await else {
+                    return cx.reply_ephemeral(t!(lang, "mod.no-roles")).await;
+                };
+                if !outranks(ranks.owner, ranks.actor, rank) {
+                    let text = t!(lang, refusal, number = number, moderator = mention(opened_by));
+                    return cx.reply_ephemeral(text).await;
+                }
+            }
+        }
         let updated = cx
             .app
             .db
             .set_case_reason(guild, number, Some(&reason), moderator.id, &moderator.name, "command")
             .await?;
         let Some(case) = updated else {
-            return cx.reply_ephemeral(format!("There is no case #{number}.")).await;
+            return cx.reply_ephemeral(t!(lang, "mod.no-case", number = number)).await;
         };
         refresh_post(&cx.app, &case).await;
-        cx.reply(private(case_embed(&case))).await
+        cx.reply(private(case_embed(&case, lang))).await
     }
 }

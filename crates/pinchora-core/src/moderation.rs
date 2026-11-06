@@ -148,24 +148,6 @@ pub enum Refusal {
     AboveMe,
 }
 
-impl Refusal {
-    /// The sentence for the moderator; `verb` is what they tried, like "ban".
-    pub fn text(self, verb: &str) -> String {
-        match self {
-            Self::Yourself => format!("You can't {verb} yourself."),
-            Self::Me => format!("I can't {verb} myself."),
-            Self::Owner => format!("You can't {verb} the server owner."),
-            Self::Above => {
-                format!("You can't {verb} that member: their highest role is not below yours.")
-            }
-            Self::AboveMe => format!(
-                "I can't {verb} that member: their highest role is not below mine. Drag my role above theirs in \
-                 Server Settings > Roles, then try again."
-            ),
-        }
-    }
-}
-
 /// Whether `actor` may act on `target`, with the bot doing it: Discord's own rule. The owner is above
 /// everyone and can be acted on by no one; anyone else must sit strictly higher than the member they
 /// act on, and so must the bot.
@@ -186,6 +168,12 @@ pub fn may_act(owner: u64, actor: Rank, bot: Rank, target: Rank) -> Result<(), R
         return Err(Refusal::AboveMe);
     }
     Ok(())
+}
+
+/// Whether `actor` sits above `other` for what is done to a case after the fact (taking a warn back,
+/// a new reason): the owner does, nobody is above the owner, and anyone else must sit strictly higher.
+pub fn outranks(owner: u64, actor: Rank, other: Rank) -> bool {
+    actor.id == owner || (other.id != owner && actor.top > other.top)
 }
 
 /// Why `grantor` may not hand out or take `role`, or `None` when they may: the same rule as every role
@@ -404,10 +392,19 @@ mod tests {
     }
 
     #[test]
-    fn refusals_name_what_was_tried() {
-        assert_eq!(Refusal::Yourself.text("ban"), "You can't ban yourself.");
-        assert!(Refusal::AboveMe.text("kick").contains("Drag my role"));
-        assert!(Refusal::Above.text("time out").starts_with("You can't time out"));
+    fn only_the_owner_or_someone_higher_outranks() {
+        type Row = (&'static str, Rank, Rank, bool);
+        let rows: &[Row] = &[
+            ("higher", rank(10, 5), rank(11, 3), true),
+            ("equal", rank(10, 5), rank(11, 5), false),
+            ("lower", rank(10, 3), rank(11, 5), false),
+            ("no longer a member", rank(10, 0), rank(11, -1), true),
+            ("the owner acts", rank(OWNER, 0), rank(11, 9), true),
+            ("on the owner", rank(10, 99), rank(OWNER, 0), false),
+        ];
+        for (label, actor, other, expected) in rows {
+            assert_eq!(outranks(OWNER, *actor, *other), *expected, "{label}");
+        }
     }
 
     /// The shared role rule, row by row: (role position, permissions, grantor, bot top, refused with).
@@ -439,11 +436,24 @@ mod tests {
             ("below both", role(3, 0), moderator, None),
             ("equal to the moderator", role(5, 0), moderator, Some("not below your")),
             ("above the moderator", role(7, 0), moderator, Some("not below your")),
-            ("a ban role for a moderator", role(3, BAN), moderator, Some("Ban Members")),
+            (
+                "a ban role for a moderator",
+                role(3, BAN),
+                moderator,
+                Some("Ban Members"),
+            ),
             ("a ban role for an administrator", role(3, BAN), admin, None),
             ("the owner, above their own roles", role(7, BAN), owner, None),
             ("not below the bot", role(9, 0), owner, Some("above my")),
-            ("unknown roles", role(3, 0), Grantor { top_role: None, ..moderator }, Some("couldn't check")),
+            (
+                "unknown roles",
+                role(3, 0),
+                Grantor {
+                    top_role: None,
+                    ..moderator
+                },
+                Some("couldn't check"),
+            ),
         ];
         for (label, facts, grantor, refused) in rows {
             let why = role_refusal_for(*facts, *grantor, Some(9), "@R");

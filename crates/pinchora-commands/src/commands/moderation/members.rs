@@ -3,9 +3,11 @@
 
 use chrono::Duration;
 use pinchora_core::{
+    i18n::Lang,
     moderation::{CaseKind, check_reason, check_temp_ban, check_timeout, role_refusal_for},
     server_events::parse_duration,
     settings::{Grantor, RoleFacts},
+    t,
 };
 use twilight_http::request::AuditLogReason;
 use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
@@ -17,7 +19,7 @@ use twilight_model::{
     util::Timestamp,
 };
 
-use super::{Act, Moderator, NO_ROLES, Ranks, administrator, permitted, record, reply_embed, tell};
+use super::{Act, Moderator, Ranks, administrator, permitted, record, reply_embed, take_back, tell};
 use crate::{Cx, roles::error_code};
 
 fn ban_members() -> Permissions {
@@ -41,21 +43,25 @@ fn manage_roles() -> Permissions {
 }
 
 /// What Discord's refusal means, to follow "Discord refused it:".
-pub(crate) fn refusal(error: &twilight_http::Error) -> &'static str {
-    match error_code(error) {
-        Some(50013) => "I'm missing the permission for it, or my highest role is too low",
-        Some(10007) => "that member isn't in the server any more",
-        Some(10013) => "there is no such user",
-        Some(10026) => "that user isn't banned",
-        Some(_) => "it said no",
-        None => "Discord could not be reached",
-    }
+pub(crate) fn refusal(lang: Lang, error: &twilight_http::Error) -> String {
+    let key = match error_code(error) {
+        Some(50013) => "missing-permission",
+        Some(10007) => "unknown-member",
+        Some(10013) => "unknown-user",
+        Some(10026) => "unknown-ban",
+        Some(_) => "said-no",
+        None => "unreachable",
+    };
+    t!(lang, &format!("mod.why.{key}"))
 }
 
 /// The audit log reason: who asked, and why. Discord keeps 512 characters.
-pub(crate) fn audit_reason(moderator: &Moderator, reason: Option<&str>) -> String {
-    let text = format!("{}: {}", moderator.name, reason.unwrap_or("no reason given"));
-    text.chars().take(512).collect()
+pub(crate) fn audit_reason(lang: Lang, moderator: &Moderator, reason: Option<&str>) -> String {
+    let reason = match reason {
+        Some(reason) => reason.to_owned(),
+        None => t!(lang, "mod.audit-no-reason"),
+    };
+    format!("{}: {reason}", moderator.name).chars().take(512).collect()
 }
 
 /// A public answer that pings nobody.
@@ -80,8 +86,6 @@ fn reason_of(text: Option<&str>) -> Result<Option<String>, String> {
     check_reason(text).map_err(|e| e.message)
 }
 
-const NOT_A_MEMBER: &str = "That user isn't a member of this server.";
-
 #[derive(CommandModel, CreateCommand)]
 #[command(
     name = "ban",
@@ -105,7 +109,8 @@ pub struct Ban {
 
 impl Ban {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
-        let Some(guild) = permitted(cx, Permissions::BAN_MEMBERS, "Ban Members").await? else {
+        let lang = cx.lang();
+        let Some(guild) = permitted(cx, Permissions::BAN_MEMBERS, "ban-members").await? else {
             return Ok(());
         };
         let reason = match reason_of(self.reason.as_deref()) {
@@ -116,26 +121,26 @@ impl Ban {
             Some(text) => match parse_duration(text).map(check_temp_ban) {
                 Some(Ok(d)) => Some(d),
                 Some(Err(error)) => return cx.reply_ephemeral(error.message).await,
-                None => {
-                    return cx
-                        .reply_ephemeral("Write the duration like `12h`, `7d` or `30d`.")
-                        .await;
-                }
+                None => return cx.reply_ephemeral(t!(lang, "mod.ban-duration-format")).await,
             },
             None => None,
         };
         let moderator = Moderator::of(cx)?;
         let Some(ranks) = Ranks::read(&cx.app, guild, &moderator).await else {
-            return cx.reply_ephemeral(NO_ROLES).await;
+            return cx.reply_ephemeral(t!(lang, "mod.no-roles")).await;
         };
-        if let Some(why) = ranks.refusal(&self.user, "ban") {
+        if let Some(why) = ranks.refusal(lang, &self.user, "ban") {
             return cx.reply_ephemeral(why).await;
         }
         let mut act = Act::on(CaseKind::Ban, &self.user, reason);
         act.duration = duration;
-        // Told first: once banned, the member shares no server with the bot to be written to from.
-        let told = self.user.member.is_some() && tell(&cx.app, guild, &act).await;
-        let audit = audit_reason(&moderator, act.reason.as_deref());
+        // Told first: once banned, the member shares no server with the bot to be written to from. A ban
+        // Discord then refuses turns the message into one that says so.
+        let told = match self.user.member {
+            Some(_) => tell(&cx.app, guild, &act).await,
+            None => None,
+        };
+        let audit = audit_reason(lang, &moderator, act.reason.as_deref());
         let days = self.delete_days.unwrap_or(0).clamp(0, 7) as u32;
         if let Err(error) = cx
             .app
@@ -146,12 +151,16 @@ impl Ban {
             .await
         {
             tracing::debug!(%error, guild, "ban refused");
-            return cx
-                .reply_ephemeral(format!("Discord refused the ban: {}.", refusal(&error)))
-                .await;
+            let mut text = t!(lang, "mod.refused-ban", why = refusal(lang, &error));
+            if let Some(told) = &told {
+                take_back(&cx.app, told, CaseKind::Ban).await;
+                text = format!("{text}\n{}", t!(lang, "mod.told-anyway"));
+            }
+            return cx.reply_ephemeral(text).await;
         }
+        let told = told.is_some();
         let opened = record(&cx.app, guild, (moderator.id, &moderator.name), &act, Some(told)).await?;
-        cx.reply(public(reply_embed(&opened.case, &[]))).await
+        cx.reply(public(reply_embed(&opened.case, &[], lang))).await
     }
 }
 
@@ -172,7 +181,8 @@ pub struct Unban {
 
 impl Unban {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
-        let Some(guild) = permitted(cx, Permissions::BAN_MEMBERS, "Ban Members").await? else {
+        let lang = cx.lang();
+        let Some(guild) = permitted(cx, Permissions::BAN_MEMBERS, "ban-members").await? else {
             return Ok(());
         };
         let reason = match reason_of(self.reason.as_deref()) {
@@ -181,7 +191,7 @@ impl Unban {
         };
         let moderator = Moderator::of(cx)?;
         let act = Act::on(CaseKind::Unban, &self.user, reason);
-        let audit = audit_reason(&moderator, act.reason.as_deref());
+        let audit = audit_reason(lang, &moderator, act.reason.as_deref());
         if let Err(error) = cx
             .app
             .http
@@ -189,12 +199,11 @@ impl Unban {
             .reason(&audit)
             .await
         {
-            return cx
-                .reply_ephemeral(format!("Discord refused the unban: {}.", refusal(&error)))
-                .await;
+            let text = t!(lang, "mod.refused-unban", why = refusal(lang, &error));
+            return cx.reply_ephemeral(text).await;
         }
         let opened = record(&cx.app, guild, (moderator.id, &moderator.name), &act, None).await?;
-        cx.reply(public(reply_embed(&opened.case, &[]))).await
+        cx.reply(public(reply_embed(&opened.case, &[], lang))).await
     }
 }
 
@@ -215,7 +224,8 @@ pub struct Kick {
 
 impl Kick {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
-        let Some(guild) = permitted(cx, Permissions::KICK_MEMBERS, "Kick Members").await? else {
+        let lang = cx.lang();
+        let Some(guild) = permitted(cx, Permissions::KICK_MEMBERS, "kick-members").await? else {
             return Ok(());
         };
         let reason = match reason_of(self.reason.as_deref()) {
@@ -223,18 +233,18 @@ impl Kick {
             Err(why) => return cx.reply_ephemeral(why).await,
         };
         if self.user.member.is_none() {
-            return cx.reply_ephemeral(NOT_A_MEMBER).await;
+            return cx.reply_ephemeral(t!(lang, "mod.not-a-member")).await;
         }
         let moderator = Moderator::of(cx)?;
         let Some(ranks) = Ranks::read(&cx.app, guild, &moderator).await else {
-            return cx.reply_ephemeral(NO_ROLES).await;
+            return cx.reply_ephemeral(t!(lang, "mod.no-roles")).await;
         };
-        if let Some(why) = ranks.refusal(&self.user, "kick") {
+        if let Some(why) = ranks.refusal(lang, &self.user, "kick") {
             return cx.reply_ephemeral(why).await;
         }
         let act = Act::on(CaseKind::Kick, &self.user, reason);
         let told = tell(&cx.app, guild, &act).await;
-        let audit = audit_reason(&moderator, act.reason.as_deref());
+        let audit = audit_reason(lang, &moderator, act.reason.as_deref());
         if let Err(error) = cx
             .app
             .http
@@ -242,12 +252,16 @@ impl Kick {
             .reason(&audit)
             .await
         {
-            return cx
-                .reply_ephemeral(format!("Discord refused the kick: {}.", refusal(&error)))
-                .await;
+            let mut text = t!(lang, "mod.refused-kick", why = refusal(lang, &error));
+            if let Some(told) = &told {
+                take_back(&cx.app, told, CaseKind::Kick).await;
+                text = format!("{text}\n{}", t!(lang, "mod.told-anyway"));
+            }
+            return cx.reply_ephemeral(text).await;
         }
+        let told = told.is_some();
         let opened = record(&cx.app, guild, (moderator.id, &moderator.name), &act, Some(told)).await?;
-        cx.reply(public(reply_embed(&opened.case, &[]))).await
+        cx.reply(public(reply_embed(&opened.case, &[], lang))).await
     }
 }
 
@@ -259,9 +273,10 @@ pub(crate) async fn set_timeout(
     until: Option<chrono::DateTime<chrono::Utc>>,
     audit: &str,
 ) -> Result<(), String> {
+    let lang = cx.lang();
     let until = match until.map(|at| Timestamp::from_secs(at.timestamp())) {
         Some(Ok(at)) => Some(at),
-        Some(Err(_)) => return Err("that time can't be sent to Discord".to_owned()),
+        Some(Err(_)) => return Err(t!(lang, "mod.why.bad-time")),
         None => None,
     };
     cx.app
@@ -271,7 +286,7 @@ pub(crate) async fn set_timeout(
         .reason(audit)
         .await
         .map(drop)
-        .map_err(|error| refusal(&error).to_owned())
+        .map_err(|error| refusal(lang, &error))
 }
 
 #[derive(CommandModel, CreateCommand)]
@@ -294,7 +309,8 @@ pub struct Timeout {
 
 impl Timeout {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
-        let Some(guild) = permitted(cx, Permissions::MODERATE_MEMBERS, "Timeout Members").await? else {
+        let lang = cx.lang();
+        let Some(guild) = permitted(cx, Permissions::MODERATE_MEMBERS, "timeout-members").await? else {
             return Ok(());
         };
         let reason = match reason_of(self.reason.as_deref()) {
@@ -306,28 +322,26 @@ impl Timeout {
             Err(error) => return cx.reply_ephemeral(error.message).await,
         };
         let Some(member) = &self.user.member else {
-            return cx.reply_ephemeral(NOT_A_MEMBER).await;
+            return cx.reply_ephemeral(t!(lang, "mod.not-a-member")).await;
         };
         if member.permissions.contains(Permissions::ADMINISTRATOR) {
-            return cx
-                .reply_ephemeral("Members with the Administrator permission can't be timed out.")
-                .await;
+            return cx.reply_ephemeral(t!(lang, "mod.admin-no-timeout")).await;
         }
         let moderator = Moderator::of(cx)?;
         let Some(ranks) = Ranks::read(&cx.app, guild, &moderator).await else {
-            return cx.reply_ephemeral(NO_ROLES).await;
+            return cx.reply_ephemeral(t!(lang, "mod.no-roles")).await;
         };
-        if let Some(why) = ranks.refusal(&self.user, "time out") {
+        if let Some(why) = ranks.refusal(lang, &self.user, "timeout") {
             return cx.reply_ephemeral(why).await;
         }
         let mut act = Act::on(CaseKind::Timeout, &self.user, reason);
         act.duration = Some(duration);
-        let audit = audit_reason(&moderator, act.reason.as_deref());
+        let audit = audit_reason(lang, &moderator, act.reason.as_deref());
         if let Err(why) = set_timeout(cx, guild, &self.user, Some(cx.app.now() + duration), &audit).await {
-            return cx.reply_ephemeral(format!("Discord refused the timeout: {why}.")).await;
+            return cx.reply_ephemeral(t!(lang, "mod.refused-timeout", why = why)).await;
         }
         let opened = record(&cx.app, guild, (moderator.id, &moderator.name), &act, None).await?;
-        cx.reply(public(reply_embed(&opened.case, &[]))).await
+        cx.reply(public(reply_embed(&opened.case, &[], lang))).await
     }
 }
 
@@ -348,7 +362,8 @@ pub struct Untimeout {
 
 impl Untimeout {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
-        let Some(guild) = permitted(cx, Permissions::MODERATE_MEMBERS, "Timeout Members").await? else {
+        let lang = cx.lang();
+        let Some(guild) = permitted(cx, Permissions::MODERATE_MEMBERS, "timeout-members").await? else {
             return Ok(());
         };
         let reason = match reason_of(self.reason.as_deref()) {
@@ -356,29 +371,29 @@ impl Untimeout {
             Err(why) => return cx.reply_ephemeral(why).await,
         };
         let Some(member) = &self.user.member else {
-            return cx.reply_ephemeral(NOT_A_MEMBER).await;
+            return cx.reply_ephemeral(t!(lang, "mod.not-a-member")).await;
         };
         let now = cx.app.now().timestamp();
         if member
             .communication_disabled_until
             .is_none_or(|until| until.as_secs() <= now)
         {
-            return cx.reply_ephemeral("That member isn't timed out.").await;
+            return cx.reply_ephemeral(t!(lang, "mod.not-timed-out")).await;
         }
         let moderator = Moderator::of(cx)?;
         let Some(ranks) = Ranks::read(&cx.app, guild, &moderator).await else {
-            return cx.reply_ephemeral(NO_ROLES).await;
+            return cx.reply_ephemeral(t!(lang, "mod.no-roles")).await;
         };
-        if let Some(why) = ranks.refusal(&self.user, "end the timeout of") {
+        if let Some(why) = ranks.refusal(lang, &self.user, "untimeout") {
             return cx.reply_ephemeral(why).await;
         }
         let act = Act::on(CaseKind::Untimeout, &self.user, reason);
-        let audit = audit_reason(&moderator, act.reason.as_deref());
+        let audit = audit_reason(lang, &moderator, act.reason.as_deref());
         if let Err(why) = set_timeout(cx, guild, &self.user, None, &audit).await {
-            return cx.reply_ephemeral(format!("Discord refused it: {why}.")).await;
+            return cx.reply_ephemeral(t!(lang, "mod.refused", why = why)).await;
         }
         let opened = record(&cx.app, guild, (moderator.id, &moderator.name), &act, None).await?;
-        cx.reply(public(reply_embed(&opened.case, &[]))).await
+        cx.reply(public(reply_embed(&opened.case, &[], lang))).await
     }
 }
 
@@ -402,7 +417,8 @@ pub struct Nick {
 
 impl Nick {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
-        let Some(guild) = permitted(cx, Permissions::MANAGE_NICKNAMES, "Manage Nicknames").await? else {
+        let lang = cx.lang();
+        let Some(guild) = permitted(cx, Permissions::MANAGE_NICKNAMES, "manage-nicknames").await? else {
             return Ok(());
         };
         let reason = match reason_of(self.reason.as_deref()) {
@@ -410,28 +426,33 @@ impl Nick {
             Err(why) => return cx.reply_ephemeral(why).await,
         };
         if self.user.member.is_none() {
-            return cx.reply_ephemeral(NOT_A_MEMBER).await;
+            return cx.reply_ephemeral(t!(lang, "mod.not-a-member")).await;
         }
         let nickname = self.nickname.as_deref().map(str::trim).filter(|n| !n.is_empty());
         let moderator = Moderator::of(cx)?;
         let Some(ranks) = Ranks::read(&cx.app, guild, &moderator).await else {
-            return cx.reply_ephemeral(NO_ROLES).await;
+            return cx.reply_ephemeral(t!(lang, "mod.no-roles")).await;
         };
         // Your own nickname is yours to change; anyone else's follows the hierarchy.
         let why = if self.user.resolved.id.get() == moderator.id {
-            ranks.bot_may(&self.user, "rename")
+            ranks.bot_may(lang, &self.user, "rename")
         } else {
-            ranks.refusal(&self.user, "rename")
+            ranks.refusal(lang, &self.user, "rename")
         };
         if let Some(why) = why {
             return cx.reply_ephemeral(why).await;
         }
+        // The case's details are the server's record, in the server's language.
+        let server = cx.app.guild_lang(guild).await;
         let mut act = Act::on(CaseKind::Nick, &self.user, reason);
         act.details = Some(match nickname {
-            Some(nick) => format!("nickname set to `{}`", nick.replace('`', "'")),
-            None => "nickname reset".to_owned(),
+            Some(nick) => {
+                let nick = format!("`{}`", nick.replace('`', "'"));
+                t!(server, "mod.details.nick-set", nick = nick)
+            }
+            None => t!(server, "mod.details.nick-reset"),
         });
-        let audit = audit_reason(&moderator, act.reason.as_deref());
+        let audit = audit_reason(lang, &moderator, act.reason.as_deref());
         if let Err(error) = cx
             .app
             .http
@@ -441,11 +462,11 @@ impl Nick {
             .await
         {
             return cx
-                .reply_ephemeral(format!("Discord refused it: {}.", refusal(&error)))
+                .reply_ephemeral(t!(lang, "mod.refused", why = refusal(lang, &error)))
                 .await;
         }
         let opened = record(&cx.app, guild, (moderator.id, &moderator.name), &act, None).await?;
-        cx.reply(private(reply_embed(&opened.case, &[]))).await
+        cx.reply(private(reply_embed(&opened.case, &[], lang))).await
     }
 }
 
@@ -489,11 +510,12 @@ pub struct RoleRemove {
 
 impl RoleCommand {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
+        let lang = cx.lang();
         let (user, role, reason, add) = match self {
             Self::Add(c) => (c.user, c.role, c.reason, true),
             Self::Remove(c) => (c.user, c.role, c.reason, false),
         };
-        let Some(guild) = permitted(cx, Permissions::MANAGE_ROLES, "Manage Roles").await? else {
+        let Some(guild) = permitted(cx, Permissions::MANAGE_ROLES, "manage-roles").await? else {
             return Ok(());
         };
         let reason = match reason_of(reason.as_deref()) {
@@ -501,19 +523,22 @@ impl RoleCommand {
             Err(why) => return cx.reply_ephemeral(why).await,
         };
         let Some(member) = &user.member else {
-            return cx.reply_ephemeral(NOT_A_MEMBER).await;
+            return cx.reply_ephemeral(t!(lang, "mod.not-a-member")).await;
         };
+        let label = format!("<@&{}>", role.id);
         let holds = member.roles.contains(&role.id);
         if add && holds {
-            return cx.reply_ephemeral(format!("They already have <@&{}>.", role.id)).await;
+            return cx.reply_ephemeral(t!(lang, "mod.already-has", role = label)).await;
         }
         if !add && !holds {
-            return cx.reply_ephemeral(format!("They don't have <@&{}>.", role.id)).await;
+            return cx.reply_ephemeral(t!(lang, "mod.lacks", role = label)).await;
         }
         let moderator = Moderator::of(cx)?;
         let Some(ranks) = Ranks::read(&cx.app, guild, &moderator).await else {
-            return cx.reply_ephemeral(NO_ROLES).await;
+            return cx.reply_ephemeral(t!(lang, "mod.no-roles")).await;
         };
+        // The same rule as every role Pinchora hands out: one the bot can give, below the moderator's
+        // highest role, and none with a dangerous permission unless they own or administer the server.
         let known = ranks.table.get(&role.id.get());
         let facts = RoleFacts {
             everyone: role.id.get() == guild,
@@ -526,14 +551,13 @@ impl RoleCommand {
             administrator: administrator(cx),
             top_role: Some(ranks.actor.top),
         };
-        let label = format!("<@&{}>", role.id);
         if let Some(why) = role_refusal_for(facts, grantor, Some(ranks.bot.top), &label) {
             return cx.reply_ephemeral(why).await;
         }
         let kind = if add { CaseKind::RoleAdd } else { CaseKind::RoleRemove };
         let mut act = Act::on(kind, &user, reason);
         act.details = Some(format!("@{}", role.name.replace(['`', '*'], "")));
-        let audit = audit_reason(&moderator, act.reason.as_deref());
+        let audit = audit_reason(lang, &moderator, act.reason.as_deref());
         let http = &cx.app.http;
         let done = if add {
             http.add_guild_member_role(Id::new(guild), user.resolved.id, role.id)
@@ -546,11 +570,11 @@ impl RoleCommand {
         };
         if let Err(error) = done {
             return cx
-                .reply_ephemeral(format!("Discord refused it: {}.", refusal(&error)))
+                .reply_ephemeral(t!(lang, "mod.refused", why = refusal(lang, &error)))
                 .await;
         }
         let opened = record(&cx.app, guild, (moderator.id, &moderator.name), &act, None).await?;
-        cx.reply(private(reply_embed(&opened.case, &[]))).await
+        cx.reply(private(reply_embed(&opened.case, &[], lang))).await
     }
 }
 

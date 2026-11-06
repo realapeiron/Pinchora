@@ -87,9 +87,6 @@ pub struct App {
     pub(crate) log_state: LogState,
     /// Server owners, role positions and the bot's roles, for the moderation hierarchy.
     pub(crate) moderation: ModState,
-    /// Whether the gateway asks for message content (`gateway.message_content`): the server log then
-    /// keeps recent messages to show what an edited or deleted one said, and `/purge` can filter by text.
-    pub message_content: bool,
     /// Seconds added to the clock by [`App::shift_clock`].
     clock_shift: AtomicI64,
     /// Custom commands and auto-responders, and what they remember.
@@ -166,7 +163,6 @@ impl App {
             rebuild_slots: Arc::new(Semaphore::new(REBUILD_SLOTS)),
             log_state: LogState::new(),
             moderation: ModState::new(),
-            message_content: false,
             clock_shift: AtomicI64::new(0),
             custom: CustomState::new(),
         }

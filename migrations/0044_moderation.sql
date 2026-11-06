@@ -20,7 +20,9 @@ CREATE TABLE mod_case_counters (
 -- One action taken through Pinchora. `target_id` is a member, or a channel for the channel actions
 -- (purge, slowmode, lock, unlock). `active`: a warn that still counts, a ban that still stands (a
 -- temporary one is lifted by the ticker at `expires_at`, which leases it for two minutes in
--- `expire_lease` so two pods never lift it twice). The records stay when a member deletes their data:
+-- `expire_lease` so two pods never lift it twice; a ban lifted on Discord by anyone ends it). A lock
+-- keeps what @everyone's overwrite allowed and denied of the locked permissions before it
+-- (`lock_allow`, `lock_deny`), for the unlock to put back. The records stay when a member deletes their data:
 -- they are the server's, and the moderator's name is the only thing taken out (see privacy.rs).
 CREATE TABLE mod_cases (
     guild_id        BIGINT      NOT NULL,
@@ -41,6 +43,8 @@ CREATE TABLE mod_cases (
     log_channel_id  BIGINT,
     log_message_id  BIGINT,
     expire_lease    TIMESTAMPTZ,
+    lock_allow      BIGINT,
+    lock_deny       BIGINT,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ,
     PRIMARY KEY (guild_id, number)
@@ -79,6 +83,18 @@ CREATE TABLE log_settings (
     ignored_users     BIGINT[] NOT NULL DEFAULT '{}' CHECK (cardinality(ignored_users) <= 50),
     ignore_bots       BOOLEAN  NOT NULL DEFAULT FALSE
 );
+
+-- A server that already logged keeps logging what it did: the four older groups (joins and leaves,
+-- names, bans, voice joins, leaves and moves). Every newer event starts off there until it is switched on;
+-- a server that picks its first log channel from now on gets them all.
+INSERT INTO log_settings (guild_id, disabled_events)
+SELECT id, ARRAY[
+    'avatar', 'message_edit', 'message_delete', 'message_bulk_delete', 'role_create', 'role_delete',
+    'role_update', 'member_roles', 'channel_create', 'channel_delete', 'channel_update', 'channel_permissions',
+    'thread_create', 'thread_delete', 'thread_update', 'voice_moderation', 'voice_self', 'kick', 'timeout',
+    'server_update', 'invite_create', 'invite_delete', 'emojis', 'stickers'
+]
+FROM guilds WHERE log_channel_id IS NOT NULL;
 
 -- What staff did: moderation commands (`command`, with their case), what Discord's audit log says a
 -- member did by hand (`discord`) and cases edited on the dashboard (`web`). The dashboard's settings

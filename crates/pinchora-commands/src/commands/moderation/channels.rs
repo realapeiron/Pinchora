@@ -2,8 +2,9 @@
 
 use chrono::Duration;
 use pinchora_core::{
-    moderation::{CaseKind, PURGE_AGE, check_reason, format_duration, parse_slowmode},
-    snowflake,
+    i18n::Lang,
+    moderation::{CaseKind, PURGE_AGE, check_reason, parse_slowmode},
+    snowflake, t,
 };
 use twilight_http::request::AuditLogReason;
 use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
@@ -18,7 +19,7 @@ use twilight_model::{
 use super::{
     Act, Moderator,
     members::{audit_reason, private, public, refusal},
-    permitted, record, reply_embed,
+    permitted, record, reply_embed, words,
 };
 use crate::Cx;
 
@@ -62,13 +63,14 @@ fn allowed_in(cx: &Cx, named: Option<&InteractionChannel>, needed: Permissions) 
 /// [`permitted`] for Manage Channels, in the channel the command names.
 async fn channel_permitted(cx: &Cx, named: Option<&InteractionChannel>) -> anyhow::Result<Option<u64>> {
     let Some(guild) = cx.guild_id() else {
-        cx.reply_ephemeral("Moderation only works inside a server.").await?;
+        cx.reply_ephemeral(t!(cx.lang(), "mod.guild-only")).await?;
         return Ok(None);
     };
     if allowed_in(cx, named, Permissions::MANAGE_CHANNELS) {
         return Ok(Some(guild));
     }
-    cx.reply_ephemeral("You need the Manage Channels permission to do that.")
+    let permission = words::permission(cx.lang(), "manage-channels");
+    cx.reply_ephemeral(t!(cx.lang(), "mod.needs", permission = permission))
         .await?;
     Ok(None)
 }
@@ -106,23 +108,30 @@ impl PurgeFilter {
             && (!self.attachments || !message.attachments.is_empty())
     }
 
+    /// Whether the filters look at what a message says or carries, which Discord only shows a bot
+    /// with the Message Content intent.
+    pub(crate) fn reads(&self) -> bool {
+        self.contains.is_some() || self.links || self.attachments
+    }
+
     /// The filters in words, for the case: "from @Mia, with links".
-    fn describe(&self, user_name: Option<&str>) -> String {
+    fn describe(&self, lang: Lang, user_name: Option<&str>) -> String {
         let mut parts = Vec::new();
         if let Some(name) = user_name {
-            parts.push(format!("from {name}"));
+            parts.push(t!(lang, "mod.details.from", name = name));
         }
         if self.bots {
-            parts.push("from bots".to_owned());
+            parts.push(t!(lang, "mod.details.from-bots"));
         }
         if let Some(text) = &self.contains {
-            parts.push(format!("containing `{}`", text.replace('`', "'")));
+            let text = format!("`{}`", text.replace('`', "'"));
+            parts.push(t!(lang, "mod.details.containing", text = text));
         }
         if self.links {
-            parts.push("with links".to_owned());
+            parts.push(t!(lang, "mod.details.with-links"));
         }
         if self.attachments {
-            parts.push("with attachments".to_owned());
+            parts.push(t!(lang, "mod.details.with-attachments"));
         }
         parts.join(", ")
     }
@@ -157,7 +166,8 @@ pub struct Purge {
 
 impl Purge {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
-        let Some(guild) = permitted(cx, Permissions::MANAGE_MESSAGES, "Manage Messages").await? else {
+        let lang = cx.lang();
+        let Some(guild) = permitted(cx, Permissions::MANAGE_MESSAGES, "manage-messages").await? else {
             return Ok(());
         };
         let reason = match check_reason(self.reason.as_deref()) {
@@ -171,26 +181,21 @@ impl Purge {
             links: self.links == Some(true),
             attachments: self.attachments == Some(true),
         };
-        // Without the Message Content intent Discord sends other people's messages without their text.
-        if (filter.contains.is_some() || filter.links) && !cx.app.message_content {
-            return cx
-                .reply_ephemeral(
-                    "The `contains` and `links` filters need to read messages, which this bot does not do. \
-                     Use the member, bots or attachments filters instead.",
-                )
-                .await;
-        }
         let Some((channel, channel_name)) = target_channel(cx, None) else {
-            return cx.reply_ephemeral("I can't tell which channel this is.").await;
+            return cx.reply_ephemeral(t!(lang, "mod.which-channel")).await;
         };
         let messages = match cx.app.http.channel_messages(Id::new(channel)).limit(100).await {
             Ok(response) => response.models().await?,
             Err(error) => {
-                return cx
-                    .reply_ephemeral(format!("I couldn't read the channel: {}.", refusal(&error)))
-                    .await;
+                let text = t!(lang, "mod.read-failed", why = refusal(lang, &error));
+                return cx.reply_ephemeral(text).await;
             }
         };
+        // Without the Message Content intent Discord sends other people's messages without their text,
+        // attachments or embeds: filters that look at them would match nothing.
+        if filter.reads() && !readable(&messages, cx.app.application_id.get()) {
+            return cx.reply_ephemeral(t!(lang, "mod.purge-needs-content")).await;
+        }
         let now = cx.app.now();
         let ids: Vec<_> = messages
             .iter()
@@ -199,12 +204,10 @@ impl Purge {
             .map(|m| m.id)
             .collect();
         if ids.is_empty() {
-            return cx
-                .reply_ephemeral("No messages from the last 14 days match that, so nothing was deleted.")
-                .await;
+            return cx.reply_ephemeral(t!(lang, "mod.purge-none")).await;
         }
         let moderator = Moderator::of(cx)?;
-        let audit = audit_reason(&moderator, reason.as_deref());
+        let audit = audit_reason(lang, &moderator, reason.as_deref());
         let http = &cx.app.http;
         let deleted = if let [one] = ids.as_slice() {
             http.delete_message(Id::new(channel), *one)
@@ -218,16 +221,18 @@ impl Purge {
                 .map(drop)
         };
         if let Err(error) = deleted {
-            return cx
-                .reply_ephemeral(format!("Discord refused to delete them: {}.", refusal(&error)))
-                .await;
+            let text = t!(lang, "mod.refused-delete", why = refusal(lang, &error));
+            return cx.reply_ephemeral(text).await;
         }
-        let n = ids.len();
-        let described = filter.describe(self.user.as_ref().map(|u| u.resolved.name.as_str()));
-        let mut details = format!("Deleted {n} message{}", if n == 1 { "" } else { "s" });
-        if !described.is_empty() {
-            details.push_str(&format!(" ({described})"));
-        }
+        // The case's details are the server's record, in the server's language.
+        let server = cx.app.guild_lang(guild).await;
+        let purged = t!(server, "mod.details.purged", count = ids.len());
+        let described = filter.describe(server, self.user.as_ref().map(|u| u.resolved.name.as_str()));
+        let details = if described.is_empty() {
+            purged
+        } else {
+            t!(server, "mod.details.filters", purged = purged, filters = described)
+        };
         let act = Act {
             kind: CaseKind::Purge,
             target: channel,
@@ -237,8 +242,17 @@ impl Purge {
             details: Some(details),
         };
         let opened = record(&cx.app, guild, (moderator.id, &moderator.name), &act, None).await?;
-        cx.reply(private(reply_embed(&opened.case, &[]))).await
+        cx.reply(private(reply_embed(&opened.case, &[], lang))).await
     }
+}
+
+/// Whether Discord showed the bot what other people's messages say: without the Message Content
+/// intent every one of them comes without text, attachments and embeds.
+fn readable(messages: &[Message], me: u64) -> bool {
+    messages
+        .iter()
+        .filter(|m| m.author.id.get() != me)
+        .any(|m| !m.content.is_empty() || !m.attachments.is_empty() || !m.embeds.is_empty())
 }
 
 #[derive(CommandModel, CreateCommand)]
@@ -262,6 +276,7 @@ pub struct Slowmode {
 
 impl Slowmode {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
+        let lang = cx.lang();
         let Some(guild) = channel_permitted(cx, self.channel.as_ref()).await? else {
             return Ok(());
         };
@@ -274,10 +289,10 @@ impl Slowmode {
             Err(error) => return cx.reply_ephemeral(error.message).await,
         };
         let Some((channel, name)) = target_channel(cx, self.channel.as_ref()) else {
-            return cx.reply_ephemeral("I can't tell which channel this is.").await;
+            return cx.reply_ephemeral(t!(lang, "mod.which-channel")).await;
         };
         let moderator = Moderator::of(cx)?;
-        let audit = audit_reason(&moderator, reason.as_deref());
+        let audit = audit_reason(lang, &moderator, reason.as_deref());
         if let Err(error) = cx
             .app
             .http
@@ -287,16 +302,15 @@ impl Slowmode {
             .await
         {
             return cx
-                .reply_ephemeral(format!("Discord refused it: {}.", refusal(&error)))
+                .reply_ephemeral(t!(lang, "mod.refused", why = refusal(lang, &error)))
                 .await;
         }
+        let server = cx.app.guild_lang(guild).await;
         let details = if seconds == 0 {
-            "off".to_owned()
+            t!(server, "mod.details.slowmode-off")
         } else {
-            format!(
-                "one message every {}",
-                format_duration(Duration::seconds(seconds.into()))
-            )
+            let every = words::duration(server, Duration::seconds(seconds.into()));
+            t!(server, "mod.details.slowmode-every", duration = every)
         };
         let act = Act {
             kind: CaseKind::Slowmode,
@@ -307,18 +321,28 @@ impl Slowmode {
             details: Some(details),
         };
         let opened = record(&cx.app, guild, (moderator.id, &moderator.name), &act, None).await?;
-        cx.reply(public(reply_embed(&opened.case, &[]))).await
+        cx.reply(public(reply_embed(&opened.case, &[], lang))).await
     }
 }
 
 /// What @everyone's overwrite becomes when a channel is locked or unlocked, or `None` when it already
-/// is: `(allow, deny)`, both empty meaning the overwrite can go.
-pub(crate) fn lock_change(allow: Permissions, deny: Permissions, lock: bool) -> Option<(Permissions, Permissions)> {
+/// is: `(allow, deny)`, both empty meaning the overwrite can go. An unlock puts back what the overwrite
+/// allowed and denied of the locked permissions before the lock (`before`), when that is known.
+pub(crate) fn lock_change(
+    allow: Permissions,
+    deny: Permissions,
+    lock: bool,
+    before: Option<(Permissions, Permissions)>,
+) -> Option<(Permissions, Permissions)> {
     let locked = deny.contains(Permissions::SEND_MESSAGES);
+    let (allowed, denied) = before.unwrap_or((Permissions::empty(), Permissions::empty()));
     match (lock, locked) {
         (true, true) | (false, false) => None,
         (true, false) => Some((allow - LOCKED, deny | LOCKED)),
-        (false, true) => Some((allow, deny - LOCKED)),
+        (false, true) => Some((
+            (allow - LOCKED) | (allowed & LOCKED),
+            (deny - LOCKED) | (denied & (LOCKED - Permissions::SEND_MESSAGES)),
+        )),
     }
 }
 
@@ -367,6 +391,7 @@ impl Unlock {
 }
 
 async fn lock(cx: &Cx, named: Option<&InteractionChannel>, reason: Option<&str>, lock: bool) -> anyhow::Result<()> {
+    let lang = cx.lang();
     let Some(guild) = channel_permitted(cx, named).await? else {
         return Ok(());
     };
@@ -375,15 +400,14 @@ async fn lock(cx: &Cx, named: Option<&InteractionChannel>, reason: Option<&str>,
         Err(error) => return cx.reply_ephemeral(error.message).await,
     };
     let Some((channel, name)) = target_channel(cx, named) else {
-        return cx.reply_ephemeral("I can't tell which channel this is.").await;
+        return cx.reply_ephemeral(t!(lang, "mod.which-channel")).await;
     };
     let http = &cx.app.http;
     let found = match http.channel(Id::new(channel)).await {
         Ok(response) => response.model().await?,
         Err(error) => {
-            return cx
-                .reply_ephemeral(format!("I couldn't read the channel: {}.", refusal(&error)))
-                .await;
+            let text = t!(lang, "mod.read-failed", why = refusal(lang, &error));
+            return cx.reply_ephemeral(text).await;
         }
     };
     let everyone: Option<&Overwrite> = found
@@ -392,12 +416,23 @@ async fn lock(cx: &Cx, named: Option<&InteractionChannel>, reason: Option<&str>,
         .flatten()
         .find(|o| o.id.get() == guild);
     let (allow, deny) = everyone.map_or((Permissions::empty(), Permissions::empty()), |o| (o.allow, o.deny));
-    let Some((allow, deny)) = lock_change(allow, deny, lock) else {
-        let state = if lock { "already locked" } else { "not locked" };
-        return cx.reply_ephemeral(format!("<#{channel}> is {state}.")).await;
+    // What the lock took is put back as it was: an unlock asks the lock's case what that was.
+    let before = if lock {
+        None
+    } else {
+        let saved = cx.app.db.lock_state(guild, channel).await?;
+        saved.map(|(a, d)| (Permissions::from_bits_truncate(a), Permissions::from_bits_truncate(d)))
+    };
+    let Some((new_allow, new_deny)) = lock_change(allow, deny, lock, before) else {
+        let key = if lock { "mod.already-locked" } else { "mod.not-locked" };
+        return cx
+            .reply_ephemeral(t!(lang, key, channel = format!("<#{channel}>")))
+            .await;
     };
     let moderator = Moderator::of(cx)?;
-    let audit = audit_reason(&moderator, reason.as_deref());
+    let audit = audit_reason(lang, &moderator, reason.as_deref());
+    let (allow_before, deny_before) = (allow & LOCKED, deny & LOCKED);
+    let (allow, deny) = (new_allow, new_deny);
     let done = if allow.is_empty() && deny.is_empty() {
         http.delete_channel_permission(Id::new(channel))
             .role(Id::new(guild))
@@ -418,7 +453,7 @@ async fn lock(cx: &Cx, named: Option<&InteractionChannel>, reason: Option<&str>,
     };
     if let Err(error) = done {
         return cx
-            .reply_ephemeral(format!("Discord refused it: {}.", refusal(&error)))
+            .reply_ephemeral(t!(lang, "mod.refused", why = refusal(lang, &error)))
             .await;
     }
     let act = Act {
@@ -430,7 +465,14 @@ async fn lock(cx: &Cx, named: Option<&InteractionChannel>, reason: Option<&str>,
         details: None,
     };
     let opened = record(&cx.app, guild, (moderator.id, &moderator.name), &act, None).await?;
-    cx.reply(public(reply_embed(&opened.case, &[]))).await
+    if lock {
+        let (allowed, denied) = (allow_before.bits(), deny_before.bits());
+        cx.app
+            .db
+            .set_lock_state(guild, opened.case.number, allowed, denied)
+            .await?;
+    }
+    cx.reply(public(reply_embed(&opened.case, &[], lang))).await
 }
 
 #[cfg(test)]
@@ -509,7 +551,7 @@ mod tests {
                 links: true,
                 ..PurgeFilter::default()
             }
-            .describe(Some("Mia")),
+            .describe(Lang::En, Some("Mia")),
             "from Mia, from bots, with links"
         );
     }
@@ -517,14 +559,22 @@ mod tests {
     #[test]
     fn locking_takes_sending_from_everyone_and_unlocking_gives_it_back() {
         let view = Permissions::VIEW_CHANNEL;
-        let (allow, deny) = lock_change(view | Permissions::SEND_MESSAGES, Permissions::empty(), true).unwrap();
+        let send = Permissions::SEND_MESSAGES;
+        let (allow, deny) = lock_change(view | send, Permissions::empty(), true, None).unwrap();
         assert_eq!(allow, view);
         assert!(deny.contains(LOCKED));
-        assert_eq!(lock_change(allow, deny, true), None, "already locked");
-        let (allow, deny) = lock_change(allow, deny, false).unwrap();
-        assert_eq!((allow, deny), (view, Permissions::empty()));
-        assert_eq!(lock_change(allow, deny, false), None, "not locked");
-        let (allow, deny) = lock_change(Permissions::empty(), Permissions::SEND_MESSAGES, false).unwrap();
+        assert_eq!(lock_change(allow, deny, true, None), None, "already locked");
+        // Unlocking puts back what @everyone had: here an explicit Send Messages.
+        let (allow, deny) = lock_change(allow, deny, false, Some((send, Permissions::empty()))).unwrap();
+        assert_eq!((allow, deny), (view | send, Permissions::empty()));
+        assert_eq!(lock_change(allow, deny, false, None), None, "not locked");
+        // Without a lock to ask (locked by hand), the locked permissions go back to neutral.
+        let (allow, deny) = lock_change(Permissions::empty(), send, false, None).unwrap();
         assert!(allow.is_empty() && deny.is_empty(), "the overwrite can go");
+        // A thread permission that was denied before the lock stays denied after it.
+        let threads = Permissions::CREATE_PUBLIC_THREADS;
+        let (allow, deny) = lock_change(Permissions::empty(), threads, true, None).unwrap();
+        let (_, deny) = lock_change(allow, deny, false, Some((Permissions::empty(), threads))).unwrap();
+        assert_eq!(deny, threads);
     }
 }

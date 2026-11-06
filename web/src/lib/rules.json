@@ -965,8 +965,25 @@
       "critterdrop",
       "surge",
       "party",
+      "ban",
+      "unban",
+      "kick",
+      "timeout",
+      "untimeout",
+      "warn",
+      "warnings",
+      "unwarn",
+      "purge",
+      "slowmode",
+      "lock",
+      "unlock",
+      "nick",
+      "role",
+      "case",
+      "reason",
       "tag",
-      "customcommand"
+      "customcommand",
+      "language"
     ],
     "responder_placeholders": {
       "keyword": [

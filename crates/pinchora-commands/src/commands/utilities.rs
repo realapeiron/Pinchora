@@ -1,6 +1,10 @@
 //! `/config join-role`, `goodbye`, `log` and `log-events`: what the bot does as members come and go.
 
-use pinchora_core::logging::{Group, LogCategory, LogConfig, LogEvent};
+use pinchora_core::{
+    i18n::Lang,
+    logging::{Group, LogCategory, LogConfig, LogEvent},
+    t,
+};
 use pinchora_db::GuildSettings;
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::{application::interaction::InteractionChannel, guild::Role};
@@ -110,10 +114,10 @@ pub(crate) fn log_summary(s: &GuildSettings) -> String {
 }
 
 /// The detailed log in a few lines: the channel of each category and how many of its events are on.
-pub(crate) fn log_config_summary(config: &LogConfig) -> String {
+pub(crate) fn log_config_summary(lang: Lang, config: &LogConfig) -> String {
     let head = match config.default_channel {
-        Some(channel) => format!("**on** · <#{channel}>"),
-        None => "**off** · pick a channel with `/config log`".to_owned(),
+        Some(channel) => t!(lang, "log.head-on", channel = format!("<#{channel}>")),
+        None => t!(lang, "log.head-off"),
     };
     let mut lines = vec![head];
     for category in LogCategory::ALL {
@@ -121,12 +125,20 @@ pub(crate) fn log_config_summary(config: &LogConfig) -> String {
         let on = events.iter().filter(|e| config.enabled(**e)).count();
         let channel = match (config.channels.get(&category), config.default_channel) {
             (Some(own), _) => format!("<#{own}>"),
-            (None, Some(_)) => "log channel".to_owned(),
-            (None, None) => "no channel".to_owned(),
+            (None, Some(_)) => t!(lang, "log.log-channel"),
+            (None, None) => t!(lang, "log.no-channel"),
         };
-        lines.push(format!("> {}: {on}/{} on · {channel}", category.label(), events.len()));
+        let name = t!(lang, &format!("log.category.{}", category.key()));
+        lines.push(t!(
+            lang,
+            "log.category-line",
+            category = name,
+            on = on,
+            total = events.len(),
+            channel = channel
+        ));
     }
-    lines.push(ignore_summary(config));
+    lines.push(ignore_summary(lang, config));
     lines.join("\n")
 }
 
@@ -181,7 +193,7 @@ impl ConfigLog {
         let db = &cx.app.db;
         let off = self.off == Some(true);
         if self.channel.is_some() && off {
-            return cx.reply_ephemeral("Pick a channel or `off`, not both.").await;
+            return cx.reply_ephemeral(t!(cx.lang(), "mod.setup.channel-or-off")).await;
         }
         let config = match (self.category.map(LogCategoryChoice::category), self.channel) {
             (Some(category), channel) if channel.is_some() || off => {
@@ -206,8 +218,8 @@ impl ConfigLog {
             _ => db.log_config(guild).await?,
         };
         cx.app.announce_guild_change(guild).await;
-        cx.reply_ephemeral(format!("Server log: {}", log_config_summary(&config)))
-            .await
+        let summary = log_config_summary(cx.lang(), &config);
+        cx.reply_ephemeral(t!(cx.lang(), "log.prefix", summary = summary)).await
     }
 }
 
@@ -245,7 +257,7 @@ impl ConfigLogEvents {
             })
             .await?;
         cx.app.announce_guild_change(guild).await;
-        cx.reply_ephemeral(format!("Server log: {}", log_config_summary(&config)))
-            .await
+        let summary = log_config_summary(cx.lang(), &config);
+        cx.reply_ephemeral(t!(cx.lang(), "log.prefix", summary = summary)).await
     }
 }

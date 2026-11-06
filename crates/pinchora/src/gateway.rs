@@ -160,7 +160,8 @@ async fn run_shard(
     let id = shard.id().number();
     let flags = wanted_events();
     // Without the Message Content intent Discord still sends the text of messages that mention the bot;
-    // it is dropped, so keyword auto-responders never hear chat the operator did not turn on.
+    // it is dropped, so keyword auto-responders and the server log never hear chat the operator did not
+    // turn on.
     let reads_chat = shard.config().intents().contains(Intents::MESSAGE_CONTENT);
     let mut closing = false;
     loop {
@@ -175,8 +176,12 @@ async fn run_shard(
                 None => break,
                 Some(Ok(Event::GatewayClose(_))) if closing => break,
                 Some(Ok(mut event)) => {
-                    if !reads_chat && let Event::MessageCreate(message) = &mut event {
-                        message.content.clear();
+                    if !reads_chat {
+                        match &mut event {
+                            Event::MessageCreate(message) => message.content.clear(),
+                            Event::MessageUpdate(message) => message.content.clear(),
+                            _ => {}
+                        }
                     }
                     dispatch(&app, id, event)
                 }
