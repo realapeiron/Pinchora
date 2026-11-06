@@ -24,6 +24,20 @@ use twilight_model::{
 
 use crate::server_log::LogState;
 
+/// Where a channel sits, for XP multipliers that follow a thread to its channel and a channel to its category.
+#[derive(Debug, Clone, Copy)]
+struct ChannelPlace {
+    parent: Option<u64>,
+    thread: bool,
+}
+
+/// What the voice XP ticker needs about a server, kept for minutes so a tick every minute does not ask
+/// the database every time.
+pub(crate) struct VoiceGuild {
+    pub settings: Arc<GuildSettings>,
+    pub rules: Arc<XpRules>,
+}
+
 /// Everything a handler needs. Built once per process and shared as `Arc<App>`.
 pub struct App {
     /// REST client; goes through the shared http-proxy when one is configured.
@@ -42,6 +56,8 @@ pub struct App {
     guild_settings: Moka<u64, Arc<GuildSettings>>,
     guild_roles: Moka<u64, Arc<HashMap<u64, String>>>,
     xp_rules: Moka<u64, Arc<XpRules>>,
+    voice_guilds: Moka<u64, Arc<VoiceGuild>>,
+    channel_places: Moka<u64, ChannelPlace>,
     avatars: Moka<String, Arc<Vec<u8>>>,
     users: Moka<u64, Arc<User>>,
     tasks: TaskTracker,
@@ -89,6 +105,15 @@ impl App {
             xp_rules: Moka::builder()
                 .max_capacity(50_000)
                 .time_to_live(Duration::from_secs(60))
+                .build(),
+            // Longer than the minute between ticks; a change made on another pod waits at most this long.
+            voice_guilds: Moka::builder()
+                .max_capacity(50_000)
+                .time_to_live(Duration::from_secs(300))
+                .build(),
+            channel_places: Moka::builder()
+                .max_capacity(100_000)
+                .time_to_live(Duration::from_secs(600))
                 .build(),
             avatars: Moka::builder()
                 .weigher(|_k: &String, v: &Arc<Vec<u8>>| v.len().try_into().unwrap_or(u32::MAX))
@@ -168,6 +193,65 @@ impl App {
 
     pub async fn forget_xp_rules(&self, guild_id: u64) {
         self.xp_rules.invalidate(&guild_id).await;
+        self.voice_guilds.invalidate(&guild_id).await;
+    }
+
+    /// The settings and multipliers voice XP is paid by, cached for five minutes.
+    pub(crate) async fn voice_guild(&self, guild_id: u64) -> anyhow::Result<Arc<VoiceGuild>> {
+        self.voice_guilds
+            .try_get_with(guild_id, async {
+                let settings = self.db.guild_settings(guild_id).await?;
+                let rules = self.db.xp_rules(guild_id).await?;
+                anyhow::Ok(Arc::new(VoiceGuild {
+                    settings: Arc::new(settings),
+                    rules: Arc::new(rules),
+                }))
+            })
+            .await
+            .map_err(|e| anyhow::anyhow!("{e:#}"))
+    }
+
+    pub(crate) async fn forget_voice_guild(&self, guild_id: u64) {
+        self.voice_guilds.invalidate(&guild_id).await;
+    }
+
+    /// `channel` followed by what it sits under, nearest first: a thread or forum post's channel, then
+    /// that channel's category. Only looked up as far as `rules` needs: nothing when the server has no
+    /// channel rules or the channel has its own. Discord is asked once per channel and the answer
+    /// kept; a lookup that fails just leaves the lineage short.
+    pub async fn xp_lineage(&self, rules: &XpRules, channel: u64) -> Vec<u64> {
+        let mut lineage = vec![channel];
+        if rules.channels.is_empty() || rules.channels.contains_key(&channel) {
+            return lineage;
+        }
+        let Some(place) = self.channel_place(channel).await else {
+            return lineage;
+        };
+        let Some(parent) = place.parent else {
+            return lineage;
+        };
+        lineage.push(parent);
+        if place.thread
+            && !rules.channels.contains_key(&parent)
+            && let Some(category) = self.channel_place(parent).await.and_then(|p| p.parent)
+        {
+            lineage.push(category);
+        }
+        lineage
+    }
+
+    async fn channel_place(&self, id: u64) -> Option<ChannelPlace> {
+        self.channel_places
+            .try_get_with(id, async {
+                let channel = self.http.channel(Id::new(id.max(1))).await?.model().await?;
+                anyhow::Ok(ChannelPlace {
+                    parent: channel.parent_id.map(|p| p.get()),
+                    thread: channel.kind.is_thread(),
+                })
+            })
+            .await
+            .map_err(|error| tracing::debug!(%error, id, "channel lookup failed"))
+            .ok()
     }
 
     /// A server's role names by id, cached for a minute; `None` when Discord cannot be asked.
@@ -197,6 +281,7 @@ impl App {
 
     pub async fn forget_guild_settings(&self, guild_id: u64) {
         self.guild_settings.invalidate(&guild_id).await;
+        self.voice_guilds.invalidate(&guild_id).await;
     }
 
     /// Runs a render job on the blocking pool, at most one per CPU at a time.

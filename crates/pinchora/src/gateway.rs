@@ -2,8 +2,8 @@ use std::{sync::Arc, time::Duration};
 
 use pinchora_cache::{RedisQueue, StoredSession};
 use pinchora_commands::{
-    App, Responder, handle_interaction, on_ban_add, on_ban_remove, on_member_add, on_member_remove, on_member_update,
-    on_message, on_voice_state_update,
+    App, Responder, handle_gateway_interaction, on_ban_add, on_ban_remove, on_guild_create, on_guild_delete,
+    on_member_add, on_member_remove, on_member_update, on_message, on_voice_state_update,
 };
 use pinchora_core::{
     Config, cluster,
@@ -23,8 +23,9 @@ use twilight_model::gateway::{
 const SESSION_TTL: Duration = Duration::from_secs(240);
 
 fn wanted_events() -> EventTypeFlags {
-    // Only events we handle get deserialized; GUILD_CREATE alone would cost more
-    // CPU than everything else at scale. Gateway close events always come through.
+    // Only events we handle get deserialized. GUILD_CREATE is the costly one (the whole server in one
+    // payload, once per guild per identify); it is here for the voice states it carries, which put
+    // voice XP right after a restart. Gateway close events always come through.
     EventTypeFlags::INTERACTION_CREATE
         | EventTypeFlags::MESSAGE_CREATE
         | EventTypeFlags::MEMBER_ADD
@@ -33,6 +34,8 @@ fn wanted_events() -> EventTypeFlags {
         | EventTypeFlags::BAN_ADD
         | EventTypeFlags::BAN_REMOVE
         | EventTypeFlags::VOICE_STATE_UPDATE
+        | EventTypeFlags::GUILD_CREATE
+        | EventTypeFlags::GUILD_DELETE
         | EventTypeFlags::READY
         | EventTypeFlags::RESUMED
 }
@@ -179,7 +182,7 @@ fn dispatch(app: &Arc<App>, shard: u32, event: Event) {
         Event::InteractionCreate(interaction) => {
             let interaction = interaction.0;
             let responder = Arc::new(Responder::rest(app.clone(), &interaction));
-            app.spawn(handle_interaction(app.clone(), interaction, responder));
+            app.spawn(handle_gateway_interaction(app.clone(), interaction, responder));
         }
         Event::MessageCreate(message) => {
             let app2 = app.clone();
@@ -234,6 +237,22 @@ fn dispatch(app: &Arc<App>, shard: u32, event: Event) {
             app.spawn_event("voice_state_update", async move {
                 if let Err(error) = on_voice_state_update(app2, *event).await {
                     tracing::warn!(%error, "voice handler failed");
+                }
+            });
+        }
+        Event::GuildCreate(event) => {
+            let app2 = app.clone();
+            app.spawn_event("guild_create", async move {
+                if let Err(error) = on_guild_create(app2, *event).await {
+                    tracing::warn!(%error, "guild create handler failed");
+                }
+            });
+        }
+        Event::GuildDelete(event) => {
+            let app2 = app.clone();
+            app.spawn_event("guild_delete", async move {
+                if let Err(error) = on_guild_delete(app2, event).await {
+                    tracing::warn!(%error, "guild delete handler failed");
                 }
             });
         }

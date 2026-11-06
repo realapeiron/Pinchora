@@ -1656,6 +1656,28 @@ async fn weekly_xp_is_kept_per_week_and_chat_splits_server_and_global_xp() {
 }
 
 #[tokio::test]
+async fn pruning_old_weekly_xp_has_an_index_on_the_week() {
+    let Some(db) = db().await else { return };
+    // The primary key and the board index both lead with guild_id; with a table scan ruled out, the
+    // prune must still find an index it can use for `week < ...`.
+    let mut tx = db.pool().begin().await.unwrap();
+    sqlx::query("SET LOCAL enable_seqscan = off")
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    let plan: Vec<(String,)> = sqlx::query_as("EXPLAIN DELETE FROM weekly_xp WHERE week < '2020-01-06'::date")
+        .fetch_all(&mut *tx)
+        .await
+        .unwrap();
+    let plan: Vec<String> = plan.into_iter().map(|(line,)| line).collect();
+    assert!(
+        plan.iter().any(|line| line.contains("weekly_xp_week_idx")),
+        "{}",
+        plan.join("\n")
+    );
+}
+
+#[tokio::test]
 async fn xp_rules_are_capped_replaced_and_cleared() {
     let Some(db) = db().await else { return };
     let [guild, other] = ids();
