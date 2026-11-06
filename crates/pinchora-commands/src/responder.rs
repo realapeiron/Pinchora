@@ -370,7 +370,9 @@ mod tests {
                     .ratelimiter(None)
                     .build(),
             );
-            let db = Db::connect(&database, 1).await.expect("connect to the database");
+            let db = Db::connect_waiting(&database, 1, std::time::Duration::from_secs(60))
+                .await
+                .expect("connect to the database");
             let cache = Cache::connect(&redis).await.expect("connect to redis");
             let app = App::new(rest.clone(), rest, Id::new(1), db, cache, "test".into());
             Some(Self {

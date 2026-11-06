@@ -4,7 +4,9 @@ use pinchora_db::{ACTIVE, DONE, Db, DuelStart, NewGame, PENDING, Payout};
 
 async fn db() -> Option<Db> {
     let url = std::env::var("PINCHORA_TEST_DATABASE_URL").ok()?;
-    let db = Db::connect(&url, 5).await.expect("connect");
+    let db = Db::connect_waiting(&url, 5, std::time::Duration::from_secs(60))
+        .await
+        .expect("connect");
     db.migrate().await.expect("migrate");
     Some(db)
 }

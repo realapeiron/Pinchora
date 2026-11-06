@@ -523,7 +523,9 @@ impl Harness {
 
 /// The real [`App`] on the test databases, its REST client pointed at the mock.
 async fn app(database: &str, redis: &str, mock: SocketAddr) -> Arc<App> {
-    let db = Db::connect(database, 5).await.expect("connect to the database");
+    let db = Db::connect_waiting(database, 5, std::time::Duration::from_secs(60))
+        .await
+        .expect("connect to the database");
     db.migrate().await.expect("migrate");
     let cache = Cache::connect(redis).await.expect("connect to redis");
     let rest = Arc::new(

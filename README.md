@@ -431,6 +431,12 @@ PINCHORA_TEST_REDIS_URL=redis://localhost:6379 \
 cargo test --workspace
 ```
 
+The database waits up to a minute for a free connection in the tests (five seconds in the bot), so a
+machine running several suites at once does not fail them with a timeout. The tests that depend on
+real time (a countdown such as "back in 1 h", the five-second window between a giveaway's message
+edits) allow for the time the test itself has used or hold the window open by hand, and the ones that
+run the game janitor first close the late games earlier runs left in the database.
+
 ## Layout
 
 ```

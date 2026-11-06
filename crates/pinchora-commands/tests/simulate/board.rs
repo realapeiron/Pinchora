@@ -10,7 +10,8 @@ use serde_json::json;
 use twilight_model::channel::message::Component;
 
 use super::{
-    Post, Reply, SWEEPS, Sim, duel, expire, fund, int_option, message_of, record_of, session_of, shells, unique,
+    Post, Reply, SWEEPS, Sim, duel, expire, forget_late_games, fund, int_option, message_of, record_of, session_of,
+    shells, unique,
 };
 
 /// Who is to move in a duel message that says `<@id>'s move` or `<@id> fires`.
@@ -250,6 +251,7 @@ async fn a_slow_chess_player_forfeits_the_wager_and_a_game_without_one_just_ends
     else {
         return;
     };
+    forget_late_games(&sim).await;
     let (a, b, c, d) = (unique(), unique(), unique(), unique());
     for user in [a, b, c, d] {
         fund(&sim, user, 300).await;
@@ -753,6 +755,7 @@ async fn a_captain_who_never_places_forfeits_and_two_idle_captains_get_their_she
     else {
         return;
     };
+    forget_late_games(&sim).await;
     let (a, b, c, d) = (unique(), unique(), unique(), unique());
     for user in [a, b, c, d] {
         fund(&sim, user, 300).await;
@@ -1225,6 +1228,7 @@ async fn a_late_click_from_a_private_message_closes_the_public_board_too() {
     let Some(mut sim) = Sim::new("a_late_click_from_a_private_message_closes_the_public_board_too").await else {
         return;
     };
+    forget_late_games(&sim).await;
     let (a, b) = (unique(), unique());
     let challenge = duel(&mut sim, a, b, "seafleet", vec![]).await;
     let public = sim.click(b, &challenge, "Accept").await;
