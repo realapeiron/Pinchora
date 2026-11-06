@@ -61,7 +61,7 @@ impl Wrapped {
         }
         let db = &cx.app.db;
         let content = Content::get();
-        let favourite = db.favourite_fish(id).await?;
+        let favourite = db.favourite_fish(id, year).await?;
         let fish = favourite
             .as_ref()
             .and_then(|(fish_id, caught)| content.fish(fish_id).map(|f| (f, *caught)));

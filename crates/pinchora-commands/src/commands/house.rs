@@ -207,11 +207,14 @@ impl HouseCommand {
                 if host.bot || host.id == author.id {
                     return cx.reply_ephemeral("Like someone else's house!").await;
                 }
+                if super::privacy::private_house(cx, host.id.get()).await? {
+                    return Ok(());
+                }
                 ensure_house(&cx.app, host.id.get()).await?;
                 match cx
                     .app
                     .db
-                    .like_house(host.id.get(), author.id.get(), Utc::now().date_naive())
+                    .like_house(host.id.get(), author.id.get(), cx.app.now().date_naive())
                     .await?
                 {
                     Some(total) => {
@@ -446,7 +449,7 @@ pub(crate) async fn visit(cx: &Cx, author: &User, host_id: u64, name: String, ro
         .record_visit(
             host_id,
             author.id.get(),
-            Utc::now().date_naive(),
+            cx.app.now().date_naive(),
             VISIT_REWARD,
             VISIT_CAP,
         )

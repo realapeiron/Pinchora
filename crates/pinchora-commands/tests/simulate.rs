@@ -8372,7 +8372,7 @@ async fn reminders_arrive_once_after_their_time() {
     assert!(field.chars().count() <= 1024, "{} characters", field.chars().count());
     assert!(field.contains("more in the menu below"), "{field}");
     assert_eq!(list.options("rm:c").len(), 25);
-    sim.app.db.delete_user_data(busy).await.unwrap();
+    sim.app.db.delete_user_data(busy, sim.app.now()).await.unwrap();
 }
 
 #[tokio::test]
@@ -8439,6 +8439,15 @@ async fn pet_and_trip_reminders_follow_the_pet() {
         dms[0].description()
     );
 
+    // Looking at a pet that is back (the trip not claimed yet) does not announce the trip again.
+    sim.command(user, "pet", pet_command("view")).await;
+    assert!(
+        db.scheduled_reminder(user, "trip", pet.id).await.unwrap().is_none(),
+        "a trip that is over is not scheduled again"
+    );
+    reminder_tick(&sim.app).await.unwrap();
+    assert!(dms_of(&sim.posts(), user).is_empty());
+
     // Claimed: the pet is at home again, and its next message is about its needs.
     let claim = sim
         .command(
@@ -8468,20 +8477,28 @@ async fn pet_and_trip_reminders_follow_the_pet() {
     reminder_tick(&sim.app).await.unwrap();
     assert!(dms_of(&sim.posts(), user).is_empty(), "once");
 
-    // Looking after the pet moves the next message: a card shown after a feed schedules a later one.
+    // A pet that is already low, looked at again: the message that was sent is not scheduled and sent
+    // again every time the card is shown.
     let card = sim.command(user, "pet", pet_command("view")).await;
-    let before = db
-        .scheduled_reminder(user, "pet", pet.id)
-        .await
-        .unwrap()
-        .expect("scheduled again");
+    sim.command(user, "pet", pet_command("view")).await;
+    assert!(
+        db.scheduled_reminder(user, "pet", pet.id).await.unwrap().is_none(),
+        "an overdue message is not scheduled again"
+    );
+    reminder_tick(&sim.app).await.unwrap();
+    assert!(
+        dms_of(&sim.posts(), user).is_empty(),
+        "nothing arrives for a pet that was told about"
+    );
+
+    // Looking after the pet schedules the next message, for later.
     sim.click(user, &card, "Play").await;
     let after = db
         .scheduled_reminder(user, "pet", pet.id)
         .await
         .unwrap()
-        .expect("moved");
-    assert!(after > before, "{before} -> {after}");
+        .expect("scheduled for the next time it needs looking after");
+    assert!(after > sim.app.now(), "{after} is still to come");
 
     // Turned off: nothing is waiting, and nothing arrives.
     sim.command(user, "remind", remind_when("pet", false)).await;
@@ -8654,6 +8671,175 @@ async fn privacy_choices_are_seen_by_other_players_and_data_can_be_deleted() {
     assert!(!db.privacy(owner).await.unwrap().hide_house);
 }
 
+/// Deletes `user`'s data through the panel's two steps.
+async fn delete_through_the_panel(sim: &mut Sim, user: u64) -> Reply {
+    let panel = sim.command(user, "privacy", json!([])).await;
+    let confirm = sim.click(user, &panel, "Delete my data…").await;
+    sim.click(user, &confirm, "Yes, delete everything").await
+}
+
+#[tokio::test]
+async fn deleting_data_does_not_hand_out_a_second_daily_weekly_monthly_or_walk() {
+    let Some(mut sim) = Sim::new("deleting_data_does_not_hand_out_a_second_daily_weekly_monthly_or_walk").await else {
+        return;
+    };
+    let (user, alt) = (unique(), unique());
+    let (db, day) = (sim.app.db.clone(), chrono::Duration::days);
+
+    // Everything there is to collect, and a pet that has walked.
+    assert!(sim.command(user, "daily", json!([])).await.title().starts_with("+"));
+    assert_eq!(sim.command(user, "weekly", json!([])).await.title(), "+1,500 shells");
+    assert_eq!(sim.command(user, "monthly", json!([])).await.title(), "+6,500 shells");
+    let collected = shells(&sim, user).await;
+    db.adopt(user, &Content::get().pets[0].id, "Pinchy").await.unwrap();
+
+    // The loop: give it all to an alt, delete, come back for more.
+    for round in 0..3 {
+        let balance = shells(&sim, user).await;
+        if balance > 0 {
+            db.transfer_credits(user, alt, balance).await.unwrap();
+        }
+        let done = delete_through_the_panel(&mut sim, user).await;
+        assert_eq!(done.title(), "Your data is deleted", "round {round}");
+        assert_eq!(shells(&sim, user).await, 0, "they start over with nothing");
+        assert_eq!(
+            sim.command(user, "daily", json!([])).await.title(),
+            "Already collected today",
+            "round {round}"
+        );
+        assert_eq!(
+            sim.command(user, "weekly", json!([])).await.title(),
+            "Already collected this week",
+            "round {round}"
+        );
+        assert_eq!(
+            sim.command(user, "monthly", json!([])).await.title(),
+            "Already collected this month",
+            "round {round}"
+        );
+    }
+    assert_eq!(
+        shells(&sim, alt).await,
+        collected,
+        "one cycle's worth, however often they deleted"
+    );
+
+    // The wallet counts the same waiting times down again.
+    let wallet = sim.command(user, "balance", json!([])).await;
+    assert_png(&wallet, 900, 300);
+
+    // A new pet is held to the old pet's walk cooldown.
+    db.adopt(user, &Content::get().pets[0].id, "Pinchy").await.unwrap();
+    let card = sim.command(user, "pet", pet_command("view")).await;
+    let walk = sim.click(user, &card, "Walk").await;
+    assert!(
+        walk.ephemeral && walk.content().contains("needs a break"),
+        "{}",
+        walk.content()
+    );
+    assert_eq!(shells(&sim, user).await, 0, "no shells were found");
+    sim.app.shift_clock(chrono::Duration::minutes(50));
+    let walk = sim.click(user, &card, "Walk").await;
+    assert!(walk.description().contains("Found"), "{}", walk.description());
+
+    // Waiting still works: a week and a day later the weekly pays again, the monthly does not.
+    sim.app.shift_clock(day(8));
+    assert_eq!(sim.command(user, "weekly", json!([])).await.title(), "+1,500 shells");
+    assert_eq!(
+        sim.command(user, "monthly", json!([])).await.title(),
+        "Already collected this month"
+    );
+    sim.app.shift_clock(day(23));
+    assert_eq!(sim.command(user, "monthly", json!([])).await.title(), "+6,500 shells");
+}
+
+#[tokio::test]
+async fn a_hidden_house_and_a_private_profile_close_every_door() {
+    let Some(mut sim) = Sim::new("a_hidden_house_and_a_private_profile_close_every_door").await else {
+        return;
+    };
+    let (owner, viewer, db) = (unique(), unique(), sim.app.db.clone());
+    let both = resolved(&[owner], &[]);
+    let guestbook = json!([{ "name": "guestbook", "type": 1, "options": [user_option("user", owner)] }]);
+    let like = json!([sub("like", vec![user_option("user", owner)])]);
+    let points = json!([sub("show", vec![user_option("user", owner)])]);
+    let stall = json!([sub("view", vec![user_option("user", owner)])]);
+    let likes = |db: pinchora_db::Db| async move {
+        let (likes,): (i32,) = sqlx::query_as("SELECT COALESCE(max(likes), 0) FROM houses WHERE user_id = $1")
+            .bind(owner as i64)
+            .fetch_one(db.pool())
+            .await
+            .unwrap();
+        likes
+    };
+
+    // A book with two pages, so there is a page to turn.
+    for n in 0..6 {
+        sqlx::query(
+            "INSERT INTO guestbook_notes (host_id, author_id, author_name, day, body)
+             VALUES ($1, $2, 'Guest', current_date, 'hello')",
+        )
+        .bind(owner as i64)
+        .bind(unique() as i64 + n)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    }
+
+    // Open: the book reads, the house can be liked, the points and the stall show.
+    let book = sim
+        .command_resolved(viewer, "house", guestbook.clone(), both.clone())
+        .await;
+    assert!(book.title().contains("guestbook"), "{}", book.title());
+    let liked = sim.command_resolved(viewer, "house", like.clone(), both.clone()).await;
+    assert!(liked.content().contains("liked"), "{}", liked.content());
+    assert_eq!(likes(db.clone()).await, 1);
+    assert_eq!(
+        sim.command_resolved(viewer, "points", points.clone(), both.clone())
+            .await
+            .title(),
+        "⭐ Points"
+    );
+    assert_png(
+        &sim.command_resolved(viewer, "stall", stall.clone(), both.clone()).await,
+        1000,
+        600,
+    );
+
+    // The house is hidden: no book (a page from before does not turn), no like, no signing.
+    db.set_privacy(owner, pinchora_db::Hide::House, true).await.unwrap();
+    for (name, options) in [("guestbook", guestbook.clone()), ("like", like.clone())] {
+        let refused = sim.command_resolved(viewer, "house", options, both.clone()).await;
+        assert!(
+            refused.ephemeral && refused.content() == "This house is private.",
+            "{name}: {}",
+            refused.content()
+        );
+    }
+    let turned = sim.click(viewer, &book, "Older ▶").await;
+    assert_eq!(turned.content(), "This house is private.");
+    assert_eq!(likes(db.clone()).await, 1, "nothing was liked");
+    assert_eq!(
+        sim.command_resolved(owner, "house", guestbook.clone(), both.clone())
+            .await
+            .title(),
+        "📖 Your guestbook",
+        "the owner still reads their own book"
+    );
+
+    // A private profile hides the points and the stall as well.
+    db.set_privacy(owner, pinchora_db::Hide::House, false).await.unwrap();
+    db.set_privacy(owner, pinchora_db::Hide::Profile, true).await.unwrap();
+    for (command, options) in [("points", points), ("stall", stall)] {
+        let refused = sim.command_resolved(viewer, command, options, both.clone()).await;
+        assert!(
+            refused.ephemeral && refused.content() == "This profile is private.",
+            "/{command}: {}",
+            refused.content()
+        );
+    }
+}
+
 #[tokio::test]
 async fn wrapped_opens_in_december_and_stays_open_through_january() {
     let Some(mut sim) = Sim::new("wrapped_opens_in_december_and_stays_open_through_january").await else {
@@ -8729,7 +8915,7 @@ async fn wrapped_opens_in_december_and_stays_open_through_january() {
     // December 1 opens it: the card of the year, and a quiet one for somebody with nothing.
     set_clock(&sim, Utc.with_ymd_and_hms(year, 12, 1, 0, 0, 5).unwrap());
     let card = sim.command(user, "wrapped", json!([])).await;
-    assert_png(&card, 640, 1140);
+    assert_png(&card, 640, 1164);
     assert!(!card.ephemeral, "the card is for sharing");
     let saved = sim.dir.join(format!("{:02}-wrapped.png", sim.step));
     let samples = Path::new(env!("CARGO_TARGET_TMPDIR"))
@@ -8739,7 +8925,7 @@ async fn wrapped_opens_in_december_and_stays_open_through_january() {
     std::fs::create_dir_all(&samples).unwrap();
     std::fs::copy(&saved, samples.join("wrapped-test-user.png")).expect("copy the sample");
     let quiet = sim.command(newcomer, "wrapped", json!([])).await;
-    assert_png(&quiet, 640, 1140);
+    assert_png(&quiet, 640, 1164);
     std::fs::copy(
         sim.dir.join(format!("{:02}-wrapped.png", sim.step)),
         samples.join("wrapped-test-user-quiet.png"),
@@ -8750,7 +8936,7 @@ async fn wrapped_opens_in_december_and_stays_open_through_january() {
     let same = sim
         .command(user, "wrapped", json!([int_option("year", year.into())]))
         .await;
-    assert_png(&same, 640, 1140);
+    assert_png(&same, 640, 1164);
     let early = sim
         .command(user, "wrapped", json!([int_option("year", (year - 1).into())]))
         .await;
@@ -8770,7 +8956,7 @@ async fn wrapped_opens_in_december_and_stays_open_through_january() {
 
     // January still shows the year that ended; February closes it again.
     set_clock(&sim, at(year + 1, 1, 31));
-    assert_png(&sim.command(user, "wrapped", json!([])).await, 640, 1140);
+    assert_png(&sim.command(user, "wrapped", json!([])).await, 640, 1164);
     set_clock(&sim, at(year + 1, 2, 1));
     let shut = sim.command(user, "wrapped", json!([])).await;
     let reopens = Utc.with_ymd_and_hms(year + 1, 12, 1, 0, 0, 0).unwrap().timestamp();

@@ -1,11 +1,21 @@
 //! What a player hides from others, and "delete my data".
 
+use chrono::{DateTime, Duration, NaiveDate, Utc};
+
 use crate::{Db, sql_id};
+
+/// How long a deleted player's id is remembered: past the longest cooldown (a month), so by then
+/// nothing they could have used up is still locked.
+pub const TOMBSTONE_DAYS: i64 = 35;
+
+/// How long after deleting their data a pet cannot be taken for a walk: the walk's own cooldown, which
+/// lives in the cache under the pet's id and so does not follow the player into a new pet.
+const WALK_LOCK: Duration = Duration::minutes(45);
 
 /// Every column that holds a player's id, as (table, column), children before the tables they
 /// point at. "Delete my data" removes the player's rows from all of them, and a test reads the
 /// schema to make sure a table added by a later migration is listed here (or in
-/// [`OTHER_TABLES`]) before it can ship.
+/// [`OTHER_TABLES`], [`ID_LISTS`] or [`CLEARED_COLUMNS`]) before it can ship.
 pub const USER_COLUMNS: &[(&str, &str)] = &[
     ("placements", "user_id"),
     ("rooms", "user_id"),
@@ -28,6 +38,7 @@ pub const USER_COLUMNS: &[(&str, &str)] = &[
     ("stall_listings", "seller_id"),
     ("pets", "owner_id"),
     ("fish_book", "user_id"),
+    ("activity_fish", "user_id"),
     ("user_backgrounds", "user_id"),
     ("user_badges", "user_id"),
     ("user_titles", "user_id"),
@@ -51,12 +62,33 @@ pub const USER_COLUMNS: &[(&str, &str)] = &[
     ("reminder_optins", "user_id"),
     ("user_privacy", "user_id"),
     ("activity_monthly", "user_id"),
+    ("giveaway_entries", "user_id"),
+    ("giveaways", "host_id"),
+    ("suggestion_votes", "user_id"),
+    ("suggestions", "author_id"),
+    ("poll_votes", "user_id"),
+    ("polls", "author_id"),
     ("users", "id"),
 ];
 
-/// Columns that hold a list of player ids; the player's id is replaced by 0 in them (a podium keeps
-/// its places).
-pub const ID_LISTS: &[(&str, &str)] = &[("contest_results", "winner_ids")];
+/// How a player's id leaves a list of ids.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ListEdit {
+    /// Replaced by 0, for lists that run in step with another one (a podium keeps its places).
+    Blank,
+    /// Taken out.
+    Remove,
+}
+
+/// Columns that hold a list of player ids, and what happens to the player's id in them.
+pub const ID_LISTS: &[(&str, &str, ListEdit)] = &[
+    ("contest_results", "winner_ids", ListEdit::Blank),
+    ("giveaways", "winner_ids", ListEdit::Remove),
+];
+
+/// Columns that name a player on rows that belong to somebody else and go on without them: the
+/// column is set to NULL.
+pub const CLEARED_COLUMNS: &[(&str, &str)] = &[("suggestions", "decided_by")];
 
 /// Tables that belong to no player: server settings and shared stock.
 pub const OTHER_TABLES: &[&str] = &[
@@ -70,6 +102,9 @@ pub const OTHER_TABLES: &[&str] = &[
     "store_items",
     "xp_rules",
     "contest_results",
+    // Kept on purpose, for [`TOMBSTONE_DAYS`]: see the migration.
+    "deleted_users",
+    "suggestion_settings",
 ];
 
 /// What a player hides.
@@ -134,11 +169,27 @@ impl Db {
 
     /// Deletes every row about the player, in every table of [`USER_COLUMNS`], in one transaction:
     /// their account, house, pets, friends, notes they signed or were left, votes, history, all of
-    /// it. Shells they had put into a running duel go back to the other player first, so nobody
-    /// loses a wager over somebody else's deletion.
-    pub async fn delete_user_data(&self, user: u64) -> anyhow::Result<Deleted> {
+    /// it. What was held for them in the open goes first:
+    ///
+    /// - Shells they had put into a running duel go back to the other player.
+    /// - A giveaway they host is called off (its prize is part of the shells that go with them) and
+    ///   they leave every giveaway's entries and winners.
+    /// - Likes they gave are taken off the houses they went to.
+    ///
+    /// And a tombstone is left (see [`Db::walk_locked_until`] and the `deleted_users` migration) so
+    /// that deleting is not a way to get a daily reward, a rep, a wordle reward, paid visits or a
+    /// walk a second time: the player comes back with nothing, but not with fresh cooldowns.
+    pub async fn delete_user_data(&self, user: u64, now: DateTime<Utc>) -> anyhow::Result<Deleted> {
         let id = sql_id(user);
+        let today = now.date_naive();
         let mut tx = self.pool().begin().await?;
+
+        // Their own claims wait for this to finish, and see the tombstone when they go on.
+        sqlx::query("SELECT 1 FROM users WHERE id = $1 FOR UPDATE")
+            .bind(id)
+            .fetch_optional(&mut *tx)
+            .await?;
+        leave_tombstone(&mut tx, id, now, today).await?;
 
         let held: Vec<(i64, i64, Option<i64>, i64)> = sqlx::query_as(
             "SELECT id, host_id, guest_id, bet FROM game_sessions
@@ -160,9 +211,33 @@ impl Db {
             }
         }
 
-        for (table, column) in ID_LISTS {
-            // The lists are always as long as their votes; only the id is blanked.
-            let sql = format!("UPDATE {table} SET {column} = array_replace({column}, $1, 0) WHERE $1 = ANY({column})");
+        // A guest's paid visits of the day stay counted when the host they went to is deleted, under
+        // a number that is nobody's.
+        sqlx::query("UPDATE visits SET host_id = -nextval('deleted_ids') WHERE host_id = $1 AND day >= $2")
+            .bind(id)
+            .bind(today)
+            .execute(&mut *tx)
+            .await?;
+        // The likes they gave come off the houses they went to.
+        sqlx::query(
+            "UPDATE houses h SET likes = GREATEST(h.likes - l.n, 0)
+             FROM (SELECT host_id, count(*)::INTEGER AS n FROM house_likes WHERE liker_id = $1 GROUP BY host_id) l
+             WHERE h.user_id = l.host_id",
+        )
+        .bind(id)
+        .execute(&mut *tx)
+        .await?;
+
+        for (table, column, edit) in ID_LISTS {
+            let value = match edit {
+                ListEdit::Blank => format!("array_replace({column}, $1, 0)"),
+                ListEdit::Remove => format!("array_remove({column}, $1)"),
+            };
+            let sql = format!("UPDATE {table} SET {column} = {value} WHERE $1 = ANY({column})");
+            sqlx::query(sqlx::AssertSqlSafe(sql)).bind(id).execute(&mut *tx).await?;
+        }
+        for (table, column) in CLEARED_COLUMNS {
+            let sql = format!("UPDATE {table} SET {column} = NULL WHERE {column} = $1");
             sqlx::query(sqlx::AssertSqlSafe(sql)).bind(id).execute(&mut *tx).await?;
         }
 
@@ -186,4 +261,117 @@ impl Db {
         tx.commit().await?;
         Ok(deleted)
     }
+
+    /// Drops the tombstones of players who deleted their data more than [`TOMBSTONE_DAYS`] before
+    /// `now`; returns how many went.
+    pub async fn forget_old_tombstones(&self, now: DateTime<Utc>) -> anyhow::Result<u64> {
+        Ok(sqlx::query("DELETE FROM deleted_users WHERE deleted_at < $1")
+            .bind(now - Duration::days(TOMBSTONE_DAYS))
+            .execute(self.pool())
+            .await?
+            .rows_affected())
+    }
+
+    /// Until when a player who deleted their data may not take a pet for a walk (a walk finds shells,
+    /// and its cooldown is the pet's, not theirs). `None` when nothing holds them back.
+    pub async fn walk_locked_until(&self, user: u64, now: DateTime<Utc>) -> anyhow::Result<Option<DateTime<Utc>>> {
+        let row: Option<(Option<DateTime<Utc>>,)> =
+            sqlx::query_as("SELECT walk_until FROM deleted_users WHERE user_id = $1")
+                .bind(sql_id(user))
+                .fetch_optional(self.pool())
+                .await?;
+        Ok(row.and_then(|(until,)| until).filter(|until| *until > now))
+    }
+
+    /// Whether the player had already played the daily wordle of `day` (days since 1970-01-01)
+    /// before deleting their data, so the board they start again pays nothing.
+    pub async fn daily_wordle_played_before_deleting(&self, user: u64, day: i32) -> anyhow::Result<bool> {
+        let row: Option<(Option<i32>,)> = sqlx::query_as("SELECT wordle_day FROM deleted_users WHERE user_id = $1")
+            .bind(sql_id(user))
+            .fetch_optional(self.pool())
+            .await?;
+        Ok(row.and_then(|(played,)| played).is_some_and(|played| played >= day))
+    }
+}
+
+/// What the player had used up, as it stands in their rows.
+#[derive(sqlx::FromRow)]
+struct Used {
+    last_daily_at: Option<DateTime<Utc>>,
+    last_rep_at: Option<DateTime<Utc>>,
+    weekly_at: Option<DateTime<Utc>>,
+    monthly_at: Option<DateTime<Utc>>,
+    visits: i64,
+    liked: Vec<i64>,
+    wordle_day: Option<i32>,
+    has_pet: bool,
+}
+
+/// Writes (or brings up to date) the tombstone of a player about to be deleted. Nothing is written
+/// for a player who had used nothing up. Times only ever move forward: deleting twice keeps the
+/// later of each.
+async fn leave_tombstone(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    id: i64,
+    now: DateTime<Utc>,
+    today: NaiveDate,
+) -> anyhow::Result<()> {
+    let used: Used = sqlx::query_as(
+        "SELECT (SELECT last_daily_at FROM users WHERE id = $1) AS last_daily_at,
+                (SELECT last_rep_at FROM users WHERE id = $1) AS last_rep_at,
+                (SELECT claimed_at FROM reward_claims WHERE user_id = $1 AND kind = 'weekly') AS weekly_at,
+                (SELECT claimed_at FROM reward_claims WHERE user_id = $1 AND kind = 'monthly') AS monthly_at,
+                (SELECT count(*) FROM visits WHERE guest_id = $1 AND day = $2) AS visits,
+                COALESCE((SELECT array_agg(host_id) FROM house_likes WHERE liker_id = $1 AND day = $2), '{}'::BIGINT[]) AS liked,
+                (SELECT max(day) FROM wordle_games WHERE user_id = $1 AND mode = 'daily') AS wordle_day,
+                EXISTS (SELECT 1 FROM pets WHERE owner_id = $1) AS has_pet",
+    )
+    .bind(id)
+    .bind(today)
+    .fetch_one(&mut **tx)
+    .await?;
+    if used.last_daily_at.is_none()
+        && used.last_rep_at.is_none()
+        && used.weekly_at.is_none()
+        && used.monthly_at.is_none()
+        && used.visits == 0
+        && used.liked.is_empty()
+        && used.wordle_day.is_none()
+        && !used.has_pet
+    {
+        return Ok(());
+    }
+    sqlx::query(
+        "INSERT INTO deleted_users
+             (user_id, deleted_at, last_daily_at, last_rep_at, weekly_at, monthly_at, day, visits, liked, wordle_day, walk_until)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+         ON CONFLICT (user_id) DO UPDATE SET
+             deleted_at = EXCLUDED.deleted_at,
+             last_daily_at = GREATEST(deleted_users.last_daily_at, EXCLUDED.last_daily_at),
+             last_rep_at = GREATEST(deleted_users.last_rep_at, EXCLUDED.last_rep_at),
+             weekly_at = GREATEST(deleted_users.weekly_at, EXCLUDED.weekly_at),
+             monthly_at = GREATEST(deleted_users.monthly_at, EXCLUDED.monthly_at),
+             visits = CASE WHEN deleted_users.day = EXCLUDED.day THEN deleted_users.visits ELSE 0 END
+                      + EXCLUDED.visits,
+             liked = CASE WHEN deleted_users.day = EXCLUDED.day
+                          THEN ARRAY(SELECT DISTINCT unnest(deleted_users.liked || EXCLUDED.liked))
+                          ELSE EXCLUDED.liked END,
+             day = EXCLUDED.day,
+             wordle_day = GREATEST(deleted_users.wordle_day, EXCLUDED.wordle_day),
+             walk_until = GREATEST(deleted_users.walk_until, EXCLUDED.walk_until)",
+    )
+    .bind(id)
+    .bind(now)
+    .bind(used.last_daily_at)
+    .bind(used.last_rep_at)
+    .bind(used.weekly_at)
+    .bind(used.monthly_at)
+    .bind(today)
+    .bind(used.visits)
+    .bind(&used.liked)
+    .bind(used.wordle_day)
+    .bind(used.has_pet.then_some(now + WALK_LOCK))
+    .execute(&mut **tx)
+    .await?;
+    Ok(())
 }

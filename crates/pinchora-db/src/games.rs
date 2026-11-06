@@ -272,7 +272,7 @@ impl Db {
                         winner == session.host_id || Some(winner) == session.guest_id,
                         "the winner is not in the game"
                     );
-                    pay(&mut tx, winner, session.bet * 2, "duel_win").await?;
+                    pay(&mut tx, winner, session.bet * 2, "duel_pot").await?;
                 }
                 Payout::Refund => {
                     pay(&mut tx, session.host_id, session.bet, "duel_refund").await?;

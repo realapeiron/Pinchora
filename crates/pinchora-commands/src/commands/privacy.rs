@@ -2,7 +2,7 @@
 
 use std::str::Split;
 
-use pinchora_db::{Hide, Privacy};
+use pinchora_db::{Hide, Privacy, TOMBSTONE_DAYS};
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::{
     channel::message::{
@@ -39,6 +39,17 @@ pub(crate) async fn private_profile(cx: &Cx, target: u64) -> anyhow::Result<bool
         return Ok(false);
     }
     cx.reply_ephemeral("This profile is private.").await?;
+    Ok(true)
+}
+
+/// Tells the invoker "This house is private." and returns true when `owner` is somebody else who
+/// hides their house. Used by everything that reads or writes another player's house apart from
+/// `/house visit`, which says so by name.
+pub(crate) async fn private_house(cx: &Cx, owner: u64) -> anyhow::Result<bool> {
+    if owner == cx.author()?.id.get() || !cx.app.db.privacy(owner).await?.hide_house {
+        return Ok(false);
+    }
+    cx.reply_ephemeral("This house is private.").await?;
     Ok(true)
 }
 
@@ -162,13 +173,18 @@ fn confirm(until: i64) -> InteractionResponseData {
     let embed = EmbedBuilder::new()
         .color(DANGER)
         .title("Delete all your data?")
-        .description(
+        .description(format!(
             "This permanently removes everything Pinchora keeps about you: your level, shells and pearls, \
              house and furniture, pets, fish book, badges, titles and backgrounds, friends and partner, \
-             guestbook notes you wrote or were left, votes, game stats, reminders and privacy choices.\n\n\
-             **It cannot be undone.** You start over as a new player the next time you use Pinchora. \
-             Shells you had bet in a running duel go back to your opponent.",
-        )
+             guestbook notes you wrote or were left, votes, suggestions, polls, giveaway entries, game stats, \
+             reminders and privacy choices.\n\n\
+             **It cannot be undone.** You start over as a new player the next time you use Pinchora, with \
+             no shells. Shells you had bet in a running duel go back to your opponent, and a giveaway you \
+             host is called off.\n\n\
+             Deleting does not reset waiting times: for {TOMBSTONE_DAYS} days Pinchora keeps your id and \
+             when you last used your daily, weekly and monthly rewards, rep, the daily wordle, paid visits, \
+             likes and pet walks, so they are still waiting when you come back."
+        ))
         .build();
     ephemeral(
         embed,
@@ -211,7 +227,7 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>) -> anyhow::
                 let data = panel(cx, user, "That confirmation timed out. Nothing was deleted.").await?;
                 return cx.update(data).await;
             }
-            let deleted = cx.app.db.delete_user_data(user).await?;
+            let deleted = cx.app.db.delete_user_data(user, cx.app.now()).await?;
             tracing::info!(
                 user,
                 rows = deleted.rows,

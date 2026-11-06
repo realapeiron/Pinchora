@@ -45,6 +45,15 @@ CREATE TABLE user_privacy (
     hide_house        BOOLEAN NOT NULL DEFAULT FALSE
 );
 
+-- The fish a player caught in a calendar year, for the favourite fish of /wrapped.
+CREATE TABLE activity_fish (
+    user_id  BIGINT  NOT NULL,
+    year     INTEGER NOT NULL,
+    fish_id  TEXT    NOT NULL,
+    caught   INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, year, fish_id)
+);
+
 -- What a player did in a calendar month (UTC, `month` is its first day), for /wrapped.
 CREATE TABLE activity_monthly (
     user_id         BIGINT NOT NULL,
@@ -59,3 +68,59 @@ CREATE TABLE activity_monthly (
     pet_care        BIGINT NOT NULL DEFAULT 0,
     PRIMARY KEY (user_id, month)
 );
+
+-- What "delete my data" leaves behind: the id of a player who deleted everything, with the times
+-- of what they had used up, so deleting and coming back cannot hand out a fresh daily, weekly or
+-- monthly reward, another rep, a second daily wordle reward, more paid visits or likes for the
+-- day, or an early pet walk. A returning player starts with nothing else (no shells, no level, no
+-- house). The numbers are honoured wherever the player's own rows would have been looked at, and
+-- the row is dropped once the longest cooldown (a month) is long gone.
+-- `day` is the UTC day `visits` (paid-visit slots used) and `liked` (houses liked) belong to.
+CREATE TABLE deleted_users (
+    user_id        BIGINT      PRIMARY KEY,
+    deleted_at     TIMESTAMPTZ NOT NULL,
+    last_daily_at  TIMESTAMPTZ,
+    last_rep_at    TIMESTAMPTZ,
+    weekly_at      TIMESTAMPTZ,
+    monthly_at     TIMESTAMPTZ,
+    day            DATE,
+    visits         BIGINT      NOT NULL DEFAULT 0,
+    liked          BIGINT[]    NOT NULL DEFAULT '{}',
+    wordle_day     INTEGER,
+    walk_until     TIMESTAMPTZ
+);
+
+CREATE INDEX deleted_users_age_idx ON deleted_users (deleted_at);
+
+-- Numbers that stand in for deleted players where a row has to stay for somebody else's sake (a
+-- guest's paid visits of the day outlive the host who deleted their data). They are negative, so
+-- they never match a real player, and they say nothing about who was deleted.
+CREATE SEQUENCE deleted_ids;
+
+-- A player's row is created from many places (every first command makes one), so this is where a
+-- returning player gets the cooldowns of their last life back: the daily and rep ones on the row
+-- itself, the weekly and monthly ones as the claims they were. Everything that reads those reads
+-- them as if the player had never deleted anything.
+CREATE FUNCTION restore_cooldowns() RETURNS trigger AS $$
+DECLARE
+    tomb deleted_users%ROWTYPE;
+BEGIN
+    SELECT * INTO tomb FROM deleted_users WHERE user_id = NEW.id;
+    IF FOUND THEN
+        NEW.last_daily_at := GREATEST(NEW.last_daily_at, tomb.last_daily_at);
+        NEW.last_rep_at := GREATEST(NEW.last_rep_at, tomb.last_rep_at);
+        IF tomb.weekly_at IS NOT NULL THEN
+            INSERT INTO reward_claims (user_id, kind, claimed_at) VALUES (NEW.id, 'weekly', tomb.weekly_at)
+            ON CONFLICT (user_id, kind) DO NOTHING;
+        END IF;
+        IF tomb.monthly_at IS NOT NULL THEN
+            INSERT INTO reward_claims (user_id, kind, claimed_at) VALUES (NEW.id, 'monthly', tomb.monthly_at)
+            ON CONFLICT (user_id, kind) DO NOTHING;
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER users_restore_cooldowns BEFORE INSERT ON users
+    FOR EACH ROW EXECUTE FUNCTION restore_cooldowns();

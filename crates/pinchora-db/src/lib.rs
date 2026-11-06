@@ -52,7 +52,9 @@ pub use partners::{PairOutcome, PartnerRow};
 pub use periodic::PeriodOutcome;
 pub use pets::{PetRow, TripClaim, TripPayout, Wake};
 pub use polls::{MAX_OPEN_POLLS, NewPoll, PollOpen, PollRow, PollVote};
-pub use privacy::{Deleted, Hide, ID_LISTS, OTHER_TABLES, Privacy, USER_COLUMNS};
+pub use privacy::{
+    CLEARED_COLUMNS, Deleted, Hide, ID_LISTS, ListEdit, OTHER_TABLES, Privacy, TOMBSTONE_DAYS, USER_COLUMNS,
+};
 pub use reminders::{MAX_TEXT_REMINDERS, OPT_IN_KINDS, ReminderRow, TEXT as TEXT_REMINDER};
 pub use rewards::{LevelRoleRow, MAX_LEVEL_ROLES, MAX_REP_ROLES, MAX_STORE_ITEMS, RepRoleRow, StoreBuy, StoreItem};
 pub use shop::{BuyOutcome, Currency, MarketRow, VisitOutcome};

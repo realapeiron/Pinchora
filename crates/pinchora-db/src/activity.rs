@@ -10,7 +10,7 @@ use crate::{Db, sql_id};
 pub enum Counter {
     /// Chat messages that earned XP.
     Messages,
-    /// XP earned in chat and voice.
+    /// Server XP earned in chat and voice, in every server.
     Xp,
     /// Shells earned (not received from another player, not refunded).
     Shells,
@@ -80,10 +80,17 @@ struct MonthRow {
     activity: Activity,
 }
 
-/// Whether a ledger entry is shells the player earned: money, not a move of shells between players
-/// and not a bet or a purchase coming back.
-pub(crate) fn counts_as_earned(delta: i64, reason: &str) -> bool {
-    delta > 0 && reason != "transfer_in" && !reason.ends_with("refund")
+/// The shells of a ledger entry that the player earned: money, not a move of shells between players
+/// and not a bet or a purchase coming back. A duel's pot pays the winner both stakes, one of them
+/// their own, so only half of it was won.
+pub(crate) fn earned(delta: i64, reason: &str) -> i64 {
+    if delta <= 0 || reason == "transfer_in" || reason.ends_with("refund") {
+        0
+    } else if reason == "duel_pot" {
+        delta / 2
+    } else {
+        delta
+    }
 }
 
 /// Adds `n` to the player's `counter` for the month of `month` (this month when `None`).
@@ -142,13 +149,28 @@ impl Db {
         Ok(rows.into_iter().map(|r| (r.month.month(), r.activity)).collect())
     }
 
-    /// The fish the player caught most, with how many: ties go to the one caught first.
-    pub async fn favourite_fish(&self, user: u64) -> anyhow::Result<Option<(String, i64)>> {
-        let row: Option<(String, i32)> = sqlx::query_as(
-            "SELECT fish_id, caught FROM fish_book WHERE user_id = $1 AND caught > 0
-             ORDER BY caught DESC, first_at, fish_id LIMIT 1",
+    /// Counts a catch of `fish_id` in `year`.
+    pub async fn add_catch_in(&self, user: u64, year: i32, fish_id: &str) -> anyhow::Result<()> {
+        sqlx::query(
+            "INSERT INTO activity_fish (user_id, year, fish_id, caught) VALUES ($1, $2, $3, 1)
+             ON CONFLICT (user_id, year, fish_id) DO UPDATE SET caught = activity_fish.caught + 1",
         )
         .bind(sql_id(user))
+        .bind(year)
+        .bind(fish_id)
+        .execute(self.pool())
+        .await?;
+        Ok(())
+    }
+
+    /// The fish the player caught most in `year`, with how many: ties go to the one with the lower id.
+    pub async fn favourite_fish(&self, user: u64, year: i32) -> anyhow::Result<Option<(String, i64)>> {
+        let row: Option<(String, i32)> = sqlx::query_as(
+            "SELECT fish_id, caught FROM activity_fish WHERE user_id = $1 AND year = $2 AND caught > 0
+             ORDER BY caught DESC, fish_id LIMIT 1",
+        )
+        .bind(sql_id(user))
+        .bind(year)
         .fetch_optional(self.pool())
         .await?;
         Ok(row.map(|(fish, caught)| (fish, i64::from(caught))))
@@ -161,7 +183,7 @@ impl Db {
             "SELECT v.host_id, count(*), bool_or(f.friend_id IS NOT NULL)
              FROM visits v
              LEFT JOIN friends f ON f.user_id = $1 AND f.friend_id = v.host_id
-             WHERE v.guest_id = $1 AND v.host_id <> $1
+             WHERE v.guest_id = $1 AND v.host_id > 0 AND v.host_id <> $1
                AND v.day >= make_date($2, 1, 1) AND v.day < make_date($2 + 1, 1, 1)
              GROUP BY v.host_id
              ORDER BY bool_or(f.friend_id IS NOT NULL) DESC, count(*) DESC, max(v.day) DESC, v.host_id
@@ -181,11 +203,13 @@ mod tests {
 
     #[test]
     fn only_real_earnings_count_as_shells_earned() {
-        assert!(counts_as_earned(250, "daily"));
-        assert!(counts_as_earned(30, "visit"));
-        assert!(!counts_as_earned(-30, "market"));
-        assert!(!counts_as_earned(100, "transfer_in"));
-        assert!(!counts_as_earned(60, "duel_refund"));
-        assert!(!counts_as_earned(1_500, "pet_capsule_refund"));
+        assert_eq!(earned(250, "daily"), 250);
+        assert_eq!(earned(30, "visit"), 30);
+        assert_eq!(earned(-30, "market"), 0);
+        assert_eq!(earned(100, "transfer_in"), 0);
+        assert_eq!(earned(60, "duel_refund"), 0);
+        assert_eq!(earned(1_500, "pet_capsule_refund"), 0);
+        assert_eq!(earned(200, "duel_pot"), 100, "the winner's own stake is not a win");
+        assert_eq!(earned(40, "duel_win"), 40, "the tic-tac-toe reward is all won");
     }
 }

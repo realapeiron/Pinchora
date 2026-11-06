@@ -418,6 +418,19 @@ pub(crate) async fn on_care(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
         }
         PetStatus::Awake | PetStatus::Back => {}
     }
+    // The walk's cooldown belongs to the pet, so a player who deleted their data and adopted again is
+    // held to the one their old pet was on.
+    if action == Care::Walk
+        && let Some(until) = cx.app.db.walk_locked_until(user, now).await?
+    {
+        return cx
+            .reply_ephemeral(format!(
+                "{} needs a break. Try again in {} min.",
+                pet.name,
+                (until - now).num_minutes() + 1
+            ))
+            .await;
+    }
     let key = format!("pet:{pet_id}:{action:?}");
     if let Some(left) = cx
         .app

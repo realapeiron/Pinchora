@@ -80,8 +80,8 @@ async fn claim(cx: &Cx, period: Period) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// How long until a reward is ready again, as the wallet card writes it: `ready`, `5m`, `3h 20m`
-/// or `12d 4h`.
+/// How long until a reward is ready again, as the wallet card writes it: `ready`, `5m`, `3h 20m`,
+/// `12d 4h`, and `24h` or `7d` when nothing is left over.
 pub(crate) fn ready_in(claimed_at: Option<DateTime<Utc>>, cooldown: chrono::Duration, now: DateTime<Utc>) -> String {
     let left = match claimed_at {
         Some(t) if t + cooldown > now => t + cooldown - now,
@@ -90,8 +90,14 @@ pub(crate) fn ready_in(claimed_at: Option<DateTime<Utc>>, cooldown: chrono::Dura
     let minutes = (left.num_seconds() + 59) / 60;
     match minutes {
         // A day's worth reads better in hours; the days start once there are two of them.
-        m if m >= 48 * 60 => format!("{}d {}h", m / (24 * 60), m % (24 * 60) / 60),
-        m if m >= 60 => format!("{}h {}m", m / 60, m % 60),
+        m if m >= 48 * 60 => match m % (24 * 60) / 60 {
+            0 => format!("{}d", m / (24 * 60)),
+            h => format!("{}d {h}h", m / (24 * 60)),
+        },
+        m if m >= 60 => match m % 60 {
+            0 => format!("{}h", m / 60),
+            rest => format!("{}h {rest}m", m / 60),
+        },
         m => format!("{}m", m.max(1)),
     }
 }
@@ -123,9 +129,9 @@ mod tests {
             ),
             "12d 4h"
         );
-        assert_eq!(ready_in(Some(now), Duration::days(30), now), "30d 0h");
-        assert_eq!(ready_in(Some(now), Duration::days(1), now), "24h 0m");
-        assert_eq!(ready_in(Some(now - week + Duration::hours(47)), week, now), "47h 0m");
+        assert_eq!(ready_in(Some(now), Duration::days(30), now), "30d");
+        assert_eq!(ready_in(Some(now), Duration::days(1), now), "24h");
+        assert_eq!(ready_in(Some(now - week + Duration::hours(47)), week, now), "47h");
         assert_eq!(ready_in(Some(now - week + Duration::hours(50)), week, now), "2d 2h");
     }
 }

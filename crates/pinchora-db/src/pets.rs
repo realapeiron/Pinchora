@@ -411,9 +411,15 @@ impl Db {
         .bind(size_cm)
         .fetch_one(self.pool())
         .await?;
-        // The count is for /wrapped; a catch that is logged is not undone by it.
+        // The counts are for /wrapped; a catch that is logged is not undone by them.
         if let Err(error) = self.bump_activity(user, crate::Counter::Fish, 1).await {
             tracing::debug!(%error, user, "catch not counted");
+        }
+        if let Err(error) = self
+            .add_catch_in(user, chrono::Datelike::year(&chrono::Utc::now()), fish_id)
+            .await
+        {
+            tracing::debug!(%error, user, "catch not counted for the year");
         }
         Ok(caught == 1)
     }

@@ -31,8 +31,8 @@ Written in Rust and built to run sharded on Kubernetes.
 | `/remind me when daily\|weekly\|monthly\|pet\|trip on\|off` | Opt in to a direct message when a reward is ready again (scheduled when you collect it, or at once for one already counting down), when your active pet needs looking after (hunger, fun or hygiene down to 30, no sooner than two hours after you last looked after it; not while it is away or asleep) or when a pet is home from a trip. One message each time, then it waits for the next claim, trip or care |
 | `/remind me in duration text` | A note to yourself by direct message: `45m`, `2h30m`, `1d 12h` (a minute to a year; units w d h m s). The text is up to 200 characters and loses any mention (users, roles, channels, `@everyone`, `@here`). Up to 25 open at a time |
 | `/remind list`, `/remind cancel id` | Which notifications are on and the reminders still to come, with a menu to cancel one; or cancel by the number the list shows |
-| `/privacy` | Private panel with three switches and a delete button. **Profile** private: others who look you up with `/profile`, `/rank`, `/balance`, `/friends list`, `/partner view` or `/play stats` see "This profile is private." (your own cards are never hidden from you). **Boards** hidden: you are left off the global XP and shell leaderboards, and the ranks of others count without you. **House** hidden: not offered in the `/house visit` shortlist and refused by name too (stronger than `/house lock`). **Delete my data…** asks twice (the second button works for two minutes) and removes every row about you in every table: account, house, pets, friends, notes, votes, history and the rest. A running duel's wager goes back to the other player |
-| `/wrapped [year]` | A tall card with your year: the busiest month and a bar for each, messages, XP, shells earned, fish caught, houses visited, pets cared for, likes given and received, your favourite fish, the house you visited most (a friend's first) and a fun title. Open from 1 December to 31 January; outside that it says when it opens. Pinchora has counted per month since this feature began, so earlier months of your year only fill in as you play |
+| `/privacy` | Private panel with three switches and a delete button. **Profile** private: others who look you up with `/profile`, `/rank`, `/balance`, `/friends list`, `/partner view` or `/play stats` see "This profile is private." (your own cards are never hidden from you). **Boards** hidden: you are left off the global XP and shell leaderboards, and the ranks of others count without you. **House** hidden: not offered in the `/house visit` shortlist and refused by name too, and its guestbook (notes and visitors) cannot be read or signed and the house cannot be liked (stronger than `/house lock`). A private profile also hides your `/points show` and `/stall view`. **Delete my data…** asks twice (the second button works for two minutes) and removes every row about you in every table: account, house, pets, friends, notes, votes, suggestions, polls, giveaway entries, history and the rest. A running duel's wager goes back to the other player, a giveaway you host is called off, and likes you gave come off the houses. You come back with nothing but not with fresh waiting times: see below |
+| `/wrapped [year]` | A tall card with your year: the busiest month and a bar for each, messages, server XP (chat and voice), shells earned (a duel counts what you won, not your own stake), fish caught, houses visited, pets cared for, likes given and received, your favourite fish of the year, the house you visited most (a friend's first) and a fun title. Open from 1 December to 31 January; outside that it says when it opens. Pinchora has counted per month since this feature began, so earlier months of your year only fill in as you play |
 | `/rep user` | One reputation point per day; a server's reputation roles are given the moment the receiver's total reaches them, and the reply says so |
 | `/bio text` | About-me text on the profile card |
 | `/config welcome\|leveling\|show` | Welcome cards and level-up messages. `/config leveling` takes `enabled`, `channel`, `message` (placeholders `{user}` `{level}` `{server}` `{role}`, the last being the reward role just earned, empty when none) and `mode`: `channel` (the level-up channel, else where they chatted), `current` (always where they chatted), `dm` (a direct message; closed DMs are skipped quietly) or `off` (no message, roles still given) (Manage Server) |
@@ -78,8 +78,22 @@ instead of sent.
 
 Wrapped counts per user and calendar month (UTC) in `activity_monthly`, bumped where things already
 happen: chat and voice XP, every positive ledger entry that is not a transfer from another player or a refund,
-fish caught, the first visit to a house each day, house likes, and pet care. The favourite fish comes from
-the fish book and the most visited house from the visit log, which has history of its own.
+fish caught, the first visit to a house each day, house likes, and pet care. XP is the server XP of chat
+and voice alike (a message counts its server XP, not the global share). The favourite fish of a year comes from
+`activity_fish`, which counts catches per year, and the most visited house from the visit log, which has
+history of its own.
+
+"Delete my data" leaves a tombstone: a row in `deleted_users` with the player's id and when they last used
+the daily, weekly and monthly rewards and rep, which houses they liked and how many paid visits they made
+today, whether they had played today's daily wordle, and a 45 minute walk lock when they had a pet (its
+cooldown is kept in Redis under the pet's id, which a new pet does not share). A trigger on `users` gives a
+returning player the daily, rep, weekly and monthly times back when their row is created again, so every
+reader of those sees them; the paid-visit and like checks, the wordle payout and the pet walk read the
+tombstone themselves. A guest's paid visits of the day outlive a host who deletes their data (the host's id
+on the visit becomes a number from a sequence that is nobody's). Tombstones are dropped after 35 days, by the
+reminder ticker. A test inserts into every table that names a player and one reads the schema, so a new table
+or an id column (`*_by`, id arrays included) must be listed in `crates/pinchora-db/src/privacy.rs` before it can
+ship.
 
 Voice XP keeps who is in voice in Redis, written from the voice-state events, and one ticker on the
 gateway pays every guild once a minute behind a per-minute lock, so a restart or a second gateway pod

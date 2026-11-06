@@ -143,11 +143,15 @@ impl Db {
             return Ok(VisitOutcome::AlreadyToday);
         }
         crate::activity::bump(&mut tx, guest, crate::Counter::Visits, 1, None).await?;
-        let (today,): (i64,) = sqlx::query_as("SELECT count(*) FROM visits WHERE guest_id = $1 AND day = $2")
-            .bind(guest)
-            .bind(day)
-            .fetch_one(&mut *tx)
-            .await?;
+        // The slots used before the player deleted their data count too.
+        let (today,): (i64,) = sqlx::query_as(
+            "SELECT (SELECT count(*) FROM visits WHERE guest_id = $1 AND day = $2)
+                    + COALESCE((SELECT visits FROM deleted_users WHERE user_id = $1 AND day = $2), 0)",
+        )
+        .bind(guest)
+        .bind(day)
+        .fetch_one(&mut *tx)
+        .await?;
         let paid = if today <= daily_cap { reward } else { 0 };
         if paid > 0 {
             sqlx::query("INSERT INTO users (id, credits) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET credits = users.credits + EXCLUDED.credits")

@@ -55,7 +55,7 @@ impl Db {
     }
 
     /// Like [`Db::add_message_xp`] with the server and global shares apart, and the server XP counted
-    /// toward the weekly board of the week starting `week`.
+    /// toward the weekly board of the week starting `week` and toward `/wrapped` (as voice XP is).
     pub async fn add_xp(&self, guild_id: u64, user_id: u64, grant: XpGrant, week: NaiveDate) -> anyhow::Result<XpGain> {
         let (new_xp,): (i64,) = sqlx::query_as(
             "WITH m AS (
@@ -76,7 +76,7 @@ impl Db {
                  ON CONFLICT (guild_id, week, user_id) DO UPDATE SET xp = weekly_xp.xp + EXCLUDED.xp
              ), a AS (
                  INSERT INTO activity_monthly (user_id, month, messages, xp)
-                 VALUES ($2, date_trunc('month', now() AT TIME ZONE 'UTC')::date, 1, $5)
+                 VALUES ($2, date_trunc('month', now() AT TIME ZONE 'UTC')::date, 1, $3)
                  ON CONFLICT (user_id, month) DO UPDATE
                  SET messages = activity_monthly.messages + 1, xp = activity_monthly.xp + EXCLUDED.xp
              )

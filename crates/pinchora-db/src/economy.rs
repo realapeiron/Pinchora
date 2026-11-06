@@ -151,8 +151,9 @@ pub(crate) async fn ledger(
         .bind(reason)
         .execute(&mut **tx)
         .await?;
-    if crate::activity::counts_as_earned(delta, reason) {
-        crate::activity::bump(tx, user_id, crate::activity::Counter::Shells, delta, None).await?;
+    let earned = crate::activity::earned(delta, reason);
+    if earned > 0 {
+        crate::activity::bump(tx, user_id, crate::activity::Counter::Shells, earned, None).await?;
     }
     Ok(())
 }

@@ -34,6 +34,18 @@ impl Db {
     pub async fn like_house(&self, host: u64, liker: u64, day: NaiveDate) -> anyhow::Result<Option<i32>> {
         let (host, liker) = (sql_id(host), sql_id(liker));
         let mut tx = self.pool().begin().await?;
+        // A like given before the player deleted their data is still a like given today.
+        let (before,): (bool,) = sqlx::query_as(
+            "SELECT EXISTS (SELECT 1 FROM deleted_users WHERE user_id = $1 AND day = $3 AND $2 = ANY(liked))",
+        )
+        .bind(liker)
+        .bind(host)
+        .bind(day)
+        .fetch_one(&mut *tx)
+        .await?;
+        if before {
+            return Ok(None);
+        }
         let fresh =
             sqlx::query("INSERT INTO house_likes (host_id, liker_id, day) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING")
                 .bind(host)

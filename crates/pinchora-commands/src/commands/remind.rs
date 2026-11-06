@@ -35,6 +35,8 @@ use crate::{
 
 /// The ticker wakes this often.
 const WAKE: Duration = Duration::from_secs(30);
+/// Every this many wake-ups (an hour) the tombstones of old deletions are dropped.
+const FORGET_EVERY: u32 = 120;
 /// Reminders taken from the table and sent at once.
 const BATCH: i64 = 25;
 /// A pass keeps taking batches until it has run this long (the leases outlast it).
@@ -304,17 +306,23 @@ async fn try_refresh_pet(app: &App, pet: &PetRow) -> anyhow::Result<()> {
         return Ok(());
     }
     let now = app.now();
+    // Only a moment still to come is scheduled: one that has passed was sent (or is about to be) and
+    // looking at the pet again must not send it again.
     if optins.iter().any(|k| k == "trip") {
         match (&pet.trip_dest, pet.trip_ends_at) {
-            (Some(_), Some(ends)) => {
+            (Some(_), Some(ends)) if ends > now => {
                 app.db.schedule_reminder(user, "trip", pet.id, "", ends).await?;
             }
+            (Some(_), Some(_)) => {}
             _ => app.db.unschedule_reminder(user, "trip", pet.id).await?,
         }
     }
     if optins.iter().any(|k| k == "pet") {
         if pet.active && !pet.is_away(now) && !pet::is_asleep(pet, now) {
-            app.db.schedule_reminder(user, "pet", pet.id, "", pet_due(pet)).await?;
+            let due = pet_due(pet);
+            if due > now {
+                app.db.schedule_reminder(user, "pet", pet.id, "", due).await?;
+            }
         } else {
             app.db.unschedule_reminder(user, "pet", pet.id).await?;
         }
@@ -722,15 +730,23 @@ pub async fn tick(app: &Arc<App>) -> anyhow::Result<usize> {
     Ok(sent)
 }
 
-/// Runs [`tick`] every 30 seconds for the life of the process.
+/// Runs [`tick`] every 30 seconds for the life of the process, and forgets the players who deleted
+/// their data long enough ago once an hour.
 pub fn spawn_ticker(app: Arc<App>) {
     tokio::spawn(async move {
         let mut wake = tokio::time::interval(WAKE);
         wake.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+        let mut rounds = 0u32;
         loop {
             wake.tick().await;
             if let Err(error) = tick(&app).await {
                 tracing::warn!(%error, "reminder tick failed");
+            }
+            rounds = rounds.wrapping_add(1);
+            if rounds.is_multiple_of(FORGET_EVERY)
+                && let Err(error) = app.db.forget_old_tombstones(app.now()).await
+            {
+                tracing::warn!(%error, "old deletions not forgotten");
             }
         }
     });

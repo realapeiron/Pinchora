@@ -4,9 +4,10 @@
 //! numbers behind Wrapped.
 
 use chrono::{Duration, NaiveDate, Utc};
-use pinchora_core::economy::Period;
+use pinchora_core::economy::{Period, daily_reward};
 use pinchora_db::{
-    Counter, Db, DuelStart, Hide, ID_LISTS, NewGame, OTHER_TABLES, PENDING, PeriodOutcome, USER_COLUMNS, XpGrant,
+    CLEARED_COLUMNS, Counter, DailyOutcome, Db, DuelStart, GiveawayOpen, Hide, ID_LISTS, ListEdit, NewGame,
+    NewGiveaway, OTHER_TABLES, PENDING, PeriodOutcome, RepOutcome, USER_COLUMNS, VisitOutcome, XpGrant,
 };
 
 async fn db() -> Option<Db> {
@@ -97,6 +98,25 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
     assert_eq!(db.user(other).await.unwrap().credits, 400, "the bet is held");
     // And a challenge the other player sent them.
     db.create_game(game(other, user, 0)).await.unwrap();
+    // A giveaway they host, with its prize held from them.
+    let before = db.user(user).await.unwrap().credits;
+    let GiveawayOpen::Started(hosted) = db
+        .create_giveaway(NewGiveaway {
+            guild_id: guild,
+            channel_id: 1,
+            host: user,
+            prize: "Shells",
+            shells: 50,
+            winners: 2,
+            required_role: None,
+            ends_at: Utc::now() + Duration::hours(1),
+        })
+        .await
+        .unwrap()
+    else {
+        panic!("the giveaway starts");
+    };
+    assert_eq!(db.user(user).await.unwrap().credits, before - 100, "the prize is held");
     sqlx::query("INSERT INTO game_answers (session_id, user_id, choice) VALUES ($1, $2, 1), ($1, $3, 2)")
         .bind(session.id)
         .bind(user as i64)
@@ -136,6 +156,21 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
          VALUES (1, 1, ARRAY[$1, $2], ARRAY[3, 2], 2)
          ON CONFLICT (guild_id, week) DO UPDATE SET winner_ids = EXCLUDED.winner_ids",
         "INSERT INTO activity_monthly (user_id, month, visits) VALUES ($1, '2025-01-01', 4) ON CONFLICT DO NOTHING",
+        // Somebody else's giveaway the player entered and won ($1 doubles as the server).
+        "INSERT INTO giveaways (guild_id, channel_id, host_id, prize, shells, winners, ends_at, status, winner_ids, announced)
+         VALUES ($1, 2, $2, 'Hat', 0, 2, now(), 'ended', ARRAY[$1, $2], TRUE)",
+        "INSERT INTO giveaway_entries (giveaway_id, user_id)
+         SELECT id, $1 FROM giveaways WHERE guild_id = $1 AND prize = 'Hat'
+         UNION ALL SELECT id, $2 FROM giveaways WHERE guild_id = $1 AND prize = 'Hat'",
+        "INSERT INTO suggestions (guild_id, number, author_id, body, status, decided_by)
+         VALUES ($1, 1, $1, 'Add a garden', 'approved', $2), ($1, 2, $2, 'Remove it', 'denied', $1)",
+        "INSERT INTO suggestion_votes (suggestion_id, user_id, up)
+         SELECT id, $1, TRUE FROM suggestions WHERE guild_id = $1 AND number = 2",
+        "INSERT INTO polls (guild_id, channel_id, author_id, question, options, ends_at)
+         VALUES ($1, 2, $1, 'Mine?', ARRAY['a', 'b'], now() + interval '1 day'),
+                ($1, 2, $2, 'Theirs?', ARRAY['a', 'b'], now() + interval '1 day')",
+        "INSERT INTO poll_votes (poll_id, user_id, choice)
+         SELECT id, $1, 0 FROM polls WHERE guild_id = $1 AND author_id = $2",
     ];
     for sql in inserts {
         run(db, sql, user, other).await;
@@ -147,7 +182,7 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         }
     }
 
-    let deleted = db.delete_user_data(user).await.unwrap();
+    let deleted = db.delete_user_data(user, Utc::now()).await.unwrap();
     assert!(deleted.rows >= filled.len() as u64, "{deleted:?}");
     let mut tables: Vec<&str> = filled.iter().map(|(t, _)| *t).collect();
     tables.dedup();
@@ -160,7 +195,7 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
             "{table}.{column} still names the deleted player"
         );
     }
-    for (table, column) in ID_LISTS {
+    for (table, column, _) in ID_LISTS {
         let sql = format!("SELECT count(*) FROM {table} WHERE $1 = ANY({column})");
         let (left,): (i64,) = sqlx::query_as(sqlx::AssertSqlSafe(sql))
             .bind(user as i64)
@@ -179,6 +214,40 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         (vec![0, other as i64], vec![3, 2]),
         "the podium keeps its places"
     );
+    for (table, column) in CLEARED_COLUMNS {
+        assert_eq!(
+            count(db, table, column, user).await,
+            0,
+            "{table}.{column} still names the player"
+        );
+    }
+    let (winners,): (Vec<i64>,) =
+        sqlx::query_as("SELECT winner_ids FROM giveaways WHERE host_id = $1 AND prize = 'Hat'")
+            .bind(other as i64)
+            .fetch_one(db.pool())
+            .await
+            .unwrap();
+    assert_eq!(
+        winners,
+        [other as i64],
+        "the player is taken out of the winners, not blanked"
+    );
+    let (decided,): (i64,) =
+        sqlx::query_as("SELECT count(*) FROM suggestions WHERE guild_id = $1 AND decided_by IS NULL")
+            .bind(user as i64)
+            .fetch_one(db.pool())
+            .await
+            .unwrap();
+    assert_eq!(
+        decided, 1,
+        "the suggestion the player decided stays, undecided by anyone"
+    );
+    let (kept,): (i64,) = sqlx::query_as("SELECT count(*) FROM suggestions WHERE guild_id = $1")
+        .bind(user as i64)
+        .fetch_one(db.pool())
+        .await
+        .unwrap();
+    assert_eq!(kept, 1, "only the other player's suggestion is left");
 
     // The other player keeps their own things, and their bet is back.
     assert_eq!(
@@ -189,6 +258,12 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
     assert_eq!(count(db, "social_names", "user_id", other).await, 1);
     assert!(db.partner(other).await.unwrap().is_none(), "the pair is gone");
     assert_eq!(count(db, "contest_entries", "user_id", other).await, 1);
+    assert!(
+        db.giveaway(hosted.id).await.unwrap().is_none(),
+        "the giveaway they hosted is called off"
+    );
+    assert_eq!(count(db, "giveaway_entries", "user_id", other).await, 1);
+    assert_eq!(count(db, "polls", "author_id", other).await, 1, "their polls stay");
     assert_eq!(
         count(db, "contest_votes", "voter_id", other).await,
         0,
@@ -196,7 +271,7 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
     );
 
     // Deleting again is quiet, and the player starts over as a new one.
-    assert_eq!(db.delete_user_data(user).await.unwrap().rows, 0);
+    assert_eq!(db.delete_user_data(user, Utc::now()).await.unwrap().rows, 0);
     assert_eq!(db.user(user).await.unwrap().credits, 0);
     filled
 }
@@ -237,7 +312,13 @@ async fn every_table_is_a_player_table_or_says_it_is_not() {
         "tables {unknown:?} are in neither USER_COLUMNS nor OTHER_TABLES (crates/pinchora-db/src/privacy.rs): \
          \"delete my data\" would miss them"
     );
-    for (table, column) in USER_COLUMNS.iter().chain(ID_LISTS) {
+    let named: Vec<(&str, &str)> = USER_COLUMNS
+        .iter()
+        .copied()
+        .chain(CLEARED_COLUMNS.iter().copied())
+        .chain(ID_LISTS.iter().map(|(t, c, _)| (*t, *c)))
+        .collect();
+    for (table, column) in &named {
         let (found,): (bool,) = sqlx::query_as(
             "SELECT EXISTS (SELECT 1 FROM information_schema.columns
                             WHERE table_schema = current_schema() AND table_name = $1 AND column_name = $2)",
@@ -250,26 +331,57 @@ async fn every_table_is_a_player_table_or_says_it_is_not() {
         assert!(found, "{table}.{column} does not exist");
     }
 
-    // A column that looks like it holds a player's id, in a table that is listed, must be listed.
+    // A column that looks like it holds a player's id (or a list of them) must be dealt with: listed
+    // as a player column, cleared, or an id list; or sit in a table that belongs to no player.
     let words = [
-        "user", "owner", "host", "guest", "author", "liker", "voter", "friend", "seller", "blocked", "from_", "to_id",
-        "partner", "entry_id",
+        "user",
+        "owner",
+        "host",
+        "guest",
+        "author",
+        "liker",
+        "voter",
+        "friend",
+        "seller",
+        "blocked",
+        "from_",
+        "to_id",
+        "partner",
+        "entry_id",
+        "winner",
+        "recipient",
+        "sender",
+        "creator",
     ];
-    let columns: Vec<(String, String)> = sqlx::query_as(
-        "SELECT table_name::TEXT, column_name::TEXT FROM information_schema.columns
-         WHERE table_schema = current_schema() AND data_type = 'bigint' ORDER BY 1, 2",
+    let columns: Vec<(String, String, String)> = sqlx::query_as(
+        "SELECT table_name::TEXT, column_name::TEXT, udt_name::TEXT FROM information_schema.columns
+         WHERE table_schema = current_schema() AND udt_name IN ('int8', '_int8') ORDER BY 1, 2",
     )
     .fetch_all(db.pool())
     .await
     .unwrap();
-    for (table, column) in columns {
-        let looks_like_a_player = words.iter().any(|w| column.contains(w)) && !column.contains("guestbook");
-        let listed = USER_COLUMNS.iter().any(|(t, c)| *t == table && *c == column);
-        assert!(
-            !looks_like_a_player || listed || OTHER_TABLES.contains(&table.as_str()),
-            "{table}.{column} looks like a player's id but \"delete my data\" does not clear it"
-        );
+    for (table, column, kind) in columns {
+        let looks_like_a_player =
+            (words.iter().any(|w| column.contains(w)) || column.ends_with("_by")) && !column.contains("guestbook");
+        if !looks_like_a_player {
+            continue;
+        }
+        if kind == "_int8" {
+            assert!(
+                ID_LISTS.iter().any(|(t, c, _)| *t == table && *c == column),
+                "{table}.{column} looks like a list of players' ids but \"delete my data\" does not take the player out of it"
+            );
+        } else {
+            let dealt_with =
+                named.contains(&(table.as_str(), column.as_str())) || OTHER_TABLES.contains(&table.as_str());
+            assert!(
+                dealt_with,
+                "{table}.{column} looks like a player's id but \"delete my data\" does not clear it"
+            );
+        }
     }
+    // Lists that run in step with another one are blanked, not shortened.
+    assert!(ID_LISTS.iter().any(|(_, _, edit)| *edit == ListEdit::Blank));
 }
 
 #[tokio::test]
@@ -508,8 +620,8 @@ async fn reminders_go_out_once_and_survive_a_crash() {
     assert!(db.reminder_optins(user).await.unwrap().is_empty());
     assert!(db.set_optin(user, "bogus", true).await.is_err());
     // Nothing of this stays in the shared database.
-    db.delete_user_data(user).await.unwrap();
-    db.delete_user_data(other).await.unwrap();
+    db.delete_user_data(user, Utc::now()).await.unwrap();
+    db.delete_user_data(other, Utc::now()).await.unwrap();
 }
 
 #[tokio::test]
@@ -535,7 +647,7 @@ async fn at_most_25_reminders_are_open_even_when_added_at_once() {
     let first = db.text_reminders(user).await.unwrap()[0].id;
     assert!(db.cancel_text_reminder(user, first).await.unwrap());
     assert!(db.add_text_reminder(user, "again", due).await.unwrap().is_some());
-    db.delete_user_data(user).await.unwrap();
+    db.delete_user_data(user, Utc::now()).await.unwrap();
 }
 
 #[tokio::test]
@@ -566,6 +678,7 @@ async fn the_months_are_counted_where_things_happen() {
         .unwrap();
     db.earn_shells(user, 300, "fishing").await.unwrap();
     db.earn_shells(user, 99, "duel_refund").await.unwrap();
+    db.earn_shells(user, 200, "duel_pot").await.unwrap();
     db.spend_shells(user, 10, "shop").await.unwrap();
     db.log_catch(user, "minnow", 3.0).await.unwrap();
     db.log_catch(user, "minnow", 3.5).await.unwrap();
@@ -586,11 +699,11 @@ async fn the_months_are_counted_where_things_happen() {
     assert_eq!(me[0].0, chrono::Datelike::month(&month));
     let total = sum(&me);
     assert_eq!(total.messages, 1, "only the chat message");
-    assert_eq!(total.xp, 18 + 7, "chat's global XP and voice XP");
+    assert_eq!(total.xp, 20 + 7, "chat's server XP and voice XP");
     assert_eq!(
         total.shells,
-        300 + 25,
-        "fishing and the visit pay; a refund, a purchase and a transfer out do not"
+        300 + 25 + 100,
+        "fishing and the visit pay, and a duel adds what was won (not the stake in the pot); a refund, a purchase and a transfer out do not"
     );
     assert_eq!(total.fish, 2);
     assert_eq!(total.visits, 1, "only the first visit of the day");
@@ -611,4 +724,307 @@ async fn the_months_are_counted_where_things_happen() {
     assert_eq!(old.iter().map(|(m, _)| *m).collect::<Vec<_>>(), [1, 3]);
     assert_eq!((old[0].1.messages, old[1].1.fish), (42, 5));
     assert!(db.activity_year(user, 2002).await.unwrap().is_empty());
+
+    // The favourite fish is the year's, not the book's.
+    assert_eq!(
+        db.favourite_fish(user, this_year).await.unwrap(),
+        Some(("minnow".to_owned(), 2))
+    );
+    for _ in 0..3 {
+        db.add_catch_in(user, 2001, "pearl_oyster").await.unwrap();
+    }
+    db.add_catch_in(user, 2001, "minnow").await.unwrap();
+    assert_eq!(
+        db.favourite_fish(user, 2001).await.unwrap(),
+        Some(("pearl_oyster".to_owned(), 3))
+    );
+    assert_eq!(db.favourite_fish(user, 2002).await.unwrap(), None);
+}
+
+/// What deleting data must not be: a way to get a reward, a rep, a paid visit, a wordle payout or
+/// a walk a second time.
+#[tokio::test]
+async fn deleting_and_coming_back_resets_no_cooldown() {
+    let Some(db) = db().await else { return };
+    let [user, alt, other_alt] = ids();
+    let now = micros(Utc::now());
+    let weekly = |at| db.claim_period(user, Period::Weekly, at);
+    let monthly = |at| db.claim_period(user, Period::Monthly, at);
+
+    // The loop: collect everything, hand it to an alt, delete, come back and do it again.
+    let mut legit = 0;
+    for round in 0..4 {
+        let daily = db.claim_daily(user).await.unwrap();
+        let week = weekly(now).await.unwrap();
+        let month = monthly(now).await.unwrap();
+        let rep = db.give_rep(user, other_alt).await.unwrap();
+        if round == 0 {
+            assert!(matches!(daily, DailyOutcome::Claimed { .. }), "{daily:?}");
+            assert!(matches!(week, PeriodOutcome::Claimed { .. }), "{week:?}");
+            assert!(matches!(month, PeriodOutcome::Claimed { .. }), "{month:?}");
+            assert!(matches!(rep, RepOutcome::Given { .. }), "{rep:?}");
+            legit = daily_reward(1) + Period::Weekly.reward() + Period::Monthly.reward();
+        } else {
+            assert!(
+                matches!(daily, DailyOutcome::Cooldown { .. }),
+                "round {round}: {daily:?}"
+            );
+            assert!(
+                matches!(week, PeriodOutcome::Cooldown { .. }),
+                "round {round}: {week:?}"
+            );
+            assert!(
+                matches!(month, PeriodOutcome::Cooldown { .. }),
+                "round {round}: {month:?}"
+            );
+            assert!(matches!(rep, RepOutcome::Cooldown { .. }), "round {round}: {rep:?}");
+        }
+        let balance = db.user(user).await.unwrap().credits;
+        if balance > 0 {
+            db.transfer_credits(user, alt, balance).await.unwrap();
+        }
+        db.delete_user_data(user, now).await.unwrap();
+        assert_eq!(db.user(user).await.unwrap().credits, 0, "they come back with nothing");
+    }
+    assert_eq!(
+        db.user(alt).await.unwrap().credits,
+        legit,
+        "one legitimate cycle, not four"
+    );
+    assert_eq!(db.user(other_alt).await.unwrap().reputation, 1, "one rep, not four");
+    let (rows,): (i64,) = sqlx::query_as("SELECT count(*) FROM credit_ledger WHERE user_id = $1 AND delta > 0")
+        .bind(user as i64)
+        .fetch_one(db.pool())
+        .await
+        .unwrap();
+    assert_eq!(rows, 0, "nothing was paid to them after coming back");
+
+    // The wallet reads the cooldowns off the row, and they are on it.
+    let back = db.user(user).await.unwrap();
+    assert!(back.last_daily_at.is_some() && back.last_rep_at.is_some());
+    assert_eq!(db.period_claimed_at(user, Period::Weekly).await.unwrap(), Some(now));
+
+    // Time still passes: a day later the daily and the rep work again, a week later the weekly one,
+    // a month later the monthly one.
+    sqlx::query(
+        "UPDATE deleted_users SET last_daily_at = last_daily_at - interval '30 hours',
+                                  last_rep_at = last_rep_at - interval '30 hours' WHERE user_id = $1",
+    )
+    .bind(user as i64)
+    .execute(db.pool())
+    .await
+    .unwrap();
+    sqlx::query("UPDATE users SET last_daily_at = last_daily_at - interval '30 hours', last_rep_at = last_rep_at - interval '30 hours' WHERE id = $1")
+        .bind(user as i64)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    assert!(matches!(
+        db.claim_daily(user).await.unwrap(),
+        DailyOutcome::Claimed { .. }
+    ));
+    assert!(matches!(
+        db.give_rep(user, other_alt).await.unwrap(),
+        RepOutcome::Given { .. }
+    ));
+    assert!(matches!(
+        weekly(now + Duration::days(6)).await.unwrap(),
+        PeriodOutcome::Cooldown { .. }
+    ));
+    assert!(matches!(
+        weekly(now + Duration::days(8)).await.unwrap(),
+        PeriodOutcome::Claimed { .. }
+    ));
+    assert!(matches!(
+        monthly(now + Duration::days(29)).await.unwrap(),
+        PeriodOutcome::Cooldown { .. }
+    ));
+    assert!(matches!(
+        monthly(now + Duration::days(31)).await.unwrap(),
+        PeriodOutcome::Claimed { .. }
+    ));
+
+    // Deleting twice in a row keeps the later of each time, and a player with nothing leaves no trace.
+    db.delete_user_data(user, now).await.unwrap();
+    db.delete_user_data(user, now + Duration::hours(1)).await.unwrap();
+    assert!(matches!(
+        db.claim_daily(user).await.unwrap(),
+        DailyOutcome::Cooldown { .. }
+    ));
+    let [nobody] = ids();
+    db.user(nobody).await.unwrap();
+    db.delete_user_data(nobody, now).await.unwrap();
+    assert_eq!(count(&db, "deleted_users", "user_id", nobody).await, 0);
+
+    // Tombstones are dropped when the longest cooldown is long over.
+    sqlx::query("UPDATE deleted_users SET deleted_at = $2 WHERE user_id = $1")
+        .bind(user as i64)
+        .bind(now - Duration::days(36))
+        .execute(db.pool())
+        .await
+        .unwrap();
+    assert!(db.forget_old_tombstones(now).await.unwrap() >= 1);
+    assert_eq!(count(&db, "deleted_users", "user_id", user).await, 0);
+    db.delete_user_data(user, now).await.unwrap();
+    db.delete_user_data(alt, now).await.unwrap();
+    db.delete_user_data(other_alt, now).await.unwrap();
+}
+
+/// The other limits that sit in rows: paid visits, likes, the daily wordle and the pet walk.
+#[tokio::test]
+async fn paid_visits_likes_wordle_and_walks_survive_deleting() {
+    let Some(db) = db().await else { return };
+    let [guest, h1, h2, h3, liker, host] = ids();
+    let now = micros(Utc::now());
+    let day = now.date_naive();
+    let (reward, cap) = (25, 2);
+    let paid = |outcome: VisitOutcome| match outcome {
+        VisitOutcome::Rewarded { reward } => reward,
+        VisitOutcome::AlreadyToday => -1,
+    };
+
+    // A guest is paid for two houses a day, whoever deletes what afterwards.
+    assert_eq!(paid(db.record_visit(h1, guest, day, reward, cap).await.unwrap()), 25);
+    assert_eq!(paid(db.record_visit(h2, guest, day, reward, cap).await.unwrap()), 25);
+    assert_eq!(
+        paid(db.record_visit(h3, guest, day, reward, cap).await.unwrap()),
+        0,
+        "the cap"
+    );
+    // The hosts delete their data and come back: the guest's visits of the day still count.
+    for host in [h1, h2, h3] {
+        db.delete_user_data(host, now).await.unwrap();
+    }
+    assert_eq!(
+        count(&db, "visits", "host_id", h1).await,
+        0,
+        "the host's id is gone from the visit"
+    );
+    assert_eq!(
+        paid(db.record_visit(h1, guest, day, reward, cap).await.unwrap()),
+        0,
+        "the host starting over does not reset the guest's day"
+    );
+    // And the guest deleting does not either.
+    db.delete_user_data(guest, now).await.unwrap();
+    assert_eq!(
+        paid(db.record_visit(h2, guest, day, reward, cap).await.unwrap()),
+        0,
+        "the guest starting over does not reset their day"
+    );
+    // Tomorrow is a new day.
+    assert_eq!(
+        paid(
+            db.record_visit(h2, guest, day + Duration::days(1), reward, cap)
+                .await
+                .unwrap()
+        ),
+        25
+    );
+    // The Wrapped numbers never point at a deleted host.
+    assert_eq!(
+        db.most_visited_house(guest, chrono::Datelike::year(&day))
+            .await
+            .unwrap()
+            .map(|(h, _, _)| h),
+        Some(h2)
+    );
+
+    // Likes: the one given today is still given, and a deleted liker's like comes off the house.
+    sqlx::query("INSERT INTO houses (user_id) VALUES ($1) ON CONFLICT DO NOTHING")
+        .bind(host as i64)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    assert_eq!(db.like_house(host, liker, day).await.unwrap(), Some(1));
+    db.delete_user_data(liker, now).await.unwrap();
+    let (likes,): (i32,) = sqlx::query_as("SELECT likes FROM houses WHERE user_id = $1")
+        .bind(host as i64)
+        .fetch_one(db.pool())
+        .await
+        .unwrap();
+    assert_eq!(likes, 0, "the deleted player's like came off the house");
+    assert_eq!(
+        db.like_house(host, liker, day).await.unwrap(),
+        None,
+        "today's like is already given"
+    );
+    assert_eq!(
+        db.like_house(host, liker, day + Duration::days(1)).await.unwrap(),
+        Some(1),
+        "tomorrow they can like again"
+    );
+
+    // The daily wordle pays once a day; a board deleted with the data is still played.
+    let [player] = ids();
+    db.start_wordle(player, "daily", 20_000, "coral", false).await.unwrap();
+    db.delete_user_data(player, now).await.unwrap();
+    assert!(db.daily_wordle_played_before_deleting(player, 20_000).await.unwrap());
+    assert!(!db.daily_wordle_played_before_deleting(player, 20_001).await.unwrap());
+
+    // The walk's cooldown follows the player into a new pet.
+    let [walker] = ids();
+    db.adopt(walker, "crab", "Pinchy").await.unwrap();
+    assert_eq!(db.walk_locked_until(walker, now).await.unwrap(), None);
+    db.delete_user_data(walker, now).await.unwrap();
+    let until = db.walk_locked_until(walker, now).await.unwrap().expect("a walk lock");
+    assert_eq!(until, now + Duration::minutes(45));
+    assert_eq!(
+        db.walk_locked_until(walker, now + Duration::minutes(46)).await.unwrap(),
+        None
+    );
+
+    for user in [guest, h1, h2, h3, liker, host, player, walker] {
+        db.delete_user_data(user, now + Duration::days(40)).await.unwrap();
+    }
+}
+
+/// Shells held for a giveaway or a duel are not lost to others, and not resurrected for the host.
+#[tokio::test]
+async fn deleting_a_host_calls_the_giveaway_off_and_keeps_the_money_in_one_place() {
+    let Some(db) = db().await else { return };
+    let [host, entrant, guild] = ids();
+    let now = micros(Utc::now());
+    db.earn_shells(host, 500, "test").await.unwrap();
+    let GiveawayOpen::Started(giveaway) = db
+        .create_giveaway(NewGiveaway {
+            guild_id: guild,
+            channel_id: 1,
+            host,
+            prize: "Shells",
+            shells: 100,
+            winners: 2,
+            required_role: None,
+            ends_at: now - Duration::minutes(1),
+        })
+        .await
+        .unwrap()
+    else {
+        panic!("the giveaway starts");
+    };
+    db.toggle_giveaway_entry(giveaway.id, entrant, now - Duration::minutes(2))
+        .await
+        .unwrap();
+    assert_eq!(db.user(host).await.unwrap().credits, 300, "the prize is held");
+
+    db.delete_user_data(host, now).await.unwrap();
+    assert!(db.giveaway(giveaway.id).await.unwrap().is_none());
+    assert!(
+        db.due_giveaways(now, 1_000)
+            .await
+            .unwrap()
+            .iter()
+            .all(|id| *id != giveaway.id)
+    );
+    assert_eq!(
+        db.user(host).await.unwrap().credits,
+        0,
+        "no prize comes back to a player who left"
+    );
+    assert_eq!(
+        db.user(entrant).await.unwrap().credits,
+        0,
+        "and nobody is paid from it either"
+    );
+    db.delete_user_data(entrant, now).await.unwrap();
 }

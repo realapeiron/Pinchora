@@ -3,8 +3,17 @@ use std::fmt::Write;
 use super::{Backdrop, PIXEL, SANS, SpriteArt, avatar_frame, backdrop, text};
 use crate::{
     Theme,
-    svg::{HEART, SHELL, STAR, background, compact, data_uri_png, escape, sprite, thousands, truncate},
+    svg::{CRAB, HEART, SHELL, STAR, background, compact, data_uri_png, escape, sprite, thousands, truncate},
 };
+
+/// A speech bubble: messages.
+const BUBBLE: &[&str] = &[".#####.", "#######", "#o#o#o#", "#######", ".#####.", "##....."];
+/// A fish facing left: fish caught.
+const FISH: &[&str] = &["..###...#", ".#o###.##", "#########", ".#####.##", "..###...#"];
+/// A cottage: houses visited.
+const HOUSE: &[&str] = &["...#...", "..###..", ".#####.", "#######", ".##o##.", ".##o##."];
+/// An empty heart: a like given. The full [`HEART`] is the one received.
+const HEART_OUTLINE: &[&str] = &[".##.##.", "#..#..#", "#.....#", ".#...#.", "..#.#..", "...#..."];
 
 /// What a year came to.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -35,7 +44,7 @@ pub struct WrappedHouse<'a> {
     pub friend: bool,
 }
 
-/// 640×1140 Wrapped card: the year in numbers.
+/// 640×1164 Wrapped card: the year in numbers.
 pub struct WrappedCard<'a> {
     pub year: i32,
     pub display_name: &'a str,
@@ -70,7 +79,7 @@ const MONTHS: [&str; 12] = [
 impl WrappedCard<'_> {
     pub const AVATAR_SIZE: u32 = 128;
     pub const WIDTH: f32 = 640.0;
-    pub const HEIGHT: f32 = 1140.0;
+    pub const HEIGHT: f32 = 1164.0;
 
     /// The busiest month (1-12) and what it held; the latest wins a tie. `None` for a year with nothing.
     pub fn top_month(months: &[i64; 12]) -> Option<(usize, i64)> {
@@ -218,8 +227,9 @@ impl WrappedCard<'_> {
             let color = if best { &t.gold } else { &t.accent };
             let _ = write!(
                 s,
-                r##"<rect x="{x}" y="{}" width="34" height="{chart_h}" fill="#1f2a57"/>"##,
+                r##"<rect x="{x}" y="{}" width="34" height="{chart_h}" fill="{}" fill-opacity="0.55"/>"##,
                 base - chart_h - 16.0,
+                t.panel_edge,
             );
             if bar > 0.0 {
                 let _ = write!(
@@ -245,17 +255,18 @@ impl WrappedCard<'_> {
 
         // The numbers, two to a row.
         let m = &self.totals;
-        let tiles: [(&str, i64, Tile); 8] = [
-            ("MESSAGES", m.messages, Tile::Star),
-            ("XP EARNED", m.xp, Tile::Star),
-            ("SHELLS EARNED", m.shells, Tile::Shell),
-            ("FISH CAUGHT", m.fish, Tile::Star),
-            ("HOUSES VISITED", m.visits, Tile::Heart),
-            ("PETS CARED FOR", m.pet_care, Tile::Heart),
-            ("LIKES GIVEN", m.likes_given, Tile::Heart),
-            ("LIKES RECEIVED", m.likes_received, Tile::Heart),
+        // Each number has a picture of its own: (what it counts, how many, the icon and its colours).
+        let tiles: [(&str, i64, &[&str], &str, &str); 8] = [
+            ("MESSAGES", m.messages, BUBBLE, &t.accent, "#ffffff"),
+            ("SERVER XP", m.xp, STAR, &t.gold, "#fff7d6"),
+            ("SHELLS EARNED", m.shells, SHELL, &t.gold, "#ffffff"),
+            ("FISH CAUGHT", m.fish, FISH, &t.mint, "#ffffff"),
+            ("HOUSES VISITED", m.visits, HOUSE, &t.gold, "#ffffff"),
+            ("PETS CARED FOR", m.pet_care, CRAB, &t.accent, "#ffffff"),
+            ("LIKES GIVEN", m.likes_given, HEART_OUTLINE, &t.heart, "#ffc2cf"),
+            ("LIKES RECEIVED", m.likes_received, HEART, &t.heart, "#ffc2cf"),
         ];
-        for (i, (label, value, icon)) in tiles.iter().enumerate() {
+        for (i, (label, value, icon, color, highlight)) in tiles.iter().enumerate() {
             let (x, y) = (20.0 + (i % 2) as f32 * 308.0, 548.0 + (i / 2) as f32 * 88.0);
             t.panel(&mut s, x, y, 292.0, 76.0, 4.0);
             text(&mut s, x + 18.0, y + 28.0, 12.0, PIXEL, false, &t.muted, "start", label);
@@ -270,11 +281,17 @@ impl WrappedCard<'_> {
                 "start",
                 &escape(&compact(*value)),
             );
-            match icon {
-                Tile::Star => sprite(&mut s, STAR, x + 246.0, y + 22.0, 4.0, &t.gold, "#fff7d6"),
-                Tile::Shell => sprite(&mut s, SHELL, x + 246.0, y + 22.0, 4.0, &t.gold, "#ffffff"),
-                Tile::Heart => sprite(&mut s, HEART, x + 246.0, y + 22.0, 4.0, &t.heart, "#ffc2cf"),
-            }
+            // Centred in a 40 x 28 box at the right of the tile, whatever its shape.
+            let (cols, rows) = (icon[0].chars().count() as f32, icon.len() as f32);
+            sprite(
+                &mut s,
+                icon,
+                x + 266.0 - cols * 2.0,
+                y + 38.0 - rows * 2.0,
+                4.0,
+                color,
+                highlight,
+            );
         }
 
         // The favourite fish, with its picture.
@@ -400,7 +417,7 @@ impl WrappedCard<'_> {
         text(
             &mut s,
             w / 2.0,
-            1130.0,
+            1146.0,
             12.0,
             PIXEL,
             false,
@@ -412,11 +429,4 @@ impl WrappedCard<'_> {
         s.push_str("</svg>");
         s
     }
-}
-
-#[derive(Clone, Copy)]
-enum Tile {
-    Star,
-    Shell,
-    Heart,
 }

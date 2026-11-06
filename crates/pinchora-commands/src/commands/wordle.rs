@@ -267,7 +267,11 @@ pub(crate) async fn on_guess(cx: &Cx, mut args: Split<'_, char>, text: &str) -> 
         record(&cx.app, Game::Wordle, me, won).await;
         if won {
             let tries = game.guesses.len();
-            let paid = if mode == DAILY {
+            // A daily played before the player deleted their data was paid then.
+            let replayed = mode == DAILY && cx.app.db.daily_wordle_played_before_deleting(me, day).await?;
+            let paid = if replayed {
+                0
+            } else if mode == DAILY {
                 let shells = wordle::reward(true, tries);
                 cx.app.db.earn_shells(me, shells, "wordle_daily").await?;
                 shells
@@ -276,6 +280,8 @@ pub(crate) async fn on_guess(cx: &Cx, mut args: Split<'_, char>, text: &str) -> 
             };
             note = if paid > 0 {
                 format!("+**{paid}** shells!")
+            } else if replayed {
+                "(You played today's daily before deleting your data, so it pays nothing again.)".to_owned()
             } else {
                 "(Today's reward limit for practice is reached.)".to_owned()
             };
