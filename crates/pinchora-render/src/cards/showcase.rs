@@ -48,7 +48,7 @@ impl ShowcaseSlot<'_> {
     /// The largest sprite a tile has room for.
     pub const ART_BOX: (u32, u32) = (128, 72);
     /// The size of the house picture: what a house tile has inside its border.
-    pub const HOUSE_BOX: (u32, u32) = (160, 104);
+    pub const HOUSE_BOX: (u32, u32) = (160, 106);
     pub(crate) const HEIGHT: f32 = 114.0;
     /// Room between tiles.
     const GAP: f32 = 8.0;
@@ -272,16 +272,16 @@ fn house_tile(out: &mut String, t: &Theme, slot: &ShowcaseSlot<'_>, x: f32, y: f
         h - 8.0,
         data_uri_png(slot.art.png)
     );
-    // The kind, top left.
+    // The kind, top left, on the same line as the kind of the sprite tiles beside it.
     let _ = write!(
         out,
         r##"<path d="{}" fill="#0b1029" fill-opacity="0.78"/>"##,
-        notched_path(x + 8.0, y + 8.0, 46.0, 18.0, 2.0)
+        notched_path(x + 8.0, y + 6.0, 46.0, 16.0, 2.0)
     );
     text(
         out,
         x + 14.0,
-        y + 21.0,
+        y + ShowcaseSlot::KIND_BASELINE,
         10.0,
         PIXEL,
         false,
@@ -420,5 +420,7 @@ mod tests {
             assert_eq!((pw, ph), ShowcaseSlot::HOUSE_BOX);
             assert_eq!(size_of(&png), ShowcaseSlot::HOUSE_BOX);
         }
+        // The picture is drawn as it is, not stretched to the tile's inside.
+        assert_eq!(ShowcaseSlot::HOUSE_BOX.1 as f32, ShowcaseSlot::HEIGHT - 8.0);
     }
 }
