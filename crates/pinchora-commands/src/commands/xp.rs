@@ -33,7 +33,7 @@ pub struct XpMultiplier {
     /// 1 is normal, 2 doubles it, 0 earns no XP at all
     #[command(min_value = 0.0, max_value = 5.0)]
     value: f64,
-    /// The channel to change, text or voice (pick this or a role)
+    /// The channel or category to change, text, voice or forum (pick this or a role)
     channel: Option<InteractionChannel>,
     /// The role to change; @everyone sets it for the whole server (pick this or a channel)
     role: Option<Id<RoleMarker>>,
@@ -42,7 +42,7 @@ pub struct XpMultiplier {
 #[derive(CommandModel, CreateCommand)]
 #[command(name = "clear", desc = "Remove one multiplier, or all of them")]
 pub struct XpClear {
-    /// The channel to reset
+    /// The channel or category to reset
     channel: Option<InteractionChannel>,
     /// The role to reset
     role: Option<Id<RoleMarker>>,
@@ -194,7 +194,7 @@ async fn show(cx: &Cx, guild: u64) -> anyhow::Result<()> {
         .description(sections.join("\n\n"))
         .field(EmbedFieldBuilder::new("Voice XP", voice_summary(&settings)))
         .footer(EmbedFooterBuilder::new(format!(
-            "{}/{MAX_XP_RULES} rules · a channel's multiplier times the member's highest role multiplier; a no-XP role always wins · server XP and points only, global XP stays normal",
+            "{}/{MAX_XP_RULES} rules · a channel's multiplier times the member's highest role multiplier; a no-XP role always wins · a thread or post follows its channel, a channel its category, unless it has its own · server XP and points only, global XP stays normal",
             rules.channels.len() + rules.roles.len()
         )))
         .build();
@@ -214,10 +214,17 @@ async fn voice(cx: &Cx, guild: u64, c: XpVoice) -> anyhow::Result<()> {
         cx.app.db.update_voice_xp(guild, c.enabled, amount).await?
     };
     cx.app.forget_guild_settings(guild).await;
+    let mut text = voice_summary(&settings);
+    if c.enabled == Some(true) {
+        // Nobody is remembered while voice XP is off, and Discord cannot list who is in voice.
+        text.push_str(
+            "\n> Members already in a voice channel start earning when they next join, move, mute or unmute.",
+        );
+    }
     let embed = EmbedBuilder::new()
         .color(BRAND)
         .title("Voice XP")
-        .description(voice_summary(&settings))
+        .description(text)
         .build();
     cx.reply(InteractionResponseData {
         embeds: Some(vec![embed]),
