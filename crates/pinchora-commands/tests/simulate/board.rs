@@ -798,6 +798,16 @@ async fn the_daily_picross_is_solved_row_by_row_and_paid_once() {
         "{}",
         twice.content()
     );
+
+    // A form opened on the day and sent after midnight does not mark (or pay for) yesterday's puzzle.
+    let open = sim.click(friend, &other, "Mark cells").await;
+    sim.app.shift_clock(chrono::Duration::days(1));
+    let after_midnight = sim.submit_fields(friend, &open, &[("cells", "A1")]).await;
+    assert!(
+        after_midnight.ephemeral && after_midnight.content().contains("has ended"),
+        "{}",
+        after_midnight.content()
+    );
 }
 
 #[tokio::test]

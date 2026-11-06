@@ -409,6 +409,12 @@ async fn mark(
                 .reply_ephemeral("This puzzle is finished. Start another with `/play picross`!")
                 .await;
         }
+        // A form opened before midnight may arrive after it; yesterday's daily is closed by then.
+        if mode == DAILY && i64::from(day) != today(&cx.app) {
+            return cx
+                .reply_ephemeral("That puzzle has ended. Start today's with `/play picross`!")
+                .await;
+        }
         let puzzle = puzzle_of(&game);
         let mut grid = grid_of(&game);
         edit(&mut grid);
