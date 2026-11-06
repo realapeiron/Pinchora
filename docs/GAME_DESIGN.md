@@ -173,24 +173,34 @@ Redis (`cast:<user>:<nonce>` = `<bite ms>:<spot>:<rod>:<bait>`), so the reel doe
 player's gear at that moment.
 
 - **Spots** (`content/fishing_gear.json`): Shore, Reef, Kelp Forest, Deep Sea and Abyss open at global
-  level 1 / 5 / 12 / 20 / 30 (the first is open even at level 0). Each fish in `content/fish.json` has
-  `spots`: the spots it lives in and its draw weight at each. Within one spot a rarer fish always has a
-  smaller weight than a commoner one (`content/check.py` and the game tests check it); the depth shifts the
-  mix, not the order. Time of day and season still filter who bites, so a pool is never empty (junk lives
-  everywhere). Weights run on a scale where a common is 1000 so a legendary can be 8. Base odds work out to
-  roughly 17 / 20 / 23 / 27 / 32 shells of fish per cast at the five spots with the starter rod.
-- **Gear**: five rods (`window_ms`, `luck` multiplies the weight of rare and better fish, 1.0 to 1.4) and three
-  baits (a rarity tier's weight ×2.5, or a spot's signature `specials` ×3); a bait replaces the plain-bait fee.
-  Tables `fishing_gear`, `user_rods`, `user_baits`; no row means the shore, the starter rod and plain bait.
+  level 1 / 5 / 12 / 20 / 30 (the first is open even at level 0). Each spot has fixed `shares`, in percent,
+  of the six kinds a cast rolls first: junk, common, uncommon, rare, epic, legendary (they add up to 100; a
+  kind is above 0 exactly where fish of that kind live). The hour and the season never move them. Only after
+  the kind is rolled does the cast pick a species among the fish of that kind that are about now (`time` and
+  `season` in `content/fish.json` are flavour inside a kind), by `spots`: the spots a fish lives in and its
+  draw weight there, relative to the other fish of its kind at that spot. Every kind a spot rolls has a fish
+  about at every hour of every month (`fishing::tests` and `content/check.py` check it), so the roll never
+  moves; if a kind ever has none about it settles for the nearest kind that has one (the lower on a tie) and
+  never for junk, which is only ever rolled by its own share. Rarer kinds are rarer and the rare, epic and
+  legendary shares never fall going deeper. Shares in percent, shore to abyss: junk 10 / 10 / 9 / 8 / 7,
+  uncommon 7.5 / 7 / 8 / 8 / 8, rare 1.5 / 1.8 / 2.2 / 2.8 / 3.4, epic 0 / 0.1 / 0.2 / 0.3 / 0.45, legendary
+  0 / 0 / 0 / 0.1 / 0.16, the rest common.
+- **Gear**: five rods (`window_ms`, `luck` multiplies the shares of rare, epic and legendary, 1.0 to 1.4) and
+  three baits (a rarity's share ×2.5, or a spot's signature `specials` ×3 among the fish of their own kind); the
+  shares are then shared out again. A bait replaces the plain-bait fee. Tables `fishing_gear`, `user_rods`,
+  `user_baits`; no row means the shore, the starter rod and plain bait.
 - **Economy**: shells an hour is worked out from the real tables as casting every 30 s (120 casts), every reel
-  caught, every fish sold at its usual size and the bait paid for, averaged over the hours and months. The
-  starter rod with plain bait pays about 810 / 1,150 / 1,575 / 2,030 / 2,625 an hour at the five spots; the best
-  rod and bait about 1,085 / 1,530 / 2,180 / 2,760 / 3,815. `fishing::tests` fails if any rod and bait pays more
-  than 1,200 / 1,700 / 2,300 / 3,000 / 4,000 at the five spots, if the Shore starter wage leaves 700–900, if a
-  deeper spot or better gear stops being clearly better, if the 40,000-shell rod pays for itself in under 15 hours
-  of Abyss fishing (it takes 27–41) or if legendaries pass 0.3% of Abyss catches with the best rod (about 0.2%).
-  For comparison `/daily` pays 250–750 a day. Baits mostly shift the odds rather than the wage: they cost
-  13 / 28 / 24 shells a cast against 10 for plain bait.
+  caught, every fish sold at its usual size and the bait paid for, for every hour of every month (288 cells), not
+  on average. The starter rod with plain bait pays 755 / 1,128 / 1,552 / 2,013 / 2,565 an hour on average at the
+  five spots (the weakest hour 638 / 1,079 / 1,469 / 1,977 / 2,523, the best 901 / 1,180 / 1,591 / 2,090 / 2,670);
+  the best rod and bait about 1,000 / 1,491 / 2,026 / 2,766 / 3,464. `fishing::tests` fails if any hour of any
+  month pays more than 1,200 / 1,700 / 2,300 / 3,000 / 4,000 at the five spots with any rod and bait (the worst
+  cell is 1,135 / 1,549 / 2,107 / 2,868 / 3,600), if the Shore starter mean leaves 700-900, if any hour pays under
+  half its spot's mean or loses money with a rod and plain bait, if a deeper spot's worst hour stops beating the
+  shallower spot's best, if better gear stops being clearly better, if the 40,000-shell rod pays for itself in
+  under 15 hours of Abyss fishing or if legendaries pass 0.3% of casts at any hour at any spot with the best rod
+  (about 0.22% at the Abyss, 0.14% at the Deep Sea). For comparison `/daily` pays 250-750 a day. Baits mostly
+  shift the odds rather than the wage: they cost 13 / 28 / 24 shells a cast against 10 for plain bait.
 - **Sizes and selling**: a size is normal around the middle of the species' range, three deviations to either
   end of it. A catch goes to `fish_bucket` (60 fish at most) and to the fish book, which keeps the count and the
   record size for good; `/fish sell` sells all or all but the biggest of each species, for the species' worth

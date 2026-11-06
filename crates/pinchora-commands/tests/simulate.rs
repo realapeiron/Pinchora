@@ -7667,7 +7667,7 @@ async fn a_catch_has_a_size_waits_in_the_bucket_and_beats_records() {
     );
     assert!(catch.description().contains("A new species for your fish book!"));
     assert!(
-        footer(&catch).starts_with("Shore · Reaction 0.4") && footer(&catch).ends_with("Fish book 1/72 · Bucket 1/60"),
+        footer(&catch).starts_with("Shore · Reaction 0.") && footer(&catch).ends_with("Fish book 1/72 · Bucket 1/60"),
         "{}",
         footer(&catch)
     );

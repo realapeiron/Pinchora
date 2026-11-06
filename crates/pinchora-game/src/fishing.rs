@@ -30,8 +30,75 @@ pub struct Spot {
     /// Global level that opens the spot.
     pub level: u32,
     pub blurb: String,
+    /// How often a cast here comes up as each kind of catch, whatever the hour or season.
+    pub shares: Shares,
     /// The spot's signature fish, the ones Tide Crumbs call.
     pub specials: Vec<String>,
+}
+
+/// The kind of catch a cast rolls first. Junk is its own kind; the rest are the fish rarities.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Tier {
+    Junk,
+    Common,
+    Uncommon,
+    Rare,
+    Epic,
+    Legendary,
+}
+
+impl Tier {
+    pub const ALL: [Tier; 6] = [
+        Self::Junk,
+        Self::Common,
+        Self::Uncommon,
+        Self::Rare,
+        Self::Epic,
+        Self::Legendary,
+    ];
+
+    /// The kind a fish is rolled as: boots and tins are junk, the others go by rarity.
+    pub fn of(fish: &Fish) -> Tier {
+        if fish.junk { Self::Junk } else { fish.rarity.into() }
+    }
+}
+
+impl From<Rarity> for Tier {
+    fn from(rarity: Rarity) -> Self {
+        match rarity {
+            Rarity::Common => Self::Common,
+            Rarity::Uncommon => Self::Uncommon,
+            Rarity::Rare => Self::Rare,
+            Rarity::Epic => Self::Epic,
+            Rarity::Legendary => Self::Legendary,
+        }
+    }
+}
+
+/// A spot's share of casts for each [`Tier`], in percent; a spot's shares add up to 100. A kind left out
+/// is never rolled there.
+#[derive(Debug, Clone, Copy, Default, Deserialize)]
+#[serde(default)]
+pub struct Shares {
+    pub junk: f64,
+    pub common: f64,
+    pub uncommon: f64,
+    pub rare: f64,
+    pub epic: f64,
+    pub legendary: f64,
+}
+
+impl Shares {
+    pub fn get(&self, tier: Tier) -> f64 {
+        match tier {
+            Tier::Junk => self.junk,
+            Tier::Common => self.common,
+            Tier::Uncommon => self.uncommon,
+            Tier::Rare => self.rare,
+            Tier::Epic => self.epic,
+            Tier::Legendary => self.legendary,
+        }
+    }
 }
 
 /// A rod: it widens the Reel! window and tips the odds toward rare fish.
@@ -203,25 +270,114 @@ impl Tackle<'_> {
     pub const PLAIN: Tackle<'static> = Tackle { luck: 1.0, bait: None };
 }
 
-/// The fish that can bite now at `spot`, each with its draw weight after rod and bait.
+/// The chance of rolling each [`Tier`] at `spot`, in [`Tier::ALL`] order, adding up to 1. The spot's shares
+/// are fixed; the clock does not move them. The rod multiplies the rare, epic and legendary shares and a
+/// rarity bait the share of its own tier, and what is left over is shared out again.
+pub fn tier_chances(spot: &Spot, tackle: Tackle<'_>) -> [f64; 6] {
+    let mut chances = Tier::ALL.map(|tier| {
+        let mut share = spot.shares.get(tier);
+        if tier >= Tier::Rare {
+            share *= tackle.luck;
+        }
+        if let Some(Boost::Rarity { rarity, factor }) = tackle.bait.map(|b| b.boost)
+            && Tier::from(rarity) == tier
+        {
+            share *= factor;
+        }
+        share
+    });
+    let total: f64 = chances.iter().sum();
+    if total > 0.0 {
+        chances.iter_mut().for_each(|chance| *chance /= total);
+    }
+    chances
+}
+
+/// The fish of each [`Tier`] that can bite now at `spot`, each with its weight within the tier: the weight
+/// in `fish.json`, times a specials bait's factor for the spot's signature fish.
+fn pools<'a>(
+    content: &'a Content,
+    spot: &Spot,
+    hour: u32,
+    month: u32,
+    tackle: Tackle<'_>,
+) -> [Vec<(&'a Fish, f64)>; 6] {
+    let mut pools: [Vec<(&Fish, f64)>; 6] = Default::default();
+    for fish in content.fish.iter().filter(|f| f.bites_at(hour, month)) {
+        let Some(base) = fish.spots.get(&spot.id) else {
+            continue;
+        };
+        let mut weight = f64::from(*base);
+        if let Some(Boost::Specials { factor }) = tackle.bait.map(|b| b.boost)
+            && spot.specials.contains(&fish.id)
+        {
+            weight *= factor;
+        }
+        if weight > 0.0 {
+            pools[Tier::of(fish) as usize].push((fish, weight));
+        }
+    }
+    pools
+}
+
+/// Where a roll of `rolled` ends up when `has` says which tiers have a fish about right now: the tier
+/// itself, else the nearest other one that has one, the lower one on a tie. Junk is only ever rolled, never
+/// fallen back to, and a junk roll with no junk about goes to the common fish.
+pub fn settle(rolled: Tier, has: impl Fn(Tier) -> bool) -> Option<Tier> {
+    if rolled == Tier::Junk && has(Tier::Junk) {
+        return Some(Tier::Junk);
+    }
+    let ladder = &Tier::ALL[1..];
+    let start = ladder.iter().position(|t| *t == rolled).unwrap_or(0);
+    (0..ladder.len()).find_map(|distance| {
+        let below = start.checked_sub(distance).map(|i| ladder[i]);
+        let above = ladder.get(start + distance).copied();
+        [below, above].into_iter().flatten().find(|t| has(*t))
+    })
+}
+
+/// The tier a 0..1 roll lands on, by the chances of [`tier_chances`].
+pub fn pick_tier(chances: &[f64; 6], roll: f64) -> Option<Tier> {
+    let total: f64 = chances.iter().sum();
+    if total <= 0.0 {
+        return None;
+    }
+    let mut target = roll.clamp(0.0, 0.999_999) * total;
+    let mut last = None;
+    for (tier, chance) in Tier::ALL.into_iter().zip(chances) {
+        if *chance <= 0.0 {
+            continue;
+        }
+        if target < *chance {
+            return Some(tier);
+        }
+        target -= chance;
+        last = Some(tier);
+    }
+    last
+}
+
+/// The fish that can bite now at `spot`, each with its chance of being the catch of a cast (they add up to
+/// 1): the chance of its tier, after any fallback, times its weight among the tier's fish about now.
 pub fn odds<'a>(content: &'a Content, spot: &Spot, hour: u32, month: u32, tackle: Tackle<'_>) -> Vec<(&'a Fish, f64)> {
-    content
-        .fish
-        .iter()
-        .filter(|f| f.bites_at(hour, month))
-        .filter_map(|f| {
-            let base = f64::from(*f.spots.get(&spot.id)?);
-            let mut weight = base;
-            if f.rarity >= Rarity::Rare {
-                weight *= tackle.luck;
-            }
-            match tackle.bait.map(|b| b.boost) {
-                Some(Boost::Rarity { rarity, factor }) if f.rarity == rarity => weight *= factor,
-                Some(Boost::Specials { factor }) if spot.specials.contains(&f.id) => weight *= factor,
-                _ => {}
-            }
-            (weight > 0.0).then_some((f, weight))
+    let pools = pools(content, spot, hour, month, tackle);
+    let mut landed = [0.0; 6];
+    for (tier, chance) in Tier::ALL.into_iter().zip(tier_chances(spot, tackle)) {
+        if chance > 0.0
+            && let Some(at) = settle(tier, |t| !pools[t as usize].is_empty())
+        {
+            landed[at as usize] += chance;
+        }
+    }
+    pools
+        .into_iter()
+        .zip(landed)
+        .flat_map(|(pool, chance)| {
+            let total: f64 = pool.iter().map(|(_, w)| w).sum();
+            pool.into_iter()
+                .map(move |(fish, weight)| (fish, chance * weight / total))
         })
+        .filter(|(_, chance)| *chance > 0.0)
         .collect()
 }
 
@@ -239,6 +395,23 @@ pub fn pick<'a>(odds: &[(&'a Fish, f64)], roll: f64) -> Option<&'a Fish> {
         target -= weight;
     }
     odds.last().map(|(fish, _)| *fish)
+}
+
+/// The catch of one cast: roll the tier first (`tier_roll`, 0..1), settle on the nearest tier with a fish
+/// about now if the roll's own has none, then pick among that tier's fish (`fish_roll`, 0..1).
+pub fn catch_fish<'a>(
+    content: &'a Content,
+    spot: &Spot,
+    hour: u32,
+    month: u32,
+    tackle: Tackle<'_>,
+    tier_roll: f64,
+    fish_roll: f64,
+) -> Option<&'a Fish> {
+    let pools = pools(content, spot, hour, month, tackle);
+    let rolled = pick_tier(&tier_chances(spot, tackle), tier_roll)?;
+    let tier = settle(rolled, |t| !pools[t as usize].is_empty())?;
+    pick(&pools[tier as usize], fish_roll)
 }
 
 // /Reel
@@ -390,47 +563,239 @@ mod tests {
         assert_eq!(content().fishing.first_spot().level, 1);
     }
 
+    /// Every hour (UTC) of every month: all the cells of the clock a cast can fall in.
+    fn cells() -> impl Iterator<Item = (u32, u32)> {
+        (0..24).flat_map(|hour| (1..=12).map(move |month| (hour, month)))
+    }
+
+    fn tier_name(tier: Tier) -> &'static str {
+        ["junk", "common", "uncommon", "rare", "epic", "legendary"][tier as usize]
+    }
+
     #[test]
     fn something_always_bites_at_every_spot() {
         for spot in &content().fishing.spots {
-            for hour in 0..24 {
-                for month in 1..=12 {
-                    let pool = odds(content(), spot, hour, month, Tackle::PLAIN);
-                    assert!(!pool.is_empty(), "{} is empty at hour {hour}, month {month}", spot.id);
-                    assert!(pool.iter().map(|(_, w)| w).sum::<f64>() > 0.0);
-                }
+            for (hour, month) in cells() {
+                let pool = odds(content(), spot, hour, month, Tackle::PLAIN);
+                assert!(!pool.is_empty(), "{} is empty at hour {hour}, month {month}", spot.id);
+                let total: f64 = pool.iter().map(|(_, p)| p).sum();
+                assert!(
+                    (total - 1.0).abs() < 1e-9,
+                    "{} sums to {total} at {hour}:{month}",
+                    spot.id
+                );
             }
         }
     }
 
     #[test]
-    fn weights_follow_rarity_within_a_spot() {
+    fn shares_add_up_and_fall_with_rarity() {
         let content = content();
         for spot in &content.fishing.spots {
-            for (commoner, rarer) in Rarity::ALL.iter().zip(&Rarity::ALL[1..]) {
-                let weights = |rarity: Rarity| {
-                    content
-                        .fish
-                        .iter()
-                        .filter(move |f| f.rarity == rarity)
-                        .filter_map(|f| f.spots.get(&spot.id).copied())
-                        .collect::<Vec<_>>()
-                };
-                let (common, rare) = (weights(*commoner), weights(*rarer));
-                if let (Some(low), Some(high)) = (common.iter().min(), rare.iter().max()) {
-                    assert!(high < low, "{}: {rarer:?} fish outweigh {commoner:?} ones", spot.id);
+            let total: f64 = Tier::ALL.iter().map(|t| spot.shares.get(*t)).sum();
+            assert!((total - 100.0).abs() < 1e-6, "{}: shares add up to {total}", spot.id);
+            let lives = |tier: Tier| {
+                content
+                    .fish
+                    .iter()
+                    .any(|f| Tier::of(f) == tier && f.spots.contains_key(&spot.id))
+            };
+            for tier in Tier::ALL {
+                // A kind is rolled exactly where something of it lives, so nothing is unreachable
+                // and nothing is rolled that cannot be caught.
+                assert_eq!(
+                    spot.shares.get(tier) > 0.0,
+                    lives(tier),
+                    "{}: the {} share and its fish disagree",
+                    spot.id,
+                    tier_name(tier)
+                );
+            }
+            // Rarer is rarer: each kind of fish comes up less often than the one below it, and junk is
+            // never the bulk of a spot.
+            for pair in Tier::ALL[1..].windows(2) {
+                let (common, rarer) = (spot.shares.get(pair[0]), spot.shares.get(pair[1]));
+                assert!(
+                    rarer == 0.0 || rarer < common,
+                    "{}: {} is not rarer than {}",
+                    spot.id,
+                    tier_name(pair[1]),
+                    tier_name(pair[0])
+                );
+            }
+            assert!(spot.shares.junk <= 12.0, "{}: too much junk", spot.id);
+        }
+        // Deeper is richer: from one spot to the next the share of rare, epic and legendary fish never falls.
+        for pair in content.fishing.spots.windows(2) {
+            for tier in [Tier::Rare, Tier::Epic, Tier::Legendary] {
+                assert!(
+                    pair[1].shares.get(tier) >= pair[0].shares.get(tier),
+                    "{} has fewer {} fish than {}",
+                    pair[1].id,
+                    tier_name(tier),
+                    pair[0].id
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn every_kind_a_spot_rolls_has_a_fish_about_at_every_hour_and_month() {
+        // Time and season are flavour inside a kind: no hour is ever empty, so a roll is never moved
+        // to another kind.
+        let content = content();
+        for spot in &content.fishing.spots {
+            for tier in Tier::ALL.into_iter().filter(|t| spot.shares.get(*t) > 0.0) {
+                for (hour, month) in cells() {
+                    let pools = pools(content, spot, hour, month, Tackle::PLAIN);
+                    assert!(
+                        !pools[tier as usize].is_empty(),
+                        "{}: no {} fish at hour {hour}, month {month}",
+                        spot.id,
+                        tier_name(tier)
+                    );
                 }
             }
         }
     }
 
     #[test]
-    fn odds_sum_to_one_once_normalised() {
+    fn the_clock_never_moves_the_tier_shares() {
+        let (content, gear) = (content(), &content().fishing);
+        let top = gear.rods.last().expect("a rod");
+        for spot in &gear.spots {
+            for bait in std::iter::once(None).chain(gear.baits.iter().map(Some)) {
+                for luck in [1.0, top.luck] {
+                    let tackle = Tackle { luck, bait };
+                    let wanted = tier_chances(spot, tackle);
+                    assert!((wanted.iter().sum::<f64>() - 1.0).abs() < 1e-9);
+                    for (hour, month) in cells() {
+                        let mut got = [0.0; 6];
+                        for (fish, chance) in odds(content, spot, hour, month, tackle) {
+                            got[Tier::of(fish) as usize] += chance;
+                        }
+                        for tier in Tier::ALL {
+                            assert!(
+                                (got[tier as usize] - wanted[tier as usize]).abs() < 1e-9,
+                                "{} at {hour}:{month}: {} share is {} not {}",
+                                spot.id,
+                                tier_name(tier),
+                                got[tier as usize],
+                                wanted[tier as usize]
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn an_empty_tier_falls_back_to_the_nearest_one_never_to_junk() {
+        let only = |tiers: &'static [Tier]| move |tier: Tier| tiers.contains(&tier);
+        // Its own tier first.
+        assert_eq!(settle(Tier::Epic, only(&Tier::ALL)), Some(Tier::Epic));
+        assert_eq!(settle(Tier::Junk, only(&Tier::ALL)), Some(Tier::Junk));
+        // The nearest one, either side.
+        assert_eq!(settle(Tier::Epic, only(&[Tier::Common, Tier::Rare])), Some(Tier::Rare));
+        assert_eq!(
+            settle(Tier::Rare, only(&[Tier::Common, Tier::Legendary])),
+            Some(Tier::Common)
+        );
+        assert_eq!(settle(Tier::Uncommon, only(&[Tier::Legendary])), Some(Tier::Legendary));
+        // A tie goes to the lower, cheaper tier.
+        assert_eq!(
+            settle(Tier::Epic, only(&[Tier::Rare, Tier::Legendary])),
+            Some(Tier::Rare)
+        );
+        assert_eq!(
+            settle(Tier::Uncommon, only(&[Tier::Common, Tier::Rare])),
+            Some(Tier::Common)
+        );
+        // Junk is rolled, never fallen back to; a junk roll with no junk about is a common fish.
+        assert_eq!(settle(Tier::Common, only(&[Tier::Junk, Tier::Rare])), Some(Tier::Rare));
+        assert_eq!(settle(Tier::Rare, only(&[Tier::Junk])), None);
+        assert_eq!(
+            settle(Tier::Junk, only(&[Tier::Uncommon, Tier::Rare])),
+            Some(Tier::Uncommon)
+        );
+        assert_eq!(settle(Tier::Rare, |_| false), None);
+    }
+
+    #[test]
+    fn a_tier_nothing_lives_in_moves_its_chance_to_the_nearest_tier() {
+        // The shore has no epic fish; give it an epic share anyway. The epic rolls settle for rare fish.
+        let content = content();
+        let mut spot = content.fishing.spot("shore").expect("shore").clone();
+        spot.shares = Shares {
+            common: 50.0,
+            epic: 50.0,
+            ..Shares::default()
+        };
+        let pool = odds(content, &spot, 12, 6, Tackle::PLAIN);
+        let rare: f64 = pool
+            .iter()
+            .filter(|(f, _)| f.rarity == Rarity::Rare)
+            .map(|(_, p)| p)
+            .sum();
+        assert!((rare - 0.5).abs() < 1e-9, "the epic rolls became rare fish: {rare}");
+        assert!((pool.iter().map(|(_, p)| p).sum::<f64>() - 1.0).abs() < 1e-9);
+        let caught = catch_fish(content, &spot, 12, 6, Tackle::PLAIN, 0.99, 0.5).expect("a fish");
+        assert_eq!(caught.rarity, Rarity::Rare);
+        let caught = catch_fish(content, &spot, 12, 6, Tackle::PLAIN, 0.01, 0.5).expect("a fish");
+        assert_eq!(caught.rarity, Rarity::Common);
+        // A spot nobody lives at has nothing to fall back to.
+        spot.id = "nowhere".into();
+        assert!(odds(content, &spot, 12, 6, Tackle::PLAIN).is_empty());
+        assert!(catch_fish(content, &spot, 12, 6, Tackle::PLAIN, 0.5, 0.5).is_none());
+    }
+
+    #[test]
+    fn a_cast_follows_the_odds() {
+        // Roll the tier at the middle of each tier's stretch of 0..1 and sweep the fish roll: the fish
+        // come out in the proportions the odds table gives.
+        let (content, gear) = (content(), &content().fishing);
+        let abyss = gear.spot("abyss").expect("abyss");
+        let tackle = Tackle {
+            luck: 1.27,
+            bait: gear.bait("tide_crumbs"),
+        };
+        let (hour, month) = (22, 12);
+        let table = odds(content, abyss, hour, month, tackle);
+        let chances = tier_chances(abyss, tackle);
+        let mut counts = std::collections::HashMap::<&str, f64>::new();
+        let mut start = 0.0;
+        const FISH_ROLLS: u32 = 2_000;
+        for chance in chances {
+            for n in 0..FISH_ROLLS {
+                let tier_roll = start + chance * 0.5;
+                let fish_roll = (f64::from(n) + 0.5) / f64::from(FISH_ROLLS);
+                if chance > 0.0 {
+                    let fish = catch_fish(content, abyss, hour, month, tackle, tier_roll, fish_roll).expect("a fish");
+                    *counts.entry(fish.id.as_str()).or_default() += chance / f64::from(FISH_ROLLS);
+                }
+            }
+            start += chance;
+        }
+        assert_eq!(counts.len(), table.len());
+        for (fish, chance) in &table {
+            let got = counts[fish.id.as_str()];
+            // The sweep of the fish roll is coarse to one part in FISH_ROLLS of the fish's tier.
+            let slack = 2.0 * chances[Tier::of(fish) as usize] / f64::from(FISH_ROLLS);
+            assert!((got - chance).abs() < slack, "{}: {got} against {chance}", fish.id);
+        }
+        // The ends of the roll land on the ends of the table.
+        assert_eq!(pick_tier(&chances, 0.0), Some(Tier::Junk));
+        assert_eq!(pick_tier(&chances, 1.0), Some(Tier::Legendary));
+        assert_eq!(pick_tier(&[0.0; 6], 0.5), None);
+    }
+
+    #[test]
+    fn odds_walk_the_whole_table() {
         let spot = content().fishing.spot("reef").expect("reef");
         let pool = odds(content(), spot, 12, 6, Tackle::PLAIN);
-        let total: f64 = pool.iter().map(|(_, w)| w).sum();
-        let shares: f64 = pool.iter().map(|(_, w)| w / total).sum();
-        assert!((shares - 1.0).abs() < 1e-9);
+        let total: f64 = pool.iter().map(|(_, p)| p).sum();
+        assert!((total - 1.0).abs() < 1e-9);
         // The roll walks the whole table: every fish in it is reachable and nothing else is.
         let mut seen: Vec<&str> = (0..2000)
             .filter_map(|n| pick(&pool, f64::from(n) / 2000.0))
@@ -484,53 +849,64 @@ mod tests {
     fn baits_boost_their_tier_or_the_spots_specials() {
         let (content, gear) = (content(), &content().fishing);
         let reef = gear.spot("reef").expect("reef");
-        let plain = odds(content, reef, 12, 7, Tackle::PLAIN);
-        let with = |bait: &str| {
+        let with = |bait: Option<&str>, hour, month| {
             odds(
                 content,
                 reef,
-                12,
-                7,
+                hour,
+                month,
                 Tackle {
                     luck: 1.0,
-                    bait: gear.bait(bait),
+                    bait: bait.and_then(|id| gear.bait(id)),
                 },
             )
         };
-        let uncommon = |pool: &[(&Fish, f64)]| share_of(pool, |f| f.rarity == Rarity::Uncommon);
-        let rare = |pool: &[(&Fish, f64)]| share_of(pool, |f| f.rarity == Rarity::Rare);
+        let plain = with(None, 12, 7);
+        let uncommon = |pool: &[(&Fish, f64)]| share_of(pool, |f| Tier::of(f) == Tier::Uncommon);
+        let rare = |pool: &[(&Fish, f64)]| share_of(pool, |f| Tier::of(f) == Tier::Rare);
         let special = |pool: &[(&Fish, f64)]| share_of(pool, |f| reef.specials.contains(&f.id));
-        assert!(uncommon(&with("glow_worm")) > 2.0 * uncommon(&plain));
-        assert!(rare(&with("silver_lure")) > 1.8 * rare(&plain));
-        assert!(special(&with("tide_crumbs")) > 2.5 * special(&plain));
+        assert!(uncommon(&with(Some("glow_worm"), 12, 7)) > 2.0 * uncommon(&plain));
+        assert!(rare(&with(Some("silver_lure"), 12, 7)) > 2.0 * rare(&plain));
         // A bait leaves the other tiers' fish where they were: nothing drops out of the table.
-        assert_eq!(with("glow_worm").len(), plain.len());
-        // A special of one spot means nothing at another.
-        let shore = gear.spot("shore").expect("shore");
-        let at_shore = odds(
-            content,
-            shore,
-            12,
-            7,
-            Tackle {
-                luck: 1.0,
-                bait: gear.bait("tide_crumbs"),
-            },
+        assert_eq!(with(Some("glow_worm"), 12, 7).len(), plain.len());
+        // Tide Crumbs call the signature fish of the spot, whichever of them is about, and only inside
+        // their own tier: the tier shares are the same.
+        let crumbs = with(Some("tide_crumbs"), 12, 7);
+        assert!(
+            special(&crumbs) > 1.5 * special(&plain),
+            "{}",
+            special(&crumbs) / special(&plain)
         );
         assert!(
-            at_shore
-                .iter()
-                .all(|(f, w)| reef.specials.contains(&f.id).not_or(*w == f64::from(f.spots["shore"])))
+            (rare(&crumbs) - rare(&plain)).abs() < 1e-9,
+            "the crumbs left the rare share alone"
         );
-    }
-
-    trait NotOr {
-        fn not_or(self, other: bool) -> bool;
-    }
-    impl NotOr for bool {
-        fn not_or(self, other: bool) -> bool {
-            !self || other
-        }
+        // A special that is not about changes nothing: at the shore at noon in summer none of its three is.
+        let shore = gear.spot("shore").expect("shore");
+        let at_shore = |bait: Option<&str>, hour, month| {
+            odds(
+                content,
+                shore,
+                hour,
+                month,
+                Tackle {
+                    luck: 1.0,
+                    bait: bait.and_then(|id| gear.bait(id)),
+                },
+            )
+        };
+        let (quiet, calling) = (at_shore(None, 12, 7), at_shore(Some("tide_crumbs"), 12, 7));
+        assert_eq!(quiet.len(), calling.len());
+        assert!(
+            quiet
+                .iter()
+                .zip(&calling)
+                .all(|((f, p), (g, q))| f.id == g.id && (p - q).abs() < 1e-12)
+        );
+        // At dawn in spring two of them are, and they get likelier.
+        let (quiet, calling) = (at_shore(None, 5, 4), at_shore(Some("tide_crumbs"), 5, 4));
+        let shore_special = |pool: &[(&Fish, f64)]| share_of(pool, |f| shore.specials.contains(&f.id));
+        assert!(shore_special(&calling) > 1.5 * shore_special(&quiet));
     }
 
     #[test]
@@ -670,7 +1046,8 @@ mod tests {
 
     // /Economy
 
-    /// The most a spot may pay an hour of constant casting with every reel caught, with any rod and bait.
+    /// The most a spot may pay an hour of constant casting with every reel caught, with any rod and bait,
+    /// at any hour of any month.
     const CEILINGS: [(&str, f64); 5] = [
         ("shore", 1_200.0),
         ("reef", 1_700.0),
@@ -706,30 +1083,46 @@ mod tests {
         worth[&fish.id]
     }
 
-    /// What one cast at `spot` brings in on average over every hour of the day and month of the year,
-    /// before the bait is paid, and the share of casts that bring in a fish of each rarity.
-    fn average_cast(spot: &Spot, tackle: Tackle<'_>) -> (f64, [f64; 5]) {
-        let (mut shells, mut shares, mut cells) = (0.0, [0.0; 5], 0.0);
-        for hour in 0..24 {
-            for month in 1..=12 {
-                let pool = odds(content(), spot, hour, month, tackle);
-                let total: f64 = pool.iter().map(|(_, w)| w).sum();
-                for (fish, weight) in &pool {
-                    shells += weight / total * expected_sale(fish);
-                    shares[fish.rarity as usize] += weight / total;
-                }
-                cells += 1.0;
-            }
-        }
-        (shells / cells, shares.map(|share| share / cells))
+    /// Shells an hour at `spot` at this hour and month with `rod` and `bait` (plain bait for `None`):
+    /// casting every [`CAST_COOLDOWN_SECS`], every reel caught, every fish sold, the bait paid for.
+    fn shells_per_hour(spot: &Spot, hour: u32, month: u32, rod: &Rod, bait: Option<&Bait>) -> f64 {
+        let cast: f64 = odds(content(), spot, hour, month, Tackle { luck: rod.luck, bait })
+            .iter()
+            .map(|(fish, chance)| chance * expected_sale(fish))
+            .sum();
+        let bait_cost = bait.map_or(BAIT_PRICE as f64, |b| b.price as f64 / b.pack as f64);
+        (cast - bait_cost) * 3_600.0 / CAST_COOLDOWN_SECS as f64
     }
 
-    /// Shells an hour at `spot` with `rod` and `bait` (plain bait for `None`): casting every
-    /// [`CAST_COOLDOWN_SECS`], every reel caught, every fish sold, the bait paid for.
-    fn shells_per_hour(spot: &Spot, rod: &Rod, bait: Option<&Bait>) -> f64 {
-        let (shells, _) = average_cast(spot, Tackle { luck: rod.luck, bait });
-        let bait_cost = bait.map_or(BAIT_PRICE as f64, |b| b.price as f64 / b.pack as f64);
-        (shells - bait_cost) * 3_600.0 / CAST_COOLDOWN_SECS as f64
+    /// The wage at every hour of every month, in [`cells`] order, for a spot, rod and bait.
+    fn wages(spot: &Spot, rod: &Rod, bait: Option<&Bait>) -> Vec<f64> {
+        type Key = (String, String, Option<String>);
+        static TABLE: std::sync::Mutex<Option<std::collections::HashMap<Key, Vec<f64>>>> = std::sync::Mutex::new(None);
+        let key = (spot.id.clone(), rod.id.clone(), bait.map(|b| b.id.clone()));
+        if let Some(found) = TABLE.lock().expect("lock").get_or_insert_default().get(&key) {
+            return found.clone();
+        }
+        let made: Vec<f64> = cells()
+            .map(|(hour, month)| shells_per_hour(spot, hour, month, rod, bait))
+            .collect();
+        TABLE
+            .lock()
+            .expect("lock")
+            .get_or_insert_default()
+            .insert(key, made.clone());
+        made
+    }
+
+    fn mean(values: &[f64]) -> f64 {
+        values.iter().sum::<f64>() / values.len() as f64
+    }
+
+    fn lowest(values: &[f64]) -> f64 {
+        values.iter().copied().fold(f64::MAX, f64::min)
+    }
+
+    fn highest(values: &[f64]) -> f64 {
+        values.iter().copied().fold(f64::MIN, f64::max)
     }
 
     /// Every way to fit out a rod: each rod with plain bait and with each bait.
@@ -740,19 +1133,28 @@ mod tests {
             .collect()
     }
 
+    /// The best mean wage a spot gives with any rod and bait.
+    fn best_mean(gear: &Gear, spot: &Spot) -> f64 {
+        all_tackle(gear)
+            .into_iter()
+            .map(|(rod, bait)| mean(&wages(spot, rod, bait)))
+            .fold(f64::MIN, f64::max)
+    }
+
     #[test]
-    fn no_spot_pays_more_than_its_ceiling_with_any_gear() {
+    fn no_hour_of_any_month_pays_more_than_its_spot_ceiling_with_any_gear() {
         let gear = &content().fishing;
         for (id, ceiling) in CEILINGS {
             let spot = gear.spot(id).expect("spot");
             for (rod, bait) in all_tackle(gear) {
-                let pay = shells_per_hour(spot, rod, bait);
-                assert!(
-                    pay <= ceiling,
-                    "{id} pays {pay:.0} shells an hour with {} and {:?}: the ceiling is {ceiling}",
-                    rod.id,
-                    bait.map(|b| &b.id)
-                );
+                for ((hour, month), pay) in cells().zip(wages(spot, rod, bait)) {
+                    assert!(
+                        pay <= ceiling,
+                        "{id} pays {pay:.0} shells an hour at {hour}:00 in month {month} with {} and {:?}: the ceiling is {ceiling}",
+                        rod.id,
+                        bait.map(|b| &b.id)
+                    );
+                }
             }
         }
     }
@@ -760,32 +1162,70 @@ mod tests {
     #[test]
     fn the_shore_with_the_starter_gear_pays_a_modest_wage() {
         let gear = &content().fishing;
-        let pay = shells_per_hour(gear.first_spot(), gear.starter_rod(), None);
+        let pay = mean(&wages(gear.first_spot(), gear.starter_rod(), None));
         assert!((700.0..=900.0).contains(&pay), "{pay:.0}");
+    }
+
+    #[test]
+    fn no_hour_is_dead_and_the_starter_never_loses_money() {
+        let gear = &content().fishing;
+        for spot in &gear.spots {
+            for rod in &gear.rods {
+                let pay = wages(spot, rod, None);
+                let average = mean(&pay);
+                for ((hour, month), cell) in cells().zip(&pay) {
+                    assert!(
+                        *cell >= 0.5 * average && *cell > 0.0,
+                        "{} pays {cell:.0} at {hour}:00 in month {month} with {}: the mean is {average:.0}",
+                        spot.id,
+                        rod.id
+                    );
+                }
+            }
+            // The wage barely moves with the clock: the weakest hour is within a third of the best.
+            let starter = wages(spot, gear.starter_rod(), None);
+            assert!(
+                lowest(&starter) > 0.6 * highest(&starter),
+                "{}: {:.0} to {:.0} an hour",
+                spot.id,
+                lowest(&starter),
+                highest(&starter)
+            );
+        }
     }
 
     #[test]
     fn deeper_spots_and_better_gear_each_pay_clearly_more() {
         let gear = &content().fishing;
-        let starter = |spot: &Spot| shells_per_hour(spot, gear.starter_rod(), None);
-        let best = |spot: &Spot| {
-            all_tackle(gear)
-                .into_iter()
-                .map(|(rod, bait)| shells_per_hour(spot, rod, bait))
-                .fold(f64::MIN, f64::max)
-        };
+        let starter = |spot: &Spot| wages(spot, gear.starter_rod(), None);
         for pair in gear.spots.windows(2) {
             let (up, down) = (&pair[0], &pair[1]);
             assert!(
-                starter(down) > 1.2 * starter(up),
+                mean(&starter(down)) > 1.2 * mean(&starter(up)),
                 "starter gear: {} vs {}",
                 down.id,
                 up.id
             );
-            assert!(best(down) > 1.2 * best(up), "best gear: {} vs {}", down.id, up.id);
+            // At every hour, not only on average.
+            assert!(
+                lowest(&starter(down)) > highest(&starter(up)),
+                "{}'s worst hour does not beat {}'s best",
+                down.id,
+                up.id
+            );
+            assert!(
+                best_mean(gear, down) > 1.2 * best_mean(gear, up),
+                "best gear: {} vs {}",
+                down.id,
+                up.id
+            );
         }
         for spot in &gear.spots {
-            assert!(best(spot) > 1.25 * starter(spot), "{}: gear barely matters", spot.id);
+            assert!(
+                best_mean(gear, spot) > 1.25 * mean(&starter(spot)),
+                "{}: gear barely matters",
+                spot.id
+            );
         }
     }
 
@@ -795,7 +1235,7 @@ mod tests {
         let abyss = gear.spot("abyss").expect("abyss");
         let top = gear.rods.last().expect("a rod");
         for bait in std::iter::once(None).chain(gear.baits.iter().map(Some)) {
-            let gain = shells_per_hour(abyss, top, bait) - shells_per_hour(abyss, gear.starter_rod(), bait);
+            let gain = mean(&wages(abyss, top, bait)) - mean(&wages(abyss, gear.starter_rod(), bait));
             assert!(gain > 0.0);
             let hours = top.price as f64 / gain;
             assert!(
@@ -808,20 +1248,27 @@ mod tests {
     }
 
     #[test]
-    fn legendaries_stay_rare_even_with_the_best_rod() {
-        let gear = &content().fishing;
+    fn legendaries_stay_rare_at_every_hour_even_with_the_best_rod() {
+        let (content, gear) = (content(), &content().fishing);
         let top = gear.rods.last().expect("a rod");
         for spot in &gear.spots {
             for bait in std::iter::once(None).chain(gear.baits.iter().map(Some)) {
-                let (_, shares) = average_cast(spot, Tackle { luck: top.luck, bait });
-                let legendary = shares[Rarity::Legendary as usize];
-                assert!(legendary <= 0.003, "{}: {:.3}% legendary", spot.id, legendary * 100.0);
-                if spot.id == "abyss" {
+                for (hour, month) in cells() {
+                    let pool = odds(content, spot, hour, month, Tackle { luck: top.luck, bait });
+                    let legendary = share_of(&pool, |f| Tier::of(f) == Tier::Legendary);
                     assert!(
-                        legendary >= 0.001,
-                        "abyss legendaries are out of reach: {:.3}%",
+                        legendary <= 0.003,
+                        "{} at {hour}:00 in month {month}: {:.3}% legendary",
+                        spot.id,
                         legendary * 100.0
                     );
+                    if spot.id == "abyss" {
+                        assert!(
+                            legendary >= 0.001,
+                            "abyss legendaries are out of reach at {hour}:00 in month {month}: {:.3}%",
+                            legendary * 100.0
+                        );
+                    }
                 }
             }
         }

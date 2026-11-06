@@ -75,6 +75,9 @@ ROOM_IDS = {
 }
 STARTER_IDS = {"crumbclaw_crab", "drowsepatch_cat", "cloverpuff_bun"}
 SPOT_IDS = {"shore", "reef", "kelp_forest", "deep_sea", "abyss"}
+TIERS = ("junk",) + RARITIES  # what a cast rolls first; junk is its own kind
+DAY_PARTS = ("dawn", "day", "dusk", "night")
+SEASONS = ("spring", "summer", "autumn", "winter")
 JUNK_IDS = {
     "siltstep_boot", "rattlelip_tin", "frayloop_rope", "driftspoke_wheel",
     "chipwink_cup", "snaggletoe_sock",
@@ -528,7 +531,7 @@ def check_pets(raw):
 def check_fish(raw):
     records = entries(raw, "fish.json", 64)
     seen, names = {}, {}
-    spot_weights = defaultdict(lambda: defaultdict(list))  # spot -> rarity -> draw weights there
+    lived_at = defaultdict(int)  # spot -> how many fish live there
     for item, where in records:
         fields(item, where, ("id", "name", "rarity", "min_cm", "max_cm", "base_value", "time", "season", "spots", "flavor", "sprite_brief"), ("junk",))
         identity(item, where, seen, names)
@@ -562,8 +565,8 @@ def check_fish(raw):
                 problem(where, f"unknown spot {spot!r}; spots are {sorted(SPOT_IDS)}")
             elif not integer(weight) or weight <= 0:
                 problem(where, f"the weight at {spot} must be a positive integer")
-            elif isinstance(rarity, str) and rarity in RARITIES:
-                spot_weights[spot][rarity].append(weight)
+            else:
+                lived_at[spot] += 1
     if not JUNK_IDS <= seen.keys():
         problem("fish.json", f"missing junk catches: {sorted(JUNK_IDS - seen.keys())}")
     if not TREASURE_IDS <= seen.keys():
@@ -573,13 +576,41 @@ def check_fish(raw):
         if not counts[rarity]:
             problem("fish.json", f"needs at least one {rarity} catch")
     for spot in sorted(SPOT_IDS):
-        if not spot_weights[spot]:
+        if not lived_at[spot]:
             problem("fish.json", f"nothing lives at {spot}")
-        weights = spot_weights[spot]
-        for commoner, rarer in zip(RARITIES, RARITIES[1:]):
-            if weights[commoner] and weights[rarer] and min(weights[commoner]) <= max(weights[rarer]):
-                problem("fish.json", f"at {spot} every {rarer} draw weight must be smaller than every {commoner} weight")
     return records
+
+
+def check_shares(spot, where, fish):
+    """A spot's fixed share of casts per kind of catch, and that every kind it rolls has a fish about all year."""
+    shares = spot.get("shares")
+    if not isinstance(shares, dict) or not shares or set(shares) - set(TIERS) or not all(
+            number(value) and value >= 0 for value in shares.values()):
+        problem(where, f"shares must map some of {list(TIERS)} to non-negative numbers")
+        return
+    if abs(sum(shares.values()) - 100) > 1e-6:
+        problem(where, f"shares must add up to 100; they add up to {sum(shares.values())}")
+    living = defaultdict(list)  # kind -> (time, season) of each fish of that kind living here
+    for item, _ in fish:
+        if spot.get("id") in (item.get("spots") or {}):
+            kind = "junk" if item.get("junk") else item.get("rarity")
+            living[kind].append((item.get("time"), item.get("season")))
+    for kind in TIERS:
+        share = shares.get(kind, 0)
+        if (share > 0) != bool(living[kind]):
+            problem(where, f"the {kind} share must be above 0 exactly when {kind} fish live here")
+        if share > 0:
+            # Time and season are flavour inside a kind: at every part of the day in every season something
+            # of the kind must be about, or the roll would be moved to another kind.
+            for part in DAY_PARTS:
+                for season in SEASONS:
+                    if not any(time in ("any", part) and when in ("any", season) for time, when in living[kind]):
+                        problem(where, f"no {kind} fish is about at {part} in {season}")
+    rolled = [shares.get(rarity, 0) for rarity in RARITIES if shares.get(rarity, 0) > 0]
+    if rolled != sorted(rolled, reverse=True) or len(set(rolled)) != len(rolled):
+        problem(where, "each rarity must come up less often than the one below it")
+    if shares.get("junk", 0) > 12:
+        problem(where, "junk may be at most 12% of a spot's casts")
 
 
 def check_fishing(raw, fish, backgrounds, badges):
@@ -592,8 +623,9 @@ def check_fishing(raw, fish, backgrounds, badges):
     spots, levels = entries(raw.get("spots"), "fishing_gear.json spots", len(SPOT_IDS)), []
     seen_spots = {}
     for item, where in spots:
-        fields(item, where, ("id", "name", "level", "blurb", "specials"))
+        fields(item, where, ("id", "name", "level", "blurb", "shares", "specials"))
         identity(item, where, seen_spots, {})
+        check_shares(item, where, fish)
         string(item, "blurb", where, limit=80)
         level = item.get("level")
         if not integer(level) or level < 1:

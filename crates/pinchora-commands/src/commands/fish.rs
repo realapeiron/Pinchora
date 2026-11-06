@@ -337,14 +337,15 @@ pub(crate) async fn on_reel(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
         Reel::Caught => {}
     }
     let clock = cx.app.now();
-    let pool = fishing::odds(
+    let Some(fish) = fishing::catch_fish(
         content,
         spot,
         clock.hour(),
         chrono::Datelike::month(&clock),
         Tackle { luck: rod.luck, bait },
-    );
-    let Some(fish) = fishing::pick(&pool, rand::random::<f64>()) else {
+        rand::random::<f64>(),
+        rand::random::<f64>(),
+    ) else {
         return cx
             .update(miss("Nothing bites today", "The sea is quiet. Try again later."))
             .await;

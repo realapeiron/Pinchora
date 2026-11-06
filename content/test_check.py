@@ -261,11 +261,32 @@ class FishingContentTests(unittest.TestCase):
                 broken[0].update(change)
                 self.assertTrue(self.fish_errors(broken))
 
-    def test_a_rarer_fish_never_outweighs_a_commoner_one_at_the_same_spot(self):
-        broken = copy.deepcopy(self.FISH)
-        legend = next(f for f in broken if f["rarity"] == "legendary")
-        legend["spots"] = {spot: 500 for spot in legend["spots"]}
-        self.assertTrue(any("must be smaller" in e for e in self.fish_errors(broken)))
+    def test_shares_must_add_up_match_the_fish_and_leave_no_hour_empty(self):
+        for index, shares in (
+            (0, {"junk": 10, "common": 81, "uncommon": 7.5, "rare": 1}),  # adds up to 99.5
+            (0, {"junk": 10, "common": 80, "uncommon": 7.5, "rare": 1.5, "epic": 1}),  # no epic fish live at the shore
+            (1, {"junk": 10, "common": 81.2, "uncommon": 7, "rare": 1.8}),  # epic fish live at the reef, no epic share
+            (0, {"junk": 20, "common": 71, "uncommon": 7.5, "rare": 1.5}),  # too much junk
+            (0, {"junk": 10, "common": 81, "uncommon": 3, "rare": 6}),  # rare is not rarer than uncommon
+            (0, {"junk": 10, "common": 81, "uncommon": 7.5, "rare": 1.5, "mythic": 0}),
+        ):
+            with self.subTest(index=index, shares=shares):
+                broken = copy.deepcopy(self.GEAR)
+                broken["spots"][index]["shares"] = shares
+                self.assertTrue(self.gear_errors(broken))
+        # A kind with no fish about at some hour: the shore's two any-time rare fish only bite on winter nights.
+        broken_fish = copy.deepcopy(self.FISH)
+        for fish in broken_fish:
+            if fish["id"] in ("lanternstripe_pike", "brinebell_coin"):
+                fish["time"], fish["season"] = "night", "winter"
+        check.ERRORS.clear()
+        check.check_fishing(
+            self.GEAR,
+            check.entries(broken_fish, "fish.json", 0),
+            check.entries(self.BACKGROUNDS, "backgrounds.json", 0),
+            check.entries(self.BADGES, "badges.json", 0),
+        )
+        self.assertTrue(any("no rare fish is about" in e for e in check.ERRORS))
 
     def test_only_the_six_odds_and_ends_are_junk(self):
         broken = copy.deepcopy(self.FISH)
