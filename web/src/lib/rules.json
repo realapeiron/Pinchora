@@ -966,7 +966,8 @@
       "surge",
       "party",
       "tag",
-      "customcommand"
+      "customcommand",
+      "language"
     ],
     "responder_placeholders": {
       "keyword": [
