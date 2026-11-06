@@ -1819,17 +1819,17 @@ async fn a_trip_pays_once_and_freezes_the_pets_needs() {
 
     // Only the owner can send it, and only once at a time.
     assert!(
-        !db.start_trip(other, pet.id, "tidepool_meadow", [10, 20, 30, 40], back)
+        !db.start_trip(other, &pet, "tidepool_meadow", [10, 20, 30, 40], back)
             .await
             .unwrap()
     );
     assert!(
-        db.start_trip(owner, pet.id, "tidepool_meadow", [10, 20, 30, 40], back)
+        db.start_trip(owner, &pet, "tidepool_meadow", [10, 20, 30, 40], back)
             .await
             .unwrap()
     );
     assert!(
-        !db.start_trip(owner, pet.id, "driftwood_cove", [1, 1, 1, 1], back)
+        !db.start_trip(owner, &pet, "driftwood_cove", [1, 1, 1, 1], back)
             .await
             .unwrap()
     );
@@ -1892,7 +1892,7 @@ async fn a_trip_pays_once_and_freezes_the_pets_needs() {
 
     // Home again, it can go out again.
     assert!(
-        db.start_trip(owner, pet.id, "driftwood_cove", [5, 5, 5, 5], after)
+        db.start_trip(owner, &home, "driftwood_cove", [5, 5, 5, 5], after)
             .await
             .unwrap()
     );
@@ -1925,7 +1925,7 @@ async fn care_cannot_write_over_a_trip() {
     let read = read_pet(&db, owner, pet.id).await;
     assert_eq!((read.hunger, read.level, read.xp), (90, 2, 20));
     assert!(
-        db.start_trip(owner, pet.id, "tidepool_meadow", frozen, back)
+        db.start_trip(owner, &read, "tidepool_meadow", frozen, back)
             .await
             .unwrap()
     );
@@ -1975,7 +1975,7 @@ async fn a_care_write_that_read_the_pet_before_a_claim_cannot_undo_the_trip_xp()
     let after = now + chrono::Duration::hours(2);
     let pet = db.adopt(owner, "crumbclaw_crab", "Pip").await.unwrap();
     assert!(
-        db.start_trip(owner, pet.id, "tidepool_meadow", [50, 50, 50, 50], now)
+        db.start_trip(owner, &pet, "tidepool_meadow", [50, 50, 50, 50], now)
             .await
             .unwrap()
     );
@@ -2009,23 +2009,38 @@ async fn a_care_click_racing_a_claim_or_a_trip_never_loses_the_trips_xp_or_needs
     let back = now + chrono::Duration::hours(2);
     let after = back + chrono::Duration::minutes(1);
 
-    // A care click and the start of a trip: whichever lands first, the pet ends up frozen.
+    // A care click and the start of a trip, both worked out from the same read: one lands and the other is
+    // refused, so the frozen needs never overwrite a care and a care never unfreezes a trip.
     let frozen = [11, 22, 33, 44];
     for round in 0..20 {
         let pet = db.adopt(owner, &format!("racer_{round}"), "Pip").await.unwrap();
         let (care, trip) = tokio::join!(
             db.save_pet(owner, &pet, [100, 100, 100, 100], 2, 10, now),
-            db.start_trip(owner, pet.id, "tidepool_meadow", frozen, back),
+            db.start_trip(owner, &pet, "tidepool_meadow", frozen, back),
         );
-        care.unwrap();
-        assert!(trip.unwrap(), "round {round}: the trip started");
+        let (cared, left) = (care.unwrap(), trip.unwrap());
+        assert!(
+            cared != left,
+            "round {round}: exactly one of them landed (care {cared}, trip {left})"
+        );
         let row = read_pet(&db, owner, pet.id).await;
-        assert_eq!(
-            (row.hunger, row.fun, row.energy, row.hygiene, row.needs_at),
-            (11, 22, 33, 44, back),
-            "round {round}"
-        );
-        assert_eq!(row.trip_dest.as_deref(), Some("tidepool_meadow"), "round {round}");
+        if left {
+            assert_eq!(
+                (row.hunger, row.fun, row.energy, row.hygiene, row.needs_at),
+                (11, 22, 33, 44, back),
+                "round {round}"
+            );
+            assert_eq!(row.trip_dest.as_deref(), Some("tidepool_meadow"), "round {round}");
+        } else {
+            // The care landed first, so the trip, worked out from the old needs, was refused: the care is
+            // not overwritten by the frozen needs.
+            assert_eq!(
+                (row.hunger, row.fun, row.energy, row.hygiene),
+                (100, 100, 100, 100),
+                "round {round}"
+            );
+            assert_eq!(row.trip_dest, None, "round {round}");
+        }
     }
 
     // A care click and the claim of a finished trip: the 100 trip XP is always in the end result,
@@ -2039,7 +2054,7 @@ async fn a_care_click_racing_a_claim_or_a_trip_never_loses_the_trips_xp_or_needs
     for round in 0..20 {
         let pet = db.adopt(owner, &format!("homecomer_{round}"), "Pip").await.unwrap();
         assert!(
-            db.start_trip(owner, pet.id, "tidepool_meadow", [50, 50, 50, 50], back)
+            db.start_trip(owner, &pet, "tidepool_meadow", [50, 50, 50, 50], back)
                 .await
                 .unwrap()
         );

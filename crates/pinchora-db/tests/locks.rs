@@ -275,7 +275,7 @@ async fn claiming_a_trip_while_the_owner_deletes_their_data() {
     assert!(
         db.start_trip(
             owner,
-            pet.id,
+            &pet,
             "beach",
             [50, 50, 50, 50],
             Utc::now() - Duration::minutes(1)
@@ -882,7 +882,7 @@ async fn a_mixed_load_with_deletes_fails_nobody_and_keeps_the_books() {
                                 None => db.adopt(a, "cat", "Tom").await?,
                             };
                             let back = Utc::now() - Duration::seconds(1);
-                            db.start_trip(a, pet.id, "beach", [50, 50, 50, 50], back).await?;
+                            db.start_trip(a, &pet, "beach", [50, 50, 50, 50], back).await?;
                             db.claim_trip(a, pet.id, Utc::now(), |p, _| TripPayout {
                                 shells: 1,
                                 item: None,

@@ -222,11 +222,14 @@ impl Db {
     }
 
     /// Sends a pet on a trip that ends at `ends_at`, with its needs frozen as `needs` until
-    /// then. False when the pet is not the player's or is already out or waiting to be claimed.
+    /// then. `seen` is the pet as the caller read it, and `needs` were worked out from it: the write only
+    /// lands if the pet's needs are still as of the same time, so a care click that got in between is not
+    /// overwritten by the frozen needs (it is refused, like a care click that lost to a trip). False when
+    /// the pet changed since, is not the player's, or is already out or waiting to be claimed.
     pub async fn start_trip(
         &self,
         owner: u64,
-        pet_id: i64,
+        seen: &PetRow,
         trip: &str,
         needs: [i16; 4],
         ends_at: DateTime<Utc>,
@@ -234,9 +237,9 @@ impl Db {
         let n = sqlx::query(
             "UPDATE pets SET trip_dest = $3, trip_ends_at = $4, needs_at = $4,
                     hunger = $5, fun = $6, energy = $7, hygiene = $8
-             WHERE id = $1 AND owner_id = $2 AND trip_dest IS NULL",
+             WHERE id = $1 AND owner_id = $2 AND trip_dest IS NULL AND needs_at = $9",
         )
-        .bind(pet_id)
+        .bind(seen.id)
         .bind(sql_id(owner))
         .bind(trip)
         .bind(ends_at)
@@ -244,6 +247,7 @@ impl Db {
         .bind(needs[1])
         .bind(needs[2])
         .bind(needs[3])
+        .bind(seen.needs_at)
         .execute(self.pool())
         .await?
         .rows_affected();

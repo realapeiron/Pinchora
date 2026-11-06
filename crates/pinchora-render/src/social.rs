@@ -789,7 +789,7 @@ fn pat(canvas: &mut RgbaImage, a: &Figure, b: &Figure, at: f32) {
 
     let pa = Pose {
         x: lerp(62.0, 112.0, walk),
-        lift: hop(walk, 6.0) + 3.0 * bow,
+        lift: hop(walk, 6.0),
         sx: 1.0,
         sy: 1.0 + 0.03 * bow,
         lean: 4.0 * pats + 2.0 * walk,
@@ -922,8 +922,12 @@ fn high_five(canvas: &mut RgbaImage, a: &Figure, b: &Figure, at: f32) {
     let (placed_a, placed_b) = stand(canvas, Interaction::HighFive, (a, pa), (b, pb));
 
     let meet = (120.0, 58.0);
-    let raised = walk.max(0.15);
+    // Standing and waiting, an arm is the sprite's own; a second one drawn at the chest would float there.
+    let raised = walk;
     for (me, figure) in [(&placed_a, a), (&placed_b, b)] {
+        if raised < 0.12 {
+            continue;
+        }
         let dir = me.dir as f32;
         let up = (me.near.0 + dir * 12.0, me.near.1 - 22.0);
         let wrist = (
@@ -1083,6 +1087,60 @@ mod tests {
                     );
                 }
             }
+        }
+    }
+
+    #[test]
+    fn a_high_five_waits_with_no_hand_held_out() {
+        let (sa, sb) = (person("tidewalker", 1, &["straw_hat"]), person("longreef", 5, &["bow"]));
+        let (a, b) = (
+            Figure::new(Person { spec: &sa }, 1),
+            Figure::new(Person { spec: &sb }, -1),
+        );
+        // At rest both are just standing: the arms are the sprites' own, and a second one drawn at the
+        // chest used to float there beside each of them.
+        let rest = |x: f32| Pose {
+            x,
+            lift: 0.0,
+            sx: 1.0,
+            sy: 1.0,
+            lean: 0.0,
+        };
+        let mut standing = backdrop(Interaction::HighFive);
+        twinkles(&mut standing, 0.0);
+        stand(
+            &mut standing,
+            Interaction::HighFive,
+            (&a, rest(56.0)),
+            (&b, rest(184.0)),
+        );
+        assert_eq!(scene(Interaction::HighFive, &a, &b, 0.0), standing);
+    }
+
+    #[test]
+    fn the_patter_keeps_its_feet_on_its_shadow() {
+        let (sa, sb) = (person("tidewalker", 1, &["straw_hat"]), person("longreef", 5, &["bow"]));
+        let (a, b) = (
+            Figure::new(Person { spec: &sa }, 1),
+            Figure::new(Person { spec: &sb }, -1),
+        );
+        let (sky, shadow) = (backdrop(Interaction::Pat), hex(Interaction::Pat.palette().3));
+        // While it pats the patter stands at x 112 (see `pat`); the lowest row of the figure there is
+        // followed straight away by the shadow.
+        for at in [0.45, 0.55, 0.65] {
+            let frame = scene(Interaction::Pat, &a, &b, at);
+            let figure_at = |x: i32, y: i32| {
+                let px = frame.get_pixel(x as u32, y as u32);
+                px != sky.get_pixel(x as u32, y as u32) && *px != shadow
+            };
+            let feet = (0..H)
+                .rev()
+                .find(|&y| (100..124).any(|x| figure_at(x, y)))
+                .expect("the patter");
+            assert!(
+                (100..124).any(|x| *frame.get_pixel(x as u32, feet as u32 + 1) == shadow),
+                "at {at}: its feet end at row {feet}, the shadow is not right under them"
+            );
         }
     }
 

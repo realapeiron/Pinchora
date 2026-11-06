@@ -266,10 +266,21 @@ async fn start(cx: &Cx, guild: u64, c: GiveawayStart) -> anyhow::Result<()> {
             return tell(cx, post_refusal(channel, &error)).await;
         }
     };
-    cx.app
-        .db
-        .set_giveaway_message(giveaway.id, channel.get(), message.id.get())
-        .await?;
+    // The message is up; the giveaway has to know it (the entry counter and the ending edit it). One more try
+    // if the first fails, and then it runs on without: the giveaway is live and its ending still announces.
+    for attempt in 1..=2 {
+        match cx
+            .app
+            .db
+            .set_giveaway_message(giveaway.id, channel.get(), message.id.get())
+            .await
+        {
+            Ok(()) => break,
+            Err(error) => {
+                tracing::warn!(guild, giveaway = giveaway.id, attempt, %error, "could not remember a giveaway's message");
+            }
+        }
+    }
     let held = if giveaway.escrow() > 0 {
         format!(
             " {} shells were taken from you to pay the winners; whatever nobody wins comes back.",
@@ -345,10 +356,16 @@ async fn reroll(cx: &Cx, guild: u64, c: GiveawayReroll) -> anyhow::Result<()> {
         }
     };
     let winners = mentions(&picked.iter().map(|w| *w as i64).collect::<Vec<_>>());
+    // A reroll only picks people: the shells of a shells prize were paid when it ended.
     let text = format!(
-        "🎉 New winner{} for **{}**: {winners}. Congratulations!",
+        "🎉 New winner{} for **{}**: {winners}. Congratulations!{}",
         if picked.len() == 1 { "" } else { "s" },
-        giveaway.prize
+        giveaway.prize,
+        if giveaway.shells > 0 {
+            " (no shells on a reroll)"
+        } else {
+            ""
+        }
     );
     let channel = Id::new((giveaway.channel_id as u64).max(1));
     let no_pings = quiet();

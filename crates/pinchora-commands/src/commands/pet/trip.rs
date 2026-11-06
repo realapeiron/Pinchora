@@ -189,7 +189,7 @@ async fn depart(app: &App, user: u64, pet: &PetRow, trip: &Trip) -> anyhow::Resu
     let needs = current_needs(pet, now);
     let ends = now + Duration::hours(i64::from(trip.hours));
     let kept = [needs.hunger, needs.fun, needs.energy, needs.hygiene];
-    if !app.db.start_trip(user, pet.id, &trip.id, kept, ends).await? {
+    if !app.db.start_trip(user, pet, &trip.id, kept, ends).await? {
         return Ok(Departure::Refused(format!("**{}** can't set off right now.", pet.name)));
     }
     Ok(Departure::Left(PetRow {

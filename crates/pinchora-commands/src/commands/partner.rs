@@ -93,6 +93,9 @@ impl PartnerCommand {
                         .reply_ephemeral(format!("{} already has a partner.", mention(to)))
                         .await;
                 }
+                if social::asked_too_soon(cx, "partner", me, to).await? {
+                    return Ok(());
+                }
                 social::remember(cx, other).await?;
                 let request = Request {
                     from: me,
@@ -113,6 +116,7 @@ impl PartnerCommand {
                     content: Some(mention(to)),
                     embeds: Some(vec![embed]),
                     components: Some(vec![request.buttons("pt", "Accept")]),
+                    allowed_mentions: social::ping_only(to),
                     ..Default::default()
                 })
                 .await

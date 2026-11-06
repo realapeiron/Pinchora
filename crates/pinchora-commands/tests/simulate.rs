@@ -8772,10 +8772,10 @@ async fn the_nursery_is_a_paged_grid_that_opens_one_pet() {
     )
     .await
     .unwrap();
-    db.start_trip(user, pets[3].id, "kelp_forest_library", fresh_needs(70), now + hour * 3)
+    db.start_trip(user, &pets[3], "kelp_forest_library", fresh_needs(70), now + hour * 3)
         .await
         .unwrap();
-    db.start_trip(user, pets[4].id, "tidepool_meadow", fresh_needs(70), now - hour)
+    db.start_trip(user, &pets[4], "tidepool_meadow", fresh_needs(70), now - hour)
         .await
         .unwrap();
     set_pet(&db, user, pets[5].id, [100, 95, 90, 100], 30, 0, now)
