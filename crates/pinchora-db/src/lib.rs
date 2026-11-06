@@ -39,6 +39,7 @@ mod suggestions;
 mod tags;
 mod users;
 mod xp;
+mod xp_admin;
 
 use std::time::Duration;
 
@@ -103,6 +104,7 @@ pub use suggestions::{
 pub use tags::{CommandRow, ResponderRow, TagSet, TagWrite};
 pub use users::UserRow;
 pub use xp::{MAX_XP_RULES, XpTarget};
+pub use xp_admin::XpEdit;
 
 /// Handle to PostgreSQL. Cheap to clone.
 #[derive(Clone, Debug)]

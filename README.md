@@ -471,7 +471,10 @@ mention the bot, so text commands work as `@Pinchora profile` and `/help` says s
 
 ### Info commands
 
-<!-- F18: the Info commands package replaces this heading's section; keep it one `###` section. -->
+`/info user [user]`, `/info server`, `/info avatar [user] [server]`, `/info banner [user]`,
+`/info role <role>`, `/info channel [channel]`, `/info members`, `/info emoji <emoji>` and
+`/info invite <code>` show pixel cards. Role lists have pages. Private profiles hide Pinchora
+levels, badges and titles on the user card.
 
 ### Utility
 
@@ -487,7 +490,10 @@ mention the bot, so text commands work as `@Pinchora profile` and `/help` says s
 
 ### XP admin
 
-<!-- F22: the XP admin package replaces this heading's section; keep it one `###` section. -->
+Managers can `/xp add|remove|set <user> <amount>`, `/xp reset <user>`,
+`/xp reset-all` (two confirmations), or `/xp import mee6` (merge or replace,
+once per server per day). The Leveling dashboard has member XP search and an
+import job with progress. Edits affect server XP only, and each action is audited.
 
 ### Brand kit
 

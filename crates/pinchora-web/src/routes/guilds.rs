@@ -40,6 +40,7 @@ pub fn router() -> Router<WebState> {
             put(leveling::put_rep_role).delete(leveling::delete_rep_role),
         )
         .route("/jobs/{id}", get(leveling::job))
+        .nest("/xp-admin", super::xp_admin::router())
         .route("/store", get(store::store))
         .route("/store/{role}", put(store::put_item).delete(store::delete_item))
         .route("/modules", get(modules::modules))

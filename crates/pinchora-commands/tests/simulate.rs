@@ -101,6 +101,8 @@ mod grants;
 // What reaches the (still empty) feature hooks.
 #[path = "simulate/hooks.rs"]
 mod hooks;
+#[path = "simulate/info_xp.rs"]
+mod info_xp;
 
 const APPLICATION_ID: u64 = 1;
 const CHANNEL_ID: u64 = 2;

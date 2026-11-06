@@ -111,11 +111,12 @@ pub enum Module {
     Collection,
     Gambling,
     TextCommands,
+    Info,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 28] = [
+    pub const ALL: [Self; 29] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -144,6 +145,7 @@ impl Module {
         Self::Collection,
         Self::Gambling,
         Self::TextCommands,
+        Self::Info,
     ];
 
     /// The key stored in the database and used in the API.
@@ -177,6 +179,7 @@ impl Module {
             Self::Collection => "collection",
             Self::Gambling => "gambling",
             Self::TextCommands => "text_commands",
+            Self::Info => "info",
         }
     }
 
@@ -214,6 +217,7 @@ impl Module {
             Self::Collection => "Critter drops and beachcombing",
             Self::Gambling => "Gambling-style games",
             Self::TextCommands => "Text commands",
+            Self::Info => "Info commands",
         }
     }
 
@@ -259,6 +263,7 @@ impl Module {
             Self::TextCommands => {
                 "Commands typed as messages, with the prefix or an @mention. Slash commands are not affected."
             }
+            Self::Info => "Server, member, role, channel, emoji and invite information.",
         }
     }
 
@@ -285,6 +290,7 @@ impl Module {
             | Self::PartyGames
             | Self::Collection
             | Self::Gambling => Group::Games,
+            Self::Info => Group::Server,
         }
     }
 
@@ -326,6 +332,8 @@ impl Module {
             "tag" | "customcommand" => Self::CustomCommands,
             "suggest" | "suggestion" => Self::Suggestions,
             "poll" => Self::Polls,
+            "info" => Self::Info,
+            "xp" => Self::Leveling,
             "dex" | "beachcomb" | "crabpot" | "critterdrop" => Self::Collection,
             "surge" => Self::Party,
             "party" => Self::PartyGames,
@@ -369,6 +377,8 @@ impl Module {
             "tg" | "cm" => Self::CustomCommands,
             "sg" => Self::Suggestions,
             "pl" => Self::Polls,
+            "nf" => Self::Info,
+            "xi" => Self::Leveling,
             _ => return None,
         })
     }

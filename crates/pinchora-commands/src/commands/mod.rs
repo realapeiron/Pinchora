@@ -22,6 +22,7 @@ pub(crate) mod hangman;
 pub(crate) mod heist;
 pub(crate) mod help;
 pub(crate) mod house;
+pub(crate) mod info;
 pub(crate) mod interact;
 pub(crate) mod language;
 pub(crate) mod leaderboard;
@@ -62,6 +63,7 @@ mod utilities;
 pub(crate) mod wordle;
 mod wrapped;
 mod xp;
+pub(crate) mod xp_admin;
 
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::application::{command::Command, interaction::application_command::CommandData};
@@ -144,4 +146,6 @@ commands!(
     tag::Tag,
     customcommand::CustomCommand,
     language::LanguageCommand,
+    xp_admin::XpAdmin,
+    info::Info,
 );

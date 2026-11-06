@@ -25,6 +25,7 @@ import {
 import { jobProgress, jobText, rememberJob, rememberedJob } from "../lib/syncJob";
 import { useSettingsForm } from "../lib/useSettingsForm";
 import { PageHead } from "./PageHead";
+import { XpAdmin } from "./XpAdmin";
 
 const MODES = [
   {
@@ -159,6 +160,7 @@ export function Leveling() {
       />
 
       <RepRoles guild={guild} info={discord.data} />
+      <XpAdmin guild={guild} />
 
       <SaveBar
         count={form.changes}

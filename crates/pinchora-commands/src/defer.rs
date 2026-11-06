@@ -74,6 +74,7 @@ const PRIVATE: &[&str] = &[
     "stall sell",
     "suggest",
     "suggestion",
+    "xp",
 ];
 
 /// Slash commands that answer with a form, which only works as the first answer: never deferred.

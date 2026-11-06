@@ -1883,6 +1883,116 @@
           ],
           "path": "config language",
           "usage": "/config language <language>"
+        },
+        {
+          "description": "Show a member's account and server details",
+          "manager": false,
+          "options": [
+            {
+              "description": "Member to inspect",
+              "name": "user",
+              "required": false
+            }
+          ],
+          "path": "info user",
+          "usage": "/info user [user]"
+        },
+        {
+          "description": "Show server details",
+          "manager": false,
+          "options": [],
+          "path": "info server",
+          "usage": "/info server"
+        },
+        {
+          "description": "Show a user's avatar",
+          "manager": false,
+          "options": [
+            {
+              "description": "Member whose avatar to view",
+              "name": "user",
+              "required": false
+            },
+            {
+              "description": "Prefer the server avatar",
+              "name": "server",
+              "required": false
+            }
+          ],
+          "path": "info avatar",
+          "usage": "/info avatar [user] [server]"
+        },
+        {
+          "description": "Show a user's banner",
+          "manager": false,
+          "options": [
+            {
+              "description": "Member whose banner to view",
+              "name": "user",
+              "required": false
+            }
+          ],
+          "path": "info banner",
+          "usage": "/info banner [user]"
+        },
+        {
+          "description": "Show a role's details",
+          "manager": false,
+          "options": [
+            {
+              "description": "Role to inspect",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "info role",
+          "usage": "/info role <role>"
+        },
+        {
+          "description": "Show a channel's details",
+          "manager": false,
+          "options": [
+            {
+              "description": "Channel to inspect",
+              "name": "channel",
+              "required": false
+            }
+          ],
+          "path": "info channel",
+          "usage": "/info channel [channel]"
+        },
+        {
+          "description": "Show member counts",
+          "manager": false,
+          "options": [],
+          "path": "info members",
+          "usage": "/info members"
+        },
+        {
+          "description": "Show a custom emoji",
+          "manager": false,
+          "options": [
+            {
+              "description": "Custom or Unicode emoji",
+              "name": "emoji",
+              "required": true
+            }
+          ],
+          "path": "info emoji",
+          "usage": "/info emoji <emoji>"
+        },
+        {
+          "description": "Show an invite's details",
+          "manager": false,
+          "options": [
+            {
+              "description": "Invite code",
+              "name": "code",
+              "required": true
+            }
+          ],
+          "path": "info invite",
+          "usage": "/info invite <code>"
         }
       ],
       "intro": "Welcome cards, goodbyes, the server log, the language, the text prefix and the settings overview.",
@@ -2132,6 +2242,97 @@
           "options": [],
           "path": "config store list",
           "usage": "/config store list"
+        },
+        {
+          "description": "Add server XP to a member",
+          "manager": true,
+          "options": [
+            {
+              "description": "Member to edit",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "XP amount",
+              "name": "amount",
+              "required": true
+            }
+          ],
+          "path": "xp add",
+          "usage": "/xp add <user> <amount>"
+        },
+        {
+          "description": "Remove server XP from a member",
+          "manager": true,
+          "options": [
+            {
+              "description": "Member to edit",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "XP amount",
+              "name": "amount",
+              "required": true
+            }
+          ],
+          "path": "xp remove",
+          "usage": "/xp remove <user> <amount>"
+        },
+        {
+          "description": "Set a member's server XP",
+          "manager": true,
+          "options": [
+            {
+              "description": "Member to edit",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "XP amount",
+              "name": "amount",
+              "required": true
+            }
+          ],
+          "path": "xp set",
+          "usage": "/xp set <user> <amount>"
+        },
+        {
+          "description": "Reset one member's server XP",
+          "manager": true,
+          "options": [
+            {
+              "description": "Member to reset",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "xp reset",
+          "usage": "/xp reset <user>"
+        },
+        {
+          "description": "Reset everyone's server XP; requires two confirmations",
+          "manager": true,
+          "options": [],
+          "path": "xp reset-all",
+          "usage": "/xp reset-all"
+        },
+        {
+          "description": "Import MEE6 XP (once per server per day)",
+          "manager": true,
+          "options": [
+            {
+              "choices": [
+                "Merge: keep the higher XP",
+                "Replace: use MEE6 XP"
+              ],
+              "description": "How imported XP combines with existing XP",
+              "name": "mode",
+              "required": true
+            }
+          ],
+          "path": "xp import mee6",
+          "usage": "/xp import mee6 <mode>"
         }
       ],
       "intro": "Level roles, XP multipliers, voice XP, reputation roles and the points store.",
@@ -2283,5 +2484,5 @@
       "title": "Game & module setup"
     }
   ],
-  "count": 156
+  "count": 171
 }

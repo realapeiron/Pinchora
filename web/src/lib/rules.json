@@ -1150,7 +1150,9 @@
       "party",
       "tag",
       "customcommand",
-      "language"
+      "language",
+      "xp",
+      "info"
     ],
     "responder_placeholders": {
       "keyword": [
