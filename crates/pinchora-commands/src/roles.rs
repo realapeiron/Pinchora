@@ -2,8 +2,10 @@
 //! to be handed out.
 
 use pinchora_core::{
+    i18n::Lang,
     leveling::{self, LevelReward},
     settings::{self, Grantor, RoleFacts},
+    t,
 };
 use pinchora_db::LevelRoleRow;
 use twilight_http::{Error, api_error::ApiError, error::ErrorType, request::AuditLogReason};
@@ -39,14 +41,20 @@ pub(crate) fn member_is_gone(error: &Error) -> bool {
 
 /// Why Discord refused to give a role, worded to follow "I couldn't give you <role>:".
 pub(crate) fn refusal(error: &Error) -> String {
-    match error_code(error) {
-        Some(MISSING_PERMISSIONS) => {
-            "my highest role is not above it, or I lack the Manage Roles permission".to_owned()
+    refusal_in(Lang::En, error)
+}
+
+/// [`refusal`] in `lang`.
+pub(crate) fn refusal_in(lang: Lang, error: &Error) -> String {
+    t!(
+        lang,
+        match error_code(error) {
+            Some(MISSING_PERMISSIONS) => "role-refusal.permissions",
+            Some(UNKNOWN_ROLE) => "role-refusal.gone",
+            Some(_) => "role-refusal.refused",
+            None => "role-refusal.unreachable",
         }
-        Some(UNKNOWN_ROLE) => "that role no longer exists".to_owned(),
-        Some(_) => "Discord refused it".to_owned(),
-        None => "Discord could not be reached".to_owned(),
-    }
+    )
 }
 
 pub(crate) fn rewards(rows: &[LevelRoleRow]) -> Vec<LevelReward> {
@@ -115,20 +123,21 @@ pub(crate) async fn unassignable(cx: &Cx, guild: u64, role: &Role) -> Option<Str
         permissions: role.permissions.bits(),
     };
     let label = format!("<@&{}>", role.id);
+    let lang = cx.lang();
     if facts.everyone || facts.managed {
-        return settings::role_refusal(facts, None, &label);
+        return settings::role_refusal_in(lang, facts, None, &label);
     }
     let (roles, top) = match roles_and_bot_position(&cx.app, guild).await {
         Ok(found) => found,
         Err(error) => {
             tracing::warn!(guild, %error, "could not look up the bot's roles");
-            return settings::role_refusal(facts, None, &label);
+            return settings::role_refusal_in(lang, facts, None, &label);
         }
     };
-    if let Some(why) = settings::role_refusal(facts, Some(top), &label) {
+    if let Some(why) = settings::role_refusal_in(lang, facts, Some(top), &label) {
         return Some(why);
     }
-    let why = settings::grant_refusal(facts, grantor(cx, &roles), &label)?;
+    let why = settings::grant_refusal_in(lang, facts, grantor(cx, &roles), &label)?;
     let user = cx.author().map(|u| u.id.get()).unwrap_or(0);
     match cx.app.guild_facts(guild).await {
         Some(facts) if facts.owner == user => None,

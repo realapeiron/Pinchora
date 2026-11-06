@@ -1,6 +1,6 @@
 //! `/config xp`: multipliers and no-XP channels and roles, and voice XP.
 
-use pinchora_core::settings;
+use pinchora_core::{i18n::Lang, settings, t};
 use pinchora_db::{GuildSettings, MAX_XP_RULES, XpTarget};
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::{
@@ -72,23 +72,29 @@ fn subject(target: XpTarget, id: u64) -> String {
 }
 
 /// One line of a multiplier list.
-fn rule_line(target: XpTarget, id: u64, multiplier: f64) -> String {
+fn rule_line(lang: Lang, target: XpTarget, id: u64, multiplier: f64) -> String {
     if multiplier == 0.0 {
-        format!("{} · **no XP**", subject(target, id))
+        t!(lang, "xp.no-xp", subject = subject(target, id))
     } else {
-        format!("{} · **×{multiplier}**", subject(target, id))
+        t!(
+            lang,
+            "xp.multiplied",
+            subject = subject(target, id),
+            multiplier = multiplier
+        )
     }
 }
 
 /// How voice XP is set, for `/config xp` and `/config show`.
-pub(crate) fn voice_summary(s: &GuildSettings) -> String {
-    let mut text = format!(
-        "**{}** · {} XP a minute with company, not while muted and deafened or in the AFK channel",
-        if s.voice_xp_enabled { "on" } else { "off" },
-        s.voice_xp_amount
+pub(crate) fn voice_summary(lang: Lang, s: &GuildSettings) -> String {
+    let mut text = t!(
+        lang,
+        "xp.voice-summary",
+        state = t!(lang, if s.voice_xp_enabled { "cfg.on" } else { "cfg.off" }),
+        amount = s.voice_xp_amount
     );
     if s.voice_xp_enabled && !s.leveling_enabled {
-        text.push_str("\n> Leveling is off, so nobody earns XP. Turn it on with `/config leveling`.");
+        text.push_str(&t!(lang, "xp.voice-leveling-off"));
     }
     text
 }
@@ -109,26 +115,24 @@ async fn multiplier(cx: &Cx, guild: u64, c: XpMultiplier) -> anyhow::Result<()> 
         (Some(channel), None) => (XpTarget::Channel, channel.id.get()),
         (None, Some(role)) => (XpTarget::Role, role.get()),
         _ => {
-            return cx
-                .reply_ephemeral("Pick a channel **or** a role to set the multiplier for.")
-                .await;
+            return cx.reply_ephemeral(t!(cx.lang(), "xp.pick-one")).await;
         }
     };
     let value = match settings::check_multiplier(c.value) {
         Ok(value) => value,
-        Err(error) => return cx.reply_ephemeral(error.message).await,
+        Err(error) => return cx.reply_ephemeral(error.text(cx.lang())).await,
     };
     let who = subject(target, id);
     let text = if value == 1.0 {
         // 1 is what everything earns anyway, so the rule is simply dropped.
         cx.app.db.remove_xp_rule(guild, target, id).await?;
-        format!("{who} earns normal XP and points again.")
+        t!(cx.lang(), "xp.normal-again", subject = who)
     } else if !cx.app.db.set_xp_rule(guild, target, id, value).await? {
-        format!("A server can have {MAX_XP_RULES} XP rules. Remove one with `/config xp clear` first.")
+        t!(cx.lang(), "xp.rules-full", max = MAX_XP_RULES)
     } else if value == 0.0 {
-        format!("{who} now earns **no XP and no points** here.")
+        t!(cx.lang(), "xp.none-earned", subject = who)
     } else {
-        format!("{who} now earns **×{value}** XP and points.")
+        t!(cx.lang(), "xp.now-earns", subject = who, multiplier = value)
     };
     cx.app.announce_xp_change(guild).await;
     cx.reply_ephemeral(text).await
@@ -137,13 +141,10 @@ async fn multiplier(cx: &Cx, guild: u64, c: XpMultiplier) -> anyhow::Result<()> 
 async fn clear(cx: &Cx, guild: u64, c: XpClear) -> anyhow::Result<()> {
     let text = match (&c.channel, c.role) {
         (None, None) => match cx.app.db.clear_xp_rules(guild).await? {
-            0 => "There were no XP rules to clear.".to_owned(),
-            n => format!(
-                "Cleared **{n}** XP rule{}. Everything earns normal XP again.",
-                if n == 1 { "" } else { "s" }
-            ),
+            0 => t!(cx.lang(), "xp.no-rules"),
+            n => t!(cx.lang(), "xp.cleared", count = n),
         },
-        (Some(_), Some(_)) => "Pick a channel **or** a role, not both.".to_owned(),
+        (Some(_), Some(_)) => t!(cx.lang(), "xp.pick-not-both"),
         (channel, role) => {
             let (target, id) = match (channel, role) {
                 (Some(channel), _) => (XpTarget::Channel, channel.id.get()),
@@ -151,9 +152,9 @@ async fn clear(cx: &Cx, guild: u64, c: XpClear) -> anyhow::Result<()> {
                 (None, None) => unreachable!("handled above"),
             };
             if cx.app.db.remove_xp_rule(guild, target, id).await? {
-                format!("{} earns normal XP and points again.", subject(target, id))
+                t!(cx.lang(), "xp.normal-again", subject = subject(target, id))
             } else {
-                format!("{} had no multiplier.", subject(target, id))
+                t!(cx.lang(), "xp.had-none", subject = subject(target, id))
             }
         }
     };
@@ -164,36 +165,39 @@ async fn clear(cx: &Cx, guild: u64, c: XpClear) -> anyhow::Result<()> {
 async fn show(cx: &Cx, guild: u64) -> anyhow::Result<()> {
     let rules = cx.app.db.xp_rules(guild).await?;
     let settings = cx.app.db.guild_settings(guild).await?;
+    let lang = cx.lang();
     let list = |target: XpTarget, rules: &std::collections::HashMap<u64, f64>| {
         let mut rows: Vec<(u64, f64)> = rules.iter().map(|(id, m)| (*id, *m)).collect();
         rows.sort_by_key(|row| row.0);
         rows.iter()
-            .map(|(id, m)| rule_line(target, *id, *m))
+            .map(|(id, m)| rule_line(lang, target, *id, *m))
             .collect::<Vec<_>>()
             .join("\n")
     };
     // The lists go in the description: a field holds 1,024 characters, fifty rules need more.
     let mut sections = Vec::new();
     if !rules.channels.is_empty() {
-        sections.push(format!("**Channels**\n{}", list(XpTarget::Channel, &rules.channels)));
+        sections.push(t!(lang, "xp.channels", list = list(XpTarget::Channel, &rules.channels)));
     }
     if !rules.roles.is_empty() {
-        sections.push(format!("**Roles**\n{}", list(XpTarget::Role, &rules.roles)));
+        sections.push(t!(lang, "xp.roles", list = list(XpTarget::Role, &rules.roles)));
     }
     if sections.is_empty() {
-        sections.push(
-            "No multipliers yet: every channel and role earns normal XP.\nSet one with `/config xp multiplier`."
-                .to_owned(),
-        );
+        sections.push(t!(lang, "xp.no-multipliers"));
     }
     let embed = EmbedBuilder::new()
         .color(BRAND)
-        .title("XP rules")
+        .title(t!(lang, "xp.rules-title"))
         .description(sections.join("\n\n"))
-        .field(EmbedFieldBuilder::new("Voice XP", voice_summary(&settings)))
-        .footer(EmbedFooterBuilder::new(format!(
-            "{}/{MAX_XP_RULES} rules · a channel's multiplier times the member's highest role multiplier; a no-XP role always wins · a thread or post follows its channel, a channel its category, unless it has its own · server XP and points only, global XP stays normal",
-            rules.channels.len() + rules.roles.len()
+        .field(EmbedFieldBuilder::new(
+            t!(lang, "xp.voice-field"),
+            voice_summary(lang, &settings),
+        ))
+        .footer(EmbedFooterBuilder::new(t!(
+            lang,
+            "xp.rules-footer",
+            count = rules.channels.len() + rules.roles.len(),
+            max = MAX_XP_RULES
         )))
         .build();
     cx.reply(InteractionResponseData {
@@ -207,7 +211,7 @@ async fn show(cx: &Cx, guild: u64) -> anyhow::Result<()> {
 async fn voice(cx: &Cx, guild: u64, c: XpVoice) -> anyhow::Result<()> {
     let amount = match c.amount.map(settings::check_voice_amount).transpose() {
         Ok(amount) => amount,
-        Err(error) => return cx.reply_ephemeral(error.message).await,
+        Err(error) => return cx.reply_ephemeral(error.text(cx.lang())).await,
     };
     let settings = if c.enabled.is_none() && c.amount.is_none() {
         cx.app.db.guild_settings(guild).await?
@@ -230,16 +234,14 @@ async fn voice(cx: &Cx, guild: u64, c: XpVoice) -> anyhow::Result<()> {
         }
         None => {}
     }
-    let mut text = voice_summary(&settings);
+    let mut text = voice_summary(cx.lang(), &settings);
     if c.enabled == Some(true) {
         // Nobody is remembered while voice XP is off, and Discord cannot list who is in voice.
-        text.push_str(
-            "\n> Members already in a voice channel start earning when they next join, move, mute or unmute.",
-        );
+        text.push_str(&t!(cx.lang(), "xp.voice-hint"));
     }
     let embed = EmbedBuilder::new()
         .color(BRAND)
-        .title("Voice XP")
+        .title(t!(cx.lang(), "xp.voice-title"))
         .description(text)
         .build();
     cx.reply(InteractionResponseData {

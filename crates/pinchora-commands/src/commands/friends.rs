@@ -2,7 +2,7 @@
 
 use std::str::Split;
 
-use pinchora_core::leveling;
+use pinchora_core::{i18n::Lang, leveling, t};
 use pinchora_db::{BefriendOutcome, FriendRow, MAX_FRIENDS};
 use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
 use twilight_model::{
@@ -70,27 +70,25 @@ impl FriendsCommand {
                 let other = &c.user.resolved;
                 let to = other.id.get();
                 if other.bot || to == me {
-                    return cx
-                        .reply_ephemeral("Friends are other people. Try someone from the server!")
-                        .await;
+                    return cx.reply_ephemeral(t!(cx.lang(), "friends.not-self")).await;
                 }
                 if cx.app.db.are_friends(me, to).await? {
                     return cx
-                        .reply_ephemeral(format!("You and {} are already friends.", mention(to)))
+                        .reply_ephemeral(t!(cx.lang(), "friends.already", user = mention(to)))
                         .await;
                 }
                 if cx.app.db.friend_count(me).await? >= MAX_FRIENDS {
                     return cx
-                        .reply_ephemeral(format!(
-                            "You have {MAX_FRIENDS} friends, the most there can be. Make room with `/friends remove`."
-                        ))
+                        .reply_ephemeral(t!(cx.lang(), "friends.you-full", max = MAX_FRIENDS))
                         .await;
                 }
                 if cx.app.db.friend_count(to).await? >= MAX_FRIENDS {
                     return cx
-                        .reply_ephemeral(format!(
-                            "{} has {MAX_FRIENDS} friends already, the most there can be.",
-                            mention(to)
+                        .reply_ephemeral(t!(
+                            cx.lang(),
+                            "friends.they-full",
+                            user = mention(to),
+                            max = MAX_FRIENDS
                         ))
                         .await;
                 }
@@ -105,18 +103,19 @@ impl FriendsCommand {
                 };
                 let embed = EmbedBuilder::new()
                     .color(BRAND)
-                    .title("🤝 Friend request")
-                    .description(format!(
-                        "{} would like to be friends with {}.\nFriends get a quick pick in `/house visit` and a place in `/friends list`.\nThis request expires <t:{}:R>.",
-                        mention(me),
-                        mention(to),
-                        request.until
+                    .title(t!(cx.lang(), "friends.request-title"))
+                    .description(t!(
+                        cx.lang(),
+                        "friends.request",
+                        from = mention(me),
+                        to = mention(to),
+                        until = request.until
                     ))
                     .build();
                 cx.reply(InteractionResponseData {
                     content: Some(mention(to)),
                     embeds: Some(vec![embed]),
-                    components: Some(vec![request.buttons("fd", "Accept")]),
+                    components: Some(vec![request.buttons(cx.lang(), "fd", &t!(cx.lang(), "friends.accept"))]),
                     allowed_mentions: social::ping_only(to),
                     ..Default::default()
                 })
@@ -125,15 +124,15 @@ impl FriendsCommand {
             Self::Remove(c) => {
                 let to = c.user.resolved.id.get();
                 let text = if cx.app.db.unfriend(me, to).await? {
-                    format!("{} is no longer your friend.", mention(to))
+                    t!(cx.lang(), "friends.removed", user = mention(to))
                 } else {
-                    format!("{} isn't one of your friends.", mention(to))
+                    t!(cx.lang(), "friends.not-a-friend", user = mention(to))
                 };
                 cx.reply_ephemeral(text).await
             }
             Self::List(c) => {
                 if c.user.as_ref().is_some_and(|u| u.resolved.bot) {
-                    return cx.reply_ephemeral("Bots don't have friends.").await;
+                    return cx.reply_ephemeral(t!(cx.lang(), "friends.bot")).await;
                 }
                 let owner = c.user.as_ref().map_or(me, |u| u.resolved.id.get());
                 if super::privacy::private_profile(cx, owner).await? {
@@ -162,38 +161,47 @@ async fn list_page(cx: &Cx, owner: u64, page: i64) -> anyhow::Result<Interaction
     if friends.is_empty() && total > 0 {
         friends = cx.app.db.friends(owner, page * PER_PAGE, PER_PAGE).await?.0;
     }
+    let lang = cx.lang();
     let name = cx.app.db.remembered_name(owner).await?.filter(|n| !n.is_empty());
     let title = match (owner == me, name) {
-        (true, _) => "👥 Your friends".to_owned(),
-        (false, Some(name)) => format!("👥 {name}'s friends"),
-        (false, None) => "👥 Friends".to_owned(),
+        (true, _) => t!(lang, "friends.title-own"),
+        (false, Some(name)) => t!(lang, "friends.title-of", name = name),
+        (false, None) => t!(lang, "friends.title"),
     };
     let body = if friends.is_empty() {
         if owner == me {
-            "No friends yet. Ask someone with `/friends add`.".to_owned()
+            t!(lang, "friends.empty-own")
         } else {
-            "No friends yet.".to_owned()
+            t!(lang, "friends.empty")
         }
     } else {
         friends
             .iter()
             .enumerate()
             .map(|(n, f)| {
-                format!(
-                    "**{}.** {} · Lv {} · 💖 {}{}",
-                    page * PER_PAGE + n as i64 + 1,
-                    mention(f.friend_id),
-                    leveling::level_of(f.xp),
-                    f.likes,
-                    if f.locked { " · 🔒" } else { "" }
+                t!(
+                    lang,
+                    "friends.row",
+                    number = page * PER_PAGE + n as i64 + 1,
+                    user = mention(f.friend_id),
+                    level = leveling::level_of(f.xp),
+                    likes = f.likes,
+                    locked = if f.locked { " · 🔒" } else { "" }
                 )
             })
             .collect::<Vec<_>>()
             .join("\n")
     };
     let footer = match pages {
-        1 => format!("{total} of {MAX_FRIENDS} friends"),
-        p => format!("Page {}/{p} · {total} of {MAX_FRIENDS} friends", page + 1),
+        1 => t!(lang, "friends.footer", total = total, max = MAX_FRIENDS),
+        p => t!(
+            lang,
+            "friends.footer-paged",
+            page = page + 1,
+            pages = p,
+            total = total,
+            max = MAX_FRIENDS
+        ),
     };
     let embed = EmbedBuilder::new()
         .color(BRAND)
@@ -211,8 +219,8 @@ async fn list_page(cx: &Cx, owner: u64, page: i64) -> anyhow::Result<Interaction
             b
         };
         components.push(row(vec![
-            nav("◀ Newer", page - 1, page == 0),
-            nav("Older ▶", page + 1, page + 1 >= pages),
+            nav(&t!(lang, "friends.newer"), page - 1, page == 0),
+            nav(&t!(lang, "friends.older"), page + 1, page + 1 >= pages),
         ]));
     }
     Ok(InteractionResponseData {
@@ -227,15 +235,12 @@ pub(crate) async fn visit_shortlist(cx: &Cx, room: i16) -> anyhow::Result<()> {
     let me = cx.author()?.id.get();
     let friends = cx.app.db.visitable_friends(me, SHORTLIST).await?;
     if friends.is_empty() {
-        return cx
-            .reply_ephemeral(
-                "Name whose house to visit: `/house visit user:@someone`. Friends you add with `/friends add` show up here as a shortlist (houses they have locked or hidden are left out).",
-            )
-            .await;
+        return cx.reply_ephemeral(t!(cx.lang(), "friends.shortlist-empty")).await;
     }
-    let options = friends.iter().map(option).collect();
+    let lang = cx.lang();
+    let options = friends.iter().map(|f| option(lang, f)).collect();
     cx.reply(InteractionResponseData {
-        content: Some("Whose house do you want to visit?".to_owned()),
+        content: Some(t!(lang, "friends.shortlist-ask")),
         components: Some(vec![row(vec![Component::SelectMenu(SelectMenu {
             channel_types: None,
             custom_id: format!("fd:v:{room}"),
@@ -246,7 +251,7 @@ pub(crate) async fn visit_shortlist(cx: &Cx, room: i16) -> anyhow::Result<()> {
             max_values: Some(1),
             min_values: Some(1),
             options: Some(options),
-            placeholder: Some("Visit a friend…".to_owned()),
+            placeholder: Some(t!(lang, "friends.shortlist-placeholder")),
             required: None,
         })])]),
         flags: Some(MessageFlags::EPHEMERAL),
@@ -255,15 +260,21 @@ pub(crate) async fn visit_shortlist(cx: &Cx, room: i16) -> anyhow::Result<()> {
     .await
 }
 
-fn option(friend: &FriendRow) -> SelectMenuOption {
+fn option(lang: Lang, friend: &FriendRow) -> SelectMenuOption {
+    let fallback = t!(lang, "friends.a-friend");
     let name = if friend.name.is_empty() {
-        "A friend"
+        &fallback
     } else {
         &friend.name
     };
     SelectMenuOption {
         default: false,
-        description: Some(format!("Lv {} · 💖 {}", leveling::level_of(friend.xp), friend.likes)),
+        description: Some(t!(
+            lang,
+            "friends.option",
+            level = leveling::level_of(friend.xp),
+            likes = friend.likes
+        )),
         emoji: None,
         label: name.chars().take(100).collect(),
         value: friend.friend_id.to_string(),
@@ -276,7 +287,7 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, value: Opti
     match args.next() {
         Some(answer @ ("yes" | "no")) => match Request::parse(&mut args) {
             Some(request) => on_answer(cx, answer == "yes", request).await,
-            None => closed(cx, "This friend request has expired.").await,
+            None => closed(cx, t!(cx.lang(), "friends.expired")).await,
         },
         Some("p") => {
             let owner: u64 = args.next().and_then(|v| v.parse().ok()).unwrap_or(0);
@@ -287,7 +298,7 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, value: Opti
         Some("v") => {
             let room: i16 = args.next().and_then(|v| v.parse().ok()).unwrap_or(0);
             let Some(host) = value.and_then(|v| v.parse::<u64>().ok()) else {
-                return cx.reply_ephemeral("Pick a friend to visit.").await;
+                return cx.reply_ephemeral(t!(cx.lang(), "friends.pick")).await;
             };
             // Somebody nobody remembered still gets a name: "{name} has locked their house" must not start with a space.
             let name = cx
@@ -296,11 +307,11 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, value: Opti
                 .remembered_name(host)
                 .await?
                 .filter(|n| !n.is_empty())
-                .unwrap_or_else(|| "A friend".to_owned());
+                .unwrap_or_else(|| t!(cx.lang(), "friends.a-friend"));
             let author = cx.author()?.clone();
             house::visit(cx, &author, host, name, room.clamp(0, 5)).await
         }
-        _ => cx.reply_ephemeral("This button has expired.").await,
+        _ => cx.reply_ephemeral(t!(cx.lang(), "social.button-expired")).await,
     }
 }
 
@@ -318,16 +329,21 @@ async fn closed(cx: &Cx, text: impl Into<String>) -> anyhow::Result<()> {
 async fn on_answer(cx: &Cx, accept: bool, request: Request) -> anyhow::Result<()> {
     let me = cx.author()?.id.get();
     if me != request.to && !(me == request.from && !accept) {
-        return cx.reply_ephemeral("This request isn't for you.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "social.not-for-you")).await;
     }
     if request.expired(&cx.app) {
-        return closed(cx, "This friend request has expired.").await;
+        return closed(cx, t!(cx.lang(), "friends.expired")).await;
     }
     if !accept {
         let text = if me == request.from {
-            format!("{} took the friend request back.", mention(request.from))
+            t!(cx.lang(), "friends.withdrawn", from = mention(request.from))
         } else {
-            format!("{} said no thanks to {}.", mention(request.to), mention(request.from))
+            t!(
+                cx.lang(),
+                "social.said-no",
+                to = mention(request.to),
+                from = mention(request.from)
+            )
         };
         return closed(cx, text).await;
     }
@@ -339,8 +355,8 @@ async fn on_answer(cx: &Cx, accept: bool, request: Request) -> anyhow::Result<()
             cx.app.db.remember_name(me, &social::plain_name(user)).await?;
             let embed = EmbedBuilder::new()
                 .color(SUCCESS)
-                .title("🤝 New friends")
-                .description(format!("{from} and {to} are friends now!"))
+                .title(t!(cx.lang(), "friends.new-title"))
+                .description(t!(cx.lang(), "friends.new", from = from, to = to))
                 .build();
             cx.update(InteractionResponseData {
                 content: Some(String::new()),
@@ -350,14 +366,13 @@ async fn on_answer(cx: &Cx, accept: bool, request: Request) -> anyhow::Result<()
             })
             .await
         }
-        BefriendOutcome::AlreadyFriends => closed(cx, format!("{from} and {to} are already friends.")).await,
+        BefriendOutcome::AlreadyFriends => {
+            closed(cx, t!(cx.lang(), "friends.already-pair", from = from, to = to)).await
+        }
         BefriendOutcome::Full { user } => {
             closed(
                 cx,
-                format!(
-                    "{} has {MAX_FRIENDS} friends already, the most there can be.",
-                    mention(user)
-                ),
+                t!(cx.lang(), "friends.they-full", user = mention(user), max = MAX_FRIENDS),
             )
             .await
         }

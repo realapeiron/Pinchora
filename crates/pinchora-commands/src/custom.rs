@@ -7,8 +7,10 @@ use std::{sync::Arc, time::Duration};
 
 use moka::future::Cache as Moka;
 use pinchora_core::{
+    i18n::Lang,
     modules::Module,
-    settings::run_time_refusal,
+    settings::run_time_refusal_in,
+    t,
     tags::{
         ACTION_DMS_PER_HOUR, ACTION_POINTS_DAILY_MAX, Action, EMBED_AUTHOR_MAX, EMBED_DESCRIPTION_MAX,
         EMBED_FIELD_NAME_MAX, EMBED_FIELD_VALUE_MAX, EMBED_FOOTER_MAX, EMBED_TITLE_MAX, EMBED_TOTAL_MAX, EmbedSpec,
@@ -503,6 +505,8 @@ pub(crate) struct Actor<'a> {
     pub held: &'a [u64],
     /// The message that set off a keyword responder, to react to.
     pub message: Option<(Id<ChannelMarker>, Id<MessageMarker>)>,
+    /// The language of the notes about actions that did not work.
+    pub lang: Lang,
     /// An auto-responder runs them: its role changes must not set other responders off (a chain stops
     /// after one responder).
     pub responder: bool,
@@ -554,7 +558,7 @@ pub(crate) struct PointsRun {
 
 /// Runs the points actions, which only touch the database. A server with points off skips them; what they
 /// give one member a day is capped at [`ACTION_POINTS_DAILY_MAX`] (taking is not).
-pub(crate) async fn run_points(app: &App, guild: u64, user: u64, actions: &[Action]) -> PointsRun {
+pub(crate) async fn run_points(app: &App, lang: Lang, guild: u64, user: u64, actions: &[Action]) -> PointsRun {
     let mut run = PointsRun::default();
     for action in actions {
         let Action::GivePoints { amount } = action else {
@@ -567,10 +571,11 @@ pub(crate) async fn run_points(app: &App, guild: u64, user: u64, actions: &[Acti
         let done = if *amount > 0 {
             let allowed = points_allowance(app, guild, user, *amount).await;
             if allowed < *amount {
-                run.capped = Some(format!(
-                    "Custom commands give at most {} {} a day; you reached today's limit.",
-                    thousands(ACTION_POINTS_DAILY_MAX),
-                    settings.points_name
+                run.capped = Some(t!(
+                    lang,
+                    "customcommand.capped",
+                    max = thousands(ACTION_POINTS_DAILY_MAX),
+                    name = settings.points_name
                 ));
             }
             if allowed == 0 {
@@ -623,11 +628,11 @@ pub(crate) async fn run_discord_actions(app: &App, who: &Actor<'_>, actions: &[A
                 let give = gives(action);
                 if give {
                     let refusal = match &permissions {
-                        None => Some(format!("I couldn't check <@&{role}> just now. Try again in a moment.")),
+                        None => Some(t!(who.lang, "customcommand.unchecked", role = format!("<@&{role}>"))),
                         Some(list) => list
                             .iter()
                             .find(|(id, _)| *id == role)
-                            .and_then(|(_, bits)| run_time_refusal(*bits, &format!("<@&{role}>"))),
+                            .and_then(|(_, bits)| run_time_refusal_in(who.lang, *bits, &format!("<@&{role}>"))),
                     };
                     if let Some(why) = refusal {
                         tracing::warn!(guild = who.guild, role, "a role action named a role it may not give");
@@ -656,10 +661,11 @@ pub(crate) async fn run_discord_actions(app: &App, who: &Actor<'_>, actions: &[A
                 };
                 if let Err(error) = result {
                     tracing::warn!(guild = who.guild, role, %error, "a role action failed");
-                    notes.push(format!(
-                        "I couldn't {} <@&{role}>: {}.",
-                        if give { "give you" } else { "take" },
-                        crate::roles::refusal(&error)
+                    notes.push(t!(
+                        who.lang,
+                        if give { "roles.cant-give" } else { "roles.cant-take" },
+                        role = format!("<@&{role}>"),
+                        why = crate::roles::refusal_in(who.lang, &error)
                     ));
                 }
             }

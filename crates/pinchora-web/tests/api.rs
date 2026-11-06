@@ -2070,7 +2070,7 @@ async fn the_card_editor_previews_saves_uploads_and_tests_designs() {
     let cards = browser.get(&format!("{base}/cards")).await;
     assert_eq!(cards.status, StatusCode::OK, "{}", cards.text());
     let cards = cards.json();
-    let classic = pinchora_render::templates::classic(CardKind::Welcome, "reef", None, None);
+    let classic = pinchora_render::templates::classic(CardKind::Welcome, "reef", None, None, Lang::En);
     assert_eq!(cards["welcome"]["design"], json!(classic));
     assert_eq!(
         (&cards["welcome"]["custom"], &cards["welcome"]["delivery"]),

@@ -147,6 +147,7 @@ fn hostile_text_renders_on_every_card() {
             server_name: HOSTILE,
             member_number: Some(12),
             title: HOSTILE,
+            lang: pinchora_core::i18n::Lang::En,
             theme: t(),
         }),
     ));
@@ -177,6 +178,7 @@ fn hostile_text_renders_on_every_card() {
             avatar_png: &[],
             from: 2,
             to: 3,
+            lang: pinchora_core::i18n::Lang::En,
             theme: t(),
         }),
     ));
@@ -223,6 +225,7 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "poll",
         r.poll_card(&PollCard {
+            lang: pinchora_core::i18n::Lang::En,
             number: 3,
             question: hostile(),
             options: vec![

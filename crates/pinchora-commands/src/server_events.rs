@@ -7,7 +7,7 @@
 use std::{sync::Arc, time::Duration};
 
 use chrono::Duration as Span;
-use pinchora_core::modules::Module;
+use pinchora_core::{i18n::Lang, modules::Module, t};
 use twilight_http::{Error, error::ErrorType};
 use twilight_model::{
     channel::message::{
@@ -118,6 +118,15 @@ pub fn spawn_ticker(app: Arc<App>) {
     });
 }
 
+/// The language for a direct message to `user` about something in `guild`: their own `/language` pick,
+/// else the server's default, else English. A DM has no Discord locale to read.
+pub(crate) async fn dm_lang(app: &App, user: u64, guild: u64) -> Lang {
+    match app.user_lang_choice(user).await {
+        Some(lang) => lang,
+        None => app.guild_lang(guild).await,
+    }
+}
+
 /// An answer only the member sees, which pings nobody.
 pub(crate) async fn tell(cx: &Cx, text: impl Into<String>) -> anyhow::Result<()> {
     cx.reply(InteractionResponseData {
@@ -173,14 +182,14 @@ pub(crate) fn is_permanent(error: &Error) -> bool {
 }
 
 /// Why Discord would not take a message, for the manager who asked for it.
-pub(crate) fn post_refusal(channel: Id<ChannelMarker>, error: &Error) -> String {
+pub(crate) fn post_refusal(lang: Lang, channel: Id<ChannelMarker>, error: &Error) -> String {
     match roles::error_code(error) {
         Some(MISSING_ACCESS | MISSING_PERMISSIONS) => {
-            format!("I can't post in <#{channel}>: I need View Channel, Send Messages and Embed Links there.")
+            t!(lang, "post-refusal.access", channel = format!("<#{channel}>"))
         }
-        Some(UNKNOWN_CHANNEL) => "That channel no longer exists.".to_owned(),
-        Some(_) => "Discord refused the message.".to_owned(),
-        None => "Discord could not be reached. Try again in a moment.".to_owned(),
+        Some(UNKNOWN_CHANNEL) => t!(lang, "post-refusal.gone"),
+        Some(_) => t!(lang, "post-refusal.refused"),
+        None => t!(lang, "post-refusal.unreachable"),
     }
 }
 

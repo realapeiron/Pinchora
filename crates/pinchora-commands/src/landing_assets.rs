@@ -267,6 +267,7 @@ fn welcome(r: &Renderer) -> anyhow::Result<RgbaImage> {
         server_name: "The Tide Pool",
         member_number: Some(12_345),
         title: "Welcome",
+        lang: Lang::En,
         theme: Theme::reef(),
     })?;
     Ok(decode(&png))
@@ -278,6 +279,7 @@ fn level_up(r: &Renderer) -> anyhow::Result<RgbaImage> {
         avatar_png: &placeholder_avatar(42, LevelUpCard::AVATAR_SIZE),
         from: 26,
         to: 27,
+        lang: Lang::En,
         theme: Theme::reef(),
     })?;
     Ok(decode(&png))

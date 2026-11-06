@@ -1,3 +1,4 @@
+use pinchora_core::t;
 use twilight_interactions::command::{CommandModel, CreateCommand};
 
 use crate::Cx;
@@ -16,9 +17,9 @@ impl Bio {
         let text = if text == "-" { String::new() } else { text };
         cx.app.db.set_bio(cx.author()?.id.get(), &text).await?;
         let reply = if text.is_empty() {
-            "Bio cleared."
+            t!(cx.lang(), "bio.cleared")
         } else {
-            "Bio updated. Check it with `/profile`."
+            t!(cx.lang(), "bio.updated")
         };
         cx.reply_ephemeral(reply).await
     }

@@ -4,6 +4,7 @@
 use std::str::Split;
 
 use chrono::Utc;
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{NoteRow, SignOutcome};
 use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
 use twilight_model::{
@@ -18,7 +19,7 @@ use twilight_model::{
 };
 use twilight_util::builder::embed::{EmbedBuilder, EmbedFieldBuilder, EmbedFooterBuilder};
 
-use super::house::ensure_house;
+use super::{house::ensure_house, social::short_date_time};
 use crate::{
     Cx,
     util::{BRAND, mention, relative, resolved_display_name},
@@ -45,12 +46,12 @@ pub struct HouseGuestbook {
 pub(crate) async fn run(cx: &Cx, c: HouseGuestbook) -> anyhow::Result<()> {
     let author = cx.author()?.id.get();
     let (host, title) = match &c.user {
-        Some(user) if user.resolved.bot => return cx.reply_ephemeral("Bots don't have houses.").await,
+        Some(user) if user.resolved.bot => return cx.reply_ephemeral(t!(cx.lang(), "house.bot")).await,
         Some(user) if user.resolved.id.get() != author => (
             user.resolved.id.get(),
-            format!("📖 {}'s guestbook", resolved_display_name(user)),
+            t!(cx.lang(), "guestbook.title-of", name = resolved_display_name(user)),
         ),
-        _ => (author, "📖 Your guestbook".to_owned()),
+        _ => (author, t!(cx.lang(), "guestbook.title-own")),
     };
     if super::privacy::private_house(cx, host).await? {
         return Ok(());
@@ -72,6 +73,7 @@ async fn page(
     note: &str,
 ) -> anyhow::Result<InteractionResponseData> {
     let db = &cx.app.db;
+    let lang = cx.lang();
     // A public page stays public when the owner turns it, so their menus never show there.
     let own = cx.author()?.id.get() == host && seen != Some(PUBLIC);
     let (mut notes, total) = db.guestbook(host, page * PER_PAGE, PER_PAGE).await?;
@@ -98,22 +100,27 @@ async fn page(
     }
     if notes.is_empty() {
         lines.push(if own {
-            "No notes yet. Visitors can sign it after `/house visit`.".to_owned()
+            t!(lang, "guestbook.empty-own")
         } else {
-            "No notes yet. Visit with `/house visit` and press **Sign guestbook**.".to_owned()
+            t!(lang, "guestbook.empty")
         });
     }
     for n in &notes {
-        lines.push(format!(
-            "**{}** · {}{}\n{}",
-            plain(&n.author_name),
-            relative(n.created_at),
-            if n.id > seen { " · **new**" } else { "" },
-            plain(&n.body)
+        lines.push(t!(
+            lang,
+            "guestbook.note",
+            author = plain(&n.author_name),
+            when = relative(n.created_at),
+            new = if n.id > seen {
+                t!(lang, "guestbook.new")
+            } else {
+                String::new()
+            },
+            body = plain(&n.body)
         ));
     }
     let visited = if visitors.is_empty() {
-        "Nobody has visited yet.".to_owned()
+        t!(lang, "guestbook.no-visitors")
     } else {
         visitors
             .iter()
@@ -121,16 +128,22 @@ async fn page(
             .collect::<Vec<_>>()
             .join("\n")
     };
-    let footer = match (pages, total) {
-        (1, 1) => "1 note".to_owned(),
-        (1, n) => format!("{n} notes"),
-        (p, n) => format!("Page {}/{p} · {n} notes", page + 1),
+    let notes_count = t!(lang, "guestbook.notes", count = total);
+    let footer = match pages {
+        1 => notes_count,
+        p => t!(
+            lang,
+            "guestbook.footer-paged",
+            page = page + 1,
+            pages = p,
+            notes = notes_count
+        ),
     };
     let embed = EmbedBuilder::new()
         .color(BRAND)
         .title(title)
         .description(lines.join("\n\n"))
-        .field(EmbedFieldBuilder::new("Recent visitors", visited))
+        .field(EmbedFieldBuilder::new(t!(lang, "guestbook.visitors"), visited))
         .footer(EmbedFooterBuilder::new(footer))
         .build();
 
@@ -149,8 +162,8 @@ async fn page(
             })
         };
         components.push(row(vec![
-            nav("◀ Newer", page - 1, page == 0),
-            nav("Older ▶", page + 1, page + 1 >= pages),
+            nav(&t!(lang, "guestbook.newer"), page - 1, page == 0),
+            nav(&t!(lang, "guestbook.older"), page + 1, page + 1 >= pages),
         ]));
     }
     if own && !notes.is_empty() {
@@ -158,7 +171,7 @@ async fn page(
             .iter()
             .map(|n| SelectMenuOption {
                 default: false,
-                description: Some(format!("Signed {}", n.created_at.format("%b %-d, %H:%M UTC"))),
+                description: Some(t!(lang, "guestbook.signed", when = short_date_time(lang, n.created_at))),
                 emoji: None,
                 label: clip(&format!("{}: {}", n.author_name, n.body), 100),
                 value: n.id.to_string(),
@@ -166,7 +179,7 @@ async fn page(
             .collect();
         components.push(row(vec![menu(
             format!("gb:d:{host}:{page}:{seen}"),
-            "Delete a note…",
+            &t!(lang, "guestbook.delete-placeholder"),
             options,
         )]));
     }
@@ -178,24 +191,24 @@ async fn page(
             }
             options.push(SelectMenuOption {
                 default: false,
-                description: Some("Removes their notes; they can't sign again".to_owned()),
+                description: Some(t!(lang, "guestbook.block-hint")),
                 emoji: None,
-                label: clip(&format!("Block {}", n.author_name), 100),
+                label: clip(&t!(lang, "guestbook.block", name = n.author_name), 100),
                 value: format!("b{}", n.author_id),
             });
         }
         let room = 25usize.saturating_sub(options.len());
         options.extend(blocked.iter().take(room).map(|(id, name)| SelectMenuOption {
             default: false,
-            description: Some("Let them sign your guestbook again".to_owned()),
+            description: Some(t!(lang, "guestbook.unblock-hint")),
             emoji: None,
-            label: clip(&format!("Unblock {name}"), 100),
+            label: clip(&t!(lang, "guestbook.unblock", name = name), 100),
             value: format!("u{id}"),
         }));
         if !options.is_empty() {
             components.push(row(vec![menu(
                 format!("gb:b:{host}:{page}:{seen}"),
-                "Block or unblock a signer…",
+                &t!(lang, "guestbook.block-placeholder"),
                 options,
             )]));
         }
@@ -260,15 +273,15 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, value: Opti
         .as_ref()
         .and_then(|m| m.embeds.first())
         .and_then(|e| e.title.clone())
-        .unwrap_or_else(|| "📖 Guestbook".to_owned());
+        .unwrap_or_else(|| t!(cx.lang(), "guestbook.title"));
     if action != "p" && clicker != host {
-        return cx.reply_ephemeral("Only the owner can change their guestbook.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "guestbook.owner-only")).await;
     }
     let note = match (action, value) {
         ("d", Some(id)) => match id.parse() {
             Ok(id) => match cx.app.db.delete_note(host, id).await? {
-                Some(n) => format!("Deleted the note from **{}**.", plain(&n.author_name)),
-                None => "That note was already gone.".to_owned(),
+                Some(n) => t!(cx.lang(), "guestbook.deleted", name = plain(&n.author_name)),
+                None => t!(cx.lang(), "guestbook.already-gone"),
             },
             Err(_) => String::new(),
         },
@@ -285,56 +298,58 @@ async fn block_choice(cx: &Cx, host: u64, page_no: i64, choice: &str) -> anyhow:
         return Ok(String::new());
     };
     let db = &cx.app.db;
+    let lang = cx.lang();
     if choice.starts_with('u') {
         let name = db
             .guestbook_blocks(host)
             .await?
             .into_iter()
             .find(|(id, _)| *id as u64 == signer)
-            .map_or_else(|| "them".to_owned(), |(_, name)| name);
+            .map_or_else(|| t!(lang, "guestbook.them"), |(_, name)| name);
         db.unblock_signer(host, signer).await?;
-        return Ok(format!("Unblocked **{}**: they can sign again.", plain(&name)));
+        return Ok(t!(lang, "guestbook.unblocked", name = plain(&name)));
     }
     let (notes, _): (Vec<NoteRow>, i64) = db.guestbook(host, page_no * PER_PAGE, PER_PAGE).await?;
     let name = notes
         .iter()
         .find(|n| n.author_id as u64 == signer)
-        .map_or_else(|| "this visitor".to_owned(), |n| n.author_name.clone());
+        .map_or_else(|| t!(lang, "guestbook.this-visitor"), |n| n.author_name.clone());
     let removed = db.block_signer(host, signer, &name).await?;
-    Ok(format!(
-        "Blocked **{}**: {removed} note{} removed, and they can't sign again.",
-        plain(&name),
-        if removed == 1 { "" } else { "s" }
-    ))
+    Ok(t!(lang, "guestbook.blocked", name = plain(&name), count = removed))
 }
 
-fn refusal(outcome: SignOutcome) -> &'static str {
-    match outcome {
-        SignOutcome::Signed => "Signed!",
-        SignOutcome::AlreadyToday => "You already signed this guestbook today. Come back tomorrow!",
-        SignOutcome::Locked => "This house is locked, so its guestbook is closed.",
-        SignOutcome::Blocked => "The owner of this house has blocked you from signing their guestbook.",
-        SignOutcome::NoVisit => "Visit the house first with `/house visit`, then sign its guestbook.",
-    }
+fn refusal(lang: Lang, outcome: SignOutcome) -> String {
+    t!(
+        lang,
+        match outcome {
+            SignOutcome::Signed => "guestbook.refusal.signed",
+            SignOutcome::AlreadyToday => "guestbook.refusal.already-today",
+            SignOutcome::Locked => "guestbook.refusal.locked",
+            SignOutcome::Blocked => "guestbook.refusal.blocked",
+            SignOutcome::NoVisit => "guestbook.refusal.no-visit",
+        }
+    )
 }
 
 /// "Sign guestbook" on a visit: opens the note form, unless the rules say no.
 async fn sign_button(cx: &Cx, host: u64, clicker: u64) -> anyhow::Result<()> {
     if clicker == host {
-        return cx
-            .reply_ephemeral("This is your own guestbook. Read it with `/house guestbook`.")
-            .await;
+        return cx.reply_ephemeral(t!(cx.lang(), "guestbook.own")).await;
     }
     let today = Utc::now().date_naive();
     if let Some(why) = cx.app.db.guestbook_refusal(host, clicker, today).await? {
-        return cx.reply_ephemeral(refusal(why)).await;
+        return cx.reply_ephemeral(refusal(cx.lang(), why)).await;
     }
-    cx.modal(format!("gb:n:{host}"), "Sign the guestbook", vec![note_field()])
-        .await
+    cx.modal(
+        format!("gb:n:{host}"),
+        &t!(cx.lang(), "guestbook.modal-title"),
+        vec![note_field(cx.lang())],
+    )
+    .await
 }
 
 #[allow(deprecated)] // TextInput::label: the Label around it carries the label now
-fn note_field() -> Component {
+fn note_field(lang: Lang) -> Component {
     Component::Label(Label {
         component: Box::new(Component::TextInput(TextInput {
             custom_id: NOTE_FIELD.to_owned(),
@@ -342,28 +357,26 @@ fn note_field() -> Component {
             label: None,
             max_length: Some(NOTE_MAX as u16),
             min_length: Some(1),
-            placeholder: Some("Lovely room! The aquarium is my favourite.".to_owned()),
+            placeholder: Some(t!(lang, "guestbook.note-placeholder")),
             required: Some(true),
             style: TextInputStyle::Paragraph,
             value: None,
         })),
-        description: Some(format!(
-            "Up to {NOTE_MAX} characters, plain text. Links and mentions are left out."
-        )),
+        description: Some(t!(lang, "guestbook.note-hint", max = NOTE_MAX)),
         id: None,
-        label: "Your note".to_owned(),
+        label: t!(lang, "guestbook.note-label"),
     })
 }
 
 /// The note form, submitted: `gb:n:<host>`.
 pub(crate) async fn on_modal(cx: &Cx, mut args: Split<'_, char>, fields: &[(String, String)]) -> anyhow::Result<()> {
     if args.next() != Some("n") {
-        return cx.reply_ephemeral("This form has expired.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "guestbook.form-expired")).await;
     }
     let host: u64 = args.next().and_then(|v| v.parse().ok()).unwrap_or(0);
     let author = cx.author()?.id.get();
     if author == host {
-        return cx.reply_ephemeral("You can't sign your own guestbook.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "guestbook.sign-own")).await;
     }
     if super::privacy::private_house(cx, host).await? {
         return Ok(());
@@ -374,21 +387,16 @@ pub(crate) async fn on_modal(cx: &Cx, mut args: Split<'_, char>, fields: &[(Stri
         .map_or("", |(_, v)| v.as_str());
     let body = clean_note(raw);
     if body.is_empty() {
-        return cx
-            .reply_ephemeral("Your note was empty once links and mentions were left out. Try a few words!")
-            .await;
+        return cx.reply_ephemeral(t!(cx.lang(), "guestbook.note-empty")).await;
     }
     let today = Utc::now().date_naive();
     let name = cx.author_display_name();
     match cx.app.db.sign_guestbook(host, author, &name, &body, today).await? {
         SignOutcome::Signed => {
-            cx.reply_ephemeral(format!(
-                "✍️ Signed! Your note is in their guestbook:\n> {}",
-                plain(&body)
-            ))
-            .await
+            cx.reply_ephemeral(t!(cx.lang(), "guestbook.signed-note", note = plain(&body)))
+                .await
         }
-        other => cx.reply_ephemeral(refusal(other)).await,
+        other => cx.reply_ephemeral(refusal(cx.lang(), other)).await,
     }
 }
 

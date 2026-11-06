@@ -5,6 +5,9 @@ use std::str::Split;
 
 use std::time::Duration;
 
+use chrono::{DateTime, Datelike, Utc};
+
+use pinchora_core::{i18n::Lang, t};
 use pinchora_game::{Content, character::Character};
 use pinchora_render::character::{Channel, Colors, Paint};
 use twilight_model::{
@@ -44,10 +47,11 @@ pub(super) async fn asked_too_soon(cx: &Cx, kind: &str, from: u64, to: u64) -> a
     let Some(left) = left else {
         return Ok(false);
     };
-    cx.reply_ephemeral(format!(
-        "You just asked {}. You can ask again in {} seconds.",
-        crate::util::mention(to),
-        left.as_secs() + 1
+    cx.reply_ephemeral(t!(
+        cx.lang(),
+        "social.ask-too-soon",
+        user = crate::util::mention(to),
+        seconds = left.as_secs() + 1
     ))
     .await?;
     Ok(true)
@@ -65,6 +69,26 @@ pub(super) async fn remember(cx: &Cx, other: &User) -> anyhow::Result<()> {
     cx.app.db.remember_name(me.id.get(), &plain_name(me)).await?;
     cx.app.db.remember_name(other.id.get(), &plain_name(other)).await?;
     Ok(())
+}
+
+/// "Nov 2" (Turkish "2 Kas"): the month names come from the catalog.
+pub(super) fn short_date(lang: Lang, at: DateTime<Utc>) -> String {
+    t!(lang, "date.short", month = month_name(lang, at.month()), day = at.day())
+}
+
+/// "Nov 5, 14:03 UTC" (Turkish "5 Kas, 14:03 UTC").
+pub(super) fn short_date_time(lang: Lang, at: DateTime<Utc>) -> String {
+    t!(
+        lang,
+        "date.short-time",
+        month = month_name(lang, at.month()),
+        day = at.day(),
+        time = at.format("%H:%M")
+    )
+}
+
+fn month_name(lang: Lang, month: u32) -> String {
+    t!(lang, &format!("date.month-{month}"))
 }
 
 /// A button with a custom id.
@@ -96,11 +120,11 @@ pub(super) struct Request {
 
 impl Request {
     /// `Accept` and `Decline` for the request: `<prefix>:yes|no:<from>:<to>:<until>`.
-    pub(super) fn buttons(self, prefix: &str, accept: &str) -> Component {
+    pub(super) fn buttons(self, lang: Lang, prefix: &str, accept: &str) -> Component {
         let id = |answer: &str| format!("{prefix}:{answer}:{}:{}:{}", self.from, self.to, self.until);
         row(vec![
             button(accept, id("yes"), ButtonStyle::Success),
-            button("Decline", id("no"), ButtonStyle::Secondary),
+            button(&t!(lang, "social.decline"), id("no"), ButtonStyle::Secondary),
         ])
     }
 
@@ -170,7 +194,7 @@ mod tests {
             to: 987_654_321_098_765_432,
             until: 1_900_000_000,
         };
-        let Component::ActionRow(row) = request.buttons("pt", "Accept") else {
+        let Component::ActionRow(row) = request.buttons(Lang::En, "pt", "Accept") else {
             panic!("a row");
         };
         let Some(Component::Button(accept)) = row.components.first() else {

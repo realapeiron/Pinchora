@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use chrono::Utc;
-use pinchora_core::snowflake;
+use pinchora_core::{snowflake, t};
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_util::builder::embed::{EmbedBuilder, EmbedFieldBuilder, EmbedFooterBuilder};
 
@@ -23,13 +23,14 @@ impl Ping {
         cx.app.cache.ping().await?;
         let redis = t.elapsed().as_millis();
 
+        let lang = cx.lang();
         let embed = EmbedBuilder::new()
             .color(BRAND)
-            .title("Pong!")
-            .field(EmbedFieldBuilder::new("Interaction", format!("{lag} ms")).inline())
-            .field(EmbedFieldBuilder::new("Database", format!("{db} ms")).inline())
+            .title(t!(lang, "ping.title"))
+            .field(EmbedFieldBuilder::new(t!(lang, "ping.interaction"), format!("{lag} ms")).inline())
+            .field(EmbedFieldBuilder::new(t!(lang, "ping.database"), format!("{db} ms")).inline())
             .field(EmbedFieldBuilder::new("Redis", format!("{redis} ms")).inline())
-            .footer(EmbedFooterBuilder::new(format!("Node: {}", cx.app.node)))
+            .footer(EmbedFooterBuilder::new(t!(lang, "ping.node", node = cx.app.node)))
             .build();
         cx.reply_embed(embed).await
     }
