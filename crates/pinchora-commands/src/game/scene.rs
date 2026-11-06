@@ -438,15 +438,24 @@ pub fn scaled_png(sprite: &RgbaImage, factor: u32) -> anyhow::Result<(Vec<u8>, u
     Ok((png.into_inner(), w, h))
 }
 
-/// An item sprite scaled by the largest whole factor that fits `max_w`×`max_h`, as PNG.
+/// An item sprite scaled by the largest whole factor that fits `max_w`×`max_h`, as PNG. A sprite that
+/// is bigger than the box even at its own size (a tall headboard, a locker) is shrunk to fit instead
+/// of poking out of its slot.
 pub fn slot_sprite(sprites: &Sprites, content: &Content, item_id: &str, max_w: u32, max_h: u32) -> (Vec<u8>, u32, u32) {
     let sprite = sprites
         .item(content, item_id)
         .unwrap_or_else(|| Arc::new(RgbaImage::from_pixel(8, 8, image::Rgba([0x8f, 0xa0, 0xd8, 255]))));
-    let factor = (max_w / sprite.width().max(1))
-        .min(max_h / sprite.height().max(1))
-        .clamp(1, 8);
-    let (w, h) = (sprite.width() * factor, sprite.height() * factor);
+    let (sw, sh) = (sprite.width().max(1), sprite.height().max(1));
+    let (w, h) = if sw > max_w || sh > max_h {
+        let fit = (max_w as f32 / sw as f32).min(max_h as f32 / sh as f32);
+        (
+            ((sw as f32 * fit) as u32).clamp(1, max_w),
+            ((sh as f32 * fit) as u32).clamp(1, max_h),
+        )
+    } else {
+        let factor = (max_w / sw).min(max_h / sh).clamp(1, 8);
+        (sw * factor, sh * factor)
+    };
     let big = image::imageops::resize(sprite.as_ref(), w, h, image::imageops::FilterType::Nearest);
     let mut png = IoCursor::new(Vec::new());
     let _ = big.write_to(&mut png, image::ImageFormat::Png);
@@ -464,6 +473,21 @@ mod tests {
         c.colors.skin = Paint::Swatch(skin);
         c.colors.top = Paint::Swatch(top);
         c
+    }
+
+    #[test]
+    fn no_slot_sprite_pokes_out_of_its_box() {
+        let (sprites, content) = (Sprites::default(), Content::get());
+        let (bw, bh) = pinchora_render::ItemGridCard::SPRITE_BOX;
+        let mut seen = std::collections::HashSet::new();
+        for item in content.items().filter(|i| seen.insert(i.base.id.clone())) {
+            let (_, w, h) = slot_sprite(&sprites, content, &item.id(), bw, bh);
+            assert!(
+                w <= bw && h <= bh && w > 0 && h > 0,
+                "{} is drawn {w}x{h} in a {bw}x{bh} box",
+                item.id()
+            );
+        }
     }
 
     #[test]
