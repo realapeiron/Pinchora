@@ -214,7 +214,7 @@ permission gets a private refusal and nothing changes.
 | `/duel seafleet user [bet]` | **Sea Fleet**, battleship on a 10×10 sea. After the challenge is accepted each captain places five ships in private (**Shuffle** draws a layout from every legal one with the bot's secure random source, as often as you like, then **Lock in fleet**; there are no fixed layouts to learn, and the layout you are looking at stays on the server, never in a button or a picture; fleets are never shown to the other captain). Then they take turns: pick a column and a row from two menus under the shared radar, which shows both players' waters, every hit and miss and the ships that have gone down. **My fleet** is your own waters, privately. 5 minutes to place, 2 minutes a shot |
 | `/duel chess user [bet]` | **Reef Chess** with a rules engine written for the bot (castling, en passant, promotion, check, checkmate, stalemate, fifty-move rule, threefold repetition, insufficient material; checked against the standard perft counts). Pieces are pixel sea creatures (pearl, seahorse, conch, lighthouse, octopus queen, crab king); a move is two picks from menus under the board, the piece then where it goes (promotions list all four pieces, the queen first). Coral or sky is drawn at random; 5 minutes a move |
 | `/duel checkers user [bet]` | **Pearl Checkers**, English draughts with pearls: compulsory jumps, multiple jumps, kings, a draw after 40 quiet moves each. The same two menus (piece, then move, where a jump chain is one entry); 3 minutes a move |
-| `/play picross [mode]` | **Pixel Picross**: a 10×10 nonogram of a sea creature (26 pictures, each unique-solution checked, each also mirrored sideways, never upside down). `daily` (default) is the same puzzle for everyone each day, with a streak: 35 shells, plus 5 for each day of the streak up to a week; `practice` is a random puzzle (10 shells, 5 a day) from the pictures the daily will not show for a week. Pick a row and tick its filled cells from a menu, or **Mark cells** and type `A1 B3-B7 -C2` (a dash clears); **Check** says how many marks are wrong, never which, three times a puzzle, and a checked puzzle pays less (daily a flat 15 and no streak bonus, practice 5). The solved picture is revealed in colour, with a spoiler-free **Share result** |
+| `/play picross [mode]` | **Pixel Picross**: a 10×10 nonogram of a sea or house picture (92 pictures, each unique-solution checked, each also mirrored sideways, never upside down). `daily` (default) is the same puzzle for everyone each day, with a streak: 35 shells, plus 5 for each day of the streak up to a week; `practice` is a random puzzle (10 shells, 5 a day) from the pictures the daily will not show for a week. Pick a row and tick its filled cells from a menu, or **Mark cells** and type `A1 B3-B7 -C2` (a dash clears); **Check** says how many marks are wrong, never which, three times a puzzle, and a checked puzzle pays less (daily a flat 15 and no streak bonus, practice 5). The solved picture is revealed in colour, with a spoiler-free **Share result** |
 | `/play 2048` | **Tide 2048** with a fish from the atlas on every tile (shrimp up to a leviathan at 2048): four arrow buttons, the game is kept between sessions, **Finish** counts it. The best score shows in `/play stats`; a finished game pays 5 to 60 shells for a tile of 256 or more (5 paid games a day) |
 | `/play hangman` | A cozy word (780 in five categories) guessed from two letter menus while the tide washes a pixel sandcastle away; six misses lose |
 | `/play wordle [mode]` | Five letters, six tries, typed into a form, shown as private pixel tiles with a keyboard summary. `daily` (default) is one word the same for everyone, kept per player per day, with a spoiler-free **Share result**; `practice` is a random word, as many as you like |
@@ -479,7 +479,7 @@ crates/
   pinchora-web/       web dashboard API (axum): Discord OAuth, sessions, CSRF, server settings, modules, the house viewer, the SPA
 web/                  dashboard UI (Vite + React + TypeScript), embedded into the binary
 migrations/           SQL migrations
-assets/fonts/         Silkscreen + Noto Sans (SIL OFL)
+assets/fonts/         Silkscreen + Noto Sans, and Noto Sans CJK + Noto Emoji subsets as fallback (SIL OFL)
 deploy/               Kubernetes (kustomize)
 docs/                 architecture, research, game design
 ```
@@ -510,3 +510,15 @@ coloured circle with its first letter.
 
 Silkscreen and Noto Sans are under the SIL Open Font License; the license texts are in
 `assets/fonts/`.
+
+Names, bios and titles in emoji or CJK draw as letters, not empty boxes, because two fallback fonts follow the
+card fonts in the renderer's font database (`pinchora_render::FONT_FILES` for the cards and the dashboard,
+`FALLBACK_FONT_FILES` for these). Both are SIL OFL, made from the official releases with `pyftsubset` (fontTools;
+no hinting, no layout features except the emoji sequences):
+
+| File | From | Holds | Size |
+|---|---|---|---|
+| `NotoSansCJKsc-Subset.otf` | Noto Sans CJK SC Regular 2.004 ([notofonts/noto-cjk](https://github.com/notofonts/noto-cjk)) | 7,174 common hanzi (GB 2312 level 1, Big5 frequently used, JIS X 0208 level 1), kana, the 2,350 hangul syllables of KS X 1001 and compatibility jamo, bopomofo, CJK and full-width punctuation | 2.0 MB |
+| `NotoEmoji-Subset.ttf` | Noto Emoji 3.002 ([google/fonts](https://github.com/google/fonts/tree/main/ofl/notoemoji)), monochrome, Regular weight | every emoji code point of the font (1,489) and its sequences (flags, ZWJ, skin tones) | 0.9 MB |
+
+A character no font has (a rare hanzi, another script) still draws as an empty box.

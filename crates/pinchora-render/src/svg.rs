@@ -1,10 +1,30 @@
 //! Small SVG building blocks for the pixel-art card style.
 
-use std::fmt::Write;
+use std::{borrow::Cow, fmt::Write};
 
 use base64::Engine;
 use resvg::usvg;
 use unicode_segmentation::UnicodeSegmentation;
+
+/// Whether a card may carry `c` in its text. XML 1.0 forbids the control characters (tab and line breaks are
+/// dropped too: a card is one line) and U+FFFE and U+FFFF, and a parser may refuse the other noncharacters
+/// (U+FDD0 to U+FDEF and the last two code points of every plane) as well; a name holding one must not stop a
+/// card from drawing.
+fn is_card_char(c: char) -> bool {
+    let n = c as u32;
+    !c.is_control() && !(0xFDD0..=0xFDEF).contains(&n) && n & 0xFFFE != 0xFFFE
+}
+
+/// `svg` without the characters an XML document cannot hold (see [`is_card_char`]; tabs and line breaks stay),
+/// so text that reached the markup unescaped cannot stop a card from drawing either.
+pub(crate) fn scrub(svg: &str) -> Cow<'_, str> {
+    let fine = |c: char| matches!(c, '\t' | '\n' | '\r') || is_card_char(c);
+    if svg.chars().all(fine) {
+        Cow::Borrowed(svg)
+    } else {
+        Cow::Owned(svg.chars().filter(|&c| fine(c)).collect())
+    }
+}
 
 pub fn escape(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
@@ -15,7 +35,7 @@ pub fn escape(text: &str) -> String {
             '>' => out.push_str("&gt;"),
             '"' => out.push_str("&quot;"),
             '\'' => out.push_str("&apos;"),
-            c if c.is_control() => {}
+            c if !is_card_char(c) => {}
             c => out.push(c),
         }
     }
@@ -50,7 +70,8 @@ pub fn sans_width(text: &str, size: f32) -> f32 {
         .chars()
         .map(|c| match c {
             ' '..='~' => SANS_EM[c as usize - 32],
-            // Emoji and the wide scripts.
+            // Emoji draw in Noto Emoji, 1.27 em across; the wide scripts take an em.
+            c if c as u32 >= 0x1f000 || (0x2600..0x2c00).contains(&(c as u32)) => 1.27,
             c if c as u32 >= 0x2e80 || (0x2190..0x2c00).contains(&(c as u32)) => 1.0,
             _ => 0.6,
         })
@@ -501,6 +522,9 @@ mod tests {
         // Read off the renderer: four `w` in Noto Sans at 100 px ink 312 px; the pixel font's
         // wide glyphs are seven font pixels, at 16 px two pixels each.
         assert!((sans_width("wwww", 100.0) - 330.8).abs() < 1.0);
+        // The fallback fonts: an em for a Chinese letter, 1.27 for an emoji.
+        assert!((sans_width("李", 100.0) - 100.0).abs() < 1.0);
+        assert!((sans_width("😀✨", 100.0) - 254.0).abs() < 1.0);
         assert_eq!(pixel_width("NN", 16.0), 28.0);
         assert_eq!(pixel_width("I", 8.0), 3.0);
         assert!(pixel_width("MARLOW", 14.0) > pixel_width("MARLOW", 8.0));
@@ -511,17 +535,92 @@ mod tests {
         assert!(cut.len() > 6, "it keeps what fits: {cut}");
     }
 
+    /// The code points XML 1.0 cannot hold and the noncharacters a parser may refuse.
+    const INVALID: &str = "\u{FFFE}\u{FFFF}\u{1FFFE}\u{1FFFF}\u{10FFFE}\u{10FFFF}\u{FDD0}\u{FDEF}\u{0}\u{1}\u{8}\u{B}\u{C}\u{1F}\u{7F}\u{85}";
+
+    #[test]
+    fn code_points_xml_cannot_hold_are_dropped_from_text_and_the_rest_is_kept() {
+        assert_eq!(escape(&format!("a{INVALID}b")), "ab");
+        // Tabs and line breaks never reach a card's one-line text either.
+        assert_eq!(escape("a\tb\nc\rd"), "abcd");
+        // What XML allows stays: letters, emoji, CJK, the replacement character, private use, the
+        // first and last valid code points around the noncharacters.
+        let fine = "Zoë ✨ 李 😀 \u{FFFD}\u{E000}\u{FFFC}\u{10000}\u{10FFFD}\u{FDCF}\u{FDF0}";
+        assert_eq!(escape(fine), fine);
+        assert_eq!(escape("<&>\"'"), "&lt;&amp;&gt;&quot;&apos;");
+        // Every one of them, alone and in a name, leaves text the XML parser takes.
+        for c in INVALID.chars() {
+            let svg = format!(
+                r#"<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><text>x{}y</text></svg>"#,
+                escape(&c.to_string())
+            );
+            assert!(
+                usvg::Tree::from_str(&svg, &usvg::Options::default()).is_ok(),
+                "U+{:04X}",
+                c as u32
+            );
+        }
+        // The check is the XML one: without escaping, the parser refuses them.
+        let raw =
+            format!(r#"<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><text>{INVALID}</text></svg>"#);
+        assert!(usvg::Tree::from_str(&raw, &usvg::Options::default()).is_err());
+    }
+
+    #[test]
+    fn a_document_is_scrubbed_of_them_before_it_is_drawn() {
+        let clean = "<svg>\n\t<g/>\r\n</svg>";
+        assert!(matches!(scrub(clean), Cow::Borrowed(_)), "clean text is not copied");
+        assert_eq!(scrub(&format!("<svg>\n{INVALID}<g/></svg>")), "<svg>\n<g/></svg>");
+        // A card that let such text past `escape` still draws.
+        let svg = format!(
+            r#"<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"><text x="2" y="14" font-size="12" id="{INVALID}">A{INVALID}B</text></svg>"#
+        );
+        assert!(crate::Renderer::new().svg_to_png(&svg).is_ok());
+    }
+
+    #[test]
+    fn emoji_and_cjk_come_from_the_fallback_fonts() {
+        // A character no font has draws as the same empty box every time; one a fallback font has draws as
+        // its own picture, in the pixel font and in Noto Sans alike.
+        let r = crate::Renderer::new();
+        for family in [crate::cards::PIXEL, crate::cards::SANS] {
+            let draw = |text: &str| {
+                let svg = format!(
+                    r##"<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="96" height="96" fill="#fff"/><text x="8" y="72" font-family="{family}" font-size="64">{text}</text></svg>"##
+                );
+                r.svg_to_png(&svg).expect("renders")
+            };
+            let missing = draw("አ");
+            assert_eq!(missing, draw("ጸ"), "{family}: what no font has is one box");
+            let shown = ["李", "あ", "한", "😀", "✨", "❤", "🇹🇷"].map(|c| (c, draw(c)));
+            for (c, png) in &shown {
+                assert_ne!(*png, missing, "{family}: {c} is a box");
+            }
+            for (i, (a, pa)) in shown.iter().enumerate() {
+                for (b, pb) in &shown[i + 1..] {
+                    assert_ne!(pa, pb, "{family}: {a} and {b} look the same");
+                }
+            }
+        }
+    }
+
     #[test]
     fn text_is_measured_as_drawn_even_where_the_pixel_font_has_no_letters() {
         // Plain ASCII comes from the table; an accent keeps the width of its letter.
         let same = |a: f32, b: f32| (a - b).abs() < 0.01;
         assert!(same(pixel_width("ZOË", 14.0), pixel_width("ZOE", 14.0)));
         assert!(same(pixel_width("ÑÑ", 8.0), pixel_width("NN", 8.0)));
-        // What the fonts lack draws as an empty box of the same width each time, a whole number of
+        // What no font has draws as an empty box of the same width each time, a whole number of
         // font pixels wide.
-        let one = pixel_width("李", 8.0);
+        let one = pixel_width("አ", 8.0);
         assert!((5.0..=8.0).contains(&one), "{one}");
-        assert!(same(pixel_width("李李李", 8.0), 3.0 * one));
+        assert!(same(pixel_width("አአአ", 8.0), 3.0 * one));
+        // The wide scripts and emoji are drawn by the fallback fonts, about an em across, and measured there.
+        let han = pixel_width("李", 8.0);
+        assert!((6.0..=8.0).contains(&han), "{han}");
+        assert!((pixel_width("李李李", 8.0) - 3.0 * han).abs() < 3.0);
+        let emoji = pixel_width("😀", 14.0);
+        assert!((14.0..=19.0).contains(&emoji), "{emoji}");
         // Another script falls back to the sans font and is measured there.
         assert!(pixel_width("Анна", 14.0) > 0.0);
         // Cutting follows the measure: the cut text fits, is a prefix and ends in an ellipsis,
@@ -529,8 +628,9 @@ mod tests {
         for text in [
             "MMMMMMMMMMMMMMMMMMMMMM",
             "李李李李李李李李李李李李",
-            "👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦",
+            "👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦",
             "ЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖ",
+            "አአአአአአአአአአአአአአ",
         ] {
             let cut = truncate_pixel_to(text, 14.0, 100.0);
             assert!(cut.ends_with('…') && pixel_width(&cut, 14.0) <= 100.0, "{text}: {cut}");
