@@ -1,4 +1,4 @@
-import { PixelLink } from "../components/PixelButton";
+import { PixelButton, PixelLink } from "../components/PixelButton";
 import { Panel } from "../components/Panel";
 import {
   STATE_LABEL,
@@ -8,6 +8,7 @@ import {
   personLabel,
   stars,
   transcriptUrl,
+  useCloseTicket,
   useTicket,
   when,
 } from "../lib/tickets";
@@ -32,6 +33,7 @@ export function TicketView({ guild, id }: { guild: string; id: string }) {
 }
 
 function TicketBody({ guild, detail }: { guild: string; detail: TicketDetail }) {
+  const close = useCloseTicket(guild);
   const { ticket, transcript } = detail;
   const number = `#${String(ticket.number).padStart(4, "0")}`;
   const firstReply =
@@ -52,17 +54,30 @@ function TicketBody({ guild, detail }: { guild: string; detail: TicketDetail }) 
           </>
         }
         action={
-          transcript && (
-            <a
-              className="pixel-button pixel-button-secondary"
-              href={transcriptUrl(guild, ticket.id)}
-              download={`ticket-${String(ticket.number).padStart(4, "0")}.html`}
-            >
-              Download transcript
-            </a>
-          )
+          <>
+            {ticket.state !== "closed" && (
+              <PixelButton
+                variant="secondary"
+                className="tk-close"
+                disabled={close.isPending}
+                onClick={() => close.mutate(ticket.id)}
+              >
+                {close.isPending ? "Closing…" : "Close ticket"}
+              </PixelButton>
+            )}
+            {transcript && (
+              <a
+                className="pixel-button pixel-button-secondary"
+                href={transcriptUrl(guild, ticket.id)}
+                download={`ticket-${String(ticket.number).padStart(4, "0")}.html`}
+              >
+                Download transcript
+              </a>
+            )}
+          </>
         }
       />
+      {close.isError && <Problem error={close.error} />}
       <Panel title="DETAILS">
         <dl className="tk-facts">
           <div>

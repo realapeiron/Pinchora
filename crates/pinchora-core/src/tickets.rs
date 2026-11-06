@@ -2,6 +2,8 @@
 //! and who may move it on, the name its channel gets, and its transcript as a web page. Pure: the bot,
 //! `/tickets` and the dashboard all decide with these rules.
 
+use std::collections::HashMap;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
@@ -609,7 +611,76 @@ padding:8px 0;border-top:1px solid #2e3d75}.who{font-weight:700;overflow-wrap:an
 /// The transcript as one self-contained web page (no scripts, no outside requests): the ticket at the top,
 /// then every message with its author and time. All text a member wrote is escaped, so nothing in it can
 /// become markup.
+pub const TRANSCRIPT_HTML_MAX: usize = 7 * 1024 * 1024;
+
 pub fn render_html(head: &TranscriptHead<'_>, lines: &[Line], authors: &[Author], lang: Lang) -> String {
+    render_html_with_mentions(head, lines, authors, &HashMap::new(), lang)
+}
+
+/// Resolves raw Discord mention ids only while rendering. The stored line never contains a name.
+pub fn render_mentions(text: &str, names: &HashMap<u64, String>, lang: Lang) -> String {
+    let deleted = t!(lang, "tickets.transcript.deleted-user");
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(start) = rest.find("<@") {
+        out.push_str(&rest[..start]);
+        let after = &rest[start + 2..];
+        let id_start = after.strip_prefix('!').unwrap_or(after);
+        if let Some(end) = id_start.find('>')
+            && let Some(id) = id_start[..end]
+                .parse::<u64>()
+                .ok()
+                .filter(|_| id_start[..end].bytes().all(|b| b.is_ascii_digit()))
+        {
+            out.push('@');
+            out.push_str(names.get(&id).map(String::as_str).unwrap_or(&deleted));
+            rest = &id_start[end + 1..];
+        } else {
+            out.push_str("<@");
+            rest = after;
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
+pub fn render_html_with_mentions(
+    head: &TranscriptHead<'_>,
+    lines: &[Line],
+    authors: &[Author],
+    mentions: &HashMap<u64, String>,
+    lang: Lang,
+) -> String {
+    let full = render_html_inner(head, lines, authors, mentions, lang, 0);
+    if full.len() <= TRANSCRIPT_HTML_MAX {
+        return full;
+    }
+    let mut low = 1;
+    let mut high = lines.len();
+    while low < high {
+        let cut = low + (high - low) / 2;
+        if render_html_inner(head, &lines[cut..], authors, mentions, lang, cut).len() <= TRANSCRIPT_HTML_MAX {
+            high = cut;
+        } else {
+            low = cut + 1;
+        }
+    }
+    let html = render_html_inner(head, &lines[low..], authors, mentions, lang, low);
+    if html.len() <= TRANSCRIPT_HTML_MAX {
+        html
+    } else {
+        render_html_inner(head, &[], authors, mentions, lang, lines.len())
+    }
+}
+
+fn render_html_inner(
+    head: &TranscriptHead<'_>,
+    lines: &[Line],
+    authors: &[Author],
+    mentions: &HashMap<u64, String>,
+    lang: Lang,
+    cut: usize,
+) -> String {
     let title = t!(lang, "tickets.transcript.title", number = format!("{:04}", head.number));
     let mut html = String::with_capacity(2_048 + lines.len() * 160);
     html.push_str("<!doctype html><html lang=\"");
@@ -652,6 +723,11 @@ pub fn render_html(head: &TranscriptHead<'_>, lines: &[Line], authors: &[Author]
         fact(t!(lang, "tickets.transcript.reason", reason = reason));
     }
     html.push_str("</p>");
+    if cut > 0 {
+        html.push_str("<p class=\"note\">");
+        html.push_str(&escape_html(&t!(lang, "tickets.transcript.cut", count = cut)));
+        html.push_str("</p>");
+    }
     if !head.with_content {
         html.push_str("<p class=\"note\">");
         html.push_str(&escape_html(&t!(lang, "tickets.transcript.no-content")));
@@ -680,7 +756,7 @@ pub fn render_html(head: &TranscriptHead<'_>, lines: &[Line], authors: &[Author]
         html.push_str("</time></div><div>");
         if let Some(text) = line.c.as_deref().filter(|c| !c.is_empty()) {
             html.push_str("<div class=\"text\">");
-            html.push_str(&escape_html(text));
+            html.push_str(&escape_html(&render_mentions(text, mentions, lang)));
             html.push_str("</div>");
         }
         if !line.f.is_empty() {
@@ -711,6 +787,47 @@ mod tests {
     use chrono::TimeZone;
 
     use super::*;
+
+    #[test]
+    fn transcript_html_keeps_newest_messages_under_cap() {
+        let head = TranscriptHead {
+            server: "Reef",
+            number: 1,
+            topic: "Help",
+            opener: None,
+            opened_at: at(0),
+            closed_at: None,
+            closed_by: None,
+            reason: None,
+            with_content: true,
+        };
+        let lines: Vec<Line> = (0..20)
+            .map(|n| Line {
+                a: 0,
+                t: at(n),
+                c: Some(format!("MARKER-{n} {}", "x".repeat(500_000))),
+                f: vec![],
+                e: 0,
+            })
+            .collect();
+        let html = render_html(&head, &lines, &[], Lang::En);
+        assert!(html.len() <= TRANSCRIPT_HTML_MAX);
+        assert!(html.contains("MARKER-19"));
+        assert!(!html.contains("MARKER-0"));
+        assert!(html.contains("older messages were omitted"));
+    }
+
+    #[test]
+    fn mention_names_are_resolved_only_when_rendered() {
+        let raw = "Hello <@42> and <@!99>.";
+        let names = HashMap::from([(42, "Sam".to_owned())]);
+        assert_eq!(render_mentions(raw, &names, Lang::En), "Hello @Sam and @Deleted user.");
+        assert_eq!(
+            render_mentions(raw, &HashMap::new(), Lang::Tr),
+            "Hello @Silinmiş kullanıcı and @Silinmiş kullanıcı."
+        );
+        assert_eq!(raw, "Hello <@42> and <@!99>.");
+    }
 
     fn draft<'a>(topics: &'a [Topic], questions: &'a [Question]) -> PanelDraft<'a> {
         PanelDraft {

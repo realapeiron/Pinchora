@@ -6,7 +6,7 @@
 //! of it: it makes channels and threads, keeps permission and thread-member changes, answers a channel's
 //! history, and keeps the transcript pages handlers send (the harness reads every other file as a picture).
 
-use pinchora_commands::tickets_tick;
+use pinchora_commands::{on_ticket_place_deleted, tickets_tick};
 use pinchora_core::tickets::{Question, Topic};
 use pinchora_db::{NewTicket, PanelSaved, PanelWrite, TicketOpen};
 
@@ -34,10 +34,12 @@ struct World {
     changes: Arc<Mutex<Vec<String>>>,
     /// What each channel's history holds, oldest first.
     history: Arc<Mutex<HashMap<u64, Vec<Value>>>>,
+    thread_members: Arc<Mutex<HashMap<u64, Vec<u64>>>>,
     /// How many channels `GET /guilds/{id}/channels` lists.
     channel_count: Arc<AtomicUsize>,
     /// Refuse to make channels, as Discord does for a bot without Manage Channels.
     refuse_channels: Arc<AtomicBool>,
+    refuse_uploads: Arc<AtomicBool>,
     pages: Arc<Mutex<Vec<Page>>>,
 }
 
@@ -77,6 +79,12 @@ async fn ticket_discord(
     let world = &state.world;
     // Transcript pages ride as files: keep them here and pass the rest on as plain JSON.
     let (json, files) = request_body(&headers, &body);
+    if !files.is_empty() && world.refuse_uploads.load(Ordering::SeqCst) {
+        return (
+            StatusCode::PAYLOAD_TOO_LARGE,
+            json!({ "message": "Request entity too large", "code": 40005 }).to_string(),
+        );
+    }
     if files.iter().any(|(name, _)| name.ends_with(".html")) {
         for (name, bytes) in files {
             assert!(
@@ -131,12 +139,36 @@ async fn ticket_discord(
             return (StatusCode::OK, thread.to_string());
         }
         (&Method::PUT | &Method::DELETE, [.., "channels", channel, "thread-members", user]) => {
+            let mut members = world.thread_members.lock().unwrap();
+            let list = members.entry(number(channel)).or_default();
+            if method == Method::PUT && !list.contains(&number(user)) {
+                list.push(number(user));
+            } else if method == Method::DELETE {
+                list.retain(|id| *id != number(user));
+            }
             world
                 .changes
                 .lock()
                 .unwrap()
                 .push(format!("{method} member {channel} {user}"));
             return (StatusCode::NO_CONTENT, String::new());
+        }
+        (&Method::GET, [.., "channels", channel, "thread-members"]) => {
+            let members = world.thread_members.lock().unwrap();
+            let list: Vec<Value> = members
+                .get(&number(channel))
+                .into_iter()
+                .flatten()
+                .map(|id| {
+                    json!({
+                        "id": channel,
+                        "user_id": id.to_string(),
+                        "join_timestamp": "2024-01-01T00:00:00.000000+00:00",
+                        "flags": 0,
+                    })
+                })
+                .collect();
+            return (StatusCode::OK, Value::Array(list).to_string());
         }
         (&Method::PUT | &Method::DELETE, [.., "channels", channel, "permissions", target]) => {
             world
@@ -307,6 +339,55 @@ async fn posted_panel(sim: &mut Sim, admin: u64, panel: &str, channel: u64) -> R
 
 // /Tests
 
+#[tokio::test]
+async fn deleted_ticket_is_recovered_on_next_open() {
+    let Some((mut sim, world)) = ticket_sim("deleted_ticket_is_recovered_on_next_open").await else {
+        return;
+    };
+    let (admin, member, channel) = (unique(), unique(), unique());
+    save_panel(&sim, "Help", channel, &[Topic::new("Support")], &[], &[]).await;
+    let panel = posted_panel(&mut sim, admin, "Help", channel).await;
+    sim.click(member, &panel, "Support").await;
+    let first = world.made.lock().unwrap()[0].0;
+    sim.mock.channels.lock().unwrap().remove(&first);
+    sim.app
+        .cache
+        .release_cooldown(&format!("tk:{}:{member}", sim.guild))
+        .await
+        .unwrap();
+    let again = sim.click(member, &panel, "Support").await;
+    assert!(
+        again
+            .followups
+            .last()
+            .unwrap()
+            .content()
+            .contains("Your ticket is open")
+    );
+    assert_eq!(world.made.lock().unwrap().len(), 2);
+    let old = sim.app.db.ticket_at(sim.guild, first).await.unwrap().unwrap();
+    assert!(!old.is_open());
+    assert_eq!(old.close_reason.as_deref(), Some("The ticket channel was deleted."));
+}
+
+#[tokio::test]
+async fn deleted_ticket_gateway_close_is_idempotent() {
+    let Some((mut sim, world)) = ticket_sim("deleted_ticket_gateway_close_is_idempotent").await else {
+        return;
+    };
+    let (admin, member, channel) = (unique(), unique(), unique());
+    save_panel(&sim, "Help", channel, &[Topic::new("Support")], &[], &[]).await;
+    let panel = posted_panel(&mut sim, admin, "Help", channel).await;
+    sim.click(member, &panel, "Support").await;
+    let place = world.made.lock().unwrap()[0].0;
+    sim.mock.channels.lock().unwrap().remove(&place);
+    on_ticket_place_deleted(&sim.app, sim.guild, place).await.unwrap();
+    on_ticket_place_deleted(&sim.app, sim.guild, place).await.unwrap();
+    let ticket = sim.app.db.ticket_at(sim.guild, place).await.unwrap().unwrap();
+    assert!(!ticket.is_open());
+    assert_eq!(ticket.close_reason.as_deref(), Some("The ticket channel was deleted."));
+}
+
 /// The whole life of a ticket: set up and post a panel, open a ticket from it, claim it, close it with a
 /// transcript (hostile text and all), rate it, reopen it, read its transcript, close and delete it.
 #[tokio::test]
@@ -428,6 +509,22 @@ async fn a_ticket_opens_from_a_panel_is_claimed_closed_rated_and_reopened() {
     sim.roles = vec![support];
     let claimed = sim.click(staff, &welcome, "Claim").await;
     assert!(claimed.content().contains("You claimed ticket #0001"), "{claimed}");
+    let extra = unique();
+    sim.mock.channels.lock().unwrap().get_mut(place).unwrap()["permission_overwrites"]
+        .as_array_mut()
+        .unwrap()
+        .push(json!({"id": extra.to_string(), "type": 1, "allow": "3072", "deny": "0"}));
+    sim.click(staff, &welcome, "Lock").await;
+    let locked = changes(&world);
+    for who in [sim.guild, member, extra] {
+        let change = locked
+            .iter()
+            .find(|c| c.starts_with(&format!("PUT perm {place} {who} ")))
+            .unwrap();
+        let overwrite: Value = serde_json::from_str(&change[change.find('{').unwrap()..]).unwrap();
+        let deny: u64 = overwrite["deny"].as_str().unwrap().parse().unwrap();
+        assert_ne!(deny & 2048, 0, "{who} cannot send: {change}");
+    }
     let twice = sim.click(staff, &welcome, "Claim").await;
     assert!(
         twice.content().contains("back in the queue"),
@@ -445,17 +542,22 @@ async fn a_ticket_opens_from_a_panel_is_claimed_closed_rated_and_reopened() {
 
     // What was said in the ticket, hostile text included.
     let bot = json!({ "id": APPLICATION_ID.to_string(), "username": "Pinchora", "discriminator": "0", "avatar": null, "bot": true });
+    let mentioned = unique();
+    let mut hostile = history_message(
+        *place,
+        person_json(member, "sam", Some("Sam <b>"), false),
+        &format!("<script>alert('x')</script> my bill is wrong & here's proof <@{mentioned}>"),
+        2,
+        &["bill \"1\".png"],
+    );
+    let mut mention = person_json(mentioned, "private-name", Some("Private Name"), false);
+    mention["public_flags"] = json!(0);
+    hostile["mentions"] = json!([mention]);
     world.history.lock().unwrap().insert(
         *place,
         vec![
             history_message(*place, bot, "", 1, &[]),
-            history_message(
-                *place,
-                person_json(member, "sam", Some("Sam <b>"), false),
-                "<script>alert('x')</script> my bill is wrong & here's proof",
-                2,
-                &["bill \"1\".png"],
-            ),
+            hostile,
             history_message(
                 *place,
                 person_json(staff, "kai", Some("Kai"), false),
@@ -541,11 +643,34 @@ async fn a_ticket_opens_from_a_panel_is_claimed_closed_rated_and_reopened() {
         assert!(!page.html.contains("<script"), "nothing becomes markup");
         assert!(page.html.contains("bill &quot;1&quot;.png"));
         assert!(page.html.contains("Sam &lt;b&gt;") && page.html.contains("Kai"));
+        assert!(page.html.contains("@private-name"));
+        assert!(!page.html.contains(&format!("&lt;@{mentioned}&gt;")));
     }
     std::fs::write(sim.dir.join("transcript.html"), &pages[0].html).unwrap();
     let stored = sim.app.db.transcript(ticket.id).await.unwrap().expect("kept");
     assert_eq!(stored.lines.len(), 3);
     assert!(stored.with_content);
+    assert!(stored.lines.iter().any(|line| {
+        line.c
+            .as_deref()
+            .unwrap_or_default()
+            .contains(&format!("<@{mentioned}>"))
+    }));
+    sim.app
+        .db
+        .delete_user_data(mentioned, chrono::Utc::now())
+        .await
+        .unwrap();
+    let anonymised = sim.app.db.transcript(ticket.id).await.unwrap().unwrap();
+    assert!(!anonymised.author_ids.iter().any(|(_, id)| *id == mentioned));
+    assert_eq!(
+        pinchora_core::tickets::render_mentions(
+            &format!("<@{mentioned}>"),
+            &std::collections::HashMap::new(),
+            pinchora_core::i18n::Lang::En
+        ),
+        "@Deleted user"
+    );
 
     // The member rates it once.
     let rating = posted_reply(dm);
@@ -591,6 +716,7 @@ async fn a_ticket_opens_from_a_panel_is_claimed_closed_rated_and_reopened() {
     // Closed by button (asked first), then the channel is deleted.
     let ask = sim.click(staff, &welcome, "Close").await;
     assert!(ask.ephemeral && ask.content().contains("Close ticket #0001?"), "{ask}");
+    world.refuse_uploads.store(true, Ordering::SeqCst);
     let closing = sim.click(staff, &ask, "Close ticket").await;
     assert!(closing.content().contains("Closing"), "{closing}");
     let posts = take_posts(&sim);
@@ -599,6 +725,16 @@ async fn a_ticket_opens_from_a_panel_is_claimed_closed_rated_and_reopened() {
         .find(|p| p.channel == *place && p.description().contains("Closed by"))
         .expect("closed again");
     let controls = posted_reply(notice);
+    assert!(
+        posts
+            .iter()
+            .any(|p| p.channel == log_channel && p.title() == "Ticket #0001 closed")
+    );
+    assert!(
+        posts
+            .iter()
+            .any(|p| p.channel == member && p.content().contains("was closed"))
+    );
     let ask = sim.click(staff, &controls, "Delete").await;
     sim.click(staff, &ask, "Delete channel").await;
     assert!(changes(&world).contains(&format!("DELETE channel {place}")));
@@ -719,11 +855,24 @@ async fn a_form_asks_first_and_big_servers_get_private_threads() {
     let ticket = sim.app.db.ticket_at(sim.guild, *thread).await.unwrap().expect("ticket");
     assert_eq!(ticket.answers().len(), 2);
 
+    let added = unique();
+    world
+        .thread_members
+        .lock()
+        .unwrap()
+        .entry(*thread)
+        .or_default()
+        .push(added);
+
     sim.channel = *thread;
     sim.command(member, "ticket", json!([sub("close", vec![])])).await;
     let changed = changes(&world);
     assert!(
         changed.contains(&format!("DELETE member {thread} {member}")),
+        "{changed:?}"
+    );
+    assert!(
+        changed.contains(&format!("DELETE member {thread} {added}")),
         "{changed:?}"
     );
     assert!(

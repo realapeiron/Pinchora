@@ -269,6 +269,8 @@ pub struct IdleTicket {
 pub struct StoredTranscript {
     pub lines: Vec<Line>,
     pub authors: Vec<Author>,
+    /// Retained author ids by line index. Delete-my-data removes the user's row from this map.
+    pub author_ids: Vec<(u16, u64)>,
     pub with_content: bool,
     pub messages: i32,
 }
@@ -573,6 +575,18 @@ impl Db {
             .await?)
     }
 
+    /// Open tickets belonging to a member, for checking whether Discord still has their places.
+    pub async fn open_tickets_for_user(&self, guild: u64, opener: u64) -> anyhow::Result<Vec<Ticket>> {
+        let sql = format!(
+            "SELECT {TICKET_COLUMNS} FROM tickets t WHERE t.guild_id = $1 AND t.opener_id = $2 AND t.status = 'open'"
+        );
+        Ok(sqlx::query_as::<_, Ticket>(sqlx::AssertSqlSafe(sql))
+            .bind(sql_id(guild))
+            .bind(sql_id(opener))
+            .fetch_all(self.pool())
+            .await?)
+    }
+
     /// `staff` takes an open ticket nobody has claimed; `false` when it is claimed or closed already.
     pub async fn claim_ticket(&self, id: i64, staff: u64) -> anyhow::Result<bool> {
         let done =
@@ -623,7 +637,18 @@ impl Db {
     /// Opens a closed ticket again, unclaimed, its transcript and rating forgotten (a new one is kept when
     /// it closes again).
     pub async fn reopen_ticket(&self, id: i64, at: DateTime<Utc>) -> anyhow::Result<Option<Ticket>> {
+        retry("reopen_ticket", || self.reopen_ticket_once(id, at)).await
+    }
+
+    async fn reopen_ticket_once(&self, id: i64, at: DateTime<Utc>) -> anyhow::Result<Option<Ticket>> {
+        let ids: Vec<i64> = sqlx::query_scalar(
+            "SELECT opener_id FROM tickets WHERE id = $1 UNION SELECT user_id FROM ticket_transcript_authors WHERE ticket_id = $1",
+        )
+        .bind(id)
+        .fetch_all(self.pool())
+        .await?;
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &ids).await?;
         let sql = format!(
             "UPDATE tickets t SET status = 'open', claimed_by = NULL, closed_by = NULL, close_reason = NULL,
                  closed_at = NULL, rating = NULL, last_activity_at = $2
@@ -635,6 +660,13 @@ impl Db {
             .fetch_optional(&mut *tx)
             .await?;
         if ticket.is_some() {
+            let current: Vec<i64> =
+                sqlx::query_scalar("SELECT user_id FROM ticket_transcript_authors WHERE ticket_id = $1")
+                    .bind(id)
+                    .fetch_all(&mut *tx)
+                    .await?;
+            let late: Vec<i64> = current.into_iter().filter(|user| !ids.contains(user)).collect();
+            crate::locks::try_lock_users(&mut tx, &late).await?;
             sqlx::query("DELETE FROM ticket_transcript_authors WHERE ticket_id = $1")
                 .bind(id)
                 .execute(&mut *tx)
@@ -754,14 +786,16 @@ impl Db {
             return Ok(None);
         };
         let lines: Vec<Line> = serde_json::from_str(&json)?;
-        let rows: Vec<(i16, String, bool)> =
-            sqlx::query_as("SELECT idx, name, bot FROM ticket_transcript_authors WHERE ticket_id = $1 ORDER BY idx")
-                .bind(ticket)
-                .fetch_all(self.pool())
-                .await?;
+        let rows: Vec<(i16, i64, String, bool)> = sqlx::query_as(
+            "SELECT idx, user_id, name, bot FROM ticket_transcript_authors WHERE ticket_id = $1 ORDER BY idx",
+        )
+        .bind(ticket)
+        .fetch_all(self.pool())
+        .await?;
+        let author_ids = rows.iter().map(|(idx, id, _, _)| (*idx as u16, *id as u64)).collect();
         let mut authors: Vec<Author> = rows
             .into_iter()
-            .map(|(idx, name, bot)| Author {
+            .map(|(idx, _, name, bot)| Author {
                 idx: idx as u16,
                 name: Some(name),
                 bot,
@@ -779,6 +813,7 @@ impl Db {
         Ok(Some(StoredTranscript {
             lines,
             authors,
+            author_ids,
             with_content,
             messages,
         }))

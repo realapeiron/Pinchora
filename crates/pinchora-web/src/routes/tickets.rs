@@ -12,7 +12,7 @@ use axum::{
 };
 use chrono::{Duration, Utc};
 use futures_util::future::join_all;
-use pinchora_commands::{TicketPanelPost, post_ticket_panel};
+use pinchora_commands::{TicketPanelPost, close_ticket_from_web, post_ticket_panel};
 use pinchora_core::{
     i18n::Lang,
     settings::{FieldError, parse_hex_color},
@@ -22,7 +22,9 @@ use pinchora_core::{
         PLACEHOLDER_MAX, PanelDraft, PanelStyle, QUESTION_MAX, Question, TITLE_MAX, Topic, TranscriptHead, WELCOME_MAX,
     },
 };
-use pinchora_db::{PanelSaved, PanelWrite, Ticket, TicketFilter, TicketPanel, TicketSettings, TicketSummary};
+use pinchora_db::{
+    PanelSaved, PanelWrite, StoredTranscript, Ticket, TicketFilter, TicketPanel, TicketSettings, TicketSummary,
+};
 use serde::Deserialize;
 use serde_json::{Value, json};
 
@@ -49,6 +51,7 @@ pub fn router() -> Router<WebState> {
         .route("/panels/{id}/post", post(post_panel))
         .route("/list", get(list))
         .route("/ticket/{id}", get(ticket))
+        .route("/ticket/{id}/close", post(close_ticket))
         .route("/ticket/{id}/transcript.html", get(transcript_page))
 }
 
@@ -681,6 +684,69 @@ async fn owned_ticket(state: &WebState, guild: u64, params: &HashMap<String, Str
         .ok_or_else(ApiError::not_found)
 }
 
+/// `POST /tickets/ticket/{id}/close`: a server manager closes it from the dashboard.
+pub async fn close_ticket(
+    State(state): State<WebState>,
+    managed: ManagedGuild,
+    Path(params): Path<HashMap<String, String>>,
+) -> ApiResult<Json<Value>> {
+    let guild = managed.id;
+    let ticket = owned_ticket(&state, guild, &params).await?;
+    if !ticket.is_open() {
+        return Err(ApiError::new(
+            StatusCode::CONFLICT,
+            "ticket_closed",
+            pinchora_core::t!(Lang::En, "tickets.web.already-closed"),
+        ));
+    }
+    let closed = close_ticket_from_web(
+        &state.app,
+        ticket,
+        managed.current.session.user_id,
+        managed.current.session.display_name().to_owned(),
+    )
+    .await?
+    .ok_or_else(|| {
+        ApiError::new(
+            StatusCode::CONFLICT,
+            "ticket_closed",
+            pinchora_core::t!(Lang::En, "tickets.web.already-closed"),
+        )
+    })?;
+    let target = closed.id.to_string();
+    audit::finish(
+        &state,
+        &managed.current.session,
+        Change {
+            guild,
+            action: "tickets.close",
+            target: Some(&target),
+            before: json!({ "state": "open" }),
+            after: json!({ "state": "closed" }),
+        },
+        None,
+    )
+    .await;
+    Ok(Json(json!({ "id": closed.id.to_string(), "state": "closed" })))
+}
+
+/// Only retained author rows can give a mention its name. Privacy deletion removes that row.
+fn mention_names(stored: &StoredTranscript) -> HashMap<u64, String> {
+    stored
+        .author_ids
+        .iter()
+        .filter_map(|(idx, id)| {
+            stored
+                .authors
+                .iter()
+                .find(|author| author.idx == *idx)?
+                .name
+                .as_ref()
+                .map(|name| (*id, name.clone()))
+        })
+        .collect()
+}
+
 /// `GET /tickets/ticket/{id}`: the ticket and, once closed, its transcript.
 pub async fn ticket(
     State(state): State<WebState>,
@@ -707,11 +773,16 @@ pub async fn ticket(
         .map(|p| (p.id, p.name))
         .collect();
     let transcript = stored.map(|s| {
+        let mentions = mention_names(&s);
+        let lines: Vec<_> = s.lines.into_iter().map(|mut line| {
+            line.c = line.c.map(|content| tickets::render_mentions(&content, &mentions, Lang::En));
+            line
+        }).collect();
         json!({
             "with_content": s.with_content,
             "messages": s.messages,
             "authors": s.authors.iter().map(|a| json!({ "idx": a.idx, "name": a.name, "bot": a.bot })).collect::<Vec<_>>(),
-            "lines": s.lines,
+            "lines": lines,
         })
     });
     Ok(Json(json!({
@@ -755,7 +826,8 @@ pub async fn transcript_page(
         reason: ticket.close_reason.as_deref(),
         with_content: stored.with_content,
     };
-    let html = tickets::render_html(&head, &stored.lines, &stored.authors, Lang::En);
+    let html =
+        tickets::render_html_with_mentions(&head, &stored.lines, &stored.authors, &mention_names(&stored), Lang::En);
     let mut response = (StatusCode::OK, html).into_response();
     let headers = response.headers_mut();
     headers.insert(

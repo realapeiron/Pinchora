@@ -38,6 +38,7 @@ rated = "Thank you! You gave {stars}."
 rated-already = "This ticket was rated already."
 auto-reason = { one = "Nobody wrote for 1 hour.", other = "Nobody wrote for {count} hours." }
 channel-topic = "Ticket {number} · {topic}"
+channel-deleted = "The ticket channel was deleted."
 
 [tickets.panel]
 footer = "Pick a topic to open a private ticket."
@@ -77,7 +78,7 @@ opened = "{user} ({name}) opened {place} about **{topic}**."
 claimed-title = "Ticket {number} claimed"
 claimed = "{user} is handling {place}."
 closed-title = "Ticket {number} closed"
-closed = { one = "Opened by {opener}, closed by {user}. {count} message, transcript attached.", other = "Opened by {opener}, closed by {user}. {count} messages, transcript attached." }
+closed = { one = "Opened by {opener}, closed by {user}. {count} message; transcript follows.", other = "Opened by {opener}, closed by {user}. {count} messages; transcript follows." }
 reopened-title = "Ticket {number} reopened"
 reopened = "Reopened by {user}."
 
@@ -189,6 +190,10 @@ closed = "Closed by {who}, {at}"
 reason = "Reason: {reason}"
 deleted-user = "Deleted user"
 no-content = "The bot runs without Discord's Message Content intent, so this transcript keeps who wrote, when, and the files, but not the words."
+cut = { one = "1 older message was omitted to keep this file small.", other = "{count} older messages were omitted to keep this file small." }
 empty = "Nobody wrote anything in this ticket."
 files = { one = "1 file:", other = "{count} files:" }
 embeds = { one = "1 embed", other = "{count} embeds" }
+
+[tickets.web]
+already-closed = "This ticket is already closed."

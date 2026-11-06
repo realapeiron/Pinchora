@@ -1,10 +1,12 @@
 //! A ticket's messages read back from Discord, as its transcript: the lines (text only with the Message
 //! Content intent), who wrote them, and the page members download.
 
+use std::collections::HashMap;
+
 use chrono::{DateTime, Utc};
 use pinchora_core::{
     i18n::Lang,
-    tickets::{Author, Line, TRANSCRIPT_MAX, TranscriptHead, first_reply, render_html},
+    tickets::{Author, Line, TRANSCRIPT_MAX, TranscriptHead, first_reply, render_html_with_mentions},
 };
 use pinchora_db::{StoredTranscript, Ticket};
 use twilight_model::{
@@ -35,6 +37,10 @@ impl Captured {
             })
             .collect()
     }
+
+    pub fn mention_names(&self) -> HashMap<u64, String> {
+        self.authors.iter().map(|(id, name, _)| (*id, name.clone())).collect()
+    }
 }
 
 /// The name a message shows for its author.
@@ -46,16 +52,9 @@ fn author_name(message: &Message) -> String {
         .unwrap_or_else(|| message.author.name.clone())
 }
 
-/// The message text with user mentions written as `@name`, so the transcript reads without Discord.
+/// Keep mention ids, never a copied username that would survive that member deleting their data.
 fn text_of(message: &Message) -> String {
-    let mut text = message.content.clone();
-    for user in &message.mentions {
-        let name = &user.name;
-        for form in [format!("<@{}>", user.id), format!("<@!{}>", user.id)] {
-            text = text.replace(&form, &format!("@{name}"));
-        }
-    }
-    text
+    message.content.clone()
 }
 
 /// Reads up to [`TRANSCRIPT_MAX`] of the newest messages of the ticket's channel or thread, oldest first.
@@ -106,6 +105,11 @@ pub(crate) async fn capture(app: &App, ticket: &Ticket) -> anyhow::Result<Captur
             f: message.attachments.iter().map(|f| f.filename.clone()).collect(),
             e: message.embeds.len().min(u16::MAX as usize) as u16,
         });
+        for user in &message.mentions {
+            if !authors.iter().any(|(id, _, _)| *id == user.id.get()) {
+                authors.push((user.id.get(), user.name.clone(), user.bot));
+            }
+        }
     }
     let opener = authors
         .iter()
@@ -141,6 +145,7 @@ pub(crate) fn page_html(
     names: &Page<'_>,
     lines: &[Line],
     authors: &[Author],
+    mentions: &HashMap<u64, String>,
     with_content: bool,
     lang: Lang,
 ) -> Vec<u8> {
@@ -155,12 +160,33 @@ pub(crate) fn page_html(
         reason: ticket.close_reason.as_deref(),
         with_content,
     };
-    render_html(&head, lines, authors, lang).into_bytes()
+    render_html_with_mentions(&head, lines, authors, mentions, lang).into_bytes()
 }
 
 /// The page of a kept transcript.
 pub(crate) fn stored_html(ticket: &Ticket, names: &Page<'_>, stored: &StoredTranscript, lang: Lang) -> Vec<u8> {
-    page_html(ticket, names, &stored.lines, &stored.authors, stored.with_content, lang)
+    let mentions: HashMap<u64, String> = stored
+        .author_ids
+        .iter()
+        .filter_map(|(idx, id)| {
+            stored
+                .authors
+                .iter()
+                .find(|author| author.idx == *idx)?
+                .name
+                .as_ref()
+                .map(|name| (*id, name.clone()))
+        })
+        .collect();
+    page_html(
+        ticket,
+        names,
+        &stored.lines,
+        &stored.authors,
+        &mentions,
+        stored.with_content,
+        lang,
+    )
 }
 
 /// `ticket-0042.html`.

@@ -31,6 +31,37 @@ pub use actions::{spawn_ticker, tick};
 pub(crate) use open::{on_form, on_open};
 pub use panel::{PanelPost, post_panel};
 
+/// A deleted ticket place is closed through the regular close path, once across gateway pods.
+pub async fn on_place_deleted(app: &Arc<App>, guild: u64, place: u64) -> anyhow::Result<()> {
+    let Some(ticket) = app.db.ticket_at(guild, place).await?.filter(Ticket::is_open) else {
+        return Ok(());
+    };
+    let panel = match ticket.panel_id {
+        Some(id) => app.db.ticket_panel(id).await?,
+        None => None,
+    };
+    let lang = guild_lang(app, guild).await;
+    actions::close(
+        app,
+        ticket,
+        panel,
+        None,
+        Some(t!(lang, "tickets.channel-deleted")),
+        None,
+    )
+    .await?;
+    Ok(())
+}
+
+/// Dashboard close uses the same transcript, log and DM path as Discord controls.
+pub async fn close_from_web(app: &Arc<App>, ticket: Ticket, by: u64, name: String) -> anyhow::Result<Option<Ticket>> {
+    let panel = match ticket.panel_id {
+        Some(id) => app.db.ticket_panel(id).await?,
+        None => None,
+    };
+    actions::close(app, ticket, panel, Some((by, name)), None, None).await
+}
+
 use crate::{App, Cx, commands::games::quiet};
 
 /// The ticker wakes this often to look for tickets nobody wrote in.
@@ -117,19 +148,20 @@ pub(crate) fn log_channel(settings: &TicketSettings, panel: Option<&TicketPanel>
 pub(crate) async fn log(app: &App, channel: Option<u64>, embed: Embed, file: Option<(String, Vec<u8>)>) {
     let Some(channel) = channel else { return };
     let embeds = [embed];
-    let files: Vec<Attachment> = file
-        .into_iter()
-        .map(|(name, bytes)| Attachment::from_bytes(name, bytes, 1))
-        .collect();
     let mentions = quiet();
     let request: CreateMessage<'_> = app
         .http
         .create_message(Id::new(channel))
         .embeds(&embeds)
-        .attachments(&files)
         .allowed_mentions(mentions.as_ref());
     if let Err(error) = request.await {
         tracing::warn!(channel, %error, "ticket log not written");
+    }
+    if let Some((name, bytes)) = file {
+        let files = [Attachment::from_bytes(name, bytes, 1)];
+        if let Err(error) = app.http.create_message(Id::new(channel)).attachments(&files).await {
+            tracing::warn!(channel, %error, "ticket transcript not uploaded to log");
+        }
     }
 }
 

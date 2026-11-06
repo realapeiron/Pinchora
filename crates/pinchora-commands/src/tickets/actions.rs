@@ -443,24 +443,22 @@ async fn lock(cx: &Cx, ticket: &Ticket, locking: bool) -> anyhow::Result<()> {
         return tell(cx, lacking).await;
     }
     let done = if ticket.thread_id.is_some() {
-        cx.app.http.update_thread(place).locked(locking).await.map(|_| ())
-    } else {
-        let overwrite = if locking {
-            PermissionOverwrite {
-                id: Id::new(ticket.opener_id as u64),
-                ..read_only()
-            }
-        } else {
-            member_overwrite(ticket.opener_id as u64)
-        };
         cx.app
             .http
-            .update_channel_permission(place, &overwrite)
+            .update_thread(place)
+            .locked(locking)
             .await
             .map(|_| ())
+            .map_err(anyhow::Error::from)
+    } else {
+        lock_channel_members(cx, ticket, place, locking).await
     };
     if let Err(error) = done {
-        return tell(cx, discord_refusal(&error, lang, Need::Manage(place.get()))).await;
+        let message = error.downcast_ref::<twilight_http::Error>().map_or_else(
+            || t!(lang, "tickets.discord.refused"),
+            |error| discord_refusal(error, lang, Need::Manage(place.get())),
+        );
+        return tell(cx, message).await;
     }
     cx.app.db.set_ticket_locked(ticket.id, locking).await?;
     let server = guild_lang(&cx.app, ticket.guild_id as u64).await;
@@ -484,6 +482,92 @@ async fn lock(cx: &Cx, ticket: &Ticket, locking: bool) -> anyhow::Result<()> {
         "tickets.unlocked-you"
     };
     tell(cx, t!(lang, key)).await
+}
+
+/// A role's staff allowance beats the @everyone write deny; explicit member allowances do not.
+async fn lock_channel_members(cx: &Cx, ticket: &Ticket, place: Id<ChannelMarker>, locking: bool) -> anyhow::Result<()> {
+    let channel = cx.app.http.channel(place).await?.model().await?;
+    let everyone = PermissionOverwrite {
+        allow: None,
+        deny: Some(if locking {
+            Permissions::VIEW_CHANNEL
+                | Permissions::SEND_MESSAGES
+                | Permissions::ATTACH_FILES
+                | Permissions::ADD_REACTIONS
+        } else {
+            Permissions::VIEW_CHANNEL
+        }),
+        id: Id::new(ticket.guild_id as u64),
+        kind: PermissionOverwriteType::Role,
+    };
+    cx.app.http.update_channel_permission(place, &everyone).await?;
+    let bot = cx.app.application_id.get();
+    let mut members = vec![ticket.opener_id as u64];
+    let support = match ticket.panel_id {
+        Some(id) => cx
+            .app
+            .db
+            .ticket_panel(id)
+            .await?
+            .map(|p| p.support_roles)
+            .unwrap_or_default(),
+        None => Vec::new(),
+    };
+    let guild = Id::new(ticket.guild_id as u64);
+    let staff_roles: Vec<u64> = match cx.app.http.roles(guild).await {
+        Ok(response) => response
+            .models()
+            .await?
+            .into_iter()
+            .filter(|role| {
+                support.contains(&(role.id.get() as i64))
+                    || super::STAFF_PERMISSIONS
+                        .iter()
+                        .any(|needed| role.permissions.contains(*needed))
+            })
+            .map(|role| role.id.get())
+            .collect(),
+        Err(_) => support.into_iter().map(|id| id as u64).collect(),
+    };
+    if locking {
+        for role in &staff_roles {
+            let overwrite = PermissionOverwrite {
+                allow: Some(member_allow()),
+                deny: None,
+                id: Id::new(*role),
+                kind: PermissionOverwriteType::Role,
+            };
+            cx.app.http.update_channel_permission(place, &overwrite).await?;
+        }
+    }
+    for overwrite in channel.permission_overwrites.unwrap_or_default() {
+        let id = overwrite.id.get();
+        if overwrite.kind == twilight_model::channel::permission_overwrite::PermissionOverwriteType::Member
+            && id != bot
+            && !members.contains(&id)
+        {
+            members.push(id);
+        }
+    }
+    for member in members {
+        if locking
+            && let Ok(response) = cx.app.http.guild_member(guild, Id::new(member)).await
+            && let Ok(found) = response.model().await
+            && found.roles.iter().any(|role| staff_roles.contains(&role.get()))
+        {
+            continue;
+        }
+        let overwrite = if locking {
+            PermissionOverwrite {
+                id: Id::new(member),
+                ..read_only()
+            }
+        } else {
+            member_overwrite(member)
+        };
+        cx.app.http.update_channel_permission(place, &overwrite).await?;
+    }
+    Ok(())
 }
 
 async fn add(cx: &Cx, ticket: &Ticket, user: u64) -> anyhow::Result<()> {
@@ -633,6 +717,7 @@ async fn send_transcript(cx: &Cx, ticket: &Ticket) -> anyhow::Result<()> {
                 &page,
                 &captured.lines,
                 &captured.authors(),
+                &captured.mention_names(),
                 captured.with_content,
                 lang,
             )
@@ -745,6 +830,7 @@ pub(crate) async fn close(
         &page,
         &captured.lines,
         &captured.authors(),
+        &captured.mention_names(),
         captured.with_content,
         lang,
     );
@@ -781,12 +867,50 @@ async fn shut(app: &App, ticket: &Ticket, _panel: Option<&TicketPanel>, settings
     let Some(place) = place_of(ticket) else { return };
     let bot = app.application_id.get();
     if ticket.thread_id.is_some() {
-        if let Err(error) = app
-            .http
-            .remove_thread_member(place, Id::<UserMarker>::new(ticket.opener_id as u64))
-            .await
-        {
-            tracing::debug!(ticket = ticket.id, %error, "opener not taken out of the thread");
+        let mut members = vec![ticket.opener_id as u64];
+        let mut after: Option<Id<UserMarker>> = None;
+        loop {
+            let request = app.http.thread_members(place).limit(100);
+            let response = match after {
+                Some(after) => request.after(after).await,
+                None => request.await,
+            };
+            let list = match response {
+                Ok(response) => match response.models().await {
+                    Ok(list) => list,
+                    Err(error) => {
+                        tracing::debug!(ticket = ticket.id, %error, "thread members not read");
+                        break;
+                    }
+                },
+                Err(error) => {
+                    tracing::debug!(ticket = ticket.id, %error, "thread members not read");
+                    break;
+                }
+            };
+            let full = list.len() == 100;
+            let last = list.last().and_then(|member| member.user_id);
+            for member in list {
+                if let Some(id) = member.user_id.map(Id::get)
+                    && id != bot
+                    && !members.contains(&id)
+                {
+                    members.push(id);
+                }
+            }
+            if !full || last.is_none() || last == after {
+                break;
+            }
+            after = last;
+        }
+        for member in members {
+            if let Err(error) = app
+                .http
+                .remove_thread_member(place, Id::<UserMarker>::new(member))
+                .await
+            {
+                tracing::debug!(ticket = ticket.id, member, %error, "ticket member not taken out of the thread");
+            }
         }
         if let Err(error) = app.http.update_thread(place).archived(true).locked(true).await {
             tracing::debug!(ticket = ticket.id, %error, "ticket thread not archived");
@@ -852,21 +976,21 @@ async fn tell_opener(app: &App, ticket: &Ticket, settings: &TicketSettings, serv
     } else {
         Vec::new()
     };
-    let files: Vec<Attachment> = if settings.dm_transcript {
-        vec![Attachment::from_bytes(file.0, file.1, 1)]
-    } else {
-        Vec::new()
-    };
     let sent = app
         .http
         .create_message(channel)
         .content(&text)
         .components(&components)
-        .attachments(&files)
         .allowed_mentions(quiet().as_ref())
         .await;
     if let Err(error) = sent {
         tracing::debug!(ticket = ticket.id, %error, "ticket direct message not delivered");
+    }
+    if settings.dm_transcript {
+        let files = [Attachment::from_bytes(file.0, file.1, 1)];
+        if let Err(error) = app.http.create_message(channel).attachments(&files).await {
+            tracing::debug!(ticket = ticket.id, %error, "ticket transcript direct message not delivered");
+        }
     }
 }
 

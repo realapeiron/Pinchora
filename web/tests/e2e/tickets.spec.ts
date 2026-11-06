@@ -153,6 +153,15 @@ test("tickets opened on the panel show in the table and one shows its transcript
   expect(html).toContain("&lt;script&gt;");
   expect(html).not.toContain("<script");
   await shot(page, "tickets-transcript", true);
+
+  await page.getByRole("link", { name: "All tickets" }).click();
+  const support = table.locator('[data-ticket="3"]');
+  await support.getByRole("button", { name: "Close" }).click();
+  await expect(support).toContainText("CLOSED");
+  await table.getByRole("link", { name: /#0002/ }).click();
+  await page.getByRole("button", { name: "Close ticket" }).click();
+  await expect(page.getByRole("heading", { name: "TICKET #0002" })).toBeVisible();
+  await expect(page.getByText("CLOSED", { exact: true })).toBeVisible();
 });
 
 test("the tickets pages fit a phone", async ({ page }) => {

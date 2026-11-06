@@ -272,6 +272,22 @@ export function useTicket(guild: string, id: string | undefined) {
   });
 }
 
+export function useCloseTicket(guild: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api<{ id: string; state: "closed" }>(`${base(guild)}/ticket/${id}/close`, "POST"),
+    onSuccess: async (_, id) => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: [`${base(guild)}/ticket/${id}`] }),
+        client.invalidateQueries({ queryKey: [`${base(guild)}/list`] }),
+        client.invalidateQueries({ queryKey: [base(guild)] }),
+        client.invalidateQueries({ queryKey: [`/api/guilds/${guild}/audit`] }),
+      ]);
+    },
+  });
+}
+
 export function transcriptUrl(guild: string, id: string): string {
   return `${base(guild)}/ticket/${id}/transcript.html`;
 }

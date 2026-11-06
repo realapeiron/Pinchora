@@ -438,13 +438,16 @@ dashboard's Community group).
   closed ticket's channel has Reopen, Transcript and Delete buttons. Without the Message Content intent the
   transcript keeps who wrote, when, and the file names, and says why the words are missing.
 - **Auto-close**: every five minutes the bot asks Discord for the last message of tickets idle longer than
-  the server allows, and closes the ones that really are (a switched-off module pauses it).
+  the server allows, and closes the ones that really are (a switched-off module pauses it). If a ticket
+  channel or thread is deleted directly in Discord, the bot closes its ticket record when it receives the
+  delete event or the member next tries to open a ticket.
 - **Transcripts** are self-contained pages (no scripts, nothing loaded from elsewhere) with every word members
-  wrote escaped. "Delete my data" removes the tickets a member opened and turns their name on other tickets'
+  wrote escaped. HTML downloads stay below 7 MiB and note how many older messages were left out. "Delete my data"
+  removes the tickets a member opened and turns their name on other tickets'
   transcripts into "Deleted user"; staff who claimed or closed tickets are cleared from them.
 - **Dashboard** (Tickets page): settings, panels with tabs (Buttons, Behaviour, Form, Log), a live preview and a
   **Post** button, the tickets table (open, claimed, closed; by staff, member or words) with each ticket's
-  transcript, and the last 7 and 30 days: opened, closed, median first reply and ratings.
+  transcript, a Close button in the list and detail, and the last 7 and 30 days: opened, closed, median first reply and ratings.
 
 ### Temp voice
 

@@ -237,18 +237,31 @@ async fn create(
     if let Some(lacking) = missing(cx, need) {
         return Ok(Err(lacking));
     }
-    let opened = app
-        .db
-        .open_ticket(&NewTicket {
-            guild_id: guild,
-            panel_id: Some(panel.id),
-            opener,
-            topic: &topic.label,
-            answers,
-            max_open: settings.max_open_per_user,
-            at: app.now(),
-        })
-        .await?;
+    let new = NewTicket {
+        guild_id: guild,
+        panel_id: Some(panel.id),
+        opener,
+        topic: &topic.label,
+        answers,
+        max_open: settings.max_open_per_user,
+        at: app.now(),
+    };
+    let mut opened = app.db.open_ticket(&new).await?;
+    if matches!(opened, TicketOpen::TooMany { .. }) {
+        let mut recovered = false;
+        for stale in app.db.open_tickets_for_user(guild, opener).await? {
+            let Some(place) = stale.place() else { continue };
+            if let Err(error) = app.http.channel(Id::new(place)).await
+                && crate::roles::error_code(&error) == Some(super::UNKNOWN_CHANNEL)
+            {
+                super::on_place_deleted(app, guild, place).await?;
+                recovered = true;
+            }
+        }
+        if recovered {
+            opened = app.db.open_ticket(&new).await?;
+        }
+    }
     let ticket = match opened {
         TicketOpen::Opened(ticket) => *ticket,
         TicketOpen::TooMany { open } => {

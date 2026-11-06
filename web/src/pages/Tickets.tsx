@@ -24,6 +24,7 @@ import {
   exampleName,
   personLabel,
   stars,
+  useCloseTicket,
   useSaveTicketSettings,
   useTicketList,
   useTickets,
@@ -407,6 +408,7 @@ const STATES = [
 const STATE_BADGE = { open: "badge-gold", claimed: "badge-mint", closed: "tk-badge-quiet" } as const;
 
 function TicketList({ guild }: { guild: string }) {
+  const close = useCloseTicket(guild);
   const [filter, setFilter] = useState<TicketFilter>({ state: "", q: "", user: "", staff: "" });
   const [typed, setTyped] = useState<TicketFilter>(filter);
   const list = useTicketList(guild, filter);
@@ -512,6 +514,9 @@ function TicketList({ guild }: { guild: string }) {
               <th scope="col" role="columnheader">
                 Rating
               </th>
+              <th scope="col" role="columnheader">
+                Action
+              </th>
             </tr>
           </thead>
           <tbody role="rowgroup">
@@ -550,11 +555,24 @@ function TicketList({ guild }: { guild: string }) {
                     "—"
                   )}
                 </td>
+                <td role="cell" data-label="Action">
+                  {t.state !== "closed" && (
+                    <PixelButton
+                      variant="secondary"
+                      className="button-small tk-close"
+                      disabled={close.isPending}
+                      onClick={() => close.mutate(t.id)}
+                    >
+                      Close
+                    </PixelButton>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
+      {close.isError && <Problem error={close.error} />}
       {list.hasNextPage && (
         <div className="tk-more">
           <PixelButton

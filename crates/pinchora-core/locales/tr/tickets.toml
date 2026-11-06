@@ -38,6 +38,7 @@ rated = "Teşekkürler! Puanın: {stars}"
 rated-already = "Bu talep zaten puanlanmış."
 auto-reason = { one = "1 saattir kimse yazmadı.", other = "{count} saattir kimse yazmadı." }
 channel-topic = "Talep {number} · {topic}"
+channel-deleted = "Talep kanalı silindi."
 
 [tickets.panel]
 footer = "Gizli bir talep açmak için bir konu seç."
@@ -77,7 +78,7 @@ opened = "{user} ({name}) **{topic}** konusunda {place} talebini açtı."
 claimed-title = "Talep {number} üstlenildi"
 claimed = "{place} ile {user} ilgileniyor."
 closed-title = "Talep {number} kapandı"
-closed = { one = "Açan: {opener}, kapatan: {user}. {count} mesaj, döküm ekte.", other = "Açan: {opener}, kapatan: {user}. {count} mesaj, döküm ekte." }
+closed = { one = "Açan: {opener}, kapatan: {user}. {count} mesaj; döküm ardından gönderilecek.", other = "Açan: {opener}, kapatan: {user}. {count} mesaj; döküm ardından gönderilecek." }
 reopened-title = "Talep {number} yeniden açıldı"
 reopened = "Yeniden açan: {user}."
 
@@ -189,9 +190,13 @@ closed = "Kapatan: {who}, {at}"
 reason = "Sebep: {reason}"
 deleted-user = "Silinmiş kullanıcı"
 no-content = "Bot, Discord'un Mesaj İçeriği iznini kullanmıyor; bu yüzden döküm kimin ne zaman yazdığını ve dosyaları tutar, yazılanları tutmaz."
+cut = { one = "Dosya boyutunu sınırlamak için eski 1 mesaj çıkarıldı.", other = "Dosya boyutunu sınırlamak için eski {count} mesaj çıkarıldı." }
 empty = "Bu talebe kimse bir şey yazmadı."
 files = { one = "1 dosya:", other = "{count} dosya:" }
 embeds = { one = "1 gömülü içerik", other = "{count} gömülü içerik" }
+
+[tickets.web]
+already-closed = "Bu talep zaten kapatılmış."
 
 # Komutların Türkçe açıklamaları (Discord'da görünen metinler).
 [cmd]

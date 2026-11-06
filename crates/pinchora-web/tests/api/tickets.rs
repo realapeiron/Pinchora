@@ -81,7 +81,7 @@ async fn seed_ticket(
         Line {
             a: 2,
             t: at(14),
-            c: Some("Sorry about that! A new one is on its way.".into()),
+            c: Some(format!("Sorry about that! A new one is on its way. <@{staff}>")),
             f: vec![],
             e: 0,
         },
@@ -273,6 +273,7 @@ async fn tickets_list_filter_and_show_their_transcript() {
     assert_eq!(detail["ticket"]["close_reason"], "Solved: replacement sent");
     assert_eq!(detail["transcript"]["messages"], 4);
     assert_eq!(detail["transcript"]["authors"][1]["name"], "Mia");
+    assert!(detail["transcript"]["lines"][2]["c"].as_str().unwrap().contains("@Kai"));
     assert_eq!(detail["ticket"]["answers"][0]["answer"], "#4242");
     let summary = browser.get(&t(guild)).await.json()["summary"]["week"].clone();
     assert_eq!(summary["opened"], 2);
@@ -289,6 +290,26 @@ async fn tickets_list_filter_and_show_their_transcript() {
     let html = page.text();
     assert!(html.contains("&lt;script&gt;") && !html.contains("<script"), "{html}");
     assert!(html.contains("Kai") && html.contains("Mia") && html.contains("receipt.png"));
+    assert!(html.contains("@Kai"));
+
+    let closed_from_web = browser
+        .write(Method::POST, &format!("{}/ticket/{open}/close", t(guild)), json!({}))
+        .await;
+    assert_eq!(closed_from_web.status, StatusCode::OK, "{}", closed_from_web.text());
+    assert_eq!(closed_from_web.json()["state"], "closed");
+    assert_eq!(db.ticket(open).await.unwrap().unwrap().closed_by, Some(_owner as i64));
+    let repeated = browser
+        .write(Method::POST, &format!("{}/ticket/{open}/close", t(guild)), json!({}))
+        .await;
+    assert_eq!(repeated.status, StatusCode::CONFLICT);
+    let audit = browser.get(&format!("/api/guilds/{guild}/audit")).await.json();
+    assert!(
+        audit["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|row| row["action"] == "tickets.close")
+    );
 
     // Somebody else's server's ticket is not here.
     let (other, _, _) = h.managed_server().await;
@@ -299,6 +320,20 @@ async fn tickets_list_filter_and_show_their_transcript() {
         .get(&format!("{}/ticket/{stranger}/transcript.html", t(guild)))
         .await;
     assert_eq!(missing.status, StatusCode::NOT_FOUND);
+
+    db.delete_user_data(kai, Utc::now()).await.unwrap();
+    let after_delete = browser.get(&format!("{}/ticket/{closed}", t(guild))).await.json();
+    assert!(
+        after_delete["transcript"]["lines"][2]["c"]
+            .as_str()
+            .unwrap()
+            .contains("@Deleted user")
+    );
+    let after_html = browser
+        .get(&format!("{}/ticket/{closed}/transcript.html", t(guild)))
+        .await
+        .text();
+    assert!(after_html.contains("@Deleted user") && !after_html.contains("@Kai"));
 }
 
 /// Leaves tickets on the panel the browser test made, for its screenshots: `TICKETS_SEED_GUILD` names the

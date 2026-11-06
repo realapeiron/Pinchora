@@ -358,6 +358,11 @@
   background: #c62e33;
 }
 
+.pixel-button.tk-close {
+  border-color: #a93f58;
+  color: #ffe5eb;
+}
+
 .dc-select {
   margin-top: 10px;
   display: flex;
