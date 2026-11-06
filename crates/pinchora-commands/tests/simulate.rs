@@ -72,6 +72,9 @@ use twilight_model::{
 mod board;
 #[path = "simulate/collection.rs"]
 mod collection;
+// Correctness follow-ups: stale buttons, forfeits, repeated requests, forged ids, voice XP at scale.
+#[path = "simulate/w9a.rs"]
+mod w9a;
 // The party games' flows (Hot Pearl, Acronym Tide, Caption the Postcard, Wordle Race, Would You Rather, Truth or Dare).
 #[path = "simulate/words.rs"]
 mod words;
@@ -1754,9 +1757,9 @@ async fn connect_four_wagers_are_held_paid_and_refunded() {
 }
 
 #[tokio::test]
-async fn connect_four_timeouts_give_the_bets_back_even_after_a_restart() {
+async fn connect_four_timeouts_forfeit_the_pot_even_after_a_restart() {
     let _serial = SWEEPS.lock().await;
-    let Some(mut sim) = Sim::new("connect_four_timeouts_give_the_bets_back_even_after_a_restart").await else {
+    let Some(mut sim) = Sim::new("connect_four_timeouts_forfeit_the_pot_even_after_a_restart").await else {
         return;
     };
     let (a, b, c, d, e) = (unique(), unique(), unique(), unique(), unique());
@@ -1764,7 +1767,7 @@ async fn connect_four_timeouts_give_the_bets_back_even_after_a_restart() {
         fund(&sim, user, 300).await;
     }
 
-    // The player to move does nothing: the janitor ends the game and edits its message.
+    // The player to move does nothing: the janitor ends the game, the other takes the pot, and the message says so.
     let challenge = duel(&mut sim, a, b, "connect4", vec![int_option("bet", 50)]).await;
     let board = sim.click(b, &challenge, "Accept").await;
     let session = session_of(&board);
@@ -1775,8 +1778,8 @@ async fn connect_four_timeouts_give_the_bets_back_even_after_a_restart() {
     sweep_games(&sim.app).await.expect("sweep");
     assert_eq!(
         (shells(&sim, a).await, shells(&sim, b).await),
-        (300, 300),
-        "both wagers are back"
+        (250, 350),
+        "the player who ran out of time loses the wager to the other"
     );
     let message = message_of(&sim, session).await;
     let posts = sim.posts();
@@ -1786,12 +1789,13 @@ async fn connect_four_timeouts_give_the_bets_back_even_after_a_restart() {
         .expect("the message says the game timed out");
     assert!(edit.content().contains("ran out of time"), "{}", edit.content());
     assert!(
-        edit.content().contains(&format!("<@{a}>")),
+        edit.content().contains(&format!("<@{a}> ran out of time and forfeits")),
         "A was to move: {}",
         edit.content()
     );
     assert!(
-        edit.content().contains("Both wagers were given back"),
+        edit.content()
+            .contains(&format!("<@{b}> takes the pot of **100** shells")),
         "{}",
         edit.content()
     );
@@ -1801,11 +1805,7 @@ async fn connect_four_timeouts_give_the_bets_back_even_after_a_restart() {
         "the buttons are gone"
     );
     sweep_games(&sim.app).await.expect("sweep again");
-    assert_eq!(
-        (shells(&sim, a).await, shells(&sim, b).await),
-        (300, 300),
-        "refunded once"
-    );
+    assert_eq!((shells(&sim, a).await, shells(&sim, b).await), (250, 350), "paid once");
     let late = sim.click(a, &board, "4").await;
     assert!(late.ephemeral && late.content().contains("over"), "{}", late.content());
 
@@ -1820,19 +1820,27 @@ async fn connect_four_timeouts_give_the_bets_back_even_after_a_restart() {
         "{}",
         ended.content()
     );
-    assert_eq!((shells(&sim, c).await, shells(&sim, d).await), (300, 300));
+    assert_eq!(
+        (shells(&sim, c).await, shells(&sim, d).await),
+        (250, 350),
+        "C was to move, so D takes the pot"
+    );
 
     // A restart loses nothing: the wager lives in the database, so a fresh process settles it.
     let challenge = duel(&mut sim, e, b, "connect4", vec![int_option("bet", 200)]).await;
     let board = sim.click(b, &challenge, "Accept").await;
-    assert_eq!((shells(&sim, e).await, shells(&sim, b).await), (100, 100));
+    assert_eq!((shells(&sim, e).await, shells(&sim, b).await), (100, 150));
     expire(&sim, session_of(&board)).await;
     drop(sim);
     let Some(restarted) = Sim::new("connect_four_after_a_restart").await else {
         return;
     };
     sweep_games(&restarted.app).await.expect("sweep");
-    assert_eq!((shells(&restarted, e).await, shells(&restarted, b).await), (300, 300));
+    assert_eq!(
+        (shells(&restarted, e).await, shells(&restarted, b).await),
+        (100, 550),
+        "E was to move and forfeits to B"
+    );
 }
 
 #[tokio::test]
@@ -2230,7 +2238,11 @@ async fn the_daily_wordle_is_typed_into_a_form_and_shared_without_spoilers() {
     assert_eq!(record_of(&sim, player, "wordle").await, (1, 1));
     won.button("Share result");
 
-    let late = sim.click(player, &board, "Guess").await;
+    // The form still opens (nothing is read before it does); a board that is over says so when the guess
+    // is sent.
+    let late_form = sim.click(player, &board, "Guess").await;
+    assert!(late_form.modal.is_some(), "{late_form}");
+    let late = sim.submit(player, &late_form, miss, &won).await;
     assert!(
         late.ephemeral && late.content().contains("finished"),
         "{}",
@@ -5880,6 +5892,12 @@ async fn partners_propose_accept_view_leave() {
         "{}",
         said_no.content()
     );
+    // The same player cannot be asked again for a minute (Redis keeps real time: end the wait by hand).
+    sim.app
+        .cache
+        .release_cooldown(&format!("ask:partner:{e}:{f}"))
+        .await
+        .unwrap();
     let (options, users) = propose(f, "Fay");
     let asked = sim.command_resolved(e, "partner", options, users).await;
     let back = sim.click(e, &asked, "Decline").await;
@@ -6302,7 +6320,13 @@ async fn friends_add_accept_list_remove_and_visit() {
     let no = sim.click(c, &asked, "Decline").await;
     assert!(no.content().contains("said no thanks"), "{}", no.content());
     assert!(!sim.app.db.are_friends(a, c).await.unwrap());
-    // A request stops being good after a day.
+    // A request stops being good after a day. (The same player cannot be asked again for a minute; Redis keeps
+    // real time, so the wait is ended by hand.)
+    sim.app
+        .cache
+        .release_cooldown(&format!("ask:friend:{a}:{c}"))
+        .await
+        .unwrap();
     let (options, users) = add(c, "Cy");
     let asked = sim.command_resolved(a, "friends", options, users).await;
     sim.app.shift_clock(chrono::Duration::hours(25));
@@ -6765,7 +6789,8 @@ impl Sim {
             .expect("the guild create handler failed");
     }
 
-    /// Who voice XP remembers in this server, by user id.
+    /// Who voice XP remembers in this server, by user id. A member who left is only a note in channel 0 (see
+    /// `voice_xp::LEFT_KEPT`): not somebody in voice.
     async fn voice_members(&self) -> Vec<u64> {
         let mut users: Vec<u64> = self
             .app
@@ -6774,6 +6799,7 @@ impl Sim {
             .await
             .expect("voice hash")
             .iter()
+            .filter(|(_, record)| !record.starts_with("0|"))
             .map(|(user, _)| user.parse().expect("a user id"))
             .collect();
         users.sort_unstable();
@@ -7382,6 +7408,9 @@ async fn a_guild_create_snapshot_replaces_who_is_remembered_in_voice() {
 
     // The snapshot is the truth: it lists who is in voice now; its member list says who is a bot and
     // who holds which role. `stranger` has no member there, so they wait for their next voice event.
+    // The bot was away for a moment: what it remembered was written before the snapshot was taken (a voice
+    // event after the snapshot stays as the event left it).
+    sim.app.shift_clock(chrono::Duration::seconds(1));
     let boosted: &[u64] = &[booster_id];
     sim.snapshot(
         &[
@@ -7428,10 +7457,12 @@ async fn a_guild_create_snapshot_replaces_who_is_remembered_in_voice() {
     assert_eq!(sim.voice_members().await, now);
 
     // Leaves that happened while the bot was away disappear with the next snapshot...
+    sim.app.shift_clock(chrono::Duration::seconds(1));
     sim.snapshot(&[(b, lounge, false, false)], &[(b, false, &[])], None)
         .await;
     assert_eq!(sim.voice_members().await, vec![b]);
     // ...all of them when the server is empty...
+    sim.app.shift_clock(chrono::Duration::seconds(1));
     sim.snapshot(&[], &[], None).await;
     assert!(sim.voice_members().await.is_empty());
     assert!(
@@ -10163,6 +10194,11 @@ async fn giveaways_run_pay_once_and_survive_restarts() {
         announced.content().contains(&format!("<@{leftover}>")) && pings_nobody(announced),
         "{}",
         announced.body
+    );
+    assert!(
+        announced.content().contains("(no shells on a reroll)"),
+        "the shells prize says nothing is paid again: {}",
+        announced.content()
     );
     assert_eq!(shells(&sim, leftover).await, 0, "a reroll does not pay shells");
     let none_left = giveaway_cmd(&mut sim, host, "reroll", vec![id]).await;

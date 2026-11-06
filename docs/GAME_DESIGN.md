@@ -205,7 +205,10 @@ player's gear at that moment.
   shallower spot's best, if better gear stops being clearly better, if the 40,000-shell rod pays for itself in
   under 15 hours of Abyss fishing or if legendaries pass 0.3% of casts at any hour at any spot with the best rod
   (about 0.22% at the Abyss, 0.14% at the Deep Sea). For comparison `/daily` pays 250-750 a day. Baits mostly
-  shift the odds rather than the wage: they cost 13 / 28 / 24 shells a cast against 10 for plain bait.
+  shift the odds rather than the wage: they cost 13 / 28 / 24 shells a cast against 10 for plain bait. The Silver
+  Lure and Tide Crumbs are for hunting rare and signature fish, not for income: with any rod they lose shells at
+  the Shore, Reef and Kelp Forest (the starter rod with a Silver Lure at the Shore is about -857 an hour), and
+  Tide Crumbs halves the Abyss wage. The tackle shop's card and the bait menus say so in plain words.
 - **Sizes and selling**: a size is normal around the middle of the species' range, three deviations to either
   end of it. A catch goes to `fish_bucket` (60 fish at most) and to the fish book, which keeps the count and the
   record size for good; `/fish sell` sells all or all but the biggest of each species, for the species' worth
@@ -256,7 +259,7 @@ hourly market with shared stock, catalog, inventory, gifts, player stalls (5% fe
 plaza (donations + manager editing), pets (adopt, capsules with published odds, care with
 decaying needs, pets wander in rooms), fishing (timed Reel button, fish book), daily quests
 (pearl all-clear), duels (tic-tac-toe, connect four, rock paper scissors, Sea Fleet, Reef Chess and Pearl
-Checkers, with optional escrowed wagers; in the last three a player who runs out of time forfeits the pot),
+Checkers, with optional escrowed wagers; in all of them but Share or Grab a player who runs out of time forfeits the pot),
 calm games (hangman, daily and practice wordle, trivia, Pixel Picross, Tide 2048, `/play stats`), profile / rank / wallet / pet / level-up / welcome
 cards, welcome card designer, pixel characters (`/character`), leaderboard card, card backgrounds and badges (`/customize`).
 

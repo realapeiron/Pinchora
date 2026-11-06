@@ -13,7 +13,7 @@ use super::*;
 
 /// Drops are closed by whoever ticks, for every drop in the database, so the tests that make drops and the
 /// ones that move the clock on take turns.
-static COLLECTION: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+pub(super) static COLLECTION: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
 /// Turns chat drops on for the sim's server, here or in `channel`.
 async fn enable_drops(sim: &Sim, channel: Option<u64>) {
