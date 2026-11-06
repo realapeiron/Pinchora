@@ -15,6 +15,7 @@ mod guilds;
 mod house;
 mod house_read;
 mod interactions;
+mod language;
 mod locks;
 mod members;
 mod modules;

@@ -1,0 +1,28 @@
+# Labels drawn on the pixel cards. They are drawn in capitals in a pixel font: keep them short.
+
+[card]
+level = "SEVİYE"
+rank = "SIRA"
+experience = "DENEYİM"
+about-me = "HAKKIMDA"
+no-bio = "Henüz bir şey yazılmamış. /bio ile kendini anlat."
+shells = "KABUK"
+pearls = "İNCİ"
+global = "DÜNYA"
+server = "SUNUCU"
+rep = "{count} REP"
+total-xp = "TOPLAM {xp} XP"
+next-role = "Sonraki rol: {level}. seviyede {role}"
+wallet = "CÜZDAN"
+streak = "SERİ"
+pets = "HAYVANLAR"
+fish-book = "BALIK DEFTERİ"
+daily = "GÜNLÜK"
+weekly = "HAFTALIK"
+monthly = "AYLIK"
+help-title = "PINCHORA YARDIM"
+page = "SAYFA {page}/{pages}"
+needs-manage-server = "SUNUCUYU YÖNET İZNİ GEREKİR"
+
+[card.days]
+other = "{count} GÜN"

@@ -1,4 +1,4 @@
-use pinchora_core::economy::DAILY_COOLDOWN;
+use pinchora_core::{economy::DAILY_COOLDOWN, t};
 use pinchora_db::DailyOutcome;
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_util::builder::embed::EmbedBuilder;
@@ -24,6 +24,7 @@ impl Daily {
             let ready = chrono::Utc::now() + DAILY_COOLDOWN;
             remind::after_claim(&cx.app, cx.author()?.id.get(), "daily", ready).await;
         }
+        let lang = cx.lang();
         let embed = match outcome {
             DailyOutcome::Claimed {
                 amount,
@@ -31,16 +32,13 @@ impl Daily {
                 balance,
             } => EmbedBuilder::new()
                 .color(SUCCESS)
-                .title(format!("+{} shells", thousands(amount)))
-                .description(format!(
-                    "Day **{streak}** of your streak. You now have **{}** shells.\nCome back tomorrow; the streak bonus grows for 20 days.",
-                    thousands(balance)
-                ))
+                .title(t!(lang, "daily.claimed-title", amount = thousands(amount)))
+                .description(t!(lang, "daily.claimed", streak = streak, balance = thousands(balance)))
                 .build(),
             DailyOutcome::Cooldown { next_at } => EmbedBuilder::new()
                 .color(WARN)
-                .title("Already collected today")
-                .description(format!("Your next daily is ready {}.", relative(next_at)))
+                .title(t!(lang, "daily.cooldown-title"))
+                .description(t!(lang, "daily.cooldown", when = relative(next_at)))
                 .build(),
         };
         cx.reply_embed(embed).await?;

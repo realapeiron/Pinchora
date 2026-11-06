@@ -22,6 +22,7 @@ pub(crate) mod heist;
 pub(crate) mod help;
 pub(crate) mod house;
 pub(crate) mod interact;
+pub(crate) mod language;
 pub(crate) mod leaderboard;
 pub(crate) mod level_roles;
 pub(crate) mod modules;
@@ -68,7 +69,9 @@ macro_rules! commands {
     ($($ty:ty),* $(,)?) => {
         /// Every slash command, for registration.
         pub fn definitions() -> Vec<Command> {
-            vec![$(<$ty as CreateCommand>::create_command().into()),*]
+            let mut commands = vec![$(<$ty as CreateCommand>::create_command().into()),*];
+            crate::lang::localize(&mut commands);
+            commands
         }
 
         pub(crate) async fn dispatch(cx: &Cx, data: CommandData) -> anyhow::Result<()> {
@@ -135,4 +138,5 @@ commands!(
     collection::drops::CritterDrop,
     surge::SurgeCommand,
     party_games::PartyCommand,
+    language::LanguageCommand,
 );

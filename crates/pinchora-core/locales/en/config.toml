@@ -1,0 +1,5 @@
+# /config replies.
+
+[config]
+guild-only = "Settings only exist inside a server."
+needs-manage-server = "You need the Manage Server permission to change this server's settings."

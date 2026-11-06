@@ -236,6 +236,11 @@ pub(crate) fn text(
     body: &str,
 ) {
     let weight = if bold { "bold" } else { "normal" };
+    let body = if family == PIXEL {
+        crate::svg::pixel_letters(body)
+    } else {
+        body.into()
+    };
     let _ = write!(
         out,
         r#"<text x="{x}" y="{y}" font-family="{family}" font-size="{size}" font-weight="{weight}" fill="{fill}" text-anchor="{anchor}">{body}</text>"#
@@ -267,6 +272,8 @@ mod tests {
 
     fn profile<'a>(backdrop: Option<Backdrop<'a>>, badges: &'a [BadgeIcon<'a>]) -> ProfileCard<'a> {
         ProfileCard {
+            lang: pinchora_core::i18n::Lang::En,
+            lang: pinchora_core::i18n::Lang::En,
             display_name: "Captain Pinch",
             title: None,
             username: "captain.pinch",
@@ -295,6 +302,8 @@ mod tests {
         let plain = [
             profile(None, &[]).to_svg(),
             RankCard {
+                lang: pinchora_core::i18n::Lang::En,
+                lang: pinchora_core::i18n::Lang::En,
                 display_name: "A",
                 title: None,
                 username: "a",
@@ -309,6 +318,7 @@ mod tests {
             }
             .to_svg(),
             WalletCard {
+                lang: pinchora_core::i18n::Lang::En,
                 display_name: "A",
                 avatar_png: &[],
                 shells: 1,
@@ -400,6 +410,8 @@ mod tests {
 
     fn rank(title: Option<&str>) -> RankCard<'_> {
         RankCard {
+            lang: pinchora_core::i18n::Lang::En,
+            lang: pinchora_core::i18n::Lang::En,
             display_name: "Captain Pinch",
             title,
             username: "captain.pinch",
@@ -1022,6 +1034,7 @@ mod tests {
         let themed = |opacity, frame| Theme::reef().with_style(opacity, frame);
         let rank = |theme| RankCard { theme, ..rank(None) };
         let wallet = |theme| WalletCard {
+            lang: pinchora_core::i18n::Lang::En,
             display_name: "A",
             avatar_png: &[],
             shells: 1,

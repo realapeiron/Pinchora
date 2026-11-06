@@ -896,6 +896,8 @@ struct Sim {
     /// The channel interactions come from; tests that need channel-wide cooldowns to themselves
     /// pick their own.
     channel: u64,
+    /// The invoker's Discord client language.
+    locale: &'static str,
 }
 
 impl Sim {
@@ -966,6 +968,7 @@ impl Sim {
             dir,
             step: 0,
             channel: CHANNEL_ID,
+            locale: "en-US",
         })
     }
 
@@ -1274,7 +1277,7 @@ impl Sim {
             "version": 1,
             "guild_id": self.guild.to_string(),
             "channel": { "id": self.channel.to_string(), "type": 0, "guild_id": self.guild.to_string() },
-            "locale": "en-US",
+            "locale": self.locale,
             "guild_locale": "en-US",
             "context": 0,
             "attachment_size_limit": 26_214_400,
@@ -1476,6 +1479,66 @@ async fn profile_and_daily() {
     assert_eq!(profile.files.len(), 1);
     assert_eq!(profile.files[0].0, "profile.png");
     assert!(sim.app.db.user(user).await.expect("user row").credits > 0);
+}
+
+/// A player whose Discord is in Turkish gets Turkish replies and Turkish cards; `/language set`
+/// overrides the client, and "Automatic" goes back to it.
+#[tokio::test]
+async fn turkish_players_get_turkish_text_and_cards() {
+    let Some(mut sim) = Sim::new("turkish_players_get_turkish_text_and_cards").await else {
+        return;
+    };
+    let user = unique();
+    let set = |value: &str| json!([{ "name": "set", "type": 1, "options": [{ "name": "language", "type": 3, "value": value }] }]);
+    let english = card_pixels(&sim.command(user, "profile", json!([])).await, (960, 540));
+    let english_rank = card_pixels(&sim.command(user, "rank", json!([])).await, (934, 282));
+
+    sim.locale = "tr";
+    let profile = sim.command(user, "profile", json!([])).await;
+    assert_eq!(profile.files[0].0, "profile.png");
+    let turkish = card_pixels(&profile, (960, 540));
+    assert!(
+        differ_in(&english, &turkish, 60..264, 296..316),
+        "the LEVEL label is SEVİYE"
+    );
+    let rank = sim.command(user, "rank", json!([])).await;
+    assert!(
+        differ_in(&english_rank, &card_pixels(&rank, (934, 282)), 600..900, 56..78),
+        "RANK and LEVEL"
+    );
+    let help = sim.command(user, "help", json!([])).await;
+    assert!(help.description().contains("Menüden"), "{}", help.description());
+    assert_eq!(help.files[0].0, "help.png");
+
+    // The player's own pick beats the client.
+    let picked = sim.command(user, "language", set("en")).await;
+    assert!(picked.content().contains("**English**"), "{}", picked.content());
+    let help = sim.command(user, "help", json!([])).await;
+    assert!(help.description().contains("Pick an area"), "{}", help.description());
+    sim.locale = "en-GB";
+    let picked = sim.command(user, "language", set("tr")).await;
+    assert!(picked.content().contains("**Türkçe**"), "{}", picked.content());
+    let help = sim.command(user, "help", json!([])).await;
+    assert!(help.description().contains("Menüden"), "{}", help.description());
+    // Automatic: the client's language again.
+    let auto = sim.command(user, "language", set("auto")).await;
+    assert!(auto.content().contains("Discord"), "{}", auto.content());
+    assert_eq!(sim.app.db.user_language(user).await.expect("read"), None);
+    let help = sim.command(user, "help", json!([])).await;
+    assert!(help.description().contains("Pick an area"), "{}", help.description());
+
+    // A server default answers nobody in particular; the reply is still in the player's language.
+    sim.locale = "tr";
+    sim.permissions = 0x20;
+    let config =
+        json!([{ "name": "language", "type": 1, "options": [{ "name": "language", "type": 3, "value": "tr" }] }]);
+    let config = sim.command(user, "config", config).await;
+    assert!(
+        config.content().contains("varsayılan dili artık **Türkçe**"),
+        "{}",
+        config.content()
+    );
+    assert_eq!(sim.app.guild_lang(sim.guild).await, pinchora_core::i18n::Lang::Tr);
 }
 
 /// Emoji and CJK in a name draw as letters on the profile card, where they once drew as empty boxes: the name

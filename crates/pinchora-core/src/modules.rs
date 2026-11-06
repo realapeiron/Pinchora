@@ -4,7 +4,7 @@
 
 use std::collections::HashMap;
 
-use crate::settings::FieldError;
+use crate::{i18n::Lang, settings::FieldError, t};
 
 /// How many channels one module may name.
 pub const MAX_CHANNELS: usize = 50;
@@ -12,7 +12,7 @@ pub const MAX_CHANNELS: usize = 50;
 /// Commands that stay available whatever a server switches off: the way back in, the basics, and
 /// what is the player's own business rather than the server's (their privacy and data, and the
 /// reminders they asked for).
-pub const NEVER_GATED: [&str; 5] = ["config", "help", "ping", "privacy", "remind"];
+pub const NEVER_GATED: [&str; 6] = ["config", "help", "language", "ping", "privacy", "remind"];
 
 /// The custom-id prefixes of the buttons and menus the [`NEVER_GATED`] commands send: they have no
 /// module either.
@@ -185,6 +185,11 @@ impl Module {
             Self::Collection => "Critter drops and beachcombing",
             Self::Gambling => "Gambling-style games",
         }
+    }
+
+    /// [`Module::label`] in `lang`.
+    pub fn name(self, lang: Lang) -> String {
+        t!(lang, &format!("module.{}", self.key()))
     }
 
     /// One line on what the module covers, for the dashboard and `/config modules show`.
@@ -523,17 +528,13 @@ pub fn edit_channels(
 }
 
 /// The sentence that says a module is off, for the person who tried it. `manager` adds the way back.
-pub fn refusal(module: Module, access: Access, manager: bool) -> String {
+pub fn refusal(module: Module, access: Access, manager: bool, lang: Lang) -> String {
     let mut text = match access {
-        Access::ServerOff | Access::Allowed => "This feature is turned off on this server.",
-        Access::ChannelOff => "This feature is turned off in this channel.",
-    }
-    .to_owned();
+        Access::ServerOff | Access::Allowed => t!(lang, "gate.server-off"),
+        Access::ChannelOff => t!(lang, "gate.channel-off"),
+    };
     if manager {
-        text.push_str(&format!(
-            " It is the **{}** module: switch it on with `/config modules` or on the dashboard.",
-            module.label()
-        ));
+        text.push_str(&t!(lang, "gate.how-to-enable", module = module.name(lang)));
     }
     text
 }
@@ -770,18 +771,25 @@ mod tests {
     #[test]
     fn the_refusal_and_the_summary_read_well() {
         assert_eq!(
-            refusal(Module::Pets, Access::ServerOff, false),
+            refusal(Module::Pets, Access::ServerOff, false, Lang::En),
             "This feature is turned off on this server."
         );
         assert_eq!(
-            refusal(Module::Pets, Access::ChannelOff, false),
+            refusal(Module::Pets, Access::ChannelOff, false, Lang::En),
             "This feature is turned off in this channel."
         );
-        let manager = refusal(Module::Pets, Access::ServerOff, true);
+        let manager = refusal(Module::Pets, Access::ServerOff, true, Lang::En);
+        assert_eq!(
+            refusal(Module::Pets, Access::ChannelOff, true, Lang::Tr),
+            "Bu özellik bu kanalda kapalı. Bu, **Evcil hayvanlar** modülü: `/config modules` ile ya da panelden açabilirsin."
+        );
         assert!(
             manager.contains("**Pets**") && manager.contains("/config modules"),
             "{manager}"
         );
+        for module in Module::ALL {
+            assert_eq!(module.name(Lang::En), module.label(), "locales/en/common.toml [module]");
+        }
         let rule = |enabled, mode, n: u64| ModuleRule {
             enabled,
             mode,

@@ -68,6 +68,7 @@ pub struct App {
     channel_places: Moka<u64, ChannelPlace>,
     avatars: Moka<String, Arc<Vec<u8>>>,
     users: Moka<u64, Arc<User>>,
+    pub(crate) languages: crate::lang::Languages,
     tasks: TaskTracker,
     event_slots: Arc<Semaphore>,
     /// Last-seen names and voice channels, so the server log can say what changed.
@@ -136,6 +137,7 @@ impl App {
                 .max_capacity(10_000)
                 .time_to_live(Duration::from_secs(600))
                 .build(),
+            languages: crate::lang::Languages::new(),
             tasks: TaskTracker::new(),
             event_slots: Arc::new(Semaphore::new(1024)),
             log_state: LogState::new(),

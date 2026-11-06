@@ -1,0 +1,42 @@
+# Text many commands share: errors, refusals, the words for the bot's money.
+
+[error]
+generic = "Bizim tarafta bir şeyler ters gitti. Birazdan tekrar dener misin?"
+guild-only = "Bu yalnızca bir sunucunun içinde çalışıyor."
+bot-no-profile = "Botların profili olmaz."
+bot-no-xp = "Botlar XP kazanmaz."
+needs-manage-server = "Bunun için **Sunucuyu Yönet** iznine ihtiyacın var."
+
+[gate]
+server-off = "Bu özellik bu sunucuda kapalı."
+channel-off = "Bu özellik bu kanalda kapalı."
+how-to-enable = " Bu, **{module}** modülü: `/config modules` ile ya da panelden açabilirsin."
+
+# Module names, by `Module::key`, as `/config modules` and refusals name them.
+[module]
+leveling = "Seviye sistemi"
+points = "Sohbet puanları"
+welcome = "Karşılama kartları"
+goodbye = "Veda mesajları"
+log = "Sunucu kaydı"
+role_panels = "Rol panelleri"
+store = "Puan mağazası"
+suggestions = "Öneriler"
+polls = "Anketler"
+giveaways = "Çekilişler"
+profile = "Profiller ve sıralar"
+economy = "Kabuk ekonomisi"
+shop = "Mağazalar ve hediyeler"
+quests = "Günlük görevler"
+social = "Arkadaşlar ve sarılmalar"
+house = "Evler"
+plaza = "Meydan"
+pets = "Evcil hayvanlar"
+fishing = "Balıkçılık"
+duels = "Düellolar"
+board_games = "Masa ve bulmaca oyunları"
+puzzles = "Kelime ve bilgi oyunları"
+party = "Parti oyunları"
+party_games = "Kelime parti oyunları"
+collection = "Canlı düşüşleri ve sahil taraması"
+gambling = "Şans oyunları"

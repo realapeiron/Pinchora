@@ -1,0 +1,32 @@
+# /daily, /weekly, /monthly, /balance, /give.
+
+[daily]
+streak-days = { one = "{count} day", other = "{count} days" }
+
+claimed-title = "+{amount} shells"
+claimed = "Day **{streak}** of your streak. You now have **{balance}** shells.\nCome back tomorrow; the streak bonus grows for 20 days."
+cooldown-title = "Already collected today"
+cooldown = "Your next daily is ready {when}."
+
+[weekly]
+claimed = "Your weekly reward. You now have **{balance}** shells.\nThe next one is ready {when}."
+cooldown-title = "Already collected this week"
+cooldown = "Your next weekly reward is ready {when}."
+
+[monthly]
+claimed = "Your monthly reward. You now have **{balance}** shells.\nThe next one is ready {when}."
+cooldown-title = "Already collected this month"
+cooldown = "Your next monthly reward is ready {when}."
+
+[give]
+self = "You can't send shells to yourself."
+bot = "Bots have no use for shells."
+sent = "Sent **{amount}** shells to {user}. You have **{balance}** left."
+insufficient = "You only have {balance} shells."
+
+# How long until something is ready, as the wallet card writes it: `3h 20m`, `12d 4h`.
+[time]
+ready = "ready"
+days = "{n}d"
+hours = "{n}h"
+minutes = "{n}m"

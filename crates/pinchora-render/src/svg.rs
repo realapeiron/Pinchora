@@ -84,6 +84,7 @@ pub fn sans_width(text: &str, size: f32) -> f32 {
 /// scripts, emoji) is laid out for real, so font fallback and the empty box the pixel font
 /// draws for what it lacks are counted as the renderer draws them.
 pub fn pixel_width(text: &str, size: f32) -> f32 {
+    let text = &*pixel_letters(text);
     if !text.is_ascii() {
         return laid_out_width(text, crate::cards::PIXEL, false, size);
     }
@@ -98,6 +99,27 @@ pub fn pixel_width(text: &str, size: f32) -> f32 {
         })
         .sum();
     pixels as f32 * size / 8.0
+}
+
+/// `text` as the pixel font draws it. The font has no İ, ı, Ş, ş, Ğ or ğ: they become the plain
+/// letter, as Turkish is often typed on keyboards without them, rather than a letter of another font.
+pub(crate) fn pixel_letters(text: &str) -> std::borrow::Cow<'_, str> {
+    const MISSING: [char; 6] = ['İ', 'ı', 'Ş', 'ş', 'Ğ', 'ğ'];
+    if !text.contains(MISSING) {
+        return std::borrow::Cow::Borrowed(text);
+    }
+    text.chars()
+        .map(|c| match c {
+            'İ' => 'I',
+            'ı' => 'i',
+            'Ş' => 'S',
+            'ş' => 's',
+            'Ğ' => 'G',
+            'ğ' => 'g',
+            c => c,
+        })
+        .collect::<String>()
+        .into()
 }
 
 /// How wide the renderer draws `text` in `family` at `size` px, laid out with the card fonts.
