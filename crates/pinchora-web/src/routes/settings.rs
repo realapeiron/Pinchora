@@ -64,6 +64,9 @@ pub struct SettingsBody {
     log_names: Option<bool>,
     log_bans: Option<bool>,
     log_voice: Option<bool>,
+    /// `null` goes back to the default prefix.
+    #[serde(default, deserialize_with = "present")]
+    prefix: Option<Option<String>>,
 }
 
 /// A Discord id from a form: digits, not zero.
@@ -130,6 +133,7 @@ impl SettingsBody {
             log_names: self.log_names,
             log_bans: self.log_bans,
             log_voice: self.log_voice,
+            prefix: self.prefix,
         };
         if errors.is_empty() { Ok(patch) } else { Err(errors) }
     }
@@ -155,7 +159,13 @@ fn diff(before: &GuildSettings, after: &GuildSettings) -> (Map<String, Value>, M
 
 /// The channels and the join role the patch moves to must be ones the bot can use. Unchanged
 /// fields are not checked, so a channel deleted in Discord never blocks saving something else.
-async fn check_discord(state: &WebState, guild: u64, before: &GuildSettings, after: &GuildSettings) -> ApiResult<()> {
+async fn check_discord(
+    state: &WebState,
+    managed: &ManagedGuild,
+    before: &GuildSettings,
+    after: &GuildSettings,
+) -> ApiResult<()> {
+    let guild = managed.id;
     let moved = |old: Option<i64>, new: Option<i64>| new.filter(|_| new != old).map(|id| id as u64);
     let channels: Vec<(&'static str, u64)> = [
         (
@@ -184,8 +194,10 @@ async fn check_discord(state: &WebState, guild: u64, before: &GuildSettings, aft
         channels.iter().all(|(_, id)| info.channel(*id).is_some())
     })
     .await?;
+    let mut grantor = None;
     if role.is_some() {
         let live = guild_info::live(state, guild).await?;
+        grantor = Some(guild_info::grantor(state, managed, &live.roles, true).await?);
         info = GuildInfo {
             roles: live.roles,
             bot: live.bot,
@@ -196,8 +208,8 @@ async fn check_discord(state: &WebState, guild: u64, before: &GuildSettings, aft
         .iter()
         .filter_map(|(field, id)| info.check_post_channel(field, *id).err())
         .collect();
-    if let Some(role) = role
-        && let Err(error) = info.check_assignable("join_role_id", role)
+    if let (Some(role), Some(grantor)) = (role, grantor)
+        && let Err(error) = info.check_grant("join_role_id", role, grantor)
     {
         errors.push(error);
     }
@@ -219,7 +231,7 @@ pub async fn patch(
     if after.is_empty() {
         return Ok(Json(current.into()));
     }
-    check_discord(&state, guild, &current, &next).await?;
+    check_discord(&state, &managed, &current, &next).await?;
     let updated = match db.patch_guild_settings(guild, &patch).await {
         Ok(updated) => updated,
         // Another save moved the other end of the points range between the check and the write.

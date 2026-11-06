@@ -1,5 +1,7 @@
 use std::fmt::Write;
 
+use pinchora_core::{i18n::Lang, t};
+
 use super::{Backdrop, PIXEL, SANS, avatar_frame, backdrop, text};
 use crate::{
     Theme,
@@ -14,6 +16,8 @@ pub struct NextRole<'a> {
 
 /// 934×282 server rank card.
 pub struct RankCard<'a> {
+    /// The language of the labels.
+    pub lang: Lang,
     pub display_name: &'a str,
     /// The title under the name, e.g. `Tide Angler`.
     pub title: Option<&'a str>,
@@ -51,12 +55,32 @@ impl RankCard<'_> {
         }
         avatar_frame(&mut s, self.avatar_png, 33.0, 33.0, 216.0, 8.0, &t.accent, "avatar");
 
-        text(&mut s, 900.0, 74.0, 18.0, PIXEL, false, &t.muted, "end", "RANK");
+        text(
+            &mut s,
+            900.0,
+            74.0,
+            18.0,
+            PIXEL,
+            false,
+            &t.muted,
+            "end",
+            &t!(self.lang, "card.rank"),
+        );
         let rank = format!("#{}", compact(self.rank));
         let level = self.level.to_string();
         // Right-aligned "RANK #n  LEVEL n" cluster.
         text(&mut s, 900.0, 118.0, 44.0, PIXEL, false, &t.ink, "end", &escape(&rank));
-        text(&mut s, 720.0, 74.0, 18.0, PIXEL, false, &t.muted, "end", "LEVEL");
+        text(
+            &mut s,
+            720.0,
+            74.0,
+            18.0,
+            PIXEL,
+            false,
+            &t.muted,
+            "end",
+            &t!(self.lang, "card.level"),
+        );
         text(&mut s, 720.0, 118.0, 44.0, PIXEL, false, &t.accent, "end", &level);
 
         let name = escape(&truncate(self.display_name, 18));
@@ -92,7 +116,12 @@ impl RankCard<'_> {
         );
         text(&mut s, 900.0, 186.0, 16.0, PIXEL, false, &t.ink, "end", &xp);
         if let Some(next) = &self.next_role {
-            let line = format!("Next role: {} at level {}", truncate(next.name, 18), next.level);
+            let line = t!(
+                self.lang,
+                "card.next-role",
+                role = truncate(next.name, 18),
+                level = next.level
+            );
             text(
                 &mut s,
                 282.0,

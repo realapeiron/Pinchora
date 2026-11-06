@@ -261,6 +261,7 @@ export function sleepingPet(sprite: Img, left: boolean): Img {
     body = flatten(body);
     if (left) body = flipHorizontal(body);
   }
+  closeEyes(body);
   for (let i = 0; i < body.data.length; i += 4) {
     if (body.data[i + 3]! > 0) {
       for (let c = 0; c < 3; c++) body.data[i + c] = Math.floor((body.data[i + c]! * 7) / 8);
@@ -269,11 +270,84 @@ export function sleepingPet(sprite: Img, left: boolean): Img {
   const width = Math.max(body.width, 24);
   const out = blank(width, body.height + ZZ_ROOM);
   overlay(out, body, Math.floor((width - body.width) / 2), ZZ_ROOM);
-  // The small one low and to the left, the big one high and to the right.
+  // The small one low by the head, the big one high and away from it: the snore leaves the head, so it
+  // is mirrored with the way the pet lies. The art faces left, which turning an upright pet to the left
+  // keeps (its top is its head) and mirroring a wide one to the left undoes.
   const middle = Math.floor(width / 2);
-  drawGlyph(out, ZZ[0]!, Math.max(middle - 9, 0), 10);
-  drawGlyph(out, ZZ[1]!, middle + 1, 1);
+  const headLeft = upright === left;
+  const places: [number, number][] = headLeft
+    ? [
+        [Math.max(middle - 9, 0), 10],
+        [middle + 1, 1],
+      ]
+    : [
+        [middle + 4, 10],
+        [Math.max(middle - 8, 0), 1],
+      ];
+  drawGlyph(out, ZZ[0]!, places[0]![0], places[0]![1]);
+  drawGlyph(out, ZZ[1]!, places[1]![0], places[1]![1]);
   return out;
+}
+
+/** The most pixels an eye can have: darker, bigger shapes inside a pet are markings. */
+const EYE_MAX = 12;
+
+/**
+ * Closes the eyes of a sleeper: an eye is a small dark patch with body all around it (the dark pixels
+ * that touch the outline or the edge of the picture are the outline), and a closed one is only its
+ * bottom row, the rest painted over with the body beside it. A patch one row high is shut already.
+ */
+function closeEyes(img: Img): void {
+  const [w, h] = [img.width, img.height];
+  const alpha = (x: number, y: number) => img.data[(y * w + x) * 4 + 3]!;
+  const dark = (x: number, y: number) => {
+    if (x < 0 || y < 0 || x >= w || y >= h) return false;
+    const at = (y * w + x) * 4;
+    return img.data[at + 3] === 255 && Math.max(img.data[at]!, img.data[at + 1]!, img.data[at + 2]!) < 80;
+  };
+  const seen = new Array<boolean>(w * h).fill(false);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (seen[y * w + x] || !dark(x, y)) continue;
+      // The patch this pixel is in, and whether it stays clear of the outline.
+      const patch: [number, number][] = [];
+      const stack: [number, number][] = [[x, y]];
+      let inside = true;
+      seen[y * w + x] = true;
+      for (let from = stack.pop(); from; from = stack.pop()) {
+        const [px, py] = from;
+        patch.push([px, py]);
+        for (let dx = -1; dx <= 1; dx++) {
+          for (let dy = -1; dy <= 1; dy++) {
+            const [nx, ny] = [px + dx, py + dy];
+            if (nx < 0 || ny < 0 || nx >= w || ny >= h || alpha(nx, ny) < 255) {
+              inside = false;
+            } else if (dark(nx, ny) && !seen[ny * w + nx]) {
+              seen[ny * w + nx] = true;
+              stack.push([nx, ny]);
+            }
+          }
+        }
+      }
+      let [top, bottom] = [patch[0]![1], patch[0]![1]];
+      for (const [, py] of patch) [top, bottom] = [Math.min(top, py), Math.max(bottom, py)];
+      if (!inside || patch.length > EYE_MAX || top === bottom) continue;
+      for (const [px, py] of patch.filter((p) => p[1] < bottom)) {
+        // The body above the patch, or failing that beside it.
+        const near = (
+          [
+            [px, top - 1],
+            [px - 1, py],
+            [px + 1, py],
+          ] as [number, number][]
+        ).find(([fx, fy]) => fx >= 0 && fy >= 0 && fx < w && fy < h && !dark(fx, fy));
+        if (near) {
+          const [from, to] = [(near[1] * w + near[0]) * 4, (py * w + px) * 4];
+          img.data.copyWithin(to, from, from + 4);
+        }
+      }
+    }
+  }
 }
 
 /** `sprite` without every third row: two thirds as tall, its pixels as sharp as before. */

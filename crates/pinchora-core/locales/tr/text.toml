@@ -1,0 +1,62 @@
+# Metin komutları (`p!profile`, `@Pinchora profile`) ve `/config prefix`.
+#
+# Bir mesajla Discord dili gelmez: metin komutu üyenin `/language` seçimiyle, o yoksa sunucunun
+# varsayılan diliyle (`/config language`), o da yoksa İngilizceyle yanıtlanır.
+
+[text]
+# `/help`: açıklamanın altındaki satır. {prefix} sunucunun öneki; Message Content intent'i kapalıysa `@Pinchora `.
+help-hint = "Her komut burada yazıyla da çalışır: `{prefix}profile`, `{prefix}fish cast reef`."
+# `/config show`: alanın adı.
+config-field = "Metin komutları"
+
+# `/config prefix`.
+prefix-intent-on = "`{prefix}`, ör. `{prefix}profile` · `@Pinchora profile` da çalışır"
+prefix-intent-off = "`{prefix}` · bot sahibi Message Content intent'ini açana kadar metin komutları `@Pinchora profile` biçiminde yazılır"
+prefix-show = "Metin komutları şununla başlıyor: {summary}"
+prefix-changed = "Metin komutları artık şununla başlıyor: {summary}"
+prefix-length = "Önek 1 ile {max} karakter arasında olmalı, ör. p! ya da ?."
+prefix-characters = "Önekte boşluk, @, # ya da ters tırnak olamaz."
+
+# Bir metin komutu çalışmak yerine ne diyor.
+unknown-prefix = "Buradaki önekim `{prefix}`: `{prefix}help` ya da `/help` dene."
+unknown-mention = "`@Pinchora help` ya da `/help` dene."
+slash-only = "Bu komut yalnızca slash komutu olarak çalışıyor: `/{path}` yaz."
+no-commands-here = "Bu kanalda komut kullanamazsın."
+admins-only = "`{command}` yalnızca yöneticiler içindir."
+server-denied = "Bu sunucunun komut izinleri `{command}` komutunu burada kullanmana izin vermiyor."
+need-permission = "`{command}` komutunu kullanmak için {permissions} iznine ihtiyacın var."
+need-other-permission = "`{command}` komutunun istediği izne sahip değilsin."
+and = " ve "
+member-not-found = "<@{id}> üyesini bulamıyorum."
+role-not-found = "Bu rol bu sunucuda yok."
+channel-not-found = "Bu kanal bu sunucuda yok."
+channel-kind = "`{option}` bu türde bir kanal olamaz."
+
+# İzin adları, Discord'un ayarlarında göründüğü gibi.
+[text.permission]
+manage-server = "Sunucuyu Yönet"
+manage-roles = "Rolleri Yönet"
+manage-messages = "Mesajları Yönet"
+administrator = "Yönetici"
+
+# Yanlış çağrı: neyin yanlış olduğu, sonra kullanım satırı. {word} üyenin mesajından, {option} komutun
+# tanımından gelir (seçenek adları İngilizce kalır).
+[text.usage]
+line = "Kullanım: `{usage}`"
+no-subcommand = "`{command}` komutunda `{word}` diye bir şey yok."
+needs-subcommand = "`{command}` için bir kelime daha gerekiyor."
+twice = "`{option}` iki kez verilmiş."
+too-many = "`{word}` fazladan bir kelime."
+missing = "`{option}` eksik."
+choice = "`{option}` şunlardan biri olmalı: {choices}."
+length = "`{option}` {min} ile {max} karakter arasında olmalı."
+whole-number = "`{option}` bir tam sayı olmalı."
+number = "`{option}` bir sayı olmalı."
+yes-no = "`{option}` evet ya da hayır olmalı."
+member = "`{option}` bir üye olmalı: etiketle ya da kimliğini (ID) yaz."
+role = "`{option}` bir rol olmalı: etiketle ya da kimliğini (ID) yaz."
+channel = "`{option}` bir kanal olmalı: #genel gibi bağla ya da kimliğini (ID) yaz."
+slash-only-option = "`{option}` yalnızca slash komutuyla verilebilir."
+bounds-both = "`{option}` {low} ile {high} arasında olmalı."
+bounds-low = "`{option}` en az {low} olmalı."
+bounds-high = "`{option}` en fazla {high} olmalı."

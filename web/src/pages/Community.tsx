@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { useOutletContext } from "react-router";
+import { Link, useOutletContext } from "react-router";
 
 import { Field, SwitchRow } from "../components/Field";
 import { Panel } from "../components/Panel";
@@ -7,7 +7,7 @@ import { ChannelPicker } from "../components/Pickers";
 import { PixelToggle } from "../components/PixelToggle";
 import { SaveBar } from "../components/SaveBar";
 import { Toast } from "../components/Toast";
-import type { Community as CommunityData, Overview } from "../lib/api";
+import type { Community as CommunityData, ModuleEntry, Overview } from "../lib/api";
 import { CommunitySaveError, useCommunity, useDiscord } from "../lib/queries";
 import { Loading, Problem } from "./States";
 import { PageHead } from "./PageHead";
@@ -32,12 +32,32 @@ export function Community() {
       />
       {query.isPending && <Loading label="Reading the settings" />}
       {query.isError && <Problem error={query.error} />}
-      {query.isSuccess && <CommunityForm guild={guild} saved={query.data} />}
+      {query.isSuccess && <CommunityForm guild={guild} saved={query.data} modules={data.modules} />}
     </div>
   );
 }
 
-function CommunityForm({ guild, saved }: { guild: string; saved: CommunityData }) {
+/** Says so when the module a section belongs to is switched off: its switch is the one that counts. */
+function ModuleOff({ guild, modules, module }: { guild: string; modules: ModuleEntry[]; module: string }) {
+  const found = modules.find((m) => m.key === module);
+  if (!found || found.enabled) return null;
+  return (
+    <p className="notice" role="note">
+      <strong>{found.label}</strong> is switched off in <Link to={`/g/${guild}/modules`}>Modules</Link>, so
+      nothing here does anything until you switch it on.
+    </p>
+  );
+}
+
+function CommunityForm({
+  guild,
+  saved,
+  modules,
+}: {
+  guild: string;
+  saved: CommunityData;
+  modules: ModuleEntry[];
+}) {
   const discord = useDiscord(guild);
   const { save } = useCommunity(guild);
   const [suggestions, setSuggestions] = useState(saved.suggestions.channel_id);
@@ -97,6 +117,7 @@ function CommunityForm({ guild, saved }: { guild: string; saved: CommunityData }
   return (
     <>
       <Panel title="SUGGESTIONS">
+        <ModuleOff guild={guild} modules={modules} module="suggestions" />
         <Field
           label="Suggestion channel"
           htmlFor="suggestion-channel"
@@ -108,12 +129,13 @@ function CommunityForm({ guild, saved }: { guild: string; saved: CommunityData }
             info={discord.data}
             value={suggestions}
             onChange={setSuggestions}
-            none="Off: /suggest is closed"
+            none="No channel yet: /suggest asks for one"
           />
         </Field>
       </Panel>
 
       <Panel title="CRITTER DROPS">
+        <ModuleOff guild={guild} modules={modules} module="collection" />
         <SwitchRow
           title="Chat drops"
           control={<PixelToggle label="Chat drops" checked={enabled} onChange={setEnabled} />}
@@ -138,6 +160,7 @@ function CommunityForm({ guild, saved }: { guild: string; saved: CommunityData }
       </Panel>
 
       <Panel title="STORM SURGES">
+        <ModuleOff guild={guild} modules={modules} module="party" />
         <SwitchRow
           title="Timed storms"
           control={<PixelToggle label="Timed storms" checked={surgeOn} onChange={setSurgeOn} />}
@@ -165,7 +188,7 @@ function CommunityForm({ guild, saved }: { guild: string; saved: CommunityData }
             error={surgeChanged ? fieldError("surge", "every_hours") : null}
             hint={
               saved.surge.next_at
-                ? `The next one comes ${new Date(saved.surge.next_at).toLocaleString()}.`
+                ? `The next one comes ${new Date(saved.surge.next_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}.`
                 : undefined
             }
           >

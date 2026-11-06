@@ -1,0 +1,162 @@
+{
+ "rainy_reading_nook": {
+  "name": "Yağmurlu Gün Okuma Köşesi",
+  "description": "Gri bir öğleden sonra için yumuşak ışık, derin bir koltuk ve bir yığın kitap."
+ },
+ "tide_pool_cafe": {
+  "name": "Gelgit Havuzu Kafesi",
+  "description": "Suyun kıyısında minik bir kafe: küçük masalar, sıcak içecekler, deniz havası."
+ },
+ "moonlit_bedroom": {
+  "name": "Ay Işıklı Yatak Odası",
+  "description": "Sakin maviler, alçak lambalar ve bir daha kalkmak istemeyeceğin bir yatak."
+ },
+ "greenhouse_hideaway": {
+  "name": "Sera Sığınağı",
+  "description": "Odanın alabildiği kadar bitki ve aralarında oturacak bir yer."
+ },
+ "lantern_festival": {
+  "name": "Fener Şenliği",
+  "description": "Her yerde sıcak ışıklar ve arkadaşlar için kurulmuş bir sofra."
+ },
+ "seaside_cottage": {
+  "name": "Deniz Kenarı Kulübesi",
+  "description": "Deniz odunu, deniz kabukları ve bir yaz kıyısının renkleri."
+ },
+ "snowed_in": {
+  "name": "Karda Mahsur",
+  "description": "Battaniyeler, sıcak bir ışıltı ve bir hafta içeride kalmak için gereken her şey."
+ },
+ "tiny_library": {
+  "name": "Minik Kütüphane",
+  "description": "Her duvarda raflar ve okumak için sessiz bir köşe."
+ },
+ "sunday_brunch": {
+  "name": "Pazar Kahvaltısı",
+  "description": "Uzun, telaşsız bir kahvaltıya hazır güneşli bir mutfak."
+ },
+ "artist_loft": {
+  "name": "Sanatçı Çatı Katı",
+  "description": "Şövaleler, dağınıklık ve güzel ışık: bir şeylerin yapıldığı bir oda."
+ },
+ "pet_paradise": {
+  "name": "Evcil Hayvan Cenneti",
+  "description": "Yataklar, oyuncaklar ve mama kapları; evcil hayvanlarının etrafında planlanmış bir oda."
+ },
+ "autumn_harvest": {
+  "name": "Sonbahar Hasadı",
+  "description": "Balkabağı renkleri, ahşap mobilyalar ve dolu bir sofra."
+ },
+ "spring_picnic": {
+  "name": "Bahar Pikniği",
+  "description": "Dışarıyı içeri getir: çiçekler, açık renkler, yerde bir battaniye."
+ },
+ "starry_observatory": {
+  "name": "Yıldızlı Gözlemevi",
+  "description": "Koyu duvarlar, küçük ışıklar ve göğü izleyebileceğin bir yer."
+ },
+ "music_corner": {
+  "name": "Müzik Köşesi",
+  "description": "Enstrümanlar, hoparlörler ve dinleyiciler için bir yer."
+ },
+ "candy_shop": {
+  "name": "Şekerci Dükkânı",
+  "description": "Tatlı renkler ve ikramlarla dolu raflar."
+ },
+ "underwater_lounge": {
+  "name": "Sualtı Salonu",
+  "description": "Derin maviler ve yeşiller; sanki pencerenin dışında resif varmış gibi."
+ },
+ "cabin_in_the_woods": {
+  "name": "Ormandaki Kulübe",
+  "description": "Koyu ahşap, ekose ve pencerede yanan bir lamba."
+ },
+ "plant_parent": {
+  "name": "Bitki Ebeveyni",
+  "description": "Büyük yapraklar, küçük saksılar ve yeşile bürünen her raf."
+ },
+ "game_night": {
+  "name": "Oyun Gecesi",
+  "description": "Kartlar ve zarlar için bir masa, atıştırmalıklar elinin altında."
+ },
+ "bathhouse_retreat": {
+  "name": "Hamam İnzivası",
+  "description": "Temiz fayanslar, havlular ve küçük bir spa dinginliği."
+ },
+ "cozy_home_office": {
+  "name": "Sıcacık Ev Ofisi",
+  "description": "Memnuniyetle çalışacağın bir masa ve rahat bir mola köşesi."
+ },
+ "midnight_snack": {
+  "name": "Gece Yarısı Atıştırması",
+  "description": "Gece saat 2'de bir mutfak: tek bir ışık yanık, buzdolabı açık."
+ },
+ "beach_bonfire": {
+  "name": "Kumsal Ateşi",
+  "description": "Sıcak turuncular, daire şeklinde alçak oturaklar ve dışarıda gece."
+ },
+ "tea_party": {
+  "name": "Çay Partisi",
+  "description": "İnce fincanlar, küçük bir masa ve yoldaki misafirler."
+ },
+ "workshop_tinkerer": {
+  "name": "Mucit Atölyesi",
+  "description": "Tezgâhlar, aletler ve yarım kalmış projeler."
+ },
+ "flower_market": {
+  "name": "Çiçek Pazarı",
+  "description": "Kova kova çiçekler ve bir dükkân tezgâhı."
+ },
+ "fairy_tale_cottage": {
+  "name": "Masal Kulübesi",
+  "description": "Yuvarlak şekiller, mantarlar ve azıcık büyü."
+ },
+ "retro_arcade": {
+  "name": "Retro Oyun Salonu",
+  "description": "Parlayan ekranlar ve turlar arasında oturacak bir yer."
+ },
+ "harbour_lookout": {
+  "name": "Liman Seyir Terası",
+  "description": "Denizcilik eşyaları, halatlar ve teknelerin manzarası."
+ },
+ "slumber_party": {
+  "name": "Pijama Partisi",
+  "description": "Yastıklar, battaniyeler ve yerde herkese yetecek kadar yer."
+ },
+ "winter_holiday": {
+  "name": "Kış Şenliği",
+  "description": "Işıklar, hediyeler ve soğuk mevsime hazır bir oda."
+ },
+ "garden_party": {
+  "name": "Bahçe Partisi",
+  "description": "Temiz hava, çiçekler ve uzun bir öğleden sonra için sandalyeler."
+ },
+ "minimal_calm": {
+  "name": "Sade ve Dingin",
+  "description": "Daha az parça, her biri özenle seçilmiş."
+ },
+ "colour_clash": {
+  "name": "Renk Çatışması",
+  "description": "Birbirine yakışmaması gereken ama yakışan cesur renkler."
+ },
+ "two_tone": {
+  "name": "Sadece İki Ton",
+  "description": "İki renk seç ve bütün odayı onlarla kur."
+ },
+ "study_session": {
+  "name": "Ders Çalışma Seansı",
+  "description": "Odaklı bir masa, bir okuma lambası ve uzun yol için atıştırmalıklar."
+ },
+ "sunset_balcony": {
+  "name": "Gün Batımı Balkonu",
+  "description": "Sıcak akşam ışığı ve manzaraya dönük bir sandalye."
+ },
+ "potion_shop": {
+  "name": "İksir Dükkânı",
+  "description": "Şişeler, kavanozlar ve gizemli raflar."
+ },
+ "welcome_home": {
+  "name": "Eve Hoş Geldin",
+  "description": "Uzun bir günün ardından en çok içeri girmek isteyeceğin oda."
+ }
+}

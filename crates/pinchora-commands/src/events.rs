@@ -16,7 +16,7 @@ use twilight_model::{
 };
 
 use crate::{
-    App,
+    App, auto,
     card_images::{CardSubject, card_png, deliver, server_card},
     commands::collection,
     leveling::{self, LevelUp},
@@ -27,16 +27,26 @@ use crate::{
 
 pub use pinchora_core::settings::{DEFAULT_GOODBYE, DEFAULT_LEVELUP, DEFAULT_WELCOME};
 
-/// Grants chat XP (once per minute per member) and announces level-ups.
+/// Runs text commands, grants chat XP (once per minute per member) and announces level-ups.
 pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<()> {
     let msg = event.message;
     if msg.author.bot || msg.webhook_id.is_some() || !matches!(msg.kind, MessageType::Regular | MessageType::Reply) {
         return Ok(());
     }
+    // A text command runs on its own; the message still counts as chat below.
+    if crate::text::calls_bot(&app, &msg).await {
+        let (app2, message) = (app.clone(), msg.clone());
+        app.spawn(async move {
+            crate::text::on_text_command(app2, &message).await;
+        });
+    }
     let Some(guild) = msg.guild_id else {
         return Ok(());
     };
     let (g, u) = (guild.get(), msg.author.id.get());
+    // Keywords in the chat set auto-responders off (they only hear text when the bot has the Message
+    // Content intent). It comes first: it has nothing to do with the XP minute.
+    auto::chat(&app, &msg).await;
     // Chat that makes critters and bottles wash up counts here, before the XP cooldown: it never reads
     // the message, and a failure never keeps a member from their XP.
     let here = Some(msg.channel_id.get());
@@ -44,6 +54,17 @@ pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<(
         && let Err(error) = collection::spawn::on_chat(&app, g, u, msg.channel_id.get()).await
     {
         tracing::debug!(%error, guild = g, "chat drops not counted");
+    }
+    let settings = app.guild_settings(g).await?;
+    // Leveling and points can also be switched off in some channels (`/config modules`). Where neither
+    // counts the minute is not spent, so chatting in such a channel never costs the XP of the next message
+    // somewhere else.
+    let leveling_on = settings.leveling_enabled && app.module_allowed(g, here, Module::Leveling).await;
+    let points_on = settings.points_enabled && app.module_allowed(g, here, Module::Points).await;
+    let author_nick = msg.member.as_ref().and_then(|m| m.nick.as_deref());
+    if !leveling_on && !points_on {
+        server_log::note_names(&app, &settings, g, &msg.author, author_nick).await;
+        return Ok(());
     }
     let cooldown = Duration::from_secs(MESSAGE_XP_COOLDOWN_SECS);
     if app
@@ -54,18 +75,7 @@ pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<(
     {
         return Ok(());
     }
-    let settings = app.guild_settings(g).await?;
-    server_log::note_names(
-        &app,
-        &settings,
-        g,
-        &msg.author,
-        msg.member.as_ref().and_then(|m| m.nick.as_deref()),
-    )
-    .await;
-    // Leveling and points can also be switched off in some channels (`/config modules`).
-    let leveling_on = settings.leveling_enabled && app.module_allowed(g, here, Module::Leveling).await;
-    let points_on = settings.points_enabled && app.module_allowed(g, here, Module::Points).await;
+    server_log::note_names(&app, &settings, g, &msg.author, author_nick).await;
     let points = if points_on {
         rand::random_range(i64::from(settings.points_min)..=i64::from(settings.points_max))
     } else {
@@ -97,7 +107,10 @@ pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<(
     let gain = app.db.add_xp(g, u, grant, week_start(app.now())).await?;
     metrics::counter!("pinchora_xp_granted_total").increment(grant.server_xp as u64);
     metrics::counter!("pinchora_points_granted_total").increment(points as u64);
-    app.quest(u, pinchora_game::quests::QuestKind::Chat).await;
+    // Quests switched off count nothing, chatting included.
+    if app.module_allowed(g, here, Module::Quests).await {
+        app.quest(u, pinchora_game::quests::QuestKind::Chat).await;
+    }
 
     let (before, after) = (level_of(gain.old_xp), level_of(gain.new_xp));
     if after <= before {
@@ -131,6 +144,7 @@ pub async fn on_member_add(app: Arc<App>, event: MemberAdd) -> anyhow::Result<()
     }
     server_log::note_names(&app, &settings, guild_id.get(), &member.user, member.nick.as_deref()).await;
     server_log::member_joined(&app, &settings, &member.user).await;
+    auto::member_joined(&app, guild_id.get(), &member).await;
     if member.user.bot || !settings.welcome_enabled {
         return Ok(());
     }
@@ -192,6 +206,7 @@ pub async fn on_member_remove(app: Arc<App>, event: MemberRemove) -> anyhow::Res
     let settings = app.guild_settings(guild_id.get()).await?;
     app.log_state.forget(guild_id.get(), user.id.get()).await;
     server_log::member_left(&app, &settings, &user).await;
+    auto::member_left(&app, guild_id.get(), &user).await;
     if !app.module_allowed(guild_id.get(), None, Module::Goodbye).await {
         return Ok(());
     }
@@ -233,8 +248,33 @@ pub async fn on_member_remove(app: Arc<App>, event: MemberRemove) -> anyhow::Res
     deliver(&app, Id::new(channel as u64), card.delivery, &text, image, &mentions).await
 }
 
+/// What Discord said changed that text commands keep permission data about.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PermissionChange {
+    /// A server's owner or roles (the server itself, or one of its roles, was updated).
+    Guild(u64),
+    /// A channel's permission overwrites (or the channel went away).
+    Channel(u64),
+    /// What a server set for the bot's commands under Integrations.
+    CommandPermissions(u64),
+}
+
+/// Forgets what text commands cached about the thing that changed, so the next command is judged by
+/// the new permissions rather than the minute-old ones.
+pub async fn on_permissions_changed(app: &App, change: PermissionChange) {
+    match change {
+        PermissionChange::Guild(guild) => app.forget_permission_facts(guild).await,
+        PermissionChange::Channel(channel) => app.forget_channel_rules(channel).await,
+        PermissionChange::CommandPermissions(guild) => app.forget_command_overrides(guild).await,
+    }
+}
+
 /// Logs nickname and username changes.
 pub async fn on_member_update(app: Arc<App>, event: MemberUpdate) -> anyhow::Result<()> {
+    auto::roles_changed(&app, &event).await;
+    // A member's roles may have changed: what text commands know of the server's permissions is
+    // forgotten with it.
+    on_permissions_changed(&app, PermissionChange::Guild(event.guild_id.get())).await;
     let settings = app.guild_settings(event.guild_id.get()).await?;
     server_log::names_updated(
         &app,

@@ -40,6 +40,11 @@ pub const DEFAULT_LEVELUP: &str = "🎉 {user} reached **level {level}**!";
 pub const DEFAULT_WELCOME: &str = "Welcome to **{server}**, {user}!";
 pub const DEFAULT_GOODBYE: &str = "👋 **{user}** has left **{server}**.";
 
+/// What text commands start with when a server picked none (`p!profile`).
+pub const DEFAULT_PREFIX: &str = "p!";
+/// A text command prefix, in characters.
+pub const PREFIX_MAX: usize = 5;
+
 /// Every way a level-up can be announced, in the order the pickers list them.
 pub const LEVELUP_MODES: [LevelUpMode; 4] = [
     LevelUpMode::Channel,
@@ -183,6 +188,29 @@ pub fn parse_levelup_mode(key: &str) -> Result<LevelUpMode, FieldError> {
     })
 }
 
+/// A text command prefix, trimmed: 1 to [`PREFIX_MAX`] characters with no spaces, `@`, `#` or
+/// backticks, so a prefix can never be (or start) a mention, a channel link or code.
+pub fn check_prefix(s: &str) -> Result<String, FieldError> {
+    let prefix = s.trim();
+    let length = prefix.chars().count();
+    if length == 0 || length > PREFIX_MAX {
+        return Err(FieldError::new(
+            "prefix",
+            format!("A prefix is 1 to {PREFIX_MAX} characters, e.g. p! or ?."),
+        ));
+    }
+    if prefix
+        .chars()
+        .any(|c| c.is_whitespace() || matches!(c, '@' | '#' | '`'))
+    {
+        return Err(FieldError::new(
+            "prefix",
+            "A prefix can't hold spaces, @, # or backticks.",
+        ));
+    }
+    Ok(prefix.to_owned())
+}
+
 /// What the points are called, trimmed.
 pub fn check_points_name(s: &str) -> Result<String, FieldError> {
     let name = s.trim();
@@ -297,7 +325,7 @@ pub fn check_stock(n: i64) -> Result<i32, FieldError> {
     in_range("stock", n, &STOCK_RANGE, "Stock").map(|n| n as i32)
 }
 
-/// What decides whether the bot can hand a role out.
+/// What decides whether the bot can hand a role out, and who may set it up to be handed out.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RoleFacts {
     /// `@everyone`, whose id is the server's.
@@ -305,6 +333,102 @@ pub struct RoleFacts {
     /// Owned by an integration or a bot.
     pub managed: bool,
     pub position: i64,
+    /// The role's permission bits, as Discord sends them.
+    pub permissions: u64,
+}
+
+/// Permissions that run or police a server, as Discord's bits and the names its settings show. A role
+/// holding any of them is only set up to be handed out by the server owner or an administrator.
+pub const DANGEROUS_PERMISSIONS: [(u64, &str); 10] = [
+    (1 << 3, "Administrator"),
+    (1 << 5, "Manage Server"),
+    (1 << 28, "Manage Roles"),
+    (1 << 4, "Manage Channels"),
+    (1 << 29, "Manage Webhooks"),
+    (1 << 2, "Ban Members"),
+    (1 << 1, "Kick Members"),
+    (1 << 40, "Timeout Members"),
+    (1 << 17, "Mention @everyone, @here and All Roles"),
+    (1 << 13, "Manage Messages"),
+];
+
+/// The dangerous permissions among `bits`, by name, in [`DANGEROUS_PERMISSIONS`] order.
+pub fn dangerous_permissions(bits: u64) -> Vec<&'static str> {
+    DANGEROUS_PERMISSIONS
+        .iter()
+        .filter(|(bit, _)| bits & bit != 0)
+        .map(|(_, name)| *name)
+        .collect()
+}
+
+/// Who is setting a role up to be handed out (a level, reputation, store, join or panel role, or a
+/// custom action): what decides which roles they may.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Grantor {
+    pub owner: bool,
+    /// Holds Administrator (the owner does too, as Discord counts it).
+    pub administrator: bool,
+    /// The position of their highest role (0 with none but `@everyone`); `None` when it could not be
+    /// looked up.
+    pub top_role: Option<i64>,
+}
+
+fn powers(role: &RoleFacts) -> Option<String> {
+    let names = dangerous_permissions(role.permissions);
+    match names.as_slice() {
+        [] => None,
+        [one] => Some((*one).to_owned()),
+        [first, second] => Some(format!("{first} and {second}")),
+        [first, ..] => Some(format!("{first} and {} more", names.len() - 1)),
+    }
+}
+
+/// Why `grantor` may not set `role` up to be handed out, or `None` when they may. A role with a
+/// [dangerous permission](DANGEROUS_PERMISSIONS) needs the owner or an administrator; a role at or
+/// above the grantor's own highest role needs the owner, as Discord's own role settings do.
+/// `label` names the role in the sentence.
+pub fn grant_refusal(role: RoleFacts, grantor: Grantor, label: &str) -> Option<String> {
+    if !(grantor.owner || grantor.administrator)
+        && let Some(powers) = powers(&role)
+    {
+        return Some(format!(
+            "{label} has {powers}, so only the server owner or an administrator can set it to be handed out."
+        ));
+    }
+    hierarchy_refusal(role, grantor, label)
+}
+
+fn hierarchy_refusal(role: RoleFacts, grantor: Grantor, label: &str) -> Option<String> {
+    if grantor.owner {
+        return None;
+    }
+    match grantor.top_role {
+        Some(top) if role.position < top => None,
+        Some(_) => Some(format!(
+            "{label} is not below your highest role, so you can't set it to be handed out."
+        )),
+        None => Some("I couldn't check your roles just now. Try again in a moment.".to_owned()),
+    }
+}
+
+/// [`grant_refusal`] for a role a custom command or auto-responder hands out. Any member sets those off
+/// whenever they like, so a role with a dangerous permission is refused whoever writes it, and the bot
+/// checks it again every time it runs ([`run_time_refusal`]).
+pub fn action_role_refusal(role: RoleFacts, grantor: Grantor, label: &str) -> Option<String> {
+    run_time_refusal(role.permissions, label).or_else(|| hierarchy_refusal(role, grantor, label))
+}
+
+/// Why a custom action may not hand out a role with these permissions now, or `None` when it may:
+/// permissions can change after the action was written.
+pub fn run_time_refusal(permissions: u64, label: &str) -> Option<String> {
+    let role = RoleFacts {
+        everyone: false,
+        managed: false,
+        position: 0,
+        permissions,
+    };
+    powers(&role)
+        .map(|powers| format!("{label} has {powers}, so custom commands and auto-responders can't hand it out."))
 }
 
 /// Why the bot cannot hand out a role, or `None` when it can. `bot_top` is the position of the
@@ -358,6 +482,8 @@ pub struct GuildSettingsPatch {
     pub log_names: Option<bool>,
     pub log_bans: Option<bool>,
     pub log_voice: Option<bool>,
+    /// The text command prefix; `Some(None)` goes back to [`DEFAULT_PREFIX`].
+    pub prefix: Option<Option<String>>,
 }
 
 /// Checks every field of `patch` with the rules above and returns it cleaned (names and titles
@@ -403,6 +529,13 @@ pub fn check_patch(
     if let Some(emoji) = &mut patch.points_emoji {
         match check_points_emoji(emoji) {
             Ok(clean) => *emoji = clean,
+            Err(error) => note(Err(error)),
+        }
+    }
+    if let Some(Some(prefix)) = &patch.prefix {
+        match check_prefix(prefix) {
+            // The default is stored as no prefix, as `/config prefix reset` leaves it.
+            Ok(clean) => patch.prefix = Some(Some(clean).filter(|p| p != DEFAULT_PREFIX)),
             Err(error) => note(Err(error)),
         }
     }
@@ -464,6 +597,17 @@ mod tests {
     }
 
     #[test]
+    fn prefixes_are_short_and_cannot_ping() {
+        assert_eq!(check_prefix(" p! ").unwrap(), "p!");
+        for good in ["?", "z!", "pin.", "!!!!!", "ğ$"] {
+            assert!(check_prefix(good).is_ok(), "{good:?}");
+        }
+        for bad in ["", "  ", "toolong", "p !", "@", "<@1>", "#", "`p", "p\tq"] {
+            assert_eq!(check_prefix(bad).unwrap_err().field, "prefix", "{bad:?}");
+        }
+    }
+
+    #[test]
     fn points_ranges_and_order() {
         assert!(check_points(0, 1_000).is_ok());
         assert_eq!(check_points(5, 4).unwrap_err().field, "points_min");
@@ -510,11 +654,103 @@ mod tests {
     }
 
     #[test]
+    fn dangerous_permissions_are_named() {
+        assert!(dangerous_permissions(0).is_empty());
+        assert!(dangerous_permissions((1 << 10) | (1 << 11)).is_empty(), "view and send");
+        assert_eq!(dangerous_permissions(1 << 3), ["Administrator"]);
+        assert_eq!(
+            dangerous_permissions((1 << 40) | (1 << 1)),
+            ["Kick Members", "Timeout Members"]
+        );
+        let all = DANGEROUS_PERMISSIONS.iter().fold(0, |bits, (bit, _)| bits | bit);
+        assert_eq!(dangerous_permissions(all).len(), DANGEROUS_PERMISSIONS.len());
+    }
+
+    #[test]
+    fn who_may_set_a_role_to_be_handed_out() {
+        const ADMIN: u64 = 1 << 3;
+        const MANAGE_MESSAGES: u64 = 1 << 13;
+        const BAN: u64 = 1 << 2;
+        let role = |position, permissions| RoleFacts {
+            everyone: false,
+            managed: false,
+            position,
+            permissions,
+        };
+        let owner = Grantor {
+            owner: true,
+            administrator: true,
+            top_role: Some(0),
+        };
+        let admin = |top| Grantor {
+            owner: false,
+            administrator: true,
+            top_role: top,
+        };
+        let manager = |top| Grantor {
+            owner: false,
+            administrator: false,
+            top_role: top,
+        };
+        // (role, grantor, configured roles allowed, custom actions allowed)
+        let cases = [
+            (role(3, 0), manager(Some(5)), true, true),
+            (role(5, 0), manager(Some(5)), false, false),
+            (role(6, 0), manager(Some(5)), false, false),
+            (role(3, 0), manager(None), false, false),
+            (role(3, ADMIN), manager(Some(5)), false, false),
+            (role(3, MANAGE_MESSAGES), manager(Some(5)), false, false),
+            (role(3, BAN | ADMIN), admin(Some(5)), true, false),
+            (role(6, ADMIN), admin(Some(5)), false, false),
+            (role(6, 0), admin(Some(5)), false, false),
+            (role(30, ADMIN), owner, true, false),
+            (role(30, 0), owner, true, true),
+            (
+                role(30, 0),
+                Grantor {
+                    top_role: None,
+                    ..owner
+                },
+                true,
+                true,
+            ),
+        ];
+        for (n, (role, grantor, configured, action)) in cases.into_iter().enumerate() {
+            assert_eq!(
+                grant_refusal(role, grantor, "@R").is_none(),
+                configured,
+                "case {n}: {role:?} {grantor:?}"
+            );
+            assert_eq!(
+                action_role_refusal(role, grantor, "@R").is_none(),
+                action,
+                "case {n} as an action: {role:?} {grantor:?}"
+            );
+        }
+        let why = grant_refusal(role(3, ADMIN | BAN | MANAGE_MESSAGES), manager(Some(5)), "@Mod").unwrap();
+        assert_eq!(
+            why,
+            "@Mod has Administrator and 2 more, so only the server owner or an administrator can set it to be handed out."
+        );
+        assert!(
+            grant_refusal(role(5, 0), manager(Some(5)), "@Top")
+                .unwrap()
+                .contains("not below your highest role")
+        );
+        assert_eq!(run_time_refusal(0, "@Fan"), None);
+        assert_eq!(
+            run_time_refusal(ADMIN | BAN, "@Fan").unwrap(),
+            "@Fan has Administrator and Ban Members, so custom commands and auto-responders can't hand it out."
+        );
+    }
+
+    #[test]
     fn role_refusals_explain_themselves() {
         let role = |everyone, managed, position| RoleFacts {
             everyone,
             managed,
             position,
+            permissions: 0,
         };
         assert_eq!(role_refusal(role(false, false, 3), Some(5), "@Fan"), None);
         assert!(
@@ -549,6 +785,16 @@ mod tests {
         };
         let clean = check_patch(patch, (1, 3)).unwrap();
         assert_eq!(clean.welcome_title, Some(Some("HELLO".into())));
+        let prefix = |p: &str| GuildSettingsPatch {
+            prefix: Some(Some(p.into())),
+            ..Default::default()
+        };
+        assert_eq!(
+            check_patch(prefix(" z! "), (1, 3)).unwrap().prefix,
+            Some(Some("z!".into()))
+        );
+        assert_eq!(check_patch(prefix("p!"), (1, 3)).unwrap().prefix, Some(None));
+        assert_eq!(check_patch(prefix("@"), (1, 3)).unwrap_err()[0].field, "prefix");
         assert_eq!(clean.points_name.as_deref(), Some("shells"));
 
         let bad = GuildSettingsPatch {

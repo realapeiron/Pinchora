@@ -325,16 +325,29 @@ pub async fn bots_present(state: &WebState, guilds: &[u64]) -> Vec<bool> {
     stream::iter(lookups.collect::<Vec<_>>()).buffered(8).collect().await
 }
 
-/// The link that adds the bot to `guild`, with its commands and the permissions it uses.
-pub fn invite_url(settings: &WebSettings, application_id: u64, guild: u64) -> String {
+/// The authorize URL with the bot's scopes and permissions, before any server is named.
+fn bot_authorize(settings: &WebSettings, application_id: u64) -> Url {
     let mut url = Url::parse(&settings.authorize_url).expect("authorize URL was checked at start");
     url.query_pairs_mut()
         .append_pair("client_id", &application_id.to_string())
         .append_pair("scope", "bot applications.commands")
-        .append_pair("permissions", &BOT_PERMISSIONS.to_string())
+        .append_pair("permissions", &BOT_PERMISSIONS.to_string());
+    url
+}
+
+/// The link that adds the bot to `guild`, with its commands and the permissions it uses.
+pub fn invite_url(settings: &WebSettings, application_id: u64, guild: u64) -> String {
+    let mut url = bot_authorize(settings, application_id);
+    url.query_pairs_mut()
         .append_pair("guild_id", &guild.to_string())
         .append_pair("disable_guild_select", "true");
     url.into()
+}
+
+/// The link the public site hands out: the same scopes and permissions, with the server picked on
+/// Discord's own page.
+pub fn bot_invite_url(settings: &WebSettings, application_id: u64) -> String {
+    bot_authorize(settings, application_id).into()
 }
 
 /// Turns a Discord user into what a session stores about them.
@@ -387,5 +400,17 @@ mod tests {
         assert!(url.contains("scope=bot+applications.commands"));
         assert!(url.contains("guild_id=42"));
         assert!(url.contains(&format!("permissions={BOT_PERMISSIONS}")));
+    }
+
+    #[test]
+    fn the_public_invite_lets_discord_pick_the_server() {
+        let settings = WebSettings::resolve(&Default::default(), 9).unwrap();
+        let url = bot_invite_url(&settings, 9);
+        assert_eq!(
+            url,
+            format!(
+                "https://discord.com/oauth2/authorize?client_id=9&scope=bot+applications.commands&permissions={BOT_PERMISSIONS}"
+            )
+        );
     }
 }

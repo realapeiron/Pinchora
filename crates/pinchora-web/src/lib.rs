@@ -7,6 +7,8 @@
 mod audit;
 mod auth;
 mod client_ip;
+#[cfg(test)]
+mod commands_catalog;
 mod config;
 mod discord;
 mod error;
@@ -35,7 +37,8 @@ const AUDIT_RETENTION: chrono::Duration = chrono::Duration::days(180);
 
 /// Serves the dashboard until SIGTERM.
 pub async fn run(config: &Config, app: Arc<App>, ready: Readiness) -> anyhow::Result<()> {
-    let settings = WebSettings::resolve(&config.web, config.discord.application_id)?;
+    let mut settings = WebSettings::resolve(&config.web, config.discord.application_id)?;
+    settings.message_content = config.gateway.message_content;
     if !settings.missing.is_empty() {
         tracing::warn!(
             missing = ?settings.missing,

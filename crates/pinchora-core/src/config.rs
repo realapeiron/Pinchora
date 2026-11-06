@@ -84,6 +84,10 @@ pub struct GatewayConfig {
     pub cluster_count: u16,
     /// Listen for `GUILD_MEMBER_ADD` (privileged "Server Members" intent) for welcome cards.
     pub member_events: bool,
+    /// Listen for message text (privileged "Message Content" intent): without it the bot cannot read chat,
+    /// so keyword auto-responders stay locked and text commands only work after an @mention of the bot.
+    /// Discord needs verification for it above 100 servers.
+    pub message_content: bool,
 }
 
 impl Default for GatewayConfig {
@@ -93,6 +97,7 @@ impl Default for GatewayConfig {
             cluster_id: None,
             cluster_count: 1,
             member_events: true,
+            message_content: false,
         }
     }
 }

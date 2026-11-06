@@ -3,6 +3,7 @@
 
 use std::sync::LazyLock;
 
+use pinchora_core::i18n::Lang;
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
@@ -48,6 +49,21 @@ impl Category {
         }
     }
 
+    /// The label in `lang`.
+    pub fn label_in(self, lang: Lang) -> &'static str {
+        if lang == Lang::En {
+            return self.label();
+        }
+        match self {
+            Self::Silly => "Komik",
+            Self::Food => "Yemek",
+            Self::Adventure => "Macera",
+            Self::Ocean => "Okyanus",
+            Self::Brainy => "Zekâ",
+            Self::Cozy => "Huzur",
+        }
+    }
+
     pub fn from_key(key: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|c| c.key() == key)
     }
@@ -82,6 +98,11 @@ static EMBEDDED: LazyLock<PartyContent> = LazyLock::new(|| {
         .expect("embedded party content must parse; run `cargo test -p pinchora-game`")
 });
 
+static EMBEDDED_TR: LazyLock<PartyContent> = LazyLock::new(|| {
+    serde_json::from_str(include_str!("../../../../content/party_tr.json"))
+        .expect("embedded Turkish party content must parse; run `cargo test -p pinchora-game`")
+});
+
 /// Truth or dare: what the player picked.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Pick {
@@ -109,6 +130,24 @@ impl Pick {
 impl PartyContent {
     pub fn get() -> &'static PartyContent {
         &EMBEDDED
+    }
+
+    /// The content for `lang`.
+    pub fn for_lang(lang: Lang) -> &'static PartyContent {
+        match lang {
+            Lang::En => &EMBEDDED,
+            Lang::Tr => &EMBEDDED_TR,
+        }
+    }
+
+    /// A question of any language by its id (a running poll only remembers the id).
+    pub fn find_rather(id: &str) -> Option<&'static Rather> {
+        Lang::ALL.into_iter().find_map(|lang| Self::for_lang(lang).rather(id))
+    }
+
+    /// A truth or dare of any language by its id.
+    pub fn find_prompt(id: &str) -> Option<&'static Prompt> {
+        Lang::ALL.into_iter().find_map(|lang| Self::for_lang(lang).prompt(id))
     }
 
     pub fn rather(&self, id: &str) -> Option<&Rather> {
@@ -143,11 +182,16 @@ mod tests {
     use std::collections::HashSet;
 
     use super::*;
-    use crate::party::filter::is_profane;
+    use crate::party::filter::is_profane_for;
 
     #[test]
     fn there_are_about_two_hundred_of_each_in_every_category() {
-        let c = PartyContent::get();
+        for lang in Lang::ALL {
+            each_category(PartyContent::for_lang(lang));
+        }
+    }
+
+    fn each_category(c: &PartyContent) {
         assert!(c.wyr.len() >= 200, "{} would-you-rather questions", c.wyr.len());
         assert!(
             c.truths.len() + c.dares.len() >= 200,
@@ -165,11 +209,16 @@ mod tests {
 
     #[test]
     fn entries_are_well_formed_unique_and_clean_even_for_strict_servers() {
-        let c = PartyContent::get();
         let mut ids = HashSet::new();
         let mut texts = HashSet::new();
+        for lang in Lang::ALL {
+            clean_entries(PartyContent::for_lang(lang), lang, &mut ids, &mut texts);
+        }
+    }
+
+    fn clean_entries(c: &PartyContent, lang: Lang, ids: &mut HashSet<String>, texts: &mut HashSet<String>) {
         for q in &c.wyr {
-            assert!(ids.insert(q.id.as_str()), "duplicate id {}", q.id);
+            assert!(ids.insert(q.id.clone()), "duplicate id {}", q.id);
             assert!(q.id.starts_with(&format!("wyr_{}_", q.category.key())), "{}", q.id);
             assert!(
                 texts.insert(format!("{}|{}", q.a, q.b).to_lowercase()),
@@ -178,17 +227,17 @@ mod tests {
             );
             for side in [&q.a, &q.b] {
                 assert!((8..=60).contains(&side.chars().count()), "{}: {side}", q.id);
-                assert!(!is_profane(side, true), "{}: {side}", q.id);
+                assert!(!is_profane_for(side, true, lang), "{}: {side}", q.id);
             }
             assert_ne!(q.a.to_lowercase(), q.b.to_lowercase(), "{}", q.id);
         }
         for (prompts, kind) in [(&c.truths, "truth"), (&c.dares, "dare")] {
             for p in prompts {
-                assert!(ids.insert(p.id.as_str()), "duplicate id {}", p.id);
+                assert!(ids.insert(p.id.clone()), "duplicate id {}", p.id);
                 assert!(p.id.starts_with(&format!("{kind}_{}_", p.category.key())), "{}", p.id);
                 assert!(texts.insert(p.text.to_lowercase()), "{}: duplicate", p.id);
                 assert!((15..=110).contains(&p.text.chars().count()), "{}: {}", p.id, p.text);
-                assert!(!is_profane(&p.text, true), "{}: {}", p.id, p.text);
+                assert!(!is_profane_for(&p.text, true, lang), "{}: {}", p.id, p.text);
                 assert!(p.text.ends_with('.') || p.text.ends_with('?'), "{}: {}", p.id, p.text);
             }
         }

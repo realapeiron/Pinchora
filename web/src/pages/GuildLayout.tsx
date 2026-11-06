@@ -33,6 +33,8 @@ export const NAV: { group: string; pages: { to: string; label: string }[] }[] = 
   {
     group: "TOOLS",
     pages: [
+      { to: "commands", label: "Custom commands" },
+      { to: "responders", label: "Auto-responders" },
       { to: "log", label: "Server log" },
       { to: "community", label: "Community" },
     ],
@@ -88,7 +90,7 @@ function ValidGuildLayout({ me, guildId }: { me: Me; guildId: string }) {
                 {pages.map((page) => (
                   <NavLink
                     key={page.to}
-                    end
+                    end={page.to === ""}
                     to={page.to ? `/g/${guildId}/${page.to}` : `/g/${guildId}`}
                     className="sidebar-link"
                   >

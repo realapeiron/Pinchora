@@ -1,0 +1,134 @@
+# /house: replies, the room editor's buttons, menus and hints.
+
+[house]
+bot = "Bots don't have houses."
+partner-only = "You can only decorate the house of your partner. Pair up with `/partner propose`."
+like-self = "Like someone else's house!"
+liked = { one = "💖 {liker} liked {host}'s house! It has **{count}** like now.", other = "💖 {liker} liked {host}'s house! It has **{count}** likes now." }
+already-liked = "You already liked this house today."
+locked = "Your house is locked. Visitors will be turned away."
+unlocked = "Your house is open for visitors again."
+
+[house.edit]
+start = "Pick furniture: it jumps to a free spot, then press **Place**."
+start-partner = "Pick furniture from your inventory: it jumps to a free spot, then press **Place**."
+expired = "This editor has expired. Run `/house edit` again."
+plaza-managers = "Only server managers can arrange the plaza."
+no-longer-partners = "You are no longer partners, so you can't decorate their house."
+fits-nowhere = "**{item}** fits nowhere in this room right now. **Turn** it, or store something."
+holding = "Holding **{item}**. Press **Place** to put it at **{spot}**, or pick another spot."
+pick = "Pick something from the menu."
+pick-first = "Pick something to place first."
+placed-full = "Placed **{item}**. There is no free spot for another one."
+placed-next = "Placed **{item}**. Holding another: **Place** again at **{spot}**, or pick something else."
+placed = "Placed **{item}**."
+none-left = "You have no **{item}** left."
+cant-place = "Can't place it: {reason}."
+move-theirs = "A piece in {name}'s house is theirs, so it can't go into your hand. **Store** it to give it back to them, or place one of yours."
+move-on-top = " What stood on it ({count}) went back to your inventory."
+moving = "Moving **{item}**: pick a spot with **Go to** or the arrows, then **Place**.{extra}"
+nothing-to-move = "Nothing under the cursor to move."
+store-on-top = ", with the {count} on it"
+stored = "Stored **{item}**{extra}; it is back in your inventory."
+stored-theirs = "Stored **{item}**{extra}; it is back in {name}'s inventory."
+nothing-under = "Nothing under the cursor."
+turned-moved = "Turned it and moved to **{spot}** so it fits."
+turned-no-room = "Turned it, but it fits nowhere this way."
+cant-flip-top = "Can't flip it: what stands on it would no longer be on top."
+flipped = "Flipped."
+cant-flip = "Can't flip it: {reason}."
+nothing-to-flip = "Nothing under the cursor to flip."
+already-empty = "The room is already empty."
+cleared = { one = "Stored all **{count}** piece in your inventory. **Undo** puts them back.", other = "Stored all **{count}** pieces in your inventory. **Undo** puts them back." }
+cleared-theirs = { one = "Stored all **{count}** piece in {name}'s inventory. **Undo** puts them back.", other = "Stored all **{count}** pieces in {name}'s inventory. **Undo** puts them back." }
+nothing-to-undo = "Nothing to undo."
+undid = "Undid {step}."
+undo-moved = "**{item}** is no longer where it was"
+undo-none = "you have no **{item}** left"
+undo-none-theirs = "{name}'s inventory has no **{item}** left"
+cant-undo = "Can't undo {step}: {why}. That step is off the undo list."
+now-room = "Now editing room {room}."
+saved = "Saved! Show it off with `/house view`."
+saved-plaza = "Saved! See it with `/plaza view`."
+saved-partner = "Saved! They can see it with `/house view`; you can too, with `/house visit`."
+
+[house.editor]
+cursor = "Cursor **{spot}** · Holding: **{item}**"
+nothing = "nothing"
+under = "Under cursor: {name}"
+title = "Editing room {room} · {title}"
+footer = "Pick furniture and it jumps to a free spot. Go to moves the cursor anywhere in one click."
+partner-title = "Decorating {name}'s room {room} · {title}"
+partner-footer = "A piece you place comes from your inventory and belongs to {name} from then on. Stored pieces go to their inventory."
+soulbound-out = " Your soulbound pieces stay out of this menu."
+prev-items = "◀ Previous items"
+more-items = "More items ▶"
+soulbound = "Soulbound · "
+inventory-empty-hint = "Your inventory is empty — buy furniture with /shop"
+choose-page = "Choose furniture (page {page}/{pages})"
+choose = "Choose furniture"
+inventory-empty = "Inventory empty"
+no-spot = "No free spot fits this"
+go-to-spot = "Go to a free spot ({count} fit)"
+room-empty = "The room is empty"
+go-to-thing = "Go to something in the room"
+nothing-here = "Nothing here"
+floor = "Floor"
+right-wall = "Right wall"
+left-wall = "Left wall"
+next-room = "Next room"
+undo = "↶ Undo"
+turn = "↻ Turn"
+place = "Place"
+move = "Move"
+cancel = "Cancel"
+store = "Store"
+flip = "Flip"
+done = "Done"
+
+[house.clear]
+option = "Clear the room…"
+option-hint = { one = "Store all {count} piece in your inventory", other = "Store all {count} pieces in your inventory" }
+title = "Clear room {room} · {title}?"
+question = { one = "Store all **{count}** piece in this room back in your inventory?\n**Undo** puts them all back where they were.", other = "Store all **{count}** pieces in this room back in your inventory?\n**Undo** puts them all back where they were." }
+question-theirs = { one = "Store all **{count}** piece in this room back in {name}'s inventory?\n**Undo** puts them all back where they were.", other = "Store all **{count}** pieces in this room back in {name}'s inventory?\n**Undo** puts them all back where they were." }
+store = { one = "Store it", other = "Store all {count}" }
+
+[house.view]
+title = "{name}'s {house}"
+plaza-title = "{name} plaza"
+summary = { one = "Room {room}/{rooms} · **{title}** · {count} item · 💖 {likes}", other = "Room {room}/{rooms} · **{title}** · {count} items · 💖 {likes}" }
+unread = { one = "📖 {count} new guestbook note · read with /house guestbook", other = "📖 {count} new guestbook notes · read with /house guestbook" }
+prev = "◀ Room"
+next = "Room ▶"
+sign = "Sign guestbook"
+
+[house.visit]
+private = "{name}'s house is private."
+locked = "{name} has locked their house."
+paid = "+{reward} shells for visiting today"
+cap = "You've had your {cap} paid visits today"
+
+[house.upgrade]
+finest = "You already live in the **{house}**, the finest house there is."
+title = "Upgrade to the {house}"
+offer = "**{from} → {to} rooms**, rooms grow to {width}×{depth} tiles.\nAll your furniture stays where it is.\n\nPrice: **{price}** shells · You have **{balance}**"
+button = "Upgrade for {price} shells"
+done = { one = "🏠 Welcome to your **{house}**! {count} new room to decorate. {balance} shells left.", other = "🏠 Welcome to your **{house}**! {count} new rooms to decorate. {balance} shells left." }
+short = "You need {price} shells but have {balance}."
+changed = "Your house already changed; run `/house upgrade` again."
+
+# Where a spot is, in the editor's menus: `C4`, `Left wall 2 · high`, "next to Oak Bed".
+[house.spot]
+left-wall = "Left wall {n} · {height}"
+right-wall = "Right wall {n} · {height}"
+high = "high"
+middle = "middle"
+low = "low"
+on-top = "on top of {item}"
+beside = "beside {item}"
+next-to = "next to {item}"
+free-wall = "free wall"
+against-wall = "against a wall"
+open-floor = "open floor"
+hidden = " · mostly hidden"

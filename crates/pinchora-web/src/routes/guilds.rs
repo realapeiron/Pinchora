@@ -12,7 +12,8 @@ use serde::Serialize;
 use serde_json::Value;
 
 use super::{
-    audit_log, cards, community, discord_info, leveling, me::icon_url, modules, overview, preview, settings, store,
+    audit_log, cards, commands, community, discord_info, leveling, me::icon_url, modules, overview, preview,
+    responders, settings, store,
 };
 use crate::state::WebState;
 
@@ -43,6 +44,30 @@ pub fn router() -> Router<WebState> {
         .route("/store/{role}", put(store::put_item).delete(store::delete_item))
         .route("/modules", get(modules::modules))
         .route("/modules/{module}", put(modules::put_module))
+        .route("/commands", get(commands::list).post(commands::create))
+        .route("/commands/export", get(commands::export))
+        .route("/commands/import", post(commands::import))
+        .route("/commands/preview", post(commands::preview))
+        .route(
+            "/commands/{id}",
+            get(commands::get)
+                .put(commands::replace)
+                .patch(commands::set_enabled)
+                .delete(commands::delete),
+        )
+        .route("/commands/{id}/test", post(commands::test))
+        .route("/responders", get(responders::list).post(responders::create))
+        .route("/responders/export", get(responders::export))
+        .route("/responders/import", post(responders::import))
+        .route("/responders/preview", post(responders::preview))
+        .route(
+            "/responders/{id}",
+            get(responders::get)
+                .put(responders::replace)
+                .patch(responders::set_enabled)
+                .delete(responders::delete),
+        )
+        .route("/responders/{id}/test", post(responders::test))
         .route("/community", get(community::community))
         .route("/suggestions/settings", put(community::put_suggestions))
         .route("/critters/settings", put(community::put_critters))
@@ -105,6 +130,8 @@ pub struct SettingsView {
     pub log_names: bool,
     pub log_bans: bool,
     pub log_voice: bool,
+    /// The prefix text commands start with, the default when the server picked none.
+    pub prefix: String,
 }
 
 fn id(value: Option<i64>) -> Option<String> {
@@ -113,6 +140,7 @@ fn id(value: Option<i64>) -> Option<String> {
 
 impl From<GuildSettings> for SettingsView {
     fn from(s: GuildSettings) -> Self {
+        let prefix = s.prefix().to_owned();
         Self {
             leveling_enabled: s.leveling_enabled,
             levelup_channel_id: id(s.levelup_channel_id),
@@ -140,6 +168,7 @@ impl From<GuildSettings> for SettingsView {
             log_names: s.log_names,
             log_bans: s.log_bans,
             log_voice: s.log_voice,
+            prefix,
         }
     }
 }

@@ -19,7 +19,9 @@ use pinchora_core::{
         self, CardDesign, CardKind, Delivery, HEIGHT_RANGE, UPLOAD_MAX_BYTES, UPLOAD_MAX_SIDE, UPLOAD_STORED_MAX_BYTES,
         WIDTH_RANGE,
     },
+    i18n::Lang,
     settings::{self, FieldError, MessageKind},
+    t,
 };
 use pinchora_render::{encode_png, templates};
 use serde::Deserialize;
@@ -301,7 +303,8 @@ pub async fn test(
     let session = &managed.current.session;
     let subject = sample_subject(session, &managed.guild.name);
     let settings = state.app.db.guild_settings(guild).await?;
-    let text = test_text(kind, &settings, &subject);
+    // The test note goes into the channel, so it speaks the server's language like its other open messages.
+    let text = test_text(kind, &settings, &subject, state.app.guild_lang(guild).await);
     let image = if delivery.has_image() {
         let png = preview_png(&state.app, guild, &design, &subject)
             .await
@@ -339,7 +342,7 @@ pub async fn test(
 }
 
 /// The server's welcome or goodbye text with the requester filled in, marked as a test.
-fn test_text(kind: CardKind, settings: &pinchora_db::GuildSettings, subject: &CardSubject) -> String {
+fn test_text(kind: CardKind, settings: &pinchora_db::GuildSettings, subject: &CardSubject, lang: Lang) -> String {
     let members = SAMPLE_MEMBERS.to_string();
     let message = match kind {
         CardKind::Welcome => {
@@ -365,11 +368,11 @@ fn test_text(kind: CardKind, settings: &pinchora_db::GuildSettings, subject: &Ca
             )
         }
     };
-    format!(
-        "{message}\n-# Test of the {} image, sent from the dashboard by {}.",
-        kind.key(),
-        subject.name
-    )
+    let key = match kind {
+        CardKind::Welcome => "welcome.test-welcome",
+        CardKind::Goodbye => "welcome.test-goodbye",
+    };
+    format!("{message}\n-# {}", t!(lang, key, name = subject.name))
 }
 
 /// `POST /cards/uploads`: a background picture (PNG, JPEG, WebP or GIF, its first frame), up to

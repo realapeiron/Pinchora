@@ -1,5 +1,5 @@
 use chrono::Utc;
-use pinchora_core::{economy::DAILY_STREAK_WINDOW, leveling};
+use pinchora_core::{economy::DAILY_STREAK_WINDOW, leveling, t};
 use pinchora_db::UserRow;
 use pinchora_game::{Background, Badge, Content, character::Character};
 use pinchora_render::{ProfileCard, SpriteArt};
@@ -31,7 +31,7 @@ impl Profile {
             None => (cx.author()?.clone(), cx.author_display_name()),
         };
         if user.bot {
-            return cx.reply_ephemeral("Bots don't have profiles.").await;
+            return cx.reply_ephemeral(t!(cx.lang(), "error.bot-no-profile")).await;
         }
         if privacy::private_profile(cx, user.id.get()).await? {
             return Ok(());
@@ -93,6 +93,7 @@ pub(crate) async fn card_with(
     let theme = customize::theme(&row, background);
     let title = customize::title_name(&row);
     let partner = partner_name(&cx.app, user.id.get()).await;
+    let lang = cx.lang();
     cx.app
         .render(move |r| {
             let art = character
@@ -102,6 +103,7 @@ pub(crate) async fn card_with(
             let showcase_art = showcase.art(&sprites);
             let slots = Showcase::slots(&showcase_art);
             r.profile_card(&ProfileCard {
+                lang,
                 display_name: &name,
                 title,
                 username: &username,

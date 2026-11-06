@@ -1,0 +1,63 @@
+# Text commands (`p!profile`, `@Pinchora profile`) and `/config prefix`.
+#
+# A message carries no Discord language, so a text command is answered in the member's `/language`
+# pick, else the server's default (`/config language`), else English.
+
+[text]
+# `/help`: the line under the description. {prefix} is the server's prefix, or `@Pinchora ` without the
+# Message Content intent.
+help-hint = "Every command also works as text here: `{prefix}profile`, `{prefix}fish cast reef`."
+# `/config show`: the field's name.
+config-field = "Text commands"
+
+# `/config prefix`.
+prefix-intent-on = "`{prefix}`, e.g. `{prefix}profile` · `@Pinchora profile` works too"
+prefix-intent-off = "`{prefix}` · text commands need `@Pinchora profile` until the bot owner turns on the Message Content intent"
+prefix-show = "Text commands start with {summary}"
+prefix-changed = "Text commands now start with {summary}"
+prefix-length = "A prefix is 1 to {max} characters, e.g. p! or ?."
+prefix-characters = "A prefix can't hold spaces, @, # or backticks."
+
+# What a text command says instead of running.
+unknown-prefix = "My prefix here is `{prefix}`: try `{prefix}help`, or `/help`."
+unknown-mention = "Try `@Pinchora help`, or `/help`."
+slash-only = "This one only works as a slash command: use `/{path}`."
+no-commands-here = "You can't use commands in this channel."
+admins-only = "`{command}` is only for administrators."
+server-denied = "This server's command permissions don't let you use `{command}` here."
+need-permission = "You need the {permissions} permission to use `{command}`."
+need-other-permission = "You need the permission `{command}` asks for, which you don't have."
+and = " and "
+member-not-found = "I can't find the member <@{id}>."
+role-not-found = "That role isn't in this server."
+channel-not-found = "That channel isn't in this server."
+channel-kind = "`{option}` can't be that kind of channel."
+
+# The permission names, as Discord's settings show them.
+[text.permission]
+manage-server = "Manage Server"
+manage-roles = "Manage Roles"
+manage-messages = "Manage Messages"
+administrator = "Administrator"
+
+# A wrong call: what is wrong, then the usage line. {word} and {option} come from the member's message
+# and the command's definition.
+[text.usage]
+line = "Usage: `{usage}`"
+no-subcommand = "`{command}` has no `{word}`."
+needs-subcommand = "`{command}` needs one more word."
+twice = "`{option}` is given twice."
+too-many = "`{word}` is one word too many."
+missing = "`{option}` is missing."
+choice = "`{option}` is one of: {choices}."
+length = "`{option}` is {min} to {max} characters."
+whole-number = "`{option}` is a whole number."
+number = "`{option}` is a number."
+yes-no = "`{option}` is yes or no."
+member = "`{option}` is a member: mention them or use their id."
+role = "`{option}` is a role: mention it or use its id."
+channel = "`{option}` is a channel: link it like #general or use its id."
+slash-only-option = "`{option}` can only be given with the slash command."
+bounds-both = "`{option}` goes from {low} to {high}."
+bounds-low = "`{option}` goes at least {low}."
+bounds-high = "`{option}` goes at most {high}."

@@ -95,20 +95,29 @@ fn main() -> anyhow::Result<()> {
         row("crane", [ABSENT, PRESENT, CORRECT, ABSENT, PRESENT]),
         row("pearl", [CORRECT, CORRECT, CORRECT, CORRECT, CORRECT]),
     ];
-    let keys_of = |rows: &[WordleRow]| {
-        let mut keys = [0u8; 26];
-        for r in rows {
-            for (c, m) in r.letters.iter().zip(r.marks) {
-                let k = &mut keys[(*c as u8 - b'a') as usize];
-                *k = (*k).max(m);
-            }
-        }
-        keys
+    let keys_of = |rows: &[WordleRow]| -> Vec<Vec<(char, u8)>> {
+        ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"]
+            .iter()
+            .map(|line| {
+                line.chars()
+                    .map(|k| {
+                        let mark = rows
+                            .iter()
+                            .flat_map(|r| r.letters.iter().zip(r.marks))
+                            .filter(|(c, _)| c.to_ascii_uppercase() == k)
+                            .map(|(_, m)| m)
+                            .max()
+                            .unwrap_or(0);
+                        (k, mark)
+                    })
+                    .collect()
+            })
+            .collect()
     };
     let card = WordleCard {
         title: "Daily wordle #63",
         rows: &rows,
-        keys: keys_of(&rows),
+        keyboard: &keys_of(&rows),
         footer: "Solved in 2/6",
         theme: Theme::reef(),
     };
@@ -116,7 +125,7 @@ fn main() -> anyhow::Result<()> {
     let card = WordleCard {
         title: "Practice wordle",
         rows: &rows[..1],
-        keys: keys_of(&rows[..1]),
+        keyboard: &keys_of(&rows[..1]),
         footer: "Try 2 of 6",
         theme: Theme::reef(),
     };

@@ -77,6 +77,7 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "profile",
         r.profile_card(&ProfileCard {
+            lang: pinchora_core::i18n::Lang::Tr,
             display_name: HOSTILE,
             title: Some(HOSTILE),
             username: HOSTILE,
@@ -102,6 +103,7 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "rank",
         r.rank_card(&RankCard {
+            lang: pinchora_core::i18n::Lang::Tr,
             display_name: HOSTILE,
             title: Some(HOSTILE),
             username: HOSTILE,
@@ -121,6 +123,7 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "wallet",
         r.wallet_card(&WalletCard {
+            lang: pinchora_core::i18n::Lang::En,
             display_name: HOSTILE,
             avatar_png: &[],
             shells: 10,
@@ -564,7 +567,7 @@ fn hostile_text_renders_on_every_card() {
         r.wordle_card(&WordleCard {
             title: HOSTILE,
             rows: &word,
-            keys: [0; 26],
+            keyboard: &[],
             footer: HOSTILE,
             theme: t(),
         }),
@@ -640,6 +643,7 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "help",
         r.help_card(&HelpCard {
+            lang: pinchora_core::i18n::Lang::Tr,
             title: hostile(),
             intro: hostile(),
             page: 2,

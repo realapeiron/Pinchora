@@ -187,15 +187,15 @@ pub(crate) async fn on_button(cx: &Cx, party: Party, action: &str, id: i64) -> a
     }
     match action {
         "j" => join(cx, party, id).await?,
-        "l" => leave(cx, id).await?,
+        "l" => leave(cx, party, id).await?,
         "x" => cancel(cx, id).await?,
         _ => start(cx, party, id).await?,
     }
     Ok(true)
 }
 
-async fn refresh(cx: &Cx, id: i64) -> anyhow::Result<()> {
-    let Some((game, players)) = snapshot(&cx.app, id).await? else {
+async fn refresh(cx: &Cx, party: Party, id: i64) -> anyhow::Result<()> {
+    let Some((game, players)) = snapshot(&cx.app, party, id).await? else {
         return cx.reply_ephemeral("This lobby has expired.").await;
     };
     remember(cx, &game).await;
@@ -211,7 +211,7 @@ async fn join(cx: &Cx, party: Party, id: i64) -> anyhow::Result<()> {
         .join_party(id, user, &name, party.players().1, cx.app.now())
         .await?
     {
-        PartyJoin::Joined => refresh(cx, id).await,
+        PartyJoin::Joined => refresh(cx, party, id).await,
         PartyJoin::Already => {
             cx.reply_ephemeral("You are already in. Wait for the host to press Start!")
                 .await
@@ -221,10 +221,10 @@ async fn join(cx: &Cx, party: Party, id: i64) -> anyhow::Result<()> {
     }
 }
 
-async fn leave(cx: &Cx, id: i64) -> anyhow::Result<()> {
+async fn leave(cx: &Cx, party: Party, id: i64) -> anyhow::Result<()> {
     let user = cx.author()?.id.get();
     match cx.app.db.leave_party(id, user, cx.app.now()).await? {
-        PartyLeave::Left => refresh(cx, id).await,
+        PartyLeave::Left => refresh(cx, party, id).await,
         PartyLeave::NotIn => cx.reply_ephemeral("You are not in this lobby.").await,
         PartyLeave::Host => {
             cx.reply_ephemeral("You are the host: press Cancel to close the lobby instead.")
@@ -270,7 +270,7 @@ async fn cancel(cx: &Cx, id: i64) -> anyhow::Result<()> {
 async fn start(cx: &Cx, party: Party, id: i64) -> anyhow::Result<()> {
     let user = cx.author()?.id.get();
     for _ in 0..3 {
-        let Some((game, players)) = snapshot(&cx.app, id).await? else {
+        let Some((game, players)) = snapshot(&cx.app, party, id).await? else {
             return cx.reply_ephemeral("This lobby has expired.").await;
         };
         if !game.in_lobby() || game.late(cx.app.now()) {

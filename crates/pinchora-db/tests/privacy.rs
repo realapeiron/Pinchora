@@ -8,7 +8,7 @@ use pinchora_core::economy::{Period, daily_reward};
 use pinchora_db::{
     ANONYMISED, Award, CLEARED_COLUMNS, Comb, Counter, DAILY_LIMITS, DELETED_NAME, Daily, DailyOutcome, Db, DerbyJoin,
     DuelStart, GiveawayOpen, Hide, ID_LISTS, ListEdit, NewGame, NewGiveaway, OTHER_TABLES, PENDING, PeriodOutcome,
-    RepOutcome, USER_COLUMNS, VisitOutcome, XpGrant,
+    RepOutcome, USER_COLUMNS, VisitOutcome, XpGrant, ZEROED_COLUMNS,
 };
 
 async fn db() -> Option<Db> {
@@ -76,6 +76,7 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         .await
         .unwrap();
     db.set_privacy(user, Hide::Profile, true).await.unwrap();
+    db.set_dm_opt_out(user, true).await.unwrap();
     db.log_catch(user, "minnow", 4.0).await.unwrap();
     db.remember_name(user, "Pinch").await.unwrap();
     db.remember_name(other, "Other").await.unwrap();
@@ -246,6 +247,10 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         // A change they made on the dashboard ($1 doubles as the server).
         "INSERT INTO dashboard_audit (guild_id, actor_id, actor_name, source, action)
          VALUES ($1, $1, 'Pinch', 'web', 'settings.patch')",
+        // A custom command and an auto-responder they wrote ($1 doubles as the server).
+        "INSERT INTO custom_commands (guild_id, name, responses, created_by) VALUES ($1, 'hello', ARRAY['hi'], $1)",
+        "INSERT INTO custom_responders (guild_id, name, trigger_kind, responses, created_by)
+         VALUES ($1, 'welcome', 'member_join', ARRAY['hi'], $1)",
     ];
     for sql in inserts {
         run(db, sql, user, other).await;
@@ -311,6 +316,23 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
             .unwrap();
         assert_eq!(kept, 1, "the server's record of {table} stays, without the player");
     }
+    // A server's custom commands and responders stay, without the player who wrote them.
+    for (table, column) in ZEROED_COLUMNS {
+        assert_eq!(
+            count(db, table, column, user).await,
+            0,
+            "{table}.{column} still names the player"
+        );
+        let sql = format!("SELECT count(*) FROM {table} WHERE guild_id = $1 AND {column} = 0");
+        let (kept,): (i64,) = sqlx::query_as(sqlx::AssertSqlSafe(sql))
+            .bind(user as i64)
+            .fetch_one(db.pool())
+            .await
+            .unwrap();
+        assert_eq!(kept, 1, "the server's record in {table} stays, without the player");
+    }
+    // Their choice about direct messages from servers went with the account.
+    assert!(!db.dm_opt_out(user).await.unwrap());
     // The day's limits stay, the older days' go.
     for (table, column, day) in DAILY_LIMITS {
         let sql = format!(
@@ -425,6 +447,7 @@ async fn every_table_is_a_player_table_or_says_it_is_not() {
         .map(|(t, _)| *t)
         .chain(DAILY_LIMITS.iter().map(|(t, _, _)| *t))
         .chain(ANONYMISED.iter().map(|(t, _, _)| *t))
+        .chain(ZEROED_COLUMNS.iter().map(|(t, _)| *t))
         .collect();
     let unknown: Vec<&str> = tables
         .iter()
@@ -433,7 +456,7 @@ async fn every_table_is_a_player_table_or_says_it_is_not() {
         .collect();
     assert!(
         unknown.is_empty(),
-        "tables {unknown:?} are in none of USER_COLUMNS, DAILY_LIMITS, ANONYMISED or OTHER_TABLES \
+        "tables {unknown:?} are in none of USER_COLUMNS, DAILY_LIMITS, ANONYMISED, ZEROED_COLUMNS or OTHER_TABLES \
          (crates/pinchora-db/src/privacy.rs): \"delete my data\" would miss them"
     );
     let named: Vec<(&str, &str)> = USER_COLUMNS
@@ -443,6 +466,7 @@ async fn every_table_is_a_player_table_or_says_it_is_not() {
         .chain(ID_LISTS.iter().map(|(t, c, _)| (*t, *c)))
         .chain(DAILY_LIMITS.iter().map(|(t, c, _)| (*t, *c)))
         .chain(ANONYMISED.iter().map(|(t, c, _)| (*t, *c)))
+        .chain(ZEROED_COLUMNS.iter().copied())
         .collect();
     for (table, column) in &named {
         let (found,): (bool,) = sqlx::query_as(
@@ -1304,7 +1328,7 @@ async fn deleting_a_host_calls_the_giveaway_off_and_keeps_the_money_in_one_place
             .await
             .unwrap()
             .iter()
-            .all(|id| *id != giveaway.id)
+            .all(|due| due.id != giveaway.id)
     );
     assert_eq!(
         db.user(host).await.unwrap().credits,

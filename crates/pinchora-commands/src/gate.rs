@@ -38,7 +38,7 @@ async fn refuses(cx: &Cx, module: Option<Module>) -> anyhow::Result<bool> {
     match cx.app.module_access(guild, channel, module).await? {
         Access::Allowed => Ok(false),
         access => {
-            cx.reply_ephemeral(refusal(module, access, cx.can_manage_guild()))
+            cx.reply_ephemeral(refusal(module, access, cx.can_manage_guild(), cx.lang()))
                 .await?;
             metrics::counter!("pinchora_module_refusals_total", "module" => module.key()).increment(1);
             Ok(true)
@@ -178,6 +178,8 @@ mod tests {
             ("bc", "dex", ""),
             ("kp", "crabpot", ""),
             ("mb", "critterdrop", ""),
+            ("tg", "customcommand", "list"),
+            ("cm", "customcommand", "create"),
         ] {
             let sub = Some(sub).filter(|s| !s.is_empty());
             assert_eq!(

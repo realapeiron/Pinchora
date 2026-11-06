@@ -1,5 +1,8 @@
 use chrono::Utc;
-use pinchora_core::economy::{DAILY_COOLDOWN, DAILY_STREAK_WINDOW, Period};
+use pinchora_core::{
+    economy::{DAILY_COOLDOWN, DAILY_STREAK_WINDOW, Period},
+    t,
+};
 use pinchora_db::TransferOutcome;
 use pinchora_game::Content;
 use pinchora_render::WalletCard;
@@ -38,18 +41,21 @@ impl Balance {
             Some(t) if now - t <= DAILY_STREAK_WINDOW => row.daily_streak,
             _ => 0,
         };
-        let next_daily = ready_in(row.last_daily_at, DAILY_COOLDOWN, now);
+        let lang = cx.lang();
+        let next_daily = ready_in(row.last_daily_at, DAILY_COOLDOWN, now, lang);
         // The weekly and monthly rewards run on the game clock like their commands do.
         let game_now = cx.app.now();
         let next_weekly = ready_in(
             cx.app.db.period_claimed_at(user.id.get(), Period::Weekly).await?,
             Period::Weekly.cooldown(),
             game_now,
+            lang,
         );
         let next_monthly = ready_in(
             cx.app.db.period_claimed_at(user.id.get(), Period::Monthly).await?,
             Period::Monthly.cooldown(),
             game_now,
+            lang,
         );
         let pets = cx.app.db.pets(user.id.get()).await?.len() as i64;
         let fish_found = cx.app.db.fish_book_count(user.id.get()).await?;
@@ -62,6 +68,7 @@ impl Balance {
             .app
             .render(move |r| {
                 r.wallet_card(&WalletCard {
+                    lang,
                     display_name: &name,
                     avatar_png: &avatar,
                     shells: row.credits,
@@ -97,20 +104,21 @@ impl Give {
         let from = cx.author()?.id;
         let to = self.user.resolved.id;
         if to == from {
-            return cx.reply_ephemeral("You can't send shells to yourself.").await;
+            return cx.reply_ephemeral(t!(cx.lang(), "give.self")).await;
         }
         if self.user.resolved.bot {
-            return cx.reply_ephemeral("Bots have no use for shells.").await;
+            return cx.reply_ephemeral(t!(cx.lang(), "give.bot")).await;
         }
         match cx.app.db.transfer_credits(from.get(), to.get(), self.amount).await? {
             TransferOutcome::Done { sender_balance } => {
                 let embed = EmbedBuilder::new()
                     .color(SUCCESS)
-                    .description(format!(
-                        "Sent **{}** shells to {}. You have **{}** left.",
-                        thousands(self.amount),
-                        mention(to),
-                        thousands(sender_balance)
+                    .description(t!(
+                        cx.lang(),
+                        "give.sent",
+                        amount = thousands(self.amount),
+                        user = mention(to),
+                        balance = thousands(sender_balance)
                     ))
                     .build();
                 cx.reply_embed(embed).await?;
@@ -120,7 +128,7 @@ impl Give {
                 Ok(())
             }
             TransferOutcome::Insufficient { balance } => {
-                cx.reply_ephemeral(format!("You only have {} shells.", thousands(balance)))
+                cx.reply_ephemeral(t!(cx.lang(), "give.insufficient", balance = thousands(balance)))
                     .await
             }
         }

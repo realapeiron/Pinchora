@@ -7,19 +7,26 @@ import { channelLabel } from "../components/Pickers";
 
 import {
   type AuditPage,
+  type AutoResponder,
   type Community,
   type GuildEntry,
+  type CommandDef,
+  type CustomCommand,
   type GuildInfo,
+  type ImportReport,
   type Job,
   type LevelRoles,
   type Me,
   type ModulePatch,
   type Modules,
   type Overview,
+  type Preview,
   type RepRoles,
+  type ResponderDef,
   type Settings,
   type SettingsPatch,
   type Store,
+  type TagList,
   type XpRules,
   ApiError,
   api,
@@ -335,4 +342,100 @@ export function useAtlasIndex() {
     staleTime: Infinity,
     gcTime: Infinity,
   });
+}
+// /Custom commands and auto-responders
+
+/** The two lists share every route shape: `/commands` and `/responders`. */
+export type TagKind = "commands" | "responders";
+
+interface TagTypes {
+  commands: { item: CustomCommand; def: CommandDef };
+  responders: { item: AutoResponder; def: ResponderDef };
+}
+
+export function tagsKey(guild: string, kind: TagKind) {
+  return [`/api/guilds/${guild}/${kind}`];
+}
+
+/** A server's commands (or responders), with the most it may have. */
+export function useTags<K extends TagKind>(guild: string, kind: K) {
+  return useQuery({
+    queryKey: tagsKey(guild, kind),
+    queryFn: () => api<TagList<TagTypes[K]["item"]>>(`/api/guilds/${guild}/${kind}`),
+  });
+}
+
+/** Creates (no `id`) or replaces (`id`) one, and reads the list and the audit log again. */
+export function useSaveTag<K extends TagKind>(guild: string, kind: K) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, def }: { id?: string; def: TagTypes[K]["def"] }) =>
+      id
+        ? api<TagTypes[K]["item"]>(`/api/guilds/${guild}/${kind}/${id}`, "PUT", def)
+        : api<TagTypes[K]["item"]>(`/api/guilds/${guild}/${kind}`, "POST", def),
+    onSuccess: () => settled(client, guild, kind),
+  });
+}
+
+export function useDeleteTag(guild: string, kind: TagKind) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api<{ deleted: string }>(`/api/guilds/${guild}/${kind}/${id}`, "DELETE"),
+    onSuccess: () => settled(client, guild, kind),
+  });
+}
+
+export function useToggleTag(guild: string, kind: TagKind) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
+      api(`/api/guilds/${guild}/${kind}/${id}`, "PATCH", { enabled }),
+    onSuccess: () => settled(client, guild, kind),
+  });
+}
+
+async function settled(client: ReturnType<typeof useQueryClient>, guild: string, kind: TagKind) {
+  await Promise.all([
+    client.invalidateQueries({ queryKey: tagsKey(guild, kind) }),
+    client.invalidateQueries({ queryKey: [`/api/guilds/${guild}/audit`] }),
+  ]);
+}
+
+/** One item by id, for the editor (the list has it too, but a link may open the editor first). */
+export function useTag<K extends TagKind>(guild: string, kind: K, id: string | null) {
+  return useQuery({
+    queryKey: [...tagsKey(guild, kind), id],
+    queryFn: () => api<TagTypes[K]["item"]>(`/api/guilds/${guild}/${kind}/${id}`),
+    enabled: id !== null,
+  });
+}
+
+/**
+ * The message a draft would send, drawn by the bot's own code. `body` is the draft (and the arguments
+ * for a command); `reroll` asks again for another random pick. A draft the bot would refuse comes back
+ * as an error, shown where the preview would be.
+ */
+export function useTagPreview(guild: string, kind: TagKind, body: unknown, enabled: boolean, reroll = 0) {
+  return useQuery({
+    queryKey: [`/api/guilds/${guild}/${kind}/preview`, body, reroll],
+    queryFn: () => api<Preview>(`/api/guilds/${guild}/${kind}/preview`, "POST", body),
+    enabled,
+    staleTime: Infinity,
+    retry: false,
+    placeholderData: (previous) => previous,
+  });
+}
+
+export function useImportTags(guild: string, kind: TagKind) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { version?: number; items: unknown[]; on_conflict?: "skip" | "replace" }) =>
+      api<ImportReport>(`/api/guilds/${guild}/${kind}/import`, "POST", body),
+    onSuccess: () => settled(client, guild, kind),
+  });
+}
+
+/** The export file of a server's commands (or responders), as the server wrote it. */
+export function exportTags(guild: string, kind: TagKind) {
+  return api<{ version: number; items: unknown[] }>(`/api/guilds/${guild}/${kind}/export`);
 }

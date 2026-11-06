@@ -1,0 +1,95 @@
+{
+ "straw_hat": {
+  "name": "Hasır Güneş Şapkası"
+ },
+ "beanie": {
+  "name": "Örgü Bere"
+ },
+ "bow": {
+  "name": "Büyük Fiyonk"
+ },
+ "sailor_cap": {
+  "name": "Denizci Kasketi"
+ },
+ "flower_crown": {
+  "name": "Çiçek Tacı"
+ },
+ "top_hat": {
+  "name": "Silindir Şapka"
+ },
+ "witch_hat": {
+  "name": "Mercan Cadı Şapkası"
+ },
+ "captain_hat": {
+  "name": "Kaptan Şapkası"
+ },
+ "crown": {
+  "name": "Altın Taç"
+ },
+ "round_glasses": {
+  "name": "Yuvarlak Gözlük"
+ },
+ "freckles": {
+  "name": "Çiller"
+ },
+ "blush": {
+  "name": "Al Yanaklar"
+ },
+ "sunglasses": {
+  "name": "Güneş Gözlüğü"
+ },
+ "eyepatch": {
+  "name": "Korsan Göz Bandı"
+ },
+ "heart_glasses": {
+  "name": "Kalpli Gözlük"
+ },
+ "scarf": {
+  "name": "Sıcacık Atkı"
+ },
+ "bandana": {
+  "name": "Bandana"
+ },
+ "bow_tie": {
+  "name": "Papyon"
+ },
+ "shell_necklace": {
+  "name": "Deniz Kabuğu Kolye"
+ },
+ "pearl_necklace": {
+  "name": "İnci Kolye"
+ },
+ "backpack": {
+  "name": "Sırt Çantası"
+ },
+ "cape": {
+  "name": "Kahraman Pelerini"
+ },
+ "surfboard": {
+  "name": "Sörf Tahtası"
+ },
+ "fairy_wings": {
+  "name": "Peri Kanatları"
+ },
+ "bat_wings": {
+  "name": "Yarasa Kanatları"
+ },
+ "ice_cream": {
+  "name": "Dondurma"
+ },
+ "balloon": {
+  "name": "Balon"
+ },
+ "flower": {
+  "name": "Çiçek"
+ },
+ "lantern": {
+  "name": "Fener"
+ },
+ "star_wand": {
+  "name": "Yıldız Asası"
+ },
+ "fishing_rod": {
+  "name": "Olta"
+ }
+}

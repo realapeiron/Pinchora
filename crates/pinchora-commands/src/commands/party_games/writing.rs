@@ -6,6 +6,7 @@
 
 use std::{str::Split, sync::Arc, time::Duration};
 
+use pinchora_core::i18n::Lang;
 use pinchora_db::{Commit, PartyEntry, PartyGame, PartyPlayer, PartyVote, Pay, PlayerChange};
 use pinchora_game::party::{
     Dice, Party, VOTE_POINTS, WIN_BONUS, acronym, postcard as scenes, round_points, round_winners, writing_reward,
@@ -39,6 +40,9 @@ pub(crate) const ENTRY_FIELD: &str = "entry";
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 struct State {
+    /// The language of the game: Acronym Tide draws its letters from it.
+    #[serde(default)]
+    lang: Lang,
     seed: u64,
     /// Acronym Tide: the letters of this round.
     letters: String,
@@ -97,7 +101,11 @@ pub(crate) async fn open(cx: &Cx, party: Party, rounds: i32) -> anyhow::Result<(
         acronym::ROUNDS
     };
     let rounds = rounds.clamp(*range.start(), *range.end());
-    lobby::open(cx, party, rounds, encode(&State::default())?).await
+    let state = State {
+        lang: cx.lang(),
+        ..Default::default()
+    };
+    lobby::open(cx, party, rounds, encode(&state)?).await
 }
 
 /// Sets up what round `round` (from 1) shows: its letters, or its postcard.
@@ -109,7 +117,7 @@ fn begin_round(party: Party, state: &mut State, round: i32) {
         state.scene = scene.to_owned();
         state.seen.push(scene.to_owned());
     } else {
-        let letters = acronym::draw_letters(&mut dice, acronym::letter_count(round - 1));
+        let letters = acronym::draw_letters(state.lang, &mut dice, acronym::letter_count(round - 1));
         state.letters = letters.into_iter().collect();
     }
     state.note.clear();
@@ -405,7 +413,7 @@ pub(crate) async fn on_button(cx: &Cx, party: Party, mut parts: Split<'_, char>)
     let (Some(round), me) = (number(()), cx.author()?.id.get()) else {
         return cx.reply_ephemeral("This button has expired.").await;
     };
-    let Some((game, players)) = snapshot(&cx.app, id).await? else {
+    let Some((game, players)) = snapshot(&cx.app, party, id).await? else {
         return cx.reply_ephemeral("This game has expired.").await;
     };
     let round = round as i32;
@@ -484,7 +492,7 @@ async fn vote(cx: &Cx, party: Party, game: &PartyGame, players: &[PartyPlayer], 
     if new_vote {
         let votes = app.db.party_votes(game.id, game.round).await?.len();
         if votes >= players.len() {
-            to_reveal(app, game.id).await?;
+            to_reveal(app, party, game.id).await?;
         } else {
             count_changed(app, party, game).await;
         }
@@ -525,7 +533,7 @@ async fn count_changed(app: &Arc<App>, party: Party, game: &PartyGame) {
 /// Edits the count into the game's message, if the game is still in `phase` of `round`.
 async fn show_count(app: &Arc<App>, party: Party, id: i64, phase: &str, round: i32) {
     let result = async {
-        let Some((game, players)) = snapshot(app, id).await? else {
+        let Some((game, players)) = snapshot(app, party, id).await? else {
             return anyhow::Ok(());
         };
         if !game.is_playing() || game.phase != phase || game.round != round {
@@ -568,7 +576,7 @@ pub(crate) async fn on_modal(
     };
     let app = &cx.app;
     let me = cx.author()?.id.get();
-    let Some((game, players)) = snapshot(app, id).await? else {
+    let Some((game, players)) = snapshot(app, party, id).await? else {
         return cx.reply_ephemeral("This game has expired.").await;
     };
     if !game.is_playing() || game.phase != "write" || game.round != round || game.late(app.now()) {
@@ -584,14 +592,14 @@ pub(crate) async fn on_modal(
         .iter()
         .find(|(field, _)| field == ENTRY_FIELD)
         .map_or("", |(_, value)| value.as_str());
-    let cleaned = match text::clean(typed, strict(app, game.guild_id as u64).await) {
+    let cleaned = match text::clean_for(typed, strict(app, game.guild_id as u64).await, state.lang) {
         Ok(cleaned) => cleaned,
         Err(refused) => return cx.reply_ephemeral(refused.say()).await,
     };
     let line = if party == Party::Postcard {
         scenes::check_caption(&cleaned).map_err(|e| e.say())
     } else {
-        acronym::check_phrase(&cleaned, &letters_of(&state)).map_err(|e| e.say(&letters_of(&state)))
+        acronym::check_phrase(state.lang, &cleaned, &letters_of(&state)).map_err(|e| e.say(&letters_of(&state)))
     };
     let line = match line {
         Ok(line) => line,
@@ -620,7 +628,7 @@ pub(crate) async fn on_modal(
     if fresh {
         let written = app.db.party_entries(id, round).await?.len();
         if written >= players.len() {
-            to_vote(app, id).await?;
+            to_vote(app, party, id).await?;
         } else {
             count_changed(app, party, &game).await;
         }
@@ -631,14 +639,13 @@ pub(crate) async fn on_modal(
 // /Phases
 
 /// Writing is over: up for a vote, or, with fewer than two lines, straight to a reveal that says so.
-async fn to_vote(app: &Arc<App>, id: i64) -> anyhow::Result<bool> {
-    let Some((game, players)) = snapshot(app, id).await? else {
+async fn to_vote(app: &Arc<App>, party: Party, id: i64) -> anyhow::Result<bool> {
+    let Some((game, players)) = snapshot(app, party, id).await? else {
         return Ok(false);
     };
     if !game.is_playing() || game.phase != "write" {
         return Ok(false);
     }
-    let party = party_of(&game)?;
     let mut state = decode(&game)?;
     let entries = app.db.party_entries(id, game.round).await?;
     if entries.len() < 2 {
@@ -683,14 +690,13 @@ async fn to_vote(app: &Arc<App>, id: i64) -> anyhow::Result<bool> {
 }
 
 /// Voting is over: score the round and show who wrote what.
-async fn to_reveal(app: &Arc<App>, id: i64) -> anyhow::Result<bool> {
-    let Some((game, players)) = snapshot(app, id).await? else {
+async fn to_reveal(app: &Arc<App>, party: Party, id: i64) -> anyhow::Result<bool> {
+    let Some((game, players)) = snapshot(app, party, id).await? else {
         return Ok(false);
     };
     if !game.is_playing() || game.phase != "vote" {
         return Ok(false);
     }
-    let party = party_of(&game)?;
     let mut state = decode(&game)?;
     let entries = app.db.party_entries(id, game.round).await?;
     let votes = app.db.party_votes(id, game.round).await?;
@@ -813,14 +819,13 @@ async fn reveal_view(
 }
 
 /// The reveal has been up long enough: the next round, or the final scores.
-async fn after_reveal(app: &Arc<App>, id: i64) -> anyhow::Result<bool> {
-    let Some((game, players)) = snapshot(app, id).await? else {
+async fn after_reveal(app: &Arc<App>, party: Party, id: i64) -> anyhow::Result<bool> {
+    let Some((game, players)) = snapshot(app, party, id).await? else {
         return Ok(false);
     };
     if !game.is_playing() || game.phase != "reveal" {
         return Ok(false);
     }
-    let party = party_of(&game)?;
     if game.round >= game.rounds {
         return finish(app, game, players).await;
     }
@@ -943,10 +948,11 @@ pub(crate) async fn on_due(app: &Arc<App>, game: PartyGame) -> anyhow::Result<bo
     if !game.late(app.now()) {
         return Ok(false);
     }
+    let party = party_of(&game)?;
     match game.phase.as_str() {
-        "write" => to_vote(app, game.id).await,
-        "vote" => to_reveal(app, game.id).await,
-        "reveal" => after_reveal(app, game.id).await,
+        "write" => to_vote(app, party, game.id).await,
+        "vote" => to_reveal(app, party, game.id).await,
+        "reveal" => after_reveal(app, party, game.id).await,
         _ => Ok(false),
     }
 }

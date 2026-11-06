@@ -141,7 +141,8 @@ function ModuleRow({
       <div className="module-main">
         <div className="module-title">
           <h3 className="setting-name">{saved.label}</h3>
-          <span className={`badge badge-${state.tone}`}>{state.text}</span>
+          {/* The switch already says on or off; the badge is for what it does not say: kept to some channels. */}
+          {state.tone === "gold" && <span className={`badge badge-${state.tone}`}>{state.text}</span>}
         </div>
         <p className="muted">{saved.blurb}</p>
         {(error || why) && (

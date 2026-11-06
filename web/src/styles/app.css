@@ -822,6 +822,8 @@ body:has(.save-bar.is-open) .toast {
   display: grid;
   gap: 20px;
   margin-top: 20px;
+  /* Fields with a hint or an error under them must not stretch the ones beside them. */
+  align-items: start;
 }
 
 .form-grid-2 {
@@ -830,7 +832,15 @@ body:has(.save-bar.is-open) .toast {
 
 .setting-row + .field,
 .setting-row + .form-grid,
-.field + .form-grid {
+.form-grid + .field,
+.choice + .field,
+.field + .form-grid,
+.form-grid + .choice,
+.choice + .setting-row,
+.field + .setting-row,
+.embed-editor + .setting-row,
+.embed-off + .setting-row,
+.setting-row + .setting-row {
   margin-top: 20px;
 }
 
@@ -1415,12 +1425,11 @@ input[type="number"].pixel-input {
 }
 
 .module-tile {
-  display: flex;
-  flex-wrap: wrap;
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 6px 8px;
-  height: 100%;
   padding: 10px 12px;
   color: var(--ink);
   text-decoration: none;
@@ -1487,11 +1496,17 @@ input[type="number"].pixel-input {
   gap: 12px;
 }
 
+.glance > li,
+.module-grid > li {
+  display: flex;
+}
+
 .glance-tile {
+  flex: 1;
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-content: start;
   gap: 6px 10px;
-  height: 100%;
   padding: 14px;
   color: var(--ink);
   text-decoration: none;
@@ -1625,6 +1640,390 @@ input[type="number"].pixel-input {
   }
 }
 
+/* /Custom commands and auto-responders */
+
+.tag-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.tag-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 12px 12px 14px;
+  background: #10173a;
+}
+
+.tag-main {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.tag-name {
+  font: 700 15px/1.3 var(--font-pixel);
+  letter-spacing: 1px;
+  color: var(--gold);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.tag-name:hover {
+  text-decoration: underline;
+}
+
+.tag-detail,
+.tag-facts {
+  margin: 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.tag-lock {
+  margin-left: 8px;
+}
+
+.tag-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.is-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 24px;
+  align-items: start;
+}
+
+.editor-form {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+
+.editor-rail {
+  position: sticky;
+  top: 16px;
+  min-width: 0;
+}
+
+.input-prefix {
+  display: flex;
+  align-items: stretch;
+}
+.input-prefix-text {
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0 10px;
+  font: 700 13px/1 var(--font-pixel);
+  letter-spacing: 1px;
+  color: var(--gold);
+  background: #1a2350;
+  box-shadow: inset 0 0 0 2px var(--panel-edge);
+}
+
+.variants {
+  display: grid;
+  gap: 12px;
+}
+.variant {
+  display: grid;
+  gap: 6px;
+}
+.variant-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.variant-head .button-small {
+  margin-left: auto;
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+.embed-off {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.embed-off p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.embed-editor {
+  display: grid;
+  gap: 16px;
+  margin-top: 20px;
+  padding: 14px;
+  background: rgb(46 61 117 / 0.18);
+  box-shadow: inset 0 0 0 2px #232e5c;
+}
+.embed-editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.colour-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.colour-swatch {
+  flex: none;
+  width: 42px;
+  height: 42px;
+  box-shadow: inset 0 0 0 2px var(--outline);
+}
+
+.embed-fields-editor {
+  display: grid;
+  gap: 10px;
+}
+.embed-field-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto auto;
+  gap: 10px;
+  align-items: start;
+}
+.embed-field-row .pixel-textarea {
+  min-height: 42px;
+}
+
+.actions-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.action-row {
+  display: grid;
+  grid-template-columns: minmax(0, 240px) minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+}
+.action-row .input-short {
+  max-width: none;
+}
+.action-value {
+  min-width: 0;
+}
+
+.id-list {
+  display: grid;
+  gap: 10px;
+}
+.id-list-empty {
+  margin: 0;
+  font-size: 14px;
+}
+
+.choice-triggers {
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+.choice-card.is-locked {
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+.choice-lock {
+  margin-left: 8px;
+}
+
+.transfer-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.import-result {
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-left: var(--px) solid var(--mint);
+  background: rgb(6 214 160 / 0.08);
+}
+.import-result p {
+  margin: 0;
+}
+.import-failed {
+  color: var(--ink);
+}
+
+.preview-live {
+  display: grid;
+  gap: 8px;
+  transition: opacity 0.15s;
+}
+.preview-live.is-busy {
+  opacity: 0.6;
+}
+.preview-notes {
+  margin: 14px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+}
+
+/* A message the way Discord draws it: what the bot would send. */
+
+.discord {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  color: #dbdee1;
+  background: #313338;
+  border-left: var(--px) solid var(--panel-edge);
+}
+.discord-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: #f2f3f5;
+}
+.discord-avatar {
+  width: 28px;
+  height: 28px;
+  background: var(--accent);
+  box-shadow: inset 0 0 0 2px var(--outline);
+}
+.discord-tag {
+  padding: 2px 5px 1px;
+  font: 700 10px/1.2 var(--font-pixel);
+  color: #fff;
+  background: #5865f2;
+}
+.discord-private {
+  font-size: 12px;
+}
+.discord-text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.embed-card {
+  display: flex;
+  gap: 12px;
+  max-width: 100%;
+  padding: 8px 12px 10px;
+  background: #2b2d31;
+  border-left: var(--px) solid var(--accent);
+}
+.embed-main {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.embed-main p {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.embed-author {
+  font-size: 13px;
+  font-weight: 700;
+}
+.embed-title {
+  font-weight: 700;
+  color: #f2f3f5;
+}
+.embed-description {
+  font-size: 14px;
+}
+.embed-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 4px;
+}
+.embed-field {
+  grid-column: 1 / -1;
+  font-size: 14px;
+}
+.embed-field.is-inline {
+  grid-column: auto;
+}
+.embed-field-name {
+  font-weight: 700;
+  font-size: 13px;
+  color: #f2f3f5;
+}
+.embed-picture,
+.embed-thumb {
+  padding: 18px 10px;
+  font-size: 12px;
+  text-align: center;
+  color: #949ba4;
+  background: #1e1f22;
+}
+.embed-thumb {
+  flex: none;
+  align-self: start;
+  width: 76px;
+  padding: 14px 6px;
+  overflow-wrap: anywhere;
+}
+.embed-footer {
+  font-size: 12px;
+}
+
+@media (max-width: 1023px) {
+  .editor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .editor-rail {
+    position: static;
+  }
+  .embed-field-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .action-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .tag-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .tag-actions {
+    justify-content: space-between;
+  }
+  .embed-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* /Narrow screens: the sidebar folds above the page. */
 
 @media (max-width: 767px) {
@@ -1705,7 +2104,7 @@ input[type="number"].pixel-input {
     justify-content: space-between;
   }
   .module-add {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
   }
   .module-grid {
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));

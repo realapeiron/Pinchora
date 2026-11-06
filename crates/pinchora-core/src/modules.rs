@@ -4,7 +4,7 @@
 
 use std::collections::HashMap;
 
-use crate::settings::FieldError;
+use crate::{i18n::Lang, settings::FieldError, t};
 
 /// How many channels one module may name.
 pub const MAX_CHANNELS: usize = 50;
@@ -12,7 +12,7 @@ pub const MAX_CHANNELS: usize = 50;
 /// Commands that stay available whatever a server switches off: the way back in, the basics, and
 /// what is the player's own business rather than the server's (their privacy and data, and the
 /// reminders they asked for).
-pub const NEVER_GATED: [&str; 5] = ["config", "help", "ping", "privacy", "remind"];
+pub const NEVER_GATED: [&str; 6] = ["config", "help", "language", "ping", "privacy", "remind"];
 
 /// The custom-id prefixes of the buttons and menus the [`NEVER_GATED`] commands send: they have no
 /// module either.
@@ -71,6 +71,7 @@ pub enum Module {
     Suggestions,
     Polls,
     Giveaways,
+    CustomCommands,
     Profile,
     Economy,
     Shop,
@@ -87,11 +88,12 @@ pub enum Module {
     PartyGames,
     Collection,
     Gambling,
+    TextCommands,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 26] = [
+    pub const ALL: [Self; 28] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -102,6 +104,7 @@ impl Module {
         Self::Suggestions,
         Self::Polls,
         Self::Giveaways,
+        Self::CustomCommands,
         Self::Profile,
         Self::Economy,
         Self::Shop,
@@ -118,6 +121,7 @@ impl Module {
         Self::PartyGames,
         Self::Collection,
         Self::Gambling,
+        Self::TextCommands,
     ];
 
     /// The key stored in the database and used in the API.
@@ -133,6 +137,7 @@ impl Module {
             Self::Suggestions => "suggestions",
             Self::Polls => "polls",
             Self::Giveaways => "giveaways",
+            Self::CustomCommands => "custom_commands",
             Self::Profile => "profile",
             Self::Economy => "economy",
             Self::Shop => "shop",
@@ -149,6 +154,7 @@ impl Module {
             Self::PartyGames => "party_games",
             Self::Collection => "collection",
             Self::Gambling => "gambling",
+            Self::TextCommands => "text_commands",
         }
     }
 
@@ -168,6 +174,7 @@ impl Module {
             Self::Suggestions => "Suggestions",
             Self::Polls => "Polls",
             Self::Giveaways => "Giveaways",
+            Self::CustomCommands => "Custom commands",
             Self::Profile => "Profiles and ranks",
             Self::Economy => "Shell economy",
             Self::Shop => "Shops and gifts",
@@ -184,7 +191,13 @@ impl Module {
             Self::PartyGames => "Word party games",
             Self::Collection => "Critter drops and beachcombing",
             Self::Gambling => "Gambling-style games",
+            Self::TextCommands => "Text commands",
         }
+    }
+
+    /// [`Module::label`] in `lang`.
+    pub fn name(self, lang: Lang) -> String {
+        t!(lang, &format!("module.{}", self.key()))
     }
 
     /// One line on what the module covers, for the dashboard and `/config modules show`.
@@ -200,6 +213,9 @@ impl Module {
             Self::Suggestions => "/suggest and its voting buttons.",
             Self::Polls => "/poll and its voting buttons.",
             Self::Giveaways => "/giveaway and its entry button.",
+            Self::CustomCommands => {
+                "/tag and /customcommand, and the auto-responders (joins, level-ups, roles, keywords)."
+            }
             Self::Profile => "/profile, /rank, /leaderboard, /bio, /customize, /character, /wrapped and game stats.",
             Self::Economy => "/daily, /weekly, /monthly, /balance, /give and /rep.",
             Self::Shop => "/shop, /inventory, /gift and player stalls.",
@@ -218,6 +234,9 @@ impl Module {
             }
             Self::Collection => "/dex, /beachcomb, /crabpot, /critterdrop and drops that wash up in chat.",
             Self::Gambling => "Games that stake shells on chance: the shell game and staked derbies.",
+            Self::TextCommands => {
+                "Commands typed as messages, with the prefix or an @mention. Slash commands are not affected."
+            }
         }
     }
 
@@ -232,7 +251,9 @@ impl Module {
             | Self::Store
             | Self::Suggestions
             | Self::Polls
-            | Self::Giveaways => Group::Server,
+            | Self::Giveaways
+            | Self::CustomCommands
+            | Self::TextCommands => Group::Server,
             Self::Profile | Self::Economy | Self::Shop | Self::Quests | Self::Social => Group::Players,
             Self::House | Self::Plaza | Self::Pets | Self::Fishing => Group::Home,
             Self::Duels
@@ -280,6 +301,7 @@ impl Module {
             "roles" => Self::RolePanels,
             "partner" | "friends" | "hug" | "pat" | "wave" | "highfive" => Self::Social,
             "giveaway" => Self::Giveaways,
+            "tag" | "customcommand" => Self::CustomCommands,
             "suggest" | "suggestion" => Self::Suggestions,
             "poll" => Self::Polls,
             "dex" | "beachcomb" | "crabpot" | "critterdrop" => Self::Collection,
@@ -322,6 +344,7 @@ impl Module {
             "rr" => Self::RolePanels,
             "pt" | "fd" | "hg" => Self::Social,
             "gw" => Self::Giveaways,
+            "tg" | "cm" => Self::CustomCommands,
             "sg" => Self::Suggestions,
             "pl" => Self::Polls,
             _ => return None,
@@ -523,17 +546,13 @@ pub fn edit_channels(
 }
 
 /// The sentence that says a module is off, for the person who tried it. `manager` adds the way back.
-pub fn refusal(module: Module, access: Access, manager: bool) -> String {
+pub fn refusal(module: Module, access: Access, manager: bool, lang: Lang) -> String {
     let mut text = match access {
-        Access::ServerOff | Access::Allowed => "This feature is turned off on this server.",
-        Access::ChannelOff => "This feature is turned off in this channel.",
-    }
-    .to_owned();
+        Access::ServerOff | Access::Allowed => t!(lang, "gate.server-off"),
+        Access::ChannelOff => t!(lang, "gate.channel-off"),
+    };
     if manager {
-        text.push_str(&format!(
-            " It is the **{}** module: switch it on with `/config modules` or on the dashboard.",
-            module.label()
-        ));
+        text.push_str(&t!(lang, "gate.how-to-enable", module = module.name(lang)));
     }
     text
 }
@@ -628,6 +647,13 @@ mod tests {
                 "{prefix}"
             );
         }
+        assert_eq!(Module::of_command("tag", None), Some(Module::CustomCommands));
+        assert_eq!(
+            Module::of_command("customcommand", Some("create")),
+            Some(Module::CustomCommands)
+        );
+        assert_eq!(Module::of_component_prefix("tg"), Some(Module::CustomCommands));
+        assert_eq!(Module::of_component_prefix("cm"), Some(Module::CustomCommands));
         assert_eq!(Module::of_component_prefix("zz"), None);
     }
 
@@ -770,18 +796,25 @@ mod tests {
     #[test]
     fn the_refusal_and_the_summary_read_well() {
         assert_eq!(
-            refusal(Module::Pets, Access::ServerOff, false),
+            refusal(Module::Pets, Access::ServerOff, false, Lang::En),
             "This feature is turned off on this server."
         );
         assert_eq!(
-            refusal(Module::Pets, Access::ChannelOff, false),
+            refusal(Module::Pets, Access::ChannelOff, false, Lang::En),
             "This feature is turned off in this channel."
         );
-        let manager = refusal(Module::Pets, Access::ServerOff, true);
+        let manager = refusal(Module::Pets, Access::ServerOff, true, Lang::En);
+        assert_eq!(
+            refusal(Module::Pets, Access::ChannelOff, true, Lang::Tr),
+            "Bu özellik bu kanalda kapalı. Bu, **Evcil hayvanlar** modülü: `/config modules` ile ya da panelden açabilirsin."
+        );
         assert!(
             manager.contains("**Pets**") && manager.contains("/config modules"),
             "{manager}"
         );
+        for module in Module::ALL {
+            assert_eq!(module.name(Lang::En), module.label(), "locales/en/common.toml [module]");
+        }
         let rule = |enabled, mode, n: u64| ModuleRule {
             enabled,
             mode,

@@ -11,12 +11,14 @@ import {
   checkPoints,
   checkPointsEmoji,
   checkPointsName,
+  checkPrefix,
   checkPrice,
   checkReputation,
   checkStock,
   checkTitle,
   checkVoiceAmount,
 } from "./rules";
+import { checkCommandName } from "./tags";
 
 type Input = unknown;
 
@@ -29,6 +31,7 @@ const checks: Record<string, (input: Input) => Check<unknown>> = {
   title: (s) => checkTitle(s as string),
   points_name: (s) => checkPointsName(s as string),
   points_emoji: (s) => checkPointsEmoji(s as string),
+  prefix: (s) => checkPrefix(s as string),
   points: (pair) => {
     const [min, max] = pair as [number, number];
     return checkPoints(min, max);
@@ -39,6 +42,7 @@ const checks: Record<string, (input: Input) => Check<unknown>> = {
   reputation: (n) => checkReputation(n as number),
   price: (n) => checkPrice(n as number),
   stock: (n) => checkStock(n as number),
+  command_name: (s) => checkCommandName(s as string),
 };
 
 describe("the browser's checks answer like the server's", () => {

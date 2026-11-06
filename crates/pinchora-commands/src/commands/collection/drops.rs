@@ -7,6 +7,7 @@
 use std::{str::Split, sync::Arc, time::Duration};
 
 use chrono::{Datelike, Duration as Span, Timelike};
+use pinchora_core::i18n::Lang;
 use pinchora_db::{BottleOpen, BottlePrize, DROP_BOTTLE, DROP_CRITTERS, DropRow, Grab, NewDrop};
 use pinchora_game::{
     Rarity,
@@ -115,16 +116,16 @@ impl CritterDrop {
 /// the drop ends. Best effort: without it the buttons are only retired when somebody clicks.
 fn track_message(cx: &Cx, drop: i64) {
     let app = cx.app.clone();
-    let token = cx.interaction.token.clone();
+    let responder = cx.responder.clone();
     // The drop stays keyed to the channel it was called in, which `/critterdrop` checks for a waiting one.
     let channel = channel_of(cx);
     cx.app.spawn(async move {
         // The answer to the command may still be on its way to Discord.
         tokio::time::sleep(Duration::from_millis(1_500)).await;
-        let message = async { anyhow::Ok(app.interaction().response(&token).await?.model().await?) }.await;
+        let message = responder.original().await;
         match message {
-            Ok(message) => {
-                if let Err(error) = app.db.set_drop_message(drop, channel, message.id.get()).await {
+            Ok((_, message)) => {
+                if let Err(error) = app.db.set_drop_message(drop, channel, message).await {
                     tracing::debug!(%error, drop, "drop message not remembered");
                 }
             }
@@ -510,11 +511,15 @@ pub(crate) async fn on_open(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::Resu
     let Some(row) = app.db.drop_row(id).await?.filter(|r| r.kind == DROP_BOTTLE) else {
         return cx.reply_ephemeral("That bottle has drifted off.").await;
     };
+    let lang = cx.lang();
     let text = row
         .cards
         .first()
-        .and_then(|id| Collection::get().bottle(id))
-        .map_or("The note has faded.", |b| b.text.as_str())
+        .and_then(|id| Collection::get().bottle_text(id, lang))
+        .unwrap_or(match lang {
+            Lang::En => "The note has faded.",
+            Lang::Tr => "Not solmuş.",
+        })
         .to_owned();
     let prize = collection::open_bottle(&mut dice());
     let held = match prize {

@@ -1,6 +1,6 @@
 use std::{collections::HashSet, str::Split, sync::Arc};
 
-use pinchora_core::{leveling, stats::PlayerStats};
+use pinchora_core::{leveling, stats::PlayerStats, t};
 use pinchora_db::{CustomizeBuy, MAX_BADGES, UserRow};
 use pinchora_game::{Background, Badge, BadgeKind, BadgeStat, Content, Rarity, TitleKind, stat_value};
 use pinchora_render::{
@@ -429,6 +429,7 @@ async fn background_panel(
     page: Option<usize>,
     note: &str,
 ) -> anyhow::Result<InteractionResponseData> {
+    let lang = cx.lang();
     let content = Content::get();
     let user = cx.author()?;
     let id = user.id.get();
@@ -459,11 +460,11 @@ async fn background_panel(
         .take(PER_PAGE)
         .map(|b| {
             let status = if is_equipped(b) {
-                "Equipped".to_owned()
+                t!(lang, "customize.equipped")
             } else if is_owned(b) {
-                "Owned".to_owned()
+                t!(lang, "customize.owned")
             } else {
-                format!("{} shells", thousands(b.price))
+                t!(lang, "customize.price", price = thousands(b.price))
             };
             option(
                 &b.name,
@@ -486,17 +487,18 @@ async fn background_panel(
     match shown {
         Some(b) => {
             let status = if is_equipped(b) {
-                "on your cards now".to_owned()
+                t!(lang, "customize.worn-now")
             } else if is_owned(b) {
-                "owned, not worn".to_owned()
+                t!(lang, "customize.owned-not-worn")
             } else {
-                format!("{} shells", thousands(b.price))
+                t!(lang, "customize.price", price = thousands(b.price))
             };
             text.push_str(&format!("**{}** · {} · {status}", b.name, b.rarity.label()));
         }
-        None => text.push_str("Pick a background below to see it on your profile card."),
+        None => text.push_str(&t!(lang, "customize.background.pick-hint")),
     }
-    text.push_str(&format!("\nYou have **{}** shells.", thousands(credits)));
+    text.push('\n');
+    text.push_str(&t!(lang, "customize.balance", balance = thousands(credits)));
 
     let hid = id_part(shown);
     let can_buy = shown.is_some_and(|b| !is_owned(b));
@@ -504,42 +506,55 @@ async fn background_panel(
     let components = vec![
         row(vec![menu(
             "cz:bs".to_owned(),
-            "Pick a background…",
+            &t!(lang, "customize.background.pick"),
             options,
             1,
             1,
-            "Nothing to show",
+            &t!(lang, "customize.nothing-to-show"),
         )]),
         row(vec![
             button(
                 format!("cz:bp:{}:{hid}", page.saturating_sub(1)),
-                "◀ Page",
+                &t!(lang, "customize.prev-page"),
                 ButtonStyle::Secondary,
                 page == 0,
             ),
             button(
                 format!("cz:bp:{}:{hid}", page + 1),
-                "Page ▶",
+                &t!(lang, "customize.next-page"),
                 ButtonStyle::Secondary,
                 page + 1 >= pages,
             ),
-            button(format!("cz:bb:{hid}"), "Buy", ButtonStyle::Success, !can_buy),
-            button(format!("cz:be:{hid}"), "Equip", ButtonStyle::Primary, !can_equip),
-            button("cz:br".to_owned(), "Remove", ButtonStyle::Danger, equipped.is_none()),
+            button(
+                format!("cz:bb:{hid}"),
+                &t!(lang, "customize.buy"),
+                ButtonStyle::Success,
+                !can_buy,
+            ),
+            button(
+                format!("cz:be:{hid}"),
+                &t!(lang, "customize.equip"),
+                ButtonStyle::Primary,
+                !can_equip,
+            ),
+            button(
+                "cz:br".to_owned(),
+                &t!(lang, "customize.remove"),
+                ButtonStyle::Danger,
+                equipped.is_none(),
+            ),
         ]),
     ];
     let embed = EmbedBuilder::new()
         .color(BRAND)
-        .title("Card backgrounds")
+        .title(t!(lang, "customize.background.title"))
         .description(text);
     Ok(Cx::card(embed, "profile.png", png, components, true))
 }
 
 async fn expired(cx: &Cx, command: &str) -> anyhow::Result<()> {
-    cx.reply_ephemeral(format!(
-        "That choice isn't available any more. Run `/customize {command}` again."
-    ))
-    .await
+    cx.reply_ephemeral(t!(cx.lang(), "customize.expired", command = command))
+        .await
 }
 
 async fn buy_background(cx: &Cx, id: &str) -> anyhow::Result<()> {
@@ -552,18 +567,20 @@ async fn buy_background(cx: &Cx, id: &str) -> anyhow::Result<()> {
         .buy_background(cx.author()?.id.get(), &background.id, background.price)
         .await?;
     let note = match outcome {
-        CustomizeBuy::Bought { balance } => format!(
-            "🛍️ Bought **{}** for {} shells. {} left. Press **Equip** to put it on your cards.",
-            background.name,
-            thousands(background.price),
-            thousands(balance)
+        CustomizeBuy::Bought { balance } => t!(
+            cx.lang(),
+            "customize.background.bought",
+            item = background.name,
+            price = thousands(background.price),
+            balance = thousands(balance)
         ),
-        CustomizeBuy::AlreadyOwned => format!("You already own **{}**.", background.name),
-        CustomizeBuy::Insufficient { balance } => format!(
-            "**{}** costs {} shells; you have {}.",
-            background.name,
-            thousands(background.price),
-            thousands(balance)
+        CustomizeBuy::AlreadyOwned => t!(cx.lang(), "customize.already-own", item = background.name),
+        CustomizeBuy::Insufficient { balance } => t!(
+            cx.lang(),
+            "customize.costs",
+            item = background.name,
+            price = thousands(background.price),
+            balance = thousands(balance)
         ),
     };
     let data = background_panel(cx, Highlight::Id(&background.id), None, &note).await?;
@@ -580,12 +597,9 @@ async fn equip_background(cx: &Cx, id: &str) -> anyhow::Result<()> {
         .equip_background(cx.author()?.id.get(), &background.id)
         .await?
     {
-        format!(
-            "Saved. **{}** is on your profile, rank and wallet cards.",
-            background.name
-        )
+        t!(cx.lang(), "customize.background.equipped", item = background.name)
     } else {
-        format!("You don't own **{}** yet. Press **Buy** first.", background.name)
+        t!(cx.lang(), "customize.background.not-owned", item = background.name)
     };
     let data = background_panel(cx, Highlight::Id(&background.id), None, &note).await?;
     cx.update(data).await
@@ -782,25 +796,37 @@ async fn badges_panel(cx: &Cx, page: usize, note: &str, fresh: Fresh) -> anyhow:
         text.push_str(note);
         text.push_str("\n\n");
     }
+    let lang = cx.lang();
     let names: Vec<_> = worn.iter().map(|b| format!("**{}**", b.name)).collect();
-    if worn.is_empty() && wardrobe.chosen {
-        text.push_str("You are not wearing any badges.");
+    let (count, names) = (worn.len(), names.join(", "));
+    text.push_str(&if worn.is_empty() && wardrobe.chosen {
+        t!(lang, "customize.badges.none-worn")
     } else if worn.is_empty() {
-        text.push_str("Your best badges will show on your card on their own once you have earned some.");
+        t!(lang, "customize.badges.none-earned")
     } else if wardrobe.chosen {
-        text.push_str(&format!("Wearing {}/{MAX_BADGES}: {}.", worn.len(), names.join(", ")));
+        t!(
+            lang,
+            "customize.badges.wearing",
+            count = count,
+            max = MAX_BADGES,
+            names = names
+        )
     } else {
-        text.push_str(&format!(
-            "Your card shows your best badges on its own ({}/{MAX_BADGES}): {}.",
-            worn.len(),
-            names.join(", ")
-        ));
-    }
-    text.push_str(&format!(
-        " Pick up to {MAX_BADGES} below.\nYou have **{}** shells.",
-        thousands(credits)
-    ));
-    let mut embed = EmbedBuilder::new().color(BRAND).title("Your badges").description(text);
+        t!(
+            lang,
+            "customize.badges.auto",
+            count = count,
+            max = MAX_BADGES,
+            names = names
+        )
+    });
+    text.push_str(&t!(lang, "customize.badges.pick-up-to", max = MAX_BADGES));
+    text.push('\n');
+    text.push_str(&t!(lang, "customize.balance", balance = thousands(credits)));
+    let mut embed = EmbedBuilder::new()
+        .color(BRAND)
+        .title(t!(lang, "customize.badges.title"))
+        .description(text);
     for (name, lines) in badge_fields(&wardrobe) {
         embed = embed.field(EmbedFieldBuilder::new(name, lines));
     }
@@ -809,45 +835,45 @@ async fn badges_panel(cx: &Cx, page: usize, note: &str, fresh: Fresh) -> anyhow:
     if pages > 1 {
         buttons.push(button(
             format!("cz:wp:{}:{mask:x}", page.saturating_sub(1)),
-            "◀ Page",
+            &t!(lang, "customize.prev-page"),
             ButtonStyle::Secondary,
             page == 0,
         ));
         buttons.push(button(
             format!("cz:wp:{}:{mask:x}", page + 1),
-            "Page ▶",
+            &t!(lang, "customize.next-page"),
             ButtonStyle::Secondary,
             page + 1 >= pages,
         ));
     }
     buttons.push(button(
         format!("cz:wc:{mask:x}"),
-        "Take all off",
+        &t!(lang, "customize.badges.take-all-off"),
         ButtonStyle::Danger,
         wardrobe.chosen && saved_empty,
     ));
     buttons.push(button(
         format!("cz:wa:{mask:x}"),
-        "Show my best automatically",
+        &t!(lang, "customize.badges.auto-button"),
         ButtonStyle::Secondary,
         !wardrobe.chosen,
     ));
     let components = vec![
         row(vec![menu(
             format!("cz:ws:{page}:{mask:x}"),
-            "Badges to wear…",
+            &t!(lang, "customize.badges.wear-menu"),
             wear_options,
             0,
             MAX_BADGES as u8,
-            "Nothing to wear yet",
+            &t!(lang, "customize.badges.nothing-to-wear"),
         )]),
         row(vec![menu(
             format!("cz:wb:{mask:x}"),
-            "Buy a shop badge…",
+            &t!(lang, "customize.badges.buy-menu"),
             buy_options,
             1,
             1,
-            "Nothing to buy",
+            &t!(lang, "customize.badges.nothing-to-buy"),
         )]),
         row(buttons),
     ];
@@ -886,10 +912,10 @@ async fn wear(cx: &Cx, page: usize, fresh: u128, values: &[String]) -> anyhow::R
         }
     }
     let note = if next.len() > MAX_BADGES {
-        format!("You can wear {MAX_BADGES} badges at most. Take one off first.")
+        t!(cx.lang(), "customize.badges.too-many", max = MAX_BADGES)
     } else {
         cx.app.db.set_badges(id, &next).await?;
-        "Saved.".to_owned()
+        t!(cx.lang(), "customize.saved")
     };
     let data = badges_panel(cx, page, &note, Fresh::Keep(fresh)).await?;
     cx.update(data).await
@@ -900,21 +926,23 @@ async fn buy_badge(cx: &Cx, id: &str, fresh: u128) -> anyhow::Result<()> {
         return expired(cx, "badges").await;
     };
     let BadgeKind::Shop { price } = badge.kind else {
-        return cx.reply_ephemeral("That badge is earned, not sold.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "customize.badges.not-sold")).await;
     };
     let note = match cx.app.db.buy_badge(cx.author()?.id.get(), &badge.id, price).await? {
-        CustomizeBuy::Bought { balance } => format!(
-            "🛍️ Bought **{}** for {} shells. {} left. Pick it in the first menu to wear it.",
-            badge.name,
-            thousands(price),
-            thousands(balance)
+        CustomizeBuy::Bought { balance } => t!(
+            cx.lang(),
+            "customize.badges.bought",
+            item = badge.name,
+            price = thousands(price),
+            balance = thousands(balance)
         ),
-        CustomizeBuy::AlreadyOwned => format!("You already own **{}**.", badge.name),
-        CustomizeBuy::Insufficient { balance } => format!(
-            "**{}** costs {} shells; you have {}.",
-            badge.name,
-            thousands(price),
-            thousands(balance)
+        CustomizeBuy::AlreadyOwned => t!(cx.lang(), "customize.already-own", item = badge.name),
+        CustomizeBuy::Insufficient { balance } => t!(
+            cx.lang(),
+            "customize.costs",
+            item = badge.name,
+            price = thousands(price),
+            balance = thousands(balance)
         ),
     };
     let data = badges_panel(cx, 0, &note, Fresh::Keep(fresh)).await?;
@@ -956,8 +984,8 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[S
         },
         Some("br") => {
             cx.app.db.remove_background(cx.author()?.id.get()).await?;
-            let note = "Removed. Your cards are plain again.";
-            let data = background_panel(cx, Highlight::Nothing, None, note).await?;
+            let note = t!(cx.lang(), "customize.background.removed");
+            let data = background_panel(cx, Highlight::Nothing, None, &note).await?;
             cx.update(data).await
         }
         Some("ws") => {
@@ -975,17 +1003,17 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[S
         }
         Some("wc") => {
             cx.app.db.set_badges(cx.author()?.id.get(), &[]).await?;
-            let note = "Took every badge off. Your card shows none.";
-            let data = badges_panel(cx, 0, note, Fresh::Keep(fresh(args.next()))).await?;
+            let note = t!(cx.lang(), "customize.badges.took-off");
+            let data = badges_panel(cx, 0, &note, Fresh::Keep(fresh(args.next()))).await?;
             cx.update(data).await
         }
         Some("wa") => {
             cx.app.db.reset_badges(cx.author()?.id.get()).await?;
-            let note = "Done. Your card shows your best badges again, the rarest first.";
-            let data = badges_panel(cx, 0, note, Fresh::Keep(fresh(args.next()))).await?;
+            let note = t!(cx.lang(), "customize.badges.auto-done");
+            let data = badges_panel(cx, 0, &note, Fresh::Keep(fresh(args.next()))).await?;
             cx.update(data).await
         }
-        _ => cx.reply_ephemeral("This button has expired.").await,
+        _ => cx.reply_ephemeral(t!(cx.lang(), "privacy.expired")).await,
     }
 }
 

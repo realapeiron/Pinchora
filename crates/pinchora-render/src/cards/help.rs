@@ -1,5 +1,7 @@
 use std::fmt::Write;
 
+use pinchora_core::{i18n::Lang, t};
+
 use super::{PIXEL, SANS, text};
 use crate::{
     Theme,
@@ -21,6 +23,8 @@ pub struct HelpRow {
 /// 900-wide page of the `/help` guide: the area's name, one line on it, and a row for each command,
 /// with the page number in the corner. A row's text may take a second line; the card grows to fit.
 pub struct HelpCard {
+    /// The language of the labels; the rows and title come translated.
+    pub lang: Lang,
     pub title: String,
     pub intro: String,
     /// 1-based, as shown.
@@ -89,9 +93,9 @@ impl HelpCard {
             false,
             &t.muted,
             "start",
-            "PINCHORA HELP",
+            &t!(self.lang, "card.help-title"),
         );
-        let chip_text = format!("PAGE {}/{}", self.page, self.pages);
+        let chip_text = t!(self.lang, "card.page", page = self.page, pages = self.pages);
         let chip = pixel_width(&chip_text, 16.0) + 24.0;
         panel(&mut s, 864.0 - chip, 24.0, chip, 32.0, 4.0, &t.panel, &t.panel_edge);
         text(
@@ -190,7 +194,7 @@ impl HelpCard {
                 false,
                 &t.muted,
                 "start",
-                "NEEDS MANAGE SERVER",
+                &t!(self.lang, "card.needs-manage-server"),
             );
         }
         sprite(&mut s, CRAB, 752.0, foot - 12.0, 2.0, &t.accent, "#fff1e8");
@@ -216,6 +220,7 @@ mod tests {
 
     fn card(rows: Vec<HelpRow>) -> HelpCard {
         HelpCard {
+            lang: Lang::En,
             title: "House".to_owned(),
             intro: "Decorate rooms, visit friends and show off.".to_owned(),
             page: 2,

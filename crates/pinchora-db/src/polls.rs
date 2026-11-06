@@ -2,8 +2,11 @@
 
 use chrono::{DateTime, Utc};
 
+use pinchora_core::modules::Module;
+
 use crate::{
     Db,
+    giveaways::{Due, not_paused},
     locks::{lock_users, retry},
     sql_id,
 };
@@ -217,15 +220,20 @@ impl Db {
         Ok(row.and_then(|(c,)| usize::try_from(c).ok()))
     }
 
-    /// Ids of open polls whose time is up at `now`, soonest first.
-    pub async fn due_polls(&self, now: DateTime<Utc>, limit: i64) -> anyhow::Result<Vec<i64>> {
-        let rows: Vec<(i64,)> =
-            sqlx::query_as("SELECT id FROM polls WHERE status = 'open' AND ends_at <= $1 ORDER BY ends_at LIMIT $2")
-                .bind(now)
-                .bind(limit)
-                .fetch_all(self.pool())
-                .await?;
-        Ok(rows.into_iter().map(|(id,)| id).collect())
+    /// Open polls whose time is up at `now`, soonest first, with the server and channel they live in. Ones
+    /// paused by their module are left out, as in [`Db::due_giveaways`].
+    pub async fn due_polls(&self, now: DateTime<Utc>, limit: i64) -> anyhow::Result<Vec<Due>> {
+        Ok(sqlx::query_as(concat!(
+            "SELECT p.id, p.guild_id, p.channel_id FROM polls p
+             WHERE p.status = 'open' AND p.ends_at <= $1 AND ",
+            not_paused!("p"),
+            " ORDER BY p.ends_at LIMIT $2"
+        ))
+        .bind(now)
+        .bind(limit)
+        .bind(Module::Polls.key())
+        .fetch_all(self.pool())
+        .await?)
     }
 
     /// Closes a poll that is due at `now`, once; `None` when somebody closed it first.

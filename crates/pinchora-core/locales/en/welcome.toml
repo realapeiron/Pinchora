@@ -1,0 +1,9 @@
+# Welcome and goodbye images: the /config welcome-card preview and the dashboard's test message.
+
+[welcome]
+preview-title = "Welcome card preview"
+preview-about = "New members will see this card. Turn it on and pick a channel with `/config welcome`; the dashboard's editor can move, add and restyle everything on it."
+preview-replaced = "This classic card replaced the design made in the dashboard's editor."
+preview-custom = "This is the design made in the dashboard's editor; any option here goes back to the classic card."
+test-welcome = "Test of the welcome image, sent from the dashboard by {name}."
+test-goodbye = "Test of the goodbye image, sent from the dashboard by {name}."

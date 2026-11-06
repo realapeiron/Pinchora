@@ -1,6 +1,7 @@
 //! Giveaways: entries, the shells prize held from the host, and ending exactly once.
 
 use chrono::{DateTime, Utc};
+use pinchora_core::modules::Module;
 use sqlx::{Postgres, Transaction};
 
 use crate::{
@@ -19,6 +20,29 @@ pub const MAX_RUNNING_GIVEAWAYS: i64 = 20;
 /// How many times an end starts over because entries came or went between reading who wins and
 /// locking the giveaway. Entries close when it is due, so only an early end can see that at all.
 const END_TRIES: usize = 5;
+
+/// SQL that holds for a row of `$table` (with `guild_id` and `channel_id`) unless the module named by `$3`
+/// is switched off for its server, or its channel is on the module's `except` list.
+macro_rules! not_paused {
+    ($table:literal) => {
+        concat!(
+            "NOT EXISTS (SELECT 1 FROM guild_modules m WHERE m.guild_id = ",
+            $table,
+            ".guild_id AND m.module = $3 AND (NOT m.enabled OR (m.channel_mode = 'except' AND ",
+            $table,
+            ".channel_id = ANY(m.channels))))"
+        )
+    };
+}
+pub(crate) use not_paused;
+
+/// A giveaway or poll whose time is up, and where it lives.
+#[derive(Debug, Clone, Copy, sqlx::FromRow)]
+pub struct Due {
+    pub id: i64,
+    pub guild_id: i64,
+    pub channel_id: i64,
+}
 
 /// A giveaway, running or over.
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -346,16 +370,22 @@ impl Db {
         })
     }
 
-    /// Ids of running giveaways whose time is up at `now`, soonest first.
-    pub async fn due_giveaways(&self, now: DateTime<Utc>, limit: i64) -> anyhow::Result<Vec<i64>> {
-        let rows: Vec<(i64,)> = sqlx::query_as(
-            "SELECT id FROM giveaways WHERE status = 'running' AND ends_at <= $1 ORDER BY ends_at LIMIT $2",
-        )
+    /// Running giveaways whose time is up at `now`, soonest first, with the server and channel they live in.
+    /// Ones paused by their module are left out: in a server that switched giveaways off, or in a channel
+    /// its rule names as excluded (a rule that reaches the channel through its category is the caller's to
+    /// check).
+    pub async fn due_giveaways(&self, now: DateTime<Utc>, limit: i64) -> anyhow::Result<Vec<Due>> {
+        Ok(sqlx::query_as(concat!(
+            "SELECT g.id, g.guild_id, g.channel_id FROM giveaways g
+             WHERE g.status = 'running' AND g.ends_at <= $1 AND ",
+            not_paused!("g"),
+            " ORDER BY g.ends_at LIMIT $2"
+        ))
         .bind(now)
         .bind(limit)
+        .bind(Module::Giveaways.key())
         .fetch_all(self.pool())
-        .await?;
-        Ok(rows.into_iter().map(|(id,)| id).collect())
+        .await?)
     }
 
     /// Ends a running giveaway, once: `pick(entrants, count)` chooses the winners, each is paid

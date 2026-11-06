@@ -7,6 +7,7 @@
 use std::{sync::Arc, time::Duration};
 
 use chrono::Duration as Span;
+use pinchora_core::modules::Module;
 use twilight_http::{Error, error::ErrorType};
 use twilight_model::{
     channel::message::{
@@ -27,6 +28,8 @@ use crate::{
 const WAKE: Duration = Duration::from_secs(5);
 /// Giveaways and polls are forgotten this long after they ended.
 const KEEP: Span = Span::days(60);
+/// How many due giveaways (and polls) one step looks at, to pick up to 50 of them whose module is on.
+const SCAN: i64 = 500;
 /// Cleanup runs every this many wakes (hourly).
 const CLEANUP_EVERY: u32 = 720;
 
@@ -38,21 +41,48 @@ const MISSING_PERMISSIONS: u64 = 50013;
 /// channels that have not been told yet (the pod that ended one may have died before it could) and
 /// shows the entry counts that changed too fast to show at the time. Returns how many giveaways and
 /// polls it ended.
+///
+/// A giveaway or poll in a server (or channel) that switched its module off is paused, not ended: no
+/// winner is drawn, no shells move and nothing is posted while it is off, and once it is switched on
+/// again the ones that ran out meanwhile end on the next step. Announcements of ones that already ended
+/// still go out. The step looks at [`SCAN`] due ones at a time, so paused ones cannot starve the others.
 pub async fn tick(app: &Arc<App>) -> anyhow::Result<usize> {
     let now = app.now();
     let mut ended = 0;
-    for id in app.db.due_giveaways(now, 50).await? {
-        match giveaway::end(app, id, false).await {
+    let mut turns = 0;
+    for due in app.db.due_giveaways(now, SCAN).await? {
+        if !app
+            .module_allowed(due.guild_id as u64, Some(due.channel_id as u64), Module::Giveaways)
+            .await
+        {
+            continue;
+        }
+        turns += 1;
+        if turns > 50 {
+            break;
+        }
+        match giveaway::end(app, due.id, false).await {
             Ok(Some(_)) => ended += 1,
             Ok(None) => {}
-            Err(error) => tracing::warn!(%error, giveaway = id, "giveaway not ended"),
+            Err(error) => tracing::warn!(%error, giveaway = due.id, "giveaway not ended"),
         }
     }
-    for id in app.db.due_polls(now, 50).await? {
-        match poll::close(app, id).await {
+    turns = 0;
+    for due in app.db.due_polls(now, SCAN).await? {
+        if !app
+            .module_allowed(due.guild_id as u64, Some(due.channel_id as u64), Module::Polls)
+            .await
+        {
+            continue;
+        }
+        turns += 1;
+        if turns > 50 {
+            break;
+        }
+        match poll::close(app, due.id).await {
             Ok(true) => ended += 1,
             Ok(false) => {}
-            Err(error) => tracing::warn!(%error, poll = id, "poll not closed"),
+            Err(error) => tracing::warn!(%error, poll = due.id, "poll not closed"),
         }
     }
     giveaway::announce_pending(app).await;

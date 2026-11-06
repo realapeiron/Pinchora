@@ -5,6 +5,7 @@ pub(crate) mod collection;
 pub(crate) mod config;
 pub(crate) mod connect4;
 pub(crate) mod contest;
+pub(crate) mod customcommand;
 pub(crate) mod customize;
 mod daily;
 pub(crate) mod decorate;
@@ -22,6 +23,7 @@ pub(crate) mod heist;
 pub(crate) mod help;
 pub(crate) mod house;
 pub(crate) mod interact;
+pub(crate) mod language;
 pub(crate) mod leaderboard;
 pub(crate) mod level_roles;
 pub(crate) mod modules;
@@ -35,6 +37,7 @@ pub(crate) mod play;
 pub(crate) mod plaza;
 mod points;
 pub(crate) mod poll;
+pub(crate) mod prefix;
 pub(crate) mod privacy;
 pub(crate) mod profile;
 pub(crate) mod quests;
@@ -52,6 +55,7 @@ pub(crate) mod stall;
 pub(crate) mod store;
 pub(crate) mod suggest;
 pub(crate) mod surge;
+pub(crate) mod tag;
 pub(crate) mod trivia;
 mod undo;
 mod utilities;
@@ -68,7 +72,9 @@ macro_rules! commands {
     ($($ty:ty),* $(,)?) => {
         /// Every slash command, for registration.
         pub fn definitions() -> Vec<Command> {
-            vec![$(<$ty as CreateCommand>::create_command().into()),*]
+            let mut commands = vec![$(<$ty as CreateCommand>::create_command().into()),*];
+            crate::lang::localize(&mut commands);
+            commands
         }
 
         pub(crate) async fn dispatch(cx: &Cx, data: CommandData) -> anyhow::Result<()> {
@@ -135,4 +141,7 @@ commands!(
     collection::drops::CritterDrop,
     surge::SurgeCommand,
     party_games::PartyCommand,
+    tag::Tag,
+    customcommand::CustomCommand,
+    language::LanguageCommand,
 );

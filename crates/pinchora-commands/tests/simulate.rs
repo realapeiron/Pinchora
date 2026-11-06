@@ -15,7 +15,7 @@ use std::{
     path::{Path, PathBuf},
     sync::{
         Arc, LazyLock, Mutex, Once,
-        atomic::{AtomicBool, AtomicU64, Ordering},
+        atomic::{AtomicBool, AtomicU16, AtomicU64, AtomicUsize, Ordering},
     },
     time::SystemTime,
 };
@@ -81,9 +81,23 @@ mod collection;
 // Correctness follow-ups: stale buttons, forfeits, repeated requests, forged ids, voice XP at scale.
 #[path = "simulate/w9a.rs"]
 mod w9a;
+// Text commands with a server's prefix, through the same handlers.
+#[path = "simulate/text.rs"]
+mod text;
 // The party games' flows (Hot Pearl, Acronym Tide, Caption the Postcard, Wordle Race, Would You Rather, Truth or Dare).
+#[path = "simulate/turkish.rs"]
+mod turkish;
 #[path = "simulate/words.rs"]
 mod words;
+// Custom commands (/customcommand, /tag) and auto-responders.
+#[path = "simulate/tags.rs"]
+mod tags;
+// What a switched-off module still did: timers, the chat XP minute, quests, the level-up channel.
+#[path = "simulate/carryover.rs"]
+mod carryover;
+// Who may set a role up to be handed out.
+#[path = "simulate/grants.rs"]
+mod grants;
 
 const APPLICATION_ID: u64 = 1;
 const CHANNEL_ID: u64 = 2;
@@ -191,6 +205,21 @@ struct Mock {
     channel_lookups: Arc<Mutex<HashMap<u64, usize>>>,
     /// Whether looking up the server itself fails (Discord is down).
     guild_lookup_fails: Arc<AtomicBool>,
+    /// Who owns the server, as `GET /guilds/{id}` says (1 until a test hands it to someone).
+    owner: Arc<AtomicU64>,
+    /// The bot's global commands, as Discord's JSON.
+    global_commands: Arc<Mutex<Vec<Value>>>,
+    /// What the server set for the bot's commands under Integrations, as Discord's JSON (a list of
+    /// guild application command permissions); `None` answers Unknown Application.
+    command_permissions: Arc<Mutex<Option<Value>>>,
+    /// An HTTP status the command permissions route answers instead (0: none).
+    command_permissions_status: Arc<AtomicU16>,
+    /// How often the command permissions were asked for.
+    command_permission_lookups: Arc<AtomicUsize>,
+    /// Messages somebody deleted through the API, as (channel, message).
+    deleted_messages: Arc<Mutex<Vec<(u64, u64)>>>,
+    /// Whether the server's role list has `@everyone` (Discord's always does; most tests never ask).
+    everyone_role: Arc<AtomicBool>,
 }
 
 /// A message a handler posted to a channel (`POST`) or edited there (`PATCH`).
@@ -348,8 +377,14 @@ async fn discord(
     let parts: Vec<&str> = path.trim_matches('/').split('/').collect();
     let number = |part: &str| part.parse::<u64>().unwrap_or(0);
     match (&method, parts.as_slice()) {
-        (&Method::GET, [.., "guilds", _, "roles"]) => {
+        (&Method::GET, [.., "guilds", guild, "roles"]) => {
             let mut roles = vec![role_json(BOT_ROLE_ID, "Pinchora", BOT_ROLE_POSITION, true)];
+            if mock.everyone_role.load(Ordering::SeqCst) {
+                // View Channel, Send Messages and Use Application Commands: what a new server gives everyone.
+                let mut everyone = role_json(number(guild), "@everyone", 0, false);
+                everyone["permissions"] = json!((1u64 << 10 | 1 << 11 | 1 << 31).to_string());
+                roles.push(everyone);
+            }
             roles.extend(mock.roles.lock().unwrap().iter().cloned());
             return (StatusCode::OK, Value::Array(roles).to_string());
         }
@@ -386,11 +421,41 @@ async fn discord(
             }
             return (StatusCode::NO_CONTENT, String::new());
         }
+        (&Method::GET, [.., "applications", _, "commands"]) => {
+            let commands = mock.global_commands.lock().unwrap().clone();
+            return (StatusCode::OK, Value::Array(commands).to_string());
+        }
+        (&Method::GET, [.., "applications", _, "guilds", _, "commands", "permissions"]) => {
+            mock.command_permission_lookups.fetch_add(1, Ordering::SeqCst);
+            let status = mock.command_permissions_status.load(Ordering::SeqCst);
+            if status != 0 {
+                let down = json!({ "message": "Missing Access", "code": 50001 });
+                return (StatusCode::from_u16(status).expect("status"), down.to_string());
+            }
+            return match mock.command_permissions.lock().unwrap().clone() {
+                Some(list) => (StatusCode::OK, list.to_string()),
+                None => {
+                    let gone = json!({ "message": "Unknown application command permissions", "code": 10066 });
+                    (StatusCode::NOT_FOUND, gone.to_string())
+                }
+            };
+        }
+        (&Method::DELETE, [.., "channels", channel, "messages", id]) => {
+            mock.deleted_messages
+                .lock()
+                .unwrap()
+                .push((number(channel), number(id)));
+            return (StatusCode::NO_CONTENT, String::new());
+        }
         (&Method::GET, [.., "guilds", _]) if mock.guild_lookup_fails.load(Ordering::SeqCst) => {
             let down = json!({ "message": "Service unavailable", "code": 0 });
             return (StatusCode::INTERNAL_SERVER_ERROR, down.to_string());
         }
-        (&Method::GET, [.., "guilds", guild]) => return (StatusCode::OK, guild_json(number(guild)).to_string()),
+        (&Method::GET, [.., "guilds", guild]) => {
+            let mut found = guild_json(number(guild));
+            found["owner_id"] = json!(mock.owner.load(Ordering::SeqCst).max(1).to_string());
+            return (StatusCode::OK, found.to_string());
+        }
         (&Method::GET, [.., "channels", channel]) => {
             *mock.channel_lookups.lock().unwrap().entry(number(channel)).or_default() += 1;
             return match mock.channels.lock().unwrap().get(&number(channel)) {
@@ -591,6 +656,11 @@ impl Reply {
     /// Whether the handler told Discord to ping nobody: `allowed_mentions` is there and parses nothing.
     fn pings_nobody(&self) -> bool {
         self.mentions == Some(json!({ "parse": [] }))
+    }
+
+    /// Whether the handler told Discord to ping `user` and nobody else.
+    fn pings_only(&self, user: u64) -> bool {
+        self.mentions == Some(json!({ "parse": [], "users": [user.to_string()] }))
     }
 
     /// Applies what the handler sent; fields it left out stay as they were.
@@ -902,6 +972,8 @@ struct Sim {
     /// The channel interactions come from; tests that need channel-wide cooldowns to themselves
     /// pick their own.
     channel: u64,
+    /// The invoker's Discord client language.
+    locale: &'static str,
 }
 
 impl Sim {
@@ -934,6 +1006,13 @@ impl Sim {
             channels: Arc::default(),
             channel_lookups: Arc::default(),
             guild_lookup_fails: Arc::default(),
+            owner: Arc::default(),
+            global_commands: Arc::default(),
+            command_permissions: Arc::default(),
+            command_permissions_status: Arc::default(),
+            command_permission_lookups: Arc::default(),
+            deleted_messages: Arc::default(),
+            everyone_role: Arc::default(),
         };
         let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind the mock");
         let mock = listener.local_addr().expect("mock address");
@@ -947,6 +1026,8 @@ impl Sim {
                 .build(),
         );
         let mut app = App::new(rest.clone(), rest, Id::new(APPLICATION_ID), db, cache, "sim".into());
+        // As on a bot with the Message Content intent: text commands answer to the server's prefix.
+        app.message_content = true;
         // Avatars come from Discord's CDN. The mock refuses the tunnel, so cards get the
         // placeholder avatar, offline and the same every run.
         app.web = reqwest::Client::builder()
@@ -972,6 +1053,7 @@ impl Sim {
             dir,
             step: 0,
             channel: CHANNEL_ID,
+            locale: "en-US",
         })
     }
 
@@ -998,6 +1080,19 @@ impl Sim {
     /// Adds a role to the mock server and returns its JSON for `data.resolved.roles`.
     fn guild_role(&self, id: u64, name: &str, position: i64) -> Value {
         let role = role_json(id, name, position, false);
+        self.mock.roles.lock().unwrap().push(role.clone());
+        role
+    }
+
+    /// Makes `user` the owner of the server, who may set up any role the bot can hand out.
+    fn own_server(&self, user: u64) {
+        self.mock.owner.store(user, Ordering::SeqCst);
+    }
+
+    /// Like [`Sim::guild_role`] with permission bits.
+    fn guild_role_with(&self, id: u64, name: &str, position: i64, permissions: u64) -> Value {
+        let mut role = role_json(id, name, position, false);
+        role["permissions"] = json!(permissions.to_string());
         self.mock.roles.lock().unwrap().push(role.clone());
         role
     }
@@ -1280,7 +1375,7 @@ impl Sim {
             "version": 1,
             "guild_id": self.guild.to_string(),
             "channel": { "id": self.channel.to_string(), "type": 0, "guild_id": self.guild.to_string() },
-            "locale": "en-US",
+            "locale": self.locale,
             "guild_locale": "en-US",
             "context": 0,
             "attachment_size_limit": 26_214_400,
@@ -1482,6 +1577,114 @@ async fn profile_and_daily() {
     assert_eq!(profile.files.len(), 1);
     assert_eq!(profile.files[0].0, "profile.png");
     assert!(sim.app.db.user(user).await.expect("user row").credits > 0);
+}
+
+/// A player whose Discord is in Turkish gets Turkish replies and Turkish cards; `/language set`
+/// overrides the client, and "Automatic" goes back to it.
+#[tokio::test]
+async fn turkish_players_get_turkish_text_and_cards() {
+    let Some(mut sim) = Sim::new("turkish_players_get_turkish_text_and_cards").await else {
+        return;
+    };
+    let user = unique();
+    let set = |value: &str| json!([{ "name": "set", "type": 1, "options": [{ "name": "language", "type": 3, "value": value }] }]);
+    let english = card_pixels(&sim.command(user, "profile", json!([])).await, (960, 540));
+    let english_rank = card_pixels(&sim.command(user, "rank", json!([])).await, (934, 282));
+
+    sim.locale = "tr";
+    let profile = sim.command(user, "profile", json!([])).await;
+    assert_eq!(profile.files[0].0, "profile.png");
+    let turkish = card_pixels(&profile, (960, 540));
+    assert!(
+        differ_in(&english, &turkish, 60..264, 296..316),
+        "the LEVEL label is SEVİYE"
+    );
+    let rank = sim.command(user, "rank", json!([])).await;
+    assert!(
+        differ_in(&english_rank, &card_pixels(&rank, (934, 282)), 600..900, 56..78),
+        "RANK and LEVEL"
+    );
+    let help = sim.command(user, "help", json!([])).await;
+    assert!(help.description().contains("Menüden"), "{}", help.description());
+    assert_eq!(help.files[0].0, "help.png");
+
+    // The player's own pick beats the client.
+    let picked = sim.command(user, "language", set("en")).await;
+    assert!(picked.content().contains("**English**"), "{}", picked.content());
+    let help = sim.command(user, "help", json!([])).await;
+    assert!(help.description().contains("Pick an area"), "{}", help.description());
+    sim.locale = "en-GB";
+    let picked = sim.command(user, "language", set("tr")).await;
+    assert!(picked.content().contains("**Türkçe**"), "{}", picked.content());
+    let help = sim.command(user, "help", json!([])).await;
+    assert!(help.description().contains("Menüden"), "{}", help.description());
+    // Automatic: the client's language again.
+    let auto = sim.command(user, "language", set("auto")).await;
+    assert!(auto.content().contains("Discord"), "{}", auto.content());
+    assert_eq!(sim.app.db.user_language(user).await.expect("read"), None);
+    let help = sim.command(user, "help", json!([])).await;
+    assert!(help.description().contains("Pick an area"), "{}", help.description());
+
+    // A server default answers nobody in particular; the reply is still in the player's language.
+    sim.locale = "tr";
+    sim.permissions = 0x20;
+    let config =
+        json!([{ "name": "language", "type": 1, "options": [{ "name": "language", "type": 3, "value": "tr" }] }]);
+    let config = sim.command(user, "config", config).await;
+    assert!(
+        config.content().contains("varsayılan dili artık **Türkçe**"),
+        "{}",
+        config.content()
+    );
+    assert_eq!(sim.app.guild_lang(sim.guild).await, pinchora_core::i18n::Lang::Tr);
+
+    // The rest of the everyday commands, in Turkish.
+    let daily = sim.command(user, "daily", json!([])).await;
+    assert!(daily.title().ends_with("kabuk"), "{}", daily.title());
+    assert!(
+        daily.description().contains("Serinin **1**. günü"),
+        "{}",
+        daily.description()
+    );
+    let wallet = sim.command(user, "balance", json!([])).await;
+    assert_eq!(wallet.files[0].0, "wallet.png");
+    let privacy = sim.command(user, "privacy", json!([])).await;
+    assert_eq!(privacy.title(), "🔒 Gizlilik");
+    assert!(!privacy.button("Verilerimi sil…").disabled);
+    let character = sim.command(user, "character", json!([])).await;
+    assert_eq!(character.title(), "Karakterin");
+    assert!(!character.button("Rastgele").disabled);
+    let backgrounds = sim
+        .command(user, "customize", json!([{ "name": "background", "type": 1 }]))
+        .await;
+    assert_eq!(backgrounds.title(), "Kart arka planları");
+
+    // The house editor: its title, hints and buttons.
+    let edit = sim.command(user, "house", json!([{ "name": "edit", "type": 1 }])).await;
+    assert!(edit.title().starts_with("1. oda düzenleniyor"), "{}", edit.title());
+    assert!(
+        edit.description().contains("Elinde: **hiçbir şey**"),
+        "{}",
+        edit.description()
+    );
+    assert!(edit.button("Yerleştir").disabled, "nothing held, nothing to place");
+    let furniture = edit
+        .options("he:s:")
+        .iter()
+        .find(|o| !o.value.starts_with('<') && o.value != "none")
+        .expect("the starter kit is in the inventory")
+        .value
+        .clone();
+    let held = sim.pick(user, &edit, "he:s:", &furniture).await;
+    assert!(held.description().contains("Elinde **"), "{}", held.description());
+    let placed = sim.click(user, &held, "Yerleştir").await;
+    assert!(
+        placed.description().contains("yerleştirildi"),
+        "{}",
+        placed.description()
+    );
+    let done = sim.click(user, &placed, "Bitti").await;
+    assert!(done.content().starts_with("Kaydedildi!"), "{}", done.content());
 }
 
 /// Emoji and CJK in a name draw as letters on the profile card, where they once drew as empty boxes: the name
@@ -2566,6 +2769,8 @@ async fn level_roles_follow_level_ups() {
         return;
     };
     let (admin, early, late, middle) = (unique(), unique(), unique(), unique());
+    // The owner may set up any role the bot can hand out.
+    sim.own_server(admin);
     let (r1, r3) = (unique(), unique());
     let novice = sim.guild_role(r1, "Novice", 2);
     let veteran = sim.guild_role(r3, "Reef Veteran", 3);
@@ -2682,6 +2887,8 @@ async fn points_and_store_flow() {
         return;
     };
     let (admin, buyer) = (unique(), unique());
+    // The owner may set up any role the bot can hand out.
+    sim.own_server(admin);
     let (vip_id, pricey_id) = (unique(), unique());
     let vip = sim.guild_role(vip_id, "VIP", 2);
     let pricey = sim.guild_role(pricey_id, "Whale", 3);
@@ -4613,6 +4820,8 @@ async fn role_panels_post_and_toggle_roles() {
         return;
     };
     let (admin, alice) = (unique(), unique());
+    // The owner may set up any role the bot can hand out.
+    sim.own_server(admin);
     let (red_id, blue_id) = (unique(), unique());
     let red = sim.guild_role(red_id, "Red", 2);
     let blue = sim.guild_role(blue_id, "Blue", 3);
@@ -4946,6 +5155,8 @@ async fn join_role_goodbye_and_server_log() {
         return;
     };
     let admin = unique();
+    // The owner may set up any role the bot can hand out.
+    sim.own_server(admin);
     let (alice, robot, stranger) = (unique(), unique(), unique());
     let (newbie_id, log, bye) = (unique(), unique(), unique());
     let (lounge, den) = (unique(), unique());
@@ -7884,6 +8095,8 @@ async fn level_ups_follow_the_mode_and_fill_their_placeholders() {
         return;
     };
     let admin = unique();
+    // The owner may set up any role the bot can hand out.
+    sim.own_server(admin);
     let (announce, chatty) = (unique(), unique());
     let novice_id = unique();
     let novice = sim.guild_role(novice_id, "Reef Novice", 2);
@@ -8118,6 +8331,8 @@ async fn reputation_roles_are_given_when_a_point_lands() {
         return;
     };
     let admin = unique();
+    // The owner may set up any role the bot can hand out.
+    sim.own_server(admin);
     let (target, g1, g2, g3, g4, g5) = (unique(), unique(), unique(), unique(), unique(), unique());
     let (trusted_id, legend_id, gone_id) = (unique(), unique(), unique());
     let trusted = sim.guild_role(trusted_id, "Trusted", 2);
@@ -9800,6 +10015,11 @@ async fn a_hidden_house_and_a_private_profile_close_every_door() {
     assert!(book.title().contains("guestbook"), "{}", book.title());
     let liked = sim.command_resolved(viewer, "house", like.clone(), both.clone()).await;
     assert!(liked.content().contains("liked"), "{}", liked.content());
+    assert!(
+        liked.pings_only(owner),
+        "the owner is told, nobody else: {:?}",
+        liked.mentions
+    );
     assert_eq!(likes(db.clone()).await, 1);
     assert_eq!(
         sim.command_resolved(viewer, "points", points.clone(), both.clone())
@@ -11032,11 +11252,67 @@ async fn replies_after_a_defer_keep_allowed_mentions() {
         json!({ "parse": [] }),
         "the follow-up"
     );
-    assert!(
-        calls[2].body.get("allowed_mentions").is_none(),
-        "unset stays unset: {}",
+    assert_eq!(
+        calls[2].body["allowed_mentions"],
+        json!({ "parse": [] }),
+        "unset pings nobody: {}",
         calls[2].body
     );
+}
+
+/// A reply that says nothing about `allowed_mentions` pings nobody, however it reaches Discord; one that
+/// names somebody to ping keeps that.
+#[tokio::test]
+async fn replies_ping_nobody_unless_they_say_whom() {
+    let Some(sim) = Sim::new("replies_ping_nobody_unless_they_say_whom").await else {
+        return;
+    };
+    let data = json!({ "id": unique().to_string(), "name": "x", "type": 1 });
+    let interaction = sim.interaction(unique(), 2, data, None);
+    let (tx, rx) = oneshot::channel();
+    let responder = Responder::http(sim.app.clone(), &interaction, tx);
+    let loud = |text: &str, whom: Option<u64>| twilight_model::http::interaction::InteractionResponseData {
+        content: Some(format!("{text} <@5> <@&6> @everyone")),
+        allowed_mentions: whom.map(|user| twilight_model::channel::message::AllowedMentions {
+            users: vec![Id::new(user)],
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+    sim.calls.lock().unwrap().clear();
+    responder
+        .respond(loud("first", None), false)
+        .await
+        .expect("the first answer");
+    let first = rx.await.expect("the answer to Discord").data.expect("its data");
+    responder
+        .respond(loud("follow-up", None), false)
+        .await
+        .expect("a follow-up");
+    responder
+        .respond(loud("to one", Some(5)), false)
+        .await
+        .expect("a follow-up that pings");
+    responder.edit(&loud("edit", None)).await.expect("an edit");
+    responder
+        .edit(&loud("edit to one", Some(5)))
+        .await
+        .expect("an edit that pings");
+    let calls = std::mem::take(&mut *sim.calls.lock().unwrap());
+    assert_eq!(
+        calls.len(),
+        4,
+        "{:?}",
+        calls.iter().map(|c| &c.path).collect::<Vec<_>>()
+    );
+    let quiet = json!({ "parse": [] });
+    let to_five = json!({ "parse": [], "users": ["5"] });
+    let first = serde_json::to_value(first.allowed_mentions).expect("mentions as JSON");
+    assert_eq!(first, quiet, "the first answer");
+    assert_eq!(calls[0].body["allowed_mentions"], quiet, "a follow-up");
+    assert_eq!(calls[1].body["allowed_mentions"], to_five, "a follow-up that pings");
+    assert_eq!(calls[2].body["allowed_mentions"], quiet, "an edit");
+    assert_eq!(calls[3].body["allowed_mentions"], to_five, "an edit that pings");
 }
 
 // /Fishing
@@ -11452,6 +11728,9 @@ async fn a_catch_has_a_size_waits_in_the_bucket_and_beats_records() {
     // A first catch: a fish of the shore, sized inside its range, put in the bucket and not sold.
     let angler = unique();
     fund(&sim, angler, 100).await;
+    // The reel is this player's first interaction: read their language now, as their cast would
+    // have, so the reaction time measures the click and not that read.
+    sim.app.user_lang_choice(angler).await;
     let id = seed_cast(&sim, angler, 1, 400, "shore:driftwood_rod:-").await;
     let catch = sim.component(angler, &id, &[], &casting()).await;
     let fish = caught_fish(&catch);

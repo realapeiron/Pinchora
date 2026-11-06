@@ -310,7 +310,8 @@ async fn put_reward(
 ) -> ApiResult<Json<Value>> {
     let (guild, role) = (managed.id, path_id(params, "role")?);
     let info = guild_info::live(&state, guild).await?;
-    info.check_assignable("role_id", role)?;
+    let grantor = guild_info::grantor(&state, &managed, &info.roles, true).await?;
+    info.check_grant("role_id", role, grantor)?;
     let was = list
         .rows(&state, guild)
         .await?

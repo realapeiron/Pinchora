@@ -5,8 +5,10 @@
 pub mod acronym;
 pub mod derby;
 pub mod filter;
+pub mod filter_tr;
 pub mod heist;
 pub mod hotpearl;
+mod hotpearl_tr;
 pub mod postcard;
 pub mod prompts;
 pub mod race;

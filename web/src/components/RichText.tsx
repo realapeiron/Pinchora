@@ -1,26 +1,27 @@
 import { Fragment, type ReactNode } from "react";
 
+import { richParts } from "../lib/text";
+
 /**
- * The little Discord markdown the bot's sentences and messages use: **bold**, *italic* and `code`.
- * Everything else is shown as written (React escapes it).
+ * The little Discord markdown the bot's sentences and messages use: **bold**, *italic* and `code`, and
+ * backslash escapes, which Discord hides (the bot escapes what members type). Everything else is shown as
+ * written (React escapes it).
  */
 export function RichText({ text }: { text: string }) {
   return <>{render(text)}</>;
 }
 
-const TOKEN = /(\*\*[^*]+\*\*|`[^`]+`|\*[^*\s][^*]*\*)/g;
-
 function render(text: string): ReactNode[] {
-  return text.split(TOKEN).map((part, i) => {
-    if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
-      return <strong key={i}>{part.slice(2, -2)}</strong>;
+  return richParts(text).map((part, i) => {
+    switch (part.kind) {
+      case "bold":
+        return <strong key={i}>{part.text}</strong>;
+      case "code":
+        return <code key={i}>{part.text}</code>;
+      case "italic":
+        return <em key={i}>{part.text}</em>;
+      default:
+        return <Fragment key={i}>{part.text}</Fragment>;
     }
-    if (part.startsWith("`") && part.endsWith("`") && part.length > 2) {
-      return <code key={i}>{part.slice(1, -1)}</code>;
-    }
-    if (part.startsWith("*") && part.endsWith("*") && part.length > 2) {
-      return <em key={i}>{part.slice(1, -1)}</em>;
-    }
-    return <Fragment key={i}>{part}</Fragment>;
   });
 }

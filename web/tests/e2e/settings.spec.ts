@@ -41,6 +41,8 @@ const PAGES = [
   { path: "/points", name: "points", heading: "POINTS" },
   { path: "/log", name: "server-log", heading: "SERVER LOG" },
   { path: "/community", name: "community", heading: "COMMUNITY" },
+  { path: "/commands", name: "commands", heading: "CUSTOM COMMANDS" },
+  { path: "/responders", name: "responders", heading: "AUTO-RESPONDERS" },
   { path: "/audit", name: "audit-log", heading: "AUDIT LOG" },
 ];
 
@@ -131,7 +133,8 @@ test("points and the store", async ({ page }) => {
 
 /** Waits until the pictures and message previews on the page have loaded. */
 async function settled(page: Page, name: string) {
-  if (name === "welcome" || name === "welcome-image") await previewPixels(page);
+  // The editor keeps the bot's own picture behind a toggle, so only the welcome page has it from the start.
+  if (name === "welcome") await previewPixels(page);
   await expect(page.locator(".state")).toHaveCount(0);
   for (const preview of await page.locator(".message-preview p").all()) {
     await expect(preview).not.toHaveText("…");

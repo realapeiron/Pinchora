@@ -316,5 +316,98 @@ class FishingContentTests(unittest.TestCase):
                 self.assertTrue(self.gear_errors(broken))
 
 
+class TurkishOverlayTests(unittest.TestCase):
+    """The Turkish names in content/i18n/tr are checked against the English content and the glossary."""
+
+    def errors(self, edit=None):
+        """Run the Turkish check; `edit(file name, data)` may change a file's data first."""
+        real = check.read_tr
+
+        def patched(filename):
+            data = copy.deepcopy(real(filename))
+            if edit is not None and data is not None:
+                data = edit(filename, data) or data
+            return data
+
+        check.ERRORS.clear()
+        check.read_tr = patched
+        try:
+            check.check_turkish()
+        finally:
+            check.read_tr = real
+        return check.ERRORS[:]
+
+    def test_the_shipped_overlay_is_clean(self):
+        self.assertEqual(self.errors(), [])
+
+    def test_a_missing_or_unknown_id_is_caught(self):
+        def drop(name, data):
+            if name == "pets.json":
+                del data["crumbclaw_crab"]
+                data["ghost_pet"] = {"name": "Hayalet", "description": "x.", "food": "y"}
+
+        found = self.errors(drop)
+        self.assertTrue(any("missing Turkish text for 'crumbclaw_crab'" in e for e in found), found)
+        self.assertTrue(any("unknown id 'ghost_pet'" in e for e in found), found)
+
+    def test_empty_untrimmed_and_overlong_texts_are_caught(self):
+        for field, value in (("name", ""), ("name", " Mercan"), ("description", "a" * 101), ("name", "x" * 60)):
+            with self.subTest(field=field, value=value[:10]):
+                def edit(name, data):
+                    if name == "fish.json":
+                        data["pebblelip_dace"][field] = value
+
+                self.assertTrue(self.errors(edit))
+
+    def test_duplicate_names_are_caught(self):
+        def edit(name, data):
+            if name == "fish.json":
+                data["pebblelip_dace"]["name"] = data["toaststripe_minnow"]["name"].lower()
+
+        self.assertTrue(any("duplicate name" in e for e in self.errors(edit)))
+
+    def test_the_glossary_is_enforced(self):
+        def edit(name, data):
+            if name == "pets.json":
+                data["crumbclaw_crab"]["name"] = "Crumbclaw Kedisi"
+
+        self.assertTrue(any("'crab'" in e and "yengeç" in e for e in self.errors(edit)))
+
+    def test_furniture_names_follow_the_noun_table(self):
+        def edit(name, data):
+            if name == "furniture.json":
+                data["hemloop_chair"]["name"] = "Hemloop Koltuk"
+
+        self.assertTrue(any("name must be Hemloop Sandalyesi" in e for e in self.errors(edit)))
+
+    def test_trip_stories_keep_their_count_and_placeholder(self):
+        def fewer(name, data):
+            if name == "pet_trips.json":
+                data["tidepool_meadow"]["stories"].pop()
+
+        def no_pet(name, data):
+            if name == "pet_trips.json":
+                data["tidepool_meadow"]["stories"][0] = "Bir kuzu ağladı."
+
+        self.assertTrue(any("one Turkish story per English story" in e for e in self.errors(fewer)))
+        self.assertTrue(any("{pet}" in e for e in self.errors(no_pet)))
+
+    def test_terms_and_colours_must_be_complete(self):
+        def edit(name, data):
+            if name == "terms.json":
+                del data["rarity.rare"]
+                data["quest.fish"]["name"] = "Balık yakala"
+            if name == "colors.json":
+                del data["coral"]
+
+        found = self.errors(edit)
+        self.assertTrue(any("terms.json" in e and "rarity.rare" in e for e in found), found)
+        self.assertTrue(any("quest.fish must keep the number 3" in e for e in found), found)
+        self.assertTrue(any("variant colour 'coral'" in e for e in found), found)
+
+    def test_turkish_lower_casing_handles_dotted_and_dotless_i(self):
+        self.assertEqual(check.tr_lower("IŞIK İNCİ"), "ışık inci")
+
+
 if __name__ == "__main__":
     unittest.main()

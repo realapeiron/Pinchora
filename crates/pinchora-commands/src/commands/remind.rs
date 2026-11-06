@@ -29,7 +29,7 @@ use twilight_util::builder::embed::{EmbedBuilder, EmbedFieldBuilder, EmbedFooter
 use crate::{
     App, Cx,
     commands::pet,
-    leveling::private_channel,
+    leveling::open_private_channel,
     util::{BRAND, relative},
 };
 
@@ -676,7 +676,7 @@ async fn deliver(app: &App, r: &ReminderRow, now: DateTime<Utc>) -> anyhow::Resu
     let embed = EmbedBuilder::new().color(BRAND).title(title).description(text).build();
     let mentions = AllowedMentions::default();
     let sent = async {
-        let channel = private_channel(app, user)
+        let channel = open_private_channel(app, user)
             .await
             .ok_or_else(|| anyhow::anyhow!("direct messages are closed"))?;
         app.http

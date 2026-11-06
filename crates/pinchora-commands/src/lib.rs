@@ -1,7 +1,10 @@
 mod app;
+mod auto;
 mod card_images;
+mod catalog;
 mod commands;
 mod components;
+mod custom;
 mod cx;
 mod defer;
 mod events;
@@ -9,18 +12,24 @@ mod game;
 mod gate;
 mod house_view;
 mod invalidations;
+#[cfg(test)]
+mod landing_assets;
+mod lang;
 mod leveling;
 mod responder;
 mod roles;
 mod server_events;
 mod server_log;
+mod text;
 mod util;
 mod voice_xp;
 
 pub use app::{App, PreviewError};
 pub use card_images::{CardSubject, ServerCard, atlas_has, card_png, classic_card, deliver, preview_png, server_card};
+pub use catalog::{command_catalog, site_facts};
 pub use commands::{
     collection::{post_bottle, post_critter_drop, spawn_ticker as spawn_collection_ticker, tick as collection_tick},
+    customcommand::reserved_names as reserved_command_names,
     definitions as command_definitions,
     games::{spawn_janitor as spawn_game_janitor, sweep as sweep_games},
     level_roles::{SyncOutcome, SyncReport, sync_level_roles, sync_resting},
@@ -29,11 +38,14 @@ pub use commands::{
     party_games::{spawn_ticker as spawn_party_ticker, tick as party_tick},
     remind::{spawn_ticker as spawn_reminder_ticker, tick as reminder_tick},
 };
+pub use custom::{
+    Rendered, Spec, def_diff, escape_markdown, mention_ids, pick as pick_random, render_message, scrub_value, templates,
+};
 pub use cx::Cx;
 pub use defer::Deferral;
 pub use events::{
-    on_ban_add, on_ban_remove, on_guild_create, on_guild_delete, on_member_add, on_member_remove, on_member_update,
-    on_message, on_voice_state_update, voice_snapshot,
+    PermissionChange, on_ban_add, on_ban_remove, on_guild_create, on_guild_delete, on_member_add, on_member_remove,
+    on_member_update, on_message, on_permissions_changed, on_voice_state_update, voice_snapshot,
 };
 pub use house_view::{
     RoomData, catalog as house_catalog, character_png, render_png as render_room_png, room_name as house_room_name,
@@ -42,6 +54,7 @@ pub use house_view::{
 pub use invalidations::listen as listen_for_invalidations;
 pub use responder::Responder;
 pub use server_events::{spawn_ticker as spawn_events_ticker, tick as events_tick};
+pub use text::on_text_command;
 pub use util::fill;
 pub use voice_xp::{
     VoiceSnapshot, forget as forget_voice_presence, prune as voice_prune, rebuild as rebuild_voice,
@@ -64,16 +77,21 @@ pub async fn handle_gateway_interaction(app: Arc<App>, interaction: Interaction,
 pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, responder: Arc<Responder>) {
     let started = Instant::now();
     let data = interaction.data.take();
+    let lang = lang::resolve(&app, &interaction).await;
     let cx = Cx {
         app,
         interaction,
         responder,
+        lang,
     };
     // Typing into an option that suggests: only suggestions go back, and the command itself neither
     // runs nor passes a module's switch.
     if cx.interaction.kind == InteractionType::ApplicationCommandAutocomplete {
         if let Some(InteractionData::ApplicationCommand(command)) = data {
-            let choices = commands::modules::autocomplete(&command);
+            let choices = match command.name.as_str() {
+                "tag" | "customcommand" => commands::tag::autocomplete(&cx, &command).await,
+                _ => commands::modules::autocomplete(&command),
+            };
             if let Err(error) = cx.responder.suggest(choices).await {
                 tracing::warn!(%error, name = %command.name, "could not answer an autocomplete");
             }
@@ -110,8 +128,6 @@ pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, res
         .record(started.elapsed().as_secs_f64());
     if let Err(error) = result {
         tracing::error!(name = %label, error = ?error, "interaction failed");
-        let _ = cx
-            .reply_ephemeral("Something went wrong on our side. Please try again in a moment.")
-            .await;
+        let _ = cx.reply_ephemeral(pinchora_core::t!(cx.lang(), "error.generic")).await;
     }
 }
