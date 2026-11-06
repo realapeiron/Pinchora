@@ -78,6 +78,11 @@ pub async fn run(config: &Config, app: Arc<App>, ready: Readiness) -> anyhow::Re
     if config.gateway.member_events {
         intents |= Intents::GUILD_MEMBERS;
     }
+    // Without it, Discord only sends the text of messages that mention the bot: text commands then
+    // need `@Pinchora profile` instead of `p!profile`.
+    if config.gateway.message_content {
+        intents |= Intents::MESSAGE_CONTENT;
+    }
     let presence = UpdatePresencePayload::new(
         vec![
             MinimalActivity {

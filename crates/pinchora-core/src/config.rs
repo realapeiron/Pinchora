@@ -84,6 +84,9 @@ pub struct GatewayConfig {
     pub cluster_count: u16,
     /// Listen for `GUILD_MEMBER_ADD` (privileged "Server Members" intent) for welcome cards.
     pub member_events: bool,
+    /// Ask for message text (privileged "Message Content" intent), so text commands work with a
+    /// server's prefix. Off, they only work after an @mention of the bot.
+    pub message_content: bool,
 }
 
 impl Default for GatewayConfig {
@@ -93,6 +96,7 @@ impl Default for GatewayConfig {
             cluster_id: None,
             cluster_count: 1,
             member_events: true,
+            message_content: false,
         }
     }
 }

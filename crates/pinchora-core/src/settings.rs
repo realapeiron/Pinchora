@@ -40,6 +40,11 @@ pub const DEFAULT_LEVELUP: &str = "🎉 {user} reached **level {level}**!";
 pub const DEFAULT_WELCOME: &str = "Welcome to **{server}**, {user}!";
 pub const DEFAULT_GOODBYE: &str = "👋 **{user}** has left **{server}**.";
 
+/// What text commands start with when a server picked none (`p!profile`).
+pub const DEFAULT_PREFIX: &str = "p!";
+/// A text command prefix, in characters.
+pub const PREFIX_MAX: usize = 5;
+
 /// Every way a level-up can be announced, in the order the pickers list them.
 pub const LEVELUP_MODES: [LevelUpMode; 4] = [
     LevelUpMode::Channel,
@@ -181,6 +186,29 @@ pub fn parse_levelup_mode(key: &str) -> Result<LevelUpMode, FieldError> {
             "Level-ups go to the level-up channel, the current channel, a DM, or nowhere.",
         )
     })
+}
+
+/// A text command prefix, trimmed: 1 to [`PREFIX_MAX`] characters with no spaces, `@`, `#` or
+/// backticks, so a prefix can never be (or start) a mention, a channel link or code.
+pub fn check_prefix(s: &str) -> Result<String, FieldError> {
+    let prefix = s.trim();
+    let length = prefix.chars().count();
+    if length == 0 || length > PREFIX_MAX {
+        return Err(FieldError::new(
+            "prefix",
+            format!("A prefix is 1 to {PREFIX_MAX} characters, e.g. p! or ?."),
+        ));
+    }
+    if prefix
+        .chars()
+        .any(|c| c.is_whitespace() || matches!(c, '@' | '#' | '`'))
+    {
+        return Err(FieldError::new(
+            "prefix",
+            "A prefix can't hold spaces, @, # or backticks.",
+        ));
+    }
+    Ok(prefix.to_owned())
 }
 
 /// What the points are called, trimmed.
@@ -358,6 +386,8 @@ pub struct GuildSettingsPatch {
     pub log_names: Option<bool>,
     pub log_bans: Option<bool>,
     pub log_voice: Option<bool>,
+    /// The text command prefix; `Some(None)` goes back to [`DEFAULT_PREFIX`].
+    pub prefix: Option<Option<String>>,
 }
 
 /// Checks every field of `patch` with the rules above and returns it cleaned (names and titles
@@ -403,6 +433,12 @@ pub fn check_patch(
     if let Some(emoji) = &mut patch.points_emoji {
         match check_points_emoji(emoji) {
             Ok(clean) => *emoji = clean,
+            Err(error) => note(Err(error)),
+        }
+    }
+    if let Some(Some(prefix)) = &mut patch.prefix {
+        match check_prefix(prefix) {
+            Ok(clean) => *prefix = clean,
             Err(error) => note(Err(error)),
         }
     }
@@ -460,6 +496,17 @@ mod tests {
         }
         for bad in ["", "coins", "⭐⭐", "<:c:1>", "<coin:123456789012345678>"] {
             assert!(check_points_emoji(bad).is_err(), "{bad:?}");
+        }
+    }
+
+    #[test]
+    fn prefixes_are_short_and_cannot_ping() {
+        assert_eq!(check_prefix(" p! ").unwrap(), "p!");
+        for good in ["?", "z!", "pin.", "!!!!!", "ğ$"] {
+            assert!(check_prefix(good).is_ok(), "{good:?}");
+        }
+        for bad in ["", "  ", "toolong", "p !", "@", "<@1>", "#", "`p", "p\tq"] {
+            assert_eq!(check_prefix(bad).unwrap_err().field, "prefix", "{bad:?}");
         }
     }
 

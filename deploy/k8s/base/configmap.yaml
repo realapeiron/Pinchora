@@ -13,6 +13,8 @@ data:
   PINCHORA_INTERACTIONS__BIND: 0.0.0.0:8080
   PINCHORA_DATABASE__MAX_CONNECTIONS: "20"
   PINCHORA_GATEWAY__MEMBER_EVENTS: "true"
+  # Text commands with a server's prefix (`p!profile`) need the privileged Message Content intent.
+  PINCHORA_GATEWAY__MESSAGE_CONTENT: "false"
   # Shared REST ratelimit view. Delete this line to talk to Discord directly
   # (and drop http-proxy.yaml from kustomization.yaml).
   PINCHORA_DISCORD__HTTP_PROXY: pinchora-http-proxy:3000
