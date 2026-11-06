@@ -16,6 +16,7 @@ use crate::{
     commands::{
         collection::{SOULBOUND_RULE, giveable},
         shop::{SlotSpec, grid_png},
+        social::ping_only,
     },
     util::{BRAND, mention, resolved_display_name, thousands},
 };
@@ -276,14 +277,19 @@ pub(crate) async fn on_buy(cx: &Cx, value: Option<&str>) -> anyhow::Result<()> {
         } => {
             cx.app.quest(buyer, pinchora_game::quests::QuestKind::Buy).await;
             let name = Content::get().item(&item_id).map_or(item_id.clone(), |i| i.name());
+            // The seller hears of the sale; the buyer is not pinged for their own purchase.
             return cx
-                .reply_text(format!(
-                    "🤝 {} bought **{name}** from {}'s stall for {} shells. ({} left)",
-                    mention(buyer),
-                    mention(seller),
-                    thousands(price),
-                    thousands(balance)
-                ))
+                .reply(InteractionResponseData {
+                    content: Some(format!(
+                        "🤝 {} bought **{name}** from {}'s stall for {} shells. ({} left)",
+                        mention(buyer),
+                        mention(seller),
+                        thousands(price),
+                        thousands(balance)
+                    )),
+                    allowed_mentions: ping_only(seller as u64),
+                    ..Default::default()
+                })
                 .await;
         }
         StallBuy::Gone => "Someone was faster: that item is already sold.".to_owned(),

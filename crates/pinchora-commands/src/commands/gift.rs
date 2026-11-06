@@ -10,7 +10,10 @@ use twilight_model::{
 
 use crate::{
     Cx,
-    commands::collection::{SOULBOUND_RULE, giveable},
+    commands::{
+        collection::{SOULBOUND_RULE, giveable},
+        social::ping_only,
+    },
     util::mention,
 };
 
@@ -103,11 +106,16 @@ pub(crate) async fn on_gift(cx: &Cx, mut args: std::str::Split<'_, char>, value:
         ..Default::default()
     })
     .await?;
-    cx.reply_text(format!(
-        "🎁 {} sent {} a **{}**! It's waiting in their `/inventory`.",
-        mention(from),
-        mention(to),
-        item.name()
-    ))
+    // The one who gets the gift is told; the sender is not pinged for their own gift.
+    cx.reply(InteractionResponseData {
+        content: Some(format!(
+            "🎁 {} sent {} a **{}**! It's waiting in their `/inventory`.",
+            mention(from),
+            mention(to),
+            item.name()
+        )),
+        allowed_mentions: ping_only(to),
+        ..Default::default()
+    })
     .await
 }

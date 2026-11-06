@@ -192,7 +192,7 @@ pub(crate) async fn on_button(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::Re
     }
     let app = &cx.app;
     let me = cx.author()?.id.get();
-    let Some((game, players)) = snapshot(app, id).await? else {
+    let Some((game, players)) = snapshot(app, Party::TruthOrDare, id).await? else {
         return cx.reply_ephemeral("This game has expired.").await;
     };
     remember(cx, &game).await;

@@ -1556,3 +1556,119 @@ async fn a_lobby_button_of_another_party_game_is_refused() {
     );
     assert_eq!(sim.app.db.party_players(race_id).await.unwrap().len(), 4);
 }
+
+#[tokio::test]
+async fn a_turn_button_or_form_of_one_party_game_finds_no_game_of_another() {
+    let _alone = PARTY.lock().await;
+    let Some(mut sim) = Sim::new("a_turn_button_or_form_of_one_party_game_finds_no_game_of_another").await else {
+        return;
+    };
+    fresh(&sim).await;
+    let (ada, bo, cy) = (unique(), unique(), unique());
+    // An Acronym Tide in one channel and a Caption the Postcard in another, both waiting for writing.
+    sim.channel = unique();
+    let (lobby, acronym) = lobby_of(&mut sim, "acronym", vec![int_option("rounds", 1)], ada, &[bo, cy]).await;
+    let acronym_round = sim.click(ada, &lobby, "Start").await;
+    sim.channel = unique();
+    let (lobby, postcard) = lobby_of(&mut sim, "postcard", vec![int_option("rounds", 1)], ada, &[bo, cy]).await;
+    let postcard_round = sim.click(ada, &lobby, "Start").await;
+    let letters = state(&sim, acronym).await["letters"]
+        .as_str()
+        .expect("letters")
+        .to_owned();
+
+    let expired = |reply: &Reply, what: &str| {
+        assert!(
+            reply.ephemeral && reply.modal.is_none() && reply.content().contains("expired"),
+            "{what}: {}",
+            reply.content()
+        );
+    };
+    // Buttons: each game's prefix with the other's id.
+    for (forged, on, what) in [
+        (
+            format!("cn:w:{acronym}:1"),
+            &acronym_round,
+            "a postcard write button on the acronym",
+        ),
+        (
+            format!("ac:w:{postcard}:1"),
+            &postcard_round,
+            "an acronym write button on the postcard",
+        ),
+        (
+            format!("cn:v:{acronym}:1:0"),
+            &acronym_round,
+            "a postcard vote on the acronym",
+        ),
+        (
+            format!("ac:v:{postcard}:1:0"),
+            &postcard_round,
+            "an acronym vote on the postcard",
+        ),
+        (
+            format!("hl:w:{acronym}:0"),
+            &acronym_round,
+            "a Hot Pearl button on the acronym",
+        ),
+        (format!("wx:g:{acronym}"), &acronym_round, "a race guess on the acronym"),
+        (
+            format!("td:e:{acronym}"),
+            &acronym_round,
+            "the Truth or Dare end button on the acronym",
+        ),
+    ] {
+        let reply = sim.component(ada, &forged, &[], on).await;
+        expired(&reply, what);
+    }
+
+    // Forms: a real form of one game, sent under the other's prefix with its own id.
+    let acronym_form = sim.click(bo, &acronym_round, "Write a phrase").await;
+    assert!(acronym_form.modal.is_some(), "{}", acronym_form.content());
+    let postcard_form = sim.click(bo, &postcard_round, "Write a caption").await;
+    assert!(postcard_form.modal.is_some(), "{}", postcard_form.content());
+    let (acronym_id, _) = acronym_form.modal.clone().expect("the form");
+    let (postcard_id, _) = postcard_form.modal.clone().expect("the form");
+    assert_eq!(acronym_id, format!("ac:m:{acronym}:1"));
+    assert_eq!(postcard_id, format!("cn:m:{postcard}:1"));
+    let mut forged = sim.click(bo, &acronym_round, "Write a phrase").await;
+    forged.modal.as_mut().expect("the form").0 = format!("cn:m:{acronym}:1");
+    let reply = sim
+        .submit_fields(bo, &forged, &[("entry", phrase(&letters).as_str())])
+        .await;
+    expired(&reply, "a postcard form on the acronym");
+    let mut forged = sim.click(bo, &postcard_round, "Write a caption").await;
+    forged.modal.as_mut().expect("the form").0 = format!("ac:m:{postcard}:1");
+    let reply = sim
+        .submit_fields(bo, &forged, &[("entry", "a perfectly friendly caption")])
+        .await;
+    expired(&reply, "an acronym form on the postcard");
+    forged.modal.as_mut().expect("the form").0 = format!("hl:m:{postcard}:0");
+    let reply = sim.submit_fields(bo, &forged, &[("word", "pearl")]).await;
+    expired(&reply, "a Hot Pearl form on the postcard");
+    forged.modal.as_mut().expect("the form").0 = format!("wx:m:{postcard}");
+    let reply = sim.submit_fields(bo, &forged, &[("guess", "pearl")]).await;
+    expired(&reply, "a race guess form on the postcard");
+
+    // Nothing was written, nothing moved on; the games' own forms still work.
+    for id in [acronym, postcard] {
+        assert!(sim.app.db.party_entries(id, 1).await.unwrap().is_empty(), "game {id}");
+        assert_eq!(game(&sim, id).await.phase, "write", "game {id}");
+    }
+    let saved = sim
+        .submit_fields(bo, &acronym_form, &[("entry", phrase(&letters).as_str())])
+        .await;
+    assert!(
+        saved.ephemeral && saved.content().contains("Locked"),
+        "{}",
+        saved.content()
+    );
+    let saved = sim
+        .submit_fields(bo, &postcard_form, &[("entry", "a perfectly friendly caption")])
+        .await;
+    assert!(
+        saved.ephemeral && saved.content().contains("Locked"),
+        "{}",
+        saved.content()
+    );
+}

@@ -168,7 +168,7 @@ pub(crate) async fn on_button(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::Re
         return cx.reply_ephemeral("This button has expired.").await;
     }
     let me = cx.author()?.id.get();
-    let Some((game, players)) = snapshot(&cx.app, id).await? else {
+    let Some((game, players)) = snapshot(&cx.app, Party::WordRace, id).await? else {
         return cx.reply_ephemeral("This race has expired.").await;
     };
     remember(cx, &game).await;
@@ -242,7 +242,7 @@ pub(crate) async fn on_modal(cx: &Cx, mut parts: Split<'_, char>, fields: &[(Str
     };
     let app = &cx.app;
     let me = cx.author()?.id.get();
-    let Some((game, players)) = snapshot(app, id).await? else {
+    let Some((game, players)) = snapshot(app, Party::WordRace, id).await? else {
         return cx.reply_ephemeral("This race has expired.").await;
     };
     if !game.is_playing() || game.phase != "race" {
@@ -292,7 +292,7 @@ pub(crate) async fn on_modal(cx: &Cx, mut parts: Split<'_, char>, fields: &[(Str
             finish(app, id, Some((me, tries))).await?;
         }
         Board::Failed | Board::Playing => {
-            let Some((game, players)) = snapshot(app, id).await? else {
+            let Some((game, players)) = snapshot(app, Party::WordRace, id).await? else {
                 return Ok(());
             };
             let boards: Vec<Board> = players.iter().map(|p| race::board(&p.guesses, &state.word)).collect();
@@ -309,7 +309,7 @@ pub(crate) async fn on_modal(cx: &Cx, mut parts: Split<'_, char>, fields: &[(Str
 /// Ends the race: `winner` is who solved it and in how many tries, or nobody. Shows the word and the
 /// standings. False when it was already over.
 pub(crate) async fn finish(app: &Arc<App>, id: i64, winner: Option<(u64, usize)>) -> anyhow::Result<bool> {
-    let Some((game, players)) = snapshot(app, id).await? else {
+    let Some((game, players)) = snapshot(app, Party::WordRace, id).await? else {
         return Ok(false);
     };
     if !game.is_playing() {

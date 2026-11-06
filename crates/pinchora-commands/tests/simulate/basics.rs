@@ -374,6 +374,11 @@ async fn a_gift_moves_one_piece_and_is_announced() {
         "{}",
         news.content()
     );
+    assert!(
+        news.pings_only(friend),
+        "the friend is told, nobody else: {:?}",
+        news.mentions
+    );
     assert_eq!(
         (owned(&sim, giver, &piece).await, owned(&sim, friend, &piece).await),
         (0, 1)
@@ -468,6 +473,11 @@ async fn a_stall_lists_sells_and_gives_pieces_back() {
             && sale.content().contains("200 shells"),
         "{}",
         sale.content()
+    );
+    assert!(
+        sale.pings_only(seller),
+        "the seller is told, nobody else: {:?}",
+        sale.mentions
     );
     assert_eq!(shells(&sim, buyer).await, 800);
     assert_eq!(shells(&sim, seller).await, 190, "the seller keeps all but the 5% fee");

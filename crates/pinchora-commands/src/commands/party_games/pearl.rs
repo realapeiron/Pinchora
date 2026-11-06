@@ -213,7 +213,7 @@ enum Turn {
 /// click never plays on after the clock: after the answer for the button that opens the form (`opens_form`,
 /// which has to be answered in time), and before it for the form itself, which can be deferred.
 async fn check(cx: &Cx, id: i64, turn: u32, user: u64, opens_form: bool) -> anyhow::Result<Turn> {
-    let Some((game, players)) = snapshot(&cx.app, id).await? else {
+    let Some((game, players)) = snapshot(&cx.app, Party::HotPearl, id).await? else {
         return Ok(Turn::Refused("This game has expired.".to_owned()));
     };
     let state = decode(&game)?;

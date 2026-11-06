@@ -360,9 +360,15 @@ pub(crate) fn track_message(cx: &Cx, game: i64) {
     });
 }
 
-/// The game and its players as the database has them now.
-pub(crate) async fn snapshot(app: &App, id: i64) -> anyhow::Result<Option<(PartyGame, Vec<PartyPlayer>)>> {
-    let Some(game) = app.db.party(id).await? else {
+/// The game and its players as the database has them now, when `id` is a game of `party`. A custom id is
+/// only as good as the click that sends it: a forged `ac:w:<id>` of a Postcard game (or any other game's
+/// id under this game's prefix) finds nothing, as if the game had expired.
+pub(crate) async fn snapshot(
+    app: &App,
+    party: Party,
+    id: i64,
+) -> anyhow::Result<Option<(PartyGame, Vec<PartyPlayer>)>> {
+    let Some(game) = app.db.party(id).await?.filter(|game| game.kind == party.key()) else {
         return Ok(None);
     };
     let players = app.db.party_players(id).await?;

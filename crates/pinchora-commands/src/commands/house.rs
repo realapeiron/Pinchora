@@ -225,12 +225,17 @@ impl HouseCommand {
                         cx.app
                             .quest(author.id.get(), pinchora_game::quests::QuestKind::Like)
                             .await;
-                        cx.reply_text(format!(
-                            "💖 {} liked {}'s house! It has **{total}** like{} now.",
-                            crate::util::mention(author.id),
-                            crate::util::mention(host.id),
-                            if total == 1 { "" } else { "s" }
-                        ))
+                        // The owner hears of the like; the one who liked is not pinged for their own.
+                        cx.reply(InteractionResponseData {
+                            content: Some(format!(
+                                "💖 {} liked {}'s house! It has **{total}** like{} now.",
+                                crate::util::mention(author.id),
+                                crate::util::mention(host.id),
+                                if total == 1 { "" } else { "s" }
+                            )),
+                            allowed_mentions: super::social::ping_only(host.id.get()),
+                            ..Default::default()
+                        })
                         .await
                     }
                     None => cx.reply_ephemeral("You already liked this house today.").await,

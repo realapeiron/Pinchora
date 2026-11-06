@@ -590,6 +590,11 @@ impl Reply {
         self.mentions == Some(json!({ "parse": [] }))
     }
 
+    /// Whether the handler told Discord to ping `user` and nobody else.
+    fn pings_only(&self, user: u64) -> bool {
+        self.mentions == Some(json!({ "parse": [], "users": [user.to_string()] }))
+    }
+
     /// Applies what the handler sent; fields it left out stay as they were.
     fn edit(&mut self, content: Option<String>, embeds: Option<Vec<Embed>>, components: Option<Vec<Component>>) {
         self.content = content.or(self.content.take());
@@ -9797,6 +9802,11 @@ async fn a_hidden_house_and_a_private_profile_close_every_door() {
     assert!(book.title().contains("guestbook"), "{}", book.title());
     let liked = sim.command_resolved(viewer, "house", like.clone(), both.clone()).await;
     assert!(liked.content().contains("liked"), "{}", liked.content());
+    assert!(
+        liked.pings_only(owner),
+        "the owner is told, nobody else: {:?}",
+        liked.mentions
+    );
     assert_eq!(likes(db.clone()).await, 1);
     assert_eq!(
         sim.command_resolved(viewer, "points", points.clone(), both.clone())
@@ -11029,11 +11039,67 @@ async fn replies_after_a_defer_keep_allowed_mentions() {
         json!({ "parse": [] }),
         "the follow-up"
     );
-    assert!(
-        calls[2].body.get("allowed_mentions").is_none(),
-        "unset stays unset: {}",
+    assert_eq!(
+        calls[2].body["allowed_mentions"],
+        json!({ "parse": [] }),
+        "unset pings nobody: {}",
         calls[2].body
     );
+}
+
+/// A reply that says nothing about `allowed_mentions` pings nobody, however it reaches Discord; one that
+/// names somebody to ping keeps that.
+#[tokio::test]
+async fn replies_ping_nobody_unless_they_say_whom() {
+    let Some(sim) = Sim::new("replies_ping_nobody_unless_they_say_whom").await else {
+        return;
+    };
+    let data = json!({ "id": unique().to_string(), "name": "x", "type": 1 });
+    let interaction = sim.interaction(unique(), 2, data, None);
+    let (tx, rx) = oneshot::channel();
+    let responder = Responder::http(sim.app.clone(), &interaction, tx);
+    let loud = |text: &str, whom: Option<u64>| twilight_model::http::interaction::InteractionResponseData {
+        content: Some(format!("{text} <@5> <@&6> @everyone")),
+        allowed_mentions: whom.map(|user| twilight_model::channel::message::AllowedMentions {
+            users: vec![Id::new(user)],
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+    sim.calls.lock().unwrap().clear();
+    responder
+        .respond(loud("first", None), false)
+        .await
+        .expect("the first answer");
+    let first = rx.await.expect("the answer to Discord").data.expect("its data");
+    responder
+        .respond(loud("follow-up", None), false)
+        .await
+        .expect("a follow-up");
+    responder
+        .respond(loud("to one", Some(5)), false)
+        .await
+        .expect("a follow-up that pings");
+    responder.edit(&loud("edit", None)).await.expect("an edit");
+    responder
+        .edit(&loud("edit to one", Some(5)))
+        .await
+        .expect("an edit that pings");
+    let calls = std::mem::take(&mut *sim.calls.lock().unwrap());
+    assert_eq!(
+        calls.len(),
+        4,
+        "{:?}",
+        calls.iter().map(|c| &c.path).collect::<Vec<_>>()
+    );
+    let quiet = json!({ "parse": [] });
+    let to_five = json!({ "parse": [], "users": ["5"] });
+    let first = serde_json::to_value(first.allowed_mentions).expect("mentions as JSON");
+    assert_eq!(first, quiet, "the first answer");
+    assert_eq!(calls[0].body["allowed_mentions"], quiet, "a follow-up");
+    assert_eq!(calls[1].body["allowed_mentions"], to_five, "a follow-up that pings");
+    assert_eq!(calls[2].body["allowed_mentions"], quiet, "an edit");
+    assert_eq!(calls[3].body["allowed_mentions"], to_five, "an edit that pings");
 }
 
 // /Fishing
