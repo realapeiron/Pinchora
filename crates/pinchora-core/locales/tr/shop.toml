@@ -1,7 +1,6 @@
 # /shop, /inventory, /gift, /stall, /plaza: cards, menus, buy and sell replies. Card lines are drawn in capitals in a pixel font: keep them short.
 
 [shop]
-soulbound-rule = "Parçacıkla alınan eşyalar ruh bağlıdır: kendi evine koyabilirsin ama asla satamaz, hediye edemez ya da bağışlayamazsın."
 unit-shells = "kabuk"
 unit-pearls = "inci"
 # A price on a card (shells show as a bare number next to the shell icon) and in a menu description.

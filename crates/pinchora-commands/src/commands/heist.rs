@@ -6,9 +6,11 @@
 
 use std::{str::Split, sync::Arc};
 
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{CrewJoin, GameSession, HeistSettled, NewGame, PENDING, PartyMember};
 use pinchora_game::{
-    party::heist::{self, COOLDOWN_SECS, DAILY_SHELLS, Heist, LOBBY_SECS, MAX_CREW, MIN_CREW, Role, STAGES, Tier},
+    lang::lower,
+    party::heist::{self, COOLDOWN_SECS, DAILY_SHELLS, Heist, LOBBY_SECS, MAX_CREW, MIN_CREW, Role, Tier, stage_title},
     play::Game,
 };
 use pinchora_render::{CrewView, HeistCard, StageView, Theme};
@@ -19,8 +21,8 @@ use twilight_model::{
 use twilight_util::builder::embed::EmbedBuilder;
 
 use super::{
-    games::{channel_of, location, quiet},
-    party::{card_embed, clean_name, count, edit_card, rest, resting, track_message, wait_text},
+    games::{channel_of, location, quiet, session_lang, state_lang, state_with_lang},
+    party::{card_embed, clean_name, count, edit_card, rest, resting, track_message, wait_text_in},
 };
 use crate::{
     App, Cx,
@@ -37,21 +39,24 @@ fn roles_of(crew: &[PartyMember]) -> Vec<Role> {
 
 /// The heist a lobby will play: its seed is the lobby's state.
 fn heist_of(session: &GameSession, crew: &[PartyMember]) -> Heist {
-    heist::run(session.state.parse().unwrap_or(session.id as u64), &roles_of(crew))
+    heist::run(
+        state_lang(&session.state).0.parse().unwrap_or(session.id as u64),
+        &roles_of(crew),
+    )
 }
 
 /// `/play heist`: opens a lobby in this channel.
 pub(crate) async fn start(cx: &Cx) -> anyhow::Result<()> {
     let me = cx.author()?.id.get();
+    let lang = cx.lang();
     let Some(guild) = cx.guild_id() else {
-        return cx.reply_ephemeral("Heists happen inside a server.").await;
+        return cx.reply_ephemeral(t!(lang, "heist.server-only")).await;
     };
+    // The lobby is public and keeps speaking the server's language to its end; `lang` is for the opener's refusals.
+    let board_lang = cx.app.guild_lang(guild).await;
     if let Some(left) = resting(&cx.app, "heist", me).await? {
         return cx
-            .reply_ephemeral(format!(
-                "You're laying low after your last heist. The guard crabs forget you in {}.",
-                wait_text(left)
-            ))
+            .reply_ephemeral(t!(lang, "heist.laying-low", wait = wait_text_in(lang, left)))
             .await;
     }
     let seed: u64 = rand::random();
@@ -66,35 +71,41 @@ pub(crate) async fn start(cx: &Cx) -> anyhow::Result<()> {
             guest: None,
             bet: 0,
             status: PENDING,
-            state: &seed.to_string(),
+            state: &state_with_lang(&seed.to_string(), board_lang),
             ttl_secs: LOBBY_SECS,
         })
         .await?
     else {
-        return cx
-            .reply_ephemeral("A heist is already being planned in this channel. Join the crew!")
-            .await;
+        return cx.reply_ephemeral(t!(lang, "heist.already-planned")).await;
     };
-    let data = lobby_message(&cx.app, &session, &[]).await?;
+    let data = lobby_message(&cx.app, &session, &[], board_lang).await?;
     cx.reply(data).await?;
     track_message(cx, session.id);
     Ok(())
 }
 
+/// A stage as the card will show it, with its words already in the player's language.
+struct StageText {
+    title: String,
+    chance: u8,
+    passed: Option<bool>,
+    line: String,
+}
+
 /// The cards's stages for a crew that has not set off: no results, only the chances it has now.
-fn stages_for(roles: &[Role], heist: Option<&Heist>) -> [StageView<'static>; 3] {
+fn stages_for(roles: &[Role], heist: Option<&Heist>, lang: Lang) -> [StageText; 3] {
     std::array::from_fn(|n| match heist {
-        Some(heist) => StageView {
-            title: STAGES[n],
+        Some(heist) => StageText {
+            title: stage_title(lang, n),
             chance: heist.stages[n].chance,
             passed: Some(heist.stages[n].passed),
-            line: heist.stages[n].line,
+            line: heist.stages[n].line_in(lang),
         },
-        None => StageView {
-            title: STAGES[n],
+        None => StageText {
+            title: stage_title(lang, n),
             chance: heist::chance(roles, n),
             passed: None,
-            line: "",
+            line: String::new(),
         },
     })
 }
@@ -105,6 +116,7 @@ async fn card(
     heist: Option<&Heist>,
     headline: String,
     each: i64,
+    lang: Lang,
 ) -> anyhow::Result<Vec<u8>> {
     let names: Vec<(String, usize)> = crew
         .iter()
@@ -116,13 +128,21 @@ async fn card(
         })
         .collect();
     let roles = roles_of(crew);
-    let stages = stages_for(&roles, heist);
+    let stages = stages_for(&roles, heist, lang);
+    let headline = lang.upper(&headline);
     app.render(move |r| {
         let views: Vec<CrewView<'_>> = names
             .iter()
             .map(|(name, role)| CrewView { name, role: *role })
             .collect();
+        let stages = stages.each_ref().map(|stage| StageView {
+            title: &stage.title,
+            chance: stage.chance,
+            passed: stage.passed,
+            line: &stage.line,
+        });
         r.heist_card(&HeistCard {
+            lang,
             crew: &views,
             stages,
             headline: &headline,
@@ -138,33 +158,46 @@ async fn lobby_message(
     app: &App,
     session: &GameSession,
     crew: &[PartyMember],
+    lang: Lang,
 ) -> anyhow::Result<InteractionResponseData> {
-    let png = card(app, crew, None, format!("CREW {}/{MAX_CREW}", crew.len()), 0).await?;
-    let embed = EmbedBuilder::new().color(BRAND).title("Treasure Heist").description(
-        Role::ALL
-            .map(|r| format!("{} **{}** {}", r.emoji(), r.label(), r.job()))
-            .join("\n"),
-    );
-    let mut data = Cx::card(embed, "heist.png", png, lobby_buttons(session.id), false);
-    data.content = Some(format!(
-        "💰 {} is planning a **Treasure Heist**! Pick a role with the buttons: a crew that covers all three has the \
-         best chances. Nobody loses shells, the vault pays the crew or nobody. It needs at least {MIN_CREW} crew and \
-         sets off {}.",
-        mention(session.host_id),
-        relative(session.expires_at)
+    let headline = t!(lang, "heist.card.crew-count", n = crew.len(), max = MAX_CREW);
+    let png = card(app, crew, None, headline, 0, lang).await?;
+    let embed = EmbedBuilder::new()
+        .color(BRAND)
+        .title(t!(lang, "heist.title"))
+        .description(
+            Role::ALL
+                .map(|r| {
+                    t!(
+                        lang,
+                        "heist.role-line",
+                        emoji = r.emoji(),
+                        role = r.label_in(lang),
+                        job = r.job_in(lang)
+                    )
+                })
+                .join("\n"),
+        );
+    let mut data = Cx::card(embed, "heist.png", png, lobby_buttons(session.id, lang), false);
+    data.content = Some(t!(
+        lang,
+        "heist.lobby",
+        host = mention(session.host_id),
+        min = MIN_CREW,
+        when = relative(session.expires_at)
     ));
     data.allowed_mentions = quiet();
     Ok(data)
 }
 
-fn lobby_buttons(id: i64) -> Vec<Component> {
+fn lobby_buttons(id: i64, lang: Lang) -> Vec<Component> {
     vec![
         row(Role::ALL
             .iter()
             .map(|role| {
                 button(
                     format!("hs:j:{id}:{}", role.index()),
-                    role.label(),
+                    &role.label_in(lang),
                     Some(role.emoji()),
                     ButtonStyle::Secondary,
                     false,
@@ -172,8 +205,20 @@ fn lobby_buttons(id: i64) -> Vec<Component> {
             })
             .collect()),
         row(vec![
-            button(format!("hs:s:{id}"), "Set off now", None, ButtonStyle::Success, false),
-            button(format!("hs:l:{id}"), "Leave", None, ButtonStyle::Secondary, false),
+            button(
+                format!("hs:s:{id}"),
+                &t!(lang, "heist.set-off"),
+                None,
+                ButtonStyle::Success,
+                false,
+            ),
+            button(
+                format!("hs:l:{id}"),
+                &t!(lang, "heist.leave"),
+                None,
+                ButtonStyle::Secondary,
+                false,
+            ),
         ]),
     ]
 }
@@ -182,7 +227,7 @@ fn lobby_buttons(id: i64) -> Vec<Component> {
 pub(crate) async fn on_button(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Result<()> {
     let action = args.next();
     let Some(id) = args.next().and_then(|v| v.parse::<i64>().ok()) else {
-        return cx.reply_ephemeral("This heist has expired.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "heist.expired")).await;
     };
     match action {
         Some("j") => match args
@@ -191,11 +236,11 @@ pub(crate) async fn on_button(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Res
             .and_then(Role::from_index)
         {
             Some(role) => on_join(cx, id, role).await,
-            None => cx.reply_ephemeral("This button has expired.").await,
+            None => cx.reply_ephemeral(t!(cx.lang(), "arcade.button-expired")).await,
         },
         Some("s") => on_set_off(cx, id).await,
         Some("l") => on_leave(cx, id).await,
-        _ => cx.reply_ephemeral("This button has expired.").await,
+        _ => cx.reply_ephemeral(t!(cx.lang(), "arcade.button-expired")).await,
     }
 }
 
@@ -204,11 +249,11 @@ async fn open_lobby(cx: &Cx, id: i64) -> anyhow::Result<Option<GameSession>> {
     match cx.app.db.game(id).await?.filter(|s| s.kind == "heist") {
         Some(session) if session.status == PENDING && !session.expired() => Ok(Some(session)),
         Some(session) if session.status == PENDING => {
-            cx.reply_ephemeral("The crew is already setting off!").await?;
+            cx.reply_ephemeral(t!(cx.lang(), "heist.setting-off")).await?;
             Ok(None)
         }
         _ => {
-            cx.reply_ephemeral("This heist is over.").await?;
+            cx.reply_ephemeral(t!(cx.lang(), "heist.over")).await?;
             Ok(None)
         }
     }
@@ -219,12 +264,10 @@ async fn on_join(cx: &Cx, id: i64, role: Role) -> anyhow::Result<()> {
         return Ok(());
     };
     let me = cx.author()?.id.get();
+    let lang = cx.lang();
     if let Some(left) = resting(&cx.app, "heist", me).await? {
         return cx
-            .reply_ephemeral(format!(
-                "You're laying low after your last heist. The guard crabs forget you in {}.",
-                wait_text(left)
-            ))
+            .reply_ephemeral(t!(lang, "heist.laying-low", wait = wait_text_in(lang, left)))
             .await;
     }
     let joined = cx
@@ -240,15 +283,14 @@ async fn on_join(cx: &Cx, id: i64, role: Role) -> anyhow::Result<()> {
         .await?;
     match joined {
         CrewJoin::Joined | CrewJoin::Moved => {}
-        CrewJoin::Closed => return cx.reply_ephemeral("The crew just set off without you!").await,
+        CrewJoin::Closed => return cx.reply_ephemeral(t!(lang, "heist.closed")).await,
         CrewJoin::Full => {
-            return cx
-                .reply_ephemeral(format!("The crew is full: {MAX_CREW} is the most a heist holds."))
-                .await;
+            return cx.reply_ephemeral(t!(lang, "heist.full", max = MAX_CREW)).await;
         }
     }
     let crew = cx.app.db.party_members(id).await?;
-    cx.update(lobby_message(&cx.app, &session, &crew).await?).await
+    let table = session_lang(&cx.app, &session).await;
+    cx.update(lobby_message(&cx.app, &session, &crew, table).await?).await
 }
 
 async fn on_leave(cx: &Cx, id: i64) -> anyhow::Result<()> {
@@ -256,10 +298,11 @@ async fn on_leave(cx: &Cx, id: i64) -> anyhow::Result<()> {
         return Ok(());
     };
     if !cx.app.db.heist_leave(id, cx.author()?.id.get()).await? {
-        return cx.reply_ephemeral("You're not in this crew.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "heist.not-in")).await;
     }
     let crew = cx.app.db.party_members(id).await?;
-    cx.update(lobby_message(&cx.app, &session, &crew).await?).await
+    let table = session_lang(&cx.app, &session).await;
+    cx.update(lobby_message(&cx.app, &session, &crew, table).await?).await
 }
 
 async fn on_set_off(cx: &Cx, id: i64) -> anyhow::Result<()> {
@@ -267,39 +310,45 @@ async fn on_set_off(cx: &Cx, id: i64) -> anyhow::Result<()> {
         return Ok(());
     };
     let me = cx.author()?.id.get();
+    let lang = cx.lang();
     if session.host_id as u64 != me {
         return cx
-            .reply_ephemeral(format!(
-                "Only {} can set the crew off early. It sets off {}.",
-                mention(session.host_id),
-                relative(session.expires_at)
+            .reply_ephemeral(t!(
+                lang,
+                "heist.host-only",
+                host = mention(session.host_id),
+                when = relative(session.expires_at)
             ))
             .await;
     }
     let crew = cx.app.db.party_members(id).await?.len();
     if crew < MIN_CREW {
         return cx
-            .reply_ephemeral(format!(
-                "A heist needs at least {MIN_CREW} crew and yours has {crew}. Pick a role yourself, or wait for \
-                 more to join; it sets off {} either way.",
-                relative(session.expires_at)
+            .reply_ephemeral(t!(
+                lang,
+                "heist.too-few",
+                min = MIN_CREW,
+                crew = crew,
+                when = relative(session.expires_at)
             ))
             .await;
     }
-    match finish(&cx.app, id, Some(me)).await? {
-        Some(done) => cx.update(done.response()).await,
-        None => cx.reply_ephemeral("This heist is already under way.").await,
+    let table = session_lang(&cx.app, &session).await;
+    match finish(&cx.app, id, Some(me), table).await? {
+        Some(done) => cx.update(done.response(table)).await,
+        None => cx.reply_ephemeral(t!(lang, "heist.under-way")).await,
     }
 }
 
 /// Ends a lobby whose clock ran out: plays the heist and edits the lobby's message. False when
 /// somebody else got there first.
 pub(crate) async fn time_out(app: &Arc<App>, session: &GameSession) -> anyhow::Result<bool> {
-    let Some(done) = finish(app, session.id, None).await? else {
+    let lang = session_lang(app, session).await;
+    let Some(done) = finish(app, session.id, None, lang).await? else {
         return Ok(false);
     };
     if let Some(at) = location(session) {
-        done.publish(app, at).await;
+        done.publish(app, at, lang).await;
     }
     Ok(true)
 }
@@ -311,21 +360,21 @@ struct Finished {
     card: Option<(Vec<u8>, Tier)>,
 }
 
-fn embed(tier: Tier) -> EmbedBuilder {
+fn embed(tier: Tier, lang: Lang) -> EmbedBuilder {
     EmbedBuilder::new()
         .color(match tier {
             Tier::Vault => SUCCESS,
             Tier::Haul | Tier::Scraps => WARN,
             Tier::Busted => DANGER,
         })
-        .title("Treasure Heist")
+        .title(t!(lang, "heist.title"))
 }
 
 impl Finished {
-    fn response(self) -> InteractionResponseData {
+    fn response(self, lang: Lang) -> InteractionResponseData {
         match self.card {
             Some((png, tier)) => {
-                let mut data = Cx::card(embed(tier), "heist.png", png, Vec::new(), false);
+                let mut data = Cx::card(embed(tier, lang), "heist.png", png, Vec::new(), false);
                 data.content = Some(self.content);
                 data.allowed_mentions = quiet();
                 data
@@ -339,14 +388,14 @@ impl Finished {
         }
     }
 
-    async fn publish(self, app: &App, at: (u64, u64)) {
+    async fn publish(self, app: &App, at: (u64, u64), lang: Lang) {
         match self.card {
             Some((png, tier)) => {
                 edit_card(
                     app,
                     at,
                     Some(&self.content),
-                    card_embed(embed(tier), "heist.png"),
+                    card_embed(embed(tier, lang), "heist.png"),
                     ("heist.png", png),
                     &[],
                 )
@@ -361,7 +410,7 @@ impl Finished {
 
 /// Sets lobby `id` off: plays the heist, pays the crew and says how it went. `None` when the lobby
 /// was already ended by someone else.
-async fn finish(app: &Arc<App>, id: i64, forced: Option<u64>) -> anyhow::Result<Option<Finished>> {
+async fn finish(app: &Arc<App>, id: i64, forced: Option<u64>, lang: Lang) -> anyhow::Result<Option<Finished>> {
     let Some(session) = app.db.game(id).await?.filter(|s| s.kind == "heist") else {
         return Ok(None);
     };
@@ -378,7 +427,7 @@ async fn finish(app: &Arc<App>, id: i64, forced: Option<u64>) -> anyhow::Result<
     let (crew, each, paid) = match settled {
         HeistSettled::CalledOff { .. } => {
             return Ok(Some(Finished {
-                content: format!("🏴‍☠️ {host}'s heist was called off: a heist needs at least {MIN_CREW} crew."),
+                content: t!(lang, "heist.called-off", host = host, min = MIN_CREW),
                 card: None,
             }));
         }
@@ -398,18 +447,20 @@ async fn finish(app: &Arc<App>, id: i64, forced: Option<u64>) -> anyhow::Result<
             let got = paid.iter().find(|(u, _)| *u == m.user_id as u64).map_or(0, |(_, s)| *s);
             match got {
                 0 if busted => format!("{role} {}", mention(m.user_id)),
-                0 => format!("{role} {} (today's limit is reached)", mention(m.user_id)),
+                0 => format!("{role} {} {}", mention(m.user_id), t!(lang, "heist.limit-reached")),
                 shells => format!("{role} {} **+{}**", mention(m.user_id), thousands(shells)),
             }
         })
         .collect();
-    let content = format!(
-        "💰 {host}'s heist is over: **{}**!\n{}",
-        heist.tier.headline().to_lowercase(),
-        lines.join("\n")
+    let content = t!(
+        lang,
+        "heist.done",
+        host = host,
+        headline = lower(lang, &heist.tier.headline_in(lang)),
+        lines = lines.join("\n")
     );
     // The heist is over and paid whatever happens to the picture: without one the text still tells it.
-    let png = card(app, &crew, Some(&heist), heist.tier.headline().to_owned(), each).await;
+    let png = card(app, &crew, Some(&heist), heist.tier.headline_in(lang), each, lang).await;
     if let Err(error) = &png {
         tracing::warn!(%error, session = id, "heist card not drawn");
     }
@@ -434,7 +485,7 @@ mod tests {
 
     #[test]
     fn the_buttons_fit_discord_and_carry_every_role() {
-        let rows = lobby_buttons(9);
+        let rows = lobby_buttons(9, Lang::En);
         assert_eq!(rows.len(), 2);
         let ids: Vec<String> = rows
             .iter()
@@ -475,7 +526,7 @@ mod tests {
         assert_eq!(a.stages[0].chance, 64);
         // The stages shown before the start carry the chances but no results.
         let roles = roles_of(&crew);
-        let lobby = stages_for(&roles, None);
+        let lobby = stages_for(&roles, None, Lang::En);
         assert!(
             lobby
                 .iter()

@@ -2,6 +2,8 @@
 //! The vault is a crew-against-the-sea game: nobody ever loses shells, the loot is simply not there when
 //! the crew fumbles.
 
+use pinchora_core::{i18n::Lang, t};
+
 use super::Rng;
 
 /// Crew members a heist holds, and the least it needs to set off.
@@ -41,6 +43,30 @@ impl Role {
         }
     }
 
+    /// What the catalogs call the role (`heist.role.<key>`).
+    fn key(self) -> &'static str {
+        match self {
+            Self::Lookout => "lookout",
+            Self::Locksmith => "locksmith",
+            Self::Diver => "diver",
+        }
+    }
+
+    /// [`Role::label`] in `lang`.
+    pub fn label_in(self, lang: Lang) -> String {
+        t!(lang, &format!("heist.role.{}", self.key()))
+    }
+
+    /// [`Role::job`] in `lang`.
+    pub fn job_in(self, lang: Lang) -> String {
+        t!(lang, &format!("heist.job.{}", self.key()))
+    }
+
+    /// The role's short word on the card, in capitals.
+    pub fn card_tag(self, lang: Lang) -> String {
+        t!(lang, &format!("heist.card.{}", self.key()))
+    }
+
     pub fn emoji(self) -> &'static str {
         match self {
             Self::Lookout => "🔭",
@@ -61,6 +87,11 @@ impl Role {
 
 /// The three stages of a heist, in order; each is helped by the role of the same number.
 pub const STAGES: [&str; 3] = ["Slip past the guards", "Crack the clam lock", "Haul out the loot"];
+
+/// The title of stage `stage` in `lang`.
+pub fn stage_title(lang: Lang, stage: usize) -> String {
+    t!(lang, &format!("heist.stage.{stage}"))
+}
 
 /// How well the crew does at one stage, in whole percent: a base chance, a big bonus for the first
 /// member who has the role and smaller ones for more of them, and a little for any extra hands.
@@ -120,6 +151,17 @@ impl Tier {
             Self::Busted => "BUSTED",
         }
     }
+
+    /// [`Tier::headline`] in `lang`, in capitals.
+    pub fn headline_in(self, lang: Lang) -> String {
+        let key = match self {
+            Self::Vault => "vault",
+            Self::Haul => "haul",
+            Self::Scraps => "scraps",
+            Self::Busted => "busted",
+        };
+        t!(lang, &format!("heist.headline.{key}"))
+    }
 }
 
 /// What happened at one stage.
@@ -129,6 +171,17 @@ pub struct Stage {
     pub chance: u8,
     pub passed: bool,
     pub line: &'static str,
+    /// Which stage this is and which of its lines was picked, for [`Stage::line_in`].
+    stage: usize,
+    pick: usize,
+}
+
+impl Stage {
+    /// [`Stage::line`] in `lang`.
+    pub fn line_in(&self, lang: Lang) -> String {
+        let how = if self.passed { "pass" } else { "fail" };
+        t!(lang, &format!("heist.line.{how}.{}.{}", self.stage, self.pick))
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -180,10 +233,13 @@ pub fn run(seed: u64, roles: &[Role]) -> Heist {
         let chance = chance(roles, stage);
         let passed = rng.below(100) < u32::from(chance);
         let lines = if passed { &PASS_LINES[stage] } else { &FAIL_LINES[stage] };
+        let pick = rng.below(lines.len() as u32) as usize;
         Stage {
             chance,
             passed,
-            line: lines[rng.below(lines.len() as u32) as usize],
+            line: lines[pick],
+            stage,
+            pick,
         }
     });
     let tier = Tier::of(stages.iter().filter(|s| s.passed).count());
@@ -216,6 +272,30 @@ mod tests {
         let lopsided = [Diver, Diver, Diver, Diver];
         let total = |crew: &[Role]| (0..3).map(|s| u32::from(chance(crew, s))).sum::<u32>();
         assert!(total(&covered) > total(&lopsided) + 40);
+    }
+
+    #[test]
+    fn every_line_and_label_reads_the_same_in_english_and_is_translated() {
+        for stage in 0..3 {
+            assert_eq!(stage_title(Lang::En, stage), STAGES[stage]);
+            for (how, lines) in [("pass", &PASS_LINES[stage]), ("fail", &FAIL_LINES[stage])] {
+                for (pick, line) in lines.iter().enumerate() {
+                    let key = format!("heist.line.{how}.{stage}.{pick}");
+                    assert_eq!(t!(Lang::En, &key), *line, "{key}");
+                    assert_ne!(t!(Lang::Tr, &key), key, "{key} is translated");
+                }
+            }
+        }
+        for role in Role::ALL {
+            assert_eq!(
+                (role.label_in(Lang::En), role.job_in(Lang::En)),
+                (role.label().to_owned(), role.job().to_owned())
+            );
+            assert_ne!(role.label_in(Lang::Tr), role.label());
+        }
+        for tier in [Tier::Vault, Tier::Haul, Tier::Scraps, Tier::Busted] {
+            assert_eq!(tier.headline_in(Lang::En), tier.headline());
+        }
     }
 
     #[test]

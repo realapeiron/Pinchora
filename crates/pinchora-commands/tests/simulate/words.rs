@@ -11,10 +11,10 @@ use super::*;
 
 /// The ticker moves on every late game in the database, whoever's it is, so the tests that make party
 /// games take turns.
-static PARTY: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+pub(super) static PARTY: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
 /// The word list Hot Pearl plays by, to find a word for any syllable.
-static WORDS: &str = include_str!("../../../../content/pearl_words.txt");
+pub(super) static WORDS: &str = include_str!("../../../../content/pearl_words.txt");
 
 /// A word that holds `syllable`: the first four-letter one, or the first at all.
 fn word_with(syllable: &str) -> String {
@@ -56,13 +56,13 @@ fn word_for(letter: char) -> &'static str {
     }
 }
 
-fn phrase(letters: &str) -> String {
+pub(super) fn phrase(letters: &str) -> String {
     letters.chars().map(word_for).collect::<Vec<_>>().join(" ")
 }
 
 /// The sim's database is its own, so a test starts from no games at all: whatever an earlier run left
 /// behind would be moved on by this test's clock.
-async fn fresh(sim: &Sim) {
+pub(super) async fn fresh(sim: &Sim) {
     sqlx::query("DELETE FROM party_games")
         .execute(sim.app.db.pool())
         .await
@@ -70,7 +70,7 @@ async fn fresh(sim: &Sim) {
 }
 
 /// The id of the game a message belongs to, from its buttons (`hl:j:<id>`, `ac:w:<id>:<round>`, ...).
-fn game_id(reply: &Reply) -> i64 {
+pub(super) fn game_id(reply: &Reply) -> i64 {
     reply
         .controls()
         .find_map(|c| match c {
@@ -80,17 +80,17 @@ fn game_id(reply: &Reply) -> i64 {
         .expect("a button with a game id")
 }
 
-async fn game(sim: &Sim, id: i64) -> PartyGame {
+pub(super) async fn game(sim: &Sim, id: i64) -> PartyGame {
     sim.app.db.party(id).await.expect("game").expect("the game exists")
 }
 
 /// The game's own state, as the JSON the database keeps.
-async fn state(sim: &Sim, id: i64) -> Value {
+pub(super) async fn state(sim: &Sim, id: i64) -> Value {
     serde_json::from_str(&game(sim, id).await.state).expect("state is JSON")
 }
 
 /// Tells the game which message it is shown in, as the follow-up lookup would.
-async fn pin(sim: &Sim, id: i64) {
+pub(super) async fn pin(sim: &Sim, id: i64) {
     sim.app
         .db
         .set_party_message(id, sim.channel, unique())
@@ -99,39 +99,47 @@ async fn pin(sim: &Sim, id: i64) {
 }
 
 /// Moves the clock on and runs the ticker once; how many games it moved.
-async fn advance(sim: &Sim, secs: i64) -> usize {
+pub(super) async fn advance(sim: &Sim, secs: i64) -> usize {
     sim.app.shift_clock(Duration::seconds(secs));
     party_tick(&sim.app).await.expect("the party ticker")
 }
 
 /// The messages the handlers edited, oldest first.
-fn edits(posts: &[Post]) -> Vec<&Post> {
+pub(super) fn edits(posts: &[Post]) -> Vec<&Post> {
     posts.iter().filter(|p| p.method == Method::PATCH).collect()
 }
 
-fn description(post: &Post) -> &str {
+pub(super) fn description(post: &Post) -> &str {
     post.embed()["description"].as_str().unwrap_or_default()
 }
 
 /// Keeps a picture a handler edited in, next to the sim's own, under a name that says what it shows.
-fn keep(sim: &Sim, name: &str, post: &Post) {
+pub(super) fn keep(sim: &Sim, name: &str, post: &Post) {
     let (_, png) = post.files.first().expect("the edit carried a picture");
     std::fs::write(sim.dir.join(format!("{name}.png")), png).expect("save the picture");
 }
 
 /// Opens a lobby with `command` (`hotpearl`, `acronym`, ...), and has everybody else join it.
-async fn lobby_of(sim: &mut Sim, command: &str, options: Vec<Value>, host: u64, joiners: &[u64]) -> (Reply, i64) {
+pub(super) async fn lobby_of(
+    sim: &mut Sim,
+    command: &str,
+    options: Vec<Value>,
+    host: u64,
+    joiners: &[u64],
+) -> (Reply, i64) {
     let mut lobby = sim.command(host, "party", json!([sub(command, options)])).await;
     assert!(!lobby.ephemeral, "{}", lobby.content());
     let id = game_id(&lobby);
     pin(sim, id).await;
+    // The buttons speak the language of the interaction.
+    let join = if sim.locale == "tr" { "Katıl" } else { "Join" };
     for user in joiners {
-        lobby = sim.click(*user, &lobby, "Join").await;
+        lobby = sim.click(*user, &lobby, join).await;
     }
     (lobby, id)
 }
 
-async fn balance(sim: &Sim, user: u64) -> i64 {
+pub(super) async fn balance(sim: &Sim, user: u64) -> i64 {
     sim.app.db.user(user).await.expect("user row").credits
 }
 
@@ -1446,7 +1454,7 @@ async fn truth_or_dare_takes_turns_pays_for_done_and_ends_when_it_goes_quiet() {
 
 impl Reply {
     /// Whether the message has a button whose label starts with `prefix`.
-    fn has_button_starting(&self, prefix: &str) -> bool {
+    pub(super) fn has_button_starting(&self, prefix: &str) -> bool {
         self.controls()
             .any(|c| matches!(c, Component::Button(b) if b.label.as_deref().is_some_and(|l| l.starts_with(prefix))))
     }
@@ -1454,7 +1462,7 @@ impl Reply {
 
 impl Sim {
     /// Clicks the button whose label starts with `prefix`.
-    async fn click_starting(&mut self, user: u64, on: &Reply, prefix: &str) -> Reply {
+    pub(super) async fn click_starting(&mut self, user: u64, on: &Reply, prefix: &str) -> Reply {
         let label = on
             .controls()
             .find_map(|c| match c {
@@ -1467,12 +1475,12 @@ impl Sim {
 }
 
 /// The id of the truth or dare the player is on.
-async fn st_prompt(sim: &Sim, id: i64) -> String {
+pub(super) async fn st_prompt(sim: &Sim, id: i64) -> String {
     state(sim, id).await["prompt"].as_str().expect("a prompt").to_owned()
 }
 
 /// Keeps the picture of a reply under a name that says what it shows.
-fn keep_reply(sim: &Sim, name: &str, reply: &Reply) {
+pub(super) fn keep_reply(sim: &Sim, name: &str, reply: &Reply) {
     let (_, png) = reply.files.first().expect("the reply carried a picture");
     std::fs::write(sim.dir.join(format!("{name}.png")), png).expect("save the picture");
 }
@@ -1675,10 +1683,10 @@ async fn a_turn_button_or_form_of_one_party_game_finds_no_game_of_another() {
 }
 
 /// The Turkish word list Hot Pearl plays by.
-static WORDS_TR: &str = include_str!("../../../../content/pearl_words_tr.txt");
+pub(super) static WORDS_TR: &str = include_str!("../../../../content/pearl_words_tr.txt");
 
 /// A Turkish word that starts with `letter`, for building phrases.
-fn word_tr(letter: char) -> &'static str {
+pub(super) fn word_tr(letter: char) -> &'static str {
     match letter {
         'A' => "arılar",
         'B' => "balık",
@@ -1724,9 +1732,10 @@ async fn a_turkish_hot_pearl_table_gets_turkish_syllables_and_words() {
     fresh(&sim).await;
     sim.channel = unique();
     sim.locale = "tr";
+    turkish_server(&sim).await;
     let (host, ann) = (unique(), unique());
     let (lobby, id) = lobby_of(&mut sim, "hotpearl", vec![], host, &[ann]).await;
-    let table = sim.click(host, &lobby, "Start").await;
+    let table = sim.click(host, &lobby, "Başlat").await;
     let st = state(&sim, id).await;
     assert_eq!(st["lang"], "tr");
     let syllable = st["syl"].as_str().expect("a syllable").to_owned();
@@ -1747,7 +1756,7 @@ async fn a_turkish_hot_pearl_table_gets_turkish_syllables_and_words() {
         .find(|w| (4..=8).contains(&w.chars().count()) && w.contains(syllable.as_str()))
         .expect("a Turkish word for the syllable")
         .to_owned();
-    let form = sim.click(cur, &table, "Type a word").await;
+    let form = sim.click(cur, &table, "Kelime yaz").await;
     assert!(form.modal.is_some(), "{}", form.content());
     // A word without Turkish letters only: refused in Turkish.
     let foreign = sim.submit_fields(cur, &form, &[("word", "xyzzy")]).await;
@@ -1756,7 +1765,7 @@ async fn a_turkish_hot_pearl_table_gets_turkish_syllables_and_words() {
         "{}",
         foreign.content()
     );
-    let typed = pinchora_game::lang::upper(Lang::Tr, &word);
+    let typed = Lang::Tr.upper(&word);
     let played = sim.submit_fields(cur, &form, &[("word", typed.as_str())]).await;
     assert!(!played.ephemeral, "{}", played.content());
     keep_reply_png(&sim, &played, "hot-pearl-tr-after-a-word");
@@ -1779,9 +1788,10 @@ async fn a_turkish_acronym_round_draws_turkish_capitals_and_checks_them() {
     fresh(&sim).await;
     sim.channel = unique();
     sim.locale = "tr";
+    turkish_server(&sim).await;
     let (ada, bo, cy) = (unique(), unique(), unique());
     let (lobby, id) = lobby_of(&mut sim, "acronym", vec![int_option("rounds", 1)], ada, &[bo, cy]).await;
-    let round = sim.click(ada, &lobby, "Start").await;
+    let round = sim.click(ada, &lobby, "Başlat").await;
     let st = state(&sim, id).await;
     assert_eq!(st["lang"], "tr");
     let letters = st["letters"].as_str().expect("letters").to_owned();
@@ -1790,7 +1800,7 @@ async fn a_turkish_acronym_round_draws_turkish_capitals_and_checks_them() {
         "{letters}"
     );
     keep_reply_png(&sim, &round, "acronym-tr-letters");
-    let form = sim.click(ada, &round, "Write a phrase").await;
+    let form = sim.click(ada, &round, "Cümle yaz").await;
     let line = letters.chars().map(word_tr).collect::<Vec<_>>().join(" ");
     let wrong = sim.submit_fields(ada, &form, &[("entry", "bir iki")]).await;
     assert!(wrong.ephemeral, "{}", wrong.content());
@@ -1813,14 +1823,15 @@ async fn a_turkish_word_race_is_played_with_the_turkish_keyboard() {
     fresh(&sim).await;
     sim.channel = unique();
     sim.locale = "tr";
+    turkish_server(&sim).await;
     let (ada, bo) = (unique(), unique());
     let (lobby, id) = lobby_of(&mut sim, "wordrace", vec![], ada, &[bo]).await;
-    let race = sim.click(ada, &lobby, "Start").await;
+    let race = sim.click(ada, &lobby, "Başlat").await;
     let st = state(&sim, id).await;
     assert_eq!(st["lang"], "tr");
     let secret = st["word"].as_str().expect("the word").to_owned();
     assert!(PlayContent::for_lang(Lang::Tr).words.answers.contains(&secret));
-    let form = sim.click(ada, &race, "Guess").await;
+    let form = sim.click(ada, &race, "Tahmin et").await;
     let english = sim.submit_fields(ada, &form, &[("guess", "pearl")]).await;
     assert!(english.content().contains("listemde yok"), "{}", english.content());
     let miss = PlayContent::for_lang(Lang::Tr)
@@ -1830,7 +1841,7 @@ async fn a_turkish_word_race_is_played_with_the_turkish_keyboard() {
         .find(|w| **w != secret && w.contains('ş') && w.contains('ı'))
         .expect("an allowed word")
         .clone();
-    let typed = pinchora_game::lang::upper(Lang::Tr, &miss);
+    let typed = Lang::Tr.upper(&miss);
     let board = sim.submit_fields(ada, &form, &[("guess", typed.as_str())]).await;
     assert!(board.ephemeral && board.files.len() == 1, "{}", board.content());
     keep_reply_png(&sim, &board, "word-race-tr-board");
@@ -1852,6 +1863,7 @@ async fn turkish_would_you_rather_and_dares_come_from_the_turkish_pools() {
     fresh(&sim).await;
     sim.channel = unique();
     sim.locale = "tr";
+    turkish_server(&sim).await;
     let (host, ann) = (unique(), unique());
     let poll = sim
         .command(host, "party", json!([sub("wouldyourrather", vec![])]))
@@ -1866,10 +1878,10 @@ async fn turkish_would_you_rather_and_dares_come_from_the_turkish_pools() {
 
     sim.channel = unique();
     let (lobby, id) = lobby_of(&mut sim, "truthordare", vec![], host, &[ann]).await;
-    let turn = sim.click(host, &lobby, "Start").await;
+    let turn = sim.click(host, &lobby, "Başlat").await;
     assert_eq!(state(&sim, id).await["lang"], "tr");
     let cur = state(&sim, id).await["cur"].as_u64().expect("whose turn");
-    let dare = sim.click(cur, &turn, "Dare").await;
+    let dare = sim.click(cur, &turn, "Cesaret").await;
     let prompt = state(&sim, id).await["prompt"].as_str().expect("a prompt").to_owned();
     assert!(prompt.contains("_tr_"), "{prompt}");
     keep_reply_png(&sim, &dare, "dare-tr-card");

@@ -423,6 +423,7 @@ fn chess(r: &Renderer) -> anyhow::Result<RgbaImage> {
     pieces[6] = 0;
     pieces[21] = 2;
     let png = r.chess_card(&ChessCard {
+        lang: Lang::En,
         pieces: &pieces,
         names: ["Captain Pinch", "Marlowe"],
         turn: Some(1),
@@ -445,6 +446,7 @@ fn connect4(r: &Renderer) -> anyhow::Result<RgbaImage> {
         .flat_map(|row| row.bytes().map(|b| if b == b'.' { 0 } else { b - b'0' }))
         .collect();
     let png = r.connect4_card(&Connect4Card {
+        lang: Lang::En,
         cells: &cells,
         names: ["Captain Pinch", "Marlowe"],
         turn: Some(1),

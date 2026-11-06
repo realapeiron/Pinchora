@@ -60,7 +60,7 @@ async fn a_turkish_player_gets_the_turkish_daily_wordle_with_the_turkish_keyboar
         })
         .expect("an allowed word with Turkish letters")
         .clone();
-    let board = sim.submit(player, &form, &lang::upper(Lang::Tr, &miss), &board).await;
+    let board = sim.submit(player, &form, &Lang::Tr.upper(&miss), &board).await;
     assert!(board.description().contains("tahmin et"), "{}", board.description());
     keep_png(&sim, &board, "wordle-tr-one-guess");
     let stored = sim
@@ -160,7 +160,7 @@ async fn turkish_practice_wordle_resumes_and_loses_with_the_word_shown() {
     }
     assert!(board.description().contains("Hakkın bitti"), "{}", board.description());
     assert!(
-        board.description().contains(&lang::upper(Lang::Tr, &first.word)),
+        board.description().contains(&Lang::Tr.upper(&first.word)),
         "{}",
         board.description()
     );

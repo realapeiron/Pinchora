@@ -36,7 +36,14 @@ pub(crate) async fn strict(app: &App, guild: u64) -> bool {
 
 /// How `/config show` and `/config partygames` word the setting.
 pub(crate) fn party_summary(lang: Lang, strict: bool) -> String {
-    t!(lang, if strict { "cfg.party-strict" } else { "cfg.party-normal" })
+    t!(
+        lang,
+        if strict {
+            "party.filter.strict"
+        } else {
+            "party.filter.normal"
+        }
+    )
 }
 
 impl ConfigPartyGames {
@@ -50,7 +57,7 @@ impl ConfigPartyGames {
             cx,
             t!(
                 cx.lang(),
-                "cfg.party-current",
+                "party.filter.says",
                 summary = party_summary(cx.lang(), strict)
             ),
         )

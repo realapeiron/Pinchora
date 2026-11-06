@@ -1,0 +1,215 @@
+# The crab derby, the treasure heist, the shell game and the storm surge.
+
+[arcade]
+button-expired = "This button has expired."
+
+# Crab Derby.
+[derby]
+title = "Hermit Crab Derby"
+server-only = "Races run inside a server."
+gambling-off = "🎲 Races with shells on them are a gambling-style game, and those are **off** on this server. A manager can switch them on with `/config gambling`. A race for fun needs no stake: just leave `bet` empty."
+stake-range = "A stake is {min} to {max} shells."
+easy = "Easy there! You can open another race in {wait}."
+already-open = "A derby is already open in this channel. Join it, or wait for the next one!"
+lobby-status = "Pick your crab below, you can switch until the start"
+lobby-footer = "Pick a crab, then watch them go."
+lobby-stake = "Everyone puts **{stake}** shells on their crab, and those who back the winner share the pool. If nobody backs it, every stake comes back."
+lobby-free = "No stakes, just bragging rights (and a few shells if you back the winner)."
+lobby = "🦀 {host} opened a **Hermit Crab Derby**! {stake_line}\nThe race starts {when}."
+start-button = "Start the race"
+leave-button = "Leave"
+expired = "This race has expired."
+gates-closing = "The race is about to start, the gates are closed!"
+over = "This race is over."
+gates-closed = "The gates just closed, this race is starting!"
+full = "This race is full: {max} racers is the most."
+broke = "You only have **{balance}** shells, but the stake is **{stake}**. Try `/daily`, or join a race for fun!"
+down = "That stake would take you past today's limit of **{limit}** shells down on staked races (you're at {net}). Join a race for fun, or come back tomorrow."
+not-in = "You haven't picked a crab in this race."
+host-only = "Only {host} can start the race early. It starts on its own {when}."
+need-racers = { one = "Pick a crab first: a race needs at least {count} racer to start, and yours has {racers}. It starts on its own {when} either way.", other = "Pick a crab first: a race needs at least {count} racers to start, and yours has {racers}. It starts on its own {when} either way." }
+already-running = "This race is already running."
+result-footer = "Click the spoiler once the crabs are done."
+called-off = "🦀 {host}'s derby was called off: {why}.{back}"
+why-nobody = "nobody picked a crab"
+why-few = "a race with shells on it needs at least {min} racers"
+stake-back = " The stake went back."
+and-more = "{shown} and {more} more"
+paid = "💰 The backers of **{crab}** share the pool of **{pool}** shells: {list}"
+refunded = "Nobody backed **{crab}**, so every stake went back."
+nobody-friendly = "Nobody backed **{crab}**."
+friendly = "🎉 Backed **{crab}**: {list}"
+result = "🏁 {host}'s **Hermit Crab Derby**, and they're off!\n||{placings}\n{backers}||"
+
+[derby.card]
+title = "HERMIT CRAB DERBY"
+pool = "POOL {pool}"
+entry = "ENTRY {stake} EACH, WINNERS SHARE THE POOL"
+for-fun = "FOR FUN"
+no-stakes = "NO STAKES, JUST BRAGGING RIGHTS"
+lane = "LANE {n}"
+no-backers = "NO BACKERS"
+backers = { one = "{count} BACKER", other = "{count} BACKERS" }
+
+# Drawn into the race GIF by a 3x5 pixel font (capitals and digits; Turkish letters are folded to plain ones).
+[derby.gif]
+title = "HERMIT CRAB DERBY"
+ready = "READY"
+go = "GO!"
+finish = "WIN"
+
+# Treasure Heist.
+[heist]
+title = "Treasure Heist"
+server-only = "Heists happen inside a server."
+laying-low = "You're laying low after your last heist. The guard crabs forget you in {wait}."
+already-planned = "A heist is already being planned in this channel. Join the crew!"
+lobby = "💰 {host} is planning a **Treasure Heist**! Pick a role with the buttons: a crew that covers all three has the best chances. Nobody loses shells, the vault pays the crew or nobody. It needs at least {min} crew and sets off {when}."
+role-line = "{emoji} **{role}** {job}"
+set-off = "Set off now"
+leave = "Leave"
+expired = "This heist has expired."
+setting-off = "The crew is already setting off!"
+over = "This heist is over."
+closed = "The crew just set off without you!"
+full = "The crew is full: {max} is the most a heist holds."
+not-in = "You're not in this crew."
+host-only = "Only {host} can set the crew off early. It sets off {when}."
+too-few = "A heist needs at least {min} crew and yours has {crew}. Pick a role yourself, or wait for more to join; it sets off {when} either way."
+under-way = "This heist is already under way."
+called-off = "🏴‍☠️ {host}'s heist was called off: a heist needs at least {min} crew."
+limit-reached = "(today's limit is reached)"
+done = "💰 {host}'s heist is over: **{headline}**!\n{lines}"
+
+[heist.role]
+lookout = "Lookout"
+locksmith = "Locksmith"
+diver = "Diver"
+
+[heist.job]
+lookout = "keeps the guard crabs looking the other way"
+locksmith = "cracks the clam lock"
+diver = "hauls the loot to the surface"
+
+[heist.stage]
+0 = "Slip past the guards"
+1 = "Crack the clam lock"
+2 = "Haul out the loot"
+
+# The result, in capitals: it heads the card, and in lower case it ends the message's first line.
+[heist.headline]
+vault = "THE VAULT IS OPEN"
+haul = "A GOOD HAUL"
+scraps = "SCRAPS ONLY"
+busted = "BUSTED"
+
+[heist.card]
+title = "TREASURE HEIST"
+crew-count = "CREW {n}/{max}"
+open = "OPEN!"
+shut = "STAYS SHUT"
+sealed = "SEALED"
+passed = "PASSED"
+failed = "FAILED"
+to-come = "TO COME"
+stage = "STAGE {n}"
+chance = "{chance}% CHANCE"
+crew = "THE CREW ({count})"
+each = "{amount} EACH"
+nobody = "NOBODY HAS JOINED YET"
+lookout = "LOOKOUT"
+locksmith = "LOCKSMITH"
+diver = "DIVER"
+
+[heist.line.pass.0]
+0 = "The guard crabs argue about lunch and never look up."
+1 = "A well-timed bubble screen hides the whole crew."
+2 = "The lookout whistles once; the guards wander off."
+
+[heist.line.pass.1]
+0 = "Click, click, clunk: the clam lock yawns open."
+1 = "The locksmith hums a lullaby and the lock falls asleep."
+2 = "One tiny claw, one perfect twist, and the door gives."
+
+[heist.line.pass.2]
+0 = "The treasure rides a kelp lift all the way up."
+1 = "Bag after bag floats out on a trail of bubbles."
+2 = "The diver kicks off and the loot comes home."
+
+[heist.line.fail.0]
+0 = "A guard crab sneezes and the whole patrol turns round."
+1 = "The crew squeaks across the sand. Every claw in the reef hears it."
+2 = "Somebody steps on a squeaky sponge."
+
+[heist.line.fail.1]
+0 = "The lock snaps shut on a claw and rings the alarm."
+1 = "Wrong key. Wrong key. Also the wrong lock."
+2 = "The clam lock decides it has had enough of visitors."
+
+[heist.line.fail.2]
+0 = "The bags are heavier than they look and sink straight back."
+1 = "A curious octopus sits on the loot and will not move."
+2 = "The kelp lift snaps with a sad little twang."
+
+# Shell Game.
+[shells]
+title = "Shell game"
+server-only = "The shell table is inside a server."
+gambling-off = "🎲 Gambling-style games are **off** on this server. A manager can switch them on with `/config gambling`."
+stake-range = "A stake at the shell table is {min} to {max} shells."
+shuffling = "The crab is still shuffling. Sit down again in {wait}."
+broke = "You only have **{balance}** shells, so you can't stake {stake}. Try `/daily`!"
+too-many = "You've played {plays} games at the table today. The crab needs a nap; come back tomorrow."
+down = "That stake would take you past today's loss limit of **{limit}** shells (you're at {net}). Try a smaller one, or come back tomorrow."
+up = "You're up **{net}** shells today, as far as the table lets anyone go. Come back tomorrow!"
+sits = "🐚 {player} sits down at the shell table with **{stake}** shells. The pearl is under one shell: pick one {when}! A right guess pays **{payout}** shells."
+shell-button = "Shell {n}"
+status-start = "Where is the pearl?"
+status-found = "You found the pearl!"
+status-missed = "Not under that one"
+status-returned = "Stake returned"
+found = "🎉 {player} found the pearl under shell {pearl} and takes **{paid}** shells for the **{stake}** staked!"
+missed = "🐚 {player} picked shell {picked}, but the pearl was under shell {pearl}. The sea keeps the **{stake}** shells."
+timeout = "⌛ {player} never picked a shell, so the **{stake}** shells staked went back."
+not-yours = "This isn't your table. Sit down at your own with `/play shells`!"
+over = "This game is over."
+
+[shells.card]
+title = "SHELL GAME"
+stake = "STAKE {stake} PAYS {payout}"
+your-pick = "YOUR PICK"
+
+# Storm Surge.
+[surge]
+title = "Storm Surge"
+server-only = "Storms come to servers."
+denied = "Only members with Manage Server can call a storm."
+breather = "The sea needs a breather: the next storm can be called in {wait}."
+raging = "A storm is already raging on this server. Join the fight!"
+button = "Stack a sandbag"
+announcement = "⛈️ **Storm surge!** A huge wave is rolling in. Everyone: stack sandbags to hold the wall! The sea washes one away every {secs} s, and the wall has to grow with every helper who joins. The storm breaks {when}."
+claws = "Your claws need a rest: stack the next one in {wait}."
+passed = "This storm has passed."
+capped = "You've stacked **{max}** sandbags, as many as one crab can. Cheer the others on!"
+stacked = "🧱 Sandbag **{mine}** stacked! The wall stands at **{wall}** of **{goal}**."
+holds = "The wall already holds, nice work!"
+more = "\n…and {n} more helpers."
+held = "🌤️ **The wall held!** The sea gave up and everyone who helped has been paid:"
+broke-nobody = "🌊 **The sea broke through.** Nobody came to help this time."
+broke = "🌊 **The sea broke through the wall.** Thanks for trying, the helpers got a little something:"
+
+[surge.config]
+denied = "Only members with Manage Server can change timed storms."
+on = "⛈️ Timed storm surges are **on**: one comes to <#{channel}> every **{hours}** hours.{when}"
+next = " The next one comes {when}."
+on-no-channel = "⛈️ Timed storm surges are **on**, but they need a channel: pick one with `channel:`."
+off = "⛈️ Timed storm surges are **off**. Managers can still call a storm with `/surge`."
+
+[surge.card]
+title = "STORM SURGE"
+rolling = "HOLD THE WALL"
+held = "THE WALL HELD"
+broken = "THE SEA WON"
+wall = "WALL {wall} / {goal}"
+helping = { one = "{count} CRAB HELPING", other = "{count} CRABS HELPING" }
+bags = "{bags} BAGS"

@@ -161,6 +161,24 @@ impl Entry {
         self.habitat.map_or("Washed up", Habitat::label)
     }
 
+    /// The name in `lang`: the translation when the language has one, else the English name.
+    pub fn name_in(&self, lang: Lang) -> String {
+        match lang {
+            Lang::En => self.name.clone(),
+            _ => Content::get().name(&self.id, lang).into_owned(),
+        }
+    }
+
+    /// The flavour line in `lang`: the translation when the language has one, else the English line.
+    pub fn flavor_in(&self, lang: Lang) -> String {
+        match lang {
+            Lang::En => self.flavor.clone(),
+            _ => Content::get()
+                .description(&self.id, lang)
+                .map_or_else(|| self.flavor.clone(), std::borrow::Cow::into_owned),
+        }
+    }
+
     pub fn pay(&self) -> Pay {
         pay(self.rarity)
     }

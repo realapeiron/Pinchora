@@ -1,7 +1,6 @@
 # /shop, /inventory, /gift, /stall, /plaza: cards, menus, buy and sell replies. Card lines are drawn in capitals in a pixel font: keep them short.
 
 [shop]
-soulbound-rule = "Pieces bought with fragments are soulbound: place them in your own house, but they can never be sold, gifted or donated."
 unit-shells = "shells"
 unit-pearls = "pearls"
 # A price on a card (shells show as a bare number next to the shell icon) and in a menu description.

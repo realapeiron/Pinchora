@@ -1,5 +1,7 @@
 //! Share or grab: two players secretly pick, and the pool goes by what they picked together.
 
+use pinchora_core::{i18n::Lang, t};
+
 /// Shells the sea puts in the pool of a game nobody wagered on.
 pub const POOL: i64 = 60;
 /// Seconds a pair of players has to pick.
@@ -30,10 +32,11 @@ impl Pick {
         Self::ALL.into_iter().find(|p| p.key() == key)
     }
 
-    pub fn label(self) -> &'static str {
+    /// The pick's name in `lang` (`share.pick-share`, `share.pick-grab`).
+    pub fn label(self, lang: Lang) -> String {
         match self {
-            Self::Share => "Share",
-            Self::Grab => "Grab",
+            Self::Share => t!(lang, "share.pick-share"),
+            Self::Grab => t!(lang, "share.pick-grab"),
         }
     }
 
@@ -154,5 +157,11 @@ mod tests {
         for bad in ["", "s", "s:", "x:s", "ss:s", "s:s:s"] {
             assert_eq!(Picks::decode(bad), None, "{bad:?}");
         }
+    }
+
+    #[test]
+    fn picks_are_named_in_every_language() {
+        assert_eq!(Pick::ALL.map(|p| p.label(Lang::En)), ["Share", "Grab"]);
+        assert_eq!(Pick::ALL.map(|p| p.label(Lang::Tr)), ["Paylaş", "Kap"]);
     }
 }

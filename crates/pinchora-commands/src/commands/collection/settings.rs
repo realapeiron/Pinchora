@@ -46,16 +46,16 @@ pub(crate) async fn forget(guild: u64) {
 /// How `/config show` and `/config critters` word the setting.
 pub(crate) fn critters_summary(lang: Lang, s: &CollectionSettings) -> String {
     match (s.enabled, s.channel_id) {
-        (false, _) => t!(lang, "cfg.critters-off"),
-        (true, Some(channel)) => t!(lang, "cfg.critters-channel", channel = format!("<#{channel}>")),
-        (true, None) => t!(lang, "cfg.critters-anywhere"),
+        (false, _) => t!(lang, "collect.summary-off"),
+        (true, Some(channel)) => t!(lang, "collect.summary-channel", channel = channel),
+        (true, None) => t!(lang, "collect.summary-anywhere"),
     }
 }
 
 impl ConfigCritters {
     pub async fn run(self, cx: &Cx, guild: u64) -> anyhow::Result<()> {
         if self.channel.is_some() && self.anywhere == Some(true) {
-            return tell(cx, t!(cx.lang(), "cfg.critters-both")).await;
+            return tell(cx, t!(cx.lang(), "collect.both-set")).await;
         }
         let channel = match (self.channel, self.anywhere) {
             (Some(channel), _) => Some(Some(channel.id.get())),
@@ -64,14 +64,7 @@ impl ConfigCritters {
         };
         let settings = cx.app.db.set_collection_settings(guild, self.enabled, channel).await?;
         forget(guild).await;
-        tell(
-            cx,
-            t!(
-                cx.lang(),
-                "cfg.critters-current",
-                summary = critters_summary(cx.lang(), &settings)
-            ),
-        )
-        .await
+        let summary = critters_summary(cx.lang(), &settings);
+        tell(cx, t!(cx.lang(), "collect.setting", summary = summary)).await
     }
 }

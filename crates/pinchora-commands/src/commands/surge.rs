@@ -9,7 +9,7 @@
 use std::{str::Split, sync::Arc};
 
 use chrono::{Duration as Span, Utc};
-use pinchora_core::modules::Module;
+use pinchora_core::{i18n::Lang, modules::Module, t};
 use pinchora_db::{ACTIVE, GameSession, NewGame, PartySettings, SurgeHelp, SurgeSettled};
 use pinchora_game::{
     party::surge::{
@@ -29,8 +29,8 @@ use twilight_model::{
 use twilight_util::builder::embed::EmbedBuilder;
 
 use super::{
-    games::{channel_of, location, quiet},
-    party::{clean_name, count, edit_card, post_card, rest, resting, track_message, unrest, wait_text},
+    games::{channel_of, location, quiet, session_lang, state_with_lang},
+    party::{clean_name, count, edit_card, post_card, rest, resting, track_message, unrest, wait_text_in},
 };
 use crate::{
     App, Cx,
@@ -93,29 +93,28 @@ pub struct ConfigSurge {
 }
 
 /// What `/config surge` says about the settings.
-fn settings_text(settings: &PartySettings) -> String {
+fn settings_text(settings: &PartySettings, lang: Lang) -> String {
     let when = settings
         .surge_next_at
-        .map(|at| format!(" The next one comes {}.", relative(at)))
+        .map(|at| t!(lang, "surge.config.next", when = relative(at)))
         .unwrap_or_default();
     match (settings.surge_enabled, settings.surge_channel_id) {
-        (true, Some(channel)) => format!(
-            "⛈️ Timed storm surges are **on**: one comes to <#{channel}> every **{}** hours.{when}",
-            settings.surge_every_hours
+        (true, Some(channel)) => t!(
+            lang,
+            "surge.config.on",
+            channel = channel,
+            hours = settings.surge_every_hours,
+            when = when
         ),
-        (true, None) => {
-            "⛈️ Timed storm surges are **on**, but they need a channel: pick one with `channel:`.".to_owned()
-        }
-        (false, _) => "⛈️ Timed storm surges are **off**. Managers can still call a storm with `/surge`.".to_owned(),
+        (true, None) => t!(lang, "surge.config.on-no-channel"),
+        (false, _) => t!(lang, "surge.config.off"),
     }
 }
 
 impl ConfigSurge {
     pub(crate) async fn run(self, cx: &Cx, guild: u64) -> anyhow::Result<()> {
         if !cx.can_manage_guild() {
-            return cx
-                .reply_ephemeral("Only members with Manage Server can change timed storms.")
-                .await;
+            return cx.reply_ephemeral(t!(cx.lang(), "surge.config.denied")).await;
         }
         let hours = self.every.map(Every::hours);
         debug_assert!(hours.is_none_or(|h| EVERY_CHOICES.contains(&h) && h >= MIN_EVERY_HOURS));
@@ -134,7 +133,7 @@ impl ConfigSurge {
                 )
                 .await?
         };
-        cx.reply_ephemeral(settings_text(&settings)).await
+        cx.reply_ephemeral(settings_text(&settings, cx.lang())).await
     }
 }
 
@@ -176,11 +175,12 @@ async fn snapshot(app: &App, session: &GameSession) -> anyhow::Result<(Snapshot,
     Ok((Snapshot::of(session, &members), stacked))
 }
 
-async fn card(app: &App, snap: &Snapshot, state: SurgeState) -> anyhow::Result<Vec<u8>> {
+async fn card(app: &App, snap: &Snapshot, state: SurgeState, lang: Lang) -> anyhow::Result<Vec<u8>> {
     let (wall, goal, helpers) = (snap.wall, snap.goal, snap.helpers);
     let top = snap.top.clone();
     app.render(move |r| {
         r.surge_card(&SurgeCard {
+            lang,
             wall,
             goal,
             helpers,
@@ -192,41 +192,41 @@ async fn card(app: &App, snap: &Snapshot, state: SurgeState) -> anyhow::Result<V
     .await
 }
 
-fn buttons(id: i64) -> Vec<Component> {
+fn buttons(id: i64, lang: Lang) -> Vec<Component> {
     vec![row(vec![button(
         format!("ss:h:{id}"),
-        "Stack a sandbag",
+        &t!(lang, "surge.button"),
         Some("🧱"),
         ButtonStyle::Primary,
         false,
     )])]
 }
 
-fn embed(color: u32) -> EmbedBuilder {
-    EmbedBuilder::new().color(color).title("Storm Surge")
+fn embed(color: u32, lang: Lang) -> EmbedBuilder {
+    EmbedBuilder::new().color(color).title(t!(lang, "surge.title"))
 }
 
-fn announcement(session: &GameSession) -> String {
-    format!(
-        "⛈️ **Storm surge!** A huge wave is rolling in. Everyone: stack sandbags to hold the wall! The sea washes one \
-         away every {} s, and the wall has to grow with every helper who joins. The storm breaks {}.",
-        surge::ERODE_SECS,
-        relative(session.expires_at)
+fn announcement(session: &GameSession, lang: Lang) -> String {
+    t!(
+        lang,
+        "surge.announcement",
+        secs = surge::ERODE_SECS,
+        when = relative(session.expires_at)
     )
 }
 
 /// The message of a storm that is running.
-async fn rolling(app: &App, session: &GameSession) -> anyhow::Result<InteractionResponseData> {
+async fn rolling(app: &App, session: &GameSession, lang: Lang) -> anyhow::Result<InteractionResponseData> {
     let (snap, _) = snapshot(app, session).await?;
-    let png = card(app, &snap, SurgeState::Rolling).await?;
-    let mut data = Cx::card(embed(BRAND), "surge.png", png, buttons(session.id), false);
-    data.content = Some(announcement(session));
+    let png = card(app, &snap, SurgeState::Rolling, lang).await?;
+    let mut data = Cx::card(embed(BRAND, lang), "surge.png", png, buttons(session.id, lang), false);
+    data.content = Some(announcement(session, lang));
     data.allowed_mentions = quiet();
     Ok(data)
 }
 
 /// Starts a storm in `channel`, if the server has none running.
-async fn open_storm(app: &App, guild: u64, channel: u64, host: u64) -> anyhow::Result<Option<GameSession>> {
+async fn open_storm(app: &App, guild: u64, channel: u64, host: u64, lang: Lang) -> anyhow::Result<Option<GameSession>> {
     app.db
         .open_party_game(NewGame {
             kind: "surge",
@@ -236,7 +236,7 @@ async fn open_storm(app: &App, guild: u64, channel: u64, host: u64) -> anyhow::R
             guest: None,
             bet: 0,
             status: ACTIVE,
-            state: "0:0:0",
+            state: &state_with_lang("0:0:0", lang),
             ttl_secs: DURATION_SECS,
         })
         .await
@@ -244,30 +244,26 @@ async fn open_storm(app: &App, guild: u64, channel: u64, host: u64) -> anyhow::R
 
 impl SurgeCommand {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
+        let lang = cx.lang();
         let Some(guild) = cx.guild_id() else {
-            return cx.reply_ephemeral("Storms come to servers.").await;
+            return cx.reply_ephemeral(t!(lang, "surge.server-only")).await;
         };
         if !cx.can_manage_guild() {
-            return cx
-                .reply_ephemeral("Only members with Manage Server can call a storm.")
-                .await;
+            return cx.reply_ephemeral(t!(lang, "surge.denied")).await;
         }
         if let Some(left) = resting(&cx.app, "surge", guild).await? {
             return cx
-                .reply_ephemeral(format!(
-                    "The sea needs a breather: the next storm can be called in {}.",
-                    wait_text(left)
-                ))
+                .reply_ephemeral(t!(lang, "surge.breather", wait = wait_text_in(lang, left)))
                 .await;
         }
         let me = cx.author()?.id.get();
-        let Some(session) = open_storm(&cx.app, guild, channel_of(cx), me).await? else {
-            return cx
-                .reply_ephemeral("A storm is already raging on this server. Join the fight!")
-                .await;
+        // The storm card is public and keeps speaking the server's language to its end.
+        let board_lang = cx.app.guild_lang(guild).await;
+        let Some(session) = open_storm(&cx.app, guild, channel_of(cx), me, board_lang).await? else {
+            return cx.reply_ephemeral(t!(lang, "surge.raging")).await;
         };
         rest(&cx.app, "surge", guild, SUMMON_COOLDOWN_SECS).await;
-        cx.reply(rolling(&cx.app, &session).await?).await?;
+        cx.reply(rolling(&cx.app, &session, board_lang).await?).await?;
         track_message(cx, session.id);
         Ok(())
     }
@@ -276,16 +272,14 @@ impl SurgeCommand {
 /// `ss:h:<id>` stacks a sandbag.
 pub(crate) async fn on_button(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Result<()> {
     let (Some("h"), Some(id)) = (args.next(), args.next().and_then(|v| v.parse::<i64>().ok())) else {
-        return cx.reply_ephemeral("This button has expired.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "arcade.button-expired")).await;
     };
     let me = cx.author()?.id.get();
+    let lang = cx.lang();
     let kind = format!("surgehelp:{id}");
     if let Some(left) = resting(&cx.app, &kind, me).await? {
         return cx
-            .reply_ephemeral(format!(
-                "Your claws need a rest: stack the next one in {}.",
-                wait_text(left)
-            ))
+            .reply_ephemeral(t!(lang, "surge.claws", wait = wait_text_in(lang, left)))
             .await;
     }
     rest(&cx.app, &kind, me, HELP_COOLDOWN_SECS).await;
@@ -303,30 +297,25 @@ pub(crate) async fn on_button(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Res
         } => (session, mine, stacked, helpers),
         SurgeHelp::Over => {
             unrest(&cx.app, &kind, me).await;
-            return cx.reply_ephemeral("This storm has passed.").await;
+            return cx.reply_ephemeral(t!(lang, "surge.passed")).await;
         }
         SurgeHelp::Capped => {
             unrest(&cx.app, &kind, me).await;
-            return cx
-                .reply_ephemeral(format!(
-                    "You've stacked **{MAX_HELPS}** sandbags, as many as one crab can. Cheer the others on!"
-                ))
-                .await;
+            return cx.reply_ephemeral(t!(lang, "surge.capped", max = MAX_HELPS)).await;
         }
     };
     let elapsed = (Utc::now() - (session.expires_at - Span::seconds(DURATION_SECS))).num_seconds();
     let (wall, goal) = (surge::wall(stacked, elapsed), surge::goal(helpers));
     if wall < goal {
         return cx
-            .reply_ephemeral(format!(
-                "🧱 Sandbag **{mine}** stacked! The wall stands at **{wall}** of **{goal}**."
-            ))
+            .reply_ephemeral(t!(lang, "surge.stacked", mine = mine, wall = wall, goal = goal))
             .await;
     }
-    // The wall holds: end the storm now and pay everyone.
-    match finish(&cx.app, &session, true, false).await? {
+    // The wall holds: end the storm now and pay everyone, on the card in the storm's own language.
+    let table = session_lang(&cx.app, &session).await;
+    match finish(&cx.app, &session, true, false, table).await? {
         Some(data) => cx.update(data).await,
-        None => cx.reply_ephemeral("The wall already holds, nice work!").await,
+        None => cx.reply_ephemeral(t!(lang, "surge.holds")).await,
     }
 }
 
@@ -336,6 +325,7 @@ async fn finish(
     session: &GameSession,
     held: bool,
     only_if_expired: bool,
+    lang: Lang,
 ) -> anyhow::Result<Option<InteractionResponseData>> {
     let Some(settled) = app
         .db
@@ -346,11 +336,16 @@ async fn finish(
     };
     let played: Vec<(u64, bool)> = settled.helpers.iter().map(|(h, _)| (h.user_id as u64, held)).collect();
     count(app, Game::Surge, &played).await;
-    Ok(Some(ended(app, session, &settled).await?))
+    Ok(Some(ended(app, session, &settled, lang).await?))
 }
 
 /// The message of a storm that is over: the last card and who got what.
-async fn ended(app: &App, session: &GameSession, settled: &SurgeSettled) -> anyhow::Result<InteractionResponseData> {
+async fn ended(
+    app: &App,
+    session: &GameSession,
+    settled: &SurgeSettled,
+    lang: Lang,
+) -> anyhow::Result<InteractionResponseData> {
     let members: Vec<_> = settled.helpers.iter().map(|(m, _)| m.clone()).collect();
     let mut snap = Snapshot::of(session, &members);
     let state = if settled.held {
@@ -361,7 +356,7 @@ async fn ended(app: &App, session: &GameSession, settled: &SurgeSettled) -> anyh
         SurgeState::Broken
     };
     // The storm is over and paid whatever happens to the picture: without one the text still tells it.
-    let png = card(app, &snap, state).await;
+    let png = card(app, &snap, state, lang).await;
     if let Err(error) = &png {
         tracing::warn!(%error, session = session.id, "storm card not drawn");
     }
@@ -377,19 +372,19 @@ async fn ended(app: &App, session: &GameSession, settled: &SurgeSettled) -> anyh
         .collect();
     let more = match helpers.len().saturating_sub(10) {
         0 => String::new(),
-        n => format!("\n…and {n} more helpers."),
+        n => t!(lang, "surge.more", n = n),
     };
     let headline = if settled.held {
-        "🌤️ **The wall held!** The sea gave up and everyone who helped has been paid:"
+        t!(lang, "surge.held")
     } else if helpers.is_empty() {
-        "🌊 **The sea broke through.** Nobody came to help this time."
+        t!(lang, "surge.broke-nobody")
     } else {
-        "🌊 **The sea broke through the wall.** Thanks for trying, the helpers got a little something:"
+        t!(lang, "surge.broke")
     };
     let content = format!("{headline}\n{}{more}", lines.join("\n"));
     let mut data = match png {
         Ok(png) => Cx::card(
-            embed(if settled.held { SUCCESS } else { DANGER }),
+            embed(if settled.held { SUCCESS } else { DANGER }, lang),
             "surge.png",
             png,
             Vec::new(),
@@ -426,7 +421,8 @@ async fn publish(app: &App, at: (u64, u64), data: InteractionResponseData) {
 
 /// The janitor's end for a storm whose time ran out: the sea wins.
 pub(crate) async fn time_out(app: &Arc<App>, session: &GameSession) -> anyhow::Result<bool> {
-    let Some(data) = finish(app, session, false, true).await? else {
+    let lang = session_lang(app, session).await;
+    let Some(data) = finish(app, session, false, true, lang).await? else {
         return Ok(false);
     };
     if let Some(at) = location(session) {
@@ -465,11 +461,12 @@ async fn start_timed(app: &Arc<App>, settings: &PartySettings) -> anyhow::Result
     if !app.module_allowed(guild, Some(channel as u64), Module::Party).await {
         return Ok(());
     }
-    let Some(session) = open_storm(app, guild, channel as u64, 0).await? else {
+    let lang = app.guild_lang(guild).await;
+    let Some(session) = open_storm(app, guild, channel as u64, 0, lang).await? else {
         // A storm is already raging; the next one comes at the next slot.
         return Ok(());
     };
-    let data = rolling(app, &session).await?;
+    let data = rolling(app, &session, lang).await?;
     let (Some(embeds), Some(files)) = (data.embeds, data.attachments) else {
         return Ok(());
     };
@@ -501,14 +498,15 @@ async fn start_timed(app: &Arc<App>, settings: &PartySettings) -> anyhow::Result
 /// Redraws a running storm's card when its wall, its helpers or the erosion changed since the last draw.
 async fn refresh(app: &App, session: &GameSession) -> anyhow::Result<()> {
     let (snap, stacked) = snapshot(app, session).await?;
-    let key = snap.key(stacked);
+    let lang = session_lang(app, session).await;
+    let key = state_with_lang(&snap.key(stacked), lang);
     if key == session.state || !app.db.touch_game_state(session.id, &session.state, &key).await? {
         return Ok(());
     }
     let Some(at) = location(session) else {
         return Ok(());
     };
-    publish(app, at, rolling(app, session).await?).await;
+    publish(app, at, rolling(app, session, lang).await?).await;
     Ok(())
 }
 
@@ -565,11 +563,13 @@ mod tests {
             surge_every_hours: 24,
             surge_next_at: None,
         };
-        assert!(settings_text(&settings).contains("**off**") && settings_text(&settings).contains("/surge"));
+        let text = |settings: &PartySettings| settings_text(settings, Lang::En);
+        assert!(text(&settings).contains("**off**") && text(&settings).contains("/surge"));
         settings.surge_enabled = true;
-        assert!(settings_text(&settings).contains("need a channel"));
+        assert!(text(&settings).contains("need a channel"));
         settings.surge_channel_id = Some(55);
-        assert!(settings_text(&settings).contains("<#55>") && settings_text(&settings).contains("24"));
+        assert!(text(&settings).contains("<#55>") && text(&settings).contains("24"));
+        assert!(settings_text(&settings, Lang::Tr).contains("<#55>"));
     }
 
     #[test]

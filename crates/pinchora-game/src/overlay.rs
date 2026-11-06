@@ -394,15 +394,6 @@ pub fn slot_label(slot: Slot, lang: Lang) -> &'static str {
     term(&format!("slot.{}", slot.key()), slot.label(), lang)
 }
 
-/// `text` in capitals the way `lang` writes them: Turkish capitalises `i` as `İ` and `ı` as `I`, which
-/// `str::to_uppercase` alone gets wrong (`Nadir` would become `NADIR`).
-pub fn upper(text: &str, lang: Lang) -> String {
-    match lang {
-        Lang::En => text.to_uppercase(),
-        Lang::Tr => text.replace('i', "İ").to_uppercase(),
-    }
-}
-
 /// A part of the day (`dawn`, `day`, `dusk`, `night`, `any`) in `lang`, capitalised.
 pub fn time_label(time: &str, lang: Lang) -> Cow<'_, str> {
     word_label("time", time, lang)
@@ -816,11 +807,11 @@ mod tests {
 
     #[test]
     fn turkish_capitals_keep_the_dot_of_the_i() {
-        assert_eq!(upper("Nadir", Lang::Tr), "NADİR");
-        assert_eq!(upper("Efsanevi", Lang::Tr), "EFSANEVİ");
-        assert_eq!(upper("Yaygın", Lang::Tr), "YAYGIN");
-        assert_eq!(upper("Kafe ve dükkân", Lang::Tr), "KAFE VE DÜKKÂN");
-        assert_eq!(upper("Rare", Lang::En), "RARE");
+        assert_eq!(Lang::Tr.upper("Nadir"), "NADİR");
+        assert_eq!(Lang::Tr.upper("Efsanevi"), "EFSANEVİ");
+        assert_eq!(Lang::Tr.upper("Yaygın"), "YAYGIN");
+        assert_eq!(Lang::Tr.upper("Kafe ve dükkân"), "KAFE VE DÜKKÂN");
+        assert_eq!(Lang::En.upper("Rare"), "RARE");
     }
 
     #[test]

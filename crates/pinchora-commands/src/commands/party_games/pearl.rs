@@ -4,9 +4,8 @@
 
 use std::{str::Split, sync::Arc};
 
-use pinchora_core::i18n::Lang;
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{Commit, NewEntry, PartyEntry, PartyGame, PartyPlayer, Pay, PlayerChange};
-use pinchora_game::lang;
 use pinchora_game::party::{
     Dice, Party,
     filter::is_profane_for,
@@ -30,6 +29,7 @@ use super::{
 };
 use crate::{
     App, Cx,
+    commands::games::channel_lang,
     util::{BRAND, SUCCESS, mention, relative},
 };
 
@@ -51,8 +51,52 @@ struct State {
     turn: u32,
     seed: u64,
     /// What just happened, for the line above the board.
-    note: String,
+    #[serde(default)]
+    moment: Moment,
     last: Option<String>,
+}
+
+/// What just happened. It is kept as what it was, not as a sentence, so it is worded in the language of the
+/// table whenever the board is drawn.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+enum Moment {
+    /// Nothing yet: the holder is simply named.
+    #[default]
+    Holds,
+    First {
+        name: String,
+    },
+    Played {
+        name: String,
+        word: String,
+        next: String,
+    },
+    Boom {
+        name: String,
+        out: bool,
+    },
+}
+
+impl Moment {
+    fn say(&self, lang: Lang, holder: &str) -> String {
+        match self {
+            Self::Holds => t!(lang, "hotpearl.holds", name = holder),
+            Self::First { name } => t!(lang, "hotpearl.first", name = name),
+            Self::Played { name, word, next } => t!(
+                lang,
+                "hotpearl.played",
+                name = name,
+                word = lang.upper(word),
+                next = next
+            ),
+            Self::Boom { name, out } => t!(
+                lang,
+                if *out { "hotpearl.boom-out" } else { "hotpearl.boom" },
+                name = name
+            ),
+        }
+    }
 }
 
 fn decode(game: &PartyGame) -> anyhow::Result<State> {
@@ -72,7 +116,8 @@ fn syllable(lang: Lang, seed: u64, turn: u32, avoid: Option<&str>) -> String {
 pub(crate) async fn open(cx: &Cx, lives: i32) -> anyhow::Result<()> {
     let lives = lives.clamp(*hotpearl::LIVES.start(), *hotpearl::LIVES.end());
     let state = encode(&State {
-        lang: cx.lang(),
+        // The table is public and keeps playing in the server's language, whoever opened it.
+        lang: channel_lang(cx).await,
         lives,
         ..Default::default()
     })?;
@@ -90,7 +135,9 @@ pub(crate) async fn start(cx: &Cx, game: &PartyGame, players: &[PartyPlayer]) ->
     state.cur = first.id();
     state.turn = 0;
     state.syl = syllable(state.lang, state.seed, 0, None);
-    state.note = format!("{} goes first", first.name);
+    state.moment = Moment::First {
+        name: first.name.clone(),
+    };
     let seats: Vec<PlayerChange> = order
         .iter()
         .enumerate()
@@ -127,14 +174,19 @@ async fn view(
     state: &State,
     headline: Option<&str>,
 ) -> anyhow::Result<InteractionResponseData> {
+    let lang = state.lang;
     let holder = players.iter().find(|p| p.id() == state.cur);
-    let banner = if state.note.is_empty() {
-        format!("{} holds the pearl", holder.map_or("Somebody", |p| p.name.as_str()))
-    } else {
-        state.note.clone()
-    };
+    let banner = state.moment.say(
+        lang,
+        &holder.map_or_else(|| t!(lang, "party.somebody"), |p| p.name.clone()),
+    );
     let png = {
-        let (syllable, banner, last) = (lang::upper(state.lang, &state.syl), banner.clone(), state.last.clone());
+        // The card draws these in capitals, which Turkish spells with its own İ.
+        let (syllable, banner, last) = (
+            lang.upper(&state.syl),
+            lang.upper(&banner),
+            state.last.as_deref().map(|word| lang.upper(word)),
+        );
         let seats: Vec<(String, i32, bool, bool)> = players
             .iter()
             .map(|p| {
@@ -159,6 +211,7 @@ async fn view(
                 })
                 .collect();
             r.pearl_card(&PearlCard {
+                lang,
                 syllable: &syllable,
                 seats: &seats,
                 banner: &banner,
@@ -171,34 +224,33 @@ async fn view(
     let secs = turn_secs(state.turn);
     let embed = EmbedBuilder::new()
         .color(BRAND)
-        .title(format!("{} Hot Pearl", Party::HotPearl.emoji()))
-        .description(match state.lang {
-            Lang::En => format!(
-                "{}\n{}, type a word with **{}** before the pearl pops {}! ({secs} seconds a turn)",
-                headline.unwrap_or(&banner),
-                mention(state.cur),
-                state.syl.to_uppercase(),
-                relative(game.deadline)
-            ),
-            Lang::Tr => format!(
-                "{}\n{}, inci patlamadan {} içinde **{}** geçen bir kelime yaz! (turu {secs} saniye)",
-                headline.unwrap_or(&banner),
-                mention(state.cur),
-                relative(game.deadline),
-                lang::upper(Lang::Tr, &state.syl)
-            ),
-        });
+        .title(format!(
+            "{} {}",
+            Party::HotPearl.emoji(),
+            Party::HotPearl.label_in(lang)
+        ))
+        .description(t!(
+            lang,
+            "hotpearl.turn",
+            headline = headline.unwrap_or(&banner),
+            holder = mention(state.cur),
+            syllable = lang.upper(&state.syl),
+            when = relative(game.deadline),
+            secs = secs
+        ));
     let button = push_button(
         Party::HotPearl,
         &[&"w", &game.id, &state.turn],
-        "Type a word",
+        &t!(lang, "hotpearl.btn-word"),
         ButtonStyle::Primary,
     );
     Ok(card(None, embed, "pearl.png", png, vec![row(vec![button])]))
 }
 
+/// The form's one field: `ui` is the language of the player who opens it, `lang` the table's (its syllable
+/// and its example word).
 #[allow(deprecated)] // the label belongs on the Label component, so the input's own stays empty
-fn word_field(lang: Lang, syllable: &str) -> Component {
+fn word_field(ui: Lang, lang: Lang, syllable: &str) -> Component {
     Component::Label(Label {
         component: Box::new(Component::TextInput(TextInput {
             custom_id: WORD_FIELD.to_owned(),
@@ -206,17 +258,14 @@ fn word_field(lang: Lang, syllable: &str) -> Component {
             label: None,
             max_length: Some(hotpearl::MAX_WORD as u16),
             min_length: Some(1),
-            placeholder: Some(if lang == Lang::Tr { "inci" } else { "pearl" }.to_owned()),
+            placeholder: Some(t!(lang, "hotpearl.placeholder")),
             required: Some(true),
             style: TextInputStyle::Short,
             value: None,
         })),
         description: None,
         id: None,
-        label: match lang {
-            Lang::En => format!("A word with {}", syllable.to_uppercase()),
-            Lang::Tr => format!("{} içeren bir kelime", lang::upper(lang, syllable)),
-        },
+        label: t!(ui, "hotpearl.field-label", syllable = lang.upper(syllable)),
     })
 }
 
@@ -231,22 +280,22 @@ enum Turn {
 /// click never plays on after the clock: after the answer for the button that opens the form (`opens_form`,
 /// which has to be answered in time), and before it for the form itself, which can be deferred.
 async fn check(cx: &Cx, id: i64, turn: u32, user: u64, opens_form: bool) -> anyhow::Result<Turn> {
+    let lang = cx.lang();
     let Some((game, players)) = snapshot(&cx.app, Party::HotPearl, id).await? else {
-        return Ok(Turn::Refused("This game has expired.".to_owned()));
+        return Ok(Turn::Refused(t!(lang, "party.expired-game")));
     };
     let state = decode(&game)?;
     if !game.is_playing() || game.phase != "turn" || state.turn != turn {
-        return Ok(Turn::Refused(
-            "The pearl has moved on. Use the buttons on the newest message!".to_owned(),
-        ));
+        return Ok(Turn::Refused(t!(lang, "hotpearl.moved-on")));
     }
     if !players.iter().any(|p| p.id() == user) {
-        return Ok(Turn::Refused("You are not playing this game.".to_owned()));
+        return Ok(Turn::Refused(t!(lang, "party.not-playing")));
     }
     if user != state.cur {
-        return Ok(Turn::Refused(format!(
-            "It is {}'s turn, not yours.",
-            name_of(&players, state.cur)
+        return Ok(Turn::Refused(t!(
+            lang,
+            "hotpearl.not-your-turn",
+            name = name_of(lang, &players, state.cur)
         )));
     }
     if game.late(cx.app.now()) {
@@ -255,7 +304,7 @@ async fn check(cx: &Cx, id: i64, turn: u32, user: u64, opens_form: bool) -> anyh
         } else {
             pop(&cx.app, game).await?;
         }
-        return Ok(Turn::Refused("Too slow: the pearl popped!".to_owned()));
+        return Ok(Turn::Refused(t!(lang, "hotpearl.too-slow")));
     }
     Ok(Turn::Live(Box::new((game, players, state))))
 }
@@ -271,13 +320,13 @@ pub(crate) async fn on_button(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::Re
     let action = parts.next().unwrap_or_default();
     if matches!(action, "j" | "l" | "s" | "x") {
         let Some(id) = parts.next().and_then(|v| v.parse().ok()) else {
-            return cx.reply_ephemeral("This button has expired.").await;
+            return cx.reply_ephemeral(t!(cx.lang(), "party.expired-button")).await;
         };
         lobby::on_button(cx, Party::HotPearl, action, id).await?;
         return Ok(());
     }
     let (Some((id, turn)), "w") = (ids(parts), action) else {
-        return cx.reply_ephemeral("This button has expired.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "party.expired-button")).await;
     };
     let me = cx.author()?.id.get();
     match check(cx, id, turn, me, true).await? {
@@ -287,8 +336,8 @@ pub(crate) async fn on_button(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::Re
             remember(cx, &game).await;
             cx.modal(
                 format!("hl:m:{id}:{turn}"),
-                "Hot Pearl",
-                vec![word_field(state.lang, &state.syl)],
+                &Party::HotPearl.label_in(cx.lang()),
+                vec![word_field(cx.lang(), state.lang, &state.syl)],
             )
             .await
         }
@@ -299,7 +348,7 @@ pub(crate) async fn on_button(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::Re
 pub(crate) async fn on_modal(cx: &Cx, mut parts: Split<'_, char>, fields: &[(String, String)]) -> anyhow::Result<()> {
     parts.next();
     let Some((id, turn)) = ids(parts) else {
-        return cx.reply_ephemeral("This form has expired.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "party.expired-form")).await;
     };
     let me = cx.author()?.id.get();
     let typed = fields
@@ -320,26 +369,25 @@ pub(crate) async fn on_modal(cx: &Cx, mut parts: Split<'_, char>, fields: &[(Str
         .collect();
     let word = match check_word(dictionary_for(state.lang), &state.syl, typed, &used) {
         Ok(word) => word,
-        Err(refusal) => return cx.reply_ephemeral(refusal.say_in(state.lang, &state.syl)).await,
+        Err(refusal) => return cx.reply_ephemeral(refusal.say_in(cx.lang(), &state.syl)).await,
     };
     // The list holds mild words ("damn" is out, "hell" is not); a strict server turns those away too.
     if is_profane_for(&word, true, state.lang) && strict(app, game.guild_id as u64).await {
-        return cx.reply_ephemeral(text::Refused::Profane.say()).await;
+        return cx.reply_ephemeral(text::Refused::Profane.say(cx.lang())).await;
     }
     let order: Vec<(u64, bool)> = players.iter().map(|p| (p.id(), !p.eliminated)).collect();
     let Some(next) = next_player(&order, state.cur) else {
-        return cx.reply_ephemeral("Nobody is left to pass the pearl to.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "hotpearl.nobody-left")).await;
     };
     let mut after_state = state.clone();
     after_state.cur = next;
     after_state.turn = state.turn + 1;
     after_state.syl = syllable(state.lang, state.seed, after_state.turn, Some(&state.syl));
-    after_state.note = format!(
-        "{} played {}  ·  {} is up",
-        name_of(&players, me),
-        word.to_uppercase(),
-        name_of(&players, next)
-    );
+    after_state.moment = Moment::Played {
+        name: name_of(state.lang, &players, me),
+        word: word.clone(),
+        next: name_of(state.lang, &players, next),
+    };
     after_state.last = Some(word.clone());
     let commit = Commit {
         phase: "turn",
@@ -356,7 +404,7 @@ pub(crate) async fn on_modal(cx: &Cx, mut parts: Split<'_, char>, fields: &[(Str
         pay: None,
     };
     let Some(done) = app.db.commit_party(id, game.seq, commit).await? else {
-        return cx.reply_ephemeral("The pearl moved on before your word landed.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "hotpearl.moved-before")).await;
     };
     cx.update(view(app, &done.game, &players, &after_state, None).await?)
         .await
@@ -367,6 +415,7 @@ pub(crate) async fn on_modal(cx: &Cx, mut parts: Split<'_, char>, fields: &[(Str
 pub(crate) async fn pop(app: &Arc<App>, game: PartyGame) -> anyhow::Result<bool> {
     let players = app.db.party_players(game.id).await?;
     let state = decode(&game)?;
+    let lang = state.lang;
     let Some(victim) = players.iter().find(|p| p.id() == state.cur) else {
         return Ok(false);
     };
@@ -391,18 +440,13 @@ pub(crate) async fn pop(app: &Arc<App>, game: PartyGame) -> anyhow::Result<bool>
         .map(|(user, _)| *user)
         .collect();
     let verdict = if out {
-        format!("💥 The pearl popped on **{name}**, who is out!")
+        t!(lang, "hotpearl.pop-out", name = name)
     } else {
-        format!(
-            "💥 The pearl popped on **{name}**! {lives} li{} left.",
-            if lives == 1 { "fe" } else { "ves" }
-        )
+        t!(lang, "hotpearl.pop", name = name, count = lives)
     };
 
     if alive.len() <= 1 {
         let winner = alive.first().copied();
-        let mut next = state.clone();
-        next.note = verdict.clone();
         // Winning by waiting pays nothing: the table has to have played words, and so does the winner.
         let authors: Vec<u64> = app
             .db
@@ -420,7 +464,7 @@ pub(crate) async fn pop(app: &Arc<App>, game: PartyGame) -> anyhow::Result<bool>
         let commit = Commit {
             phase: "done",
             round: game.round,
-            state: &encode(&next)?,
+            state: &game.state,
             deadline: game.deadline,
             status: "done",
             players: &[change],
@@ -447,39 +491,52 @@ pub(crate) async fn pop(app: &Arc<App>, game: PartyGame) -> anyhow::Result<bool>
                 (
                     p.name.clone(),
                     if won {
-                        "LAST ONE STANDING".to_owned()
+                        t!(lang, "hotpearl.last-standing")
                     } else {
-                        format!("OUT ON TURN {}", p.score)
+                        t!(lang, "hotpearl.out-on-turn", n = p.score)
                     },
                     if !won {
                         String::new()
                     } else if rewarded {
-                        paid_note(&done.paid, p.id())
+                        paid_note(lang, &done.paid, p.id())
                     } else {
-                        "no shells: too few words".to_owned()
+                        t!(lang, "hotpearl.no-shells")
                     },
                     won,
                 )
             })
             .collect();
-        let winner_name = winner.map_or_else(|| "Nobody".to_owned(), |w| name_of(&players, w));
-        let subtitle = format!("{winner_name} wins after {} turns", state.turn + 1);
-        let png = standings_png(app, "Hot Pearl", &subtitle, rows, "Thanks for playing").await?;
+        let label = Party::HotPearl.label_in(lang);
+        let winner_name = winner.map_or_else(|| t!(lang, "party.nobody"), |w| name_of(lang, &players, w));
+        let subtitle = t!(lang, "hotpearl.wins-after", name = winner_name, turns = state.turn + 1);
+        let png = standings_png(app, lang, &label, &subtitle, rows, &t!(lang, "party.thanks")).await?;
         let unpaid = if rewarded || winner.is_none() {
             String::new()
         } else {
             format!(
-                "\nNo shells this time: a win pays once {} words were played, {} of them by the winner.",
-                hotpearl::MIN_WORDS,
-                hotpearl::MIN_WINNER_WORDS
+                "\n{}",
+                t!(
+                    lang,
+                    "hotpearl.unpaid",
+                    min_words = hotpearl::MIN_WORDS,
+                    min_winner = hotpearl::MIN_WINNER_WORDS
+                )
             )
         };
         let embed = EmbedBuilder::new()
             .color(SUCCESS)
-            .title(format!("{} Hot Pearl is over", Party::HotPearl.emoji()))
-            .description(format!(
-                "{verdict}\n🏆 {} wins!{unpaid}",
-                winner.map_or_else(|| "Nobody".to_owned(), mention)
+            .title(t!(
+                lang,
+                "party.over-title",
+                emoji = Party::HotPearl.emoji(),
+                label = label
+            ))
+            .description(t!(
+                lang,
+                "hotpearl.over",
+                verdict = verdict,
+                winner = winner.map_or_else(|| t!(lang, "party.nobody"), mention),
+                unpaid = unpaid
             ));
         edit_card(app, &done.game, &card(None, embed, "standings.png", png, Vec::new())).await;
         return Ok(true);
@@ -492,7 +549,7 @@ pub(crate) async fn pop(app: &Arc<App>, game: PartyGame) -> anyhow::Result<bool>
     next.cur = next_holder;
     next.turn = state.turn + 1;
     next.syl = syllable(state.lang, state.seed, next.turn, Some(&state.syl));
-    next.note = format!("BOOM! {name} {}", if out { "is out" } else { "lost a life" });
+    next.moment = Moment::Boom { name, out };
     let commit = Commit {
         phase: "turn",
         round: next.turn as i32,

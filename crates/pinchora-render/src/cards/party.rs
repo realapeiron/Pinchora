@@ -3,6 +3,8 @@
 
 use std::fmt::Write;
 
+use pinchora_core::{i18n::Lang, t};
+
 use super::{PIXEL, SANS, SpriteArt, text};
 use crate::{
     Theme,
@@ -58,6 +60,8 @@ pub struct DerbyLane<'a> {
 
 /// 600×470 derby lobby: the six crabs on their lanes, who backs each, and what is at stake.
 pub struct DerbyCard<'a> {
+    /// The language of the labels; the status comes translated, and in capitals.
+    pub lang: Lang,
     /// The six crabs, in lane order.
     pub lanes: &'a [DerbyLane<'a>],
     /// Shells each racer put up; 0 for a friendly race.
@@ -86,11 +90,12 @@ impl DerbyCard<'_> {
             false,
             &t.ink,
             "start",
-            "HERMIT CRAB DERBY",
+            &t!(self.lang, "derby.card.title"),
         );
         if self.stake > 0 {
             let pool = self.stake * self.racers as i64;
-            chip(&mut s, w - 28.0, 26.0, &format!("POOL {}", compact(pool)), &t.gold, t);
+            let label = t!(self.lang, "derby.card.pool", pool = compact(pool));
+            chip(&mut s, w - 28.0, 26.0, &label, &t.gold, t);
             sprite(&mut s, SHELL, 28.0, 68.0, 3.0, &t.gold, "#ffffff");
             text(
                 &mut s,
@@ -101,10 +106,10 @@ impl DerbyCard<'_> {
                 false,
                 &t.muted,
                 "start",
-                &format!("ENTRY {} EACH, WINNERS SHARE THE POOL", compact(self.stake)),
+                &t!(self.lang, "derby.card.entry", stake = compact(self.stake)),
             );
         } else {
-            chip(&mut s, w - 28.0, 26.0, "FOR FUN", &t.mint, t);
+            chip(&mut s, w - 28.0, 26.0, &t!(self.lang, "derby.card.for-fun"), &t.mint, t);
             text(
                 &mut s,
                 28.0,
@@ -114,7 +119,7 @@ impl DerbyCard<'_> {
                 false,
                 &t.muted,
                 "start",
-                "NO STAKES, JUST BRAGGING RIGHTS",
+                &t!(self.lang, "derby.card.no-stakes"),
             );
         }
         for (n, lane) in self.lanes.iter().take(6).enumerate() {
@@ -146,7 +151,7 @@ impl DerbyCard<'_> {
                 false,
                 &accent,
                 "start",
-                &format!("LANE {}", n + 1),
+                &t!(self.lang, "derby.card.lane", n = n + 1),
             );
             text(
                 &mut s,
@@ -161,9 +166,8 @@ impl DerbyCard<'_> {
             );
             let backers = lane.backers.len();
             let line = match backers {
-                0 => "NO BACKERS".to_owned(),
-                1 => "1 BACKER".to_owned(),
-                n => format!("{n} BACKERS"),
+                0 => t!(self.lang, "derby.card.no-backers"),
+                n => t!(self.lang, "derby.card.backers", count = n),
             };
             let tone = if backers == 0 { &t.muted } else { &t.mint };
             text(&mut s, x + 112.0, y + 82.0, 14.0, PIXEL, false, tone, "start", &line);
@@ -250,6 +254,8 @@ const CHEST_TRIM: &[&str] = &[
 
 /// 580×350 share-or-grab card: both players, the pool between them, and what they picked.
 pub struct ShareGrabCard<'a> {
+    /// The language of the labels; the banner comes translated, and in capitals.
+    pub lang: pinchora_core::i18n::Lang,
     pub names: [&'a str; 2],
     pub picks: [PickView; 2],
     /// Shells in the pool.
@@ -270,12 +276,29 @@ impl ShareGrabCard<'_> {
         let (w, h) = (Self::WIDTH, Self::HEIGHT);
         let mut s = open(w, h);
         background(&mut s, w, h, &t.bg_top, &t.bg_bottom);
-        text(&mut s, 28.0, 52.0, 24.0, PIXEL, false, &t.ink, "start", "SHARE OR GRAB");
+        text(
+            &mut s,
+            28.0,
+            52.0,
+            24.0,
+            PIXEL,
+            false,
+            &t.ink,
+            "start",
+            &pinchora_core::t!(self.lang, "share.card.title"),
+        );
         chip(
             &mut s,
             w - 28.0,
             26.0,
-            if self.wager { "YOUR STAKES" } else { "THE SEA'S POOL" },
+            &pinchora_core::t!(
+                self.lang,
+                if self.wager {
+                    "share.card.stakes"
+                } else {
+                    "share.card.sea-pool"
+                }
+            ),
             if self.wager { &t.gold } else { &t.mint },
             t,
         );
@@ -292,7 +315,7 @@ impl ShareGrabCard<'_> {
             false,
             &t.muted,
             "middle",
-            "IN THE POOL",
+            &pinchora_core::t!(self.lang, "share.card.in-pool"),
         );
         let pool = compact(self.pool);
         let group = 21.0 + 14.0 + pixel_width(&pool, 24.0);
@@ -311,10 +334,14 @@ impl ShareGrabCard<'_> {
         for (i, (name, pick)) in self.names.iter().zip(self.picks).enumerate() {
             let x = if i == 0 { 28.0 } else { 392.0 };
             let (edge, label, tone) = match pick {
-                PickView::Thinking => (&t.panel_edge, "THINKING...", &t.muted),
-                PickView::Locked => (&t.mint, "LOCKED IN", &t.mint),
-                PickView::Share => (&t.mint, "SHARE", &t.mint),
-                PickView::Grab => (&t.accent, "GRAB", &t.accent),
+                PickView::Thinking => (
+                    &t.panel_edge,
+                    pinchora_core::t!(self.lang, "share.card.thinking"),
+                    &t.muted,
+                ),
+                PickView::Locked => (&t.mint, pinchora_core::t!(self.lang, "share.card.locked"), &t.mint),
+                PickView::Share => (&t.mint, pinchora_core::t!(self.lang, "share.card.share"), &t.mint),
+                PickView::Grab => (&t.accent, pinchora_core::t!(self.lang, "share.card.grab"), &t.accent),
             };
             panel(&mut s, x, 84.0, 160.0, 168.0, 4.0, &t.panel, edge);
             text(
@@ -345,7 +372,7 @@ impl ShareGrabCard<'_> {
                     text(&mut s, x + 80.0, 188.0, 40.0, PIXEL, false, tone, "middle", mark);
                 }
             }
-            text(&mut s, x + 80.0, 236.0, 16.0, PIXEL, false, tone, "middle", label);
+            text(&mut s, x + 80.0, 236.0, 16.0, PIXEL, false, tone, "middle", &label);
         }
         let (edge, ink) = match self.mood {
             Mood::Wait => (&t.panel_edge, &t.muted),
@@ -387,6 +414,8 @@ const PEARL: &[&str] = &["..###..", ".#ooo#.", "#ooooo#", "#ooooo#", ".#ooo#.", 
 
 /// 520×320 shell game: three shells on a table, one with the pearl under it.
 pub struct ShellCard<'a> {
+    /// The language of the labels; the status comes translated, and in capitals.
+    pub lang: Lang,
     pub stake: i64,
     /// The shell the player picked.
     pub picked: Option<usize>,
@@ -407,8 +436,23 @@ impl ShellCard<'_> {
         let (w, h) = (Self::WIDTH, Self::HEIGHT);
         let mut s = open(w, h);
         background(&mut s, w, h, &t.bg_top, &t.bg_bottom);
-        text(&mut s, 28.0, 52.0, 24.0, PIXEL, false, &t.ink, "start", "SHELL GAME");
-        let label = format!("STAKE {} PAYS {}", compact(self.stake), compact(self.payout.max(0)));
+        text(
+            &mut s,
+            28.0,
+            52.0,
+            24.0,
+            PIXEL,
+            false,
+            &t.ink,
+            "start",
+            &t!(self.lang, "shells.card.title"),
+        );
+        let label = t!(
+            self.lang,
+            "shells.card.stake",
+            stake = compact(self.stake),
+            payout = compact(self.payout.max(0))
+        );
         chip(&mut s, w - 28.0, 26.0, &label, &t.gold, t);
         // The table.
         panel(&mut s, 24.0, 84.0, 472.0, 150.0, 4.0, "#8a5a34", "#5b3a20");
@@ -456,7 +500,7 @@ impl ShellCard<'_> {
                     false,
                     &t.gold,
                     "middle",
-                    "YOUR PICK",
+                    &t!(self.lang, "shells.card.your-pick"),
                 );
             }
         }
@@ -497,8 +541,8 @@ pub struct StageView<'a> {
     pub line: &'a str,
 }
 
-/// The crew's roles, as a short word and a pixel icon colour each.
-const ROLE_TAGS: [(&str, &str); 3] = [("LOOKOUT", "#8fd3ff"), ("LOCKSMITH", "#ffd166"), ("DIVER", "#06d6a0")];
+/// The crew's roles, as the key of a short word (`heist.card.<key>`) and a pixel icon colour each.
+const ROLE_TAGS: [(&str, &str); 3] = [("lookout", "#8fd3ff"), ("locksmith", "#ffd166"), ("diver", "#06d6a0")];
 
 /// A round vault door in two layers: the steel, then the dial in the middle.
 const VAULT_STEEL: &[&str] = &[
@@ -539,6 +583,8 @@ const VAULT_DIAL: &[&str] = &[
 /// 600 wide heist card: the vault, the three stages with the crew's chance at each, and who is in. The
 /// crew's panel is only as tall as its rows (two members a row), so the card is 476 to 560 high.
 pub struct HeistCard<'a> {
+    /// The language of the labels; the headline, the stage titles and their lines come translated.
+    pub lang: Lang,
     pub crew: &'a [CrewView<'a>],
     pub stages: [StageView<'a>; 3],
     pub headline: &'a str,
@@ -576,7 +622,7 @@ impl HeistCard<'_> {
             false,
             &t.ink,
             "start",
-            "TREASURE HEIST",
+            &t!(self.lang, "heist.card.title"),
         );
         let opened = self.stages.iter().all(|stage| stage.passed == Some(true));
         let done = self.stages.iter().all(|stage| stage.passed.is_some());
@@ -625,12 +671,12 @@ impl HeistCard<'_> {
             false,
             if opened { &t.gold } else { &t.muted },
             "middle",
-            if opened {
-                "OPEN!"
+            &if opened {
+                t!(self.lang, "heist.card.open")
             } else if done {
-                "STAYS SHUT"
+                t!(self.lang, "heist.card.shut")
             } else {
-                "SEALED"
+                t!(self.lang, "heist.card.sealed")
             },
         );
         if opened {
@@ -643,9 +689,9 @@ impl HeistCard<'_> {
         for (n, stage) in self.stages.iter().enumerate() {
             let y = 84.0 + n as f32 * 96.0;
             let (edge, mark, tone) = match stage.passed {
-                Some(true) => (&t.mint, "PASSED", &t.mint),
-                Some(false) => (&t.accent, "FAILED", &t.accent),
-                None => (&t.panel_edge, "TO COME", &t.muted),
+                Some(true) => (&t.mint, t!(self.lang, "heist.card.passed"), &t.mint),
+                Some(false) => (&t.accent, t!(self.lang, "heist.card.failed"), &t.accent),
+                None => (&t.panel_edge, t!(self.lang, "heist.card.to-come"), &t.muted),
             };
             panel(&mut s, 224.0, y, 352.0, 88.0, 4.0, &t.panel, edge);
             text(
@@ -657,9 +703,9 @@ impl HeistCard<'_> {
                 false,
                 &t.muted,
                 "start",
-                &format!("STAGE {}", n + 1),
+                &t!(self.lang, "heist.card.stage", n = n + 1),
             );
-            text(&mut s, 560.0, y + 19.0, 14.0, PIXEL, false, tone, "end", mark);
+            text(&mut s, 560.0, y + 19.0, 14.0, PIXEL, false, tone, "end", &mark);
             text(
                 &mut s,
                 240.0,
@@ -680,7 +726,7 @@ impl HeistCard<'_> {
                 false,
                 &t.muted,
                 "end",
-                &format!("{}% CHANCE", stage.chance),
+                &t!(self.lang, "heist.card.chance", chance = stage.chance),
             );
             let _ = write!(
                 s,
@@ -722,10 +768,10 @@ impl HeistCard<'_> {
             false,
             &t.muted,
             "start",
-            &format!("THE CREW ({})", self.crew.len()),
+            &t!(self.lang, "heist.card.crew", count = self.crew.len()),
         );
         if self.each > 0 {
-            let label = format!("{} EACH", thousands(self.each));
+            let label = t!(self.lang, "heist.card.each", amount = thousands(self.each));
             sprite(
                 &mut s,
                 SHELL,
@@ -757,7 +803,8 @@ impl HeistCard<'_> {
                 "start",
                 &escape(&truncate_to(member.name, 16.0, 120.0)),
             );
-            text(&mut s, x + 250.0, y + 17.0, 12.0, PIXEL, false, color, "end", tag);
+            let tag = t!(self.lang, &format!("heist.card.{tag}"));
+            text(&mut s, x + 250.0, y + 17.0, 12.0, PIXEL, false, color, "end", &tag);
         }
         if self.crew.is_empty() {
             text(
@@ -769,7 +816,7 @@ impl HeistCard<'_> {
                 false,
                 &t.muted,
                 "middle",
-                "NOBODY HAS JOINED YET",
+                &t!(self.lang, "heist.card.nobody"),
             );
         }
         s.push_str("</svg>");
@@ -792,6 +839,8 @@ const BAG: &[&str] = &["..####..", ".#oooo#.", "#oooooo#", "#o####o#", ".######.
 
 /// 640×380 storm surge card: the sky, the sea, the sandbag wall and how high it stands against its goal.
 pub struct SurgeCard<'a> {
+    /// The language of the labels.
+    pub lang: Lang,
     /// The wall's height in sandbags, and the height it needs.
     pub wall: i64,
     pub goal: i64,
@@ -811,13 +860,23 @@ impl SurgeCard<'_> {
         let (w, h) = (Self::WIDTH, Self::HEIGHT);
         let mut s = open(w, h);
         background(&mut s, w, h, &t.bg_top, &t.bg_bottom);
-        text(&mut s, 28.0, 52.0, 24.0, PIXEL, false, &t.ink, "start", "STORM SURGE");
+        text(
+            &mut s,
+            28.0,
+            52.0,
+            24.0,
+            PIXEL,
+            false,
+            &t.ink,
+            "start",
+            &t!(self.lang, "surge.card.title"),
+        );
         let (label, tone) = match self.state {
-            SurgeState::Rolling => ("HOLD THE WALL", &t.accent),
-            SurgeState::Held => ("THE WALL HELD", &t.mint),
-            SurgeState::Broken => ("THE SEA WON", &t.gold),
+            SurgeState::Rolling => (t!(self.lang, "surge.card.rolling"), &t.accent),
+            SurgeState::Held => (t!(self.lang, "surge.card.held"), &t.mint),
+            SurgeState::Broken => (t!(self.lang, "surge.card.broken"), &t.gold),
         };
-        chip(&mut s, w - 28.0, 26.0, label, tone, t);
+        chip(&mut s, w - 28.0, 26.0, &label, tone, t);
 
         // The scene: sky, clouds, rain and sea behind the wall.
         let (sx, sy, sw, sh) = (24.0, 76.0, 592.0, 190.0);
@@ -950,7 +1009,12 @@ impl SurgeCard<'_> {
             false,
             &t.ink,
             "start",
-            &format!("WALL {} / {}", thousands(self.wall), thousands(self.goal)),
+            &t!(
+                self.lang,
+                "surge.card.wall",
+                wall = thousands(self.wall),
+                goal = thousands(self.goal)
+            ),
         );
         text(
             &mut s,
@@ -961,11 +1025,7 @@ impl SurgeCard<'_> {
             false,
             &t.muted,
             "start",
-            &format!(
-                "{} {} HELPING",
-                thousands(self.helpers),
-                if self.helpers == 1 { "CRAB" } else { "CRABS" }
-            ),
+            &t!(self.lang, "surge.card.helping", count = thousands(self.helpers)),
         );
         for (n, (name, bags)) in self.top.iter().take(3).enumerate() {
             let y = 328.0 + n as f32 * 18.0;
@@ -995,7 +1055,7 @@ impl SurgeCard<'_> {
                 false,
                 &t.muted,
                 "end",
-                &format!("{bags} BAGS"),
+                &t!(self.lang, "surge.card.bags", bags = bags),
             );
         }
         s.push_str("</svg>");
@@ -1036,6 +1096,7 @@ mod tests {
             })
             .collect();
         let card = DerbyCard {
+            lang: Lang::En,
             lanes: &lanes,
             stake: 50,
             racers: 3,
@@ -1063,6 +1124,7 @@ mod tests {
     #[test]
     fn share_or_grab_hides_the_picks_until_both_are_in() {
         let card = |picks, banner| ShareGrabCard {
+            lang: pinchora_core::i18n::Lang::En,
             names: ["Ann", "A very very long display name"],
             picks,
             pool: 60,
@@ -1082,6 +1144,7 @@ mod tests {
     #[test]
     fn the_shell_game_lifts_the_shells_to_show_the_pearl() {
         let card = |picked, pearl| ShellCard {
+            lang: Lang::En,
             stake: 20,
             picked,
             pearl,
@@ -1104,6 +1167,7 @@ mod tests {
     #[test]
     fn a_right_pick_is_green_a_wrong_one_red_and_the_status_has_a_plate_to_itself() {
         let card = |picked, pearl| ShellCard {
+            lang: Lang::En,
             stake: 20,
             picked,
             pearl,
@@ -1143,6 +1207,7 @@ mod tests {
             line: "Click, click, clunk: the clam lock yawns open.",
         };
         let card = |passed: Option<bool>, headline| HeistCard {
+            lang: Lang::En,
             crew: &crew,
             stages: [stage(passed), stage(passed), stage(passed)],
             headline,
@@ -1178,6 +1243,7 @@ mod tests {
         };
         let card = |crew: &[CrewView<'_>], stages: [Option<bool>; 3], headline: &str| {
             HeistCard {
+                lang: Lang::En,
                 crew,
                 stages: stages.map(stage),
                 headline,
@@ -1232,6 +1298,7 @@ mod tests {
     fn the_storm_wall_rises_with_the_sandbags_and_the_card_says_how_it_ended() {
         let top = vec![("Ann".to_owned(), 12), ("Bo".to_owned(), 9)];
         let card = |wall, state| SurgeCard {
+            lang: Lang::En,
             wall,
             goal: 40,
             helpers: 2,
@@ -1251,6 +1318,7 @@ mod tests {
         // An empty wall and a goal of nothing do not break the drawing.
         let _ = card(0, SurgeState::Rolling).to_svg();
         let _ = SurgeCard {
+            lang: Lang::En,
             goal: 0,
             ..card(0, SurgeState::Rolling)
         }

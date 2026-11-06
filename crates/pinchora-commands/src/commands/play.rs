@@ -1,5 +1,6 @@
 //! `/play`: hangman, wordle, trivia and everyone's game stats.
 
+use pinchora_core::t;
 use pinchora_game::play::{Game, TriviaCategory};
 use twilight_interactions::command::{CommandModel, CommandOption, CreateCommand, CreateOption, ResolvedUser};
 use twilight_model::http::interaction::InteractionResponseData;
@@ -192,12 +193,13 @@ async fn stats(cx: &Cx, user: Option<ResolvedUser>) -> anyhow::Result<()> {
         None => (cx.author()?.id.get(), cx.author_display_name()),
     };
     if user.as_ref().is_some_and(|u| u.resolved.bot) {
-        return cx.reply_ephemeral("Bots don't play games. They just referee.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "play.stats.bot")).await;
     }
     if super::privacy::private_profile(cx, id).await? {
         return Ok(());
     }
     let rows = cx.app.db.game_stats(id).await?;
+    let lang = cx.lang();
     let (mut played, mut won) = (0, 0);
     let mut fields = Vec::new();
     for game in Game::ALL {
@@ -207,20 +209,22 @@ async fn stats(cx: &Cx, user: Option<ResolvedUser>) -> anyhow::Result<()> {
                 played += r.played;
                 won += r.won;
                 let best = if game == Game::Tide2048 && r.best > 0 {
-                    format!("\nBest score **{}**", thousands(i64::from(r.best)))
+                    t!(lang, "play.stats.best", score = thousands(i64::from(r.best)))
                 } else {
                     String::new()
                 };
-                format!(
-                    "**{}** won of **{}**\n{}% wins{best}",
-                    r.won,
-                    r.played,
-                    r.won * 100 / r.played
+                t!(
+                    lang,
+                    "play.stats.record",
+                    won = r.won,
+                    played = r.played,
+                    percent = r.won * 100 / r.played,
+                    best = best
                 )
             }
-            _ => "Not played yet".to_owned(),
+            _ => t!(lang, "play.stats.none"),
         };
-        fields.push(EmbedFieldBuilder::new(format!("{} {}", game.emoji(), game.label()), value).inline());
+        fields.push(EmbedFieldBuilder::new(format!("{} {}", game.emoji(), game.name(lang)), value).inline());
     }
     // Discord takes 25 fields to an embed, so the games past the 25th go in a second embed.
     let embeds = fields
@@ -229,14 +233,14 @@ async fn stats(cx: &Cx, user: Option<ResolvedUser>) -> anyhow::Result<()> {
         .map(|(index, chunk)| {
             let mut embed = EmbedBuilder::new().color(BRAND);
             if index == 0 {
-                embed = embed.title(format!("{name}'s games")).description(if played == 0 {
-                    "No games yet. Try `/duel connect4`, `/play wordle` or `/play trivia`!".to_owned()
-                } else {
-                    format!("**{won}** wins in **{played}** games.")
-                });
-                embed = embed.footer(EmbedFooterBuilder::new(
-                    "Counted when a game finishes; timeouts and declined challenges don't count.",
-                ));
+                embed = embed
+                    .title(t!(lang, "play.stats.title", name = name))
+                    .description(if played == 0 {
+                        t!(lang, "play.stats.no-games")
+                    } else {
+                        t!(lang, "play.stats.summary", won = won, played = played)
+                    });
+                embed = embed.footer(EmbedFooterBuilder::new(t!(lang, "play.stats.footer")));
             }
             for field in chunk {
                 embed = embed.field(field.clone());

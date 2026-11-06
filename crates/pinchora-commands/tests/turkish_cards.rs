@@ -7,7 +7,7 @@ use std::path::Path;
 
 use image::{Rgba, RgbaImage};
 use pinchora_core::{i18n::Lang, t};
-use pinchora_game::{Content, lang, overlay::upper};
+use pinchora_game::{Content, lang};
 use pinchora_render::{
     CORRECT, GridSlot, HelpCard, HelpRow, ItemGridCard, PRESENT, ProfileCard, Renderer, Theme, WalletCard, WordleCard,
     WordleRow, encode_png, placeholder_avatar,
@@ -48,13 +48,13 @@ fn the_item_grid_holds_the_longest_turkish_names() {
             line1: "12.500".to_owned(),
             line2: format!(
                 "{} · {}×{}",
-                upper(i.base.rarity.label_in(Lang::Tr), Lang::Tr),
+                Lang::Tr.upper(i.base.rarity.label_in(Lang::Tr)),
                 i.base.footprint[0],
                 i.base.footprint[1]
             ),
             bar: None,
             frame: i.base.rarity.color(),
-            badge: upper(i.base.category.label_in(Lang::Tr), Lang::Tr),
+            badge: Lang::Tr.upper(i.base.category.label_in(Lang::Tr)),
             shell_price: true,
         })
         .collect();
@@ -79,8 +79,8 @@ fn the_pixel_font_specimen_shows_the_whole_turkish_alphabet() {
             r##"<text x="24" y="{y}" font-family="Silkscreen" font-weight="{weight}" font-size="{size}" fill="#e8eeff">{text}</text>"##
         )
     };
-    let caps = lang::upper(Lang::Tr, "abcçdefgğhıijklmnoöprsştuüvyz");
-    let words = lang::upper(Lang::Tr, "şirin ığdır çağrı öğle ünlü kâr hâlâ içkili");
+    let caps = Lang::Tr.upper("abcçdefgğhıijklmnoöprsştuüvyz");
+    let words = Lang::Tr.upper("şirin ığdır çağrı öğle ünlü kâr hâlâ içkili");
     let svg = format!(
         r##"<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="420"><rect width="1000" height="420" fill="#141b3d"/>{}{}{}{}{}{}</svg>"##,
         line(56, 32, false, &caps),
@@ -229,10 +229,7 @@ fn the_turkish_wordle_card_draws_the_turkish_keyboard() {
                 .collect()
         })
         .collect();
-    let (title, footer) = (
-        lang::upper(Lang::Tr, "Günlük wordle #12"),
-        lang::upper(Lang::Tr, "Deneme 4 / 6"),
-    );
+    let (title, footer) = (Lang::Tr.upper("Günlük wordle #12"), Lang::Tr.upper("Deneme 4 / 6"));
     let card = WordleCard {
         title: &title,
         rows: &rows,

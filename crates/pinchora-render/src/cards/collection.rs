@@ -3,12 +3,14 @@
 
 use std::fmt::Write;
 
+use pinchora_core::{i18n::Lang, t};
+
 use super::{PIXEL, SANS, text};
 use crate::{
     Theme,
     svg::{
-        STAR, background, data_uri_png, escape, mix, notched_path, panel, pixel_shadow, pixel_width, segment_bar,
-        sprite, truncate_to, wrap,
+        STAR, background, data_uri_png, escape, fit_laid_out, laid_out_width, mix, notched_path, panel, pixel_shadow,
+        pixel_width, segment_bar, sprite, truncate_to, wrap, wrap_laid_out,
     },
 };
 
@@ -36,6 +38,57 @@ fn stand(out: &mut String, art: &EntryPicture, cx: f32, bottom: f32, filter: Opt
 
 /// The dark silhouette a creature not found yet is drawn as.
 const SILHOUETTE: &str = r#"<defs><filter id="unseen" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="0.14 0.14 0.14 0 0.02  0.14 0.14 0.18 0 0.03  0.18 0.18 0.26 0 0.07  0 0 0 0.95 0"/></filter></defs>"#;
+
+/// A name that has to fit `max` px on one line: at `size`, or at the largest whole size down to `min` that
+/// holds it, so a long name (Turkish ones run long) is shrunk before it is cut; only a name too long for
+/// `min` ends with an ellipsis. Returns the text and the size to draw it at.
+fn fit_name(name: &str, size: f32, min: f32, max: f32) -> (String, f32) {
+    let width = |at: f32| laid_out_width(name, SANS, true, at);
+    let measured = width(size);
+    if measured <= max {
+        return (name.to_owned(), size);
+    }
+    let mut at = (size * max / measured).floor().clamp(min, size);
+    while at > min && width(at) > max {
+        at -= 1.0;
+    }
+    if width(at) <= max {
+        (name.to_owned(), at)
+    } else {
+        (fit_laid_out(name, SANS, true, at, max), at)
+    }
+}
+
+/// A name for a small box: one line at `size` when it fits `max` px, else two lines at the largest of `size - 1`
+/// to `size - 3` that holds all of it, so a long name is read whole. Returns its lines and their size.
+fn name_lines(name: &str, size: f32, max: f32) -> (Vec<String>, f32) {
+    if laid_out_width(name, SANS, true, size) <= max {
+        return (vec![name.to_owned()], size);
+    }
+    let whole = name.split_whitespace().collect::<Vec<_>>().join(" ");
+    let (mut lines, mut at) = (Vec::new(), size);
+    for step in 1..=3 {
+        at = size - step as f32;
+        lines = wrap_laid_out(name, SANS, true, at, max, 2);
+        if lines.join(" ") == whole {
+            break;
+        }
+    }
+    (lines, at)
+}
+
+/// Draws a name from [`name_lines`] centred on `cx`: a single line sits on `single`, two lines on `first` and
+/// 14 px below it.
+fn name_text(out: &mut String, cx: f32, (single, first): (f32, f32), size: f32, lines: &[String], ink: &str) {
+    for (i, line) in lines.iter().enumerate() {
+        let y = if lines.len() == 1 {
+            single
+        } else {
+            first + i as f32 * 14.0
+        };
+        text(out, cx, y, size, SANS, true, ink, "middle", &escape(line));
+    }
+}
 
 fn hex(rgb: u32) -> String {
     format!("#{:06x}", rgb & 0xff_ffff)
@@ -335,6 +388,8 @@ pub struct DexCard {
     pub pages: usize,
     pub cells: Vec<DexCell>,
     pub footer: String,
+    /// The language of the labels; the title, tab and footer come written.
+    pub lang: Lang,
     pub theme: Theme,
 }
 
@@ -435,12 +490,13 @@ impl DexCard {
                 pixel_shadow(&mut s, cx, y + 106.0, cell.art.w as f32 / 2.4, 6.0, 0.25);
             }
             stand(&mut s, &cell.art, cx, y + 102.0, (!cell.owned).then_some("unseen"));
-            let (name, ink) = if cell.owned {
-                (truncate_to(&cell.name, 14.0, cw - 16.0), &t.ink)
+            let (lines, size, ink) = if cell.owned {
+                let (lines, size) = name_lines(&cell.name, 14.0, cw - 16.0);
+                (lines, size, &t.ink)
             } else {
-                ("???".to_owned(), &t.panel_edge)
+                (vec!["???".to_owned()], 14.0, &t.panel_edge)
             };
-            text(&mut s, cx, y + 132.0, 14.0, SANS, true, ink, "middle", &escape(&name));
+            name_text(&mut s, cx, (y + 132.0, y + 123.0), size, &lines, ink);
         }
         if !self.footer.is_empty() {
             text(
@@ -464,7 +520,12 @@ impl DexCard {
             false,
             &t.muted,
             "end",
-            &format!("PAGE {}/{}", self.page + 1, self.pages.max(1)),
+            &t!(
+                self.lang,
+                "dex.card.page",
+                page = self.page + 1,
+                pages = self.pages.max(1)
+            ),
         );
         t.draw_frame(&mut s, w, h);
         s.push_str("</svg>");
@@ -560,17 +621,8 @@ impl HaulCard {
             );
         }
         let x = 352.0;
-        text(
-            &mut s,
-            x,
-            138.0,
-            32.0,
-            SANS,
-            true,
-            &t.ink,
-            "start",
-            &escape(&truncate_to(&tile.name, 32.0, 372.0)),
-        );
+        let (name, size) = fit_name(&tile.name, 32.0, 22.0, 372.0);
+        text(&mut s, x, 138.0, size, SANS, true, &t.ink, "start", &escape(&name));
         text(
             &mut s,
             x,
@@ -691,17 +743,8 @@ impl HaulCard {
             let cx = x + 112.0;
             pixel_shadow(&mut s, cx, y + 142.0, tile.art.w as f32 / 2.3, 6.0, 0.25);
             stand(&mut s, &tile.art, cx, y + 136.0, None);
-            text(
-                &mut s,
-                cx,
-                y + 168.0,
-                16.0,
-                SANS,
-                true,
-                &t.ink,
-                "middle",
-                &escape(&truncate_to(&tile.name, 16.0, 204.0)),
-            );
+            let (lines, size) = name_lines(&tile.name, 16.0, 204.0);
+            name_text(&mut s, cx, (y + 168.0, y + 158.0), size, &lines, &t.ink);
             if !tile.line.is_empty() {
                 text(
                     &mut s,
@@ -758,6 +801,8 @@ pub struct PotCard {
     pub rate: String,
     /// The next upgrade, e.g. `Level 2 for 400 shells`; empty at the top.
     pub upgrade: String,
+    /// The language of the labels; the rate and the upgrade come written.
+    pub lang: Lang,
     pub theme: Theme,
 }
 
@@ -788,8 +833,13 @@ impl PotCard {
         header(
             &mut s,
             t,
-            "Crab pot",
-            &format!("LEVEL {}/{}", self.level, self.max_level),
+            &t!(self.lang, "crabpot.card.title"),
+            &t!(
+                self.lang,
+                "crabpot.card.level",
+                level = self.level,
+                max = self.max_level
+            ),
             764.0,
         );
         // The sea: a lighter band at the top, the sea floor in sand at the bottom.
@@ -856,11 +906,11 @@ impl PotCard {
         // The panel on the right.
         panel(&mut s, 430.0, 96.0, 334.0, 214.0, 4.0, &t.panel, &t.panel_edge);
         let (status, color) = match &self.state {
-            PotState::Empty => ("EMPTY", t.muted.clone()),
-            PotState::Soaking { .. } => ("SOAKING", t.accent.clone()),
-            PotState::Ready { .. } => ("READY TO HAUL", t.mint.clone()),
+            PotState::Empty => (t!(self.lang, "crabpot.card.empty"), t.muted.clone()),
+            PotState::Soaking { .. } => (t!(self.lang, "crabpot.card.soaking"), t.accent.clone()),
+            PotState::Ready { .. } => (t!(self.lang, "crabpot.card.ready"), t.mint.clone()),
         };
-        text(&mut s, 454.0, 140.0, 24.0, PIXEL, false, &color, "start", status);
+        text(&mut s, 454.0, 140.0, 24.0, PIXEL, false, &color, "start", &status);
         match &self.state {
             PotState::Empty => {
                 text(
@@ -872,7 +922,7 @@ impl PotCard {
                     false,
                     &t.ink,
                     "start",
-                    "Set it for 1, 4 or 8 hours.",
+                    &escape(&t!(self.lang, "crabpot.card.set-hint")),
                 );
             }
             PotState::Soaking { left, fraction, hours } => {
@@ -885,7 +935,7 @@ impl PotCard {
                     false,
                     &t.ink,
                     "start",
-                    &escape(&format!("{left} left of {hours} h")),
+                    &escape(&t!(self.lang, "crabpot.card.soak-left", left = left, hours = hours)),
                 );
                 segment_bar(
                     &mut s,
@@ -910,7 +960,7 @@ impl PotCard {
                     false,
                     &t.ink,
                     "start",
-                    &escape(&format!("A {hours} h soak is done.")),
+                    &escape(&t!(self.lang, "crabpot.card.soak-done", hours = hours)),
                 );
             }
         }
@@ -926,7 +976,7 @@ impl PotCard {
             &escape(&self.rate.to_uppercase()),
         );
         let upgrade = if self.upgrade.is_empty() {
-            "TOP LEVEL POT".to_owned()
+            t!(self.lang, "crabpot.card.top-level")
         } else {
             self.upgrade.to_uppercase()
         };
@@ -988,12 +1038,49 @@ mod tests {
                 },
             ],
             footer: String::new(),
+            lang: Lang::En,
             theme: Theme::reef(),
         };
         let svg = card.to_svg();
         assert!(svg.contains("Pebblesnap Crab") && svg.contains("x3"));
         assert!(!svg.contains("Secret"), "a locked slot never gives its name away");
         assert!(svg.contains("???") && svg.contains(r##"filter="url(#unseen)""##));
+    }
+
+    #[test]
+    fn a_long_name_is_shrunk_or_split_before_it_is_cut() {
+        // English names keep the size they always had.
+        assert_eq!(
+            fit_name("Pebblesnap Crab", 32.0, 22.0, 372.0),
+            ("Pebblesnap Crab".into(), 32.0)
+        );
+        assert_eq!(
+            name_lines("Pebblesnap Crab", 14.0, 132.0),
+            (vec!["Pebblesnap Crab".into()], 14.0)
+        );
+        // The longest Turkish ones are not cut: smaller on the big card, on two lines in a small box.
+        for name in [
+            "Thunderspine Deniz Kestanesi",
+            "Cobbleshell Keşiş Yengeci",
+            "Kapı Eşiği Keşiş Yengeci",
+        ] {
+            let (text, size) = fit_name(name, 32.0, 22.0, 372.0);
+            assert!(text == name && (22.0..32.0).contains(&size), "{name}: {text} at {size}");
+            assert!(laid_out_width(&text, SANS, true, size) <= 372.0, "{name} at {size}");
+            for (box_width, base) in [(132.0, 14.0), (204.0, 16.0)] {
+                let (lines, size) = name_lines(name, base, box_width);
+                assert!(
+                    lines.len() <= 2 && lines.join(" ") == name && !lines.iter().any(|l| l.contains('…')),
+                    "{name} in {box_width}: {lines:?}"
+                );
+                for line in &lines {
+                    assert!(laid_out_width(line, SANS, true, size) <= box_width, "{line} at {size}");
+                }
+            }
+        }
+        // A name that cannot fit even so is cut, never left to spill.
+        let (cut, size) = fit_name(&"W".repeat(40), 32.0, 22.0, 372.0);
+        assert!(cut.ends_with('…') && size == 22.0 && laid_out_width(&cut, SANS, true, size) <= 372.0);
     }
 
     #[test]

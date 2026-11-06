@@ -3,6 +3,7 @@
 
 use std::{sync::Arc, time::Duration};
 
+use pinchora_core::i18n::Lang;
 use pinchora_db::GameSession;
 use pinchora_game::play::Game;
 use twilight_model::{
@@ -58,6 +59,37 @@ pub(crate) fn unpack(state: &str) -> (&str, [String; 2]) {
     let host = parts.next().unwrap_or("Player 1").to_owned();
     let guest = parts.next().unwrap_or("Player 2").to_owned();
     (fields, [host, guest])
+}
+
+/// A lobby's state with the language it is played in on the end, `<fields>|<code>`: the table's shared
+/// messages keep speaking it, whoever clicks and whenever the janitor edits them.
+pub(crate) fn state_with_lang(fields: &str, lang: Lang) -> String {
+    format!("{fields}|{}", lang.code())
+}
+
+/// The fields of a state made by [`state_with_lang`], and its language when it has one.
+pub(crate) fn state_lang(state: &str) -> (&str, Option<Lang>) {
+    match state.split_once('|') {
+        Some((fields, code)) => (fields, Lang::from_code(code)),
+        None => (state, None),
+    }
+}
+
+/// The language a session's shared messages are in: the one it was opened in, else the server's default.
+pub(crate) async fn session_lang(app: &App, session: &GameSession) -> Lang {
+    match state_lang(&session.state).1 {
+        Some(lang) => lang,
+        None => app.guild_lang(session.guild_id as u64).await,
+    }
+}
+
+/// The language of a message the whole channel reads, a challenge or a board: the server's default, never the
+/// clicker's. Only the clicker's own refusals and menus use [`Cx::lang`]. Outside a server it is the clicker's.
+pub(crate) async fn channel_lang(cx: &Cx) -> Lang {
+    match cx.guild_id() {
+        Some(guild) => cx.app.guild_lang(guild).await,
+        None => cx.lang(),
+    }
 }
 
 /// The channel an interaction came from, 0 when Discord did not say.
@@ -217,6 +249,14 @@ pub(crate) fn location(session: &GameSession) -> Option<(u64, u64)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_state_keeps_the_language_it_is_played_in() {
+        assert_eq!(state_with_lang("4242", Lang::Tr), "4242|tr");
+        assert_eq!(state_lang("4242|tr"), ("4242", Some(Lang::Tr)));
+        assert_eq!(state_lang("4242"), ("4242", None));
+        assert_eq!(state_lang("0:0:0|xx"), ("0:0:0", None));
+    }
 
     #[test]
     fn names_ride_in_the_state_and_cannot_break_it() {

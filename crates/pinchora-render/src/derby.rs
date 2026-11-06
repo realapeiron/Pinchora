@@ -6,6 +6,8 @@
 
 use image::{Delay, Frame, Rgba, RgbaImage, codecs::gif::GifEncoder, codecs::gif::Repeat};
 
+use pinchora_core::{i18n::Lang, t};
+
 use crate::social::{blit, hex, mix, put};
 
 /// Lanes on the track.
@@ -42,6 +44,8 @@ const NAVY: [u8; 3] = [0x1b, 0x1d, 0x2b];
 /// What the GIF draws: the six crabs as sprites (facing right), their lane colours and a finished
 /// race.
 pub struct DerbyScene<'a> {
+    /// The language of the words on the track: the title, READY, GO and the finish gate.
+    pub lang: Lang,
     pub crabs: &'a [RgbaImage],
     /// Each lane's colour as `0xrrggbb`, behind its number.
     pub accents: [u32; LANES],
@@ -89,6 +93,16 @@ pub fn tint_crab(base: &RgbaImage, shell: [u32; 3]) -> RgbaImage {
 
 /// A 3×5 pixel font for the digits, capitals and a few signs; each glyph is five rows.
 fn glyph(c: char) -> [&'static str; 5] {
+    // Turkish letters share the plain letter's shape: the font is too small for dots and cedillas.
+    let c = match c {
+        'Ç' => 'C',
+        'Ğ' => 'G',
+        'İ' | 'ı' => 'I',
+        'Ö' => 'O',
+        'Ş' => 'S',
+        'Ü' => 'U',
+        c => c,
+    };
     match c {
         'A' => [".#.", "#.#", "###", "#.#", "#.#"],
         'B' => ["##.", "#.#", "##.", "#.#", "##."],
@@ -183,7 +197,8 @@ fn rgb(v: u32) -> [u8; 3] {
 }
 
 /// Everything that does not move: sky and sea, the sand lanes, their numbers, the start and the finish.
-fn backdrop(accents: &[u32; LANES], names: &[&str; LANES]) -> RgbaImage {
+fn backdrop(scene: &DerbyScene<'_>) -> RgbaImage {
+    let (accents, names) = (&scene.accents, &scene.names);
     let mut img = RgbaImage::new(WIDTH as u32, HEIGHT as u32);
     // Sky in three bands, then the sea.
     for (band, color) in [[0xc4, 0xea, 0xfc], [0xa8, 0xde, 0xfa], [0x8f, 0xd3, 0xff]]
@@ -262,7 +277,14 @@ fn backdrop(accents: &[u32; LANES], names: &[&str; LANES]) -> RgbaImage {
     rect(&mut img, FINISH_X - 2, 12, 2, TOP - 12, hex(NAVY));
     rect(&mut img, FINISH_X + 12, 12, 2, TOP - 12, hex(NAVY));
     rect(&mut img, FINISH_X - 2, 12, 16, 8, hex([0xff, 0xd1, 0x66]));
-    text(&mut img, FINISH_X + 1, 14, 1, "WIN", hex(NAVY));
+    text(
+        &mut img,
+        FINISH_X + 1,
+        14,
+        1,
+        &t!(scene.lang, "derby.gif.finish"),
+        hex(NAVY),
+    );
     img
 }
 
@@ -382,10 +404,31 @@ fn draw(scene: &DerbyScene<'_>, base: &RgbaImage, step: usize, banner: Banner, f
             }
         }
     }
-    caption(&mut img, WIDTH / 2, 4, 2, "HERMIT CRAB DERBY", hex([255, 255, 255]));
+    caption(
+        &mut img,
+        WIDTH / 2,
+        4,
+        2,
+        &t!(scene.lang, "derby.gif.title"),
+        hex([255, 255, 255]),
+    );
     match banner {
-        Banner::Ready => caption(&mut img, WIDTH / 2, 136, 6, "READY", hex([0xff, 0xd1, 0x66])),
-        Banner::Go => caption(&mut img, WIDTH / 2, 136, 8, "GO!", hex([0x06, 0xd6, 0xa0])),
+        Banner::Ready => caption(
+            &mut img,
+            WIDTH / 2,
+            136,
+            6,
+            &t!(scene.lang, "derby.gif.ready"),
+            hex([0xff, 0xd1, 0x66]),
+        ),
+        Banner::Go => caption(
+            &mut img,
+            WIDTH / 2,
+            136,
+            8,
+            &t!(scene.lang, "derby.gif.go"),
+            hex([0x06, 0xd6, 0xa0]),
+        ),
         Banner::None => {}
     }
     img
@@ -395,7 +438,7 @@ fn draw(scene: &DerbyScene<'_>, base: &RgbaImage, step: usize, banner: Banner, f
 pub fn derby_gif(scene: &DerbyScene<'_>) -> anyhow::Result<Vec<u8>> {
     anyhow::ensure!(scene.crabs.len() == LANES, "the derby has {LANES} crabs");
     anyhow::ensure!(!scene.frames.is_empty(), "a race has frames");
-    let base = backdrop(&scene.accents, &scene.names);
+    let base = backdrop(scene);
     let mut out = Vec::new();
     {
         let mut encoder = GifEncoder::new_with_speed(&mut out, 30);
@@ -427,13 +470,7 @@ pub fn derby_gif(scene: &DerbyScene<'_>) -> anyhow::Result<Vec<u8>> {
 
 /// One picture of the race, for the lobby card to show the crabs lined up or for a test to look at.
 pub fn derby_still(scene: &DerbyScene<'_>, step: usize, finished: bool) -> RgbaImage {
-    draw(
-        scene,
-        &backdrop(&scene.accents, &scene.names),
-        step,
-        Banner::None,
-        finished,
-    )
+    draw(scene, &backdrop(scene), step, Banner::None, finished)
 }
 
 #[cfg(test)]
@@ -466,6 +503,7 @@ mod tests {
 
     fn scene<'a>(crabs: &'a [RgbaImage], frames: &'a [[f32; LANES]]) -> DerbyScene<'a> {
         DerbyScene {
+            lang: Lang::En,
             crabs,
             accents: [0xff6b4a, 0x3a9bdc, 0x06d6a0, 0xffd166, 0xb48ae0, 0xf08a24],
             names: ["Pebble", "Scuttle", "Kelp", "Barnacle", "Clawdia", "Tidbit"],
@@ -548,7 +586,7 @@ mod tests {
         let crabs = crabs();
         let frames = frames();
         let scene = scene(&crabs, &frames);
-        let base = backdrop(&scene.accents, &scene.names);
+        let base = backdrop(&scene);
         for step in [0, 7, 20, frames.len() - 1] {
             let image = draw(&scene, &base, step, Banner::Go, step == frames.len() - 1);
             let colours: HashSet<[u8; 4]> = image.pixels().map(|p| p.0).collect();
@@ -656,7 +694,7 @@ mod tests {
         }
         let frames = frames();
         let scene = scene(&crabs, &frames);
-        let base = backdrop(&scene.accents, &scene.names);
+        let base = backdrop(&scene);
         for step in [0, 20, frames.len() - 1] {
             let image = draw(&scene, &base, step, Banner::Go, step == frames.len() - 1);
             let colours: HashSet<[u8; 4]> = image.pixels().map(|p| p.0).collect();

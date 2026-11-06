@@ -66,6 +66,7 @@ fn main() -> anyhow::Result<()> {
         })
         .collect();
     let card = DerbyCard {
+        lang: pinchora_core::i18n::Lang::En,
         lanes: &lanes,
         stake: 50,
         racers: 6,
@@ -76,6 +77,7 @@ fn main() -> anyhow::Result<()> {
     std::fs::write(
         format!("{out}/derby-lobby-free.png"),
         r.derby_card(&DerbyCard {
+            lang: pinchora_core::i18n::Lang::En,
             stake: 0,
             racers: 0,
             ..card
@@ -90,6 +92,7 @@ fn main() -> anyhow::Result<()> {
         })
         .collect();
     let scene = DerbyScene {
+        lang: pinchora_core::i18n::Lang::En,
         crabs: &crabs,
         accents: ACCENTS,
         names: NAMES,
@@ -122,6 +125,7 @@ fn main() -> anyhow::Result<()> {
     .enumerate()
     {
         let card = ShareGrabCard {
+            lang: pinchora_core::i18n::Lang::En,
             names: ["Captain Pinch", "Marlowe"],
             picks,
             pool: 60,
@@ -143,6 +147,7 @@ fn main() -> anyhow::Result<()> {
     .enumerate()
     {
         let card = ShellCard {
+            lang: pinchora_core::i18n::Lang::En,
             stake: 20,
             picked,
             pearl,
@@ -188,6 +193,7 @@ fn main() -> anyhow::Result<()> {
             line: if passed[i].is_some() { lines[i] } else { "" },
         };
         let card = HeistCard {
+            lang: pinchora_core::i18n::Lang::En,
             crew: &crew,
             stages: [stage(0), stage(1), stage(2)],
             headline,
@@ -213,6 +219,7 @@ fn main() -> anyhow::Result<()> {
     .enumerate()
     {
         let card = SurgeCard {
+            lang: pinchora_core::i18n::Lang::En,
             wall,
             goal: 56,
             helpers: 4,

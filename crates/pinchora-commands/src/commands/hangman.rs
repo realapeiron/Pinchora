@@ -2,7 +2,7 @@
 
 use std::str::Split;
 
-use pinchora_core::i18n::Lang;
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{ACTIVE, GameSession, NewGame, Payout};
 use pinchora_game::{
     lang,
@@ -29,11 +29,6 @@ use std::{sync::Arc, time::Duration};
 /// A game left alone this long is closed.
 const IDLE_SECS: i64 = 900;
 
-/// English or Turkish text, by the game's language.
-fn say<'a>(lang: Lang, en: &'a str, tr: &'a str) -> &'a str {
-    if lang == Lang::Tr { tr } else { en }
-}
-
 pub(crate) async fn start(cx: &Cx) -> anyhow::Result<()> {
     let me = cx.author()?.id.get();
     let lang = cx.lang();
@@ -44,13 +39,7 @@ pub(crate) async fn start(cx: &Cx) -> anyhow::Result<()> {
         .await?
     {
         return cx
-            .reply_ephemeral(match lang {
-                Lang::En => format!("One sandcastle at a time! Try again in {} s.", left.as_secs() + 1),
-                Lang::Tr => format!(
-                    "Bir seferde tek kum kalesi! {} sn sonra tekrar dene.",
-                    left.as_secs() + 1
-                ),
-            })
+            .reply_ephemeral(t!(lang, "hangman.cooldown", secs = left.as_secs() + 1))
             .await;
     }
     let words = &PlayContent::for_lang(lang).hangman;
@@ -101,22 +90,17 @@ async fn message(
                 .collect()
         })
         .collect();
-    let category = lang::upper(
-        tongue,
-        find_hangman(game.word()).map_or(say(tongue, "Mystery", "Gizem"), |h| h.category.label_in(tongue)),
-    );
+    let mystery = t!(tongue, "hangman.mystery");
+    let category = tongue.upper(find_hangman(game.word()).map_or(mystery.as_str(), |h| h.category.label_in(tongue)));
     let wrong: Vec<char> = game.wrong().into_iter().map(up).collect();
     let misses = game.misses();
-    let status = lang::upper(
-        tongue,
-        if game.is_won() {
-            say(tongue, "You saved it!", "Kurtardın!")
-        } else if lost {
-            say(tongue, "The sea took it!", "Deniz aldı götürdü!")
-        } else {
-            say(tongue, "Pick a letter below", "Aşağıdan bir harf seç")
-        },
-    );
+    let status = tongue.upper(&if game.is_won() {
+        t!(tongue, "hangman.status-won")
+    } else if lost {
+        t!(tongue, "hangman.status-lost")
+    } else {
+        t!(tongue, "hangman.status-playing")
+    });
     let png = app
         .render(move |r| {
             r.hangman_card(&HangmanCard {
@@ -125,52 +109,35 @@ async fn message(
                 wrong: &wrong,
                 misses,
                 status: &status,
+                lang: tongue,
                 theme: Theme::reef(),
             })
         })
         .await?;
-    let shown_word = lang::upper(tongue, game.word());
+    // English shows the word as it is stored; Turkish in capitals with the dotted İ.
+    let shown_word = match tongue {
+        Lang::En => game.word().to_owned(),
+        Lang::Tr => tongue.upper(game.word()),
+    };
     let left = MAX_MISSES - misses;
+    let user = mention(owner);
     let (title, color, content) = if game.is_won() {
         (
-            say(tongue, "Sandcastle saved!", "Kum kalesi kurtuldu!"),
+            t!(tongue, "hangman.title-won"),
             SUCCESS,
-            match tongue {
-                Lang::En => format!(
-                    "🎉 {} saved the sandcastle! The word was **{}**. {note}",
-                    mention(owner),
-                    game.word()
-                ),
-                Lang::Tr => format!(
-                    "🎉 {} kum kalesini kurtardı! Kelime **{shown_word}** idi. {note}",
-                    mention(owner)
-                ),
-            },
+            t!(tongue, "hangman.won", user = user, word = shown_word, note = note),
         )
     } else if lost {
         (
-            say(tongue, "The sea took the castle", "Deniz kaleyi aldı"),
+            t!(tongue, "hangman.title-lost"),
             WARN,
-            match tongue {
-                Lang::En => format!("🌊 The tide won this time. The word was **{}**. {note}", game.word()),
-                Lang::Tr => format!("🌊 Bu sefer gelgit kazandı. Kelime **{shown_word}** idi. {note}"),
-            },
+            t!(tongue, "hangman.lost", word = shown_word, note = note),
         )
     } else {
         (
-            say(tongue, "Save the sandcastle", "Kum kalesini kurtar"),
+            t!(tongue, "hangman.title-playing"),
             BRAND,
-            match tongue {
-                Lang::En => format!(
-                    "🏰 {} is saving the sandcastle! **{left}** wrong guess{} left.",
-                    mention(owner),
-                    if left == 1 { "" } else { "es" }
-                ),
-                Lang::Tr => format!(
-                    "🏰 {} kum kalesini kurtarıyor! **{left}** yanlış hakkı kaldı.",
-                    mention(owner)
-                ),
-            },
+            t!(tongue, "hangman.playing", user = user, count = left),
         )
     };
     let components = if game.is_over() {
@@ -199,10 +166,7 @@ fn letter_menus(id: i64, game: &Hangman) -> Vec<Component> {
     let range = |half: &[char]| {
         let (a, b) = (half[0], half[half.len() - 1]);
         let (a, b) = (lang::upper_char(tongue, a), lang::upper_char(tongue, b));
-        match tongue {
-            Lang::En => format!("Pick a letter ({a}-{b})"),
-            Lang::Tr => format!("Bir harf seç ({a}-{b})"),
-        }
+        t!(tongue, "hangman.pick-range", from = a, to = b)
     };
     [("a", first), ("n", second)]
         .into_iter()
@@ -248,7 +212,7 @@ pub(crate) async fn on_pick(cx: &Cx, mut args: Split<'_, char>, value: Option<&s
         args.next().and_then(|v| v.parse::<i64>().ok()),
         value.and_then(|v| v.chars().next()),
     ) else {
-        return cx.reply_ephemeral("This game has expired.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "hangman.expired")).await;
     };
     // Only a hangman game: another game's id would pass another module's switch.
     let Some(session) = cx
@@ -258,16 +222,11 @@ pub(crate) async fn on_pick(cx: &Cx, mut args: Split<'_, char>, value: Option<&s
         .await?
         .filter(|s| s.kind == "hangman" && s.is_active())
     else {
-        return cx
-            .reply_ephemeral("This game is over. Start a new one with `/play hangman`!")
-            .await;
+        return cx.reply_ephemeral(t!(cx.lang(), "hangman.over-start")).await;
     };
     if session.host_id as u64 != me {
         return cx
-            .reply_ephemeral(format!(
-                "This is {}'s sandcastle. Start your own with `/play hangman`!",
-                mention(session.host_id)
-            ))
+            .reply_ephemeral(t!(cx.lang(), "hangman.not-yours", owner = mention(session.host_id)))
             .await;
     }
     if session.expired() {
@@ -281,7 +240,7 @@ pub(crate) async fn on_pick(cx: &Cx, mut args: Split<'_, char>, value: Option<&s
                 })
                 .await
             }
-            None => cx.reply_ephemeral("This game is over.").await,
+            None => cx.reply_ephemeral(t!(cx.lang(), "hangman.over")).await,
         };
     }
     let Some(mut game) = Hangman::decode(&session.state) else {
@@ -292,16 +251,11 @@ pub(crate) async fn on_pick(cx: &Cx, mut args: Split<'_, char>, value: Option<&s
         Guess::Repeat => {
             let shown = lang::upper_char(tongue, letter);
             return cx
-                .reply_ephemeral(match tongue {
-                    Lang::En => format!("You already tried **{shown}**."),
-                    Lang::Tr => format!("**{shown}** harfini zaten denedin."),
-                })
+                .reply_ephemeral(t!(tongue, "hangman.already-tried", letter = shown))
                 .await;
         }
         Guess::Invalid => {
-            return cx
-                .reply_ephemeral(say(tongue, "Pick a letter from the menus.", "Harfi menülerden seç."))
-                .await;
+            return cx.reply_ephemeral(t!(tongue, "hangman.bad-pick")).await;
         }
         Guess::Hit(_) | Guess::Miss => {}
     }
@@ -315,27 +269,19 @@ pub(crate) async fn on_pick(cx: &Cx, mut args: Split<'_, char>, value: Option<&s
             .await?
             .is_none()
         {
-            return cx.reply_ephemeral("Too quick! Look at the board and pick again.").await;
+            return cx.reply_ephemeral(t!(tongue, "hangman.too-quick")).await;
         }
         record(&cx.app, Game::Hangman, me, game.is_won()).await;
         if game.is_won() {
             let paid = pay_win(&cx.app, me, Game::Hangman, Game::Hangman.win_reward(), "hangman_win").await?;
             note = if paid > 0 {
-                match tongue {
-                    Lang::En => format!("+**{paid}** shells!"),
-                    Lang::Tr => format!("+**{paid}** deniz kabuğu!"),
-                }
+                t!(tongue, "hangman.paid", paid = paid)
             } else {
-                say(
-                    tongue,
-                    "(Today's reward limit for this game is reached.)",
-                    "(Bu oyun için bugünkü ödül sınırına ulaşıldı.)",
-                )
-                .to_owned()
+                t!(tongue, "hangman.limit-reached")
             };
         }
     } else if !cx.app.db.advance_game(id, &session.state, &next, IDLE_SECS).await? {
-        return cx.reply_ephemeral("Too quick! Look at the board and pick again.").await;
+        return cx.reply_ephemeral(t!(tongue, "hangman.too-quick")).await;
     }
     let data = message(&cx.app, id, &game, me, &note).await?;
     cx.update(data).await
@@ -354,13 +300,11 @@ async fn close(app: &App, session: &GameSession) -> anyhow::Result<Option<String
     let game = Hangman::decode(&before.state);
     let tongue = game.as_ref().map_or(Lang::En, Hangman::lang);
     let word = game.map(|g| g.word().to_owned()).unwrap_or_default();
-    Ok(Some(match tongue {
-        Lang::En => format!("🌊 The tide came in while nobody was looking. The word was **{word}**."),
-        Lang::Tr => format!(
-            "🌊 Kimse bakmazken gelgit geldi. Kelime **{}** idi.",
-            lang::upper(tongue, &word)
-        ),
-    }))
+    let shown_word = match tongue {
+        Lang::En => word,
+        Lang::Tr => tongue.upper(&word),
+    };
+    Ok(Some(t!(tongue, "hangman.timeout", word = shown_word)))
 }
 
 /// Closes an idle game and says so on its message.

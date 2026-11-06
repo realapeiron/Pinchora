@@ -302,8 +302,8 @@ async fn the_server_tools_answer_in_turkish() {
     // /config show: every field in Turkish, the defaults too.
     let shown = sim.command(admin, "config", config(sub("show", vec![]))).await;
     assert_eq!(shown.title(), "Sunucu ayarları");
-    assert!(shown.field("Parti oyunları").contains("ağır küfürler"));
-    assert!(shown.field("Canlı düşüşleri").contains("açmak için"));
+    assert!(shown.field("Parti oyunları").contains("ağır sözler ve hakaretler"));
+    assert!(shown.field("Canlı düşüşleri").contains("ile açabilirsin"));
     assert!(shown.field("Karşılama kartları").contains("**kapalı** · ayarlanmadı"));
     assert!(
         shown.field("Karşılama kartları").contains("sunucusuna hoş geldin"),
@@ -750,7 +750,7 @@ async fn a_turkish_server_hears_its_events_in_turkish() {
     std::fs::write(sim.dir.join("welcome-card-join.png"), &hello.files[0].1).expect("save the picture");
     let joined = in_channel(&posts, log);
     assert_eq!(joined.iter().map(|p| p.title()).collect::<Vec<_>>(), ["Üye katıldı"]);
-    assert!(joined[0].field("Hesap oluşturuldu").starts_with("<t:"));
+    assert!(joined[0].field("Hesap oluşturma").starts_with("<t:"));
     sim.join(robot, "RoboBot", true, None).await;
     assert_eq!(sim.posts().iter().map(Post::title).collect::<Vec<_>>(), ["Bot katıldı"]);
     sim.leave(alice, "Alice", false).await;

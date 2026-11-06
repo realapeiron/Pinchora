@@ -2,6 +2,8 @@
 //! votes for the funniest. The scenes are profile backdrops with pets, fish and characters standing
 //! about on them; the picture is drawn from the sprite atlas, so a scene is only a list of places.
 
+use pinchora_core::{i18n::Lang, t};
+
 use super::Dice;
 
 /// Rounds a game plays unless the host picks another number, and the range they may pick from.
@@ -190,10 +192,16 @@ pub enum CaptionError {
 }
 
 impl CaptionError {
+    /// What to tell the player, in English.
     pub fn say(self) -> String {
+        self.say_in(Lang::En)
+    }
+
+    /// The same in `lang` (`postcard.err.*` in the catalogs).
+    pub fn say_in(self, lang: Lang) -> String {
         match self {
-            Self::TooShort => format!("A caption needs at least {MIN_CAPTION} characters."),
-            Self::TooLong => format!("Keep it under {MAX_CAPTION} characters."),
+            Self::TooShort => t!(lang, "postcard.err.too-short", min = MIN_CAPTION),
+            Self::TooLong => t!(lang, "postcard.err.too-long", max = MAX_CAPTION),
         }
     }
 }
@@ -273,5 +281,7 @@ mod tests {
         assert_eq!(check_caption(&"a".repeat(91)), Err(CaptionError::TooLong));
         assert!(check_caption(&"a".repeat(90)).is_ok());
         assert!(CaptionError::TooLong.say().contains("90"));
+        assert!(CaptionError::TooLong.say_in(Lang::Tr).contains("90 karakteri"));
+        assert!(CaptionError::TooShort.say_in(Lang::Tr).contains("en az 3 karakter"));
     }
 }

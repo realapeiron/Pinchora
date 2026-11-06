@@ -19,7 +19,7 @@ use std::{
 
 use chrono::Duration as Span;
 use image::{RgbaImage, imageops};
-use pinchora_core::items::is_soulbound;
+use pinchora_core::{i18n::Lang, items::is_soulbound, t};
 use pinchora_db::{Award, Daily, Granted, InventoryRow};
 use pinchora_game::{
     collection::{Art, Entry},
@@ -36,7 +36,9 @@ const CLEANUP_EVERY: u32 = 720;
 const KEEP: Span = Span::days(2);
 
 /// What soulbound means, for every place that has to tell a player so.
-pub(crate) const SOULBOUND_RULE: &str = "Pieces bought with fragments are soulbound: place them in your own house, but they can never be sold, gifted or donated.";
+pub(crate) fn soulbound_rule(lang: Lang) -> String {
+    t!(lang, "collect.soulbound-rule")
+}
 
 /// The most options a select menu holds.
 const MENU: usize = 25;
@@ -144,32 +146,42 @@ pub(crate) fn picture(app: &App, entry: &Entry, boxed: (u32, u32)) -> EntryPictu
 }
 
 /// What a play paid, as a short phrase: `+14 shells +2 frag`; empty when nothing was.
-pub(crate) fn money(granted: &Granted) -> String {
+pub(crate) fn money(lang: Lang, granted: &Granted) -> String {
     let mut parts = Vec::new();
     if granted.shells > 0 {
-        parts.push(format!("+{} shells", granted.shells));
+        parts.push(t!(lang, "collect.money-shells", shells = granted.shells));
     }
     if granted.fragments > 0 {
-        parts.push(format!("+{} frag", granted.fragments));
+        parts.push(t!(lang, "collect.money-fragments", fragments = granted.fragments));
     }
     parts.join(" ")
 }
 
 /// The tag a haul tile carries: `NEW` for a discovery, `SPARE` for one the player already had.
-pub(crate) fn tag(granted: &Granted) -> String {
-    if granted.new { "NEW" } else { "SPARE" }.to_owned()
+pub(crate) fn tag(lang: Lang, granted: &Granted) -> String {
+    if granted.new {
+        t!(lang, "collect.tag-new")
+    } else {
+        t!(lang, "collect.tag-spare")
+    }
 }
 
 /// A tile for `entry` in a haul; `granted` is what it paid, if it paid anything to speak of.
-pub(crate) fn haul_tile(app: &App, entry: &Entry, granted: Option<&Granted>, boxed: (u32, u32)) -> HaulTile {
+pub(crate) fn haul_tile(
+    app: &App,
+    lang: Lang,
+    entry: &Entry,
+    granted: Option<&Granted>,
+    boxed: (u32, u32),
+) -> HaulTile {
     HaulTile {
         art: picture(app, entry, boxed),
-        name: entry.name.clone(),
-        rarity: entry.rarity.label().to_owned(),
+        name: entry.name_in(lang),
+        rarity: entry.rarity.label_in(lang).to_owned(),
         frame: entry.rarity.color(),
-        tag: granted.map(tag).unwrap_or_default(),
-        line: granted.map(money).unwrap_or_default(),
-        flavor: entry.flavor.clone(),
+        tag: granted.map(|g| tag(lang, g)).unwrap_or_default(),
+        line: granted.map(|g| money(lang, g)).unwrap_or_default(),
+        flavor: entry.flavor_in(lang),
     }
 }
 

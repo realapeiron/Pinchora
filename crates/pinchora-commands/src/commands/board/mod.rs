@@ -2,6 +2,7 @@
 //! wager (`/duel seafleet`, `/duel checkers`, `/duel chess`); Pixel Picross and Tide 2048 are played alone
 //! (`/play picross`, `/play 2048`).
 
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{GameSession, Payout};
 use pinchora_game::play::Game;
 use twilight_model::{
@@ -53,9 +54,10 @@ pub(crate) fn tag(name: &str) -> String {
 /// (limited per day) if the game had `moves` enough (see `Game::min_moves`): a game cut short by an
 /// early resignation pays nothing, so two friends cannot trade wins for shells. The final state is the one
 /// the game ends in; the session's own state is the one the caller saw, so a move that landed first wins
-/// the race. Returns the sentence for the message, or `None` when somebody else ended the game first.
+/// the race. Returns the sentence for the message, in `lang`, or `None` when somebody else ended the game first.
 pub(crate) async fn conclude(
     app: &App,
+    lang: Lang,
     session: &GameSession,
     final_state: &str,
     game: Game,
@@ -75,17 +77,17 @@ pub(crate) async fn conclude(
         record(app, game, player, winner == Some(player)).await;
     }
     let note = match winner {
-        Some(_) if session.bet > 0 => format!("They take the pot of **{}** shells.", thousands(session.bet * 2)),
-        Some(_) if moves < game.min_moves() => "(A game this short earns no shells.)".to_owned(),
+        Some(_) if session.bet > 0 => t!(lang, "duel.pot-won", pot = thousands(session.bet * 2)),
+        Some(_) if moves < game.min_moves() => t!(lang, "board.too-short"),
         Some(w) => {
             let paid = pay_win(app, w, game, game.win_reward(), &format!("{}_win", game.key())).await?;
             if paid > 0 {
-                format!("+**{paid}** shells!")
+                t!(lang, "duel.paid", paid = paid)
             } else {
-                "(Today's reward limit for this game is reached.)".to_owned()
+                t!(lang, "duel.limit-reached")
             }
         }
-        None if session.bet > 0 => "Both wagers were given back.".to_owned(),
+        None if session.bet > 0 => t!(lang, "duel.wagers-back"),
         None => String::new(),
     };
     Ok(Some(note))
@@ -156,6 +158,7 @@ const MENU_MAX: usize = 25;
 /// empty board has 27 moves). The extra menus' custom ids end in `:2`, `:3`, so every id in a message is
 /// its own while the handlers, which read the leading parts only, treat them alike.
 pub(crate) fn select_rows(
+    lang: Lang,
     custom_id: &str,
     placeholder: &str,
     options: Vec<SelectMenuOption>,
@@ -170,7 +173,7 @@ pub(crate) fn select_rows(
             } else {
                 select_row(
                     format!("{custom_id}:{}", n + 1),
-                    &format!("{placeholder} (more)"),
+                    &t!(lang, "board.more", placeholder = placeholder),
                     chunk.to_vec(),
                     values,
                 )
@@ -195,22 +198,27 @@ pub(crate) fn option(
 }
 
 /// A row with a "Resign" button.
-pub(crate) fn resign_button(prefix: &str, id: i64) -> Component {
+pub(crate) fn resign_button(lang: Lang, prefix: &str, id: i64) -> Component {
     Component::ActionRow(ActionRow {
         id: None,
-        components: vec![button(format!("{prefix}:q:{id}"), "Resign", ButtonStyle::Danger, false)],
+        components: vec![button(
+            format!("{prefix}:q:{id}"),
+            &t!(lang, "board.resign"),
+            ButtonStyle::Danger,
+            false,
+        )],
     })
 }
 
 /// The private "are you sure" that follows a click on Resign.
 pub(crate) async fn confirm_resign(cx: &Cx, prefix: &str, id: i64) -> anyhow::Result<()> {
     cx.reply(InteractionResponseData {
-        content: Some("Resign this game? Your opponent wins.".to_owned()),
+        content: Some(t!(cx.lang(), "board.confirm-resign")),
         components: Some(vec![Component::ActionRow(ActionRow {
             id: None,
             components: vec![button(
                 format!("{prefix}:R:{id}"),
-                "Yes, resign",
+                &t!(cx.lang(), "board.confirm-yes"),
                 ButtonStyle::Danger,
                 false,
             )],
@@ -254,9 +262,9 @@ mod tests {
                 .map(|i| option(format!("o{i}"), i.to_string(), None, false))
                 .collect()
         };
-        let one = select_rows("cc:t:1:0:d4", "Where?", options(25), (1, 1));
+        let one = select_rows(Lang::En, "cc:t:1:0:d4", "Where?", options(25), (1, 1));
         assert_eq!(menus(&one).len(), 1);
-        let two = select_rows("cc:t:1:0:d4", "Where?", options(27), (1, 1));
+        let two = select_rows(Lang::En, "cc:t:1:0:d4", "Where?", options(27), (1, 1));
         let menus = menus(&two);
         assert_eq!(menus.len(), 2);
         assert_eq!(menus[0].options.as_ref().map(Vec::len), Some(25));
@@ -264,7 +272,7 @@ mod tests {
         assert_eq!(menus[0].custom_id, "cc:t:1:0:d4");
         assert_eq!(menus[1].custom_id, "cc:t:1:0:d4:2");
         assert_eq!(menus[1].placeholder.as_deref(), Some("Where? (more)"));
-        assert!(select_rows("x", "y", Vec::new(), (1, 1)).is_empty());
+        assert!(select_rows(Lang::En, "x", "y", Vec::new(), (1, 1)).is_empty());
     }
 
     #[test]

@@ -6,7 +6,7 @@
 
 use std::{str::Split, sync::Arc, time::Duration};
 
-use pinchora_core::i18n::Lang;
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{Commit, PartyEntry, PartyGame, PartyPlayer, PartyVote, Pay, PlayerChange};
 use pinchora_game::party::{
     Dice, Party, VOTE_POINTS, WIN_BONUS, acronym, postcard as scenes, round_points, round_winners, writing_reward,
@@ -23,12 +23,12 @@ use twilight_model::{
 use twilight_util::builder::embed::{EmbedBuilder, ImageSource};
 
 use super::{
-    after, card, count_games, day, edit_card, later, lobby, name_of, paid_note, postcard, push_button, remember, row,
-    snapshot, standings_png, strict, text, theme,
+    after, card, count_games, day, edit_card, game_lang, later, lobby, name_of, paid_note, postcard, push_button,
+    remember, round_label, row, snapshot, standings_png, strict, text, theme,
 };
 use crate::{
     App, Cx,
-    commands::games::quiet,
+    commands::games::{channel_lang, quiet},
     util::{BRAND, SUCCESS, WARN, relative},
 };
 
@@ -50,7 +50,43 @@ struct State {
     scene: String,
     seen: Vec<String>,
     /// What the last tally said, for the reveal.
-    note: String,
+    #[serde(default)]
+    tally: Tally,
+}
+
+/// What a round's tally came to. It is kept as what it was, not as a sentence, so the reveal is worded in the
+/// language of the table whenever it is drawn.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+enum Tally {
+    /// Nothing counted yet.
+    #[default]
+    Open,
+    /// Nobody wrote a line.
+    NoEntries,
+    /// One line came in: nothing to vote on.
+    OneEntry,
+    NoVotes,
+    Winner {
+        name: String,
+        text: String,
+    },
+    Tie {
+        names: Vec<String>,
+    },
+}
+
+impl Tally {
+    fn say(&self, lang: Lang, party: Party) -> String {
+        match self {
+            Self::Open => String::new(),
+            Self::NoEntries => t!(lang, &format!("{}.no-entries", party.key())),
+            Self::OneEntry => t!(lang, &format!("{}.one-entry", party.key())),
+            Self::NoVotes => t!(lang, "party.no-votes"),
+            Self::Winner { name, text } => t!(lang, "party.round-winner", name = name, text = text),
+            Self::Tie { names } => t!(lang, "party.round-tie", names = names.join(", ")),
+        }
+    }
 }
 
 fn decode(game: &PartyGame) -> anyhow::Result<State> {
@@ -89,11 +125,6 @@ fn reveal_secs(party: Party) -> i64 {
     }
 }
 
-/// What a line is called in this game.
-fn noun(party: Party) -> &'static str {
-    if party == Party::Postcard { "caption" } else { "phrase" }
-}
-
 pub(crate) async fn open(cx: &Cx, party: Party, rounds: i32) -> anyhow::Result<()> {
     let range = if party == Party::Postcard {
         scenes::ROUNDS
@@ -102,7 +133,8 @@ pub(crate) async fn open(cx: &Cx, party: Party, rounds: i32) -> anyhow::Result<(
     };
     let rounds = rounds.clamp(*range.start(), *range.end());
     let state = State {
-        lang: cx.lang(),
+        // The table is public and keeps playing in the server's language, whoever opened it.
+        lang: channel_lang(cx).await,
         ..Default::default()
     };
     lobby::open(cx, party, rounds, encode(&state)?).await
@@ -120,7 +152,7 @@ fn begin_round(party: Party, state: &mut State, round: i32) {
         let letters = acronym::draw_letters(state.lang, &mut dice, acronym::letter_count(round - 1));
         state.letters = letters.into_iter().collect();
     }
-    state.note.clear();
+    state.tally = Tally::Open;
 }
 
 pub(crate) async fn start(cx: &Cx, game: &PartyGame, players: &[PartyPlayer]) -> anyhow::Result<lobby::Started> {
@@ -187,20 +219,27 @@ fn embed_only(embed: EmbedBuilder) -> InteractionResponseData {
 
 /// The words under the round's picture: what to write, when it closes, and how many have.
 fn write_embed(party: Party, game: &PartyGame, players: &[PartyPlayer], state: &State, written: usize) -> EmbedBuilder {
-    let round_label = format!("Round {}/{}", game.round, game.rounds);
-    let status = format!("{written} of {} {}s in", players.len(), noun(party));
+    let lang = state.lang;
     let ask = if party == Party::Postcard {
-        "Write a caption for this postcard".to_owned()
+        t!(lang, "postcard.ask")
     } else {
-        format!("Build a phrase from **{}**", shown_letters(state))
+        t!(lang, "acronym.ask", letters = shown_letters(state))
     };
     EmbedBuilder::new()
         .color(BRAND)
-        .title(format!("{} {} · {round_label}", party.emoji(), party.label()))
-        .description(format!(
-            "{ask}. Everyone writes one, and nobody sees who wrote what until the vote is over.\n{}s close {} · {status}",
-            noun(party),
-            relative(game.deadline)
+        .title(format!(
+            "{} {} · {}",
+            party.emoji(),
+            party.label_in(lang),
+            round_label(lang, game.round, game.rounds)
+        ))
+        .description(t!(
+            lang,
+            &format!("{}.write-desc", party.key()),
+            ask = ask,
+            when = relative(game.deadline),
+            written = written,
+            players = players.len()
         ))
 }
 
@@ -214,29 +253,32 @@ async fn write_view(
     state: &State,
     written: usize,
 ) -> anyhow::Result<InteractionResponseData> {
-    let round_label = format!("Round {}/{}", game.round, game.rounds);
+    let lang = state.lang;
+    // The cards draw their title, place, stamp and footer in capitals, which Turkish spells with its own İ.
+    let round = lang.upper(&round_label(lang, game.round, game.rounds));
     let png = if party == Party::Postcard {
         let scene = scenes::scene(&state.scene).ok_or_else(|| anyhow::anyhow!("unknown scene {}", state.scene))?;
         let picture = postcard::scene_png(app, scene)?;
-        let (place, stamp) = (scene.place.to_owned(), round_label);
+        let place = lang.upper(&t!(lang, &format!("postcard.place.{}", scene.id)));
         app.render(move |r| {
             r.postcard_card(&PostcardCard {
+                lang,
                 scene: &picture,
                 place: &place,
-                stamp: &stamp,
+                stamp: &round,
                 theme: theme(),
             })
         })
         .await?
     } else {
         let letters = letters_of(state);
-        let title = party.label().to_owned();
-        let hint = "One word for each letter, in order. Press the button and type your phrase.".to_owned();
-        let status = "Phrases stay hidden until the vote is over".to_owned();
+        let title = lang.upper(&party.label_in(lang));
+        let hint = t!(lang, "acronym.card-hint");
+        let status = lang.upper(&t!(lang, "acronym.card-status"));
         app.render(move |r| {
             r.letters_card(&LettersCard {
                 title: &title,
-                round: &round_label,
+                round: &round,
                 letters: &letters,
                 hint: &hint,
                 status: &status,
@@ -246,12 +288,12 @@ async fn write_view(
         .await?
     };
     let file = write_file(party);
-    let label = if party == Party::Postcard {
-        "Write a caption"
-    } else {
-        "Write a phrase"
-    };
-    let button = push_button(party, &[&"w", &game.id, &game.round], label, ButtonStyle::Primary);
+    let button = push_button(
+        party,
+        &[&"w", &game.id, &game.round],
+        &t!(lang, &format!("{}.btn-write", party.key())),
+        ButtonStyle::Primary,
+    );
     Ok(card(
         None,
         write_embed(party, game, players, state, written),
@@ -262,14 +304,21 @@ async fn write_view(
 }
 
 /// The words over the ballot: what to vote for, when it closes, and how many have.
-fn vote_embed(party: Party, game: &PartyGame, players: usize, voted: usize) -> EmbedBuilder {
+fn vote_embed(party: Party, game: &PartyGame, lang: Lang, players: usize, voted: usize) -> EmbedBuilder {
     EmbedBuilder::new()
         .color(BRAND)
-        .title(format!("{} {} · vote", party.emoji(), party.label()))
-        .description(format!(
-            "Vote for the {} you like best, {}. {voted} of {players} voted.",
-            noun(party),
-            relative(game.deadline)
+        .title(t!(
+            lang,
+            "party.vote-title",
+            emoji = party.emoji(),
+            label = party.label_in(lang)
+        ))
+        .description(t!(
+            lang,
+            &format!("{}.vote-desc", party.key()),
+            when = relative(game.deadline),
+            voted = voted,
+            players = players
         ))
 }
 
@@ -283,6 +332,7 @@ async fn vote_view(
     entries: &[PartyEntry],
     voted: usize,
 ) -> anyhow::Result<InteractionResponseData> {
+    let lang = state.lang;
     let picture = if party == Party::Postcard {
         Some(postcard::scene_png(
             app,
@@ -294,9 +344,9 @@ async fn vote_view(
     let rows: Vec<(String, Option<String>, Option<u32>, bool)> =
         entries.iter().map(|e| (e.text.clone(), None, None, false)).collect();
     let subtitle = if party == Party::Postcard {
-        "Which caption is the funniest?".to_owned()
+        t!(lang, "postcard.vote-sub")
     } else {
-        format!("Which phrase is best for {}?", shown_letters(state))
+        t!(lang, "acronym.vote-sub", letters = shown_letters(state))
     };
     let png = entries_png(
         app,
@@ -305,7 +355,7 @@ async fn vote_view(
         &subtitle,
         picture,
         rows,
-        "You can not vote for your own",
+        &t!(lang, "party.no-own-vote"),
     )
     .await?;
     let buttons: Vec<Component> = (0..entries.len())
@@ -321,7 +371,7 @@ async fn vote_view(
     let rows: Vec<Component> = buttons.chunks(5).map(|chunk| row(chunk.to_vec())).collect();
     Ok(card(
         None,
-        vote_embed(party, game, players.len(), voted),
+        vote_embed(party, game, lang, players.len(), voted),
         "entries.png",
         png,
         rows,
@@ -338,8 +388,14 @@ async fn entries_png(
     rows: Vec<(String, Option<String>, Option<u32>, bool)>,
     footer: &str,
 ) -> anyhow::Result<Vec<u8>> {
-    let (title, subtitle, footer) = (party.label().to_owned(), subtitle.to_owned(), footer.to_owned());
-    let chip = format!("Round {}/{}", game.round, game.rounds);
+    let lang = game_lang(game);
+    // The card draws its title, chip and footer in capitals, which Turkish spells with its own İ.
+    let (title, subtitle, footer) = (
+        lang.upper(&party.label_in(lang)),
+        subtitle.to_owned(),
+        lang.upper(footer),
+    );
+    let chip = lang.upper(&round_label(lang, game.round, game.rounds));
     app.render(move |r| {
         let rows: Vec<EntryRow> = rows
             .iter()
@@ -351,6 +407,7 @@ async fn entries_png(
             })
             .collect();
         r.entries_card(&pinchora_render::EntriesCard {
+            lang,
             title: &title,
             subtitle: &subtitle,
             chip: &chip,
@@ -363,24 +420,27 @@ async fn entries_png(
     .await
 }
 
+/// The form's one field: `ui` is the language of the player who opens it, the table's own (`state.lang`)
+/// words the example in it.
 #[allow(deprecated)] // the label belongs on the Label component, so the input's own stays empty
-fn field(party: Party, state: &State) -> Component {
-    let (label, max, placeholder) = if party == Party::Postcard {
-        ("Your caption".to_owned(), scenes::MAX_CAPTION, "What is going on here?")
+fn field(ui: Lang, party: Party, state: &State) -> Component {
+    let (label, max) = if party == Party::Postcard {
+        (t!(ui, "postcard.field-label"), scenes::MAX_CAPTION)
     } else {
         (
-            format!(
-                "Your phrase for {}",
-                letters_of(state)
+            t!(
+                ui,
+                "acronym.field-label",
+                letters = letters_of(state)
                     .iter()
                     .map(char::to_string)
                     .collect::<Vec<_>>()
                     .join(" ")
             ),
             acronym::MAX_PHRASE,
-            "Tiny whales ride sleds",
         )
     };
+    let placeholder = t!(state.lang, &format!("{}.placeholder", party.key()));
     Component::Label(Label {
         component: Box::new(Component::TextInput(TextInput {
             custom_id: ENTRY_FIELD.to_owned(),
@@ -388,7 +448,7 @@ fn field(party: Party, state: &State) -> Component {
             label: None,
             max_length: Some(max as u16),
             min_length: Some(3),
-            placeholder: Some(placeholder.to_owned()),
+            placeholder: Some(placeholder),
             required: Some(true),
             style: TextInputStyle::Short,
             value: None,
@@ -404,25 +464,24 @@ fn field(party: Party, state: &State) -> Component {
 pub(crate) async fn on_button(cx: &Cx, party: Party, mut parts: Split<'_, char>) -> anyhow::Result<()> {
     let action = parts.next().unwrap_or_default();
     let mut number = |_: ()| parts.next().and_then(|v| v.parse::<i64>().ok());
+    let lang = cx.lang();
     let Some(id) = number(()) else {
-        return cx.reply_ephemeral("This button has expired.").await;
+        return cx.reply_ephemeral(t!(lang, "party.expired-button")).await;
     };
     if lobby::on_button(cx, party, action, id).await? {
         return Ok(());
     }
     let (Some(round), me) = (number(()), cx.author()?.id.get()) else {
-        return cx.reply_ephemeral("This button has expired.").await;
+        return cx.reply_ephemeral(t!(lang, "party.expired-button")).await;
     };
     let Some((game, players)) = snapshot(&cx.app, party, id).await? else {
-        return cx.reply_ephemeral("This game has expired.").await;
+        return cx.reply_ephemeral(t!(lang, "party.expired-game")).await;
     };
     let round = round as i32;
     remember(cx, &game).await;
     let phase = if action == "w" { "write" } else { "vote" };
     if !game.is_playing() || game.round != round || game.phase != phase {
-        return cx
-            .reply_ephemeral("That step is over. Use the buttons on the newest message!")
-            .await;
+        return cx.reply_ephemeral(t!(lang, "party.step-over")).await;
     }
     if game.late(cx.app.now()) {
         if action == "w" {
@@ -431,34 +490,28 @@ pub(crate) async fn on_button(cx: &Cx, party: Party, mut parts: Split<'_, char>)
         } else {
             on_due(&cx.app, game).await?;
         }
-        return cx.reply_ephemeral("Time is up for this step!").await;
+        return cx.reply_ephemeral(t!(lang, "party.step-late")).await;
     }
     if !players.iter().any(|p| p.id() == me) {
-        return cx
-            .reply_ephemeral("You are not in this game: only players write and vote.")
-            .await;
+        return cx.reply_ephemeral(t!(lang, "party.not-in-game")).await;
     }
     match action {
         "w" => {
             let state = decode(&game)?;
             cx.modal(
                 format!("{}:m:{id}:{round}", party.prefix()),
-                if party == Party::Postcard {
-                    "Caption the postcard"
-                } else {
-                    "Acronym Tide"
-                },
-                vec![field(party, &state)],
+                &t!(lang, &format!("{}.modal-title", party.key())),
+                vec![field(lang, party, &state)],
             )
             .await
         }
         "v" => {
             let Some(index) = number(()).map(|n| n as usize) else {
-                return cx.reply_ephemeral("This button has expired.").await;
+                return cx.reply_ephemeral(t!(lang, "party.expired-button")).await;
             };
             vote(cx, party, &game, &players, index).await
         }
-        _ => cx.reply_ephemeral("This button has expired.").await,
+        _ => cx.reply_ephemeral(t!(lang, "party.expired-button")).await,
     }
 }
 
@@ -466,8 +519,9 @@ async fn vote(cx: &Cx, party: Party, game: &PartyGame, players: &[PartyPlayer], 
     let app = &cx.app;
     let me = cx.author()?.id.get();
     let entries = app.db.party_entries(game.id, game.round).await?;
+    let lang = cx.lang();
     let Some(entry) = entries.get(index) else {
-        return cx.reply_ephemeral("There is no such entry.").await;
+        return cx.reply_ephemeral(t!(lang, "party.no-entry")).await;
     };
     let number = index + 1;
     let (said, new_vote) = match app
@@ -475,16 +529,13 @@ async fn vote(cx: &Cx, party: Party, game: &PartyGame, players: &[PartyPlayer], 
         .put_vote(game.id, game.round, me, entry.author(), app.now())
         .await?
     {
-        PartyVote::Counted => (
-            format!("🗳️ Your vote for **#{number}** is in. You can change it until voting closes."),
-            true,
-        ),
-        PartyVote::Changed => (format!("🗳️ Moved your vote to **#{number}**."), false),
-        PartyVote::Same => (format!("You already voted for **#{number}**."), false),
-        PartyVote::OwnEntry => ("That one is yours! Pick another.".to_owned(), false),
-        PartyVote::NotPlayer => ("Only players can vote.".to_owned(), false),
-        PartyVote::NoEntry => ("There is no such entry.".to_owned(), false),
-        PartyVote::Closed => ("Voting is closed.".to_owned(), false),
+        PartyVote::Counted => (t!(lang, "party.vote.counted", number = number), true),
+        PartyVote::Changed => (t!(lang, "party.vote.changed", number = number), false),
+        PartyVote::Same => (t!(lang, "party.vote.same", number = number), false),
+        PartyVote::OwnEntry => (t!(lang, "party.vote.own"), false),
+        PartyVote::NotPlayer => (t!(lang, "party.vote.not-player"), false),
+        PartyVote::NoEntry => (t!(lang, "party.no-entry"), false),
+        PartyVote::Closed => (t!(lang, "party.vote.closed"), false),
     };
     cx.reply_ephemeral(said).await?;
     // Only a first vote changes the count. Everybody has voted: no reason to wait out the clock; otherwise
@@ -547,7 +598,10 @@ async fn show_count(app: &Arc<App>, party: Party, id: i64, phase: &str, round: i
             }
             "vote" => {
                 let voted = app.db.party_votes(id, round).await?.len();
-                pictured(vote_embed(party, &game, players.len(), voted), "entries.png")
+                pictured(
+                    vote_embed(party, &game, game_lang(&game), players.len(), voted),
+                    "entries.png",
+                )
             }
             _ => return Ok(()),
         };
@@ -568,24 +622,23 @@ pub(crate) async fn on_modal(
     fields: &[(String, String)],
 ) -> anyhow::Result<()> {
     parts.next();
+    let lang = cx.lang();
     let (Some(id), Some(round)) = (
         parts.next().and_then(|v| v.parse::<i64>().ok()),
         parts.next().and_then(|v| v.parse::<i32>().ok()),
     ) else {
-        return cx.reply_ephemeral("This form has expired.").await;
+        return cx.reply_ephemeral(t!(lang, "party.expired-form")).await;
     };
     let app = &cx.app;
     let me = cx.author()?.id.get();
     let Some((game, players)) = snapshot(app, party, id).await? else {
-        return cx.reply_ephemeral("This game has expired.").await;
+        return cx.reply_ephemeral(t!(lang, "party.expired-game")).await;
     };
     if !game.is_playing() || game.phase != "write" || game.round != round || game.late(app.now()) {
         if game.is_playing() && game.late(app.now()) {
             on_due(app, game).await?;
         }
-        return cx
-            .reply_ephemeral(format!("Time is up: this {} came too late.", noun(party)))
-            .await;
+        return cx.reply_ephemeral(t!(lang, &format!("{}.too-late", party.key()))).await;
     }
     let state = decode(&game)?;
     let typed = fields
@@ -594,12 +647,13 @@ pub(crate) async fn on_modal(
         .map_or("", |(_, value)| value.as_str());
     let cleaned = match text::clean_for(typed, strict(app, game.guild_id as u64).await, state.lang) {
         Ok(cleaned) => cleaned,
-        Err(refused) => return cx.reply_ephemeral(refused.say()).await,
+        Err(refused) => return cx.reply_ephemeral(refused.say(lang)).await,
     };
     let line = if party == Party::Postcard {
-        scenes::check_caption(&cleaned).map_err(|e| e.say())
+        scenes::check_caption(&cleaned).map_err(|e| e.say_in(lang))
     } else {
-        acronym::check_phrase(state.lang, &cleaned, &letters_of(&state)).map_err(|e| e.say(&letters_of(&state)))
+        acronym::check_phrase(state.lang, &cleaned, &letters_of(&state))
+            .map_err(|e| e.say_in(lang, &letters_of(&state)))
     };
     let line = match line {
         Ok(line) => line,
@@ -608,18 +662,16 @@ pub(crate) async fn on_modal(
     let fresh = match app.db.put_entry(id, round, "write", me, &line, app.now()).await? {
         None => {
             return cx
-                .reply_ephemeral(format!(
-                    "Time is up, or you are not in this game: that {} did not count.",
-                    noun(party)
-                ))
+                .reply_ephemeral(t!(lang, &format!("{}.not-counted", party.key())))
                 .await;
         }
         Some(fresh) => {
-            cx.reply_ephemeral(format!(
-                "✍️ {} in: “{line}”. Press the button again to rewrite it until time is up.",
-                if fresh { "Locked" } else { "Rewritten and locked" }
-            ))
-            .await?;
+            let key = if fresh {
+                "party.entry.locked"
+            } else {
+                "party.entry.rewritten"
+            };
+            cx.reply_ephemeral(t!(lang, key, line = line)).await?;
             fresh
         }
     };
@@ -649,10 +701,10 @@ async fn to_vote(app: &Arc<App>, party: Party, id: i64) -> anyhow::Result<bool> 
     let mut state = decode(&game)?;
     let entries = app.db.party_entries(id, game.round).await?;
     if entries.len() < 2 {
-        state.note = if entries.is_empty() {
-            format!("Nobody wrote a {} this round.", noun(party))
+        state.tally = if entries.is_empty() {
+            Tally::NoEntries
         } else {
-            format!("Only one {} came in, so there was nothing to vote on.", noun(party))
+            Tally::OneEntry
         };
         let commit = Commit {
             phase: "reveal",
@@ -718,22 +770,19 @@ async fn to_reveal(app: &Arc<App>, party: Party, id: i64) -> anyhow::Result<bool
             ..Default::default()
         })
         .collect();
-    state.note = match winners.as_slice() {
-        [] => "Nobody got a vote this round.".to_owned(),
-        [one] => {
-            let text = entries
+    state.tally = match winners.as_slice() {
+        [] => Tally::NoVotes,
+        [one] => Tally::Winner {
+            name: name_of(state.lang, &players, *one),
+            text: entries
                 .iter()
                 .find(|e| e.author() == *one)
-                .map_or("", |e| e.text.as_str());
-            format!("🏆 {} takes the round with “{text}”", name_of(&players, *one))
-        }
-        many => format!(
-            "🏆 A tie! {} share the round.",
-            many.iter()
-                .map(|w| name_of(&players, *w))
-                .collect::<Vec<_>>()
-                .join(", ")
-        ),
+                .map_or("", |e| e.text.as_str())
+                .to_owned(),
+        },
+        many => Tally::Tie {
+            names: many.iter().map(|w| name_of(state.lang, &players, *w)).collect(),
+        },
     };
     let commit = Commit {
         phase: "reveal",
@@ -763,6 +812,7 @@ async fn reveal_view(
     entries: &[PartyEntry],
     tally: &[(u64, u32)],
 ) -> anyhow::Result<InteractionResponseData> {
+    let lang = state.lang;
     let winners = round_winners(tally);
     let mut ranked: Vec<&PartyEntry> = entries.iter().collect();
     let votes_of = |user: u64| tally.iter().find(|(who, _)| *who == user).map(|(_, n)| *n);
@@ -772,7 +822,7 @@ async fn reveal_view(
         .map(|e| {
             (
                 e.text.clone(),
-                Some(name_of(players, e.author())),
+                Some(name_of(lang, players, e.author())),
                 votes_of(e.author()),
                 winners.contains(&e.author()),
             )
@@ -786,9 +836,9 @@ async fn reveal_view(
         None
     };
     let subtitle = if party == Party::Postcard {
-        "The votes are in".to_owned()
+        t!(lang, "postcard.reveal-sub")
     } else {
-        format!("Letters: {}", shown_letters(state))
+        t!(lang, "acronym.reveal-sub", letters = shown_letters(state))
     };
     let png = entries_png(
         app,
@@ -797,23 +847,28 @@ async fn reveal_view(
         &subtitle,
         picture,
         rows,
-        &format!("{VOTE_POINTS} point a vote, {WIN_BONUS} more for the winner"),
+        &t!(lang, "party.score-rule", points = VOTE_POINTS, bonus = WIN_BONUS),
     )
     .await?;
     let last = game.round >= game.rounds;
     let embed = EmbedBuilder::new()
         .color(WARN)
-        .title(format!(
-            "{} {} · round {} results",
-            party.emoji(),
-            party.label(),
-            game.round
+        .title(t!(
+            lang,
+            "party.results-title",
+            emoji = party.emoji(),
+            label = party.label_in(lang),
+            round = game.round
         ))
-        .description(format!(
-            "{}\n{} {}.",
-            state.note,
-            if last { "Final scores" } else { "Next round" },
-            relative(game.deadline)
+        .description(t!(
+            lang,
+            if last {
+                "party.reveal-final"
+            } else {
+                "party.reveal-next"
+            },
+            note = state.tally.say(lang, party),
+            when = relative(game.deadline)
         ));
     Ok(card(None, embed, "results.png", png, Vec::new()))
 }
@@ -857,6 +912,7 @@ async fn after_reveal(app: &Arc<App>, party: Party, id: i64) -> anyhow::Result<b
 /// The last round is over: pay the players who wrote, count the games and show the final scores.
 async fn finish(app: &Arc<App>, game: PartyGame, players: Vec<PartyPlayer>) -> anyhow::Result<bool> {
     let party = party_of(&game)?;
+    let lang = game_lang(&game);
     let wrote: Vec<u64> = app
         .db
         .party_all_entries(game.id)
@@ -906,38 +962,42 @@ async fn finish(app: &Arc<App>, game: PartyGame, players: Vec<PartyPlayer>) -> a
         .map(|p| {
             (
                 p.name.clone(),
-                format!("{} PT{}", p.score, if p.score == 1 { "" } else { "S" }),
-                paid_note(&done.paid, p.id()),
+                t!(lang, "party.points", count = p.score),
+                paid_note(lang, &done.paid, p.id()),
                 winners.contains(&p.id()),
             )
         })
         .collect();
     let png = standings_png(
         app,
-        party.label(),
-        &format!(
-            "Final scores after {} round{}",
-            game.rounds,
-            if game.rounds == 1 { "" } else { "s" }
-        ),
+        lang,
+        &party.label_in(lang),
+        &t!(lang, "party.final-after", count = game.rounds),
         rows,
-        "Thanks for playing",
+        &t!(lang, "party.thanks"),
     )
     .await?;
     let line = match winners.as_slice() {
-        [] => "Nobody scored this time.".to_owned(),
-        [one] => format!("🏆 {} wins!", name_of(&players, *one)),
-        many => format!(
-            "🏆 A tie between {}!",
-            many.iter()
-                .map(|w| name_of(&players, *w))
+        [] => t!(lang, "party.nobody-scored"),
+        [one] => t!(lang, "party.wins", name = name_of(lang, &players, *one)),
+        many => t!(
+            lang,
+            "party.tie-between",
+            names = many
+                .iter()
+                .map(|w| name_of(lang, &players, *w))
                 .collect::<Vec<_>>()
                 .join(", ")
         ),
     };
     let embed = EmbedBuilder::new()
         .color(SUCCESS)
-        .title(format!("{} {} is over", party.emoji(), party.label()))
+        .title(t!(
+            lang,
+            "party.over-title",
+            emoji = party.emoji(),
+            label = party.label_in(lang)
+        ))
         .description(line);
     edit_card(app, &done.game, &card(None, embed, "standings.png", png, Vec::new())).await;
     Ok(true)

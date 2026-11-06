@@ -13,6 +13,7 @@ use std::{
 };
 
 use image::RgbaImage;
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{DerbyJoin, DerbyLeave, DerbyOutcome, DerbyResult, GameSession, NewGame, PENDING, PartyMember};
 use pinchora_game::{
     party::derby::{self, CRABS, DAILY_LOSS_LIMIT, LOBBY_SECS, MAX_RACERS, MIN_STAKED_RACERS, ROSTER, Race},
@@ -26,8 +27,8 @@ use twilight_model::{
 use twilight_util::builder::embed::{EmbedBuilder, EmbedFooterBuilder};
 
 use super::{
-    games::{channel_of, location, quiet},
-    party::{card_embed, clean_name, count, rest, resting, reward_win, track_message, wait_text},
+    games::{channel_of, location, quiet, session_lang, state_lang, state_with_lang},
+    party::{card_embed, clean_name, count, rest, resting, reward_win, track_message, wait_text_in},
 };
 use crate::{
     App, Cx,
@@ -61,33 +62,30 @@ fn crab_art(app: &App) -> anyhow::Result<&'static CrabArt> {
 
 /// The race a lobby will run: its seed is the lobby's state.
 fn race_of(session: &GameSession) -> Race {
-    derby::run(session.state.parse().unwrap_or(session.id as u64))
+    derby::run(state_lang(&session.state).0.parse().unwrap_or(session.id as u64))
 }
 
 /// `/play derby`: opens a lobby in this channel.
 pub(crate) async fn start(cx: &Cx, bet: Option<i64>) -> anyhow::Result<()> {
     let me = cx.author()?.id.get();
+    let lang = cx.lang();
     let Some(guild) = cx.guild_id() else {
-        return cx.reply_ephemeral("Races run inside a server.").await;
+        return cx.reply_ephemeral(t!(lang, "derby.server-only")).await;
     };
+    // The lobby is public and keeps speaking the server's language to its end; `lang` is for the opener's refusals.
+    let board_lang = cx.app.guild_lang(guild).await;
     let bet = bet.unwrap_or(0);
     if bet != 0 && !cx.app.db.gambling_enabled(guild).await? {
-        return cx
-            .reply_ephemeral(
-                "🎲 Races with shells on them are a gambling-style game, and those are **off** on this server. \
-                 A manager can switch them on with `/config gambling`. A race for fun needs no stake: \
-                 just leave `bet` empty.",
-            )
-            .await;
+        return cx.reply_ephemeral(t!(lang, "derby.gambling-off")).await;
     }
     if bet != 0 && !(MIN_BET..=MAX_BET).contains(&bet) {
         return cx
-            .reply_ephemeral(format!("A stake is {MIN_BET} to {MAX_BET} shells."))
+            .reply_ephemeral(t!(lang, "derby.stake-range", min = MIN_BET, max = MAX_BET))
             .await;
     }
     if let Some(left) = resting(&cx.app, "derbystart", me).await? {
         return cx
-            .reply_ephemeral(format!("Easy there! You can open another race in {}.", wait_text(left)))
+            .reply_ephemeral(t!(lang, "derby.easy", wait = wait_text_in(lang, left)))
             .await;
     }
     let seed: u64 = rand::random();
@@ -102,17 +100,15 @@ pub(crate) async fn start(cx: &Cx, bet: Option<i64>) -> anyhow::Result<()> {
             guest: None,
             bet,
             status: PENDING,
-            state: &seed.to_string(),
+            state: &state_with_lang(&seed.to_string(), board_lang),
             ttl_secs: LOBBY_SECS,
         })
         .await?
     else {
-        return cx
-            .reply_ephemeral("A derby is already open in this channel. Join it, or wait for the next one!")
-            .await;
+        return cx.reply_ephemeral(t!(lang, "derby.already-open")).await;
     };
     rest(&cx.app, "derbystart", me, 20).await;
-    let data = lobby_message(&cx.app, &session, &[]).await?;
+    let data = lobby_message(&cx.app, &session, &[], board_lang).await?;
     cx.reply(data).await?;
     track_message(cx, session.id);
     Ok(())
@@ -123,6 +119,7 @@ async fn lobby_message(
     app: &App,
     session: &GameSession,
     racers: &[PartyMember],
+    lang: Lang,
 ) -> anyhow::Result<InteractionResponseData> {
     let art = crab_art(app)?;
     let backers: Vec<Vec<String>> = (0..CRABS)
@@ -135,6 +132,7 @@ async fn lobby_message(
         })
         .collect();
     let (stake, racer_count) = (session.bet, racers.len());
+    let status = lang.upper(&t!(lang, "derby.lobby-status"));
     let png = app
         .render(move |r| {
             let lanes: Vec<DerbyLane<'_>> = (0..CRABS)
@@ -150,39 +148,39 @@ async fn lobby_message(
                 })
                 .collect();
             r.derby_card(&DerbyCard {
+                lang,
                 lanes: &lanes,
                 stake,
                 racers: racer_count,
-                status: "Pick your crab below, you can switch until the start",
+                status: &status,
                 theme: Theme::reef(),
             })
         })
         .await?;
     let host = mention(session.host_id);
     let stake_line = if session.bet > 0 {
-        format!(
-            "Everyone puts **{}** shells on their crab, and those who back the winner share the pool. \
-             If nobody backs it, every stake comes back.",
-            thousands(session.bet)
-        )
+        t!(lang, "derby.lobby-stake", stake = thousands(session.bet))
     } else {
-        "No stakes, just bragging rights (and a few shells if you back the winner).".to_owned()
+        t!(lang, "derby.lobby-free")
     };
     let embed = EmbedBuilder::new()
         .color(BRAND)
-        .title("Hermit Crab Derby")
-        .footer(EmbedFooterBuilder::new("Pick a crab, then watch them go."));
-    let mut data = Cx::card(embed, "derby.png", png, lobby_buttons(session.id), false);
-    data.content = Some(format!(
-        "🦀 {host} opened a **Hermit Crab Derby**! {stake_line}\nThe race starts {}.",
-        relative(session.expires_at)
+        .title(t!(lang, "derby.title"))
+        .footer(EmbedFooterBuilder::new(t!(lang, "derby.lobby-footer")));
+    let mut data = Cx::card(embed, "derby.png", png, lobby_buttons(session.id, lang), false);
+    data.content = Some(t!(
+        lang,
+        "derby.lobby",
+        host = host,
+        stake_line = stake_line,
+        when = relative(session.expires_at)
     ));
     data.allowed_mentions = quiet();
     Ok(data)
 }
 
 /// Six crab buttons in two rows, then the host's Start and everyone's Leave.
-fn lobby_buttons(id: i64) -> Vec<Component> {
+fn lobby_buttons(id: i64, lang: Lang) -> Vec<Component> {
     let crabs: Vec<Component> = ROSTER
         .iter()
         .enumerate()
@@ -200,12 +198,18 @@ fn lobby_buttons(id: i64) -> Vec<Component> {
     rows.push(row(vec![
         button(
             format!("dy:s:{id}"),
-            "Start the race",
+            &t!(lang, "derby.start-button"),
             None,
             ButtonStyle::Success,
             false,
         ),
-        button(format!("dy:l:{id}"), "Leave", None, ButtonStyle::Secondary, false),
+        button(
+            format!("dy:l:{id}"),
+            &t!(lang, "derby.leave-button"),
+            None,
+            ButtonStyle::Secondary,
+            false,
+        ),
     ]));
     rows
 }
@@ -214,16 +218,16 @@ fn lobby_buttons(id: i64) -> Vec<Component> {
 pub(crate) async fn on_button(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Result<()> {
     let action = args.next();
     let Some(id) = args.next().and_then(|v| v.parse::<i64>().ok()) else {
-        return cx.reply_ephemeral("This race has expired.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "derby.expired")).await;
     };
     match action {
         Some("c") => match args.next().and_then(|v| v.parse::<usize>().ok()).filter(|c| *c < CRABS) {
             Some(crab) => on_pick(cx, id, crab).await,
-            None => cx.reply_ephemeral("This button has expired.").await,
+            None => cx.reply_ephemeral(t!(cx.lang(), "arcade.button-expired")).await,
         },
         Some("s") => on_start(cx, id).await,
         Some("l") => on_leave(cx, id).await,
-        _ => cx.reply_ephemeral("This button has expired.").await,
+        _ => cx.reply_ephemeral(t!(cx.lang(), "arcade.button-expired")).await,
     }
 }
 
@@ -232,12 +236,11 @@ async fn open_lobby(cx: &Cx, id: i64) -> anyhow::Result<Option<GameSession>> {
     match cx.app.db.game(id).await?.filter(|s| s.kind == "derby") {
         Some(session) if session.status == PENDING && !session.expired() => Ok(Some(session)),
         Some(session) if session.status == PENDING => {
-            cx.reply_ephemeral("The race is about to start, the gates are closed!")
-                .await?;
+            cx.reply_ephemeral(t!(cx.lang(), "derby.gates-closing")).await?;
             Ok(None)
         }
         _ => {
-            cx.reply_ephemeral("This race is over.").await?;
+            cx.reply_ephemeral(t!(cx.lang(), "derby.over")).await?;
             Ok(None)
         }
     }
@@ -248,6 +251,7 @@ async fn on_pick(cx: &Cx, id: i64, crab: usize) -> anyhow::Result<()> {
         return Ok(());
     };
     let me = cx.author()?.id.get();
+    let lang = cx.lang();
     let joined = cx
         .app
         .db
@@ -263,37 +267,35 @@ async fn on_pick(cx: &Cx, id: i64, crab: usize) -> anyhow::Result<()> {
     match joined {
         DerbyJoin::Joined | DerbyJoin::Moved => {}
         DerbyJoin::Closed => {
-            return cx
-                .reply_ephemeral("The gates just closed, this race is starting!")
-                .await;
+            return cx.reply_ephemeral(t!(lang, "derby.gates-closed")).await;
         }
         DerbyJoin::Full => {
-            return cx
-                .reply_ephemeral(format!("This race is full: {MAX_RACERS} racers is the most."))
-                .await;
+            return cx.reply_ephemeral(t!(lang, "derby.full", max = MAX_RACERS)).await;
         }
         DerbyJoin::Broke { balance } => {
             return cx
-                .reply_ephemeral(format!(
-                    "You only have **{}** shells, but the stake is **{}**. Try `/daily`, or join a race for fun!",
-                    thousands(balance),
-                    thousands(session.bet)
+                .reply_ephemeral(t!(
+                    lang,
+                    "derby.broke",
+                    balance = thousands(balance),
+                    stake = thousands(session.bet)
                 ))
                 .await;
         }
         DerbyJoin::Down { net } => {
             return cx
-                .reply_ephemeral(format!(
-                    "That stake would take you past today's limit of **{}** shells down on staked races \
-                     (you're at {}). Join a race for fun, or come back tomorrow.",
-                    thousands(DAILY_LOSS_LIMIT),
-                    thousands(net)
+                .reply_ephemeral(t!(
+                    lang,
+                    "derby.down",
+                    limit = thousands(DAILY_LOSS_LIMIT),
+                    net = thousands(net)
                 ))
                 .await;
         }
     }
     let racers = cx.app.db.party_members(id).await?;
-    cx.update(lobby_message(&cx.app, &session, &racers).await?).await
+    let table = session_lang(&cx.app, &session).await;
+    cx.update(lobby_message(&cx.app, &session, &racers, table).await?).await
 }
 
 async fn on_leave(cx: &Cx, id: i64) -> anyhow::Result<()> {
@@ -303,13 +305,11 @@ async fn on_leave(cx: &Cx, id: i64) -> anyhow::Result<()> {
     match cx.app.db.derby_leave(id, cx.author()?.id.get()).await? {
         DerbyLeave::Left { .. } => {
             let racers = cx.app.db.party_members(id).await?;
-            cx.update(lobby_message(&cx.app, &session, &racers).await?).await
+            let table = session_lang(&cx.app, &session).await;
+            cx.update(lobby_message(&cx.app, &session, &racers, table).await?).await
         }
-        DerbyLeave::NotIn => cx.reply_ephemeral("You haven't picked a crab in this race.").await,
-        DerbyLeave::Closed => {
-            cx.reply_ephemeral("The gates just closed, this race is starting!")
-                .await
-        }
+        DerbyLeave::NotIn => cx.reply_ephemeral(t!(cx.lang(), "derby.not-in")).await,
+        DerbyLeave::Closed => cx.reply_ephemeral(t!(cx.lang(), "derby.gates-closed")).await,
     }
 }
 
@@ -318,12 +318,14 @@ async fn on_start(cx: &Cx, id: i64) -> anyhow::Result<()> {
         return Ok(());
     };
     let me = cx.author()?.id.get();
+    let lang = cx.lang();
     if session.host_id as u64 != me {
         return cx
-            .reply_ephemeral(format!(
-                "Only {} can start the race early. It starts on its own {}.",
-                mention(session.host_id),
-                relative(session.expires_at)
+            .reply_ephemeral(t!(
+                lang,
+                "derby.host-only",
+                host = mention(session.host_id),
+                when = relative(session.expires_at)
             ))
             .await;
     }
@@ -331,28 +333,31 @@ async fn on_start(cx: &Cx, id: i64) -> anyhow::Result<()> {
     let needed = if session.bet > 0 { MIN_STAKED_RACERS } else { 1 };
     if racers < needed {
         return cx
-            .reply_ephemeral(format!(
-                "Pick a crab first: a race needs at least {needed} racer{} to start, and yours has {racers}. \
-                 It starts on its own {} either way.",
-                if needed == 1 { "" } else { "s" },
-                relative(session.expires_at)
+            .reply_ephemeral(t!(
+                lang,
+                "derby.need-racers",
+                count = needed,
+                racers = racers,
+                when = relative(session.expires_at)
             ))
             .await;
     }
-    match finish(&cx.app, id, Some(me)).await? {
-        Some(done) => cx.update(done.response()).await,
-        None => cx.reply_ephemeral("This race is already running.").await,
+    let table = session_lang(&cx.app, &session).await;
+    match finish(&cx.app, id, Some(me), table).await? {
+        Some(done) => cx.update(done.response(table)).await,
+        None => cx.reply_ephemeral(t!(lang, "derby.already-running")).await,
     }
 }
 
 /// Ends a lobby whose clock ran out: runs the race and edits the lobby's message. False when somebody
 /// else got there first.
 pub(crate) async fn time_out(app: &Arc<App>, session: &GameSession) -> anyhow::Result<bool> {
-    let Some(done) = finish(app, session.id, None).await? else {
+    let lang = session_lang(app, session).await;
+    let Some(done) = finish(app, session.id, None, lang).await? else {
         return Ok(false);
     };
     if let Some(at) = location(session) {
-        done.publish(app, at).await;
+        done.publish(app, at, lang).await;
     }
     Ok(true)
 }
@@ -364,18 +369,18 @@ struct Finished {
     gif: Option<Vec<u8>>,
 }
 
-fn embed() -> EmbedBuilder {
+fn embed(lang: Lang) -> EmbedBuilder {
     EmbedBuilder::new()
         .color(SUCCESS)
-        .title("Hermit Crab Derby")
-        .footer(EmbedFooterBuilder::new("Click the spoiler once the crabs are done."))
+        .title(t!(lang, "derby.title"))
+        .footer(EmbedFooterBuilder::new(t!(lang, "derby.result-footer")))
 }
 
 impl Finished {
-    fn response(self) -> InteractionResponseData {
+    fn response(self, lang: Lang) -> InteractionResponseData {
         match self.gif {
             Some(gif) => {
-                let mut data = Cx::card(embed(), "derby.gif", gif, Vec::new(), false);
+                let mut data = Cx::card(embed(lang), "derby.gif", gif, Vec::new(), false);
                 data.content = Some(self.content);
                 data.allowed_mentions = quiet();
                 data
@@ -390,14 +395,14 @@ impl Finished {
     }
 
     /// Puts the result on the lobby's message with the bot's token.
-    async fn publish(self, app: &App, at: (u64, u64)) {
+    async fn publish(self, app: &App, at: (u64, u64), lang: Lang) {
         match self.gif {
             Some(gif) => {
                 super::party::edit_card(
                     app,
                     at,
                     Some(&self.content),
-                    card_embed(embed(), "derby.gif"),
+                    card_embed(embed(lang), "derby.gif"),
                     ("derby.gif", gif),
                     &[],
                 )
@@ -412,7 +417,7 @@ impl Finished {
 
 /// Runs the race of lobby `id`, pays out and says how it went: the host starting it early (`forced`)
 /// or the clock running out. `None` when the lobby was already ended by someone else.
-async fn finish(app: &Arc<App>, id: i64, forced: Option<u64>) -> anyhow::Result<Option<Finished>> {
+async fn finish(app: &Arc<App>, id: i64, forced: Option<u64>, lang: Lang) -> anyhow::Result<Option<Finished>> {
     let Some(session) = app.db.game(id).await?.filter(|s| s.kind == "derby") else {
         return Ok(None);
     };
@@ -424,17 +429,17 @@ async fn finish(app: &Arc<App>, id: i64, forced: Option<u64>) -> anyhow::Result<
     let host = mention(result.session.host_id);
     if result.outcome == DerbyOutcome::Cancelled {
         let why = if result.racers.is_empty() {
-            "nobody picked a crab".to_owned()
+            t!(lang, "derby.why-nobody")
         } else {
-            format!("a race with shells on it needs at least {MIN_STAKED_RACERS} racers")
+            t!(lang, "derby.why-few", min = MIN_STAKED_RACERS)
         };
         let back = if result.session.bet > 0 && !result.racers.is_empty() {
-            " The stake went back."
+            t!(lang, "derby.stake-back")
         } else {
-            ""
+            String::new()
         };
         return Ok(Some(Finished {
-            content: format!("🦀 {host}'s derby was called off: {why}.{back}"),
+            content: t!(lang, "derby.called-off", host = host, why = why, back = back),
             gif: None,
         }));
     }
@@ -462,13 +467,14 @@ async fn finish(app: &Arc<App>, id: i64, forced: Option<u64>) -> anyhow::Result<
             rewards.push((*user, paid));
         }
     }
-    let content = results_text(&host, &race, &result, &rewards, &winners);
+    let content = results_text(&host, &race, &result, &rewards, &winners, lang);
 
     // The race is over and paid whatever happens to the picture: without one the text still tells it.
     let art = crab_art(app)?;
     let gif = app
         .render(move |_| {
             derby_gif(&DerbyScene {
+                lang,
                 crabs: &art.sprites,
                 accents: std::array::from_fn(|n| ROSTER[n].accent),
                 names: std::array::from_fn(|n| ROSTER[n].name),
@@ -484,7 +490,14 @@ async fn finish(app: &Arc<App>, id: i64, forced: Option<u64>) -> anyhow::Result<
 }
 
 /// The line under the GIF: placings and who got what, hidden in spoilers so the crabs finish first.
-fn results_text(host: &str, race: &Race, result: &DerbyResult, rewards: &[(u64, i64)], winners: &[u64]) -> String {
+fn results_text(
+    host: &str,
+    race: &Race,
+    result: &DerbyResult,
+    rewards: &[(u64, i64)],
+    winners: &[u64],
+    lang: Lang,
+) -> String {
     let medals = ["🥇", "🥈", "🥉"];
     let placings: Vec<String> = race
         .order
@@ -504,31 +517,33 @@ fn results_text(host: &str, race: &Race, result: &DerbyResult, rewards: &[(u64, 
         let shown = users.iter().take(12).cloned().collect::<Vec<_>>().join(" · ");
         match users.len().saturating_sub(12) {
             0 => shown,
-            more => format!("{shown} and {more} more"),
+            more => t!(lang, "derby.and-more", shown = shown, more = more),
         }
     };
     let backers = match &result.outcome {
         DerbyOutcome::Paid(paid) => {
             let pool: i64 = result.racers.iter().map(|r| r.amount).sum();
-            format!(
-                "💰 The backers of **{}** share the pool of **{}** shells: {}",
-                winner.name,
-                thousands(pool),
-                list(
+            t!(
+                lang,
+                "derby.paid",
+                crab = winner.name,
+                pool = thousands(pool),
+                list = list(
                     paid.iter()
                         .map(|(u, s)| format!("{} +{}", mention(u), thousands(*s)))
                         .collect()
                 )
             )
         }
-        DerbyOutcome::Refunded => format!("Nobody backed **{}**, so every stake went back.", winner.name),
-        DerbyOutcome::Friendly(_) if winners.is_empty() => format!("Nobody backed **{}**.", winner.name),
+        DerbyOutcome::Refunded => t!(lang, "derby.refunded", crab = winner.name),
+        DerbyOutcome::Friendly(_) if winners.is_empty() => t!(lang, "derby.nobody-friendly", crab = winner.name),
         DerbyOutcome::Friendly(_) => {
             let paid = |user: &u64| rewards.iter().find(|(u, _)| u == user).map_or(0, |(_, s)| *s);
-            format!(
-                "🎉 Backed **{}**: {}",
-                winner.name,
-                list(
+            t!(
+                lang,
+                "derby.friendly",
+                crab = winner.name,
+                list = list(
                     winners
                         .iter()
                         .map(|u| match paid(u) {
@@ -541,9 +556,12 @@ fn results_text(host: &str, race: &Race, result: &DerbyResult, rewards: &[(u64, 
         }
         DerbyOutcome::Cancelled => String::new(),
     };
-    format!(
-        "🏁 {host}'s **Hermit Crab Derby**, and they're off!\n||{}\n{backers}||",
-        placings.join(" · ")
+    t!(
+        lang,
+        "derby.result",
+        host = host,
+        placings = placings.join(" · "),
+        backers = backers
     )
 }
 
@@ -576,7 +594,7 @@ mod tests {
 
     #[test]
     fn the_buttons_fit_discord_and_name_every_crab() {
-        let rows = lobby_buttons(77);
+        let rows = lobby_buttons(77, Lang::En);
         assert_eq!(rows.len(), 3, "two rows of crabs and the controls");
         let ids: Vec<String> = rows
             .iter()
@@ -617,7 +635,7 @@ mod tests {
             winner: race.winner() as i16,
             outcome: DerbyOutcome::Paid(vec![(10, 80)]),
         };
-        let text = results_text("<@3>", &race, &result, &[], &[10]);
+        let text = results_text("<@3>", &race, &result, &[], &[10], Lang::En);
         let winner = ROSTER[race.winner()].name;
         assert!(text.contains(&format!("**{winner}**")) && text.contains("||") && text.contains("<@10> +80"));
         assert!(text.contains("pool of **80** shells"));

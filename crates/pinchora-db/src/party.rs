@@ -1038,8 +1038,12 @@ impl Db {
         if game.expired() {
             return Ok(ShellPick::Gone);
         }
+        // The state is the pearl's shell, then the table's language after a `|`.
         let pearl: u8 = game
             .state
+            .split('|')
+            .next()
+            .unwrap_or_default()
             .parse()
             .map_err(|_| anyhow::anyhow!("bad shell game state {:?}", game.state))?;
         let paid = if pick == pearl { payout(game.bet) } else { 0 };

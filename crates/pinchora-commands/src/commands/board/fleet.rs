@@ -6,6 +6,7 @@
 use std::str::Split;
 
 use chrono::{DateTime, Duration, Utc};
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::GameSession;
 use pinchora_game::play::{
     Game as Play,
@@ -125,10 +126,27 @@ pub(crate) fn slow_players(session: &GameSession) -> Vec<u64> {
     }
 }
 
+/// Why a game ended.
+enum How {
+    /// Every ship of the loser went down.
+    Sunk,
+    /// This player (0 host, 1 guest) gave up.
+    Resigned(usize),
+}
+
+impl How {
+    fn text(&self, lang: Lang, names: &[String; 2]) -> String {
+        match self {
+            Self::Sunk => t!(lang, "seafleet.how-sunk"),
+            Self::Resigned(loser) => t!(lang, "board.how-resigned", name = tag(&names[*loser])),
+        }
+    }
+}
+
 /// How a game ended: the winner (0 host, 1 guest) and how.
 struct End {
     winner: usize,
-    how: String,
+    how: How,
 }
 
 fn ship_views(fleet: &Fleet, sea: &Sea) -> Vec<ShipView> {
@@ -163,9 +181,10 @@ fn radar_ships(state: &State) -> [Vec<ShipView>; 2] {
     })
 }
 
-/// The public message: both radars, whose turn it is and the menus to fire (or the button to place a fleet).
+/// The public message in `lang`: both radars, whose turn it is and the menus to fire (or the button to place a fleet).
 async fn public(
     app: &App,
+    lang: Lang,
     session: &GameSession,
     names: &[String; 2],
     state: &State,
@@ -188,34 +207,57 @@ async fn public(
     });
     let turn = (state.battle && end.is_none()).then_some(state.turn as u8);
     let status = match end {
-        Some(end) => format!("{} wins by {}", tag(&names[end.winner]), end.how),
-        None if state.battle => format!("{} to fire", tag(&names[state.turn])),
+        Some(end) => t!(
+            lang,
+            "board.status-won",
+            name = tag(&names[end.winner]),
+            how = end.how.text(lang, names)
+        ),
+        None if state.battle => t!(lang, "seafleet.status-fire", name = tag(&names[state.turn])),
         None => {
-            let ready = |i: usize| if state.fleets[i].is_some() { "ready" } else { "placing" };
-            format!(
-                "Fleets: {} {}, {} {}",
-                tag(&names[0]),
-                ready(0),
-                tag(&names[1]),
-                ready(1)
+            let ready = |i: usize| {
+                if state.fleets[i].is_some() {
+                    t!(lang, "seafleet.ready")
+                } else {
+                    t!(lang, "seafleet.placing")
+                }
+            };
+            t!(
+                lang,
+                "seafleet.status-placing",
+                first = tag(&names[0]),
+                first_state = ready(0),
+                second = tag(&names[1]),
+                second_state = ready(1)
             )
         }
     };
+    // The card draws it in capitals.
+    let status = lang.upper(&status);
     let content = match end {
-        Some(end) => format!("🏆 {} wins by {}! {note}", mention(ids[end.winner]), end.how),
-        None if state.battle => format!(
-            "🚢 {} vs {}\n{} fires, {}{note}",
-            mention(ids[0]),
-            mention(ids[1]),
-            mention(ids[state.turn]),
-            relative(deadline)
+        Some(end) => t!(
+            lang,
+            "board.won",
+            winner = mention(ids[end.winner]),
+            how = end.how.text(lang, names),
+            note = note
         ),
-        None => format!(
-            "🚢 {} vs {}\nBoth captains: **place your fleet** in private, {}.\n{}",
-            mention(ids[0]),
-            mention(ids[1]),
-            relative(deadline),
-            note
+        None if state.battle => t!(
+            lang,
+            "seafleet.turn",
+            host = mention(ids[0]),
+            guest = mention(ids[1]),
+            fires = mention(ids[state.turn]),
+            when = relative(deadline),
+            note = note
+        ),
+        None => t!(
+            lang,
+            "seafleet.placing-turn",
+            host = mention(ids[0]),
+            guest = mention(ids[1]),
+            when = relative(deadline),
+            note = note
         ),
     };
     let pot = if session.bet > 0 { session.bet * 2 } else { 0 };
@@ -232,6 +274,7 @@ async fn public(
                 afloat: afloat[side],
             };
             r.radar_card(&RadarCard {
+                lang,
                 seas: [view(0, ships0), view(1, ships1)],
                 turn,
                 winner,
@@ -244,35 +287,37 @@ async fn public(
         .await?
     };
     let mut description = if state.battle {
-        format!("Shots fired: {}", state.shots)
+        t!(lang, "seafleet.shots", n = state.shots)
     } else {
-        "Each captain places five ships in private: a preset or a random layout, then **Lock in**.".to_owned()
+        t!(lang, "seafleet.intro")
     };
     if pot > 0 {
-        description.push_str(&format!(
-            "\nPot: **{}** shells ({} each)",
-            thousands(pot),
-            thousands(session.bet)
+        description.push('\n');
+        description.push_str(&t!(
+            lang,
+            "duel.pot-line",
+            pot = thousands(pot),
+            bet = thousands(session.bet)
         ));
     }
     let embed = EmbedBuilder::new()
         .color(if end.is_some() { SUCCESS } else { BRAND })
-        .title("Sea Fleet")
+        .title(Play::SeaFleet.name(lang))
         .description(description);
     let components = match end {
         Some(_) => Vec::new(),
-        None if state.battle => battle_menus(session.id, state, aim),
+        None if state.battle => battle_menus(lang, session.id, state, aim),
         None => vec![
             Component::ActionRow(ActionRow {
                 id: None,
                 components: vec![button(
                     format!("bs:o:{}", session.id),
-                    "Place my fleet",
+                    &t!(lang, "seafleet.place"),
                     ButtonStyle::Primary,
                     false,
                 )],
             }),
-            resign_button("bs", session.id),
+            resign_button(lang, "bs", session.id),
         ],
     };
     let mut data = Cx::card(embed, "seafleet.png", png, components, false);
@@ -282,14 +327,14 @@ async fn public(
 }
 
 /// The menus to fire: a column, then (once picked) a row, and the buttons under them.
-fn battle_menus(id: i64, state: &State, aim: Option<usize>) -> Vec<Component> {
+fn battle_menus(lang: Lang, id: i64, state: &State, aim: Option<usize>) -> Vec<Component> {
     let sea = &state.seas[1 - state.turn];
     let open = |col: usize, row: usize| sea.shot(row * SIZE + col).is_none();
     let columns = (0..SIZE)
         .filter(|&col| (0..SIZE).any(|row| open(col, row)))
         .map(|col| {
             option(
-                format!("Column {}", char::from(b'A' + col as u8)),
+                t!(lang, "seafleet.column", letter = char::from(b'A' + col as u8)),
                 col.to_string(),
                 None,
                 aim == Some(col),
@@ -298,7 +343,7 @@ fn battle_menus(id: i64, state: &State, aim: Option<usize>) -> Vec<Component> {
         .collect();
     let mut rows = vec![select_row(
         format!("bs:a:{id}:{}", state.shots),
-        "Fire: pick a column (A-J)",
+        &t!(lang, "seafleet.pick-column"),
         columns,
         (1, 1),
     )];
@@ -309,7 +354,7 @@ fn battle_menus(id: i64, state: &State, aim: Option<usize>) -> Vec<Component> {
             .collect();
         rows.push(select_row(
             format!("bs:f:{id}:{}:{col}", state.shots),
-            &format!("Column {}: pick the row to hit", char::from(b'A' + col as u8)),
+            &t!(lang, "seafleet.pick-row", letter = char::from(b'A' + col as u8)),
             options,
             (1, 1),
         ));
@@ -317,8 +362,18 @@ fn battle_menus(id: i64, state: &State, aim: Option<usize>) -> Vec<Component> {
     rows.push(Component::ActionRow(ActionRow {
         id: None,
         components: vec![
-            button(format!("bs:m:{id}"), "My fleet", ButtonStyle::Secondary, false),
-            button(format!("bs:q:{id}"), "Resign", ButtonStyle::Danger, false),
+            button(
+                format!("bs:m:{id}"),
+                &t!(lang, "seafleet.my-fleet"),
+                ButtonStyle::Secondary,
+                false,
+            ),
+            button(
+                format!("bs:q:{id}"),
+                &t!(lang, "board.resign"),
+                ButtonStyle::Danger,
+                false,
+            ),
         ],
     }));
     rows
@@ -328,8 +383,11 @@ fn battle_menus(id: i64, state: &State, aim: Option<usize>) -> Vec<Component> {
 pub(crate) async fn begin(cx: &Cx, session: &GameSession) -> anyhow::Result<()> {
     let (fields, names) = unpack(&session.state);
     let state = State::decode(fields).ok_or_else(|| anyhow::anyhow!("bad sea fleet state {fields:?}"))?;
+    // The radar is public: the server's language, whoever clicked Accept.
+    let lang = cx.app.guild_lang(session.guild_id as u64).await;
     let data = public(
         &cx.app,
+        lang,
         session,
         &names,
         &state,
@@ -350,7 +408,7 @@ pub(crate) async fn begin(cx: &Cx, session: &GameSession) -> anyhow::Result<()> 
 pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[String]) -> anyhow::Result<()> {
     let action = args.next();
     let Some(id) = args.next().and_then(|v| v.parse::<i64>().ok()) else {
-        return cx.reply_ephemeral("This game has expired.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "duel.game-expired")).await;
     };
     let mut number = || args.next().and_then(|v| v.parse::<usize>().ok());
     let value = values.first().and_then(|v| v.parse::<usize>().ok());
@@ -365,17 +423,17 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[S
         Some("v") => on_shuffle(cx, id).await,
         Some("l") => match number() {
             Some(rev) => on_lock(cx, id, rev as i64).await,
-            None => cx.reply_ephemeral("This button has expired.").await,
+            None => cx.reply_ephemeral(t!(cx.lang(), "duel.button-expired")).await,
         },
         Some("a") => match (number(), value) {
             (Some(shots), Some(col)) => on_aim(cx, id, shots, col).await,
-            _ => cx.reply_ephemeral("This menu has expired.").await,
+            _ => cx.reply_ephemeral(t!(cx.lang(), "duel.menu-expired")).await,
         },
         Some("f") => match (number(), number(), value) {
             (Some(shots), Some(col), Some(row)) => on_fire(cx, id, shots, col, row).await,
-            _ => cx.reply_ephemeral("This menu has expired.").await,
+            _ => cx.reply_ephemeral(t!(cx.lang(), "duel.menu-expired")).await,
         },
-        _ => cx.reply_ephemeral("This button has expired.").await,
+        _ => cx.reply_ephemeral(t!(cx.lang(), "duel.button-expired")).await,
     }
 }
 
@@ -390,11 +448,11 @@ async fn running(cx: &Cx, id: i64) -> anyhow::Result<Option<(GameSession, [Strin
         .await?
         .filter(|s| s.is_active() && s.kind == DuelKind::SeaFleet.key())
     else {
-        cx.reply_ephemeral("This game is over.").await?;
+        cx.reply_ephemeral(t!(cx.lang(), "duel.game-over")).await?;
         return Ok(None);
     };
     if !session.has_player(me) {
-        cx.reply_ephemeral("You're not in this game. Challenge someone with `/duel seafleet`!")
+        cx.reply_ephemeral(t!(cx.lang(), "duel.not-in-game", command = "seafleet"))
             .await?;
         return Ok(None);
     }
@@ -416,14 +474,28 @@ fn random_fleet() -> Fleet {
 
 /// The private placement message for a captain's layout, with the buttons to draw another or lock it in.
 /// The buttons carry the revision of the layout and nothing else of it.
-async fn placement(app: &App, id: i64, name: &str, fleet: &Fleet, rev: i64) -> anyhow::Result<InteractionResponseData> {
+async fn placement(
+    app: &App,
+    lang: Lang,
+    id: i64,
+    name: &str,
+    fleet: &Fleet,
+    rev: i64,
+) -> anyhow::Result<InteractionResponseData> {
     let sea = Sea::new();
     let shots = sea.encode();
     let ships = ship_views(fleet, &sea);
-    let (title, subtitle, name) = ("Place your fleet".to_owned(), format!("Layout {rev}"), name.to_owned());
+    // The card draws its title, subtitle and footer in capitals.
+    let (title, subtitle, name) = (
+        lang.upper(&t!(lang, "seafleet.place-title")),
+        lang.upper(&t!(lang, "seafleet.layout", rev = rev)),
+        name.to_owned(),
+    );
+    let footer = lang.upper(&t!(lang, "seafleet.place-footer"));
     let png = app
         .render(move |r| {
             r.fleet_card(&FleetCard {
+                lang,
                 title: &title,
                 subtitle: &subtitle,
                 sea: SeaView {
@@ -433,7 +505,7 @@ async fn placement(app: &App, id: i64, name: &str, fleet: &Fleet, rev: i64) -> a
                     afloat: SHIPS.len(),
                 },
                 sunk: [false; 5],
-                footer: "Shuffle for another layout, then lock it in",
+                footer: &footer,
                 last: None,
                 theme: Theme::reef(),
             })
@@ -442,20 +514,31 @@ async fn placement(app: &App, id: i64, name: &str, fleet: &Fleet, rev: i64) -> a
     let rows = vec![Component::ActionRow(ActionRow {
         id: None,
         components: vec![
-            button(format!("bs:v:{id}:{rev}"), "Shuffle", ButtonStyle::Secondary, false),
-            button(format!("bs:l:{id}:{rev}"), "Lock in fleet", ButtonStyle::Success, false),
+            button(
+                format!("bs:v:{id}:{rev}"),
+                &t!(lang, "seafleet.shuffle"),
+                ButtonStyle::Secondary,
+                false,
+            ),
+            button(
+                format!("bs:l:{id}:{rev}"),
+                &t!(lang, "seafleet.lock"),
+                ButtonStyle::Success,
+                false,
+            ),
         ],
     })];
     let embed = EmbedBuilder::new()
         .color(BRAND)
-        .title("Place your fleet")
-        .description("Only you can see this. **Shuffle** for another random layout, then **Lock in fleet**.");
+        .title(t!(lang, "seafleet.place-title"))
+        .description(t!(lang, "seafleet.place-desc"));
     Ok(Cx::card(embed, "fleet.png", png, rows, true))
 }
 
 /// Draws a new layout for a captain and shows it.
 async fn draw(
     app: &App,
+    lang: Lang,
     session: &GameSession,
     names: &[String; 2],
     me: usize,
@@ -465,7 +548,7 @@ async fn draw(
         .db
         .set_fleet_draft(session.id, players(session)[me], &fleet.encode())
         .await?;
-    placement(app, session.id, &names[me], &fleet, rev).await
+    placement(app, lang, session.id, &names[me], &fleet, rev).await
 }
 
 /// `bs:o:<id>`: a captain opens their private placement.
@@ -474,16 +557,14 @@ async fn on_open(cx: &Cx, id: i64) -> anyhow::Result<()> {
         return Ok(());
     };
     if state.battle {
-        return cx
-            .reply_ephemeral("The battle has begun. Use **My fleet** to see your waters.")
-            .await;
+        return cx.reply_ephemeral(t!(cx.lang(), "seafleet.battle-begun")).await;
     }
     if state.fleets[me].is_some() {
         return cx
-            .reply_ephemeral(format!("Your fleet is locked in. Waiting for **{}**.", names[1 - me]))
+            .reply_ephemeral(t!(cx.lang(), "seafleet.locked-waiting", name = names[1 - me]))
             .await;
     }
-    let data = draw(&cx.app, &session, &names, me).await?;
+    let data = draw(&cx.app, cx.lang(), &session, &names, me).await?;
     cx.reply(data).await
 }
 
@@ -493,14 +574,20 @@ async fn on_shuffle(cx: &Cx, id: i64) -> anyhow::Result<()> {
         return Ok(());
     };
     if state.battle || state.fleets[me].is_some() {
-        return cx.update(locked(&cx.app, &state, &names, me).await?).await;
+        return cx.update(locked(&cx.app, cx.lang(), &state, &names, me).await?).await;
     }
-    let data = draw(&cx.app, &session, &names, me).await?;
+    let data = draw(&cx.app, cx.lang(), &session, &names, me).await?;
     cx.update(data).await
 }
 
 /// The private view of a captain's own fleet and the shots at it, without buttons.
-async fn locked(app: &App, state: &State, names: &[String; 2], me: usize) -> anyhow::Result<InteractionResponseData> {
+async fn locked(
+    app: &App,
+    lang: Lang,
+    state: &State,
+    names: &[String; 2],
+    me: usize,
+) -> anyhow::Result<InteractionResponseData> {
     let Some(fleet) = &state.fleets[me] else {
         anyhow::bail!("no fleet to show");
     };
@@ -510,16 +597,20 @@ async fn locked(app: &App, state: &State, names: &[String; 2], me: usize) -> any
     let sunk: [bool; 5] = std::array::from_fn(|i| sea.is_sunk(fleet, i));
     let afloat = sea.afloat(fleet).len();
     let (name, last) = (names[me].clone(), state.last.filter(|(s, _)| *s == me).map(|(_, c)| c));
-    let footer = if state.battle {
-        "Only you can see this".to_owned()
+    // The card draws its title, subtitle and footer in capitals.
+    let footer = lang.upper(&if state.battle {
+        t!(lang, "seafleet.only-you")
     } else {
-        format!("Locked in. Waiting for {}", names[1 - me])
-    };
+        t!(lang, "seafleet.locked-footer", name = names[1 - me])
+    });
+    let title = lang.upper(&t!(lang, "seafleet.your-fleet"));
+    let subtitle = lang.upper(&t!(lang, "seafleet.afloat", afloat = afloat));
     let png = app
         .render(move |r| {
             r.fleet_card(&FleetCard {
-                title: "Your fleet",
-                subtitle: &format!("{afloat} of 5 ships afloat"),
+                lang,
+                title: &title,
+                subtitle: &subtitle,
                 sea: SeaView {
                     name: &name,
                     shots: &shots,
@@ -535,8 +626,8 @@ async fn locked(app: &App, state: &State, names: &[String; 2], me: usize) -> any
         .await?;
     let embed = EmbedBuilder::new()
         .color(BRAND)
-        .title("Your fleet")
-        .description("Only you can see this. **Refresh** after the other captain fires.");
+        .title(t!(lang, "seafleet.your-fleet"))
+        .description(t!(lang, "seafleet.your-fleet-desc"));
     Ok(Cx::card(embed, "fleet.png", png, Vec::new(), true))
 }
 
@@ -545,8 +636,9 @@ async fn on_lock(cx: &Cx, id: i64, rev: i64) -> anyhow::Result<()> {
     let Some((session, names, state, me)) = running(cx, id).await? else {
         return Ok(());
     };
+    let lang = cx.lang();
     if state.battle || state.fleets[me].is_some() {
-        return cx.update(locked(&cx.app, &state, &names, me).await?).await;
+        return cx.update(locked(&cx.app, lang, &state, &names, me).await?).await;
     }
     let user = players(&session)[me];
     // The layout is taken out of the drafts first, so a double click locks in once.
@@ -555,23 +647,22 @@ async fn on_lock(cx: &Cx, id: i64, rev: i64) -> anyhow::Result<()> {
             // The click came from an older placement message: show the layout the captain has now.
             Some((layout, current)) => {
                 let fleet = Fleet::decode(&layout).ok_or_else(|| anyhow::anyhow!("bad fleet draft {layout:?}"))?;
-                cx.update(placement(&cx.app, id, &names[me], &fleet, current).await?)
+                cx.update(placement(&cx.app, lang, id, &names[me], &fleet, current).await?)
                     .await
             }
-            None => {
-                cx.reply_ephemeral("That layout is gone. Press **Place my fleet** again.")
-                    .await
-            }
+            None => cx.reply_ephemeral(t!(lang, "seafleet.layout-gone")).await,
         };
     };
     let fleet = Fleet::decode(&layout).ok_or_else(|| anyhow::anyhow!("bad fleet draft {layout:?}"))?;
+    // The public board is edited with the bot's token, for everyone: the server's language.
+    let board_lang = cx.app.guild_lang(session.guild_id as u64).await;
     // Both captains can lock in at once; the one that loses the race for the state tries again.
     for _ in 0..4 {
         let Some((session, names, mut state, me)) = running(cx, id).await? else {
             return Ok(());
         };
         if state.battle || state.fleets[me].is_some() {
-            return cx.update(locked(&cx.app, &state, &names, me).await?).await;
+            return cx.update(locked(&cx.app, lang, &state, &names, me).await?).await;
         }
         state.fleets[me] = Some(fleet.clone());
         let both = state.fleets.iter().all(Option::is_some);
@@ -580,9 +671,10 @@ async fn on_lock(cx: &Cx, id: i64, rev: i64) -> anyhow::Result<()> {
             state.turn = rand::random_range(0..2);
             (
                 FLEET_TURN_SECS,
-                format!(
-                    "\n⚓ Fleets are out! {} fires first.",
-                    mention(players(&session)[state.turn])
+                t!(
+                    board_lang,
+                    "seafleet.fleets-out",
+                    first = mention(players(&session)[state.turn])
                 ),
             )
         } else {
@@ -596,6 +688,7 @@ async fn on_lock(cx: &Cx, id: i64, rev: i64) -> anyhow::Result<()> {
         let deadline = Utc::now() + Duration::seconds(ttl);
         let data = public(
             &cx.app,
+            board_lang,
             &session,
             &names,
             &state,
@@ -609,13 +702,12 @@ async fn on_lock(cx: &Cx, id: i64, rev: i64) -> anyhow::Result<()> {
         if let Some((channel, message)) = location(&session) {
             edit_card(&cx.app, channel, message, &data).await;
         }
-        let mine = locked(&cx.app, &state, &names, me).await?;
+        let mine = locked(&cx.app, lang, &state, &names, me).await?;
         return cx.update(mine).await;
     }
     // Give the layout back, so the captain can try again.
     cx.app.db.set_fleet_draft(id, user, &layout).await?;
-    cx.reply_ephemeral("The game moved on while you locked in. Press **Place my fleet** again.")
-        .await
+    cx.reply_ephemeral(t!(lang, "seafleet.lock-moved")).await
 }
 
 /// `bs:m:<id>` (a new private message) and `bs:r:<id>` (refresh it): a captain looks at their own waters.
@@ -623,15 +715,19 @@ async fn on_fleet(cx: &Cx, id: i64, refresh: bool) -> anyhow::Result<()> {
     let Some((_, names, state, me)) = running(cx, id).await? else {
         return Ok(());
     };
+    let lang = cx.lang();
     if state.fleets[me].is_none() {
-        return cx
-            .reply_ephemeral("You haven't placed your fleet yet. Press **Place my fleet**.")
-            .await;
+        return cx.reply_ephemeral(t!(lang, "seafleet.not-placed")).await;
     }
-    let mut data = locked(&cx.app, &state, &names, me).await?;
+    let mut data = locked(&cx.app, lang, &state, &names, me).await?;
     data.components = Some(vec![Component::ActionRow(ActionRow {
         id: None,
-        components: vec![button(format!("bs:r:{id}"), "Refresh", ButtonStyle::Secondary, false)],
+        components: vec![button(
+            format!("bs:r:{id}"),
+            &t!(lang, "seafleet.refresh"),
+            ButtonStyle::Secondary,
+            false,
+        )],
     })]);
     if refresh {
         cx.update(data).await
@@ -647,13 +743,14 @@ async fn firing(cx: &Cx, id: i64, shots: usize) -> anyhow::Result<Option<(GameSe
         return Ok(None);
     };
     if !state.battle {
-        cx.reply_ephemeral("The battle hasn't begun yet. Both captains still have to lock in their fleets.")
-            .await?;
+        cx.reply_ephemeral(t!(cx.lang(), "seafleet.not-begun")).await?;
         return Ok(None);
     }
     if state.shots != shots {
+        // The stale radar is refreshed in place for everyone: the server's language.
         let data = public(
             &cx.app,
+            cx.app.guild_lang(session.guild_id as u64).await,
             &session,
             &names,
             &state,
@@ -667,7 +764,7 @@ async fn firing(cx: &Cx, id: i64, shots: usize) -> anyhow::Result<Option<(GameSe
         return Ok(None);
     }
     if state.turn != me {
-        cx.reply_ephemeral("Not your turn yet.").await?;
+        cx.reply_ephemeral(t!(cx.lang(), "duel.not-your-turn")).await?;
         return Ok(None);
     }
     Ok(Some((session, names, state, me)))
@@ -679,18 +776,20 @@ async fn on_aim(cx: &Cx, id: i64, shots: usize, col: usize) -> anyhow::Result<()
         return Ok(());
     };
     if col >= SIZE {
-        return cx.reply_ephemeral("This menu has expired.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "duel.menu-expired")).await;
     }
-    // Only the menus change, so the picture stays as it is.
+    // Only the menus change, so the picture stays as it is; the message is public: the server's language.
+    let board_lang = cx.app.guild_lang(session.guild_id as u64).await;
     cx.update(InteractionResponseData {
-        components: Some(battle_menus(session.id, &state, Some(col))),
-        content: Some(format!(
-            "🚢 {} vs {}\n{} fires, {}\nColumn **{}** picked: now pick the row.",
-            mention(players(&session)[0]),
-            mention(players(&session)[1]),
-            mention(players(&session)[state.turn]),
-            relative(session.expires_at),
-            char::from(b'A' + col as u8)
+        components: Some(battle_menus(board_lang, session.id, &state, Some(col))),
+        content: Some(t!(
+            board_lang,
+            "seafleet.aimed",
+            host = mention(players(&session)[0]),
+            guest = mention(players(&session)[1]),
+            fires = mention(players(&session)[state.turn]),
+            when = relative(session.expires_at),
+            letter = char::from(b'A' + col as u8)
         )),
         allowed_mentions: quiet(),
         ..Default::default()
@@ -703,8 +802,11 @@ async fn on_fire(cx: &Cx, id: i64, shots: usize, col: usize, row: usize) -> anyh
     let Some((session, names, mut state, me)) = firing(cx, id, shots).await? else {
         return Ok(());
     };
+    // `lang` is for what only the clicker sees; the radar and its note stay in the server's language.
+    let lang = cx.lang();
+    let board_lang = cx.app.guild_lang(session.guild_id as u64).await;
     if col >= SIZE || row >= SIZE {
-        return cx.reply_ephemeral("This menu has expired.").await;
+        return cx.reply_ephemeral(t!(lang, "duel.menu-expired")).await;
     }
     let target = 1 - me;
     let cell = row * SIZE + col;
@@ -713,15 +815,20 @@ async fn on_fire(cx: &Cx, id: i64, shots: usize, col: usize, row: usize) -> anyh
     };
     let fired = state.seas[target].fire(&fleet, cell);
     if fired == Fired::Again {
-        return cx.reply_ephemeral("You already fired there. Pick another cell.").await;
+        return cx.reply_ephemeral(t!(lang, "seafleet.again")).await;
     }
     state.shots += 1;
     state.last = Some((target, cell));
     let name = rules::cell_name(cell);
     let note = match fired {
-        Fired::Miss => format!("\n💦 {name}: a miss."),
-        Fired::Hit => format!("\n💥 {name}: a hit!"),
-        Fired::Sunk(ship) => format!("\n💥 {name}: **sunk the {}!**", SHIPS[ship].0),
+        Fired::Miss => t!(board_lang, "seafleet.miss", cell = name),
+        Fired::Hit => t!(board_lang, "seafleet.hit", cell = name),
+        Fired::Sunk(ship) => t!(
+            board_lang,
+            "seafleet.sunk",
+            cell = name,
+            ship = rules::ship_name(board_lang, ship)
+        ),
         Fired::Again => String::new(),
     };
     let ids = players(&session);
@@ -729,14 +836,24 @@ async fn on_fire(cx: &Cx, id: i64, shots: usize, col: usize, row: usize) -> anyh
         let packed = pack(&state.encode(), [&names[0], &names[1]]);
         let end = End {
             winner: me,
-            how: "sinking the whole fleet".to_owned(),
+            how: How::Sunk,
         };
-        let Some(reward) = conclude(&cx.app, &session, &packed, Play::SeaFleet, Some(ids[me]), state.shots).await?
+        let Some(reward) = conclude(
+            &cx.app,
+            board_lang,
+            &session,
+            &packed,
+            Play::SeaFleet,
+            Some(ids[me]),
+            state.shots,
+        )
+        .await?
         else {
-            return cx.reply_ephemeral("The battle moved on under you. Look again.").await;
+            return cx.reply_ephemeral(t!(lang, "seafleet.moved")).await;
         };
         let data = public(
             &cx.app,
+            board_lang,
             &session,
             &names,
             &state,
@@ -758,13 +875,12 @@ async fn on_fire(cx: &Cx, id: i64, shots: usize, col: usize, row: usize) -> anyh
         .advance_game(id, &session.state, &packed, FLEET_TURN_SECS)
         .await?
     {
-        return cx
-            .reply_ephemeral("The battle moved on under you. Look again and pick a column.")
-            .await;
+        return cx.reply_ephemeral(t!(lang, "seafleet.moved-pick")).await;
     }
     let deadline = Utc::now() + Duration::seconds(FLEET_TURN_SECS);
     let data = public(
         &cx.app,
+        board_lang,
         &session,
         &names,
         &state,
@@ -784,8 +900,11 @@ async fn on_resign(cx: &Cx, id: i64) -> anyhow::Result<()> {
         return Ok(());
     };
     let ids = players(&session);
+    // The public radar is edited with the bot's token, for everyone: the server's language.
+    let board_lang = cx.app.guild_lang(session.guild_id as u64).await;
     let Some(note) = conclude(
         &cx.app,
+        board_lang,
         &session,
         &session.state,
         Play::SeaFleet,
@@ -794,14 +913,15 @@ async fn on_resign(cx: &Cx, id: i64) -> anyhow::Result<()> {
     )
     .await?
     else {
-        return resigned(cx, "The game was over before you could resign.").await;
+        return resigned(cx, &t!(cx.lang(), "board.too-late")).await;
     };
     let end = End {
         winner: 1 - me,
-        how: format!("resignation ({} gave up)", tag(&names[me])),
+        how: How::Resigned(me),
     };
     let data = public(
         &cx.app,
+        board_lang,
         &session,
         &names,
         &state,
@@ -816,7 +936,7 @@ async fn on_resign(cx: &Cx, id: i64) -> anyhow::Result<()> {
     if let Some((channel, message)) = location(&session) {
         edit_card(&cx.app, channel, message, &data).await;
     }
-    resigned(cx, "You resigned.").await
+    resigned(cx, &t!(cx.lang(), "board.resigned")).await
 }
 
 #[cfg(test)]

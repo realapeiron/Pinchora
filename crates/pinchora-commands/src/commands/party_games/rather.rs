@@ -3,6 +3,7 @@
 
 use std::{str::Split, sync::Arc, time::Duration};
 
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{Commit, NewParty, PartyGame, PollChoice};
 use pinchora_game::{
     party::{
@@ -16,10 +17,10 @@ use serde::{Deserialize, Serialize};
 use twilight_model::channel::message::component::ButtonStyle;
 use twilight_util::builder::embed::EmbedBuilder;
 
-use super::{after, card, edit_card, remember, row, theme, track_message};
+use super::{after, card, edit_card, game_lang, remember, row, theme, track_message};
 use crate::{
     App, Cx,
-    commands::games::{button, channel_of, pay_win, record},
+    commands::games::{button, channel_lang, channel_of, pay_win, record},
     util::{BRAND, SUCCESS, relative},
 };
 
@@ -30,6 +31,9 @@ const COOLDOWN_SECS: u64 = 20;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 struct State {
+    /// The language the poll is shown in: the question is from its pool.
+    #[serde(default)]
+    lang: Lang,
     /// The question's id in `content/party.json`.
     q: String,
 }
@@ -53,13 +57,12 @@ pub(crate) async fn open(cx: &Cx, topic: Option<Category>) -> anyhow::Result<()>
         .await?
     {
         return cx
-            .reply_ephemeral(format!(
-                "A question was just posted in this channel. The next one can go up in {} s.",
-                left.as_secs() + 1
-            ))
+            .reply_ephemeral(t!(cx.lang(), "rather.cooldown", secs = left.as_secs() + 1))
             .await;
     }
-    let pool = PartyContent::for_lang(cx.lang()).questions(topic);
+    // The poll is public and speaks the server's language, whoever opened it.
+    let board_lang = channel_lang(cx).await;
+    let pool = PartyContent::for_lang(board_lang).questions(topic);
     anyhow::ensure!(!pool.is_empty(), "no questions in this category");
     // Skip questions this channel saw lately, a few tries deep.
     let mut chosen = pool[rand::random_range(0..pool.len())];
@@ -85,11 +88,14 @@ pub(crate) async fn open(cx: &Cx, topic: Option<Category>) -> anyhow::Result<()>
             guild_id: cx.guild_id().unwrap_or(0),
             channel_id: channel,
             host,
-            host_name: &super::text::name(&cx.author_display_name()),
+            host_name: &super::text::name(&cx.author_display_name(), board_lang),
             rounds: 1,
             status: "playing",
             phase: "vote",
-            state: &serde_json::to_string(&State { q: chosen.id.clone() })?,
+            state: &serde_json::to_string(&State {
+                lang: board_lang,
+                q: chosen.id.clone(),
+            })?,
             deadline: after(app, POLL_SECS),
         })
         .await?;
@@ -106,11 +112,14 @@ async fn view(
     q: &Rather,
     result: Option<(i64, i64)>,
 ) -> anyhow::Result<twilight_model::http::interaction::InteractionResponseData> {
-    let (category, a, b) = (q.category.label().to_owned(), q.a.clone(), q.b.clone());
+    let lang = game_lang(game);
+    // The card draws the category in capitals, which Turkish spells with its own İ.
+    let (category, a, b) = (lang.upper(&q.category.label_in(lang)), q.a.clone(), q.b.clone());
     let closed = result.is_some();
     let png = app
         .render(move |r| {
             r.rather_card(&RatherCard {
+                lang,
                 category: &category,
                 a: &a,
                 b: &b,
@@ -121,19 +130,12 @@ async fn view(
         })
         .await?;
     let description = match result {
-        Some((a, b)) => format!(
-            "The poll is closed: **{}** vote{} in all.",
-            a + b,
-            if a + b == 1 { "" } else { "s" }
-        ),
-        None => format!(
-            "Pick a side. You can change your mind, and the split is shown when the poll closes {}.",
-            relative(game.deadline)
-        ),
+        Some((a, b)) => t!(lang, "rather.closed", count = a + b),
+        None => t!(lang, "rather.open", when = relative(game.deadline)),
     };
     let embed = EmbedBuilder::new()
         .color(if closed { SUCCESS } else { BRAND })
-        .title(format!("{} Would you rather…", Party::WouldYouRather.emoji()))
+        .title(t!(lang, "rather.title", emoji = Party::WouldYouRather.emoji()))
         .description(description);
     let buttons = vec![
         button(
@@ -154,18 +156,19 @@ async fn view(
 
 /// `wy:<a|b>:<id>`: a vote.
 pub(crate) async fn on_button(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::Result<()> {
+    let lang = cx.lang();
     let side = match parts.next() {
         Some("a") => 0,
         Some("b") => 1,
-        _ => return cx.reply_ephemeral("This button has expired.").await,
+        _ => return cx.reply_ephemeral(t!(lang, "party.expired-button")).await,
     };
     let Some(id) = parts.next().and_then(|v| v.parse::<i64>().ok()) else {
-        return cx.reply_ephemeral("This button has expired.").await;
+        return cx.reply_ephemeral(t!(lang, "party.expired-button")).await;
     };
     let app = &cx.app;
     let me = cx.author()?.id.get();
     let Some(game) = app.db.party(id).await? else {
-        return cx.reply_ephemeral("This poll has expired.").await;
+        return cx.reply_ephemeral(t!(lang, "rather.expired")).await;
     };
     remember(cx, &game).await;
     let q = question(&game)?;
@@ -176,27 +179,31 @@ pub(crate) async fn on_button(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::Re
             if game.is_playing() && game.late(app.now()) {
                 close(app, game).await?;
             }
-            return cx.reply_ephemeral("This poll has closed.").await;
+            return cx.reply_ephemeral(t!(lang, "rather.poll-closed")).await;
         }
         PollChoice::First => {
             let paid = pay_win(app, me, Game::WouldYouRather, POLL_VOTE_REWARD, "wyr_vote").await?;
             let note = if paid > 0 {
-                format!(" +{paid} shell")
+                t!(lang, "rather.paid", paid = paid)
             } else {
                 String::new()
             };
-            format!("You picked **{letter}**: {chosen}.{note}")
+            format!("{}{note}", t!(lang, "rather.picked", letter = letter, chosen = chosen))
         }
-        PollChoice::Changed => format!("You moved your vote to **{letter}**: {chosen}."),
-        PollChoice::Same => format!("You already picked **{letter}**: {chosen}."),
+        PollChoice::Changed => t!(lang, "rather.moved", letter = letter, chosen = chosen),
+        PollChoice::Same => t!(lang, "rather.same", letter = letter, chosen = chosen),
     };
     let (a, b) = app.db.poll_counts(id).await?;
     let total = a + b;
     said.push_str(&format!(
-        "\nSo far: A {}% · B {}% ({total} vote{}). The final split comes when the poll closes.",
-        RatherCard::percent(a, total),
-        RatherCard::percent(b, total),
-        if total == 1 { "" } else { "s" }
+        "\n{}",
+        t!(
+            lang,
+            "rather.so-far",
+            a = RatherCard::percent(a, total),
+            b = RatherCard::percent(b, total),
+            count = total
+        )
     ));
     cx.reply_ephemeral(said).await
 }

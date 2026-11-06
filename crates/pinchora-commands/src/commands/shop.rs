@@ -3,7 +3,7 @@ use std::str::Split;
 use chrono::Utc;
 use pinchora_core::{i18n::Lang, items::is_soulbound, t};
 use pinchora_db::{BuyOutcome, Currency as DbCurrency};
-use pinchora_game::{Availability, Category, Content, Currency, market, overlay::upper};
+use pinchora_game::{Availability, Category, Content, Currency, market};
 use pinchora_render::{GridSlot, ItemGridCard, Theme};
 use twilight_interactions::command::{CommandModel, CommandOption, CreateCommand, CreateOption};
 use twilight_model::{
@@ -255,7 +255,7 @@ fn option_price(lang: Lang, price: i64, currency: Currency) -> String {
 
 /// The rule about soulbound pieces, which gifts, stalls and the plaza all repeat.
 pub(crate) fn soulbound_rule(lang: Lang) -> String {
-    t!(lang, "shop.soulbound-rule")
+    t!(lang, "collect.soulbound-rule")
 }
 
 async fn market_card(app: &App, lang: Lang) -> anyhow::Result<InteractionResponseData> {
@@ -358,12 +358,12 @@ async fn catalog_card(
             line1: price_label(lang, i.base.price, i.base.currency),
             line2: format!(
                 "{} · {}×{}",
-                upper(i.base.rarity.label_in(lang), lang),
+                lang.upper(i.base.rarity.label_in(lang)),
                 i.base.footprint[0],
                 i.base.footprint[1]
             ),
             bar: None,
-            badge: fit_badge(upper(i.base.category.label_in(lang), lang)),
+            badge: fit_badge(lang.upper(i.base.category.label_in(lang))),
             shell_price: i.base.currency == Currency::Shells,
         })
         .collect();
@@ -443,7 +443,7 @@ async fn inventory_card(app: &App, lang: Lang, user_id: u64, page: usize) -> any
             line1: format!("X{}", r.quantity),
             line2: content
                 .item(&r.item_id)
-                .map_or_else(String::new, |i| upper(i.base.category.label_in(lang), lang)),
+                .map_or_else(String::new, |i| lang.upper(i.base.category.label_in(lang))),
             bar: None,
             badge: if is_soulbound(&r.item_id) {
                 t!(lang, "inventory.soulbound")

@@ -1,11 +1,13 @@
 //! `/dex`: the Tide Pool Dex, a paged picture book of every critter and find, and where fragments are
 //! spent on decor.
 
-use std::{collections::HashMap, str::Split, sync::Arc};
+use std::{collections::HashMap, str::Split};
 
+use pinchora_core::{i18n::Lang, t};
 use pinchora_game::{
     Content, Rarity,
     collection::{Collection, Kind, exchange_cost, exchange_pick, exchange_pool},
+    lang as letters,
 };
 use pinchora_render::{DexCard, DexCell, Theme};
 use twilight_interactions::command::{CommandModel, CommandOption, CreateCommand, CreateOption, ResolvedUser};
@@ -18,7 +20,7 @@ use twilight_model::{
 };
 use twilight_util::builder::embed::EmbedBuilder;
 
-use super::SOULBOUND_RULE;
+use super::soulbound_rule;
 use crate::{
     App, Cx,
     game::scene::slot_sprite,
@@ -47,7 +49,7 @@ impl Dex {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
         let me = cx.author()?.id.get();
         let (owner, name) = match &self.user {
-            Some(u) if u.resolved.bot => return cx.reply_ephemeral("Bots don't collect. They just count.").await,
+            Some(u) if u.resolved.bot => return cx.reply_ephemeral(t!(cx.lang(), "dex.bot")).await,
             Some(u) => (u.resolved.id.get(), resolved_display_name(u)),
             None => (me, cx.author_display_name()),
         };
@@ -58,7 +60,7 @@ impl Dex {
             Some(DexTab::Finds) => Kind::Find,
             _ => Kind::Critter,
         };
-        let data = view(&cx.app, owner, &name, me, tab, 0, true).await?;
+        let data = view(cx, owner, &name, tab, 0, true).await?;
         cx.reply(data).await
     }
 }
@@ -78,17 +80,17 @@ fn page_id(owner: u64, kind: Kind, page: usize) -> String {
     format!("bc:d:{owner}:{}:{page}", tab_key(kind))
 }
 
-/// One page of `owner`'s dex as `viewer` sees it: the picture, page and tab buttons, and for the owner a
-/// button to spend their fragments.
+/// One page of `owner`'s dex as the author of `cx` sees it, in their language: the picture, page and tab
+/// buttons, and for the owner a button to spend their fragments.
 pub(crate) async fn view(
-    app: &Arc<App>,
+    cx: &Cx,
     owner: u64,
     name: &str,
-    viewer: u64,
     kind: Kind,
     page: usize,
     ephemeral: bool,
 ) -> anyhow::Result<InteractionResponseData> {
+    let (app, lang, viewer) = (&cx.app, cx.lang(), cx.author()?.id.get());
     let collection = Collection::get();
     let list = collection.list(kind);
     let pages = list.len().div_ceil(DexCard::PER_PAGE).max(1);
@@ -109,7 +111,7 @@ pub(crate) async fn view(
         .take(DexCard::PER_PAGE)
         .map(|(i, entry)| DexCell {
             number: i + 1,
-            name: entry.name.clone(),
+            name: entry.name_in(lang),
             art: super::picture(app, entry, DexCard::ART_BOX),
             frame: entry.rarity.color(),
             owned: caught.contains_key(&entry.id),
@@ -118,17 +120,20 @@ pub(crate) async fn view(
         .collect();
     let mine = owner == viewer;
     let footer = if mine {
-        format!(
-            "{found_all}/{} IN ALL · FRAGMENTS {}",
-            collection.len(),
-            thousands(app.db.fragments(owner).await?)
+        let fragments = thousands(app.db.fragments(owner).await?);
+        t!(
+            lang,
+            "dex.footer-mine",
+            found = found_all,
+            total = collection.len(),
+            fragments = fragments
         )
     } else {
-        format!("{found_all}/{} IN ALL", collection.len())
+        t!(lang, "dex.footer-other", found = found_all, total = collection.len())
     };
     let card = DexCard {
-        title: "Tide pool dex".to_owned(),
-        tab: kind.label().to_uppercase(),
+        title: t!(lang, "dex.title"),
+        tab: lang.upper(kind.label_in(lang)),
         owner: name.to_owned(),
         found: found_here,
         total: list.len(),
@@ -136,6 +141,7 @@ pub(crate) async fn view(
         pages,
         cells,
         footer,
+        lang,
         theme: Theme::reef(),
     };
     let png = app.render(move |r| r.dex_card(&card)).await?;
@@ -154,29 +160,38 @@ pub(crate) async fn view(
     let mut rows = vec![row(vec![
         nav("◀", page.saturating_sub(1), page == 0),
         nav("▶", page + 1, page + 1 >= pages),
-        tab("Critters", Kind::Critter),
-        tab("Finds", Kind::Find),
+        tab(Kind::Critter.label_in(lang), Kind::Critter),
+        tab(Kind::Find.label_in(lang), Kind::Find),
     ])];
     if mine {
         rows.push(row(vec![button(
             format!("bc:x:{owner}"),
-            "Spend fragments",
+            &t!(lang, "dex.spend"),
             Some("🧩"),
             ButtonStyle::Success,
             false,
         )]));
     }
-    let embed = EmbedBuilder::new().color(BRAND).description(format!(
-        "**{name}'s Tide Pool Dex** · {} {found_here}/{} · {found_all} of {} found",
-        kind.label().to_lowercase(),
-        list.len(),
-        collection.len()
+    let embed = EmbedBuilder::new().color(BRAND).description(t!(
+        lang,
+        "dex.summary",
+        name = name,
+        tab = letters::lower(lang, kind.label_in(lang)),
+        found = found_here,
+        count = list.len(),
+        all = found_all,
+        total = collection.len()
     ));
     Ok(Cx::card(embed, "dex.png", png, rows, ephemeral))
 }
 
 /// What the fragment exchange offers, as a select menu, with a way back.
-async fn exchange_panel(app: &App, owner: u64, note: Option<&str>) -> anyhow::Result<InteractionResponseData> {
+async fn exchange_panel(
+    app: &App,
+    lang: Lang,
+    owner: u64,
+    note: Option<&str>,
+) -> anyhow::Result<InteractionResponseData> {
     let fragments = app.db.fragments(owner).await?;
     let content = Content::get();
     let options: Vec<SelectMenuOption> = Rarity::ALL
@@ -185,13 +200,14 @@ async fn exchange_panel(app: &App, owner: u64, note: Option<&str>) -> anyhow::Re
             let cost = exchange_cost(rarity);
             SelectMenuOption {
                 default: false,
-                description: Some(format!(
-                    "{} fragments · {} pieces to find",
-                    thousands(cost),
-                    exchange_pool(content, rarity).len()
+                description: Some(t!(
+                    lang,
+                    "dex.option-desc",
+                    cost = thousands(cost),
+                    pieces = exchange_pool(content, rarity).len()
                 )),
                 emoji: None,
-                label: format!("{} decor piece", rarity.label()),
+                label: t!(lang, "dex.option-label", rarity = rarity.label_in(lang)),
                 value: rarity.label().to_lowercase(),
             }
         })
@@ -208,21 +224,22 @@ async fn exchange_panel(app: &App, owner: u64, note: Option<&str>) -> anyhow::Re
             max_values: Some(1),
             min_values: Some(1),
             options: Some(options),
-            placeholder: Some("Pick a piece to trade for…".to_owned()),
+            placeholder: Some(t!(lang, "dex.pick-piece")),
             required: None,
         })],
     });
     let back = row(vec![button(
         page_id(owner, Kind::Critter, 0),
-        "Back to the dex",
+        &t!(lang, "dex.back"),
         None,
         ButtonStyle::Secondary,
         false,
     )]);
-    let mut text = format!(
-        "You have **{}** fragments. Spares of critters and finds leave fragments behind; trade them for a \
-         free-to-earn decor piece of the tier you pick, chosen at random.\n{SOULBOUND_RULE}",
-        thousands(fragments)
+    let mut text = t!(
+        lang,
+        "dex.exchange-text",
+        fragments = thousands(fragments),
+        rule = soulbound_rule(lang)
     );
     if let Some(note) = note {
         text = format!("{note}\n\n{text}");
@@ -231,7 +248,7 @@ async fn exchange_panel(app: &App, owner: u64, note: Option<&str>) -> anyhow::Re
         embeds: Some(vec![
             EmbedBuilder::new()
                 .color(BRAND)
-                .title("Fragment exchange")
+                .title(t!(lang, "dex.exchange-title"))
                 .description(text)
                 .build(),
         ]),
@@ -247,6 +264,7 @@ pub(crate) async fn on_component(cx: &Cx, mut parts: Split<'_, char>, value: Opt
     let action = parts.next().unwrap_or_default();
     let owner: u64 = parts.next().and_then(|v| v.parse().ok()).unwrap_or(0);
     let me = cx.author()?.id.get();
+    let lang = cx.lang();
     match action {
         "d" => {
             let kind = parse_tab(parts.next().unwrap_or_default());
@@ -256,63 +274,61 @@ pub(crate) async fn on_component(cx: &Cx, mut parts: Split<'_, char>, value: Opt
             } else {
                 match cx.app.user(owner).await {
                     Some(user) => display_name(&user, None),
-                    None => "A collector".to_owned(),
+                    None => t!(lang, "dex.collector"),
                 }
             };
-            let data = view(&cx.app, owner, &name, me, kind, page, false).await?;
+            let data = view(cx, owner, &name, kind, page, false).await?;
             cx.update(data).await
         }
-        "x" | "xs" if owner != me => {
-            cx.reply_ephemeral("That is not your dex. Open yours with `/dex`.")
-                .await
-        }
+        "x" | "xs" if owner != me => cx.reply_ephemeral(t!(lang, "dex.not-yours")).await,
         "x" => {
-            let data = exchange_panel(&cx.app, owner, None).await?;
+            let data = exchange_panel(&cx.app, lang, owner, None).await?;
             cx.update(data).await
         }
         "xs" => {
             let Some(rarity) = value.and_then(|v| Rarity::ALL.into_iter().find(|r| r.label().to_lowercase() == v))
             else {
-                return cx.reply_ephemeral("Pick a tier from the menu.").await;
+                return cx.reply_ephemeral(t!(lang, "dex.pick-tier")).await;
             };
             let cost = exchange_cost(rarity);
             let content = Content::get();
             let Some(item) = exchange_pick(content, rarity, rand::random()) else {
-                let data =
-                    exchange_panel(&cx.app, owner, Some("There is nothing to trade for at that tier yet.")).await?;
+                let note = t!(lang, "dex.nothing-yet");
+                let data = exchange_panel(&cx.app, lang, owner, Some(&note)).await?;
                 return cx.update(data).await;
             };
             let Some(left) = cx.app.db.exchange_fragments(me, cost, &item).await? else {
-                let note = format!(
-                    "A {} piece costs **{}** fragments.",
-                    rarity.label().to_lowercase(),
-                    thousands(cost)
+                let note = t!(
+                    lang,
+                    "dex.costs",
+                    rarity = letters::lower(lang, rarity.label_in(lang)),
+                    cost = thousands(cost)
                 );
-                let data = exchange_panel(&cx.app, owner, Some(&note)).await?;
+                let data = exchange_panel(&cx.app, lang, owner, Some(&note)).await?;
                 return cx.update(data).await;
             };
-            let name = content.item(&item).map_or_else(|| item.clone(), |i| i.name());
+            let name = content.item(&item).map_or_else(|| item.clone(), |i| i.name_in(lang));
             let (png, _, _) = slot_sprite(&cx.app.sprites, content, &item, 200, 160);
             let embed = EmbedBuilder::new()
                 .color(SUCCESS)
-                .title(format!("You got a {name}!"))
-                .description(format!(
-                    "A {} decor piece, now in your inventory: place it in `/house edit`. It is soulbound, so it \
-                     stays yours: it can never be sold, gifted or donated.\nFragments left: **{}**.",
-                    rarity.label().to_lowercase(),
-                    thousands(left)
+                .title(t!(lang, "dex.got", name = name))
+                .description(t!(
+                    lang,
+                    "dex.got-text",
+                    rarity = letters::lower(lang, rarity.label_in(lang)),
+                    left = thousands(left)
                 ));
             let back = row(vec![
                 button(
                     format!("bc:x:{owner}"),
-                    "Trade again",
+                    &t!(lang, "dex.trade-again"),
                     Some("🧩"),
                     ButtonStyle::Success,
                     false,
                 ),
                 button(
                     page_id(owner, Kind::Critter, 0),
-                    "Back to the dex",
+                    &t!(lang, "dex.back"),
                     None,
                     ButtonStyle::Secondary,
                     false,
@@ -320,6 +336,6 @@ pub(crate) async fn on_component(cx: &Cx, mut parts: Split<'_, char>, value: Opt
             ]);
             cx.update(Cx::card(embed, "piece.png", png, vec![back], false)).await
         }
-        _ => cx.reply_ephemeral("This button has expired.").await,
+        _ => cx.reply_ephemeral(t!(lang, "collect.button-expired")).await,
     }
 }

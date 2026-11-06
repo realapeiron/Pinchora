@@ -2,11 +2,18 @@
 //!
 //! A cell is `y * 10 + x`; columns read A to J along the top and rows 1 to 10 down the side.
 
+use pinchora_core::{i18n::Lang, t};
+
 pub const SIZE: usize = 10;
 pub const CELLS: usize = SIZE * SIZE;
 
 /// The five ships of a fleet and how many cells each takes.
 pub const SHIPS: [(&str, usize); 5] = [("Galleon", 5), ("Frigate", 4), ("Brig", 3), ("Sloop", 3), ("Dinghy", 2)];
+
+/// The name of ship `ship` (an index into [`SHIPS`]) in `lang`: `seafleet.ship-<index>` in the catalogs.
+pub fn ship_name(lang: Lang, ship: usize) -> String {
+    t!(lang, &format!("seafleet.ship-{ship}"))
+}
 
 /// `A7` for the cell at column 0, row 6.
 pub fn cell_name(cell: usize) -> String {
@@ -424,5 +431,13 @@ mod tests {
         assert_eq!(Sea::decode(&text), Some(sea));
         assert!(Sea::decode("short").is_none());
         assert!(Sea::decode(&"x".repeat(CELLS)).is_none());
+    }
+
+    #[test]
+    fn ships_are_named_in_every_language() {
+        for (index, (english, _)) in SHIPS.iter().enumerate() {
+            assert_eq!(ship_name(Lang::En, index), *english);
+            assert_ne!(ship_name(Lang::Tr, index), *english, "{english} has a Turkish name");
+        }
     }
 }

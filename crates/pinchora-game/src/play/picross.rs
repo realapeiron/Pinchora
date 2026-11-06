@@ -3,6 +3,8 @@
 //!
 //! Columns read A to J and rows 1 to 10, like the coordinates in Sea Fleet.
 
+use pinchora_core::{i18n::Lang, t};
+
 /// Cells on a side.
 pub const SIZE: usize = 10;
 pub const CELLS: usize = SIZE * SIZE;
@@ -1684,6 +1686,18 @@ impl Puzzle {
         PICTURES[self.picture].name
     }
 
+    /// The picture's name in `lang`: `picross.name.<key>` in the catalogs, where the key is the English name
+    /// in lowercase with dashes (`palm-tree`).
+    pub fn name_in(&self, lang: Lang) -> String {
+        let key: String = PICTURES[self.picture]
+            .name
+            .to_lowercase()
+            .chars()
+            .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+            .collect();
+        t!(lang, &format!("picross.name.{key}"))
+    }
+
     pub fn color(&self) -> u32 {
         PICTURES[self.picture].color
     }
@@ -2079,6 +2093,24 @@ mod tests {
                 .filter(|&c| c != '.')
                 .count();
             assert!((24..=85).contains(&filled), "{} fills {filled} cells", picture.name);
+        }
+    }
+
+    #[test]
+    fn every_picture_has_a_name_in_every_language() {
+        for (index, picture) in PICTURES.iter().enumerate() {
+            let puzzle = Puzzle::new(index, 0);
+            assert_eq!(
+                puzzle.name_in(Lang::En),
+                picture.name,
+                "English reads as the picture's own name"
+            );
+            let turkish = puzzle.name_in(Lang::Tr);
+            assert!(
+                !turkish.starts_with("picross.name."),
+                "{} has no Turkish name",
+                picture.name
+            );
         }
     }
 
