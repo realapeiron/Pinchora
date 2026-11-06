@@ -99,7 +99,7 @@ impl RankCard<'_> {
                     false,
                     &t.gold,
                     "start",
-                    &escape(&truncate(&title.to_uppercase(), 24)),
+                    &escape(&truncate(&self.lang.upper(title), 24)),
                 );
                 text(&mut s, 282.0, 152.0, 20.0, SANS, false, &t.muted, "start", &handle);
             }

@@ -795,6 +795,15 @@ coloured circle with its first letter.
 Silkscreen and Noto Sans are under the SIL Open Font License; the license texts are in
 `assets/fonts/`.
 
+Silkscreen is a modified version: `tools/fonts/silkscreen_tr.py` adds the Turkish letters it lacked, İ ı Ş ş Ğ ğ,
+to both weights, on the font's own 125-unit pixel grid (İ is an I with a dot, Ş an S with Ç's cedilla, Ğ a G with a
+breve in the rows of Â's circumflex; Silkscreen has no lower case, so ı is the I bar), and moves the dots of Ö and Ü
+(and the circumflex of Regular's Û) onto that grid. Ç Ö Ü Â were already there. The family name stays
+`Silkscreen`: its copyright line declares no Reserved Font Name. The change is noted in the font's version and
+description fields and in `OFL-Silkscreen.txt`. Re-run the script (fontTools) to rebuild; it is idempotent. The
+profile, rank and wallet cards capitalise Turkish text with `Lang::upper` (`i` becomes `İ`, as `lang::upper` does
+for the wordle board), so the dots land where Turkish puts them.
+
 Names, bios and titles in emoji or CJK draw as letters, not empty boxes, because two fallback fonts follow the
 card fonts in the renderer's font database (`pinchora_render::FONT_FILES` for the cards and the dashboard,
 `FALLBACK_FONT_FILES` for these). Both are SIL OFL, made from the official releases with `pyftsubset` (fontTools;

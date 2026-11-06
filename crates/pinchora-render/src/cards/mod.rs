@@ -236,11 +236,6 @@ pub(crate) fn text(
     body: &str,
 ) {
     let weight = if bold { "bold" } else { "normal" };
-    let body = if family == PIXEL {
-        crate::svg::pixel_letters(body)
-    } else {
-        body.into()
-    };
     let _ = write!(
         out,
         r#"<text x="{x}" y="{y}" font-family="{family}" font-size="{size}" font-weight="{weight}" fill="{fill}" text-anchor="{anchor}">{body}</text>"#
