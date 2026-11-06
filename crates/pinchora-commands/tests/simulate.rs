@@ -10978,6 +10978,7 @@ async fn a_staked_derby_shares_the_pool_between_the_backers_and_the_janitor_runs
     };
     sim.channel = unique();
     let (host, a, b, c, broke) = (unique(), unique(), unique(), unique(), unique());
+    gambling(&mut sim, unique(), true).await;
     for user in [a, b, c] {
         fund(&sim, user, 100).await;
     }
@@ -11055,6 +11056,7 @@ async fn a_derby_nobody_won_or_too_few_joined_gives_every_stake_back() {
     };
     sim.channel = unique();
     let (host, a, b) = (unique(), unique(), unique());
+    gambling(&mut sim, unique(), true).await;
     for user in [a, b] {
         fund(&sim, user, 100).await;
     }
@@ -11115,6 +11117,83 @@ async fn a_derby_nobody_won_or_too_few_joined_gives_every_stake_back() {
         "{}",
         empty.content()
     );
+}
+
+/// What a player has won less staked at the derby tables today.
+async fn derby_net(sim: &Sim, user: u64) -> i64 {
+    sim.app.db.table_today(user, "derby").await.expect("the day's table").1
+}
+
+#[tokio::test]
+async fn staked_derbies_need_the_gambling_switch_and_stop_at_the_daily_loss_limit() {
+    let _serial = SWEEPS.lock().await;
+    let Some(mut sim) = Sim::new("staked_derbies_need_the_gambling_switch_and_stop_at_the_daily_loss_limit").await
+    else {
+        return;
+    };
+    let (manager, rich, other) = (unique(), unique(), unique());
+    fund(&sim, rich, 5_000).await;
+    fund(&sim, other, 5_000).await;
+    let names = pinchora_game::party::derby::ROSTER.map(|c| c.name);
+
+    // Off by default: a race with shells on it is refused, a race for fun is not.
+    sim.channel = unique();
+    let refused = open_derby(&mut sim, unique(), Some(40)).await;
+    assert!(
+        refused.ephemeral
+            && refused.content().contains("**off**")
+            && refused.content().contains("/config gambling")
+            && refused.files.is_empty(),
+        "{}",
+        refused.content()
+    );
+    let free = open_derby(&mut sim, unique(), None).await;
+    assert!(
+        !free.ephemeral && free.content().contains("No stakes"),
+        "{}",
+        free.content()
+    );
+    gambling(&mut sim, manager, true).await;
+
+    // Three lobbies of 500: the limit is 1,000 shells down, so two fit and the third is refused.
+    let mut lobbies = Vec::new();
+    for _ in 0..3 {
+        sim.channel = unique();
+        let lobby = open_derby(&mut sim, unique(), Some(500)).await;
+        assert!(!lobby.ephemeral, "{}", lobby.content());
+        lobbies.push(lobby);
+    }
+    sim.click(rich, &lobbies[0], names[0]).await;
+    sim.click(rich, &lobbies[1], names[0]).await;
+    assert_eq!((shells(&sim, rich).await, derby_net(&sim, rich).await), (4_000, -1_000));
+    let third = sim.click(rich, &lobbies[2], names[0]).await;
+    assert!(
+        third.ephemeral && third.content().contains("limit of **1,000**") && third.content().contains("-1,000"),
+        "{}",
+        third.content()
+    );
+    assert_eq!(shells(&sim, rich).await, 4_000, "a refused stake takes nothing");
+    let sessions: Vec<i64> = lobbies.iter().map(session_of).collect();
+    assert!(sim.app.db.party_members(sessions[2]).await.unwrap().is_empty());
+    sim.click(other, &lobbies[2], names[0]).await;
+    assert_eq!(derby_net(&sim, other).await, -500, "the limit is each player's own");
+
+    // Leaving a lobby gives the room under the limit back.
+    sim.click(rich, &lobbies[0], "Leave").await;
+    assert_eq!((shells(&sim, rich).await, derby_net(&sim, rich).await), (4_500, -500));
+    sim.click(rich, &lobbies[2], names[0]).await;
+    assert_eq!((shells(&sim, rich).await, derby_net(&sim, rich).await), (4_000, -1_000));
+
+    // The race of the third lobby: `other` backs the winner and `rich` does not. The second lobby has
+    // only one racer, so it is called off and its stake comes back.
+    let race = race_of(&sim, sessions[2]).await;
+    sim.click(other, &lobbies[2], names[race.winner()]).await;
+    sim.click(rich, &lobbies[2], names[(race.winner() + 1) % 6]).await;
+    expire(&sim, sessions[1]).await;
+    expire(&sim, sessions[2]).await;
+    sweep_games(&sim.app).await.expect("sweep");
+    assert_eq!((shells(&sim, rich).await, derby_net(&sim, rich).await), (4_500, -500));
+    assert_eq!((shells(&sim, other).await, derby_net(&sim, other).await), (5_500, 500));
 }
 
 #[tokio::test]
@@ -11362,6 +11441,82 @@ async fn share_or_grab_wagers_go_by_the_picks_and_a_player_who_never_picks_forfe
     assert_eq!((shells(&sim, h).await, shells(&sim, c).await), before);
 }
 
+#[tokio::test]
+async fn a_pair_s_hour_starts_when_the_pool_paid_them_and_a_double_click_pays_once() {
+    let Some(mut sim) = Sim::new("a_pair_s_hour_starts_when_the_pool_paid_them_and_a_double_click_pays_once").await
+    else {
+        return;
+    };
+    let pair_key = |x: u64, y: u64| format!("rest:sharepair:{}:{}", x.min(y), x.max(y));
+
+    // Players who used up the day's pool: the game pays nothing, so it must not start their hour.
+    let (a, b) = (unique(), unique());
+    for user in [a, b] {
+        assert_eq!(
+            sim.app
+                .db
+                .grant_capped(user, "sharegrab", 180, 180, "test")
+                .await
+                .unwrap(),
+            180
+        );
+    }
+    let challenge = duel(&mut sim, a, b, "share", vec![]).await;
+    let board = sim.click(b, &challenge, "Accept").await;
+    let (a_picker, b_picker) = (
+        sim.click(a, &board, "Choose in secret").await,
+        sim.click(b, &board, "Choose in secret").await,
+    );
+    sim.click(a, &a_picker, "🤝 Share").await;
+    sim.click(b, &b_picker, "🤝 Share").await;
+    let posts = sim.posts();
+    assert!(
+        posts.last().expect("result").content().contains("limit for this game"),
+        "{}",
+        posts.last().unwrap().content()
+    );
+    assert_eq!((shells(&sim, a).await, shells(&sim, b).await), (180, 180));
+    assert!(
+        sim.app.cache.get(&pair_key(a, b)).await.unwrap().is_none(),
+        "nothing was paid, so the pair is not resting"
+    );
+
+    // The last pick arriving twice at once: the game ends once, and it pays.
+    let (c, d) = (unique(), unique());
+    let challenge = duel(&mut sim, c, d, "share", vec![]).await;
+    let board = sim.click(d, &challenge, "Accept").await;
+    let (c_picker, d_picker) = (
+        sim.click(c, &board, "Choose in secret").await,
+        sim.click(d, &board, "Choose in secret").await,
+    );
+    sim.click(c, &c_picker, "🤝 Share").await;
+    let share = d_picker.button("🤝 Share").custom_id.clone().expect("a custom id");
+    let data = json!({ "custom_id": share, "component_type": 2, "values": [] });
+    let first = sim.interaction(d, 3, data.clone(), Some(&d_picker));
+    let second = sim.interaction(d, 3, data, Some(&d_picker));
+    let (first_tx, _first_rx) = oneshot::channel();
+    let (second_tx, _second_rx) = oneshot::channel();
+    let first_responder = Arc::new(Responder::http(sim.app.clone(), &first, first_tx));
+    let second_responder = Arc::new(Responder::http(sim.app.clone(), &second, second_tx));
+    ERRORS.with_borrow_mut(Vec::clear);
+    tokio::join!(
+        Box::pin(handle_interaction(sim.app.clone(), first, first_responder)),
+        Box::pin(handle_interaction(sim.app.clone(), second, second_responder))
+    );
+    let errors = ERRORS.take();
+    assert!(errors.is_empty(), "a handler failed:\n{}", errors.join("\n"));
+    assert_eq!(
+        (shells(&sim, c).await, shells(&sim, d).await),
+        (30, 30),
+        "paid once, in full"
+    );
+    assert_eq!(record_of(&sim, c, "sharegrab").await, (1, 1));
+    assert!(
+        sim.app.cache.get(&pair_key(c, d)).await.unwrap().is_some(),
+        "a payout went through, so the hour has started"
+    );
+}
+
 /// `/config gambling enabled:<on>` as a manager.
 async fn gambling(sim: &mut Sim, manager: u64, on: bool) -> Reply {
     sim.permissions = MANAGE_GUILD;
@@ -11584,7 +11739,7 @@ async fn a_heist_crew_picks_roles_and_the_vault_pays_what_the_seed_says() {
         lobby.content()
     );
     assert!(lobby.pings_nobody());
-    assert_png(&lobby, 600, 560);
+    assert_png(&lobby, 600, 476);
     for label in ["Lookout", "Locksmith", "Diver", "Set off now", "Leave"] {
         assert!(lobby.has_button(label), "{label}");
     }
@@ -11609,7 +11764,7 @@ async fn a_heist_crew_picks_roles_and_the_vault_pays_what_the_seed_says() {
         .unwrap();
 
     let view = sim.click(host, &lobby, "Lookout").await;
-    assert_png(&view, 600, 560);
+    assert_png(&view, 600, 476);
     let view = sim.click(a, &view, "Diver").await;
     let view = sim.click(a, &view, "Locksmith").await;
     sim.click(b, &view, "Diver").await;
@@ -11633,7 +11788,7 @@ async fn a_heist_crew_picks_roles_and_the_vault_pays_what_the_seed_says() {
     );
 
     let done = sim.click(host, &view, "Set off now").await;
-    assert_png(&done, 600, 560);
+    assert_png(&done, 600, 504);
     assert!(
         done.content().contains("the vault is open") && done.components.is_empty(),
         "{}",

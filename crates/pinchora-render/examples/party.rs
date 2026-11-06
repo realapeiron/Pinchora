@@ -86,12 +86,13 @@ fn main() -> anyhow::Result<()> {
     let frames: Vec<[f32; 6]> = (0..=66)
         .map(|step| {
             let t = step as f32 / 56.0;
-            [1.0, 1.08, 0.96, 1.04, 0.9, 1.02].map(|pace| (t * pace).min(1.06))
+            [1.0, 1.08, 0.96, 1.04, 0.9, 1.02].map(|pace| (t * pace).min(1.12))
         })
         .collect();
     let scene = DerbyScene {
         crabs: &crabs,
         accents: ACCENTS,
+        names: NAMES,
         frames: &frames,
         order: [1, 5, 3, 0, 2, 4],
     };

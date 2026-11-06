@@ -27,7 +27,7 @@ impl Help {
             ))
             .field(EmbedFieldBuilder::new(
                 "Games",
-                "`/duel connect4`, `/duel rps` and `/duel tictactoe` challenge a friend (optional wager)\n`/duel share` split a pool or grab it all (optional wager)\n`/play hangman`, `/play wordle` and `/play trivia` play on your own or with the channel\n`/play derby` hermit crab races, back your crab (optional stakes)\n`/play heist` crew up against a sunken vault, nobody loses shells\n`/play shells` guess the pearl (a gambling game, off until a manager turns it on)\n`/surge` managers call a storm the whole server fights together\n`/play stats` your wins",
+                "`/duel connect4`, `/duel rps` and `/duel tictactoe` challenge a friend (optional wager)\n`/duel share` split a pool or grab it all (optional wager)\n`/play hangman`, `/play wordle` and `/play trivia` play on your own or with the channel\n`/play derby` hermit crab races, back your crab (stakes are a gambling game, off until a manager turns it on)\n`/play heist` crew up against a sunken vault, nobody loses shells\n`/play shells` guess the pearl (a gambling game, off until a manager turns it on)\n`/surge` managers call a storm the whole server fights together\n`/play stats` your wins",
             ))
             .field(EmbedFieldBuilder::new(
                 "Leaderboards",

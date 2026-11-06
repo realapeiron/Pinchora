@@ -20,6 +20,15 @@ macro_rules! columns {
     };
 }
 
+/// SQL for the day (days since 1970-01-01, UTC) a timestamp falls on, the way [`today`] counts it. Daily rows
+/// of a game that holds shells for a while are adjusted on the day the shells were taken, even when the
+/// game ends after midnight.
+macro_rules! day_of {
+    ($timestamp:literal) => {
+        concat!("floor(extract(epoch FROM ", $timestamp, ") / 86400)::int")
+    };
+}
+
 /// Days since 1970-01-01, UTC: what "today" means for the daily limits.
 fn today() -> i32 {
     Utc::now().timestamp().div_euclid(86_400) as i32
@@ -57,6 +66,11 @@ pub enum DerbyJoin {
         balance: i64,
     },
     Full,
+    /// This stake would take the player past the day's derby loss limit; `net` is where they stand
+    /// (shells won less shells staked and not given back).
+    Down {
+        net: i64,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -391,8 +405,8 @@ impl Db {
 
     // /Derby
 
-    /// A player picks a crab in an open derby. With a stake the stake comes off their balance, once;
-    /// picking again moves them to the other crab for free.
+    /// A player picks a crab in an open derby. With a stake the stake comes off their balance, once, and
+    /// counts against `loss_limit` shells a day; picking again moves them to the other crab for free.
     pub async fn derby_join(
         &self,
         session: i64,
@@ -400,6 +414,7 @@ impl Db {
         name: &str,
         crab: i16,
         max_racers: i64,
+        loss_limit: i64,
     ) -> anyhow::Result<DerbyJoin> {
         let mut tx = self.pool().begin().await?;
         let Some(lobby) = lock_open(&mut tx, session, "derby").await? else {
@@ -438,12 +453,42 @@ impl Db {
             if balance < lobby.bet {
                 return Ok(DerbyJoin::Broke { balance });
             }
+            // The day's row is the one of the transaction's own clock, which stamps `joined_at` too: that
+            // is the row a refund or a payout finds again later.
+            sqlx::query(concat!(
+                "INSERT INTO party_daily (user_id, day, game) VALUES ($1, ",
+                day_of!("now()"),
+                ", 'derby') ON CONFLICT DO NOTHING"
+            ))
+            .bind(user)
+            .execute(&mut *tx)
+            .await?;
+            let (net,): (i64,) = sqlx::query_as(concat!(
+                "SELECT net FROM party_daily WHERE user_id = $1 AND day = ",
+                day_of!("now()"),
+                " AND game = 'derby' FOR UPDATE"
+            ))
+            .bind(user)
+            .fetch_one(&mut *tx)
+            .await?;
+            if net - lobby.bet < -loss_limit {
+                return Ok(DerbyJoin::Down { net });
+            }
             sqlx::query("UPDATE users SET credits = credits - $2 WHERE id = $1")
                 .bind(user)
                 .bind(lobby.bet)
                 .execute(&mut *tx)
                 .await?;
             ledger(&mut tx, user, -lobby.bet, "derby_bet").await?;
+            sqlx::query(concat!(
+                "UPDATE party_daily SET net = net - $2 WHERE user_id = $1 AND day = ",
+                day_of!("now()"),
+                " AND game = 'derby'"
+            ))
+            .bind(user)
+            .bind(lobby.bet)
+            .execute(&mut *tx)
+            .await?;
         }
         sqlx::query(
             "INSERT INTO party_members (session_id, user_id, choice, amount, name) VALUES ($1, $2, $3, $4, $5)",
@@ -466,18 +511,24 @@ impl Db {
             return Ok(DerbyLeave::Closed);
         }
         let user = sql_id(user);
-        let gone: Option<(i64,)> =
-            sqlx::query_as("DELETE FROM party_members WHERE session_id = $1 AND user_id = $2 RETURNING amount")
+        let held: Option<(i64,)> =
+            sqlx::query_as("SELECT amount FROM party_members WHERE session_id = $1 AND user_id = $2 FOR UPDATE")
                 .bind(session)
                 .bind(user)
                 .fetch_optional(&mut *tx)
                 .await?;
-        let Some((refund,)) = gone else {
+        let Some((refund,)) = held else {
             return Ok(DerbyLeave::NotIn);
         };
         if refund > 0 {
             credit(&mut tx, user, refund, "derby_refund").await?;
+            derby_net(&mut tx, session, user, refund).await?;
         }
+        sqlx::query("DELETE FROM party_members WHERE session_id = $1 AND user_id = $2")
+            .bind(session)
+            .bind(user)
+            .execute(&mut *tx)
+            .await?;
         tx.commit().await?;
         Ok(DerbyLeave::Left { refund })
     }
@@ -506,7 +557,7 @@ impl Db {
         let racers = members(&mut tx, session).await?;
         let staked = lobby.bet > 0;
         let outcome = if racers.is_empty() || (staked && racers.len() < min_staked) {
-            refund_all(&mut tx, &racers).await?;
+            refund_all(&mut tx, session, &racers).await?;
             DerbyOutcome::Cancelled
         } else if !staked {
             let winners = racers.iter().filter(|r| r.choice == winner).map(|r| r.user_id as u64);
@@ -514,7 +565,7 @@ impl Db {
         } else {
             let winners: Vec<&PartyMember> = racers.iter().filter(|r| r.choice == winner).collect();
             if winners.is_empty() {
-                refund_all(&mut tx, &racers).await?;
+                refund_all(&mut tx, session, &racers).await?;
                 DerbyOutcome::Refunded
             } else {
                 let pool: i64 = racers.iter().map(|r| r.amount).sum();
@@ -525,6 +576,7 @@ impl Db {
                 paid.sort_unstable();
                 for (user, share) in &paid {
                     credit(&mut tx, sql_id(*user), *share, "derby_win").await?;
+                    derby_net(&mut tx, session, sql_id(*user), *share).await?;
                 }
                 paid.sort_by_key(|(user, _)| racers.iter().position(|r| r.user_id as u64 == *user));
                 DerbyOutcome::Paid(paid)
@@ -866,12 +918,7 @@ impl Db {
         let paid = if pick == pearl { payout(game.bet) } else { 0 };
         if paid > 0 {
             credit(&mut tx, game.host_id, paid, "shells_win").await?;
-            sqlx::query("UPDATE party_daily SET net = net + $3 WHERE user_id = $1 AND day = $2 AND game = 'shellgame'")
-                .bind(game.host_id)
-                .bind(today())
-                .bind(paid)
-                .execute(&mut *tx)
-                .await?;
+            shell_net(&mut tx, session, game.host_id, paid, 0).await?;
         }
         finish(&mut tx, session, &format!("{pearl}:{pick}")).await?;
         tx.commit().await?;
@@ -894,15 +941,7 @@ impl Db {
             return Ok(None);
         };
         credit(&mut tx, game.host_id, game.bet, "shells_refund").await?;
-        sqlx::query(
-            "UPDATE party_daily SET plays = GREATEST(plays - 1, 0), net = net + $3
-             WHERE user_id = $1 AND day = $2 AND game = 'shellgame'",
-        )
-        .bind(game.host_id)
-        .bind(today())
-        .bind(game.bet)
-        .execute(&mut *tx)
-        .await?;
+        shell_net(&mut tx, session, game.host_id, game.bet, 1).await?;
         finish(&mut tx, session, "timeout").await?;
         tx.commit().await?;
         Ok(Some(game))
@@ -1030,8 +1069,12 @@ async fn credit(
     ledger(tx, user, amount, reason).await
 }
 
-/// Gives every racer their stake back, in id order.
-async fn refund_all(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, racers: &[PartyMember]) -> anyhow::Result<()> {
+/// Gives every racer of derby `session` their stake back, in id order.
+async fn refund_all(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    session: i64,
+    racers: &[PartyMember],
+) -> anyhow::Result<()> {
     let mut owed: Vec<(i64, i64)> = racers
         .iter()
         .filter(|r| r.amount > 0)
@@ -1040,7 +1083,56 @@ async fn refund_all(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, racers: &[Pa
     owed.sort_unstable();
     for (user, stake) in owed {
         credit(tx, user, stake, "derby_refund").await?;
+        derby_net(tx, session, user, stake).await?;
     }
+    Ok(())
+}
+
+/// Moves a player's net at the derby tables by `delta`, on the day they joined `session` (the day their
+/// stake was counted), whatever day it is now. Does nothing for a player who is not in it.
+async fn derby_net(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    session: i64,
+    user: i64,
+    delta: i64,
+) -> anyhow::Result<()> {
+    sqlx::query(concat!(
+        "UPDATE party_daily SET net = net + $3
+         WHERE user_id = $1 AND game = 'derby' AND day = (
+             SELECT ",
+        day_of!("joined_at"),
+        " FROM party_members WHERE session_id = $2 AND user_id = $1)"
+    ))
+    .bind(user)
+    .bind(session)
+    .bind(delta)
+    .execute(&mut **tx)
+    .await?;
+    Ok(())
+}
+
+/// Adds `delta` shells to a shell game's net and takes `plays_back` games off its count, on the day the
+/// table started (`game_sessions.created_at`), whatever day it is now. Does nothing when that day has no row.
+async fn shell_net(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    session: i64,
+    user: i64,
+    delta: i64,
+    plays_back: i32,
+) -> anyhow::Result<()> {
+    sqlx::query(concat!(
+        "UPDATE party_daily SET plays = GREATEST(plays - $4, 0), net = net + $3
+         WHERE user_id = $1 AND game = 'shellgame' AND day = (
+             SELECT ",
+        day_of!("created_at"),
+        " FROM game_sessions WHERE id = $2)"
+    ))
+    .bind(user)
+    .bind(session)
+    .bind(delta)
+    .bind(plays_back)
+    .execute(&mut **tx)
+    .await?;
     Ok(())
 }
 

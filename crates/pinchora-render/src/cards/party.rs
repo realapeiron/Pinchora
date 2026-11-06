@@ -424,10 +424,11 @@ impl ShellCard<'_> {
             let x = 52.0 + shell as f32 * 150.0;
             let lifted = self.pearl.is_some();
             let mine = self.picked == Some(shell);
-            let (body, light) = if mine {
-                (t.accent.as_str(), "#ffb9a8")
-            } else {
-                ("#d8a7c8", "#f6e0ee")
+            // The pick is green when the pearl was under it, red when it was not.
+            let (body, light) = match (mine, self.pearl == self.picked) {
+                (true, true) => (t.mint.as_str(), "#b4f5df"),
+                (true, false) => (t.accent.as_str(), "#ffb9a8"),
+                (false, _) => ("#d8a7c8", "#f6e0ee"),
             };
             let y = if lifted { 112.0 } else { 134.0 };
             if self.pearl == Some(shell) {
@@ -459,6 +460,8 @@ impl ShellCard<'_> {
                 );
             }
         }
+        // The status sits on a plate of its own, so the card's fixed sparkles never land beside the words.
+        panel(&mut s, 24.0, 288.0, 472.0, 26.0, 4.0, &t.panel, &t.panel_edge);
         text(
             &mut s,
             w / 2.0,
@@ -533,7 +536,8 @@ const VAULT_DIAL: &[&str] = &[
     "...............",
 ];
 
-/// 600×560 heist card: the vault, the three stages with the crew's chance at each, and who is in.
+/// 600 wide heist card: the vault, the three stages with the crew's chance at each, and who is in. The
+/// crew's panel is only as tall as its rows (two members a row), so the card is 476 to 560 high.
 pub struct HeistCard<'a> {
     pub crew: &'a [CrewView<'a>],
     pub stages: [StageView<'a>; 3],
@@ -545,11 +549,22 @@ pub struct HeistCard<'a> {
 
 impl HeistCard<'_> {
     pub const WIDTH: f32 = 600.0;
-    pub const HEIGHT: f32 = 560.0;
+    /// The most members the card lists.
+    const SEATS: usize = 8;
+
+    /// Rows of crew (two to a row) the card makes room for; an empty crew still gets one.
+    fn rows(&self) -> usize {
+        self.crew.len().clamp(1, Self::SEATS).div_ceil(2)
+    }
+
+    /// The card's height: the vault and stages, then a crew panel that fits its rows.
+    pub fn height(&self) -> f32 {
+        476.0 + (self.rows() - 1) as f32 * 28.0
+    }
 
     pub fn to_svg(&self) -> String {
         let t = &self.theme;
-        let (w, h) = (Self::WIDTH, Self::HEIGHT);
+        let (w, h) = (Self::WIDTH, self.height());
         let mut s = open(w, h);
         background(&mut s, w, h, &t.bg_top, &t.bg_bottom);
         text(
@@ -565,6 +580,8 @@ impl HeistCard<'_> {
         );
         let opened = self.stages.iter().all(|stage| stage.passed == Some(true));
         let done = self.stages.iter().all(|stage| stage.passed.is_some());
+        let busted = done && self.stages.iter().all(|stage| stage.passed == Some(false));
+        // Gold for the open vault, red only for a crew that got nothing: a good haul is good news.
         chip(
             &mut s,
             w - 28.0,
@@ -572,7 +589,7 @@ impl HeistCard<'_> {
             self.headline,
             if opened {
                 &t.gold
-            } else if done {
+            } else if busted {
                 &t.accent
             } else {
                 &t.mint
@@ -686,7 +703,16 @@ impl HeistCard<'_> {
             }
         }
         // The crew.
-        panel(&mut s, 24.0, 378.0, 552.0, 158.0, 4.0, &t.panel, &t.panel_edge);
+        panel(
+            &mut s,
+            24.0,
+            378.0,
+            552.0,
+            h - 378.0 - 24.0,
+            4.0,
+            &t.panel,
+            &t.panel_edge,
+        );
         text(
             &mut s,
             44.0,
@@ -711,7 +737,7 @@ impl HeistCard<'_> {
             );
             text(&mut s, 556.0, 406.0, 14.0, PIXEL, false, &t.gold, "end", &label);
         }
-        for (n, member) in self.crew.iter().take(8).enumerate() {
+        for (n, member) in self.crew.iter().take(Self::SEATS).enumerate() {
             let (col, row) = ((n % 2) as f32, (n / 2) as f32);
             let (x, y) = (44.0 + col * 266.0, 418.0 + row * 28.0);
             let (tag, color) = ROLE_TAGS[member.role.min(2)];
@@ -737,7 +763,7 @@ impl HeistCard<'_> {
             text(
                 &mut s,
                 300.0,
-                470.0,
+                438.0,
                 14.0,
                 PIXEL,
                 false,
@@ -1076,6 +1102,34 @@ mod tests {
     }
 
     #[test]
+    fn a_right_pick_is_green_a_wrong_one_red_and_the_status_has_a_plate_to_itself() {
+        let card = |picked, pearl| ShellCard {
+            stake: 20,
+            picked,
+            pearl,
+            status: "Pick a shell",
+            payout: 50,
+            theme: Theme::reef(),
+        };
+        let t = Theme::reef();
+        let found = card(Some(1), Some(1)).to_svg();
+        assert!(
+            found.contains(&t.mint) && !found.contains(&t.accent),
+            "a found pearl is green"
+        );
+        let missed = card(Some(0), Some(2)).to_svg();
+        assert!(missed.contains(&t.accent) && !missed.contains(&t.mint), "a miss is red");
+        // The fixed sparkle at 70% of the width and 94% of the height used to sit right after the words.
+        let png = Renderer::new().svg_to_png(&card(None, None).to_svg()).expect("renders");
+        let image = image::load_from_memory(&png).expect("a PNG").to_rgba8();
+        assert_eq!(
+            image.get_pixel(366, 302),
+            image.get_pixel(400, 302),
+            "no sparkle beside the status"
+        );
+    }
+
+    #[test]
     fn the_heist_card_shows_the_crew_and_how_each_stage_went() {
         let crew = [
             CrewView { name: "Ann", role: 0 },
@@ -1101,8 +1155,77 @@ mod tests {
         assert!(won.contains("OPEN!") && won.contains("PASSED") && won.contains("60 EACH"));
         let lost = card(Some(false), "BUSTED").to_svg();
         assert!(lost.contains("STAYS SHUT") && lost.contains("FAILED"));
-        assert_eq!(size(&Renderer::new().svg_to_png(&won).expect("renders")), (600, 560));
+        // Three in the crew take two rows, and the card is only as tall as they need.
+        assert_eq!(size(&Renderer::new().svg_to_png(&won).expect("renders")), (600, 504));
         assert!(card(None, "x").to_svg().contains("LOOKOUT") && card(None, "x").to_svg().contains("DIVER"));
+    }
+
+    #[test]
+    fn the_heist_card_is_as_tall_as_its_crew_and_a_good_haul_is_not_red() {
+        let crew = |n: usize| -> Vec<CrewView<'static>> {
+            (0..n)
+                .map(|k| CrewView {
+                    name: "Ann",
+                    role: k % 3,
+                })
+                .collect()
+        };
+        let stage = |passed| StageView {
+            title: "Crack the clam lock",
+            chance: 64,
+            passed,
+            line: "Click, click, clunk.",
+        };
+        let card = |crew: &[CrewView<'_>], stages: [Option<bool>; 3], headline: &str| {
+            HeistCard {
+                crew,
+                stages: stages.map(stage),
+                headline,
+                each: 0,
+                theme: Theme::reef(),
+            }
+            .to_svg()
+        };
+        let height = |n: usize| {
+            let crew = crew(n);
+            size(
+                &Renderer::new()
+                    .svg_to_png(&card(&crew, [None; 3], "CREW"))
+                    .expect("renders"),
+            )
+            .1
+        };
+        assert_eq!(
+            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(height),
+            [476, 476, 476, 504, 504, 532, 532, 560, 560, 560]
+        );
+
+        // The headline's colour: gold when the vault opens, mint for a haul, red only when nothing came out.
+        let team = crew(3);
+        let t = Theme::reef();
+        let colour_of = |svg: &str, headline: &str| {
+            let end = svg.find(&format!(">{headline}</text>")).expect("the headline is drawn");
+            let start = svg[..end].rfind("<text").expect("in a text element");
+            svg[start..end]
+                .split("fill=\"")
+                .nth(1)
+                .and_then(|rest| rest.split('"').next())
+                .map(str::to_owned)
+        };
+        let (yes, no) = (Some(true), Some(false));
+        for (stages, headline, expected) in [
+            ([yes, yes, yes], "THE VAULT IS OPEN", &t.gold),
+            ([yes, yes, no], "A GOOD HAUL", &t.mint),
+            ([yes, no, no], "SCRAPS ONLY", &t.mint),
+            ([no, no, no], "BUSTED", &t.accent),
+        ] {
+            let svg = card(&team, stages, headline);
+            assert_eq!(
+                colour_of(&svg, headline).as_deref(),
+                Some(expected.as_str()),
+                "{headline}"
+            );
+        }
     }
 
     #[test]

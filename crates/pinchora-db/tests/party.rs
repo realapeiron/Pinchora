@@ -9,6 +9,9 @@ use pinchora_db::{
     ShellPick, ShellStart, SurgeHelp,
 };
 
+/// The daily derby loss limit the tests pass to joins that are not about the limit.
+const LOSS: i64 = 100_000;
+
 async fn db() -> Option<Db> {
     let url = std::env::var("PINCHORA_TEST_DATABASE_URL").ok()?;
     let db = Db::connect(&url, 8).await.expect("connect");
@@ -90,13 +93,13 @@ async fn a_staked_derby_holds_stakes_and_the_winners_share_the_pool() {
         db.earn_shells(user, 100, "test").await.unwrap();
     }
     let id = lobby(&db, "derby", guild, channel, a, 40).await;
-    assert_eq!(db.derby_join(id, a, "A", 0, 30).await.unwrap(), DerbyJoin::Joined);
-    assert_eq!(db.derby_join(id, b, "B", 1, 30).await.unwrap(), DerbyJoin::Joined);
-    assert_eq!(db.derby_join(id, c, "C", 1, 30).await.unwrap(), DerbyJoin::Joined);
-    assert_eq!(db.derby_join(id, d, "D", 2, 30).await.unwrap(), DerbyJoin::Joined);
+    assert_eq!(db.derby_join(id, a, "A", 0, 30, LOSS).await.unwrap(), DerbyJoin::Joined);
+    assert_eq!(db.derby_join(id, b, "B", 1, 30, LOSS).await.unwrap(), DerbyJoin::Joined);
+    assert_eq!(db.derby_join(id, c, "C", 1, 30, LOSS).await.unwrap(), DerbyJoin::Joined);
+    assert_eq!(db.derby_join(id, d, "D", 2, 30, LOSS).await.unwrap(), DerbyJoin::Joined);
     assert_eq!(shells(&db, a).await, 60, "the stake is held");
     // Picking again moves the crab and charges nothing.
-    assert_eq!(db.derby_join(id, d, "D", 1, 30).await.unwrap(), DerbyJoin::Moved);
+    assert_eq!(db.derby_join(id, d, "D", 1, 30, LOSS).await.unwrap(), DerbyJoin::Moved);
     assert_eq!(shells(&db, d).await, 60);
     assert_eq!(db.party_members(id).await.unwrap().len(), 4);
 
@@ -139,7 +142,7 @@ async fn a_staked_derby_holds_stakes_and_the_winners_share_the_pool() {
         "no second payout"
     );
     assert_eq!(db.game(id).await.unwrap().unwrap().status, DONE);
-    assert_eq!(db.derby_join(id, a, "A", 3, 30).await.unwrap(), DerbyJoin::Closed);
+    assert_eq!(db.derby_join(id, a, "A", 3, 30, LOSS).await.unwrap(), DerbyJoin::Closed);
 }
 
 #[tokio::test]
@@ -151,9 +154,9 @@ async fn a_derby_nobody_won_or_too_few_joined_gives_every_stake_back() {
     }
     // Nobody backed the winning crab.
     let id = lobby(&db, "derby", guild, channel, a, 25).await;
-    db.derby_join(id, a, "A", 0, 30).await.unwrap();
-    db.derby_join(id, b, "B", 1, 30).await.unwrap();
-    db.derby_join(id, c, "C", 2, 30).await.unwrap();
+    db.derby_join(id, a, "A", 0, 30, LOSS).await.unwrap();
+    db.derby_join(id, b, "B", 1, 30, LOSS).await.unwrap();
+    db.derby_join(id, c, "C", 2, 30, LOSS).await.unwrap();
     let result = db.derby_settle(id, Some(a), 2, 5).await.unwrap().expect("settled");
     assert_eq!(result.outcome, DerbyOutcome::Refunded);
     assert_eq!(
@@ -163,7 +166,7 @@ async fn a_derby_nobody_won_or_too_few_joined_gives_every_stake_back() {
 
     // A race with shells on it needs two players; the lone racer is refunded.
     let id = lobby(&db, "derby", guild, other, a, 25).await;
-    db.derby_join(id, a, "A", 0, 30).await.unwrap();
+    db.derby_join(id, a, "A", 0, 30, LOSS).await.unwrap();
     assert_eq!(shells(&db, a).await, 75);
     run_out(&db, id).await;
     let result = db
@@ -187,8 +190,8 @@ async fn a_friendly_derby_moves_no_shells_and_names_the_winning_backers() {
     let Some(db) = db().await else { return };
     let [guild, channel, a, b] = ids();
     let id = lobby(&db, "derby", guild, channel, a, 0).await;
-    db.derby_join(id, a, "A", 3, 30).await.unwrap();
-    db.derby_join(id, b, "B", 4, 30).await.unwrap();
+    db.derby_join(id, a, "A", 3, 30, LOSS).await.unwrap();
+    db.derby_join(id, b, "B", 4, 30, LOSS).await.unwrap();
     let result = db.derby_settle(id, Some(a), 2, 4).await.unwrap().expect("settled");
     assert_eq!(result.outcome, DerbyOutcome::Friendly(vec![b]));
     assert_eq!((shells(&db, a).await, shells(&db, b).await), (0, 0));
@@ -202,11 +205,11 @@ async fn leaving_a_derby_refunds_and_a_short_wallet_cannot_join() {
     db.earn_shells(broke, 10, "test").await.unwrap();
     let id = lobby(&db, "derby", guild, channel, a, 50).await;
     assert_eq!(
-        db.derby_join(id, broke, "Broke", 0, 30).await.unwrap(),
+        db.derby_join(id, broke, "Broke", 0, 30, LOSS).await.unwrap(),
         DerbyJoin::Broke { balance: 10 }
     );
     assert_eq!(db.derby_leave(id, broke).await.unwrap(), DerbyLeave::NotIn);
-    db.derby_join(id, a, "A", 0, 30).await.unwrap();
+    db.derby_join(id, a, "A", 0, 30, LOSS).await.unwrap();
     assert_eq!(shells(&db, a).await, 50);
     assert_eq!(db.derby_leave(id, a).await.unwrap(), DerbyLeave::Left { refund: 50 });
     assert_eq!(shells(&db, a).await, 100);
@@ -217,8 +220,11 @@ async fn leaving_a_derby_refunds_and_a_short_wallet_cannot_join() {
     );
     // The lobby holds at most `max` racers.
     db.earn_shells(broke, 100, "test").await.unwrap();
-    assert_eq!(db.derby_join(id, a, "A", 0, 1).await.unwrap(), DerbyJoin::Joined);
-    assert_eq!(db.derby_join(id, broke, "B", 0, 1).await.unwrap(), DerbyJoin::Full);
+    assert_eq!(db.derby_join(id, a, "A", 0, 1, LOSS).await.unwrap(), DerbyJoin::Joined);
+    assert_eq!(
+        db.derby_join(id, broke, "B", 0, 1, LOSS).await.unwrap(),
+        DerbyJoin::Full
+    );
     assert_eq!(shells(&db, broke).await, 110, "a full lobby takes nothing");
 }
 
@@ -282,8 +288,8 @@ async fn simultaneous_derby_endings_pay_once() {
         db.earn_shells(user, 100, "test").await.unwrap();
     }
     let id = lobby(&db, "derby", guild, channel, a, 30).await;
-    db.derby_join(id, a, "A", 2, 30).await.unwrap();
-    db.derby_join(id, b, "B", 2, 30).await.unwrap();
+    db.derby_join(id, a, "A", 2, 30, LOSS).await.unwrap();
+    db.derby_join(id, b, "B", 2, 30, LOSS).await.unwrap();
     run_out(&db, id).await;
     let tries = (0..6).map(|_| {
         let db = db.clone();
@@ -800,4 +806,206 @@ async fn storm_settings_schedule_the_next_storm_and_one_pod_takes_each_slot() {
     );
     let off = db.set_surge(guild, Some(false), None, None, later).await.unwrap();
     assert!(off.surge_next_at.is_none(), "switching it off cancels the next storm");
+}
+
+/// A player's rows in `party_daily` for `game` as (days ago, plays, net), newest first.
+async fn daily_rows(db: &Db, user: u64, game: &str) -> Vec<(i32, i32, i64)> {
+    let today = Utc::now().timestamp().div_euclid(86_400) as i32;
+    let rows: Vec<(i32, i32, i64)> =
+        sqlx::query_as("SELECT day, plays, net FROM party_daily WHERE user_id = $1 AND game = $2 ORDER BY day DESC")
+            .bind(user as i64)
+            .bind(game)
+            .fetch_all(db.pool())
+            .await
+            .unwrap();
+    rows.into_iter()
+        .map(|(day, plays, net)| (today - day, plays, net))
+        .collect()
+}
+
+/// Pretends the player put their stake in a day ago: their join, and the day's row it was counted on.
+async fn joined_yesterday(db: &Db, session: i64, user: u64, game: &str) {
+    sqlx::query("UPDATE party_members SET joined_at = joined_at - interval '1 day' WHERE session_id = $1")
+        .bind(session)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    sqlx::query("UPDATE party_daily SET day = day - 1 WHERE user_id = $1 AND game = $2")
+        .bind(user as i64)
+        .bind(game)
+        .execute(db.pool())
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn derby_stakes_count_against_a_daily_loss_limit_until_they_come_back() {
+    let Some(db) = db().await else { return };
+    let [guild, c1, c2, c3, c4, c5, player, other, host] = ids();
+    db.earn_shells(player, 2_000, "test").await.unwrap();
+    db.earn_shells(other, 2_000, "test").await.unwrap();
+    let net = |user: u64| {
+        let db = db.clone();
+        async move { db.table_today(user, "derby").await.unwrap().1 }
+    };
+    let (a, b, c) = (
+        lobby(&db, "derby", guild, c1, host, 200).await,
+        lobby(&db, "derby", guild, c2, host, 200).await,
+        lobby(&db, "derby", guild, c3, host, 200).await,
+    );
+    // A limit of 500: two stakes of 200 fit, a third (to 600 down) does not.
+    assert_eq!(
+        db.derby_join(a, player, "P", 0, 30, 500).await.unwrap(),
+        DerbyJoin::Joined
+    );
+    assert_eq!(
+        db.derby_join(b, player, "P", 0, 30, 500).await.unwrap(),
+        DerbyJoin::Joined
+    );
+    assert_eq!(net(player).await, -400);
+    assert_eq!(
+        db.derby_join(c, player, "P", 0, 30, 500).await.unwrap(),
+        DerbyJoin::Down { net: -400 }
+    );
+    assert_eq!(shells(&db, player).await, 1_600, "a refused stake takes nothing");
+    assert_eq!(db.party_members(c).await.unwrap().len(), 0);
+    // Moving to another crab is free and counts nothing more.
+    assert_eq!(
+        db.derby_join(a, player, "P", 3, 30, 500).await.unwrap(),
+        DerbyJoin::Moved
+    );
+    assert_eq!(net(player).await, -400);
+    // Leaving gives the stake back, and the room under the limit with it.
+    assert_eq!(
+        db.derby_leave(a, player).await.unwrap(),
+        DerbyLeave::Left { refund: 200 }
+    );
+    assert_eq!(net(player).await, -200);
+    assert_eq!(
+        db.derby_join(c, player, "P", 0, 30, 500).await.unwrap(),
+        DerbyJoin::Joined
+    );
+    assert_eq!(net(player).await, -400);
+
+    // A lost race stays lost; the winner's share is counted in; a race nobody backed gives it all back.
+    db.derby_join(b, other, "O", 1, 30, 500).await.unwrap();
+    let lost = db.derby_settle(b, Some(host), 2, 1).await.unwrap().expect("settled");
+    assert_eq!(lost.outcome, DerbyOutcome::Paid(vec![(other, 400)]));
+    assert_eq!(net(player).await, -400, "P lost the stake of the race B");
+    assert_eq!(net(other).await, 200, "O staked 200 and was paid 400");
+    let nobody = db.derby_settle(c, Some(host), 2, 5).await.unwrap().expect("settled");
+    assert_eq!(nobody.outcome, DerbyOutcome::Cancelled, "one racer is no race");
+    assert_eq!(net(player).await, -200, "the stake of the called-off race is back");
+
+    // The same for a race nobody backed the winner of, and a free race counts nothing.
+    let d = lobby(&db, "derby", guild, c4, host, 100).await;
+    db.derby_join(d, player, "P", 0, 30, 500).await.unwrap();
+    db.derby_join(d, other, "O", 1, 30, 500).await.unwrap();
+    assert_eq!(net(player).await, -300);
+    let refunded = db.derby_settle(d, Some(host), 2, 4).await.unwrap().expect("settled");
+    assert_eq!(refunded.outcome, DerbyOutcome::Refunded);
+    assert_eq!(net(player).await, -200);
+    assert_eq!(net(other).await, 200);
+    let free = lobby(&db, "derby", guild, c5, host, 0).await;
+    db.derby_join(free, player, "P", 0, 30, 500).await.unwrap();
+    db.derby_settle(free, Some(host), 2, 0).await.unwrap().expect("settled");
+    assert_eq!(net(player).await, -200, "a race for fun moves no net");
+    // The day's net is exactly what the balances moved, and shells only changed hands.
+    assert_eq!(shells(&db, player).await, 2_000 + net(player).await);
+    assert_eq!(shells(&db, other).await, 2_000 + net(other).await);
+    assert_eq!(ledger_total(&db, &[player, other]).await, 4_000);
+}
+
+#[tokio::test]
+async fn a_derby_stake_is_settled_on_the_day_it_was_put_up() {
+    let Some(db) = db().await else { return };
+    let [guild, c1, c2, host, leaver, loner] = ids();
+    for user in [leaver, loner] {
+        db.earn_shells(user, 500, "test").await.unwrap();
+    }
+    // Put up a day ago and given back now (a leave, and a called-off race): yesterday's row is made
+    // whole, and today has no row at all.
+    let a = lobby(&db, "derby", guild, c1, host, 80).await;
+    db.derby_join(a, leaver, "L", 0, 30, 1_000).await.unwrap();
+    joined_yesterday(&db, a, leaver, "derby").await;
+    assert_eq!(daily_rows(&db, leaver, "derby").await, vec![(1, 0, -80)]);
+    assert_eq!(
+        db.derby_leave(a, leaver).await.unwrap(),
+        DerbyLeave::Left { refund: 80 }
+    );
+    assert_eq!(daily_rows(&db, leaver, "derby").await, vec![(1, 0, 0)]);
+
+    let b = lobby(&db, "derby", guild, c2, host, 80).await;
+    db.derby_join(b, loner, "S", 0, 30, 1_000).await.unwrap();
+    joined_yesterday(&db, b, loner, "derby").await;
+    let called_off = db.derby_settle(b, Some(host), 2, 0).await.unwrap().expect("settled");
+    assert_eq!(called_off.outcome, DerbyOutcome::Cancelled);
+    assert_eq!(daily_rows(&db, loner, "derby").await, vec![(1, 0, 0)]);
+    assert_eq!(db.table_today(loner, "derby").await.unwrap(), (0, 0));
+}
+
+#[tokio::test]
+async fn a_shell_game_is_settled_on_the_day_the_table_started() {
+    let Some(db) = db().await else { return };
+    let [guild, channel, forgetful, lucky] = ids();
+    for user in [forgetful, lucky] {
+        db.earn_shells(user, 500, "test").await.unwrap();
+    }
+    let limits = ShellLimits {
+        plays: 20,
+        loss: 300,
+        win: 600,
+    };
+    let table = |host: u64| NewGame {
+        kind: "shellgame",
+        guild_id: guild,
+        channel_id: channel,
+        host,
+        guest: None,
+        bet: 40,
+        status: ACTIVE,
+        state: "1",
+        ttl_secs: 45,
+    };
+    // A table started a day ago and never guessed at: the refund goes to the row of that day.
+    let ShellStart::Started(game) = db.shell_start(table(forgetful), limits).await.unwrap() else {
+        panic!("a table");
+    };
+    sqlx::query("UPDATE game_sessions SET created_at = created_at - interval '1 day' WHERE id = $1")
+        .bind(game.id)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    sqlx::query("UPDATE party_daily SET day = day - 1 WHERE user_id = $1 AND game = 'shellgame'")
+        .bind(forgetful as i64)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    assert_eq!(daily_rows(&db, forgetful, "shellgame").await, vec![(1, 1, -40)]);
+    run_out(&db, game.id).await;
+    assert!(db.shell_refund(game.id).await.unwrap().is_some());
+    assert_eq!(daily_rows(&db, forgetful, "shellgame").await, vec![(1, 0, 0)]);
+    assert_eq!(db.table_today(forgetful, "shellgame").await.unwrap(), (0, 0));
+    assert_eq!(shells(&db, forgetful).await, 500);
+
+    // And a right guess made after midnight is paid into the same day's net.
+    let ShellStart::Started(game) = db.shell_start(table(lucky), limits).await.unwrap() else {
+        panic!("a table");
+    };
+    sqlx::query("UPDATE game_sessions SET created_at = created_at - interval '1 day' WHERE id = $1")
+        .bind(game.id)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    sqlx::query("UPDATE party_daily SET day = day - 1 WHERE user_id = $1 AND game = 'shellgame'")
+        .bind(lucky as i64)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    let ShellPick::Done(done) = db.shell_pick(game.id, lucky, 1, |s| s * 5 / 2).await.unwrap() else {
+        panic!("a guess");
+    };
+    assert_eq!(done.paid, 100);
+    assert_eq!(daily_rows(&db, lucky, "shellgame").await, vec![(1, 1, 60)]);
+    assert_eq!(db.table_today(lucky, "shellgame").await.unwrap(), (0, 0));
 }

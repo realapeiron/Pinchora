@@ -182,7 +182,7 @@ pub(crate) async fn count(app: &App, game: Game, players: &[(u64, bool)]) {
 #[derive(CommandModel, CreateCommand)]
 #[command(
     name = "gambling",
-    desc = "Switch the shell game and other gambling-style games on or off for this server"
+    desc = "Switch the shell game, staked derbies and other gambling-style games on or off for this server"
 )]
 pub struct ConfigGambling {
     /// On lets members stake shells on games of chance; off (the default) closes them
@@ -199,8 +199,9 @@ impl ConfigGambling {
         }
         cx.app.db.set_gambling(guild, self.enabled).await?;
         cx.reply_ephemeral(if self.enabled {
-            "🎲 Gambling-style games are **on**. Members can stake a few shells at the table with `/play shells`; \
-             there are daily limits on plays, wins and losses. Turn them off again with `/config gambling enabled:false`."
+            "🎲 Gambling-style games are **on**. Members can stake shells at the table with `/play shells` and on \
+             crabs with `/play derby bet`; there are daily limits on plays, wins and losses. Turn them off again \
+             with `/config gambling enabled:false`."
         } else {
             "🎲 Gambling-style games are **off**. Nobody can stake shells on games of chance here."
         })

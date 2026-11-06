@@ -16,13 +16,19 @@ pub const HEIGHT: i32 = 288;
 
 const TOP: i32 = 44;
 const LANE_H: i32 = 38;
+/// The lane plates on the left, with the lane's number and its crab's name.
+const PLATE_W: i32 = 38;
 /// Where a crab's sprite starts, and how far its left edge walks to put its nose on the finish line.
-const START_X: i32 = 42;
-const FINISH_X: i32 = 440;
+const START_X: i32 = 46;
+const FINISH_X: i32 = 424;
+/// The middle of the place badges, to the right of the finish.
+const BADGE_X: i32 = 466;
 const SPRITE_W: i32 = 36;
 const TRAVEL: f32 = (FINISH_X - START_X - SPRITE_W) as f32;
-/// How far past the line a finished crab trots before it stops, as a share of the track.
-const OVERSHOOT: f32 = 0.05;
+/// How far past the line the winner trots before it stops, as a share of the track. The crabs behind it
+/// stop shorter, one place at a time, down to the last that stops on the line, so the field fans out
+/// instead of piling up in one column.
+const OVERSHOOT: f32 = 0.09;
 /// Frame times in hundredths of a second.
 /// A race with more steps than this is drawn with every other one.
 const LONG_RACE: usize = 90;
@@ -39,6 +45,8 @@ pub struct DerbyScene<'a> {
     pub crabs: &'a [RgbaImage],
     /// Each lane's colour as `0xrrggbb`, behind its number.
     pub accents: [u32; LANES],
+    /// Each crab's name, on its lane plate under the number: the buttons are named after the crabs.
+    pub names: [&'a str; LANES],
     /// How far along the track each crab is at every step: 0.0 at the start line, 1.0 at the finish.
     pub frames: &'a [[f32; LANES]],
     /// The crabs from first across the line to last.
@@ -175,7 +183,7 @@ fn rgb(v: u32) -> [u8; 3] {
 }
 
 /// Everything that does not move: sky and sea, the sand lanes, their numbers, the start and the finish.
-fn backdrop(accents: &[u32; LANES]) -> RgbaImage {
+fn backdrop(accents: &[u32; LANES], names: &[&str; LANES]) -> RgbaImage {
     let mut img = RgbaImage::new(WIDTH as u32, HEIGHT as u32);
     // Sky in three bands, then the sea.
     for (band, color) in [[0xc4, 0xea, 0xfc], [0xa8, 0xde, 0xfa], [0x8f, 0xd3, 0xff]]
@@ -215,14 +223,31 @@ fn backdrop(accents: &[u32; LANES]) -> RgbaImage {
         };
         rect(&mut img, x, y, 3, 2, hex(tone));
     }
-    // Lane plates with their number, in the lane's colour.
+    // Lane plates in the lane's colour, with its number and its crab's name.
+    let inside = PLATE_W - 2;
     for (lane, accent) in accents.iter().enumerate() {
         let y = TOP + lane as i32 * LANE_H;
-        rect(&mut img, 0, y, 30, LANE_H - 1, hex(rgb(*accent)));
-        rect(&mut img, 0, y, 30, 2, hex(mix(rgb(*accent), [255, 255, 255], 0.4)));
-        rect(&mut img, 28, y, 2, LANE_H - 1, hex(mix(rgb(*accent), NAVY, 0.45)));
+        rect(&mut img, 0, y, PLATE_W, LANE_H - 1, hex(rgb(*accent)));
+        rect(&mut img, 0, y, PLATE_W, 2, hex(mix(rgb(*accent), [255, 255, 255], 0.4)));
+        rect(&mut img, inside, y, 2, LANE_H - 1, hex(mix(rgb(*accent), NAVY, 0.45)));
         let digit = char::from_digit(lane as u32 + 1, 10).unwrap_or('?');
-        text(&mut img, 11, y + 14, 2, &digit.to_string(), hex(NAVY));
+        text(
+            &mut img,
+            (inside - text_width(&digit.to_string(), 2)) / 2,
+            y + 8,
+            2,
+            &digit.to_string(),
+            hex(NAVY),
+        );
+        let name = names[lane].to_uppercase();
+        text(
+            &mut img,
+            (inside - text_width(&name, 1)) / 2,
+            y + 24,
+            1,
+            &name,
+            hex(NAVY),
+        );
     }
     // The start line, and the finish: a chequered column with a banner over it.
     for row in 0..(LANES as i32 * LANE_H / 4) {
@@ -321,14 +346,18 @@ fn draw(scene: &DerbyScene<'_>, base: &RgbaImage, step: usize, banner: Banner, f
             [0xff, 0xf6, 0xd6]
         };
         let y = TOP + winner as i32 * LANE_H;
-        rect(&mut img, 31, y, FINISH_X - 33, LANE_H - 1, hex(tone));
+        rect(&mut img, PLATE_W + 1, y, FINISH_X - PLATE_W - 3, LANE_H - 1, hex(tone));
         rect(&mut img, START_X - 4, y, 3, LANE_H - 1, hex([255, 255, 255]));
     }
     for lane in 0..LANES {
         let y = TOP + lane as i32 * LANE_H;
-        let progress = now[lane].min(1.0 + OVERSHOOT);
+        let place = scene.order.iter().position(|&c| c == lane).unwrap_or(LANES - 1);
+        // Where the crab comes to rest once it is across the line: further for a better place.
+        let stop = 1.0 + OVERSHOOT * (1.0 - place as f32 / (LANES - 1) as f32);
+        let progress = now[lane].min(stop);
+        let pace = progress - before[lane].min(stop);
         let x = START_X + (progress * TRAVEL).round() as i32;
-        let moving = (now[lane] - before[lane]) > 0.0005 && !finished;
+        let moving = pace > 0.0005 && !finished;
         // The crab hops while it runs; a crab at rest stands.
         let hop = if moving {
             ((step as f32 * 1.1 + lane as f32 * 1.9).sin().abs() * 3.0).round() as i32
@@ -337,7 +366,7 @@ fn draw(scene: &DerbyScene<'_>, base: &RgbaImage, step: usize, banner: Banner, f
         };
         // A shadow, and dust behind a crab that is going fast.
         rect(&mut img, x + 6, y + LANE_H - 4, 24, 2, hex([0xb8, 0x9e, 0x68]));
-        if moving && now[lane] - before[lane] > 0.027 {
+        if moving && pace > 0.027 {
             for (dx, dy) in [(-3, 26), (-7, 22), (-5, 29)] {
                 rect(&mut img, x + dx, y + dy, 3, 2, hex([0xfa, 0xee, 0xcf]));
             }
@@ -347,8 +376,7 @@ fn draw(scene: &DerbyScene<'_>, base: &RgbaImage, step: usize, banner: Banner, f
         }
         // Past the line the crab has a place.
         if now[lane] >= 1.0 || finished {
-            let place = scene.order.iter().position(|&c| c == lane).unwrap_or(LANES - 1);
-            badge(&mut img, FINISH_X + 30, y + LANE_H / 2, place);
+            badge(&mut img, BADGE_X, y + LANE_H / 2, place);
             if place == 0 && now[lane] >= 1.0 {
                 crown(&mut img, x + 13, y + 1 - hop);
             }
@@ -367,7 +395,7 @@ fn draw(scene: &DerbyScene<'_>, base: &RgbaImage, step: usize, banner: Banner, f
 pub fn derby_gif(scene: &DerbyScene<'_>) -> anyhow::Result<Vec<u8>> {
     anyhow::ensure!(scene.crabs.len() == LANES, "the derby has {LANES} crabs");
     anyhow::ensure!(!scene.frames.is_empty(), "a race has frames");
-    let base = backdrop(&scene.accents);
+    let base = backdrop(&scene.accents, &scene.names);
     let mut out = Vec::new();
     {
         let mut encoder = GifEncoder::new_with_speed(&mut out, 30);
@@ -399,7 +427,13 @@ pub fn derby_gif(scene: &DerbyScene<'_>) -> anyhow::Result<Vec<u8>> {
 
 /// One picture of the race, for the lobby card to show the crabs lined up or for a test to look at.
 pub fn derby_still(scene: &DerbyScene<'_>, step: usize, finished: bool) -> RgbaImage {
-    draw(scene, &backdrop(&scene.accents), step, Banner::None, finished)
+    draw(
+        scene,
+        &backdrop(&scene.accents, &scene.names),
+        step,
+        Banner::None,
+        finished,
+    )
 }
 
 #[cfg(test)]
@@ -434,6 +468,7 @@ mod tests {
         DerbyScene {
             crabs,
             accents: [0xff6b4a, 0x3a9bdc, 0x06d6a0, 0xffd166, 0xb48ae0, 0xf08a24],
+            names: ["Pebble", "Scuttle", "Kelp", "Barnacle", "Clawdia", "Tidbit"],
             frames,
             order: [2, 0, 1, 3, 4, 5],
         }
@@ -513,7 +548,7 @@ mod tests {
         let crabs = crabs();
         let frames = frames();
         let scene = scene(&crabs, &frames);
-        let base = backdrop(&scene.accents);
+        let base = backdrop(&scene.accents, &scene.names);
         for step in [0, 7, 20, frames.len() - 1] {
             let image = draw(&scene, &base, step, Banner::Go, step == frames.len() - 1);
             let colours: HashSet<[u8; 4]> = image.pixels().map(|p| p.0).collect();
@@ -530,19 +565,73 @@ mod tests {
         let late = derby_still(&scene, frames.len() - 1, true);
         // Lane 1's sprite is further right late than early: find its leftmost non-sand pixel in its lane.
         let lane_y = (TOP + LANE_H + 10) as u32;
-        let first_crab_pixel =
-            |img: &RgbaImage| (31..WIDTH as u32).find(|&x| img.get_pixel(x, lane_y).0[..3] == [0x80, 0x80, 0x80]);
+        let first_crab_pixel = |img: &RgbaImage| {
+            (PLATE_W as u32..WIDTH as u32).find(|&x| img.get_pixel(x, lane_y).0[..3] == [0x80, 0x80, 0x80])
+        };
         let (a, b) = (first_crab_pixel(&early), first_crab_pixel(&late));
         assert!(a.is_some() && b.is_some() && b > a, "{a:?} then {b:?}");
         // Lane 2 won: its badge is gold, and lane 0, second, has the silver one. Early on there are none.
         let badge = |img: &RgbaImage, lane: i32| {
-            img.get_pixel((FINISH_X + 35) as u32, (TOP + lane * LANE_H + LANE_H / 2 + 3) as u32)
+            img.get_pixel((BADGE_X + 5) as u32, (TOP + lane * LANE_H + LANE_H / 2 + 3) as u32)
                 .0[..3]
                 .to_vec()
         };
         assert_eq!(badge(&late, 2), vec![0xff, 0xd1, 0x66]);
         assert_eq!(badge(&late, 0), vec![0xd6, 0xde, 0xee]);
         assert_ne!(badge(&early, 2), badge(&late, 2));
+    }
+
+    #[test]
+    fn finished_crabs_fan_out_by_place_instead_of_piling_up_on_the_line() {
+        let crabs = crabs();
+        let frames = frames();
+        let scene = scene(&crabs, &frames);
+        let last = derby_still(&scene, frames.len() - 1, true);
+        // Where each lane's crab rests: its shell's first pixel, the same spot on every identical sprite.
+        let rest: Vec<u32> = (0..LANES as i32)
+            .map(|lane| {
+                let y = (TOP + lane * LANE_H + 12) as u32;
+                (PLATE_W as u32..WIDTH as u32)
+                    .find(|&x| last.get_pixel(x, y).0[..3] == [0x80, 0x80, 0x80])
+                    .expect("the crab is on its lane")
+            })
+            .collect();
+        // The order is [2, 0, 1, 3, 4, 5]: each place rests further left than the one before it.
+        for pair in scene.order.windows(2) {
+            assert!(
+                rest[pair[0]] > rest[pair[1]],
+                "lane {} (better) rests at {}, lane {} at {}",
+                pair[0],
+                rest[pair[0]],
+                pair[1],
+                rest[pair[1]]
+            );
+        }
+        let spread = rest[scene.order[0]] - rest[scene.order[LANES - 1]];
+        assert!(spread >= 24, "{spread} px between first and last");
+    }
+
+    #[test]
+    fn every_lane_plate_carries_its_number_and_its_crab_s_name() {
+        let crabs = crabs();
+        let frames = frames();
+        let scene = scene(&crabs, &frames);
+        let image = derby_still(&scene, 0, false);
+        let navy = hex(NAVY);
+        for lane in 0..LANES as i32 {
+            let ink = |from: i32, to: i32| {
+                (0..PLATE_W - 2)
+                    .flat_map(|x| (from..to).map(move |y| (x, y)))
+                    .filter(|&(x, y)| *image.get_pixel(x as u32, (TOP + lane * LANE_H + y) as u32) == navy)
+                    .count()
+            };
+            assert!(ink(6, 20) >= 10, "lane {lane} has no number");
+            assert!(ink(22, 31) >= 10, "lane {lane} has no name under it");
+            // The longest name still fits inside the plate.
+            assert_eq!(ink(31, LANE_H - 1), 0, "lane {lane}'s name runs out of the plate");
+        }
+        let longest = scene.names.iter().map(|n| text_width(&n.to_uppercase(), 1)).max();
+        assert!(longest.is_some_and(|w| w <= PLATE_W - 2), "{longest:?} px of name");
     }
 
     #[test]
@@ -567,7 +656,7 @@ mod tests {
         }
         let frames = frames();
         let scene = scene(&crabs, &frames);
-        let base = backdrop(&scene.accents);
+        let base = backdrop(&scene.accents, &scene.names);
         for step in [0, 20, frames.len() - 1] {
             let image = draw(&scene, &base, step, Banner::Go, step == frames.len() - 1);
             let colours: HashSet<[u8; 4]> = image.pixels().map(|p| p.0).collect();

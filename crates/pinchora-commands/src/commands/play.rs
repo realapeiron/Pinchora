@@ -104,7 +104,7 @@ impl TriviaTopic {
     desc = "Hermit Crab Derby: everyone picks a crab and watches the race; winners share the stakes"
 )]
 pub struct PlayDerby {
-    /// Shells each racer puts on their crab (10-500); leave empty to race for fun
+    /// Shells each racer stakes on a crab (10-500, needs /config gambling); empty races for fun
     #[command(min_value = 10, max_value = 500)]
     bet: Option<i64>,
 }

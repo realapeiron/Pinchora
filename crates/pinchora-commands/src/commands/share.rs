@@ -4,7 +4,7 @@
 //! two stakes. Both share: split it (stakes come back). One grabs: they take all. Both grab: nobody
 //! gets anything, and a wagered pot sinks into the sea. A player who never picks forfeits.
 
-use std::{str::Split, sync::Arc, time::Duration};
+use std::{str::Split, sync::Arc};
 
 use pinchora_db::{GameSession, PENDING, Payout};
 use pinchora_game::{
@@ -21,7 +21,7 @@ use twilight_util::builder::embed::EmbedBuilder;
 use super::{
     duel::{Kind, answer},
     games::{button, button_row, location, pack, quiet, unpack},
-    party::{count, edit_card},
+    party::{count, edit_card, rest, resting},
 };
 use crate::{
     App, Cx,
@@ -333,13 +333,11 @@ async fn conclude(
     } else {
         let mut grants = outcome.split(POOL);
         let (lo, hi) = (players[0].min(players[1]), players[0].max(players[1]));
-        // A pair is paid from the pool once an hour, so two accounts cannot trade it back and forth.
-        let paying = grants.iter().any(|g| *g > 0)
-            && app
-                .cache
-                .try_cooldown(&format!("sharepair:{lo}:{hi}"), Duration::from_secs(PAIR_COOLDOWN_SECS))
-                .await?
-                .is_none();
+        // A pair is paid from the pool once an hour, so two accounts cannot trade it back and forth. The
+        // hour starts when a payout has gone through, not when one is tried: a click that loses the race to
+        // end the game must not leave the winner's payout facing a pair that looks paid already.
+        let pair = format!("sharepair:{lo}");
+        let paying = grants.iter().any(|g| *g > 0) && resting(app, &pair, hi).await?.is_none();
         if !paying {
             grants = [0, 0];
         }
@@ -350,6 +348,9 @@ async fn conclude(
         else {
             return Ok(None);
         };
+        if paid.iter().sum::<i64>() > 0 {
+            rest(app, &pair, hi, PAIR_COOLDOWN_SECS).await;
+        }
         note = if !paying && outcome != Outcome::BothGrab {
             "(This pair was paid from the sea's pool within the hour, so no shells this time.)".to_owned()
         } else if paid.iter().sum::<i64>() < grants.iter().sum::<i64>() {

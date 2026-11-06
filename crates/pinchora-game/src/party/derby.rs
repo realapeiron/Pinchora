@@ -13,6 +13,9 @@ pub const MAX_RACERS: i64 = 30;
 pub const LOBBY_SECS: i64 = 75;
 /// A race with shells at stake needs this many players, so nobody races against themselves.
 pub const MIN_STAKED_RACERS: usize = 2;
+/// A staked race is pure chance, so nobody may be more than this many shells down on a day's staked
+/// derbies (a stake held in a lobby counts as down until it comes back); a stake past it is refused.
+pub const DAILY_LOSS_LIMIT: i64 = 1_000;
 /// Milliseconds one step of the race lasts in the animation.
 pub const TICK_MS: u32 = 90;
 

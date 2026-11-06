@@ -3,7 +3,9 @@
 //! A lobby opens for a minute or so; everyone picks a crab (and, when the host asked for a stake, puts
 //! the same shells on it). The race is a GIF, decided by a seed kept with the lobby, so every pod runs
 //! the same race. Whoever backed the winner shares the pool; nobody backing it, or too few racers,
-//! gives every stake back, so the house never takes a shell.
+//! gives every stake back, so the house never takes a shell. A staked race is pure chance, so it is a
+//! gambling-style game: off until a manager switches it on with `/config gambling`, and with a limit on
+//! how much a player can be down on the day. Free races are open everywhere.
 
 use std::{
     str::Split,
@@ -13,7 +15,7 @@ use std::{
 use image::RgbaImage;
 use pinchora_db::{DerbyJoin, DerbyLeave, DerbyOutcome, DerbyResult, GameSession, NewGame, PENDING, PartyMember};
 use pinchora_game::{
-    party::derby::{self, CRABS, LOBBY_SECS, MAX_RACERS, MIN_STAKED_RACERS, ROSTER, Race},
+    party::derby::{self, CRABS, DAILY_LOSS_LIMIT, LOBBY_SECS, MAX_RACERS, MIN_STAKED_RACERS, ROSTER, Race},
     play::{Game, MAX_BET, MIN_BET},
 };
 use pinchora_render::{DERBY_LANES, DerbyCard, DerbyLane, DerbyScene, SpriteArt, Theme, derby_gif, tint_crab};
@@ -69,6 +71,15 @@ pub(crate) async fn start(cx: &Cx, bet: Option<i64>) -> anyhow::Result<()> {
         return cx.reply_ephemeral("Races run inside a server.").await;
     };
     let bet = bet.unwrap_or(0);
+    if bet != 0 && !cx.app.db.gambling_enabled(guild).await? {
+        return cx
+            .reply_ephemeral(
+                "🎲 Races with shells on them are a gambling-style game, and those are **off** on this server. \
+                 A manager can switch them on with `/config gambling`. A race for fun needs no stake: \
+                 just leave `bet` empty.",
+            )
+            .await;
+    }
     if bet != 0 && !(MIN_BET..=MAX_BET).contains(&bet) {
         return cx
             .reply_ephemeral(format!("A stake is {MIN_BET} to {MAX_BET} shells."))
@@ -240,7 +251,14 @@ async fn on_pick(cx: &Cx, id: i64, crab: usize) -> anyhow::Result<()> {
     let joined = cx
         .app
         .db
-        .derby_join(id, me, &clean_name(&cx.author_display_name()), crab as i16, MAX_RACERS)
+        .derby_join(
+            id,
+            me,
+            &clean_name(&cx.author_display_name()),
+            crab as i16,
+            MAX_RACERS,
+            DAILY_LOSS_LIMIT,
+        )
         .await?;
     match joined {
         DerbyJoin::Joined | DerbyJoin::Moved => {}
@@ -260,6 +278,16 @@ async fn on_pick(cx: &Cx, id: i64, crab: usize) -> anyhow::Result<()> {
                     "You only have **{}** shells, but the stake is **{}**. Try `/daily`, or join a race for fun!",
                     thousands(balance),
                     thousands(session.bet)
+                ))
+                .await;
+        }
+        DerbyJoin::Down { net } => {
+            return cx
+                .reply_ephemeral(format!(
+                    "That stake would take you past today's limit of **{}** shells down on staked races \
+                     (you're at {}). Join a race for fun, or come back tomorrow.",
+                    thousands(DAILY_LOSS_LIMIT),
+                    thousands(net)
                 ))
                 .await;
         }
@@ -443,6 +471,7 @@ async fn finish(app: &Arc<App>, id: i64, forced: Option<u64>) -> anyhow::Result<
             derby_gif(&DerbyScene {
                 crabs: &art.sprites,
                 accents: std::array::from_fn(|n| ROSTER[n].accent),
+                names: std::array::from_fn(|n| ROSTER[n].name),
                 frames: &race.frames,
                 order: race.order,
             })
