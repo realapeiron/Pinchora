@@ -784,14 +784,16 @@ function PanelEditor({
           )}
         </div>
       </div>
-      <div className="tk-editor-preview">
-        <span className="field-label" id={`${base}-preview`}>
-          Preview
-        </span>
-        <PanelPreview draft={draft} labelledBy={`${base}-preview`} />
-        <p className="muted fine">
-          This is how the panel looks in Discord. Nothing is posted until you post it.
-        </p>
+      <div className="tk-editor-side">
+        <div className="tk-editor-preview">
+          <span className="field-label" id={`${base}-preview`}>
+            Preview
+          </span>
+          <PanelPreview draft={draft} labelledBy={`${base}-preview`} />
+          <p className="muted fine">
+            This is how the panel looks in Discord. Nothing is posted until you post it.
+          </p>
+        </div>
       </div>
       <div className="panel-foot tk-editor-foot">
         {save.isError && !(save.error instanceof ApiError && save.error.errors.length > 0) && (

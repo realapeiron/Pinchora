@@ -36,7 +36,7 @@ moved = "{category} kategorisine taşındı."
 transcript-here = "{number} numaralı talebin dökümü: dosyayı tarayıcında aç."
 rated = "Teşekkürler! Puanın: {stars}"
 rated-already = "Bu talep zaten puanlanmış."
-auto-reason = "{hours} saattir kimse yazmadı."
+auto-reason = { one = "1 saattir kimse yazmadı.", other = "{count} saattir kimse yazmadı." }
 channel-topic = "Talep {number} · {topic}"
 
 [tickets.panel]

@@ -160,9 +160,14 @@
   margin-top: 0;
 }
 
+/* The preview sticks below the top bar, within its own column: never over the save buttons. */
+.tk-editor-side {
+  align-self: stretch;
+}
+
 .tk-editor-preview {
   position: sticky;
-  top: 16px;
+  top: 88px;
   display: grid;
   gap: 8px;
 }
@@ -566,9 +571,11 @@
   .tk-editor {
     grid-template-columns: minmax(0, 1fr);
   }
+  .tk-editor-side {
+    order: -1;
+  }
   .tk-editor-preview {
     position: static;
-    order: -1;
   }
 }
 

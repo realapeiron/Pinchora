@@ -223,12 +223,14 @@ pub(crate) async fn on_control(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::R
     let Some(id) = parts.next().and_then(|id| id.parse::<i64>().ok()) else {
         return tell(cx, t!(lang, "tickets.expired")).await;
     };
+    // Only in the ticket itself, where the bot posts these: staff rights come from that channel's permissions.
+    let here = cx.interaction.channel.as_ref().map(|c| c.id.get());
     let found = cx
         .app
         .db
         .ticket(id)
         .await?
-        .filter(|t| Some(t.guild_id as u64) == cx.guild_id());
+        .filter(|t| Some(t.guild_id as u64) == cx.guild_id() && t.place() == here);
     let Some(ticket) = found else {
         return tell(cx, t!(lang, "tickets.gone")).await;
     };
@@ -965,7 +967,10 @@ pub async fn tick(app: &Arc<App>) -> anyhow::Result<usize> {
     let mut closed = 0;
     for idle in app.db.idle_tickets(now, 25).await? {
         let (guild, place) = (idle.guild_id as u64, idle.place as u64);
+        // A ticket skipped here goes to the back of the queue, so 25 that can never close (a switched-off
+        // module, a server the bot left) cannot hold up every other server's.
         if !module_on(app, guild, Some(place)).await {
+            app.db.touch_ticket(idle.id, now).await?;
             continue;
         }
         let cutoff = idle_cutoff(now, idle.auto_close_hours);
@@ -985,6 +990,7 @@ pub async fn tick(app: &Arc<App>) -> anyhow::Result<usize> {
             Err(error) if crate::roles::error_code(&error) == Some(UNKNOWN_CHANNEL) => {}
             Err(error) => {
                 tracing::debug!(ticket = idle.id, %error, "idle ticket's channel not read");
+                app.db.touch_ticket(idle.id, now).await?;
                 continue;
             }
         }
@@ -996,7 +1002,7 @@ pub async fn tick(app: &Arc<App>) -> anyhow::Result<usize> {
             None => None,
         };
         let lang = guild_lang(app, guild).await;
-        let reason = t!(lang, "tickets.auto-reason", hours = idle.auto_close_hours);
+        let reason = t!(lang, "tickets.auto-reason", count = idle.auto_close_hours);
         match close(app, ticket, panel, None, Some(reason), Some(cutoff)).await {
             Ok(Some(_)) => closed += 1,
             Ok(None) => {}

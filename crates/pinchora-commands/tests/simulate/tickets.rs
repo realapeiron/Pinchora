@@ -839,7 +839,7 @@ async fn idle_tickets_close_themselves() {
     let quiet = sim.app.db.ticket_at(sim.guild, quiet_place).await.unwrap().unwrap();
     let busy = sim.app.db.ticket_at(sim.guild, busy_place).await.unwrap().unwrap();
     assert!(!quiet.is_open(), "the quiet one closed");
-    assert_eq!(quiet.close_reason.as_deref(), Some("Nobody wrote for 1 hours."));
+    assert_eq!(quiet.close_reason.as_deref(), Some("Nobody wrote for 1 hour."));
     assert_eq!(quiet.closed_by, None, "the bot closed it");
     assert!(busy.is_open(), "the busy one stays open");
     let posts = take_posts(&sim);

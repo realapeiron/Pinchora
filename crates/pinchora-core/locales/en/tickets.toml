@@ -36,7 +36,7 @@ moved = "Moved to {category}."
 transcript-here = "Ticket {number}'s transcript: open the file in your browser."
 rated = "Thank you! You gave {stars}."
 rated-already = "This ticket was rated already."
-auto-reason = "Nobody wrote for {hours} hours."
+auto-reason = { one = "Nobody wrote for 1 hour.", other = "Nobody wrote for {count} hours." }
 channel-topic = "Ticket {number} · {topic}"
 
 [tickets.panel]
