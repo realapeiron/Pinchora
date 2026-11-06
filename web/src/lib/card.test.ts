@@ -17,6 +17,7 @@ import {
   resizeText,
   snapMove,
   textHeight,
+  tidy,
   undo,
   unknownPlaceholders,
 } from "./card";
@@ -103,6 +104,10 @@ describe("moving and resizing", () => {
     const sprite = { x: 0, y: 0, w: 72, h: 52 };
     const stepped = resizeBox(sprite, "se", 40, 0, { kind: "aspect", unit: { w: 36, h: 26 } });
     expect(stepped).toEqual({ x: 0, y: 0, w: 108, h: 78 });
+    // An avatar shrunk below four times its border keeps a border the API takes.
+    const avatar = { ...newLayer(canvas, "avatar"), border_width: 12 };
+    const small = tidy({ ...avatar, ...resizeBox(avatar, "se", -170, -170, { kind: "square" }) });
+    expect(small.type === "avatar" && [small.w, small.border_width]).toEqual([30, 7]);
   });
 
   it("widens text from the sides and scales its font from the corners", () => {

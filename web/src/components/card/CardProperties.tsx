@@ -13,6 +13,7 @@ import {
   clamp,
   stickerName,
   textHeight,
+  tidy,
   unknownPlaceholders,
 } from "../../lib/card";
 import { PixelButton } from "../PixelButton";
@@ -431,7 +432,7 @@ export function LayerProperties({
   simple: boolean;
 }) {
   const id = (name: string) => `layer-${name}`;
-  const set = <L extends Layer>(next: L, merge?: string) => onChange(next, merge);
+  const set = <L extends Layer>(next: L, merge?: string) => onChange(tidy(next), merge);
   return (
     <div className="props">
       <h3 className="pixel-label props-title">

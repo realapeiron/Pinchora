@@ -249,8 +249,11 @@ export function newLayer(
   }
 }
 
-/** `layer` with its text box as tall as its lines, as the API keeps it. */
+/** `layer` with its text box as tall as its lines, as the API keeps it, and an avatar's border at most a quarter
+ * of its size, as the API wants it. */
 export function tidy(layer: Layer): Layer {
+  if (layer.type === "avatar")
+    return { ...layer, border_width: Math.min(layer.border_width, Math.floor(layer.w / 4)) };
   return layer.type === "text" ? { ...layer, h: textHeight(layer.size, layer.max_lines) } : layer;
 }
 
