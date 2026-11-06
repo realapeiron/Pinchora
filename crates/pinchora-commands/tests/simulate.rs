@@ -13652,27 +13652,18 @@ async fn the_party_games_are_in_the_stats_and_the_help() {
         assert!(fields.iter().any(|f| f.contains(game)), "{game} in {fields:?}");
     }
     let help = sim.command(player, "help", json!([])).await;
-    let text: String = help.embeds[0]
-        .fields
-        .iter()
-        .map(|f| f.value.as_str())
-        .collect::<Vec<_>>()
-        .join("\n");
-    for command in [
-        "/play derby",
-        "/play heist",
-        "/play shells",
-        "/duel share",
-        "/surge",
-        "/config gambling",
-        "/config surge",
-    ] {
-        assert!(text.contains(command), "{command}");
+    let areas = help_areas(&help);
+    for area in ["Crowd games & collecting", "Duels", "Game & module setup"] {
+        assert!(areas.iter().any(|a| a == area), "{area} in {areas:?}");
     }
-    assert!(
-        help.embeds[0].fields.iter().all(|f| f.value.chars().count() <= 1024),
-        "a help field is too long"
-    );
+}
+
+/// The areas the help menu lists, once /help is seen to answer privately with a card and controls.
+fn help_areas(help: &Reply) -> Vec<String> {
+    assert!(help.ephemeral, "the help is for the one who asked");
+    assert_eq!(help.files.len(), 1, "one card");
+    assert!(help.button("Next ▶").custom_id.is_some());
+    help.options("hp:s").iter().map(|o| o.label.clone()).collect()
 }
 
 // /Modules

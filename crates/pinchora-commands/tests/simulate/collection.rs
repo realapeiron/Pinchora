@@ -817,10 +817,8 @@ async fn help_tells_about_collecting() {
         return;
     };
     let help = sim.command(unique(), "help", json!([])).await;
-    let text = help.field("Collecting");
-    for command in ["/beachcomb", "/crabpot", "/critterdrop", "/dex", "/config critters"] {
-        assert!(text.contains(command), "{command}");
-    }
+    let areas = super::help_areas(&help);
+    assert!(areas.iter().any(|a| a == "Crowd games & collecting"), "{areas:?}");
 }
 
 /// A bought-with-fragments piece (soulbound) and a plain one of another design, for `user`.

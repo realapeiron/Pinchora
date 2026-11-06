@@ -19,7 +19,7 @@ pub(crate) mod giveaway;
 pub(crate) mod guestbook;
 pub(crate) mod hangman;
 pub(crate) mod heist;
-mod help;
+pub(crate) mod help;
 pub(crate) mod house;
 pub(crate) mod interact;
 pub(crate) mod leaderboard;

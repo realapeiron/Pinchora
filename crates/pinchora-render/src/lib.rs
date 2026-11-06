@@ -34,6 +34,7 @@ pub use cards::{
     EntriesCard, EntryHeader, EntryRow, LettersCard, PartyLobbyCard, PearlCard, PearlSeat, PostcardCard, PromptCard,
     PromptTone, RaceCard, Racer, RacerState, RatherCard, StandingRow, StandingsCard,
 };
+pub use cards::{HelpCard, HelpRow};
 pub use derby::{DerbyScene, LANES as DERBY_LANES, derby_gif, derby_still, tint_crab};
 pub use encode::encode_png;
 pub use style::{ACCENT_PRESETS, AccentError, Frame, Opacity, parse_accent, readable};
@@ -154,6 +155,10 @@ impl Renderer {
     }
 
     pub fn hangman_card(&self, card: &HangmanCard<'_>) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn help_card(&self, card: &HelpCard) -> anyhow::Result<Vec<u8>> {
         self.svg_to_png(&card.to_svg())
     }
 

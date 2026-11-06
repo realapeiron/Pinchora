@@ -346,15 +346,9 @@ async fn help_and_stats_list_the_board_games() {
     };
     let user = unique();
     let help = sim.command(user, "help", json!([])).await;
-    let games = help.field("Board & puzzle games");
-    for command in [
-        "/duel seafleet",
-        "/duel chess",
-        "/duel checkers",
-        "/play picross",
-        "/play 2048",
-    ] {
-        assert!(games.contains(command), "{command} is missing from /help: {games}");
+    let areas = super::help_areas(&help);
+    for area in ["Duels", "Puzzles & word games"] {
+        assert!(areas.iter().any(|a| a == area), "{area} in {areas:?}");
     }
     let stats = sim.command(user, "play", json!([super::sub("stats", vec![])])).await;
     for game in [
