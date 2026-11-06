@@ -29,6 +29,7 @@ export const NAV: NavGroup[] = [
     group: "MEMBERS",
     pages: [
       { to: "welcome", label: "Welcome & goodbye" },
+      { to: "welcome-image", label: "Welcome image" },
       { to: "leveling", label: "Leveling" },
       { to: "points", label: "Points & store" },
     ],

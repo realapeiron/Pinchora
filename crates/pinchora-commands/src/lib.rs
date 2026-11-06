@@ -1,5 +1,6 @@
 mod app;
 mod auto;
+mod card_images;
 mod catalog;
 mod commands;
 mod components;
@@ -24,11 +25,11 @@ mod text;
 mod util;
 mod voice_xp;
 
-pub use app::App;
+pub use app::{App, PreviewError};
+pub use card_images::{CardSubject, ServerCard, atlas_has, card_png, classic_card, deliver, preview_png, server_card};
 pub use catalog::{command_catalog, site_facts};
 pub use commands::{
     collection::{post_bottle, post_critter_drop, spawn_ticker as spawn_collection_ticker, tick as collection_tick},
-    config::{WelcomeDesign, welcome_card_png},
     customcommand::reserved_names as reserved_command_names,
     definitions as command_definitions,
     games::{spawn_janitor as spawn_game_janitor, sweep as sweep_games},

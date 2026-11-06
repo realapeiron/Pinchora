@@ -98,6 +98,7 @@ const ACTION_FIELDS: Record<string, Record<string, string>> = {
   "rep_roles.put": { reputation: "the reputation" },
   "xp_rules.put": { multiplier: "the multiplier" },
   "store.put": { price: "the price", stock: "the stock" },
+  "card.put": { delivery: "how it is sent", design: "the design" },
   "command.update": TAG_FIELDS,
   "responder.update": TAG_FIELDS,
 };
@@ -121,6 +122,8 @@ const ACTIONS: Record<string, string> = {
   "store.delete": "took a role off sale",
   "suggestions.set": "changed the suggestion channel",
   "critters.set": "changed critter drops",
+  "card.put": "saved an image design",
+  "card.upload": "uploaded a background picture",
 };
 
 const MODES: Record<string, string> = {
@@ -145,6 +148,11 @@ export function showValue(field: string, value: unknown, names: Names = plainNam
     if (value.every((v) => typeof v === "string")) return value.map((v) => `“${v}”`).join(" · ");
   }
   if (field === "channel_mode" && typeof value === "string") return MODES[value] ?? value;
+  if (field === "design" && typeof value === "object") {
+    const design = value as { width?: number; height?: number; layers?: unknown[] };
+    return `${design.width}×${design.height}, ${design.layers?.length ?? 0} layers`;
+  }
+  if (field === "design" && value === "classic") return "the classic card";
   if (typeof value === "string" && /^\d+$/.test(value)) {
     if (field.endsWith("channel_id")) return names.channel(value);
     if (field.endsWith("role_id")) return names.role(value);
@@ -159,6 +167,7 @@ export function targetLabel(entry: AuditEntry, names: Names = plainNames): strin
   const target = entry.target;
   if (!target) return null;
   if (entry.action === "module.set") return names.module(target);
+  if (entry.action === "card.upload") return null;
   // Custom commands and responders are named in the sentence itself.
   if (/^(command|responder)\./.test(entry.action)) return null;
   const [kind, id] = target.split(":");

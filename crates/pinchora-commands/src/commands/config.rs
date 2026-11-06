@@ -1,19 +1,17 @@
-use pinchora_core::{leveling::LevelUpMode, settings, t};
+use pinchora_core::{card_design::CardKind, leveling::LevelUpMode, settings, t};
 use pinchora_db::GuildSettings;
-use pinchora_render::{Theme, WelcomeCard};
 use twilight_interactions::command::{CommandModel, CommandOption, CreateCommand, CreateOption};
 use twilight_model::{
     application::interaction::InteractionChannel,
     channel::message::{Embed, MessageFlags},
     guild::Permissions,
     http::interaction::InteractionResponseData,
-    id::{Id, marker::UserMarker},
-    util::ImageHash,
 };
 use twilight_util::builder::embed::{EmbedBuilder, EmbedFieldBuilder};
 
 use crate::{
-    App, Cx,
+    Cx,
+    card_images::{CardSubject, card_png, server_card},
     commands::{
         collection::settings::{ConfigCritters, critters_summary},
         language::ConfigLanguage,
@@ -121,6 +119,8 @@ pub struct ConfigWelcomeCard {
 }
 
 impl ConfigWelcomeCard {
+    /// With any option, the classic card in the chosen theme, headline and accent becomes the server's welcome
+    /// image (a design made in the dashboard's editor is put aside); without one, the image as it is now.
     async fn run(self, cx: &Cx, guild: u64) -> anyhow::Result<()> {
         let accent = match self.color.as_deref().map(settings::check_accent) {
             Some(Ok(rgb)) => Some(rgb as i32),
@@ -132,77 +132,49 @@ impl ConfigWelcomeCard {
             Some(Err(error)) => return cx.reply_ephemeral(error.message).await,
             None => None,
         };
-        let stored = cx
-            .app
-            .db
-            .update_welcome_card(guild, self.theme.map(|t| t.value()), title.as_deref(), accent)
-            .await?;
-        cx.app.forget_guild_settings(guild).await;
+        let changed = self.theme.is_some() || title.is_some() || accent.is_some();
+        let (stored, replaced) = if changed {
+            let stored = cx
+                .app
+                .db
+                .update_welcome_card(guild, self.theme.map(|t| t.value()), title.as_deref(), accent)
+                .await?;
+            let replaced = cx.app.db.clear_card_design(guild, CardKind::Welcome).await?;
+            cx.app.forget_guild_settings(guild).await;
+            (stored, replaced)
+        } else {
+            (cx.app.db.guild_settings(guild).await?, false)
+        };
+        let card = server_card(&cx.app, &stored, guild, CardKind::Welcome).await?;
         let author = cx.author()?.clone();
-        let png = welcome_card_png(
-            &cx.app,
-            author.id,
-            author.avatar,
-            &cx.author_display_name(),
-            "your server",
-            &WelcomeDesign::of(&stored),
-        )
-        .await?;
+        let subject = CardSubject {
+            user: author.id,
+            avatar: author.avatar,
+            name: cx.author_display_name(),
+            username: author.name.clone(),
+            server: "your server".to_owned(),
+            members: Some(PREVIEW_MEMBERS),
+        };
+        let png = card_png(&cx.app, guild, &card.design, &subject).await?;
+        let lang = cx.lang();
+        let mut about = t!(lang, "welcome.preview-about");
+        if replaced {
+            about.push_str("\n\n");
+            about.push_str(&t!(lang, "welcome.preview-replaced"));
+        } else if card.custom {
+            about.push_str("\n\n");
+            about.push_str(&t!(lang, "welcome.preview-custom"));
+        }
         let embed = EmbedBuilder::new()
             .color(BRAND)
-            .title("Welcome card preview")
-            .description("New members will see this card. Turn it on and pick a channel with `/config welcome`.");
+            .title(t!(lang, "welcome.preview-title"))
+            .description(about);
         cx.reply(Cx::card(embed, "welcome.png", png, Vec::new(), true)).await
     }
 }
 
-/// How a server's welcome card looks: theme key, headline and accent, each `None` for the default.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct WelcomeDesign {
-    pub theme: Option<String>,
-    pub title: Option<String>,
-    pub accent: Option<u32>,
-}
-
-impl WelcomeDesign {
-    pub fn of(settings: &GuildSettings) -> Self {
-        Self {
-            theme: settings.welcome_theme.clone(),
-            title: settings.welcome_title.clone(),
-            accent: settings.welcome_accent.map(|c| c as u32),
-        }
-    }
-}
-
-/// The welcome card preview `/config welcome-card` shows: the card for `name` (with their avatar)
-/// joining `server` as member #1234. The dashboard's live preview draws through this too.
-pub async fn welcome_card_png(
-    app: &App,
-    user: Id<UserMarker>,
-    avatar: Option<ImageHash>,
-    name: &str,
-    server: &str,
-    design: &WelcomeDesign,
-) -> anyhow::Result<Vec<u8>> {
-    let avatar = app.avatar_of(user, avatar, WelcomeCard::AVATAR_SIZE, Some(44)).await;
-    let title = design
-        .title
-        .clone()
-        .unwrap_or_else(|| settings::DEFAULT_WELCOME_TITLE.to_owned());
-    let theme = Theme::preset(design.theme.as_deref().unwrap_or(settings::DEFAULT_THEME)).with_accent(design.accent);
-    let (name, server) = (name.to_owned(), server.to_owned());
-    app.render(move |r| {
-        r.welcome_card(&WelcomeCard {
-            display_name: &name,
-            avatar_png: &avatar,
-            server_name: &server,
-            member_number: Some(1234),
-            title: &title,
-            theme,
-        })
-    })
-    .await
-}
+/// The member number a preview shows.
+const PREVIEW_MEMBERS: u64 = 1234;
 
 impl ConfigCommand {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
@@ -414,6 +386,7 @@ mod tests {
     use std::ops::RangeInclusive;
 
     use pinchora_core::leveling::{MAX_MULTIPLIER, VOICE_XP_RANGE};
+    use pinchora_render::Theme;
     use twilight_model::application::command::{CommandOption, CommandOptionChoiceValue, CommandOptionValue};
 
     use super::*;
