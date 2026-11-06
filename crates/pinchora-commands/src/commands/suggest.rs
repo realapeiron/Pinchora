@@ -4,6 +4,7 @@
 
 use std::time::Duration;
 
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{Decision, SuggestionRow, SuggestionVote};
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::{
@@ -19,7 +20,7 @@ use crate::{
     App, Cx,
     commands::games::{edit_message, quiet},
     leveling::private_channel,
-    server_events::{button, message_link, post_refusal, row, tell},
+    server_events::{button, dm_lang, message_link, post_refusal, row, tell},
     util::{BRAND, DANGER, SUCCESS, strip_mentions},
 };
 
@@ -85,10 +86,10 @@ pub struct ConfigSuggestions {
 }
 
 /// How `/config show` and `/config suggestions` word the setting.
-pub(crate) fn suggestions_summary(channel: Option<u64>) -> String {
+pub(crate) fn suggestions_summary(lang: Lang, channel: Option<u64>) -> String {
     match channel {
-        Some(channel) => format!("**on** · <#{channel}>"),
-        None => "**off** · pick a channel with `/config suggestions`".to_owned(),
+        Some(channel) => t!(lang, "suggest.summary-on", channel = format!("<#{channel}>")),
+        None => t!(lang, "suggest.summary-off"),
     }
 }
 
@@ -96,7 +97,7 @@ impl ConfigSuggestions {
     pub async fn run(self, cx: &Cx, guild: u64) -> anyhow::Result<()> {
         let db = &cx.app.db;
         let channel = match (self.channel, self.off == Some(true)) {
-            (Some(_), true) => return tell(cx, "Pick a channel or `off`, not both.").await,
+            (Some(_), true) => return tell(cx, t!(cx.lang(), "suggest.both")).await,
             (Some(channel), false) => {
                 db.set_suggestion_channel(guild, Some(channel.id.get())).await?;
                 Some(channel.id.get())
@@ -107,32 +108,40 @@ impl ConfigSuggestions {
             }
             (None, false) => db.suggestion_channel(guild).await?,
         };
-        tell(cx, format!("Suggestions: {}", suggestions_summary(channel))).await
+        tell(
+            cx,
+            t!(
+                cx.lang(),
+                "suggest.current",
+                summary = suggestions_summary(cx.lang(), channel)
+            ),
+        )
+        .await
     }
 }
 
 /// The suggestion as its message shows it: the text, who made it, and once decided, who decided and why.
-fn suggestion_embed(s: &SuggestionRow) -> Embed {
+fn suggestion_embed(lang: Lang, s: &SuggestionRow) -> Embed {
     let (color, verdict) = match s.status.as_str() {
-        pinchora_db::SUGGESTION_APPROVED => (SUCCESS, Some("Approved by")),
-        pinchora_db::SUGGESTION_DENIED => (DANGER, Some("Denied by")),
+        pinchora_db::SUGGESTION_APPROVED => (SUCCESS, Some(t!(lang, "suggest.approved-by"))),
+        pinchora_db::SUGGESTION_DENIED => (DANGER, Some(t!(lang, "suggest.denied-by"))),
         _ => (BRAND, None),
     };
     let mut embed = EmbedBuilder::new()
         .color(color)
-        .title(format!("Suggestion #{}", s.number))
+        .title(t!(lang, "suggest.title", number = s.number))
         .description(&s.body)
-        .field(EmbedFieldBuilder::new("Suggested by", format!("<@{}>", s.author_id)).inline());
+        .field(EmbedFieldBuilder::new(t!(lang, "suggest.suggested-by"), format!("<@{}>", s.author_id)).inline());
     if let (Some(verdict), Some(by)) = (verdict, s.decided_by) {
         embed = embed.field(EmbedFieldBuilder::new(verdict, format!("<@{by}>")).inline());
     }
     if let Some(reason) = s.reason.as_deref() {
-        embed = embed.field(EmbedFieldBuilder::new("Reason", reason));
+        embed = embed.field(EmbedFieldBuilder::new(t!(lang, "suggest.reason"), reason));
     }
     let footer = if s.is_open() {
-        "Vote with the buttons; press your side again to take your vote back"
+        t!(lang, "suggest.footer-open")
     } else {
-        "Voting is closed"
+        t!(lang, "suggest.footer-closed")
     };
     embed.footer(EmbedFooterBuilder::new(footer)).build()
 }
@@ -179,18 +188,14 @@ fn suggestion_components(s: &SuggestionRow) -> Vec<Component> {
 impl Suggest {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
         let Some(guild) = cx.guild_id() else {
-            return tell(cx, "Suggestions only exist inside a server.").await;
+            return tell(cx, t!(cx.lang(), "suggest.guild-only")).await;
         };
         let Some(channel) = cx.app.db.suggestion_channel(guild).await? else {
-            return tell(
-                cx,
-                "Suggestions aren't set up here. A manager can pick a channel with `/config suggestions`.",
-            )
-            .await;
+            return tell(cx, t!(cx.lang(), "suggest.not-set-up")).await;
         };
         let body = strip_mentions(&self.text);
         if body.is_empty() {
-            return tell(cx, "Write your suggestion after the command.").await;
+            return tell(cx, t!(cx.lang(), "suggest.needs-text")).await;
         }
         let user = cx.author()?.id.get();
         if let Some(left) = cx
@@ -199,22 +204,17 @@ impl Suggest {
             .try_cooldown(&format!("suggest:{guild}:{user}"), SUGGEST_EVERY)
             .await?
         {
-            return tell(
-                cx,
-                format!(
-                    "Give it a moment: you can suggest again in {} seconds.",
-                    left.as_secs() + 1
-                ),
-            )
-            .await;
+            return tell(cx, t!(cx.lang(), "suggest.slow-down", seconds = left.as_secs() + 1)).await;
         }
         let suggestion = cx.app.db.create_suggestion(guild, user, &body).await?;
         let channel = Id::new(channel.max(1));
+        // The suggestion's message answers nobody in particular: it speaks the server's language.
+        let server_lang = cx.app.guild_lang(guild).await;
         let posted = cx
             .app
             .http
             .create_message(channel)
-            .embeds(&[suggestion_embed(&suggestion)])
+            .embeds(&[suggestion_embed(server_lang, &suggestion)])
             .components(&suggestion_components(&suggestion))
             .allowed_mentions(quiet().as_ref())
             .await;
@@ -223,7 +223,7 @@ impl Suggest {
             Err(error) => {
                 tracing::warn!(guild, suggestion = suggestion.id, %error, "could not post a suggestion");
                 cx.app.db.abort_suggestion(suggestion.id).await?;
-                return tell(cx, post_refusal(channel, &error)).await;
+                return tell(cx, post_refusal(cx.lang(), channel, &error)).await;
             }
         };
         cx.app
@@ -232,10 +232,12 @@ impl Suggest {
             .await?;
         tell(
             cx,
-            format!(
-                "Your suggestion is up as **#{}** in <#{channel}>: {}",
-                suggestion.number,
-                message_link(guild, channel.get(), message.id.get())
+            t!(
+                cx.lang(),
+                "suggest.posted",
+                number = suggestion.number,
+                channel = format!("<#{channel}>"),
+                link = message_link(guild, channel.get(), message.id.get())
             ),
         )
         .await
@@ -245,10 +247,10 @@ impl Suggest {
 impl SuggestionCommand {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
         let Some(guild) = cx.guild_id() else {
-            return tell(cx, "Suggestions only exist inside a server.").await;
+            return tell(cx, t!(cx.lang(), "suggest.guild-only")).await;
         };
         if !cx.can_manage_guild() {
-            return tell(cx, "You need the Manage Server permission to decide on suggestions.").await;
+            return tell(cx, t!(cx.lang(), "suggest.needs-manage")).await;
         }
         match self {
             Self::Approve(c) => decide(cx, guild, c.id, true, c.reason).await,
@@ -267,36 +269,61 @@ async fn decide(cx: &Cx, guild: u64, number: i64, approve: bool, reason: Option<
         .await?;
     let suggestion = match decision {
         Decision::Done(suggestion) => suggestion,
-        Decision::Missing => return tell(cx, format!("There is no suggestion #{number} in this server.")).await,
+        Decision::Missing => return tell(cx, t!(cx.lang(), "suggest.none", number = number)).await,
         Decision::Already(status) => {
-            return tell(cx, format!("Suggestion #{number} was already {status}.")).await;
+            return tell(
+                cx,
+                t!(
+                    cx.lang(),
+                    "suggest.already",
+                    number = number,
+                    status = status_word(cx.lang(), &status)
+                ),
+            )
+            .await;
         }
     };
     if let Some((channel, message)) = suggestion.channel_id.zip(suggestion.message_id) {
+        let server_lang = cx.app.guild_lang(guild).await;
         edit_message(
             &cx.app,
             channel as u64,
             message as u64,
             None,
-            Some(&[suggestion_embed(&suggestion)]),
+            Some(&[suggestion_embed(server_lang, &suggestion)]),
             Some(&suggestion_components(&suggestion)),
         )
         .await;
     }
     let told = if tell_author(&cx.app, guild, &suggestion).await {
-        "I told them."
+        t!(cx.lang(), "suggest.told")
     } else {
-        "I couldn't send them a message (their DMs are closed)."
+        t!(cx.lang(), "suggest.not-told")
     };
     tell(
         cx,
-        format!(
-            "Suggestion **#{number}** is {} for <@{}>. {told}",
-            if approve { "approved" } else { "denied" },
-            suggestion.author_id
+        t!(
+            cx.lang(),
+            "suggest.decided",
+            number = number,
+            status = t!(cx.lang(), if approve { "suggest.approved" } else { "suggest.denied" }),
+            author = format!("<@{}>", suggestion.author_id),
+            told = told
         ),
     )
     .await
+}
+
+/// "approved" or "denied" for a suggestion's stored status.
+fn status_word(lang: Lang, status: &str) -> String {
+    t!(
+        lang,
+        if status == pinchora_db::SUGGESTION_APPROVED {
+            "suggest.approved"
+        } else {
+            "suggest.denied"
+        }
+    )
 }
 
 /// Sends the author the decision. False when Discord will not deliver it (closed DMs).
@@ -304,26 +331,28 @@ async fn tell_author(app: &App, guild: u64, s: &SuggestionRow) -> bool {
     let Some(dm) = private_channel(app, s.author_id as u64).await else {
         return false;
     };
+    let lang = dm_lang(app, s.author_id as u64, guild).await;
     let server = async { anyhow::Ok(app.http.guild(Id::new(guild.max(1))).await?.model().await?.name) }
         .await
-        .unwrap_or_else(|_| "the server".to_owned());
+        .unwrap_or_else(|_| t!(lang, "suggest.the-server"));
     let approved = s.status == pinchora_db::SUGGESTION_APPROVED;
     let quote: String = s.body.chars().take(300).collect();
     let mut embed = EmbedBuilder::new()
         .color(if approved { SUCCESS } else { DANGER })
-        .title(format!(
-            "Your suggestion #{} was {}",
-            s.number,
-            if approved { "approved" } else { "denied" }
+        .title(t!(
+            lang,
+            "suggest.dm-title",
+            number = s.number,
+            status = status_word(lang, &s.status)
         ))
         .description(format!("> {}", quote.replace('\n', "\n> ")))
         .footer(EmbedFooterBuilder::new(server));
     if let Some(reason) = s.reason.as_deref() {
-        embed = embed.field(EmbedFieldBuilder::new("Reason", reason));
+        embed = embed.field(EmbedFieldBuilder::new(t!(lang, "suggest.reason"), reason));
     }
     if let Some((channel, message)) = s.channel_id.zip(s.message_id) {
         embed = embed.field(EmbedFieldBuilder::new(
-            "Suggestion",
+            t!(lang, "suggest.dm-suggestion"),
             message_link(guild, channel as u64, message as u64),
         ));
     }
@@ -342,7 +371,7 @@ async fn tell_author(app: &App, guild: u64, s: &SuggestionRow) -> bool {
 /// `sg:v:<id>:<u|d>`: a vote, a switch, or taking the vote back; the buttons show the new counts.
 pub(crate) async fn on_vote<'a>(cx: &Cx, parts: impl Iterator<Item = &'a str>) -> anyhow::Result<()> {
     let Some((id, up)) = parse_button(parts) else {
-        return tell(cx, "This button has expired.").await;
+        return tell(cx, t!(cx.lang(), "social.button-expired")).await;
     };
     let guild = cx.guild_id();
     let found = cx
@@ -352,14 +381,14 @@ pub(crate) async fn on_vote<'a>(cx: &Cx, parts: impl Iterator<Item = &'a str>) -
         .await?
         .filter(|s| Some(s.guild_id as u64) == guild);
     if found.is_none() {
-        return tell(cx, "That suggestion no longer exists.").await;
+        return tell(cx, t!(cx.lang(), "suggest.gone")).await;
     }
     let user = cx.author()?.id.get();
     if cx.app.db.vote_suggestion(id, user, up).await? == SuggestionVote::Closed {
-        return tell(cx, "This suggestion was already decided, so voting is closed.").await;
+        return tell(cx, t!(cx.lang(), "suggest.closed")).await;
     }
     let Some(now) = cx.app.db.suggestion(id).await? else {
-        return tell(cx, "That suggestion no longer exists.").await;
+        return tell(cx, t!(cx.lang(), "suggest.gone")).await;
     };
     cx.update(InteractionResponseData {
         components: Some(suggestion_components(&now)),
@@ -422,7 +451,7 @@ mod tests {
 
     #[test]
     fn a_decided_suggestion_names_who_decided_and_locks_the_buttons() {
-        let embed = suggestion_embed(&suggestion("approved"));
+        let embed = suggestion_embed(Lang::En, &suggestion("approved"));
         assert_eq!(embed.color, Some(SUCCESS));
         let fields: Vec<_> = embed
             .fields
@@ -446,6 +475,6 @@ mod tests {
                 .iter()
                 .all(|c| matches!(c, Component::Button(b) if b.disabled))
         );
-        assert_eq!(suggestion_embed(&suggestion("denied")).color, Some(DANGER));
+        assert_eq!(suggestion_embed(Lang::En, &suggestion("denied")).color, Some(DANGER));
     }
 }

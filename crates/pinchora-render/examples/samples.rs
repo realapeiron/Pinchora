@@ -340,6 +340,7 @@ fn main() -> anyhow::Result<()> {
         server_name: "The Tide Pool",
         member_number: Some(12_345),
         title: "Welcome",
+        lang: pinchora_core::i18n::Lang::En,
         theme: Theme::reef(),
     })?;
     std::fs::write(format!("{out}/welcome.png"), &welcome)?;
@@ -349,6 +350,7 @@ fn main() -> anyhow::Result<()> {
         avatar_png: &placeholder_avatar(5, LevelUpCard::AVATAR_SIZE),
         from: 26,
         to: 27,
+        lang: pinchora_core::i18n::Lang::En,
         theme: Theme::reef(),
     })?;
     std::fs::write(format!("{out}/levelup.png"), &level_up)?;

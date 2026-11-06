@@ -1,13 +1,14 @@
 //! `/config join-role`, `goodbye`, `log` and `log-events`: what the bot does as members come and go.
 
+use pinchora_core::{i18n::Lang, settings::MessageKind, t};
 use pinchora_db::GuildSettings;
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::{application::interaction::InteractionChannel, guild::Role};
 
-use crate::{Cx, events::DEFAULT_GOODBYE, roles};
+use crate::{Cx, events::default_message, roles};
 
-fn on_off(on: bool) -> &'static str {
-    if on { "on" } else { "off" }
+fn on_off(lang: Lang, on: bool) -> String {
+    t!(lang, if on { "cfg.on" } else { "cfg.off" })
 }
 
 #[derive(CommandModel, CreateCommand)]
@@ -56,34 +57,41 @@ pub struct ConfigLogEvents {
 }
 
 /// How `/config show` and the commands word each setting.
-pub(crate) fn join_role_summary(s: &GuildSettings) -> String {
+pub(crate) fn join_role_summary(lang: Lang, s: &GuildSettings) -> String {
     match s.join_role_id {
-        Some(role) => format!("**on** · <@&{role}>"),
-        None => "**off** · pick a role with `/config join-role`".to_owned(),
+        Some(role) => t!(lang, "cfg.join-role-on", role = format!("<@&{role}>")),
+        None => t!(lang, "cfg.join-role-off"),
     }
 }
 
-pub(crate) fn goodbye_summary(s: &GuildSettings) -> String {
+pub(crate) fn goodbye_summary(lang: Lang, s: &GuildSettings) -> String {
     match s.goodbye_channel_id {
-        Some(channel) => format!(
-            "**on** · <#{channel}>\n> {}",
-            s.goodbye_message.as_deref().unwrap_or(DEFAULT_GOODBYE)
+        Some(channel) => t!(
+            lang,
+            "cfg.goodbye-on",
+            channel = format!("<#{channel}>"),
+            message = s
+                .goodbye_message
+                .clone()
+                .unwrap_or_else(|| default_message(lang, MessageKind::Goodbye))
         ),
-        None => "**off** · pick a channel with `/config goodbye`".to_owned(),
+        None => t!(lang, "cfg.goodbye-off"),
     }
 }
 
-pub(crate) fn log_summary(s: &GuildSettings) -> String {
+pub(crate) fn log_summary(lang: Lang, s: &GuildSettings) -> String {
     let head = match s.log_channel_id {
-        Some(channel) => format!("**on** · <#{channel}>"),
-        None => "**off** · pick a channel with `/config log`".to_owned(),
+        Some(channel) => t!(lang, "cfg.log-on", channel = format!("<#{channel}>")),
+        None => t!(lang, "cfg.log-off"),
     };
-    format!(
-        "{head}\n> joins and leaves {} · name changes {} · bans {} · voice {}",
-        on_off(s.log_members),
-        on_off(s.log_names),
-        on_off(s.log_bans),
-        on_off(s.log_voice)
+    t!(
+        lang,
+        "cfg.log-events",
+        head = head,
+        members = on_off(lang, s.log_members),
+        names = on_off(lang, s.log_names),
+        bans = on_off(lang, s.log_bans),
+        voice = on_off(lang, s.log_voice)
     )
 }
 
@@ -91,21 +99,25 @@ impl ConfigJoinRole {
     pub async fn run(self, cx: &Cx, guild: u64) -> anyhow::Result<()> {
         let db = &cx.app.db;
         let text = match (self.role, self.off == Some(true)) {
-            (Some(_), true) => "Pick a role or `off`, not both.".to_owned(),
+            (Some(_), true) => t!(cx.lang(), "cfg.join-role-both"),
             (Some(role), false) => {
                 if let Some(why) = roles::unassignable(cx, guild, &role).await {
                     return cx.reply_ephemeral(why).await;
                 }
                 db.set_join_role(guild, Some(role.id.get())).await?;
                 cx.app.forget_guild_settings(guild).await;
-                format!("New members now get <@&{}> when they join. Bots are skipped.", role.id)
+                t!(cx.lang(), "cfg.join-role-set", role = format!("<@&{}>", role.id))
             }
             (None, true) => {
                 db.set_join_role(guild, None).await?;
                 cx.app.forget_guild_settings(guild).await;
-                "New members no longer get a role.".to_owned()
+                t!(cx.lang(), "cfg.join-role-cleared")
             }
-            (None, false) => format!("Join role: {}", join_role_summary(&db.guild_settings(guild).await?)),
+            (None, false) => t!(
+                cx.lang(),
+                "cfg.join-role-current",
+                summary = join_role_summary(cx.lang(), &db.guild_settings(guild).await?)
+            ),
         };
         cx.reply_ephemeral(text).await
     }
@@ -117,7 +129,7 @@ impl ConfigGoodbye {
         let off = self.off == Some(true);
         let message = self.message.as_deref().map(str::trim).filter(|m| !m.is_empty());
         if off && (self.channel.is_some() || message.is_some()) {
-            return cx.reply_ephemeral("Use `off` on its own.").await;
+            return cx.reply_ephemeral(t!(cx.lang(), "cfg.goodbye-alone")).await;
         }
         let settings = if off {
             db.clear_goodbye(guild).await?
@@ -128,8 +140,12 @@ impl ConfigGoodbye {
             db.guild_settings(guild).await?
         };
         cx.app.forget_guild_settings(guild).await;
-        cx.reply_ephemeral(format!("Goodbye messages: {}", goodbye_summary(&settings)))
-            .await
+        cx.reply_ephemeral(t!(
+            cx.lang(),
+            "cfg.goodbye-current",
+            summary = goodbye_summary(cx.lang(), &settings)
+        ))
+        .await
     }
 }
 
@@ -137,14 +153,18 @@ impl ConfigLog {
     pub async fn run(self, cx: &Cx, guild: u64) -> anyhow::Result<()> {
         let db = &cx.app.db;
         let settings = match (self.channel, self.off == Some(true)) {
-            (Some(_), true) => return cx.reply_ephemeral("Pick a channel or `off`, not both.").await,
+            (Some(_), true) => return cx.reply_ephemeral(t!(cx.lang(), "cfg.log-both")).await,
             (Some(channel), false) => db.set_log_channel(guild, Some(channel.id.get())).await?,
             (None, true) => db.set_log_channel(guild, None).await?,
             (None, false) => db.guild_settings(guild).await?,
         };
         cx.app.forget_guild_settings(guild).await;
-        cx.reply_ephemeral(format!("Server log: {}", log_summary(&settings)))
-            .await
+        cx.reply_ephemeral(t!(
+            cx.lang(),
+            "cfg.log-current",
+            summary = log_summary(cx.lang(), &settings)
+        ))
+        .await
     }
 }
 
@@ -155,7 +175,11 @@ impl ConfigLogEvents {
             .update_log_events(guild, self.members, self.names, self.bans, self.voice)
             .await?;
         cx.app.forget_guild_settings(guild).await;
-        cx.reply_ephemeral(format!("Server log: {}", log_summary(&settings)))
-            .await
+        cx.reply_ephemeral(t!(
+            cx.lang(),
+            "cfg.log-current",
+            summary = log_summary(cx.lang(), &settings)
+        ))
+        .await
     }
 }

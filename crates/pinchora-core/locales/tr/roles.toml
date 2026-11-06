@@ -1,0 +1,59 @@
+# /config level-roles and /roles.
+
+[level-roles]
+full = "Bir sunucuda en fazla {max} seviye rolü olabilir. Önce `/config level-roles remove` ile birini kaldır."
+added = "**{level}.** seviyeye ulaşan üyeler artık {role} rolünü alacak. Zaten o seviyede olanlara vermek için `/config level-roles sync` çalıştır."
+removed = "{role} artık bir seviye rolü değil. Üyeler zaten sahip oldukları rolü korur."
+not-one = "{role} bir seviye rolü değil."
+empty = "Henüz seviye rolü yok. `/config level-roles add` ile bir tane ekle."
+row = "**{level}.** seviye · {role}"
+title = "Seviye rolleri"
+footer = "{count}/{max} · {mode}"
+footer-stack = "biriktir: üyeler kazandıkları her rolü korur"
+footer-replace = "değiştir: üyeler yalnızca en yüksek rollerini korur"
+mode-stack = "Seviye rolleri artık **birikiyor**: üyeler kazandıkları her rolü korur."
+mode-replace = "Seviye rolleri artık birbirinin **yerine geçiyor**: üyeler yalnızca ulaştıkları en yüksek seviyenin rolünü korur."
+summary = "**{checked}** üye kontrol edildi, **{updated}** üyenin seviye rolleri güncellendi.{early}"
+early = " {total} üyeden {checked} tanesinden sonra erken durdu; çok uzun sürüyordu."
+busy = "Bu sunucu için bir eşitleme zaten sürüyor. Birkaç dakika ver."
+resting = "Bir eşitleme az önce bitti. {minutes} dk sonra yeniden eşitleyebilirsin."
+
+[roles]
+refused = "Discord mesajı reddetti. Düğmelerdeki emojilerin geçerli olduğundan emin ol."
+panel-missing = "**{name}** adında bir panel yok. `/roles panel` ile bir tane başlat."
+guild-only = "Rol panelleri yalnızca bir sunucuda var."
+needs-manage = "Rol paneli kurmak için Sunucuyu Yönet iznine ihtiyacın var."
+needs-title = "Panele bir başlık ver."
+draft = "**{title}** paneli (numara {id}) bir taslak. `/roles add` ile rol ekle, sonra `/roles post` ile yayınla."
+exists = "**{title}** paneli zaten vardı; açıklaması güncel. Mesajı yenilemek için `/roles post` çalıştır."
+bad-emoji = "Bu emojiyi okuyamadım. Bir Unicode emojisi ya da `<:ad:123456789>` gibi özel bir emoji kullan."
+full = "Bir panel en fazla {max} rol alır. Önce `/roles remove` ile birini kaldır."
+added = "{role}, **{title}** panelinde **{label}** adıyla duruyor ({count}/{max}). Göstermek için `/roles post` çalıştır."
+removed = "{role} artık **{title}** panelinde değil. Mesajı yenilemek için `/roles post` çalıştır; üyeler sahip oldukları rolü korur."
+not-on = "{role}, **{title}** panelinde değil."
+no-roles = "**{title}** panelinde henüz rol yok. `/roles add` ile birkaç tane ekle."
+updated = "**{title}** paneli {channel} kanalında güncellendi."
+posted = "**{title}** paneli {channel} kanalına gönderildi: {link}{moved}"
+moved = " {old} kanalındaki önceki mesaj hâlâ çalışır ama artık güncellenmez."
+footer = "Rol almak için bir düğmeye bas; bırakmak için yeniden bas"
+buttons-guild-only = "Rol düğmeleri yalnızca bir sunucuda çalışır."
+gone-from-panel = "Bu rol artık bu panelde değil."
+added-role = "{role} eklendi."
+removed-role = "{role} kaldırıldı."
+cant-take = "{role} rolünü alamadım: {why}."
+cant-give = "{role} rolünü veremedim: {why}."
+button-removed = " Düğmesi panelden kaldırıldı."
+
+# Why Discord refused to give a role, worded to follow "I couldn't give you <role>:".
+[role-refusal]
+permissions = "en yüksek rolüm onun üstünde değil ya da Rolleri Yönet iznim yok"
+gone = "o rol artık yok"
+refused = "Discord reddetti"
+unreachable = "Discord'a ulaşılamadı"
+
+# Why a server event (giveaway, suggestion, poll) could not be posted.
+[post-refusal]
+access = "{channel} kanalına gönderemem: orada Kanalı Görüntüle, Mesaj Gönder ve Bağlantıları Göm izinlerine ihtiyacım var."
+gone = "Bu kanal artık yok."
+refused = "Discord mesajı reddetti."
+unreachable = "Discord'a ulaşılamadı. Birazdan tekrar dene."

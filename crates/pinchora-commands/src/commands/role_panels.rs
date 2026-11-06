@@ -1,5 +1,6 @@
 //! `/roles`: messages of buttons that give and take roles.
 
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::{MAX_PANEL_ROLES, PanelRoleRow, PanelRow};
 use twilight_http::{Error, request::AuditLogReason};
 use twilight_interactions::command::{CommandModel, CreateCommand};
@@ -139,7 +140,7 @@ fn parse_emoji(text: &str) -> Option<EmojiReactionType> {
 }
 
 /// The panel as a message: its text with a line per role, and a button per role, five to a row.
-fn panel_message(panel: &PanelRow, roles: &[PanelRoleRow]) -> (Embed, Vec<Component>) {
+fn panel_message(lang: Lang, panel: &PanelRow, roles: &[PanelRoleRow]) -> (Embed, Vec<Component>) {
     let mut lines: Vec<String> = Vec::new();
     lines.extend(panel.description.clone());
     if !lines.is_empty() {
@@ -153,9 +154,7 @@ fn panel_message(panel: &PanelRow, roles: &[PanelRoleRow]) -> (Embed, Vec<Compon
         .color(BRAND)
         .title(&panel.title)
         .description(lines.join("\n"))
-        .footer(EmbedFooterBuilder::new(
-            "Click a button to get a role; click it again to drop it",
-        ))
+        .footer(EmbedFooterBuilder::new(t!(lang, "roles.footer")))
         .build();
     let components = roles
         .chunks(ROW_WIDTH)
@@ -184,14 +183,14 @@ fn panel_message(panel: &PanelRow, roles: &[PanelRoleRow]) -> (Embed, Vec<Compon
 }
 
 /// Why Discord would not take the panel message, for the manager who asked.
-fn post_refusal(channel: Id<ChannelMarker>, error: &Error) -> String {
+fn post_refusal(lang: Lang, channel: Id<ChannelMarker>, error: &Error) -> String {
     match roles::error_code(error) {
         Some(MISSING_ACCESS | MISSING_PERMISSIONS) => {
-            format!("I can't post in <#{channel}>: I need View Channel, Send Messages and Embed Links there.")
+            t!(lang, "post-refusal.access", channel = format!("<#{channel}>"))
         }
-        Some(UNKNOWN_CHANNEL) => "That channel no longer exists.".to_owned(),
-        Some(_) => "Discord refused the message. Check that the emojis on the buttons are valid.".to_owned(),
-        None => "Discord could not be reached. Try again in a moment.".to_owned(),
+        Some(UNKNOWN_CHANNEL) => t!(lang, "post-refusal.gone"),
+        Some(_) => t!(lang, "roles.refused"),
+        None => t!(lang, "post-refusal.unreachable"),
     }
 }
 
@@ -199,11 +198,8 @@ fn post_refusal(channel: Id<ChannelMarker>, error: &Error) -> String {
 async fn find_panel(cx: &Cx, guild: u64, key: &str) -> anyhow::Result<Option<PanelRow>> {
     let panel = cx.app.db.find_panel(guild, key).await?;
     if panel.is_none() {
-        cx.reply_ephemeral(format!(
-            "There is no panel called **{}**. Start one with `/roles panel`.",
-            key.trim()
-        ))
-        .await?;
+        cx.reply_ephemeral(t!(cx.lang(), "roles.panel-missing", name = key.trim()))
+            .await?;
     }
     Ok(panel)
 }
@@ -211,32 +207,24 @@ async fn find_panel(cx: &Cx, guild: u64, key: &str) -> anyhow::Result<Option<Pan
 impl RolesCommand {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
         let Some(guild) = cx.guild_id() else {
-            return cx.reply_ephemeral("Role panels only exist inside a server.").await;
+            return cx.reply_ephemeral(t!(cx.lang(), "roles.guild-only")).await;
         };
         if !cx.can_manage_guild() {
-            return cx
-                .reply_ephemeral("You need the Manage Server permission to set up role panels.")
-                .await;
+            return cx.reply_ephemeral(t!(cx.lang(), "roles.needs-manage")).await;
         }
         let db = &cx.app.db;
         match self {
             Self::Panel(c) => {
                 let title = c.title.trim();
                 if title.is_empty() {
-                    return cx.reply_ephemeral("Give the panel a title.").await;
+                    return cx.reply_ephemeral(t!(cx.lang(), "roles.needs-title")).await;
                 }
                 let description = c.description.as_deref().map(str::trim).filter(|d| !d.is_empty());
                 let (panel, created) = db.save_panel(guild, title, description).await?;
                 cx.reply_ephemeral(if created {
-                    format!(
-                        "Panel **{}** (number {}) is a draft. Add roles with `/roles add`, then publish it with `/roles post`.",
-                        panel.title, panel.id
-                    )
+                    t!(cx.lang(), "roles.draft", title = panel.title, id = panel.id)
                 } else {
-                    format!(
-                        "Panel **{}** already existed; its description is up to date. Run `/roles post` to refresh the message.",
-                        panel.title
-                    )
+                    t!(cx.lang(), "roles.exists", title = panel.title)
                 })
                 .await
             }
@@ -246,11 +234,7 @@ impl RolesCommand {
                 };
                 let emoji = c.emoji.as_deref().map(str::trim).filter(|e| !e.is_empty());
                 if emoji.is_some_and(|e| parse_emoji(e).is_none()) {
-                    return cx
-                        .reply_ephemeral(
-                            "I couldn't read that emoji. Use a Unicode emoji or a custom one like `<:name:123456789>`.",
-                        )
-                        .await;
+                    return cx.reply_ephemeral(t!(cx.lang(), "roles.bad-emoji")).await;
                 }
                 if let Some(why) = roles::unassignable(cx, guild, &c.role).await {
                     return cx.reply_ephemeral(why).await;
@@ -260,17 +244,18 @@ impl RolesCommand {
                     .await?
                 {
                     return cx
-                        .reply_ephemeral(format!(
-                            "A panel holds at most {MAX_PANEL_ROLES} roles. Remove one with `/roles remove` first."
-                        ))
+                        .reply_ephemeral(t!(cx.lang(), "roles.full", max = MAX_PANEL_ROLES))
                         .await;
                 }
                 let count = db.panel_roles(panel.id).await?.len();
-                cx.reply_ephemeral(format!(
-                    "<@&{}> is on **{}** as **{}** ({count}/{MAX_PANEL_ROLES}). Run `/roles post` to show it.",
-                    c.role.id,
-                    panel.title,
-                    c.label.trim()
+                cx.reply_ephemeral(t!(
+                    cx.lang(),
+                    "roles.added",
+                    role = format!("<@&{}>", c.role.id),
+                    title = panel.title,
+                    label = c.label.trim(),
+                    count = count,
+                    max = MAX_PANEL_ROLES
                 ))
                 .await
             }
@@ -278,13 +263,11 @@ impl RolesCommand {
                 let Some(panel) = find_panel(cx, guild, &c.panel).await? else {
                     return Ok(());
                 };
+                let role = format!("<@&{}>", c.role);
                 cx.reply_ephemeral(if db.remove_panel_role(panel.id, c.role.get()).await? {
-                    format!(
-                        "<@&{}> is off **{}**. Run `/roles post` to refresh the message; members keep the role they have.",
-                        c.role, panel.title
-                    )
+                    t!(cx.lang(), "roles.removed", role = role, title = panel.title)
                 } else {
-                    format!("<@&{}> isn't on **{}**.", c.role, panel.title)
+                    t!(cx.lang(), "roles.not-on", role = role, title = panel.title)
                 })
                 .await
             }
@@ -302,14 +285,12 @@ async fn post(cx: &Cx, guild: u64, c: RolesPost) -> anyhow::Result<()> {
     let roles = db.panel_roles(panel.id).await?;
     if roles.is_empty() {
         return cx
-            .reply_ephemeral(format!(
-                "**{}** has no roles yet. Add some with `/roles add`.",
-                panel.title
-            ))
+            .reply_ephemeral(t!(cx.lang(), "roles.no-roles", title = panel.title))
             .await;
     }
     let channel = c.channel.id;
-    let (embed, components) = panel_message(&panel, &roles);
+    // The panel's message answers nobody in particular: it speaks the server's language.
+    let (embed, components) = panel_message(cx.app.guild_lang(guild).await, &panel, &roles);
     let before = panel.channel_id.zip(panel.message_id);
 
     // Same channel: edit the message in place. A message someone deleted is posted afresh.
@@ -324,13 +305,18 @@ async fn post(cx: &Cx, guild: u64, c: RolesPost) -> anyhow::Result<()> {
         {
             Ok(_) => {
                 return cx
-                    .reply_ephemeral(format!("Updated **{}** in <#{same}>.", panel.title))
+                    .reply_ephemeral(t!(
+                        cx.lang(),
+                        "roles.updated",
+                        title = panel.title,
+                        channel = format!("<#{same}>")
+                    ))
                     .await;
             }
             Err(error) if roles::error_code(&error) == Some(UNKNOWN_MESSAGE) => {}
             Err(error) => {
                 tracing::warn!(guild, panel = panel.id, %error, "could not update a role panel");
-                return cx.reply_ephemeral(post_refusal(channel, &error)).await;
+                return cx.reply_ephemeral(post_refusal(cx.lang(), channel, &error)).await;
             }
         }
     }
@@ -346,18 +332,22 @@ async fn post(cx: &Cx, guild: u64, c: RolesPost) -> anyhow::Result<()> {
         Ok(response) => response.model().await?,
         Err(error) => {
             tracing::warn!(guild, panel = panel.id, %error, "could not post a role panel");
-            return cx.reply_ephemeral(post_refusal(channel, &error)).await;
+            return cx.reply_ephemeral(post_refusal(cx.lang(), channel, &error)).await;
         }
     };
     db.set_panel_message(panel.id, channel.get(), message.id.get()).await?;
     let moved = before
         .filter(|(posted_in, _)| *posted_in as u64 != channel.get())
         .map_or_else(String::new, |(old, _)| {
-            format!(" The earlier message in <#{old}> still works but won't update.")
+            t!(cx.lang(), "roles.moved", old = format!("<#{old}>"))
         });
-    cx.reply_ephemeral(format!(
-        "Posted **{}** in <#{channel}>: https://discord.com/channels/{guild}/{channel}/{}{moved}",
-        panel.title, message.id
+    cx.reply_ephemeral(t!(
+        cx.lang(),
+        "roles.posted",
+        title = panel.title,
+        channel = format!("<#{channel}>"),
+        link = format!("https://discord.com/channels/{guild}/{channel}/{}", message.id),
+        moved = moved
     ))
     .await
 }
@@ -365,14 +355,14 @@ async fn post(cx: &Cx, guild: u64, c: RolesPost) -> anyhow::Result<()> {
 /// `rr` buttons: give the member the role, or take it if they have it.
 pub(crate) async fn on_toggle<'a>(cx: &Cx, parts: impl Iterator<Item = &'a str>) -> anyhow::Result<()> {
     let Some(guild) = cx.guild_id() else {
-        return cx.reply_ephemeral("Role buttons only work inside a server.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "roles.buttons-guild-only")).await;
     };
     let Some((panel, role)) = parse_button(parts) else {
-        return cx.reply_ephemeral("This button has expired.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "social.button-expired")).await;
     };
     // The id came from the client; it counts only if that role still has a button on a panel of this server.
     if cx.app.db.panel_role(guild, panel, role).await?.is_none() {
-        return cx.reply_ephemeral("That role isn't on this panel any more.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "roles.gone-from-panel")).await;
     }
     let user = cx.author()?.id;
     let has_it = cx
@@ -396,17 +386,29 @@ pub(crate) async fn on_toggle<'a>(cx: &Cx, parts: impl Iterator<Item = &'a str>)
     };
     match result {
         Ok(_) => {
-            cx.reply_ephemeral(format!("{} <@&{role}>.", if has_it { "Removed" } else { "Added" }))
-                .await
+            cx.reply_ephemeral(t!(
+                cx.lang(),
+                if has_it {
+                    "roles.removed-role"
+                } else {
+                    "roles.added-role"
+                },
+                role = format!("<@&{role}>")
+            ))
+            .await
         }
         Err(error) => {
             tracing::warn!(guild, user = user.get(), role, %error, "could not change a role from a panel");
-            let verb = if has_it { "take" } else { "give you" };
-            let mut text = format!("I couldn't {verb} <@&{role}>: {}.", roles::refusal(&error));
+            let mut text = t!(
+                cx.lang(),
+                if has_it { "roles.cant-take" } else { "roles.cant-give" },
+                role = format!("<@&{role}>"),
+                why = roles::refusal_in(cx.lang(), &error)
+            );
             if roles::role_is_gone(&error) {
                 cx.app.db.forget_role(guild, role).await?;
                 cx.app.forget_guild_settings(guild).await;
-                text.push_str(" Its button was taken off the panel.");
+                text.push_str(&t!(cx.lang(), "roles.button-removed"));
             }
             cx.reply_ephemeral(text).await
         }
@@ -496,7 +498,7 @@ mod tests {
                 emoji: (n == 1).then(|| "🎮".to_owned()),
             })
             .collect();
-        let (embed, rows) = panel_message(&panel, &roles);
+        let (embed, rows) = panel_message(Lang::En, &panel, &roles);
         assert_eq!(embed.title.as_deref(), Some("Colours"));
         let description = embed.description.unwrap();
         assert!(

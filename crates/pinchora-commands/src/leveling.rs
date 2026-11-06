@@ -3,7 +3,7 @@
 
 use std::sync::Arc;
 
-use pinchora_core::{leveling::LevelUpMode, modules::Module};
+use pinchora_core::{leveling::LevelUpMode, modules::Module, settings::MessageKind, t};
 use pinchora_db::GuildSettings;
 use pinchora_render::{LevelUpCard, Theme, placeholder_avatar};
 use twilight_model::{
@@ -17,8 +17,9 @@ use crate::{
     App,
     auto::{self, LevelUpEvent},
     commands::customize,
-    events::DEFAULT_LEVELUP,
+    events::default_message,
     roles,
+    server_events::dm_lang,
     util::{display_name, fill, mention},
 };
 
@@ -80,14 +81,25 @@ pub(crate) async fn level_up(app: &Arc<App>, settings: &GuildSettings, up: Level
             None => return Ok(()),
         },
     };
-    let template = settings.levelup_message.as_deref().unwrap_or(DEFAULT_LEVELUP);
+    // A level-up in a channel answers nobody in particular and speaks the server's language; one by direct
+    // message speaks the member's.
+    let lang = if mode == LevelUpMode::Dm {
+        dm_lang(app, user, guild).await
+    } else {
+        app.guild_lang(guild).await
+    };
+    let template = settings
+        .levelup_message
+        .clone()
+        .unwrap_or_else(|| default_message(lang, MessageKind::LevelUp));
+    let template = template.as_str();
     let server = if template.contains("{server}") {
         match app.http.guild(Id::new(guild.max(1))).await {
             Ok(response) => response
                 .model()
                 .await
-                .map_or_else(|_| "the server".to_owned(), |g| g.name),
-            Err(_) => "the server".to_owned(),
+                .map_or_else(|_| t!(lang, "events.the-server"), |g| g.name),
+            Err(_) => t!(lang, "events.the-server"),
         }
     } else {
         String::new()
@@ -115,7 +127,7 @@ pub(crate) async fn level_up(app: &Arc<App>, settings: &GuildSettings, up: Level
         users: vec![Id::new(user.max(1))],
         ..Default::default()
     };
-    let name = author.map_or_else(|| "Someone".to_owned(), |u| display_name(u, nick));
+    let name = author.map_or_else(|| t!(lang, "interact.someone"), |u| display_name(u, nick));
     let avatar = match author {
         Some(u) => app.avatar(u, LevelUpCard::AVATAR_SIZE, Some(34)).await,
         None => Arc::new(placeholder_avatar(user, LevelUpCard::AVATAR_SIZE)),
@@ -128,6 +140,7 @@ pub(crate) async fn level_up(app: &Arc<App>, settings: &GuildSettings, up: Level
                 avatar_png: &avatar,
                 from: before,
                 to: after,
+                lang,
                 theme: Theme::reef().with_accent(accent.map(|c| c as u32)),
             })
         })

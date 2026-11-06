@@ -1,8 +1,9 @@
 use std::time::{Duration, Instant};
 
 use pinchora_core::{
+    i18n::Lang,
     leveling::{LevelReward, level_of},
-    settings,
+    settings, t,
 };
 use pinchora_db::MAX_LEVEL_ROLES;
 use twilight_interactions::command::{CommandModel, CommandOption, CreateCommand, CreateOption};
@@ -91,59 +92,67 @@ impl ConfigLevelRoles {
             Self::Add(c) => {
                 let level = match settings::check_level(c.level) {
                     Ok(level) => level,
-                    Err(error) => return cx.reply_ephemeral(error.message).await,
+                    Err(error) => return cx.reply_ephemeral(error.text(cx.lang())).await,
                 };
                 if let Some(why) = roles::unassignable(cx, guild, &c.role).await {
                     return cx.reply_ephemeral(why).await;
                 }
                 if !db.add_level_role(guild, level, c.role.id.get()).await? {
                     return cx
-                        .reply_ephemeral(format!(
-                            "A server can have {MAX_LEVEL_ROLES} level roles. Remove one with `/config level-roles remove` first."
-                        ))
+                        .reply_ephemeral(t!(cx.lang(), "level-roles.full", max = MAX_LEVEL_ROLES))
                         .await;
                 }
-                cx.reply_ephemeral(format!(
-                    "Members who reach level **{}** now get <@&{}>. Run `/config level-roles sync` to give it to members who are already there.",
-                    c.level, c.role.id
+                cx.reply_ephemeral(t!(
+                    cx.lang(),
+                    "level-roles.added",
+                    level = c.level,
+                    role = format!("<@&{}>", c.role.id)
                 ))
                 .await
             }
             Self::Remove(c) => {
+                let role = format!("<@&{}>", c.role);
                 let text = if db.remove_level_role(guild, c.role.get()).await? {
-                    format!(
-                        "<@&{}> is no longer a level role. Members keep the role they already have.",
-                        c.role
-                    )
+                    t!(cx.lang(), "level-roles.removed", role = role)
                 } else {
-                    format!("<@&{}> isn't a level role.", c.role)
+                    t!(cx.lang(), "level-roles.not-one", role = role)
                 };
                 cx.reply_ephemeral(text).await
             }
             Self::List(_) => {
                 let rows = db.level_roles(guild).await?;
                 if rows.is_empty() {
-                    return cx
-                        .reply_ephemeral("No level roles yet. Add one with `/config level-roles add`.")
-                        .await;
+                    return cx.reply_ephemeral(t!(cx.lang(), "level-roles.empty")).await;
                 }
                 let stack = db.guild_settings(guild).await?.level_roles_stack;
                 let lines: Vec<String> = rows
                     .iter()
-                    .map(|r| format!("Level **{}** · <@&{}>", r.level, r.role_id))
+                    .map(|r| {
+                        t!(
+                            cx.lang(),
+                            "level-roles.row",
+                            level = r.level,
+                            role = format!("<@&{}>", r.role_id)
+                        )
+                    })
                     .collect();
                 let embed = EmbedBuilder::new()
                     .color(BRAND)
-                    .title("Level roles")
+                    .title(t!(cx.lang(), "level-roles.title"))
                     .description(lines.join("\n"))
-                    .footer(EmbedFooterBuilder::new(format!(
-                        "{}/{MAX_LEVEL_ROLES} · {}",
-                        rows.len(),
-                        if stack {
-                            "stack: members keep every role they earn"
-                        } else {
-                            "replace: members keep only their highest role"
-                        }
+                    .footer(EmbedFooterBuilder::new(t!(
+                        cx.lang(),
+                        "level-roles.footer",
+                        count = rows.len(),
+                        max = MAX_LEVEL_ROLES,
+                        mode = t!(
+                            cx.lang(),
+                            if stack {
+                                "level-roles.footer-stack"
+                            } else {
+                                "level-roles.footer-replace"
+                            }
+                        )
                     )))
                     .build();
                 cx.reply(InteractionResponseData {
@@ -157,11 +166,14 @@ impl ConfigLevelRoles {
                 let stack = matches!(c.mode, RoleMode::Stack);
                 db.set_level_roles_stack(guild, stack).await?;
                 cx.app.forget_guild_settings(guild).await;
-                cx.reply_ephemeral(if stack {
-                    "Level roles now **stack**: members keep every role they earn."
-                } else {
-                    "Level roles now **replace** each other: members keep only the role of the highest level they reached."
-                })
+                cx.reply_ephemeral(t!(
+                    cx.lang(),
+                    if stack {
+                        "level-roles.mode-stack"
+                    } else {
+                        "level-roles.mode-replace"
+                    }
+                ))
                 .await
             }
             Self::Sync(_) => sync(cx, guild).await,
@@ -172,16 +184,14 @@ impl ConfigLevelRoles {
 /// Re-applies the level roles to the members with XP here, newest XP first.
 async fn sync(cx: &Cx, guild: u64) -> anyhow::Result<()> {
     if roles::level_rewards(&cx.app, guild).await?.is_empty() {
-        return cx
-            .reply_ephemeral("No level roles yet. Add one with `/config level-roles add`.")
-            .await;
+        return cx.reply_ephemeral(t!(cx.lang(), "level-roles.empty")).await;
     }
     // One lookup and a few role changes per member, so this outlasts Discord's first-answer window.
     cx.responder.defer(true).await?;
     let text = match sync_level_roles(&cx.app, guild, |_| {}).await? {
-        SyncOutcome::NoRoles => "No level roles yet. Add one with `/config level-roles add`.".to_owned(),
-        SyncOutcome::Done(report) => report.summary(),
-        other => other.refusal().unwrap_or_default(),
+        SyncOutcome::NoRoles => t!(cx.lang(), "level-roles.empty"),
+        SyncOutcome::Done(report) => report.summary_in(cx.lang()),
+        other => other.refusal_in(cx.lang()).unwrap_or_default(),
     };
     cx.reply_ephemeral(text).await
 }
@@ -200,17 +210,22 @@ pub struct SyncReport {
 impl SyncReport {
     /// The sentence `/config level-roles sync` ends with.
     pub fn summary(&self) -> String {
+        self.summary_in(Lang::En)
+    }
+
+    /// [`SyncReport::summary`] in `lang`.
+    pub fn summary_in(&self, lang: Lang) -> String {
         let early = if self.checked < self.total {
-            format!(
-                " Stopped early after {} of {} members; it was taking too long.",
-                self.checked, self.total
-            )
+            t!(lang, "level-roles.early", checked = self.checked, total = self.total)
         } else {
             String::new()
         };
-        format!(
-            "Checked **{}** members and updated the level roles of **{}**.{early}",
-            self.checked, self.updated
+        t!(
+            lang,
+            "level-roles.summary",
+            checked = self.checked,
+            updated = self.updated,
+            early = early
         )
     }
 }
@@ -230,11 +245,17 @@ pub enum SyncOutcome {
 impl SyncOutcome {
     /// What to tell whoever asked, when the sync did not run.
     pub fn refusal(&self) -> Option<String> {
+        self.refusal_in(Lang::En)
+    }
+
+    /// [`SyncOutcome::refusal`] in `lang`.
+    pub fn refusal_in(&self, lang: Lang) -> Option<String> {
         match self {
-            Self::Busy => Some("A sync is already running for this server. Give it a few minutes.".to_owned()),
-            Self::Resting(left) => Some(format!(
-                "A sync just finished. Syncing again is possible in {} min.",
-                left.as_secs().div_ceil(60).max(1)
+            Self::Busy => Some(t!(lang, "level-roles.busy")),
+            Self::Resting(left) => Some(t!(
+                lang,
+                "level-roles.resting",
+                minutes = left.as_secs().div_ceil(60).max(1)
             )),
             Self::NoRoles | Self::Done(_) => None,
         }

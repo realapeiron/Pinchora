@@ -1,8 +1,10 @@
 //! `/config modules`: switch parts of Pinchora on or off for the whole server, or limit them to some
 //! channels. The same rules and the same write as the dashboard's modules page.
 
-use pinchora_core::modules::{
-    ChannelMode, Group, MAX_CHANNELS, Module, ModuleRule, Scope, check_channels, edit_channels, summary,
+use pinchora_core::{
+    i18n::Lang,
+    modules::{ChannelMode, Group, MAX_CHANNELS, Module, ModuleRule, Scope, check_channels, edit_channels, summary_in},
+    t,
 };
 use pinchora_db::{AuditSource, NewAudit};
 use serde_json::Value;
@@ -45,26 +47,32 @@ const MAX_SUGGESTIONS: usize = 25;
 
 /// The module a typed or picked `text` names: its key, or its name in any case. A member of the
 /// list is picked by key; typing a name and sending without picking works too.
-fn find(text: &str) -> Option<Module> {
+fn find(lang: Lang, text: &str) -> Option<Module> {
     let text = text.trim();
-    Module::parse(text).or_else(|| Module::ALL.into_iter().find(|m| m.label().eq_ignore_ascii_case(text)))
+    Module::parse(text).or_else(|| {
+        Module::ALL
+            .into_iter()
+            .find(|m| m.label().eq_ignore_ascii_case(text) || m.name(lang).to_lowercase() == text.to_lowercase())
+    })
 }
 
 /// What the `module` option suggests for what has been typed so far: the modules whose name, key or
 /// blurb holds it, in list order, at most [`MAX_SUGGESTIONS`] (Discord's limit; the list is longer than that).
-fn suggestions(typed: &str) -> Vec<CommandOptionChoice> {
+fn suggestions(lang: Lang, typed: &str) -> Vec<CommandOptionChoice> {
     let typed = typed.trim().to_lowercase().replace('_', " ");
     Module::ALL
         .into_iter()
         .filter(|m| {
             typed.is_empty()
+                || m.name(lang).to_lowercase().contains(&typed)
                 || m.label().to_lowercase().contains(&typed)
                 || m.key().replace('_', " ").contains(&typed)
+                || m.blurb_in(lang).to_lowercase().contains(&typed)
                 || m.blurb().to_lowercase().contains(&typed)
         })
         .take(MAX_SUGGESTIONS)
         .map(|m| CommandOptionChoice {
-            name: m.label().to_owned(),
+            name: m.name(lang),
             name_localizations: None,
             value: CommandOptionChoiceValue::String(m.key().to_owned()),
         })
@@ -73,7 +81,7 @@ fn suggestions(typed: &str) -> Vec<CommandOptionChoice> {
 
 /// The suggestions for the `module` option of `/config modules toggle` and `channels` while it is
 /// being typed; empty for any other option, so a stray autocomplete still gets an answer.
-pub(crate) fn autocomplete(data: &CommandData) -> Vec<CommandOptionChoice> {
+pub(crate) fn autocomplete(lang: Lang, data: &CommandData) -> Vec<CommandOptionChoice> {
     let inner = |options: &[CommandDataOption], name: &str| -> Option<Vec<CommandDataOption>> {
         options.iter().find(|o| o.name == name).and_then(|o| match &o.value {
             CommandOptionValue::SubCommand(inner) | CommandOptionValue::SubCommandGroup(inner) => Some(inner.clone()),
@@ -92,7 +100,7 @@ pub(crate) fn autocomplete(data: &CommandData) -> Vec<CommandOptionChoice> {
     options
         .iter()
         .find_map(|o| match &o.value {
-            CommandOptionValue::Focused(typed, _) if o.name == "module" => Some(suggestions(typed)),
+            CommandOptionValue::Focused(typed, _) if o.name == "module" => Some(suggestions(lang, typed)),
             _ => None,
         })
         .unwrap_or_default()
@@ -100,10 +108,9 @@ pub(crate) fn autocomplete(data: &CommandData) -> Vec<CommandOptionChoice> {
 
 /// The module the option named, or the private answer that says there is none.
 async fn named(cx: &Cx, text: &str) -> anyhow::Result<Option<Module>> {
-    let found = find(text);
+    let found = find(cx.lang(), text);
     if found.is_none() {
-        cx.reply_ephemeral("That isn't a module. Start typing a name and pick one from the list, or see them all with `/config modules show`.")
-            .await?;
+        cx.reply_ephemeral(t!(cx.lang(), "modules.not-a-module")).await?;
     }
     Ok(found)
 }
@@ -157,21 +164,21 @@ pub struct ModulesChannels {
 }
 
 /// One module as a line of a list: "🟢 **Pets** · on", and under it the channels it names.
-fn line(module: Module, rule: &ModuleRule) -> String {
+fn line(lang: Lang, module: Module, rule: &ModuleRule) -> String {
     let places = if rule.mode == ChannelMode::All {
         String::new()
     } else {
         let shown: Vec<String> = rule.channels.iter().take(4).map(|id| format!("<#{id}>")).collect();
         let more = rule.channels.len().saturating_sub(shown.len());
         let more = if more > 0 {
-            format!(" and {more} more")
+            t!(lang, "modules.more", count = more)
         } else {
             String::new()
         };
         format!("\n> {}{more}", shown.join(" "))
     };
     let mark = if rule.enabled { "🟢" } else { "⚫" };
-    format!("{mark} **{}** · {}{places}", module.label(), summary(rule))
+    format!("{mark} **{}** · {}{places}", module.name(lang), summary_in(lang, rule))
 }
 
 /// The fields of a rule that differ, as the `before` and `after` objects of an audit row.
@@ -265,7 +272,7 @@ impl ConfigModules {
                     return Ok(());
                 };
                 let rule = change(cx, guild, module, Some(c.enabled), None).await?;
-                cx.reply_ephemeral(line(module, &rule)).await
+                cx.reply_ephemeral(line(cx.lang(), module, &rule)).await
             }
             Self::Channels(c) => channels(cx, guild, c).await,
         }
@@ -286,36 +293,34 @@ async fn channels(cx: &Cx, guild: u64, c: ModulesChannels) -> anyhow::Result<()>
     .and_then(|(mode, list)| check_channels(module, mode, &list).map(|list| (mode, list)));
     let (mode, list) = match edited {
         Ok(edit) => edit,
-        Err(error) => return cx.reply_ephemeral(error.message).await,
+        Err(error) => return cx.reply_ephemeral(error.text(cx.lang())).await,
     };
     let rule = change(cx, guild, module, None, Some((mode, list))).await?;
-    let mut text = line(module, &rule);
+    let mut text = line(cx.lang(), module, &rule);
     if module.scope() == Scope::Channels && rule.mode != ChannelMode::All {
-        text.push_str(&format!(
-            "\nUp to {MAX_CHANNELS} channels; a category covers the channels and threads under it."
-        ));
+        text.push('\n');
+        text.push_str(&t!(cx.lang(), "modules.limit", max = MAX_CHANNELS));
     }
     cx.reply_ephemeral(text).await
 }
 
 async fn show(cx: &Cx, guild: u64) -> anyhow::Result<()> {
     let states = cx.app.db.module_states(guild).await?;
+    let lang = cx.lang();
     let mut embed = EmbedBuilder::new()
         .color(BRAND)
-        .title("Modules")
-        .description("Which parts of Pinchora this server uses. `/config`, `/help` and `/ping` always work.");
+        .title(t!(lang, "modules.title"))
+        .description(t!(lang, "modules.about"));
     for group in Group::ALL {
         let lines: Vec<String> = states
             .iter()
             .filter(|(m, _)| m.group() == group)
-            .map(|(m, rule)| line(*m, rule))
+            .map(|(m, rule)| line(lang, *m, rule))
             .collect();
-        embed = embed.field(EmbedFieldBuilder::new(group.label(), lines.join("\n")));
+        embed = embed.field(EmbedFieldBuilder::new(group.name(lang), lines.join("\n")));
     }
     let embed = embed
-        .footer(EmbedFooterBuilder::new(
-            "Change them with /config modules toggle and channels, or on the dashboard.",
-        ))
+        .footer(EmbedFooterBuilder::new(t!(lang, "modules.footer")))
         .build();
     cx.reply(twilight_model::http::interaction::InteractionResponseData {
         embeds: Some(vec![embed]),
@@ -384,7 +389,7 @@ mod tests {
     /// Discord shows 25 suggestions at most, so every module must be found by typing, not by scrolling.
     #[test]
     fn suggestions_stay_within_discords_limit_and_reach_every_module() {
-        let first = texts(&suggestions(""));
+        let first = texts(&suggestions(Lang::En, ""));
         assert_eq!(first.len(), Module::ALL.len().min(MAX_SUGGESTIONS));
         let wanted: Vec<(String, String)> = Module::ALL
             .iter()
@@ -398,7 +403,7 @@ mod tests {
                 module.key().to_owned(),
                 module.label().to_uppercase(),
             ] {
-                let found = texts(&suggestions(&typed));
+                let found = texts(&suggestions(Lang::En, &typed));
                 assert!(found.len() <= MAX_SUGGESTIONS, "{typed}");
                 assert!(
                     found.iter().any(|(_, key)| key == module.key()),
@@ -409,26 +414,34 @@ mod tests {
         }
         for (name, key) in first {
             assert!(name.chars().count() <= 100 && !name.is_empty(), "{name}");
-            assert!(find(&key).is_some(), "{key}");
+            assert!(find(Lang::En, &key).is_some(), "{key}");
         }
         assert_eq!(
-            texts(&suggestions("chess")),
+            texts(&suggestions(Lang::En, "chess")),
             [("Board and puzzle games".to_owned(), "board_games".to_owned())],
             "a game finds the module that holds it"
         );
-        assert!(suggestions("zzzz").is_empty());
+        assert!(suggestions(Lang::En, "zzzz").is_empty());
     }
 
     #[test]
     fn a_typed_name_is_as_good_as_a_picked_key() {
         for module in Module::ALL {
-            assert_eq!(find(module.key()), Some(module));
-            assert_eq!(find(module.label()), Some(module));
-            assert_eq!(find(&format!("  {}  ", module.label().to_uppercase())), Some(module));
+            assert_eq!(find(Lang::En, module.key()), Some(module));
+            assert_eq!(find(Lang::En, module.label()), Some(module));
+            assert_eq!(
+                find(Lang::En, &format!("  {}  ", module.label().to_uppercase())),
+                Some(module)
+            );
+            assert_eq!(
+                find(Lang::Tr, &module.name(Lang::Tr)),
+                Some(module),
+                "its Turkish name too"
+            );
         }
-        assert_eq!(find("pets"), Some(Module::Pets));
-        assert_eq!(find("pet"), None, "half a name is not a module");
-        assert_eq!(find(""), None);
+        assert_eq!(find(Lang::En, "pets"), Some(Module::Pets));
+        assert_eq!(find(Lang::En, "pet"), None, "half a name is not a module");
+        assert_eq!(find(Lang::En, ""), None);
     }
 
     fn command(options: serde_json::Value) -> CommandData {
@@ -446,17 +459,17 @@ mod tests {
             ] }]))
         };
         for sub in ["toggle", "channels"] {
-            let found = texts(&autocomplete(&focused(sub, "module", "chess")));
+            let found = texts(&autocomplete(Lang::En, &focused(sub, "module", "chess")));
             assert_eq!(found.len(), 1, "{sub}");
             assert_eq!(found[0].1, "board_games");
         }
-        assert!(autocomplete(&focused("toggle", "enabled", "chess")).is_empty());
-        assert!(autocomplete(&focused("show", "module", "chess")).is_empty());
+        assert!(autocomplete(Lang::En, &focused("toggle", "enabled", "chess")).is_empty());
+        assert!(autocomplete(Lang::En, &focused("show", "module", "chess")).is_empty());
         let other = command(json!([{ "name": "goodbye", "type": 1, "options": [
             { "name": "module", "type": 3, "value": "chess", "focused": true }
         ] }]));
-        assert!(autocomplete(&other).is_empty());
-        assert!(autocomplete(&command(json!([]))).is_empty());
+        assert!(autocomplete(Lang::En, &other).is_empty());
+        assert!(autocomplete(Lang::En, &command(json!([]))).is_empty());
     }
 
     #[test]
@@ -487,12 +500,12 @@ mod tests {
             mode: ChannelMode::Except,
             channels: (1..=6).collect(),
         };
-        let text = line(Module::Pets, &rule);
+        let text = line(Lang::En, Module::Pets, &rule);
         assert!(
             text.contains("**Pets**") && text.contains("<#1>") && text.contains("and 2 more"),
             "{text}"
         );
-        assert!(line(Module::Pets, &ModuleRule::default()).ends_with("· on"));
-        assert!(summary(&rule).contains("off in 6 channels"));
+        assert!(line(Lang::En, Module::Pets, &ModuleRule::default()).ends_with("· on"));
+        assert!(summary_in(Lang::En, &rule).contains("off in 6 channels"));
     }
 }

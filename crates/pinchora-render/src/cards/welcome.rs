@@ -1,5 +1,7 @@
 use std::fmt::Write;
 
+use pinchora_core::{i18n::Lang, t};
+
 use super::{PIXEL, SANS, avatar_frame, text};
 use crate::{
     Theme,
@@ -15,6 +17,8 @@ pub struct WelcomeCard<'a> {
     pub member_number: Option<u64>,
     /// Big headline, e.g. "WELCOME".
     pub title: &'a str,
+    /// The language of the line under the name.
+    pub lang: Lang,
     pub theme: Theme,
 }
 
@@ -55,12 +59,13 @@ impl WelcomeCard<'_> {
         let name = escape(&truncate(self.display_name, 28));
         text(&mut s, 550.0, 368.0, 36.0, SANS, true, &t.accent, "middle", &name);
         let subtitle = match self.member_number {
-            Some(n) => format!(
-                "to {} · member #{}",
-                truncate(self.server_name, 32),
-                thousands(n as i64)
+            Some(n) => t!(
+                self.lang,
+                "card.welcome.to-member",
+                server = truncate(self.server_name, 32),
+                number = thousands(n as i64)
             ),
-            None => format!("to {}", truncate(self.server_name, 40)),
+            None => t!(self.lang, "card.welcome.to", server = truncate(self.server_name, 40)),
         };
         text(
             &mut s,

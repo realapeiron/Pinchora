@@ -4,9 +4,13 @@
 
 use std::{str::Split, sync::OnceLock};
 
-use pinchora_core::tags::{
-    COMMAND_COOLDOWN_MAX, CommandDef, DESCRIPTION_MAX, MAX_COMMANDS, RESPONSE_MAX, ReplyMode, check_name, tidy_name,
-    truncate,
+use pinchora_core::{
+    i18n::Lang,
+    t,
+    tags::{
+        COMMAND_COOLDOWN_MAX, CommandDef, DESCRIPTION_MAX, MAX_COMMANDS, RESPONSE_MAX, ReplyMode, check_name,
+        tidy_name, truncate,
+    },
 };
 use pinchora_db::{AuditSource, CommandRow, NewAudit, TagWrite};
 use serde_json::Value;
@@ -104,15 +108,17 @@ pub struct CustomInfo {
     name: String,
 }
 
-const NEEDS_MANAGE: &str = "You need the Manage Server permission to manage custom commands.";
+fn needs_manage(lang: Lang) -> String {
+    t!(lang, "customcommand.needs-manage")
+}
 
 impl CustomCommand {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
         let Some(guild) = cx.guild_id() else {
-            return cx.reply_ephemeral("Custom commands live in servers.").await;
+            return cx.reply_ephemeral(t!(cx.lang(), "customcommand.guild-only")).await;
         };
         if !cx.can_manage_guild() {
-            return cx.reply_ephemeral(NEEDS_MANAGE).await;
+            return cx.reply_ephemeral(needs_manage(cx.lang())).await;
         }
         match self {
             Self::Create(c) => create(cx, guild, c).await,
@@ -155,16 +161,22 @@ fn field(
     })
 }
 
-fn form(reply: Option<String>, description: Option<String>, cooldown: Option<i64>, replies: usize) -> Vec<Component> {
+fn form(
+    lang: Lang,
+    reply: Option<String>,
+    description: Option<String>,
+    cooldown: Option<i64>,
+    replies: usize,
+) -> Vec<Component> {
     let hint = if replies > 1 {
-        format!("This command has {replies} replies; this changes the first. The rest are on the dashboard.")
+        t!(lang, "customcommand.hint-many", count = replies)
     } else {
-        format!("Up to {RESPONSE_MAX} characters. {{user}} {{args}} {{1}} and more are filled in.")
+        t!(lang, "customcommand.hint", max = RESPONSE_MAX)
     };
     vec![
         field(
             RESPONSE_FIELD,
-            "Reply",
+            &t!(lang, "customcommand.reply-label"),
             hint,
             TextInputStyle::Paragraph,
             RESPONSE_MAX,
@@ -173,8 +185,8 @@ fn form(reply: Option<String>, description: Option<String>, cooldown: Option<i64
         ),
         field(
             DESCRIPTION_FIELD,
-            "Description (optional)",
-            format!("Shown next to the name in suggestions, up to {DESCRIPTION_MAX} characters."),
+            &t!(lang, "customcommand.description-label"),
+            t!(lang, "customcommand.description-hint", max = DESCRIPTION_MAX),
             TextInputStyle::Short,
             DESCRIPTION_MAX,
             description.filter(|d| !d.is_empty()),
@@ -182,8 +194,8 @@ fn form(reply: Option<String>, description: Option<String>, cooldown: Option<i64
         ),
         field(
             COOLDOWN_FIELD,
-            "Cooldown in seconds (optional)",
-            format!("How long a member waits between uses: 0 to {COMMAND_COOLDOWN_MAX}."),
+            &t!(lang, "customcommand.cooldown-label"),
+            t!(lang, "customcommand.cooldown-hint", max = COMMAND_COOLDOWN_MAX),
             TextInputStyle::Short,
             4,
             cooldown.filter(|c| *c > 0).map(|c| c.to_string()),
@@ -195,24 +207,22 @@ fn form(reply: Option<String>, description: Option<String>, cooldown: Option<i64
 async fn create(cx: &Cx, guild: u64, c: CustomCreate) -> anyhow::Result<()> {
     let name = match check_name(&c.name, reserved_names()) {
         Ok(name) => name,
-        Err(error) => return cx.reply_ephemeral(error.message).await,
+        Err(error) => return cx.reply_ephemeral(error.text(cx.lang())).await,
     };
     let set = cx.app.tag_set(guild).await?;
     if set.commands.iter().any(|x| x.def.name == name) {
         return cx
-            .reply_ephemeral(format!(
-                "`/tag {name}` already exists. Change it with `/customcommand edit`."
-            ))
+            .reply_ephemeral(t!(cx.lang(), "customcommand.exists", name = name))
             .await;
     }
     if set.commands.len() >= MAX_COMMANDS {
-        return cx.reply_ephemeral(full()).await;
+        return cx.reply_ephemeral(full(cx.lang())).await;
     }
     let private = u8::from(c.private.unwrap_or(false));
     cx.modal(
         format!("cm:c:{name}:{private}"),
-        &format!("New /tag {name}"),
-        form(None, c.description, None, 1),
+        &t!(cx.lang(), "customcommand.new-title", name = name),
+        form(cx.lang(), None, c.description, None, 1),
     )
     .await
 }
@@ -229,8 +239,9 @@ async fn edit(cx: &Cx, guild: u64, c: CustomEdit) -> anyhow::Result<()> {
     let def = &row.def;
     cx.modal(
         format!("cm:e:{}:{keep}", row.id),
-        &format!("Edit /tag {}", def.name),
+        &t!(cx.lang(), "customcommand.edit-title", name = def.name),
         form(
+            cx.lang(),
             def.responses.first().cloned(),
             Some(def.description.clone()),
             Some(def.cooldown_secs),
@@ -240,8 +251,8 @@ async fn edit(cx: &Cx, guild: u64, c: CustomEdit) -> anyhow::Result<()> {
     .await
 }
 
-fn full() -> String {
-    format!("This server has {MAX_COMMANDS} custom commands already, the most there can be. Remove one first.")
+fn full(lang: Lang) -> String {
+    t!(lang, "customcommand.full", max = MAX_COMMANDS)
 }
 
 /// A command of the server by its name, as typed or picked.
@@ -259,10 +270,8 @@ async fn find(cx: &Cx, guild: u64, name: &str) -> anyhow::Result<Option<CommandR
 
 async fn gone(cx: &Cx, name: &str) -> anyhow::Result<()> {
     let shown = truncate(&tidy_name(name), 40).replace('`', "'");
-    cx.reply_ephemeral(format!(
-        "There is no custom command called `{shown}`. See them with `/customcommand list`."
-    ))
-    .await
+    cx.reply_ephemeral(t!(cx.lang(), "customcommand.none", name = shown))
+        .await
 }
 
 // /Form submitted
@@ -275,7 +284,7 @@ fn text<'a>(fields: &'a [(String, String)], id: &str) -> &'a str {
 }
 
 /// The cooldown box: empty is none, anything else must be a whole number of seconds.
-fn cooldown_of(raw: &str) -> Result<i64, String> {
+fn cooldown_of(lang: Lang, raw: &str) -> Result<i64, String> {
     let raw = raw.trim();
     if raw.is_empty() {
         return Ok(0);
@@ -283,28 +292,28 @@ fn cooldown_of(raw: &str) -> Result<i64, String> {
     raw.parse::<i64>()
         .ok()
         .filter(|n| (0..=COMMAND_COOLDOWN_MAX).contains(n))
-        .ok_or_else(|| format!("A cooldown is a whole number of seconds, 0 to {COMMAND_COOLDOWN_MAX}."))
+        .ok_or_else(|| t!(lang, "customcommand.cooldown-bad", max = COMMAND_COOLDOWN_MAX))
 }
 
 /// A form of `/customcommand create` or `edit`, submitted: `cm:c:<name>:<private>` or `cm:e:<id>:<private>`.
 pub(crate) async fn on_modal(cx: &Cx, mut parts: Split<'_, char>, fields: &[(String, String)]) -> anyhow::Result<()> {
     let Some(guild) = cx.guild_id() else {
-        return cx.reply_ephemeral("Custom commands live in servers.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "customcommand.guild-only")).await;
     };
     // The form can be opened by a manager and submitted later, after their permission changed.
     if !cx.can_manage_guild() {
-        return cx.reply_ephemeral(NEEDS_MANAGE).await;
+        return cx.reply_ephemeral(needs_manage(cx.lang())).await;
     }
     let (kind, target, private) = (parts.next(), parts.next().unwrap_or(""), parts.next().unwrap_or("0"));
     match kind {
         Some("c") => created(cx, guild, target, private == "1", fields).await,
         Some("e") => edited(cx, guild, target, private, fields).await,
-        _ => cx.reply_ephemeral("This form has expired.").await,
+        _ => cx.reply_ephemeral(t!(cx.lang(), "customcommand.form-expired")).await,
     }
 }
 
 async fn created(cx: &Cx, guild: u64, name: &str, private: bool, fields: &[(String, String)]) -> anyhow::Result<()> {
-    let cooldown = match cooldown_of(text(fields, COOLDOWN_FIELD)) {
+    let cooldown = match cooldown_of(cx.lang(), text(fields, COOLDOWN_FIELD)) {
         Ok(seconds) => seconds,
         Err(message) => return cx.reply_ephemeral(message).await,
     };
@@ -329,7 +338,7 @@ async fn created(cx: &Cx, guild: u64, name: &str, private: bool, fields: &[(Stri
     };
     let def = match def.clean(reserved_names()) {
         Ok(def) => def,
-        Err(errors) => return cx.reply_ephemeral(errors[0].message.clone()).await,
+        Err(errors) => return cx.reply_ephemeral(errors[0].text(cx.lang())).await,
     };
     let author = cx.author()?.id.get();
     match cx.app.db.add_custom_command(guild, &def, author).await? {
@@ -337,20 +346,14 @@ async fn created(cx: &Cx, guild: u64, name: &str, private: bool, fields: &[(Stri
             announce_guild_change(&cx.app, guild).await;
             let after = serde_json::to_value(&row.def)?;
             audit(cx, guild, "command.create", &row.def.name, Value::Null, after).await;
-            cx.reply_ephemeral(format!(
-                "Created `/tag {0}`. Try it with `/tag {0}`. Embeds, roles to give, cooldowns and who may use it are on the dashboard.",
-                row.def.name
-            ))
-            .await
+            cx.reply_ephemeral(t!(cx.lang(), "customcommand.created", name = row.def.name))
+                .await
         }
         TagWrite::NameTaken => {
-            cx.reply_ephemeral(format!(
-                "`/tag {}` already exists. Change it with `/customcommand edit`.",
-                def.name
-            ))
-            .await
+            cx.reply_ephemeral(t!(cx.lang(), "customcommand.exists", name = def.name))
+                .await
         }
-        TagWrite::Full => cx.reply_ephemeral(full()).await,
+        TagWrite::Full => cx.reply_ephemeral(full(cx.lang())).await,
         TagWrite::Gone => unreachable!("an insert is never gone"),
     }
 }
@@ -361,10 +364,10 @@ async fn edited(cx: &Cx, guild: u64, id: &str, private: &str, fields: &[(String,
         cx.app.db.custom_command(guild, id).await?
     }) else {
         return cx
-            .reply_ephemeral("That command was removed while the form was open.")
+            .reply_ephemeral(t!(cx.lang(), "customcommand.removed-while-open"))
             .await;
     };
-    let cooldown = match cooldown_of(text(fields, COOLDOWN_FIELD)) {
+    let cooldown = match cooldown_of(cx.lang(), text(fields, COOLDOWN_FIELD)) {
         Ok(seconds) => seconds,
         Err(message) => return cx.reply_ephemeral(message).await,
     };
@@ -384,7 +387,7 @@ async fn edited(cx: &Cx, guild: u64, id: &str, private: &str, fields: &[(String,
     // The name does not change, so it is not held against the bot's commands again.
     let def = match def.clean(&[]) {
         Ok(def) => def,
-        Err(errors) => return cx.reply_ephemeral(errors[0].message.clone()).await,
+        Err(errors) => return cx.reply_ephemeral(errors[0].text(cx.lang())).await,
     };
     match cx.app.db.replace_custom_command(guild, row.id, &def).await? {
         TagWrite::Saved(saved) => {
@@ -393,10 +396,11 @@ async fn edited(cx: &Cx, guild: u64, id: &str, private: &str, fields: &[(String,
             if after.as_object().is_some_and(|a| !a.is_empty()) {
                 audit(cx, guild, "command.update", &saved.def.name, before, after).await;
             }
-            cx.reply_ephemeral(format!("Saved `/tag {}`.", saved.def.name)).await
+            cx.reply_ephemeral(t!(cx.lang(), "customcommand.saved", name = saved.def.name))
+                .await
         }
         _ => {
-            cx.reply_ephemeral("That command was removed while the form was open.")
+            cx.reply_ephemeral(t!(cx.lang(), "customcommand.removed-while-open"))
                 .await
         }
     }
@@ -420,7 +424,7 @@ async fn delete(cx: &Cx, guild: u64, c: CustomDelete) -> anyhow::Result<()> {
                 Value::Null,
             )
             .await;
-            cx.reply_ephemeral(format!("Removed `/tag {}`.", removed.def.name))
+            cx.reply_ephemeral(t!(cx.lang(), "customcommand.deleted", name = removed.def.name))
                 .await
         }
         None => gone(cx, &c.name).await,
@@ -428,7 +432,7 @@ async fn delete(cx: &Cx, guild: u64, c: CustomDelete) -> anyhow::Result<()> {
 }
 
 /// One page of the list, and the buttons that turn it.
-fn page_view(commands: &[CommandRow], page: usize) -> (Embed, Vec<Component>) {
+fn page_view(lang: Lang, commands: &[CommandRow], page: usize) -> (Embed, Vec<Component>) {
     let pages = commands.len().div_ceil(PAGE).max(1);
     let page = page.min(pages - 1);
     let lines: Vec<String> = commands
@@ -440,23 +444,33 @@ fn page_view(commands: &[CommandRow], page: usize) -> (Embed, Vec<Component>) {
             if !c.def.description.is_empty() {
                 line.push_str(&format!(" · {}", c.def.description));
             }
-            line.push_str(&format!(" · used {}×", c.uses));
+            line.push_str(&t!(lang, "customcommand.list-used", count = c.uses));
             if !c.def.enabled {
-                line.push_str(" · **off**");
+                line.push_str(&t!(lang, "customcommand.list-off"));
             }
             line
         })
         .collect();
     let description = if lines.is_empty() {
-        "No custom commands yet. Write one with `/customcommand create`.".to_owned()
+        t!(lang, "customcommand.list-empty")
     } else {
         lines.join("\n")
     };
     let embed = EmbedBuilder::new()
-        .title(format!("Custom commands ({}/{MAX_COMMANDS})", commands.len()))
+        .title(t!(
+            lang,
+            "customcommand.list-title",
+            count = commands.len(),
+            max = MAX_COMMANDS
+        ))
         .description(description)
         .color(BRAND)
-        .footer(EmbedFooterBuilder::new(format!("Page {} of {pages}", page + 1)))
+        .footer(EmbedFooterBuilder::new(t!(
+            lang,
+            "customcommand.list-page",
+            page = page + 1,
+            pages = pages
+        )))
         .build();
     let mut components = Vec::new();
     if pages > 1 {
@@ -465,14 +479,14 @@ fn page_view(commands: &[CommandRow], page: usize) -> (Embed, Vec<Component>) {
             components: vec![
                 button(
                     format!("tg:l:{}", page.saturating_sub(1)),
-                    "Previous",
+                    &t!(lang, "customcommand.previous"),
                     None,
                     ButtonStyle::Secondary,
                     page == 0,
                 ),
                 button(
                     format!("tg:l:{}", page + 1),
-                    "Next",
+                    &t!(lang, "customcommand.next"),
                     None,
                     ButtonStyle::Secondary,
                     page + 1 >= pages,
@@ -485,7 +499,7 @@ fn page_view(commands: &[CommandRow], page: usize) -> (Embed, Vec<Component>) {
 
 async fn show_list(cx: &Cx, guild: u64) -> anyhow::Result<()> {
     let set = cx.app.tag_set(guild).await?;
-    let (embed, components) = page_view(&set.commands, 0);
+    let (embed, components) = page_view(cx.lang(), &set.commands, 0);
     cx.reply(ephemeral(embed, components)).await
 }
 
@@ -501,17 +515,17 @@ fn ephemeral(embed: Embed, components: Vec<Component>) -> InteractionResponseDat
 /// A page button of the list, clicked: `tg:l:<page>`.
 pub(crate) async fn on_page(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::Result<()> {
     let Some(guild) = cx.guild_id() else {
-        return cx.reply_ephemeral("Custom commands live in servers.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "customcommand.guild-only")).await;
     };
     if parts.next() != Some("l") {
-        return cx.reply_ephemeral("This button has expired.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "social.button-expired")).await;
     }
     if !cx.can_manage_guild() {
-        return cx.reply_ephemeral(NEEDS_MANAGE).await;
+        return cx.reply_ephemeral(needs_manage(cx.lang())).await;
     }
     let page: usize = parts.next().and_then(|p| p.parse().ok()).unwrap_or(0);
     let set = cx.app.tag_set(guild).await?;
-    let (embed, components) = page_view(&set.commands, page);
+    let (embed, components) = page_view(cx.lang(), &set.commands, page);
     cx.update(InteractionResponseData {
         embeds: Some(vec![embed]),
         components: Some(components),
@@ -525,42 +539,72 @@ async fn info(cx: &Cx, guild: u64, c: CustomInfo) -> anyhow::Result<()> {
         return gone(cx, &c.name).await;
     };
     let d = &row.def;
-    let count = |n: usize, one: &str, many: &str| format!("{n} {}", if n == 1 { one } else { many });
+    let lang = cx.lang();
     let mut embed = EmbedBuilder::new()
         .title(format!("/tag {}", d.name))
         .color(BRAND)
-        .field(EmbedFieldBuilder::new("State", if d.enabled { "on" } else { "off" }).inline())
-        .field(EmbedFieldBuilder::new("Used", format!("{}×", row.uses)).inline())
         .field(
             EmbedFieldBuilder::new(
-                "Answers",
-                if d.reply_mode == ReplyMode::Ephemeral {
-                    "privately"
-                } else {
-                    "in the channel"
-                },
+                t!(lang, "customcommand.state"),
+                t!(
+                    lang,
+                    if d.enabled {
+                        "customcommand.on"
+                    } else {
+                        "customcommand.off"
+                    }
+                ),
+            )
+            .inline(),
+        )
+        .field(EmbedFieldBuilder::new(t!(lang, "customcommand.used"), format!("{}×", row.uses)).inline())
+        .field(
+            EmbedFieldBuilder::new(
+                t!(lang, "customcommand.answers"),
+                t!(
+                    lang,
+                    if d.reply_mode == ReplyMode::Ephemeral {
+                        "customcommand.privately"
+                    } else {
+                        "customcommand.in-channel"
+                    }
+                ),
             )
             .inline(),
         )
         .field(
             EmbedFieldBuilder::new(
-                "Cooldown",
+                t!(lang, "customcommand.cooldown"),
                 if d.cooldown_secs > 0 {
                     format!("{} s", d.cooldown_secs)
                 } else {
-                    "none".to_owned()
+                    t!(lang, "customcommand.no-cooldown")
                 },
             )
             .inline(),
         )
-        .field(EmbedFieldBuilder::new("Replies", count(d.responses.len(), "reply", "replies")).inline())
         .field(
             EmbedFieldBuilder::new(
-                "Extras",
-                format!(
-                    "{}, {}",
-                    if d.embed.is_some() { "embed" } else { "plain text" },
-                    count(d.actions.len(), "action", "actions")
+                t!(lang, "customcommand.replies"),
+                t!(lang, "customcommand.reply-count", count = d.responses.len()),
+            )
+            .inline(),
+        )
+        .field(
+            EmbedFieldBuilder::new(
+                t!(lang, "customcommand.extras"),
+                t!(
+                    lang,
+                    "customcommand.extras-value",
+                    kind = t!(
+                        lang,
+                        if d.embed.is_some() {
+                            "customcommand.embed"
+                        } else {
+                            "customcommand.plain"
+                        }
+                    ),
+                    actions = t!(lang, "customcommand.action-count", count = d.actions.len())
                 ),
             )
             .inline(),
@@ -569,18 +613,21 @@ async fn info(cx: &Cx, guild: u64, c: CustomInfo) -> anyhow::Result<()> {
         embed = embed.description(&d.description);
     }
     let limits = [
-        ("roles that may use it", d.allow_roles.len()),
-        ("roles that may not", d.deny_roles.len()),
-        ("channels it works in", d.allow_channels.len()),
-        ("channels it doesn't", d.deny_channels.len()),
+        ("customcommand.limit-allow-roles", d.allow_roles.len()),
+        ("customcommand.limit-deny-roles", d.deny_roles.len()),
+        ("customcommand.limit-allow-channels", d.allow_channels.len()),
+        ("customcommand.limit-deny-channels", d.deny_channels.len()),
     ];
     let limits: Vec<String> = limits
         .into_iter()
         .filter(|(_, n)| *n > 0)
-        .map(|(what, n)| format!("{n} {what}"))
+        .map(|(key, n)| t!(lang, key, count = n))
         .collect();
     if !limits.is_empty() {
-        embed = embed.field(EmbedFieldBuilder::new("Restrictions", limits.join("\n")));
+        embed = embed.field(EmbedFieldBuilder::new(
+            t!(lang, "customcommand.restrictions"),
+            limits.join("\n"),
+        ));
     }
     cx.reply(ephemeral(embed.build(), Vec::new())).await
 }
@@ -646,18 +693,18 @@ mod tests {
 
     #[test]
     fn the_cooldown_box_takes_whole_seconds() {
-        assert_eq!(cooldown_of(""), Ok(0));
-        assert_eq!(cooldown_of(" 30 "), Ok(30));
-        assert_eq!(cooldown_of("3600"), Ok(3_600));
+        assert_eq!(cooldown_of(Lang::En, ""), Ok(0));
+        assert_eq!(cooldown_of(Lang::En, " 30 "), Ok(30));
+        assert_eq!(cooldown_of(Lang::En, "3600"), Ok(3_600));
         for bad in ["3601", "-1", "1.5", "soon", "1e3"] {
-            assert!(cooldown_of(bad).is_err(), "{bad}");
+            assert!(cooldown_of(Lang::En, bad).is_err(), "{bad}");
         }
     }
 
     #[test]
     fn the_list_pages_and_its_buttons_stop_at_the_ends() {
         let few = vec![row("a", 3, true), row("b", 0, false)];
-        let (embed, components) = page_view(&few, 0);
+        let (embed, components) = page_view(Lang::En, &few, 0);
         assert!(components.is_empty(), "one page needs no buttons");
         let text = embed.description.unwrap();
         assert!(
@@ -665,7 +712,7 @@ mod tests {
             "{text}"
         );
         let many: Vec<CommandRow> = (0..25).map(|n| row(&format!("c{n:02}"), 0, true)).collect();
-        let (embed, components) = page_view(&many, 2);
+        let (embed, components) = page_view(Lang::En, &many, 2);
         assert_eq!(embed.footer.unwrap().text, "Page 3 of 3");
         assert_eq!(embed.description.unwrap().lines().count(), 5);
         let Component::ActionRow(buttons) = &components[0] else {
@@ -680,13 +727,13 @@ mod tests {
             })
             .collect();
         assert_eq!(ids, [("tg:l:1".to_owned(), false), ("tg:l:3".to_owned(), true)]);
-        let (embed, _) = page_view(&many, 99);
+        let (embed, _) = page_view(Lang::En, &many, 99);
         assert_eq!(
             embed.footer.unwrap().text,
             "Page 3 of 3",
             "a page past the end is the last"
         );
-        let (embed, _) = page_view(&[], 0);
+        let (embed, _) = page_view(Lang::En, &[], 0);
         assert!(embed.description.unwrap().contains("No custom commands yet"));
     }
 
@@ -702,7 +749,7 @@ mod tests {
 
     #[test]
     fn a_form_is_three_boxes_with_the_reply_first() {
-        let boxes = form(Some("hi".into()), Some(String::new()), Some(0), 1);
+        let boxes = form(Lang::En, Some("hi".into()), Some(String::new()), Some(0), 1);
         assert_eq!(boxes.len(), 3);
         let ids: Vec<String> = boxes
             .iter()
