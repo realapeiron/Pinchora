@@ -9,7 +9,8 @@ ALTER TABLE game_stats ADD COLUMN best INTEGER NOT NULL DEFAULT 0;
 -- (the result stays, and the streak is counted from the days solved); practice keeps one row per player
 -- (day 0), replaced by the next puzzle. `grid` holds the player's marks, 100 characters of `#` and `.`.
 -- The step from `playing` to `solved` happens once, in one update, and the shells are paid by whoever
--- made it.
+-- made it. `checks` counts the times the player asked how many of their marks are wrong; a puzzle that
+-- needed one pays less.
 CREATE TABLE picross_games (
     user_id     BIGINT      NOT NULL,
     mode        TEXT        NOT NULL,
@@ -17,6 +18,7 @@ CREATE TABLE picross_games (
     picture     SMALLINT    NOT NULL,
     variant     SMALLINT    NOT NULL,
     grid        TEXT        NOT NULL,
+    checks      SMALLINT    NOT NULL DEFAULT 0,
     status      TEXT        NOT NULL DEFAULT 'playing',
     started_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     solved_at   TIMESTAMPTZ,
@@ -34,4 +36,16 @@ CREATE TABLE solo_games (
     status      TEXT        NOT NULL DEFAULT 'playing',
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (user_id, game)
+);
+
+-- The Sea Fleet layout a captain is looking at before they lock it in. The layout stays here, on the server;
+-- the buttons on the private message carry only `rev`, a counter that goes up with every new layout, so a
+-- click on an older message cannot lock in a layout the captain is not looking at. The row goes when the
+-- layout is locked in (into the game's state) or when the game goes.
+CREATE TABLE fleet_drafts (
+    session_id  BIGINT      NOT NULL REFERENCES game_sessions (id) ON DELETE CASCADE,
+    user_id     BIGINT      NOT NULL,
+    layout      TEXT        NOT NULL,
+    rev         BIGINT      NOT NULL DEFAULT 1,
+    PRIMARY KEY (session_id, user_id)
 );

@@ -1,13 +1,14 @@
 //! `/play picross`: Pixel Picross. Ten rows and ten columns of clues hide a sea creature; mark the cells the
 //! clues say are filled and the picture shows. One puzzle a day is the same for everyone; practice puzzles
-//! are as many as you like. Marks are set a row at a time from two menus, or typed as coordinates.
+//! are as many as you like. Marks are set a row at a time from two menus, or typed as coordinates. A puzzle
+//! can be checked a few times, which only says how many marks are wrong, and pays less once it was.
 
 use std::{str::Split, time::Duration};
 
 use pinchora_db::PicrossGame;
 use pinchora_game::play::{
     Game,
-    picross::{self, CELLS, Clues, Grid, Puzzle, SIZE, Shade, parse_marks},
+    picross::{self, CELLS, Clues, Grid, Ink, Puzzle, SIZE, Shade, parse_marks},
 };
 use pinchora_render::{PicrossCard, Reveal, Theme};
 use twilight_model::{
@@ -28,6 +29,12 @@ use crate::{
 
 const DAILY: &str = "daily";
 const PRACTICE: &str = "practice";
+/// How many times a puzzle can be checked.
+pub(crate) const MAX_CHECKS: i16 = 3;
+/// What the daily puzzle pays once it was checked, whatever the streak.
+pub(crate) const CHECKED_DAILY_REWARD: i64 = 15;
+/// What a practice puzzle pays once it was checked (an unchecked one pays the game's win reward).
+pub(crate) const CHECKED_PRACTICE_REWARD: i64 = 5;
 /// Custom id of the text input in the "Mark cells" form.
 pub(crate) const CELLS_FIELD: &str = "cells";
 
@@ -54,8 +61,12 @@ pub(crate) fn streak(solved: &[i32], today: i64) -> i64 {
     count
 }
 
-/// Shells for the daily puzzle: 35, and 5 more for every day of the streak up to a week.
-pub(crate) fn daily_reward(streak: i64) -> i64 {
+/// Shells for the daily puzzle: 35, and 5 more for every day of the streak up to a week. A puzzle that was
+/// checked pays a flat 15 and no streak bonus (the day still counts towards the streak).
+pub(crate) fn daily_reward(streak: i64, checks: i16) -> i64 {
+    if checks > 0 {
+        return CHECKED_DAILY_REWARD;
+    }
     30 + 5 * streak.clamp(1, 7)
 }
 
@@ -70,18 +81,29 @@ pub(crate) async fn start(cx: &Cx, daily: bool) -> anyhow::Result<()> {
             .start_picross(me, DAILY, day as i32, (picture as u8, variant), false)
             .await?
     } else {
-        match cx.app.db.picross_game(me, PRACTICE, 0).await?.filter(|g| !g.solved()) {
+        // An unfinished practice board is picked up again, unless its picture has since come close to the
+        // daily puzzle's.
+        let allowed = picross::practice_pictures(today(&cx.app));
+        match cx
+            .app
+            .db
+            .picross_game(me, PRACTICE, 0)
+            .await?
+            .filter(|g| !g.solved() && allowed.contains(&(g.picture as usize)))
+        {
             Some(unfinished) => unfinished,
             None => new_practice(&cx.app, me).await?,
         }
     };
-    let data = view(&cx.app, &game, None, &[], "").await?;
+    let data = view(&cx.app, &game, None, None, "").await?;
     cx.reply(data).await
 }
 
+/// A random practice puzzle, from the pictures the daily puzzle will not show for a week.
 async fn new_practice(app: &App, user: u64) -> anyhow::Result<PicrossGame> {
-    let picture = rand::random_range(0..picross::PICTURES.len()) as u8;
-    let variant = rand::random_range(0..4u8);
+    let pictures = picross::practice_pictures(today(app));
+    let picture = pictures[rand::random_range(0..pictures.len())] as u8;
+    let variant = rand::random_range(0..picross::VARIANTS);
     app.db.start_picross(user, PRACTICE, 0, (picture, variant), true).await
 }
 
@@ -149,22 +171,29 @@ fn controls(game: &PicrossGame, puzzle: &Puzzle, row: Option<usize>) -> Vec<Comp
             (0, SIZE as u8),
         ));
     }
+    let left = (MAX_CHECKS - game.checks).max(0);
     out.push(Component::ActionRow(ActionRow {
         id: None,
         components: vec![
             button(format!("pz:m:{tag}"), "Mark cells", ButtonStyle::Primary, false),
-            button(format!("pz:k:{tag}"), "Check", ButtonStyle::Secondary, false),
+            button(
+                format!("pz:k:{tag}"),
+                &format!("Check ({left} left)"),
+                ButtonStyle::Secondary,
+                left == 0,
+            ),
         ],
     }));
     out
 }
 
-/// The private board: clues, marks, and the menus; or the finished picture.
+/// The private board: clues, marks, and the menus; or the finished picture. `wrong` is what a check just
+/// found: how many marks are not part of the picture, never which.
 async fn view(
     app: &App,
     game: &PicrossGame,
     row: Option<usize>,
-    mistakes: &[usize],
+    wrong: Option<usize>,
     note: &str,
 ) -> anyhow::Result<InteractionResponseData> {
     let puzzle = puzzle_of(game);
@@ -186,33 +215,36 @@ async fn view(
         "A new puzzle every day".to_owned()
     } else if game.solved() {
         "Press New puzzle for another".to_owned()
-    } else if mistakes.is_empty() {
-        "Pick a row, then its filled cells".to_owned()
+    } else if let Some(wrong) = wrong {
+        format!("{wrong} wrong cell{}", if wrong == 1 { "" } else { "s" })
     } else {
-        format!(
-            "{} wrong cell{} in red",
-            mistakes.len(),
-            if mistakes.len() == 1 { "" } else { "s" }
-        )
+        "Pick a row, then its filled cells".to_owned()
     };
     let row_done: [bool; SIZE] = std::array::from_fn(|y| grid.row_done(&clues, y));
     let col_done: [bool; SIZE] = std::array::from_fn(|x| grid.col_done(&clues, x));
-    let shades: [u8; CELLS] = std::array::from_fn(|cell| {
-        if !puzzle.filled(cell) {
-            0
-        } else {
-            match puzzle.shade(cell) {
+    // Per cell of the finished picture: what it is painted in, and lit, plain or shaded by what is above and
+    // below it (the render's codes: 1 to 3 the colour, 4 to 6 the accent, 7 to 9 white, 10 an eye).
+    let paint: [u8; CELLS] = std::array::from_fn(|cell| match puzzle.ink(cell) {
+        None => 0,
+        Some(Ink::Eye) => 10,
+        Some(ink) => {
+            let tone = match puzzle.shade(cell) {
                 Shade::Light => 1,
                 Shade::Main => 2,
                 Shade::Dark => 3,
+            };
+            tone + match ink {
+                Ink::Body | Ink::Eye => 0,
+                Ink::Accent => 3,
+                Ink::White => 6,
             }
         }
     });
     let color = format!("#{:06x}", puzzle.color());
+    let accent = format!("#{:06x}", puzzle.accent());
     let solved = game.solved();
     let name = puzzle.name();
     let cells = *grid.cells();
-    let mistakes_owned = mistakes.to_vec();
     let png = {
         let title = title.clone();
         app.render(move |r| {
@@ -224,12 +256,12 @@ async fn view(
                 cols: &clues.cols,
                 row_done,
                 col_done,
-                mistakes: &mistakes_owned,
                 footer: &footer,
                 reveal: solved.then_some(Reveal {
                     name,
                     color: &color,
-                    shades: &shades,
+                    accent: &accent,
+                    cells: &paint,
                 }),
                 theme: Theme::reef(),
             })
@@ -241,7 +273,9 @@ async fn view(
     } else {
         format!(
             "Each number is a run of filled cells in its row or column, in order, with a gap between runs. \
-             Pick a row and tick its filled cells, or **Mark cells** to type them (`A1 B3-B7 -C2`; a dash clears).\n{note}"
+             Pick a row and tick its filled cells, or **Mark cells** to type them (`A1 B3-B7 -C2`; a dash clears).\n\
+             **Check** says how many of your marks are wrong, not which ({MAX_CHECKS} times a puzzle), and a puzzle \
+             you checked pays less.\n{note}"
         )
     };
     let embed = EmbedBuilder::new()
@@ -271,7 +305,7 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[S
     };
     if action == Some("n") {
         let game = new_practice(&cx.app, me).await?;
-        let data = view(&cx.app, &game, None, &[], "").await?;
+        let data = view(&cx.app, &game, None, None, "").await?;
         return cx.update(data).await;
     }
     let Some(game) = cx.app.db.picross_game(me, mode, day).await? else {
@@ -317,14 +351,18 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[S
                 .await
         }
         Some("k") if !game.solved() => {
-            let puzzle = puzzle_of(&game);
-            let mistakes = grid_of(&game).mistakes(&puzzle);
-            let note = if mistakes.is_empty() {
-                "No mistakes so far."
-            } else {
-                "The cells in red are not part of the picture."
+            let Some(checked) = cx.app.db.picross_check(me, mode, day, MAX_CHECKS).await? else {
+                return cx.reply_ephemeral("You have used every check on this puzzle.").await;
             };
-            let data = view(&cx.app, &game, None, &mistakes, note).await?;
+            let wrong = grid_of(&checked).wrong(&puzzle_of(&checked));
+            let left = (MAX_CHECKS - checked.checks).max(0);
+            let note = match wrong {
+                0 => "No mistakes so far.".to_owned(),
+                1 => "**1** of your marks is not part of the picture.".to_owned(),
+                n => format!("**{n}** of your marks are not part of the picture."),
+            };
+            let note = format!("{note} {left} check{} left.", if left == 1 { "" } else { "s" });
+            let data = view(&cx.app, &checked, None, Some(wrong), &note).await?;
             cx.update(data).await
         }
         Some("s") if game.solved() && mode == DAILY => share(cx, me, day).await,
@@ -432,7 +470,7 @@ async fn mark(
         } else {
             String::new()
         };
-        let data = view(&cx.app, &updated, row, &[], &note).await?;
+        let data = view(&cx.app, &updated, row, None, &note).await?;
         return cx.update(data).await;
     }
     cx.reply_ephemeral("The board changed while you marked. Try again.")
@@ -445,14 +483,21 @@ async fn finish(app: &App, me: u64, game: &PicrossGame) -> anyhow::Result<String
     if game.mode == DAILY {
         let days = app.db.picross_days_solved(me, 40).await?;
         let streak = streak(&days, today(app));
-        let shells = daily_reward(streak);
+        let shells = daily_reward(streak, game.checks);
         app.db.earn_shells(me, shells, "picross_daily").await?;
-        return Ok(format!(
-            "+**{shells}** shells, a streak of **{streak}** day{}!",
-            if streak == 1 { "" } else { "s" }
-        ));
+        let days = if streak == 1 { "" } else { "s" };
+        return Ok(if game.checks > 0 {
+            format!("+**{shells}** shells (less, because you checked), a streak of **{streak}** day{days}!")
+        } else {
+            format!("+**{shells}** shells, a streak of **{streak}** day{days}!")
+        });
     }
-    let paid = pay_win(app, me, Game::Picross, Game::Picross.win_reward(), "picross_win").await?;
+    let reward = if game.checks > 0 {
+        CHECKED_PRACTICE_REWARD
+    } else {
+        Game::Picross.win_reward()
+    };
+    let paid = pay_win(app, me, Game::Picross, reward, "picross_win").await?;
     Ok(if paid > 0 {
         format!("+**{paid}** shells!")
     } else {
@@ -504,7 +549,20 @@ mod tests {
 
     #[test]
     fn the_daily_reward_grows_with_the_streak_to_a_week() {
-        assert_eq!([0, 1, 2, 3, 7, 8, 30].map(daily_reward), [35, 35, 40, 45, 65, 65, 65]);
+        assert_eq!(
+            [0, 1, 2, 3, 7, 8, 30].map(|s| daily_reward(s, 0)),
+            [35, 35, 40, 45, 65, 65, 65]
+        );
+    }
+
+    #[test]
+    fn a_checked_puzzle_pays_a_flat_smaller_reward_whatever_the_streak() {
+        for streak in [0, 1, 4, 7, 30] {
+            assert_eq!(daily_reward(streak, 1), CHECKED_DAILY_REWARD);
+            assert_eq!(daily_reward(streak, MAX_CHECKS), CHECKED_DAILY_REWARD);
+            assert!(daily_reward(streak, 1) < daily_reward(streak, 0));
+        }
+        assert!(CHECKED_PRACTICE_REWARD < Game::Picross.win_reward());
     }
 
     #[test]

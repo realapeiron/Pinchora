@@ -57,6 +57,12 @@ fn main() -> anyhow::Result<()> {
         ..card
     };
     std::fs::write(format!("{out}/chess-over.png"), r.chess_card(&card)?)?;
+    let long = ChessCard {
+        names: ["Captain Pinchora of the Reef", "Marlowe the Mariner of Seas"],
+        status: "Captain Pinchora of the Reef wins by resignation (Marlowe the Mariner of Seas gave up)",
+        ..card
+    };
+    std::fs::write(format!("{out}/chess-long-status.png"), r.chess_card(&long)?)?;
 
     // Checkers: a middle game with a king.
     let mut cells = [0u8; 32];
@@ -164,20 +170,20 @@ fn main() -> anyhow::Result<()> {
     };
     std::fs::write(format!("{out}/fleet.png"), r.fleet_card(&card)?)?;
 
-    // Pixel picross: anchor, half done, then revealed.
+    // Pixel picross: a fish, half done, then revealed. `a` is the accent colour, `w` white, `e` an eye.
     let picture = [
-        "....##....",
-        "...#..#...",
-        "....##....",
-        "..######..",
-        "....##....",
-        "....##....",
-        "#...##...#",
-        "##..##..##",
-        ".##.##.##.",
-        "..######..",
+        "..........",
+        "....###...",
+        "a..#####..",
+        "aaa#######",
+        "aaa####e##",
+        "aaa#wwwww#",
+        "a..#####..",
+        "....###...",
+        "..........",
+        "..........",
     ];
-    let solution: [bool; 100] = std::array::from_fn(|i| picture[i / 10].as_bytes()[i % 10] == b'#');
+    let solution: [bool; 100] = std::array::from_fn(|i| picture[i / 10].as_bytes()[i % 10] != b'.');
     let runs = |line: Vec<bool>| -> Vec<u8> {
         let mut out = Vec::new();
         let mut n = 0u8;
@@ -214,21 +220,30 @@ fn main() -> anyhow::Result<()> {
         cols: &cols,
         row_done: std::array::from_fn(|y| y < 5),
         col_done: [false; 10],
-        mistakes: &[63],
         footer: "Pick a row, then its filled cells",
         reveal: None,
         theme: Theme::reef(),
     };
     std::fs::write(format!("{out}/picross.png"), r.picross_card(&card)?)?;
-    let shades: [u8; 100] = std::array::from_fn(|i| {
-        if !solution[i] {
-            0
-        } else if i < 10 || !solution[i - 10] {
+    let cells: [u8; 100] = std::array::from_fn(|i| {
+        let letter = picture[i / 10].as_bytes()[i % 10];
+        if letter == b'.' {
+            return 0;
+        }
+        if letter == b'e' {
+            return 10;
+        }
+        let tone = if i < 10 || !solution[i - 10] {
             1
         } else if i + 10 >= 100 || !solution[i + 10] {
             3
         } else {
             2
+        };
+        tone + match letter {
+            b'a' => 3,
+            b'w' => 6,
+            _ => 0,
         }
     });
     let card = PicrossCard {
@@ -237,12 +252,12 @@ fn main() -> anyhow::Result<()> {
         grid: &solution,
         row_done: [true; 10],
         col_done: [true; 10],
-        mistakes: &[],
         footer: "+55 shells, a 3 day streak",
         reveal: Some(Reveal {
-            name: "Anchor",
-            color: "#8fa0d8",
-            shades: &shades,
+            name: "Fish",
+            color: "#ff9e7a",
+            accent: "#ffd166",
+            cells: &cells,
         }),
         ..card
     };

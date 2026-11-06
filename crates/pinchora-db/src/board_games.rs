@@ -1,4 +1,5 @@
-//! What the solo board games keep: pixel picross boards, Tide 2048 games and the best scores.
+//! What the board games keep: pixel picross boards, Tide 2048 games, the best scores and the Sea Fleet
+//! layouts captains are choosing.
 
 use crate::{Db, sql_id};
 
@@ -12,6 +13,8 @@ pub struct PicrossGame {
     pub variant: i16,
     /// The player's marks: 100 characters of `#` and `.`.
     pub grid: String,
+    /// How many times the player asked how many of their marks are wrong.
+    pub checks: i16,
     pub status: String,
 }
 
@@ -41,7 +44,7 @@ impl SoloGame {
 /// The columns of a [`PicrossGame`] and of a [`SoloGame`], for queries that need a literal string.
 macro_rules! picross_columns {
     () => {
-        "user_id, mode, day, picture, variant, grid, status"
+        "user_id, mode, day, picture, variant, grid, checks, status"
     };
 }
 macro_rules! solo_columns {
@@ -96,7 +99,7 @@ impl Db {
             "INSERT INTO picross_games (user_id, mode, day, picture, variant, grid)
              VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (user_id, mode, day)
              DO UPDATE SET picture = EXCLUDED.picture, variant = EXCLUDED.variant, grid = EXCLUDED.grid,
-                 status = 'playing', started_at = now(), solved_at = NULL"
+                 checks = 0, status = 'playing', started_at = now(), solved_at = NULL"
         } else {
             "INSERT INTO picross_games (user_id, mode, day, picture, variant, grid)
              VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (user_id, mode, day) DO NOTHING"
@@ -146,6 +149,30 @@ impl Db {
         .await?)
     }
 
+    /// Uses one of a board's checks, if it still has one under `limit`, and returns the board as it is
+    /// then. `None` when none are left or the board is not being played, so a double click cannot spend
+    /// more than the limit.
+    pub async fn picross_check(
+        &self,
+        user: u64,
+        mode: &str,
+        day: i32,
+        limit: i16,
+    ) -> anyhow::Result<Option<PicrossGame>> {
+        Ok(sqlx::query_as::<_, PicrossGame>(concat!(
+            "UPDATE picross_games SET checks = checks + 1
+             WHERE user_id = $1 AND mode = $2 AND day = $3 AND status = 'playing' AND checks < $4
+             RETURNING ",
+            picross_columns!()
+        ))
+        .bind(sql_id(user))
+        .bind(mode)
+        .bind(day)
+        .bind(limit)
+        .fetch_optional(self.pool())
+        .await?)
+    }
+
     /// The days (since 1970-01-01) a player solved the daily puzzle, newest first, at most `limit`.
     pub async fn picross_days_solved(&self, user: u64, limit: i64) -> anyhow::Result<Vec<i32>> {
         let rows: Vec<(i32,)> = sqlx::query_as(
@@ -157,6 +184,48 @@ impl Db {
         .fetch_all(self.pool())
         .await?;
         Ok(rows.into_iter().map(|(day,)| day).collect())
+    }
+
+    /// Keeps a layout for a captain's placement in a game, in place of the one they had, and returns its
+    /// revision (it goes up by one every time).
+    pub async fn set_fleet_draft(&self, session: i64, user: u64, layout: &str) -> anyhow::Result<i64> {
+        let (rev,): (i64,) = sqlx::query_as(
+            "INSERT INTO fleet_drafts (session_id, user_id, layout) VALUES ($1, $2, $3)
+             ON CONFLICT (session_id, user_id)
+             DO UPDATE SET layout = EXCLUDED.layout, rev = fleet_drafts.rev + 1
+             RETURNING rev",
+        )
+        .bind(session)
+        .bind(sql_id(user))
+        .bind(layout)
+        .fetch_one(self.pool())
+        .await?;
+        Ok(rev)
+    }
+
+    /// The layout a captain is looking at, with its revision.
+    pub async fn fleet_draft(&self, session: i64, user: u64) -> anyhow::Result<Option<(String, i64)>> {
+        Ok(
+            sqlx::query_as("SELECT layout, rev FROM fleet_drafts WHERE session_id = $1 AND user_id = $2")
+                .bind(session)
+                .bind(sql_id(user))
+                .fetch_optional(self.pool())
+                .await?,
+        )
+    }
+
+    /// Takes a captain's layout out of the drafts, if it is still at `rev`. `None` when they have a newer
+    /// one or none, so a click on an older message locks in nothing, and a double click locks in once.
+    pub async fn take_fleet_draft(&self, session: i64, user: u64, rev: i64) -> anyhow::Result<Option<String>> {
+        let row: Option<(String,)> = sqlx::query_as(
+            "DELETE FROM fleet_drafts WHERE session_id = $1 AND user_id = $2 AND rev = $3 RETURNING layout",
+        )
+        .bind(session)
+        .bind(sql_id(user))
+        .bind(rev)
+        .fetch_optional(self.pool())
+        .await?;
+        Ok(row.map(|(layout,)| layout))
     }
 
     pub async fn solo_game(&self, user: u64, game: &str) -> anyhow::Result<Option<SoloGame>> {

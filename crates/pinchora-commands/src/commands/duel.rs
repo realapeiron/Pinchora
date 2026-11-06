@@ -614,14 +614,22 @@ pub(crate) async fn time_out(app: &Arc<App>, session: &GameSession) -> anyhow::R
     Ok(true)
 }
 
-/// A click on a game whose clock has run out: ends it (bets go back) and shows that on the message
-/// the player clicked.
+/// A click on a game whose clock has run out: ends it (the pot goes to whoever was not slow, or bets go
+/// back) and shows that on the message the player clicked and, when the click came from a private message
+/// (a placement, a confirmation), on the public board too, so its menus do not stay live.
 pub(crate) async fn expire_here(cx: &Cx, session: &GameSession) -> anyhow::Result<()> {
     let (payout, from) = timeout_settlement(session);
     match cx.app.db.settle_game(session.id, from, "timeout", payout, true).await? {
         Some(before) => {
+            let text = timeout_text(&before);
+            let clicked = cx.interaction.message.as_ref().map(|m| m.id.get());
+            if let Some((channel, message)) = location(&before)
+                && clicked != Some(message)
+            {
+                edit_message(&cx.app, channel, message, Some(&text), None, Some(&[])).await;
+            }
             cx.update(InteractionResponseData {
-                content: Some(timeout_text(&before)),
+                content: Some(text),
                 components: Some(Vec::new()),
                 allowed_mentions: Some(AllowedMentions::default()),
                 ..Default::default()

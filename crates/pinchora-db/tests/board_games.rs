@@ -60,10 +60,94 @@ async fn a_picross_board_is_kept_unless_it_is_replaced() {
         .await
         .unwrap()
         .expect("solved");
-    let next = db.start_picross(user, "practice", 0, (5, 2), true).await.unwrap();
-    assert_eq!((next.picture, next.variant, next.status.as_str()), (5, 2, "playing"));
+    let next = db.start_picross(user, "practice", 0, (5, 1), true).await.unwrap();
+    assert_eq!((next.picture, next.variant, next.status.as_str()), (5, 1, "playing"));
     assert_eq!(next.grid, ".".repeat(100));
     assert!(db.picross_game(user, "practice", 1).await.unwrap().is_none());
+}
+
+#[tokio::test]
+async fn a_board_has_a_limited_number_of_checks_even_when_they_are_asked_at_once() {
+    let Some(db) = db().await else { return };
+    let [user] = ids();
+    let board = db.start_picross(user, "daily", 20_820, (2, 0), false).await.unwrap();
+    assert_eq!(board.checks, 0);
+    let first = db
+        .picross_check(user, "daily", 20_820, 3)
+        .await
+        .unwrap()
+        .expect("a check");
+    assert_eq!(first.checks, 1);
+    // Four clicks at once with two checks left: exactly two succeed.
+    let results = tokio::join!(
+        db.picross_check(user, "daily", 20_820, 3),
+        db.picross_check(user, "daily", 20_820, 3),
+        db.picross_check(user, "daily", 20_820, 3),
+        db.picross_check(user, "daily", 20_820, 3),
+    );
+    let used = [results.0, results.1, results.2, results.3]
+        .into_iter()
+        .filter(|r| r.as_ref().unwrap().is_some())
+        .count();
+    assert_eq!(used, 2);
+    assert!(db.picross_check(user, "daily", 20_820, 3).await.unwrap().is_none());
+    let board = db.picross_game(user, "daily", 20_820).await.unwrap().expect("board");
+    assert_eq!(board.checks, 3);
+    // A solved board has nothing to check, and a replaced practice board starts with all of them again.
+    db.picross_marks(user, "daily", 20_820, &board.grid, &board.grid, true)
+        .await
+        .unwrap()
+        .expect("solved");
+    assert!(db.picross_check(user, "daily", 20_820, 9).await.unwrap().is_none());
+    db.start_picross(user, "practice", 0, (1, 0), true).await.unwrap();
+    db.picross_check(user, "practice", 0, 3)
+        .await
+        .unwrap()
+        .expect("a check");
+    let fresh = db.start_picross(user, "practice", 0, (2, 0), true).await.unwrap();
+    assert_eq!(fresh.checks, 0);
+}
+
+#[tokio::test]
+async fn a_fleet_draft_is_kept_on_the_server_and_locked_in_once_at_its_revision() {
+    let Some(db) = db().await else { return };
+    let [host, guest] = ids();
+    let session = db
+        .create_game(NewGame {
+            kind: "seafleet",
+            guild_id: 7,
+            channel_id: 8,
+            host,
+            guest: Some(guest),
+            bet: 0,
+            status: PENDING,
+            state: "pending",
+            ttl_secs: 60,
+        })
+        .await
+        .unwrap();
+    assert!(db.fleet_draft(session.id, host).await.unwrap().is_none());
+    let first = db.set_fleet_draft(session.id, host, "00h09h92v96v45h").await.unwrap();
+    let second = db.set_fleet_draft(session.id, host, "11h19h82v86v35h").await.unwrap();
+    assert_eq!(second, first + 1, "every new layout is a new revision");
+    // The other captain's draft is their own.
+    let other = db.set_fleet_draft(session.id, guest, "22h29h72v76v25h").await.unwrap();
+    assert_eq!(other, 1);
+    assert_eq!(
+        db.fleet_draft(session.id, host).await.unwrap(),
+        Some(("11h19h82v86v35h".to_owned(), second))
+    );
+    // A click on the older message (the first revision) takes nothing.
+    assert!(db.take_fleet_draft(session.id, host, first).await.unwrap().is_none());
+    // Two clicks on the current one lock in once.
+    let (one, two) = tokio::join!(
+        db.take_fleet_draft(session.id, host, second),
+        db.take_fleet_draft(session.id, host, second)
+    );
+    let taken: Vec<String> = [one.unwrap(), two.unwrap()].into_iter().flatten().collect();
+    assert_eq!(taken, ["11h19h82v86v35h"]);
+    assert!(db.fleet_draft(session.id, host).await.unwrap().is_none());
+    assert!(db.fleet_draft(session.id, guest).await.unwrap().is_some());
 }
 
 #[tokio::test]

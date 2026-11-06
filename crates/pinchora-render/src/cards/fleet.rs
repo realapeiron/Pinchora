@@ -1,9 +1,15 @@
 use std::fmt::Write;
 
-use super::{PIXEL, SANS, text};
+use super::{
+    PIXEL, SANS,
+    boards::{COORDINATE_SIZE, coordinate_color, fitted_pixel_text},
+    text,
+};
 use crate::{
     Theme,
-    svg::{SHELL, background, compact, escape, mix, notched_path, panel, sprite, truncate, truncate_to},
+    svg::{
+        SHELL, background, background_plain, compact, escape, mix, notched_path, panel, sprite, truncate, truncate_to,
+    },
 };
 
 /// The colours of the five ships, longest first: galleon, frigate, brig, sloop and dinghy.
@@ -41,26 +47,27 @@ pub struct SeaView<'a> {
 fn sea(out: &mut String, t: &Theme, x: f32, y: f32, view: &SeaView<'_>, last: Option<usize>, frame: &str) {
     panel(out, x, y, PANEL_W, PANEL_H, 6.0, "#10204a", frame);
     let (gx, gy) = (x + 28.0, y + 24.0);
+    let ink = coordinate_color(t);
     for i in 0..10 {
         text(
             out,
             gx + i as f32 * CELL + CELL / 2.0,
             gy - 8.0,
-            11.0,
+            COORDINATE_SIZE,
             PIXEL,
             false,
-            &t.muted,
+            &ink,
             "middle",
             &char::from(b'A' + i as u8).to_string(),
         );
         text(
             out,
-            gx - 8.0,
-            gy + i as f32 * CELL + CELL / 2.0 + 4.0,
-            11.0,
+            gx - 13.0,
+            gy + i as f32 * CELL + CELL / 2.0 + 5.0,
+            COORDINATE_SIZE,
             PIXEL,
             false,
-            &t.muted,
+            &ink,
             "middle",
             &(i + 1).to_string(),
         );
@@ -237,18 +244,9 @@ impl RadarCard<'_> {
             sea(&mut s, t, x, 84.0, view, last, edge);
         }
         panel(&mut s, 24.0, 470.0, w - 48.0, 56.0, 4.0, &t.panel, &t.panel_edge);
-        let max = if self.pot > 0 { 52 } else { 66 };
-        text(
-            &mut s,
-            44.0,
-            505.0,
-            17.0,
-            PIXEL,
-            false,
-            &t.ink,
-            "start",
-            &escape(&truncate(&self.status.to_uppercase(), max)),
-        );
+        // The pot sits at the right; the words get what is left of the panel.
+        let max = if self.pot > 0 { 654.0 } else { 748.0 };
+        fitted_pixel_text(&mut s, (44.0, 505.0), max, &t.ink, "start", &self.status.to_uppercase());
         if self.pot > 0 {
             sprite(&mut s, SHELL, w - 126.0, 486.0, 3.0, &t.gold, "#ffffff");
             text(
@@ -293,7 +291,7 @@ impl FleetCard<'_> {
             s,
             r#"<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}">"#
         );
-        background(&mut s, w, h, &t.bg_top, &t.bg_bottom);
+        background_plain(&mut s, w, h, &t.bg_top, &t.bg_bottom);
         text(
             &mut s,
             24.0,

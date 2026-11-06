@@ -5,7 +5,7 @@ use std::fmt::Write;
 use super::{PIXEL, SANS, text};
 use crate::{
     Theme,
-    svg::{escape, mix, notched_path, panel, truncate},
+    svg::{escape, mix, notched_path, panel, pixel_width, truncate, truncate_pixel_to},
 };
 
 /// The two sides' colours (body, light): coral for the first player, sky blue for the second.
@@ -80,21 +80,43 @@ pub(super) fn player_panel(
     text(out, x + 72.0, y + 60.0, 14.0, PIXEL, false, note_color, "start", note);
 }
 
+/// The sizes a status line is tried at, largest first.
+const STATUS_SIZES: [f32; 5] = [17.0, 15.0, 13.0, 12.0, 11.0];
+
+/// A line of the pixel font that fits `max` px: at the largest size it fits, and only if it is too long
+/// even at the smallest cut short with an ellipsis. `body` is plain text, escaped here.
+pub(super) fn fitted_pixel_text(out: &mut String, (x, y): (f32, f32), max: f32, fill: &str, anchor: &str, body: &str) {
+    let size = STATUS_SIZES
+        .into_iter()
+        .find(|&size| pixel_width(body, size) <= max)
+        .unwrap_or(STATUS_SIZES[STATUS_SIZES.len() - 1]);
+    text(
+        out,
+        x,
+        y,
+        size,
+        PIXEL,
+        false,
+        fill,
+        anchor,
+        &escape(&truncate_pixel_to(body, size, max)),
+    );
+}
+
+/// What a board's coordinates are drawn in: the muted blue lifted towards the ink so it reads at a glance.
+pub(super) fn coordinate_color(t: &Theme) -> String {
+    mix(&t.muted, &t.ink, 0.6)
+}
+
+/// The size of the letters and numbers around a board.
+pub(super) const COORDINATE_SIZE: f32 = 14.0;
+
 /// The status line along the bottom of a card, with the pot beside it when shells are on the table.
 pub(super) fn status_panel(out: &mut String, t: &Theme, y: f32, status: &str, pot: i64) {
     panel(out, 24.0, y, 532.0, 56.0, 4.0, &t.panel, &t.panel_edge);
-    let max = if pot > 0 { 26 } else { 40 };
-    text(
-        out,
-        44.0,
-        y + 35.0,
-        17.0,
-        PIXEL,
-        false,
-        &t.ink,
-        "start",
-        &escape(&truncate(&status.to_uppercase(), max)),
-    );
+    // The pot sits at the right; the words get what is left of the panel.
+    let max = if pot > 0 { 406.0 } else { 492.0 };
+    fitted_pixel_text(out, (44.0, y + 35.0), max, &t.ink, "start", &status.to_uppercase());
     if pot > 0 {
         crate::svg::sprite(out, crate::svg::SHELL, 462.0, y + 16.0, 3.0, &t.gold, "#ffffff");
         text(
@@ -178,26 +200,27 @@ pub(super) fn board(
         }
     }
     // Rank numbers down the left side and file letters along the bottom.
+    let ink = coordinate_color(t);
     for i in 0..8 {
         text(
             out,
-            ox - 9.0,
-            oy + i as f32 * SQUARE + SQUARE / 2.0 + 4.0,
-            11.0,
+            ox - 10.0,
+            oy + i as f32 * SQUARE + SQUARE / 2.0 + 5.0,
+            COORDINATE_SIZE,
             PIXEL,
             false,
-            &t.muted,
+            &ink,
             "middle",
             &(8 - i).to_string(),
         );
         text(
             out,
             ox + i as f32 * SQUARE + SQUARE / 2.0,
-            oy + 8.0 * SQUARE + 15.0,
-            11.0,
+            oy + 8.0 * SQUARE + 18.0,
+            COORDINATE_SIZE,
             PIXEL,
             false,
-            &t.muted,
+            &ink,
             "middle",
             &char::from(b'a' + i as u8).to_string(),
         );

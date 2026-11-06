@@ -15,7 +15,7 @@ use twilight_util::builder::embed::EmbedBuilder;
 
 use super::{
     CHECKERS_SECS, conclude, confirm_resign, edit_card, option, players, resign_button, resigned, select_row,
-    select_rows,
+    select_rows, tag,
 };
 use crate::{
     App, Cx,
@@ -158,10 +158,10 @@ async fn message(
     let winner = end.and_then(|e| e.winner).map(|w| u8::from(w != state.pearl));
     let mover = state.mover();
     let status = match end {
-        Some(End { winner: Some(w), how }) => format!("{} wins by {how}", names[*w]),
+        Some(End { winner: Some(w), how }) => format!("{} wins by {how}", tag(&names[*w])),
         Some(End { winner: None, how }) => format!("A draw by {how}"),
-        None if moves.iter().any(|m| !m.captured.is_empty()) => format!("{} must jump!", names[mover]),
-        None => format!("{} to move", names[mover]),
+        None if moves.iter().any(|m| !m.captured.is_empty()) => format!("{} must jump!", tag(&names[mover])),
+        None => format!("{} to move", tag(&names[mover])),
     };
     let content = match end {
         None => format!(
@@ -432,7 +432,7 @@ async fn on_move(cx: &Cx, id: i64, plies: usize, path: &str) -> anyhow::Result<(
     };
     let end = End::of(&next, outcome);
     let winner = end.winner.map(|w| players(&session)[w]);
-    let Some(note) = conclude(&cx.app, &session, &packed, Play::Checkers, winner).await? else {
+    let Some(note) = conclude(&cx.app, &session, &packed, Play::Checkers, winner, next.plies).await? else {
         return cx.reply_ephemeral("The board changed under you. Look again.").await;
     };
     let data = message(
@@ -459,12 +459,21 @@ async fn on_resign(cx: &Cx, id: i64) -> anyhow::Result<()> {
     let me = cx.author()?.id.get();
     let ids = players(&session);
     let winner = usize::from(me == ids[0]);
-    let Some(note) = conclude(&cx.app, &session, &session.state, Play::Checkers, Some(ids[winner])).await? else {
+    let Some(note) = conclude(
+        &cx.app,
+        &session,
+        &session.state,
+        Play::Checkers,
+        Some(ids[winner]),
+        state.plies,
+    )
+    .await?
+    else {
         return resigned(cx, "The game was over before you could resign.").await;
     };
     let end = End {
         winner: Some(winner),
-        how: format!("resignation ({} gave up)", names[1 - winner]),
+        how: format!("resignation ({} gave up)", tag(&names[1 - winner])),
     };
     let data = message(
         &cx.app,

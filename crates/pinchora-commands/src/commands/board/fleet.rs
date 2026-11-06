@@ -1,6 +1,7 @@
-//! `/duel seafleet`: Sea Fleet, battleship for two. Each captain places a fleet in private (a preset or a
-//! random layout, then lock it in), then they take turns firing at the other's waters from two menus under
-//! the shared radar. Fleets live in the game's state; nobody sees the other's except through shots.
+//! `/duel seafleet`: Sea Fleet, battleship for two. Each captain places a fleet in private (a random layout,
+//! as often as they like, then lock it in), then they take turns firing at the other's waters from two menus
+//! under the shared radar. The layout a captain is choosing is kept in the database, never in a button, and
+//! locked-in fleets live in the game's state; nobody sees the other's except through shots.
 
 use std::str::Split;
 
@@ -8,7 +9,7 @@ use chrono::{DateTime, Duration, Utc};
 use pinchora_db::GameSession;
 use pinchora_game::play::{
     Game as Play,
-    fleet::{self as rules, CELLS, Fired, Fleet, PRESETS, SHIPS, SIZE, Sea},
+    fleet::{self as rules, CELLS, Fired, Fleet, SHIPS, SIZE, Sea},
 };
 use pinchora_render::{FleetCard, RadarCard, SeaView, ShipView, Theme};
 use twilight_model::{
@@ -21,7 +22,7 @@ use twilight_model::{
 use twilight_util::builder::embed::EmbedBuilder;
 
 use super::{
-    FLEET_TURN_SECS, conclude, confirm_resign, edit_card, option, players, resign_button, resigned, select_row,
+    FLEET_TURN_SECS, conclude, confirm_resign, edit_card, option, players, resign_button, resigned, select_row, tag,
 };
 use crate::{
     App, Cx,
@@ -150,6 +151,18 @@ struct Show<'a> {
     note: &'a str,
 }
 
+/// The ships the public radars show: only the ones that have gone down, which every shot at them already
+/// gave away. A fleet not yet sunk, and every fleet before the battle, shows nothing.
+fn radar_ships(state: &State) -> [Vec<ShipView>; 2] {
+    std::array::from_fn(|side| match (&state.fleets[side], state.battle) {
+        (Some(fleet), true) => ship_views(fleet, &state.seas[side])
+            .into_iter()
+            .filter(|s| s.sunk)
+            .collect(),
+        _ => Vec::new(),
+    })
+}
+
 /// The public message: both radars, whose turn it is and the menus to fire (or the button to place a fleet).
 async fn public(
     app: &App,
@@ -167,13 +180,7 @@ async fn public(
     let ids = players(session);
     // What each radar shows: a captain's waters with the shots into them and the ships that have gone down.
     let shots = [state.seas[0].encode(), state.seas[1].encode()];
-    let ships: [Vec<ShipView>; 2] = std::array::from_fn(|side| match (&state.fleets[side], state.battle) {
-        (Some(fleet), true) => ship_views(fleet, &state.seas[side])
-            .into_iter()
-            .filter(|s| s.sunk)
-            .collect(),
-        _ => Vec::new(),
-    });
+    let ships = radar_ships(state);
     let afloat: [usize; 2] = std::array::from_fn(|side| {
         state.fleets[side]
             .as_ref()
@@ -181,11 +188,17 @@ async fn public(
     });
     let turn = (state.battle && end.is_none()).then_some(state.turn as u8);
     let status = match end {
-        Some(end) => format!("{} wins by {}", names[end.winner], end.how),
-        None if state.battle => format!("{} to fire", names[state.turn]),
+        Some(end) => format!("{} wins by {}", tag(&names[end.winner]), end.how),
+        None if state.battle => format!("{} to fire", tag(&names[state.turn])),
         None => {
             let ready = |i: usize| if state.fleets[i].is_some() { "ready" } else { "placing" };
-            format!("Fleets: {} {}, {} {}", names[0], ready(0), names[1], ready(1))
+            format!(
+                "Fleets: {} {}, {} {}",
+                tag(&names[0]),
+                ready(0),
+                tag(&names[1]),
+                ready(1)
+            )
         }
     };
     let content = match end {
@@ -330,7 +343,8 @@ pub(crate) async fn begin(cx: &Cx, session: &GameSession) -> anyhow::Result<()> 
 }
 
 /// `bs:y:<id>` and `bs:n:<id>` answer a challenge; `bs:o:<id>` opens a captain's private placement;
-/// `bs:v:<id>:<seed>` previews a layout and `bs:l:<id>:<seed>` locks it in; `bs:a:<id>:<shots>` picks a
+/// `bs:v:<id>:<rev>` draws another layout and `bs:l:<id>:<rev>` locks in the one on the message (the
+/// layout itself stays in the database, the buttons name only its revision); `bs:a:<id>:<shots>` picks a
 /// column and `bs:f:<id>:<shots>:<column>` a row (the value) to fire at; `bs:m:<id>` shows a captain's own
 /// fleet and `bs:r:<id>` refreshes it; `bs:q:<id>` asks to resign and `bs:R:<id>` confirms.
 pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[String]) -> anyhow::Result<()> {
@@ -348,12 +362,9 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[S
         Some("o") => on_open(cx, id).await,
         Some("m") => on_fleet(cx, id, false).await,
         Some("r") => on_fleet(cx, id, true).await,
-        Some("v") => match number() {
-            Some(seed) => on_preview(cx, id, seed as u32).await,
-            None => cx.reply_ephemeral("This button has expired.").await,
-        },
+        Some("v") => on_shuffle(cx, id).await,
         Some("l") => match number() {
-            Some(seed) => on_lock(cx, id, seed as u32).await,
+            Some(rev) => on_lock(cx, id, rev as i64).await,
             None => cx.reply_ephemeral("This button has expired.").await,
         },
         Some("a") => match (number(), value) {
@@ -390,24 +401,19 @@ async fn running(cx: &Cx, id: i64) -> anyhow::Result<Option<(GameSession, [Strin
     Ok(Some((session, names, state, index)))
 }
 
-/// A layout's name: a preset's, or "Random layout".
-fn layout_name(seed: u32) -> String {
-    PRESETS
-        .get(seed as usize)
-        .map_or_else(|| "Random layout".to_owned(), |(name, _)| (*name).to_owned())
+/// A layout drawn from every legal one by the bot's secure random source (`rand`'s thread generator is a
+/// CSPRNG seeded by the system), so no layout can be worked out from the ones before it or from the shots.
+fn random_fleet() -> Fleet {
+    Fleet::random(&mut |bound| rand::random_range(0..bound))
 }
 
-fn random_seed() -> u32 {
-    PRESETS.len() as u32 + rand::random_range(0..1_000_000u32)
-}
-
-/// The private placement message for a layout, with the buttons to change it or lock it in.
-async fn placement(app: &App, id: i64, name: &str, seed: u32) -> anyhow::Result<InteractionResponseData> {
-    let fleet = Fleet::from_seed(seed);
+/// The private placement message for a captain's layout, with the buttons to draw another or lock it in.
+/// The buttons carry the revision of the layout and nothing else of it.
+async fn placement(app: &App, id: i64, name: &str, fleet: &Fleet, rev: i64) -> anyhow::Result<InteractionResponseData> {
     let sea = Sea::new();
     let shots = sea.encode();
-    let ships = ship_views(&fleet, &sea);
-    let (title, subtitle, name) = ("Place your fleet".to_owned(), layout_name(seed), name.to_owned());
+    let ships = ship_views(fleet, &sea);
+    let (title, subtitle, name) = ("Place your fleet".to_owned(), format!("Layout {rev}"), name.to_owned());
     let png = app
         .render(move |r| {
             r.fleet_card(&FleetCard {
@@ -420,56 +426,44 @@ async fn placement(app: &App, id: i64, name: &str, seed: u32) -> anyhow::Result<
                     afloat: SHIPS.len(),
                 },
                 sunk: [false; 5],
-                footer: "Pick a layout, then lock it in",
+                footer: "Shuffle for another layout, then lock it in",
                 last: None,
                 theme: Theme::reef(),
             })
         })
         .await?;
-    let presets = PRESETS
-        .iter()
-        .enumerate()
-        .map(|(n, (label, _))| {
-            let style = if seed as usize == n {
-                ButtonStyle::Primary
-            } else {
-                ButtonStyle::Secondary
-            };
-            button(format!("bs:v:{id}:{n}"), label, style, false)
-        })
-        .collect();
-    let rows = vec![
-        Component::ActionRow(ActionRow {
-            id: None,
-            components: presets,
-        }),
-        Component::ActionRow(ActionRow {
-            id: None,
-            components: vec![
-                button(
-                    format!("bs:v:{id}:{}", random_seed()),
-                    "Shuffle",
-                    ButtonStyle::Secondary,
-                    false,
-                ),
-                button(
-                    format!("bs:l:{id}:{seed}"),
-                    "Lock in fleet",
-                    ButtonStyle::Success,
-                    false,
-                ),
-            ],
-        }),
-    ];
-    let embed = EmbedBuilder::new().color(BRAND).title("Place your fleet").description(
-        "Only you can see this. **Shuffle** for a random layout, or pick a preset, then **Lock in fleet**.",
-    );
+    let rows = vec![Component::ActionRow(ActionRow {
+        id: None,
+        components: vec![
+            button(format!("bs:v:{id}:{rev}"), "Shuffle", ButtonStyle::Secondary, false),
+            button(format!("bs:l:{id}:{rev}"), "Lock in fleet", ButtonStyle::Success, false),
+        ],
+    })];
+    let embed = EmbedBuilder::new()
+        .color(BRAND)
+        .title("Place your fleet")
+        .description("Only you can see this. **Shuffle** for another random layout, then **Lock in fleet**.");
     Ok(Cx::card(embed, "fleet.png", png, rows, true))
+}
+
+/// Draws a new layout for a captain and shows it.
+async fn draw(
+    app: &App,
+    session: &GameSession,
+    names: &[String; 2],
+    me: usize,
+) -> anyhow::Result<InteractionResponseData> {
+    let fleet = random_fleet();
+    let rev = app
+        .db
+        .set_fleet_draft(session.id, players(session)[me], &fleet.encode())
+        .await?;
+    placement(app, session.id, &names[me], &fleet, rev).await
 }
 
 /// `bs:o:<id>`: a captain opens their private placement.
 async fn on_open(cx: &Cx, id: i64) -> anyhow::Result<()> {
-    let Some((_, names, state, me)) = running(cx, id).await? else {
+    let Some((session, names, state, me)) = running(cx, id).await? else {
         return Ok(());
     };
     if state.battle {
@@ -482,19 +476,19 @@ async fn on_open(cx: &Cx, id: i64) -> anyhow::Result<()> {
             .reply_ephemeral(format!("Your fleet is locked in. Waiting for **{}**.", names[1 - me]))
             .await;
     }
-    let data = placement(&cx.app, id, &names[me], random_seed()).await?;
+    let data = draw(&cx.app, &session, &names, me).await?;
     cx.reply(data).await
 }
 
-/// `bs:v:<id>:<seed>`: another layout on the private message.
-async fn on_preview(cx: &Cx, id: i64, seed: u32) -> anyhow::Result<()> {
-    let Some((_, names, state, me)) = running(cx, id).await? else {
+/// `bs:v:<id>:<rev>`: another layout on the private message.
+async fn on_shuffle(cx: &Cx, id: i64) -> anyhow::Result<()> {
+    let Some((session, names, state, me)) = running(cx, id).await? else {
         return Ok(());
     };
     if state.battle || state.fleets[me].is_some() {
         return cx.update(locked(&cx.app, &state, &names, me).await?).await;
     }
-    let data = placement(&cx.app, id, &names[me], seed).await?;
+    let data = draw(&cx.app, &session, &names, me).await?;
     cx.update(data).await
 }
 
@@ -539,8 +533,31 @@ async fn locked(app: &App, state: &State, names: &[String; 2], me: usize) -> any
     Ok(Cx::card(embed, "fleet.png", png, Vec::new(), true))
 }
 
-/// `bs:l:<id>:<seed>`: a captain locks their layout in. When both have, the battle begins.
-async fn on_lock(cx: &Cx, id: i64, seed: u32) -> anyhow::Result<()> {
+/// `bs:l:<id>:<rev>`: a captain locks the layout they are looking at in. When both have, the battle begins.
+async fn on_lock(cx: &Cx, id: i64, rev: i64) -> anyhow::Result<()> {
+    let Some((session, names, state, me)) = running(cx, id).await? else {
+        return Ok(());
+    };
+    if state.battle || state.fleets[me].is_some() {
+        return cx.update(locked(&cx.app, &state, &names, me).await?).await;
+    }
+    let user = players(&session)[me];
+    // The layout is taken out of the drafts first, so a double click locks in once.
+    let Some(layout) = cx.app.db.take_fleet_draft(id, user, rev).await? else {
+        return match cx.app.db.fleet_draft(id, user).await? {
+            // The click came from an older placement message: show the layout the captain has now.
+            Some((layout, current)) => {
+                let fleet = Fleet::decode(&layout).ok_or_else(|| anyhow::anyhow!("bad fleet draft {layout:?}"))?;
+                cx.update(placement(&cx.app, id, &names[me], &fleet, current).await?)
+                    .await
+            }
+            None => {
+                cx.reply_ephemeral("That layout is gone. Press **Place my fleet** again.")
+                    .await
+            }
+        };
+    };
+    let fleet = Fleet::decode(&layout).ok_or_else(|| anyhow::anyhow!("bad fleet draft {layout:?}"))?;
     // Both captains can lock in at once; the one that loses the race for the state tries again.
     for _ in 0..4 {
         let Some((session, names, mut state, me)) = running(cx, id).await? else {
@@ -549,7 +566,7 @@ async fn on_lock(cx: &Cx, id: i64, seed: u32) -> anyhow::Result<()> {
         if state.battle || state.fleets[me].is_some() {
             return cx.update(locked(&cx.app, &state, &names, me).await?).await;
         }
-        state.fleets[me] = Some(Fleet::from_seed(seed));
+        state.fleets[me] = Some(fleet.clone());
         let both = state.fleets.iter().all(Option::is_some);
         let (ttl, note) = if both {
             state.battle = true;
@@ -588,6 +605,8 @@ async fn on_lock(cx: &Cx, id: i64, seed: u32) -> anyhow::Result<()> {
         let mine = locked(&cx.app, &state, &names, me).await?;
         return cx.update(mine).await;
     }
+    // Give the layout back, so the captain can try again.
+    cx.app.db.set_fleet_draft(id, user, &layout).await?;
     cx.reply_ephemeral("The game moved on while you locked in. Press **Place my fleet** again.")
         .await
 }
@@ -705,7 +724,8 @@ async fn on_fire(cx: &Cx, id: i64, shots: usize, col: usize, row: usize) -> anyh
             winner: me,
             how: "sinking the whole fleet".to_owned(),
         };
-        let Some(reward) = conclude(&cx.app, &session, &packed, Play::SeaFleet, Some(ids[me])).await? else {
+        let Some(reward) = conclude(&cx.app, &session, &packed, Play::SeaFleet, Some(ids[me]), state.shots).await?
+        else {
             return cx.reply_ephemeral("The battle moved on under you. Look again.").await;
         };
         let data = public(
@@ -757,12 +777,21 @@ async fn on_resign(cx: &Cx, id: i64) -> anyhow::Result<()> {
         return Ok(());
     };
     let ids = players(&session);
-    let Some(note) = conclude(&cx.app, &session, &session.state, Play::SeaFleet, Some(ids[1 - me])).await? else {
+    let Some(note) = conclude(
+        &cx.app,
+        &session,
+        &session.state,
+        Play::SeaFleet,
+        Some(ids[1 - me]),
+        state.shots,
+    )
+    .await?
+    else {
         return resigned(cx, "The game was over before you could resign.").await;
     };
     let end = End {
         winner: 1 - me,
-        how: format!("resignation ({} gave up)", names[me]),
+        how: format!("resignation ({} gave up)", tag(&names[me])),
     };
     let data = public(
         &cx.app,
@@ -787,11 +816,19 @@ async fn on_resign(cx: &Cx, id: i64) -> anyhow::Result<()> {
 mod tests {
     use super::*;
 
+    /// Two fleets written out, so a test knows where the ships lie.
+    const HARBOUR: &str = "00h09h92v96v45h";
+    const SCATTER: &str = "11v60h38h84v53v";
+
+    fn fleet(code: &str) -> Fleet {
+        Fleet::decode(code).expect("a valid fleet")
+    }
+
     #[test]
     fn state_round_trips() {
         let mut state = State::new();
-        state.fleets[0] = Some(Fleet::from_seed(2));
-        state.fleets[1] = Some(Fleet::from_seed(9));
+        state.fleets[0] = Some(fleet(HARBOUR));
+        state.fleets[1] = Some(fleet(SCATTER));
         state.battle = true;
         state.turn = 1;
         let fleet = state.fleets[0].clone().unwrap();
@@ -814,7 +851,29 @@ mod tests {
     fn placement_ends_when_both_fleets_are_set() {
         let mut state = State::new();
         assert!(!state.battle && state.fleets.iter().all(Option::is_none));
-        state.fleets[0] = Some(Fleet::from_seed(1));
+        state.fleets[0] = Some(fleet(HARBOUR));
         assert_eq!(state.fleets.iter().filter(|f| f.is_some()).count(), 1);
+    }
+
+    #[test]
+    fn the_public_radar_shows_nothing_of_a_fleet_until_a_ship_is_down() {
+        let mut state = State::new();
+        state.fleets = [Some(fleet(HARBOUR)), Some(fleet(SCATTER))];
+        // Before the battle, nothing; at the start of it, nothing either.
+        assert!(radar_ships(&state).iter().all(Vec::is_empty));
+        state.battle = true;
+        assert!(radar_ships(&state).iter().all(Vec::is_empty));
+        // A hit that sinks nothing shows no ship.
+        let harbour = state.fleets[0].clone().unwrap();
+        state.seas[0].fire(&harbour, 0);
+        assert!(radar_ships(&state).iter().all(Vec::is_empty));
+        // The dinghy (E6 and F6) goes down: only it shows, and only on that radar.
+        for cell in harbour.cells_of(4) {
+            state.seas[0].fire(&harbour, cell);
+        }
+        let ships = radar_ships(&state);
+        assert_eq!(ships[0].len(), 1);
+        assert_eq!(ships[0][0].ship, 4);
+        assert!(ships[1].is_empty());
     }
 }

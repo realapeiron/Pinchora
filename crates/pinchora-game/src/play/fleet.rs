@@ -1,4 +1,4 @@
-//! Sea Fleet, battleship on a 10×10 sea: fleets, layouts from a seed, and shots.
+//! Sea Fleet, battleship on a 10×10 sea: fleets, random layouts, and shots.
 //!
 //! A cell is `y * 10 + x`; columns read A to J along the top and rows 1 to 10 down the side.
 
@@ -7,15 +7,6 @@ pub const CELLS: usize = SIZE * SIZE;
 
 /// The five ships of a fleet and how many cells each takes.
 pub const SHIPS: [(&str, usize); 5] = [("Galleon", 5), ("Frigate", 4), ("Brig", 3), ("Sloop", 3), ("Dinghy", 2)];
-
-/// Layouts that are picked by name; any other seed is a random layout.
-pub const PRESETS: [(&str, &str); 5] = [
-    ("Harbour line", "00h09h92v96v45h"),
-    ("Scatter", "11v60h38h84v53v"),
-    ("Corners", "59h06v00h90v44h"),
-    ("Diagonal", "00v22h45v66h88v"),
-    ("Fortress", "20h92v19h03v55h"),
-];
 
 /// `A7` for the cell at column 0, row 6.
 pub fn cell_name(cell: usize) -> String {
@@ -45,19 +36,21 @@ pub struct Fleet {
     pub ships: [Placed; 5],
 }
 
+/// The cells a ship of `len` cells covers where it lies.
+fn cells(ship: Placed, len: usize) -> impl Iterator<Item = usize> {
+    (0..len).map(move |k| {
+        if ship.horizontal {
+            ship.y * SIZE + ship.x + k
+        } else {
+            (ship.y + k) * SIZE + ship.x
+        }
+    })
+}
+
 impl Fleet {
     /// The cells ship `index` covers.
     pub fn cells_of(&self, index: usize) -> Vec<usize> {
-        let ship = self.ships[index];
-        (0..SHIPS[index].1)
-            .map(|k| {
-                if ship.horizontal {
-                    ship.y * SIZE + ship.x + k
-                } else {
-                    (ship.y + k) * SIZE + ship.x
-                }
-            })
-            .collect()
+        cells(self.ships[index], SHIPS[index].1).collect()
     }
 
     /// Which ship lies on each cell, as its index in [`SHIPS`].
@@ -125,64 +118,46 @@ impl Fleet {
         fleet.is_valid().then_some(fleet)
     }
 
-    /// The layout for a seed: a preset for the first few, a random one for every other number. The same
-    /// seed always gives the same fleet, so a button can carry the layout it shows.
-    pub fn from_seed(seed: u32) -> Self {
-        if let Some((_, code)) = PRESETS.get(seed as usize) {
-            return Self::decode(code).expect("presets are valid");
-        }
-        let mut state = u64::from(seed).wrapping_mul(0x9e37_79b9_7f4a_7c15) | 1;
-        let mut next = move |bound: usize| {
-            // xorshift64*, plenty for scattering ships.
-            state ^= state >> 12;
-            state ^= state << 25;
-            state ^= state >> 27;
-            (state.wrapping_mul(0x2545_f491_4f6c_dd1d) >> 33) as usize % bound
-        };
-        'attempt: loop {
+    /// A layout drawn uniformly from every legal one: each ship goes anywhere in the sea, either way round,
+    /// and a draw where two ships meet is thrown away whole, so no layout is likelier than another. `below`
+    /// gives a whole number in `0..bound`; the bot passes its secure random source, so a layout cannot be
+    /// worked out from the ones before it or from the shots fired.
+    pub fn random(below: &mut dyn FnMut(usize) -> usize) -> Self {
+        loop {
             let mut taken = [false; CELLS];
             let mut ships = [Placed {
                 x: 0,
                 y: 0,
                 horizontal: true,
             }; 5];
+            let mut clear = true;
             for (index, (_, len)) in SHIPS.iter().enumerate() {
-                let mut placed = false;
-                for _ in 0..200 {
-                    let horizontal = next(2) == 0;
-                    let (max_x, max_y) = if horizontal {
-                        (SIZE - len + 1, SIZE)
-                    } else {
-                        (SIZE, SIZE - len + 1)
-                    };
-                    let ship = Placed {
-                        x: next(max_x),
-                        y: next(max_y),
+                // Every way to lay the ship: along the rows first, then down the columns.
+                let across = (SIZE - len + 1) * SIZE;
+                let pick = below(2 * across);
+                let horizontal = pick < across;
+                let at = pick % across;
+                let ship = if horizontal {
+                    Placed {
+                        x: at % (SIZE - len + 1),
+                        y: at / (SIZE - len + 1),
                         horizontal,
-                    };
-                    let cells: Vec<usize> = (0..*len)
-                        .map(|k| {
-                            if horizontal {
-                                ship.y * SIZE + ship.x + k
-                            } else {
-                                (ship.y + k) * SIZE + ship.x
-                            }
-                        })
-                        .collect();
-                    if cells.iter().all(|&c| !taken[c]) {
-                        for c in cells {
-                            taken[c] = true;
-                        }
-                        ships[index] = ship;
-                        placed = true;
-                        break;
                     }
-                }
-                if !placed {
-                    continue 'attempt;
+                } else {
+                    Placed {
+                        x: at % SIZE,
+                        y: at / SIZE,
+                        horizontal,
+                    }
+                };
+                ships[index] = ship;
+                for cell in cells(ship, *len) {
+                    clear &= !std::mem::replace(&mut taken[cell], true);
                 }
             }
-            return Self { ships };
+            if clear {
+                return Self { ships };
+            }
         }
     }
 }
@@ -299,28 +274,81 @@ impl Sea {
 mod tests {
     use super::*;
 
-    #[test]
-    fn every_preset_is_a_valid_fleet_and_they_differ() {
-        let mut seen = Vec::new();
-        for (name, code) in PRESETS {
-            let fleet = Fleet::decode(code).unwrap_or_else(|| panic!("{name} is not a valid fleet"));
-            assert_eq!(fleet.encode(), code);
-            assert!(!seen.contains(&code), "{name} repeats a layout");
-            seen.push(code);
-            let covered = fleet.grid().iter().flatten().count();
-            assert_eq!(covered, SHIPS.iter().map(|s| s.1).sum::<usize>(), "{name}");
+    /// Five ships along the edges and the middle, written out.
+    const HARBOUR: &str = "00h09h92v96v45h";
+
+    /// A deterministic stream of numbers for tests (xorshift64*), not for the bot.
+    fn stream(seed: u64) -> impl FnMut(usize) -> usize {
+        let mut state = seed.wrapping_mul(0x9e37_79b9_7f4a_7c15) | 1;
+        move |bound| {
+            state ^= state >> 12;
+            state ^= state << 25;
+            state ^= state >> 27;
+            (state.wrapping_mul(0x2545_f491_4f6c_dd1d) >> 33) as usize % bound
         }
     }
 
     #[test]
-    fn random_layouts_are_valid_and_follow_the_seed() {
-        for seed in 5..400 {
-            let fleet = Fleet::from_seed(seed);
-            assert!(fleet.is_valid(), "seed {seed}");
-            assert_eq!(fleet, Fleet::from_seed(seed), "seed {seed} is repeatable");
+    fn random_layouts_are_valid_and_come_from_the_whole_sea() {
+        let mut below = stream(7);
+        let mut seen = std::collections::HashSet::new();
+        let mut covered = [false; CELLS];
+        let mut horizontal = [0usize; 5];
+        const DRAWS: usize = 4_000;
+        for _ in 0..DRAWS {
+            let fleet = Fleet::random(&mut below);
+            assert!(fleet.is_valid());
+            assert_eq!(fleet.grid().iter().flatten().count(), 17, "five ships, seventeen cells");
+            assert_eq!(Fleet::decode(&fleet.encode()), Some(fleet.clone()), "it round-trips");
+            for (ship, count) in horizontal.iter_mut().enumerate() {
+                *count += usize::from(fleet.ships[ship].horizontal);
+            }
+            for (cell, ship) in fleet.grid().iter().enumerate() {
+                covered[cell] |= ship.is_some();
+            }
+            seen.insert(fleet.encode());
         }
-        assert_ne!(Fleet::from_seed(1000), Fleet::from_seed(1001));
-        assert_eq!(Fleet::from_seed(0).encode(), PRESETS[0].1);
+        assert!(
+            seen.len() > DRAWS - 5,
+            "layouts do not repeat: {} of {DRAWS}",
+            seen.len()
+        );
+        assert!(
+            covered.iter().all(|&c| c),
+            "every cell of the sea gets a ship sometimes"
+        );
+        for (ship, count) in horizontal.into_iter().enumerate() {
+            let share = count as f64 / DRAWS as f64;
+            assert!(
+                (0.45..0.55).contains(&share),
+                "ship {ship} lies across {share:.2} of the time"
+            );
+        }
+    }
+
+    #[test]
+    fn the_layouts_are_uniform_over_where_one_ship_can_lie() {
+        // The dinghy (two cells) has 2 * 9 * 10 = 180 places; once the fleet is valid each is as likely
+        // as any other, give or take what the other ships take up.
+        let mut below = stream(11);
+        let mut hits = std::collections::HashMap::new();
+        const DRAWS: usize = 36_000;
+        for _ in 0..DRAWS {
+            let ship = Fleet::random(&mut below).ships[4];
+            *hits.entry((ship.x, ship.y, ship.horizontal)).or_insert(0usize) += 1;
+        }
+        assert_eq!(hits.len(), 180, "every place is used");
+        let (low, high) = hits.values().fold((usize::MAX, 0), |(l, h), &n| (l.min(n), h.max(n)));
+        // About 200 each; the corners and edges are not special.
+        assert!(low > 120 && high < 290, "{low} to {high}");
+    }
+
+    #[test]
+    fn a_fresh_random_fleet_is_not_one_of_a_handful_of_known_ones() {
+        let mut below = stream(3);
+        let first: Vec<String> = (0..50).map(|_| Fleet::random(&mut below).encode()).collect();
+        let distinct: std::collections::HashSet<&String> = first.iter().collect();
+        assert_eq!(distinct.len(), 50);
     }
 
     #[test]
@@ -352,7 +380,7 @@ mod tests {
 
     #[test]
     fn shots_hit_miss_sink_and_are_not_repeated() {
-        let fleet = Fleet::decode(PRESETS[0].1).expect("a preset");
+        let fleet = Fleet::decode(HARBOUR).expect("a valid fleet");
         let mut sea = Sea::new();
         // The dinghy lies on E6 and F6.
         let dinghy = fleet.cells_of(4);
@@ -370,7 +398,7 @@ mod tests {
 
     #[test]
     fn a_fleet_is_beaten_when_every_ship_is_sunk() {
-        let fleet = Fleet::from_seed(7);
+        let fleet = Fleet::random(&mut stream(7));
         let mut sea = Sea::new();
         let mut last = Fired::Miss;
         for cell in 0..CELLS {
@@ -386,7 +414,7 @@ mod tests {
 
     #[test]
     fn the_sea_round_trips_as_text() {
-        let fleet = Fleet::from_seed(3);
+        let fleet = Fleet::random(&mut stream(3));
         let mut sea = Sea::new();
         for cell in [0, 11, 22, 33, 44, 55, 66, 77, 88, 99] {
             sea.fire(&fleet, cell);

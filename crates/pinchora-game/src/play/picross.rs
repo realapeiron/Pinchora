@@ -10,22 +10,28 @@ pub const CELLS: usize = SIZE * SIZE;
 /// The day puzzle #1 was shown (days since 1970-01-01).
 pub const LAUNCH_DAY: i64 = 20_762;
 
-/// A picture: its name, its colour and which cells are filled (`#`).
+/// A picture: its name, its colours and which cells are filled. In `rows` a `.` is empty and any other
+/// character is a filled cell: `#` in the picture's colour, `a` in its accent colour, `w` white and `e` the
+/// dark of an eye. The letters only decide how the finished picture is painted; the clues count every
+/// filled cell alike.
 pub struct Picture {
     pub name: &'static str,
     pub color: u32,
+    pub accent: u32,
     pub rows: [&'static str; SIZE],
 }
 
-/// The pictures every puzzle is made from; a test checks that each one has exactly one solution.
+/// The pictures every puzzle is made from; a test checks that each one has exactly one solution and is one
+/// piece.
 pub const PICTURES: [Picture; 26] = [
     Picture {
         name: "Anchor",
         color: 0x8fa0d8,
+        accent: 0xffd166,
         rows: [
-            "....##....",
-            "...#..#...",
-            "....##....",
+            "....aa....",
+            "...a..a...",
+            "....aa....",
             "..######..",
             "....##....",
             "....##....",
@@ -38,14 +44,15 @@ pub const PICTURES: [Picture; 26] = [
     Picture {
         name: "Fish",
         color: 0xff9e7a,
+        accent: 0xffd166,
         rows: [
             "..........",
             "....###...",
-            "#..#####..",
-            "##.#######",
-            "##.####.##",
-            "##.#######",
-            "#..#####..",
+            "a..#####..",
+            "aaa#######",
+            "aaa####e##",
+            "aaa#wwwww#",
+            "a..#####..",
             "....###...",
             "..........",
             "..........",
@@ -54,6 +61,7 @@ pub const PICTURES: [Picture; 26] = [
     Picture {
         name: "Shell",
         color: 0xffc4b0,
+        accent: 0xe08a7a,
         rows: [
             "....##....",
             "..######..",
@@ -63,17 +71,18 @@ pub const PICTURES: [Picture; 26] = [
             "##########",
             ".########.",
             "..######..",
-            "...####...",
-            "....##....",
+            "...aaaa...",
+            "....aa....",
         ],
     },
     Picture {
         name: "Crab",
         color: 0xff6b4a,
+        accent: 0xffb347,
         rows: [
-            "#........#",
-            "##......##",
-            "#.#.##.#.#",
+            "a........a",
+            "aa......aa",
+            "a.#.ee.#.a",
             ".#######..",
             "..#.##.#..",
             ".########.",
@@ -86,14 +95,15 @@ pub const PICTURES: [Picture; 26] = [
     Picture {
         name: "Starfish",
         color: 0xffd166,
+        accent: 0xff9e4a,
         rows: [
             "....##....",
             "....##....",
             "...####...",
             "##########",
             ".########.",
-            "..######..",
-            "..######..",
+            "..##aa##..",
+            "..##aa##..",
             ".###..###.",
             ".##....##.",
             "#........#",
@@ -102,11 +112,12 @@ pub const PICTURES: [Picture; 26] = [
     Picture {
         name: "Octopus",
         color: 0x9b6bc4,
+        accent: 0xffffff,
         rows: [
             "...####...",
             "..######..",
             ".########.",
-            ".##.##.##.",
+            ".#e.##.e#.",
             ".########.",
             "..######..",
             ".#.#..#.#.",
@@ -118,56 +129,60 @@ pub const PICTURES: [Picture; 26] = [
     Picture {
         name: "Whale",
         color: 0x5bc0eb,
+        accent: 0xbfe9fa,
         rows: [
             "..........",
-            "....#.#...",
-            "....#.#...",
+            "....a.a...",
+            "....a.a...",
             "..########",
-            ".#########",
+            ".#######e#",
             "##########",
             "#.########",
-            "#########.",
-            ".#######..",
+            "##wwwwww#.",
+            ".#wwwww#..",
             "..........",
         ],
     },
     Picture {
         name: "Sailboat",
         color: 0xfff1e8,
+        accent: 0xc98a1e,
         rows: [
-            "....#.....",
-            "...##.....",
-            "..###.....",
-            ".####.....",
-            "#####.##..",
-            "#####.###.",
-            "#####.####",
-            "#####.....",
-            "##########",
-            ".########.",
+            ".....a....",
+            "...##a....",
+            "..###a....",
+            ".####a....",
+            "#####a##..",
+            "#####a###.",
+            "#####a####",
+            "#####a....",
+            "aaaaaaaaaa",
+            ".aaaaaaaa.",
         ],
     },
     Picture {
         name: "Lighthouse",
-        color: 0xff8fb1,
+        color: 0xf3e3c3,
+        accent: 0xe8553a,
         rows: [
-            "....##....",
-            "...####...",
-            "..######..",
+            "....aa....",
+            "...aaaa...",
+            "..aaaaaa..",
             "....##....",
             "...####...",
             "...#..#...",
-            "...####...",
+            "...aaaa...",
             "..#....#..",
-            "..######..",
+            "..aaaaaa..",
             ".########.",
         ],
     },
     Picture {
         name: "Seahorse",
         color: 0x06d6a0,
+        accent: 0xffd166,
         rows: [
-            "...###....",
+            "...aaa....",
             "..#.###...",
             "..#####...",
             "...##.....",
@@ -182,11 +197,12 @@ pub const PICTURES: [Picture; 26] = [
     Picture {
         name: "Jellyfish",
         color: 0xcfb2ea,
+        accent: 0xa07bd0,
         rows: [
             "..######..",
             ".########.",
             "##########",
-            "##########",
+            "###e##e###",
             "##########",
             ".#.#.#.#.#",
             ".#.#.#.#.#",
@@ -198,28 +214,30 @@ pub const PICTURES: [Picture; 26] = [
     Picture {
         name: "Turtle",
         color: 0x5bbf6a,
+        accent: 0xb8e07a,
         rows: [
             "..........",
-            "...####...",
+            "...aaaa...",
             "..######..",
             ".########.",
-            "#.######.#",
+            "a.######.a",
             "..######..",
             ".########.",
-            "##.####.##",
-            "#........#",
+            "aa.####.aa",
+            "a........a",
             "..........",
         ],
     },
     Picture {
         name: "Oyster",
         color: 0xd6c8f0,
+        accent: 0xffffff,
         rows: [
             "..........",
             "..######..",
             ".########.",
             "##########",
-            "##########",
+            "####ww####",
             ".###..###.",
             ".##.##.##.",
             "##.####.##",
@@ -230,14 +248,15 @@ pub const PICTURES: [Picture; 26] = [
     Picture {
         name: "Chest",
         color: 0xc98a1e,
+        accent: 0xffd166,
         rows: [
             "..........",
             ".########.",
             "##########",
             "#........#",
-            "##########",
-            "#...##...#",
-            "#...##...#",
+            "aaaaaaaaaa",
+            "#...aa...#",
+            "#...aa...#",
             "#........#",
             "##########",
             "..........",
@@ -246,6 +265,7 @@ pub const PICTURES: [Picture; 26] = [
     Picture {
         name: "Trident",
         color: 0xffd166,
+        accent: 0xffffff,
         rows: [
             "#...##...#",
             "#...##...#",
@@ -262,30 +282,32 @@ pub const PICTURES: [Picture; 26] = [
     Picture {
         name: "Palm tree",
         color: 0x5bbf6a,
+        accent: 0xb07a4a,
         rows: [
             "...##.##..",
             ".########.",
             "##########",
             "#.##..##.#",
             "..#.##.#..",
-            ".....##...",
-            ".....##...",
-            ".....##...",
-            "....###...",
-            "..########",
+            ".....aa...",
+            ".....aa...",
+            ".....aa...",
+            "....aaa...",
+            "..aaaaaaaa",
         ],
     },
     Picture {
         name: "Dolphin",
         color: 0x3a9bdc,
+        accent: 0xffffff,
         rows: [
             "..........",
             ".....##...",
             "....####..",
             "##.######.",
-            "#########.",
+            "#######e#.",
             ".#########",
-            "..#######.",
+            "..#wwwww#.",
             "...####...",
             "..##..##..",
             "..........",
@@ -294,6 +316,7 @@ pub const PICTURES: [Picture; 26] = [
     Picture {
         name: "Shark",
         color: 0x6a6f86,
+        accent: 0xffffff,
         rows: [
             "....#.....",
             "....##....",
@@ -301,8 +324,8 @@ pub const PICTURES: [Picture; 26] = [
             "...#####..",
             "..#######.",
             ".#########",
-            "##########",
-            "#.########",
+            "#######e##",
+            "#.#wwwwww#",
             "..#.#.#.#.",
             "..........",
         ],
@@ -310,9 +333,10 @@ pub const PICTURES: [Picture; 26] = [
     Picture {
         name: "Coral",
         color: 0xff6b4a,
+        accent: 0xffb3a0,
         rows: [
-            "#...#..#.#",
-            "#...#..#.#",
+            "a...a..a.a",
+            "a...a..a.a",
             "##.##..###",
             ".####.##..",
             "..###.##..",
@@ -326,25 +350,27 @@ pub const PICTURES: [Picture; 26] = [
     Picture {
         name: "Pufferfish",
         color: 0xe8d3a3,
+        accent: 0xc9a870,
         rows: [
             "..........",
-            "..#.#.#...",
+            "..a.a.a...",
             ".########.",
-            "#.######.#",
+            "#.####e#.#",
             "##########",
             "#.#.##.#.#",
             "##########",
             "#.######..",
             ".########.",
-            "..#.#.#...",
+            "..a.a.a...",
         ],
     },
     Picture {
         name: "Bottle",
         color: 0x8fd3ff,
+        accent: 0xc98a1e,
         rows: [
-            "....##....",
-            "....##....",
+            "....aa....",
+            "....aa....",
             "....##....",
             "...####...",
             "..######..",
@@ -358,6 +384,7 @@ pub const PICTURES: [Picture; 26] = [
     Picture {
         name: "Sandcastle",
         color: 0xd2b77f,
+        accent: 0xffffff,
         rows: [
             "#.#.##.#.#",
             "##########",
@@ -374,6 +401,7 @@ pub const PICTURES: [Picture; 26] = [
     Picture {
         name: "Seagull",
         color: 0xfff1e8,
+        accent: 0xffb347,
         rows: [
             "..........",
             "..........",
@@ -383,37 +411,39 @@ pub const PICTURES: [Picture; 26] = [
             "....##....",
             "....##....",
             "...####...",
-            "...#..#...",
+            "...a..a...",
             "..........",
         ],
     },
     Picture {
         name: "Lobster",
-        color: 0xe86a92,
+        color: 0xe5533d,
+        accent: 0xff8a6b,
         rows: [
-            "##......##",
-            "#.#....#.#",
-            "#.#.##.#.#",
+            "aa......aa",
+            "a.a....a.a",
+            "a.a.##.a.a",
             "##.####.##",
             "...####...",
             "...####...",
             "..######..",
             "...####...",
             "..######..",
-            ".###..###.",
+            ".aaa..aaa.",
         ],
     },
     Picture {
         name: "Lantern",
         color: 0xffd166,
+        accent: 0xff7a2f,
         rows: [
             "....##....",
             "...####...",
             "..######..",
             "..#....#..",
-            "..#.##.#..",
-            "..#.##.#..",
-            "..#.##.#..",
+            "..#.aa.#..",
+            "..#.aa.#..",
+            "..#.aa.#..",
             "..#....#..",
             "..######..",
             "...####...",
@@ -422,6 +452,7 @@ pub const PICTURES: [Picture; 26] = [
     Picture {
         name: "Key",
         color: 0xffd166,
+        accent: 0xffffff,
         rows: [
             "..####....",
             ".##..##...",
@@ -437,13 +468,30 @@ pub const PICTURES: [Picture; 26] = [
     },
 ];
 
-/// A puzzle: a picture, mirrored sideways and/or flipped upside down (`variant` bit 0 and bit 1), so
-/// each picture makes four different sets of clues.
+/// How many ways a picture is set: as drawn, or mirrored sideways. Never upside down, which would make a
+/// sea creature hard to know.
+pub const VARIANTS: u8 = 2;
+
+/// A puzzle: a picture, mirrored sideways or not (`variant` 1 or 0), so each picture makes two different
+/// sets of clues.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Puzzle {
     pub picture: usize,
     pub variant: u8,
     cells: [bool; CELLS],
+    inks: [Option<Ink>; CELLS],
+}
+
+/// What a filled cell of the finished picture is painted in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Ink {
+    /// The picture's own colour.
+    Body,
+    /// Its second colour.
+    Accent,
+    White,
+    /// The dark of an eye.
+    Eye,
 }
 
 /// How a filled cell of the finished picture is shaded.
@@ -457,13 +505,23 @@ pub enum Shade {
 }
 
 /// Which puzzle a day brings: every picture once in a scrambled order, then the same pictures
-/// mirrored and flipped.
+/// mirrored.
 pub fn daily(day: i64) -> (usize, u8) {
     let n = PICTURES.len() as i64;
     // 7 and the number of pictures share no factor, so the order visits every picture.
     let picture = (day.rem_euclid(n) * 7 % n) as usize;
-    let variant = (day.div_euclid(n).rem_euclid(4)) as u8;
+    let variant = (day.div_euclid(n).rem_euclid(i64::from(VARIANTS))) as u8;
     (picture, variant)
+}
+
+/// How many days, today included, the daily puzzle's pictures are kept out of practice.
+pub const PRACTICE_BLACKOUT_DAYS: i64 = 7;
+
+/// The pictures a practice puzzle may be made from on `day`: all but the ones the daily puzzle shows today
+/// and in the next days, so nobody can solve the day's puzzle ahead of time in practice (in either variant).
+pub fn practice_pictures(day: i64) -> Vec<usize> {
+    let kept: Vec<usize> = (day..day + PRACTICE_BLACKOUT_DAYS).map(|d| daily(d).0).collect();
+    (0..PICTURES.len()).filter(|p| !kept.contains(p)).collect()
 }
 
 /// The number shown on a day's puzzle.
@@ -474,22 +532,29 @@ pub fn puzzle_number(day: i64) -> i64 {
 impl Puzzle {
     pub fn new(picture: usize, variant: u8) -> Self {
         let picture = picture % PICTURES.len();
-        let variant = variant % 4;
+        let variant = variant % VARIANTS;
         let rows = &PICTURES[picture].rows;
         let mut cells = [false; CELLS];
+        let mut inks = [None; CELLS];
         for (y, row) in rows.iter().enumerate() {
             for (x, c) in row.chars().enumerate() {
-                let (tx, ty) = (
-                    if variant & 1 == 1 { SIZE - 1 - x } else { x },
-                    if variant & 2 == 2 { SIZE - 1 - y } else { y },
-                );
-                cells[ty * SIZE + tx] = c == '#';
+                let tx = if variant == 1 { SIZE - 1 - x } else { x };
+                let ink = match c {
+                    '#' => Some(Ink::Body),
+                    'a' => Some(Ink::Accent),
+                    'w' => Some(Ink::White),
+                    'e' => Some(Ink::Eye),
+                    _ => None,
+                };
+                cells[y * SIZE + tx] = ink.is_some();
+                inks[y * SIZE + tx] = ink;
             }
         }
         Self {
             picture,
             variant,
             cells,
+            inks,
         }
     }
 
@@ -499,6 +564,15 @@ impl Puzzle {
 
     pub fn color(&self) -> u32 {
         PICTURES[self.picture].color
+    }
+
+    pub fn accent(&self) -> u32 {
+        PICTURES[self.picture].accent
+    }
+
+    /// What `cell` of the finished picture is painted in; `None` where it is empty.
+    pub fn ink(&self, cell: usize) -> Option<Ink> {
+        self.inks[cell]
     }
 
     /// Whether `cell` is filled in the finished picture.
@@ -626,9 +700,9 @@ impl Grid {
         clues_of(&self.cells) == *clues
     }
 
-    /// Filled cells that the finished picture leaves empty.
-    pub fn mistakes(&self, puzzle: &Puzzle) -> Vec<usize> {
-        (0..CELLS).filter(|&c| self.cells[c] && !puzzle.filled(c)).collect()
+    /// How many filled cells the finished picture leaves empty.
+    pub fn wrong(&self, puzzle: &Puzzle) -> usize {
+        (0..CELLS).filter(|&c| self.cells[c] && !puzzle.filled(c)).count()
     }
 
     /// Whether row `y` is a match for its clue (shown as a tick beside it).
@@ -817,9 +891,9 @@ mod tests {
         for (index, picture) in PICTURES.iter().enumerate() {
             for (y, row) in picture.rows.iter().enumerate() {
                 assert_eq!(row.len(), SIZE, "{} row {y}", picture.name);
-                assert!(row.chars().all(|c| c == '#' || c == '.'), "{} row {y}", picture.name);
+                assert!(row.chars().all(|c| ".#aew".contains(c)), "{} row {y}", picture.name);
             }
-            for variant in 0..4 {
+            for variant in 0..VARIANTS {
                 let puzzle = Puzzle::new(index, variant);
                 assert_eq!(
                     count_solutions(&puzzle.clues(), 2),
@@ -828,6 +902,46 @@ mod tests {
                     picture.name
                 );
             }
+        }
+    }
+
+    /// The number of pieces a picture falls into, cells touching at a corner counting as joined.
+    fn pieces(puzzle: &Puzzle) -> usize {
+        let mut seen = [false; CELLS];
+        let mut count = 0;
+        for start in (0..CELLS).filter(|&c| puzzle.filled(c)) {
+            if seen[start] {
+                continue;
+            }
+            count += 1;
+            let mut stack = vec![start];
+            seen[start] = true;
+            while let Some(cell) = stack.pop() {
+                let (x, y) = ((cell % SIZE) as i32, (cell / SIZE) as i32);
+                for (dx, dy) in (-1..=1).flat_map(|dx| (-1..=1).map(move |dy| (dx, dy))) {
+                    let (nx, ny) = (x + dx, y + dy);
+                    if !(0..SIZE as i32).contains(&nx) || !(0..SIZE as i32).contains(&ny) {
+                        continue;
+                    }
+                    let next = ny as usize * SIZE + nx as usize;
+                    if puzzle.filled(next) && !seen[next] {
+                        seen[next] = true;
+                        stack.push(next);
+                    }
+                }
+            }
+        }
+        count
+    }
+
+    #[test]
+    fn pictures_are_in_one_piece_apart_from_what_sits_inside_them() {
+        for (index, picture) in PICTURES.iter().enumerate() {
+            let pieces = pieces(&Puzzle::new(index, 0));
+            // The flame in the lantern floats in its glass; nothing else is cut loose, and the fish's
+            // tail is joined to its body.
+            let allowed = if picture.name == "Lantern" { 2 } else { 1 };
+            assert_eq!(pieces, allowed, "{} falls into {pieces} pieces", picture.name);
         }
     }
 
@@ -840,7 +954,7 @@ mod tests {
                 .rows
                 .iter()
                 .flat_map(|r| r.chars())
-                .filter(|&c| c == '#')
+                .filter(|&c| c != '.')
                 .count();
             assert!((24..=85).contains(&filled), "{} fills {filled} cells", picture.name);
         }
@@ -860,36 +974,75 @@ mod tests {
     }
 
     #[test]
-    fn variants_mirror_and_flip() {
+    fn variants_mirror_sideways_and_never_flip() {
         let base = Puzzle::new(1, 0);
         let mirrored = Puzzle::new(1, 1);
-        let flipped = Puzzle::new(1, 2);
         for y in 0..SIZE {
             for x in 0..SIZE {
                 assert_eq!(mirrored.filled(y * SIZE + x), base.filled(y * SIZE + SIZE - 1 - x));
-                assert_eq!(flipped.filled(y * SIZE + x), base.filled((SIZE - 1 - y) * SIZE + x));
+                assert_eq!(mirrored.ink(y * SIZE + x), base.ink(y * SIZE + SIZE - 1 - x));
             }
         }
-        assert_eq!(Puzzle::new(1, 4), base, "variants wrap");
+        assert_eq!(VARIANTS, 2, "no upside-down pictures");
+        assert_eq!(Puzzle::new(1, 2), base, "variants wrap");
         assert_eq!(Puzzle::new(27, 0), Puzzle::new(1, 0), "so do pictures");
     }
 
     #[test]
-    fn the_daily_puzzle_visits_every_picture_then_comes_back_changed() {
+    fn the_fishs_tail_is_joined_and_its_eye_and_belly_are_painted() {
+        let fish = PICTURES.iter().position(|p| p.name == "Fish").expect("a fish");
+        let puzzle = Puzzle::new(fish, 0);
+        // Row 3 runs unbroken from the tail's tip to the nose.
+        assert!((0..SIZE).all(|x| puzzle.filled(3 * SIZE + x)), "the tail is attached");
+        let inks: Vec<Ink> = (0..CELLS).filter_map(|c| puzzle.ink(c)).collect();
+        for ink in [Ink::Body, Ink::Accent, Ink::White, Ink::Eye] {
+            assert!(inks.contains(&ink), "{ink:?}");
+        }
+    }
+
+    #[test]
+    fn the_daily_puzzle_visits_every_picture_then_comes_back_mirrored() {
         let n = PICTURES.len() as i64;
         let mut seen = std::collections::HashSet::new();
         for day in 20_000..20_000 + n {
             let (picture, variant) = daily(day);
             assert!(seen.insert(picture), "picture {picture} repeats on day {day}");
-            assert!(variant < 4);
+            assert!(variant < VARIANTS);
         }
         assert_eq!(daily(20_763), daily(20_763));
         assert_ne!(daily(20_763), daily(20_764));
         let (a, va) = daily(20_000);
         let (b, vb) = daily(20_000 + n);
         assert_eq!(a, b);
-        assert_ne!(va, vb, "the second time round it is mirrored or flipped");
+        assert_ne!(va, vb, "the second time round it is mirrored");
         assert_eq!(puzzle_number(LAUNCH_DAY), 1);
+    }
+
+    #[test]
+    fn practice_never_uses_the_pictures_of_the_coming_dailies() {
+        for day in 20_000..20_000 + 3 * PICTURES.len() as i64 {
+            let allowed = practice_pictures(day);
+            assert_eq!(
+                allowed.len(),
+                PICTURES.len() - PRACTICE_BLACKOUT_DAYS as usize,
+                "day {day}"
+            );
+            for ahead in 0..PRACTICE_BLACKOUT_DAYS {
+                let (picture, _) = daily(day + ahead);
+                assert!(
+                    !allowed.contains(&picture),
+                    "day {day}: picture {picture} is the daily in {ahead} days"
+                );
+            }
+            assert!(allowed.iter().all(|&p| p < PICTURES.len()));
+        }
+        // Pictures come back into practice once their daily is more than a week away or past.
+        let (picture, _) = daily(20_100);
+        assert!(!practice_pictures(20_100).contains(&picture));
+        assert!(
+            practice_pictures(20_101).contains(&picture),
+            "the day after, it is free again"
+        );
     }
 
     #[test]
@@ -902,7 +1055,7 @@ mod tests {
             grid.set(cell, puzzle.filled(cell));
         }
         assert!(grid.solves(&clues));
-        assert!(grid.mistakes(&puzzle).is_empty());
+        assert_eq!(grid.wrong(&puzzle), 0);
         assert!((0..SIZE).all(|i| grid.row_done(&clues, i) && grid.col_done(&clues, i)));
         let first = (0..CELLS).find(|&c| puzzle.filled(c)).expect("a filled cell");
         grid.set(first, false);
@@ -911,7 +1064,7 @@ mod tests {
         let empty = (0..CELLS).find(|&c| !puzzle.filled(c)).expect("an empty cell");
         grid.set(first, true);
         grid.set(empty, true);
-        assert_eq!(grid.mistakes(&puzzle), [empty]);
+        assert_eq!(grid.wrong(&puzzle), 1);
         assert_eq!(grid.count(), puzzle.solution().iter().filter(|&&c| c).count() + 1);
     }
 

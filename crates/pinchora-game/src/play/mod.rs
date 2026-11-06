@@ -130,6 +130,18 @@ impl Game {
             Self::SeaFleet | Self::Picross | Self::Tide2048 | Self::Checkers | Self::Chess => 5,
         }
     }
+
+    /// How many moves a two-player board game must have had before a win pays the system's reward: plies
+    /// of chess and of checkers, shots of both captains in Sea Fleet. A game cut shorter (one player
+    /// resigning at once) is still a win in the stats, but two friends cannot farm shells with it.
+    pub fn min_moves(self) -> usize {
+        match self {
+            Self::Chess => 10,
+            Self::Checkers => 6,
+            Self::SeaFleet => 10,
+            _ => 0,
+        }
+    }
 }
 
 /// Smallest and largest friendly wager on a duel, in shells.
@@ -147,5 +159,19 @@ mod tests {
             assert!(game.win_reward() > 0 && game.daily_cap() > 0);
         }
         assert_eq!(Game::from_key("poker"), None);
+    }
+
+    #[test]
+    fn only_the_two_player_board_games_ask_for_a_minimum_of_moves() {
+        let asking: Vec<_> = Game::ALL.into_iter().filter(|g| g.min_moves() > 0).collect();
+        assert_eq!(asking, [Game::SeaFleet, Game::Checkers, Game::Chess]);
+        assert_eq!(
+            (
+                Game::Chess.min_moves(),
+                Game::Checkers.min_moves(),
+                Game::SeaFleet.min_moves()
+            ),
+            (10, 6, 10)
+        );
     }
 }

@@ -15,6 +15,7 @@ use twilight_util::builder::embed::EmbedBuilder;
 
 use super::{
     CHESS_SECS, conclude, confirm_resign, edit_card, option, players, resign_button, resigned, select_row, select_rows,
+    tag,
 };
 use crate::{
     App, Cx,
@@ -158,10 +159,10 @@ async fn message(
     let winner = end.and_then(|e| e.winner).map(|w| u8::from(w != state.coral));
     let mover = state.mover();
     let status = match end {
-        Some(End { winner: Some(w), how }) => format!("{} wins by {how}", names[*w]),
+        Some(End { winner: Some(w), how }) => format!("{} wins by {how}", tag(&names[*w])),
         Some(End { winner: None, how }) => format!("A draw by {how}"),
-        None if in_check => format!("{} to move, in check!", names[mover]),
-        None => format!("{} to move", names[mover]),
+        None if in_check => format!("{} to move, in check!", tag(&names[mover])),
+        None => format!("{} to move", tag(&names[mover])),
     };
     let content = match end {
         None => format!(
@@ -254,7 +255,8 @@ fn menus(id: i64, state: &State, moves: &[Move], selected: Option<u8>) -> Vec<Co
         && let Some(piece) = position.piece_at(from)
     {
         let mut here: Vec<&Move> = moves.iter().filter(|m| m.from == from).collect();
-        here.sort_by_key(|m| (m.to, m.promotion.map_or(0, weight)));
+        // A pawn that reaches the last rank is offered the queen first, then the rook, bishop and knight.
+        here.sort_by_key(|m| (m.to, std::cmp::Reverse(m.promotion.map_or(0, weight))));
         let options = here
             .iter()
             .map(|m| {
@@ -440,7 +442,7 @@ async fn on_move(cx: &Cx, id: i64, plies: usize, text: &str) -> anyhow::Result<(
     };
     let end = End::of(&next, outcome);
     let winner = end.winner.map(|w| players(&session)[w]);
-    let Some(note) = conclude(&cx.app, &session, &packed, Play::Chess, winner).await? else {
+    let Some(note) = conclude(&cx.app, &session, &packed, Play::Chess, winner, next.game.plies()).await? else {
         return cx.reply_ephemeral("The board changed under you. Look again.").await;
     };
     let data = message(
@@ -467,12 +469,13 @@ async fn on_resign(cx: &Cx, id: i64) -> anyhow::Result<()> {
     let me = cx.author()?.id.get();
     let ids = players(&session);
     let winner = usize::from(me == ids[0]);
-    let Some(note) = conclude(&cx.app, &session, &session.state, Play::Chess, Some(ids[winner])).await? else {
+    let plies = state.game.plies();
+    let Some(note) = conclude(&cx.app, &session, &session.state, Play::Chess, Some(ids[winner]), plies).await? else {
         return resigned(cx, "The game was over before you could resign.").await;
     };
     let end = End {
         winner: Some(winner),
-        how: format!("resignation ({} gave up)", names[1 - winner]),
+        how: format!("resignation ({} gave up)", tag(&names[1 - winner])),
     };
     let data = message(
         &cx.app,

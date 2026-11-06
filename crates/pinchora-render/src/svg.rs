@@ -363,16 +363,9 @@ pub fn data_uri_png(png: &[u8]) -> String {
     )
 }
 
-/// Background gradient plus a faint 4px dither, shared by every card.
+/// Background gradient plus a faint 4px dither, shared by every card, with a few sparkles on top.
 pub fn background(out: &mut String, w: f32, h: f32, top: &str, bottom: &str) {
-    let _ = write!(
-        out,
-        r##"<defs>
-<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="{top}"/><stop offset="1" stop-color="{bottom}"/></linearGradient>
-<pattern id="dither" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="4" height="4" fill="#ffffff" fill-opacity="0.025"/><rect x="4" y="4" width="4" height="4" fill="#ffffff" fill-opacity="0.025"/></pattern>
-</defs>
-<rect width="{w}" height="{h}" fill="url(#bg)"/><rect width="{w}" height="{h}" fill="url(#dither)"/>"##
-    );
+    background_plain(out, w, h, top, bottom);
     // A few fixed sparkles; fixed so cards are deterministic and cacheable.
     for (sx, sy) in [
         (0.06, 0.12),
@@ -391,6 +384,18 @@ pub fn background(out: &mut String, w: f32, h: f32, top: &str, bottom: &str) {
     }
 }
 
+/// The background without the sparkles, for cards whose text would meet them.
+pub fn background_plain(out: &mut String, w: f32, h: f32, top: &str, bottom: &str) {
+    let _ = write!(
+        out,
+        r##"<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="{top}"/><stop offset="1" stop-color="{bottom}"/></linearGradient>
+<pattern id="dither" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="4" height="4" fill="#ffffff" fill-opacity="0.025"/><rect x="4" y="4" width="4" height="4" fill="#ffffff" fill-opacity="0.025"/></pattern>
+</defs>
+<rect width="{w}" height="{h}" fill="url(#bg)"/><rect width="{w}" height="{h}" fill="url(#dither)"/>"##
+    );
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -403,6 +408,17 @@ mod tests {
         assert_eq!(compact(999), "999");
         assert_eq!(compact(12_500), "12.5K");
         assert_eq!(compact(3_400_000), "3.4M");
+    }
+
+    #[test]
+    fn the_plain_background_has_no_sparkles() {
+        let sparkle = r##"width="4" height="4" fill="#ffffff" fill-opacity="0.35""##;
+        let (mut with, mut without) = (String::new(), String::new());
+        background(&mut with, 500.0, 400.0, "#000000", "#111111");
+        background_plain(&mut without, 500.0, 400.0, "#000000", "#111111");
+        assert_eq!(with.matches(sparkle).count(), 6);
+        assert_eq!(without.matches(sparkle).count(), 0);
+        assert!(with.starts_with(&without), "the sparkles are the only difference");
     }
 
     #[test]

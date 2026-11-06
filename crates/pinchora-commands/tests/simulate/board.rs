@@ -2,13 +2,16 @@
 //! and Tide 2048. Pictures land in `target/sim/<test>/`.
 
 use pinchora_game::play::{
-    fleet::{Fleet, Sea},
+    fleet::{self, Fleet, Sea},
     picross::{self, Puzzle},
     tide2048,
 };
 use serde_json::json;
+use twilight_model::channel::message::Component;
 
-use super::{Post, Reply, SWEEPS, Sim, duel, expire, fund, int_option, record_of, session_of, shells, unique};
+use super::{
+    Post, Reply, SWEEPS, Sim, duel, expire, fund, int_option, message_of, record_of, session_of, shells, unique,
+};
 
 /// Who is to move in a duel message that says `<@id>'s move` or `<@id> fires`.
 fn mover(reply: &Reply, a: u64, b: u64) -> u64 {
@@ -212,6 +215,11 @@ async fn reef_chess_handles_castling_promotion_and_resigning() {
         picked.options("cc:t:")[0].label.contains("becomes a"),
         "{}",
         picked.options("cc:t:")[0].label
+    );
+    assert_eq!(
+        promotions,
+        ["a7b8q", "a7b8r", "a7b8b", "a7b8n"],
+        "the queen is the first choice, the knight the last"
     );
     let promoted = sim.pick(a, &picked, "cc:t:", "a7b8n").await;
     assert!(promoted.description().contains("axb8=N"), "{}", promoted.description());
@@ -466,6 +474,55 @@ async fn pearl_checkers_forces_the_capture_and_pays_the_winner() {
 
 // /Sea Fleet
 
+/// The two fleets of a Sea Fleet game in its battle, read from the game's state.
+async fn fleets_of(sim: &Sim, session: i64) -> [Fleet; 2] {
+    let (state,): (String,) = sqlx::query_as("SELECT state FROM game_sessions WHERE id = $1")
+        .bind(session)
+        .fetch_one(sim.app.db.pool())
+        .await
+        .expect("the session");
+    let fields = state.split_once('|').map_or(state.as_str(), |(fields, _)| fields);
+    let parts: Vec<&str> = fields.split(':').collect();
+    assert_eq!(parts[0], "b", "the battle has begun: {fields}");
+    [parts[2], parts[3]].map(|code| Fleet::decode(code).expect("a fleet"))
+}
+
+/// Every custom id in a message.
+fn custom_ids(reply: &Reply) -> Vec<String> {
+    reply
+        .controls()
+        .filter_map(|c| match c {
+            Component::Button(b) => b.custom_id.clone(),
+            Component::SelectMenu(m) => Some(m.custom_id.clone()),
+            _ => None,
+        })
+        .collect()
+}
+
+/// Checks that nothing a message says or carries gives a fleet away: its text, its embeds and every custom
+/// id are free of the layout, and the custom ids are only the game and a small counter.
+fn assert_hides(reply: &Reply, fleet: &Fleet, session: i64) {
+    let everything = format!(
+        "{}{}{}",
+        reply.content(),
+        serde_json::to_string(&reply.embeds).unwrap(),
+        serde_json::to_string(&reply.components).unwrap()
+    );
+    assert!(
+        !everything.contains(&fleet.encode()),
+        "the layout is in the message: {everything}"
+    );
+    for id in custom_ids(reply) {
+        let parts: Vec<&str> = id.split(':').collect();
+        assert!((3..=5).contains(&parts.len()), "{id}");
+        assert_eq!((parts[0], parts[2]), ("bs", session.to_string().as_str()), "{id}");
+        for part in &parts[3..] {
+            let counter: u64 = part.parse().expect("a number");
+            assert!(counter < 1_000, "{id} carries more than a counter");
+        }
+    }
+}
+
 /// A cell's column letter menu value and row menu value.
 fn aim(cell: usize) -> (String, String) {
     ((cell % 10).to_string(), (cell / 10).to_string())
@@ -494,7 +551,8 @@ async fn sea_fleet_places_in_private_fires_and_sinks_a_fleet() {
     let session = session_of(&public);
     assert_eq!((shells(&sim, a).await, shells(&sim, b).await), (200, 200));
 
-    // Each captain places in private: the placement is ephemeral, with presets, Shuffle and Lock in.
+    // Each captain places in private: the placement is ephemeral, with Shuffle and Lock in, and no fixed
+    // layouts to learn by heart.
     let outsider = sim.click(stranger, &public, "Place my fleet").await;
     assert!(
         outsider.ephemeral && outsider.content().contains("not in this game"),
@@ -504,25 +562,53 @@ async fn sea_fleet_places_in_private_fires_and_sinks_a_fleet() {
     let open = sim.click(a, &public, "Place my fleet").await;
     assert!(open.ephemeral, "the placement is private");
     assert_eq!(png_size(&open), (620, 500));
-    for label in [
-        "Harbour line",
-        "Scatter",
-        "Corners",
-        "Diagonal",
-        "Fortress",
-        "Shuffle",
-        "Lock in fleet",
-    ] {
+    for label in ["Shuffle", "Lock in fleet"] {
         assert!(open.has_button(label), "no {label}");
     }
+    for label in ["Harbour line", "Scatter", "Corners", "Diagonal", "Fortress"] {
+        assert!(
+            !open.has_button(label),
+            "{label} is a fixed layout the other captain could learn"
+        );
+    }
+    // The layout stays on the server: the buttons carry a counter, the draft is in the database.
+    let (first_layout, first_rev) = sim.app.db.fleet_draft(session, a).await.unwrap().expect("a draft");
+    let first_fleet = Fleet::decode(&first_layout).expect("a valid layout");
+    assert_hides(&open, &first_fleet, session);
     let shuffled = sim.click(a, &open, "Shuffle").await;
     assert!(shuffled.ephemeral && shuffled.has_button("Lock in fleet"));
-    let preset = sim.click(a, &shuffled, "Harbour line").await;
-    let locked = sim.click(a, &preset, "Lock in fleet").await;
+    let (second_layout, second_rev) = sim.app.db.fleet_draft(session, a).await.unwrap().expect("a draft");
+    assert_ne!(first_layout, second_layout, "Shuffle draws another layout");
+    assert_eq!(second_rev, first_rev + 1);
+    assert_hides(&shuffled, &Fleet::decode(&second_layout).unwrap(), session);
+    assert!(
+        sim.app.db.fleet_draft(session, b).await.unwrap().is_none(),
+        "the other captain has no draft yet"
+    );
+
+    // A click on an older placement message (its layout is no longer the current one) locks in nothing and
+    // shows the layout the captain has now.
+    let stale = sim.click(a, &open, "Lock in fleet").await;
+    assert!(
+        stale.has_button("Lock in fleet") && stale.title() == "Place your fleet",
+        "{}",
+        stale.title()
+    );
+    assert!(
+        sim.app.db.fleet_draft(session, a).await.unwrap().is_some(),
+        "the draft is still there"
+    );
+    let locked = sim.click(a, &shuffled, "Lock in fleet").await;
     assert!(
         locked.components.is_empty() && locked.title() == "Your fleet",
         "{}",
         locked.title()
+    );
+    assert!(sim.app.db.fleet_draft(session, a).await.unwrap().is_none(), "locked in");
+    let twice = sim.click(a, &shuffled, "Lock in fleet").await;
+    assert!(
+        twice.components.is_empty() && twice.title() == "Your fleet",
+        "a second click only shows the locked fleet"
     );
     let waiting = latest_post(&sim);
     assert!(waiting.content().contains("place your fleet"), "{}", waiting.content());
@@ -539,18 +625,36 @@ async fn sea_fleet_places_in_private_fires_and_sinks_a_fleet() {
         early.content()
     );
 
-    // The second captain locks in the same layout, which starts the battle on the public message.
+    // The second captain locks in too, which starts the battle on the public message.
     let open = sim.click(b, &public, "Place my fleet").await;
-    let preset = sim.click(b, &open, "Harbour line").await;
-    sim.click(b, &preset, "Lock in fleet").await;
+    sim.click(b, &open, "Lock in fleet").await;
     let battle = reply_of(&latest_post(&sim));
     assert!(battle.content().contains("fires"), "{}", battle.content());
     assert!(battle.has_button("My fleet") && battle.has_button("Resign"));
     assert_eq!(battle.options("bs:a:").len(), 10, "ten columns to pick from");
+    let fleets = fleets_of(&sim, session).await;
+    assert_eq!(
+        fleets[0].encode(),
+        second_layout,
+        "the host's fleet is the layout they locked in"
+    );
+    for fleet in &fleets {
+        assert_hides(&battle, fleet, session);
+        assert!(!battle.content().contains(&fleet.encode()));
+    }
     let (first, second) = {
         let first = mover(&battle, a, b);
         (first, if first == a { b } else { a })
     };
+    // Whoever fires, the captain `first` shoots into the other's sea.
+    let (mine, theirs) = {
+        let first_index = usize::from(first != a);
+        (&fleets[first_index], &fleets[1 - first_index])
+    };
+    let water = (0..fleet::CELLS)
+        .find(|&c| theirs.grid()[c].is_none())
+        .expect("some water");
+    let ship = mine.cells_of(0)[0];
 
     // Not your turn; a miss; a hit; the turn passes either way.
     let early = sim
@@ -561,21 +665,37 @@ async fn sea_fleet_places_in_private_fires_and_sinks_a_fleet() {
         "{}",
         early.content()
     );
-    let column = sim.pick(first, &battle, "bs:a:", "4").await;
+    let (col, row) = aim(water);
+    let column = sim.pick(first, &battle, "bs:a:", &col).await;
     assert_eq!(column.options("bs:f:").len(), 10);
-    assert!(column.content().contains("Column **E** picked"), "{}", column.content());
-    let miss = sim.pick(first, &column, "bs:f:", "4").await;
-    assert!(miss.content().contains("E5: a miss"), "{}", miss.content());
+    assert!(
+        column
+            .content()
+            .contains(&format!("Column **{}** picked", char::from(b'A' + (water % 10) as u8))),
+        "{}",
+        column.content()
+    );
+    let miss = sim.pick(first, &column, "bs:f:", &row).await;
+    assert!(
+        miss.content().contains(&format!("{}: a miss", fleet::cell_name(water))),
+        "{}",
+        miss.content()
+    );
     assert_eq!(mover(&miss, a, b), second);
-    let hit = fire(&mut sim, second, &miss, 0).await;
-    assert!(hit.content().contains("A1: a hit!"), "{}", hit.content());
+    let hit = fire(&mut sim, second, &miss, ship).await;
+    assert!(
+        hit.content().contains(&format!("{}: a hit!", fleet::cell_name(ship))),
+        "{}",
+        hit.content()
+    );
     assert_eq!(png_size(&hit), (836, 550));
     // The same cell twice is refused, and the menus do not offer it.
-    let column = sim.pick(first, &hit, "bs:a:", "4").await;
+    let column = sim.pick(first, &hit, "bs:a:", &col).await;
     assert_eq!(
         column.options("bs:f:").len(),
         9,
-        "E5 was fired at, so it is gone from the rows"
+        "{} was fired at, so it is gone from the rows",
+        fleet::cell_name(water)
     );
 
     // A captain looks at their own waters in private.
@@ -586,7 +706,7 @@ async fn sea_fleet_places_in_private_fires_and_sinks_a_fleet() {
     assert!(theirs.ephemeral);
 
     // Fast-forward to the last shot: every cell of the other fleet is hit but one.
-    let fleet0 = Fleet::from_seed(0);
+    let fleet0 = Fleet::decode("00h09h92v96v45h").expect("a fleet");
     let victim = usize::from(second != a);
     let mut sea = Sea::new();
     let cells: Vec<usize> = (0..5).flat_map(|ship| fleet0.cells_of(ship)).collect();
@@ -696,7 +816,7 @@ async fn the_daily_picross_is_solved_row_by_row_and_paid_once() {
     assert_eq!(png_size(&board), (540, 610));
     assert!(board.title().starts_with("Daily picross #"), "{}", board.title());
     assert_eq!(board.options("pz:r:").len(), 10);
-    assert!(board.has_button("Mark cells") && board.has_button("Check"));
+    assert!(board.has_button("Mark cells") && board.has_button("Check (3 left)"));
     // Everyone gets the same puzzle on a day.
     let other = sim
         .command(friend, "play", json!([super::sub("picross", vec![])]))
@@ -718,7 +838,7 @@ async fn the_daily_picross_is_solved_row_by_row_and_paid_once() {
         "the filled cells stay ticked"
     );
 
-    // Typed coordinates: a run along a column, then a mistake, then Check shows it and a clear removes it.
+    // Typed coordinates: a run along a column, then a mistake and a clear that removes it.
     let modal = sim.click(user, &state, "Mark cells").await;
     assert!(modal.modal.is_some(), "the form opens");
     let bad = sim.submit_fields(user, &modal, &[("cells", "A1-B2")]).await;
@@ -729,9 +849,7 @@ async fn the_daily_picross_is_solved_row_by_row_and_paid_once() {
     );
     let empty = (0..100).find(|&c| !puzzle.filled(c)).expect("an empty cell");
     let name = format!("{}{}", char::from(b'A' + (empty % 10) as u8), empty / 10 + 1);
-    state = sim.submit_fields(user, &modal, &[("cells", &name)]).await;
-    let checked = sim.click(user, &state, "Check").await;
-    assert!(checked.description().contains("in red"), "{}", checked.description());
+    sim.submit_fields(user, &modal, &[("cells", &name)]).await;
     state = sim.submit_fields(user, &modal, &[("cells", &format!("-{name}"))]).await;
 
     // The rest of the rows by the menus.
@@ -893,7 +1011,10 @@ async fn picross_streaks_pay_more_and_practice_puzzles_are_endless_but_capped() 
             );
         }
         practice = sim.click(user, &practice, "New puzzle").await;
-        assert!(practice.has_button("Check"), "a fresh board");
+        assert!(
+            practice.has_button("Check (3 left)"),
+            "a fresh board with all its checks"
+        );
     }
     assert_eq!(paid, 5, "the daily limit for practice");
     assert_eq!(record_of(&sim, user, "picross").await, (7, 7));
@@ -1032,5 +1153,397 @@ async fn tide_2048_slides_remembers_the_game_and_pays_for_a_big_tile() {
         best.iter().find(|s| s.game == "tide2048").map(|s| s.best),
         Some(1234),
         "the best score is kept"
+    );
+}
+
+// /Fixes: hidden fleets, checks, practice, short games, late clicks
+
+/// A Sea Fleet state in its battle with two fleets written out and `shots` already fired, none of them hit.
+fn battle_fields(turn: usize, fleets: [&Fleet; 2], shots: usize) -> String {
+    let sea = ".".repeat(fleet::CELLS);
+    format!(
+        "b:{turn}:{}:{}:{sea}:{sea}:-:{shots}",
+        fleets[0].encode(),
+        fleets[1].encode()
+    )
+}
+
+#[tokio::test]
+async fn the_public_radar_is_the_same_whatever_the_fleets_are() {
+    let Some(mut sim) = Sim::new("the_public_radar_is_the_same_whatever_the_fleets_are").await else {
+        return;
+    };
+    let (a, b) = (unique(), unique());
+    let challenge = duel(&mut sim, a, b, "seafleet", vec![]).await;
+    let public = sim.click(b, &challenge, "Accept").await;
+    let session = session_of(&public);
+    let harbour = Fleet::decode("00h09h92v96v45h").expect("a fleet");
+    let scatter = Fleet::decode("11v60h38h84v53v").expect("a fleet");
+
+    // The same game, the same (empty) shots, two quite different pairs of fleets: the picture is the same,
+    // byte for byte, and so is everything a click on the public message brings.
+    let mut pictures = Vec::new();
+    let mut texts = Vec::new();
+    for fleets in [[&harbour, &scatter], [&scatter, &harbour]] {
+        set_fields(&sim, session, &battle_fields(0, fleets, 0)).await;
+        let board = sim.component(a, &format!("bs:a:{session}:99"), &["0"], &public).await;
+        assert!(!board.ephemeral, "a stale click brings the board up to date");
+        for fleet in fleets {
+            assert_hides(&board, fleet, session);
+        }
+        pictures.push(board.files[0].1.clone());
+        texts.push(format!(
+            "{}{}",
+            serde_json::to_string(&board.embeds).unwrap(),
+            serde_json::to_string(&custom_ids(&board)).unwrap()
+        ));
+    }
+    assert_eq!(
+        pictures[0], pictures[1],
+        "the radar's picture does not depend on the fleets"
+    );
+    assert_eq!(texts[0], texts[1], "nor do the embed and the custom ids");
+
+    // With shots in, the picture shows them and sunk ships only: here a miss and a hit that sinks nothing.
+    let mut sea = Sea::new();
+    sea.fire(&scatter, 99);
+    sea.fire(&scatter, 11);
+    let dots = ".".repeat(fleet::CELLS);
+    set_fields(
+        &sim,
+        session,
+        &format!(
+            "b:0:{}:{}:{dots}:{}:-:2",
+            harbour.encode(),
+            scatter.encode(),
+            sea.encode()
+        ),
+    )
+    .await;
+    let shot = sim.component(a, &format!("bs:a:{session}:99"), &["0"], &public).await;
+    assert_ne!(shot.files[0].1, pictures[0], "the shots are on the radar");
+    assert_hides(&shot, &scatter, session);
+}
+
+#[tokio::test]
+async fn a_late_click_from_a_private_message_closes_the_public_board_too() {
+    let _serial = SWEEPS.lock().await;
+    let Some(mut sim) = Sim::new("a_late_click_from_a_private_message_closes_the_public_board_too").await else {
+        return;
+    };
+    let (a, b) = (unique(), unique());
+    let challenge = duel(&mut sim, a, b, "seafleet", vec![]).await;
+    let public = sim.click(b, &challenge, "Accept").await;
+    let session = session_of(&public);
+    let open = sim.click(a, &public, "Place my fleet").await;
+    expire(&sim, session).await;
+    // The clock ran out before the captain locked in; the click lands on the private placement message.
+    let late = sim.click(a, &open, "Lock in fleet").await;
+    assert!(late.content().contains("ran out of time"), "{}", late.content());
+    assert!(late.components.is_empty());
+    // The public message is edited too: no live menus or buttons are left on it.
+    let post = latest_post(&sim);
+    assert_eq!(post.method, axum::http::Method::PATCH);
+    assert!(post.content().contains("ran out of time"), "{}", post.content());
+    assert_eq!(
+        post.body["components"].as_array().map(Vec::len),
+        Some(0),
+        "the board lost its buttons"
+    );
+    assert_eq!(post.message, message_of(&sim, session).await);
+}
+
+#[tokio::test]
+async fn picross_checks_only_count_the_wrong_marks_are_limited_and_cost_reward() {
+    let Some(mut sim) = Sim::new("picross_checks_only_count_the_wrong_marks_are_limited_and_cost_reward").await else {
+        return;
+    };
+    let user = unique();
+    let day = sim.app.now().timestamp().div_euclid(86_400);
+    let (picture, variant) = picross::daily(day);
+    let puzzle = Puzzle::new(picture, variant);
+    let in_picture = puzzle.solution().iter().filter(|&&c| c).count();
+    let board = sim.command(user, "play", json!([super::sub("picross", vec![])])).await;
+    assert!(board.has_button("Check (3 left)"));
+
+    // The old trick: mark every cell, ask which are wrong, clear the red ones. A check now only says how many.
+    let all = (0..10)
+        .map(|x| format!("{c}1-{c}10", c = char::from(b'A' + x)))
+        .collect::<Vec<_>>()
+        .join(" ");
+    let modal = sim.click(user, &board, "Mark cells").await;
+    let filled = sim.submit_fields(user, &modal, &[("cells", &all)]).await;
+    let checked = sim.click(user, &filled, "Check (3 left)").await;
+    let wrong = 100 - in_picture;
+    assert!(
+        checked
+            .description()
+            .contains(&format!("**{wrong}** of your marks are not part of the picture")),
+        "{}",
+        checked.description()
+    );
+    assert!(
+        checked.description().contains("2 checks left"),
+        "{}",
+        checked.description()
+    );
+    assert!(checked.has_button("Check (2 left)"));
+    let game = sim
+        .app
+        .db
+        .picross_game(user, "daily", day as i32)
+        .await
+        .unwrap()
+        .expect("board");
+    assert_eq!(
+        (game.grid.as_str(), game.checks, game.solved()),
+        ("#".repeat(100).as_str(), 1, false)
+    );
+    let second = sim.click(user, &checked, "Check (2 left)").await;
+    let third = sim.click(user, &second, "Check (1 left)").await;
+    assert!(third.button("Check (0 left)").disabled, "no checks left");
+    let more = sim.component(user, &format!("pz:k:daily:{day}"), &[], &third).await;
+    assert!(
+        more.ephemeral && more.content().contains("every check"),
+        "{}",
+        more.content()
+    );
+    let game = sim
+        .app
+        .db
+        .picross_game(user, "daily", day as i32)
+        .await
+        .unwrap()
+        .expect("board");
+    assert_eq!(game.checks, 3, "a fourth check is not counted");
+
+    // Solved at last, it still pays: a flat 15 and no streak bonus, not the 35 of a puzzle solved unaided.
+    let mut solved = third;
+    for y in 0..picross::SIZE {
+        let values = row_values(&puzzle, y);
+        let picked = sim.pick(user, &solved, "pz:r:", &y.to_string()).await;
+        let refs: Vec<&str> = values.iter().map(String::as_str).collect();
+        solved = sim
+            .component(user, &picked.menu("pz:c:").custom_id.clone(), &refs, &picked)
+            .await;
+    }
+    assert!(
+        solved
+            .description()
+            .contains("+**15** shells (less, because you checked)"),
+        "{}",
+        solved.description()
+    );
+    assert_eq!(shells(&sim, user).await, 15);
+
+    // Practice: one check halves the reward of the solve (10 to 5).
+    let practice = sim
+        .command(
+            user,
+            "play",
+            json!([super::sub("picross", vec![super::text_option("mode", "practice")])]),
+        )
+        .await;
+    let game = sim
+        .app
+        .db
+        .picross_game(user, "practice", 0)
+        .await
+        .unwrap()
+        .expect("a board");
+    let puzzle = Puzzle::new(game.picture as usize, game.variant as u8);
+    let mut board = sim.click(user, &practice, "Check (3 left)").await;
+    assert!(board.description().contains("**0** of your marks") || board.description().contains("No mistakes"));
+    for y in 0..picross::SIZE {
+        let values = row_values(&puzzle, y);
+        let picked = sim.pick(user, &board, "pz:r:", &y.to_string()).await;
+        let refs: Vec<&str> = values.iter().map(String::as_str).collect();
+        board = sim
+            .component(user, &picked.menu("pz:c:").custom_id.clone(), &refs, &picked)
+            .await;
+    }
+    assert!(board.description().contains("+**5** shells"), "{}", board.description());
+    assert_eq!(shells(&sim, user).await, 20);
+}
+
+#[tokio::test]
+async fn practice_puzzles_keep_clear_of_the_coming_dailies_and_are_never_upside_down() {
+    let Some(mut sim) = Sim::new("practice_puzzles_keep_clear_of_the_coming_dailies_and_are_never_upside_down").await
+    else {
+        return;
+    };
+    let user = unique();
+    let day = sim.app.now().timestamp().div_euclid(86_400);
+    let allowed = picross::practice_pictures(day);
+    let practice = || json!([super::sub("picross", vec![super::text_option("mode", "practice")])]);
+    sim.command(user, "play", practice()).await;
+    for round in 0..40 {
+        let game = sim
+            .app
+            .db
+            .picross_game(user, "practice", 0)
+            .await
+            .unwrap()
+            .expect("a board");
+        assert!(
+            allowed.contains(&(game.picture as usize)),
+            "round {round}: picture {}",
+            game.picture
+        );
+        assert!(
+            i64::from(game.variant) < i64::from(picross::VARIANTS),
+            "round {round}: variant {}",
+            game.variant
+        );
+        // Finished in the database, so the next command starts a new one.
+        sim.app
+            .db
+            .picross_marks(user, "practice", 0, &game.grid, &game.grid, true)
+            .await
+            .unwrap()
+            .expect("solved");
+        sim.command(user, "play", practice()).await;
+    }
+    // The daily's own picture is out of practice, in both variants: today's and the next six days'.
+    for ahead in 0..picross::PRACTICE_BLACKOUT_DAYS {
+        assert!(!allowed.contains(&picross::daily(day + ahead).0));
+    }
+    // A practice board left over from before, on a picture that has since come up for the daily, is not
+    // picked up again.
+    let (daily_picture, _) = picross::daily(day);
+    sim.app
+        .db
+        .start_picross(user, "practice", 0, (daily_picture as u8, 0), true)
+        .await
+        .unwrap();
+    sim.command(user, "play", practice()).await;
+    let game = sim
+        .app
+        .db
+        .picross_game(user, "practice", 0)
+        .await
+        .unwrap()
+        .expect("a board");
+    assert_ne!(
+        game.picture as usize, daily_picture,
+        "the daily's picture left practice"
+    );
+}
+
+/// Resigns for `loser` on `board`: asks, then confirms.
+async fn resign(sim: &mut Sim, loser: u64, board: &Reply) -> Reply {
+    let ask = sim.click(loser, board, "Resign").await;
+    sim.click(loser, &ask, "Yes, resign").await
+}
+
+/// Sets the `n`th field of a session's state (counting from 0) and keeps the others.
+async fn set_field(sim: &Sim, session: i64, n: usize, value: &str) {
+    let (state,): (String,) = sqlx::query_as("SELECT state FROM game_sessions WHERE id = $1")
+        .bind(session)
+        .fetch_one(sim.app.db.pool())
+        .await
+        .expect("the session");
+    let (fields, names) = state.split_once('|').expect("names ride in the state");
+    let mut parts: Vec<&str> = fields.split(':').collect();
+    parts[n] = value;
+    set_fields(sim, session, &format!("{}|{names}", parts.join(":"))).await;
+}
+
+#[tokio::test]
+async fn a_win_by_resigning_early_earns_no_shells_and_a_real_game_does() {
+    let Some(mut sim) = Sim::new("a_win_by_resigning_early_earns_no_shells_and_a_real_game_does").await else {
+        return;
+    };
+    // Reef Chess: ten plies make a game.
+    let nine = "0:e2e4 e7e5 g1f3 b8c6 f1c4 g8f6 d2d3 d7d6 c1g5";
+    let ten = "0:e2e4 e7e5 g1f3 b8c6 f1c4 g8f6 d2d3 d7d6 c1g5 c8g4";
+    for (fields, paid) in [("0:", 0), (nine, 0), (ten, 30)] {
+        let (a, b) = (unique(), unique());
+        let challenge = duel(&mut sim, a, b, "chess", vec![]).await;
+        let board = sim.click(b, &challenge, "Accept").await;
+        set_fields(&sim, session_of(&board), fields).await;
+        let done = resign(&mut sim, a, &board).await;
+        assert!(done.content().contains("You resigned"), "{}", done.content());
+        let post = latest_post(&sim);
+        assert!(post.content().contains("wins by resignation"), "{}", post.content());
+        if paid == 0 {
+            assert!(post.content().contains("earns no shells"), "{}", post.content());
+        }
+        assert_eq!(shells(&sim, b).await, paid, "chess, {fields:?}");
+        assert_eq!(
+            record_of(&sim, b, "chess").await,
+            (1, 1),
+            "the win still counts in the stats"
+        );
+    }
+
+    // Pearl Checkers: six plies.
+    for (plies, paid) in [(0, 0), (5, 0), (6, 20)] {
+        let (a, b) = (unique(), unique());
+        let challenge = duel(&mut sim, a, b, "checkers", vec![]).await;
+        let board = sim.click(b, &challenge, "Accept").await;
+        set_field(&sim, session_of(&board), 4, &plies.to_string()).await;
+        resign(&mut sim, a, &board).await;
+        let post = latest_post(&sim);
+        assert!(post.content().contains("wins by resignation"), "{}", post.content());
+        assert_eq!(shells(&sim, b).await, paid, "checkers, {plies} plies");
+    }
+
+    // Sea Fleet: ten shots between the two captains.
+    let harbour = Fleet::decode("00h09h92v96v45h").expect("a fleet");
+    let scatter = Fleet::decode("11v60h38h84v53v").expect("a fleet");
+    for (shots, paid) in [(0, 0), (9, 0), (10, 25)] {
+        let (a, b) = (unique(), unique());
+        let challenge = duel(&mut sim, a, b, "seafleet", vec![]).await;
+        let board = sim.click(b, &challenge, "Accept").await;
+        set_fields(&sim, session_of(&board), &battle_fields(0, [&harbour, &scatter], shots)).await;
+        resign(&mut sim, a, &board).await;
+        let post = latest_post(&sim);
+        assert!(post.content().contains("wins by resignation"), "{}", post.content());
+        assert_eq!(shells(&sim, b).await, paid, "sea fleet, {shots} shots");
+    }
+
+    // A wager is another thing: the pot changes hands whatever the length, and nothing is created.
+    let (a, b) = (unique(), unique());
+    fund(&sim, a, 100).await;
+    fund(&sim, b, 100).await;
+    let challenge = duel(&mut sim, a, b, "chess", vec![int_option("bet", 50)]).await;
+    let board = sim.click(b, &challenge, "Accept").await;
+    resign(&mut sim, a, &board).await;
+    assert_eq!((shells(&sim, a).await, shells(&sim, b).await), (50, 150));
+}
+
+#[tokio::test]
+async fn long_names_do_not_cut_the_end_of_a_status_line() {
+    let Some(mut sim) = Sim::new("long_names_do_not_cut_the_end_of_a_status_line").await else {
+        return;
+    };
+    let (a, b) = (unique(), unique());
+    let challenge = duel(&mut sim, a, b, "chess", vec![]).await;
+    let board = sim.click(b, &challenge, "Accept").await;
+    // Names ride in the state; give both the longest a name can be.
+    let session = session_of(&board);
+    let long = "Captain Pinchora Marlowe";
+    sqlx::query("UPDATE game_sessions SET state = split_part(state, '|', 1) || '|' || $2 || '|' || $2 WHERE id = $1")
+        .bind(session)
+        .bind(long)
+        .execute(sim.app.db.pool())
+        .await
+        .expect("long names");
+    set_fields(&sim, session, "0:e2e4 e7e5 g1f3 b8c6 f1c4 g8f6 d2d3 d7d6 c1g5 c8g4").await;
+    let (state,): (String,) = sqlx::query_as("SELECT state FROM game_sessions WHERE id = $1")
+        .bind(session)
+        .fetch_one(sim.app.db.pool())
+        .await
+        .unwrap();
+    assert!(state.contains(long), "{state}");
+    let done = resign(&mut sim, a, &board).await;
+    assert!(done.content().contains("You resigned"));
+    let post = latest_post(&sim);
+    // The words after the name are all there; the name is the part that gives way.
+    assert!(
+        post.content().contains("wins by resignation (Captain Pinch… gave up)"),
+        "{}",
+        post.content()
     );
 }

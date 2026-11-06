@@ -36,16 +36,31 @@ pub(crate) fn players(session: &GameSession) -> [u64; 2] {
     [session.host_id as u64, session.guest_id.unwrap_or(0) as u64]
 }
 
+/// A player's name cut short for the status line of a card, where the words that follow it matter more
+/// than the end of the name.
+pub(crate) fn tag(name: &str) -> String {
+    const MAX: usize = 14;
+    if name.chars().count() <= MAX {
+        return name.to_owned();
+    }
+    let mut short: String = name.chars().take(MAX - 1).collect();
+    short.push('…');
+    short
+}
+
 /// Ends a two-player game exactly once and settles it: the pot goes to the winner (or both wagers back on
 /// a draw), both players' stats are counted and, without a wager, the winner earns the game's reward
-/// (limited per day). `from_state` is the state the caller saw, so a move that landed first wins the
-/// race. Returns the sentence for the message, or `None` when somebody else ended the game first.
+/// (limited per day) if the game had `moves` enough (see `Game::min_moves`): a game cut short by an
+/// early resignation pays nothing, so two friends cannot trade wins for shells. The final state is the one
+/// the game ends in; the session's own state is the one the caller saw, so a move that landed first wins
+/// the race. Returns the sentence for the message, or `None` when somebody else ended the game first.
 pub(crate) async fn conclude(
     app: &App,
     session: &GameSession,
     final_state: &str,
     game: Game,
     winner: Option<u64>,
+    moves: usize,
 ) -> anyhow::Result<Option<String>> {
     let payout = winner.map_or(Payout::Refund, Payout::Winner);
     if app
@@ -61,6 +76,7 @@ pub(crate) async fn conclude(
     }
     let note = match winner {
         Some(_) if session.bet > 0 => format!("They take the pot of **{}** shells.", thousands(session.bet * 2)),
+        Some(_) if moves < game.min_moves() => "(A game this short earns no shells.)".to_owned(),
         Some(w) => {
             let paid = pay_win(app, w, game, game.win_reward(), &format!("{}_win", game.key())).await?;
             if paid > 0 {
@@ -249,6 +265,14 @@ mod tests {
         assert_eq!(menus[1].custom_id, "cc:t:1:0:d4:2");
         assert_eq!(menus[1].placeholder.as_deref(), Some("Where? (more)"));
         assert!(select_rows("x", "y", Vec::new(), (1, 1)).is_empty());
+    }
+
+    #[test]
+    fn long_names_are_cut_for_the_status_line() {
+        assert_eq!(tag("Marlowe"), "Marlowe");
+        assert_eq!(tag("exactly14chars"), "exactly14chars");
+        assert_eq!(tag("Captain Pinchora of the Reef"), "Captain Pinch…");
+        assert_eq!(tag("Captain Pinchora of the Reef").chars().count(), 14);
     }
 
     #[test]

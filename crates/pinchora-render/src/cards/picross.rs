@@ -1,9 +1,13 @@
 use std::fmt::Write;
 
-use super::{PIXEL, SANS, text};
+use super::{
+    PIXEL, SANS,
+    boards::{COORDINATE_SIZE, coordinate_color},
+    text,
+};
 use crate::{
     Theme,
-    svg::{background, escape, mix, panel, truncate},
+    svg::{background_plain, escape, mix, panel, truncate},
 };
 
 const CELL: f32 = 34.0;
@@ -12,12 +16,15 @@ const SIDE: f32 = CELL * 10.0;
 const CLUE_W: f32 = 112.0;
 const CLUE_H: f32 = 112.0;
 
-/// A finished picture shown instead of the marks: its colour and, per cell, 0 empty, 1 lit, 2 main or 3 shaded.
+/// A finished picture shown instead of the marks: its two colours and, per cell, what it is painted in.
 pub struct Reveal<'a> {
     pub name: &'a str,
-    /// `#rrggbb`.
+    /// `#rrggbb`: the picture's colour and its second colour.
     pub color: &'a str,
-    pub shades: &'a [u8; 100],
+    pub accent: &'a str,
+    /// Per cell: 0 empty; 1 to 3 the picture's colour lit, plain and shaded; 4 to 6 the same in the second
+    /// colour; 7 to 9 in white; 10 the dark of an eye.
+    pub cells: &'a [u8; 100],
 }
 
 /// 540×610 pixel picross: the clues on two sides of a 10×10 grid, the player's marks in it, or, once the
@@ -32,8 +39,6 @@ pub struct PicrossCard<'a> {
     /// Lines whose marks already match their clue; their clues dim.
     pub row_done: [bool; 10],
     pub col_done: [bool; 10],
-    /// Marked cells that the picture leaves empty, crossed out in red.
-    pub mistakes: &'a [usize],
     pub footer: &'a str,
     pub reveal: Option<Reveal<'a>>,
     pub theme: Theme,
@@ -51,7 +56,7 @@ impl PicrossCard<'_> {
             s,
             r#"<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}">"#
         );
-        background(&mut s, w, h, &t.bg_top, &t.bg_bottom);
+        background_plain(&mut s, w, h, &t.bg_top, &t.bg_bottom);
         panel(&mut s, 24.0, 20.0, w - 48.0, 52.0, 4.0, &t.panel, &t.panel_edge);
         text(
             &mut s,
@@ -159,15 +164,14 @@ impl PicrossCard<'_> {
                     CELL - 2.0
                 );
                 if self.grid[cell] {
-                    let mistake = self.mistakes.contains(&cell);
-                    let body = if mistake { "#ef476f" } else { t.mint.as_str() };
                     let _ = write!(
                         s,
-                        r##"<rect x="{}" y="{}" width="{}" height="{}" fill="{body}"/><rect x="{}" y="{}" width="{}" height="4" fill="#ffffff" fill-opacity="0.35"/><rect x="{}" y="{}" width="{}" height="4" fill="#000000" fill-opacity="0.22"/>"##,
+                        r##"<rect x="{}" y="{}" width="{}" height="{}" fill="{}"/><rect x="{}" y="{}" width="{}" height="4" fill="#ffffff" fill-opacity="0.35"/><rect x="{}" y="{}" width="{}" height="4" fill="#000000" fill-opacity="0.22"/>"##,
                         cx + 3.0,
                         cy + 3.0,
                         CELL - 6.0,
                         CELL - 6.0,
+                        t.mint,
                         cx + 3.0,
                         cy + 3.0,
                         CELL - 6.0,
@@ -175,44 +179,31 @@ impl PicrossCard<'_> {
                         cy + CELL - 7.0,
                         CELL - 6.0
                     );
-                    if mistake {
-                        let _ = write!(
-                            s,
-                            r##"<path d="M{} {} L{} {} M{} {} L{} {}" stroke="#fff1e8" stroke-width="3"/>"##,
-                            cx + 9.0,
-                            cy + 9.0,
-                            cx + CELL - 9.0,
-                            cy + CELL - 9.0,
-                            cx + CELL - 9.0,
-                            cy + 9.0,
-                            cx + 9.0,
-                            cy + CELL - 9.0
-                        );
-                    }
                 }
             }
         }
         // Row numbers beside the grid and column letters under it, the way a cell is typed.
+        let ink = coordinate_color(t);
         for i in 0..10 {
             text(
                 s,
-                gx + SIDE + 18.0,
-                gy + i as f32 * CELL + CELL / 2.0 + 4.0,
-                11.0,
+                gx + SIDE + 20.0,
+                gy + i as f32 * CELL + CELL / 2.0 + 5.0,
+                COORDINATE_SIZE,
                 PIXEL,
                 false,
-                &t.muted,
+                &ink,
                 "middle",
                 &(i + 1).to_string(),
             );
             text(
                 s,
                 gx + i as f32 * CELL + CELL / 2.0,
-                gy + SIDE + 22.0,
-                11.0,
+                gy + SIDE + 24.0,
+                COORDINATE_SIZE,
                 PIXEL,
                 false,
-                &t.muted,
+                &ink,
                 "middle",
                 &char::from(b'A' + i as u8).to_string(),
             );
@@ -232,24 +223,87 @@ impl PicrossCard<'_> {
             "#10204a",
             &t.panel_edge,
         );
-        let shades = [
-            mix(reveal.color, "#ffffff", 0.35),
-            reveal.color.to_owned(),
-            mix(reveal.color, "#0b1029", 0.45),
-        ];
+        let at = |x: usize, y: usize| reveal.cells[y * 10 + x];
+        let filled = |x: i32, y: i32| (0..10).contains(&x) && (0..10).contains(&y) && at(x as usize, y as usize) != 0;
+        // The dark outline goes down first, a little wider than the cells, so the silhouette is edged all round.
         for y in 0..10usize {
             for x in 0..10usize {
-                let shade = reveal.shades[y * 10 + x];
-                if shade == 0 {
+                if at(x, y) != 0 {
+                    let _ = write!(
+                        s,
+                        r##"<rect x="{}" y="{}" width="{}" height="{}" fill="#0b1029"/>"##,
+                        x0 + x as f32 * cell - 3.0,
+                        y0 + y as f32 * cell - 3.0,
+                        cell + 6.0,
+                        cell + 6.0
+                    );
+                }
+            }
+        }
+        for y in 0..10usize {
+            for x in 0..10usize {
+                let code = at(x, y);
+                if code == 0 {
                     continue;
                 }
+                let (px, py) = (x0 + x as f32 * cell, y0 + y as f32 * cell);
+                let (xi, yi) = (x as i32, y as i32);
+                // 1..=9 are three paints in three tones (lit, plain, shaded); 10 is an eye.
+                let body = if code == 10 {
+                    "#0b1029".to_owned()
+                } else {
+                    let paint = match (code - 1) / 3 {
+                        0 => reveal.color,
+                        1 => reveal.accent,
+                        _ => "#fff1e8",
+                    };
+                    match (code - 1) % 3 {
+                        0 => mix(paint, "#ffffff", 0.3),
+                        1 => paint.to_owned(),
+                        _ => mix(paint, "#0b1029", 0.3),
+                    }
+                };
                 let _ = write!(
                     s,
-                    r#"<rect x="{}" y="{}" width="{cell}" height="{cell}" fill="{}"/>"#,
-                    x0 + x as f32 * cell,
-                    y0 + y as f32 * cell,
-                    shades[usize::from(shade - 1).min(2)]
+                    r#"<rect x="{px}" y="{py}" width="{cell}" height="{cell}" fill="{body}"/>"#
                 );
+                if code == 10 {
+                    // A glint, so the eye looks back.
+                    let _ = write!(
+                        s,
+                        r##"<rect x="{}" y="{}" width="10" height="10" fill="#ffffff"/>"##,
+                        px + 8.0,
+                        py + 8.0
+                    );
+                    continue;
+                }
+                // A bright edge along the top of the picture and a dark one along its bottom.
+                if !filled(xi, yi - 1) {
+                    let _ = write!(
+                        s,
+                        r##"<rect x="{px}" y="{py}" width="{cell}" height="6" fill="#ffffff" fill-opacity="0.28"/>"##
+                    );
+                }
+                if !filled(xi - 1, yi) {
+                    let _ = write!(
+                        s,
+                        r##"<rect x="{px}" y="{py}" width="6" height="{cell}" fill="#ffffff" fill-opacity="0.14"/>"##
+                    );
+                }
+                if !filled(xi, yi + 1) {
+                    let _ = write!(
+                        s,
+                        r##"<rect x="{px}" y="{}" width="{cell}" height="8" fill="#000000" fill-opacity="0.24"/>"##,
+                        py + cell - 8.0
+                    );
+                }
+                if !filled(xi + 1, yi) {
+                    let _ = write!(
+                        s,
+                        r##"<rect x="{}" y="{py}" width="6" height="{cell}" fill="#000000" fill-opacity="0.16"/>"##,
+                        px + cell - 6.0
+                    );
+                }
             }
         }
         text(
@@ -279,7 +333,6 @@ mod tests {
         grid: &'a [bool; 100],
         rows: &'a [Vec<u8>],
         cols: &'a [Vec<u8>],
-        mistakes: &'a [usize],
         reveal: Option<Reveal<'a>>,
     ) -> PicrossCard<'a> {
         PicrossCard {
@@ -290,7 +343,6 @@ mod tests {
             cols,
             row_done: [true, false, false, false, false, false, false, false, false, false],
             col_done: [false; 10],
-            mistakes,
             footer: "Pick a row, then its filled cells",
             reveal,
             theme: Theme::reef(),
@@ -298,17 +350,24 @@ mod tests {
     }
 
     #[test]
-    fn marks_mistakes_and_finished_lines_are_drawn() {
+    fn marks_and_finished_lines_are_drawn() {
         let mut grid = [false; 100];
         grid[0] = true;
         grid[11] = true;
         let rows = clues(&[&[1], &[1, 2], &[0], &[0], &[0], &[0], &[0], &[0], &[0], &[0]]);
         let cols = rows.clone();
-        let svg = card(&grid, &rows, &cols, &[11], None).to_svg();
-        assert_eq!(svg.matches(r##"fill="#ef476f""##).count(), 1, "one mistake");
-        assert!(svg.contains("<path d=\"M"), "the mistake is crossed out");
+        let svg = card(&grid, &rows, &cols, None).to_svg();
         assert!(svg.contains("DAILY PICROSS #12"));
-        assert_eq!(svg.matches("#06d6a0").count(), 1, "one correct mark");
+        assert_eq!(svg.matches("#06d6a0").count(), 2, "two marks");
+        assert_eq!(
+            svg.matches(r##"fill="#ef476f""##).count(),
+            0,
+            "nothing is ever shown wrong"
+        );
+        assert!(
+            !svg.contains(r##"width="4" height="4" fill="#ffffff" fill-opacity="0.35""##),
+            "no sparkles to meet the text"
+        );
     }
 
     #[test]
@@ -328,24 +387,24 @@ mod tests {
         ]);
         let cols = rows.clone();
         let png = Renderer::new()
-            .picross_card(&card(&grid, &rows, &cols, &[], None))
+            .picross_card(&card(&grid, &rows, &cols, None))
             .expect("renders");
         let image = image::load_from_memory(&png).expect("a png");
         assert_eq!(
             (image.width(), image.height()),
             (PicrossCard::WIDTH, PicrossCard::HEIGHT)
         );
-        let shades: [u8; 100] = std::array::from_fn(|i| (i % 4) as u8);
+        let cells: [u8; 100] = std::array::from_fn(|i| (i % 11) as u8);
         let png = Renderer::new()
             .picross_card(&card(
                 &grid,
                 &rows,
                 &cols,
-                &[],
                 Some(Reveal {
                     name: "Anchor",
                     color: "#8fa0d8",
-                    shades: &shades,
+                    accent: "#ffd166",
+                    cells: &cells,
                 }),
             ))
             .expect("renders");
