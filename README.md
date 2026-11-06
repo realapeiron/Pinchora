@@ -315,6 +315,19 @@ badges, titles, trivia, hangman words and the wordle lists) lives in
 [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md). Sprites are drawn by GPT and imported with
 `tools/art/` (see below).
 
+Content names speak more than English. `content/i18n/tr/` holds the Turkish text of every content id (650 furniture
+designs, wallpapers, floors, sets, rooms, pets, fish, looks, accessories, presets, backgrounds, badges, titles, contest
+themes, critters, finds, pet trips with their stories, fishing spots, rods and baits) as `id → {name, description?}`
+files, plus `terms.json` (rarities, categories, slots, habitats, stats, house tiers, daily quests), `colors.json` and
+`_glossary.json` (one Turkish word per English term). Colour variants are not stored: `sofa__mint` is the translated
+base name plus the translated colour word, as in English. Ask `Content::name(id, lang)` and
+`Content::description(id, lang)` (or `Item::name_in`, `Rarity::label_in`, `Category::label_in`, `Quest::text_in`,
+`Tier::name_in`, `Trip::stories_in`): a missing text or language falls back to English. `python3 content/check.py`
+and `cargo test -p pinchora-game overlay` hold the overlay to the English content: every id translated, length limits,
+no duplicate names, the glossary, the furniture noun table (`_furniture_nouns.json`). To add a language, copy
+`content/i18n/tr/`, translate it, add the files to `TR_FILES`-style tables in `crates/pinchora-game/src/overlay.rs` and
+an arm to `overlay()`.
+
 ## Quick start (Docker)
 
 1. Create an application at <https://discord.com/developers/applications>, add a bot, and turn

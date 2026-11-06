@@ -1,3 +1,4 @@
+use pinchora_core::i18n::Lang;
 use pinchora_db::{MAX_LISTINGS, STALL_FEE_PERCENT, StallBuy};
 use pinchora_game::Content;
 use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
@@ -90,6 +91,7 @@ impl StallCommand {
             }
             Self::Sell(c) => {
                 let content = Content::get();
+                let lang = Lang::default(); // i18n: cx.lang()
                 let (rows, kept_back) = giveable(cx.app.db.inventory(me.id.get()).await?);
                 let options: Vec<SelectMenuOption> = rows
                     .into_iter()
@@ -103,7 +105,7 @@ impl StallCommand {
                                 thousands(item.base.price)
                             )),
                             emoji: None,
-                            label: item.name(),
+                            label: item.name_in(lang),
                             value: row.item_id,
                         })
                     })
@@ -131,6 +133,7 @@ impl StallCommand {
             }
             Self::Manage(_) => {
                 let content = Content::get();
+                let lang = Lang::default(); // i18n: cx.lang()
                 let options: Vec<SelectMenuOption> = cx
                     .app
                     .db
@@ -141,7 +144,7 @@ impl StallCommand {
                         default: false,
                         description: Some(format!("Listed for {} shells", thousands(l.price))),
                         emoji: None,
-                        label: content.item(&l.item_id).map_or(l.item_id.clone(), |i| i.name()),
+                        label: content.item(&l.item_id).map_or(l.item_id.clone(), |i| i.name_in(lang)),
                         value: l.id.to_string(),
                     })
                     .collect();
@@ -178,8 +181,10 @@ async fn stall_card(cx: &Cx, seller: &User, name: &str) -> anyhow::Result<Intera
             shell_price: true,
         })
         .collect();
+    let lang = Lang::default(); // i18n: cx.lang()
     let png = grid_png(
         &cx.app,
+        lang,
         format!("{name}'s stall"),
         format!("{}/{MAX_LISTINGS} LISTINGS", listings.len()),
         "PLAYER SHOP · 5% MARKET FEE".to_owned(),
@@ -192,7 +197,7 @@ async fn stall_card(cx: &Cx, seller: &User, name: &str) -> anyhow::Result<Intera
             default: false,
             description: Some(format!("{} shells", thousands(l.price))),
             emoji: None,
-            label: content.item(&l.item_id).map_or(l.item_id.clone(), |i| i.name()),
+            label: content.item(&l.item_id).map_or(l.item_id.clone(), |i| i.name_in(lang)),
             value: l.id.to_string(),
         })
         .collect();
@@ -223,15 +228,19 @@ pub(crate) async fn on_list(cx: &Cx, mut args: std::str::Split<'_, char>, value:
     let Some(item) = value.and_then(|v| Content::get().item(v)) else {
         return cx.reply_ephemeral("Pick an item.").await;
     };
+    let lang = Lang::default(); // i18n: cx.lang()
     if item.bound {
         return cx
-            .reply_ephemeral(format!("**{}** can't go on a stall. {SOULBOUND_RULE}", item.name()))
+            .reply_ephemeral(format!(
+                "**{}** can't go on a stall. {SOULBOUND_RULE}",
+                item.name_in(lang)
+            ))
             .await;
     }
     let text = if cx.app.db.list_item(cx.author()?.id.get(), &item.id(), price).await? {
         format!(
             "🏷️ **{}** is on your stall for {} shells.",
-            item.name(),
+            item.name_in(lang),
             thousands(price)
         )
     } else {
@@ -248,10 +257,11 @@ pub(crate) async fn on_list(cx: &Cx, mut args: std::str::Split<'_, char>, value:
 /// `su` select: take a listing back.
 pub(crate) async fn on_unlist(cx: &Cx, value: Option<&str>) -> anyhow::Result<()> {
     let listing: i64 = value.and_then(|v| v.parse().ok()).unwrap_or(0);
+    let lang = Lang::default(); // i18n: cx.lang()
     let text = match cx.app.db.unlist_item(cx.author()?.id.get(), listing).await? {
         Some(item) => format!(
             "Took **{}** back into your inventory.",
-            Content::get().item(&item).map_or(item.clone(), |i| i.name())
+            Content::get().item(&item).map_or(item.clone(), |i| i.name_in(lang))
         ),
         None => "That listing is gone.".to_owned(),
     };
@@ -267,6 +277,7 @@ pub(crate) async fn on_unlist(cx: &Cx, value: Option<&str>) -> anyhow::Result<()
 pub(crate) async fn on_buy(cx: &Cx, value: Option<&str>) -> anyhow::Result<()> {
     let listing: i64 = value.and_then(|v| v.parse().ok()).unwrap_or(0);
     let buyer = cx.author()?.id.get();
+    let lang = Lang::default(); // i18n: cx.lang()
     let text = match cx.app.db.buy_listing(buyer, listing).await? {
         StallBuy::Bought {
             item_id,
@@ -275,7 +286,9 @@ pub(crate) async fn on_buy(cx: &Cx, value: Option<&str>) -> anyhow::Result<()> {
             balance,
         } => {
             cx.app.quest(buyer, pinchora_game::quests::QuestKind::Buy).await;
-            let name = Content::get().item(&item_id).map_or(item_id.clone(), |i| i.name());
+            let name = Content::get()
+                .item(&item_id)
+                .map_or(item_id.clone(), |i| i.name_in(lang));
             return cx
                 .reply_text(format!(
                     "🤝 {} bought **{name}** from {}'s stall for {} shells. ({} left)",

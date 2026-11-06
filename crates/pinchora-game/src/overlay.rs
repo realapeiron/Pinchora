@@ -443,12 +443,15 @@ mod tests {
             .collect()
     }
 
+    /// An English id with its name and description.
+    type Row = (String, String, Option<String>);
+
     /// Every English id with its name and description, per overlay file.
-    fn english_by_file() -> Vec<(&'static str, Vec<(String, String, Option<String>)>)> {
+    fn english_by_file() -> Vec<(&'static str, Vec<Row>)> {
         let c = content();
         let d = |s: &str| Some(s.to_owned());
         let col = Collection::get();
-        let rows = |entries: &[CollectionEntry]| -> Vec<(String, String, Option<String>)> {
+        let rows = |entries: &[CollectionEntry]| -> Vec<Row> {
             entries
                 .iter()
                 .map(|e| (e.id.clone(), e.name.clone(), d(&e.flavor)))
