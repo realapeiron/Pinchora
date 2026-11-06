@@ -21,6 +21,7 @@ mod static_files;
 mod stats;
 mod store;
 mod tag_common;
+mod tickets;
 
 use std::time::Instant;
 

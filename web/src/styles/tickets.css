@@ -1,0 +1,673 @@
+/* The Tickets page: numbers, panel editor with its Discord preview, the tickets table and a transcript. */
+
+/* A quiet badge (closed, not posted) that still reads: light text on the panel edge. */
+.tk-badge-quiet {
+  color: var(--ink);
+  background: var(--panel-edge);
+}
+
+/* /Numbers */
+
+.tk-stats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.tk-stat {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 14px 16px;
+  background: #10173a;
+  box-shadow: inset 0 0 0 2px #232e5c;
+}
+
+.tk-stat-name {
+  font: 700 12px/1.2 var(--font-pixel);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.tk-stat-value {
+  font: 700 24px/1.1 var(--font-pixel);
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+
+.tk-stat-detail {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* /Segmented choices (7 or 30 days, ticket states) */
+
+.tk-segment {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.tk-segment.is-tight {
+  flex-wrap: nowrap;
+}
+
+.tk-segment button {
+  min-height: 36px;
+  padding: 6px 12px 8px;
+  border: 0;
+  font: 700 12px/1 var(--font-pixel);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: #10173a;
+  box-shadow: inset 0 0 0 2px #232e5c;
+  cursor: pointer;
+}
+
+.tk-segment button:hover {
+  color: var(--ink);
+}
+
+.tk-segment button[aria-checked="true"],
+.tk-segment button[aria-pressed="true"] {
+  color: var(--outline);
+  background: var(--gold);
+  box-shadow: none;
+}
+
+.tk-segment button:focus-visible,
+.tk-tab:focus-visible,
+.tk-row-link:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* /Panels */
+
+.tk-panel-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.tk-panel-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 12px 12px 14px;
+  background: #10173a;
+  border-left: var(--px) solid var(--panel-edge);
+}
+
+.tk-panel-row.is-editing {
+  border-left-color: var(--accent);
+  background: #131b44;
+}
+
+.tk-panel-main {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.tk-panel-name {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font: 700 15px/1.3 var(--font-pixel);
+  letter-spacing: 1px;
+  color: var(--gold);
+  overflow-wrap: anywhere;
+}
+
+.tk-panel-facts {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.tk-panel-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* /Panel editor */
+
+.tk-editor {
+  margin-top: 20px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 400px);
+  gap: 24px;
+  align-items: start;
+}
+
+.tk-editor-foot {
+  grid-column: 1 / -1;
+  margin-top: 0;
+}
+
+/* The preview sticks below the top bar, within its own column: never over the save buttons. */
+.tk-editor-side {
+  align-self: stretch;
+}
+
+.tk-editor-preview {
+  position: sticky;
+  top: 88px;
+  display: grid;
+  gap: 8px;
+}
+
+.tk-tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  border-bottom: 2px solid #232e5c;
+}
+
+.tk-tab {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 8px 14px;
+  border: 0;
+  font: 700 13px/1 var(--font-pixel);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: transparent;
+  box-shadow: inset 0 calc(-1 * var(--px)) 0 transparent;
+  cursor: pointer;
+}
+
+.tk-tab:hover {
+  color: var(--ink);
+}
+
+.tk-tab[aria-selected="true"] {
+  color: var(--ink);
+  box-shadow: inset 0 calc(-1 * var(--px)) 0 var(--accent);
+}
+
+.tk-tab-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--heart);
+}
+
+.tk-tabpanel {
+  padding-top: 20px;
+  display: grid;
+  gap: 20px;
+}
+
+.tk-topics,
+.tk-questions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.tk-topic {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) minmax(0, 150px) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 10px;
+  background: #10173a;
+}
+
+.tk-topic.is-menu {
+  grid-template-columns: 64px minmax(0, 1fr) minmax(0, 1fr) auto;
+}
+
+.tk-topic .pixel-input {
+  min-width: 0;
+}
+
+.tk-emoji {
+  text-align: center;
+}
+
+.tk-question {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 8px 12px;
+  align-items: center;
+  padding: 10px;
+  background: #10173a;
+}
+
+.tk-question-switches {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.tk-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.tk-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--mint);
+}
+
+.tk-icon-button {
+  min-width: 42px;
+  min-height: 42px;
+  padding: 0;
+  border: 0;
+  font: 700 18px/1 var(--font-body);
+  color: var(--muted);
+  background: #0c1230;
+  box-shadow: inset 0 0 0 2px var(--panel-edge);
+  cursor: pointer;
+}
+
+.tk-icon-button:hover {
+  color: var(--ink);
+  box-shadow: inset 0 0 0 2px var(--heart);
+}
+
+.tk-icon-button:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.tk-add {
+  justify-self: start;
+}
+
+.tk-color {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.tk-color input[type="color"] {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.tk-sample {
+  font: 400 13px/1.4 var(--font-body);
+  color: var(--muted);
+}
+
+.tk-sample code {
+  color: var(--mint);
+}
+
+/* /The Discord preview of a panel */
+
+.dc-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.dc-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 6px 14px;
+  border-radius: 4px;
+  font: 600 14px/1.2 var(--font-body);
+  color: #fff;
+  background: #5865f2;
+}
+
+.dc-button.is-secondary {
+  background: #4e5058;
+}
+.dc-button.is-success {
+  background: #248046;
+}
+.dc-button.is-danger {
+  background: #c62e33;
+}
+
+.pixel-button.tk-close {
+  border-color: #a93f58;
+  color: #ffe5eb;
+}
+
+.dc-select {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #b5bac1;
+  background: #1e1f22;
+}
+
+.dc-options {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 4px;
+  border-radius: 4px;
+  background: #2b2d31;
+  font-size: 14px;
+}
+
+.dc-options li {
+  display: grid;
+  gap: 2px;
+  padding: 6px 8px;
+}
+
+.dc-options small {
+  color: #b5bac1;
+}
+
+.dc-off {
+  opacity: 0.5;
+}
+
+/* /Tickets table */
+
+.tk-filters > .tk-segment {
+  grid-column: 1 / -1;
+}
+
+.tk-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 16px;
+}
+
+.tk-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 2px;
+  font-size: 14px;
+}
+
+.tk-table th {
+  padding: 6px 12px;
+  text-align: left;
+  font: 700 11px/1.2 var(--font-pixel);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.tk-table td {
+  padding: 10px 12px;
+  background: #10173a;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+
+.tk-table tr:hover td {
+  background: #131b44;
+}
+
+.tk-number {
+  font: 700 14px/1 var(--font-pixel);
+  color: var(--gold);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.tk-row-link {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.tk-row-link:hover .tk-number {
+  text-decoration: underline;
+}
+
+.tk-sub {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.tk-stars {
+  color: var(--gold);
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.tk-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+/* /One ticket */
+
+.tk-back {
+  justify-self: start;
+}
+
+.tk-facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.tk-facts > div {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  background: #10173a;
+}
+
+.tk-facts dt {
+  font: 700 11px/1.2 var(--font-pixel);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.tk-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.tk-answers {
+  margin: 16px 0 0;
+  display: grid;
+  gap: 8px;
+}
+
+.tk-answers dt {
+  font-weight: 700;
+}
+
+.tk-answers dd {
+  margin: 0;
+  white-space: pre-wrap;
+  color: var(--muted);
+}
+
+.tk-transcript {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.tk-line {
+  display: grid;
+  grid-template-columns: minmax(0, 170px) minmax(0, 1fr);
+  gap: 16px;
+  padding: 10px 14px;
+  background: #10173a;
+}
+
+.tk-who {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.tk-who.is-bot {
+  color: var(--mint);
+}
+
+.tk-who.is-gone {
+  font-style: italic;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.tk-who time {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.tk-text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.tk-files {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--gold);
+}
+
+@media (max-width: 1199px) {
+  .tk-editor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tk-editor-side {
+    order: -1;
+  }
+  .tk-editor-preview {
+    position: static;
+  }
+}
+
+@media (max-width: 1023px) {
+  .tk-filters {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .tk-search {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 767px) {
+  .tk-panel-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .tk-panel-actions {
+    justify-content: flex-start;
+  }
+  .tk-topic,
+  .tk-topic.is-menu {
+    grid-template-columns: 56px minmax(0, 1fr) auto;
+  }
+  .tk-topic > :nth-child(3) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .tk-question {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .tk-question > :nth-child(2) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .tk-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tk-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .tk-table,
+  .tk-table tbody,
+  .tk-table tr,
+  .tk-table td {
+    display: block;
+  }
+  .tk-table tr {
+    margin-bottom: 8px;
+    background: #10173a;
+  }
+  .tk-table td {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 12px;
+  }
+  .tk-table td::before {
+    content: attr(data-label);
+    flex: none;
+    font: 700 11px/1.6 var(--font-pixel);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .tk-table td:first-child {
+    padding-top: 12px;
+  }
+  .tk-table td:last-child {
+    padding-bottom: 12px;
+  }
+  .tk-line {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+}
+
+/* Read by screen readers only. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

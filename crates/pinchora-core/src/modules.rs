@@ -120,11 +120,12 @@ pub enum Module {
     AutoRoles,
     ColorRoles,
     Stats,
+    Tickets,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 32] = [
+    pub const ALL: [Self; 33] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -157,6 +158,7 @@ impl Module {
         Self::AutoRoles,
         Self::ColorRoles,
         Self::Stats,
+        Self::Tickets,
     ];
 
     /// The key stored in the database and used in the API.
@@ -194,6 +196,7 @@ impl Module {
             Self::AutoRoles => "autoroles",
             Self::ColorRoles => "color_roles",
             Self::Stats => "stats",
+            Self::Tickets => "tickets",
         }
     }
 
@@ -235,6 +238,7 @@ impl Module {
             Self::AutoRoles => "Auto roles",
             Self::ColorRoles => "Colour roles",
             Self::Stats => "Stats",
+            Self::Tickets => "Tickets",
         }
     }
 
@@ -291,6 +295,7 @@ impl Module {
             Self::AutoRoles => "/autoroles: roles given to members who join, and roles kept for those who come back.",
             Self::ColorRoles => "/color: colour roles members pick for their names.",
             Self::Stats => "/stats, /counters, the Stats page and counting messages, voice minutes, joins and leaves.",
+            Self::Tickets => "/ticket and /tickets: private support tickets opened from a panel, with transcripts.",
         }
     }
 
@@ -319,6 +324,7 @@ impl Module {
             Self::Moderation => Group::Safety,
             Self::RolePanels | Self::AutoRoles | Self::ColorRoles => Group::Roles,
             Self::Stats => Group::Server,
+            Self::Tickets => Group::Community,
         }
     }
 
@@ -370,6 +376,7 @@ impl Module {
             "surge" => Self::Party,
             "party" => Self::PartyGames,
             "stats" | "counters" => Self::Stats,
+            "ticket" | "tickets" => Self::Tickets,
             "duel" => match sub {
                 Some("share") => Self::Party,
                 Some("tictactoe" | "connect4" | "rps") => Self::Duels,
@@ -412,6 +419,7 @@ impl Module {
             "sg" => Self::Suggestions,
             "pl" => Self::Polls,
             "sc" => Self::Stats,
+            "tk" | "tp" | "tf" | "tr" => Self::Tickets,
             _ => return None,
         })
     }

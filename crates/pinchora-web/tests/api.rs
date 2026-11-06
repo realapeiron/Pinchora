@@ -52,6 +52,9 @@ mod tags;
 // The roles page: auto roles, sticky roles, role panels and colour roles.
 #[path = "api/roles.rs"]
 mod roles;
+// Tickets: settings, panels, the tickets list and transcripts.
+#[path = "api/tickets.rs"]
+mod tickets;
 
 const APPLICATION_ID: u64 = 1;
 const PUBLIC_URL: &str = "http://dash.test";

@@ -133,6 +133,9 @@ mod roles;
 // Server stats: counting, the flush, the /stats cards and /counters.
 #[path = "simulate/stats.rs"]
 mod stats;
+// Tickets: panels, ticket channels and threads, closing with transcripts, the idle ticker.
+#[path = "simulate/tickets.rs"]
+mod tickets;
 
 const APPLICATION_ID: u64 = 1;
 const CHANNEL_ID: u64 = 2;
@@ -12536,7 +12539,11 @@ async fn admin_state(sim: &Sim, target: u64, suggestion: i64) -> String {
     let (db, guild) = (&sim.app.db, sim.guild);
     format!(
         "{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}",
-        db.log_config(guild).await.unwrap(),
+        (
+            db.log_config(guild).await.unwrap(),
+            db.ticket_settings(guild).await.unwrap(),
+            db.ticket_panels(guild).await.unwrap()
+        ),
         db.mod_settings(guild).await.unwrap(),
         db.warn_thresholds(guild).await.unwrap(),
         db.guild_settings(guild).await.unwrap(),
@@ -12845,6 +12852,39 @@ async fn admin_paths_refuse_members_without_manage_server() {
             json!([sub("remove", vec![channel_option("channel", channel)])]),
         ),
         ("counters list", json!([sub("list", vec![])])),
+        (
+            "tickets panel create",
+            json!([group(
+                "panel",
+                sub(
+                    "create",
+                    vec![text_option("name", "Gated"), channel_option("channel", channel)]
+                )
+            )]),
+        ),
+        (
+            "tickets panel edit",
+            json!([group(
+                "panel",
+                sub(
+                    "edit",
+                    vec![text_option("panel", "Gated"), text_option("title", "Changed")]
+                )
+            )]),
+        ),
+        (
+            "tickets panel post",
+            json!([group("panel", sub("post", vec![text_option("panel", "Gated")]))]),
+        ),
+        (
+            "tickets panel delete",
+            json!([group("panel", sub("delete", vec![text_option("panel", "Gated")]))]),
+        ),
+        ("tickets panel list", json!([group("panel", sub("list", vec![]))])),
+        (
+            "tickets settings",
+            json!([sub("settings", vec![int_option("max_open", 2)])]),
+        ),
     ];
 
     let before = admin_state(&sim, target, suggestion.id).await;

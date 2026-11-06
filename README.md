@@ -556,7 +556,43 @@ roles. The commands are in the table above (`/autoroles`, `/roles`, `/color`); t
 
 ### Tickets
 
-<!-- F3: the Tickets package replaces this heading's section; keep it one `###` section. -->
+Private support tickets, opened from a panel and run by the server's staff (module **Tickets**, in the
+dashboard's Community group).
+
+| Command | What it does |
+|---|---|
+| `/tickets panel create name channel [title] [description] [topics] [style] [support_role]` | Make a panel (up to 10): a title, a text, and its topics as buttons (up to 5) or a menu (up to 25), typed as `Support, Billing, Report a member`. The support role sees and answers its tickets (Manage Server) |
+| `/tickets panel edit panel [name] [title] [description] [topics] [style] [support_role] [color] [welcome] [channel]` | Change a panel; `welcome` is the ticket's first message, with `{user}` `{server}` `{number}` `{topic}`. Post it again to update it (Manage Server) |
+| `/tickets panel post\|delete\|list panel` | Post a panel (posting again edits it where it is), delete one (its tickets stay), or list them with how many tickets are open (Manage Server) |
+| `/tickets settings [category] [closed_category] [log_channel] [auto_close_hours] [dm_transcript] [ratings] [mode] [naming] [max_open] [clear]` | Where ticket channels go and where closed ones move, the log channel, closing tickets nobody wrote in for 1 to 720 hours, the transcript by direct message, 1 to 5 star ratings, channels or private threads (automatic: threads once the server has more than 400 channels), the channel name (`ticket-{number}`, also `{user}` `{topic}`) and how many tickets one member may have open (1 to 10). No options shows them (Manage Server) |
+| `/ticket close [reason]`, `/ticket transcript` | In a ticket: close it, or get its messages as a web page only you see. The member who opened it may do both |
+| `/ticket claim\|unclaim\|add user\|remove user\|rename name\|reopen\|move category` | In a ticket, for staff (a support role, Manage Channels or Manage Server): say you handle it or hand it back, let someone in or take them out, rename the channel, reopen a closed ticket, move the channel to another category |
+
+- **Opening**: a member presses a topic (or picks it from the menu); a panel with a form asks up to five questions
+  first and the answers open the ticket. The bot makes `ticket-0042` in the ticket category, seen only by the
+  member, the panel's support roles and the bot, or a private thread off the panel's channel, says hello with
+  the member's answers and pings only the member and the support roles. One ticket a minute per member, and at
+  most the server's number open at once; two members opening at the same moment get different numbers.
+- **Inside**: Close (asks first), Claim, Transcript and Lock (only staff can write) buttons; the ticket says who
+  claimed, locked, added or removed whom. A bot without a permission it needs answers with the exact one
+  (Manage Channels and Manage Roles for channels, Create Private Threads for threads), and nothing is left half made.
+- **Closing** happens once however many pods see it: the bot reads the ticket's history (up to 2,000 messages)
+  into a transcript, the member loses access (a thread is archived and locked), the channel moves to the closed
+  category, the log channel gets the close with `ticket-0042.html`, and the member gets the page by direct
+  message with five star buttons when ratings are on (not if they switched server DMs off in `/privacy`). A
+  closed ticket's channel has Reopen, Transcript and Delete buttons. Without the Message Content intent the
+  transcript keeps who wrote, when, and the file names, and says why the words are missing.
+- **Auto-close**: every five minutes the bot asks Discord for the last message of tickets idle longer than
+  the server allows, and closes the ones that really are (a switched-off module pauses it). If a ticket
+  channel or thread is deleted directly in Discord, the bot closes its ticket record when it receives the
+  delete event or the member next tries to open a ticket.
+- **Transcripts** are self-contained pages (no scripts, nothing loaded from elsewhere) with every word members
+  wrote escaped. HTML downloads stay below 7 MiB and note how many older messages were left out. "Delete my data"
+  removes the tickets a member opened and turns their name on other tickets'
+  transcripts into "Deleted user"; staff who claimed or closed tickets are cleared from them.
+- **Dashboard** (Tickets page): settings, panels with tabs (Buttons, Behaviour, Form, Log), a live preview and a
+  **Post** button, the tickets table (open, claimed, closed; by staff, member or words) with each ticket's
+  transcript, a Close button in the list and detail, and the last 7 and 30 days: opened, closed, median first reply and ratings.
 
 ### Temp voice
 

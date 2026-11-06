@@ -143,6 +143,24 @@ function memberJson(user: string, roles: string[]) {
   };
 }
 
+/** Names for the members the ticket seed (`seed_demo_tickets`) uses; anyone else is `member` and a number. */
+const NAMES: Record<string, string> = {
+  "770000000000000101": "Sam",
+  "770000000000000102": "Mia",
+  "770000000000000103": "Kai",
+  "770000000000000104": "Leo",
+};
+
+function userJson(id: string) {
+  return {
+    id,
+    username: `member${id.slice(-3)}`,
+    discriminator: "0",
+    global_name: NAMES[id] ?? null,
+    avatar: null,
+  };
+}
+
 /** Roles members were given, by user id. */
 const held = new Map<string, Set<string>>();
 
@@ -189,6 +207,9 @@ createServer((req, res) => {
   }
   if (api === "api" && resource === "channels" && id && sub === "messages" && req.method === "POST") {
     return send(res, 200, messageJson(id));
+  }
+  if (api === "api" && resource === "users" && id && id !== "@me" && !sub && req.method === "GET") {
+    return send(res, 200, userJson(id));
   }
   send(res, 404, { message: "404: Not Found", code: 0 });
 }).listen(port, "127.0.0.1", () => console.log(`mock discord on 127.0.0.1:${port}`));

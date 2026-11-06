@@ -41,6 +41,7 @@ mod stalls;
 mod stats;
 mod suggestions;
 mod tags;
+mod tickets;
 mod users;
 mod xp;
 
@@ -112,6 +113,7 @@ pub use suggestions::{
     APPROVED as SUGGESTION_APPROVED, DENIED as SUGGESTION_DENIED, Decision, SuggestionRow, SuggestionVote,
 };
 pub use tags::{CommandRow, ResponderRow, TagSet, TagWrite};
+pub use tickets::*;
 pub use users::UserRow;
 pub use xp::{MAX_XP_RULES, XpTarget};
 

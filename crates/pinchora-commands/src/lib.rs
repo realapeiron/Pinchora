@@ -24,6 +24,7 @@ mod server_events;
 mod server_log;
 mod stats;
 mod text;
+mod tickets;
 mod util;
 mod voice_xp;
 
@@ -75,6 +76,10 @@ pub use stats::{
     sweep as stats_sweep,
 };
 pub use text::on_text_command;
+pub use tickets::{
+    PanelPost as TicketPanelPost, close_from_web as close_ticket_from_web, on_place_deleted as on_ticket_place_deleted,
+    post_panel as post_ticket_panel, spawn_ticker as spawn_tickets_ticker, tick as tickets_tick,
+};
 pub use util::fill;
 pub use voice_xp::{
     VoiceSnapshot, forget as forget_voice_presence, prune as voice_prune, rebuild as rebuild_voice,

@@ -4,8 +4,8 @@ use pinchora_cache::{RedisQueue, StoredSession};
 use pinchora_commands::{
     App, PermissionChange, Responder, handle_gateway_interaction, on_audit_log_entry, on_ban_add, on_ban_remove,
     on_guild_delete, on_member_add, on_member_remove, on_member_update, on_message, on_message_delete,
-    on_message_delete_bulk, on_message_update, on_permissions_changed, on_voice_state_update, rebuild_voice,
-    voice_snapshot,
+    on_message_delete_bulk, on_message_update, on_permissions_changed, on_ticket_place_deleted, on_voice_state_update,
+    rebuild_voice, voice_snapshot,
 };
 use pinchora_commands::{ReactionEvent, on_reaction};
 use pinchora_core::{
@@ -56,6 +56,7 @@ fn wanted_events() -> EventTypeFlags {
         | EventTypeFlags::ROLE_DELETE
         | EventTypeFlags::CHANNEL_UPDATE
         | EventTypeFlags::CHANNEL_DELETE
+        | EventTypeFlags::THREAD_DELETE
         | EventTypeFlags::COMMAND_PERMISSIONS_UPDATE
         | EventTypeFlags::READY
         | EventTypeFlags::RESUMED
@@ -336,7 +337,29 @@ fn dispatch(app: &Arc<App>, shard: u32, event: Event) {
         Event::RoleUpdate(event) => forget(app, PermissionChange::Guild(event.guild_id.get())),
         Event::RoleDelete(event) => forget(app, PermissionChange::Guild(event.guild_id.get())),
         Event::ChannelUpdate(event) => forget(app, PermissionChange::Channel(event.id.get())),
-        Event::ChannelDelete(event) => forget(app, PermissionChange::Channel(event.id.get())),
+        Event::ChannelDelete(event) => {
+            let guild = event.guild_id.map(|id| id.get());
+            let place = event.id.get();
+            forget(app, PermissionChange::Channel(place));
+            if let Some(guild) = guild {
+                let app2 = app.clone();
+                app.spawn_event("ticket_channel_delete", async move {
+                    if let Err(error) = on_ticket_place_deleted(&app2, guild, place).await {
+                        tracing::warn!(guild, place, %error, "deleted ticket channel not closed");
+                    }
+                });
+            }
+        }
+        Event::ThreadDelete(event) => {
+            let (guild, place) = (event.guild_id.get(), event.id.get());
+            forget(app, PermissionChange::Channel(place));
+            let app2 = app.clone();
+            app.spawn_event("ticket_thread_delete", async move {
+                if let Err(error) = on_ticket_place_deleted(&app2, guild, place).await {
+                    tracing::warn!(guild, place, %error, "deleted ticket thread not closed");
+                }
+            });
+        }
         Event::CommandPermissionsUpdate(event) => {
             forget(app, PermissionChange::CommandPermissions(event.guild_id.get()));
         }

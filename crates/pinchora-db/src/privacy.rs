@@ -98,6 +98,10 @@ pub const USER_COLUMNS: &[(&str, &str)] = &[
     ("poll_votes", "user_id"),
     ("polls", "author_id"),
     ("member_activity_daily", "user_id"),
+    // The member's name on the transcripts of other people's tickets (the lines stay, as "Deleted user"),
+    // then the tickets they opened, whose transcripts go with them.
+    ("ticket_transcript_authors", "user_id"),
+    ("tickets", "opener_id"),
     ("users", "id"),
 ];
 
@@ -122,7 +126,12 @@ pub const ID_LISTS: &[(&str, &str, ListEdit)] = &[
 
 /// Columns that name a player on rows that belong to somebody else and go on without them: the
 /// column is set to NULL.
-pub const CLEARED_COLUMNS: &[(&str, &str)] = &[("suggestions", "decided_by"), ("collection_drops", "host_id")];
+pub const CLEARED_COLUMNS: &[(&str, &str)] = &[
+    ("suggestions", "decided_by"),
+    ("collection_drops", "host_id"),
+    ("tickets", "claimed_by"),
+    ("tickets", "closed_by"),
+];
 
 /// The games' per-day limits, as (table, player column, day column), the day in days since
 /// 1970-01-01 (UTC): plays that pay, shells paid, shells lost at the tables. Today's rows stay when
@@ -192,6 +201,12 @@ pub const OTHER_TABLES: &[&str] = &[
     "counter_channels",
     "stats_flushes",
     "global_stats_daily",
+    "ticket_settings",
+    "ticket_forms",
+    "ticket_panels",
+    "ticket_counters",
+    // A closed ticket's lines; who wrote them is in `ticket_transcript_authors`.
+    "ticket_transcripts",
 ];
 
 /// What a player hides.

@@ -263,6 +263,15 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
          VALUES ($1, 'welcome', 'member_join', ARRAY['hi'], $1)",
         // What they did in a server, counted for its stats ($1 doubles as the server).
         "INSERT INTO member_activity_daily (guild_id, user_id, day, messages) VALUES ($1, $1, current_date, 3)",
+        // A ticket they opened, and the other player's one they claimed, closed and wrote in, with its
+        // transcript ($1 doubles as the server).
+        "INSERT INTO tickets (guild_id, number, opener_id, status, claimed_by, closed_by)
+         VALUES ($1, 1, $1, 'open', NULL, NULL), ($1, 2, $2, 'closed', $1, $1)",
+        "INSERT INTO ticket_transcripts (ticket_id, json, messages, with_content)
+         SELECT id, '[]', 0, TRUE FROM tickets WHERE guild_id = $1",
+        "INSERT INTO ticket_transcript_authors (ticket_id, idx, user_id, name)
+         SELECT id, 0, $1, 'Pinch' FROM tickets WHERE guild_id = $1 AND number = 2
+         UNION ALL SELECT id, 1, $2, 'Other' FROM tickets WHERE guild_id = $1 AND number = 2",
     ];
     for sql in inserts {
         run(db, sql, user, other).await;
@@ -396,6 +405,20 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         .await
         .unwrap();
     assert_eq!(kept, 1, "only the other player's suggestion is left");
+    let (tickets, authors): (i64, i64) = sqlx::query_as(
+        "SELECT count(*), (SELECT count(*) FROM ticket_transcript_authors a JOIN tickets t ON t.id = a.ticket_id
+                           WHERE t.guild_id = $1)
+         FROM tickets WHERE guild_id = $1 AND claimed_by IS NULL AND closed_by IS NULL",
+    )
+    .bind(user as i64)
+    .fetch_one(db.pool())
+    .await
+    .unwrap();
+    assert_eq!(
+        (tickets, authors),
+        (1, 1),
+        "their own ticket is gone; the other player's stays, its transcript without their name"
+    );
 
     // The other player keeps their own things, and their bet is back.
     assert_eq!(
