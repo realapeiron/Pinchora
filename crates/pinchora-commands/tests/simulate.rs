@@ -67,9 +67,12 @@ use twilight_model::{
     id::Id,
 };
 
-// The collection games' flows (Critter Drop, bottles, Beachcomb, Tide Pool Dex, Crab Pot).
+// The everyday commands (ping, help, bio, rep, give, the shops, stalls, the plaza, quests, house and config basics).
+#[path = "simulate/basics.rs"]
+mod basics;
 #[path = "simulate/board.rs"]
 mod board;
+// The collection games' flows (Critter Drop, bottles, Beachcomb, Tide Pool Dex, Crab Pot).
 #[path = "simulate/collection.rs"]
 mod collection;
 // The party games' flows (Hot Pearl, Acronym Tide, Caption the Postcard, Wordle Race, Would You Rather, Truth or Dare).
