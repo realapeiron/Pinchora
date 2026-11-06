@@ -6,6 +6,7 @@
 //! Rewrite after changing a rule: `cargo test -p pinchora-web rules -- --ignored write_rules`.
 
 use pinchora_core::{
+    card_design::{self as card, CardKind, Delivery},
     leveling::{MAX_MULTIPLIER, VOICE_XP_RANGE},
     settings::{self, FieldError, MessageKind},
 };
@@ -143,7 +144,41 @@ fn rules() -> Value {
             "theme": settings::DEFAULT_THEME,
             "welcome_title": settings::DEFAULT_WELCOME_TITLE,
         },
+        "card": card_rules(),
         "cases": cases(),
+    })
+}
+
+/// The welcome and goodbye image editor's limits, so its inputs never make a design the API refuses.
+fn card_rules() -> Value {
+    let span = |r: &std::ops::RangeInclusive<u32>| json!([r.start(), r.end()]);
+    json!({
+        "version": card::DESIGN_VERSION,
+        "width": span(&card::WIDTH_RANGE),
+        "height": span(&card::HEIGHT_RANGE),
+        "position": [card::POSITION_RANGE.start(), card::POSITION_RANGE.end()],
+        "size": span(&card::SIZE_RANGE),
+        "max_layers": card::MAX_LAYERS,
+        "layer_id_max": card::LAYER_ID_MAX,
+        "text_max": card::TEXT_MAX,
+        "text_size": span(&card::TEXT_SIZE_RANGE),
+        "max_lines": card::MAX_LINES,
+        "border_max": card::BORDER_MAX,
+        "outline_max": card::OUTLINE_MAX,
+        "dim_max": card::DIM_MAX,
+        // An f32 in Rust; written with the digits it was given.
+        "line_height": (f64::from(card::LINE_HEIGHT) * 100.0).round() / 100.0,
+        "placeholders": card::PLACEHOLDERS,
+        "glyphs": card::GLYPHS,
+        "sticker_prefixes": card::STICKER_PREFIXES,
+        "background_prefix": card::BACKGROUND_PREFIX,
+        "upload_max_bytes": card::UPLOAD_MAX_BYTES,
+        "upload_max_side": card::UPLOAD_MAX_SIDE,
+        "max_uploads": card::MAX_UPLOADS,
+        "deliveries": CardKind::ALL
+            .iter()
+            .map(|kind| (kind.key().to_owned(), json!(Delivery::offered(*kind).iter().map(|d| d.key()).collect::<Vec<_>>())))
+            .collect::<serde_json::Map<_, _>>(),
     })
 }
 

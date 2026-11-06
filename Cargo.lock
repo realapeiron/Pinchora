@@ -1997,6 +1997,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "pinchora-core",
+ "serde_json",
  "sqlx",
  "tokio",
  "tracing",

@@ -136,6 +136,11 @@ fn placeholders_fill_in_and_hostile_names_still_draw() {
     }
     assert_eq!(ordinal(101), "101st");
     assert_eq!(ordinal(1112), "1,112th");
+    let sneaky = CardFill {
+        user: "{server}",
+        ..FILL
+    };
+    assert_eq!(fill_placeholders("{user} {nope} {", &sneaky), "{server} {nope} {");
     let unknown = CardFill { members: None, ..FILL };
     assert_eq!(fill_placeholders("#{members} {ordinal}", &unknown), "#? newest");
 

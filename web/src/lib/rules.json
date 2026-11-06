@@ -49,6 +49,75 @@
       "name": "Cream"
     }
   ],
+  "card": {
+    "background_prefix": "bg_",
+    "border_max": 40,
+    "deliveries": {
+      "goodbye": [
+        "with_message",
+        "before_message",
+        "image_only",
+        "text_only"
+      ],
+      "welcome": [
+        "with_message",
+        "before_message",
+        "image_only",
+        "text_only",
+        "dm"
+      ]
+    },
+    "dim_max": 90,
+    "glyphs": [
+      "crab",
+      "heart",
+      "star",
+      "shell"
+    ],
+    "height": [
+      150,
+      1000
+    ],
+    "layer_id_max": 24,
+    "line_height": 1.3,
+    "max_layers": 20,
+    "max_lines": 4,
+    "max_uploads": 12,
+    "outline_max": 12,
+    "placeholders": [
+      "{user}",
+      "{username}",
+      "{server}",
+      "{members}",
+      "{ordinal}"
+    ],
+    "position": [
+      -2000,
+      4000
+    ],
+    "size": [
+      4,
+      3200
+    ],
+    "sticker_prefixes": [
+      "p_",
+      "c_",
+      "b_",
+      "f_"
+    ],
+    "text_max": 200,
+    "text_size": [
+      8,
+      200
+    ],
+    "upload_max_bytes": 4194304,
+    "upload_max_side": 4096,
+    "version": 1,
+    "width": [
+      300,
+      1600
+    ]
+  },
   "cases": [
     {
       "check": "accent",

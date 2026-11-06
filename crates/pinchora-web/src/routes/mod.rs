@@ -1,6 +1,7 @@
 //! The dashboard's routes and the headers every response carries.
 
 mod audit_log;
+mod cards;
 mod community;
 mod discord_info;
 mod guilds;

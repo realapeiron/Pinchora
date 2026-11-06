@@ -1,4 +1,5 @@
 mod app;
+mod card_images;
 mod commands;
 mod components;
 mod cx;
@@ -17,9 +18,9 @@ mod util;
 mod voice_xp;
 
 pub use app::App;
+pub use card_images::{CardSubject, ServerCard, atlas_has, card_png, classic_card, deliver, server_card};
 pub use commands::{
     collection::{post_bottle, post_critter_drop, spawn_ticker as spawn_collection_ticker, tick as collection_tick},
-    config::{WelcomeDesign, welcome_card_png},
     definitions as command_definitions,
     games::{spawn_janitor as spawn_game_janitor, sweep as sweep_games},
     level_roles::{SyncOutcome, SyncReport, sync_level_roles, sync_resting},

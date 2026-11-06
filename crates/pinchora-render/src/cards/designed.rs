@@ -66,15 +66,37 @@ pub fn ordinal(n: u64) -> String {
     format!("{}{suffix}", thousands(n as i64))
 }
 
-/// `text` with its placeholders filled in from `fill`.
+/// `text` with its placeholders filled in from `fill`, in one pass: a name that looks like a placeholder is
+/// not filled in again.
 pub fn fill_placeholders(text: &str, fill: &CardFill<'_>) -> String {
-    let members = fill.members.map_or_else(|| "?".to_owned(), |n| thousands(n as i64));
-    let nth = fill.members.map_or_else(|| "newest".to_owned(), ordinal);
-    text.replace("{user}", &truncate(fill.user, NAME_MAX))
-        .replace("{username}", &truncate(fill.username, NAME_MAX))
-        .replace("{server}", &truncate(fill.server, SERVER_MAX))
-        .replace("{members}", &members)
-        .replace("{ordinal}", &nth)
+    let value = |key: &str| -> Option<String> {
+        Some(match key {
+            "user" => truncate(fill.user, NAME_MAX),
+            "username" => truncate(fill.username, NAME_MAX),
+            "server" => truncate(fill.server, SERVER_MAX),
+            "members" => fill.members.map_or_else(|| "?".to_owned(), |n| thousands(n as i64)),
+            "ordinal" => fill.members.map_or_else(|| "newest".to_owned(), ordinal),
+            _ => return None,
+        })
+    };
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(open) = rest.find('{') {
+        out.push_str(&rest[..open]);
+        let after = &rest[open + 1..];
+        match after.find('}').and_then(|end| Some((end, value(&after[..end])?))) {
+            Some((end, filled)) => {
+                out.push_str(&filled);
+                rest = &after[end + 1..];
+            }
+            None => {
+                out.push('{');
+                rest = after;
+            }
+        }
+    }
+    out.push_str(rest);
+    out
 }
 
 impl DesignedCard<'_> {
