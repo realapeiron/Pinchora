@@ -468,9 +468,9 @@ async fn turkish_critterdrop_command_and_settings_answer_in_turkish() {
     );
     let shown = sim.command(admin, "config", json!([sub("show", vec![])])).await;
     assert!(
-        shown.field("Critter drops").contains("hangi kanal hareketliyse"),
+        shown.field("Canlı düşüşleri").contains("hangi kanal hareketliyse"),
         "{}",
-        shown.field("Critter drops")
+        shown.field("Canlı düşüşleri")
     );
 
     // The drop is posted for the whole channel, so it speaks the server's language.
