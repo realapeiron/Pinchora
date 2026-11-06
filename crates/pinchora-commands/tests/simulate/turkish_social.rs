@@ -45,7 +45,7 @@ async fn partners_friends_hugs_and_reputation_speak_turkish() {
     );
     asked.button("Reddet");
     let stolen = sim.click(c, &asked, "Kabul et").await;
-    assert!(stolen.content().contains("sana gelmedi"), "{}", stolen.content());
+    assert!(stolen.content().contains("senin için değil"), "{}", stolen.content());
     let paired = sim.click(b, &asked, "Kabul et").await;
     assert_eq!(paired.title(), "💞 Yeni partnerler");
     keep(&sim, &paired, "partners-new");

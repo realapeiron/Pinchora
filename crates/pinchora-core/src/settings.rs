@@ -619,6 +619,7 @@ pub fn check_patch(
 
 #[cfg(test)]
 mod tests {
+    use super::*;
 
     /// Every error with a catalog key says in English what its message says, and has Turkish too.
     #[test]
@@ -689,7 +690,6 @@ mod tests {
         let refusal = run_time_refusal_in(Lang::Tr, admin, "<@&2>").unwrap();
         assert!(refusal.contains("Yönetici ve Sunucuyu Yönet"), "{refusal}");
     }
-    use super::*;
 
     #[test]
     fn colours_need_six_hex_digits() {

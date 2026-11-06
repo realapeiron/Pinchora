@@ -53,7 +53,7 @@ impl ConfigRepRoles {
             Self::Add(c) => {
                 let reputation = match settings::check_reputation(c.reputation) {
                     Ok(reputation) => reputation,
-                    Err(error) => return cx.reply_ephemeral(error.message).await,
+                    Err(error) => return cx.reply_ephemeral(error.text(cx.lang())).await,
                 };
                 if let Some(why) = roles::unassignable(cx, guild, &c.role).await {
                     return cx.reply_ephemeral(why).await;

@@ -17,7 +17,7 @@ pub struct WelcomeCard<'a> {
     pub member_number: Option<u64>,
     /// Big headline, e.g. "WELCOME".
     pub title: &'a str,
-    /// The language of the line under the name.
+    /// The language of the line under the name and of the headline's capitals.
     pub lang: Lang,
     pub theme: Theme,
 }
@@ -54,7 +54,14 @@ impl WelcomeCard<'_> {
 
         avatar_frame(&mut s, self.avatar_png, 450.0, 36.0, 200.0, 12.0, &t.accent, "avatar");
 
-        let title = escape(&truncate(self.title, 18).to_uppercase());
+        // Turkish capitals keep the dot: `i` is `İ` (`ı` already becomes `I`).
+        let headline = truncate(self.title, 18);
+        let headline = if self.lang == Lang::Tr {
+            headline.replace('i', "İ")
+        } else {
+            headline
+        };
+        let title = escape(&headline.to_uppercase());
         text(&mut s, 550.0, 316.0, 64.0, PIXEL, false, &t.ink, "middle", &title);
         let name = escape(&truncate(self.display_name, 28));
         text(&mut s, 550.0, 368.0, 36.0, SANS, true, &t.accent, "middle", &name);

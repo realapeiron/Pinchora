@@ -53,7 +53,7 @@ unreachable = "Discord'a ulaşılamadı"
 
 # Why a server event (giveaway, suggestion, poll) could not be posted.
 [post-refusal]
-access = "{channel} kanalına gönderemem: orada Kanalı Görüntüle, Mesaj Gönder ve Bağlantıları Göm izinlerine ihtiyacım var."
+access = "{channel} kanalına mesaj gönderemiyorum: orada Kanalı Görüntüle, Mesaj Gönder ve Bağlantı Yerleştir izinlerine ihtiyacım var."
 gone = "Bu kanal artık yok."
 refused = "Discord mesajı reddetti."
 unreachable = "Discord'a ulaşılamadı. Birazdan tekrar dene."

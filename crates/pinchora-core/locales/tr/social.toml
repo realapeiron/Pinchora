@@ -4,7 +4,7 @@
 ask-too-soon = "{user} kullanıcısına az önce sordun. {seconds} saniye sonra yeniden sorabilirsin."
 decline = "Reddet"
 said-no = "{to}, {from} kullanıcısına \"hayır, teşekkürler\" dedi."
-not-for-you = "Bu istek sana gelmedi."
+not-for-you = "Bu istek senin için değil."
 button-expired = "Bu düğmenin süresi doldu."
 
 [partner]
@@ -41,12 +41,12 @@ left = "💔 Sen ve {partner} artık partner değilsiniz."
 not-partners = "Artık onunla partner değilsin."
 
 [friends]
-not-self = "Arkadaşların başka insanlar. Sunucudan birini dene!"
+not-self = "Arkadaşın başka biri olmalı. Sunucudan birini dene!"
 already = "Sen ve {user} zaten arkadaşsınız."
 you-full = "{max} arkadaşın var, bu olabilecek en yüksek sayı. `/friends remove` ile yer aç."
 they-full = "{user} kullanıcısının zaten {max} arkadaşı var, bu olabilecek en yüksek sayı."
 request-title = "🤝 Arkadaşlık isteği"
-request = "{from}, {to} kullanıcısıyla arkadaş olmak istiyor.\nArkadaşlar `/house visit` içinde hızlı seçime, `/friends list` içinde de bir yere kavuşur.\nBu isteğin süresi <t:{until}:R> dolar."
+request = "{from}, {to} kullanıcısıyla arkadaş olmak istiyor.\nArkadaşlar `/house visit` içinde hızlı seçimde ve `/friends list` listesinde yer alır.\nBu isteğin süresi <t:{until}:R> dolar."
 accept = "Kabul et"
 removed = "{user} artık arkadaşın değil."
 not-a-friend = "{user} arkadaşlarından biri değil."
