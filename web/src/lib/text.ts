@@ -58,6 +58,7 @@ const FIELD_NAMES: Record<string, string> = {
   log_names: "name change logs",
   log_bans: "ban logs",
   log_voice: "voice logs",
+  prefix: "the text command prefix",
 };
 
 /** What the fields of a custom command or an auto-responder are called in the log. */

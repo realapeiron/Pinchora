@@ -150,6 +150,8 @@ export interface Settings {
   log_names: boolean;
   log_bans: boolean;
   log_voice: boolean;
+  /** What text commands start with; the default when the server picked none. */
+  prefix: string;
 }
 
 export interface AuditEntry {

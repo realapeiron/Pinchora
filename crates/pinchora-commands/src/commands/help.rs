@@ -10,7 +10,7 @@ use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::{
     application::command::{Command, CommandOption, CommandOptionType},
     channel::message::{
-        Component,
+        Component, MessageFlags,
         component::{ActionRow, Button, ButtonStyle, SelectMenu, SelectMenuOption, SelectMenuType},
     },
     http::interaction::InteractionResponseData,
@@ -25,7 +25,8 @@ pub struct Help;
 
 impl Help {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
-        let data = page_card(cx, 0).await?;
+        // Asked by text, the guide is posted for the channel: there is no private message to turn.
+        let data = page_card(cx, 0, !cx.responder.is_text()).await?;
         cx.reply(data).await
     }
 }
@@ -139,6 +140,7 @@ const AREAS: &[Area] = &[
         key: "setup",
         covers: &[
             "config show",
+            "config prefix",
             "config welcome",
             "config welcome-card",
             "config leveling",
@@ -425,9 +427,9 @@ fn controls(pages: &[Page], at: usize, lang: Lang) -> Vec<Component> {
     ]
 }
 
-/// The card for page `at` (the last one when it is past the end), with its controls. Private: the
+/// The card for page `at` (the last one when it is past the end), with its controls. Private, the
 /// controls are one person's to turn.
-async fn page_card(cx: &Cx, at: usize) -> anyhow::Result<InteractionResponseData> {
+async fn page_card(cx: &Cx, at: usize, private: bool) -> anyhow::Result<InteractionResponseData> {
     let lang = cx.lang();
     let pages = &PAGES[&lang];
     let at = at.min(pages.len().saturating_sub(1));
@@ -442,12 +444,18 @@ async fn page_card(cx: &Cx, at: usize) -> anyhow::Result<InteractionResponseData
         theme: Theme::reef(),
     };
     let png = cx.app.render(move |r| r.help_card(&card)).await?;
+    let mut description = t!(lang, "help.description");
+    if let Some(guild) = cx.guild_id() {
+        let prefix = crate::text::shown_prefix(&cx.app, guild).await;
+        description.push('\n');
+        description.push_str(&t!(lang, "text.help-hint", prefix = prefix));
+    }
     let embed = EmbedBuilder::new()
         .color(BRAND)
         .title(t!(lang, "help.title"))
-        .description(t!(lang, "help.description"))
+        .description(description)
         .footer(EmbedFooterBuilder::new(t!(lang, "help.footer")));
-    Ok(Cx::card(embed, "help.png", png, controls(pages, at, lang), true))
+    Ok(Cx::card(embed, "help.png", png, controls(pages, at, lang), private))
 }
 
 /// `hp:<page>` buttons and the `hp:s` menu, whose value is the page.
@@ -457,7 +465,13 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, value: Opti
         other => other,
     };
     let at = wanted.and_then(|p| p.parse().ok()).unwrap_or(0);
-    let data = page_card(cx, at).await?;
+    let private = cx
+        .interaction
+        .message
+        .as_ref()
+        .and_then(|m| m.flags)
+        .is_none_or(|flags| flags.contains(MessageFlags::EPHEMERAL));
+    let data = page_card(cx, at, private).await?;
     cx.update(data).await
 }
 

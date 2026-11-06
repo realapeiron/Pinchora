@@ -16,6 +16,7 @@ mod responder;
 mod roles;
 mod server_events;
 mod server_log;
+mod text;
 mod util;
 mod voice_xp;
 
@@ -38,8 +39,8 @@ pub use custom::{
 pub use cx::Cx;
 pub use defer::Deferral;
 pub use events::{
-    on_ban_add, on_ban_remove, on_guild_create, on_guild_delete, on_member_add, on_member_remove, on_member_update,
-    on_message, on_voice_state_update, voice_snapshot,
+    PermissionChange, on_ban_add, on_ban_remove, on_guild_create, on_guild_delete, on_member_add, on_member_remove,
+    on_member_update, on_message, on_permissions_changed, on_voice_state_update, voice_snapshot,
 };
 pub use house_view::{
     RoomData, catalog as house_catalog, character_png, render_png as render_room_png, room_name as house_room_name,
@@ -48,6 +49,7 @@ pub use house_view::{
 pub use invalidations::listen as listen_for_invalidations;
 pub use responder::Responder;
 pub use server_events::{spawn_ticker as spawn_events_ticker, tick as events_tick};
+pub use text::on_text_command;
 pub use util::fill;
 pub use voice_xp::{
     VoiceSnapshot, forget as forget_voice_presence, prune as voice_prune, rebuild as rebuild_voice,

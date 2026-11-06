@@ -22,7 +22,7 @@ duels = { title = "Duels", intro = "Challenge a friend to a quick game. Most tak
 puzzles = { title = "Puzzles & word games", intro = "Play on your own, or start a party game for the whole channel." }
 crowd = { title = "Crowd games & collecting", intro = "Races, heists and storms for the channel, and critters to find along the shore." }
 community = { title = "Community", intro = "Polls, suggestions, giveaways, role buttons, server points and custom commands." }
-setup = { title = "Server setup", intro = "Welcome cards, goodbyes, the server log, the language and the settings overview." }
+setup = { title = "Server setup", intro = "Welcome cards, goodbyes, the server log, the language, the text prefix and the settings overview." }
 levels = { title = "Levels, XP & points setup", intro = "Level roles, XP multipliers, voice XP, reputation roles and the points store." }
 modules = { title = "Game & module setup", intro = "Switch games and whole parts of Pinchora on or off, for the server or per channel." }
 more = { title = "More commands", intro = "Everything else." }

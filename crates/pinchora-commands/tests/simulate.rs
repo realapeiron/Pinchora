@@ -15,7 +15,7 @@ use std::{
     path::{Path, PathBuf},
     sync::{
         Arc, LazyLock, Mutex, Once,
-        atomic::{AtomicBool, AtomicU64, Ordering},
+        atomic::{AtomicBool, AtomicU16, AtomicU64, AtomicUsize, Ordering},
     },
     time::SystemTime,
 };
@@ -78,6 +78,9 @@ mod collection;
 // Correctness follow-ups: stale buttons, forfeits, repeated requests, forged ids, voice XP at scale.
 #[path = "simulate/w9a.rs"]
 mod w9a;
+// Text commands with a server's prefix, through the same handlers.
+#[path = "simulate/text.rs"]
+mod text;
 // The party games' flows (Hot Pearl, Acronym Tide, Caption the Postcard, Wordle Race, Would You Rather, Truth or Dare).
 #[path = "simulate/turkish.rs"]
 mod turkish;
@@ -201,6 +204,19 @@ struct Mock {
     guild_lookup_fails: Arc<AtomicBool>,
     /// Who owns the server, as `GET /guilds/{id}` says (1 until a test hands it to someone).
     owner: Arc<AtomicU64>,
+    /// The bot's global commands, as Discord's JSON.
+    global_commands: Arc<Mutex<Vec<Value>>>,
+    /// What the server set for the bot's commands under Integrations, as Discord's JSON (a list of
+    /// guild application command permissions); `None` answers Unknown Application.
+    command_permissions: Arc<Mutex<Option<Value>>>,
+    /// An HTTP status the command permissions route answers instead (0: none).
+    command_permissions_status: Arc<AtomicU16>,
+    /// How often the command permissions were asked for.
+    command_permission_lookups: Arc<AtomicUsize>,
+    /// Messages somebody deleted through the API, as (channel, message).
+    deleted_messages: Arc<Mutex<Vec<(u64, u64)>>>,
+    /// Whether the server's role list has `@everyone` (Discord's always does; most tests never ask).
+    everyone_role: Arc<AtomicBool>,
 }
 
 /// A message a handler posted to a channel (`POST`) or edited there (`PATCH`).
@@ -358,8 +374,14 @@ async fn discord(
     let parts: Vec<&str> = path.trim_matches('/').split('/').collect();
     let number = |part: &str| part.parse::<u64>().unwrap_or(0);
     match (&method, parts.as_slice()) {
-        (&Method::GET, [.., "guilds", _, "roles"]) => {
+        (&Method::GET, [.., "guilds", guild, "roles"]) => {
             let mut roles = vec![role_json(BOT_ROLE_ID, "Pinchora", BOT_ROLE_POSITION, true)];
+            if mock.everyone_role.load(Ordering::SeqCst) {
+                // View Channel, Send Messages and Use Application Commands: what a new server gives everyone.
+                let mut everyone = role_json(number(guild), "@everyone", 0, false);
+                everyone["permissions"] = json!((1u64 << 10 | 1 << 11 | 1 << 31).to_string());
+                roles.push(everyone);
+            }
             roles.extend(mock.roles.lock().unwrap().iter().cloned());
             return (StatusCode::OK, Value::Array(roles).to_string());
         }
@@ -394,6 +416,32 @@ async fn discord(
             if method == Method::PUT {
                 held.push(role);
             }
+            return (StatusCode::NO_CONTENT, String::new());
+        }
+        (&Method::GET, [.., "applications", _, "commands"]) => {
+            let commands = mock.global_commands.lock().unwrap().clone();
+            return (StatusCode::OK, Value::Array(commands).to_string());
+        }
+        (&Method::GET, [.., "applications", _, "guilds", _, "commands", "permissions"]) => {
+            mock.command_permission_lookups.fetch_add(1, Ordering::SeqCst);
+            let status = mock.command_permissions_status.load(Ordering::SeqCst);
+            if status != 0 {
+                let down = json!({ "message": "Missing Access", "code": 50001 });
+                return (StatusCode::from_u16(status).expect("status"), down.to_string());
+            }
+            return match mock.command_permissions.lock().unwrap().clone() {
+                Some(list) => (StatusCode::OK, list.to_string()),
+                None => {
+                    let gone = json!({ "message": "Unknown application command permissions", "code": 10066 });
+                    (StatusCode::NOT_FOUND, gone.to_string())
+                }
+            };
+        }
+        (&Method::DELETE, [.., "channels", channel, "messages", id]) => {
+            mock.deleted_messages
+                .lock()
+                .unwrap()
+                .push((number(channel), number(id)));
             return (StatusCode::NO_CONTENT, String::new());
         }
         (&Method::GET, [.., "guilds", _]) if mock.guild_lookup_fails.load(Ordering::SeqCst) => {
@@ -956,6 +1004,12 @@ impl Sim {
             channel_lookups: Arc::default(),
             guild_lookup_fails: Arc::default(),
             owner: Arc::default(),
+            global_commands: Arc::default(),
+            command_permissions: Arc::default(),
+            command_permissions_status: Arc::default(),
+            command_permission_lookups: Arc::default(),
+            deleted_messages: Arc::default(),
+            everyone_role: Arc::default(),
         };
         let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind the mock");
         let mock = listener.local_addr().expect("mock address");
@@ -969,6 +1023,8 @@ impl Sim {
                 .build(),
         );
         let mut app = App::new(rest.clone(), rest, Id::new(APPLICATION_ID), db, cache, "sim".into());
+        // As on a bot with the Message Content intent: text commands answer to the server's prefix.
+        app.message_content = true;
         // Avatars come from Discord's CDN. The mock refuses the tunnel, so cards get the
         // placeholder avatar, offline and the same every run.
         app.web = reqwest::Client::builder()
