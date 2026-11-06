@@ -95,6 +95,9 @@ mod carryover;
 // Who may set a role up to be handed out.
 #[path = "simulate/grants.rs"]
 mod grants;
+// What reaches the (still empty) feature hooks.
+#[path = "simulate/hooks.rs"]
+mod hooks;
 
 const APPLICATION_ID: u64 = 1;
 const CHANNEL_ID: u64 = 2;

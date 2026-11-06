@@ -401,6 +401,102 @@ The bot owner turns this on in two places: **Message Content Intent** on the Bot
 Portal, and `PINCHORA_GATEWAY__MESSAGE_CONTENT=true`. Without them Discord only sends the text of messages that
 mention the bot, so text commands work as `@Pinchora profile` and `/help` says so.
 
+### AutoMod
+
+<!-- F1: the AutoMod package replaces this heading's section; keep it one `###` section. -->
+
+### Roles pack
+
+<!-- F2: the Roles pack package replaces this heading's section; keep it one `###` section. -->
+
+### Tickets
+
+<!-- F3: the Tickets package replaces this heading's section; keep it one `###` section. -->
+
+### Temp voice
+
+<!-- F4: the Temp voice package replaces this heading's section; keep it one `###` section. -->
+
+### Starboard and vote channels
+
+<!-- F5: the Starboard and vote channels package replaces this heading's section; keep it one `###` section. -->
+
+### Invite tracker
+
+<!-- F6: the Invite tracker package replaces this heading's section; keep it one `###` section. -->
+
+### Birthdays
+
+<!-- F7: the Birthdays package replaces this heading's section; keep it one `###` section. -->
+
+### Achievements
+
+<!-- F8: the Achievements package replaces this heading's section; keep it one `###` section. -->
+
+### Stats
+
+<!-- F9: the Stats package replaces this heading's section; keep it one `###` section. -->
+
+### Raid protection and verification
+
+<!-- F10: the Raid protection and verification package replaces this heading's section; keep it one `###` section. -->
+
+### Anti-nuke
+
+<!-- F11: the Anti-nuke package replaces this heading's section; keep it one `###` section. -->
+
+### Social feeds
+
+<!-- F12: the Social feeds package replaces this heading's section; keep it one `###` section. -->
+
+### Workflows
+
+<!-- F13: the Workflows package replaces this heading's section; keep it one `###` section. -->
+
+### Branding
+
+<!-- F14: the Branding package replaces this heading's section; keep it one `###` section. -->
+
+### AI characters
+
+<!-- F15: the AI characters package replaces this heading's section; keep it one `###` section. -->
+
+### Roblox verification
+
+<!-- F16: the Roblox verification package replaces this heading's section; keep it one `###` section. -->
+
+### Game trackers
+
+<!-- F17: the Game trackers package replaces this heading's section; keep it one `###` section. -->
+
+### Info commands
+
+<!-- F18: the Info commands package replaces this heading's section; keep it one `###` section. -->
+
+### Utility
+
+<!-- F19: the Utility package replaces this heading's section; keep it one `###` section. -->
+
+### Community pack
+
+<!-- F20: the Community pack package replaces this heading's section; keep it one `###` section. -->
+
+### Events
+
+<!-- F21: the Events package replaces this heading's section; keep it one `###` section. -->
+
+### XP admin
+
+<!-- F22: the XP admin package replaces this heading's section; keep it one `###` section. -->
+
+### Brand kit
+
+<!-- F23: the Brand kit package replaces this heading's section; keep it one `###` section. -->
+
+### More games
+
+<!-- F24: the More games package replaces this heading's section; keep it one `###` section. -->
+
 ## Quick start (Docker)
 
 1. Create an application at <https://discord.com/developers/applications>, add a bot, and turn
@@ -662,7 +758,8 @@ crates/
   pinchora-db/        PostgreSQL (sqlx) + migrations runner
   pinchora-cache/     Redis: cooldowns, gateway sessions, cross-pod identify queue, invalidation pub/sub
   pinchora-render/    pixel-art cards (SVG → PNG with resvg)
-  pinchora-commands/  slash commands, buttons, gateway event handlers
+  pinchora-commands/  slash commands, buttons, gateway event handlers; `hooks.rs` is where feature packages listen
+                      to messages, joins, leaves, reactions, DMs and level-ups
   pinchora-web/       web dashboard API (axum): Discord OAuth, sessions, CSRF, server settings, modules, the house viewer, the public site's data and invite link, the SPA
 web/                  dashboard and public site UI (Vite + React + TypeScript), embedded into the binary
 migrations/           SQL migrations

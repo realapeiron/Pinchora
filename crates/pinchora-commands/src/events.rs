@@ -16,6 +16,7 @@ use twilight_model::{
     id::Id,
 };
 
+use crate::hooks::{self, JoinVerdict, ReactionEvent, Verdict};
 use crate::{
     App, auto,
     commands::collection,
@@ -33,6 +34,16 @@ pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<(
     if msg.author.bot || msg.webhook_id.is_some() || !matches!(msg.kind, MessageType::Regular | MessageType::Reply) {
         return Ok(());
     }
+    let Some(guild) = msg.guild_id else {
+        hooks::on_dm(&app, &msg).await;
+        return Ok(());
+    };
+    let (g, u) = (guild.get(), msg.author.id.get());
+    let settings = app.guild_settings(g).await?;
+    // Packages that judge a message (automod first) speak before it earns XP or calls a command.
+    if hooks::after_message(&app, &msg, &settings).await == Verdict::Blocked {
+        return Ok(());
+    }
     // A text command runs on its own; the message still counts as chat below.
     if crate::text::calls_bot(&app, &msg).await {
         let (app2, message) = (app.clone(), msg.clone());
@@ -40,10 +51,6 @@ pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<(
             crate::text::on_text_command(app2, &message).await;
         });
     }
-    let Some(guild) = msg.guild_id else {
-        return Ok(());
-    };
-    let (g, u) = (guild.get(), msg.author.id.get());
     // Keywords in the chat set auto-responders off (they only hear text when the bot has the Message
     // Content intent). It comes first: it has nothing to do with the XP minute.
     auto::chat(&app, &msg).await;
@@ -55,7 +62,6 @@ pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<(
     {
         tracing::debug!(%error, guild = g, "chat drops not counted");
     }
-    let settings = app.guild_settings(g).await?;
     // Leveling and points can also be switched off in some channels (`/config modules`). Where neither
     // counts the minute is not spent, so chatting in such a channel never costs the XP of the next message
     // somewhere else.
@@ -135,14 +141,19 @@ pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<(
 
 /// Gives the join role, logs the join, and posts a welcome card when the server has them turned on.
 pub async fn on_member_add(app: Arc<App>, event: MemberAdd) -> anyhow::Result<()> {
+    let held = hooks::on_member_join(&app, &event).await == JoinVerdict::Held;
     let MemberAdd { guild_id, member } = event;
     let settings = app.guild_settings(guild_id.get()).await?;
     // The role and the log come first: neither depends on the welcome card going out.
-    if let Some(role) = settings.join_role_id.filter(|_| !member.user.bot) {
+    if let Some(role) = settings.join_role_id.filter(|_| !member.user.bot && !held) {
         roles::give_join_role(&app, guild_id.get(), member.user.id.get(), role as u64).await;
     }
     server_log::note_names(&app, &settings, guild_id.get(), &member.user, member.nick.as_deref()).await;
     server_log::member_joined(&app, &settings, &member.user).await;
+    // A member held at the gate gets the rest when they are let in.
+    if held {
+        return Ok(());
+    }
     auto::member_joined(&app, guild_id.get(), &member).await;
     if member.user.bot {
         return Ok(());
@@ -192,6 +203,7 @@ pub async fn on_member_add(app: Arc<App>, event: MemberAdd) -> anyhow::Result<()
 
 /// Says goodbye when the server has it turned on, and logs the leave.
 pub async fn on_member_remove(app: Arc<App>, event: MemberRemove) -> anyhow::Result<()> {
+    hooks::on_member_leave(&app, &event).await;
     let MemberRemove { guild_id, user } = event;
     let settings = app.guild_settings(guild_id.get()).await?;
     app.log_state.forget(guild_id.get(), user.id.get()).await;
@@ -227,6 +239,12 @@ pub async fn on_member_remove(app: Arc<App>, event: MemberRemove) -> anyhow::Res
         .content(&text)
         .allowed_mentions(Some(&mentions))
         .await?;
+    Ok(())
+}
+
+/// Passes a reaction added to or removed from a message on to the feature packages.
+pub async fn on_reaction(app: Arc<App>, event: ReactionEvent) -> anyhow::Result<()> {
+    hooks::on_reaction(&app, &event).await;
     Ok(())
 }
 

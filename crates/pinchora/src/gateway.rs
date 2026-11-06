@@ -6,6 +6,7 @@ use pinchora_commands::{
     on_member_add, on_member_remove, on_member_update, on_message, on_permissions_changed, on_voice_state_update,
     rebuild_voice, voice_snapshot,
 };
+use pinchora_commands::{ReactionEvent, on_reaction};
 use pinchora_core::{
     Config, cluster,
     telemetry::{self, Readiness},
@@ -37,6 +38,10 @@ fn wanted_events() -> EventTypeFlags {
         | EventTypeFlags::VOICE_STATE_UPDATE
         | EventTypeFlags::GUILD_CREATE
         | EventTypeFlags::GUILD_DELETE
+        | EventTypeFlags::REACTION_ADD
+        | EventTypeFlags::REACTION_REMOVE
+        | EventTypeFlags::REACTION_REMOVE_ALL
+        | EventTypeFlags::REACTION_REMOVE_EMOJI
         // What text commands judge a member's permissions by: the server's owner and roles, a
         // channel's overwrites and the Integrations settings. Cheap, and they come under the
         // Guilds intent (the last one with no intent at all).
@@ -86,6 +91,8 @@ pub async fn run(config: &Config, app: Arc<App>, ready: Readiness) -> anyhow::Re
     // Bans and voice states feed the server log; neither intent is privileged.
     let mut intents =
         Intents::GUILDS | Intents::GUILD_MESSAGES | Intents::GUILD_MODERATION | Intents::GUILD_VOICE_STATES;
+    // Reaction roles and the starboard listen to reactions; not privileged either.
+    intents |= Intents::GUILD_MESSAGE_REACTIONS;
     if config.gateway.member_events {
         intents |= Intents::GUILD_MEMBERS;
     }
@@ -280,6 +287,10 @@ fn dispatch(app: &Arc<App>, shard: u32, event: Event) {
                 }
             });
         }
+        Event::ReactionAdd(event) => reacted(app, ReactionEvent::Add(event)),
+        Event::ReactionRemove(event) => reacted(app, ReactionEvent::Remove(event)),
+        Event::ReactionRemoveAll(event) => reacted(app, ReactionEvent::RemoveAll(event)),
+        Event::ReactionRemoveEmoji(event) => reacted(app, ReactionEvent::RemoveEmoji(event)),
         Event::GuildUpdate(event) => forget(app, PermissionChange::Guild(event.id.get())),
         Event::RoleCreate(event) => forget(app, PermissionChange::Guild(event.guild_id.get())),
         Event::RoleUpdate(event) => forget(app, PermissionChange::Guild(event.guild_id.get())),
@@ -304,4 +315,15 @@ fn dispatch(app: &Arc<App>, shard: u32, event: Event) {
 fn forget(app: &Arc<App>, change: PermissionChange) {
     let app2 = app.clone();
     app.spawn(async move { on_permissions_changed(&app2, change).await });
+}
+
+/// Hands a reaction change to the feature packages. Droppable like a chat message: a reaction storm
+/// must not use every event slot.
+fn reacted(app: &Arc<App>, event: ReactionEvent) {
+    let app2 = app.clone();
+    app.spawn_event("reaction", async move {
+        if let Err(error) = on_reaction(app2, event).await {
+            tracing::warn!(%error, "reaction handler failed");
+        }
+    });
 }

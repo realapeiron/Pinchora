@@ -51,6 +51,7 @@ pub(crate) async fn level_up(app: &Arc<App>, settings: &GuildSettings, up: Level
         here,
     } = up;
     let earned = roles::level_up_roles(app, guild, user, after, held, settings.level_roles_stack).await;
+    crate::hooks::on_level_up(app, guild, user, after, earned).await;
     // Auto-responders for a level-up answer whatever the level-up mode says, and never hold it up.
     if let Some(author) = author {
         let event = LevelUpEvent {

@@ -608,6 +608,15 @@ p {
   border-left-color: var(--accent);
 }
 
+.sidebar-filter {
+  appearance: none;
+  border-radius: 0;
+}
+
+.sidebar-empty {
+  margin: 0 0 0 8px;
+}
+
 .overview {
   display: grid;
   gap: 24px;

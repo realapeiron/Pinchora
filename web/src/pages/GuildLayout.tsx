@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useParams } from "react-router";
 
 import { PixelLink } from "../components/PixelButton";
@@ -7,12 +7,16 @@ import { ServerIcon } from "../components/ServerIcon";
 import { TopBar } from "../components/TopBar";
 import { ApiError, type Me } from "../lib/api";
 import { isDiscordId } from "../lib/ids";
+import { type NavGroup, visibleNav } from "../lib/nav";
 import { useOverview } from "../lib/queries";
 import { NotFound } from "./NotFound";
 import { Loading, Problem } from "./States";
 
-/** The admin pages of a server, by sidebar group. Paths are relative to `/g/:guildId`. */
-export const NAV: { group: string; pages: { to: string; label: string }[] }[] = [
+/**
+ * The admin pages of a server, by sidebar group. Paths are relative to `/g/:guildId`. A feature adds its
+ * page as one line in its own group; a group with no page yet is not shown.
+ */
+export const NAV: NavGroup[] = [
   {
     group: "SERVER",
     pages: [
@@ -38,6 +42,11 @@ export const NAV: { group: string; pages: { to: string; label: string }[] }[] = 
       { to: "community", label: "Community" },
     ],
   },
+  { group: "ROLES", pages: [] },
+  { group: "SAFETY", pages: [] },
+  { group: "COMMUNITY", pages: [] },
+  { group: "FEEDS", pages: [] },
+  { group: "PLAYERS", pages: [] },
 ];
 
 /** The admin side of one server: sidebar with the server and its pages, the page on the right. */
@@ -50,6 +59,8 @@ export function GuildLayout({ me }: { me: Me }) {
 function ValidGuildLayout({ me, guildId }: { me: Me; guildId: string }) {
   const overview = useOverview(guildId);
   const nav = useRef<HTMLElement>(null);
+  const [filter, setFilter] = useState("");
+  const shown = visibleNav(NAV, filter);
   const { pathname } = useLocation();
   // On a phone the links are one sideways strip: keep the open page's tab in sight.
   useEffect(() => {
@@ -82,8 +93,17 @@ function ValidGuildLayout({ me, guildId }: { me: Me; guildId: string }) {
               </NavLink>
             </div>
           </div>
+          <input
+            type="search"
+            className="pixel-input sidebar-filter"
+            aria-label="Filter pages"
+            placeholder="Filter pages"
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+          />
           <nav ref={nav} aria-label="Server settings" className="sidebar-nav">
-            {NAV.map(({ group, pages }) => (
+            {shown.length === 0 && <p className="muted sidebar-empty">No page matches.</p>}
+            {shown.map(({ group, pages }) => (
               <div key={group} className="sidebar-section">
                 <p className="sidebar-group pixel-label">{group}</p>
                 {pages.map((page) => (
