@@ -9,6 +9,7 @@ repository = "https://github.com/realapeiron/Pinchora"
 rust-version = "1.94"
 
 [workspace.dependencies]
+regex = "1.12"
 pinchora-core = { path = "crates/pinchora-core" }
 pinchora-db = { path = "crates/pinchora-db" }
 pinchora-cache = { path = "crates/pinchora-cache" }

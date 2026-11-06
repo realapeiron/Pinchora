@@ -121,11 +121,12 @@ pub enum Module {
     ColorRoles,
     Stats,
     Tickets,
+    AutoMod,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 33] = [
+    pub const ALL: [Self; 34] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -159,6 +160,7 @@ impl Module {
         Self::ColorRoles,
         Self::Stats,
         Self::Tickets,
+        Self::AutoMod,
     ];
 
     /// The key stored in the database and used in the API.
@@ -197,6 +199,7 @@ impl Module {
             Self::ColorRoles => "color_roles",
             Self::Stats => "stats",
             Self::Tickets => "tickets",
+            Self::AutoMod => "automod",
         }
     }
 
@@ -239,6 +242,7 @@ impl Module {
             Self::ColorRoles => "Colour roles",
             Self::Stats => "Stats",
             Self::Tickets => "Tickets",
+            Self::AutoMod => "AutoMod",
         }
     }
 
@@ -296,6 +300,7 @@ impl Module {
             Self::ColorRoles => "/color: colour roles members pick for their names.",
             Self::Stats => "/stats, /counters, the Stats page and counting messages, voice minutes, joins and leaves.",
             Self::Tickets => "/ticket and /tickets: private support tickets opened from a panel, with transcripts.",
+            Self::AutoMod => "Automatic message rules and moderation actions.",
         }
     }
 
@@ -325,6 +330,7 @@ impl Module {
             Self::RolePanels | Self::AutoRoles | Self::ColorRoles => Group::Roles,
             Self::Stats => Group::Server,
             Self::Tickets => Group::Community,
+            Self::AutoMod => Group::Safety,
         }
     }
 
@@ -333,6 +339,7 @@ impl Module {
             Self::Welcome | Self::Goodbye | Self::Log | Self::Moderation | Self::Gambling | Self::AutoRoles => {
                 Scope::Server
             }
+            Self::AutoMod => Scope::Server,
             _ => Scope::Channels,
         }
     }
@@ -390,6 +397,7 @@ impl Module {
                 Some("stats") => Self::Profile,
                 _ => return None,
             },
+            "automod" => Self::AutoMod,
             _ => return None,
         })
     }
@@ -420,6 +428,7 @@ impl Module {
             "pl" => Self::Polls,
             "sc" => Self::Stats,
             "tk" | "tp" | "tf" | "tr" => Self::Tickets,
+            "am" | "ax" => Self::AutoMod,
             _ => return None,
         })
     }

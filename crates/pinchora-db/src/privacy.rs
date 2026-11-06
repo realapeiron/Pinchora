@@ -22,6 +22,8 @@ const WALK_LOCK: Duration = Duration::minutes(45);
 /// [`OTHER_TABLES`], [`ID_LISTS`], [`CLEARED_COLUMNS`], [`DAILY_LIMITS`], [`ANONYMISED`] or [`ZEROED_COLUMNS`]) before it
 /// can ship.
 pub const USER_COLUMNS: &[(&str, &str)] = &[
+    ("automod_hits", "user_id"),
+    ("automod_strikes", "user_id"),
     ("placements", "user_id"),
     ("rooms", "user_id"),
     ("houses", "user_id"),
@@ -131,6 +133,7 @@ pub const CLEARED_COLUMNS: &[(&str, &str)] = &[
     ("collection_drops", "host_id"),
     ("tickets", "claimed_by"),
     ("tickets", "closed_by"),
+    ("automod_rules", "created_by"),
 ];
 
 /// The games' per-day limits, as (table, player column, day column), the day in days since
@@ -165,6 +168,9 @@ pub const ZEROED_COLUMNS: &[(&str, &str)] = &[("custom_commands", "created_by"),
 
 /// Tables that belong to no player: server settings and shared stock.
 pub const OTHER_TABLES: &[&str] = &[
+    "automod_settings",
+    "automod_rules",
+    "automod_hit_actions",
     "_sqlx_migrations",
     "guilds",
     "level_roles",

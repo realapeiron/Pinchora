@@ -131,6 +131,7 @@ async fn boot(config: &Config, role: &str) -> anyhow::Result<(Arc<App>, Readines
     pinchora_commands::spawn_reminder_ticker(app.clone());
     // Ends giveaways and closes polls when their time is up, on whichever pod gets there first.
     pinchora_commands::spawn_events_ticker(app.clone());
+    pinchora_commands::spawn_automod_ticker(app.clone());
     // Lifts temporary bans whose time is up, on whichever pod claims them first.
     pinchora_commands::spawn_moderation_ticker(app.clone());
     // Retires critter drops and bottles nobody took in time.

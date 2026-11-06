@@ -12,6 +12,7 @@ use chrono::{DateTime, Utc};
 use moka::future::Cache as Moka;
 use pinchora_cache::Cache;
 use pinchora_core::{
+    automod::Config as AutoModConfig,
     leveling::XpRules,
     modules::{Access, GuildModules, Module},
 };
@@ -147,6 +148,7 @@ pub struct App {
     command_overrides: Moka<u64, Arc<CommandOverrides>>,
     xp_rules: Moka<u64, Arc<XpRules>>,
     module_rules: Moka<u64, Arc<GuildModules>>,
+    automod_configs: Moka<u64, Arc<AutoModConfig>>,
     voice_guilds: Moka<u64, Arc<VoiceGuild>>,
     channel_places: Moka<u64, ChannelPlace>,
     channel_misses: Moka<u64, ()>,
@@ -225,6 +227,10 @@ impl App {
                 .time_to_live(Duration::from_secs(60))
                 .build(),
             module_rules: Moka::builder()
+                .max_capacity(50_000)
+                .time_to_live(Duration::from_secs(60))
+                .build(),
+            automod_configs: Moka::builder()
                 .max_capacity(50_000)
                 .time_to_live(Duration::from_secs(60))
                 .build(),
@@ -415,6 +421,33 @@ impl App {
     /// the server log's channel ignore list.
     pub(crate) async fn place_lineage(&self, channel: u64) -> Vec<u64> {
         self.lineage(channel, false, |_| false).await
+    }
+
+    /// Complete ancestry for exclusion checks; an unknown parent fails closed.
+    pub(crate) async fn automod_lineage(&self, channel: u64) -> Option<Vec<u64>> {
+        let mut ids = vec![channel];
+        let place = self.channel_place(channel).await?;
+        if let Some(parent) = place.parent {
+            ids.push(parent);
+            if place.thread {
+                let parent_place = self.channel_place(parent).await?;
+                if let Some(category) = parent_place.parent {
+                    ids.push(category);
+                }
+            }
+        }
+        Some(ids)
+    }
+
+    pub async fn automod_config(&self, guild: u64) -> anyhow::Result<Arc<AutoModConfig>> {
+        self.automod_configs
+            .try_get_with(guild, async { self.db.automod_config(guild).await.map(Arc::new) })
+            .await
+            .map_err(|e| anyhow::anyhow!("{e:#}"))
+    }
+
+    pub async fn forget_automod_config(&self, guild: u64) {
+        self.automod_configs.invalidate(&guild).await;
     }
 
     /// [`App::xp_lineage`] for any rule: `none` says the server has no channel rules at all, `has_rule`
@@ -678,6 +711,7 @@ impl App {
     }
 
     pub async fn forget_guild_settings(&self, guild_id: u64) {
+        self.forget_automod_config(guild_id).await;
         self.guild_settings.invalidate(&guild_id).await;
         self.log_state.forget_config(guild_id).await;
         self.module_rules.invalidate(&guild_id).await;

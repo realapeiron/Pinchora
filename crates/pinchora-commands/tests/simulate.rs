@@ -79,6 +79,8 @@ mod cards;
 #[path = "simulate/collection.rs"]
 mod collection;
 // Moderation commands, cases and the mod-log; the detailed server log.
+#[path = "simulate/automod.rs"]
+mod automod;
 #[path = "simulate/moderation.rs"]
 mod moderation;
 // Correctness follow-ups: stale buttons, forfeits, repeated requests, forged ids, voice XP at scale.
@@ -12588,6 +12590,36 @@ async fn admin_paths_refuse_members_without_manage_server() {
         "channels": resolved_channels(&[channel])["channels"],
     });
     let rows: Vec<(&str, Value)> = vec![
+        ("automod show", json!([sub("show", vec![])])),
+        (
+            "automod profile",
+            json!([sub("profile", vec![text_option("name", "strict")])]),
+        ),
+        (
+            "automod toggle",
+            json!([sub(
+                "toggle",
+                vec![text_option("rule", "caps"), bool_option("enabled", true)]
+            )]),
+        ),
+        ("automod test", json!([sub("test", vec![text_option("text", "HELLO")])])),
+        (
+            "automod exempt role",
+            json!([group(
+                "exempt",
+                sub("role", vec![text_option("action", "add"), role_option("role", &role)])
+            )]),
+        ),
+        (
+            "automod exempt channel",
+            json!([group(
+                "exempt",
+                sub(
+                    "channel",
+                    vec![text_option("action", "add"), channel_option("channel", channel)]
+                )
+            )]),
+        ),
         (
             "config welcome",
             json!([sub("welcome", vec![bool_option("enabled", true)])]),

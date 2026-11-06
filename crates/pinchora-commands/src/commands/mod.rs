@@ -1,3 +1,4 @@
+pub(crate) mod automod;
 mod bio;
 pub(crate) mod board;
 pub(crate) mod character;
@@ -170,4 +171,5 @@ commands!(
     stats::CountersCommand,
     tickets::TicketCommand,
     tickets::TicketsCommand,
+    automod::AutoMod,
 );

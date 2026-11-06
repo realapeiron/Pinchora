@@ -20,3 +20,4 @@ pub mod tickets;
 pub mod wrapped;
 
 pub use config::Config;
+pub mod automod;

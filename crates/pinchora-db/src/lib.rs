@@ -159,3 +159,6 @@ impl Db {
 pub(crate) fn sql_id(id: u64) -> i64 {
     id as i64
 }
+
+mod automod;
+pub use automod::*;
