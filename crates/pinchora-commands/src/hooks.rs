@@ -13,7 +13,7 @@ use pinchora_db::GuildSettings;
 use twilight_model::{
     channel::Message,
     gateway::payload::incoming::{
-        MemberAdd, MemberRemove, ReactionAdd, ReactionRemove, ReactionRemoveAll, ReactionRemoveEmoji,
+        MemberAdd, MemberRemove, MemberUpdate, ReactionAdd, ReactionRemove, ReactionRemoveAll, ReactionRemoveEmoji,
     },
 };
 
@@ -61,22 +61,25 @@ pub(crate) async fn after_message(_app: &Arc<App>, _msg: &Message, _settings: &G
 }
 
 /// A member joined, before their join role and welcome.
-pub(crate) async fn on_member_join(_app: &Arc<App>, _event: &MemberAdd) -> JoinVerdict {
+pub(crate) async fn on_member_join(app: &Arc<App>, event: &MemberAdd) -> JoinVerdict {
     // F10 join gate and captcha goes first: a member it holds is `JoinVerdict::Held`.
     // F2 auto roles (they honour Held).
+    crate::commands::roles_pack::on_member_join(app, event).await;
     // F6 invite tracker works out who invited them.
     JoinVerdict::Continue
 }
 
 /// A member left or was removed, before the goodbye.
-pub(crate) async fn on_member_leave(_app: &Arc<App>, _event: &MemberRemove) {
+pub(crate) async fn on_member_leave(app: &Arc<App>, event: &MemberRemove) {
     // F2 sticky roles remember what they held.
+    crate::commands::roles_pack::on_member_leave(app, event).await;
     // F6 invite tracker takes the invite back.
 }
 
 /// A reaction changed on a message in a server.
-pub(crate) async fn on_reaction(_app: &Arc<App>, _event: &ReactionEvent) {
+pub(crate) async fn on_reaction(app: &Arc<App>, event: &ReactionEvent) {
     // F2 reaction roles.
+    crate::commands::roles_pack::on_reaction(app, event).await;
     // F5 starboard counts stars.
     // F13 workflows' reaction trigger.
 }
@@ -90,4 +93,11 @@ pub(crate) async fn on_dm(_app: &Arc<App>, _msg: &Message) {
 pub(crate) async fn on_level_up(_app: &Arc<App>, _guild: u64, _user: u64, _level: u32, _role: Option<u64>) {
     // F8 achievements (the level kind).
     // F13 workflows' level-up trigger.
+}
+
+/// A member's roles or name changed, before the server log hears of it. Not one of the first six: sticky roles
+/// need to see every change to a member's roles, because Discord's leave event does not say what they held.
+pub(crate) async fn on_member_update(app: &Arc<App>, event: &MemberUpdate) {
+    // F2 sticky roles keep what the member holds now.
+    crate::commands::roles_pack::on_member_update(app, event).await;
 }

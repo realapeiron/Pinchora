@@ -30,6 +30,7 @@ pub use cards::{
 pub use cards::{
     BottleCard, DexCard, DexCell, DropCard, DropCritter, EntryPicture, HaulCard, HaulTile, PotCard, PotState,
 };
+pub use cards::{ColorCard, ColorCell};
 pub use cards::{
     EntriesCard, EntryHeader, EntryRow, LettersCard, PartyLobbyCard, PearlCard, PearlSeat, PostcardCard, PromptCard,
     PromptTone, RaceCard, Racer, RacerState, RatherCard, StandingRow, StandingsCard,
@@ -184,6 +185,10 @@ impl Renderer {
     }
 
     pub fn poll_card(&self, card: &PollCard) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn color_card(&self, card: &ColorCard) -> anyhow::Result<Vec<u8>> {
         self.svg_to_png(&card.to_svg())
     }
 

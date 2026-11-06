@@ -45,9 +45,16 @@ Written in Rust and built to run sharded on Kubernetes.
 | `/config goodbye [channel] [message] [off]` | Goodbye message in a channel when a member leaves; placeholders `{user}` `{server}` `{members}` (Manage Server) |
 | `/config log [channel] [off]` | Server log: compact embeds with the member, their avatar and the time for joins and leaves, nickname and username changes, bans and unbans, and voice joins, leaves and moves (Manage Server) |
 | `/config log-events [members] [names] [bans] [voice]` | Switch kinds of log entries on or off; all start on, so picking a log channel is enough (Manage Server) |
-| `/roles panel title [description]` | Start a panel of role buttons (a draft); the same title again only changes the description (Manage Server) |
-| `/roles add panel role label [emoji]` | Put a role button on a panel (up to 25); adding a role again changes its label and emoji. `panel` is the title or the number (Manage Server) |
-| `/roles remove panel role`, `/roles post panel channel` | Take a button off, or post the panel; posting again in the same channel updates the message in place (Manage Server) |
+| `/roles panel title [description] [style] [exclusive] [required] [min] [max]` | Start a role panel (a draft); the same title again changes only what is given. `style` is `buttons` (the default), `select` (a menu) or `reactions`; `exclusive` makes picking a role swap the member's other role of the panel; `required` is a role members need to use it (@everyone takes the need away); `min` and `max` (0 to 25, 0 is no limit) are the fewest and most roles of the panel a member holds (Manage Server) |
+| `/roles add panel role label [emoji] [description]` | Put a role on a panel (up to 25); adding a role again changes its label, emoji and line. `panel` is the title or the number; `description` is the line under the label in a menu; a reactions panel needs an emoji on every role (Manage Server) |
+| `/roles remove panel role`, `/roles post panel channel` | Take a role off, or post the panel; posting again in the same channel updates the message in place, and a reactions panel gets its emojis put under the message (Manage Server) |
+| `/roles temp role duration [panel]` | Make a role last only `duration` (`12h`, `7d`; a minute to a year; `off` for good) after a member takes it from a panel, on one panel or on every panel that has it (Manage Server) |
+| `/autoroles add role [kind] [delay] [remove_after]` | Give a role to everyone who joins (up to 10 a server): `kind` is `join` (members, the default), `bot` or `after_verify` (when the join gate lets a member in); `delay` waits (30 seconds to 30 days) and `remove_after` takes it back again (a minute to a year); adding the same role and kind again changes it. Same safety checks as level roles (Manage Server) |
+| `/autoroles remove role [kind]`, `/autoroles list` | Stop giving a role (of one kind, or every kind), or list the auto roles with whether sticky roles are on (Manage Server) |
+| `/autoroles sticky enabled` | Sticky roles: a member who leaves and comes back within 60 days gets back the roles they held, as far as the bot can give them (not roles above its own, roles with a dangerous permission, roles an integration owns, or roles whose time ran out while they were away). Switching it on starts from the roles members hold now (Manage Server) |
+| `/color pick`, `/color list`, `/color remove` | Colour your name with a role: the menu offers the palette (the card colours that read on Discord's dark chat) and the server's own colour roles, with a card showing the pick on a name; a member holds one colour at a time. Roles are made the first time somebody picks a colour |
+| `/color set hex` | Any colour by hex code (`#ff6b4a`), when the server's mode is `hex`; colours too dark to read are refused |
+| `/color setup [enabled] [mode] [allow] [disallow] [anchor] [roles]` | Switch colour roles on, choose `palette` or `hex` mode, name the roles allowed to pick (none named means everyone), the anchor role new colour roles are made under, and own roles to offer as colours (mention them, up to 10). A server holds up to 32 colour roles (Manage Server) |
 | `/points show [user]` | Server points balance and rank; the server can rename the points and pick their emoji |
 | `/points give\|take user amount` | Adjust a member's server points (Manage Server) |
 | `/config points [enabled] [name] [emoji] [min] [max]` | Turn server points on or off, rename them, and set what a message earns (Manage Server) |
@@ -407,7 +414,33 @@ mention the bot, so text commands work as `@Pinchora profile` and `/help` says s
 
 ### Roles pack
 
-<!-- F2: the Roles pack package replaces this heading's section; keep it one `###` section. -->
+Auto roles, role panels in three styles, roles that expire, roles kept for members who come back, and colour
+roles. The commands are in the table above (`/autoroles`, `/roles`, `/color`); the dashboard's **Roles** page
+(sidebar group Roles) does the same with a live preview of every panel.
+
+- **Auto roles** (module `autoroles`) are given by the join hook, after what sticky roles bring back, and respect a
+  member held at the join gate (the gate gives the `after_verify` ones with `give_after_verify` when it lets them
+  in). A role with a delay waits in `delayed_roles`, a role that lasts waits in `timed_roles`; one ticker (every 30
+  seconds, on every pod, claimed with leases) gives and takes them, and also serves a panel's expiring roles. A
+  change Discord refuses for good (the member left, the role is gone, the bot may not) is dropped; one with no
+  answer is tried again. Members who leave lose the roles still waiting for them.
+- **Sticky roles** need to know what a member held when they left, which Discord's leave event does not say. The
+  bot notes a member's roles from each member update while the switch is on (this is why `hooks.rs` has a
+  `on_member_update` entry next to the six), reads the current members once when it is switched on (up to 10,000,
+  one run per server every 10 minutes) and forgets members who left more than 60 days ago.
+- **Role panels** (module `role_panels`, now under the Roles group): *buttons* (`rr:`/`rb:`: a panel with no
+  rules keeps `rr:` exactly as before, one with rules sends `rb:`; both buttons follow the panel's rules, so a
+  message posted before the rules still obeys), a *menu* (`rs:`: what the member picks is what they hold of the panel,
+  limited by the fewest and most; picking nothing takes them all off when the fewest is 0) and *reactions* (through
+  `hooks::on_reaction`: a reaction gives the role, taking it back takes it, a refused one is taken off the message).
+  A required role closes a panel to everyone else. Reactions panels need an emoji on every role, none repeated, and
+  the bot needs Add Reactions and Read Message History in the channel. The dashboard posts through the same code.
+- **Colour roles** (module `color_roles`, prefix `cr:`): the palette is `ACCENT_PRESETS` plus the outfit dyes of the
+  character editor, only the ones readable on Discord's dark chat; roles are made on demand (name, colour, no
+  permissions) right under the anchor role when the server set one. One role per colour, at most 32 a server, a
+  member holds one. The bot needs Manage Roles with its role above the anchor.
+- The bot needs **Manage Roles** (its role above every role it gives), and Add Reactions for reaction panels. The
+  intents it listens to are the ones already on (Server Members for joins and sticky roles, reactions).
 
 ### Tickets
 
@@ -538,10 +571,11 @@ so every bot pod uses it from the next message instead of after its one-minute c
 | Page | What it sets | Same as |
 |---|---|---|
 | Overview | Chat XP on/off, the text command prefix, every page's state at a glance, every module's state, the latest changes | `/config show`, `/config leveling enabled`, `/config prefix`, `/config modules show` |
-| Modules | Each part of Pinchora (leveling, points, welcome, goodbye, log, role panels, store, suggestions, polls, giveaways, custom commands, profiles, economy, shops, quests, social, houses, plaza, pets, fishing, duels, board and puzzle games, word and trivia games, party games, word party games, critter drops, gambling, text commands) on or off, and where it works: all channels, only some, or all but some | `/config modules` |
+| Modules | Each part of Pinchora (leveling, points, welcome, goodbye, log, role panels, auto roles, colour roles, store, suggestions, polls, giveaways, custom commands, profiles, economy, shops, quests, social, houses, plaza, pets, fishing, duels, board and puzzle games, word and trivia games, party games, word party games, critter drops, gambling, text commands) on or off, and where it works: all channels, only some, or all but some | `/config modules` |
 | Welcome & goodbye | Welcome cards (channel, text with placeholder chips), the card designer (theme, headline, accent, live preview drawn by the bot), join role, goodbye channel and text | `/config welcome`, `welcome-card`, `join-role`, `goodbye` |
 | Leveling | Leveling, where level-ups go, level-up channel and text, voice XP, XP multipliers, level roles (stack/replace, **Sync members**), reputation roles | `/config leveling`, `xp`, `level-roles`, `rep-roles` |
 | Points & store | Points on/off, name, emoji, points per message; roles on sale with price and stock | `/config points`, `/config store` |
+| Roles | Auto roles (who gets which role on joining, with a delay or an expiry), sticky roles, role panels as buttons, a menu or reactions with a live preview and posting from the page, and colour roles (palette, mode, who may pick, the anchor role, making the missing roles) | `/autoroles`, `/roles`, `/color` |
 | Server log | Log channel and the four kinds of events | `/config log`, `/config log-events` |
 | Custom commands | The commands members run with `/tag`: name, description, one to five replies (one picked at random), an embed, up to three actions (give, take or toggle a role, give or take server points, send a DM), who may use it and where, a cooldown, a live preview drawn by the bot, import and export as a JSON file | `/customcommand` (replies only) |
 | Auto-responders | Messages the bot sends by itself when a member joins, leaves, levels up, gets or loses a role, or says a keyword (locked unless the bot has the Message Content intent): where it answers, how often, a cooldown, actions, a preview, import and export | |

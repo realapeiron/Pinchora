@@ -26,6 +26,12 @@ mod voice_xp;
 
 pub use app::App;
 pub use catalog::{command_catalog, site_facts};
+pub use commands::role_panels::{check_emoji, rules_problem as role_rules_problem};
+pub use commands::roles_pack::{
+    ColorRoleReport, ColorStop, PaletteColor, PostRefusal, PostedPanel, color_stop_text, create_palette_roles,
+    delete_color_role, give_after_verify, palette as color_palette, post_panel as post_role_panel,
+    spawn_ticker as spawn_roles_ticker, start_sticky_snapshot, sticky_changed, tick as roles_tick,
+};
 pub use commands::{
     collection::{post_bottle, post_critter_drop, spawn_ticker as spawn_collection_ticker, tick as collection_tick},
     config::{WelcomeDesign, welcome_card_png},

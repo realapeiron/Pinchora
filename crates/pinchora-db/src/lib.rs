@@ -30,6 +30,7 @@ mod privacy;
 mod public_stats;
 mod reminders;
 mod rewards;
+mod roles_pack;
 mod shop;
 mod showcase;
 mod social;
@@ -72,7 +73,7 @@ pub use house::{
 pub use interactions::Tally;
 pub use locks::conflict_retries;
 pub use members::{LeaderboardRow, MemberRank, XpGain, XpGrant};
-pub use panels::{MAX_PANEL_ROLES, PanelRoleRow, PanelRow};
+pub use panels::{MAX_PANEL_ROLES, PanelDoc, PanelEntry, PanelPatch, PanelRoleDoc, PanelRoleRow, PanelRow, PanelSaved};
 pub use partners::{PairOutcome, PartnerRow};
 pub use party::{
     CrewJoin, DerbyJoin, DerbyLeave, DerbyOutcome, DerbyResult, HeistSettled, PartyMember, PartySettings, ShellDone,
@@ -92,6 +93,9 @@ pub use privacy::{
 pub use public_stats::PublicCounts;
 pub use reminders::{MAX_TEXT_REMINDERS, OPT_IN_KINDS, ReminderRow, TEXT as TEXT_REMINDER};
 pub use rewards::{LevelRoleRow, MAX_LEVEL_ROLES, MAX_REP_ROLES, MAX_STORE_ITEMS, RepRoleRow, StoreBuy, StoreItem};
+pub use roles_pack::{
+    AutoRoleRow, ColorAdded, ColorRoleRow, ColorSettings, DelayedRoleRow, NewAutoRole, StickyRow, TimedRoleRow,
+};
 pub use shop::{BuyOutcome, Currency, MarketRow, VisitOutcome};
 pub use showcase::{FishBookRow, HousePreview};
 pub use stalls::{ListingRow, MAX_LISTINGS, STALL_FEE_PERCENT, StallBuy};

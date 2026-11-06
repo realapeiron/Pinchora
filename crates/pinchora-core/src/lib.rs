@@ -5,6 +5,7 @@ pub mod i18n;
 pub mod items;
 pub mod leveling;
 pub mod modules;
+pub mod roles_pack;
 pub mod server_events;
 pub mod settings;
 pub mod snowflake;

@@ -4,6 +4,7 @@ mod character;
 mod checkers;
 mod chess;
 mod collection;
+mod color;
 mod connect4;
 mod fleet;
 mod frame;
@@ -34,6 +35,7 @@ pub use chess::ChessCard;
 pub use collection::{
     BottleCard, DexCard, DexCell, DropCard, DropCritter, EntryPicture, HaulCard, HaulTile, PotCard, PotState,
 };
+pub use color::{ColorCard, ColorCell};
 pub use connect4::Connect4Card;
 pub use fleet::{FleetCard, RadarCard, SHIP_COLORS, SHIP_NAMES, SeaView, ShipView};
 pub use grid::{GridSlot, ItemGridCard};

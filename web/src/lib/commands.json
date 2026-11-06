@@ -1404,7 +1404,7 @@
           "usage": "/giveaway list"
         },
         {
-          "description": "Start a panel of role buttons, or change its description",
+          "description": "Start a role panel, or change its text, style and rules",
           "manager": true,
           "options": [
             {
@@ -1413,16 +1413,46 @@
               "required": true
             },
             {
-              "description": "Text shown above the buttons",
+              "description": "Text shown above the roles",
               "name": "description",
+              "required": false
+            },
+            {
+              "choices": [
+                "Buttons: a button per role",
+                "Menu: pick from a dropdown",
+                "Reactions: react to get a role"
+              ],
+              "description": "Buttons, a menu or reactions",
+              "name": "style",
+              "required": false
+            },
+            {
+              "description": "Members hold one role of the panel at a time: picking another swaps",
+              "name": "exclusive",
+              "required": false
+            },
+            {
+              "description": "A role members need to use the panel (@everyone takes the need away)",
+              "name": "required",
+              "required": false
+            },
+            {
+              "description": "The fewest roles of the panel a member keeps",
+              "name": "min",
+              "required": false
+            },
+            {
+              "description": "The most roles of the panel a member holds (0: no limit)",
+              "name": "max",
               "required": false
             }
           ],
           "path": "roles panel",
-          "usage": "/roles panel <title> [description]"
+          "usage": "/roles panel <title> [description] [style] [exclusive] [required] [min] [max]"
         },
         {
-          "description": "Add a role button to a panel (up to 25), or change its label",
+          "description": "Add a role to a panel (up to 25), or change its label",
           "manager": true,
           "options": [
             {
@@ -1444,13 +1474,18 @@
               "description": "Emoji on the button: a Unicode emoji or a custom one",
               "name": "emoji",
               "required": false
+            },
+            {
+              "description": "A line under the label in a menu",
+              "name": "description",
+              "required": false
             }
           ],
           "path": "roles add",
-          "usage": "/roles add <panel> <role> <label> [emoji]"
+          "usage": "/roles add <panel> <role> <label> [emoji] [description]"
         },
         {
-          "description": "Take a role button off a panel",
+          "description": "Take a role off a panel",
           "manager": true,
           "options": [
             {
@@ -1459,7 +1494,7 @@
               "required": true
             },
             {
-              "description": "The role whose button to remove",
+              "description": "The role to remove",
               "name": "role",
               "required": true
             }
@@ -1484,6 +1519,29 @@
           ],
           "path": "roles post",
           "usage": "/roles post <panel> <channel>"
+        },
+        {
+          "description": "Make a panel's role last only for a while after a member takes it",
+          "manager": true,
+          "options": [
+            {
+              "description": "The role",
+              "name": "role",
+              "required": true
+            },
+            {
+              "description": "How long it lasts, like 7d or 12h (off: for good)",
+              "name": "duration",
+              "required": true
+            },
+            {
+              "description": "Only on this panel's title or number (default: every panel that has the role)",
+              "name": "panel",
+              "required": false
+            }
+          ],
+          "path": "roles temp",
+          "usage": "/roles temp <role> <duration> [panel]"
         },
         {
           "description": "Show a server points balance",
@@ -1632,6 +1690,158 @@
           ],
           "path": "customcommand info",
           "usage": "/customcommand info <name>"
+        },
+        {
+          "description": "Give a role to everyone who joins (up to 10), or change one",
+          "manager": true,
+          "options": [
+            {
+              "description": "The role to give",
+              "name": "role",
+              "required": true
+            },
+            {
+              "choices": [
+                "Members who join",
+                "Bots that join",
+                "Members who pass the join gate"
+              ],
+              "description": "Who gets it (default: members who join)",
+              "name": "kind",
+              "required": false
+            },
+            {
+              "description": "Wait this long after they join, like 10m or 1d (default: at once)",
+              "name": "delay",
+              "required": false
+            },
+            {
+              "description": "Take it away again after this long, like 7d (default: keep it)",
+              "name": "remove_after",
+              "required": false
+            }
+          ],
+          "path": "autoroles add",
+          "usage": "/autoroles add <role> [kind] [delay] [remove_after]"
+        },
+        {
+          "description": "Stop giving a role automatically",
+          "manager": true,
+          "options": [
+            {
+              "description": "The role to stop giving",
+              "name": "role",
+              "required": true
+            },
+            {
+              "choices": [
+                "Members who join",
+                "Bots that join",
+                "Members who pass the join gate"
+              ],
+              "description": "Only this kind (default: every kind)",
+              "name": "kind",
+              "required": false
+            }
+          ],
+          "path": "autoroles remove",
+          "usage": "/autoroles remove <role> [kind]"
+        },
+        {
+          "description": "Show the auto roles and whether sticky roles are on",
+          "manager": true,
+          "options": [],
+          "path": "autoroles list",
+          "usage": "/autoroles list"
+        },
+        {
+          "description": "Give members back their roles when they leave and come back",
+          "manager": true,
+          "options": [
+            {
+              "description": "Keep roles for members who leave",
+              "name": "enabled",
+              "required": true
+            }
+          ],
+          "path": "autoroles sticky",
+          "usage": "/autoroles sticky <enabled>"
+        },
+        {
+          "description": "Pick a colour for your name from a menu",
+          "manager": false,
+          "options": [],
+          "path": "color pick",
+          "usage": "/color pick"
+        },
+        {
+          "description": "Colour your name with any hex code, when the server allows it",
+          "manager": false,
+          "options": [
+            {
+              "description": "A colour code like #ff6b4a",
+              "name": "hex",
+              "required": true
+            }
+          ],
+          "path": "color set",
+          "usage": "/color set <hex>"
+        },
+        {
+          "description": "Take your name colour off",
+          "manager": false,
+          "options": [],
+          "path": "color remove",
+          "usage": "/color remove"
+        },
+        {
+          "description": "Show the colours this server offers",
+          "manager": false,
+          "options": [],
+          "path": "color list",
+          "usage": "/color list"
+        },
+        {
+          "description": "Set up colour roles: switch them on, who may pick, which roles",
+          "manager": false,
+          "options": [
+            {
+              "description": "Switch colour roles on or off",
+              "name": "enabled",
+              "required": false
+            },
+            {
+              "choices": [
+                "Palette: only the server's colours",
+                "Any colour: members may type a hex code"
+              ],
+              "description": "The palette only, or any hex code too",
+              "name": "mode",
+              "required": false
+            },
+            {
+              "description": "A role that may pick a colour (once any is named, only those roles may)",
+              "name": "allow",
+              "required": false
+            },
+            {
+              "description": "Take a role off the list of those who may pick",
+              "name": "disallow",
+              "required": false
+            },
+            {
+              "description": "New colour roles are made right under this role",
+              "name": "anchor",
+              "required": false
+            },
+            {
+              "description": "Roles of your own to offer as colours: mention them (up to 10)",
+              "name": "roles",
+              "required": false
+            }
+          ],
+          "path": "color setup",
+          "usage": "/color setup [enabled] [mode] [allow] [disallow] [anchor] [roles]"
         }
       ],
       "intro": "Polls, suggestions, giveaways, role buttons, server points and custom commands.",
@@ -2283,5 +2493,5 @@
       "title": "Game & module setup"
     }
   ],
-  "count": 156
+  "count": 166
 }

@@ -111,11 +111,13 @@ pub enum Module {
     Collection,
     Gambling,
     TextCommands,
+    AutoRoles,
+    ColorRoles,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 28] = [
+    pub const ALL: [Self; 30] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -144,6 +146,8 @@ impl Module {
         Self::Collection,
         Self::Gambling,
         Self::TextCommands,
+        Self::AutoRoles,
+        Self::ColorRoles,
     ];
 
     /// The key stored in the database and used in the API.
@@ -177,6 +181,8 @@ impl Module {
             Self::Collection => "collection",
             Self::Gambling => "gambling",
             Self::TextCommands => "text_commands",
+            Self::AutoRoles => "autoroles",
+            Self::ColorRoles => "color_roles",
         }
     }
 
@@ -214,6 +220,8 @@ impl Module {
             Self::Collection => "Critter drops and beachcombing",
             Self::Gambling => "Gambling-style games",
             Self::TextCommands => "Text commands",
+            Self::AutoRoles => "Auto roles",
+            Self::ColorRoles => "Colour roles",
         }
     }
 
@@ -259,6 +267,8 @@ impl Module {
             Self::TextCommands => {
                 "Commands typed as messages, with the prefix or an @mention. Slash commands are not affected."
             }
+            Self::AutoRoles => "/autoroles: roles given to members who join, and roles kept for those who come back.",
+            Self::ColorRoles => "/color: colour roles members pick for their names.",
         }
     }
 
@@ -269,7 +279,6 @@ impl Module {
             | Self::Welcome
             | Self::Goodbye
             | Self::Log
-            | Self::RolePanels
             | Self::Store
             | Self::Suggestions
             | Self::Polls
@@ -285,12 +294,13 @@ impl Module {
             | Self::PartyGames
             | Self::Collection
             | Self::Gambling => Group::Games,
+            Self::RolePanels | Self::AutoRoles | Self::ColorRoles => Group::Roles,
         }
     }
 
     pub const fn scope(self) -> Scope {
         match self {
-            Self::Welcome | Self::Goodbye | Self::Log | Self::Gambling => Scope::Server,
+            Self::Welcome | Self::Goodbye | Self::Log | Self::Gambling | Self::AutoRoles => Scope::Server,
             _ => Scope::Channels,
         }
     }
@@ -321,6 +331,8 @@ impl Module {
             "plaza" => Self::Plaza,
             "points" | "store" => Self::Store,
             "roles" => Self::RolePanels,
+            "autoroles" => Self::AutoRoles,
+            "color" => Self::ColorRoles,
             "partner" | "friends" | "hug" | "pat" | "wave" | "highfive" => Self::Social,
             "giveaway" => Self::Giveaways,
             "tag" | "customcommand" => Self::CustomCommands,
@@ -363,7 +375,8 @@ impl Module {
             "hl" | "ac" | "cn" | "wx" | "wy" | "td" => Self::PartyGames,
             "cd" | "mb" | "bc" | "kp" => Self::Collection,
             "st" => Self::Store,
-            "rr" => Self::RolePanels,
+            "rr" | "rb" | "rs" => Self::RolePanels,
+            "cr" => Self::ColorRoles,
             "pt" | "fd" | "hg" => Self::Social,
             "gw" => Self::Giveaways,
             "tg" | "cm" => Self::CustomCommands,

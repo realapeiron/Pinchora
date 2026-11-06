@@ -213,6 +213,10 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
                 ($1, 2, $2, 'Theirs?', ARRAY['a', 'b'], now() + interval '1 day')",
         "INSERT INTO poll_votes (poll_id, user_id, choice)
          SELECT id, $1, 0 FROM polls WHERE guild_id = $1 AND author_id = $2",
+        // What roles they held when they left, a role that lapses, and one that waits for them ($1 doubles as the server).
+        "INSERT INTO sticky_roles (guild_id, user_id, role_ids, left_at) VALUES ($1, $1, ARRAY[5, 6], now())",
+        "INSERT INTO timed_roles (guild_id, user_id, role_id, remove_at) VALUES ($1, $1, 5, now() + interval '1 day')",
+        "INSERT INTO delayed_roles (guild_id, user_id, role_id, grant_at) VALUES ($1, $1, 6, now() + interval '1 day')",
         // The character, the collection and the solo boards.
         "INSERT INTO user_accessories (user_id, accessory_id) VALUES ($1, 'cap')",
         "INSERT INTO character_outfits (user_id, slot, name, code) VALUES ($1, 1, 'Beach', 'x')",

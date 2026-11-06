@@ -12,6 +12,7 @@ mod modules;
 mod overview;
 mod preview;
 mod responders;
+mod roles;
 mod settings;
 mod site;
 mod static_files;

@@ -98,6 +98,9 @@ mod grants;
 // What reaches the (still empty) feature hooks.
 #[path = "simulate/hooks.rs"]
 mod hooks;
+// The roles pack: auto roles, sticky roles, role panels, expiring roles and colour roles.
+#[path = "simulate/roles.rs"]
+mod roles;
 
 const APPLICATION_ID: u64 = 1;
 const CHANNEL_ID: u64 = 2;
@@ -376,6 +379,9 @@ async fn discord(
     let path = uri.path().to_owned();
     let parts: Vec<&str> = path.trim_matches('/').split('/').collect();
     let number = |part: &str| part.parse::<u64>().unwrap_or(0);
+    if let Some(answer) = roles::mock(&mock, &method, &uri, &parts, &body) {
+        return answer;
+    }
     match (&method, parts.as_slice()) {
         (&Method::GET, [.., "guilds", guild, "roles"]) => {
             let mut roles = vec![role_json(BOT_ROLE_ID, "Pinchora", BOT_ROLE_POSITION, true)];
@@ -12598,6 +12604,24 @@ async fn admin_paths_refuse_members_without_manage_server() {
                 vec![text_option("panel", "Gated"), channel_option("channel", channel)]
             )]),
         ),
+        (
+            "roles temp",
+            json!([sub(
+                "temp",
+                vec![role_option("role", &role), text_option("duration", "1h")]
+            )]),
+        ),
+        ("autoroles add", json!([sub("add", vec![role_option("role", &role)])])),
+        (
+            "autoroles remove",
+            json!([sub("remove", vec![role_option("role", &role)])]),
+        ),
+        ("autoroles list", json!([sub("list", vec![])])),
+        (
+            "autoroles sticky",
+            json!([sub("sticky", vec![bool_option("enabled", true)])]),
+        ),
+        ("color setup", json!([sub("setup", vec![bool_option("enabled", true)])])),
         (
             "points give",
             json!([sub(
