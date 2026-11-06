@@ -1361,6 +1361,12 @@ code {
   }
 }
 
+/* The dashboard's top bar drops the wordmark on phones (house.css); the public header and footer have room for it. */
+
+.site .brand-name {
+  display: inline;
+}
+
 /* /Motion: only for people who have not asked for less */
 
 @media (prefers-reduced-motion: no-preference) {
