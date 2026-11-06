@@ -1632,6 +1632,132 @@
           ],
           "path": "customcommand info",
           "usage": "/customcommand info <name>"
+        },
+        {
+          "description": "Follow a source and post what is new in a channel",
+          "manager": true,
+          "options": [
+            {
+              "choices": [
+                "YouTube",
+                "RSS or podcast",
+                "Reddit",
+                "Bluesky",
+                "X, Instagram or TikTok (bridge)"
+              ],
+              "description": "Where the posts come from",
+              "name": "kind",
+              "required": true
+            },
+            {
+              "description": "A channel link, @handle or id; a feed address; r/subreddit; a Bluesky handle",
+              "name": "source",
+              "required": true
+            },
+            {
+              "description": "Where new posts go",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "description": "The text: {title} {url} {author} {account} {published} (default: one per kind)",
+              "name": "message",
+              "required": false
+            },
+            {
+              "description": "A role to ping with every new post",
+              "name": "role",
+              "required": false
+            }
+          ],
+          "path": "feeds add",
+          "usage": "/feeds add <kind> <source> <channel> [message] [role]"
+        },
+        {
+          "description": "The feeds this server follows, with how they are doing",
+          "manager": true,
+          "options": [],
+          "path": "feeds list",
+          "usage": "/feeds list"
+        },
+        {
+          "description": "Change a feed's channel, message, role, card or filters",
+          "manager": true,
+          "options": [
+            {
+              "description": "The feed's number, from /feeds list",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "Post in this channel instead",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "The new text; - goes back to the default",
+              "name": "message",
+              "required": false
+            },
+            {
+              "description": "Ping this role with every new post",
+              "name": "role",
+              "required": false
+            },
+            {
+              "description": "Stop pinging a role",
+              "name": "no_role",
+              "required": false
+            },
+            {
+              "description": "Add Pinchora's card (title, picture, summary) under the text",
+              "name": "embed",
+              "required": false
+            },
+            {
+              "description": "Only post titles with one of these words, comma-separated; - clears",
+              "name": "include",
+              "required": false
+            },
+            {
+              "description": "Never post titles with these words, comma-separated; - clears",
+              "name": "exclude",
+              "required": false
+            },
+            {
+              "description": "Switch the feed on or off",
+              "name": "enabled",
+              "required": false
+            }
+          ],
+          "path": "feeds edit",
+          "usage": "/feeds edit <id> [channel] [message] [role] [no_role] [embed] [include] [exclude] [enabled]"
+        },
+        {
+          "description": "Post the source's latest item in the feed's channel now",
+          "manager": true,
+          "options": [
+            {
+              "description": "The feed's number, from /feeds list",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "feeds test",
+          "usage": "/feeds test <id>"
+        },
+        {
+          "description": "Stop following a source",
+          "manager": true,
+          "options": [
+            {
+              "description": "The feed's number, from /feeds list",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "feeds remove",
+          "usage": "/feeds remove <id>"
         }
       ],
       "intro": "Polls, suggestions, giveaways, role buttons, server points and custom commands.",
@@ -2283,5 +2409,5 @@
       "title": "Game & module setup"
     }
   ],
-  "count": 156
+  "count": 161
 }
