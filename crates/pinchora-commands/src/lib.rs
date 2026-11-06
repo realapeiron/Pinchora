@@ -138,3 +138,9 @@ pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, res
         let _ = cx.reply_ephemeral(pinchora_core::t!(cx.lang(), "error.generic")).await;
     }
 }
+
+mod automod;
+pub use automod::{
+    check_config_roles as check_automod_roles, on_native_execution as on_automod_execution,
+    on_native_rule_change as on_automod_rule_change, spawn_ticker as spawn_automod_ticker, sync_guild as sync_automod,
+};

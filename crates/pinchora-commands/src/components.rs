@@ -18,6 +18,8 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
     }
     let mut parts = custom_id.split(':');
     match parts.next() {
+        Some("am") => crate::commands::automod::on_component(cx, "am", parts, values).await,
+        Some("ax") => crate::commands::automod::on_component(cx, "ax", parts, values).await,
         Some("lb") => leaderboard::on_button(cx, parts).await,
         Some("he") => house::on_edit(cx, "he", parts, values.first().map(String::as_str)).await,
         Some("pe") => house::on_edit(cx, "pe", parts, values.first().map(String::as_str)).await,

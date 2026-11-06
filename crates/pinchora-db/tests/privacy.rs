@@ -253,6 +253,9 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         "INSERT INTO staff_actions (guild_id, actor_id, actor_name, source, action, case_number)
          VALUES ($1, $1, 'Pinch', 'command', 'warn', 1)",
         "INSERT INTO log_settings (guild_id, ignored_users) VALUES ($1, ARRAY[$1, $2])",
+        // F1's player-owned history and counters are forgotten with the player.
+        "INSERT INTO automod_hits (guild_id,user_id,channel_id,action) VALUES ($1,$1,1,'log_only')",
+        "INSERT INTO automod_strikes (guild_id,user_id,window_start,count) VALUES ($1,$1,now(),1)",
         // A custom command and an auto-responder they wrote ($1 doubles as the server).
         "INSERT INTO custom_commands (guild_id, name, responses, created_by) VALUES ($1, 'hello', ARRAY['hi'], $1)",
         "INSERT INTO custom_responders (guild_id, name, trigger_kind, responses, created_by)

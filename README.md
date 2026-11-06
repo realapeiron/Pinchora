@@ -515,7 +515,36 @@ mention the bot, so text commands work as `@Pinchora profile` and `/help` says s
 
 ### AutoMod
 
-<!-- F1: the AutoMod package replaces this heading's section; keep it one `###` section. -->
+| Command | What it does |
+|---|---|
+| `/automod show` | Current profile, active rules and observation deadline |
+| `/automod profile name` | Apply `relaxed`, `standard`, `strict` or `off`; standard only logs for its first 48 hours |
+| `/automod toggle rule enabled` | Enable or pause one named rule |
+| `/automod exempt role action role [rule]` | `add` or `remove` a role exemption, for one rule or all rules |
+| `/automod exempt channel action channel [rule]` | `add` or `remove` a channel exemption |
+| `/automod test text` | Private matcher preview; no strikes or actions |
+
+The **AutoMod** dashboard under Safety has profile cards, up to 30 rule cards, ordered actions,
+role/channel exemptions, channel scopes, a message test, the last 50 hits and per-member strike reset.
+Rules cover message floods, duplicates, repetition, blocked words (de-disguise and bounded regex),
+invites, domains, capitals, emoji, mentions, attachments, newlines, zalgo, media-only, YouTube-only,
+honeypot channels and Discord word presets. Actions run in configured order: delete, warn (a moderation
+case and the existing warn ladder), timeout, kick, ban, log, DM and safe role assignment. Escalation
+thresholds share a configurable strike window. Bots, webhooks and the owner are excluded; moderation
+checks live role hierarchy and permissions. Add-role actions refuse dangerous roles at save and execution.
+
+Standard's first 48 hours and each rule's **Log only** switch record hits without warnings, strikes or
+punishments. Content-dependent local rules are locked when Message Content is off. Discord-native
+mirrors detect spam, mentions, keywords, invitations, compatible links and presets without that flag;
+mirrors only send alerts, leaving ordered actions and safety checks to Pinchora. Native sync is debounced
+five seconds, reconciles drift, and respects other applications' rules and Discord's guild limits.
+Native mirrors require a moderation log/alert channel; complex domain allowlists and channel-only rules
+stay local. Native spam uses Discord's detector; numeric flood thresholds also run locally.
+
+Alerts use `am:del|to|ban|ok:<hit>` and `ax:r|c:<rule>:<hit>` with Manage Server checked on every click.
+Migration **0045** adds `automod_settings`, `automod_rules`, `automod_strikes` and `automod_hits`.
+Hit history and inactive strikes expire after 30 days; player deletion clears hits, strikes and rule authors.
+English and Turkish text comes from `locales/{en,tr}/automod.toml`.
 
 ### Roles pack
 

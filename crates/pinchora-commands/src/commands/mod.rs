@@ -1,3 +1,4 @@
+pub(crate) mod automod;
 mod bio;
 pub(crate) mod board;
 pub(crate) mod character;
@@ -161,4 +162,5 @@ commands!(
     tag::Tag,
     customcommand::CustomCommand,
     language::LanguageCommand,
+    automod::AutoMod,
 );

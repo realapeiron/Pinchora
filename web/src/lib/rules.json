@@ -1166,7 +1166,8 @@
       "reason",
       "tag",
       "customcommand",
-      "language"
+      "language",
+      "automod"
     ],
     "responder_placeholders": {
       "keyword": [

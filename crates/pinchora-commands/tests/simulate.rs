@@ -79,6 +79,8 @@ mod cards;
 #[path = "simulate/collection.rs"]
 mod collection;
 // Moderation commands, cases and the mod-log; the detailed server log.
+#[path = "simulate/automod.rs"]
+mod automod;
 #[path = "simulate/moderation.rs"]
 mod moderation;
 // Correctness follow-ups: stale buttons, forfeits, repeated requests, forged ids, voice XP at scale.

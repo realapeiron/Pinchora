@@ -17,3 +17,4 @@ pub mod telemetry;
 pub mod wrapped;
 
 pub use config::Config;
+pub mod automod;

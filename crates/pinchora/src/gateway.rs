@@ -43,7 +43,7 @@ fn wanted_events() -> EventTypeFlags {
         | EventTypeFlags::VOICE_STATE_UPDATE
         | EventTypeFlags::GUILD_CREATE
         | EventTypeFlags::GUILD_DELETE
-        | EventTypeFlags::REACTION_ADD
+        | EventTypeFlags::AUTO_MODERATION_RULE_CREATE | EventTypeFlags::AUTO_MODERATION_RULE_UPDATE | EventTypeFlags::AUTO_MODERATION_RULE_DELETE | EventTypeFlags::AUTO_MODERATION_ACTION_EXECUTION | EventTypeFlags::REACTION_ADD
         | EventTypeFlags::REACTION_REMOVE
         | EventTypeFlags::REACTION_REMOVE_ALL
         | EventTypeFlags::REACTION_REMOVE_EMOJI
@@ -100,6 +100,7 @@ pub async fn run(config: &Config, app: Arc<App>, ready: Readiness) -> anyhow::Re
         Intents::GUILDS | Intents::GUILD_MESSAGES | Intents::GUILD_MODERATION | Intents::GUILD_VOICE_STATES;
     // Reaction roles and the starboard listen to reactions; not privileged either.
     intents |= Intents::GUILD_MESSAGE_REACTIONS;
+    intents |= Intents::AUTO_MODERATION_CONFIGURATION | Intents::AUTO_MODERATION_EXECUTION;
     if config.gateway.member_events {
         intents |= Intents::GUILD_MEMBERS;
     }
@@ -324,6 +325,23 @@ fn dispatch(app: &Arc<App>, shard: u32, event: Event) {
             app.spawn_event("guild_delete", async move {
                 if let Err(error) = on_guild_delete(app2, event).await {
                     tracing::warn!(%error, "guild delete handler failed");
+                }
+            });
+        }
+        Event::AutoModerationRuleCreate(event) => {
+            pinchora_commands::on_automod_rule_change(app.clone(), event.guild_id.get())
+        }
+        Event::AutoModerationRuleUpdate(event) => {
+            pinchora_commands::on_automod_rule_change(app.clone(), event.guild_id.get())
+        }
+        Event::AutoModerationRuleDelete(event) => {
+            pinchora_commands::on_automod_rule_change(app.clone(), event.guild_id.get())
+        }
+        Event::AutoModerationActionExecution(event) => {
+            let owned = app.clone();
+            app.spawn(async move {
+                if let Err(error) = pinchora_commands::on_automod_execution(owned, event).await {
+                    tracing::warn!(%error, "automod native event failed");
                 }
             });
         }

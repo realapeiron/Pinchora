@@ -117,11 +117,12 @@ pub enum Module {
     Collection,
     Gambling,
     TextCommands,
+    AutoMod,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 29] = [
+    pub const ALL: [Self; 30] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -151,6 +152,7 @@ impl Module {
         Self::Collection,
         Self::Gambling,
         Self::TextCommands,
+        Self::AutoMod,
     ];
 
     /// The key stored in the database and used in the API.
@@ -185,6 +187,7 @@ impl Module {
             Self::Collection => "collection",
             Self::Gambling => "gambling",
             Self::TextCommands => "text_commands",
+            Self::AutoMod => "automod",
         }
     }
 
@@ -223,6 +226,7 @@ impl Module {
             Self::Collection => "Critter drops and beachcombing",
             Self::Gambling => "Gambling-style games",
             Self::TextCommands => "Text commands",
+            Self::AutoMod => "AutoMod",
         }
     }
 
@@ -276,6 +280,7 @@ impl Module {
             Self::TextCommands => {
                 "Commands typed as messages, with the prefix or an @mention. Slash commands are not affected."
             }
+            Self::AutoMod => "Automatic message rules and moderation actions.",
         }
     }
 
@@ -303,12 +308,14 @@ impl Module {
             | Self::Collection
             | Self::Gambling => Group::Games,
             Self::Moderation => Group::Safety,
+            Self::AutoMod => Group::Safety,
         }
     }
 
     pub const fn scope(self) -> Scope {
         match self {
             Self::Welcome | Self::Goodbye | Self::Log | Self::Moderation | Self::Gambling => Scope::Server,
+            Self::AutoMod => Scope::Server,
             _ => Scope::Channels,
         }
     }
@@ -362,6 +369,7 @@ impl Module {
                 Some("stats") => Self::Profile,
                 _ => return None,
             },
+            "automod" => Self::AutoMod,
             _ => return None,
         })
     }
@@ -389,6 +397,7 @@ impl Module {
             "tg" | "cm" => Self::CustomCommands,
             "sg" => Self::Suggestions,
             "pl" => Self::Polls,
+            "am" | "ax" => Self::AutoMod,
             _ => return None,
         })
     }

@@ -54,6 +54,9 @@ pub enum ReactionEvent {
 /// before XP and before a text command reads it.
 pub(crate) async fn after_message(_app: &Arc<App>, _msg: &Message, _settings: &GuildSettings) -> Verdict {
     // F1 automod goes first: a message it deletes is `Verdict::Blocked`, so it earns nothing.
+    if crate::automod::after_message(_app, _msg, _settings).await == Verdict::Blocked {
+        return Verdict::Blocked;
+    }
     // F9 stats counts the message.
     // F19 AFK and sticky messages come after F1.
     // F15 AI characters answer mentions.

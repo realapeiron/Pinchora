@@ -80,6 +80,7 @@ const PRIVATE: &[&str] = &[
     "suggest",
     "suggestion",
     "warnings",
+    "automod",
 ];
 
 /// Slash commands that answer with a form, which only works as the first answer: never deferred.

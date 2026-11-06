@@ -1641,6 +1641,103 @@
     {
       "commands": [
         {
+          "description": "Show the AutoMod profile and active rules",
+          "manager": true,
+          "options": [],
+          "path": "automod show",
+          "usage": "/automod show"
+        },
+        {
+          "description": "Apply relaxed, standard (48h observe), strict or off",
+          "manager": true,
+          "options": [
+            {
+              "description": "relaxed, standard, strict or off",
+              "name": "name",
+              "required": true
+            }
+          ],
+          "path": "automod profile",
+          "usage": "/automod profile <name>"
+        },
+        {
+          "description": "Turn a rule on or off",
+          "manager": true,
+          "options": [
+            {
+              "description": "Rule name or id",
+              "name": "rule",
+              "required": true
+            },
+            {
+              "description": "Whether this rule is enabled",
+              "name": "enabled",
+              "required": true
+            }
+          ],
+          "path": "automod toggle",
+          "usage": "/automod toggle <rule> <enabled>"
+        },
+        {
+          "description": "Add or remove an exempt role",
+          "manager": true,
+          "options": [
+            {
+              "description": "add or remove",
+              "name": "action",
+              "required": true
+            },
+            {
+              "description": "Exempt role",
+              "name": "role",
+              "required": true
+            },
+            {
+              "description": "Rule name (omit for all rules)",
+              "name": "rule",
+              "required": false
+            }
+          ],
+          "path": "automod exempt role",
+          "usage": "/automod exempt role <action> <role> [rule]"
+        },
+        {
+          "description": "Add or remove an exempt channel",
+          "manager": true,
+          "options": [
+            {
+              "description": "add or remove",
+              "name": "action",
+              "required": true
+            },
+            {
+              "description": "Exempt channel",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "description": "Rule name (omit for all rules)",
+              "name": "rule",
+              "required": false
+            }
+          ],
+          "path": "automod exempt channel",
+          "usage": "/automod exempt channel <action> <channel> [rule]"
+        },
+        {
+          "description": "Test text privately without acting or adding strikes",
+          "manager": true,
+          "options": [
+            {
+              "description": "Text to check",
+              "name": "text",
+              "required": true
+            }
+          ],
+          "path": "automod test",
+          "usage": "/automod test <text>"
+        },
+        {
           "description": "Ban someone, for good or for a while",
           "manager": true,
           "options": [
@@ -2793,5 +2890,5 @@
       "title": "Game & module setup"
     }
   ],
-  "count": 176
+  "count": 182
 }

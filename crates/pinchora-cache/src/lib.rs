@@ -302,3 +302,5 @@ impl Cache {
         Ok(self.conn().smembers(format!("{PREFIX}:s:{key}")).await?)
     }
 }
+
+mod automod;

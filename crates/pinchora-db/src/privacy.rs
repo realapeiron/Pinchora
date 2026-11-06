@@ -22,6 +22,8 @@ const WALK_LOCK: Duration = Duration::minutes(45);
 /// [`OTHER_TABLES`], [`ID_LISTS`], [`CLEARED_COLUMNS`], [`DAILY_LIMITS`], [`ANONYMISED`] or [`ZEROED_COLUMNS`]) before it
 /// can ship.
 pub const USER_COLUMNS: &[(&str, &str)] = &[
+    ("automod_hits", "user_id"),
+    ("automod_strikes", "user_id"),
     ("placements", "user_id"),
     ("rooms", "user_id"),
     ("houses", "user_id"),
@@ -117,7 +119,11 @@ pub const ID_LISTS: &[(&str, &str, ListEdit)] = &[
 
 /// Columns that name a player on rows that belong to somebody else and go on without them: the
 /// column is set to NULL.
-pub const CLEARED_COLUMNS: &[(&str, &str)] = &[("suggestions", "decided_by"), ("collection_drops", "host_id")];
+pub const CLEARED_COLUMNS: &[(&str, &str)] = &[
+    ("suggestions", "decided_by"),
+    ("collection_drops", "host_id"),
+    ("automod_rules", "created_by"),
+];
 
 /// The games' per-day limits, as (table, player column, day column), the day in days since
 /// 1970-01-01 (UTC): plays that pay, shells paid, shells lost at the tables. Today's rows stay when
@@ -151,6 +157,8 @@ pub const ZEROED_COLUMNS: &[(&str, &str)] = &[("custom_commands", "created_by"),
 
 /// Tables that belong to no player: server settings and shared stock.
 pub const OTHER_TABLES: &[&str] = &[
+    "automod_settings",
+    "automod_rules",
     "_sqlx_migrations",
     "guilds",
     "level_roles",
