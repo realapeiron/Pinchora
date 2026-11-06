@@ -1321,6 +1321,10 @@ async fn picross_checks_only_count_the_wrong_marks_are_limited_and_cost_reward()
     let mut solved = third;
     for y in 0..picross::SIZE {
         let values = row_values(&puzzle, y);
+        // Every cell is still marked, so a row that is all ticks is already right.
+        if values.len() == picross::SIZE {
+            continue;
+        }
         let picked = sim.pick(user, &solved, "pz:r:", &y.to_string()).await;
         let refs: Vec<&str> = values.iter().map(String::as_str).collect();
         solved = sim
@@ -1356,6 +1360,9 @@ async fn picross_checks_only_count_the_wrong_marks_are_limited_and_cost_reward()
     assert!(board.description().contains("**0** of your marks") || board.description().contains("No mistakes"));
     for y in 0..picross::SIZE {
         let values = row_values(&puzzle, y);
+        if values.is_empty() {
+            continue;
+        }
         let picked = sim.pick(user, &board, "pz:r:", &y.to_string()).await;
         let refs: Vec<&str> = values.iter().map(String::as_str).collect();
         board = sim
