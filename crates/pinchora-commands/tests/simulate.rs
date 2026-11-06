@@ -11388,6 +11388,22 @@ async fn the_shell_game_is_off_until_a_manager_turns_it_on_and_pays_a_right_gues
     let off = sim.command(player, "play", shells_cmd(20)).await;
     assert!(off.ephemeral && off.content().contains("**off**"), "{}", off.content());
     assert_eq!(shells(&sim, player).await, 100, "nothing was taken");
+    let member = sim
+        .command(
+            player,
+            "config",
+            json!([sub("gambling", vec![bool_option("enabled", true)])]),
+        )
+        .await;
+    assert!(
+        member.ephemeral && member.content().contains("Manage Server"),
+        "{}",
+        member.content()
+    );
+    assert!(
+        !sim.app.db.gambling_enabled(sim.guild).await.unwrap(),
+        "a member cannot switch it on"
+    );
     let on = gambling(&mut sim, manager, true).await;
     assert!(on.ephemeral && on.content().contains("**on**"), "{}", on.content());
     assert!(sim.app.db.gambling_enabled(sim.guild).await.unwrap());
@@ -11951,7 +11967,19 @@ async fn timed_storm_surges_are_switched_on_per_server_and_come_when_they_are_du
         "{}",
         on.content()
     );
+    let next = sim.app.db.party_settings(sim.guild).await.unwrap().surge_next_at;
+    let shown = sim.command(manager, "config", config(vec![])).await;
+    assert!(shown.content().contains("every **6** hours"), "{}", shown.content());
+    assert_eq!(
+        sim.app.db.party_settings(sim.guild).await.unwrap().surge_next_at,
+        next,
+        "looking at the setting does not move the next storm"
+    );
     sim.permissions = 0;
+    let refused = sim
+        .command(helper, "config", config(vec![bool_option("enabled", false)]))
+        .await;
+    assert!(refused.content().contains("Manage Server"), "{}", refused.content());
     sweep_games(&sim.app).await.expect("sweep");
     assert!(
         sim.posts().iter().all(|p| p.channel != lounge),

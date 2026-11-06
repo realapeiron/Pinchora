@@ -191,6 +191,12 @@ pub struct ConfigGambling {
 
 impl ConfigGambling {
     pub(crate) async fn run(self, cx: &Cx, guild: u64) -> anyhow::Result<()> {
+        // Discord's default permissions can be changed by a server's admins; the switch checks too.
+        if !cx.can_manage_guild() {
+            return cx
+                .reply_ephemeral("Only members with Manage Server can switch gambling-style games.")
+                .await;
+        }
         cx.app.db.set_gambling(guild, self.enabled).await?;
         cx.reply_ephemeral(if self.enabled {
             "🎲 Gambling-style games are **on**. Members can stake a few shells at the table with `/play shells`; \

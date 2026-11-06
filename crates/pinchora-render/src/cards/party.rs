@@ -634,7 +634,7 @@ impl HeistCard<'_> {
             text(
                 &mut s,
                 240.0,
-                y + 22.0,
+                y + 19.0,
                 14.0,
                 PIXEL,
                 false,
@@ -642,11 +642,11 @@ impl HeistCard<'_> {
                 "start",
                 &format!("STAGE {}", n + 1),
             );
-            text(&mut s, 560.0, y + 22.0, 14.0, PIXEL, false, tone, "end", mark);
+            text(&mut s, 560.0, y + 19.0, 14.0, PIXEL, false, tone, "end", mark);
             text(
                 &mut s,
                 240.0,
-                y + 46.0,
+                y + 43.0,
                 18.0,
                 SANS,
                 true,
@@ -657,7 +657,7 @@ impl HeistCard<'_> {
             text(
                 &mut s,
                 560.0,
-                y + 45.0,
+                y + 42.0,
                 12.0,
                 PIXEL,
                 false,
@@ -669,13 +669,13 @@ impl HeistCard<'_> {
                 s,
                 r##"<rect x="240" y="{by}" width="320" height="6" fill="#0b1029"/><rect x="240" y="{by}" width="{}" height="6" fill="{tone}"/>"##,
                 320.0 * f32::from(stage.chance.min(100)) / 100.0,
-                by = y + 52.0,
+                by = y + 49.0,
             );
             for (row, line) in wrap(stage.line, 46, 2).iter().enumerate() {
                 text(
                     &mut s,
                     240.0,
-                    y + 71.0 + row as f32 * 12.0,
+                    y + 68.0 + row as f32 * 12.0,
                     12.0,
                     SANS,
                     false,

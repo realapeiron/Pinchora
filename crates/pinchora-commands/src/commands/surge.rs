@@ -111,19 +111,28 @@ fn settings_text(settings: &PartySettings) -> String {
 
 impl ConfigSurge {
     pub(crate) async fn run(self, cx: &Cx, guild: u64) -> anyhow::Result<()> {
+        if !cx.can_manage_guild() {
+            return cx
+                .reply_ephemeral("Only members with Manage Server can change timed storms.")
+                .await;
+        }
         let hours = self.every.map(Every::hours);
         debug_assert!(hours.is_none_or(|h| EVERY_CHOICES.contains(&h) && h >= MIN_EVERY_HOURS));
-        let settings = cx
-            .app
-            .db
-            .set_surge(
-                guild,
-                self.enabled,
-                self.channel.map(|channel| channel.id.get()),
-                hours,
-                cx.app.now(),
-            )
-            .await?;
+        // With no options it only shows the settings: saving would push the next storm back.
+        let settings = if self.enabled.is_none() && self.channel.is_none() && hours.is_none() {
+            cx.app.db.party_settings(guild).await?
+        } else {
+            cx.app
+                .db
+                .set_surge(
+                    guild,
+                    self.enabled,
+                    self.channel.map(|channel| channel.id.get()),
+                    hours,
+                    cx.app.now(),
+                )
+                .await?
+        };
         cx.reply_ephemeral(settings_text(&settings)).await
     }
 }
