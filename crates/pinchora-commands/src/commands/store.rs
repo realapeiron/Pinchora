@@ -1,4 +1,4 @@
-use pinchora_core::settings;
+use pinchora_core::{i18n::Lang, settings, t};
 use pinchora_db::{MAX_STORE_ITEMS, StoreBuy, StoreItem};
 use twilight_http::request::AuditLogReason;
 use twilight_interactions::command::{CommandModel, CreateCommand};
@@ -58,17 +58,17 @@ pub struct StoreRemove {
 pub struct StoreList;
 
 /// How many are left, as the store words it.
-fn stock_text(stock: Option<i32>) -> Option<String> {
+fn stock_text(lang: Lang, stock: Option<i32>) -> Option<String> {
     match stock {
         None => None,
-        Some(0) => Some("sold out".to_owned()),
-        Some(n) => Some(format!("{n} left")),
+        Some(0) => Some(t!(lang, "store.sold-out")),
+        Some(n) => Some(t!(lang, "store.left", count = n)),
     }
 }
 
-fn line(item: &StoreItem, emoji: &str) -> String {
+fn line(lang: Lang, item: &StoreItem, emoji: &str) -> String {
     let mut line = format!("<@&{}> · **{}** {emoji}", item.role_id, thousands(item.price));
-    if let Some(stock) = stock_text(item.stock) {
+    if let Some(stock) = stock_text(lang, item.stock) {
         line.push_str(" · ");
         line.push_str(&stock);
     }
@@ -76,7 +76,7 @@ fn line(item: &StoreItem, emoji: &str) -> String {
 }
 
 /// The store as a public message: the items and a menu to buy one. `None` when nothing is on sale.
-async fn store_message(app: &App, guild: u64) -> anyhow::Result<Option<InteractionResponseData>> {
+async fn store_message(app: &App, guild: u64, lang: Lang) -> anyhow::Result<Option<InteractionResponseData>> {
     let items = app.db.store_items(guild).await?;
     if items.is_empty() {
         return Ok(None);
@@ -89,47 +89,50 @@ async fn store_message(app: &App, guild: u64) -> anyhow::Result<Option<Interacti
         .map(|i| SelectMenuOption {
             default: false,
             description: Some(format!(
-                "{} {}{}",
-                thousands(i.price),
-                settings.points_name,
-                stock_text(i.stock).map_or_else(String::new, |s| format!(" · {s}"))
+                "{}{}",
+                t!(
+                    lang,
+                    "store.option",
+                    price = thousands(i.price),
+                    name = settings.points_name
+                ),
+                stock_text(lang, i.stock).map_or_else(String::new, |s| format!(" · {s}"))
             )),
             emoji: None,
             label: names
                 .as_ref()
                 .and_then(|n| n.get(&(i.role_id as u64)))
-                .map_or_else(|| "Unknown role".to_owned(), |n| n.chars().take(100).collect()),
+                .map_or_else(|| t!(lang, "store.unknown-role"), |n| n.chars().take(100).collect()),
             value: i.id.to_string(),
         })
         .collect();
-    let lines: Vec<String> = items.iter().map(|i| line(i, &settings.points_emoji)).collect();
+    let lines: Vec<String> = items.iter().map(|i| line(lang, i, &settings.points_emoji)).collect();
     let embed = EmbedBuilder::new()
         .color(BRAND)
-        .title("Server store")
+        .title(t!(lang, "store.title"))
         .description(lines.join("\n"))
-        .footer(EmbedFooterBuilder::new(format!(
-            "Pay with {}. Check your balance with /points show",
-            settings.points_name
+        .footer(EmbedFooterBuilder::new(t!(
+            lang,
+            "store.footer",
+            name = settings.points_name
         )))
         .build();
     Ok(Some(InteractionResponseData {
         embeds: Some(vec![embed]),
-        components: Some(menu("st".to_owned(), "Buy a role…", options)),
+        components: Some(menu("st".to_owned(), &t!(lang, "store.buy-placeholder"), options)),
         ..Default::default()
     }))
 }
 
 impl StoreCommand {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
+        let lang = cx.lang();
         let Some(guild) = cx.guild_id() else {
-            return cx.reply_ephemeral("The store lives inside a server.").await;
+            return cx.reply_ephemeral(t!(lang, "store.guild-only")).await;
         };
-        match store_message(&cx.app, guild).await? {
+        match store_message(&cx.app, guild, lang).await? {
             Some(message) => cx.reply(message).await,
-            None => {
-                cx.reply_ephemeral("The store is empty. Server managers can add roles with `/config store add`.")
-                    .await
-            }
+            None => cx.reply_ephemeral(t!(lang, "store.empty")).await,
         }
     }
 }
@@ -137,6 +140,7 @@ impl StoreCommand {
 impl ConfigStore {
     pub async fn run(self, cx: &Cx, guild: u64) -> anyhow::Result<()> {
         let db = &cx.app.db;
+        let lang = cx.lang();
         match self {
             Self::Add(c) => {
                 let checked = settings::check_price(c.price)
@@ -150,39 +154,46 @@ impl ConfigStore {
                 }
                 let Some(item) = db.add_store_item(guild, c.role.id.get(), price, stock).await? else {
                     return cx
-                        .reply_ephemeral(format!(
-                            "A store holds at most {MAX_STORE_ITEMS} roles. Remove one with `/config store remove` first."
-                        ))
+                        .reply_ephemeral(t!(lang, "store.max-roles", max = MAX_STORE_ITEMS))
                         .await;
                 };
                 let settings = cx.app.guild_settings(guild).await?;
-                cx.reply_ephemeral(format!("On sale now: {}", line(&item, &settings.points_emoji)))
-                    .await
+                cx.reply_ephemeral(t!(
+                    lang,
+                    "store.on-sale",
+                    line = line(lang, &item, &settings.points_emoji)
+                ))
+                .await
             }
             Self::Remove(c) => {
+                let role = format!("<@&{}>", c.role);
                 let text = if db.remove_store_item(guild, c.role.get()).await? {
-                    format!("<@&{}> is off sale. Members who bought it keep it.", c.role)
+                    t!(lang, "store.removed", role = role)
                 } else {
-                    format!("<@&{}> isn't in the store.", c.role)
+                    t!(lang, "store.not-in-store", role = role)
                 };
                 cx.reply_ephemeral(text).await
             }
             Self::List(_) => {
                 let items = db.store_items(guild).await?;
                 if items.is_empty() {
-                    return cx
-                        .reply_ephemeral("Nothing on sale. Add a role with `/config store add`.")
-                        .await;
+                    return cx.reply_ephemeral(t!(lang, "store.list-empty")).await;
                 }
                 let settings = cx.app.guild_settings(guild).await?;
-                let lines: Vec<String> = items.iter().map(|i| line(i, &settings.points_emoji)).collect();
+                let lines: Vec<String> = items.iter().map(|i| line(lang, i, &settings.points_emoji)).collect();
                 let embed = EmbedBuilder::new()
                     .color(BRAND)
-                    .title(format!("{} store", capitalized(&settings.points_name)))
+                    .title(t!(
+                        lang,
+                        "store.list-title",
+                        name = capitalized(&settings.points_name, lang)
+                    ))
                     .description(lines.join("\n"))
-                    .footer(EmbedFooterBuilder::new(format!(
-                        "{}/{MAX_STORE_ITEMS} roles",
-                        items.len()
+                    .footer(EmbedFooterBuilder::new(t!(
+                        lang,
+                        "store.list-footer",
+                        count = items.len(),
+                        max = MAX_STORE_ITEMS
                     )))
                     .build();
                 cx.reply(InteractionResponseData {
@@ -199,16 +210,17 @@ impl ConfigStore {
 /// `st` select: buy the chosen role. The points are taken first; if Discord then refuses the
 /// role they are given back.
 pub(crate) async fn on_buy(cx: &Cx, value: Option<&str>) -> anyhow::Result<()> {
+    let lang = cx.lang();
     let Some(guild) = cx.guild_id() else {
-        return cx.reply_ephemeral("The store lives inside a server.").await;
+        return cx.reply_ephemeral(t!(lang, "store.guild-only")).await;
     };
     let Some(item_id) = value.and_then(|v| v.parse::<i64>().ok()) else {
-        return cx.reply_ephemeral("Pick something to buy.").await;
+        return cx.reply_ephemeral(t!(lang, "store.pick")).await;
     };
     let buyer = cx.author()?.id.get();
     let db = &cx.app.db;
     let Some(item) = db.store_item(guild, item_id).await? else {
-        return cx.reply_ephemeral("That role isn't for sale any more.").await;
+        return cx.reply_ephemeral(t!(lang, "store.gone")).await;
     };
     let role = format!("<@&{}>", item.role_id);
     let has_it = cx
@@ -217,22 +229,24 @@ pub(crate) async fn on_buy(cx: &Cx, value: Option<&str>) -> anyhow::Result<()> {
         .as_ref()
         .is_some_and(|m| m.roles.iter().any(|r| r.get() == item.role_id as u64));
     if has_it {
-        return cx
-            .reply_ephemeral(format!("You already have {role}, so you weren't charged."))
-            .await;
+        return cx.reply_ephemeral(t!(lang, "store.already-have", role = role)).await;
     }
     let settings = cx.app.guild_settings(guild).await?;
     let (emoji, name) = (&settings.points_emoji, &settings.points_name);
     let (price, balance) = match db.buy_store_item(guild, buyer, item_id).await? {
         StoreBuy::Bought { price, balance, .. } => (price, balance),
-        StoreBuy::Gone => return cx.reply_ephemeral("That role isn't for sale any more.").await,
-        StoreBuy::SoldOut => return cx.reply_ephemeral(format!("{role} is sold out.")).await,
+        StoreBuy::Gone => return cx.reply_ephemeral(t!(lang, "store.gone")).await,
+        StoreBuy::SoldOut => return cx.reply_ephemeral(t!(lang, "store.role-sold-out", role = role)).await,
         StoreBuy::Insufficient { price, balance } => {
             return cx
-                .reply_ephemeral(format!(
-                    "{role} costs **{}** {emoji} {name}; you have **{}**.",
-                    thousands(price),
-                    thousands(balance)
+                .reply_ephemeral(t!(
+                    lang,
+                    "store.insufficient",
+                    role = role,
+                    price = thousands(price),
+                    emoji = emoji,
+                    name = name,
+                    balance = thousands(balance)
                 ))
                 .await;
         }
@@ -247,20 +261,26 @@ pub(crate) async fn on_buy(cx: &Cx, value: Option<&str>) -> anyhow::Result<()> {
     if let Err(error) = given {
         tracing::warn!(guild, buyer, role = item.role_id, %error, "could not give a store role");
         let balance = db.refund_store_purchase(guild, buyer, item_id, price).await?;
-        let mut text = format!(
-            "I couldn't give you {role}: {}. You weren't charged; you still have **{}** {emoji} {name}.",
-            roles::refusal(&error),
-            thousands(balance)
+        let mut text = t!(
+            lang,
+            "store.couldnt-give",
+            role = role,
+            why = roles::refusal(&error),
+            balance = thousands(balance),
+            emoji = emoji,
+            name = name
         );
         if roles::role_is_gone(&error) {
             db.forget_role(guild, item.role_id as u64).await?;
-            text.push_str(" The role was taken off the store.");
+            text.push_str(&t!(lang, "store.role-removed"));
         }
         return cx.reply_ephemeral(text).await;
     }
 
-    // Show the new stock to everyone, then tell the buyer privately.
-    if let Some(message) = store_message(&cx.app, guild).await?
+    // Show the new stock to everyone, in the server's language since the message is nobody's in particular,
+    // then tell the buyer privately in theirs.
+    let shared = cx.app.guild_lang(guild).await;
+    if let Some(message) = store_message(&cx.app, guild, shared).await?
         && let Err(error) = cx.update(message).await
     {
         tracing::debug!(%error, "could not refresh the store message");
@@ -269,10 +289,14 @@ pub(crate) async fn on_buy(cx: &Cx, value: Option<&str>) -> anyhow::Result<()> {
         embeds: Some(vec![
             EmbedBuilder::new()
                 .color(SUCCESS)
-                .description(format!(
-                    "You bought {role} for **{}** {emoji} {name}. You have **{}** left.",
-                    thousands(price),
-                    thousands(balance)
+                .description(t!(
+                    lang,
+                    "store.bought",
+                    role = role,
+                    price = thousands(price),
+                    emoji = emoji,
+                    name = name,
+                    balance = thousands(balance)
                 ))
                 .build(),
         ]),

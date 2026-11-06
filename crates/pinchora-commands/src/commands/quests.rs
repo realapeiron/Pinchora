@@ -1,6 +1,7 @@
 use std::{str::Split, time::Duration};
 
 use chrono::Utc;
+use pinchora_core::t;
 use pinchora_game::quests::{self, ALL_CLEAR_PEARLS};
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::{
@@ -64,28 +65,32 @@ async fn board(cx: &Cx, note: Option<String>) -> anyhow::Result<InteractionRespo
         } else {
             "▫️"
         };
-        lines.push(format!(
-            "{mark} **{}** — {} `{}/{}` · +{} shells",
-            q.text_in(lang),
-            bar(progress, q.target),
-            progress.min(q.target),
-            q.target,
-            q.reward
+        lines.push(t!(
+            lang,
+            "quests.line",
+            mark = mark,
+            text = q.text_in(lang),
+            bar = bar(progress, q.target),
+            progress = progress.min(q.target),
+            target = q.target,
+            reward = q.reward
         ));
     }
     let seconds_left = 86_400 - Utc::now().timestamp().rem_euclid(86_400);
     let embed = EmbedBuilder::new()
         .color(if claimable { SUCCESS } else { BRAND })
-        .title("Today's quests")
+        .title(t!(lang, "quests.title"))
         .description(format!(
-            "{}\n\nFinish all three for **{ALL_CLEAR_PEARLS} pearls**.{}",
+            "{}\n\n{}{}",
             lines.join("\n"),
+            t!(lang, "quests.all-clear", pearls = ALL_CLEAR_PEARLS),
             note.map(|n| format!("\n\n{n}")).unwrap_or_default()
         ))
-        .footer(EmbedFooterBuilder::new(format!(
-            "New quests in {}h {}m",
-            seconds_left / 3600,
-            seconds_left % 3600 / 60
+        .footer(EmbedFooterBuilder::new(t!(
+            lang,
+            "quests.footer",
+            hours = seconds_left / 3600,
+            minutes = seconds_left % 3600 / 60
         )));
     Ok(InteractionResponseData {
         embeds: Some(vec![embed.build()]),
@@ -96,7 +101,7 @@ async fn board(cx: &Cx, note: Option<String>) -> anyhow::Result<InteractionRespo
                 disabled: !claimable,
                 emoji: None,
                 id: None,
-                label: Some("Claim rewards".to_owned()),
+                label: Some(t!(lang, "quests.claim")),
                 sku_id: None,
                 style: ButtonStyle::Success,
                 url: None,
@@ -112,12 +117,9 @@ async fn board(cx: &Cx, note: Option<String>) -> anyhow::Result<InteractionRespo
 pub(crate) async fn on_claim(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Result<()> {
     let user = cx.author()?.id.get();
     let day = today();
+    let lang = cx.lang();
     if args.next().and_then(|v| v.parse::<i64>().ok()) != Some(day) {
-        let data = board(
-            cx,
-            Some("That board is from an earlier day, so its button has expired. Here are today's quests.".to_owned()),
-        )
-        .await?;
+        let data = board(cx, Some(t!(lang, "quests.expired"))).await?;
         return cx.update(data).await;
     }
     let ttl = Duration::from_secs(2 * 86_400);
@@ -141,14 +143,14 @@ pub(crate) async fn on_claim(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resu
     let mut parts = Vec::new();
     if shells > 0 {
         cx.app.db.earn_shells(user, shells, "quests").await?;
-        parts.push(format!("+{shells} shells"));
+        parts.push(t!(lang, "quests.shells", shells = shells));
     }
     if finished == 3 && cx.app.cache.once(&format!("quest-allclear:{day}:{user}"), ttl).await? {
         cx.app.db.earn_pearls(user, ALL_CLEAR_PEARLS).await?;
-        parts.push(format!("+{ALL_CLEAR_PEARLS} pearls for clearing the day!"));
+        parts.push(t!(lang, "quests.pearls", pearls = ALL_CLEAR_PEARLS));
     }
     let note = if parts.is_empty() {
-        "Nothing new to claim.".to_owned()
+        t!(lang, "quests.nothing")
     } else {
         format!("🎉 {}", parts.join(" · "))
     };

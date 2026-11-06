@@ -1,7 +1,7 @@
 use std::str::Split;
 
 use chrono::Utc;
-use pinchora_core::{i18n::Lang, items::is_soulbound};
+use pinchora_core::{i18n::Lang, items::is_soulbound, t};
 use pinchora_db::{BuyOutcome, Currency as DbCurrency};
 use pinchora_game::{Availability, Category, Content, Currency, market, overlay::upper};
 use pinchora_render::{GridSlot, ItemGridCard, Theme};
@@ -22,6 +22,8 @@ use crate::{
 };
 
 const PER_PAGE: usize = 8;
+/// The most letters a slot's badge fits before it runs out of the frame.
+const BADGE_CHARS: usize = 19;
 
 #[derive(CommandModel, CreateCommand)]
 #[command(name = "shop", desc = "Buy furniture")]
@@ -146,7 +148,7 @@ fn button(custom_id: String, label: &str, disabled: bool) -> Component {
     })
 }
 
-fn buy_menu(custom_id: String, placeholder: &str, options: Vec<SelectMenuOption>) -> Component {
+fn buy_menu(lang: Lang, custom_id: String, placeholder: &str, options: Vec<SelectMenuOption>) -> Component {
     let disabled = options.is_empty();
     Component::SelectMenu(SelectMenu {
         channel_types: None,
@@ -162,7 +164,7 @@ fn buy_menu(custom_id: String, placeholder: &str, options: Vec<SelectMenuOption>
                 default: false,
                 description: None,
                 emoji: None,
-                label: "Nothing to buy".to_owned(),
+                label: t!(lang, "shop.nothing-to-buy"),
                 value: "none".to_owned(),
             }]
         } else {
@@ -224,11 +226,36 @@ pub(crate) async fn grid_png(
     .await
 }
 
-fn price_label(price: i64, currency: Currency) -> String {
+/// `text` cut back by whole words until it fits a slot's badge (a Turkish category name can be longer than the frame).
+fn fit_badge(mut text: String) -> String {
+    while text.chars().count() > BADGE_CHARS {
+        match text.rfind(' ') {
+            Some(at) => text.truncate(at),
+            None => return text.chars().take(BADGE_CHARS).collect(),
+        }
+    }
+    text
+}
+
+/// A price as the cards draw it: shells are a bare number next to the shell icon.
+fn price_label(lang: Lang, price: i64, currency: Currency) -> String {
     match currency {
         Currency::Shells => thousands(price),
-        Currency::Pearls => format!("{} PEARLS", thousands(price)),
+        Currency::Pearls => t!(lang, "shop.price-pearls", price = thousands(price)),
     }
+}
+
+/// A price as a menu description writes it.
+fn option_price(lang: Lang, price: i64, currency: Currency) -> String {
+    match currency {
+        Currency::Shells => t!(lang, "shop.option-price-shells", price = thousands(price)),
+        Currency::Pearls => t!(lang, "shop.option-price-pearls", price = thousands(price)),
+    }
+}
+
+/// The rule about soulbound pieces, which gifts, stalls and the plaza all repeat.
+pub(crate) fn soulbound_rule(lang: Lang) -> String {
+    t!(lang, "shop.soulbound-rule")
 }
 
 async fn market_card(app: &App, lang: Lang) -> anyhow::Result<InteractionResponseData> {
@@ -246,9 +273,9 @@ async fn market_card(app: &App, lang: Lang) -> anyhow::Result<InteractionRespons
                 item_id: r.item_id.clone(),
                 line1: thousands(r.price),
                 line2: if left == 0 {
-                    "SOLD OUT".to_owned()
+                    t!(lang, "shop.sold-out-line")
                 } else {
-                    format!("{left}/{} LEFT", r.stock)
+                    t!(lang, "shop.stock-left", left = left, stock = r.stock)
                 },
                 bar: Some(left as f32 / r.stock.max(1) as f32),
                 badge: format!("#{}", i + 1),
@@ -263,11 +290,12 @@ async fn market_card(app: &App, lang: Lang) -> anyhow::Result<InteractionRespons
             let item = content.item(&r.item_id)?;
             Some(SelectMenuOption {
                 default: false,
-                description: Some(format!(
-                    "{} shells · {} · {} left",
-                    thousands(r.price),
-                    item.base.rarity.label_in(lang),
-                    r.stock - r.sold
+                description: Some(t!(
+                    lang,
+                    "shop.market-option",
+                    price = thousands(r.price),
+                    rarity = item.base.rarity.label_in(lang),
+                    left = r.stock - r.sold
                 )),
                 emoji: None,
                 label: item.name_in(lang),
@@ -278,23 +306,24 @@ async fn market_card(app: &App, lang: Lang) -> anyhow::Result<InteractionRespons
     let png = grid_png(
         app,
         lang,
-        "Hourly market".to_owned(),
-        format!("RESTOCKS IN {minutes_left} MIN"),
-        "STOCK IS SHARED BY EVERY PLAYER".to_owned(),
+        t!(lang, "shop.market-title"),
+        t!(lang, "shop.market-restocks", minutes = minutes_left),
+        t!(lang, "shop.market-footer"),
         specs,
     )
     .await?;
     let embed = EmbedBuilder::new()
         .color(BRAND)
-        .title("Hourly market")
-        .description("Eight pieces, fresh every hour, while stock lasts. Pick one below to buy it.");
+        .title(t!(lang, "shop.market-title"))
+        .description(t!(lang, "shop.market-intro"));
     Ok(Cx::card(
         embed,
         "market.png",
         png,
         vec![row(vec![buy_menu(
+            lang,
             format!("mk:{hour}"),
-            "Buy from the market…",
+            &t!(lang, "shop.market-pick"),
             options,
         )])],
         false,
@@ -326,7 +355,7 @@ async fn catalog_card(
         .iter()
         .map(|i| SlotSpec {
             item_id: i.id(),
-            line1: price_label(i.base.price, i.base.currency),
+            line1: price_label(lang, i.base.price, i.base.currency),
             line2: format!(
                 "{} · {}×{}",
                 upper(i.base.rarity.label_in(lang), lang),
@@ -334,7 +363,7 @@ async fn catalog_card(
                 i.base.footprint[1]
             ),
             bar: None,
-            badge: upper(i.base.category.label_in(lang), lang),
+            badge: fit_badge(upper(i.base.category.label_in(lang), lang)),
             shell_price: i.base.currency == Currency::Shells,
         })
         .collect();
@@ -344,7 +373,7 @@ async fn catalog_card(
             default: false,
             description: Some(format!(
                 "{} · {}",
-                price_label(i.base.price, i.base.currency).to_lowercase(),
+                option_price(lang, i.base.price, i.base.currency),
                 content
                     .description(&i.base.id, lang)
                     .unwrap_or_default()
@@ -361,27 +390,38 @@ async fn catalog_card(
     let png = grid_png(
         app,
         lang,
-        format!("{} catalog", category.label_in(lang)),
-        format!("PAGE {}/{pages}", page + 1),
-        format!("{} ITEMS IN THIS AISLE", items.len()),
+        t!(lang, "shop.catalog-title", category = category.label_in(lang)),
+        t!(lang, "card.page", page = page + 1, pages = pages),
+        t!(lang, "shop.catalog-footer", count = items.len()),
         specs,
     )
     .await?;
     let embed = EmbedBuilder::new()
         .color(BRAND)
-        .title(format!("{} catalog", category.label_in(lang)))
-        .description(
-            "Pick an item below to buy one. Bought furniture goes to `/inventory`; place it with `/house edit`.",
-        );
+        .title(t!(lang, "shop.catalog-title", category = category.label_in(lang)))
+        .description(t!(lang, "shop.catalog-intro"));
     Ok(Cx::card(
         embed,
         "catalog.png",
         png,
         vec![
-            row(vec![buy_menu(format!("cb:{key}"), "Buy from this page…", options)]),
+            row(vec![buy_menu(
+                lang,
+                format!("cb:{key}"),
+                &t!(lang, "shop.catalog-pick"),
+                options,
+            )]),
             row(vec![
-                button(format!("cp:{key}:{}", page.saturating_sub(1)), "◀ Page", page == 0),
-                button(format!("cp:{key}:{}", page + 1), "Page ▶", page + 1 >= pages),
+                button(
+                    format!("cp:{key}:{}", page.saturating_sub(1)),
+                    &t!(lang, "customize.prev-page"),
+                    page == 0,
+                ),
+                button(
+                    format!("cp:{key}:{}", page + 1),
+                    &t!(lang, "customize.next-page"),
+                    page + 1 >= pages,
+                ),
             ]),
         ],
         false,
@@ -405,27 +445,39 @@ async fn inventory_card(app: &App, lang: Lang, user_id: u64, page: usize) -> any
                 .item(&r.item_id)
                 .map_or_else(String::new, |i| upper(i.base.category.label_in(lang), lang)),
             bar: None,
-            badge: if is_soulbound(&r.item_id) { "SOULBOUND" } else { "" }.to_owned(),
+            badge: if is_soulbound(&r.item_id) {
+                t!(lang, "inventory.soulbound")
+            } else {
+                String::new()
+            },
             shell_price: false,
         })
         .collect();
     let png = grid_png(
         app,
         lang,
-        "Inventory".to_owned(),
-        format!("PAGE {}/{pages}", page + 1),
-        format!("{total} PIECES READY TO PLACE"),
+        t!(lang, "inventory.card-title"),
+        t!(lang, "card.page", page = page + 1, pages = pages),
+        t!(lang, "inventory.footer", total = total),
         specs,
     )
     .await?;
     let embed = EmbedBuilder::new()
         .color(BRAND)
-        .title("Your inventory")
-        .description("Place these with `/house edit`. Buy more with `/shop catalog` or `/shop market`.");
+        .title(t!(lang, "inventory.title"))
+        .description(t!(lang, "inventory.intro"));
     let components = if pages > 1 {
         vec![row(vec![
-            button(format!("iv:{}", page.saturating_sub(1)), "◀ Page", page == 0),
-            button(format!("iv:{}", page + 1), "Page ▶", page + 1 >= pages),
+            button(
+                format!("iv:{}", page.saturating_sub(1)),
+                &t!(lang, "customize.prev-page"),
+                page == 0,
+            ),
+            button(
+                format!("iv:{}", page + 1),
+                &t!(lang, "customize.next-page"),
+                page + 1 >= pages,
+            ),
         ])]
     } else {
         Vec::new()
@@ -433,42 +485,45 @@ async fn inventory_card(app: &App, lang: Lang, user_id: u64, page: usize) -> any
     Ok(Cx::card(embed, "inventory.png", png, components, true))
 }
 
-fn buy_text(outcome: BuyOutcome, name: &str, price: i64, currency: Currency) -> String {
+fn buy_text(lang: Lang, outcome: BuyOutcome, name: &str, price: i64, currency: Currency) -> String {
     let unit = match currency {
-        Currency::Shells => "shells",
-        Currency::Pearls => "pearls",
+        Currency::Shells => t!(lang, "shop.unit-shells"),
+        Currency::Pearls => t!(lang, "shop.unit-pearls"),
     };
     match outcome {
-        BuyOutcome::Bought { balance } => format!(
-            "🛍️ Bought **{name}** for {} {unit}. {} {unit} left. Place it with `/house edit`.",
-            thousands(price),
-            thousands(balance)
+        BuyOutcome::Bought { balance } => t!(
+            lang,
+            "shop.bought",
+            name = name,
+            price = thousands(price),
+            unit = unit,
+            balance = thousands(balance)
         ),
-        BuyOutcome::Insufficient { balance } => {
-            format!(
-                "**{name}** costs {} {unit}; you have {}.",
-                thousands(price),
-                thousands(balance)
-            )
-        }
-        BuyOutcome::SoldOut => format!("**{name}** just sold out. Check back next hour!"),
+        BuyOutcome::Insufficient { balance } => t!(
+            lang,
+            "shop.insufficient",
+            name = name,
+            price = thousands(price),
+            unit = unit,
+            balance = thousands(balance)
+        ),
+        BuyOutcome::SoldOut => t!(lang, "shop.sold-out", name = name),
     }
 }
 
 /// `mk:<hour>` select: buy one unit from that hour's market.
 pub(crate) async fn on_market_buy(cx: &Cx, mut args: Split<'_, char>, value: Option<&str>) -> anyhow::Result<()> {
     let hour: i64 = args.next().and_then(|h| h.parse().ok()).unwrap_or(0);
+    let lang = cx.lang();
     let Some(item_id) = value.filter(|v| *v != "none") else {
-        return cx.reply_ephemeral("Pick an item to buy.").await;
+        return cx.reply_ephemeral(t!(lang, "shop.pick-item")).await;
     };
     if hour != market::hour_of(Utc::now().timestamp()) {
-        return cx
-            .reply_ephemeral("This market has closed. Open the new one with `/shop market`.")
-            .await;
+        return cx.reply_ephemeral(t!(lang, "shop.market-closed")).await;
     }
     let content = Content::get();
     let Some(item) = content.item(item_id) else {
-        return cx.reply_ephemeral("That item no longer exists.").await;
+        return cx.reply_ephemeral(t!(lang, "shop.item-gone")).await;
     };
     let outcome = cx.app.db.market_buy(cx.author()?.id.get(), hour, item_id).await?;
     if matches!(outcome, BuyOutcome::Bought { .. }) {
@@ -484,19 +539,19 @@ pub(crate) async fn on_market_buy(cx: &Cx, mut args: Split<'_, char>, value: Opt
         .into_iter()
         .find(|r| r.item_id == item_id)
         .map_or(item.base.price, |r| r.price);
-    let lang = cx.lang();
-    cx.reply_ephemeral(buy_text(outcome, &item.name_in(lang), price, Currency::Shells))
+    cx.reply_ephemeral(buy_text(lang, outcome, &item.name_in(lang), price, Currency::Shells))
         .await
 }
 
 /// `cb:<category>` select: buy one at the catalog price. Price and availability come
 /// from content, never from the client.
 pub(crate) async fn on_catalog_buy(cx: &Cx, value: Option<&str>) -> anyhow::Result<()> {
+    let lang = cx.lang();
     let Some(item) = value.and_then(|v| Content::get().item(v)) else {
-        return cx.reply_ephemeral("Pick an item to buy.").await;
+        return cx.reply_ephemeral(t!(lang, "shop.pick-item")).await;
     };
     if item.base.availability != Availability::Permanent {
-        return cx.reply_ephemeral("That item isn't sold in the catalog.").await;
+        return cx.reply_ephemeral(t!(lang, "shop.not-in-catalog")).await;
     }
     let currency = match item.base.currency {
         Currency::Shells => DbCurrency::Shells,
@@ -512,8 +567,8 @@ pub(crate) async fn on_catalog_buy(cx: &Cx, value: Option<&str>) -> anyhow::Resu
             .quest(cx.author()?.id.get(), pinchora_game::quests::QuestKind::Buy)
             .await;
     }
-    let lang = cx.lang();
     cx.reply_ephemeral(buy_text(
+        lang,
         outcome,
         &item.name_in(lang),
         item.base.price,
