@@ -119,7 +119,6 @@ fn code(piece: rules::Piece) -> u8 {
     piece.kind as u8 + 1 + if piece.color == Color::White { 0 } else { 6 }
 }
 
-/// The board message: the picture, whose move it is, and the menus to make it.
 /// How a board is shown: the end of the game if it is over, when the move is due, the piece picked up and a note to add.
 #[derive(Default)]
 struct Show<'a> {
@@ -129,6 +128,7 @@ struct Show<'a> {
     note: &'a str,
 }
 
+/// The board message: the picture, whose move it is, and the menus to make it.
 async fn message(
     app: &App,
     session: &GameSession,

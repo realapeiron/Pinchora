@@ -141,7 +141,6 @@ fn ship_views(fleet: &Fleet, sea: &Sea) -> Vec<ShipView> {
         .collect()
 }
 
-/// The public message: both radars, whose turn it is and the menus to fire (or the button to place a fleet).
 /// How a board is shown: the end of the game if it is over, when the move is due, the column aimed at and a note to add.
 #[derive(Default)]
 struct Show<'a> {
@@ -151,6 +150,7 @@ struct Show<'a> {
     note: &'a str,
 }
 
+/// The public message: both radars, whose turn it is and the menus to fire (or the button to place a fleet).
 async fn public(
     app: &App,
     session: &GameSession,
