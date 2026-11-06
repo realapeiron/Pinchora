@@ -19,7 +19,8 @@
   border-bottom-color: var(--accent);
 }
 
-.content-wide {
+/* Two classes: app.css lands after this file in the bundle and its `.content` would win a tie. */
+.content.content-wide {
   max-width: 1480px;
   /* The tab strip and the room scroll inside their own frames; they must not widen the page. */
   grid-template-columns: minmax(0, 1fr);
@@ -173,7 +174,7 @@
 }
 
 @media (max-width: 767px) {
-  .content-wide {
+  .content.content-wide {
     padding: 16px 16px 96px;
   }
   .top-bar {

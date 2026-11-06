@@ -54,11 +54,13 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
   });
 
   const owner = house.data?.owner.name;
+  // The bot's picture has no grid, so comparing draws without one.
+  const edit = grid && !compare;
   const drawn = useMemo(() => {
     if (!art.data || !room.data || !sprites.isSuccess) return null;
-    const scene = buildScene(art.data.content, art.data, room.data, { edit: grid, characterLabel: owner });
+    const scene = buildScene(art.data.content, art.data, room.data, { edit, characterLabel: owner });
     return { scene, rendered: renderRoom(scene) };
-  }, [art.data, room.data, sprites.isSuccess, grid, owner]);
+  }, [art.data, room.data, sprites.isSuccess, edit, owner]);
 
   useEffect(() => setHover(null), [drawn]);
 
@@ -82,7 +84,9 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
             lead={
               house.data
                 ? `${house.data.house.tier_name} · ${house.data.rooms.length} ${house.data.rooms.length === 1 ? "room" : "rooms"} · ${house.data.house.likes} likes`
-                : "Your rooms, as they stand."
+                : target.kind === "own"
+                  ? "Your rooms, as they stand."
+                  : "Somebody else's rooms, as they stand."
             }
             action={
               house.data?.scope === "own" ? (
@@ -164,6 +168,7 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
                     <PixelButton
                       variant={grid ? "primary" : "secondary"}
                       aria-pressed={grid}
+                      disabled={compare}
                       onClick={() => setGrid(!grid)}
                     >
                       Tile grid
