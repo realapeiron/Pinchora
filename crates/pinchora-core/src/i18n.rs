@@ -300,14 +300,18 @@ fn fill(template: &str, args: &[(&str, &dyn Display)]) -> String {
 
 /// Translated text: `t!(lang, "key")` or `t!(lang, "key", name = value, count = n)`. Every value
 /// only needs [`Display`]; `count` also picks a plural form.
+///
+/// The arguments are borrowed as `&dyn Display`, which is not `Send`: the `let` drops them before
+/// the statement around the macro goes on, so `cx.reply(t!(…)).await` keeps its future `Send`.
 #[macro_export]
 macro_rules! t {
     ($lang:expr, $key:expr $(,)?) => {
         $crate::i18n::text($lang, $key, &[])
     };
-    ($lang:expr, $key:expr, $($name:ident = $value:expr),+ $(,)?) => {
-        $crate::i18n::text($lang, $key, &[$((stringify!($name), &$value as &dyn ::std::fmt::Display)),+])
-    };
+    ($lang:expr, $key:expr, $($name:ident = $value:expr),+ $(,)?) => {{
+        let text = $crate::i18n::text($lang, $key, &[$((stringify!($name), &$value as &dyn ::std::fmt::Display)),+]);
+        text
+    }};
 }
 
 #[cfg(test)]
