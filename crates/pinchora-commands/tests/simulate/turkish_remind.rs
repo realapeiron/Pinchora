@@ -105,7 +105,7 @@ async fn reminders_are_set_listed_cancelled_and_delivered_in_turkish() {
             && notifications.contains("🔔 Haftalık ödül")
             && notifications.contains("🔕 Aylık ödül")
             && notifications.contains("🔕 Hayvana bakım zamanı")
-            && notifications.contains("🔕 Hayvan gezeden döndü"),
+            && notifications.contains("🔕 Hayvan geziden döndü"),
         "{notifications}"
     );
     let footer = list.embeds[0]

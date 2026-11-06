@@ -53,7 +53,7 @@ daily = "günlük ödül"
 weekly = "haftalık ödül"
 monthly = "aylık ödül"
 pet = "hayvanının bakım zamanı"
-trip = "hayvanlarının gezeden dönüşü"
+trip = "hayvanlarının geziden dönüşü"
 
 # The reward's name inside a sentence.
 [remind.kind]
@@ -67,7 +67,7 @@ daily = "Günlük ödül"
 weekly = "Haftalık ödül"
 monthly = "Aylık ödül"
 pet = "Hayvana bakım zamanı"
-trip = "Hayvan gezeden döndü"
+trip = "Hayvan geziden döndü"
 
 # The title of the direct message for each reward.
 [remind.title]

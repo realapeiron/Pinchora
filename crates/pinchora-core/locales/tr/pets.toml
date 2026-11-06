@@ -72,7 +72,7 @@ walk = "seninle kıyıda tırıs gidiyor"
 awake = "{name} zaten uyanık."
 free = "{name} gerinip esniyor ve yeniden uyandı! Bu, bugünkü ücretsiz uyandırma hakkındı."
 paid = "{name} gerinip esniyor ve yeniden uyandı! Uyandırma {fee} kabuğa mal oldu ({balance} kaldı)."
-poor = "Bugünkü ücretsiz uyandırma hakkın bitti, bir tane daha {fee} kabuk (sende {balance} var). Ücretsiz hakkın yarın yenilenir, {name} da istediği kadar uyuyabilir."
+poor = "Bugünkü ücretsiz uyandırma hakkın bitti, bir tane daha {fee} kabuk (sende {balance} var). Ücretsiz hakkın yarın yenilenir; o zamana kadar {name} istediği kadar uyuyabilir."
 
 [pet.adopt]
 have-one = "Zaten bir hayvanın var. Yenileri `/pet capsule` ile gelir."

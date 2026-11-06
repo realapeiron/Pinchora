@@ -131,16 +131,21 @@ fn pick_pet<'a>(pets: &'a [PetRow], name: Option<&str>, lang: Lang) -> Result<&'
             .or(pets.first())
             .ok_or_else(|| t!(lang, "pet.no-pet"));
     };
-    let wanted = lower(lang, name);
+    // English folds every letter as before (É and é match); Turkish folds I/ı and İ/i its own way.
+    let fold = |text: &str| match lang {
+        Lang::En => text.to_lowercase(),
+        Lang::Tr => lower(lang, text),
+    };
+    let wanted = fold(name);
     let content = Content::get();
     // The species by the name the player sees, or by the English one.
     let species = |p: &PetRow| match content.pet(&p.species) {
-        Some(s) => [lower(lang, &content.name(&s.id, lang)), s.name.to_lowercase()],
+        Some(s) => [fold(&content.name(&s.id, lang)), s.name.to_lowercase()],
         None => [String::new(), String::new()],
     };
     pets.iter()
-        .find(|p| lower(lang, &p.name) == wanted)
-        .or_else(|| pets.iter().find(|p| lower(lang, &p.name).starts_with(&wanted)))
+        .find(|p| fold(&p.name) == wanted)
+        .or_else(|| pets.iter().find(|p| fold(&p.name).starts_with(&wanted)))
         .or_else(|| pets.iter().find(|p| species(p).contains(&wanted)))
         .ok_or_else(|| {
             let names: Vec<String> = pets.iter().take(10).map(|p| format!("**{}**", p.name)).collect();
@@ -666,6 +671,9 @@ mod tests {
         let err = pick_pet(&pets, Some("Nobody"), Lang::En).unwrap_err();
         assert!(err.contains("Nobody") && err.contains("**Biscuit**"), "{err}");
         assert!(pick_pet(&[], None, Lang::En).is_err());
+        // Letters beyond ASCII still ignore case in English.
+        let accented = vec![pet(4, "Émile", "crumbclaw_crab", true)];
+        assert_eq!(pick_pet(&accented, Some("émile"), Lang::En).unwrap().id, 4);
     }
 
     #[test]
