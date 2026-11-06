@@ -310,6 +310,10 @@ async fn show(cx: &Cx, guild: u64) -> anyhow::Result<()> {
             .filter(|(m, _)| m.group() == group)
             .map(|(m, rule)| line(*m, rule))
             .collect();
+        // A group no module belongs to yet has nothing to show (Discord refuses an empty field).
+        if lines.is_empty() {
+            continue;
+        }
         embed = embed.field(EmbedFieldBuilder::new(group.label(), lines.join("\n")));
     }
     let embed = embed

@@ -80,12 +80,14 @@ function ModulesForm({ guild, data }: { guild: string; data: ModulesData }) {
 
   return (
     <>
-      {data.groups.map((group) => (
-        <Panel key={group.key} title={group.label.toUpperCase()}>
-          <ul className="module-list">
-            {data.items
-              .filter((m) => m.group === group.key)
-              .map((saved) => (
+      {data.groups.map((group) => {
+        const items = data.items.filter((m) => m.group === group.key);
+        // A group no module belongs to yet stays off the page.
+        if (items.length === 0) return null;
+        return (
+          <Panel key={group.key} title={group.label.toUpperCase()}>
+            <ul className="module-list">
+              {items.map((saved) => (
                 <ModuleRow
                   key={saved.key}
                   saved={saved}
@@ -96,9 +98,10 @@ function ModulesForm({ guild, data }: { guild: string; data: ModulesData }) {
                   onChange={(next) => edit(saved.key, next)}
                 />
               ))}
-          </ul>
-        </Panel>
-      ))}
+            </ul>
+          </Panel>
+        );
+      })}
       <SaveBar
         count={changes}
         saving={save.isPending}

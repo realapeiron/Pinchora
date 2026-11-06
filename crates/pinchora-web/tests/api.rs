@@ -2303,7 +2303,7 @@ async fn access(
 
 #[tokio::test]
 async fn module_switches_save_with_the_command_rules_and_reach_the_bot() {
-    use pinchora_core::modules::{Access, Module};
+    use pinchora_core::modules::{Access, Group, Module};
     let Some(h) = Harness::new("modules").await else {
         return;
     };
@@ -2324,7 +2324,7 @@ async fn module_switches_save_with_the_command_rules_and_reach_the_bot() {
     assert_eq!(list.status, StatusCode::OK, "{}", list.text());
     let list = list.json();
     assert_eq!(list["max_channels"], 50);
-    assert_eq!(list["groups"].as_array().unwrap().len(), 4);
+    assert_eq!(list["groups"].as_array().unwrap().len(), Group::ALL.len());
     let items = list["items"].as_array().unwrap();
     assert_eq!(items.len(), Module::ALL.len());
     for item in items {
