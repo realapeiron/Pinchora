@@ -56,6 +56,7 @@ pub(crate) mod store;
 pub(crate) mod suggest;
 pub(crate) mod surge;
 pub(crate) mod tag;
+pub(crate) mod tickets;
 pub(crate) mod trivia;
 mod undo;
 mod utilities;
@@ -144,4 +145,6 @@ commands!(
     tag::Tag,
     customcommand::CustomCommand,
     language::LanguageCommand,
+    tickets::TicketCommand,
+    tickets::TicketsCommand,
 );

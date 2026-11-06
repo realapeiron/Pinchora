@@ -1632,6 +1632,309 @@
           ],
           "path": "customcommand info",
           "usage": "/customcommand info <name>"
+        },
+        {
+          "description": "Close this ticket and keep its transcript",
+          "manager": false,
+          "options": [
+            {
+              "description": "Why it is closed: shown in the ticket, the log and the transcript",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "ticket close",
+          "usage": "/ticket close [reason]"
+        },
+        {
+          "description": "Say you handle this ticket (staff)",
+          "manager": false,
+          "options": [],
+          "path": "ticket claim",
+          "usage": "/ticket claim"
+        },
+        {
+          "description": "Hand this ticket back to the queue (staff)",
+          "manager": false,
+          "options": [],
+          "path": "ticket unclaim",
+          "usage": "/ticket unclaim"
+        },
+        {
+          "description": "Let a member see and write in this ticket (staff)",
+          "manager": false,
+          "options": [
+            {
+              "description": "Who to add",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "ticket add",
+          "usage": "/ticket add <user>"
+        },
+        {
+          "description": "Take a member out of this ticket (staff)",
+          "manager": false,
+          "options": [
+            {
+              "description": "Who to take out",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "ticket remove",
+          "usage": "/ticket remove <user>"
+        },
+        {
+          "description": "Rename this ticket's channel (staff)",
+          "manager": false,
+          "options": [
+            {
+              "description": "The new name; {number}, {user} and {topic} are filled in",
+              "name": "name",
+              "required": true
+            }
+          ],
+          "path": "ticket rename",
+          "usage": "/ticket rename <name>"
+        },
+        {
+          "description": "Get this ticket's messages as a web page, only for you",
+          "manager": false,
+          "options": [],
+          "path": "ticket transcript",
+          "usage": "/ticket transcript"
+        },
+        {
+          "description": "Open this closed ticket again (staff)",
+          "manager": false,
+          "options": [],
+          "path": "ticket reopen",
+          "usage": "/ticket reopen"
+        },
+        {
+          "description": "Move this ticket's channel to another category (staff)",
+          "manager": false,
+          "options": [
+            {
+              "description": "The category to move it to",
+              "name": "category",
+              "required": true
+            }
+          ],
+          "path": "ticket move",
+          "usage": "/ticket move <category>"
+        },
+        {
+          "description": "Make a panel (up to 10); post it with /tickets panel post",
+          "manager": true,
+          "options": [
+            {
+              "description": "How the other commands and the dashboard find it",
+              "name": "name",
+              "required": true
+            },
+            {
+              "description": "Where it is posted, and where private threads open in thread mode",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "description": "Its title (default: Need help?)",
+              "name": "title",
+              "required": false
+            },
+            {
+              "description": "The text above the buttons",
+              "name": "description",
+              "required": false
+            },
+            {
+              "description": "Topics, one button or option each: Support, Billing, Report a member",
+              "name": "topics",
+              "required": false
+            },
+            {
+              "choices": [
+                "Buttons (up to 5 topics)",
+                "Menu (up to 25 topics)"
+              ],
+              "description": "Buttons or a menu",
+              "name": "style",
+              "required": false
+            },
+            {
+              "description": "The role that answers these tickets",
+              "name": "support_role",
+              "required": false
+            }
+          ],
+          "path": "tickets panel create",
+          "usage": "/tickets panel create <name> <channel> [title] [description] [topics] [style] [support_role]"
+        },
+        {
+          "description": "Change a panel; posted already, post it again to update it",
+          "manager": true,
+          "options": [
+            {
+              "description": "The panel's name or number",
+              "name": "panel",
+              "required": true
+            },
+            {
+              "description": "A new name",
+              "name": "name",
+              "required": false
+            },
+            {
+              "description": "A new title",
+              "name": "title",
+              "required": false
+            },
+            {
+              "description": "A new text above the buttons",
+              "name": "description",
+              "required": false
+            },
+            {
+              "description": "New topics, one button or option each: Support, Billing, Report a member",
+              "name": "topics",
+              "required": false
+            },
+            {
+              "choices": [
+                "Buttons (up to 5 topics)",
+                "Menu (up to 25 topics)"
+              ],
+              "description": "Buttons or a menu",
+              "name": "style",
+              "required": false
+            },
+            {
+              "description": "The role that answers these tickets (replaces the panel's roles)",
+              "name": "support_role",
+              "required": false
+            },
+            {
+              "description": "The panel's colour, like #ff6b4a",
+              "name": "color",
+              "required": false
+            },
+            {
+              "description": "What the ticket says first; {user}, {server}, {number} and {topic} are filled in",
+              "name": "welcome",
+              "required": false
+            },
+            {
+              "description": "Where it is posted",
+              "name": "channel",
+              "required": false
+            }
+          ],
+          "path": "tickets panel edit",
+          "usage": "/tickets panel edit <panel> [name] [title] [description] [topics] [style] [support_role] [color] [welcome] [channel]"
+        },
+        {
+          "description": "Post a panel, or update it where it is",
+          "manager": true,
+          "options": [
+            {
+              "description": "The panel's name or number",
+              "name": "panel",
+              "required": true
+            }
+          ],
+          "path": "tickets panel post",
+          "usage": "/tickets panel post <panel>"
+        },
+        {
+          "description": "Delete a panel; its tickets stay",
+          "manager": true,
+          "options": [
+            {
+              "description": "The panel's name or number",
+              "name": "panel",
+              "required": true
+            }
+          ],
+          "path": "tickets panel delete",
+          "usage": "/tickets panel delete <panel>"
+        },
+        {
+          "description": "The server's panels",
+          "manager": true,
+          "options": [],
+          "path": "tickets panel list",
+          "usage": "/tickets panel list"
+        },
+        {
+          "description": "How tickets run; with no options it shows the settings",
+          "manager": true,
+          "options": [
+            {
+              "description": "The category new ticket channels go in",
+              "name": "category",
+              "required": false
+            },
+            {
+              "description": "The category closed tickets move to",
+              "name": "closed_category",
+              "required": false
+            },
+            {
+              "description": "Where opened and closed tickets are logged, with transcripts",
+              "name": "log_channel",
+              "required": false
+            },
+            {
+              "description": "Close a ticket nobody wrote in for this many hours (0: never)",
+              "name": "auto_close_hours",
+              "required": false
+            },
+            {
+              "description": "Send the member their transcript by direct message",
+              "name": "dm_transcript",
+              "required": false
+            },
+            {
+              "description": "Ask the member for 1 to 5 stars after a close",
+              "name": "ratings",
+              "required": false
+            },
+            {
+              "choices": [
+                "Automatic (threads past 400 channels)",
+                "Channels",
+                "Private threads"
+              ],
+              "description": "Channels or private threads",
+              "name": "mode",
+              "required": false
+            },
+            {
+              "description": "The channel name: {number}, {user} and {topic} are filled in",
+              "name": "naming",
+              "required": false
+            },
+            {
+              "description": "Tickets one member may have open at once (1 to 10)",
+              "name": "max_open",
+              "required": false
+            },
+            {
+              "choices": [
+                "Ticket category",
+                "Closed category",
+                "Log channel"
+              ],
+              "description": "Unset one of the channels above",
+              "name": "clear",
+              "required": false
+            }
+          ],
+          "path": "tickets settings",
+          "usage": "/tickets settings [category] [closed_category] [log_channel] [auto_close_hours] [dm_transcript] [ratings] [mode] [naming] [max_open] [clear]"
         }
       ],
       "intro": "Polls, suggestions, giveaways, role buttons, server points and custom commands.",
@@ -2283,5 +2586,5 @@
       "title": "Game & module setup"
     }
   ],
-  "count": 156
+  "count": 171
 }

@@ -98,6 +98,9 @@ mod grants;
 // What reaches the (still empty) feature hooks.
 #[path = "simulate/hooks.rs"]
 mod hooks;
+// Tickets: panels, ticket channels and threads, closing with transcripts, the idle ticker.
+#[path = "simulate/tickets.rs"]
+mod tickets;
 
 const APPLICATION_ID: u64 = 1;
 const CHANNEL_ID: u64 = 2;

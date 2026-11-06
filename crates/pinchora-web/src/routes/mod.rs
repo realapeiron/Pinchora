@@ -17,6 +17,7 @@ mod site;
 mod static_files;
 mod store;
 mod tag_common;
+mod tickets;
 
 use std::time::Instant;
 

@@ -111,11 +111,12 @@ pub enum Module {
     Collection,
     Gambling,
     TextCommands,
+    Tickets,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 28] = [
+    pub const ALL: [Self; 29] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -144,6 +145,7 @@ impl Module {
         Self::Collection,
         Self::Gambling,
         Self::TextCommands,
+        Self::Tickets,
     ];
 
     /// The key stored in the database and used in the API.
@@ -177,6 +179,7 @@ impl Module {
             Self::Collection => "collection",
             Self::Gambling => "gambling",
             Self::TextCommands => "text_commands",
+            Self::Tickets => "tickets",
         }
     }
 
@@ -214,6 +217,7 @@ impl Module {
             Self::Collection => "Critter drops and beachcombing",
             Self::Gambling => "Gambling-style games",
             Self::TextCommands => "Text commands",
+            Self::Tickets => "Tickets",
         }
     }
 
@@ -259,6 +263,7 @@ impl Module {
             Self::TextCommands => {
                 "Commands typed as messages, with the prefix or an @mention. Slash commands are not affected."
             }
+            Self::Tickets => "/ticket and /tickets: private support tickets opened from a panel, with transcripts.",
         }
     }
 
@@ -285,6 +290,7 @@ impl Module {
             | Self::PartyGames
             | Self::Collection
             | Self::Gambling => Group::Games,
+            Self::Tickets => Group::Community,
         }
     }
 
@@ -329,6 +335,7 @@ impl Module {
             "dex" | "beachcomb" | "crabpot" | "critterdrop" => Self::Collection,
             "surge" => Self::Party,
             "party" => Self::PartyGames,
+            "ticket" | "tickets" => Self::Tickets,
             "duel" => match sub {
                 Some("share") => Self::Party,
                 Some("tictactoe" | "connect4" | "rps") => Self::Duels,
@@ -369,6 +376,7 @@ impl Module {
             "tg" | "cm" => Self::CustomCommands,
             "sg" => Self::Suggestions,
             "pl" => Self::Polls,
+            "tk" | "tp" | "tf" | "tr" => Self::Tickets,
             _ => return None,
         })
     }

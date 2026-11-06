@@ -74,6 +74,8 @@ const PRIVATE: &[&str] = &[
     "stall sell",
     "suggest",
     "suggestion",
+    "ticket",
+    "tickets",
 ];
 
 /// Slash commands that answer with a form, which only works as the first answer: never deferred.
@@ -82,7 +84,7 @@ const OPENS_FORM: &[&str] = &["customcommand create", "customcommand edit"];
 /// Component clicks that may answer with a modal, as `prefix:action` of the custom id. The simulator
 /// checks that every modal it sees opened comes from one of these.
 const OPENS_MODAL: &[&str] = &[
-    "ca:hex", "ca:name", "gb:s", "pz:m", "wo:g", "cs:h", "hl:w", "ac:w", "cn:w", "wx:g",
+    "ca:hex", "ca:name", "gb:s", "pz:m", "wo:g", "cs:h", "hl:w", "ac:w", "cn:w", "wx:g", "tk:o", "tk:s",
 ];
 
 impl Deferral {

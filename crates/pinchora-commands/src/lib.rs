@@ -21,6 +21,7 @@ mod roles;
 mod server_events;
 mod server_log;
 mod text;
+mod tickets;
 mod util;
 mod voice_xp;
 
@@ -57,6 +58,10 @@ pub use invalidations::listen as listen_for_invalidations;
 pub use responder::Responder;
 pub use server_events::{spawn_ticker as spawn_events_ticker, tick as events_tick};
 pub use text::on_text_command;
+pub use tickets::{
+    PanelPost as TicketPanelPost, post_panel as post_ticket_panel, spawn_ticker as spawn_tickets_ticker,
+    tick as tickets_tick,
+};
 pub use util::fill;
 pub use voice_xp::{
     VoiceSnapshot, forget as forget_voice_presence, prune as voice_prune, rebuild as rebuild_voice,

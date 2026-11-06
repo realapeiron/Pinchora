@@ -1,0 +1,267 @@
+//! Tickets: members open a private channel (or private thread) from a panel's button or menu, staff
+//! claim, lock and close it, and a transcript is kept, logged and sent to the member when it closes.
+//!
+//! Custom ids carry everything: `tk:o:<panel>:<topic>` (a panel button), `tk:s:<panel>` (a panel menu),
+//! `tf:<panel>:<topic>` (the panel's form), `tp:<action>:<ticket>` (the controls inside a ticket) and
+//! `tr:<ticket>:<stars>` (the rating a member gets by direct message). Closing is claimed in the database
+//! first, so on many pods a ticket closes, logs and is transcribed exactly once.
+
+mod actions;
+mod open;
+mod panel;
+mod transcript;
+
+use std::{sync::Arc, time::Duration};
+
+use pinchora_core::{i18n::Lang, modules::Module, t, tickets::Refusal};
+use pinchora_db::{Ticket, TicketPanel, TicketSettings};
+use twilight_http::request::channel::message::CreateMessage;
+use twilight_model::{
+    channel::message::{AllowedMentions, Component, Embed, MessageFlags},
+    guild::Permissions,
+    http::{attachment::Attachment, interaction::InteractionResponseData},
+    id::{
+        Id,
+        marker::{ChannelMarker, RoleMarker, UserMarker},
+    },
+};
+
+pub(crate) use actions::{TicketAct, on_control, on_rating, run_action};
+pub use actions::{spawn_ticker, tick};
+pub(crate) use open::{on_form, on_open};
+pub use panel::{PanelPost, post_panel};
+
+use crate::{App, Cx, commands::games::quiet};
+
+/// The ticker wakes this often to look for tickets nobody wrote in.
+const WAKE: Duration = Duration::from_secs(300);
+
+/// What staff may do in every ticket, whatever its panel: run the server or its channels.
+const STAFF_PERMISSIONS: [Permissions; 3] = [
+    Permissions::ADMINISTRATOR,
+    Permissions::MANAGE_GUILD,
+    Permissions::MANAGE_CHANNELS,
+];
+
+/// What the opener, added members and support roles may do in a ticket's channel.
+pub(crate) fn member_allow() -> Permissions {
+    Permissions::VIEW_CHANNEL
+        | Permissions::SEND_MESSAGES
+        | Permissions::READ_MESSAGE_HISTORY
+        | Permissions::ATTACH_FILES
+        | Permissions::EMBED_LINKS
+}
+
+/// A private answer that pings nobody.
+pub(crate) async fn tell(cx: &Cx, text: impl Into<String>) -> anyhow::Result<()> {
+    crate::server_events::tell(cx, text).await
+}
+
+/// Whether the member behind `cx` is staff for tickets of `panel`: Manage Server, Manage Channels or
+/// Administrator, or one of the panel's support roles.
+pub(crate) fn is_staff(cx: &Cx, panel: Option<&TicketPanel>) -> bool {
+    let Some(member) = cx.interaction.member.as_ref() else {
+        return false;
+    };
+    if member
+        .permissions
+        .is_some_and(|p| STAFF_PERMISSIONS.iter().any(|needed| p.contains(*needed)))
+    {
+        return true;
+    }
+    panel.is_some_and(|panel| {
+        member
+            .roles
+            .iter()
+            .any(|role| panel.support_roles.contains(&(role.get() as i64)))
+    })
+}
+
+/// The ticket of the channel `cx` came from, or a private answer saying this is no ticket (and `None`).
+pub(crate) async fn here(cx: &Cx) -> anyhow::Result<Option<(Ticket, Option<TicketPanel>)>> {
+    let (Some(guild), Some(channel)) = (cx.guild_id(), cx.interaction.channel.as_ref().map(|c| c.id.get())) else {
+        tell(cx, t!(cx.lang(), "tickets.not-a-ticket")).await?;
+        return Ok(None);
+    };
+    let Some(ticket) = cx.app.db.ticket_at(guild, channel).await? else {
+        tell(cx, t!(cx.lang(), "tickets.not-a-ticket")).await?;
+        return Ok(None);
+    };
+    let panel = match ticket.panel_id {
+        Some(id) => cx.app.db.ticket_panel(id).await?,
+        None => None,
+    };
+    Ok(Some((ticket, panel)))
+}
+
+/// A refusal of the ticket rules, said privately.
+pub(crate) async fn refuse(cx: &Cx, refusal: Refusal) -> anyhow::Result<()> {
+    tell(cx, refusal.text(cx.lang())).await
+}
+
+/// `#0042`: how a ticket's number is shown.
+pub(crate) fn number(n: i32) -> String {
+    format!("#{n:04}")
+}
+
+/// The panel's override, else the server's setting.
+pub(crate) fn log_channel(settings: &TicketSettings, panel: Option<&TicketPanel>) -> Option<u64> {
+    panel
+        .and_then(|p| p.log_channel_id)
+        .or(settings.log_channel_id)
+        .map(|id| id as u64)
+}
+
+/// Posts `embed` (and `file`, a transcript) in the ticket log; a log that cannot be written to is only
+/// noted, it never stops the ticket.
+pub(crate) async fn log(app: &App, channel: Option<u64>, embed: Embed, file: Option<(String, Vec<u8>)>) {
+    let Some(channel) = channel else { return };
+    let embeds = [embed];
+    let files: Vec<Attachment> = file
+        .into_iter()
+        .map(|(name, bytes)| Attachment::from_bytes(name, bytes, 1))
+        .collect();
+    let mentions = quiet();
+    let request: CreateMessage<'_> = app
+        .http
+        .create_message(Id::new(channel))
+        .embeds(&embeds)
+        .attachments(&files)
+        .allowed_mentions(mentions.as_ref());
+    if let Err(error) = request.await {
+        tracing::warn!(channel, %error, "ticket log not written");
+    }
+}
+
+/// Pings exactly these users and roles and nobody else.
+pub(crate) fn pinging(users: &[u64], roles: &[u64]) -> AllowedMentions {
+    AllowedMentions {
+        users: users.iter().map(|u| Id::<UserMarker>::new(*u)).collect(),
+        roles: roles.iter().map(|r| Id::<RoleMarker>::new(*r)).collect(),
+        ..AllowedMentions::default()
+    }
+}
+
+/// A private answer with components.
+pub(crate) fn private(content: String, components: Vec<Component>) -> InteractionResponseData {
+    InteractionResponseData {
+        content: Some(content),
+        components: Some(components),
+        flags: Some(MessageFlags::EPHEMERAL),
+        allowed_mentions: quiet(),
+        ..Default::default()
+    }
+}
+
+/// The channel id of a ticket's place, for REST calls.
+pub(crate) fn place_of(ticket: &Ticket) -> Option<Id<ChannelMarker>> {
+    ticket.place().map(Id::new)
+}
+
+/// Whether the tickets module works for the guild (and the place) a timer acts on.
+pub(crate) async fn module_on(app: &App, guild: u64, place: Option<u64>) -> bool {
+    app.module_allowed(guild, place, Module::Tickets).await
+}
+
+/// The server's name, for transcripts and direct messages; empty when Discord will not say.
+pub(crate) async fn server_name(app: &App, guild: u64) -> String {
+    match app.http.guild(Id::new(guild)).await {
+        Ok(response) => response.model().await.map(|g| g.name).unwrap_or_default(),
+        Err(error) => {
+            tracing::debug!(guild, %error, "server name not read");
+            String::new()
+        }
+    }
+}
+
+/// The language of messages a ticket posts for everybody in it.
+pub(crate) async fn guild_lang(app: &Arc<App>, guild: u64) -> Lang {
+    app.guild_lang(guild).await
+}
+
+const UNKNOWN_CHANNEL: u64 = 10003;
+const MISSING_ACCESS: u64 = 50001;
+const MISSING_PERMISSIONS: u64 = 50013;
+const MAX_CHANNELS: u64 = 30013;
+
+/// What the bot was trying when Discord said no, for the sentence that names what it lacks.
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum Need {
+    /// Posting a message in the channel.
+    Post(u64),
+    /// Making a ticket channel (under a category, when there is one).
+    Channel,
+    /// Making a private thread off the channel.
+    Thread(u64),
+    /// Changing the ticket's channel or thread: who sees it, its name, its category.
+    Manage(u64),
+}
+
+/// Why Discord refused, in `lang`, naming the exact permission the bot needs for `need`.
+pub(crate) fn discord_refusal(error: &twilight_http::Error, lang: Lang, need: Need) -> String {
+    match crate::roles::error_code(error) {
+        Some(MISSING_ACCESS | MISSING_PERMISSIONS) => match need {
+            Need::Post(channel) => t!(lang, "tickets.discord.post", channel = format!("<#{channel}>")),
+            Need::Channel => t!(lang, "tickets.discord.channel"),
+            Need::Thread(channel) => t!(lang, "tickets.discord.thread", channel = format!("<#{channel}>")),
+            Need::Manage(channel) => t!(lang, "tickets.discord.manage", channel = format!("<#{channel}>")),
+        },
+        Some(UNKNOWN_CHANNEL) => t!(lang, "tickets.discord.gone"),
+        Some(MAX_CHANNELS) => t!(lang, "tickets.discord.full"),
+        Some(_) => t!(lang, "tickets.discord.refused"),
+        None => t!(lang, "tickets.discord.unreachable"),
+    }
+}
+
+/// The permissions the bot lacks for `need`, as a sentence in `cx`'s language (`None` when it has them
+/// all or Discord did not say), from what the interaction says the bot has in the channel it came from.
+pub(crate) fn missing(cx: &Cx, need: Need) -> Option<String> {
+    let keys = missing_keys(cx, need);
+    if keys.is_empty() {
+        return None;
+    }
+    let names: Vec<String> = keys
+        .iter()
+        .map(|key| format!("**{}**", t!(cx.lang(), &format!("tickets.perm.{key}"))))
+        .collect();
+    Some(t!(cx.lang(), "tickets.discord.lacking", permissions = names.join(", ")))
+}
+
+fn missing_keys(cx: &Cx, need: Need) -> Vec<&'static str> {
+    let Some(have) = cx.interaction.app_permissions else {
+        return Vec::new();
+    };
+    if have.contains(Permissions::ADMINISTRATOR) {
+        return Vec::new();
+    }
+    let wanted: &[(Permissions, &str)] = match need {
+        Need::Channel => &[
+            (Permissions::MANAGE_CHANNELS, "manage-channels"),
+            (Permissions::MANAGE_ROLES, "manage-roles"),
+            (Permissions::VIEW_CHANNEL, "view-channel"),
+            (Permissions::SEND_MESSAGES, "send-messages"),
+            (Permissions::EMBED_LINKS, "embed-links"),
+            (Permissions::READ_MESSAGE_HISTORY, "read-history"),
+        ],
+        Need::Thread(_) => &[
+            (Permissions::CREATE_PRIVATE_THREADS, "private-threads"),
+            (Permissions::SEND_MESSAGES_IN_THREADS, "send-in-threads"),
+            (Permissions::MANAGE_THREADS, "manage-threads"),
+            (Permissions::READ_MESSAGE_HISTORY, "read-history"),
+        ],
+        Need::Post(_) => &[
+            (Permissions::VIEW_CHANNEL, "view-channel"),
+            (Permissions::SEND_MESSAGES, "send-messages"),
+            (Permissions::EMBED_LINKS, "embed-links"),
+        ],
+        Need::Manage(_) => &[
+            (Permissions::MANAGE_CHANNELS, "manage-channels"),
+            (Permissions::MANAGE_ROLES, "manage-roles"),
+        ],
+    };
+    wanted
+        .iter()
+        .filter(|(bit, _)| !have.contains(*bit))
+        .map(|(_, name)| *name)
+        .collect()
+}

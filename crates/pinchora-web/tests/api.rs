@@ -42,6 +42,9 @@ use twilight_model::{gateway::payload::incoming::MessageCreate, id::Id};
 // Custom commands and auto-responders.
 #[path = "api/tags.rs"]
 mod tags;
+// Tickets: settings, panels, the tickets list and transcripts.
+#[path = "api/tickets.rs"]
+mod tickets;
 
 const APPLICATION_ID: u64 = 1;
 const PUBLIC_URL: &str = "http://dash.test";

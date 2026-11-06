@@ -1039,7 +1039,9 @@
       "party",
       "tag",
       "customcommand",
-      "language"
+      "language",
+      "ticket",
+      "tickets"
     ],
     "responder_placeholders": {
       "keyword": [
