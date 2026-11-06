@@ -1,6 +1,11 @@
 use chrono::NaiveDate;
 
-use crate::{Db, house::add_inventory, sql_id};
+use crate::{
+    Db,
+    house::add_inventory,
+    locks::{lock_users, retry},
+    sql_id,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Currency {
@@ -42,9 +47,25 @@ impl Db {
         currency: Currency,
         quantity: i32,
     ) -> anyhow::Result<BuyOutcome> {
+        retry("buy_item", || {
+            self.buy_item_once(user_id, item_id, unit_price, currency, quantity)
+        })
+        .await
+    }
+
+    /// One attempt of [`Db::buy_item`].
+    async fn buy_item_once(
+        &self,
+        user_id: u64,
+        item_id: &str,
+        unit_price: i64,
+        currency: Currency,
+        quantity: i32,
+    ) -> anyhow::Result<BuyOutcome> {
         let id = sql_id(user_id);
         let total = unit_price * i64::from(quantity);
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[id]).await?;
         sqlx::query("INSERT INTO users (id) VALUES ($1) ON CONFLICT (id) DO NOTHING")
             .bind(id)
             .execute(&mut *tx)
@@ -85,8 +106,14 @@ impl Db {
 
     /// Buys one unit from the hourly market; stock and money move in one transaction.
     pub async fn market_buy(&self, user_id: u64, hour: i64, item_id: &str) -> anyhow::Result<BuyOutcome> {
+        retry("market_buy", || self.market_buy_once(user_id, hour, item_id)).await
+    }
+
+    /// One attempt of [`Db::market_buy`].
+    async fn market_buy_once(&self, user_id: u64, hour: i64, item_id: &str) -> anyhow::Result<BuyOutcome> {
         let id = sql_id(user_id);
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[id]).await?;
         sqlx::query("INSERT INTO users (id) VALUES ($1) ON CONFLICT (id) DO NOTHING")
             .bind(id)
             .execute(&mut *tx)
@@ -125,8 +152,26 @@ impl Db {
         reward: i64,
         daily_cap: i64,
     ) -> anyhow::Result<VisitOutcome> {
+        retry("record_visit", || {
+            self.record_visit_once(host, guest, day, reward, daily_cap)
+        })
+        .await
+    }
+
+    /// One attempt of [`Db::record_visit`].
+    async fn record_visit_once(
+        &self,
+        host: u64,
+        guest: u64,
+        day: NaiveDate,
+        reward: i64,
+        daily_cap: i64,
+    ) -> anyhow::Result<VisitOutcome> {
         let (host, guest) = (sql_id(host), sql_id(guest));
         let mut tx = self.pool().begin().await?;
+        // The visit row is both players' (a delete of the host's data rewrites it), and the guest's
+        // day, with what a delete of their data left of it, is read and written under their lock.
+        lock_users(&mut tx, &[host, guest]).await?;
         // `xmax` is 0 on a row this statement inserted and set on one it updated.
         let (fresh,): (bool,) = sqlx::query_as(
             "INSERT INTO visits (host_id, guest_id, day) VALUES ($1, $2, $3)
@@ -142,11 +187,16 @@ impl Db {
             tx.commit().await?;
             return Ok(VisitOutcome::AlreadyToday);
         }
-        let (today,): (i64,) = sqlx::query_as("SELECT count(*) FROM visits WHERE guest_id = $1 AND day = $2")
-            .bind(guest)
-            .bind(day)
-            .fetch_one(&mut *tx)
-            .await?;
+        crate::activity::bump(&mut tx, guest, crate::Counter::Visits, 1, None).await?;
+        // The slots used before the player deleted their data count too.
+        let (today,): (i64,) = sqlx::query_as(
+            "SELECT (SELECT count(*) FROM visits WHERE guest_id = $1 AND day = $2)
+                    + COALESCE((SELECT visits FROM deleted_users WHERE user_id = $1 AND day = $2), 0)",
+        )
+        .bind(guest)
+        .bind(day)
+        .fetch_one(&mut *tx)
+        .await?;
         let paid = if today <= daily_cap { reward } else { 0 };
         if paid > 0 {
             sqlx::query("INSERT INTO users (id, credits) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET credits = users.credits + EXCLUDED.credits")

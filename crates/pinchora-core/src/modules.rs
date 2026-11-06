@@ -9,8 +9,14 @@ use crate::settings::FieldError;
 /// How many channels one module may name.
 pub const MAX_CHANNELS: usize = 50;
 
-/// Commands that stay available whatever a server switches off: the way back in, and the basics.
-pub const NEVER_GATED: [&str; 3] = ["config", "help", "ping"];
+/// Commands that stay available whatever a server switches off: the way back in, the basics, and
+/// what is the player's own business rather than the server's (their privacy and data, and the
+/// reminders they asked for).
+pub const NEVER_GATED: [&str; 5] = ["config", "help", "ping", "privacy", "remind"];
+
+/// The custom-id prefixes of the buttons and menus the [`NEVER_GATED`] commands send: they have no
+/// module either.
+pub const NEVER_GATED_PREFIXES: [&str; 2] = ["pr", "rm"];
 
 /// Where a module's settings are shown together.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -194,8 +200,8 @@ impl Module {
             Self::Suggestions => "/suggest and its voting buttons.",
             Self::Polls => "/poll and its voting buttons.",
             Self::Giveaways => "/giveaway and its entry button.",
-            Self::Profile => "/profile, /rank, /leaderboard, /bio, /customize, /character and game stats.",
-            Self::Economy => "/daily, /balance, /give and /rep.",
+            Self::Profile => "/profile, /rank, /leaderboard, /bio, /customize, /character, /wrapped and game stats.",
+            Self::Economy => "/daily, /weekly, /monthly, /balance, /give and /rep.",
             Self::Shop => "/shop, /inventory, /gift and player stalls.",
             Self::Quests => "/quests.",
             Self::Social => "/partner, /friends, /hug, /pat, /wave and /highfive.",
@@ -262,8 +268,8 @@ impl Module {
     /// subcommand group. `None` for the commands in [`NEVER_GATED`] and for anything unknown.
     pub fn of_command(name: &str, sub: Option<&str>) -> Option<Self> {
         Some(match name {
-            "profile" | "rank" | "leaderboard" | "bio" | "customize" | "character" => Self::Profile,
-            "daily" | "balance" | "give" | "rep" => Self::Economy,
+            "profile" | "rank" | "leaderboard" | "bio" | "customize" | "character" | "wrapped" => Self::Profile,
+            "daily" | "weekly" | "monthly" | "balance" | "give" | "rep" => Self::Economy,
             "house" => Self::House,
             "shop" | "inventory" | "gift" | "stall" => Self::Shop,
             "pet" => Self::Pets,
@@ -597,6 +603,11 @@ mod tests {
         assert_eq!(Module::of_command("party", Some("hotpearl")), Some(Module::PartyGames));
         assert_eq!(Module::of_command("party", Some("stop")), Some(Module::PartyGames));
         assert_eq!(Module::of_command("play", None), None);
+        assert_eq!(Module::of_command("weekly", None), Some(Module::Economy));
+        assert_eq!(Module::of_command("wrapped", None), Some(Module::Profile));
+        for prefix in NEVER_GATED_PREFIXES {
+            assert_eq!(Module::of_component_prefix(prefix), None, "{prefix}");
+        }
         for never in NEVER_GATED {
             assert_eq!(Module::of_command(never, None), None, "{never}");
             assert_eq!(Module::of_command(never, Some("show")), None, "{never}");

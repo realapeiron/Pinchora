@@ -5,6 +5,7 @@ use chrono::NaiveDate;
 use crate::{
     Db,
     economy::ledger,
+    locks::{lock_users, retry},
     shop::{Currency, balance_of, charge},
     sql_id,
 };
@@ -183,8 +184,14 @@ impl Db {
     /// Buys a rod at `price`: the shells, the ledger entry and the rod happen together or not at all.
     pub async fn buy_rod(&self, user: u64, rod: &str, price: i64) -> anyhow::Result<GearBuy> {
         anyhow::ensure!(price > 0, "a purchase needs a price");
+        retry("buy_rod", || self.buy_rod_once(user, rod, price)).await
+    }
+
+    /// One attempt of [`Db::buy_rod`].
+    async fn buy_rod_once(&self, user: u64, rod: &str, price: i64) -> anyhow::Result<GearBuy> {
         let id = sql_id(user);
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[id]).await?;
         sqlx::query("INSERT INTO users (id) VALUES ($1) ON CONFLICT (id) DO NOTHING")
             .bind(id)
             .execute(&mut *tx)
@@ -213,8 +220,14 @@ impl Db {
     /// Buys a pack of `pack` bait for `price`, added to what they have.
     pub async fn buy_bait(&self, user: u64, bait: &str, pack: i32, price: i64) -> anyhow::Result<GearBuy> {
         anyhow::ensure!(price > 0 && pack > 0, "a purchase needs a price and a pack");
+        retry("buy_bait", || self.buy_bait_once(user, bait, pack, price)).await
+    }
+
+    /// One attempt of [`Db::buy_bait`].
+    async fn buy_bait_once(&self, user: u64, bait: &str, pack: i32, price: i64) -> anyhow::Result<GearBuy> {
         let id = sql_id(user);
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[id]).await?;
         sqlx::query("INSERT INTO users (id) VALUES ($1) ON CONFLICT (id) DO NOTHING")
             .bind(id)
             .execute(&mut *tx)
@@ -272,8 +285,14 @@ impl Db {
     /// Uses up one piece of `bait` for a cast and returns how many are left; `None` when they have
     /// none. The last piece also takes the bait off the hook.
     pub async fn take_bait(&self, user: u64, bait: &str) -> anyhow::Result<Option<i32>> {
+        retry("take_bait", || self.take_bait_once(user, bait)).await
+    }
+
+    /// One attempt of [`Db::take_bait`].
+    async fn take_bait_once(&self, user: u64, bait: &str) -> anyhow::Result<Option<i32>> {
         let id = sql_id(user);
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[id]).await?;
         let left: Option<(i32,)> = sqlx::query_as(
             "UPDATE user_baits SET qty = qty - 1 WHERE user_id = $1 AND bait_id = $2 AND qty >= 1 RETURNING qty",
         )
@@ -300,8 +319,14 @@ impl Db {
     /// Puts a catch in the fish book (counting it, and the record size if it beats the last), the
     /// bucket and the weekly board, and pays the book milestones it reached, all together.
     pub async fn record_catch(&self, user: u64, catch: NewCatch<'_>) -> anyhow::Result<CatchLog> {
+        retry("record_catch", || self.record_catch_once(user, catch)).await
+    }
+
+    /// One attempt of [`Db::record_catch`].
+    async fn record_catch_once(&self, user: u64, catch: NewCatch<'_>) -> anyhow::Result<CatchLog> {
         let id = sql_id(user);
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[id]).await?;
         sqlx::query("INSERT INTO users (id) VALUES ($1) ON CONFLICT (id) DO NOTHING")
             .bind(id)
             .execute(&mut *tx)
@@ -443,7 +468,13 @@ impl Db {
     pub async fn sell_fish(&self, user: u64, sales: &[(i64, i64)]) -> anyhow::Result<Sold> {
         let id = sql_id(user);
         let ids: Vec<i64> = sales.iter().map(|(fish, _)| *fish).collect();
+        retry("sell_fish", || self.sell_fish_once(id, sales, &ids)).await
+    }
+
+    /// One attempt of [`Db::sell_fish`].
+    async fn sell_fish_once(&self, id: i64, sales: &[(i64, i64)], ids: &[i64]) -> anyhow::Result<Sold> {
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[id]).await?;
         sqlx::query("INSERT INTO users (id) VALUES ($1) ON CONFLICT (id) DO NOTHING")
             .bind(id)
             .execute(&mut *tx)
@@ -451,7 +482,7 @@ impl Db {
         let gone: Vec<(i64,)> =
             sqlx::query_as("DELETE FROM fish_bucket WHERE user_id = $1 AND id = ANY($2) RETURNING id")
                 .bind(id)
-                .bind(&ids)
+                .bind(ids)
                 .fetch_all(&mut *tx)
                 .await?;
         let shells: i64 = sales
@@ -504,10 +535,18 @@ impl Db {
 
     /// Forgets the weekly catches of weeks that started before `week`; returns how many rows went.
     pub async fn forget_catch_weeks_before(&self, week: NaiveDate) -> anyhow::Result<u64> {
-        Ok(sqlx::query("DELETE FROM weekly_catch WHERE week < $1")
+        retry("forget_catch_weeks_before", || async move {
+            Ok(sqlx::query(
+                "WITH old AS MATERIALIZED (
+                     SELECT guild_id, week, user_id FROM weekly_catch WHERE week < $1 FOR UPDATE SKIP LOCKED)
+                 DELETE FROM weekly_catch c USING old
+                 WHERE c.guild_id = old.guild_id AND c.week = old.week AND c.user_id = old.user_id",
+            )
             .bind(week)
             .execute(self.pool())
             .await?
             .rows_affected())
+        })
+        .await
     }
 }

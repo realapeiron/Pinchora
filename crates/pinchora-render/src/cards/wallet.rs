@@ -14,7 +14,10 @@ pub struct WalletCard<'a> {
     pub shells: i64,
     pub pearls: i64,
     pub streak: i32,
+    /// How long until each reward can be collected again, e.g. `3h 20m`, or `ready`.
     pub next_daily: &'a str,
+    pub next_weekly: &'a str,
+    pub next_monthly: &'a str,
     pub pets: i64,
     pub fish_found: i64,
     pub fish_total: i64,
@@ -79,29 +82,59 @@ impl WalletCard<'_> {
                 sprite(&mut s, rows, x + 254.0, 54.0, 6.0, color, "#ffffff");
             }
         }
+        // Four tiles: the three counts, and the time left on each reward next to one another.
         let small = [
             (
                 "STREAK",
                 format!("{} DAY{}", self.streak.max(0), if self.streak == 1 { "" } else { "S" }),
             ),
-            ("NEXT DAILY", self.next_daily.to_uppercase()),
             ("PETS", self.pets.to_string()),
             ("FISH BOOK", format!("{}/{}", self.fish_found, self.fish_total)),
         ];
-        for (i, (label, value)) in small.iter().enumerate() {
-            let x = 216.0 + i as f32 * 168.0;
-            t.panel(&mut s, x, 160.0, 152.0, 104.0, 4.0);
+        let widths = [136.0, 88.0, 120.0];
+        let mut x = 216.0;
+        for ((label, value), width) in small.iter().zip(widths) {
+            t.panel(&mut s, x, 160.0, width, 104.0, 4.0);
             text(&mut s, x + 16.0, 190.0, 13.0, PIXEL, false, &t.muted, "start", label);
             text(
                 &mut s,
                 x + 16.0,
                 236.0,
-                20.0,
+                18.0,
                 PIXEL,
                 false,
                 &t.ink,
                 "start",
-                &escape(&truncate(value, 9)),
+                &escape(&truncate(value, 8)),
+            );
+            x += width + 16.0;
+        }
+        // The timers: a reward that can be collected now stands out in green.
+        let width = 868.0 - x;
+        t.panel(&mut s, x, 160.0, width, 104.0, 4.0);
+        let timers = [
+            ("DAILY", self.next_daily),
+            ("WEEKLY", self.next_weekly),
+            ("MONTHLY", self.next_monthly),
+        ];
+        for (i, (label, value)) in timers.iter().enumerate() {
+            let y = 189.0 + i as f32 * 28.0;
+            let color = if value.eq_ignore_ascii_case("ready") {
+                &t.mint
+            } else {
+                &t.ink
+            };
+            text(&mut s, x + 16.0, y, 13.0, PIXEL, false, &t.muted, "start", label);
+            text(
+                &mut s,
+                x + width - 16.0,
+                y,
+                15.0,
+                PIXEL,
+                false,
+                color,
+                "end",
+                &escape(&truncate(&value.to_uppercase(), 9)),
             );
         }
         sprite(&mut s, HEART, 860.0, 270.0, 2.4, &t.heart, "#ffc2cf");

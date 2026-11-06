@@ -25,6 +25,7 @@ pub use commands::{
     modules::{announce_guild_change, module_diff},
     partner::partner_name,
     party_games::{spawn_ticker as spawn_party_ticker, tick as party_tick},
+    remind::{spawn_ticker as spawn_reminder_ticker, tick as reminder_tick},
 };
 pub use cx::Cx;
 pub use defer::Deferral;

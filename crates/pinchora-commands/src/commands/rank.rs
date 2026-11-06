@@ -5,7 +5,10 @@ use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
 
 use crate::{
     Cx,
-    commands::customize::{Cosmetics, theme, title_name},
+    commands::{
+        customize::{Cosmetics, theme, title_name},
+        privacy,
+    },
     roles,
     util::resolved_display_name,
 };
@@ -28,6 +31,9 @@ impl Rank {
         };
         if user.bot {
             return cx.reply_ephemeral("Bots don't earn XP.").await;
+        }
+        if privacy::private_profile(cx, user.id.get()).await? {
+            return Ok(());
         }
         let db = &cx.app.db;
         let (xp, rank) = match db.member_rank(guild, user.id.get()).await? {

@@ -123,6 +123,9 @@ impl PointsCommand {
                 if user.bot {
                     return cx.reply_ephemeral(format!("Bots don't earn {name}.")).await;
                 }
+                if super::privacy::private_profile(cx, user.id.get()).await? {
+                    return Ok(());
+                }
                 let (points, rank) = cx.app.db.member_points(guild, user.id.get()).await?;
                 let footer = match (rank, settings.points_enabled) {
                     (Some(rank), _) => format!("Rank #{rank} on this server"),

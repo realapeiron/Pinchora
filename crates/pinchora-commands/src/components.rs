@@ -5,7 +5,7 @@ use crate::{
     commands::{
         board, character, collection, connect4, contest, customize, decorate, derby, duel, fish, friends, gift,
         giveaway, guestbook, hangman, heist, house, interact, leaderboard, partner, party_games, pet, plaza, poll,
-        quests, role_panels, rps, share, shells, shop, stall, store, suggest, surge, trivia, wordle,
+        privacy, quests, remind, role_panels, rps, share, shells, shop, stall, store, suggest, surge, trivia, wordle,
     },
 };
 
@@ -67,6 +67,8 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
         Some("pt") => partner::on_component(cx, parts, values.first().map(String::as_str)).await,
         Some("fd") => friends::on_component(cx, parts, values.first().map(String::as_str)).await,
         Some("hg") => interact::on_component(cx, parts).await,
+        Some("rm") => remind::on_component(cx, parts, values.first().map(String::as_str)).await,
+        Some("pr") => privacy::on_component(cx, parts).await,
         Some("gw") => giveaway::on_component(cx, parts).await,
         Some("sg") => suggest::on_vote(cx, parts).await,
         Some("pl") => poll::on_component(cx, parts).await,

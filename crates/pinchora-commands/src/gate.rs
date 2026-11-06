@@ -48,7 +48,7 @@ async fn refuses(cx: &Cx, module: Option<Module>) -> anyhow::Result<bool> {
 
 #[cfg(test)]
 mod tests {
-    use pinchora_core::modules::NEVER_GATED;
+    use pinchora_core::modules::{NEVER_GATED, NEVER_GATED_PREFIXES};
     use twilight_model::application::command::{Command, CommandOption, CommandOptionType};
 
     use super::*;
@@ -131,6 +131,10 @@ mod tests {
             "the scan found {buttons:?} / {forms:?}"
         );
         for prefix in buttons.iter().chain(&forms) {
+            if NEVER_GATED_PREFIXES.contains(&prefix.as_str()) {
+                assert_eq!(Module::of_component_prefix(prefix), None, "`{prefix}:` is never gated");
+                continue;
+            }
             assert!(
                 Module::of_component_prefix(prefix).is_some(),
                 "`{prefix}:` has no module: add it to Module::of_component_prefix"

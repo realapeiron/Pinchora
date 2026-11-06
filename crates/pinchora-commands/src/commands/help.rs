@@ -23,7 +23,7 @@ impl Help {
             ))
             .field(EmbedFieldBuilder::new(
                 "Shells",
-                "`/daily` daily shells with streak bonus\n`/balance` your wallet\n`/give` send shells to a friend",
+                "`/daily` daily shells with streak bonus\n`/weekly` and `/monthly` bigger rewards, every 7 and 30 days\n`/balance` your wallet and reward timers\n`/give` send shells to a friend\n`/remind me when` a direct message when a reward, your pet or a trip is ready\n`/remind me in` a note to yourself, e.g. `2h30m`",
             ))
             .field(EmbedFieldBuilder::new(
                 "Games",
@@ -40,6 +40,10 @@ impl Help {
             .field(EmbedFieldBuilder::new(
                 "Board & puzzle games",
                 "`/duel seafleet` hide your ships and sink theirs\n`/duel chess` and `/duel checkers` on pixel boards (all three take an optional wager)\n`/play picross` a daily nonogram that hides a sea creature, or a practice one\n`/play 2048` slide and merge sea creatures",
+            ))
+            .field(EmbedFieldBuilder::new(
+                "Privacy & your year",
+                "`/privacy` hide your profile, your place on the global boards or your house, or delete your data\n`/wrapped` your year in numbers (December and January)",
             ))
             .field(EmbedFieldBuilder::new(
                 "Leaderboards",

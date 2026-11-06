@@ -2,7 +2,11 @@
 
 use chrono::{DateTime, Utc};
 
-use crate::{Db, sql_id};
+use crate::{
+    Db,
+    locks::{lock_users, retry},
+    sql_id,
+};
 
 pub const OPEN: &str = "open";
 
@@ -67,12 +71,15 @@ macro_rules! columns {
 impl Db {
     /// Starts a poll, unless its author already has [`MAX_OPEN_POLLS`] open in this server.
     pub async fn create_poll(&self, new: NewPoll<'_>) -> anyhow::Result<PollOpen> {
+        retry("create_poll", || self.create_poll_once(new)).await
+    }
+
+    /// One attempt of [`Db::create_poll`].
+    async fn create_poll_once(&self, new: NewPoll<'_>) -> anyhow::Result<PollOpen> {
         let mut tx = self.pool().begin().await?;
-        // Two polls started at once by one member must not both slip under the limit.
-        sqlx::query("SELECT pg_advisory_xact_lock($1)")
-            .bind(sql_id(new.author) ^ sql_id(new.guild_id))
-            .execute(&mut *tx)
-            .await?;
+        // Two polls started at once by one member must not both slip under the limit: the author's
+        // lock makes them take turns.
+        lock_users(&mut tx, &[sql_id(new.author)]).await?;
         let (open,): (i64,) =
             sqlx::query_as("SELECT count(*) FROM polls WHERE guild_id = $1 AND author_id = $2 AND status = 'open'")
                 .bind(sql_id(new.guild_id))
@@ -131,7 +138,13 @@ impl Db {
     /// the member's current option, taking the vote back. The poll row is share-locked, so a vote
     /// never lands after the poll closed.
     pub async fn vote_poll(&self, id: i64, user: u64, choice: usize, now: DateTime<Utc>) -> anyhow::Result<PollVote> {
+        retry("vote_poll", || self.vote_poll_once(id, user, choice, now)).await
+    }
+
+    /// One attempt of [`Db::vote_poll`].
+    async fn vote_poll_once(&self, id: i64, user: u64, choice: usize, now: DateTime<Utc>) -> anyhow::Result<PollVote> {
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(user)]).await?;
         let open: Option<(bool,)> =
             sqlx::query_as("SELECT status = 'open' AND ends_at > $2 FROM polls WHERE id = $1 FOR SHARE")
                 .bind(id)
@@ -264,14 +277,21 @@ impl Db {
         Ok(())
     }
 
-    /// Drops polls that closed before `before` (and their votes); returns how many.
+    /// Drops polls that closed before `before` (and their votes); returns how many. Rows somebody
+    /// holds are left for the next sweep (see the `locks` module).
     pub async fn forget_old_polls(&self, before: DateTime<Utc>) -> anyhow::Result<u64> {
-        Ok(
-            sqlx::query("DELETE FROM polls WHERE status = 'closed' AND announced AND closed_at < $1")
-                .bind(before)
-                .execute(self.pool())
-                .await?
-                .rows_affected(),
-        )
+        retry("forget_old_polls", || async move {
+            Ok(sqlx::query(
+                "WITH old AS MATERIALIZED (
+                     SELECT id FROM polls WHERE status = 'closed' AND announced AND closed_at < $1
+                     FOR UPDATE SKIP LOCKED)
+                 DELETE FROM polls WHERE id IN (SELECT id FROM old)",
+            )
+            .bind(before)
+            .execute(self.pool())
+            .await?
+            .rows_affected())
+        })
+        .await
     }
 }

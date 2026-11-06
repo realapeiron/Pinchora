@@ -82,6 +82,9 @@ impl StallCommand {
                     Some(r) => (r.resolved.clone(), resolved_display_name(r)),
                     None => (me.clone(), cx.author_display_name()),
                 };
+                if super::privacy::private_profile(cx, seller.id.get()).await? {
+                    return Ok(());
+                }
                 let data = stall_card(cx, &seller, &name).await?;
                 cx.reply(data).await
             }

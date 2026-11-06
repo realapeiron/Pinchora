@@ -229,10 +229,15 @@ pub fn thousands(n: i64) -> String {
 pub fn compact(n: i64) -> String {
     let a = n.unsigned_abs() as f64;
     let sign = if n < 0 { "-" } else { "" };
+    // One decimal, and none when it would be a zero: `49K`, not `49.0K`.
+    let scaled = |value: f64, unit: &str| {
+        let text = format!("{value:.1}");
+        format!("{sign}{}{unit}", text.strip_suffix(".0").unwrap_or(&text))
+    };
     match a {
-        a if a >= 1e9 => format!("{sign}{:.1}B", a / 1e9),
-        a if a >= 1e6 => format!("{sign}{:.1}M", a / 1e6),
-        a if a >= 1e4 => format!("{sign}{:.1}K", a / 1e3),
+        a if a >= 1e9 => scaled(a / 1e9, "B"),
+        a if a >= 1e6 => scaled(a / 1e6, "M"),
+        a if a >= 1e4 => scaled(a / 1e3, "K"),
         _ => thousands(n),
     }
 }
@@ -443,6 +448,10 @@ mod tests {
         assert_eq!(compact(999), "999");
         assert_eq!(compact(12_500), "12.5K");
         assert_eq!(compact(3_400_000), "3.4M");
+        assert_eq!(compact(49_000), "49K");
+        assert_eq!(compact(2_000_000), "2M");
+        assert_eq!(compact(-12_000), "-12K");
+        assert_eq!(compact(10_049), "10K");
     }
 
     #[test]

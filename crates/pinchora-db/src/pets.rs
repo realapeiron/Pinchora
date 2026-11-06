@@ -1,6 +1,10 @@
 use chrono::{DateTime, Utc};
 
-use crate::{Db, sql_id};
+use crate::{
+    Db,
+    locks::{Retry, lock_users, retry},
+    sql_id,
+};
 
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct PetRow {
@@ -106,8 +110,15 @@ impl Db {
 
     /// Adds a pet; the first pet a player gets becomes their active one.
     pub async fn adopt(&self, owner: u64, species: &str, name: &str) -> anyhow::Result<PetRow> {
+        retry("adopt", || self.adopt_once(owner, species, name)).await
+    }
+
+    /// One attempt of [`Db::adopt`].
+    async fn adopt_once(&self, owner: u64, species: &str, name: &str) -> anyhow::Result<PetRow> {
         let id = sql_id(owner);
         let mut tx = self.pool().begin().await?;
+        // Two adoptions at once take turns, so only one of them becomes the active pet.
+        lock_users(&mut tx, &[id]).await?;
         let (has_active,): (bool,) =
             sqlx::query_as("SELECT EXISTS (SELECT 1 FROM pets WHERE owner_id = $1 AND active)")
                 .bind(id)
@@ -128,8 +139,14 @@ impl Db {
     }
 
     pub async fn set_active_pet(&self, owner: u64, pet_id: i64) -> anyhow::Result<bool> {
+        retry("set_active_pet", || self.set_active_pet_once(owner, pet_id)).await
+    }
+
+    /// One attempt of [`Db::set_active_pet`].
+    async fn set_active_pet_once(&self, owner: u64, pet_id: i64) -> anyhow::Result<bool> {
         let id = sql_id(owner);
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[id]).await?;
         let owned: Option<(i64,)> = sqlx::query_as("SELECT id FROM pets WHERE id = $1 AND owner_id = $2")
             .bind(pet_id)
             .bind(id)
@@ -235,19 +252,42 @@ impl Db {
 
     /// Pays the souvenir of a finished trip: shells, an item, the pet's XP. The pet is locked
     /// while `payout` works out the haul from it, and the trip is cleared in the same
-    /// transaction as the payment, so a repeated claim finds [`TripClaim::Nothing`].
+    /// transaction as the payment, so a repeated claim finds [`TripClaim::Nothing`]. `payout` is
+    /// asked again if the claim loses a deadlock and runs a second time; the last answer is paid.
     pub async fn claim_trip<F>(
         &self,
         owner: u64,
         pet_id: i64,
         now: DateTime<Utc>,
-        payout: F,
+        mut payout: F,
     ) -> anyhow::Result<TripClaim>
     where
-        F: FnOnce(&PetRow, &str) -> TripPayout,
+        F: FnMut(&PetRow, &str) -> TripPayout,
+    {
+        let mut retry = Retry::new("claim_trip");
+        loop {
+            let result = self.claim_trip_once(owner, pet_id, now, &mut payout).await;
+            if !retry.again(&result).await {
+                return result;
+            }
+        }
+    }
+
+    /// One attempt of [`Db::claim_trip`].
+    async fn claim_trip_once<F>(
+        &self,
+        owner: u64,
+        pet_id: i64,
+        now: DateTime<Utc>,
+        payout: &mut F,
+    ) -> anyhow::Result<TripClaim>
+    where
+        F: FnMut(&PetRow, &str) -> TripPayout,
     {
         let id = sql_id(owner);
         let mut tx = self.pool().begin().await?;
+        // The owner's lock comes before the pet's row (see the `locks` module).
+        lock_users(&mut tx, &[id]).await?;
         let pet = sqlx::query_as::<_, PetRow>(concat!(
             "SELECT ",
             pet_columns!(),
@@ -289,13 +329,17 @@ impl Db {
         Ok(TripClaim::Claimed { pet, balance })
     }
 
-    /// Whether the player's free wake-up of the UTC day `day` (days since 1970) is still there.
+    /// Whether the player's free wake-up of the UTC day `day` (days since 1970) is still there. One
+    /// used before deleting their data counts.
     pub async fn free_wake_ready(&self, user: u64, day: i32) -> anyhow::Result<bool> {
-        let row: Option<(Option<i32>,)> = sqlx::query_as("SELECT pet_wake_day FROM users WHERE id = $1")
-            .bind(sql_id(user))
-            .fetch_optional(self.pool())
-            .await?;
-        Ok(row.and_then(|(d,)| d).is_none_or(|d| d < day))
+        let (used,): (Option<i32>,) = sqlx::query_as(
+            "SELECT GREATEST((SELECT pet_wake_day FROM users WHERE id = $1),
+                             (SELECT pet_wake_day FROM deleted_users WHERE user_id = $1))",
+        )
+        .bind(sql_id(user))
+        .fetch_one(self.pool())
+        .await?;
+        Ok(used.is_none_or(|d| d < day))
     }
 
     /// Wakes a sleeping pet: its needs become `needs` as of `at`. The player's free wake-up of
@@ -312,8 +356,28 @@ impl Db {
         day: i32,
         fee: i64,
     ) -> anyhow::Result<Wake> {
+        retry("wake_pet", || {
+            self.wake_pet_once(owner, pet_id, seen_at, needs, at, day, fee)
+        })
+        .await
+    }
+
+    /// One attempt of [`Db::wake_pet`].
+    #[allow(clippy::too_many_arguments)]
+    async fn wake_pet_once(
+        &self,
+        owner: u64,
+        pet_id: i64,
+        seen_at: DateTime<Utc>,
+        needs: [i16; 4],
+        at: DateTime<Utc>,
+        day: i32,
+        fee: i64,
+    ) -> anyhow::Result<Wake> {
         let id = sql_id(owner);
         let mut tx = self.pool().begin().await?;
+        // The owner's lock comes before the pet's row (see the `locks` module).
+        lock_users(&mut tx, &[id]).await?;
         let current: Option<(DateTime<Utc>,)> =
             sqlx::query_as("SELECT needs_at FROM pets WHERE id = $1 AND owner_id = $2 FOR UPDATE")
                 .bind(pet_id)
@@ -375,8 +439,14 @@ impl Db {
 
     /// Takes shells for a purchase or fee; `None` when the player cannot afford it.
     pub async fn spend_shells(&self, user: u64, amount: i64, reason: &str) -> anyhow::Result<Option<i64>> {
+        retry("spend_shells", || self.spend_shells_once(user, amount, reason)).await
+    }
+
+    /// One attempt of [`Db::spend_shells`].
+    async fn spend_shells_once(&self, user: u64, amount: i64, reason: &str) -> anyhow::Result<Option<i64>> {
         let id = sql_id(user);
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[id]).await?;
         sqlx::query("INSERT INTO users (id) VALUES ($1) ON CONFLICT (id) DO NOTHING")
             .bind(id)
             .execute(&mut *tx)
@@ -397,8 +467,14 @@ impl Db {
 
     /// Pays shells out (rewards, refunds); returns the new balance.
     pub async fn earn_shells(&self, user: u64, amount: i64, reason: &str) -> anyhow::Result<i64> {
+        retry("earn_shells", || self.earn_shells_once(user, amount, reason)).await
+    }
+
+    /// One attempt of [`Db::earn_shells`].
+    async fn earn_shells_once(&self, user: u64, amount: i64, reason: &str) -> anyhow::Result<i64> {
         let id = sql_id(user);
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[id]).await?;
         let (balance,): (i64,) = sqlx::query_as(
             "INSERT INTO users (id, credits) VALUES ($1, $2)
              ON CONFLICT (id) DO UPDATE SET credits = users.credits + EXCLUDED.credits RETURNING credits",
@@ -425,6 +501,16 @@ impl Db {
         .bind(size_cm)
         .fetch_one(self.pool())
         .await?;
+        // The counts are for /wrapped; a catch that is logged is not undone by them.
+        if let Err(error) = self.bump_activity(user, crate::Counter::Fish, 1).await {
+            tracing::debug!(%error, user, "catch not counted");
+        }
+        if let Err(error) = self
+            .add_catch_in(user, chrono::Datelike::year(&chrono::Utc::now()), fish_id)
+            .await
+        {
+            tracing::debug!(%error, user, "catch not counted for the year");
+        }
         Ok(caught == 1)
     }
 

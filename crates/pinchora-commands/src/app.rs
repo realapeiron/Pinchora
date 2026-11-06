@@ -336,6 +336,14 @@ impl App {
         }
     }
 
+    /// Counts something the player did for their `/wrapped`. Failures are logged and swallowed: the
+    /// numbers never break a command.
+    pub async fn count(&self, user: u64, counter: pinchora_db::Counter, n: i64) {
+        if let Err(error) = self.db.bump_activity(user, counter, n).await {
+            tracing::debug!(%error, user, "activity not counted");
+        }
+    }
+
     pub async fn forget_guild_settings(&self, guild_id: u64) {
         self.guild_settings.invalidate(&guild_id).await;
         self.module_rules.invalidate(&guild_id).await;

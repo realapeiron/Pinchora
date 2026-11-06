@@ -1,3 +1,4 @@
+mod activity;
 mod audit;
 mod board_games;
 mod character;
@@ -13,14 +14,18 @@ mod guestbook;
 mod guilds;
 mod house;
 mod interactions;
+mod locks;
 mod members;
 mod modules;
 mod panels;
 mod partners;
 mod party;
 mod party_games;
+mod periodic;
 mod pets;
 mod polls;
+mod privacy;
+mod reminders;
 mod rewards;
 mod shop;
 mod showcase;
@@ -34,6 +39,7 @@ use std::time::Duration;
 
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
+pub use activity::{Activity, Counter};
 pub use audit::{AuditRow, AuditSource, NewAudit};
 pub use board_games::{PicrossGame, SoloGame, SoloStep};
 pub use character::OutfitRow;
@@ -60,6 +66,7 @@ pub use house::{
     SOULBOUND_GUEST, UpgradeOutcome,
 };
 pub use interactions::Tally;
+pub use locks::conflict_retries;
 pub use members::{LeaderboardRow, MemberRank, XpGain, XpGrant};
 pub use panels::{MAX_PANEL_ROLES, PanelRoleRow, PanelRow};
 pub use partners::{PairOutcome, PartnerRow};
@@ -71,8 +78,14 @@ pub use party_games::{
     Commit, Committed, LOBBY, NewEntry, NewParty, PLAYING, PartyEntry, PartyGame, PartyJoin, PartyLeave, PartyPlayer,
     PartyVote, Pay, PlayerChange, PollChoice,
 };
+pub use periodic::PeriodOutcome;
 pub use pets::{PetRow, TripClaim, TripPayout, Wake};
 pub use polls::{MAX_OPEN_POLLS, NewPoll, PollOpen, PollRow, PollVote};
+pub use privacy::{
+    ANONYMISED, CLEARED_COLUMNS, DAILY_LIMITS, DELETED_NAME, Deleted, Hide, ID_LISTS, ListEdit, OTHER_TABLES, Privacy,
+    TOMBSTONE_DAYS, USER_COLUMNS,
+};
+pub use reminders::{MAX_TEXT_REMINDERS, OPT_IN_KINDS, ReminderRow, TEXT as TEXT_REMINDER};
 pub use rewards::{LevelRoleRow, MAX_LEVEL_ROLES, MAX_REP_ROLES, MAX_STORE_ITEMS, RepRoleRow, StoreBuy, StoreItem};
 pub use shop::{BuyOutcome, Currency, MarketRow, VisitOutcome};
 pub use showcase::{FishBookRow, HousePreview};

@@ -1,4 +1,8 @@
-use crate::{Db, sql_id};
+use crate::{
+    Db,
+    locks::{lock_users, retry},
+    sql_id,
+};
 
 /// Most level roles a server can set up.
 pub const MAX_LEVEL_ROLES: i64 = 25;
@@ -221,8 +225,17 @@ impl Db {
     /// Takes the price and one unit of stock in a single transaction. The item row is locked
     /// first, so two buyers can neither take the last unit nor spend the same points twice.
     pub async fn buy_store_item(&self, guild_id: u64, user_id: u64, item_id: i64) -> anyhow::Result<StoreBuy> {
+        retry("buy_store_item", || {
+            self.buy_store_item_once(guild_id, user_id, item_id)
+        })
+        .await
+    }
+
+    /// One attempt of [`Db::buy_store_item`].
+    async fn buy_store_item_once(&self, guild_id: u64, user_id: u64, item_id: i64) -> anyhow::Result<StoreBuy> {
         let (guild, user) = (sql_id(guild_id), sql_id(user_id));
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[user]).await?;
         let item: Option<StoreItem> = sqlx::query_as(
             "SELECT id, role_id, price, stock FROM store_items WHERE guild_id = $1 AND id = $2 FOR UPDATE",
         )
@@ -279,7 +292,22 @@ impl Db {
         item_id: i64,
         price: i64,
     ) -> anyhow::Result<i64> {
+        retry("refund_store_purchase", || {
+            self.refund_store_purchase_once(guild_id, user_id, item_id, price)
+        })
+        .await
+    }
+
+    /// One attempt of [`Db::refund_store_purchase`].
+    async fn refund_store_purchase_once(
+        &self,
+        guild_id: u64,
+        user_id: u64,
+        item_id: i64,
+        price: i64,
+    ) -> anyhow::Result<i64> {
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(user_id)]).await?;
         sqlx::query("UPDATE store_items SET stock = stock + 1 WHERE guild_id = $1 AND id = $2 AND stock IS NOT NULL")
             .bind(sql_id(guild_id))
             .bind(item_id)

@@ -1,4 +1,8 @@
-use crate::{Db, sql_id};
+use crate::{
+    Db,
+    locks::{lock_users, retry},
+    sql_id,
+};
 
 /// What a hug, pat, wave or high five adds up to once it is counted.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -14,8 +18,14 @@ pub struct Tally {
 impl Db {
     /// Counts one interaction of `kind` from `from` to `to`.
     pub async fn record_interaction(&self, kind: &str, from: u64, to: u64) -> anyhow::Result<Tally> {
+        retry("record_interaction", || self.record_interaction_once(kind, from, to)).await
+    }
+
+    /// One attempt of [`Db::record_interaction`].
+    async fn record_interaction_once(&self, kind: &str, from: u64, to: u64) -> anyhow::Result<Tally> {
         let (from, to) = (sql_id(from), sql_id(to));
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[from, to]).await?;
         let (pair,): (i32,) = sqlx::query_as(
             "INSERT INTO interactions (kind, from_user, to_user, times) VALUES ($1, $2, $3, 1)
              ON CONFLICT (kind, from_user, to_user) DO UPDATE SET times = interactions.times + 1, last_at = now()

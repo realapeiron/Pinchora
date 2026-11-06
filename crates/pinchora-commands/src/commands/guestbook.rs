@@ -52,6 +52,9 @@ pub(crate) async fn run(cx: &Cx, c: HouseGuestbook) -> anyhow::Result<()> {
         ),
         _ => (author, "📖 Your guestbook".to_owned()),
     };
+    if super::privacy::private_house(cx, host).await? {
+        return Ok(());
+    }
     ensure_house(&cx.app, host).await?;
     let data = page(cx, host, title, 0, None, "").await?;
     cx.reply(data).await
@@ -243,6 +246,10 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, value: Opti
     let page_no: i64 = args.next().and_then(|v| v.parse().ok()).unwrap_or(0);
     let seen: Option<i64> = args.next().and_then(|v| v.parse().ok());
     let clicker = cx.author()?.id.get();
+    // A house hidden after its guestbook was posted closes the book.
+    if super::privacy::private_house(cx, host).await? {
+        return Ok(());
+    }
     if action == "s" {
         return sign_button(cx, host, clicker).await;
     }
@@ -357,6 +364,9 @@ pub(crate) async fn on_modal(cx: &Cx, mut args: Split<'_, char>, fields: &[(Stri
     let author = cx.author()?.id.get();
     if author == host {
         return cx.reply_ephemeral("You can't sign your own guestbook.").await;
+    }
+    if super::privacy::private_house(cx, host).await? {
+        return Ok(());
     }
     let raw = fields
         .iter()

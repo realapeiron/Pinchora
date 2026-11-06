@@ -51,6 +51,9 @@ impl Dex {
             Some(u) => (u.resolved.id.get(), resolved_display_name(u)),
             None => (me, cx.author_display_name()),
         };
+        if crate::commands::privacy::private_profile(cx, owner).await? {
+            return Ok(());
+        }
         let tab = match self.tab {
             Some(DexTab::Finds) => Kind::Find,
             _ => Kind::Critter,

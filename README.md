@@ -26,7 +26,13 @@ Written in Rust and built to run sharded on Kubernetes.
 | Badge unlocked notices | When a command or chat level-up earns you an achievement badge (`/daily`, `/fish`, `/pet`, placing furniture, `/give`, a new chat level), a short "Badge unlocked" embed with the badge art follows the reply, once per badge |
 | `/leaderboard [board]` | Server XP, server points, **Weekly XP** (resets Monday 00:00 UTC, with last week's top three in a panel under the board), **Weekly catch** (each player's biggest catch of the week by size for its species, so a 7.9 cm minnow can beat a 200 cm sailfish; boots and tins do not count; same Monday reset and last-week podium), global XP or global shells as a pixel-art card, with page buttons |
 | `/daily` | Daily shells; the streak bonus grows for 20 days |
-| `/balance [user]`, `/give user amount` | Wallet and transfers |
+| `/weekly`, `/monthly` | A bigger reward each, on a cooldown of their own: 1,500 shells every 7 days and 6,500 every 30. The cooldown counts from the claim, and a claim made at the same moment as another pays once |
+| `/balance [user]`, `/give user amount` | Wallet and transfers. The wallet card shows the time left on the daily, weekly and monthly reward side by side (`ready` in green once it can be collected) |
+| `/remind me when daily\|weekly\|monthly\|pet\|trip on\|off` | Opt in to a direct message when a reward is ready again (scheduled when you collect it, or at once for one already counting down), when your active pet needs looking after (hunger, fun or hygiene down to 30, no sooner than two hours after you last looked after it; not while it is away or asleep) or when a pet is home from a trip. One message each time, then it waits for the next claim, trip or care |
+| `/remind me in duration text` | A note to yourself by direct message: `45m`, `2h30m`, `1d 12h` (a minute to a year; units w d h m s). The text is up to 200 characters and loses any mention (users, roles, channels, `@everyone`, `@here`). Up to 25 open at a time |
+| `/remind list`, `/remind cancel id` | Which notifications are on and the reminders still to come, with a menu to cancel one; or cancel by the number the list shows |
+| `/privacy` | Private panel with three switches and a delete button. **Profile** private: others who look you up with `/profile`, `/rank`, `/balance`, `/friends list`, `/partner view`, `/play stats` or `/dex` see "This profile is private." (your own cards are never hidden from you). **Boards** hidden: you are left off the global XP and shell leaderboards, and the ranks of others count without you. **House** hidden: not offered in the `/house visit` shortlist and refused by name too, and its guestbook (notes and visitors) cannot be read or signed and the house cannot be liked (stronger than `/house lock`). A private profile also hides your `/points show` and `/stall view`. **Delete my data…** asks twice (the second button works for two minutes) and removes every row about you in every table: account, house, pets, friends, notes, votes, suggestions, polls, giveaway entries, history and the rest. A running duel's wager goes back to the other player, a derby you host gives its racers their stakes back, a giveaway you host is called off, and likes you gave come off the houses. You come back with nothing but not with fresh waiting times: see below |
+| `/wrapped [year]` | A tall card with your year: the busiest month and a bar for each, messages, server XP (chat and voice), shells earned (a duel counts what you won, not your own stake), fish caught, houses visited, pets cared for, likes given and received, your favourite fish of the year, the house you visited most (a friend's first) and a fun title. Open from 1 December to 31 January; outside that it says when it opens. Pinchora has counted per month since this feature began, so earlier months of your year only fill in as you play |
 | `/rep user` | One reputation point per day; a server's reputation roles are given the moment the receiver's total reaches them, and the reply says so |
 | `/bio text` | About-me text on the profile card |
 | `/config welcome\|leveling\|show` | Welcome cards and level-up messages. `/config leveling` takes `enabled`, `channel`, `message` (placeholders `{user}` `{level}` `{server}` `{role}`, the last being the reward role just earned, empty when none) and `mode`: `channel` (the level-up channel, else where they chatted), `current` (always where they chatted), `dm` (a direct message; closed DMs are skipped quietly) or `off` (no message, roles still given) (Manage Server) |
@@ -62,6 +68,59 @@ hands out; roles the bot can't give (@everyone, integration-managed roles, roles
 are refused when they are added to the level roles, the store, the join role or a role panel. If
 Discord refuses a store role at purchase time, the points and stock are returned. New members get a
 welcome card when enabled.
+
+Reminders wait in a table (`reminders`), one row per message with the time it is due. One ticker on
+every pod looks every 30 seconds, takes the due rows in batches with `FOR UPDATE SKIP LOCKED`, leases them
+for two minutes while the messages go out and deletes each one once sent, so a restart delays a message
+and two pods never send the same one. A player with closed direct messages is logged at debug level and the
+reminder is dropped. A message about a reward, a pet or a trip is checked again just before it is sent: if
+the player switched it off, claimed the trip or looked after the pet meanwhile, it is dropped or moved
+instead of sent.
+
+Wrapped counts per user and calendar month (UTC) in `activity_monthly`, bumped where things already
+happen: chat and voice XP, every positive ledger entry that is not a transfer from another player or a refund,
+fish caught, the first visit to a house each day, house likes, and pet care. XP is the server XP of chat
+and voice alike (a message counts its server XP, not the global share). The favourite fish of a year comes from
+`activity_fish`, which counts catches per year, and the most visited house from the visit log, which has
+history of its own.
+
+"Delete my data" leaves a tombstone: a row in `deleted_users` with the player's id and when they last used
+the daily, weekly and monthly rewards and rep, which houses they liked and how many paid visits they made
+today, whether they had played today's daily wordle, the last daily picross they solved, the day of their last
+free pet wake-up, a 45 minute walk lock when they had a pet (its cooldown is kept in Redis under the pet's id,
+which a new pet does not share) and the beachcomb wait they had left. A trigger on `users` gives a returning
+player the daily, rep, free wake-up, weekly and monthly times back when their row is created again, so every
+reader of those sees them; the paid-visit and like checks, the wordle and picross payouts, the free wake-up
+check, the pet walk and the beachcomb read the tombstone themselves. The games' limits of the day
+(`collection_daily`: paid critter grabs, bottles, beachcombs and pot hauls; `party_daily`: derby and shell game
+losses and plays, heist, storm and share-or-grab payouts, paid word party games) are not deleted for today,
+only for the days before, so a returning player picks the day up where it was; the game win caps of
+`pay_win` live in Redis and are untouched. The dex goes with the data, so a returning player discovers again,
+but only as many plays pay as the day allows. Racers who staked shells in a derby the player hosts get them
+back, word party games and lobbies they host are called off, their critter-drop cards become free, and the
+dashboard's audit log keeps their changes under "Deleted user". A guest's paid visits of
+the day outlive a host who deletes their data (the host's id on the visit becomes a number from a sequence that
+is nobody's). A delete and a claim of the same player never overlap: the delete, the trigger that creates a
+player's row, and every claim of a per-player limit take the player's advisory lock (`lock_user(id)`) and keep
+it to the end of their transaction, so a claim that lands while a delete is still in flight waits for it and
+then finds the tombstone.
+
+One lock order holds for every transaction that touches a player's rows (written down in
+`crates/pinchora-db/src/locks.rs`): first the locks of all its players at once, in id order (a duel's two
+players, a giveaway's host and winners, a listing's buyer and seller, everyone a delete pays back or takes a
+like from), then the object it is about (session, giveaway, pet, listing, poll), then the writes. Chat XP
+stays one statement that writes `users` first, so the trigger takes the lock before anything else. A delete
+that finds a player it must lock only after it holds its first locks (a like landed in between) does not wait
+for them: it tries the lock, and gives up and starts over with the full set when somebody holds it. The sweeps
+that drop old rows of many players (games, giveaways, polls, weekly boards, tombstones) skip the rows somebody
+holds and take them next time. Postgres still breaks any deadlock this misses by rolling one side back (two
+friends who delete their data at once cross on the rows they share); every transaction that takes player
+locks, and the sweeps, run again when they lose like that (up to three times, after a few random milliseconds;
+a delete that met a player out of order starts over up to twelve more), which is safe because the lost
+attempt left nothing behind and every claim checks what was already used inside its own transaction.
+Tombstones are dropped after 35 days, by the reminder ticker. A test inserts into every table that names a
+player and one reads the schema, so a new table or an id column (`*_by`, id arrays included) must be listed
+in `crates/pinchora-db/src/privacy.rs` before it can ship.
 
 Voice XP keeps who is in voice in Redis, written from the voice-state events, and one ticker on the
 gateway pays every guild once a minute behind a per-minute lock, so a restart or a second gateway pod
@@ -174,7 +233,7 @@ permission gets a private refusal and nothing changes.
 | `/party truthordare [topic]` | Truth or Dare, 2 to 10 players, family friendly (102 truths and 102 dares in six topics): the bot picks whose turn it is, that player presses **Truth** or **Dare**, gets one nobody had lately, and presses **Done** or **Pass** (passing is always fine). The host ends the game with **End game**; a table that lets two turns in a row run out of time ends it by itself. Each player gets one game in `/play stats` when it ends |
 | `/party stop` | Ends the lobby or game running in this channel: its host or a member with Manage Server can. The message is closed, nobody wins and nothing is paid or refunded (the party games have no wagers); the answer is private |
 | `/config partygames [strict]` | How strict the filter on what members type is (Manage Server). The base filter always blocks strong words and slurs (it reads whole words, undoes disguises like `sh!t`, `f u c k`, `f*ck`, `s1ut` and common misspellings, and lets names like Matsushita through); `strict:true` adds mild words and name-calling. Mentions, links, invites and formatting are always taken out of typed text |
-| `/config modules show\|toggle\|channels` | Switch parts of Pinchora off for the whole server (`toggle module enabled`) or per channel (`channels module where [channel] [remove]`: `where` is all channels, only these, or everywhere except these, and the list grows one channel at a time; a category covers the channels and threads under it; up to 50 channels). A switched-off module answers its commands, buttons and forms with a private "This feature is turned off on this server" (or "in this channel"), stops its chat XP, points, critter drops, goodbyes, log lines or timed storms, and `/config`, `/help` and `/ping` are never switched off. The 26 modules are listed with `show`, and `module` suggests them as you type (start with part of a name, or of a game such as `chess`); leveling, points, welcome and gambling keep their switch where it already was (`/config leveling`, `points`, `welcome`, `gambling`). The dashboard's Modules page does the same (Manage Server) |
+| `/config modules show\|toggle\|channels` | Switch parts of Pinchora off for the whole server (`toggle module enabled`) or per channel (`channels module where [channel] [remove]`: `where` is all channels, only these, or everywhere except these, and the list grows one channel at a time; a category covers the channels and threads under it; up to 50 channels). A switched-off module answers its commands, buttons and forms with a private "This feature is turned off on this server" (or "in this channel"), stops its chat XP, points, critter drops, goodbyes, log lines or timed storms, and `/config`, `/help`, `/ping`, `/privacy` and `/remind` (with their buttons) are never switched off; `/weekly` and `/monthly` belong to the economy module and `/wrapped` to profiles. The 26 modules are listed with `show`, and `module` suggests them as you type (start with part of a name, or of a game such as `chess`); leveling, points, welcome and gambling keep their switch where it already was (`/config leveling`, `points`, `welcome`, `gambling`). The dashboard's Modules page does the same (Manage Server) |
 | `/config welcome-card` | Design the welcome card (theme, headline, accent colour) with a live preview |
 
 Duel wagers (`bet`, 10 to 500 shells each) are optional and off by default. Nothing is held until the
@@ -352,7 +411,8 @@ cargo run -p pinchora -- commands         # print slash command JSON
 cargo run -p pinchora-render --example samples   # render sample cards to target/render-samples
                                                  # (profile-background/-badges/-placeholder, rank-background, wallet-background show /customize;
                                                  #  the profile and rank samples carry a title; profile-showcase-*, profile-bg-<white|black|stripes|beach>-<opacity>,
-                                                 #  profile-nobg-*, profile-unicode/-wide/-cyrillic/-shout and profile-frame-* are the stress variants)
+                                                 #  profile-nobg-*, profile-unicode/-wide/-cyrillic/-shout and profile-frame-* are the stress variants;
+                                                 #  wrapped and wrapped-quiet are the year card for a busy player and for one with nothing)
 cargo run -p pinchora-render --example games     # connect four, hangman and wordle sample cards
 cargo run -p pinchora-render --example board_games   # chess, checkers, Sea Fleet radar and fleet, picross and 2048 sample cards
 cargo run --release -p pinchora-render --example characters   # characters-looks.png (all 24 looks with a hat, glasses and a

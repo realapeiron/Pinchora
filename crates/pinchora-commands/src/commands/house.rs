@@ -211,11 +211,14 @@ impl HouseCommand {
                 if host.bot || host.id == author.id {
                     return cx.reply_ephemeral("Like someone else's house!").await;
                 }
+                if super::privacy::private_house(cx, host.id.get()).await? {
+                    return Ok(());
+                }
                 ensure_house(&cx.app, host.id.get()).await?;
                 match cx
                     .app
                     .db
-                    .like_house(host.id.get(), author.id.get(), Utc::now().date_naive())
+                    .like_house(host.id.get(), author.id.get(), cx.app.now().date_naive())
                     .await?
                 {
                     Some(total) => {
@@ -446,6 +449,10 @@ pub(crate) async fn visit(cx: &Cx, author: &User, host_id: u64, name: String, ro
         let data = room_card(cx, host_id, &name, room, None, None).await?;
         return cx.reply(data).await;
     }
+    // A hidden house is not there at all: nobody can walk in, not even by name.
+    if cx.app.db.privacy(host_id).await?.hide_house {
+        return cx.reply_ephemeral(format!("{name}'s house is private.")).await;
+    }
     let (house, _) = ensure_house(&cx.app, host_id).await?;
     if house.locked {
         return cx.reply_ephemeral(format!("{name} has locked their house.")).await;
@@ -456,7 +463,7 @@ pub(crate) async fn visit(cx: &Cx, author: &User, host_id: u64, name: String, ro
         .record_visit(
             host_id,
             author.id.get(),
-            Utc::now().date_naive(),
+            cx.app.now().date_naive(),
             VISIT_REWARD,
             VISIT_CAP,
         )
@@ -478,6 +485,10 @@ pub(crate) async fn visit(cx: &Cx, author: &User, host_id: u64, name: String, ro
 pub(crate) async fn on_view_nav(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Result<()> {
     let owner: u64 = args.next().and_then(|v| v.parse().ok()).unwrap_or(0);
     let room: i16 = args.next().and_then(|v| v.parse().ok()).unwrap_or(0);
+    // A house hidden after its picture was posted stops showing its other rooms.
+    if owner != cx.author()?.id.get() && cx.app.db.privacy(owner).await?.hide_house {
+        return cx.reply_ephemeral("This house is private.").await;
+    }
     let name = if cx.guild_id() == Some(owner) {
         super::plaza::guild_name(cx, owner).await
     } else {

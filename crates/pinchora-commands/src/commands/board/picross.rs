@@ -499,6 +499,10 @@ async fn mark(
 async fn finish(app: &App, me: u64, game: &PicrossGame) -> anyhow::Result<String> {
     record(app, Game::Picross, me, true).await;
     if game.mode == DAILY {
+        // A daily solved before the player deleted their data was paid then.
+        if app.db.daily_picross_solved_before_deleting(me, game.day).await? {
+            return Ok("(You solved today's puzzle before deleting your data, so it pays nothing again.)".to_owned());
+        }
         let days = app.db.picross_days_solved(me, 40).await?;
         let streak = streak(&days, today(app));
         let shells = daily_reward(streak, game.checks);

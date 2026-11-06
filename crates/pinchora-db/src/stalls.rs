@@ -1,6 +1,11 @@
 use pinchora_core::items::is_soulbound;
 
-use crate::{Db, house::add_inventory, sql_id};
+use crate::{
+    Db,
+    house::add_inventory,
+    locks::{lock_users, retry},
+    sql_id,
+};
 
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct ListingRow {
@@ -46,8 +51,14 @@ impl Db {
         if is_soulbound(item_id) {
             return Ok(false);
         }
+        retry("list_item", || self.list_item_once(seller, item_id, price)).await
+    }
+
+    /// One attempt of [`Db::list_item`].
+    async fn list_item_once(&self, seller: u64, item_id: &str, price: i64) -> anyhow::Result<bool> {
         let id = sql_id(seller);
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[id]).await?;
         let (count,): (i64,) = sqlx::query_as("SELECT count(*) FROM stall_listings WHERE seller_id = $1")
             .bind(id)
             .fetch_one(&mut *tx)
@@ -78,8 +89,14 @@ impl Db {
 
     /// Takes a listing back into the seller's inventory.
     pub async fn unlist_item(&self, seller: u64, listing: i64) -> anyhow::Result<Option<String>> {
+        retry("unlist_item", || self.unlist_item_once(seller, listing)).await
+    }
+
+    /// One attempt of [`Db::unlist_item`].
+    async fn unlist_item_once(&self, seller: u64, listing: i64) -> anyhow::Result<Option<String>> {
         let id = sql_id(seller);
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[id]).await?;
         let row: Option<(String,)> =
             sqlx::query_as("DELETE FROM stall_listings WHERE id = $1 AND seller_id = $2 RETURNING item_id")
                 .bind(listing)
@@ -96,8 +113,23 @@ impl Db {
 
     /// Buys a listing: the listing row is deleted first, so two buyers can never both get it.
     pub async fn buy_listing(&self, buyer: u64, listing: i64) -> anyhow::Result<StallBuy> {
+        retry("buy_listing", || self.buy_listing_once(buyer, listing)).await
+    }
+
+    /// One attempt of [`Db::buy_listing`].
+    async fn buy_listing_once(&self, buyer: u64, listing: i64) -> anyhow::Result<StallBuy> {
         let buyer = sql_id(buyer);
         let mut tx = self.pool().begin().await?;
+        // The seller is read plainly first, so both players' locks come before the listing's row
+        // (see the `locks` module). The seller of a listing never changes.
+        let seller: Option<(i64,)> = sqlx::query_as("SELECT seller_id FROM stall_listings WHERE id = $1")
+            .bind(listing)
+            .fetch_optional(&mut *tx)
+            .await?;
+        let Some((seller,)) = seller else {
+            return Ok(StallBuy::Gone);
+        };
+        lock_users(&mut tx, &[buyer, seller]).await?;
         let row: Option<ListingRow> =
             sqlx::query_as("DELETE FROM stall_listings WHERE id = $1 RETURNING id, seller_id, item_id, price")
                 .bind(listing)
@@ -131,11 +163,15 @@ impl Db {
             });
         };
         let payout = row.price - row.price * STALL_FEE_PERCENT / 100;
-        sqlx::query("UPDATE users SET credits = credits + $2 WHERE id = $1")
-            .bind(row.seller_id)
-            .bind(payout)
-            .execute(&mut *tx)
-            .await?;
+        // A seller who never had shells has no row yet: it is made with the payout.
+        sqlx::query(
+            "INSERT INTO users (id, credits) VALUES ($1, $2)
+             ON CONFLICT (id) DO UPDATE SET credits = users.credits + EXCLUDED.credits",
+        )
+        .bind(row.seller_id)
+        .bind(payout)
+        .execute(&mut *tx)
+        .await?;
         crate::economy::ledger(&mut tx, buyer, -row.price, "stall_buy").await?;
         crate::economy::ledger(&mut tx, row.seller_id, payout, "stall_sale").await?;
         add_inventory(&mut tx, buyer, &row.item_id, 1).await?;

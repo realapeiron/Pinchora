@@ -25,7 +25,7 @@ pub use cards::{
     Mood, NextRole, NurseryCard, NurseryPet, PRESENT, PetCard, PetStatus, PickView, PicrossCard, PollCard, PollOption,
     ProfileCard, RadarCard, RankCard, Reveal, SHIP_COLORS, SHIP_NAMES, SeaView, ShareGrabCard, ShellCard, ShipView,
     ShowcaseKind, ShowcaseSlot, SpriteArt, StageView, SurgeCard, SurgeState, Tide2048Card, WalletCard, WelcomeCard,
-    WordleCard, WordleRow,
+    WordleCard, WordleRow, WrappedCard, WrappedFish, WrappedHouse, WrappedTotals,
 };
 pub use cards::{
     BottleCard, DexCard, DexCell, DropCard, DropCritter, EntryPicture, HaulCard, HaulTile, PotCard, PotState,
@@ -158,6 +158,10 @@ impl Renderer {
     }
 
     pub fn wordle_card(&self, card: &WordleCard<'_>) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn wrapped_card(&self, card: &WrappedCard<'_>) -> anyhow::Result<Vec<u8>> {
         self.svg_to_png(&card.to_svg())
     }
 

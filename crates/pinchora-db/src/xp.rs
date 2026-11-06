@@ -3,7 +3,11 @@
 use chrono::NaiveDate;
 use pinchora_core::leveling::XpRules;
 
-use crate::{Db, LeaderboardRow, XpGain, sql_id};
+use crate::{
+    Db, LeaderboardRow, XpGain,
+    locks::{lock_users, retry},
+    sql_id,
+};
 
 /// Most multiplier rules a server can set up, channels and roles together.
 pub const MAX_XP_RULES: i64 = 50;
@@ -96,8 +100,8 @@ impl Db {
     }
 
     /// Adds one minute of voice XP to every member in `grants` (user, server XP), in a single
-    /// statement, and counts it toward the week. Each user may appear once. Returns every member's
-    /// XP before and after, to spot level-ups.
+    /// statement after their locks (see the `locks` module), and counts it toward the week. Each
+    /// user may appear once. Returns every member's XP before and after, to spot level-ups.
     pub async fn add_voice_xp(
         &self,
         guild_id: u64,
@@ -109,27 +113,9 @@ impl Db {
         }
         let users: Vec<i64> = grants.iter().map(|(user, _)| sql_id(*user)).collect();
         let amounts: Vec<i64> = grants.iter().map(|(_, xp)| *xp).collect();
-        let rows: Vec<(i64, i64, i64)> = sqlx::query_as(
-            "WITH g AS (
-                 SELECT * FROM UNNEST($2::BIGINT[], $3::BIGINT[]) AS t(user_id, amount) WHERE amount > 0
-             ), m AS (
-                 INSERT INTO members (guild_id, user_id, xp, last_xp_at)
-                 SELECT $1, user_id, amount, now() FROM g
-                 ON CONFLICT (guild_id, user_id) DO UPDATE
-                 SET xp = members.xp + EXCLUDED.xp, last_xp_at = now()
-                 RETURNING user_id, xp
-             ), w AS (
-                 INSERT INTO weekly_xp (guild_id, week, user_id, xp)
-                 SELECT $1, $4, user_id, amount FROM g
-                 ON CONFLICT (guild_id, week, user_id) DO UPDATE SET xp = weekly_xp.xp + EXCLUDED.xp
-             )
-             SELECT m.user_id, m.xp, g.amount FROM m JOIN g USING (user_id)",
-        )
-        .bind(sql_id(guild_id))
-        .bind(users)
-        .bind(amounts)
-        .bind(week)
-        .fetch_all(self.pool())
+        let rows = retry("add_voice_xp", || {
+            self.add_voice_xp_once(guild_id, &users, &amounts, week)
+        })
         .await?;
         Ok(rows
             .into_iter()
@@ -143,6 +129,46 @@ impl Db {
                 )
             })
             .collect())
+    }
+
+    /// One attempt of [`Db::add_voice_xp`]: (user, XP now, XP added) per member.
+    async fn add_voice_xp_once(
+        &self,
+        guild_id: u64,
+        users: &[i64],
+        amounts: &[i64],
+        week: NaiveDate,
+    ) -> anyhow::Result<Vec<(i64, i64, i64)>> {
+        let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, users).await?;
+        let rows: Vec<(i64, i64, i64)> = sqlx::query_as(
+            "WITH g AS (
+                 SELECT * FROM UNNEST($2::BIGINT[], $3::BIGINT[]) AS t(user_id, amount) WHERE amount > 0
+             ), m AS (
+                 INSERT INTO members (guild_id, user_id, xp, last_xp_at)
+                 SELECT $1, user_id, amount, now() FROM g
+                 ON CONFLICT (guild_id, user_id) DO UPDATE
+                 SET xp = members.xp + EXCLUDED.xp, last_xp_at = now()
+                 RETURNING user_id, xp
+             ), w AS (
+                 INSERT INTO weekly_xp (guild_id, week, user_id, xp)
+                 SELECT $1, $4, user_id, amount FROM g
+                 ON CONFLICT (guild_id, week, user_id) DO UPDATE SET xp = weekly_xp.xp + EXCLUDED.xp
+             ), a AS (
+                 INSERT INTO activity_monthly (user_id, month, xp)
+                 SELECT user_id, date_trunc('month', now() AT TIME ZONE 'UTC')::date, amount FROM g
+                 ON CONFLICT (user_id, month) DO UPDATE SET xp = activity_monthly.xp + EXCLUDED.xp
+             )
+             SELECT m.user_id, m.xp, g.amount FROM m JOIN g USING (user_id)",
+        )
+        .bind(sql_id(guild_id))
+        .bind(users)
+        .bind(amounts)
+        .bind(week)
+        .fetch_all(&mut *tx)
+        .await?;
+        tx.commit().await?;
+        Ok(rows)
     }
 
     /// The server's weekly XP board for the week starting `week`, with the XP as `value`.
@@ -167,12 +193,21 @@ impl Db {
         .await?)
     }
 
-    /// Forgets the weekly XP of weeks that started before `week`; returns how many rows went.
+    /// Forgets the weekly XP of weeks that started before `week`; returns how many rows went. Rows
+    /// somebody holds are left for the next sweep (see the `locks` module).
     pub async fn forget_weeks_before(&self, week: NaiveDate) -> anyhow::Result<u64> {
-        Ok(sqlx::query("DELETE FROM weekly_xp WHERE week < $1")
+        retry("forget_weeks_before", || async move {
+            Ok(sqlx::query(
+                "WITH old AS MATERIALIZED (
+                     SELECT guild_id, week, user_id FROM weekly_xp WHERE week < $1 FOR UPDATE SKIP LOCKED)
+                 DELETE FROM weekly_xp x USING old
+                 WHERE x.guild_id = old.guild_id AND x.week = old.week AND x.user_id = old.user_id",
+            )
             .bind(week)
             .execute(self.pool())
             .await?
             .rows_affected())
+        })
+        .await
     }
 }

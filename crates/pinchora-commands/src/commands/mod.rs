@@ -28,15 +28,18 @@ pub(crate) mod modules;
 pub(crate) mod partner;
 pub(crate) mod party;
 pub(crate) mod party_games;
+mod periodic;
 pub(crate) mod pet;
 mod ping;
 pub(crate) mod play;
 pub(crate) mod plaza;
 mod points;
 pub(crate) mod poll;
+pub(crate) mod privacy;
 pub(crate) mod profile;
 pub(crate) mod quests;
 mod rank;
+pub(crate) mod remind;
 mod rep;
 mod rep_roles;
 pub(crate) mod role_panels;
@@ -53,6 +56,7 @@ pub(crate) mod trivia;
 mod undo;
 mod utilities;
 pub(crate) mod wordle;
+mod wrapped;
 mod xp;
 
 use twilight_interactions::command::{CommandModel, CreateCommand};
@@ -89,6 +93,8 @@ commands!(
     rank::Rank,
     leaderboard::Leaderboard,
     daily::Daily,
+    periodic::Weekly,
+    periodic::Monthly,
     economy::Balance,
     economy::Give,
     rep::Rep,
@@ -116,6 +122,9 @@ commands!(
     interact::Pat,
     interact::Wave,
     interact::HighFive,
+    remind::RemindCommand,
+    privacy::PrivacyCommand,
+    wrapped::Wrapped,
     giveaway::GiveawayCommand,
     suggest::Suggest,
     suggest::SuggestionCommand,

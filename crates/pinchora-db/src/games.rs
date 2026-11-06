@@ -2,7 +2,12 @@
 
 use chrono::{DateTime, Utc};
 
-use crate::{Db, economy::ledger, sql_id};
+use crate::{
+    Db,
+    economy::ledger,
+    locks::{lock_users, retry},
+    sql_id,
+};
 
 pub const PENDING: &str = "pending";
 pub const ACTIVE: &str = "active";
@@ -107,9 +112,25 @@ macro_rules! columns {
 }
 
 impl Db {
-    /// Opens a session.
+    /// Opens a session. Its players' locks come first (see the `locks` module), so a session is
+    /// never opened for a player in the middle of deleting their data, and the delete finds it.
     pub async fn create_game(&self, new: NewGame<'_>) -> anyhow::Result<GameSession> {
-        Ok(sqlx::query_as::<_, GameSession>(concat!(
+        retry("create_game", || self.create_game_once(new)).await
+    }
+
+    /// One attempt of [`Db::create_game`].
+    async fn create_game_once(&self, new: NewGame<'_>) -> anyhow::Result<GameSession> {
+        let mut tx = self.pool().begin().await?;
+        lock_users(
+            &mut tx,
+            &[Some(new.host), new.guest]
+                .into_iter()
+                .flatten()
+                .map(sql_id)
+                .collect::<Vec<_>>(),
+        )
+        .await?;
+        let session = sqlx::query_as::<_, GameSession>(concat!(
             "INSERT INTO game_sessions (kind, guild_id, channel_id, host_id, guest_id, bet, status, state, expires_at)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now() + make_interval(secs => $9))
              RETURNING ",
@@ -124,8 +145,10 @@ impl Db {
         .bind(new.status)
         .bind(new.state)
         .bind(new.ttl_secs as f64)
-        .fetch_one(self.pool())
-        .await?)
+        .fetch_one(&mut *tx)
+        .await?;
+        tx.commit().await?;
+        Ok(session)
     }
 
     pub async fn game(&self, id: i64) -> anyhow::Result<Option<GameSession>> {
@@ -175,7 +198,23 @@ impl Db {
         state: &str,
         ttl_secs: i64,
     ) -> anyhow::Result<DuelStart> {
+        retry("start_duel", || {
+            self.start_duel_once(id, guest, message, state, ttl_secs)
+        })
+        .await
+    }
+
+    /// One attempt of [`Db::start_duel`].
+    async fn start_duel_once(
+        &self,
+        id: i64,
+        guest: u64,
+        message: (u64, u64),
+        state: &str,
+        ttl_secs: i64,
+    ) -> anyhow::Result<DuelStart> {
         let mut tx = self.pool().begin().await?;
+        lock_players(&mut tx, id).await?;
         let session: Option<GameSession> = sqlx::query_as(concat!(
             "SELECT ",
             columns!(),
@@ -251,7 +290,23 @@ impl Db {
         payout: Payout,
         only_if_expired: bool,
     ) -> anyhow::Result<Option<GameSession>> {
+        retry("settle_game", || {
+            self.settle_game_once(id, from_state, final_state, payout, only_if_expired)
+        })
+        .await
+    }
+
+    /// One attempt of [`Db::settle_game`].
+    async fn settle_game_once(
+        &self,
+        id: i64,
+        from_state: Option<&str>,
+        final_state: &str,
+        payout: Payout,
+        only_if_expired: bool,
+    ) -> anyhow::Result<Option<GameSession>> {
         let mut tx = self.pool().begin().await?;
+        lock_players(&mut tx, id).await?;
         let session: Option<GameSession> = sqlx::query_as(concat!(
             "SELECT ",
             columns!(),
@@ -274,7 +329,7 @@ impl Db {
                         winner == session.host_id || Some(winner) == session.guest_id,
                         "the winner is not in the game"
                     );
-                    pay(&mut tx, winner, session.bet * 2, "duel_win").await?;
+                    pay(&mut tx, winner, session.bet * 2, "duel_pot").await?;
                 }
                 Payout::Refund => {
                     pay(&mut tx, session.host_id, session.bet, "duel_refund").await?;
@@ -306,14 +361,21 @@ impl Db {
         .await?)
     }
 
-    /// Drops finished sessions (and their trivia answers) after two days; returns how many.
+    /// Drops finished sessions (and their trivia answers) after two days; returns how many. Rows
+    /// somebody holds are left for the next sweep (see the `locks` module).
     pub async fn forget_old_games(&self) -> anyhow::Result<u64> {
-        Ok(
-            sqlx::query("DELETE FROM game_sessions WHERE status = 'done' AND created_at < now() - interval '2 days'")
-                .execute(self.pool())
-                .await?
-                .rows_affected(),
-        )
+        retry("forget_old_games", || async move {
+            Ok(sqlx::query(
+                "WITH old AS MATERIALIZED (
+                     SELECT id FROM game_sessions WHERE status = 'done' AND created_at < now() - interval '2 days'
+                     FOR UPDATE SKIP LOCKED)
+                 DELETE FROM game_sessions WHERE id IN (SELECT id FROM old)",
+            )
+            .execute(self.pool())
+            .await?
+            .rows_affected())
+        })
+        .await
     }
 
     /// Records a trivia answer; false when this player already answered the round.
@@ -434,6 +496,23 @@ impl Db {
         .fetch_optional(self.pool())
         .await?)
     }
+}
+
+/// Takes the locks of the session's players when it holds (or will hold) shells, before the session's
+/// row is locked (see the `locks` module). The players and the bet of a session never change, so the
+/// plain read is good for the locked one that follows.
+async fn lock_players(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, id: i64) -> anyhow::Result<()> {
+    let row: Option<(i64, Option<i64>, i64)> =
+        sqlx::query_as("SELECT host_id, guest_id, bet FROM game_sessions WHERE id = $1")
+            .bind(id)
+            .fetch_optional(&mut **tx)
+            .await?;
+    if let Some((host, guest, bet)) = row
+        && bet > 0
+    {
+        lock_users(tx, &[Some(host), guest].into_iter().flatten().collect::<Vec<_>>()).await?;
+    }
+    Ok(())
 }
 
 async fn pay(

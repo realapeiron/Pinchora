@@ -1,6 +1,10 @@
 use chrono::{DateTime, Utc};
 
-use crate::{Db, sql_id};
+use crate::{
+    Db,
+    locks::{lock_users, retry},
+    sql_id,
+};
 
 /// Friends a player can have.
 pub const MAX_FRIENDS: i64 = 100;
@@ -59,15 +63,15 @@ impl Db {
     /// Makes two players friends, both ways at once, unless either has the most friends allowed.
     pub async fn befriend(&self, a: u64, b: u64) -> anyhow::Result<BefriendOutcome> {
         anyhow::ensure!(a != b, "nobody befriends themselves");
+        retry("befriend", || self.befriend_once(a, b)).await
+    }
+
+    /// One attempt of [`Db::befriend`].
+    async fn befriend_once(&self, a: u64, b: u64) -> anyhow::Result<BefriendOutcome> {
         let (low, high) = (sql_id(a.min(b)), sql_id(a.max(b)));
         let mut tx = self.pool().begin().await?;
-        // Other pairings of either player wait here, smaller id first so they cannot deadlock.
-        for id in [low, high] {
-            sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended('friends:' || $1::text, 0))")
-                .bind(id)
-                .execute(&mut *tx)
-                .await?;
-        }
+        // Other pairings of either player wait here: the players' locks, taken in id order.
+        lock_users(&mut tx, &[low, high]).await?;
         let (already,): (bool,) =
             sqlx::query_as("SELECT EXISTS (SELECT 1 FROM friends WHERE user_id = $1 AND friend_id = $2)")
                 .bind(sql_id(a))
@@ -139,10 +143,11 @@ impl Db {
         Ok((rows.into_iter().map(friend).collect(), self.friend_count(user).await?))
     }
 
-    /// Friends whose houses are open, the most liked first: who `/house visit` offers.
+    /// Friends whose houses are open (not locked, not hidden), the most liked first: who `/house visit` offers.
     pub async fn visitable_friends(&self, user: u64, limit: i64) -> anyhow::Result<Vec<FriendRow>> {
         let rows = sqlx::query_as::<_, RawFriend>(friend_sql!(
             "WHERE f.user_id = $1 AND NOT COALESCE(h.locked, false)
+             AND NOT EXISTS (SELECT 1 FROM user_privacy p WHERE p.user_id = f.friend_id AND p.hide_house)
              ORDER BY COALESCE(h.likes, 0) DESC, f.since DESC, f.friend_id LIMIT $2"
         ))
         .bind(sql_id(user))

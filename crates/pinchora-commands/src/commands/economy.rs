@@ -1,5 +1,5 @@
 use chrono::Utc;
-use pinchora_core::economy::{DAILY_COOLDOWN, DAILY_STREAK_WINDOW};
+use pinchora_core::economy::{DAILY_COOLDOWN, DAILY_STREAK_WINDOW, Period};
 use pinchora_db::TransferOutcome;
 use pinchora_game::Content;
 use pinchora_render::WalletCard;
@@ -8,7 +8,11 @@ use twilight_util::builder::embed::EmbedBuilder;
 
 use crate::{
     Cx,
-    commands::customize::{self, Cosmetics, theme},
+    commands::{
+        customize::{self, Cosmetics, theme},
+        periodic::ready_in,
+        privacy,
+    },
     util::{SUCCESS, mention, resolved_display_name, thousands},
 };
 
@@ -25,19 +29,28 @@ impl Balance {
             Some(r) => (r.resolved.clone(), resolved_display_name(r)),
             None => (cx.author()?.clone(), cx.author_display_name()),
         };
+        if privacy::private_profile(cx, user.id.get()).await? {
+            return Ok(());
+        }
         let row = cx.app.db.user(user.id.get()).await?;
         let now = Utc::now();
         let streak = match row.last_daily_at {
             Some(t) if now - t <= DAILY_STREAK_WINDOW => row.daily_streak,
             _ => 0,
         };
-        let next_daily = match row.last_daily_at {
-            Some(t) if now - t < DAILY_COOLDOWN => {
-                let mins = (t + DAILY_COOLDOWN - now).num_minutes().max(1);
-                format!("{}h {}m", mins / 60, mins % 60)
-            }
-            _ => "ready".to_owned(),
-        };
+        let next_daily = ready_in(row.last_daily_at, DAILY_COOLDOWN, now);
+        // The weekly and monthly rewards run on the game clock like their commands do.
+        let game_now = cx.app.now();
+        let next_weekly = ready_in(
+            cx.app.db.period_claimed_at(user.id.get(), Period::Weekly).await?,
+            Period::Weekly.cooldown(),
+            game_now,
+        );
+        let next_monthly = ready_in(
+            cx.app.db.period_claimed_at(user.id.get(), Period::Monthly).await?,
+            Period::Monthly.cooldown(),
+            game_now,
+        );
         let pets = cx.app.db.pets(user.id.get()).await?.len() as i64;
         let fish_found = cx.app.db.fish_book_count(user.id.get()).await?;
         let fish_total = pinchora_game::Content::get().fish.len() as i64;
@@ -55,6 +68,8 @@ impl Balance {
                     pearls: row.pearls,
                     streak,
                     next_daily: &next_daily,
+                    next_weekly: &next_weekly,
+                    next_monthly: &next_monthly,
                     pets,
                     fish_found,
                     fish_total,

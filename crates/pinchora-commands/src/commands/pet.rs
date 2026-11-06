@@ -20,7 +20,7 @@ use twilight_util::builder::embed::EmbedBuilder;
 
 use crate::{
     App, Cx,
-    commands::customize,
+    commands::{customize, remind},
     game::scene::Sprites,
     util::{BRAND, WARN, thousands},
 };
@@ -317,6 +317,8 @@ fn status_note(pet: &PetRow, now: DateTime<Utc>) -> Option<String> {
 
 /// The card for a pet with its buttons: care, and by state the claim, wake-up and trip buttons.
 async fn pet_card(app: &App, pet: &PetRow, note: Option<String>) -> anyhow::Result<InteractionResponseData> {
+    // Showing a pet is how its state changes reach the reminders about it.
+    remind::refresh_pet(app, pet).await;
     let png = pet_png(app, pet).await?;
     let now = app.now();
     let state = status(pet, now);
@@ -416,6 +418,19 @@ pub(crate) async fn on_care(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
         }
         PetStatus::Awake | PetStatus::Back => {}
     }
+    // The walk's cooldown belongs to the pet, so a player who deleted their data and adopted again is
+    // held to the one their old pet was on.
+    if action == Care::Walk
+        && let Some(until) = cx.app.db.walk_locked_until(user, now).await?
+    {
+        return cx
+            .reply_ephemeral(format!(
+                "{} needs a break. Try again in {} min.",
+                pet.name,
+                (until - now).num_minutes() + 1
+            ))
+            .await;
+    }
     let key = format!("pet:{pet_id}:{action:?}");
     if let Some(left) = cx
         .app
@@ -480,6 +495,7 @@ pub(crate) async fn on_care(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
         return cx.reply_ephemeral(note).await;
     }
     cx.app.quest(user, pinchora_game::quests::QuestKind::Care).await;
+    cx.app.count(user, pinchora_db::Counter::PetCare, 1).await;
     let verb = match action {
         Care::Feed => "munches happily",
         Care::Play => "bounces around with you",

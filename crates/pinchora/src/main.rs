@@ -125,6 +125,9 @@ async fn boot(config: &Config, role: &str) -> anyhow::Result<(Arc<App>, Readines
     pinchora_commands::listen_for_invalidations(&app).await;
     // Ends duels and rounds whose clock ran out, so no wager stays held after a restart.
     pinchora_commands::spawn_game_janitor(app.clone());
+    // Sends the reminders that came due; every pod runs it and the table's leases keep one from
+    // repeating another.
+    pinchora_commands::spawn_reminder_ticker(app.clone());
     // Ends giveaways and closes polls when their time is up, on whichever pod gets there first.
     pinchora_commands::spawn_events_ticker(app.clone());
     // Retires critter drops and bottles nobody took in time.

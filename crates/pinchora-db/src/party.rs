@@ -1023,7 +1023,10 @@ async fn lock_open(
         .filter(|s| s.status == PENDING && !s.expired()))
 }
 
-async fn members(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, session: i64) -> anyhow::Result<Vec<PartyMember>> {
+pub(crate) async fn members(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    session: i64,
+) -> anyhow::Result<Vec<PartyMember>> {
     Ok(sqlx::query_as::<_, PartyMember>(
         "SELECT user_id, choice, amount, name FROM party_members WHERE session_id = $1 ORDER BY joined_at, user_id",
     )
@@ -1070,7 +1073,7 @@ async fn credit(
 }
 
 /// Gives every racer of derby `session` their stake back, in id order.
-async fn refund_all(
+pub(crate) async fn refund_all(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     session: i64,
     racers: &[PartyMember],

@@ -6,7 +6,7 @@ use image::{RgbaImage, imageops};
 use pinchora_render::{
     Backdrop, BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, CharacterCard, EditorCell, EditorSection, Frame,
     LeaderboardCard, LeaderboardEntry, LevelUpCard, NextRole, Opacity, ProfileCard, RankCard, Renderer, ShowcaseKind,
-    ShowcaseSlot, SpriteArt, Theme, WalletCard, WelcomeCard,
+    ShowcaseSlot, SpriteArt, Theme, WalletCard, WelcomeCard, WrappedCard, WrappedFish, WrappedHouse, WrappedTotals,
     character::{CharacterSpec, Colors, Paint, Worn, render_character},
     placeholder_avatar,
     room::{Cursor, RoomScene, SceneItem, SceneLayer, render_room},
@@ -314,6 +314,8 @@ fn main() -> anyhow::Result<()> {
             pearls: 42,
             streak: 12,
             next_daily: "3h 20m",
+            next_weekly: "ready",
+            next_monthly: "12d 4h",
             pets: 5,
             fish_found: 31,
             fish_total: 72,
@@ -522,6 +524,47 @@ fn main() -> anyhow::Result<()> {
         tile(ShowcaseKind::Furniture, &bed, "Blushbun Bed (Rose)"),
         house("Tide Pool Shack"),
     ];
+    // Wrapped: a busy year, and a year with nothing in it.
+    let busy = WrappedCard {
+        year: 2026,
+        display_name: "Captain Pinch",
+        avatar_png: &placeholder_avatar(7, WrappedCard::AVATAR_SIZE),
+        title: "Tide Whisperer",
+        totals: WrappedTotals {
+            messages: 4_218,
+            xp: 96_400,
+            shells: 183_250,
+            fish: 312,
+            visits: 87,
+            likes_given: 140,
+            likes_received: 96,
+            pet_care: 205,
+        },
+        months: [120, 340, 80, 0, 410, 560, 300, 90, 700, 1_020, 880, 640],
+        fish: Some(WrappedFish {
+            name: "Amberwink Squidlet",
+            caught: 42,
+            art: Some(art(&fish)),
+        }),
+        house: Some(WrappedHouse {
+            name: "Marlowe the Mapmaker",
+            visits: 31,
+            friend: true,
+        }),
+        backdrop: None,
+        theme: Theme::reef(),
+    };
+    std::fs::write(format!("{out}/wrapped.png"), r.wrapped_card(&busy)?)?;
+    let quiet = WrappedCard {
+        title: "Fresh Pearl",
+        totals: WrappedTotals::default(),
+        months: [0; 12],
+        fish: None,
+        house: None,
+        ..busy
+    };
+    std::fs::write(format!("{out}/wrapped-quiet.png"), r.wrapped_card(&quiet)?)?;
+
     let long_bio = "Collector of shiny shells, builder of tiny pixel houses, feeder of crabs and chaser of rare fish. Ask me about Sir Clicks-a-lot or my 4 AM fishing trips!";
     let long_name = "Bartholomew Fizzlebottom Smythe!";
     let busy_bio = |name: &str,

@@ -10,7 +10,7 @@ use chrono::{DateTime, Duration, Utc};
 use pinchora_core::items::soulbound;
 use sqlx::{Postgres, Transaction};
 
-use crate::{Db, economy::ledger, house::add_inventory, sql_id};
+use crate::{Db, economy::ledger, house::add_inventory, locks::lock_users, sql_id};
 
 type Tx<'a> = Transaction<'a, Postgres>;
 
@@ -501,6 +501,9 @@ impl Db {
         daily: Daily<'_>,
     ) -> anyhow::Result<Comb> {
         let mut tx = self.pool().begin().await?;
+        // The wait can sit in a tombstone (see `Db::delete_user_data`): the player's lock first, so a
+        // delete still under way is waited for and its tombstone is the one read.
+        lock_users(&mut tx, &[sql_id(user)]).await?;
         let ready: Option<DateTime<Utc>> = lock_player(&mut tx, user)
             .await?
             .and_then(|row: (Option<DateTime<Utc>>,)| row.0);
@@ -640,18 +643,20 @@ impl Db {
     }
 }
 
-/// Makes sure the player has a row and locks it; the first column is `comb_ready_at`.
+/// Makes sure the player has a row and locks it; the first column is `comb_ready_at`, or the wait the
+/// player had left when they deleted their data if that ends later.
 async fn lock_player(tx: &mut Tx<'_>, user: u64) -> anyhow::Result<Option<(Option<DateTime<Utc>>,)>> {
     sqlx::query("INSERT INTO collection_players (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING")
         .bind(sql_id(user))
         .execute(&mut **tx)
         .await?;
-    Ok(
-        sqlx::query_as("SELECT comb_ready_at FROM collection_players WHERE user_id = $1 FOR UPDATE")
-            .bind(sql_id(user))
-            .fetch_optional(&mut **tx)
-            .await?,
+    Ok(sqlx::query_as(
+        "SELECT GREATEST(comb_ready_at, (SELECT comb_ready_at FROM deleted_users WHERE user_id = $1))
+         FROM collection_players WHERE user_id = $1 FOR UPDATE",
     )
+    .bind(sql_id(user))
+    .fetch_optional(&mut **tx)
+    .await?)
 }
 
 /// Counts a play of a game today and says whether it still pays.

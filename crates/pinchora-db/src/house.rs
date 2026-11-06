@@ -1,6 +1,10 @@
 use pinchora_core::items::is_soulbound;
 
-use crate::{Db, sql_id};
+use crate::{
+    Db,
+    locks::{Retry, lock_users, retry},
+    sql_id,
+};
 
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct HouseRow {
@@ -93,8 +97,14 @@ pub enum UpgradeOutcome {
 impl Db {
     /// The player's house, created with `starter` as its first room when missing.
     pub async fn house(&self, user_id: u64, starter: &NewRoom) -> anyhow::Result<(HouseRow, Vec<RoomRow>, bool)> {
+        retry("house", || self.house_once(user_id, starter)).await
+    }
+
+    /// One attempt of [`Db::house`].
+    async fn house_once(&self, user_id: u64, starter: &NewRoom) -> anyhow::Result<(HouseRow, Vec<RoomRow>, bool)> {
         let id = sql_id(user_id);
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[id]).await?;
         let created = sqlx::query("INSERT INTO houses (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING")
             .bind(id)
             .execute(&mut *tx)
@@ -155,14 +165,21 @@ impl Db {
     }
 
     pub async fn grant_item(&self, user_id: u64, item_id: &str, quantity: i32) -> anyhow::Result<()> {
+        retry("grant_item", || self.grant_item_once(user_id, item_id, quantity)).await
+    }
+
+    /// One attempt of [`Db::grant_item`].
+    async fn grant_item_once(&self, user_id: u64, item_id: &str, quantity: i32) -> anyhow::Result<()> {
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(user_id)]).await?;
         add_inventory(&mut tx, sql_id(user_id), item_id, quantity).await?;
         tx.commit().await?;
         Ok(())
     }
 
     /// Moves one owned item into a room. Edits of one house are serialized by locking
-    /// the house row; `check` validates the spot against the room's current placements.
+    /// the house row; `check` validates the spot against the room's current placements (and is
+    /// asked again if the edit loses a deadlock and runs a second time).
     #[allow(clippy::too_many_arguments)]
     pub async fn place_item<F>(
         &self,
@@ -175,7 +192,7 @@ impl Db {
         check: F,
     ) -> anyhow::Result<PlaceOutcome>
     where
-        F: FnOnce(&[PlacementRow]) -> Result<(), String>,
+        F: FnMut(&[PlacementRow]) -> Result<(), String>,
     {
         self.place_item_for(user_id, user_id, room_idx, item_id, x, y, flipped, check)
             .await
@@ -194,16 +211,44 @@ impl Db {
         x: i16,
         y: i16,
         flipped: bool,
-        check: F,
+        mut check: F,
     ) -> anyhow::Result<PlaceOutcome>
     where
-        F: FnOnce(&[PlacementRow]) -> Result<(), String>,
+        F: FnMut(&[PlacementRow]) -> Result<(), String>,
+    {
+        let mut retry = Retry::new("place_item_for");
+        loop {
+            let result = self
+                .place_item_for_once(owner, stock, room_idx, item_id, x, y, flipped, &mut check)
+                .await;
+            if !retry.again(&result).await {
+                return result;
+            }
+        }
+    }
+
+    /// One attempt of [`Db::place_item_for`].
+    #[allow(clippy::too_many_arguments)]
+    async fn place_item_for_once<F>(
+        &self,
+        owner: u64,
+        stock: u64,
+        room_idx: i16,
+        item_id: &str,
+        x: i16,
+        y: i16,
+        flipped: bool,
+        check: &mut F,
+    ) -> anyhow::Result<PlaceOutcome>
+    where
+        F: FnMut(&[PlacementRow]) -> Result<(), String>,
     {
         if owner != stock && is_soulbound(item_id) {
             return Ok(PlaceOutcome::Blocked(SOULBOUND_GUEST.to_owned()));
         }
         let (id, stock) = (sql_id(owner), sql_id(stock));
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[id, stock]).await?;
         sqlx::query("SELECT 1 FROM houses WHERE user_id = $1 FOR UPDATE")
             .bind(id)
             .execute(&mut *tx)
@@ -247,8 +292,14 @@ impl Db {
 
     /// Returns a placed item to the inventory. `None` if it is not the player's.
     pub async fn pick_up(&self, user_id: u64, placement_id: i64) -> anyhow::Result<Option<String>> {
+        retry("pick_up", || self.pick_up_once(user_id, placement_id)).await
+    }
+
+    /// One attempt of [`Db::pick_up`].
+    async fn pick_up_once(&self, user_id: u64, placement_id: i64) -> anyhow::Result<Option<String>> {
         let id = sql_id(user_id);
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[id]).await?;
         let item: Option<(String,)> =
             sqlx::query_as("DELETE FROM placements WHERE id = $1 AND user_id = $2 RETURNING item_id")
                 .bind(placement_id)
@@ -265,8 +316,14 @@ impl Db {
 
     /// Takes every placement in a room back to the inventory at once; returns what stood there.
     pub async fn clear_room(&self, user_id: u64, room_idx: i16) -> anyhow::Result<Vec<PlacementRow>> {
+        retry("clear_room", || self.clear_room_once(user_id, room_idx)).await
+    }
+
+    /// One attempt of [`Db::clear_room`].
+    async fn clear_room_once(&self, user_id: u64, room_idx: i16) -> anyhow::Result<Vec<PlacementRow>> {
         let id = sql_id(user_id);
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[id]).await?;
         sqlx::query("SELECT 1 FROM houses WHERE user_id = $1 FOR UPDATE")
             .bind(id)
             .execute(&mut *tx)
@@ -323,8 +380,32 @@ impl Db {
     where
         F: FnMut(&[PlacementRow], &RoomChange) -> Result<(), String>,
     {
+        let mut retry = Retry::new("restore_for");
+        loop {
+            let result = self
+                .restore_for_once(owner, editor, room_idx, changes, &mut check)
+                .await;
+            if !retry.again(&result).await {
+                return result;
+            }
+        }
+    }
+
+    /// One attempt of [`Db::restore_for`].
+    async fn restore_for_once<F>(
+        &self,
+        owner: u64,
+        editor: u64,
+        room_idx: i16,
+        changes: &[RoomChange],
+        check: &mut F,
+    ) -> anyhow::Result<RestoreOutcome>
+    where
+        F: FnMut(&[PlacementRow], &RoomChange) -> Result<(), String>,
+    {
         let (id, refund) = (sql_id(owner), sql_id(editor));
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[id, refund]).await?;
         sqlx::query("SELECT 1 FROM houses WHERE user_id = $1 FOR UPDATE")
             .bind(id)
             .execute(&mut *tx)
@@ -458,8 +539,23 @@ impl Db {
         price: i64,
         new_rooms: &[NewRoom],
     ) -> anyhow::Result<UpgradeOutcome> {
+        retry("upgrade_house", || {
+            self.upgrade_house_once(user_id, from_tier, price, new_rooms)
+        })
+        .await
+    }
+
+    /// One attempt of [`Db::upgrade_house`].
+    async fn upgrade_house_once(
+        &self,
+        user_id: u64,
+        from_tier: i16,
+        price: i64,
+        new_rooms: &[NewRoom],
+    ) -> anyhow::Result<UpgradeOutcome> {
         let id = sql_id(user_id);
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[id]).await?;
         let (tier,): (i16,) = sqlx::query_as("SELECT tier FROM houses WHERE user_id = $1 FOR UPDATE")
             .bind(id)
             .fetch_one(&mut *tx)

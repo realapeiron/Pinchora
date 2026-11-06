@@ -9,5 +9,6 @@ pub mod settings;
 pub mod snowflake;
 pub mod stats;
 pub mod telemetry;
+pub mod wrapped;
 
 pub use config::Config;

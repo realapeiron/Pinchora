@@ -29,9 +29,9 @@ use axum::{
 use pinchora_cache::Cache;
 use pinchora_commands::{
     App, Deferral, Responder, handle_interaction, on_ban_add, on_ban_remove, on_guild_create, on_guild_delete,
-    on_member_add, on_member_remove, on_member_update, on_message, on_voice_state_update, sweep_games,
+    on_member_add, on_member_remove, on_member_update, on_message, on_voice_state_update, reminder_tick, sweep_games,
 };
-use pinchora_db::Db;
+use pinchora_db::{Counter, Db};
 use pinchora_game::{
     Content,
     character::Character,
@@ -172,6 +172,10 @@ impl Post {
 
     fn content(&self) -> &str {
         self.body["content"].as_str().unwrap_or_default()
+    }
+
+    fn description(&self) -> &str {
+        self.embed()["description"].as_str().unwrap_or_default()
     }
 }
 
@@ -6592,8 +6596,6 @@ fn content_emoji(key: &str) -> &'static str {
 
 // /Leveling toolkit
 
-/// The direct message channel the mock opens for anyone.
-const DM_CHANNEL_ID: u64 = 9_100_000_000_001;
 /// Whether the mock refuses to open direct messages (the member closed them).
 static DMS_CLOSED: AtomicBool = AtomicBool::new(false);
 /// Members whose direct messages are open (`false`) or closed (`true`) whatever [`DMS_CLOSED`] says, so
@@ -6621,7 +6623,8 @@ fn open_direct_message(recipient: u64) -> (StatusCode, String) {
         let refusal = json!({ "message": "Cannot send messages to this user", "code": 50007 });
         return (StatusCode::FORBIDDEN, refusal.to_string());
     }
-    let channel = json!({ "id": DM_CHANNEL_ID.to_string(), "type": 1, "recipients": [] });
+    // The channel is the recipient's own id, so a test can tell whose messages are whose.
+    let channel = json!({ "id": recipient.to_string(), "type": 1, "recipients": [] });
     (StatusCode::OK, channel.to_string())
 }
 
@@ -7854,7 +7857,7 @@ async fn level_ups_follow_the_mode_and_fill_their_placeholders() {
     sim.say_in(fifth, chatty, &[]).await;
     let posts = sim.posts();
     assert!(in_channel(&posts, chatty).is_empty() && in_channel(&posts, announce).is_empty());
-    let dm = in_channel(&posts, DM_CHANNEL_ID);
+    let dm = in_channel(&posts, fifth);
     assert_eq!(dm.len(), 1, "one direct message");
     assert_eq!(
         dm[0].content(),
@@ -7863,11 +7866,11 @@ async fn level_ups_follow_the_mode_and_fill_their_placeholders() {
     assert_eq!(sim.role_changes(), vec![format!("PUT {fifth} {novice_id}")]);
 
     // Closed direct messages are not an error, and the level still counts.
-    DMS_CLOSED.store(true, Ordering::SeqCst);
     let sixth = unique();
+    DM_OVERRIDES.lock().unwrap().insert(sixth, true);
     level_up(&sim, sixth).await;
     sim.say_in(sixth, chatty, &[]).await;
-    DMS_CLOSED.store(false, Ordering::SeqCst);
+    DM_OVERRIDES.lock().unwrap().remove(&sixth);
     assert!(sim.posts().is_empty());
     assert!(sim.server_xp(sixth).await >= 100);
     assert_eq!(
@@ -8933,6 +8936,900 @@ async fn the_nursery_is_a_paged_grid_that_opens_one_pet() {
     assert_png(&again, 1000, 352);
 }
 
+// /Rewards, reminders and privacy
+
+use chrono::{Datelike as _, NaiveDate, TimeZone as _, Utc};
+
+/// `/remind me when <what> <on|off>`.
+fn remind_when(what: &str, on: bool) -> Value {
+    json!([group(
+        "me",
+        sub(
+            "when",
+            vec![
+                text_option("what", what),
+                text_option("state", if on { "on" } else { "off" })
+            ]
+        )
+    )])
+}
+
+/// `/remind me in <duration> <text>`.
+fn remind_in(duration: &str, text: &str) -> Value {
+    json!([group(
+        "me",
+        sub("in", vec![text_option("duration", duration), text_option("text", text)])
+    )])
+}
+
+/// The ticker sends every reminder in the database that is due, so the tests that make some due take
+/// turns, and each starts by sending what an earlier run left behind.
+static REMINDERS: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+/// The direct messages `user` got among `posts`, oldest first: the mock opens a channel named after
+/// the person it is for.
+fn dms_of(posts: &[Post], user: u64) -> Vec<&Post> {
+    in_channel(posts, user)
+}
+
+/// Moves the game clock of `sim` to `at`.
+fn set_clock(sim: &Sim, at: chrono::DateTime<Utc>) {
+    sim.app.shift_clock(at - sim.app.now());
+}
+
+#[tokio::test]
+async fn weekly_and_monthly_rewards_have_cooldowns_and_show_on_the_wallet() {
+    let Some(mut sim) = Sim::new("weekly_and_monthly_rewards_have_cooldowns_and_show_on_the_wallet").await else {
+        return;
+    };
+    let user = unique();
+    let day = chrono::Duration::days;
+
+    let fresh = sim.command(user, "balance", json!([])).await;
+    assert_png(&fresh, 900, 300);
+
+    let weekly = sim.command(user, "weekly", json!([])).await;
+    assert_eq!(weekly.title(), "+1,500 shells");
+    assert!(
+        weekly.description().contains("Your weekly reward"),
+        "{}",
+        weekly.description()
+    );
+    let again = sim.command(user, "weekly", json!([])).await;
+    assert_eq!(again.title(), "Already collected this week");
+    assert!(again.description().contains("<t:"), "{}", again.description());
+    let monthly = sim.command(user, "monthly", json!([])).await;
+    assert_eq!(monthly.title(), "+6,500 shells");
+    assert_eq!(shells(&sim, user).await, 8_000);
+    let again = sim.command(user, "monthly", json!([])).await;
+    assert_eq!(again.title(), "Already collected this month");
+
+    // The wallet shows what is left of each: the daily is ready, the others are counting down.
+    sim.command(user, "daily", json!([])).await;
+    let wallet = sim.command(user, "balance", json!([])).await;
+    assert_png(&wallet, 900, 300);
+
+    // A week less a day on: still waiting. A day later the weekly pays again and the monthly does not.
+    sim.app.shift_clock(day(6));
+    assert_eq!(
+        sim.command(user, "weekly", json!([])).await.title(),
+        "Already collected this week"
+    );
+    sim.app.shift_clock(day(1));
+    let wallet = sim.command(user, "balance", json!([])).await;
+    assert_png(&wallet, 900, 300);
+    assert_eq!(sim.command(user, "weekly", json!([])).await.title(), "+1,500 shells");
+    assert_eq!(
+        sim.command(user, "monthly", json!([])).await.title(),
+        "Already collected this month"
+    );
+
+    // Thirty days after the first monthly it pays again.
+    sim.app.shift_clock(day(23));
+    assert_eq!(sim.command(user, "monthly", json!([])).await.title(), "+6,500 shells");
+    assert_eq!(sim.command(user, "weekly", json!([])).await.title(), "+1,500 shells");
+    let total = shells(&sim, user).await;
+    assert_eq!(total, 8_000 + 250 + 1_500 + 6_500 + 1_500);
+
+    // Every one of those shells shows in this month's numbers for /wrapped.
+    let year = sim.app.db.activity_year(user, Utc::now().year()).await.unwrap();
+    assert_eq!(year.iter().map(|(_, m)| m.shells).sum::<i64>(), total);
+
+    // Nobody else's cooldown moved.
+    let other = unique();
+    assert_eq!(sim.command(other, "weekly", json!([])).await.title(), "+1,500 shells");
+}
+
+#[tokio::test]
+async fn reminders_arrive_once_after_their_time() {
+    let Some(mut sim) = Sim::new("reminders_arrive_once_after_their_time").await else {
+        return;
+    };
+    let _turn = REMINDERS.lock().await;
+    let user = unique();
+    // The level-up test closes everyone's DMs for a while; this member's stay open.
+    DM_OVERRIDES.lock().unwrap().insert(user, false);
+    let hours = chrono::Duration::hours;
+    let minutes = chrono::Duration::minutes;
+    reminder_tick(&sim.app).await.unwrap();
+    sim.posts();
+
+    // The daily reward: switched on while it is ready, scheduled when it is collected.
+    let on = sim.command(user, "remind", remind_when("daily", true)).await;
+    assert!(
+        on.ephemeral && on.content().contains("ready to collect now"),
+        "{}",
+        on.content()
+    );
+    sim.command(user, "daily", json!([])).await;
+    assert!(sim.app.db.scheduled_reminder(user, "daily", 0).await.unwrap().is_some());
+    assert_eq!(reminder_tick(&sim.app).await.unwrap(), 0, "nothing is due yet");
+    assert!(dms_of(&sim.posts(), user).is_empty());
+
+    sim.app.shift_clock(hours(25));
+    reminder_tick(&sim.app).await.unwrap();
+    let posts = sim.posts();
+    let dms = dms_of(&posts, user);
+    assert_eq!(dms.len(), 1, "one message when the daily is ready");
+    assert_eq!(dms[0].title(), "Your daily is ready");
+    assert!(dms[0].description().contains("/daily"), "{}", dms[0].description());
+    assert_eq!(
+        dms[0].body["allowed_mentions"]["parse"],
+        json!([]),
+        "a direct message never pings anyone"
+    );
+    reminder_tick(&sim.app).await.unwrap();
+    assert!(dms_of(&sim.posts(), user).is_empty(), "and only one");
+    assert!(sim.app.db.scheduled_reminder(user, "daily", 0).await.unwrap().is_none());
+
+    // Collected again a day later (the daily keeps real time, so its clock is turned back in the
+    // database): the next message is scheduled by the claim itself.
+    sqlx::query("UPDATE users SET last_daily_at = now() - interval '25 hours' WHERE id = $1")
+        .bind(user as i64)
+        .execute(sim.app.db.pool())
+        .await
+        .unwrap();
+    assert_eq!(sim.command(user, "daily", json!([])).await.title(), "+275 shells");
+    assert!(sim.app.db.scheduled_reminder(user, "daily", 0).await.unwrap().is_some());
+    // Switched off: what was scheduled goes, and nothing is sent when the time comes.
+    sim.command(user, "remind", remind_when("daily", false)).await;
+    assert!(sim.app.db.scheduled_reminder(user, "daily", 0).await.unwrap().is_none());
+    sim.app.shift_clock(hours(25));
+    reminder_tick(&sim.app).await.unwrap();
+    assert!(dms_of(&sim.posts(), user).is_empty());
+
+    // The weekly reward: collected first, then asked for, so the time is worked out from the claim.
+    sim.command(user, "weekly", json!([])).await;
+    let on = sim.command(user, "remind", remind_when("weekly", true)).await;
+    assert!(on.content().contains("Your next weekly is ready"), "{}", on.content());
+    sim.app.shift_clock(chrono::Duration::days(6));
+    reminder_tick(&sim.app).await.unwrap();
+    assert!(dms_of(&sim.posts(), user).is_empty(), "six days is not a week");
+    sim.app.shift_clock(hours(25));
+    reminder_tick(&sim.app).await.unwrap();
+    let posts = sim.posts();
+    assert_eq!(dms_of(&posts, user).len(), 1);
+    assert_eq!(dms_of(&posts, user)[0].title(), "Your weekly is ready");
+
+    // A reminder written by the player: mentions are left out, the list shows it with a menu.
+    let set = sim
+        .command(user, "remind", remind_in("2h30m", "call mum <@123456> and @everyone"))
+        .await;
+    assert!(set.ephemeral, "reminders are private");
+    assert_eq!(set.title(), "⏰ Reminder set");
+    assert!(
+        set.description().contains("call mum and")
+            && !set.description().contains("123456")
+            && !set.description().contains("everyone"),
+        "{}",
+        set.description()
+    );
+    let list = sim.command(user, "remind", json!([sub("list", vec![])])).await;
+    assert!(
+        list.ephemeral && list.field("Reminders").contains("call mum and"),
+        "{}",
+        list.field("Reminders")
+    );
+    assert!(
+        list.field("Messages when something is ready")
+            .contains("🔔 Weekly reward")
+    );
+    assert_eq!(list.options("rm:c").len(), 1);
+    reminder_tick(&sim.app).await.unwrap();
+    assert!(dms_of(&sim.posts(), user).is_empty());
+    sim.app.shift_clock(hours(2) + minutes(31));
+    reminder_tick(&sim.app).await.unwrap();
+    let posts = sim.posts();
+    let dms = dms_of(&posts, user);
+    assert_eq!(
+        (dms.len(), dms[0].title(), dms[0].description()),
+        (1, "⏰ Reminder", "call mum and")
+    );
+    reminder_tick(&sim.app).await.unwrap();
+    assert!(dms_of(&sim.posts(), user).is_empty(), "sent once");
+    assert!(sim.app.db.text_reminders(user).await.unwrap().is_empty());
+
+    // Cancelling: from the list's menu, and by number.
+    sim.command(user, "remind", remind_in("1h", "tea")).await;
+    sim.command(user, "remind", remind_in("2 hours", "toast")).await;
+    let list = sim.command(user, "remind", json!([sub("list", vec![])])).await;
+    let tea = list
+        .options("rm:c")
+        .iter()
+        .find(|o| o.label == "tea")
+        .expect("tea")
+        .value
+        .clone();
+    let toast = list
+        .options("rm:c")
+        .iter()
+        .find(|o| o.label == "toast")
+        .expect("toast")
+        .value
+        .clone();
+    let list = sim.pick(user, &list, "rm:c", &tea).await;
+    assert!(list.description().contains("Cancelled"), "{}", list.description());
+    assert_eq!(list.options("rm:c").len(), 1);
+    let gone = sim
+        .command(
+            user,
+            "remind",
+            json!([sub("cancel", vec![int_option("id", toast.parse().unwrap())])]),
+        )
+        .await;
+    assert!(gone.content().contains("Cancelled reminder"), "{}", gone.content());
+    let none = sim
+        .command(
+            user,
+            "remind",
+            json!([sub("cancel", vec![int_option("id", 987_654_321)])]),
+        )
+        .await;
+    assert!(none.content().contains("no reminder"), "{}", none.content());
+    sim.app.shift_clock(hours(3));
+    reminder_tick(&sim.app).await.unwrap();
+    assert!(
+        dms_of(&sim.posts(), user).is_empty(),
+        "cancelled reminders never arrive"
+    );
+
+    // Closed direct messages: logged quietly, the reminder is dropped and not tried again.
+    sim.command(user, "remind", remind_in("5m", "closed door")).await;
+    DM_OVERRIDES.lock().unwrap().insert(user, true);
+    sim.app.shift_clock(minutes(6));
+    reminder_tick(&sim.app).await.unwrap();
+    DM_OVERRIDES.lock().unwrap().insert(user, false);
+    assert!(dms_of(&sim.posts(), user).is_empty());
+    assert!(sim.app.db.text_reminders(user).await.unwrap().is_empty(), "dropped");
+    reminder_tick(&sim.app).await.unwrap();
+    assert!(dms_of(&sim.posts(), user).is_empty());
+
+    // Times that make no sense, and text that is only mentions.
+    for (duration, text, answer) in [
+        ("soon", "x", "couldn't read"),
+        ("30s", "x", "too soon"),
+        ("400d", "x", "a year"),
+        ("5m", "<@1> @here", "Write what to remind you of"),
+    ] {
+        let refused = sim.command(user, "remind", remind_in(duration, text)).await;
+        assert!(
+            refused.ephemeral && refused.content().contains(answer),
+            "{duration}: {}",
+            refused.content()
+        );
+    }
+
+    // At most 25 are open at a time.
+    let busy = unique();
+    for n in 0..25 {
+        let text = format!("note {n} {}", "long ".repeat(38));
+        let set = sim.command(busy, "remind", remind_in("1d", &text)).await;
+        assert_eq!(set.title(), "⏰ Reminder set", "{n}");
+    }
+    let full = sim.command(busy, "remind", remind_in("1d", "one too many")).await;
+    assert!(full.content().contains("already have 25"), "{}", full.content());
+    assert_eq!(sim.app.db.text_reminders(busy).await.unwrap().len(), 25);
+    // 25 notes of 200 characters still fit the list: an embed field takes 1,024 at most.
+    let list = sim.command(busy, "remind", json!([sub("list", vec![])])).await;
+    let field = list.field("Reminders");
+    assert!(field.chars().count() <= 1024, "{} characters", field.chars().count());
+    assert!(field.contains("more in the menu below"), "{field}");
+    assert_eq!(list.options("rm:c").len(), 25);
+    sim.app.db.delete_user_data(busy, sim.app.now()).await.unwrap();
+}
+
+#[tokio::test]
+async fn pet_and_trip_reminders_follow_the_pet() {
+    let Some(mut sim) = Sim::new("pet_and_trip_reminders_follow_the_pet").await else {
+        return;
+    };
+    let _turn = REMINDERS.lock().await;
+    let (user, db) = (unique(), sim.app.db.clone());
+    DM_OVERRIDES.lock().unwrap().insert(user, false);
+    reminder_tick(&sim.app).await.unwrap();
+    sim.posts();
+    let content = Content::get();
+    let pet = db.adopt(user, &content.pets[0].id, "Pinchy").await.unwrap();
+
+    // Switched on with a pet at home: told around when it will need looking after.
+    let on = sim.command(user, "remind", remind_when("pet", true)).await;
+    assert!(
+        on.content()
+            .contains("I'll message you when **Pinchy** needs looking after, around <t:"),
+        "{}",
+        on.content()
+    );
+    let first = db
+        .scheduled_reminder(user, "pet", pet.id)
+        .await
+        .unwrap()
+        .expect("scheduled");
+    // Needs of 80 run low (30) after 10 hours, the fun first.
+    let left = (first - pet.needs_at).num_minutes();
+    assert!((595..=605).contains(&left), "{left} minutes");
+    let none = sim.command(user, "remind", remind_when("trip", true)).await;
+    assert!(
+        none.content().contains("None of your pets is on a trip"),
+        "{}",
+        none.content()
+    );
+
+    // Off it goes on a one-hour trip: the pet is not at home, so it is not told about; the trip is.
+    let trip = sim.command(user, "pet", trip_go("tidepool_meadow", None)).await;
+    assert!(trip.description().contains("sets off"), "{}", trip.description());
+    assert!(db.scheduled_reminder(user, "pet", pet.id).await.unwrap().is_none());
+    let home_at = db
+        .scheduled_reminder(user, "trip", pet.id)
+        .await
+        .unwrap()
+        .expect("trip scheduled");
+    assert_eq!(
+        home_at,
+        db.active_pet(user).await.unwrap().unwrap().trip_ends_at.unwrap()
+    );
+    assert_eq!(reminder_tick(&sim.app).await.unwrap(), 0);
+    assert!(dms_of(&sim.posts(), user).is_empty());
+
+    set_clock(&sim, home_at + chrono::Duration::minutes(1));
+    reminder_tick(&sim.app).await.unwrap();
+    let posts = sim.posts();
+    let dms = dms_of(&posts, user);
+    assert_eq!(dms.len(), 1, "told when the pet is home");
+    assert_eq!(dms[0].title(), "Pinchy is home");
+    assert!(
+        dms[0].description().contains("/pet trip claim"),
+        "{}",
+        dms[0].description()
+    );
+
+    // Looking at a pet that is back (the trip not claimed yet) does not announce the trip again.
+    sim.command(user, "pet", pet_command("view")).await;
+    assert!(
+        db.scheduled_reminder(user, "trip", pet.id).await.unwrap().is_none(),
+        "a trip that is over is not scheduled again"
+    );
+    reminder_tick(&sim.app).await.unwrap();
+    assert!(dms_of(&sim.posts(), user).is_empty());
+
+    // Claimed: the pet is at home again, and its next message is about its needs.
+    let claim = sim
+        .command(
+            user,
+            "pet",
+            json!([{ "name": "trip", "type": 2, "options": [{ "name": "claim", "type": 1 }] }]),
+        )
+        .await;
+    assert!(claim.description().contains("is back from"), "{}", claim.description());
+    let due = db
+        .scheduled_reminder(user, "pet", pet.id)
+        .await
+        .unwrap()
+        .expect("the pet is watched again");
+    assert!(due > home_at);
+    set_clock(&sim, due + chrono::Duration::minutes(1));
+    reminder_tick(&sim.app).await.unwrap();
+    let posts = sim.posts();
+    let dms = dms_of(&posts, user);
+    assert_eq!(dms.len(), 1, "told when the pet needs looking after");
+    assert_eq!(dms[0].title(), "Pinchy needs you");
+    assert!(
+        dms[0].description().contains("someone to play with"),
+        "{}",
+        dms[0].description()
+    );
+    reminder_tick(&sim.app).await.unwrap();
+    assert!(dms_of(&sim.posts(), user).is_empty(), "once");
+
+    // A pet that is already low, looked at again: the message that was sent is not scheduled and sent
+    // again every time the card is shown.
+    let card = sim.command(user, "pet", pet_command("view")).await;
+    sim.command(user, "pet", pet_command("view")).await;
+    assert!(
+        db.scheduled_reminder(user, "pet", pet.id).await.unwrap().is_none(),
+        "an overdue message is not scheduled again"
+    );
+    reminder_tick(&sim.app).await.unwrap();
+    assert!(
+        dms_of(&sim.posts(), user).is_empty(),
+        "nothing arrives for a pet that was told about"
+    );
+
+    // Looking after the pet schedules the next message, for later.
+    sim.click(user, &card, "Play").await;
+    let after = db
+        .scheduled_reminder(user, "pet", pet.id)
+        .await
+        .unwrap()
+        .expect("scheduled for the next time it needs looking after");
+    assert!(after > sim.app.now(), "{after} is still to come");
+
+    // Turned off: nothing is waiting, and nothing arrives.
+    sim.command(user, "remind", remind_when("pet", false)).await;
+    sim.command(user, "remind", remind_when("trip", false)).await;
+    assert!(db.scheduled_reminder(user, "pet", pet.id).await.unwrap().is_none());
+    assert!(db.reminder_optins(user).await.unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn privacy_choices_are_seen_by_other_players_and_data_can_be_deleted() {
+    let Some(mut sim) = Sim::new("privacy_choices_are_seen_by_other_players_and_data_can_be_deleted").await else {
+        return;
+    };
+    let (owner, viewer, db) = (unique(), unique(), sim.app.db.clone());
+    fund(&sim, owner, 700).await;
+    db.befriend(owner, viewer).await.unwrap();
+    let both = resolved(&[owner], &[]);
+    let by_owner = |what: &str| json!([user_option(what, owner)]);
+
+    // Public to begin with.
+    let public = profile_of(&mut sim, viewer, owner, "Marlowe").await;
+    assert_eq!((public.files.len(), public.ephemeral), (1, false));
+    let panel = sim.command(owner, "privacy", json!([])).await;
+    assert!(
+        panel.ephemeral && panel.description().contains("Public."),
+        "{}",
+        panel.description()
+    );
+    assert_eq!(panel.rows(), 2);
+
+    // Profile: private. Every card of theirs says so to others, and still opens for them.
+    let panel = sim.click(owner, &panel, "Profile: public").await;
+    assert!(
+        panel.description().contains("Saved.") && panel.has_button("Profile: private"),
+        "{}",
+        panel.description()
+    );
+    assert!(db.privacy(owner).await.unwrap().hide_profile);
+    let hidden = profile_of(&mut sim, viewer, owner, "Marlowe").await;
+    assert!(hidden.ephemeral && hidden.content() == "This profile is private." && hidden.files.is_empty());
+    for (command, options) in [
+        ("rank", by_owner("user")),
+        ("balance", by_owner("user")),
+        ("friends", json!([sub("list", vec![user_option("user", owner)])])),
+        ("partner", json!([sub("view", vec![user_option("user", owner)])])),
+        ("play", json!([sub("stats", vec![user_option("user", owner)])])),
+    ] {
+        let reply = sim.command_resolved(viewer, command, options, both.clone()).await;
+        assert!(
+            reply.ephemeral && reply.content() == "This profile is private.",
+            "/{command}: {:?}",
+            reply.content()
+        );
+    }
+    let own = sim.command(owner, "profile", json!([])).await;
+    assert_eq!(own.files.len(), 1, "they see their own");
+    let own = sim
+        .command_resolved(owner, "balance", by_owner("user"), both.clone())
+        .await;
+    assert_eq!(own.files.len(), 1, "even when they name themselves");
+    let panel = sim.click(owner, &panel, "Profile: private").await;
+    assert!(panel.has_button("Profile: public"));
+    assert_eq!(
+        profile_of(&mut sim, viewer, owner, "Marlowe").await.files.len(),
+        1,
+        "public again"
+    );
+
+    // Global boards: the owner is first on the XP board until they hide from it.
+    sqlx::query("UPDATE users SET xp = $2 WHERE id = $1")
+        .bind(owner as i64)
+        .bind(owner as i64)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    let leader = |rows: Vec<pinchora_db::LeaderboardRow>| rows.first().map(|r| r.user_id as u64);
+    assert_eq!(leader(db.global_xp_leaderboard(1, 0).await.unwrap()), Some(owner));
+    let panel = sim.click(owner, &panel, "Boards: listed").await;
+    assert!(panel.has_button("Boards: hidden"), "{}", panel.description());
+    assert_ne!(leader(db.global_xp_leaderboard(1, 0).await.unwrap()), Some(owner));
+    let board = sim
+        .command(viewer, "leaderboard", json!([text_option("board", "xp")]))
+        .await;
+    assert_eq!(board.files.len(), 1, "the board still draws");
+    let panel = sim.click(owner, &panel, "Boards: hidden").await;
+    assert_eq!(leader(db.global_xp_leaderboard(1, 0).await.unwrap()), Some(owner));
+
+    // House: friends find it in /house visit; hidden, it is not offered and cannot be visited by name.
+    let offered = sim.command(viewer, "house", json!([sub("visit", vec![])])).await;
+    assert!(
+        offered.options("fd:v:").iter().any(|o| o.value == owner.to_string()),
+        "{offered}"
+    );
+    let panel = sim.click(owner, &panel, "House: open").await;
+    assert!(panel.has_button("House: hidden"));
+    let none = sim.command(viewer, "house", json!([sub("visit", vec![])])).await;
+    assert!(
+        none.content().contains("Name whose house to visit") && none.rows() == 0,
+        "no shortlist: {none}"
+    );
+    let refused = sim
+        .command_resolved(
+            viewer,
+            "house",
+            json!([sub("visit", vec![user_option("user", owner)])]),
+            both.clone(),
+        )
+        .await;
+    assert!(
+        refused.ephemeral && refused.content().contains("is private"),
+        "{}",
+        refused.content()
+    );
+    assert_eq!(db.visitable_friends(viewer, 10).await.unwrap().len(), 0);
+    let panel = sim.click(owner, &panel, "House: hidden").await;
+    let visit = sim
+        .command_resolved(
+            viewer,
+            "house",
+            json!([sub("visit", vec![user_option("user", owner)])]),
+            both.clone(),
+        )
+        .await;
+    assert_eq!(visit.files.len(), 1, "open again");
+
+    // Delete my data: two steps, and the second one times out.
+    let confirm = sim.click(owner, &panel, "Delete my data…").await;
+    assert_eq!(confirm.title(), "Delete all your data?");
+    let kept = sim.click(owner, &confirm, "Keep my data").await;
+    assert!(
+        kept.description().contains("Nothing was deleted"),
+        "{}",
+        kept.description()
+    );
+    assert_eq!(shells(&sim, owner).await, 700);
+    let confirm = sim.click(owner, &kept, "Delete my data…").await;
+    sim.app.shift_clock(chrono::Duration::minutes(3));
+    let late = sim.click(owner, &confirm, "Yes, delete everything").await;
+    assert!(late.description().contains("timed out"), "{}", late.description());
+    assert_eq!(shells(&sim, owner).await, 700, "a late confirmation deletes nothing");
+
+    // Somebody else's click on the confirm button deletes their own data, never the owner's.
+    let confirm = sim.click(owner, &late, "Delete my data…").await;
+    let stranger = unique();
+    fund(&sim, stranger, 50).await;
+    sim.click(stranger, &confirm, "Yes, delete everything").await;
+    assert_eq!(shells(&sim, owner).await, 700);
+    assert_eq!(shells(&sim, stranger).await, 0);
+
+    db.set_privacy(owner, pinchora_db::Hide::House, true).await.unwrap();
+    let done = sim.click(owner, &confirm, "Yes, delete everything").await;
+    assert_eq!(done.title(), "Your data is deleted");
+    assert!(done.components.is_empty(), "nothing left to press");
+    assert!(done.description().contains("Removed"), "{}", done.description());
+    for (table, column) in pinchora_db::USER_COLUMNS {
+        let (left,): (i64,) = sqlx::query_as(sqlx::AssertSqlSafe(format!(
+            "SELECT count(*) FROM {table} WHERE {column} = $1"
+        )))
+        .bind(owner as i64)
+        .fetch_one(db.pool())
+        .await
+        .unwrap();
+        assert_eq!(left, 0, "{table}.{column}");
+    }
+    assert!(
+        !db.are_friends(viewer, owner).await.unwrap(),
+        "the friendship went with them"
+    );
+    assert_eq!(shells(&sim, owner).await, 0, "they start over");
+    assert!(!db.privacy(owner).await.unwrap().hide_house);
+}
+
+/// Deletes `user`'s data through the panel's two steps.
+async fn delete_through_the_panel(sim: &mut Sim, user: u64) -> Reply {
+    let panel = sim.command(user, "privacy", json!([])).await;
+    let confirm = sim.click(user, &panel, "Delete my data…").await;
+    sim.click(user, &confirm, "Yes, delete everything").await
+}
+
+#[tokio::test]
+async fn deleting_data_does_not_hand_out_a_second_daily_weekly_monthly_or_walk() {
+    let Some(mut sim) = Sim::new("deleting_data_does_not_hand_out_a_second_daily_weekly_monthly_or_walk").await else {
+        return;
+    };
+    let (user, alt) = (unique(), unique());
+    let (db, day) = (sim.app.db.clone(), chrono::Duration::days);
+
+    // Everything there is to collect, and a pet that has walked.
+    assert!(sim.command(user, "daily", json!([])).await.title().starts_with("+"));
+    assert_eq!(sim.command(user, "weekly", json!([])).await.title(), "+1,500 shells");
+    assert_eq!(sim.command(user, "monthly", json!([])).await.title(), "+6,500 shells");
+    let collected = shells(&sim, user).await;
+    db.adopt(user, &Content::get().pets[0].id, "Pinchy").await.unwrap();
+
+    // The loop: give it all to an alt, delete, come back for more.
+    for round in 0..3 {
+        let balance = shells(&sim, user).await;
+        if balance > 0 {
+            db.transfer_credits(user, alt, balance).await.unwrap();
+        }
+        let done = delete_through_the_panel(&mut sim, user).await;
+        assert_eq!(done.title(), "Your data is deleted", "round {round}");
+        assert_eq!(shells(&sim, user).await, 0, "they start over with nothing");
+        assert_eq!(
+            sim.command(user, "daily", json!([])).await.title(),
+            "Already collected today",
+            "round {round}"
+        );
+        assert_eq!(
+            sim.command(user, "weekly", json!([])).await.title(),
+            "Already collected this week",
+            "round {round}"
+        );
+        assert_eq!(
+            sim.command(user, "monthly", json!([])).await.title(),
+            "Already collected this month",
+            "round {round}"
+        );
+    }
+    assert_eq!(
+        shells(&sim, alt).await,
+        collected,
+        "one cycle's worth, however often they deleted"
+    );
+
+    // The wallet counts the same waiting times down again.
+    let wallet = sim.command(user, "balance", json!([])).await;
+    assert_png(&wallet, 900, 300);
+
+    // A new pet is held to the old pet's walk cooldown.
+    db.adopt(user, &Content::get().pets[0].id, "Pinchy").await.unwrap();
+    let card = sim.command(user, "pet", pet_command("view")).await;
+    let walk = sim.click(user, &card, "Walk").await;
+    assert!(
+        walk.ephemeral && walk.content().contains("needs a break"),
+        "{}",
+        walk.content()
+    );
+    assert_eq!(shells(&sim, user).await, 0, "no shells were found");
+    sim.app.shift_clock(chrono::Duration::minutes(50));
+    let walk = sim.click(user, &card, "Walk").await;
+    assert!(walk.description().contains("Found"), "{}", walk.description());
+
+    // Waiting still works: a week and a day later the weekly pays again, the monthly does not.
+    sim.app.shift_clock(day(8));
+    assert_eq!(sim.command(user, "weekly", json!([])).await.title(), "+1,500 shells");
+    assert_eq!(
+        sim.command(user, "monthly", json!([])).await.title(),
+        "Already collected this month"
+    );
+    sim.app.shift_clock(day(23));
+    assert_eq!(sim.command(user, "monthly", json!([])).await.title(), "+6,500 shells");
+}
+
+#[tokio::test]
+async fn a_hidden_house_and_a_private_profile_close_every_door() {
+    let Some(mut sim) = Sim::new("a_hidden_house_and_a_private_profile_close_every_door").await else {
+        return;
+    };
+    let (owner, viewer, db) = (unique(), unique(), sim.app.db.clone());
+    let both = resolved(&[owner], &[]);
+    let guestbook = json!([{ "name": "guestbook", "type": 1, "options": [user_option("user", owner)] }]);
+    let like = json!([sub("like", vec![user_option("user", owner)])]);
+    let points = json!([sub("show", vec![user_option("user", owner)])]);
+    let stall = json!([sub("view", vec![user_option("user", owner)])]);
+    let likes = |db: pinchora_db::Db| async move {
+        let (likes,): (i32,) = sqlx::query_as("SELECT COALESCE(max(likes), 0) FROM houses WHERE user_id = $1")
+            .bind(owner as i64)
+            .fetch_one(db.pool())
+            .await
+            .unwrap();
+        likes
+    };
+
+    // A book with two pages, so there is a page to turn.
+    for n in 0..6 {
+        sqlx::query(
+            "INSERT INTO guestbook_notes (host_id, author_id, author_name, day, body)
+             VALUES ($1, $2, 'Guest', current_date, 'hello')",
+        )
+        .bind(owner as i64)
+        .bind(unique() as i64 + n)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    }
+
+    // Open: the book reads, the house can be liked, the points and the stall show.
+    let book = sim
+        .command_resolved(viewer, "house", guestbook.clone(), both.clone())
+        .await;
+    assert!(book.title().contains("guestbook"), "{}", book.title());
+    let liked = sim.command_resolved(viewer, "house", like.clone(), both.clone()).await;
+    assert!(liked.content().contains("liked"), "{}", liked.content());
+    assert_eq!(likes(db.clone()).await, 1);
+    assert_eq!(
+        sim.command_resolved(viewer, "points", points.clone(), both.clone())
+            .await
+            .title(),
+        "⭐ Points"
+    );
+    assert_png(
+        &sim.command_resolved(viewer, "stall", stall.clone(), both.clone()).await,
+        1000,
+        600,
+    );
+
+    // The house is hidden: no book (a page from before does not turn), no like, no signing.
+    db.set_privacy(owner, pinchora_db::Hide::House, true).await.unwrap();
+    for (name, options) in [("guestbook", guestbook.clone()), ("like", like.clone())] {
+        let refused = sim.command_resolved(viewer, "house", options, both.clone()).await;
+        assert!(
+            refused.ephemeral && refused.content() == "This house is private.",
+            "{name}: {}",
+            refused.content()
+        );
+    }
+    let turned = sim.click(viewer, &book, "Older ▶").await;
+    assert_eq!(turned.content(), "This house is private.");
+    assert_eq!(likes(db.clone()).await, 1, "nothing was liked");
+    assert_eq!(
+        sim.command_resolved(owner, "house", guestbook.clone(), both.clone())
+            .await
+            .title(),
+        "📖 Your guestbook",
+        "the owner still reads their own book"
+    );
+
+    // A private profile hides the points and the stall as well.
+    db.set_privacy(owner, pinchora_db::Hide::House, false).await.unwrap();
+    db.set_privacy(owner, pinchora_db::Hide::Profile, true).await.unwrap();
+    for (command, options) in [("points", points), ("stall", stall)] {
+        let refused = sim.command_resolved(viewer, command, options, both.clone()).await;
+        assert!(
+            refused.ephemeral && refused.content() == "This profile is private.",
+            "/{command}: {}",
+            refused.content()
+        );
+    }
+}
+
+#[tokio::test]
+async fn wrapped_opens_in_december_and_stays_open_through_january() {
+    let Some(mut sim) = Sim::new("wrapped_opens_in_december_and_stays_open_through_january").await else {
+        return;
+    };
+    let (user, host, newcomer, db) = (unique(), unique(), unique(), sim.app.db.clone());
+    let year = Utc::now().year();
+    let at = |y: i32, m: u32, d: u32| Utc.with_ymd_and_hms(y, m, d, 12, 0, 0).unwrap();
+
+    // A year of numbers: busy in the autumn, a favourite fish and a friend's house visited often.
+    let counted = [
+        (
+            Counter::Messages,
+            [(1, 120), (3, 300), (5, 80), (7, 560), (9, 410), (11, 980)],
+        ),
+        (
+            Counter::Xp,
+            [
+                (1, 2_400),
+                (3, 6_100),
+                (5, 1_500),
+                (7, 11_200),
+                (9, 8_300),
+                (11, 19_500),
+            ],
+        ),
+        (
+            Counter::Shells,
+            [(1, 900), (3, 4_000), (5, 700), (7, 9_000), (9, 5_500), (11, 12_000)],
+        ),
+        (Counter::PetCare, [(1, 10), (3, 30), (5, 8), (7, 50), (9, 40), (11, 90)]),
+        (Counter::LikesGiven, [(1, 1), (3, 4), (5, 0), (7, 6), (9, 3), (11, 9)]),
+        (
+            Counter::LikesReceived,
+            [(1, 2), (3, 3), (5, 1), (7, 8), (9, 2), (11, 12)],
+        ),
+    ];
+    for (counter, months) in counted {
+        for (month, n) in months {
+            db.add_activity_in(user, NaiveDate::from_ymd_opt(year, month, 1).unwrap(), counter, n)
+                .await
+                .unwrap();
+        }
+    }
+    let fish = &Content::get().fish[2];
+    for size in [10.0, 12.0, 14.0] {
+        db.log_catch(user, &fish.id, size).await.unwrap();
+    }
+    db.log_catch(user, &Content::get().fish[5].id, 20.0).await.unwrap();
+    db.befriend(user, host).await.unwrap();
+    db.remember_name(host, "Marlowe the Mapmaker").await.unwrap();
+    for day in [3, 9, 15, 21, 27] {
+        db.record_visit(host, user, NaiveDate::from_ymd_opt(year, 6, day).unwrap(), 0, 10)
+            .await
+            .unwrap();
+    }
+
+    // Outside the window it says when it opens.
+    set_clock(&sim, at(year, 6, 15));
+    let closed = sim.command(user, "wrapped", json!([])).await;
+    let opens = Utc.with_ymd_and_hms(year, 12, 1, 0, 0, 0).unwrap().timestamp();
+    assert!(
+        closed.ephemeral && closed.content().contains(&format!("<t:{opens}:D>")) && closed.files.is_empty(),
+        "{}",
+        closed.content()
+    );
+    set_clock(&sim, at(year, 11, 30));
+    assert!(
+        sim.command(user, "wrapped", json!([])).await.files.is_empty(),
+        "not the day before"
+    );
+
+    // December 1 opens it: the card of the year, and a quiet one for somebody with nothing.
+    set_clock(&sim, Utc.with_ymd_and_hms(year, 12, 1, 0, 0, 5).unwrap());
+    let card = sim.command(user, "wrapped", json!([])).await;
+    assert_png(&card, 640, 1164);
+    assert!(!card.ephemeral, "the card is for sharing");
+    let saved = sim.dir.join(format!("{:02}-wrapped.png", sim.step));
+    let samples = Path::new(env!("CARGO_TARGET_TMPDIR"))
+        .parent()
+        .unwrap()
+        .join("render-samples");
+    std::fs::create_dir_all(&samples).unwrap();
+    std::fs::copy(&saved, samples.join("wrapped-test-user.png")).expect("copy the sample");
+    let quiet = sim.command(newcomer, "wrapped", json!([])).await;
+    assert_png(&quiet, 640, 1164);
+    std::fs::copy(
+        sim.dir.join(format!("{:02}-wrapped.png", sim.step)),
+        samples.join("wrapped-test-user-quiet.png"),
+    )
+    .expect("copy the quiet sample");
+
+    // Years: the one that just ended, an earlier one with nothing, a later one that is not over.
+    let same = sim
+        .command(user, "wrapped", json!([int_option("year", year.into())]))
+        .await;
+    assert_png(&same, 640, 1164);
+    let early = sim
+        .command(user, "wrapped", json!([int_option("year", (year - 1).into())]))
+        .await;
+    assert!(
+        early.ephemeral && early.content().contains("Nothing was counted"),
+        "{}",
+        early.content()
+    );
+    let later = sim
+        .command(user, "wrapped", json!([int_option("year", (year + 1).into())]))
+        .await;
+    assert!(
+        later.ephemeral && later.content().contains("hasn't been wrapped up yet"),
+        "{}",
+        later.content()
+    );
+
+    // January still shows the year that ended; February closes it again.
+    set_clock(&sim, at(year + 1, 1, 31));
+    assert_png(&sim.command(user, "wrapped", json!([])).await, 640, 1164);
+    set_clock(&sim, at(year + 1, 2, 1));
+    let shut = sim.command(user, "wrapped", json!([])).await;
+    let reopens = Utc.with_ymd_and_hms(year + 1, 12, 1, 0, 0, 0).unwrap().timestamp();
+    assert!(
+        shut.content().contains(&format!("<t:{reopens}:D>")),
+        "{}",
+        shut.content()
+    );
+}
+
 // /Server events
 
 /// The events tests take turns: a tick ends every giveaway and poll that is due in the database, and
@@ -9566,7 +10463,7 @@ async fn suggestions_collect_votes_and_managers_decide() {
         .collect();
     assert!(locked.iter().all(|b| b["disabled"] == json!(true)), "{locked:?}");
     assert_eq!(locked[0]["label"], "1", "the final count stays on the button");
-    let dm = only(&posts, DM_CHANNEL_ID, Method::POST);
+    let dm = only(&posts, author, Method::POST);
     assert_eq!(dm.title(), "Your suggestion #1 was approved");
     assert!(
         dm.embed()["description"].as_str().unwrap().contains("Add a garden") && pings_nobody(dm),
@@ -9605,7 +10502,7 @@ async fn suggestions_collect_votes_and_managers_decide() {
     let edit = only(&posts, ideas, Method::PATCH);
     assert_eq!(edit.embed()["color"], json!(0xef476f));
     assert_eq!(edit.field("Denied by"), format!("<@{admin}>"));
-    assert!(in_channel(&posts, DM_CHANNEL_ID).is_empty());
+    assert!(in_channel(&posts, second_author).is_empty());
 
     // Another server's suggestion cannot be voted on from here.
     let foreign = sim
