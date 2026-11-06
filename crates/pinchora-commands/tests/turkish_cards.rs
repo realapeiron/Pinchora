@@ -6,7 +6,7 @@ use std::path::Path;
 
 use image::{Rgba, RgbaImage};
 use pinchora_core::i18n::Lang;
-use pinchora_game::Content;
+use pinchora_game::{Content, overlay::upper};
 use pinchora_render::{GridSlot, ItemGridCard, Renderer, Theme, encode_png};
 
 fn out(name: &str) -> std::path::PathBuf {
@@ -44,13 +44,13 @@ fn the_item_grid_holds_the_longest_turkish_names() {
             line1: "12.500".to_owned(),
             line2: format!(
                 "{} · {}×{}",
-                i.base.rarity.label_in(Lang::Tr).to_uppercase(),
+                upper(i.base.rarity.label_in(Lang::Tr), Lang::Tr),
                 i.base.footprint[0],
                 i.base.footprint[1]
             ),
             bar: None,
             frame: i.base.rarity.color(),
-            badge: i.base.category.label_in(Lang::Tr).to_uppercase(),
+            badge: upper(i.base.category.label_in(Lang::Tr), Lang::Tr),
             shell_price: true,
         })
         .collect();

@@ -3,7 +3,7 @@ use std::str::Split;
 use chrono::Utc;
 use pinchora_core::{i18n::Lang, items::is_soulbound};
 use pinchora_db::{BuyOutcome, Currency as DbCurrency};
-use pinchora_game::{Availability, Category, Content, Currency, market};
+use pinchora_game::{Availability, Category, Content, Currency, market, overlay::upper};
 use pinchora_render::{GridSlot, ItemGridCard, Theme};
 use twilight_interactions::command::{CommandModel, CommandOption, CreateCommand, CreateOption};
 use twilight_model::{
@@ -329,12 +329,12 @@ async fn catalog_card(
             line1: price_label(i.base.price, i.base.currency),
             line2: format!(
                 "{} · {}×{}",
-                i.base.rarity.label_in(lang).to_uppercase(),
+                upper(i.base.rarity.label_in(lang), lang),
                 i.base.footprint[0],
                 i.base.footprint[1]
             ),
             bar: None,
-            badge: i.base.category.label_in(lang).to_uppercase(),
+            badge: upper(i.base.category.label_in(lang), lang),
             shell_price: i.base.currency == Currency::Shells,
         })
         .collect();
@@ -403,7 +403,7 @@ async fn inventory_card(app: &App, lang: Lang, user_id: u64, page: usize) -> any
             line1: format!("X{}", r.quantity),
             line2: content
                 .item(&r.item_id)
-                .map_or_else(String::new, |i| i.base.category.label_in(lang).to_uppercase()),
+                .map_or_else(String::new, |i| upper(i.base.category.label_in(lang), lang)),
             bar: None,
             badge: if is_soulbound(&r.item_id) { "SOULBOUND" } else { "" }.to_owned(),
             shell_price: false,
