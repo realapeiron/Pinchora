@@ -4,6 +4,7 @@
 
 use std::sync::LazyLock;
 
+use pinchora_db::WardrobeFacts;
 use pinchora_render::character::{ACCESSORY_TINTS, Channel, CharacterSpec, Colors, Paint, Pose, Slot, Worn};
 use serde::Deserialize;
 
@@ -68,6 +69,48 @@ impl Accessory {
         } else {
             Access::Owned
         }
+    }
+}
+
+/// What a player may wear: what they bought, their level and the badges they have. The rule
+/// behind the editor's Buy and Save, for any front end: `Db::wardrobe_facts` reads the data.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Shelf {
+    /// Accessory ids they bought.
+    pub bought: Vec<String>,
+    pub level: u32,
+    /// Ids of the badges they have, achievements and shop badges alike.
+    pub badges: Vec<String>,
+}
+
+impl Shelf {
+    pub fn new(content: &Content, facts: &WardrobeFacts) -> Self {
+        Self {
+            bought: facts.bought_accessories.clone(),
+            level: u32::try_from(facts.stats.level).unwrap_or(0),
+            badges: content
+                .earned_badges(&facts.stats, &facts.bought_badges)
+                .into_iter()
+                .map(|b| b.id.clone())
+                .collect(),
+        }
+    }
+
+    pub fn access(&self, item: &Accessory) -> Access {
+        item.access(self.bought.contains(&item.id), self.level, |b| {
+            self.badges.iter().any(|x| x == b)
+        })
+    }
+
+    /// The first thing worn that the player may not wear yet.
+    pub fn blocker(&self, character: &Character) -> Option<(&'static Accessory, Access)> {
+        character.accessories.iter().find_map(|w| {
+            let item = accessory(&w.id)?;
+            match self.access(item) {
+                Access::Owned => None,
+                other => Some((item, other)),
+            }
+        })
     }
 }
 
@@ -388,6 +431,51 @@ mod tests {
         let captain = accessory("captain_hat").expect("a captain's hat");
         assert_eq!(captain.access(false, 9, |_| true), Access::Level(10));
         assert_eq!(captain.access(false, 10, |_| true), Access::Buy(1200));
+    }
+
+    #[test]
+    fn the_shelf_works_out_what_a_player_may_wear_from_the_database_facts() {
+        use pinchora_db::{PlayerStats, WardrobeFacts};
+
+        use crate::{BadgeKind, BadgeStat};
+
+        let content = Content::get();
+        let finder = content.badge("fin_finder").expect("the rod's badge");
+        let BadgeKind::Achievement { stat, at } = finder.kind else {
+            panic!("fin_finder is an achievement");
+        };
+        let mut facts = WardrobeFacts {
+            stats: PlayerStats {
+                level: 12,
+                ..PlayerStats::default()
+            },
+            ..WardrobeFacts::default()
+        };
+        let mut character = Character::starter(content);
+        character.wear(Slot::Head, Some("captain_hat"), None);
+        character.wear(Slot::Hand, Some("fishing_rod"), None);
+
+        let shelf = Shelf::new(content, &facts);
+        assert_eq!(shelf.level, 12);
+        assert!(!shelf.badges.iter().any(|b| b == "fin_finder"));
+        let (blocked, access) = shelf.blocker(&character).expect("two things are not yet theirs");
+        assert_eq!((blocked.id.as_str(), access), ("captain_hat", Access::Buy(1200)));
+
+        // Bought, the hat is theirs; the rod still waits for its badge.
+        facts.bought_accessories.push("captain_hat".to_owned());
+        let shelf = Shelf::new(content, &facts);
+        let (blocked, access) = shelf.blocker(&character).expect("the rod is still locked");
+        assert_eq!(blocked.id, "fishing_rod");
+        assert!(matches!(access, Access::Badge(id) if id == "fin_finder"));
+
+        // The badge comes from the numbers the database counted.
+        match stat {
+            BadgeStat::FishSpecies => facts.stats.fish_species = at,
+            other => panic!("update this test: fin_finder counts {other:?}"),
+        }
+        let shelf = Shelf::new(content, &facts);
+        assert!(shelf.badges.iter().any(|b| b == "fin_finder"));
+        assert!(shelf.blocker(&character).is_none());
     }
 
     #[test]

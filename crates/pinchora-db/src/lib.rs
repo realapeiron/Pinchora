@@ -27,7 +27,7 @@ use std::time::Duration;
 
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
-pub use character::OutfitRow;
+pub use character::{OutfitRow, WardrobeFacts};
 pub use contest::{ContestEntry, ContestResult};
 pub use customize::{CustomizeBuy, MAX_BADGES, PlayerStats};
 pub use economy::{DailyOutcome, RepOutcome, TransferOutcome};

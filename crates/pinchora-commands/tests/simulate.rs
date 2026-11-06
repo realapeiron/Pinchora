@@ -3866,6 +3866,25 @@ async fn the_character_editor_steps_dyes_buys_keeps_outfits_and_saves() {
     let old = sim.component(user, "ch:look", &["tidewalker"], &second).await;
     assert!(old.content().contains("expired"), "{}", old.content());
 
+    // Cancel loses nothing when nothing is unsaved, untouched or right after a Save, and says so.
+    let calm = sim.click(user, &second, "Cancel").await;
+    assert!(calm.description().starts_with("Closed:"), "{}", calm.description());
+    assert!(!calm.description().contains("without saving"), "{}", calm.description());
+    let again = sim.command(user, "character", json!([])).await;
+    let stepped = sim.click(user, &again, "▶").await;
+    let kept_new = sim.click(user, &stepped, "Save").await;
+    assert!(kept_new.description().contains("Saved!"), "{}", kept_new.description());
+    let stepped_back = sim.click(user, &kept_new, "◀").await;
+    let kept_old = sim.click(user, &stepped_back, "Save").await;
+    assert!(kept_old.description().contains("Saved!"), "{}", kept_old.description());
+    assert_eq!(db.character(user).await.unwrap().as_deref(), Some(code.as_str()));
+    let after_save = sim.click(user, &kept_old, "Cancel").await;
+    assert!(
+        after_save.description().starts_with("Closed:"),
+        "{}",
+        after_save.description()
+    );
+
     // The saved character, hat and balloon, is on the profile and in the house.
     sim.command(user, "profile", json!([])).await;
     sim.command(user, "house", json!([{ "name": "view", "type": 1 }])).await;

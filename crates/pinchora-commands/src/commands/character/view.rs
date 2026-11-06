@@ -4,7 +4,7 @@ use image::{RgbaImage, imageops};
 use pinchora_db::OutfitRow;
 use pinchora_game::{
     Content,
-    character::{Access, Character, OUTFIT_SLOTS, accessories_in, accessory, presets},
+    character::{Access, Character, OUTFIT_SLOTS, Shelf, accessories_in, accessory, presets},
 };
 use pinchora_render::{
     CharacterCard, EditorCell, EditorSection, Theme,
@@ -21,7 +21,7 @@ use twilight_model::{
 };
 use twilight_util::builder::embed::EmbedBuilder;
 
-use super::{Draft, Shelf, Tab, access_note};
+use super::{Draft, Tab, access_note, load_shelf};
 use crate::{Cx, util::BRAND};
 
 fn row(components: Vec<Component>) -> Component {
@@ -94,7 +94,7 @@ fn swatch_ramp(channel: Channel, paint: Paint) -> Vec<u32> {
 /// The editor: card, menus and buttons for the draft.
 pub(super) async fn editor(cx: &Cx, draft: &Draft, note: &str) -> anyhow::Result<InteractionResponseData> {
     let user = cx.author()?.id.get();
-    let shelf = Shelf::load(&cx.app, user).await?;
+    let shelf = load_shelf(&cx.app, user).await?;
     let outfits = cx.app.db.outfits(user).await?;
     let character = draft.character();
     let components = controls(draft, &character, &shelf, &outfits);
@@ -122,8 +122,9 @@ pub(super) async fn editor(cx: &Cx, draft: &Draft, note: &str) -> anyhow::Result
     Ok(Cx::card(embed, "character.png", png, components, true))
 }
 
-/// The message once the editor is closed: the saved character, no controls.
-pub(super) async fn closed(cx: &Cx, saved: Option<&str>) -> anyhow::Result<InteractionResponseData> {
+/// The message once the editor is closed: the saved character, no controls. `lost`: the draft
+/// held changes that were not saved.
+pub(super) async fn closed(cx: &Cx, saved: Option<&str>, lost: bool) -> anyhow::Result<InteractionResponseData> {
     let content = Content::get();
     let character = saved
         .and_then(|c| Character::decode(content, c))
@@ -138,7 +139,7 @@ pub(super) async fn closed(cx: &Cx, saved: Option<&str>) -> anyhow::Result<Inter
                 status: ("CLOSED".to_owned(), true),
                 tabs: Vec::new(),
                 tab: usize::MAX,
-                caption: "Closed without saving".to_owned(),
+                caption: if lost { "Closed without saving" } else { "Closed" }.to_owned(),
                 sections: Vec::new(),
                 hint: "/character opens the editor again".to_owned(),
                 theme: Theme::reef(),
@@ -148,7 +149,11 @@ pub(super) async fn closed(cx: &Cx, saved: Option<&str>) -> anyhow::Result<Inter
     let embed = EmbedBuilder::new()
         .color(BRAND)
         .title("Your character")
-        .description("Closed without saving: your character is as it was.");
+        .description(if lost {
+            "Closed without saving: your character is as it was."
+        } else {
+            "Closed: your character is saved as it is."
+        });
     Ok(Cx::card(embed, "character.png", png, Vec::new(), true))
 }
 

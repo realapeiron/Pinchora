@@ -222,8 +222,17 @@ fn clean_fringe(pixels: &mut [[u8; 4]], w: i32, h: i32) {
     }
 }
 
+/// Steps to the four sides of a pixel, and to all eight around it.
+const SIDES: [(i32, i32); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
+const AROUND: [(i32, i32); 8] = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)];
+
 /// Connected groups (4-way) of the cells for which `test` holds.
 fn groups(w: i32, h: i32, test: impl Fn(i32, i32) -> bool) -> Vec<Vec<(i32, i32)>> {
+    groups_via(w, h, &SIDES, test)
+}
+
+/// Connected groups of the cells for which `test` holds, cells joined by any of `steps`.
+fn groups_via(w: i32, h: i32, steps: &[(i32, i32)], test: impl Fn(i32, i32) -> bool) -> Vec<Vec<(i32, i32)>> {
     let mut seen = vec![false; (w * h) as usize];
     let mut out = Vec::new();
     for y in 0..h {
@@ -237,7 +246,7 @@ fn groups(w: i32, h: i32, test: impl Fn(i32, i32) -> bool) -> Vec<Vec<(i32, i32)
             while i < group.len() {
                 let (gx, gy) = group[i];
                 i += 1;
-                for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
+                for (dx, dy) in steps {
                     let (nx, ny) = (gx + dx, gy + dy);
                     if nx >= 0 && ny >= 0 && nx < w && ny < h && !seen[(ny * w + nx) as usize] && test(nx, ny) {
                         seen[(ny * w + nx) as usize] = true;
@@ -261,6 +270,17 @@ fn nearest(keys: &[[u8; 3]], c: [u8; 3]) -> u8 {
     (0..keys.len()).min_by_key(|&i| (luma(keys[i]) - l).abs()).unwrap_or(0) as u8
 }
 
+/// What a pixel is made of, for telling neighbours apart: 1 skin, 2 hair, 3 top, 4 bottom, 0 the rest.
+fn kind(p: Part) -> u8 {
+    match p {
+        Part::Skin(_) => 1,
+        Part::Hair(_) => 2,
+        Part::Top(_) => 3,
+        Part::Bottom(_) => 4,
+        _ => 0,
+    }
+}
+
 /// The art was colour-quantised, so a few pixels of one part landed on another part's key: the
 /// navy of the trousers in a head of hair, a speck of skin in a pair of shorts. Clothes colours
 /// above the collar are hair, and a lone pixel walled in by one other part joins that part.
@@ -276,13 +296,6 @@ fn settle_strays(grid: &Grid<'_>, parts: &mut [Part], shirt_top: i32) {
             };
         }
     }
-    let kind = |p: Part| match p {
-        Part::Skin(_) => 1,
-        Part::Hair(_) => 2,
-        Part::Top(_) => 3,
-        Part::Bottom(_) => 4,
-        _ => 0,
-    };
     let before = parts.to_vec();
     for y in 0..grid.h {
         for x in 0..w {
@@ -311,6 +324,47 @@ fn settle_strays(grid: &Grid<'_>, parts: &mut [Part], shirt_top: i32) {
                         _ => Part::Bottom(nearest(&BOTTOM_KEY, c)),
                     };
                 }
+            }
+        }
+    }
+    settle_stains(grid, parts, shirt_top);
+}
+
+/// The most pixels a stain of hair colour on the trousers has.
+const STAIN_MAX: usize = 40;
+
+/// Stains are the same quantiser mistake in bigger pieces: a few pixels of hair colour in a pair
+/// of trousers or a skirt, joined to each other so the lone-pixel pass leaves them. A small
+/// group of hair colour (pixels touching corner to corner are one group) below the collar that
+/// only trousers border (the outline does not count) becomes trousers; a speck of up to three
+/// pixels may have one other pixel against it. A bigger group with anything else against it is
+/// not a stain, and a band that goes on (the hem frill of the gown) is too big to be one: both
+/// stay.
+fn settle_stains(grid: &Grid<'_>, parts: &mut [Part], shirt_top: i32) {
+    let (w, h) = (grid.w, grid.h);
+    let before = parts.to_vec();
+    let hair_at = |x: i32, y: i32| matches!(before[(y * w + x) as usize], Part::Hair(_));
+    for group in groups_via(w, h, &AROUND, |x, y| y >= shirt_top && hair_at(x, y)) {
+        if group.len() > STAIN_MAX {
+            continue;
+        }
+        let (mut bottoms, mut others) = (0, 0);
+        for &(x, y) in &group {
+            for (dx, dy) in SIDES {
+                let (nx, ny) = (x + dx, y + dy);
+                if group.contains(&(nx, ny)) || matches!(grid.at(nx, ny), None | Some(OUTLINE)) {
+                    continue;
+                }
+                match kind(before[(ny * w + nx) as usize]) {
+                    4 => bottoms += 1,
+                    _ => others += 1,
+                }
+            }
+        }
+        if bottoms >= 2 && (others == 0 || (group.len() <= 3 && others * 2 <= bottoms)) {
+            for (x, y) in group {
+                let i = (y * w + x) as usize;
+                parts[i] = Part::Bottom(nearest(&BOTTOM_KEY, rgb_of(&grid.px[i])));
             }
         }
     }

@@ -2,7 +2,7 @@ use std::{collections::HashSet, str::Split, sync::Arc};
 
 use pinchora_core::leveling;
 use pinchora_db::{CustomizeBuy, MAX_BADGES, PlayerStats, UserRow};
-use pinchora_game::{Background, Badge, BadgeKind, BadgeStat, Content, Rarity, TitleKind};
+use pinchora_game::{Background, Badge, BadgeKind, BadgeStat, Content, Rarity, TitleKind, stat_value};
 use pinchora_render::{
     Backdrop, BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, Frame, Opacity, SpriteArt, Theme, parse_accent,
     sprites::placeholder_badge_color,
@@ -190,19 +190,6 @@ pub(crate) fn frame_of(row: &UserRow) -> Frame {
 
 // /Badges
 
-fn stat_value(stats: &PlayerStats, stat: BadgeStat) -> i64 {
-    match stat {
-        BadgeStat::Level => stats.level,
-        BadgeStat::FishSpecies => stats.fish_species,
-        BadgeStat::HouseLikes => stats.house_likes,
-        BadgeStat::Pets => stats.pets,
-        BadgeStat::Streak => stats.streak,
-        BadgeStat::Placed => stats.placed,
-        BadgeStat::Reputation => stats.reputation,
-        BadgeStat::Shells => stats.shells,
-    }
-}
-
 /// What a player has earned and bought, and which badges they have put on.
 struct Wardrobe {
     stats: PlayerStats,
@@ -236,15 +223,12 @@ impl Wardrobe {
 
     /// Whether the badge is theirs: reached for an achievement, bought for a shop badge.
     fn has(&self, badge: &Badge) -> bool {
-        match badge.kind {
-            BadgeKind::Achievement { stat, at } => stat_value(&self.stats, stat) >= at,
-            BadgeKind::Shop { .. } => self.bought.contains(&badge.id),
-        }
+        badge.is_earned(&self.stats, &self.bought)
     }
 
     /// Every badge they could put on now, in the order of `content/badges.json`.
     fn wearable(&self) -> Vec<&'static Badge> {
-        Content::get().badges.iter().filter(|b| self.has(b)).collect()
+        Content::get().earned_badges(&self.stats, &self.bought)
     }
 
     /// What the card shows when they have not chosen: up to six of their badges, the rarest
@@ -334,13 +318,6 @@ impl Wardrobe {
 
 /// The badges a profile card shows for `user`: the ones saved as worn that they still may wear,
 /// or their best earned ones until they have chosen.
-/// Ids of every badge the player has: achievements reached and shop badges bought.
-pub(crate) async fn earned_badges(app: &App, user: u64) -> anyhow::Result<Vec<String>> {
-    let row = app.db.user(user).await?;
-    let wardrobe = Wardrobe::load(app, user, &row).await?;
-    Ok(wardrobe.wearable().into_iter().map(|b| b.id.clone()).collect())
-}
-
 pub(crate) async fn worn_badges(app: &App, user: u64, row: &UserRow) -> anyhow::Result<Vec<&'static Badge>> {
     if row.badges_set && row.badges.is_empty() {
         return Ok(Vec::new());

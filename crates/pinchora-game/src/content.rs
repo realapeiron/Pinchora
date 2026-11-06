@@ -1,5 +1,6 @@
 use std::{collections::HashMap, sync::LazyLock};
 
+use pinchora_db::PlayerStats;
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize)]
@@ -364,6 +365,20 @@ pub enum BadgeKind {
     Shop { price: i64 },
 }
 
+/// The player's number that `stat` counts.
+pub fn stat_value(stats: &PlayerStats, stat: BadgeStat) -> i64 {
+    match stat {
+        BadgeStat::Level => stats.level,
+        BadgeStat::FishSpecies => stats.fish_species,
+        BadgeStat::HouseLikes => stats.house_likes,
+        BadgeStat::Pets => stats.pets,
+        BadgeStat::Streak => stats.streak,
+        BadgeStat::Placed => stats.placed,
+        BadgeStat::Reputation => stats.reputation,
+        BadgeStat::Shells => stats.shells,
+    }
+}
+
 /// A small icon worn on the profile card.
 #[derive(Debug, Clone, Deserialize)]
 pub struct Badge {
@@ -375,6 +390,17 @@ pub struct Badge {
     #[serde(flatten)]
     pub kind: BadgeKind,
     pub icon_brief: String,
+}
+
+impl Badge {
+    /// Whether the player has it: an achievement once its count is reached, a shop badge once it
+    /// is among `bought` (the shop badge ids they own).
+    pub fn is_earned(&self, stats: &PlayerStats, bought: &[String]) -> bool {
+        match self.kind {
+            BadgeKind::Achievement { stat, at } => stat_value(stats, stat) >= at,
+            BadgeKind::Shop { .. } => bought.contains(&self.id),
+        }
+    }
 }
 
 /// What unlocks a title.
@@ -568,6 +594,11 @@ impl Content {
 
     pub fn badge(&self, id: &str) -> Option<&Badge> {
         self.badges.iter().find(|b| b.id == id)
+    }
+
+    /// Every badge the player has, in the order of `content/badges.json`.
+    pub fn earned_badges(&self, stats: &PlayerStats, bought: &[String]) -> Vec<&Badge> {
+        self.badges.iter().filter(|b| b.is_earned(stats, bought)).collect()
     }
 
     pub fn title(&self, id: &str) -> Option<&Title> {

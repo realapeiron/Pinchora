@@ -265,6 +265,14 @@ async fn accessories_are_bought_once_and_outfits_keep_three_slots() {
     assert_eq!(db.user(alice).await.unwrap().credits, 100, "charged once");
     assert_eq!(db.owned_accessories(alice).await.unwrap(), vec!["top_hat".to_owned()]);
     assert!(db.owned_accessories(bob).await.unwrap().is_empty());
+    // What the wearing rule reads: purchases and the numbers, also for a player with no row.
+    let facts = db.wardrobe_facts(alice).await.unwrap();
+    assert_eq!(facts.bought_accessories, vec!["top_hat".to_owned()]);
+    assert!(facts.bought_badges.is_empty());
+    assert_eq!(facts.stats.shells, 100);
+    let facts = db.wardrobe_facts(bob).await.unwrap();
+    assert!(facts.bought_accessories.is_empty() && facts.bought_badges.is_empty());
+    assert_eq!(facts.stats.shells, 0);
 
     assert!(db.outfits(alice).await.unwrap().is_empty());
     assert!(

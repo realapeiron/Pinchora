@@ -819,24 +819,28 @@ fn lens_box(a: &Anchors, i: usize, grow: i32) -> (i32, i32, i32, i32) {
     (x0 - gx, y0 - gy + 1, x1 + gx, y1 + gy)
 }
 
+/// One lens: a box with its corners cut, `frame` round the edge and `fill` (glass, shine) inside.
+fn lens(f: &mut Pen, (x0, y0, x1, y1): (i32, i32, i32, i32), frame: [u8; 3], fill: Option<([u8; 3], [u8; 3])>) {
+    for y in y0..=y1 {
+        for x in x0..=x1 {
+            let edge = x == x0 || x == x1 || y == y0 || y == y1;
+            let corner = (x == x0 || x == x1) && (y == y0 || y == y1);
+            if corner {
+                continue;
+            }
+            if edge {
+                f.put(x, y, frame);
+            } else if let Some((glass, shine)) = fill {
+                f.put(x, y, if x == x0 + 1 && y == y0 + 1 { shine } else { glass });
+            }
+        }
+    }
+}
+
 /// Rings round both eyes with a bridge and a temple to the ear; `fill` fills the lenses.
 fn frames(f: &mut Pen, a: &Anchors, frame: [u8; 3], fill: Option<([u8; 3], [u8; 3])>) {
     for i in 0..2 {
-        let (x0, y0, x1, y1) = lens_box(a, i, 1);
-        for y in y0..=y1 {
-            for x in x0..=x1 {
-                let edge = x == x0 || x == x1 || y == y0 || y == y1;
-                let corner = (x == x0 || x == x1) && (y == y0 || y == y1);
-                if corner {
-                    continue;
-                }
-                if edge {
-                    f.put(x, y, frame);
-                } else if let Some((glass, shine)) = fill {
-                    f.put(x, y, if x == x0 + 1 && y == y0 + 1 { shine } else { glass });
-                }
-            }
-        }
+        lens(f, lens_box(a, i, 1), frame, fill);
     }
     let (l, r) = (lens_box(a, 0, 1), lens_box(a, 1, 1));
     f.rect(l.2, l.1 + 1, r.0, l.1 + 1, frame);
@@ -850,10 +854,29 @@ fn round_glasses(p: &mut Pens, c: &Ctx<'_>) {
     p.front.put(r.0 + 1, r.1 + 1, WHITE[4]);
 }
 
+/// Two dark lenses that span both eyes, so they read as glasses and not as a patch on the near
+/// eye: both as tall as the taller eye, the far one at least six wide (on a turned head the far
+/// eye is a sliver), and a short temple to the ear.
 fn sunglasses(p: &mut Pens, c: &Ctx<'_>) {
-    frames(&mut p.front, c.a, LINE, Some((c.t[1], c.t[3])));
-    let r = lens_box(c.a, 1, 1);
-    p.front.put(r.0 + 2, r.1 + 1, c.t[4]);
+    let a = c.a;
+    let [far, near] = a.eyes;
+    let rows = (far.3 - far.1).max(near.3 - near.1) + 2;
+    let near_box = (near.0 - 2, near.1, near.2 + 1, near.1 + rows - 1);
+    let far_right = far.2 + 1;
+    let far_box = ((far.0 - 1).min(far_right - 5), far.1, far_right, far.1 + rows - 1);
+    let f = &mut p.front;
+    for lens_box in [far_box, near_box] {
+        lens(f, lens_box, LINE, Some((c.t[1], c.t[3])));
+    }
+    f.rect(far_box.2, far_box.1 + 1, near_box.0, far_box.1 + 1, LINE);
+    f.rect(
+        near_box.2,
+        near_box.1 + 1,
+        (a.skull.1 - 4).min(near_box.2 + 4),
+        near_box.1 + 1,
+        LINE,
+    );
+    f.put(near_box.0 + 2, near_box.1 + 1, c.t[4]);
 }
 
 fn heart_glasses(p: &mut Pens, c: &Ctx<'_>) {

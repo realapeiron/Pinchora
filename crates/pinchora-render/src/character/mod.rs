@@ -196,17 +196,19 @@ pub fn atlas() -> &'static SpriteStore {
     &STORE
 }
 
-/// The prepared look, made once per look id.
+static LOOKS: LazyLock<Mutex<HashMap<String, Arc<Prepared>>>> = LazyLock::new(Mutex::default);
+
+/// The prepared look, made once per look. Only looks with art are cached under their own id;
+/// every other id gets the one stand-in figure, so a stream of made-up ids cannot grow the cache.
 fn prepared(look: &str) -> Arc<Prepared> {
-    static LOOKS: LazyLock<Mutex<HashMap<String, Arc<Prepared>>>> = LazyLock::new(Mutex::default);
-    if let Some(p) = LOOKS.lock().expect("look cache").get(look) {
+    let art = atlas().get(&format!("a_{look}"));
+    let key = if art.is_some() { look } else { "" };
+    if let Some(p) = LOOKS.lock().expect("look cache").get(key) {
         return p.clone();
     }
-    let sprite = atlas()
-        .get(&format!("a_{look}"))
-        .map_or_else(placeholder_character, |s| (*s).clone());
+    let sprite = art.map_or_else(placeholder_character, |s| (*s).clone());
     let p = Arc::new(Prepared::new(&sprite));
-    LOOKS.lock().expect("look cache").insert(look.to_owned(), p.clone());
+    LOOKS.lock().expect("look cache").insert(key.to_owned(), p.clone());
     p
 }
 

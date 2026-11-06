@@ -12,12 +12,11 @@ mod view;
 
 use std::{str::Split, time::Duration};
 
-use pinchora_core::leveling;
 use pinchora_db::CustomizeBuy;
 use pinchora_game::{
     Content,
     character::{
-        Access, Accessory, Character, OUTFIT_NAME_MAX, OUTFIT_SLOTS, accessories_in, accessory, preset, presets,
+        Access, Accessory, Character, OUTFIT_NAME_MAX, OUTFIT_SLOTS, Shelf, accessories_in, accessory, preset, presets,
     },
 };
 use pinchora_render::character::{ACCESSORY_TINTS, Channel, Paint, Slot, parse_hex, shadeable};
@@ -29,7 +28,7 @@ use twilight_model::channel::message::{
     component::{Label, TextInput, TextInputStyle},
 };
 
-use crate::{App, Cx, commands::customize::earned_badges, util::thousands};
+use crate::{App, Cx, util::thousands};
 
 /// How long an untouched draft is kept.
 const DRAFT_TTL: Duration = Duration::from_secs(2 * 3600);
@@ -186,39 +185,9 @@ async fn saved_code(app: &App, user: u64) -> anyhow::Result<Option<String>> {
         .map(|c| c.encode()))
 }
 
-/// What the player may wear: what they bought, their level and their badges.
-pub(crate) struct Shelf {
-    pub(crate) bought: Vec<String>,
-    pub(crate) level: u32,
-    pub(crate) badges: Vec<String>,
-}
-
-impl Shelf {
-    pub(crate) async fn load(app: &App, user: u64) -> anyhow::Result<Self> {
-        let row = app.db.user(user).await?;
-        Ok(Self {
-            bought: app.db.owned_accessories(user).await?,
-            level: leveling::level_of(row.xp),
-            badges: earned_badges(app, user).await?,
-        })
-    }
-
-    pub(crate) fn access(&self, item: &Accessory) -> Access {
-        item.access(self.bought.contains(&item.id), self.level, |b| {
-            self.badges.iter().any(|x| x == b)
-        })
-    }
-
-    /// The first thing worn that the player may not wear yet.
-    fn blocker(&self, character: &Character) -> Option<(&'static Accessory, Access)> {
-        character.accessories.iter().find_map(|w| {
-            let item = accessory(&w.id)?;
-            match self.access(item) {
-                Access::Owned => None,
-                other => Some((item, other)),
-            }
-        })
-    }
+/// What the player may wear, read from the database.
+pub(crate) async fn load_shelf(app: &App, user: u64) -> anyhow::Result<Shelf> {
+    Ok(Shelf::new(Content::get(), &app.db.wardrobe_facts(user).await?))
 }
 
 /// Words for what stands between a player and an accessory.
@@ -404,7 +373,7 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[S
             None => note = "Nothing to undo.".to_owned(),
         },
         "rand" => {
-            let shelf = Shelf::load(&cx.app, user).await?;
+            let shelf = load_shelf(&cx.app, user).await?;
             character = randomise(
                 content,
                 &shelf,
@@ -423,7 +392,7 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[S
             character.wear(draft.slot, Some(&worn.id), next);
         }
         "buy" => {
-            let shelf = Shelf::load(&cx.app, user).await?;
+            let shelf = load_shelf(&cx.app, user).await?;
             let Some(item) = character.worn(draft.slot).and_then(|w| accessory(&w.id)) else {
                 return expired(cx).await;
             };
@@ -448,7 +417,7 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[S
             };
         }
         "save" => {
-            let shelf = Shelf::load(&cx.app, user).await?;
+            let shelf = load_shelf(&cx.app, user).await?;
             note = match shelf.blocker(&character) {
                 Some((item, access)) => format!(
                     "Not saved: **{}** isn't yours yet ({}). Buy it or take it off first.",
@@ -467,7 +436,7 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[S
         "cancel" => {
             cx.app.cache.forget(&key(user)).await?;
             let saved = saved_code(&cx.app, user).await?;
-            let data = view::closed(cx, saved.as_deref()).await?;
+            let data = view::closed(cx, saved.as_deref(), !draft.is_saved()).await?;
             return cx.update(data).await;
         }
         "keep" => {

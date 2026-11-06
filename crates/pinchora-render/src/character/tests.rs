@@ -232,3 +232,52 @@ fn accessory_ids_are_unique_and_every_slot_has_some() {
         assert!(ACCESSORIES.iter().filter(|a| a.slot == slot).count() >= 5, "{slot:?}");
     }
 }
+
+#[test]
+fn made_up_look_ids_share_one_stand_in_and_do_not_grow_the_cache() {
+    let stand_in = compose(&spec("no-such-look", &[])).image;
+    for n in 0..200 {
+        assert_eq!(compose(&spec(&format!("made-up-{n}"), &[])).image, stand_in);
+    }
+    // Other tests add real looks at the same time, so look at what is cached, not how much.
+    let cache = LOOKS.lock().expect("look cache");
+    assert!(cache.contains_key(""), "the stand-in is cached under one key");
+    assert!(
+        cache
+            .keys()
+            .all(|k| k.is_empty() || atlas().get(&format!("a_{k}")).is_some()),
+        "only looks with art are cached under their own id: {:?}",
+        cache.keys().collect::<Vec<_>>()
+    );
+}
+
+/// Hair-key pixels at or below the waistband.
+fn hair_below_the_waist(look: &str) -> usize {
+    let p = prepared(look);
+    let waist = p.anchors.torso.3;
+    p.parts
+        .iter()
+        .enumerate()
+        .filter(|(i, part)| matches!(part, Part::Hair(_)) && (*i as i32 / p.width as i32) >= waist)
+        .count()
+}
+
+#[test]
+fn trousers_and_skirts_carry_no_hair_coloured_stains() {
+    // The quantiser left specks of hair colour in the legs of these; none may be left.
+    for look in [
+        "bobbin",
+        "mopsy",
+        "ponycrest",
+        "puffcloud",
+        "twinbuns",
+        "wavecrest",
+        "bunhaven",
+        "shavebreeze",
+        "topknot",
+    ] {
+        assert_eq!(hair_below_the_waist(look), 0, "{look}: hair colour in the legs");
+    }
+    // The gown's hem frill is drawn in that colour on purpose, and stays.
+    assert!(hair_below_the_waist("starlet") > 60, "the hem frill was eaten");
+}
