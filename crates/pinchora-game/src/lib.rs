@@ -6,6 +6,7 @@ mod content;
 pub mod contest;
 pub mod fishing;
 pub mod house;
+pub mod lang;
 pub mod market;
 pub mod overlay;
 pub mod party;

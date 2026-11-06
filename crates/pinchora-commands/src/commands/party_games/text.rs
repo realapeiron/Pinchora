@@ -1,6 +1,7 @@
 //! Cleaning what members type into the party games before anybody sees it.
 
-use pinchora_game::party::filter::is_profane;
+use pinchora_core::i18n::Lang;
+use pinchora_game::party::filter::is_profane_for;
 
 use crate::util::strip_mentions;
 
@@ -64,6 +65,11 @@ fn is_link(word: &str) -> bool {
 /// tidied, and refused when it holds a word the filter blocks (`strict` adds the milder list). The
 /// filter reads the text twice, with its formatting still on (so "f*ck" shows its star) and without.
 pub(crate) fn clean(text: &str, strict: bool) -> Result<String, Refused> {
+    clean_for(text, strict, Lang::En)
+}
+
+/// [`clean`] for text typed in a game in `lang`.
+pub(crate) fn clean_for(text: &str, strict: bool, lang: Lang) -> Result<String, Refused> {
     let plain = strip_tags(&strip_mentions(text));
     let kept: Vec<&str> = plain.split_whitespace().filter(|word| !is_link(word)).collect();
     let words: Vec<String> = kept
@@ -75,7 +81,7 @@ pub(crate) fn clean(text: &str, strict: bool) -> Result<String, Refused> {
     if cleaned.is_empty() {
         return Err(Refused::Empty);
     }
-    if is_profane(&cleaned, strict) || is_profane(&kept.join(" "), strict) {
+    if is_profane_for(&cleaned, strict, lang) || is_profane_for(&kept.join(" "), strict, lang) {
         return Err(Refused::Profane);
     }
     Ok(cleaned)

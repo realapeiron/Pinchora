@@ -6,6 +6,7 @@
 
 use std::{str::Split, sync::Arc, time::Duration};
 
+use pinchora_core::i18n::Lang;
 use pinchora_db::{Commit, PartyEntry, PartyGame, PartyPlayer, PartyVote, Pay, PlayerChange};
 use pinchora_game::party::{
     Dice, Party, VOTE_POINTS, WIN_BONUS, acronym, postcard as scenes, round_points, round_winners, writing_reward,
@@ -39,6 +40,9 @@ pub(crate) const ENTRY_FIELD: &str = "entry";
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 struct State {
+    /// The language of the game: Acronym Tide draws its letters from it.
+    #[serde(default)]
+    lang: Lang,
     seed: u64,
     /// Acronym Tide: the letters of this round.
     letters: String,
@@ -97,7 +101,11 @@ pub(crate) async fn open(cx: &Cx, party: Party, rounds: i32) -> anyhow::Result<(
         acronym::ROUNDS
     };
     let rounds = rounds.clamp(*range.start(), *range.end());
-    lobby::open(cx, party, rounds, encode(&State::default())?).await
+    let state = State {
+        lang: cx.lang(),
+        ..Default::default()
+    };
+    lobby::open(cx, party, rounds, encode(&state)?).await
 }
 
 /// Sets up what round `round` (from 1) shows: its letters, or its postcard.
@@ -109,7 +117,7 @@ fn begin_round(party: Party, state: &mut State, round: i32) {
         state.scene = scene.to_owned();
         state.seen.push(scene.to_owned());
     } else {
-        let letters = acronym::draw_letters(&mut dice, acronym::letter_count(round - 1));
+        let letters = acronym::draw_letters(state.lang, &mut dice, acronym::letter_count(round - 1));
         state.letters = letters.into_iter().collect();
     }
     state.note.clear();
@@ -584,14 +592,14 @@ pub(crate) async fn on_modal(
         .iter()
         .find(|(field, _)| field == ENTRY_FIELD)
         .map_or("", |(_, value)| value.as_str());
-    let cleaned = match text::clean(typed, strict(app, game.guild_id as u64).await) {
+    let cleaned = match text::clean_for(typed, strict(app, game.guild_id as u64).await, state.lang) {
         Ok(cleaned) => cleaned,
         Err(refused) => return cx.reply_ephemeral(refused.say()).await,
     };
     let line = if party == Party::Postcard {
         scenes::check_caption(&cleaned).map_err(|e| e.say())
     } else {
-        acronym::check_phrase(&cleaned, &letters_of(&state)).map_err(|e| e.say(&letters_of(&state)))
+        acronym::check_phrase(state.lang, &cleaned, &letters_of(&state)).map_err(|e| e.say(&letters_of(&state)))
     };
     let line = match line {
         Ok(line) => line,

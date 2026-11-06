@@ -11,7 +11,10 @@ use std::{
     sync::LazyLock,
 };
 
-use super::{Dice, filter};
+use pinchora_core::i18n::Lang;
+
+use super::{Dice, filter, hotpearl_tr};
+use crate::lang;
 
 /// Lives a table plays with unless the host picks another number, and the range they may pick from.
 pub const DEFAULT_LIVES: i32 = 2;
@@ -65,8 +68,19 @@ const HARD_MIN: u32 = 400;
 /// Fragments common enough to be syllables that a family table should not see in big letters.
 const NOT_SHOWN: &[&str] = &["ass", "tit", "cum", "sex", "fag", "nig"];
 
+/// The same thresholds for the Turkish list, which is about a twentieth the size.
+const EASY_MIN_TR: u32 = 200;
+const MEDIUM_MIN_TR: u32 = 60;
+const MEDIUM_MIN_SHORT_TR: u32 = 80;
+const HARD_MIN_TR: u32 = 30;
+/// Turkish fragments never shown in big letters.
+const NOT_SHOWN_TR: &[&str] = &["sik", "göt", "bok", "amk", "amc", "piç", "ibn", "pus", "oro"];
+
 pub struct Dictionary {
+    lang: Lang,
     words: HashSet<&'static str>,
+    /// The stems a verb's infinitive stands for ("gel" for "gelmek"), also words themselves.
+    roots: HashSet<String>,
     counts: HashMap<&'static str, u32>,
     easy: Vec<&'static str>,
     medium: Vec<&'static str>,
@@ -74,24 +88,35 @@ pub struct Dictionary {
 }
 
 static WORDS: &str = include_str!("../../../../content/pearl_words.txt");
+static WORDS_TR: &str = include_str!("../../../../content/pearl_words_tr.txt");
 
-static DICTIONARY: LazyLock<Dictionary> = LazyLock::new(Dictionary::build);
+static DICTIONARY: LazyLock<Dictionary> = LazyLock::new(|| Dictionary::build(WORDS, Lang::En));
+static DICTIONARY_TR: LazyLock<Dictionary> = LazyLock::new(|| Dictionary::build(WORDS_TR, Lang::Tr));
 
-/// The shipped word list and the syllables made from it. Built on first use.
+/// The shipped English word list and the syllables made from it. Built on first use.
 pub fn dictionary() -> &'static Dictionary {
     &DICTIONARY
 }
 
+/// The shipped word list of `lang` and the syllables made from it.
+pub fn dictionary_for(lang: Lang) -> &'static Dictionary {
+    match lang {
+        Lang::En => &DICTIONARY,
+        Lang::Tr => &DICTIONARY_TR,
+    }
+}
+
 impl Dictionary {
-    fn build() -> Self {
-        let words: HashSet<&'static str> = WORDS.lines().filter(|w| !w.is_empty()).collect();
+    fn build(text: &'static str, lang: Lang) -> Self {
+        let words: HashSet<&'static str> = text.lines().filter(|w| !w.is_empty()).collect();
         let mut counts: HashMap<&'static str, u32> = HashMap::new();
         for word in &words {
             // A fragment counts once per word, however often the word repeats it.
+            let at: Vec<usize> = word.char_indices().map(|(i, _)| i).chain([word.len()]).collect();
             let mut seen: Vec<&str> = Vec::with_capacity(24);
             for n in [2usize, 3] {
-                for i in 0..=word.len().saturating_sub(n) {
-                    let Some(part) = word.get(i..i + n) else { continue };
+                for i in 0..at.len().saturating_sub(n) {
+                    let part = &word[at[i]..at[i + n]];
                     if !seen.contains(&part) {
                         seen.push(part);
                         *counts.entry(part).or_default() += 1;
@@ -99,15 +124,23 @@ impl Dictionary {
                 }
             }
         }
+        let (easy_min, medium_min, medium_short, hard_min) = match lang {
+            Lang::En => (EASY_MIN, MEDIUM_MIN, MEDIUM_MIN_SHORT, HARD_MIN),
+            Lang::Tr => (EASY_MIN_TR, MEDIUM_MIN_TR, MEDIUM_MIN_SHORT_TR, HARD_MIN_TR),
+        };
+        let hidden = match lang {
+            Lang::En => NOT_SHOWN,
+            Lang::Tr => NOT_SHOWN_TR,
+        };
         let mut easy = Vec::new();
         let mut medium = Vec::new();
         let mut hard = Vec::new();
-        for (&part, &n) in counts.iter().filter(|(part, _)| !NOT_SHOWN.contains(*part)) {
-            match (part.len(), n) {
-                (2, n) if n >= EASY_MIN => easy.push(part),
-                (2, n) if n >= MEDIUM_MIN_SHORT => medium.push(part),
-                (3, n) if n >= MEDIUM_MIN => medium.push(part),
-                (3, n) if n >= HARD_MIN => hard.push(part),
+        for (&part, &n) in counts.iter().filter(|(part, _)| !hidden.contains(*part)) {
+            match (part.chars().count(), n) {
+                (2, n) if n >= easy_min => easy.push(part),
+                (2, n) if n >= medium_short => medium.push(part),
+                (3, n) if n >= medium_min => medium.push(part),
+                (3, n) if n >= hard_min => hard.push(part),
                 _ => {}
             }
         }
@@ -115,13 +148,29 @@ impl Dictionary {
         for tier in [&mut easy, &mut medium, &mut hard] {
             tier.sort_unstable();
         }
+        let roots = if lang == Lang::Tr {
+            words
+                .iter()
+                .filter_map(|w| w.strip_suffix("mak").or_else(|| w.strip_suffix("mek")))
+                .filter(|root| root.chars().count() >= 2)
+                .map(str::to_owned)
+                .collect()
+        } else {
+            HashSet::new()
+        };
         Self {
+            lang,
             words,
+            roots,
             counts,
             easy,
             medium,
             hard,
         }
+    }
+
+    pub fn lang(&self) -> Lang {
+        self.lang
     }
 
     /// How many listed words hold `syllable`.
@@ -152,10 +201,18 @@ impl Dictionary {
 
     /// Whether `word` (lowercase letters) is a word: listed, or an inflection of a listed one, and not rude.
     pub fn accepts(&self, word: &str) -> bool {
-        if filter::is_profane(word, false) {
+        if filter::is_profane_for(word, false, self.lang) {
             return false;
         }
-        self.words.contains(word) || stems(word).any(|stem| self.words.contains(stem.as_str()))
+        match self.lang {
+            Lang::En => self.words.contains(word) || stems(word).any(|stem| self.words.contains(stem.as_str())),
+            Lang::Tr => self.knows(word) || hotpearl_tr::stems(word).iter().any(|stem| self.knows(stem)),
+        }
+    }
+
+    /// Whether `word` is listed, or the stem of a listed verb.
+    fn knows(&self, word: &str) -> bool {
+        self.words.contains(word) || self.roots.contains(word)
     }
 }
 
@@ -213,7 +270,22 @@ pub enum WordError {
 impl WordError {
     /// What to tell the player, with the syllable in capitals.
     pub fn say(self, syllable: &str) -> String {
-        let syllable = syllable.to_uppercase();
+        self.say_in(Lang::En, syllable)
+    }
+
+    /// The same in `lang`.
+    pub fn say_in(self, lang: Lang, syllable: &str) -> String {
+        let syllable = lang::upper(lang, syllable);
+        if lang == Lang::Tr {
+            return match self {
+                Self::Letters => "Sadece harf yaz lütfen: Türk alfabesi.".to_owned(),
+                Self::TooShort => format!("Bir kelime en az {MIN_WORD} harfli olmalı."),
+                Self::TooLong => "Bu kelime olamayacak kadar uzun.".to_owned(),
+                Self::MissingSyllable => format!("Bu kelimede **{syllable}** yok."),
+                Self::NotAWord => "Bu kelime listemde yok.".to_owned(),
+                Self::AlreadyUsed => "Bu kelime bu oyunda zaten kullanıldı.".to_owned(),
+            };
+        }
         match self {
             Self::Letters => "Just letters, please: a to z.".to_owned(),
             Self::TooShort => format!("A word needs at least {MIN_WORD} letters."),
@@ -228,14 +300,16 @@ impl WordError {
 /// Checks a typed word against the syllable, the list and the words played so far; the lowercase
 /// word when it counts.
 pub fn check_word(dictionary: &Dictionary, syllable: &str, typed: &str, used: &[String]) -> Result<String, WordError> {
-    let word = typed.trim().to_ascii_lowercase();
-    if word.is_empty() || !word.bytes().all(|b| b.is_ascii_lowercase()) {
+    let lang = dictionary.lang;
+    let word = lang::lower(lang, typed.trim());
+    if word.is_empty() || !word.chars().all(|c| lang::is_letter(lang, c)) {
         return Err(WordError::Letters);
     }
-    if word.len() < MIN_WORD {
+    let length = word.chars().count();
+    if length < MIN_WORD {
         return Err(WordError::TooShort);
     }
-    if word.len() > MAX_WORD {
+    if length > MAX_WORD {
         return Err(WordError::TooLong);
     }
     if !word.contains(syllable) {
@@ -392,5 +466,83 @@ mod tests {
         assert!(found("biggest").contains(&"big".to_owned()));
         assert!(found("boxes").contains(&"box".to_owned()));
         assert!(found("happily").contains(&"happy".to_owned()));
+    }
+
+    #[test]
+    fn the_turkish_list_is_big_clean_and_takes_the_usual_endings() {
+        let d = dictionary_for(Lang::Tr);
+        assert_eq!(d.lang(), Lang::Tr);
+        assert!(d.words.len() > 7_000, "{}", d.words.len());
+        for word in [
+            "kitap",
+            "çiçek",
+            "deniz",
+            "gelmek",
+            "evler",
+            "kitaplarımız",
+            "gözlerinden",
+            "geliyorum",
+            "okuyacağız",
+            "ağacı",
+            "kitabı",
+            "yapıyor",
+            "güzellik",
+            "ışık",
+        ] {
+            assert!(d.accepts(word), "{word}");
+        }
+        for word in [
+            "qzxv",
+            "kitapler",
+            "evlar",
+            "xyzzy",
+            "siktir",
+            "orospu",
+            "gelmekxx",
+            "ççççç",
+        ] {
+            assert!(!d.accepts(word), "{word}");
+        }
+        assert!(d.words.iter().all(|w| w.chars().all(|c| lang::is_letter(Lang::Tr, c))));
+    }
+
+    #[test]
+    fn turkish_syllables_come_in_three_tiers_of_real_fragments() {
+        let d = dictionary_for(Lang::Tr);
+        for tier in [Tier::Easy, Tier::Medium, Tier::Hard] {
+            let pool = d.tier(tier);
+            assert!(pool.len() >= 40, "{tier:?}: {}", pool.len());
+            for syllable in pool {
+                let n = syllable.chars().count();
+                assert!(
+                    (2..=3).contains(&n) && syllable.chars().all(|c| lang::is_letter(Lang::Tr, c)),
+                    "{syllable}"
+                );
+                assert!(d.count(syllable) >= HARD_MIN_TR, "{syllable}");
+                assert!(!NOT_SHOWN_TR.contains(syllable));
+            }
+        }
+        assert!(d.tier(Tier::Easy).iter().all(|s| s.chars().count() == 2));
+        let mut dice = Dice::new(5);
+        let mut last: Option<&str> = None;
+        for turn in 0..80 {
+            let syllable = d.syllable(turn, &mut dice, last);
+            assert_ne!(Some(syllable), last);
+            last = Some(syllable);
+        }
+    }
+
+    #[test]
+    fn a_turkish_word_has_to_hold_the_syllable_with_turkish_case() {
+        let d = dictionary_for(Lang::Tr);
+        let used = vec!["kitap".to_owned()];
+        assert_eq!(check_word(d, "iş", " İŞÇİ ", &used), Ok("işçi".to_owned()));
+        assert_eq!(check_word(d, "ış", "IŞIK", &used), Ok("ışık".to_owned()));
+        assert_eq!(check_word(d, "ış", "işçi", &used), Err(WordError::MissingSyllable));
+        assert_eq!(check_word(d, "ki", "kitap", &used), Err(WordError::AlreadyUsed));
+        assert_eq!(check_word(d, "ka", "kaw", &used), Err(WordError::Letters));
+        assert_eq!(check_word(d, "ka", "kxx", &used), Err(WordError::Letters));
+        assert!(WordError::MissingSyllable.say_in(Lang::Tr, "ış").contains("IŞ"));
+        assert!(WordError::MissingSyllable.say_in(Lang::Tr, "iş").contains("İŞ"));
     }
 }

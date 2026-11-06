@@ -538,7 +538,7 @@ async fn leave_tombstone(
                 (SELECT claimed_at FROM reward_claims WHERE user_id = $1 AND kind = 'monthly') AS monthly_at,
                 (SELECT count(*) FROM visits WHERE guest_id = $1 AND day = $2) AS visits,
                 COALESCE((SELECT array_agg(host_id) FROM house_likes WHERE liker_id = $1 AND day = $2), '{}'::BIGINT[]) AS liked,
-                (SELECT max(day) FROM wordle_games WHERE user_id = $1 AND mode = 'daily') AS wordle_day,
+                (SELECT max(day) FROM wordle_games WHERE user_id = $1 AND mode IN ('daily', 'daily-tr')) AS wordle_day,
                 (SELECT max(day) FROM picross_games WHERE user_id = $1 AND mode = 'daily' AND status = 'solved')
                     AS picross_day,
                 (SELECT pet_wake_day FROM users WHERE id = $1) AS pet_wake_day,

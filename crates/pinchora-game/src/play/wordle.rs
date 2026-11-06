@@ -1,5 +1,11 @@
 //! Wordle: five letters, six tries, one shared word a day.
 
+use std::collections::HashMap;
+
+use pinchora_core::i18n::Lang;
+
+use crate::lang;
+
 pub const WORD_LEN: usize = 5;
 pub const MAX_TRIES: usize = 6;
 /// Day number (days since 1970-01-01) of puzzle #0.
@@ -23,51 +29,49 @@ impl Tile {
     }
 }
 
-/// Lowercases a typed guess; `None` unless it is exactly five letters a-z.
-pub fn normalize(input: &str) -> Option<String> {
-    let word = input.trim().to_ascii_lowercase();
-    (word.len() == WORD_LEN && word.bytes().all(|b| b.is_ascii_lowercase())).then_some(word)
+/// Lowercases a typed guess with the language's rules; `None` unless it is exactly five letters of its alphabet.
+pub fn normalize(lang: Lang, input: &str) -> Option<String> {
+    let word = lang::lower(lang, input.trim());
+    (word.chars().count() == WORD_LEN && word.chars().all(|c| lang::is_letter(lang, c))).then_some(word)
 }
 
-/// Colours a guess against the answer. Letters in the right place are correct first; each
-/// remaining answer letter can then mark only one other tile, so a repeated letter in the guess
-/// is yellow no more often than it occurs in the answer.
+/// Colours a guess against the answer (lowercase letters of any language). Letters in the right place are
+/// correct first; each remaining answer letter can then mark only one other tile, so a repeated letter in
+/// the guess is yellow no more often than it occurs in the answer.
 pub fn score(guess: &str, answer: &str) -> [Tile; WORD_LEN] {
-    let (g, a) = (guess.as_bytes(), answer.as_bytes());
+    let (g, a): (Vec<char>, Vec<char>) = (guess.chars().collect(), answer.chars().collect());
     let mut tiles = [Tile::Absent; WORD_LEN];
-    if g.len() != WORD_LEN || a.len() != WORD_LEN || !g.iter().chain(a).all(u8::is_ascii_lowercase) {
+    if g.len() != WORD_LEN || a.len() != WORD_LEN || !g.iter().chain(&a).all(|c| c.is_alphabetic() && c.is_lowercase())
+    {
         return tiles;
     }
-    let mut unmatched = [0u8; 26];
+    let mut unmatched: Vec<char> = Vec::with_capacity(WORD_LEN);
     for i in 0..WORD_LEN {
         if g[i] == a[i] {
             tiles[i] = Tile::Correct;
         } else {
-            unmatched[(a[i] - b'a') as usize] += 1;
+            unmatched.push(a[i]);
         }
     }
     for i in 0..WORD_LEN {
         if tiles[i] == Tile::Correct {
             continue;
         }
-        let slot = &mut unmatched[(g[i] - b'a') as usize];
-        if *slot > 0 {
-            *slot -= 1;
+        if let Some(at) = unmatched.iter().position(|c| *c == g[i]) {
+            unmatched.swap_remove(at);
             tiles[i] = Tile::Present;
         }
     }
     tiles
 }
 
-/// The best result each letter a-z has had over the guesses, `None` for letters not tried.
-pub fn keyboard<'a>(guesses: impl IntoIterator<Item = (&'a str, [Tile; WORD_LEN])>) -> [Option<Tile>; 26] {
-    let mut keys: [Option<Tile>; 26] = [None; 26];
+/// The best result each letter has had over the guesses; letters not tried are missing.
+pub fn keyboard<'a>(guesses: impl IntoIterator<Item = (&'a str, [Tile; WORD_LEN])>) -> HashMap<char, Tile> {
+    let mut keys: HashMap<char, Tile> = HashMap::new();
     for (word, tiles) in guesses {
-        for (b, tile) in word.bytes().zip(tiles) {
-            if b.is_ascii_lowercase() {
-                let key = &mut keys[(b - b'a') as usize];
-                *key = Some(key.map_or(tile, |old| old.max(tile)));
-            }
+        for (c, tile) in word.chars().zip(tiles) {
+            let key = keys.entry(c).or_insert(tile);
+            *key = (*key).max(tile);
         }
     }
     keys
@@ -104,9 +108,10 @@ pub fn reward(daily: bool, tries: usize) -> i64 {
 }
 
 /// A result without spoilers: the number, the tries and the coloured squares.
-pub fn share_text(puzzle: i64, solved_in: Option<usize>, rows: &[[Tile; WORD_LEN]]) -> String {
+pub fn share_text(lang: Lang, puzzle: i64, solved_in: Option<usize>, rows: &[[Tile; WORD_LEN]]) -> String {
     let tries = solved_in.map_or_else(|| "X".to_owned(), |n| n.to_string());
-    let mut text = format!("Pinchora Wordle #{puzzle} {tries}/{MAX_TRIES}\n");
+    let name = if lang == Lang::En { "Wordle" } else { "Wordle TR" };
+    let mut text = format!("Pinchora {name} #{puzzle} {tries}/{MAX_TRIES}\n");
     for row in rows {
         text.push('\n');
         text.extend(row.iter().map(|t| t.emoji()));
@@ -152,9 +157,14 @@ mod tests {
 
     #[test]
     fn guesses_are_normalised() {
-        assert_eq!(normalize("  PeArL "), Some("pearl".into()));
-        for bad in ["", "pear", "pearls", "pe rl", "pe4rl", "péarl"] {
-            assert_eq!(normalize(bad), None, "{bad:?}");
+        assert_eq!(normalize(Lang::En, "  PeArL "), Some("pearl".into()));
+        for bad in ["", "pear", "pearls", "pe rl", "pe4rl", "péarl", "çiçek"] {
+            assert_eq!(normalize(Lang::En, bad), None, "{bad:?}");
+        }
+        assert_eq!(normalize(Lang::Tr, " ÇİÇEK "), Some("çiçek".into()));
+        assert_eq!(normalize(Lang::Tr, "IŞIKL"), Some("ışıkl".into()));
+        for bad in ["", "kalem1", "kale", "kalemm", "quark", "wxyza", "ka em"] {
+            assert_eq!(normalize(Lang::Tr, bad), None, "{bad:?}");
         }
     }
 
@@ -163,13 +173,13 @@ mod tests {
         let first = score("crane", "pearl");
         let second = score("pearl", "pearl");
         let keys = keyboard([("crane", first), ("pearl", second)]);
-        assert_eq!(keys[(b'p' - b'a') as usize], Some(C));
-        assert_eq!(keys[(b'c' - b'a') as usize], Some(A));
-        assert_eq!(keys[(b'e' - b'a') as usize], Some(C), "yellow then green is green");
-        assert_eq!(keys[(b'z' - b'a') as usize], None);
+        assert_eq!(keys.get(&'p'), Some(&C));
+        assert_eq!(keys.get(&'c'), Some(&A));
+        assert_eq!(keys.get(&'e'), Some(&C), "yellow then green is green");
+        assert_eq!(keys.get(&'z'), None);
         // Green never goes back to yellow.
         let keys = keyboard([("pearl", second), ("crane", first)]);
-        assert_eq!(keys[(b'r' - b'a') as usize], Some(C));
+        assert_eq!(keys.get(&'r'), Some(&C));
     }
 
     #[test]
@@ -193,9 +203,20 @@ mod tests {
         assert_eq!(reward(true, 6), 20);
         assert_eq!(reward(false, 3), 10);
         let rows = [score("crane", "pearl"), score("pearl", "pearl")];
-        let text = share_text(63, Some(2), &rows);
+        let text = share_text(Lang::En, 63, Some(2), &rows);
         assert_eq!(text, "Pinchora Wordle #63 2/6\n\n⬛🟨🟩⬛🟨\n🟩🟩🟩🟩🟩");
         assert!(!text.contains("pearl") && !text.contains("crane"), "no spoilers");
-        assert!(share_text(63, None, &rows).starts_with("Pinchora Wordle #63 X/6"));
+        assert!(share_text(Lang::En, 63, None, &rows).starts_with("Pinchora Wordle #63 X/6"));
+        assert!(share_text(Lang::Tr, 63, Some(3), &rows).starts_with("Pinchora Wordle TR #63 3/6"));
+    }
+
+    #[test]
+    fn turkish_letters_are_scored_like_any_other() {
+        assert_eq!(score("çiçek", "çiçek"), [C; 5]);
+        // The dotted and the dotless i are different letters.
+        assert_eq!(score("kışla", "ışıkl"), [P, P, P, P, A]);
+        assert_eq!(score("kısık", "kısım"), [C, C, C, C, A]);
+        assert_eq!(score("kisik", "kısık"), [C, A, C, A, C]);
+        assert_eq!(score("ağaçç", "çağda"), [P, P, P, P, A]);
     }
 }

@@ -65,6 +65,7 @@ mod tests {
                 .map(String::from)
                 .to_vec(),
             answer: "Whale shark".into(),
+            lang: Default::default(),
         }
     }
 

@@ -546,7 +546,7 @@ fn hostile_text_renders_on_every_card() {
         r.wordle_card(&WordleCard {
             title: HOSTILE,
             rows: &word,
-            keys: [0; 26],
+            keyboard: &[],
             footer: HOSTILE,
             theme: t(),
         }),

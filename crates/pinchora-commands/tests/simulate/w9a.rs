@@ -236,12 +236,14 @@ fn the_wordle_card_tells_a_wrong_letter_from_a_key_nobody_tried() {
         letters: ['c', 'r', 'a', 'n', 'e'],
         marks: [ABSENT; 5],
     }];
-    let mut keys = [0u8; 26];
-    keys[(b'c' - b'a') as usize] = ABSENT;
+    let keyboard: Vec<Vec<(char, u8)>> = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"]
+        .iter()
+        .map(|row| row.chars().map(|c| (c, if c == 'C' { ABSENT } else { 0 })).collect())
+        .collect();
     let card = WordleCard {
         title: "Practice",
         rows: &rows,
-        keys,
+        keyboard: &keyboard,
         footer: "Try 2 of 6",
         theme,
     };

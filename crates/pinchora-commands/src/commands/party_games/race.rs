@@ -3,8 +3,10 @@
 
 use std::{str::Split, sync::Arc};
 
+use pinchora_core::i18n::Lang;
 use pinchora_db::{Commit, PartyGame, PartyPlayer, Pay};
 use pinchora_game::{
+    lang,
     party::{
         Party,
         race::{self, Board, RACE_SECS},
@@ -37,6 +39,9 @@ pub(crate) const GUESS_FIELD: &str = "guess";
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 struct State {
+    /// The language of the race: its word list and alphabet.
+    #[serde(default)]
+    lang: Lang,
     /// The word everybody is after.
     word: String,
 }
@@ -54,14 +59,20 @@ fn mark(tile: wordle::Tile) -> u8 {
 }
 
 pub(crate) async fn open(cx: &Cx) -> anyhow::Result<()> {
-    lobby::open(cx, Party::WordRace, 1, serde_json::to_string(&State::default())?).await
+    let state = State {
+        lang: cx.lang(),
+        ..Default::default()
+    };
+    lobby::open(cx, Party::WordRace, 1, serde_json::to_string(&state)?).await
 }
 
 /// Picks the word and starts the clock.
 pub(crate) async fn start(cx: &Cx, game: &PartyGame, players: &[PartyPlayer]) -> anyhow::Result<lobby::Started> {
     let app = &cx.app;
-    let answers = &PlayContent::get().words.answers;
+    let lang = decode(game)?.lang;
+    let answers = &PlayContent::for_lang(lang).words.answers;
     let state = State {
+        lang,
         word: answers[rand::random_range(0..answers.len())].clone(),
     };
     let commit = Commit {
@@ -196,6 +207,7 @@ pub(crate) async fn on_button(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::Re
 /// Your own board: tiles, keyboard, and where you stand, shown only to you.
 async fn private_board(
     app: &App,
+    lang: Lang,
     guesses: &[String],
     word: &str,
     note: &str,
@@ -204,22 +216,42 @@ async fn private_board(
     let rows: Vec<WordleRow> = scored
         .iter()
         .map(|(guess, tiles)| WordleRow {
-            letters: guess.chars().collect::<Vec<_>>().try_into().unwrap_or(['?'; 5]),
+            letters: guess
+                .chars()
+                .map(|c| lang::upper_char(lang, c))
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap_or(['?'; 5]),
             marks: tiles.map(mark),
         })
         .collect();
-    let mut keys = [0u8; 26];
-    for (i, key) in wordle::keyboard(scored.iter().copied()).iter().enumerate() {
-        keys[i] = key.map_or(0, mark);
-    }
+    let best = wordle::keyboard(scored.iter().copied());
+    let keyboard: Vec<Vec<(char, u8)>> = lang::keyboard_rows(lang)
+        .iter()
+        .map(|row| {
+            row.chars()
+                .map(|c| (lang::upper_char(lang, c), best.get(&c).map_or(0, |t| mark(*t))))
+                .collect()
+        })
+        .collect();
     let tries = guesses.len();
-    let footer = format!("Try {} of {}", (tries + 1).min(wordle::MAX_TRIES), wordle::MAX_TRIES);
+    let footer = lang::upper(
+        lang,
+        &match lang {
+            Lang::En => format!("Try {} of {}", (tries + 1).min(wordle::MAX_TRIES), wordle::MAX_TRIES),
+            Lang::Tr => format!("Deneme {} / {}", (tries + 1).min(wordle::MAX_TRIES), wordle::MAX_TRIES),
+        },
+    );
     let png = app
         .render(move |r| {
             r.wordle_card(&WordleCard {
-                title: "Your race board",
+                title: if lang == Lang::Tr {
+                    "YARIŞ TAHTAN"
+                } else {
+                    "Your race board"
+                },
                 rows: &rows,
-                keys,
+                keyboard: &keyboard,
                 footer: &footer,
                 theme: Theme::reef(),
             })
@@ -261,18 +293,26 @@ pub(crate) async fn on_modal(cx: &Cx, mut parts: Split<'_, char>, fields: &[(Str
         .iter()
         .find(|(field, _)| field == GUESS_FIELD)
         .map_or("", |(_, value)| value.as_str());
-    let Some(guess) = wordle::normalize(typed) else {
-        return cx.reply_ephemeral("A guess is exactly five letters, a to z.").await;
-    };
-    if !PlayContent::get().words.is_allowed(&guess) {
+    let state = decode(&game)?;
+    let Some(guess) = wordle::normalize(state.lang, typed) else {
         return cx
-            .reply_ephemeral(format!(
-                "**{}** isn't in my word list. Try another word!",
-                guess.to_uppercase()
-            ))
+            .reply_ephemeral(match state.lang {
+                Lang::En => "A guess is exactly five letters, a to z.",
+                Lang::Tr => "Bir tahmin tam olarak beş harf olmalı (Türk alfabesi).",
+            })
+            .await;
+    };
+    if !PlayContent::for_lang(state.lang).words.is_allowed(&guess) {
+        return cx
+            .reply_ephemeral(match state.lang {
+                Lang::En => format!("**{}** isn't in my word list. Try another word!", guess.to_uppercase()),
+                Lang::Tr => format!(
+                    "**{}** kelime listemde yok. Başka bir kelime dene!",
+                    lang::upper(state.lang, &guess)
+                ),
+            })
             .await;
     }
-    let state = decode(&game)?;
     let Some(board) = app.db.race_guess(id, me, &guess, &state.word, app.now()).await? else {
         return cx
             .reply_ephemeral("Your board is finished, so that guess did not count.")
@@ -284,7 +324,7 @@ pub(crate) async fn on_modal(cx: &Cx, mut parts: Split<'_, char>, fields: &[(Str
         Board::Failed => "Out of tries. The word stays secret until the race is over.".to_owned(),
         Board::Playing => "🟩 right spot · 🟨 wrong spot · ⬛ not in the word.".to_owned(),
     };
-    cx.reply(private_board(app, &board.guesses, &state.word, &note).await?)
+    cx.reply(private_board(app, state.lang, &board.guesses, &state.word, &note).await?)
         .await?;
 
     match outcome {

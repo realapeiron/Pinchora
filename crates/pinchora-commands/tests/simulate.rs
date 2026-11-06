@@ -79,6 +79,8 @@ mod collection;
 #[path = "simulate/w9a.rs"]
 mod w9a;
 // The party games' flows (Hot Pearl, Acronym Tide, Caption the Postcard, Wordle Race, Would You Rather, Truth or Dare).
+#[path = "simulate/turkish.rs"]
+mod turkish;
 #[path = "simulate/words.rs"]
 mod words;
 // Custom commands (/customcommand, /tag) and auto-responders.
