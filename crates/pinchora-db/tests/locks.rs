@@ -10,8 +10,9 @@ use std::time::{Duration as StdDuration, Instant};
 use chrono::{Duration, NaiveDate, Utc};
 use pinchora_core::economy::Period;
 use pinchora_db::{
-    Db, DuelStart, GiveawayOpen, NewGame, NewGiveaway, NewRoom, PENDING, Payout, Reroll, StallBuy, TripClaim,
-    TripPayout, Wake, XpGrant,
+    ACTIVE, Award, BottlePrize, Commit, DROP_BOTTLE, DROP_CRITTERS, Daily, Db, DerbyJoin, DuelStart, GiveawayOpen,
+    Grab, NewDrop, NewGame, NewGiveaway, NewParty, NewRoom, PENDING, Pay, Payout, PlayerChange, Reroll, ShellLimits,
+    ShellPick, ShellStart, StallBuy, TripClaim, TripPayout, Wake, XpGrant,
 };
 
 async fn db_with(pool: u32) -> Option<Db> {
@@ -698,6 +699,244 @@ async fn sweeps_leave_the_rows_somebody_holds_for_the_next_one() {
     );
 }
 
+// ---------------------------------------------------------------- the games
+
+/// The daily limit of the tests: nothing here is about it.
+const LOSS: i64 = 1_000_000;
+
+fn lobby_of(
+    kind: &'static str,
+    guild: u64,
+    channel: u64,
+    host: u64,
+    bet: i64,
+    status: &'static str,
+) -> NewGame<'static> {
+    NewGame {
+        kind,
+        guild_id: guild,
+        channel_id: channel,
+        host,
+        guest: None,
+        bet,
+        status,
+        state: "7",
+        ttl_secs: 600,
+    }
+}
+
+#[tokio::test]
+async fn settling_a_derby_while_a_racer_deletes_their_data() {
+    let Some(db) = db_with(4).await else { return };
+    let [host, racer, leaver, guild, channel] = ids();
+    for user in [host, racer, leaver] {
+        db.earn_shells(user, 100, "test").await.unwrap();
+    }
+    let derby = db
+        .open_party_game(lobby_of("derby", guild, channel, host, 10, PENDING))
+        .await
+        .unwrap()
+        .expect("the channel is free");
+    for (user, crab) in [(host, 0), (racer, 1), (leaver, 1)] {
+        assert_eq!(
+            db.derby_join(derby.id, user, "R", crab, 30, LOSS).await.unwrap(),
+            DerbyJoin::Joined
+        );
+    }
+
+    // The race is run while one of its winners is deleting their data.
+    let id = derby.id;
+    let (settled, deleted) = race_a_delete(
+        &db,
+        "SELECT 1 FROM game_sessions WHERE id = $1 FOR UPDATE",
+        id,
+        leaver,
+        move |db| async move { db.derby_settle(id, Some(host), 2, 1).await },
+    )
+    .await;
+    let settled = settled.expect("the race fails nowhere");
+    deleted.expect("the delete fails nowhere");
+    assert!(settled.is_some(), "somebody ran the race");
+    for user in [host, racer, leaver] {
+        assert_eq!(credits(&db, user).await, ledger(&db, user).await, "books of {user}");
+    }
+    let ended = db.game(derby.id).await.unwrap().expect("the lobby");
+    assert_eq!(
+        ended.status,
+        pinchora_db::DONE,
+        "the race was run and nothing waits in the lobby"
+    );
+    for user in [host, racer] {
+        db.delete_user_data(user, Utc::now()).await.unwrap();
+    }
+}
+
+#[tokio::test]
+async fn grabbing_a_card_while_the_player_deletes_their_data() {
+    let Some(db) = db_with(4).await else { return };
+    let [grabber, guild] = ids();
+    let cards: Vec<String> = ["x_one", "x_two", "x_three"].map(String::from).into();
+    let drop = db
+        .create_drop(NewDrop {
+            kind: DROP_CRITTERS,
+            guild_id: guild,
+            channel_id: guild + 1,
+            host: None,
+            cards: &cards,
+            expires_at: Utc::now() + Duration::hours(1),
+        })
+        .await
+        .unwrap();
+    let award = Award {
+        entry: "x_one",
+        new_shells: 15,
+        dup_shells: 6,
+        dup_fragments: 1,
+        bonus_fragments: 0,
+    };
+    let daily = Daily {
+        game: "critterdrop",
+        day: 20_000,
+        cap: 20,
+    };
+    let id = drop.id;
+    let (grabbed, deleted) = race_a_delete(
+        &db,
+        "SELECT 1 FROM collection_drops WHERE id = $1 FOR UPDATE",
+        id,
+        grabber,
+        move |db| async move { db.grab_card(id, 0, grabber, Utc::now(), award, daily).await },
+    )
+    .await;
+    let grabbed = grabbed.expect("the grab fails nowhere");
+    deleted.expect("the delete fails nowhere");
+    assert!(matches!(grabbed, Grab::Taken { .. }), "{grabbed:?}");
+    // The delete came after the grab, so nothing of the grabber is left, not even the shells it paid.
+    assert_eq!(credits(&db, grabber).await, 0);
+    assert_eq!(ledger(&db, grabber).await, 0);
+}
+
+#[tokio::test]
+async fn moving_a_party_game_while_a_paid_player_deletes_their_data() {
+    let Some(db) = db_with(4).await else { return };
+    let [host, other, guild, channel] = ids();
+    let deadline = Utc::now() + Duration::hours(1);
+    let game = db
+        .create_party(NewParty {
+            kind: "hotpearl",
+            guild_id: guild,
+            channel_id: channel,
+            host,
+            host_name: "Host",
+            rounds: 1,
+            status: "lobby",
+            phase: "lobby",
+            state: "{}",
+            deadline,
+        })
+        .await
+        .unwrap();
+    assert!(matches!(
+        db.join_party(game.id, other, "Other", 8, Utc::now()).await.unwrap(),
+        pinchora_db::PartyJoin::Joined
+    ));
+    let game = db.party(game.id).await.unwrap().expect("the game");
+    let (id, seq) = (game.id, game.seq);
+    let (moved, deleted) = race_a_delete(
+        &db,
+        "SELECT 1 FROM party_games WHERE id = $1 FOR UPDATE",
+        id,
+        other,
+        move |db| async move {
+            db.commit_party(
+                id,
+                seq,
+                Commit {
+                    phase: "done",
+                    round: 1,
+                    state: "{}",
+                    deadline,
+                    status: "done",
+                    players: &[PlayerChange {
+                        user: other,
+                        score: 1,
+                        ..Default::default()
+                    }],
+                    entries: &[],
+                    pay: Some(Pay {
+                        game: "hotpearl",
+                        day: 20_000,
+                        cap: 5,
+                        reason: "party_win",
+                        shells: &[(host, 7), (other, 5)],
+                    }),
+                },
+            )
+            .await
+        },
+    )
+    .await;
+    let moved = moved.expect("the move fails nowhere").expect("nobody moved first");
+    deleted.expect("the delete fails nowhere");
+    assert_eq!(moved.paid, vec![(host, 7), (other, 5)]);
+    assert_eq!((credits(&db, host).await, ledger(&db, host).await), (7, 7));
+    assert_eq!(credits(&db, other).await, 0, "the delete took the prize with the rest");
+    db.delete_user_data(host, Utc::now()).await.unwrap();
+}
+
+#[tokio::test]
+async fn closing_a_contest_week_while_a_winner_deletes_their_data() {
+    let Some(db) = db_with(4).await else { return };
+    let [leaving, second, third, voter, guild] = ids();
+    let week = 100;
+    for user in [leaving, second, third] {
+        sqlx::query(
+            "INSERT INTO contest_entries (guild_id, week, user_id, owner_name, room_idx, tier, room_type, wallpaper, floor)
+             VALUES ($1, $2, $3, 'Name', 0, 1, 'living', 'w', 'f')",
+        )
+        .bind(guild as i64)
+        .bind(week)
+        .bind(user as i64)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    }
+    // The leaving player leads, the second has one vote, the third none.
+    for (entry, by) in [(leaving, voter), (leaving, second), (second, voter)] {
+        assert!(db.contest_vote(guild, week, entry, by).await.unwrap());
+    }
+    // Their delete is under way: the standings still show them first.
+    let mut delete = db.pool().begin().await.unwrap();
+    Db::delete_user_data_in(&mut delete, leaving, Utc::now()).await.unwrap();
+    let (closer, closer_pid) = side().await;
+    let closing = tokio::spawn(async move {
+        closer
+            .close_contest_weeks(guild, week + 1, &[500, 250, 100], "house_of_the_week")
+            .await
+    });
+    queued(&db, closer_pid, "the closing").await;
+    delete.commit().await.unwrap();
+
+    let closed = closing.await.unwrap().expect("closing fails nowhere");
+    assert_eq!(closed, vec![week]);
+    let result = db
+        .last_contest_result(guild, week + 1)
+        .await
+        .unwrap()
+        .expect("a result");
+    assert_eq!(
+        result.winner_ids,
+        vec![second as i64],
+        "the player who left is neither paid nor stored; the one with votes left wins"
+    );
+    assert_eq!(credits(&db, second).await, 500);
+    assert_eq!((credits(&db, leaving).await, ledger(&db, leaving).await), (0, 0));
+    assert_eq!(credits(&db, third).await, 0, "no votes, no prize");
+    for user in [second, third, voter] {
+        db.delete_user_data(user, Utc::now()).await.unwrap();
+    }
+}
+
 // ---------------------------------------------------------------- mixed load
 
 #[derive(Default, Clone)]
@@ -707,15 +946,15 @@ struct Tally {
     samples: Vec<String>,
 }
 
-const OPS: [&str; 17] = [
+const OPS: [&str; 24] = [
     "daily", "weekly", "rep", "transfer", "like", "visit", "xp", "duel", "giveaway", "delete", "wallet", "earn",
-    "stall", "trip", "friend", "house", "sweep",
+    "stall", "trip", "friend", "house", "sweep", "derby", "heist", "surge", "shells", "collect", "party", "contest",
 ];
 
 /// What players do at once in a busy server, deletes of their data among it, from a few workers for
 /// a while (`PINCHORA_TEST_MIX_SECS`, `PINCHORA_TEST_MIX_WORKERS`). No call may fail (a deadlock
 /// would reach the player as "something went wrong"), and every balance must be what its ledger
-/// says, with no shells left held in a duel or a giveaway.
+/// says, with no shells left held in a duel, a giveaway or a party game.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn a_mixed_load_with_deletes_fails_nobody_and_keeps_the_books() {
     let env = |name: &str, default: u64| std::env::var(name).ok().and_then(|v| v.parse().ok()).unwrap_or(default);
@@ -754,7 +993,7 @@ async fn a_mixed_load_with_deletes_fails_nobody_and_keeps_the_books() {
                 let a = users[i];
                 let b = users[(i + 1 + (roll() % (users.len() as u64 - 1)) as usize) % users.len()];
                 // One worker deletes every tenth call, so deletes always run, whatever the dice say.
-                let op = match roll() % 120 {
+                let op = match roll() % 200 {
                     _ if worker == 0 && calls.is_multiple_of(10) => 9,
                     0..=7 => 0,
                     8..=13 => 1,
@@ -772,7 +1011,14 @@ async fn a_mixed_load_with_deletes_fails_nobody_and_keeps_the_books() {
                     94..=99 => 13,
                     100..=105 => 14,
                     106..=111 => 15,
-                    _ => 16,
+                    112..=119 => 16,
+                    120..=134 => 17,
+                    135..=144 => 18,
+                    145..=154 => 19,
+                    155..=164 => 20,
+                    165..=179 => 21,
+                    180..=189 => 22,
+                    _ => 23,
                 };
                 let day = Utc::now().date_naive();
                 let result: anyhow::Result<()> = async {
@@ -872,7 +1118,197 @@ async fn a_mixed_load_with_deletes_fails_nobody_and_keeps_the_books() {
                         16 => {
                             db.forget_old_giveaways(Utc::now() + Duration::days(1)).await?;
                             db.forget_old_games().await?;
+                            db.forget_old_parties(Utc::now() + Duration::days(1), 0).await?;
+                            db.forget_old_collection(Utc::now() + Duration::days(1), 0).await?;
                             db.forget_weeks_before(NaiveDate::from_ymd_opt(2001, 1, 2).unwrap())
+                                .await
+                                .map(drop)
+                        }
+                        17 => {
+                            // A staked derby: two racers, one leaves and comes back, the host runs it.
+                            let channel = roll() >> 2;
+                            if let Some(derby) = db
+                                .open_party_game(lobby_of("derby", guild, channel, a, 3, PENDING))
+                                .await?
+                            {
+                                db.derby_join(derby.id, a, "A", 0, 30, LOSS).await?;
+                                db.derby_join(derby.id, b, "B", 1, 30, LOSS).await?;
+                                if roll() % 2 == 0 {
+                                    db.derby_leave(derby.id, b).await?;
+                                    db.derby_join(derby.id, b, "B", 0, 30, LOSS).await?;
+                                }
+                                db.derby_settle(derby.id, Some(a), 2, (roll() % 2) as i16).await?;
+                            }
+                            Ok(())
+                        }
+                        18 => {
+                            let channel = roll() >> 2;
+                            if let Some(heist) = db
+                                .open_party_game(lobby_of("heist", guild, channel, a, 0, PENDING))
+                                .await?
+                            {
+                                db.heist_join(heist.id, a, "A", 0, 5).await?;
+                                db.heist_join(heist.id, b, "B", 1, 5).await?;
+                                db.heist_settle(heist.id, Some(a), 2, 1_000_000, |_, _| 2).await?;
+                            }
+                            Ok(())
+                        }
+                        19 => {
+                            let storm_guild = guild + 100 + (roll() >> 8) % 1_000_000_007;
+                            if let Some(storm) = db
+                                .open_party_game(lobby_of("surge", storm_guild, 5, a, 0, ACTIVE))
+                                .await?
+                            {
+                                db.surge_help(storm.id, a, "A", 3).await?;
+                                db.surge_help(storm.id, b, "B", 3).await?;
+                                db.surge_settle(storm.id, true, false, 1_000_000, |_, helps| helps)
+                                    .await?;
+                            }
+                            Ok(())
+                        }
+                        20 => {
+                            let limits = ShellLimits {
+                                plays: 1_000_000,
+                                loss: 1_000_000,
+                                win: 1_000_000,
+                            };
+                            let table = NewGame {
+                                state: "1",
+                                ttl_secs: 45,
+                                ..lobby_of("shellgame", guild, roll() >> 2, a, 2, ACTIVE)
+                            };
+                            if let ShellStart::Started(game) = db.shell_start(table, limits).await? {
+                                if roll() % 2 == 0 {
+                                    let picked = db.shell_pick(game.id, a, (roll() % 3) as u8, |stake| stake * 2).await?;
+                                    anyhow::ensure!(!matches!(picked, ShellPick::NotYours), "the host's own pick");
+                                } else {
+                                    sqlx::query("UPDATE game_sessions SET expires_at = now() - interval '1 second' WHERE id = $1")
+                                        .bind(game.id)
+                                        .execute(db.pool())
+                                        .await?;
+                                    db.shell_refund(game.id).await?;
+                                }
+                            }
+                            Ok(())
+                        }
+                        21 => {
+                            let (award, daily) = (
+                                Award {
+                                    entry: "x_one",
+                                    new_shells: 3,
+                                    dup_shells: 2,
+                                    dup_fragments: 1,
+                                    bonus_fragments: 0,
+                                },
+                                Daily {
+                                    game: "critterdrop",
+                                    day: 20_000,
+                                    cap: 1_000_000,
+                                },
+                            );
+                            let cards: Vec<String> = ["x_one", "x_two", "x_three"].map(String::from).into();
+                            let channel = (roll() >> 2) + 1;
+                            let critters = db
+                                .create_drop(NewDrop {
+                                    kind: DROP_CRITTERS,
+                                    guild_id: guild,
+                                    channel_id: channel,
+                                    host: None,
+                                    cards: &cards,
+                                    expires_at: Utc::now() + Duration::hours(1),
+                                })
+                                .await?;
+                            db.grab_card(critters.id, 0, a, Utc::now(), award, daily).await?;
+                            db.grab_card(critters.id, 0, b, Utc::now(), award, daily).await?;
+                            let bottle = db
+                                .create_drop(NewDrop {
+                                    kind: DROP_BOTTLE,
+                                    guild_id: guild,
+                                    channel_id: channel + 1,
+                                    host: None,
+                                    cards: &["bottle_01".to_owned()],
+                                    expires_at: Utc::now() + Duration::hours(1),
+                                })
+                                .await?;
+                            db.open_bottle(bottle.id, a, Utc::now(), BottlePrize::Fragments(5), daily)
+                                .await?;
+                            db.exchange_fragments(a, 5, "chair").await?;
+                            db.start_pot(b, 1, Utc::now() - Duration::hours(2)).await?;
+                            db.haul_pot(b, Utc::now(), daily, |_, _, _| vec![award]).await?;
+                            db.upgrade_pot(b, 1, 1).await.map(drop)
+                        }
+                        22 => {
+                            let deadline = Utc::now() + Duration::hours(1);
+                            let game = db
+                                .create_party(NewParty {
+                                    kind: "hotpearl",
+                                    guild_id: guild,
+                                    channel_id: roll() >> 2,
+                                    host: a,
+                                    host_name: "A",
+                                    rounds: 1,
+                                    status: "lobby",
+                                    phase: "lobby",
+                                    state: "{}",
+                                    deadline,
+                                })
+                                .await?;
+                            db.join_party(game.id, b, "B", 8, Utc::now()).await?;
+                            if roll() % 2 == 0 {
+                                db.leave_party(game.id, b, Utc::now()).await?;
+                                db.join_party(game.id, b, "B", 8, Utc::now()).await?;
+                            }
+                            if let Some(game) = db.party(game.id).await? {
+                                db.commit_party(
+                                    game.id,
+                                    game.seq,
+                                    Commit {
+                                        phase: "done",
+                                        round: 1,
+                                        state: "{}",
+                                        deadline,
+                                        status: "done",
+                                        players: &[
+                                            PlayerChange {
+                                                user: a,
+                                                score: 1,
+                                                ..Default::default()
+                                            },
+                                            PlayerChange {
+                                                user: b,
+                                                score: 1,
+                                                ..Default::default()
+                                            },
+                                        ],
+                                        entries: &[],
+                                        pay: Some(Pay {
+                                            game: "hotpearl",
+                                            day: 20_000,
+                                            cap: 1_000_000,
+                                            reason: "party_win",
+                                            shells: &[(a, 2), (b, 1)],
+                                        }),
+                                    },
+                                )
+                                .await?;
+                            }
+                            Ok(())
+                        }
+                        23 => {
+                            let contest_guild = guild + 100 + (roll() >> 8) % 1_000_000_007;
+                            for user in [a, b] {
+                                sqlx::query(
+                                    "INSERT INTO contest_entries (guild_id, week, user_id, owner_name, room_idx, tier, room_type, wallpaper, floor)
+                                     VALUES ($1, 5, $2, 'Name', 0, 1, 'living', 'w', 'f') ON CONFLICT DO NOTHING",
+                                )
+                                .bind(contest_guild as i64)
+                                .bind(user as i64)
+                                .execute(db.pool())
+                                .await?;
+                            }
+                            db.contest_vote(contest_guild, 5, a, b).await?;
+                            db.contest_vote(contest_guild, 5, b, a).await?;
+                            db.close_contest_weeks(contest_guild, 6, &[5, 3], "house_of_the_week")
                                 .await
                                 .map(drop)
                         }
@@ -938,7 +1374,9 @@ async fn a_mixed_load_with_deletes_fails_nobody_and_keeps_the_books() {
     let ids: Vec<i64> = users.iter().map(|u| *u as i64).collect();
     let (held,): (i64,) = sqlx::query_as(
         "SELECT (SELECT count(*) FROM game_sessions WHERE status = 'active' AND host_id = ANY($1))
-              + (SELECT count(*) FROM giveaways WHERE status = 'running' AND host_id = ANY($1))",
+              + (SELECT count(*) FROM giveaways WHERE status = 'running' AND host_id = ANY($1))
+              + (SELECT COALESCE(SUM(m.amount), 0) FROM party_members m JOIN game_sessions s ON s.id = m.session_id
+                 WHERE s.status <> 'done' AND m.user_id = ANY($1))::BIGINT",
     )
     .bind(&ids)
     .fetch_one(db.pool())
@@ -953,6 +1391,6 @@ async fn a_mixed_load_with_deletes_fails_nobody_and_keeps_the_books() {
         books.is_empty(),
         "balances that are not what the ledger says: {books:?}"
     );
-    assert_eq!(held, 0, "shells left held in a duel or a giveaway");
+    assert_eq!(held, 0, "shells left held in a duel, a giveaway or a game");
     assert!(total.iter().all(|t| t.ok > 0), "every kind of call ran:\n{report}");
 }

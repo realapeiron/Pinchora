@@ -10,7 +10,13 @@ use chrono::{DateTime, Duration, Utc};
 use pinchora_core::items::soulbound;
 use sqlx::{Postgres, Transaction};
 
-use crate::{Db, economy::ledger, house::add_inventory, locks::lock_users, sql_id};
+use crate::{
+    Db,
+    economy::ledger,
+    house::add_inventory,
+    locks::{Retry, lock_users, retry},
+    sql_id,
+};
 
 type Tx<'a> = Transaction<'a, Postgres>;
 
@@ -264,8 +270,15 @@ impl Db {
     /// soulbound piece: it can be placed in their own house, but never sold, gifted or donated.
     /// Returns the fragments left, or `None` when the player cannot cover it.
     pub async fn exchange_fragments(&self, user: u64, cost: i64, item: &str) -> anyhow::Result<Option<i64>> {
+        retry("exchange_fragments", || self.exchange_fragments_once(user, cost, item)).await
+    }
+
+    /// One attempt of [`Db::exchange_fragments`]. Like everything below that writes a player's rows, it
+    /// takes the player's lock first (see the `locks` module).
+    async fn exchange_fragments_once(&self, user: u64, cost: i64, item: &str) -> anyhow::Result<Option<i64>> {
         let id = sql_id(user);
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[id]).await?;
         let left: Option<(i64,)> = sqlx::query_as(
             "UPDATE collection_players SET fragments = fragments - $2
              WHERE user_id = $1 AND fragments >= $2 RETURNING fragments",
@@ -357,7 +370,24 @@ impl Db {
         award: Award<'_>,
         daily: Daily<'_>,
     ) -> anyhow::Result<Grab> {
+        retry("grab_card", || {
+            self.grab_card_once(drop_id, slot, user, now, award, daily)
+        })
+        .await
+    }
+
+    /// One attempt of [`Db::grab_card`]: the grabber's lock, then the drop's row.
+    async fn grab_card_once(
+        &self,
+        drop_id: i64,
+        slot: usize,
+        user: u64,
+        now: DateTime<Utc>,
+        award: Award<'_>,
+        daily: Daily<'_>,
+    ) -> anyhow::Result<Grab> {
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(user)]).await?;
         let drop: Option<DropRow> = sqlx::query_as(concat!(
             "SELECT ",
             drop_columns!(),
@@ -406,7 +436,23 @@ impl Db {
         prize: BottlePrize<'_>,
         daily: Daily<'_>,
     ) -> anyhow::Result<BottleOpen> {
+        retry("open_bottle", || {
+            self.open_bottle_once(drop_id, user, now, prize, daily)
+        })
+        .await
+    }
+
+    /// One attempt of [`Db::open_bottle`]: the opener's lock, then the bottle's row.
+    async fn open_bottle_once(
+        &self,
+        drop_id: i64,
+        user: u64,
+        now: DateTime<Utc>,
+        prize: BottlePrize<'_>,
+        daily: Daily<'_>,
+    ) -> anyhow::Result<BottleOpen> {
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(user)]).await?;
         let drop: Option<DropRow> = sqlx::query_as(concat!(
             "SELECT ",
             drop_columns!(),
@@ -474,18 +520,34 @@ impl Db {
     }
 
     /// Forgets drops that closed before `before`, and play counts of days before `day`.
+    ///
+    /// A sweep over the rows of many players cannot take their locks first, so it locks the rows it deletes
+    /// with `SKIP LOCKED`: one somebody holds is left for the next sweep (see the `locks` module).
     pub async fn forget_old_collection(&self, before: DateTime<Utc>, day: i32) -> anyhow::Result<u64> {
-        let drops = sqlx::query("DELETE FROM collection_drops WHERE status = 'closed' AND expires_at < $1")
+        retry("forget_old_collection", || async move {
+            let drops = sqlx::query(
+                "WITH old AS MATERIALIZED (
+                     SELECT id FROM collection_drops WHERE status = 'closed' AND expires_at < $1
+                     FOR UPDATE SKIP LOCKED)
+                 DELETE FROM collection_drops WHERE id IN (SELECT id FROM old)",
+            )
             .bind(before)
             .execute(self.pool())
             .await?
             .rows_affected();
-        let days = sqlx::query("DELETE FROM collection_daily WHERE day < $1")
+            let days = sqlx::query(
+                "WITH old AS MATERIALIZED (
+                     SELECT user_id, day, game FROM collection_daily WHERE day < $1 FOR UPDATE SKIP LOCKED)
+                 DELETE FROM collection_daily d USING old
+                 WHERE d.user_id = old.user_id AND d.day = old.day AND d.game = old.game",
+            )
             .bind(day)
             .execute(self.pool())
             .await?
             .rows_affected();
-        Ok(drops + days)
+            Ok(drops + days)
+        })
+        .await
     }
 
     // /Beachcomb
@@ -566,12 +628,33 @@ impl Db {
         user: u64,
         now: DateTime<Utc>,
         daily: Daily<'_>,
-        catches: F,
+        mut catches: F,
     ) -> anyhow::Result<PotHaul>
     where
-        F: FnOnce(i16, i16, DateTime<Utc>) -> Vec<Award<'a>>,
+        F: FnMut(i16, i16, DateTime<Utc>) -> Vec<Award<'a>>,
+    {
+        let mut retry = Retry::new("haul_pot");
+        loop {
+            let result = self.haul_pot_once(user, now, daily, &mut catches).await;
+            if !retry.again(&result).await {
+                return result;
+            }
+        }
+    }
+
+    /// One attempt of [`Db::haul_pot`]; `catches` is asked again if it loses a deadlock and runs twice.
+    async fn haul_pot_once<'a, F>(
+        &self,
+        user: u64,
+        now: DateTime<Utc>,
+        daily: Daily<'_>,
+        catches: &mut F,
+    ) -> anyhow::Result<PotHaul>
+    where
+        F: FnMut(i16, i16, DateTime<Utc>) -> Vec<Award<'a>>,
     {
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(user)]).await?;
         let row: Option<(i16, Option<i16>, Option<DateTime<Utc>>)> = sqlx::query_as(
             "SELECT pot_level, pot_hours, pot_ends_at FROM collection_players WHERE user_id = $1 FOR UPDATE",
         )
@@ -604,8 +687,14 @@ impl Db {
 
     /// Takes the pot from level `from` to the next for `cost` shells.
     pub async fn upgrade_pot(&self, user: u64, from: i16, cost: i64) -> anyhow::Result<PotUpgrade> {
+        retry("upgrade_pot", || self.upgrade_pot_once(user, from, cost)).await
+    }
+
+    /// One attempt of [`Db::upgrade_pot`].
+    async fn upgrade_pot_once(&self, user: u64, from: i16, cost: i64) -> anyhow::Result<PotUpgrade> {
         let id = sql_id(user);
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[id]).await?;
         sqlx::query("INSERT INTO collection_players (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING")
             .bind(id)
             .execute(&mut *tx)

@@ -3,6 +3,10 @@
 //!
 //! Every move of shells here happens in one transaction with the row change that causes it, and a
 //! game ends exactly once: whoever gets `Some` back from a settle function owns the ending.
+//!
+//! The transactions follow the lock rule of the `locks` module: the players' locks first (one player for a
+//! join, everyone in the lobby for a settle), then the session's row, then the writes, and a transaction
+//! that loses a deadlock anyway runs again.
 
 use chrono::{DateTime, Utc};
 
@@ -10,6 +14,7 @@ use crate::{
     Db,
     economy::ledger,
     games::{ACTIVE, DONE, GameSession, NewGame, PENDING},
+    locks::{lock_users, retry, try_lock_users},
     sql_id,
 };
 
@@ -321,7 +326,13 @@ impl Db {
     /// Pays `want` shells out of thin air for `game`, at most `cap` shells a day to this player in all;
     /// returns what was paid (0 when the day's limit is reached).
     pub async fn grant_capped(&self, user: u64, game: &str, want: i64, cap: i64, reason: &str) -> anyhow::Result<i64> {
+        retry("grant_capped", || self.grant_capped_once(user, game, want, cap, reason)).await
+    }
+
+    /// One attempt of [`Db::grant_capped`].
+    async fn grant_capped_once(&self, user: u64, game: &str, want: i64, cap: i64, reason: &str) -> anyhow::Result<i64> {
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(user)]).await?;
         let granted = grant_capped(&mut tx, sql_id(user), game, want, cap, reason).await?;
         tx.commit().await?;
         Ok(granted)
@@ -416,7 +427,24 @@ impl Db {
         max_racers: i64,
         loss_limit: i64,
     ) -> anyhow::Result<DerbyJoin> {
+        retry("derby_join", || {
+            self.derby_join_once(session, user, name, crab, max_racers, loss_limit)
+        })
+        .await
+    }
+
+    /// One attempt of [`Db::derby_join`].
+    async fn derby_join_once(
+        &self,
+        session: i64,
+        user: u64,
+        name: &str,
+        crab: i16,
+        max_racers: i64,
+        loss_limit: i64,
+    ) -> anyhow::Result<DerbyJoin> {
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(user)]).await?;
         let Some(lobby) = lock_open(&mut tx, session, "derby").await? else {
             return Ok(DerbyJoin::Closed);
         };
@@ -506,7 +534,13 @@ impl Db {
 
     /// A racer leaves an open derby and gets their stake back.
     pub async fn derby_leave(&self, session: i64, user: u64) -> anyhow::Result<DerbyLeave> {
+        retry("derby_leave", || self.derby_leave_once(session, user)).await
+    }
+
+    /// One attempt of [`Db::derby_leave`].
+    async fn derby_leave_once(&self, session: i64, user: u64) -> anyhow::Result<DerbyLeave> {
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(user)]).await?;
         if lock_open(&mut tx, session, "derby").await?.is_none() {
             return Ok(DerbyLeave::Closed);
         }
@@ -543,7 +577,22 @@ impl Db {
         min_staked: usize,
         winner: i16,
     ) -> anyhow::Result<Option<DerbyResult>> {
+        retry("derby_settle", || {
+            self.derby_settle_once(session, forced_by, min_staked, winner)
+        })
+        .await
+    }
+
+    /// One attempt of [`Db::derby_settle`]: every racer's lock, then the lobby's row.
+    async fn derby_settle_once(
+        &self,
+        session: i64,
+        forced_by: Option<u64>,
+        min_staked: usize,
+        winner: i16,
+    ) -> anyhow::Result<Option<DerbyResult>> {
         let mut tx = self.pool().begin().await?;
+        lock_members(&mut tx, session).await?;
         let Some(lobby) = lock_game(&mut tx, session, "derby").await? else {
             return Ok(None);
         };
@@ -554,7 +603,7 @@ impl Db {
         if lobby.status != PENDING || !due {
             return Ok(None);
         }
-        let racers = members(&mut tx, session).await?;
+        let racers = members_locked(&mut tx, session).await?;
         let staked = lobby.bet > 0;
         let outcome = if racers.is_empty() || (staked && racers.len() < min_staked) {
             refund_all(&mut tx, session, &racers).await?;
@@ -603,7 +652,23 @@ impl Db {
         role: i16,
         max_crew: i64,
     ) -> anyhow::Result<CrewJoin> {
+        retry("heist_join", || {
+            self.heist_join_once(session, user, name, role, max_crew)
+        })
+        .await
+    }
+
+    /// One attempt of [`Db::heist_join`].
+    async fn heist_join_once(
+        &self,
+        session: i64,
+        user: u64,
+        name: &str,
+        role: i16,
+        max_crew: i64,
+    ) -> anyhow::Result<CrewJoin> {
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(user)]).await?;
         if lock_open(&mut tx, session, "heist").await?.is_none() {
             return Ok(CrewJoin::Closed);
         }
@@ -640,7 +705,13 @@ impl Db {
 
     /// A crew member leaves an open heist. False when they were not in it, or it is closed.
     pub async fn heist_leave(&self, session: i64, user: u64) -> anyhow::Result<bool> {
+        retry("heist_leave", || self.heist_leave_once(session, user)).await
+    }
+
+    /// One attempt of [`Db::heist_leave`].
+    async fn heist_leave_once(&self, session: i64, user: u64) -> anyhow::Result<bool> {
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(user)]).await?;
         if lock_open(&mut tx, session, "heist").await?.is_none() {
             return Ok(false);
         }
@@ -665,7 +736,23 @@ impl Db {
         daily_cap: i64,
         each: fn(&GameSession, &[PartyMember]) -> i64,
     ) -> anyhow::Result<Option<HeistSettled>> {
+        retry("heist_settle", || {
+            self.heist_settle_once(session, forced_by, min_crew, daily_cap, each)
+        })
+        .await
+    }
+
+    /// One attempt of [`Db::heist_settle`]: every crew member's lock, then the lobby's row.
+    async fn heist_settle_once(
+        &self,
+        session: i64,
+        forced_by: Option<u64>,
+        min_crew: usize,
+        daily_cap: i64,
+        each: fn(&GameSession, &[PartyMember]) -> i64,
+    ) -> anyhow::Result<Option<HeistSettled>> {
         let mut tx = self.pool().begin().await?;
+        lock_members(&mut tx, session).await?;
         let Some(lobby) = lock_game(&mut tx, session, "heist").await? else {
             return Ok(None);
         };
@@ -676,7 +763,7 @@ impl Db {
         if lobby.status != PENDING || !due {
             return Ok(None);
         }
-        let crew = members(&mut tx, session).await?;
+        let crew = members_locked(&mut tx, session).await?;
         if crew.len() < min_crew {
             finish(&mut tx, session, "called-off").await?;
             tx.commit().await?;
@@ -709,7 +796,13 @@ impl Db {
 
     /// A player stacks a sandbag on a running storm. Counts one sandbag for them, up to `max_helps`.
     pub async fn surge_help(&self, session: i64, user: u64, name: &str, max_helps: i64) -> anyhow::Result<SurgeHelp> {
+        retry("surge_help", || self.surge_help_once(session, user, name, max_helps)).await
+    }
+
+    /// One attempt of [`Db::surge_help`].
+    async fn surge_help_once(&self, session: i64, user: u64, name: &str, max_helps: i64) -> anyhow::Result<SurgeHelp> {
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(user)]).await?;
         let Some(storm) = lock_game(&mut tx, session, "surge")
             .await?
             .filter(|s| s.status == ACTIVE && !s.expired())
@@ -774,14 +867,30 @@ impl Db {
         daily_cap: i64,
         reward: fn(bool, i64) -> i64,
     ) -> anyhow::Result<Option<SurgeSettled>> {
+        retry("surge_settle", || {
+            self.surge_settle_once(session, held, only_if_expired, daily_cap, reward)
+        })
+        .await
+    }
+
+    /// One attempt of [`Db::surge_settle`]: every helper's lock, then the storm's row.
+    async fn surge_settle_once(
+        &self,
+        session: i64,
+        held: bool,
+        only_if_expired: bool,
+        daily_cap: i64,
+        reward: fn(bool, i64) -> i64,
+    ) -> anyhow::Result<Option<SurgeSettled>> {
         let mut tx = self.pool().begin().await?;
+        lock_members(&mut tx, session).await?;
         let Some(storm) = lock_game(&mut tx, session, "surge")
             .await?
             .filter(|s| s.status == ACTIVE && (!only_if_expired || s.expired()))
         else {
             return Ok(None);
         };
-        let helpers = members(&mut tx, session).await?;
+        let helpers = members_locked(&mut tx, session).await?;
         let mut order: Vec<&PartyMember> = helpers.iter().collect();
         order.sort_by_key(|m| m.user_id);
         let mut paid = Vec::with_capacity(helpers.len());
@@ -818,9 +927,15 @@ impl Db {
     /// A player sits down at the shell game: the stake comes off their balance and the pearl is put
     /// under shell `pearl`. Refused when they cannot cover it or have used the day's allowance.
     pub async fn shell_start(&self, new: NewGame<'_>, limits: ShellLimits) -> anyhow::Result<ShellStart> {
+        retry("shell_start", || self.shell_start_once(new, limits)).await
+    }
+
+    /// One attempt of [`Db::shell_start`].
+    async fn shell_start_once(&self, new: NewGame<'_>, limits: ShellLimits) -> anyhow::Result<ShellStart> {
         let user = sql_id(new.host);
         let stake = new.bet;
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[user]).await?;
         sqlx::query("INSERT INTO users (id) VALUES ($1) ON CONFLICT (id) DO NOTHING")
             .bind(user)
             .execute(&mut *tx)
@@ -898,7 +1013,19 @@ impl Db {
         pick: u8,
         payout: fn(i64) -> i64,
     ) -> anyhow::Result<ShellPick> {
+        retry("shell_pick", || self.shell_pick_once(session, user, pick, payout)).await
+    }
+
+    /// One attempt of [`Db::shell_pick`]: the player's lock, then the table's row.
+    async fn shell_pick_once(
+        &self,
+        session: i64,
+        user: u64,
+        pick: u8,
+        payout: fn(i64) -> i64,
+    ) -> anyhow::Result<ShellPick> {
         let mut tx = self.pool().begin().await?;
+        lock_players(&mut tx, session).await?;
         let Some(game) = lock_game(&mut tx, session, "shellgame")
             .await?
             .filter(|s| s.status == ACTIVE)
@@ -933,7 +1060,13 @@ impl Db {
     /// Gives the stake back for a shell game nobody finished, once its time is up. `None` when it
     /// is over already or not late yet.
     pub async fn shell_refund(&self, session: i64) -> anyhow::Result<Option<GameSession>> {
+        retry("shell_refund", || self.shell_refund_once(session)).await
+    }
+
+    /// One attempt of [`Db::shell_refund`].
+    async fn shell_refund_once(&self, session: i64) -> anyhow::Result<Option<GameSession>> {
         let mut tx = self.pool().begin().await?;
+        lock_players(&mut tx, session).await?;
         let Some(game) = lock_game(&mut tx, session, "shellgame")
             .await?
             .filter(|s| s.status == ACTIVE && s.expired())
@@ -962,7 +1095,24 @@ impl Db {
         daily_cap: i64,
         only_if_expired: bool,
     ) -> anyhow::Result<Option<(GameSession, [i64; 2])>> {
+        retry("settle_game_granting", || {
+            self.settle_game_granting_once(id, from_state, final_state, grants, daily_cap, only_if_expired)
+        })
+        .await
+    }
+
+    /// One attempt of [`Db::settle_game_granting`]: both players' locks, then the game's row.
+    async fn settle_game_granting_once(
+        &self,
+        id: i64,
+        from_state: Option<&str>,
+        final_state: &str,
+        grants: [i64; 2],
+        daily_cap: i64,
+        only_if_expired: bool,
+    ) -> anyhow::Result<Option<(GameSession, [i64; 2])>> {
         let mut tx = self.pool().begin().await?;
+        lock_players(&mut tx, id).await?;
         let Some(game) = lock_by_id(&mut tx, id).await?.filter(|s| {
             s.status != DONE && from_state.is_none_or(|state| s.state == state) && (!only_if_expired || s.expired())
         }) else {
@@ -990,6 +1140,42 @@ fn is_unique_violation(error: &anyhow::Error) -> bool {
         .downcast_ref::<sqlx::Error>()
         .and_then(|e| e.as_database_error())
         .is_some_and(|e| e.is_unique_violation())
+}
+
+/// Takes the locks of a session's players (its host, and its guest when it has one) before the session's
+/// row is locked. They are the ones a shell game or a share-or-grab pays; the two never change, so the plain
+/// read is good for the locked one that follows.
+async fn lock_players(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, id: i64) -> anyhow::Result<()> {
+    let row: Option<(i64, Option<i64>)> = sqlx::query_as("SELECT host_id, guest_id FROM game_sessions WHERE id = $1")
+        .bind(id)
+        .fetch_optional(&mut **tx)
+        .await?;
+    if let Some((host, guest)) = row {
+        lock_users(tx, &[Some(host), guest].into_iter().flatten().collect::<Vec<_>>()).await?;
+    }
+    Ok(())
+}
+
+/// Takes the locks of everyone in a lobby, as read now, before its row is locked. Somebody who joins in
+/// between is caught by [`members_locked`].
+async fn lock_members(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, session: i64) -> anyhow::Result<()> {
+    let ids: Vec<(i64,)> = sqlx::query_as("SELECT user_id FROM party_members WHERE session_id = $1")
+        .bind(session)
+        .fetch_all(&mut **tx)
+        .await?;
+    lock_users(tx, &ids.into_iter().map(|(id,)| id).collect::<Vec<_>>()).await
+}
+
+/// The members of a lobby whose row is locked, with the lock of every one of them: those [`lock_members`]
+/// read are held already, and one who joined since is taken without waiting (waiting for a player while
+/// holding the lobby's row would be out of order), or the settle starts over.
+async fn members_locked(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    session: i64,
+) -> anyhow::Result<Vec<PartyMember>> {
+    let list = members(tx, session).await?;
+    try_lock_users(tx, &list.iter().map(|m| m.user_id).collect::<Vec<_>>()).await?;
+    Ok(list)
 }
 
 async fn lock_by_id(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, id: i64) -> anyhow::Result<Option<GameSession>> {

@@ -36,11 +36,12 @@
 //! instead of being waited for (only the rows a cascade deletes along with it can still make a
 //! sweep wait, and [`retry`] covers that).
 //!
-//! Not yet under the rule: the collection, party, board and word games (`collection.rs`, `party.rs`,
-//! `board_games.rs`, `party_games.rs`) lock their drop, session or game row first and get the
-//! players' locks from the trigger on `users` when they pay. Only the beachcomb, which honours a
-//! tombstone, takes its player's lock first. A delete that crosses one of the others can lose a
-//! deadlock; it runs again.
+//! The games follow it too. A move of one player (a grab, a pick, a join, a poll vote) takes that
+//! player's lock before the drop, session or game row; a transaction that pays everyone in a lobby
+//! (a derby, a heist, a storm, a party game's last move) reads the players, takes all their locks,
+//! and only then locks the session; one who joined in between is [`try_lock_users`]ed, never waited for.
+//! The collection games, the party games, the word and party games, the contest and fishing do this;
+//! the board games and the calm games hold no transaction of their own beyond those of `games.rs`.
 //!
 //! # When it happens anyway
 //!

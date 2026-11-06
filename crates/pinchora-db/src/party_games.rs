@@ -2,10 +2,19 @@
 //! running game goes through [`Db::commit_party`], which only applies to the game as the caller saw it
 //! (`seq`), so two clicks, or a click and the clock, can never both move it. A game's payout rides in the
 //! same transaction as the move that ends it.
+//!
+//! The transactions follow the lock rule of the `locks` module: the locks of the players they touch first,
+//! then the game's row, then the writes, and a transaction that loses a deadlock anyway runs again.
 
 use chrono::{DateTime, Utc};
 
-use crate::{Db, economy::ledger, games::DONE, sql_id};
+use crate::{
+    Db,
+    economy::ledger,
+    games::DONE,
+    locks::{lock_users, retry},
+    sql_id,
+};
 
 type Tx<'a> = sqlx::Transaction<'a, sqlx::Postgres>;
 
@@ -218,7 +227,13 @@ pub struct Committed {
 impl Db {
     /// Opens a game with its host as the first player.
     pub async fn create_party(&self, new: NewParty<'_>) -> anyhow::Result<PartyGame> {
+        retry("create_party", || self.create_party_once(new)).await
+    }
+
+    /// One attempt of [`Db::create_party`].
+    async fn create_party_once(&self, new: NewParty<'_>) -> anyhow::Result<PartyGame> {
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(new.host)]).await?;
         let game: PartyGame = sqlx::query_as(concat!(
             "INSERT INTO party_games (kind, guild_id, channel_id, host_id, status, phase, rounds, state, deadline)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING ",
@@ -303,7 +318,20 @@ impl Db {
         max: usize,
         now: DateTime<Utc>,
     ) -> anyhow::Result<PartyJoin> {
+        retry("join_party", || self.join_party_once(id, user, name, max, now)).await
+    }
+
+    /// One attempt of [`Db::join_party`].
+    async fn join_party_once(
+        &self,
+        id: i64,
+        user: u64,
+        name: &str,
+        max: usize,
+        now: DateTime<Utc>,
+    ) -> anyhow::Result<PartyJoin> {
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(user)]).await?;
         let Some(game) = lock_game(&mut tx, id).await? else {
             return Ok(PartyJoin::Closed);
         };
@@ -342,7 +370,13 @@ impl Db {
 
     /// Takes a player out of a lobby.
     pub async fn leave_party(&self, id: i64, user: u64, now: DateTime<Utc>) -> anyhow::Result<PartyLeave> {
+        retry("leave_party", || self.leave_party_once(id, user, now)).await
+    }
+
+    /// One attempt of [`Db::leave_party`].
+    async fn leave_party_once(&self, id: i64, user: u64, now: DateTime<Utc>) -> anyhow::Result<PartyLeave> {
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(user)]).await?;
         let Some(game) = lock_game(&mut tx, id).await? else {
             return Ok(PartyLeave::Closed);
         };
@@ -379,7 +413,32 @@ impl Db {
         expect_seq: i32,
         commit: Commit<'_>,
     ) -> anyhow::Result<Option<Committed>> {
+        retry("commit_party", || self.commit_party_once(id, expect_seq, commit)).await
+    }
+
+    /// One attempt of [`Db::commit_party`]: the locks of every player the move touches (the changes, the
+    /// entries and the ones paid are all in its arguments), then the game's row.
+    async fn commit_party_once(
+        &self,
+        id: i64,
+        expect_seq: i32,
+        commit: Commit<'_>,
+    ) -> anyhow::Result<Option<Committed>> {
         let mut tx = self.pool().begin().await?;
+        let touched: Vec<i64> = commit
+            .players
+            .iter()
+            .map(|change| change.user)
+            .chain(commit.entries.iter().map(|entry| entry.user))
+            .chain(
+                commit
+                    .pay
+                    .iter()
+                    .flat_map(|pay| pay.shells.iter().map(|(user, _)| *user)),
+            )
+            .map(sql_id)
+            .collect();
+        lock_users(&mut tx, &touched).await?;
         let moved: Option<PartyGame> = sqlx::query_as(concat!(
             "UPDATE party_games
              SET phase = $3, round = $4, state = $5, deadline = $6, status = $7, seq = seq + 1
@@ -600,7 +659,19 @@ impl Db {
         side: i64,
         now: DateTime<Utc>,
     ) -> anyhow::Result<PollChoice> {
+        retry("put_poll_vote", || self.put_poll_vote_once(id, voter, side, now)).await
+    }
+
+    /// One attempt of [`Db::put_poll_vote`].
+    async fn put_poll_vote_once(
+        &self,
+        id: i64,
+        voter: u64,
+        side: i64,
+        now: DateTime<Utc>,
+    ) -> anyhow::Result<PollChoice> {
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(voter)]).await?;
         let Some(game) = lock_game(&mut tx, id).await? else {
             return Ok(PollChoice::Closed);
         };
@@ -706,18 +777,32 @@ impl Db {
 
     /// Forgets games that ended before `before`, with their players, entries and votes, and daily
     /// counts from before `day`. Returns how many games went.
+    ///
+    /// A sweep over the rows of many players cannot take their locks first, so it locks the rows it deletes
+    /// with `SKIP LOCKED`: one somebody holds is left for the next sweep (see the `locks` module).
     pub async fn forget_old_parties(&self, before: DateTime<Utc>, day: i32) -> anyhow::Result<u64> {
-        sqlx::query("DELETE FROM party_daily WHERE day < $1")
+        retry("forget_old_parties", || async move {
+            sqlx::query(
+                "WITH old AS MATERIALIZED (
+                     SELECT user_id, day, game FROM party_daily WHERE day < $1 FOR UPDATE SKIP LOCKED)
+                 DELETE FROM party_daily d USING old
+                 WHERE d.user_id = old.user_id AND d.day = old.day AND d.game = old.game",
+            )
             .bind(day)
             .execute(self.pool())
             .await?;
-        Ok(
-            sqlx::query("DELETE FROM party_games WHERE status = 'done' AND created_at < $1")
-                .bind(before)
-                .execute(self.pool())
-                .await?
-                .rows_affected(),
-        )
+            Ok(sqlx::query(
+                "WITH old AS MATERIALIZED (
+                     SELECT id FROM party_games WHERE status = 'done' AND created_at < $1
+                     FOR UPDATE SKIP LOCKED)
+                 DELETE FROM party_games WHERE id IN (SELECT id FROM old)",
+            )
+            .bind(before)
+            .execute(self.pool())
+            .await?
+            .rows_affected())
+        })
+        .await
     }
 }
 

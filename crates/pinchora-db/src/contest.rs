@@ -250,7 +250,9 @@ impl Db {
     }
 
     /// One attempt of closing one week of [`Db::close_contest_weeks`]; false when it was closed
-    /// already.
+    /// already. The winners are read, locked, and read again: a winner who deleted their data
+    /// meanwhile (the delete holds their lock and takes their entry with it) is gone from the second
+    /// reading, so the one who moves up instead is locked in a new round before anything is paid.
     async fn close_contest_week_once(
         &self,
         guild: i64,
@@ -258,63 +260,55 @@ impl Db {
         prizes: &[i64],
         title: &str,
     ) -> anyhow::Result<bool> {
-        let mut tx = self.pool().begin().await?;
-        let standings: Vec<(i64, i64)> = sqlx::query_as(
-            "SELECT e.user_id, count(v.voter_id) FROM contest_entries e
-             LEFT JOIN contest_votes v ON v.guild_id = e.guild_id AND v.week = e.week AND v.entry_id = e.user_id
-             WHERE e.guild_id = $1 AND e.week = $2
-             GROUP BY e.user_id, e.entered_at
-             ORDER BY count(v.voter_id) DESC, e.entered_at, e.user_id",
-        )
-        .bind(guild)
-        .bind(week)
-        .fetch_all(&mut *tx)
-        .await?;
-        let winners: Vec<(i64, i64)> = standings
-            .iter()
-            .copied()
-            .filter(|(_, votes)| *votes > 0)
-            .take(prizes.len())
-            .collect();
-        // The winners' locks before anything is written (see the `locks` module): the standings
-        // of a week that is over do not move.
-        lock_users(&mut tx, &winners.iter().map(|(user, _)| *user).collect::<Vec<i64>>()).await?;
-        let fresh = sqlx::query(
-            "INSERT INTO contest_results (guild_id, week, winner_ids, winner_votes, entries)
-             VALUES ($1, $2, $3, $4, $5) ON CONFLICT (guild_id, week) DO NOTHING",
-        )
-        .bind(guild)
-        .bind(week)
-        .bind(winners.iter().map(|(u, _)| *u).collect::<Vec<i64>>())
-        .bind(winners.iter().map(|(_, v)| *v as i32).collect::<Vec<i32>>())
-        .bind(standings.len() as i32)
-        .execute(&mut *tx)
-        .await?
-        .rows_affected()
-            == 1;
-        if !fresh {
-            return Ok(false);
-        }
-        for (&(user, _), &prize) in winners.iter().zip(prizes) {
-            sqlx::query(
-                "INSERT INTO users (id, credits) VALUES ($1, $2)
-                 ON CONFLICT (id) DO UPDATE SET credits = users.credits + EXCLUDED.credits",
+        for _ in 0..CLOSE_TRIES {
+            let mut tx = self.pool().begin().await?;
+            let (_, seen) = week_standings(&mut tx, guild, week, prizes.len()).await?;
+            // The winners' locks before anything is written (see the `locks` module).
+            let locked: Vec<i64> = seen.iter().map(|(user, _)| *user).collect();
+            lock_users(&mut tx, &locked).await?;
+            let (standings, winners) = week_standings(&mut tx, guild, week, prizes.len()).await?;
+            if !winners.iter().all(|(user, _)| locked.contains(user)) {
+                tx.rollback().await?;
+                continue;
+            }
+            let fresh = sqlx::query(
+                "INSERT INTO contest_results (guild_id, week, winner_ids, winner_votes, entries)
+                 VALUES ($1, $2, $3, $4, $5) ON CONFLICT (guild_id, week) DO NOTHING",
             )
-            .bind(user)
-            .bind(prize)
+            .bind(guild)
+            .bind(week)
+            .bind(winners.iter().map(|(u, _)| *u).collect::<Vec<i64>>())
+            .bind(winners.iter().map(|(_, v)| *v as i32).collect::<Vec<i32>>())
+            .bind(standings.len() as i32)
             .execute(&mut *tx)
-            .await?;
-            crate::economy::ledger(&mut tx, user, prize, "contest_prize").await?;
-        }
-        if let Some(&(first, _)) = winners.first() {
-            sqlx::query("INSERT INTO user_titles (user_id, title_id) VALUES ($1, $2) ON CONFLICT DO NOTHING")
-                .bind(first)
-                .bind(title)
+            .await?
+            .rows_affected()
+                == 1;
+            if !fresh {
+                return Ok(false);
+            }
+            for (&(user, _), &prize) in winners.iter().zip(prizes) {
+                sqlx::query(
+                    "INSERT INTO users (id, credits) VALUES ($1, $2)
+                     ON CONFLICT (id) DO UPDATE SET credits = users.credits + EXCLUDED.credits",
+                )
+                .bind(user)
+                .bind(prize)
                 .execute(&mut *tx)
                 .await?;
+                crate::economy::ledger(&mut tx, user, prize, "contest_prize").await?;
+            }
+            if let Some(&(first, _)) = winners.first() {
+                sqlx::query("INSERT INTO user_titles (user_id, title_id) VALUES ($1, $2) ON CONFLICT DO NOTHING")
+                    .bind(first)
+                    .bind(title)
+                    .execute(&mut *tx)
+                    .await?;
+            }
+            tx.commit().await?;
+            return Ok(true);
         }
-        tx.commit().await?;
-        Ok(true)
+        anyhow::bail!("the entries of week {week} kept changing while it was closed")
     }
 
     /// The newest finished week before `before`.
@@ -328,4 +322,36 @@ impl Db {
         .fetch_optional(self.pool())
         .await?)
     }
+}
+
+/// How many times closing a week starts over because a winner left between reading the standings and
+/// locking them.
+const CLOSE_TRIES: usize = 5;
+
+/// The week's entries by votes (most first, then the earlier entry) as (player, votes), and the top ones
+/// with at least one vote, as many as there are prizes.
+async fn week_standings(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    guild: i64,
+    week: i32,
+    prizes: usize,
+) -> anyhow::Result<(Vec<(i64, i64)>, Vec<(i64, i64)>)> {
+    let all: Vec<(i64, i64)> = sqlx::query_as(
+        "SELECT e.user_id, count(v.voter_id) FROM contest_entries e
+         LEFT JOIN contest_votes v ON v.guild_id = e.guild_id AND v.week = e.week AND v.entry_id = e.user_id
+         WHERE e.guild_id = $1 AND e.week = $2
+         GROUP BY e.user_id, e.entered_at
+         ORDER BY count(v.voter_id) DESC, e.entered_at, e.user_id",
+    )
+    .bind(guild)
+    .bind(week)
+    .fetch_all(&mut **tx)
+    .await?;
+    let winners = all
+        .iter()
+        .copied()
+        .filter(|(_, votes)| *votes > 0)
+        .take(prizes)
+        .collect();
+    Ok((all, winners))
 }
