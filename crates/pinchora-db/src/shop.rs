@@ -1,6 +1,6 @@
 use chrono::NaiveDate;
 
-use crate::{Db, house::add_inventory, sql_id};
+use crate::{Db, house::add_inventory, privacy::lock_users, sql_id};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Currency {
@@ -127,6 +127,8 @@ impl Db {
     ) -> anyhow::Result<VisitOutcome> {
         let (host, guest) = (sql_id(host), sql_id(guest));
         let mut tx = self.pool().begin().await?;
+        // The guest's day (and what a delete of their data left of it) is read and written under their lock.
+        lock_users(&mut tx, &[guest]).await?;
         // `xmax` is 0 on a row this statement inserted and set on one it updated.
         let (fresh,): (bool,) = sqlx::query_as(
             "INSERT INTO visits (host_id, guest_id, day) VALUES ($1, $2, $3)

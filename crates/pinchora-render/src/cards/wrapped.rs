@@ -400,7 +400,7 @@ impl WrappedCard<'_> {
                         if house.visits == 1 { "" } else { "s" }
                     ),
                 );
-                sprite(&mut s, HEART, 548.0, y + 34.0, 6.0, &t.heart, "#ffc2cf");
+                sprite(&mut s, HOUSE, 548.0, y + 34.0, 6.0, &t.gold, "#ffffff");
             }
             None => text(
                 &mut s,

@@ -1,6 +1,6 @@
 use chrono::NaiveDate;
 
-use crate::{Db, house::add_inventory, sql_id};
+use crate::{Db, house::add_inventory, privacy::lock_users, sql_id};
 
 impl Db {
     /// Moves one item from `from`'s inventory to `to`'s. False if `from` has none.
@@ -34,6 +34,7 @@ impl Db {
     pub async fn like_house(&self, host: u64, liker: u64, day: NaiveDate) -> anyhow::Result<Option<i32>> {
         let (host, liker) = (sql_id(host), sql_id(liker));
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[host, liker]).await?;
         // A like given before the player deleted their data is still a like given today.
         let (before,): (bool,) = sqlx::query_as(
             "SELECT EXISTS (SELECT 1 FROM deleted_users WHERE user_id = $1 AND day = $3 AND $2 = ANY(liked))",

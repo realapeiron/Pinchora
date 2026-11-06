@@ -156,6 +156,14 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
          VALUES (1, 1, ARRAY[$1, $2], ARRAY[3, 2], 2)
          ON CONFLICT (guild_id, week) DO UPDATE SET winner_ids = EXCLUDED.winner_ids",
         "INSERT INTO activity_monthly (user_id, month, visits) VALUES ($1, '2025-01-01', 4) ON CONFLICT DO NOTHING",
+        "INSERT INTO fishing_gear (user_id, spot, rod, bait) VALUES ($1, 'shore', 'driftwood_rod', 'worm')",
+        "INSERT INTO user_rods (user_id, rod_id) VALUES ($1, 'reed_rod')",
+        "INSERT INTO user_baits (user_id, bait_id, qty) VALUES ($1, 'worm', 3)",
+        "INSERT INTO fish_bucket (user_id, fish_id, size_cm) VALUES ($1, 'minnow', 4.5)",
+        "INSERT INTO fish_milestones (user_id, species) VALUES ($1, 5)",
+        // ($1 doubles as the server here too.)
+        "INSERT INTO weekly_catch (guild_id, week, user_id, fish_id, size_cm, ratio)
+         VALUES ($1, current_date, $1, 'minnow', 4.5, 1.1)",
         // Somebody else's giveaway the player entered and won ($1 doubles as the server).
         "INSERT INTO giveaways (guild_id, channel_id, host_id, prize, shells, winners, ends_at, status, winner_ids, announced)
          VALUES ($1, 2, $2, 'Hat', 0, 2, now(), 'ended', ARRAY[$1, $2], TRUE)",
@@ -1027,4 +1035,205 @@ async fn deleting_a_host_calls_the_giveaway_off_and_keeps_the_money_in_one_place
         "and nobody is paid from it either"
     );
     db.delete_user_data(entrant, now).await.unwrap();
+}
+
+/// A claim that arrives while a delete of the same player has removed the row and written the
+/// tombstone but not committed yet must wait for it and then find the tombstone: no second payout,
+/// no fresh cooldown, and no error for the player. (Before the player lock, the claim's insert
+/// created a row with no cooldowns under the delete, and the claims that were already running lost
+/// their row and failed.)
+#[tokio::test]
+async fn claims_that_overlap_a_delete_wait_for_it_and_pay_nothing() {
+    let Some(db) = db().await else { return };
+    let [user, other, host, other_host] = ids();
+    let now = micros(Utc::now());
+    let day = now.date_naive();
+    let (reward, cap) = (25, 1);
+
+    // Everything the player can use up in a day, used up.
+    assert!(matches!(
+        db.claim_daily(user).await.unwrap(),
+        DailyOutcome::Claimed { .. }
+    ));
+    for period in [Period::Weekly, Period::Monthly] {
+        assert!(matches!(
+            db.claim_period(user, period, now).await.unwrap(),
+            PeriodOutcome::Claimed { .. }
+        ));
+    }
+    assert!(matches!(
+        db.give_rep(user, other).await.unwrap(),
+        RepOutcome::Given { .. }
+    ));
+    for house in [host, other_host] {
+        sqlx::query("INSERT INTO houses (user_id) VALUES ($1) ON CONFLICT DO NOTHING")
+            .bind(house as i64)
+            .execute(db.pool())
+            .await
+            .unwrap();
+    }
+    assert_eq!(db.like_house(host, user, day).await.unwrap(), Some(1));
+    assert!(matches!(
+        db.record_visit(host, user, day, reward, cap).await.unwrap(),
+        VisitOutcome::Rewarded { reward: 25 }
+    ));
+
+    // The delete is done but for its commit. Claims of every kind start now.
+    let mut delete = db.pool().begin().await.unwrap();
+    Db::delete_user_data_in(&mut delete, user, now).await.unwrap();
+    let daily = tokio::spawn({
+        let db = db.clone();
+        async move { db.claim_daily(user).await }
+    });
+    let weekly = tokio::spawn({
+        let db = db.clone();
+        async move { db.claim_period(user, Period::Weekly, now).await }
+    });
+    let monthly = tokio::spawn({
+        let db = db.clone();
+        async move { db.claim_period(user, Period::Monthly, now).await }
+    });
+    let rep = tokio::spawn({
+        let db = db.clone();
+        async move { db.give_rep(user, other).await }
+    });
+    let like = tokio::spawn({
+        let db = db.clone();
+        async move { db.like_house(host, user, day).await }
+    });
+    let visit = tokio::spawn({
+        let db = db.clone();
+        async move { db.record_visit(other_host, user, day, reward, cap).await }
+    });
+    // A claim-free way to create the row, and the two reads of the tombstone, wait too.
+    let wallet = tokio::spawn({
+        let db = db.clone();
+        async move { db.user(user).await }
+    });
+    let walk = tokio::spawn({
+        let db = db.clone();
+        async move { db.walk_locked_until(user, now).await }
+    });
+    let wordle = tokio::spawn({
+        let db = db.clone();
+        async move { db.daily_wordle_played_before_deleting(user, 20_000).await }
+    });
+    tokio::time::sleep(std::time::Duration::from_millis(600)).await;
+    assert!(
+        !daily.is_finished() && !weekly.is_finished() && !monthly.is_finished(),
+        "the claims wait for the delete instead of running under it"
+    );
+    assert!(!rep.is_finished() && !like.is_finished() && !visit.is_finished());
+    assert!(!wallet.is_finished() && !walk.is_finished() && !wordle.is_finished());
+    delete.commit().await.unwrap();
+
+    let daily = daily.await.unwrap().unwrap();
+    let weekly = weekly.await.unwrap().unwrap();
+    let monthly = monthly.await.unwrap().unwrap();
+    assert!(matches!(daily, DailyOutcome::Cooldown { .. }), "{daily:?}");
+    assert!(matches!(weekly, PeriodOutcome::Cooldown { .. }), "{weekly:?}");
+    assert!(matches!(monthly, PeriodOutcome::Cooldown { .. }), "{monthly:?}");
+    let rep = rep.await.unwrap().unwrap();
+    assert!(matches!(rep, RepOutcome::Cooldown { .. }), "{rep:?}");
+    assert_eq!(like.await.unwrap().unwrap(), None, "today's like was already given");
+    let visit = visit.await.unwrap().unwrap();
+    assert!(
+        matches!(visit, VisitOutcome::Rewarded { reward: 0 }),
+        "the day's paid visit was already used: {visit:?}"
+    );
+    let wallet = wallet.await.unwrap().unwrap();
+    assert!(wallet.last_daily_at.is_some() && wallet.last_rep_at.is_some());
+    assert_eq!(wallet.credits, 0, "they come back with nothing");
+    assert!(walk.await.unwrap().is_ok() && wordle.await.unwrap().is_ok());
+    assert_eq!(db.user(user).await.unwrap().credits, 0);
+    let (paid,): (i64,) = sqlx::query_as("SELECT count(*) FROM credit_ledger WHERE user_id = $1 AND delta > 0")
+        .bind(user as i64)
+        .fetch_one(db.pool())
+        .await
+        .unwrap();
+    assert_eq!(paid, 0, "nothing was paid to the player after the delete");
+    for gone in [user, other, host, other_host] {
+        db.delete_user_data(gone, now).await.unwrap();
+    }
+}
+
+/// The real delete against claims that come in on their own connections across the whole of it, as
+/// separate interactions would: over many rounds nothing is paid beyond the one legitimate claim,
+/// and no claim fails.
+#[tokio::test]
+async fn claims_spread_over_a_delete_pay_nothing_and_never_fail() {
+    let Ok(url) = std::env::var("PINCHORA_TEST_DATABASE_URL") else {
+        return;
+    };
+    let db = Db::connect(&url, 32).await.expect("connect");
+    db.migrate().await.expect("migrate");
+
+    // How long a delete takes on this machine, to spread the claims over a little more than that.
+    let [probe] = ids();
+    db.claim_daily(probe).await.unwrap();
+    let started = std::time::Instant::now();
+    db.delete_user_data(probe, Utc::now()).await.unwrap();
+    let span_us = (started.elapsed().as_micros() as u64 * 3 / 2).max(2_000);
+
+    let (rounds, per_round) = (30, 60u64);
+    let (mut paid, mut shells, mut errors) = (0u32, 0i64, Vec::new());
+    for round in 0..rounds {
+        let [user, other] = ids();
+        let now = Utc::now();
+        db.claim_daily(user).await.unwrap();
+        db.claim_period(user, Period::Weekly, now).await.unwrap();
+        db.claim_period(user, Period::Monthly, now).await.unwrap();
+        db.give_rep(user, other).await.unwrap();
+        let mut claims = Vec::new();
+        for i in 0..per_round {
+            let db = db.clone();
+            let at = std::time::Duration::from_micros(span_us * i / per_round);
+            claims.push(tokio::spawn(async move {
+                tokio::time::sleep(at).await;
+                match i % 4 {
+                    0 => db.claim_daily(user).await.map(|o| match o {
+                        DailyOutcome::Claimed { amount, .. } => amount,
+                        DailyOutcome::Cooldown { .. } => 0,
+                    }),
+                    1 => db
+                        .claim_period(user, Period::Weekly, Utc::now())
+                        .await
+                        .map(|o| match o {
+                            PeriodOutcome::Claimed { amount, .. } => amount,
+                            PeriodOutcome::Cooldown { .. } => 0,
+                        }),
+                    2 => db
+                        .claim_period(user, Period::Monthly, Utc::now())
+                        .await
+                        .map(|o| match o {
+                            PeriodOutcome::Claimed { amount, .. } => amount,
+                            PeriodOutcome::Cooldown { .. } => 0,
+                        }),
+                    _ => db.give_rep(user, other).await.map(|o| match o {
+                        RepOutcome::Given { .. } => 1,
+                        RepOutcome::Cooldown { .. } => 0,
+                    }),
+                }
+            }));
+        }
+        db.delete_user_data(user, Utc::now()).await.unwrap();
+        for claim in claims {
+            match claim.await.unwrap() {
+                Ok(0) => {}
+                Ok(amount) => {
+                    paid += 1;
+                    shells += amount;
+                }
+                Err(error) => errors.push(format!("round {round}: {error}")),
+            }
+        }
+        db.delete_user_data(user, Utc::now()).await.unwrap();
+        db.delete_user_data(other, Utc::now()).await.unwrap();
+    }
+    assert_eq!(
+        (paid, shells),
+        (0, 0),
+        "claims that came in during a delete were paid again"
+    );
+    assert!(errors.is_empty(), "claims failed: {errors:#?}");
 }

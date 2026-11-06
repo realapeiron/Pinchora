@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use pinchora_core::economy::{DAILY_COOLDOWN, REP_COOLDOWN, daily_reward, next_streak};
 
-use crate::{Db, sql_id};
+use crate::{Db, privacy::lock_users, sql_id};
 
 #[derive(Debug, Clone, Copy)]
 pub enum DailyOutcome {
@@ -25,6 +25,7 @@ impl Db {
     pub async fn claim_daily(&self, user_id: u64) -> anyhow::Result<DailyOutcome> {
         let id = sql_id(user_id);
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[id]).await?;
         sqlx::query("INSERT INTO users (id) VALUES ($1) ON CONFLICT (id) DO NOTHING")
             .bind(id)
             .execute(&mut *tx)
@@ -69,6 +70,7 @@ impl Db {
         anyhow::ensure!(amount > 0 && from != to, "invalid transfer");
         let (from, to) = (sql_id(from), sql_id(to));
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[from, to]).await?;
         sqlx::query("INSERT INTO users (id) VALUES ($1), ($2) ON CONFLICT (id) DO NOTHING")
             .bind(from)
             .bind(to)
@@ -106,6 +108,7 @@ impl Db {
         anyhow::ensure!(from != to, "cannot rep yourself");
         let (from, to) = (sql_id(from), sql_id(to));
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[from, to]).await?;
         sqlx::query("INSERT INTO users (id) VALUES ($1), ($2) ON CONFLICT (id) DO NOTHING")
             .bind(from)
             .bind(to)

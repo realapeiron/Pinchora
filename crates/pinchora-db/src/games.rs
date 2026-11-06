@@ -2,7 +2,7 @@
 
 use chrono::{DateTime, Utc};
 
-use crate::{Db, economy::ledger, sql_id};
+use crate::{Db, economy::ledger, privacy::lock_users, sql_id};
 
 pub const PENDING: &str = "pending";
 pub const ACTIVE: &str = "active";
@@ -190,6 +190,7 @@ impl Db {
         }
         if session.bet > 0 {
             let players = [session.host_id, sql_id(guest)];
+            lock_users(&mut tx, &players).await?;
             sqlx::query("INSERT INTO users (id) VALUES ($1), ($2) ON CONFLICT (id) DO NOTHING")
                 .bind(players[0])
                 .bind(players[1])

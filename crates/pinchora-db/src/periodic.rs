@@ -4,7 +4,7 @@
 use chrono::{DateTime, Utc};
 use pinchora_core::economy::Period;
 
-use crate::{Db, sql_id};
+use crate::{Db, privacy::lock_users, sql_id};
 
 /// What a claim of a [`Period`] reward came to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -24,6 +24,7 @@ impl Db {
     pub async fn claim_period(&self, user: u64, period: Period, now: DateTime<Utc>) -> anyhow::Result<PeriodOutcome> {
         let id = sql_id(user);
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[id]).await?;
         sqlx::query("INSERT INTO users (id) VALUES ($1) ON CONFLICT (id) DO NOTHING")
             .bind(id)
             .execute(&mut *tx)

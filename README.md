@@ -90,10 +90,14 @@ cooldown is kept in Redis under the pet's id, which a new pet does not share). A
 returning player the daily, rep, weekly and monthly times back when their row is created again, so every
 reader of those sees them; the paid-visit and like checks, the wordle payout and the pet walk read the
 tombstone themselves. A guest's paid visits of the day outlive a host who deletes their data (the host's id
-on the visit becomes a number from a sequence that is nobody's). Tombstones are dropped after 35 days, by the
-reminder ticker. A test inserts into every table that names a player and one reads the schema, so a new table
-or an id column (`*_by`, id arrays included) must be listed in `crates/pinchora-db/src/privacy.rs` before it can
-ship.
+on the visit becomes a number from a sequence that is nobody's). A delete and a claim of the same player never
+overlap: the delete, the trigger that creates a player's row, and every claim of a per-player limit (daily,
+weekly, monthly, rep, likes, paid visits, the wordle and walk reads) take the player's advisory lock first
+(`lock_user(id)`, in id order when two players are involved) and keep it to the end of their transaction, so a
+claim that lands while a delete is still in flight waits for it and then finds the tombstone. Tombstones are
+dropped after 35 days, by the reminder ticker. A test inserts into every table that names a player and one reads
+the schema, so a new table or an id column (`*_by`, id arrays included) must be listed in
+`crates/pinchora-db/src/privacy.rs` before it can ship.
 
 Voice XP keeps who is in voice in Redis, written from the voice-state events, and one ticker on the
 gateway pays every guild once a minute behind a per-minute lock, so a restart or a second gateway pod

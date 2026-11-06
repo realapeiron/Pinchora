@@ -38,6 +38,12 @@ pub const USER_COLUMNS: &[(&str, &str)] = &[
     ("stall_listings", "seller_id"),
     ("pets", "owner_id"),
     ("fish_book", "user_id"),
+    ("fish_bucket", "user_id"),
+    ("fish_milestones", "user_id"),
+    ("fishing_gear", "user_id"),
+    ("user_baits", "user_id"),
+    ("user_rods", "user_id"),
+    ("weekly_catch", "user_id"),
     ("activity_fish", "user_id"),
     ("user_backgrounds", "user_id"),
     ("user_badges", "user_id"),
@@ -179,17 +185,34 @@ impl Db {
     /// And a tombstone is left (see [`Db::walk_locked_until`] and the `deleted_users` migration) so
     /// that deleting is not a way to get a daily reward, a rep, a wordle reward, paid visits or a
     /// walk a second time: the player comes back with nothing, but not with fresh cooldowns.
+    ///
+    /// The player's lock (see `lock_users`) is taken first and held to the commit, so a claim of
+    /// theirs that overlaps the delete waits and then finds the tombstone instead of a row with no
+    /// cooldowns.
     pub async fn delete_user_data(&self, user: u64, now: DateTime<Utc>) -> anyhow::Result<Deleted> {
+        let mut tx = self.pool().begin().await?;
+        let deleted = Self::delete_user_data_in(&mut tx, user, now).await?;
+        tx.commit().await?;
+        Ok(deleted)
+    }
+
+    /// [`Db::delete_user_data`] up to, but not including, the commit: the caller owns the
+    /// transaction. Tests use it to hold a delete open and watch what overlapping claims do.
+    pub async fn delete_user_data_in(
+        tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+        user: u64,
+        now: DateTime<Utc>,
+    ) -> anyhow::Result<Deleted> {
         let id = sql_id(user);
         let today = now.date_naive();
-        let mut tx = self.pool().begin().await?;
+        lock_users(tx, &[id]).await?;
 
         // Their own claims wait for this to finish, and see the tombstone when they go on.
         sqlx::query("SELECT 1 FROM users WHERE id = $1 FOR UPDATE")
             .bind(id)
-            .fetch_optional(&mut *tx)
+            .fetch_optional(&mut **tx)
             .await?;
-        leave_tombstone(&mut tx, id, now, today).await?;
+        leave_tombstone(tx, id, now, today).await?;
 
         let held: Vec<(i64, i64, Option<i64>, i64)> = sqlx::query_as(
             "SELECT id, host_id, guest_id, bet FROM game_sessions
@@ -197,7 +220,7 @@ impl Db {
              ORDER BY id FOR UPDATE",
         )
         .bind(id)
-        .fetch_all(&mut *tx)
+        .fetch_all(&mut **tx)
         .await?;
         for (_, host, guest, bet) in held {
             let other = if host == id { guest } else { Some(host) };
@@ -205,9 +228,9 @@ impl Db {
                 sqlx::query("UPDATE users SET credits = credits + $2 WHERE id = $1")
                     .bind(other)
                     .bind(bet)
-                    .execute(&mut *tx)
+                    .execute(&mut **tx)
                     .await?;
-                crate::economy::ledger(&mut tx, other, bet, "duel_refund").await?;
+                crate::economy::ledger(tx, other, bet, "duel_refund").await?;
             }
         }
 
@@ -216,7 +239,7 @@ impl Db {
         sqlx::query("UPDATE visits SET host_id = -nextval('deleted_ids') WHERE host_id = $1 AND day >= $2")
             .bind(id)
             .bind(today)
-            .execute(&mut *tx)
+            .execute(&mut **tx)
             .await?;
         // The likes they gave come off the houses they went to.
         sqlx::query(
@@ -225,7 +248,7 @@ impl Db {
              WHERE h.user_id = l.host_id",
         )
         .bind(id)
-        .execute(&mut *tx)
+        .execute(&mut **tx)
         .await?;
 
         for (table, column, edit) in ID_LISTS {
@@ -234,11 +257,17 @@ impl Db {
                 ListEdit::Remove => format!("array_remove({column}, $1)"),
             };
             let sql = format!("UPDATE {table} SET {column} = {value} WHERE $1 = ANY({column})");
-            sqlx::query(sqlx::AssertSqlSafe(sql)).bind(id).execute(&mut *tx).await?;
+            sqlx::query(sqlx::AssertSqlSafe(sql))
+                .bind(id)
+                .execute(&mut **tx)
+                .await?;
         }
         for (table, column) in CLEARED_COLUMNS {
             let sql = format!("UPDATE {table} SET {column} = NULL WHERE {column} = $1");
-            sqlx::query(sqlx::AssertSqlSafe(sql)).bind(id).execute(&mut *tx).await?;
+            sqlx::query(sqlx::AssertSqlSafe(sql))
+                .bind(id)
+                .execute(&mut **tx)
+                .await?;
         }
 
         let mut deleted = Deleted::default();
@@ -247,7 +276,7 @@ impl Db {
             // Table and column names are the constants above.
             let rows = sqlx::query(sqlx::AssertSqlSafe(format!("DELETE FROM {table} WHERE {column} = $1")))
                 .bind(id)
-                .execute(&mut *tx)
+                .execute(&mut **tx)
                 .await?
                 .rows_affected();
             if rows > 0 {
@@ -258,7 +287,6 @@ impl Db {
             }
         }
         deleted.tables = touched.len();
-        tx.commit().await?;
         Ok(deleted)
     }
 
@@ -273,25 +301,51 @@ impl Db {
     }
 
     /// Until when a player who deleted their data may not take a pet for a walk (a walk finds shells,
-    /// and its cooldown is the pet's, not theirs). `None` when nothing holds them back.
+    /// and its cooldown is the pet's, not theirs). `None` when nothing holds them back. A delete of
+    /// theirs that is still under way is waited for, so its tombstone is the one read.
     pub async fn walk_locked_until(&self, user: u64, now: DateTime<Utc>) -> anyhow::Result<Option<DateTime<Utc>>> {
+        let id = sql_id(user);
+        let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[id]).await?;
         let row: Option<(Option<DateTime<Utc>>,)> =
             sqlx::query_as("SELECT walk_until FROM deleted_users WHERE user_id = $1")
-                .bind(sql_id(user))
-                .fetch_optional(self.pool())
+                .bind(id)
+                .fetch_optional(&mut *tx)
                 .await?;
+        tx.commit().await?;
         Ok(row.and_then(|(until,)| until).filter(|until| *until > now))
     }
 
     /// Whether the player had already played the daily wordle of `day` (days since 1970-01-01)
-    /// before deleting their data, so the board they start again pays nothing.
+    /// before deleting their data, so the board they start again pays nothing. Waits for a delete
+    /// of theirs that is still under way, like [`Db::walk_locked_until`].
     pub async fn daily_wordle_played_before_deleting(&self, user: u64, day: i32) -> anyhow::Result<bool> {
+        let id = sql_id(user);
+        let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[id]).await?;
         let row: Option<(Option<i32>,)> = sqlx::query_as("SELECT wordle_day FROM deleted_users WHERE user_id = $1")
-            .bind(sql_id(user))
-            .fetch_optional(self.pool())
+            .bind(id)
+            .fetch_optional(&mut *tx)
             .await?;
+        tx.commit().await?;
         Ok(row.and_then(|(played,)| played).is_some_and(|played| played >= day))
     }
+}
+
+/// Takes the lock of each player in `ids` (the same one `delete_user_data` and the trigger that
+/// creates a player's row take) and keeps it until the transaction ends. Every claim of something
+/// limited per player calls this before it reads what the player has used, and so does a delete
+/// before it writes the tombstone: the two cannot overlap, which is what keeps a claim from
+/// landing between a delete's `DELETE FROM users` and its commit and starting from a row with no
+/// cooldowns. Ids are taken in order, so two transactions that need the same pair cannot deadlock.
+pub(crate) async fn lock_users(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, ids: &[i64]) -> anyhow::Result<()> {
+    let mut ids = ids.to_vec();
+    ids.sort_unstable();
+    ids.dedup();
+    for id in ids {
+        sqlx::query("SELECT lock_user($1)").bind(id).execute(&mut **tx).await?;
+    }
+    Ok(())
 }
 
 /// What the player had used up, as it stands in their rows.
