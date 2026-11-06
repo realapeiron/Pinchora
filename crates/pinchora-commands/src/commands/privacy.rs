@@ -1,4 +1,5 @@
-//! `/privacy`: what other players can see of you, and "delete my data".
+//! `/privacy`: what other players can see of you, whether servers may send you direct messages, and
+//! "delete my data".
 
 use std::str::Split;
 
@@ -22,12 +23,26 @@ use crate::{
 const CONFIRM_SECS: i64 = 120;
 
 #[derive(CommandModel, CreateCommand)]
-#[command(name = "privacy", desc = "Choose what others can see of you, or delete your data")]
-pub struct PrivacyCommand;
+#[command(
+    name = "privacy",
+    desc = "Choose what others can see of you, whether servers may DM you, or delete your data"
+)]
+pub struct PrivacyCommand {
+    /// Let servers' custom commands, auto-responders, level-ups and suggestion updates DM you
+    server_dms: Option<bool>,
+}
 
 impl PrivacyCommand {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
-        let data = panel(cx, cx.author()?.id.get(), "").await?;
+        let user = cx.author()?.id.get();
+        let note = match self.server_dms {
+            Some(on) => {
+                cx.app.db.set_dm_opt_out(user, !on).await?;
+                "Saved."
+            }
+            None => "",
+        };
+        let data = panel(cx, user, note).await?;
         cx.reply(data).await
     }
 }
@@ -82,6 +97,7 @@ fn ephemeral(embed: twilight_model::channel::message::Embed, components: Vec<Com
 /// The panel: where each choice stands, a button for each, and the delete button.
 async fn panel(cx: &Cx, user: u64, note: &str) -> anyhow::Result<InteractionResponseData> {
     let privacy = cx.app.db.privacy(user).await?;
+    let dms_off = cx.app.db.dm_opt_out(user).await?;
     let state = |hidden: bool, on: &str, off: &str| {
         if hidden {
             format!("🔒 {on}")
@@ -95,7 +111,7 @@ async fn panel(cx: &Cx, user: u64, note: &str) -> anyhow::Result<InteractionResp
         description.push_str("\n\n");
     }
     description.push_str(&format!(
-        "**Profile**\n{}\n\n**Global leaderboards**\n{}\n\n**House**\n{}",
+        "**Profile**\n{}\n\n**Global leaderboards**\n{}\n\n**House**\n{}\n\n**Server DMs**\n{}",
         state(
             privacy.hide_profile,
             "Private. Others who look you up with `/profile`, `/rank` or `/balance` see \"This profile is private.\"",
@@ -110,6 +126,11 @@ async fn panel(cx: &Cx, user: u64, note: &str) -> anyhow::Result<InteractionResp
             privacy.hide_house,
             "Hidden. Not offered in `/house visit` and nobody can visit you, not even with your name (stronger than `/house lock`).",
             "Open. Friends find it in `/house visit`, unless you lock it.",
+        ),
+        state(
+            dms_off,
+            "Off. No server's custom commands, auto-responders, level-ups or suggestion updates send you direct messages. Your own `/remind` messages still arrive.",
+            "On. A server's custom commands, auto-responders, level-ups and suggestion updates may send you direct messages.",
         ),
     ));
     let toggle = |label: &str, key: &str, on: bool| {
@@ -162,6 +183,7 @@ async fn panel(cx: &Cx, user: u64, note: &str) -> anyhow::Result<InteractionResp
                     "h",
                     privacy.hide_house,
                 ),
+                toggle(if dms_off { "Server DMs: off" } else { "Server DMs: on" }, "m", dms_off),
             ]),
             row(vec![button("Delete my data…", "pr:d".to_owned(), ButtonStyle::Danger)]),
         ],
@@ -195,7 +217,7 @@ fn confirm(until: i64) -> InteractionResponseData {
     )
 }
 
-/// `pr:t:<p|l|h>` flips a choice, `pr:d` asks for confirmation, `pr:y:<until>` deletes, `pr:n` backs out.
+/// `pr:t:<p|l|h|m>` flips a choice, `pr:d` asks for confirmation, `pr:y:<until>` deletes, `pr:n` backs out.
 pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Result<()> {
     let user = cx.author()?.id.get();
     match args.next() {
@@ -204,6 +226,12 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>) -> anyhow::
                 Some("p") => Hide::Profile,
                 Some("l") => Hide::Leaderboard,
                 Some("h") => Hide::House,
+                Some("m") => {
+                    let off = cx.app.db.dm_opt_out(user).await?;
+                    cx.app.db.set_dm_opt_out(user, !off).await?;
+                    let data = panel(cx, user, "Saved.").await?;
+                    return cx.update(data).await;
+                }
                 _ => return cx.reply_ephemeral("This button has expired.").await,
             };
             let before: Privacy = cx.app.db.privacy(user).await?;

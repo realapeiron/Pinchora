@@ -1,6 +1,7 @@
 //! The dashboard's routes and the headers every response carries.
 
 mod audit_log;
+mod commands;
 mod community;
 mod discord_info;
 mod guilds;
@@ -10,9 +11,11 @@ mod me;
 mod modules;
 mod overview;
 mod preview;
+mod responders;
 mod settings;
 mod static_files;
 mod store;
+mod tag_common;
 
 use std::time::Instant;
 

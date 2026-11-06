@@ -58,6 +58,11 @@ impl ApiError {
         Self::new(StatusCode::UNPROCESSABLE_ENTITY, "limit", message)
     }
 
+    /// 422 `blocked`: the request is fine but something the server runs without cannot do it.
+    pub fn blocked(message: impl Into<String>) -> Self {
+        Self::new(StatusCode::UNPROCESSABLE_ENTITY, "blocked", message)
+    }
+
     pub fn malformed(message: impl Into<String>) -> Self {
         Self::new(StatusCode::BAD_REQUEST, "malformed", message)
     }

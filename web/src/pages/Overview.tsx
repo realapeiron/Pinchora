@@ -6,7 +6,7 @@ import { PixelLink } from "../components/PixelButton";
 import { PixelToggle } from "../components/PixelToggle";
 import { SaveBar } from "../components/SaveBar";
 import { Toast } from "../components/Toast";
-import type { Overview as OverviewData, Settings } from "../lib/api";
+import type { ModuleEntry, Overview as OverviewData, Settings } from "../lib/api";
 import { changedFields, patchOf } from "../lib/draft";
 import { badge } from "../lib/modules";
 import { useNames, useSaveSettings } from "../lib/queries";
@@ -19,43 +19,52 @@ const MODE_WORDS: Record<string, string> = {
   off: "no level-up messages",
 };
 
-/** One tile per settings page: is its main switch on, and the gist of how it is set. */
-function glance(s: Settings) {
+/**
+ * One tile per settings page: is it on, and the gist of how it is set. "On" is the module's own switch (the
+ * grid below shows the same), and a page that also needs a channel is on only once it has one.
+ */
+function glance(s: Settings, modules: ModuleEntry[]) {
+  const switched = (key: string) => modules.find((m) => m.key === key)?.enabled ?? true;
+  const off = "switched off";
   return [
     {
       to: "welcome",
       name: "Welcome cards",
-      on: s.welcome_enabled && s.welcome_channel_id !== null,
-      detail:
-        (s.welcome_channel_id ? `${s.welcome_theme ?? "reef"} theme` : "no channel yet") +
-        (s.join_role_id ? ", join role" : ""),
+      on: switched("welcome") && s.welcome_channel_id !== null,
+      detail: !switched("welcome")
+        ? off
+        : (s.welcome_channel_id ? `${s.welcome_theme ?? "reef"} theme` : "no channel yet") +
+          (s.join_role_id ? ", join role" : ""),
     },
     {
       to: "leveling",
       name: "Leveling",
-      on: s.leveling_enabled,
+      on: switched("leveling"),
       detail: `${MODE_WORDS[s.levelup_mode] ?? s.levelup_mode}${s.voice_xp_enabled ? ", voice XP" : ""}`,
     },
     {
       to: "points",
       name: "Server points",
-      on: s.points_enabled,
+      on: switched("points"),
       detail: `${s.points_emoji} ${s.points_min}–${s.points_max} ${s.points_name} a message`,
     },
     {
       to: "welcome",
       name: "Goodbye",
-      on: s.goodbye_channel_id !== null,
-      detail: s.goodbye_channel_id ? "when someone leaves" : "no channel yet",
+      on: switched("goodbye") && s.goodbye_channel_id !== null,
+      detail: !switched("goodbye") ? off : s.goodbye_channel_id ? "when someone leaves" : "no channel yet",
     },
     {
       to: "log",
       name: "Server log",
-      on: s.log_channel_id !== null,
-      detail:
-        [s.log_members && "joins", s.log_names && "names", s.log_bans && "bans", s.log_voice && "voice"]
-          .filter(Boolean)
-          .join(", ") || "nothing picked",
+      on: switched("log") && s.log_channel_id !== null,
+      detail: !switched("log")
+        ? off
+        : s.log_channel_id === null
+          ? "no channel yet"
+          : [s.log_members && "joins", s.log_names && "names", s.log_bans && "bans", s.log_voice && "voice"]
+              .filter(Boolean)
+              .join(", ") || "nothing picked",
     },
   ];
 }
@@ -121,7 +130,7 @@ export function Overview() {
 
       <Panel title="AT A GLANCE">
         <ul className="glance">
-          {glance(saved).map((tile) => (
+          {glance(saved, data.modules).map((tile) => (
             <li key={tile.name}>
               <Link to={`/g/${guild}/${tile.to}`} className="glance-tile">
                 <span className="glance-name">{tile.name}</span>

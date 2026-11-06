@@ -1,6 +1,8 @@
 import { Navigate, createBrowserRouter } from "react-router";
 
 import { AuditLog } from "./pages/AuditLog";
+import { CommandEditor } from "./pages/CommandEditor";
+import { Commands } from "./pages/Commands";
 import { Community } from "./pages/Community";
 import { GuildLayout } from "./pages/GuildLayout";
 import { MyHouse, VisitHouse } from "./pages/House";
@@ -11,6 +13,8 @@ import { NotFound } from "./pages/NotFound";
 import { Overview } from "./pages/Overview";
 import { Points } from "./pages/Points";
 import { RequireLogin } from "./pages/RequireLogin";
+import { ResponderEditor } from "./pages/ResponderEditor";
+import { Responders } from "./pages/Responders";
 import { ServerLog } from "./pages/ServerLog";
 import { Servers } from "./pages/Servers";
 import { Welcome } from "./pages/Welcome";
@@ -33,6 +37,12 @@ export const router = createBrowserRouter([
       { path: "points", element: <Points /> },
       { path: "log", element: <ServerLog /> },
       { path: "community", element: <Community /> },
+      { path: "commands", element: <Commands /> },
+      { path: "commands/new", element: <CommandEditor /> },
+      { path: "commands/:commandId", element: <CommandEditor /> },
+      { path: "responders", element: <Responders /> },
+      { path: "responders/new", element: <ResponderEditor /> },
+      { path: "responders/:responderId", element: <ResponderEditor /> },
       { path: "audit", element: <AuditLog /> },
       { path: "*", element: <NotFound /> },
     ],

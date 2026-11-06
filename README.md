@@ -31,12 +31,12 @@ Written in Rust and built to run sharded on Kubernetes.
 | `/remind me when daily\|weekly\|monthly\|pet\|trip on\|off` | Opt in to a direct message when a reward is ready again (scheduled when you collect it, or at once for one already counting down), when your active pet needs looking after (hunger, fun or hygiene down to 30, no sooner than two hours after you last looked after it; not while it is away or asleep) or when a pet is home from a trip. One message each time, then it waits for the next claim, trip or care |
 | `/remind me in duration text` | A note to yourself by direct message: `45m`, `2h30m`, `1d 12h` (a minute to a year; units w d h m s). The text is up to 200 characters and loses any mention (users, roles, channels, `@everyone`, `@here`). Up to 25 open at a time |
 | `/remind list`, `/remind cancel id` | Which notifications are on and the reminders still to come, with a menu to cancel one; or cancel by the number the list shows |
-| `/privacy` | Private panel with three switches and a delete button. **Profile** private: others who look you up with `/profile`, `/rank`, `/balance`, `/friends list`, `/partner view`, `/play stats` or `/dex` see "This profile is private." (your own cards are never hidden from you). **Boards** hidden: you are left off the global XP and shell leaderboards, and the ranks of others count without you. **House** hidden: not offered in the `/house visit` shortlist and refused by name too, and its guestbook (notes and visitors) cannot be read or signed and the house cannot be liked (stronger than `/house lock`). A private profile also hides your `/points show` and `/stall view`. **Delete my data…** asks twice (the second button works for two minutes) and removes every row about you in every table: account, house, pets, friends, notes, votes, suggestions, polls, giveaway entries, history and the rest. A running duel's wager goes back to the other player, a derby you host gives its racers their stakes back, a giveaway you host is called off, and likes you gave come off the houses. You come back with nothing but not with fresh waiting times: see below |
+| `/privacy [server_dms]` | Private panel with four switches and a delete button (the `server_dms` option sets the last switch directly). **Profile** private: others who look you up with `/profile`, `/rank`, `/balance`, `/friends list`, `/partner view`, `/play stats` or `/dex` see "This profile is private." (your own cards are never hidden from you). **Boards** hidden: you are left off the global XP and shell leaderboards, and the ranks of others count without you. **House** hidden: not offered in the `/house visit` shortlist and refused by name too, and its guestbook (notes and visitors) cannot be read or signed and the house cannot be liked (stronger than `/house lock`). **Server DMs** off: no server's custom commands, auto-responders, level-ups or suggestion updates send you direct messages (your own `/remind` messages still arrive). A private profile also hides your `/points show` and `/stall view`. **Delete my data…** asks twice (the second button works for two minutes) and removes every row about you in every table: account, house, pets, friends, notes, votes, suggestions, polls, giveaway entries, history and the rest (a server's custom commands you wrote stay, no longer saying who wrote them). A running duel's wager goes back to the other player, a derby you host gives its racers their stakes back, a giveaway you host is called off, and likes you gave come off the houses. You come back with nothing but not with fresh waiting times: see below |
 | `/wrapped [year]` | A tall card with your year: the busiest month and a bar for each, messages, server XP (chat and voice), shells earned (a duel counts what you won, not your own stake), fish caught, houses visited, pets cared for, likes given and received, your favourite fish of the year, the house you visited most (a friend's first) and a fun title. Open from 1 December to 31 January; outside that it says when it opens. Pinchora has counted per month since this feature began, so earlier months of your year only fill in as you play |
 | `/rep user` | One reputation point per day; a server's reputation roles are given the moment the receiver's total reaches them, and the reply says so |
 | `/bio text` | About-me text on the profile card |
 | `/config welcome\|leveling\|show` | Welcome cards and level-up messages. `/config leveling` takes `enabled`, `channel`, `message` (placeholders `{user}` `{level}` `{server}` `{role}`, the last being the reward role just earned, empty when none) and `mode`: `channel` (the level-up channel, else where they chatted), `current` (always where they chatted), `dm` (a direct message; closed DMs are skipped quietly) or `off` (no message, roles still given) (Manage Server) |
-| `/config level-roles add\|remove\|list\|mode\|sync` | Roles given at a level (up to 25): `mode` keeps every role earned or only the highest, `sync` catches up members who already passed a level (one at a time per server, from Discord or the dashboard, with a 5 minute rest after each) (Manage Server) |
+| `/config level-roles add\|remove\|list\|mode\|sync` | Roles given at a level (up to 25): `mode` keeps every role earned or only the highest, `sync` catches up members who already passed a level (one at a time per server, from Discord or the dashboard, with a 5 minute rest after each). Who may set up which role is in "Who may hand out a role" below (Manage Server) |
 | `/config xp multiplier value [channel] [role]` | Scale the server XP and points a channel (text, voice or forum) or category, or a role, earns, from 0 to 5; 0 means no XP, 1 is normal and drops the rule. Threads and forum posts follow their channel, and a channel follows its category unless it has a rule of its own (the nearest rule wins). A channel's multiplier is multiplied by the member's highest role multiplier, a no-XP role always wins, and `@everyone` is a server-wide multiplier. Global XP is never scaled. Up to 50 rules (Manage Server) |
 | `/config xp clear [channel] [role]`, `/config xp show` | Remove one multiplier or all of them, or list the multipliers with the voice settings (Manage Server) |
 | `/config xp voice [enabled] [amount]` | Voice XP, off by default: members in a voice channel with at least one other person earn `amount` (1 to 100, default 10) server XP a minute; nothing while alone (bots do not count), muted and deafened at once, or in the server's AFK channel. Multipliers apply by the voice channel (or its category) and the member's roles; level-ups follow the leveling mode. Switching it on does not see who is already in voice: they start earning when they next join, move, mute or unmute (Manage Server) |
@@ -60,6 +60,9 @@ Written in Rust and built to run sharded on Kubernetes.
 | `/suggest text` | Post a suggestion (up to 1000 characters) in the server's suggestion channel as an embed with 👍 and 👎 buttons showing live counts. One vote per member: press the other side to switch, the same side again to take the vote back. One suggestion per 30 seconds |
 | `/suggestion approve\|deny id [reason]` | Decide on the server's suggestion number `id` (the `#n` in its title): the embed turns green or red with who decided and why, its buttons lock with the final counts, and the author gets a direct message (closed DMs are reported to you, not an error). Decided once (Manage Server) |
 | `/poll question options [duration]` | A question with two to five answers separated by `\|`, up to 80 characters each; `duration` like `30m`, `6h`, `1d` (default 1 day, 1 minute to 14 days). One button per answer plus **Results**; one vote per member, the same switch/take-back rule as suggestions. Votes stay hidden while it runs, **Results** shows a private pixel bar-chart card (drawn at most every 10 seconds per poll), and when it closes the channel gets the final card and a line saying who won (or the tie). Three open polls per member |
+| `/tag name [args]` | Run one of the server's custom commands (see "Custom commands and auto-responders" below). `name` suggests the server's commands as you type, by name and description; `args` (up to 200 characters) are what the command can use as `{args}` and `{1}` to `{5}`. A command can have a cooldown per member, allowed and denied roles and channels, and answer privately; what the people who ran it typed can never ping anyone |
+| `/customcommand create name [description] [private]` | Write a command: a form asks for its reply (up to 2,000 characters, with placeholders), an optional description and cooldown. Names are 1 to 32 characters of `a-z 0-9 - _` and cannot be one of Pinchora's own commands; 50 per server (Manage Server) |
+| `/customcommand edit name [private]`, `delete name`, `list`, `info name` | Change a command's first reply, description and cooldown in the same form (and whether it answers privately), remove it, list them with their use counts (paged), or see how one is set up. Embeds, several replies, actions and role or channel limits are on the dashboard (Manage Server) |
 | `/ping` | Health: how fast the interaction, the database and Redis answer |
 | `/help` | A private guide drawn as pixel cards, one area at a time (profile, shells, shops, house, pets, fishing, friends, duels, puzzles and party games, crowd games and collecting, community tools, three pages of server setup). Every command and subcommand has its own line with what it does, and a star marks the ones for members who can manage the server. Jump to an area with the menu or turn the pages with the buttons; the pages are built from the registered command tree, and a unit test fails until a new command is given an area |
 
@@ -244,7 +247,7 @@ permission gets a private refusal and nothing changes.
 | `/party truthordare [topic]` | Truth or Dare, 2 to 10 players, family friendly (102 truths and 102 dares in six topics): the bot picks whose turn it is, that player presses **Truth** or **Dare**, gets one nobody had lately, and presses **Done** or **Pass** (passing is always fine). The host ends the game with **End game**; a table that lets two turns in a row run out of time ends it by itself. Each player gets one game in `/play stats` when it ends |
 | `/party stop` | Ends the lobby or game running in this channel: its host or a member with Manage Server can. The message is closed, nobody wins and nothing is paid or refunded (the party games have no wagers); the answer is private |
 | `/config partygames [strict]` | How strict the filter on what members type is (Manage Server). The base filter always blocks strong words and slurs (it reads whole words, undoes disguises like `sh!t`, `f u c k`, `f*ck`, `s1ut` and common misspellings, and lets names like Matsushita through); `strict:true` adds mild words and name-calling. Mentions, links, invites and formatting are always taken out of typed text |
-| `/config modules show\|toggle\|channels` | Switch parts of Pinchora off for the whole server (`toggle module enabled`) or per channel (`channels module where [channel] [remove]`: `where` is all channels, only these, or everywhere except these, and the list grows one channel at a time; a category covers the channels and threads under it; up to 50 channels). A switched-off module answers its commands, buttons and forms with a private "This feature is turned off on this server" (or "in this channel"), stops its chat XP, points, critter drops, goodbyes, log lines or timed storms, and `/config`, `/help`, `/ping`, `/privacy` and `/remind` (with their buttons) are never switched off; `/weekly` and `/monthly` belong to the economy module and `/wrapped` to profiles. The 26 modules are listed with `show`, and `module` suggests them as you type (start with part of a name, or of a game such as `chess`); leveling, points, welcome and gambling keep their switch where it already was (`/config leveling`, `points`, `welcome`, `gambling`). The dashboard's Modules page does the same (Manage Server) |
+| `/config modules show\|toggle\|channels` | Switch parts of Pinchora off for the whole server (`toggle module enabled`) or per channel (`channels module where [channel] [remove]`: `where` is all channels, only these, or everywhere except these, and the list grows one channel at a time; a category covers the channels and threads under it; up to 50 channels). A switched-off module answers its commands, buttons and forms with a private "This feature is turned off on this server" (or "in this channel"), stops its chat XP, points, critter drops, goodbyes, log lines or timed storms, and `/config`, `/help`, `/ping`, `/privacy` and `/remind` (with their buttons) are never switched off; `/weekly` and `/monthly` belong to the economy module and `/wrapped` to profiles. The 27 modules are listed with `show`, and `module` suggests them as you type (start with part of a name, or of a game such as `chess`); leveling, points, welcome and gambling keep their switch where it already was (`/config leveling`, `points`, `welcome`, `gambling`). The dashboard's Modules page does the same (Manage Server) |
 | `/config welcome-card` | Design the welcome card (theme, headline, accent colour) with a live preview |
 
 Duel wagers (`bet`, 10 to 500 shells each) are optional and off by default. Nothing is held until the
@@ -332,7 +335,10 @@ badges, titles, trivia, hangman words and the wordle lists) lives in
 1. Create an application at <https://discord.com/developers/applications>, add a bot, and turn
    on **Server Members Intent** (for welcome cards, join roles, goodbye messages and the member, nickname and
    username entries of the server log; or set `PINCHORA_GATEWAY__MEMBER_EVENTS=false`). The server log's ban and voice
-   entries use the non-privileged Guild Moderation and Guild Voice States intents.
+   entries use the non-privileged Guild Moderation and Guild Voice States intents. Keyword auto-responders
+   need the privileged **Message Content Intent** as well: turn it on in the Developer Portal and set
+   `PINCHORA_GATEWAY__MESSAGE_CONTENT=true` (Discord asks for verification above 100 servers); without it the
+   dashboard shows keyword triggers as locked and the bot never reads chat text.
 2. `cp .env.example .env` and fill in the token and application id.
 3. Start everything:
 
@@ -364,11 +370,13 @@ so every bot pod uses it from the next message instead of after its one-minute c
 | Page | What it sets | Same as |
 |---|---|---|
 | Overview | Chat XP on/off, every page's state at a glance, every module's state, the latest changes | `/config show`, `/config leveling enabled`, `/config modules show` |
-| Modules | Each part of Pinchora (leveling, points, welcome, goodbye, log, role panels, store, suggestions, polls, giveaways, profiles, economy, shops, quests, social, houses, plaza, pets, fishing, duels, board and puzzle games, word and trivia games, party games, word party games, critter drops, gambling) on or off, and where it works: all channels, only some, or all but some | `/config modules` |
+| Modules | Each part of Pinchora (leveling, points, welcome, goodbye, log, role panels, store, suggestions, polls, giveaways, custom commands, profiles, economy, shops, quests, social, houses, plaza, pets, fishing, duels, board and puzzle games, word and trivia games, party games, word party games, critter drops, gambling) on or off, and where it works: all channels, only some, or all but some | `/config modules` |
 | Welcome & goodbye | Welcome cards (channel, text with placeholder chips), the card designer (theme, headline, accent, live preview drawn by the bot), join role, goodbye channel and text | `/config welcome`, `welcome-card`, `join-role`, `goodbye` |
 | Leveling | Leveling, where level-ups go, level-up channel and text, voice XP, XP multipliers, level roles (stack/replace, **Sync members**), reputation roles | `/config leveling`, `xp`, `level-roles`, `rep-roles` |
 | Points & store | Points on/off, name, emoji, points per message; roles on sale with price and stock | `/config points`, `/config store` |
 | Server log | Log channel and the four kinds of events | `/config log`, `/config log-events` |
+| Custom commands | The commands members run with `/tag`: name, description, one to five replies (one picked at random), an embed, up to three actions (give, take or toggle a role, give or take server points, send a DM), who may use it and where, a cooldown, a live preview drawn by the bot, import and export as a JSON file | `/customcommand` (replies only) |
+| Auto-responders | Messages the bot sends by itself when a member joins, leaves, levels up, gets or loses a role, or says a keyword (locked unless the bot has the Message Content intent): where it answers, how often, a cooldown, actions, a preview, import and export | |
 | Community | The `/suggest` channel; critter drops on/off and where they land; timed storm surges (on/off, channel, how often) | `/config suggestions`, `/config critters`, `/config surge` |
 | Audit log | Every dashboard change: who, what, before and after (kept 180 days) | |
 
@@ -377,6 +385,67 @@ asks `App::module_access` before every command, button and form (`gate.rs`, with
 command or button prefix has no module) and in the chat, welcome, goodbye, log and voice paths. A server
 that never touched them has everything on (welcome cards and gambling stay off until they are switched on), and a module back to
 "on everywhere" keeps no row in `guild_modules`.
+
+A module switched off pauses what runs on a timer instead of ending it: giveaways and polls whose time passes
+while their module is off (in their server, or in the channel they live in) are neither drawn nor closed and
+post nothing, and end on the next tick after the module is switched back on. Party rounds are different: one
+that is already running when its module is switched off still settles through the janitor, paying out or giving
+back its escrow, so no stake stays locked; the switch only refuses new commands and clicks. Chat XP spends its
+one-minute cooldown only where leveling or points count, chat counts towards quests only while quests are on, and
+a level-up is not posted in a level-up channel the leveling module is off in (it is told where it was earned).
+
+### Who may hand out a role
+
+Every place a server sets up a role for the bot to hand out (level, reputation, store and join roles, role panels,
+custom command and auto-responder actions; on Discord and on the dashboard) checks it with one rule
+(`pinchora_core::settings::grant_refusal`), live when it is saved:
+
+- The bot must be able to give it: not `@everyone`, not managed by an integration, below the bot's highest role.
+- A role with Administrator, Manage Server, Manage Roles, Manage Channels, Manage Webhooks, Ban, Kick or Timeout
+  Members, Mention @everyone or Manage Messages is only set up by the server owner or an administrator.
+- Nobody but the owner sets up a role at or above their own highest role.
+- Custom command and auto-responder actions, which any member sets off whenever they like, never hand out a role
+  with those permissions, whoever wrote them, and the bot checks the role's permissions again each time it gives it.
+  On the dashboard, editing, switching on or overwriting (import) a command or responder checks all its role
+  actions against the person doing it.
+
+The dashboard's role pickers grey out, for the manager looking, what they may not pick, with the reason.
+
+### Custom commands and auto-responders
+
+Servers write their own commands (`/tag name`) and messages the bot sends by itself, on the dashboard or, for
+the simple case, with `/customcommand`. Both go through the same rules (`pinchora_core::tags`: limits, the
+sentences that refuse a draft, the placeholder language) and the same writes, and every change is audited and
+announced to the bot. A server has up to 50 commands and 25 auto-responders; a reply is up to 2,000 characters,
+an embed up to 6,000 in all with at most 25 fields, and a command does at most three actions.
+
+- **Placeholders**: `{user}` (a mention), `{user.name}`, `{user.id}`, `{user.avatar}`, `{server}`,
+  `{server.members}`, `{channel}`, `{random:a|b|c}`, `{points}` and `{points.name}` (after a points action); a
+  command also has `{args}`, `{1}` to `{5}` and `{1:default}`; responders have `{count}` (join), `{level}` and
+  `{role}` (level-up) or `{role}` (role changes). Anything else is left as written, and a value that looks like a
+  placeholder is not filled again.
+- **Safety**: everything goes through one pipeline (`custom.rs`). What a member typed or a name is stripped of
+  mentions and `@everyone`/`@here` before it is placed in a message; with "Allow mentions" off (the default) the
+  mentions the author wrote are dropped too, and only the member it is about is pinged; with it on, the users and
+  roles the author wrote can be pinged, never everyone or here. Markdown in what a member typed, in names and in
+  the server's name is escaped, so `{args}` cannot become a masked link, bold text or a heading. Actions can only
+  move **server points**, never shells; role actions follow "Who may hand out a role" above.
+- **Action limits**: a command or responder with actions waits at least 30 seconds per member between uses (a
+  shorter cooldown is refused, and an older row runs with 30), points actions give one member at most 1,000 a day
+  per server (taking is not capped; the member is told), and direct messages from actions and DM responders stop
+  at 5 an hour per member per server and never reach a member who switched them off with `/privacy`. A role
+  change an auto-responder makes sets off no other role responder: a chain stops after one responder.
+- **Auto-responders**: member join, leave, level-up (from a level on), role gained or lost (a member's first update
+  after a restart only teaches the bot their roles), and keyword (contains, exact, starts with, ends with; never
+  case-sensitive; at most one answer per message). Each has a chance, a cooldown per member, and answers where it
+  happened, in one channel, or by direct message (closed DMs are skipped quietly). Keywords need
+  `PINCHORA_GATEWAY__MESSAGE_CONTENT=true`; without it they cannot be switched on and the dashboard says why.
+- **Modules**: the *Custom commands* module covers `/tag`, `/customcommand` and the responders, and can be kept
+  to channels like any other.
+- **Export and import**: a JSON file (`{"version": 1, "items": [...]}`) per list. An import checks every item like
+  a new one, leaves out roles and channels the other server lacks (and role actions the importer may not set up),
+  skips (or with "replace" overwrites) names that exist, and reports what it refused. The audit entry of a
+  replacing import keeps the commands it overwrote.
 
 The dashboard and the slash commands check values with the same rules (`pinchora_core::settings`): the same
 limits and the same sentences, and a role the bot cannot hand out is greyed out with the reason `/config`
@@ -483,7 +552,7 @@ run the game janitor first close the late games earlier runs left in the databas
 ```
 crates/
   pinchora/           binary: gateway | interactions | web | migrate | register | commands
-  pinchora-core/      config, telemetry, level/economy/cluster math, settings and module rules
+  pinchora-core/      config, telemetry, level/economy/cluster math, settings, module and custom-command rules
   pinchora-db/        PostgreSQL (sqlx) + migrations runner
   pinchora-cache/     Redis: cooldowns, gateway sessions, cross-pod identify queue, invalidation pub/sub
   pinchora-render/    pixel-art cards (SVG → PNG with resvg)

@@ -153,6 +153,10 @@ pub(crate) fn track_message(cx: &Cx, session: i64) {
 /// Ends every game whose clock ran out: duels give the bets back, hangman is closed, a trivia
 /// round reveals its answer. Safe to run on many pods at once; each game ends exactly once.
 /// Returns how many it ended.
+///
+/// A round that is running when its module is switched off is still settled here, exactly as if the
+/// module were on: the escrow it holds (stakes, pots) is paid out or given back, so nothing stays
+/// locked. Switching a module off only refuses new commands and clicks.
 pub async fn sweep(app: &Arc<App>) -> anyhow::Result<usize> {
     let mut ended = 0;
     for session in app.db.late_games(50).await? {

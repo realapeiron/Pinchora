@@ -122,8 +122,18 @@ const AREAS: &[Area] = &[
     },
     Area {
         title: "Community",
-        intro: "Polls, suggestions, giveaways, role buttons and server points.",
-        covers: &["poll", "suggest", "suggestion", "giveaway", "roles", "points", "store"],
+        intro: "Polls, suggestions, giveaways, role buttons, server points and custom commands.",
+        covers: &[
+            "poll",
+            "suggest",
+            "suggestion",
+            "giveaway",
+            "roles",
+            "points",
+            "store",
+            "tag",
+            "customcommand",
+        ],
     },
     Area {
         title: "Server setup",

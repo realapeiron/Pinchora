@@ -3,7 +3,7 @@
 
 use std::sync::Arc;
 
-use pinchora_core::leveling::LevelUpMode;
+use pinchora_core::{leveling::LevelUpMode, modules::Module};
 use pinchora_db::GuildSettings;
 use pinchora_render::{LevelUpCard, Theme, placeholder_avatar};
 use twilight_model::{
@@ -15,6 +15,7 @@ use twilight_model::{
 
 use crate::{
     App,
+    auto::{self, LevelUpEvent},
     commands::customize,
     events::DEFAULT_LEVELUP,
     roles,
@@ -50,11 +51,30 @@ pub(crate) async fn level_up(app: &Arc<App>, settings: &GuildSettings, up: Level
         here,
     } = up;
     let earned = roles::level_up_roles(app, guild, user, after, held, settings.level_roles_stack).await;
+    // Auto-responders for a level-up answer whatever the level-up mode says, and never hold it up.
+    if let Some(author) = author {
+        let event = LevelUpEvent {
+            guild,
+            user: author.clone(),
+            nick: nick.map(str::to_owned),
+            held: held.to_vec(),
+            level: after,
+            role: earned,
+            here: here.get(),
+        };
+        let task_app = app.clone();
+        app.spawn(async move { auto::leveled_up(&task_app, event).await });
+    }
     let mode = LevelUpMode::parse(&settings.levelup_mode);
     let channel = match mode {
         LevelUpMode::Off => return Ok(()),
         LevelUpMode::Current => here,
-        LevelUpMode::Channel => settings.levelup_channel_id.map_or(here, |id| Id::new(id as u64)),
+        // The leveling module can be kept to some channels, and the bot does not post where it is off:
+        // a level-up channel its rule leaves out gets nothing, and the level-up is told where it was earned.
+        LevelUpMode::Channel => match settings.levelup_channel_id {
+            Some(id) if app.module_allowed(guild, Some(id as u64), Module::Leveling).await => Id::new(id as u64),
+            _ => here,
+        },
         LevelUpMode::Dm => match private_channel(app, user).await {
             Some(channel) => channel,
             None => return Ok(()),
@@ -133,8 +153,24 @@ pub(crate) async fn level_up(app: &Arc<App>, settings: &GuildSettings, up: Level
     Ok(())
 }
 
-/// The direct message channel with `user`, or `None` when Discord will not open one.
+/// The direct message channel with `user`, or `None` when they switched direct messages from servers off
+/// (`/privacy`) or Discord will not open one. Every message a server sets up to send by DM comes through here.
 pub(crate) async fn private_channel(app: &App, user: u64) -> Option<Id<ChannelMarker>> {
+    match app.db.dm_opt_out(user).await {
+        Ok(false) => {}
+        Ok(true) => return None,
+        Err(error) => {
+            tracing::warn!(user, %error, "could not read the direct message choice");
+            return None;
+        }
+    }
+    open_private_channel(app, user).await
+}
+
+/// The direct message channel with `user`, whatever they chose about servers' messages: for what the
+/// player asked for themselves (`/remind`), which is not a server's to switch off. `None` when Discord
+/// will not open one.
+pub(crate) async fn open_private_channel(app: &App, user: u64) -> Option<Id<ChannelMarker>> {
     let opened = async {
         anyhow::Ok(
             app.http

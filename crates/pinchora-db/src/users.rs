@@ -98,6 +98,28 @@ impl Db {
         Ok(())
     }
 
+    /// Whether the member switched off direct messages from servers (`/privacy`).
+    pub async fn dm_opt_out(&self, id: u64) -> anyhow::Result<bool> {
+        let row: Option<(bool,)> = sqlx::query_as("SELECT dm_opt_out FROM users WHERE id = $1")
+            .bind(sql_id(id))
+            .fetch_optional(self.pool())
+            .await?;
+        Ok(row.is_some_and(|(off,)| off))
+    }
+
+    /// Switches direct messages from servers off (`true`) or back on.
+    pub async fn set_dm_opt_out(&self, id: u64, off: bool) -> anyhow::Result<()> {
+        sqlx::query(
+            "INSERT INTO users (id, dm_opt_out) VALUES ($1, $2)
+             ON CONFLICT (id) DO UPDATE SET dm_opt_out = EXCLUDED.dm_opt_out",
+        )
+        .bind(sql_id(id))
+        .bind(off)
+        .execute(self.pool())
+        .await?;
+        Ok(())
+    }
+
     /// The saved character code, or `None` if the player never designed one (or is unknown).
     pub async fn character(&self, id: u64) -> anyhow::Result<Option<String>> {
         let row: Option<(Option<String>,)> = sqlx::query_as("SELECT avatar FROM users WHERE id = $1")

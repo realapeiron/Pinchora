@@ -35,7 +35,9 @@ test("switch a part off, keep another to one channel, and see it on the overview
   await shot(page, "modules-before", true);
 
   await page.getByRole("switch", { name: "Pets", exact: true }).click();
-  await expect(row(page, "pets").locator(".badge")).toHaveText("OFF");
+  // The switch says on or off; a badge appears only for what it cannot say (kept to some channels).
+  await expect(page.getByRole("switch", { name: "Pets", exact: true })).toContainText("OFF");
+  await expect(row(page, "pets").locator(".badge")).toHaveCount(0);
 
   // A list needs a channel before it can be saved.
   const fishing = row(page, "fishing");

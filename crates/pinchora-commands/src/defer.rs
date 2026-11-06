@@ -37,6 +37,9 @@ const PRIVATE: &[&str] = &[
     "character",
     "config",
     "crabpot",
+    "customcommand delete",
+    "customcommand info",
+    "customcommand list",
     "customize",
     "dex",
     "fish gear",
@@ -72,6 +75,9 @@ const PRIVATE: &[&str] = &[
     "suggestion",
 ];
 
+/// Slash commands that answer with a form, which only works as the first answer: never deferred.
+const OPENS_FORM: &[&str] = &["customcommand create", "customcommand edit"];
+
 /// Component clicks that may answer with a modal, as `prefix:action` of the custom id. The simulator
 /// checks that every modal it sees opened comes from one of these.
 const OPENS_MODAL: &[&str] = &[
@@ -85,6 +91,9 @@ impl Deferral {
             return Self::Never;
         }
         match &interaction.data {
+            Some(InteractionData::ApplicationCommand(command)) if covers(OPENS_FORM, &command_path(command), ' ') => {
+                Self::Never
+            }
             Some(InteractionData::ApplicationCommand(command)) if covers(PRIVATE, &command_path(command), ' ') => {
                 Self::Private
             }
@@ -185,6 +194,23 @@ mod tests {
             assert!(
                 paths.iter().any(|path| covers(&[entry], path, ' ')),
                 "`{entry}` is not a command, so it can never match"
+            );
+        }
+    }
+
+    #[test]
+    fn every_form_entry_names_a_command_and_is_not_also_private() {
+        let paths = registered();
+        for entry in OPENS_FORM {
+            assert!(
+                paths.iter().any(|path| covers(&[entry], path, ' ')),
+                "`{entry}` is not a command, so it can never match"
+            );
+            assert!(
+                !PRIVATE
+                    .iter()
+                    .any(|p| covers(&[p], entry, ' ') || covers(&[entry], p, ' ')),
+                "`{entry}` opens a form, so it cannot be deferred privately"
             );
         }
     }

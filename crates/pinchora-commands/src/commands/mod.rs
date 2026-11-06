@@ -5,6 +5,7 @@ pub(crate) mod collection;
 pub(crate) mod config;
 pub(crate) mod connect4;
 pub(crate) mod contest;
+pub(crate) mod customcommand;
 pub(crate) mod customize;
 mod daily;
 pub(crate) mod decorate;
@@ -52,6 +53,7 @@ pub(crate) mod stall;
 pub(crate) mod store;
 pub(crate) mod suggest;
 pub(crate) mod surge;
+pub(crate) mod tag;
 pub(crate) mod trivia;
 mod undo;
 mod utilities;
@@ -135,4 +137,6 @@ commands!(
     collection::drops::CritterDrop,
     surge::SurgeCommand,
     party_games::PartyCommand,
+    tag::Tag,
+    customcommand::CustomCommand,
 );

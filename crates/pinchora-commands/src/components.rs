@@ -3,10 +3,10 @@ use twilight_model::application::interaction::modal::ModalInteractionComponent;
 use crate::{
     Cx,
     commands::{
-        board, character, collection, connect4, contest, customize, decorate, derby, duel, fish, friends, gift,
-        giveaway, guestbook, hangman, heist, help, house, interact, leaderboard, partner, party_games, pet, plaza,
-        poll, privacy, quests, remind, role_panels, rps, share, shells, shop, stall, store, suggest, surge, trivia,
-        wordle,
+        board, character, collection, connect4, contest, customcommand, customize, decorate, derby, duel, fish,
+        friends, gift, giveaway, guestbook, hangman, heist, help, house, interact, leaderboard, partner, party_games,
+        pet, plaza, poll, privacy, quests, remind, role_panels, rps, share, shells, shop, stall, store, suggest, surge,
+        trivia, wordle,
     },
 };
 
@@ -73,6 +73,7 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
         Some("pr") => privacy::on_component(cx, parts).await,
         Some("gw") => giveaway::on_component(cx, parts).await,
         Some("sg") => suggest::on_vote(cx, parts).await,
+        Some("tg") => customcommand::on_page(cx, parts).await,
         Some("pl") => poll::on_component(cx, parts).await,
         Some("cd") => collection::drops::on_grab(cx, parts).await,
         Some("mb") => collection::drops::on_open(cx, parts).await,
@@ -99,6 +100,7 @@ pub(crate) async fn dispatch_modal(cx: &Cx, custom_id: &str, fields: &[(String, 
         Some("gb") => guestbook::on_modal(cx, parts, fields).await,
         Some("cs") => customize::on_style_modal(cx, parts, fields).await,
         Some("ca") => character::on_modal(cx, parts, fields).await,
+        Some("cm") => customcommand::on_modal(cx, parts, fields).await,
         Some("pz") if parts.next() == Some("m") => board::picross::on_modal(cx, parts, fields).await,
         Some(prefix @ ("hl" | "ac" | "cn" | "wx")) => party_games::on_modal(cx, prefix, parts, fields).await,
         Some("wo") if parts.next() == Some("m") => {

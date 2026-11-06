@@ -19,7 +19,7 @@ const WALK_LOCK: Duration = Duration::minutes(45);
 /// Every column that holds a player's id, as (table, column), children before the tables they
 /// point at. "Delete my data" removes the player's rows from all of them, and a test reads the
 /// schema to make sure a table added by a later migration is listed here (or in
-/// [`OTHER_TABLES`], [`ID_LISTS`], [`CLEARED_COLUMNS`], [`DAILY_LIMITS`] or [`ANONYMISED`]) before it
+/// [`OTHER_TABLES`], [`ID_LISTS`], [`CLEARED_COLUMNS`], [`DAILY_LIMITS`], [`ANONYMISED`] or [`ZEROED_COLUMNS`]) before it
 /// can ship.
 pub const USER_COLUMNS: &[(&str, &str)] = &[
     ("placements", "user_id"),
@@ -134,6 +134,11 @@ pub const ANONYMISED: &[(&str, &str, &str)] = &[("dashboard_audit", "actor_id", 
 
 /// The name a deleted player leaves on the records of [`ANONYMISED`].
 pub const DELETED_NAME: &str = "Deleted user";
+
+/// A server's own records that remember who made them, as (table, id column) and nothing else about
+/// the player: the record stays (a server's custom commands outlive the manager who wrote them) and
+/// the id becomes 0.
+pub const ZEROED_COLUMNS: &[(&str, &str)] = &[("custom_commands", "created_by"), ("custom_responders", "created_by")];
 
 /// Tables that belong to no player: server settings and shared stock.
 pub const OTHER_TABLES: &[&str] = &[
@@ -332,6 +337,14 @@ impl Db {
             sqlx::query(sqlx::AssertSqlSafe(sql))
                 .bind(id)
                 .bind(DELETED_NAME)
+                .execute(&mut **tx)
+                .await?;
+        }
+
+        for (table, column) in ZEROED_COLUMNS {
+            let sql = format!("UPDATE {table} SET {column} = 0 WHERE {column} = $1");
+            sqlx::query(sqlx::AssertSqlSafe(sql))
+                .bind(id)
                 .execute(&mut **tx)
                 .await?;
         }

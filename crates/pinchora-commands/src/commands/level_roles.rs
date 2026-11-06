@@ -93,7 +93,7 @@ impl ConfigLevelRoles {
                     Ok(level) => level,
                     Err(error) => return cx.reply_ephemeral(error.message).await,
                 };
-                if let Some(why) = roles::unassignable(&cx.app, guild, &c.role).await {
+                if let Some(why) = roles::unassignable(cx, guild, &c.role).await {
                     return cx.reply_ephemeral(why).await;
                 }
                 if !db.add_level_role(guild, level, c.role.id.get()).await? {
