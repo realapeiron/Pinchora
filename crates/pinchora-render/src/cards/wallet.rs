@@ -1,5 +1,7 @@
 use std::fmt::Write;
 
+use pinchora_core::{i18n::Lang, t};
+
 use super::{Backdrop, PIXEL, SANS, avatar_frame, backdrop, text};
 use crate::{
     Theme,
@@ -8,13 +10,15 @@ use crate::{
 
 /// 900×300 wallet card.
 pub struct WalletCard<'a> {
+    /// The language of the labels; the timers come translated.
+    pub lang: Lang,
     pub display_name: &'a str,
     /// PNG, 136×136.
     pub avatar_png: &'a [u8],
     pub shells: i64,
     pub pearls: i64,
     pub streak: i32,
-    /// How long until each reward can be collected again, e.g. `3h 20m`, or `ready`.
+    /// How long until each reward can be collected again, e.g. `3h 20m`, or `time.ready` in [`Self::lang`].
     pub next_daily: &'a str,
     pub next_weekly: &'a str,
     pub next_monthly: &'a str,
@@ -57,11 +61,29 @@ impl WalletCard<'_> {
             "middle",
             &escape(&truncate(self.display_name, 14)),
         );
-        text(&mut s, 108.0, 250.0, 13.0, PIXEL, false, &t.muted, "middle", "WALLET");
+        text(
+            &mut s,
+            108.0,
+            250.0,
+            13.0,
+            PIXEL,
+            false,
+            &t.muted,
+            "middle",
+            &t!(self.lang, "card.wallet"),
+        );
 
         let big = [
-            ("SHELLS", compact(self.shells), Some((SHELL, t.gold.as_str()))),
-            ("PEARLS", compact(self.pearls), Some((STAR, "#8fd3ff"))),
+            (
+                t!(self.lang, "card.shells"),
+                compact(self.shells),
+                Some((SHELL, t.gold.as_str())),
+            ),
+            (
+                t!(self.lang, "card.pearls"),
+                compact(self.pearls),
+                Some((STAR, "#8fd3ff")),
+            ),
         ];
         for (i, (label, value, icon)) in big.iter().enumerate() {
             let x = 216.0 + i as f32 * 336.0;
@@ -85,11 +107,14 @@ impl WalletCard<'_> {
         // Four tiles: the three counts, and the time left on each reward next to one another.
         let small = [
             (
-                "STREAK",
-                format!("{} DAY{}", self.streak.max(0), if self.streak == 1 { "" } else { "S" }),
+                t!(self.lang, "card.streak"),
+                t!(self.lang, "card.days", count = self.streak.max(0)),
             ),
-            ("PETS", self.pets.to_string()),
-            ("FISH BOOK", format!("{}/{}", self.fish_found, self.fish_total)),
+            (t!(self.lang, "card.pets"), self.pets.to_string()),
+            (
+                t!(self.lang, "card.fish-book"),
+                format!("{}/{}", self.fish_found, self.fish_total),
+            ),
         ];
         let widths = [136.0, 88.0, 120.0];
         let mut x = 216.0;
@@ -113,17 +138,14 @@ impl WalletCard<'_> {
         let width = 868.0 - x;
         t.panel(&mut s, x, 160.0, width, 104.0, 4.0);
         let timers = [
-            ("DAILY", self.next_daily),
-            ("WEEKLY", self.next_weekly),
-            ("MONTHLY", self.next_monthly),
+            (t!(self.lang, "card.daily"), self.next_daily),
+            (t!(self.lang, "card.weekly"), self.next_weekly),
+            (t!(self.lang, "card.monthly"), self.next_monthly),
         ];
+        let ready = t!(self.lang, "time.ready");
         for (i, (label, value)) in timers.iter().enumerate() {
             let y = 189.0 + i as f32 * 28.0;
-            let color = if value.eq_ignore_ascii_case("ready") {
-                &t.mint
-            } else {
-                &t.ink
-            };
+            let color = if *value == ready { &t.mint } else { &t.ink };
             text(&mut s, x + 16.0, y, 13.0, PIXEL, false, &t.muted, "start", label);
             text(
                 &mut s,

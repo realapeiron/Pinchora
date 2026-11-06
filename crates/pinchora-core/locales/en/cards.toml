@@ -1,0 +1,29 @@
+# Labels drawn on the pixel cards. They are drawn in capitals in a pixel font: keep them short.
+
+[card]
+level = "LEVEL"
+rank = "RANK"
+experience = "EXPERIENCE"
+about-me = "ABOUT ME"
+no-bio = "No bio yet. Set one with /bio."
+shells = "SHELLS"
+pearls = "PEARLS"
+global = "GLOBAL"
+server = "SERVER"
+rep = "{count} REP"
+total-xp = "TOTAL {xp} XP"
+next-role = "Next role: {role} at level {level}"
+wallet = "WALLET"
+streak = "STREAK"
+pets = "PETS"
+fish-book = "FISH BOOK"
+daily = "DAILY"
+weekly = "WEEKLY"
+monthly = "MONTHLY"
+help-title = "PINCHORA HELP"
+page = "PAGE {page}/{pages}"
+needs-manage-server = "NEEDS MANAGE SERVER"
+
+[card.days]
+one = "{count} DAY"
+other = "{count} DAYS"

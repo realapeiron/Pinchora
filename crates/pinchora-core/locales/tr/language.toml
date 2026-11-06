@@ -1,0 +1,7 @@
+# /language and /config language.
+
+[language]
+set = "Tamam, bundan sonra her sunucuda seninle **{language}** konuşacağım."
+auto = "Tamam, yeniden Discord dilini takip edeceğim (şu an **{language}**)."
+server-set = "Bu sunucunun varsayılan dili artık **{language}**. Karşılama kartları, seviye atlamaları ve çekilişler gibi kimseye özel olmayan mesajlarda kullanılır; herkes yine kendi dilinde yanıt alır."
+server-auto = "Bu sunucunun artık varsayılan bir dili yok: o mesajlar İngilizce gidecek."

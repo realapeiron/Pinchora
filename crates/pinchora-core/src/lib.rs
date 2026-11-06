@@ -1,6 +1,7 @@
 pub mod cluster;
 pub mod config;
 pub mod economy;
+pub mod i18n;
 pub mod items;
 pub mod leveling;
 pub mod modules;

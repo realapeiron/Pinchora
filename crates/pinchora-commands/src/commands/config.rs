@@ -1,4 +1,4 @@
-use pinchora_core::{leveling::LevelUpMode, settings};
+use pinchora_core::{leveling::LevelUpMode, settings, t};
 use pinchora_db::GuildSettings;
 use pinchora_render::{Theme, WelcomeCard};
 use twilight_interactions::command::{CommandModel, CommandOption, CreateCommand, CreateOption};
@@ -16,6 +16,7 @@ use crate::{
     App, Cx,
     commands::{
         collection::settings::{ConfigCritters, critters_summary},
+        language::ConfigLanguage,
         level_roles::ConfigLevelRoles,
         modules::ConfigModules,
         party::ConfigGambling,
@@ -85,6 +86,8 @@ pub enum ConfigCommand {
     PartyGames(ConfigPartyGames),
     #[command(name = "modules")]
     Modules(ConfigModules),
+    #[command(name = "language")]
+    Language(ConfigLanguage),
 }
 
 #[derive(CommandOption, CreateOption, Clone, Copy)]
@@ -201,14 +204,12 @@ pub async fn welcome_card_png(
 impl ConfigCommand {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
         let Some(guild) = cx.guild_id() else {
-            return cx.reply_ephemeral("Settings only exist inside a server.").await;
+            return cx.reply_ephemeral(t!(cx.lang(), "config.guild-only")).await;
         };
         // A server can override who sees `/config` in Discord's integration settings, so the
         // permission is checked here too, for every subcommand.
         if !cx.can_manage_guild() {
-            return cx
-                .reply_ephemeral("You need the Manage Server permission to change this server's settings.")
-                .await;
+            return cx.reply_ephemeral(t!(cx.lang(), "config.needs-manage-server")).await;
         }
         let settings = match self {
             Self::Welcome(c) => {
@@ -243,6 +244,7 @@ impl ConfigCommand {
             Self::Surge(c) => return c.run(cx, guild).await,
             Self::PartyGames(c) => return c.run(cx, guild).await,
             Self::Modules(c) => return c.run(cx, guild).await,
+            Self::Language(c) => return c.run(cx, guild).await,
             Self::Points(c) => match c.apply(&cx.app.db, guild).await? {
                 Ok(settings) => settings,
                 Err(reason) => return cx.reply_ephemeral(reason).await,
@@ -268,6 +270,13 @@ impl ConfigCommand {
         embed
             .fields
             .push(EmbedFieldBuilder::new("Party games", party_summary(cx.app.db.party_strict(guild).await?)).build());
+        let language = match cx.app.guild_lang_choice(guild).await {
+            Some(lang) => lang.native_name().to_owned(),
+            None => t!(cx.lang(), "config.language-default"),
+        };
+        embed
+            .fields
+            .push(EmbedFieldBuilder::new(t!(cx.lang(), "config.language-field"), language).build());
         cx.reply(InteractionResponseData {
             embeds: Some(vec![embed]),
             flags: Some(MessageFlags::EPHEMERAL),

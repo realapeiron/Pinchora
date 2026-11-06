@@ -10,6 +10,7 @@ mod game;
 mod gate;
 mod house_view;
 mod invalidations;
+mod lang;
 mod leveling;
 mod responder;
 mod roles;
@@ -69,10 +70,12 @@ pub async fn handle_gateway_interaction(app: Arc<App>, interaction: Interaction,
 pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, responder: Arc<Responder>) {
     let started = Instant::now();
     let data = interaction.data.take();
+    let lang = lang::resolve(&app, &interaction).await;
     let cx = Cx {
         app,
         interaction,
         responder,
+        lang,
     };
     // Typing into an option that suggests: only suggestions go back, and the command itself neither
     // runs nor passes a module's switch.
@@ -118,8 +121,6 @@ pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, res
         .record(started.elapsed().as_secs_f64());
     if let Err(error) = result {
         tracing::error!(name = %label, error = ?error, "interaction failed");
-        let _ = cx
-            .reply_ephemeral("Something went wrong on our side. Please try again in a moment.")
-            .await;
+        let _ = cx.reply_ephemeral(pinchora_core::t!(cx.lang(), "error.generic")).await;
     }
 }

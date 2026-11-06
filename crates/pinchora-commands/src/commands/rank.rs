@@ -1,4 +1,4 @@
-use pinchora_core::leveling;
+use pinchora_core::{leveling, t};
 use pinchora_game::Content;
 use pinchora_render::{NextRole, RankCard};
 use twilight_interactions::command::{CommandModel, CreateCommand, ResolvedUser};
@@ -23,14 +23,14 @@ pub struct Rank {
 impl Rank {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
         let Some(guild) = cx.guild_id() else {
-            return cx.reply_ephemeral("Ranks only exist inside a server.").await;
+            return cx.reply_ephemeral(t!(cx.lang(), "rank.guild-only")).await;
         };
         let (user, name) = match &self.user {
             Some(r) => (r.resolved.clone(), resolved_display_name(r)),
             None => (cx.author()?.clone(), cx.author_display_name()),
         };
         if user.bot {
-            return cx.reply_ephemeral("Bots don't earn XP.").await;
+            return cx.reply_ephemeral(t!(cx.lang(), "error.bot-no-xp")).await;
         }
         if privacy::private_profile(cx, user.id.get()).await? {
             return Ok(());
@@ -49,10 +49,12 @@ impl Rank {
         let theme = theme(&row, background);
         let title = title_name(&row);
         let username = user.name.clone();
+        let lang = cx.lang();
         let png = cx
             .app
             .render(move |r| {
                 r.rank_card(&RankCard {
+                    lang,
                     display_name: &name,
                     title,
                     username: &username,

@@ -98,6 +98,7 @@ fn main() -> anyhow::Result<()> {
 
     let started = std::time::Instant::now();
     let profile = r.profile_card(&ProfileCard {
+        lang: pinchora_core::i18n::Lang::En,
         display_name: "Captain Pinch",
         title: None,
         username: "captain.pinch",
@@ -177,6 +178,7 @@ fn main() -> anyhow::Result<()> {
     let themed = Theme::reef().with_accent(Some(0x8eddd1));
     let profile_with = |name: &str, backdrop: Option<Backdrop<'_>>, badges: &[BadgeIcon<'_>], theme: Theme| {
         let png = r.profile_card(&ProfileCard {
+            lang: pinchora_core::i18n::Lang::En,
             display_name: "Captain Pinch",
             title: Some("Tide Angler"),
             username: "captain.pinch",
@@ -266,6 +268,7 @@ fn main() -> anyhow::Result<()> {
     )?;
 
     let rank = r.rank_card(&RankCard {
+        lang: pinchora_core::i18n::Lang::En,
         display_name: "Captain Pinch",
         title: Some("Tide Angler"),
         username: "captain.pinch",
@@ -285,6 +288,7 @@ fn main() -> anyhow::Result<()> {
 
     let rank_card = |backdrop: Option<Backdrop<'_>>, theme: Theme| {
         r.rank_card(&RankCard {
+            lang: pinchora_core::i18n::Lang::En,
             display_name: "Captain Pinch",
             title: None,
             username: "captain.pinch",
@@ -308,6 +312,7 @@ fn main() -> anyhow::Result<()> {
 
     let wallet_card = |backdrop: Option<Backdrop<'_>>, theme: Theme| {
         r.wallet_card(&WalletCard {
+            lang: pinchora_core::i18n::Lang::En,
             display_name: "Captain Pinch",
             avatar_png: &placeholder_avatar(7, WalletCard::AVATAR_SIZE),
             shells: 1_284_500,
@@ -575,6 +580,7 @@ fn main() -> anyhow::Result<()> {
                     theme: Theme|
      -> anyhow::Result<Vec<u8>> {
         r.profile_card(&ProfileCard {
+            lang: pinchora_core::i18n::Lang::En,
             display_name: name,
             title: Some("Lighthouse Keeper"),
             username: "bartholomew.fizzlebottom.smythe.99",

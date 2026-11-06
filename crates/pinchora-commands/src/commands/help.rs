@@ -2,8 +2,9 @@
 //! from the registered command tree, so a command added later shows up in its area by itself; a unit
 //! test fails until a new command is given one.
 
-use std::{str::Split, sync::LazyLock};
+use std::{collections::HashMap, str::Split, sync::LazyLock};
 
+use pinchora_core::{i18n::Lang, t};
 use pinchora_render::{HelpCard, HelpRow, Theme};
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::{
@@ -32,17 +33,26 @@ impl Help {
 /// An area of the guide: its name, a line about it, and the commands it holds, as the start of their
 /// path (`house` holds `/house view` and everything else under `/house`; `play stats` just that one).
 struct Area {
-    title: &'static str,
-    intro: &'static str,
+    /// Its name and line are `help.area.<key>.title` and `.intro` in the catalogs.
+    key: &'static str,
     covers: &'static [&'static str],
+}
+
+impl Area {
+    fn title(&self, lang: Lang) -> String {
+        t!(lang, &format!("help.area.{}.title", self.key))
+    }
+
+    fn intro(&self, lang: Lang) -> String {
+        t!(lang, &format!("help.area.{}.intro", self.key))
+    }
 }
 
 /// The areas in the order of the guide. A command belongs to the area with the longest start of its
 /// path that matches, so `play stats` can sit with the profile while the other `/play` games sit elsewhere.
 const AREAS: &[Area] = &[
     Area {
-        title: "Start here",
-        intro: "The everyday basics. Pick an area from the menu for everything else.",
+        key: "start",
         covers: &[
             "profile",
             "rank",
@@ -51,52 +61,44 @@ const AREAS: &[Area] = &[
             "balance",
             "quests",
             "help",
+            "language",
             "ping",
         ],
     },
     Area {
-        title: "Profile & cards",
-        intro: "Your look, your character, and what other people may see of you.",
+        key: "profile",
         covers: &["bio", "character", "customize", "wrapped", "privacy", "play stats"],
     },
     Area {
-        title: "Shells & rewards",
-        intro: "Bigger rewards every week and month, shells for friends, reputation, and reminders.",
+        key: "rewards",
         covers: &["weekly", "monthly", "give", "rep", "remind"],
     },
     Area {
-        title: "Shops & trading",
-        intro: "Buy furniture, keep it in your inventory, give it away or sell it from your own stall.",
+        key: "shops",
         covers: &["shop", "inventory", "gift", "stall"],
     },
     Area {
-        title: "House & plaza",
-        intro: "Your own pixel house, the weekly room contest, and the plaza the whole server shares.",
+        key: "house",
         covers: &["house", "plaza"],
     },
     Area {
-        title: "Pets",
-        intro: "Adopt a pet, look after it, and send it on trips that bring souvenirs home.",
+        key: "pets",
         covers: &["pet"],
     },
     Area {
-        title: "Fishing",
-        intro: "Cast a line, fill your bucket, sell the catch and complete the fish book.",
+        key: "fishing",
         covers: &["fish"],
     },
     Area {
-        title: "Friends & partners",
-        intro: "Add friends, pair up with a partner, and send animated greetings.",
+        key: "friends",
         covers: &["friends", "partner", "hug", "pat", "wave", "highfive"],
     },
     Area {
-        title: "Duels",
-        intro: "Challenge a friend to a quick game. Most take an optional wager.",
+        key: "duels",
         covers: &["duel"],
     },
     Area {
-        title: "Puzzles & word games",
-        intro: "Play on your own, or start a party game for the whole channel.",
+        key: "puzzles",
         covers: &[
             "play hangman",
             "play wordle",
@@ -107,8 +109,7 @@ const AREAS: &[Area] = &[
         ],
     },
     Area {
-        title: "Crowd games & collecting",
-        intro: "Races, heists and storms for the channel, and critters to find along the shore.",
+        key: "crowd",
         covers: &[
             "play derby",
             "play heist",
@@ -121,8 +122,7 @@ const AREAS: &[Area] = &[
         ],
     },
     Area {
-        title: "Community",
-        intro: "Polls, suggestions, giveaways, role buttons, server points and custom commands.",
+        key: "community",
         covers: &[
             "poll",
             "suggest",
@@ -136,8 +136,7 @@ const AREAS: &[Area] = &[
         ],
     },
     Area {
-        title: "Server setup",
-        intro: "Welcome cards, goodbyes, the server log and the settings overview.",
+        key: "setup",
         covers: &[
             "config show",
             "config welcome",
@@ -148,11 +147,11 @@ const AREAS: &[Area] = &[
             "config log",
             "config log-events",
             "config suggestions",
+            "config language",
         ],
     },
     Area {
-        title: "Levels, XP & points setup",
-        intro: "Level roles, XP multipliers, voice XP, reputation roles and the points store.",
+        key: "levels",
         covers: &[
             "config level-roles",
             "config xp",
@@ -162,8 +161,7 @@ const AREAS: &[Area] = &[
         ],
     },
     Area {
-        title: "Game & module setup",
-        intro: "Switch games and whole parts of Pinchora on or off, for the server or per channel.",
+        key: "modules",
         covers: &[
             "config critters",
             "config gambling",
@@ -184,7 +182,7 @@ const EVEN_SLACK: f32 = 30.0;
 /// One page of the guide.
 struct Page {
     title: String,
-    intro: &'static str,
+    intro: String,
     rows: Vec<HelpRow>,
 }
 
@@ -195,9 +193,25 @@ struct Leaf {
     manager: bool,
 }
 
-/// Every runnable command and subcommand of `commands`, in registration order.
-fn leaves(commands: &[Command]) -> Vec<Leaf> {
-    fn walk(options: &[CommandOption], path: &str, text: &str, manager: bool, out: &mut Vec<Leaf>) {
+/// `description` in `lang`, from the localizations registration filled in.
+fn described(description: &str, localizations: Option<&HashMap<String, String>>, lang: Lang) -> String {
+    lang.discord_locales()
+        .first()
+        .and_then(|locale| localizations?.get(*locale))
+        .map_or(description, String::as_str)
+        .to_owned()
+}
+
+/// Every runnable command and subcommand of `commands`, in registration order, described in `lang`.
+fn leaves(commands: &[Command], lang: Lang) -> Vec<Leaf> {
+    fn walk(
+        options: &[CommandOption],
+        path: &str,
+        text: (&str, String),
+        manager: bool,
+        lang: Lang,
+        out: &mut Vec<Leaf>,
+    ) {
         let subs: Vec<&CommandOption> = options
             .iter()
             .filter(|o| {
@@ -208,14 +222,14 @@ fn leaves(commands: &[Command]) -> Vec<Leaf> {
             })
             .collect();
         if subs.is_empty() {
+            let (english, text) = text;
             let text = WORDS
                 .iter()
-                .find(|(p, _)| *p == path)
-                .map_or(text, |(_, words)| *words)
-                .to_owned();
+                .find(|(p, _)| *p == path && lang == Lang::En)
+                .map_or(text, |(_, words)| (*words).to_owned());
             out.push(Leaf {
                 path: path.to_owned(),
-                manager: manager || text.contains("Manage Server"),
+                manager: manager || english.contains("Manage Server"),
                 text,
             });
         }
@@ -223,8 +237,12 @@ fn leaves(commands: &[Command]) -> Vec<Leaf> {
             walk(
                 sub.options.as_deref().unwrap_or_default(),
                 &format!("{path} {}", sub.name),
-                &sub.description,
+                (
+                    &sub.description,
+                    described(&sub.description, sub.description_localizations.as_ref(), lang),
+                ),
                 manager,
+                lang,
                 out,
             );
         }
@@ -234,8 +252,12 @@ fn leaves(commands: &[Command]) -> Vec<Leaf> {
         walk(
             &command.options,
             &command.name,
-            &command.description,
+            (
+                &command.description,
+                described(&command.description, command.description_localizations.as_ref(), lang),
+            ),
             command.default_member_permissions.is_some(),
+            lang,
             &mut out,
         );
     }
@@ -267,8 +289,8 @@ fn area_of(path: &str) -> Option<usize> {
 /// The pages: each area's commands in the order its `covers` list names them, started over on a new
 /// page whenever the rows would not fit one card. Anything no area claims lands on a last page, so
 /// the guide never leaves a command out (a test keeps that page empty).
-fn build(commands: &[Command]) -> Vec<Page> {
-    let leaves = leaves(commands);
+fn build(commands: &[Command], lang: Lang) -> Vec<Page> {
+    let leaves = leaves(commands, lang);
     let mut by_area: Vec<Vec<(usize, HelpRow)>> = (0..=AREAS.len()).map(|_| Vec::new()).collect();
     for leaf in leaves {
         let area = area_of(&leaf.path);
@@ -295,9 +317,10 @@ fn build(commands: &[Command]) -> Vec<Page> {
         }
         // Stable: the commands under one start of a path keep the order they were registered in.
         rows.sort_by_key(|(order, _)| *order);
-        let (title, intro) = AREAS
-            .get(index)
-            .map_or(("More commands", "Everything else."), |a| (a.title, a.intro));
+        let (title, intro) = AREAS.get(index).map_or_else(
+            || (t!(lang, "help.area.more.title"), t!(lang, "help.area.more.intro")),
+            |a| (a.title(lang), a.intro(lang)),
+        );
         // As many pages as the rows need, filled evenly: a page of fourteen rows and one of two reads worse
         // than two of eight.
         let total: f32 = rows.iter().map(|(_, row)| HelpCard::row_height(row)).sum();
@@ -318,11 +341,11 @@ fn build(commands: &[Command]) -> Vec<Page> {
         for (n, rows) in chunks.into_iter().enumerate() {
             pages.push(Page {
                 title: if count > 1 {
-                    format!("{title} ({}/{count})", n + 1)
+                    t!(lang, "help.page-of", title = title, page = n + 1, pages = count)
                 } else {
-                    title.to_owned()
+                    title.clone()
                 },
-                intro,
+                intro: intro.clone(),
                 rows,
             });
         }
@@ -330,7 +353,14 @@ fn build(commands: &[Command]) -> Vec<Page> {
     pages
 }
 
-static PAGES: LazyLock<Vec<Page>> = LazyLock::new(|| build(&crate::command_definitions()));
+/// The guide in every language, built once.
+static PAGES: LazyLock<HashMap<Lang, Vec<Page>>> = LazyLock::new(|| {
+    let commands = crate::command_definitions();
+    Lang::ALL
+        .into_iter()
+        .map(|lang| (lang, build(&commands, lang)))
+        .collect()
+});
 
 fn button(page: usize, label: &str, disabled: bool) -> Component {
     Component::Button(Button {
@@ -356,7 +386,7 @@ fn preview(page: &Page) -> String {
 }
 
 /// The menu that jumps to any page, and the buttons that turn one page at a time.
-fn controls(pages: &[Page], at: usize) -> Vec<Component> {
+fn controls(pages: &[Page], at: usize, lang: Lang) -> Vec<Component> {
     let options = pages
         .iter()
         .enumerate()
@@ -381,15 +411,15 @@ fn controls(pages: &[Page], at: usize) -> Vec<Component> {
                 max_values: Some(1),
                 min_values: Some(1),
                 options: Some(options),
-                placeholder: Some("Jump to an area…".to_owned()),
+                placeholder: Some(t!(lang, "help.jump")),
                 required: None,
             })],
         }),
         Component::ActionRow(ActionRow {
             id: None,
             components: vec![
-                button(at.saturating_sub(1), "◀ Previous", at == 0),
-                button(at + 1, "Next ▶", at + 1 >= pages.len()),
+                button(at.saturating_sub(1), &t!(lang, "help.previous"), at == 0),
+                button(at + 1, &t!(lang, "help.next"), at + 1 >= pages.len()),
             ],
         }),
     ]
@@ -398,12 +428,14 @@ fn controls(pages: &[Page], at: usize) -> Vec<Component> {
 /// The card for page `at` (the last one when it is past the end), with its controls. Private: the
 /// controls are one person's to turn.
 async fn page_card(cx: &Cx, at: usize) -> anyhow::Result<InteractionResponseData> {
-    let pages = &*PAGES;
+    let lang = cx.lang();
+    let pages = &PAGES[&lang];
     let at = at.min(pages.len().saturating_sub(1));
     let page = &pages[at];
     let card = HelpCard {
+        lang,
         title: page.title.clone(),
-        intro: page.intro.to_owned(),
+        intro: page.intro.clone(),
         page: at + 1,
         pages: pages.len(),
         rows: page.rows.clone(),
@@ -412,12 +444,10 @@ async fn page_card(cx: &Cx, at: usize) -> anyhow::Result<InteractionResponseData
     let png = cx.app.render(move |r| r.help_card(&card)).await?;
     let embed = EmbedBuilder::new()
         .color(BRAND)
-        .title("Pinchora")
-        .description("Pick an area from the menu, or turn the pages with the buttons.")
-        .footer(EmbedFooterBuilder::new(
-            "A star marks commands for members who can manage the server.",
-        ));
-    Ok(Cx::card(embed, "help.png", png, controls(pages, at), true))
+        .title(t!(lang, "help.title"))
+        .description(t!(lang, "help.description"))
+        .footer(EmbedFooterBuilder::new(t!(lang, "help.footer")));
+    Ok(Cx::card(embed, "help.png", png, controls(pages, at, lang), true))
 }
 
 /// `hp:<page>` buttons and the `hp:s` menu, whose value is the page.
@@ -452,8 +482,8 @@ mod tests {
     #[test]
     fn every_command_and_subcommand_is_on_exactly_one_page() {
         let tree = tree();
-        let pages = build(&tree);
-        let all = leaves(&tree);
+        let pages = build(&tree, Lang::En);
+        let all = leaves(&tree, Lang::En);
         assert!(all.len() > 100, "the walk found only {} commands", all.len());
         let mut missing = Vec::new();
         for leaf in &all {
@@ -481,7 +511,7 @@ mod tests {
     #[test]
     fn every_top_level_command_has_a_row() {
         let tree = tree();
-        let pages = build(&tree);
+        let pages = build(&tree, Lang::En);
         for command in &tree {
             let slash = format!("/{}", command.name);
             let under = format!("{slash} ");
@@ -498,22 +528,22 @@ mod tests {
 
     #[test]
     fn the_areas_are_well_formed() {
-        let all = leaves(&tree());
+        let all = leaves(&tree(), Lang::En);
         for (i, area) in AREAS.iter().enumerate() {
-            assert!(!area.covers.is_empty(), "{} covers nothing", area.title);
+            assert!(!area.covers.is_empty(), "{} covers nothing", area.key);
             for cover in area.covers {
                 assert!(
                     all.iter()
                         .any(|l| l.path == *cover || l.path.starts_with(&format!("{cover} "))),
                     "`{cover}` in {} is not a command",
-                    area.title
+                    area.key
                 );
                 for other in &AREAS[i + 1..] {
                     assert!(
                         !other.covers.contains(cover),
                         "`{cover}` is in {} and in {}",
-                        area.title,
-                        other.title
+                        area.key,
+                        other.key
                     );
                 }
             }
@@ -528,76 +558,81 @@ mod tests {
 
     #[test]
     fn the_longest_start_of_a_path_wins() {
-        let area = |path| area_of(path).map(|i| AREAS[i].title);
-        assert_eq!(area("play stats"), Some("Profile & cards"));
-        assert_eq!(area("play wordle"), Some("Puzzles & word games"));
-        assert_eq!(area("play derby"), Some("Crowd games & collecting"));
-        assert_eq!(area("config xp multiplier"), Some("Levels, XP & points setup"));
-        assert_eq!(area("config show"), Some("Server setup"));
-        assert_eq!(area("house contest vote"), Some("House & plaza"));
+        let area = |path| area_of(path).map(|i| AREAS[i].title(Lang::En));
+        let some = |title: &str| Some(title.to_owned());
+        assert_eq!(area("play stats"), some("Profile & cards"));
+        assert_eq!(area("play wordle"), some("Puzzles & word games"));
+        assert_eq!(area("play derby"), some("Crowd games & collecting"));
+        assert_eq!(area("config xp multiplier"), some("Levels, XP & points setup"));
+        assert_eq!(area("config show"), some("Server setup"));
+        assert_eq!(area("house contest vote"), some("House & plaza"));
         assert_eq!(area("plays"), None, "a longer word is not the same command");
         assert_eq!(area("config"), None, "no area holds a bare `config`");
     }
 
     #[test]
     fn every_row_fits_its_card_and_every_page_fits_a_card() {
-        let pages = build(&tree());
-        for page in &pages {
-            let mut height = 0.0;
-            for row in &page.rows {
-                assert!(
-                    HelpCard::fits(row),
-                    "{} would be cut on its card: {:?}",
-                    row.command,
-                    row.text
-                );
-                height += HelpCard::row_height(row);
+        for lang in Lang::ALL {
+            let pages = build(&tree(), lang);
+            for page in &pages {
+                let mut height = 0.0;
+                for row in &page.rows {
+                    assert!(
+                        HelpCard::fits(row),
+                        "{} would be cut on its card: {:?}",
+                        row.command,
+                        row.text
+                    );
+                    height += HelpCard::row_height(row);
+                }
+                assert!(height <= HelpCard::BODY_MAX, "{} is {height} px tall", page.title);
+                assert!(!page.rows.is_empty(), "{} is empty", page.title);
             }
-            assert!(height <= HelpCard::BODY_MAX, "{} is {height} px tall", page.title);
-            assert!(!page.rows.is_empty(), "{} is empty", page.title);
         }
     }
 
     #[test]
     fn the_menu_offers_every_page_within_discords_limits() {
-        let pages = build(&tree());
-        assert!(
-            pages.len() <= 25,
-            "a menu holds 25 options, the guide has {}",
-            pages.len()
-        );
-        for at in 0..pages.len() {
-            let rows = controls(&pages, at);
-            assert_eq!(rows.len(), 2);
-            let Component::ActionRow(menu) = &rows[0] else {
-                panic!("the menu comes first")
-            };
-            let Component::SelectMenu(menu) = &menu.components[0] else {
-                panic!("a select menu")
-            };
-            let options = menu.options.as_deref().unwrap_or_default();
-            assert_eq!(options.len(), pages.len());
-            assert_eq!(options.iter().filter(|o| o.default).count(), 1);
-            assert!(options[at].default);
-            for option in options {
-                assert!(option.label.chars().count() <= 100 && option.value.len() <= 100);
-                assert!(option.description.as_ref().is_some_and(|d| d.chars().count() <= 100));
+        for lang in Lang::ALL {
+            let pages = build(&tree(), lang);
+            assert!(
+                pages.len() <= 25,
+                "a menu holds 25 options, the guide has {}",
+                pages.len()
+            );
+            for at in 0..pages.len() {
+                let rows = controls(&pages, at, lang);
+                assert_eq!(rows.len(), 2);
+                let Component::ActionRow(menu) = &rows[0] else {
+                    panic!("the menu comes first")
+                };
+                let Component::SelectMenu(menu) = &menu.components[0] else {
+                    panic!("a select menu")
+                };
+                let options = menu.options.as_deref().unwrap_or_default();
+                assert_eq!(options.len(), pages.len());
+                assert_eq!(options.iter().filter(|o| o.default).count(), 1);
+                assert!(options[at].default);
+                for option in options {
+                    assert!(option.label.chars().count() <= 100 && option.value.len() <= 100);
+                    assert!(option.description.as_ref().is_some_and(|d| d.chars().count() <= 100));
+                }
+                let Component::ActionRow(buttons) = &rows[1] else {
+                    panic!("the buttons come second")
+                };
+                let disabled: Vec<bool> = buttons
+                    .components
+                    .iter()
+                    .map(|c| matches!(c, Component::Button(b) if b.disabled))
+                    .collect();
+                assert_eq!(disabled, [at == 0, at + 1 == pages.len()], "page {at}");
             }
-            let Component::ActionRow(buttons) = &rows[1] else {
-                panic!("the buttons come second")
-            };
-            let disabled: Vec<bool> = buttons
-                .components
-                .iter()
-                .map(|c| matches!(c, Component::Button(b) if b.disabled))
-                .collect();
-            assert_eq!(disabled, [at == 0, at + 1 == pages.len()], "page {at}");
         }
     }
 
     #[test]
     fn managers_are_marked_where_the_command_asks_for_them() {
-        let pages = build(&tree());
+        let pages = build(&tree(), Lang::Tr);
         let manager = |path: &str| rows_of(&pages, path)[0].manager;
         assert!(manager("config show") && manager("giveaway start") && manager("plaza edit"));
         assert!(!manager("house view") && !manager("duel chess"));

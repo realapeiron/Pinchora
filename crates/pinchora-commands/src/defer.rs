@@ -54,6 +54,7 @@ const PRIVATE: &[&str] = &[
     "house edit",
     "house lock",
     "house upgrade",
+    "language",
     "partner leave",
     "party stop",
     "pet adopt",

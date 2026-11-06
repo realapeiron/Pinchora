@@ -1,0 +1,134 @@
+# /house: replies, the room editor's buttons, menus and hints.
+
+[house]
+bot = "Botların evi olmaz."
+partner-only = "Yalnızca partnerinin evini döşeyebilirsin. `/partner propose` ile biriyle eşleş."
+like-self = "Başka birinin evini beğen!"
+liked = { other = "💖 {liker}, {host} kullanıcısının evini beğendi! Artık **{count}** beğenisi var." }
+already-liked = "Bu evi bugün zaten beğendin."
+locked = "Evin kilitlendi. Ziyaretçiler kapıdan dönecek."
+unlocked = "Evin yeniden ziyaretçilere açık."
+
+[house.edit]
+start = "Bir mobilya seç: boş bir yere atlar, sonra **Yerleştir**'e bas."
+start-partner = "Envanterinden bir mobilya seç: boş bir yere atlar, sonra **Yerleştir**'e bas."
+expired = "Bu düzenleyicinin süresi doldu. `/house edit` ile yeniden aç."
+plaza-managers = "Meydanı yalnızca sunucu yöneticileri düzenleyebilir."
+no-longer-partners = "Artık partner değilsiniz, bu yüzden onun evini döşeyemezsin."
+fits-nowhere = "**{item}** şu an bu odada hiçbir yere sığmıyor. **Döndür** ya da bir şeyi kaldır."
+holding = "Elinde **{item}** var. **{spot}** noktasına koymak için **Yerleştir**'e bas ya da başka bir yer seç."
+pick = "Menüden bir şey seç."
+pick-first = "Önce yerleştirecek bir şey seç."
+placed-full = "**{item}** yerleştirildi. Bir tane daha için boş yer kalmadı."
+placed-next = "**{item}** yerleştirildi. Elinde bir tane daha var: **{spot}** için yine **Yerleştir**'e bas ya da başka bir şey seç."
+placed = "**{item}** yerleştirildi."
+none-left = "Hiç **{item}** kalmadı."
+cant-place = "Buraya konmuyor: {reason}."
+move-theirs = "{name} kullanıcısının evindeki eşyalar ona ait, eline alamazsın. Ona geri vermek için **Kaldır**'a bas ya da kendi eşyalarından birini yerleştir."
+move-on-top = " Üstündekiler ({count}) envanterine döndü."
+moving = "**{item}** taşınıyor: **Git** menüsü ya da oklarla bir yer seç, sonra **Yerleştir**.{extra}"
+nothing-to-move = "İmlecin altında taşınacak bir şey yok."
+store-on-top = ", üstündeki {count} eşyayla birlikte"
+stored = "**{item}**{extra} kaldırıldı; envanterine döndü."
+stored-theirs = "**{item}**{extra} kaldırıldı; {name} kullanıcısının envanterine döndü."
+nothing-under = "İmlecin altında bir şey yok."
+turned-moved = "Döndürüldü ve sığsın diye **{spot}** noktasına kaydı."
+turned-no-room = "Döndürüldü ama bu yönde hiçbir yere sığmıyor."
+cant-flip-top = "Çevrilemiyor: üstündekiler artık üstünde durmaz."
+flipped = "Çevrildi."
+cant-flip = "Çevrilemiyor: {reason}."
+nothing-to-flip = "İmlecin altında çevrilecek bir şey yok."
+already-empty = "Oda zaten boş."
+cleared = { other = "**{count}** eşyanın hepsi envanterine kaldırıldı. **Geri al** hepsini yerine koyar." }
+cleared-theirs = { other = "**{count}** eşyanın hepsi {name} kullanıcısının envanterine kaldırıldı. **Geri al** hepsini yerine koyar." }
+nothing-to-undo = "Geri alınacak bir şey yok."
+undid = "Geri alındı: {step}."
+undo-moved = "**{item}** artık eski yerinde değil"
+undo-none = "hiç **{item}** kalmadı"
+undo-none-theirs = "{name} kullanıcısının envanterinde hiç **{item}** kalmadı"
+cant-undo = "Geri alınamıyor ({step}): {why}. Bu adım geri alma listesinden çıktı."
+now-room = "Şimdi {room}. oda düzenleniyor."
+saved = "Kaydedildi! `/house view` ile göster."
+saved-plaza = "Kaydedildi! `/plaza view` ile bak."
+saved-partner = "Kaydedildi! O `/house view` ile görebilir; sen de `/house visit` ile görebilirsin."
+
+[house.editor]
+cursor = "İmleç **{spot}** · Elinde: **{item}**"
+nothing = "hiçbir şey"
+under = "İmlecin altında: {name}"
+title = "{room}. oda düzenleniyor · {title}"
+footer = "Bir mobilya seç, boş bir yere atlar. Git menüsü imleci tek tıkla istediğin yere taşır."
+partner-title = "{name} kullanıcısının {room}. odası döşeniyor · {title}"
+partner-footer = "Yerleştirdiğin eşya envanterinden gelir ve artık {name} kullanıcısına ait olur. Kaldırılan eşyalar onun envanterine gider."
+soulbound-out = " Ruh bağlı eşyaların bu menüde görünmez."
+prev-items = "◀ Önceki eşyalar"
+more-items = "Diğer eşyalar ▶"
+soulbound = "Ruh bağlı · "
+inventory-empty-hint = "Envanterin boş — /shop ile mobilya al"
+choose-page = "Mobilya seç (sayfa {page}/{pages})"
+choose = "Mobilya seç"
+inventory-empty = "Envanter boş"
+no-spot = "Buna uyan boş yer yok"
+go-to-spot = "Boş bir yere git ({count} uygun)"
+room-empty = "Oda boş"
+go-to-thing = "Odadaki bir şeye git"
+nothing-here = "Burada bir şey yok"
+floor = "Zemin"
+right-wall = "Sağ duvar"
+left-wall = "Sol duvar"
+next-room = "Sonraki oda"
+undo = "↶ Geri al"
+turn = "↻ Döndür"
+place = "Yerleştir"
+move = "Taşı"
+cancel = "Vazgeç"
+store = "Kaldır"
+flip = "Çevir"
+done = "Bitti"
+
+[house.clear]
+option = "Odayı boşalt…"
+option-hint = { other = "{count} eşyanın hepsini envanterine kaldır" }
+title = "{room}. oda boşaltılsın mı · {title}?"
+question = { other = "Bu odadaki **{count}** eşyanın hepsi envanterine kaldırılsın mı?\n**Geri al** hepsini eski yerine koyar." }
+question-theirs = { other = "Bu odadaki **{count}** eşyanın hepsi {name} kullanıcısının envanterine kaldırılsın mı?\n**Geri al** hepsini eski yerine koyar." }
+store = { one = "Kaldır", other = "{count} eşyanın hepsini kaldır" }
+
+[house.view]
+title = "{name} · {house}"
+plaza-title = "{name} meydanı"
+summary = { other = "Oda {room}/{rooms} · **{title}** · {count} eşya · 💖 {likes}" }
+unread = { other = "📖 {count} yeni ziyaretçi notu · /house guestbook ile oku" }
+prev = "◀ Oda"
+next = "Oda ▶"
+sign = "Deftere yaz"
+
+[house.visit]
+private = "{name} kullanıcısının evi gizli."
+locked = "{name} evini kilitlemiş."
+paid = "Bugünkü ziyaretin için +{reward} kabuk"
+cap = "Bugünkü {cap} ücretli ziyaret hakkını doldurdun"
+
+[house.upgrade]
+finest = "Zaten **{house}** evinde yaşıyorsun, daha iyisi yok."
+title = "Yükselt: {house}"
+offer = "**{from} → {to} oda**, odalar {width}×{depth} kareye büyür.\nTüm mobilyaların yerinde kalır.\n\nFiyat: **{price}** kabuk · Sende **{balance}** var"
+button = "{price} kabuğa yükselt"
+done = { other = "🏠 Yeni **{house}** evine hoş geldin! Döşenecek {count} yeni oda var. {balance} kabuğun kaldı." }
+short = "{price} kabuk gerekiyor ama sende {balance} var."
+changed = "Evin zaten değişti; `/house upgrade` ile yeniden dene."
+
+# Where a spot is, in the editor's menus: `C4`, `Left wall 2 · high`, "next to Oak Bed".
+[house.spot]
+left-wall = "Sol duvar {n} · {height}"
+right-wall = "Sağ duvar {n} · {height}"
+high = "yüksek"
+middle = "orta"
+low = "alçak"
+on-top = "{item} üstünde"
+beside = "{item} yanında"
+next-to = "{item} yanında"
+free-wall = "boş duvar"
+against-wall = "duvar dibinde"
+open-floor = "açık zemin"
+hidden = " · çoğu gizli"

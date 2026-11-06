@@ -79,6 +79,7 @@ pub struct App {
     channel_misses: Moka<u64, ()>,
     avatars: Moka<String, Arc<Vec<u8>>>,
     users: Moka<u64, Arc<User>>,
+    pub(crate) languages: crate::lang::Languages,
     tasks: TaskTracker,
     event_slots: Arc<Semaphore>,
     rebuild_slots: Arc<Semaphore>,
@@ -154,6 +155,7 @@ impl App {
                 .max_capacity(10_000)
                 .time_to_live(Duration::from_secs(600))
                 .build(),
+            languages: crate::lang::Languages::new(),
             tasks: TaskTracker::new(),
             event_slots: Arc::new(Semaphore::new(1024)),
             rebuild_slots: Arc::new(Semaphore::new(REBUILD_SLOTS)),

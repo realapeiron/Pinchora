@@ -1,5 +1,7 @@
 use std::fmt::Write;
 
+use pinchora_core::{i18n::Lang, t};
+
 use super::{
     Backdrop, BadgeIcon, PIXEL, SANS, ShowcaseSlot, SpriteArt, avatar_frame, backdrop, showcase::draw_row, text,
 };
@@ -13,6 +15,8 @@ use crate::{
 
 /// 960×540 profile card.
 pub struct ProfileCard<'a> {
+    /// The language of the labels.
+    pub lang: Lang,
     pub display_name: &'a str,
     /// The title under the name, e.g. `Tide Angler`.
     pub title: Option<&'a str>,
@@ -173,7 +177,17 @@ impl ProfileCard<'_> {
         avatar_frame(&mut s, self.avatar_png, 40.0, 40.0, 224.0, 8.0, &t.accent, "avatar");
 
         t.panel(&mut s, 40.0, 280.0, 224.0, 88.0, 4.0);
-        text(&mut s, 60.0, 312.0, 18.0, PIXEL, false, &t.muted, "start", "LEVEL");
+        text(
+            &mut s,
+            60.0,
+            312.0,
+            18.0,
+            PIXEL,
+            false,
+            &t.muted,
+            "start",
+            &t!(self.lang, "card.level"),
+        );
         text(
             &mut s,
             60.0,
@@ -198,7 +212,7 @@ impl ProfileCard<'_> {
             false,
             &t.ink,
             "start",
-            &format!("{} REP", compact(i64::from(self.reputation))),
+            &t!(self.lang, "card.rep", count = compact(i64::from(self.reputation))),
         );
 
         t.panel(&mut s, 40.0, 456.0, 224.0, 56.0, 4.0);
@@ -212,7 +226,7 @@ impl ProfileCard<'_> {
             false,
             &t.ink,
             "start",
-            &format!("{} DAY", self.streak.max(0)),
+            &t!(self.lang, "card.days", count = self.streak.max(0)),
         );
 
         // Right column: name, bio, stats, XP. With a character, text keeps clear of its corner.
@@ -266,18 +280,15 @@ impl ProfileCard<'_> {
             false,
             &t.muted,
             "start",
-            "ABOUT ME",
+            &t!(self.lang, "card.about-me"),
         );
         if let Some(partner) = &self.partner {
             // The corner of the label row; a character takes the panel's right edge.
             let right = if self.character.is_some() { 806.0 } else { 900.0 };
             self.partner_line(&mut s, partner, right, bio_top + rows.bio_label_dy);
         }
-        let bio = if self.bio.trim().is_empty() {
-            "No bio yet. Set one with /bio."
-        } else {
-            self.bio
-        };
+        let no_bio = t!(self.lang, "card.no-bio");
+        let bio = if self.bio.trim().is_empty() { &no_bio } else { self.bio };
         for (i, line) in wrap(bio, bio_chars, 3).iter().enumerate() {
             text(
                 &mut s,
@@ -316,9 +327,17 @@ impl ProfileCard<'_> {
             .server_rank
             .map_or_else(|| "-".to_owned(), |r| format!("#{}", thousands(r)));
         let stats = [
-            ("SHELLS", compact(self.credits), Some((SHELL, t.gold.as_str()))),
-            ("GLOBAL", format!("#{}", compact(self.global_rank)), None),
-            ("SERVER", server_rank, None),
+            (
+                t!(self.lang, "card.shells"),
+                compact(self.credits),
+                Some((SHELL, t.gold.as_str())),
+            ),
+            (
+                t!(self.lang, "card.global"),
+                format!("#{}", compact(self.global_rank)),
+                None,
+            ),
+            (t!(self.lang, "card.server"), server_rank, None),
         ];
         for (i, (label, value, icon)) in stats.iter().enumerate() {
             let x = 296.0 + i as f32 * 216.0;
@@ -367,7 +386,7 @@ impl ProfileCard<'_> {
             false,
             &t.muted,
             "start",
-            "EXPERIENCE",
+            &t!(self.lang, "card.experience"),
         );
         let xp_label = format!(
             "{} / {} XP",
@@ -390,9 +409,9 @@ impl ProfileCard<'_> {
         );
         // Seven digits would run into the badges.
         let total = if self.total_xp >= 1_000_000 {
-            format!("TOTAL {} XP", compact(self.total_xp))
+            t!(self.lang, "card.total-xp", xp = compact(self.total_xp))
         } else {
-            format!("TOTAL {} XP", thousands(self.total_xp))
+            t!(self.lang, "card.total-xp", xp = thousands(self.total_xp))
         };
         text(
             &mut s,
