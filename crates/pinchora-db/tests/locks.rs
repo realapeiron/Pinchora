@@ -10,7 +10,8 @@ use std::time::{Duration as StdDuration, Instant};
 use chrono::{Duration, NaiveDate, Utc};
 use pinchora_core::economy::Period;
 use pinchora_db::{
-    Db, DuelStart, GiveawayOpen, NewGame, NewGiveaway, PENDING, Payout, StallBuy, TripClaim, TripPayout, Wake, XpGrant,
+    Db, DuelStart, GiveawayOpen, NewGame, NewGiveaway, NewRoom, PENDING, Payout, Reroll, StallBuy, TripClaim,
+    TripPayout, Wake, XpGrant,
 };
 
 async fn db_with(pool: u32) -> Option<Db> {
@@ -371,6 +372,268 @@ async fn buying_from_a_stall_while_the_seller_deletes_their_data() {
     db.delete_user_data(buyer, Utc::now()).await.unwrap();
 }
 
+#[tokio::test]
+async fn a_like_landing_while_the_delete_starts_cannot_cross_a_pair_call() {
+    let Some(db) = db_with(6).await else { return };
+    // `ids` count upwards: the host's lock comes before the deleter's in id order.
+    let [host, deleter_id] = ids();
+    let today = Utc::now().date_naive();
+    sqlx::query("INSERT INTO houses (user_id) VALUES ($1)")
+        .bind(host as i64)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    db.earn_shells(host, 1, "test").await.unwrap();
+    db.earn_shells(deleter_id, 1, "test").await.unwrap();
+
+    // The like is given in a transaction that holds the deleter's lock, as a like does: the delete's
+    // first read cannot see it, and its lock waits.
+    let mut like = db.pool().begin().await.unwrap();
+    sqlx::query("SELECT lock_user($1)")
+        .bind(deleter_id as i64)
+        .execute(&mut *like)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO house_likes (host_id, liker_id, day) VALUES ($1, $2, $3)")
+        .bind(host as i64)
+        .bind(deleter_id as i64)
+        .bind(today)
+        .execute(&mut *like)
+        .await
+        .unwrap();
+    let ((deleter, deleter_pid), (friend, friend_pid)) = (side().await, side().await);
+    let delete = tokio::spawn(async move { deleter.delete_user_data(deleter_id, Utc::now()).await });
+    queued(&db, deleter_pid, "the delete").await;
+    // A call about both players: takes the host's lock and waits for the deleter's.
+    let befriend = tokio::spawn(async move { friend.befriend(host, deleter_id).await });
+    queued(&db, friend_pid, "the pair call").await;
+    let before = pinchora_db::conflict_retries();
+    like.commit().await.unwrap();
+
+    befriend.await.unwrap().expect("the pair call fails nowhere");
+    delete.await.unwrap().expect("the delete fails nowhere");
+    assert!(
+        pinchora_db::conflict_retries() > before,
+        "the delete found the host too late to wait for, and started over"
+    );
+    for user in [host, deleter_id] {
+        db.delete_user_data(user, Utc::now()).await.unwrap();
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn friends_who_delete_their_data_at_once_both_get_through() {
+    let Some(db) = db_with(8).await else { return };
+    let day = Utc::now().date_naive();
+    for _ in 0..4 {
+        let [a, b] = ids();
+        db.earn_shells(a, 10, "test").await.unwrap();
+        db.earn_shells(b, 10, "test").await.unwrap();
+        db.befriend(a, b).await.unwrap();
+        // Rows both ways, so each delete removes what the other one removes from the other end.
+        db.record_visit(a, b, day, 1, 3).await.unwrap();
+        db.record_visit(b, a, day, 1, 3).await.unwrap();
+        db.record_interaction("hug", a, b).await.unwrap();
+        db.record_interaction("hug", b, a).await.unwrap();
+        let barrier = Arc::new(tokio::sync::Barrier::new(2));
+        let deletes: Vec<_> = [a, b]
+            .into_iter()
+            .map(|user| {
+                let (db, barrier) = (db.clone(), barrier.clone());
+                tokio::spawn(async move {
+                    barrier.wait().await;
+                    db.delete_user_data(user, Utc::now()).await
+                })
+            })
+            .collect();
+        for delete in deletes {
+            delete.await.unwrap().expect("a delete fails nowhere");
+        }
+        assert!(!db.are_friends(a, b).await.unwrap());
+    }
+}
+
+#[tokio::test]
+async fn rerolling_a_giveaway_while_an_entrant_deletes_their_data() {
+    let Some(db) = db_with(4).await else { return };
+    let [host, first, leaving, last, guild] = ids();
+    let GiveawayOpen::Started(giveaway) = db
+        .create_giveaway(NewGiveaway {
+            guild_id: guild,
+            channel_id: 1,
+            host,
+            prize: "A role",
+            shells: 0,
+            winners: 1,
+            required_role: None,
+            ends_at: Utc::now() + Duration::hours(1),
+        })
+        .await
+        .unwrap()
+    else {
+        panic!("the giveaway starts");
+    };
+    let id = giveaway.id;
+    for user in [first, leaving, last] {
+        db.toggle_giveaway_entry(id, user, Utc::now()).await.unwrap();
+    }
+    db.end_giveaway(id, Utc::now(), true, |entrants, _| {
+        entrants.iter().copied().filter(|e| *e == first).collect()
+    })
+    .await
+    .unwrap()
+    .expect("it was running");
+
+    // One entrant's delete is under way: their entry is still there for anybody who reads it.
+    let mut delete = db.pool().begin().await.unwrap();
+    Db::delete_user_data_in(&mut delete, leaving, Utc::now()).await.unwrap();
+    let (roller, roller_pid) = side().await;
+    let asked = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let counted = asked.clone();
+    let reroll = tokio::spawn(async move {
+        roller
+            .reroll_giveaway(guild, id, 1, move |entrants, _| {
+                counted.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                // Always the one who is leaving, while there is one.
+                if entrants.contains(&leaving) {
+                    vec![leaving]
+                } else {
+                    entrants.to_vec()
+                }
+            })
+            .await
+    });
+    queued(&db, roller_pid, "the reroll").await;
+    delete.commit().await.unwrap();
+
+    let Reroll::Done(row, picked) = reroll.await.unwrap().expect("the reroll fails nowhere") else {
+        panic!("somebody is left to win");
+    };
+    assert_eq!(picked, vec![last], "the pick started over without the deleted entrant");
+    assert!(asked.load(std::sync::atomic::Ordering::SeqCst) >= 2);
+    assert!(!row.winner_ids.contains(&(leaving as i64)));
+    let (stored,): (Vec<i64>,) = sqlx::query_as("SELECT winner_ids FROM giveaways WHERE id = $1")
+        .bind(id)
+        .fetch_one(db.pool())
+        .await
+        .unwrap();
+    assert_eq!(
+        stored,
+        vec![first as i64, last as i64],
+        "nothing of the deleted player is stored"
+    );
+    for user in [host, first, last] {
+        db.delete_user_data(user, Utc::now()).await.unwrap();
+    }
+}
+
+#[tokio::test]
+async fn opening_a_session_waits_for_its_host_to_finish_deleting() {
+    let Some(db) = db_with(4).await else { return };
+    let [host, guest, guild] = ids();
+    db.earn_shells(host, 5, "test").await.unwrap();
+    let mut delete = db.pool().begin().await.unwrap();
+    Db::delete_user_data_in(&mut delete, host, Utc::now()).await.unwrap();
+    let (caller, caller_pid) = side().await;
+    let created = tokio::spawn(async move { caller.create_game(duel(host, guest, 0, guild)).await });
+    queued(&db, caller_pid, "the new session").await;
+    delete.commit().await.unwrap();
+    let session = created.await.unwrap().expect("opening a session fails nowhere");
+    assert!(db.game(session.id).await.unwrap().is_some());
+    db.delete_user_data(host, Utc::now()).await.unwrap();
+}
+
+#[tokio::test]
+async fn sweeps_leave_the_rows_somebody_holds_for_the_next_one() {
+    let Some(db) = db_with(4).await else { return };
+    let [guild, host] = ids();
+    let mut old = Vec::new();
+    for _ in 0..2 {
+        let (id,): (i64,) = sqlx::query_as(
+            "INSERT INTO game_sessions (kind, guild_id, channel_id, host_id, status, state, expires_at, created_at)
+             VALUES ('connect4', $1, 1, $2, 'done', '', now(), now() - interval '3 days') RETURNING id",
+        )
+        .bind(guild as i64)
+        .bind(host as i64)
+        .fetch_one(db.pool())
+        .await
+        .unwrap();
+        old.push(id);
+    }
+    let weeks = NaiveDate::from_ymd_opt(2001, 1, 1).unwrap();
+    for user in [guild, host] {
+        sqlx::query("INSERT INTO weekly_xp (guild_id, week, user_id, xp) VALUES ($1, $2, $3, 1)")
+            .bind(guild as i64)
+            .bind(weeks)
+            .bind(user as i64)
+            .execute(db.pool())
+            .await
+            .unwrap();
+    }
+    let mut held = db.pool().begin().await.unwrap();
+    sqlx::query("SELECT 1 FROM game_sessions WHERE id = $1 FOR UPDATE")
+        .bind(old[0])
+        .execute(&mut *held)
+        .await
+        .unwrap();
+    sqlx::query("SELECT 1 FROM weekly_xp WHERE guild_id = $1 AND week = $2 AND user_id = $1 FOR UPDATE")
+        .bind(guild as i64)
+        .bind(weeks)
+        .execute(&mut *held)
+        .await
+        .unwrap();
+
+    // Neither sweep waits for what is held (a plain delete would wait here until the timeout).
+    let wait = StdDuration::from_secs(10);
+    // (The mixed load's sweeps run the same deletes, so how many went here is not asserted.)
+    let games = tokio::time::timeout(wait, db.forget_old_games()).await;
+    let weeks_gone = tokio::time::timeout(
+        wait,
+        db.forget_weeks_before(NaiveDate::from_ymd_opt(2001, 1, 2).unwrap()),
+    )
+    .await;
+    games.expect("the sweep of games does not wait").unwrap();
+    weeks_gone.expect("the sweep of weeks does not wait").unwrap();
+    let left = |sql: &'static str, id: i64| {
+        let pool = db.pool().clone();
+        async move {
+            let (n,): (i64,) = sqlx::query_as(sql).bind(id).fetch_one(&pool).await.unwrap();
+            n
+        }
+    };
+    assert_eq!(
+        left("SELECT count(*) FROM game_sessions WHERE id = $1", old[0]).await,
+        1,
+        "the held session stays"
+    );
+    assert_eq!(
+        left("SELECT count(*) FROM game_sessions WHERE id = $1", old[1]).await,
+        0
+    );
+    assert_eq!(
+        left("SELECT count(*) FROM weekly_xp WHERE user_id = $1", guild as i64).await,
+        1
+    );
+    assert_eq!(
+        left("SELECT count(*) FROM weekly_xp WHERE user_id = $1", host as i64).await,
+        0
+    );
+
+    held.commit().await.unwrap();
+    db.forget_old_games().await.unwrap();
+    db.forget_weeks_before(NaiveDate::from_ymd_opt(2001, 1, 2).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(
+        left("SELECT count(*) FROM game_sessions WHERE id = $1", old[0]).await,
+        0
+    );
+    assert_eq!(
+        left("SELECT count(*) FROM weekly_xp WHERE user_id = $1", guild as i64).await,
+        0
+    );
+}
+
 // ---------------------------------------------------------------- mixed load
 
 #[derive(Default, Clone)]
@@ -380,9 +643,9 @@ struct Tally {
     samples: Vec<String>,
 }
 
-const OPS: [&str; 14] = [
+const OPS: [&str; 17] = [
     "daily", "weekly", "rep", "transfer", "like", "visit", "xp", "duel", "giveaway", "delete", "wallet", "earn",
-    "stall", "trip",
+    "stall", "trip", "friend", "house", "sweep",
 ];
 
 /// What players do at once in a busy server, deletes of their data among it, from a few workers for
@@ -396,7 +659,11 @@ async fn a_mixed_load_with_deletes_fails_nobody_and_keeps_the_books() {
     let Some(db) = db_with(workers as u32 * 2).await else {
         return;
     };
-    let users: Arc<Vec<u64>> = Arc::new(ids::<10>().to_vec());
+    // Players who are deleted all the time, and a few house owners nobody deletes (placing a piece in
+    // a house whose owner deleted it in between is a foreign key error, a different matter).
+    let all = ids::<14>();
+    let users: Arc<Vec<u64>> = Arc::new(all[..10].to_vec());
+    let owners: Arc<Vec<u64>> = Arc::new(all[10..].to_vec());
     let [guild] = ids();
     for user in users.iter() {
         db.earn_shells(*user, 1_000_000, "test").await.unwrap();
@@ -406,7 +673,7 @@ async fn a_mixed_load_with_deletes_fails_nobody_and_keeps_the_books() {
     let mut handles = Vec::new();
     for worker in 0..workers {
         let db = db.clone();
-        let users = users.clone();
+        let (users, owners) = (users.clone(), owners.clone());
         handles.push(tokio::spawn(async move {
             let mut tally = vec![Tally::default(); OPS.len()];
             let mut seed = 0x9E37_79B9_7F4A_7C15u64 ^ (worker + 1).wrapping_mul(0x2545_F491_4F6C_DD1D);
@@ -423,7 +690,7 @@ async fn a_mixed_load_with_deletes_fails_nobody_and_keeps_the_books() {
                 let a = users[i];
                 let b = users[(i + 1 + (roll() % (users.len() as u64 - 1)) as usize) % users.len()];
                 // One worker deletes every tenth call, so deletes always run, whatever the dice say.
-                let op = match roll() % 100 {
+                let op = match roll() % 120 {
                     _ if worker == 0 && calls.is_multiple_of(10) => 9,
                     0..=7 => 0,
                     8..=13 => 1,
@@ -438,7 +705,10 @@ async fn a_mixed_load_with_deletes_fails_nobody_and_keeps_the_books() {
                     76..=81 => 10,
                     82..=87 => 11,
                     88..=93 => 12,
-                    _ => 13,
+                    94..=99 => 13,
+                    100..=105 => 14,
+                    106..=111 => 15,
+                    _ => 16,
                 };
                 let day = Utc::now().date_naive();
                 let result: anyhow::Result<()> = async {
@@ -483,10 +753,15 @@ async fn a_mixed_load_with_deletes_fails_nobody_and_keeps_the_books() {
                                 required_role: None,
                                 ends_at: Utc::now() + Duration::hours(1),
                             };
+                            let guild_id = new.guild_id;
                             if let GiveawayOpen::Started(g) = db.create_giveaway(new).await? {
                                 db.toggle_giveaway_entry(g.id, b, Utc::now()).await?;
+                                db.toggle_giveaway_entry(g.id, a, Utc::now()).await?;
                                 db.end_giveaway(g.id, Utc::now(), true, |e, n| e.iter().copied().take(n).collect())
                                     .await?;
+                                db.reroll_giveaway(guild_id, g.id, 1, |e, n| e.iter().copied().take(n).collect())
+                                    .await?;
+                                db.mark_giveaway_announced(g.id).await?;
                             }
                             Ok(())
                         }
@@ -503,6 +778,39 @@ async fn a_mixed_load_with_deletes_fails_nobody_and_keeps_the_books() {
                                 db.buy_listing(b, listing.id).await?;
                             }
                             Ok(())
+                        }
+                        14 => {
+                            db.befriend(a, b).await?;
+                            db.record_interaction("hug", a, b).await?;
+                            db.block_signer(a, b, "Somebody").await.map(drop)
+                        }
+                        15 => {
+                            let room = NewRoom {
+                                room_type: "living".into(),
+                                wallpaper: "plain".into(),
+                                floor: "oak".into(),
+                            };
+                            let owner = owners[(roll() % owners.len() as u64) as usize];
+                            db.house(owner, &room).await?;
+                            db.grant_item(owner, "chair", 2).await?;
+                            db.place_item(
+                                owner,
+                                0,
+                                "chair",
+                                (roll() % 8) as i16,
+                                (roll() % 8) as i16,
+                                false,
+                                |_| Ok(()),
+                            )
+                            .await?;
+                            db.clear_room(owner, 0).await.map(drop)
+                        }
+                        16 => {
+                            db.forget_old_giveaways(Utc::now() + Duration::days(1)).await?;
+                            db.forget_old_games().await?;
+                            db.forget_weeks_before(NaiveDate::from_ymd_opt(2001, 1, 2).unwrap())
+                                .await
+                                .map(drop)
                         }
                         _ => {
                             let pet = match db.active_pet(a).await? {
@@ -572,7 +880,7 @@ async fn a_mixed_load_with_deletes_fails_nobody_and_keeps_the_books() {
     .fetch_one(db.pool())
     .await
     .unwrap();
-    for user in users.iter() {
+    for user in users.iter().chain(owners.iter()) {
         db.delete_user_data(*user, Utc::now()).await.unwrap();
     }
     let failed: u64 = total.iter().map(|t| t.failed).sum();

@@ -110,6 +110,11 @@ impl Db {
 
     /// Adds a pet; the first pet a player gets becomes their active one.
     pub async fn adopt(&self, owner: u64, species: &str, name: &str) -> anyhow::Result<PetRow> {
+        retry("adopt", || self.adopt_once(owner, species, name)).await
+    }
+
+    /// One attempt of [`Db::adopt`].
+    async fn adopt_once(&self, owner: u64, species: &str, name: &str) -> anyhow::Result<PetRow> {
         let id = sql_id(owner);
         let mut tx = self.pool().begin().await?;
         // Two adoptions at once take turns, so only one of them becomes the active pet.
@@ -134,6 +139,11 @@ impl Db {
     }
 
     pub async fn set_active_pet(&self, owner: u64, pet_id: i64) -> anyhow::Result<bool> {
+        retry("set_active_pet", || self.set_active_pet_once(owner, pet_id)).await
+    }
+
+    /// One attempt of [`Db::set_active_pet`].
+    async fn set_active_pet_once(&self, owner: u64, pet_id: i64) -> anyhow::Result<bool> {
         let id = sql_id(owner);
         let mut tx = self.pool().begin().await?;
         lock_users(&mut tx, &[id]).await?;

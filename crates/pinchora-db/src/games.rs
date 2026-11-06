@@ -110,9 +110,25 @@ macro_rules! columns {
 }
 
 impl Db {
-    /// Opens a session.
+    /// Opens a session. Its players' locks come first (see the `locks` module), so a session is
+    /// never opened for a player in the middle of deleting their data, and the delete finds it.
     pub async fn create_game(&self, new: NewGame<'_>) -> anyhow::Result<GameSession> {
-        Ok(sqlx::query_as::<_, GameSession>(concat!(
+        retry("create_game", || self.create_game_once(new)).await
+    }
+
+    /// One attempt of [`Db::create_game`].
+    async fn create_game_once(&self, new: NewGame<'_>) -> anyhow::Result<GameSession> {
+        let mut tx = self.pool().begin().await?;
+        lock_users(
+            &mut tx,
+            &[Some(new.host), new.guest]
+                .into_iter()
+                .flatten()
+                .map(sql_id)
+                .collect::<Vec<_>>(),
+        )
+        .await?;
+        let session = sqlx::query_as::<_, GameSession>(concat!(
             "INSERT INTO game_sessions (kind, guild_id, channel_id, host_id, guest_id, bet, status, state, expires_at)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now() + make_interval(secs => $9))
              RETURNING ",
@@ -127,8 +143,10 @@ impl Db {
         .bind(new.status)
         .bind(new.state)
         .bind(new.ttl_secs as f64)
-        .fetch_one(self.pool())
-        .await?)
+        .fetch_one(&mut *tx)
+        .await?;
+        tx.commit().await?;
+        Ok(session)
     }
 
     pub async fn game(&self, id: i64) -> anyhow::Result<Option<GameSession>> {
@@ -341,14 +359,21 @@ impl Db {
         .await?)
     }
 
-    /// Drops finished sessions (and their trivia answers) after two days; returns how many.
+    /// Drops finished sessions (and their trivia answers) after two days; returns how many. Rows
+    /// somebody holds are left for the next sweep (see the `locks` module).
     pub async fn forget_old_games(&self) -> anyhow::Result<u64> {
-        Ok(
-            sqlx::query("DELETE FROM game_sessions WHERE status = 'done' AND created_at < now() - interval '2 days'")
-                .execute(self.pool())
-                .await?
-                .rows_affected(),
-        )
+        retry("forget_old_games", || async move {
+            Ok(sqlx::query(
+                "WITH old AS MATERIALIZED (
+                     SELECT id FROM game_sessions WHERE status = 'done' AND created_at < now() - interval '2 days'
+                     FOR UPDATE SKIP LOCKED)
+                 DELETE FROM game_sessions WHERE id IN (SELECT id FROM old)",
+            )
+            .execute(self.pool())
+            .await?
+            .rows_affected())
+        })
+        .await
     }
 
     /// Records a trivia answer; false when this player already answered the round.

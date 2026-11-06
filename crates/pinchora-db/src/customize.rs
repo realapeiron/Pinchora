@@ -105,6 +105,11 @@ impl Db {
     /// filled in (they existed before notices did) gets it filled with `earned` and hears
     /// nothing: those badges are old news.
     pub async fn claim_badge_notices(&self, user: u64, earned: &[String]) -> anyhow::Result<Vec<String>> {
+        retry("claim_badge_notices", || self.claim_badge_notices_once(user, earned)).await
+    }
+
+    /// One attempt of [`Db::claim_badge_notices`].
+    async fn claim_badge_notices_once(&self, user: u64, earned: &[String]) -> anyhow::Result<Vec<String>> {
         let mut tx = self.pool().begin().await?;
         lock_users(&mut tx, &[sql_id(user)]).await?;
         // A player may have things to announce before they have a row (a first pet needs none).

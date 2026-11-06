@@ -1,6 +1,10 @@
 use chrono::{DateTime, Utc};
 
-use crate::{Db, locks::lock_users, sql_id};
+use crate::{
+    Db,
+    locks::{lock_users, retry},
+    sql_id,
+};
 
 /// Friends a player can have.
 pub const MAX_FRIENDS: i64 = 100;
@@ -59,6 +63,11 @@ impl Db {
     /// Makes two players friends, both ways at once, unless either has the most friends allowed.
     pub async fn befriend(&self, a: u64, b: u64) -> anyhow::Result<BefriendOutcome> {
         anyhow::ensure!(a != b, "nobody befriends themselves");
+        retry("befriend", || self.befriend_once(a, b)).await
+    }
+
+    /// One attempt of [`Db::befriend`].
+    async fn befriend_once(&self, a: u64, b: u64) -> anyhow::Result<BefriendOutcome> {
         let (low, high) = (sql_id(a.min(b)), sql_id(a.max(b)));
         let mut tx = self.pool().begin().await?;
         // Other pairings of either player wait here: the players' locks, taken in id order.

@@ -100,14 +100,18 @@ One lock order holds for every transaction that touches a player's rows (written
 `crates/pinchora-db/src/locks.rs`): first the locks of all its players at once, in id order (a duel's two
 players, a giveaway's host and winners, a listing's buyer and seller, everyone a delete pays back or takes a
 like from), then the object it is about (session, giveaway, pet, listing, poll), then the writes. Chat XP
-stays one statement that writes `users` first, so the trigger takes the lock before anything else. Postgres
-still breaks any deadlock this misses by rolling one side back; claims, payments and the delete run a
-transaction that lost like that again (up to three times, after a few random milliseconds), which is safe
-because the lost attempt left nothing behind and every claim checks what was already used inside its own
-transaction. Tombstones are
-dropped after 35 days, by the reminder ticker. A test inserts into every table that names a player and one reads
-the schema, so a new table or an id column (`*_by`, id arrays included) must be listed in
-`crates/pinchora-db/src/privacy.rs` before it can ship.
+stays one statement that writes `users` first, so the trigger takes the lock before anything else. A delete
+that finds a player it must lock only after it holds its first locks (a like landed in between) does not wait
+for them: it tries the lock, and gives up and starts over with the full set when somebody holds it. The sweeps
+that drop old rows of many players (games, giveaways, polls, weekly boards, tombstones) skip the rows somebody
+holds and take them next time. Postgres still breaks any deadlock this misses by rolling one side back (two
+friends who delete their data at once cross on the rows they share); every transaction that takes player
+locks, and the sweeps, run again when they lose like that (up to three times, after a few random milliseconds;
+a delete that met a player out of order starts over up to twelve more), which is safe because the lost
+attempt left nothing behind and every claim checks what was already used inside its own transaction.
+Tombstones are dropped after 35 days, by the reminder ticker. A test inserts into every table that names a
+player and one reads the schema, so a new table or an id column (`*_by`, id arrays included) must be listed
+in `crates/pinchora-db/src/privacy.rs` before it can ship.
 
 Voice XP keeps who is in voice in Redis, written from the voice-state events, and one ticker on the
 gateway pays every guild once a minute behind a per-minute lock, so a restart or a second gateway pod

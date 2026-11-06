@@ -4,7 +4,7 @@ use chrono::{DateTime, Duration, NaiveDate, Utc};
 
 use crate::{
     Db,
-    locks::{lock_users, retry},
+    locks::{lock_users, retry, try_lock_users},
     sql_id,
 };
 
@@ -194,7 +194,9 @@ impl Db {
     /// The player's lock (see the `locks` module) is taken first and held to the commit, with the
     /// locks of the players it pays back or takes a like from, so a claim of theirs that overlaps the
     /// delete waits and then finds the tombstone instead of a row with no cooldowns. A delete that
-    /// loses a deadlock anyway runs again.
+    /// loses a deadlock anyway, or that finds a player it has to lock too late to wait for, runs
+    /// again. Two players who are friends and delete at once can still cross on the rows they share
+    /// (each deletes the other's visits and gifts); one of them loses and runs again.
     pub async fn delete_user_data(&self, user: u64, now: DateTime<Utc>) -> anyhow::Result<Deleted> {
         retry("delete_user_data", || async move {
             let mut tx = self.pool().begin().await?;
@@ -216,7 +218,9 @@ impl Db {
         let today = now.date_naive();
         // Who else gets written to is read before the locks. Somebody who came in between (a duel
         // accepted or a like given, both under the player's lock, which lets nobody new in once it
-        // is held) is locked straight after, out of order: a deadlock that causes is run again.
+        // is held) is out of order by now: waiting for their lock could cross a transaction that
+        // holds it and waits for one of ours. So their lock is only tried, and when somebody holds
+        // it the delete gives up and starts over, reading the full set first.
         let mut locked = others_written(tx, id).await?;
         locked.push(id);
         lock_users(tx, &locked).await?;
@@ -226,7 +230,7 @@ impl Db {
             .filter(|other| !locked.contains(other))
             .collect();
         if !late.is_empty() {
-            lock_users(tx, &late).await?;
+            try_lock_users(tx, &late).await?;
         }
 
         // Their own claims wait for this to finish, and see the tombstone when they go on.
@@ -315,17 +319,30 @@ impl Db {
     /// Drops the tombstones of players who deleted their data more than [`TOMBSTONE_DAYS`] before
     /// `now`; returns how many went.
     pub async fn forget_old_tombstones(&self, now: DateTime<Utc>) -> anyhow::Result<u64> {
-        Ok(sqlx::query("DELETE FROM deleted_users WHERE deleted_at < $1")
-            .bind(now - Duration::days(TOMBSTONE_DAYS))
+        let before = now - Duration::days(TOMBSTONE_DAYS);
+        retry("forget_old_tombstones", || async move {
+            Ok(sqlx::query(
+                "WITH old AS MATERIALIZED (
+                     SELECT user_id FROM deleted_users WHERE deleted_at < $1 FOR UPDATE SKIP LOCKED)
+                 DELETE FROM deleted_users WHERE user_id IN (SELECT user_id FROM old)",
+            )
+            .bind(before)
             .execute(self.pool())
             .await?
             .rows_affected())
+        })
+        .await
     }
 
     /// Until when a player who deleted their data may not take a pet for a walk (a walk finds shells,
     /// and its cooldown is the pet's, not theirs). `None` when nothing holds them back. A delete of
     /// theirs that is still under way is waited for, so its tombstone is the one read.
     pub async fn walk_locked_until(&self, user: u64, now: DateTime<Utc>) -> anyhow::Result<Option<DateTime<Utc>>> {
+        retry("walk_locked_until", || self.walk_locked_until_once(user, now)).await
+    }
+
+    /// One attempt of [`Db::walk_locked_until`].
+    async fn walk_locked_until_once(&self, user: u64, now: DateTime<Utc>) -> anyhow::Result<Option<DateTime<Utc>>> {
         let id = sql_id(user);
         let mut tx = self.pool().begin().await?;
         lock_users(&mut tx, &[id]).await?;
@@ -342,6 +359,14 @@ impl Db {
     /// before deleting their data, so the board they start again pays nothing. Waits for a delete
     /// of theirs that is still under way, like [`Db::walk_locked_until`].
     pub async fn daily_wordle_played_before_deleting(&self, user: u64, day: i32) -> anyhow::Result<bool> {
+        retry("daily_wordle_played_before_deleting", || {
+            self.daily_wordle_played_once(user, day)
+        })
+        .await
+    }
+
+    /// One attempt of [`Db::daily_wordle_played_before_deleting`].
+    async fn daily_wordle_played_once(&self, user: u64, day: i32) -> anyhow::Result<bool> {
         let id = sql_id(user);
         let mut tx = self.pool().begin().await?;
         lock_users(&mut tx, &[id]).await?;

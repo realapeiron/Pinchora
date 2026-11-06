@@ -285,6 +285,11 @@ impl Db {
     /// Uses up one piece of `bait` for a cast and returns how many are left; `None` when they have
     /// none. The last piece also takes the bait off the hook.
     pub async fn take_bait(&self, user: u64, bait: &str) -> anyhow::Result<Option<i32>> {
+        retry("take_bait", || self.take_bait_once(user, bait)).await
+    }
+
+    /// One attempt of [`Db::take_bait`].
+    async fn take_bait_once(&self, user: u64, bait: &str) -> anyhow::Result<Option<i32>> {
         let id = sql_id(user);
         let mut tx = self.pool().begin().await?;
         lock_users(&mut tx, &[id]).await?;
@@ -530,10 +535,18 @@ impl Db {
 
     /// Forgets the weekly catches of weeks that started before `week`; returns how many rows went.
     pub async fn forget_catch_weeks_before(&self, week: NaiveDate) -> anyhow::Result<u64> {
-        Ok(sqlx::query("DELETE FROM weekly_catch WHERE week < $1")
+        retry("forget_catch_weeks_before", || async move {
+            Ok(sqlx::query(
+                "WITH old AS MATERIALIZED (
+                     SELECT guild_id, week, user_id FROM weekly_catch WHERE week < $1 FOR UPDATE SKIP LOCKED)
+                 DELETE FROM weekly_catch c USING old
+                 WHERE c.guild_id = old.guild_id AND c.week = old.week AND c.user_id = old.user_id",
+            )
             .bind(week)
             .execute(self.pool())
             .await?
             .rows_affected())
+        })
+        .await
     }
 }

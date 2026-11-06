@@ -2,7 +2,11 @@
 
 use chrono::{DateTime, Utc};
 
-use crate::{Db, locks::lock_users, sql_id};
+use crate::{
+    Db,
+    locks::{lock_users, retry},
+    sql_id,
+};
 
 /// Open reminders of the kind a player writes themselves.
 pub const MAX_TEXT_REMINDERS: i64 = 25;
@@ -50,6 +54,11 @@ impl Db {
     /// Turns a notification on or off. Off also drops what was scheduled for it.
     pub async fn set_optin(&self, user: u64, kind: &str, on: bool) -> anyhow::Result<()> {
         anyhow::ensure!(OPT_IN_KINDS.contains(&kind), "unknown reminder kind {kind}");
+        retry("set_optin", || self.set_optin_once(user, kind, on)).await
+    }
+
+    /// One attempt of [`Db::set_optin`].
+    async fn set_optin_once(&self, user: u64, kind: &str, on: bool) -> anyhow::Result<()> {
         let id = sql_id(user);
         if on {
             sqlx::query("INSERT INTO reminder_optins (user_id, kind) VALUES ($1, $2) ON CONFLICT DO NOTHING")
@@ -77,6 +86,16 @@ impl Db {
 
     /// Adds a reminder the player wrote; `None` when they already have [`MAX_TEXT_REMINDERS`] open.
     pub async fn add_text_reminder(&self, user: u64, body: &str, due_at: DateTime<Utc>) -> anyhow::Result<Option<i64>> {
+        retry("add_text_reminder", || self.add_text_reminder_once(user, body, due_at)).await
+    }
+
+    /// One attempt of [`Db::add_text_reminder`].
+    async fn add_text_reminder_once(
+        &self,
+        user: u64,
+        body: &str,
+        due_at: DateTime<Utc>,
+    ) -> anyhow::Result<Option<i64>> {
         let id = sql_id(user);
         let mut tx = self.pool().begin().await?;
         // Two reminders added at once count each other: the player's lock makes them take turns.

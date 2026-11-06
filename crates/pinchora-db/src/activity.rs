@@ -3,7 +3,7 @@
 use chrono::{Datelike, NaiveDate};
 use sqlx::PgConnection;
 
-use crate::{Db, sql_id};
+use crate::{Db, locks::retry, sql_id};
 
 /// A number `/wrapped` keeps per month.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -123,15 +123,21 @@ pub(crate) async fn bump(
 impl Db {
     /// Counts `n` of `counter` for this month, for the places that run outside a transaction.
     pub async fn bump_activity(&self, user: u64, counter: Counter, n: i64) -> anyhow::Result<()> {
-        let mut conn = self.pool().acquire().await?;
-        bump(&mut conn, sql_id(user), counter, n, None).await
+        retry("bump_activity", || async move {
+            let mut conn = self.pool().acquire().await?;
+            bump(&mut conn, sql_id(user), counter, n, None).await
+        })
+        .await
     }
 
     /// Counts `n` of `counter` in the month that `month` falls in (its first day is kept).
     pub async fn add_activity_in(&self, user: u64, month: NaiveDate, counter: Counter, n: i64) -> anyhow::Result<()> {
         let first = month.with_day(1).unwrap_or(month);
-        let mut conn = self.pool().acquire().await?;
-        bump(&mut conn, sql_id(user), counter, n, Some(first)).await
+        retry("add_activity_in", || async move {
+            let mut conn = self.pool().acquire().await?;
+            bump(&mut conn, sql_id(user), counter, n, Some(first)).await
+        })
+        .await
     }
 
     /// The player's numbers for each month of `year` that has any, as (month 1-12, numbers).

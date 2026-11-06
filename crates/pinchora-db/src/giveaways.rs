@@ -137,6 +137,17 @@ async fn entrants_of(tx: &mut Transaction<'_, Postgres>, id: i64) -> anyhow::Res
     Ok(rows.into_iter().map(|(user,)| user as u64).collect())
 }
 
+/// Who has entered the giveaway and is not among `winners` yet.
+async fn candidates_of(tx: &mut Transaction<'_, Postgres>, id: i64, winners: &[i64]) -> anyhow::Result<Vec<u64>> {
+    let rows: Vec<(i64,)> =
+        sqlx::query_as("SELECT user_id FROM giveaway_entries WHERE giveaway_id = $1 AND NOT (user_id = ANY($2))")
+            .bind(id)
+            .bind(winners)
+            .fetch_all(&mut **tx)
+            .await?;
+    Ok(rows.into_iter().map(|(user,)| user as u64).collect())
+}
+
 /// Whether two lists hold the same people, in any order.
 fn same_people(a: &[u64], b: &[u64]) -> bool {
     let (mut a, mut b) = (a.to_vec(), b.to_vec());
@@ -448,50 +459,82 @@ impl Db {
     }
 
     /// Picks `count` new winners of an ended giveaway from the entrants who have not won yet. No
-    /// shells move: the prize was paid when it ended.
+    /// shells move: the prize was paid when it ended. The picked players are locked before the
+    /// giveaway's row (see the `locks` module), which waits for a player who is deleting their data
+    /// to be gone: if one of them is no longer an entrant by then, the pick starts over without
+    /// them, so a deleted player's id is never stored. `pick` may be asked more than once.
     pub async fn reroll_giveaway(
         &self,
         guild_id: u64,
         id: i64,
         count: usize,
-        pick: impl FnOnce(&[u64], usize) -> Vec<u64>,
+        mut pick: impl FnMut(&[u64], usize) -> Vec<u64>,
     ) -> anyhow::Result<Reroll> {
-        let mut tx = self.pool().begin().await?;
-        let row = sqlx::query_as::<_, GiveawayRow>(concat!(
+        let mut retry = Retry::new("reroll_giveaway");
+        loop {
+            let result = self.reroll_giveaway_once(guild_id, id, count, &mut pick).await;
+            if !retry.again(&result).await {
+                return result;
+            }
+        }
+    }
+
+    /// One attempt of [`Db::reroll_giveaway`].
+    async fn reroll_giveaway_once(
+        &self,
+        guild_id: u64,
+        id: i64,
+        count: usize,
+        pick: &mut impl FnMut(&[u64], usize) -> Vec<u64>,
+    ) -> anyhow::Result<Reroll> {
+        let giveaway = concat!(
             "SELECT ",
             columns!(),
-            " FROM giveaways g WHERE g.id = $1 AND g.guild_id = $2 FOR UPDATE OF g"
-        ))
-        .bind(id)
-        .bind(sql_id(guild_id))
-        .fetch_optional(&mut *tx)
-        .await?;
-        let Some(mut giveaway) = row else {
-            return Ok(Reroll::Missing);
-        };
-        if giveaway.is_running() {
-            return Ok(Reroll::StillRunning);
-        }
-        let candidates: Vec<(i64,)> =
-            sqlx::query_as("SELECT user_id FROM giveaway_entries WHERE giveaway_id = $1 AND NOT (user_id = ANY($2))")
+            " FROM giveaways g WHERE g.id = $1 AND g.guild_id = $2"
+        );
+        for _ in 0..END_TRIES {
+            let mut tx = self.pool().begin().await?;
+            let seen = sqlx::query_as::<_, GiveawayRow>(giveaway)
                 .bind(id)
-                .bind(&giveaway.winner_ids)
-                .fetch_all(&mut *tx)
+                .bind(sql_id(guild_id))
+                .fetch_optional(&mut *tx)
                 .await?;
-        let candidates: Vec<u64> = candidates.into_iter().map(|(user,)| user as u64).collect();
-        let picked = chosen(pick(&candidates, count), &candidates, count);
-        if picked.is_empty() {
-            return Ok(Reroll::NoOneLeft);
+            let Some(seen) = seen else {
+                return Ok(Reroll::Missing);
+            };
+            if seen.is_running() {
+                return Ok(Reroll::StillRunning);
+            }
+            let candidates = candidates_of(&mut tx, id, &seen.winner_ids).await?;
+            let picked = chosen(pick(&candidates, count), &candidates, count);
+            if picked.is_empty() {
+                return Ok(Reroll::NoOneLeft);
+            }
+            let ids: Vec<i64> = picked.iter().map(|w| sql_id(*w)).collect();
+            lock_users(&mut tx, &ids).await?;
+            let row = sqlx::query_as::<_, GiveawayRow>(sqlx::AssertSqlSafe(format!("{giveaway} FOR UPDATE OF g")))
+                .bind(id)
+                .bind(sql_id(guild_id))
+                .fetch_optional(&mut *tx)
+                .await?;
+            let Some(mut giveaway) = row else {
+                return Ok(Reroll::Missing);
+            };
+            let still = candidates_of(&mut tx, id, &giveaway.winner_ids).await?;
+            if !picked.iter().all(|w| still.contains(w)) {
+                tx.rollback().await?;
+                continue;
+            }
+            sqlx::query("UPDATE giveaways SET winner_ids = winner_ids || $2 WHERE id = $1")
+                .bind(id)
+                .bind(&ids)
+                .execute(&mut *tx)
+                .await?;
+            tx.commit().await?;
+            giveaway.winner_ids.extend(ids);
+            return Ok(Reroll::Done(Box::new(giveaway), picked));
         }
-        let ids: Vec<i64> = picked.iter().map(|w| sql_id(*w)).collect();
-        sqlx::query("UPDATE giveaways SET winner_ids = winner_ids || $2 WHERE id = $1")
-            .bind(id)
-            .bind(&ids)
-            .execute(&mut *tx)
-            .await?;
-        tx.commit().await?;
-        giveaway.winner_ids.extend(ids);
-        Ok(Reroll::Done(Box::new(giveaway), picked))
+        anyhow::bail!("the entrants of giveaway {id} kept changing while it was rerolled")
     }
 
     /// Ended giveaways whose channel has not been told yet, oldest first.
@@ -544,15 +587,22 @@ impl Db {
         .await?)
     }
 
-    /// Drops giveaways that ended before `before` (and their entries); returns how many.
+    /// Drops giveaways that ended before `before` (and their entries); returns how many. Rows
+    /// somebody holds are left for the next sweep (see the `locks` module).
     pub async fn forget_old_giveaways(&self, before: DateTime<Utc>) -> anyhow::Result<u64> {
-        Ok(
-            sqlx::query("DELETE FROM giveaways WHERE status = 'ended' AND announced AND ended_at < $1")
-                .bind(before)
-                .execute(self.pool())
-                .await?
-                .rows_affected(),
-        )
+        retry("forget_old_giveaways", || async move {
+            Ok(sqlx::query(
+                "WITH old AS MATERIALIZED (
+                     SELECT id FROM giveaways WHERE status = 'ended' AND announced AND ended_at < $1
+                     FOR UPDATE SKIP LOCKED)
+                 DELETE FROM giveaways WHERE id IN (SELECT id FROM old)",
+            )
+            .bind(before)
+            .execute(self.pool())
+            .await?
+            .rows_affected())
+        })
+        .await
     }
 }
 

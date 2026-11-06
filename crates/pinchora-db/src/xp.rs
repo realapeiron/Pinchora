@@ -193,12 +193,21 @@ impl Db {
         .await?)
     }
 
-    /// Forgets the weekly XP of weeks that started before `week`; returns how many rows went.
+    /// Forgets the weekly XP of weeks that started before `week`; returns how many rows went. Rows
+    /// somebody holds are left for the next sweep (see the `locks` module).
     pub async fn forget_weeks_before(&self, week: NaiveDate) -> anyhow::Result<u64> {
-        Ok(sqlx::query("DELETE FROM weekly_xp WHERE week < $1")
+        retry("forget_weeks_before", || async move {
+            Ok(sqlx::query(
+                "WITH old AS MATERIALIZED (
+                     SELECT guild_id, week, user_id FROM weekly_xp WHERE week < $1 FOR UPDATE SKIP LOCKED)
+                 DELETE FROM weekly_xp x USING old
+                 WHERE x.guild_id = old.guild_id AND x.week = old.week AND x.user_id = old.user_id",
+            )
             .bind(week)
             .execute(self.pool())
             .await?
             .rows_affected())
+        })
+        .await
     }
 }

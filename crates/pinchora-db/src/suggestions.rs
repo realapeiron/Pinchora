@@ -2,7 +2,11 @@
 
 use chrono::{DateTime, Utc};
 
-use crate::{Db, locks::lock_users, sql_id};
+use crate::{
+    Db,
+    locks::{lock_users, retry},
+    sql_id,
+};
 
 pub const OPEN: &str = "open";
 pub const APPROVED: &str = "approved";
@@ -88,6 +92,14 @@ impl Db {
 
     /// Files a suggestion under the server's next number.
     pub async fn create_suggestion(&self, guild_id: u64, author: u64, body: &str) -> anyhow::Result<SuggestionRow> {
+        retry("create_suggestion", || {
+            self.create_suggestion_once(guild_id, author, body)
+        })
+        .await
+    }
+
+    /// One attempt of [`Db::create_suggestion`].
+    async fn create_suggestion_once(&self, guild_id: u64, author: u64, body: &str) -> anyhow::Result<SuggestionRow> {
         let mut tx = self.pool().begin().await?;
         lock_users(&mut tx, &[sql_id(author)]).await?;
         let (number,): (i32,) = sqlx::query_as(
@@ -148,6 +160,11 @@ impl Db {
     /// it is the member's current side, taking the vote back. The row is share-locked, so a vote
     /// never lands after a manager decided.
     pub async fn vote_suggestion(&self, id: i64, user: u64, up: bool) -> anyhow::Result<SuggestionVote> {
+        retry("vote_suggestion", || self.vote_suggestion_once(id, user, up)).await
+    }
+
+    /// One attempt of [`Db::vote_suggestion`].
+    async fn vote_suggestion_once(&self, id: i64, user: u64, up: bool) -> anyhow::Result<SuggestionVote> {
         let mut tx = self.pool().begin().await?;
         lock_users(&mut tx, &[sql_id(user)]).await?;
         let open: Option<(bool,)> = sqlx::query_as("SELECT status = 'open' FROM suggestions WHERE id = $1 FOR SHARE")
@@ -195,6 +212,21 @@ impl Db {
 
     /// Approves or denies the server's suggestion number `number`, once.
     pub async fn decide_suggestion(
+        &self,
+        guild_id: u64,
+        number: i32,
+        approve: bool,
+        by: u64,
+        reason: Option<&str>,
+    ) -> anyhow::Result<Decision> {
+        retry("decide_suggestion", || {
+            self.decide_suggestion_once(guild_id, number, approve, by, reason)
+        })
+        .await
+    }
+
+    /// One attempt of [`Db::decide_suggestion`].
+    async fn decide_suggestion_once(
         &self,
         guild_id: u64,
         number: i32,

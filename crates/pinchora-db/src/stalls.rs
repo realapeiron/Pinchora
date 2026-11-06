@@ -45,6 +45,11 @@ impl Db {
 
     /// Moves one item from inventory onto the seller's stall. `Ok(false)` if not owned or the stall is full.
     pub async fn list_item(&self, seller: u64, item_id: &str, price: i64) -> anyhow::Result<bool> {
+        retry("list_item", || self.list_item_once(seller, item_id, price)).await
+    }
+
+    /// One attempt of [`Db::list_item`].
+    async fn list_item_once(&self, seller: u64, item_id: &str, price: i64) -> anyhow::Result<bool> {
         let id = sql_id(seller);
         let mut tx = self.pool().begin().await?;
         lock_users(&mut tx, &[id]).await?;
@@ -78,6 +83,11 @@ impl Db {
 
     /// Takes a listing back into the seller's inventory.
     pub async fn unlist_item(&self, seller: u64, listing: i64) -> anyhow::Result<Option<String>> {
+        retry("unlist_item", || self.unlist_item_once(seller, listing)).await
+    }
+
+    /// One attempt of [`Db::unlist_item`].
+    async fn unlist_item_once(&self, seller: u64, listing: i64) -> anyhow::Result<Option<String>> {
         let id = sql_id(seller);
         let mut tx = self.pool().begin().await?;
         lock_users(&mut tx, &[id]).await?;
