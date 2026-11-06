@@ -72,6 +72,9 @@ use twilight_model::{
 mod board;
 #[path = "simulate/collection.rs"]
 mod collection;
+// The party games' flows (Hot Pearl, Acronym Tide, Caption the Postcard, Wordle Race, Would You Rather, Truth or Dare).
+#[path = "simulate/words.rs"]
+mod words;
 
 const APPLICATION_ID: u64 = 1;
 const CHANNEL_ID: u64 = 2;
@@ -11197,6 +11200,10 @@ async fn admin_paths_refuse_members_without_manage_server() {
         (
             "config surge",
             json!([sub("surge", vec![bool_option("enabled", true)])]),
+        ),
+        (
+            "config partygames",
+            json!([sub("partygames", vec![bool_option("strict", true)])]),
         ),
         (
             "roles panel",

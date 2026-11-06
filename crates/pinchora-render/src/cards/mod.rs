@@ -13,6 +13,7 @@ mod leaderboard;
 mod levelup;
 mod nursery;
 mod party;
+mod party_games;
 mod pet;
 mod picross;
 mod poll;
@@ -41,6 +42,10 @@ pub use nursery::{NurseryCard, NurseryPet};
 pub use party::{
     CrewView, DerbyCard, DerbyLane, HeistCard, Mood, PickView, ShareGrabCard, ShellCard, StageView, SurgeCard,
     SurgeState,
+};
+pub use party_games::{
+    EntriesCard, EntryHeader, EntryRow, LettersCard, PartyLobbyCard, PearlCard, PearlSeat, PostcardCard, PromptCard,
+    PromptTone, RaceCard, Racer, RacerState, RatherCard, StandingRow, StandingsCard,
 };
 pub use pet::{PetCard, PetStatus};
 pub use picross::{PicrossCard, Reveal};

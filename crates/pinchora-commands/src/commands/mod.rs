@@ -26,6 +26,7 @@ pub(crate) mod leaderboard;
 pub(crate) mod level_roles;
 pub(crate) mod partner;
 pub(crate) mod party;
+pub(crate) mod party_games;
 pub(crate) mod pet;
 mod ping;
 pub(crate) mod play;
@@ -120,4 +121,5 @@ commands!(
     collection::crabpot::CrabPot,
     collection::drops::CritterDrop,
     surge::SurgeCommand,
+    party_games::PartyCommand,
 );

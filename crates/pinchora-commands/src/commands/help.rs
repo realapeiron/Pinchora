@@ -30,6 +30,10 @@ impl Help {
                 "`/duel connect4`, `/duel rps` and `/duel tictactoe` challenge a friend (optional wager)\n`/duel share` split a pool or grab it all (optional wager)\n`/play hangman`, `/play wordle` and `/play trivia` play on your own or with the channel\n`/play derby` hermit crab races, back your crab (stakes are a gambling game, off until a manager turns it on)\n`/play heist` crew up against a sunken vault, nobody loses shells\n`/play shells` guess the pearl (a gambling game, off until a manager turns it on)\n`/surge` managers call a storm the whole server fights together\n`/play stats` your wins",
             ))
             .field(EmbedFieldBuilder::new(
+                "Party games",
+                "`/party hotpearl` type words before the pearl pops\n`/party acronym` write a phrase from letters, vote for the best\n`/party postcard` caption a pixel postcard and vote\n`/party wordrace` race to find the same word on private boards\n`/party wouldyourrather` and `/party truthordare` quick questions for the channel\n`/party stop` the host or a manager ends a game\nManagers: `/config partygames` sets how strict the word filter is",
+            ))
+            .field(EmbedFieldBuilder::new(
                 "Collecting",
                 "`/beachcomb` walk the shore for shells, sea glass and critters\n`/crabpot` set a crab pot, haul it in hours later\n`/critterdrop` drop three critters for the channel to grab\n`/dex` your Tide Pool Dex, and where fragments buy decor\nManagers: `/config critters` lets critters and bottles wash up while people chat",
             ))

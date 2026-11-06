@@ -101,7 +101,7 @@ fn sprite(app: &App, entry: &Entry) -> Arc<RgbaImage> {
 }
 
 /// The sprite without the transparent rows and columns around it, so it sits in the middle of a box.
-fn trimmed(sprite: &RgbaImage) -> RgbaImage {
+pub(crate) fn trimmed(sprite: &RgbaImage) -> RgbaImage {
     let (mut x0, mut y0, mut x1, mut y1) = (sprite.width(), sprite.height(), 0, 0);
     for (x, y, px) in sprite.enumerate_pixels() {
         if px[3] > 0 {

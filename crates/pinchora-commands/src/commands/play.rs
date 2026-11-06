@@ -2,6 +2,7 @@
 
 use pinchora_game::play::{Game, TriviaCategory};
 use twilight_interactions::command::{CommandModel, CommandOption, CreateCommand, CreateOption, ResolvedUser};
+use twilight_model::http::interaction::InteractionResponseData;
 use twilight_util::builder::embed::{EmbedBuilder, EmbedFieldBuilder, EmbedFooterBuilder};
 
 use super::{
@@ -12,6 +13,9 @@ use crate::{
     Cx,
     util::{BRAND, resolved_display_name, thousands},
 };
+
+/// How many fields Discord takes in one embed.
+const MAX_EMBED_FIELDS: usize = 25;
 
 #[derive(CommandModel, CreateCommand)]
 #[command(
@@ -192,7 +196,7 @@ async fn stats(cx: &Cx, user: Option<ResolvedUser>) -> anyhow::Result<()> {
     }
     let rows = cx.app.db.game_stats(id).await?;
     let (mut played, mut won) = (0, 0);
-    let mut embed = EmbedBuilder::new().color(BRAND).title(format!("{name}'s games"));
+    let mut fields = Vec::new();
     for game in Game::ALL {
         let row = rows.iter().find(|r| r.game == game.key());
         let value = match row {
@@ -213,17 +217,33 @@ async fn stats(cx: &Cx, user: Option<ResolvedUser>) -> anyhow::Result<()> {
             }
             _ => "Not played yet".to_owned(),
         };
-        embed = embed.field(EmbedFieldBuilder::new(format!("{} {}", game.emoji(), game.label()), value).inline());
+        fields.push(EmbedFieldBuilder::new(format!("{} {}", game.emoji(), game.label()), value).inline());
     }
-    embed = embed.description(if played == 0 {
-        "No games yet. Try `/duel connect4`, `/play wordle` or `/play trivia`!".to_owned()
-    } else {
-        format!("**{won}** wins in **{played}** games.")
-    });
-    let embed = embed
-        .footer(EmbedFooterBuilder::new(
-            "Counted when a game finishes; timeouts and declined challenges don't count.",
-        ))
-        .build();
-    cx.reply_embed(embed).await
+    // Discord takes 25 fields to an embed, so the games past the 25th go in a second embed.
+    let embeds = fields
+        .chunks(MAX_EMBED_FIELDS)
+        .enumerate()
+        .map(|(index, chunk)| {
+            let mut embed = EmbedBuilder::new().color(BRAND);
+            if index == 0 {
+                embed = embed.title(format!("{name}'s games")).description(if played == 0 {
+                    "No games yet. Try `/duel connect4`, `/play wordle` or `/play trivia`!".to_owned()
+                } else {
+                    format!("**{won}** wins in **{played}** games.")
+                });
+                embed = embed.footer(EmbedFooterBuilder::new(
+                    "Counted when a game finishes; timeouts and declined challenges don't count.",
+                ));
+            }
+            for field in chunk {
+                embed = embed.field(field.clone());
+            }
+            embed.build()
+        })
+        .collect();
+    cx.reply(InteractionResponseData {
+        embeds: Some(embeds),
+        ..Default::default()
+    })
+    .await
 }

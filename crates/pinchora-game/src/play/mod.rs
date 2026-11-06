@@ -1,6 +1,6 @@
 //! The calm games: pure rules and content for connect four, rock-paper-scissors, hangman, wordle,
 //! trivia and the board and puzzle games (Sea Fleet, Pixel Picross, Tide 2048, Pearl Checkers and Reef
-//! Chess). Nothing here touches the database or Discord.
+//! Chess); the party games live in [`crate::party`]. Nothing here touches the database or Discord.
 
 pub mod checkers;
 pub mod chess;
@@ -41,10 +41,16 @@ pub enum Game {
     Tide2048,
     Checkers,
     Chess,
+    HotPearl,
+    Acronym,
+    Postcard,
+    WordRace,
+    WouldYouRather,
+    TruthOrDare,
 }
 
 impl Game {
-    pub const ALL: [Game; 20] = [
+    pub const ALL: [Game; 26] = [
         Self::TicTacToe,
         Self::Connect4,
         Self::Rps,
@@ -65,6 +71,12 @@ impl Game {
         Self::Tide2048,
         Self::Checkers,
         Self::Chess,
+        Self::HotPearl,
+        Self::Acronym,
+        Self::Postcard,
+        Self::WordRace,
+        Self::WouldYouRather,
+        Self::TruthOrDare,
     ];
 
     /// What the database and the reward-cap counters call it.
@@ -90,6 +102,12 @@ impl Game {
             Self::Tide2048 => "tide2048",
             Self::Checkers => "checkers",
             Self::Chess => "chess",
+            Self::HotPearl => "hotpearl",
+            Self::Acronym => "acronym",
+            Self::Postcard => "postcard",
+            Self::WordRace => "wordrace",
+            Self::WouldYouRather => "wouldyourrather",
+            Self::TruthOrDare => "truthordare",
         }
     }
 
@@ -115,6 +133,12 @@ impl Game {
             Self::Tide2048 => "Tide 2048",
             Self::Checkers => "Pearl Checkers",
             Self::Chess => "Reef Chess",
+            Self::HotPearl => "Hot Pearl",
+            Self::Acronym => "Acronym Tide",
+            Self::Postcard => "Caption the Postcard",
+            Self::WordRace => "Wordle Race",
+            Self::WouldYouRather => "Would You Rather",
+            Self::TruthOrDare => "Truth or Dare",
         }
     }
 
@@ -140,6 +164,12 @@ impl Game {
             Self::Tide2048 => "🌊",
             Self::Checkers => "⚪",
             Self::Chess => "♟️",
+            Self::HotPearl => "🦪",
+            Self::Acronym => "🌊",
+            Self::Postcard => "💌",
+            Self::WordRace => "🏁",
+            Self::WouldYouRather => "⚖️",
+            Self::TruthOrDare => "🎲",
         }
     }
 
@@ -173,6 +203,13 @@ impl Game {
             Self::Tide2048 => 10,
             Self::Checkers => 20,
             Self::Chess => 30,
+            // The party games pay by how the game went; these are about what a win is worth.
+            Self::HotPearl => 32,
+            Self::Acronym => 25,
+            Self::Postcard => 25,
+            Self::WordRace => 25,
+            Self::WouldYouRather => 1,
+            Self::TruthOrDare => 4,
         }
     }
 
@@ -196,6 +233,13 @@ impl Game {
             Self::Heist => 6,
             Self::Surge => 3,
             Self::SeaFleet | Self::Picross | Self::Tide2048 | Self::Checkers | Self::Chess => 5,
+            // Paid games a day; later ones are still counted in /play stats.
+            Self::HotPearl => 6,
+            Self::Acronym => 6,
+            Self::Postcard => 6,
+            Self::WordRace => 6,
+            Self::WouldYouRather => 10,
+            Self::TruthOrDare => 5,
         }
     }
 

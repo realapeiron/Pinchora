@@ -17,6 +17,7 @@ mod members;
 mod panels;
 mod partners;
 mod party;
+mod party_games;
 mod pets;
 mod polls;
 mod rewards;
@@ -64,6 +65,10 @@ pub use partners::{PairOutcome, PartnerRow};
 pub use party::{
     CrewJoin, DerbyJoin, DerbyLeave, DerbyOutcome, DerbyResult, HeistSettled, PartyMember, PartySettings, ShellDone,
     ShellLimits, ShellPick, ShellStart, SurgeHelp, SurgeSettled,
+};
+pub use party_games::{
+    Commit, Committed, LOBBY, NewEntry, NewParty, PLAYING, PartyEntry, PartyGame, PartyJoin, PartyLeave, PartyPlayer,
+    PartyVote, Pay, PlayerChange, PollChoice,
 };
 pub use pets::{PetRow, TripClaim, TripPayout, Wake};
 pub use polls::{MAX_OPEN_POLLS, NewPoll, PollOpen, PollRow, PollVote};

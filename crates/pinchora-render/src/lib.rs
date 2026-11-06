@@ -30,6 +30,10 @@ pub use cards::{
 pub use cards::{
     BottleCard, DexCard, DexCell, DropCard, DropCritter, EntryPicture, HaulCard, HaulTile, PotCard, PotState,
 };
+pub use cards::{
+    EntriesCard, EntryHeader, EntryRow, LettersCard, PartyLobbyCard, PearlCard, PearlSeat, PostcardCard, PromptCard,
+    PromptTone, RaceCard, Racer, RacerState, RatherCard, StandingRow, StandingsCard,
+};
 pub use derby::{DerbyScene, LANES as DERBY_LANES, derby_gif, derby_still, tint_crab};
 pub use encode::encode_png;
 pub use style::{ACCENT_PRESETS, AccentError, Frame, Opacity, parse_accent, readable};
@@ -222,6 +226,42 @@ impl Renderer {
     }
 
     pub fn tide2048_card(&self, card: &Tide2048Card<'_>) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn party_lobby_card(&self, card: &PartyLobbyCard<'_>) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn pearl_card(&self, card: &PearlCard<'_>) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn standings_card(&self, card: &StandingsCard<'_>) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn letters_card(&self, card: &LettersCard<'_>) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn entries_card(&self, card: &EntriesCard<'_>) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn race_card(&self, card: &RaceCard<'_>) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn postcard_card(&self, card: &PostcardCard<'_>) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn rather_card(&self, card: &RatherCard<'_>) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn prompt_card(&self, card: &PromptCard<'_>) -> anyhow::Result<Vec<u8>> {
         self.svg_to_png(&card.to_svg())
     }
 }
