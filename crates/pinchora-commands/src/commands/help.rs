@@ -27,7 +27,7 @@ impl Help {
             ))
             .field(EmbedFieldBuilder::new(
                 "Games",
-                "`/duel connect4`, `/duel rps` and `/duel tictactoe` challenge a friend (optional wager)\n`/play hangman`, `/play wordle` and `/play trivia` play on your own or with the channel\n`/play stats` your wins",
+                "`/duel connect4`, `/duel rps` and `/duel tictactoe` challenge a friend (optional wager)\n`/duel share` split a pool or grab it all (optional wager)\n`/play hangman`, `/play wordle` and `/play trivia` play on your own or with the channel\n`/play derby` hermit crab races, back your crab (optional stakes)\n`/play heist` crew up against a sunken vault, nobody loses shells\n`/play shells` guess the pearl (a gambling game, off until a manager turns it on)\n`/surge` managers call a storm the whole server fights together\n`/play stats` your wins",
             ))
             .field(EmbedFieldBuilder::new(
                 "Leaderboards",
@@ -43,7 +43,7 @@ impl Help {
             ))
             .field(EmbedFieldBuilder::new(
                 "Server admins",
-                "`/config welcome` welcome cards\n`/config leveling` level-up messages\n`/config level-roles` roles for reaching a level\n`/config points` and `/config store` points and role store\n`/config suggestions` where suggestions go\n`/points give` and `/points take` adjust balances\n`/config show` current settings",
+                "`/config welcome` welcome cards\n`/config leveling` level-up messages\n`/config level-roles` roles for reaching a level\n`/config points` and `/config store` points and role store\n`/config suggestions` where suggestions go\n`/config gambling` switch gambling-style games on\n`/config surge` timed storm surges\n`/points give` and `/points take` adjust balances\n`/config show` current settings",
             ))
             .footer(EmbedFooterBuilder::new("Houses, pets and mini games are on the way."))
             .build();

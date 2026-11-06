@@ -360,6 +360,21 @@ impl Db {
         .await?)
     }
 
+    /// Remembers which message shows a party game, unless it already knows one.
+    pub async fn remember_game_message(&self, id: i64, channel_id: u64, message_id: u64) -> anyhow::Result<()> {
+        sqlx::query(
+            "UPDATE game_sessions
+             SET message_id = $3, channel_id = CASE WHEN channel_id = 0 THEN $2 ELSE channel_id END
+             WHERE id = $1 AND status <> 'done' AND message_id IS NULL",
+        )
+        .bind(id)
+        .bind(sql_id(channel_id))
+        .bind(sql_id(message_id))
+        .execute(self.pool())
+        .await?;
+        Ok(())
+    }
+
     /// Moves a session's text state from `from` to `to` without touching its clock; false when it
     /// is not `from` any more.
     pub async fn touch_game_state(&self, id: i64, from: &str, to: &str) -> anyhow::Result<bool> {
@@ -467,15 +482,15 @@ impl Db {
         Ok(DerbyLeave::Left { refund })
     }
 
-    /// Runs the derby: ends the lobby, works out who wins and pays, in one transaction. `winner` is
-    /// asked for the winning crab once the lobby is locked. `forced_by` is the host starting the race
-    /// early; without it the lobby must have run out of time. `None` when somebody else ended it first.
+    /// Runs the derby: ends the lobby and pays, in one transaction. `winner` is the crab that won the
+    /// race the lobby's seed says. `forced_by` is the host starting the race early; without it the
+    /// lobby must have run out of time. `None` when somebody else ended it first.
     pub async fn derby_settle(
         &self,
         session: i64,
         forced_by: Option<u64>,
         min_staked: usize,
-        winner: impl FnOnce(&GameSession) -> i16,
+        winner: i16,
     ) -> anyhow::Result<Option<DerbyResult>> {
         let mut tx = self.pool().begin().await?;
         let Some(lobby) = lock_game(&mut tx, session, "derby").await? else {
@@ -489,7 +504,6 @@ impl Db {
             return Ok(None);
         }
         let racers = members(&mut tx, session).await?;
-        let winner = winner(&lobby);
         let staked = lobby.bet > 0;
         let outcome = if racers.is_empty() || (staked && racers.len() < min_staked) {
             refund_all(&mut tx, &racers).await?;
@@ -589,7 +603,7 @@ impl Db {
     }
 
     /// Sets the heist off: ends the lobby and pays the crew, in one transaction. `each` is asked for
-    /// the shares every member earns once the crew is fixed; each is paid up to `daily_cap` a day.
+    /// the share every member earns once the crew is fixed; it is paid up to `daily_cap` a day.
     /// `forced_by` is the host setting off early; without it the lobby must have run out of time.
     pub async fn heist_settle(
         &self,
@@ -597,7 +611,7 @@ impl Db {
         forced_by: Option<u64>,
         min_crew: usize,
         daily_cap: i64,
-        each: impl FnOnce(&GameSession, &[PartyMember]) -> i64,
+        each: fn(&GameSession, &[PartyMember]) -> i64,
     ) -> anyhow::Result<Option<HeistSettled>> {
         let mut tx = self.pool().begin().await?;
         let Some(lobby) = lock_game(&mut tx, session, "heist").await? else {
@@ -676,6 +690,19 @@ impl Db {
         })
     }
 
+    /// Storms that are running and not out of time, oldest first, for keeping their card fresh.
+    pub async fn running_surges(&self, limit: i64) -> anyhow::Result<Vec<GameSession>> {
+        Ok(sqlx::query_as::<_, GameSession>(concat!(
+            "SELECT ",
+            columns!(),
+            " FROM game_sessions
+             WHERE kind = 'surge' AND status = 'active' AND expires_at > now() ORDER BY id LIMIT $1"
+        ))
+        .bind(limit)
+        .fetch_all(self.pool())
+        .await?)
+    }
+
     /// Sandbags stacked and how many have helped so far.
     pub async fn surge_totals(&self, session: i64) -> anyhow::Result<(i64, i64)> {
         let mut tx = self.pool().begin().await?;
@@ -693,7 +720,7 @@ impl Db {
         held: bool,
         only_if_expired: bool,
         daily_cap: i64,
-        reward: impl Fn(bool, i64) -> i64,
+        reward: fn(bool, i64) -> i64,
     ) -> anyhow::Result<Option<SurgeSettled>> {
         let mut tx = self.pool().begin().await?;
         let Some(storm) = lock_game(&mut tx, session, "surge")

@@ -14,10 +14,12 @@ use crate::{
     Cx,
     commands::{
         level_roles::ConfigLevelRoles,
+        party::ConfigGambling,
         points::ConfigPoints,
         rep_roles::ConfigRepRoles,
         store::ConfigStore,
         suggest::{ConfigSuggestions, suggestions_summary},
+        surge::ConfigSurge,
         utilities::{
             ConfigGoodbye, ConfigJoinRole, ConfigLog, ConfigLogEvents, goodbye_summary, join_role_summary, log_summary,
         },
@@ -68,6 +70,10 @@ pub enum ConfigCommand {
     LogEvents(ConfigLogEvents),
     #[command(name = "suggestions")]
     Suggestions(ConfigSuggestions),
+    #[command(name = "gambling")]
+    Gambling(ConfigGambling),
+    #[command(name = "surge")]
+    Surge(ConfigSurge),
 }
 
 #[derive(CommandOption, CreateOption, Clone, Copy)]
@@ -177,6 +183,8 @@ impl ConfigCommand {
             Self::Log(c) => return c.run(cx, guild).await,
             Self::LogEvents(c) => return c.run(cx, guild).await,
             Self::Suggestions(c) => return c.run(cx, guild).await,
+            Self::Gambling(c) => return c.run(cx, guild).await,
+            Self::Surge(c) => return c.run(cx, guild).await,
             Self::Points(c) => match c.apply(&cx.app.db, guild).await? {
                 Ok(settings) => settings,
                 Err(reason) => return cx.reply_ephemeral(reason).await,

@@ -11,7 +11,7 @@ pub const PER_HELPER: i64 = 8;
 pub const MAX_COUNTED_HELPERS: i64 = 20;
 /// Seconds between one helper's sandbags, and the most one helper can stack in a storm.
 pub const HELP_COOLDOWN_SECS: u64 = 6;
-pub const MAX_HELPS: i64 = 40;
+pub const MAX_HELPS: i64 = 25;
 /// A manager can summon a storm this often per server, in seconds; a timed storm is at least
 /// [`MIN_EVERY_HOURS`] apart.
 pub const SUMMON_COOLDOWN_SECS: u64 = 1_800;
@@ -80,8 +80,12 @@ mod tests {
 
     #[test]
     fn a_crowd_can_win_and_one_player_cannot() {
-        // One helper is held to 40 bags, and the sea takes 20 of them back.
+        // One helper is held to 25 bags, so even stacking one every cooldown, the sea takes its share back
+        // before the wall can reach the goal of a crowd of one.
         assert!(wall(MAX_HELPS, DURATION_SECS) < goal(1));
+        assert!(wall(MAX_HELPS, MAX_HELPS * HELP_COOLDOWN_SECS as i64) < goal(1));
+        // Two helpers at full speed can just do it.
+        assert!(wall(2 * MAX_HELPS, MAX_HELPS * HELP_COOLDOWN_SECS as i64) >= goal(2));
         // Five helpers each stacking 18 hold it with minutes to spare.
         assert!(wall(5 * 18, 400) >= goal(5));
         // Ten who stack five each do not.
@@ -90,13 +94,13 @@ mod tests {
 
     #[test]
     fn rewards_are_small_and_a_win_pays_more_than_a_loss() {
-        for helps in [0, 1, 7, 15, 40] {
+        for helps in [0, 1, 7, 15, 25] {
             assert!(reward(true, helps) > reward(false, helps));
         }
         assert_eq!(reward(true, 15), 50);
         assert_eq!(reward(true, 100), 50);
         assert_eq!(reward(false, 3), 9);
-        assert!(reward(true, 40) <= DAILY_SHELLS);
+        assert!(reward(true, MAX_HELPS) <= DAILY_SHELLS);
     }
 
     #[test]

@@ -101,15 +101,15 @@ async fn a_staked_derby_holds_stakes_and_the_winners_share_the_pool() {
     assert_eq!(db.party_members(id).await.unwrap().len(), 4);
 
     assert!(
-        db.derby_settle(id, None, 2, |_| 1).await.unwrap().is_none(),
+        db.derby_settle(id, None, 2, 1).await.unwrap().is_none(),
         "the lobby still has time and nobody started it"
     );
     assert!(
-        db.derby_settle(id, Some(b), 2, |_| 1).await.unwrap().is_none(),
+        db.derby_settle(id, Some(b), 2, 1).await.unwrap().is_none(),
         "only the host starts it early"
     );
     let result = db
-        .derby_settle(id, Some(a), 2, |_| 1)
+        .derby_settle(id, Some(a), 2, 1)
         .await
         .unwrap()
         .expect("the host starts the race");
@@ -135,7 +135,7 @@ async fn a_staked_derby_holds_stakes_and_the_winners_share_the_pool() {
         "shells only moved between the racers"
     );
     assert!(
-        db.derby_settle(id, Some(a), 2, |_| 1).await.unwrap().is_none(),
+        db.derby_settle(id, Some(a), 2, 1).await.unwrap().is_none(),
         "no second payout"
     );
     assert_eq!(db.game(id).await.unwrap().unwrap().status, DONE);
@@ -154,7 +154,7 @@ async fn a_derby_nobody_won_or_too_few_joined_gives_every_stake_back() {
     db.derby_join(id, a, "A", 0, 30).await.unwrap();
     db.derby_join(id, b, "B", 1, 30).await.unwrap();
     db.derby_join(id, c, "C", 2, 30).await.unwrap();
-    let result = db.derby_settle(id, Some(a), 2, |_| 5).await.unwrap().expect("settled");
+    let result = db.derby_settle(id, Some(a), 2, 5).await.unwrap().expect("settled");
     assert_eq!(result.outcome, DerbyOutcome::Refunded);
     assert_eq!(
         (shells(&db, a).await, shells(&db, b).await, shells(&db, c).await),
@@ -167,7 +167,7 @@ async fn a_derby_nobody_won_or_too_few_joined_gives_every_stake_back() {
     assert_eq!(shells(&db, a).await, 75);
     run_out(&db, id).await;
     let result = db
-        .derby_settle(id, None, 2, |_| 0)
+        .derby_settle(id, None, 2, 0)
         .await
         .unwrap()
         .expect("late lobbies run");
@@ -177,7 +177,7 @@ async fn a_derby_nobody_won_or_too_few_joined_gives_every_stake_back() {
     // An empty lobby just closes.
     let id = lobby(&db, "derby", guild, other, a, 0).await;
     run_out(&db, id).await;
-    let result = db.derby_settle(id, None, 2, |_| 0).await.unwrap().expect("settled");
+    let result = db.derby_settle(id, None, 2, 0).await.unwrap().expect("settled");
     assert_eq!(result.outcome, DerbyOutcome::Cancelled);
     assert_eq!(ledger_total(&db, &[a, b, c]).await, 300);
 }
@@ -189,7 +189,7 @@ async fn a_friendly_derby_moves_no_shells_and_names_the_winning_backers() {
     let id = lobby(&db, "derby", guild, channel, a, 0).await;
     db.derby_join(id, a, "A", 3, 30).await.unwrap();
     db.derby_join(id, b, "B", 4, 30).await.unwrap();
-    let result = db.derby_settle(id, Some(a), 2, |_| 4).await.unwrap().expect("settled");
+    let result = db.derby_settle(id, Some(a), 2, 4).await.unwrap().expect("settled");
     assert_eq!(result.outcome, DerbyOutcome::Friendly(vec![b]));
     assert_eq!((shells(&db, a).await, shells(&db, b).await), (0, 0));
 }
@@ -250,7 +250,7 @@ async fn a_channel_holds_one_derby_and_one_heist_and_a_server_one_storm() {
         "a heist is another game"
     );
     run_out(&db, first).await;
-    db.derby_settle(first, None, 2, |_| 0).await.unwrap().expect("ends");
+    db.derby_settle(first, None, 2, 0).await.unwrap().expect("ends");
     assert!(
         db.open_party_game(again).await.unwrap().is_some(),
         "a finished derby frees the channel"
@@ -287,7 +287,7 @@ async fn simultaneous_derby_endings_pay_once() {
     run_out(&db, id).await;
     let tries = (0..6).map(|_| {
         let db = db.clone();
-        async move { db.derby_settle(id, None, 2, |_| 2).await }
+        async move { db.derby_settle(id, None, 2, 2).await }
     });
     let results = futures_join(tries).await;
     assert_eq!(results.iter().filter(|r| r.is_some()).count(), 1, "one ending owns it");

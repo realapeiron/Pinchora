@@ -24,6 +24,8 @@ const TRAVEL: f32 = (FINISH_X - START_X - SPRITE_W) as f32;
 /// How far past the line a finished crab trots before it stops, as a share of the track.
 const OVERSHOOT: f32 = 0.05;
 /// Frame times in hundredths of a second.
+/// A race with more steps than this is drawn with every other one.
+const LONG_RACE: usize = 90;
 const READY: u16 = 70;
 const GO: u16 = 40;
 const STEP: u16 = 9;
@@ -146,10 +148,15 @@ fn text(canvas: &mut RgbaImage, x: i32, y: i32, scale: i32, text: &str, color: R
     }
 }
 
-/// Draws `text` over a one-pixel-down shadow, centred on `cx`.
+/// Draws `text` in a navy outline, centred on `cx`, so it reads on sky, sea and sand alike.
 fn caption(canvas: &mut RgbaImage, cx: i32, y: i32, scale: i32, label: &str, color: Rgba<u8>) {
     let x = cx - text_width(label, scale) / 2;
-    text(canvas, x, y + (scale / 3).max(1), scale, label, hex(NAVY));
+    let edge = (scale / 3).max(1);
+    for dy in [-edge, 0, edge] {
+        for dx in [-edge, 0, edge] {
+            text(canvas, x + dx, y + dy, scale, label, hex(NAVY));
+        }
+    }
     text(canvas, x, y, scale, label, color);
 }
 
@@ -230,7 +237,7 @@ fn backdrop(accents: &[u32; LANES]) -> RgbaImage {
     rect(&mut img, FINISH_X - 2, 12, 2, TOP - 12, hex(NAVY));
     rect(&mut img, FINISH_X + 12, 12, 2, TOP - 12, hex(NAVY));
     rect(&mut img, FINISH_X - 2, 12, 16, 8, hex([0xff, 0xd1, 0x66]));
-    caption(&mut img, FINISH_X + 6, 13, 1, "WIN", hex(NAVY));
+    text(&mut img, FINISH_X + 1, 14, 1, "WIN", hex(NAVY));
     img
 }
 
@@ -308,7 +315,7 @@ fn draw(scene: &DerbyScene<'_>, base: &RgbaImage, step: usize, banner: Banner, f
     // The winner's lane lights up once they are across.
     let winner = scene.order[0];
     if now[winner] >= 1.0 {
-        let tone = if step % 2 == 0 {
+        let tone = if step.is_multiple_of(2) {
             [0xff, 0xe9, 0xa8]
         } else {
             [0xff, 0xf6, 0xd6]
@@ -343,7 +350,7 @@ fn draw(scene: &DerbyScene<'_>, base: &RgbaImage, step: usize, banner: Banner, f
             let place = scene.order.iter().position(|&c| c == lane).unwrap_or(LANES - 1);
             badge(&mut img, FINISH_X + 30, y + LANE_H / 2, place);
             if place == 0 && now[lane] >= 1.0 {
-                crown(&mut img, x + 13, y - 3 - hop);
+                crown(&mut img, x + 13, y + 1 - hop);
             }
         }
     }
@@ -377,9 +384,14 @@ pub fn derby_gif(scene: &DerbyScene<'_>) -> anyhow::Result<Vec<u8>> {
         add(draw(scene, &base, 0, Banner::Ready, false), READY)?;
         add(draw(scene, &base, 0, Banner::Go, false), GO)?;
         let last = scene.frames.len() - 1;
-        for step in 1..=last {
-            add(draw(scene, &base, step, Banner::None, false), STEP)?;
+        // An unusually long race shows every other step, twice as long, to stay within a small GIF.
+        let stride = if last > LONG_RACE { 2 } else { 1 };
+        let mut step = stride;
+        while step < last {
+            add(draw(scene, &base, step, Banner::None, false), STEP * stride as u16)?;
+            step += stride;
         }
+        add(draw(scene, &base, last, Banner::None, false), STEP)?;
         add(draw(scene, &base, last, Banner::None, true), REST)?;
     }
     Ok(out)
@@ -473,6 +485,27 @@ mod tests {
         assert_eq!((first.width(), first.height()), (WIDTH as u32, HEIGHT as u32));
         let finish = steps.last().expect("a last frame");
         assert!(finish.delay().numer_denom_ms().0 >= 3_000, "the finish is held");
+    }
+
+    #[test]
+    fn an_unusually_long_race_still_makes_a_small_gif_that_ends_on_the_finish() {
+        let crabs = crabs();
+        let frames: Vec<[f32; LANES]> = (0..=220)
+            .map(|step| {
+                let t = step as f32 / 200.0;
+                [0.0f32, 1.0, 2.0, 3.0, 4.0, 5.0].map(|lane| (t * (1.0 + lane * 0.01)).min(1.05))
+            })
+            .collect();
+        let gif = derby_gif(&scene(&crabs, &frames)).expect("encodes");
+        assert!(gif.len() < 1_000_000, "{} KB", gif.len() / 1024);
+        let steps: Vec<_> = GifDecoder::new(std::io::Cursor::new(&gif))
+            .expect("a GIF")
+            .into_frames()
+            .collect::<Result<_, _>>()
+            .expect("frames");
+        assert!(steps.len() < 140, "{} frames", steps.len());
+        let (numer, _) = steps[steps.len() - 1].delay().numer_denom_ms();
+        assert!(numer >= 3_000, "the finish is held");
     }
 
     #[test]

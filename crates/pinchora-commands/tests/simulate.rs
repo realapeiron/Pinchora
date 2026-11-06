@@ -10831,3 +10831,1217 @@ async fn the_weekly_catch_board_ranks_by_size_for_the_species() {
         assert_eq!(row.fish_id, fish.id);
     }
 }
+
+// /Party games
+
+fn play_sub(name: &str, options: Vec<Value>) -> Value {
+    json!([sub(name, options)])
+}
+
+/// The seed a derby or heist lobby was opened with, which decides how it will go.
+async fn seed_of(sim: &Sim, session: i64) -> u64 {
+    sim.app
+        .db
+        .game(session)
+        .await
+        .expect("session")
+        .expect("the lobby exists")
+        .state
+        .parse()
+        .expect("a lobby's state is its seed")
+}
+
+/// The race a derby lobby will run.
+async fn race_of(sim: &Sim, session: i64) -> pinchora_game::party::derby::Race {
+    pinchora_game::party::derby::run(seed_of(sim, session).await)
+}
+
+/// Gives a lobby a message of its own to be edited, as `track_message` does a moment after a command.
+async fn give_message(sim: &Sim, session: i64) -> u64 {
+    let message = unique();
+    sim.app
+        .db
+        .set_game_message(session, sim.channel, message)
+        .await
+        .expect("message");
+    message
+}
+
+/// Opens a derby lobby as `host` in the sim's channel.
+async fn open_derby(sim: &mut Sim, host: u64, bet: Option<i64>) -> Reply {
+    let options = bet.map(|b| vec![int_option("bet", b)]).unwrap_or_default();
+    sim.command(host, "play", play_sub("derby", options)).await
+}
+
+/// The edit of `message` among the posts, which must carry `file`.
+fn edit_with<'a>(posts: &'a [Post], message: u64, file: &str) -> &'a Post {
+    let edit = posts
+        .iter()
+        .find(|p| p.message == message)
+        .unwrap_or_else(|| panic!("message {message} was not edited"));
+    assert!(edit.files.iter().any(|(name, _)| name == file), "no {file} on the edit");
+    edit
+}
+
+#[tokio::test]
+async fn a_free_derby_runs_as_a_gif_and_rewards_the_backers_of_the_winner() {
+    let Some(mut sim) = Sim::new("a_free_derby_runs_as_a_gif_and_rewards_the_backers_of_the_winner").await else {
+        return;
+    };
+    sim.channel = unique();
+    let (host, a, b, stranger) = (unique(), unique(), unique(), unique());
+    let lobby = open_derby(&mut sim, host, None).await;
+    assert!(
+        !lobby.ephemeral && lobby.content().contains("Hermit Crab Derby") && lobby.content().contains("No stakes"),
+        "{}",
+        lobby.content()
+    );
+    assert!(lobby.pings_nobody());
+    assert_png(&lobby, 600, 470);
+    assert_eq!(lobby.controls().count(), 8, "six crabs, start and leave");
+    let session = session_of(&lobby);
+    let race = race_of(&sim, session).await;
+    let (winner, other) = (race.winner(), (race.winner() + 1) % 6);
+    let names = pinchora_game::party::derby::ROSTER.map(|c| c.name);
+
+    let second = open_derby(&mut sim, stranger, None).await;
+    assert!(
+        second.ephemeral && second.content().contains("already open"),
+        "{}",
+        second.content()
+    );
+
+    let after_a = sim.click(a, &lobby, names[winner]).await;
+    assert_png(&after_a, 600, 470);
+    let after_b = sim.click(b, &after_a, names[other]).await;
+    assert_png(&after_b, 600, 470);
+    let backers = sim.app.db.party_members(session).await.unwrap();
+    assert_eq!(
+        backers
+            .iter()
+            .map(|m| (m.user_id as u64, m.choice as usize))
+            .collect::<Vec<_>>(),
+        vec![(a, winner), (b, other)]
+    );
+
+    let early = sim.click(stranger, &after_b, "Start the race").await;
+    assert!(
+        early.ephemeral && early.content().contains("Only"),
+        "{}",
+        early.content()
+    );
+    let nobody = sim.click(stranger, &after_b, "Leave").await;
+    assert!(
+        nobody.ephemeral && nobody.content().contains("haven't picked"),
+        "{}",
+        nobody.content()
+    );
+
+    let finished = sim.click(host, &after_b, "Start the race").await;
+    assert!(finished.components.is_empty(), "the buttons are gone");
+    assert!(
+        finished.content().contains("||") && finished.content().contains(&format!("**{}**", names[winner])),
+        "{}",
+        finished.content()
+    );
+    assert!(
+        finished.content().contains(&format!("{} +20", mention(a))),
+        "{}",
+        finished.content()
+    );
+    let frames = gif_frames(&finished, "derby.gif");
+    assert!(frames.len() > 45, "{} frames", frames.len());
+    assert_eq!((frames[0].width(), frames[0].height()), (480, 288));
+    save_frames(&sim, "derby", &frames);
+    frames[frames.len() - 1]
+        .save(sim.dir.join("derby-last.png"))
+        .expect("save the last frame");
+    assert_eq!((shells(&sim, a).await, shells(&sim, b).await), (20, 0));
+    assert_eq!(record_of(&sim, a, "derby").await, (1, 1));
+    assert_eq!(record_of(&sim, b, "derby").await, (1, 0));
+    assert_eq!(record_of(&sim, host, "derby").await, (0, 0), "the host only watched");
+
+    let late = sim.click(a, &after_b, names[other]).await;
+    assert!(late.ephemeral && late.content().contains("over"), "{}", late.content());
+    // The channel is free for another race now.
+    let next = open_derby(&mut sim, stranger, None).await;
+    assert!(!next.ephemeral, "{}", next.content());
+}
+
+#[tokio::test]
+async fn a_staked_derby_shares_the_pool_between_the_backers_and_the_janitor_runs_a_forgotten_race() {
+    let _serial = SWEEPS.lock().await;
+    let Some(mut sim) =
+        Sim::new("a_staked_derby_shares_the_pool_between_the_backers_and_the_janitor_runs_a_forgotten_race").await
+    else {
+        return;
+    };
+    sim.channel = unique();
+    let (host, a, b, c, broke) = (unique(), unique(), unique(), unique(), unique());
+    for user in [a, b, c] {
+        fund(&sim, user, 100).await;
+    }
+    fund(&sim, broke, 10).await;
+    let lobby = open_derby(&mut sim, host, Some(40)).await;
+    assert!(lobby.content().contains("**40** shells"), "{}", lobby.content());
+    let session = session_of(&lobby);
+    let race = race_of(&sim, session).await;
+    let names = pinchora_game::party::derby::ROSTER.map(|c| c.name);
+    let (win, lose, other) = (race.winner(), (race.winner() + 1) % 6, (race.winner() + 2) % 6);
+
+    let short = sim.click(broke, &lobby, names[win]).await;
+    assert!(
+        short.ephemeral && short.content().contains("only have **10** shells"),
+        "{}",
+        short.content()
+    );
+    sim.click(a, &lobby, names[win]).await;
+    sim.click(b, &lobby, names[win]).await;
+    let mut view = sim.click(c, &lobby, names[lose]).await;
+    assert_eq!(
+        (shells(&sim, a).await, shells(&sim, b).await, shells(&sim, c).await),
+        (60, 60, 60),
+        "the stakes are held"
+    );
+    // Changing crab costs nothing more; leaving gives the stake back, once.
+    view = sim.click(c, &view, names[other]).await;
+    assert_eq!(shells(&sim, c).await, 60);
+    view = sim.click(c, &view, "Leave").await;
+    assert_eq!(shells(&sim, c).await, 100);
+    let gone = sim.click(c, &view, "Leave").await;
+    assert!(
+        gone.ephemeral && gone.content().contains("haven't picked"),
+        "{}",
+        gone.content()
+    );
+    sim.click(c, &view, names[lose]).await;
+    assert_eq!(shells(&sim, c).await, 60);
+    assert_eq!(sim.app.db.party_members(session).await.unwrap().len(), 3);
+
+    // Nobody starts it: the janitor runs the race when the lobby's time is up and edits its message.
+    let message = give_message(&sim, session).await;
+    sweep_games(&sim.app).await.expect("sweep");
+    assert_eq!(shells(&sim, a).await, 60, "a lobby with time left is not touched");
+    expire(&sim, session).await;
+    sweep_games(&sim.app).await.expect("sweep");
+    let posts = sim.posts();
+    let edit = edit_with(&posts, message, "derby.gif");
+    assert!(
+        edit.content().contains("share the pool of **120** shells")
+            && edit.content().contains(&format!("{} +60", mention(a)))
+            && edit.content().contains(&format!("{} +60", mention(b))),
+        "{}",
+        edit.content()
+    );
+    assert!(!edit.content().contains(&mention(c)), "the loser is not named");
+    assert_eq!(edit.body["components"].as_array().map(Vec::len), Some(0));
+    assert_eq!(
+        (shells(&sim, a).await, shells(&sim, b).await, shells(&sim, c).await),
+        (120, 120, 60),
+        "the pool went to the two who backed the winner"
+    );
+    assert_eq!(record_of(&sim, a, "derby").await, (1, 1));
+    assert_eq!(record_of(&sim, c, "derby").await, (1, 0));
+    sweep_games(&sim.app).await.expect("sweep again");
+    assert_eq!(shells(&sim, a).await, 120, "paid once");
+    assert!(sim.posts().is_empty());
+}
+
+#[tokio::test]
+async fn a_derby_nobody_won_or_too_few_joined_gives_every_stake_back() {
+    let _serial = SWEEPS.lock().await;
+    let Some(mut sim) = Sim::new("a_derby_nobody_won_or_too_few_joined_gives_every_stake_back").await else {
+        return;
+    };
+    sim.channel = unique();
+    let (host, a, b) = (unique(), unique(), unique());
+    for user in [a, b] {
+        fund(&sim, user, 100).await;
+    }
+    let names = pinchora_game::party::derby::ROSTER.map(|c| c.name);
+
+    // Nobody backed the winner.
+    let lobby = open_derby(&mut sim, host, Some(25)).await;
+    let race = race_of(&sim, session_of(&lobby)).await;
+    sim.click(a, &lobby, names[(race.winner() + 1) % 6]).await;
+    sim.click(b, &lobby, names[(race.winner() + 2) % 6]).await;
+    assert_eq!((shells(&sim, a).await, shells(&sim, b).await), (75, 75));
+    let finished = sim.click(host, &lobby, "Start the race").await;
+    assert!(
+        finished.content().contains("every stake went back"),
+        "{}",
+        finished.content()
+    );
+    assert_eq!((shells(&sim, a).await, shells(&sim, b).await), (100, 100));
+
+    // A race with shells on it needs two racers: the host cannot start it early with one, and a race
+    // that runs out of time with one is called off and the stake goes back.
+    let lobby = open_derby(&mut sim, a, Some(30)).await;
+    let session = session_of(&lobby);
+    let message = give_message(&sim, session).await;
+    sim.click(a, &lobby, names[0]).await;
+    assert_eq!(shells(&sim, a).await, 70);
+    let early = sim.click(a, &lobby, "Start the race").await;
+    assert!(
+        early.ephemeral && early.content().contains("at least 2 racers"),
+        "{}",
+        early.content()
+    );
+    assert_eq!(shells(&sim, a).await, 70, "the lobby is still open");
+    expire(&sim, session).await;
+    sweep_games(&sim.app).await.expect("sweep");
+    let posts = sim.posts();
+    let edit = posts
+        .iter()
+        .find(|p| p.message == message)
+        .expect("the lobby message says the race was called off");
+    assert!(
+        edit.content().contains("called off") && edit.content().contains("The stake went back"),
+        "{}",
+        edit.content()
+    );
+    assert_eq!(shells(&sim, a).await, 100, "the stake went back");
+    assert_eq!(
+        record_of(&sim, a, "derby").await,
+        (1, 0),
+        "the race before counted once; a called-off one adds nothing"
+    );
+
+    // An empty lobby cannot be started either.
+    let lobby = open_derby(&mut sim, b, None).await;
+    let empty = sim.click(b, &lobby, "Start the race").await;
+    assert!(
+        empty.ephemeral && empty.content().contains("Pick a crab"),
+        "{}",
+        empty.content()
+    );
+}
+
+#[tokio::test]
+async fn share_or_grab_hides_the_picks_and_pays_the_sea_s_pool_by_what_they_picked() {
+    let Some(mut sim) = Sim::new("share_or_grab_hides_the_picks_and_pays_the_sea_s_pool_by_what_they_picked").await
+    else {
+        return;
+    };
+    let (a, b, bystander) = (unique(), unique(), unique());
+    let challenge = duel(&mut sim, a, b, "share", vec![]).await;
+    assert!(
+        !challenge.ephemeral
+            && challenge.content().contains("Share or Grab")
+            && challenge.content().contains("**60** shells in the pool"),
+        "{}",
+        challenge.content()
+    );
+    let board = sim.click(b, &challenge, "Accept").await;
+    assert_png(&board, 580, 350);
+    assert!(
+        board.content().contains("⏳") && board.has_button("Choose in secret"),
+        "{}",
+        board.content()
+    );
+    let refused = sim.click(bystander, &board, "Choose in secret").await;
+    assert!(
+        refused.ephemeral && refused.content().contains("not in this game"),
+        "{}",
+        refused.content()
+    );
+
+    let a_picker = sim.click(a, &board, "Choose in secret").await;
+    let b_picker = sim.click(b, &board, "Choose in secret").await;
+    assert!(a_picker.ephemeral && b_picker.ephemeral);
+    assert_eq!(a_picker.controls().count(), 2, "share or grab");
+    let locked = sim.click(a, &a_picker, "🤝 Share").await;
+    assert!(
+        locked.content().contains("Locked in 🤝 Share") && locked.components.is_empty(),
+        "{}",
+        locked.content()
+    );
+    let posts = sim.posts();
+    let shown = posts.last().expect("the public message was refreshed");
+    assert!(
+        shown.content().contains("✅") && shown.content().contains("⏳") && !shown.content().contains("Share"),
+        "{}",
+        shown.content()
+    );
+    assert!(shown.files.iter().any(|(name, _)| name == "share.png"));
+    let repeat = sim.click(a, &a_picker, "🦀 Grab").await;
+    assert!(
+        repeat.content().contains("You locked in 🤝"),
+        "no changing your mind: {}",
+        repeat.content()
+    );
+
+    let done = sim.click(b, &b_picker, "🤝 Share").await;
+    assert!(done.content().contains("Both shared"), "{}", done.content());
+    let posts = sim.posts();
+    let end = posts.last().expect("the result");
+    assert!(
+        end.content().contains("split: **30** shells each")
+            && end.body["components"].as_array().map(Vec::len) == Some(0),
+        "{}",
+        end.content()
+    );
+    assert_eq!((shells(&sim, a).await, shells(&sim, b).await), (30, 30));
+    assert_eq!(record_of(&sim, a, "sharegrab").await, (1, 1));
+    assert_eq!(record_of(&sim, b, "sharegrab").await, (1, 1));
+    let late = sim.click(a, &a_picker, "🤝 Share").await;
+    assert!(late.content().contains("over"), "{}", late.content());
+
+    // The same pair is not paid from the pool twice in an hour.
+    let challenge = duel(&mut sim, b, a, "share", vec![]).await;
+    let board = sim.click(a, &challenge, "Accept").await;
+    let (a_picker, b_picker) = (
+        sim.click(a, &board, "Choose in secret").await,
+        sim.click(b, &board, "Choose in secret").await,
+    );
+    sim.click(a, &a_picker, "🤝 Share").await;
+    sim.click(b, &b_picker, "🤝 Share").await;
+    let posts = sim.posts();
+    assert!(
+        posts.last().expect("result").content().contains("within the hour"),
+        "{}",
+        posts.last().expect("result").content()
+    );
+    assert_eq!((shells(&sim, a).await, shells(&sim, b).await), (30, 30));
+
+    // A grabber takes the whole pool from a sharer; two grabbers get nothing.
+    let (c, d, e, f) = (unique(), unique(), unique(), unique());
+    let challenge = duel(&mut sim, c, d, "share", vec![]).await;
+    let board = sim.click(d, &challenge, "Accept").await;
+    let (c_picker, d_picker) = (
+        sim.click(c, &board, "Choose in secret").await,
+        sim.click(d, &board, "Choose in secret").await,
+    );
+    sim.click(d, &d_picker, "🤝 Share").await;
+    let grabbed = sim.click(c, &c_picker, "🦀 Grab").await;
+    assert!(
+        grabbed.content().contains("🦀 Grab against 🤝 Share"),
+        "{}",
+        grabbed.content()
+    );
+    let posts = sim.posts();
+    let end = posts.last().expect("the result");
+    assert!(
+        end.content()
+            .contains(&format!("{} grabbed the whole pool of **60** shells", mention(c))),
+        "{}",
+        end.content()
+    );
+    assert_eq!((shells(&sim, c).await, shells(&sim, d).await), (60, 0));
+    assert_eq!(record_of(&sim, c, "sharegrab").await, (1, 1));
+    assert_eq!(record_of(&sim, d, "sharegrab").await, (1, 0));
+
+    let challenge = duel(&mut sim, e, f, "share", vec![]).await;
+    let board = sim.click(f, &challenge, "Accept").await;
+    let (e_picker, f_picker) = (
+        sim.click(e, &board, "Choose in secret").await,
+        sim.click(f, &board, "Choose in secret").await,
+    );
+    sim.click(e, &e_picker, "🦀 Grab").await;
+    sim.click(f, &f_picker, "🦀 Grab").await;
+    let posts = sim.posts();
+    assert!(
+        posts.last().expect("result").content().contains("washes away"),
+        "{}",
+        posts.last().unwrap().content()
+    );
+    assert_eq!((shells(&sim, e).await, shells(&sim, f).await), (0, 0));
+    assert_eq!(record_of(&sim, e, "sharegrab").await, (1, 0));
+}
+
+#[tokio::test]
+async fn share_or_grab_wagers_go_by_the_picks_and_a_player_who_never_picks_forfeits() {
+    let _serial = SWEEPS.lock().await;
+    let Some(mut sim) = Sim::new("share_or_grab_wagers_go_by_the_picks_and_a_player_who_never_picks_forfeits").await
+    else {
+        return;
+    };
+    let users: Vec<u64> = (0..8).map(|_| unique()).collect();
+    for user in &users {
+        fund(&sim, *user, 200).await;
+    }
+    let (a, b, c, d, e, f, g, h) = (
+        users[0], users[1], users[2], users[3], users[4], users[5], users[6], users[7],
+    );
+
+    let challenge = duel(&mut sim, a, b, "share", vec![int_option("bet", 50)]).await;
+    assert!(
+        challenge.content().contains("**100** in the pot") && challenge.content().contains("sea keeps it all"),
+        "{}",
+        challenge.content()
+    );
+    let board = sim.click(b, &challenge, "Accept").await;
+    assert!(board.content().contains("**100** shells"), "{}", board.content());
+    assert_eq!(
+        (shells(&sim, a).await, shells(&sim, b).await),
+        (150, 150),
+        "the stakes are held"
+    );
+    // One grabs while the other shares: the grabber takes the pot.
+    let (a_picker, b_picker) = (
+        sim.click(a, &board, "Choose in secret").await,
+        sim.click(b, &board, "Choose in secret").await,
+    );
+    sim.click(a, &a_picker, "🦀 Grab").await;
+    sim.click(b, &b_picker, "🤝 Share").await;
+    assert_eq!((shells(&sim, a).await, shells(&sim, b).await), (250, 150));
+    assert_eq!(record_of(&sim, a, "sharegrab").await, (1, 1));
+
+    // Both share: the stakes come back. Both grab: the sea keeps them.
+    let challenge = duel(&mut sim, c, d, "share", vec![int_option("bet", 50)]).await;
+    let board = sim.click(d, &challenge, "Accept").await;
+    let (c_picker, d_picker) = (
+        sim.click(c, &board, "Choose in secret").await,
+        sim.click(d, &board, "Choose in secret").await,
+    );
+    sim.click(c, &c_picker, "🤝 Share").await;
+    sim.click(d, &d_picker, "🤝 Share").await;
+    assert_eq!((shells(&sim, c).await, shells(&sim, d).await), (200, 200));
+    let challenge = duel(&mut sim, d, c, "share", vec![int_option("bet", 50)]).await;
+    let board = sim.click(c, &challenge, "Accept").await;
+    let (c_picker, d_picker) = (
+        sim.click(c, &board, "Choose in secret").await,
+        sim.click(d, &board, "Choose in secret").await,
+    );
+    sim.click(c, &c_picker, "🦀 Grab").await;
+    sim.click(d, &d_picker, "🦀 Grab").await;
+    let posts = sim.posts();
+    assert!(
+        posts.last().expect("result").content().contains("sink into the sea"),
+        "{}",
+        posts.last().unwrap().content()
+    );
+    assert_eq!((shells(&sim, c).await, shells(&sim, d).await), (150, 150));
+
+    // A player who never picks forfeits the pot to the one who did.
+    let challenge = duel(&mut sim, e, f, "share", vec![int_option("bet", 50)]).await;
+    let board = sim.click(f, &challenge, "Accept").await;
+    let session = session_of(&board);
+    let e_picker = sim.click(e, &board, "Choose in secret").await;
+    sim.click(e, &e_picker, "🦀 Grab").await;
+    sim.posts();
+    expire(&sim, session).await;
+    sweep_games(&sim.app).await.expect("sweep");
+    // Found by what it says: the challenge's own tracker may have swapped the message id meanwhile.
+    let posts = sim.posts();
+    let edit = posts
+        .iter()
+        .find(|p| p.content().contains("forfeits"))
+        .expect("the forfeit is announced");
+    assert!(edit.files.iter().any(|(name, _)| name == "share.png"));
+    assert!(
+        edit.content()
+            .contains(&format!("{} ran out of time and forfeits", mention(f)))
+            && edit
+                .content()
+                .contains(&format!("{} takes the pot of **100**", mention(e))),
+        "{}",
+        edit.content()
+    );
+    assert_eq!((shells(&sim, e).await, shells(&sim, f).await), (250, 150));
+    assert_eq!(record_of(&sim, e, "sharegrab").await, (1, 1));
+    assert_eq!(record_of(&sim, f, "sharegrab").await, (1, 0));
+    sweep_games(&sim.app).await.expect("sweep again");
+    assert_eq!(shells(&sim, e).await, 250, "paid once");
+
+    // Nobody picks: both stakes go back, and a late click ends the game in place.
+    let challenge = duel(&mut sim, g, h, "share", vec![int_option("bet", 50)]).await;
+    let board = sim.click(h, &challenge, "Accept").await;
+    assert_eq!((shells(&sim, g).await, shells(&sim, h).await), (150, 150));
+    expire(&sim, session_of(&board)).await;
+    let ended = sim.click(g, &board, "Choose in secret").await;
+    assert!(ended.content().contains("Nobody picked in time"), "{}", ended.content());
+    assert_eq!((shells(&sim, g).await, shells(&sim, h).await), (200, 200));
+    assert_eq!(record_of(&sim, g, "sharegrab").await, (0, 0));
+
+    // A declined challenge holds nothing.
+    let challenge = duel(&mut sim, h, c, "share", vec![int_option("bet", 50)]).await;
+    let before = (shells(&sim, h).await, shells(&sim, c).await);
+    let declined = sim.click(c, &challenge, "Decline").await;
+    assert!(declined.content().contains("declined"), "{}", declined.content());
+    assert_eq!((shells(&sim, h).await, shells(&sim, c).await), before);
+}
+
+/// `/config gambling enabled:<on>` as a manager.
+async fn gambling(sim: &mut Sim, manager: u64, on: bool) -> Reply {
+    sim.permissions = MANAGE_GUILD;
+    let reply = sim
+        .command(
+            manager,
+            "config",
+            json!([sub("gambling", vec![bool_option("enabled", on)])]),
+        )
+        .await;
+    sim.permissions = 0;
+    reply
+}
+
+#[tokio::test]
+async fn the_shell_game_is_off_until_a_manager_turns_it_on_and_pays_a_right_guess() {
+    let Some(mut sim) = Sim::new("the_shell_game_is_off_until_a_manager_turns_it_on_and_pays_a_right_guess").await
+    else {
+        return;
+    };
+    let (manager, player) = (unique(), unique());
+    fund(&sim, player, 100).await;
+    let shells_cmd = |stake: i64| play_sub("shells", vec![int_option("bet", stake)]);
+    let off = sim.command(player, "play", shells_cmd(20)).await;
+    assert!(off.ephemeral && off.content().contains("**off**"), "{}", off.content());
+    assert_eq!(shells(&sim, player).await, 100, "nothing was taken");
+    let on = gambling(&mut sim, manager, true).await;
+    assert!(on.ephemeral && on.content().contains("**on**"), "{}", on.content());
+    assert!(sim.app.db.gambling_enabled(sim.guild).await.unwrap());
+    let broke = sim.command(unique(), "play", shells_cmd(20)).await;
+    assert!(
+        broke.ephemeral && broke.content().contains("only have **0** shells"),
+        "{}",
+        broke.content()
+    );
+
+    // A right guess pays two and a half times the stake.
+    let table = sim.command(player, "play", shells_cmd(20)).await;
+    assert!(
+        !table.ephemeral && table.content().contains("sits down at the shell table"),
+        "{}",
+        table.content()
+    );
+    assert_png(&table, 520, 320);
+    assert_eq!(table.controls().count(), 3);
+    assert_eq!(shells(&sim, player).await, 80, "the stake is held");
+    let session = session_of(&table);
+    let pearl: usize = sim.app.db.game(session).await.unwrap().unwrap().state.parse().unwrap();
+    let stranger = sim.click(unique(), &table, &format!("Shell {}", pearl + 1)).await;
+    assert!(
+        stranger.ephemeral && stranger.content().contains("isn't your table"),
+        "{}",
+        stranger.content()
+    );
+    let found = sim.click(player, &table, &format!("Shell {}", pearl + 1)).await;
+    assert!(
+        found.components.is_empty() && found.content().contains("found the pearl"),
+        "{}",
+        found.content()
+    );
+    assert_png(&found, 520, 320);
+    assert_eq!(shells(&sim, player).await, 130, "20 staked, 50 back");
+    assert_eq!(record_of(&sim, player, "shellgame").await, (1, 1));
+    let again = sim.click(player, &table, "Shell 1").await;
+    assert!(
+        again.ephemeral && again.content().contains("over"),
+        "{}",
+        again.content()
+    );
+
+    // A wrong guess loses the stake and shows where the pearl was.
+    sim.app
+        .cache
+        .forget(&format!("rest:shellsstart:{player}"))
+        .await
+        .unwrap();
+    let table = sim.command(player, "play", shells_cmd(30)).await;
+    let pearl: usize = sim
+        .app
+        .db
+        .game(session_of(&table))
+        .await
+        .unwrap()
+        .unwrap()
+        .state
+        .parse()
+        .unwrap();
+    let wrong = (pearl + 1) % 3;
+    let lost = sim.click(player, &table, &format!("Shell {}", wrong + 1)).await;
+    assert!(
+        lost.content().contains(&format!("pearl was under shell {}", pearl + 1)),
+        "{}",
+        lost.content()
+    );
+    assert_eq!(shells(&sim, player).await, 100);
+    assert_eq!(record_of(&sim, player, "shellgame").await, (2, 1));
+    let again = sim.command(player, "play", shells_cmd(30)).await;
+    assert!(
+        again.ephemeral && again.content().contains("still shuffling"),
+        "{}",
+        again.content()
+    );
+
+    // Switched off again, the table closes.
+    gambling(&mut sim, manager, false).await;
+    sim.app
+        .cache
+        .forget(&format!("rest:shellsstart:{player}"))
+        .await
+        .unwrap();
+    let closed = sim.command(player, "play", shells_cmd(20)).await;
+    assert!(
+        closed.ephemeral && closed.content().contains("**off**"),
+        "{}",
+        closed.content()
+    );
+}
+
+#[tokio::test]
+async fn a_forgotten_shell_game_gives_the_stake_back_and_the_tables_have_daily_limits() {
+    let _serial = SWEEPS.lock().await;
+    let Some(mut sim) = Sim::new("a_forgotten_shell_game_gives_the_stake_back_and_the_tables_have_daily_limits").await
+    else {
+        return;
+    };
+    let (manager, player, late) = (unique(), unique(), unique());
+    fund(&sim, player, 100).await;
+    fund(&sim, late, 100).await;
+    gambling(&mut sim, manager, true).await;
+    let shells_cmd = |stake: i64| play_sub("shells", vec![int_option("bet", stake)]);
+
+    let table = sim.command(player, "play", shells_cmd(40)).await;
+    let session = session_of(&table);
+    let message = give_message(&sim, session).await;
+    assert_eq!(shells(&sim, player).await, 60);
+    sweep_games(&sim.app).await.expect("sweep");
+    assert_eq!(shells(&sim, player).await, 60, "a table with time left is left alone");
+    expire(&sim, session).await;
+    sweep_games(&sim.app).await.expect("sweep");
+    assert_eq!(shells(&sim, player).await, 100, "the stake is back");
+    let posts = sim.posts();
+    let edit = edit_with(&posts, message, "shells.png");
+    assert!(edit.content().contains("never picked a shell"), "{}", edit.content());
+    assert_eq!(edit.body["components"].as_array().map(Vec::len), Some(0));
+    sweep_games(&sim.app).await.expect("sweep again");
+    assert_eq!(shells(&sim, player).await, 100, "refunded once");
+    assert_eq!(record_of(&sim, player, "shellgame").await, (0, 0));
+
+    // A click on a late table ends it in place.
+    let table = sim.command(late, "play", shells_cmd(25)).await;
+    expire(&sim, session_of(&table)).await;
+    let ended = sim.click(late, &table, "Shell 2").await;
+    assert!(ended.content().contains("never picked a shell"), "{}", ended.content());
+    assert_eq!(shells(&sim, late).await, 100);
+
+    // The loss limit: 300 down is the end of the day. Three lost games of 100 would pass it.
+    let rich = unique();
+    fund(&sim, rich, 1_000).await;
+    for round in 0..3 {
+        sim.app.cache.forget(&format!("rest:shellsstart:{rich}")).await.unwrap();
+        let table = sim.command(rich, "play", shells_cmd(90)).await;
+        assert!(!table.ephemeral, "round {round}: {}", table.content());
+        let pearl: usize = sim
+            .app
+            .db
+            .game(session_of(&table))
+            .await
+            .unwrap()
+            .unwrap()
+            .state
+            .parse()
+            .unwrap();
+        sim.click(rich, &table, &format!("Shell {}", (pearl + 1) % 3 + 1)).await;
+    }
+    sim.app.cache.forget(&format!("rest:shellsstart:{rich}")).await.unwrap();
+    let stop = sim.command(rich, "play", shells_cmd(50)).await;
+    assert!(
+        stop.ephemeral && stop.content().contains("loss limit of **300**"),
+        "{}",
+        stop.content()
+    );
+    assert_eq!(shells(&sim, rich).await, 730);
+}
+
+/// Opens a heist lobby as `host` in the sim's channel.
+async fn open_heist(sim: &mut Sim, host: u64) -> Reply {
+    sim.command(host, "play", play_sub("heist", vec![])).await
+}
+
+#[tokio::test]
+async fn a_heist_crew_picks_roles_and_the_vault_pays_what_the_seed_says() {
+    use pinchora_game::party::heist::{self, Role, Tier};
+    let Some(mut sim) = Sim::new("a_heist_crew_picks_roles_and_the_vault_pays_what_the_seed_says").await else {
+        return;
+    };
+    sim.channel = unique();
+    let (host, a, b, stranger) = (unique(), unique(), unique(), unique());
+    let lobby = open_heist(&mut sim, host).await;
+    assert!(
+        !lobby.ephemeral
+            && lobby.content().contains("Treasure Heist")
+            && lobby.content().contains("Nobody loses shells"),
+        "{}",
+        lobby.content()
+    );
+    assert!(lobby.pings_nobody());
+    assert_png(&lobby, 600, 560);
+    for label in ["Lookout", "Locksmith", "Diver", "Set off now", "Leave"] {
+        assert!(lobby.has_button(label), "{label}");
+    }
+    let session = session_of(&lobby);
+    let second = open_heist(&mut sim, stranger).await;
+    assert!(
+        second.ephemeral && second.content().contains("already being planned"),
+        "{}",
+        second.content()
+    );
+
+    // The seed decides the stages; pick one that opens the vault for this crew.
+    let crew_roles = [Role::Lookout, Role::Locksmith, Role::Diver];
+    let seed = (0..10_000u64)
+        .find(|s| heist::run(*s, &crew_roles).tier == Tier::Vault)
+        .expect("some seed opens the vault");
+    sqlx::query("UPDATE game_sessions SET state = $2 WHERE id = $1")
+        .bind(session)
+        .bind(seed.to_string())
+        .execute(sim.app.db.pool())
+        .await
+        .unwrap();
+
+    let view = sim.click(host, &lobby, "Lookout").await;
+    assert_png(&view, 600, 560);
+    let view = sim.click(a, &view, "Diver").await;
+    let view = sim.click(a, &view, "Locksmith").await;
+    sim.click(b, &view, "Diver").await;
+    let crew = sim.app.db.party_members(session).await.unwrap();
+    assert_eq!(
+        crew.iter().map(|m| (m.user_id as u64, m.choice)).collect::<Vec<_>>(),
+        vec![(host, 0), (a, 1), (b, 2)],
+        "a changed their mind and kept their place"
+    );
+    let early = sim.click(stranger, &view, "Set off now").await;
+    assert!(
+        early.ephemeral && early.content().contains("Only"),
+        "{}",
+        early.content()
+    );
+    let nobody = sim.click(stranger, &view, "Leave").await;
+    assert!(
+        nobody.ephemeral && nobody.content().contains("not in this crew"),
+        "{}",
+        nobody.content()
+    );
+
+    let done = sim.click(host, &view, "Set off now").await;
+    assert_png(&done, 600, 560);
+    assert!(
+        done.content().contains("the vault is open") && done.components.is_empty(),
+        "{}",
+        done.content()
+    );
+    for (user, icon) in [(host, "🔭"), (a, "🔑"), (b, "🤿")] {
+        assert!(
+            done.content().contains(&format!("{icon} {} **+60**", mention(user))),
+            "{}",
+            done.content()
+        );
+        assert_eq!(shells(&sim, user).await, 60);
+        assert_eq!(record_of(&sim, user, "heist").await, (1, 1));
+    }
+    let late = sim.click(a, &view, "Lookout").await;
+    assert!(late.ephemeral && late.content().contains("over"), "{}", late.content());
+
+    // The crew lies low after a heist, and cannot plan another at once.
+    let resting = open_heist(&mut sim, host).await;
+    assert!(
+        resting.ephemeral && resting.content().contains("laying low"),
+        "{}",
+        resting.content()
+    );
+    let fresh = unique();
+    let lobby = open_heist(&mut sim, fresh).await;
+    let refused = sim.click(a, &lobby, "Diver").await;
+    assert!(
+        refused.ephemeral && refused.content().contains("laying low"),
+        "{}",
+        refused.content()
+    );
+}
+
+#[tokio::test]
+async fn a_busted_heist_pays_nobody_and_a_lone_crew_member_is_called_off_by_the_janitor() {
+    use pinchora_game::party::heist::{self, Role, Tier};
+    let _serial = SWEEPS.lock().await;
+    let Some(mut sim) =
+        Sim::new("a_busted_heist_pays_nobody_and_a_lone_crew_member_is_called_off_by_the_janitor").await
+    else {
+        return;
+    };
+    sim.channel = unique();
+    let (host, a, loner) = (unique(), unique(), unique());
+    let lobby = open_heist(&mut sim, host).await;
+    let session = session_of(&lobby);
+    let crew_roles = [Role::Diver, Role::Diver];
+    let seed = (0..10_000u64)
+        .find(|s| heist::run(*s, &crew_roles).tier == Tier::Busted)
+        .expect("some seed fails this crew");
+    sqlx::query("UPDATE game_sessions SET state = $2 WHERE id = $1")
+        .bind(session)
+        .bind(seed.to_string())
+        .execute(sim.app.db.pool())
+        .await
+        .unwrap();
+    let view = sim.click(host, &lobby, "Diver").await;
+    sim.click(a, &view, "Diver").await;
+    let message = give_message(&sim, session).await;
+    expire(&sim, session).await;
+    sweep_games(&sim.app).await.expect("sweep");
+    let posts = sim.posts();
+    let edit = edit_with(&posts, message, "heist.png");
+    assert!(edit.content().contains("busted"), "{}", edit.content());
+    assert_eq!((shells(&sim, host).await, shells(&sim, a).await), (0, 0));
+    assert_eq!(record_of(&sim, host, "heist").await, (1, 0));
+
+    // One crew member alone is not a heist.
+    sim.channel = unique();
+    let lobby = open_heist(&mut sim, loner).await;
+    let session = session_of(&lobby);
+    sim.click(loner, &lobby, "Lookout").await;
+    let early = sim.click(loner, &lobby, "Set off now").await;
+    assert!(
+        early.ephemeral && early.content().contains("at least 2 crew"),
+        "{}",
+        early.content()
+    );
+    let message = give_message(&sim, session).await;
+    expire(&sim, session).await;
+    sweep_games(&sim.app).await.expect("sweep");
+    let posts = sim.posts();
+    let edit = posts
+        .iter()
+        .find(|p| p.message == message)
+        .expect("the lobby message was edited");
+    assert!(
+        edit.content().contains("called off") && edit.content().contains("at least 2 crew"),
+        "{}",
+        edit.content()
+    );
+    assert_eq!(edit.body["components"].as_array().map(Vec::len), Some(0));
+    assert_eq!(record_of(&sim, loner, "heist").await, (0, 0));
+}
+
+/// `/surge` as a manager.
+async fn call_storm(sim: &mut Sim, manager: u64) -> Reply {
+    sim.permissions = MANAGE_GUILD;
+    let reply = sim.command(manager, "surge", json!([])).await;
+    sim.permissions = 0;
+    reply
+}
+
+#[tokio::test]
+async fn a_storm_surge_is_held_back_by_the_whole_server_and_pays_everyone_who_helped() {
+    let Some(mut sim) = Sim::new("a_storm_surge_is_held_back_by_the_whole_server_and_pays_everyone_who_helped").await
+    else {
+        return;
+    };
+    sim.channel = unique();
+    let (manager, member) = (unique(), unique());
+    let denied = sim.command(member, "surge", json!([])).await;
+    assert!(
+        denied.ephemeral && denied.content().contains("Manage Server"),
+        "{}",
+        denied.content()
+    );
+
+    let storm = call_storm(&mut sim, manager).await;
+    assert!(
+        !storm.ephemeral && storm.content().contains("Storm surge") && storm.has_button("Stack a sandbag"),
+        "{}",
+        storm.content()
+    );
+    assert!(storm.pings_nobody());
+    assert_png(&storm, 640, 380);
+    let session = session_of(&storm);
+    let again = call_storm(&mut sim, manager).await;
+    assert!(
+        again.ephemeral && again.content().contains("breather"),
+        "{}",
+        again.content()
+    );
+    sim.app
+        .cache
+        .forget(&format!("rest:surge:{}", sim.guild))
+        .await
+        .unwrap();
+    let raging = call_storm(&mut sim, manager).await;
+    assert!(
+        raging.ephemeral && raging.content().contains("already raging"),
+        "{}",
+        raging.content()
+    );
+
+    let helpers: Vec<u64> = (0..3).map(|_| unique()).collect();
+    let stack = |sim: &Sim, user: u64| {
+        let key = format!("rest:surgehelp:{session}:{user}");
+        let cache = sim.app.cache.clone();
+        async move { cache.forget(&key).await.unwrap() }
+    };
+    let first = sim.click(helpers[0], &storm, "Stack a sandbag").await;
+    assert!(
+        first.ephemeral && first.content().contains("Sandbag **1** stacked"),
+        "{}",
+        first.content()
+    );
+    let eager = sim.click(helpers[0], &storm, "Stack a sandbag").await;
+    assert!(
+        eager.ephemeral && eager.content().contains("claws need a rest"),
+        "{}",
+        eager.content()
+    );
+
+    // Two helpers stack 18 each, the third finishes the wall: 24 + 8 * 3 = 48 sandbags.
+    for round in 1..18 {
+        stack(&sim, helpers[0]).await;
+        let reply = sim.click(helpers[0], &storm, "Stack a sandbag").await;
+        assert!(
+            reply.content().contains(&format!("Sandbag **{}** stacked", round + 1)),
+            "{}",
+            reply.content()
+        );
+    }
+    for _ in 0..18 {
+        stack(&sim, helpers[1]).await;
+        sim.click(helpers[1], &storm, "Stack a sandbag").await;
+    }
+    let mut last = None;
+    for n in 0..12 {
+        stack(&sim, helpers[2]).await;
+        let reply = sim.click(helpers[2], &storm, "Stack a sandbag").await;
+        if n < 11 {
+            assert!(
+                reply.ephemeral && reply.content().contains("The wall stands at"),
+                "{}",
+                reply.content()
+            );
+        } else {
+            last = Some(reply);
+        }
+    }
+    let held = last.expect("the last sandbag");
+    assert!(
+        held.content().contains("The wall held") && held.components.is_empty(),
+        "{}",
+        held.content()
+    );
+    assert_png(&held, 640, 380);
+    // 20 + 2 shells for each of the first 15 sandbags, then 12 sandbags for the third.
+    for (user, bags, shells_paid) in [
+        (helpers[0], 18, 20 + 2 * 15),
+        (helpers[1], 18, 20 + 2 * 15),
+        (helpers[2], 12, 20 + 2 * 12),
+    ] {
+        assert!(
+            held.content()
+                .contains(&format!("{} ×{bags} **+{shells_paid}**", mention(user))),
+            "{}",
+            held.content()
+        );
+        assert_eq!(shells(&sim, user).await, shells_paid);
+        assert_eq!(record_of(&sim, user, "surge").await, (1, 1));
+    }
+    sim.app
+        .cache
+        .forget(&format!("rest:surgehelp:{session}:{}", helpers[1]))
+        .await
+        .unwrap();
+    let late = sim.click(helpers[1], &storm, "Stack a sandbag").await;
+    assert!(
+        late.ephemeral && late.content().contains("passed"),
+        "{}",
+        late.content()
+    );
+    assert_eq!(record_of(&sim, member, "surge").await, (0, 0));
+}
+
+#[tokio::test]
+async fn the_janitor_keeps_the_storm_card_fresh_and_the_sea_wins_when_time_runs_out() {
+    let _serial = SWEEPS.lock().await;
+    let Some(mut sim) = Sim::new("the_janitor_keeps_the_storm_card_fresh_and_the_sea_wins_when_time_runs_out").await
+    else {
+        return;
+    };
+    sim.channel = unique();
+    let (manager, a, b) = (unique(), unique(), unique());
+    let storm = call_storm(&mut sim, manager).await;
+    let session = session_of(&storm);
+    let message = give_message(&sim, session).await;
+    sim.click(a, &storm, "Stack a sandbag").await;
+    sim.click(b, &storm, "Stack a sandbag").await;
+    sim.app
+        .cache
+        .forget(&format!("rest:surgehelp:{session}:{a}"))
+        .await
+        .unwrap();
+    sim.click(a, &storm, "Stack a sandbag").await;
+
+    // The card catches up with the wall once, and not again until something changes.
+    sweep_games(&sim.app).await.expect("sweep");
+    let posts = sim.posts();
+    let refreshed = edit_with(&posts, message, "surge.png");
+    assert!(
+        refreshed.content().contains("Storm surge") && !refreshed.body["components"].as_array().unwrap().is_empty()
+    );
+    sweep_games(&sim.app).await.expect("sweep again");
+    assert!(
+        sim.posts().iter().all(|p| p.message != message),
+        "nothing changed, nothing redrawn"
+    );
+    sim.app
+        .cache
+        .forget(&format!("rest:surgehelp:{session}:{b}"))
+        .await
+        .unwrap();
+    sim.click(b, &storm, "Stack a sandbag").await;
+    sweep_games(&sim.app).await.expect("sweep once more");
+    assert!(
+        sim.posts().iter().any(|p| p.message == message),
+        "a new sandbag redraws the card"
+    );
+
+    // Time runs out with the wall too low: the sea wins and the helpers get a small thanks.
+    expire(&sim, session).await;
+    sweep_games(&sim.app).await.expect("sweep");
+    let posts = sim.posts();
+    let edit = edit_with(&posts, message, "surge.png");
+    assert!(
+        edit.content().contains("The sea broke through the wall"),
+        "{}",
+        edit.content()
+    );
+    assert_eq!(edit.body["components"].as_array().map(Vec::len), Some(0));
+    // Each stacked two sandbags: 6 shells for trying and 1 for each sandbag.
+    assert_eq!(shells(&sim, a).await, 6 + 2);
+    assert_eq!(shells(&sim, b).await, 6 + 2);
+    assert_eq!(record_of(&sim, a, "surge").await, (1, 0));
+    sweep_games(&sim.app).await.expect("sweep after");
+    assert_eq!(shells(&sim, a).await, 8, "paid once");
+    sim.app
+        .cache
+        .forget(&format!("rest:surgehelp:{session}:{a}"))
+        .await
+        .unwrap();
+    let late = sim.click(a, &storm, "Stack a sandbag").await;
+    assert!(
+        late.ephemeral && late.content().contains("passed"),
+        "{}",
+        late.content()
+    );
+}
+
+#[tokio::test]
+async fn timed_storm_surges_are_switched_on_per_server_and_come_when_they_are_due() {
+    let _serial = SWEEPS.lock().await;
+    let Some(mut sim) = Sim::new("timed_storm_surges_are_switched_on_per_server_and_come_when_they_are_due").await
+    else {
+        return;
+    };
+    let (manager, helper, lounge) = (unique(), unique(), unique());
+    sim.permissions = MANAGE_GUILD;
+    let config = |options: Vec<Value>| json!([sub("surge", options)]);
+    let off = sim.command(manager, "config", config(vec![])).await;
+    assert!(off.ephemeral && off.content().contains("**off**"), "{}", off.content());
+    let needs = sim
+        .command(manager, "config", config(vec![bool_option("enabled", true)]))
+        .await;
+    assert!(needs.content().contains("need a channel"), "{}", needs.content());
+    let on = sim
+        .command_resolved(
+            manager,
+            "config",
+            config(vec![channel_option("channel", lounge), int_option("every", 6)]),
+            resolved_channels(&[lounge]),
+        )
+        .await;
+    assert!(
+        on.content().contains(&format!("<#{lounge}>")) && on.content().contains("every **6** hours"),
+        "{}",
+        on.content()
+    );
+    sim.permissions = 0;
+    sweep_games(&sim.app).await.expect("sweep");
+    assert!(
+        sim.posts().iter().all(|p| p.channel != lounge),
+        "nothing before it is due"
+    );
+    sim.app.shift_clock(chrono::Duration::hours(7));
+    sweep_games(&sim.app).await.expect("sweep");
+    let posts = sim.posts();
+    let storm = posts
+        .iter()
+        .find(|p| p.channel == lounge && p.method == Method::POST)
+        .expect("the storm came to the channel");
+    assert!(storm.content().contains("Storm surge") && storm.files.iter().any(|(n, _)| n == "surge.png"));
+    let reply = posted_reply(storm);
+    assert!(reply.has_button("Stack a sandbag"));
+    let running = sim.app.db.running_surges(1_000).await.unwrap();
+    let mine = running
+        .iter()
+        .find(|s| s.guild_id == sim.guild as i64)
+        .expect("a storm is running here");
+    assert_eq!(mine.channel_id, lounge as i64);
+    assert!(mine.message_id.is_some(), "the janitor knows the message it posted");
+    sweep_games(&sim.app).await.expect("sweep");
+    assert!(
+        sim.posts().iter().all(|p| p.method != Method::POST),
+        "one storm per slot: the next comes six hours later"
+    );
+    let helped = sim.click(helper, &reply, "Stack a sandbag").await;
+    assert!(
+        helped.content().contains("Sandbag **1** stacked"),
+        "{}",
+        helped.content()
+    );
+
+    // Switched off, no more storms; clean up so no stale slot is left in the database.
+    sim.permissions = MANAGE_GUILD;
+    let off = sim
+        .command(manager, "config", config(vec![bool_option("enabled", false)]))
+        .await;
+    assert!(off.content().contains("**off**"), "{}", off.content());
+    expire(&sim, mine.id).await;
+    sweep_games(&sim.app).await.expect("sweep");
+    assert!(
+        sim.app
+            .db
+            .party_settings(sim.guild)
+            .await
+            .unwrap()
+            .surge_next_at
+            .is_none()
+    );
+}
+
+#[tokio::test]
+async fn the_party_games_are_in_the_stats_and_the_help() {
+    let Some(mut sim) = Sim::new("the_party_games_are_in_the_stats_and_the_help").await else {
+        return;
+    };
+    let player = unique();
+    let stats = sim.command(player, "play", json!([sub("stats", vec![])])).await;
+    let fields: Vec<&str> = stats.embeds[0].fields.iter().map(|f| f.name.as_str()).collect();
+    for game in [
+        "Crab Derby",
+        "Share or Grab",
+        "Shell Game",
+        "Treasure Heist",
+        "Storm Surge",
+    ] {
+        assert!(fields.iter().any(|f| f.contains(game)), "{game} in {fields:?}");
+    }
+    let help = sim.command(player, "help", json!([])).await;
+    let text: String = help.embeds[0]
+        .fields
+        .iter()
+        .map(|f| f.value.as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+    for command in [
+        "/play derby",
+        "/play heist",
+        "/play shells",
+        "/duel share",
+        "/surge",
+        "/config gambling",
+        "/config surge",
+    ] {
+        assert!(text.contains(command), "{command}");
+    }
+    assert!(
+        help.embeds[0].fields.iter().all(|f| f.value.chars().count() <= 1024),
+        "a help field is too long"
+    );
+}

@@ -6,6 +6,7 @@ pub(crate) mod contest;
 pub(crate) mod customize;
 mod daily;
 pub(crate) mod decorate;
+pub(crate) mod derby;
 pub(crate) mod duel;
 mod economy;
 pub(crate) mod fish;
@@ -15,12 +16,14 @@ pub(crate) mod gift;
 pub(crate) mod giveaway;
 pub(crate) mod guestbook;
 pub(crate) mod hangman;
+pub(crate) mod heist;
 mod help;
 pub(crate) mod house;
 pub(crate) mod interact;
 pub(crate) mod leaderboard;
 mod level_roles;
 pub(crate) mod partner;
+pub(crate) mod party;
 pub(crate) mod pet;
 mod ping;
 pub(crate) mod play;
@@ -34,11 +37,14 @@ mod rep;
 mod rep_roles;
 pub(crate) mod role_panels;
 pub(crate) mod rps;
+pub(crate) mod share;
+pub(crate) mod shells;
 pub(crate) mod shop;
 mod social;
 pub(crate) mod stall;
 pub(crate) mod store;
 pub(crate) mod suggest;
+pub(crate) mod surge;
 pub(crate) mod trivia;
 mod undo;
 mod utilities;
@@ -107,4 +113,5 @@ commands!(
     suggest::Suggest,
     suggest::SuggestionCommand,
     poll::Poll,
+    surge::SurgeCommand,
 );

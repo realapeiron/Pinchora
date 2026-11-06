@@ -208,6 +208,16 @@ mod tests {
     }
 
     #[test]
+    fn races_are_short_enough_for_a_small_gif() {
+        let longest = (0..20_000u64)
+            .map(|seed| run(seed.wrapping_mul(0x9e37_79b9_7f4a_7c15)).frames.len())
+            .max()
+            .unwrap_or(0);
+        println!("the longest of 20,000 races is {longest} steps");
+        assert!(longest <= 110, "{longest} steps");
+    }
+
+    #[test]
     fn the_lead_changes_hands_in_a_fair_share_of_races() {
         let changed = (0..400u64)
             .filter(|&seed| {
