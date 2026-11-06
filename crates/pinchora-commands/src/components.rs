@@ -3,9 +3,9 @@ use twilight_model::application::interaction::modal::ModalInteractionComponent;
 use crate::{
     Cx,
     commands::{
-        character, collection, connect4, contest, customize, decorate, derby, duel, fish, friends, gift, giveaway,
-        guestbook, hangman, heist, house, interact, leaderboard, partner, pet, plaza, poll, quests, role_panels, rps,
-        share, shells, shop, stall, store, suggest, surge, trivia, wordle,
+        board, character, collection, connect4, contest, customize, decorate, derby, duel, fish, friends, gift,
+        giveaway, guestbook, hangman, heist, house, interact, leaderboard, partner, pet, plaza, poll, quests,
+        role_panels, rps, share, shells, shop, stall, store, suggest, surge, trivia, wordle,
     },
 };
 
@@ -52,6 +52,11 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
         Some("gb") => guestbook::on_component(cx, parts, values.first().map(String::as_str)).await,
         Some("rc") => contest::on_component(cx, parts).await,
         Some("c4") => connect4::on_button(cx, parts).await,
+        Some("bs") => board::fleet::on_component(cx, parts, values).await,
+        Some("ck") => board::checkers::on_component(cx, parts, values).await,
+        Some("cc") => board::chess::on_component(cx, parts, values).await,
+        Some("pz") => board::picross::on_component(cx, parts, values).await,
+        Some("tz") => board::tide2048::on_button(cx, parts).await,
         Some("rp") => rps::on_button(cx, parts).await,
         Some("hm") => hangman::on_pick(cx, parts, values.first().map(String::as_str)).await,
         Some("wo") => wordle::on_button(cx, parts).await,
@@ -83,6 +88,7 @@ pub(crate) async fn dispatch_modal(cx: &Cx, custom_id: &str, fields: &[(String, 
         Some("gb") => guestbook::on_modal(cx, parts, fields).await,
         Some("cs") => customize::on_style_modal(cx, parts, fields).await,
         Some("ca") => character::on_modal(cx, parts, fields).await,
+        Some("pz") if parts.next() == Some("m") => board::picross::on_modal(cx, parts, fields).await,
         Some("wo") if parts.next() == Some("m") => {
             let text = fields
                 .iter()

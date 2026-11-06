@@ -19,11 +19,12 @@ use resvg::{tiny_skia, usvg};
 
 pub use avatar::{placeholder_avatar, prepare_avatar};
 pub use cards::{
-    ABSENT, Backdrop, BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, CORRECT, CharacterCard, Connect4Card,
-    CrewView, DerbyCard, DerbyLane, EditorCell, EditorSection, GridSlot, HangmanCard, HangmanLetter, HeistCard,
-    ItemGridCard, LastWeekEntry, LeaderboardCard, LeaderboardEntry, LevelUpCard, Mood, NextRole, NurseryCard,
-    NurseryPet, PRESENT, PetCard, PetStatus, PickView, PollCard, PollOption, ProfileCard, RankCard, ShareGrabCard,
-    ShellCard, ShowcaseKind, ShowcaseSlot, SpriteArt, StageView, SurgeCard, SurgeState, WalletCard, WelcomeCard,
+    ABSENT, Backdrop, BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, CORRECT, CharacterCard, CheckersCard,
+    ChessCard, Connect4Card, CrewView, DerbyCard, DerbyLane, EditorCell, EditorSection, FleetCard, GridSlot,
+    HangmanCard, HangmanLetter, HeistCard, ItemGridCard, LastWeekEntry, LeaderboardCard, LeaderboardEntry, LevelUpCard,
+    Mood, NextRole, NurseryCard, NurseryPet, PRESENT, PetCard, PetStatus, PickView, PicrossCard, PollCard, PollOption,
+    ProfileCard, RadarCard, RankCard, Reveal, SHIP_COLORS, SHIP_NAMES, SeaView, ShareGrabCard, ShellCard, ShipView,
+    ShowcaseKind, ShowcaseSlot, SpriteArt, StageView, SurgeCard, SurgeState, Tide2048Card, WalletCard, WelcomeCard,
     WordleCard, WordleRow,
 };
 pub use cards::{
@@ -197,6 +198,30 @@ impl Renderer {
     }
 
     pub fn surge_card(&self, card: &SurgeCard<'_>) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn chess_card(&self, card: &ChessCard<'_>) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn checkers_card(&self, card: &CheckersCard<'_>) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn radar_card(&self, card: &RadarCard<'_>) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn fleet_card(&self, card: &FleetCard<'_>) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn picross_card(&self, card: &PicrossCard<'_>) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn tide2048_card(&self, card: &Tide2048Card<'_>) -> anyhow::Result<Vec<u8>> {
         self.svg_to_png(&card.to_svg())
     }
 }

@@ -1,6 +1,6 @@
 use std::{str::Split, sync::Arc, time::Duration};
 
-use pinchora_db::{DuelStart, GameSession, NewGame, PENDING, Payout};
+use pinchora_db::{ACTIVE, DuelStart, GameSession, NewGame, PENDING, Payout};
 use pinchora_game::play::{Game as Play, MAX_BET, MIN_BET};
 use twilight_interactions::command::{CommandModel, CommandOption, CreateCommand, CreateOption, ResolvedUser};
 use twilight_model::{
@@ -12,6 +12,7 @@ use twilight_model::{
 };
 
 use super::{
+    board::{self, checkers, chess, fleet},
     connect4,
     games::{button, channel_of, edit_message, location, pack, record, track_message, unpack},
     rps, share,
@@ -35,6 +36,51 @@ pub enum DuelCommand {
     Rps(DuelRps),
     #[command(name = "share")]
     Share(DuelShare),
+    #[command(name = "seafleet")]
+    SeaFleet(DuelSeaFleet),
+    #[command(name = "checkers")]
+    Checkers(DuelCheckers),
+    #[command(name = "chess")]
+    Chess(DuelChess),
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(
+    name = "seafleet",
+    desc = "Sea Fleet: hide your ships, sink theirs; the winner earns shells, or the pot"
+)]
+pub struct DuelSeaFleet {
+    /// Your opponent
+    user: ResolvedUser,
+    /// Shells each of you puts up (10-500); leave empty to play for fun
+    #[command(min_value = 10, max_value = 500)]
+    bet: Option<i64>,
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(
+    name = "checkers",
+    desc = "Pearl Checkers on a pixel board; the winner earns shells, or the pot"
+)]
+pub struct DuelCheckers {
+    /// Your opponent
+    user: ResolvedUser,
+    /// Shells each of you puts up (10-500); leave empty to play for fun
+    #[command(min_value = 10, max_value = 500)]
+    bet: Option<i64>,
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(
+    name = "chess",
+    desc = "Reef Chess on a pixel board; the winner earns shells, or the pot"
+)]
+pub struct DuelChess {
+    /// Your opponent
+    user: ResolvedUser,
+    /// Shells each of you puts up (10-500); leave empty to play for fun
+    #[command(min_value = 10, max_value = 500)]
+    bet: Option<i64>,
 }
 
 #[derive(CommandModel, CreateCommand)]
@@ -112,6 +158,9 @@ impl DuelCommand {
             Self::Connect4(c) => challenge(cx, Kind::Connect4, &c.user, 0, c.bet).await,
             Self::Rps(c) => challenge(cx, Kind::Rps, &c.user, c.rounds.map_or(3, Rounds::count), c.bet).await,
             Self::Share(c) => challenge(cx, Kind::ShareGrab, &c.user, 0, c.bet).await,
+            Self::SeaFleet(c) => challenge(cx, Kind::SeaFleet, &c.user, 0, c.bet).await,
+            Self::Checkers(c) => challenge(cx, Kind::Checkers, &c.user, 0, c.bet).await,
+            Self::Chess(c) => challenge(cx, Kind::Chess, &c.user, 0, c.bet).await,
         }
     }
 }
@@ -301,6 +350,9 @@ pub(crate) enum Kind {
     Connect4,
     Rps,
     ShareGrab,
+    SeaFleet,
+    Checkers,
+    Chess,
 }
 
 impl Kind {
@@ -309,6 +361,9 @@ impl Kind {
             Self::Connect4 => "connect4",
             Self::Rps => "rps",
             Self::ShareGrab => "sharegrab",
+            Self::SeaFleet => "seafleet",
+            Self::Checkers => "checkers",
+            Self::Chess => "chess",
         }
     }
 
@@ -317,6 +372,9 @@ impl Kind {
             "connect4" => Some(Self::Connect4),
             "rps" => Some(Self::Rps),
             "sharegrab" => Some(Self::ShareGrab),
+            "seafleet" => Some(Self::SeaFleet),
+            "checkers" => Some(Self::Checkers),
+            "chess" => Some(Self::Chess),
             _ => None,
         }
     }
@@ -327,14 +385,25 @@ impl Kind {
             Self::Connect4 => "c4",
             Self::Rps => "rp",
             Self::ShareGrab => "sh",
+            Self::SeaFleet => "bs",
+            Self::Checkers => "ck",
+            Self::Chess => "cc",
         }
     }
 
-    /// How long a player has for one turn or one pick.
-    fn turn_secs(self) -> i64 {
+    /// Whether the player who runs out of time loses a wagered game. The older duels give both bets back.
+    fn forfeits(self) -> bool {
+        matches!(self, Self::SeaFleet | Self::Checkers | Self::Chess)
+    }
+
+    /// How long a player has for the first turn or pick once the challenge is accepted.
+    fn first_secs(self) -> i64 {
         match self {
+            Self::Connect4 | Self::Rps => TURN_SECS,
             Self::ShareGrab => pinchora_game::party::share::PICK_SECS,
-            _ => TURN_SECS,
+            Self::SeaFleet => board::FLEET_PLACE_SECS,
+            Self::Checkers => board::CHECKERS_SECS,
+            Self::Chess => board::CHESS_SECS,
         }
     }
 }
@@ -403,6 +472,9 @@ async fn challenge(cx: &Cx, kind: Kind, opponent: &ResolvedUser, rounds: u8, bet
         Kind::Connect4 => "Connect four".to_owned(),
         Kind::Rps => format!("rock paper scissors, best of {rounds}"),
         Kind::ShareGrab => "Share or Grab".to_owned(),
+        Kind::SeaFleet => "Sea Fleet".to_owned(),
+        Kind::Checkers => "Pearl Checkers".to_owned(),
+        Kind::Chess => "Reef Chess".to_owned(),
     };
     let wager = match (kind, bet > 0) {
         (Kind::ShareGrab, true) => format!(
@@ -414,6 +486,11 @@ async fn challenge(cx: &Cx, kind: Kind, opponent: &ResolvedUser, rounds: u8, bet
         (Kind::ShareGrab, false) => format!(
             "The sea puts **{}** shells in the pool: share it, or grab it all!",
             pinchora_game::party::share::POOL
+        ),
+        (kind, true) if kind.forfeits() => format!(
+            "💰 Wager: **{}** shells each. The winner takes **{}**; a draw or a decline gives the shells back, and a player who runs out of time forfeits.",
+            thousands(bet),
+            thousands(bet * 2)
         ),
         (_, true) => format!(
             "💰 Wager: **{}** shells each. The winner takes **{}**; a draw, a decline or a no-show gives the shells back.",
@@ -515,18 +592,24 @@ pub(crate) async fn answer(cx: &Cx, kind: Kind, id: i64, accept: bool) -> anyhow
         Kind::Connect4 => connect4::initial_fields(),
         Kind::Rps => rps::initial_fields(fields.parse().unwrap_or(3)),
         Kind::ShareGrab => share::initial_fields(),
+        Kind::SeaFleet => fleet::initial_fields(),
+        Kind::Checkers => checkers::initial_fields(),
+        Kind::Chess => chess::initial_fields(),
     };
     let packed = pack(&machine, [&names[0], &names[1]]);
     match cx
         .app
         .db
-        .start_duel(id, me, (channel, message), &packed, kind.turn_secs())
+        .start_duel(id, me, (channel, message), &packed, kind.first_secs())
         .await?
     {
         DuelStart::Started(started) => match kind {
             Kind::Connect4 => connect4::begin(cx, &started).await,
             Kind::Rps => rps::begin(cx, &started).await,
             Kind::ShareGrab => share::begin(cx, &started).await,
+            Kind::SeaFleet => fleet::begin(cx, &started).await,
+            Kind::Checkers => checkers::begin(cx, &started).await,
+            Kind::Chess => chess::begin(cx, &started).await,
         },
         DuelStart::Gone => cx.reply_ephemeral("This challenge is over.").await,
         DuelStart::NotInvited => cx.reply_ephemeral("This challenge isn't for you.").await,
@@ -552,11 +635,8 @@ pub(crate) async fn answer(cx: &Cx, kind: Kind, id: i64, accept: bool) -> anyhow
 /// Ends a duel (or an unanswered challenge) whose clock ran out: bets go back and the message
 /// says so. False when somebody else ended it first.
 pub(crate) async fn time_out(app: &Arc<App>, session: &GameSession) -> anyhow::Result<bool> {
-    let Some(before) = app
-        .db
-        .settle_game(session.id, None, "timeout", Payout::Refund, true)
-        .await?
-    else {
+    let (payout, from) = timeout_settlement(session);
+    let Some(before) = app.db.settle_game(session.id, from, "timeout", payout, true).await? else {
         return Ok(false);
     };
     let text = timeout_text(&before);
@@ -566,18 +646,22 @@ pub(crate) async fn time_out(app: &Arc<App>, session: &GameSession) -> anyhow::R
     Ok(true)
 }
 
-/// A click on a game whose clock has run out: ends it (bets go back) and shows that on the message
-/// the player clicked.
+/// A click on a game whose clock has run out: ends it (the pot goes to whoever was not slow, or bets go
+/// back) and shows that on the message the player clicked and, when the click came from a private message
+/// (a placement, a confirmation), on the public board too, so its menus do not stay live.
 pub(crate) async fn expire_here(cx: &Cx, session: &GameSession) -> anyhow::Result<()> {
-    match cx
-        .app
-        .db
-        .settle_game(session.id, None, "timeout", Payout::Refund, true)
-        .await?
-    {
+    let (payout, from) = timeout_settlement(session);
+    match cx.app.db.settle_game(session.id, from, "timeout", payout, true).await? {
         Some(before) => {
+            let text = timeout_text(&before);
+            let clicked = cx.interaction.message.as_ref().map(|m| m.id.get());
+            if let Some((channel, message)) = location(&before)
+                && clicked != Some(message)
+            {
+                edit_message(&cx.app, channel, message, Some(&text), None, Some(&[])).await;
+            }
             cx.update(InteractionResponseData {
-                content: Some(timeout_text(&before)),
+                content: Some(text),
                 components: Some(Vec::new()),
                 allowed_mentions: Some(AllowedMentions::default()),
                 ..Default::default()
@@ -588,23 +672,67 @@ pub(crate) async fn expire_here(cx: &Cx, session: &GameSession) -> anyhow::Resul
     }
 }
 
+/// What a late session pays out, and the state it must still be in for that to be right. A board game
+/// with a wager goes to the player who was not slow, so it only settles if nobody has moved since
+/// (otherwise the janitor looks again with the new state); every older duel gives both bets back.
+fn timeout_settlement(session: &GameSession) -> (Payout, Option<&str>) {
+    let kind = Kind::from_key(&session.kind);
+    if session.status != ACTIVE || session.bet == 0 || !kind.is_some_and(Kind::forfeits) {
+        return (Payout::Refund, None);
+    }
+    match slow_players(session).as_slice() {
+        [slow] => {
+            let other = if *slow == session.host_id as u64 {
+                session.guest_id.unwrap_or(0) as u64
+            } else {
+                session.host_id as u64
+            };
+            (Payout::Winner(other), Some(session.state.as_str()))
+        }
+        _ => (Payout::Refund, Some(session.state.as_str())),
+    }
+}
+
+/// Who still had to act when a running game timed out.
+fn slow_players(session: &GameSession) -> Vec<u64> {
+    match Kind::from_key(&session.kind) {
+        Some(Kind::Connect4) => connect4::slow_players(session),
+        Some(Kind::Rps) => rps::slow_players(session),
+        Some(Kind::ShareGrab) => share::slow_players(session),
+        Some(Kind::SeaFleet) => fleet::slow_players(session),
+        Some(Kind::Checkers) => checkers::slow_players(session),
+        Some(Kind::Chess) => chess::slow_players(session),
+        None => Vec::new(),
+    }
+}
+
 /// What a timed-out duel's message says. `session` is the session as it was before it ended.
 pub(crate) fn timeout_text(session: &GameSession) -> String {
     let guest = session.guest_id.unwrap_or(0);
     if session.status == PENDING {
         return format!("⌛ {} didn't answer in time, so the challenge expired.", mention(guest));
     }
-    let slow = match Kind::from_key(&session.kind) {
-        Some(Kind::Connect4) => connect4::slow_players(session),
-        Some(Kind::Rps) => rps::slow_players(session),
-        Some(Kind::ShareGrab) => share::slow_players(session),
-        None => Vec::new(),
-    };
+    let slow = slow_players(session);
     let who = match slow.as_slice() {
         [] => "Nobody".to_owned(),
         [one] => mention(one),
         many => many.iter().map(mention).collect::<Vec<_>>().join(" and "),
     };
+    if session.bet > 0
+        && Kind::from_key(&session.kind).is_some_and(Kind::forfeits)
+        && let [slow] = slow.as_slice()
+    {
+        let other = if *slow == session.host_id as u64 {
+            guest as u64
+        } else {
+            session.host_id as u64
+        };
+        return format!(
+            "⌛ {who} ran out of time and forfeits, so {} takes the pot of **{}** shells.",
+            mention(other),
+            thousands(session.bet * 2)
+        );
+    }
     let refund = if session.bet > 0 {
         " Both wagers were given back."
     } else {

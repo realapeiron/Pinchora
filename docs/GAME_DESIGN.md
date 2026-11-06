@@ -255,8 +255,9 @@ Built: houses (6 tiers, tile-grid editor in Discord, visits with rewards, likes,
 hourly market with shared stock, catalog, inventory, gifts, player stalls (5% fee), server
 plaza (donations + manager editing), pets (adopt, capsules with published odds, care with
 decaying needs, pets wander in rooms), fishing (timed Reel button, fish book), daily quests
-(pearl all-clear), duels (tic-tac-toe, connect four and rock paper scissors, with optional escrowed
-wagers), calm games (hangman, daily and practice wordle, trivia, `/play stats`), profile / rank / wallet / pet / level-up / welcome
+(pearl all-clear), duels (tic-tac-toe, connect four, rock paper scissors, Sea Fleet, Reef Chess and Pearl
+Checkers, with optional escrowed wagers; in the last three a player who runs out of time forfeits the pot),
+calm games (hangman, daily and practice wordle, trivia, Pixel Picross, Tide 2048, `/play stats`), profile / rank / wallet / pet / level-up / welcome
 cards, welcome card designer, pixel characters (`/character`), leaderboard card, card backgrounds and badges (`/customize`).
 
 Next, in order: wallpaper/floor selection inside the editor, pet walks that find items,

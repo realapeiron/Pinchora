@@ -4,16 +4,19 @@ use pinchora_game::play::{Game, TriviaCategory};
 use twilight_interactions::command::{CommandModel, CommandOption, CreateCommand, CreateOption, ResolvedUser};
 use twilight_util::builder::embed::{EmbedBuilder, EmbedFieldBuilder, EmbedFooterBuilder};
 
-use super::{derby, hangman, heist, shells, trivia, wordle};
+use super::{
+    board::{picross, tide2048},
+    derby, hangman, heist, shells, trivia, wordle,
+};
 use crate::{
     Cx,
-    util::{BRAND, resolved_display_name},
+    util::{BRAND, resolved_display_name, thousands},
 };
 
 #[derive(CommandModel, CreateCommand)]
 #[command(
     name = "play",
-    desc = "Games: hangman, wordle, trivia, crab derby, heist, shell game and your game stats",
+    desc = "Games: hangman, wordle, trivia, picross, 2048, derby, heist, shell game and stats",
     contexts = "guild"
 )]
 #[allow(clippy::large_enum_variant)] // parsed once per interaction, never stored
@@ -24,6 +27,10 @@ pub enum PlayCommand {
     Wordle(PlayWordle),
     #[command(name = "trivia")]
     Trivia(PlayTrivia),
+    #[command(name = "picross")]
+    Picross(PlayPicross),
+    #[command(name = "2048")]
+    Tide2048(PlayTide2048),
     #[command(name = "derby")]
     Derby(PlayDerby),
     #[command(name = "heist")]
@@ -33,6 +40,31 @@ pub enum PlayCommand {
     #[command(name = "stats")]
     Stats(PlayStats),
 }
+
+#[derive(CommandModel, CreateCommand)]
+#[command(
+    name = "picross",
+    desc = "Pixel Picross: fill in the grid from its clues to find the sea creature"
+)]
+pub struct PlayPicross {
+    /// The puzzle everyone shares today (the default), or a random one to practice on
+    mode: Option<PicrossMode>,
+}
+
+#[derive(CommandOption, CreateOption, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PicrossMode {
+    #[option(name = "Daily puzzle (the same for everyone)", value = "daily")]
+    Daily,
+    #[option(name = "Practice (a random puzzle)", value = "practice")]
+    Practice,
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(
+    name = "2048",
+    desc = "Tide 2048: slide the sea creatures and merge them into bigger ones"
+)]
+pub struct PlayTide2048;
 
 #[derive(CommandModel, CreateCommand)]
 #[command(name = "hangman", desc = "Guess the word before the tide takes the sandcastle")]
@@ -140,6 +172,8 @@ impl PlayCommand {
             Self::Hangman(_) => hangman::start(cx).await,
             Self::Wordle(c) => wordle::start(cx, c.mode != Some(WordleMode::Practice)).await,
             Self::Trivia(c) => trivia::start(cx, c.category.map(TriviaTopic::category)).await,
+            Self::Picross(c) => picross::start(cx, c.mode != Some(PicrossMode::Practice)).await,
+            Self::Tide2048(_) => tide2048::start(cx).await,
             Self::Derby(c) => derby::start(cx, c.bet).await,
             Self::Heist(_) => heist::start(cx).await,
             Self::Shells(c) => shells::start(cx, c.bet).await,
@@ -165,8 +199,13 @@ async fn stats(cx: &Cx, user: Option<ResolvedUser>) -> anyhow::Result<()> {
             Some(r) if r.played > 0 => {
                 played += r.played;
                 won += r.won;
+                let best = if game == Game::Tide2048 && r.best > 0 {
+                    format!("\nBest score **{}**", thousands(i64::from(r.best)))
+                } else {
+                    String::new()
+                };
                 format!(
-                    "**{}** won of **{}**\n{}% wins",
+                    "**{}** won of **{}**\n{}% wins{best}",
                     r.won,
                     r.played,
                     r.won * 100 / r.played

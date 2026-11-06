@@ -1,7 +1,11 @@
 mod badges;
+mod boards;
 mod character;
+mod checkers;
+mod chess;
 mod collection;
 mod connect4;
+mod fleet;
 mod frame;
 mod grid;
 mod hangman;
@@ -10,20 +14,25 @@ mod levelup;
 mod nursery;
 mod party;
 mod pet;
+mod picross;
 mod poll;
 mod profile;
 mod rank;
 mod showcase;
+mod tide2048;
 mod wallet;
 mod welcome;
 mod wordle;
 
 pub use badges::{BadgeCell, BadgeCollectionCard, BadgeState};
 pub use character::{CharacterCard, EditorCell, EditorSection};
+pub use checkers::CheckersCard;
+pub use chess::ChessCard;
 pub use collection::{
     BottleCard, DexCard, DexCell, DropCard, DropCritter, EntryPicture, HaulCard, HaulTile, PotCard, PotState,
 };
 pub use connect4::Connect4Card;
+pub use fleet::{FleetCard, RadarCard, SHIP_COLORS, SHIP_NAMES, SeaView, ShipView};
 pub use grid::{GridSlot, ItemGridCard};
 pub use hangman::{HangmanCard, HangmanLetter};
 pub use leaderboard::{LastWeekEntry, LeaderboardCard, LeaderboardEntry};
@@ -34,10 +43,12 @@ pub use party::{
     SurgeState,
 };
 pub use pet::{PetCard, PetStatus};
+pub use picross::{PicrossCard, Reveal};
 pub use poll::{PollCard, PollOption};
 pub use profile::ProfileCard;
 pub use rank::{NextRole, RankCard};
 pub use showcase::{ShowcaseKind, ShowcaseSlot};
+pub use tide2048::Tide2048Card;
 pub use wallet::WalletCard;
 pub use welcome::WelcomeCard;
 pub use wordle::{ABSENT, CORRECT, PRESENT, WordleCard, WordleRow};

@@ -85,6 +85,8 @@ pub struct GameStat {
     pub game: String,
     pub played: i32,
     pub won: i32,
+    /// The highest score, for the games that have one (Tide 2048); 0 for the rest.
+    pub best: i32,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -355,7 +357,7 @@ impl Db {
 
     pub async fn game_stats(&self, user: u64) -> anyhow::Result<Vec<GameStat>> {
         Ok(
-            sqlx::query_as::<_, GameStat>("SELECT game, played, won FROM game_stats WHERE user_id = $1")
+            sqlx::query_as::<_, GameStat>("SELECT game, played, won, best FROM game_stats WHERE user_id = $1")
                 .bind(sql_id(user))
                 .fetch_all(self.pool())
                 .await?,

@@ -34,6 +34,10 @@ impl Help {
                 "`/beachcomb` walk the shore for shells, sea glass and critters\n`/crabpot` set a crab pot, haul it in hours later\n`/critterdrop` drop three critters for the channel to grab\n`/dex` your Tide Pool Dex, and where fragments buy decor\nManagers: `/config critters` lets critters and bottles wash up while people chat",
             ))
             .field(EmbedFieldBuilder::new(
+                "Board & puzzle games",
+                "`/duel seafleet` hide your ships and sink theirs\n`/duel chess` and `/duel checkers` on pixel boards (all three take an optional wager)\n`/play picross` a daily nonogram that hides a sea creature, or a practice one\n`/play 2048` slide and merge sea creatures",
+            ))
+            .field(EmbedFieldBuilder::new(
                 "Leaderboards",
                 "`/leaderboard` server XP, server points, global XP or global shells",
             ))

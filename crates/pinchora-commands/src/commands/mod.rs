@@ -1,4 +1,5 @@
 mod bio;
+pub(crate) mod board;
 pub(crate) mod character;
 pub(crate) mod collection;
 pub(crate) mod config;

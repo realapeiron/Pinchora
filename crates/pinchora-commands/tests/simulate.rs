@@ -68,6 +68,8 @@ use twilight_model::{
 };
 
 // The collection games' flows (Critter Drop, bottles, Beachcomb, Tide Pool Dex, Crab Pot).
+#[path = "simulate/board.rs"]
+mod board;
 #[path = "simulate/collection.rs"]
 mod collection;
 

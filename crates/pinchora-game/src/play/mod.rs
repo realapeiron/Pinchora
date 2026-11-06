@@ -1,10 +1,16 @@
-//! The calm games: pure rules and content for connect four, rock-paper-scissors, hangman, wordle
-//! and trivia. Nothing here touches the database or Discord.
+//! The calm games: pure rules and content for connect four, rock-paper-scissors, hangman, wordle,
+//! trivia and the board and puzzle games (Sea Fleet, Pixel Picross, Tide 2048, Pearl Checkers and Reef
+//! Chess). Nothing here touches the database or Discord.
 
+pub mod checkers;
+pub mod chess;
 pub mod connect4;
 mod content;
+pub mod fleet;
 pub mod hangman;
+pub mod picross;
 pub mod rps;
+pub mod tide2048;
 pub mod trivia;
 pub mod wordle;
 
@@ -30,10 +36,15 @@ pub enum Game {
     ShellGame,
     Heist,
     Surge,
+    SeaFleet,
+    Picross,
+    Tide2048,
+    Checkers,
+    Chess,
 }
 
 impl Game {
-    pub const ALL: [Game; 15] = [
+    pub const ALL: [Game; 20] = [
         Self::TicTacToe,
         Self::Connect4,
         Self::Rps,
@@ -49,6 +60,11 @@ impl Game {
         Self::ShellGame,
         Self::Heist,
         Self::Surge,
+        Self::SeaFleet,
+        Self::Picross,
+        Self::Tide2048,
+        Self::Checkers,
+        Self::Chess,
     ];
 
     /// What the database and the reward-cap counters call it.
@@ -69,6 +85,11 @@ impl Game {
             Self::ShellGame => "shellgame",
             Self::Heist => "heist",
             Self::Surge => "surge",
+            Self::SeaFleet => "seafleet",
+            Self::Picross => "picross",
+            Self::Tide2048 => "tide2048",
+            Self::Checkers => "checkers",
+            Self::Chess => "chess",
         }
     }
 
@@ -89,6 +110,11 @@ impl Game {
             Self::ShellGame => "Shell Game",
             Self::Heist => "Treasure Heist",
             Self::Surge => "Storm Surge",
+            Self::SeaFleet => "Sea Fleet",
+            Self::Picross => "Pixel Picross",
+            Self::Tide2048 => "Tide 2048",
+            Self::Checkers => "Pearl Checkers",
+            Self::Chess => "Reef Chess",
         }
     }
 
@@ -109,6 +135,11 @@ impl Game {
             Self::ShellGame => "🐚",
             Self::Heist => "💰",
             Self::Surge => "⛈️",
+            Self::SeaFleet => "🚢",
+            Self::Picross => "🧩",
+            Self::Tide2048 => "🌊",
+            Self::Checkers => "⚪",
+            Self::Chess => "♟️",
         }
     }
 
@@ -137,6 +168,11 @@ impl Game {
             Self::ShellGame => party::shells::payout(party::shells::MIN_STAKE),
             Self::Heist => party::heist::Tier::Haul.each(),
             Self::Surge => party::surge::WIN_BASE,
+            Self::SeaFleet => 25,
+            Self::Picross => 10,
+            Self::Tide2048 => 10,
+            Self::Checkers => 20,
+            Self::Chess => 30,
         }
     }
 
@@ -159,6 +195,19 @@ impl Game {
             Self::ShellGame => i64::from(party::shells::DAILY_PLAYS),
             Self::Heist => 6,
             Self::Surge => 3,
+            Self::SeaFleet | Self::Picross | Self::Tide2048 | Self::Checkers | Self::Chess => 5,
+        }
+    }
+
+    /// How many moves a two-player board game must have had before a win pays the system's reward: plies
+    /// of chess and of checkers, shots of both captains in Sea Fleet. A game cut shorter (one player
+    /// resigning at once) is still a win in the stats, but two friends cannot farm shells with it.
+    pub fn min_moves(self) -> usize {
+        match self {
+            Self::Chess => 10,
+            Self::Checkers => 6,
+            Self::SeaFleet => 10,
+            _ => 0,
         }
     }
 }
@@ -177,6 +226,20 @@ mod tests {
             assert_eq!(Game::from_key(game.key()), Some(game));
             assert!(game.win_reward() > 0 && game.daily_cap() > 0);
         }
-        assert_eq!(Game::from_key("chess"), None);
+        assert_eq!(Game::from_key("poker"), None);
+    }
+
+    #[test]
+    fn only_the_two_player_board_games_ask_for_a_minimum_of_moves() {
+        let asking: Vec<_> = Game::ALL.into_iter().filter(|g| g.min_moves() > 0).collect();
+        assert_eq!(asking, [Game::SeaFleet, Game::Checkers, Game::Chess]);
+        assert_eq!(
+            (
+                Game::Chess.min_moves(),
+                Game::Checkers.min_moves(),
+                Game::SeaFleet.min_moves()
+            ),
+            (10, 6, 10)
+        );
     }
 }
