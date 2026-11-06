@@ -31,7 +31,7 @@ impl Help {
             ))
             .field(EmbedFieldBuilder::new(
                 "Party games",
-                "`/party hotpearl` type words before the pearl pops\n`/party acronym` write a phrase from letters, vote for the best\n`/party postcard` caption a pixel postcard and vote\n`/party wordrace` race to find the same word on private boards\n`/party wouldyourrather` and `/party truthordare` quick questions for the channel\nManagers: `/config partygames` sets how strict the word filter is",
+                "`/party hotpearl` type words before the pearl pops\n`/party acronym` write a phrase from letters, vote for the best\n`/party postcard` caption a pixel postcard and vote\n`/party wordrace` race to find the same word on private boards\n`/party wouldyourrather` and `/party truthordare` quick questions for the channel\n`/party stop` the host or a manager ends a game\nManagers: `/config partygames` sets how strict the word filter is",
             ))
             .field(EmbedFieldBuilder::new(
                 "Collecting",

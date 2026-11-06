@@ -147,6 +147,41 @@ pub fn truncate_to(text: &str, size: f32, max: f32) -> String {
     out
 }
 
+/// Greedy word wrap by drawn width: lines of at most `max` px in `family` at `size` px, bold or not, so a
+/// wide box is filled whatever the letters are. When text is left over after `max_lines` lines, the last
+/// one ends with an ellipsis.
+pub fn wrap_laid_out(text: &str, family: &str, bold: bool, size: f32, max: f32, max_lines: usize) -> Vec<String> {
+    let width = |t: &str| laid_out_width(t, family, bold, size);
+    let words: Vec<&str> = text.split_whitespace().collect();
+    let mut lines: Vec<String> = Vec::new();
+    // Where in `words` each line starts, to put the rest of the text on the last line when it is cut.
+    let mut starts: Vec<usize> = vec![0];
+    let mut line = String::new();
+    for (i, word) in words.iter().enumerate() {
+        if line.is_empty() {
+            line = (*word).to_owned();
+            continue;
+        }
+        let candidate = format!("{line} {word}");
+        if width(&candidate) <= max {
+            line = candidate;
+        } else {
+            lines.push(std::mem::replace(&mut line, (*word).to_owned()));
+            starts.push(i);
+        }
+    }
+    if !line.is_empty() {
+        lines.push(line);
+    }
+    let max_lines = max_lines.max(1);
+    if lines.len() > max_lines {
+        lines.truncate(max_lines);
+        lines[max_lines - 1] = words[starts[max_lines - 1]..].join(" ");
+    }
+    // A word wider than the box on its own, or the rest of a long text, is cut with an ellipsis.
+    lines.iter().map(|l| fit_by(l, max, width)).collect()
+}
+
 /// Greedy word wrap by grapheme count; the last allowed line gets an ellipsis.
 pub fn wrap(text: &str, per_line: usize, max_lines: usize) -> Vec<String> {
     let mut lines: Vec<String> = Vec::new();
@@ -364,7 +399,7 @@ pub fn data_uri_png(png: &[u8]) -> String {
 }
 
 /// Background gradient plus a faint 4px dither, shared by every card.
-pub fn background(out: &mut String, w: f32, h: f32, top: &str, bottom: &str) {
+pub fn background_plain(out: &mut String, w: f32, h: f32, top: &str, bottom: &str) {
     let _ = write!(
         out,
         r##"<defs>
@@ -373,6 +408,11 @@ pub fn background(out: &mut String, w: f32, h: f32, top: &str, bottom: &str) {
 </defs>
 <rect width="{w}" height="{h}" fill="url(#bg)"/><rect width="{w}" height="{h}" fill="url(#dither)"/>"##
     );
+}
+
+/// [`background_plain`] plus a few sparkles at fixed places on the card.
+pub fn background(out: &mut String, w: f32, h: f32, top: &str, bottom: &str) {
+    background_plain(out, w, h, top, bottom);
     // A few fixed sparkles; fixed so cards are deterministic and cacheable.
     for (sx, sy) in [
         (0.06, 0.12),
@@ -403,6 +443,29 @@ mod tests {
         assert_eq!(compact(999), "999");
         assert_eq!(compact(12_500), "12.5K");
         assert_eq!(compact(3_400_000), "3.4M");
+    }
+
+    #[test]
+    fn wrapping_by_width_fills_the_box() {
+        let text = "Describe your perfect cozy night in four sentences, and make every one of them rhyme";
+        let lines = wrap_laid_out(text, crate::cards::SANS, true, 30.0, 780.0, 4);
+        assert!((2..=3).contains(&lines.len()), "{lines:?}");
+        assert_eq!(lines.join(" "), text, "nothing is lost when it fits");
+        for line in &lines {
+            assert!(laid_out_width(line, crate::cards::SANS, true, 30.0) <= 780.0, "{line}");
+        }
+        // Every line but the last is nearly full, where a count of characters leaves the right side empty.
+        for line in &lines[..lines.len() - 1] {
+            assert!(laid_out_width(line, crate::cards::SANS, true, 30.0) > 600.0, "{line}");
+        }
+        // Too much text ends in an ellipsis on the last allowed line, and one long word is cut to fit.
+        let cut = wrap_laid_out(&"word ".repeat(80), crate::cards::SANS, true, 30.0, 780.0, 2);
+        assert_eq!(cut.len(), 2);
+        assert!(cut[1].ends_with('…'), "{cut:?}");
+        let long = wrap_laid_out(&"w".repeat(80), crate::cards::SANS, true, 30.0, 780.0, 2);
+        assert_eq!(long.len(), 1);
+        assert!(long[0].ends_with('…') && laid_out_width(&long[0], crate::cards::SANS, true, 30.0) <= 780.0);
+        assert!(wrap_laid_out("   ", crate::cards::SANS, true, 30.0, 780.0, 2).is_empty());
     }
 
     #[test]

@@ -24,7 +24,7 @@ use twilight_model::{
 use twilight_util::builder::embed::EmbedBuilder;
 
 use super::{
-    after, card, count_games, day, edit_card, lobby, name_of, paid_note, push_button, remember, row, snapshot,
+    after, card, count_games, day, edit_card, later, lobby, name_of, paid_note, push_button, remember, row, snapshot,
     standings_png, theme,
 };
 use crate::{
@@ -176,7 +176,8 @@ pub(crate) async fn on_button(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::Re
         return cx.reply_ephemeral("This race is over.").await;
     }
     if game.late(cx.app.now()) {
-        finish(&cx.app, id, None).await?;
+        // The button that opens the form has to be answered in time: the race is ended after the answer.
+        later(&cx.app, id, move |app| async move { finish(&app, id, None).await });
         return cx.reply_ephemeral("Time is up: the race is over!").await;
     }
     let Some(player) = players.iter().find(|p| p.id() == me) else {

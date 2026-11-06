@@ -2,7 +2,7 @@
 //! Dare. The group games share a lobby (Join, Leave, Start, Cancel) and one message that every phase
 //! edits; what is on it, and when it changes, lives in `party_games` so a restart loses nothing. A move
 //! made by a click, and one made by the clock, go through the same compare-and-swap in the database, so
-//! only one of them gets to announce it.
+//! only one of them gets to announce it. `/party stop` lets the host or a manager end a game that is on.
 
 mod dare;
 mod lobby;
@@ -11,13 +11,14 @@ mod postcard;
 mod race;
 mod rather;
 mod settings;
+mod stop;
 mod text;
 mod writing;
 
 pub use settings::ConfigPartyGames;
 pub(crate) use settings::party_summary;
 
-use std::{str::Split, sync::Arc, time::Duration};
+use std::{future::Future, str::Split, sync::Arc, time::Duration};
 
 use chrono::{DateTime, Duration as Span, Utc};
 use pinchora_db::{PartyGame, PartyPlayer};
@@ -59,6 +60,8 @@ pub enum PartyCommand {
     WouldYouRather(PartyRather),
     #[command(name = "truthordare")]
     TruthOrDare(PartyDare),
+    #[command(name = "stop")]
+    Stop(PartyStop),
 }
 
 #[derive(CommandModel, CreateCommand)]
@@ -150,6 +153,13 @@ pub struct PartyDare {
     topic: Option<Topic>,
 }
 
+#[derive(CommandModel, CreateCommand)]
+#[command(
+    name = "stop",
+    desc = "Stop the party game running in this channel (its host or a server manager)"
+)]
+pub struct PartyStop;
+
 impl PartyCommand {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
         match self {
@@ -182,6 +192,7 @@ impl PartyCommand {
             Self::WordRace(_) => race::open(cx).await,
             Self::WouldYouRather(c) => rather::open(cx, c.topic.map(Topic::category)).await,
             Self::TruthOrDare(c) => dare::open(cx, c.topic.map(Topic::category)).await,
+            Self::Stop(_) => stop::run(cx).await,
         }
     }
 }
@@ -298,6 +309,23 @@ pub(crate) async fn edit_card(app: &App, game: &PartyGame, data: &InteractionRes
         tracing::debug!(%error, channel, message, game = game.id, "party message not edited");
     }
     result.is_ok()
+}
+
+/// Gets a late game moving once the click that found it late has been answered. A click that opens a form
+/// has to be answered within three seconds with no defer to fall back on, and the step it owes (a card to
+/// draw and send, a payout) can take longer on a busy machine; the ticker would take the same step a moment
+/// later, and whichever gets there first wins the compare-and-swap.
+pub(crate) fn later<F, Fut>(app: &Arc<App>, game: i64, step: F)
+where
+    F: FnOnce(Arc<App>) -> Fut + Send + 'static,
+    Fut: Future<Output = anyhow::Result<bool>> + Send + 'static,
+{
+    let owned = app.clone();
+    app.spawn(async move {
+        if let Err(error) = step(owned).await {
+            tracing::warn!(%error, game, "late party game not moved on");
+        }
+    });
 }
 
 /// Remembers the message a click was on as the game's message, when the game does not know it yet.

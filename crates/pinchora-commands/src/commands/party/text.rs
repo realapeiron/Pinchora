@@ -61,12 +61,13 @@ fn is_link(word: &str) -> bool {
 }
 
 /// Member text made safe for a public message: mentions, tags, links and formatting taken out, spaces
-/// tidied, and refused when it holds a word the filter blocks (`strict` adds the milder list).
+/// tidied, and refused when it holds a word the filter blocks (`strict` adds the milder list). The
+/// filter reads the text twice, with its formatting still on (so "f*ck" shows its star) and without.
 pub(crate) fn clean(text: &str, strict: bool) -> Result<String, Refused> {
     let plain = strip_tags(&strip_mentions(text));
-    let words: Vec<String> = plain
-        .split_whitespace()
-        .filter(|word| !is_link(word))
+    let kept: Vec<&str> = plain.split_whitespace().filter(|word| !is_link(word)).collect();
+    let words: Vec<String> = kept
+        .iter()
         .map(|word| word.chars().filter(|c| !is_markup(*c)).collect::<String>())
         .filter(|word| !word.is_empty())
         .collect();
@@ -74,7 +75,7 @@ pub(crate) fn clean(text: &str, strict: bool) -> Result<String, Refused> {
     if cleaned.is_empty() {
         return Err(Refused::Empty);
     }
-    if is_profane(&cleaned, strict) {
+    if is_profane(&cleaned, strict) || is_profane(&kept.join(" "), strict) {
         return Err(Refused::Profane);
     }
     Ok(cleaned)
@@ -123,13 +124,15 @@ mod tests {
         assert_eq!(clean("what the fuck", false), Err(Refused::Profane));
         assert_eq!(clean("oh damn", false).unwrap(), "oh damn");
         assert_eq!(clean("oh damn", true), Err(Refused::Profane));
-        // A rude word hidden inside markup is still seen.
-        assert_eq!(
-            clean("f**k", false).unwrap(),
-            "fk",
-            "stripped markup leaves a harmless word"
-        );
+        // A rude word hidden inside markup, or starred out, is still seen.
+        assert_eq!(clean("f**k", false), Err(Refused::Profane));
+        assert_eq!(clean("what the f*cking hell", false), Err(Refused::Profane));
         assert_eq!(clean("**shit**", false), Err(Refused::Profane));
+        assert_eq!(clean("fu ck", false), Err(Refused::Profane));
+        // Formatting round a harmless word is only taken out.
+        assert_eq!(clean("**bold** *and* ~~gone~~", false).unwrap(), "bold and gone");
+        // A link that is dropped does not count against the text round it.
+        assert_eq!(clean("see https://x.example/porn ok", false).unwrap(), "see ok");
     }
 
     #[test]
@@ -138,6 +141,8 @@ mod tests {
         assert_eq!(name(&"x".repeat(60)).chars().count(), 24);
         assert_eq!(name("<@5> "), "Player");
         assert_eq!(name("shithead"), "Player");
+        assert_eq!(name("Matsushita"), "Matsushita");
+        assert_eq!(name("f*ck"), "Player");
         assert_eq!(name("@everyone"), "everyone");
     }
 }

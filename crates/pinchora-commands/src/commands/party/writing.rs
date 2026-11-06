@@ -4,7 +4,7 @@
 //! A round is `write`, `vote`, `reveal`; each wait has a deadline, and the first player to finish all
 //! their steps early (everyone has written, everyone has voted) moves it on sooner.
 
-use std::{str::Split, sync::Arc};
+use std::{str::Split, sync::Arc, time::Duration};
 
 use pinchora_db::{Commit, PartyEntry, PartyGame, PartyPlayer, PartyVote, Pay, PlayerChange};
 use pinchora_game::party::{
@@ -19,16 +19,20 @@ use twilight_model::{
     },
     http::interaction::InteractionResponseData,
 };
-use twilight_util::builder::embed::EmbedBuilder;
+use twilight_util::builder::embed::{EmbedBuilder, ImageSource};
 
 use super::{
-    after, card, count_games, day, edit_card, lobby, name_of, paid_note, postcard, push_button, remember, row,
+    after, card, count_games, day, edit_card, later, lobby, name_of, paid_note, postcard, push_button, remember, row,
     snapshot, standings_png, strict, text, theme,
 };
 use crate::{
     App, Cx,
+    commands::games::quiet,
     util::{BRAND, SUCCESS, WARN, relative},
 };
+
+/// The shortest wait between two edits that only change how many have written or voted.
+const COUNT_EVERY: Duration = Duration::from_secs(3);
 
 /// Custom id of the text input of the form.
 pub(crate) const ENTRY_FIELD: &str = "entry";
@@ -147,7 +151,53 @@ fn shown_letters(state: &State) -> String {
         .join(" · ")
 }
 
-/// The round's prompt: the letters or the postcard, who is in, and the button to write.
+/// The file the round's picture goes up as.
+fn write_file(party: Party) -> &'static str {
+    if party == Party::Postcard {
+        "postcard.png"
+    } else {
+        "letters.png"
+    }
+}
+
+/// `embed` with the attached picture `file` as its image.
+fn pictured(embed: EmbedBuilder, file: &str) -> EmbedBuilder {
+    match ImageSource::attachment(file) {
+        Ok(source) => embed.image(source),
+        Err(_) => embed,
+    }
+}
+
+/// A message that changes only its embed, so the picture and the buttons stay as they are.
+fn embed_only(embed: EmbedBuilder) -> InteractionResponseData {
+    InteractionResponseData {
+        embeds: Some(vec![embed.build()]),
+        allowed_mentions: quiet(),
+        ..Default::default()
+    }
+}
+
+/// The words under the round's picture: what to write, when it closes, and how many have.
+fn write_embed(party: Party, game: &PartyGame, players: &[PartyPlayer], state: &State, written: usize) -> EmbedBuilder {
+    let round_label = format!("Round {}/{}", game.round, game.rounds);
+    let status = format!("{written} of {} {}s in", players.len(), noun(party));
+    let ask = if party == Party::Postcard {
+        "Write a caption for this postcard".to_owned()
+    } else {
+        format!("Build a phrase from **{}**", shown_letters(state))
+    };
+    EmbedBuilder::new()
+        .color(BRAND)
+        .title(format!("{} {} · {round_label}", party.emoji(), party.label()))
+        .description(format!(
+            "{ask}. Everyone writes one, and nobody sees who wrote what until the vote is over.\n{}s close {} · {status}",
+            noun(party),
+            relative(game.deadline)
+        ))
+}
+
+/// The round's prompt: the letters or the postcard, who is in, and the button to write. The picture
+/// does not say how many have written (the embed does), so a new line only changes the embed.
 async fn write_view(
     app: &App,
     party: Party,
@@ -157,59 +207,62 @@ async fn write_view(
     written: usize,
 ) -> anyhow::Result<InteractionResponseData> {
     let round_label = format!("Round {}/{}", game.round, game.rounds);
-    let status = format!("{written} of {} {}s in", players.len(), noun(party));
-    let (file, png, ask) = if party == Party::Postcard {
+    let png = if party == Party::Postcard {
         let scene = scenes::scene(&state.scene).ok_or_else(|| anyhow::anyhow!("unknown scene {}", state.scene))?;
         let picture = postcard::scene_png(app, scene)?;
-        let (place, stamp) = (scene.place.to_owned(), round_label.clone());
-        let png = app
-            .render(move |r| {
-                r.postcard_card(&PostcardCard {
-                    scene: &picture,
-                    place: &place,
-                    stamp: &stamp,
-                    theme: theme(),
-                })
+        let (place, stamp) = (scene.place.to_owned(), round_label);
+        app.render(move |r| {
+            r.postcard_card(&PostcardCard {
+                scene: &picture,
+                place: &place,
+                stamp: &stamp,
+                theme: theme(),
             })
-            .await?;
-        ("postcard.png", png, "Write a caption for this postcard".to_owned())
+        })
+        .await?
     } else {
         let letters = letters_of(state);
-        let (title, round, status) = (party.label().to_owned(), round_label.clone(), status.clone());
+        let title = party.label().to_owned();
         let hint = "One word for each letter, in order. Press the button and type your phrase.".to_owned();
-        let png = app
-            .render(move |r| {
-                r.letters_card(&LettersCard {
-                    title: &title,
-                    round: &round,
-                    letters: &letters,
-                    hint: &hint,
-                    status: &status,
-                    theme: theme(),
-                })
+        let status = "Phrases stay hidden until the vote is over".to_owned();
+        app.render(move |r| {
+            r.letters_card(&LettersCard {
+                title: &title,
+                round: &round_label,
+                letters: &letters,
+                hint: &hint,
+                status: &status,
+                theme: theme(),
             })
-            .await?;
-        (
-            "letters.png",
-            png,
-            format!("Build a phrase from **{}**", shown_letters(state)),
-        )
+        })
+        .await?
     };
-    let embed = EmbedBuilder::new()
-        .color(BRAND)
-        .title(format!("{} {} · {round_label}", party.emoji(), party.label()))
-        .description(format!(
-            "{ask}. Everyone writes one, and nobody sees who wrote what until the vote is over.\n{}s close {} · {status}",
-            noun(party),
-            relative(game.deadline)
-        ));
+    let file = write_file(party);
     let label = if party == Party::Postcard {
         "Write a caption"
     } else {
         "Write a phrase"
     };
     let button = push_button(party, &[&"w", &game.id, &game.round], label, ButtonStyle::Primary);
-    Ok(card(None, embed, file, png, vec![row(vec![button])]))
+    Ok(card(
+        None,
+        write_embed(party, game, players, state, written),
+        file,
+        png,
+        vec![row(vec![button])],
+    ))
+}
+
+/// The words over the ballot: what to vote for, when it closes, and how many have.
+fn vote_embed(party: Party, game: &PartyGame, players: usize, voted: usize) -> EmbedBuilder {
+    EmbedBuilder::new()
+        .color(BRAND)
+        .title(format!("{} {} · vote", party.emoji(), party.label()))
+        .description(format!(
+            "Vote for the {} you like best, {}. {voted} of {players} voted.",
+            noun(party),
+            relative(game.deadline)
+        ))
 }
 
 /// The entries of the round up for a vote, numbered, with the voting buttons.
@@ -247,15 +300,6 @@ async fn vote_view(
         "You can not vote for your own",
     )
     .await?;
-    let embed = EmbedBuilder::new()
-        .color(BRAND)
-        .title(format!("{} {} · vote", party.emoji(), party.label()))
-        .description(format!(
-            "Vote for the {} you like best, {}. {voted} of {} voted.",
-            noun(party),
-            relative(game.deadline),
-            players.len()
-        ));
     let buttons: Vec<Component> = (0..entries.len())
         .map(|i| {
             push_button(
@@ -267,7 +311,13 @@ async fn vote_view(
         })
         .collect();
     let rows: Vec<Component> = buttons.chunks(5).map(|chunk| row(chunk.to_vec())).collect();
-    Ok(card(None, embed, "entries.png", png, rows))
+    Ok(card(
+        None,
+        vote_embed(party, game, players.len(), voted),
+        "entries.png",
+        png,
+        rows,
+    ))
 }
 
 /// The list of entries as a picture, anonymous or with names and votes.
@@ -367,7 +417,12 @@ pub(crate) async fn on_button(cx: &Cx, party: Party, mut parts: Split<'_, char>)
             .await;
     }
     if game.late(cx.app.now()) {
-        on_due(&cx.app, game).await?;
+        if action == "w" {
+            // The button that opens a form has to be answered in time: the step is taken after the answer.
+            later(&cx.app, id, move |app| async move { on_due(&app, game).await });
+        } else {
+            on_due(&cx.app, game).await?;
+        }
         return cx.reply_ephemeral("Time is up for this step!").await;
     }
     if !players.iter().any(|p| p.id() == me) {
@@ -407,36 +462,94 @@ async fn vote(cx: &Cx, party: Party, game: &PartyGame, players: &[PartyPlayer], 
         return cx.reply_ephemeral("There is no such entry.").await;
     };
     let number = index + 1;
-    let said = match app
+    let (said, new_vote) = match app
         .db
         .put_vote(game.id, game.round, me, entry.author(), app.now())
         .await?
     {
-        PartyVote::Counted => format!("🗳️ Your vote for **#{number}** is in. You can change it until voting closes."),
-        PartyVote::Changed => format!("🗳️ Moved your vote to **#{number}**."),
-        PartyVote::Same => format!("You already voted for **#{number}**."),
-        PartyVote::OwnEntry => "That one is yours! Pick another.".to_owned(),
-        PartyVote::NotPlayer => "Only players can vote.".to_owned(),
-        PartyVote::NoEntry => "There is no such entry.".to_owned(),
-        PartyVote::Closed => "Voting is closed.".to_owned(),
+        PartyVote::Counted => (
+            format!("🗳️ Your vote for **#{number}** is in. You can change it until voting closes."),
+            true,
+        ),
+        PartyVote::Changed => (format!("🗳️ Moved your vote to **#{number}**."), false),
+        PartyVote::Same => (format!("You already voted for **#{number}**."), false),
+        PartyVote::OwnEntry => ("That one is yours! Pick another.".to_owned(), false),
+        PartyVote::NotPlayer => ("Only players can vote.".to_owned(), false),
+        PartyVote::NoEntry => ("There is no such entry.".to_owned(), false),
+        PartyVote::Closed => ("Voting is closed.".to_owned(), false),
     };
     cx.reply_ephemeral(said).await?;
-    // Everybody has voted: no reason to wait out the clock. Otherwise keep the count on the message current.
-    let votes = app.db.party_votes(game.id, game.round).await?.len();
-    if votes >= players.len() {
-        to_reveal(app, game.id).await?;
-    } else if let Some((game, players)) = snapshot(app, game.id).await?
-        && game.phase == "vote"
-    {
-        let state = decode(&game)?;
-        edit_card(
-            app,
-            &game,
-            &vote_view(app, party, &game, &players, &state, &entries, votes).await?,
-        )
-        .await;
+    // Only a first vote changes the count. Everybody has voted: no reason to wait out the clock; otherwise
+    // the count on the message follows, now or in a moment.
+    if new_vote {
+        let votes = app.db.party_votes(game.id, game.round).await?.len();
+        if votes >= players.len() {
+            to_reveal(app, game.id).await?;
+        } else {
+            count_changed(app, party, game).await;
+        }
     }
     Ok(())
+}
+
+/// Puts the new count of lines in, or votes cast, on the game's message: at once if nothing was edited in
+/// the last few seconds, otherwise once more when they are over, which then shows everything that came
+/// in meanwhile. Only the embed is edited, so the picture is not drawn and sent again for a number.
+async fn count_changed(app: &Arc<App>, party: Party, game: &PartyGame) {
+    let id = game.id;
+    let (phase, round) = (game.phase.clone(), game.round);
+    // Each phase of each round has its own clock: the first vote is not held back by the last phrase.
+    let key = format!("partycount:{id}:{phase}:{round}");
+    let left = match app.cache.try_cooldown(&key, COUNT_EVERY).await {
+        Ok(None) => return show_count(app, party, id, &phase, round).await,
+        Ok(Some(left)) => left,
+        Err(error) => {
+            tracing::debug!(%error, game = id, "party count not throttled");
+            return show_count(app, party, id, &phase, round).await;
+        }
+    };
+    // One late edit is enough for everything that comes in until it goes out.
+    let wait = left.max(Duration::from_millis(50));
+    if !matches!(app.cache.try_cooldown(&format!("{key}:late"), wait).await, Ok(None)) {
+        return;
+    }
+    let owned = app.clone();
+    app.spawn(async move {
+        tokio::time::sleep(wait).await;
+        // The next edit waits its own turn from here.
+        let _ = owned.cache.try_cooldown(&key, COUNT_EVERY).await;
+        show_count(&owned, party, id, &phase, round).await;
+    });
+}
+
+/// Edits the count into the game's message, if the game is still in `phase` of `round`.
+async fn show_count(app: &Arc<App>, party: Party, id: i64, phase: &str, round: i32) {
+    let result = async {
+        let Some((game, players)) = snapshot(app, id).await? else {
+            return anyhow::Ok(());
+        };
+        if !game.is_playing() || game.phase != phase || game.round != round {
+            return Ok(());
+        }
+        let data = match phase {
+            "write" => {
+                let state = decode(&game)?;
+                let written = app.db.party_entries(id, round).await?.len();
+                pictured(write_embed(party, &game, &players, &state, written), write_file(party))
+            }
+            "vote" => {
+                let voted = app.db.party_votes(id, round).await?.len();
+                pictured(vote_embed(party, &game, players.len(), voted), "entries.png")
+            }
+            _ => return Ok(()),
+        };
+        edit_card(app, &game, &embed_only(data)).await;
+        Ok(())
+    }
+    .await;
+    if let Err(error) = result {
+        tracing::debug!(%error, game = id, "party count not shown");
+    }
 }
 
 /// The form was submitted: `ac:m:<id>:<round>` or `cn:m:<id>:<round>`.
@@ -484,7 +597,7 @@ pub(crate) async fn on_modal(
         Ok(line) => line,
         Err(why) => return cx.reply_ephemeral(why).await,
     };
-    match app.db.put_entry(id, round, "write", me, &line, app.now()).await? {
+    let fresh = match app.db.put_entry(id, round, "write", me, &line, app.now()).await? {
         None => {
             return cx
                 .reply_ephemeral(format!(
@@ -499,20 +612,18 @@ pub(crate) async fn on_modal(
                 if fresh { "Locked" } else { "Rewritten and locked" }
             ))
             .await?;
+            fresh
         }
-    }
-    let written = app.db.party_entries(id, round).await?.len();
-    if written >= players.len() {
-        to_vote(app, id).await?;
-    } else if let Some((game, players)) = snapshot(app, id).await?
-        && game.phase == "write"
-    {
-        edit_card(
-            app,
-            &game,
-            &write_view(app, party, &game, &players, &state, written).await?,
-        )
-        .await;
+    };
+    // A rewrite changes no count. A first line may be the last one, which moves the game on at once;
+    // otherwise the count on the message follows, now or in a moment.
+    if fresh {
+        let written = app.db.party_entries(id, round).await?.len();
+        if written >= players.len() {
+            to_vote(app, id).await?;
+        } else {
+            count_changed(app, party, &game).await;
+        }
     }
     Ok(())
 }

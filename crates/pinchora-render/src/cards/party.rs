@@ -7,7 +7,8 @@ use super::{PIXEL, SANS, text};
 use crate::{
     Theme,
     svg::{
-        CRAB, HEART, SHELL, STAR, background, data_uri_png, escape, mix, panel, pixel_width, sprite, truncate_to, wrap,
+        CRAB, HEART, SHELL, STAR, background_plain, data_uri_png, escape, mix, panel, pixel_width, sprite, truncate_to,
+        wrap, wrap_laid_out,
     },
 };
 
@@ -20,6 +21,27 @@ fn open(w: f32, h: f32) -> String {
         r#"<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}">"#
     );
     s
+}
+
+/// The shared gradient and dither, with sparkles only in the margins. The shared sparkles sit at fixed
+/// fractions of the card, and on these cards that puts a white speck on a heading or the end of a footer.
+fn background(out: &mut String, w: f32, h: f32, t: &Theme) {
+    background_plain(out, w, h, &t.bg_top, &t.bg_bottom);
+    for (x, y) in [
+        (10.0, 0.14 * h),
+        (w - 16.0, 0.09 * h),
+        (w - 20.0, 0.88 * h),
+        (0.4 * w, 8.0),
+        (14.0, 0.82 * h),
+        (0.72 * w, h - 10.0),
+    ] {
+        let _ = write!(
+            out,
+            r##"<rect x="{}" y="{}" width="4" height="4" fill="#ffffff" fill-opacity="0.35"/>"##,
+            x.round(),
+            y.round()
+        );
+    }
 }
 
 fn heading(s: &mut String, t: &Theme, title: &str, right: &str) {
@@ -122,7 +144,7 @@ impl PartyLobbyCard<'_> {
         let top = 96.0 + lines.len() as f32 * 28.0 + 12.0;
         let h = top + rows as f32 * 56.0 + 70.0;
         let mut s = open(WIDTH, h);
-        background(&mut s, WIDTH, h, &t.bg_top, &t.bg_bottom);
+        background(&mut s, WIDTH, h, t);
         heading(&mut s, t, self.title, &format!("{}/{}", self.players.len(), max));
         for (i, line) in lines.iter().enumerate() {
             text(
@@ -230,7 +252,7 @@ impl PearlCard<'_> {
         let t = &self.theme;
         let (w, h) = (WIDTH, 560.0);
         let mut s = open(w, h);
-        background(&mut s, w, h, &t.bg_top, &t.bg_bottom);
+        background(&mut s, w, h, t);
         let (cx, cy) = (450.0, 262.0);
 
         // A table of dusk-coloured water under the pearl.
@@ -369,7 +391,7 @@ impl StandingsCard<'_> {
         let t = &self.theme;
         let h = 150.0 + self.rows.len().min(10) as f32 * 62.0 + 40.0;
         let mut s = open(WIDTH, h);
-        background(&mut s, WIDTH, h, &t.bg_top, &t.bg_bottom);
+        background(&mut s, WIDTH, h, t);
         heading(&mut s, t, self.title, "");
         text(
             &mut s,
@@ -466,7 +488,7 @@ impl LettersCard<'_> {
         let t = &self.theme;
         let (w, h) = (WIDTH, 380.0);
         let mut s = open(w, h);
-        background(&mut s, w, h, &t.bg_top, &t.bg_bottom);
+        background(&mut s, w, h, t);
         heading(&mut s, t, self.title, self.round);
         let n = self.letters.len().max(1) as f32;
         let (tile, gap) = (120.0, 22.0);
@@ -558,7 +580,7 @@ impl EntriesCard<'_> {
         let rows = self.rows.len().min(10);
         let h = top + rows as f32 * 78.0 + 44.0;
         let mut s = open(WIDTH, h);
-        background(&mut s, WIDTH, h, &t.bg_top, &t.bg_bottom);
+        background(&mut s, WIDTH, h, t);
         heading(&mut s, t, self.title, self.chip);
         text(
             &mut s,
@@ -686,7 +708,7 @@ impl RaceCard<'_> {
         let t = &self.theme;
         let (w, h) = (WIDTH, 440.0);
         let mut s = open(w, h);
-        background(&mut s, w, h, &t.bg_top, &t.bg_bottom);
+        background(&mut s, w, h, t);
         heading(&mut s, t, self.title, "");
         let n = self.racers.len().clamp(1, 4) as f32;
         let col_w = (w - 72.0 - (n - 1.0) * 16.0) / n;
@@ -880,7 +902,7 @@ impl RatherCard<'_> {
         let t = &self.theme;
         let (w, h) = (WIDTH, 470.0);
         let mut s = open(w, h);
-        background(&mut s, w, h, &t.bg_top, &t.bg_bottom);
+        background(&mut s, w, h, t);
         heading(&mut s, t, "Would you rather", self.category);
         let total = self.votes.map_or(0, |(a, b)| a + b);
         for (i, (label, tone)) in [(self.a, &t.accent), (self.b, &t.mint)].into_iter().enumerate() {
@@ -987,10 +1009,10 @@ impl PromptCard<'_> {
             PromptTone::Truth => ("TRUTH", t.mint.clone()),
             PromptTone::Dare => ("DARE", t.accent.clone()),
         };
-        let lines = wrap(self.text, 36, 4);
+        let lines = wrap_laid_out(self.text, SANS, true, 30.0, 780.0, 4);
         let h = 250.0 + lines.len() as f32 * 44.0;
         let mut s = open(WIDTH, h);
-        background(&mut s, WIDTH, h, &t.bg_top, &t.bg_bottom);
+        background(&mut s, WIDTH, h, t);
         let chip = pixel_width(badge, 22.0) + 40.0;
         panel(&mut s, 36.0, 32.0, chip, 48.0, 4.0, &mix(&t.panel, &tone, 0.2), &tone);
         text(
@@ -1050,7 +1072,7 @@ impl PromptCard<'_> {
                 true,
                 &t.ink,
                 "start",
-                &escape(&truncate_to(line, 30.0, 780.0)),
+                &escape(line),
             );
         }
         footer(&mut s, t, h - 20.0, self.footer);

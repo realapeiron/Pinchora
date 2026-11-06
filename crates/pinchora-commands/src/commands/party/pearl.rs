@@ -4,11 +4,11 @@
 
 use std::{str::Split, sync::Arc};
 
-use pinchora_db::{Commit, NewEntry, PartyGame, PartyPlayer, Pay, PlayerChange};
+use pinchora_db::{Commit, NewEntry, PartyEntry, PartyGame, PartyPlayer, Pay, PlayerChange};
 use pinchora_game::party::{
     Dice, Party,
     filter::is_profane,
-    hotpearl::{self, check_word, dictionary, next_player, turn_secs},
+    hotpearl::{self, check_word, dictionary, earns_reward, next_player, turn_secs},
     pearl_reward,
 };
 use pinchora_render::{PearlCard, PearlSeat};
@@ -23,7 +23,7 @@ use twilight_model::{
 use twilight_util::builder::embed::EmbedBuilder;
 
 use super::{
-    after, card, count_games, day, edit_card, lobby, name_of, paid_note, push_button, remember, row, snapshot,
+    after, card, count_games, day, edit_card, later, lobby, name_of, paid_note, push_button, remember, row, snapshot,
     standings_png, strict, text, theme,
 };
 use crate::{
@@ -209,9 +209,10 @@ enum Turn {
     Refused(String),
 }
 
-/// Whether `user` can play now on turn `turn` of game `id`. A pearl that ran out of time is popped here,
-/// so a click never plays on after the clock.
-async fn check(cx: &Cx, id: i64, turn: u32, user: u64) -> anyhow::Result<Turn> {
+/// Whether `user` can play now on turn `turn` of game `id`. A pearl that ran out of time is popped, so a
+/// click never plays on after the clock: after the answer for the button that opens the form (`opens_form`,
+/// which has to be answered in time), and before it for the form itself, which can be deferred.
+async fn check(cx: &Cx, id: i64, turn: u32, user: u64, opens_form: bool) -> anyhow::Result<Turn> {
     let Some((game, players)) = snapshot(&cx.app, id).await? else {
         return Ok(Turn::Refused("This game has expired.".to_owned()));
     };
@@ -231,7 +232,11 @@ async fn check(cx: &Cx, id: i64, turn: u32, user: u64) -> anyhow::Result<Turn> {
         )));
     }
     if game.late(cx.app.now()) {
-        pop(&cx.app, game).await?;
+        if opens_form {
+            later(&cx.app, id, move |app| async move { pop(&app, game).await });
+        } else {
+            pop(&cx.app, game).await?;
+        }
         return Ok(Turn::Refused("Too slow: the pearl popped!".to_owned()));
     }
     Ok(Turn::Live(Box::new((game, players, state))))
@@ -257,7 +262,7 @@ pub(crate) async fn on_button(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::Re
         return cx.reply_ephemeral("This button has expired.").await;
     };
     let me = cx.author()?.id.get();
-    match check(cx, id, turn, me).await? {
+    match check(cx, id, turn, me, true).await? {
         Turn::Refused(why) => cx.reply_ephemeral(why).await,
         Turn::Live(live) => {
             let (game, _, state) = *live;
@@ -279,7 +284,7 @@ pub(crate) async fn on_modal(cx: &Cx, mut parts: Split<'_, char>, fields: &[(Str
         .iter()
         .find(|(field, _)| field == WORD_FIELD)
         .map_or("", |(_, value)| value.as_str());
-    let (game, players, state) = match check(cx, id, turn, me).await? {
+    let (game, players, state) = match check(cx, id, turn, me, false).await? {
         Turn::Refused(why) => return cx.reply_ephemeral(why).await,
         Turn::Live(live) => *live,
     };
@@ -376,7 +381,20 @@ pub(crate) async fn pop(app: &Arc<App>, game: PartyGame) -> anyhow::Result<bool>
         let winner = alive.first().copied();
         let mut next = state.clone();
         next.note = verdict.clone();
-        let shells: Vec<(u64, i64)> = winner.map(|w| (w, pearl_reward(players.len()))).into_iter().collect();
+        // Winning by waiting pays nothing: the table has to have played words, and so does the winner.
+        let authors: Vec<u64> = app
+            .db
+            .party_all_entries(game.id)
+            .await?
+            .iter()
+            .map(PartyEntry::author)
+            .collect();
+        let rewarded = winner.is_some_and(|w| earns_reward(&authors, w));
+        let shells: Vec<(u64, i64)> = winner
+            .filter(|_| rewarded)
+            .map(|w| (w, pearl_reward(players.len())))
+            .into_iter()
+            .collect();
         let commit = Commit {
             phase: "done",
             round: game.round,
@@ -411,10 +429,12 @@ pub(crate) async fn pop(app: &Arc<App>, game: PartyGame) -> anyhow::Result<bool>
                     } else {
                         format!("OUT ON TURN {}", p.score)
                     },
-                    if won {
+                    if !won {
+                        String::new()
+                    } else if rewarded {
                         paid_note(&done.paid, p.id())
                     } else {
-                        String::new()
+                        "no shells: too few words".to_owned()
                     },
                     won,
                 )
@@ -423,11 +443,20 @@ pub(crate) async fn pop(app: &Arc<App>, game: PartyGame) -> anyhow::Result<bool>
         let winner_name = winner.map_or_else(|| "Nobody".to_owned(), |w| name_of(&players, w));
         let subtitle = format!("{winner_name} wins after {} turns", state.turn + 1);
         let png = standings_png(app, "Hot Pearl", &subtitle, rows, "Thanks for playing").await?;
+        let unpaid = if rewarded || winner.is_none() {
+            String::new()
+        } else {
+            format!(
+                "\nNo shells this time: a win pays once {} words were played, {} of them by the winner.",
+                hotpearl::MIN_WORDS,
+                hotpearl::MIN_WINNER_WORDS
+            )
+        };
         let embed = EmbedBuilder::new()
             .color(SUCCESS)
             .title(format!("{} Hot Pearl is over", Party::HotPearl.emoji()))
             .description(format!(
-                "{verdict}\n🏆 {} wins!",
+                "{verdict}\n🏆 {} wins!{unpaid}",
                 winner.map_or_else(|| "Nobody".to_owned(), mention)
             ));
         edit_card(app, &done.game, &card(None, embed, "standings.png", png, Vec::new())).await;

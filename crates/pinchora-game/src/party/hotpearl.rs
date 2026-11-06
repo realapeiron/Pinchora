@@ -20,6 +20,16 @@ pub const LIVES: std::ops::RangeInclusive<i32> = 1..=3;
 pub const MIN_WORD: usize = 3;
 pub const MAX_WORD: usize = 24;
 
+/// A game pays its winner only when at least this many words were played in all, and at least
+/// [`MIN_WINNER_WORDS`] of them by the winner: a pearl nobody tried to catch is not worth shells.
+pub const MIN_WORDS: usize = 4;
+pub const MIN_WINNER_WORDS: usize = 2;
+
+/// Whether the winner of a game earns shells, given who played each of its words.
+pub fn earns_reward(authors: &[u64], winner: u64) -> bool {
+    authors.len() >= MIN_WORDS && authors.iter().filter(|a| **a == winner).count() >= MIN_WINNER_WORDS
+}
+
 /// Seconds the pearl stays with a player on `turn` (counted from 0): it burns shorter as the game goes on.
 pub fn turn_secs(turn: u32) -> i64 {
     (25 - i64::from(turn) / 4).max(15)
@@ -253,6 +263,20 @@ pub fn next_player(order: &[(u64, bool)], after: u64) -> Option<u64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_win_needs_real_words_from_the_table_and_the_winner() {
+        // Nobody typed: the last player standing won by waiting.
+        assert!(!earns_reward(&[], 1));
+        // A few words, but not enough in all, or not the winner's.
+        assert!(!earns_reward(&[1, 1, 2], 1));
+        assert!(!earns_reward(&[2, 2, 2, 1], 1));
+        assert!(!earns_reward(&[2, 2, 2, 2, 2], 1));
+        // Enough from the table, and enough from the winner.
+        assert!(earns_reward(&[1, 2, 1, 2], 1));
+        assert!(earns_reward(&[1, 1, 1, 1], 1));
+        assert!(earns_reward(&[2, 1, 2, 3, 1], 1));
+    }
 
     #[test]
     fn the_pearl_burns_faster_and_stops_at_fifteen_seconds() {

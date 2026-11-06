@@ -134,10 +134,56 @@ async fn balance(sim: &Sim, user: u64) -> i64 {
     sim.app.db.user(user).await.expect("user row").credits
 }
 
+/// Waits for work a handler left running in the background to land: `done` is asked until it says so.
+async fn eventually<F, Fut>(what: &str, mut done: F)
+where
+    F: FnMut() -> Fut,
+    Fut: std::future::Future<Output = bool>,
+{
+    for _ in 0..600 {
+        if done().await {
+            return;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    }
+    panic!("{what} never happened");
+}
+
+/// How many messages the mock Discord has seen edited or posted since `sim.posts()` last emptied it.
+fn pending_edits(sim: &Sim) -> usize {
+    sim.mock.posts.lock().unwrap().len()
+}
+
+/// The holder of the pearl plays a real word for the syllable on it, and the table comes back.
+async fn play_word(sim: &mut Sim, id: i64, table: &Reply) -> Reply {
+    let st = state(sim, id).await;
+    let cur = st["cur"].as_u64().expect("a holder");
+    let syllable = st["syl"].as_str().expect("a syllable").to_owned();
+    let used: Vec<String> = sim
+        .app
+        .db
+        .party_all_entries(id)
+        .await
+        .expect("entries")
+        .into_iter()
+        .map(|e| e.text)
+        .collect();
+    let word = WORDS
+        .lines()
+        .find(|w| (4..=8).contains(&w.len()) && w.contains(syllable.as_str()) && !used.iter().any(|u| u == w))
+        .expect("a fresh word for the syllable")
+        .to_owned();
+    let form = sim.click(cur, table, "Type a word").await;
+    assert!(form.modal.is_some(), "{}", form.content());
+    let played = sim.submit_fields(cur, &form, &[("word", word.as_str())]).await;
+    assert!(!played.ephemeral, "{}", played.content());
+    played
+}
+
 #[tokio::test]
-async fn hot_pearl_goes_from_lobby_to_a_paid_winner() {
+async fn hot_pearl_goes_from_lobby_to_a_winner_who_is_not_paid_for_waiting() {
     let _alone = PARTY.lock().await;
-    let Some(mut sim) = Sim::new("hot_pearl_goes_from_lobby_to_a_paid_winner").await else {
+    let Some(mut sim) = Sim::new("hot_pearl_goes_from_lobby_to_a_winner_who_is_not_paid_for_waiting").await else {
         return;
     };
     fresh(&sim).await;
@@ -298,17 +344,29 @@ async fn hot_pearl_goes_from_lobby_to_a_paid_winner() {
     let players = sim.app.db.party_players(id).await.expect("players");
     assert_eq!(players.iter().filter(|p| p.eliminated).count(), 1);
 
-    // The next pop leaves one player standing, who wins and is paid.
+    // The next pop leaves one player standing, who wins. Only one word was played in the whole game, so
+    // winning by waiting pays nothing, and the result says why.
     assert_eq!(advance(&sim, 60).await, 1);
     let posts = sim.posts();
     let ended = edits(&posts);
     assert_eq!(ended.len(), 1);
     assert!(ended[0].title().contains("is over"), "{}", ended[0].title());
+    assert!(
+        description(ended[0]).contains("No shells this time"),
+        "{}",
+        description(ended[0])
+    );
     assert_eq!(ended[0].files[0].0, "standings.png");
     keep(&sim, "pearl-standings", ended[0]);
     let players = sim.app.db.party_players(id).await.expect("players");
     let winner = players.iter().find(|p| !p.eliminated).expect("one player is left").id();
-    assert_eq!(balance(&sim, winner).await, pearl_reward(3));
+    assert_eq!(balance(&sim, winner).await, 0);
+    let paid: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM party_daily WHERE user_id = $1")
+        .bind(winner as i64)
+        .fetch_one(sim.app.db.pool())
+        .await
+        .expect("daily rows");
+    assert_eq!(paid, 0, "an unpaid win does not use up the day's paid games");
     assert_eq!(record_of(&sim, winner, "hotpearl").await, (1, 1));
     for loser in [host, ann, bo].into_iter().filter(|u| *u != winner) {
         assert_eq!(record_of(&sim, loser, "hotpearl").await, (1, 0));
@@ -321,6 +379,53 @@ async fn hot_pearl_goes_from_lobby_to_a_paid_winner() {
     assert!(stale.ephemeral, "{}", stale.content());
     let next = sim.command(host, "party", json!([sub("wordrace", vec![])])).await;
     assert!(!next.ephemeral, "{}", next.content());
+}
+
+/// A two-player game with one life each: `words` words are played, then whoever holds the pearl lets it
+/// burn. The winner, the loser and the words of the message that ended it.
+async fn short_pearl_game(sim: &mut Sim, name: &str, words: usize) -> (u64, u64, String) {
+    sim.channel = unique();
+    let (host, ann) = (unique(), unique());
+    let (lobby, id) = lobby_of(sim, "hotpearl", vec![int_option("lives", 1)], host, &[ann]).await;
+    let mut table = sim.click(host, &lobby, "Start").await;
+    for _ in 0..words {
+        table = play_word(sim, id, &table).await;
+    }
+    let loser = state(sim, id).await["cur"].as_u64().expect("a holder");
+    let winner = if loser == host { ann } else { host };
+    sim.posts();
+    assert_eq!(advance(sim, 60).await, 1);
+    let posts = sim.posts();
+    let ended = edits(&posts).into_iter().last().expect("the result");
+    assert!(ended.title().contains("is over"), "{}", ended.title());
+    keep(sim, name, ended);
+    (winner, loser, description(ended).to_owned())
+}
+
+#[tokio::test]
+async fn hot_pearl_pays_only_when_the_table_and_the_winner_played_words() {
+    let _alone = PARTY.lock().await;
+    let Some(mut sim) = Sim::new("hot_pearl_pays_only_when_the_table_and_the_winner_played_words").await else {
+        return;
+    };
+    fresh(&sim).await;
+
+    // Three words (two of them the winner's) are one short of a real game.
+    let (winner, loser, said) = short_pearl_game(&mut sim, "pearl-three-words", 3).await;
+    assert!(said.contains("No shells this time"), "{said}");
+    assert_eq!(balance(&sim, winner).await, 0);
+    assert_eq!(balance(&sim, loser).await, 0);
+    assert_eq!(
+        record_of(&sim, winner, "hotpearl").await,
+        (1, 1),
+        "it still counts as a win"
+    );
+
+    // Four words, two of them the winner's, pay.
+    let (winner, loser, said) = short_pearl_game(&mut sim, "pearl-four-words", 4).await;
+    assert!(!said.contains("No shells"), "{said}");
+    assert_eq!(balance(&sim, winner).await, pearl_reward(2));
+    assert_eq!(balance(&sim, loser).await, 0);
 }
 
 #[tokio::test]
@@ -343,6 +448,9 @@ async fn a_click_after_the_clock_pops_the_pearl_instead_of_playing_on() {
     let late = sim.click(cur, &table, "Type a word").await;
     assert!(late.ephemeral && late.modal.is_none(), "no form after the clock");
     assert!(late.content().contains("Too slow"), "{}", late.content());
+    // The pop is not part of the answer, which has to come in time: it lands right after.
+    let waiting = &sim;
+    eventually("the pearl's pop", || async move { pending_edits(waiting) >= 1 }).await;
     let posts = sim.posts();
     let popped = edits(&posts);
     assert_eq!(popped.len(), 1);
@@ -357,6 +465,264 @@ async fn a_click_after_the_clock_pops_the_pearl_instead_of_playing_on() {
     assert_eq!(state(&sim, id).await["turn"], 1);
     // The ticker finds nothing left to do for that turn.
     assert_eq!(party_tick(&sim.app).await.unwrap(), 0);
+}
+
+#[tokio::test]
+async fn late_clicks_on_form_buttons_are_answered_first_and_the_clock_step_follows() {
+    let _alone = PARTY.lock().await;
+    let Some(mut sim) = Sim::new("late_clicks_on_form_buttons_are_answered_first_and_the_clock_step_follows").await
+    else {
+        return;
+    };
+    fresh(&sim).await;
+    let (ada, bo, cy) = (unique(), unique(), unique());
+
+    // Writing ran out with nothing written: the late click gets its answer, no form, and the game then
+    // moves on by itself, once.
+    sim.channel = unique();
+    let (lobby, id) = lobby_of(&mut sim, "acronym", vec![int_option("rounds", 1)], ada, &[bo, cy]).await;
+    let round = sim.click(ada, &lobby, "Start").await;
+    sim.app.shift_clock(Duration::seconds(100));
+    sim.posts();
+    let late = sim.click(ada, &round, "Write a phrase").await;
+    assert!(late.ephemeral && late.modal.is_none(), "{}", late.content());
+    assert!(late.content().contains("Time is up"), "{}", late.content());
+    let waiting = &sim;
+    eventually("the writing step ends", || async move { pending_edits(waiting) >= 1 }).await;
+    let posts = sim.posts();
+    let moved = edits(&posts);
+    assert_eq!(moved.len(), 1, "one edit for the step");
+    assert!(
+        description(moved[0]).contains("Nobody wrote"),
+        "{}",
+        description(moved[0])
+    );
+    assert_eq!(game(&sim, id).await.phase, "reveal");
+
+    // The same for a caption, which opens its form the same way.
+    sim.channel = unique();
+    let (lobby, id) = lobby_of(&mut sim, "postcard", vec![int_option("rounds", 1)], ada, &[bo, cy]).await;
+    let round = sim.click(ada, &lobby, "Start").await;
+    sim.app.shift_clock(Duration::seconds(100));
+    sim.posts();
+    let late = sim.click(bo, &round, "Write a caption").await;
+    assert!(late.ephemeral && late.modal.is_none(), "{}", late.content());
+    let waiting = &sim;
+    eventually("the caption step ends", || async move { pending_edits(waiting) >= 1 }).await;
+    sim.posts();
+    assert_eq!(game(&sim, id).await.phase, "reveal");
+
+    // And for a race that ran out of time: the form does not open, and the race ends with no winner.
+    sim.channel = unique();
+    let (lobby, id) = lobby_of(&mut sim, "wordrace", vec![], ada, &[bo]).await;
+    let race = sim.click(ada, &lobby, "Start").await;
+    sim.app.shift_clock(Duration::seconds(600));
+    sim.posts();
+    let late = sim.click(ada, &race, "Guess").await;
+    assert!(late.ephemeral && late.modal.is_none(), "{}", late.content());
+    assert!(late.content().contains("over"), "{}", late.content());
+    let waiting = &sim;
+    eventually("the race ends", || async move { pending_edits(waiting) >= 1 }).await;
+    let posts = sim.posts();
+    assert!(description(edits(&posts)[0]).contains("Nobody found"));
+    assert!(game(&sim, id).await.is_done());
+    assert_eq!(balance(&sim, ada).await, 0);
+}
+
+#[tokio::test]
+async fn the_host_or_a_manager_can_stop_a_game_that_is_under_way() {
+    let _alone = PARTY.lock().await;
+    let Some(mut sim) = Sim::new("the_host_or_a_manager_can_stop_a_game_that_is_under_way").await else {
+        return;
+    };
+    fresh(&sim).await;
+    sim.channel = unique();
+    let (host, ann, bo, stranger, boss) = (unique(), unique(), unique(), unique(), unique());
+    let stop = || json!([sub("stop", vec![])]);
+
+    let none = sim.command(host, "party", stop()).await;
+    assert!(
+        none.ephemeral && none.content().contains("no party game"),
+        "{}",
+        none.content()
+    );
+
+    // A game in its second turn: a bystander can not end it, its host can, and the message closes.
+    let (lobby, id) = lobby_of(&mut sim, "hotpearl", vec![], host, &[ann, bo]).await;
+    let mut table = sim.click(host, &lobby, "Start").await;
+    table = play_word(&mut sim, id, &table).await;
+    let denied = sim.command(stranger, "party", stop()).await;
+    assert!(
+        denied.ephemeral && denied.content().contains("Only"),
+        "{}",
+        denied.content()
+    );
+    assert!(game(&sim, id).await.is_playing(), "a bystander changed nothing");
+    sim.posts();
+    let stopped = sim.command(host, "party", stop()).await;
+    assert!(
+        stopped.ephemeral && stopped.content().contains("Stopped Hot Pearl"),
+        "{}",
+        stopped.content()
+    );
+    let posts = sim.posts();
+    let closed = edits(&posts);
+    assert_eq!(closed.len(), 1);
+    assert!(
+        closed[0].content().contains("stopped Hot Pearl"),
+        "{}",
+        closed[0].content()
+    );
+    assert!(closed[0].content().contains("no shells"), "{}", closed[0].content());
+    assert!(game(&sim, id).await.is_done());
+    // Its buttons are dead, the clock leaves it alone, and nothing was paid or counted.
+    let stale = sim.click(host, &table, "Type a word").await;
+    assert!(stale.ephemeral, "{}", stale.content());
+    assert_eq!(advance(&sim, 600).await, 0);
+    for user in [host, ann, bo] {
+        assert_eq!(balance(&sim, user).await, 0);
+        assert_eq!(record_of(&sim, user, "hotpearl").await, (0, 0));
+    }
+
+    // A manager ends a game somebody else hosts, while people are writing.
+    let (lobby, id) = lobby_of(&mut sim, "acronym", vec![], host, &[ann, bo]).await;
+    let round = sim.click(host, &lobby, "Start").await;
+    let letters = state(&sim, id).await["letters"].as_str().expect("letters").to_owned();
+    let form = sim.click(ann, &round, "Write a phrase").await;
+    sim.submit_fields(ann, &form, &[("entry", phrase(&letters).as_str())])
+        .await;
+    sim.permissions = MANAGE_GUILD;
+    sim.posts();
+    let stopped = sim.command(boss, "party", stop()).await;
+    assert!(
+        stopped.ephemeral && stopped.content().contains("Stopped Acronym Tide"),
+        "{}",
+        stopped.content()
+    );
+    let posts = sim.posts();
+    assert!(
+        edits(&posts)
+            .iter()
+            .any(|p| p.content().contains("stopped Acronym Tide") && p.body["components"] == json!([])),
+        "the message is closed for good"
+    );
+    assert!(game(&sim, id).await.is_done());
+    assert_eq!(advance(&sim, 600).await, 0, "a stopped game is not moved on");
+    for user in [host, ann, bo] {
+        assert_eq!(balance(&sim, user).await, 0);
+        assert_eq!(record_of(&sim, user, "acronym").await, (0, 0));
+    }
+
+    // A lobby can be stopped too, and the channel is free for the next game after any of them.
+    let (_, lobby_id) = lobby_of(&mut sim, "postcard", vec![], host, &[]).await;
+    let stopped = sim.command(boss, "party", stop()).await;
+    assert!(
+        stopped.content().contains("Stopped Caption the Postcard"),
+        "{}",
+        stopped.content()
+    );
+    assert!(game(&sim, lobby_id).await.is_done());
+    let next = sim.command(host, "party", json!([sub("wordrace", vec![])])).await;
+    assert!(!next.ephemeral, "{}", next.content());
+}
+
+#[tokio::test]
+async fn counting_who_is_in_edits_only_the_text_and_at_most_every_few_seconds() {
+    let _alone = PARTY.lock().await;
+    let Some(mut sim) = Sim::new("counting_who_is_in_edits_only_the_text_and_at_most_every_few_seconds").await else {
+        return;
+    };
+    fresh(&sim).await;
+    sim.channel = unique();
+    let users: Vec<u64> = (0..5).map(|_| unique()).collect();
+    let (lobby, id) = lobby_of(
+        &mut sim,
+        "acronym",
+        vec![int_option("rounds", 1)],
+        users[0],
+        &users[1..],
+    )
+    .await;
+    let round = sim.click(users[0], &lobby, "Start").await;
+    let letters = state(&sim, id).await["letters"].as_str().expect("letters").to_owned();
+    let line = phrase(&letters);
+    let form = sim.click(users[0], &round, "Write a phrase").await;
+
+    // Three phrases in quick succession: the first edits the count at once, the others wait for one edit
+    // that covers them. Each edit is the text alone: no picture, no buttons.
+    sim.posts();
+    let started = std::time::Instant::now();
+    for user in &users[..3] {
+        sim.submit_fields(*user, &form, &[("entry", line.as_str())]).await;
+    }
+    // The throttle counts real seconds: a machine too busy to get through three steps in a second and a
+    // half cannot say anything about it.
+    if started.elapsed() > std::time::Duration::from_millis(1_500) {
+        eprintln!("too slow to check the throttle: skipped");
+        return;
+    }
+    let posts = sim.posts();
+    let now = edits(&posts);
+    assert_eq!(now.len(), 1, "one edit for three phrases in a row");
+    assert!(description(now[0]).contains("1 of 5"), "{}", description(now[0]));
+    for post in &now {
+        assert!(
+            post.files.is_empty() && post.body["attachments"].is_null() && post.body["components"].is_null(),
+            "{}",
+            post.body
+        );
+        assert_eq!(post.embed()["image"]["url"], "attachment://letters.png");
+    }
+
+    // A rewrite changes no count, so it edits nothing.
+    sim.submit_fields(users[0], &form, &[("entry", line.as_str())]).await;
+    assert!(edits(&sim.posts()).is_empty());
+
+    // When the few seconds are up the one late edit shows all three.
+    let waiting = &sim;
+    eventually("the late count edit", || async move { pending_edits(waiting) >= 1 }).await;
+    let posts = sim.posts();
+    let late = edits(&posts);
+    assert_eq!(late.len(), 1);
+    assert!(description(late[0]).contains("3 of 5"), "{}", description(late[0]));
+    assert!(late[0].files.is_empty());
+
+    // The last phrases move it on to the vote, whatever the throttle says; the vote counts the same way.
+    sim.posts();
+    for user in &users[3..] {
+        sim.submit_fields(*user, &form, &[("entry", line.as_str())]).await;
+    }
+    let posts = sim.posts();
+    let vote = edits(&posts).into_iter().last().expect("the vote went up");
+    assert_eq!(vote.files[0].0, "entries.png", "the phase change draws the picture");
+    let ballot = posted_reply(vote);
+    let entries = sim.app.db.party_entries(id, 1).await.expect("entries");
+    let last = users[4];
+    let number = (entries.iter().position(|e| e.author() == last).expect("an entry") + 1).to_string();
+    sim.posts();
+    let started = std::time::Instant::now();
+    for voter in &users[..3] {
+        sim.click(*voter, &ballot, &number).await;
+    }
+    if started.elapsed() > std::time::Duration::from_millis(1_500) {
+        eprintln!("too slow to check the throttle on votes: skipped");
+        return;
+    }
+    let posts = sim.posts();
+    let now = edits(&posts);
+    assert_eq!(now.len(), 1, "one edit for three votes in a row");
+    assert!(description(now[0]).contains("1 of 5 voted"), "{}", description(now[0]));
+    assert!(now.iter().all(|p| p.files.is_empty()), "no picture for a number");
+    let waiting = &sim;
+    eventually("the late vote count", || async move { pending_edits(waiting) >= 1 }).await;
+    let posts = sim.posts();
+    let late = edits(&posts);
+    assert_eq!(late.len(), 1);
+    assert!(
+        description(late[0]).contains("3 of 5 voted"),
+        "{}",
+        description(late[0])
+    );
 }
 
 #[tokio::test]
@@ -471,6 +837,15 @@ async fn acronym_tide_collects_phrases_then_votes_then_pays() {
         "{}",
         rude.content()
     );
+    // Misspelled, starred out and cut up with spaces are caught as well.
+    for disguised in ["what the phuck", "oh f*ck it", "you s1ut", "so fu ck off"] {
+        let caught = sim.submit_fields(ada, &form, &[("entry", disguised)]).await;
+        assert!(
+            caught.ephemeral && caught.content().contains("friendly"),
+            "{disguised}: {}",
+            caught.content()
+        );
+    }
 
     // A good phrase is locked in privately, and a rewrite replaces it.
     sim.posts();
@@ -689,6 +1064,15 @@ async fn caption_the_postcard_draws_a_scene_and_filters_captions() {
     assert!(ok.ephemeral && ok.content().contains("Locked"), "{}", ok.content());
     let kept = sim.app.db.party_entries(id, 1).await.expect("entries");
     assert_eq!(kept[0].text, "Hi everyone look here", "mentions and links are gone");
+    // A name or a word that only carries a swear word's letters is not a swear word.
+    let name = sim
+        .submit_fields(ada, &form, &[("entry", "Matsushita sniggered at the niggle")])
+        .await;
+    assert!(
+        name.ephemeral && name.content().contains("Rewritten"),
+        "{}",
+        name.content()
+    );
 
     // A server can ask for the strict filter: mild words that passed before are turned away.
     let mild = sim.submit_fields(bo, &form, &[("entry", "oh damn the crab")]).await;
@@ -985,7 +1369,8 @@ async fn truth_or_dare_takes_turns_pays_for_done_and_ends_when_it_goes_quiet() {
     assert!(done.description().contains("did it"), "{}", done.description());
     assert!(done.description().contains("+4 shells"), "{}", done.description());
     assert_eq!(balance(&sim, first).await, 4);
-    assert_eq!(record_of(&sim, first, "truthordare").await, (1, 1));
+    // Turns are not games: nothing is counted until the session ends.
+    assert_eq!(record_of(&sim, first, "truthordare").await, (0, 0));
     assert_eq!(
         state(&sim, id).await["cur"].as_u64(),
         Some(order[1]),
@@ -1000,7 +1385,7 @@ async fn truth_or_dare_takes_turns_pays_for_done_and_ends_when_it_goes_quiet() {
     let passed = sim.click(order[1], &dare, "Pass").await;
     assert!(passed.description().contains("passed"), "{}", passed.description());
     assert_eq!(balance(&sim, order[1]).await, 0);
-    assert_eq!(record_of(&sim, order[1], "truthordare").await, (1, 0));
+    assert_eq!(record_of(&sim, order[1], "truthordare").await, (0, 0));
 
     // Only the host ends the game by hand.
     let denied = sim.click(bo, &passed, "End game").await;
@@ -1023,8 +1408,18 @@ async fn truth_or_dare_takes_turns_pays_for_done_and_ends_when_it_goes_quiet() {
     assert!(description(over).contains("quiet"), "{}", description(over));
     keep(&sim, "dare-standings", over);
     assert!(game(&sim, id).await.is_done());
+    // One game for each of the three players, however many turns they had; the one who did the most
+    // (the first, with one) won it.
+    for user in [ada, bo, cy] {
+        assert_eq!(
+            record_of(&sim, user, "truthordare").await,
+            (1, i32::from(user == first)),
+            "{user}"
+        );
+    }
 
-    // A second game: the host ends it with the button.
+    // A second game with two of them: the host ends it with the button, and it counts once for each.
+    let before = record_of(&sim, ada, "truthordare").await;
     let (lobby, other) = lobby_of(&mut sim, "truthordare", vec![], ada, &[bo]).await;
     let turn = sim.click(ada, &lobby, "Start").await;
     let ended = sim.click(ada, &turn, "End game").await;
@@ -1034,6 +1429,16 @@ async fn truth_or_dare_takes_turns_pays_for_done_and_ends_when_it_goes_quiet() {
         ended.title()
     );
     assert!(game(&sim, other).await.is_done());
+    assert_eq!(
+        record_of(&sim, ada, "truthordare").await,
+        (before.0 + 1, before.1),
+        "nobody did a turn, so nobody won"
+    );
+    assert_eq!(
+        record_of(&sim, cy, "truthordare").await.0,
+        1,
+        "cy was not in the second game"
+    );
 }
 
 impl Reply {
@@ -1088,7 +1493,8 @@ async fn the_party_commands_fit_discords_limits_and_help_knows_them() {
             "postcard",
             "wordrace",
             "wouldyourrather",
-            "truthordare"
+            "truthordare",
+            "stop"
         ]
     );
     for sub in party["options"].as_array().unwrap() {
@@ -1116,6 +1522,7 @@ async fn the_party_commands_fit_discords_limits_and_help_knows_them() {
         help.field("Party games")
     );
     assert!(help.field("Party games").contains("/party truthordare"));
+    assert!(help.field("Party games").contains("/party stop"));
     // Like the rest of /config, it is for managers: Discord keeps it from everyone else.
     assert!(config["default_member_permissions"].is_string(), "{config}");
 }

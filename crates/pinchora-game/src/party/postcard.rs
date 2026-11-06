@@ -35,12 +35,12 @@ pub struct Prop {
     pub x: i32,
     pub y: i32,
     pub flip: bool,
-    /// Whole-number size: 1 draws the sprite as it is.
-    pub scale: u32,
 }
 
-const fn prop(art: Art, x: i32, y: i32, flip: bool, scale: u32) -> Prop {
-    Prop { art, x, y, flip, scale }
+/// Every prop is drawn as the atlas has it, one sprite pixel to one backdrop pixel: a bigger one would show
+/// blocks of another size next to the rest of the scene.
+const fn prop(art: Art, x: i32, y: i32, flip: bool) -> Prop {
+    Prop { art, x, y, flip }
 }
 
 /// A postcard: a backdrop (`bg_<id>` in the atlas), the place it greets from, and who is in it.
@@ -61,9 +61,9 @@ pub const SCENES: &[Scene] = &[
         place: "Driftwood Dunes",
         backdrop: "driftwood_dunes",
         props: &[
-            prop(Pet("drowsepatch_cat"), 78, 118, false, 1),
-            prop(Fish("snaggletoe_sock"), 122, 118, false, 2),
-            prop(Pet("pebblepouch_hermit"), 166, 118, true, 1),
+            prop(Pet("drowsepatch_cat"), 78, 118, false),
+            prop(Fish("snaggletoe_sock"), 122, 118, false),
+            prop(Pet("pebblepouch_hermit"), 166, 118, true),
         ],
     },
     Scene {
@@ -71,9 +71,9 @@ pub const SCENES: &[Scene] = &[
         place: "Tideglass Noon",
         backdrop: "tideglass_noon",
         props: &[
-            prop(Hero("beach_surfer"), 112, 122, false, 1),
-            prop(Pet("puddlesock_otter"), 154, 124, true, 1),
-            prop(Pet("pearlwhisk_seal"), 205, 124, true, 1),
+            prop(Hero("beach_surfer"), 112, 122, false),
+            prop(Pet("puddlesock_otter"), 154, 124, true),
+            prop(Pet("pearlwhisk_seal"), 205, 124, true),
         ],
     },
     Scene {
@@ -81,9 +81,9 @@ pub const SCENES: &[Scene] = &[
         place: "Shellwash Shore",
         backdrop: "shellwash_morning",
         props: &[
-            prop(Pet("crumbclaw_crab"), 84, 120, false, 1),
-            prop(Fish("siltstep_boot"), 124, 122, false, 2),
-            prop(Pet("sprinklearm_octopus"), 168, 120, true, 1),
+            prop(Pet("crumbclaw_crab"), 84, 120, false),
+            prop(Fish("siltstep_boot"), 124, 122, false),
+            prop(Pet("sprinklearm_octopus"), 168, 120, true),
         ],
     },
     Scene {
@@ -91,10 +91,10 @@ pub const SCENES: &[Scene] = &[
         place: "Clovercap Bluff",
         backdrop: "clovercap_bluff",
         props: &[
-            prop(Pet("cloverpuff_bun"), 60, 112, false, 1),
-            prop(Pet("quiltquill_hedgehog"), 100, 118, false, 1),
-            prop(Hero("trail_scout"), 150, 122, true, 1),
-            prop(Pet("tumblebutton_pup"), 196, 124, true, 1),
+            prop(Pet("cloverpuff_bun"), 60, 112, false),
+            prop(Pet("quiltquill_hedgehog"), 100, 118, false),
+            prop(Hero("trail_scout"), 150, 122, true),
+            prop(Pet("tumblebutton_pup"), 196, 124, true),
         ],
     },
     Scene {
@@ -102,9 +102,9 @@ pub const SCENES: &[Scene] = &[
         place: "Misty Boardwalk",
         backdrop: "misty_boardwalk",
         props: &[
-            prop(Hero("ship_captain"), 84, 118, false, 1),
-            prop(Fish("plumspot_puffer"), 140, 120, false, 3),
-            prop(Pet("drowsepatch_cat"), 190, 120, true, 1),
+            prop(Hero("ship_captain"), 84, 118, false),
+            prop(Fish("plumspot_puffer"), 140, 120, false),
+            prop(Pet("drowsepatch_cat"), 190, 120, true),
         ],
     },
     Scene {
@@ -112,20 +112,9 @@ pub const SCENES: &[Scene] = &[
         place: "Starlit Jetty",
         backdrop: "starlit_jetty",
         props: &[
-            prop(Hero("moon_bat"), 96, 120, false, 1),
-            prop(Pet("hoothem_owlet"), 140, 120, true, 1),
-            prop(Fish("hushbell_angler"), 176, 118, true, 2),
-        ],
-    },
-    Scene {
-        id: "hearth_pile",
-        place: "Hearthside Paws",
-        backdrop: "hearthside_paws",
-        props: &[
-            prop(Pet("drowsepatch_cat"), 70, 120, false, 1),
-            prop(Pet("puffsole_guinea_pig"), 108, 122, false, 1),
-            prop(Pet("tinkertrot_ferret"), 146, 122, true, 1),
-            prop(Pet("tumblebutton_pup"), 184, 120, true, 1),
+            prop(Hero("moon_bat"), 96, 120, false),
+            prop(Pet("hoothem_owlet"), 140, 120, true),
+            prop(Fish("hushbell_angler"), 176, 118, true),
         ],
     },
     Scene {
@@ -133,9 +122,9 @@ pub const SCENES: &[Scene] = &[
         place: "Brinebell Market",
         backdrop: "brinebell_market",
         props: &[
-            prop(Hero("sweet_tooth"), 90, 124, false, 1),
-            prop(Fish("reefruff_lionfish"), 134, 124, false, 2),
-            prop(Pet("tasselcrest_cockatiel"), 180, 124, true, 1),
+            prop(Hero("sweet_tooth"), 90, 124, false),
+            prop(Fish("reefruff_lionfish"), 134, 124, false),
+            prop(Pet("tasselcrest_cockatiel"), 180, 124, true),
         ],
     },
     Scene {
@@ -143,9 +132,9 @@ pub const SCENES: &[Scene] = &[
         place: "Firefly Picnic",
         backdrop: "firefly_picnic",
         props: &[
-            prop(Hero("coral_witch"), 80, 118, false, 1),
-            prop(Pet("rufflebranch_axolotl"), 124, 122, false, 1),
-            prop(Pet("teacup_toadlet"), 160, 124, true, 1),
+            prop(Hero("coral_witch"), 80, 118, false),
+            prop(Pet("rufflebranch_axolotl"), 124, 122, false),
+            prop(Pet("teacup_toadlet"), 160, 124, true),
         ],
     },
     Scene {
@@ -153,9 +142,9 @@ pub const SCENES: &[Scene] = &[
         place: "Biscuit Cove",
         backdrop: "biscuit_cove",
         props: &[
-            prop(Hero("reef_pirate"), 100, 124, false, 1),
-            prop(Pet("chirrupfold_budgie"), 140, 124, true, 1),
-            prop(Pet("lanternclasp_crab"), 172, 124, true, 1),
+            prop(Hero("reef_pirate"), 100, 124, false),
+            prop(Pet("chirrupfold_budgie"), 140, 124, true),
+            prop(Pet("lanternclasp_crab"), 172, 124, true),
         ],
     },
     Scene {
@@ -163,9 +152,9 @@ pub const SCENES: &[Scene] = &[
         place: "Snowmuffin Village",
         backdrop: "snowmuffin_village",
         props: &[
-            prop(Hero("snow_day"), 96, 122, false, 1),
-            prop(Pet("quiltquill_hedgehog"), 140, 124, true, 1),
-            prop(Pet("acornpocket_squirrel"), 178, 124, true, 1),
+            prop(Hero("snow_day"), 96, 122, false),
+            prop(Pet("quiltquill_hedgehog"), 140, 124, true),
+            prop(Pet("acornpocket_squirrel"), 178, 124, true),
         ],
     },
     Scene {
@@ -173,9 +162,9 @@ pub const SCENES: &[Scene] = &[
         place: "Palmcup Oasis",
         backdrop: "palmcup_oasis",
         props: &[
-            prop(Pet("wishroot_tortoise"), 84, 124, false, 1),
-            prop(Pet("dunetuft_fennec"), 128, 124, true, 1),
-            prop(Fish("tidefold_locket"), 160, 124, true, 2),
+            prop(Pet("wishroot_tortoise"), 84, 124, false),
+            prop(Pet("dunetuft_fennec"), 128, 124, true),
+            prop(Fish("tidefold_locket"), 160, 124, true),
         ],
     },
 ];
@@ -248,7 +237,6 @@ mod tests {
             );
             assert!(!scene.place.is_empty() && scene.place.len() <= 24, "{}", scene.place);
             for prop in scene.props {
-                assert!((1..=3).contains(&prop.scale));
                 assert!(
                     (0..240).contains(&prop.x) && (0..=135).contains(&prop.y),
                     "{}",

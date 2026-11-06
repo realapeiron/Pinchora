@@ -5,12 +5,9 @@
 use std::{str::Split, sync::Arc};
 
 use pinchora_db::{Commit, PartyGame, PartyPlayer, Pay, PlayerChange};
-use pinchora_game::{
-    party::{
-        Dice, Party, TURN_REWARD,
-        prompts::{Category, PartyContent, Pick},
-    },
-    play::Game,
+use pinchora_game::party::{
+    Dice, Party, TURN_REWARD,
+    prompts::{Category, PartyContent, Pick},
 };
 use pinchora_render::{PromptCard, PromptTone};
 use serde::{Deserialize, Serialize};
@@ -18,11 +15,11 @@ use twilight_model::{channel::message::component::ButtonStyle, http::interaction
 use twilight_util::builder::embed::EmbedBuilder;
 
 use super::{
-    after, card, day, edit_card, lobby, name_of, paid_note, push_button, remember, row, snapshot, standings_png, theme,
+    after, card, count_games, day, edit_card, lobby, name_of, paid_note, push_button, remember, row, snapshot,
+    standings_png, theme,
 };
 use crate::{
     App, Cx,
-    commands::games::record,
     util::{BRAND, SUCCESS, mention, relative},
 };
 
@@ -322,7 +319,6 @@ async fn resolve(
     let Some(done) = app.db.commit_party(game.id, game.seq, commit).await? else {
         return cx.reply_ephemeral("The turn changed just now. Try again!").await;
     };
-    record(app, Game::TruthOrDare, who, did).await;
     if did {
         let paid = paid_note(&done.paid, who);
         if !paid.is_empty() {
@@ -371,6 +367,13 @@ async fn finish(
     let mut ranked: Vec<&PartyPlayer> = players.iter().collect();
     ranked.sort_by_key(|p| (std::cmp::Reverse(p.score), p.seat));
     let top = ranked.first().map_or(0, |p| p.score);
+    // One game for each player however many turns they had; the most turns done wins it, a tie shares it.
+    let winners: Vec<u64> = ranked
+        .iter()
+        .filter(|p| top > 0 && p.score == top)
+        .map(|p| p.id())
+        .collect();
+    count_games(app, Party::TruthOrDare, players, &winners).await;
     let rows = ranked
         .iter()
         .map(|p| {

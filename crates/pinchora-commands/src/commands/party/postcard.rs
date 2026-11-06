@@ -58,10 +58,6 @@ pub(crate) fn compose(sprites: &Sprites, scene: &Scene) -> anyhow::Result<RgbaIm
             }
         };
         let mut art = trimmed(&drawn);
-        if prop.scale > 1 {
-            let (w, h) = (art.width() * prop.scale, art.height() * prop.scale);
-            art = imageops::resize(&art, w, h, imageops::FilterType::Nearest);
-        }
         if prop.flip {
             imageops::flip_horizontal_in_place(&mut art);
         }
