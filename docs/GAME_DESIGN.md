@@ -163,10 +163,12 @@ Every movement is written to `credit_ledger` (pearls get their own ledger).
 ## Fishing
 
 `/fish cast` costs a bait (10 shells plain, or one piece of a bought bait), shows a cast message, and
-a **Reel!** button works once the fish has bitten, a random 2–17 s later (`BITE_MIN_MS`..`BITE_MAX_MS`, spread
-evenly); reacting inside the rod's window (2.5 s for the starter rod, up to 5 s) catches a fish, pressing before
-the bite is an early miss. The spread is much wider than the longest window, so pressing blind at one fixed moment
-catches at most about a third of casts with the best rod (a game test checks it). The cast keeps what it was made with in
+a **Reel!** button works once the fish has bitten, a random 2–11 s later (`BITE_MIN_MS`..`BITE_MAX_MS`, spread
+evenly); reacting inside the rod's window (2.5 s for the starter rod, up to 3.5 s) catches a fish, pressing before
+the bite is an early miss and the bite is then never shown. The spread is well over twice the longest window, so
+pressing blind at one fixed moment catches at most 39% of casts with the best rod and 28% with the starter rod (a
+game test checks it stays at or under 40%). The bite message goes out at the bite time itself rather than the delay
+after the cast's reply, so the time the reply took does not eat into the window. The cast keeps what it was made with in
 Redis (`cast:<user>:<nonce>` = `<bite ms>:<spot>:<rod>:<bait>`), so the reel does not depend on the
 player's gear at that moment.
 

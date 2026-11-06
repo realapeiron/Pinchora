@@ -7541,7 +7541,7 @@ async fn rods_and_bait_are_bought_equipped_and_used_up() {
         "{}",
         rod.description()
     );
-    assert!(rod.field("Rod").contains("reel 3.0 s") && rod.field("Rod").contains("rare luck +6%"));
+    assert!(rod.field("Rod").contains("reel 2.8 s") && rod.field("Rod").contains("rare luck +6%"));
     let hook = sim.pick(angler, &rod, "fx:b:", "glow_worm").await;
     assert!(
         hook.description().contains("**Glow Worm** is on the hook"),
@@ -7599,18 +7599,18 @@ async fn rods_and_bait_are_bought_equipped_and_used_up() {
         none.content()
     );
 
-    // The window to Reel! is the rod's. 2.7 s after the bite is too slow for the starter rod...
+    // The window to Reel! is the rod's. 2.6 s after the bite is too slow for the starter rod...
     let slow = unique();
-    let id = seed_cast(&sim, slow, 1, 2_700, "").await;
+    let id = seed_cast(&sim, slow, 1, 2_600, "").await;
     let missed = sim.component(slow, &id, &[], &casting()).await;
     assert_eq!(missed.title(), "Too slow!");
     // ...but fine for the Reedline Rod, whichever way the cast carries it.
-    let id = seed_cast(&sim, angler, 2, 2_700, "").await;
+    let id = seed_cast(&sim, angler, 2, 2_600, "").await;
     let caught = sim.component(angler, &id, &[], &casting()).await;
     assert!(caught.title().contains("You caught"), "{}", caught.title());
     // A cast remembers the rod it was made with: a rod swapped in afterwards changes nothing.
     let swapper = unique();
-    let id = seed_cast(&sim, swapper, 3, 4_500, "shore:starweave_rod:-").await;
+    let id = seed_cast(&sim, swapper, 3, 3_200, "shore:starweave_rod:-").await;
     let caught = sim.component(swapper, &id, &[], &casting()).await;
     assert!(caught.title().contains("You caught"), "{}", caught.title());
     let id = seed_cast(&sim, swapper, 4, 2_600, "shore:driftwood_rod:-").await;

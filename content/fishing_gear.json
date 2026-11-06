@@ -49,7 +49,7 @@
       "id": "reedline_rod",
       "name": "Reedline Rod",
       "price": 800,
-      "window_ms": 3000,
+      "window_ms": 2800,
       "luck": 1.06,
       "blurb": "Light and springy. The line stays calm a little longer."
     },
@@ -57,7 +57,7 @@
       "id": "pearlwhip_rod",
       "name": "Pearlwhip Rod",
       "price": 3500,
-      "window_ms": 3600,
+      "window_ms": 3000,
       "luck": 1.15,
       "blurb": "A pearl-wrapped grip that fish seem to admire."
     },
@@ -65,7 +65,7 @@
       "id": "tidecaller_rod",
       "name": "Tidecaller Rod",
       "price": 12000,
-      "window_ms": 4300,
+      "window_ms": 3300,
       "luck": 1.27,
       "blurb": "Hums softly whenever the tide is turning."
     },
@@ -73,7 +73,7 @@
       "id": "starweave_rod",
       "name": "Starweave Rod",
       "price": 40000,
-      "window_ms": 5000,
+      "window_ms": 3500,
       "luck": 1.4,
       "blurb": "Spun from night sky. Patient, steady and a little magic."
     }

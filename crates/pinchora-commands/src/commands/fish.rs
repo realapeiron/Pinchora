@@ -245,10 +245,14 @@ async fn cast(cx: &Cx, choice: Option<SpotChoice>) -> anyhow::Result<()> {
     })
     .await?;
 
-    // Reveal the bite after the delay by editing the message.
-    let responder = Arc::clone(&cx.responder);
+    // Reveal the bite at the bite time by editing the message, unless Reel! was already pressed too early.
+    let (responder, app) = (Arc::clone(&cx.responder), Arc::clone(&cx.app));
     cx.app.spawn(async move {
-        tokio::time::sleep(Duration::from_millis(delay_ms as u64)).await;
+        let wait = bite_at - Utc::now().timestamp_millis();
+        tokio::time::sleep(Duration::from_millis(wait.max(0) as u64)).await;
+        if let Ok(None) = app.cache.get(&format!("cast:{user}:{nonce}")).await {
+            return;
+        }
         let bite = EmbedBuilder::new()
             .color(WARN)
             .title("❗ Something bit! REEL IT IN!")
