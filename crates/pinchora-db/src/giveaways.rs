@@ -406,11 +406,13 @@ impl Db {
             };
             let seen_in = entrants_of(&mut tx, id).await?;
             let winners = chosen(pick(&seen_in, seen.winners as usize), &seen_in, seen.winners as usize);
+            // The winners are locked even when no shells move: that waits for one who is deleting
+            // their data, whose entry is then gone and makes the end start over without them.
+            let mut locked: Vec<i64> = winners.iter().map(|w| sql_id(*w)).collect();
             if seen.shells > 0 {
-                let mut paid: Vec<i64> = winners.iter().map(|w| sql_id(*w)).collect();
-                paid.push(seen.host_id);
-                lock_users(&mut tx, &paid).await?;
+                locked.push(seen.host_id);
             }
+            lock_users(&mut tx, &locked).await?;
             let row = sqlx::query_as::<_, GiveawayRow>(sqlx::AssertSqlSafe(format!("{due} FOR UPDATE OF g")))
                 .bind(id)
                 .bind(now)

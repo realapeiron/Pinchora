@@ -528,6 +528,70 @@ async fn rerolling_a_giveaway_while_an_entrant_deletes_their_data() {
 }
 
 #[tokio::test]
+async fn ending_a_giveaway_without_shells_while_an_entrant_deletes_their_data() {
+    let Some(db) = db_with(4).await else { return };
+    let [host, first, leaving, guild] = ids();
+    let GiveawayOpen::Started(giveaway) = db
+        .create_giveaway(NewGiveaway {
+            guild_id: guild,
+            channel_id: 1,
+            host,
+            prize: "A role",
+            shells: 0,
+            winners: 1,
+            required_role: None,
+            ends_at: Utc::now() + Duration::hours(1),
+        })
+        .await
+        .unwrap()
+    else {
+        panic!("the giveaway starts");
+    };
+    let id = giveaway.id;
+    for user in [first, leaving] {
+        db.toggle_giveaway_entry(id, user, Utc::now()).await.unwrap();
+    }
+
+    let mut delete = db.pool().begin().await.unwrap();
+    Db::delete_user_data_in(&mut delete, leaving, Utc::now()).await.unwrap();
+    let (ender, ender_pid) = side().await;
+    let end = tokio::spawn(async move {
+        ender
+            .end_giveaway(id, Utc::now(), true, move |entrants, _| {
+                // Always the one who is leaving, while there is one.
+                if entrants.contains(&leaving) {
+                    vec![leaving]
+                } else {
+                    entrants.to_vec()
+                }
+            })
+            .await
+    });
+    queued(&db, ender_pid, "the end").await;
+    delete.commit().await.unwrap();
+
+    let ended = end
+        .await
+        .unwrap()
+        .expect("the end fails nowhere")
+        .expect("it was running");
+    assert_eq!(
+        ended.winners,
+        vec![first],
+        "the pick started over without the deleted entrant"
+    );
+    let (stored,): (Vec<i64>,) = sqlx::query_as("SELECT winner_ids FROM giveaways WHERE id = $1")
+        .bind(id)
+        .fetch_one(db.pool())
+        .await
+        .unwrap();
+    assert_eq!(stored, vec![first as i64], "nothing of the deleted player is stored");
+    for user in [host, first] {
+        db.delete_user_data(user, Utc::now()).await.unwrap();
+    }
+}
+
+#[tokio::test]
 async fn opening_a_session_waits_for_its_host_to_finish_deleting() {
     let Some(db) = db_with(4).await else { return };
     let [host, guest, guild] = ids();
