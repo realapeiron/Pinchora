@@ -259,11 +259,19 @@ async fn a_bottle_opens_once_and_pays_its_prize() {
         panic!("opened");
     };
     assert!(paid && got == 40 && !drop.is_open());
+    // The loser is told who was quicker, even though opening closed the bottle.
     assert!(matches!(
         db.open_bottle(first.id, b, now, BottlePrize::Shells(40), cap)
             .await
             .unwrap(),
-        BottleOpen::Gone
+        BottleOpen::Lost { by } if by == a
+    ));
+    // That stays true once its time has passed.
+    assert!(matches!(
+        db.open_bottle(first.id, b, now + Duration::minutes(11), BottlePrize::Shells(40), cap)
+            .await
+            .unwrap(),
+        BottleOpen::Lost { by } if by == a
     ));
     assert_eq!(shells(&db, a).await, 40);
     assert_eq!(shells(&db, b).await, 0);
@@ -440,7 +448,7 @@ async fn a_pot_soaks_then_is_hauled_in_exactly_once() {
     let [a] = ids();
     let now = Utc::now();
     let cap = daily("crabpot", 3);
-    let catches = |_level: i16, hours: i16| -> Vec<Award<'static>> {
+    let catches = |_level: i16, hours: i16, _ends: chrono::DateTime<Utc>| -> Vec<Award<'static>> {
         let mut all = vec![award("x_one"), award("x_one")];
         if hours >= 4 {
             all.push(award("x_two"));
@@ -546,9 +554,133 @@ async fn fragments_buy_decor_once() {
     );
     let got: Vec<_> = [x.unwrap(), y.unwrap()].into_iter().flatten().collect();
     assert_eq!(got, vec![5], "one piece, five fragments left");
+    // The piece is in the inventory as a soulbound one: its own row, never the plain piece.
     let have = db.inventory(a).await.unwrap();
     assert_eq!(
-        have.iter().find(|r| r.item_id == "dewtrail_print").map(|r| r.quantity),
+        have.iter()
+            .find(|r| r.item_id == "dewtrail_print~bound")
+            .map(|r| r.quantity),
         Some(1)
     );
+    assert!(have.iter().all(|r| r.item_id != "dewtrail_print"));
+}
+
+/// A starter room for `user`, so there is a house to place pieces in.
+async fn house_of(db: &Db, user: u64) {
+    let starter = pinchora_db::NewRoom {
+        room_type: "living".into(),
+        wallpaper: "w".into(),
+        floor: "f".into(),
+    };
+    db.house(user, &starter).await.unwrap();
+}
+
+async fn pieces(db: &Db, user: u64, item: &str) -> i32 {
+    db.inventory(user)
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|r| r.item_id == item)
+        .map_or(0, |r| r.quantity)
+}
+
+#[tokio::test]
+async fn soulbound_pieces_can_be_placed_but_never_leave_their_owner() {
+    use pinchora_db::{PlaceOutcome, Refusal, RestoreOutcome, RoomChange, SOULBOUND_GUEST};
+
+    let Some(db) = db().await else { return };
+    let [a, b, editor] = ids();
+    let (bound, plain) = ("dewtrail_print~bound", "dewtrail_print");
+    house_of(&db, a).await;
+    house_of(&db, b).await;
+    let bottle_row = bottle(&db, a, Duration::minutes(10)).await;
+    db.open_bottle(
+        bottle_row.id,
+        a,
+        Utc::now(),
+        BottlePrize::Fragments(100),
+        daily("bottle", 10),
+    )
+    .await
+    .unwrap();
+    db.exchange_fragments(a, 25, plain).await.unwrap().expect("a piece");
+    assert_eq!((pieces(&db, a, bound).await, pieces(&db, a, plain).await), (1, 0));
+
+    // A gift or a plaza donation (the same move) is refused, and nothing leaves the inventory.
+    assert!(!db.gift_item(a, b, bound).await.unwrap());
+    assert!(!db.gift_item(a, b + 1, bound).await.unwrap());
+    assert_eq!((pieces(&db, a, bound).await, pieces(&db, b, bound).await), (1, 0));
+
+    // So is a listing on a stall.
+    assert!(!db.list_item(a, bound, 500).await.unwrap());
+    assert!(db.listings(a).await.unwrap().is_empty());
+    assert_eq!(pieces(&db, a, bound).await, 1);
+
+    // A partner's house is somebody else's: the piece cannot be placed there either.
+    let blocked = db
+        .place_item_for(b, a, 0, bound, 0, 0, false, |_| Ok(()))
+        .await
+        .unwrap();
+    assert!(
+        matches!(&blocked, PlaceOutcome::Blocked(why) if why == SOULBOUND_GUEST),
+        "{blocked:?}"
+    );
+    assert!(db.placements(b, 0).await.unwrap().is_empty());
+    assert_eq!(pieces(&db, a, bound).await, 1);
+
+    // In their own house it goes, and it stays soulbound through picking up, placing again and clearing.
+    let PlaceOutcome::Placed { id } = db.place_item(a, 0, bound, 1, 1, false, |_| Ok(())).await.unwrap() else {
+        panic!("placed in their own house");
+    };
+    assert_eq!(pieces(&db, a, bound).await, 0);
+    assert_eq!(db.pick_up(a, id).await.unwrap().as_deref(), Some(bound));
+    assert_eq!((pieces(&db, a, bound).await, pieces(&db, a, plain).await), (1, 0));
+    db.place_item(a, 0, bound, 1, 1, false, |_| Ok(())).await.unwrap();
+    let cleared = db.clear_room(a, 0).await.unwrap();
+    assert_eq!(cleared.len(), 1);
+    assert_eq!((pieces(&db, a, bound).await, pieces(&db, a, plain).await), (1, 0));
+
+    // Even an undo cannot hand a soulbound placement to an editor who is not the owner.
+    let PlaceOutcome::Placed { id } = db.place_item(a, 0, bound, 1, 1, false, |_| Ok(())).await.unwrap() else {
+        panic!("placed");
+    };
+    let placement = db
+        .placements(a, 0)
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|p| p.id == id)
+        .unwrap();
+    let handed = db
+        .restore_for(a, editor, 0, &[RoomChange::Remove(placement.clone())], |_, _| Ok(()))
+        .await
+        .unwrap();
+    assert!(
+        matches!(handed, RestoreOutcome::Refused(Refusal::Blocked(_))),
+        "{handed:?}"
+    );
+    assert_eq!(db.placements(a, 0).await.unwrap().len(), 1);
+    assert_eq!(pieces(&db, editor, bound).await, 0);
+    // The owner's own undo takes it back as theirs.
+    let back = db
+        .restore(a, 0, &[RoomChange::Remove(placement)], |_, _| Ok(()))
+        .await
+        .unwrap();
+    assert!(matches!(back, RestoreOutcome::Done { .. }));
+    assert_eq!(pieces(&db, a, bound).await, 1);
+
+    // The plain piece of the same design moves freely, so the marks are what tell them apart.
+    db.grant_item(a, plain, 1).await.unwrap();
+    assert!(db.gift_item(a, b, plain).await.unwrap());
+    db.grant_item(a, plain, 1).await.unwrap();
+    assert!(db.list_item(a, plain, 500).await.unwrap());
+    db.grant_item(a, plain, 1).await.unwrap();
+    let PlaceOutcome::Placed { .. } = db
+        .place_item_for(b, a, 0, plain, 0, 0, false, |_| Ok(()))
+        .await
+        .unwrap()
+    else {
+        panic!("a plain piece goes into a partner's house");
+    };
+    assert_eq!(pieces(&db, a, bound).await, 1, "and the soulbound one never moved");
 }

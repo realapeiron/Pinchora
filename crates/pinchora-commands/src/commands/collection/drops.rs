@@ -6,11 +6,13 @@
 
 use std::{str::Split, sync::Arc, time::Duration};
 
-use chrono::Duration as Span;
+use chrono::{Datelike, Duration as Span, Timelike};
 use pinchora_db::{BottleOpen, BottlePrize, DROP_BOTTLE, DROP_CRITTERS, DropRow, Grab, NewDrop};
 use pinchora_game::{
     Rarity,
-    collection::{self, BOTTLE_SECS, Collection, DROP_SECS, Entry, MANUAL_DROP_COOLDOWN_SECS, Prize},
+    collection::{
+        self, BOTTLE_SECS, Collection, DROP_SECS, Entry, MANUAL_CHANNEL_COOLDOWN_SECS, MANUAL_DROP_COOLDOWN_SECS, Prize,
+    },
     play::Game,
 };
 use pinchora_render::{BottleCard, DropCard, DropCritter, HaulCard, Theme};
@@ -22,7 +24,7 @@ use twilight_model::{
 };
 use twilight_util::builder::embed::{EmbedBuilder, ImageSource};
 
-use super::{award, daily, dice, haul_tile, money, picture};
+use super::{award, daily, dice, haul_tile, money, picture, settings::settings};
 use crate::{
     App, Cx,
     commands::games::{channel_of, edit_message, quiet, record},
@@ -43,9 +45,39 @@ impl CritterDrop {
         let app = &cx.app;
         let (user, channel) = (cx.author()?.id.get(), channel_of(cx));
         let guild = cx.guild_id().unwrap_or(0);
+        // What `/config critters` says holds for a hand-called drop too: switched off, or kept to one channel.
+        let setting = settings(app, guild).await?;
+        if !setting.enabled {
+            return cx
+                .reply_ephemeral(
+                    "Critter drops are switched off in this server. A manager can turn them on with \
+                     `/config critters enabled:true`.",
+                )
+                .await;
+        }
+        if let Some(only) = setting.channel_id.filter(|set| *set as u64 != channel) {
+            return cx
+                .reply_ephemeral(format!("This server keeps critter drops to <#{only}>. Call one there!"))
+                .await;
+        }
         if app.db.drop_waiting_in(channel, app.now()).await? {
             return cx
                 .reply_ephemeral("Something is still waiting in this channel. Let somebody grab it first!")
+                .await;
+        }
+        // The channel's cooldown first, whoever called last; the caller's own on top of it. A caller who
+        // is still waiting must not cost the channel its turn, so the first is given back.
+        let channel_wait = format!("critterdrop:channel:{channel}");
+        if let Some(left) = app
+            .cache
+            .try_cooldown(&channel_wait, Duration::from_secs(MANUAL_CHANNEL_COOLDOWN_SECS))
+            .await?
+        {
+            return cx
+                .reply_ephemeral(format!(
+                    "This channel had a drop a little while ago. The next one can be called in {} minutes.",
+                    left.as_secs() / 60 + 1
+                ))
                 .await;
         }
         if let Some(left) = app
@@ -56,6 +88,7 @@ impl CritterDrop {
             )
             .await?
         {
+            app.cache.release_cooldown(&channel_wait).await?;
             return cx
                 .reply_ephemeral(format!(
                     "You called a drop a little while ago. The next one is ready in {} minutes.",
@@ -109,7 +142,8 @@ fn cards(row: &DropRow) -> Vec<&'static Entry> {
 
 /// Opens a critter drop in the database: three different critters, open for [`DROP_SECS`].
 async fn create_critter_drop(app: &App, guild: u64, channel: u64, host: Option<u64>) -> anyhow::Result<DropRow> {
-    let ids: Vec<String> = collection::drop_cards(&mut dice())
+    let now = app.now();
+    let ids: Vec<String> = collection::drop_cards(now.hour(), now.month(), &mut dice())
         .iter()
         .map(|e| e.id.clone())
         .collect();

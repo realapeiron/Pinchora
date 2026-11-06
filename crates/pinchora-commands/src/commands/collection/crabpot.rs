@@ -2,7 +2,7 @@
 
 use std::{collections::HashMap, str::Split, sync::Arc};
 
-use chrono::Duration;
+use chrono::{Datelike, Duration, Timelike};
 use pinchora_db::{Granted, PotHaul, PotRow, PotUpgrade};
 use pinchora_game::{
     collection::{self, Collection, POT_HOURS, POT_MAX_LEVEL},
@@ -221,7 +221,7 @@ fn haul_card(app: &App, granted: &[Granted], paid: bool, hours: i16) -> HaulCard
     }
     let mut footer = parts.join(" · ");
     if !paid {
-        footer = "Daily limit reached: the catch fills your dex, shells wait for tomorrow".to_owned();
+        footer = "Daily haul limit reached: the catch fills your dex, shells wait for tomorrow".to_owned();
     }
     HaulCard {
         title: "Crab pot".to_owned(),
@@ -284,9 +284,17 @@ pub(crate) async fn on_component(cx: &Cx, mut parts: Split<'_, char>) -> anyhow:
         "h" => {
             let haul = app
                 .db
-                .haul_pot(me, now, daily(app, Game::CrabPot), |level, hours| {
-                    (0..collection::pot_catches(level, hours))
-                        .filter_map(|_| collection::pot_catch(level, &mut dice()))
+                .haul_pot(me, now, daily(app, Game::CrabPot), |level, hours, ends_at| {
+                    // The catches come evenly through the soak, each drawn for the hour it was made.
+                    let (catches, soak) = (
+                        collection::pot_catches(level, hours) as i32,
+                        Duration::hours(hours.into()),
+                    );
+                    (0..catches)
+                        .filter_map(|k| {
+                            let at = ends_at - soak + soak * (2 * k + 1) / (2 * catches);
+                            collection::pot_catch(level, at.hour(), at.month(), &mut dice())
+                        })
                         .map(award)
                         .collect()
                 })
@@ -302,13 +310,18 @@ pub(crate) async fn on_component(cx: &Cx, mut parts: Split<'_, char>) -> anyhow:
                     let png = app.render(move |r| r.haul_card(&card)).await?;
                     let new = granted.iter().filter(|g| g.new).count();
                     let embed = EmbedBuilder::new().color(SUCCESS).description(format!(
-                        "You hauled in **{}** catch{}{}.",
+                        "You hauled in **{}** catch{}{}.{}",
                         granted.len(),
                         if granted.len() == 1 { "" } else { "es" },
                         if new > 0 {
                             format!(", {new} new for your dex")
                         } else {
                             String::new()
+                        },
+                        if paid {
+                            ""
+                        } else {
+                            " Daily haul limit reached: the catch is in your dex, but shells and fragments wait for tomorrow."
                         }
                     ));
                     let back = row(vec![button(

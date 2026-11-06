@@ -1,5 +1,6 @@
 use std::{collections::HashMap, sync::LazyLock};
 
+use pinchora_core::items::{is_soulbound, plain, soulbound};
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize)]
@@ -399,20 +400,23 @@ pub struct Title {
     pub kind: TitleKind,
 }
 
-/// One playable item: a base design, optionally in a palette variant.
+/// One playable item: a base design, optionally in a palette variant, optionally soulbound.
 #[derive(Debug, Clone, Copy)]
 pub struct Item<'a> {
     pub base: &'a Furniture,
     pub variant: Option<&'a str>,
+    /// Bought with fragments: it can be placed but never leaves its owner (see `pinchora_core::items`).
+    pub bound: bool,
 }
 
 impl Item<'_> {
-    /// `sofa` or `sofa__mint`.
+    /// `sofa`, `sofa__mint` or `sofa__mint~bound`.
     pub fn id(&self) -> String {
-        match self.variant {
+        let id = match self.variant {
             Some(v) => format!("{}__{v}", self.base.id),
             None => self.base.id.clone(),
-        }
+        };
+        if self.bound { soulbound(&id) } else { id }
     }
 
     pub fn name(&self) -> String {
@@ -509,18 +513,24 @@ impl Content {
         self.furniture_index.get(base_id).map(|&i| &self.furniture[i])
     }
 
-    /// Resolves `sofa` or `sofa__mint`.
+    /// Resolves `sofa`, `sofa__mint` or the soulbound `sofa__mint~bound`.
     pub fn item(&self, id: &str) -> Option<Item<'_>> {
-        let (base_id, variant) = match id.split_once("__") {
+        let bound = is_soulbound(id);
+        let (base_id, variant) = match plain(id).split_once("__") {
             Some((b, v)) => (b, Some(v)),
-            None => (id, None),
+            None => (plain(id), None),
         };
         let base = self.furniture(base_id)?;
         match variant {
-            None if base.variants.is_empty() => Some(Item { base, variant: None }),
+            None if base.variants.is_empty() => Some(Item {
+                base,
+                variant: None,
+                bound,
+            }),
             Some(v) => base.variants.iter().find(|x| x.as_str() == v).map(|x| Item {
                 base,
                 variant: Some(x.as_str()),
+                bound,
             }),
             None => None,
         }
@@ -534,7 +544,11 @@ impl Content {
             } else {
                 base.variants.iter().map(|v| Some(v.as_str())).collect()
             };
-            variants.into_iter().map(move |variant| Item { base, variant })
+            variants.into_iter().map(move |variant| Item {
+                base,
+                variant,
+                bound: false,
+            })
         })
     }
 

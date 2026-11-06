@@ -28,6 +28,12 @@ pub const COUNT_EVERY_SECS: u64 = 20;
 pub const BOTTLE_SHARE: f64 = 0.3;
 /// How often one player can call a critter drop by hand, in seconds.
 pub const MANUAL_DROP_COOLDOWN_SECS: u64 = 1800;
+/// How often a channel gets a hand-called critter drop, whoever calls it, in seconds.
+pub const MANUAL_CHANNEL_COOLDOWN_SECS: u64 = 600;
+// A channel waits longer than a drop lasts (so hand-called drops never overlap) and less than one caller does.
+const _: () = assert!(
+    MANUAL_CHANNEL_COOLDOWN_SECS > DROP_SECS as u64 && MANUAL_CHANNEL_COOLDOWN_SECS < MANUAL_DROP_COOLDOWN_SECS
+);
 /// The wait between two beachcombs, in minutes.
 pub const COMB_COOLDOWN_MINUTES: i64 = 20;
 /// Of the things a beachcomb turns up, how many are living critters rather than finds.
@@ -316,9 +322,15 @@ pub fn pick<'a>(pool: &[&'a Entry], luck: f64, rng: &mut impl FnMut() -> f64) ->
 
 // /Critter Drop
 
-/// Three different critters for a drop, rarity first like every draw.
-pub fn drop_cards(rng: &mut impl FnMut() -> f64) -> Vec<&'static Entry> {
-    let all: Vec<&Entry> = Collection::get().critters.iter().collect();
+/// Three different critters for a drop at this UTC `hour` in this `month`, rarity first like every draw. A
+/// critter tied to a time of day or a season only washes up then, wherever it lives.
+pub fn drop_cards(hour: u32, month: u32, rng: &mut impl FnMut() -> f64) -> Vec<&'static Entry> {
+    let (tod, season) = (fishing::time_of_day(hour), fishing::season(month));
+    let all: Vec<&Entry> = Collection::get()
+        .critters
+        .iter()
+        .filter(|c| c.fits(tod, season))
+        .collect();
     let mut cards: Vec<&Entry> = Vec::with_capacity(DROP_CARDS);
     // A tier can hold fewer than three, so a repeat is simply drawn again, a few times at most.
     for _ in 0..DROP_CARDS * 20 {
@@ -400,18 +412,20 @@ pub fn pot_catches(level: i16, hours: i16) -> u32 {
     (f64::from(hours) * pot_rate(level) * pot_bonus(hours)).floor() as u32
 }
 
-/// One thing a pot of `level` brings up: a find now and then, otherwise a critter of the shallows
-/// (the deep ones stay out of reach). A better pot is luckier.
-pub fn pot_catch(level: i16, rng: &mut impl FnMut() -> f64) -> Option<&'static Entry> {
+/// One thing a pot of `level` brings up at this UTC `hour` in this `month`: a find now and then, otherwise
+/// a critter of the shallows (the deep ones stay out of reach). A better pot is luckier, and what is tied to
+/// a time of day or a season only comes up then.
+pub fn pot_catch(level: i16, hour: u32, month: u32, rng: &mut impl FnMut() -> f64) -> Option<&'static Entry> {
+    let (tod, season) = (fishing::time_of_day(hour), fishing::season(month));
     let collection = Collection::get();
     let luck = 0.15 * f64::from(level.clamp(1, POT_MAX_LEVEL) - 1);
     let pool: Vec<&Entry> = if rng() < POT_FIND_SHARE {
-        collection.finds.iter().collect()
+        collection.finds.iter().filter(|f| f.fits(tod, season)).collect()
     } else {
         collection
             .critters
             .iter()
-            .filter(|c| c.habitat != Some(Habitat::Deep))
+            .filter(|c| c.habitat != Some(Habitat::Deep) && c.fits(tod, season))
             .collect()
     };
     pick(&pool, luck, rng)
@@ -450,14 +464,32 @@ pub fn open_bottle(rng: &mut impl FnMut() -> f64) -> Prize {
 
 // /Fragments
 
-/// What a decor piece of a rarity costs in fragments; common pieces cost the least.
+/// What one fragment is worth in shells of catalogue price. A spare pays 16.7 shells and 2.4 fragments on
+/// average (the draw odds against [`pay`]); the fragments are meant to be worth as much as the shells beside
+/// them, so one fragment is worth 16.7 / 2.4 = 7 shells.
+pub const FRAGMENT_SHELLS: f64 = 7.0;
+
+/// What a decor piece of a rarity costs in fragments: the mean catalogue price of the pieces fragments can
+/// buy at that rarity ([`exchange_pool`]) over [`FRAGMENT_SHELLS`], rounded.
+///
+/// | rarity    | mean price | fragments | spares of average luck |
+/// |-----------|-----------:|----------:|-----------------------:|
+/// | common    |         83 |        12 |                      5 |
+/// | uncommon  |        458 |        65 |                     27 |
+/// | rare      |      2,599 |       370 |                    155 |
+/// | epic      |     13,658 |     1,950 |                    819 |
+/// | legendary |     62,166 |     8,900 |                  3,739 |
+///
+/// The pieces are soulbound (`pinchora_core::items`): they decorate the buyer's house but are never sold,
+/// gifted or donated, so fragments cannot be turned into shells at a better rate than spares pay.
+/// `fragment_prices_follow_the_catalogue` fails when the catalogue moves away from this table.
 pub fn exchange_cost(rarity: Rarity) -> i64 {
     match rarity {
-        Rarity::Common => 25,
-        Rarity::Uncommon => 60,
-        Rarity::Rare => 150,
-        Rarity::Epic => 400,
-        Rarity::Legendary => 1_000,
+        Rarity::Common => 12,
+        Rarity::Uncommon => 65,
+        Rarity::Rare => 370,
+        Rarity::Epic => 1_950,
+        Rarity::Legendary => 8_900,
     }
 }
 
@@ -646,14 +678,14 @@ mod tests {
     fn a_drop_has_three_different_critters() {
         let mut rng = spread();
         for _ in 0..500 {
-            let cards = drop_cards(&mut rng);
+            let cards = drop_cards(12, 6, &mut rng);
             assert_eq!(cards.len(), DROP_CARDS);
             let ids: HashSet<_> = cards.iter().map(|c| c.id.as_str()).collect();
             assert_eq!(ids.len(), DROP_CARDS);
             assert!(cards.iter().all(|c| c.kind == Kind::Critter));
         }
         // Even dice that keep asking for the same legendary critter end up with three cards.
-        assert_eq!(drop_cards(&mut dice(&[0.999, 0.0])).len(), DROP_CARDS);
+        assert_eq!(drop_cards(12, 6, &mut dice(&[0.999, 0.0])).len(), DROP_CARDS);
     }
 
     #[test]
@@ -701,14 +733,14 @@ mod tests {
         // The deep stays out of a pot's reach, however lucky it is.
         let mut rng = spread();
         for _ in 0..3_000 {
-            let e = pot_catch(5, &mut rng).expect("a catch");
+            let e = pot_catch(5, 23, 12, &mut rng).expect("a catch");
             assert_ne!(e.habitat, Some(Habitat::Deep), "{}", e.id);
         }
         // A better pot finds rare things more often.
         let rares = |level: i16| {
             let mut rng = spread();
             (0..6_000)
-                .filter(|_| pot_catch(level, &mut rng).is_some_and(|e| e.rarity >= Rarity::Rare))
+                .filter(|_| pot_catch(level, 12, 6, &mut rng).is_some_and(|e| e.rarity >= Rarity::Rare))
                 .count()
         };
         assert!(rares(5) > rares(1), "{} against {}", rares(5), rares(1));
@@ -786,5 +818,106 @@ mod tests {
             .filter_map(|n| exchange_pick(content, Rarity::Common, f64::from(n) / 40.0))
             .collect();
         assert!(picks.len() >= 3, "{picks:?}");
+    }
+    /// An hour and a month in which `e` can turn up.
+    fn when(e: &Entry) -> (u32, u32) {
+        let hour = match e.time.as_str() {
+            "dawn" => 5,
+            "dusk" => 18,
+            "night" => 23,
+            _ => 12,
+        };
+        let month = match e.season.as_str() {
+            "spring" => 4,
+            "summer" => 7,
+            "autumn" => 10,
+            "winter" => 1,
+            _ => 6,
+        };
+        (hour, month)
+    }
+
+    #[test]
+    fn what_is_tied_to_a_time_or_season_turns_up_in_drops_and_pots_only_then() {
+        let c = Collection::get();
+        let tied: Vec<&Entry> = c
+            .critters
+            .iter()
+            .filter(|e| e.time != "any" || e.season != "any")
+            .collect();
+        assert!(tied.len() >= 8, "{} critters are tied to a time", tied.len());
+        // Away from their time none of them is ever dealt, in a drop or a pot, whatever the dice say.
+        let mut rng = spread();
+        for hour in 0..24 {
+            for month in 1..=12 {
+                let (tod, season) = (fishing::time_of_day(hour), fishing::season(month));
+                for _ in 0..30 {
+                    for card in drop_cards(hour, month, &mut rng) {
+                        assert!(card.fits(tod, season), "{} at hour {hour} in month {month}", card.id);
+                    }
+                    let e = pot_catch(3, hour, month, &mut rng).expect("a catch");
+                    assert!(e.fits(tod, season), "{} at hour {hour} in month {month}", e.id);
+                }
+            }
+        }
+        // At their time each can be dealt in a drop (the deep ones only come that way), and the ones a
+        // pot reaches in a pot.
+        for e in &tied {
+            let (hour, month) = when(e);
+            assert!(e.fits(fishing::time_of_day(hour), fishing::season(month)), "{}", e.id);
+            let mut rng = spread();
+            let dealt = (0..60_000).any(|_| drop_cards(hour, month, &mut rng).iter().any(|c| c.id == e.id));
+            assert!(
+                dealt,
+                "{} never washes up in a drop at hour {hour} in month {month}",
+                e.id
+            );
+            if e.habitat != Some(Habitat::Deep) {
+                let caught = (0..60_000).any(|_| pot_catch(5, hour, month, &mut rng).is_some_and(|c| c.id == e.id));
+                assert!(
+                    caught,
+                    "{} is never caught in a pot at hour {hour} in month {month}",
+                    e.id
+                );
+            }
+        }
+        // The moon pearl is a night find: a pot brings it up at night and never at noon.
+        let mut rng = spread();
+        assert!((0..30_000).any(|_| pot_catch(5, 23, 6, &mut rng).is_some_and(|e| e.id == "moon_pearl")));
+        assert!(!(0..30_000).any(|_| pot_catch(5, 12, 6, &mut rng).is_some_and(|e| e.id == "moon_pearl")));
+    }
+
+    #[test]
+    fn fragment_prices_follow_the_catalogue() {
+        let content = Content::get();
+        // A spare pays this many shells and fragments on average, so a fragment is worth about this many shells.
+        let (mut shells, mut fragments) = (0.0, 0.0);
+        for r in Rarity::ALL {
+            shells += odds(r) / 100.0 * pay(r).dup_shells as f64;
+            fragments += odds(r) / 100.0 * pay(r).dup_fragments as f64;
+        }
+        assert!(
+            (16.6..16.8).contains(&shells) && (2.3..2.5).contains(&fragments),
+            "{shells} {fragments}"
+        );
+        assert!(
+            (shells / fragments - FRAGMENT_SHELLS).abs() < 0.2,
+            "a fragment is worth {:.2} shells beside a spare's shells",
+            shells / fragments
+        );
+        // And a piece costs what its tier is worth in catalogue price at that rate, give or take a tenth.
+        for r in Rarity::ALL {
+            let pool = exchange_pool(content, r);
+            let mean = pool.iter().map(|f| f.price as f64).sum::<f64>() / pool.len() as f64;
+            let worth = mean / FRAGMENT_SHELLS / exchange_cost(r) as f64;
+            assert!(
+                (0.9..1.1).contains(&worth),
+                "{r:?}: pieces average {mean:.0} shells, {} fragments is {:.0}% of that at {FRAGMENT_SHELLS} a fragment",
+                exchange_cost(r),
+                worth * 100.0
+            );
+        }
+        // Common pieces are within a day's play, the legendary ones are a long goal.
+        assert!(exchange_cost(Rarity::Common) < 20 && exchange_cost(Rarity::Legendary) > 5_000);
     }
 }

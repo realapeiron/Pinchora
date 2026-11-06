@@ -3,7 +3,11 @@
 
 use chrono::Duration;
 use pinchora_commands::{collection_tick, post_bottle, post_critter_drop};
-use pinchora_game::collection::{Collection, Kind};
+use pinchora_core::items::{is_soulbound, soulbound};
+use pinchora_game::{
+    Rarity,
+    collection::{Collection, Kind, exchange_cost, exchange_pick},
+};
 
 use super::*;
 
@@ -231,6 +235,15 @@ async fn chat_makes_things_wash_up_but_only_with_enough_talk_from_enough_people(
         .await
         .unwrap();
     assert_eq!(open, 0, "a drop that could not be posted is taken back");
+
+    // And it cost the server nothing: the next 25 messages, in a channel that works, spawn at once instead
+    // of waiting out the cooldown.
+    let fine = unique();
+    for _ in 0..25 {
+        sim.say_in(unique(), fine, &[]).await;
+    }
+    let posts = sim.posts();
+    only(&posts, fine, Method::POST);
 }
 
 #[tokio::test]
@@ -371,7 +384,7 @@ async fn a_bottle_is_opened_by_the_first_who_clicks_and_the_message_is_read_alou
 
     let slow = sim.click(b, &bottle, "Open the bottle").await;
     assert!(
-        slow.ephemeral && slow.content().contains("drifted off"),
+        slow.ephemeral && slow.content().contains(&format!("Too slow! <@{a}> opened it first")),
         "{}",
         slow.content()
     );
@@ -382,7 +395,13 @@ async fn a_bottle_is_opened_by_the_first_who_clicks_and_the_message_is_read_alou
     // A bottle nobody opens drifts away.
     assert!(post_bottle(&sim.app, sim.guild, channel).await.expect("posts"));
     let posts = sim.posts();
-    let second = only(&posts, channel, Method::POST).message;
+    let second_post = only(&posts, channel, Method::POST);
+    let second = second_post.message;
+    let second_open = reply_of(second_post)
+        .button("Open the bottle")
+        .custom_id
+        .clone()
+        .expect("custom id");
     sim.app.shift_clock(Duration::minutes(11));
     collection_tick(&sim.app).await.expect("tick");
     let posts = sim.posts();
@@ -391,18 +410,65 @@ async fn a_bottle_is_opened_by_the_first_who_clicks_and_the_message_is_read_alou
         .find(|p| p.message == second && p.method == Method::PATCH)
         .expect("the bottle's message is edited");
     assert_eq!(gone.title(), "🍾 The bottle drifted away");
-    assert!(reply_of(gone).button("Drifted away").disabled);
+    let adrift = reply_of(gone);
+    assert!(adrift.button("Drifted away").disabled);
+    // Nobody opened that one, so a late click is told it is gone rather than that somebody was quicker.
+    let late = sim.component(b, &second_open, &[], &adrift).await;
+    assert!(
+        late.ephemeral && late.content().contains("drifted off"),
+        "{}",
+        late.content()
+    );
 }
 
 #[tokio::test]
-async fn critterdrop_command_posts_for_the_channel_and_has_a_cooldown() {
-    let Some(mut sim) = Sim::new("critterdrop_command_posts_for_the_channel_and_has_a_cooldown").await else {
+async fn critterdrop_command_follows_the_server_setting_and_has_cooldowns() {
+    let Some(mut sim) = Sim::new("critterdrop_command_follows_the_server_setting_and_has_cooldowns").await else {
         return;
     };
     let _turn = COLLECTION.lock().await;
     sim.channel = unique();
+    let channel = sim.channel;
     let (host, other) = (unique(), unique());
 
+    // Switched off (the default): refused politely, and neither cooldown was started.
+    let off = sim.command(host, "critterdrop", json!([])).await;
+    assert!(
+        off.ephemeral && off.content().contains("switched off") && off.content().contains("/config critters"),
+        "{}",
+        off.content()
+    );
+    assert!(sim.posts().is_empty());
+    assert!(
+        sim.app
+            .cache
+            .try_cooldown(&format!("critterdrop:{host}"), std::time::Duration::from_secs(1))
+            .await
+            .unwrap()
+            .is_none(),
+        "a refused call does not use up the caller's turn"
+    );
+    sim.app
+        .cache
+        .release_cooldown(&format!("critterdrop:{host}"))
+        .await
+        .unwrap();
+
+    // Kept to another channel: told where to go.
+    sim.guild = unique();
+    let elsewhere = unique();
+    enable_drops(&sim, Some(elsewhere)).await;
+    let wrong = sim.command(host, "critterdrop", json!([])).await;
+    assert!(
+        wrong.ephemeral && wrong.content().contains(&format!("<#{elsewhere}>")),
+        "{}",
+        wrong.content()
+    );
+    assert!(sim.posts().is_empty());
+
+    // On everywhere, it works.
+    sim.guild = unique();
+    enable_drops(&sim, None).await;
     let drop = sim.command(host, "critterdrop", json!([])).await;
     assert!(!drop.ephemeral, "the whole channel sees it");
     assert_eq!(drop.title(), "🦀 Critters washed up!");
@@ -425,9 +491,30 @@ async fn critterdrop_command_posts_for_the_channel_and_has_a_cooldown() {
         busy.content()
     );
 
-    // Once it is over, the caller still waits for their own cooldown, and somebody else does not.
+    // Once it is over, the channel waits out its own cooldown whoever calls, on top of the caller's.
     sim.app.shift_clock(Duration::seconds(100));
     collection_tick(&sim.app).await.expect("tick");
+    let again = sim.command(host, "critterdrop", json!([])).await;
+    assert!(
+        again.ephemeral && again.content().contains("This channel had a drop"),
+        "{}",
+        again.content()
+    );
+    let others = sim.command(other, "critterdrop", json!([])).await;
+    assert!(
+        others.ephemeral
+            && others.content().contains("This channel had a drop")
+            && others.content().contains("minutes"),
+        "{}",
+        others.content()
+    );
+    // The channel's ten minutes pass (Redis keeps real time, so end them by hand): the caller still has
+    // their own half hour to wait, and that does not cost the channel its turn.
+    sim.app
+        .cache
+        .release_cooldown(&format!("critterdrop:channel:{channel}"))
+        .await
+        .unwrap();
     let again = sim.command(host, "critterdrop", json!([])).await;
     assert!(
         again.ephemeral && again.content().contains("called a drop"),
@@ -545,29 +632,39 @@ async fn the_dex_pages_its_critters_and_finds_and_spends_fragments_on_decor() {
     let empty = sim.command(visitor, "dex", json!([])).await;
     assert!(empty.description().contains("0 of 84 found"), "{}", empty.description());
 
-    // Fragments: 25 buys a common piece; a legendary one is far out of reach.
+    // Fragments: a common piece is within reach; a legendary one is far out of it. The panel says what the
+    // pieces are: soulbound.
     let panel = sim.click(owner, &book, "Spend fragments").await;
     assert_eq!(panel.title(), "Fragment exchange");
     assert_eq!(panel.options("bc:xs:").len(), 5);
     assert!(panel.description().contains("120"), "{}", panel.description());
+    assert!(panel.description().contains("soulbound"), "{}", panel.description());
     let broke = sim.pick(owner, &panel, "bc:xs:", "legendary").await;
     assert!(
-        broke.description().contains("costs **1,000** fragments"),
+        broke.description().contains("costs **8,900** fragments"),
         "{}",
         broke.description()
     );
     assert_eq!(sim.app.db.fragments(owner).await.unwrap(), 120);
+    let common = exchange_cost(Rarity::Common);
+    assert_eq!(common, 12);
     let bought = sim.pick(owner, &panel, "bc:xs:", "common").await;
     assert!(bought.title().starts_with("You got a "), "{}", bought.title());
     assert_eq!(bought.files[0].0, "piece.png");
-    assert_eq!(sim.app.db.fragments(owner).await.unwrap(), 95);
+    assert!(bought.description().contains("soulbound"), "{}", bought.description());
+    assert_eq!(sim.app.db.fragments(owner).await.unwrap(), 120 - common);
     let owned = sim.app.db.inventory(owner).await.unwrap();
     assert!(
-        owned.iter().any(|r| bought
-            .title()
-            .contains(&Content::get().item(&r.item_id).expect("item").name())),
-        "the piece is in the inventory: {}",
+        owned.iter().any(|r| is_soulbound(&r.item_id)
+            && bought
+                .title()
+                .contains(&Content::get().item(&r.item_id).expect("item").name())),
+        "the piece is in the inventory, soulbound: {}",
         bought.title()
+    );
+    assert!(
+        owned.iter().all(|r| is_soulbound(&r.item_id)),
+        "and it is all they have"
     );
     let back = sim.click(owner, &bought, "Back to the dex").await;
     assert_eq!(back.files[0].0, "dex.png");
@@ -655,6 +752,31 @@ async fn the_crab_pot_soaks_hauls_once_and_upgrades() {
     let kinds = sim.app.db.dex(user).await.unwrap().len();
     assert!(kinds >= 2);
 
+    // The day's third paying haul is used up: the next one fills the dex and says that is all it did.
+    let reset = sim.click(user, &big, "Back to the pot").await;
+    let soak = sim.click(user, &reset, "Set for 1 h").await;
+    assert!(soak.has_button("Check the tide"));
+    sim.app.shift_clock(Duration::minutes(61));
+    let day = sim.app.now().timestamp().div_euclid(86_400) as i32;
+    sqlx::query(
+        "INSERT INTO collection_daily (user_id, day, game, plays) VALUES ($1, $2, 'crabpot', 3)
+         ON CONFLICT (user_id, day, game) DO UPDATE SET plays = 3",
+    )
+    .bind(user as i64)
+    .bind(day)
+    .execute(sim.app.db.pool())
+    .await
+    .unwrap();
+    let before = shells(&sim, user).await;
+    let ready = sim.command(user, "crabpot", json!([])).await;
+    let capped = sim.click(user, &ready, "Haul it in!").await;
+    assert!(
+        capped.description().contains("Daily haul limit reached"),
+        "{}",
+        capped.description()
+    );
+    assert_eq!(shells(&sim, user).await, before, "nothing was paid");
+
     // Upgrading costs shells, and says so when there are not enough.
     sqlx::query("UPDATE users SET credits = 0 WHERE id = $1")
         .bind(user as i64)
@@ -693,4 +815,194 @@ async fn help_tells_about_collecting() {
     for command in ["/beachcomb", "/crabpot", "/critterdrop", "/dex", "/config critters"] {
         assert!(text.contains(command), "{command}");
     }
+}
+
+/// A bought-with-fragments piece (soulbound) and a plain one of another design, for `user`.
+async fn pieces_for(sim: &Sim, user: u64) -> (String, String) {
+    let content = pinchora_game::Content::get();
+    let base = exchange_pick(content, Rarity::Common, 0.0).expect("a common piece");
+    let plain = exchange_pick(content, Rarity::Uncommon, 0.0).expect("an uncommon piece");
+    let db = &sim.app.db;
+    give_fragments(sim, user, 50).await;
+    db.exchange_fragments(user, exchange_cost(Rarity::Common), &base)
+        .await
+        .unwrap()
+        .expect("fragments cover a common piece");
+    db.grant_item(user, &plain, 3).await.unwrap();
+    (soulbound(&base), plain)
+}
+
+fn values(reply: &Reply, menu: &str) -> Vec<String> {
+    reply.options(menu).iter().map(|o| o.value.clone()).collect()
+}
+
+#[tokio::test]
+async fn soulbound_decor_cannot_be_sold_gifted_or_donated() {
+    let Some(mut sim) = Sim::new("soulbound_decor_cannot_be_sold_gifted_or_donated").await else {
+        return;
+    };
+    let (owner, friend, only_bound) = (unique(), unique(), unique());
+    let (bound, plain) = pieces_for(&sim, owner).await;
+    // Somebody whose only piece is a soulbound one.
+    let (only, _) = pieces_for(&sim, only_bound).await;
+    sqlx::query("DELETE FROM inventory WHERE user_id = $1 AND item_id <> $2")
+        .bind(only_bound as i64)
+        .bind(&only)
+        .execute(sim.app.db.pool())
+        .await
+        .unwrap();
+    let inventory = sim.command(owner, "inventory", json!([])).await;
+    assert_eq!(
+        inventory.files[0].0, "inventory.png",
+        "a soulbound piece is drawn like any other"
+    );
+
+    // A stall: the menu leaves the piece out, a hand-made pick of it is refused, the plain piece sells.
+    let sell = || json!([sub("sell", vec![int_option("price", 500)])]);
+    let menu = sim.command(owner, "stall", sell()).await;
+    let offered = values(&menu, "sl:");
+    assert!(offered.contains(&plain) && !offered.contains(&bound), "{offered:?}");
+    let refused = sim.component(owner, "sl:500", &[&bound], &menu).await;
+    assert!(
+        refused.content().contains("can't go on a stall") && refused.content().contains("soulbound"),
+        "{}",
+        refused.content()
+    );
+    assert!(sim.app.db.listings(owner).await.unwrap().is_empty());
+    assert_eq!(owned(&sim, owner, &bound).await, 1);
+    let listed = sim.pick(owner, &menu, "sl:", &plain).await;
+    assert!(listed.content().contains("is on your stall"), "{}", listed.content());
+    let rows = sim.app.db.listings(owner).await.unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].item_id, plain);
+    let nothing = sim.command(only_bound, "stall", sell()).await;
+    assert!(
+        nothing.ephemeral && nothing.content().contains("soulbound") && nothing.rows() == 0,
+        "{}",
+        nothing.content()
+    );
+
+    // A gift: the same.
+    let gift = || (json!([user_option("user", friend)]), resolved(&[friend], &[]));
+    let (options, people) = gift();
+    let menu = sim.command_resolved(owner, "gift", options, people).await;
+    let offered = values(&menu, "gf:");
+    assert!(offered.contains(&plain) && !offered.contains(&bound), "{offered:?}");
+    let refused = sim.component(owner, &format!("gf:{friend}"), &[&bound], &menu).await;
+    assert!(
+        refused.content().contains("can't be given away") && refused.content().contains("soulbound"),
+        "{}",
+        refused.content()
+    );
+    assert_eq!(
+        (owned(&sim, owner, &bound).await, owned(&sim, friend, &bound).await),
+        (1, 0)
+    );
+    let sent = sim.pick(owner, &menu, "gf:", &plain).await;
+    assert!(sent.content().contains("Sent"), "{}", sent.content());
+    assert_eq!(owned(&sim, friend, &plain).await, 1);
+    let (options, people) = gift();
+    let nothing = sim.command_resolved(only_bound, "gift", options, people).await;
+    assert!(
+        nothing.ephemeral && nothing.content().contains("soulbound") && nothing.rows() == 0,
+        "{}",
+        nothing.content()
+    );
+
+    // A donation to the server's plaza: the same again.
+    let donate = || json!([sub("donate", vec![])]);
+    let menu = sim.command(owner, "plaza", donate()).await;
+    let offered = values(&menu, "pd");
+    assert!(offered.contains(&plain) && !offered.contains(&bound), "{offered:?}");
+    let refused = sim.component(owner, "pd", &[&bound], &menu).await;
+    assert!(
+        refused.content().contains("can't be donated") && refused.content().contains("soulbound"),
+        "{}",
+        refused.content()
+    );
+    assert_eq!(
+        (owned(&sim, owner, &bound).await, owned(&sim, sim.guild, &bound).await),
+        (1, 0)
+    );
+    let donated = sim.pick(owner, &menu, "pd", &plain).await;
+    assert!(donated.content().contains("Donated"), "{}", donated.content());
+    assert_eq!(owned(&sim, sim.guild, &plain).await, 1);
+    let nothing = sim.command(only_bound, "plaza", donate()).await;
+    assert!(
+        nothing.ephemeral && nothing.content().contains("soulbound") && nothing.rows() == 0,
+        "{}",
+        nothing.content()
+    );
+
+    // The piece never moved: still the owner's, and it is all they have of it.
+    assert_eq!(owned(&sim, owner, &bound).await, 1);
+    assert_eq!(owned(&sim, owner, &soulbound(&plain)).await, 0);
+}
+
+#[tokio::test]
+async fn soulbound_decor_is_placed_in_your_own_house_but_not_a_partners() {
+    let Some(mut sim) = Sim::new("soulbound_decor_is_placed_in_your_own_house_but_not_a_partners").await else {
+        return;
+    };
+    let (a, b) = (unique(), unique());
+    sim.app.db.pair_partners(a, b).await.unwrap();
+    sim.app.db.remember_name(b, "Bea").await.unwrap();
+    let (bound, plain) = pieces_for(&sim, a).await;
+    let edit_options = |owner: u64| json!([sub("edit", vec![user_option("owner", owner)])]);
+
+    // In a's own editor the piece is on the menu, marked, and goes into the room like any other.
+    let own = sim.command(a, "house", json!([{ "name": "edit", "type": 1 }])).await;
+    let entry = own
+        .options("he:s:")
+        .iter()
+        .find(|o| o.value == bound)
+        .expect("the soulbound piece is on the menu");
+    assert!(
+        entry.description.as_deref().is_some_and(|d| d.contains("Soulbound")),
+        "{:?}",
+        entry.description
+    );
+    let held = sim.pick(a, &own, "he:s:", &bound).await;
+    let placed = sim.click(a, &held, "Place").await;
+    assert!(placed.description().contains("Placed **"), "{}", placed.description());
+    assert_eq!(owned(&sim, a, &bound).await, 0);
+    assert!(room_pieces(&sim, a, 0).await.iter().any(|p| p.0 == bound));
+    // Storing it puts it back as a soulbound piece, not a plain one.
+    let stored = sim.click(a, &placed, "Store").await;
+    assert!(stored.description().contains("Stored"), "{}", stored.description());
+    assert_eq!(
+        (owned(&sim, a, &bound).await, owned(&sim, a, &soulbound(&plain)).await),
+        (1, 0)
+    );
+
+    // Decorating b's house: the soulbound piece is left off a's menu, and a hand-made pick cannot place it.
+    let edit = sim
+        .command_resolved(a, "house", edit_options(b), named(&[(b, "Bea")]))
+        .await;
+    let offered = values(&edit, "pt:s:");
+    assert!(offered.contains(&plain) && !offered.contains(&bound), "{offered:?}");
+    let footer = edit.embeds[0]
+        .footer
+        .as_ref()
+        .map(|f| f.text.clone())
+        .unwrap_or_default();
+    assert!(footer.contains("soulbound pieces stay out of this menu"), "{footer}");
+    let id = edit.menu("pt:s:").custom_id.clone();
+    let held = sim.component(a, &id, &[&bound], &edit).await;
+    let place_id = held.button("Place").custom_id.clone().expect("custom id");
+    let blocked = sim.component(a, &place_id, &[], &held).await;
+    assert!(
+        blocked
+            .description()
+            .contains("soulbound pieces only go in your own house"),
+        "{}",
+        blocked.description()
+    );
+    assert!(room_pieces(&sim, b, 0).await.is_empty());
+    assert_eq!((owned(&sim, a, &bound).await, owned(&sim, b, &bound).await), (1, 0));
+    // The plain piece of another design still goes in.
+    let held = sim.pick(a, &edit, "pt:s:", &plain).await;
+    let placed = sim.click(a, &held, "Place").await;
+    assert!(placed.description().contains("Placed **"), "{}", placed.description());
+    assert_eq!(room_pieces(&sim, b, 0).await.len(), 1);
 }

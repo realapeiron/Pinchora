@@ -266,6 +266,25 @@ mod tests {
     }
 
     #[test]
+    fn soulbound_items_are_the_same_piece_with_a_mark() {
+        let c = content();
+        let bound = c.item("sofa__mint~bound").unwrap();
+        assert!(bound.bound && bound.variant == Some("mint"));
+        assert_eq!(bound.id(), "sofa__mint~bound");
+        assert_eq!(bound.name(), "Sofa (Mint)");
+        assert_eq!(c.item("sofa__mint").unwrap().id(), "sofa__mint");
+        assert!(c.item("table~bound").unwrap().bound);
+        assert!(c.item("sofa~bound").is_none() && c.item("sofa__gold~bound").is_none());
+        assert!(c.items().all(|i| !i.bound), "the catalogue sells none of them");
+        // The same footprint rules apply, so a soulbound piece can be placed like any other.
+        let (w, d) = (6, 6);
+        assert_eq!(
+            can_place(&c, w, d, &[], "sofa__mint~bound", 0, 0, false),
+            can_place(&c, w, d, &[], "sofa__mint", 0, 0, false)
+        );
+    }
+
+    #[test]
     fn placement_rules() {
         let c = content();
         let fits = |placed: &[Placed], id: &str, x, y| can_place(&c, 10, 8, placed, id, x, y, false);

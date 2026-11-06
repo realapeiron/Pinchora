@@ -19,7 +19,8 @@ use std::{
 
 use chrono::Duration as Span;
 use image::{RgbaImage, imageops};
-use pinchora_db::{Award, Daily, Granted};
+use pinchora_core::items::is_soulbound;
+use pinchora_db::{Award, Daily, Granted, InventoryRow};
 use pinchora_game::{
     collection::{Art, Entry},
     play::Game,
@@ -33,6 +34,19 @@ const WAKE: Duration = Duration::from_secs(5);
 const CLEANUP_EVERY: u32 = 720;
 /// Closed drops are forgotten after this long.
 const KEEP: Span = Span::days(2);
+
+/// What soulbound means, for every place that has to tell a player so.
+pub(crate) const SOULBOUND_RULE: &str = "Pieces bought with fragments are soulbound: place them in your own house, but they can never be sold, gifted or donated.";
+
+/// The most options a select menu holds.
+const MENU: usize = 25;
+
+/// The pieces of an inventory a menu of things to give away can offer (the soulbound ones stay out), and
+/// whether any soulbound piece was left out.
+pub(crate) fn giveable(rows: Vec<InventoryRow>) -> (Vec<InventoryRow>, bool) {
+    let (bound, free): (Vec<_>, Vec<_>) = rows.into_iter().partition(|row| is_soulbound(&row.item_id));
+    (free.into_iter().take(MENU).collect(), !bound.is_empty())
+}
 
 /// What the rules say `entry` pays, for the database to apply.
 pub(crate) fn award(entry: &Entry) -> Award<'_> {

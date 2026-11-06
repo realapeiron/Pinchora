@@ -18,6 +18,7 @@ use twilight_model::{
 };
 use twilight_util::builder::embed::EmbedBuilder;
 
+use super::SOULBOUND_RULE;
 use crate::{
     App, Cx,
     game::scene::slot_sprite,
@@ -217,7 +218,7 @@ async fn exchange_panel(app: &App, owner: u64, note: Option<&str>) -> anyhow::Re
     )]);
     let mut text = format!(
         "You have **{}** fragments. Spares of critters and finds leave fragments behind; trade them for a \
-         free-to-earn decor piece of the tier you pick, chosen at random.",
+         free-to-earn decor piece of the tier you pick, chosen at random.\n{SOULBOUND_RULE}",
         thousands(fragments)
     );
     if let Some(note) = note {
@@ -293,7 +294,8 @@ pub(crate) async fn on_component(cx: &Cx, mut parts: Split<'_, char>, value: Opt
                 .color(SUCCESS)
                 .title(format!("You got a {name}!"))
                 .description(format!(
-                    "A {} decor piece, now in your inventory: place it in `/house edit`.\nFragments left: **{}**.",
+                    "A {} decor piece, now in your inventory: place it in `/house edit`. It is soulbound, so it \
+                     stays yours: it can never be sold, gifted or donated.\nFragments left: **{}**.",
                     rarity.label().to_lowercase(),
                     thousands(left)
                 ));

@@ -7,6 +7,7 @@
 //! applies them.
 
 use chrono::{DateTime, Duration, Utc};
+use pinchora_core::items::soulbound;
 use sqlx::{Postgres, Transaction};
 
 use crate::{Db, economy::ledger, house::add_inventory, sql_id};
@@ -259,7 +260,8 @@ impl Db {
         Ok(row.map_or(0, |(n,)| n))
     }
 
-    /// Spends `cost` fragments on the decor piece `item` (an item id) and puts it in the inventory.
+    /// Spends `cost` fragments on the decor piece `item` (an item id) and puts it in the inventory as a
+    /// soulbound piece: it can be placed in their own house, but never sold, gifted or donated.
     /// Returns the fragments left, or `None` when the player cannot cover it.
     pub async fn exchange_fragments(&self, user: u64, cost: i64, item: &str) -> anyhow::Result<Option<i64>> {
         let id = sql_id(user);
@@ -275,7 +277,7 @@ impl Db {
         let Some((left,)) = left else {
             return Ok(None);
         };
-        add_inventory(&mut tx, id, item, 1).await?;
+        add_inventory(&mut tx, id, &soulbound(item), 1).await?;
         tx.commit().await?;
         Ok(Some(left))
     }
@@ -413,13 +415,17 @@ impl Db {
         .bind(drop_id)
         .fetch_optional(&mut *tx)
         .await?;
-        let Some(mut drop) = drop.filter(|d| d.kind == BOTTLE && d.is_open() && d.expires_at > now) else {
+        let Some(mut drop) = drop.filter(|d| d.kind == BOTTLE) else {
             return Ok(BottleOpen::Gone);
         };
+        // Somebody opened it first: opening closes the bottle, so this must be told before it is called over.
         if drop.takers.first().is_some_and(|t| *t != 0) {
             return Ok(BottleOpen::Lost {
                 by: drop.takers[0] as u64,
             });
+        }
+        if !drop.is_open() || drop.expires_at <= now {
+            return Ok(BottleOpen::Gone);
         }
         drop.takers[0] = sql_id(user);
         sqlx::query("UPDATE collection_drops SET takers = $2, status = 'closed' WHERE id = $1")
@@ -549,9 +555,9 @@ impl Db {
         Ok(set == 1)
     }
 
-    /// Hauls the pot in once its soak is done: `catches` works out what it brought from the pot's level and
-    /// the soak's hours (the pot is locked meanwhile), and the haul is filed, paid and cleared in one
-    /// transaction, so a second haul finds [`PotHaul::Empty`].
+    /// Hauls the pot in once its soak is done: `catches` works out what it brought from the pot's level, the
+    /// soak's hours and the time the soak ended (the pot is locked meanwhile), and the haul is filed, paid and
+    /// cleared in one transaction, so a second haul finds [`PotHaul::Empty`].
     pub async fn haul_pot<'a, F>(
         &self,
         user: u64,
@@ -560,7 +566,7 @@ impl Db {
         catches: F,
     ) -> anyhow::Result<PotHaul>
     where
-        F: FnOnce(i16, i16) -> Vec<Award<'a>>,
+        F: FnOnce(i16, i16, DateTime<Utc>) -> Vec<Award<'a>>,
     {
         let mut tx = self.pool().begin().await?;
         let row: Option<(i16, Option<i16>, Option<DateTime<Utc>>)> = sqlx::query_as(
@@ -581,7 +587,7 @@ impl Db {
             .await?;
         let paid = paid_play(&mut tx, user, daily).await?;
         let mut granted = Vec::new();
-        for award in catches(level, hours) {
+        for award in catches(level, hours, ends_at) {
             granted.push(grant(&mut tx, user, award, paid, "crab_pot").await?);
         }
         tx.commit().await?;

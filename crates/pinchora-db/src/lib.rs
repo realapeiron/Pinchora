@@ -43,7 +43,7 @@ pub use guestbook::{NoteRow, SignOutcome, VisitorRow};
 pub use guilds::{GuildSettings, LogKind};
 pub use house::{
     HouseRow, InventoryRow, NewRoom, PlaceOutcome, PlacementRow, Refusal, RestoreOutcome, RoomChange, RoomRow,
-    UpgradeOutcome,
+    SOULBOUND_GUEST, UpgradeOutcome,
 };
 pub use interactions::Tally;
 pub use members::{LeaderboardRow, MemberRank, XpGain, XpGrant};

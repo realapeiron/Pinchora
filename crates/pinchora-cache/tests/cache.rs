@@ -28,6 +28,17 @@ async fn cooldowns_and_sessions() {
     );
     let left = cache.try_cooldown(&key, Duration::from_secs(5)).await.unwrap().unwrap();
     assert!(left > Duration::from_secs(3) && left <= Duration::from_secs(5));
+    // Releasing one starts the next at once; releasing a cooldown that is not running is no error.
+    cache.release_cooldown(&key).await.unwrap();
+    assert!(
+        cache
+            .try_cooldown(&key, Duration::from_secs(5))
+            .await
+            .unwrap()
+            .is_none()
+    );
+    cache.release_cooldown(&key).await.unwrap();
+    cache.release_cooldown(&key).await.unwrap();
 
     let shard = 4_000_000 + (Instant::now().elapsed().as_nanos() % 1000) as u32;
     let session = StoredSession {
@@ -90,6 +101,10 @@ async fn hashes_and_sets_hold_who_is_where() {
     cache.map_remove(&hash, "1").await.unwrap();
     cache.map_remove(&hash, "nobody").await.unwrap();
     assert_eq!(cache.map_all(&hash).await.unwrap().len(), 1);
+    assert_eq!(cache.map_len(&hash).await.unwrap(), 1);
+    cache.map_set(&hash, "3", "attic", ttl).await.unwrap();
+    assert_eq!(cache.map_len(&hash).await.unwrap(), 2);
+    assert_eq!(cache.map_len(&format!("{hash}:none")).await.unwrap(), 0);
 
     assert!(cache.set_members(&set).await.unwrap().is_empty());
     cache.set_add(&set, "10").await.unwrap();

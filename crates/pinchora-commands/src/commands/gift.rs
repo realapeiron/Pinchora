@@ -8,7 +8,11 @@ use twilight_model::{
     http::interaction::InteractionResponseData,
 };
 
-use crate::{Cx, util::mention};
+use crate::{
+    Cx,
+    commands::collection::{SOULBOUND_RULE, giveable},
+    util::mention,
+};
 
 #[derive(CommandModel, CreateCommand)]
 #[command(name = "gift", desc = "Send a piece of furniture to a friend")]
@@ -25,13 +29,9 @@ impl Gift {
             return cx.reply_ephemeral("Gifts are for friends!").await;
         }
         let content = Content::get();
-        let options: Vec<SelectMenuOption> = cx
-            .app
-            .db
-            .inventory(author.get())
-            .await?
+        let (rows, kept_back) = giveable(cx.app.db.inventory(author.get()).await?);
+        let options: Vec<SelectMenuOption> = rows
             .into_iter()
-            .take(25)
             .filter_map(|row| {
                 let item = content.item(&row.item_id)?;
                 Some(SelectMenuOption {
@@ -45,7 +45,11 @@ impl Gift {
             .collect();
         if options.is_empty() {
             return cx
-                .reply_ephemeral("Your inventory is empty. Pick up something in `/house edit` or visit `/shop`.")
+                .reply_ephemeral(if kept_back {
+                    format!("Nothing in your inventory can be sent as a gift. {SOULBOUND_RULE}")
+                } else {
+                    "Your inventory is empty. Pick up something in `/house edit` or visit `/shop`.".to_owned()
+                })
                 .await;
         }
         cx.reply(InteractionResponseData {
@@ -82,6 +86,11 @@ pub(crate) async fn on_gift(cx: &Cx, mut args: std::str::Split<'_, char>, value:
     };
     if to == 0 || to == from {
         return cx.reply_ephemeral("Gifts are for friends!").await;
+    }
+    if item.bound {
+        return cx
+            .reply_ephemeral(format!("**{}** can't be given away. {SOULBOUND_RULE}", item.name()))
+            .await;
     }
     if !cx.app.db.gift_item(from, to, &item.id()).await? {
         return cx

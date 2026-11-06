@@ -132,9 +132,9 @@ channel when the bot starts is only noticed once their state changes.
 | `/pet trip go destination [pet]`, `/pet trip claim` | Field trips: send a pet (default: your active one) for 1, 4 or 8 hours to one of 8 cosy places from `content/pet_trips.json` (a place opens at a pet level, 1 to 26; the card's **Trip** button lists them). The pet leaves the house, its needs wait for it and it cannot be looked after meanwhile. Back, **Claim souvenir** (or `/pet trip claim`, which collects every pet that is home and otherwise says who is still away) pays shells, XP and a short story, and sometimes a free-to-earn furniture piece (`reward` items only, weighted by rarity, never shop stock). Higher levels find more shells and rarer pieces. A trip is a stored end time, so it survives restarts, and a claim pays exactly once |
 | `/fish` | Cast, wait for the bite, press **Reel!** in time; 72 catches for the fish book |
 | `/beachcomb` | Walk the shore (once every 20 minutes) for a find: shells, sea glass, driftwood, coins, now and then a critter; some only turn up at a time of day or in a season. A first find is a discovery for your dex and pays well, a spare is recycled for a few shells and fragments. A card shows what you found |
-| `/critterdrop` | Drop three pixel critters in the channel on one picture with a numbered button each: the first click takes a card, nobody takes two, they drift away after 90 seconds. You can call one every 30 minutes, one at a time per channel; chat can make them wash up too (`/config critters`) |
+| `/critterdrop` | Drop three pixel critters in the channel on one picture with a numbered button each: the first click takes a card, nobody takes two, they drift away after 90 seconds. It follows `/config critters` (off in a server until a manager turns it on, and kept to the set channel if there is one). You can call one every 30 minutes, a channel gets one every 10 minutes whoever calls, and one waits at a time per channel; chat can make them wash up too |
 | `/crabpot` | A crab pot you set for 1, 4 or 8 hours and haul in later (a stored end time, so it survives restarts): 1 to 1.8 catches an hour, more for a longer soak, drawn from the critters of the shallows and the finds. Five levels, bought with shells: a better pot catches more and finds rarer things. The haul is a card of everything it brought |
-| `/dex [user] [tab]` | The Tide Pool Dex: a paged picture book of all 48 critters and 36 finds with a progress bar, how many you met of each, and the ones you have not found as dark silhouettes. **Spend fragments** trades what spares leave behind for a free-to-earn decor piece of the tier you pick (25 / 60 / 150 / 400 / 1,000 fragments from common to legendary) |
+| `/dex [user] [tab]` | The Tide Pool Dex: a paged picture book of all 48 critters and 36 finds with a progress bar, how many you met of each, and the ones you have not found as dark silhouettes. **Spend fragments** trades what spares leave behind for a free-to-earn decor piece of the tier you pick (12 / 65 / 370 / 1,950 / 8,900 fragments from common to legendary); the piece is **soulbound**: it can be placed in your own house but never sold at a stall, gifted, donated to a plaza or placed in a partner's house |
 | `/quests` | Three daily quests; clear all three for pearls |
 | `/duel tictactoe user` | Button tic-tac-toe; the winner earns shells |
 | `/duel connect4 user [bet]` | Connect four on a pixel-art board: the challenged player accepts, then each turn is a column button (1-7) within 90 s; the winner earns shells |
@@ -164,9 +164,21 @@ later ones still fill the dex. A play is counted, filed and paid in one database
 click, two pods or a restart never take a card twice or pay twice; the best sustained source is a level 5 pot,
 about 40 shells an hour over its eight-hour soak (a level 1 pot about 19), and a walk or a spare of a common
 critter pays 6, far below the 1,500 an hour the games may pay.
+A spare pays 16.7 shells and 2.4 fragments on average (the odds against the pay table), and the fragments are
+worth as much as the shells beside them, so **one fragment is worth about 7 shells** of catalogue price. The
+decor fragments buy is priced at that rate: a tier costs the mean catalogue price of its pieces over 7 (83
+shells for a common piece is 12 fragments, 458 is 65, 2,599 is 370, 13,658 is 1,950 and 62,166 is 8,900), about
+5, 27, 155, 819 and 3,739 spares, and a unit test fails when the catalogue drifts from the table. Those pieces
+are **soulbound**: the inventory row carries a `~bound` mark on the item id (`sofa__mint~bound`, see
+`pinchora_core::items`), which placing, storing, undoing and clearing keep, and the three ways a piece can
+leave its owner refuse it, in the database as well as in the menus: the stall listing, a gift or plaza
+donation, and a partner's house (the partner editor leaves them off its menu).
+Time-tied critters and finds (a night jelly, a summer urchin, the moon pearl) only turn up in their time of day
+or season wherever they are drawn: beachcombs, drops (at the time of the drop) and crab pots (each catch at
+its own hour of the soak).
 Chat can make a critter drop or a bottle (a short cosy note and a small prize for whoever opens it first)
 wash up: once a server has turned it on, every 25 messages from at least two people, a person's messages
-counting once every 20 seconds, at most one every 12 minutes per server; message text is never read. Drops
+counting once every 20 seconds, at most one every 12 minutes per server (a drop Discord would not take, because the bot cannot post in that channel, gives the minutes back); message text is never read. Drops
 and bottles are rows in `collection_drops`, closed by a ticker on every pod when their time is up. Until the
 atlas has `cr_<id>` sprites for them, critters and finds borrow a fish, pet or furniture sprite or are drawn
 from small pixel shapes (`pinchora_render::critters`).

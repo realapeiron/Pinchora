@@ -1,3 +1,5 @@
+use pinchora_core::items::is_soulbound;
+
 use crate::{Db, house::add_inventory, sql_id};
 
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -38,8 +40,12 @@ impl Db {
         .await?)
     }
 
-    /// Moves one item from inventory onto the seller's stall. `Ok(false)` if not owned or the stall is full.
+    /// Moves one item from inventory onto the seller's stall. `Ok(false)` if not owned, soulbound or the stall is full.
     pub async fn list_item(&self, seller: u64, item_id: &str, price: i64) -> anyhow::Result<bool> {
+        // A soulbound piece is never for sale.
+        if is_soulbound(item_id) {
+            return Ok(false);
+        }
         let id = sql_id(seller);
         let mut tx = self.pool().begin().await?;
         let (count,): (i64,) = sqlx::query_as("SELECT count(*) FROM stall_listings WHERE seller_id = $1")

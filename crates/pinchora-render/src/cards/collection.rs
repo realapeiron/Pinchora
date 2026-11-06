@@ -500,6 +500,13 @@ pub struct HaulCard {
     pub theme: Theme,
 }
 
+/// The plate behind a haul grid's subtitle as `(x, y, w, h)`: it ends at the card's right margin and holds
+/// the text, which is 18 px and ends at 958 on the baseline 60.
+fn subtitle_plate(subtitle: &str) -> (f32, f32, f32, f32) {
+    let w = pixel_width(subtitle, 18.0) + 24.0;
+    (970.0 - w, 38.0, w, 30.0)
+}
+
 impl HaulCard {
     pub const SINGLE_ART_BOX: (u32, u32) = (224, 176);
     pub const GRID_ART_BOX: (u32, u32) = (120, 96);
@@ -627,7 +634,23 @@ impl HaulCard {
         let (w, h) = (1000.0, 108.0 + rows * 214.0 + 40.0);
         let mut s = open_svg(w, h);
         background(&mut s, w, h, &t.bg_top, &t.bg_bottom);
-        header(&mut s, t, &self.title, &self.subtitle, 964.0);
+        header(&mut s, t, &self.title, "", 964.0);
+        if !self.subtitle.is_empty() {
+            // On a plate, because the background's fixed sparkles can land right on the text of a tall card.
+            let (px, py, pw, ph) = subtitle_plate(&self.subtitle);
+            panel(&mut s, px, py, pw, ph, 4.0, "#0b1029", &t.panel_edge);
+            text(
+                &mut s,
+                958.0,
+                60.0,
+                18.0,
+                PIXEL,
+                false,
+                &t.gold,
+                "end",
+                &escape(&self.subtitle),
+            );
+        }
         for (i, tile) in tiles.iter().enumerate() {
             let in_row = (tiles.len() - (i / 4) * 4).min(4) as f32;
             let row_w = in_row * 224.0 + (in_row - 1.0) * 12.0;
@@ -1002,5 +1025,42 @@ mod tests {
             svg.contains("Critter 7") && !svg.contains("Critter 8"),
             "eight tiles at most"
         );
+    }
+
+    #[test]
+    fn a_hauls_subtitle_sits_on_a_plate_that_covers_the_backgrounds_sparkle() {
+        // The background puts a 4 px sparkle at 93% of the width and 8% of the height. On a card two rows
+        // tall that is right where the 18 px subtitle is, so the text has a plate that covers it.
+        let subtitle = "8 H SOAK";
+        let (px, py, pw, ph) = subtitle_plate(subtitle);
+        let text_width = pixel_width(subtitle, 18.0);
+        for rows in 1..=2 {
+            let (w, h) = (1000.0_f32, 108.0 + rows as f32 * 214.0 + 40.0);
+            let (sx, sy) = ((w * 0.93).round(), (h * 0.08).round());
+            let on_text = sx + 4.0 > 958.0 - text_width && sx < 958.0 && sy + 4.0 > 47.0 && sy < 60.0;
+            let under_plate = sx >= px && sx + 4.0 <= px + pw && sy >= py && sy + 4.0 <= py + ph;
+            assert!(
+                !on_text || under_plate,
+                "{rows} rows: the sparkle at {sx},{sy} shows on the subtitle"
+            );
+        }
+        assert!(px + pw <= 1000.0 && px > 600.0, "the plate stays on the card");
+        let tile = || HaulTile {
+            art: picture(),
+            name: "Pebblesnap Crab".into(),
+            rarity: "Common".into(),
+            frame: 0x8fa0d8,
+            tag: String::new(),
+            line: String::new(),
+            flavor: String::new(),
+        };
+        let card = HaulCard {
+            title: "Crab pot".into(),
+            subtitle: subtitle.into(),
+            tiles: vec![tile(), tile()],
+            footer: String::new(),
+            theme: Theme::reef(),
+        };
+        assert!(card.to_svg().contains(subtitle));
     }
 }

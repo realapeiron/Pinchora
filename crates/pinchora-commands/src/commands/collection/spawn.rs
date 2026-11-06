@@ -15,7 +15,8 @@ const HOURS: Duration = Duration::from_secs(6 * 3600);
 /// A person's messages count at most once every [`COUNT_EVERY_SECS`], so one chatterbox cannot fill the
 /// counter alone; a spawn needs [`SPAWN_MESSAGES`] counted messages from at least [`SPAWN_CHATTERS`]
 /// people, and a server gets at most one every [`SPAWN_COOLDOWN_SECS`]. The counters live in Redis and the
-/// last step is an atomic cooldown, so several pods agree on who spawns.
+/// last step is an atomic cooldown, so several pods agree on who spawns. A spawn Discord would not take (the
+/// bot cannot post in that channel) gives the cooldown back, so it does not cost the server its next one.
 pub(crate) async fn on_chat(app: &Arc<App>, guild: u64, user: u64, channel: u64) -> anyhow::Result<()> {
     let settings = settings(app, guild).await?;
     if !settings.enabled || settings.channel_id.is_some_and(|set| set as u64 != channel) {
@@ -38,11 +39,14 @@ pub(crate) async fn on_chat(app: &Arc<App>, guild: u64, user: u64, channel: u64)
     if counted < SPAWN_MESSAGES {
         return Ok(());
     }
-    if cache.map_all(&format!("cdwho:{guild}:{cycle}")).await?.len() < SPAWN_CHATTERS {
+    // Once the counter is past its threshold every counted message gets here: only the size is asked of
+    // the set of chatters, never its members.
+    if cache.map_len(&format!("cdwho:{guild}:{cycle}")).await? < SPAWN_CHATTERS {
         return Ok(());
     }
+    let cooldown = format!("cdspawn:{guild}");
     if cache
-        .try_cooldown(&format!("cdspawn:{guild}"), Duration::from_secs(SPAWN_COOLDOWN_SECS))
+        .try_cooldown(&cooldown, Duration::from_secs(SPAWN_COOLDOWN_SECS))
         .await?
         .is_some()
     {
@@ -52,10 +56,18 @@ pub(crate) async fn on_chat(app: &Arc<App>, guild: u64, user: u64, channel: u64)
         .incr(&format!("cdcycle:{guild}"), Duration::from_secs(24 * 3600))
         .await?;
     let posted = if rand::random::<f64>() < BOTTLE_SHARE {
-        drops::post_bottle(app, guild, channel).await?
+        drops::post_bottle(app, guild, channel).await
     } else {
-        drops::post_critter_drop(app, guild, channel).await?
+        drops::post_critter_drop(app, guild, channel).await
     };
-    metrics::counter!("pinchora_collection_spawns_total", "posted" => if posted { "yes" } else { "no" }).increment(1);
-    Ok(())
+    metrics::counter!("pinchora_collection_spawns_total", "posted" => if matches!(posted, Ok(true)) { "yes" } else { "no" })
+        .increment(1);
+    if !matches!(posted, Ok(true)) {
+        // Nothing landed, so nothing was spent. The counts start over (the cycle moved on), which keeps a
+        // channel the bot cannot post in from being tried again on every message.
+        if let Err(error) = cache.release_cooldown(&cooldown).await {
+            tracing::debug!(%error, guild, "spawn cooldown not given back");
+        }
+    }
+    posted.map(|_| ())
 }

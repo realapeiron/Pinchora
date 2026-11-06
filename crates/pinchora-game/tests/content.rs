@@ -307,3 +307,16 @@ fn markets_and_starter_kits_work_with_real_content() {
     }
     assert_ne!(market::offers(c, 10), market::offers(c, 11));
 }
+
+#[test]
+fn a_soulbound_id_still_fits_the_editor_custom_ids() {
+    // The house editor carries the held piece's id in every component's custom id, after
+    // `<prefix>:<action>:<room>:<x>:<y>:<page>:<flipped>:<mode>:` (under 30 characters), and Discord
+    // allows 100.
+    let longest = Content::get()
+        .items()
+        .map(|i| pinchora_core::items::soulbound(&i.id()).len())
+        .max()
+        .expect("items");
+    assert!(longest <= 60, "a soulbound id is {longest} characters long");
+}
