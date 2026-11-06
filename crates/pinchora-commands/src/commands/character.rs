@@ -12,6 +12,7 @@ mod view;
 
 use std::{str::Split, time::Duration};
 
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::CustomizeBuy;
 use pinchora_game::{
     Content,
@@ -102,13 +103,11 @@ impl Tab {
         }
     }
 
-    pub(crate) fn label(self) -> &'static str {
+    /// The tab's name in `lang`, from `character.tab.*` and `character.channel.*`.
+    pub(crate) fn name(self, lang: Lang) -> String {
         match self {
-            Tab::Look => "Look",
-            Tab::Paint(c) => c.label(),
-            Tab::Gear => "Accessories",
-            Tab::Presets => "Presets",
-            Tab::Outfits => "Outfits",
+            Tab::Paint(c) => channel_name(c, lang),
+            other => t!(lang, &format!("character.tab.{}", other.key())),
         }
     }
 
@@ -191,22 +190,22 @@ pub(crate) async fn load_shelf(app: &App, user: u64) -> anyhow::Result<Shelf> {
 }
 
 /// Words for what stands between a player and an accessory.
-pub(crate) fn access_note(access: &Access) -> String {
+pub(crate) fn access_note(access: &Access, lang: Lang) -> String {
     match access {
-        Access::Owned => "Yours".to_owned(),
-        Access::Buy(price) => format!("{} shells", thousands(*price)),
-        Access::Level(at) => format!("Reach level {at}"),
-        Access::Badge(id) => format!(
-            "Earn the {} badge",
-            Content::get().badge(id).map_or(id.as_str(), |b| b.name.as_str())
+        Access::Owned => t!(lang, "character.access.owned"),
+        Access::Buy(price) => t!(lang, "character.access.buy", price = thousands(*price)),
+        Access::Level(at) => t!(lang, "character.access.level", level = at),
+        Access::Badge(id) => t!(
+            lang,
+            "character.access.badge",
+            badge = Content::get().badge(id).map_or(id.as_str(), |b| b.name.as_str())
         ),
     }
 }
 
 /// Answers a click on an editor that is no longer the live one.
 async fn expired(cx: &Cx) -> anyhow::Result<()> {
-    cx.reply_ephemeral("This character editor has expired. Run `/character` to open a fresh one.")
-        .await
+    cx.reply_ephemeral(t!(cx.lang(), "character.expired")).await
 }
 
 /// `ch:` selects of the editor before character 2.0.
@@ -300,7 +299,7 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[S
                     let codes: Vec<String> = outfits.iter().map(|o| o.code.clone()).collect();
                     match step(&codes, Some(&draft.code), forward).and_then(|c| Character::decode(content, &c)) {
                         Some(c) => character = c,
-                        None => note = "No saved outfits yet: save this one with the buttons below.".to_owned(),
+                        None => note = t!(cx.lang(), "character.no-outfits"),
                     }
                 }
             }
@@ -336,9 +335,10 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[S
                 }
                 Tab::Presets => match preset(value).and_then(|p| p.character(content)) {
                     Some(c) => {
-                        note = format!(
-                            "**{}** is on. Make it your own, then Save.",
-                            preset(value).map_or("", |p| &p.name)
+                        note = t!(
+                            cx.lang(),
+                            "character.preset-on",
+                            name = preset(value).map_or("", |p| &p.name)
                         );
                         character = c;
                     }
@@ -350,16 +350,12 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[S
                     match outfits.iter().find(|o| o.slot == slot) {
                         Some(o) => match Character::decode(content, &o.code) {
                             Some(c) => {
-                                note = format!("Wearing your outfit **{}**.", o.name);
+                                note = t!(cx.lang(), "character.wearing-outfit", name = o.name);
                                 character = c;
                             }
-                            None => note = "That outfit no longer reads; save a new one over it.".to_owned(),
+                            None => note = t!(cx.lang(), "character.outfit-broken"),
                         },
-                        None => {
-                            note = format!(
-                                "Outfit slot {slot} is empty: press **Keep in {slot}** to save this look there."
-                            )
-                        }
+                        None => note = t!(cx.lang(), "character.outfit-empty", slot = slot),
                     }
                 }
             }
@@ -368,9 +364,9 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[S
             Some(code) => {
                 draft.code = code;
                 character = draft.character();
-                note = "Undone.".to_owned();
+                note = t!(cx.lang(), "character.undone");
             }
-            None => note = "Nothing to undo.".to_owned(),
+            None => note = t!(cx.lang(), "character.nothing-to-undo"),
         },
         "rand" => {
             let shelf = load_shelf(&cx.app, user).await?;
@@ -379,7 +375,7 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[S
                 &shelf,
                 &mut StdRng::seed_from_u64(rand::random_range(0..u64::MAX)),
             );
-            note = "Randomised from everything you own. Again, or Undo to go back.".to_owned();
+            note = t!(cx.lang(), "character.randomised");
         }
         "tint" => {
             let Some(worn) = character.worn(draft.slot).cloned() else {
@@ -398,38 +394,44 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[S
             };
             note = match shelf.access(item) {
                 Access::Buy(price) => match cx.app.db.buy_accessory(user, &item.id, price).await? {
-                    CustomizeBuy::Bought { balance } => format!(
-                        "Bought **{}** for {} shells ({} left). It's yours to wear.",
-                        item.name,
-                        thousands(price),
-                        thousands(balance)
+                    CustomizeBuy::Bought { balance } => t!(
+                        cx.lang(),
+                        "character.bought",
+                        item = item.name,
+                        price = thousands(price),
+                        balance = thousands(balance)
                     ),
-                    CustomizeBuy::AlreadyOwned => format!("You already own **{}**.", item.name),
-                    CustomizeBuy::Insufficient { balance } => format!(
-                        "**{}** costs {} shells; you have {}.",
-                        item.name,
-                        thousands(price),
-                        thousands(balance)
+                    CustomizeBuy::AlreadyOwned => t!(cx.lang(), "character.already-own", item = item.name),
+                    CustomizeBuy::Insufficient { balance } => t!(
+                        cx.lang(),
+                        "character.costs",
+                        item = item.name,
+                        price = thousands(price),
+                        balance = thousands(balance)
                     ),
                 },
-                Access::Owned => format!("You already own **{}**.", item.name),
-                other => format!("**{}** is locked: {}.", item.name, access_note(&other).to_lowercase()),
+                Access::Owned => t!(cx.lang(), "character.already-own", item = item.name),
+                other => t!(
+                    cx.lang(),
+                    "character.locked",
+                    item = item.name,
+                    why = access_note(&other, cx.lang()).to_lowercase()
+                ),
             };
         }
         "save" => {
             let shelf = load_shelf(&cx.app, user).await?;
             note = match shelf.blocker(&character) {
-                Some((item, access)) => format!(
-                    "Not saved: **{}** isn't yours yet ({}). Buy it or take it off first.",
-                    item.name,
-                    access_note(&access).to_lowercase()
+                Some((item, access)) => t!(
+                    cx.lang(),
+                    "character.not-saved",
+                    item = item.name,
+                    why = access_note(&access, cx.lang()).to_lowercase()
                 ),
                 None => {
                     cx.app.db.set_character(user, &draft.code).await?;
                     draft.saved = draft.code.clone();
-                    "Saved! Your character stands in your house, joins you on visits and shows on your \
-                     profile and in hugs."
-                        .to_owned()
+                    t!(cx.lang(), "character.saved")
                 }
             };
         }
@@ -449,7 +451,7 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[S
             };
             cx.app.db.save_outfit(user, slot, &draft.code).await?;
             draft.tab = Tab::Outfits;
-            note = format!("Kept this look in outfit slot {slot}. Rename it with **Rename…**.");
+            note = t!(cx.lang(), "character.kept", slot = slot);
         }
         "hex" => {
             let Tab::Paint(channel) = draft.tab else {
@@ -459,10 +461,14 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[S
             return cx
                 .modal(
                     format!("ca:hexm:{}", draft.session),
-                    &format!("{} colour", channel.label()),
+                    &t!(
+                        cx.lang(),
+                        "character.hex-title",
+                        channel = channel_name(channel, cx.lang())
+                    ),
                     vec![text_field(
                         HEX_FIELD,
-                        "Hex colour code",
+                        &t!(cx.lang(), "character.hex-label"),
                         "#ff6b4a",
                         7,
                         now.map(|v| format!("#{v:06x}")),
@@ -473,29 +479,33 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[S
         "name" => {
             let outfits = cx.app.db.outfits(user).await?;
             if outfits.is_empty() {
-                note = "Keep an outfit in a slot first, then name it.".to_owned();
+                note = t!(cx.lang(), "character.name-first");
             } else {
                 let fields = outfits
                     .iter()
                     .map(|o| {
                         text_field(
                             &format!("slot{}", o.slot),
-                            &format!("Outfit {}", o.slot),
-                            "Beach day",
+                            &t!(cx.lang(), "character.outfit-slot", slot = o.slot),
+                            &t!(cx.lang(), "character.outfit-example"),
                             OUTFIT_NAME_MAX as u16,
                             Some(o.name.clone()),
                         )
                     })
                     .collect();
                 return cx
-                    .modal(format!("ca:namem:{}", draft.session), "Name your outfits", fields)
+                    .modal(
+                        format!("ca:namem:{}", draft.session),
+                        &t!(cx.lang(), "character.name-title"),
+                        fields,
+                    )
                     .await;
             }
         }
         _ => return expired(cx).await,
     }
     if draft.change(&character) && note.is_empty() {
-        note = describe(&draft, &character);
+        note = describe(&draft, &character, cx.lang());
     }
     store(&cx.app, user, &draft).await?;
     let data = view::editor(cx, &draft, &note).await?;
@@ -503,26 +513,34 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[S
 }
 
 /// A one-line note on what the open tab now shows.
-fn describe(draft: &Draft, character: &Character) -> String {
+fn describe(draft: &Draft, character: &Character, lang: Lang) -> String {
     let content = Content::get();
     match draft.tab {
-        Tab::Look => format!(
-            "Look: **{}**.",
-            content
+        Tab::Look => t!(
+            lang,
+            "character.now",
+            what = Tab::Look.name(lang),
+            value = content
                 .look(&character.look)
                 .map_or(character.look.as_str(), |l| l.name.as_str())
         ),
-        Tab::Paint(channel) => format!(
-            "{}: **{}**.",
-            channel.label(),
-            channel.name_of(character.colors.get(channel))
+        Tab::Paint(channel) => t!(
+            lang,
+            "character.now",
+            what = channel_name(channel, lang),
+            value = channel.name_of(character.colors.get(channel))
         ),
         Tab::Gear => match character.worn(draft.slot).and_then(|w| accessory(&w.id)) {
-            Some(item) => format!("{}: **{}**.", draft.slot.label(), item.name),
-            None => format!("{}: nothing.", draft.slot.label()),
+            Some(item) => t!(lang, "character.now", what = draft.slot.label(), value = item.name),
+            None => t!(lang, "character.now-nothing", what = draft.slot.label()),
         },
         Tab::Presets | Tab::Outfits => String::new(),
     }
+}
+
+/// [`Channel::label`] in `lang`.
+pub(crate) fn channel_name(channel: Channel, lang: Lang) -> String {
+    t!(lang, &format!("character.channel.{}", channel.key()))
 }
 
 /// A random character from what the player may wear: any look and swatch, and in each slot
@@ -578,16 +596,14 @@ pub(crate) async fn on_modal(cx: &Cx, mut args: Split<'_, char>, fields: &[(Stri
     let action = args.next().unwrap_or_default();
     let session: Option<u32> = args.next().and_then(|s| s.parse().ok());
     let Some(mut draft) = load(&cx.app, user).await?.filter(|d| Some(d.session) == session) else {
-        return cx
-            .reply_ephemeral("This form has expired. Run `/character` to open a fresh editor.")
-            .await;
+        return cx.reply_ephemeral(t!(cx.lang(), "character.form-expired")).await;
     };
     let field = |id: &str| fields.iter().find(|(k, _)| k == id).map(|(_, v)| v.trim());
     let note;
     match action {
         "hexm" => {
             let Tab::Paint(channel) = draft.tab else {
-                return cx.reply_ephemeral("This form has expired.").await;
+                return cx.reply_ephemeral(t!(cx.lang(), "character.form-gone")).await;
             };
             match field(HEX_FIELD).and_then(parse_hex) {
                 Some(typed) => {
@@ -596,15 +612,23 @@ pub(crate) async fn on_modal(cx: &Cx, mut args: Split<'_, char>, fields: &[(Stri
                     character.colors.set(channel, Paint::Custom(kept));
                     draft.change(&character);
                     note = if kept == typed {
-                        format!("{}: **#{typed:06x}**.", channel.label())
+                        t!(
+                            cx.lang(),
+                            "character.now",
+                            what = channel_name(channel, cx.lang()),
+                            value = format!("#{typed:06x}")
+                        )
                     } else {
-                        format!(
-                            "{}: **#{kept:06x}**. `#{typed:06x}` was nudged a little so its light and shade still show.",
-                            channel.label()
+                        t!(
+                            cx.lang(),
+                            "character.nudged",
+                            what = channel_name(channel, cx.lang()),
+                            kept = format!("#{kept:06x}"),
+                            typed = format!("#{typed:06x}")
                         )
                     };
                 }
-                None => note = "That is not a colour code. Type six hex digits such as `#ff6b4a`.".to_owned(),
+                None => note = t!(cx.lang(), "character.not-hex"),
             }
         }
         "namem" => {
@@ -618,9 +642,9 @@ pub(crate) async fn on_modal(cx: &Cx, mut args: Split<'_, char>, fields: &[(Stri
                 }
             }
             draft.tab = Tab::Outfits;
-            note = format!("Named {renamed} outfit{}.", if renamed == 1 { "" } else { "s" });
+            note = t!(cx.lang(), "character.named", count = renamed);
         }
-        _ => return cx.reply_ephemeral("This form has expired.").await,
+        _ => return cx.reply_ephemeral(t!(cx.lang(), "character.form-gone")).await,
     }
     store(&cx.app, user, &draft).await?;
     let data = view::editor(cx, &draft, &note).await?;

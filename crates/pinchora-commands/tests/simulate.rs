@@ -1539,6 +1539,54 @@ async fn turkish_players_get_turkish_text_and_cards() {
         config.content()
     );
     assert_eq!(sim.app.guild_lang(sim.guild).await, pinchora_core::i18n::Lang::Tr);
+
+    // The rest of the everyday commands, in Turkish.
+    let daily = sim.command(user, "daily", json!([])).await;
+    assert!(daily.title().ends_with("kabuk"), "{}", daily.title());
+    assert!(
+        daily.description().contains("Serinin **1**. günü"),
+        "{}",
+        daily.description()
+    );
+    let wallet = sim.command(user, "balance", json!([])).await;
+    assert_eq!(wallet.files[0].0, "wallet.png");
+    let privacy = sim.command(user, "privacy", json!([])).await;
+    assert_eq!(privacy.title(), "🔒 Gizlilik");
+    assert!(!privacy.button("Verilerimi sil…").disabled);
+    let character = sim.command(user, "character", json!([])).await;
+    assert_eq!(character.title(), "Karakterin");
+    assert!(!character.button("Rastgele").disabled);
+    let backgrounds = sim
+        .command(user, "customize", json!([{ "name": "background", "type": 1 }]))
+        .await;
+    assert_eq!(backgrounds.title(), "Kart arka planları");
+
+    // The house editor: its title, hints and buttons.
+    let edit = sim.command(user, "house", json!([{ "name": "edit", "type": 1 }])).await;
+    assert!(edit.title().starts_with("1. oda düzenleniyor"), "{}", edit.title());
+    assert!(
+        edit.description().contains("Elinde: **hiçbir şey**"),
+        "{}",
+        edit.description()
+    );
+    assert!(edit.button("Yerleştir").disabled, "nothing held, nothing to place");
+    let furniture = edit
+        .options("he:s:")
+        .iter()
+        .find(|o| !o.value.starts_with('<') && o.value != "none")
+        .expect("the starter kit is in the inventory")
+        .value
+        .clone();
+    let held = sim.pick(user, &edit, "he:s:", &furniture).await;
+    assert!(held.description().contains("Elinde **"), "{}", held.description());
+    let placed = sim.click(user, &held, "Yerleştir").await;
+    assert!(
+        placed.description().contains("yerleştirildi"),
+        "{}",
+        placed.description()
+    );
+    let done = sim.click(user, &placed, "Bitti").await;
+    assert!(done.content().starts_with("Kaydedildi!"), "{}", done.content());
 }
 
 /// Emoji and CJK in a name draw as letters on the profile card, where they once drew as empty boxes: the name
@@ -11476,6 +11524,9 @@ async fn a_catch_has_a_size_waits_in_the_bucket_and_beats_records() {
     // A first catch: a fish of the shore, sized inside its range, put in the bucket and not sold.
     let angler = unique();
     fund(&sim, angler, 100).await;
+    // The reel is this player's first interaction: read their language now, as their cast would
+    // have, so the reaction time measures the click and not that read.
+    sim.app.user_lang_choice(angler).await;
     let id = seed_cast(&sim, angler, 1, 400, "shore:driftwood_rod:-").await;
     let catch = sim.component(angler, &id, &[], &casting()).await;
     let fish = caught_fish(&catch);

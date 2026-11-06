@@ -1,7 +1,7 @@
 use std::str::Split;
 
 use chrono::{DateTime, Utc};
-use pinchora_core::items::is_soulbound;
+use pinchora_core::{i18n::Lang, items::is_soulbound, t};
 use pinchora_db::{
     HouseRow, NewRoom, PetRow, PlaceOutcome, PlacementRow, Refusal, RestoreOutcome, RoomChange, RoomRow,
     UpgradeOutcome, VisitOutcome,
@@ -126,12 +126,7 @@ impl HouseCommand {
         match self {
             Self::View(c) => {
                 let unread = cx.app.db.guestbook_unread(author.id.get()).await?;
-                let footer = (unread > 0).then(|| {
-                    format!(
-                        "📖 {unread} new guestbook note{} · read with /house guestbook",
-                        if unread == 1 { "" } else { "s" }
-                    )
-                });
+                let footer = (unread > 0).then(|| t!(cx.lang(), "house.view.unread", count = unread));
                 let data = room_card(
                     cx,
                     author.id.get(),
@@ -144,7 +139,7 @@ impl HouseCommand {
                 cx.reply(data).await
             }
             Self::Visit(c) => match &c.user {
-                Some(user) if user.resolved.bot => cx.reply_ephemeral("Bots don't have houses.").await,
+                Some(user) if user.resolved.bot => cx.reply_ephemeral(t!(cx.lang(), "house.bot")).await,
                 Some(user) => {
                     let name = resolved_display_name(user);
                     visit(cx, &author, user.resolved.id.get(), name, room_index(c.room)).await
@@ -158,31 +153,19 @@ impl HouseCommand {
                 let (who, prefix, note) = match &c.owner {
                     Some(owner) if owner.resolved.id != author.id => {
                         if owner.resolved.bot {
-                            return cx.reply_ephemeral("Bots don't have houses.").await;
+                            return cx.reply_ephemeral(t!(cx.lang(), "house.bot")).await;
                         }
                         match cx.app.db.partner(me).await? {
                             Some(p) if p.partner_id == owner.resolved.id.get() => {
                                 ensure_house(&cx.app, me).await?;
-                                (
-                                    Who::partner_of(me, p),
-                                    "pt",
-                                    "Pick furniture from your inventory: it jumps to a free spot, then press **Place**.",
-                                )
+                                (Who::partner_of(me, p), "pt", t!(cx.lang(), "house.edit.start-partner"))
                             }
                             _ => {
-                                return cx
-                                    .reply_ephemeral(
-                                        "You can only decorate the house of your partner. Pair up with `/partner propose`.",
-                                    )
-                                    .await;
+                                return cx.reply_ephemeral(t!(cx.lang(), "house.partner-only")).await;
                             }
                         }
                     }
-                    _ => (
-                        Who::own(me),
-                        "he",
-                        "Pick furniture: it jumps to a free spot, then press **Place**.",
-                    ),
+                    _ => (Who::own(me), "he", t!(cx.lang(), "house.edit.start")),
                 };
                 let (_, rooms) = ensure_house(&cx.app, who.owner).await?;
                 let room = room_index(c.room).min(rooms.len().saturating_sub(1) as i16);
@@ -196,7 +179,7 @@ impl HouseCommand {
                     mode: CursorMode::Floor,
                     item: None,
                 };
-                let data = editor_as(cx, who, state, note, None).await?;
+                let data = editor_as(cx, who, state, &note, None).await?;
                 cx.reply(data).await
             }
             Self::Upgrade(_) => upgrade_offer(cx, author.id.get()).await,
@@ -209,7 +192,7 @@ impl HouseCommand {
             Self::Like(c) => {
                 let host = &c.user.resolved;
                 if host.bot || host.id == author.id {
-                    return cx.reply_ephemeral("Like someone else's house!").await;
+                    return cx.reply_ephemeral(t!(cx.lang(), "house.like-self")).await;
                 }
                 if super::privacy::private_house(cx, host.id.get()).await? {
                     return Ok(());
@@ -225,24 +208,25 @@ impl HouseCommand {
                         cx.app
                             .quest(author.id.get(), pinchora_game::quests::QuestKind::Like)
                             .await;
-                        cx.reply_text(format!(
-                            "💖 {} liked {}'s house! It has **{total}** like{} now.",
-                            crate::util::mention(author.id),
-                            crate::util::mention(host.id),
-                            if total == 1 { "" } else { "s" }
+                        cx.reply_text(t!(
+                            cx.lang(),
+                            "house.liked",
+                            liker = crate::util::mention(author.id),
+                            host = crate::util::mention(host.id),
+                            count = total
                         ))
                         .await
                     }
-                    None => cx.reply_ephemeral("You already liked this house today.").await,
+                    None => cx.reply_ephemeral(t!(cx.lang(), "house.already-liked")).await,
                 }
             }
             Self::Lock(c) => {
                 ensure_house(&cx.app, author.id.get()).await?;
                 cx.app.db.set_house_locked(author.id.get(), c.locked).await?;
                 let text = if c.locked {
-                    "Your house is locked. Visitors will be turned away."
+                    t!(cx.lang(), "house.locked")
                 } else {
-                    "Your house is open for visitors again."
+                    t!(cx.lang(), "house.unlocked")
                 };
                 cx.reply_ephemeral(text).await
             }
@@ -388,16 +372,18 @@ pub(crate) async fn room_card(
     let mut embed = EmbedBuilder::new()
         .color(BRAND)
         .title(if plaza {
-            format!("{owner_name} plaza")
+            t!(cx.lang(), "house.view.plaza-title", name = owner_name)
         } else {
-            format!("{owner_name}'s {}", tier.name)
+            t!(cx.lang(), "house.view.title", name = owner_name, house = tier.name)
         })
-        .description(format!(
-            "Room {}/{} · **{title}** · {count} item{} · 💖 {}",
-            room + 1,
-            rooms.len(),
-            if count == 1 { "" } else { "s" },
-            house.likes
+        .description(t!(
+            cx.lang(),
+            "house.view.summary",
+            room = room + 1,
+            rooms = rooms.len(),
+            title = title,
+            count = count,
+            likes = house.likes
         ));
     if let Some(footer) = footer {
         embed = embed.footer(EmbedFooterBuilder::new(footer));
@@ -416,8 +402,12 @@ pub(crate) async fn room_card(
     };
     let mut buttons = Vec::new();
     if rooms.len() > 1 {
-        buttons.push(nav("◀ Room", room - 1, room == 0));
-        buttons.push(nav("Room ▶", room + 1, room as usize + 1 >= rooms.len()));
+        buttons.push(nav(&t!(cx.lang(), "house.view.prev"), room - 1, room == 0));
+        buttons.push(nav(
+            &t!(cx.lang(), "house.view.next"),
+            room + 1,
+            room as usize + 1 >= rooms.len(),
+        ));
     }
     // A guest can leave a note in the owner's guestbook.
     if !plaza && guest.is_some_and(|g| g != owner_id) {
@@ -426,7 +416,7 @@ pub(crate) async fn room_card(
             disabled: false,
             emoji: None,
             id: None,
-            label: Some("Sign guestbook".to_owned()),
+            label: Some(t!(cx.lang(), "house.view.sign")),
             sku_id: None,
             style: ButtonStyle::Primary,
             url: None,
@@ -451,11 +441,15 @@ pub(crate) async fn visit(cx: &Cx, author: &User, host_id: u64, name: String, ro
     }
     // A hidden house is not there at all: nobody can walk in, not even by name.
     if cx.app.db.privacy(host_id).await?.hide_house {
-        return cx.reply_ephemeral(format!("{name}'s house is private.")).await;
+        return cx
+            .reply_ephemeral(t!(cx.lang(), "house.visit.private", name = name))
+            .await;
     }
     let (house, _) = ensure_house(&cx.app, host_id).await?;
     if house.locked {
-        return cx.reply_ephemeral(format!("{name} has locked their house.")).await;
+        return cx
+            .reply_ephemeral(t!(cx.lang(), "house.visit.locked", name = name))
+            .await;
     }
     let outcome = cx
         .app
@@ -474,8 +468,8 @@ pub(crate) async fn visit(cx: &Cx, author: &User, host_id: u64, name: String, ro
             .await;
     }
     let footer = match outcome {
-        VisitOutcome::Rewarded { reward } if reward > 0 => Some(format!("+{reward} shells for visiting today")),
-        VisitOutcome::Rewarded { .. } => Some(format!("You've had your {VISIT_CAP} paid visits today")),
+        VisitOutcome::Rewarded { reward } if reward > 0 => Some(t!(cx.lang(), "house.visit.paid", reward = reward)),
+        VisitOutcome::Rewarded { .. } => Some(t!(cx.lang(), "house.visit.cap", cap = VISIT_CAP)),
         VisitOutcome::AlreadyToday => None,
     };
     let data = room_card(cx, host_id, &name, room, footer, Some(author.id.get())).await?;
@@ -487,7 +481,7 @@ pub(crate) async fn on_view_nav(cx: &Cx, mut args: Split<'_, char>) -> anyhow::R
     let room: i16 = args.next().and_then(|v| v.parse().ok()).unwrap_or(0);
     // A house hidden after its picture was posted stops showing its other rooms.
     if owner != cx.author()?.id.get() && cx.app.db.privacy(owner).await?.hide_house {
-        return cx.reply_ephemeral("This house is private.").await;
+        return cx.reply_ephemeral(t!(cx.lang(), "privacy.house-private")).await;
     }
     let name = if cx.guild_id() == Some(owner) {
         super::plaza::guild_name(cx, owner).await
@@ -532,11 +526,11 @@ impl CursorMode {
             .find(|m| code.len() == 1 && code.starts_with(m.code()))
     }
 
-    fn label(self) -> &'static str {
+    fn label(self, lang: Lang) -> String {
         match self {
-            Self::Floor => "Floor",
-            Self::RightWall => "Right wall",
-            Self::LeftWall => "Left wall",
+            Self::Floor => t!(lang, "house.editor.floor"),
+            Self::RightWall => t!(lang, "house.editor.right-wall"),
+            Self::LeftWall => t!(lang, "house.editor.left-wall"),
         }
     }
 
@@ -830,21 +824,29 @@ fn settle(
 
 /// A cursor position as players read it: "C4" on the floor (the letters and numbers drawn
 /// along the front edges), "Right wall 3 · high" on a wall.
-fn spot_label(x: u32, y: u32, wall: Option<bool>) -> String {
+fn spot_label(lang: Lang, x: u32, y: u32, wall: Option<bool>) -> String {
     const HEIGHTS: [&str; 3] = ["high", "middle", "low"];
     match wall {
         None => format!("{}{}", column_letter(x), y + 1),
-        Some(left) => format!(
-            "{} wall {} · {}",
-            if left { "Left" } else { "Right" },
-            x + 1,
-            HEIGHTS.get(y as usize).copied().unwrap_or("low")
+        Some(left) => t!(
+            lang,
+            if left {
+                "house.spot.left-wall"
+            } else {
+                "house.spot.right-wall"
+            },
+            n = x + 1,
+            height = t!(
+                lang,
+                &format!("house.spot.{}", HEIGHTS.get(y as usize).copied().unwrap_or("low"))
+            )
         ),
     }
 }
 
 /// What a spot is next to, so the jump menu reads "next to Oak Bed" and not bare coordinates.
 fn spot_hint(
+    lang: Lang,
     content: &Content,
     placements: &[PlacementRow],
     layer: Layer,
@@ -878,12 +880,12 @@ fn spot_hint(
         }
     }
     match (holder, neighbour, wall) {
-        (Some(p), _, _) => format!("on top of {}", name(p)),
-        (None, Some(p), Some(_)) => format!("beside {}", name(p)),
-        (None, Some(p), None) => format!("next to {}", name(p)),
-        (None, None, Some(_)) => "free wall".to_owned(),
-        (None, None, None) if spot.x == 0 || spot.y == 0 => "against a wall".to_owned(),
-        (None, None, None) => "open floor".to_owned(),
+        (Some(p), _, _) => t!(lang, "house.spot.on-top", item = name(p)),
+        (None, Some(p), Some(_)) => t!(lang, "house.spot.beside", item = name(p)),
+        (None, Some(p), None) => t!(lang, "house.spot.next-to", item = name(p)),
+        (None, None, Some(_)) => t!(lang, "house.spot.free-wall"),
+        (None, None, None) if spot.x == 0 || spot.y == 0 => t!(lang, "house.spot.against-wall"),
+        (None, None, None) => t!(lang, "house.spot.open-floor"),
     }
 }
 
@@ -967,14 +969,22 @@ fn undo_fits(
 }
 
 /// Asks before storing every piece in the room. The room picture already on the message stays.
-async fn clear_prompt(cx: &Cx, state: &EditState, title: &str, pieces: usize, whose: &str) -> anyhow::Result<()> {
+async fn clear_prompt(
+    cx: &Cx,
+    state: &EditState,
+    title: &str,
+    pieces: usize,
+    guest_of: Option<&str>,
+) -> anyhow::Result<()> {
+    let lang = cx.lang();
+    let question = match guest_of {
+        Some(name) => t!(lang, "house.clear.question-theirs", count = pieces, name = name),
+        None => t!(lang, "house.clear.question", count = pieces),
+    };
     let mut embed = EmbedBuilder::new()
         .color(DANGER)
-        .title(format!("Clear room {} · {title}?", state.room + 1))
-        .description(format!(
-            "Store all **{pieces}** piece{} in this room back in {whose} inventory?\n**Undo** puts them all back where they were.",
-            if pieces == 1 { "" } else { "s" }
-        ));
+        .title(t!(lang, "house.clear.title", room = state.room + 1, title = title))
+        .description(question);
     if let Ok(image) = ImageSource::attachment("room.png") {
         embed = embed.image(image);
     }
@@ -995,16 +1005,8 @@ async fn clear_prompt(cx: &Cx, state: &EditState, title: &str, pieces: usize, wh
         components: Some(vec![Component::ActionRow(ActionRow {
             id: None,
             components: vec![
-                button(
-                    &if pieces == 1 {
-                        "Store it".to_owned()
-                    } else {
-                        format!("Store all {pieces}")
-                    },
-                    "z",
-                    ButtonStyle::Danger,
-                ),
-                button("Cancel", "c", ButtonStyle::Secondary),
+                button(&t!(lang, "house.clear.store", count = pieces), "z", ButtonStyle::Danger),
+                button(&t!(lang, "house.editor.cancel"), "c", ButtonStyle::Secondary),
             ],
         })]),
         flags: Some(MessageFlags::EPHEMERAL),
@@ -1020,32 +1022,30 @@ pub(crate) async fn on_edit(
     value: Option<&str>,
 ) -> anyhow::Result<()> {
     let Some((action, mut state)) = EditState::parse(prefix, &mut args) else {
-        return cx
-            .reply_ephemeral("This editor has expired. Run `/house edit` again.")
-            .await;
+        return cx.reply_ephemeral(t!(cx.lang(), "house.edit.expired")).await;
     };
     // The house being edited: the player's own, the server plaza, or their partner's.
     let me = cx.author()?.id.get();
     let who = match prefix {
         "pe" => match super::plaza::editable_plaza(cx) {
             Some(guild) => Who::own(guild),
-            None => return cx.reply_ephemeral("Only server managers can arrange the plaza.").await,
+            None => return cx.reply_ephemeral(t!(cx.lang(), "house.edit.plaza-managers")).await,
         },
         "pt" => match cx.app.db.partner(me).await? {
             Some(p) => Who::partner_of(me, p),
             None => {
-                return cx
-                    .reply_ephemeral("You are no longer partners, so you can't decorate their house.")
-                    .await;
+                return cx.reply_ephemeral(t!(cx.lang(), "house.edit.no-longer-partners")).await;
             }
         },
         _ => Who::own(me),
     };
     let user_id = who.owner;
-    let whose = if who.is_guest() {
-        format!("{}'s", partner_label(&cx.app, who.owner).await)
+    let lang = cx.lang();
+    // The partner whose house this is, when it is not the player's own: some lines name them.
+    let guest_of = if who.is_guest() {
+        Some(partner_label(&cx.app, who.owner).await)
     } else {
-        "your".to_owned()
+        None
     };
     let content = Content::get();
     let (house_row, rooms) = ensure_house(&cx.app, user_id).await?;
@@ -1074,17 +1074,15 @@ pub(crate) async fn on_edit(
                 state.flipped = false;
                 match state.item.clone() {
                     Some(item_id) => match settle(content, tier, &placements, &mut state, &heights, false) {
-                        Settle::NoRoom => format!(
-                            "**{}** fits nowhere in this room right now. **Turn** it, or store something.",
-                            name_of(&item_id)
-                        ),
-                        _ => format!(
-                            "Holding **{}**. Press **Place** to put it at **{}**, or pick another spot.",
-                            name_of(&item_id),
-                            spot_label(state.x, state.y, state.wall(content))
+                        Settle::NoRoom => t!(lang, "house.edit.fits-nowhere", item = name_of(&item_id)),
+                        _ => t!(
+                            lang,
+                            "house.edit.holding",
+                            item = name_of(&item_id),
+                            spot = spot_label(lang, state.x, state.y, state.wall(content))
                         ),
                     },
-                    None => "Pick something from the menu.".to_owned(),
+                    None => t!(lang, "house.edit.pick"),
                 }
             }
         },
@@ -1093,7 +1091,7 @@ pub(crate) async fn on_edit(
             match value {
                 Some(CLEAR_ROOM) if !placements.is_empty() => {
                     let title = room_title(content, &rooms[state.room as usize]);
-                    return clear_prompt(cx, &state, &title, placements.len(), &whose).await;
+                    return clear_prompt(cx, &state, &title, placements.len(), guest_of.as_deref()).await;
                 }
                 Some(id) if id.starts_with('#') => {
                     let target = id[1..]
@@ -1141,7 +1139,7 @@ pub(crate) async fn on_edit(
             String::new()
         }
         "p" => match state.item.clone() {
-            None => "Pick something to place first.".to_owned(),
+            None => t!(lang, "house.edit.pick-first"),
             Some(item_id) => {
                 let (width, depth) = (tier.width, tier.depth);
                 let (x, y, flipped) = (state.x, state.y, state.flipped);
@@ -1181,29 +1179,33 @@ pub(crate) async fn on_edit(
                             match settle(content, tier, &placements, &mut state, &heights, false) {
                                 Settle::NoRoom => {
                                     state.release(content);
-                                    format!("Placed **{name}**. There is no free spot for another one.")
+                                    t!(lang, "house.edit.placed-full", item = name)
                                 }
-                                _ => format!(
-                                    "Placed **{name}**. Holding another: **Place** again at **{}**, or pick something else.",
-                                    spot_label(state.x, state.y, state.wall(content))
+                                _ => t!(
+                                    lang,
+                                    "house.edit.placed-next",
+                                    item = name,
+                                    spot = spot_label(lang, state.x, state.y, state.wall(content))
                                 ),
                             }
                         } else {
                             state.release(content);
-                            format!("Placed **{name}**.")
+                            t!(lang, "house.edit.placed", item = name)
                         }
                     }
                     PlaceOutcome::NotOwned => {
                         state.release(content);
-                        format!("You have no **{name}** left.")
+                        t!(lang, "house.edit.none-left", item = name)
                     }
-                    PlaceOutcome::Blocked(reason) => format!("Can't place it: {reason}."),
+                    PlaceOutcome::Blocked(reason) => t!(lang, "house.edit.cant-place", reason = reason),
                 }
             }
         },
         // Move: takes the piece under the cursor into the hand, turned as it was.
-        "v" if who.is_guest() => format!(
-            "A piece in {whose} house is theirs, so it can't go into your hand. **Store** it to give it back to them, or place one of yours."
+        "v" if who.is_guest() => t!(
+            lang,
+            "house.edit.move-theirs",
+            name = guest_of.as_deref().unwrap_or_default()
         ),
         "v" => match under_cursor(content, &placements, state.x, state.y, state.wall(content)) {
             Some(p) => {
@@ -1215,16 +1217,13 @@ pub(crate) async fn on_edit(
                 state.flipped = p.flipped;
                 (state.x, state.y) = (p.x as u32, p.y as u32);
                 let extra = if on_top > 0 {
-                    format!(" What stood on it ({on_top}) went back to your inventory.")
+                    t!(lang, "house.edit.move-on-top", count = on_top)
                 } else {
                     String::new()
                 };
-                format!(
-                    "Moving **{}**: pick a spot with **Go to** or the arrows, then **Place**.{extra}",
-                    name_of(&p.item_id)
-                )
+                t!(lang, "house.edit.moving", item = name_of(&p.item_id), extra = extra)
             }
-            None => "Nothing under the cursor to move.".to_owned(),
+            None => t!(lang, "house.edit.nothing-to-move"),
         },
         "k" => match under_cursor(content, &placements, state.x, state.y, state.wall(content)) {
             Some(p) => {
@@ -1233,16 +1232,22 @@ pub(crate) async fn on_edit(
                 let on_top = step.removed.len() - 1;
                 history.push(step);
                 let extra = if on_top > 0 {
-                    format!(", with the {on_top} on it")
+                    t!(lang, "house.edit.store-on-top", count = on_top)
                 } else {
                     String::new()
                 };
-                format!(
-                    "Stored **{}**{extra}; it is back in {whose} inventory.",
-                    name_of(&p.item_id)
-                )
+                match &guest_of {
+                    Some(owner) => t!(
+                        lang,
+                        "house.edit.stored-theirs",
+                        item = name_of(&p.item_id),
+                        extra = extra,
+                        name = owner
+                    ),
+                    None => t!(lang, "house.edit.stored", item = name_of(&p.item_id), extra = extra),
+                }
             }
-            None => "Nothing under the cursor.".to_owned(),
+            None => t!(lang, "house.edit.nothing-under"),
         },
         // Cancel: empties the hand; the held piece never left the inventory.
         "c" => {
@@ -1253,11 +1258,12 @@ pub(crate) async fn on_edit(
         "t" => {
             state.flipped = !state.flipped;
             match settle(content, tier, &placements, &mut state, &heights, true) {
-                Settle::Moved => format!(
-                    "Turned it and moved to **{}** so it fits.",
-                    spot_label(state.x, state.y, state.wall(content))
+                Settle::Moved => t!(
+                    lang,
+                    "house.edit.turned-moved",
+                    spot = spot_label(lang, state.x, state.y, state.wall(content))
                 ),
-                Settle::NoRoom => "Turned it, but it fits nowhere this way.".to_owned(),
+                Settle::NoRoom => t!(lang, "house.edit.turned-no-room"),
                 Settle::Stayed => String::new(),
             }
         }
@@ -1272,7 +1278,7 @@ pub(crate) async fn on_edit(
                 let (x, y) = (p.x as u32, p.y as u32);
                 match house::can_place(content, tier.width, tier.depth, &others, &p.item_id, x, y, !p.flipped) {
                     Ok(()) if house::flip_drops_surface_items(content, &others, &p.item_id, x, y, p.flipped) => {
-                        "Can't flip it: what stands on it would no longer be on top.".to_owned()
+                        t!(lang, "house.edit.cant-flip-top")
                     }
                     Ok(()) => {
                         cx.app.db.flip_placement(user_id, p.id).await?;
@@ -1287,32 +1293,32 @@ pub(crate) async fn on_edit(
                         if let Some(left) = state.wall(content).filter(|_| state.item.is_none()) {
                             state.mode = CursorMode::from_wall(Some(!left));
                         }
-                        "Flipped.".to_owned()
+                        t!(lang, "house.edit.flipped")
                     }
-                    Err(reason) => format!("Can't flip it: {reason}."),
+                    Err(reason) => t!(lang, "house.edit.cant-flip", reason = reason),
                 }
             }
-            None => "Nothing under the cursor to flip.".to_owned(),
+            None => t!(lang, "house.edit.nothing-to-flip"),
         },
         // Clear room, confirmed: every piece goes back to the inventory, as one undo step.
         "z" => {
             let removed = cx.app.db.clear_room(user_id, state.room).await?;
             state.release(content);
             if removed.is_empty() {
-                "The room is already empty.".to_owned()
+                t!(lang, "house.edit.already-empty")
             } else {
                 let n = removed.len();
                 let mut step = Step::new(Kind::Clear, room_title(content, &rooms[state.room as usize]));
                 step.removed = removed.iter().map(Piece::of).collect();
                 history.push(step);
-                format!(
-                    "Stored all **{n}** piece{} in {whose} inventory. **Undo** puts them back.",
-                    if n == 1 { "" } else { "s" }
-                )
+                match &guest_of {
+                    Some(owner) => t!(lang, "house.edit.cleared-theirs", count = n, name = owner),
+                    None => t!(lang, "house.edit.cleared", count = n),
+                }
             }
         }
         "u" => match history.pop() {
-            None => "Nothing to undo.".to_owned(),
+            None => t!(lang, "house.edit.nothing-to-undo"),
             Some(step) => {
                 let changes = step.reverse(content, state.room);
                 let size = (tier.width, tier.depth);
@@ -1339,18 +1345,20 @@ pub(crate) async fn on_edit(
                             state.mode = CursorMode::from_wall(on_wall.then_some(p.flipped));
                             (state.x, state.y) = (p.x.max(0) as u32, p.y.max(0) as u32);
                         }
-                        format!("Undid {}.", step.describe())
+                        t!(lang, "house.edit.undid", step = step.describe())
                     }
                     RestoreOutcome::Refused(why) => {
                         let why = match why {
-                            Refusal::Moved(item) => format!("**{}** is no longer where it was", name_of(&item)),
-                            Refusal::NotOwned(item) if who.is_guest() => {
-                                format!("{whose} inventory has no **{}** left", name_of(&item))
-                            }
-                            Refusal::NotOwned(item) => format!("you have no **{}** left", name_of(&item)),
+                            Refusal::Moved(item) => t!(lang, "house.edit.undo-moved", item = name_of(&item)),
+                            Refusal::NotOwned(item) => match &guest_of {
+                                Some(owner) => {
+                                    t!(lang, "house.edit.undo-none-theirs", item = name_of(&item), name = owner)
+                                }
+                                None => t!(lang, "house.edit.undo-none", item = name_of(&item)),
+                            },
                             Refusal::Blocked(reason) => reason,
                         };
-                        format!("Can't undo {}: {why}. That step is off the undo list.", step.describe())
+                        t!(lang, "house.edit.cant-undo", step = step.describe(), why = why)
                     }
                 }
             }
@@ -1359,18 +1367,18 @@ pub(crate) async fn on_edit(
             state.room = (state.room + 1) % rooms.len() as i16;
             state.x = 1;
             state.y = 0;
-            format!("Now editing room {}.", state.room + 1)
+            t!(lang, "house.edit.now-room", room = state.room + 1)
         }
         "x" => {
             let data = InteractionResponseData {
-                content: Some(
+                content: Some(t!(
+                    lang,
                     match prefix {
-                        "pe" => "Saved! See it with `/plaza view`.",
-                        "pt" => "Saved! They can see it with `/house view`; you can too, with `/house visit`.",
-                        _ => "Saved! Show it off with `/house view`.",
+                        "pe" => "house.edit.saved-plaza",
+                        "pt" => "house.edit.saved-partner",
+                        _ => "house.edit.saved",
                     }
-                    .to_owned(),
-                ),
+                )),
                 embeds: Some(Vec::new()),
                 components: Some(Vec::new()),
                 attachments: Some(Vec::new()),
@@ -1419,6 +1427,7 @@ pub(crate) async fn editor_as(
     note: &str,
     history: Option<History>,
 ) -> anyhow::Result<InteractionResponseData> {
+    let lang = cx.lang();
     let content = Content::get();
     let user_id = who.owner;
     let (house_row, rooms) = ensure_house(&cx.app, user_id).await?;
@@ -1470,15 +1479,15 @@ pub(crate) async fn editor_as(
             .take(PAGE)
             .filter_map(|&(x, y)| {
                 let (_, r) = house::footprint(content, item_id, x, y, state.flipped)?;
-                let mut hint = spot_hint(content, &placements, layer, r, wall);
+                let mut hint = spot_hint(lang, content, &placements, layer, r, wall);
                 if house::is_hidden(content, &on_floor, &heights, item_id, x, y, state.flipped) {
-                    hint.push_str(" · mostly hidden");
+                    hint.push_str(&t!(lang, "house.spot.hidden"));
                 }
                 Some(SelectMenuOption {
                     default: (x, y) == (state.x, state.y),
                     description: Some(hint),
                     emoji: None,
-                    label: spot_label(x, y, wall),
+                    label: spot_label(lang, x, y, wall),
                     value: format!("{x}.{y}"),
                 })
             })
@@ -1488,13 +1497,9 @@ pub(crate) async fn editor_as(
             near.sort_by_key(|p| ((p.x as u32).abs_diff(state.x) + (p.y as u32).abs_diff(state.y), p.id));
             let clear = (!placements.is_empty()).then(|| SelectMenuOption {
                 default: false,
-                description: Some(format!(
-                    "Store all {} piece{} in your inventory",
-                    placements.len(),
-                    if placements.len() == 1 { "" } else { "s" }
-                )),
+                description: Some(t!(lang, "house.clear.option-hint", count = placements.len())),
                 emoji: None,
-                label: "Clear the room…".to_owned(),
+                label: t!(lang, "house.clear.option"),
                 value: CLEAR_ROOM.to_owned(),
             });
             clear
@@ -1502,7 +1507,12 @@ pub(crate) async fn editor_as(
                 .chain(near.into_iter().take(PAGE - 1).filter_map(|p| {
                     let item = content.item(&p.item_id)?;
                     let (layer, _) = house::footprint(content, &p.item_id, p.x as u32, p.y as u32, p.flipped)?;
-                    let at = spot_label(p.x as u32, p.y as u32, (layer == Layer::Wall).then_some(p.flipped));
+                    let at = spot_label(
+                        lang,
+                        p.x as u32,
+                        p.y as u32,
+                        (layer == Layer::Wall).then_some(p.flipped),
+                    );
                     Some(SelectMenuOption {
                         default: hovered_id == Some(p.id),
                         description: Some(at),
@@ -1556,29 +1566,34 @@ pub(crate) async fn editor_as(
     if !note.is_empty() {
         lines.push(note.to_owned());
     }
-    lines.push(format!(
-        "Cursor **{}** · Holding: **{}**",
-        spot_label(state.x, state.y, wall),
-        selected_item.map_or("nothing".to_owned(), |i| i.name())
+    lines.push(t!(
+        lang,
+        "house.editor.cursor",
+        spot = spot_label(lang, state.x, state.y, wall),
+        item = selected_item.map_or_else(|| t!(lang, "house.editor.nothing"), |i| i.name())
     ));
     if let Some(name) = &hovered_name {
-        lines.push(format!("Under cursor: {name}"));
+        lines.push(t!(lang, "house.editor.under", name = name));
     }
     let (heading, footer) = match &owner_name {
         Some(name) => (
-            format!("Decorating {name}'s room {} · {title}", state.room + 1),
-            format!(
-                "A piece you place comes from your inventory and belongs to {name} from then on. Stored pieces go to their inventory.{}",
-                if kept_back {
-                    " Your soulbound pieces stay out of this menu."
-                } else {
-                    ""
-                }
+            t!(
+                lang,
+                "house.editor.partner-title",
+                name = name,
+                room = state.room + 1,
+                title = title
             ),
+            t!(lang, "house.editor.partner-footer", name = name)
+                + &if kept_back {
+                    t!(lang, "house.editor.soulbound-out")
+                } else {
+                    String::new()
+                },
         ),
         None => (
-            format!("Editing room {} · {title}", state.room + 1),
-            "Pick furniture and it jumps to a free spot. Go to moves the cursor anywhere in one click.".to_owned(),
+            t!(lang, "house.editor.title", room = state.room + 1, title = title),
+            t!(lang, "house.editor.footer"),
         ),
     };
     let embed = EmbedBuilder::new()
@@ -1602,7 +1617,7 @@ pub(crate) async fn editor_as(
         value: value.to_owned(),
     };
     if state.page > 0 {
-        options.push(option("◀ Previous items", PREV_PAGE, None, false));
+        options.push(option(&t!(lang, "house.editor.prev-items"), PREV_PAGE, None, false));
     }
     options.extend(
         inventory
@@ -1618,7 +1633,11 @@ pub(crate) async fn editor_as(
                     Some(format!(
                         "x{} · {}{} · {iw}×{id}",
                         row.quantity,
-                        if item.bound { "Soulbound · " } else { "" },
+                        if item.bound {
+                            t!(lang, "house.editor.soulbound")
+                        } else {
+                            String::new()
+                        },
                         item.base.category.label()
                     )),
                     state.item.as_deref() == Some(row.item_id.as_str()),
@@ -1626,7 +1645,7 @@ pub(crate) async fn editor_as(
             }),
     );
     if state.page + 1 < pages {
-        options.push(option("More items ▶", NEXT_PAGE, None, false));
+        options.push(option(&t!(lang, "house.editor.more-items"), NEXT_PAGE, None, false));
     }
     let select = |action: &str, options: Vec<SelectMenuOption>, placeholder: String, empty: &str| {
         let disabled = options.is_empty();
@@ -1652,21 +1671,26 @@ pub(crate) async fn editor_as(
         "s",
         options,
         if inventory.is_empty() {
-            "Your inventory is empty — buy furniture with /shop".to_owned()
+            t!(lang, "house.editor.inventory-empty-hint")
         } else if pages > 1 {
-            format!("Choose furniture (page {}/{pages})", state.page + 1)
+            t!(lang, "house.editor.choose-page", page = state.page + 1, pages = pages)
         } else {
-            "Choose furniture".to_owned()
+            t!(lang, "house.editor.choose")
         },
-        "Inventory empty",
+        &t!(lang, "house.editor.inventory-empty"),
     );
     let jump_placeholder = match (selected_item.is_some(), jump_options.is_empty()) {
-        (true, true) => "No free spot fits this".to_owned(),
-        (true, false) => format!("Go to a free spot ({} fit)", spots.len()),
-        (false, true) => "The room is empty".to_owned(),
-        (false, false) => "Go to something in the room".to_owned(),
+        (true, true) => t!(lang, "house.editor.no-spot"),
+        (true, false) => t!(lang, "house.editor.go-to-spot", count = spots.len()),
+        (false, true) => t!(lang, "house.editor.room-empty"),
+        (false, false) => t!(lang, "house.editor.go-to-thing"),
     };
-    let jump_menu = select("j", jump_options, jump_placeholder, "Nothing here");
+    let jump_menu = select(
+        "j",
+        jump_options,
+        jump_placeholder,
+        &t!(lang, "house.editor.nothing-here"),
+    );
     let button = |label: &str, action: &str, style: ButtonStyle, disabled: bool| {
         Component::Button(Button {
             custom_id: Some(state.id(action)),
@@ -1689,11 +1713,17 @@ pub(crate) async fn editor_as(
             } else {
                 ButtonStyle::Secondary
             };
-            button(mode.label(), &format!("m{}", mode.code()), style, holding)
+            button(&mode.label(lang), &format!("m{}", mode.code()), style, holding)
         })
         .collect();
-    modes.push(button("Next room", "n", ButtonStyle::Secondary, rooms.len() < 2));
-    modes.push(button("↶ Undo", "u", ButtonStyle::Secondary, history.is_empty()));
+    let label = |key: &str| t!(lang, &format!("house.editor.{key}"));
+    modes.push(button(
+        &label("next-room"),
+        "n",
+        ButtonStyle::Secondary,
+        rooms.len() < 2,
+    ));
+    modes.push(button(&label("undo"), "u", ButtonStyle::Secondary, history.is_empty()));
     let components = vec![
         row(vec![inventory_menu]),
         row(vec![jump_menu]),
@@ -1702,23 +1732,23 @@ pub(crate) async fn editor_as(
             button("↗", "ur", ButtonStyle::Secondary, false),
             button("↙", "dl", ButtonStyle::Secondary, false),
             button("↘", "dr", ButtonStyle::Secondary, false),
-            button("↻ Turn", "t", ButtonStyle::Secondary, !holding),
+            button(&label("turn"), "t", ButtonStyle::Secondary, !holding),
         ]),
         row(vec![
-            button("Place", "p", ButtonStyle::Success, !fits),
+            button(&label("place"), "p", ButtonStyle::Success, !fits),
             button(
-                "Move",
+                &label("move"),
                 "v",
                 ButtonStyle::Primary,
                 holding || hovered_id.is_none() || who.is_guest(),
             ),
             if holding {
-                button("Cancel", "c", ButtonStyle::Secondary, false)
+                button(&label("cancel"), "c", ButtonStyle::Secondary, false)
             } else {
-                button("Store", "k", ButtonStyle::Danger, hovered_id.is_none())
+                button(&label("store"), "k", ButtonStyle::Danger, hovered_id.is_none())
             },
-            button("Flip", "f", ButtonStyle::Secondary, hovered_id.is_none()),
-            button("Done", "x", ButtonStyle::Primary, false),
+            button(&label("flip"), "f", ButtonStyle::Secondary, hovered_id.is_none()),
+            button(&label("done"), "x", ButtonStyle::Primary, false),
         ]),
         row(modes),
     ];
@@ -1730,25 +1760,23 @@ async fn upgrade_offer(cx: &Cx, user_id: u64) -> anyhow::Result<()> {
     let current = house::tier(house_row.tier);
     if house_row.tier as usize >= house::TIERS.len() {
         return cx
-            .reply_ephemeral(format!(
-                "You already live in the **{}**, the finest house there is.",
-                current.name
-            ))
+            .reply_ephemeral(t!(cx.lang(), "house.upgrade.finest", house = current.name))
             .await;
     }
     let next = house::tier(house_row.tier + 1);
     let balance = cx.app.db.user(user_id).await?.credits;
     let embed = EmbedBuilder::new()
         .color(BRAND)
-        .title(format!("Upgrade to the {}", next.name))
-        .description(format!(
-            "**{} → {} rooms**, rooms grow to {}×{} tiles.\nAll your furniture stays where it is.\n\nPrice: **{}** shells · You have **{}**",
-            current.rooms,
-            next.rooms,
-            next.width,
-            next.depth,
-            thousands(next.price),
-            thousands(balance)
+        .title(t!(cx.lang(), "house.upgrade.title", house = next.name))
+        .description(t!(
+            cx.lang(),
+            "house.upgrade.offer",
+            from = current.rooms,
+            to = next.rooms,
+            width = next.width,
+            depth = next.depth,
+            price = thousands(next.price),
+            balance = thousands(balance)
         ))
         .build();
     let button = Component::Button(Button {
@@ -1756,7 +1784,7 @@ async fn upgrade_offer(cx: &Cx, user_id: u64) -> anyhow::Result<()> {
         disabled: balance < next.price,
         emoji: None,
         id: None,
-        label: Some(format!("Upgrade for {} shells", thousands(next.price))),
+        label: Some(t!(cx.lang(), "house.upgrade.button", price = thousands(next.price))),
         sku_id: None,
         style: ButtonStyle::Success,
         url: None,
@@ -1786,21 +1814,20 @@ pub(crate) async fn on_upgrade(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Re
         .map(|t| starter_room(content, t))
         .collect();
     let text = match cx.app.db.upgrade_house(user_id, from, next.price, &new_rooms).await? {
-        UpgradeOutcome::Upgraded { balance, .. } => format!(
-            "🏠 Welcome to your **{}**! {} new room{} to decorate. {} shells left.",
-            next.name,
-            new_rooms.len(),
-            if new_rooms.len() == 1 { "" } else { "s" },
-            thousands(balance)
+        UpgradeOutcome::Upgraded { balance, .. } => t!(
+            cx.lang(),
+            "house.upgrade.done",
+            house = next.name,
+            count = new_rooms.len(),
+            balance = thousands(balance)
         ),
-        UpgradeOutcome::Insufficient { balance } => {
-            format!(
-                "You need {} shells but have {}.",
-                thousands(next.price),
-                thousands(balance)
-            )
-        }
-        UpgradeOutcome::WrongTier { .. } => "Your house already changed; run `/house upgrade` again.".to_owned(),
+        UpgradeOutcome::Insufficient { balance } => t!(
+            cx.lang(),
+            "house.upgrade.short",
+            price = thousands(next.price),
+            balance = thousands(balance)
+        ),
+        UpgradeOutcome::WrongTier { .. } => t!(cx.lang(), "house.upgrade.changed"),
     };
     cx.update(InteractionResponseData {
         content: Some(text),
@@ -1957,8 +1984,9 @@ mod tests {
         let spots = free_spots(content, tier, &placements, &state, &flat);
         assert_eq!(spots.first(), Some(&(state.x, state.y)));
         assert!(!spots.contains(&(3, 3)) && !spots.contains(&(2, 3)));
-        assert_eq!(spot_label(2, 3, None), "C4");
-        assert_eq!(spot_label(0, 1, Some(true)), "Left wall 1 · middle");
+        assert_eq!(spot_label(Lang::En, 2, 3, None), "C4");
+        assert_eq!(spot_label(Lang::En, 0, 1, Some(true)), "Left wall 1 · middle");
+        assert_eq!(spot_label(Lang::Tr, 0, 1, Some(true)), "Sol duvar 1 · orta");
     }
 
     /// A small lamp, a tall bed and the tier-1 room, for the tests of what the jump avoids.
@@ -2027,7 +2055,7 @@ mod tests {
         assert!(
             !house::is_hidden(content, &placed, &tall, &lamp, x, y, false),
             "{} is in sight",
-            spot_label(x, y, None)
+            spot_label(Lang::En, x, y, None)
         );
         let spots = free_spots(content, tier, &placements, &state, &tall);
         let distance = |&(sx, sy): &(u32, u32)| sx.abs_diff(0) + sy.abs_diff(0);
