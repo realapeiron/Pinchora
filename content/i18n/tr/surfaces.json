@@ -1,0 +1,266 @@
+{
+ "creamcalm_plaster": {
+  "name": "Creamcalm Sıvası"
+ },
+ "mintmurmur_paint": {
+  "name": "Mintmurmur Boyası"
+ },
+ "sandhush_wash": {
+  "name": "Sandhush Badanası"
+ },
+ "skyrest_paper": {
+  "name": "Skyrest Duvar Kâğıdı"
+ },
+ "rosequiet_paint": {
+  "name": "Rosequiet Boyası"
+ },
+ "lilacpause_plaster": {
+  "name": "Lilacpause Sıvası"
+ },
+ "navynap_paper": {
+  "name": "Navynap Duvar Kâğıdı"
+ },
+ "mosswhisper_wash": {
+  "name": "Mosswhisper Badanası"
+ },
+ "hemcheck_paper": {
+  "name": "Hemcheck Duvar Kâğıdı"
+ },
+ "pebblewake_stripes": {
+  "name": "Pebblewake Çizgileri"
+ },
+ "stillfold_panels": {
+  "name": "Stillfold Panelleri"
+ },
+ "blinkberry_dots": {
+  "name": "Blinkberry Puantiyeleri"
+ },
+ "marginleaf_print": {
+  "name": "Marginleaf Baskısı"
+ },
+ "sprigspool_trellis": {
+  "name": "Sprigspool Kafesi"
+ },
+ "hushwick_wisps": {
+  "name": "Hushwick Dumanları"
+ },
+ "frostcrumb_flakes": {
+  "name": "Frostcrumb Kar Taneleri"
+ },
+ "lanternplait_knots": {
+  "name": "Lanternplait Düğümleri"
+ },
+ "budwhistle_sprigs": {
+  "name": "Budwhistle Filizleri"
+ },
+ "brinebeam_planking": {
+  "name": "Brinebeam Ahşap Kaplaması"
+ },
+ "polypocket_fans": {
+  "name": "Polypocket Yelpazeleri"
+ },
+ "blushbutton_spots": {
+  "name": "Blushbutton Benekleri"
+ },
+ "rivetsprout_brick": {
+  "name": "Rivetsprout Tuğlası"
+ },
+ "acorncourt_damask": {
+  "name": "Acorncourt Damaskosu"
+ },
+ "dewpeg_canvas": {
+  "name": "Dewpeg Çadır Bezi"
+ },
+ "orbitcrumb_stars": {
+  "name": "Orbitcrumb Yıldızları"
+ },
+ "fizzfern_grid": {
+  "name": "Fizzfern Izgarası"
+ },
+ "kettlewink_tile": {
+  "name": "Kettlewink Fayansı"
+ },
+ "humskein_felt": {
+  "name": "Humskein Keçesi"
+ },
+ "clickcove_steps": {
+  "name": "Clickcove Basamakları"
+ },
+ "reedpause_weave": {
+  "name": "Reedpause Dokuması"
+ },
+ "dunethread_arches": {
+  "name": "Dunethread Kemerleri"
+ },
+ "sugarquay_swirls": {
+  "name": "Sugarquay Kıvrımları"
+ },
+ "hemrose_stencil": {
+  "name": "Hemrose Şablonu"
+ },
+ "pebblewake_ropework": {
+  "name": "Pebblewake Halat İşi"
+ },
+ "marginmoss_giltleaf": {
+  "name": "Marginmoss Yaldız Yaprağı"
+ },
+ "stillfold_marblewash": {
+  "name": "Stillfold Mermer Badanası"
+ },
+ "brinebeam_chartwork": {
+  "name": "Brinebeam Harita İşi"
+ },
+ "polypocket_pearls": {
+  "name": "Polypocket İncileri"
+ },
+ "acorncourt_brocade": {
+  "name": "Acorncourt Brokarı"
+ },
+ "orbitcrumb_auroras": {
+  "name": "Orbitcrumb Kutup Işıkları"
+ },
+ "fizzfern_bubbles": {
+  "name": "Fizzfern Baloncukları"
+ },
+ "hushwick_moonlace": {
+  "name": "Hushwick Ay Danteli"
+ },
+ "wishplait_silk": {
+  "name": "Wishplait İpeği"
+ },
+ "budwhistle_petalnet": {
+  "name": "Budwhistle Taç Yaprak Ağı"
+ },
+ "sandsettle_boards": {
+  "name": "Sandsettle Tahtaları"
+ },
+ "creamstep_tile": {
+  "name": "Creamstep Fayansı"
+ },
+ "mossrest_matting": {
+  "name": "Mossrest Hasırı"
+ },
+ "quietash_planks": {
+  "name": "Quietash Kalasları"
+ },
+ "mintcool_squares": {
+  "name": "Mintcool Kareleri"
+ },
+ "rosewarm_cork": {
+  "name": "Rosewarm Mantar Kaplaması"
+ },
+ "skysoft_vinyl": {
+  "name": "Skysoft Vinili"
+ },
+ "lilacdown_carpet": {
+  "name": "Lilacdown Halısı"
+ },
+ "hemgrain_boards": {
+  "name": "Hemgrain Tahtaları"
+ },
+ "pebblewake_deck": {
+  "name": "Pebblewake Güvertesi"
+ },
+ "stillfold_concrete": {
+  "name": "Stillfold Betonu"
+ },
+ "blinkberry_checks": {
+  "name": "Blinkberry Damaları"
+ },
+ "marginmoss_parquet": {
+  "name": "Marginmoss Parkesi"
+ },
+ "sprigspool_pavers": {
+  "name": "Sprigspool Kaldırım Taşları"
+ },
+ "hushwick_slates": {
+  "name": "Hushwick Kayrak Taşları"
+ },
+ "frostcrumb_flannel": {
+  "name": "Frostcrumb Flaneli"
+ },
+ "lanternplait_coins": {
+  "name": "Lanternplait Sikkeleri"
+ },
+ "budwhistle_mosaic": {
+  "name": "Budwhistle Mozaiği"
+ },
+ "brinebeam_deckplate": {
+  "name": "Brinebeam Güverte Levhası"
+ },
+ "polypocket_limestone": {
+  "name": "Polypocket Kireç Taşı"
+ },
+ "blushbutton_foam": {
+  "name": "Blushbutton Köpüğü"
+ },
+ "rivetsprout_plate": {
+  "name": "Rivetsprout Levhası"
+ },
+ "acorncourt_inlay": {
+  "name": "Acorncourt Kakması"
+ },
+ "dewpeg_groundsheet": {
+  "name": "Dewpeg Zemin Örtüsü"
+ },
+ "orbitcrumb_panels": {
+  "name": "Orbitcrumb Panelleri"
+ },
+ "fizzfern_clean_tile": {
+  "name": "Fizzfern Temiz Fayansı"
+ },
+ "kettlewink_checker": {
+  "name": "Kettlewink Dama Deseni"
+ },
+ "humskein_cork": {
+  "name": "Humskein Mantar Kaplaması"
+ },
+ "clickcove_rubber": {
+  "name": "Clickcove Kauçuğu"
+ },
+ "reedpause_tatting": {
+  "name": "Reedpause Mekik Danteli"
+ },
+ "dunethread_clay": {
+  "name": "Dunethread Kili"
+ },
+ "sugarquay_terrazzo": {
+  "name": "Sugarquay Terrazzosu"
+ },
+ "hemgrain_herringbone": {
+  "name": "Hemgrain Balık Kılçığı"
+ },
+ "pebblewake_beachglass": {
+  "name": "Pebblewake Deniz Camı"
+ },
+ "marginmoss_borders": {
+  "name": "Marginmoss Bordürleri"
+ },
+ "stillfold_polished_stone": {
+  "name": "Stillfold Cilalı Taşı"
+ },
+ "brinebeam_compasswork": {
+  "name": "Brinebeam Pusula İşi"
+ },
+ "polypocket_tideglass": {
+  "name": "Polypocket Gelgit Camı"
+ },
+ "acorncourt_starstone": {
+  "name": "Acorncourt Yıldız Taşı"
+ },
+ "orbitcrumb_nightglass": {
+  "name": "Orbitcrumb Gece Camı"
+ },
+ "fizzfern_specimen_tile": {
+  "name": "Fizzfern Numune Fayansı"
+ },
+ "hushwick_hexstones": {
+  "name": "Hushwick Altıgen Taşları"
+ },
+ "wishplait_courtyard": {
+  "name": "Wishplait Avlusu"
+ },
+ "budwhistle_petalpath": {
+  "name": "Budwhistle Taç Yaprak Yolu"
+ }
+}

@@ -1,0 +1,158 @@
+{
+ "thimblefen_cottage": {
+  "name": "Thimblefen Kulübesi",
+  "description": "Yavaş kahvaltılar ve yağmurlu öğleden sonra şekerlemeleri için yamalı bir ev."
+ },
+ "pebblewake_porch": {
+  "name": "Pebblewake Verandası",
+  "description": "Pencerelerde tuz, içeride yumuşak minderler ve her misafire boş bir yer."
+ },
+ "stillfold_home": {
+  "name": "Stillfold Evi",
+  "description": "Sade şekiller, küçük günlük sevinçlere bolca yer bırakır."
+ },
+ "blinkberry_arcade": {
+  "name": "Blinkberry Oyun Salonu",
+  "description": "Sikkesiz oyunlar, yumuşak neon ve neşeli rekorlarla dolu cep boyu bir köşe."
+ },
+ "marginmoss_library": {
+  "name": "Marginmoss Kütüphanesi",
+  "description": "Çok sevilen hikâyeler ve sayfaları arasına saklanmış hazineler için raflar."
+ },
+ "sprigspool_potting": {
+  "name": "Sprigspool Saksı Köşesi",
+  "description": "Güneşli, kapalı bir saksı köşesi; çamurlu çizmeler burada her zaman hoş karşılanır."
+ },
+ "hushwick_hollow": {
+  "name": "Hushwick Vadisi",
+  "description": "Sevimli gölgeler her sonbahar burada toplanıp çok küçük korkular takas eder."
+ },
+ "frostcrumb_gathering": {
+  "name": "Frostcrumb Buluşması",
+  "description": "Kış bayramı ikramları, sıcak eldivenler ve ateşin yanında ayrılmış bir sandalye."
+ },
+ "lanternplait_fete": {
+  "name": "Lanternplait Şenliği",
+  "description": "Ortak dilekler, parlak fenerler ve bir mantı daha için kurulmuş Ay Yeni Yılı sofrası."
+ },
+ "budwhistle_meadow": {
+  "name": "Budwhistle Çayırı",
+  "description": "İlk sıcak esintiye açık bırakılmış kapılar için bahar çiçeği süsleri."
+ },
+ "brinebeam_wreck": {
+  "name": "Brinebeam Batığı",
+  "description": "Batık bir geminin işe yarar ıvır zıvırı, kurutulup yeniden ev gibi sıcacık yapılmış."
+ },
+ "polypocket_reef": {
+  "name": "Polypocket Resifi",
+  "description": "Yuvarlak mercan biçimleri, hayali bir gelgitin altında misafirperver bir ev kurar."
+ },
+ "blushbutton_nook": {
+  "name": "Blushbutton Köşesi",
+  "description": "Minik gülümsemeler ve yumuşacık şekiller, ev işlerini bile sarılası yapar."
+ },
+ "rivetsprout_loft": {
+  "name": "Rivetsprout Çatı Katı",
+  "description": "Dürüst atölye malzemeleri; bir çaydanlığa ve gürbüz bir eğrelti otuna da yer var."
+ },
+ "gilded_acorn_court": {
+  "name": "Altın Meşe Palamudu Avlusu",
+  "description": "Oyma yapraklar, cilalı ahşap ve harika minderlerden oluşan mütevazı bir krallık."
+ },
+ "dewpeg_camp": {
+  "name": "Dewpeg Kampı",
+  "description": "Kamp alanını eve getir; nemli çoraplar ve kayıp çadır kazıkları olmadan."
+ },
+ "orbitcrumb_station": {
+  "name": "Orbitcrumb İstasyonu",
+  "description": "Mesaisi bitmiş bir uzay kulübesi: yuvarlak kapaklar, uyku vaktinin yıldızlarına bakan bir manzara."
+ },
+ "fizzfern_lab": {
+  "name": "Fizzfern Laboratuvarı",
+  "description": "Meraklı zihinler ve özenle etiketlenmiş bisküviler için nazik bir laboratuvar."
+ },
+ "kettlewink_cafe": {
+  "name": "Kettlewink Kafe",
+  "description": "İkinci bisküvinin her zaman teşvik edildiği küçük bir mahalle kafesi."
+ },
+ "humskein_studio": {
+  "name": "Humskein Stüdyosu",
+  "description": "Neşeli bir gürültü yapıp ardından sessiz bir melodiye yerleşmek için misafirperver bir yer."
+ },
+ "clickcove_den": {
+  "name": "Clickcove Yuvası",
+  "description": "Ortak ekranlar, dostça maçlar ve atıştırma molaları için rahat bir oyun köşesi."
+ },
+ "reedpause_retreat": {
+  "name": "Reedpause İnzivası",
+  "description": "Kamış paravanlar, sessiz su ve derin bir nefes almaya yetecek kadar boş alan."
+ },
+ "dunethread_house": {
+  "name": "Dunethread Evi",
+  "description": "En uzun altın öğleden sonralar için serin gölge, dokuma kumaş ve sıcak kil."
+ },
+ "sugarquay_parlor": {
+  "name": "Sugarquay Salonu",
+  "description": "Şekerlemelerden ilham alan mobilyalar lezzetli görünür ama kibarca yenmez kalır."
+ },
+ "saltstitch_landing": {
+  "name": "Saltstitch Rıhtımı",
+  "description": "Islak çizmelere ve beklenmedik misafirlere yer açan parlak bir kıyı evi."
+ },
+ "bramblebob_sleepover": {
+  "name": "Bramblebob Pijama Partisi",
+  "description": "Yumuşak ranzalar, gizli çekmeceler ve en küçük ev arkadaşları için minik yataklar."
+ },
+ "foliofoam_commons": {
+  "name": "Foliofoam Ortak Alanı",
+  "description": "Her hikâyenin dinleyen bir kulak bulduğu mahalle okuma odası."
+ },
+ "inkkelp_office": {
+  "name": "Inkkelp Ofisi",
+  "description": "Ortak projeler ve çok düzenli bisküviler için rahat bir iş yeri."
+ },
+ "crumbcoil_bakery": {
+  "name": "Crumbcoil Fırını",
+  "description": "Sıcak tepsiler ve minik masalar, köşe dükkânını günlük bir törene çevirir."
+ },
+ "glazefin_market": {
+  "name": "Glazefin Pazarı",
+  "description": "Kurdeleler, taze sebze meyve ve ilginç hatıralar için dost canlısı küçük bir pazar."
+ },
+ "spoolpetal_atelier": {
+  "name": "Spoolpetal Atölyesi",
+  "description": "Kil deneyleri, gevşek iplikler ve mutlu hatalar için ortak bir stüdyo."
+ },
+ "bouncebrine_club": {
+  "name": "Bouncebrine Kulübü",
+  "description": "Esneme için yer ve uzun bir su molası sunan neşeli bir hareket kulübü."
+ },
+ "slategill_bathhouse": {
+  "name": "Slategill Hamamı",
+  "description": "Sessiz havuzlar ve katlanmış havlular tüm mahalleyi yavaşlamaya davet eder."
+ },
+ "sunspool_boardwalk": {
+  "name": "Sunspool Sahil Yolu",
+  "description": "Esintili kumsal kulübeleri ve gün batımına kadar süren bir gün için gölgeli oturaklar."
+ },
+ "rivetreef_workshop": {
+  "name": "Rivetreef Atölyesi",
+  "description": "Sağlam aletler, yedek parçalar ve yarım kalmış fikirlerden oluşan işe yarar bir koleksiyon."
+ },
+ "copperwake_cutter": {
+  "name": "Copperwake Kotrası",
+  "description": "Küçük ve rahat bir gemiyi, hareketli güvertesinden uykulu tayfa kamarasına kadar kur."
+ },
+ "tilebud_courtyard": {
+  "name": "Tilebud Avlusu",
+  "description": "Duvarlar, kapılar ve bahçe yolları birlikte büyümek için korunaklı bir yer oluşturur."
+ },
+ "glimmerpip_midway": {
+  "name": "Glimmerpip Panayırı",
+  "description": "Uydurma oyunlar ve cebe sığan ödüllerle dolu şakacı bir oyun salonu."
+ },
+ "driftchime_hall": {
+  "name": "Driftchime Salonu",
+  "description": "Prova, akşam yemeği ya da çok küçük bir konser için hazır bir mahalle salonu."
+ }
+}

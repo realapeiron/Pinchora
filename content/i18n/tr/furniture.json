@@ -1,0 +1,2602 @@
+{
+ "hemloop_chair": {
+  "name": "Hemloop Sandalyesi",
+  "description": "Her kahvaltı hikâyesini bilen örme bir sandalye."
+ },
+ "pebblerest_stool": {
+  "name": "Pebblerest Taburesi",
+  "description": "Kumlu topuklar ve gün batımından sonra da süren sohbetler için."
+ },
+ "plainwhorl_chair": {
+  "name": "Plainwhorl Sandalyesi",
+  "description": "Odununda minik bir kıvrım olan, güvenilir bir sandalye."
+ },
+ "crumbrail_bench": {
+  "name": "Crumbrail Bankı",
+  "description": "Her kırıntının konacağı rahat bir yer var."
+ },
+ "mosshem_pouf": {
+  "name": "Mosshem Pufu",
+  "description": "İyi bir hikâyeye yaklaşmak için kaydırılacak kadar küçük bir puf."
+ },
+ "reedwink_stool": {
+  "name": "Reedwink Taburesi",
+  "description": "Terliklerini bağlamak için sessiz, küçük bir tünek."
+ },
+ "boltbud_chair": {
+  "name": "Boltbud Sandalyesi",
+  "description": "Sağlam bir sandalye; şaşırtıcı derecede yumuşak bir yanı var."
+ },
+ "dewfold_seat": {
+  "name": "Dewfold Oturağı",
+  "description": "Evin içinde bile kamp ateşi masalına hazır."
+ },
+ "buttonnap_cushion": {
+  "name": "Buttonnap Yastığı",
+  "description": "Uyanık olduğunu söylüyor. Hiç de öyle değil."
+ },
+ "duneplait_stool": {
+  "name": "Duneplait Taburesi",
+  "description": "Acelesiz öğleden sonralar için elle örülmüş."
+ },
+ "spoolback_chair": {
+  "name": "Spoolback Sandalyesi",
+  "description": "Çok kibar bir gıcırtıyla ritim tutar."
+ },
+ "patchwake_sofa": {
+  "name": "Patchwake Kanepesi",
+  "description": "Bir yama daha sığacak yer her zaman bulunur."
+ },
+ "sailtuck_loveseat": {
+  "name": "Sailtuck İkili Koltuğu",
+  "description": "İki kişi ve bir bisküvi kutusu için bir liman."
+ },
+ "softangle_armchair": {
+  "name": "Softangle Koltuğu",
+  "description": "Omuzlarının gevşemeyi hatırladığı köşe."
+ },
+ "pagecurl_chaise": {
+  "name": "Pagecurl Divanı",
+  "description": "Bir bölüm, bir bakmışsın altıya dönüşür."
+ },
+ "sprigrail_bench": {
+  "name": "Sprigrail Bankı",
+  "description": "Sulamayı neredeyse unuttuğun fidelere hayran olmak için bir yer."
+ },
+ "frostweave_rocker": {
+  "name": "Frostweave Sallanan Koltuğu",
+  "description": "Çaydanlık ötmeye karar verene kadar usulca sallan."
+ },
+ "milkdrop_beanbag": {
+  "name": "Milkdrop Armut Pufu",
+  "description": "Tam kararında batar; ayağa kalkmak küçük bir maceraya döner."
+ },
+ "reeffold_lounger": {
+  "name": "Reeffold Şezlongu",
+  "description": "Hayali gelgitler bile tembel bir öğleden sonrayı hak eder."
+ },
+ "clicknest_chair": {
+  "name": "Clicknest Sandalyesi",
+  "description": "Bir tur daha ve ardından makul bir esneme için yapıldı."
+ },
+ "lanternbow_settee": {
+  "name": "Lanternbow Mini Kanepesi",
+  "description": "Dilekleri ve susam kırıntılarını paylaşmak için en iyi kanepe."
+ },
+ "hushwing_armchair": {
+  "name": "Hushwing Koltuğu",
+  "description": "Gölgesi senin yanında olmayı seviyor."
+ },
+ "capsulecurve_sofa": {
+  "name": "Capsulecurve Kanepesi",
+  "description": "Uzun bir hayali yörüngenin ardından yumuşak bir iniş."
+ },
+ "velvetbough_throne": {
+  "name": "Velvetbough Tahtı",
+  "description": "Çayı kimin yapacağına dair görkemli duyurular için."
+ },
+ "prismbeat_bench": {
+  "name": "Prismbeat Bankı",
+  "description": "Nazik bir ışık, oturan herkesi kutlar."
+ },
+ "cloudtide_dayseat": {
+  "name": "Cloudtide Minderi",
+  "description": "Kıvrılmak için bütün bir minik gelgit havuzu kadar yer."
+ },
+ "crumbcorner_table": {
+  "name": "Crumbcorner Masası",
+  "description": "Kahvaltı, köşeleri yuvarlak bir masada daha lezzetli."
+ },
+ "pebblepad_table": {
+  "name": "Pebblepad Masası",
+  "description": "Bir kupa ve düzgün bir kumsal taşına yetecek kadar yer."
+ },
+ "stillstep_nightstand": {
+  "name": "Stillstep Komodini",
+  "description": "Yatmadan önce lazım olanları uykulu elinin erişiminde tutar."
+ },
+ "paperleg_desk": {
+  "name": "Paperleg Çalışma Masası",
+  "description": "Çok kısa bir mektuba başlamak için davetkâr bir yer."
+ },
+ "sprigwork_table": {
+  "name": "Sprigwork Masası",
+  "description": "Azıcık toprak, karakterine yalnızca güzellik katar."
+ },
+ "rivetend_table": {
+  "name": "Rivetend Masası",
+  "description": "Aletlere yetecek kadar sağlam, çaya yetecek kadar nazik."
+ },
+ "dewtray_table": {
+  "name": "Dewtray Masası",
+  "description": "Son marşmelov hikâyesinden sonra katlanıp kaldırılır."
+ },
+ "reedflat_table": {
+  "name": "Reedflat Masası",
+  "description": "Yere alçak, sükûnete yakın."
+ },
+ "dunecup_table": {
+  "name": "Dunecup Masası",
+  "description": "Kil tablası uzun öğleden sonralarda hoş bir serinlikte kalır."
+ },
+ "kettlecorner_table": {
+  "name": "Kettlecorner Masası",
+  "description": "Tuhaf küçük sohbetler için hep aynı masa."
+ },
+ "tideleaf_table": {
+  "name": "Tideleaf Masası",
+  "description": "Gelgitle sürüklenip gelen misafirlere ekstra yer."
+ },
+ "hemdrawer_desk": {
+  "name": "Hemdrawer Çalışma Masası",
+  "description": "Bir proje ve onun bütün keyifli açık uçları için yer var."
+ },
+ "quietarc_desk": {
+  "name": "Quietarc Çalışma Masası",
+  "description": "Pürüzsüz bir kavis, yoğun bir günün sivriliğini alır."
+ },
+ "pageledge_table": {
+  "name": "Pageledge Masası",
+  "description": "Haritayı yayacak yeri olan bir okuma masası."
+ },
+ "sugarbutton_table": {
+  "name": "Sugarbutton Masası",
+  "description": "Kremalı görünür; gerçek pastadan sonra silinince tertemiz olur."
+ },
+ "clickspan_desk": {
+  "name": "Clickspan Çalışma Masası",
+  "description": "Klavyelere ve atıştırmalık tabaklarına geniş bir iniş pisti."
+ },
+ "beambox_nightstand": {
+  "name": "Beambox Komodini",
+  "description": "Geminin küçük dolabı, daha sakin bir görevde keyfini çıkarıyor."
+ },
+ "coralfan_table": {
+  "name": "Coralfan Masası",
+  "description": "Resif biçimlerinden bir yelpaze herkesi çevresinde toplar."
+ },
+ "fizzproof_counter": {
+  "name": "Fizzproof Tezgâhı",
+  "description": "Dökülmelere, keşiflere ve kaybolan bisküvilere hazırlıklı."
+ },
+ "humskein_mix_desk": {
+  "name": "Humskein Miksaj Masası",
+  "description": "Her düğme çevirene çayını koyacağı bir yer lazım."
+ },
+ "plaitwish_table": {
+  "name": "Plaitwish Masası",
+  "description": "Yeni yılın ilk ortak yemeği için cömert bir masa."
+ },
+ "orbitmap_desk": {
+  "name": "Orbitmap Çalışma Masası",
+  "description": "Mutfağa giden rota çok önemli bir görevdir."
+ },
+ "acorncourt_table": {
+  "name": "Acorncourt Masası",
+  "description": "Özellikle demokratik bir bisküvi tabağı olan görkemli bir masa."
+ },
+ "revolving_tide_table": {
+  "name": "Revolving Gelgit Masası",
+  "description": "Camsı bir kıvrım, çok yumuşak bir girdabın anısını taşır."
+ },
+ "patchpillow_bed": {
+  "name": "Patchpillow Yatağı",
+  "description": "Erkenden yatmaya küçük, yamalı bir davet."
+ },
+ "sandsheet_cot": {
+  "name": "Sandsheet Portatif Yatağı",
+  "description": "Çoraplarında kum bulmadan kumsal hayal etmek için."
+ },
+ "foldfern_cot": {
+  "name": "Foldfern Portatif Yatağı",
+  "description": "Kamp alanının en azimle savunulan rahat köşesi."
+ },
+ "reedroll_bed": {
+  "name": "Reedroll Yatağı",
+  "description": "Gün sonunda azıcık sessizliği ser."
+ },
+ "dunetuck_bed": {
+  "name": "Dunetuck Yatağı",
+  "description": "Sıcak akşamlar ve geç sabahlar için serin keten."
+ },
+ "stillsoft_bed": {
+  "name": "Stillsoft Yatağı",
+  "description": "Sade çizgiler, harika derecede karmaşık rüyalar."
+ },
+ "pagehaven_bed": {
+  "name": "Pagehaven Yatağı",
+  "description": "Maceralı bir bölümden sonra tek yumuşak iniş."
+ },
+ "blushbun_bed": {
+  "name": "Blushbun Yatağı",
+  "description": "Uykulu yüzü, ikna edici bir yatma vakti hatırlatması."
+ },
+ "beamnest_bunk": {
+  "name": "Beamnest Ranzası",
+  "description": "Sonunda demir atıp yerleşen bir gemiden iki rahat ranza."
+ },
+ "polypillow_bed": {
+  "name": "Polypillow Yatağı",
+  "description": "Rüyalar mercan kıvrımlarının arasında yavaşça süzülür."
+ },
+ "hushdrape_bed": {
+  "name": "Hushdrape Yatağı",
+  "description": "Perdeler hava akımını dışarıda, dost gölgeleri içeride tutar."
+ },
+ "capsulenap_pod": {
+  "name": "Capsulenap Kapsülü",
+  "description": "Akşamdan kahvaltıya huzurlu bir yolculuğa hazır."
+ },
+ "frostbough_bed": {
+  "name": "Frostbough Yatağı",
+  "description": "En uzun kış gecesinde sıcak küçük bir ada."
+ },
+ "acorncrest_canopy": {
+  "name": "Acorncrest Baldakeni",
+  "description": "Sabah duyurularını uyuyarak geçirmeye kraliyet daveti."
+ },
+ "hemgrain_dresser": {
+  "name": "Hemgrain Şifonyeri",
+  "description": "Katlanmış şeyler için üç çekmece, bir de gizemli kurdele."
+ },
+ "pebblepeg_cabinet": {
+  "name": "Pebblepeg Dolabı",
+  "description": "Hazinelerini kuru, dağınıklığını güzelce gizli tutar."
+ },
+ "plainstack_cubby": {
+  "name": "Plainstack Gözlü Rafı",
+  "description": "Her küçük şeyin kendine ait küçük bir karesi var."
+ },
+ "mossbasket_chest": {
+  "name": "Mossbasket Sandığı",
+  "description": "Tohum paketleri, eldivenler ve iyimser ekim planları için."
+ },
+ "boltcrate_locker": {
+  "name": "Boltcrate Kilitli Dolabı",
+  "description": "Bir türlü yerinde durmayan aletlere güvenilir bir yuva."
+ },
+ "dewstrap_trunk": {
+  "name": "Dewstrap Seyahat Sandığı",
+  "description": "Belki evde geçecek bir hafta sonuna hep hazır."
+ },
+ "spoolshoe_rack": {
+  "name": "Spoolshoe Ayakkabılığı",
+  "description": "Başıboş terlikler için küçük bir buluşma noktası."
+ },
+ "reedfold_basket": {
+  "name": "Reedfold Sepeti",
+  "description": "Dağınıklık girer. Daha sakin bir oda çıkar."
+ },
+ "marginrow_bookcase": {
+  "name": "Marginrow Kitaplığı",
+  "description": "Sessizce bir kitap daha almaya teşvik eden kitaplık."
+ },
+ "stillpanel_wardrobe": {
+  "name": "Stillpanel Gardırobu",
+  "description": "Rengârenk bir gardırobu saklamak için pürüzsüz bir yer."
+ },
+ "kettleware_hutch": {
+  "name": "Kettleware Servis Dolabı",
+  "description": "Gözde fincanları bekleyen neşeli bir raf sırası."
+ },
+ "buttonbelly_dresser": {
+  "name": "Buttonbelly Şifonyeri",
+  "description": "Gülen çekmeceler çamaşırı neredeyse bitmiş gibi gösterir."
+ },
+ "beamhold_chest": {
+  "name": "Beamhold Sandığı",
+  "description": "Kilit süs; derli toplu hissi gerçek."
+ },
+ "clickslot_cabinet": {
+  "name": "Clickslot Dolabı",
+  "description": "Yedek kablolar ve eski skorlar için düzgün bir dinlenme yeri."
+ },
+ "reefniche_cabinet": {
+  "name": "Reefniche Dolabı",
+  "description": "Sevdiğin kara hazineleri için resif biçimli minik köşeler."
+ },
+ "fizzfile_drawers": {
+  "name": "Fizzfile Çekmeceleri",
+  "description": "Etiketler, keşiflerin atıştırmalıklarla karışmasını önler."
+ },
+ "wishknot_wardrobe": {
+  "name": "Wishknot Gardırobu",
+  "description": "Düğümlü kulplar umut dolu her türlü kıyafeti tutar."
+ },
+ "dunemarrow_armoire": {
+  "name": "Dunemarrow Armuarı",
+  "description": "Keteni, sabırlı bir gölge kafesinin ardında serin tutar."
+ },
+ "velvetroot_cabinet": {
+  "name": "Velvetroot Dolabı",
+  "description": "Yedek peçeteler bile görkemli muamele görür."
+ },
+ "orbitvault_cupboard": {
+  "name": "Orbitvault Yüksek Dolabı",
+  "description": "Alelade çoraplar için güvenli bir bölme."
+ },
+ "hemshade_lamp": {
+  "name": "Hemshade Lambası",
+  "description": "Son sayfa için küçük bir sıcaklık havuzu."
+ },
+ "pebblecap_lamp": {
+  "name": "Pebblecap Lambası",
+  "description": "Parlak ikinci kariyerine başlayan bir kumsal çakılı."
+ },
+ "quietdot_lamp": {
+  "name": "Quietdot Lambası",
+  "description": "Küçük ve harika bir fikre yetecek kadar ışık."
+ },
+ "pageglow_lamp": {
+  "name": "Pageglow Lambası",
+  "description": "Bölüm sonunda bitene kadar seninle uyanık kalır."
+ },
+ "wickcrumb_candle": {
+  "name": "Wickcrumb Mumu",
+  "description": "Pastanın dikkatini çalmadan sıcak bir parıltı katar."
+ },
+ "dewloop_lantern": {
+  "name": "Dewloop Feneri",
+  "description": "Kupanın yanına sığan bir kamp parıltısı."
+ },
+ "reedcap_lamp": {
+  "name": "Reedcap Lambası",
+  "description": "Sabırlı küçük bir dokumanın süzdüğü yumuşak ışık."
+ },
+ "dunewick_candle": {
+  "name": "Dunewick Mumu",
+  "description": "Serin bir kil kapta minik bir akşam güneşi."
+ },
+ "sprigshade_lamp": {
+  "name": "Sprigshade Lambası",
+  "description": "Taze bir yaprağın ruhunu taşıyan emaye bir abajur."
+ },
+ "rivetarm_floor_lamp": {
+  "name": "Rivetarm Ayaklı Lambası",
+  "description": "Uzun kolu ışığı tam okuduğun yere uzatır."
+ },
+ "stillarc_floor_lamp": {
+  "name": "Stillarc Ayaklı Lambası",
+  "description": "Sessiz bir köşenin üstünde zarif bir kavis."
+ },
+ "blushcheek_lamp": {
+  "name": "Blushcheek Lambası",
+  "description": "Her açtığında yanakları kızarır."
+ },
+ "beamguard_sconce": {
+  "name": "Beamguard Apliği",
+  "description": "Bir zamanlar dalgaları gözlerdi. Şimdi terlikleri gözlüyor."
+ },
+ "frosttin_lantern": {
+  "name": "Frosttin Feneri",
+  "description": "Delikli yıldızlar bir avuç kış sıcaklığı serpiştirir."
+ },
+ "sugarstripe_lamp": {
+  "name": "Sugarstripe Lambası",
+  "description": "Çizgili bir parıltı; yapış yapış parmak izi sıfır."
+ },
+ "reefbubble_lamp": {
+  "name": "Reefbubble Lambası",
+  "description": "Küçük baloncuklar bir gelgit havuzu kadar parıltı taşır."
+ },
+ "clickhalo_lamp": {
+  "name": "Clickhalo Lambası",
+  "description": "Neşeli bir gece seansı için yumuşak bir hale."
+ },
+ "wishfold_lantern": {
+  "name": "Wishfold Feneri",
+  "description": "Katlanmış kâğıt her dileğe sıcak bir dinlenme yeri verir."
+ },
+ "fizzflask_lamp": {
+  "name": "Fizzflask Lambası",
+  "description": "Güvenilir derecede sıcacık sonuçlar veren parlak bir deney."
+ },
+ "hushpetal_sconce": {
+  "name": "Hushpetal Apliği",
+  "description": "Yumuşak mor alevinin çevresinde dost gölgeler açar."
+ },
+ "starcrumb_orrery": {
+  "name": "Starcrumb Gezegen Maketi",
+  "description": "Yatma vaktinde kısılmayı akıl eden bütün bir minik gök."
+ },
+ "acornsun_beacon": {
+  "name": "Acornsun İşaret Feneri",
+  "description": "En küçük görkemli kutlamalar için altın bir parıltı."
+ },
+ "hemtop_counter": {
+  "name": "Hemtop Tezgâhı",
+  "description": "Her güzel kahvaltı planının ilk durağı."
+ },
+ "pebblewash_sink": {
+  "name": "Pebblewash Evyesi",
+  "description": "Kupaları ve çok küçük kumsal buluntularını durulamak için bir yer."
+ },
+ "stillwarm_stove": {
+  "name": "Stillwarm Ocağı",
+  "description": "Küçük bir gündelik büyüye hazır dört düzgün daire."
+ },
+ "crumbshine_toaster": {
+  "name": "Crumbshine Tost Makinesi",
+  "description": "Mutfağı biri umursuyormuş gibi kokutur."
+ },
+ "mintwhistle_kettle": {
+  "name": "Mintwhistle Çaydanlığı",
+  "description": "Çok küçük bir şarkısı, çok işe yarar bir görevi var."
+ },
+ "tidechip_mug": {
+  "name": "Tidechip Kupası",
+  "description": "Çentik sadece boyanmış. Sevgi ise gayet gerçek."
+ },
+ "pagebreak_teacup": {
+  "name": "Pagebreak Çay Fincanı",
+  "description": "Okumanın hayale dalmaya dönüştüğü yeri işaretler."
+ },
+ "sprigseal_jar": {
+  "name": "Sprigseal Kavanozu",
+  "description": "Tohumları kuru, atıştırmalık tahminlerini heyecanlı tutar."
+ },
+ "reedrest_breadbox": {
+  "name": "Reedrest Ekmek Kutusu",
+  "description": "Dünden kalan somuna sessiz, küçük bir sığınak."
+ },
+ "rivetpan_range": {
+  "name": "Rivetpan Fırınlı Ocağı",
+  "description": "Çok iddialı bir çorba için sağlam bir fırınlı ocak."
+ },
+ "kettlewink_fridge": {
+  "name": "Kettlewink Buzdolabı",
+  "description": "Süt, pasta ve yarının kahvaltısının serin bekçisi."
+ },
+ "dunebowl_counter": {
+  "name": "Dunebowl Tezgâhı",
+  "description": "Sıcak, unlu öğleden sonralar için serin bir kil tezgâh."
+ },
+ "buttonmix_blender": {
+  "name": "Buttonmix Blenderı",
+  "description": "Meyveyi, en az kendisi kadar neşeli renkte bir şeye dönüştürür."
+ },
+ "brineboard_island": {
+  "name": "Brineboard Mutfak Adası",
+  "description": "Çok yol görmüş bir tezgâh; artık tüm sevdası sandviçler."
+ },
+ "crumbscale_set": {
+  "name": "Crumbscale Ölçü Seti",
+  "description": "Unu, pastanın hak ettiği ciddiyetle tartar."
+ },
+ "reefsteam_cooker": {
+  "name": "Reefsteam Tenceresi",
+  "description": "Deniz kabuğu biçimli kapağı olan minik bir bulut yapıcı."
+ },
+ "fizzchill_cabinet": {
+  "name": "Fizzchill Dolabı",
+  "description": "Öğle yemeği öğle yemeği kalsın diye özenle etiketlenmiş."
+ },
+ "wishfeast_counter": {
+  "name": "Wishfeast Tezgâhı",
+  "description": "Koca bir kalabalığın mantısına yetecek kadar yer var."
+ },
+ "orbitbake_oven": {
+  "name": "Orbitbake Fırını",
+  "description": "Yuvarlak penceresi kabaran ekmeği minik bir aya benzetir."
+ },
+ "acornmarble_island": {
+  "name": "Acornmarble Mutfak Adası",
+  "description": "Günlük havuç doğramak için vakur bir sahne."
+ },
+ "hemwash_basin": {
+  "name": "Hemwash Lavabosu",
+  "description": "Temiz patiler, eller ve şüpheli bahçe kararları için."
+ },
+ "pebbleflush_loo": {
+  "name": "Pebbleflush Tuvaleti",
+  "description": "Sarnıcında minik bir dalga olan sessiz bir olmazsa olmaz."
+ },
+ "stillglass_shower": {
+  "name": "Stillglass Duşu",
+  "description": "Günün yorgunluğunu durulamak için parlak bir köşe."
+ },
+ "reedsoap_dish": {
+  "name": "Reedsoap Sabunluğu",
+  "description": "Sabuna kuru, minik bir ada verir."
+ },
+ "sprigfold_towels": {
+  "name": "Sprigfold Havluları",
+  "description": "Saksı gününden sonra yıkanıp temizlenmek için yumuşak kareler."
+ },
+ "dunepot_hamper": {
+  "name": "Dunepot Çamaşır Sepeti",
+  "description": "Yarının çamaşırı için sabırlı bir sepet."
+ },
+ "patchsoak_tub": {
+  "name": "Patchsoak Küveti",
+  "description": "Mobilyaya dönüşmüş derin bir iç çekiş."
+ },
+ "rivetpipe_shower": {
+  "name": "Rivetpipe Duşu",
+  "description": "Dürüst borular ve gönül rahatlatan sıcak bir durulanma."
+ },
+ "buttonbubble_basin": {
+  "name": "Buttonbubble Lavabosu",
+  "description": "Mutlu küçük yüzü diş macunu sıçramalarını affeder."
+ },
+ "tidefold_towel_rail": {
+  "name": "Tidefold Havluluğu",
+  "description": "Kabarık havluları hayali gelgit çizgisinin üstünde tutar."
+ },
+ "reefcurl_tub": {
+  "name": "Reefcurl Küveti",
+  "description": "Hiç acele etmeyen tek bir ıslanma için küçük bir koy."
+ },
+ "fizzmist_shower": {
+  "name": "Fizzmist Duşu",
+  "description": "Gereken tek deney, doğru sıcaklığı bulmak."
+ },
+ "wishbowl_vanity": {
+  "name": "Wishbowl Lavabo Dolabı",
+  "description": "Taze bir başlangıç için taze bir yüz."
+ },
+ "moonrinse_bath": {
+  "name": "Moonrinse Banyo Küveti",
+  "description": "Yere inmiş uzay yolcuları için yuvarlak küçük bir lagün."
+ },
+ "clickbud_screen": {
+  "name": "Clickbud Ekranı",
+  "description": "Çok büyük hayali maceralar için alçakgönüllü bir ekran."
+ },
+ "kettlewave_radio": {
+  "name": "Kettlewave Radyosu",
+  "description": "Sen reçeli bulurken tosta arkadaşlık eder."
+ },
+ "stillbreeze_fan": {
+  "name": "Stillbreeze Vantilatörü",
+  "description": "Kâğıtlarını asla uçurmayan küçük bir esinti."
+ },
+ "pebbleclick_remote": {
+  "name": "Pebbleclick Kumandası",
+  "description": "Nedense hep tam bıraktığın yerde saklanır."
+ },
+ "pagecount_calculator": {
+  "name": "Pagecount Hesap Makinesi",
+  "description": "Kitap bütçelerini takdire değer bir iyimserlikle sayar."
+ },
+ "patchscreen_television": {
+  "name": "Patchscreen Televizyonu",
+  "description": "Yağmurlu bir günün eğlencesini saran sıcak ahşap çerçeve."
+ },
+ "blinkslot_cabinet": {
+  "name": "Blinkslot Oyun Makinesi",
+  "description": "Her tur dostça küçük bir göz kırpmayla başlar."
+ },
+ "sprigmist_humidifier": {
+  "name": "Sprigmist Nemlendiricisi",
+  "description": "Sabah sisini özleyen yapraklar için küçük bir bulut."
+ },
+ "spooldeck_player": {
+  "name": "Spooldeck Pikabı",
+  "description": "Sevdiğin ezgilere nazik bir dönme yeri verir."
+ },
+ "clickquay_computer": {
+  "name": "Clickquay Bilgisayarı",
+  "description": "Hayal gücü fazlasıyla meşgul, derli toplu küçük bir makine."
+ },
+ "fizzscan_terminal": {
+  "name": "Fizzscan Terminali",
+  "description": "Çayın yakında hazır olma olasılığının yüksek olduğunu bildirir."
+ },
+ "beamcast_projector": {
+  "name": "Beamcast Projeksiyonu",
+  "description": "Düz bir duvarı hikâyelere açılan bir pencereye çevirir."
+ },
+ "orbitview_console": {
+  "name": "Orbitview Konsolu",
+  "description": "Uzak yıldızları ve çok yerel atıştırmalık hatırlatmalarını gösterir."
+ },
+ "blinkberry_twin_game": {
+  "name": "Blinkberry İkili Oyun Makinesi",
+  "description": "İki set düğme, biraz daha kalmak için tek ortak bahane."
+ },
+ "humskein_sound_wall": {
+  "name": "Humskein Ses Duvarı",
+  "description": "Bir fısıltıyı harika dolu hissettirecek kadar hoparlör."
+ },
+ "pocketweather_globe": {
+  "name": "Pocketweather Küresi",
+  "description": "Hayret ihtimali harika olan minik bir hava raporu."
+ },
+ "hemcheck_rug": {
+  "name": "Hemcheck Halısı",
+  "description": "Serin bir sabahın en sıcacık karesi."
+ },
+ "pebblepath_runner": {
+  "name": "Pebblepath Yolluğu",
+  "description": "Kumlu görünen, hiç süpürülmesi gerekmeyen bir yol."
+ },
+ "stillstripe_mat": {
+  "name": "Stillstripe Paspası",
+  "description": "Tek temiz çizgi, küçük odayı yerli yerine oturtur."
+ },
+ "sprigstep_mat": {
+  "name": "Sprigstep Paspası",
+  "description": "Çamurlu botlardan duraklamalarını rica eden kibar bir istek."
+ },
+ "reedquiet_mat": {
+  "name": "Reedquiet Paspası",
+  "description": "Nefes almak için yumuşak bir oda karesi."
+ },
+ "duneline_runner": {
+  "name": "Duneline Yolluğu",
+  "description": "Çıplak ayaklar için minik bir gölge şeridi."
+ },
+ "crumbdot_mat": {
+  "name": "Crumbdot Paspası",
+  "description": "Noktaları süs. Gerçek kırıntılar sana ait."
+ },
+ "marginleaf_rug": {
+  "name": "Marginleaf Halısı",
+  "description": "Okuma koltuğunun altında yapraklı bir iniş yeri."
+ },
+ "blushcloud_rug": {
+  "name": "Blushcloud Halısı",
+  "description": "İçeride kalmaktan çok mutlu, gülümseyen bir bulut."
+ },
+ "rivetgrid_rug": {
+  "name": "Rivetgrid Halısı",
+  "description": "Atölyeyi yumuşatır, düz çizgilerinden ödün vermez."
+ },
+ "dewring_rug": {
+  "name": "Dewring Halısı",
+  "description": "Hayali kamp sabahları için kuru bir ada."
+ },
+ "clickstep_rug": {
+  "name": "Clickstep Halısı",
+  "description": "Atıştırmalık rafına giden yolda rahat bir kontrol noktası."
+ },
+ "reefwhorl_rug": {
+  "name": "Reefwhorl Halısı",
+  "description": "Ayak parmaklarının altında güvenle duran bütün bir akıntı."
+ },
+ "wishbraid_rug": {
+  "name": "Wishbraid Halısı",
+  "description": "Örülmüş dilekler toplanmak için sıcak bir yer yapar."
+ },
+ "orbitlace_rug": {
+  "name": "Orbitlace Halısı",
+  "description": "Henüz hiçbir terliğin yürümediği yolların sessiz haritası."
+ },
+ "acornmosaic_carpet": {
+  "name": "Acornmosaic Moketi",
+  "description": "En sıradan öğleden sonrana yakışan yaprak dolu bir moket."
+ },
+ "hemhill_painting": {
+  "name": "Hemhill Tablosu",
+  "description": "Hiç aceleli bir gün yaşamamış minik bir tepe."
+ },
+ "pebblehour_clock": {
+  "name": "Pebblehour Saati",
+  "description": "Bütün oda tatil gibi hissettirse de zamanı tutar."
+ },
+ "stillbar_wall_shelf": {
+  "name": "Stillbar Duvar Rafı",
+  "description": "Görülmeye değer küçük şeyler için sade bir raf."
+ },
+ "pagepair_books": {
+  "name": "Pagepair Kitapları",
+  "description": "Biri şimdi için, biri çok yakında için."
+ },
+ "sprigthumb_vase": {
+  "name": "Sprigthumb Vazosu",
+  "description": "Patikaya fazla eğilmiş çiçek için yapıldı."
+ },
+ "dewtrail_print": {
+  "name": "Dewtrail Baskısı",
+  "description": "Pek çok güzel mola yeri olan kısa bir yürüyüşün haritası."
+ },
+ "reedstroke_scroll": {
+  "name": "Reedstroke Rulo Tablosu",
+  "description": "Bazen acelesiz tek bir fırça darbesi yeter."
+ },
+ "dunebead_garland": {
+  "name": "Dunebead Girlandı",
+  "description": "Gölge renkli boncuklardan neşeli küçük bir dizi."
+ },
+ "crumbnote_board": {
+  "name": "Crumbnote Panosu",
+  "description": "Günün özel yemeği, seni gülümseten her şey."
+ },
+ "boltpeg_wall_rack": {
+  "name": "Boltpeg Duvar Askılığı",
+  "description": "Her zamanki şüpheliler için kancalı, çalışkan bir askılık."
+ },
+ "buttonbud_vase": {
+  "name": "Buttonbud Vazosu",
+  "description": "En minik buketin için yuvarlak bir yüz."
+ },
+ "sailmark_wall_shelf": {
+  "name": "Sailmark Duvar Rafı",
+  "description": "Biblolar için minik bir kuru havuz."
+ },
+ "marginglow_painting": {
+  "name": "Marginglow Tablosu",
+  "description": "Gerçeğinin yanındaki duvar için resmedilmiş bir okuma köşesi."
+ },
+ "stilloval_mirror": {
+  "name": "Stilloval Aynası",
+  "description": "Biraz daha sana ait olmaya başlayan bir odayı yansıtır."
+ },
+ "humskein_wave_panel": {
+  "name": "Humskein Dalga Paneli",
+  "description": "Yumuşak dalgacıklar her odaya kendi iç sesini buldurur."
+ },
+ "clickcove_pennant": {
+  "name": "Clickcove Flaması",
+  "description": "Aramıza katılmak, atıştırmalık paylaşmak ve birbirini alkışlamak için."
+ },
+ "beamchart_map": {
+  "name": "Beamchart Haritası",
+  "description": "Haritadaki en güvenli liman bir çay fincanıyla işaretli."
+ },
+ "sugarloop_mirror": {
+  "name": "Sugarloop Aynası",
+  "description": "Gayet sıradan bir yansıma için tatlı bir çerçeve."
+ },
+ "froststitch_tapestry": {
+  "name": "Froststitch Goblenı",
+  "description": "Zemini asla üşütmeyen, işlenmiş bir kar yağışı."
+ },
+ "sprigrow_wall_shelf": {
+  "name": "Sprigrow Duvar Rafı",
+  "description": "Umut dolu küçük saksı sırasını bekleyen güneşli bir raf."
+ },
+ "reefsong_mural": {
+  "name": "Reefsong Duvar Resmi",
+  "description": "Mercan kıvrımları ve parlak küçük balıkların sessiz korosu."
+ },
+ "wishknot_wall_shelf": {
+  "name": "Wishknot Duvar Rafı",
+  "description": "Yeni yıla taşıdığın küçük şeyler için parlak bir raf."
+ },
+ "fizzbubble_diagram": {
+  "name": "Fizzbubble Şeması",
+  "description": "Baloncukları gereğinden çok daha fazla coşkuyla anlatır."
+ },
+ "duneshade_tapestry": {
+  "name": "Duneshade Goblenı",
+  "description": "Avlunun en serin yerinin dokunmuş bir anısı."
+ },
+ "hushglass_portrait": {
+  "name": "Hushglass Portresi",
+  "description": "En güzel gülümsemesini deneyen dost bir gölgenin portresi."
+ },
+ "orbitpin_star_chart": {
+  "name": "Orbitpin Yıldız Haritası",
+  "description": "Hepsine hayalle ulaşılan minik varış noktalarıyla dolu bir gök."
+ },
+ "brinecrest_wall_wheel": {
+  "name": "Brinecrest Duvar Dümeni",
+  "description": "Gemi yönlendirmekten emekli; şimdi sohbeti yönlendiriyor."
+ },
+ "acornlight_mosaic": {
+  "name": "Acornlight Mozaiği",
+  "description": "Küçük cam yapraklar çok görkemli küçük bir ağaç oluşturur."
+ },
+ "hemcross_window": {
+  "name": "Hemcross Penceresi",
+  "description": "Kocaman bir hayale dalmak için küçük bir çerçeve."
+ },
+ "pebblepane_window": {
+  "name": "Pebblepane Penceresi",
+  "description": "Odanın gelgiti duyabildiğini sanmasına izin verir."
+ },
+ "stillframe_door": {
+  "name": "Stillframe Kapısı",
+  "description": "Günün geri kalanına açılan temiz küçük bir kapı aralığı."
+ },
+ "sprigslat_gate": {
+  "name": "Sprigslat Kapısı",
+  "description": "Minik bir bahçe bile hoş bir girişi hak eder."
+ },
+ "dunearc_window": {
+  "name": "Dunearc Penceresi",
+  "description": "Sıcak bir kil kemerden serin mavi bir bakış."
+ },
+ "marginpane_window": {
+  "name": "Marginpane Penceresi",
+  "description": "Her okuma köşesini umut vadeden bir öğleden sonraya çevirir."
+ },
+ "reedslide_door": {
+  "name": "Reedslide Kapısı",
+  "description": "İyi saklanmış bir sır gibi yumuşakça kayarak açılır."
+ },
+ "buttonround_window": {
+  "name": "Buttonround Penceresi",
+  "description": "Gül rengi çerçeveli yuvarlak bir kaçamak bakış."
+ },
+ "beamport_window": {
+  "name": "Beamport Penceresi",
+  "description": "Manzaranın hareket ettiği günleri hatırlayan bir lombar."
+ },
+ "reefarch_door": {
+  "name": "Reefarch Kapısı",
+  "description": "Gidip gelmeler için küçük bir mercan kemeri."
+ },
+ "orbitseal_hatch": {
+  "name": "Orbitseal Kapağı",
+  "description": "Çok dramatik hayali fırlatmalarda bile yumuşakça kapanır."
+ },
+ "acornglass_window": {
+  "name": "Acornglass Penceresi",
+  "description": "Sıradan bir duvarı küçük bir yaprak şenliğine çevirir."
+ },
+ "sprigcup_fern": {
+  "name": "Sprigcup Eğrelti Otu",
+  "description": "Çaydanlığın yanına sığan minik bir orman."
+ },
+ "hemleaf_pothos": {
+  "name": "Hemleaf Potosu",
+  "description": "En yeni yaprağı hep biraz daha yer arıyor."
+ },
+ "pebbletip_succulent": {
+  "name": "Pebbletip Sukulenti",
+  "description": "Acele etmeye hiç niyeti olmayan derli toplu küçük bir bitki."
+ },
+ "stillstem_rubber_tree": {
+  "name": "Stillstem Kauçuk Ağacı",
+  "description": "Sessiz bir köşeye kendinden emin bir yeşil biçim katar."
+ },
+ "dunesip_cactus": {
+  "name": "Dunesip Kaktüsü",
+  "description": "Su tasarrufu alışkanlıkları mükemmel, dikenli küçük bir dost."
+ },
+ "reedbud_bonsai": {
+  "name": "Reedbud Bonsaisi",
+  "description": "Ağaçlara yakışır şekilde acele etmeyen küçük bir ağaç."
+ },
+ "crumbmint_pot": {
+  "name": "Crumbmint Saksısı",
+  "description": "Bulaşık yıkamanın en güzel kısmı gibi kokar."
+ },
+ "boltleaf_planter": {
+  "name": "Boltleaf Saksılığı",
+  "description": "Taze yapraklar çelik bir köşeyi bile yaşanır kılar."
+ },
+ "pagebud_ivy": {
+  "name": "Pagebud Sarmaşığı",
+  "description": "Hep bahçeli bölüme doğru uzanır."
+ },
+ "dewsprout_tin": {
+  "name": "Dewsprout Teneke Saksısı",
+  "description": "Taşınabilir küçük bir yuva için ödünç bir yeşillik."
+ },
+ "sprigarch_trellis": {
+  "name": "Sprigarch Kafesi",
+  "description": "Yüce planları olan yapraklar için yardımsever bir merdiven."
+ },
+ "blushpetal_planter": {
+  "name": "Blushpetal Saksılığı",
+  "description": "Aynı derecede neşeli bir çiçeğe ev sahipliği yapan neşeli saksı."
+ },
+ "hemwindow_flowerbox": {
+  "name": "Hemwindow Çiçekliği",
+  "description": "Hayali pencerenin hemen dışında bir bahçe."
+ },
+ "dunefan_palm": {
+  "name": "Dunefan Palmiyesi",
+  "description": "Nereye otursa yumuşak bir gölge yaratır."
+ },
+ "reedwater_lily_bowl": {
+  "name": "Reedwater Nilüfer Kasesi",
+  "description": "Botlarını aramanı hiç istemeyen minik bir gölet."
+ },
+ "kettlebloom_stand": {
+  "name": "Kettlebloom Çiçek Standı",
+  "description": "Üç minik çiçek sıradakilere arkadaşlık ediyor."
+ },
+ "reeffern_arrangement": {
+  "name": "Reeffern Aranjmanı",
+  "description": "Resifin en yumuşak biçimlerinden esinlenen havadar bir aranjman."
+ },
+ "fizzroot_terrarium": {
+  "name": "Fizzroot Teraryumu",
+  "description": "Camdan çatısı çok derli toplu, yeşil küçük bir dünya."
+ },
+ "wishcitrus_tree": {
+  "name": "Wishcitrus Ağacı",
+  "description": "Küçük altın meyveler her dalı umutlu gösterir."
+ },
+ "budwhistle_arbor": {
+  "name": "Budwhistle Çardağı",
+  "description": "Yılın ilk uzun öğleden sonrası için taç yapraklardan bir kemer."
+ },
+ "hushglow_mushrooms": {
+  "name": "Hushglow Mantarları",
+  "description": "Karanlıkta çekinen herkes için yumuşak bir parıltı."
+ },
+ "orbitgarden_sphere": {
+  "name": "Orbitgarden Küresi",
+  "description": "İç mekân havası mükemmel, minik yeşil bir gezegen."
+ },
+ "crumbclaw_bowl": {
+  "name": "Crumbclaw Mama Kabı",
+  "description": "Küçük pençelerin son lokmaya ulaşacağı kadar sığ."
+ },
+ "drowsepatch_basket": {
+  "name": "Drowsepatch Sepeti",
+  "description": "Kıvrılmış bir kedi için şüpheli derecede mükemmel bir uyum."
+ },
+ "cloverpuff_nibble_rack": {
+  "name": "Cloverpuff Atıştırmalık Rafı",
+  "description": "Hevesli küçük atıştırmacılar için derli toplu bir ikram durağı."
+ },
+ "pebblepaw_washpan": {
+  "name": "Pebblepaw Yıkama Leğeni",
+  "description": "Su birikintilerini araştırıp duran patiler için."
+ },
+ "reedroll_scratch_post": {
+  "name": "Reedroll Tırmalama Direği",
+  "description": "O etkileyici küçük pençelerin idman yapacağı gerçek bir yer."
+ },
+ "buttonburrow_house": {
+  "name": "Buttonburrow Evi",
+  "description": "En küçük ev arkadaşı için sıcacık bir kapı aralığı."
+ },
+ "dewdash_tunnel": {
+  "name": "Dewdash Tüneli",
+  "description": "Bir giriş, bir çıkış ve bitmeyen sürpriz belirişler."
+ },
+ "pageperch_stand": {
+  "name": "Pageperch Tüneği",
+  "description": "Evin en cıvıl cıvıl eleştirmeni için yüksek küçük bir tünek."
+ },
+ "sprigpaw_toy_basket": {
+  "name": "Sprigpaw Oyuncak Sepeti",
+  "description": "Özenle kaldırılan her oyuncağın bir sonraki kaçışını başlattığı yer."
+ },
+ "reefrest_pet_pool": {
+  "name": "Reefrest Patili Havuzu",
+  "description": "Su seven dostlar için bir sıçrama boyunda deniz kenarı tatili."
+ },
+ "fizzpaw_care_station": {
+  "name": "Fizzpaw Bakım İstasyonu",
+  "description": "Bütün küçük bakım malzemeleri güven veren derli toplu tek yerde."
+ },
+ "orbitcurl_pet_pod": {
+  "name": "Orbitcurl Patili Kapsülü",
+  "description": "Çok önemli uykular için güvenli küçük bir kapsül."
+ },
+ "hemhop_blocks": {
+  "name": "Hemhop Blokları",
+  "description": "Şu an kule şeklindeki küçük bir olasılıklar yığını."
+ },
+ "pebbletoss_rings": {
+  "name": "Pebbletoss Halkaları",
+  "description": "Kuralları çok esnek bir deniz kenarı meydan okuması."
+ },
+ "reedturn_board": {
+  "name": "Reedturn Oyun Tahtası",
+  "description": "Her zaman bir sıraya daha yer bırakan sessiz bir oyun."
+ },
+ "duneloop_hoop": {
+  "name": "Duneloop Çemberi",
+  "description": "Dönüp durmak gayet güzel bir varış noktasıdır."
+ },
+ "buttonbelly_plush": {
+  "name": "Buttonbelly Peluşu",
+  "description": "Son derece sabırlı bir dinleyici, fevkalade yuvarlak bir göbek."
+ },
+ "crumbfit_puzzle": {
+  "name": "Crumbfit Yapbozu",
+  "description": "Son parça büyük ihtimalle bisküvi tabağının altında."
+ },
+ "blinkberry_pin_table": {
+  "name": "Blinkberry Langırt Pisti",
+  "description": "Hafif bir tıkırtı, minik bir parıltı ve bir deneme daha."
+ },
+ "dewkite_bundle": {
+  "name": "Dewkite Çıkını",
+  "description": "Her an gelebilecek bir esinti için hazırlanmış."
+ },
+ "pagepath_story_tiles": {
+  "name": "Pagepath Hikâye Taşları",
+  "description": "Küçük bir macera diz, sonra daha iyi bir son uydur."
+ },
+ "clickcube_puzzle": {
+  "name": "Clickcube Yapbozu",
+  "description": "Her kenarın bir yeri var; bulmak işin eğlencesi."
+ },
+ "reefroll_marble_run": {
+  "name": "Reefroll Bilye Yolu",
+  "description": "Minik bilyeler sahte bir resifte manzaralı yolu seçer."
+ },
+ "fizzwhirl_workbench": {
+  "name": "Fizzwhirl Tezgâhı",
+  "description": "Neşeli saçmalık deneyleri için bir tezgâh."
+ },
+ "orbitfloat_mobile": {
+  "name": "Orbitfloat Mobili",
+  "description": "Küçük gezegenler yörüngeleriyle sessizce ilgilenir."
+ },
+ "acornmaze_play_castle": {
+  "name": "Acornmaze Oyun Kalesi",
+  "description": "Pek dolambaçlı bir atıştırma yolu olan minik bir krallık."
+ },
+ "hemstring_ukulele": {
+  "name": "Hemstring Ukulelesi",
+  "description": "Dört tel ve olasılıklarla dolu koca bir öğleden sonra."
+ },
+ "pebblebeat_drum": {
+  "name": "Pebblebeat Davulu",
+  "description": "Gelgitin ritmini komşu dostu bir ses seviyesinde tutar."
+ },
+ "spoolnote_keyboard": {
+  "name": "Spoolnote Klavyesi",
+  "description": "Eve dönecek bir şarkıyı bekleyen bir sıra tuş."
+ },
+ "reedrain_chimes": {
+  "name": "Reedrain Rüzgâr Çanı",
+  "description": "Hayal ettiğin esinti için küçük ahşap bir melodi."
+ },
+ "humskein_upright": {
+  "name": "Humskein Piyanosu",
+  "description": "Bütün bir odalık müzik cilalı ahşabın içine sığmış."
+ },
+ "dunebell_harp": {
+  "name": "Dunebell Arpı",
+  "description": "Teller avludaki sıcak havanın titreşimi gibi parlar."
+ },
+ "reefpipe_organ": {
+  "name": "Reefpipe Orgu",
+  "description": "Resifin en uzun kıvrımlarından şekillenmiş nazik bir koro."
+ },
+ "orbitbowl_resonator": {
+  "name": "Orbitbowl Rezonatörü",
+  "description": "Tok ve ferah bir uğultusu olan yuvarlak, küçük bir enstrüman."
+ },
+ "pebblepost_mailbox": {
+  "name": "Pebblepost Posta Kutusu",
+  "description": "Notları, kartpostalları ve çok küçük haberleri sabırla bekler."
+ },
+ "sprigstep_planter_box": {
+  "name": "Sprigstep Ekim Sandığı",
+  "description": "Bir sonraki yetiştirme fikrin için boş bir minik sahne."
+ },
+ "dewpeg_firepit": {
+  "name": "Dewpeg Ateş Çukuru",
+  "description": "Anlatıldıkça büyüyen hikâyeler için minik bir kamp ateşi."
+ },
+ "reedskip_stepping_set": {
+  "name": "Reedskip Basamak Taşları",
+  "description": "Daha sakin bir öğleden sonraya iki küçük adım."
+ },
+ "duneshade_parasol": {
+  "name": "Duneshade Şemsiyesi",
+  "description": "Paylaşılacak yeri olan küçük bir gölge."
+ },
+ "hemhang_clothesline": {
+  "name": "Hemhang Çamaşır İpi",
+  "description": "Çamaşırlar bahçenin en güzel manzarasını görür."
+ },
+ "kettleporch_bench": {
+  "name": "Kettleporch Bankı",
+  "description": "Beklemeye değer birini beklemek için hoş bir yer."
+ },
+ "sprigwheel_barrow": {
+  "name": "Sprigwheel El Arabası",
+  "description": "Toprak, fideler ve fazlasıyla iddialı planlar taşır."
+ },
+ "dewcord_hammock": {
+  "name": "Dewcord Hamağı",
+  "description": "Öğleden sonrayı izne çıkarmak için hafifçe sarkan bir gerekçe."
+ },
+ "rivetdrip_rain_barrel": {
+  "name": "Rivetdrip Yağmur Fıçısı",
+  "description": "Daha güneşli bir gün için biraz yağmur biriktirir."
+ },
+ "reefmurmur_fountain": {
+  "name": "Reefmurmur Çeşmesi",
+  "description": "Bütün bir gelgit havuzunun sabrını taşıyan minik bir şırıltı."
+ },
+ "wishbridge_arch": {
+  "name": "Wishbridge Kemeri",
+  "description": "Şimdi ile sonra gelecek her şey arasında parlak küçük bir köprü."
+ },
+ "orbitshade_gazebo": {
+  "name": "Orbitshade Köşkü",
+  "description": "Tamamen hayali bir meteor yağmuru altında piknik için sığınak."
+ },
+ "acorncourt_pavilion": {
+  "name": "Acorncourt Köşkü",
+  "description": "Ayakları yere basan bahçe partileri için görkemli bir çatı."
+ },
+ "hushpatch_pumpkin": {
+  "name": "Hushpatch Balkabağı",
+  "description": "Sonbahar karşılamasını prova eden minik, boyalı bir sırıtış."
+ },
+ "frostpocket_stocking": {
+  "name": "Frostpocket Çorabı",
+  "description": "Küçük sürprizler ve kocaman beklentiler boyunda."
+ },
+ "wishfold_envelope": {
+  "name": "Wishfold Zarfı",
+  "description": "Nazik bir yeni yıl dileği için parlak küçük bir cep."
+ },
+ "budwhistle_egg_bowl": {
+  "name": "Budwhistle Yumurta Kasesi",
+  "description": "Güneşli bir sofrayı bekleyen boyalı yumurtalarla dolu bir kase."
+ },
+ "hushbell_wreath": {
+  "name": "Hushbell Çelengi",
+  "description": "Yumuşak bir şıngırtı en çekingen ziyaretçiyi bile karşılar."
+ },
+ "frostcrumb_tree": {
+  "name": "Frostcrumb Ağacı",
+  "description": "Küçük ve neşeli bir toplantı için giyinmiş kış ağacı."
+ },
+ "wishrope_garland": {
+  "name": "Wishrope Girlandı",
+  "description": "Düğümlü dilekler bir mutlu köşeden diğerine uzanır."
+ },
+ "budbasket_stand": {
+  "name": "Budbasket Standı",
+  "description": "İlk çiçeklerin iyimserliğiyle dolu ayaklı bir sepet."
+ },
+ "hushwink_candle": {
+  "name": "Hushwink Mumu",
+  "description": "Biri nazik bir hayalet hikâyesi anlattığında alevi göz kırpıyor gibi."
+ },
+ "frostpost_gift_pile": {
+  "name": "Frostpost Hediye Yığını",
+  "description": "Ambalaj bozulmayacak kadar güzel. Neredeyse."
+ },
+ "wishcoil_lantern": {
+  "name": "Wishcoil Feneri",
+  "description": "Yılın en parlak ortak akşamı için spiral bir kâğıt ışıltısı."
+ },
+ "budcurl_flower_cart": {
+  "name": "Budcurl Çiçek Arabası",
+  "description": "Makul olmayan miktarda bahar taşıyan küçük bir araba."
+ },
+ "hushpuff_door_arch": {
+  "name": "Hushpuff Kapı Kemeri",
+  "description": "Hoş ve ılımlı sürprizler için giyinmiş bir kapı aralığı."
+ },
+ "frostglimmer_hearth": {
+  "name": "Frostglimmer Şöminesi",
+  "description": "Odanın biraz daha kalman için en sıcak daveti."
+ },
+ "wishdance_screen": {
+  "name": "Wishdance Paravanı",
+  "description": "Hareket, müzik ve yeni başlangıçlarla dolu katlanır bir paravan."
+ },
+ "budrain_arbor": {
+  "name": "Budrain Çardağı",
+  "description": "Taç yapraklar, olabilecek en nazik hava durumu gibi tepede toplanır."
+ },
+ "frostwish_carousel": {
+  "name": "Frostwish Atlıkarıncası",
+  "description": "Küçük kızaklar bir cebe sığacak tatil ışığında yavaşça döner."
+ },
+ "lanternplait_moon_gate": {
+  "name": "Lanternplait Ay Kapısı",
+  "description": "Umut dolu yeni bir yıla adım atmak için ışıklı bir daire."
+ },
+ "tuckfin_chair": {
+  "name": "Tuckfin Sandalyesi",
+  "description": "Tost kokusunun peşinden gelen herkes için yedek bir sandalye."
+ },
+ "loopshore_stool": {
+  "name": "Loopshore Taburesi",
+  "description": "Hareketli bir kahvaltıdan sağ çıkacak kadar sıkı örülmüş."
+ },
+ "hushpurl_pouf": {
+  "name": "Hushpurl Pufu",
+  "description": "Kıyıda uzun bir yürüyüşten sonra yumuşak bir iniş."
+ },
+ "brinepleat_armchair": {
+  "name": "Brinepleat Koltuğu",
+  "description": "Geniş kolçaklar yarım kalmış bir örgü projesine yer bırakır."
+ },
+ "hemharbor_loveseat": {
+  "name": "Hemharbor İkili Koltuğu",
+  "description": "Bir battaniyeyi ve bir sırrı paylaşmaya yetecek kadar yer."
+ },
+ "pebbleplait_bench": {
+  "name": "Pebbleplait Bankı",
+  "description": "Komşuların eve gitmeden önce soluklandığı bank."
+ },
+ "tidequilt_sofa": {
+  "name": "Tidequilt Kanepesi",
+  "description": "Yumuşak kareler öğleden sonra güneşini toplar."
+ },
+ "nookcurl_chaise": {
+  "name": "Nookcurl Divanı",
+  "description": "Son bölümü biraz daha uzatmaya davet."
+ },
+ "reedhush_rocker": {
+  "name": "Reedhush Sallanan Koltuğu",
+  "description": "Dışarıdaki dalgalarla birlikte tempo tutar."
+ },
+ "driftbutton_beanbag": {
+  "name": "Driftbutton Armut Pufu",
+  "description": "Kesinlikle hiçbir şey hakkında konuşmak için favori yer."
+ },
+ "swaystitch_swing_seat": {
+  "name": "Swaystitch Salıncağı",
+  "description": "Korunaklı bir veranda için nazik bir salıncak."
+ },
+ "covecrease_corner_sofa": {
+  "name": "Covecrease Köşe Kanepesi",
+  "description": "Boş bir köşeyi evin en güzel oturma yerine çevirir."
+ },
+ "gatherloop_sectional": {
+  "name": "Gatherloop Modüler Koltuğu",
+  "description": "Bir hikâye anlatıcıya daha hep yer var."
+ },
+ "pearlpleat_daybed": {
+  "name": "Pearlpleat Sediri",
+  "description": "Sessizce koca bir öğleden sonraya dönüşen şekerlemeler için yapıldı."
+ },
+ "shellhuddle_pit_seat": {
+  "name": "Shellhuddle Çukur Koltuğu",
+  "description": "Dolgulu kenarlarının içine koca bir sohbet sığar."
+ },
+ "baybloom_circle_sofa": {
+  "name": "Baybloom Yuvarlak Kanepesi",
+  "description": "Bütün hane için küçük bir iç mekân adası."
+ },
+ "crumbshoal_coffee_table": {
+  "name": "Crumbshoal Sehpası",
+  "description": "Yer minderinin yanında atıştırmalıklar için yeterince alçak."
+ },
+ "nestnib_side_table": {
+  "name": "Nestnib Yan Sehpası",
+  "description": "Küçük rahatlıkları kolay erişimde tutar."
+ },
+ "foliofin_reading_table": {
+  "name": "Foliofin Okuma Masası",
+  "description": "Ortası paylaşılan keşifler için ayrılmış."
+ },
+ "tidefork_dining_table": {
+  "name": "Tidefork Yemek Masası",
+  "description": "Uzun akşam yemekleri onun çevresinde toplanmayı bilir."
+ },
+ "inkfold_writing_desk": {
+  "name": "Inkfold Yazı Masası",
+  "description": "Taze bir sayfa için temiz bir yer."
+ },
+ "reedparcel_console": {
+  "name": "Reedparcel Konsol Masası",
+  "description": "Anahtarlar ve cep hazineleri için bir iniş noktası."
+ },
+ "suppercoil_table": {
+  "name": "Suppercoil Masası",
+  "description": "Ayağa kalkmadan ekmeği uzat."
+ },
+ "patchspan_craft_table": {
+  "name": "Patchspan Zanaat Masası",
+  "description": "Gelecek vaat eden bir dağınıklık için bolca yer."
+ },
+ "quillnest_drafting_desk": {
+  "name": "Quillnest Çizim Masası",
+  "description": "Düz çizgiler ve başıboş fikirler eşit derecede hoş karşılanır."
+ },
+ "foamfold_picnic_table": {
+  "name": "Foamfold Piknik Masası",
+  "description": "Gölgeyle birlikte yer değiştiren bir öğle yemeğine hazır."
+ },
+ "glazewake_display_table": {
+  "name": "Glazewake Sergi Masası",
+  "description": "Her küçük buluntunun ışıkta parlayacağı bir an var."
+ },
+ "scrolltide_map_table": {
+  "name": "Scrolltide Harita Masası",
+  "description": "Yolculuklar burada planlanır, rotalar nazikçe tartışılır."
+ },
+ "hallhoney_banquet_table": {
+  "name": "Hallhoney Ziyafet Masası",
+  "description": "Paylaşılan yemekler ve ödünç sandalyeler için yapılmış."
+ },
+ "kinshipcoil_grand_table": {
+  "name": "Kinshipcoil Büyük Masası",
+  "description": "Bütün mahalle bu masayı kurmaya yardım edebilir."
+ },
+ "tuckbud_toddler_bed": {
+  "name": "Tuckbud Çocuk Yatağı",
+  "description": "Çok büyük hayaller, küçücük bir yatağa sığar."
+ },
+ "snoozeskein_single_bed": {
+  "name": "Snoozeskein Tek Kişilik Yatağı",
+  "description": "Hiçbir zaman uzun süre düzgün kalmayan derli toplu bir yorgan."
+ },
+ "driftpocket_trundle": {
+  "name": "Driftpocket Çekyatı",
+  "description": "Yedek bir yatak, ilk iyi geceler dileğinin altında saklanır."
+ },
+ "cloudburl_bunk": {
+  "name": "Cloudburl Ranzası",
+  "description": "Üst ranza, hayali bir gözcülük görevi ile birlikte gelir."
+ },
+ "hushwoven_double_bed": {
+  "name": "Hushwoven Çift Kişilik Yatağı",
+  "description": "Dokuma kamışlar, ağır ağır geçen sabahlara sessiz bir fon olur."
+ },
+ "mossmurmur_canopy_bed": {
+  "name": "Mossmurmur Baldaken Yatağı",
+  "description": "Odanın içinde minik bir oda."
+ },
+ "seamcloud_loft_bed": {
+  "name": "Seamcloud Yüksek Yatağı",
+  "description": "Rüyalar yukarıda, altta küçük bir saklanma köşesi."
+ },
+ "moonpurl_family_bed": {
+  "name": "Moonpurl Aile Yatağı",
+  "description": "Battaniyenin çoğunu evcil hayvanların kaptığı evler için."
+ },
+ "parcelpurl_cabinet": {
+  "name": "Parcelpurl Dolabı",
+  "description": "Saklamaya değer şeylere sessiz bir yuva."
+ },
+ "ribbonreef_dresser": {
+  "name": "Ribbonreef Şifonyeri",
+  "description": "Eşleşmeyen çoraplar bile düzgün bir çekmece bulur."
+ },
+ "foliobud_bookcase": {
+  "name": "Foliobud Kitaplığı",
+  "description": "Üstü, en sevilen süs eşyasının gözcü noktası."
+ },
+ "cratepetal_cubby": {
+  "name": "Cratepetal Gözlü Rafı",
+  "description": "Küçük bölmeler, içi rahatlatan bir düzen kurar."
+ },
+ "threadwake_wardrobe": {
+  "name": "Threadwake Gardırobu",
+  "description": "Hafifçe tuz kokan montlara geniş bir yuva."
+ },
+ "mottlehook_coat_stand": {
+  "name": "Mottlehook Portmantosu",
+  "description": "Şapkaları, ağacın uykulu kuşları tuttuğu gibi tutar."
+ },
+ "trinketshoal_chest": {
+  "name": "Trinketshoal Sandığı",
+  "description": "Kumsal buluntularının bütün pencere kenarlarını işgal etmesini önler."
+ },
+ "loomloop_low_shelf": {
+  "name": "Loomloop Alçak Rafı",
+  "description": "Sepetler ve küçük sergiler için uzun, alçak bir yuva."
+ },
+ "quayfold_locker": {
+  "name": "Quayfold Kilitli Dolabı",
+  "description": "İş gününün ıvır zıvırı bu özel dolapta saklanır."
+ },
+ "glazepocket_vitrine": {
+  "name": "Glazepocket Vitrini",
+  "description": "Minik koleksiyonlar bol bol görülmeyi hak eder."
+ },
+ "folioharbor_stack": {
+  "name": "Folioharbor Kitap Rafı",
+  "description": "Bu kütüphane koridorunun iki yanı da hikâyelerle dolu."
+ },
+ "marketmoss_wall_unit": {
+  "name": "Marketmoss Duvar Ünitesi",
+  "description": "Koca bir duvar boyunca her şeyi yerine koyacak yer var."
+ },
+ "ribbonhook_wall_rack": {
+  "name": "Ribbonhook Duvar Askılığı",
+  "description": "Önlükler ve kurdeleler burada birlikte bekleyebilir."
+ },
+ "parcelperch_wall_shelf": {
+  "name": "Parcelperch Duvar Rafı",
+  "description": "Dükkânın en küçük hazineleri için yüksek bir tünek."
+ },
+ "twineglow_floor_lamp": {
+  "name": "Twineglow Ayaklı Lambası",
+  "description": "Akşam sandalyesinin yanında yumuşak bir ışık halkası."
+ },
+ "moonhinge_arc_lamp": {
+  "name": "Moonhinge Kavisli Lambası",
+  "description": "Kanepenin üzerine uzanır, yine de yerine oturmaz."
+ },
+ "reedflare_tripod_lamp": {
+  "name": "Reedflare Üç Ayaklı Lambası",
+  "description": "Sıcak ışık, kamış örgüden dışarı göz atar."
+ },
+ "shellflick_sconce": {
+  "name": "Shellflick Apliği",
+  "description": "Duvarda küçük, sıcak bir deniz kabuğu."
+ },
+ "tidebeam_wall_light": {
+  "name": "Tidebeam Duvar Işığı",
+  "description": "Yoğun bir tezgâh için temiz bir ışık şeridi."
+ },
+ "petalwick_sconce": {
+  "name": "Petalwick Apliği",
+  "description": "Cam taç yaprakları geceleri hiç kapanmaz."
+ },
+ "quayglow_bulkhead": {
+  "name": "Quayglow Gemi Lambası",
+  "description": "Ruhen en fırtınalı yatak vakti masalına bile yetecek kadar sağlam."
+ },
+ "starplait_wall_lantern": {
+  "name": "Starplait Duvar Feneri",
+  "description": "Delikli metal kenarlarından minik yıldızlar sızıp kaçar."
+ },
+ "pebblewick_candle": {
+  "name": "Pebblewick Mumu",
+  "description": "Akşamın son fincanına minik bir parıltı eşlik eder."
+ },
+ "mothcup_table_lamp": {
+  "name": "Mothcup Masa Lambası",
+  "description": "Bitmemiş bir mektup yığınına sessiz bir arkadaş."
+ },
+ "dropletglow_lamp": {
+  "name": "Dropletglow Lambası",
+  "description": "Hava karardıktan sonra da kalan bir damla gün batımı."
+ },
+ "coilcap_desk_lamp": {
+  "name": "Coilcap Çalışma Lambası",
+  "description": "Sayfaya doğru nazikçe eğilir."
+ },
+ "marshwick_lantern": {
+  "name": "Marshwick Feneri",
+  "description": "Akşamın sıcacıklığından taşınabilir bir parça."
+ },
+ "pearlseed_light_bowl": {
+  "name": "Pearlseed Işık Kasesi",
+  "description": "Bir kase minik ışık, çok yumuşak bir kutlamaya yeter."
+ },
+ "toasthem_counter": {
+  "name": "Toasthem Tezgâhı",
+  "description": "Her ev yapımı kahvaltı burada sağlam bir başlangıç yapar."
+ },
+ "foamspout_sink": {
+  "name": "Foamspout Evyesi",
+  "description": "Kimsenin yıkamak istemediği kaseye yetecek kadar büyük."
+ },
+ "emberpleat_stove": {
+  "name": "Emberpleat Ocağı",
+  "description": "Bütün öğleden sonra kaynayacak çorbaya hazır."
+ },
+ "chillpetal_fridge": {
+  "name": "Chillpetal Buzdolabı",
+  "description": "İkinci porsiyonu aramanın en iyi yeri."
+ },
+ "crumbquay_island": {
+  "name": "Crumbquay Mutfak Adası",
+  "description": "Ek tezgâh alanı kılığına girmiş bir buluşma noktası."
+ },
+ "steamnest_dishwasher": {
+  "name": "Steamnest Bulaşık Makinesi",
+  "description": "Ev halkı mola verirken makine mırıldanır."
+ },
+ "hearthcoil_bake_oven": {
+  "name": "Hearthcoil Pişirme Fırını",
+  "description": "Çok yoğun bir pişirme gününün sıcak kalbi."
+ },
+ "panplait_wall_rack": {
+  "name": "Panplait Duvar Askılığı",
+  "description": "Tavalar küçük bir mutfak orkestrası gibi dizilir."
+ },
+ "butterburl_breadbox": {
+  "name": "Butterburl Ekmek Kutusu",
+  "description": "Sabah ekmeğini gözlerden uzak saklar."
+ },
+ "sprinklefin_spice_tray": {
+  "name": "Sprinklefin Baharat Tepsisi",
+  "description": "Birbirinden çok farklı kokuların minik bir dizisi."
+ },
+ "pourpetal_kettle": {
+  "name": "Pourpetal Çaydanlığı",
+  "description": "Her sabah ilk sözü çaydanlık söyler."
+ },
+ "whiskmoss_mixer": {
+  "name": "Whiskmoss Mikseri",
+  "description": "Sıradan bir hamuru küçük bir kutlamaya çevirir."
+ },
+ "crumbglint_toaster": {
+  "name": "Crumbglint Tost Makinesi",
+  "description": "Kahvaltı zamanının sabırlı bekçisi."
+ },
+ "shellpin_saltcellar": {
+  "name": "Shellpin Tuzluğu",
+  "description": "Sofraya bir tutam deniz kenarı."
+ },
+ "mistrail_vanity": {
+  "name": "Mistrail Lavabo Dolabı",
+  "description": "Küçük sabah ritüelleri için pırıl pırıl bir yüzey."
+ },
+ "foamfold_tub": {
+  "name": "Foamfold Küveti",
+  "description": "Ruhen yağmurlu bir günü içinde eritecek kadar derin."
+ },
+ "rainpebble_shower": {
+  "name": "Rainpebble Duşu",
+  "description": "Taze bir başlangıç, küçük bir cam köşede başlar."
+ },
+ "quietflush_loo": {
+  "name": "Quietflush Tuvaleti",
+  "description": "Yumuşak yuvarlak hatlara sahip, güvenilir bir banyo gereci."
+ },
+ "reedsteam_sauna": {
+  "name": "Reedsteam Saunası",
+  "description": "Sıcak sedir, dış dünyayı çok uzak hissettirir."
+ },
+ "foamloop_towel_rail": {
+  "name": "Foamloop Havluluğu",
+  "description": "Taze havlular derli toplu küçük bir sırada bekler."
+ },
+ "mistoval_mirror": {
+  "name": "Mistoval Aynası",
+  "description": "Ağırdan alınan sabahın sessiz yansıması."
+ },
+ "soapbud_dish": {
+  "name": "Soapbud Sabunluğu",
+  "description": "Kaygan küçük sabunun düzgün dinlenme yeri."
+ },
+ "linenpearl_towels": {
+  "name": "Linenpearl Havluları",
+  "description": "Özenle katlanır, törensizce ödünç alınır."
+ },
+ "steamseed_oil_tray": {
+  "name": "Steamseed Yağ Tepsisi",
+  "description": "Banyo rafı için birkaç sessiz koku."
+ },
+ "blinkpetal_cabinet": {
+  "name": "Blinkpetal Oyun Makinesi",
+  "description": "Düşen hayali taç yaprakları yakalamaya dair sevimli bir oyun."
+ },
+ "cloudcrank_twin_game": {
+  "name": "Cloudcrank İkili Oyun Makinesi",
+  "description": "İki komşu aynı saçma yüksek skorun peşinden koşabilir."
+ },
+ "foamcast_television": {
+  "name": "Foamcast Televizyonu",
+  "description": "Ortak bir kase atıştırmalıkla en güzel izlenen diziler için."
+ },
+ "hushcurrent_air_unit": {
+  "name": "Hushcurrent Klima Ünitesi",
+  "description": "Sohbetin altında yumuşak bir uğultu."
+ },
+ "pixelreed_wall_screen": {
+  "name": "Pixelreed Duvar Ekranı",
+  "description": "Film gecesine hazır, geniş ve boş bir ekran."
+ },
+ "softsignal_intercom": {
+  "name": "Softsignal Kapı Zili",
+  "description": "Kapıda kibar, küçük bir çınlama."
+ },
+ "tapfin_tablet": {
+  "name": "Tapfin Tableti",
+  "description": "Tarifler ve gezinen düşünceler küçük bir ekranda buluşur."
+ },
+ "hushdial_radio": {
+  "name": "Hushdial Radyosu",
+  "description": "Sessiz bir öğleden sonranın temposuna ayar tutar."
+ },
+ "whirrpetal_fan": {
+  "name": "Whirrpetal Vantilatörü",
+  "description": "Kâğıtları hiçbir zaman çok uzağa savurmayan minik bir esinti."
+ },
+ "clickspool_printer": {
+  "name": "Clickspool Yazıcısı",
+  "description": "Ortak bir fikri ellerinde tutabileceğin bir şeye çevirir."
+ },
+ "glowparcel_projector": {
+  "name": "Glowparcel Projeksiyonu",
+  "description": "Çok büyük akşam planları olan küçük bir kutu."
+ },
+ "chirpcoil_speaker": {
+  "name": "Chirpcoil Hoparlörü",
+  "description": "Her boş masa üstünde bir cep dolusu müzik."
+ },
+ "seamshore_runner": {
+  "name": "Seamshore Yolluğu",
+  "description": "Kapıdan çaydanlığa uzanan yumuşak bir yol."
+ },
+ "pebblepurl_rug": {
+  "name": "Pebblepurl Halısı",
+  "description": "Ayak altında çakıl olmadan çakıl desenleri."
+ },
+ "harborhem_carpet": {
+  "name": "Harborhem Moketi",
+  "description": "Koca bir odaya yetecek kadar deniz kenarı nakışı."
+ },
+ "tucktide_mat": {
+  "name": "Tucktide Paspası",
+  "description": "Minik bir kapı eşiğine minik bir karşılama."
+ },
+ "quiltshoal_rug": {
+  "name": "Quiltshoal Halısı",
+  "description": "Sanki içeride yaşamaya karar vermiş bir piknik battaniyesi."
+ },
+ "toastweft_runner": {
+  "name": "Toastweft Yolluğu",
+  "description": "Dokuma tostlardan bir iz kahvaltıya doğru uzanır."
+ },
+ "crumbcheck_mat": {
+  "name": "Crumbcheck Paspası",
+  "description": "Hayali kırıntıları kusursuz bir nezaketle yakalar."
+ },
+ "kettlelace_rug": {
+  "name": "Kettlelace Halısı",
+  "description": "Bu dokuma resimde çaydanlık hep ocakta."
+ },
+ "inksquare_mat": {
+  "name": "Inksquare Paspası",
+  "description": "Yoğun bir çalışma masasının altında sessiz bir alan."
+ },
+ "memoquay_runner": {
+  "name": "Memoquay Yolluğu",
+  "description": "Çalışma odasının içinden geçen uzun, yumuşak bir güzergâh."
+ },
+ "graphfoam_rug": {
+  "name": "Graphfoam Halısı",
+  "description": "Karelerin içinde durmayı reddeden fikirler için bir ızgara."
+ },
+ "stretchstitch_mat": {
+  "name": "Stretchstitch Paspası",
+  "description": "Günü esneyerek uyandırmaya yetecek boş, küçük bir alan."
+ },
+ "hoploop_training_mat": {
+  "name": "Hoploop Antrenman Matı",
+  "description": "Çok saçma bir ısınma hareketini denemek için yumuşak bir yer."
+ },
+ "bounceweave_floor_mat": {
+  "name": "Bounceweave Zemin Paspası",
+  "description": "Koca bir sabah esneme çemberine yetecek yer."
+ },
+ "leafmargin_rug": {
+  "name": "Leafmargin Halısı",
+  "description": "Kendi dokuma ayracı olan bir okuma köşesi."
+ },
+ "storybraid_runner": {
+  "name": "Storybraid Yolluğu",
+  "description": "Macera dolu raflar arasında yumuşak bir koridor."
+ },
+ "foliostar_carpet": {
+  "name": "Foliostar Moketi",
+  "description": "Çok küçük bir hikâye çemberi için cömert bir moket."
+ },
+ "mistweft_bath_mat": {
+  "name": "Mistweft Banyo Paspası",
+  "description": "Sessiz bir banyonun ardından sıcak bir iniş."
+ },
+ "reedripple_runner": {
+  "name": "Reedripple Yolluğu",
+  "description": "Dokuma dalgacıklar banyo kapısına doğru uzanır."
+ },
+ "steamquilt_rug": {
+  "name": "Steamquilt Halısı",
+  "description": "Sessizlik dolu odanın yumuşak karesi."
+ },
+ "keelknot_runner": {
+  "name": "Keelknot Yolluğu",
+  "description": "Mürettebat bölmesinden geçen derli toplu küçük bir yol."
+ },
+ "compasspurl_rug": {
+  "name": "Compasspurl Halısı",
+  "description": "Hep rahat bir oturma yerini gösterir."
+ },
+ "deckcheck_carpet": {
+  "name": "Deckcheck Moketi",
+  "description": "Limandan hiç ayrılmayan odaların güverte çizgileri."
+ },
+ "buttonbounce_mat": {
+  "name": "Buttonbounce Paspası",
+  "description": "Sıranın tekrar gelmesini beklerken durmak için yumuşak bir yer."
+ },
+ "prismhop_carpet": {
+  "name": "Prismhop Moketi",
+  "description": "Henüz kimsenin icat etmediği oyunların dokunmuş yolları."
+ },
+ "foliohour_clock": {
+  "name": "Foliohour Saati",
+  "description": "Okuma odasında zaman kibarca akıp gider."
+ },
+ "shellscript_print": {
+  "name": "Shellscript Baskısı",
+  "description": "Çok sıradan hazinelerin hayali saha rehberi."
+ },
+ "mossmargin_painting": {
+  "name": "Mossmargin Tablosu",
+  "description": "Henüz yazılmamış bir hikâyeden bir manzara."
+ },
+ "quillarc_mirror": {
+  "name": "Quillarc Aynası",
+  "description": "Dar bir okuma köşesini biraz daha ferah hissettirir."
+ },
+ "leafledger_wall_shelf": {
+  "name": "Leafledger Duvar Rafı",
+  "description": "En sevilen küçük keşiflerin yüksek kenarı."
+ },
+ "noteknot_board": {
+  "name": "Noteknot Panosu",
+  "description": "Mahallenin küçük hatırlatmalarını bıraktığı yer."
+ },
+ "ribbontide_flag": {
+  "name": "Ribbontide Bayrağı",
+  "description": "Başlıca kuralı nazik olmak olan kulübün bayrağı."
+ },
+ "pagepetal_poster": {
+  "name": "Pagepetal Posteri",
+  "description": "Yeni bir şey okumaya parlak bir davet."
+ },
+ "moonmargin_tapestry": {
+  "name": "Moonmargin Goblenı",
+  "description": "Keyifle sessiz kalan bir gece göğü."
+ },
+ "twiggleam_wall_planter": {
+  "name": "Twiggleam Duvar Saksılığı",
+  "description": "İlan panosuna küçük, yeşil bir arkadaş."
+ },
+ "coilpetal_mirror": {
+  "name": "Coilpetal Aynası",
+  "description": "Her mevsimi yansıtan bir çiçek."
+ },
+ "shellfolio_relief": {
+  "name": "Shellfolio Kabartması",
+  "description": "Hoş, dolgun hatlı bir deniz kabuğu etüdü."
+ },
+ "bookbeam_wall_shelf": {
+  "name": "Bookbeam Duvar Rafı",
+  "description": "Kütüphanenin en işlek masasının üstünde uzun bir kenar."
+ },
+ "letterwake_organizer": {
+  "name": "Letterwake Düzenleyicisi",
+  "description": "Mektupların masa üstünde koca bir manzaraya dönüşmesini engeller."
+ },
+ "cloudindex_mural": {
+  "name": "Cloudindex Duvar Resmi",
+  "description": "Koca bir duvar dolusu hayali hava durumu."
+ },
+ "scriptripple_scroll": {
+  "name": "Scriptripple Rulo Tablosu",
+  "description": "İşaretler neredeyse denizden gelen bir mesaja benziyor."
+ },
+ "sprouttick_clock": {
+  "name": "Sprouttick Saati",
+  "description": "Küçük bir yaprak öğleden sonraya başını sallayarak eşlik eder."
+ },
+ "hearthmargin_triptych": {
+  "name": "Hearthmargin Üçlü Tablosu",
+  "description": "Aynı misafirperver evin üç küçük manzarası."
+ },
+ "pagecove_books": {
+  "name": "Pagecove Kitapları",
+  "description": "Sıradaki üç macera şimdiden bekliyor."
+ },
+ "shellstem_vase": {
+  "name": "Shellstem Vazosu",
+  "description": "Bir avuç bulunmuş çiçeğin dar yuvası."
+ },
+ "acornquill_bookends": {
+  "name": "Acornquill Kitap Desteği",
+  "description": "Başıboş gezen kitapların sabırlı çift nöbetçisi."
+ },
+ "driftcurl_sculpture": {
+  "name": "Driftcurl Heykeli",
+  "description": "Öğleden sonra ışığını yakalayan küçük bir kıvrım."
+ },
+ "saltlatch_door": {
+  "name": "Saltlatch Kapısı",
+  "description": "Evden neşeli bir ilk merhaba."
+ },
+ "shorecross_window": {
+  "name": "Shorecross Penceresi",
+  "description": "Dört camdan çok değişken tek bir gök izlenir."
+ },
+ "hearthoval_window": {
+  "name": "Hearthoval Penceresi",
+  "description": "Kahvaltı köşesinden yumuşak, yuvarlak bir manzara."
+ },
+ "tidepair_french_doors": {
+  "name": "Tidepair Fransız Kapısı",
+  "description": "Odayı hayali bir deniz meltemine açar."
+ },
+ "reedslide_screen_door": {
+  "name": "Reedslide Sineklikli Kapısı",
+  "description": "Işığı yine de geçiren nazik bir sınır."
+ },
+ "shopbell_glass_door": {
+  "name": "Shopbell Cam Kapısı",
+  "description": "Küçük zil bütün müdavimleri tanır."
+ },
+ "bayparcel_window": {
+  "name": "Bayparcel Penceresi",
+  "description": "Hareketli bir odanın üstünde üç cömert cam."
+ },
+ "stargill_round_window": {
+  "name": "Stargill Yuvarlak Penceresi",
+  "description": "Minik, yuvarlak bir gün ışığı lekesi."
+ },
+ "archhem_entry": {
+  "name": "Archhem Girişi",
+  "description": "Tepesinde sevimli bir kavis olan bir giriş."
+ },
+ "tilebloom_window": {
+  "name": "Tilebloom Penceresi",
+  "description": "Güneş ışığı taç yaprağı biçimli lekeler halinde gelir."
+ },
+ "frostpurl_glazed_door": {
+  "name": "Frostpurl Camlı Kapısı",
+  "description": "Mahremiyet isteyen odanın sessiz kapısı."
+ },
+ "ribbonpane_storefront": {
+  "name": "Ribbonpane Dükkân Vitrini",
+  "description": "Dükkâncının bu hafta neyi seviyorsa, ona geniş bir bakış."
+ },
+ "deckseal_hatch": {
+  "name": "Deckseal Kapağı",
+  "description": "Gemi odalarının sağlam, küçük kapısı."
+ },
+ "hedgepeek_garden_door": {
+  "name": "Hedgepeek Bahçe Kapısı",
+  "description": "Ardında bir şeylerin büyüdüğünü vaat eder gibi duran bir kapı."
+ },
+ "twintide_shutters": {
+  "name": "Twintide Panjurları",
+  "description": "Güneşli odanın derli toplu göz kapakları."
+ },
+ "sunthread_clerestory": {
+  "name": "Sunthread Üst Penceresi",
+  "description": "Mobilyaların üstünde bir gün ışığı şeridi."
+ },
+ "sprigpleat_fern": {
+  "name": "Sprigpleat Eğrelti Otu",
+  "description": "Yaprakları her ışık lekesine doğru eğilir."
+ },
+ "palmparcel_tree": {
+  "name": "Palmparcel Ağacı",
+  "description": "Cömert bir gölge alanı olan derli toplu bir palmiye."
+ },
+ "leafcoil_fig": {
+  "name": "Leafcoil İncir Ağacı",
+  "description": "En uzun pencerenin yapraklı arkadaşı."
+ },
+ "bloomcradle_trough": {
+  "name": "Bloomcradle Uzun Saksısı",
+  "description": "Dar, güneşli köşenin uzun, küçük bahçesi."
+ },
+ "mossnest_terrarium": {
+  "name": "Mossnest Teraryumu",
+  "description": "Kendi cam ufku olan minik bir manzara."
+ },
+ "fruitwhorl_planter": {
+  "name": "Fruitwhorl Saksılığı",
+  "description": "Küçük meyve, büyük hırslar."
+ },
+ "fernharbor_garden_bed": {
+  "name": "Fernharbor Bahçe Yatağı",
+  "description": "Derli toplu bir kenarlığın içinde duran koca bir cep bahçesi."
+ },
+ "ivyenvelope_wall_pot": {
+  "name": "Ivyenvelope Duvar Saksısı",
+  "description": "Odaya yazılmış canlı bir mektup."
+ },
+ "petalledge_flowerbox": {
+  "name": "Petalledge Çiçekliği",
+  "description": "Bir sıra çiçek pencereye arkadaşlık eder."
+ },
+ "fernframe_living_panel": {
+  "name": "Fernframe Yaşayan Paneli",
+  "description": "Duvara tırmanan bir bahçe parçası."
+ },
+ "sproutpocket_wall_trio": {
+  "name": "Sproutpocket Üçlü Duvar Saksısı",
+  "description": "Dikey bir sırada üç küçük bahçe."
+ },
+ "clovercup_pot": {
+  "name": "Clovercup Saksısı",
+  "description": "Mutfak masasının minik, yeşil misafiri."
+ },
+ "needlepearl_cactus": {
+  "name": "Needlepearl Kaktüsü",
+  "description": "Mükemmel masa adabı olan dikenli küçük bir bitki."
+ },
+ "mintbundle_herb_tin": {
+  "name": "Mintbundle Bitki Tenekesi",
+  "description": "Taze küçük bir dal hep yakında."
+ },
+ "petalquill_bud_vase": {
+  "name": "Petalquill Tomurcuk Vazosu",
+  "description": "Bu minik vaza için tek bir çiçek yeterli."
+ },
+ "mossmarble_bowl": {
+  "name": "Mossmarble Kasesi",
+  "description": "Bir çay fincanının yanına sığan minyatür bir bahçe."
+ },
+ "pawpurl_basket": {
+  "name": "Pawpurl Sepeti",
+  "description": "Çok önemli bir şekerlemenin küçük yuvası."
+ },
+ "nibblequay_feeder": {
+  "name": "Nibblequay Mamalığı",
+  "description": "Evin en küçük müdavimlerine akşam yemeği."
+ },
+ "clawcoil_tower": {
+  "name": "Clawcoil Tırmanma Kulesi",
+  "description": "Tırmalamaya bolca yer olan özel bir gözcü noktası."
+ },
+ "whiskerfold_hutch": {
+  "name": "Whiskerfold Kafesi",
+  "description": "Cömert bir ön verandalı, rahat küçük bir yuva."
+ },
+ "finbubble_tank": {
+  "name": "Finbubble Akvaryumu",
+  "description": "Kanepenin yanında sessiz küçük bir su dünyası."
+ },
+ "pawdrift_grooming_table": {
+  "name": "Pawdrift Bakım Masası",
+  "description": "Kumlu tüyleri taramak için sabırlı bir platform."
+ },
+ "burrowloop_playhouse": {
+  "name": "Burrowloop Oyun Evi",
+  "description": "Her kapı bir başka harika saklanma yerine açılır."
+ },
+ "splashwhisk_pet_pool": {
+  "name": "Splashwhisk Patili Havuzu",
+  "description": "Suyu seven patilerin sığ sıçrama noktası."
+ },
+ "pawstep_wall_perch": {
+  "name": "Pawstep Duvar Tüneği",
+  "description": "Bütün evi yukarıdan gözetlemenin yeri."
+ },
+ "treatparcel_jar": {
+  "name": "Treatparcel Kavanozu",
+  "description": "Kapağının sesi herkesi koşa koşa getirir."
+ },
+ "ringripple_toss": {
+  "name": "Ringripple Atma Oyunu",
+  "description": "Çok hoşgörülü bir skor tutucunun yönettiği küçük bir yarışma."
+ },
+ "puffparcel_plush": {
+  "name": "Puffparcel Peluşu",
+  "description": "Hiçbir konuda özel fikri olmayan yumuşak bir arkadaş."
+ },
+ "marblequay_track": {
+  "name": "Marblequay Bilye Pisti",
+  "description": "Neşeli bir tıkırtıyla biten küçük bir yuvarlanma yolculuğu."
+ },
+ "foosprig_table": {
+  "name": "Foosprig Langırt Masası",
+  "description": "Minik oyuncular, şaşırtıcı derecede ciddi dostluk maçları."
+ },
+ "clawberry_prize_game": {
+  "name": "Clawberry Ödül Makinesi",
+  "description": "Her ödül yeni bir yuvadan hoşlanacak gibi duruyor."
+ },
+ "hopshoal_dance_deck": {
+  "name": "Hopshoal Dans Zemini",
+  "description": "Neşeyle doğaçlanan dans adımları için parlak bir zemin."
+ },
+ "rollpetal_ball_lane": {
+  "name": "Rollpetal Top Yolu",
+  "description": "Küçük bir tahta topu umut dolu bir yolculuğa uğurla."
+ },
+ "scorepurl_poster": {
+  "name": "Scorepurl Posteri",
+  "description": "Herkesin kendi rekorunu kutlayacağı bir yer."
+ },
+ "tiletwirl_puzzle": {
+  "name": "Tiletwirl Yapbozu",
+  "description": "Keyifle acelesiz bir öğleden sonra için minik bir yapboz."
+ },
+ "pawnpebble_board": {
+  "name": "Pawnpebble Oyun Tahtası",
+  "description": "Kuralları birlikte öğrenmeye bir davet."
+ },
+ "blockbloom_set": {
+  "name": "Blockbloom Oyun Seti",
+  "description": "Mahallenin en küçük silüeti."
+ },
+ "dicewhorl_cup": {
+  "name": "Dicewhorl Zar Kupası",
+  "description": "Umut dolu bir atıştan önce yumuşak bir şıkırtı."
+ },
+ "noteburl_upright": {
+  "name": "Noteburl Piyanosu",
+  "description": "Çalışmak ve tesadüfi düetler için sıcak bir piyano."
+ },
+ "brasspetal_harp": {
+  "name": "Brasspetal Arpı",
+  "description": "Sessiz notaları tavana doğru süzülüyor gibi."
+ },
+ "beatquay_drum_kit": {
+  "name": "Beatquay Bateri Seti",
+  "description": "Harika derecede coşkulu bir prova yapmaya yetecek kadar davul."
+ },
+ "windspool_organ": {
+  "name": "Windspool Orgu",
+  "description": "Tek bir ahşap dolapta bütün bir minik koro."
+ },
+ "chordpetal_floor_stand": {
+  "name": "Chordpetal Zemin Standı",
+  "description": "Sevilen bir enstrümanı bir sonraki melodiye hazır tutar."
+ },
+ "noteloop_wall_rack": {
+  "name": "Noteloop Duvar Askılığı",
+  "description": "Provalar arasında derli toplu bir dinlenme yeri."
+ },
+ "rehearsalbud_poster": {
+  "name": "Rehearsalbud Posteri",
+  "description": "Birlikte biraz gürültü yapmaya davet."
+ },
+ "chimecup_bells": {
+  "name": "Chimecup Çanları",
+  "description": "Yumuşak bir başlangıç için üç küçük nota."
+ },
+ "thumbtide_lyre": {
+  "name": "Thumbtide Liri",
+  "description": "Samimi bir masa üstü konseri için küçük bir enstrüman."
+ },
+ "shadecoil_parasol": {
+  "name": "Shadecoil Şemsiyesi",
+  "description": "Taşınabilir, cömert bir gölge alanı."
+ },
+ "sandparcel_cabana": {
+  "name": "Sandparcel Plaj Kabini",
+  "description": "Uzun bir kumsal öğleden sonrası için küçük, özel bir köşe."
+ },
+ "beachburl_lounger": {
+  "name": "Beachburl Şezlongu",
+  "description": "Arkalığı yavaş bulutları izlemeye göre ayarlı."
+ },
+ "spritzshore_shower": {
+  "name": "Spritzshore Duşu",
+  "description": "Eve yürümeden önce kumsalı üstünden yıkar."
+ },
+ "boardwalkbud_kiosk": {
+  "name": "Boardwalkbud Büfesi",
+  "description": "Soğuk bir içecek ve uzun bir sohbet için minik bir mola yeri."
+ },
+ "driftbarrow_cart": {
+  "name": "Driftbarrow Arabası",
+  "description": "Kimsenin almayı düşünmediğinden fazla saksı taşır."
+ },
+ "rainpocket_barrel": {
+  "name": "Rainpocket Fıçısı",
+  "description": "Susamış bir sonraki öğleden sonra için küçük bir yağmur deposu."
+ },
+ "coastcurl_firepit": {
+  "name": "Coastcurl Ateş Çukuru",
+  "description": "Gün batımını aşan hikâyeler için sıcak bir merkez."
+ },
+ "gullstitch_picnic_bench": {
+  "name": "Gullstitch Piknik Bankı",
+  "description": "Kumlu ayakkabılı insanlar için uzun bir bank."
+ },
+ "shorebob_lifeguard_seat": {
+  "name": "Shorebob Cankurtaran Kulesi",
+  "description": "Bütün kumsala göz kulak olmak için yüksek bir tünek."
+ },
+ "wavecradle_hammock": {
+  "name": "Wavecradle Hamağı",
+  "description": "Öğleden sonranın nasıl geçtiğini unutturan yumuşak bir yer."
+ },
+ "sandskein_pergola": {
+  "name": "Sandskein Pergolası",
+  "description": "Çoğunlukla gölgeden yapılmış koca bir açık hava odası."
+ },
+ "shellspray_fountain": {
+  "name": "Shellspray Çeşmesi",
+  "description": "Küçük bir şırıltı avluya arkadaşlık eder."
+ },
+ "boardbloom_stage": {
+  "name": "Boardbloom Sahnesi",
+  "description": "Şarkılar, konuşmalar ve utangaç ilk gösteriler için alçak bir sahne."
+ },
+ "beachcurl_flag": {
+  "name": "Beachcurl Bayrağı",
+  "description": "Kumsal kulübünün açık olduğunun parlak bir işareti."
+ },
+ "shellparcel_bowl": {
+  "name": "Shellparcel Kasesi",
+  "description": "Çok uzun bir kumsal yürüyüşünden küçük bir koleksiyon."
+ },
+ "hushknit_scarecrow": {
+  "name": "Hushknit Korkuluğu",
+  "description": "Tek korkutucu yeteneği şapkasını kaybetmek."
+ },
+ "moonmoth_wreath": {
+  "name": "Moonmoth Çelengi",
+  "description": "Ayaz sonbahar akşamları için yumuşak bir karşılama."
+ },
+ "pumpkinpurl_candle": {
+  "name": "Pumpkinpurl Mumu",
+  "description": "Şömine rafı için küçük, sıcak bir balkabağı."
+ },
+ "frostparcel_sleigh": {
+  "name": "Frostparcel Kızağı",
+  "description": "Baştan sona hikâyelerle anlatılan yolculuklar için kışlık bir koltuk."
+ },
+ "snowletter_garland": {
+  "name": "Snowletter Girlandı",
+  "description": "Her küçük zarf yazılmamış bir kış dileği taşır."
+ },
+ "mittenmoss_globe": {
+  "name": "Mittenmoss Kar Küresi",
+  "description": "Tek elin içine sığan sessiz bir kar yağışı."
+ },
+ "wishpetal_pavilion": {
+  "name": "Wishpetal Köşkü",
+  "description": "Yılın ilk ortak yemeği için ışıl ışıl bir buluşma yeri."
+ },
+ "knotquay_banner": {
+  "name": "Knotquay Pankartı",
+  "description": "Duvara düzgünce bağlanmış parlak bir dilek."
+ },
+ "wishbud_lantern": {
+  "name": "Wishbud Feneri",
+  "description": "Umut dolu bir masa için küçük bir fener."
+ },
+ "petalparcel_wagon": {
+  "name": "Petalparcel Arabası",
+  "description": "Kapı eşiğine kucak dolusu bahar getirir."
+ },
+ "springskein_wreath": {
+  "name": "Springskein Çelengi",
+  "description": "İlk sıcak esinti için bir çiçek çemberi."
+ },
+ "budbasket_eggs": {
+  "name": "Budbasket Yumurtaları",
+  "description": "Neşeli bahar renklerinden küçük bir sepet."
+ },
+ "memobud_desk": {
+  "name": "Memobud Çalışma Masası",
+  "description": "Günün ortak projesine başlamak için ferah bir yer."
+ },
+ "quillcurrent_chair": {
+  "name": "Quillcurrent Sandalyesi",
+  "description": "Masa ile bisküvi kutusu arasında sessizce yuvarlanır."
+ },
+ "inktray_file_cabinet": {
+  "name": "Inktray Dosya Dolabı",
+  "description": "Sonradan önemi anlaşılacak kâğıtlar için derli toplu bir yuva."
+ },
+ "memoquay_reception_desk": {
+  "name": "Memoquay Resepsiyon Masası",
+  "description": "Güler yüzlü bir merhaba ve işe yarar bir cevap burada başlar."
+ },
+ "folioloop_meeting_table": {
+  "name": "Folioloop Toplantı Masası",
+  "description": "Herkesin notlarına ve ortak bir demliğe yetecek kadar büyük."
+ },
+ "quietparcel_phone_booth": {
+  "name": "Quietparcel Telefon Kulübesi",
+  "description": "Hareketli bir odanın içinde küçük, sessiz bir oda."
+ },
+ "paperpetal_copier": {
+  "name": "Paperpetal Fotokopi Makinesi",
+  "description": "Gözden geçirilmiş planın bir kopyasını daha sabırla çıkarır."
+ },
+ "clipshore_mail_sorter": {
+  "name": "Clipshore Posta Ayırıcısı",
+  "description": "Her mektubun beklemek için küçük bir yeri var."
+ },
+ "inkharbor_workstation": {
+  "name": "Inkharbor Çalışma İstasyonu",
+  "description": "Birlikte daha iyi işleyen fikirler için bir masa adası."
+ },
+ "memosip_water_cooler": {
+  "name": "Memosip Su Sebili",
+  "description": "Gerçek toplantıların arasındaki gayriresmî buluşma noktası."
+ },
+ "planpurl_whiteboard": {
+  "name": "Planpurl Beyaz Tahtası",
+  "description": "Henüz şeklini bulmakta olan bir plan için boş bir duvar."
+ },
+ "shiftfin_wall_clock": {
+  "name": "Shiftfin Duvar Saati",
+  "description": "İş gününü makul bir tempoda akıtır."
+ },
+ "taskleaf_noticeboard": {
+  "name": "Taskleaf İlan Panosu",
+  "description": "Bu odayı paylaşan ekibin küçük hatırlatmaları."
+ },
+ "nibnest_pen_cup": {
+  "name": "Nibnest Kalemliği",
+  "description": "Genelde ortadan kaybolan kalemlerin buluşma noktası."
+ },
+ "paperwave_letter_tray": {
+  "name": "Paperwave Mektup Tepsisi",
+  "description": "Öğleden sonra postası için küçük bir düzen."
+ },
+ "clipcoil_stapler": {
+  "name": "Clipcoil Zımbası",
+  "description": "Dağınık uçları sessizce bir arada tutar."
+ },
+ "memonest_desk_calendar": {
+  "name": "Memonest Masa Takvimi",
+  "description": "Hatırlanmaya değer sıradan günler burada işaretlenir."
+ },
+ "quillpearl_stamp_set": {
+  "name": "Quillpearl Mühür Seti",
+  "description": "Evrak işlerini biraz daha resmî hissettirir."
+ },
+ "crustquay_service_counter": {
+  "name": "Crustquay Servis Tezgâhı",
+  "description": "Sabahın ilk siparişi için davetkâr bir tezgâh."
+ },
+ "sugarfin_display_case": {
+  "name": "Sugarfin Sergi Vitrini",
+  "description": "Her tepsi yürümeyi bırakmak için iyi bir sebep gibi görünür."
+ },
+ "foamcoil_brew_station": {
+  "name": "Foamcoil Demleme İstasyonu",
+  "description": "Kafenin gününü başlatan sıcak tıslama."
+ },
+ "crumbhuddle_booth": {
+  "name": "Crumbhuddle Loca Koltuğu",
+  "description": "Tatlı bir şeyin başında hasret gidermek için sevilen bir köşe."
+ },
+ "teapurl_bistro_table": {
+  "name": "Teapurl Bistro Masası",
+  "description": "Kimseyi acele ettirmeye hiç niyeti olmayan küçük bir masa."
+ },
+ "sipspool_bar_stool": {
+  "name": "Sipspool Bar Taburesi",
+  "description": "Sıcak içecek yapma sanatını en ön sıradan izleten yer."
+ },
+ "gelatide_cold_cart": {
+  "name": "Gelatide Soğuk İçecek Arabası",
+  "description": "Öğleden sonranın en sıcak saatleri için serin küçük bir araba."
+ },
+ "crustbloom_bread_stand": {
+  "name": "Crustbloom Ekmek Standı",
+  "description": "Somunlar seçilmeyi umuyormuş gibi öne doğru eğilir."
+ },
+ "pantryparcel_tea_shelf": {
+  "name": "Pantryparcel Çay Rafı",
+  "description": "Demlenecek şeylerden oluşan koca bir kütüphane."
+ },
+ "menuwhorl_board": {
+  "name": "Menuwhorl Menü Tahtası",
+  "description": "Günün ikramları sevimli çerçevesinin içine tam oturur."
+ },
+ "crumbcrest_shop_sign": {
+  "name": "Crumbcrest Dükkân Tabelası",
+  "description": "Herkesin zaten tanıdığı kokunun sade tabelası."
+ },
+ "sipminute_clock": {
+  "name": "Sipminute Saati",
+  "description": "Hep bir fincan daha içmeye vakit olduğunu söyler gibi."
+ },
+ "foamleaf_cappuccino": {
+  "name": "Foamleaf Kapuçinosu",
+  "description": "Sabahın ilk sıcak içeceğinin üstünde küçük bir yaprak yüzer."
+ },
+ "crumbparcel_cake_stand": {
+  "name": "Crumbparcel Pasta Standı",
+  "description": "Kafenin en gurur duyduğu hamur işi için minik bir sahne."
+ },
+ "teacoil_pot": {
+  "name": "Teacoil Demliği",
+  "description": "Acele etmeyen bir sohbete yetecek kadar çay."
+ },
+ "sugarpocket_caddy": {
+  "name": "Sugarpocket Şeker Kutusu",
+  "description": "Bütün küçük ekstralar tek bir yerde."
+ },
+ "beanwhirl_grinder": {
+  "name": "Beanwhirl Kahve Değirmeni",
+  "description": "Küçük bir kol çevirmek çok güzel bir kokuyu başlatır."
+ },
+ "toastpetal_plate": {
+  "name": "Toastpetal Tabağı",
+  "description": "Büyük bir özenle sunulan sade bir kahvaltı."
+ },
+ "threadquay_sewing_desk": {
+  "name": "Threadquay Dikiş Masası",
+  "description": "Bir artık parçayı işe yarar bir şeye çevirmek için düz bir yer."
+ },
+ "claywhorl_pottery_wheel": {
+  "name": "Claywhorl Çömlek Çarkı",
+  "description": "Harika derecede eğri büğrü ilk kase için dönen bir başlangıç."
+ },
+ "canvasbud_easel": {
+  "name": "Canvasbud Şövalesi",
+  "description": "Hiçbir beklentisi olmayan boş bir tuval."
+ },
+ "loomharbor_frame": {
+  "name": "Loomharbor Çerçevesi",
+  "description": "Yavaş yavaş büyüyen bir kumaş parçası için sabırlı bir çerçeve."
+ },
+ "needleparcel_craft_cabinet": {
+  "name": "Needleparcel Zanaat Dolabı",
+  "description": "Eskiden kaybolan her küçük şey için bir çekmece."
+ },
+ "printpetal_press": {
+  "name": "Printpetal Baskı Presi",
+  "description": "Her seferinde özenli bir tur çevirerek küçük bir sanat yapar."
+ },
+ "glazecoil_kiln": {
+  "name": "Glazecoil Fırını",
+  "description": "Yeni şekillenmiş kil için sıcak bir bekleme odası."
+ },
+ "spindlefoam_worktable": {
+  "name": "Spindlefoam İş Tezgâhı",
+  "description": "Yayılması gereken projelerin ortak masası."
+ },
+ "starpetal_telescope": {
+  "name": "Starpetal Teleskobu",
+  "description": "Çok uzak hayaller için sabırlı bir alet."
+ },
+ "clickpetal_camera_stand": {
+  "name": "Clickpetal Kamera Standı",
+  "description": "Odayı tam bugün olduğu gibi hatırlamaya hazır."
+ },
+ "modelshoal_rail_table": {
+  "name": "Modelshoal Raylı Masası",
+  "description": "Tek bir masa üstüne sığdırılmış bütün bir minik yolculuk."
+ },
+ "patchharbor_quilt_frame": {
+  "name": "Patchharbor Yorgan Çerçevesi",
+  "description": "Birçok elin yaptığı bir battaniye için büyük bir çerçeve."
+ },
+ "toolpetal_pegboard": {
+  "name": "Toolpetal Askı Panosu",
+  "description": "Her alete, eve dönebileceği bir kontur çizilmiştir."
+ },
+ "stitchmap_pattern_poster": {
+  "name": "Stitchmap Desen Posteri",
+  "description": "Çok küçük bir dikiş macerası için duvar boyutunda bir harita."
+ },
+ "threadnest_spools": {
+  "name": "Threadnest Makaraları",
+  "description": "Bir plana dönüşmeyi bekleyen rengârenk bir karmaşa."
+ },
+ "paintpearl_palette": {
+  "name": "Paintpearl Paleti",
+  "description": "Tuvalin yanında renklerden küçük bir ada."
+ },
+ "claybud_bowl_set": {
+  "name": "Claybud Kase Seti",
+  "description": "Elde yapılmış sallantılarıyla gurur duyan bir kase yığını."
+ },
+ "scrapfin_album": {
+  "name": "Scrapfin Albümü",
+  "description": "Çekmecede bırakılamayacak kadar güzel anılar için küçük bir yuva."
+ },
+ "stepcurrent_treadmill": {
+  "name": "Stepcurrent Koşu Bandı",
+  "description": "Deniz kenarının havası uymadığında küçük bir iç mekân yürüyüşü."
+ },
+ "pedalpetal_cycle": {
+  "name": "Pedalpetal Bisikleti",
+  "description": "Her zaman tam çaydanlığın başında biten bir sürüş."
+ },
+ "rowripple_machine": {
+  "name": "Rowripple Kürek Makinesi",
+  "description": "Teknesiz günler için karada kürek çekme."
+ },
+ "barbellbloom_rack": {
+  "name": "Barbellbloom Halter Rafı",
+  "description": "Göründüğünden ağır şeyler için derli toplu bir yer."
+ },
+ "presspurl_bench": {
+  "name": "Presspurl Bankı",
+  "description": "Her gün biraz daha fazla çaba için sağlam bir zemin."
+ },
+ "stretchfin_barre": {
+  "name": "Stretchfin Bale Barı",
+  "description": "Yavaş ve dikkatli bir esneme için uzun, sağlam bir bar."
+ },
+ "punchparcel_bag": {
+  "name": "Punchparcel Boks Torbası",
+  "description": "Artan enerji için yumuşak bir hedef."
+ },
+ "climbquay_frame": {
+  "name": "Climbquay Tırmanma İskelesi",
+  "description": "Biraz daha yükseğe uzanmak için sağlam bir merdiven."
+ },
+ "balancebud_beam": {
+  "name": "Balancebud Denge Kirişi",
+  "description": "Yavaş adımlar ve iki yana açılmış kollar için dar bir yol."
+ },
+ "rollshore_stretch_rack": {
+  "name": "Rollshore Esneme Rafı",
+  "description": "Kulübün en yumuşak ekipmanı için derli toplu bir dinlenme yeri."
+ },
+ "liftleaf_cable_station": {
+  "name": "Liftleaf Kablo İstasyonu",
+  "description": "Ölçülü hareketler ve istikrarlı ilerleme için koca bir köşe."
+ },
+ "hopcurrent_stepper": {
+  "name": "Hopcurrent Steppleri",
+  "description": "Her an bir adım daha atmaya hazır küçük bir merdiven."
+ },
+ "bouncepearl_ball_cradle": {
+  "name": "Bouncepearl Top Beşiği",
+  "description": "En çok zıplayan ekipmanın odayı keşfe çıkmasını önler."
+ },
+ "sweatstitch_locker_bank": {
+  "name": "Sweatstitch Dolap Sırası",
+  "description": "Montlar ve yedek çoraplar için güvenli küçük yuvalardan oluşan bir sıra."
+ },
+ "motionharbor_rig": {
+  "name": "Motionharbor Çalışma Kafesi",
+  "description": "Tek bir sağlam kafeste koca bir odaya yetecek hareket."
+ },
+ "formripple_mirror": {
+  "name": "Formripple Aynası",
+  "description": "Dikkatli bir esnemeyi kontrol etmek için geniş bir yansıma."
+ },
+ "mortarbud_half_wall": {
+  "name": "Mortarbud Yarım Duvarı",
+  "description": "Odanın kenarını belirler ama sohbeti gizlemez."
+ },
+ "plasterpurl_half_wall": {
+  "name": "Plasterpurl Yarım Duvarı",
+  "description": "Hâlâ ışık dolu bir oda için sade bir sınır."
+ },
+ "slatshoal_divider": {
+  "name": "Slatshoal Bölmesi",
+  "description": "Bir alanı bölerken arada küçük bakışlara yer bırakır."
+ },
+ "reedfold_screen": {
+  "name": "Reedfold Paravanı",
+  "description": "Hareketli bir ev için katlanır bir mahremiyet köşesi."
+ },
+ "glasspetal_panel": {
+  "name": "Glasspetal Paneli",
+  "description": "Odayı ferah tutan şeffaf bir sınır."
+ },
+ "frostveil_panel": {
+  "name": "Frostveil Paneli",
+  "description": "Işığı geçirirken biraz mahremiyeti korur."
+ },
+ "brickwhorl_column": {
+  "name": "Brickwhorl Sütunu",
+  "description": "İki oda arasında sağlam bir noktalama işareti."
+ },
+ "flutebud_column": {
+  "name": "Flutebud Sütunu",
+  "description": "Gündelik bir kapı aralığına biraz tören katar."
+ },
+ "archparcel_frame": {
+  "name": "Archparcel Çerçevesi",
+  "description": "Bir odadan ötekine açık bir davet."
+ },
+ "beamloop_arch": {
+  "name": "Beamloop Kemeri",
+  "description": "Bir dizi minik ışık için hazır, ahşap bir geçit."
+ },
+ "picketpurl_fence": {
+  "name": "Picketpurl Çiti",
+  "description": "Çok küçük bir bahçe için sevimli bir sınır."
+ },
+ "ropewake_railing": {
+  "name": "Ropewake Korkuluğu",
+  "description": "Deniz kenarı alışkanlığı olan yumuşak görünümlü bir sınır."
+ },
+ "ironpetal_railing": {
+  "name": "Ironpetal Korkuluğu",
+  "description": "Basamaklar ve platformlar için zarif küçük bir korkuluk."
+ },
+ "hedgeparcel_wall": {
+  "name": "Hedgeparcel Duvarı",
+  "description": "Her köşeyi bahçe gibi hissettiren yapraklı bir duvar."
+ },
+ "curtaincove_stand": {
+  "name": "Curtaincove Perde Standı",
+  "description": "Sessiz küçük bir köşenin etrafına yumuşak bir perde çekin."
+ },
+ "canvasquill_divider": {
+  "name": "Canvasquill Bölmesi",
+  "description": "Bir stüdyonun şeklini değiştirmek için hafif bir bölme."
+ },
+ "gatebud_picket_gate": {
+  "name": "Gatebud Çit Kapısı",
+  "description": "Çok davetkâr bir sürgüsü olan küçük bir kapı."
+ },
+ "latchreef_iron_gate": {
+  "name": "Latchreef Demir Kapısı",
+  "description": "Avlu girişinde daha resmî bir merhaba."
+ },
+ "stepstitch_low_steps": {
+  "name": "Stepstitch Alçak Basamakları",
+  "description": "Biraz daha iyi bir manzaraya giden iki kolay adım."
+ },
+ "terracecoil_stair": {
+  "name": "Terracecoil Merdiveni",
+  "description": "Yüksekliği değişen bir oda için geniş, küçük bir merdiven."
+ },
+ "deckparcel_platform": {
+  "name": "Deckparcel Platformu",
+  "description": "Bir okuma köşesini telaşın biraz üstüne kaldırır."
+ },
+ "gatherbud_platform": {
+  "name": "Gatherbud Platformu",
+  "description": "Ortak bir sahne ya da salon için cömert bir temel."
+ },
+ "cornerquay_half_wall": {
+  "name": "Cornerquay Yarım Duvarı",
+  "description": "Açık bir zemini sıcacık bir köşeye dönüştürür."
+ },
+ "latticeleaf_divider": {
+  "name": "Latticeleaf Bölmesi",
+  "description": "Işığın dolaşmasına yer bırakan, bahçemsi bir bölme."
+ },
+ "keelquilt_crew_bunk": {
+  "name": "Keelquilt Mürettebat Ranzası",
+  "description": "Çok sakin bir deniz rüyası için iki rahat ranza yeri."
+ },
+ "chartcoil_captain_desk": {
+  "name": "Chartcoil Kaptan Masası",
+  "description": "Bir sonraki sakin seferi planlamak için sağlam bir yer."
+ },
+ "helmwhorl_wheel_stand": {
+  "name": "Helmwhorl Dümen Standı",
+  "description": "Geminin yönü sevimli, tombul ellerde."
+ },
+ "anchorpurl_capstan": {
+  "name": "Anchorpurl Çıkrığı",
+  "description": "Hayali çapa nöbeti için sağlam bir güverte donanımı."
+ },
+ "ropeskein_coil_crate": {
+  "name": "Ropeskein Halat Sandığı",
+  "description": "Faydalı bir halat hep bir tur daha sarılmak ister."
+ },
+ "sailparcel_mast": {
+  "name": "Sailparcel Direği",
+  "description": "Hafif bir liman meltemine hazır küçük bir direk."
+ },
+ "hullbloom_dinghy": {
+  "name": "Hullbloom Botu",
+  "description": "Deniz kenarı hikâyeleriyle dolu bir oda için küçük bir tekne."
+ },
+ "decksip_galley_counter": {
+  "name": "Decksip Mutfak Tezgâhı",
+  "description": "Küçük bir gemi bile kahvaltı için düzgün bir yeri hak eder."
+ },
+ "keelguard_figurehead": {
+  "name": "Keelguard Pruva Heykeli",
+  "description": "Geminin hayali pruvasının güler yüzlü gözcüsü."
+ },
+ "berthparcel_sea_chest": {
+  "name": "Berthparcel Deniz Sandığı",
+  "description": "Hatıraların ve yedek yünlülerin denizci boyutunda yuvası."
+ },
+ "deckharbor_cargo_crane": {
+  "name": "Deckharbor Yük Vinci",
+  "description": "Hayali yükleri tatmin edici derecede büyük dişlilerle taşır."
+ },
+ "portwhorl_porthole": {
+  "name": "Portwhorl Lombozu",
+  "description": "Rahat küçük bir kulübe için yuvarlak bir manzara."
+ },
+ "signalpurl_flags": {
+  "name": "Signalpurl Bayrakları",
+  "description": "Uydurma bir sefer için bir dizi parlak mesaj."
+ },
+ "compassbud_box": {
+  "name": "Compassbud Pusula Kutusu",
+  "description": "Bir sonraki macerayı göstermeye hep hazır."
+ },
+ "shipwhisper_model": {
+  "name": "Shipwhisper Gemi Maketi",
+  "description": "Çok daha büyük bir geminin içindeki raf için küçük bir gemi."
+ },
+ "tidequill_logbook": {
+  "name": "Tidequill Seyir Defteri",
+  "description": "Sakin denizleri ve harika öğle yemeklerini kaydetmek için bir yer."
+ }
+}

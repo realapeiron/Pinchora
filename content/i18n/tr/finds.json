@@ -1,0 +1,146 @@
+{
+ "pale_whorl_shell": {
+  "name": "Soluk Sarmal Deniz Kabuğu",
+  "description": "Dinlersen içinde hâlâ biraz deniz var."
+ },
+ "fan_scallop": {
+  "name": "Yelpaze Deniz Tarağı",
+  "description": "Kumlu yaz günleri için minik bir katlanır yelpaze."
+ },
+ "ridged_cockle": {
+  "name": "Oluklu Kalp Midyesi",
+  "description": "Her oluk bir güzel gelgit demek."
+ },
+ "sand_dollar": {
+  "name": "Kum Doları",
+  "description": "Hiçbir şeyin karşılığı olmaz ama saklamaya değer."
+ },
+ "mint_sea_glass": {
+  "name": "Nane Deniz Camı",
+  "description": "Bir şişenin eski hayatı, yumuşayıp yeşile bürünmüş."
+ },
+ "sky_sea_glass": {
+  "name": "Gök Deniz Camı",
+  "description": "Tutulmuş bir nefes kadar pürüzsüz, öğle kadar mavi."
+ },
+ "smooth_pebble": {
+  "name": "Pürüzsüz Çakıl",
+  "description": "Bin nazik dalga tarafından yuvarlanmış."
+ },
+ "striped_pebble": {
+  "name": "Çizgili Çakıl",
+  "description": "Minik bir yarış taşı gibi çizgi taşır."
+ },
+ "driftwood_twig": {
+  "name": "Deniz Odunu Dalı",
+  "description": "Gümüş renkli, hafif, ağacı hâlâ hatırlıyor."
+ },
+ "gull_feather": {
+  "name": "Martı Tüyü",
+  "description": "Büyük ihtimalle hediye olsun diye bilerek düşürülmüş."
+ },
+ "frayed_rope": {
+  "name": "Yıpranmış Halat",
+  "description": "En az üç macerayı bağlamıştır."
+ },
+ "biscuit_tin": {
+  "name": "Ezik Bisküvi Tenekesi",
+  "description": "Boş ama hafifçe zencefil kokuyor."
+ },
+ "chipped_teacup": {
+  "name": "Çentikli Çay Fincanı",
+  "description": "Takımı tamamlamaya bir kulp eksik."
+ },
+ "kelp_ribbon": {
+  "name": "Deniz Yosunu Kurdelesi",
+  "description": "Buruşuk, tuzlu, hediye paketi için garip biçimde iyi."
+ },
+ "rosy_spiral_conch": {
+  "name": "Gül Rengi Sarmal Konk",
+  "description": "Kimse dinlemezken usulca mırıldanır."
+ },
+ "fluted_scallop": {
+  "name": "Yivli Deniz Tarağı",
+  "description": "Minik bir konser salonu gibi oluklu."
+ },
+ "amber_sea_glass": {
+  "name": "Buzlu Kehribar Camı",
+  "description": "Buzlu ortasında gün batımını saklar."
+ },
+ "weathered_plank": {
+  "name": "Aşınmış Tahta",
+  "description": "Bir rıhtımın, teknenin ya da çok eski bir kapının parçası."
+ },
+ "shark_tooth": {
+  "name": "Köpekbalığı Dişi",
+  "description": "Küçük, keskin ve bununla çok gururlu."
+ },
+ "heron_feather": {
+  "name": "Balıkçıl Tüyü",
+  "description": "Gri ve uzun, şafağın sessiz olduğu yerde bulunur."
+ },
+ "lucky_pebble": {
+  "name": "Şanslı Çakıl",
+  "description": "Uğur böceği gibi benekli, şansı da aşağı yukarı onun kadar."
+ },
+ "tarred_rope_coil": {
+  "name": "Katranlı Halat Kangalı",
+  "description": "Limanların ve uzun abartılı hikâyelerin kokusunu taşır."
+ },
+ "coral_twig": {
+  "name": "Mercan Dalı",
+  "description": "Hâlâ rüya gören bir resifin dalı."
+ },
+ "green_copper_coin": {
+  "name": "Yeşil Bakır Sikke",
+  "description": "Çok önce tatlı bir şeye harcanmış."
+ },
+ "seed_pearl": {
+  "name": "Tohum İnci",
+  "description": "Henüz ne olacağına karar vermemiş bir inci."
+ },
+ "old_doubloon": {
+  "name": "Eski Dublon",
+  "description": "Kararmış ama güneşte hâlâ göz kırpar."
+ },
+ "silver_locket": {
+  "name": "Gümüş Madalyon",
+  "description": "İçinde çok iyi bir köpeğin minik bir çizimi var."
+ },
+ "glass_float": {
+  "name": "Cam Şamandıra",
+  "description": "Merhaba demek için okyanus aşırı sürüklenmiş."
+ },
+ "brass_key": {
+  "name": "Pirinç Anahtar",
+  "description": "Bir şeyi açar. Ne olduğunu kimse bilmez."
+ },
+ "ships_cleat": {
+  "name": "Gemi Bağlama Çengeli",
+  "description": "Bir zamanlar koca bir gemiyi tutardı, şimdi bir anıyı tutuyor."
+ },
+ "mermaids_comb": {
+  "name": "Deniz Kızı Tarağı",
+  "description": "Kullanıldıktan sonra nazikçe bir kayanın üstüne bırakılmış."
+ },
+ "black_pearl": {
+  "name": "Siyah İnci",
+  "description": "Derinlik kadar koyu, güzel bir fikir kadar parlak."
+ },
+ "captains_key": {
+  "name": "Kaptanın Anahtarı",
+  "description": "Kaptanın sandığına uyan tek anahtar."
+ },
+ "figurehead_splinter": {
+  "name": "Pruva Figürü Kıymığı",
+  "description": "Çok önce oyulmuş bir gülümseme, hâlâ gülümsüyor."
+ },
+ "moon_pearl": {
+  "name": "Ay İncisi",
+  "description": "Hiç ayın olmadığı gecelerde hafifçe parlar."
+ },
+ "sunken_compass": {
+  "name": "Batık Pusula",
+  "description": "En çok özlediğin şeyi gösterir."
+ }
+}

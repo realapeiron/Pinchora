@@ -1,0 +1,54 @@
+{
+ "shore": {
+  "name": "Kıyı",
+  "description": "Sıcak kum, minik dalgacıklar ve çok nazik balıklar."
+ },
+ "reef": {
+  "name": "Resif",
+  "description": "Mercan renkleri ve telaşlı küçük bir kalabalık."
+ },
+ "kelp_forest": {
+  "name": "Yosun Ormanı",
+  "description": "Serin suda sallanan uzun yeşil kurdeleler."
+ },
+ "deep_sea": {
+  "name": "Derin Deniz",
+  "description": "Büyük siluetlerin süzülüp geçtiği mavi-siyah sular."
+ },
+ "abyss": {
+  "name": "Abis",
+  "description": "Sessiz ve yıldızlı, son güneş ışığının çok altında."
+ },
+ "driftwood_rod": {
+  "name": "Deniz Odunu Oltası",
+  "description": "Pürüzsüz bir çubuk ve bir ip. Bedava ve elinden geleni yapar."
+ },
+ "reedline_rod": {
+  "name": "Reedline Oltası",
+  "description": "Hafif ve esnek. Misina biraz daha uzun süre sakin kalır."
+ },
+ "pearlwhip_rod": {
+  "name": "Pearlwhip Oltası",
+  "description": "Balıkların hayran olduğu inci sarmalı bir sap."
+ },
+ "tidecaller_rod": {
+  "name": "Tidecaller Oltası",
+  "description": "Gelgit dönerken usulca mırıldanır."
+ },
+ "starweave_rod": {
+  "name": "Starweave Oltası",
+  "description": "Gece göğünden eğrilmiş. Sabırlı, dengeli ve biraz büyülü."
+ },
+ "glow_worm": {
+  "name": "Işıklı Solucan",
+  "description": "Neşeli küçük bir ışıltı. Seyrek balıklar buna bayılır."
+ },
+ "silver_lure": {
+  "name": "Gümüş Yem",
+  "description": "Nadir balıkların görmezden gelemediği tek bir gümüş parıltı."
+ },
+ "tide_crumbs": {
+  "name": "Gelgit Kırıntıları",
+  "description": "Bulunduğun noktanın kendi gözdeleri için bir tutam ikram."
+ }
+}

@@ -1,0 +1,122 @@
+{
+ "shoreline_stroller": {
+  "name": "Kıyı Yürüyüşçüsü",
+  "description": "3. seviyeye ulaş."
+ },
+ "lighthouse_keeper": {
+  "name": "Deniz Feneri Bekçisi",
+  "description": "15. seviyeye ulaş."
+ },
+ "harbour_elder": {
+  "name": "Liman Büyüğü",
+  "description": "40. seviyeye ulaş."
+ },
+ "tide_angler": {
+  "name": "Gelgit Oltacısı",
+  "description": "5 farklı balık türü yakala."
+ },
+ "net_whisperer": {
+  "name": "Ağ Fısıldayıcısı",
+  "description": "20 farklı balık türü yakala."
+ },
+ "deep_diver": {
+  "name": "Derin Dalgıç",
+  "description": "48 farklı balık türü yakala."
+ },
+ "cosy_host": {
+  "name": "Sıcacık Ev Sahibi",
+  "description": "Evin için 5 beğeni al."
+ },
+ "open_door": {
+  "name": "Açık Kapı",
+  "description": "Evin için 30 beğeni al."
+ },
+ "hearth_keeper": {
+  "name": "Ocak Bekçisi",
+  "description": "Evin için 120 beğeni al."
+ },
+ "critter_friend": {
+  "name": "Hayvan Dostu",
+  "description": "2 evcil hayvana sahip ol."
+ },
+ "pocket_menagerie": {
+  "name": "Cep Hayvanat Bahçesi",
+  "description": "6 evcil hayvana sahip ol."
+ },
+ "crab_shepherd": {
+  "name": "Yengeç Çobanı",
+  "description": "12 evcil hayvana sahip ol."
+ },
+ "early_riser": {
+  "name": "Erkenci Kuş",
+  "description": "Günlük serini 3 güne ulaştır."
+ },
+ "steady_tide": {
+  "name": "Düzenli Gelgit",
+  "description": "Günlük serini 14 güne ulaştır."
+ },
+ "clockwork_crab": {
+  "name": "Saat Gibi Yengeç",
+  "description": "Günlük serini 60 güne ulaştır."
+ },
+ "coral_architect": {
+  "name": "Mercan Mimarı",
+  "description": "60 parça mobilya yerleştir."
+ },
+ "cosy_curator": {
+  "name": "Sıcacık Küratör",
+  "description": "200 parça mobilya yerleştir."
+ },
+ "home_weaver": {
+  "name": "Ev Dokuyucusu",
+  "description": "600 parça mobilya yerleştir."
+ },
+ "kindly_neighbour": {
+  "name": "Sevecen Komşu",
+  "description": "5 itibar puanına ulaş."
+ },
+ "beloved_local": {
+  "name": "Sevilen Mahalleli",
+  "description": "30 itibar puanına ulaş."
+ },
+ "pillar_of_the_pier": {
+  "name": "İskelenin Direği",
+  "description": "100 itibar puanına ulaş."
+ },
+ "shell_collector": {
+  "name": "Deniz Kabuğu Toplayıcı",
+  "description": "Elinde 5.000 deniz kabuğu bulundur."
+ },
+ "shell_tycoon": {
+  "name": "Deniz Kabuğu Patronu",
+  "description": "Elinde 50.000 deniz kabuğu bulundur."
+ },
+ "pearl_baron": {
+  "name": "İnci Baronu",
+  "description": "Elinde 500.000 deniz kabuğu bulundur."
+ },
+ "capn_crab": {
+  "name": "Kaptan Yengeç",
+  "description": "Yengeç Kasketi rozetine sahip ol."
+ },
+ "puddle_pilot": {
+  "name": "Su Birikintisi Pilotu",
+  "description": "Yağmurlu Gün Ördeği rozetine sahip ol."
+ },
+ "moonlit_wanderer": {
+  "name": "Ay Işıklı Gezgin",
+  "description": "Ay Işıklı Güve rozetine sahip ol."
+ },
+ "cloud_crowned": {
+  "name": "Bulut Taçlı",
+  "description": "Bulutçuk Tacı rozetine sahip ol."
+ },
+ "wyrm_whisperer": {
+  "name": "Ejder Fısıldayıcısı",
+  "description": "İnci Ejderi rozetine sahip ol."
+ },
+ "house_of_the_week": {
+  "name": "Haftanın Evi",
+  "description": "Topluluğun her hafta seçtiği eve verilir."
+ }
+}

@@ -1,0 +1,254 @@
+{
+ "rarity.common": {
+  "name": "Yaygın"
+ },
+ "rarity.uncommon": {
+  "name": "Seyrek"
+ },
+ "rarity.rare": {
+  "name": "Nadir"
+ },
+ "rarity.epic": {
+  "name": "Destansı"
+ },
+ "rarity.legendary": {
+  "name": "Efsanevi"
+ },
+ "category.seating": {
+  "name": "Oturma"
+ },
+ "category.tables": {
+  "name": "Masalar"
+ },
+ "category.beds": {
+  "name": "Yataklar"
+ },
+ "category.storage": {
+  "name": "Depolama"
+ },
+ "category.lighting": {
+  "name": "Aydınlatma"
+ },
+ "category.kitchen": {
+  "name": "Mutfak"
+ },
+ "category.bathroom": {
+  "name": "Banyo"
+ },
+ "category.electronics": {
+  "name": "Elektronik"
+ },
+ "category.rugs": {
+  "name": "Halılar"
+ },
+ "category.wall_decor": {
+  "name": "Duvar süsleri"
+ },
+ "category.windows_doors": {
+  "name": "Pencere ve kapılar"
+ },
+ "category.plants": {
+  "name": "Bitkiler"
+ },
+ "category.pet_items": {
+  "name": "Evcil hayvan eşyaları"
+ },
+ "category.toys_games": {
+  "name": "Oyuncak ve oyunlar"
+ },
+ "category.music": {
+  "name": "Müzik"
+ },
+ "category.outdoor": {
+  "name": "Dış mekân"
+ },
+ "category.seasonal": {
+  "name": "Mevsimlik"
+ },
+ "category.office": {
+  "name": "Ofis"
+ },
+ "category.cafe": {
+  "name": "Kafe ve dükkân"
+ },
+ "category.hobbies": {
+  "name": "Hobiler"
+ },
+ "category.fitness": {
+  "name": "Spor"
+ },
+ "category.partitions": {
+  "name": "Duvar ve bölmeler"
+ },
+ "category.nautical": {
+  "name": "Denizcilik"
+ },
+ "slot.head": {
+  "name": "Baş"
+ },
+ "slot.face": {
+  "name": "Yüz"
+ },
+ "slot.neck": {
+  "name": "Boyun"
+ },
+ "slot.back": {
+  "name": "Sırt"
+ },
+ "slot.hand": {
+  "name": "El"
+ },
+ "habitat.shore": {
+  "name": "Kıyı"
+ },
+ "habitat.tidepool": {
+  "name": "Gelgit havuzu"
+ },
+ "habitat.kelp": {
+  "name": "Yosun ormanı"
+ },
+ "habitat.reef": {
+  "name": "Resif"
+ },
+ "habitat.deep": {
+  "name": "Derin su"
+ },
+ "habitat.washed_up": {
+  "name": "Kıyıya vurmuş"
+ },
+ "kind.critter": {
+  "name": "Minik canlılar"
+ },
+ "kind.find": {
+  "name": "Buluntular"
+ },
+ "stat.level": {
+  "name": "Seviye"
+ },
+ "stat.fish_species": {
+  "name": "Balık defteri"
+ },
+ "stat.house_likes": {
+  "name": "Ev beğenileri"
+ },
+ "stat.pets": {
+  "name": "Evcil hayvanlar"
+ },
+ "stat.streak": {
+  "name": "Günlük seri"
+ },
+ "stat.placed": {
+  "name": "Yerleştirilen mobilya"
+ },
+ "stat.reputation": {
+  "name": "İtibar"
+ },
+ "stat.shells": {
+  "name": "Deniz kabuğu"
+ },
+ "stat.level.noun": {
+  "name": "seviye"
+ },
+ "stat.fish_species.noun": {
+  "name": "balık türü"
+ },
+ "stat.house_likes.noun": {
+  "name": "ev beğenisi"
+ },
+ "stat.pets.noun": {
+  "name": "evcil hayvan"
+ },
+ "stat.streak.noun": {
+  "name": "günlük seri"
+ },
+ "stat.placed.noun": {
+  "name": "yerleştirilen mobilya"
+ },
+ "stat.reputation.noun": {
+  "name": "itibar"
+ },
+ "stat.shells.noun": {
+  "name": "deniz kabuğu"
+ },
+ "time.any": {
+  "name": "Her zaman"
+ },
+ "time.dawn": {
+  "name": "Şafak"
+ },
+ "time.day": {
+  "name": "Gündüz"
+ },
+ "time.dusk": {
+  "name": "Akşamüstü"
+ },
+ "time.night": {
+  "name": "Gece"
+ },
+ "season.any": {
+  "name": "Her mevsim"
+ },
+ "season.spring": {
+  "name": "İlkbahar"
+ },
+ "season.summer": {
+  "name": "Yaz"
+ },
+ "season.autumn": {
+  "name": "Sonbahar"
+ },
+ "season.winter": {
+  "name": "Kış"
+ },
+ "tier.1": {
+  "name": "Gelgit Havuzu Barınağı"
+ },
+ "tier.2": {
+  "name": "Kumsal Kulübesi"
+ },
+ "tier.3": {
+  "name": "Resif Evi"
+ },
+ "tier.4": {
+  "name": "Mercan Villası"
+ },
+ "tier.5": {
+  "name": "Deniz Feneri Çatı Katı"
+ },
+ "tier.6": {
+  "name": "Batık Saray"
+ },
+ "quest.chat": {
+  "name": "Sohbet et ve 10 kez XP kazan"
+ },
+ "quest.fish": {
+  "name": "3 balık yakala"
+ },
+ "quest.visit": {
+  "name": "2 eve misafir ol"
+ },
+ "quest.care": {
+  "name": "Evcil hayvanına 3 kez bak"
+ },
+ "quest.place": {
+  "name": "2 mobilya yerleştir"
+ },
+ "quest.buy": {
+  "name": "Dükkândan bir şey satın al"
+ },
+ "quest.like": {
+  "name": "Birinin evini beğen"
+ },
+ "quest.daily": {
+  "name": "Günlük deniz kabuğunu topla"
+ },
+ "currency.shells": {
+  "name": "Deniz kabuğu"
+ },
+ "currency.pearls": {
+  "name": "İnci"
+ },
+ "currency.fragments": {
+  "name": "Parçacık"
+ }
+}

@@ -1,0 +1,162 @@
+{
+ "little_beacon": {
+  "name": "Küçük Fener",
+  "description": "5. seviyeye ulaş."
+ },
+ "bright_beacon": {
+  "name": "Parlak Fener",
+  "description": "10. seviyeye ulaş."
+ },
+ "harbour_beacon": {
+  "name": "Liman Feneri",
+  "description": "25. seviyeye ulaş."
+ },
+ "starlit_beacon": {
+  "name": "Yıldızlı Fener",
+  "description": "50. seviyeye ulaş."
+ },
+ "guiding_light": {
+  "name": "Kılavuz Işık",
+  "description": "100. seviyeye ulaş."
+ },
+ "fin_finder": {
+  "name": "Yüzgeç Kâşifi",
+  "description": "10 farklı balık türü yakala."
+ },
+ "reef_regular": {
+  "name": "Resif Müdavimi",
+  "description": "24 farklı balık türü yakala."
+ },
+ "shoal_scholar": {
+  "name": "Sürü Bilgini",
+  "description": "36 farklı balık türü yakala."
+ },
+ "every_fin_friend": {
+  "name": "Her Yüzgecin Dostu",
+  "description": "72 balık türünün hepsini yakala."
+ },
+ "warm_welcome": {
+  "name": "Sıcak Karşılama",
+  "description": "Evin için 10 beğeni al."
+ },
+ "heartfelt_home": {
+  "name": "Gönül Evi",
+  "description": "Evin için 50 beğeni al."
+ },
+ "town_favourite": {
+  "name": "Kasabanın Gözdesi",
+  "description": "Evin için 250 beğeni al."
+ },
+ "pawshake": {
+  "name": "Pati Tokalaşması",
+  "description": "1 evcil hayvana sahip ol."
+ },
+ "cuddle_circle": {
+  "name": "Sarılma Çemberi",
+  "description": "5 evcil hayvana sahip ol."
+ },
+ "full_nest": {
+  "name": "Dolu Yuva",
+  "description": "15 evcil hayvana sahip ol."
+ },
+ "week_of_waves": {
+  "name": "Dalga Haftası",
+  "description": "Üst üste 7 gün oyna."
+ },
+ "moonlong_mornings": {
+  "name": "Ay Boyu Sabahlar",
+  "description": "Üst üste 30 gün oyna."
+ },
+ "always_ashore": {
+  "name": "Hep Kıyıda",
+  "description": "Üst üste 100 gün oyna."
+ },
+ "year_at_the_pier": {
+  "name": "İskelede Bir Yıl",
+  "description": "Üst üste 365 gün oyna."
+ },
+ "nest_nudger": {
+  "name": "Yuva Kurcalayıcı",
+  "description": "25 parça mobilya yerleştir."
+ },
+ "room_bloomer": {
+  "name": "Oda Çiçeği",
+  "description": "100 parça mobilya yerleştir."
+ },
+ "little_world_maker": {
+  "name": "Küçük Dünya Yaratıcısı",
+  "description": "300 parça mobilya yerleştir."
+ },
+ "kind_current": {
+  "name": "Sevecen Akıntı",
+  "description": "10 itibar puanına ulaş."
+ },
+ "harbour_helper": {
+  "name": "Liman Yardımcısı",
+  "description": "50 itibar puanına ulaş."
+ },
+ "community_pearl": {
+  "name": "Topluluğun İncisi",
+  "description": "150 itibar puanına ulaş."
+ },
+ "pocket_rattle": {
+  "name": "Cep Şıngırtısı",
+  "description": "Aynı anda elinde 10.000 deniz kabuğu bulundur."
+ },
+ "shell_stacker": {
+  "name": "Deniz Kabuğu İstifçisi",
+  "description": "Aynı anda elinde 100.000 deniz kabuğu bulundur."
+ },
+ "tide_treasurer": {
+  "name": "Gelgit Haznedarı",
+  "description": "Aynı anda elinde 1.000.000 deniz kabuğu bulundur."
+ },
+ "tiny_tide": {
+  "name": "Minik Gelgit",
+  "description": "Gittiğin her yere taşıyacağın küçük bir dalga."
+ },
+ "crab_cap": {
+  "name": "Yengeç Kasketi",
+  "description": "Biraz yan yan, tam bir deniz kenarı şıklığı."
+ },
+ "pocket_puffer": {
+  "name": "Cep Balon Balığı",
+  "description": "Küçük, yuvarlak ve burada olmaktan sessizce mutlu."
+ },
+ "peachy_float": {
+  "name": "Şeftali Simidi",
+  "description": "Yavaş geçen bir öğleden sonrada süzülüp gitmeye yetecek kadar tatlı."
+ },
+ "rainy_day_duck": {
+  "name": "Yağmurlu Gün Ördeği",
+  "description": "Her çiseleme, neşeli minik bir şapırtıyı hak eder."
+ },
+ "snoozy_star": {
+  "name": "Uykucu Yıldız",
+  "description": "Gökyüzünün bile öğleden sonra küçük bir şekerlemeye ihtiyacı var."
+ },
+ "tea_by_the_sea": {
+  "name": "Deniz Kenarında Çay",
+  "description": "Esintide bir tutam tuz olan sıcak bir yudum."
+ },
+ "pebble_pal": {
+  "name": "Çakıl Dostu",
+  "description": "Hayata hiç acele etmeden bakan küçük bir arkadaş."
+ },
+ "lantern_jelly": {
+  "name": "Fener Denizanası",
+  "description": "En derin küçük hayaller için yumuşak bir parıltı."
+ },
+ "moonlit_moth": {
+  "name": "Ay Işıklı Güve",
+  "description": "Yumuşak kanatlar, gümüş dilekler ve acele edecek hiçbir yer yok."
+ },
+ "cloudlet_crown": {
+  "name": "Bulutçuk Tacı",
+  "description": "Başını bulutlarda tutman için kraliyet izni."
+ },
+ "pearl_wyrm": {
+  "name": "İnci Ejderi",
+  "description": "Çok kıymetli bir çakıl taşı taşıyan minik bir deniz ejderi."
+ }
+}

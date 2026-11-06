@@ -1,0 +1,32 @@
+{
+ "beach_surfer": {
+  "name": "Kumsal Sörfçüsü"
+ },
+ "ship_captain": {
+  "name": "Gemi Kaptanı"
+ },
+ "coral_witch": {
+  "name": "Mercan Cadısı"
+ },
+ "reef_pirate": {
+  "name": "Resif Korsanı"
+ },
+ "snow_day": {
+  "name": "Karlı Gün"
+ },
+ "meadow_fairy": {
+  "name": "Çayır Perisi"
+ },
+ "moon_bat": {
+  "name": "Ay Yarasası"
+ },
+ "trail_scout": {
+  "name": "Patika İzcisi"
+ },
+ "sweet_tooth": {
+  "name": "Tatlı Düşkünü"
+ },
+ "pearl_royal": {
+  "name": "İnci Kraliyeti"
+ }
+}

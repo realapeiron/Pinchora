@@ -1,0 +1,42 @@
+{
+ "living": {
+  "name": "Pebblewelcome Salonu",
+  "description": "Rahatça yerleş, bir hikâye paylaş ve bir misafire daha yer aç."
+ },
+ "bedroom": {
+  "name": "Drowsyfold Yatak Odası",
+  "description": "Uykulu başlar ve yarının umutlu planları için yumuşak bir iniş."
+ },
+ "kitchen": {
+  "name": "Kettlecorner Mutfağı",
+  "description": "Kahvaltı, akşam yemeği ya da çok iyi bir atıştırmalık için malzemeleri topla."
+ },
+ "bathroom": {
+  "name": "Rinsewhistle Banyosu",
+  "description": "Sıcak su ve yeni katlanmış havlular için temiz, küçük bir köşe."
+ },
+ "garden": {
+  "name": "Spriggle Bahçesi",
+  "description": "Yaprakların, çamurlu çizmelerin ve hayallerin rahatça yayılabildiği bir ev köşesi."
+ },
+ "workshop": {
+  "name": "Tinkerwake Atölyesi",
+  "description": "İşe yarar aletleri yakında tut, bir sonraki parlak fikrine de yer bırak."
+ },
+ "pet_room": {
+  "name": "Pawpause Odası",
+  "description": "Her minik yoldaş için evin içinde sıcacık bir ev."
+ },
+ "library": {
+  "name": "Marginrest Kütüphanesi",
+  "description": "Sessiz raflar, rahat koltuklar ve çaydan önce bir bölüm daha."
+ },
+ "studio": {
+  "name": "Humminglow Stüdyosu",
+  "description": "Biraz müzik yap, yeni bir düşünceyi çiz ya da sadece ritmini bul."
+ },
+ "attic": {
+  "name": "Raftercrumb Çatı Arası",
+  "description": "Hazineleri sakla, unutulan favorilere yeni bir küçük köşe ver."
+ }
+}
