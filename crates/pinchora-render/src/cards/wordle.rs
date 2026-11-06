@@ -23,13 +23,12 @@ pub struct WordleCard<'a> {
     pub title: &'a str,
     /// The guesses so far, oldest first; the remaining rows of the six are drawn empty.
     pub rows: &'a [WordleRow],
-    /// For each letter a-z: 0 not tried, else [`ABSENT`], [`PRESENT`] or [`CORRECT`].
-    pub keys: [u8; 26],
+    /// The keyboard summary, a row of keys at a time: each key is its capital letter and 0 for not tried, else
+    /// [`ABSENT`], [`PRESENT`] or [`CORRECT`].
+    pub keyboard: &'a [Vec<(char, u8)>],
     pub footer: &'a str,
     pub theme: Theme,
 }
-
-const KEYBOARD: [&str; 3] = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
 
 impl WordleCard<'_> {
     pub const TRIES: usize = 6;
@@ -90,7 +89,7 @@ impl WordleCard<'_> {
                         y + 3.0,
                         Self::TILE - 6.0
                     );
-                    let letter = g.letters[col].to_ascii_uppercase().to_string();
+                    let letter = g.letters[col].to_uppercase().to_string();
                     text(
                         &mut s,
                         x + Self::TILE / 2.0,
@@ -107,14 +106,13 @@ impl WordleCard<'_> {
         }
 
         // Keyboard summary.
-        for (r, keys) in KEYBOARD.iter().enumerate() {
+        for (r, keys) in self.keyboard.iter().enumerate() {
             let (key_w, key_h, gap) = (34.0, 40.0, 4.0);
             let n = keys.len() as f32;
             let kx0 = (w - (n * key_w + (n - 1.0) * gap)) / 2.0;
             let ky = 484.0 + r as f32 * (key_h + 6.0);
-            for (i, letter) in keys.chars().enumerate() {
-                let mark = self.keys[(letter as u8 - b'a') as usize];
-                let (fill, edge, ink) = match mark {
+            for (i, (letter, mark)) in keys.iter().enumerate() {
+                let (fill, edge, ink) = match *mark {
                     0 => ("#2e3d75".into(), "#1d2b53".into(), t.ink.clone()),
                     ABSENT => ("#141b3d".into(), "#0b1029".into(), t.muted.clone()),
                     other => self.colors(other),
@@ -130,7 +128,7 @@ impl WordleCard<'_> {
                     true,
                     &ink,
                     "middle",
-                    &letter.to_ascii_uppercase().to_string(),
+                    &escape(&letter.to_uppercase().to_string()),
                 );
             }
         }
@@ -165,12 +163,14 @@ mod tests {
     #[test]
     fn colours_follow_the_marks_and_empty_rows_stay_empty() {
         let rows = [row("crane", [ABSENT, PRESENT, CORRECT, ABSENT, ABSENT])];
-        let mut keys = [0u8; 26];
-        keys[(b'a' - b'a') as usize] = CORRECT;
+        let keyboard: Vec<Vec<(char, u8)>> = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"]
+            .iter()
+            .map(|row| row.chars().map(|c| (c, if c == 'A' { CORRECT } else { 0 })).collect())
+            .collect();
         let card = WordleCard {
             title: "Practice",
             rows: &rows,
-            keys,
+            keyboard: &keyboard,
             footer: "Try 2 of 6",
             theme: Theme::reef(),
         };

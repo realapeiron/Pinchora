@@ -4,6 +4,7 @@
 
 use std::{str::Split, sync::Arc};
 
+use pinchora_core::i18n::Lang;
 use pinchora_db::{Commit, PartyGame, PartyPlayer, Pay, PlayerChange};
 use pinchora_game::party::{
     Dice, Party, TURN_REWARD,
@@ -15,7 +16,7 @@ use twilight_model::{channel::message::component::ButtonStyle, http::interaction
 use twilight_util::builder::embed::EmbedBuilder;
 
 use super::{
-    after, card, count_games, day, edit_card, lobby, name_of, paid_note, push_button, remember, row, snapshot,
+    after, card, count_games, day, edit_card, lang_of, lobby, name_of, paid_note, push_button, remember, row, snapshot,
     standings_png, theme,
 };
 use crate::{
@@ -29,6 +30,9 @@ const DO_SECS: i64 = 180;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 struct State {
+    /// The language of the game: its truths and dares.
+    #[serde(default)]
+    lang: Lang,
     seed: u64,
     /// The category the host asked for, if any.
     topic: Option<String>,
@@ -63,6 +67,7 @@ fn category(state: &State) -> Option<Category> {
 
 pub(crate) async fn open(cx: &Cx, topic: Option<Category>) -> anyhow::Result<()> {
     let state = State {
+        lang: lang_of(cx),
         topic: topic.map(|c| c.key().to_owned()),
         ..Default::default()
     };
@@ -102,25 +107,24 @@ async fn view(
     state: &State,
 ) -> anyhow::Result<InteractionResponseData> {
     let name = name_of(players, state.cur);
-    let content = PartyContent::get();
-    let prompt = content.prompt(&state.prompt).filter(|_| game.phase == "prompt");
+    let prompt = PartyContent::find_prompt(&state.prompt).filter(|_| game.phase == "prompt");
     let (tone, text, topic, footer) = match (&prompt, state.pick.as_deref().and_then(Pick::from_key)) {
         (Some(prompt), Some(Pick::Truth)) => (
             PromptTone::Truth,
             prompt.text.clone(),
-            prompt.category.label(),
+            prompt.category.label_in(state.lang),
             "Answer it, or pass: passing is always fine",
         ),
         (Some(prompt), _) => (
             PromptTone::Dare,
             prompt.text.clone(),
-            prompt.category.label(),
+            prompt.category.label_in(state.lang),
             "Do it, or pass: passing is always fine",
         ),
         (None, _) => (
             PromptTone::Turn,
             "Truth or dare?".to_owned(),
-            category(state).map_or("", Category::label),
+            category(state).map_or("", |c| c.label_in(state.lang)),
             "Only the player whose turn it is can pick",
         ),
     };
@@ -248,7 +252,7 @@ async fn choose(
     pick: Pick,
 ) -> anyhow::Result<()> {
     let app = &cx.app;
-    let pool = PartyContent::get().prompts(pick, category(&state));
+    let pool = PartyContent::for_lang(state.lang).prompts(pick, category(&state));
     anyhow::ensure!(!pool.is_empty(), "no prompts to pick from");
     let mut fresh: Vec<&_> = pool.iter().filter(|p| !state.seen.contains(&p.id)).copied().collect();
     if fresh.is_empty() {

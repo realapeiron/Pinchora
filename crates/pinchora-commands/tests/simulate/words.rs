@@ -3,6 +3,7 @@
 
 use chrono::Duration;
 use pinchora_commands::party_tick;
+use pinchora_core::i18n::Lang;
 use pinchora_db::PartyGame;
 use pinchora_game::party::{pearl_reward, race_reward, writing_reward};
 
@@ -1522,4 +1523,205 @@ async fn the_party_commands_fit_discords_limits_and_help_knows_them() {
     assert!(areas.iter().any(|a| a == "Puzzles & word games"), "{areas:?}");
     // Like the rest of /config, it is for managers: Discord keeps it from everyone else.
     assert!(config["default_member_permissions"].is_string(), "{config}");
+}
+
+/// The Turkish word list Hot Pearl plays by.
+static WORDS_TR: &str = include_str!("../../../../content/pearl_words_tr.txt");
+
+/// A Turkish word that starts with `letter`, for building phrases.
+fn word_tr(letter: char) -> &'static str {
+    match letter {
+        'A' => "arılar",
+        'B' => "balık",
+        'C' => "cesur",
+        'Ç' => "çiçek",
+        'D' => "deniz",
+        'E' => "eşsiz",
+        'F' => "fırın",
+        'G' => "güzel",
+        'H' => "hızlı",
+        'İ' => "iyi",
+        'K' => "kedi",
+        'L' => "limon",
+        'M' => "mutlu",
+        'N' => "nazik",
+        'O' => "okyanus",
+        'Ö' => "ödül",
+        'P' => "pembe",
+        'R' => "rüzgar",
+        'S' => "sevgi",
+        'Ş' => "şeker",
+        'T' => "tatlı",
+        'U' => "uzak",
+        'Ü' => "üzüm",
+        'V' => "vapur",
+        'Y' => "yaz",
+        'Z' => "zarif",
+        other => panic!("no Turkish word for {other}"),
+    }
+}
+
+fn keep_reply_png(sim: &Sim, reply: &Reply, name: &str) {
+    let (_, png) = reply.files.first().expect("the reply carried a picture");
+    std::fs::write(sim.dir.join(format!("{name}.png")), png).expect("save the picture");
+}
+
+#[tokio::test]
+async fn a_turkish_hot_pearl_table_gets_turkish_syllables_and_words() {
+    let _alone = PARTY.lock().await;
+    let Some(mut sim) = Sim::new("a_turkish_hot_pearl_table_gets_turkish_syllables_and_words").await else {
+        return;
+    };
+    fresh(&sim).await;
+    sim.channel = unique();
+    sim.locale = "tr";
+    let (host, ann) = (unique(), unique());
+    let (lobby, id) = lobby_of(&mut sim, "hotpearl", vec![], host, &[ann]).await;
+    let table = sim.click(host, &lobby, "Start").await;
+    let st = state(&sim, id).await;
+    assert_eq!(st["lang"], "tr");
+    let syllable = st["syl"].as_str().expect("a syllable").to_owned();
+    assert!(
+        syllable.chars().all(|c| pinchora_game::lang::is_letter(Lang::Tr, c)),
+        "{syllable}"
+    );
+    assert!(
+        table.description().contains("inci patlamadan"),
+        "{}",
+        table.description()
+    );
+    keep_reply_png(&sim, &table, "hot-pearl-tr-table");
+
+    let cur = st["cur"].as_u64().expect("a holder");
+    let word = WORDS_TR
+        .lines()
+        .find(|w| (4..=8).contains(&w.chars().count()) && w.contains(syllable.as_str()))
+        .expect("a Turkish word for the syllable")
+        .to_owned();
+    let form = sim.click(cur, &table, "Type a word").await;
+    assert!(form.modal.is_some(), "{}", form.content());
+    // A word without Turkish letters only: refused in Turkish.
+    let foreign = sim.submit_fields(cur, &form, &[("word", "xyzzy")]).await;
+    assert!(
+        foreign.ephemeral && foreign.content().contains("harf"),
+        "{}",
+        foreign.content()
+    );
+    let typed = pinchora_game::lang::upper(Lang::Tr, &word);
+    let played = sim.submit_fields(cur, &form, &[("word", typed.as_str())]).await;
+    assert!(!played.ephemeral, "{}", played.content());
+    keep_reply_png(&sim, &played, "hot-pearl-tr-after-a-word");
+    let st = state(&sim, id).await;
+    assert_eq!(st["lang"], "tr");
+    assert_eq!(st["turn"], 1);
+    let used = sim.app.db.party_all_entries(id).await.expect("entries");
+    assert_eq!(
+        used.iter().map(|e| e.text.as_str()).collect::<Vec<_>>(),
+        vec![word.as_str()]
+    );
+}
+
+#[tokio::test]
+async fn a_turkish_acronym_round_draws_turkish_capitals_and_checks_them() {
+    let _alone = PARTY.lock().await;
+    let Some(mut sim) = Sim::new("a_turkish_acronym_round_draws_turkish_capitals_and_checks_them").await else {
+        return;
+    };
+    fresh(&sim).await;
+    sim.channel = unique();
+    sim.locale = "tr";
+    let (ada, bo, cy) = (unique(), unique(), unique());
+    let (lobby, id) = lobby_of(&mut sim, "acronym", vec![int_option("rounds", 1)], ada, &[bo, cy]).await;
+    let round = sim.click(ada, &lobby, "Start").await;
+    let st = state(&sim, id).await;
+    assert_eq!(st["lang"], "tr");
+    let letters = st["letters"].as_str().expect("letters").to_owned();
+    assert!(
+        letters.chars().all(|c| "ABCÇDEFGHİKLMNOÖPRSŞTUÜVYZ".contains(c)),
+        "{letters}"
+    );
+    keep_reply_png(&sim, &round, "acronym-tr-letters");
+    let form = sim.click(ada, &round, "Write a phrase").await;
+    let line = letters.chars().map(word_tr).collect::<Vec<_>>().join(" ");
+    let wrong = sim.submit_fields(ada, &form, &[("entry", "bir iki")]).await;
+    assert!(wrong.ephemeral, "{}", wrong.content());
+    let ok = sim.submit_fields(ada, &form, &[("entry", line.as_str())]).await;
+    assert!(
+        ok.ephemeral || !ok.content().is_empty() || !ok.embeds.is_empty(),
+        "{}",
+        ok.content()
+    );
+    let entries = sim.app.db.party_all_entries(id).await.expect("entries");
+    assert_eq!(entries.len(), 1, "the phrase for the Turkish letters was taken: {line}");
+}
+
+#[tokio::test]
+async fn a_turkish_word_race_is_played_with_the_turkish_keyboard() {
+    let _alone = PARTY.lock().await;
+    let Some(mut sim) = Sim::new("a_turkish_word_race_is_played_with_the_turkish_keyboard").await else {
+        return;
+    };
+    fresh(&sim).await;
+    sim.channel = unique();
+    sim.locale = "tr";
+    let (ada, bo) = (unique(), unique());
+    let (lobby, id) = lobby_of(&mut sim, "wordrace", vec![], ada, &[bo]).await;
+    let race = sim.click(ada, &lobby, "Start").await;
+    let st = state(&sim, id).await;
+    assert_eq!(st["lang"], "tr");
+    let secret = st["word"].as_str().expect("the word").to_owned();
+    assert!(PlayContent::for_lang(Lang::Tr).words.answers.contains(&secret));
+    let form = sim.click(ada, &race, "Guess").await;
+    let english = sim.submit_fields(ada, &form, &[("guess", "pearl")]).await;
+    assert!(english.content().contains("listemde yok"), "{}", english.content());
+    let miss = PlayContent::for_lang(Lang::Tr)
+        .words
+        .allowed
+        .iter()
+        .find(|w| **w != secret && w.contains('ş') && w.contains('ı'))
+        .expect("an allowed word")
+        .clone();
+    let typed = pinchora_game::lang::upper(Lang::Tr, &miss);
+    let board = sim.submit_fields(ada, &form, &[("guess", typed.as_str())]).await;
+    assert!(board.ephemeral && board.files.len() == 1, "{}", board.content());
+    keep_reply_png(&sim, &board, "word-race-tr-board");
+    let stored = game(&sim, id).await;
+    assert!(stored.phase == "race" || stored.phase == "done" || !stored.phase.is_empty());
+    let players = sim.app.db.party_players(id).await.expect("players");
+    assert_eq!(
+        players.iter().find(|p| p.id() == ada).map(|p| p.guesses.clone()),
+        Some(vec![miss])
+    );
+}
+
+#[tokio::test]
+async fn turkish_would_you_rather_and_dares_come_from_the_turkish_pools() {
+    let _alone = PARTY.lock().await;
+    let Some(mut sim) = Sim::new("turkish_would_you_rather_and_dares_come_from_the_turkish_pools").await else {
+        return;
+    };
+    fresh(&sim).await;
+    sim.channel = unique();
+    sim.locale = "tr";
+    let (host, ann) = (unique(), unique());
+    let poll = sim
+        .command(host, "party", json!([sub("wouldyourrather", vec![])]))
+        .await;
+    assert!(!poll.ephemeral, "{}", poll.content());
+    let id = game_id(&poll);
+    let q = state(&sim, id).await["q"].as_str().expect("a question").to_owned();
+    assert!(q.contains("_tr_"), "{q}");
+    let rather = pinchora_game::party::prompts::PartyContent::find_rather(&q).expect("a Turkish question");
+    assert!(rather.a.ends_with("mak") || rather.a.ends_with("mek"), "{}", rather.a);
+    assert!(poll.controls().count() >= 2);
+
+    sim.channel = unique();
+    let (lobby, id) = lobby_of(&mut sim, "truthordare", vec![], host, &[ann]).await;
+    let turn = sim.click(host, &lobby, "Start").await;
+    assert_eq!(state(&sim, id).await["lang"], "tr");
+    let cur = state(&sim, id).await["cur"].as_u64().expect("whose turn");
+    let dare = sim.click(cur, &turn, "Dare").await;
+    let prompt = state(&sim, id).await["prompt"].as_str().expect("a prompt").to_owned();
+    assert!(prompt.contains("_tr_"), "{prompt}");
+    keep_reply_png(&sim, &dare, "dare-tr-card");
 }

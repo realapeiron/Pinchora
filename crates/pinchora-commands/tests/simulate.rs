@@ -76,6 +76,8 @@ mod board;
 #[path = "simulate/collection.rs"]
 mod collection;
 // The party games' flows (Hot Pearl, Acronym Tide, Caption the Postcard, Wordle Race, Would You Rather, Truth or Dare).
+#[path = "simulate/turkish.rs"]
+mod turkish;
 #[path = "simulate/words.rs"]
 mod words;
 
@@ -896,6 +898,8 @@ struct Sim {
     /// The channel interactions come from; tests that need channel-wide cooldowns to themselves
     /// pick their own.
     channel: u64,
+    /// The locale the players' Discord client is set to.
+    locale: &'static str,
 }
 
 impl Sim {
@@ -966,6 +970,7 @@ impl Sim {
             dir,
             step: 0,
             channel: CHANNEL_ID,
+            locale: "en-US",
         })
     }
 
@@ -1274,7 +1279,7 @@ impl Sim {
             "version": 1,
             "guild_id": self.guild.to_string(),
             "channel": { "id": self.channel.to_string(), "type": 0, "guild_id": self.guild.to_string() },
-            "locale": "en-US",
+            "locale": self.locale,
             "guild_locale": "en-US",
             "context": 0,
             "attachment_size_limit": 26_214_400,

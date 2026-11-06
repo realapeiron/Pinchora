@@ -7,6 +7,7 @@
 use std::{str::Split, sync::Arc, time::Duration};
 
 use chrono::{Datelike, Duration as Span, Timelike};
+use pinchora_core::i18n::Lang;
 use pinchora_db::{BottleOpen, BottlePrize, DROP_BOTTLE, DROP_CRITTERS, DropRow, Grab, NewDrop};
 use pinchora_game::{
     Rarity,
@@ -510,11 +511,15 @@ pub(crate) async fn on_open(cx: &Cx, mut parts: Split<'_, char>) -> anyhow::Resu
     let Some(row) = app.db.drop_row(id).await?.filter(|r| r.kind == DROP_BOTTLE) else {
         return cx.reply_ephemeral("That bottle has drifted off.").await;
     };
+    let lang = crate::commands::games::lang_of(cx);
     let text = row
         .cards
         .first()
-        .and_then(|id| Collection::get().bottle(id))
-        .map_or("The note has faded.", |b| b.text.as_str())
+        .and_then(|id| Collection::get().bottle_text(id, lang))
+        .unwrap_or(match lang {
+            Lang::En => "The note has faded.",
+            Lang::Tr => "Not solmuş.",
+        })
         .to_owned();
     let prize = collection::open_bottle(&mut dice());
     let held = match prize {

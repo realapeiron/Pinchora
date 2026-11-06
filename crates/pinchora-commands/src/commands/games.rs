@@ -3,6 +3,7 @@
 
 use std::{sync::Arc, time::Duration};
 
+use pinchora_core::i18n::Lang;
 use pinchora_db::GameSession;
 use pinchora_game::play::Game;
 use twilight_model::{
@@ -61,6 +62,16 @@ pub(crate) fn unpack(state: &str) -> (&str, [String; 2]) {
 }
 
 /// The channel an interaction came from, 0 when Discord did not say.
+/// The language the games speak to this player. One place to ask, so the language system only has to
+/// answer here: for now it is the player's Discord locale.
+pub(crate) fn lang_of(cx: &Cx) -> Lang {
+    cx.interaction
+        .locale
+        .as_deref()
+        .map(Lang::from_discord)
+        .unwrap_or_default()
+}
+
 pub(crate) fn channel_of(cx: &Cx) -> u64 {
     cx.interaction.channel.as_ref().map_or(0, |c| c.id.get())
 }

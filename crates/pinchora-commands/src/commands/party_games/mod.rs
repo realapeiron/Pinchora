@@ -32,6 +32,7 @@ use twilight_model::{
 };
 use twilight_util::builder::embed::EmbedBuilder;
 
+pub(crate) use super::games::lang_of;
 use super::games::{button, channel_of, quiet, record};
 use crate::{App, Cx};
 
