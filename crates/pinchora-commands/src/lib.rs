@@ -2,6 +2,7 @@ mod app;
 mod commands;
 mod components;
 mod cx;
+mod defer;
 mod events;
 mod game;
 mod leveling;
@@ -19,6 +20,7 @@ pub use commands::{
     partner::partner_name,
 };
 pub use cx::Cx;
+pub use defer::Deferral;
 pub use events::{
     on_ban_add, on_ban_remove, on_member_add, on_member_remove, on_member_update, on_message, on_voice_state_update,
 };
@@ -29,6 +31,13 @@ pub use voice_xp::{spawn_ticker as spawn_voice_ticker, tick as voice_tick};
 use std::{sync::Arc, time::Instant};
 
 use twilight_model::application::interaction::{Interaction, InteractionData};
+
+/// [`handle_interaction`] for the gateway, where nothing else answers for a slow handler: one still
+/// running after `defer::DEFER_AFTER` is deferred through REST before Discord's three seconds are up.
+pub async fn handle_gateway_interaction(app: Arc<App>, interaction: Interaction, responder: Arc<Responder>) {
+    let handler = handle_interaction(app, interaction, responder.clone());
+    defer::defer_slow(&responder, defer::DEFER_AFTER, handler).await;
+}
 
 /// Runs one interaction to completion. Every path answers the user, errors included.
 pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, responder: Arc<Responder>) {

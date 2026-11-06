@@ -2,8 +2,8 @@ use std::{sync::Arc, time::Duration};
 
 use pinchora_cache::{RedisQueue, StoredSession};
 use pinchora_commands::{
-    App, Responder, handle_interaction, on_ban_add, on_ban_remove, on_member_add, on_member_remove, on_member_update,
-    on_message, on_voice_state_update,
+    App, Responder, handle_gateway_interaction, on_ban_add, on_ban_remove, on_member_add, on_member_remove,
+    on_member_update, on_message, on_voice_state_update,
 };
 use pinchora_core::{
     Config, cluster,
@@ -179,7 +179,7 @@ fn dispatch(app: &Arc<App>, shard: u32, event: Event) {
         Event::InteractionCreate(interaction) => {
             let interaction = interaction.0;
             let responder = Arc::new(Responder::rest(app.clone(), &interaction));
-            app.spawn(handle_interaction(app.clone(), interaction, responder));
+            app.spawn(handle_gateway_interaction(app.clone(), interaction, responder));
         }
         Event::MessageCreate(message) => {
             let app2 = app.clone();

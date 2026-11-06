@@ -28,8 +28,8 @@ use axum::{
 };
 use pinchora_cache::Cache;
 use pinchora_commands::{
-    App, Responder, handle_interaction, on_ban_add, on_ban_remove, on_member_add, on_member_remove, on_member_update,
-    on_message, on_voice_state_update, sweep_games,
+    App, Deferral, Responder, handle_interaction, on_ban_add, on_ban_remove, on_member_add, on_member_remove,
+    on_member_update, on_message, on_voice_state_update, sweep_games,
 };
 use pinchora_db::Db;
 use pinchora_game::{
@@ -1225,6 +1225,7 @@ impl Sim {
 
         let (tx, mut rx) = oneshot::channel();
         let responder = Arc::new(Responder::http(self.app.clone(), &interaction, tx));
+        let deferral = responder.deferral();
         handle_interaction(self.app.clone(), interaction, responder).await;
 
         let errors = ERRORS.take();
@@ -1238,6 +1239,21 @@ impl Sim {
             .unwrap_or_else(|_| panic!("step {step} ({label}): the handler never answered"));
         let calls = std::mem::take(&mut *self.calls.lock().unwrap());
         let reply = Reply::build(first, on, calls);
+        // What the gateway's slow-handler defer assumes: a command it makes private never answers
+        // publicly, and a form can only follow an answer that is no defer.
+        if kind == 2 && deferral == Deferral::Private {
+            assert!(
+                reply.ephemeral,
+                "step {step} ({label}): listed as answering privately, but answered publicly"
+            );
+        }
+        if reply.modal.is_some() {
+            assert_eq!(
+                deferral,
+                Deferral::Never,
+                "step {step} ({label}): opened a form, which a defer would have broken"
+            );
+        }
         self.report(step, &label, &reply);
         reply
     }
