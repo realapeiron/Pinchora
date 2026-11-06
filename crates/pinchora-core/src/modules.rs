@@ -111,11 +111,12 @@ pub enum Module {
     Collection,
     Gambling,
     TextCommands,
+    Feeds,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 28] = [
+    pub const ALL: [Self; 29] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -144,6 +145,7 @@ impl Module {
         Self::Collection,
         Self::Gambling,
         Self::TextCommands,
+        Self::Feeds,
     ];
 
     /// The key stored in the database and used in the API.
@@ -177,6 +179,7 @@ impl Module {
             Self::Collection => "collection",
             Self::Gambling => "gambling",
             Self::TextCommands => "text_commands",
+            Self::Feeds => "feeds",
         }
     }
 
@@ -214,6 +217,7 @@ impl Module {
             Self::Collection => "Critter drops and beachcombing",
             Self::Gambling => "Gambling-style games",
             Self::TextCommands => "Text commands",
+            Self::Feeds => "Social feeds",
         }
     }
 
@@ -259,6 +263,9 @@ impl Module {
             Self::TextCommands => {
                 "Commands typed as messages, with the prefix or an @mention. Slash commands are not affected."
             }
+            Self::Feeds => {
+                "/feeds: new YouTube videos, RSS and podcast episodes, Reddit and Bluesky posts in a channel."
+            }
         }
     }
 
@@ -285,12 +292,14 @@ impl Module {
             | Self::PartyGames
             | Self::Collection
             | Self::Gambling => Group::Games,
+            Self::Feeds => Group::Feeds,
         }
     }
 
     pub const fn scope(self) -> Scope {
         match self {
             Self::Welcome | Self::Goodbye | Self::Log | Self::Gambling => Scope::Server,
+            Self::Feeds => Scope::Server,
             _ => Scope::Channels,
         }
     }
@@ -326,6 +335,7 @@ impl Module {
             "tag" | "customcommand" => Self::CustomCommands,
             "suggest" | "suggestion" => Self::Suggestions,
             "poll" => Self::Polls,
+            "feeds" => Self::Feeds,
             "dex" | "beachcomb" | "crabpot" | "critterdrop" => Self::Collection,
             "surge" => Self::Party,
             "party" => Self::PartyGames,
@@ -369,6 +379,7 @@ impl Module {
             "tg" | "cm" => Self::CustomCommands,
             "sg" => Self::Suggestions,
             "pl" => Self::Polls,
+            "sn" => Self::Feeds,
             _ => return None,
         })
     }

@@ -59,6 +59,8 @@ tikv-jemallocator = "0.6"
 tower = { version = "0.5", features = ["util"] }
 unicode-segmentation = "1"
 ed25519-dalek = "3"
+feed-rs = "3"
+url = "2.5"
 
 [profile.release]
 lto = "thin"

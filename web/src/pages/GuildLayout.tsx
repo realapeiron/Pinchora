@@ -45,7 +45,7 @@ export const NAV: NavGroup[] = [
   { group: "ROLES", pages: [] },
   { group: "SAFETY", pages: [] },
   { group: "COMMUNITY", pages: [] },
-  { group: "FEEDS", pages: [] },
+  { group: "FEEDS", pages: [{ to: "feeds", label: "Social feeds" }] },
   { group: "PLAYERS", pages: [] },
 ];
 

@@ -72,6 +72,7 @@ pub fn router() -> Router<WebState> {
         .route("/surge/settings", put(community::put_surge))
         .route("/preview/welcome-card", post(preview::welcome_card))
         .route("/preview/message", post(preview::message))
+        .nest("/feeds", super::feeds::router())
 }
 
 #[derive(Serialize)]

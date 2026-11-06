@@ -6,6 +6,7 @@ mod collection;
 mod contest;
 mod customize;
 mod economy;
+mod feeds;
 mod fishing;
 mod friends;
 mod games;
@@ -54,6 +55,7 @@ pub use collection::{
 pub use contest::{ContestEntry, ContestResult};
 pub use customize::{CustomizeBuy, MAX_BADGES};
 pub use economy::{DailyOutcome, RepOutcome, TransferOutcome};
+pub use feeds::*;
 pub use fishing::{
     BucketRow, CatchBoardRow, CatchLog, Cosmetic, DEFAULT_ROD, DEFAULT_SPOT, GearBuy, GearRow, MilestonePaid,
     MilestoneReward, NewCatch, Sold,

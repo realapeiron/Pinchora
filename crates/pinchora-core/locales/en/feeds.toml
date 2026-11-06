@@ -1,0 +1,105 @@
+# Social feeds: /feeds, the posts the poller sends, and the problems the dashboard shows.
+
+[module]
+feeds = "Social feeds"
+
+[feeds]
+name = "**#{id}** · {kind} · **{account}**"
+no-everyone = "A feed can't ping @everyone. Pick a role, or leave the role out."
+cannot-read = "I can't follow that: {why}"
+test-cannot-read = "I couldn't read the source just now: {why}"
+full = "This server already follows {max} feeds. Remove one with `/feeds remove` first."
+duplicate = "That source is already posted in {channel}."
+added = "Following {name} in {channel}. {latest}\nI look for new posts every {minutes} minutes or so. Try `/feeds test {id}` to see a post now, and `/feeds edit {id}` to change the message, the card or the filters."
+added-latest = "Its latest post: “{title}”."
+added-empty = "It has nothing posted yet."
+list-title = "Feeds ({count}/{max})"
+list-empty = "This server follows no feed yet. Add one with `/feeds add` or on the dashboard's Feeds page."
+list-footer = "Page {page} of {pages}"
+list-pings = " · pings {role}"
+previous = "Previous"
+next = "Next"
+expired = "This button has expired."
+slow-down = "That is a lot of lookups in a minute. Try again in a moment."
+edit-nothing = "Name at least one thing to change: the channel, the message, the role, the card, the filters or the switch."
+no-such = "This server has no feed #{id}. `/feeds list` shows the numbers."
+edited = "Saved {name}. New posts go to {channel}."
+removed = "Stopped following {name}."
+test-empty = "The source has nothing to show yet, so there is nothing to test with."
+test-sent = "Posted the latest item of {name} in {channel}, the way new posts will look (the role was not pinged)."
+test-refused = "I couldn't post in {channel}: {why}"
+message-too-long = "The message can be at most {max} characters."
+filter-too-many = "A filter takes at most {max} words."
+filter-too-long = "A filter word can be at most {length} characters."
+
+[feeds.health]
+ok = "✓ checked {checked} · last post {posted}"
+not-yet = "not yet"
+off = "⏸ switched off"
+off-because = "⏸ switched off: {why}"
+cannot-post = "⚠ can't post: {why}"
+failing = "⚠ {why}"
+
+[feeds.kind]
+youtube = "YouTube"
+rss = "RSS"
+podcast = "Podcast"
+reddit = "Reddit"
+bluesky = "Bluesky"
+bridge = "Bridge"
+
+# What a new post says when the feed has no message of its own. {account} is the channel, feed,
+# subreddit or account; {title} {url} {author} {published} are the post's.
+[feeds.default]
+youtube = "**{account}** posted a new video: {title}\n{url}"
+rss = "New from **{account}**: {title}\n{url}"
+reddit = "New in **{account}**: {title}\n{url}"
+bluesky = "**{account}** posted on Bluesky:\n{url}"
+bridge = "New from **{account}**: {title}\n{url}"
+
+[feeds.card]
+length = "Length"
+listen = "Listen"
+audio-file = "Audio file"
+
+# The made-up post the dashboard previews a message with.
+[feeds.sample]
+youtube = "Our biggest build yet"
+rss = "Ten things we learned this year"
+reddit = "What is the coziest game you played this month?"
+bluesky = "Morning walk by the reef 🌊"
+bridge = "A new post"
+summary = "The first lines of the article show here."
+account = "Your source"
+
+[feeds.source]
+empty = "Name the source: a link, a handle or a name."
+too-long = "That is too long for a source."
+youtube = "That isn't a YouTube channel. Paste the channel's link, its @handle or its id (UC…)."
+url = "That isn't a web address of a feed. Paste the RSS or Atom address, starting with https://."
+private = "That address points inside a private network, so I won't fetch it."
+reddit = "That isn't a subreddit. Write it as r/name or paste its link."
+bluesky = "That isn't a Bluesky account. Write the handle, like name.bsky.social, or paste the profile link."
+bridge = "That isn't a bridge route. Write the path the bridge serves, like twitter/user/name."
+
+[feeds.unavailable]
+bridge = "X, Instagram and TikTok need an RSS bridge, and this Pinchora has none set up."
+reddit = "Reddit feeds are switched off on this Pinchora."
+
+[feeds.error]
+blocked = "it points inside a private network, so I won't fetch it."
+bad-url = "it is not a plain http or https address (or redirects to one that isn't)."
+redirects = "it redirects more than 3 times."
+too-large = "it is larger than 1 MB."
+timeout = "it did not answer within 10 seconds."
+not-found = "it doesn't exist (the site answered “not found”)."
+rate-limited = "the site asked us to slow down; I'll try again later."
+status = "the site answered with an error (HTTP {status})."
+network = "the site could not be reached."
+parse = "it isn't an RSS or Atom feed."
+no-account = "there is no account with that handle."
+youtube-page = "I couldn't find the channel on that page. Paste the channel's link (youtube.com/channel/UC…) instead."
+post-permission = "I need View Channel, Send Messages and Embed Links in that channel."
+post-channel = "the channel no longer exists."
+post-refused = "Discord refused the message."
+post-down = "Discord could not be reached."

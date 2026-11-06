@@ -72,6 +72,7 @@ export const router = createBrowserRouter([
       { path: "responders/new", element: <ResponderEditor /> },
       { path: "responders/:responderId", element: <ResponderEditor /> },
       { path: "audit", element: <AuditLog /> },
+      { path: "feeds/*", lazy: async () => ({ Component: (await import("./pages/Feeds")).Feeds }) },
       { path: "*", element: <NotFound /> },
     ],
   },

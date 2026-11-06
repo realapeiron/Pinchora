@@ -138,7 +138,11 @@ pub const DELETED_NAME: &str = "Deleted user";
 /// A server's own records that remember who made them, as (table, id column) and nothing else about
 /// the player: the record stays (a server's custom commands outlive the manager who wrote them) and
 /// the id becomes 0.
-pub const ZEROED_COLUMNS: &[(&str, &str)] = &[("custom_commands", "created_by"), ("custom_responders", "created_by")];
+pub const ZEROED_COLUMNS: &[(&str, &str)] = &[
+    ("custom_commands", "created_by"),
+    ("custom_responders", "created_by"),
+    ("feeds", "created_by"),
+];
 
 /// Tables that belong to no player: server settings and shared stock.
 pub const OTHER_TABLES: &[&str] = &[
@@ -160,6 +164,9 @@ pub const OTHER_TABLES: &[&str] = &[
     "collection_drops",
     "party_settings",
     "guild_modules",
+    "feed_sources",
+    "feed_items_seen",
+    "feed_outbox",
 ];
 
 /// What a player hides.

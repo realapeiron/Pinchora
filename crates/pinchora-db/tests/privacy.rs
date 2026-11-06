@@ -251,6 +251,10 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         "INSERT INTO custom_commands (guild_id, name, responses, created_by) VALUES ($1, 'hello', ARRAY['hi'], $1)",
         "INSERT INTO custom_responders (guild_id, name, trigger_kind, responses, created_by)
          VALUES ($1, 'welcome', 'member_join', ARRAY['hi'], $1)",
+        // A feed they set up ($1 doubles as the server).
+        "INSERT INTO feed_sources (kind, source) VALUES ('rss', 'https://privacy.example/' || $1::text)",
+        "INSERT INTO feeds (guild_id, kind, source, channel_id, created_by)
+         VALUES ($1, 'rss', 'https://privacy.example/' || $1::text, 1, $1)",
     ];
     for sql in inserts {
         run(db, sql, user, other).await;

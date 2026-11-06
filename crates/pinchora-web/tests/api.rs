@@ -42,6 +42,9 @@ use twilight_model::{gateway::payload::incoming::MessageCreate, id::Id};
 // Custom commands and auto-responders.
 #[path = "api/tags.rs"]
 mod tags;
+// The Feeds page.
+#[path = "api/feeds.rs"]
+mod feeds;
 
 const APPLICATION_ID: u64 = 1;
 const PUBLIC_URL: &str = "http://dash.test";

@@ -135,6 +135,7 @@ async fn boot(config: &Config, role: &str) -> anyhow::Result<(Arc<App>, Readines
     pinchora_commands::spawn_collection_ticker(app.clone());
     // Moves the party games on: pops a pearl, ends a writing or voting phase, closes a lobby or a poll.
     pinchora_commands::spawn_party_ticker(app.clone());
+    pinchora_commands::spawn_feeds_ticker(app.clone());
     // Voice states only arrive on the gateway; its ticker pays everyone sitting in voice.
     if role == "gateway" {
         pinchora_commands::spawn_voice_ticker(app.clone());

@@ -98,6 +98,9 @@ mod grants;
 // What reaches the (still empty) feature hooks.
 #[path = "simulate/hooks.rs"]
 mod hooks;
+// Social feeds: /feeds and the poller, against a local feed server.
+#[path = "simulate/feeds.rs"]
+mod feeds;
 
 const APPLICATION_ID: u64 = 1;
 const CHANNEL_ID: u64 = 2;

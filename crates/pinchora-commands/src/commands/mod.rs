@@ -12,6 +12,7 @@ pub(crate) mod decorate;
 pub(crate) mod derby;
 pub(crate) mod duel;
 mod economy;
+pub(crate) mod feeds;
 pub(crate) mod fish;
 pub(crate) mod friends;
 pub(crate) mod games;
@@ -144,4 +145,5 @@ commands!(
     tag::Tag,
     customcommand::CustomCommand,
     language::LanguageCommand,
+    feeds::FeedsCommand,
 );

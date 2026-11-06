@@ -4,6 +4,7 @@ mod audit_log;
 mod commands;
 mod community;
 mod discord_info;
+mod feeds;
 mod guilds;
 mod house;
 mod leveling;

@@ -1039,7 +1039,8 @@
       "party",
       "tag",
       "customcommand",
-      "language"
+      "language",
+      "feeds"
     ],
     "responder_placeholders": {
       "keyword": [
