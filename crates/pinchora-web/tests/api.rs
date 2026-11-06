@@ -47,6 +47,9 @@ use twilight_model::{
 // Custom commands and auto-responders.
 #[path = "api/tags.rs"]
 mod tags;
+// The roles page: auto roles, sticky roles, role panels and colour roles.
+#[path = "api/roles.rs"]
+mod roles;
 
 const APPLICATION_ID: u64 = 1;
 const PUBLIC_URL: &str = "http://dash.test";

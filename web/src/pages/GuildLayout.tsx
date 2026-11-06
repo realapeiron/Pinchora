@@ -42,7 +42,7 @@ export const NAV: NavGroup[] = [
       { to: "community", label: "Community" },
     ],
   },
-  { group: "ROLES", pages: [] },
+  { group: "ROLES", pages: [{ to: "roles", label: "Roles" }] },
   {
     group: "SAFETY",
     pages: [

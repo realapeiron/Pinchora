@@ -13,7 +13,7 @@ use serde_json::Value;
 
 use super::{
     audit_log, cards, commands, community, discord_info, leveling, me::icon_url, moderation, modules, overview,
-    preview, responders, settings, store,
+    preview, responders, roles, settings, store,
 };
 use crate::state::WebState;
 
@@ -90,6 +90,7 @@ pub fn router() -> Router<WebState> {
         .route("/cards/uploads/{id}", get(cards::upload_png))
         .route("/cards/{kind}", put(cards::put_card))
         .route("/cards/{kind}/test", post(cards::test))
+        .nest("/roles", roles::router())
 }
 
 #[derive(Serialize)]

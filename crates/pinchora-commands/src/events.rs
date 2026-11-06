@@ -306,6 +306,7 @@ pub async fn on_permissions_changed(app: &App, change: PermissionChange) {
 
 /// Logs nickname, username and avatar changes.
 pub async fn on_member_update(app: Arc<App>, event: MemberUpdate) -> anyhow::Result<()> {
+    hooks::on_member_update(&app, &event).await;
     auto::roles_changed(&app, &event).await;
     // A member's roles may have changed: what text commands know of the server's permissions is
     // forgotten with it.

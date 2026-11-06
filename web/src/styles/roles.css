@@ -1,0 +1,470 @@
+/* /Roles page: auto roles, role panels, colour roles. Built from the dashboard's own pieces (panels, lists,
+   choices, the Discord message look); only what they do not have is here. */
+
+/* /Times: an amount and its unit side by side */
+
+.duration {
+  display: grid;
+  grid-template-columns: minmax(70px, 1fr) minmax(96px, 1.2fr);
+  gap: 8px;
+}
+
+/* A label that reads on the panel-edge blue (the dim badge's muted text is a little under 4.5:1). */
+.badge-ink {
+  background: var(--panel-edge);
+  color: var(--ink);
+}
+
+/* /Auto roles */
+
+.auto-form {
+  display: grid;
+  gap: 20px;
+  padding: 16px;
+  background: rgb(46 61 117 / 0.18);
+  box-shadow: inset 0 0 0 2px #232e5c;
+}
+
+.auto-fields {
+  display: grid;
+  grid-template-columns: minmax(200px, 1.4fr) minmax(160px, 1fr) minmax(160px, 1fr) auto;
+  gap: 14px;
+  align-items: start;
+}
+
+.auto-fields .add-actions {
+  align-self: start;
+  margin-top: 26px;
+}
+
+.auto-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  font-size: 13px;
+}
+
+.auto-row.is-paused .role-tag {
+  opacity: 0.55;
+}
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+}
+
+.timeline li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding: 8px 0 8px 22px;
+  border-left: 2px solid var(--panel-edge);
+  margin-left: 6px;
+}
+
+.timeline li::before {
+  content: "";
+  position: absolute;
+  left: -7px;
+  top: 14px;
+  width: 12px;
+  height: 12px;
+  background: var(--gold);
+  box-shadow: 0 0 0 2px var(--outline);
+}
+
+.timeline .timeline-when {
+  min-width: 86px;
+  color: var(--gold);
+}
+
+/* /Panels */
+
+.panel-cards {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.panel-card {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  padding: 14px;
+  background: #10173a;
+  box-shadow: inset 0 0 0 2px #232e5c;
+}
+
+.panel-card.is-open {
+  box-shadow: inset 0 0 0 var(--px) var(--gold);
+}
+
+.panel-card-title {
+  margin: 0;
+  font-size: 17px;
+  overflow-wrap: anywhere;
+}
+
+.panel-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: 13px;
+}
+
+.panel-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.panel-designer .choice {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.panel-rules {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.entry-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  padding: 12px;
+  background: #10173a;
+  box-shadow: inset 0 0 0 2px #232e5c;
+}
+
+.entry-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+  min-width: 0;
+}
+
+.entry .pixel-input,
+.entry .pixel-select {
+  width: 100%;
+  min-width: 0;
+}
+
+.entry-fields .field-wide {
+  grid-column: 1 / -1;
+}
+
+.entry-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.entry-tools .pixel-button {
+  min-width: 40px;
+  min-height: 36px;
+  padding: 6px 8px;
+}
+
+/* The editor: the form, and the message it makes beside it from a wide screen on. */
+.panel-designer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+
+/* The preview comes first in the page, so it is what a phone shows on top; from a wide screen it sits beside. */
+@media (min-width: 1200px) {
+  .panel-designer {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 400px);
+  }
+  .panel-designer .designer-controls {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .panel-designer .designer-preview {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}
+
+.editor-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin: 0 0 4px;
+}
+
+.post-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  gap: 14px;
+  align-items: end;
+}
+
+.post-row .add-actions {
+  align-self: end;
+}
+
+/* The preview: the message as Discord shows it, buttons, menu or reactions included. */
+
+.panel-preview {
+  display: grid;
+  gap: 12px;
+}
+
+.panel-preview .embed-description {
+  display: grid;
+  gap: 4px;
+  white-space: normal;
+}
+
+.panel-preview .preview-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 6px;
+}
+
+.preview-emoji {
+  display: inline-block;
+  min-width: 1.3em;
+  text-align: center;
+}
+
+.preview-emoji img {
+  width: 1.3em;
+  height: 1.3em;
+  vertical-align: text-bottom;
+}
+
+.preview-mention {
+  padding: 0 4px;
+  color: #c9cdfb;
+  background: rgb(88 101 242 / 0.3);
+  border-radius: 3px;
+}
+
+.preview-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.preview-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  color: #fff;
+  font: 500 14px/1.2 var(--font-body);
+  background: #4e5058;
+  border: 0;
+  border-radius: 3px;
+  cursor: default;
+}
+
+.preview-select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  color: #b5bac1;
+  font-size: 14px;
+  background: #1e1f22;
+  border-radius: 3px;
+}
+
+.preview-select-menu {
+  display: grid;
+  gap: 2px;
+  padding: 6px;
+  background: #2b2d31;
+  border-radius: 3px;
+}
+
+.preview-select-menu > div {
+  display: grid;
+  gap: 1px;
+  padding: 6px 8px;
+  color: #dbdee1;
+  font-size: 14px;
+}
+
+.preview-select-menu small {
+  color: #949ba4;
+}
+
+.preview-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.preview-reaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  color: #dbdee1;
+  font-size: 13px;
+  background: #2b2d31;
+  border: 1px solid #3f4147;
+  border-radius: 8px;
+}
+
+.preview-note {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* /Colour roles */
+
+.colour-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  gap: 8px;
+}
+
+.colour-tile {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  width: 100%;
+  padding: 10px 10px 8px;
+  color: var(--ink);
+  font: 700 14px/1.2 var(--font-body);
+  text-align: center;
+  background: var(--panel);
+  border: 0;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 var(--px) var(--panel-edge);
+}
+
+.colour-tile:hover {
+  box-shadow: inset 0 0 0 var(--px) var(--muted);
+}
+
+.colour-tile:focus-visible {
+  outline: var(--px) solid var(--gold);
+  outline-offset: 2px;
+}
+
+.colour-tile.is-picked {
+  box-shadow: inset 0 0 0 var(--px) var(--gold);
+}
+
+.tone-swatch {
+  display: block;
+  width: 100%;
+  height: 36px;
+  box-shadow: inset 0 0 0 2px rgb(0 0 0 / 0.25);
+}
+
+.colour-state {
+  font: 700 11px/1 var(--font-pixel);
+  letter-spacing: 1px;
+}
+
+.colour-state.is-made {
+  color: var(--mint);
+}
+
+.colour-sample {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #313338;
+  border-left: var(--px) solid var(--panel-edge);
+}
+
+.colour-sample .discord-avatar {
+  flex: none;
+}
+
+.colour-sample strong {
+  font-size: 17px;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip-row .pixel-select {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.colour-role-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  font-weight: 700;
+}
+
+.colour-role-name .role-dot {
+  width: 14px;
+  height: 14px;
+}
+
+@media (max-width: 960px) {
+  .auto-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .auto-fields .add-actions {
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .auto-fields,
+  .entry,
+  .entry-fields,
+  .post-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .entry-tools {
+    flex-direction: row;
+  }
+  .entry-tools .pixel-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .panel-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .colour-grid {
+    grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  }
+}

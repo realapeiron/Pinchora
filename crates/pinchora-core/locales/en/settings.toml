@@ -49,6 +49,7 @@ mention-everyone = "Mention @everyone, @here and All Roles"
 manage-messages = "Manage Messages"
 
 [module-blurb]
+moderation = "/ban, /kick, /timeout, /warn, /purge, /lock and the other moderation commands, with numbered cases."
 leveling = "Chat and voice XP, levels and level-up messages."
 points = "Server points earned by chatting."
 welcome = "The welcome card for new members."

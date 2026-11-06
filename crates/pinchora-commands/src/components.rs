@@ -5,8 +5,8 @@ use crate::{
     commands::{
         board, character, collection, connect4, contest, customcommand, customize, decorate, derby, duel, fish,
         friends, gift, giveaway, guestbook, hangman, heist, help, house, interact, leaderboard, partner, party_games,
-        pet, plaza, poll, privacy, quests, remind, role_panels, rps, share, shells, shop, stall, store, suggest, surge,
-        trivia, wordle,
+        pet, plaza, poll, privacy, quests, remind, role_panels, roles_pack, rps, share, shells, shop, stall, store,
+        suggest, surge, trivia, wordle,
     },
 };
 
@@ -53,6 +53,9 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
         Some("cs") => customize::on_style(cx, parts, values).await,
         Some("sw") => customize::on_showcase(cx, parts, values).await,
         Some("rr") => role_panels::on_toggle(cx, parts).await,
+        Some("rb") => role_panels::on_toggle(cx, parts).await,
+        Some("rs") => role_panels::on_select(cx, parts, values).await,
+        Some("cr") => roles_pack::on_color_component(cx, parts, values).await,
         Some("gb") => guestbook::on_component(cx, parts, values.first().map(String::as_str)).await,
         Some("rc") => contest::on_component(cx, parts).await,
         Some("c4") => connect4::on_button(cx, parts).await,

@@ -49,6 +49,7 @@ mention-everyone = "@everyone, @here ve Tüm Rolleri Etiketle"
 manage-messages = "Mesajları Yönet"
 
 [module-blurb]
+moderation = "/ban, /kick, /timeout, /warn, /purge, /lock ve diğer moderasyon komutları; numaralı işlem kayıtlarıyla."
 leveling = "Sohbet ve ses XP'si, seviyeler ve seviye atlama mesajları."
 points = "Sohbet ederek kazanılan sunucu puanları."
 welcome = "Yeni üyeler için karşılama kartı."

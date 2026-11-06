@@ -52,7 +52,8 @@ function messageJson(channel: string) {
     type: 0,
     author: { id: "1", username: "pinchora", discriminator: "0", global_name: null, avatar: null },
     content: "",
-    timestamp: new Date().toISOString(),
+    // Discord writes times with an offset (twilight does not read a trailing Z).
+    timestamp: new Date().toISOString().replace(/\.(\d{3})Z$/, ".$1000+00:00"),
     edited_timestamp: null,
     tts: false,
     mention_everyone: false,

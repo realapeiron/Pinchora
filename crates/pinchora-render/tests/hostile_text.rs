@@ -6,15 +6,15 @@ use image::RgbaImage;
 use pinchora_core::card_design::{CardKind, Content};
 use pinchora_render::{
     Backdrop, BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, BottleCard, CardFill, CharacterCard, CheckersCard,
-    ChessCard, Connect4Card, CrewView, DerbyCard, DerbyLane, DesignedCard, DexCard, DexCell, DropCard, DropCritter,
-    EditorCell, EditorSection, EntriesCard, EntryHeader, EntryPicture, EntryRow, FleetCard, GridSlot, HangmanCard,
-    HangmanLetter, HaulCard, HaulTile, HeistCard, HelpCard, HelpRow, ItemGridCard, LastWeekEntry, LeaderboardCard,
-    LeaderboardEntry, LettersCard, LevelUpCard, Mood, NextRole, NurseryCard, NurseryPet, PartyLobbyCard, PearlCard,
-    PearlSeat, PetCard, PetStatus, PickView, PicrossCard, PollCard, PollOption, PostcardCard, PotCard, PotState,
-    ProfileCard, PromptCard, PromptTone, RaceCard, Racer, RacerState, RadarCard, RankCard, RatherCard, Renderer,
-    Reveal, SeaView, ShareGrabCard, ShellCard, ShipView, ShowcaseKind, ShowcaseSlot, SpriteArt, StageView, StandingRow,
-    StandingsCard, SurgeCard, SurgeState, Theme, Tide2048Card, WalletCard, WelcomeCard, WordleCard, WordleRow,
-    WrappedCard, WrappedFish, WrappedHouse, WrappedTotals, encode_png, templates,
+    ChessCard, ColorCard, ColorCell, Connect4Card, CrewView, DerbyCard, DerbyLane, DesignedCard, DexCard, DexCell,
+    DropCard, DropCritter, EditorCell, EditorSection, EntriesCard, EntryHeader, EntryPicture, EntryRow, FleetCard,
+    GridSlot, HangmanCard, HangmanLetter, HaulCard, HaulTile, HeistCard, HelpCard, HelpRow, ItemGridCard,
+    LastWeekEntry, LeaderboardCard, LeaderboardEntry, LettersCard, LevelUpCard, Mood, NextRole, NurseryCard,
+    NurseryPet, PartyLobbyCard, PearlCard, PearlSeat, PetCard, PetStatus, PickView, PicrossCard, PollCard, PollOption,
+    PostcardCard, PotCard, PotState, ProfileCard, PromptCard, PromptTone, RaceCard, Racer, RacerState, RadarCard,
+    RankCard, RatherCard, Renderer, Reveal, SeaView, ShareGrabCard, ShellCard, ShipView, ShowcaseKind, ShowcaseSlot,
+    SpriteArt, StageView, StandingRow, StandingsCard, SurgeCard, SurgeState, Theme, Tide2048Card, WalletCard,
+    WelcomeCard, WordleCard, WordleRow, WrappedCard, WrappedFish, WrappedHouse, WrappedTotals, encode_png, templates,
 };
 
 /// Emoji, a Chinese letter, markup, then code points XML 1.0 forbids or a parser may refuse: U+FFFE, U+FFFF, a
@@ -241,6 +241,28 @@ fn hostile_text_renders_on_every_card() {
                 },
             ],
             closed: false,
+            theme: t(),
+        }),
+    ));
+
+    drawn.push((
+        "colours",
+        r.color_card(&ColorCard {
+            title: hostile(),
+            hint: hostile(),
+            cells: vec![
+                ColorCell {
+                    name: hostile(),
+                    rgb: 0xff6b4a,
+                },
+                ColorCell {
+                    name: hostile(),
+                    rgb: 0x8fd3ff,
+                },
+            ],
+            selected: Some(1),
+            sample: hostile(),
+            none: hostile(),
             theme: t(),
         }),
     ));

@@ -17,6 +17,7 @@ import { Points } from "./pages/Points";
 import { RequireLogin } from "./pages/RequireLogin";
 import { ResponderEditor } from "./pages/ResponderEditor";
 import { Responders } from "./pages/Responders";
+import { Roles } from "./pages/Roles";
 import { ServerLog } from "./pages/ServerLog";
 import { Servers } from "./pages/Servers";
 import { StaffLog } from "./pages/StaffLog";
@@ -79,6 +80,7 @@ export const router = createBrowserRouter([
       { path: "responders", element: <Responders /> },
       { path: "responders/new", element: <ResponderEditor /> },
       { path: "responders/:responderId", element: <ResponderEditor /> },
+      { path: "roles", element: <Roles /> },
       { path: "audit", element: <AuditLog /> },
       { path: "*", element: <NotFound /> },
     ],

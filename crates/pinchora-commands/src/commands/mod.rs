@@ -47,6 +47,7 @@ pub(crate) mod remind;
 mod rep;
 mod rep_roles;
 pub(crate) mod role_panels;
+pub(crate) mod roles_pack;
 pub(crate) mod rps;
 pub(crate) mod share;
 pub(crate) mod shells;
@@ -122,6 +123,8 @@ commands!(
     store::StoreCommand,
     customize::CustomizeCommand,
     role_panels::RolesCommand,
+    roles_pack::AutoRolesCommand,
+    roles_pack::ColorCommand,
     play::PlayCommand,
     partner::PartnerCommand,
     friends::FriendsCommand,
