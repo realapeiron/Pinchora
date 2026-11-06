@@ -914,6 +914,9 @@ mod tests {
         assert!(checked > 150, "only {checked} glossary checks ran");
     }
 
+    /// Real English adjectives that open a furniture name: translated, not coined.
+    const TRANSLATED_FIRST_WORDS: [(&str, &str); 1] = [("Revolving", "Dönen")];
+
     #[test]
     fn furniture_names_are_the_coined_word_plus_the_agreed_noun() {
         let nouns: Value = serde_json::from_str(TR_FURNITURE_NOUNS).unwrap();
@@ -921,6 +924,10 @@ mod tests {
         let mut used: HashSet<&str> = HashSet::new();
         for f in &content().furniture {
             let (first, tail) = f.name.split_once(' ').unwrap();
+            let first = TRANSLATED_FIRST_WORDS
+                .iter()
+                .find(|(english, _)| *english == first)
+                .map_or(first, |(_, turkish)| *turkish);
             let entry = &nouns[tail];
             used.insert(tail);
             let noun = match entry {

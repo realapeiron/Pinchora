@@ -12,7 +12,7 @@
  "ribbonfin_guppy": {
   "name": "Ribbonfin Lepistesi",
   "description": "Herkese, ama gerçekten herkese kıpırdanarak merhaba der.",
-  "food": "Gölet Pul Karışımı"
+  "food": "Gölet Pul Yemi Karışımı"
  },
  "noodlenose_seahorse": {
   "name": "Noodlenose Denizatı",
@@ -147,7 +147,7 @@
  "meadowgill_nudibranch": {
   "name": "Meadowgill Deniz Sümüklüsü",
   "description": "Kendine hayran kalacak kadar yavaş ilerler.",
-  "food": "Reefleaf Pulları"
+  "food": "Reefleaf Pul Yemi"
  },
  "dunetuft_fennec": {
   "name": "Dunetuft Fennek Tilkisi",

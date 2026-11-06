@@ -24,7 +24,7 @@
   "name": "Karamel"
  },
  "charcoal": {
-  "name": "Kömür"
+  "name": "Kömür Grisi"
  },
  "cherry": {
   "name": "Kiraz"
@@ -105,7 +105,7 @@
   "name": "Nane"
  },
  "moss": {
-  "name": "Yosun"
+  "name": "Yosun Yeşili"
  },
  "natural": {
   "name": "Doğal"
@@ -132,7 +132,7 @@
   "name": "Platin"
  },
  "plum": {
-  "name": "Erik"
+  "name": "Erik Moru"
  },
  "porcelain": {
   "name": "Porselen"
@@ -156,7 +156,7 @@
   "name": "Gümüş"
  },
  "sky": {
-  "name": "Gök"
+  "name": "Gök Mavisi"
  },
  "snow": {
   "name": "Kar"
@@ -174,7 +174,7 @@
   "name": "Mandalina"
  },
  "teal": {
-  "name": "Petrol"
+  "name": "Petrol Mavisi"
  },
  "violet": {
   "name": "Menekşe"

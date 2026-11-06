@@ -196,7 +196,7 @@
   "description": "Özellikle demokratik bir bisküvi tabağı olan görkemli bir masa."
  },
  "revolving_tide_table": {
-  "name": "Revolving Gelgit Masası",
+  "name": "Dönen Gelgit Masası",
   "description": "Camsı bir kıvrım, çok yumuşak bir girdabın anısını taşır."
  },
  "patchpillow_bed": {
@@ -417,7 +417,7 @@
  },
  "starcrumb_orrery": {
   "name": "Starcrumb Gezegen Maketi",
-  "description": "Yatma vaktinde kısılmayı akıl eden bütün bir minik gök."
+  "description": "Yatma vaktinde ışığını kısmayı hatırlayan bütün bir minik gök."
  },
  "acornsun_beacon": {
   "name": "Acornsun İşaret Feneri",
@@ -437,7 +437,7 @@
  },
  "crumbshine_toaster": {
   "name": "Crumbshine Tost Makinesi",
-  "description": "Mutfağı biri umursuyormuş gibi kokutur."
+  "description": "Mutfağın, biri umursuyormuş gibi kokmasını sağlar."
  },
  "mintwhistle_kettle": {
   "name": "Mintwhistle Çaydanlığı",
@@ -701,7 +701,7 @@
  },
  "pagepair_books": {
   "name": "Pagepair Kitapları",
-  "description": "Biri şimdi için, biri çok yakında için."
+  "description": "Biri şimdi için, biri de çok yakın bir gelecek için."
  },
  "sprigthumb_vase": {
   "name": "Sprigthumb Vazosu",
@@ -745,7 +745,7 @@
  },
  "humskein_wave_panel": {
   "name": "Humskein Dalga Paneli",
-  "description": "Yumuşak dalgacıklar her odaya kendi iç sesini buldurur."
+  "description": "Yumuşak dalgacıklar her odaya kısık sesle konuşmayı öğretir."
  },
  "clickcove_pennant": {
   "name": "Clickcove Flaması",
@@ -833,7 +833,7 @@
  },
  "beamport_window": {
   "name": "Beamport Penceresi",
-  "description": "Manzaranın hareket ettiği günleri hatırlayan bir lombar."
+  "description": "Manzaranın hareket ettiği günleri hatırlayan bir lomboz."
  },
  "reefarch_door": {
   "name": "Reefarch Kapısı",
@@ -1008,7 +1008,7 @@
   "description": "Son parça büyük ihtimalle bisküvi tabağının altında."
  },
  "blinkberry_pin_table": {
-  "name": "Blinkberry Langırt Pisti",
+  "name": "Blinkberry Pinball Masası",
   "description": "Hafif bir tıkırtı, minik bir parıltı ve bir deneme daha."
  },
  "dewkite_bundle": {
@@ -1193,7 +1193,7 @@
  },
  "frostwish_carousel": {
   "name": "Frostwish Atlıkarıncası",
-  "description": "Küçük kızaklar bir cebe sığacak tatil ışığında yavaşça döner."
+  "description": "Küçük kızaklar bir cebe sığacak şenlik ışığında yavaşça döner."
  },
  "lanternplait_moon_gate": {
   "name": "Lanternplait Ay Kapısı",
@@ -2420,7 +2420,7 @@
   "description": "Ölçülü hareketler ve istikrarlı ilerleme için koca bir köşe."
  },
  "hopcurrent_stepper": {
-  "name": "Hopcurrent Steppleri",
+  "name": "Hopcurrent Step Makinesi",
   "description": "Her an bir adım daha atmaya hazır küçük bir merdiven."
  },
  "bouncepearl_ball_cradle": {
@@ -2432,7 +2432,7 @@
   "description": "Montlar ve yedek çoraplar için güvenli küçük yuvalardan oluşan bir sıra."
  },
  "motionharbor_rig": {
-  "name": "Motionharbor Çalışma Kafesi",
+  "name": "Motionharbor Güç Kafesi",
   "description": "Tek bir sağlam kafeste koca bir odaya yetecek hareket."
  },
  "formripple_mirror": {
@@ -2497,7 +2497,7 @@
  },
  "curtaincove_stand": {
   "name": "Curtaincove Perde Standı",
-  "description": "Sessiz küçük bir köşenin etrafına yumuşak bir perde çekin."
+  "description": "Sessiz küçük bir köşenin etrafına yumuşak bir perde çek."
  },
  "canvasquill_divider": {
   "name": "Canvasquill Bölmesi",

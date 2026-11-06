@@ -25,15 +25,15 @@
  },
  "cosy_host": {
   "name": "Sıcacık Ev Sahibi",
-  "description": "Evin için 5 beğeni al."
+  "description": "Evine 5 beğeni topla."
  },
  "open_door": {
   "name": "Açık Kapı",
-  "description": "Evin için 30 beğeni al."
+  "description": "Evine 30 beğeni topla."
  },
  "hearth_keeper": {
   "name": "Ocak Bekçisi",
-  "description": "Evin için 120 beğeni al."
+  "description": "Evine 120 beğeni topla."
  },
  "critter_friend": {
   "name": "Hayvan Dostu",
@@ -84,7 +84,7 @@
   "description": "100 itibar puanına ulaş."
  },
  "shell_collector": {
-  "name": "Deniz Kabuğu Toplayıcı",
+  "name": "Deniz Kabuğu Toplayıcısı",
   "description": "Elinde 5.000 deniz kabuğu bulundur."
  },
  "shell_tycoon": {

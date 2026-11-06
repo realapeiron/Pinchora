@@ -33,7 +33,7 @@
  },
  "sunday_brunch": {
   "name": "Pazar Kahvaltısı",
-  "description": "Uzun ve ağır bir kahvaltıya hazır güneşli bir mutfak."
+  "description": "Uzun, telaşsız bir kahvaltıya hazır güneşli bir mutfak."
  },
  "artist_loft": {
   "name": "Sanatçı Çatı Katı",
@@ -124,7 +124,7 @@
   "description": "Yastıklar, battaniyeler ve yerde herkese yetecek kadar yer."
  },
  "winter_holiday": {
-  "name": "Kış Tatili",
+  "name": "Kış Şenliği",
   "description": "Işıklar, hediyeler ve soğuk mevsime hazır bir oda."
  },
  "garden_party": {

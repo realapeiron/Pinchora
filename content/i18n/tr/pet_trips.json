@@ -70,11 +70,11 @@
   ]
  },
  "starfall_sandbar": {
-  "name": "Starfall Kum Seti",
-  "description": "Yıldız izlemek ve büyük dilekler için bir kum seti.",
+  "name": "Starfall Kum Şeridi",
+  "description": "Yıldız izlemek ve büyük dilekler için bir kum şeridi.",
   "stories": [
    "{pet} düşen bir yıldızı yakaladı ve onu usulca göğe geri koydu.",
-   "{pet} yıldızlar tempo tutarken kum setinde dans etti.",
+   "{pet} yıldızlar tempo tutarken kum şeridinde dans etti.",
    "{pet} çorba taşır gibi dikkatle, yıldız tozuyla dolu bir deniz kabuğunu eve taşıdı.",
    "{pet} geç saate kadar uyanık kaldı ve herkes adına bir dilek tuttu."
   ]

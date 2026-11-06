@@ -1056,6 +1056,7 @@ TR_TERM_KEYS = (
 )
 TR_QUEST_NUMBERS = {"chat": "10", "fish": "3", "visit": "2", "care": "3", "place": "2"}
 TR_NAME_SLACK = 2  # characters on top of English's longest name + 30% for the suffix a Turkish noun takes
+TR_FIRST_WORDS = {"Revolving": "Dönen"}  # real English adjectives that open a furniture name: translated, not coined
 
 
 def tr_lower(text):
@@ -1167,6 +1168,7 @@ def check_turkish():
         if name == "furniture":
             for item in read_file("furniture.json") or []:
                 first, _, tail = item["name"].partition(" ")
+                first = TR_FIRST_WORDS.get(first, first)
                 noun = nouns.get(tail)
                 if isinstance(noun, dict):
                     noun = noun.get(item["category"], noun.get("*"))

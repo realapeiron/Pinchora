@@ -37,15 +37,15 @@
  },
  "warm_welcome": {
   "name": "Sıcak Karşılama",
-  "description": "Evin için 10 beğeni al."
+  "description": "Evine 10 beğeni topla."
  },
  "heartfelt_home": {
   "name": "Gönül Evi",
-  "description": "Evin için 50 beğeni al."
+  "description": "Evine 50 beğeni topla."
  },
  "town_favourite": {
   "name": "Kasabanın Gözdesi",
-  "description": "Evin için 250 beğeni al."
+  "description": "Evine 250 beğeni topla."
  },
  "pawshake": {
   "name": "Pati Tokalaşması",
