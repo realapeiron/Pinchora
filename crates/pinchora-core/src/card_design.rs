@@ -19,6 +19,19 @@ pub const MAX_LAYERS: usize = 20;
 pub const POSITION_RANGE: RangeInclusive<i32> = -2000..=4000;
 /// How wide and tall a layer may be.
 pub const SIZE_RANGE: RangeInclusive<u32> = 4..=3200;
+/// An avatar layer's side, border included, at most; the bot fetches no more than 512 px of the picture.
+pub const AVATAR_MAX_SIDE: u32 = 1024;
+/// How many avatar layers a design has, at most.
+pub const MAX_AVATARS: usize = 4;
+/// What drawing the visible layers may cost, at most, in pixel-equivalents: a shape or sticker costs its
+/// width times height ([`layer_cost`]). Measured on a 1600×1000 card, 1 million of these is about 8 ms, so the
+/// worst design that passes draws in well under 400 ms (`pinchora-render/tests/cost.rs` builds it).
+pub const LAYER_COST_MAX: u64 = 30_000_000;
+/// An avatar costs this many times its area: the picture is scaled, clipped and often faded.
+pub const AVATAR_COST_FACTOR: u64 = 5;
+/// A text layer costs this much per character it can show. Outlined, shadowed, faded emoji and CJK (the
+/// fallback fonts' big outlines) take 0.6 ms a character, whatever the size and the room around them.
+pub const TEXT_CHAR_COST: u64 = 80_000;
 pub const LAYER_ID_MAX: usize = 24;
 /// A text layer's text, in characters, before its placeholders are filled in.
 pub const TEXT_MAX: usize = 200;
@@ -32,6 +45,12 @@ pub const DIM_MAX: u8 = 90;
 pub const LINE_HEIGHT: f32 = 1.3;
 /// What a text layer can say about the member and the server.
 pub const PLACEHOLDERS: [&str; 5] = ["{user}", "{username}", "{server}", "{members}", "{ordinal}"];
+/// How long a member's name and a server's name are drawn on a card, at most, in characters.
+pub const NAME_MAX: usize = 32;
+pub const SERVER_MAX: usize = 40;
+/// The most characters each of the [`PLACEHOLDERS`] can fill in, in the same order: a name, a username, a
+/// server's name, a member count (`25,000,000`) and an ordinal (`25,000,000th`).
+pub const FILLED_MAX: [usize; 5] = [NAME_MAX, NAME_MAX, SERVER_MAX, 10, 12];
 /// The little pixel drawings every card can use, coloured to taste.
 pub const GLYPHS: [&str; 4] = ["crab", "heart", "star", "shell"];
 /// Atlas sprites that can go on a card as stickers: pets, critters and fish, badges, furniture.
@@ -40,6 +59,9 @@ pub const STICKER_PREFIXES: [&str; 4] = ["p_", "c_", "b_", "f_"];
 pub const BACKGROUND_PREFIX: &str = "bg_";
 /// An uploaded background as sent, at most.
 pub const UPLOAD_MAX_BYTES: usize = 4 * 1024 * 1024;
+/// An uploaded picture as kept (re-encoded PNG), at most: a noisy picture is shrunk until it fits, so its
+/// decoding stays a small part of drawing a card.
+pub const UPLOAD_STORED_MAX_BYTES: usize = 1024 * 1024;
 /// An uploaded picture's sides before it is shrunk, at most.
 pub const UPLOAD_MAX_SIDE: u32 = 4096;
 /// Uploads a server keeps; the oldest unused ones go first.
@@ -320,6 +342,56 @@ pub fn text_height(size: u32, lines: u32) -> u32 {
     (size as f32 * LINE_HEIGHT * lines.max(1) as f32).round() as u32
 }
 
+/// How many characters `text` takes up once its placeholders are filled in, each counted at the most it can
+/// be ([`FILLED_MAX`]): a member's name may be anything.
+pub fn filled_length(text: &str) -> usize {
+    let mut total = 0;
+    let mut rest = text;
+    while let Some(open) = rest.find('{') {
+        total += rest[..open].chars().count();
+        let after = &rest[open..];
+        match PLACEHOLDERS
+            .iter()
+            .zip(FILLED_MAX)
+            .find(|(p, _)| after.starts_with(**p))
+        {
+            Some((placeholder, most)) => {
+                total += most;
+                rest = &after[placeholder.len()..];
+            }
+            None => {
+                total += 1;
+                rest = &after[1..];
+            }
+        }
+    }
+    total + rest.chars().count()
+}
+
+/// What drawing `layer` costs, in the pixel-equivalents of [`LAYER_COST_MAX`].
+pub fn layer_cost(layer: &Layer) -> u64 {
+    let area = u64::from(layer.w) * u64::from(layer.h);
+    match &layer.content {
+        Content::Avatar { .. } => area.saturating_mul(AVATAR_COST_FACTOR),
+        Content::Text { text, .. } => (filled_length(text) as u64).saturating_mul(TEXT_CHAR_COST),
+        Content::Sprite { .. } | Content::Shape { .. } => area,
+    }
+}
+
+/// How much of a card's allowance `layers` use, in whole percent, rounded up: 100 or less is a design that
+/// fits.
+pub fn cost_share(layers: &[Layer]) -> u64 {
+    layers_cost(layers).saturating_mul(100).div_ceil(LAYER_COST_MAX)
+}
+
+/// What drawing the visible `layers` costs together.
+pub fn layers_cost(layers: &[Layer]) -> u64 {
+    layers
+        .iter()
+        .filter(|l| !l.hidden)
+        .fold(0, |sum: u64, l| sum.saturating_add(layer_cost(l)))
+}
+
 impl CardDesign {
     /// The uploaded picture the design needs, if any.
     pub fn upload(&self) -> Option<&str> {
@@ -474,6 +546,7 @@ pub fn check_design(mut design: CardDesign, catalog: &dyn Catalog) -> Result<Car
     if design.layers.len() > MAX_LAYERS {
         fail("layers", format!("A design has at most {MAX_LAYERS} layers."));
     }
+    let (canvas_w, canvas_h) = (design.width, design.height);
     let mut seen = std::collections::HashSet::new();
     for (i, layer) in design.layers.iter_mut().enumerate() {
         let name = format!("Layer {} ({})", i + 1, layer.label());
@@ -516,6 +589,9 @@ pub fn check_design(mut design: CardDesign, catalog: &dyn Catalog) -> Result<Car
             } => {
                 if layer.w != layer.h {
                     bad("an avatar is square: its width and height are the same.".to_owned());
+                }
+                if layer.w > AVATAR_MAX_SIDE {
+                    bad(format!("an avatar is at most {AVATAR_MAX_SIDE} px across."));
                 }
                 if *border_width > BORDER_MAX || *border_width * 4 > layer.w {
                     bad(format!(
@@ -594,6 +670,28 @@ pub fn check_design(mut design: CardDesign, catalog: &dyn Catalog) -> Result<Car
                 }
             }
         }
+        // After the match: a text box has just been made as tall as its lines.
+        if layer.w > canvas_w || layer.h > canvas_h {
+            bad(format!("it is bigger than the canvas ({canvas_w}×{canvas_h} px)."));
+        }
+    }
+    let avatars = design
+        .layers
+        .iter()
+        .filter(|l| matches!(l.content, Content::Avatar { .. }))
+        .count();
+    if avatars > MAX_AVATARS {
+        fail("layers", format!("A design has at most {MAX_AVATARS} avatars."));
+    }
+    if layers_cost(&design.layers) > LAYER_COST_MAX {
+        fail(
+            "layers",
+            format!(
+                "The visible layers are too heavy to draw quickly together ({}% of what a card may use). \
+                 Shrink, remove or hide some; avatars and long texts weigh the most.",
+                cost_share(&design.layers)
+            ),
+        );
     }
     if errors.is_empty() { Ok(design) } else { Err(errors) }
 }
@@ -790,6 +888,132 @@ mod tests {
         let errors = parse_design(&design(Value::Array(many)), &no_art).unwrap_err();
         assert_eq!(errors[0].field, "layers");
         assert!(errors[0].message.contains("at most 20 layers"));
+    }
+
+    fn avatar_layer(id: &str, size: u32) -> Value {
+        json!({
+            "id": id, "type": "avatar", "x": 0, "y": 0, "w": size, "h": size,
+            "shape": "circle", "border_color": "#000000", "border_width": 0,
+        })
+    }
+
+    fn shape_layer(id: &str, w: u32, h: u32) -> Value {
+        json!({
+            "id": id, "type": "shape", "x": 0, "y": 0, "w": w, "h": h,
+            "shape": "rect", "fill": "#336699", "border_color": "#000000",
+        })
+    }
+
+    #[test]
+    fn a_layer_is_never_bigger_than_the_canvas() {
+        // 1100 x 500 canvas.
+        let ok = parse_design(&design(json!([shape_layer("whole", 1100, 500)])), &no_art);
+        assert!(ok.is_ok(), "{ok:?}");
+        for (w, h) in [(1101, 500), (1100, 501)] {
+            let errors = parse_design(&design(json!([shape_layer("big", w, h)])), &no_art).unwrap_err();
+            assert_eq!(
+                messages(&errors),
+                ["Layer 1 (Shape): it is bigger than the canvas (1100×500 px)."]
+            );
+        }
+        // A text box is as tall as its lines, and that counts: 200 px, four lines is 1040 px.
+        let mut tall = text_layer("Hi");
+        tall["size"] = json!(200);
+        tall["max_lines"] = json!(4);
+        let errors = parse_design(&design(json!([tall])), &no_art).unwrap_err();
+        assert!(messages(&errors)[0].ends_with("it is bigger than the canvas (1100×500 px)."));
+        // Sitting partly off the canvas is fine.
+        let mut off = shape_layer("off", 1100, 500);
+        off["x"] = json!(-400);
+        assert!(parse_design(&design(json!([off])), &no_art).is_ok());
+    }
+
+    #[test]
+    fn avatars_are_limited_in_size_and_number() {
+        // The tallest canvas is 1000 px, which already keeps an avatar under its own 1024 px cap.
+        let mut sent = design(json!([avatar_layer("a", 1000)]));
+        sent["width"] = json!(1600);
+        sent["height"] = json!(1000);
+        assert!(parse_design(&sent, &no_art).is_ok());
+        sent["layers"] = json!([avatar_layer("a", 1025)]);
+        let errors = parse_design(&sent, &no_art).unwrap_err();
+        assert!(
+            messages(&errors).contains(&"Layer 1 (Avatar): an avatar is at most 1024 px across."),
+            "{errors:?}"
+        );
+        // Four fit, a fifth does not, hidden or not.
+        let four: Vec<Value> = (0..MAX_AVATARS).map(|i| avatar_layer(&format!("a{i}"), 200)).collect();
+        sent["layers"] = json!(four);
+        assert!(parse_design(&sent, &no_art).is_ok());
+        let mut five = four.clone();
+        let mut spare = avatar_layer("a9", 200);
+        spare["hidden"] = json!(true);
+        five.push(spare);
+        sent["layers"] = json!(five);
+        let errors = parse_design(&sent, &no_art).unwrap_err();
+        assert_eq!(messages(&errors), ["A design has at most 4 avatars."]);
+    }
+
+    #[test]
+    fn what_the_layers_cost_to_draw_is_capped() {
+        let shape = |id: &str| shape_layer(id, 1100, 500);
+        let costs = |layers: &Value| {
+            let parsed = parse_design(&design(layers.clone()), &no_art).unwrap();
+            layers_cost(&parsed.layers)
+        };
+        // A shape costs its area, an avatar five times that, a text layer by the characters it can show.
+        assert_eq!(costs(&json!([shape("s")])), 1100 * 500);
+        assert_eq!(costs(&json!([avatar_layer("a", 200)])), 5 * 200 * 200);
+        assert_eq!(costs(&json!([text_layer("Hi")])), 2 * TEXT_CHAR_COST);
+        // The templates' kind of design sits far below the cap.
+        let usual = json!([shape("s"), avatar_layer("a", 200), text_layer("WELCOME {user}")]);
+        assert!(costs(&usual) < LAYER_COST_MAX / 4, "{}", costs(&usual));
+
+        // 375 characters of text fit in the cap, a 376th does not.
+        let texts = |lengths: &[usize]| -> Vec<Value> {
+            lengths
+                .iter()
+                .enumerate()
+                .map(|(i, n)| {
+                    let mut t = text_layer(&"x".repeat(*n));
+                    t["id"] = json!(format!("t{i}"));
+                    t
+                })
+                .collect()
+        };
+        let characters = (LAYER_COST_MAX / TEXT_CHAR_COST) as usize;
+        assert_eq!(characters, 375);
+        assert!(parse_design(&design(json!(texts(&[200, 175]))), &no_art).is_ok());
+        let errors = parse_design(&design(json!(texts(&[200, 176]))), &no_art).unwrap_err();
+        assert_eq!(errors.len(), 1);
+        assert_eq!(errors[0].field, "layers");
+        assert!(
+            errors[0]
+                .message
+                .starts_with("The visible layers are too heavy to draw quickly together (101% of what a card may use)"),
+            "{}",
+            errors[0].message
+        );
+        // Hiding a layer takes its cost away.
+        let mut heavy = texts(&[200, 176]);
+        heavy[0]["hidden"] = json!(true);
+        assert!(parse_design(&design(json!(heavy)), &no_art).is_ok());
+    }
+
+    #[test]
+    fn placeholders_count_at_the_most_they_can_be() {
+        assert_eq!(filled_length(""), 0);
+        assert_eq!(filled_length("WELCOME"), 7);
+        assert_eq!(filled_length("{user}"), NAME_MAX);
+        assert_eq!(filled_length("a {server}!"), 3 + SERVER_MAX);
+        assert_eq!(
+            filled_length("{user}{username}{server}{members}{ordinal}"),
+            2 * NAME_MAX + SERVER_MAX + 10 + 12
+        );
+        // What is not a placeholder is what it looks like; a character is a character, not a byte.
+        assert_eq!(filled_length("{nope} { {user"), 14);
+        assert_eq!(filled_length("😀李{user}"), 2 + NAME_MAX);
+        assert_eq!(cost_share(&[]), 0);
     }
 
     #[test]

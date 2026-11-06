@@ -747,6 +747,17 @@ p {
   font-weight: 700;
 }
 
+/* While the save bar is up the toast rides above it, not on top of its buttons. */
+body:has(.save-bar.is-open) .toast {
+  bottom: 112px;
+}
+/* On a phone the bar's label and buttons stack, so it is taller. */
+@media (max-width: 767px) {
+  body:has(.save-bar.is-open) .toast {
+    bottom: 160px;
+  }
+}
+
 /* /Loading and problems */
 
 .state {

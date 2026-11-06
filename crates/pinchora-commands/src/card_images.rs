@@ -4,7 +4,7 @@
 
 use pinchora_core::card_design::{CardDesign, CardKind, Delivery, parse_design};
 use pinchora_db::GuildSettings;
-use pinchora_render::{CardFill, DesignedCard, character::atlas, templates};
+use pinchora_render::{CardFill, DesignedCard, Renderer, character::atlas, templates};
 use twilight_model::{
     channel::message::AllowedMentions,
     http::attachment::Attachment,
@@ -15,7 +15,7 @@ use twilight_model::{
     util::ImageHash,
 };
 
-use crate::App;
+use crate::{App, PreviewError};
 
 /// The avatar is fetched at least this big, and at most.
 const AVATAR_MIN: u32 = 32;
@@ -95,8 +95,13 @@ pub struct CardSubject {
     pub members: Option<u64>,
 }
 
-/// Draws `design` for `subject`. The uploaded background, if the design has one, is the guild's.
-pub async fn card_png(app: &App, guild: u64, design: &CardDesign, subject: &CardSubject) -> anyhow::Result<Vec<u8>> {
+/// Everything a drawing of `design` for `subject` needs, fetched, as the job the renderer runs.
+async fn card_job(
+    app: &App,
+    guild: u64,
+    design: &CardDesign,
+    subject: &CardSubject,
+) -> anyhow::Result<impl FnOnce(&Renderer) -> anyhow::Result<Vec<u8>> + Send + 'static> {
     let size = design.avatar_size().unwrap_or(AVATAR_MIN).clamp(AVATAR_MIN, AVATAR_MAX);
     let grid = design.pixelated_avatar().then_some(AVATAR_GRID);
     let avatar = app.avatar_of(subject.user, subject.avatar, size, grid).await;
@@ -105,7 +110,7 @@ pub async fn card_png(app: &App, guild: u64, design: &CardDesign, subject: &Card
         None => None,
     };
     let (design, subject) = (design.clone(), subject.clone());
-    app.render(move |r| {
+    Ok(move |r: &Renderer| {
         let fill = CardFill {
             user: &subject.name,
             username: &subject.username,
@@ -119,7 +124,22 @@ pub async fn card_png(app: &App, guild: u64, design: &CardDesign, subject: &Card
             fill: &fill,
         })
     })
-    .await
+}
+
+/// Draws `design` for `subject`. The uploaded background, if the design has one, is the guild's.
+pub async fn card_png(app: &App, guild: u64, design: &CardDesign, subject: &CardSubject) -> anyhow::Result<Vec<u8>> {
+    app.render(card_job(app, guild, design, subject).await?).await
+}
+
+/// [`card_png`] for the dashboard (previews and test messages), drawn in the preview lane: it waits its turn
+/// among the other previews and gives up, with an error to show, rather than hold the editor for long.
+pub async fn preview_png(
+    app: &App,
+    guild: u64,
+    design: &CardDesign,
+    subject: &CardSubject,
+) -> Result<Vec<u8>, PreviewError> {
+    app.render_preview(card_job(app, guild, design, subject).await?).await
 }
 
 /// Sends the text and the image to `channel` as `delivery` says: together, the image first, one of them

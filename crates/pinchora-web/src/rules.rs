@@ -152,6 +152,18 @@ fn rules() -> Value {
 /// The welcome and goodbye image editor's limits, so its inputs never make a design the API refuses.
 fn card_rules() -> Value {
     let span = |r: &std::ops::RangeInclusive<u32>| json!([r.start(), r.end()]);
+    let samples: Vec<Value> = [
+        "",
+        "WELCOME",
+        "{user}",
+        "a {server}!",
+        "{user}{username}{server}{members}{ordinal}",
+        "{nope} { {user",
+        "😀李{user}",
+    ]
+    .iter()
+    .map(|text| json!({ "text": text, "length": card::filled_length(text) }))
+    .collect();
     json!({
         "version": card::DESIGN_VERSION,
         "width": span(&card::WIDTH_RANGE),
@@ -166,6 +178,18 @@ fn card_rules() -> Value {
         "border_max": card::BORDER_MAX,
         "outline_max": card::OUTLINE_MAX,
         "dim_max": card::DIM_MAX,
+        "avatar_max_side": card::AVATAR_MAX_SIDE,
+        "max_avatars": card::MAX_AVATARS,
+        "layer_cost_max": card::LAYER_COST_MAX,
+        "avatar_cost_factor": card::AVATAR_COST_FACTOR,
+        "text_char_cost": card::TEXT_CHAR_COST,
+        "filled_max": card::PLACEHOLDERS
+            .iter()
+            .zip(card::FILLED_MAX)
+            .map(|(p, n)| (p.to_string(), json!(n)))
+            .collect::<serde_json::Map<_, _>>(),
+        // Texts with the length the server counts for them, for the editor's tests.
+        "filled_samples": samples,
         // An f32 in Rust; written with the digits it was given.
         "line_height": (f64::from(card::LINE_HEIGHT) * 100.0).round() / 100.0,
         "placeholders": card::PLACEHOLDERS,

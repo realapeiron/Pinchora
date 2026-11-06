@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { apiImage } from "../lib/api";
+import { ApiError, apiImage } from "../lib/api";
 import { useDebounced } from "../lib/useDebounced";
 
 /**
@@ -28,11 +28,14 @@ export function PreviewFrame({
   const [url, setUrl] = useState<string | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [message, setMessage] = useState("");
+  // Bumped when a refused preview (too many asked for, the bot busy) is asked again by itself.
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (settled === "null") return;
     const controller = new AbortController();
     let made: string | null = null;
+    let retry: number | undefined;
     setState("loading");
     apiImage(path, JSON.parse(settled), controller.signal)
       .then((blob) => {
@@ -42,14 +45,21 @@ export function PreviewFrame({
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
-        setMessage(error instanceof Error ? error.message : "The preview could not be drawn.");
+        const wait =
+          error instanceof ApiError && (error.status === 429 || error.status === 503)
+            ? error.retryAfter
+            : undefined;
+        if (wait) retry = window.setTimeout(() => setAttempt((n) => n + 1), wait * 1000 + 250);
+        const base = error instanceof Error ? error.message : "The preview could not be drawn.";
+        setMessage(wait ? `${base} Trying again in ${wait} s.` : base);
         setState("error");
       });
     return () => {
       controller.abort();
+      window.clearTimeout(retry);
       if (made) URL.revokeObjectURL(made);
     };
-  }, [path, settled]);
+  }, [path, settled, attempt]);
 
   // Nothing to draw while the form has a problem: the last card stays, marked as out of date.
   const paused = key === "null";

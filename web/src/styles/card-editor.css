@@ -1,4 +1,5 @@
-/* The welcome image editor: a toolbar, then layers | canvas | properties, folding to one column. */
+/* The welcome image editor: a toolbar, then layers | canvas | properties. Narrower screens put layers and
+   properties in one column beside the canvas (1024-1499 px), then under it, then fold to one column. */
 
 .content:has(.card-editor) {
   max-width: 1480px;
@@ -51,6 +52,14 @@
   color: var(--outline);
   background: var(--gold);
 }
+/* In the property panel the segments share each row's width, so no dark gap trails the last one. */
+.prop .segmented {
+  display: flex;
+}
+.prop .segment {
+  flex: 1 1 auto;
+  text-align: center;
+}
 .segment .dot {
   display: inline-block;
   width: 8px;
@@ -63,17 +72,33 @@
 .card-workspace {
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr) 300px;
+  grid-template-areas: "layers center props";
   gap: 16px;
   align-items: start;
 }
-.card-workspace > .panel .panel-body {
+.card-workspace .panel .panel-body {
   padding: 14px;
 }
 
+/* Layers and properties are grid items of the workspace; a wrapper only gathers them where they share a column. */
+.card-aside {
+  display: contents;
+}
+.card-layers {
+  grid-area: layers;
+}
+.card-props {
+  grid-area: props;
+}
+
 .card-center {
+  grid-area: center;
   display: grid;
   gap: 12px;
   min-width: 0;
+  /* The canvas stays in view, under the top bar, while the panels beside it scroll. */
+  position: sticky;
+  top: 84px;
 }
 
 .card-zoom {
@@ -223,6 +248,7 @@
 .card-bot-preview {
   display: grid;
   gap: 8px;
+  margin-top: 16px;
 }
 .card-bot-preview .preview-image {
   max-width: 100%;
@@ -235,6 +261,39 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
   margin-bottom: 12px;
+}
+
+/* How much of a card's drawing allowance the visible layers use. */
+.cost-meter {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.cost-label {
+  display: flex;
+  justify-content: space-between;
+}
+.cost-bar {
+  display: block;
+  height: 8px;
+  background: #0c1230;
+  box-shadow: inset 0 0 0 2px #232e5c;
+}
+.cost-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--mint);
+}
+.cost-meter.is-high .cost-bar > span {
+  background: var(--gold);
+}
+.cost-meter.is-over {
+  color: var(--ink);
+}
+.cost-meter.is-over .cost-bar > span {
+  background: var(--accent);
 }
 
 .layer-list {
@@ -434,11 +493,19 @@
 .template:hover {
   box-shadow: inset 0 0 0 2px var(--gold);
 }
+/* Every tile has the same frame, whatever the shape of its design, which is shown whole inside it. */
+.template-frame {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 12 / 5;
+  background: repeating-conic-gradient(#2a3157 0 25%, #1c2244 0 50%) 0 0 / 12px 12px;
+}
 .template-art {
   display: block;
-  width: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
   height: auto;
-  background: repeating-conic-gradient(#2a3157 0 25%, #1c2244 0 50%) 0 0 / 12px 12px;
 }
 .template-name {
   font: 400 12px/1.2 var(--font-pixel);
@@ -484,16 +551,49 @@
   align-items: end;
   gap: 12px;
 }
+.card-test > .pixel-button {
+  justify-self: start;
+}
 
-/* /Laptops and tablets: the canvas on top, layers and properties side by side under it. Three columns only
-   when the canvas still gets 600 px. */
-@media (max-width: 1499px) {
+/* /Laptops (1024-1499 px): the canvas stays in view on the left; layers and properties share one column on the
+   right, which scrolls by itself when it is taller than the screen. */
+@media (min-width: 1024px) and (max-width: 1499px) {
+  .card-workspace {
+    grid-template-columns: minmax(0, 1fr) 340px;
+    grid-template-areas: "center aside";
+  }
+  .card-aside {
+    grid-area: aside;
+    display: grid;
+    gap: 16px;
+    align-content: start;
+    position: sticky;
+    top: 84px;
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+    /* Room for the panels' pixel edges, which a scroll box would cut. */
+    padding: 0 6px 6px 0;
+  }
+  .card-layers,
+  .card-props {
+    grid-area: auto;
+  }
+  .card-aside .layer-list {
+    max-height: 190px;
+    overflow-y: auto;
+  }
+}
+
+/* /Tablets: the canvas on top, layers and properties side by side under it. */
+@media (max-width: 1023px) {
   .card-workspace {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      "center center"
+      "layers props";
   }
   .card-center {
-    grid-column: 1 / -1;
-    order: -1;
+    position: static;
   }
 }
 
@@ -501,12 +601,21 @@
 @media (max-width: 767px) {
   .card-workspace {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: none;
   }
-  .card-workspace > .panel:last-child {
-    order: -1;
+  .card-center,
+  .card-layers,
+  .card-props {
+    grid-area: auto;
   }
   .card-center {
-    order: -2;
+    order: 0;
+  }
+  .card-props {
+    order: 1;
+  }
+  .card-layers {
+    order: 2;
   }
   .card-send {
     flex-wrap: wrap;

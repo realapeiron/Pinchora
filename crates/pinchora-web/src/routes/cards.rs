@@ -13,9 +13,12 @@ use axum::{
 };
 use image::{ImageFormat, ImageReader, Limits, imageops::FilterType};
 use pinchora_cache::Invalidation;
-use pinchora_commands::{CardSubject, ServerCard, atlas_has, card_png, deliver, server_card};
+use pinchora_commands::{CardSubject, PreviewError, ServerCard, atlas_has, deliver, preview_png, server_card};
 use pinchora_core::{
-    card_design::{self, CardDesign, CardKind, Delivery, HEIGHT_RANGE, UPLOAD_MAX_BYTES, UPLOAD_MAX_SIDE, WIDTH_RANGE},
+    card_design::{
+        self, CardDesign, CardKind, Delivery, HEIGHT_RANGE, UPLOAD_MAX_BYTES, UPLOAD_MAX_SIDE, UPLOAD_STORED_MAX_BYTES,
+        WIDTH_RANGE,
+    },
     settings::{self, FieldError, MessageKind},
 };
 use pinchora_render::{encode_png, templates};
@@ -33,15 +36,39 @@ use crate::{
     state::WebState,
 };
 
-/// Previews per session per minute (the editor asks once an edit has settled); each also waits for a render
-/// slot like the bot's cards.
+/// Previews per session per minute (the editor asks once an edit has settled).
 const PREVIEWS_PER_MINUTE: i64 = 60;
+/// Previews per server per minute, whoever asks: one busy server cannot fill the preview lane for the rest.
+const PREVIEWS_PER_GUILD_PER_MINUTE: i64 = 20;
 /// Test messages per server per minute.
 const TESTS_PER_MINUTE: i64 = 3;
 /// Uploads per server per hour.
 const UPLOADS_PER_HOUR: i64 = 20;
 /// The member number previews and tests show.
 const SAMPLE_MEMBERS: u64 = 1234;
+
+/// What a preview that was not drawn tells the dashboard: when to ask again.
+fn preview_error(error: PreviewError) -> ApiError {
+    match error {
+        PreviewError::Busy => ApiError {
+            retry_after: Some(2),
+            ..ApiError::new(
+                axum::http::StatusCode::SERVICE_UNAVAILABLE,
+                "busy",
+                "Pinchora is drawing a lot of pictures right now. The preview comes back in a moment.",
+            )
+        },
+        PreviewError::TooSlow => ApiError {
+            retry_after: Some(5),
+            ..ApiError::new(
+                axum::http::StatusCode::SERVICE_UNAVAILABLE,
+                "slow",
+                "The preview took too long to draw. Try again, or make the design lighter.",
+            )
+        },
+        PreviewError::Failed(error) => ApiError::internal(error),
+    }
+}
 
 fn kind_of(raw: &str) -> ApiResult<CardKind> {
     CardKind::parse(raw).ok_or_else(|| ApiError::malformed("The kind is welcome or goodbye."))
@@ -214,10 +241,20 @@ pub async fn preview(
         Duration::from_secs(60),
     )
     .await?;
+    ratelimit::check(
+        &state.app.cache,
+        "preview-guild",
+        &managed.id.to_string(),
+        PREVIEWS_PER_GUILD_PER_MINUTE,
+        Duration::from_secs(60),
+    )
+    .await?;
     let design = design_of(&body.design)?;
     check_upload(&state, managed.id, &design).await?;
     let subject = sample_subject(session, &managed.guild.name);
-    let png = card_png(&state.app, managed.id, &design, &subject).await?;
+    let png = preview_png(&state.app, managed.id, &design, &subject)
+        .await
+        .map_err(preview_error)?;
     Ok(png_response(png, "private, no-store"))
 }
 
@@ -266,7 +303,9 @@ pub async fn test(
     let settings = state.app.db.guild_settings(guild).await?;
     let text = test_text(kind, &settings, &subject);
     let image = if delivery.has_image() {
-        let png = card_png(&state.app, guild, &design, &subject).await?;
+        let png = preview_png(&state.app, guild, &design, &subject)
+            .await
+            .map_err(preview_error)?;
         Some((format!("{}.png", kind.key()), png))
     } else {
         None
@@ -335,7 +374,7 @@ fn test_text(kind: CardKind, settings: &pinchora_db::GuildSettings, subject: &Ca
 
 /// `POST /cards/uploads`: a background picture (PNG, JPEG, WebP or GIF, its first frame), up to
 /// [`UPLOAD_MAX_BYTES`] and [`UPLOAD_MAX_SIDE`] px a side. It is decoded, shrunk to fit the largest
-/// canvas and stored as PNG; what was sent is never kept or served.
+/// canvas (and [`UPLOAD_STORED_MAX_BYTES`]) and stored as PNG; what was sent is never kept or served.
 pub async fn upload(
     State(state): State<WebState>,
     managed: ManagedGuild,
@@ -410,15 +449,26 @@ fn reencode(bytes: &[u8]) -> Result<(Vec<u8>, u32, u32), String> {
         .decode()
         .map_err(|_| format!("Pictures are at most {UPLOAD_MAX_SIDE} px a side, and must be a readable image."))?;
     let (max_w, max_h) = (*WIDTH_RANGE.end(), *HEIGHT_RANGE.end());
-    let picture = if picture.width() > max_w || picture.height() > max_h {
+    let mut picture = if picture.width() > max_w || picture.height() > max_h {
         picture.resize(max_w, max_h, FilterType::Triangle)
     } else {
         picture
     };
-    let rgba = picture.to_rgba8();
-    let (w, h) = rgba.dimensions();
-    let png = encode_png(&rgba).map_err(|_| unreadable())?;
-    Ok((png, w, h))
+    loop {
+        let rgba = picture.to_rgba8();
+        let (w, h) = rgba.dimensions();
+        let png = encode_png(&rgba).map_err(|_| unreadable())?;
+        if png.len() <= UPLOAD_STORED_MAX_BYTES || w.min(h) <= 64 {
+            return Ok((png, w, h));
+        }
+        // Too many bytes to keep (a photo or noise): shrink by what is over, a little more, and look again.
+        let scale = ((UPLOAD_STORED_MAX_BYTES as f64 / png.len() as f64).sqrt() * 0.95).min(0.9);
+        picture = picture.resize(
+            ((f64::from(w) * scale) as u32).max(1),
+            ((f64::from(h) * scale) as u32).max(1),
+            FilterType::Triangle,
+        );
+    }
 }
 
 /// `GET /cards/uploads/{id}`: an uploaded picture as stored.

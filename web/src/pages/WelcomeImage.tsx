@@ -26,6 +26,10 @@ import {
   CARD,
   DELIVERY_LABELS,
   commit,
+  costShare,
+  designCost,
+  fitDesign,
+  heavyMessage,
   history,
   layerLabel,
   newId,
@@ -80,13 +84,19 @@ function useMediaQuery(query: string): boolean {
 
 /** What the browser can tell is wrong with a design before the server sees it. */
 function problems(design: CardDesign): string[] {
-  return design.layers.flatMap((layer, i) => {
+  const layers = design.layers.flatMap((layer, i) => {
     if (layer.type !== "text") return [];
     const name = `Layer ${i + 1} (Text)`;
     if (layer.text.trim() === "") return [`${name}: write something, or delete the layer.`];
     const unknown = unknownPlaceholders(layer.text);
     return unknown.length ? [`${name}: ${unknown[0]} isn't a placeholder.`] : [];
   });
+  const avatars = design.layers.filter((l) => l.type === "avatar").length;
+  return [
+    ...layers,
+    ...(avatars > CARD.max_avatars ? [`A design has at most ${CARD.max_avatars} avatars.`] : []),
+    ...(designCost(design.layers) > CARD.layer_cost_max ? [heavyMessage(design.layers)] : []),
+  ];
 }
 
 export function WelcomeImage() {
@@ -143,6 +153,7 @@ function Editor({
   const [uploading, setUploading] = useState(false);
   const [testChannel, setTestChannel] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
+  const [showBot, setShowBot] = useState(false);
   const lastEdit = useRef<{ key: string; at: number } | null>(null);
   const clearToast = useCallback(() => setToast(null), []);
   const viewport = useRef<HTMLDivElement>(null);
@@ -162,6 +173,7 @@ function Editor({
   const changed = KINDS.filter(({ kind: k }) => !same(draft[k], saved[k])).length;
   const local = problems(design);
   const scale = zoom === "fit" ? fitZoom : zoom;
+  const share = costShare(design.layers);
 
   // /Edits
 
@@ -177,8 +189,9 @@ function Editor({
 
   const setSide = (next: Partial<Side>, merge?: string) =>
     apply({ ...draft, [kind]: { ...side, ...next } }, merge);
+  // Whatever changes, no layer ends up bigger than the canvas.
   const setDesign = (next: CardDesign, merge?: string) =>
-    setSide({ design: next, custom: true }, merge && `${kind}:${merge}`);
+    setSide({ design: fitDesign(next), custom: true }, merge && `${kind}:${merge}`);
   const setLayer = (next: Layer, merge?: string) =>
     setDesign(
       { ...design, layers: design.layers.map((l) => (l.id === next.id ? next : l)) },
@@ -188,6 +201,17 @@ function Editor({
   const addLayer = (next: Layer) => {
     if (design.layers.length >= CARD.max_layers) {
       setToast(`A design has at most ${CARD.max_layers} layers.`);
+      return;
+    }
+    if (
+      next.type === "avatar" &&
+      design.layers.filter((l) => l.type === "avatar").length >= CARD.max_avatars
+    ) {
+      setToast(`A design has at most ${CARD.max_avatars} avatars.`);
+      return;
+    }
+    if (designCost([...design.layers, next]) > CARD.layer_cost_max) {
+      setToast("That would make the image too heavy to draw quickly. Shrink or hide a layer first.");
       return;
     }
     setDesign({ ...design, layers: [...design.layers, next] });
@@ -378,7 +402,7 @@ function Editor({
     <div className="settings-page card-editor">
       <PageHead
         title="WELCOME IMAGE"
-        lead="Design the picture new members get, and the one that says goodbye. Drag things around on the canvas; the bot draws exactly the preview below it."
+        lead="Design the picture new members get, and the one that says goodbye. Drag things around on the canvas; Try it, further down, shows the picture the bot really draws."
       />
 
       <div className="card-toolbar" role="toolbar" aria-label="Editor">
@@ -447,104 +471,6 @@ function Editor({
       )}
 
       <div className={`card-workspace ${simple ? "is-simple" : ""}`}>
-        <Panel
-          title="LAYERS"
-          aside={
-            <span className="counter">
-              {design.layers.length}/{CARD.max_layers}
-            </span>
-          }
-        >
-          <div className="layer-add">
-            <PixelButton className="button-small" onClick={() => addLayer(newLayer(design, "text"))}>
-              + Text
-            </PixelButton>
-            <PixelButton className="button-small" onClick={() => addLayer(newLayer(design, "avatar"))}>
-              + Avatar
-            </PixelButton>
-            <PixelButton className="button-small" onClick={() => setDialog("sticker")}>
-              + Sticker
-            </PixelButton>
-            <PixelButton className="button-small" onClick={() => addLayer(newLayer(design, "shape"))}>
-              + Shape
-            </PixelButton>
-          </div>
-          <ol className="layer-list" aria-label="Layers, top first">
-            {ordered.map((l) => {
-              const index = design.layers.indexOf(l);
-              return (
-                <li
-                  key={l.id}
-                  className={`layer-row ${l.id === selected ? "is-selected" : ""} ${l.hidden ? "is-hidden" : ""}`}
-                >
-                  <button
-                    type="button"
-                    className="layer-icon"
-                    aria-label={l.hidden ? `Show ${layerLabel(l)}` : `Hide ${layerLabel(l)}`}
-                    aria-pressed={!l.hidden}
-                    onClick={() => setLayer({ ...l, hidden: !l.hidden })}
-                  >
-                    {l.hidden ? "◌" : "●"}
-                  </button>
-                  <button
-                    type="button"
-                    className="layer-icon layer-lock"
-                    aria-label={l.locked ? `Unlock ${layerLabel(l)}` : `Lock ${layerLabel(l)}`}
-                    aria-pressed={l.locked}
-                    onClick={() => setLayer({ ...l, locked: !l.locked })}
-                  >
-                    {l.locked ? "🔒" : "🔓"}
-                  </button>
-                  <button
-                    type="button"
-                    className="layer-name"
-                    onClick={() => setSelected(l.id)}
-                    aria-current={l.id === selected || undefined}
-                  >
-                    <span className="layer-kind pixel-label">
-                      {l.type === "sprite" ? "STICKER" : l.type.toUpperCase()}
-                    </span>
-                    <span className="layer-label">{layerLabel(l)}</span>
-                  </button>
-                  <span className="layer-moves">
-                    <button
-                      type="button"
-                      className="layer-icon"
-                      aria-label={`Move ${layerLabel(l)} up`}
-                      disabled={index === design.layers.length - 1}
-                      onClick={() => restack(l.id, 1)}
-                    >
-                      ▲
-                    </button>
-                    <button
-                      type="button"
-                      className="layer-icon"
-                      aria-label={`Move ${layerLabel(l)} down`}
-                      disabled={index === 0}
-                      onClick={() => restack(l.id, -1)}
-                    >
-                      ▼
-                    </button>
-                  </span>
-                </li>
-              );
-            })}
-            {design.layers.length === 0 && (
-              <li className="empty-row muted">Nothing on the canvas yet. Add a layer or pick a template.</li>
-            )}
-          </ol>
-          {layer && (
-            <div className="layer-actions">
-              <PixelButton variant="secondary" className="button-small" onClick={() => duplicate(layer)}>
-                Duplicate
-              </PixelButton>
-              <PixelButton variant="ghost" className="button-small" onClick={() => removeLayer(layer.id)}>
-                Delete
-              </PixelButton>
-            </div>
-          )}
-        </Panel>
-
         <div className="card-center">
           <div className="card-zoom" role="group" aria-label="Zoom">
             <PixelButton
@@ -599,43 +525,149 @@ function Editor({
               onCommit={onCommit}
             />
           </div>
-          <div className="card-bot-preview">
-            <h3 className="pixel-label">WHAT THE BOT POSTS</h3>
-            <PreviewFrame
-              path={`/api/guilds/${guild}/preview/card`}
-              body={local.length === 0 ? { design } : null}
-              alt={`The ${kind} image the bot draws`}
-              width={design.width}
-              height={design.height}
-              delay={600}
-            />
-            <p className="muted fine">
-              Drawn by the bot with you as the member, from the design above.{" "}
-              {side.custom ? "" : "This is the classic card from /config welcome-card until you change it."}
-            </p>
+        </div>
+        <div className="card-aside">
+          <div className="card-layers">
+            <Panel
+              title="LAYERS"
+              aside={
+                <span className="counter">
+                  {design.layers.length}/{CARD.max_layers}
+                </span>
+              }
+            >
+              <div className="layer-add">
+                <PixelButton className="button-small" onClick={() => addLayer(newLayer(design, "text"))}>
+                  + Text
+                </PixelButton>
+                <PixelButton className="button-small" onClick={() => addLayer(newLayer(design, "avatar"))}>
+                  + Avatar
+                </PixelButton>
+                <PixelButton className="button-small" onClick={() => setDialog("sticker")}>
+                  + Sticker
+                </PixelButton>
+                <PixelButton className="button-small" onClick={() => addLayer(newLayer(design, "shape"))}>
+                  + Shape
+                </PixelButton>
+              </div>
+              <div className={`cost-meter ${share > 100 ? "is-over" : share >= 80 ? "is-high" : ""}`}>
+                <span className="cost-label">
+                  <span className="pixel-label">DRAW COST</span>
+                  <span>{share}%</span>
+                </span>
+                <span
+                  className="cost-bar"
+                  role="meter"
+                  aria-label="How much of a card's drawing allowance the visible layers use"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={Math.min(100, share)}
+                >
+                  <span style={{ width: `${Math.min(100, share)}%` }} />
+                </span>
+              </div>
+              <ol className="layer-list" aria-label="Layers, top first">
+                {ordered.map((l) => {
+                  const index = design.layers.indexOf(l);
+                  return (
+                    <li
+                      key={l.id}
+                      className={`layer-row ${l.id === selected ? "is-selected" : ""} ${l.hidden ? "is-hidden" : ""}`}
+                    >
+                      <button
+                        type="button"
+                        className="layer-icon"
+                        aria-label={l.hidden ? `Show ${layerLabel(l)}` : `Hide ${layerLabel(l)}`}
+                        aria-pressed={!l.hidden}
+                        onClick={() => setLayer({ ...l, hidden: !l.hidden })}
+                      >
+                        {l.hidden ? "◌" : "●"}
+                      </button>
+                      <button
+                        type="button"
+                        className="layer-icon layer-lock"
+                        aria-label={l.locked ? `Unlock ${layerLabel(l)}` : `Lock ${layerLabel(l)}`}
+                        aria-pressed={l.locked}
+                        onClick={() => setLayer({ ...l, locked: !l.locked })}
+                      >
+                        {l.locked ? "🔒" : "🔓"}
+                      </button>
+                      <button
+                        type="button"
+                        className="layer-name"
+                        onClick={() => setSelected(l.id)}
+                        aria-current={l.id === selected || undefined}
+                      >
+                        <span className="layer-kind pixel-label">
+                          {l.type === "sprite" ? "STICKER" : l.type.toUpperCase()}
+                        </span>
+                        <span className="layer-label">{layerLabel(l)}</span>
+                      </button>
+                      <span className="layer-moves">
+                        <button
+                          type="button"
+                          className="layer-icon"
+                          aria-label={`Move ${layerLabel(l)} up`}
+                          disabled={index === design.layers.length - 1}
+                          onClick={() => restack(l.id, 1)}
+                        >
+                          ▲
+                        </button>
+                        <button
+                          type="button"
+                          className="layer-icon"
+                          aria-label={`Move ${layerLabel(l)} down`}
+                          disabled={index === 0}
+                          onClick={() => restack(l.id, -1)}
+                        >
+                          ▼
+                        </button>
+                      </span>
+                    </li>
+                  );
+                })}
+                {design.layers.length === 0 && (
+                  <li className="empty-row muted">
+                    Nothing on the canvas yet. Add a layer or pick a template.
+                  </li>
+                )}
+              </ol>
+              {layer && (
+                <div className="layer-actions">
+                  <PixelButton variant="secondary" className="button-small" onClick={() => duplicate(layer)}>
+                    Duplicate
+                  </PixelButton>
+                  <PixelButton variant="ghost" className="button-small" onClick={() => removeLayer(layer.id)}>
+                    Delete
+                  </PixelButton>
+                </div>
+              )}
+            </Panel>
+          </div>
+          <div className="card-props">
+            <Panel title="PROPERTIES">
+              {layer ? (
+                <LayerProperties
+                  layer={layer}
+                  canvas={design}
+                  onChange={setLayer}
+                  onPickSticker={() => setDialog("swap-sticker")}
+                  simple={simple}
+                />
+              ) : (
+                <CanvasProperties
+                  design={design}
+                  onChange={setDesign}
+                  atlas={atlas}
+                  uploads={uploads}
+                  onUpload={upload}
+                  uploading={uploading}
+                  simple={simple}
+                />
+              )}
+            </Panel>
           </div>
         </div>
-
-        <Panel title="PROPERTIES">
-          {layer ? (
-            <LayerProperties
-              layer={layer}
-              onChange={setLayer}
-              onPickSticker={() => setDialog("swap-sticker")}
-              simple={simple}
-            />
-          ) : (
-            <CanvasProperties
-              design={design}
-              onChange={setDesign}
-              atlas={atlas}
-              uploads={uploads}
-              onUpload={upload}
-              uploading={uploading}
-              simple={simple}
-            />
-          )}
-        </Panel>
       </div>
 
       {(errors.length > 0 || local.length > 0) && (
@@ -648,7 +680,20 @@ function Editor({
         </Panel>
       )}
 
-      <Panel title="TRY IT">
+      <Panel
+        title="TRY IT"
+        aside={
+          <PixelButton
+            variant="secondary"
+            className="button-small"
+            aria-expanded={showBot}
+            aria-controls="card-bot-preview"
+            onClick={() => setShowBot((on) => !on)}
+          >
+            {showBot ? "Hide the bot's picture" : "Show the bot's picture"}
+          </PixelButton>
+        }
+      >
         <div className="card-test">
           <Field
             label="Post a test in"
@@ -666,6 +711,24 @@ function Editor({
             {testing ? "Sending…" : "Send test"}
           </PixelButton>
         </div>
+        {showBot && (
+          <div className="card-bot-preview" id="card-bot-preview">
+            <h3 className="pixel-label">WHAT THE BOT POSTS</h3>
+            <PreviewFrame
+              path={`/api/guilds/${guild}/preview/card`}
+              body={local.length === 0 ? { design } : null}
+              alt={`The ${kind} image the bot draws`}
+              width={design.width}
+              height={design.height}
+              delay={1500}
+            />
+            <p className="muted fine">
+              Drawn by the bot with you as the member, from the design above, at most twenty times a minute
+              for the whole server.{" "}
+              {side.custom ? "" : "This is the classic card from /config welcome-card until you change it."}
+            </p>
+          </div>
+        )}
       </Panel>
 
       {dialog === "templates" && (
@@ -683,15 +746,17 @@ function Editor({
                   setDialog(null);
                 }}
               >
-                <CardSvg
-                  design={t[kind]}
-                  fill={fill}
-                  avatarUrl={me.user.avatar_url}
-                  uploads={uploadUrls}
-                  atlas={atlas}
-                  width={240}
-                  className="template-art"
-                />
+                <span className="template-frame">
+                  <CardSvg
+                    design={t[kind]}
+                    fill={fill}
+                    avatarUrl={me.user.avatar_url}
+                    uploads={uploadUrls}
+                    atlas={atlas}
+                    width={240}
+                    className="template-art"
+                  />
+                </span>
                 <span className="template-name">{t.name}</span>
               </button>
             ))}

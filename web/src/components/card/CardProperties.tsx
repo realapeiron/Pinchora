@@ -5,15 +5,18 @@ import {
   type Background,
   type CardDesign,
   type CardUpload,
+  type Canvas,
   type Layer,
   type ShapeKind,
   type TextLayer,
   CARD,
   STICKER_GROUPS,
   clamp,
+  fitLayer,
+  maxAvatarSide,
+  maxTextSize,
   stickerName,
   textHeight,
-  tidy,
   unknownPlaceholders,
 } from "../../lib/card";
 import { PixelButton } from "../PixelButton";
@@ -422,23 +425,28 @@ const SHAPES: { value: ShapeKind; label: string }[] = [
 /** The selected layer's settings. On a phone (`simple`) only the ones a thumb needs. */
 export function LayerProperties({
   layer,
+  canvas,
   onChange,
   onPickSticker,
   simple,
 }: {
   layer: Layer;
+  /** What a layer has to fit in: no bigger than the canvas. */
+  canvas: Canvas;
   onChange: Edit<Layer>;
   onPickSticker: () => void;
   simple: boolean;
 }) {
   const id = (name: string) => `layer-${name}`;
-  const set = <L extends Layer>(next: L, merge?: string) => onChange(tidy(next), merge);
+  const set = <L extends Layer>(next: L, merge?: string) => onChange(fitLayer(next, canvas), merge);
   return (
     <div className="props">
       <h3 className="pixel-label props-title">
         {layer.type === "sprite" ? "STICKER" : layer.type.toUpperCase()}
       </h3>
-      {layer.type === "text" && <TextProperties layer={layer} onChange={set} simple={simple} />}
+      {layer.type === "text" && (
+        <TextProperties layer={layer} canvas={canvas} onChange={set} simple={simple} />
+      )}
       {layer.type === "avatar" && (
         <>
           <Choice
@@ -553,7 +561,7 @@ export function LayerProperties({
               id={id("w")}
               label="Width"
               value={layer.w}
-              range={CARD.size}
+              range={[CARD.size[0] ?? 4, layer.type === "avatar" ? maxAvatarSide(canvas) : canvas.width]}
               onChange={(w) => set(layer.type === "avatar" ? { ...layer, w, h: w } : { ...layer, w }, "w")}
             />
             {layer.type !== "text" && layer.type !== "avatar" && (
@@ -561,7 +569,7 @@ export function LayerProperties({
                 id={id("h")}
                 label="Height"
                 value={layer.h}
-                range={CARD.size}
+                range={[CARD.size[0] ?? 4, canvas.height]}
                 onChange={(h) => set({ ...layer, h }, "h")}
               />
             )}
@@ -574,10 +582,12 @@ export function LayerProperties({
 
 function TextProperties({
   layer,
+  canvas,
   onChange,
   simple,
 }: {
   layer: TextLayer;
+  canvas: Canvas;
   onChange: Edit<TextLayer>;
   simple: boolean;
 }) {
@@ -639,7 +649,7 @@ function TextProperties({
         id="layer-size"
         label="Size"
         value={layer.size}
-        range={CARD.text_size}
+        range={[CARD.text_size[0] ?? 8, maxTextSize(layer.max_lines, canvas.height)]}
         unit=" px"
         onChange={(size) => setSize(size, "size")}
       />

@@ -108,6 +108,10 @@ impl Renderer {
     }
 
     pub fn svg_to_png(&self, svg: &str) -> anyhow::Result<Vec<u8>> {
+        Ok(self.svg_to_pixmap(svg)?.encode_png()?)
+    }
+
+    fn svg_to_pixmap(&self, svg: &str) -> anyhow::Result<tiny_skia::Pixmap> {
         let options = usvg::Options {
             fontdb: self.fonts.clone(),
             font_family: "Noto Sans".into(),
@@ -118,7 +122,7 @@ impl Renderer {
         let mut pixmap =
             tiny_skia::Pixmap::new(size.width(), size.height()).ok_or_else(|| anyhow::anyhow!("empty canvas"))?;
         resvg::render(&tree, tiny_skia::Transform::default(), &mut pixmap.as_mut());
-        Ok(pixmap.encode_png()?)
+        Ok(pixmap)
     }
 
     pub fn profile_card(&self, card: &ProfileCard<'_>) -> anyhow::Result<Vec<u8>> {
@@ -138,8 +142,25 @@ impl Renderer {
     }
 
     /// A welcome or goodbye image from a server's own design.
+    ///
+    /// Written with the fast PNG compression: the default level takes 150 to 300 ms to squeeze a busy
+    /// 1600×1000 picture (an uploaded photo, big avatars), more than drawing the card; the fast one takes about
+    /// 10 ms, for a file up to 1.7 times as big.
     pub fn designed_card(&self, card: &DesignedCard<'_>) -> anyhow::Result<Vec<u8>> {
-        self.svg_to_png(&card.to_svg())
+        let pixmap = self.svg_to_pixmap(&card.to_svg())?;
+        let mut rgba = Vec::with_capacity(pixmap.data().len());
+        for pixel in pixmap.pixels() {
+            let c = pixel.demultiply();
+            rgba.extend([c.red(), c.green(), c.blue(), c.alpha()]);
+        }
+        let mut out = Vec::new();
+        let mut encoder = png::Encoder::new(&mut out, pixmap.width(), pixmap.height());
+        encoder.set_color(png::ColorType::Rgba);
+        encoder.set_depth(png::BitDepth::Eight);
+        encoder.set_compression(png::Compression::Fast);
+        encoder.set_filter(png::Filter::Adaptive);
+        encoder.write_header()?.write_image_data(&rgba)?;
+        Ok(out)
     }
 
     pub fn item_grid(&self, card: &ItemGridCard) -> anyhow::Result<Vec<u8>> {

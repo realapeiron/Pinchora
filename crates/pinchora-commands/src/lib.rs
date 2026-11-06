@@ -17,8 +17,8 @@ mod server_log;
 mod util;
 mod voice_xp;
 
-pub use app::App;
-pub use card_images::{CardSubject, ServerCard, atlas_has, card_png, classic_card, deliver, server_card};
+pub use app::{App, PreviewError};
+pub use card_images::{CardSubject, ServerCard, atlas_has, card_png, classic_card, deliver, preview_png, server_card};
 pub use commands::{
     collection::{post_bottle, post_critter_drop, spawn_ticker as spawn_collection_ticker, tick as collection_tick},
     definitions as command_definitions,

@@ -8,7 +8,8 @@ use std::{
 };
 
 use pinchora_core::card_design::{
-    Align, AvatarShape, Background, CardDesign, Content, Direction, Font, LINE_HEIGHT, Layer, ShapeKind,
+    Align, AvatarShape, Background, CardDesign, Content, Direction, Font, LINE_HEIGHT, Layer, NAME_MAX, SERVER_MAX,
+    ShapeKind,
 };
 
 use super::{PIXEL, SANS};
@@ -49,9 +50,6 @@ type DataUri = Arc<String>;
 /// A sprite's data URI with its width and height.
 type SpriteUri = (DataUri, u32, u32);
 
-/// Names and server names in a card, at most, in characters.
-const NAME_MAX: usize = 32;
-const SERVER_MAX: usize = 40;
 /// The colour behind an avatar inside its border, as on every card.
 const AVATAR_BACK: &str = "#0b1029";
 /// The light pixels of the glyph stickers.

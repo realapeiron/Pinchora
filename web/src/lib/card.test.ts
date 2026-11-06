@@ -2,12 +2,21 @@ import { describe, expect, it } from "vitest";
 
 import {
   type CardDesign,
+  type Layer,
   type TextLayer,
   CARD,
   commit,
+  costShare,
   coverScale,
+  designCost,
+  filledLength,
   fillPlaceholders,
+  fitDesign,
+  fitLayer,
+  heavyMessage,
   history,
+  layerCost,
+  maxTextSize,
   newLayer,
   ordinal,
   push,
@@ -140,5 +149,92 @@ describe("the undo history", () => {
     // A new step drops what could be redone.
     expect(push(undo(h), 9).future).toEqual([]);
     expect(undo(history(1))).toEqual(history(1));
+  });
+});
+
+describe("what keeps a design cheap to draw", () => {
+  const avatar = (design: CardDesign) => newLayer(design, "avatar");
+  const text = (design: CardDesign, body: string) => ({
+    ...(newLayer(design, "text") as TextLayer),
+    text: body,
+  });
+
+  it("counts a text's length as the API does", () => {
+    for (const sample of CARD.filled_samples) {
+      expect(filledLength(sample.text), JSON.stringify(sample.text)).toBe(sample.length);
+    }
+    expect(filledLength("😀李{user}")).toBe(2 + CARD.filled_max["{user}"]!);
+  });
+
+  it("charges shapes their area, avatars five times it and text by its characters", () => {
+    const shape = newLayer(canvas, "shape");
+    expect(layerCost(shape)).toBe(shape.w * shape.h);
+    const face = avatar(canvas);
+    expect(layerCost(face)).toBe(face.w * face.h * CARD.avatar_cost_factor);
+    expect(layerCost(text(canvas, "Hi"))).toBe(2 * CARD.text_char_cost);
+    // A hidden layer costs nothing.
+    expect(designCost([shape, { ...face, hidden: true }])).toBe(layerCost(shape));
+  });
+
+  it("rounds the share up, so 100 or less is a design the API takes", () => {
+    const long = text(canvas, "x".repeat(200));
+    const rest = CARD.layer_cost_max - layerCost(long);
+    const filler = { ...newLayer(canvas, "shape"), w: 1, h: rest } as Layer;
+    expect(costShare([long, filler])).toBe(100);
+    expect(costShare([long, { ...filler, h: rest + 1 }])).toBe(101);
+    expect(costShare([])).toBe(0);
+    expect(heavyMessage([long, { ...filler, h: rest + 1 }])).toBe(
+      "The visible layers are too heavy to draw quickly together (101% of what a card may use). Shrink, remove or hide some; avatars and long texts weigh the most.",
+    );
+  });
+
+  it("keeps every layer inside the canvas, and says nothing when it already is", () => {
+    const small = { ...canvas, width: 600, height: 150 };
+    const big = { ...newLayer(canvas, "shape"), w: 900, h: 450 } as Layer;
+    const fitted = fitLayer(big, small);
+    expect([fitted.w, fitted.h]).toEqual([600, 150]);
+    const face = { ...avatar(canvas), w: 400, h: 400 } as Layer;
+    expect([fitLayer(face, small).w, fitLayer(face, small).h]).toEqual([150, 150]);
+    const title = { ...(newLayer(canvas, "text") as TextLayer), size: 200, w: 1000, h: textHeight(200, 1) };
+    const squeezed = fitLayer(title, small) as TextLayer;
+    expect(squeezed.w).toBe(600);
+    expect(squeezed.size).toBe(maxTextSize(1, 150));
+    expect(squeezed.size).toBe(115);
+    expect(textHeight(squeezed.size, 1)).toBeLessThanOrEqual(150);
+    expect(squeezed.h).toBe(textHeight(squeezed.size, 1));
+    // Nothing to do: the very same objects come back, so no undo step is made for it.
+    const fits = { ...canvas, layers: [newLayer(canvas, "shape"), avatar(canvas)] };
+    expect(fitDesign(fits)).toBe(fits);
+    expect(
+      fitDesign({ ...fits, width: 300, height: 150 }).layers.every((l) => l.w <= 300 && l.h <= 150),
+    ).toBe(true);
+  });
+
+  it("stops a resize at the canvas edge, avatars at their own cap and stickers on whole steps", () => {
+    const box = { x: 0, y: 0, w: 200, h: 100 };
+    expect(resizeBox(box, "se", 5000, 5000, { kind: "free" }, 8, { w: 1100, h: 500 })).toEqual({
+      x: 0,
+      y: 0,
+      w: 1100,
+      h: 500,
+    });
+    const square = { x: 10, y: 10, w: 100, h: 100 };
+    expect(resizeBox(square, "nw", -5000, -5000, { kind: "square" }, 8, { w: 500, h: 500 })).toEqual({
+      x: -390,
+      y: -390,
+      w: 500,
+      h: 500,
+    });
+    const sprite = { x: 0, y: 0, w: 72, h: 52 };
+    const stepped = resizeBox(sprite, "se", 5000, 0, { kind: "aspect", unit: { w: 36, h: 26 } }, 8, {
+      w: 400,
+      h: 300,
+    });
+    expect(stepped).toEqual({ x: 0, y: 0, w: 396, h: 286 });
+    // A font cannot grow past the canvas height.
+    const title = newLayer(canvas, "text") as TextLayer;
+    const grown = resizeText(title, "se", 100_000, 0, { width: 1100, height: 200 });
+    expect(textHeight(grown.size, 1)).toBeLessThanOrEqual(200);
+    expect(grown.w).toBeLessThanOrEqual(1100);
   });
 });

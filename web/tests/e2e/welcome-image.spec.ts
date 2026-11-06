@@ -25,8 +25,11 @@ async function shot(page: Page, name: string, fullPage = false) {
   await page.screenshot({ path: `${SCREENS}/${name}.png`, animations: "disabled", fullPage });
 }
 
-/** The pixels of the bot's picture the editor shows right now, once it has finished drawing. */
+/** The pixels of the bot's picture the editor shows right now, once it has finished drawing. The picture sits
+ * behind a toggle in the Try it panel; this opens it first. */
 async function botPicture(page: Page): Promise<string> {
+  const toggle = page.getByRole("button", { name: /the bot's picture$/ });
+  if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
   const frame = page.locator(".card-bot-preview .preview-frame");
   await expect(frame).not.toHaveClass(/is-busy/, { timeout: 20_000 });
   return page.locator(".card-bot-preview .preview-image").evaluate(async (img: HTMLImageElement) => {
@@ -167,6 +170,11 @@ test("templates, stickers, the layer list, uploads, a test message and goodbyes"
   await page.getByRole("button", { name: "Templates" }).click();
   await expect(page.getByRole("dialog", { name: "TEMPLATES" })).toBeVisible();
   await expect(page.locator(".template")).toHaveCount(8);
+  // Every tile is as tall as the others, whatever the shape of the design in it.
+  const tiles = await page
+    .locator(".template")
+    .evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
+  expect(new Set(tiles).size, `tile heights ${tiles}`).toBe(1);
   await shot(page, "editor-templates");
   await page.locator(".template", { hasText: "Starlit banner" }).click();
   await expect(page.locator(".card-size")).toHaveText("1200×400");
@@ -254,4 +262,105 @@ test("the editor on a tablet and a phone", async ({ page }) => {
   await botPicture(page);
   expect(await overflow(page)).toBeLessThanOrEqual(0);
   await shot(page, "editor-phone", true);
+});
+
+test("laptop and desktop widths keep the canvas and the panels in view together", async ({ page }) => {
+  await login(page);
+  const welcome = await saved(page, "welcome");
+  expect(welcome.design.layers.some((l: { type: string }) => l.type === "avatar")).toBe(true);
+  for (const [width, height] of [
+    [1280, 800],
+    [1440, 900],
+    [1920, 1080],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    await page.goto(`/g/${guild}/welcome-image`);
+    await expect(page.locator('[data-layer="avatar"]')).toBeVisible();
+    // The bot's picture is not a second canvas on the page until it is asked for.
+    await expect(page.locator(".card-svg")).toHaveCount(1);
+    await expect(page.locator(".card-bot-preview")).toHaveCount(0);
+
+    // Nothing selected: the background's segments fill their rows, no dark gap trailing the last one.
+    await page.locator(".card-stage").click({ position: { x: 4, y: 4 } });
+    const gaps = await page
+      .locator(".prop .segmented")
+      .first()
+      .evaluate((box) => {
+        const outer = box.getBoundingClientRect();
+        const rows = new Map<number, number>();
+        for (const child of box.children) {
+          const r = child.getBoundingClientRect();
+          rows.set(Math.round(r.top), Math.max(rows.get(Math.round(r.top)) ?? 0, r.right));
+        }
+        return [...rows.values()].map((right) => Math.round(outer.right - right));
+      });
+    expect(Math.max(...gaps), `row gaps ${gaps}`).toBeLessThanOrEqual(3);
+
+    // A layer selected: the canvas, the layer list and its properties are all on screen.
+    await page.locator('[data-layer="avatar"]').click();
+    await page.evaluate(() => {
+      const top = document.querySelector(".card-workspace")!.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo(0, Math.max(0, top - 84));
+    });
+    for (const target of [
+      page.locator(".card-stage"),
+      page.getByRole("heading", { name: "LAYERS", exact: true }),
+      page.getByRole("heading", { name: "PROPERTIES", exact: true }),
+    ]) {
+      await expect(target).toBeInViewport({ ratio: 1 });
+      // Not hidden under the sticky top bar.
+      expect((await target.boundingBox())!.y).toBeGreaterThanOrEqual(72);
+    }
+    await shot(page, `fix-${width}`);
+  }
+
+  // The toast rides above the save bar, not on top of its buttons.
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto(`/g/${guild}/welcome-image`);
+  await page.locator('[data-layer="avatar"]').click();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByText("1 unsaved change")).toBeVisible();
+  await page.getByLabel("Post a test in").selectOption({ label: "#welcome" });
+  await page.getByRole("button", { name: "Send test" }).click();
+  const toast = page.getByRole("status").filter({ hasText: "Test posted in #welcome" });
+  await expect(toast).toBeVisible({ timeout: 30_000 });
+  const [t, bar] = [await toast.boundingBox(), await page.locator(".save-bar-inner").boundingBox()];
+  expect(t!.y + t!.height, "the toast ends above the save bar").toBeLessThanOrEqual(bar!.y);
+  await shot(page, "fix-toast");
+
+  // The tablet: the canvas on top, the panels side by side under it.
+  await page.setViewportSize({ width: 900, height: 1180 });
+  await page.goto(`/g/${guild}/welcome-image`);
+  await expect(page.locator('[data-layer="avatar"]')).toBeVisible();
+  expect(await overflow(page)).toBeLessThanOrEqual(0);
+  await shot(page, "fix-tablet", true);
+});
+
+test("a design stays within what a card may cost to draw", async ({ page }) => {
+  await login(page);
+  await page.goto(`/g/${guild}/welcome-image`);
+  await expect(page.locator('[data-layer="avatar"]')).toBeVisible();
+  const meter = page.getByRole("meter");
+  await expect(meter).toBeVisible();
+
+  // A layer is never bigger than the canvas: a typed width is held to it.
+  const canvasWidth = Number((await page.locator(".card-size").innerText()).split("×")[0]);
+  await page.locator(".layer-name", { hasText: "Rounded box" }).click();
+  const width = page.getByLabel("Width", { exact: true });
+  await width.fill("99999");
+  await expect(width).toHaveValue(String(canvasWidth));
+  await page.locator(".card-stage").click({ position: { x: 4, y: 4 } });
+
+  // Four avatars at most.
+  for (let i = 0; i < 4; i++) await page.getByRole("button", { name: "+ Avatar" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "at most 4 avatars" })).toBeVisible();
+  await expect(page.locator(".layer-row", { hasText: "AVATAR" })).toHaveCount(4);
+
+  // Text weighs by its characters: layer after layer, the meter climbs until the next one is refused.
+  const before = Number((await meter.getAttribute("aria-valuenow")) ?? "0");
+  for (let i = 0; i < 10; i++) await page.getByRole("button", { name: "+ Text" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "too heavy to draw quickly" })).toBeVisible();
+  expect(Number(await meter.getAttribute("aria-valuenow"))).toBeGreaterThan(before);
+  expect(Number(await meter.getAttribute("aria-valuenow"))).toBeLessThanOrEqual(100);
+  await shot(page, "fix-cost");
 });

@@ -252,10 +252,98 @@ export function newLayer(
 /** `layer` with its text box as tall as its lines, as the API keeps it, and an avatar's border at most a quarter
  * of its size, as the API wants it. */
 export function tidy(layer: Layer): Layer {
-  if (layer.type === "avatar")
-    return { ...layer, border_width: Math.min(layer.border_width, Math.floor(layer.w / 4)) };
-  return layer.type === "text" ? { ...layer, h: textHeight(layer.size, layer.max_lines) } : layer;
+  if (layer.type === "avatar") {
+    const border_width = Math.min(layer.border_width, Math.floor(layer.w / 4));
+    return border_width === layer.border_width ? layer : { ...layer, border_width };
+  }
+  if (layer.type !== "text") return layer;
+  const h = textHeight(layer.size, layer.max_lines);
+  return h === layer.h ? layer : { ...layer, h };
 }
+
+// /Limits: what keeps a design cheap to draw (pinchora_core::card_design)
+
+export interface Canvas {
+  width: number;
+  height: number;
+}
+
+/** The largest font size whose `lines` lines still fit a canvas `height` px tall. */
+export function maxTextSize(lines: number, height: number): number {
+  let size: number = CARD.text_size[1] ?? 200;
+  while (size > (CARD.text_size[0] ?? 8) && textHeight(size, lines) > height) size--;
+  return size;
+}
+
+/** The most an avatar can be across on `canvas`. */
+export const maxAvatarSide = (canvas: Canvas) => Math.min(canvas.width, canvas.height, CARD.avatar_max_side);
+
+/** `layer` no bigger than `canvas` (an avatar also within its own cap, a text layer's font size shrunk until its
+ * lines fit), and tidy. The same layer comes back when nothing had to change. */
+export function fitLayer(layer: Layer, canvas: Canvas): Layer {
+  switch (layer.type) {
+    case "avatar": {
+      const side = Math.min(layer.w, layer.h, maxAvatarSide(canvas));
+      return tidy(side === layer.w && side === layer.h ? layer : { ...layer, w: side, h: side });
+    }
+    case "text": {
+      const size = Math.min(layer.size, maxTextSize(layer.max_lines, canvas.height));
+      const w = Math.min(layer.w, canvas.width);
+      return tidy(size === layer.size && w === layer.w ? layer : { ...layer, size, w });
+    }
+    default: {
+      const [w, h] = [Math.min(layer.w, canvas.width), Math.min(layer.h, canvas.height)];
+      return w === layer.w && h === layer.h ? layer : { ...layer, w, h };
+    }
+  }
+}
+
+/** `design` with every layer fitted to the canvas; the same design when all of them already fit. */
+export function fitDesign(design: CardDesign): CardDesign {
+  const layers = design.layers.map((l) => fitLayer(l, design));
+  return layers.every((l, i) => l === design.layers[i]) ? design : { ...design, layers };
+}
+
+/** How many characters `text` takes up once its placeholders are filled in, each counted at the most it can be (a
+ * member's name may be anything), as the API counts them. */
+export function filledLength(text: string): number {
+  const most: Record<string, number> = CARD.filled_max;
+  let total = 0;
+  let rest = text;
+  for (;;) {
+    const open = rest.indexOf("{");
+    if (open < 0) break;
+    total += [...rest.slice(0, open)].length;
+    const after = rest.slice(open);
+    const placeholder = CARD.placeholders.find((p) => after.startsWith(p));
+    total += placeholder ? (most[placeholder] ?? 0) : 1;
+    rest = after.slice(placeholder ? placeholder.length : 1);
+  }
+  return total + [...rest].length;
+}
+
+/** What drawing `layer` costs, in the pixel-equivalents of `CARD.layer_cost_max`. */
+export function layerCost(layer: Layer): number {
+  switch (layer.type) {
+    case "avatar":
+      return layer.w * layer.h * CARD.avatar_cost_factor;
+    case "text":
+      return filledLength(layer.text) * CARD.text_char_cost;
+    default:
+      return layer.w * layer.h;
+  }
+}
+
+/** What the visible layers cost together. */
+export const designCost = (layers: Layer[]) =>
+  layers.reduce((sum, l) => (l.hidden ? sum : sum + layerCost(l)), 0);
+
+/** How much of a card's drawing allowance `layers` use, in whole percent, rounded up: 100 or less fits. */
+export const costShare = (layers: Layer[]) => Math.ceil((designCost(layers) * 100) / CARD.layer_cost_max);
+
+/** The sentence the API gives when the layers cost too much. */
+export const heavyMessage = (layers: Layer[]) =>
+  `The visible layers are too heavy to draw quickly together (${costShare(layers)}% of what a card may use). Shrink, remove or hide some; avatars and long texts weigh the most.`;
 
 // /Geometry
 
@@ -310,7 +398,15 @@ export type Keep =
   { kind: "free" } | { kind: "square" } | { kind: "aspect"; unit?: { w: number; h: number } };
 
 /** `start` with `handle` dragged by `(dx, dy)`; never smaller than `min` a side. The opposite corner or edge stays put. */
-export function resizeBox(start: Box, handle: Handle, dx: number, dy: number, keep: Keep, min = 8): Box {
+export function resizeBox(
+  start: Box,
+  handle: Handle,
+  dx: number,
+  dy: number,
+  keep: Keep,
+  min = 8,
+  max?: { w: number; h: number },
+): Box {
   const east = handle.includes("e");
   const west = handle.includes("w");
   const south = handle.includes("s");
@@ -324,12 +420,21 @@ export function resizeBox(start: Box, handle: Handle, dx: number, dy: number, ke
       east || west ? (north || south ? Math.abs(w - start.w) >= Math.abs(h - start.h) * ratio : true) : false;
     if (byWidth) h = w / ratio;
     else w = h * ratio;
+    if (max) {
+      const fit = Math.min(1, max.w / w, max.h / h);
+      w *= fit;
+      h *= fit;
+    }
     if (keep.kind === "aspect" && keep.unit) {
-      // Whole steps of the sprite's own size, so its pixels stay square blocks.
-      const steps = Math.max(1, Math.round(w / keep.unit.w));
+      // Whole steps of the sprite's own size, so its pixels stay square blocks (and inside the limit).
+      let steps = Math.max(1, Math.round(w / keep.unit.w));
+      while (max && steps > 1 && (steps * keep.unit.w > max.w || steps * keep.unit.h > max.h)) steps--;
       w = steps * keep.unit.w;
       h = steps * keep.unit.h;
     }
+  } else if (max) {
+    w = Math.min(w, max.w);
+    h = Math.min(h, max.h);
   }
   w = Math.max(min, Math.round(w));
   h = Math.max(min, Math.round(h));
@@ -348,13 +453,24 @@ export function resizeBox(start: Box, handle: Handle, dx: number, dy: number, ke
 }
 
 /** A text layer resized by a handle: the side handles change its width, the corners its font size too. */
-export function resizeText(layer: TextLayer, handle: Handle, dx: number, dy: number): TextLayer {
+export function resizeText(
+  layer: TextLayer,
+  handle: Handle,
+  dx: number,
+  dy: number,
+  canvas?: Canvas,
+): TextLayer {
   if (handle === "e" || handle === "w") {
-    const box = resizeBox(layer, handle, dx, 0, { kind: "free" }, 24);
+    const max = canvas && { w: canvas.width, h: layer.h };
+    const box = resizeBox(layer, handle, dx, 0, { kind: "free" }, 24, max);
     return { ...layer, x: box.x, w: box.w };
   }
   const box = resizeBox(layer, handle, dx, dy, { kind: "aspect" }, 8);
-  const size = clamp(Math.round((layer.size * box.w) / layer.w), CARD.text_size);
+  const biggest = canvas ? maxTextSize(layer.max_lines, canvas.height) : Infinity;
+  let size = Math.min(clamp(Math.round((layer.size * box.w) / layer.w), CARD.text_size), biggest);
+  // Keep the box inside the canvas width too: the font size follows.
+  if (canvas && (layer.w * size) / layer.size > canvas.width)
+    size = Math.floor((layer.size * canvas.width) / layer.w);
   const w = Math.round((layer.w * size) / layer.size);
   const x = handle.includes("w") ? layer.x + layer.w - w : layer.x;
   const h = textHeight(size, layer.max_lines);

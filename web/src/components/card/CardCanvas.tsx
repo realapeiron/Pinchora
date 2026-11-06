@@ -9,10 +9,11 @@ import {
   type Keep,
   type Layer,
   HANDLES,
+  fitLayer,
+  maxAvatarSide,
   resizeBox,
   resizeText,
   snapMove,
-  tidy,
 } from "../../lib/card";
 import { type AtlasIndex, CardSvg, GLYPHS } from "./CardSvg";
 
@@ -112,12 +113,15 @@ export function CardCanvas({
         next = { ...d.start, x: moved.x, y: moved.y };
       }
     } else if (d.start.type === "text") {
-      next = resizeText(d.start, d.what, dx, dy);
+      next = resizeText(d.start, d.what, dx, dy, design);
     } else {
-      next = { ...d.start, ...resizeBox(d.start, d.what, dx, dy, keepOf(d.start, atlas)) };
+      // Never bigger than the canvas (an avatar also within its own cap), as the API wants it.
+      const side = maxAvatarSide(design);
+      const max = d.start.type === "avatar" ? { w: side, h: side } : { w: design.width, h: design.height };
+      next = { ...d.start, ...resizeBox(d.start, d.what, dx, dy, keepOf(d.start, atlas), 8, max) };
     }
     setGuides(lines);
-    onLive({ ...design, layers: design.layers.map((l) => (l.id === d.id ? tidy(next) : l)) });
+    onLive({ ...design, layers: design.layers.map((l) => (l.id === d.id ? fitLayer(next, design) : l)) });
   };
 
   const end = (event: ReactPointerEvent) => {

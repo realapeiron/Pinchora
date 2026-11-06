@@ -27,7 +27,9 @@ use axum::{
 use base64::Engine;
 use futures_util::StreamExt;
 use pinchora_cache::{Cache, Invalidation};
-use pinchora_commands::{App, CardSubject, card_png, listen_for_invalidations, on_member_add, on_message};
+use pinchora_commands::{
+    App, CardSubject, PreviewError, card_png, listen_for_invalidations, on_member_add, on_message,
+};
 use pinchora_core::{card_design::CardKind, config::WebConfig};
 use pinchora_db::{Db, XpGrant};
 use pinchora_web::{WebSettings, WebState};
@@ -2098,7 +2100,7 @@ async fn the_card_editor_previews_saves_uploads_and_tests_designs() {
 
     // A broken design is refused with the validator's sentences, and nothing is saved.
     let mut broken = banner.clone();
-    broken["width"] = json!(99);
+    broken["dim"] = json!(95);
     broken["layers"][2]["text"] = json!("Hi {nickname}");
     let bad = browser
         .write(
@@ -2108,7 +2110,7 @@ async fn the_card_editor_previews_saves_uploads_and_tests_designs() {
         )
         .await;
     assert_eq!(bad.status, StatusCode::UNPROCESSABLE_ENTITY, "{}", bad.text());
-    assert_eq!(fields_of(&bad), ["width", "layers"]);
+    assert_eq!(fields_of(&bad), ["dim", "layers"]);
     assert!(bad.text().contains("{nickname} isn't a placeholder"), "{}", bad.text());
     let put = browser
         .write(
@@ -2270,6 +2272,151 @@ async fn the_card_editor_previews_saves_uploads_and_tests_designs() {
     let posts = std::mem::take(&mut *h.mock.posts.lock().unwrap());
     assert_eq!(posts.len(), 1, "only the image");
     assert!(posts[0].1.contains("filename=\"welcome.png\""));
+}
+
+/// A design with nothing on it, as small as a card goes, which draws in no time.
+fn blank_design() -> Value {
+    json!({
+        "version": 1, "width": 300, "height": 150,
+        "background": { "type": "solid", "color": "#102030" }, "dim": 0, "layers": [],
+    })
+}
+
+#[tokio::test]
+async fn previews_are_limited_for_the_whole_server_and_refuse_what_is_too_heavy() {
+    let Some(h) = Harness::new("card_preview_limit").await else {
+        return;
+    };
+    let (guild, _, mut browser) = h.managed_server().await;
+    let path = format!("/api/guilds/{guild}/preview/card");
+    for n in 1..=20 {
+        let drawn = browser
+            .write(Method::POST, &path, json!({ "design": blank_design() }))
+            .await;
+        assert_eq!(drawn.status, StatusCode::OK, "preview {n}: {}", drawn.text());
+    }
+    let refused = browser
+        .write(Method::POST, &path, json!({ "design": blank_design() }))
+        .await;
+    assert_eq!(refused.status, StatusCode::TOO_MANY_REQUESTS, "{}", refused.text());
+    assert!(refused.header("retry-after").parse::<u64>().is_ok_and(|s| s >= 1));
+    // The limit is the server's: another server's managers draw as many as they like.
+    let (other_guild, _, mut stranger) = h.managed_server().await;
+    let other = format!("/api/guilds/{other_guild}/preview/card");
+    let drawn = stranger
+        .write(Method::POST, &other, json!({ "design": blank_design() }))
+        .await;
+    assert_eq!(drawn.status, StatusCode::OK, "{}", drawn.text());
+
+    // Too many layers, too big a layer or too heavy a pile is refused with the validator's sentence.
+    let mut heavy = blank_design();
+    let avatar = |i: usize| {
+        json!({
+            "id": format!("a{i}"), "type": "avatar", "x": 0, "y": 0, "w": 150, "h": 150,
+            "shape": "circle", "border_color": "#000000", "border_width": 0,
+        })
+    };
+    heavy["layers"] = json!((0..5).map(avatar).collect::<Vec<_>>());
+    let bad = stranger.write(Method::POST, &other, json!({ "design": heavy })).await;
+    assert_eq!(bad.status, StatusCode::UNPROCESSABLE_ENTITY, "{}", bad.text());
+    assert!(bad.text().contains("at most 4 avatars"), "{}", bad.text());
+    let mut bigger = blank_design();
+    bigger["layers"] = json!([{
+        "id": "s", "type": "shape", "x": 0, "y": 0, "w": 301, "h": 150,
+        "shape": "rect", "fill": "#336699", "border_color": "#000000",
+    }]);
+    let bad = stranger.write(Method::POST, &other, json!({ "design": bigger })).await;
+    assert_eq!(bad.status, StatusCode::UNPROCESSABLE_ENTITY, "{}", bad.text());
+    assert!(
+        bad.text().contains("bigger than the canvas (300×150 px)"),
+        "{}",
+        bad.text()
+    );
+}
+
+#[tokio::test]
+async fn previews_wait_in_their_own_lane_and_give_up_rather_than_crowd_out_the_bots_cards() {
+    let Some(h) = Harness::new("preview_lane").await else {
+        return;
+    };
+    // Four previews at once, each holding its slot for four seconds (the lane waits three): the slots fill,
+    // the rest are told the bot is busy.
+    let jobs: Vec<_> = (0..4)
+        .map(|_| {
+            let app = h.state.app.clone();
+            tokio::spawn(async move {
+                app.render_preview(|_| {
+                    std::thread::sleep(Duration::from_secs(4));
+                    Ok(())
+                })
+                .await
+            })
+        })
+        .collect();
+    let (mut drawn, mut busy) = (0, 0);
+    for job in jobs {
+        match job.await.expect("joined") {
+            Ok(()) => drawn += 1,
+            Err(PreviewError::Busy) => busy += 1,
+            Err(other) => panic!("unexpected: {other}"),
+        }
+    }
+    assert!(drawn >= 1 && busy >= 2, "drawn {drawn}, busy {busy}");
+}
+
+#[tokio::test]
+async fn a_preview_that_takes_too_long_is_given_up_on() {
+    let Some(h) = Harness::new("preview_slow").await else {
+        return;
+    };
+    let slow = h
+        .state
+        .app
+        .render_preview(|_| {
+            std::thread::sleep(Duration::from_secs(8));
+            Ok(())
+        })
+        .await;
+    assert!(matches!(slow, Err(PreviewError::TooSlow)), "{slow:?}");
+    // The job still holds its slot until it ends, so the lane is as busy as it really is.
+}
+
+#[tokio::test]
+async fn a_noisy_upload_is_shrunk_until_it_is_small_enough_to_keep() {
+    let Some(h) = Harness::new("card_upload_noise").await else {
+        return;
+    };
+    let (guild, _, mut browser) = h.managed_server().await;
+    // Random pixels: they hardly compress, so the stored PNG would be over a megabyte at this size.
+    let mut state = 12345u32;
+    let noise = image::RgbImage::from_fn(600, 500, |_, _| {
+        state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+        let v = state.to_le_bytes();
+        image::Rgb([v[1], v[2], v[3]])
+    });
+    let mut sent = std::io::Cursor::new(Vec::new());
+    noise.write_to(&mut sent, image::ImageFormat::Png).unwrap();
+    let request = Request::builder()
+        .method(Method::POST)
+        .uri(format!("/api/guilds/{guild}/cards/uploads"))
+        .header(header::CONTENT_TYPE, "image/png")
+        .header(header::ORIGIN, PUBLIC_URL)
+        .header("sec-fetch-site", "same-origin")
+        .header("x-csrf-token", browser.csrf.clone().unwrap())
+        .body(Body::from(sent.into_inner()))
+        .unwrap();
+    let made = browser.send(request).await;
+    assert_eq!(made.status, StatusCode::OK, "{}", made.text());
+    let made = made.json();
+    let stored = browser.get(made["url"].as_str().unwrap()).await;
+    assert!(
+        stored.body.len() <= pinchora_core::card_design::UPLOAD_STORED_MAX_BYTES,
+        "{} bytes kept",
+        stored.body.len()
+    );
+    let (w, tall) = (made["width"].as_f64().unwrap(), made["height"].as_f64().unwrap());
+    assert!(w < 600.0 && tall < 500.0, "shrunk: {w}x{tall}");
+    assert!((w / tall - 1.2).abs() < 0.02, "in proportion: {w}x{tall}");
 }
 
 #[tokio::test]

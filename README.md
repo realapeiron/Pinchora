@@ -431,6 +431,18 @@ Each layer can be hidden, locked and faded. One validator checks a design for th
 `rules.json`) the editor's inputs; a setting it does not know is refused by name, and every problem is listed
 with its layer.
 
+A design is also kept cheap to draw, so a card takes under 400 ms (release build) however it is made: a layer is
+never bigger than the canvas, an avatar is at most 1024 px across, a design has at most 4 avatars, and the
+visible layers together may use at most `LAYER_COST_MAX` (30 million pixel-equivalents): a shape or sticker costs
+its width times height, an avatar five times that, and a text layer 80,000 per character it can show, a
+placeholder counted at the longest it can be (a name 32, a server 40). The editor shows the share used as the
+**draw cost** bar over the layer list, holds sizes to the canvas, and refuses a layer that would go over.
+`cargo test --release -p pinchora-render --test cost -- --nocapture` builds the heaviest designs the validator
+allows (all text in emoji and CJK, four avatars, twenty faded layers, a noisy upload) and times them; the
+slowest must take 400 ms (it measured 270 ms on a loaded laptop; set the numbers again if the costs change).
+Uploads are kept at 1 MiB of PNG at most (a noisy picture is shrunk until it fits) and designed cards are
+written with the fast PNG level, because squeezing a photo at the default level took longer than drawing it.
+
 In the editor: drag layers with a mouse, pen or finger, pull the handles to resize (avatars stay square, text
 corners scale the font, side handles set its width), snap to the canvas middle and edges and to other layers
 (guides show; Alt or the Snap switch turns it off), nudge with the arrow keys, undo and redo (Ctrl+Z / Ctrl+Shift+Z,
@@ -440,13 +452,18 @@ Pinchora always drew; a server that never opened the editor gets it in its theme
 *Starlit banner*, *Clean card* (transparent) and *Pet party*. **Send** picks how it goes out: with the text in one
 message, the image first then the text, the image alone, the text alone, or (welcomes) by direct message to the
 new member (closed DMs are skipped). **Send test** posts it to a channel you pick, with you as the member and
-pinging nobody. The canvas is drawn by the browser so every drag is instant; next to it the bot's own PNG of the
-same design (`POST /api/guilds/{g}/preview/card`, debounced) is exactly what members get, because the member
-events, the preview and the test all draw through `pinchora_commands::card_png`. Tablets get the canvas over the
-two panels; phones a single column with the settings a thumb needs.
+pinging nobody. The canvas is drawn by the browser so every drag is instant; **Try it** below holds the test and, behind
+**Show the bot's picture**, the bot's own PNG of the same design (`POST /api/guilds/{g}/preview/card`, debounced),
+which is exactly what members get, because the member events, the preview and the test all draw through the same
+`pinchora_commands` code. Previews (and test messages) are drawn in their own lane: two at a time, waiting at
+most 3 s for a turn (then 503 `busy`) and given up on after 6 s (503 `slow`), so an editor being dragged around
+cannot crowd the member events' cards out of the render slots; a session may ask for 60 a minute and a server for
+20 (429, which the editor waits out and asks again). From 1024 px the canvas stays in view beside one column
+holding the layers and the properties; tablets get the canvas over the two panels side by side; phones a single
+column with the settings a thumb needs.
 
 Uploads (`POST /api/guilds/{g}/cards/uploads`, the file's own bytes): PNG, JPEG, WebP or GIF (first frame) up to
-4 MB and 4096 px a side, decoded within those limits, shrunk to fit the largest canvas and stored as PNG in
+4 MB and 4096 px a side, decoded within those limits, shrunk to fit the largest canvas and 1 MiB and stored as PNG in
 `card_uploads`; a server keeps its 12 newest plus any a saved design uses, and a design can only name the
 server's own. Designs live in `card_designs` (migration 0043; `design` NULL is the classic card), saving is
 audited (`card.put`, `card.upload`) and announced like other settings. The API: `GET /cards` (both images, the

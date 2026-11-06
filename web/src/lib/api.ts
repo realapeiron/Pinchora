@@ -15,6 +15,8 @@ export class ApiError extends Error {
   readonly errors: FieldError[];
   /** The job already running, when a 409 says so (`x-job-id`). */
   readonly jobId?: string;
+  /** Seconds until asking again may work, when a 429 or 503 says so (`Retry-After`). */
+  readonly retryAfter?: number;
 
   constructor(
     status: number,
@@ -24,6 +26,7 @@ export class ApiError extends Error {
     inviteUrl?: string,
     errors?: FieldError[],
     jobId?: string,
+    retryAfter?: number,
   ) {
     super(message);
     this.name = "ApiError";
@@ -33,6 +36,7 @@ export class ApiError extends Error {
     this.inviteUrl = inviteUrl;
     this.errors = errors?.length ? errors : field ? [{ field, message }] : [];
     this.jobId = jobId;
+    this.retryAfter = retryAfter;
   }
 }
 
@@ -74,6 +78,7 @@ async function errorOf(response: Response): Promise<ApiError> {
     field("invite_url"),
     Array.isArray(error?.errors) ? (error.errors as FieldError[]) : undefined,
     response.headers.get("x-job-id") ?? undefined,
+    Number(response.headers.get("retry-after")) || undefined,
   );
 }
 
