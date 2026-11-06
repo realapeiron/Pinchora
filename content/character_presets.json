@@ -1,0 +1,12 @@
+[
+  {"id": "beach_surfer", "name": "Beach Surfer", "code": "ponycrest.11.5.6.0.6.18+surfboard*0+sunglasses+straw_hat*7"},
+  {"id": "ship_captain", "name": "Ship Captain", "code": "quiffmoor.1.7.2.19.7.3+bow_tie*1+captain_hat+lantern"},
+  {"id": "coral_witch", "name": "Coral Witch", "code": "longreef.7.13.4.0.17.16+witch_hat*0+star_wand*12"},
+  {"id": "reef_pirate", "name": "Reef Pirate", "code": "capewind.4.0.12.9.3.2+bandana*1+eyepatch+fishing_rod"},
+  {"id": "snow_day", "name": "Snow Day", "code": "puffcloud.5.18.3.16.1.4+scarf*1+beanie*8+flower*12"},
+  {"id": "meadow_fairy", "name": "Meadow Fairy", "code": "twinbuns.8.16.1.11.13.10+fairy_wings+flower_crown*12+star_wand*4"},
+  {"id": "moon_bat", "name": "Moon Bat", "code": "sidesweep.19.0.9.9.15.3+bat_wings+bow_tie*1"},
+  {"id": "trail_scout", "name": "Trail Scout", "code": "spikeshore.2.3.17.10.4.2+backpack*2+freckles+lantern"},
+  {"id": "sweet_tooth", "name": "Sweet Tooth", "code": "bobbin.0.8.8.3.14.4+blush+bow*12+ice_cream*12"},
+  {"id": "pearl_royal", "name": "Pearl Royal", "code": "starlet.6.6.5.19.17.9+cape*10+pearl_necklace+crown"}
+]

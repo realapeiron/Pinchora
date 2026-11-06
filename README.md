@@ -106,7 +106,7 @@ channel when the bot starts is only noticed once their state changes.
 
 | Command | What it does |
 |---|---|
-| `/character` | Design your pixel character: 24 looks, skin, hair, top and bottom colours; it stands in your house, joins you on visits and shows on your profile card |
+| `/character` | Design your pixel character in one private editor with a big live preview on a floor tile: a **category** menu (Look, Skin, Hair, Eyes, Top, Bottom, Shoes, Accessories, Presets, Outfits), **◀ ▶** that step through the open category one click at a time, a menu that jumps straight to a choice, **Undo** (20 steps), **Randomise** (only from what you own) and **Save** / **Cancel**: everything is a draft until Save. 24 looks; six colour channels with 20 swatches each (eyes and shoes start as drawn) plus **Hex…**, a form for your own colour, nudged lighter or darker when the shading would not show; 31 **accessories** in five slots (head: straw sun hat, beanie, bow, sailor cap, flower crown, top hat, witch hat, captain's hat, crown; face: glasses, freckles, rosy cheeks, sunglasses, eyepatch, heart shades; neck: scarf, bandana, bow tie, shell and pearl necklaces; back: backpack, cape, surfboard, fairy and bat wings; hand: ice cream, balloon, flower, lantern, star wand, fishing rod), tried on freely, some free, some bought with shells (**Buy**), some opened by a level or a badge, most dyeable in 16 colours (**Dye ▶**); 10 ready-made **presets** (Beach Surfer, Ship Captain, Coral Witch…) and three **outfit** slots to keep looks in (**Keep in 1-3**, **Rename…**) and put back on. Save refuses an accessory that is not yours yet. The character, accessories included, stands in your house, joins you on visits and is on your profile, the partner card and the hug, pat, wave and high-five GIFs |
 | `/house view [room]` | Your house, rendered tile by tile; your active pet wanders around; says when your guestbook has new notes |
 | `/house edit [room] [owner]` | Decorate inside Discord: pick furniture, move the cursor with the ↖↗↙↘ arrows (on the floor or either wall), place, turn, flip, pick up. **↶ Undo** reverses the last 10 changes to the room (place, move, store, turn, flip, clear), even after reopening the editor, until the room is changed some other way; **Clear the room…** (first in the Go to menu, with a confirm step) stores every piece at once and is one undo step. With `owner` set to your partner you decorate their house: the pieces come from your own inventory, a piece you place belongs to the house's owner from then on (the editor says so), and anything stored goes to their inventory; moving their pieces is theirs to do, and your undo history is separate from theirs |
 | `/house visit [user] [room]` | Visit a house with your pet and character (first visit each day pays shells, 10 a day); **Sign guestbook** leaves the owner a note. Without a name it offers a menu of your friends whose doors are open, the most liked first |
@@ -125,7 +125,7 @@ channel when the bot starts is only noticed once their state changes.
 | `/partner leave` | End the partnership, after a confirm step |
 | `/friends add user` | Ask someone to be your friend (**Accept** or **Decline**, good for a day); up to 100 friends each |
 | `/friends remove user`, `/friends list [user]` | Remove a friend, or page through a player's friends with their level and house likes (10 a page) |
-| `/hug user`, `/pat user`, `/wave user`, `/highfive user` | A looping GIF (14 frames, about 120 KB) of your two pixel characters, drawn from the looks and colours you both chose (a player without a character gets a stand-in made from their id): they step together with hearts, a hand bobs on a head, an arm waves, palms meet in a flash. "That's hug #12 from you to them", with the sender's and receiver's totals; the receiver gets a **Hug back** button. One every 5 seconds per player |
+| `/hug user`, `/pat user`, `/wave user`, `/highfive user` | A looping GIF (14 frames, about 120 KB) of your two pixel characters facing each other, drawn from the looks, colours and accessories you both chose (hats stay on through every hop and lean; a held item is in the hand the animation leaves alone) (a player without a character gets a stand-in made from their id): they step together with hearts, a hand bobs on a head, an arm waves, palms meet in a flash. "That's hug #12 from you to them", with the sender's and receiver's totals; the receiver gets a **Hug back** button. One every 5 seconds per player |
 | `/pet adopt\|view\|capsule\|rename` | Pets with needs that drift over time; feed, play, bathe, walk (a walk finds shells, more at a higher level); 42 species. Every care action, walk and trip earns XP: levels 1-30, a bar on the pet card, level-ups (and the trips they open) announced in the reply. A pet whose hunger, fun and hygiene all sit at zero for 24 hours falls asleep: its card shows it asleep, it earns no XP and cannot be looked after or sent away until **Wake up** (one free a day, else 75 shells), and in the house it lies on its side with a small "z z" above it instead of wandering. A care write is checked against the pet as it was read, so a click that races the start of a trip, a souvenir claim or another click is refused instead of unfreezing the needs or undoing the XP (the food is refunded). Never permanent, never lost. Unknown button actions answer with an error instead of bathing the pet |
 | `/pet list` | The nursery: one card with every pet in a grid (portrait, name, level and XP bar, the four needs as icons, a star on the active pet, ASLEEP / AWAY / BACK! badges), 8 to a page (the card is only as tall as its rows: 1-4 pets get a half-height card), with a menu that opens one pet's card (care buttons, **Make active**, a way back to its page). A **Nursery** click on a public pet card opens the nursery as a private message of its own |
 | `/pet trip go destination [pet]`, `/pet trip claim` | Field trips: send a pet (default: your active one) for 1, 4 or 8 hours to one of 8 cosy places from `content/pet_trips.json` (a place opens at a pet level, 1 to 26; the card's **Trip** button lists them). The pet leaves the house, its needs wait for it and it cannot be looked after meanwhile. Back, **Claim souvenir** (or `/pet trip claim`, which collects every pet that is home and otherwise says who is still away) pays shells, XP and a short story, and sometimes a free-to-earn furniture piece (`reward` items only, weighted by rarity, never shop stock). Higher levels find more shells and rarer pieces. A trip is a stored end time, so it survives restarts, and a claim pays exactly once |
@@ -152,8 +152,8 @@ every pod ends games whose clock ran out every 10 seconds). Without a wager the 
 (connect four 25, rock paper scissors 15, hangman 15, wordle 10 and up to 45 for the daily, trivia 8 to 18
 by difficulty) with a daily limit per player and game.
 
-Game content (furniture, rooms, pets, pet trips, fish, fishing gear, looks, card backgrounds, badges, titles, trivia, hangman words and
-the wordle lists) lives in
+Game content (furniture, rooms, pets, pet trips, fish, fishing gear, looks, accessories, character presets, card backgrounds,
+badges, titles, trivia, hangman words and the wordle lists) lives in
 `content/*.json` (`python3 content/check.py` validates it); see
 [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md). Sprites are drawn by GPT and imported with
 `tools/art/` (see below).
@@ -195,6 +195,8 @@ cargo run -p pinchora-render --example samples   # render sample cards to target
                                                  #  the profile and rank samples carry a title; profile-showcase-*, profile-bg-<white|black|stripes|beach>-<opacity>,
                                                  #  profile-nobg-*, profile-unicode/-wide/-cyrillic/-shout and profile-frame-* are the stress variants)
 cargo run -p pinchora-render --example games     # connect four, hangman and wordle sample cards
+cargo run --release -p pinchora-render --example characters   # characters-looks.png (all 24 looks with a hat, glasses and a
+                                                 # hand item), characters-<slot>.png, characters-colours.png, character-editor.png
 ```
 
 Tests: unit tests run with plain `cargo test --workspace`. Database and Redis integration
@@ -236,7 +238,10 @@ python3 plan_sheets.py     # content → 40 sheet prompts + cut manifests in she
 ```
 
 Until a sprite exists, the renderer draws a tidy placeholder in its place, so every feature
-works before the art lands. Backgrounds are `bg_<id>` (240×135, drawn ×4 to 960×540 and
+works before the art lands. Characters are drawn by one function, `pinchora_render::character::render_character`
+(a serde-serialisable `CharacterSpec`: look, colours, accessories, pose), which finds the eyes, brow, collar, torso and
+hands in each look's art and draws the accessories there in code. An atlas sprite `acc_<id>` replaces an accessory's
+drawing when it exists (tintable ones drawn in the coral base ramp, like furniture). Backgrounds are `bg_<id>` (240×135, drawn ×4 to 960×540 and
 cropped to cover the rank and wallet cards) and badges `b_<id>` (24 px wide, drawn ×2); until
 they are in the atlas a background is a gradient from its accent colour and a badge is a
 coloured circle with its first letter.

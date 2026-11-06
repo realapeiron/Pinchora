@@ -225,19 +225,12 @@ fn plural(kind: Interaction) -> &'static str {
 /// Both characters in each other's arms, as a picture.
 async fn together(app: &App, a: u64, b: u64) -> anyhow::Result<Vec<u8>> {
     let ((ca, _), (cb, _)) = (character_of(app, a).await?, character_of(app, b).await?);
-    let sprites = app.sprites.clone();
     app.render(move |_| {
-        let (look_a, look_b) = (sprites.look(&ca.look), sprites.look(&cb.look));
+        let (spec_a, spec_b) = (ca.spec(), cb.spec());
         let still = interaction_still(
             Interaction::Hug,
-            Person {
-                look: &look_a,
-                colors: ca.colors,
-            },
-            Person {
-                look: &look_b,
-                colors: cb.colors,
-            },
+            Person { spec: &spec_a },
+            Person { spec: &spec_b },
             TOGETHER,
         );
         encode_png(&still)

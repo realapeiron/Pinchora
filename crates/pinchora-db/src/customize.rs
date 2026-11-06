@@ -188,7 +188,7 @@ impl Db {
         .await
     }
 
-    async fn buy_cosmetic(
+    pub(crate) async fn buy_cosmetic(
         &self,
         insert: &'static str,
         user: u64,

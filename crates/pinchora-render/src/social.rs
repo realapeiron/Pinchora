@@ -10,10 +10,7 @@ use std::f32::consts::{PI, TAU};
 
 use image::{Delay, Frame, Rgba, RgbaImage, codecs::gif::GifEncoder, codecs::gif::Repeat, imageops};
 
-use crate::{
-    character::{Colors, OUTFIT_COLORS, SKIN_TONES, TOP_KEY, recolor_character},
-    sprites::variant_ramp,
-};
+use crate::character::{CharacterSpec, compose};
 
 /// Native canvas, in art pixels; the picture is [`SCALE`]× that.
 const W: i32 = 240;
@@ -113,23 +110,22 @@ impl Interaction {
     }
 }
 
-/// One of the two players: their character's look as drawn (in the key colours, before the
-/// player's own are swapped in) and the colours they chose, which the hands and sleeves drawn
-/// over the sprite use too.
+/// One of the two players: their whole character (look, colours, accessories). The hands and
+/// sleeves drawn over the sprite take its skin and top colours.
 #[derive(Clone, Copy)]
 pub struct Person<'a> {
-    pub look: &'a RgbaImage,
-    pub colors: Colors,
+    pub spec: &'a CharacterSpec,
 }
 
 /// A looping GIF of `from` doing `kind` to `to`, 480×320.
 pub fn interaction_gif(kind: Interaction, from: Person<'_>, to: Person<'_>) -> anyhow::Result<Vec<u8>> {
+    let (a, b) = (Figure::new(from, 1), Figure::new(to, -1));
     let mut out = Vec::new();
     {
         let mut encoder = GifEncoder::new_with_speed(&mut out, 30);
         encoder.set_repeat(Repeat::Infinite)?;
         for i in 0..FRAMES {
-            let frame = scale_up(&scene(kind, from, to, i as f32 / FRAMES as f32));
+            let frame = scale_up(&scene(kind, &a, &b, i as f32 / FRAMES as f32));
             // The scene rests for a moment before it starts again.
             let ticks = if i == 0 { HOLD } else { TICK };
             encoder.encode_frame(Frame::from_parts(
@@ -145,7 +141,7 @@ pub fn interaction_gif(kind: Interaction, from: Person<'_>, to: Person<'_>) -> a
 
 /// One picture of the scene `at` (0 up to 1) through its loop, 480×320: the same art as the GIF.
 pub fn interaction_still(kind: Interaction, from: Person<'_>, to: Person<'_>, at: f32) -> RgbaImage {
-    scale_up(&scene(kind, from, to, at))
+    scale_up(&scene(kind, &Figure::new(from, 1), &Figure::new(to, -1), at))
 }
 
 /// The frame with every pixel made a `SCALE`×`SCALE` block.
@@ -194,10 +190,6 @@ fn hex(c: [u8; 3]) -> Rgba<u8> {
 
 fn mix(a: [u8; 3], b: [u8; 3], t: f32) -> [u8; 3] {
     [0, 1, 2].map(|i| lerp(f32::from(a[i]), f32::from(b[i]), t).round() as u8)
-}
-
-fn rgb(v: u32) -> [u8; 3] {
-    [(v >> 16) as u8, (v >> 8) as u8, v as u8]
 }
 
 // /Canvas
@@ -421,28 +413,28 @@ struct Placed {
 }
 
 impl Figure {
+    /// The looks are drawn facing left, so a figure facing right is the mirrored character.
     fn new(person: Person<'_>, dir: i32) -> Self {
-        let look = trim(person.look);
-        let look = if dir < 0 {
-            imageops::flip_horizontal(&look)
-        } else {
-            look
-        };
-        let c = person.colors;
-        let skin = SKIN_TONES[c.skin % SKIN_TONES.len()].1.map(rgb);
-        let sleeve = variant_ramp(OUTFIT_COLORS[c.top % OUTFIT_COLORS.len()]).unwrap_or([[0x19, 0xb8, 0xc8]; 5]);
-        let top = shirt_box(&look).unwrap_or((
-            look.width() as i32 / 5,
-            look.height() as i32 * 2 / 5,
-            look.width() as i32 * 4 / 5,
-            look.height() as i32 * 3 / 4,
-        ));
+        let mut spec = person.spec.clone();
+        spec.pose.mirrored = dir > 0;
+        let composed = compose(&spec);
+        let (look, left, top) = trim(&composed.image);
+        let a = composed.anchors;
+        // The shirt's shoulders, where the drawn arms start, in the trimmed picture.
+        let (mut x0, mut x1) = (a.torso.0, a.torso.2);
+        if spec.pose.mirrored {
+            (x0, x1) = (a.width - 1 - x1, a.width - 1 - x0);
+        }
+        let (ox, oy) = (composed.origin.0 - left, composed.origin.1 - top);
+        let y0 = a.torso.1 + oy;
+        let shirt = (x0 + ox, y0, x1 + ox, (a.torso.1 + 15).min(a.torso.3) + oy);
+        let colors = person.spec.colors;
         Self {
-            sprite: recolor_character(&look, c),
+            sprite: look,
             dir,
-            top,
-            skin,
-            sleeve,
+            top: shirt,
+            skin: colors.skin_ramp(),
+            sleeve: colors.top_ramp(),
         }
     }
 
@@ -534,8 +526,8 @@ impl Placed {
     }
 }
 
-/// The sprite cropped to the box around its visible pixels.
-fn trim(sprite: &RgbaImage) -> RgbaImage {
+/// The sprite cropped to the box around its visible pixels, and where that box starts.
+fn trim(sprite: &RgbaImage) -> (RgbaImage, i32, i32) {
     let mut bounds: Option<(u32, u32, u32, u32)> = None;
     for (x, y, px) in sprite.enumerate_pixels() {
         if px[3] > 127 {
@@ -546,29 +538,13 @@ fn trim(sprite: &RgbaImage) -> RgbaImage {
         }
     }
     match bounds {
-        Some((x0, y0, x1, y1)) => imageops::crop_imm(sprite, x0, y0, x1 - x0 + 1, y1 - y0 + 1).to_image(),
-        None => RgbaImage::new(1, 1),
+        Some((x0, y0, x1, y1)) => (
+            imageops::crop_imm(sprite, x0, y0, x1 - x0 + 1, y1 - y0 + 1).to_image(),
+            x0 as i32,
+            y0 as i32,
+        ),
+        None => (RgbaImage::new(1, 1), 0, 0),
     }
-}
-
-/// Where the shirt is in a look drawn in the key colours: from its first row (the first with a
-/// few shirt pixels, so a stray one in the hair does not count) the box around the shirt pixels
-/// of the next fifteen rows, which is the shoulders and sleeves. `(x0, y0, x1, y1)`, inclusive.
-fn shirt_box(look: &RgbaImage) -> Option<(i32, i32, i32, i32)> {
-    let shirt = |px: &Rgba<u8>| px[3] > 127 && TOP_KEY[1..].contains(&[px[0], px[1], px[2]]);
-    let first =
-        (0..look.height()).find(|&y| (0..look.width()).filter(|&x| shirt(look.get_pixel(x, y))).count() >= 4)?;
-    let (mut x0, mut x1) = (i32::MAX, i32::MIN);
-    let last = (first + 15).min(look.height() - 1);
-    for y in first..=last {
-        for x in 0..look.width() {
-            if shirt(look.get_pixel(x, y)) {
-                x0 = x0.min(x as i32);
-                x1 = x1.max(x as i32);
-            }
-        }
-    }
-    (x0 <= x1).then_some((x0, first as i32, x1, last as i32))
 }
 
 // /Arms and hands
@@ -690,17 +666,15 @@ fn ticks(canvas: &mut RgbaImage, centre: (f32, f32), side: f32, color: Rgba<u8>)
 
 // /Scenes
 
-/// Draws the scene `at` through its loop.
-fn scene(kind: Interaction, from: Person<'_>, to: Person<'_>, at: f32) -> RgbaImage {
+/// Draws the scene `at` through its loop: `a` on the left facing right, `b` facing it.
+fn scene(kind: Interaction, a: &Figure, b: &Figure, at: f32) -> RgbaImage {
     let mut canvas = backdrop(kind);
     twinkles(&mut canvas, at);
-    let a = Figure::new(from, 1);
-    let b = Figure::new(to, -1);
     match kind {
-        Interaction::Hug => hug(&mut canvas, &a, &b, at),
-        Interaction::Pat => pat(&mut canvas, &a, &b, at),
-        Interaction::Wave => wave(&mut canvas, &a, &b, at),
-        Interaction::HighFive => high_five(&mut canvas, &a, &b, at),
+        Interaction::Hug => hug(&mut canvas, a, b, at),
+        Interaction::Pat => pat(&mut canvas, a, b, at),
+        Interaction::Wave => wave(&mut canvas, a, b, at),
+        Interaction::HighFive => high_five(&mut canvas, a, b, at),
     }
     canvas
 }
@@ -1008,40 +982,36 @@ mod tests {
     use image::{AnimationDecoder, codecs::gif::GifDecoder};
 
     use super::*;
-    use crate::{
-        character::{HAIR_COLORS, placeholder_character},
-        sprites::SpriteStore,
-    };
+    use crate::character::{Colors, Paint, Worn};
 
-    fn person(look: &str, colors: Colors) -> (RgbaImage, Colors) {
-        let store = SpriteStore::embedded();
-        let sprite = store
-            .get(&format!("a_{look}"))
-            .map_or_else(placeholder_character, |s| (*s).clone());
-        (sprite, colors)
+    fn person(look: &str, n: u8, accessories: &[&str]) -> CharacterSpec {
+        CharacterSpec {
+            look: look.to_owned(),
+            colors: Colors {
+                skin: Paint::Swatch(n % 20),
+                hair: Paint::Swatch(n * 5 % 20),
+                eyes: Paint::Swatch(n * 3 % 20),
+                top: Paint::Swatch(n * 7 % 20),
+                bottom: Paint::Swatch(n * 11 % 20),
+                shoes: Paint::Swatch(n * 13 % 20),
+            },
+            accessories: accessories
+                .iter()
+                .map(|id| Worn {
+                    id: (*id).to_owned(),
+                    tint: None,
+                })
+                .collect(),
+            pose: Default::default(),
+        }
     }
 
     #[test]
     fn every_kind_makes_a_short_looping_gif_that_decodes() {
-        let (sa, ca) = person(
-            "tidewalker",
-            Colors {
-                skin: 1,
-                hair: 1,
-                top: 0,
-                bottom: 2,
-            },
-        );
-        let (sb, cb) = person(
-            "longreef",
-            Colors {
-                skin: 5,
-                hair: 8,
-                top: 4,
-                bottom: 3,
-            },
-        );
-        let (a, b) = (Person { look: &sa, colors: ca }, Person { look: &sb, colors: cb });
+        let sa = person("tidewalker", 1, &["straw_hat", "balloon"]);
+        let sb = person("longreef", 5, &["bow", "round_glasses", "ice_cream"]);
+        let (a, b) = (Person { spec: &sa }, Person { spec: &sb });
+        let (fa, fb) = (Figure::new(a, 1), Figure::new(b, -1));
         for kind in Interaction::ALL {
             let started = std::time::Instant::now();
             let gif = interaction_gif(kind, a, b).expect("encodes");
@@ -1056,7 +1026,7 @@ mod tests {
             assert_eq!(frames.len(), FRAMES, "{kind:?}");
             assert_eq!(frames[0].buffer().dimensions(), (W as u32 * SCALE, H as u32 * SCALE));
             for i in 0..FRAMES {
-                let colours: std::collections::HashSet<_> = scene(kind, a, b, i as f32 / FRAMES as f32)
+                let colours: std::collections::HashSet<_> = scene(kind, &fa, &fb, i as f32 / FRAMES as f32)
                     .pixels()
                     .map(|p| p.0)
                     .collect();
@@ -1067,48 +1037,44 @@ mod tests {
     }
 
     #[test]
-    fn where_the_tops_are() {
-        let store = SpriteStore::embedded();
+    fn figures_face_each_other_with_their_shoulders_on_the_shirt() {
         for look in ["tidewalker", "longreef", "capewind", "curlcove", "puffcloud", "bobbin"] {
-            let colors = Colors {
-                skin: 1,
-                hair: 1,
-                top: 0,
-                bottom: 2,
-            };
-            let (sprite, _) = person(look, colors);
-            let f = Figure::new(Person { look: &sprite, colors }, 1);
-            println!(
-                "{look}: sprite {}x{} top box {:?}",
-                f.sprite.width(),
-                f.sprite.height(),
-                f.top
-            );
-            assert!(store.get(&format!("a_{look}")).is_some());
+            let spec = person(look, 2, &["cape", "witch_hat"]);
+            for dir in [1, -1] {
+                let f = Figure::new(Person { spec: &spec }, dir);
+                let (x0, y0, x1, y1) = f.top;
+                assert!(x0 < x1 && y0 < y1, "{look}: {:?}", f.top);
+                assert!(x1 < f.sprite.width() as i32 && y1 < f.sprite.height() as i32, "{look}");
+                let px = f.sprite.get_pixel(((x0 + x1) / 2) as u32, (y0 + 3) as u32);
+                assert_eq!(px[3], 255, "{look} dir {dir}: the shirt is where the box says");
+            }
         }
     }
 
     #[test]
     fn every_look_poses_every_scene_within_a_gifs_palette() {
-        let store = SpriteStore::embedded();
+        let store = crate::character::atlas();
         let mut looks: Vec<String> = ["tidewalker", "longreef", "capewind", "curlcove", "puffcloud", "bobbin"]
             .map(String::from)
             .into();
         looks.extend((0..2).map(|n| format!("missing{n}")));
+        let gear: [&[&str]; 4] = [
+            &[],
+            &["top_hat", "sunglasses", "scarf", "fairy_wings", "lantern"],
+            &["crown", "bat_wings", "fishing_rod"],
+            &["beanie", "backpack", "star_wand", "heart_glasses"],
+        ];
         for (n, look) in looks.iter().enumerate() {
-            let colors = Colors {
-                skin: n % SKIN_TONES.len(),
-                hair: n * 5 % HAIR_COLORS.len(),
-                top: n * 7 % OUTFIT_COLORS.len(),
-                bottom: n * 11 % OUTFIT_COLORS.len(),
-            };
-            let (sprite, _) = person(look, colors);
+            let spec = person(look, n as u8, gear[n % gear.len()]);
             // A look with no art yet is drawn as the stand-in figure.
             assert!(store.get(&format!("a_{look}")).is_some() || look.starts_with("missing"));
-            let (a, b) = (Person { look: &sprite, colors }, Person { look: &sprite, colors });
+            let (a, b) = (
+                Figure::new(Person { spec: &spec }, 1),
+                Figure::new(Person { spec: &spec }, -1),
+            );
             for kind in Interaction::ALL {
                 for at in [0.0, 0.35, 0.6] {
-                    let frame = scene(kind, a, b, at);
+                    let frame = scene(kind, &a, &b, at);
                     let used: std::collections::HashSet<_> = frame.pixels().map(|p| p.0).collect();
                     assert!(used.len() <= 256, "{look} {kind:?} at {at}: {} colours", used.len());
                     assert!(
@@ -1136,35 +1102,24 @@ mod tests {
     fn social_preview() {
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/social-preview");
         std::fs::create_dir_all(&dir).unwrap();
-        let looks = [
-            ("tidewalker", 1, 1, 0, 2, "longreef", 5, 8, 4, 3),
-            ("curlcove", 2, 3, 1, 5, "puffcloud", 6, 9, 6, 8),
-            ("capewind", 3, 10, 2, 4, "bobbin", 0, 4, 7, 9),
+        let pairs: [(CharacterSpec, CharacterSpec); 3] = [
+            (
+                person("tidewalker", 1, &["straw_hat", "balloon", "scarf"]),
+                person("longreef", 5, &["bow", "round_glasses", "ice_cream"]),
+            ),
+            (
+                person("curlcove", 2, &["beanie", "backpack", "flower"]),
+                person("puffcloud", 6, &["crown", "cape", "star_wand"]),
+            ),
+            (
+                person("capewind", 3, &["captain_hat", "eyepatch", "fishing_rod"]),
+                person("bobbin", 0, &["witch_hat", "bat_wings", "lantern"]),
+            ),
         ];
-        for (n, &(la, sa, ha, ta, ba, lb, sb, hb, tb, bb)) in looks.iter().enumerate() {
-            let ca = Colors {
-                skin: sa,
-                hair: ha,
-                top: ta,
-                bottom: ba,
-            };
-            let cb = Colors {
-                skin: sb,
-                hair: hb,
-                top: tb,
-                bottom: bb,
-            };
-            assert!(ha < HAIR_COLORS.len() && hb < HAIR_COLORS.len());
-            let (pa, pb) = (person(la, ca), person(lb, cb));
+        for (n, (sa, sb)) in pairs.iter().enumerate() {
             let (a, b) = (
-                Person {
-                    look: &pa.0,
-                    colors: ca,
-                },
-                Person {
-                    look: &pb.0,
-                    colors: cb,
-                },
+                Figure::new(Person { spec: sa }, 1),
+                Figure::new(Person { spec: sb }, -1),
             );
             for kind in Interaction::ALL {
                 let cols = 4u32;
@@ -1172,7 +1127,7 @@ mod tests {
                 let (fw, fh) = (W as u32, H as u32);
                 let mut sheet = RgbaImage::new(fw * cols, fh * rows);
                 for i in 0..FRAMES {
-                    let frame = scene(kind, a, b, i as f32 / FRAMES as f32);
+                    let frame = scene(kind, &a, &b, i as f32 / FRAMES as f32);
                     imageops::overlay(
                         &mut sheet,
                         &frame,
@@ -1183,7 +1138,7 @@ mod tests {
                 sheet.save(dir.join(format!("{n}-{}.png", kind.key()))).unwrap();
                 std::fs::write(
                     dir.join(format!("{n}-{}.gif", kind.key())),
-                    interaction_gif(kind, a, b).unwrap(),
+                    interaction_gif(kind, Person { spec: sa }, Person { spec: sb }).unwrap(),
                 )
                 .unwrap();
             }

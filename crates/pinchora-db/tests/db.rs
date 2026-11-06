@@ -2,8 +2,8 @@
 
 use pinchora_db::{
     BefriendOutcome, Cosmetic, CustomizeBuy, DEFAULT_ROD, DEFAULT_SPOT, DailyOutcome, Db, GearBuy, GearRow, LogKind,
-    MAX_BADGES, MAX_FRIENDS, MAX_PANEL_ROLES, MAX_REP_ROLES, MAX_XP_RULES, MilestoneReward, NewCatch, PairOutcome,
-    PlayerStats, RepOutcome, Tally, TransferOutcome, TripClaim, TripPayout, Wake, XpGrant, XpTarget,
+    MAX_BADGES, MAX_FRIENDS, MAX_PANEL_ROLES, MAX_REP_ROLES, MAX_XP_RULES, MilestoneReward, NewCatch, OutfitRow,
+    PairOutcome, PlayerStats, RepOutcome, Tally, TransferOutcome, TripClaim, TripPayout, Wake, XpGrant, XpTarget,
 };
 
 async fn db() -> Option<Db> {
@@ -237,6 +237,72 @@ async fn place_and_pick_up_round_trip() {
     assert_eq!(db.pick_up(user, id).await.unwrap().as_deref(), Some("chair"));
     assert!(db.owns(user, "chair").await.unwrap());
     assert!(db.pick_up(user, id).await.unwrap().is_none());
+}
+
+#[tokio::test]
+async fn accessories_are_bought_once_and_outfits_keep_three_slots() {
+    let Some(db) = db().await else { return };
+    let [alice, bob] = ids();
+
+    assert!(db.owned_accessories(alice).await.unwrap().is_empty());
+    assert_eq!(
+        db.buy_accessory(alice, "top_hat", 900).await.unwrap(),
+        CustomizeBuy::Insufficient { balance: 0 }
+    );
+    assert!(
+        db.owned_accessories(alice).await.unwrap().is_empty(),
+        "a refused buy owns nothing"
+    );
+    db.earn_shells(alice, 1_000, "test").await.unwrap();
+    assert_eq!(
+        db.buy_accessory(alice, "top_hat", 900).await.unwrap(),
+        CustomizeBuy::Bought { balance: 100 }
+    );
+    assert_eq!(
+        db.buy_accessory(alice, "top_hat", 900).await.unwrap(),
+        CustomizeBuy::AlreadyOwned
+    );
+    assert_eq!(db.user(alice).await.unwrap().credits, 100, "charged once");
+    assert_eq!(db.owned_accessories(alice).await.unwrap(), vec!["top_hat".to_owned()]);
+    assert!(db.owned_accessories(bob).await.unwrap().is_empty());
+    // What the wearing rule reads: purchases and the numbers, also for a player with no row.
+    let facts = db.wardrobe_facts(alice).await.unwrap();
+    assert_eq!(facts.bought_accessories, vec!["top_hat".to_owned()]);
+    assert!(facts.bought_badges.is_empty());
+    assert_eq!(facts.stats.shells, 100);
+    let facts = db.wardrobe_facts(bob).await.unwrap();
+    assert!(facts.bought_accessories.is_empty() && facts.bought_badges.is_empty());
+    assert_eq!(facts.stats.shells, 0);
+
+    assert!(db.outfits(alice).await.unwrap().is_empty());
+    assert!(
+        !db.rename_outfit(alice, 2, "Beach").await.unwrap(),
+        "nothing to rename yet"
+    );
+    db.save_outfit(alice, 2, "tidewalker.1.1.0.2.0.0").await.unwrap();
+    db.save_outfit(alice, 1, "bobbin.0.0.0.0.0.0+crown").await.unwrap();
+    assert!(db.rename_outfit(alice, 2, "  Beach day ").await.unwrap());
+    db.save_outfit(alice, 2, "curlcove.3.3.3.3.3.3").await.unwrap();
+    assert_eq!(
+        db.outfits(alice).await.unwrap(),
+        vec![
+            OutfitRow {
+                slot: 1,
+                name: "Outfit 1".into(),
+                code: "bobbin.0.0.0.0.0.0+crown".into()
+            },
+            OutfitRow {
+                slot: 2,
+                name: "Beach day".into(),
+                code: "curlcove.3.3.3.3.3.3".into()
+            },
+        ],
+        "saving again keeps the name"
+    );
+    assert!(db.save_outfit(alice, 4, "x").await.is_err());
+    assert!(db.rename_outfit(alice, 1, "").await.is_err());
+    assert!(db.rename_outfit(alice, 1, &"x".repeat(33)).await.is_err());
+    assert!(db.outfits(bob).await.unwrap().is_empty());
 }
 
 #[tokio::test]

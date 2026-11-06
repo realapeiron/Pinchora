@@ -4,7 +4,7 @@
 use std::str::Split;
 
 use pinchora_game::{Content, character::Character};
-use pinchora_render::character::{Colors, HAIR_COLORS, OUTFIT_COLORS, SKIN_TONES};
+use pinchora_render::character::{Channel, Colors, Paint};
 use twilight_model::{
     channel::message::{
         Component,
@@ -106,14 +106,18 @@ fn stand_in(content: &Content, user: u64) -> Character {
         .looks
         .get(pick(content.looks.len().max(1)))
         .map_or_else(String::new, |l| l.id.clone());
+    let mut paint = |channel: Channel| Paint::Swatch(pick(channel.swatches().len()) as u8);
     Character {
         look,
         colors: Colors {
-            skin: pick(SKIN_TONES.len()),
-            hair: pick(HAIR_COLORS.len()),
-            top: pick(OUTFIT_COLORS.len()),
-            bottom: pick(OUTFIT_COLORS.len()),
+            skin: paint(Channel::Skin),
+            hair: paint(Channel::Hair),
+            eyes: paint(Channel::Eyes),
+            top: paint(Channel::Top),
+            bottom: paint(Channel::Bottom),
+            shoes: paint(Channel::Shoes),
         },
+        accessories: Vec::new(),
     }
 }
 

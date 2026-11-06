@@ -41,7 +41,8 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
         Some("qc") => quests::on_claim(cx).await,
         Some("tt") => duel::on_move(cx, parts).await,
         Some("gf") => gift::on_gift(cx, parts, values.first().map(String::as_str)).await,
-        Some("ch") => character::on_select(cx, parts, values.first().map(String::as_str)).await,
+        Some("ch") => character::on_old(cx).await,
+        Some("ca") => character::on_component(cx, parts, values).await,
         Some("st") => store::on_buy(cx, values.first().map(String::as_str)).await,
         Some("cz") => customize::on_component(cx, parts, values).await,
         Some("ti") => customize::on_title(cx, parts, values).await,
@@ -72,6 +73,7 @@ pub(crate) async fn dispatch_modal(cx: &Cx, custom_id: &str, fields: &[(String, 
     match parts.next() {
         Some("gb") => guestbook::on_modal(cx, parts, fields).await,
         Some("cs") => customize::on_style_modal(cx, parts, fields).await,
+        Some("ca") => character::on_modal(cx, parts, fields).await,
         Some("wo") if parts.next() == Some("m") => {
             let text = fields
                 .iter()

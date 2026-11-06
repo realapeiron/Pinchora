@@ -4,10 +4,10 @@ use std::sync::Arc;
 
 use image::{RgbaImage, imageops};
 use pinchora_render::{
-    Backdrop, BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, CharacterCard, Frame, LeaderboardCard,
-    LeaderboardEntry, LevelUpCard, NextRole, Opacity, ProfileCard, RankCard, Renderer, ShowcaseKind, ShowcaseSlot,
-    SpriteArt, Theme, WalletCard, WelcomeCard,
-    character::{Colors, placeholder_character, recolor_character},
+    Backdrop, BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, CharacterCard, EditorCell, EditorSection, Frame,
+    LeaderboardCard, LeaderboardEntry, LevelUpCard, NextRole, Opacity, ProfileCard, RankCard, Renderer, ShowcaseKind,
+    ShowcaseSlot, SpriteArt, Theme, WalletCard, WelcomeCard,
+    character::{CharacterSpec, Colors, Paint, Worn, render_character},
     placeholder_avatar,
     room::{Cursor, RoomScene, SceneItem, SceneLayer, render_room},
     sprites::{
@@ -75,18 +75,26 @@ fn main() -> anyhow::Result<()> {
     std::fs::create_dir_all(&out)?;
     let r = Renderer::new();
 
-    let colors = Colors {
-        skin: 2,
-        hair: 4,
-        top: 1,
-        bottom: 2,
+    let spec = CharacterSpec {
+        look: "ponycrest".into(),
+        colors: Colors {
+            skin: Paint::Swatch(2),
+            hair: Paint::Swatch(4),
+            eyes: Paint::Swatch(7),
+            top: Paint::Swatch(1),
+            bottom: Paint::Swatch(2),
+            shoes: Paint::Swatch(4),
+        },
+        accessories: ["straw_hat", "scarf", "ice_cream"]
+            .map(|id| Worn {
+                id: id.into(),
+                tint: None,
+            })
+            .into(),
+        pose: Default::default(),
     };
-    let look = SpriteStore::embedded()
-        .get("a_ponycrest")
-        .map_or_else(placeholder_character, |s| (*s).clone());
-    let character = recolor_character(&look, colors);
+    let character = render_character(&spec, 1);
     let (character_png, character_w, character_h) = scaled_png(&character, ProfileCard::CHARACTER_SCALE);
-    let (card_png, card_w, card_h) = scaled_png(&character, CharacterCard::SCALE);
 
     let started = std::time::Instant::now();
     let profile = r.profile_card(&ProfileCard {
@@ -339,12 +347,37 @@ fn main() -> anyhow::Result<()> {
     std::fs::write(format!("{out}/levelup.png"), &level_up)?;
 
     let card = r.character_card(&CharacterCard {
-        sprite_png: card_png,
-        sprite_w: card_w,
-        sprite_h: card_h,
+        character: character.clone(),
         name: "Captain Pinch".into(),
-        look: "Tidewalker".into(),
-        colors,
+        status: ("DRAFT".into(), false),
+        tabs: [
+            "Look", "Skin", "Hair", "Eyes", "Top", "Bottom", "Shoes", "Gear", "Presets", "Outfits",
+        ]
+        .map(String::from)
+        .into(),
+        tab: 2,
+        caption: "Hair · Ginger".into(),
+        sections: vec![EditorSection {
+            title: "Hair colour".into(),
+            cols: 5,
+            cells: pinchora_render::character::HAIR_COLORS
+                .iter()
+                .enumerate()
+                .map(|(i, s)| EditorCell {
+                    swatch: pinchora_render::character::ramp_of(
+                        &pinchora_render::character::HAIR_COLORS,
+                        Paint::Swatch(i as u8),
+                        4,
+                        2,
+                    )
+                    .map(|r| r.iter().map(|c| u32::from_be_bytes([0, c[0], c[1], c[2]])).collect()),
+                    label: s.name.into(),
+                    current: i == 4,
+                    ..Default::default()
+                })
+                .collect(),
+        }],
+        hint: "< > step · the menu jumps · save keeps it".into(),
         theme: Theme::reef(),
     })?;
     std::fs::write(format!("{out}/character.png"), &card)?;

@@ -841,6 +841,74 @@ def check_titles(raw, badges, fish_count):
     return records
 
 
+ACCESSORY_SLOTS = ("head", "face", "neck", "back", "hand")
+# Draw order of the slots, which is the order a saved character code lists them in.
+ACCESSORY_ORDER = ("back", "neck", "face", "head", "hand")
+
+
+def check_accessories(raw, badges):
+    records = entries(raw, "accessories.json", 30)
+    seen, names = {}, {}
+    badge_ids = {item.get("id") for item, _ in badges}
+    for item, where in records:
+        fields(item, where, ("id", "name", "slot", "tintable", "price"), ("level", "badge"))
+        identity(item, where, seen, names)
+        string(item, "name", where, limit=20)
+        enum(item, "slot", ACCESSORY_SLOTS, where)
+        if not isinstance(item.get("tintable"), bool):
+            problem(where, "tintable must be true or false")
+        price = item.get("price")
+        if not integer(price) or price < 0:
+            problem(where, "price must be a whole number of shells, 0 for free")
+        level = item.get("level")
+        if level is not None and (not integer(level) or not 1 <= level <= 100):
+            problem(where, "level must be 1..100")
+        badge = item.get("badge")
+        if badge is not None and badge not in badge_ids:
+            problem(where, f"badge {badge!r} is not in badges.json")
+    for slot in ACCESSORY_SLOTS:
+        mine = [item for item, _ in records if item.get("slot") == slot]
+        if len(mine) < 5:
+            problem("accessories.json", f"needs at least five {slot} accessories")
+        if not any(item.get("price") == 0 and "level" not in item and "badge" not in item for item in mine):
+            problem("accessories.json", f"needs a free {slot} accessory")
+    return records
+
+
+def check_presets(raw, looks, accessories):
+    records = entries(raw, "character_presets.json", 10)
+    seen, names = {}, {}
+    look_ids = {item.get("id") for item in looks if isinstance(item, dict)}
+    by_id = {item.get("id"): item for item, _ in accessories}
+    for item, where in records:
+        fields(item, where, ("id", "name", "code"))
+        identity(item, where, seen, names)
+        string(item, "name", where, limit=20)
+        code = item.get("code")
+        if not nonempty(code):
+            problem(where, "code must be a character code")
+            continue
+        base, *worn = code.split("+")
+        parts = base.split(".")
+        if len(parts) != 7 or parts[0] not in look_ids or not all(p.isdigit() and int(p) < 20 for p in parts[1:]):
+            problem(where, f"code {code!r} must be <look>.<six swatch numbers below 20>")
+        slots = []
+        for piece in worn:
+            ident, _, tint = piece.partition("*")
+            accessory = by_id.get(ident)
+            if accessory is None:
+                problem(where, f"unknown accessory {ident!r}")
+                continue
+            if tint and (not accessory.get("tintable") or not tint.isdigit() or int(tint) >= 16):
+                problem(where, f"{ident} cannot take the dye {tint!r}")
+            slots.append(accessory.get("slot"))
+        if len(set(slots)) != len(slots):
+            problem(where, "two accessories in one slot")
+        if slots != sorted(slots, key=ACCESSORY_ORDER.index):
+            problem(where, f"accessories must be listed in the order {', '.join(ACCESSORY_ORDER)}")
+    return records
+
+
 def check_trivia(raw):
     records = entries(raw, "trivia.json", 300)
     ids, questions = {}, {}
@@ -986,7 +1054,8 @@ def furniture_table(title, records, key, order):
 def main():
     ERRORS.clear()
     raw = {name: read_file(name + ".json") for name in (
-        "sets", "furniture", "surfaces", "rooms", "pets", "fish", "backgrounds", "badges", "titles", "fishing_gear")}
+        "sets", "furniture", "surfaces", "rooms", "pets", "fish", "looks", "backgrounds", "badges", "titles",
+        "fishing_gear", "accessories", "character_presets")}
     sets, set_ids = check_sets(raw["sets"])
     shared_ids = {}
     furniture, playable = check_furniture(raw["furniture"], set_ids, shared_ids)
@@ -998,6 +1067,8 @@ def main():
     badges = check_badges(raw["badges"], len(fish))
     titles = check_titles(raw["titles"], badges, len(fish))
     check_fishing(raw["fishing_gear"], fish, backgrounds, badges)
+    accessories = check_accessories(raw["accessories"], badges)
+    character_presets = check_presets(raw["character_presets"], raw["looks"], accessories)
     trivia, hangman, answers, allowed = check_games()
     share(furniture + surfaces["wallpapers"] + surfaces["floors"], "all purchasable designs")
     table("Catalog", [("Furniture sets", len(sets)), ("Furniture bases", len(furniture)),
@@ -1005,7 +1076,8 @@ def main():
                       ("Floors", len(surfaces["floors"])), ("Rooms", len(rooms)),
                       ("Pet species", len(pets)), ("Fish / catches", len(fish)),
                       ("Backgrounds", len(backgrounds)), ("Badges", len(badges)),
-                      ("Titles", len(titles))])
+                      ("Titles", len(titles)), ("Looks", len(raw["looks"])),
+                      ("Accessories", len(accessories)), ("Character presets", len(character_presets))])
     table("Games", [("Trivia questions", len(trivia)), ("Hangman words", len(hangman)),
                     ("Wordle answers", len(answers)), ("Wordle allowed guesses", len(allowed))])
     for key, order in (("category", CATEGORY_MIN), ("rarity", RARITIES), ("availability", AVAILABILITY), ("layer", LAYERS)):

@@ -87,22 +87,11 @@ async fn throttled(cx: &Cx, user: u64) -> anyhow::Result<bool> {
 /// Draws the GIF, counts the interaction and builds the message that carries both.
 async fn deliver(cx: &Cx, kind: Interaction, from: u64, to: u64) -> anyhow::Result<InteractionResponseData> {
     let ((a, saved), (b, _)) = (character_of(&cx.app, from).await?, character_of(&cx.app, to).await?);
-    let sprites = cx.app.sprites.clone();
     let gif = cx
         .app
         .render(move |_| {
-            let (look_a, look_b) = (sprites.look(&a.look), sprites.look(&b.look));
-            interaction_gif(
-                kind,
-                Person {
-                    look: &look_a,
-                    colors: a.colors,
-                },
-                Person {
-                    look: &look_b,
-                    colors: b.colors,
-                },
-            )
+            let (spec_a, spec_b) = (a.spec(), b.spec());
+            interaction_gif(kind, Person { spec: &spec_a }, Person { spec: &spec_b })
         })
         .await?;
     let tally = cx.app.db.record_interaction(kind.key(), from, to).await?;
