@@ -96,6 +96,16 @@ fn is_branch(option: &CommandOption) -> bool {
     )
 }
 
+/// A member's word as a usage line quotes it: without backticks, so it stays inside its code span
+/// (no links or formatting of theirs in our reply), and short, so the reply fits in a message.
+fn quoted(word: &str) -> String {
+    let mut out: String = word.chars().filter(|&c| c != '`').take(40).collect();
+    if word.chars().filter(|&c| c != '`').count() > 40 {
+        out.push('…');
+    }
+    out
+}
+
 /// `<spot>` for a required option, `[spot]` for an optional one.
 fn placeholder(option: &CommandOption) -> String {
     if option.required == Some(true) {
@@ -311,7 +321,7 @@ fn leaf<'a>(
                 last = Some(next);
                 next += 1;
             }
-            _ => return Err(fail(format!("`{}` is one word too many.", word.text))),
+            _ => return Err(fail(format!("`{}` is one word too many.", quoted(&word.text)))),
         }
     }
     let mut out = Vec::new();
@@ -346,7 +356,7 @@ pub(crate) fn parse<'a>(tree: &'a [Command], prefix: &str, text: &str) -> Result
         let wanted = words.get(at).map(|w| w.text.to_lowercase());
         let Some(branch) = options.iter().find(|o| Some(&o.name) == wanted.as_ref()) else {
             let problem = match words.get(at) {
-                Some(word) => format!("`{path}` has no `{}`.", word.text),
+                Some(word) => format!("`{path}` has no `{}`.", quoted(&word.text)),
                 None => format!("`{path}` needs one more word."),
             };
             return Err(Refusal::Usage(format!("{problem}\n{}", usage(prefix, &path, options))));
@@ -527,6 +537,10 @@ mod tests {
         assert!(word.starts_with("`bet` is a whole number."), "{word}");
         assert!(usage_of(&tree, "duel connect4 sam").starts_with("`user` is a member"));
         assert!(usage_of(&tree, "profile <@123456789012345678> extra").contains("one word too many"));
+        // A member's word can't close the code span it is quoted in, nor make the reply too long.
+        let sneaky = usage_of(&tree, "fish x`[nitro](https://e.x)`");
+        assert!(sneaky.starts_with("`fish` has no `x[nitro](https://e.x)`."), "{sneaky}");
+        assert!(usage_of(&tree, &format!("fish {}", "a".repeat(5_000))).chars().count() < 200);
         let twice = usage_of(
             &tree,
             "duel connect4 user:<@123456789012345678> user:<@223456789012345678>",
