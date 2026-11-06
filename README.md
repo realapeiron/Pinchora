@@ -103,6 +103,13 @@ in memory to show "old → new"; after a restart, or for a member it has not see
 change is logged as just the new value. Voice moves work the same way: a member already in a voice
 channel when the bot starts is only noticed once their state changes.
 
+Admin commands check the permission themselves. `/config` (every subcommand), `/roles`, `/giveaway`,
+`/suggestion`, `/points give|take` and `/plaza edit` (with the buttons and menus of its editor) need
+Manage Server or Administrator, read from the member permissions Discord sends with each interaction,
+on top of the command's default visibility: a server owner can change who sees a command in the
+integration settings, so hiding or showing one never decides who may use it. A member without the
+permission gets a private refusal and nothing changes.
+
 ### The pixel world
 
 | Command | What it does |

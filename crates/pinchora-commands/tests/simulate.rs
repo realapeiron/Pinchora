@@ -11026,3 +11026,298 @@ async fn the_weekly_catch_board_ranks_by_size_for_the_species() {
         assert_eq!(row.fish_id, fish.id);
     }
 }
+
+// /Admin permissions
+
+/// Administrator, as the permission bit Discord sends.
+const ADMINISTRATOR: u64 = 1 << 3;
+
+/// What the admin settings of a server hold, as text, to see that a refused command changed nothing.
+async fn admin_state(sim: &Sim, target: u64, suggestion: i64) -> String {
+    let (db, guild) = (&sim.app.db, sim.guild);
+    format!(
+        "{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}",
+        db.guild_settings(guild).await.unwrap(),
+        db.level_roles(guild).await.unwrap(),
+        db.rep_roles(guild).await.unwrap(),
+        db.store_items(guild).await.unwrap(),
+        db.xp_rules(guild).await.unwrap(),
+        db.running_giveaways(guild).await.unwrap(),
+        db.find_panel(guild, "Gated").await.unwrap(),
+        db.suggestion_channel(guild).await.unwrap(),
+        db.collection_settings(guild).await.unwrap(),
+        db.member_points(guild, target).await.unwrap(),
+        db.suggestion(suggestion).await.unwrap(),
+    )
+}
+
+/// A server can show any command to anyone in Discord's integration settings, so every admin path
+/// asks for Manage Server itself. The table is the audit: each command and subcommand that changes
+/// how a server runs, tried by a member with no permissions and by one with every permission but
+/// Manage Server and Administrator.
+#[tokio::test]
+async fn admin_paths_refuse_members_without_manage_server() {
+    let Some(mut sim) = Sim::new("admin_paths_refuse_members_without_manage_server").await else {
+        return;
+    };
+    let (member, target, author) = (unique(), unique(), unique());
+    let (role_id, channel) = (unique(), unique());
+    let role = sim.guild_role(role_id, "Gated", 2);
+    let suggestion = sim
+        .app
+        .db
+        .create_suggestion(sim.guild, author, "Add a garden")
+        .await
+        .unwrap();
+    // Resolved data that no option names is ignored, so one blob serves every row.
+    let known = json!({
+        "users": resolved(&[target], &[])["users"],
+        "roles": resolved(&[], &[&role])["roles"],
+        "channels": resolved_channels(&[channel])["channels"],
+    });
+    let rows: Vec<(&str, Value)> = vec![
+        (
+            "config welcome",
+            json!([sub("welcome", vec![bool_option("enabled", true)])]),
+        ),
+        (
+            "config leveling",
+            json!([sub("leveling", vec![bool_option("enabled", false)])]),
+        ),
+        ("config show", json!([sub("show", vec![])])),
+        (
+            "config welcome-card",
+            json!([sub("welcome-card", vec![text_option("title", "HELLO")])]),
+        ),
+        (
+            "config level-roles add",
+            json!([group(
+                "level-roles",
+                sub("add", vec![int_option("level", 3), role_option("role", &role)])
+            )]),
+        ),
+        (
+            "config level-roles remove",
+            json!([group("level-roles", sub("remove", vec![role_option("role", &role)]))]),
+        ),
+        (
+            "config level-roles list",
+            json!([group("level-roles", sub("list", vec![]))]),
+        ),
+        (
+            "config level-roles mode",
+            json!([group("level-roles", sub("mode", vec![text_option("mode", "replace")]))]),
+        ),
+        (
+            "config level-roles sync",
+            json!([group("level-roles", sub("sync", vec![]))]),
+        ),
+        (
+            "config xp multiplier",
+            json!([group(
+                "xp",
+                sub(
+                    "multiplier",
+                    vec![number_option("value", 2.0), role_option("role", &role)]
+                )
+            )]),
+        ),
+        (
+            "config xp clear",
+            json!([group("xp", sub("clear", vec![role_option("role", &role)]))]),
+        ),
+        ("config xp show", json!([group("xp", sub("show", vec![]))])),
+        (
+            "config xp voice",
+            json!([group("xp", sub("voice", vec![bool_option("enabled", true)]))]),
+        ),
+        (
+            "config rep-roles add",
+            json!([group(
+                "rep-roles",
+                sub("add", vec![int_option("reputation", 5), role_option("role", &role)])
+            )]),
+        ),
+        (
+            "config rep-roles remove",
+            json!([group("rep-roles", sub("remove", vec![role_option("role", &role)]))]),
+        ),
+        (
+            "config rep-roles list",
+            json!([group("rep-roles", sub("list", vec![]))]),
+        ),
+        (
+            "config points",
+            json!([sub("points", vec![text_option("name", "coins")])]),
+        ),
+        (
+            "config store add",
+            json!([group(
+                "store",
+                sub("add", vec![role_option("role", &role), int_option("price", 50)])
+            )]),
+        ),
+        (
+            "config store remove",
+            json!([group("store", sub("remove", vec![role_option("role", &role)]))]),
+        ),
+        ("config store list", json!([group("store", sub("list", vec![]))])),
+        (
+            "config join-role",
+            json!([sub("join-role", vec![role_option("role", &role)])]),
+        ),
+        (
+            "config goodbye",
+            json!([sub("goodbye", vec![channel_option("channel", channel)])]),
+        ),
+        (
+            "config log",
+            json!([sub("log", vec![channel_option("channel", channel)])]),
+        ),
+        (
+            "config log-events",
+            json!([sub("log-events", vec![bool_option("voice", false)])]),
+        ),
+        (
+            "config suggestions",
+            json!([sub("suggestions", vec![channel_option("channel", channel)])]),
+        ),
+        (
+            "config critters",
+            json!([sub("critters", vec![bool_option("enabled", true)])]),
+        ),
+        (
+            "roles panel",
+            json!([sub("panel", vec![text_option("title", "Gated")])]),
+        ),
+        (
+            "roles add",
+            json!([sub(
+                "add",
+                vec![
+                    text_option("panel", "Gated"),
+                    role_option("role", &role),
+                    text_option("label", "Gate"),
+                ]
+            )]),
+        ),
+        (
+            "roles remove",
+            json!([sub(
+                "remove",
+                vec![text_option("panel", "Gated"), role_option("role", &role)]
+            )]),
+        ),
+        (
+            "roles post",
+            json!([sub(
+                "post",
+                vec![text_option("panel", "Gated"), channel_option("channel", channel)]
+            )]),
+        ),
+        (
+            "points give",
+            json!([sub(
+                "give",
+                vec![user_option("user", target), int_option("amount", 100)]
+            )]),
+        ),
+        (
+            "points take",
+            json!([sub(
+                "take",
+                vec![user_option("user", target), int_option("amount", 100)]
+            )]),
+        ),
+        (
+            "giveaway start",
+            json!([sub(
+                "start",
+                vec![
+                    text_option("duration", "1h"),
+                    int_option("winners", 1),
+                    text_option("prize", "A cake"),
+                ]
+            )]),
+        ),
+        ("giveaway end", json!([sub("end", vec![int_option("id", 1)])])),
+        ("giveaway reroll", json!([sub("reroll", vec![int_option("id", 1)])])),
+        ("giveaway list", json!([sub("list", vec![])])),
+        (
+            "suggestion approve",
+            json!([sub("approve", vec![int_option("id", i64::from(suggestion.number))])]),
+        ),
+        (
+            "suggestion deny",
+            json!([sub("deny", vec![int_option("id", i64::from(suggestion.number))])]),
+        ),
+        ("plaza edit", json!([sub("edit", vec![])])),
+    ];
+
+    let before = admin_state(&sim, target, suggestion.id).await;
+    let all_but_manage = ((1u64 << 50) - 1) & !(MANAGE_GUILD | ADMINISTRATOR);
+    for permissions in [0, all_but_manage] {
+        sim.permissions = permissions;
+        for (label, options) in &rows {
+            let name = label.split(' ').next().expect("a command name");
+            let reply = sim.command_resolved(member, name, options.clone(), known.clone()).await;
+            let wanted = if name == "plaza" {
+                "server managers"
+            } else {
+                "Manage Server"
+            };
+            assert!(
+                reply.ephemeral && reply.content().contains(wanted),
+                "/{label} with permissions {permissions}: {:?}",
+                reply.content()
+            );
+        }
+    }
+    assert_eq!(
+        admin_state(&sim, target, suggestion.id).await,
+        before,
+        "a refused command changed something"
+    );
+
+    // The plaza editor's own controls ask too: a manager opens it, somebody else presses its buttons.
+    sim.permissions = MANAGE_GUILD;
+    let editor = sim.command(member, "plaza", json!([sub("edit", vec![])])).await;
+    let controls: Vec<(String, bool)> = editor
+        .controls()
+        .filter_map(|c| match c {
+            Component::Button(b) => b.custom_id.clone().map(|id| (id, false)),
+            Component::SelectMenu(m) => Some((m.custom_id.clone(), true)),
+            _ => None,
+        })
+        .filter(|(id, _)| id.starts_with("pe:"))
+        .collect();
+    assert!(controls.len() > 3, "the plaza editor has controls: {controls:?}");
+    sim.permissions = all_but_manage;
+    for (id, menu) in &controls {
+        let values: &[&str] = if *menu { &["x"] } else { &[] };
+        let refused = sim.component(target, id, values, &editor).await;
+        assert!(
+            refused.ephemeral && refused.content().contains("server managers"),
+            "{id}: {:?}",
+            refused.content()
+        );
+    }
+
+    // Manage Server and Administrator get through.
+    for permissions in [MANAGE_GUILD, ADMINISTRATOR] {
+        sim.permissions = permissions;
+        let shown = sim.command(member, "config", json!([sub("show", vec![])])).await;
+        assert_eq!(shown.title(), "Server settings", "permissions {permissions}");
+        let listed = sim.command(member, "giveaway", json!([sub("list", vec![])])).await;
+        assert!(!listed.content().contains("Manage Server"), "{}", listed.content());
+        let gave = sim
+            .command_resolved(
+                member,
+                "points",
+                json!([sub("give", vec![user_option("user", target), int_option("amount", 5)])]),
+                known.clone(),
+            )
+            .await;
+        assert!(gave.description().contains("Gave **5**"), "{}", gave.description());
+    }
+}

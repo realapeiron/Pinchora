@@ -152,6 +152,13 @@ impl ConfigCommand {
         let Some(guild) = cx.guild_id() else {
             return cx.reply_ephemeral("Settings only exist inside a server.").await;
         };
+        // A server can override who sees `/config` in Discord's integration settings, so the
+        // permission is checked here too, for every subcommand.
+        if !cx.can_manage_guild() {
+            return cx
+                .reply_ephemeral("You need the Manage Server permission to change this server's settings.")
+                .await;
+        }
         let settings = match self {
             Self::Welcome(c) => {
                 cx.app
