@@ -40,7 +40,7 @@ pub async fn run(config: &Config, app: Arc<App>, ready: Readiness) -> anyhow::Re
         );
     }
     if config.web.dev_login && !settings.dev_login {
-        tracing::warn!("PINCHORA_WEB__DEV_LOGIN is ignored: it only works on a loopback bind");
+        tracing::warn!("PINCHORA_WEB__DEV_LOGIN is ignored: it only works in debug builds on a loopback bind");
     }
     if settings.dev_login {
         tracing::warn!(bind = %settings.bind, "dev login is on: anyone who can reach this address can sign in as anyone");

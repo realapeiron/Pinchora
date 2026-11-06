@@ -21,7 +21,8 @@ pub struct WebSettings {
     /// Where the browser is sent to authorise: Discord's (or the mock's) `/oauth2/authorize`.
     pub authorize_url: String,
     pub cookie_secure: bool,
-    /// Whether `POST /auth/dev-login` works: asked for, on a loopback bind.
+    /// Whether `POST /auth/dev-login` works: asked for, on a loopback bind, in a debug build (a
+    /// release build never has it: a loopback bind is still reachable through a same-host proxy).
     pub dev_login: bool,
     pub static_dir: Option<PathBuf>,
     /// Environment variables still needed before anyone can log in.
@@ -51,7 +52,7 @@ impl WebSettings {
             discord_api_base: web.discord_api_base.trim_end_matches('/').to_owned(),
             authorize_url: format!("{}/oauth2/authorize", api.origin().ascii_serialization()),
             cookie_secure: web.cookie_secure.unwrap_or(public.scheme() == "https"),
-            dev_login: web.dev_login && web.bind.ip().is_loopback(),
+            dev_login: cfg!(debug_assertions) && web.dev_login && web.bind.ip().is_loopback(),
             static_dir: web.static_dir.clone(),
             missing,
         })
@@ -110,7 +111,11 @@ mod tests {
             "0.0.0.0 is not loopback"
         );
         config.bind = ([127, 0, 0, 1], 8090).into();
-        assert!(WebSettings::resolve(&config, 1).unwrap().dev_login);
+        assert_eq!(
+            WebSettings::resolve(&config, 1).unwrap().dev_login,
+            cfg!(debug_assertions),
+            "release builds never have it"
+        );
     }
 
     #[test]

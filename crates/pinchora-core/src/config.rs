@@ -163,7 +163,8 @@ pub struct WebConfig {
     pub discord_api_base: String,
     /// Mark cookies `Secure`; defaults to whether `public_url` is https.
     pub cookie_secure: Option<bool>,
-    /// Allow `POST /auth/dev-login` (sign in as anyone, without Discord). Only honoured on a loopback bind.
+    /// Allow `POST /auth/dev-login` (sign in as anyone, without Discord). Only honoured by debug
+    /// builds on a loopback bind.
     pub dev_login: bool,
     /// Serve the SPA from this folder instead of the copy built into the binary.
     pub static_dir: Option<PathBuf>,
