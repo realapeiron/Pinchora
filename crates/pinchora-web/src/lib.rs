@@ -7,6 +7,8 @@
 mod audit;
 mod auth;
 mod client_ip;
+#[cfg(test)]
+mod commands_catalog;
 mod config;
 mod discord;
 mod error;

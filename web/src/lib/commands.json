@@ -1,0 +1,2126 @@
+{
+  "areas": [
+    {
+      "commands": [
+        {
+          "description": "Show a profile card",
+          "manager": false,
+          "options": [
+            {
+              "description": "Whose profile to show (default: you)",
+              "name": "user",
+              "required": false
+            }
+          ],
+          "path": "profile",
+          "usage": "/profile [user]"
+        },
+        {
+          "description": "Show a server level card",
+          "manager": false,
+          "options": [
+            {
+              "description": "Whose rank to show (default: you)",
+              "name": "user",
+              "required": false
+            }
+          ],
+          "path": "rank",
+          "usage": "/rank [user]"
+        },
+        {
+          "description": "Top members by XP, shells, server points or biggest catch",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "This server (XP)",
+                "This server (points)",
+                "Weekly XP",
+                "Weekly catch",
+                "Global (XP)",
+                "Global (shells)"
+              ],
+              "description": "Which board (default: this server)",
+              "name": "board",
+              "required": false
+            }
+          ],
+          "path": "leaderboard",
+          "usage": "/leaderboard [board]"
+        },
+        {
+          "description": "Collect your daily shells",
+          "manager": false,
+          "options": [],
+          "path": "daily",
+          "usage": "/daily"
+        },
+        {
+          "description": "Show a shell wallet",
+          "manager": false,
+          "options": [
+            {
+              "description": "Whose wallet to show (default: you)",
+              "name": "user",
+              "required": false
+            }
+          ],
+          "path": "balance",
+          "usage": "/balance [user]"
+        },
+        {
+          "description": "Today's three quests and their rewards",
+          "manager": false,
+          "options": [],
+          "path": "quests",
+          "usage": "/quests"
+        },
+        {
+          "description": "What Pinchora can do",
+          "manager": false,
+          "options": [],
+          "path": "help",
+          "usage": "/help"
+        },
+        {
+          "description": "Check that Pinchora is awake and how fast it answers",
+          "manager": false,
+          "options": [],
+          "path": "ping",
+          "usage": "/ping"
+        }
+      ],
+      "intro": "The everyday basics. Pick an area from the menu for everything else.",
+      "key": "start-here",
+      "title": "Start here"
+    },
+    {
+      "commands": [
+        {
+          "description": "Set the about-me text on your profile card",
+          "manager": false,
+          "options": [
+            {
+              "description": "Up to 160 characters; send \"-\" to clear it",
+              "name": "text",
+              "required": true
+            }
+          ],
+          "path": "bio",
+          "usage": "/bio <text>"
+        },
+        {
+          "description": "Design your pixel character: looks, colours, accessories and outfits",
+          "manager": false,
+          "options": [],
+          "path": "character",
+          "usage": "/character"
+        },
+        {
+          "description": "Buy and wear a background for your profile, rank and wallet cards",
+          "manager": false,
+          "options": [],
+          "path": "customize background",
+          "usage": "/customize background"
+        },
+        {
+          "description": "Your badge collection: earn, buy and wear the badges on your profile card",
+          "manager": false,
+          "options": [],
+          "path": "customize badges",
+          "usage": "/customize badges"
+        },
+        {
+          "description": "Pick the title under your name on your profile and rank cards",
+          "manager": false,
+          "options": [],
+          "path": "customize title",
+          "usage": "/customize title"
+        },
+        {
+          "description": "Accent colour, panel opacity and a frame for your profile, rank and wallet cards",
+          "manager": false,
+          "options": [],
+          "path": "customize style",
+          "usage": "/customize style"
+        },
+        {
+          "description": "Put a favourite fish, a pet, a furniture item and your house on your profile card",
+          "manager": false,
+          "options": [],
+          "path": "customize showcase",
+          "usage": "/customize showcase"
+        },
+        {
+          "description": "Your year in numbers (open from 1 December to 31 January)",
+          "manager": false,
+          "options": [
+            {
+              "description": "Which year (default: the one that just ended)",
+              "name": "year",
+              "required": false
+            }
+          ],
+          "path": "wrapped",
+          "usage": "/wrapped [year]"
+        },
+        {
+          "description": "Choose what others can see of you, or delete your data",
+          "manager": false,
+          "options": [],
+          "path": "privacy",
+          "usage": "/privacy"
+        },
+        {
+          "description": "How many games someone played and won",
+          "manager": false,
+          "options": [
+            {
+              "description": "Whose stats (default: yours)",
+              "name": "user",
+              "required": false
+            }
+          ],
+          "path": "play stats",
+          "usage": "/play stats [user]"
+        }
+      ],
+      "intro": "Your look, your character, and what other people may see of you.",
+      "key": "profile-and-cards",
+      "title": "Profile & cards"
+    },
+    {
+      "commands": [
+        {
+          "description": "Collect your weekly shells (every 7 days)",
+          "manager": false,
+          "options": [],
+          "path": "weekly",
+          "usage": "/weekly"
+        },
+        {
+          "description": "Collect your monthly shells (every 30 days)",
+          "manager": false,
+          "options": [],
+          "path": "monthly",
+          "usage": "/monthly"
+        },
+        {
+          "description": "Send shells to someone",
+          "manager": false,
+          "options": [
+            {
+              "description": "Who gets the shells",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "How many shells",
+              "name": "amount",
+              "required": true
+            }
+          ],
+          "path": "give",
+          "usage": "/give <user> <amount>"
+        },
+        {
+          "description": "Give someone a reputation point (once a day)",
+          "manager": false,
+          "options": [
+            {
+              "description": "Who deserves it",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "rep",
+          "usage": "/rep <user>"
+        },
+        {
+          "description": "Message me when a reward, my pet or a pet trip is ready",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "daily",
+                "weekly",
+                "monthly",
+                "pet (needs looking after)",
+                "trip (a pet is home)"
+              ],
+              "description": "What to be told about",
+              "name": "what",
+              "required": true
+            },
+            {
+              "choices": [
+                "on",
+                "off"
+              ],
+              "description": "Turn it on or off",
+              "name": "state",
+              "required": true
+            }
+          ],
+          "path": "remind me when",
+          "usage": "/remind me when <what> <state>"
+        },
+        {
+          "description": "Message me after a while: 45m, 2h30m, 3d",
+          "manager": false,
+          "options": [
+            {
+              "description": "How long from now, e.g. 45m, 2h30m or 3d",
+              "name": "duration",
+              "required": true
+            },
+            {
+              "description": "What to remind you of",
+              "name": "text",
+              "required": true
+            }
+          ],
+          "path": "remind me in",
+          "usage": "/remind me in <duration> <text>"
+        },
+        {
+          "description": "Your reminders and which notifications are on",
+          "manager": false,
+          "options": [],
+          "path": "remind list",
+          "usage": "/remind list"
+        },
+        {
+          "description": "Cancel a reminder you set with /remind me in",
+          "manager": false,
+          "options": [
+            {
+              "description": "The number from /remind list",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "remind cancel",
+          "usage": "/remind cancel <id>"
+        }
+      ],
+      "intro": "Bigger rewards every week and month, shells for friends, reputation, and reminders.",
+      "key": "shells-and-rewards",
+      "title": "Shells & rewards"
+    },
+    {
+      "commands": [
+        {
+          "description": "The hourly market: rare pieces with limited global stock",
+          "manager": false,
+          "options": [],
+          "path": "shop market",
+          "usage": "/shop market"
+        },
+        {
+          "description": "Browse the furniture catalog",
+          "manager": false,
+          "options": [
+            {
+              "description": "Which kind of furniture",
+              "name": "category",
+              "required": false
+            }
+          ],
+          "path": "shop catalog",
+          "usage": "/shop catalog [category]"
+        },
+        {
+          "description": "Furniture you own but have not placed",
+          "manager": false,
+          "options": [],
+          "path": "inventory",
+          "usage": "/inventory"
+        },
+        {
+          "description": "Send a piece of furniture to a friend",
+          "manager": false,
+          "options": [
+            {
+              "description": "Who gets the gift",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "gift",
+          "usage": "/gift <user>"
+        },
+        {
+          "description": "Browse a player's stall",
+          "manager": false,
+          "options": [
+            {
+              "description": "Whose stall (default: yours)",
+              "name": "user",
+              "required": false
+            }
+          ],
+          "path": "stall view",
+          "usage": "/stall view [user]"
+        },
+        {
+          "description": "Put an item from your inventory on your stall",
+          "manager": false,
+          "options": [
+            {
+              "description": "Price in shells (a 5% market fee is taken on sale)",
+              "name": "price",
+              "required": true
+            }
+          ],
+          "path": "stall sell",
+          "usage": "/stall sell <price>"
+        },
+        {
+          "description": "Take items back off your stall",
+          "manager": false,
+          "options": [],
+          "path": "stall manage",
+          "usage": "/stall manage"
+        }
+      ],
+      "intro": "Buy furniture, keep it in your inventory, give it away or sell it from your own stall.",
+      "key": "shops-and-trading",
+      "title": "Shops & trading"
+    },
+    {
+      "commands": [
+        {
+          "description": "Look at your house",
+          "manager": false,
+          "options": [
+            {
+              "description": "Room number (default: 1)",
+              "name": "room",
+              "required": false
+            }
+          ],
+          "path": "house view",
+          "usage": "/house view [room]"
+        },
+        {
+          "description": "Visit someone's house (first visit each day pays shells)",
+          "manager": false,
+          "options": [
+            {
+              "description": "Whose house (leave out to pick from your friends)",
+              "name": "user",
+              "required": false
+            },
+            {
+              "description": "Room number (default: 1)",
+              "name": "room",
+              "required": false
+            }
+          ],
+          "path": "house visit",
+          "usage": "/house visit [user] [room]"
+        },
+        {
+          "description": "Decorate a room: move the cursor, pick furniture, place it",
+          "manager": false,
+          "options": [
+            {
+              "description": "Room number (default: 1)",
+              "name": "room",
+              "required": false
+            },
+            {
+              "description": "Whose house: your partner's, to decorate it together (default: yours)",
+              "name": "owner",
+              "required": false
+            }
+          ],
+          "path": "house edit",
+          "usage": "/house edit [room] [owner]"
+        },
+        {
+          "description": "Move up to a bigger house (your furniture stays)",
+          "manager": false,
+          "options": [],
+          "path": "house upgrade",
+          "usage": "/house upgrade"
+        },
+        {
+          "description": "Lock or unlock your house for visitors",
+          "manager": false,
+          "options": [
+            {
+              "description": "True stops visits",
+              "name": "locked",
+              "required": true
+            }
+          ],
+          "path": "house lock",
+          "usage": "/house lock <locked>"
+        },
+        {
+          "description": "Leave a like on someone's house (once a day)",
+          "manager": false,
+          "options": [
+            {
+              "description": "Whose house you like",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "house like",
+          "usage": "/house like <user>"
+        },
+        {
+          "description": "Change a room's wallpaper and floor",
+          "manager": false,
+          "options": [
+            {
+              "description": "Room number (default: 1)",
+              "name": "room",
+              "required": false
+            }
+          ],
+          "path": "house decorate",
+          "usage": "/house decorate [room]"
+        },
+        {
+          "description": "Read a house's guestbook and see who visited",
+          "manager": false,
+          "options": [
+            {
+              "description": "Whose guestbook (default: yours)",
+              "name": "user",
+              "required": false
+            }
+          ],
+          "path": "house guestbook",
+          "usage": "/house guestbook [user]"
+        },
+        {
+          "description": "This week's theme, time left, entries and last week's winners",
+          "manager": false,
+          "options": [],
+          "path": "house contest view",
+          "usage": "/house contest view"
+        },
+        {
+          "description": "Enter a room as it looks now (entering again updates it)",
+          "manager": false,
+          "options": [
+            {
+              "description": "Room number (default: 1)",
+              "name": "room",
+              "required": false
+            }
+          ],
+          "path": "house contest enter",
+          "usage": "/house contest enter [room]"
+        },
+        {
+          "description": "Judge the rooms other members entered",
+          "manager": false,
+          "options": [],
+          "path": "house contest vote",
+          "usage": "/house contest vote"
+        },
+        {
+          "description": "Last week's winning room",
+          "manager": false,
+          "options": [],
+          "path": "house contest winners",
+          "usage": "/house contest winners"
+        },
+        {
+          "description": "Look around the server plaza",
+          "manager": false,
+          "options": [],
+          "path": "plaza view",
+          "usage": "/plaza view"
+        },
+        {
+          "description": "Give a piece of furniture to the server plaza",
+          "manager": false,
+          "options": [],
+          "path": "plaza donate",
+          "usage": "/plaza donate"
+        },
+        {
+          "description": "Arrange the plaza's donated furniture (Manage Server)",
+          "manager": true,
+          "options": [],
+          "path": "plaza edit",
+          "usage": "/plaza edit"
+        }
+      ],
+      "intro": "Your own pixel house, the weekly room contest, and the plaza the whole server shares.",
+      "key": "house-and-plaza",
+      "title": "House & plaza"
+    },
+    {
+      "commands": [
+        {
+          "description": "See your active pet and look after it",
+          "manager": false,
+          "options": [],
+          "path": "pet view",
+          "usage": "/pet view"
+        },
+        {
+          "description": "Adopt your first pet for free",
+          "manager": false,
+          "options": [],
+          "path": "pet adopt",
+          "usage": "/pet adopt"
+        },
+        {
+          "description": "Open a pet capsule (1,500 shells) for a random pet",
+          "manager": false,
+          "options": [],
+          "path": "pet capsule",
+          "usage": "/pet capsule"
+        },
+        {
+          "description": "Your nursery: every pet at a glance; open one or pick your active pet",
+          "manager": false,
+          "options": [],
+          "path": "pet list",
+          "usage": "/pet list"
+        },
+        {
+          "description": "Rename your active pet",
+          "manager": false,
+          "options": [
+            {
+              "description": "New name",
+              "name": "name",
+              "required": true
+            }
+          ],
+          "path": "pet rename",
+          "usage": "/pet rename <name>"
+        },
+        {
+          "description": "Send a pet away for 1, 4 or 8 hours; it brings back shells and sometimes furniture",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Tidepool Meadow · 1 h · level 1",
+                "Driftwood Cove · 1 h · level 4",
+                "Sandcastle Shallows · 1 h · level 8",
+                "Kelp Forest Library · 4 h · level 10",
+                "Lantern Lagoon · 4 h · level 14",
+                "Coral Bakery Reef · 4 h · level 18",
+                "Moonpearl Isles · 8 h · level 22",
+                "Starfall Sandbar · 8 h · level 26"
+              ],
+              "description": "Where to",
+              "name": "destination",
+              "required": true
+            },
+            {
+              "description": "Which pet, by name (default: your active pet)",
+              "name": "pet",
+              "required": false
+            }
+          ],
+          "path": "pet trip go",
+          "usage": "/pet trip go <destination> [pet]"
+        },
+        {
+          "description": "Collect the souvenirs of pets that are back, or see who is still away",
+          "manager": false,
+          "options": [],
+          "path": "pet trip claim",
+          "usage": "/pet trip claim"
+        }
+      ],
+      "intro": "Adopt a pet, look after it, and send it on trips that bring souvenirs home.",
+      "key": "pets",
+      "title": "Pets"
+    },
+    {
+      "commands": [
+        {
+          "description": "Cast a line (10 shells of plain bait). Press Reel the moment something bites!",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Shore",
+                "Reef (level 5)",
+                "Kelp Forest (level 12)",
+                "Deep Sea (level 20)",
+                "Abyss (level 30)"
+              ],
+              "description": "Where to fish; the last spot you fished is remembered",
+              "name": "spot",
+              "required": false
+            }
+          ],
+          "path": "fish cast",
+          "usage": "/fish cast [spot]"
+        },
+        {
+          "description": "Buy rods and bait with shells",
+          "manager": false,
+          "options": [],
+          "path": "fish shop",
+          "usage": "/fish shop"
+        },
+        {
+          "description": "Pick your spot, rod and bait",
+          "manager": false,
+          "options": [],
+          "path": "fish gear",
+          "usage": "/fish gear"
+        },
+        {
+          "description": "Sell the fish in your bucket for shells",
+          "manager": false,
+          "options": [],
+          "path": "fish sell",
+          "usage": "/fish sell"
+        },
+        {
+          "description": "Your fish book: every species, record sizes and milestone rewards",
+          "manager": false,
+          "options": [],
+          "path": "fish book",
+          "usage": "/fish book"
+        }
+      ],
+      "intro": "Cast a line, fill your bucket, sell the catch and complete the fish book.",
+      "key": "fishing",
+      "title": "Fishing"
+    },
+    {
+      "commands": [
+        {
+          "description": "Ask someone to be your friend",
+          "manager": false,
+          "options": [
+            {
+              "description": "Who to ask",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "friends add",
+          "usage": "/friends add <user>"
+        },
+        {
+          "description": "Stop being friends with someone",
+          "manager": false,
+          "options": [
+            {
+              "description": "Who to remove",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "friends remove",
+          "usage": "/friends remove <user>"
+        },
+        {
+          "description": "Your friends, or somebody else's",
+          "manager": false,
+          "options": [
+            {
+              "description": "Whose friends (default: yours)",
+              "name": "user",
+              "required": false
+            }
+          ],
+          "path": "friends list",
+          "usage": "/friends list [user]"
+        },
+        {
+          "description": "Ask someone to be your partner",
+          "manager": false,
+          "options": [
+            {
+              "description": "Who to ask",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "partner propose",
+          "usage": "/partner propose <user>"
+        },
+        {
+          "description": "See a pair: since when, days together, what they share",
+          "manager": false,
+          "options": [
+            {
+              "description": "Whose partnership (default: yours)",
+              "name": "user",
+              "required": false
+            }
+          ],
+          "path": "partner view",
+          "usage": "/partner view [user]"
+        },
+        {
+          "description": "End your partnership",
+          "manager": false,
+          "options": [],
+          "path": "partner leave",
+          "usage": "/partner leave"
+        },
+        {
+          "description": "Give someone a hug",
+          "manager": false,
+          "options": [
+            {
+              "description": "Who gets it",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "hug",
+          "usage": "/hug <user>"
+        },
+        {
+          "description": "Give someone a pat on the head",
+          "manager": false,
+          "options": [
+            {
+              "description": "Who gets it",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "pat",
+          "usage": "/pat <user>"
+        },
+        {
+          "description": "Wave at someone",
+          "manager": false,
+          "options": [
+            {
+              "description": "Who gets it",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "wave",
+          "usage": "/wave <user>"
+        },
+        {
+          "description": "Give someone a high five",
+          "manager": false,
+          "options": [
+            {
+              "description": "Who gets it",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "highfive",
+          "usage": "/highfive <user>"
+        }
+      ],
+      "intro": "Add friends, pair up with a partner, and send animated greetings.",
+      "key": "friends-and-partners",
+      "title": "Friends & partners"
+    },
+    {
+      "commands": [
+        {
+          "description": "Tic-tac-toe with buttons; the winner earns shells",
+          "manager": false,
+          "options": [
+            {
+              "description": "Your opponent",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "duel tictactoe",
+          "usage": "/duel tictactoe <user>"
+        },
+        {
+          "description": "Connect four on a pixel board; the winner earns shells, or the pot",
+          "manager": false,
+          "options": [
+            {
+              "description": "Your opponent",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Shells each of you puts up (10-500); leave empty to play for fun",
+              "name": "bet",
+              "required": false
+            }
+          ],
+          "path": "duel connect4",
+          "usage": "/duel connect4 <user> [bet]"
+        },
+        {
+          "description": "Rock paper scissors, picked in secret; the winner earns shells, or the pot",
+          "manager": false,
+          "options": [
+            {
+              "description": "Your opponent",
+              "name": "user",
+              "required": true
+            },
+            {
+              "choices": [
+                "Best of 1",
+                "Best of 3",
+                "Best of 5"
+              ],
+              "description": "How many rounds the match is (default: best of 3)",
+              "name": "rounds",
+              "required": false
+            },
+            {
+              "description": "Shells each of you puts up (10-500); leave empty to play for fun",
+              "name": "bet",
+              "required": false
+            }
+          ],
+          "path": "duel rps",
+          "usage": "/duel rps <user> [rounds] [bet]"
+        },
+        {
+          "description": "Share or Grab: split the pool, or grab it all and hope they share",
+          "manager": false,
+          "options": [
+            {
+              "description": "Your opponent",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Shells each of you puts up (10-500); leave empty to play for the sea's pool",
+              "name": "bet",
+              "required": false
+            }
+          ],
+          "path": "duel share",
+          "usage": "/duel share <user> [bet]"
+        },
+        {
+          "description": "Sea Fleet: hide your ships, sink theirs; the winner earns shells, or the pot",
+          "manager": false,
+          "options": [
+            {
+              "description": "Your opponent",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Shells each of you puts up (10-500); leave empty to play for fun",
+              "name": "bet",
+              "required": false
+            }
+          ],
+          "path": "duel seafleet",
+          "usage": "/duel seafleet <user> [bet]"
+        },
+        {
+          "description": "Pearl Checkers on a pixel board; the winner earns shells, or the pot",
+          "manager": false,
+          "options": [
+            {
+              "description": "Your opponent",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Shells each of you puts up (10-500); leave empty to play for fun",
+              "name": "bet",
+              "required": false
+            }
+          ],
+          "path": "duel checkers",
+          "usage": "/duel checkers <user> [bet]"
+        },
+        {
+          "description": "Reef Chess on a pixel board; the winner earns shells, or the pot",
+          "manager": false,
+          "options": [
+            {
+              "description": "Your opponent",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Shells each of you puts up (10-500); leave empty to play for fun",
+              "name": "bet",
+              "required": false
+            }
+          ],
+          "path": "duel chess",
+          "usage": "/duel chess <user> [bet]"
+        }
+      ],
+      "intro": "Challenge a friend to a quick game. Most take an optional wager.",
+      "key": "duels",
+      "title": "Duels"
+    },
+    {
+      "commands": [
+        {
+          "description": "Guess the word before the tide takes the sandcastle",
+          "manager": false,
+          "options": [],
+          "path": "play hangman",
+          "usage": "/play hangman"
+        },
+        {
+          "description": "Guess the five-letter word in six tries",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Daily word (the same for everyone)",
+                "Practice (a random word)"
+              ],
+              "description": "The word everyone shares today (the default), or a random one to practice on",
+              "name": "mode",
+              "required": false
+            }
+          ],
+          "path": "play wordle",
+          "usage": "/play wordle [mode]"
+        },
+        {
+          "description": "A trivia round for the channel: 20 seconds, anyone can answer",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Ocean",
+                "Animals",
+                "Nature",
+                "Science",
+                "Geography",
+                "Food",
+                "History",
+                "Home"
+              ],
+              "description": "Pick a topic (default: anything)",
+              "name": "category",
+              "required": false
+            }
+          ],
+          "path": "play trivia",
+          "usage": "/play trivia [category]"
+        },
+        {
+          "description": "Pixel Picross: fill in the grid from its clues to find the sea creature",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Daily puzzle (the same for everyone)",
+                "Practice (a random puzzle)"
+              ],
+              "description": "The puzzle everyone shares today (the default), or a random one to practice on",
+              "name": "mode",
+              "required": false
+            }
+          ],
+          "path": "play picross",
+          "usage": "/play picross [mode]"
+        },
+        {
+          "description": "Tide 2048: slide the sea creatures and merge them into bigger ones",
+          "manager": false,
+          "options": [],
+          "path": "play 2048",
+          "usage": "/play 2048"
+        },
+        {
+          "description": "Type a word with the syllable before the pearl pops; last one with lives wins",
+          "manager": false,
+          "options": [
+            {
+              "description": "Lives each player starts with (default 2)",
+              "name": "lives",
+              "required": false
+            }
+          ],
+          "path": "party hotpearl",
+          "usage": "/party hotpearl [lives]"
+        },
+        {
+          "description": "Write a phrase from a few letters, then vote for the best one",
+          "manager": false,
+          "options": [
+            {
+              "description": "How many rounds to play (default 3)",
+              "name": "rounds",
+              "required": false
+            }
+          ],
+          "path": "party acronym",
+          "usage": "/party acronym [rounds]"
+        },
+        {
+          "description": "Caption a pixel postcard, then vote for the funniest caption",
+          "manager": false,
+          "options": [
+            {
+              "description": "How many rounds to play (default 3)",
+              "name": "rounds",
+              "required": false
+            }
+          ],
+          "path": "party postcard",
+          "usage": "/party postcard [rounds]"
+        },
+        {
+          "description": "Race two to four players to find the same five-letter word on private boards",
+          "manager": false,
+          "options": [],
+          "path": "party wordrace",
+          "usage": "/party wordrace"
+        },
+        {
+          "description": "Post a would-you-rather question for the channel to vote on",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Silly",
+                "Food",
+                "Adventure",
+                "Ocean",
+                "Brainy",
+                "Cozy"
+              ],
+              "description": "Pick a topic (default: anything)",
+              "name": "topic",
+              "required": false
+            }
+          ],
+          "path": "party wouldyourrather",
+          "usage": "/party wouldyourrather [topic]"
+        },
+        {
+          "description": "Take turns picking truth or dare; a random player is chosen each round",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Silly",
+                "Food",
+                "Adventure",
+                "Ocean",
+                "Brainy",
+                "Cozy"
+              ],
+              "description": "Pick a topic (default: anything)",
+              "name": "topic",
+              "required": false
+            }
+          ],
+          "path": "party truthordare",
+          "usage": "/party truthordare [topic]"
+        },
+        {
+          "description": "Stop the party game running in this channel (its host or a server manager)",
+          "manager": false,
+          "options": [],
+          "path": "party stop",
+          "usage": "/party stop"
+        }
+      ],
+      "intro": "Play on your own, or start a party game for the whole channel.",
+      "key": "puzzles-and-word-games",
+      "title": "Puzzles & word games"
+    },
+    {
+      "commands": [
+        {
+          "description": "Hermit Crab Derby: everyone picks a crab and watches the race; winners share the stakes",
+          "manager": false,
+          "options": [
+            {
+              "description": "Shells each racer stakes on a crab (10-500, needs /config gambling); empty races for fun",
+              "name": "bet",
+              "required": false
+            }
+          ],
+          "path": "play derby",
+          "usage": "/play derby [bet]"
+        },
+        {
+          "description": "Treasure Heist: crew up against a sunken vault, nobody loses shells",
+          "manager": false,
+          "options": [],
+          "path": "play heist",
+          "usage": "/play heist"
+        },
+        {
+          "description": "Shell Game: find the pearl under one of three shells (needs gambling switched on)",
+          "manager": false,
+          "options": [
+            {
+              "description": "Shells to stake (5-100); a right guess pays two and a half times",
+              "name": "bet",
+              "required": true
+            }
+          ],
+          "path": "play shells",
+          "usage": "/play shells <bet>"
+        },
+        {
+          "description": "Call a storm surge the whole server has to hold back (managers)",
+          "manager": true,
+          "options": [],
+          "path": "surge",
+          "usage": "/surge"
+        },
+        {
+          "description": "Walk the shore for shells, sea glass and critters (once every 20 minutes)",
+          "manager": false,
+          "options": [],
+          "path": "beachcomb",
+          "usage": "/beachcomb"
+        },
+        {
+          "description": "Set a crab pot for a few hours, then haul in the critters it caught",
+          "manager": false,
+          "options": [],
+          "path": "crabpot",
+          "usage": "/crabpot"
+        },
+        {
+          "description": "Drop three critters in this channel for everyone to grab",
+          "manager": false,
+          "options": [],
+          "path": "critterdrop",
+          "usage": "/critterdrop"
+        },
+        {
+          "description": "Your Tide Pool Dex: every critter and find you have collected",
+          "manager": false,
+          "options": [
+            {
+              "description": "Whose dex (default: yours)",
+              "name": "user",
+              "required": false
+            },
+            {
+              "choices": [
+                "Critters",
+                "Finds"
+              ],
+              "description": "Which half of the book to open (default: critters)",
+              "name": "tab",
+              "required": false
+            }
+          ],
+          "path": "dex",
+          "usage": "/dex [user] [tab]"
+        }
+      ],
+      "intro": "Races, heists and storms for the channel, and critters to find along the shore.",
+      "key": "crowd-games-and-collecting",
+      "title": "Crowd games & collecting"
+    },
+    {
+      "commands": [
+        {
+          "description": "Ask the server a question with up to five answers",
+          "manager": false,
+          "options": [
+            {
+              "description": "The question",
+              "name": "question",
+              "required": true
+            },
+            {
+              "description": "Two to five answers, separated by |",
+              "name": "options",
+              "required": true
+            },
+            {
+              "description": "How long it stays open: 30m, 6h, 1d (default 1 day, up to 14 days)",
+              "name": "duration",
+              "required": false
+            }
+          ],
+          "path": "poll",
+          "usage": "/poll <question> <options> [duration]"
+        },
+        {
+          "description": "Suggest something for this server",
+          "manager": false,
+          "options": [
+            {
+              "description": "Your suggestion",
+              "name": "text",
+              "required": true
+            }
+          ],
+          "path": "suggest",
+          "usage": "/suggest <text>"
+        },
+        {
+          "description": "Approve a suggestion and tell its author",
+          "manager": true,
+          "options": [
+            {
+              "description": "The suggestion's number",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "Why (the author sees it)",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "suggestion approve",
+          "usage": "/suggestion approve <id> [reason]"
+        },
+        {
+          "description": "Deny a suggestion and tell its author",
+          "manager": true,
+          "options": [
+            {
+              "description": "The suggestion's number",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "Why (the author sees it)",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "suggestion deny",
+          "usage": "/suggestion deny <id> [reason]"
+        },
+        {
+          "description": "Start a giveaway",
+          "manager": true,
+          "options": [
+            {
+              "description": "How long it runs: 30m, 2h, 1d, 1d12h (1 minute to 30 days)",
+              "name": "duration",
+              "required": true
+            },
+            {
+              "description": "How many winners (1 to 20)",
+              "name": "winners",
+              "required": true
+            },
+            {
+              "description": "What is being given away",
+              "name": "prize",
+              "required": true
+            },
+            {
+              "description": "Shells each winner is paid: taken from you now, whatever nobody wins comes back",
+              "name": "shells",
+              "required": false
+            },
+            {
+              "description": "Where to post it (default: here)",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Only members with this role can enter",
+              "name": "required_role",
+              "required": false
+            }
+          ],
+          "path": "giveaway start",
+          "usage": "/giveaway start <duration> <winners> <prize> [shells] [channel] [required_role]"
+        },
+        {
+          "description": "End a running giveaway now and pick its winners",
+          "manager": true,
+          "options": [
+            {
+              "description": "The giveaway's number",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "giveaway end",
+          "usage": "/giveaway end <id>"
+        },
+        {
+          "description": "Pick new winners for a giveaway that ended",
+          "manager": true,
+          "options": [
+            {
+              "description": "The giveaway's number",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "How many new winners (default 1)",
+              "name": "winners",
+              "required": false
+            }
+          ],
+          "path": "giveaway reroll",
+          "usage": "/giveaway reroll <id> [winners]"
+        },
+        {
+          "description": "The giveaways running in this server",
+          "manager": true,
+          "options": [],
+          "path": "giveaway list",
+          "usage": "/giveaway list"
+        },
+        {
+          "description": "Start a panel of role buttons, or change its description",
+          "manager": true,
+          "options": [
+            {
+              "description": "Title of the panel; it is how the other commands find it",
+              "name": "title",
+              "required": true
+            },
+            {
+              "description": "Text shown above the buttons",
+              "name": "description",
+              "required": false
+            }
+          ],
+          "path": "roles panel",
+          "usage": "/roles panel <title> [description]"
+        },
+        {
+          "description": "Add a role button to a panel (up to 25), or change its label",
+          "manager": true,
+          "options": [
+            {
+              "description": "The panel's title or number",
+              "name": "panel",
+              "required": true
+            },
+            {
+              "description": "The role the button gives and takes",
+              "name": "role",
+              "required": true
+            },
+            {
+              "description": "Text on the button",
+              "name": "label",
+              "required": true
+            },
+            {
+              "description": "Emoji on the button: a Unicode emoji or a custom one",
+              "name": "emoji",
+              "required": false
+            }
+          ],
+          "path": "roles add",
+          "usage": "/roles add <panel> <role> <label> [emoji]"
+        },
+        {
+          "description": "Take a role button off a panel",
+          "manager": true,
+          "options": [
+            {
+              "description": "The panel's title or number",
+              "name": "panel",
+              "required": true
+            },
+            {
+              "description": "The role whose button to remove",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "roles remove",
+          "usage": "/roles remove <panel> <role>"
+        },
+        {
+          "description": "Post a panel in a channel, or update it if it is already there",
+          "manager": true,
+          "options": [
+            {
+              "description": "The panel's title or number",
+              "name": "panel",
+              "required": true
+            },
+            {
+              "description": "Where to post it",
+              "name": "channel",
+              "required": true
+            }
+          ],
+          "path": "roles post",
+          "usage": "/roles post <panel> <channel>"
+        },
+        {
+          "description": "Show a server points balance",
+          "manager": false,
+          "options": [
+            {
+              "description": "Whose balance to show (default: you)",
+              "name": "user",
+              "required": false
+            }
+          ],
+          "path": "points show",
+          "usage": "/points show [user]"
+        },
+        {
+          "description": "Give someone server points (Manage Server)",
+          "manager": true,
+          "options": [
+            {
+              "description": "Who gets the points",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "How many points",
+              "name": "amount",
+              "required": true
+            }
+          ],
+          "path": "points give",
+          "usage": "/points give <user> <amount>"
+        },
+        {
+          "description": "Take server points from someone (Manage Server)",
+          "manager": true,
+          "options": [
+            {
+              "description": "Who loses the points",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "How many points (they never go below zero)",
+              "name": "amount",
+              "required": true
+            }
+          ],
+          "path": "points take",
+          "usage": "/points take <user> <amount>"
+        },
+        {
+          "description": "Spend your server points on roles",
+          "manager": false,
+          "options": [],
+          "path": "store",
+          "usage": "/store"
+        }
+      ],
+      "intro": "Polls, suggestions, giveaways, role buttons and server points.",
+      "key": "community",
+      "title": "Community"
+    },
+    {
+      "commands": [
+        {
+          "description": "Show the current settings",
+          "manager": true,
+          "options": [],
+          "path": "config show",
+          "usage": "/config show"
+        },
+        {
+          "description": "Welcome cards for new members",
+          "manager": true,
+          "options": [
+            {
+              "description": "Send a welcome card when someone joins",
+              "name": "enabled",
+              "required": false
+            },
+            {
+              "description": "Channel for welcome cards",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Text above the card. Placeholders: {user} {server} {count}",
+              "name": "message",
+              "required": false
+            }
+          ],
+          "path": "config welcome",
+          "usage": "/config welcome [enabled] [channel] [message]"
+        },
+        {
+          "description": "Design the welcome card and see a preview",
+          "manager": true,
+          "options": [
+            {
+              "choices": [
+                "Reef (navy & coral)",
+                "Sunset",
+                "Forest",
+                "Candy",
+                "Midnight"
+              ],
+              "description": "Colour theme",
+              "name": "theme",
+              "required": false
+            },
+            {
+              "description": "Big headline on the card, e.g. WELCOME or HI THERE",
+              "name": "title",
+              "required": false
+            },
+            {
+              "description": "Accent colour as hex, e.g. #ff6b4a",
+              "name": "color",
+              "required": false
+            }
+          ],
+          "path": "config welcome-card",
+          "usage": "/config welcome-card [theme] [title] [color]"
+        },
+        {
+          "description": "XP and level-up messages",
+          "manager": true,
+          "options": [
+            {
+              "description": "Give XP for chatting",
+              "name": "enabled",
+              "required": false
+            },
+            {
+              "description": "Post level-ups here instead of where the member chatted",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Level-up text. {user} {level} {server} {role} (reward role just earned, empty if none)",
+              "name": "message",
+              "required": false
+            },
+            {
+              "choices": [
+                "Channel: the level-up channel, or where they chatted",
+                "Current: always where they chatted",
+                "DM: a direct message to them",
+                "Off: no level-up message (roles are still given)"
+              ],
+              "description": "Where level-ups go (default: channel)",
+              "name": "mode",
+              "required": false
+            }
+          ],
+          "path": "config leveling",
+          "usage": "/config leveling [enabled] [channel] [message] [mode]"
+        },
+        {
+          "description": "Give every new member a role",
+          "manager": true,
+          "options": [
+            {
+              "description": "The role new members get (bots are skipped)",
+              "name": "role",
+              "required": false
+            },
+            {
+              "description": "Stop giving new members a role",
+              "name": "off",
+              "required": false
+            }
+          ],
+          "path": "config join-role",
+          "usage": "/config join-role [role] [off]"
+        },
+        {
+          "description": "Say goodbye when a member leaves",
+          "manager": true,
+          "options": [
+            {
+              "description": "Channel for goodbye messages (this turns them on)",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Text. Placeholders: {user} {server} {members}",
+              "name": "message",
+              "required": false
+            },
+            {
+              "description": "Turn goodbye messages off",
+              "name": "off",
+              "required": false
+            }
+          ],
+          "path": "config goodbye",
+          "usage": "/config goodbye [channel] [message] [off]"
+        },
+        {
+          "description": "Log joins, name changes, bans and voice in a channel",
+          "manager": true,
+          "options": [
+            {
+              "description": "Channel for the server log (this turns it on)",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Turn the server log off",
+              "name": "off",
+              "required": false
+            }
+          ],
+          "path": "config log",
+          "usage": "/config log [channel] [off]"
+        },
+        {
+          "description": "Pick what the server log reports",
+          "manager": true,
+          "options": [
+            {
+              "description": "Members joining and leaving",
+              "name": "members",
+              "required": false
+            },
+            {
+              "description": "Nickname and username changes",
+              "name": "names",
+              "required": false
+            },
+            {
+              "description": "Bans and unbans",
+              "name": "bans",
+              "required": false
+            },
+            {
+              "description": "Voice joins, leaves and moves",
+              "name": "voice",
+              "required": false
+            }
+          ],
+          "path": "config log-events",
+          "usage": "/config log-events [members] [names] [bans] [voice]"
+        },
+        {
+          "description": "Where /suggest posts suggestions",
+          "manager": true,
+          "options": [
+            {
+              "description": "Channel for suggestions (this turns them on)",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Turn suggestions off",
+              "name": "off",
+              "required": false
+            }
+          ],
+          "path": "config suggestions",
+          "usage": "/config suggestions [channel] [off]"
+        }
+      ],
+      "intro": "Welcome cards, goodbyes, the server log and the settings overview.",
+      "key": "server-setup",
+      "title": "Server setup"
+    },
+    {
+      "commands": [
+        {
+          "description": "Give a role to everyone who reaches a level",
+          "manager": true,
+          "options": [
+            {
+              "description": "Level that earns the role",
+              "name": "level",
+              "required": true
+            },
+            {
+              "description": "The role to give (adding it again moves it to the new level)",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "config level-roles add",
+          "usage": "/config level-roles add <level> <role>"
+        },
+        {
+          "description": "Stop giving a role at a level",
+          "manager": true,
+          "options": [
+            {
+              "description": "The role to stop giving",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "config level-roles remove",
+          "usage": "/config level-roles remove <role>"
+        },
+        {
+          "description": "Show the level roles",
+          "manager": true,
+          "options": [],
+          "path": "config level-roles list",
+          "usage": "/config level-roles list"
+        },
+        {
+          "description": "Keep every level role, or only the highest one",
+          "manager": true,
+          "options": [
+            {
+              "choices": [
+                "Stack: keep every role earned",
+                "Replace: keep only the highest role"
+              ],
+              "description": "How roles pile up",
+              "name": "mode",
+              "required": true
+            }
+          ],
+          "path": "config level-roles mode",
+          "usage": "/config level-roles mode <mode>"
+        },
+        {
+          "description": "Give members who are already past a level the roles they earned",
+          "manager": true,
+          "options": [],
+          "path": "config level-roles sync",
+          "usage": "/config level-roles sync"
+        },
+        {
+          "description": "Scale the XP and points a channel or role earns",
+          "manager": true,
+          "options": [
+            {
+              "description": "1 is normal, 2 doubles it, 0 earns no XP at all",
+              "name": "value",
+              "required": true
+            },
+            {
+              "description": "The channel or category to change, text, voice or forum (pick this or a role)",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "The role to change; @everyone sets it for the whole server (pick this or a channel)",
+              "name": "role",
+              "required": false
+            }
+          ],
+          "path": "config xp multiplier",
+          "usage": "/config xp multiplier <value> [channel] [role]"
+        },
+        {
+          "description": "Remove one multiplier, or all of them",
+          "manager": true,
+          "options": [
+            {
+              "description": "The channel or category to reset",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "The role to reset",
+              "name": "role",
+              "required": false
+            }
+          ],
+          "path": "config xp clear",
+          "usage": "/config xp clear [channel] [role]"
+        },
+        {
+          "description": "Show the multipliers and voice XP settings",
+          "manager": true,
+          "options": [],
+          "path": "config xp show",
+          "usage": "/config xp show"
+        },
+        {
+          "description": "Give XP for time spent in voice channels",
+          "manager": true,
+          "options": [
+            {
+              "description": "Members in a voice channel with someone else earn server XP every minute",
+              "name": "enabled",
+              "required": false
+            },
+            {
+              "description": "Server XP a minute in voice earns",
+              "name": "amount",
+              "required": false
+            }
+          ],
+          "path": "config xp voice",
+          "usage": "/config xp voice [enabled] [amount]"
+        },
+        {
+          "description": "Give a role to everyone whose reputation reaches a count",
+          "manager": true,
+          "options": [
+            {
+              "description": "Reputation that earns the role",
+              "name": "reputation",
+              "required": true
+            },
+            {
+              "description": "The role to give (adding it again moves it to the new count)",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "config rep-roles add",
+          "usage": "/config rep-roles add <reputation> <role>"
+        },
+        {
+          "description": "Stop giving a role for reputation",
+          "manager": true,
+          "options": [
+            {
+              "description": "The role to stop giving",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "config rep-roles remove",
+          "usage": "/config rep-roles remove <role>"
+        },
+        {
+          "description": "Show the reputation roles",
+          "manager": true,
+          "options": [],
+          "path": "config rep-roles list",
+          "usage": "/config rep-roles list"
+        },
+        {
+          "description": "Server points: what chatting earns",
+          "manager": true,
+          "options": [
+            {
+              "description": "Earn points for chatting",
+              "name": "enabled",
+              "required": false
+            },
+            {
+              "description": "What the points are called, e.g. coins",
+              "name": "name",
+              "required": false
+            },
+            {
+              "description": "Emoji shown next to amounts: a Unicode emoji or a custom one",
+              "name": "emoji",
+              "required": false
+            },
+            {
+              "description": "Least points one message can earn",
+              "name": "min",
+              "required": false
+            },
+            {
+              "description": "Most points one message can earn",
+              "name": "max",
+              "required": false
+            }
+          ],
+          "path": "config points",
+          "usage": "/config points [enabled] [name] [emoji] [min] [max]"
+        },
+        {
+          "description": "Put a role on sale, or change its price and stock",
+          "manager": true,
+          "options": [
+            {
+              "description": "The role to sell",
+              "name": "role",
+              "required": true
+            },
+            {
+              "description": "Price in server points",
+              "name": "price",
+              "required": true
+            },
+            {
+              "description": "How many can be bought (default: unlimited)",
+              "name": "stock",
+              "required": false
+            }
+          ],
+          "path": "config store add",
+          "usage": "/config store add <role> <price> [stock]"
+        },
+        {
+          "description": "Take a role off sale",
+          "manager": true,
+          "options": [
+            {
+              "description": "The role to stop selling",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "config store remove",
+          "usage": "/config store remove <role>"
+        },
+        {
+          "description": "Show what is on sale",
+          "manager": true,
+          "options": [],
+          "path": "config store list",
+          "usage": "/config store list"
+        }
+      ],
+      "intro": "Level roles, XP multipliers, voice XP, reputation roles and the points store.",
+      "key": "levels-xp-and-points-setup",
+      "title": "Levels, XP & points setup"
+    },
+    {
+      "commands": [
+        {
+          "description": "Critter drops and bottles that wash up while people chat",
+          "manager": true,
+          "options": [
+            {
+              "description": "Turn chat drops on or off (they start off)",
+              "name": "enabled",
+              "required": false
+            },
+            {
+              "description": "Drops land here, and only chat here counts towards them",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Let drops land in whichever channel is busy, instead of a set one",
+              "name": "anywhere",
+              "required": false
+            }
+          ],
+          "path": "config critters",
+          "usage": "/config critters [enabled] [channel] [anywhere]"
+        },
+        {
+          "description": "Switch the shell game, staked derbies and other gambling-style games on or off for this server",
+          "manager": true,
+          "options": [
+            {
+              "description": "On lets members stake shells on games of chance; off (the default) closes them",
+              "name": "enabled",
+              "required": true
+            }
+          ],
+          "path": "config gambling",
+          "usage": "/config gambling <enabled>"
+        },
+        {
+          "description": "Timed storm surges: switch them on, pick the channel and how often one comes",
+          "manager": true,
+          "options": [
+            {
+              "description": "Turn timed storms on or off (managers can always call one with /surge)",
+              "name": "enabled",
+              "required": false
+            },
+            {
+              "description": "The channel storms come to",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "choices": [
+                "Every 6 hours",
+                "Every 12 hours",
+                "Every day",
+                "Every 2 days",
+                "Every week"
+              ],
+              "description": "How often a storm comes (default: every day)",
+              "name": "every",
+              "required": false
+            }
+          ],
+          "path": "config surge",
+          "usage": "/config surge [enabled] [channel] [every]"
+        },
+        {
+          "description": "How strict the word filter is in Hot Pearl, acronyms and captions",
+          "manager": true,
+          "options": [
+            {
+              "description": "Also block mild words and name-calling (strong words and slurs are always blocked)",
+              "name": "strict",
+              "required": false
+            }
+          ],
+          "path": "config partygames",
+          "usage": "/config partygames [strict]"
+        },
+        {
+          "description": "Which parts of Pinchora are on, and where",
+          "manager": true,
+          "options": [],
+          "path": "config modules show",
+          "usage": "/config modules show"
+        },
+        {
+          "description": "Switch a part of Pinchora on or off for the whole server",
+          "manager": true,
+          "options": [
+            {
+              "description": "The part to switch (start typing its name)",
+              "name": "module",
+              "required": true
+            },
+            {
+              "description": "On, or off for everyone",
+              "name": "enabled",
+              "required": true
+            }
+          ],
+          "path": "config modules toggle",
+          "usage": "/config modules toggle <module> <enabled>"
+        },
+        {
+          "description": "Limit a part of Pinchora to some channels, or keep it out of some, one channel at a time",
+          "manager": true,
+          "options": [
+            {
+              "description": "The part to limit (start typing its name)",
+              "name": "module",
+              "required": true
+            },
+            {
+              "choices": [
+                "All channels",
+                "Only in these channels",
+                "Everywhere except these channels"
+              ],
+              "description": "Where it works (a channel or category also covers the threads and channels under it)",
+              "name": "where",
+              "required": true
+            },
+            {
+              "description": "The channel to add to the list",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Take the channel off the list instead of adding it",
+              "name": "remove",
+              "required": false
+            }
+          ],
+          "path": "config modules channels",
+          "usage": "/config modules channels <module> <where> [channel] [remove]"
+        }
+      ],
+      "intro": "Switch games and whole parts of Pinchora on or off, for the server or per channel.",
+      "key": "game-and-module-setup",
+      "title": "Game & module setup"
+    }
+  ],
+  "count": 145
+}

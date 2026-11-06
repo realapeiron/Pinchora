@@ -31,15 +31,15 @@ impl Help {
 
 /// An area of the guide: its name, a line about it, and the commands it holds, as the start of their
 /// path (`house` holds `/house view` and everything else under `/house`; `play stats` just that one).
-struct Area {
-    title: &'static str,
-    intro: &'static str,
-    covers: &'static [&'static str],
+pub(crate) struct Area {
+    pub(crate) title: &'static str,
+    pub(crate) intro: &'static str,
+    pub(crate) covers: &'static [&'static str],
 }
 
 /// The areas in the order of the guide. A command belongs to the area with the longest start of its
 /// path that matches, so `play stats` can sit with the profile while the other `/play` games sit elsewhere.
-const AREAS: &[Area] = &[
+pub(crate) const AREAS: &[Area] = &[
     Area {
         title: "Start here",
         intro: "The everyday basics. Pick an area from the menu for everything else.",
@@ -179,14 +179,16 @@ struct Page {
 }
 
 /// A command that can be run: the path of names down to it, and what it says about itself.
-struct Leaf {
-    path: String,
-    text: String,
-    manager: bool,
+pub(crate) struct Leaf {
+    pub(crate) path: String,
+    pub(crate) text: String,
+    pub(crate) manager: bool,
+    /// What it takes, in the order Discord shows the options.
+    pub(crate) options: Vec<CommandOption>,
 }
 
 /// Every runnable command and subcommand of `commands`, in registration order.
-fn leaves(commands: &[Command]) -> Vec<Leaf> {
+pub(crate) fn leaves(commands: &[Command]) -> Vec<Leaf> {
     fn walk(options: &[CommandOption], path: &str, text: &str, manager: bool, out: &mut Vec<Leaf>) {
         let subs: Vec<&CommandOption> = options
             .iter()
@@ -207,6 +209,7 @@ fn leaves(commands: &[Command]) -> Vec<Leaf> {
                 path: path.to_owned(),
                 manager: manager || text.contains("Manage Server"),
                 text,
+                options: options.to_vec(),
             });
         }
         for sub in subs {
@@ -233,7 +236,7 @@ fn leaves(commands: &[Command]) -> Vec<Leaf> {
 }
 
 /// The area that holds `path`: the one with the longest start of the path, if exactly one has it.
-fn area_of(path: &str) -> Option<usize> {
+pub(crate) fn area_of(path: &str) -> Option<usize> {
     let mut best: Option<(usize, usize)> = None;
     let mut tied = false;
     for (index, area) in AREAS.iter().enumerate() {

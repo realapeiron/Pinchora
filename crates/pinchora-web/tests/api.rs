@@ -1225,12 +1225,21 @@ async fn without_a_client_secret_the_setup_page_is_served() {
         return;
     };
     let mut browser = h.browser();
-    let page = browser.get("/").await;
+    let page = browser.get("/servers").await;
     assert_eq!(page.status, StatusCode::OK);
     let html = page.text();
     assert!(html.contains("PINCHORA_WEB__CLIENT_SECRET"), "{html}");
     assert!(html.contains(&redirect_uri()), "the redirect to register is shown");
-    assert_eq!(browser.get("/servers").await.text(), html, "every app page shows it");
+    assert_eq!(
+        browser.get("/g/1/overview").await.text(),
+        html,
+        "every app page shows it"
+    );
+    assert_ne!(
+        browser.get("/").await.text(),
+        html,
+        "the public front page needs no login, so it is not the setup page"
+    );
     assert_eq!(browser.get("/setup.css").await.status, StatusCode::OK);
 
     let login = browser.get("/auth/login").await;
@@ -2940,4 +2949,204 @@ async fn points_that_race_each_other_never_leave_the_least_above_the_most() {
             .write(Method::PATCH, &path, json!({ "points_min": 1, "points_max": 500 }))
             .await;
     }
+}
+
+/// A folder shaped like `web/dist`: the app shell, the public pages the build writes out, the text files that
+/// name the site's address, and a hashed asset.
+fn site_dir(name: &str) -> PathBuf {
+    let dir = std::env::temp_dir().join(format!("pinchora-site-{name}-{}", unique()));
+    std::fs::create_dir_all(dir.join("commands")).expect("create the site folder");
+    std::fs::create_dir_all(dir.join("assets")).expect("create the assets folder");
+    let write = |file: &str, text: &str| std::fs::write(dir.join(file), text).expect("write a site file");
+    write(
+        "index.html",
+        "<!doctype html><title>Front page</title><link rel=\"canonical\" href=\"__ORIGIN__/\">",
+    );
+    write(
+        "commands/index.html",
+        "<!doctype html><title>Commands</title><link rel=\"canonical\" href=\"__ORIGIN__/commands\">",
+    );
+    write("robots.txt", "User-agent: *\nSitemap: __ORIGIN__/sitemap.xml\n");
+    write(
+        "sitemap.xml",
+        "<urlset><url><loc>__ORIGIN__/commands</loc></url></urlset>",
+    );
+    write("assets/app-abc123.js", "console.log('app')");
+    write("og.png", "not really a png");
+    dir
+}
+
+#[tokio::test]
+async fn public_pages_are_pages_of_their_own_with_the_sites_address_in_them() {
+    let dir = site_dir("pages");
+    let folder = dir.clone();
+    let Some(h) = Harness::with("public_pages", move |web| web.static_dir = Some(folder)).await else {
+        return;
+    };
+    let mut browser = h.browser();
+
+    let front = browser.get("/").await;
+    assert_eq!(front.status, StatusCode::OK);
+    assert!(front.text().contains("<title>Front page</title>"));
+    assert!(
+        front.text().contains(&format!("href=\"{PUBLIC_URL}/\"")) && !front.text().contains("__ORIGIN__"),
+        "the placeholder becomes the public URL: {}",
+        front.text()
+    );
+    assert_eq!(front.header("cache-control"), "no-cache");
+    assert_eq!(front.header("x-robots-tag"), "", "the front page is for search engines");
+
+    for path in ["/commands", "/commands/"] {
+        let page = browser.get(path).await;
+        assert_eq!(page.status, StatusCode::OK, "{path}");
+        assert!(
+            page.text().contains("<title>Commands</title>"),
+            "{path}: its own page, not the shell"
+        );
+        assert!(page.text().contains(&format!("{PUBLIC_URL}/commands")), "{path}");
+        assert_eq!(page.header("x-robots-tag"), "", "{path}");
+    }
+
+    let shell = browser.get("/servers").await;
+    assert!(shell.text().contains("Front page"), "dashboard pages get the shell");
+    assert_eq!(
+        shell.header("x-robots-tag"),
+        "noindex, nofollow",
+        "and are not for search engines"
+    );
+    assert_eq!(
+        browser.get("/nothing-here").await.header("x-robots-tag"),
+        "noindex, nofollow"
+    );
+
+    let robots = browser.get("/robots.txt").await;
+    assert_eq!(robots.status, StatusCode::OK);
+    assert_eq!(robots.header("content-type"), "text/plain; charset=utf-8");
+    assert_eq!(
+        robots.text(),
+        format!("User-agent: *\nSitemap: {PUBLIC_URL}/sitemap.xml\n")
+    );
+    let sitemap = browser.get("/sitemap.xml").await;
+    assert_eq!(sitemap.header("content-type"), "application/xml; charset=utf-8");
+    assert!(sitemap.text().contains(&format!("<loc>{PUBLIC_URL}/commands</loc>")));
+
+    let script = browser.get("/assets/app-abc123.js").await;
+    assert_eq!(script.header("cache-control"), "public, max-age=31536000, immutable");
+    assert_eq!(
+        browser.get("/og.png").await.body.as_ref(),
+        b"not really a png",
+        "other files are served as they are"
+    );
+    assert_eq!(browser.get("/commands/missing.png").await.status, StatusCode::NOT_FOUND);
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[tokio::test]
+async fn the_front_page_works_before_login_is_set_up() {
+    let dir = site_dir("unconfigured");
+    let folder = dir.clone();
+    let Some(h) = Harness::with("public_pages_unconfigured", move |web| {
+        web.static_dir = Some(folder);
+        web.client_secret = None;
+    })
+    .await
+    else {
+        return;
+    };
+    let mut browser = h.browser();
+    assert!(browser.get("/").await.text().contains("<title>Front page</title>"));
+    assert!(
+        browser
+            .get("/commands")
+            .await
+            .text()
+            .contains("<title>Commands</title>")
+    );
+    assert!(
+        browser
+            .get("/servers")
+            .await
+            .text()
+            .contains("PINCHORA_WEB__CLIENT_SECRET"),
+        "the dashboard still says what is missing"
+    );
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[tokio::test]
+async fn the_invite_link_sends_visitors_to_discord_with_the_bots_permissions() {
+    let Some(h) = Harness::new("invite").await else {
+        return;
+    };
+    let mut browser = h.browser();
+    let response = browser.get("/invite").await;
+    assert_eq!(response.status, StatusCode::TEMPORARY_REDIRECT);
+    assert_eq!(response.header("cache-control"), "no-cache");
+    let location = Url::parse(response.header("location")).expect("an absolute URL");
+    assert_eq!(location.path(), "/oauth2/authorize");
+    let query: HashMap<String, String> = location.query_pairs().into_owned().collect();
+    assert_eq!(query["client_id"], APPLICATION_ID.to_string());
+    assert_eq!(query["scope"], "bot applications.commands");
+    let permissions: u64 = query["permissions"].parse().expect("permission bits");
+    assert!(permissions & MANAGE_ROLES != 0 && permissions & SEND_MESSAGES != 0);
+    assert!(
+        !query.contains_key("guild_id"),
+        "the visitor picks the server on Discord's page"
+    );
+}
+
+#[tokio::test]
+async fn the_landing_data_is_public_cached_and_knows_who_is_looking() {
+    let Some(h) = Harness::new("landing_data").await else {
+        return;
+    };
+    let cache = &h.state.app.cache;
+    cache.forget("web:landing-counts").await.expect("forget the totals");
+    let mut browser = h.browser();
+
+    let first = browser.get("/api/public/landing").await;
+    assert_eq!(first.status, StatusCode::OK, "{}", first.text());
+    assert_eq!(first.header("cache-control"), "no-store");
+    let body = first.json();
+    assert!(body["viewer"].is_null(), "nobody is logged in");
+    for key in ["servers", "players", "houses", "pets"] {
+        assert!(body["stats"][key].as_i64().is_some_and(|n| n >= 0), "{key}: {body}");
+    }
+
+    // A new player does not show until the totals are counted again.
+    let id = (unique() >> 2) as i64;
+    sqlx::query("INSERT INTO users (id) VALUES ($1) ON CONFLICT (id) DO NOTHING")
+        .bind(id)
+        .execute(h.state.app.db.pool())
+        .await
+        .expect("add a player");
+    let second = browser.get("/api/public/landing").await.json();
+    assert_eq!(second["stats"], body["stats"], "the totals are cached");
+    cache.forget("web:landing-counts").await.expect("forget the totals");
+    let third = browser.get("/api/public/landing").await.json();
+    assert!(third["stats"]["players"].as_i64() > Some(0), "counted again: {third}");
+
+    browser.login(&h, 7_001, vec![]).await;
+    let signed_in = browser.get("/api/public/landing").await.json();
+    assert_eq!(signed_in["viewer"]["name"], "user7001 G");
+    assert!(
+        signed_in["viewer"]["avatar_url"]
+            .as_str()
+            .is_some_and(|url| url.starts_with("https://cdn.discordapp.com/")),
+        "{signed_in}"
+    );
+    assert!(
+        signed_in["viewer"].get("csrf").is_none(),
+        "nothing secret is handed out"
+    );
+
+    // Past the limit it says to wait: the window may roll over once, so twice the limit is sent.
+    let mut flood = h.browser();
+    let mut refused = 0;
+    for _ in 0..125 {
+        if flood.get("/api/public/landing").await.status == StatusCode::TOO_MANY_REQUESTS {
+            refused += 1;
+        }
+    }
+    assert!(refused > 0, "an address that asks 125 times a minute is slowed down");
 }

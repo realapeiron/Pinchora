@@ -26,6 +26,7 @@ mod periodic;
 mod pets;
 mod polls;
 mod privacy;
+mod public_stats;
 mod reminders;
 mod rewards;
 mod shop;
@@ -86,6 +87,7 @@ pub use privacy::{
     ANONYMISED, CLEARED_COLUMNS, DAILY_LIMITS, DELETED_NAME, Deleted, Hide, ID_LISTS, ListEdit, OTHER_TABLES, Privacy,
     TOMBSTONE_DAYS, USER_COLUMNS,
 };
+pub use public_stats::PublicCounts;
 pub use reminders::{MAX_TEXT_REMINDERS, OPT_IN_KINDS, ReminderRow, TEXT as TEXT_REMINDER};
 pub use rewards::{LevelRoleRow, MAX_LEVEL_ROLES, MAX_REP_ROLES, MAX_STORE_ITEMS, RepRoleRow, StoreBuy, StoreItem};
 pub use shop::{BuyOutcome, Currency, MarketRow, VisitOutcome};
