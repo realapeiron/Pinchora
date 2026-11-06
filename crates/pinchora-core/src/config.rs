@@ -85,8 +85,9 @@ pub struct GatewayConfig {
     /// Listen for `GUILD_MEMBER_ADD` (privileged "Server Members" intent) for welcome cards.
     pub member_events: bool,
     /// Listen for message text (privileged "Message Content" intent): without it the bot cannot read chat,
-    /// so keyword auto-responders stay locked, the server log shows no message text and `/purge` cannot
-    /// filter by text, links or files. Discord needs verification for it above 100 servers.
+    /// so keyword auto-responders stay locked, text commands only work after an @mention of the bot, the
+    /// server log shows no message text and `/purge` cannot filter by text, links or files. Discord needs
+    /// verification for it above 100 servers.
     pub message_content: bool,
 }
 

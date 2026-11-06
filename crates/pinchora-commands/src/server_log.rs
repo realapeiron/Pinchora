@@ -28,8 +28,8 @@ use crate::{
     util::{BRAND, DANGER, SUCCESS, WARN, avatar_url, display_name, mention, relative},
 };
 
-/// How long a message is kept for the log (only with message content on: the gateway clears the text
-/// of chat without the Message Content intent).
+/// How long a message is kept for the log (its text only with message content on: without the Message
+/// Content intent Discord sends just the text of messages that mention the bot, and the log keeps none).
 const MESSAGE_KEPT: Duration = Duration::from_secs(24 * 3_600);
 /// The longest message text kept and shown.
 const MESSAGE_TEXT_MAX: usize = 1_000;
@@ -631,10 +631,11 @@ fn kept_key(id: u64) -> String {
 }
 
 /// Keeps a message for a day, so its edit or delete can show what it said and who sent it. Only a
-/// message with text or files (the gateway clears the text without the Message Content intent, and
-/// Discord sends no files then), and only where the log reports message edits or deletes.
+/// message with text or files (its text only with message content on, and Discord sends no files
+/// without it either), and only where the log reports message edits or deletes.
 pub(crate) async fn keep_message(app: &App, guild: u64, message: &Message) {
-    if message.content.is_empty() && message.attachments.is_empty() {
+    let content = read_text(app, message);
+    if content.is_empty() && message.attachments.is_empty() {
         return;
     }
     let logged = match app.log_config(guild).await {
@@ -653,7 +654,7 @@ pub(crate) async fn keep_message(app: &App, guild: u64, message: &Message) {
     let kept = KeptMessage {
         author: message.author.id.get(),
         name: display_name(&message.author, message.member.as_ref().and_then(|m| m.nick.as_deref())),
-        content: clip(&message.content, MESSAGE_TEXT_MAX),
+        content: clip(content, MESSAGE_TEXT_MAX),
         attachments: message.attachments.iter().map(|a| a.filename.clone()).collect(),
     };
     if let Ok(json) = serde_json::to_string(&kept)
@@ -661,6 +662,12 @@ pub(crate) async fn keep_message(app: &App, guild: u64, message: &Message) {
     {
         tracing::debug!(%error, "message not kept for the log");
     }
+}
+
+/// What a message says, as far as the log may read it: nothing without message content on (Discord
+/// still sends the text of a message that mentions the bot, for text commands; the log leaves it).
+fn read_text<'a>(app: &App, message: &'a Message) -> &'a str {
+    if app.message_content { &message.content } else { "" }
 }
 
 async fn kept(app: &App, id: u64) -> Option<KeptMessage> {
@@ -683,7 +690,10 @@ fn shown(lang: Lang, text: &str) -> String {
 
 /// Logs an edit: who, where, a link, and the text before and after when it is known.
 pub async fn on_message_update(app: Arc<App>, event: MessageUpdate) -> anyhow::Result<()> {
-    let message = event.0;
+    let mut message = event.0;
+    if !app.message_content {
+        message.content.clear();
+    }
     let Some(guild) = message.guild_id.map(|g| g.get()) else {
         return Ok(());
     };

@@ -1,5 +1,6 @@
 mod app;
 mod auto;
+mod catalog;
 mod commands;
 mod components;
 mod custom;
@@ -8,8 +9,11 @@ mod defer;
 mod events;
 mod game;
 mod gate;
+mod hooks;
 mod house_view;
 mod invalidations;
+#[cfg(test)]
+mod landing_assets;
 mod lang;
 mod leveling;
 mod log_audit;
@@ -17,10 +21,12 @@ mod responder;
 mod roles;
 mod server_events;
 mod server_log;
+mod text;
 mod util;
 mod voice_xp;
 
 pub use app::App;
+pub use catalog::{command_catalog, site_facts};
 pub use commands::{
     collection::{post_bottle, post_critter_drop, spawn_ticker as spawn_collection_ticker, tick as collection_tick},
     config::{WelcomeDesign, welcome_card_png},
@@ -39,10 +45,12 @@ pub use custom::{
 };
 pub use cx::Cx;
 pub use defer::Deferral;
+pub use events::on_reaction;
 pub use events::{
-    on_ban_add, on_ban_remove, on_guild_create, on_guild_delete, on_member_add, on_member_remove, on_member_update,
-    on_message, on_voice_state_update, voice_snapshot,
+    PermissionChange, on_ban_add, on_ban_remove, on_guild_create, on_guild_delete, on_member_add, on_member_remove,
+    on_member_update, on_message, on_permissions_changed, on_voice_state_update, voice_snapshot,
 };
+pub use hooks::ReactionEvent;
 pub use house_view::{
     RoomData, catalog as house_catalog, character_png, render_png as render_room_png, room_name as house_room_name,
     seed_at as house_seed_at,
@@ -52,6 +60,7 @@ pub use log_audit::on_audit_log_entry;
 pub use responder::Responder;
 pub use server_events::{spawn_ticker as spawn_events_ticker, tick as events_tick};
 pub use server_log::{on_message_delete, on_message_delete_bulk, on_message_update};
+pub use text::on_text_command;
 pub use util::fill;
 pub use voice_xp::{
     VoiceSnapshot, forget as forget_voice_presence, prune as voice_prune, rebuild as rebuild_voice,

@@ -23,7 +23,7 @@ puzzles = { title = "Puzzles & word games", intro = "Play on your own, or start 
 crowd = { title = "Crowd games & collecting", intro = "Races, heists and storms for the channel, and critters to find along the shore." }
 community = { title = "Community", intro = "Polls, suggestions, giveaways, role buttons, server points and custom commands." }
 moderation = { title = "Moderation", intro = "Bans, kicks, timeouts and warns, each a numbered case in the mod-log; cleaning up channels." }
-setup = { title = "Server setup", intro = "Welcome cards, goodbyes, suggestions, the language and the settings overview." }
+setup = { title = "Server setup", intro = "Welcome cards, goodbyes, suggestions, the language, the text prefix and the settings overview." }
 logsetup = { title = "Log & moderation setup", intro = "The server log's channels, events and ignore lists; the mod-log and the warn ladder." }
 levels = { title = "Levels, XP & points setup", intro = "Level roles, XP multipliers, voice XP, reputation roles and the points store." }
 modules = { title = "Game & module setup", intro = "Switch games and whole parts of Pinchora on or off, for the server or per channel." }

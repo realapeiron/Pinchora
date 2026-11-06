@@ -5,8 +5,10 @@ import { RouterProvider } from "react-router/dom";
 
 import { ApiError, needsLogin } from "./lib/api";
 import { router } from "./router";
+import { watchMeta } from "./site/meta";
 import "./styles/tokens.css";
 import "./styles/app.css";
+import "./styles/site.css";
 
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
@@ -26,6 +28,9 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// The tab title and tags follow the page the router is on.
+watchMeta(router);
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

@@ -55,6 +55,9 @@ fn cases() -> Vec<Value> {
             answer(settings::check_points_emoji(input)),
         );
     }
+    for input in ["p!", " ? ", "", "toolong", "p !", "@p", "#", "`"] {
+        case("prefix", json!(input), answer(settings::check_prefix(input)));
+    }
     for (min, max) in [(1, 3), (0, 1000), (5, 4), (-1, 3), (0, 1001)] {
         case(
             "points",
@@ -170,6 +173,7 @@ fn rules() -> Value {
             "welcome_title_max": settings::WELCOME_TITLE_MAX,
             "points_name_max": settings::POINTS_NAME_MAX,
             "points_emoji_max": settings::POINTS_EMOJI_MAX,
+            "prefix_max": settings::PREFIX_MAX,
             "points": range(&settings::POINTS_RANGE),
             "level": range(&settings::LEVEL_RANGE),
             "reputation": range(&settings::REPUTATION_RANGE),
@@ -206,6 +210,7 @@ fn rules() -> Value {
         "defaults": {
             "theme": settings::DEFAULT_THEME,
             "welcome_title": settings::DEFAULT_WELCOME_TITLE,
+            "prefix": settings::DEFAULT_PREFIX,
         },
         "cases": cases(),
     })

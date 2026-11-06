@@ -3,6 +3,8 @@ node_modules
 package-lock.json
 test-results
 playwright-report
-# Written by `cargo test -p pinchora-web rules -- --ignored write_rules`.
+# Written by `cargo test -p pinchora-web rules -- --ignored write_rules` and `... commands_catalog -- --ignored write_site_data`.
 src/lib/rules.json
+src/lib/commands.json
+src/lib/facts.json
 src/iso/fixtures

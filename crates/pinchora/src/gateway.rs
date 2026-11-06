@@ -2,10 +2,12 @@ use std::{sync::Arc, time::Duration};
 
 use pinchora_cache::{RedisQueue, StoredSession};
 use pinchora_commands::{
-    App, Responder, handle_gateway_interaction, on_audit_log_entry, on_ban_add, on_ban_remove, on_guild_delete,
-    on_member_add, on_member_remove, on_member_update, on_message, on_message_delete, on_message_delete_bulk,
-    on_message_update, on_voice_state_update, rebuild_voice, voice_snapshot,
+    App, PermissionChange, Responder, handle_gateway_interaction, on_audit_log_entry, on_ban_add, on_ban_remove,
+    on_guild_delete, on_member_add, on_member_remove, on_member_update, on_message, on_message_delete,
+    on_message_delete_bulk, on_message_update, on_permissions_changed, on_voice_state_update, rebuild_voice,
+    voice_snapshot,
 };
+use pinchora_commands::{ReactionEvent, on_reaction};
 use pinchora_core::{
     Config, cluster,
     telemetry::{self, Readiness},
@@ -41,6 +43,20 @@ fn wanted_events() -> EventTypeFlags {
         | EventTypeFlags::VOICE_STATE_UPDATE
         | EventTypeFlags::GUILD_CREATE
         | EventTypeFlags::GUILD_DELETE
+        | EventTypeFlags::REACTION_ADD
+        | EventTypeFlags::REACTION_REMOVE
+        | EventTypeFlags::REACTION_REMOVE_ALL
+        | EventTypeFlags::REACTION_REMOVE_EMOJI
+        // What text commands judge a member's permissions by: the server's owner and roles, a
+        // channel's overwrites and the Integrations settings. Cheap, and they come under the
+        // Guilds intent (the last one with no intent at all).
+        | EventTypeFlags::GUILD_UPDATE
+        | EventTypeFlags::ROLE_CREATE
+        | EventTypeFlags::ROLE_UPDATE
+        | EventTypeFlags::ROLE_DELETE
+        | EventTypeFlags::CHANNEL_UPDATE
+        | EventTypeFlags::CHANNEL_DELETE
+        | EventTypeFlags::COMMAND_PERMISSIONS_UPDATE
         | EventTypeFlags::READY
         | EventTypeFlags::RESUMED
 }
@@ -82,10 +98,16 @@ pub async fn run(config: &Config, app: Arc<App>, ready: Readiness) -> anyhow::Re
     // Content are, and each has its own switch.
     let mut intents =
         Intents::GUILDS | Intents::GUILD_MESSAGES | Intents::GUILD_MODERATION | Intents::GUILD_VOICE_STATES;
+    // Reaction roles and the starboard listen to reactions; not privileged either.
+    intents |= Intents::GUILD_MESSAGE_REACTIONS;
     if config.gateway.member_events {
         intents |= Intents::GUILD_MEMBERS;
     }
-    // Keyword auto-responders read chat; the intent is privileged, so it is off until the operator turns it on.
+    // Keyword auto-responders, text commands and the server log read chat; the intent is privileged, so
+    // it is off until the operator turns it on. Without it, Discord only sends the text of messages that
+    // mention the bot: text commands then need `@Pinchora profile` instead of `p!profile`, keyword
+    // auto-responders stay deaf and the server log shows no message text (`auto::chat` and `server_log`
+    // check the same flag).
     if config.gateway.message_content {
         intents |= Intents::MESSAGE_CONTENT;
     }
@@ -159,10 +181,6 @@ async fn run_shard(
 ) -> (u32, Option<StoredSession>) {
     let id = shard.id().number();
     let flags = wanted_events();
-    // Without the Message Content intent Discord still sends the text of messages that mention the bot;
-    // it is dropped, so keyword auto-responders and the server log never hear chat the operator did not
-    // turn on.
-    let reads_chat = shard.config().intents().contains(Intents::MESSAGE_CONTENT);
     let mut closing = false;
     loop {
         tokio::select! {
@@ -175,16 +193,7 @@ async fn run_shard(
             item = shard.next_event(flags) => match item {
                 None => break,
                 Some(Ok(Event::GatewayClose(_))) if closing => break,
-                Some(Ok(mut event)) => {
-                    if !reads_chat {
-                        match &mut event {
-                            Event::MessageCreate(message) => message.content.clear(),
-                            Event::MessageUpdate(message) => message.content.clear(),
-                            _ => {}
-                        }
-                    }
-                    dispatch(&app, id, event)
-                }
+                Some(Ok(event)) => dispatch(&app, id, event),
                 Some(Err(error)) => tracing::warn!(shard = id, %error, "gateway receive error"),
             },
         }
@@ -318,6 +327,19 @@ fn dispatch(app: &Arc<App>, shard: u32, event: Event) {
                 }
             });
         }
+        Event::ReactionAdd(event) => reacted(app, ReactionEvent::Add(event)),
+        Event::ReactionRemove(event) => reacted(app, ReactionEvent::Remove(event)),
+        Event::ReactionRemoveAll(event) => reacted(app, ReactionEvent::RemoveAll(event)),
+        Event::ReactionRemoveEmoji(event) => reacted(app, ReactionEvent::RemoveEmoji(event)),
+        Event::GuildUpdate(event) => forget(app, PermissionChange::Guild(event.id.get())),
+        Event::RoleCreate(event) => forget(app, PermissionChange::Guild(event.guild_id.get())),
+        Event::RoleUpdate(event) => forget(app, PermissionChange::Guild(event.guild_id.get())),
+        Event::RoleDelete(event) => forget(app, PermissionChange::Guild(event.guild_id.get())),
+        Event::ChannelUpdate(event) => forget(app, PermissionChange::Channel(event.id.get())),
+        Event::ChannelDelete(event) => forget(app, PermissionChange::Channel(event.id.get())),
+        Event::CommandPermissionsUpdate(event) => {
+            forget(app, PermissionChange::CommandPermissions(event.guild_id.get()));
+        }
         Event::Ready(ready) => {
             tracing::info!(shard, guilds = ready.guilds.len(), "shard ready");
             metrics::gauge!("pinchora_shard_guilds", "shard" => shard.to_string()).set(ready.guilds.len() as f64);
@@ -325,4 +347,23 @@ fn dispatch(app: &Arc<App>, shard: u32, event: Event) {
         Event::Resumed => tracing::info!(shard, "shard resumed"),
         _ => {}
     }
+}
+
+/// Drops what text commands cached about a permission that changed. Not a droppable event like a
+/// chat message: a missed one would leave the old permissions for up to a minute (five for command
+/// permissions).
+fn forget(app: &Arc<App>, change: PermissionChange) {
+    let app2 = app.clone();
+    app.spawn(async move { on_permissions_changed(&app2, change).await });
+}
+
+/// Hands a reaction change to the feature packages. Droppable like a chat message: a reaction storm
+/// must not use every event slot.
+fn reacted(app: &Arc<App>, event: ReactionEvent) {
+    let app2 = app.clone();
+    app.spawn_event("reaction", async move {
+        if let Err(error) = on_reaction(app2, event).await {
+            tracing::warn!(%error, "reaction handler failed");
+        }
+    });
 }

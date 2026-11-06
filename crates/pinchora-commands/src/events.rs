@@ -16,6 +16,7 @@ use twilight_model::{
     id::Id,
 };
 
+use crate::hooks::{self, JoinVerdict, ReactionEvent, Verdict};
 use crate::{
     App, auto,
     commands::{self, collection},
@@ -27,18 +28,32 @@ use crate::{
 
 pub use pinchora_core::settings::{DEFAULT_GOODBYE, DEFAULT_LEVELUP, DEFAULT_WELCOME};
 
-/// Grants chat XP (once per minute per member) and announces level-ups.
+/// Runs text commands, grants chat XP (once per minute per member) and announces level-ups.
 pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<()> {
     let msg = event.message;
     if msg.author.bot || msg.webhook_id.is_some() || !matches!(msg.kind, MessageType::Regular | MessageType::Reply) {
         return Ok(());
     }
     let Some(guild) = msg.guild_id else {
+        hooks::on_dm(&app, &msg).await;
         return Ok(());
     };
     let (g, u) = (guild.get(), msg.author.id.get());
-    // With message content on, the server log keeps the message a day to show an edit or delete.
+    // With message content on, the server log keeps the message a day to show an edit or delete (also
+    // one a package blocks below, so its delete can show what it said).
     server_log::keep_message(&app, g, &msg).await;
+    let settings = app.guild_settings(g).await?;
+    // Packages that judge a message (automod first) speak before it earns XP or calls a command.
+    if hooks::after_message(&app, &msg, &settings).await == Verdict::Blocked {
+        return Ok(());
+    }
+    // A text command runs on its own; the message still counts as chat below.
+    if crate::text::calls_bot(&app, &msg).await {
+        let (app2, message) = (app.clone(), msg.clone());
+        app.spawn(async move {
+            crate::text::on_text_command(app2, &message).await;
+        });
+    }
     // Keywords in the chat set auto-responders off (they only hear text when the bot has the Message
     // Content intent). It comes first: it has nothing to do with the XP minute.
     auto::chat(&app, &msg).await;
@@ -50,7 +65,6 @@ pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<(
     {
         tracing::debug!(%error, guild = g, "chat drops not counted");
     }
-    let settings = app.guild_settings(g).await?;
     // Leveling and points can also be switched off in some channels (`/config modules`). Where neither
     // counts the minute is not spent, so chatting in such a channel never costs the XP of the next message
     // somewhere else.
@@ -130,15 +144,20 @@ pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<(
 
 /// Gives the join role, logs the join, and posts a welcome card when the server has them turned on.
 pub async fn on_member_add(app: Arc<App>, event: MemberAdd) -> anyhow::Result<()> {
+    let held = hooks::on_member_join(&app, &event).await == JoinVerdict::Held;
     let MemberAdd { guild_id, member } = event;
     let settings = app.guild_settings(guild_id.get()).await?;
     // The role and the log come first: neither depends on the welcome card going out.
-    if let Some(role) = settings.join_role_id.filter(|_| !member.user.bot) {
+    if let Some(role) = settings.join_role_id.filter(|_| !member.user.bot && !held) {
         roles::give_join_role(&app, guild_id.get(), member.user.id.get(), role as u64).await;
     }
     server_log::note_names(&app, guild_id.get(), &member.user, member.nick.as_deref()).await;
     let roles: Vec<u64> = member.roles.iter().map(|r| r.get()).collect();
     server_log::member_joined(&app, guild_id.get(), &member.user, &roles).await;
+    // A member held at the gate gets the rest when they are let in.
+    if held {
+        return Ok(());
+    }
     auto::member_joined(&app, guild_id.get(), &member).await;
     if member.user.bot {
         return Ok(());
@@ -188,6 +207,7 @@ pub async fn on_member_add(app: Arc<App>, event: MemberAdd) -> anyhow::Result<()
 
 /// Says goodbye when the server has it turned on, and logs the leave.
 pub async fn on_member_remove(app: Arc<App>, event: MemberRemove) -> anyhow::Result<()> {
+    hooks::on_member_leave(&app, &event).await;
     let MemberRemove { guild_id, user } = event;
     let settings = app.guild_settings(guild_id.get()).await?;
     app.log_state.forget(guild_id.get(), user.id.get()).await;
@@ -226,9 +246,39 @@ pub async fn on_member_remove(app: Arc<App>, event: MemberRemove) -> anyhow::Res
     Ok(())
 }
 
+/// Passes a reaction added to or removed from a message on to the feature packages.
+pub async fn on_reaction(app: Arc<App>, event: ReactionEvent) -> anyhow::Result<()> {
+    hooks::on_reaction(&app, &event).await;
+    Ok(())
+}
+
+/// What Discord said changed that text commands keep permission data about.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PermissionChange {
+    /// A server's owner or roles (the server itself, or one of its roles, was updated).
+    Guild(u64),
+    /// A channel's permission overwrites (or the channel went away).
+    Channel(u64),
+    /// What a server set for the bot's commands under Integrations.
+    CommandPermissions(u64),
+}
+
+/// Forgets what text commands cached about the thing that changed, so the next command is judged by
+/// the new permissions rather than the minute-old ones.
+pub async fn on_permissions_changed(app: &App, change: PermissionChange) {
+    match change {
+        PermissionChange::Guild(guild) => app.forget_permission_facts(guild).await,
+        PermissionChange::Channel(channel) => app.forget_channel_rules(channel).await,
+        PermissionChange::CommandPermissions(guild) => app.forget_command_overrides(guild).await,
+    }
+}
+
 /// Logs nickname, username and avatar changes.
 pub async fn on_member_update(app: Arc<App>, event: MemberUpdate) -> anyhow::Result<()> {
     auto::roles_changed(&app, &event).await;
+    // A member's roles may have changed: what text commands know of the server's permissions is
+    // forgotten with it.
+    on_permissions_changed(&app, PermissionChange::Guild(event.guild_id.get())).await;
     let roles: Vec<u64> = event.roles.iter().map(|r| r.get()).collect();
     server_log::names_updated(&app, event.guild_id.get(), &event.user, event.nick.as_deref(), &roles).await;
     Ok(())

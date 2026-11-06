@@ -202,7 +202,8 @@ pub(crate) async fn roles_changed(app: &Arc<App>, event: &MemberUpdate) {
 }
 
 /// A chat message: keywords it holds set responders off, at most one per message. Messages only have
-/// text when the bot runs with the Message Content intent.
+/// text when the bot runs with the Message Content intent. Without it Discord still sends the text of
+/// messages that mention the bot (text commands need it), but keyword responders never hear it.
 pub(crate) async fn chat(app: &Arc<App>, msg: &Message) {
     let Some(guild) = msg.guild_id else { return };
     let guild_id = guild.get();
@@ -223,7 +224,7 @@ pub(crate) async fn chat(app: &Arc<App>, msg: &Message) {
     {
         app.custom.seed_roles(guild_id, msg.author.id.get(), held.clone()).await;
     }
-    if msg.content.is_empty() {
+    if msg.content.is_empty() || !app.message_content {
         return;
     }
     let heard: Vec<&ResponderRow> = set

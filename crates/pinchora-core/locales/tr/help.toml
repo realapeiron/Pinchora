@@ -23,7 +23,7 @@ puzzles = { title = "Bulmacalar ve kelime oyunları", intro = "Tek başına oyna
 crowd = { title = "Kalabalık oyunları ve koleksiyon", intro = "Kanal için yarışlar, soygunlar ve fırtınalar; kıyıda bulunacak minik canlılar." }
 community = { title = "Topluluk", intro = "Anketler, öneriler, çekilişler, rol düğmeleri, sunucu puanları ve özel komutlar." }
 moderation = { title = "Moderasyon", intro = "Yasak, atma, susturma ve uyarılar, her biri mod kaydında bir vaka; kanal temizliği." }
-setup = { title = "Sunucu kurulumu", intro = "Karşılama kartları, vedalar, öneriler, dil ve ayarlara genel bakış." }
+setup = { title = "Sunucu kurulumu", intro = "Karşılama kartları, vedalar, öneriler, dil, metin komutu öneki ve ayarlara genel bakış." }
 logsetup = { title = "Kayıt ve moderasyon ayarları", intro = "Sunucu kaydının kanalları, olayları ve yok sayılanlar; mod kaydı ve uyarı merdiveni." }
 levels = { title = "Seviye, XP ve puan ayarları", intro = "Seviye rolleri, XP çarpanları, ses XP'si, itibar rolleri ve puan mağazası." }
 modules = { title = "Oyun ve modül ayarları", intro = "Oyunları ve Pinchora'nın bütün bölümlerini sunucu ya da kanal bazında aç veya kapat." }

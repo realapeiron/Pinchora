@@ -38,6 +38,7 @@ pub(crate) mod play;
 pub(crate) mod plaza;
 mod points;
 pub(crate) mod poll;
+pub(crate) mod prefix;
 pub(crate) mod privacy;
 pub(crate) mod profile;
 pub(crate) mod quests;

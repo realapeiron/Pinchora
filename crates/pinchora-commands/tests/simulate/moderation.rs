@@ -869,8 +869,13 @@ async fn the_hierarchy_and_the_permissions_refuse_what_discord_would() {
     );
 }
 
+/// The ticker lifts every due temporary ban in the database, whoever's it is (the database tests leave
+/// some behind), so tests that run it take turns and only judge their own server's bans.
+static BAN_TICKS: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 #[tokio::test]
 async fn temporary_bans_end_on_the_ticker_with_a_case_of_their_own() {
+    let _serial = BAN_TICKS.lock().await;
     let Some(mut sim) = Sim::new("temporary_bans_end_on_the_ticker_with_a_case_of_their_own").await else {
         return;
     };
@@ -907,7 +912,7 @@ async fn temporary_bans_end_on_the_ticker_with_a_case_of_their_own() {
     );
     sim.mod_calls();
     lift_expired_bans(&sim.app).await.unwrap();
-    assert!(sim.mod_calls().is_empty(), "not yet");
+    assert!(!sim.mod_calls().contains(&format!("unban {mia}")), "not yet");
 
     sim.app.shift_clock(chrono::Duration::minutes(2));
     lift_expired_bans(&sim.app).await.unwrap();
@@ -1099,6 +1104,7 @@ async fn unlock_puts_back_what_everyone_had() {
 /// banned when the first ban's time comes, whichever of Discord's two signals arrives first.
 #[tokio::test]
 async fn a_temporary_ban_lifted_by_hand_never_lifts_a_newer_ban() {
+    let _serial = BAN_TICKS.lock().await;
     let Some(mut sim) = Sim::new("a_temporary_ban_lifted_by_hand_never_lifts_a_newer_ban").await else {
         return;
     };
@@ -1134,12 +1140,16 @@ async fn a_temporary_ban_lifted_by_hand_never_lifts_a_newer_ban() {
 
     sim.mod_calls();
     sim.app.shift_clock(chrono::Duration::minutes(2));
-    let lifted = lift_expired_bans(&sim.app).await.unwrap();
+    lift_expired_bans(&sim.app).await.unwrap();
     sim.app.shift_clock(chrono::Duration::minutes(-2));
-    assert_eq!(lifted, 0);
     assert!(
-        sim.mod_calls().iter().all(|c| !c.starts_with("unban")),
-        "nobody was unbanned"
+        sim.cases().await.iter().all(|c| c.kind != "unban"),
+        "nothing was lifted here"
+    );
+    let calls = sim.mod_calls();
+    assert!(
+        [mia, ana].iter().all(|who| !calls.contains(&format!("unban {who}"))),
+        "nobody was unbanned: {calls:?}"
     );
     assert!(banned(&sim, mia) && banned(&sim, ana), "the newer bans stand");
     assert!(sim.cases().await.iter().all(|c| !(c.kind == "ban" && c.active)));
@@ -1395,4 +1405,56 @@ async fn the_server_log_reports_messages_audit_entries_and_voice_and_leaves_the_
     .await;
     sim.edited(bob, loud, "hey!!").await;
     assert!(sim.posts().is_empty(), "the log module is off");
+}
+
+/// With the Message Content intent off the bot reads no chat: Discord still sends the text of a
+/// message that mentions it (for text commands), but the server log keeps none of it, and `/purge`
+/// refuses the filters that look at what messages say.
+#[tokio::test]
+async fn without_message_content_the_log_keeps_no_text_and_purge_filters_nothing_by_it() {
+    let Some(mut sim) = Sim::with(
+        "without_message_content_the_log_keeps_no_text_and_purge_filters_nothing_by_it",
+        |app| app.message_content = false,
+    )
+    .await
+    else {
+        return;
+    };
+    let (admin, alice, moderator, log) = (unique(), unique(), unique(), unique());
+    sim.permissions = MANAGE_GUILD;
+    sim.command_resolved(
+        admin,
+        "config",
+        json!([sub("log", vec![channel_option("channel", log)])]),
+        resolved_channels(&[log]),
+    )
+    .await;
+
+    let first = sim.said(alice, "hello").await;
+    sim.edited(alice, first, "hello there").await;
+    let posts = sim.posts();
+    let [edit] = &posts[..] else {
+        panic!("expected one entry, got {}", posts.len());
+    };
+    assert_eq!((edit.channel, edit.title()), (log, "Message edited"));
+    assert_eq!(
+        (edit.field("Before"), edit.field("After")),
+        ("", ""),
+        "no text either side"
+    );
+    sim.deleted(&[first]).await;
+    let posts = sim.posts();
+    assert_eq!(posts[0].title(), "Message deleted");
+    assert_eq!(posts[0].field("Message"), "", "nothing was kept");
+
+    sim.permissions = STAFF;
+    let words = sim
+        .command(
+            moderator,
+            "purge",
+            json!([int_option("count", 5), text_option("contains", "hello")]),
+        )
+        .await;
+    assert!(words.ephemeral && words.content().contains("need to read messages"));
+    assert!(sim.mod_calls().is_empty());
 }

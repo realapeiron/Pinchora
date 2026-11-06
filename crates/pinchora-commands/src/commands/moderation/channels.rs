@@ -184,6 +184,11 @@ impl Purge {
         let Some((channel, channel_name)) = target_channel(cx, None) else {
             return cx.reply_ephemeral(t!(lang, "mod.which-channel")).await;
         };
+        // Filters that look at what messages say or carry need the Message Content intent: switched off,
+        // the bot reads no chat.
+        if filter.reads() && !cx.app.message_content {
+            return cx.reply_ephemeral(t!(lang, "mod.purge-needs-content")).await;
+        }
         let messages = match cx.app.http.channel_messages(Id::new(channel)).limit(100).await {
             Ok(response) => response.models().await?,
             Err(error) => {
@@ -191,7 +196,7 @@ impl Purge {
                 return cx.reply_ephemeral(text).await;
             }
         };
-        // Without the Message Content intent Discord sends other people's messages without their text,
+        // Switched on but not granted, Discord sends other people's messages without their text,
         // attachments or embeds: filters that look at them would match nothing.
         if filter.reads() && !readable(&messages, cx.app.application_id.get()) {
             return cx.reply_ephemeral(t!(lang, "mod.purge-needs-content")).await;

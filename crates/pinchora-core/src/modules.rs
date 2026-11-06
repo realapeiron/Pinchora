@@ -18,17 +18,31 @@ pub const NEVER_GATED: [&str; 6] = ["config", "help", "language", "ping", "priva
 /// module either.
 pub const NEVER_GATED_PREFIXES: [&str; 3] = ["hp", "pr", "rm"];
 
-/// Where a module's settings are shown together.
+/// Where a module's settings are shown together. Roles, Safety, Community and Feeds start empty: the
+/// dashboard shows a group once a module belongs to it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Group {
     Server,
     Players,
     Home,
     Games,
+    Roles,
+    Safety,
+    Community,
+    Feeds,
 }
 
 impl Group {
-    pub const ALL: [Self; 4] = [Self::Server, Self::Players, Self::Home, Self::Games];
+    pub const ALL: [Self; 8] = [
+        Self::Server,
+        Self::Players,
+        Self::Home,
+        Self::Games,
+        Self::Roles,
+        Self::Safety,
+        Self::Community,
+        Self::Feeds,
+    ];
 
     pub const fn key(self) -> &'static str {
         match self {
@@ -36,6 +50,10 @@ impl Group {
             Self::Players => "players",
             Self::Home => "home",
             Self::Games => "games",
+            Self::Roles => "roles",
+            Self::Safety => "safety",
+            Self::Community => "community",
+            Self::Feeds => "feeds",
         }
     }
 
@@ -45,6 +63,10 @@ impl Group {
             Self::Players => "Players",
             Self::Home => "Home, pets and fishing",
             Self::Games => "Games",
+            Self::Roles => "Roles",
+            Self::Safety => "Safety",
+            Self::Community => "Community",
+            Self::Feeds => "Feeds",
         }
     }
 }
@@ -89,11 +111,12 @@ pub enum Module {
     PartyGames,
     Collection,
     Gambling,
+    TextCommands,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 28] = [
+    pub const ALL: [Self; 29] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -122,6 +145,7 @@ impl Module {
         Self::PartyGames,
         Self::Collection,
         Self::Gambling,
+        Self::TextCommands,
     ];
 
     /// The key stored in the database and used in the API.
@@ -155,6 +179,7 @@ impl Module {
             Self::PartyGames => "party_games",
             Self::Collection => "collection",
             Self::Gambling => "gambling",
+            Self::TextCommands => "text_commands",
         }
     }
 
@@ -192,6 +217,7 @@ impl Module {
             Self::PartyGames => "Word party games",
             Self::Collection => "Critter drops and beachcombing",
             Self::Gambling => "Gambling-style games",
+            Self::TextCommands => "Text commands",
         }
     }
 
@@ -237,6 +263,9 @@ impl Module {
             }
             Self::Collection => "/dex, /beachcomb, /crabpot, /critterdrop and drops that wash up in chat.",
             Self::Gambling => "Games that stake shells on chance: the shell game and staked derbies.",
+            Self::TextCommands => {
+                "Commands typed as messages, with the prefix or an @mention. Slash commands are not affected."
+            }
         }
     }
 
@@ -247,13 +276,13 @@ impl Module {
             | Self::Welcome
             | Self::Goodbye
             | Self::Log
-            | Self::Moderation
             | Self::RolePanels
             | Self::Store
             | Self::Suggestions
             | Self::Polls
             | Self::Giveaways
-            | Self::CustomCommands => Group::Server,
+            | Self::CustomCommands
+            | Self::TextCommands => Group::Server,
             Self::Profile | Self::Economy | Self::Shop | Self::Quests | Self::Social => Group::Players,
             Self::House | Self::Plaza | Self::Pets | Self::Fishing => Group::Home,
             Self::Duels
@@ -263,6 +292,7 @@ impl Module {
             | Self::PartyGames
             | Self::Collection
             | Self::Gambling => Group::Games,
+            Self::Moderation => Group::Safety,
         }
     }
 
@@ -585,8 +615,13 @@ mod tests {
             assert!(!module.label().is_empty() && !module.blurb().is_empty());
         }
         assert_eq!(Module::parse("nope"), None);
-        for group in Group::ALL {
+        // The four newer groups are filled by the phase-4 packages; until then they are empty and hidden.
+        for group in [Group::Server, Group::Players, Group::Home, Group::Games] {
             assert!(Module::ALL.iter().any(|m| m.group() == group), "{group:?} is empty");
+        }
+        for (i, group) in Group::ALL.iter().enumerate() {
+            assert!(!group.label().is_empty());
+            assert!(!Group::ALL[i + 1..].iter().any(|g| g.key() == group.key()));
         }
     }
 
