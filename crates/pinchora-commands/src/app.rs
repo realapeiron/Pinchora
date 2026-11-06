@@ -18,19 +18,20 @@ use pinchora_core::{
 use pinchora_db::{Db, GuildSettings};
 use pinchora_render::{Renderer, placeholder_avatar, prepare_avatar};
 use tokio::sync::Semaphore;
-use tokio_util::task::TaskTracker;
-use twilight_http::{Client, client::InteractionClient};
+use tokio_util::{sync::CancellationToken, task::TaskTracker};
+use twilight_http::{Client, client::InteractionClient, error::ErrorType};
 use twilight_model::{
+    channel::permission_overwrite::PermissionOverwrite,
     guild::Role,
     id::{
         Id,
-        marker::{ApplicationMarker, UserMarker},
+        marker::{ApplicationMarker, ChannelMarker, MessageMarker, UserMarker},
     },
     user::User,
     util::ImageHash,
 };
 
-use crate::server_log::LogState;
+use crate::{server_log::LogState, text::access::CommandOverrides};
 
 /// Where a channel sits, for XP multipliers that follow a thread to its channel and a channel to its category.
 #[derive(Debug, Clone, Copy)]
@@ -51,6 +52,21 @@ pub(crate) struct VoiceGuild {
 pub(crate) struct GuildFacts {
     pub owner: u64,
     pub roles: Vec<Role>,
+}
+
+/// What a text command needs about a channel to stand in for Discord: where command permissions are
+/// looked up, and which permission overwrites apply there.
+pub(crate) struct ChannelRules {
+    /// The channel, followed by its parent when it is a thread (a thread follows its channel).
+    pub lineage: Vec<u64>,
+    /// The overwrites that count in it: the channel's own, or its parent's for a thread.
+    pub overwrites: Vec<PermissionOverwrite>,
+}
+
+/// Whether Discord's answer says the application has no command permissions to read in a server (it
+/// was added without the commands scope), rather than that Discord could not be asked.
+fn is_missing(error: &twilight_http::Error) -> bool {
+    matches!(error.kind(), ErrorType::Response { status, .. } if matches!(status.get(), 403 | 404))
 }
 
 /// Everything a handler needs. Built once per process and shared as `Arc<App>`.
@@ -74,6 +90,9 @@ pub struct App {
     guild_settings: Moka<u64, Arc<GuildSettings>>,
     guild_roles: Moka<u64, Arc<HashMap<u64, String>>>,
     guild_facts: Moka<u64, Arc<GuildFacts>>,
+    channel_rules: Moka<u64, Arc<ChannelRules>>,
+    command_ids: Moka<(), Arc<HashMap<String, u64>>>,
+    command_overrides: Moka<u64, Arc<CommandOverrides>>,
     xp_rules: Moka<u64, Arc<XpRules>>,
     module_rules: Moka<u64, Arc<GuildModules>>,
     voice_guilds: Moka<u64, Arc<VoiceGuild>>,
@@ -81,6 +100,8 @@ pub struct App {
     avatars: Moka<String, Arc<Vec<u8>>>,
     users: Moka<u64, Arc<User>>,
     tasks: TaskTracker,
+    /// Cancelled when shutdown begins, so tasks that wait for a while can finish at once.
+    shutdown: CancellationToken,
     event_slots: Arc<Semaphore>,
     /// Last-seen names and voice channels, so the server log can say what changed.
     pub(crate) log_state: LogState,
@@ -127,6 +148,18 @@ impl App {
                 .max_capacity(10_000)
                 .time_to_live(Duration::from_secs(60))
                 .build(),
+            channel_rules: Moka::builder()
+                .max_capacity(50_000)
+                .time_to_live(Duration::from_secs(60))
+                .build(),
+            command_ids: Moka::builder()
+                .max_capacity(1)
+                .time_to_live(Duration::from_secs(600))
+                .build(),
+            command_overrides: Moka::builder()
+                .max_capacity(10_000)
+                .time_to_live(Duration::from_secs(300))
+                .build(),
             xp_rules: Moka::builder()
                 .max_capacity(50_000)
                 .time_to_live(Duration::from_secs(60))
@@ -154,6 +187,7 @@ impl App {
                 .time_to_live(Duration::from_secs(600))
                 .build(),
             tasks: TaskTracker::new(),
+            shutdown: CancellationToken::new(),
             event_slots: Arc::new(Semaphore::new(1024)),
             log_state: LogState::new(),
             clock_shift: AtomicI64::new(0),
@@ -182,6 +216,22 @@ impl App {
         self.tasks.spawn(future);
     }
 
+    /// Deletes a message of ours after `after`, or as soon as shutdown begins, whichever comes
+    /// first: a private answer given in a channel must not outlive the process. The wait is a
+    /// tracked task, and a delete that fails is logged.
+    pub fn delete_later(&self, channel: Id<ChannelMarker>, message: Id<MessageMarker>, after: Duration) {
+        let (http, shutdown) = (self.http.clone(), self.shutdown.clone());
+        self.spawn(async move {
+            tokio::select! {
+                () = tokio::time::sleep(after) => {}
+                () = shutdown.cancelled() => {}
+            }
+            if let Err(error) = http.delete_message(channel, message).await {
+                tracing::warn!(%error, channel = channel.get(), message = message.get(), "private answer not deleted");
+            }
+        });
+    }
+
     /// Spawns a gateway event handler, or drops the event when 1024 are already
     /// running. Dropping XP ticks under overload beats unbounded memory.
     pub fn spawn_event<F>(&self, kind: &'static str, future: F)
@@ -199,8 +249,10 @@ impl App {
         }
     }
 
-    /// Waits up to `limit` for spawned tasks to finish.
+    /// Waits up to `limit` for spawned tasks to finish. Tasks that are only waiting out a delay
+    /// ([`App::delete_later`]) are told to stop waiting.
     pub async fn drain(&self, limit: Duration) {
+        self.shutdown.cancel();
         self.tasks.close();
         let _ = tokio::time::timeout(limit, self.tasks.wait()).await;
     }
@@ -315,6 +367,93 @@ impl App {
                     owner: guild.owner_id.get(),
                     roles,
                 }))
+            })
+            .await
+            .map_err(|e| anyhow::anyhow!("{e:#}"))
+    }
+
+    /// Forgets a server's cached owner and roles, when either changed.
+    pub async fn forget_guild_facts(&self, guild_id: u64) {
+        self.guild_facts.invalidate(&guild_id).await;
+    }
+
+    /// Where command permissions are looked up in a channel and which overwrites apply there, cached
+    /// for a minute. Fails when Discord cannot say, which a text command answers by refusing.
+    pub(crate) async fn channel_rules(&self, channel: u64) -> anyhow::Result<Arc<ChannelRules>> {
+        self.channel_rules
+            .try_get_with(channel, async {
+                let found = self.http.channel(Id::new(channel.max(1))).await?.model().await?;
+                let mut lineage = vec![channel];
+                let mut overwrites = found.permission_overwrites.unwrap_or_default();
+                if found.kind.is_thread()
+                    && let Some(parent) = found.parent_id
+                {
+                    lineage.push(parent.get());
+                    let parent = self.http.channel(parent).await?.model().await?;
+                    overwrites = parent.permission_overwrites.unwrap_or_default();
+                }
+                anyhow::Ok(Arc::new(ChannelRules { lineage, overwrites }))
+            })
+            .await
+            .map_err(|e| anyhow::anyhow!("{e:#}"))
+    }
+
+    /// Forgets what a channel's permissions were, when they changed.
+    pub async fn forget_channel_rules(&self, channel: u64) {
+        self.channel_rules.invalidate(&channel).await;
+    }
+
+    /// What a server set for the bot's commands under Server Settings, Integrations, cached for five
+    /// minutes. A server that cannot have any (Discord says the application is not there, as for a bot
+    /// added without the commands scope) has none; any other failure is an error, which a text
+    /// command answers by refusing rather than guessing.
+    pub(crate) async fn command_overrides(&self, guild_id: u64) -> anyhow::Result<Arc<CommandOverrides>> {
+        self.command_overrides
+            .try_get_with(guild_id, async {
+                let entries = match self
+                    .interaction()
+                    .guild_command_permissions(Id::new(guild_id.max(1)))
+                    .await
+                {
+                    Ok(response) => response.models().await?,
+                    Err(error) if is_missing(&error) => Vec::new(),
+                    Err(error) => return Err(error.into()),
+                };
+                if entries.is_empty() {
+                    return anyhow::Ok(Arc::new(CommandOverrides::default()));
+                }
+                let ids = self.command_ids().await?;
+                anyhow::Ok(Arc::new(CommandOverrides::new(
+                    entries,
+                    self.application_id.get(),
+                    &ids,
+                )))
+            })
+            .await
+            .map_err(|e| anyhow::anyhow!("{e:#}"))
+    }
+
+    /// Forgets a server's command overrides, when they changed.
+    pub async fn forget_command_overrides(&self, guild_id: u64) {
+        self.command_overrides.invalidate(&guild_id).await;
+    }
+
+    /// The ids of the bot's commands by name, which tell the entries of Discord's command permissions
+    /// apart; cached for ten minutes.
+    async fn command_ids(&self) -> anyhow::Result<Arc<HashMap<String, u64>>> {
+        self.command_ids
+            .try_get_with((), async {
+                let commands = match self.interaction().global_commands().await {
+                    Ok(response) => response.models().await?,
+                    Err(error) if is_missing(&error) => Vec::new(),
+                    Err(error) => return Err(error.into()),
+                };
+                anyhow::Ok(Arc::new(
+                    commands
+                        .into_iter()
+                        .filter_map(|c| Some((c.name, c.id?.get())))
+                        .collect(),
+                ))
             })
             .await
             .map_err(|e| anyhow::anyhow!("{e:#}"))

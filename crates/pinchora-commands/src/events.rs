@@ -222,8 +222,32 @@ pub async fn on_member_remove(app: Arc<App>, event: MemberRemove) -> anyhow::Res
     Ok(())
 }
 
+/// What Discord said changed that text commands keep permission data about.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PermissionChange {
+    /// A server's owner or roles (the server itself, or one of its roles, was updated).
+    Guild(u64),
+    /// A channel's permission overwrites (or the channel went away).
+    Channel(u64),
+    /// What a server set for the bot's commands under Integrations.
+    CommandPermissions(u64),
+}
+
+/// Forgets what text commands cached about the thing that changed, so the next command is judged by
+/// the new permissions rather than the minute-old ones.
+pub async fn on_permissions_changed(app: &App, change: PermissionChange) {
+    match change {
+        PermissionChange::Guild(guild) => app.forget_guild_facts(guild).await,
+        PermissionChange::Channel(channel) => app.forget_channel_rules(channel).await,
+        PermissionChange::CommandPermissions(guild) => app.forget_command_overrides(guild).await,
+    }
+}
+
 /// Logs nickname and username changes.
 pub async fn on_member_update(app: Arc<App>, event: MemberUpdate) -> anyhow::Result<()> {
+    // A member's roles may have changed: what text commands know of the server's permissions is
+    // forgotten with it.
+    on_permissions_changed(&app, PermissionChange::Guild(event.guild_id.get())).await;
     let settings = app.guild_settings(event.guild_id.get()).await?;
     server_log::names_updated(
         &app,

@@ -6,11 +6,15 @@
 //! Manage Server checks, cooldowns and handlers are the very same. Only the answers travel
 //! differently, as replies to the message (see [`Responder::text`]).
 
+pub(crate) mod access;
 mod parse;
 
 use std::{collections::HashMap, sync::Arc, sync::LazyLock, time::Duration};
 
-use pinchora_core::settings::DEFAULT_PREFIX;
+use pinchora_core::{
+    modules::{Access, Module, refusal},
+    settings::DEFAULT_PREFIX,
+};
 use serde_json::json;
 use twilight_model::{
     application::{
@@ -29,16 +33,19 @@ use twilight_model::{
 
 use crate::{App, Responder, app::GuildFacts, handle_interaction};
 
+use access::{Verdict, channel_permissions};
 use parse::{Parsed, Refusal};
 
 /// The registered commands, read once.
 static TREE: LazyLock<Vec<Command>> = LazyLock::new(crate::command_definitions);
 
-/// Commands whose first answer is a private panel that a channel reply cannot stand in for, as
-/// `name` or `name sub`; anything below an entry is covered. They answer with the slash command to use
-/// before they run. Any other private panel is caught as it is answered.
+/// Commands that stay slash-only, as `name` or `name sub`; anything below an entry is covered. They
+/// answer with the slash command to use before they run. Either their first answer is a private
+/// panel that a channel reply cannot stand in for (any other private panel is caught as it is
+/// answered), or it shows the server's settings, which a reply in the channel would show to everyone.
 const SLASH_ONLY: &[&str] = &[
     "character",
+    "config",
     "customize",
     "house decorate",
     "house edit",
@@ -111,7 +118,7 @@ pub(crate) async fn calls_bot(app: &App, message: &Message) -> bool {
 
 /// The member's permissions in the server, as Discord works them out for a slash command: the
 /// owner and administrators have all of them, everyone else what `@everyone` and their roles give.
-/// Channel overrides are not applied.
+/// The channel's overwrites come on top of this ([`channel_permissions`]).
 fn guild_permissions(facts: &GuildFacts, guild: u64, user: u64, held: &[u64]) -> Permissions {
     if user == facts.owner {
         return Permissions::all();
@@ -314,9 +321,32 @@ fn private(text: impl Into<String>) -> InteractionResponseData {
     }
 }
 
+/// Whether the rate limiter lets a text command through: only when it counted this one as the member's
+/// first in a while. A limiter that can't be read lets nothing through, because nothing could limit
+/// the reply either.
+fn within_rate(counted: &anyhow::Result<Option<Duration>>) -> bool {
+    matches!(counted, Ok(None))
+}
+
+/// Whether a command's default permissions let a member with `server` permissions use it: none are
+/// asked for, or the member has them all. `"0"` (nothing set, but not nothing asked either) is how a
+/// command is kept for administrators.
+fn allowed_by_default(needed: Option<Permissions>, server: Permissions) -> bool {
+    match needed {
+        None => true,
+        Some(needed) if needed.is_empty() => server.contains(Permissions::ADMINISTRATOR),
+        Some(needed) => server.contains(needed),
+    }
+}
+
 /// Runs `message` as a text command if it is one, to the end, and returns whether it was one. A
 /// member's message that starts with the server's prefix or the bot's mention and names one of the
 /// bot's commands; anything else is left alone.
+///
+/// The server's `text_commands` module decides first: where it is off, a command typed with the
+/// prefix is ignored without a word (another bot may be using that prefix there), and one typed
+/// after the bot's mention is refused. The rate limit fails closed: when it cannot be read the
+/// command is ignored, because a reply could not be limited either.
 pub async fn on_text_command(app: Arc<App>, message: &Message) -> bool {
     let Some(guild) = message.guild_id.filter(|_| eligible(message)).map(|g| g.get()) else {
         return false;
@@ -334,11 +364,24 @@ pub async fn on_text_command(app: Arc<App>, message: &Message) -> bool {
     if matches!(parsed, Err(Refusal::Unknown)) && !mentioned {
         return false;
     }
+    let gate = app
+        .module_access(guild, Some(message.channel_id.get()), Module::TextCommands)
+        .await;
+    if !mentioned && !matches!(gate, Ok(Access::Allowed)) {
+        if let Err(error) = &gate {
+            tracing::warn!(%error, guild, "text commands ignored: module rules unavailable");
+        }
+        metrics::counter!("pinchora_text_commands_refused_total", "reason" => "module").increment(1);
+        return true;
+    }
     let user = message.author.id.get();
-    match app.cache.try_cooldown(&format!("text:{user}"), RATE).await {
-        Ok(None) => {}
-        Ok(Some(_)) => return true,
-        Err(error) => tracing::debug!(%error, "text command rate limit unavailable"),
+    let counted = app.cache.try_cooldown(&format!("text:{user}"), RATE).await;
+    if !within_rate(&counted) {
+        if let Err(error) = &counted {
+            tracing::warn!(%error, "text commands ignored: rate limit unavailable");
+            metrics::counter!("pinchora_text_commands_refused_total", "reason" => "rate_limit").increment(1);
+        }
+        return true;
     }
     let path = match &parsed {
         Ok(parsed) => parsed.path.clone(),
@@ -356,7 +399,7 @@ pub async fn on_text_command(app: Arc<App>, message: &Message) -> bool {
         message.id,
         path.clone(),
     ));
-    let notice = match prepare(&app, guild, message, parsed, &prefix, &held).await {
+    let notice = match prepare(&app, guild, message, parsed, gate, &prefix, &held).await {
         Ok(Prepared::Run(interaction)) => {
             handle_interaction(app.clone(), *interaction, responder.clone()).await;
             None
@@ -387,14 +430,29 @@ enum Prepared {
 }
 
 /// Everything between the parse and the handler: the interaction to run, or the notice to post.
+/// `gate` is what the `text_commands` module said for this channel.
 async fn prepare(
     app: &App,
     guild: u64,
     message: &Message,
     parsed: Result<Parsed<'_>, Refusal>,
+    gate: anyhow::Result<Access>,
     prefix: &str,
     held: &[u64],
 ) -> anyhow::Result<Prepared> {
+    let user = message.author.id.get();
+    // Switched off here, and the member spoke to the bot directly: say so, as a slash command would.
+    match gate? {
+        Access::Allowed => {}
+        access => {
+            let manager = match app.guild_facts(guild).await {
+                Ok(facts) => guild_permissions(&facts, guild, user, held).contains(Permissions::MANAGE_GUILD),
+                Err(_) => false,
+            };
+            metrics::counter!("pinchora_text_commands_refused_total", "reason" => "module").increment(1);
+            return Ok(Prepared::Notice(refusal(Module::TextCommands, access, manager)));
+        }
+    }
     let parsed = match parsed {
         Ok(parsed) => parsed,
         Err(Refusal::Usage(usage)) => return Ok(Prepared::Notice(usage)),
@@ -414,17 +472,41 @@ async fn prepare(
         let notice = format!("This one only works as a slash command: use `/{}`.", parsed.path);
         return Ok(Prepared::Notice(notice));
     }
+    // What Discord does before a slash command is sent: where the member may use commands at all,
+    // and what the server's Integrations settings say about this command.
     let facts = app.guild_facts(guild).await?;
-    let permissions = guild_permissions(&facts, guild, message.author.id.get(), held);
-    // What Discord does before a slash command runs: keep it from members without its permissions.
-    if let Some(needed) = parsed.command.default_member_permissions
-        && !permissions.contains(needed)
-    {
-        let notice = format!(
-            "You need {} to use `{}`.",
-            permission_names(needed),
-            parsed.command.name
-        );
+    let server = guild_permissions(&facts, guild, user, held);
+    let channel = app.channel_rules(message.channel_id.get()).await?;
+    let permissions = channel_permissions(server, guild, user, held, &channel.overwrites);
+    if !permissions.contains(Permissions::USE_SLASH_COMMANDS) {
+        metrics::counter!("pinchora_text_commands_refused_total", "reason" => "channel_permission").increment(1);
+        return Ok(Prepared::Notice("You can't use commands in this channel.".to_owned()));
+    }
+    let verdict = if server.contains(Permissions::ADMINISTRATOR) {
+        Verdict::Silent
+    } else {
+        let overrides = app.command_overrides(guild).await?;
+        overrides.verdict(&parsed.command.name, guild, user, held, &channel.lineage)
+    };
+    let may = match verdict {
+        Verdict::Denied => false,
+        Verdict::Allowed => true,
+        Verdict::Silent => allowed_by_default(parsed.command.default_member_permissions, server),
+    };
+    if !may {
+        metrics::counter!("pinchora_text_commands_refused_total", "reason" => "command_permission").increment(1);
+        let notice = match (verdict, parsed.command.default_member_permissions) {
+            (Verdict::Silent, Some(needed)) if !needed.is_empty() => format!(
+                "You need {} to use `{}`.",
+                permission_names(needed),
+                parsed.command.name
+            ),
+            (Verdict::Silent, _) => format!("`{}` is only for administrators.", parsed.command.name),
+            _ => format!(
+                "This server's command permissions don't let you use `{}` here.",
+                parsed.command.name
+            ),
+        };
         return Ok(Prepared::Notice(notice));
     }
     let resolved = match resolve(app, guild, message, &parsed, &facts).await {
@@ -496,6 +578,33 @@ mod tests {
             "flags": 0,
         }))
         .expect("role JSON")
+    }
+
+    #[test]
+    fn the_rate_limit_fails_closed() {
+        assert!(within_rate(&Ok(None)), "the first command in a while");
+        assert!(!within_rate(&Ok(Some(Duration::from_millis(900)))), "too soon");
+        assert!(
+            !within_rate(&Err(anyhow::anyhow!("redis is down"))),
+            "unknown is denied"
+        );
+    }
+
+    #[test]
+    fn a_command_kept_for_administrators_is_only_theirs() {
+        let none = Permissions::empty();
+        let staff = Permissions::MANAGE_GUILD;
+        // Nothing asked: everyone.
+        assert!(allowed_by_default(None, none));
+        // Something asked: those who have it all.
+        assert!(!allowed_by_default(Some(staff), none));
+        assert!(allowed_by_default(Some(staff), staff | Permissions::SEND_MESSAGES));
+        assert!(allowed_by_default(Some(staff), Permissions::all()));
+        // "0": nobody but administrators (an empty set is contained in every set, which must not count).
+        assert!(!allowed_by_default(Some(none), none));
+        assert!(!allowed_by_default(Some(none), staff));
+        assert!(allowed_by_default(Some(none), Permissions::ADMINISTRATOR));
+        assert!(allowed_by_default(Some(none), Permissions::all()));
     }
 
     #[test]

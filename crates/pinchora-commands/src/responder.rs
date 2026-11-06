@@ -42,8 +42,8 @@ struct TextTarget {
 /// does the same for a handler that outlasts Discord's window.
 ///
 /// A text command ([`Responder::text`]) has no interaction to answer: every answer is a reply to the
-/// member's message that pings nobody. A private answer is deleted after [`TEXT_PRIVATE_LINGER`],
-/// and a private panel or a form, which a channel reply cannot stand in for, becomes a notice to use
+/// member's message that pings nobody. A private answer is deleted after [`TEXT_PRIVATE_LINGER`]
+/// (or when the bot shuts down, whichever is first), and a private panel or a form, which a channel reply cannot stand in for, becomes a notice to use
 /// the slash command.
 pub struct Responder {
     app: Arc<App>,
@@ -353,13 +353,7 @@ impl Responder {
         let posted = request.await?.model().await?;
         let _ = text.first.set(posted.id);
         if private {
-            let (app, channel, id) = (self.app.clone(), text.channel, posted.id);
-            tokio::spawn(async move {
-                tokio::time::sleep(TEXT_PRIVATE_LINGER).await;
-                if let Err(error) = app.http.delete_message(channel, id).await {
-                    tracing::debug!(%error, "private text answer not deleted");
-                }
-            });
+            self.app.delete_later(text.channel, posted.id, TEXT_PRIVATE_LINGER);
         }
         Ok(())
     }

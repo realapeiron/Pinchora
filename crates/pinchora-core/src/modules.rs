@@ -87,11 +87,12 @@ pub enum Module {
     PartyGames,
     Collection,
     Gambling,
+    TextCommands,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 26] = [
+    pub const ALL: [Self; 27] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -118,6 +119,7 @@ impl Module {
         Self::PartyGames,
         Self::Collection,
         Self::Gambling,
+        Self::TextCommands,
     ];
 
     /// The key stored in the database and used in the API.
@@ -149,6 +151,7 @@ impl Module {
             Self::PartyGames => "party_games",
             Self::Collection => "collection",
             Self::Gambling => "gambling",
+            Self::TextCommands => "text_commands",
         }
     }
 
@@ -184,6 +187,7 @@ impl Module {
             Self::PartyGames => "Word party games",
             Self::Collection => "Critter drops and beachcombing",
             Self::Gambling => "Gambling-style games",
+            Self::TextCommands => "Text commands",
         }
     }
 
@@ -218,6 +222,9 @@ impl Module {
             }
             Self::Collection => "/dex, /beachcomb, /crabpot, /critterdrop and drops that wash up in chat.",
             Self::Gambling => "Games that stake shells on chance: the shell game and staked derbies.",
+            Self::TextCommands => {
+                "Commands typed as messages, with the prefix or an @mention. Slash commands are not affected."
+            }
         }
     }
 
@@ -232,7 +239,8 @@ impl Module {
             | Self::Store
             | Self::Suggestions
             | Self::Polls
-            | Self::Giveaways => Group::Server,
+            | Self::Giveaways
+            | Self::TextCommands => Group::Server,
             Self::Profile | Self::Economy | Self::Shop | Self::Quests | Self::Social => Group::Players,
             Self::House | Self::Plaza | Self::Pets | Self::Fishing => Group::Home,
             Self::Duels

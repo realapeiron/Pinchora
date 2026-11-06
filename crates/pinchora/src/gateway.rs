@@ -2,8 +2,9 @@ use std::{sync::Arc, time::Duration};
 
 use pinchora_cache::{RedisQueue, StoredSession};
 use pinchora_commands::{
-    App, Responder, handle_gateway_interaction, on_ban_add, on_ban_remove, on_guild_create, on_guild_delete,
-    on_member_add, on_member_remove, on_member_update, on_message, on_voice_state_update,
+    App, PermissionChange, Responder, handle_gateway_interaction, on_ban_add, on_ban_remove, on_guild_create,
+    on_guild_delete, on_member_add, on_member_remove, on_member_update, on_message, on_permissions_changed,
+    on_voice_state_update,
 };
 use pinchora_core::{
     Config, cluster,
@@ -36,6 +37,16 @@ fn wanted_events() -> EventTypeFlags {
         | EventTypeFlags::VOICE_STATE_UPDATE
         | EventTypeFlags::GUILD_CREATE
         | EventTypeFlags::GUILD_DELETE
+        // What text commands judge a member's permissions by: the server's owner and roles, a
+        // channel's overwrites and the Integrations settings. Cheap, and they come under the
+        // Guilds intent (the last one with no intent at all).
+        | EventTypeFlags::GUILD_UPDATE
+        | EventTypeFlags::ROLE_CREATE
+        | EventTypeFlags::ROLE_UPDATE
+        | EventTypeFlags::ROLE_DELETE
+        | EventTypeFlags::CHANNEL_UPDATE
+        | EventTypeFlags::CHANNEL_DELETE
+        | EventTypeFlags::COMMAND_PERMISSIONS_UPDATE
         | EventTypeFlags::READY
         | EventTypeFlags::RESUMED
 }
@@ -261,6 +272,15 @@ fn dispatch(app: &Arc<App>, shard: u32, event: Event) {
                 }
             });
         }
+        Event::GuildUpdate(event) => forget(app, PermissionChange::Guild(event.id.get())),
+        Event::RoleCreate(event) => forget(app, PermissionChange::Guild(event.guild_id.get())),
+        Event::RoleUpdate(event) => forget(app, PermissionChange::Guild(event.guild_id.get())),
+        Event::RoleDelete(event) => forget(app, PermissionChange::Guild(event.guild_id.get())),
+        Event::ChannelUpdate(event) => forget(app, PermissionChange::Channel(event.id.get())),
+        Event::ChannelDelete(event) => forget(app, PermissionChange::Channel(event.id.get())),
+        Event::CommandPermissionsUpdate(event) => {
+            forget(app, PermissionChange::CommandPermissions(event.guild_id.get()));
+        }
         Event::Ready(ready) => {
             tracing::info!(shard, guilds = ready.guilds.len(), "shard ready");
             metrics::gauge!("pinchora_shard_guilds", "shard" => shard.to_string()).set(ready.guilds.len() as f64);
@@ -268,4 +288,12 @@ fn dispatch(app: &Arc<App>, shard: u32, event: Event) {
         Event::Resumed => tracing::info!(shard, "shard resumed"),
         _ => {}
     }
+}
+
+/// Drops what text commands cached about a permission that changed. Not a droppable event like a
+/// chat message: a missed one would leave the old permissions for up to a minute (five for command
+/// permissions).
+fn forget(app: &Arc<App>, change: PermissionChange) {
+    let app2 = app.clone();
+    app.spawn(async move { on_permissions_changed(&app2, change).await });
 }

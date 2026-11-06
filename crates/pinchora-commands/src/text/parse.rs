@@ -2,6 +2,8 @@
 //! slash command tree, into the [`CommandData`] Discord would send for the same slash command. Pure:
 //! the ids it finds are looked up afterwards.
 
+use std::num::IntErrorKind;
+
 use twilight_model::{
     application::{
         command::{Command, CommandOption, CommandOptionChoiceValue, CommandOptionType, CommandOptionValue as Bound},
@@ -12,6 +14,11 @@ use twilight_model::{
         marker::{ChannelMarker, RoleMarker, UserMarker},
     },
 };
+
+/// The largest whole number Discord lets an integer option carry, either way (2^53: what a double holds
+/// exactly). A typed number beyond it is brought back to it, so no handler is handed a value that
+/// no slash command could send.
+pub(crate) const MAX_INTEGER: i64 = 1 << 53;
 
 /// Short names for the commands typed most, as `(alias, command)`.
 pub(crate) const ALIASES: &[(&str, &str)] = &[
@@ -236,7 +243,14 @@ fn value(option: &CommandOption, text: &str) -> Result<CommandOptionValue, Strin
         }
         CommandOptionType::Integer => {
             let digits: String = text.chars().filter(|c| !matches!(c, ',' | '_')).collect();
-            let n: i64 = digits.parse().map_err(|_| format!("`{name}` is a whole number."))?;
+            let n = match digits.parse::<i64>() {
+                Ok(n) => n,
+                // Too big to be a number at all is still a big number, which `clamp` brings in range.
+                Err(error) if matches!(error.kind(), IntErrorKind::PosOverflow) => MAX_INTEGER,
+                Err(error) if matches!(error.kind(), IntErrorKind::NegOverflow) => -MAX_INTEGER,
+                Err(_) => return Err(format!("`{name}` is a whole number.")),
+            }
+            .clamp(-MAX_INTEGER, MAX_INTEGER);
             in_bounds(option, n as f64)?;
             Ok(CommandOptionValue::Integer(n))
         }
@@ -673,6 +687,45 @@ mod tests {
             let shown = usage("p!", &path, &options);
             assert!(shown.starts_with(&format!("Usage: `p!{path}")), "{shown}");
         }
+    }
+
+    #[test]
+    fn whole_numbers_stop_at_what_discord_allows() {
+        let option: CommandOption = serde_json::from_value(serde_json::json!({
+            "type": 4,
+            "name": "n",
+            "description": "a number",
+        }))
+        .expect("option JSON");
+        let read = |text: &str| value(&option, text);
+        assert_eq!(read("50"), Ok(CommandOptionValue::Integer(50)));
+        assert_eq!(read("-1,000"), Ok(CommandOptionValue::Integer(-1000)));
+        assert_eq!(read("9007199254740992"), Ok(CommandOptionValue::Integer(MAX_INTEGER)));
+        for huge in ["9007199254740993", "9223372036854775807", "99999999999999999999999999"] {
+            assert_eq!(read(huge), Ok(CommandOptionValue::Integer(MAX_INTEGER)), "{huge}");
+        }
+        for huge in [
+            "-9007199254740993",
+            "-9223372036854775808",
+            "-99999999999999999999999999",
+        ] {
+            assert_eq!(read(huge), Ok(CommandOptionValue::Integer(-MAX_INTEGER)), "{huge}");
+        }
+        assert!(read("12x").is_err() && read("").is_err() && read("-").is_err());
+        // The option's own bounds still apply to the clamped number.
+        let bounded: CommandOption = serde_json::from_value(serde_json::json!({
+            "type": 4,
+            "name": "bet",
+            "description": "a bet",
+            "min_value": 1,
+            "max_value": 1000,
+        }))
+        .expect("option JSON");
+        assert_eq!(value(&bounded, "1000"), Ok(CommandOptionValue::Integer(1000)));
+        assert_eq!(
+            value(&bounded, "99999999999999999999"),
+            Err("`bet` goes from 1 to 1000.".to_owned())
+        );
     }
 
     /// What the parser builds is what twilight's derive reads for the handler, mentions included.
