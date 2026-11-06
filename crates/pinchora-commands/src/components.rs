@@ -4,8 +4,8 @@ use crate::{
     Cx,
     commands::{
         character, collection, connect4, contest, customize, decorate, duel, fish, friends, gift, giveaway, guestbook,
-        hangman, house, interact, leaderboard, partner, pet, plaza, poll, quests, role_panels, rps, shop, stall, store,
-        suggest, trivia, wordle,
+        hangman, house, interact, leaderboard, partner, party, pet, plaza, poll, quests, role_panels, rps, shop, stall,
+        store, suggest, trivia, wordle,
     },
 };
 
@@ -66,6 +66,7 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
         Some("mb") => collection::drops::on_open(cx, parts).await,
         Some("bc") => collection::dex::on_component(cx, parts, values.first().map(String::as_str)).await,
         Some("kp") => collection::crabpot::on_component(cx, parts).await,
+        Some(prefix @ ("hl" | "ac" | "cn" | "wx" | "wy" | "td")) => party::on_component(cx, prefix, parts).await,
         _ => cx.reply_ephemeral("This button has expired.").await,
     }
 }
@@ -78,6 +79,7 @@ pub(crate) async fn dispatch_modal(cx: &Cx, custom_id: &str, fields: &[(String, 
         Some("gb") => guestbook::on_modal(cx, parts, fields).await,
         Some("cs") => customize::on_style_modal(cx, parts, fields).await,
         Some("ca") => character::on_modal(cx, parts, fields).await,
+        Some(prefix @ ("hl" | "ac" | "cn" | "wx")) => party::on_modal(cx, prefix, parts, fields).await,
         Some("wo") if parts.next() == Some("m") => {
             let text = fields
                 .iter()

@@ -15,6 +15,7 @@ use crate::{
     commands::{
         collection::settings::{ConfigCritters, critters_summary},
         level_roles::ConfigLevelRoles,
+        party::{ConfigPartyGames, party_summary},
         points::ConfigPoints,
         rep_roles::ConfigRepRoles,
         store::ConfigStore,
@@ -71,6 +72,8 @@ pub enum ConfigCommand {
     Suggestions(ConfigSuggestions),
     #[command(name = "critters")]
     Critters(ConfigCritters),
+    #[command(name = "partygames")]
+    PartyGames(ConfigPartyGames),
 }
 
 #[derive(CommandOption, CreateOption, Clone, Copy)]
@@ -181,6 +184,7 @@ impl ConfigCommand {
             Self::LogEvents(c) => return c.run(cx, guild).await,
             Self::Suggestions(c) => return c.run(cx, guild).await,
             Self::Critters(c) => return c.run(cx, guild).await,
+            Self::PartyGames(c) => return c.run(cx, guild).await,
             Self::Points(c) => match c.apply(&cx.app.db, guild).await? {
                 Ok(settings) => settings,
                 Err(reason) => return cx.reply_ephemeral(reason).await,
@@ -202,6 +206,9 @@ impl ConfigCommand {
             )
             .build(),
         );
+        embed
+            .fields
+            .push(EmbedFieldBuilder::new("Party games", party_summary(cx.app.db.party_strict(guild).await?)).build());
         cx.reply(InteractionResponseData {
             embeds: Some(vec![embed]),
             flags: Some(MessageFlags::EPHEMERAL),

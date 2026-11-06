@@ -22,6 +22,7 @@ pub(crate) mod interact;
 pub(crate) mod leaderboard;
 mod level_roles;
 pub(crate) mod partner;
+pub(crate) mod party;
 pub(crate) mod pet;
 mod ping;
 pub(crate) mod play;
@@ -112,4 +113,5 @@ commands!(
     collection::beachcomb::Beachcomb,
     collection::crabpot::CrabPot,
     collection::drops::CritterDrop,
+    party::PartyCommand,
 );

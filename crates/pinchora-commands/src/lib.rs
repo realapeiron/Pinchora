@@ -19,6 +19,7 @@ pub use commands::{
     definitions as command_definitions,
     games::{spawn_janitor as spawn_game_janitor, sweep as sweep_games},
     partner::partner_name,
+    party::{spawn_ticker as spawn_party_ticker, tick as party_tick},
 };
 pub use cx::Cx;
 pub use defer::Deferral;

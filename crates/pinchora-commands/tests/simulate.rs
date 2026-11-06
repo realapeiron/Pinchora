@@ -70,6 +70,9 @@ use twilight_model::{
 // The collection games' flows (Critter Drop, bottles, Beachcomb, Tide Pool Dex, Crab Pot).
 #[path = "simulate/collection.rs"]
 mod collection;
+// The party games' flows (Hot Pearl, Acronym Tide, Caption the Postcard, Wordle Race, Would You Rather, Truth or Dare).
+#[path = "simulate/words.rs"]
+mod words;
 
 const APPLICATION_ID: u64 = 1;
 const CHANNEL_ID: u64 = 2;

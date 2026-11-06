@@ -1,5 +1,5 @@
 //! The calm games: pure rules and content for connect four, rock-paper-scissors, hangman, wordle
-//! and trivia. Nothing here touches the database or Discord.
+//! and trivia (the party games live in [`crate::party`]). Nothing here touches the database or Discord.
 
 pub mod connect4;
 mod content;
@@ -23,10 +23,16 @@ pub enum Game {
     Bottle,
     Beachcomb,
     CrabPot,
+    HotPearl,
+    Acronym,
+    Postcard,
+    WordRace,
+    WouldYouRather,
+    TruthOrDare,
 }
 
 impl Game {
-    pub const ALL: [Game; 10] = [
+    pub const ALL: [Game; 16] = [
         Self::TicTacToe,
         Self::Connect4,
         Self::Rps,
@@ -37,6 +43,12 @@ impl Game {
         Self::Bottle,
         Self::Beachcomb,
         Self::CrabPot,
+        Self::HotPearl,
+        Self::Acronym,
+        Self::Postcard,
+        Self::WordRace,
+        Self::WouldYouRather,
+        Self::TruthOrDare,
     ];
 
     /// What the database and the reward-cap counters call it.
@@ -52,6 +64,12 @@ impl Game {
             Self::Bottle => "bottle",
             Self::Beachcomb => "beachcomb",
             Self::CrabPot => "crabpot",
+            Self::HotPearl => "hotpearl",
+            Self::Acronym => "acronym",
+            Self::Postcard => "postcard",
+            Self::WordRace => "wordrace",
+            Self::WouldYouRather => "wouldyourrather",
+            Self::TruthOrDare => "truthordare",
         }
     }
 
@@ -67,6 +85,12 @@ impl Game {
             Self::Bottle => "Message in a bottle",
             Self::Beachcomb => "Beachcomb",
             Self::CrabPot => "Crab pot",
+            Self::HotPearl => "Hot Pearl",
+            Self::Acronym => "Acronym Tide",
+            Self::Postcard => "Caption the Postcard",
+            Self::WordRace => "Wordle Race",
+            Self::WouldYouRather => "Would You Rather",
+            Self::TruthOrDare => "Truth or Dare",
         }
     }
 
@@ -82,6 +106,12 @@ impl Game {
             Self::Bottle => "🍾",
             Self::Beachcomb => "🐚",
             Self::CrabPot => "🦞",
+            Self::HotPearl => "🦪",
+            Self::Acronym => "🌊",
+            Self::Postcard => "💌",
+            Self::WordRace => "🏁",
+            Self::WouldYouRather => "⚖️",
+            Self::TruthOrDare => "🎲",
         }
     }
 
@@ -104,6 +134,13 @@ impl Game {
             Self::Bottle => 34,
             Self::Beachcomb => 17,
             Self::CrabPot => 170,
+            // The party games pay by how the game went; these are about what a win is worth.
+            Self::HotPearl => 32,
+            Self::Acronym => 25,
+            Self::Postcard => 25,
+            Self::WordRace => 25,
+            Self::WouldYouRather => 1,
+            Self::TruthOrDare => 4,
         }
     }
 
@@ -121,6 +158,13 @@ impl Game {
             Self::Bottle => 10,
             Self::Beachcomb => 24,
             Self::CrabPot => 3,
+            // Paid games a day; later ones are still counted in /play stats.
+            Self::HotPearl => 6,
+            Self::Acronym => 6,
+            Self::Postcard => 6,
+            Self::WordRace => 6,
+            Self::WouldYouRather => 10,
+            Self::TruthOrDare => 5,
         }
     }
 }
