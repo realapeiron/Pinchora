@@ -75,6 +75,9 @@ mod board;
 // The collection games' flows (Critter Drop, bottles, Beachcomb, Tide Pool Dex, Crab Pot).
 #[path = "simulate/collection.rs"]
 mod collection;
+// Moderation commands, cases and the mod-log; the detailed server log.
+#[path = "simulate/moderation.rs"]
+mod moderation;
 // Correctness follow-ups: stale buttons, forfeits, repeated requests, forged ids, voice XP at scale.
 #[path = "simulate/w9a.rs"]
 mod w9a;
@@ -188,6 +191,14 @@ struct Mock {
     channel_lookups: Arc<Mutex<HashMap<u64, usize>>>,
     /// Whether looking up the server itself fails (Discord is down).
     guild_lookup_fails: Arc<AtomicBool>,
+    /// Who owns the server (the bot unless a test says otherwise).
+    owner: Arc<AtomicU64>,
+    /// Users the server has banned.
+    bans: Arc<Mutex<Vec<u64>>>,
+    /// Moderation calls seen: bans, kicks, member edits, deletes, channel edits and overwrites.
+    mod_calls: Arc<Mutex<Vec<String>>>,
+    /// A channel's recent messages, newest first, as `GET /channels/{id}/messages` answers them.
+    history: Arc<Mutex<HashMap<u64, Vec<Value>>>>,
 }
 
 /// A message a handler posted to a channel (`POST`) or edited there (`PATCH`).
@@ -383,11 +394,102 @@ async fn discord(
             }
             return (StatusCode::NO_CONTENT, String::new());
         }
+        (&Method::PUT, [.., "guilds", _, "bans", user]) => {
+            let (body, _) = request_body(&headers, &body);
+            mock.bans.lock().unwrap().push(number(user));
+            let seconds = body["delete_message_seconds"].as_u64().unwrap_or(0);
+            mock.mod_calls.lock().unwrap().push(format!("ban {user} {seconds}"));
+            return (StatusCode::NO_CONTENT, String::new());
+        }
+        (&Method::DELETE, [.., "guilds", _, "bans", user]) => {
+            let mut bans = mock.bans.lock().unwrap();
+            if !bans.contains(&number(user)) {
+                let gone = json!({ "message": "Unknown Ban", "code": 10026 });
+                return (StatusCode::NOT_FOUND, gone.to_string());
+            }
+            bans.retain(|b| *b != number(user));
+            mock.mod_calls.lock().unwrap().push(format!("unban {user}"));
+            return (StatusCode::NO_CONTENT, String::new());
+        }
+        (&Method::DELETE, [.., "guilds", _, "members", user]) => {
+            mock.mod_calls.lock().unwrap().push(format!("kick {user}"));
+            return (StatusCode::NO_CONTENT, String::new());
+        }
+        (&Method::PATCH, [.., "guilds", _, "members", user]) => {
+            let (body, _) = request_body(&headers, &body);
+            mock.mod_calls.lock().unwrap().push(format!("member {user} {body}"));
+            let roles = mock
+                .member_roles
+                .lock()
+                .unwrap()
+                .get(&number(user))
+                .cloned()
+                .unwrap_or_default();
+            return (StatusCode::OK, member_json(number(user), &roles).to_string());
+        }
+        (&Method::GET, [.., "channels", channel, "messages"]) => {
+            let history = mock
+                .history
+                .lock()
+                .unwrap()
+                .get(&number(channel))
+                .cloned()
+                .unwrap_or_default();
+            return (StatusCode::OK, Value::Array(history).to_string());
+        }
+        (&Method::POST, [.., "channels", _, "messages", "bulk-delete"]) => {
+            let (body, _) = request_body(&headers, &body);
+            let n = body["messages"].as_array().map_or(0, Vec::len);
+            mock.mod_calls.lock().unwrap().push(format!("bulk-delete {n}"));
+            return (StatusCode::NO_CONTENT, String::new());
+        }
+        (&Method::DELETE, [.., "channels", _, "messages", id]) => {
+            mock.mod_calls.lock().unwrap().push(format!("delete {id}"));
+            return (StatusCode::NO_CONTENT, String::new());
+        }
+        (&Method::PATCH, [.., "channels", channel]) => {
+            let (body, _) = request_body(&headers, &body);
+            mock.mod_calls.lock().unwrap().push(format!("channel {channel} {body}"));
+            let known = mock.channels.lock().unwrap().get(&number(channel)).cloned();
+            let answer = known.unwrap_or_else(|| json!({ "id": channel, "type": 0, "name": "sim-channel" }));
+            return (StatusCode::OK, answer.to_string());
+        }
+        (&Method::PUT, [.., "channels", channel, "permissions", id]) => {
+            let (body, _) = request_body(&headers, &body);
+            mock.mod_calls.lock().unwrap().push(format!(
+                "overwrite {channel} {id} allow={} deny={}",
+                body["allow"], body["deny"]
+            ));
+            if let Some(known) = mock.channels.lock().unwrap().get_mut(&number(channel)) {
+                let mut overwrites: Vec<Value> = known["permission_overwrites"].as_array().cloned().unwrap_or_default();
+                overwrites.retain(|o| o["id"] != json!(id));
+                overwrites
+                    .push(json!({ "id": id, "type": body["type"], "allow": body["allow"], "deny": body["deny"] }));
+                known["permission_overwrites"] = Value::Array(overwrites);
+            }
+            return (StatusCode::NO_CONTENT, String::new());
+        }
+        (&Method::DELETE, [.., "channels", channel, "permissions", id]) => {
+            mock.mod_calls
+                .lock()
+                .unwrap()
+                .push(format!("overwrite-delete {channel} {id}"));
+            if let Some(known) = mock.channels.lock().unwrap().get_mut(&number(channel))
+                && let Some(list) = known["permission_overwrites"].as_array_mut()
+            {
+                list.retain(|o| o["id"] != json!(id));
+            }
+            return (StatusCode::NO_CONTENT, String::new());
+        }
         (&Method::GET, [.., "guilds", _]) if mock.guild_lookup_fails.load(Ordering::SeqCst) => {
             let down = json!({ "message": "Service unavailable", "code": 0 });
             return (StatusCode::INTERNAL_SERVER_ERROR, down.to_string());
         }
-        (&Method::GET, [.., "guilds", guild]) => return (StatusCode::OK, guild_json(number(guild)).to_string()),
+        (&Method::GET, [.., "guilds", guild]) => {
+            let mut answer = guild_json(number(guild));
+            answer["owner_id"] = json!(mock.owner.load(Ordering::SeqCst).to_string());
+            return (StatusCode::OK, answer.to_string());
+        }
         (&Method::GET, [.., "channels", channel]) => {
             *mock.channel_lookups.lock().unwrap().entry(number(channel)).or_default() += 1;
             return match mock.channels.lock().unwrap().get(&number(channel)) {
@@ -903,6 +1005,11 @@ struct Sim {
 
 impl Sim {
     async fn new(name: &'static str) -> Option<Self> {
+        Self::with(name, |_| {}).await
+    }
+
+    /// [`Sim::new`] with a last change to the [`App`] before it is shared, like a config switch.
+    async fn with(name: &'static str, configure: impl FnOnce(&mut App)) -> Option<Self> {
         let (Ok(database), Ok(redis)) = (
             std::env::var("PINCHORA_TEST_DATABASE_URL"),
             std::env::var("PINCHORA_TEST_REDIS_URL"),
@@ -931,6 +1038,10 @@ impl Sim {
             channels: Arc::default(),
             channel_lookups: Arc::default(),
             guild_lookup_fails: Arc::default(),
+            owner: Arc::new(AtomicU64::new(APPLICATION_ID)),
+            bans: Arc::default(),
+            mod_calls: Arc::default(),
+            history: Arc::default(),
         };
         let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind the mock");
         let mock = listener.local_addr().expect("mock address");
@@ -950,6 +1061,7 @@ impl Sim {
             .proxy(reqwest::Proxy::all(format!("http://{mock}")).expect("proxy"))
             .build()
             .expect("http client");
+        configure(&mut app);
 
         let dir = Path::new(env!("CARGO_TARGET_TMPDIR"))
             .parent()
@@ -5203,9 +5315,9 @@ async fn join_role_goodbye_and_server_log() {
         )
         .await;
     assert!(
-        reply.content().contains("name changes off")
-            && reply.content().contains("voice off")
-            && reply.content().contains("bans on"),
+        reply.content().contains("Members: 3/5 on")
+            && reply.content().contains("Voice: 1/5 on")
+            && reply.content().contains("Moderation: 4/4 on"),
         "{}",
         reply.content()
     );
@@ -12097,7 +12209,10 @@ const ADMINISTRATOR: u64 = 1 << 3;
 async fn admin_state(sim: &Sim, target: u64, suggestion: i64) -> String {
     let (db, guild) = (&sim.app.db, sim.guild);
     format!(
-        "{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}",
+        "{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}",
+        db.log_config(guild).await.unwrap(),
+        db.mod_settings(guild).await.unwrap(),
+        db.warn_thresholds(guild).await.unwrap(),
         db.guild_settings(guild).await.unwrap(),
         db.module_states(guild).await.unwrap(),
         db.level_roles(guild).await.unwrap(),
@@ -12286,6 +12401,27 @@ async fn admin_paths_refuse_members_without_manage_server() {
         (
             "config partygames",
             json!([sub("partygames", vec![bool_option("strict", true)])]),
+        ),
+        (
+            "config log-ignore",
+            json!([sub(
+                "log-ignore",
+                vec![user_option("user", target), bool_option("bots", true)]
+            )]),
+        ),
+        (
+            "config moderation",
+            json!([sub(
+                "moderation",
+                vec![bool_option("dm", false), channel_option("channel", channel)]
+            )]),
+        ),
+        (
+            "config warn-ladder",
+            json!([sub(
+                "warn-ladder",
+                vec![int_option("warns", 3), text_option("action", "kick")]
+            )]),
         ),
         (
             "roles panel",

@@ -373,7 +373,8 @@ mod tests {
     #[test]
     fn the_hierarchy_follows_discord() {
         let bot = |top| rank(BOT, top);
-        let rows: &[(&str, Rank, i64, Rank, Result<(), Refusal>)] = &[
+        type Row = (&'static str, Rank, i64, Rank, Result<(), Refusal>);
+        let rows: &[Row] = &[
             ("mod above member", rank(10, 5), 9, rank(11, 3), Ok(())),
             ("equal roles", rank(10, 5), 9, rank(11, 5), Err(Refusal::Above)),
             ("member above mod", rank(10, 5), 9, rank(11, 7), Err(Refusal::Above)),
