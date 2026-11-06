@@ -1,5 +1,24 @@
 //! Word de-disguise follows the party filter (including word boundaries).
 use super::Rule;
+use std::{
+    collections::HashMap,
+    sync::{LazyLock, Mutex},
+};
+
+static PATTERNS: LazyLock<Mutex<HashMap<String, regex::Regex>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
+
+fn compiled(pattern: &str) -> Option<regex::Regex> {
+    if let Some(found) = PATTERNS.lock().unwrap().get(pattern) {
+        return Some(found.clone());
+    }
+    let regex = super::compile(pattern).ok()?;
+    let mut cache = PATTERNS.lock().unwrap();
+    if cache.len() >= 256 {
+        cache.clear();
+    }
+    cache.insert(pattern.to_owned(), regex.clone());
+    Some(regex)
+}
 
 fn disguise(c: char, one: char) -> Option<char> {
     Some(match c {
@@ -134,16 +153,22 @@ fn domain_in(host: &str, domains: &[String]) -> bool {
 }
 /// Hosts without paths, credentials, ports or punctuation around markdown links.
 pub fn hosts(text: &str) -> Vec<String> {
-    text.split(|c: char| c.is_whitespace() || matches!(c, '<' | '>' | '(' | ')' | '[' | ']' | '"' | '\'' | '`'))
+    let visible = outside_code(text);
+    visible
+        .split(|c: char| c.is_whitespace() || matches!(c, '<' | '>' | '(' | ')' | '[' | ']' | '"' | '\''))
         .filter_map(|chunk| {
             let chunk = chunk.to_lowercase();
             let chunk = chunk.trim_end_matches([',', '.', '!', '?', ';', ':']);
+            let explicit = chunk.starts_with("https://") || chunk.starts_with("http://");
             let chunk = chunk
                 .strip_prefix("https://")
                 .or_else(|| chunk.strip_prefix("http://"))
                 .unwrap_or(chunk);
+            if !explicit && chunk.contains('@') {
+                return None;
+            }
             let host = chunk
-                .split('/')
+                .split(['/', '?', '#'])
                 .next()?
                 .rsplit('@')
                 .next()?
@@ -153,6 +178,33 @@ pub fn hosts(text: &str) -> Vec<String> {
             super::domain_valid(&host).then_some(host)
         })
         .collect()
+}
+
+fn outside_code(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut chars = text.chars().peekable();
+    let mut fence = false;
+    let mut inline = false;
+    while let Some(c) = chars.next() {
+        if c == '`' {
+            let mut n = 1;
+            while chars.peek() == Some(&'`') {
+                chars.next();
+                n += 1;
+            }
+            if n >= 3 {
+                fence = !fence;
+            } else if !fence {
+                inline = !inline;
+            }
+            out.push(' ');
+        } else if fence || inline {
+            out.push(if c == '\n' { '\n' } else { ' ' });
+        } else {
+            out.push(c);
+        }
+    }
+    out
 }
 fn longest_run<T: Eq>(items: impl IntoIterator<Item = T>) -> usize {
     let (mut previous, mut run, mut best) = (None, 0, 0);
@@ -208,12 +260,12 @@ pub fn matches(rule: &Rule, input: &Input<'_>) -> bool {
                 .params
                 .regex
                 .iter()
-                .any(|p| super::compile(p).is_ok_and(|r| r.is_match(text)))
+                .any(|p| compiled(p).is_some_and(|r| r.is_match(text)))
         }
         "invites" => {
             hosts(text).iter().any(|h| domain_in(h, &["discord.gg".into()]))
-                || super::compile(r"(?i)(?:^|[\s/(<])(?:www\.)?discord(?:app)?\.com/invite/[a-z0-9-]+")
-                    .is_ok_and(|r| r.is_match(text))
+                || compiled(r"(?i)(?:^|[\s/(<])(?:www\.)?discord(?:app)?\.com/invite/[a-z0-9-]+")
+                    .is_some_and(|r| r.is_match(text))
         }
         "links" => hosts(text).iter().any(|h| {
             !domain_in(h, &rule.params.allow_domains)
@@ -312,6 +364,68 @@ mod tests {
                     }
                 ),
                 expected
+            );
+        }
+    }
+    #[test]
+    fn links_require_real_hosts_outside_code() {
+        let mut rule = crate::automod::profile("strict", chrono::Utc::now())
+            .unwrap()
+            .rules
+            .into_iter()
+            .find(|r| r.kind == "links")
+            .unwrap();
+        rule.params.block_domains.clear();
+        for text in [
+            "Pi is 3.14",
+            "`https://x.com`",
+            "```rust\nlet version = 1.23;\nhttps://x.com\n```",
+        ] {
+            assert!(
+                !matches(
+                    &rule,
+                    &Input {
+                        content: text,
+                        ..Input::default()
+                    }
+                ),
+                "{text}"
+            );
+        }
+        assert!(matches(
+            &rule,
+            &Input {
+                content: "https://bücher.de/a",
+                ..Input::default()
+            }
+        ));
+        rule.params.block_domains = vec!["x.com".into()];
+        for text in [
+            "https://safe.example/docs/x.com",
+            "https://safe.example/?next=x.com",
+            "https://user:x.com@safe.example/docs",
+        ] {
+            assert!(
+                !matches(
+                    &rule,
+                    &Input {
+                        content: text,
+                        ..Input::default()
+                    }
+                ),
+                "{text}"
+            );
+        }
+        for text in ["[site](https://x.com/path)", "https://user:pass@x.com/path"] {
+            assert!(
+                matches(
+                    &rule,
+                    &Input {
+                        content: text,
+                        ..Input::default()
+                    }
+                ),
+                "{text}"
             );
         }
     }

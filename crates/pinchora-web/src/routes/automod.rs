@@ -96,7 +96,7 @@ async fn persist(state: &WebState, managed: &ManagedGuild, config: Config) -> Ap
             before: json!(before),
             after: json!(&config),
         },
-        None,
+        Some(pinchora_cache::Invalidation::Guild(guild)),
     )
     .await;
     view(state, managed).await

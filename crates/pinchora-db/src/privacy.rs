@@ -159,6 +159,7 @@ pub const ZEROED_COLUMNS: &[(&str, &str)] = &[("custom_commands", "created_by"),
 pub const OTHER_TABLES: &[&str] = &[
     "automod_settings",
     "automod_rules",
+    "automod_hit_actions",
     "_sqlx_migrations",
     "guilds",
     "level_roles",

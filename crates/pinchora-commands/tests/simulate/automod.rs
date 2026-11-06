@@ -56,6 +56,7 @@ async fn native_discord(
 }
 async fn native_sim(name: &'static str) -> Option<(Sim, NativeMock, tokio::task::JoinHandle<()>)> {
     let mut sim = Sim::new(name).await?;
+    sim.channel_is(CHANNEL_ID, 0, None);
     let mock = NativeMock {
         base: sim.mock.clone(),
         rules: Arc::default(),
@@ -99,6 +100,153 @@ async fn message(sim: &Sim, user: u64, text: &str, roles: &[u64]) -> u64 {
 }
 async fn settled(sim: &Sim) {
     sim.app.drain(Duration::from_secs(10)).await;
+}
+
+#[tokio::test]
+async fn automod_never_punishes_staff_below_bot() {
+    let Some((sim, _, task)) = native_sim("automod_staff_guard").await else {
+        return;
+    };
+    let mut c = config(&sim, "honeypot", false).await;
+    c.rules[0].actions = vec![Action::new("ban")];
+    sim.app.db.save_automod(sim.guild, unique(), &c).await.unwrap();
+    for power in [1 << 3, 1 << 5, 1 << 13, 1 << 40] {
+        let user = unique();
+        let role = unique();
+        sim.guild_role_with(role, "Staff", 1, power);
+        sim.app.forget_permission_facts(sim.guild).await;
+        sim.mock.member_roles.lock().unwrap().insert(user, vec![role]);
+        message(&sim, user, "ordinary message", &[role]).await;
+        settled(&sim).await;
+        assert!(!sim.mock.bans.lock().unwrap().contains(&user));
+    }
+    assert!(sim.app.db.automod_hits(sim.guild).await.unwrap().is_empty());
+    task.abort();
+}
+
+#[tokio::test]
+async fn automod_honeypot_respects_exempt_category() {
+    let Some((sim, _, task)) = native_sim("automod_exempt_category").await else {
+        return;
+    };
+    let mut c = config(&sim, "honeypot", false).await;
+    let category = unique();
+    sim.channel_is(category, 4, None);
+    sim.channel_is(CHANNEL_ID, 0, Some(category));
+    c.rules[0].exempt_channels = vec![category.to_string()];
+    c.rules[0].actions = vec![Action::new("ban")];
+    sim.app.db.save_automod(sim.guild, unique(), &c).await.unwrap();
+    let user = unique();
+    message(&sim, user, "message", &[]).await;
+    settled(&sim).await;
+    assert!(!sim.mock.bans.lock().unwrap().contains(&user));
+    assert!(sim.app.db.automod_hits(sim.guild).await.unwrap().is_empty());
+    task.abort();
+}
+
+#[tokio::test]
+async fn automod_legacy_native_url_false_positive_cannot_ban() {
+    let Some((sim, _, task)) = native_sim("automod_legacy_native_url").await else {
+        return;
+    };
+    let mut c = config(&sim, "links", false).await;
+    c.rules[0].native = true;
+    c.rules[0].params.block_domains = vec!["x.com".into()];
+    c.rules[0].actions = vec![Action::new("ban")];
+    sim.app.db.save_automod(sim.guild, unique(), &c).await.unwrap();
+    let rule_id: i64 = c.rules[0].id.as_deref().unwrap().parse().unwrap();
+    let old_native = unique();
+    sim.app
+        .db
+        .set_automod_native(sim.guild, rule_id, Some(old_native))
+        .await
+        .unwrap();
+    let user = unique();
+    let event = serde_json::from_value(json!({
+        "action":{"type":2,"metadata":{"channel_id":c.alert_channel_id}},
+        "guild_id":sim.guild.to_string(),"channel_id":CHANNEL_ID.to_string(),
+        "user_id":user.to_string(),"rule_id":old_native.to_string(),"rule_trigger_type":1,
+        "content":"https://safe.example/docs/x.com","message_id":unique().to_string()
+    }))
+    .unwrap();
+    on_automod_execution(sim.app.clone(), event).await.unwrap();
+    assert!(!sim.mock.bans.lock().unwrap().contains(&user));
+    assert!(sim.app.db.automod_hits(sim.guild).await.unwrap().is_empty());
+    task.abort();
+}
+
+#[tokio::test]
+async fn automod_sync_preserves_later_drift() {
+    let Some(sim) = Sim::new("automod_sync_generation").await else {
+        return;
+    };
+    config(&sim, "mentions", false).await;
+    let status = sim.app.db.automod_sync_status(sim.guild).await.unwrap().unwrap();
+    sim.app.db.queue_automod_sync(sim.guild).await.unwrap();
+    sim.app
+        .db
+        .finish_automod_sync(sim.guild, status.revision, status.generation, None)
+        .await
+        .unwrap();
+    let queued: Option<chrono::DateTime<chrono::Utc>> =
+        sqlx::query_scalar("SELECT sync_after FROM automod_settings WHERE guild_id=$1")
+            .bind(sim.guild as i64)
+            .fetch_one(sim.app.db.pool())
+            .await
+            .unwrap();
+    assert!(queued.is_some());
+}
+
+#[tokio::test]
+async fn automod_off_config_is_served_without_database_after_warmup() {
+    let Some(sim) = Sim::new("automod_off_cache").await else {
+        return;
+    };
+    assert_eq!(sim.app.automod_config(sim.guild).await.unwrap().profile, "off");
+    let mut tx = sim.app.db.pool().begin().await.unwrap();
+    sqlx::query("LOCK TABLE automod_settings IN ACCESS EXCLUSIVE MODE")
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    let cached = tokio::time::timeout(Duration::from_millis(250), sim.app.automod_config(sim.guild)).await;
+    assert_eq!(cached.unwrap().unwrap().profile, "off");
+    tx.rollback().await.unwrap();
+    let active = rules::profile("strict", sim.app.now()).unwrap();
+    sim.app.db.save_automod(sim.guild, unique(), &active).await.unwrap();
+    assert_eq!(sim.app.automod_config(sim.guild).await.unwrap().profile, "off");
+    sim.app.forget_automod_config(sim.guild).await;
+    assert_eq!(sim.app.automod_config(sim.guild).await.unwrap().profile, "strict");
+}
+
+#[tokio::test]
+async fn automod_alert_action_claim_is_durable() {
+    let Some(sim) = Sim::new("automod_action_claim").await else {
+        return;
+    };
+    let c = config(&sim, "honeypot", false).await;
+    let hit = pinchora_db::AutoModHit {
+        id: 0,
+        guild_id: sim.guild as i64,
+        rule_id: c.rules[0].id.as_deref().and_then(|s| s.parse().ok()),
+        user_id: unique() as i64,
+        channel_id: CHANNEL_ID as i64,
+        message_id: Some(unique() as i64),
+        action: "pending".into(),
+        snippet: None,
+        created_at: sim.app.now(),
+        reviewed: false,
+    };
+    let hit = sim.app.db.open_automod_hit(&hit).await.unwrap().unwrap();
+    assert!(sim.app.db.claim_automod_action(sim.guild, hit.id, "ban").await.unwrap());
+    sim.app.shift_clock(chrono::Duration::seconds(31));
+    assert!(!sim.app.db.claim_automod_action(sim.guild, hit.id, "ban").await.unwrap());
+    assert!(
+        sim.app
+            .db
+            .claim_automod_action(sim.guild, hit.id, "delete")
+            .await
+            .unwrap()
+    );
 }
 
 #[tokio::test]
@@ -214,6 +362,7 @@ async fn automod_content_flag_owner_bots_webhooks_and_exemptions_are_respected()
     let exempt = unique();
     c.rules[0].exempt_roles = vec![exempt.to_string()];
     sim.app.db.save_automod(sim.guild, unique(), &c).await.unwrap();
+    sim.app.forget_automod_config(sim.guild).await;
     message(&sim, owner, "hello", &[]).await;
     message(&sim, unique(), "hello", &[exempt]).await;
     let mut bot = sim.chat(unique(), &[]);
@@ -398,6 +547,7 @@ async fn automod_hierarchy_role_safety_escalation_and_warn_ladder() {
             .is_err()
     );
     sim.app.db.save_automod(sim.guild, unique(), &c).await.unwrap(); // proves runtime safety after a role's powers change
+    sim.app.forget_automod_config(sim.guild).await;
     message(&sim, unique(), "DANGEROUS ROLE MUST NOT BE GIVEN", &[]).await;
     settled(&sim).await;
     assert!(sim.mock.role_calls.lock().unwrap().is_empty());
@@ -408,6 +558,7 @@ async fn automod_hierarchy_role_safety_escalation_and_warn_ladder() {
         action: Action::new("timeout"),
     }];
     sim.app.db.save_automod(sim.guild, unique(), &c).await.unwrap();
+    sim.app.forget_automod_config(sim.guild).await;
     sim.app
         .db
         .replace_warn_thresholds(

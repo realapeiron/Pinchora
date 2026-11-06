@@ -247,12 +247,15 @@ fn domain_valid(d: &str) -> bool {
     !d.is_empty()
         && d.len() <= 253
         && d.contains('.')
+        && d.rsplit('.')
+            .next()
+            .is_some_and(|tld| tld.chars().any(char::is_alphabetic))
         && d.split('.').all(|part| {
             !part.is_empty()
                 && part.len() <= 63
                 && !part.starts_with('-')
                 && !part.ends_with('-')
-                && part.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-')
+                && part.chars().all(|c| c.is_alphanumeric() || c == '-')
         })
 }
 pub fn compile(s: &str) -> Result<regex::Regex, regex::Error> {

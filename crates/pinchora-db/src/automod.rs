@@ -23,6 +23,7 @@ pub struct AutoModHit {
 #[derive(Debug, sqlx::FromRow)]
 pub struct AutoModSync {
     pub revision: i64,
+    pub generation: i64,
     pub sync_error: Option<String>,
     pub synced_at: Option<DateTime<Utc>>,
 }
@@ -82,7 +83,7 @@ impl Db {
             .bind(sql_id(guild))
             .execute(&mut *tx)
             .await?;
-        sqlx::query("INSERT INTO automod_settings (guild_id,profile,escalation,dm_on_action,alert_channel_id,observe_until,revision,sync_after) VALUES ($1,$2,$3,$4,$5,$6,1,now()+interval '5 seconds') ON CONFLICT (guild_id) DO UPDATE SET profile=$2, escalation=$3, dm_on_action=$4, alert_channel_id=$5, observe_until=$6, revision=automod_settings.revision+1, sync_after=now()+interval '5 seconds', sync_error=NULL")
+        sqlx::query("INSERT INTO automod_settings (guild_id,profile,escalation,dm_on_action,alert_channel_id,observe_until,revision,sync_generation,sync_after) VALUES ($1,$2,$3,$4,$5,$6,1,1,now()+interval '5 seconds') ON CONFLICT (guild_id) DO UPDATE SET profile=$2, escalation=$3, dm_on_action=$4, alert_channel_id=$5, observe_until=$6, revision=automod_settings.revision+1, sync_generation=automod_settings.sync_generation+1, sync_after=now()+interval '5 seconds', sync_error=NULL")
             .bind(sql_id(guild)).bind(&config.profile).bind(Json(&config.escalation)).bind(config.dm_on_action)
             .bind(config.alert_channel_id.as_deref().map(str::parse::<i64>).transpose()?).bind(config.observe_until).execute(&mut *tx).await?;
         let parse_ids = |ids: &[String]| ids.iter().map(|s| s.parse::<i64>()).collect::<Result<Vec<_>, _>>();
@@ -148,6 +149,21 @@ impl Db {
                 > 0,
         )
     }
+    /// A moderator action has one durable claim, including across process restarts.
+    pub async fn claim_automod_action(&self, guild: u64, hit: i64, kind: &str) -> anyhow::Result<bool> {
+        let changed = sqlx::query("INSERT INTO automod_hit_actions(hit_id,kind) SELECT id,$3 FROM automod_hits WHERE guild_id=$1 AND id=$2 ON CONFLICT DO NOTHING")
+            .bind(sql_id(guild)).bind(hit).bind(kind).execute(&self.pool).await?;
+        Ok(changed.rows_affected() == 1)
+    }
+    pub async fn append_automod_action(&self, guild: u64, id: i64, kind: &str) -> anyhow::Result<()> {
+        sqlx::query("UPDATE automod_hits SET action=action || ' · ' || $3 WHERE guild_id=$1 AND id=$2")
+            .bind(sql_id(guild))
+            .bind(id)
+            .bind(kind)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
     pub async fn automod_strike(&self, guild: u64, user: u64, now: DateTime<Utc>, window: u32) -> anyhow::Result<i32> {
         let mut tx = self.pool.begin().await?;
         lock_users(&mut tx, &[sql_id(user)]).await?;
@@ -169,7 +185,7 @@ impl Db {
     }
     pub async fn automod_sync_status(&self, guild: u64) -> anyhow::Result<Option<AutoModSync>> {
         Ok(
-            sqlx::query_as("SELECT revision,sync_error,synced_at FROM automod_settings WHERE guild_id=$1")
+            sqlx::query_as("SELECT revision,sync_generation AS generation,sync_error,synced_at FROM automod_settings WHERE guild_id=$1")
                 .bind(sql_id(guild))
                 .fetch_optional(&self.pool)
                 .await?,
@@ -183,12 +199,18 @@ impl Db {
         .await?)
     }
     pub async fn queue_automod_sync(&self, guild: u64) -> anyhow::Result<()> {
-        sqlx::query("UPDATE automod_settings SET sync_after=LEAST(COALESCE(sync_after,now()+interval '5 seconds'),now()+interval '5 seconds') WHERE guild_id=$1").bind(sql_id(guild)).execute(&self.pool).await?;
+        sqlx::query("UPDATE automod_settings SET sync_generation=sync_generation+1, sync_after=LEAST(COALESCE(sync_after,now()+interval '5 seconds'),now()+interval '5 seconds') WHERE guild_id=$1").bind(sql_id(guild)).execute(&self.pool).await?;
         Ok(())
     }
-    pub async fn finish_automod_sync(&self, guild: u64, revision: i64, error: Option<&str>) -> anyhow::Result<()> {
-        sqlx::query("UPDATE automod_settings SET sync_after=CASE WHEN $3::text IS NULL THEN NULL ELSE now()+interval '60 seconds' END, sync_error=$3, synced_at=now() WHERE guild_id=$1 AND revision=$2")
-            .bind(sql_id(guild)).bind(revision).bind(error).execute(&self.pool).await?;
+    pub async fn finish_automod_sync(
+        &self,
+        guild: u64,
+        revision: i64,
+        generation: i64,
+        error: Option<&str>,
+    ) -> anyhow::Result<()> {
+        sqlx::query("UPDATE automod_settings SET sync_after=CASE WHEN $4::text IS NULL THEN NULL ELSE now()+interval '60 seconds' END, sync_error=$4, synced_at=now() WHERE guild_id=$1 AND revision=$2 AND sync_generation=$3")
+            .bind(sql_id(guild)).bind(revision).bind(generation).bind(error).execute(&self.pool).await?;
         Ok(())
     }
     pub async fn set_automod_native(&self, guild: u64, rule: i64, native: Option<u64>) -> anyhow::Result<()> {

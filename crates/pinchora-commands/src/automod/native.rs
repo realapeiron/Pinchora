@@ -1,6 +1,10 @@
 //! Debounced, restart-safe reconciliation. Only rules created by this bot are touched.
-use super::{actions::alert_channel, process_hit};
+use super::{
+    actions::{alert_channel, protected},
+    process_hit,
+};
 use crate::App;
+use pinchora_cache::Invalidation;
 use pinchora_core::{
     automod::native_rule,
     modules::{Access, Module},
@@ -40,7 +44,7 @@ async fn reconcile(app: &App, guild: u64) -> anyhow::Result<()> {
     let result = reconcile_inner(app, guild).await;
     let error = result.as_ref().err().map(|e| e.to_string());
     app.db
-        .finish_automod_sync(guild, status.revision, error.as_deref())
+        .finish_automod_sync(guild, status.revision, status.generation, error.as_deref())
         .await?;
     result
 }
@@ -81,9 +85,7 @@ async fn reconcile_inner(app: &App, guild: u64) -> anyhow::Result<()> {
             counts[u8::from(old.trigger_type) as usize] = counts[u8::from(old.trigger_type) as usize].saturating_sub(1);
             for rule in &config.rules {
                 if rule.discord_rule_id.as_deref() == Some(old.id.to_string().as_str()) {
-                    app.db
-                        .set_automod_native(guild, rule.id.as_deref().unwrap_or("0").parse()?, None)
-                        .await?;
+                    set_native(app, guild, rule.id.as_deref().unwrap_or("0").parse()?, None).await?;
                 }
             }
         }
@@ -122,7 +124,7 @@ async fn reconcile_inner(app: &App, guild: u64) -> anyhow::Result<()> {
             let cap = if payload.trigger_type == 1 { 6 } else { 1 };
             if counts[payload.trigger_type as usize] >= cap {
                 limited = true;
-                app.db.set_automod_native(guild, id, None).await?;
+                set_native(app, guild, id, None).await?;
                 continue;
             }
             let request = Request::builder(&Route::CreateAutoModerationRule { guild_id: guild })
@@ -132,13 +134,22 @@ async fn reconcile_inner(app: &App, guild: u64) -> anyhow::Result<()> {
             counts[payload.trigger_type as usize] += 1;
             created.id.get()
         };
-        app.db.set_automod_native(guild, id, Some(native_id)).await?;
+        set_native(app, guild, id, Some(native_id)).await?;
     }
     if limited {
         anyhow::bail!(t!(lang, "automod.native_limit"));
     }
     if channel.is_none() && config.rules.iter().any(|r| r.native && r.enabled) {
         anyhow::bail!(t!(lang, "automod.native_channel"));
+    }
+    Ok(())
+}
+
+async fn set_native(app: &App, guild: u64, id: i64, native: Option<u64>) -> anyhow::Result<()> {
+    app.db.set_automod_native(guild, id, native).await?;
+    app.forget_automod_config(guild).await;
+    if let Err(error) = app.cache.publish_invalidation(Invalidation::Guild(guild)).await {
+        tracing::warn!(%error, guild, "automod native cache invalidation failed");
     }
     Ok(())
 }
@@ -177,17 +188,19 @@ pub async fn on_native_execution(app: Arc<App>, event: AutoModerationActionExecu
     if member.user.bot {
         return Ok(());
     }
+    if protected(&app, guild, event.user_id.get(), &member.roles).await? {
+        return Ok(());
+    }
+    // Old keyword mirrors can remain at Discord until reconciliation. Their notifications
+    // cannot prove a local match, so they must never cause a punitive action.
+    if matches!(rule.kind.as_str(), "links" | "invites" | "bad_words") {
+        return Ok(());
+    }
     let roles = member.roles.iter().map(ToString::to_string).collect::<Vec<_>>();
-    let listed: Vec<u64> = rule
-        .exempt_channels
-        .iter()
-        .chain(&rule.only_channels)
-        .filter_map(|s| s.parse().ok())
-        .collect();
-    let channels: Vec<String> = std::iter::once(channel.get())
-        .chain(app.named_lineage(channel.get(), &[&listed]).await)
-        .map(|id| id.to_string())
-        .collect();
+    let Some(ancestry) = app.automod_lineage(channel.get()).await else {
+        return Ok(());
+    };
+    let channels: Vec<String> = ancestry.into_iter().map(|id| id.to_string()).collect();
     if !rule.applies(&channels, &roles) {
         return Ok(());
     }

@@ -42,6 +42,35 @@ fn powers(
         .filter(|r| r.id.get() == guild || held.contains(&r.id))
         .fold(Permissions::empty(), |p, r| p | r.permissions)
 }
+const STAFF: Permissions = Permissions::ADMINISTRATOR
+    .union(Permissions::MANAGE_GUILD)
+    .union(Permissions::MANAGE_MESSAGES)
+    .union(Permissions::MODERATE_MEMBERS);
+
+/// Recheck at detection and execution; role changes between those points fail closed.
+pub(crate) async fn protected(
+    app: &App,
+    guild: u64,
+    target: u64,
+    held: &[Id<twilight_model::id::marker::RoleMarker>],
+) -> anyhow::Result<bool> {
+    let facts = app.permission_facts(guild).await?;
+    if target == facts.owner
+        || target == app.application_id.get()
+        || powers(&facts.roles, guild, held).intersects(STAFF)
+    {
+        return Ok(true);
+    }
+    let bot_roles = app.my_roles(guild).await?;
+    let bot_top = facts
+        .roles
+        .iter()
+        .filter(|r| bot_roles.contains(&r.id.get()))
+        .map(|r| r.position)
+        .max()
+        .unwrap_or(0);
+    Ok(top(&facts.roles, held) >= bot_top)
+}
 fn facts(role: &Role, guild: u64) -> RoleFacts {
     RoleFacts {
         everyone: role.id.get() == guild,
@@ -163,6 +192,9 @@ pub(crate) async fn execute(
         .await?
         .model()
         .await?;
+    if actor.is_none() && powers(&roles, guild, &member.roles).intersects(STAFF) {
+        anyhow::bail!(t!(lang, "automod.protected"));
+    }
     let bot_powers = powers(&roles, guild, &bot.roles);
     let (needed, permission) = match action.kind.as_str() {
         "delete" => (Permissions::MANAGE_MESSAGES, "manage_messages"),

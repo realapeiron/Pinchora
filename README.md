@@ -530,19 +530,20 @@ Rules cover message floods, duplicates, repetition, blocked words (de-disguise a
 invites, domains, capitals, emoji, mentions, attachments, newlines, zalgo, media-only, YouTube-only,
 honeypot channels and Discord word presets. Actions run in configured order: delete, warn (a moderation
 case and the existing warn ladder), timeout, kick, ban, log, DM and safe role assignment. Escalation
-thresholds share a configurable strike window. Bots, webhooks and the owner are excluded; moderation
-checks live role hierarchy and permissions. Add-role actions refuse dangerous roles at save and execution.
+thresholds share a configurable strike window. Bots, webhooks, the owner, staff with moderation powers,
+and members at or above the bot are excluded. Add-role actions refuse dangerous roles at save and execution.
 
 Standard's first 48 hours and each rule's **Log only** switch record hits without warnings, strikes or
 punishments. Content-dependent local rules are locked when Message Content is off. Discord-native
-mirrors detect spam, mentions, keywords, invitations, compatible links and presets without that flag;
+mirrors detect spam, mentions and presets without that flag; keyword, invitation and link rules
+stay local because Discord's keyword and regex matching cannot exactly mirror Pinchora's matcher;
 mirrors only send alerts, leaving ordered actions and safety checks to Pinchora. Native sync is debounced
 five seconds, reconciles drift, and respects other applications' rules and Discord's guild limits.
-Native mirrors require a moderation log/alert channel; complex domain allowlists and channel-only rules
+Native mirrors require a moderation log/alert channel; channel-only rules
 stay local. Native spam uses Discord's detector; numeric flood thresholds also run locally.
 
 Alerts use `am:del|to|ban|ok:<hit>` and `ax:r|c:<rule>:<hit>` with Manage Server checked on every click.
-Migration **0045** adds `automod_settings`, `automod_rules`, `automod_strikes` and `automod_hits`.
+Migration **0045** adds `automod_settings`, `automod_rules`, `automod_strikes`, `automod_hits` and durable alert-action claims.
 Hit history and inactive strikes expire after 30 days; player deletion clears hits, strikes and rule authors.
 English and Turkish text comes from `locales/{en,tr}/automod.toml`.
 

@@ -40,7 +40,7 @@ async fn evaluate(app: &Arc<App>, msg: &Message) -> anyhow::Result<bool> {
     {
         return Ok(false);
     }
-    let config = app.db.automod_config(guild).await?;
+    let config = app.automod_config(guild).await?;
     if config.profile == "off" || !config.rules.iter().any(|r| r.enabled) {
         return Ok(false);
     }
@@ -54,17 +54,15 @@ async fn evaluate(app: &Arc<App>, msg: &Message) -> anyhow::Result<bool> {
         Some(m) => m.roles.iter().map(ToString::to_string).collect(),
         None => return Ok(false),
     };
+    if actions::protected(app, guild, msg.author.id.get(), &msg.member.as_ref().unwrap().roles).await? {
+        return Ok(false);
+    }
+    let Some(ancestry) = app.automod_lineage(msg.channel_id.get()).await else {
+        return Ok(false);
+    };
+    let channels: Vec<String> = ancestry.into_iter().map(|id| id.to_string()).collect();
     let mut blocked = false;
     for rule in &config.rules {
-        let lists: Vec<Vec<u64>> = [&rule.only_channels, &rule.exempt_channels]
-            .into_iter()
-            .map(|ids| ids.iter().filter_map(|s| s.parse().ok()).collect())
-            .collect();
-        let lineage = app.named_lineage(msg.channel_id.get(), &[&lists[0], &lists[1]]).await;
-        let channels: Vec<String> = std::iter::once(msg.channel_id.get())
-            .chain(lineage)
-            .map(|id| id.to_string())
-            .collect();
         if !rule.applies(&channels, &roles) || (!app.message_content && rule.needs_content()) {
             continue;
         }

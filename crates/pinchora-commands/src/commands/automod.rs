@@ -215,6 +215,11 @@ impl AutoMod {
             return cx.reply_ephemeral(why).await;
         }
         cx.app.db.save_automod(guild, cx.author()?.id.get(), &config).await?;
+        cx.app.forget_automod_config(guild).await;
+        cx.app
+            .cache
+            .publish_invalidation(pinchora_cache::Invalidation::Guild(guild))
+            .await?;
         cx.reply_ephemeral(t!(cx.lang(), "automod.saved")).await
     }
 }
@@ -296,6 +301,11 @@ pub(crate) async fn on_component(
             return cx.reply_ephemeral(why).await;
         }
         cx.app.db.save_automod(guild, cx.author()?.id.get(), &config).await?;
+        cx.app.forget_automod_config(guild).await;
+        cx.app
+            .cache
+            .publish_invalidation(pinchora_cache::Invalidation::Guild(guild))
+            .await?;
     } else if action == "ok" {
         cx.app.db.review_automod_hit(guild, id).await?;
     } else {
@@ -305,8 +315,7 @@ pub(crate) async fn on_component(
             "ban" => "ban",
             _ => return cx.reply_ephemeral(t!(cx.lang(), "automod.invalid")).await,
         };
-        let key = format!("am:click:{guild}:{id}:{action}");
-        if !cx.app.cache.once(&key, std::time::Duration::from_secs(30)).await? {
+        if !cx.app.db.claim_automod_action(guild, id, kind).await? {
             return cx.reply_ephemeral(t!(cx.lang(), "automod.busy")).await;
         }
         if let Err(why) = actions::execute(
@@ -321,10 +330,7 @@ pub(crate) async fn on_component(
         {
             return cx.reply_ephemeral(why.to_string()).await;
         }
-        cx.app
-            .db
-            .finish_automod_hit(guild, id, &format!("{} · {kind}", hit.action))
-            .await?;
+        cx.app.db.append_automod_action(guild, id, kind).await?;
     }
     cx.reply_ephemeral(t!(cx.lang(), "automod.done")).await
 }

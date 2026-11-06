@@ -7,6 +7,7 @@ CREATE TABLE automod_settings (
     alert_channel_id BIGINT,
     observe_until TIMESTAMPTZ,
     revision BIGINT NOT NULL DEFAULT 0,
+    sync_generation BIGINT NOT NULL DEFAULT 0,
     sync_after TIMESTAMPTZ,
     sync_error TEXT,
     synced_at TIMESTAMPTZ
@@ -51,3 +52,9 @@ CREATE TABLE automod_hits (
 CREATE INDEX automod_hits_recent ON automod_hits(guild_id, created_at DESC);
 CREATE INDEX automod_hits_expiry ON automod_hits(created_at);
 CREATE UNIQUE INDEX automod_hits_once ON automod_hits(guild_id, rule_id, message_id) WHERE message_id IS NOT NULL;
+CREATE TABLE automod_hit_actions (
+    hit_id BIGINT NOT NULL REFERENCES automod_hits(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL CHECK (kind IN ('delete','timeout','ban')),
+    claimed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (hit_id, kind)
+);
