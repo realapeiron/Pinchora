@@ -2,10 +2,12 @@
 
 use std::str::Split;
 
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::GearBuy;
 use pinchora_game::{
     Content, Rarity,
     fishing::{BAIT_PRICE, Boost, Rod},
+    overlay::upper,
 };
 use twilight_model::{
     channel::message::{
@@ -67,23 +69,31 @@ fn option(label: String, value: String, description: String, default: bool) -> S
     }
 }
 
+/// The blurb of a spot, rod or bait in `lang`; `fallback` is the English one.
+fn blurb(content: &Content, id: &str, lang: Lang, fallback: &str) -> String {
+    content
+        .description(id, lang)
+        .map_or_else(|| fallback.to_owned(), |text| text.into_owned())
+}
+
 /// "reel 3.0 s · luck +10%".
-fn rod_stats(rod: &Rod) -> String {
-    format!(
-        "reel {:.1} s · rare luck +{}%",
-        rod.window_ms as f64 / 1000.0,
-        ((rod.luck - 1.0) * 100.0).round()
+fn rod_stats(lang: Lang, rod: &Rod) -> String {
+    t!(
+        lang,
+        "fish.gear.rod-stats",
+        reel = format!("{:.1}", rod.window_ms as f64 / 1000.0),
+        luck = ((rod.luck - 1.0) * 100.0).round()
     )
 }
 
 // /Shop
 
 pub(super) async fn shop(cx: &Cx) -> anyhow::Result<()> {
-    let data = shop_panel(&cx.app, cx.author()?.id.get(), "").await?;
+    let data = shop_panel(&cx.app, cx.lang(), cx.author()?.id.get(), "").await?;
     cx.reply(data).await
 }
 
-async fn shop_panel(app: &App, user: u64, note: &str) -> anyhow::Result<InteractionResponseData> {
+async fn shop_panel(app: &App, lang: Lang, user: u64, note: &str) -> anyhow::Result<InteractionResponseData> {
     let content = Content::get();
     let gear = &content.fishing;
     let balance = app.db.user(user).await?.credits;
@@ -97,29 +107,35 @@ async fn shop_panel(app: &App, user: u64, note: &str) -> anyhow::Result<Interact
     for (n, rod) in gear.rods.iter().enumerate() {
         let owned = rod.price == 0 || owned_rods.contains(&rod.id);
         let (line1, shell_price) = match (on_line.rod == rod.id, owned) {
-            (true, _) => ("EQUIPPED".to_owned(), false),
-            (false, true) => ("OWNED".to_owned(), false),
+            (true, _) => (t!(lang, "fish.shop.equipped"), false),
+            (false, true) => (t!(lang, "fish.shop.owned"), false),
             (false, false) => (thousands(rod.price), true),
         };
         slots.push(Slot {
             art: Art::Rod(n),
-            name: rod.name.clone(),
+            name: content.name(&rod.id, lang).into_owned(),
             line1,
-            line2: format!(
-                "REEL {:.1} S · LUCK +{}%",
-                rod.window_ms as f64 / 1000.0,
-                ((rod.luck - 1.0) * 100.0).round()
+            line2: t!(
+                lang,
+                "fish.shop.rod-line",
+                reel = format!("{:.1}", rod.window_ms as f64 / 1000.0),
+                luck = ((rod.luck - 1.0) * 100.0).round()
             ),
             bar: None,
             frame: ROD_TIERS[n % ROD_TIERS.len()].color(),
-            badge: "ROD".to_owned(),
+            badge: t!(lang, "fish.shop.rod-badge"),
             shell_price,
         });
         if !owned {
             options.push(option(
-                rod.name.clone(),
+                content.name(&rod.id, lang).into_owned(),
                 format!("r:{}", rod.id),
-                format!("{} shells · {}", thousands(rod.price), rod_stats(rod)),
+                t!(
+                    lang,
+                    "fish.shop.price-line",
+                    price = thousands(rod.price),
+                    text = rod_stats(lang, rod)
+                ),
                 false,
             ));
         }
@@ -131,51 +147,59 @@ async fn shop_panel(app: &App, user: u64, note: &str) -> anyhow::Result<Interact
         };
         slots.push(Slot {
             art: Art::Bait(BaitArt::of(bait)),
-            name: bait.name.clone(),
+            name: content.name(&bait.id, lang).into_owned(),
             line1: thousands(bait.price),
-            line2: format!("PACK OF {} · HAVE {}", bait.pack, have(&bait.id)),
+            line2: t!(lang, "fish.shop.bait-line", pack = bait.pack, have = have(&bait.id)),
             bar: None,
             frame,
-            badge: "BAIT".to_owned(),
+            badge: t!(lang, "fish.shop.bait-badge"),
             shell_price: true,
         });
         options.push(option(
-            format!("{} (pack of {})", bait.name, bait.pack),
+            t!(
+                lang,
+                "fish.shop.bait-option",
+                name = content.name(&bait.id, lang),
+                pack = bait.pack
+            ),
             format!("b:{}", bait.id),
-            format!("{} shells · {}", thousands(bait.price), bait.blurb),
+            t!(
+                lang,
+                "fish.shop.price-line",
+                price = thousands(bait.price),
+                text = blurb(content, &bait.id, lang, &bait.blurb)
+            ),
             false,
         ));
     }
     let png = grid_png(
         app,
-        "Tackle shop".to_owned(),
-        format!("YOU HAVE {} SHELLS", thousands(balance)),
-        format!("PLAIN BAIT IS {BAIT_PRICE} SHELLS A CAST · PUT GEAR ON WITH /FISH GEAR"),
+        upper(&t!(lang, "fish.shop.title"), lang),
+        t!(lang, "fish.shop.balance", shells = thousands(balance)),
+        t!(lang, "fish.shop.footer", price = BAIT_PRICE),
         slots,
     )
     .await?;
     let description = if note.is_empty() {
-        "Rods are bought once; better ones give you more time to Reel! and better odds at rare fish. \
-         Bait comes in packs and is used up one a cast, instead of plain bait. Silver Lure and Tide Crumbs are \
-         for hunting rare and signature fish, not for income: they lose shells at the shallow spots, and \
-         Tide Crumbs cuts the wage at the Abyss."
-            .to_owned()
+        t!(
+            lang,
+            "fish.shop.intro",
+            lure = content.name("silver_lure", lang),
+            crumbs = content.name("tide_crumbs", lang),
+            abyss = content.name("abyss", lang)
+        )
     } else {
         note.to_owned()
     };
     let embed = EmbedBuilder::new()
         .color(BRAND)
-        .title("🎣 Tackle shop")
+        .title(format!("🎣 {}", t!(lang, "fish.shop.title")))
         .description(description);
     Ok(Cx::card(
         embed,
         "fish-shop.png",
         png,
-        vec![row(menu(
-            format!("fx:p:{user}"),
-            "Buy a rod or a pack of bait…",
-            options,
-        ))],
+        vec![row(menu(format!("fx:p:{user}"), &t!(lang, "fish.shop.pick"), options))],
         true,
     ))
 }
@@ -183,11 +207,11 @@ async fn shop_panel(app: &App, user: u64, note: &str) -> anyhow::Result<Interact
 // /Gear
 
 pub(super) async fn panel(cx: &Cx) -> anyhow::Result<()> {
-    let data = gear_panel(&cx.app, cx.author()?.id.get(), "").await?;
+    let data = gear_panel(&cx.app, cx.lang(), cx.author()?.id.get(), "").await?;
     cx.reply(data).await
 }
 
-async fn gear_panel(app: &App, user: u64, note: &str) -> anyhow::Result<InteractionResponseData> {
+async fn gear_panel(app: &App, lang: Lang, user: u64, note: &str) -> anyhow::Result<InteractionResponseData> {
     let content = Content::get();
     let gear = &content.fishing;
     let level = player_level(app, user).await?;
@@ -206,27 +230,61 @@ async fn gear_panel(app: &App, user: u64, note: &str) -> anyhow::Result<Interact
         .and_then(|id| gear.bait(id))
         .and_then(|b| stock.iter().find(|(id, _)| *id == b.id).map(|(_, left)| (b, *left)));
 
+    let plain = t!(lang, "fish.plain-bait");
+    let per_cast = t!(lang, "fish.gear.per-cast", price = BAIT_PRICE);
     let bait_text = match bait {
-        Some((bait, left)) => format!("**{}** ×{left}\n{}", bait.name, bait.blurb),
-        None => format!("**Plain bait**\n{BAIT_PRICE} shells a cast"),
+        Some((bait, left)) => format!(
+            "**{}** ×{left}\n{}",
+            content.name(&bait.id, lang),
+            blurb(content, &bait.id, lang, &bait.blurb)
+        ),
+        None => format!("**{plain}**\n{per_cast}"),
     };
     let next = gear
         .spots
         .iter()
         .find(|s| !gear.is_open(s, level))
-        .map_or_else(String::new, |s| format!(" · {} opens at level {}", s.name, s.level));
+        .map_or_else(String::new, |s| {
+            t!(
+                lang,
+                "fish.gear.next-spot",
+                spot = content.name(&s.id, lang),
+                need = s.level
+            )
+        });
     let embed = EmbedBuilder::new()
         .color(BRAND)
-        .title("🎣 Your tackle")
+        .title(t!(lang, "fish.gear.title"))
         .description(if note.is_empty() {
-            "Pick from the menus; the next cast uses them."
+            t!(lang, "fish.gear.hint")
         } else {
-            note
+            note.to_owned()
         })
-        .field(EmbedFieldBuilder::new("Spot", format!("**{}**\n{}", spot.name, spot.blurb)).inline())
-        .field(EmbedFieldBuilder::new("Rod", format!("**{}**\n{}", rod.name, rod_stats(rod))).inline())
-        .field(EmbedFieldBuilder::new("Bait", bait_text).inline())
-        .footer(EmbedFooterBuilder::new(format!("Level {level}{next}")))
+        .field(
+            EmbedFieldBuilder::new(
+                t!(lang, "fish.gear.field-spot"),
+                format!(
+                    "**{}**\n{}",
+                    content.name(&spot.id, lang),
+                    blurb(content, &spot.id, lang, &spot.blurb)
+                ),
+            )
+            .inline(),
+        )
+        .field(
+            EmbedFieldBuilder::new(
+                t!(lang, "fish.gear.field-rod"),
+                format!("**{}**\n{}", content.name(&rod.id, lang), rod_stats(lang, rod)),
+            )
+            .inline(),
+        )
+        .field(EmbedFieldBuilder::new(t!(lang, "fish.gear.field-bait"), bait_text).inline())
+        .footer(EmbedFooterBuilder::new(t!(
+            lang,
+            "fish.gear.footer",
+            level = level,
+            next = next
+        )))
         .build();
 
     let spots = gear
@@ -234,17 +292,18 @@ async fn gear_panel(app: &App, user: u64, note: &str) -> anyhow::Result<Interact
         .iter()
         .map(|s| {
             let locked = !gear.is_open(s, level);
+            let name = content.name(&s.id, lang);
             option(
                 if locked {
-                    format!("🔒 {}", s.name)
+                    format!("🔒 {name}")
                 } else {
-                    s.name.clone()
+                    name.into_owned()
                 },
                 s.id.clone(),
                 if locked {
-                    format!("Opens at level {}", s.level)
+                    t!(lang, "fish.gear.opens-at", level = s.level)
                 } else {
-                    s.blurb.clone()
+                    blurb(content, &s.id, lang, &s.blurb)
                 },
                 s.id == spot.id,
             )
@@ -254,20 +313,22 @@ async fn gear_panel(app: &App, user: u64, note: &str) -> anyhow::Result<Interact
         .rods
         .iter()
         .filter(|r| owned(r))
-        .map(|r| option(r.name.clone(), r.id.clone(), rod_stats(r), r.id == rod.id))
+        .map(|r| {
+            option(
+                content.name(&r.id, lang).into_owned(),
+                r.id.clone(),
+                rod_stats(lang, r),
+                r.id == rod.id,
+            )
+        })
         .collect();
-    let mut baits = vec![option(
-        "Plain bait".to_owned(),
-        "plain".to_owned(),
-        format!("{BAIT_PRICE} shells a cast"),
-        bait.is_none(),
-    )];
+    let mut baits = vec![option(plain, "plain".to_owned(), per_cast, bait.is_none())];
     for (id, left) in &stock {
         if let Some(b) = gear.bait(id) {
             baits.push(option(
-                format!("{} ×{left}", b.name),
+                format!("{} ×{left}", content.name(&b.id, lang)),
                 b.id.clone(),
-                b.blurb.clone(),
+                blurb(content, &b.id, lang, &b.blurb),
                 bait.is_some_and(|(on, _)| on.id == b.id),
             ));
         }
@@ -275,9 +336,9 @@ async fn gear_panel(app: &App, user: u64, note: &str) -> anyhow::Result<Interact
     Ok(InteractionResponseData {
         embeds: Some(vec![embed]),
         components: Some(vec![
-            row(menu(format!("fx:s:{user}"), "Where to fish…", spots)),
-            row(menu(format!("fx:r:{user}"), "Which rod…", rods)),
-            row(menu(format!("fx:b:{user}"), "Which bait…", baits)),
+            row(menu(format!("fx:s:{user}"), &t!(lang, "fish.gear.pick-spot"), spots)),
+            row(menu(format!("fx:r:{user}"), &t!(lang, "fish.gear.pick-rod"), rods)),
+            row(menu(format!("fx:b:{user}"), &t!(lang, "fish.gear.pick-bait"), baits)),
         ]),
         flags: Some(MessageFlags::EPHEMERAL),
         ..Default::default()
@@ -291,98 +352,107 @@ pub(crate) async fn on_gear(cx: &Cx, mut args: Split<'_, char>, value: Option<&s
     let what = args.next().unwrap_or_default();
     let owner: u64 = args.next().and_then(|v| v.parse().ok()).unwrap_or(0);
     let user = cx.author()?.id.get();
+    let lang = cx.lang();
     if user != owner {
-        return cx
-            .reply_ephemeral("That's someone else's panel. Open yours with `/fish shop` or `/fish gear`.")
-            .await;
+        return cx.reply_ephemeral(t!(lang, "fish.gear.not-yours")).await;
     }
     let Some(value) = value else {
-        return cx.reply_ephemeral("Pick something from the menu.").await;
+        return cx.reply_ephemeral(t!(lang, "fish.gear.pick-something")).await;
     };
-    let gear = &Content::get().fishing;
+    let content = Content::get();
+    let gear = &content.fishing;
     if what == "p" {
-        let note = buy(&cx.app, user, value).await?;
-        return cx.update(shop_panel(&cx.app, user, &note).await?).await;
+        let note = buy(&cx.app, lang, user, value).await?;
+        return cx.update(shop_panel(&cx.app, lang, user, &note).await?).await;
     }
     let note = match what {
         "s" => match gear.spot(value) {
             Some(spot) => {
                 let level = player_level(&cx.app, user).await?;
                 if !gear.is_open(spot, level) {
-                    format!(
-                        "The **{}** opens at level {} and you are level {level}.",
-                        spot.name, spot.level
+                    t!(
+                        lang,
+                        "fish.gear.spot-locked",
+                        spot = content.name(&spot.id, lang),
+                        need = spot.level,
+                        level = level
                     )
                 } else {
                     cx.app.db.set_fishing_spot(user, &spot.id).await?;
-                    format!("Fishing at the **{}** from now on.", spot.name)
+                    t!(lang, "fish.gear.spot-set", spot = content.name(&spot.id, lang))
                 }
             }
-            None => "That spot is not on the map.".to_owned(),
+            None => t!(lang, "fish.gear.no-spot"),
         },
         "r" => match gear.rod(value) {
             Some(rod) if cx.app.db.equip_rod(user, &rod.id, rod.price == 0).await? => {
-                format!("The **{}** is on the line.", rod.name)
+                t!(lang, "fish.gear.rod-on", rod = content.name(&rod.id, lang))
             }
-            Some(rod) => format!("The {} is not yours yet. Buy it with `/fish shop`.", rod.name),
-            None => "That rod is not in the shop.".to_owned(),
+            Some(rod) => t!(lang, "fish.gear.rod-not-owned", rod = content.name(&rod.id, lang)),
+            None => t!(lang, "fish.gear.no-rod"),
         },
         "b" if value == "plain" => {
             cx.app.db.equip_bait(user, None).await?;
-            format!("Plain bait it is: {BAIT_PRICE} shells a cast.")
+            t!(lang, "fish.gear.plain-set", price = BAIT_PRICE)
         }
         "b" => match gear.bait(value) {
             Some(bait) if cx.app.db.equip_bait(user, Some(&bait.id)).await? => {
-                format!("**{}** is on the hook.", bait.name)
+                t!(lang, "fish.gear.bait-on", bait = content.name(&bait.id, lang))
             }
-            Some(bait) => format!("You have no {} left. Buy more with `/fish shop`.", bait.name),
-            None => "That bait is not in the shop.".to_owned(),
+            Some(bait) => t!(lang, "fish.gear.bait-out", bait = content.name(&bait.id, lang)),
+            None => t!(lang, "fish.gear.no-bait"),
         },
-        _ => return cx.reply_ephemeral("This menu has expired.").await,
+        _ => return cx.reply_ephemeral(t!(lang, "fish.gear.expired")).await,
     };
-    cx.update(gear_panel(&cx.app, user, &note).await?).await
+    cx.update(gear_panel(&cx.app, lang, user, &note).await?).await
 }
 
 /// Buys what the shop menu picked (`r:<rod>` or `b:<bait>`) and says how it went.
-async fn buy(app: &App, user: u64, value: &str) -> anyhow::Result<String> {
-    let gear = &Content::get().fishing;
+async fn buy(app: &App, lang: Lang, user: u64, value: &str) -> anyhow::Result<String> {
+    let content = Content::get();
+    let gear = &content.fishing;
     let (kind, id) = value.split_once(':').unwrap_or_default();
     Ok(match kind {
         "r" => match gear.rod(id).filter(|r| r.price > 0) {
             Some(rod) => match app.db.buy_rod(user, &rod.id, rod.price).await? {
-                GearBuy::Bought { .. } => format!(
-                    "Bought the **{}** for {} shells. Put it on with `/fish gear`.",
-                    rod.name,
-                    thousands(rod.price)
+                GearBuy::Bought { .. } => t!(
+                    lang,
+                    "fish.buy.rod-bought",
+                    rod = content.name(&rod.id, lang),
+                    price = thousands(rod.price)
                 ),
-                GearBuy::AlreadyOwned => format!("You already own the **{}**.", rod.name),
-                GearBuy::Insufficient { balance } => format!(
-                    "The **{}** costs {} shells and you have {}.",
-                    rod.name,
-                    thousands(rod.price),
-                    thousands(balance)
+                GearBuy::AlreadyOwned => t!(lang, "fish.buy.rod-owned", rod = content.name(&rod.id, lang)),
+                GearBuy::Insufficient { balance } => t!(
+                    lang,
+                    "fish.buy.rod-poor",
+                    rod = content.name(&rod.id, lang),
+                    price = thousands(rod.price),
+                    balance = thousands(balance)
                 ),
             },
-            None => "That rod is not in the shop.".to_owned(),
+            None => t!(lang, "fish.gear.no-rod"),
         },
         "b" => match gear.bait(id) {
             Some(bait) => match app.db.buy_bait(user, &bait.id, bait.pack as i32, bait.price).await? {
-                GearBuy::Bought { owned, .. } => format!(
-                    "Bought {} **{}** for {} shells; you have {owned}. Put them on with `/fish gear`.",
-                    bait.pack,
-                    bait.name,
-                    thousands(bait.price)
+                GearBuy::Bought { owned, .. } => t!(
+                    lang,
+                    "fish.buy.bait-bought",
+                    pack = bait.pack,
+                    bait = content.name(&bait.id, lang),
+                    price = thousands(bait.price),
+                    owned = owned
                 ),
                 GearBuy::AlreadyOwned => String::new(),
-                GearBuy::Insufficient { balance } => format!(
-                    "A pack of **{}** costs {} shells and you have {}.",
-                    bait.name,
-                    thousands(bait.price),
-                    thousands(balance)
+                GearBuy::Insufficient { balance } => t!(
+                    lang,
+                    "fish.buy.bait-poor",
+                    bait = content.name(&bait.id, lang),
+                    price = thousands(bait.price),
+                    balance = thousands(balance)
                 ),
             },
-            None => "That bait is not in the shop.".to_owned(),
+            None => t!(lang, "fish.gear.no-bait"),
         },
-        _ => "This menu has expired.".to_owned(),
+        _ => t!(lang, "fish.gear.expired"),
     })
 }

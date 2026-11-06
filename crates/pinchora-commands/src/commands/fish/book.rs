@@ -2,8 +2,9 @@
 
 use std::{collections::HashMap, str::Split};
 
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::FishBookRow;
-use pinchora_game::{Content, Fish, fishing::Reward};
+use pinchora_game::{Content, Fish, fishing::Reward, overlay::upper};
 use twilight_model::{
     channel::message::{
         Component,
@@ -25,18 +26,19 @@ const PER_PAGE: usize = 8;
 const UNSEEN: u32 = 0x3a4a7a;
 
 pub(super) async fn view(cx: &Cx) -> anyhow::Result<()> {
-    let data = page(&cx.app, cx.author()?.id.get(), 0).await?;
+    let data = page(&cx.app, cx.lang(), cx.author()?.id.get(), 0).await?;
     cx.reply(data).await
 }
 
 /// The spots a species lives at, shallowest first, as "SHORE · REEF".
-fn habitat(fish: &Fish) -> String {
-    let spots: Vec<_> = Content::get()
+fn habitat(fish: &Fish, lang: Lang) -> String {
+    let content = Content::get();
+    let spots: Vec<_> = content
         .fishing
         .spots
         .iter()
         .filter(|s| fish.spots.contains_key(&s.id))
-        .map(|s| s.name.to_uppercase())
+        .map(|s| upper(&content.name(&s.id, lang), lang))
         .collect();
     match spots.len() {
         0..=2 => spots.join(" · "),
@@ -44,7 +46,7 @@ fn habitat(fish: &Fish) -> String {
     }
 }
 
-async fn page(app: &App, owner: u64, page: usize) -> anyhow::Result<InteractionResponseData> {
+async fn page(app: &App, lang: Lang, owner: u64, page: usize) -> anyhow::Result<InteractionResponseData> {
     let content = Content::get();
     let book: HashMap<String, FishBookRow> = app
         .db
@@ -68,9 +70,9 @@ async fn page(app: &App, owner: u64, page: usize) -> anyhow::Result<InteractionR
                     id: fish.id.clone(),
                     hidden: false,
                 },
-                name: fish.name.clone(),
-                line1: format!("RECORD {:.1} CM", entry.best_cm),
-                line2: format!("CAUGHT ×{}", entry.caught),
+                name: content.name(&fish.id, lang).into_owned(),
+                line1: t!(lang, "fish.book.record", size = format!("{:.1}", entry.best_cm)),
+                line2: t!(lang, "fish.book.caught", fish = entry.caught),
                 // How close the record is to the biggest the species grows.
                 bar: Some((entry.best_cm - fish.min_cm) / (fish.max_cm - fish.min_cm)),
                 frame: fish.rarity.color(),
@@ -83,8 +85,8 @@ async fn page(app: &App, owner: u64, page: usize) -> anyhow::Result<InteractionR
                     hidden: true,
                 },
                 name: "? ? ?".to_owned(),
-                line1: "NOT CAUGHT".to_owned(),
-                line2: habitat(fish),
+                line1: t!(lang, "fish.book.not-caught"),
+                line2: habitat(fish, lang),
                 bar: None,
                 frame: UNSEEN,
                 badge: format!("#{:02}", n + 1),
@@ -95,11 +97,18 @@ async fn page(app: &App, owner: u64, page: usize) -> anyhow::Result<InteractionR
     let next = content.fishing.next_milestone(species);
     let png = grid_png(
         app,
-        "Fish book".to_owned(),
-        format!("{species}/{} SPECIES · PAGE {}/{pages}", content.fish.len(), page + 1),
+        upper(&t!(lang, "fish.book.title"), lang),
+        t!(
+            lang,
+            "fish.book.subtitle",
+            species = species,
+            total = content.fish.len(),
+            page = page + 1,
+            pages = pages
+        ),
         match next {
-            Some(m) => format!("NEXT REWARD AT {} SPECIES", m.species),
-            None => "THE WHOLE BOOK IS FILLED".to_owned(),
+            Some(m) => t!(lang, "fish.book.next", species = m.species),
+            None => t!(lang, "fish.book.complete"),
         },
         slots,
     )
@@ -110,24 +119,23 @@ async fn page(app: &App, owner: u64, page: usize) -> anyhow::Result<InteractionR
         .milestones
         .iter()
         .map(|m| {
-            let (kind, name) = match &m.reward {
-                Reward::Badge { id } => ("badge", content.badge(id).map_or(id.as_str(), |b| b.name.as_str())),
-                Reward::Background { id } => (
-                    "background",
-                    content.background(id).map_or(id.as_str(), |b| b.name.as_str()),
-                ),
+            let (key, id) = match &m.reward {
+                Reward::Badge { id } => ("fish.book.reward-badge", id),
+                Reward::Background { id } => ("fish.book.reward-background", id),
             };
-            format!(
-                "{} **{} species**: {} shells and the {name} {kind}",
-                if species >= m.species { "✅" } else { "▫️" },
-                m.species,
-                thousands(m.shells)
+            t!(
+                lang,
+                key,
+                mark = if species >= m.species { "✅" } else { "▫️" },
+                species = m.species,
+                shells = thousands(m.shells),
+                name = content.name(id, lang)
             )
         })
         .collect();
     let embed = EmbedBuilder::new()
         .color(BRAND)
-        .title("📖 Fish book")
+        .title(format!("📖 {}", t!(lang, "fish.book.title")))
         .description(rewards.join("\n"));
     let button = |label: &str, target: usize, disabled: bool| {
         Component::Button(Button {
@@ -148,8 +156,8 @@ async fn page(app: &App, owner: u64, page: usize) -> anyhow::Result<InteractionR
         vec![Component::ActionRow(ActionRow {
             id: None,
             components: vec![
-                button("◀ Page", page.saturating_sub(1), page == 0),
-                button("Page ▶", page + 1, page + 1 >= pages),
+                button(&t!(lang, "customize.prev-page"), page.saturating_sub(1), page == 0),
+                button(&t!(lang, "customize.next-page"), page + 1, page + 1 >= pages),
             ],
         })],
         false,
@@ -161,9 +169,7 @@ pub(super) async fn on_page(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
     let owner: u64 = args.next().and_then(|v| v.parse().ok()).unwrap_or(0);
     let target: usize = args.next().and_then(|v| v.parse().ok()).unwrap_or(0);
     if cx.author()?.id.get() != owner {
-        return cx
-            .reply_ephemeral("That's someone else's book. Open yours with `/fish book`.")
-            .await;
+        return cx.reply_ephemeral(t!(cx.lang(), "fish.book.not-yours")).await;
     }
-    cx.update(page(&cx.app, owner, target).await?).await
+    cx.update(page(&cx.app, cx.lang(), owner, target).await?).await
 }
