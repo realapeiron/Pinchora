@@ -614,9 +614,7 @@ fn unknown_placeholder(text: &str) -> Option<String> {
     let mut rest = text;
     while let Some(start) = rest.find('{') {
         let after = &rest[start..];
-        let Some(end) = after.find('}') else {
-            return None;
-        };
+        let end = after.find('}')?;
         let token = &after[..=end];
         let word = &token[1..token.len() - 1];
         if !word.is_empty()

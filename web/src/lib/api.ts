@@ -91,6 +91,15 @@ export async function apiImage(path: string, body: unknown, signal?: AbortSignal
   return response.blob();
 }
 
+/** A POST of a file's own bytes (an upload), answered with JSON. */
+export async function apiUpload<T>(path: string, file: Blob): Promise<T> {
+  const headers: Record<string, string> = { Accept: "application/json", "Content-Type": file.type };
+  if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
+  const response = await fetch(path, { method: "POST", headers, credentials: "same-origin", body: file });
+  if (!response.ok) throw await errorOf(response);
+  return (await response.json()) as T;
+}
+
 function safeParse(text: string): unknown {
   try {
     return JSON.parse(text);

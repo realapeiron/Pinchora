@@ -33,8 +33,9 @@ use crate::{
     state::WebState,
 };
 
-/// Previews per session per minute; each also waits for a render slot like the bot's cards.
-const PREVIEWS_PER_MINUTE: i64 = 40;
+/// Previews per session per minute (the editor asks once an edit has settled); each also waits for a render
+/// slot like the bot's cards.
+const PREVIEWS_PER_MINUTE: i64 = 60;
 /// Test messages per server per minute.
 const TESTS_PER_MINUTE: i64 = 3;
 /// Uploads per server per hour.

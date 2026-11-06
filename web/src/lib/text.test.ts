@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { AuditEntry } from "./api";
-import { type Names, describeChange, initials, showValue, targetLabel, timeAgo } from "./text";
+import { type Names, describeChange, fieldLabel, initials, showValue, targetLabel, timeAgo } from "./text";
 
 const now = new Date("2026-11-06T12:00:00Z");
 
@@ -85,6 +85,16 @@ describe("text", () => {
     expect(describeChange(module({ enabled: true, channel_mode: "all", channels: [] }), names)).toBe(
       "turned Pets on and opened Pets to all channels",
     );
+  });
+
+  it("describes image designs without dumping them", () => {
+    const card = { ...entry({ delivery: "dm" }), action: "card.put", target: "welcome" };
+    expect(describeChange(card, names)).toBe("saved an image design");
+    expect(targetLabel(card, names)).toBe("welcome");
+    expect(targetLabel({ ...card, action: "card.upload", target: "0".repeat(32) }, names)).toBeNull();
+    expect(showValue("design", { width: 1100, height: 500, layers: [1, 2, 3] })).toBe("1100×500, 3 layers");
+    expect(showValue("design", "classic")).toBe("the classic card");
+    expect(fieldLabel("card.put", "delivery")).toBe("how it is sent");
   });
 
   it("makes initials", () => {

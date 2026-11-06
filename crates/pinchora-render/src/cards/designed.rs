@@ -44,6 +44,11 @@ pub struct DesignedCard<'a> {
     pub fill: &'a CardFill<'a>,
 }
 
+/// A PNG as a data URI, shared between cards.
+type DataUri = Arc<String>;
+/// A sprite's data URI with its width and height.
+type SpriteUri = (DataUri, u32, u32);
+
 /// Names and server names in a card, at most, in characters.
 const NAME_MAX: usize = 32;
 const SERVER_MAX: usize = 40;
@@ -277,8 +282,8 @@ fn gradient(s: &mut String, w: f32, h: f32, from: &str, to: &str, direction: Dir
 
 /// An atlas background scaled up whole until it covers `w`×`h`, centred: its data URI, where it goes and how
 /// big it is. Scaled by a whole number so every pixel of the art stays a crisp block.
-fn scaled_background(id: &str, w: u32, h: u32) -> Option<(Arc<String>, i64, i64, u32, u32)> {
-    static CACHE: LazyLock<Mutex<HashMap<(String, u32), Arc<String>>>> = LazyLock::new(Mutex::default);
+fn scaled_background(id: &str, w: u32, h: u32) -> Option<(DataUri, i64, i64, u32, u32)> {
+    static CACHE: LazyLock<Mutex<HashMap<(String, u32), DataUri>>> = LazyLock::new(Mutex::default);
     let sprite = atlas().get(id)?;
     let (sw, sh) = (sprite.width().max(1), sprite.height().max(1));
     let k = w.div_ceil(sw).max(h.div_ceil(sh)).max(1);
@@ -308,8 +313,8 @@ fn scaled_background(id: &str, w: u32, h: u32) -> Option<(Arc<String>, i64, i64,
 }
 
 /// An atlas sprite at its own size, as a data URI.
-fn sprite_uri(id: &str) -> Option<(Arc<String>, u32, u32)> {
-    static CACHE: LazyLock<Mutex<HashMap<String, (Arc<String>, u32, u32)>>> = LazyLock::new(Mutex::default);
+fn sprite_uri(id: &str) -> Option<SpriteUri> {
+    static CACHE: LazyLock<Mutex<HashMap<String, SpriteUri>>> = LazyLock::new(Mutex::default);
     if let Some(found) = CACHE.lock().expect("sticker cache").get(id) {
         return Some(found.clone());
     }

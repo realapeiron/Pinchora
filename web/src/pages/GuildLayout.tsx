@@ -25,6 +25,7 @@ export const NAV: { group: string; pages: { to: string; label: string }[] }[] = 
     group: "MEMBERS",
     pages: [
       { to: "welcome", label: "Welcome & goodbye" },
+      { to: "welcome-image", label: "Welcome image" },
       { to: "leveling", label: "Leveling" },
       { to: "points", label: "Points & store" },
     ],

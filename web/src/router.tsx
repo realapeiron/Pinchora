@@ -14,6 +14,7 @@ import { RequireLogin } from "./pages/RequireLogin";
 import { ServerLog } from "./pages/ServerLog";
 import { Servers } from "./pages/Servers";
 import { Welcome } from "./pages/Welcome";
+import { WelcomeImage } from "./pages/WelcomeImage";
 
 // Admin pages live under /g/:guildId, one per sidebar entry (GuildLayout's NAV).
 export const router = createBrowserRouter([
@@ -29,6 +30,7 @@ export const router = createBrowserRouter([
       { index: true, element: <Overview /> },
       { path: "modules", element: <Modules /> },
       { path: "welcome", element: <Welcome /> },
+      { path: "welcome-image", element: <WelcomeImage /> },
       { path: "leveling", element: <Leveling /> },
       { path: "points", element: <Points /> },
       { path: "log", element: <ServerLog /> },

@@ -13,15 +13,18 @@ export function PreviewFrame({
   alt,
   width,
   height,
+  delay = 300,
 }: {
   path: string;
   body: object | null;
   alt: string;
   width: number;
   height: number;
+  /** How long `body` must stay the same before it is sent, in ms. */
+  delay?: number;
 }) {
   const key = JSON.stringify(body);
-  const settled = useDebounced(key, 300);
+  const settled = useDebounced(key, delay);
   const [url, setUrl] = useState<string | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [message, setMessage] = useState("");

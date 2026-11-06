@@ -245,7 +245,7 @@ permission gets a private refusal and nothing changes.
 | `/party stop` | Ends the lobby or game running in this channel: its host or a member with Manage Server can. The message is closed, nobody wins and nothing is paid or refunded (the party games have no wagers); the answer is private |
 | `/config partygames [strict]` | How strict the filter on what members type is (Manage Server). The base filter always blocks strong words and slurs (it reads whole words, undoes disguises like `sh!t`, `f u c k`, `f*ck`, `s1ut` and common misspellings, and lets names like Matsushita through); `strict:true` adds mild words and name-calling. Mentions, links, invites and formatting are always taken out of typed text |
 | `/config modules show\|toggle\|channels` | Switch parts of Pinchora off for the whole server (`toggle module enabled`) or per channel (`channels module where [channel] [remove]`: `where` is all channels, only these, or everywhere except these, and the list grows one channel at a time; a category covers the channels and threads under it; up to 50 channels). A switched-off module answers its commands, buttons and forms with a private "This feature is turned off on this server" (or "in this channel"), stops its chat XP, points, critter drops, goodbyes, log lines or timed storms, and `/config`, `/help`, `/ping`, `/privacy` and `/remind` (with their buttons) are never switched off; `/weekly` and `/monthly` belong to the economy module and `/wrapped` to profiles. The 26 modules are listed with `show`, and `module` suggests them as you type (start with part of a name, or of a game such as `chess`); leveling, points, welcome and gambling keep their switch where it already was (`/config leveling`, `points`, `welcome`, `gambling`). The dashboard's Modules page does the same (Manage Server) |
-| `/config welcome-card` | Design the welcome card (theme, headline, accent colour) with a live preview |
+| `/config welcome-card` | The classic welcome card (theme, headline, accent colour) with a preview: any option makes the classic card the server's welcome image again (a design made in the dashboard's editor is put aside, and the reply says so; how the image is sent stays), and without options it shows the welcome image as it is now, the editor's design included |
 
 Duel wagers (`bet`, 10 to 500 shells each) are optional and off by default. Nothing is held until the
 challenged player accepts; then both bets leave the balances in one transaction and sit in the database
@@ -365,7 +365,8 @@ so every bot pod uses it from the next message instead of after its one-minute c
 |---|---|---|
 | Overview | Chat XP on/off, every page's state at a glance, every module's state, the latest changes | `/config show`, `/config leveling enabled`, `/config modules show` |
 | Modules | Each part of Pinchora (leveling, points, welcome, goodbye, log, role panels, store, suggestions, polls, giveaways, profiles, economy, shops, quests, social, houses, plaza, pets, fishing, duels, board and puzzle games, word and trivia games, party games, word party games, critter drops, gambling) on or off, and where it works: all channels, only some, or all but some | `/config modules` |
-| Welcome & goodbye | Welcome cards (channel, text with placeholder chips), the card designer (theme, headline, accent, live preview drawn by the bot), join role, goodbye channel and text | `/config welcome`, `welcome-card`, `join-role`, `goodbye` |
+| Welcome & goodbye | Welcome cards (channel, text with placeholder chips), the welcome image the bot sends now (drawn by the bot) with a link to the editor, join role, goodbye channel and text | `/config welcome`, `join-role`, `goodbye` |
+| Welcome image | The image editor for welcome and goodbye pictures (below) | `/config welcome-card` (the classic card) |
 | Leveling | Leveling, where level-ups go, level-up channel and text, voice XP, XP multipliers, level roles (stack/replace, **Sync members**), reputation roles | `/config leveling`, `xp`, `level-roles`, `rep-roles` |
 | Points & store | Points on/off, name, emoji, points per message; roles on sale with price and stock | `/config points`, `/config store` |
 | Server log | Log channel and the four kinds of events | `/config log`, `/config log-events` |
@@ -414,6 +415,45 @@ cargo build -p pinchora && PINCHORA_TEST_DATABASE_URL=... PINCHORA_TEST_REDIS_UR
 
 For UI work against a running server, set `PINCHORA_WEB__PUBLIC_URL=http://localhost:5173` on the Rust side
 (`cargo run -p pinchora -- web`).
+
+### Welcome and goodbye images
+
+The **Welcome image** page is a canvas editor for the picture a new member gets and the one that says goodbye.
+A design (`pinchora_core::card_design`, versioned JSON) is a canvas of 300 to 1600 by 150 to 1000 px, a
+background (none, a colour, a gradient with or without the pixel dither and sparkles, one of the 36 pixel-art
+backgrounds scaled up in whole steps, or an uploaded picture), a darkening scrim, and up to 20 layers from
+bottom to top: the **avatar** (circle, rounded, square or pixel-notched, a border, chunky pixels or smooth),
+**text** with `{user}` `{username}` `{server}` `{members}` `{ordinal}` (Noto Sans or the pixel font, bold, size,
+colour, alignment, capitals, up to 4 wrapped lines cut with an ellipsis, a hard shadow, an outline), **stickers**
+(crab, heart, star and shell glyphs in any colour, or any pet, critter, fish, badge or furniture sprite from the
+atlas, resized in whole pixel steps) and **shapes** (box, rounded, pixel panel, ellipse, the dashed stage edge).
+Each layer can be hidden, locked and faded. One validator checks a design for the API, the bot and (through
+`rules.json`) the editor's inputs; a setting it does not know is refused by name, and every problem is listed
+with its layer.
+
+In the editor: drag layers with a mouse, pen or finger, pull the handles to resize (avatars stay square, text
+corners scale the font, side handles set its width), snap to the canvas middle and edges and to other layers
+(guides show; Alt or the Snap switch turns it off), nudge with the arrow keys, undo and redo (Ctrl+Z / Ctrl+Shift+Z,
+a whole drag is one step), duplicate (Ctrl+D) and delete; reorder, hide and lock in the layer list; zoom or fit.
+A template gallery holds eight starts: the classic card in each of the five themes (layer for layer the card
+Pinchora always drew; a server that never opened the editor gets it in its theme, headline and accent),
+*Starlit banner*, *Clean card* (transparent) and *Pet party*. **Send** picks how it goes out: with the text in one
+message, the image first then the text, the image alone, the text alone, or (welcomes) by direct message to the
+new member (closed DMs are skipped). **Send test** posts it to a channel you pick, with you as the member and
+pinging nobody. The canvas is drawn by the browser so every drag is instant; next to it the bot's own PNG of the
+same design (`POST /api/guilds/{g}/preview/card`, debounced) is exactly what members get, because the member
+events, the preview and the test all draw through `pinchora_commands::card_png`. Tablets get the canvas over the
+two panels; phones a single column with the settings a thumb needs.
+
+Uploads (`POST /api/guilds/{g}/cards/uploads`, the file's own bytes): PNG, JPEG, WebP or GIF (first frame) up to
+4 MB and 4096 px a side, decoded within those limits, shrunk to fit the largest canvas and stored as PNG in
+`card_uploads`; a server keeps its 12 newest plus any a saved design uses, and a design can only name the
+server's own. Designs live in `card_designs` (migration 0043; `design` NULL is the classic card), saving is
+audited (`card.put`, `card.upload`) and announced like other settings. The API: `GET /cards` (both images, the
+templates, the uploads), `PUT /cards/{welcome|goodbye}` (`design` or `null`, `delivery`), `POST
+/cards/{kind}/test` and `GET /cards/uploads/{id}`. `cargo test -p pinchora-render --test designed` checks the
+classic template against the old card pixel for pixel and every template against its golden in
+`crates/pinchora-render/tests/golden` (`PINCHORA_UPDATE_GOLDENS=1` rewrites them).
 
 ### House viewer (read-only)
 
