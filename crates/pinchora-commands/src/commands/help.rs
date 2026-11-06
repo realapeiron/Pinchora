@@ -38,8 +38,12 @@ impl Help {
                 "`/points show` your balance (chatting earns points)\n`/store` buy roles with points",
             ))
             .field(EmbedFieldBuilder::new(
+                "Server events",
+                "`/poll` ask the server a question\n`/suggest` suggest something (managers decide with `/suggestion`)\n`/giveaway` managers run prize draws",
+            ))
+            .field(EmbedFieldBuilder::new(
                 "Server admins",
-                "`/config welcome` welcome cards\n`/config leveling` level-up messages\n`/config level-roles` roles for reaching a level\n`/config points` and `/config store` points and role store\n`/points give` and `/points take` adjust balances\n`/config show` current settings",
+                "`/config welcome` welcome cards\n`/config leveling` level-up messages\n`/config level-roles` roles for reaching a level\n`/config points` and `/config store` points and role store\n`/config suggestions` where suggestions go\n`/points give` and `/points take` adjust balances\n`/config show` current settings",
             ))
             .footer(EmbedFooterBuilder::new("Houses, pets and mini games are on the way."))
             .build();

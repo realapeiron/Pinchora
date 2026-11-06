@@ -87,6 +87,12 @@ http-proxy when one is configured.
 - `level_roles` — roles given at a level; `store_items` — roles sold for server points (price, optional stock).
 - `role_panels` / `role_panel_roles` — messages of role buttons (up to 25 per panel); a button's custom id is
   `rr:<panel>:<role>` and a click is checked against these tables.
+- `giveaways` / `giveaway_entries` — a giveaway and who entered; the shells prize (`winners` x `shells`) is held
+  from the host when it starts, and ending, paying and refunding happen in one transaction with the status
+  change. `polls` / `poll_votes` — polls of two to five options, one vote per member, closed once by the
+  ticker. `suggestion_settings` / `suggestions` / `suggestion_votes` — the suggestion channel and per-server
+  numbering, the suggestions and their 👍/👎 votes. Buttons carry `gw:e:<giveaway>`, `pl:v:<poll>:<option>`,
+  `pl:r:<poll>` and `sg:v:<suggestion>:<u|d>`; every click is checked against its row and server.
 - `credit_ledger` — every shell movement, for audits and economy statistics.
 
 Money moves only inside transactions that lock the touched user rows in id order, so
@@ -94,6 +100,11 @@ concurrent transfers can neither overdraw nor deadlock (covered by
 `crates/pinchora-db/tests/db.rs`). A store purchase locks the item row first, then takes the
 points and one unit of stock in the same transaction; if Discord then refuses the role, the
 handler refunds both. Guild settings are cached per pod for 60 s.
+
+Giveaways and polls end on a ticker every pod runs (every 5 s, gateway and interactions alike). Ending is
+one transaction that only one pod wins, and the announcement is claimed (`announce_claimed`, good for
+2 minutes) before it is sent, so a pod that dies between the two is covered by a later tick and a second
+pod never posts it twice.
 
 ## Crates
 
