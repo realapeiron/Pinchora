@@ -8,9 +8,11 @@ use std::{sync::Arc, time::Duration};
 use moka::future::Cache as Moka;
 use pinchora_core::{
     modules::Module,
+    settings::run_time_refusal,
     tags::{
-        Action, EMBED_AUTHOR_MAX, EMBED_DESCRIPTION_MAX, EMBED_FIELD_NAME_MAX, EMBED_FIELD_VALUE_MAX, EMBED_FOOTER_MAX,
-        EMBED_TITLE_MAX, EMBED_TOTAL_MAX, EmbedSpec, RESPONSE_MAX, Vars, render, truncate,
+        ACTION_DMS_PER_HOUR, ACTION_POINTS_DAILY_MAX, Action, EMBED_AUTHOR_MAX, EMBED_DESCRIPTION_MAX,
+        EMBED_FIELD_NAME_MAX, EMBED_FIELD_VALUE_MAX, EMBED_FOOTER_MAX, EMBED_TITLE_MAX, EMBED_TOTAL_MAX, EmbedSpec,
+        RESPONSE_MAX, Vars, render, truncate,
     },
 };
 use pinchora_db::TagSet;
@@ -30,7 +32,7 @@ use twilight_util::builder::embed::{
 
 use crate::{
     App,
-    util::{BRAND, avatar_url, display_name, mention, strip_mentions},
+    util::{BRAND, avatar_url, display_name, mention, strip_mentions, thousands},
 };
 
 /// How long the bot keeps a server's commands and responders before asking the database again.
@@ -38,10 +40,11 @@ const KEEP: Duration = Duration::from_secs(60);
 /// How long the bot remembers a member's roles, for the responders that watch for a role.
 const ROLES_KEPT: Duration = Duration::from_secs(24 * 3_600);
 
-/// A server's name and size as Discord has them.
+/// A server's name, size and owner as Discord has them.
 pub(crate) struct GuildFacts {
     pub name: String,
     pub members: Option<u64>,
+    pub owner: u64,
 }
 
 /// What the bot keeps about custom commands and auto-responders.
@@ -95,7 +98,8 @@ impl App {
             .map_err(|e| anyhow::anyhow!("{e:#}"))
     }
 
-    /// The server's name and member count, cached for five minutes; `None` when Discord cannot be asked.
+    /// The server's name, member count and owner, cached for five minutes; `None` when Discord cannot be
+    /// asked.
     pub(crate) async fn guild_facts(&self, guild: u64) -> Option<Arc<GuildFacts>> {
         self.custom
             .facts
@@ -110,6 +114,7 @@ impl App {
                 anyhow::Ok(Arc::new(GuildFacts {
                     name: found.name,
                     members: found.approximate_member_count,
+                    owner: found.owner_id.get(),
                 }))
             })
             .await
@@ -135,9 +140,26 @@ impl App {
 
 // /Scrubbing
 
-/// Text a member typed (or a name), made safe to put into a message: mentions and broadcasts gone.
+/// Text a member typed (or a name), made safe to put into a message: mentions and broadcasts gone, and
+/// markdown escaped so it shows as typed.
 pub fn scrub_value(text: &str) -> String {
-    strip_mentions(text)
+    escape_markdown(&strip_mentions(text))
+}
+
+/// Markdown escaped with backslashes, which Discord hides: a name or what a member typed cannot make a
+/// masked link (`[Free Nitro](…)`), bold, a spoiler, code, a heading, a list or a quote of its own.
+pub fn escape_markdown(text: &str) -> String {
+    let mut out = String::with_capacity(text.len() + 8);
+    for c in text.chars() {
+        if matches!(
+            c,
+            '\\' | '*' | '_' | '~' | '`' | '|' | '>' | '<' | '[' | ']' | '(' | ')' | '#' | '-'
+        ) {
+            out.push('\\');
+        }
+        out.push(c);
+    }
+    out
 }
 
 /// `@everyone` and `@here` without their `@`, in any case; nothing else changes.
@@ -413,7 +435,12 @@ pub(crate) async fn scene_vars(app: &App, scene: &Scene, templates: &[&str], bal
     }
     if uses("{server") || uses("{count}") {
         let facts = app.guild_facts(scene.guild).await;
-        vars.set("server", facts.as_ref().map_or("this server", |f| f.name.as_str()));
+        vars.set(
+            "server",
+            facts
+                .as_ref()
+                .map_or_else(|| "this server".to_owned(), |f| escape_markdown(&f.name)),
+        );
         let members = facts.and_then(|f| f.members).map(|m| m.to_string()).unwrap_or_default();
         vars.set("server.members", members.clone());
         if !vars.has("count") {
@@ -422,7 +449,7 @@ pub(crate) async fn scene_vars(app: &App, scene: &Scene, templates: &[&str], bal
     }
     if uses("{points") {
         if let Ok(settings) = app.guild_settings(scene.guild).await {
-            vars.set("points.name", settings.points_name.clone());
+            vars.set("points.name", escape_markdown(&settings.points_name));
         }
         let points = match balance {
             Some(points) => Some(points),
@@ -446,6 +473,10 @@ pub fn pick(n: usize) -> usize {
 
 // /Actions
 
+/// How long a role change an auto-responder made is remembered, so the member update it causes does not
+/// set role responders off again.
+const OWN_CHANGE: Duration = Duration::from_secs(15);
+
 /// What the actions of a command or responder need to know about who they act on.
 pub(crate) struct Actor<'a> {
     pub guild: u64,
@@ -454,22 +485,80 @@ pub(crate) struct Actor<'a> {
     pub held: &'a [u64],
     /// The message that set off a keyword responder, to react to.
     pub message: Option<(Id<ChannelMarker>, Id<MessageMarker>)>,
+    /// An auto-responder runs them: its role changes must not set other responders off (a chain stops
+    /// after one responder).
+    pub responder: bool,
 }
 
-/// Runs the points actions, which only touch the database, and returns the member's balance if one ran.
-/// A server with points off skips them.
-pub(crate) async fn run_points(app: &App, guild: u64, user: u64, actions: &[Action]) -> Option<i64> {
-    let mut balance = None;
+/// The cache key that marks a role change an auto-responder made.
+pub(crate) fn own_change_key(guild: u64, user: u64, role: u64) -> String {
+    format!("auto-own:{guild}:{user}:{role}")
+}
+
+fn utc_day() -> i64 {
+    chrono::Utc::now().timestamp().div_euclid(86_400)
+}
+
+/// How many of `amount` points the member may still get from custom actions today, counted against
+/// [`ACTION_POINTS_DAILY_MAX`]; `0` when the count cannot be kept.
+async fn points_allowance(app: &App, guild: u64, user: u64, amount: i64) -> i64 {
+    let key = format!("custom-points:{guild}:{user}:{}", utc_day());
+    match app.cache.incr_by(&key, amount, Duration::from_secs(2 * 86_400)).await {
+        Ok(total) => (ACTION_POINTS_DAILY_MAX - (total - amount)).clamp(0, amount),
+        Err(error) => {
+            tracing::warn!(guild, user, %error, "could not count custom action points");
+            0
+        }
+    }
+}
+
+/// Whether one more direct message from a custom action or auto-responder may go to the member of
+/// `guild` this hour (at most [`ACTION_DMS_PER_HOUR`]). A count that cannot be kept sends nothing.
+pub(crate) async fn dm_allowed(app: &App, guild: u64, user: u64) -> bool {
+    let hour = chrono::Utc::now().timestamp().div_euclid(3_600);
+    let key = format!("custom-dm:{guild}:{user}:{hour}");
+    match app.cache.incr(&key, Duration::from_secs(2 * 3_600)).await {
+        Ok(sent) => sent <= ACTION_DMS_PER_HOUR,
+        Err(error) => {
+            tracing::warn!(guild, user, %error, "could not count custom direct messages");
+            false
+        }
+    }
+}
+
+/// What the points actions did: the member's balance if one ran, and a word when today's cap held some
+/// back.
+#[derive(Debug, Default)]
+pub(crate) struct PointsRun {
+    pub balance: Option<i64>,
+    pub capped: Option<String>,
+}
+
+/// Runs the points actions, which only touch the database. A server with points off skips them; what they
+/// give one member a day is capped at [`ACTION_POINTS_DAILY_MAX`] (taking is not).
+pub(crate) async fn run_points(app: &App, guild: u64, user: u64, actions: &[Action]) -> PointsRun {
+    let mut run = PointsRun::default();
     for action in actions {
         let Action::GivePoints { amount } = action else {
             continue;
         };
-        match app.guild_settings(guild).await {
-            Ok(settings) if settings.points_enabled => {}
+        let settings = match app.guild_settings(guild).await {
+            Ok(settings) if settings.points_enabled => settings,
             _ => continue,
-        }
+        };
         let done = if *amount > 0 {
-            app.db.give_points(guild, user, *amount).await
+            let allowed = points_allowance(app, guild, user, *amount).await;
+            if allowed < *amount {
+                run.capped = Some(format!(
+                    "Custom commands give at most {} {} a day; you reached today's limit.",
+                    thousands(ACTION_POINTS_DAILY_MAX),
+                    settings.points_name
+                ));
+            }
+            if allowed == 0 {
+                continue;
+            }
+            app.db.give_points(guild, user, allowed).await
         } else {
             app.db
                 .take_points(guild, user, amount.abs())
@@ -477,11 +566,17 @@ pub(crate) async fn run_points(app: &App, guild: u64, user: u64, actions: &[Acti
                 .map(|(_, balance)| balance)
         };
         match done {
-            Ok(points) => balance = Some(points),
+            Ok(points) => run.balance = Some(points),
             Err(error) => tracing::warn!(guild, user, %error, "a points action failed"),
         }
     }
-    balance
+    run
+}
+
+/// The permission bits of the server's roles as Discord has them now, for the roles a run would give.
+async fn live_role_permissions(app: &App, guild: u64) -> anyhow::Result<Vec<(u64, u64)>> {
+    let roles = app.http.roles(Id::new(guild.max(1))).await?.models().await?;
+    Ok(roles.into_iter().map(|r| (r.id.get(), r.permissions.bits())).collect())
 }
 
 /// Runs the actions that talk to Discord (roles, direct messages, reactions), after the answer went
@@ -489,15 +584,46 @@ pub(crate) async fn run_points(app: &App, guild: u64, user: u64, actions: &[Acti
 pub(crate) async fn run_discord_actions(app: &App, who: &Actor<'_>, actions: &[Action], vars: &Vars) -> Vec<String> {
     let mut notes = Vec::new();
     let (guild_id, user_id) = (Id::new(who.guild.max(1)), Id::new(who.user.max(1)));
+    let gives = |action: &Action| match action {
+        Action::AddRole { .. } => true,
+        Action::ToggleRole { role_id } => !who.held.contains(role_id),
+        _ => false,
+    };
+    // A role is checked again as it is now: its permissions may have changed since it was put here.
+    let permissions = if actions.iter().any(gives) {
+        live_role_permissions(app, who.guild)
+            .await
+            .map_err(|error| tracing::warn!(guild = who.guild, %error, "could not check the roles to give"))
+            .ok()
+    } else {
+        None
+    };
     for action in actions {
         match action {
             Action::AddRole { .. } | Action::RemoveRole { .. } | Action::ToggleRole { .. } => {
                 let role = action.role().unwrap_or(0);
-                let give = match action {
-                    Action::AddRole { .. } => true,
-                    Action::RemoveRole { .. } => false,
-                    _ => !who.held.contains(&role),
-                };
+                let give = gives(action);
+                if give {
+                    let refusal = match &permissions {
+                        None => Some(format!("I couldn't check <@&{role}> just now. Try again in a moment.")),
+                        Some(list) => list
+                            .iter()
+                            .find(|(id, _)| *id == role)
+                            .and_then(|(_, bits)| run_time_refusal(*bits, &format!("<@&{role}>"))),
+                    };
+                    if let Some(why) = refusal {
+                        tracing::warn!(guild = who.guild, role, "a role action named a role it may not give");
+                        notes.push(why);
+                        continue;
+                    }
+                }
+                if who.responder {
+                    // Marked before the change: Discord may tell of the member update before it answers.
+                    let key = own_change_key(who.guild, who.user, role);
+                    if let Err(error) = app.cache.put(&key, "1", OWN_CHANGE).await {
+                        tracing::warn!(guild = who.guild, %error, "could not mark a responder's role change");
+                    }
+                }
                 let role_id = Id::new(role.max(1));
                 let result = if give {
                     app.http
@@ -520,6 +646,10 @@ pub(crate) async fn run_discord_actions(app: &App, who: &Actor<'_>, actions: &[A
                 }
             }
             Action::Dm { text } => {
+                if !dm_allowed(app, who.guild, who.user).await {
+                    tracing::debug!(user = who.user, "a direct message action was over the hourly limit");
+                    continue;
+                }
                 let clean = scrub_template(text, false);
                 let text = truncate(render(&clean, vars, &mut pick).trim(), RESPONSE_MAX);
                 if let Some(channel) = crate::leveling::private_channel(app, who.user).await {

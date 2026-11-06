@@ -145,7 +145,7 @@ impl ConfigStore {
                     Ok(values) => values,
                     Err(error) => return cx.reply_ephemeral(error.message).await,
                 };
-                if let Some(why) = roles::unassignable(&cx.app, guild, &c.role).await {
+                if let Some(why) = roles::unassignable(cx, guild, &c.role).await {
                     return cx.reply_ephemeral(why).await;
                 }
                 let Some(item) = db.add_store_item(guild, c.role.id.get(), price, stock).await? else {

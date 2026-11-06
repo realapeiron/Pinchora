@@ -57,6 +57,11 @@ async fn giveaways_and_polls_wait_while_their_module_is_off() {
     tick(&sim).await;
     assert_eq!(running_giveaways(&sim).await, 1, "the giveaway is paused, not ended");
     assert_eq!(open_polls(&sim).await, 1, "the poll is paused, not closed");
+    // Paused ones are not even scanned, so they cannot crowd out the due ones of other servers.
+    let soon = sim.app.now() + chrono::Duration::hours(2);
+    let mine = |due: Vec<pinchora_db::Due>| due.iter().filter(|d| d.guild_id == sim.guild as i64).count();
+    assert_eq!(mine(sim.app.db.due_giveaways(soon, 100_000).await.unwrap()), 0);
+    assert_eq!(mine(sim.app.db.due_polls(soon, 100_000).await.unwrap()), 0);
 
     // One at a time: switching only polls back on closes only the poll.
     modules(&mut sim, manager, toggle("polls", true), &[]).await;
@@ -74,6 +79,12 @@ async fn giveaways_and_polls_wait_while_their_module_is_off() {
     .await;
     tick(&sim).await;
     assert_eq!(running_giveaways(&sim).await, 1, "off in the channel it runs in");
+    let mine = |due: Vec<pinchora_db::Due>| due.iter().filter(|d| d.guild_id == sim.guild as i64).count();
+    assert_eq!(
+        mine(sim.app.db.due_giveaways(soon, 100_000).await.unwrap()),
+        1,
+        "an `only` rule may reach the channel through its category, so the ticker decides"
+    );
     modules(
         &mut sim,
         manager,

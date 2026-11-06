@@ -9,8 +9,9 @@ use crate::settings::FieldError;
 /// How many channels one module may name.
 pub const MAX_CHANNELS: usize = 50;
 
-/// Commands that stay available whatever a server switches off: the way back in, and the basics.
-pub const NEVER_GATED: [&str; 3] = ["config", "help", "ping"];
+/// Commands that stay available whatever a server switches off: the way back in, the basics, and a
+/// member's own privacy choices.
+pub const NEVER_GATED: [&str; 4] = ["config", "help", "ping", "privacy"];
 
 /// Where a module's settings are shown together.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

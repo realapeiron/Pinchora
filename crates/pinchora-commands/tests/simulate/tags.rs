@@ -49,6 +49,15 @@ async fn stock_responders(sim: &Sim, responders: &[ResponderDef]) {
     sim.app.forget_guild_settings(sim.guild).await;
 }
 
+/// Ends the cooldowns `user` has on the server's commands, as if the time had passed (a command with
+/// actions always has one).
+async fn cool_off(sim: &Sim, user: u64) {
+    for row in sim.app.db.custom_commands(sim.guild).await.expect("the commands") {
+        let key = format!("tag:{}:{}:{user}", sim.guild, row.id);
+        sim.app.cache.release_cooldown(&key).await.expect("end a cooldown");
+    }
+}
+
 fn tag(name: &str, args: Option<&str>) -> Value {
     let mut options = vec![text_option("name", name)];
     options.extend(args.map(|a| text_option("args", a)));
@@ -573,6 +582,13 @@ async fn custom_command_actions_give_roles_and_points_and_say_when_they_cannot()
 
     // Holding it, the same toggle takes it away; taking points never goes below zero.
     sim.roles = vec![fan];
+    let again = sim.command(member, "tag", tag("join", None)).await;
+    assert!(
+        again.ephemeral && again.content().contains("cooling down"),
+        "a command with actions waits at least 30 s even with no cooldown set: {}",
+        again.content()
+    );
+    cool_off(&sim, member).await;
     sim.command(member, "tag", tag("join", None)).await;
     assert_eq!(sim.role_changes(), [format!("DELETE {member} {fan}")]);
     assert_eq!(sim.points(member).await, 50);
@@ -585,6 +601,7 @@ async fn custom_command_actions_give_roles_and_points_and_say_when_they_cannot()
     // The answer goes out first; what failed is told privately afterwards.
     sim.roles = Vec::new();
     sim.allow_role_changes(false);
+    cool_off(&sim, member).await;
     let failed = sim.command(member, "tag", tag("join", None)).await;
     assert!(
         !failed.ephemeral && failed.content().contains("You now have"),
@@ -609,6 +626,7 @@ async fn custom_command_actions_give_roles_and_points_and_say_when_they_cannot()
     .await;
     sim.permissions = 0;
     let before = sim.points(member).await;
+    cool_off(&sim, member).await;
     sim.command(member, "tag", tag("tax", None)).await;
     assert_eq!(sim.points(member).await, before);
 }
@@ -838,4 +856,186 @@ async fn keyword_responders_hear_chat_once_and_only_where_allowed() {
     assert!(sim.posts().is_empty(), "the module is off there");
     say_saying(&sim, unique(), chat, "good morning").await;
     assert_eq!(in_channel(&sim.posts(), chat).len(), 1);
+}
+
+/// Direct messages posted since the last call, as their text.
+fn dms(sim: &Sim) -> Vec<String> {
+    sim.posts()
+        .iter()
+        .filter(|p| p.channel == DM_CHANNEL_ID)
+        .map(|p| p.content().to_owned())
+        .collect()
+}
+
+#[tokio::test]
+async fn custom_actions_are_capped_checked_again_and_kept_out_of_closed_dms() {
+    let Some(mut sim) = Sim::new("custom_actions_are_capped_checked_again_and_kept_out_of_closed_dms").await else {
+        return;
+    };
+    let (admin, member, quiet) = (unique(), unique(), unique());
+    let fan = unique();
+    sim.guild_role(fan, "Reef Fan", 2);
+    sim.permissions = MANAGE_GUILD;
+    sim.command(
+        admin,
+        "config",
+        json!([sub("points", vec![bool_option("enabled", true)])]),
+    )
+    .await;
+    sim.permissions = 0;
+    let with = |name: &str, reply: &str, actions: Value| {
+        let mut def = command(name, reply);
+        def.actions = serde_json::from_value(actions).unwrap();
+        def.cooldown_secs = 30;
+        def
+    };
+    stock(
+        &sim,
+        &[
+            with(
+                "loot",
+                "Looted.",
+                json!([
+                    { "kind": "give_points", "amount": 400 },
+                    { "kind": "give_points", "amount": 400 },
+                    { "kind": "give_points", "amount": 400 },
+                ]),
+            ),
+            with(
+                "fan",
+                "Welcome, fan.",
+                json!([{ "kind": "add_role", "role_id": fan.to_string() }]),
+            ),
+            with(
+                "hello",
+                "Check your DMs.",
+                json!([{ "kind": "dm", "text": "Hi {user.name}!" }]),
+            ),
+            command("echo", "You said: {args}"),
+        ],
+    )
+    .await;
+
+    // Points from custom actions stop at 1,000 a member a day, and the member is told why.
+    let looted = sim.command(member, "tag", tag("loot", None)).await;
+    assert_eq!(sim.points(member).await, 1_000);
+    let note = looted.followups.first().expect("a note about the cap");
+    assert!(
+        note.ephemeral && note.content().contains("today's limit"),
+        "{}",
+        note.content()
+    );
+    cool_off(&sim, member).await;
+    sim.command(member, "tag", tag("loot", None)).await;
+    assert_eq!(sim.points(member).await, 1_000, "nothing more today");
+
+    // A role is checked again when it is handed out: one that gained Administrator since is refused.
+    sim.command(member, "tag", tag("fan", None)).await;
+    assert_eq!(sim.role_changes(), [format!("PUT {member} {fan}")]);
+    for role in sim.mock.roles.lock().unwrap().iter_mut() {
+        if role["id"].as_str().and_then(|id| id.parse::<u64>().ok()) == Some(fan) {
+            role["permissions"] = json!((1u64 << 3).to_string());
+        }
+    }
+    sim.roles = Vec::new();
+    let other = unique();
+    let refused = sim.command(other, "tag", tag("fan", None)).await;
+    assert!(sim.role_changes().is_empty(), "no role was given");
+    let note = refused.followups.first().expect("a note about the role");
+    assert!(
+        note.content()
+            .contains("custom commands and auto-responders can't hand it out"),
+        "{}",
+        note.content()
+    );
+
+    // At most five direct messages an hour from one server's actions, and none to who closed them.
+    sim.posts();
+    for _ in 0..7 {
+        cool_off(&sim, member).await;
+        sim.command(member, "tag", tag("hello", None)).await;
+    }
+    assert_eq!(dms(&sim), vec!["Hi Sim!"; 5], "two were held back");
+    let closed = sim
+        .command(quiet, "privacy", json!([bool_option("server_dms", false)]))
+        .await;
+    assert!(
+        closed.ephemeral && closed.content().contains("**off**"),
+        "{}",
+        closed.content()
+    );
+    let shown = sim.command(quiet, "privacy", json!([])).await;
+    assert!(shown.content().contains("**off**"), "{}", shown.content());
+    sim.command(quiet, "tag", tag("hello", None)).await;
+    assert!(dms(&sim).is_empty(), "the member said no");
+    let open = sim
+        .command(quiet, "privacy", json!([bool_option("server_dms", true)]))
+        .await;
+    assert!(open.content().contains("**on**"), "{}", open.content());
+    cool_off(&sim, quiet).await;
+    sim.command(quiet, "tag", tag("hello", None)).await;
+    assert_eq!(dms(&sim), ["Hi Sim!"]);
+
+    // What a member types shows as typed: no masked link, no bold of their own.
+    let echoed = sim
+        .command(
+            member,
+            "tag",
+            tag("echo", Some("[Free Nitro](https://evil.example) **now** <@1>")),
+        )
+        .await;
+    assert_eq!(
+        echoed.content(),
+        r"You said: \[Free Nitro\]\(https://evil.example\) \*\*now\*\*"
+    );
+}
+
+#[tokio::test]
+async fn a_responders_own_role_change_sets_off_no_other_responder() {
+    let Some(sim) = Sim::new("a_responders_own_role_change_sets_off_no_other_responder").await else {
+        return;
+    };
+    let (member, lobby) = (unique(), unique());
+    let (crab, shell) = (unique(), unique());
+    sim.guild_role(crab, "Crab", 2);
+    sim.guild_role(shell, "Shell", 3);
+    // Crab gives Shell, and Shell would give Crab back: a loop without the chain cap.
+    let mut gives_shell = responder("role_added", "Crab {role}", lobby);
+    gives_shell.trigger_value = Some(crab.to_string());
+    gives_shell.cooldown_secs = 30;
+    gives_shell.actions =
+        serde_json::from_value(json!([{ "kind": "add_role", "role_id": shell.to_string() }])).unwrap();
+    let mut gives_crab = responder("role_added", "Shell {role}", lobby);
+    gives_crab.trigger_value = Some(shell.to_string());
+    gives_crab.cooldown_secs = 30;
+    gives_crab.actions =
+        serde_json::from_value(json!([{ "kind": "toggle_role", "role_id": crab.to_string() }])).unwrap();
+    stock_responders(&sim, &[gives_shell, gives_crab]).await;
+
+    hold_roles(&sim, member, &[]).await;
+    hold_roles(&sim, member, &[crab]).await;
+    let posted: Vec<String> = posts_after(&sim, |p| !p.is_empty())
+        .await
+        .iter()
+        .map(|p| p.content().to_owned())
+        .collect();
+    assert_eq!(posted.len(), 1, "{posted:?}");
+    assert!(posted[0].starts_with("Crab"), "{posted:?}");
+    assert_eq!(sim.role_changes(), [format!("PUT {member} {shell}")]);
+
+    // Discord tells of the role the responder gave: nothing else answers.
+    hold_roles(&sim, member, &[crab, shell]).await;
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert!(sim.posts().is_empty(), "the second responder stayed quiet");
+    assert!(sim.role_changes().is_empty(), "and changed no role");
+
+    // The same role given by someone else still counts.
+    hold_roles(&sim, member, &[crab]).await;
+    hold_roles(&sim, member, &[crab, shell]).await;
+    let posted = posts_after(&sim, |p| !p.is_empty()).await;
+    assert!(
+        posted.iter().any(|p| p.content().starts_with("Shell")),
+        "{:?}",
+        posted.iter().map(|p| p.content()).collect::<Vec<_>>()
+    );
 }

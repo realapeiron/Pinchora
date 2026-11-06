@@ -27,6 +27,13 @@ pub const MAX_ACTIONS: usize = 3;
 pub const MAX_LIST: usize = 25;
 pub const COMMAND_COOLDOWN_MAX: i64 = 3_600;
 pub const RESPONDER_COOLDOWN_MAX: i64 = 86_400;
+/// The shortest cooldown, per member, of a command or responder that does something besides answering:
+/// actions must not be a points tap or a role toggle to hammer.
+pub const ACTION_COOLDOWN_MIN: i64 = 30;
+/// Server points custom actions may give one member in one server per day (UTC); taking is not capped.
+pub const ACTION_POINTS_DAILY_MAX: i64 = 1_000;
+/// Direct messages custom actions and auto-responders may send one member of one server per hour.
+pub const ACTION_DMS_PER_HOUR: i64 = 5;
 /// Server points one action may give (positive) or take (negative).
 pub const POINTS_ACTION: RangeInclusive<i64> = -1_000..=1_000;
 /// What a member types after the command name, in characters.
@@ -639,14 +646,31 @@ fn clean_list(name: &'static str, ids: Vec<u64>, errors: &mut Vec<FieldError>) -
     clean
 }
 
-fn clean_cooldown(seconds: i64, max: i64, errors: &mut Vec<FieldError>) -> i64 {
+fn clean_cooldown(seconds: i64, max: i64, has_actions: bool, errors: &mut Vec<FieldError>) -> i64 {
     if !(0..=max).contains(&seconds) {
         errors.push(FieldError::new(
             "cooldown_secs",
             format!("A cooldown goes from 0 to {max} seconds."),
         ));
+    } else if has_actions && seconds < ACTION_COOLDOWN_MIN {
+        errors.push(FieldError::new(
+            "cooldown_secs",
+            format!(
+                "With actions, a member waits at least {ACTION_COOLDOWN_MIN} seconds between uses: set the cooldown to {ACTION_COOLDOWN_MIN} or more, or remove the actions."
+            ),
+        ));
     }
     seconds.clamp(0, max)
+}
+
+/// The cooldown a command or responder runs with: what the server set, and at least
+/// [`ACTION_COOLDOWN_MIN`] when it has actions (a row written before that rule still gets it).
+pub fn run_cooldown(seconds: i64, actions: &[Action]) -> i64 {
+    if actions.is_empty() {
+        seconds.max(0)
+    } else {
+        seconds.max(ACTION_COOLDOWN_MIN)
+    }
 }
 
 /// Fills `errors` from the embed's and actions' verdicts and returns what survived.
@@ -752,7 +776,12 @@ impl CommandDef {
         self.deny_roles = clean_list("deny_roles", std::mem::take(&mut self.deny_roles), &mut errors);
         self.allow_channels = clean_list("allow_channels", std::mem::take(&mut self.allow_channels), &mut errors);
         self.deny_channels = clean_list("deny_channels", std::mem::take(&mut self.deny_channels), &mut errors);
-        self.cooldown_secs = clean_cooldown(self.cooldown_secs, COMMAND_COOLDOWN_MAX, &mut errors);
+        self.cooldown_secs = clean_cooldown(
+            self.cooldown_secs,
+            COMMAND_COOLDOWN_MAX,
+            !self.actions.is_empty(),
+            &mut errors,
+        );
         if errors.is_empty() { Ok(self) } else { Err(errors) }
     }
 
@@ -919,7 +948,12 @@ impl ResponderDef {
             errors.push(FieldError::new("chance", "The chance goes from 1 to 100 percent."));
             self.chance = self.chance.clamp(1, 100);
         }
-        self.cooldown_secs = clean_cooldown(self.cooldown_secs, RESPONDER_COOLDOWN_MAX, &mut errors);
+        self.cooldown_secs = clean_cooldown(
+            self.cooldown_secs,
+            RESPONDER_COOLDOWN_MAX,
+            !self.actions.is_empty(),
+            &mut errors,
+        );
         self.allow_channels = clean_list("allow_channels", std::mem::take(&mut self.allow_channels), &mut errors);
         self.deny_channels = clean_list("deny_channels", std::mem::take(&mut self.deny_channels), &mut errors);
         if errors.is_empty() { Ok(self) } else { Err(errors) }
@@ -1404,6 +1438,37 @@ mod tests {
     }
 
     #[test]
+    fn actions_need_a_cooldown_of_their_own() {
+        let mut c = command();
+        c.actions = vec![Action::GivePoints { amount: 1_000 }];
+        for seconds in [0, ACTION_COOLDOWN_MIN - 1] {
+            c.cooldown_secs = seconds;
+            let errors = c.clone().clean(&reserved()).unwrap_err();
+            assert_eq!(fields(errors.clone()), ["cooldown_secs"], "{seconds}");
+            assert!(
+                errors[0].message.contains("at least 30 seconds"),
+                "{}",
+                errors[0].message
+            );
+        }
+        c.cooldown_secs = ACTION_COOLDOWN_MIN;
+        assert!(c.clean(&reserved()).is_ok());
+        let mut r = responder(TriggerKind::LevelUp);
+        r.actions = vec![Action::Dm { text: "hi".into() }];
+        assert_eq!(fields(r.clone().clean().unwrap_err()), ["cooldown_secs"]);
+        r.cooldown_secs = 60;
+        assert!(r.clean().is_ok());
+        // Without actions any cooldown is fine; a stored row without one still runs with the floor.
+        assert!(command().clean(&reserved()).is_ok());
+        assert_eq!(run_cooldown(0, &[]), 0);
+        assert_eq!(
+            run_cooldown(0, &[Action::GivePoints { amount: 5 }]),
+            ACTION_COOLDOWN_MIN
+        );
+        assert_eq!(run_cooldown(90, &[Action::GivePoints { amount: 5 }]), 90);
+    }
+
+    #[test]
     fn who_may_run_a_command_and_where() {
         let mut c = command();
         assert_eq!(c.allows(&[], &[1]), Ok(()));
@@ -1477,6 +1542,7 @@ mod tests {
         talk.trigger_value = Some("hi".into());
         talk.destination = Destination::Current;
         talk.actions = vec![Action::React { emoji: "👋".into() }];
+        talk.cooldown_secs = ACTION_COOLDOWN_MIN;
         assert!(talk.clean().unwrap().channel_id.is_none());
     }
 

@@ -9,6 +9,7 @@ import {
   blankResponder,
   changedKeys,
   checkCommandName,
+  cooldownFor,
   cooldownLabel,
   defOf,
   describeAction,
@@ -163,5 +164,15 @@ describe("wording", () => {
     expect(cooldownLabel(45)).toBe("45 s");
     expect(cooldownLabel(300)).toBe("5 min");
     expect(cooldownLabel(7200)).toBe("2 h");
+  });
+});
+
+describe("cooldowns with actions", () => {
+  it("rise to the server's floor once there is an action, and stay where they are without", () => {
+    const give = [{ kind: "give_points" as const, amount: 5 }];
+    expect(LIMITS.action_cooldown_min).toBe(30);
+    expect(cooldownFor(give, 0)).toBe(30);
+    expect(cooldownFor(give, 90)).toBe(90);
+    expect(cooldownFor([], 0)).toBe(0);
   });
 });

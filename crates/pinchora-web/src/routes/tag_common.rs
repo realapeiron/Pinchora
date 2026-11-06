@@ -1,9 +1,11 @@
 //! What the custom command and auto-responder routes share: the JSON of a row, the checks of the roles and
 //! channels it names against the server, and the filled-in messages of the editors' preview and test panels.
 
-use pinchora_commands::{Rendered, Spec, mention_ids, pick_random, render_message, scrub_value, templates};
+use pinchora_commands::{
+    Rendered, Spec, escape_markdown, mention_ids, pick_random, render_message, scrub_value, templates,
+};
 use pinchora_core::{
-    settings::FieldError,
+    settings::{FieldError, Grantor},
     tags::{ARGS_MAX, Action, CommandDef, Destination, ResponderDef, TriggerKind, Vars},
 };
 use pinchora_db::{CommandRow, ResponderRow};
@@ -11,6 +13,7 @@ use serde_json::{Value, json};
 
 use crate::{
     error::{ApiError, ApiResult},
+    extract::ManagedGuild,
     guild_info::{self, GuildInfo},
     state::WebState,
 };
@@ -132,12 +135,15 @@ impl Refs {
 }
 
 /// Refuses (422) a role or channel that is not on the server, a role action the bot cannot do, and a
-/// channel the bot cannot post in. Only what is new since `old` is checked: a role that was deleted after
-/// it was put on a command must not stop the command from being edited.
-pub async fn check_refs(state: &WebState, guild: u64, now: &Refs, old: Option<&Refs>) -> ApiResult<()> {
+/// channel the bot cannot post in. Only what is new since `old` is checked against the server: a role that
+/// was deleted after it was put on a command must not stop the command from being edited. Every role action
+/// is checked against the manager, though, new or not: nobody edits a command (say, who may run it) that
+/// hands out a role they could not put on it themselves.
+pub async fn check_refs(state: &WebState, managed: &ManagedGuild, now: &Refs, old: Option<&Refs>) -> ApiResult<()> {
+    let guild = managed.id;
     let empty = Refs::default();
     let new = now.new_since(old.unwrap_or(&empty));
-    if new.is_empty() {
+    if new.is_empty() && now.action_roles.is_empty() {
         return Ok(());
     }
     let mut errors: Vec<FieldError> = Vec::new();
@@ -168,14 +174,25 @@ pub async fn check_refs(state: &WebState, guild: u64, now: &Refs, old: Option<&R
             errors.push(error);
         }
     }
-    if !new.action_roles.is_empty() {
-        // The bot's position is read live: the slash commands check it live too.
+    if !now.action_roles.is_empty() {
+        // The bot's position and the manager's roles are read live: the slash commands check them live too.
         let live = guild_info::live(state, guild).await?;
-        errors.extend(
-            new.action_roles
-                .iter()
-                .filter_map(|id| live.check_assignable("actions", *id).err()),
-        );
+        let grantor = guild_info::grantor(state, managed, &live.roles, true).await?;
+        for id in &now.action_roles {
+            let checked = if new.action_roles.contains(id) {
+                live.check_action_role("actions", *id, grantor).map(drop)
+            } else {
+                match live.role(*id) {
+                    Some(role) => live.check_action_grant("actions", role, grantor).map(drop),
+                    None => Ok(()),
+                }
+            };
+            if let Err(error) = checked
+                && !errors.contains(&error)
+            {
+                errors.push(error);
+            }
+        }
     }
     if errors.is_empty() {
         Ok(())
@@ -186,7 +203,7 @@ pub async fn check_refs(state: &WebState, guild: u64, now: &Refs, old: Option<&R
 
 /// What an import keeps of a command on another server: roles and channels this server lacks are
 /// dropped (with a word about it) instead of failing the whole command. Returns what was dropped.
-pub fn prune_command(def: &mut CommandDef, info: &GuildInfo) -> Vec<String> {
+pub fn prune_command(def: &mut CommandDef, info: &GuildInfo, grantor: Grantor) -> Vec<String> {
     let mut dropped = Vec::new();
     let mut keep_roles = |list: &mut Vec<u64>, what: &str| {
         let before = list.len();
@@ -212,13 +229,13 @@ pub fn prune_command(def: &mut CommandDef, info: &GuildInfo) -> Vec<String> {
     };
     keep_channels(&mut def.allow_channels, "allowed channels");
     keep_channels(&mut def.deny_channels, "denied channels");
-    prune_actions(&mut def.actions, info, &mut dropped);
+    prune_actions(&mut def.actions, info, grantor, &mut dropped);
     dropped
 }
 
 /// [`prune_command`] for a responder. A channel or role the responder cannot work without is not
 /// dropped: the caller fails the item when it is missing.
-pub fn prune_responder(def: &mut ResponderDef, info: &GuildInfo) -> Vec<String> {
+pub fn prune_responder(def: &mut ResponderDef, info: &GuildInfo, grantor: Grantor) -> Vec<String> {
     let mut dropped = Vec::new();
     for (list, what) in [
         (&mut def.allow_channels, "allowed channels"),
@@ -233,16 +250,19 @@ pub fn prune_responder(def: &mut ResponderDef, info: &GuildInfo) -> Vec<String> 
             ));
         }
     }
-    prune_actions(&mut def.actions, info, &mut dropped);
+    prune_actions(&mut def.actions, info, grantor, &mut dropped);
     dropped
 }
 
-fn prune_actions(actions: &mut Vec<Action>, info: &GuildInfo, dropped: &mut Vec<String>) {
+fn prune_actions(actions: &mut Vec<Action>, info: &GuildInfo, grantor: Grantor, dropped: &mut Vec<String>) {
     let before = actions.len();
-    actions.retain(|a| a.role().is_none_or(|id| info.check_assignable("actions", id).is_ok()));
+    actions.retain(|a| {
+        a.role()
+            .is_none_or(|id| info.check_action_role("actions", id, grantor).is_ok())
+    });
     if actions.len() < before {
         dropped.push(format!(
-            "{} role action(s) name a role this server lacks or I can't hand out and were left out",
+            "{} role action(s) name a role this server lacks, I can't hand out or you can't set up, and were left out",
             before - actions.len()
         ));
     }
@@ -289,11 +309,11 @@ impl Sample<'_> {
             .set("user.name", scrub_value(self.name))
             .set("user.id", self.user.to_string())
             .set("user.avatar", self.avatar.clone())
-            .set("server", self.guild_name)
+            .set("server", escape_markdown(self.guild_name))
             .set("server.members", "1234")
             .set("channel", format!("<#{}>", self.channel(channel)))
             .set("points", "250")
-            .set("points.name", self.points_name);
+            .set("points.name", escape_markdown(self.points_name));
         vars.args(&scrub_value(&args.chars().take(ARGS_MAX).collect::<String>()));
         vars
     }
@@ -474,22 +494,37 @@ mod tests {
                 parent_id: None,
                 position: 0,
             }],
-            roles: vec![RoleInfo {
-                id: "10".into(),
-                name: "Regular".into(),
-                color: 0,
-                position: 1,
-                managed: false,
-                everyone: false,
-                assignable: true,
-                why_not: None,
-            }],
+            roles: vec![role("10", "Regular", 0), role("12", "Mod", 1 << 13)],
             bot: BotInfo {
                 top_role_position: Some(5),
                 manage_roles: true,
             },
+            you: None,
         }
     }
+
+    fn role(id: &str, name: &str, permissions: u64) -> RoleInfo {
+        RoleInfo {
+            id: id.into(),
+            name: name.into(),
+            color: 0,
+            position: 1,
+            managed: false,
+            everyone: false,
+            permissions: permissions.to_string(),
+            powers: Vec::new(),
+            assignable: true,
+            why_not: None,
+            action_ok: true,
+            action_why_not: None,
+        }
+    }
+
+    const OWNER: Grantor = Grantor {
+        owner: true,
+        administrator: true,
+        top_role: None,
+    };
 
     #[test]
     fn mentions_read_as_names() {
@@ -533,7 +568,7 @@ mod tests {
             "actions": [{ "kind": "add_role", "role_id": "10" }, { "kind": "add_role", "role_id": "99" }, { "kind": "dm", "text": "hi" }]
         }))
         .unwrap();
-        let dropped = prune_command(&mut def, &info);
+        let dropped = prune_command(&mut def, &info, OWNER);
         assert_eq!(def.allow_roles, [10]);
         assert_eq!(def.deny_channels, [20]);
         assert_eq!(
@@ -542,5 +577,31 @@ mod tests {
             "the unknown role action went, the direct message stayed"
         );
         assert_eq!(dropped.len(), 3, "{dropped:?}");
+    }
+
+    #[test]
+    fn an_import_leaves_out_roles_the_manager_may_not_hand_out() {
+        let info = info();
+        let mut def: CommandDef = serde_json::from_value(json!({
+            "name": "x", "responses": ["y"],
+            "actions": [{ "kind": "add_role", "role_id": "10" }, { "kind": "toggle_role", "role_id": "12" }]
+        }))
+        .unwrap();
+        // Manage Messages is never handed out by an action, even for the owner.
+        let dropped = prune_command(&mut def, &info, OWNER);
+        assert_eq!(def.actions.iter().filter_map(Action::role).collect::<Vec<_>>(), [10]);
+        assert_eq!(dropped.len(), 1, "{dropped:?}");
+        // A manager whose highest role is not above @Regular keeps neither.
+        let low = Grantor {
+            owner: false,
+            administrator: false,
+            top_role: Some(1),
+        };
+        let mut def: CommandDef = serde_json::from_value(json!({
+            "name": "x", "responses": ["y"], "actions": [{ "kind": "add_role", "role_id": "10" }]
+        }))
+        .unwrap();
+        prune_command(&mut def, &info, low);
+        assert!(def.actions.is_empty());
     }
 }

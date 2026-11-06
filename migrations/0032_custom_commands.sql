@@ -51,3 +51,7 @@ CREATE TABLE custom_responders (
     updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX custom_responders_guild_idx ON custom_responders (guild_id, trigger_kind) WHERE enabled;
+
+-- A member who switched off direct messages from servers with `/privacy`: custom actions, direct-message
+-- auto-responders, level-ups and suggestion updates all skip them.
+ALTER TABLE users ADD COLUMN dm_opt_out BOOLEAN NOT NULL DEFAULT FALSE;

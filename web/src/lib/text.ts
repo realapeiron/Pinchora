@@ -245,3 +245,30 @@ export function initials(name: string): string {
   const letters = words.length > 1 ? words[0]![0]! + words[1]![0]! : (words[0] ?? "?").slice(0, 2);
   return letters.toUpperCase();
 }
+
+/** A piece of a message as Discord shows it. */
+export interface RichPart {
+  kind: "text" | "bold" | "italic" | "code";
+  text: string;
+}
+
+// An escape (a backslash before punctuation) comes first, so an escaped `*` never opens bold or italic.
+const RICH = /(\\[!-/:-@[-`{-~]|\*\*[^*]+\*\*|`[^`]+`|\*[^*\s][^*]*\*)/g;
+
+/** The bold, italic and code of a message, with Discord's backslash escapes taken out. */
+export function richParts(text: string): RichPart[] {
+  const parts: RichPart[] = [];
+  const push = (kind: RichPart["kind"], piece: string) => {
+    const last = parts[parts.length - 1];
+    if (kind === "text" && last?.kind === "text") last.text += piece;
+    else if (piece) parts.push({ kind, text: piece });
+  };
+  for (const part of text.split(RICH)) {
+    if (part.length === 2 && part.startsWith("\\")) push("text", part.slice(1));
+    else if (part.startsWith("**") && part.endsWith("**") && part.length > 4) push("bold", part.slice(2, -2));
+    else if (part.startsWith("`") && part.endsWith("`") && part.length > 2) push("code", part.slice(1, -1));
+    else if (part.startsWith("*") && part.endsWith("*") && part.length > 2) push("italic", part.slice(1, -1));
+    else push("text", part);
+  }
+  return parts;
+}

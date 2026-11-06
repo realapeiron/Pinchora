@@ -821,6 +821,8 @@ p {
 
 .setting-row + .field,
 .setting-row + .form-grid,
+.form-grid + .field,
+.choice + .field,
 .field + .form-grid,
 .form-grid + .choice,
 .choice + .setting-row,

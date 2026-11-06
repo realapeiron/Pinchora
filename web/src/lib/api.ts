@@ -217,14 +217,24 @@ export interface Role {
   position: number;
   managed: boolean;
   everyone: boolean;
+  /** Discord's permission bits, as a string. */
+  permissions: string;
+  /** The powerful permissions it has (Administrator, Manage Messages, ...), by name. */
+  powers: string[];
+  /** Whether you may set it up as a level, reputation, store or join role; `why_not` says why not. */
   assignable: boolean;
   why_not: string | null;
+  /** The same for a custom command's or auto-responder's role action, which never hands out powers. */
+  action_ok: boolean;
+  action_why_not: string | null;
 }
 
 export interface GuildInfo {
   channels: Channel[];
   roles: Role[];
   bot: { top_role_position: number | null; manage_roles: boolean };
+  /** Who is asking: what decides the roles they may set up. */
+  you?: { owner: boolean; administrator: boolean; top_role_position: number | null };
 }
 
 export interface XpRule {

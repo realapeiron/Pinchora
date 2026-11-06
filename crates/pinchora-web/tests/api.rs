@@ -62,6 +62,9 @@ const FAN: u64 = 9_001;
 const REGULAR: u64 = 9_002;
 const ADMIN: u64 = 9_003;
 const BOOSTER: u64 = 9_004;
+/// Below the bot, with Manage Messages: a role only the owner or an administrator may set up.
+const HELPER: u64 = 9_005;
+const MANAGE_MESSAGES: u64 = 1 << 13;
 
 /// Ids unique per process and, through the clock, per run, so tests can share one database.
 fn unique() -> u64 {
@@ -158,6 +161,7 @@ fn roles_json(guild: u64, bot_position: i64) -> Value {
         role_json(REGULAR, "Regular", 5, false, 0),
         role_json(ADMIN, "Admin", 20, false, ADMINISTRATOR),
         role_json(BOOSTER, "Server Booster", 2, true, 0),
+        role_json(HELPER, "Helper", 4, false, MANAGE_MESSAGES),
     ])
 }
 

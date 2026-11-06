@@ -283,6 +283,11 @@ export function describeAction(action: TagAction): string {
   }
 }
 
+/** The cooldown a draft keeps when its actions change: raised to the floor once it does something. */
+export function cooldownFor(actions: TagAction[], seconds: number): number {
+  return actions.length > 0 ? Math.max(seconds, LIMITS.action_cooldown_min) : seconds;
+}
+
 /** A cooldown in the biggest unit that reads well: "30 s", "5 min", "2 h". */
 export function cooldownLabel(seconds: number): string {
   if (seconds <= 0) return "none";

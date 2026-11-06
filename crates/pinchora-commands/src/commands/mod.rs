@@ -35,6 +35,7 @@ pub(crate) mod play;
 pub(crate) mod plaza;
 mod points;
 pub(crate) mod poll;
+mod privacy;
 pub(crate) mod profile;
 pub(crate) mod quests;
 mod rank;
@@ -130,4 +131,5 @@ commands!(
     party_games::PartyCommand,
     tag::Tag,
     customcommand::CustomCommand,
+    privacy::Privacy,
 );

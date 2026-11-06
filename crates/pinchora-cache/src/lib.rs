@@ -155,11 +155,17 @@ impl Cache {
 impl Cache {
     /// Increments a counter that expires after `ttl`; returns the new value.
     pub async fn incr(&self, key: &str, ttl: Duration) -> anyhow::Result<i64> {
+        self.incr_by(key, 1, ttl).await
+    }
+
+    /// Adds `by` to a counter that expires after `ttl`; returns the new value. Concurrent adds each see
+    /// a different total, so a cap can be shared out exactly.
+    pub async fn incr_by(&self, key: &str, by: i64, ttl: Duration) -> anyhow::Result<i64> {
         let key = format!("{PREFIX}:n:{key}");
         let mut conn = self.conn();
         let (value, _): (i64, i64) = redis::pipe()
             .atomic()
-            .incr(&key, 1)
+            .incr(&key, by)
             .expire(&key, ttl.as_secs() as i64)
             .query_async(&mut conn)
             .await?;

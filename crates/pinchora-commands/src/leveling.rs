@@ -153,8 +153,17 @@ pub(crate) async fn level_up(app: &Arc<App>, settings: &GuildSettings, up: Level
     Ok(())
 }
 
-/// The direct message channel with `user`, or `None` when Discord will not open one.
+/// The direct message channel with `user`, or `None` when they switched direct messages from servers off
+/// (`/privacy`) or Discord will not open one. Every message a server sets up to send by DM comes through here.
 pub(crate) async fn private_channel(app: &App, user: u64) -> Option<Id<ChannelMarker>> {
+    match app.db.dm_opt_out(user).await {
+        Ok(false) => {}
+        Ok(true) => return None,
+        Err(error) => {
+            tracing::warn!(user, %error, "could not read the direct message choice");
+            return None;
+        }
+    }
     let opened = async {
         anyhow::Ok(
             app.http

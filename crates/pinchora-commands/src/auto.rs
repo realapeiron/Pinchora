@@ -6,7 +6,7 @@ use std::{sync::Arc, time::Duration};
 
 use pinchora_core::{
     modules::Module,
-    tags::{Destination, TriggerKind},
+    tags::{Destination, TriggerKind, run_cooldown},
 };
 use pinchora_db::ResponderRow;
 use twilight_model::{
@@ -23,7 +23,8 @@ use twilight_model::{
 use crate::{
     App,
     custom::{
-        Actor, Scene, Spec, all_texts, pick, render_message, run_discord_actions, run_points, scene_vars, to_discord,
+        Actor, Scene, Spec, all_texts, dm_allowed, own_change_key, pick, render_message, run_discord_actions,
+        run_points, scene_vars, to_discord,
     },
     leveling::private_channel,
 };
@@ -167,13 +168,24 @@ pub(crate) async fn roles_changed(app: &Arc<App>, event: &MemberUpdate) {
     let Some(before) = app.custom.swap_roles(guild, user, now.clone()).await else {
         return;
     };
+    // A change an auto-responder made sets no responder off: a chain stops after one responder.
+    let mut ours = Vec::new();
+    for role in watchers.iter().filter_map(|r| r.def.watched_role()) {
+        if now.contains(&role) != before.contains(&role) && !ours.contains(&role) {
+            match app.cache.take(&own_change_key(guild, user, role)).await {
+                Ok(Some(_)) => ours.push(role),
+                Ok(None) => {}
+                Err(error) => tracing::warn!(guild, %error, "could not read a responder's role change"),
+            }
+        }
+    }
     for row in watchers {
         let Some(role) = row.def.watched_role() else { continue };
         let happened = match row.def.trigger_kind {
             TriggerKind::RoleAdded => now.contains(&role) && !before.contains(&role),
             _ => !now.contains(&role) && before.contains(&role),
         };
-        if !happened {
+        if !happened || ours.contains(&role) {
             continue;
         }
         let moment = Moment {
@@ -294,15 +306,24 @@ async fn try_fire(app: &Arc<App>, row: &ResponderRow, m: &Moment<'_>) -> anyhow:
     if def.chance < 100 && rand::random_range(1..=100) > def.chance {
         return Ok(false);
     }
-    if def.cooldown_secs > 0 {
+    let cooldown = run_cooldown(def.cooldown_secs, &def.actions);
+    if cooldown > 0 {
         let key = format!("auto:{guild}:{}:{user}", row.id);
-        let ttl = Duration::from_secs(def.cooldown_secs as u64);
+        let ttl = Duration::from_secs(cooldown as u64);
         if app.cache.try_cooldown(&key, ttl).await?.is_some() {
             return Ok(false);
         }
     }
 
-    let balance = run_points(app, guild, user, &def.actions).await;
+    let points = run_points(app, guild, user, &def.actions).await;
+    if let Some(note) = &points.capped {
+        tracing::debug!(
+            guild,
+            responder = row.id,
+            note,
+            "an auto-responder hit the daily points cap"
+        );
+    }
     let mut scene = Scene::of(guild, m.here.or(def.channel_id), m.user, m.nick);
     scene.extra.clone_from(&m.extra);
     let spec = Spec {
@@ -310,14 +331,16 @@ async fn try_fire(app: &Arc<App>, row: &ResponderRow, m: &Moment<'_>) -> anyhow:
         embed: def.embed.as_ref(),
         allow_mentions: def.allow_mentions,
     };
-    let vars = scene_vars(app, &scene, &all_texts(&spec, &def.actions), balance).await;
+    let vars = scene_vars(app, &scene, &all_texts(&spec, &def.actions), points.balance).await;
     let rendered = render_message(&spec, &vars, &mut pick);
     let (content, embed, mentions) = to_discord(&rendered, guild, user);
     if !(content.is_empty() && embed.is_none()) {
         let embeds: Vec<_> = embed.into_iter().collect();
         match (def.destination, target) {
             (Destination::Dm, _) => {
-                if let Some(channel) = private_channel(app, user).await {
+                if dm_allowed(app, guild, user).await
+                    && let Some(channel) = private_channel(app, user).await
+                {
                     // A direct message pings nobody else.
                     let none = AllowedMentions::default();
                     send(app, channel, &content, &embeds, &none, None, true).await;
@@ -335,6 +358,7 @@ async fn try_fire(app: &Arc<App>, row: &ResponderRow, m: &Moment<'_>) -> anyhow:
         user,
         held: m.held,
         message: m.here.zip(m.message).map(|(c, msg)| (Id::new(c.max(1)), msg)),
+        responder: true,
     };
     // Nobody ran this, so there is nobody to tell about an action that did not work.
     let notes = run_discord_actions(app, &actor, &def.actions, &vars).await;

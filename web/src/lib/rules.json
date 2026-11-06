@@ -881,6 +881,9 @@
       }
     ],
     "limits": {
+      "action_cooldown_min": 30,
+      "action_dms_per_hour": 5,
+      "action_points_daily_max": 1000,
       "args_max": 200,
       "command_cooldown_max": 3600,
       "description_max": 100,
@@ -958,7 +961,8 @@
       "surge",
       "party",
       "tag",
-      "customcommand"
+      "customcommand",
+      "privacy"
     ],
     "responder_placeholders": {
       "keyword": [

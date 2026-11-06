@@ -19,6 +19,7 @@ import {
   actionsProblem,
   blankCommand,
   checkCommandName,
+  cooldownFor,
   defOf,
   embedIsBlank,
   finishedActions,
@@ -64,7 +65,7 @@ function CommandForm({ guild, id, initial }: { guild: string; id?: string; initi
   const info = useDiscord(guild).data;
   const submit = useSaveTag(guild, "commands");
   const editor = useTagEditor(initial, tidyCommand, (def) => submit.mutateAsync({ id, def }));
-  const { draft, set } = editor;
+  const { draft, set, patch } = editor;
   const [args, setArgs] = useState("");
   const [showName, setShowName] = useState(false);
 
@@ -213,7 +214,9 @@ function CommandForm({ guild, id, initial }: { guild: string; id?: string; initi
           <Panel title="ACTIONS">
             <ActionsEditor
               actions={draft.actions}
-              onChange={(next) => set("actions", next)}
+              onChange={(next) =>
+                patch({ actions: next, cooldown_secs: cooldownFor(next, draft.cooldown_secs) })
+              }
               info={info}
               error={editor.problem("actions") ?? unfinished}
             />
@@ -282,13 +285,13 @@ function CommandForm({ guild, id, initial }: { guild: string; id?: string; initi
               label="Cooldown"
               htmlFor="command-cooldown"
               error={editor.problem("cooldown_secs")}
-              hint={`Seconds a member waits between uses, up to ${LIMITS.command_cooldown_max}. 0 is none.`}
+              hint={`Seconds a member waits between uses, up to ${LIMITS.command_cooldown_max}. 0 is none. With actions, at least ${LIMITS.action_cooldown_min}.`}
             >
               <input
                 id="command-cooldown"
                 type="number"
                 className="pixel-input input-short"
-                min={0}
+                min={draft.actions.length > 0 ? LIMITS.action_cooldown_min : 0}
                 max={LIMITS.command_cooldown_max}
                 value={draft.cooldown_secs}
                 onChange={(event) => set("cooldown_secs", Number(event.target.value))}

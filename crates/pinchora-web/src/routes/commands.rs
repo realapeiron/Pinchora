@@ -77,7 +77,7 @@ pub async fn create(
 ) -> ApiResult<Json<Value>> {
     let guild = managed.id;
     let def = def.clean(reserved_command_names())?;
-    check_refs(&state, guild, &Refs::of_command(&def), None).await?;
+    check_refs(&state, &managed, &Refs::of_command(&def), None).await?;
     let author = managed.current.session.user_id;
     match state.app.db.add_custom_command(guild, &def, author).await? {
         TagWrite::Saved(row) => {
@@ -123,7 +123,7 @@ pub async fn replace(
     }
     check_refs(
         &state,
-        guild,
+        &managed,
         &Refs::of_command(&def),
         Some(&Refs::of_command(&old.def)),
     )
@@ -171,6 +171,11 @@ pub async fn set_enabled(
     let old = load(&state, guild, row_id(&params)?).await?;
     if old.def.enabled == body.enabled {
         return Ok(Json(command_json(&old)));
+    }
+    if body.enabled {
+        // Switching on hands its roles out again: the manager must be one who could have put them there.
+        let refs = Refs::of_command(&old.def);
+        check_refs(&state, &managed, &refs, Some(&refs)).await?;
     }
     let row = state
         .app
@@ -329,14 +334,17 @@ pub async fn import(
     let db = &state.app.db;
     let author = managed.current.session.user_id;
     let known = merged_info(&state, guild).await?;
-    let mut ids: HashMap<String, i64> = db
+    let grantor = guild_info::grantor(&state, &managed, &known.roles, true).await?;
+    let mut existing: HashMap<String, CommandRow> = db
         .custom_commands(guild)
         .await?
         .into_iter()
-        .map(|c| (c.def.name, c.id))
+        .map(|c| (c.def.name.clone(), c))
         .collect();
     let (mut created, mut replaced, mut skipped, mut failed): (Vec<String>, Vec<String>, Vec<String>, Vec<Value>) =
         Default::default();
+    // What the replaced commands were, for the audit log.
+    let mut overwritten = serde_json::Map::new();
     for (index, item) in body.items.into_iter().enumerate() {
         let fail = |name: &str, message: String| json!({ "index": index, "name": name, "message": message });
         let mut def: CommandDef = match serde_json::from_value(item) {
@@ -347,7 +355,7 @@ pub async fn import(
             }
         };
         let label = def.name.clone();
-        let dropped = prune_command(&mut def, &known);
+        let dropped = prune_command(&mut def, &known, grantor);
         let def = match def.clean(reserved_command_names()) {
             Ok(def) => def,
             Err(errors) => {
@@ -355,17 +363,31 @@ pub async fn import(
                 continue;
             }
         };
-        let (written, replacing) = match ids.get(&def.name) {
+        let (written, replacing) = match existing.get(&def.name) {
             Some(_) if !replace => {
                 skipped.push(def.name.clone());
                 continue;
             }
-            Some(id) => (db.replace_custom_command(guild, *id, &def).await?, true),
+            Some(old) => {
+                // Overwriting a command hands its roles out on the import's terms: the manager must be
+                // one who could have put the old ones there too.
+                let refs = Refs::of_command(&old.def);
+                if let Err(error) = check_refs(&state, &managed, &refs, Some(&refs)).await {
+                    failed.push(fail(&def.name, error.message));
+                    continue;
+                }
+                (db.replace_custom_command(guild, old.id, &def).await?, true)
+            }
             None => (db.add_custom_command(guild, &def, author).await?, false),
         };
         match written {
             TagWrite::Saved(row) => {
-                ids.insert(row.def.name.clone(), row.id);
+                let before = existing.insert(row.def.name.clone(), row.clone());
+                if replacing && let Some(before) = before {
+                    overwritten
+                        .entry(row.def.name.clone())
+                        .or_insert(serde_json::to_value(&before.def).map_err(anyhow::Error::from)?);
+                }
                 let mut name = row.def.name.clone();
                 if !dropped.is_empty() {
                     name.push_str(&format!(" ({})", dropped.join("; ")));
@@ -389,7 +411,11 @@ pub async fn import(
                 guild,
                 action: "commands.import",
                 target: None,
-                before: Value::Null,
+                before: if overwritten.is_empty() {
+                    Value::Null
+                } else {
+                    json!({ "replaced": overwritten })
+                },
                 after: json!({ "created": created, "replaced": replaced }),
             },
             Some(Invalidation::Guild(guild)),
@@ -413,5 +439,6 @@ pub async fn merged_info(state: &WebState, guild: u64) -> ApiResult<guild_info::
         channels: cached.map_or_else(|| live.channels.clone(), |c| c.channels),
         roles: live.roles,
         bot: live.bot,
+        you: None,
     })
 }

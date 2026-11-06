@@ -1,6 +1,7 @@
 //! Giveaways: entries, the shells prize held from the host, and ending exactly once.
 
 use chrono::{DateTime, Utc};
+use pinchora_core::modules::Module;
 use sqlx::{Postgres, Transaction};
 
 use crate::{Db, economy::ledger, sql_id};
@@ -10,6 +11,21 @@ pub const ENDED: &str = "ended";
 
 /// Most giveaways one server can run at once.
 pub const MAX_RUNNING_GIVEAWAYS: i64 = 20;
+
+/// SQL that holds for a row of `$table` (with `guild_id` and `channel_id`) unless the module named by `$3`
+/// is switched off for its server, or its channel is on the module's `except` list.
+macro_rules! not_paused {
+    ($table:literal) => {
+        concat!(
+            "NOT EXISTS (SELECT 1 FROM guild_modules m WHERE m.guild_id = ",
+            $table,
+            ".guild_id AND m.module = $3 AND (NOT m.enabled OR (m.channel_mode = 'except' AND ",
+            $table,
+            ".channel_id = ANY(m.channels))))"
+        )
+    };
+}
+pub(crate) use not_paused;
 
 /// A giveaway or poll whose time is up, and where it lives.
 #[derive(Debug, Clone, Copy, sqlx::FromRow)]
@@ -289,13 +305,19 @@ impl Db {
     }
 
     /// Running giveaways whose time is up at `now`, soonest first, with the server and channel they live in.
+    /// Ones paused by their module are left out: in a server that switched giveaways off, or in a channel
+    /// its rule names as excluded (a rule that reaches the channel through its category is the caller's to
+    /// check).
     pub async fn due_giveaways(&self, now: DateTime<Utc>, limit: i64) -> anyhow::Result<Vec<Due>> {
-        Ok(sqlx::query_as(
-            "SELECT id, guild_id, channel_id FROM giveaways
-             WHERE status = 'running' AND ends_at <= $1 ORDER BY ends_at LIMIT $2",
-        )
+        Ok(sqlx::query_as(concat!(
+            "SELECT g.id, g.guild_id, g.channel_id FROM giveaways g
+             WHERE g.status = 'running' AND g.ends_at <= $1 AND ",
+            not_paused!("g"),
+            " ORDER BY g.ends_at LIMIT $2"
+        ))
         .bind(now)
         .bind(limit)
+        .bind(Module::Giveaways.key())
         .fetch_all(self.pool())
         .await?)
     }

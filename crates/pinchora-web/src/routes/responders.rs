@@ -83,7 +83,7 @@ pub async fn create(
     let guild = managed.id;
     let def = def.clean()?;
     check_listening(&state, &def)?;
-    check_refs(&state, guild, &Refs::of_responder(&def), None).await?;
+    check_refs(&state, &managed, &Refs::of_responder(&def), None).await?;
     let author = managed.current.session.user_id;
     match state.app.db.add_custom_responder(guild, &def, author).await? {
         TagWrite::Saved(row) => {
@@ -127,7 +127,7 @@ pub async fn replace(
     }
     check_refs(
         &state,
-        guild,
+        &managed,
         &Refs::of_responder(&def),
         Some(&Refs::of_responder(&old.def)),
     )
@@ -178,6 +178,8 @@ pub async fn set_enabled(
                 ..old.def.clone()
             },
         )?;
+        let refs = Refs::of_responder(&old.def);
+        check_refs(&state, &managed, &refs, Some(&refs)).await?;
     }
     let row = state
         .app
@@ -328,6 +330,7 @@ pub async fn import(
     let db = &state.app.db;
     let author = managed.current.session.user_id;
     let known = merged_info(&state, guild).await?;
+    let grantor = guild_info::grantor(&state, &managed, &known.roles, true).await?;
     let (mut created, mut failed): (Vec<String>, Vec<Value>) = Default::default();
     for (index, item) in body.items.into_iter().enumerate() {
         let fail = |name: &str, message: String| json!({ "index": index, "name": name, "message": message });
@@ -339,7 +342,7 @@ pub async fn import(
             }
         };
         let label = def.name.clone();
-        let mut dropped = prune_responder(&mut def, &known);
+        let mut dropped = prune_responder(&mut def, &known, grantor);
         if def.trigger_kind.needs_message_content() && def.enabled && !state.settings.message_content {
             def.enabled = false;
             dropped.push("keyword triggers are locked, so it came in switched off".to_owned());

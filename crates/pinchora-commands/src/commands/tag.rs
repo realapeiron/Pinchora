@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use pinchora_core::{
     modules::Module,
-    tags::{ARGS_MAX, NAME_MAX, ReplyMode, tidy_name, truncate},
+    tags::{ARGS_MAX, NAME_MAX, ReplyMode, run_cooldown, tidy_name, truncate},
 };
 use pinchora_db::CommandRow;
 use twilight_interactions::command::{CommandModel, CreateCommand};
@@ -91,9 +91,10 @@ async fn run_command(cx: &Cx, guild: u64, row: &CommandRow, args: &str) -> anyho
     if let Err(why) = def.allows(&held, &lineage) {
         return cx.reply_ephemeral(why).await;
     }
-    if def.cooldown_secs > 0 {
+    let cooldown = run_cooldown(def.cooldown_secs, &def.actions);
+    if cooldown > 0 {
         let key = format!("tag:{guild}:{}:{}", row.id, user.id);
-        let ttl = Duration::from_secs(def.cooldown_secs as u64);
+        let ttl = Duration::from_secs(cooldown as u64);
         if let Some(left) = cx.app.cache.try_cooldown(&key, ttl).await? {
             return cx
                 .reply_ephemeral(format!(
@@ -113,7 +114,7 @@ async fn run_command(cx: &Cx, guild: u64, row: &CommandRow, args: &str) -> anyho
     }
     // Points are the database's business and quick, so the answer can show the new balance; the rest
     // talks to Discord and follows the answer.
-    let balance = run_points(&cx.app, guild, user.id.get(), &def.actions).await;
+    let points = run_points(&cx.app, guild, user.id.get(), &def.actions).await;
     let mut scene = Scene::of(guild, channel, user, member.and_then(|m| m.nick.as_deref()));
     scene.args = args.chars().take(ARGS_MAX).collect();
     let spec = Spec {
@@ -121,7 +122,7 @@ async fn run_command(cx: &Cx, guild: u64, row: &CommandRow, args: &str) -> anyho
         embed: def.embed.as_ref(),
         allow_mentions: def.allow_mentions,
     };
-    let vars = scene_vars(&cx.app, &scene, &all_texts(&spec, &def.actions), balance).await;
+    let vars = scene_vars(&cx.app, &scene, &all_texts(&spec, &def.actions), points.balance).await;
     let rendered = render_message(&spec, &vars, &mut pick);
     let (content, embed, mentions) = to_discord(&rendered, guild, user.id.get());
     // Discord refuses a message with nothing in it (`{1}` with no words typed, say).
@@ -145,8 +146,10 @@ async fn run_command(cx: &Cx, guild: u64, row: &CommandRow, args: &str) -> anyho
         user: user.id.get(),
         held: &held,
         message: None,
+        responder: false,
     };
-    let notes = run_discord_actions(&cx.app, &actor, &def.actions, &vars).await;
+    let mut notes: Vec<String> = points.capped.into_iter().collect();
+    notes.extend(run_discord_actions(&cx.app, &actor, &def.actions, &vars).await);
     if !notes.is_empty() {
         cx.reply_ephemeral(notes.join("\n")).await?;
     }

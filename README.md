@@ -29,8 +29,9 @@ Written in Rust and built to run sharded on Kubernetes.
 | `/balance [user]`, `/give user amount` | Wallet and transfers |
 | `/rep user` | One reputation point per day; a server's reputation roles are given the moment the receiver's total reaches them, and the reply says so |
 | `/bio text` | About-me text on the profile card |
+| `/privacy [server_dms]` | Your own choice, in any server or in DMs: with `server_dms` off, no server's custom commands, auto-responders, level-ups or suggestion updates reach you by direct message; without it, it shows the current choice. Always available, whatever a server switches off |
 | `/config welcome\|leveling\|show` | Welcome cards and level-up messages. `/config leveling` takes `enabled`, `channel`, `message` (placeholders `{user}` `{level}` `{server}` `{role}`, the last being the reward role just earned, empty when none) and `mode`: `channel` (the level-up channel, else where they chatted), `current` (always where they chatted), `dm` (a direct message; closed DMs are skipped quietly) or `off` (no message, roles still given) (Manage Server) |
-| `/config level-roles add\|remove\|list\|mode\|sync` | Roles given at a level (up to 25): `mode` keeps every role earned or only the highest, `sync` catches up members who already passed a level (one at a time per server, from Discord or the dashboard, with a 5 minute rest after each) (Manage Server) |
+| `/config level-roles add\|remove\|list\|mode\|sync` | Roles given at a level (up to 25): `mode` keeps every role earned or only the highest, `sync` catches up members who already passed a level (one at a time per server, from Discord or the dashboard, with a 5 minute rest after each). Who may set up which role is in "Who may hand out a role" below (Manage Server) |
 | `/config xp multiplier value [channel] [role]` | Scale the server XP and points a channel (text, voice or forum) or category, or a role, earns, from 0 to 5; 0 means no XP, 1 is normal and drops the rule. Threads and forum posts follow their channel, and a channel follows its category unless it has a rule of its own (the nearest rule wins). A channel's multiplier is multiplied by the member's highest role multiplier, a no-XP role always wins, and `@everyone` is a server-wide multiplier. Global XP is never scaled. Up to 50 rules (Manage Server) |
 | `/config xp clear [channel] [role]`, `/config xp show` | Remove one multiplier or all of them, or list the multipliers with the voice settings (Manage Server) |
 | `/config xp voice [enabled] [amount]` | Voice XP, off by default: members in a voice channel with at least one other person earn `amount` (1 to 100, default 10) server XP a minute; nothing while alone (bots do not count), muted and deafened at once, or in the server's AFK channel. Multipliers apply by the voice channel (or its category) and the member's roles; level-ups follow the leveling mode. Switching it on does not see who is already in voice: they start earning when they next join, move, mute or unmute (Manage Server) |
@@ -322,6 +323,23 @@ back its escrow, so no stake stays locked; the switch only refuses new commands 
 one-minute cooldown only where leveling or points count, chat counts towards quests only while quests are on, and
 a level-up is not posted in a level-up channel the leveling module is off in (it is told where it was earned).
 
+### Who may hand out a role
+
+Every place a server sets up a role for the bot to hand out (level, reputation, store and join roles, role panels,
+custom command and auto-responder actions; on Discord and on the dashboard) checks it with one rule
+(`pinchora_core::settings::grant_refusal`), live when it is saved:
+
+- The bot must be able to give it: not `@everyone`, not managed by an integration, below the bot's highest role.
+- A role with Administrator, Manage Server, Manage Roles, Manage Channels, Manage Webhooks, Ban, Kick or Timeout
+  Members, Mention @everyone or Manage Messages is only set up by the server owner or an administrator.
+- Nobody but the owner sets up a role at or above their own highest role.
+- Custom command and auto-responder actions, which any member sets off whenever they like, never hand out a role
+  with those permissions, whoever wrote them, and the bot checks the role's permissions again each time it gives it.
+  On the dashboard, editing, switching on or overwriting (import) a command or responder checks all its role
+  actions against the person doing it.
+
+The dashboard's role pickers grey out, for the manager looking, what they may not pick, with the reason.
+
 ### Custom commands and auto-responders
 
 Servers write their own commands (`/tag name`) and messages the bot sends by itself, on the dashboard or, for
@@ -338,8 +356,14 @@ an embed up to 6,000 in all with at most 25 fields, and a command does at most t
 - **Safety**: everything goes through one pipeline (`custom.rs`). What a member typed or a name is stripped of
   mentions and `@everyone`/`@here` before it is placed in a message; with "Allow mentions" off (the default) the
   mentions the author wrote are dropped too, and only the member it is about is pinged; with it on, the users and
-  roles the author wrote can be pinged, never everyone or here. Actions can only move **server points**, never
-  shells, and role actions are checked against the bot's role position when saved and when run.
+  roles the author wrote can be pinged, never everyone or here. Markdown in what a member typed, in names and in
+  the server's name is escaped, so `{args}` cannot become a masked link, bold text or a heading. Actions can only
+  move **server points**, never shells; role actions follow "Who may hand out a role" above.
+- **Action limits**: a command or responder with actions waits at least 30 seconds per member between uses (a
+  shorter cooldown is refused, and an older row runs with 30), points actions give one member at most 1,000 a day
+  per server (taking is not capped; the member is told), and direct messages from actions and DM responders stop
+  at 5 an hour per member per server and never reach a member who switched them off with `/privacy`. A role
+  change an auto-responder makes sets off no other role responder: a chain stops after one responder.
 - **Auto-responders**: member join, leave, level-up (from a level on), role gained or lost (a member's first update
   after a restart only teaches the bot their roles), and keyword (contains, exact, starts with, ends with; never
   case-sensitive; at most one answer per message). Each has a chance, a cooldown per member, and answers where it
@@ -348,8 +372,9 @@ an embed up to 6,000 in all with at most 25 fields, and a command does at most t
 - **Modules**: the *Custom commands* module covers `/tag`, `/customcommand` and the responders, and can be kept
   to channels like any other.
 - **Export and import**: a JSON file (`{"version": 1, "items": [...]}`) per list. An import checks every item like
-  a new one, leaves out roles and channels the other server lacks, skips (or with "replace" overwrites) names that
-  exist, and reports what it refused.
+  a new one, leaves out roles and channels the other server lacks (and role actions the importer may not set up),
+  skips (or with "replace" overwrites) names that exist, and reports what it refused. The audit entry of a
+  replacing import keeps the commands it overwrote.
 
 The dashboard and the slash commands check values with the same rules (`pinchora_core::settings`): the same
 limits and the same sentences, and a role the bot cannot hand out is greyed out with the reason `/config`

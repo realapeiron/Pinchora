@@ -26,7 +26,7 @@ function fresh(kind: TagAction["kind"]): TagAction {
   }
 }
 
-/** Up to three things done besides answering. Roles the bot cannot hand out are greyed out with the reason. */
+/** Up to three things done besides answering. Roles that may not be handed out are greyed out with the reason. */
 export function ActionsEditor({
   actions,
   onChange,
@@ -44,7 +44,11 @@ export function ActionsEditor({
   const kinds = KINDS.filter((k) => !k.keywordOnly || trigger === "keyword");
   const set = (index: number, next: TagAction) => onChange(actions.map((a, i) => (i === index ? next : a)));
   return (
-    <Field label="Actions" error={error} hint="Done right after the answer, for the member it is about.">
+    <Field
+      label="Actions"
+      error={error}
+      hint={`Done right after the answer, for the member it is about. With actions, a member waits at least ${LIMITS.action_cooldown_min} s between uses; points from actions stop at ${LIMITS.action_points_daily_max.toLocaleString("en-US")} a member a day, direct messages at ${LIMITS.action_dms_per_hour} an hour, and roles with admin powers are never handed out.`}
+    >
       {actions.length === 0 && <p className="muted">Nothing besides the answer.</p>}
       <ul className="actions-list">
         {actions.map((action, index) => {
@@ -70,11 +74,12 @@ export function ActionsEditor({
                     value={action.role_id || null}
                     onChange={(id) => set(index, { ...action, role_id: id ?? "" })}
                     assignable
+                    forActions
                     none="Pick a role"
                   />
-                  {role && !role.assignable && (
+                  {role && !role.action_ok && (
                     <p className="field-error" role="alert">
-                      {role.why_not ?? why(role, info)}
+                      {role.action_why_not ?? why(role, info, true)}
                     </p>
                   )}
                 </div>

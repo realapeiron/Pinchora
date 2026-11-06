@@ -21,6 +21,7 @@ import {
   TRIGGERS,
   actionsProblem,
   blankResponder,
+  cooldownFor,
   destinationsFor,
   embedIsBlank,
   finishedActions,
@@ -326,7 +327,9 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
           <Panel title="ACTIONS">
             <ActionsEditor
               actions={draft.actions}
-              onChange={(next) => set("actions", next)}
+              onChange={(next) =>
+                patch({ actions: next, cooldown_secs: cooldownFor(next, draft.cooldown_secs) })
+              }
               info={info}
               trigger={kind}
               error={editor.problem("actions") ?? unfinished}
@@ -355,13 +358,13 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
                 label="Cooldown"
                 htmlFor="responder-cooldown"
                 error={editor.problem("cooldown_secs")}
-                hint={`Seconds before it can answer the same member again, up to ${LIMITS.responder_cooldown_max}.`}
+                hint={`Seconds before it can answer the same member again, up to ${LIMITS.responder_cooldown_max}. With actions, at least ${LIMITS.action_cooldown_min}.`}
               >
                 <input
                   id="responder-cooldown"
                   type="number"
                   className="pixel-input input-short"
-                  min={0}
+                  min={draft.actions.length > 0 ? LIMITS.action_cooldown_min : 0}
                   max={LIMITS.responder_cooldown_max}
                   value={draft.cooldown_secs}
                   onChange={(event) => set("cooldown_secs", Number(event.target.value))}

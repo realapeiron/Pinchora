@@ -64,6 +64,7 @@ const PRIVATE: &[&str] = &[
     "play wordle",
     "play 2048",
     "poll",
+    "privacy",
     "quests",
     "roles",
     "stall manage",

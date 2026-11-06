@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { AuditEntry } from "./api";
-import { type Names, describeChange, initials, showValue, targetLabel, timeAgo } from "./text";
+import { type Names, describeChange, initials, richParts, showValue, targetLabel, timeAgo } from "./text";
 
 const now = new Date("2026-11-06T12:00:00Z");
 
@@ -141,5 +141,25 @@ describe("text", () => {
     expect(initials("Pinchora Reef")).toBe("PR");
     expect(initials("cafe")).toBe("CA");
     expect(initials("")).toBe("?");
+  });
+});
+
+describe("rich text", () => {
+  it("reads bold, italic and code", () => {
+    expect(richParts("a **b** *c* `d`")).toEqual([
+      { kind: "text", text: "a " },
+      { kind: "bold", text: "b" },
+      { kind: "text", text: " " },
+      { kind: "italic", text: "c" },
+      { kind: "text", text: " " },
+      { kind: "code", text: "d" },
+    ]);
+  });
+
+  it("hides Discord's escapes and never formats what they escape", () => {
+    expect(richParts(String.raw`Hi captain\_crab: \[Free Nitro\]\(x\) \*\*now\*\*`)).toEqual([
+      { kind: "text", text: "Hi captain_crab: [Free Nitro](x) **now**" },
+    ]);
+    expect(richParts(String.raw`a\b \\`)).toEqual([{ kind: "text", text: "a\\b \\" }]);
   });
 });

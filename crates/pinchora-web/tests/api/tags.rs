@@ -110,6 +110,11 @@ async fn custom_commands_save_with_the_bot_rules_and_reach_the_bot() {
             "0 to 3600",
         ),
         (
+            json!({ "name": "a", "responses": ["x"], "actions": [{ "kind": "give_points", "amount": 5 }] }),
+            "cooldown_secs",
+            "at least 30 seconds",
+        ),
+        (
             json!({ "name": "a", "responses": ["x"], "embed": {} }),
             "embed",
             "title",
@@ -135,12 +140,12 @@ async fn custom_commands_save_with_the_bot_rules_and_reach_the_bot() {
             "can't see it",
         ),
         (
-            json!({ "name": "a", "responses": ["x"], "actions": [{ "kind": "add_role", "role_id": ADMIN.to_string() }] }),
+            json!({ "name": "a", "responses": ["x"], "cooldown_secs": 30, "actions": [{ "kind": "add_role", "role_id": ADMIN.to_string() }] }),
             "actions",
             "above my highest role",
         ),
         (
-            json!({ "name": "a", "responses": ["x"], "actions": [{ "kind": "toggle_role", "role_id": BOOSTER.to_string() }] }),
+            json!({ "name": "a", "responses": ["x"], "cooldown_secs": 30, "actions": [{ "kind": "toggle_role", "role_id": BOOSTER.to_string() }] }),
             "actions",
             "managed by an integration",
         ),
@@ -167,7 +172,7 @@ async fn custom_commands_save_with_the_bot_rules_and_reach_the_bot() {
     // Changing it records only what changed; saving the same thing again records nothing.
     let mut changed = without_ids(one.clone());
     changed["responses"] = json!(["Be kind to everyone."]);
-    changed["cooldown_secs"] = json!(10);
+    changed["cooldown_secs"] = json!(45);
     let saved = browser
         .write(Method::PUT, &format!("{path}/{id}"), changed.clone())
         .await;
@@ -184,7 +189,7 @@ async fn custom_commands_save_with_the_bot_rules_and_reach_the_bot() {
     let diff: Value = serde_json::from_str(rows[0].after.as_deref().unwrap()).unwrap();
     assert_eq!(
         diff,
-        json!({ "responses": ["Be kind to everyone."], "cooldown_secs": 10 })
+        json!({ "responses": ["Be kind to everyone."], "cooldown_secs": 45 })
     );
     assert_eq!(rows[0].target.as_deref(), Some("rules"));
     assert_eq!((rows[0].source.as_str(), rows[0].actor_id as u64), ("web", owner));
@@ -354,7 +359,7 @@ async fn previews_use_the_bots_pipeline_and_cannot_ping() {
         .write(
             Method::POST,
             &path,
-            json!({ "name": "greet", "responses": ["Hi {1:there}"], "reply_mode": "ephemeral", "actions": [{ "kind": "give_points", "amount": 5 }] }),
+            json!({ "name": "greet", "responses": ["Hi {1:there}"], "reply_mode": "ephemeral", "cooldown_secs": 30, "actions": [{ "kind": "give_points", "amount": 5 }] }),
         )
         .await
         .json();
@@ -500,6 +505,19 @@ async fn commands_export_and_import_between_servers() {
     assert_eq!(
         rows.iter().map(|r| r.action.as_str()).collect::<Vec<_>>(),
         ["commands.import", "commands.import"]
+    );
+    // The replacing import keeps what it overwrote, so the old command can be read back from the log.
+    let before: Value = serde_json::from_str(rows[0].before.as_deref().expect("the replaced command")).unwrap();
+    assert_eq!(
+        before["replaced"]["rules"]["responses"],
+        json!(["Be kind."]),
+        "{before}"
+    );
+    assert_eq!(before["replaced"]["rules"]["cooldown_secs"], json!(5), "{before}");
+    assert_eq!(
+        rows[1].before.as_deref(),
+        Some("null"),
+        "nothing was overwritten the first time"
     );
 
     // The limits: a file too long, a version that is not ours, a nonsense conflict rule.
@@ -803,4 +821,231 @@ async fn event_responders_check_their_triggers_channels_and_roles() {
         .map(|r| r.action)
         .collect();
     assert_eq!(actions, ["responder.delete", "responder.create", "responder.create"]);
+}
+
+/// A server with the bot and a browser logged in as someone who is not its owner, with `permissions` and
+/// holding `roles`.
+async fn staff(h: &Harness, guild: u64, permissions: u64, roles: &[u64]) -> (u64, Browser) {
+    let user = unique();
+    h.mock.member_roles.lock().unwrap().insert(user, roles.to_vec());
+    let mut browser = h.browser();
+    browser
+        .login(h, user, vec![guild_entry(guild, "Pinchora Reef", false, permissions)])
+        .await;
+    (user, browser)
+}
+
+#[tokio::test]
+async fn managers_only_hand_out_roles_below_them_and_without_powers() {
+    let Some(h) = Harness::new("tags_role_grants").await else {
+        return;
+    };
+    let (guild, _, mut owner) = h.managed_server().await;
+    // Highest role @Regular (5): @Fan (3) is below, @Helper (4) is below but has Manage Messages.
+    let (_, mut manager) = staff(&h, guild, MANAGE_GUILD, &[REGULAR]).await;
+    let (_, mut admin) = staff(&h, guild, ADMINISTRATOR, &[REGULAR]).await;
+    let g = g(guild);
+    let cooled = |role: u64| {
+        json!({ "name": format!("r{role}"), "responses": ["x"], "cooldown_secs": 30,
+                "actions": [{ "kind": "add_role", "role_id": role.to_string() }] })
+    };
+
+    // (who, method, path, body, the sentence or OK)
+    let powers = "has Manage Messages, so only the server owner or an administrator";
+    let never = "has Manage Messages, so custom commands and auto-responders can't hand it out";
+    let not_below = "not below your highest role";
+    let cases: Vec<(&str, Method, String, Value, Option<&str>)> = vec![
+        (
+            "manager",
+            Method::PUT,
+            format!("{g}/level-roles/{FAN}"),
+            json!({ "level": 2 }),
+            None,
+        ),
+        (
+            "manager",
+            Method::PUT,
+            format!("{g}/level-roles/{REGULAR}"),
+            json!({ "level": 3 }),
+            Some(not_below),
+        ),
+        (
+            "manager",
+            Method::PUT,
+            format!("{g}/level-roles/{HELPER}"),
+            json!({ "level": 4 }),
+            Some(powers),
+        ),
+        (
+            "manager",
+            Method::PUT,
+            format!("{g}/rep-roles/{HELPER}"),
+            json!({ "reputation": 4 }),
+            Some(powers),
+        ),
+        (
+            "manager",
+            Method::PUT,
+            format!("{g}/store/{HELPER}"),
+            json!({ "price": 10 }),
+            Some(powers),
+        ),
+        (
+            "manager",
+            Method::PATCH,
+            format!("{g}/settings"),
+            json!({ "join_role_id": HELPER.to_string() }),
+            Some(powers),
+        ),
+        (
+            "manager",
+            Method::POST,
+            format!("{g}/commands"),
+            cooled(HELPER),
+            Some(never),
+        ),
+        (
+            "manager",
+            Method::POST,
+            format!("{g}/commands"),
+            cooled(REGULAR),
+            Some(not_below),
+        ),
+        ("manager", Method::POST, format!("{g}/commands"), cooled(FAN), None),
+        (
+            "admin",
+            Method::PUT,
+            format!("{g}/store/{HELPER}"),
+            json!({ "price": 10 }),
+            None,
+        ),
+        (
+            "admin",
+            Method::PUT,
+            format!("{g}/level-roles/{REGULAR}"),
+            json!({ "level": 3 }),
+            Some(not_below),
+        ),
+        (
+            "admin",
+            Method::POST,
+            format!("{g}/commands"),
+            cooled(HELPER),
+            Some(never),
+        ),
+        (
+            "owner",
+            Method::PUT,
+            format!("{g}/rep-roles/{HELPER}"),
+            json!({ "reputation": 4 }),
+            None,
+        ),
+        (
+            "owner",
+            Method::POST,
+            format!("{g}/commands"),
+            cooled(HELPER),
+            Some(never),
+        ),
+        ("owner", Method::POST, format!("{g}/commands"), cooled(REGULAR), None),
+    ];
+    for (who, method, path, body, refused) in cases {
+        let browser = match who {
+            "manager" => &mut manager,
+            "admin" => &mut admin,
+            _ => &mut owner,
+        };
+        let response = browser.write(method, &path, body.clone()).await;
+        match refused {
+            None => assert_eq!(
+                response.status,
+                StatusCode::OK,
+                "{who} {path} {body}: {}",
+                response.text()
+            ),
+            Some(sentence) => {
+                assert_eq!(
+                    response.status,
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    "{who} {path} {body}: {}",
+                    response.text()
+                );
+                let (_, message) = refusal(&response);
+                assert!(message.contains(sentence), "{who} {path}: {message}");
+            }
+        }
+    }
+
+    // The owner's command hands out @Regular: the manager may not edit it (say, to let everyone run it),
+    // nor switch it back on.
+    let list = owner.get(&format!("{g}/commands")).await.json();
+    let theirs = list["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["name"] == format!("r{REGULAR}"))
+        .unwrap()
+        .clone();
+    let id = theirs["id"].as_str().unwrap().to_owned();
+    let mut edit = theirs.clone();
+    for key in ["id", "uses", "created_by", "created_at", "updated_at"] {
+        edit.as_object_mut().unwrap().remove(key);
+    }
+    edit["description"] = json!("now for everyone");
+    let refused = manager
+        .write(Method::PUT, &format!("{g}/commands/{id}"), edit.clone())
+        .await;
+    assert_eq!(refused.status, StatusCode::UNPROCESSABLE_ENTITY, "{}", refused.text());
+    assert!(refusal(&refused).1.contains(not_below));
+    owner
+        .write(
+            Method::PATCH,
+            &format!("{g}/commands/{id}"),
+            json!({ "enabled": false }),
+        )
+        .await;
+    let on = manager
+        .write(Method::PATCH, &format!("{g}/commands/{id}"), json!({ "enabled": true }))
+        .await;
+    assert_eq!(on.status, StatusCode::UNPROCESSABLE_ENTITY, "{}", on.text());
+    let owner_edit = owner.write(Method::PUT, &format!("{g}/commands/{id}"), edit).await;
+    assert_eq!(owner_edit.status, StatusCode::OK, "{}", owner_edit.text());
+
+    // The pickers grey out, for the one asking, what they may not set up, with the reason.
+    let lists = manager.get(&format!("{g}/discord")).await.json();
+    let role = |name: &str| {
+        lists["roles"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|r| r["name"] == name)
+            .cloned()
+            .unwrap()
+    };
+    assert_eq!(
+        (role("Fan")["assignable"].clone(), role("Fan")["action_ok"].clone()),
+        (json!(true), json!(true))
+    );
+    assert_eq!(role("Helper")["assignable"], false);
+    assert!(role("Helper")["why_not"].as_str().unwrap().contains(powers));
+    assert_eq!(role("Helper")["powers"], json!(["Manage Messages"]));
+    assert_eq!(role("Regular")["assignable"], false);
+    assert!(role("Regular")["why_not"].as_str().unwrap().contains(not_below));
+    assert_eq!(
+        lists["you"],
+        json!({ "owner": false, "administrator": false, "top_role_position": 5 })
+    );
+    let as_owner = owner.get(&format!("{g}/discord")).await.json();
+    let helper = as_owner["roles"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["name"] == "Helper")
+        .unwrap()
+        .clone();
+    assert_eq!(
+        (helper["assignable"].clone(), helper["action_ok"].clone()),
+        (json!(true), json!(false))
+    );
+    assert!(helper["action_why_not"].as_str().unwrap().contains(never));
 }

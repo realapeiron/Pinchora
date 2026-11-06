@@ -81,6 +81,9 @@ mod tags;
 // What a switched-off module still did: timers, the chat XP minute, quests, the level-up channel.
 #[path = "simulate/carryover.rs"]
 mod carryover;
+// Who may set a role up to be handed out.
+#[path = "simulate/grants.rs"]
+mod grants;
 
 const APPLICATION_ID: u64 = 1;
 const CHANNEL_ID: u64 = 2;
@@ -146,6 +149,8 @@ struct Mock {
     channel_lookups: Arc<Mutex<HashMap<u64, usize>>>,
     /// Whether looking up the server itself fails (Discord is down).
     guild_lookup_fails: Arc<AtomicBool>,
+    /// Who owns the server, as `GET /guilds/{id}` says (1 until a test hands it to someone).
+    owner: Arc<AtomicU64>,
 }
 
 /// A message a handler posted to a channel (`POST`) or edited there (`PATCH`).
@@ -341,7 +346,11 @@ async fn discord(
             let down = json!({ "message": "Service unavailable", "code": 0 });
             return (StatusCode::INTERNAL_SERVER_ERROR, down.to_string());
         }
-        (&Method::GET, [.., "guilds", guild]) => return (StatusCode::OK, guild_json(number(guild)).to_string()),
+        (&Method::GET, [.., "guilds", guild]) => {
+            let mut found = guild_json(number(guild));
+            found["owner_id"] = json!(mock.owner.load(Ordering::SeqCst).max(1).to_string());
+            return (StatusCode::OK, found.to_string());
+        }
         (&Method::GET, [.., "channels", channel]) => {
             *mock.channel_lookups.lock().unwrap().entry(number(channel)).or_default() += 1;
             return match mock.channels.lock().unwrap().get(&number(channel)) {
@@ -883,6 +892,7 @@ impl Sim {
             channels: Arc::default(),
             channel_lookups: Arc::default(),
             guild_lookup_fails: Arc::default(),
+            owner: Arc::default(),
         };
         let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind the mock");
         let mock = listener.local_addr().expect("mock address");
@@ -947,6 +957,19 @@ impl Sim {
     /// Adds a role to the mock server and returns its JSON for `data.resolved.roles`.
     fn guild_role(&self, id: u64, name: &str, position: i64) -> Value {
         let role = role_json(id, name, position, false);
+        self.mock.roles.lock().unwrap().push(role.clone());
+        role
+    }
+
+    /// Makes `user` the owner of the server, who may set up any role the bot can hand out.
+    fn own_server(&self, user: u64) {
+        self.mock.owner.store(user, Ordering::SeqCst);
+    }
+
+    /// Like [`Sim::guild_role`] with permission bits.
+    fn guild_role_with(&self, id: u64, name: &str, position: i64, permissions: u64) -> Value {
+        let mut role = role_json(id, name, position, false);
+        role["permissions"] = json!(permissions.to_string());
         self.mock.roles.lock().unwrap().push(role.clone());
         role
     }
@@ -2478,6 +2501,8 @@ async fn level_roles_follow_level_ups() {
         return;
     };
     let (admin, early, late, middle) = (unique(), unique(), unique(), unique());
+    // The owner may set up any role the bot can hand out.
+    sim.own_server(admin);
     let (r1, r3) = (unique(), unique());
     let novice = sim.guild_role(r1, "Novice", 2);
     let veteran = sim.guild_role(r3, "Reef Veteran", 3);
@@ -2594,6 +2619,8 @@ async fn points_and_store_flow() {
         return;
     };
     let (admin, buyer) = (unique(), unique());
+    // The owner may set up any role the bot can hand out.
+    sim.own_server(admin);
     let (vip_id, pricey_id) = (unique(), unique());
     let vip = sim.guild_role(vip_id, "VIP", 2);
     let pricey = sim.guild_role(pricey_id, "Whale", 3);
@@ -4519,6 +4546,8 @@ async fn role_panels_post_and_toggle_roles() {
         return;
     };
     let (admin, alice) = (unique(), unique());
+    // The owner may set up any role the bot can hand out.
+    sim.own_server(admin);
     let (red_id, blue_id) = (unique(), unique());
     let red = sim.guild_role(red_id, "Red", 2);
     let blue = sim.guild_role(blue_id, "Blue", 3);
@@ -4852,6 +4881,8 @@ async fn join_role_goodbye_and_server_log() {
         return;
     };
     let admin = unique();
+    // The owner may set up any role the bot can hand out.
+    sim.own_server(admin);
     let (alice, robot, stranger) = (unique(), unique(), unique());
     let (newbie_id, log, bye) = (unique(), unique(), unique());
     let (lounge, den) = (unique(), unique());
@@ -7757,6 +7788,8 @@ async fn level_ups_follow_the_mode_and_fill_their_placeholders() {
         return;
     };
     let admin = unique();
+    // The owner may set up any role the bot can hand out.
+    sim.own_server(admin);
     let (announce, chatty) = (unique(), unique());
     let novice_id = unique();
     let novice = sim.guild_role(novice_id, "Reef Novice", 2);
@@ -7991,6 +8024,8 @@ async fn reputation_roles_are_given_when_a_point_lands() {
         return;
     };
     let admin = unique();
+    // The owner may set up any role the bot can hand out.
+    sim.own_server(admin);
     let (target, g1, g2, g3, g4, g5) = (unique(), unique(), unique(), unique(), unique(), unique());
     let (trusted_id, legend_id, gone_id) = (unique(), unique(), unique());
     let trusted = sim.guild_role(trusted_id, "Trusted", 2);
