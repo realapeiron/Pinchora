@@ -199,17 +199,9 @@ fn column_rows(id: i64, board: &Board) -> Vec<Component> {
 pub(crate) async fn begin(cx: &Cx, session: &GameSession) -> anyhow::Result<()> {
     let (fields, names) = unpack(&session.state);
     let state = State::decode(fields).ok_or_else(|| anyhow::anyhow!("bad connect four state {fields:?}"))?;
-    let data = message(
-        &cx.app,
-        cx.lang(),
-        session,
-        &names,
-        &state,
-        None,
-        session.expires_at,
-        "",
-    )
-    .await?;
+    // The board is public: the server's language, whoever clicked Accept.
+    let lang = cx.app.guild_lang(session.guild_id as u64).await;
+    let data = message(&cx.app, lang, session, &names, &state, None, session.expires_at, "").await?;
     cx.update(data).await
 }
 
@@ -243,6 +235,8 @@ async fn on_move(cx: &Cx, id: i64, col: usize) -> anyhow::Result<()> {
     else {
         return cx.reply_ephemeral(t!(lang, "duel.game-over")).await;
     };
+    // `lang` is for what only the clicker sees; the board stays in the server's language.
+    let board_lang = cx.app.guild_lang(session.guild_id as u64).await;
     if !session.has_player(me) {
         return cx
             .reply_ephemeral(t!(lang, "duel.not-in-game", command = "connect4"))
@@ -276,7 +270,7 @@ async fn on_move(cx: &Cx, id: i64, col: usize) -> anyhow::Result<()> {
             return cx.reply_ephemeral(t!(lang, "connect4.changed-pick")).await;
         }
         let deadline = Utc::now() + Duration::seconds(TURN_SECS);
-        let data = message(&cx.app, lang, &session, &names, &state, None, deadline, "").await?;
+        let data = message(&cx.app, board_lang, &session, &names, &state, None, deadline, "").await?;
         return cx.update(data).await;
     };
 
@@ -303,19 +297,29 @@ async fn on_move(cx: &Cx, id: i64, col: usize) -> anyhow::Result<()> {
         record(&cx.app, Game::Connect4, player, winner == Some(player)).await;
     }
     let note = match winner {
-        Some(_) if session.bet > 0 => t!(lang, "duel.pot-won", pot = thousands(session.bet * 2)),
+        Some(_) if session.bet > 0 => t!(board_lang, "duel.pot-won", pot = thousands(session.bet * 2)),
         Some(w) => {
             let paid = pay_win(&cx.app, w, Game::Connect4, Game::Connect4.win_reward(), "connect4_win").await?;
             if paid > 0 {
-                t!(lang, "duel.paid", paid = paid)
+                t!(board_lang, "duel.paid", paid = paid)
             } else {
-                t!(lang, "duel.limit-reached")
+                t!(board_lang, "duel.limit-reached")
             }
         }
-        None if session.bet > 0 => t!(lang, "duel.wagers-back"),
+        None if session.bet > 0 => t!(board_lang, "duel.wagers-back"),
         None => String::new(),
     };
-    let data = message(&cx.app, lang, &session, &names, &state, Some(&end), Utc::now(), &note).await?;
+    let data = message(
+        &cx.app,
+        board_lang,
+        &session,
+        &names,
+        &state,
+        Some(&end),
+        Utc::now(),
+        &note,
+    )
+    .await?;
     cx.update(data).await
 }
 

@@ -38,6 +38,7 @@ async fn a_turkish_hot_pearl_goes_from_lobby_to_a_winner() {
     fresh(&sim).await;
     sim.channel = unique();
     sim.locale = "tr";
+    turkish_server(&sim).await;
     let (host, ann, bo) = (unique(), unique(), unique());
 
     let lobby = sim
@@ -233,6 +234,7 @@ async fn turkish_party_lobbies_can_be_cancelled_stopped_and_expire() {
     fresh(&sim).await;
     sim.channel = unique();
     sim.locale = "tr";
+    turkish_server(&sim).await;
     let (host, ann, bo, stranger, boss) = (unique(), unique(), unique(), unique(), unique());
     let stop = || json!([sub("stop", vec![])]);
 
@@ -348,6 +350,7 @@ async fn the_turkish_filter_settings_and_gambling_switch_speak_turkish() {
     fresh(&sim).await;
     sim.channel = unique();
     sim.locale = "tr";
+    turkish_server(&sim).await;
     let (ada, bo, cy) = (unique(), unique(), unique());
     let config = |on: bool| json!([sub("partygames", vec![bool_option("strict", on)])]);
 
@@ -432,6 +435,7 @@ async fn a_turkish_acronym_game_goes_from_letters_to_the_final_scores() {
     fresh(&sim).await;
     sim.channel = unique();
     sim.locale = "tr";
+    turkish_server(&sim).await;
     let (ada, bo, cy) = (unique(), unique(), unique());
     let (lobby, id) = lobby_of(&mut sim, "acronym", vec![int_option("rounds", 1)], ada, &[bo]).await;
     assert!(lobby.title().contains("Kısaltma Gelgiti"), "{}", lobby.title());
@@ -568,6 +572,7 @@ async fn a_turkish_postcard_game_shows_the_postcard_votes_and_scores() {
     fresh(&sim).await;
     sim.channel = unique();
     sim.locale = "tr";
+    turkish_server(&sim).await;
     let (ada, bo, cy) = (unique(), unique(), unique());
     let (lobby, id) = lobby_of(&mut sim, "postcard", vec![int_option("rounds", 1)], ada, &[bo, cy]).await;
     assert!(lobby.title().contains("Kartpostala Altyazı"), "{}", lobby.title());
@@ -646,6 +651,7 @@ async fn a_turkish_word_race_has_a_lobby_private_boards_and_a_result() {
     fresh(&sim).await;
     sim.channel = unique();
     sim.locale = "tr";
+    turkish_server(&sim).await;
     let (ada, bo, cy, outsider) = (unique(), unique(), unique(), unique());
     let (lobby, id) = lobby_of(&mut sim, "wordrace", vec![], ada, &[bo, cy]).await;
     assert!(lobby.title().contains("Wordle Yarışı"), "{}", lobby.title());
@@ -744,6 +750,7 @@ async fn a_turkish_race_nobody_wins_ends_with_the_clock() {
     fresh(&sim).await;
     sim.channel = unique();
     sim.locale = "tr";
+    turkish_server(&sim).await;
     let (ada, bo) = (unique(), unique());
     let (lobby, id) = lobby_of(&mut sim, "wordrace", vec![], ada, &[bo]).await;
     let race = sim.click(ada, &lobby, "Başlat").await;
@@ -775,6 +782,7 @@ async fn a_turkish_would_you_rather_poll_takes_votes_and_shows_the_split() {
     fresh(&sim).await;
     sim.channel = unique();
     sim.locale = "tr";
+    turkish_server(&sim).await;
     let (ada, bo, cy) = (unique(), unique(), unique());
     let poll = sim
         .command(
@@ -843,6 +851,7 @@ async fn a_turkish_truth_or_dare_table_takes_turns_and_ends() {
     fresh(&sim).await;
     sim.channel = unique();
     sim.locale = "tr";
+    turkish_server(&sim).await;
     let (ada, bo, cy) = (unique(), unique(), unique());
     let (lobby, id) = lobby_of(
         &mut sim,
@@ -967,4 +976,56 @@ fn the_party_catalog_has_a_place_for_every_postcard_and_a_name_for_every_topic()
         assert_eq!(category.label_in(Lang::En), category.label());
         assert_ne!(category.label_in(Lang::Tr), category.label_in(Lang::En));
     }
+}
+
+#[tokio::test]
+async fn a_party_table_is_in_the_servers_language_whoever_opens_or_joins_it() {
+    let _alone = PARTY.lock().await;
+    let Some(mut sim) = Sim::new("a_party_table_is_in_the_servers_language_whoever_opens_or_joins_it").await else {
+        return;
+    };
+    fresh(&sim).await;
+    let (host, ann) = (unique(), unique());
+
+    // A Turkish server and English-speaking players: the lobby is Turkish from the first message, an English
+    // click does not change it, and the refusal only the clicker sees is in English.
+    sim.channel = unique();
+    turkish_server(&sim).await;
+    sim.locale = "en-US";
+    let lobby = sim.command(host, "party", json!([sub("wordrace", vec![])])).await;
+    assert!(!lobby.ephemeral && lobby.has_button("Katıl"), "{}", lobby.content());
+    let id = game_id(&lobby);
+    assert_eq!(state(&sim, id).await["lang"], "tr");
+    let lobby = sim.click(ann, &lobby, "Katıl").await;
+    assert!(!lobby.ephemeral && lobby.has_button("Katıl"), "{}", lobby.content());
+    let refused = sim.click(ann, &lobby, "Başlat").await;
+    assert!(
+        refused.ephemeral && refused.content().contains("Only"),
+        "{}",
+        refused.content()
+    );
+    sim.click(host, &lobby, "İptal").await;
+    sim.channel = unique();
+    let poll = sim
+        .command(host, "party", json!([sub("wouldyourrather", vec![])]))
+        .await;
+    assert!(poll.title().contains("Hangisini seçerdin?"), "{}", poll.title());
+    assert_eq!(state(&sim, game_id(&poll)).await["lang"], "tr");
+
+    // An English server and a Turkish-speaking host: the table stays English, the host's own refusals are Turkish.
+    sim.app
+        .set_guild_lang(sim.guild, None)
+        .await
+        .expect("clear the server's language");
+    sim.channel = unique();
+    sim.locale = "tr";
+    let lobby = sim.command(unique(), "party", json!([sub("wordrace", vec![])])).await;
+    assert!(!lobby.ephemeral && lobby.has_button("Join"), "{}", lobby.content());
+    assert_eq!(state(&sim, game_id(&lobby)).await["lang"], "en");
+    let refused = sim.click(ann, &lobby, "Start").await;
+    assert!(
+        refused.ephemeral && refused.content().contains("yalnızca"),
+        "{}",
+        refused.content()
+    );
 }

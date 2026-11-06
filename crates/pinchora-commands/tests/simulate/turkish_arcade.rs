@@ -28,6 +28,7 @@ async fn a_turkish_free_derby_names_the_crabs_runs_the_race_and_answers_in_turki
     };
     sim.channel = unique();
     sim.locale = "tr";
+    turkish_server(&sim).await;
     let (host, a, b, stranger) = (unique(), unique(), unique(), unique());
     let lobby = open_derby(&mut sim, host, None).await;
     assert!(
@@ -106,6 +107,7 @@ async fn a_staked_turkish_derby_is_refused_until_gambling_is_on_and_the_janitor_
     forget_late_games(&sim).await;
     sim.channel = unique();
     sim.locale = "tr";
+    turkish_server(&sim).await;
     let (host, a, b, c, broke) = (unique(), unique(), unique(), unique(), unique());
     let off = open_derby(&mut sim, host, Some(40)).await;
     assert!(
@@ -188,6 +190,7 @@ async fn a_turkish_heist_crew_picks_roles_and_the_vault_pays() {
     };
     sim.channel = unique();
     sim.locale = "tr";
+    turkish_server(&sim).await;
     let (host, a, b, stranger) = (unique(), unique(), unique(), unique());
     let lobby = open_heist(&mut sim, host).await;
     assert!(
@@ -278,6 +281,7 @@ async fn a_busted_turkish_heist_and_a_lone_crew_member_read_in_turkish_even_when
     forget_late_games(&sim).await;
     sim.channel = unique();
     sim.locale = "tr";
+    turkish_server(&sim).await;
     let (host, a, loner) = (unique(), unique(), unique());
     let lobby = open_heist(&mut sim, host).await;
     let session = session_of(&lobby);
@@ -338,6 +342,7 @@ async fn the_turkish_shell_game_is_off_until_a_manager_turns_it_on_and_tells_whe
     forget_late_games(&sim).await;
     sim.channel = unique();
     sim.locale = "tr";
+    turkish_server(&sim).await;
     let (manager, player, loser) = (unique(), unique(), unique());
     fund(&sim, player, 200).await;
     fund(&sim, loser, 200).await;
@@ -371,7 +376,7 @@ async fn the_turkish_shell_game_is_off_until_a_manager_turns_it_on_and_tells_whe
         assert!(table.has_button(label), "{label}");
     }
     let session = session_of(&table);
-    let pearl: usize = sim.app.db.game(session).await.unwrap().unwrap().state.parse().unwrap();
+    let pearl = pearl_under(&sim, session).await;
     let stranger = sim.click(unique(), &table, &format!("{}. kabuk", pearl + 1)).await;
     assert!(
         stranger.ephemeral && stranger.content().contains("senin masan değil"),
@@ -395,7 +400,7 @@ async fn the_turkish_shell_game_is_off_until_a_manager_turns_it_on_and_tells_whe
     // A wrong guess says where the pearl was.
     let table = sim.command(loser, "play", shells_cmd(20)).await;
     let session = session_of(&table);
-    let pearl: usize = sim.app.db.game(session).await.unwrap().unwrap().state.parse().unwrap();
+    let pearl = pearl_under(&sim, session).await;
     let wrong = (pearl + 1) % 3;
     sim.app
         .cache
@@ -449,6 +454,7 @@ async fn a_turkish_storm_surge_is_called_stacked_and_lost_in_turkish() {
     forget_late_games(&sim).await;
     sim.channel = unique();
     sim.locale = "tr";
+    turkish_server(&sim).await;
     let (manager, member) = (unique(), unique());
     let denied = sim.command(member, "surge", json!([])).await;
     assert!(
@@ -632,5 +638,83 @@ async fn play_stats_speak_turkish_with_the_games_turkish_names() {
         bot.ephemeral && bot.content().contains("hakemlik yapar"),
         "{}",
         bot.content()
+    );
+}
+
+#[tokio::test]
+async fn a_lobby_or_table_is_in_the_servers_language_whoever_opens_or_joins_it() {
+    let _serial = SWEEPS.lock().await;
+    let Some(mut sim) = Sim::new("a_lobby_or_table_is_in_the_servers_language_whoever_opens_or_joins_it").await else {
+        return;
+    };
+    forget_late_games(&sim).await;
+    sim.channel = unique();
+    let (host, joiner, manager, player, stranger) = (unique(), unique(), unique(), unique(), unique());
+    fund(&sim, player, 200).await;
+    gambling(&mut sim, manager, true).await;
+    let names = ROSTER.map(|c| c.name);
+    let shells_cmd = || play_sub("shells", vec![int_option("bet", 20)]);
+
+    // A Turkish server, English-speaking players: every public message is Turkish and says so in its state.
+    turkish_server(&sim).await;
+    sim.locale = "en-US";
+    let derby = open_derby(&mut sim, host, None).await;
+    assert_eq!(derby.title(), "Keşiş Yengeç Yarışı");
+    let state = sim.app.db.game(session_of(&derby)).await.unwrap().unwrap().state;
+    assert!(state.ends_with("|tr"), "{state}");
+    let joined = sim.click(joiner, &derby, names[0]).await;
+    assert_eq!(
+        joined.title(),
+        "Keşiş Yengeç Yarışı",
+        "an English click keeps the lobby Turkish"
+    );
+    let heist = open_heist(&mut sim, host).await;
+    assert_eq!(heist.title(), "Hazine Soygunu");
+    let state = sim.app.db.game(session_of(&heist)).await.unwrap().unwrap().state;
+    assert!(state.ends_with("|tr"), "{state}");
+    let storm = call_storm(&mut sim, manager).await;
+    assert_eq!(storm.title(), "Fırtına Kabarması");
+    let table = sim.command(player, "play", shells_cmd()).await;
+    assert_eq!(table.title(), "Kabuk oyunu");
+    let session = session_of(&table);
+    let state = sim.app.db.game(session).await.unwrap().unwrap().state;
+    assert!(state.ends_with("|tr"), "the table's language is stored: {state}");
+    // What only the clicker sees is theirs, the table's own end is the server's.
+    let refused = sim.click(stranger, &table, "2. kabuk").await;
+    assert!(
+        refused.ephemeral && refused.content().contains("isn't your table"),
+        "{}",
+        refused.content()
+    );
+    let pearl = pearl_under(&sim, session).await;
+    let guessed = sim.click(player, &table, &format!("{}. kabuk", pearl + 1)).await;
+    assert!(
+        guessed.content().contains("inci") && !guessed.content().contains("pearl"),
+        "{}",
+        guessed.content()
+    );
+    assert_eq!(guessed.title(), "Kabuk oyunu");
+
+    // An English server, Turkish-speaking players: the tables stay English.
+    sim.app
+        .set_guild_lang(sim.guild, None)
+        .await
+        .expect("clear the server's language");
+    sim.channel = unique();
+    sim.locale = "tr";
+    let derby = open_derby(&mut sim, unique(), None).await;
+    assert_eq!(derby.title(), "Hermit Crab Derby");
+    let state = sim.app.db.game(session_of(&derby)).await.unwrap().unwrap().state;
+    assert!(state.ends_with("|en"), "{state}");
+    let heist = open_heist(&mut sim, unique()).await;
+    assert_eq!(heist.title(), "Treasure Heist");
+    fund(&sim, joiner, 100).await;
+    let table = sim.command(joiner, "play", shells_cmd()).await;
+    assert_eq!(table.title(), "Shell game");
+    let refused = sim.click(stranger, &table, "Shell 2").await;
+    assert!(
+        refused.ephemeral && refused.content().contains("senin masan değil"),
+        "{}",
+        refused.content()
     );
 }

@@ -83,11 +83,12 @@ pub(crate) async fn session_lang(app: &App, session: &GameSession) -> Lang {
     }
 }
 
-/// The language to speak to `user` when nobody clicked: their own `/language` pick, else the server's default.
-pub(crate) async fn lang_for(app: &App, user: u64, guild: u64) -> Lang {
-    match app.user_lang_choice(user).await {
-        Some(lang) => lang,
-        None => app.guild_lang(guild).await,
+/// The language of a message the whole channel reads, a challenge or a board: the server's default, never the
+/// clicker's. Only the clicker's own refusals and menus use [`Cx::lang`]. Outside a server it is the clicker's.
+pub(crate) async fn channel_lang(cx: &Cx) -> Lang {
+    match cx.guild_id() {
+        Some(guild) => cx.app.guild_lang(guild).await,
+        None => cx.lang(),
     }
 }
 

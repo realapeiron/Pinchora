@@ -31,6 +31,7 @@ use super::{
 };
 use crate::{
     App, Cx,
+    commands::games::channel_lang,
     util::{BRAND, SUCCESS, WARN, relative},
 };
 
@@ -60,7 +61,8 @@ fn mark(tile: wordle::Tile) -> u8 {
 
 pub(crate) async fn open(cx: &Cx) -> anyhow::Result<()> {
     let state = State {
-        lang: cx.lang(),
+        // The table is public and keeps playing in the server's language, whoever opened it.
+        lang: channel_lang(cx).await,
         ..Default::default()
     };
     lobby::open(cx, Party::WordRace, 1, serde_json::to_string(&state)?).await

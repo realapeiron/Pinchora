@@ -545,8 +545,8 @@ async fn the_shell_game_holds_the_stake_pays_a_right_guess_and_refunds_a_forgott
         "net: +100 less the 40 stake"
     );
 
-    // A wrong guess loses the stake.
-    let ShellStart::Started(game) = db.shell_start(table("0", 50), limits).await.unwrap() else {
+    // A wrong guess loses the stake. The table's language rides after the pearl (`<shell>|<code>`).
+    let ShellStart::Started(game) = db.shell_start(table("0|tr", 50), limits).await.unwrap() else {
         panic!("another game");
     };
     let ShellPick::Done(done) = db.shell_pick(game.id, player, 1, |s| s * 5 / 2).await.unwrap() else {

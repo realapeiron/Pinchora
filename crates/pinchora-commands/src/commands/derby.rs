@@ -73,6 +73,8 @@ pub(crate) async fn start(cx: &Cx, bet: Option<i64>) -> anyhow::Result<()> {
     let Some(guild) = cx.guild_id() else {
         return cx.reply_ephemeral(t!(lang, "derby.server-only")).await;
     };
+    // The lobby is public and keeps speaking the server's language to its end; `lang` is for the opener's refusals.
+    let board_lang = cx.app.guild_lang(guild).await;
     let bet = bet.unwrap_or(0);
     if bet != 0 && !cx.app.db.gambling_enabled(guild).await? {
         return cx.reply_ephemeral(t!(lang, "derby.gambling-off")).await;
@@ -99,7 +101,7 @@ pub(crate) async fn start(cx: &Cx, bet: Option<i64>) -> anyhow::Result<()> {
             guest: None,
             bet,
             status: PENDING,
-            state: &state_with_lang(&seed.to_string(), lang),
+            state: &state_with_lang(&seed.to_string(), board_lang),
             ttl_secs: LOBBY_SECS,
         })
         .await?
@@ -107,7 +109,7 @@ pub(crate) async fn start(cx: &Cx, bet: Option<i64>) -> anyhow::Result<()> {
         return cx.reply_ephemeral(t!(lang, "derby.already-open")).await;
     };
     rest(&cx.app, "derbystart", me, 20).await;
-    let data = lobby_message(&cx.app, &session, &[], lang).await?;
+    let data = lobby_message(&cx.app, &session, &[], board_lang).await?;
     cx.reply(data).await?;
     track_message(cx, session.id);
     Ok(())

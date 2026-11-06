@@ -30,6 +30,7 @@ use super::{
 };
 use crate::{
     App, Cx,
+    commands::games::channel_lang,
     util::{BRAND, SUCCESS, mention, relative},
 };
 
@@ -116,7 +117,8 @@ fn syllable(lang: Lang, seed: u64, turn: u32, avoid: Option<&str>) -> String {
 pub(crate) async fn open(cx: &Cx, lives: i32) -> anyhow::Result<()> {
     let lives = lives.clamp(*hotpearl::LIVES.start(), *hotpearl::LIVES.end());
     let state = encode(&State {
-        lang: cx.lang(),
+        // The table is public and keeps playing in the server's language, whoever opened it.
+        lang: channel_lang(cx).await,
         lives,
         ..Default::default()
     })?;

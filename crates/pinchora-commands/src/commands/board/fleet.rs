@@ -386,9 +386,11 @@ fn battle_menus(lang: Lang, id: i64, state: &State, aim: Option<usize>) -> Vec<C
 pub(crate) async fn begin(cx: &Cx, session: &GameSession) -> anyhow::Result<()> {
     let (fields, names) = unpack(&session.state);
     let state = State::decode(fields).ok_or_else(|| anyhow::anyhow!("bad sea fleet state {fields:?}"))?;
+    // The radar is public: the server's language, whoever clicked Accept.
+    let lang = cx.app.guild_lang(session.guild_id as u64).await;
     let data = public(
         &cx.app,
-        cx.lang(),
+        lang,
         session,
         &names,
         &state,
@@ -751,9 +753,10 @@ async fn firing(cx: &Cx, id: i64, shots: usize) -> anyhow::Result<Option<(GameSe
         return Ok(None);
     }
     if state.shots != shots {
+        // The stale radar is refreshed in place for everyone: the server's language.
         let data = public(
             &cx.app,
-            cx.lang(),
+            cx.app.guild_lang(session.guild_id as u64).await,
             &session,
             &names,
             &state,
@@ -781,11 +784,12 @@ async fn on_aim(cx: &Cx, id: i64, shots: usize, col: usize) -> anyhow::Result<()
     if col >= SIZE {
         return cx.reply_ephemeral(t!(cx.lang(), "duel.menu-expired")).await;
     }
-    // Only the menus change, so the picture stays as it is.
+    // Only the menus change, so the picture stays as it is; the message is public: the server's language.
+    let board_lang = cx.app.guild_lang(session.guild_id as u64).await;
     cx.update(InteractionResponseData {
-        components: Some(battle_menus(cx.lang(), session.id, &state, Some(col))),
+        components: Some(battle_menus(board_lang, session.id, &state, Some(col))),
         content: Some(t!(
-            cx.lang(),
+            board_lang,
             "seafleet.aimed",
             host = mention(players(&session)[0]),
             guest = mention(players(&session)[1]),
@@ -804,7 +808,9 @@ async fn on_fire(cx: &Cx, id: i64, shots: usize, col: usize, row: usize) -> anyh
     let Some((session, names, mut state, me)) = firing(cx, id, shots).await? else {
         return Ok(());
     };
+    // `lang` is for what only the clicker sees; the radar and its note stay in the server's language.
     let lang = cx.lang();
+    let board_lang = cx.app.guild_lang(session.guild_id as u64).await;
     if col >= SIZE || row >= SIZE {
         return cx.reply_ephemeral(t!(lang, "duel.menu-expired")).await;
     }
@@ -821,9 +827,14 @@ async fn on_fire(cx: &Cx, id: i64, shots: usize, col: usize, row: usize) -> anyh
     state.last = Some((target, cell));
     let name = rules::cell_name(cell);
     let note = match fired {
-        Fired::Miss => t!(lang, "seafleet.miss", cell = name),
-        Fired::Hit => t!(lang, "seafleet.hit", cell = name),
-        Fired::Sunk(ship) => t!(lang, "seafleet.sunk", cell = name, ship = rules::ship_name(lang, ship)),
+        Fired::Miss => t!(board_lang, "seafleet.miss", cell = name),
+        Fired::Hit => t!(board_lang, "seafleet.hit", cell = name),
+        Fired::Sunk(ship) => t!(
+            board_lang,
+            "seafleet.sunk",
+            cell = name,
+            ship = rules::ship_name(board_lang, ship)
+        ),
         Fired::Again => String::new(),
     };
     let ids = players(&session);
@@ -835,7 +846,7 @@ async fn on_fire(cx: &Cx, id: i64, shots: usize, col: usize, row: usize) -> anyh
         };
         let Some(reward) = conclude(
             &cx.app,
-            lang,
+            board_lang,
             &session,
             &packed,
             Play::SeaFleet,
@@ -848,7 +859,7 @@ async fn on_fire(cx: &Cx, id: i64, shots: usize, col: usize, row: usize) -> anyh
         };
         let data = public(
             &cx.app,
-            lang,
+            board_lang,
             &session,
             &names,
             &state,
@@ -875,7 +886,7 @@ async fn on_fire(cx: &Cx, id: i64, shots: usize, col: usize, row: usize) -> anyh
     let deadline = Utc::now() + Duration::seconds(FLEET_TURN_SECS);
     let data = public(
         &cx.app,
-        lang,
+        board_lang,
         &session,
         &names,
         &state,

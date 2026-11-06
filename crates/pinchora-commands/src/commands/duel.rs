@@ -15,7 +15,7 @@ use twilight_model::{
 use super::{
     board::{self, checkers, chess, fleet},
     connect4,
-    games::{button, channel_of, edit_message, location, pack, record, track_message, unpack},
+    games::{button, channel_lang, channel_of, edit_message, location, pack, record, track_message, unpack},
     rps, share,
 };
 use crate::{
@@ -180,8 +180,9 @@ impl DuelTicTacToe {
             board: [b'.'; 9],
             x_turn: true,
         };
+        // The board is public: the server's language.
         let text = t!(
-            cx.lang(),
+            channel_lang(cx).await,
             "tictactoe.start",
             x = mention(me),
             o = mention(them.id),
@@ -282,6 +283,8 @@ pub(crate) async fn on_move(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
         Some((Game { x, o, board, x_turn }, cell))
     })();
     let lang = cx.lang();
+    // `lang` is for what only the clicker sees; the board stays in the server's language.
+    let board_lang = channel_lang(cx).await;
     let Some((mut game, cell)) = parsed else {
         return cx.reply_ephemeral(t!(lang, "duel.game-expired")).await;
     };
@@ -316,22 +319,22 @@ pub(crate) async fn on_move(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
         if paid {
             cx.app.db.earn_shells(winner, WIN_REWARD, "duel_win").await?;
             t!(
-                lang,
+                board_lang,
                 "tictactoe.win-paid",
                 winner = mention(winner),
                 reward = WIN_REWARD
             )
         } else {
-            t!(lang, "tictactoe.win-resting", winner = mention(winner))
+            t!(board_lang, "tictactoe.win-resting", winner = mention(winner))
         }
     } else if game.full() {
         finished = Some(None);
-        t!(lang, "tictactoe.draw")
+        t!(board_lang, "tictactoe.draw")
     } else {
         game.x_turn = !game.x_turn;
         let next = if game.x_turn { game.x } else { game.o };
         t!(
-            lang,
+            board_lang,
             "tictactoe.turn",
             next = mention(next),
             mark = if game.x_turn { "❌" } else { "⭕" }
@@ -491,25 +494,31 @@ async fn challenge(cx: &Cx, kind: Kind, opponent: &ResolvedUser, rounds: u8, bet
             ttl_secs: CHALLENGE_SECS,
         })
         .await?;
+    // The challenge is public: the server's language, whoever reads or clicks it.
+    let board_lang = channel_lang(cx).await;
     let title = match kind {
-        Kind::Rps => t!(lang, "duel.title-rps", rounds = rounds),
-        other => other.game().name(lang),
+        Kind::Rps => t!(board_lang, "duel.title-rps", rounds = rounds),
+        other => other.game().name(board_lang),
     };
     let wager = match (kind, bet > 0) {
         (Kind::ShareGrab, true) => t!(
-            lang,
+            board_lang,
             "duel.wager-share",
             stake = thousands(bet),
             pot = thousands(bet * 2)
         ),
-        (Kind::ShareGrab, false) => t!(lang, "duel.wager-share-free", pool = pinchora_game::party::share::POOL),
-        (_, true) => t!(lang, "duel.wager", bet = thousands(bet), pot = thousands(bet * 2)),
-        (_, false) => t!(lang, "duel.no-wager"),
+        (Kind::ShareGrab, false) => t!(
+            board_lang,
+            "duel.wager-share-free",
+            pool = pinchora_game::party::share::POOL
+        ),
+        (_, true) => t!(board_lang, "duel.wager", bet = thousands(bet), pot = thousands(bet * 2)),
+        (_, false) => t!(board_lang, "duel.no-wager"),
     };
     let prefix = kind.prefix();
     cx.reply(InteractionResponseData {
         content: Some(t!(
-            lang,
+            board_lang,
             "duel.challenge",
             host = mention(me),
             guest = mention(them.id),
@@ -522,13 +531,13 @@ async fn challenge(cx: &Cx, kind: Kind, opponent: &ResolvedUser, rounds: u8, bet
             components: vec![
                 button(
                     format!("{prefix}:y:{}", session.id),
-                    &t!(lang, "duel.accept"),
+                    &t!(board_lang, "duel.accept"),
                     ButtonStyle::Success,
                     false,
                 ),
                 button(
                     format!("{prefix}:n:{}", session.id),
-                    &t!(lang, "duel.decline"),
+                    &t!(board_lang, "duel.decline"),
                     ButtonStyle::Danger,
                     false,
                 ),
@@ -572,10 +581,12 @@ pub(crate) async fn answer(cx: &Cx, kind: Kind, id: i64, accept: bool) -> anyhow
         if !ended {
             return cx.reply_ephemeral(t!(lang, "duel.challenge-over")).await;
         }
+        // The challenge message everybody reads: the server's language.
+        let board_lang = channel_lang(cx).await;
         let text = if me == host {
-            t!(lang, "duel.took-back", host = mention(host))
+            t!(board_lang, "duel.took-back", host = mention(host))
         } else {
-            t!(lang, "duel.declined", guest = mention(guest))
+            t!(board_lang, "duel.declined", guest = mention(guest))
         };
         return cx
             .update(InteractionResponseData {
@@ -667,13 +678,18 @@ pub(crate) async fn expire_here(cx: &Cx, session: &GameSession) -> anyhow::Resul
     let (payout, from) = timeout_settlement(session);
     match cx.app.db.settle_game(session.id, from, "timeout", payout, true).await? {
         Some(before) => {
-            let text = timeout_text(&before, cx.lang());
             let clicked = cx.interaction.message.as_ref().map(|m| m.id.get());
-            if let Some((channel, message)) = location(&before)
+            // The public message is the server's language whoever clicked it; a private one is the clicker's.
+            let board = timeout_text(&before, cx.app.guild_lang(before.guild_id as u64).await);
+            let spot = location(&before);
+            let text = if spot.is_some_and(|(_, message)| clicked == Some(message)) {
+                board.clone()
+            } else {
+                timeout_text(&before, cx.lang())
+            };
+            if let Some((channel, message)) = spot
                 && clicked != Some(message)
             {
-                // The board is edited with the bot's token, for everyone: the server's language.
-                let board = timeout_text(&before, cx.app.guild_lang(before.guild_id as u64).await);
                 edit_message(&cx.app, channel, message, Some(&board), None, Some(&[])).await;
             }
             cx.update(InteractionResponseData {

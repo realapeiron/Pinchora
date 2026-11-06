@@ -24,6 +24,7 @@ use super::{
 };
 use crate::{
     App, Cx,
+    commands::games::channel_lang,
     util::{BRAND, SUCCESS, mention, relative},
 };
 
@@ -117,7 +118,8 @@ fn category(state: &State) -> Option<Category> {
 
 pub(crate) async fn open(cx: &Cx, topic: Option<Category>) -> anyhow::Result<()> {
     let state = State {
-        lang: cx.lang(),
+        // The table is public and keeps playing in the server's language, whoever opened it.
+        lang: channel_lang(cx).await,
         topic: topic.map(|c| c.key().to_owned()),
         ..Default::default()
     };

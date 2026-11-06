@@ -1732,6 +1732,7 @@ async fn a_turkish_hot_pearl_table_gets_turkish_syllables_and_words() {
     fresh(&sim).await;
     sim.channel = unique();
     sim.locale = "tr";
+    turkish_server(&sim).await;
     let (host, ann) = (unique(), unique());
     let (lobby, id) = lobby_of(&mut sim, "hotpearl", vec![], host, &[ann]).await;
     let table = sim.click(host, &lobby, "Başlat").await;
@@ -1787,6 +1788,7 @@ async fn a_turkish_acronym_round_draws_turkish_capitals_and_checks_them() {
     fresh(&sim).await;
     sim.channel = unique();
     sim.locale = "tr";
+    turkish_server(&sim).await;
     let (ada, bo, cy) = (unique(), unique(), unique());
     let (lobby, id) = lobby_of(&mut sim, "acronym", vec![int_option("rounds", 1)], ada, &[bo, cy]).await;
     let round = sim.click(ada, &lobby, "Başlat").await;
@@ -1821,6 +1823,7 @@ async fn a_turkish_word_race_is_played_with_the_turkish_keyboard() {
     fresh(&sim).await;
     sim.channel = unique();
     sim.locale = "tr";
+    turkish_server(&sim).await;
     let (ada, bo) = (unique(), unique());
     let (lobby, id) = lobby_of(&mut sim, "wordrace", vec![], ada, &[bo]).await;
     let race = sim.click(ada, &lobby, "Başlat").await;
@@ -1860,6 +1863,7 @@ async fn turkish_would_you_rather_and_dares_come_from_the_turkish_pools() {
     fresh(&sim).await;
     sim.channel = unique();
     sim.locale = "tr";
+    turkish_server(&sim).await;
     let (host, ann) = (unique(), unique());
     let poll = sim
         .command(host, "party", json!([sub("wouldyourrather", vec![])]))

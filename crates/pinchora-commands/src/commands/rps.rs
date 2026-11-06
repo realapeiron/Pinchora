@@ -242,7 +242,9 @@ fn view(
 pub(crate) async fn begin(cx: &Cx, session: &GameSession) -> anyhow::Result<()> {
     let (fields, names) = unpack(&session.state);
     let state = State::decode(fields).ok_or_else(|| anyhow::anyhow!("bad rock paper scissors state {fields:?}"))?;
-    cx.update(view(cx.lang(), session, &names, &state, None, session.expires_at).response())
+    // The board is public: the server's language, whoever clicked Accept.
+    let lang = cx.app.guild_lang(session.guild_id as u64).await;
+    cx.update(view(lang, session, &names, &state, None, session.expires_at).response())
         .await
 }
 

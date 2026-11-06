@@ -1,7 +1,8 @@
 //! The two-player duels in Turkish: challenges, accepting, moves, endings, time-outs and refusals for
 //! tic-tac-toe, Connect four, rock paper scissors, Share or Grab, Sea Fleet, Pearl Checkers and Reef Chess.
-//! Every click is answered in the language of whoever clicked; what the bot edits in on its own (the other
-//! player's secret pick, the janitor) is in the server's language. Pictures land in `target/sim/<test>/`.
+//! What only the clicker sees (refusals, menus, a private picker) is in the language of whoever clicked; what the
+//! whole channel reads (a challenge, a board, a time-out) stays in the server's language for its whole life,
+//! whoever clicked it. Pictures land in `target/sim/<test>/`.
 
 use pinchora_core::i18n::Lang;
 use pinchora_game::play::fleet::{self, Fleet};
@@ -141,14 +142,6 @@ fn latest_post(sim: &Sim) -> Post {
     sim.posts().into_iter().next_back().expect("the message was edited")
 }
 
-/// Makes the server's own language Turkish, for what the bot edits in without anybody clicking.
-async fn turkish_server(sim: &Sim) {
-    sim.app
-        .set_guild_lang(sim.guild, Some(Lang::Tr))
-        .await
-        .expect("set the server's language");
-}
-
 /// Sets a session's own fields, keeping the names that ride in its state.
 async fn set_fields(sim: &Sim, session: i64, fields: &str) {
     let (state,): (String,) = sqlx::query_as("SELECT state FROM game_sessions WHERE id = $1")
@@ -173,6 +166,7 @@ async fn tic_tac_toe_in_turkish() {
         return;
     };
     sim.locale = "tr";
+    turkish_server(&sim).await;
     let (x, o, bystander, rival) = (unique(), unique(), unique(), unique());
 
     // A bot is no opponent, in any of the duels.
@@ -272,6 +266,7 @@ async fn connect_four_in_turkish_from_challenge_to_win() {
         return;
     };
     sim.locale = "tr";
+    turkish_server(&sim).await;
     let (a, b, bystander) = (unique(), unique(), unique());
 
     let challenge = invite(&mut sim, a, b, "connect4", vec![]).await;
@@ -360,6 +355,7 @@ async fn challenges_and_wagers_in_turkish_with_their_refusals() {
         return;
     };
     sim.locale = "tr";
+    turkish_server(&sim).await;
     let (a, b, broke, rich) = (unique(), unique(), unique(), unique());
     fund(&sim, a, 500).await;
     fund(&sim, b, 500).await;
@@ -451,17 +447,17 @@ async fn challenges_and_wagers_in_turkish_with_their_refusals() {
 }
 
 #[tokio::test]
-async fn duels_answer_each_click_in_the_language_of_whoever_clicked() {
-    let Some(mut sim) = Sim::new("duels_answer_each_click_in_the_language_of_whoever_clicked").await else {
+async fn duel_boards_stay_in_the_servers_language_whatever_the_clickers_is() {
+    let Some(mut sim) = Sim::new("duel_boards_stay_in_the_servers_language_whatever_the_clickers_is").await else {
         return;
     };
     let (turk, english) = (unique(), unique());
 
-    // The Turkish host challenges; the English guest accepts and gets the board in English.
-    sim.locale = "tr";
+    // A Turkish server: the English guest accepts a Turkish challenge and the board is still Turkish.
+    turkish_server(&sim).await;
+    sim.locale = "en-US";
     let challenge = invite(&mut sim, turk, english, "connect4", vec![]).await;
     assert!(challenge.content().contains("meydan okuyor"), "{}", challenge.content());
-    sim.locale = "en-US";
     let board = sim
         .component(
             english,
@@ -470,13 +466,13 @@ async fn duels_answer_each_click_in_the_language_of_whoever_clicked() {
             &challenge,
         )
         .await;
-    assert_eq!(board.title(), "Connect four");
+    assert_eq!(board.title(), "Dört Bağla");
     assert!(
-        board.content().contains(&format!("{}'s turn", mention(turk))),
+        board.content().contains(&format!("Sıra: {}", mention(turk))),
         "{}",
         board.content()
     );
-    // Each refusal is in the language of the player who was refused.
+    // What only the clicker sees is in the clicker's language.
     let refused = sim
         .component(english, &board.button("3").custom_id.clone().expect("id"), &[], &board)
         .await;
@@ -485,13 +481,35 @@ async fn duels_answer_each_click_in_the_language_of_whoever_clicked() {
         "{}",
         refused.content()
     );
-    sim.locale = "tr";
-    let board = click(&mut sim, turk, &board, "3").await;
+    // And a move by the English-speaking player redraws the board in Turkish all the same.
+    let board = sim
+        .component(turk, &board.button("3").custom_id.clone().expect("id"), &[], &board)
+        .await;
+    let board = sim
+        .component(english, &board.button("4").custom_id.clone().expect("id"), &[], &board)
+        .await;
     assert_eq!(board.title(), "Dört Bağla");
     assert!(
-        board.content().contains(&format!("Sıra: {}", mention(english))),
+        board.content().contains(&format!("Sıra: {}", mention(turk))),
         "{}",
         board.content()
+    );
+
+    // An English server: the Turkish guest declines in Turkish, but the message everyone reads stays English.
+    sim.app
+        .set_guild_lang(sim.guild, Some(Lang::En))
+        .await
+        .expect("set the server's language");
+    sim.locale = "tr";
+    let challenge = invite(&mut sim, english, turk, "connect4", vec![]).await;
+    assert!(challenge.content().contains("challenges"), "{}", challenge.content());
+    let board = click(&mut sim, turk, &challenge, "Accept").await;
+    assert_eq!(board.title(), "Connect four");
+    let refused = click(&mut sim, turk, &board, "3").await;
+    assert!(
+        refused.ephemeral && refused.content().contains("Sıra henüz sende değil"),
+        "{}",
+        refused.content()
     );
 }
 
@@ -548,7 +566,7 @@ async fn duel_time_outs_are_in_the_servers_language() {
         .expect("the message says the game timed out");
     assert!(
         edit.content()
-            .contains(&format!("{} süresini doldurdu ve hükmen yenildi", mention(c)))
+            .contains(&format!("{} için süre doldu, hükmen yenildi", mention(c)))
             && edit.content().contains("**100** kabukluk havuzu")
             && edit.content().contains(&mention(d)),
         "{}",
@@ -917,7 +935,7 @@ async fn share_or_grab_forfeits_in_turkish_when_somebody_never_picks() {
         .expect("the message says the game timed out");
     assert!(
         edit.content().contains(&format!(
-            "⌛ {} süresini doldurdu ve hükmen yenildi: **100** kabukluk havuzu {} alıyor.",
+            "⌛ {} için süre doldu, hükmen yenildi: **100** kabukluk havuzu {} alıyor.",
             mention(b),
             mention(a)
         )),
@@ -983,7 +1001,7 @@ async fn sea_fleet_in_turkish_places_fires_sinks_a_ship_and_resigns() {
     assert_eq!(public.files[0].0, "seafleet.png");
     assert_eq!(public.title(), "Deniz Filosu");
     assert!(
-        public.content().contains("filonu gizlice yerleştir"),
+        public.content().contains("filosunu gizlice yerleştirmeli"),
         "{}",
         public.content()
     );
@@ -1040,7 +1058,7 @@ async fn sea_fleet_in_turkish_places_fires_sinks_a_ship_and_resigns() {
     );
     let waiting = latest_post(&sim);
     assert!(
-        waiting.content().contains("filonu gizlice yerleştir"),
+        waiting.content().contains("filosunu gizlice yerleştirmeli"),
         "{}",
         waiting.content()
     );

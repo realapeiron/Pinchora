@@ -356,9 +356,11 @@ fn menus(lang: Lang, id: i64, state: &State, moves: &[Move], selected: Option<u8
 pub(crate) async fn begin(cx: &Cx, session: &GameSession) -> anyhow::Result<()> {
     let (fields, names) = unpack(&session.state);
     let state = State::decode(fields).ok_or_else(|| anyhow::anyhow!("bad chess state {fields:?}"))?;
+    // The board is public: the server's language, whoever clicked Accept.
+    let lang = cx.app.guild_lang(session.guild_id as u64).await;
     let data = message(
         &cx.app,
-        cx.lang(),
+        lang,
         session,
         &names,
         &state,
@@ -426,9 +428,10 @@ async fn running(cx: &Cx, id: i64, plies: Option<usize>) -> anyhow::Result<Optio
     let state = State::decode(fields).ok_or_else(|| anyhow::anyhow!("bad chess state {fields:?}"))?;
     if let Some(plies) = plies {
         if state.game.plies() != plies {
+            // The stale board is refreshed in place for everyone: the server's language.
             let data = message(
                 &cx.app,
-                cx.lang(),
+                cx.app.guild_lang(session.guild_id as u64).await,
                 &session,
                 &names,
                 &state,
@@ -460,7 +463,7 @@ async fn on_piece(cx: &Cx, id: i64, plies: usize, from: &str) -> anyhow::Result<
     };
     let data = message(
         &cx.app,
-        cx.lang(),
+        cx.app.guild_lang(session.guild_id as u64).await,
         &session,
         &names,
         &state,
@@ -478,7 +481,9 @@ async fn on_move(cx: &Cx, id: i64, plies: usize, text: &str) -> anyhow::Result<(
     let Some((session, names, state)) = running(cx, id, Some(plies)).await? else {
         return Ok(());
     };
+    // `lang` is for what only the clicker sees; the board stays in the server's language.
     let lang = cx.lang();
+    let board_lang = cx.app.guild_lang(session.guild_id as u64).await;
     let mut game = state.game.clone();
     if Move::from_uci(text).and_then(|mv| game.play(mv)).is_none() {
         return cx.reply_ephemeral(t!(lang, "board.illegal")).await;
@@ -495,7 +500,7 @@ async fn on_move(cx: &Cx, id: i64, plies: usize, text: &str) -> anyhow::Result<(
         let deadline = Utc::now() + Duration::seconds(CHESS_SECS);
         let data = message(
             &cx.app,
-            lang,
+            board_lang,
             &session,
             &names,
             &next,
@@ -509,12 +514,22 @@ async fn on_move(cx: &Cx, id: i64, plies: usize, text: &str) -> anyhow::Result<(
     };
     let end = End::of(&next, outcome);
     let winner = end.winner.map(|w| players(&session)[w]);
-    let Some(note) = conclude(&cx.app, lang, &session, &packed, Play::Chess, winner, next.game.plies()).await? else {
+    let Some(note) = conclude(
+        &cx.app,
+        board_lang,
+        &session,
+        &packed,
+        Play::Chess,
+        winner,
+        next.game.plies(),
+    )
+    .await?
+    else {
         return cx.reply_ephemeral(t!(lang, "duel.board-changed")).await;
     };
     let data = message(
         &cx.app,
-        lang,
+        board_lang,
         &session,
         &names,
         &next,

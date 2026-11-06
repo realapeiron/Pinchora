@@ -362,12 +362,13 @@ the words on its pixel cards) is in the catalogs `locales/{en,tr}/`: `games.toml
 also what `/play stats` lists), `play.toml` (`/play stats`), `duel.toml` (every `/duel` game and the board helpers),
 `solo.toml` (wordle, hangman, trivia, Pixel Picross, Tide 2048), `collect.toml` (critter drops, bottles, `/dex`,
 `/beachcomb`, `/crabpot`), `party.toml` (`/party`) and `arcade.toml` (the crab derby, treasure heist, shell game and storm
-surge, including the derby GIF's own 3x5 font, which folds Ç Ğ İ Ö Ş Ü to plain letters). A click is answered in the
-clicker's language; a lobby everybody shares keeps the language it was opened in (the derby, heist and storm states end
-in `|<code>`, the party games' JSON state holds `lang`) so the janitor does not switch it; what the bot edits in by
-itself elsewhere (duel time-outs, a secret pick, the shell game's refund) uses the player's own `/language` pick or the
-server's default. Critter drops and bottles belong to the channel: their post, every grab or opening and the close are
-in the server's language. Pixel-font labels are kept in the
+surge, including the derby GIF's own 3x5 font, which folds Ç Ğ İ Ö Ş Ü to plain letters). A public message in a channel
+(a challenge, a duel or board game's board, a party, derby, heist or storm lobby, the shell game's table, a critter drop or
+bottle) is drawn in the server's language (`/config language`, English when unset) for its whole life, whoever clicks it:
+the duel and board-game boards ask `App::guild_lang`, and a lobby locks the server's language when it opens (the derby,
+heist, storm and shell game states end in `|<code>`, the party games' JSON state holds `lang`) so the janitor does not
+switch it. What only the clicker sees (a refusal, a menu, a private picker, "not your turn") is in the clicker's own
+language; what the bot edits in by itself (a time-out, a secret pick) is in the server's. Pixel-font labels are kept in the
 catalog already in capitals, and text a card capitalises is capitalised with `pinchora_game::lang::upper` first (Turkish
 `i` is `İ`). The Turkish simulator flows are `tests/simulate/turkish_{duel,solo,party,arcade}.rs`.
 

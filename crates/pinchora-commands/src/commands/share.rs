@@ -225,7 +225,9 @@ async fn message(
 pub(crate) async fn begin(cx: &Cx, session: &GameSession) -> anyhow::Result<()> {
     let (fields, names) = unpack(&session.state);
     let picks = Picks::decode(fields).ok_or_else(|| anyhow::anyhow!("bad share or grab state {fields:?}"))?;
-    cx.update(message(&cx.app, cx.lang(), session, &names, picks, None, session.expires_at).await?)
+    // The card is public: the server's language, whoever clicked Accept.
+    let lang = cx.app.guild_lang(session.guild_id as u64).await;
+    cx.update(message(&cx.app, lang, session, &names, picks, None, session.expires_at).await?)
         .await
 }
 
@@ -267,7 +269,9 @@ async fn running(cx: &Cx, id: i64) -> anyhow::Result<Option<GameSession>> {
         return Ok(None);
     }
     if session.expired() {
-        match forfeit(&cx.app, cx.lang(), &session).await? {
+        // The card it ends on is the public one: the server's language.
+        let card_lang = cx.app.guild_lang(session.guild_id as u64).await;
+        match forfeit(&cx.app, card_lang, &session).await? {
             Some(card) => cx.update(card).await?,
             None => cx.reply_ephemeral(t!(cx.lang(), "duel.game-over")).await?,
         }

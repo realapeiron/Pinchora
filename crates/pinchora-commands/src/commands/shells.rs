@@ -22,7 +22,7 @@ use twilight_model::{
 use twilight_util::builder::embed::EmbedBuilder;
 
 use super::{
-    games::{channel_of, edit_message, lang_for, location, quiet},
+    games::{channel_of, edit_message, location, quiet, session_lang, state_with_lang},
     party::{count, edit_card, rest, resting, track_message, wait_text_in},
 };
 use crate::{
@@ -120,6 +120,8 @@ pub(crate) async fn start(cx: &Cx, stake: i64) -> anyhow::Result<()> {
             .await;
     }
     let seed: u64 = rand::random();
+    // The table is public and keeps speaking the server's language to its end; `lang` is for the player's refusals.
+    let board_lang = cx.app.guild_lang(guild).await;
     let started = cx
         .app
         .db
@@ -132,7 +134,7 @@ pub(crate) async fn start(cx: &Cx, stake: i64) -> anyhow::Result<()> {
                 guest: None,
                 bet: stake,
                 status: pinchora_db::ACTIVE,
-                state: &pearl(seed).to_string(),
+                state: &state_with_lang(&pearl(seed).to_string(), board_lang),
                 ttl_secs: GUESS_SECS,
             },
             limits(),
@@ -168,7 +170,7 @@ pub(crate) async fn start(cx: &Cx, stake: i64) -> anyhow::Result<()> {
         }
     };
     let content = t!(
-        lang,
+        board_lang,
         "shells.sits",
         player = mention(me),
         stake = thousands(stake),
@@ -181,10 +183,10 @@ pub(crate) async fn start(cx: &Cx, stake: i64) -> anyhow::Result<()> {
         Table {
             picked: None,
             pearl: None,
-            status: t!(lang, "shells.status-start"),
+            status: t!(board_lang, "shells.status-start"),
         },
         content,
-        lang,
+        board_lang,
     )
     .await?;
     cx.reply(data).await?;
@@ -208,15 +210,20 @@ pub(crate) async fn on_button(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Res
     match cx.app.db.shell_pick(id, me, shell, payout).await? {
         ShellPick::Done(done) => {
             count(&cx.app, Game::ShellGame, &[(me, done.paid > 0)]).await;
-            let (table, content) = ending(&done, lang);
-            let data = message(&cx.app, &done.session, table, content, lang).await?;
+            // The table is the server's language, whoever clicks.
+            let table_lang = session_lang(&cx.app, &done.session).await;
+            let (table, content) = ending(&done, table_lang);
+            let data = message(&cx.app, &done.session, table, content, table_lang).await?;
             cx.update(data).await
         }
         ShellPick::NotYours => cx.reply_ephemeral(t!(lang, "shells.not-yours")).await,
         ShellPick::Gone => {
             // Out of time: give the stake back right here instead of waiting for the janitor.
             match cx.app.db.shell_refund(id).await? {
-                Some(session) => cx.update(timeout_message(&cx.app, &session, lang).await?).await,
+                Some(session) => {
+                    let table_lang = session_lang(&cx.app, &session).await;
+                    cx.update(timeout_message(&cx.app, &session, table_lang).await?).await
+                }
                 None => cx.reply_ephemeral(t!(lang, "shells.over")).await,
             }
         }
@@ -292,7 +299,7 @@ pub(crate) async fn time_out(app: &Arc<App>, session: &GameSession) -> anyhow::R
         return Ok(false);
     };
     if let Some(at) = location(session) {
-        let lang = lang_for(app, session.host_id as u64, session.guild_id as u64).await;
+        let lang = session_lang(app, &before).await;
         match timeout_message(app, &before, lang).await {
             Ok(data) => {
                 if let (Some(embeds), Some(files)) = (data.embeds, data.attachments)

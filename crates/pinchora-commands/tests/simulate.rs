@@ -13366,6 +13366,21 @@ async fn a_pair_s_hour_starts_when_the_pool_paid_them_and_a_double_click_pays_on
     );
 }
 
+/// The shell the pearl is under in shell game `session`: its state is the shell, then `|<language>`.
+async fn pearl_under(sim: &Sim, session: i64) -> usize {
+    let state = sim.app.db.game(session).await.unwrap().unwrap().state;
+    state.split('|').next().unwrap().parse().unwrap()
+}
+
+/// Makes the server's own language Turkish: what a whole channel reads (a board, a lobby, a table) is drawn in it,
+/// whoever opens or clicks it.
+async fn turkish_server(sim: &Sim) {
+    sim.app
+        .set_guild_lang(sim.guild, Some(pinchora_core::i18n::Lang::Tr))
+        .await
+        .expect("set the server's language");
+}
+
 /// `/config gambling enabled:<on>` as a manager.
 async fn gambling(sim: &mut Sim, manager: u64, on: bool) -> Reply {
     sim.permissions = MANAGE_GUILD;
@@ -13429,7 +13444,7 @@ async fn the_shell_game_is_off_until_a_manager_turns_it_on_and_pays_a_right_gues
     assert_eq!(table.controls().count(), 3);
     assert_eq!(shells(&sim, player).await, 80, "the stake is held");
     let session = session_of(&table);
-    let pearl: usize = sim.app.db.game(session).await.unwrap().unwrap().state.parse().unwrap();
+    let pearl = pearl_under(&sim, session).await;
     let stranger = sim.click(unique(), &table, &format!("Shell {}", pearl + 1)).await;
     assert!(
         stranger.ephemeral && stranger.content().contains("isn't your table"),
@@ -13459,16 +13474,7 @@ async fn the_shell_game_is_off_until_a_manager_turns_it_on_and_pays_a_right_gues
         .await
         .unwrap();
     let table = sim.command(player, "play", shells_cmd(30)).await;
-    let pearl: usize = sim
-        .app
-        .db
-        .game(session_of(&table))
-        .await
-        .unwrap()
-        .unwrap()
-        .state
-        .parse()
-        .unwrap();
+    let pearl = pearl_under(&sim, session_of(&table)).await;
     let wrong = (pearl + 1) % 3;
     let lost = sim.click(player, &table, &format!("Shell {}", wrong + 1)).await;
     assert!(
@@ -13545,16 +13551,7 @@ async fn a_forgotten_shell_game_gives_the_stake_back_and_the_tables_have_daily_l
         sim.app.cache.forget(&format!("rest:shellsstart:{rich}")).await.unwrap();
         let table = sim.command(rich, "play", shells_cmd(90)).await;
         assert!(!table.ephemeral, "round {round}: {}", table.content());
-        let pearl: usize = sim
-            .app
-            .db
-            .game(session_of(&table))
-            .await
-            .unwrap()
-            .unwrap()
-            .state
-            .parse()
-            .unwrap();
+        let pearl = pearl_under(&sim, session_of(&table)).await;
         sim.click(rich, &table, &format!("Shell {}", (pearl + 1) % 3 + 1)).await;
     }
     sim.app.cache.forget(&format!("rest:shellsstart:{rich}")).await.unwrap();

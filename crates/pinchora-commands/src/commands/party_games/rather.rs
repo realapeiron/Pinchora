@@ -21,7 +21,7 @@ use twilight_util::builder::embed::EmbedBuilder;
 use super::{after, card, edit_card, game_lang, remember, row, theme, track_message};
 use crate::{
     App, Cx,
-    commands::games::{button, channel_of, pay_win, record},
+    commands::games::{button, channel_lang, channel_of, pay_win, record},
     util::{BRAND, SUCCESS, relative},
 };
 
@@ -61,7 +61,9 @@ pub(crate) async fn open(cx: &Cx, topic: Option<Category>) -> anyhow::Result<()>
             .reply_ephemeral(t!(cx.lang(), "rather.cooldown", secs = left.as_secs() + 1))
             .await;
     }
-    let pool = PartyContent::for_lang(cx.lang()).questions(topic);
+    // The poll is public and speaks the server's language, whoever opened it.
+    let board_lang = channel_lang(cx).await;
+    let pool = PartyContent::for_lang(board_lang).questions(topic);
     anyhow::ensure!(!pool.is_empty(), "no questions in this category");
     // Skip questions this channel saw lately, a few tries deep.
     let mut chosen = pool[rand::random_range(0..pool.len())];
@@ -87,12 +89,12 @@ pub(crate) async fn open(cx: &Cx, topic: Option<Category>) -> anyhow::Result<()>
             guild_id: cx.guild_id().unwrap_or(0),
             channel_id: channel,
             host,
-            host_name: &super::text::name(&cx.author_display_name(), cx.lang()),
+            host_name: &super::text::name(&cx.author_display_name(), board_lang),
             rounds: 1,
             status: "playing",
             phase: "vote",
             state: &serde_json::to_string(&State {
-                lang: cx.lang(),
+                lang: board_lang,
                 q: chosen.id.clone(),
             })?,
             deadline: after(app, POLL_SECS),

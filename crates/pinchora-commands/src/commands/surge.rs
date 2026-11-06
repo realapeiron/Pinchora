@@ -257,11 +257,13 @@ impl SurgeCommand {
                 .await;
         }
         let me = cx.author()?.id.get();
-        let Some(session) = open_storm(&cx.app, guild, channel_of(cx), me, lang).await? else {
+        // The storm card is public and keeps speaking the server's language to its end.
+        let board_lang = cx.app.guild_lang(guild).await;
+        let Some(session) = open_storm(&cx.app, guild, channel_of(cx), me, board_lang).await? else {
             return cx.reply_ephemeral(t!(lang, "surge.raging")).await;
         };
         rest(&cx.app, "surge", guild, SUMMON_COOLDOWN_SECS).await;
-        cx.reply(rolling(&cx.app, &session, lang).await?).await?;
+        cx.reply(rolling(&cx.app, &session, board_lang).await?).await?;
         track_message(cx, session.id);
         Ok(())
     }

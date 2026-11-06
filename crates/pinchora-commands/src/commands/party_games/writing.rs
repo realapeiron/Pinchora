@@ -31,7 +31,7 @@ use super::{
 };
 use crate::{
     App, Cx,
-    commands::games::quiet,
+    commands::games::{channel_lang, quiet},
     util::{BRAND, SUCCESS, WARN, relative},
 };
 
@@ -136,7 +136,8 @@ pub(crate) async fn open(cx: &Cx, party: Party, rounds: i32) -> anyhow::Result<(
     };
     let rounds = rounds.clamp(*range.start(), *range.end());
     let state = State {
-        lang: cx.lang(),
+        // The table is public and keeps playing in the server's language, whoever opened it.
+        lang: channel_lang(cx).await,
         ..Default::default()
     };
     lobby::open(cx, party, rounds, encode(&state)?).await
