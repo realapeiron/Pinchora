@@ -36,6 +36,7 @@ const PAGES = [
   { path: "", name: "overview", heading: "OVERVIEW" },
   { path: "/modules", name: "modules", heading: "MODULES" },
   { path: "/welcome", name: "welcome", heading: "WELCOME" },
+  { path: "/welcome-image", name: "welcome-image", heading: "WELCOME IMAGE" },
   { path: "/leveling", name: "leveling", heading: "LEVELING" },
   { path: "/points", name: "points", heading: "POINTS" },
   { path: "/log", name: "server-log", heading: "SERVER LOG" },
@@ -48,7 +49,7 @@ const PAGES = [
   { path: "/audit", name: "audit-log", heading: "AUDIT LOG" },
 ];
 
-test("the welcome card designer previews the bot's own card", async ({ page }) => {
+test("the welcome page shows the image the bot sends and opens the editor", async ({ page }) => {
   await login(page);
   await page.goto(`/g/${guild}/welcome`);
   await expect(page.getByRole("heading", { name: "WELCOME", exact: true })).toBeVisible();
@@ -57,32 +58,18 @@ test("the welcome card designer previews the bot's own card", async ({ page }) =
   expect(await page.locator(".preview-image").evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(
     1100,
   );
-
-  await page.getByRole("radio", { name: "Forest" }).click();
-  await page.getByRole("button", { name: "Mint" }).click();
-  await page.getByLabel("Headline").fill("HI THERE");
-  await expect(page.getByText("3 unsaved changes")).toBeVisible();
-  const second = await previewPixels(page);
-  expect(second).not.toEqual(first);
+  await expect(page.getByText("The classic card, sent with the text, in one message.")).toBeVisible();
   await page.locator(".designer").scrollIntoViewIfNeeded();
   await shot(page, "welcome-designer");
-
-  // A colour the bot cannot read: the same sentence as /config welcome-card, and no saving.
-  await page.getByLabel("Accent colour").fill("#zz");
-  await expect(page.getByText("Colours look like")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Save changes" })).toBeDisabled();
-  await expect(page.getByText("FIX THE FORM TO REDRAW")).toBeVisible();
-  await shot(page, "welcome-invalid-accent");
-  await page.getByLabel("Accent colour").fill("#06d6a0");
 
   await page.getByLabel("Channel").first().selectOption({ label: "#welcome" });
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
   const api = await (await page.request.get(`/api/guilds/${guild}`)).json();
-  expect(api.settings.welcome_theme).toBe("forest");
-  expect(api.settings.welcome_title).toBe("HI THERE");
-  expect(api.settings.welcome_accent).toBe("#06d6a0");
   expect(api.settings.welcome_channel_id).toBe("7010");
+
+  await page.getByRole("link", { name: "Open the editor" }).click();
+  await expect(page.getByRole("heading", { name: "WELCOME IMAGE", exact: true })).toBeVisible();
 });
 
 test("level roles refuse what the bot cannot give, and the sync runs", async ({ page }) => {
@@ -149,6 +136,7 @@ test("points and the store", async ({ page }) => {
 
 /** Waits until the pictures and message previews on the page have loaded. */
 async function settled(page: Page, name: string) {
+  // The editor keeps the bot's own picture behind a toggle, so only the welcome page has it from the start.
   if (name === "welcome") await previewPixels(page);
   await expect(page.locator(".state")).toHaveCount(0);
   for (const preview of await page.locator(".message-preview p").all()) {

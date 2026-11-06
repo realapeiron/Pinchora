@@ -1,24 +1,24 @@
 use std::{sync::Arc, time::Duration};
 
 use pinchora_core::{
+    card_design::{CardKind, Delivery},
     leveling::{MESSAGE_XP, MESSAGE_XP_COOLDOWN_SECS, level_of, scale, week_start},
     modules::Module,
 };
 use pinchora_db::XpGrant;
-use pinchora_render::{Theme, WelcomeCard};
 use twilight_model::{
     channel::message::{AllowedMentions, MessageType},
     gateway::payload::incoming::{
         BanAdd, BanRemove, GuildCreate, GuildDelete, MemberAdd, MemberRemove, MemberUpdate, MessageCreate,
         VoiceStateUpdate,
     },
-    http::attachment::Attachment,
     id::Id,
 };
 
 use crate::hooks::{self, JoinVerdict, ReactionEvent, Verdict};
 use crate::{
     App, auto,
+    card_images::{CardSubject, card_png, deliver, server_card},
     commands::{self, collection},
     leveling::{self, LevelUp},
     roles, server_log,
@@ -142,7 +142,8 @@ pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<(
     .await
 }
 
-/// Gives the join role, logs the join, and posts a welcome card when the server has them turned on.
+/// Gives the join role, logs the join, and welcomes the member with the server's image and text, sent the way
+/// it chose, when the server has welcomes turned on.
 pub async fn on_member_add(app: Arc<App>, event: MemberAdd) -> anyhow::Result<()> {
     let held = hooks::on_member_join(&app, &event).await == JoinVerdict::Held;
     let MemberAdd { guild_id, member } = event;
@@ -159,32 +160,19 @@ pub async fn on_member_add(app: Arc<App>, event: MemberAdd) -> anyhow::Result<()
         return Ok(());
     }
     auto::member_joined(&app, guild_id.get(), &member).await;
-    if member.user.bot {
+    if member.user.bot || !settings.welcome_enabled {
         return Ok(());
     }
-    let Some(channel) = settings.welcome_channel_id.filter(|_| settings.welcome_enabled) else {
-        return Ok(());
+    let card = server_card(&app, &settings, guild_id.get(), CardKind::Welcome).await?;
+    let channel = match card.delivery {
+        Delivery::Dm => None,
+        _ => match settings.welcome_channel_id {
+            Some(channel) => Some(Id::new(channel as u64)),
+            None => return Ok(()),
+        },
     };
     let guild = app.http.guild(guild_id).with_counts(true).await?.model().await?;
     let count = guild.approximate_member_count;
-    let name = display_name(&member.user, member.nick.as_deref());
-    let avatar = app.avatar(&member.user, WelcomeCard::AVATAR_SIZE, Some(44)).await;
-    let server_name = guild.name.clone();
-    let title = settings.welcome_title.clone().unwrap_or_else(|| "Welcome".to_owned());
-    let theme = Theme::preset(settings.welcome_theme.as_deref().unwrap_or("reef"))
-        .with_accent(settings.welcome_accent.map(|c| c as u32));
-    let png = app
-        .render(move |r| {
-            r.welcome_card(&WelcomeCard {
-                display_name: &name,
-                avatar_png: &avatar,
-                server_name: &server_name,
-                member_number: count,
-                title: &title,
-                theme,
-            })
-        })
-        .await?;
     let text = settings
         .welcome_message
         .as_deref()
@@ -192,20 +180,42 @@ pub async fn on_member_add(app: Arc<App>, event: MemberAdd) -> anyhow::Result<()
         .replace("{user}", &mention(member.user.id))
         .replace("{server}", &guild.name)
         .replace("{count}", &count.map(|c| c.to_string()).unwrap_or_default());
+    let png = if card.delivery.has_image() {
+        let subject = CardSubject {
+            user: member.user.id,
+            avatar: member.user.avatar,
+            name: display_name(&member.user, member.nick.as_deref()),
+            username: member.user.name.clone(),
+            server: guild.name.clone(),
+            members: count,
+        };
+        Some(card_png(&app, guild_id.get(), &card.design, &subject).await?)
+    } else {
+        None
+    };
     let mentions = AllowedMentions {
         users: vec![member.user.id],
         ..Default::default()
     };
-    app.http
-        .create_message(Id::new(channel as u64))
-        .content(&text)
-        .allowed_mentions(Some(&mentions))
-        .attachments(&[Attachment::from_bytes("welcome.png".to_owned(), png, 1)])
-        .await?;
-    Ok(())
+    let image = png.map(|png| ("welcome.png", png));
+    match channel {
+        Some(channel) => deliver(&app, channel, card.delivery, &text, image, &mentions).await,
+        None => {
+            // Closed direct messages are the member's choice, not a failure.
+            let user = member.user.id.get();
+            let Some(dm) = leveling::private_channel(&app, user).await else {
+                return Ok(());
+            };
+            if let Err(error) = deliver(&app, dm, Delivery::WithMessage, &text, image, &mentions).await {
+                tracing::debug!(guild = guild_id.get(), user, %error, "welcome direct message not delivered");
+            }
+            Ok(())
+        }
+    }
 }
 
-/// Says goodbye when the server has it turned on, and logs the leave.
+/// Says goodbye when the server has it turned on (with its goodbye image, if it chose one), and logs the
+/// leave.
 pub async fn on_member_remove(app: Arc<App>, event: MemberRemove) -> anyhow::Result<()> {
     hooks::on_member_leave(&app, &event).await;
     let MemberRemove { guild_id, user } = event;
@@ -219,31 +229,39 @@ pub async fn on_member_remove(app: Arc<App>, event: MemberRemove) -> anyhow::Res
     let Some(channel) = settings.goodbye_channel_id.filter(|_| !user.bot) else {
         return Ok(());
     };
+    let card = server_card(&app, &settings, guild_id.get(), CardKind::Goodbye).await?;
     let template = settings.goodbye_message.as_deref().unwrap_or(DEFAULT_GOODBYE);
-    // Only ask Discord for the server when the message uses it.
-    let (server, members) = if template.contains("{server}") || template.contains("{members}") {
+    let needs_server = card.delivery.has_image() || template.contains("{server}") || template.contains("{members}");
+    // Only ask Discord for the server when the message or the image uses it.
+    let (server, members) = if needs_server {
         let guild = app.http.guild(guild_id).with_counts(true).await?.model().await?;
-        let members = guild.approximate_member_count.map(|c| c.to_string());
-        (guild.name, members.unwrap_or_default())
+        (guild.name, guild.approximate_member_count)
     } else {
         Default::default()
     };
+    let members_text = members.map(|c| c.to_string()).unwrap_or_default();
     // Not a mention: the member is gone, and a name reads better than a bare id.
+    let name = display_name(&user, None);
     let text = fill(
         template,
-        &[
-            ("user", &display_name(&user, None)),
-            ("server", &server),
-            ("members", &members),
-        ],
+        &[("user", &name), ("server", &server), ("members", &members_text)],
     );
+    let png = if card.delivery.has_image() {
+        let subject = CardSubject {
+            user: user.id,
+            avatar: user.avatar,
+            name,
+            username: user.name.clone(),
+            server,
+            members,
+        };
+        Some(card_png(&app, guild_id.get(), &card.design, &subject).await?)
+    } else {
+        None
+    };
     let mentions = AllowedMentions::default();
-    app.http
-        .create_message(Id::new(channel as u64))
-        .content(&text)
-        .allowed_mentions(Some(&mentions))
-        .await?;
-    Ok(())
+    let image = png.map(|png| ("goodbye.png", png));
+    deliver(&app, Id::new(channel as u64), card.delivery, &text, image, &mentions).await
 }
 
 /// Passes a reaction added to or removed from a message on to the feature packages.

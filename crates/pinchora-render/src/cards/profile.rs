@@ -259,7 +259,7 @@ impl ProfileCard<'_> {
                     false,
                     &t.gold,
                     "start",
-                    &escape(&truncate(&title.to_uppercase(), 24)),
+                    &escape(&truncate(&self.lang.upper(title), 24)),
                 );
                 text(&mut s, 298.0, 130.0, 20.0, SANS, false, &t.muted, "start", &handle);
             }
@@ -453,7 +453,7 @@ impl ProfileCard<'_> {
     fn partner_line(&self, s: &mut String, partner: &str, right: f32, y: f32) {
         let t = &self.theme;
         let name = truncate_pixel_to(
-            &truncate(&partner.to_uppercase(), Self::PARTNER_CHARS),
+            &truncate(&self.lang.upper(partner), Self::PARTNER_CHARS),
             14.0,
             Self::PARTNER_WIDTH,
         );

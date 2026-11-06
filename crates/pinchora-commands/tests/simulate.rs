@@ -72,6 +72,9 @@ use twilight_model::{
 mod basics;
 #[path = "simulate/board.rs"]
 mod board;
+// Welcome and goodbye images from the dashboard's editor.
+#[path = "simulate/cards.rs"]
+mod cards;
 // The collection games' flows (Critter Drop, bottles, Beachcomb, Tide Pool Dex, Crab Pot).
 #[path = "simulate/collection.rs"]
 mod collection;

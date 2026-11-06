@@ -5,6 +5,7 @@ mod checkers;
 mod chess;
 mod collection;
 mod connect4;
+mod designed;
 mod fleet;
 mod frame;
 mod grid;
@@ -35,6 +36,7 @@ pub use collection::{
     BottleCard, DexCard, DexCell, DropCard, DropCritter, EntryPicture, HaulCard, HaulTile, PotCard, PotState,
 };
 pub use connect4::Connect4Card;
+pub use designed::{CardFill, DesignedCard, fill_placeholders, ordinal};
 pub use fleet::{FleetCard, RadarCard, SHIP_COLORS, SHIP_NAMES, SeaView, ShipView};
 pub use grid::{GridSlot, ItemGridCard};
 pub use hangman::{HangmanCard, HangmanLetter};
@@ -236,11 +238,6 @@ pub(crate) fn text(
     body: &str,
 ) {
     let weight = if bold { "bold" } else { "normal" };
-    let body = if family == PIXEL {
-        crate::svg::pixel_letters(body)
-    } else {
-        body.into()
-    };
     let _ = write!(
         out,
         r#"<text x="{x}" y="{y}" font-family="{family}" font-size="{size}" font-weight="{weight}" fill="{fill}" text-anchor="{anchor}">{body}</text>"#

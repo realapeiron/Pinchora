@@ -2,16 +2,18 @@
 
 use axum::{
     Router,
+    extract::DefaultBodyLimit,
     routing::{get, patch, post, put},
 };
 use chrono::{DateTime, Utc};
+use pinchora_core::card_design::UPLOAD_MAX_BYTES;
 use pinchora_db::{AuditRow, GuildSettings};
 use serde::Serialize;
 use serde_json::Value;
 
 use super::{
-    audit_log, commands, community, discord_info, leveling, me::icon_url, moderation, modules, overview, preview,
-    responders, settings, store,
+    audit_log, cards, commands, community, discord_info, leveling, me::icon_url, moderation, modules, overview,
+    preview, responders, settings, store,
 };
 use crate::state::WebState;
 
@@ -78,8 +80,16 @@ pub fn router() -> Router<WebState> {
         .route("/cases", get(moderation::cases))
         .route("/cases/{case}", get(moderation::case).patch(moderation::patch_case))
         .route("/staff-log", get(moderation::staff_log))
-        .route("/preview/welcome-card", post(preview::welcome_card))
+        .route("/preview/card", post(cards::preview))
         .route("/preview/message", post(preview::message))
+        .route("/cards", get(cards::cards))
+        .route(
+            "/cards/uploads",
+            post(cards::upload).layer(DefaultBodyLimit::max(UPLOAD_MAX_BYTES + 1024)),
+        )
+        .route("/cards/uploads/{id}", get(cards::upload_png))
+        .route("/cards/{kind}", put(cards::put_card))
+        .route("/cards/{kind}/test", post(cards::test))
 }
 
 #[derive(Serialize)]

@@ -21,6 +21,7 @@ import { ServerLog } from "./pages/ServerLog";
 import { Servers } from "./pages/Servers";
 import { StaffLog } from "./pages/StaffLog";
 import { Welcome } from "./pages/Welcome";
+import { WelcomeImage } from "./pages/WelcomeImage";
 import { Landing } from "./site/Landing";
 import { SiteLayout } from "./site/SiteLayout";
 import { SiteNotFound } from "./site/SiteNotFound";
@@ -64,6 +65,7 @@ export const router = createBrowserRouter([
       { index: true, element: <Overview /> },
       { path: "modules", element: <Modules /> },
       { path: "welcome", element: <Welcome /> },
+      { path: "welcome-image", element: <WelcomeImage /> },
       { path: "leveling", element: <Leveling /> },
       { path: "points", element: <Points /> },
       { path: "log", element: <ServerLog /> },

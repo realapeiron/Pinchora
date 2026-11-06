@@ -671,6 +671,10 @@ fn read_text<'a>(app: &App, message: &'a Message) -> &'a str {
 }
 
 async fn kept(app: &App, id: u64) -> Option<KeptMessage> {
+    // Redis outlives a restart that switches Message Content off. Do not expose older text either.
+    if !app.message_content {
+        return None;
+    }
     let json = app.cache.get(&kept_key(id)).await.ok().flatten()?;
     serde_json::from_str(&json).ok()
 }

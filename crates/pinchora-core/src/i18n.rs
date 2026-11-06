@@ -53,6 +53,22 @@ impl Lang {
         }
     }
 
+    /// `text` in capitals the way the language writes them: Turkish capitalises `i` as `İ` and `ı` as `I`, which
+    /// `str::to_uppercase` alone gets wrong (`Şirin` would become `ŞIRIN`). The pixel cards draw in capitals.
+    pub fn upper(self, text: &str) -> String {
+        match self {
+            Lang::En => text.to_uppercase(),
+            Lang::Tr => text
+                .chars()
+                .flat_map(|c| match c {
+                    'i' => 'İ'.to_uppercase(),
+                    'ı' => 'I'.to_uppercase(),
+                    c => c.to_uppercase(),
+                })
+                .collect(),
+        }
+    }
+
     /// The Discord locales whose command names and descriptions registration fills from this
     /// language's `commands` catalog. English is the commands' own text, so it has none.
     pub fn discord_locales(self) -> &'static [&'static str] {
@@ -339,6 +355,13 @@ mod tests {
         assert_eq!(text(Lang::Tr, "no.such.key", &[]), "no.such.key");
         assert_eq!(text(Lang::Tr, "card.level", &[]), "SEVİYE");
         assert_eq!(text(Lang::En, "card.level", &[]), "LEVEL");
+    }
+
+    #[test]
+    fn capitals_follow_the_language() {
+        assert_eq!(Lang::Tr.upper("Şirin kırmızı iş"), "ŞİRİN KIRMIZI İŞ");
+        assert_eq!(Lang::Tr.upper("ÇAĞRI Ünal öğle"), "ÇAĞRI ÜNAL ÖĞLE");
+        assert_eq!(Lang::En.upper("Işıl in it"), "IŞIL IN IT");
     }
 
     #[test]

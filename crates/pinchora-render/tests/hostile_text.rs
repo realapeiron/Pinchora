@@ -3,17 +3,18 @@
 //! characters) must not stop a card from rendering.
 
 use image::RgbaImage;
+use pinchora_core::card_design::{CardKind, Content};
 use pinchora_render::{
-    Backdrop, BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, BottleCard, CharacterCard, CheckersCard,
-    ChessCard, Connect4Card, CrewView, DerbyCard, DerbyLane, DexCard, DexCell, DropCard, DropCritter, EditorCell,
-    EditorSection, EntriesCard, EntryHeader, EntryPicture, EntryRow, FleetCard, GridSlot, HangmanCard, HangmanLetter,
-    HaulCard, HaulTile, HeistCard, HelpCard, HelpRow, ItemGridCard, LastWeekEntry, LeaderboardCard, LeaderboardEntry,
-    LettersCard, LevelUpCard, Mood, NextRole, NurseryCard, NurseryPet, PartyLobbyCard, PearlCard, PearlSeat, PetCard,
-    PetStatus, PickView, PicrossCard, PollCard, PollOption, PostcardCard, PotCard, PotState, ProfileCard, PromptCard,
-    PromptTone, RaceCard, Racer, RacerState, RadarCard, RankCard, RatherCard, Renderer, Reveal, SeaView, ShareGrabCard,
-    ShellCard, ShipView, ShowcaseKind, ShowcaseSlot, SpriteArt, StageView, StandingRow, StandingsCard, SurgeCard,
-    SurgeState, Theme, Tide2048Card, WalletCard, WelcomeCard, WordleCard, WordleRow, WrappedCard, WrappedFish,
-    WrappedHouse, WrappedTotals, encode_png,
+    Backdrop, BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, BottleCard, CardFill, CharacterCard, CheckersCard,
+    ChessCard, Connect4Card, CrewView, DerbyCard, DerbyLane, DesignedCard, DexCard, DexCell, DropCard, DropCritter,
+    EditorCell, EditorSection, EntriesCard, EntryHeader, EntryPicture, EntryRow, FleetCard, GridSlot, HangmanCard,
+    HangmanLetter, HaulCard, HaulTile, HeistCard, HelpCard, HelpRow, ItemGridCard, LastWeekEntry, LeaderboardCard,
+    LeaderboardEntry, LettersCard, LevelUpCard, Mood, NextRole, NurseryCard, NurseryPet, PartyLobbyCard, PearlCard,
+    PearlSeat, PetCard, PetStatus, PickView, PicrossCard, PollCard, PollOption, PostcardCard, PotCard, PotState,
+    ProfileCard, PromptCard, PromptTone, RaceCard, Racer, RacerState, RadarCard, RankCard, RatherCard, Renderer,
+    Reveal, SeaView, ShareGrabCard, ShellCard, ShipView, ShowcaseKind, ShowcaseSlot, SpriteArt, StageView, StandingRow,
+    StandingsCard, SurgeCard, SurgeState, Theme, Tide2048Card, WalletCard, WelcomeCard, WordleCard, WordleRow,
+    WrappedCard, WrappedFish, WrappedHouse, WrappedTotals, encode_png, templates,
 };
 
 /// Emoji, a Chinese letter, markup, then code points XML 1.0 forbids or a parser may refuse: U+FFFE, U+FFFF, a
@@ -147,6 +148,26 @@ fn hostile_text_renders_on_every_card() {
             member_number: Some(12),
             title: HOSTILE,
             theme: t(),
+        }),
+    ));
+    // A server's own design: hostile names in the placeholders, and hostile text typed into a layer.
+    let mut design = templates::template("starlit-banner", CardKind::Welcome).expect("a template");
+    if let Some(Content::Text { text, .. }) = design.layers.iter_mut().map(|l| &mut l.content).last() {
+        *text = format!("{HOSTILE} {{user}}");
+    }
+    let fill = CardFill {
+        user: HOSTILE,
+        username: HOSTILE,
+        server: HOSTILE,
+        members: Some(12),
+    };
+    drawn.push((
+        "designed",
+        r.designed_card(&DesignedCard {
+            design: &design,
+            avatar_png: &[],
+            upload_png: None,
+            fill: &fill,
         }),
     ));
     drawn.push((

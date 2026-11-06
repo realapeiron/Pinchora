@@ -156,7 +156,7 @@ impl WalletCard<'_> {
                 false,
                 color,
                 "end",
-                &escape(&truncate(&value.to_uppercase(), 9)),
+                &escape(&truncate(&self.lang.upper(value), 9)),
             );
         }
         sprite(&mut s, HEART, 860.0, 270.0, 2.4, &t.heart, "#ffc2cf");

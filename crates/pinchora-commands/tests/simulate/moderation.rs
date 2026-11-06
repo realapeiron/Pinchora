@@ -4,6 +4,8 @@
 //! deletes, the audit log's entries and voice, with its ignore lists and switches. Nothing here draws a
 //! picture: every answer is an embed.
 
+use std::time::Duration;
+
 use pinchora_commands::{
     lift_expired_bans, on_audit_log_entry, on_message_delete, on_message_delete_bulk, on_message_update,
 };
@@ -1431,6 +1433,21 @@ async fn without_message_content_the_log_keeps_no_text_and_purge_filters_nothing
     .await;
 
     let first = sim.said(alice, "hello").await;
+    // Redis may still hold messages from before Message Content was disabled.
+    let cached = json!({
+        "author": alice,
+        "name": "Alice",
+        "content": "private cached message",
+        "attachments": ["private-file.txt"]
+    });
+    let bulk = [unique(), unique()];
+    for id in [first, bulk[0], bulk[1]] {
+        sim.app
+            .cache
+            .put(&format!("logmsg:{id}"), &cached.to_string(), Duration::from_secs(60))
+            .await
+            .unwrap();
+    }
     sim.edited(alice, first, "hello there").await;
     let posts = sim.posts();
     let [edit] = &posts[..] else {
@@ -1446,6 +1463,14 @@ async fn without_message_content_the_log_keeps_no_text_and_purge_filters_nothing
     let posts = sim.posts();
     assert_eq!(posts[0].title(), "Message deleted");
     assert_eq!(posts[0].field("Message"), "", "nothing was kept");
+    assert_eq!(posts[0].field("Attachments"), "", "cached files stay hidden too");
+    sim.deleted(&bulk).await;
+    let posts = sim.posts();
+    assert_eq!(posts.len(), 1);
+    assert!(
+        !posts[0].description().contains("private cached message"),
+        "bulk deletes must not reveal cached text"
+    );
 
     sim.permissions = STAFF;
     let words = sim

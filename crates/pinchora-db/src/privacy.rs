@@ -175,6 +175,8 @@ pub const OTHER_TABLES: &[&str] = &[
     "log_channels",
     // The ignore list of members is cleaned (see `ID_LISTS`).
     "log_settings",
+    "card_designs",
+    "card_uploads",
 ];
 
 /// What a player hides.
