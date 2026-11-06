@@ -223,6 +223,16 @@ impl Unwarn {
         };
         let moderator = Moderator::of(cx)?;
         let number = self.case.clamp(1, i64::from(i32::MAX)) as i32;
+        // A moderator's own warns are for someone else to take back.
+        if cx
+            .app
+            .db
+            .case(guild, number)
+            .await?
+            .is_some_and(|c| c.target_id as u64 == moderator.id)
+        {
+            return cx.reply_ephemeral("You can't take back a warn of your own.").await;
+        }
         let details = format!("case #{number}");
         let removed = cx
             .app

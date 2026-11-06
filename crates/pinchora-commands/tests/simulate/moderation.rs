@@ -610,6 +610,23 @@ async fn moderation_commands_open_cases_tell_members_and_post_to_the_mod_log() {
         "17 cases and one new reason"
     );
     assert!(log.iter().all(|l| l.source == "command"));
+
+    // A moderator can't take back a warn of their own.
+    let own = sim
+        .command_resolved(
+            mia,
+            "warn",
+            json!([user_option("user", moderator), text_option("reason", "Rude")]),
+            member(moderator, "Sim"),
+        )
+        .await;
+    assert!(own.description().contains("case #18"), "{}", own.description());
+    let refused = sim.command(moderator, "unwarn", json!([int_option("case", 18)])).await;
+    assert!(
+        refused.ephemeral && refused.content().contains("warn of your own"),
+        "{}",
+        refused.content()
+    );
 }
 
 #[tokio::test]
