@@ -12,6 +12,11 @@ body,
   min-height: 100%;
 }
 
+/* A field scrolled to (keyboard focus) stays clear of the sticky top bar and the save bar. */
+html {
+  scroll-padding: 88px 0 136px;
+}
+
 body {
   margin: 0;
   color: var(--ink);

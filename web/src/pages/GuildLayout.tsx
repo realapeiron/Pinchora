@@ -1,4 +1,5 @@
-import { NavLink, Outlet, useParams } from "react-router";
+import { useEffect, useRef } from "react";
+import { NavLink, Outlet, useLocation, useParams } from "react-router";
 
 import { PixelLink } from "../components/PixelButton";
 import { Panel } from "../components/Panel";
@@ -45,6 +46,16 @@ export function GuildLayout({ me }: { me: Me }) {
 
 function ValidGuildLayout({ me, guildId }: { me: Me; guildId: string }) {
   const overview = useOverview(guildId);
+  const nav = useRef<HTMLElement>(null);
+  const { pathname } = useLocation();
+  // On a phone the links are one sideways strip: keep the open page's tab in sight.
+  useEffect(() => {
+    const strip = nav.current;
+    const active = strip?.querySelector(".sidebar-link.active");
+    if (strip && active && strip.scrollWidth > strip.clientWidth) {
+      strip.scrollLeft += active.getBoundingClientRect().left - strip.getBoundingClientRect().left - 16;
+    }
+  }, [pathname]);
   return (
     <div className="page">
       <TopBar me={me} />
@@ -68,7 +79,7 @@ function ValidGuildLayout({ me, guildId }: { me: Me; guildId: string }) {
               </NavLink>
             </div>
           </div>
-          <nav aria-label="Server settings" className="sidebar-nav">
+          <nav ref={nav} aria-label="Server settings" className="sidebar-nav">
             {NAV.map(({ group, pages }) => (
               <div key={group} className="sidebar-section">
                 <p className="sidebar-group pixel-label">{group}</p>

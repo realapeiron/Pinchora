@@ -1406,6 +1406,16 @@ async fn the_server_lists_mark_what_the_bot_can_hand_out() {
     browser.get(&format!("/api/guilds/{guild}/discord?refresh=1")).await;
     browser.get(&format!("/api/guilds/{guild}/discord?refresh=1")).await;
     assert_eq!(h.mock.channel_lookups.load(Ordering::SeqCst), asked + 1);
+    // A write naming a role the lists lack asks again no more often than the refresh does.
+    let unknown = browser
+        .write(
+            Method::PUT,
+            &format!("/api/guilds/{guild}/level-roles/1"),
+            json!({ "level": 2 }),
+        )
+        .await;
+    assert_eq!(unknown.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(h.mock.channel_lookups.load(Ordering::SeqCst), asked + 1);
 }
 
 #[tokio::test]
@@ -1756,6 +1766,13 @@ async fn xp_multipliers_follow_the_command_and_reach_the_bot() {
             "xp_rules.put",
             "xp_rules.put"
         ]
+    );
+    let clear = h.state.app.db.audit_page(guild, None, 1).await.unwrap().remove(0);
+    let before: Value = serde_json::from_str(clear.before.as_deref().unwrap()).unwrap();
+    assert_eq!(
+        before["rules"].as_array().map(Vec::len),
+        Some(pinchora_db::MAX_XP_RULES as usize),
+        "a clear keeps the rules it removed"
     );
 }
 

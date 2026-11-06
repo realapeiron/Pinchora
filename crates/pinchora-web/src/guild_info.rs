@@ -19,6 +19,8 @@ use crate::{
 
 /// How long the lists are trusted.
 const TTL: Duration = Duration::from_secs(60);
+/// How often one server's lists may be asked of Discord again before they run out.
+const REFRESH_COOLDOWN: Duration = Duration::from_secs(10);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChannelInfo {
@@ -234,10 +236,17 @@ fn gone_channel(field: &'static str) -> FieldError {
     )
 }
 
+/// Whether the lists may be asked of Discord again now: once per [`REFRESH_COOLDOWN`] per server,
+/// whoever asks (the pickers' refresh, or a write naming something the cached lists lack).
+pub async fn may_refresh(state: &WebState, guild: u64) -> ApiResult<bool> {
+    let key = format!("web:guild-info-refresh:{guild}");
+    Ok(state.app.cache.try_cooldown(&key, REFRESH_COOLDOWN).await?.is_none())
+}
+
 /// The lists, asking Discord again when `wanted` is not on the cached ones (it may be brand new).
 pub async fn get_with(state: &WebState, guild: u64, wanted: impl Fn(&GuildInfo) -> bool) -> ApiResult<GuildInfo> {
     let info = get(state, guild, false).await?;
-    if wanted(&info) {
+    if wanted(&info) || !may_refresh(state, guild).await? {
         return Ok(info);
     }
     get(state, guild, true).await

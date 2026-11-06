@@ -175,6 +175,8 @@ pub async fn delete_xp_rule(
 /// `DELETE /xp-rules`: every rule at once.
 pub async fn clear_xp_rules(State(state): State<WebState>, managed: ManagedGuild) -> ApiResult<Json<Value>> {
     let guild = managed.id;
+    // The audit row keeps the rules themselves, so a clear can be put back by hand.
+    let was = rules_view(&state, guild).await?["items"].clone();
     let cleared = state.app.db.clear_xp_rules(guild).await?;
     if cleared > 0 {
         audit::finish(
@@ -184,8 +186,8 @@ pub async fn clear_xp_rules(State(state): State<WebState>, managed: ManagedGuild
                 guild,
                 action: "xp_rules.clear",
                 target: None,
-                before: json!({ "rules": cleared }),
-                after: json!({ "rules": 0 }),
+                before: json!({ "rules": was }),
+                after: json!({ "rules": [] }),
             },
             Some(Invalidation::XpRules(guild)),
         )
