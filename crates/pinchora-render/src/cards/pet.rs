@@ -1,5 +1,7 @@
 use std::fmt::Write;
 
+use pinchora_core::{i18n::Lang, t};
+
 use super::{PIXEL, SANS, text};
 use crate::{
     Theme,
@@ -17,6 +19,8 @@ pub enum PetStatus {
 
 /// 860×420 pet status card.
 pub struct PetCard {
+    /// The language of the labels; the names, the mood and the time left come translated.
+    pub lang: Lang,
     /// Sprite scaled up with nearest-neighbour, at most 220×220.
     pub sprite_png: Vec<u8>,
     pub sprite_w: u32,
@@ -83,7 +87,17 @@ impl PetCard {
             }
             PetStatus::Away => {
                 plate(&mut s, 52.0, 148.0, 260.0, 80.0, 0.7);
-                text(&mut s, 182.0, 180.0, 24.0, PIXEL, false, &t.gold, "middle", "ON A TRIP");
+                text(
+                    &mut s,
+                    182.0,
+                    180.0,
+                    24.0,
+                    PIXEL,
+                    false,
+                    &t.gold,
+                    "middle",
+                    &t!(self.lang, "card.pet.on-trip"),
+                );
                 let place = escape(&truncate(&self.place, 26));
                 text(&mut s, 182.0, 212.0, 15.0, SANS, true, &t.ink, "middle", &place);
             }
@@ -125,7 +139,17 @@ impl PetCard {
             &escape(&truncate(&sub, 44)),
         );
 
-        text(&mut s, 364.0, 152.0, 16.0, PIXEL, false, &t.muted, "start", "LEVEL");
+        text(
+            &mut s,
+            364.0,
+            152.0,
+            16.0,
+            PIXEL,
+            false,
+            &t.muted,
+            "start",
+            &t!(self.lang, "card.level"),
+        );
         let level = self.level.to_string();
         text(&mut s, 440.0, 154.0, 22.0, PIXEL, false, &t.ink, "start", &level);
         // The star follows the digits at a fixed gap, so a two-digit level does not crowd it.
@@ -133,9 +157,9 @@ impl PetCard {
         sprite(&mut s, STAR, star_x, 136.0, 3.4, &t.gold, "#fff7d6");
         let maxed = self.xp_needed <= 0;
         let xp = match (maxed, self.status) {
-            (true, _) => "MAX LEVEL".to_owned(),
-            (false, PetStatus::Asleep) => "NO XP WHILE ASLEEP".to_owned(),
-            _ => format!("{} / {} XP", self.xp, self.xp_needed),
+            (true, _) => t!(self.lang, "card.pet.max-level"),
+            (false, PetStatus::Asleep) => t!(self.lang, "card.pet.no-xp-asleep"),
+            _ => t!(self.lang, "card.pet.xp", xp = self.xp, needed = self.xp_needed),
         };
         text(&mut s, 828.0, 152.0, 14.0, PIXEL, false, &t.ink, "end", &xp);
         segment_bar(
@@ -155,7 +179,12 @@ impl PetCard {
             &t.panel_edge,
         );
 
-        let labels = ["HUNGER", "FUN", "ENERGY", "CLEAN"];
+        let labels = [
+            t!(self.lang, "card.pet.hunger"),
+            t!(self.lang, "card.pet.fun"),
+            t!(self.lang, "card.pet.energy"),
+            t!(self.lang, "card.pet.clean"),
+        ];
         let colors = [&t.accent, &t.heart, &t.mint, "#8fd3ff"];
         for i in 0..4 {
             let y = 216.0 + i as f32 * 40.0;
@@ -168,7 +197,7 @@ impl PetCard {
                 false,
                 &t.muted,
                 "start",
-                labels[i],
+                &labels[i],
             );
             segment_bar(
                 &mut s,
@@ -185,10 +214,10 @@ impl PetCard {
         }
         sprite(&mut s, HEART, 364.0, 380.0, 3.4, &t.heart, "#ffc2cf");
         let line = match self.status {
-            PetStatus::Awake => format!("FEELING {}", self.mood.to_uppercase()),
-            PetStatus::Asleep => "FAST ASLEEP, WAKE IT UP".to_owned(),
-            PetStatus::Away => format!("BACK {}", self.back.to_uppercase()),
-            PetStatus::Back => "BACK HOME, SOUVENIR WAITING".to_owned(),
+            PetStatus::Awake => t!(self.lang, "card.pet.feeling", mood = self.mood.to_uppercase()),
+            PetStatus::Asleep => t!(self.lang, "card.pet.asleep-line"),
+            PetStatus::Away => t!(self.lang, "card.pet.away-line", back = self.back.to_uppercase()),
+            PetStatus::Back => t!(self.lang, "card.pet.back-line"),
         };
         text(
             &mut s,

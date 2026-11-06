@@ -54,7 +54,7 @@ pub(crate) async fn card(
     background: Option<&Background>,
     badges: &[&Badge],
 ) -> anyhow::Result<Vec<u8>> {
-    let showcase = Showcase::load(&cx.app, user.id.get(), &row).await?;
+    let showcase = Showcase::load(&cx.app, user.id.get(), &row, cx.lang()).await?;
     card_with(cx, user, name, row, background, badges, showcase).await
 }
 
@@ -91,9 +91,9 @@ pub(crate) async fn card_with(
     let sprites = cx.app.sprites.clone();
     let cosmetics = Cosmetics::new(&sprites, background, badges);
     let theme = customize::theme(&row, background);
-    let title = customize::title_name(&row);
-    let partner = partner_name(&cx.app, user.id.get()).await;
     let lang = cx.lang();
+    let title = customize::title_name(&row, lang);
+    let partner = partner_name(&cx.app, user.id.get()).await;
     cx.app
         .render(move |r| {
             let art = character
@@ -105,7 +105,7 @@ pub(crate) async fn card_with(
             r.profile_card(&ProfileCard {
                 lang,
                 display_name: &name,
-                title,
+                title: title.as_deref(),
                 username: &username,
                 avatar_png: &avatar,
                 bio: &row.bio,

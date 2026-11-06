@@ -2,6 +2,7 @@
 
 use std::str::Split;
 
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::PetRow;
 use pinchora_game::{Content, pets};
 use pinchora_render::{NurseryCard, NurseryPet, PetStatus, Theme};
@@ -34,17 +35,22 @@ struct Cell {
 }
 
 /// "2H5M", "25M": short enough for the corner of a grid cell.
-fn short_span(secs: i64) -> String {
+fn short_span(secs: i64, lang: Lang) -> String {
     let minutes = (secs.max(0) + 59) / 60;
     match (minutes / 60, minutes % 60) {
-        (0, m) => format!("{m}M"),
-        (h, 0) => format!("{h}H"),
-        (h, m) => format!("{h}H{m}M"),
+        (0, m) => t!(lang, "pet.span-short.minutes", m = m),
+        (h, 0) => t!(lang, "pet.span-short.hours", h = h),
+        (h, m) => t!(lang, "pet.span-short.hours-minutes", h = h, m = m),
     }
 }
 
 /// The nursery page `page` (clamped) of `user`'s pets; `None` for a player without any.
-async fn nursery_card(app: &App, user: u64, page: usize) -> anyhow::Result<Option<InteractionResponseData>> {
+async fn nursery_card(
+    app: &App,
+    lang: Lang,
+    user: u64,
+    page: usize,
+) -> anyhow::Result<Option<InteractionResponseData>> {
     let all = app.db.pets(user).await?;
     if all.is_empty() {
         return Ok(None);
@@ -62,12 +68,13 @@ async fn nursery_card(app: &App, user: u64, page: usize) -> anyhow::Result<Optio
         let state = status(pet, now);
         let badge = match state {
             PetStatus::Awake => String::new(),
-            PetStatus::Asleep => "ASLEEP".to_owned(),
-            PetStatus::Away => format!(
-                "AWAY {}",
-                short_span(pet.trip_ends_at.map_or(0, |ends| (ends - now).num_seconds()))
+            PetStatus::Asleep => t!(lang, "nursery.badge.asleep"),
+            PetStatus::Away => t!(
+                lang,
+                "nursery.badge.away",
+                span = short_span(pet.trip_ends_at.map_or(0, |ends| (ends - now).num_seconds()), lang)
             ),
-            PetStatus::Back => "BACK!".to_owned(),
+            PetStatus::Back => t!(lang, "nursery.badge.back"),
         };
         let needs = current_needs(pet, now);
         cells.push(Cell {
@@ -85,17 +92,19 @@ async fn nursery_card(app: &App, user: u64, page: usize) -> anyhow::Result<Optio
             badge,
         });
         let feeling = match state {
-            PetStatus::Awake => needs.mood(),
-            PetStatus::Asleep => "asleep",
-            PetStatus::Away => "away on a trip",
-            PetStatus::Back => "souvenir waiting",
+            PetStatus::Awake => t!(lang, &format!("pet.mood.{}", needs.mood())),
+            PetStatus::Asleep => t!(lang, "nursery.feeling.asleep"),
+            PetStatus::Away => t!(lang, "nursery.feeling.away"),
+            PetStatus::Back => t!(lang, "nursery.feeling.back"),
         };
         options.push(SelectMenuOption {
             default: pet.active,
-            description: Some(format!(
-                "Lv {} · {} · {feeling}",
-                pet.level,
-                species.map_or(pet.species.as_str(), |s| s.name.as_str())
+            description: Some(t!(
+                lang,
+                "nursery.option",
+                level = pet.level,
+                species = content.name(&pet.species, lang),
+                feeling = feeling
             )),
             emoji: None,
             label: pet.name.clone(),
@@ -105,16 +114,21 @@ async fn nursery_card(app: &App, user: u64, page: usize) -> anyhow::Result<Optio
 
     let count = |wanted: PetStatus| all.iter().filter(|p| status(p, now) == wanted).count();
     let (away, asleep, back) = (count(PetStatus::Away), count(PetStatus::Asleep), count(PetStatus::Back));
-    let mut footer = vec![format!("{} PETS", all.len())];
-    for (n, what) in [(away, "AWAY"), (asleep, "ASLEEP"), (back, "WITH A SOUVENIR")] {
+    let mut footer = vec![t!(lang, "nursery.footer.pets", count = all.len())];
+    for (n, key) in [
+        (away, "nursery.footer.away"),
+        (asleep, "nursery.footer.asleep"),
+        (back, "nursery.footer.back"),
+    ] {
         if n > 0 {
-            footer.push(format!("{n} {what}"));
+            footer.push(t!(lang, key, count = n));
         }
     }
     let sprites = app.sprites.clone();
     let card = NurseryCard {
-        title: "Nursery".to_owned(),
-        subtitle: format!("PAGE {}/{pages}", page + 1),
+        lang,
+        title: t!(lang, "nursery.card-title"),
+        subtitle: t!(lang, "card.page", page = page + 1, pages = pages),
         pets: Vec::new(),
         footer: footer.join(" · "),
         theme: Theme::reef(),
@@ -143,27 +157,31 @@ async fn nursery_card(app: &App, user: u64, page: usize) -> anyhow::Result<Optio
         })
         .await?;
 
-    let mut description = format!("**{}** pets", all.len());
+    let mut description = t!(lang, "nursery.count", count = all.len());
     if away > 0 {
-        description.push_str(&format!(" · {away} away"));
+        description.push_str(&t!(lang, "nursery.away", count = away));
     }
     if asleep > 0 {
-        description.push_str(&format!(" · {asleep} asleep"));
+        description.push_str(&t!(lang, "nursery.asleep", count = asleep));
     }
     if back > 0 {
-        description.push_str(&format!(" · {back} back with a souvenir"));
+        description.push_str(&t!(lang, "nursery.back", count = back));
     }
-    description.push_str(".\nPick one below to open its card. ★ marks your active pet.");
+    description.push_str(&t!(lang, "nursery.hint"));
     let embed = EmbedBuilder::new()
         .color(BRAND)
-        .title("Your nursery")
+        .title(t!(lang, "nursery.title"))
         .description(description);
-    let mut components = vec![select(format!("pn:o:{page}"), "Open a pet…", options)];
+    let mut components = vec![select(
+        format!("pn:o:{page}"),
+        &t!(lang, "nursery.placeholder"),
+        options,
+    )];
     if pages > 1 {
         components.push(row(vec![
             button_if(
                 format!("pn:p:{}", page.saturating_sub(1)),
-                "◀ Page",
+                &t!(lang, "customize.prev-page"),
                 ButtonStyle::Secondary,
                 page == 0,
             ),
@@ -175,7 +193,7 @@ async fn nursery_card(app: &App, user: u64, page: usize) -> anyhow::Result<Optio
             ),
             button_if(
                 format!("pn:p:{}", page + 1),
-                "Page ▶",
+                &t!(lang, "customize.next-page"),
                 ButtonStyle::Secondary,
                 page + 1 >= pages,
             ),
@@ -193,6 +211,7 @@ pub(super) async fn open(cx: &Cx, user: u64) -> anyhow::Result<()> {
 /// (opened as a private message when the click is on a public card), `a` make a pet the active one.
 pub(crate) async fn on_nursery(cx: &Cx, mut args: Split<'_, char>, value: Option<&str>) -> anyhow::Result<()> {
     let user = cx.author()?.id.get();
+    let lang = cx.lang();
     let action = args.next();
     let arg: i64 = args.next().and_then(|v| v.parse().ok()).unwrap_or(0);
     match action {
@@ -200,7 +219,7 @@ pub(crate) async fn on_nursery(cx: &Cx, mut args: Split<'_, char>, value: Option
         Some("f") => {
             // Only the pet's owner may open its nursery.
             let Some(at) = cx.app.db.pets(user).await?.iter().position(|p| p.id == arg) else {
-                return cx.reply_ephemeral("That pet isn't yours.").await;
+                return cx.reply_ephemeral(t!(lang, "nursery.not-yours")).await;
             };
             if clicked_privately(cx) {
                 show_page(cx, user, at / PER_PAGE).await
@@ -216,12 +235,11 @@ pub(crate) async fn on_nursery(cx: &Cx, mut args: Split<'_, char>, value: Option
         }
         Some("a") => {
             if !cx.app.db.set_active_pet(user, arg).await? {
-                return cx.reply_ephemeral("That pet isn't yours.").await;
+                return cx.reply_ephemeral(t!(lang, "nursery.not-yours")).await;
             }
-            let note = "Active pet changed. It will greet visitors in your house.";
-            open_pet(cx, user, arg, Some(note.to_owned())).await
+            open_pet(cx, user, arg, Some(t!(lang, "pet.switch.changed"))).await
         }
-        _ => cx.reply_ephemeral("This button has expired.").await,
+        _ => cx.reply_ephemeral(t!(lang, "nursery.expired")).await,
     }
 }
 
@@ -236,25 +254,28 @@ fn clicked_privately(cx: &Cx) -> bool {
 
 /// The nursery page `page` as a new private message, leaving a clicked one as it is.
 async fn open_private(cx: &Cx, user: u64, page: usize) -> anyhow::Result<()> {
-    match nursery_card(&cx.app, user, page).await? {
+    let lang = cx.lang();
+    match nursery_card(&cx.app, lang, user, page).await? {
         Some(data) => cx.reply(data).await,
-        None => cx.reply_ephemeral("No pets yet. Start with `/pet adopt`.").await,
+        None => cx.reply_ephemeral(t!(lang, "nursery.none")).await,
     }
 }
 
 async fn show_page(cx: &Cx, user: u64, page: usize) -> anyhow::Result<()> {
-    match nursery_card(&cx.app, user, page).await? {
+    let lang = cx.lang();
+    match nursery_card(&cx.app, lang, user, page).await? {
         Some(data) => cx.update(data).await,
-        None => cx.reply_ephemeral("No pets yet. Start with `/pet adopt`.").await,
+        None => cx.reply_ephemeral(t!(lang, "nursery.none")).await,
     }
 }
 
 /// Replaces the nursery with one pet's card.
 async fn open_pet(cx: &Cx, user: u64, pet_id: i64, note: Option<String>) -> anyhow::Result<()> {
+    let lang = cx.lang();
     let Some(pet) = cx.app.db.pets(user).await?.into_iter().find(|p| p.id == pet_id) else {
-        return cx.reply_ephemeral("That pet isn't yours.").await;
+        return cx.reply_ephemeral(t!(lang, "nursery.not-yours")).await;
     };
-    let data = pet_card(&cx.app, &pet, note).await?;
+    let data = pet_card(&cx.app, lang, &pet, note).await?;
     cx.update(data).await
 }
 
@@ -264,9 +285,10 @@ mod tests {
 
     #[test]
     fn corner_spans_are_short() {
-        assert_eq!(short_span(0), "0M");
-        assert_eq!(short_span(25 * 60), "25M");
-        assert_eq!(short_span(2 * 3600), "2H");
-        assert_eq!(short_span(2 * 3600 + 5 * 60), "2H5M");
+        assert_eq!(short_span(0, Lang::En), "0M");
+        assert_eq!(short_span(25 * 60, Lang::En), "25M");
+        assert_eq!(short_span(2 * 3600, Lang::En), "2H");
+        assert_eq!(short_span(2 * 3600 + 5 * 60, Lang::En), "2H5M");
+        assert_eq!(short_span(2 * 3600 + 5 * 60, Lang::Tr), "2SA5DK");
     }
 }

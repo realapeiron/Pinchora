@@ -1,5 +1,7 @@
 use std::fmt::Write;
 
+use pinchora_core::{i18n::Lang, t};
+
 use super::{BadgeIcon, PIXEL, SANS, text};
 use crate::{
     Theme,
@@ -31,6 +33,8 @@ pub struct BadgeCell<'a> {
 /// The badge collection: every badge in a grid, earned ones in colour, locked ones dark with
 /// their progress, a counter of how many are earned and a NEW marker on the latest. 960 px wide.
 pub struct BadgeCollectionCard<'a> {
+    /// The language of the card's heading; the badge names and rarity words come translated.
+    pub lang: Lang,
     pub cells: &'a [BadgeCell<'a>],
     /// Rarity words and their plate colours (`0xrrggbb`), in the order the footer lists them.
     pub legend: &'a [(&'a str, u32)],
@@ -109,7 +113,7 @@ impl BadgeCollectionCard<'_> {
             false,
             &t.ink,
             "start",
-            "BADGES",
+            &t!(self.lang, "card.badges.title"),
         );
         text(
             &mut s,
@@ -350,6 +354,7 @@ mod tests {
             }),
         ];
         let card = BadgeCollectionCard {
+            lang: pinchora_core::i18n::Lang::En,
             cells: &cells,
             legend: &[],
             theme: Theme::reef(),

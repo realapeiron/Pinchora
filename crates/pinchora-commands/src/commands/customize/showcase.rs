@@ -3,6 +3,7 @@
 
 use std::{str::Split, sync::Arc};
 
+use pinchora_core::{i18n::Lang, t};
 use pinchora_db::UserRow;
 use pinchora_game::{Content, house};
 use pinchora_render::{ShowcaseKind, ShowcaseSlot, SpriteArt};
@@ -42,11 +43,20 @@ impl Slot {
         Self::ALL.into_iter().find(|s| s.letter() == letter)
     }
 
-    fn label(self) -> &'static str {
+    fn label(self, lang: Lang) -> String {
         match self {
-            Self::Fish => "Favourite fish",
-            Self::Pet => "Pet",
-            Self::Furniture => "Furniture",
+            Self::Fish => t!(lang, "customize.showcase.slot.fish"),
+            Self::Pet => t!(lang, "customize.showcase.slot.pet"),
+            Self::Furniture => t!(lang, "customize.showcase.slot.furniture"),
+        }
+    }
+
+    /// The key suffix of the slot's menu texts.
+    fn key(self) -> &'static str {
+        match self {
+            Self::Fish => "fish",
+            Self::Pet => "pet",
+            Self::Furniture => "furniture",
         }
     }
 }
@@ -75,7 +85,7 @@ impl Showcase {
     /// Reads what each pick needs to be checked against: one small query for each slot that has
     /// a pick (is the fish in the book, is the pet theirs, is the furniture theirs) and, for the
     /// house, its room. Nothing else is read.
-    pub(crate) async fn load(app: &App, user: u64, row: &UserRow) -> anyhow::Result<Self> {
+    pub(crate) async fn load(app: &App, user: u64, row: &UserRow, lang: Lang) -> anyhow::Result<Self> {
         let content = Content::get();
         let mut tiles = Vec::new();
         if let Some(fish) = row.showcase_fish.as_deref().and_then(|id| content.fish(id))
@@ -83,7 +93,7 @@ impl Showcase {
         {
             tiles.push(Tile {
                 kind: ShowcaseKind::Fish,
-                name: fish.name.clone(),
+                name: content.name(&fish.id, lang).into_owned(),
                 source: Source::Fish(fish.id.clone()),
             });
         }
@@ -101,7 +111,7 @@ impl Showcase {
         {
             tiles.push(Tile {
                 kind: ShowcaseKind::Furniture,
-                name: item.name(),
+                name: item.name_in(lang),
                 source: Source::Item(item.id()),
             });
         }
@@ -110,7 +120,7 @@ impl Showcase {
         {
             let tier = house::tier(preview.house.tier);
             let name = match preview.house.name.trim() {
-                "" => tier.name.to_owned(),
+                "" => tier.name_in(lang).to_owned(),
                 name => name.to_owned(),
             };
             tiles.push(Tile {
@@ -184,16 +194,16 @@ struct Choice {
 
 /// The line under a furniture piece in the menu: its rarity, and "Soulbound" for a piece bought with
 /// fragments, so it is not mistaken for its unbound twin, which has the same name.
-fn furniture_note(rarity: &str, soulbound: bool) -> String {
+fn furniture_note(rarity: &str, soulbound: bool, lang: Lang) -> String {
     if soulbound {
-        format!("{rarity} · Soulbound")
+        t!(lang, "customize.showcase.soulbound", rarity = rarity)
     } else {
         rarity.to_owned()
     }
 }
 
 /// What the player may pick for `slot`, by name.
-async fn choices(app: &App, user: u64, slot: Slot) -> anyhow::Result<Vec<Choice>> {
+async fn choices(app: &App, user: u64, slot: Slot, lang: Lang) -> anyhow::Result<Vec<Choice>> {
     let content = Content::get();
     let mut choices: Vec<Choice> = match slot {
         Slot::Fish => app
@@ -205,12 +215,13 @@ async fn choices(app: &App, user: u64, slot: Slot) -> anyhow::Result<Vec<Choice>
                 let fish = content.fish(&b.fish_id)?;
                 Some(Choice {
                     value: fish.id.clone(),
-                    label: fish.name.clone(),
-                    description: format!(
-                        "{} · best {:.1} cm · caught {}",
-                        fish.rarity.label(),
-                        b.best_cm,
-                        b.caught
+                    label: content.name(&fish.id, lang).into_owned(),
+                    description: t!(
+                        lang,
+                        "customize.showcase.fish-description",
+                        rarity = fish.rarity.label_in(lang),
+                        best = format!("{:.1}", b.best_cm),
+                        caught = b.caught
                     ),
                 })
             })
@@ -220,13 +231,15 @@ async fn choices(app: &App, user: u64, slot: Slot) -> anyhow::Result<Vec<Choice>
             .pets(user)
             .await?
             .into_iter()
-            .map(|p| {
-                let species = content.pet(&p.species).map_or(p.species.as_str(), |s| &s.name);
-                Choice {
-                    value: p.id.to_string(),
-                    description: format!("{species} · level {}", p.level),
-                    label: p.name,
-                }
+            .map(|p| Choice {
+                value: p.id.to_string(),
+                description: t!(
+                    lang,
+                    "customize.showcase.pet-description",
+                    species = content.name(&p.species, lang),
+                    level = p.level
+                ),
+                label: p.name,
             })
             .collect(),
         Slot::Furniture => app
@@ -238,8 +251,8 @@ async fn choices(app: &App, user: u64, slot: Slot) -> anyhow::Result<Vec<Choice>
                 let item = content.item(id)?;
                 Some(Choice {
                     value: item.id(),
-                    label: item.name(),
-                    description: furniture_note(item.base.rarity.label(), item.bound),
+                    label: item.name_in(lang),
+                    description: furniture_note(item.base.rarity.label_in(lang), item.bound, lang),
                 })
             })
             .collect(),
@@ -266,15 +279,16 @@ fn current(row: &UserRow, slot: Slot) -> Option<String> {
 /// the slot being edited, a menu of what the player may put in it, and buttons to clear a slot,
 /// show the house or empty everything.
 pub(super) async fn panel(cx: &Cx, slot: Slot, page: usize, note: &str) -> anyhow::Result<InteractionResponseData> {
+    let lang = cx.lang();
     let content = Content::get();
     let user = cx.author()?;
     let id = user.id.get();
     let player = cx.app.db.user(id).await?;
-    let showcase = Showcase::load(&cx.app, id, &player).await?;
+    let showcase = Showcase::load(&cx.app, id, &player, lang).await?;
     // A house on the card has a room; without one on it, a single question tells.
     let has_house = showcase.name_of(ShowcaseKind::House).is_some() || cx.app.db.has_house_room(id).await?;
     let picked = current(&player, slot);
-    let choices = choices(&cx.app, id, slot).await?;
+    let choices = choices(&cx.app, id, slot, lang).await?;
     let pages = choices.len().div_ceil(PER_PAGE).max(1);
     let page = page.min(pages - 1);
 
@@ -287,9 +301,11 @@ pub(super) async fn panel(cx: &Cx, slot: Slot, page: usize, note: &str) -> anyho
                 Slot::Furniture => ShowcaseKind::Furniture,
             };
             option(
-                s.label(),
+                &s.label(lang),
                 s.letter(),
-                showcase.name_of(kind).unwrap_or("Empty").to_owned(),
+                showcase
+                    .name_of(kind)
+                    .map_or_else(|| t!(lang, "customize.showcase.empty"), str::to_owned),
                 *s == slot,
             )
         })
@@ -307,11 +323,8 @@ pub(super) async fn panel(cx: &Cx, slot: Slot, page: usize, note: &str) -> anyho
             )
         })
         .collect();
-    let (placeholder, empty) = match slot {
-        Slot::Fish => ("Pick a favourite fish…", "Catch a fish with /fish first"),
-        Slot::Pet => ("Pick a pet…", "Adopt a pet with /pet first"),
-        Slot::Furniture => ("Pick a furniture item…", "Buy furniture with /shop first"),
-    };
+    let placeholder = t!(lang, &format!("customize.showcase.placeholder.{}", slot.key()));
+    let empty = t!(lang, &format!("customize.showcase.nothing.{}", slot.key()));
 
     let (house_on, empty_showcase) = (player.showcase_house, showcase.is_empty());
     let slot_filled = picked.is_some();
@@ -324,20 +337,21 @@ pub(super) async fn panel(cx: &Cx, slot: Slot, page: usize, note: &str) -> anyho
         text.push_str(note);
         text.push_str("\n\n");
     }
-    let line = |kind, label: &str| format!("**{label}** {}", showcase.name_of(kind).unwrap_or("-"));
-    text.push_str(&format!(
-        "{} · {} · {} · **House** {}",
-        line(ShowcaseKind::Fish, "Fish"),
-        line(ShowcaseKind::Pet, "Pet"),
-        line(ShowcaseKind::Furniture, "Furniture"),
-        if showcase.name_of(ShowcaseKind::House).is_some() {
-            "shown"
+    let named = |kind| showcase.name_of(kind).unwrap_or("-").to_owned();
+    text.push_str(&t!(
+        lang,
+        "customize.showcase.summary",
+        fish = named(ShowcaseKind::Fish),
+        pet = named(ShowcaseKind::Pet),
+        furniture = named(ShowcaseKind::Furniture),
+        house = if showcase.name_of(ShowcaseKind::House).is_some() {
+            t!(lang, "customize.showcase.house-shown")
         } else {
-            "hidden"
-        },
+            t!(lang, "customize.showcase.house-hidden")
+        }
     ));
     if empty_showcase {
-        text.push_str("\nNothing is on your showcase, so your card looks as it always did.");
+        text.push_str(&t!(lang, "customize.showcase.empty-showcase"));
     }
     let png = Box::pin(profile::card_with(
         cx,
@@ -355,26 +369,30 @@ pub(super) async fn panel(cx: &Cx, slot: Slot, page: usize, note: &str) -> anyho
     if pages > 1 {
         buttons.push(button(
             format!("sw:p:{letter}:{}", page.saturating_sub(1)),
-            "◀ Page",
+            &t!(lang, "customize.prev-page"),
             ButtonStyle::Secondary,
             page == 0,
         ));
         buttons.push(button(
             format!("sw:p:{letter}:{}", page + 1),
-            "Page ▶",
+            &t!(lang, "customize.next-page"),
             ButtonStyle::Secondary,
             page + 1 >= pages,
         ));
     }
     buttons.push(button(
         format!("sw:c:{letter}"),
-        "Clear slot",
+        &t!(lang, "customize.showcase.clear-slot"),
         ButtonStyle::Secondary,
         !slot_filled,
     ));
     buttons.push(button(
         format!("sw:h:{letter}"),
-        if house_on { "Hide house" } else { "Show house" },
+        &if house_on {
+            t!(lang, "customize.showcase.hide-house")
+        } else {
+            t!(lang, "customize.showcase.show-house")
+        },
         if house_on {
             ButtonStyle::Primary
         } else {
@@ -384,32 +402,32 @@ pub(super) async fn panel(cx: &Cx, slot: Slot, page: usize, note: &str) -> anyho
     ));
     buttons.push(button(
         format!("sw:x:{letter}"),
-        "Clear all",
+        &t!(lang, "customize.showcase.clear-all"),
         ButtonStyle::Danger,
         empty_showcase && !house_on,
     ));
     let components = vec![
         row(vec![menu(
             "sw:k".to_owned(),
-            "Slot to edit…",
+            &t!(lang, "customize.showcase.slot-menu"),
             slot_options,
             1,
             1,
-            "Nothing to show",
+            &t!(lang, "customize.nothing-to-show"),
         )]),
         row(vec![menu(
             format!("sw:s:{letter}:{page}"),
-            placeholder,
+            &placeholder,
             options,
             1,
             1,
-            empty,
+            &empty,
         )]),
         row(buttons),
     ];
     let embed = EmbedBuilder::new()
         .color(BRAND)
-        .title("Profile showcase")
+        .title(t!(lang, "customize.showcase.title"))
         .description(text);
     Ok(Cx::card(embed, "profile.png", png, components, true))
 }
@@ -417,13 +435,13 @@ pub(super) async fn panel(cx: &Cx, slot: Slot, page: usize, note: &str) -> anyho
 /// Saves `value` as the pick for `slot` if it is something the player may pick; the name of
 /// what was saved, or `None` for a refused pick. Only the one pick is checked, not everything
 /// the player could have picked.
-async fn pick(app: &App, user: u64, slot: Slot, value: &str) -> anyhow::Result<Option<String>> {
+async fn pick(app: &App, user: u64, slot: Slot, value: &str, lang: Lang) -> anyhow::Result<Option<String>> {
     let content = Content::get();
     Ok(match slot {
         Slot::Fish => match content.fish(value) {
             Some(fish) if app.db.has_fish(user, &fish.id).await? => {
                 app.db.set_showcase_fish(user, Some(&fish.id)).await?;
-                Some(fish.name.clone())
+                Some(content.name(&fish.id, lang).into_owned())
             }
             _ => None,
         },
@@ -440,7 +458,7 @@ async fn pick(app: &App, user: u64, slot: Slot, value: &str) -> anyhow::Result<O
         Slot::Furniture => match content.item(value) {
             Some(item) if app.db.owns_item(user, &item.id()).await? => {
                 app.db.set_showcase_item(user, Some(&item.id())).await?;
-                Some(item.name())
+                Some(item.name_in(lang))
             }
             _ => None,
         },
@@ -449,6 +467,7 @@ async fn pick(app: &App, user: u64, slot: Slot, value: &str) -> anyhow::Result<O
 
 /// `sw:<what>:...` selects and buttons of the showcase editor.
 pub(crate) async fn on_showcase(cx: &Cx, mut args: Split<'_, char>, values: &[String]) -> anyhow::Result<()> {
+    let lang = cx.lang();
     let id = cx.author()?.id.get();
     let value = values.first().map(String::as_str);
     let slot_arg = |arg: Option<&str>| arg.and_then(Slot::from_letter).unwrap_or(Slot::Fish);
@@ -464,12 +483,12 @@ pub(crate) async fn on_showcase(cx: &Cx, mut args: Split<'_, char>, values: &[St
             let slot = slot_arg(args.next());
             let page = args.next().and_then(|p| p.parse().ok()).unwrap_or(0);
             let Some(name) = (match value {
-                Some(value) => pick(&cx.app, id, slot, value).await?,
+                Some(value) => pick(&cx.app, id, slot, value, lang).await?,
                 None => None,
             }) else {
                 return expired(cx, "showcase").await;
             };
-            let data = panel(cx, slot, page, &format!("Saved. **{name}** is on your profile card.")).await?;
+            let data = panel(cx, slot, page, &t!(lang, "customize.showcase.saved", name = name)).await?;
             cx.update(data).await
         }
         Some("p") => {
@@ -485,20 +504,21 @@ pub(crate) async fn on_showcase(cx: &Cx, mut args: Split<'_, char>, values: &[St
                 Slot::Pet => cx.app.db.set_showcase_pet(id, None).await?,
                 Slot::Furniture => cx.app.db.set_showcase_item(id, None).await?,
             }
-            let data = panel(cx, slot, 0, &format!("Cleared. {} is off your card.", slot.label())).await?;
+            let note = t!(lang, "customize.showcase.cleared-slot", slot = slot.label(lang));
+            let data = panel(cx, slot, 0, &note).await?;
             cx.update(data).await
         }
         Some("h") => {
             let slot = slot_arg(args.next());
             let shown = cx.app.db.user(id).await?.showcase_house;
             let note = if !shown && !cx.app.db.has_house_room(id).await? {
-                "You have no house yet. Open it with `/house edit` first.".to_owned()
+                t!(lang, "customize.showcase.no-house")
             } else {
                 cx.app.db.set_showcase_house(id, !shown).await?;
                 if shown {
-                    "Your house is off your card.".to_owned()
+                    t!(lang, "customize.showcase.house-off")
                 } else {
-                    "Your house is on your card.".to_owned()
+                    t!(lang, "customize.showcase.house-on")
                 }
             };
             let data = panel(cx, slot, 0, &note).await?;
@@ -507,10 +527,10 @@ pub(crate) async fn on_showcase(cx: &Cx, mut args: Split<'_, char>, values: &[St
         Some("x") => {
             let slot = slot_arg(args.next());
             cx.app.db.clear_showcase(id).await?;
-            let data = panel(cx, slot, 0, "Cleared. Your card looks as it always did.").await?;
+            let data = panel(cx, slot, 0, &t!(lang, "customize.showcase.cleared-all")).await?;
             cx.update(data).await
         }
-        _ => cx.reply_ephemeral("This button has expired.").await,
+        _ => cx.reply_ephemeral(t!(lang, "customize.showcase.expired")).await,
     }
 }
 
@@ -529,8 +549,9 @@ mod tests {
 
     #[test]
     fn a_soulbound_piece_is_told_from_its_unbound_twin() {
-        assert_eq!(furniture_note("Rare", false), "Rare");
-        assert_eq!(furniture_note("Rare", true), "Rare · Soulbound");
+        assert_eq!(furniture_note("Rare", false, Lang::En), "Rare");
+        assert_eq!(furniture_note("Rare", true, Lang::En), "Rare · Soulbound");
+        assert_eq!(furniture_note("Nadir", true, Lang::Tr), "Nadir · Ruh bağlı");
     }
 
     #[test]

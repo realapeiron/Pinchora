@@ -320,7 +320,7 @@ impl ProfileCard<'_> {
         }
 
         if let Some(y) = rows.show_y {
-            draw_row(&mut s, t, self.showcase, 296.0, y, 624.0);
+            draw_row(&mut s, t, self.lang, self.showcase, 296.0, y, 624.0);
         }
 
         let server_rank = self

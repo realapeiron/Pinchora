@@ -149,7 +149,7 @@ pub(crate) async fn level_up(app: &Arc<App>, settings: &GuildSettings, up: Level
         Err(error) => return Err(error.into()),
     }
     // The new level may have just earned a badge: say so right under the level-up.
-    customize::announce_in(app, channel, user).await;
+    customize::announce_in(app, channel, user, app.guild_lang(guild).await).await;
     Ok(())
 }
 

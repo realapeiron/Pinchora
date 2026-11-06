@@ -1,0 +1,80 @@
+# /leaderboard and /wrapped: the replies, the board titles, and the words drawn on their cards.
+# Card labels are drawn in capitals in a pixel font: keep them short.
+
+[leaderboard]
+server = "Sunucu sıralaması"
+weekly = "Haftalık XP"
+catch = "Haftalık av"
+points = "En çok {name}"
+shells = "Kabuk zenginleri"
+global = "Dünya sıralaması"
+unknown-user = "Bilinmeyen kullanıcı"
+a-fish = "bir balık"
+empty = "Burada henüz kimse yok. Biraz sohbet et, sonra tekrar bak!"
+empty-catch = "Bu hafta henüz av yok. /fish cast ile olta at!"
+# The figure and the small line under it on a row.
+shells-unit = "KABUK"
+weekly-unit = "BU HAFTA XP"
+level = "SEVİYE {level}"
+xp = "{xp} XP"
+size = "{size} CM"
+usual = "{fish} · NORMALİN %{percent}"
+# One place of last week's catch podium.
+catch-size = "{name} {size} cm"
+
+[card.leaderboard]
+page = "SAYFA {page}"
+last-week = "GEÇEN HAFTANIN İLK 3'Ü"
+
+[wrapped]
+not-open = "Wrapped henüz açılmadı. <t:{ts}:D> tarihinde açılıyor ({when}) ve Ocak ayı sonuna kadar açık kalıyor.\nO zamana kadar Pinchora saymaya devam ediyor: mesajlar, XP, kabuklar, balıklar, ziyaretler, beğeniler ve hayvan bakımı."
+not-yet = "{year} yılı henüz özetlenmedi. En yeni Wrapped {open} yılına ait."
+nothing = "{year} yılında senin için hiçbir şey sayılmadı."
+friendly-crab = "Dost canlısı bir yengeç"
+
+# The line under the player's name.
+[wrapped.title]
+chatterbox = "Baş Geveze"
+tide-whisperer = "Gelgit Fısıldayıcısı"
+social-butterfly = "Sosyal Kelebek"
+house-cheerleader = "Ev Neşelendiricisi"
+pet-whisperer = "Hayvan Fısıldayıcısı"
+shell-tycoon = "Kabuk Patronu"
+fresh-pearl = "Taze İnci"
+
+[card.wrapped]
+subtitle = "RESİFTE GEÇEN YILIN"
+busiest = "EN YOĞUN AY"
+things-done = "{num} ETKİNLİK"
+quiet = "SESSİZ BİR YIL"
+messages = "MESAJ"
+xp = "SUNUCU XP"
+shells = "KAZANILAN KABUK"
+fish = "YAKALANAN BALIK"
+houses = "ZİYARET EDİLEN EV"
+pets = "BAKILAN HAYVAN"
+likes-given = "VERİLEN BEĞENİ"
+likes-received = "ALINAN BEĞENİ"
+favourite = "FAVORİ BALIK"
+caught = { other = "{num} kez yakaladın" }
+no-fish = "HENÜZ BALIK YOK"
+house = "EN ÇOK GİDİLEN EV"
+house-friend = "EN ÇOK GİDİLEN ARKADAŞ EVİ"
+visits = { other = "{num} ziyaret" }
+no-visits = "HENÜZ ZİYARET YOK"
+footer = "/WRAPPED · GELECEK YIL GÖRÜŞÜRÜZ"
+
+# The bars: each month's name in capitals; the chart writes only the first letter.
+[card.wrapped.month]
+1 = "OCAK"
+2 = "ŞUBAT"
+3 = "MART"
+4 = "NİSAN"
+5 = "MAYIS"
+6 = "HAZİRAN"
+7 = "TEMMUZ"
+8 = "AĞUSTOS"
+9 = "EYLÜL"
+10 = "EKİM"
+11 = "KASIM"
+12 = "ARALIK"

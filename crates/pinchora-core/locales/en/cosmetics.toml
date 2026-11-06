@@ -1,0 +1,134 @@
+# /customize: titles, style and showcase, the badge lines and the "badge unlocked" notices.
+
+[customize.line]
+worn = " *(worn)*"
+bought = "bought"
+price = "{price} shells"
+
+[customize.badges]
+shop = "Shop"
+buy-option = "{price} shells · {description}"
+
+[customize.title]
+title = "Your titles"
+your-title = "Your title is **{name}**."
+no-title = "You have no title yet."
+unlocked-count = " You have unlocked {count}/{total}; pick one below."
+heading-unlocked = "Unlocked"
+heading-locked = "Still to earn"
+placeholder = "Pick a title…"
+nothing-unlocked = "Nothing unlocked yet"
+saved = "Saved. **{name}** sits under your name on your profile and rank cards."
+removed = "Removed. Your name stands on its own again."
+expired = "This button has expired."
+
+[customize.style]
+title = "Card style"
+refusal-malformed = "That is not a colour code. Type six hex digits such as `#ff6b4a`, or three such as `#f64`."
+refusal-dark = "That colour is too dark to read on the card's navy panels. Try a brighter one, such as `#ff6b4a`."
+frame-worn = "On your cards now"
+frame-free = "Free"
+frame-unlocked = "Unlocked at level {level}"
+frame-locked = "Locked · reach level {at} (you are level {level})"
+auto = "Auto"
+auto-hint = "From your background, else coral"
+accent-auto-background = "Auto (your background's)"
+accent-auto = "Auto (coral)"
+summary = "**Accent** {accent} · **Panels** {panels} · **Frame** {frame}\nThe style is on your profile, rank and wallet cards."
+opacity-hint = "\nPanel opacity shows over a background picture: pick one with `/customize background`."
+locked-frame = "🔒 {name} · level {level}"
+hex-button = "Hex code…"
+reset-button = "Reset style"
+accent-menu = "Accent colour…"
+frame-menu = "Frame…"
+saved-auto = "Saved. Your accent follows your background again."
+saved-accent = "Saved. Your accent is `{code}`."
+saved-frame = "Saved. The **{frame}** frame is on your cards."
+frame-refused = "The **{frame}** frame unlocks at level {at}. You are level {level}."
+saved-opacity = "Saved. Panels are **{opacity}**."
+reset-done = "Done. Your cards have the style every player starts with."
+expired = "This button has expired."
+form-expired = "This form has expired."
+modal-title = "Accent colour"
+hex-label = "Hex colour code"
+
+[customize.style.accent]
+coral = "Coral"
+peach = "Peach"
+honey = "Honey"
+meadow = "Meadow"
+moss = "Moss"
+mint = "Mint"
+sky = "Sky"
+ocean = "Ocean"
+periwinkle = "Periwinkle"
+violet = "Violet"
+rose = "Rose"
+cream = "Cream"
+
+[customize.style.frame]
+plain = "Plain"
+rope = "Rope"
+coral = "Coral"
+pearl = "Pearl"
+gold = "Gold"
+neon = "Neon"
+
+[customize.style.opacity]
+light = "Light"
+normal = "Normal"
+solid = "Solid"
+
+[customize.showcase]
+title = "Profile showcase"
+empty = "Empty"
+soulbound = "{rarity} · Soulbound"
+fish-description = "{rarity} · best {best} cm · caught {caught}"
+pet-description = "{species} · level {level}"
+summary = "**Fish** {fish} · **Pet** {pet} · **Furniture** {furniture} · **House** {house}"
+house-shown = "shown"
+house-hidden = "hidden"
+empty-showcase = "\nNothing is on your showcase, so your card looks as it always did."
+clear-slot = "Clear slot"
+hide-house = "Hide house"
+show-house = "Show house"
+clear-all = "Clear all"
+slot-menu = "Slot to edit…"
+saved = "Saved. **{name}** is on your profile card."
+cleared-slot = "Cleared. {slot} is off your card."
+no-house = "You have no house yet. Open it with `/house edit` first."
+house-off = "Your house is off your card."
+house-on = "Your house is on your card."
+cleared-all = "Cleared. Your card looks as it always did."
+expired = "This button has expired."
+
+[customize.showcase.slot]
+fish = "Favourite fish"
+pet = "Pet"
+furniture = "Furniture"
+
+[customize.showcase.placeholder]
+fish = "Pick a favourite fish…"
+pet = "Pick a pet…"
+furniture = "Pick a furniture item…"
+
+[customize.showcase.nothing]
+fish = "Catch a fish with /fish first"
+pet = "Adopt a pet with /pet first"
+furniture = "Buy furniture with /shop first"
+
+[customize.unlock]
+title = "Badge unlocked: {name}"
+more = "…and {count} more. "
+hint = "See your collection with /customize badges"
+announce = "{user} unlocked a badge!"
+
+# Words the cards draw themselves, in capitals.
+[card.badges]
+title = "BADGES"
+
+[card.showcase]
+fish = "FISH"
+pet = "PET"
+furniture = "FURNITURE"
+house = "HOME"

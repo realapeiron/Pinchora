@@ -1,0 +1,83 @@
+# /remind: the replies, the list, the cancel menu and the direct messages the ticker sends.
+
+[remind]
+# /remind me when
+off = "Tamam, {thing} için artık mesaj göndermeyeceğim."
+on-hint = "{note}\nBunları özel mesaj olarak gönderiyorum, o yüzden özel mesajların açık kalsın. Kapatmak için `/remind me when {what} off`."
+next-ready = "Sıradaki {kind} ödülün {when} hazır olacak. O zaman sana mesaj göndereceğim."
+ready-now = "Şu an alabilirsin: {kind} ödülün hazır. Aldıktan sonra bir sonrakinde sana mesaj göndereceğim."
+trip-none = "Hiçbir hayvanın gezide değil. Gönderdiğin biri eve dönünce sana mesaj göndereceğim."
+trip-one = "**{name}** gezide. Eve dönünce sana mesaj göndereceğim."
+trip-many = "{count} hayvanın gezide. Her biri eve döndüğünde sana mesaj göndereceğim."
+pet-none = "Henüz hayvanın yok (`/pet adopt`). Aktif hayvanın bakıma ihtiyaç duyduğunda sana mesaj göndereceğim."
+pet-at = "**{name}** bakıma ihtiyaç duyduğunda sana mesaj göndereceğim, yaklaşık {when}."
+pet-later = "**{name}** evde ve uyanık olduktan sonra, bakıma ihtiyacı olunca sana mesaj göndereceğim."
+
+# /remind me in
+write-text = "Neyi hatırlatmam gerektiğini yaz (etiketler hatırlatıcılara eklenmez)."
+too-many = "Zaten {max} açık hatırlatıcın var. Önce `/remind list` ile birini iptal et."
+set-title = "⏰ Hatırlatıcı kuruldu"
+set-text = "Sana {when} mesaj göndereceğim:\n{body}"
+set-footer = "#{id} · /remind cancel veya /remind list ile iptal et · özel mesaj olarak gelir"
+# The times it could not read (the parser answers with these keys).
+bad-time = "Bu süreyi okuyamadım. `45dk`, `2sa30dk` veya `3g` gibi yaz (birimler: hf, g, sa, dk, sn)."
+time-too-long = "Bu süre çok uzun."
+time-year = "En fazla bir yıl sonrasına hatırlatıcı kurabilirim."
+time-too-soon = "Bu çok yakın: hatırlatıcılar en az bir dakika sonrasına kurulur."
+
+# /remind list and cancel
+list-title = "⏰ Hatırlatıcıların"
+list-notifications = "Bir şey hazır olunca gelen mesajlar"
+list-reminders = "Hatırlatıcılar"
+list-none = "Hiç yok. `/remind me in 2sa30dk <metin>` ile bir tane kur."
+list-more = "…ve aşağıdaki menüde {count} tane daha var"
+list-footer = "{count}/{max} hatırlatıcı · bildirimleri /remind me when ile değiştir"
+list-placeholder = "Bir hatırlatıcıyı iptal et…"
+cancelled = "**#{id}** numaralı hatırlatıcı iptal edildi."
+no-such = "**#{id}** numaralı bir hatırlatıcın yok. Numaralarını `/remind list` ile görebilirsin."
+already-gone = "O hatırlatıcı zaten yok."
+expired = "Bu menünün süresi doldu."
+
+# The direct messages.
+text-title = "⏰ Hatırlatıcı"
+collect = "Kabuklarını `/{cmd}` ile topla."
+turn-off = "Bu mesajları `/remind me when {what} off` ile kapatabilirsin."
+trip-title = "{name} eve döndü"
+trip-text = "Gezisinden bir hatıra ile döndü. Hatırayı `/pet trip claim` ile al."
+pet-title = "{name} sana ihtiyaç duyuyor"
+pet-text = "Ona {wants} iyi gelir. `/pet view` ile ona bakabilirsin."
+
+# What `/remind me when` is about, in a sentence ("messages about ...").
+[remind.thing]
+daily = "günlük ödül"
+weekly = "haftalık ödül"
+monthly = "aylık ödül"
+pet = "hayvanının bakım zamanı"
+trip = "hayvanlarının gezeden dönüşü"
+
+# The reward's name inside a sentence.
+[remind.kind]
+daily = "günlük"
+weekly = "haftalık"
+monthly = "aylık"
+
+# The notifications on the list.
+[remind.label]
+daily = "Günlük ödül"
+weekly = "Haftalık ödül"
+monthly = "Aylık ödül"
+pet = "Hayvana bakım zamanı"
+trip = "Hayvan gezeden döndü"
+
+# The title of the direct message for each reward.
+[remind.title]
+daily = "Günlük ödülün hazır"
+weekly = "Haftalık ödülün hazır"
+monthly = "Aylık ödülün hazır"
+
+# What the pet wants most (`Needs::want_key` names these).
+[remind.wants]
+food = "biraz yemek"
+play = "biraz oyun"
+bath = "bir banyo"
+care = "biraz ilgi"

@@ -2,6 +2,8 @@
 
 use chrono::{DateTime, Datelike, TimeZone, Utc};
 
+use crate::i18n::Lang;
+
 /// The year whose Wrapped can be looked at on `now`: December of a year opens it, and it stays
 /// open through January. `None` the rest of the year.
 pub fn open_year(now: DateTime<Utc>) -> Option<i32> {
@@ -28,21 +30,32 @@ pub struct YearTotals {
     pub pet_care: i64,
 }
 
-/// A line for the card: what the player did most, measured against what a busy year looks like.
-pub fn title(t: YearTotals) -> &'static str {
+/// The id of the title a year earns: what the player did most, measured against what a busy year
+/// looks like. The words are the catalog's (`wrapped.title.<id>`), see [`title_in`].
+pub fn title_id(t: YearTotals) -> &'static str {
     // A year of a keen player; a count is worth a title when it gets near its yardstick.
     let scores = [
-        (t.messages as f64 / 3_000.0, "The Chatterbox"),
-        (t.fish as f64 / 200.0, "Tide Whisperer"),
-        (t.visits as f64 / 150.0, "Social Butterfly"),
-        (t.likes as f64 / 200.0, "House Cheerleader"),
-        (t.pet_care as f64 / 300.0, "Pet Whisperer"),
-        (t.shells as f64 / 50_000.0, "Shell Tycoon"),
+        (t.messages as f64 / 3_000.0, "chatterbox"),
+        (t.fish as f64 / 200.0, "tide-whisperer"),
+        (t.visits as f64 / 150.0, "social-butterfly"),
+        (t.likes as f64 / 200.0, "house-cheerleader"),
+        (t.pet_care as f64 / 300.0, "pet-whisperer"),
+        (t.shells as f64 / 50_000.0, "shell-tycoon"),
     ];
     let best = scores
         .iter()
-        .fold((0.0, "Fresh Pearl"), |a, b| if b.0 > a.0 { *b } else { a });
-    if best.0 < 0.05 { "Fresh Pearl" } else { best.1 }
+        .fold((0.0, "fresh-pearl"), |a, b| if b.0 > a.0 { *b } else { a });
+    if best.0 < 0.05 { "fresh-pearl" } else { best.1 }
+}
+
+/// A line for the card in `lang`, e.g. `Tide Whisperer`.
+pub fn title_in(t: YearTotals, lang: Lang) -> String {
+    crate::t!(lang, &format!("wrapped.title.{}", title_id(t)))
+}
+
+/// [`title_in`] in English.
+pub fn title(t: YearTotals) -> String {
+    title_in(t, Lang::En)
 }
 
 #[cfg(test)]
@@ -106,5 +119,16 @@ mod tests {
             }),
             "Fresh Pearl"
         );
+    }
+
+    #[test]
+    fn the_title_speaks_the_players_language() {
+        let busy = YearTotals {
+            messages: 6_000,
+            ..Default::default()
+        };
+        assert_eq!(title_in(busy, Lang::En), "The Chatterbox");
+        assert_ne!(title_in(busy, Lang::Tr), title_in(busy, Lang::En));
+        assert_ne!(title_in(YearTotals::default(), Lang::Tr), "Fresh Pearl");
     }
 }

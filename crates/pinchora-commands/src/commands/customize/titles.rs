@@ -2,6 +2,7 @@
 
 use std::str::Split;
 
+use pinchora_core::t;
 use pinchora_game::Content;
 use twilight_model::{channel::message::component::ButtonStyle, http::interaction::InteractionResponseData};
 use twilight_util::builder::embed::{EmbedBuilder, EmbedFieldBuilder};
@@ -41,6 +42,7 @@ fn chunked_fields(name: &str, lines: &[String]) -> Vec<(String, String)> {
 /// The ephemeral title editor: the profile card with the title under the name, a menu of the
 /// titles the player has unlocked, what the rest need, and a button to take the title off.
 pub(super) async fn panel(cx: &Cx, page: usize, note: &str) -> anyhow::Result<InteractionResponseData> {
+    let lang = cx.lang();
     let content = Content::get();
     let user = cx.author()?;
     let id = user.id.get();
@@ -58,9 +60,9 @@ pub(super) async fn panel(cx: &Cx, page: usize, note: &str) -> anyhow::Result<In
         .take(PER_PAGE)
         .map(|t| {
             option(
-                &t.name,
+                &content.name(&t.id, lang),
                 &t.id,
-                t.description.clone(),
+                content.description(&t.id, lang).unwrap_or_default().into_owned(),
                 equipped.as_deref() == Some(t.id.as_str()),
             )
         })
@@ -84,24 +86,35 @@ pub(super) async fn panel(cx: &Cx, page: usize, note: &str) -> anyhow::Result<In
         text.push_str("\n\n");
     }
     match equipped.as_deref().and_then(|t| content.title(t)) {
-        Some(t) => text.push_str(&format!("Your title is **{}**.", t.name)),
-        None => text.push_str("You have no title yet."),
+        Some(t) => text.push_str(&t!(
+            lang,
+            "customize.title.your-title",
+            name = content.name(&t.id, lang)
+        )),
+        None => text.push_str(&t!(lang, "customize.title.no-title")),
     }
-    text.push_str(&format!(
-        " You have unlocked {}/{}; pick one below.",
-        unlocked.len(),
-        content.titles.len()
+    text.push_str(&t!(
+        lang,
+        "customize.title.unlocked-count",
+        count = unlocked.len(),
+        total = content.titles.len()
     ));
-    let mut embed = EmbedBuilder::new().color(BRAND).title("Your titles").description(text);
+    let mut embed = EmbedBuilder::new()
+        .color(BRAND)
+        .title(t!(lang, "customize.title.title"))
+        .description(text);
     let lines = |titles: &[&pinchora_game::Title]| -> Vec<String> {
         titles
             .iter()
-            .map(|t| wardrobe.title_line(t, equipped.as_deref()))
+            .map(|t| wardrobe.title_line(t, equipped.as_deref(), lang))
             .collect()
     };
-    for (name, value) in chunked_fields("Unlocked", &lines(&unlocked))
+    for (name, value) in chunked_fields(&t!(lang, "customize.title.heading-unlocked"), &lines(&unlocked))
         .into_iter()
-        .chain(chunked_fields("Still to earn", &lines(&locked)))
+        .chain(chunked_fields(
+            &t!(lang, "customize.title.heading-locked"),
+            &lines(&locked),
+        ))
     {
         embed = embed.field(EmbedFieldBuilder::new(name, value));
     }
@@ -110,31 +123,31 @@ pub(super) async fn panel(cx: &Cx, page: usize, note: &str) -> anyhow::Result<In
     if pages > 1 {
         buttons.push(button(
             format!("ti:p:{}", page.saturating_sub(1)),
-            "◀ Page",
+            &t!(lang, "customize.prev-page"),
             ButtonStyle::Secondary,
             page == 0,
         ));
         buttons.push(button(
             format!("ti:p:{}", page + 1),
-            "Page ▶",
+            &t!(lang, "customize.next-page"),
             ButtonStyle::Secondary,
             page + 1 >= pages,
         ));
     }
     buttons.push(button(
         "ti:r".to_owned(),
-        "Remove",
+        &t!(lang, "customize.remove"),
         ButtonStyle::Danger,
         equipped.is_none(),
     ));
     let components = vec![
         row(vec![menu(
             format!("ti:s:{page}"),
-            "Pick a title…",
+            &t!(lang, "customize.title.placeholder"),
             options,
             1,
             1,
-            "Nothing unlocked yet",
+            &t!(lang, "customize.title.nothing-unlocked"),
         )]),
         row(buttons),
     ];
@@ -143,6 +156,7 @@ pub(super) async fn panel(cx: &Cx, page: usize, note: &str) -> anyhow::Result<In
 
 /// `ti:<what>:...` select and buttons of the title editor.
 pub(crate) async fn on_title(cx: &Cx, mut args: Split<'_, char>, values: &[String]) -> anyhow::Result<()> {
+    let lang = cx.lang();
     let content = Content::get();
     let id = cx.author()?.id.get();
     match args.next() {
@@ -158,10 +172,7 @@ pub(crate) async fn on_title(cx: &Cx, mut args: Split<'_, char>, values: &[Strin
                 return expired(cx, "title").await;
             }
             cx.app.db.set_title(id, Some(&title.id)).await?;
-            let note = format!(
-                "Saved. **{}** sits under your name on your profile and rank cards.",
-                title.name
-            );
+            let note = t!(lang, "customize.title.saved", name = content.name(&title.id, lang));
             let data = panel(cx, page, &note).await?;
             cx.update(data).await
         }
@@ -171,10 +182,10 @@ pub(crate) async fn on_title(cx: &Cx, mut args: Split<'_, char>, values: &[Strin
         }
         Some("r") => {
             cx.app.db.set_title(id, None).await?;
-            let data = panel(cx, 0, "Removed. Your name stands on its own again.").await?;
+            let data = panel(cx, 0, &t!(lang, "customize.title.removed")).await?;
             cx.update(data).await
         }
-        _ => cx.reply_ephemeral("This button has expired.").await,
+        _ => cx.reply_ephemeral(t!(lang, "customize.title.expired")).await,
     }
 }
 
@@ -217,7 +228,7 @@ mod tests {
         assert!(w.has_title(title("house_of_the_week")), "a grant unlocks it");
         assert!(w.has_title(title("harbour_elder")), "a grant counts for any title");
 
-        let line = |id: &str| w.title_line(title(id), Some("lighthouse_keeper"));
+        let line = |id: &str| w.title_line(title(id), Some("lighthouse_keeper"), pinchora_core::i18n::Lang::En);
         assert_eq!(
             line("lighthouse_keeper"),
             "✅ **Lighthouse Keeper** · Reach level 15. *(worn)*"

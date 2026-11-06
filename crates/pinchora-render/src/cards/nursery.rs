@@ -1,5 +1,7 @@
 use std::fmt::Write;
 
+use pinchora_core::{i18n::Lang, t};
+
 use super::{PIXEL, PetStatus, SANS, text};
 use crate::{
     Theme,
@@ -29,6 +31,8 @@ pub struct NurseryPet {
 /// 1000 px wide card with up to 8 pets in a 4×2 grid, tall enough for the rows it has (352 px for
 /// one row, 600 px for two): the nursery.
 pub struct NurseryCard {
+    /// The language of the words the card draws itself; the title, subtitle, footer and badges come translated.
+    pub lang: Lang,
     pub title: String,
     pub subtitle: String,
     pub pets: Vec<NurseryPet>,
@@ -181,7 +185,7 @@ impl NurseryCard {
                     false,
                     &t.gold,
                     "middle",
-                    "AWAY",
+                    &t!(self.lang, "card.nursery.away"),
                 );
             }
 
@@ -207,7 +211,7 @@ impl NurseryCard {
                 false,
                 &t.ink,
                 "start",
-                &format!("LV {}", pet.level),
+                &t!(self.lang, "card.nursery.level", level = pet.level),
             );
             let bar = 104.0;
             let _ = write!(
@@ -243,7 +247,7 @@ impl NurseryCard {
                 false,
                 &t.muted,
                 "middle",
-                "NO PETS YET",
+                &t!(self.lang, "card.nursery.none"),
             );
         }
         text(
@@ -272,6 +276,7 @@ mod tests {
     fn card(pets: usize) -> NurseryCard {
         let sprite = encode_png(&RgbaImage::from_pixel(48, 48, image::Rgba([200, 90, 60, 255]))).expect("encodes");
         NurseryCard {
+            lang: Lang::En,
             title: "Nursery".to_owned(),
             subtitle: "PAGE 1/1".to_owned(),
             pets: (0..pets)

@@ -45,7 +45,7 @@ async fn claim(cx: &Cx, period: Period) -> anyhow::Result<()> {
             balance,
             next_at,
         } => {
-            remind::after_claim(&cx.app, user, period.key(), next_at).await;
+            remind::after_claim(&cx.app, user, period.key(), next_at, cx.lang()).await;
             EmbedBuilder::new()
                 .color(SUCCESS)
                 .title(t!(lang, "daily.claimed-title", amount = thousands(amount)))

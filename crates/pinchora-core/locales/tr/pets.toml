@@ -1,0 +1,179 @@
+# /pet (view, adopt, capsule, list, rename, trip), the nursery and the pet cards.
+
+[pet]
+no-pet = "Henüz bir hayvanın yok. `/pet adopt` ile bir tane sahiplen."
+no-pet-short = "Henüz bir hayvanın yok."
+renamed = "Hayvanının yeni adı **{name}**."
+somewhere = "güzel bir yer"
+species-fallback = "hayvan"
+title = "{name} ({species})"
+back-in = "{span} sonra"
+level-up = "🎉 **{name} {level}. seviyeye ulaştı!**"
+trip-unlocked = "Yeni gezi açıldı: **{trip}**."
+
+[pet.status]
+asleep = "**{name}** uzun süre yiyecek, oyun ve banyo bulamayınca uyuyakaldı. Sen uyandırana kadar XP kazanmaz ve evde kalır."
+away = "**{name}** şu an **{place}** gezisinde, {span} sonra dönecek. O zamana kadar ona bakılamaz."
+back = "**{name}**, **{place}** gezisinden bir hatırayla döndü. **Hatırayı al** düğmesine bas!"
+
+# How long, as the pet card and the messages write it.
+[pet.span]
+under-minute = "bir dakikadan az"
+minutes = "{m} dk"
+hours = "{h} sa"
+hours-minutes = "{h} sa {m} dk"
+
+# The same for the corner of a nursery cell: `2H5M`.
+[pet.span-short]
+minutes = "{m}DK"
+hours = "{h}SA"
+hours-minutes = "{h}SA{m}DK"
+
+[pet.mood]
+miserable = "perişan"
+grumpy = "huysuz"
+content = "memnun"
+delighted = "çok mutlu"
+
+[pet.button]
+feed = "Besle ({price} kabuk)"
+play = "Oyna"
+walk = "Gezdir"
+bath = "Yıka"
+back-in = "{span} sonra döner"
+wake-free = "Uyandır (bugün ücretsiz)"
+wake-fee = "Uyandır ({fee} kabuk)"
+claim = "Hatırayı al"
+trip = "Gezi"
+make-active = "Aktif yap"
+nursery = "Yuva"
+
+[pet.care]
+stale = "Bu düğme artık bir işe yaramıyor. Hayvanını `/pet view` ile yeniden aç."
+not-yours = "Bu senin hayvanın değil. Kendi hayvanını `/pet adopt` ile sahiplen!"
+away = "{name} şu an {place} gezisinde, {span} sonra dönecek. O zamana kadar ona bakılamaz."
+asleep = "{name} deliksiz uyuyor. Önce onu uyandır."
+break = "{name} biraz dinlenmeli. {minutes} dk sonra tekrar dene."
+food-price = "Hayvan maması {price} kabuk."
+too-tired = "{name} bunun için fazla yorgun. Biraz dinlensin."
+left-on-trip = "{name} az önce geziye çıktı. Dönene kadar ona bakılamaz."
+changed = "{name} sen tıklarken değişti, o yüzden hiçbir şey yapılmadı. Hayvanını `/pet view` ile yeniden aç."
+note-xp = "{name} {verb}. +{xp} XP"
+note = "{name} {verb}."
+found = "\nYürüyüşte **{found}** kabuk buldun!"
+
+[pet.care.verb]
+feed = "keyifle atıştırıyor"
+play = "seninle zıplayıp oynuyor"
+clean = "tertemiz oldu"
+walk = "seninle kıyıda tırıs gidiyor"
+
+[pet.wake]
+awake = "{name} zaten uyanık."
+free = "{name} gerinip esniyor ve yeniden uyandı! Bu, bugünkü ücretsiz uyandırma hakkındı."
+paid = "{name} gerinip esniyor ve yeniden uyandı! Uyandırma {fee} kabuğa mal oldu ({balance} kaldı)."
+poor = "Bugünkü ücretsiz uyandırma hakkın bitti, bir tane daha {fee} kabuk (sende {balance} var). Ücretsiz hakkın yarın yenilenir, {name} da istediği kadar uyuyabilir."
+
+[pet.adopt]
+have-one = "Zaten bir hayvanın var. Yenileri `/pet capsule` ile gelir."
+none-ready = "Sahiplenilecek hayvan henüz hazır değil."
+title = "Bir hayvan sahiplen"
+description = "İlk arkadaşını seç. Evinde yaşar ve ziyaretlerde seninle gelir."
+placeholder = "Bir başlangıç hayvanı seç…"
+pick-starter = "Başlangıç hayvanlarından birini seç."
+already-adopted = "Zaten bir hayvan sahiplendin."
+welcome = "Eve hoş geldin, **{name}**! Adını `/pet rename` ile değiştirebilirsin."
+
+[pet.capsule]
+odds = "Bir kapsül {price} kabuk.\nŞanslar: {odds}"
+restocking = "Kapsüller henüz yeniden dolduruluyor."
+duplicate-title = "Bir {rarity} {name}!"
+duplicate = "Bu zaten sende var, o yüzden bir arkadaşının evine gitti ve sana {refund} kabuk bıraktı. Bakiye: {balance}."
+opened = "✨ Kapsül çatlayıp açılıyor… bir **{rarity}** {name}! ({balance} kabuk kaldı)\n`/pet list` ile onu aktif hayvanın yapabilirsin."
+
+[pet.switch]
+changed = "Aktif hayvan değişti. Evinde ziyaretçileri o karşılayacak."
+not-yours = "O hayvan senin değil."
+
+[nursery]
+title = "Yuvan"
+card-title = "Yuva"
+placeholder = "Bir hayvan aç…"
+none = "Henüz hayvan yok. `/pet adopt` ile başla."
+not-yours = "O hayvan senin değil."
+expired = "Bu düğmenin süresi doldu."
+option = "Sv {level} · {species} · {feeling}"
+count = "**{count}** hayvan"
+away = " · {count} yolda"
+asleep = " · {count} uyuyor"
+back = " · {count} hatırayla döndü"
+hint = ".\nKartını açmak için aşağıdan birini seç. ★ aktif hayvanını gösterir."
+
+# The badge in a cell's corner, drawn in capitals.
+[nursery.badge]
+asleep = "UYUYOR"
+away = "YOLDA {span}"
+back = "GELDİ!"
+
+[nursery.feeling]
+asleep = "uyuyor"
+away = "gezide"
+back = "hatıra bekliyor"
+
+[nursery.footer]
+pets = "{count} HAYVAN"
+away = "{count} YOLDA"
+asleep = "{count} UYUYOR"
+back = "{count} HATIRALI"
+
+[trip]
+not-on-map = "Bu yer henüz haritada yok."
+none-called = "Hayvanlarından hiçbirinin adı **{name}** değil. Hayvanların: {names}."
+already-away = "**{name}** zaten **{place}** gezisinde, {span} sonra dönecek."
+has-souvenir = "**{name}**, **{place}** gezisinden bir hatırayla döndü. Önce `/pet trip claim` ile hatırayı al."
+asleep = "**{name}** deliksiz uyuyor. Yola çıkmadan önce onu uyandır."
+locked = "**{trip}** gezisi, {name} {unlock}. seviyeye ulaşınca açılır (şu an {level}. seviyede). Bakım, yürüyüş ve geziler XP kazandırır."
+cant-leave = "**{name}** şu an yola çıkamaz."
+departure = "**{name}** minik bir çanta hazırlayıp **{trip}** için yola çıktı. {hours} sa sonra dönecek.\n*{blurb}*"
+length = "{hours} sa"
+finds = "kabuk, bazen {places}"
+picker-open = "**{name}** · {length} · {level}. seviye\n{blurb} Bulabilecekleri: {finds}."
+picker-locked = "🔒 **{name}** · {length} · {level}. seviyede açılır\n{blurb}"
+option-open = "{length} · {blurb}"
+option-locked = "{level}. seviyede açılır (şu an {now})"
+picker-title = "{pet} nereye gitsin?"
+picker-placeholder = "Bir yer seç…"
+stay-home = "Evde kalsın"
+not-yours = "Bu senin hayvanın değil."
+still-away = "O hayvan hâlâ yolda ({place}), {span} sonra dönecek."
+its-trip = "bir gezi"
+home = "**{name}**, **{trip}** gezisinden döndü!\n*{story}*\n**+{shells}** kabuk"
+home-xp = " · **+{xp}** XP"
+home-found = "\nAyrıca bir **{item}** ({rarity}) buldu, artık `/inventory` içinde."
+no-souvenir = "**{name}** için bekleyen bir hatıra yok."
+list-away = "**{name}** şu an {place} gezisinde, {span} sonra dönecek."
+none-away = "Hiçbir hayvanın geziye çıkmadı. `/pet trip go` ile birini gönder."
+already-collected = "O hatıralar zaten alınmış."
+many-title = "{count} hayvan eve döndü"
+many-total = "Toplam **+{total}** kabuk. Bakiye: {balance}."
+expired = "Bu düğmenin süresi doldu."
+
+# Words the pet and nursery cards draw themselves, in capitals.
+[card.pet]
+on-trip = "GEZİDE"
+max-level = "EN ÜST SEVİYE"
+no-xp-asleep = "UYURKEN XP YOK"
+xp = "{xp} / {needed} XP"
+hunger = "AÇLIK"
+fun = "EĞLENCE"
+energy = "ENERJİ"
+clean = "TEMİZ"
+feeling = "RUH HALİ: {mood}"
+asleep-line = "DERİN UYKUDA, UYANDIR"
+away-line = "{back} DÖNÜYOR"
+back-line = "EVDE, HATIRA BEKLİYOR"
+
+[card.nursery]
+away = "YOLDA"
+none = "HENÜZ HAYVAN YOK"
+level = "SV {level}"

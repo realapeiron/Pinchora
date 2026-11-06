@@ -1,6 +1,10 @@
 //! `/wrapped`: a card with the year in numbers, open from 1 December to 31 January.
 
-use pinchora_core::wrapped::{self, YearTotals};
+use pinchora_core::{
+    i18n::Lang,
+    t,
+    wrapped::{self, YearTotals},
+};
 use pinchora_db::Activity;
 use pinchora_game::Content;
 use pinchora_render::{SpriteArt, WrappedCard, WrappedFish, WrappedHouse, WrappedTotals};
@@ -21,24 +25,23 @@ pub struct Wrapped {
 
 impl Wrapped {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
+        let lang = cx.lang();
         let now = cx.app.now();
         let Some(open) = wrapped::open_year(now) else {
             let opens = wrapped::opens_at(now);
             return cx
-                .reply_ephemeral(format!(
-                    "Wrapped isn't open yet. It opens on <t:{}:D> ({}) and stays open until the end of January.\n\
-                     Until then Pinchora keeps counting: messages, XP, shells, fish, visits, likes and pet care.",
-                    opens.timestamp(),
-                    relative(opens)
+                .reply_ephemeral(t!(
+                    lang,
+                    "wrapped.not-open",
+                    ts = opens.timestamp(),
+                    when = relative(opens)
                 ))
                 .await;
         };
         let year = self.year.map_or(open, |y| y as i32);
         if year > open {
             return cx
-                .reply_ephemeral(format!(
-                    "{year} hasn't been wrapped up yet. The latest Wrapped is {open}."
-                ))
+                .reply_ephemeral(t!(lang, "wrapped.not-yet", year = year, open = open))
                 .await;
         }
         let user = cx.author()?;
@@ -47,9 +50,7 @@ impl Wrapped {
         // The year just ended always gets a card, even a quiet one; an earlier year only when it has
         // something to show.
         if months.is_empty() && year != open {
-            return cx
-                .reply_ephemeral(format!("Nothing was counted for you in {year}."))
-                .await;
+            return cx.reply_ephemeral(t!(lang, "wrapped.nothing", year = year)).await;
         }
         cx.responder.defer(false).await?;
 
@@ -67,7 +68,7 @@ impl Wrapped {
             .and_then(|(fish_id, caught)| content.fish(fish_id).map(|f| (f, *caught)));
         let fish_art = fish.and_then(|(f, _)| cx.app.sprites.showcase_fish(&f.id));
         let house = match db.most_visited_house(id, year).await? {
-            Some((host, visits, friend)) => Some((house_name(&cx.app, host).await, visits, friend)),
+            Some((host, visits, friend)) => Some((house_name(&cx.app, host, lang).await, visits, friend)),
             None => None,
         };
         let player = db.user(id).await?;
@@ -76,14 +77,17 @@ impl Wrapped {
         let theme = super::customize::theme(&player, background);
         let avatar = cx.app.avatar(user, WrappedCard::AVATAR_SIZE, Some(32)).await;
         let name = cx.author_display_name();
-        let title = wrapped::title(YearTotals {
-            messages: total.messages,
-            shells: total.shells,
-            fish: total.fish,
-            visits: total.visits,
-            likes: total.likes_given + total.likes_received,
-            pet_care: total.pet_care,
-        });
+        let title = wrapped::title_in(
+            YearTotals {
+                messages: total.messages,
+                shells: total.shells,
+                fish: total.fish,
+                visits: total.visits,
+                likes: total.likes_given + total.likes_received,
+                pet_care: total.pet_care,
+            },
+            lang,
+        );
         let totals = WrappedTotals {
             messages: total.messages,
             xp: total.xp,
@@ -94,15 +98,16 @@ impl Wrapped {
             likes_received: total.likes_received,
             pet_care: total.pet_care,
         };
-        let fish_name = fish.map(|(f, caught)| (f.name.clone(), caught));
+        let fish_name = fish.map(|(f, caught)| (content.name(&f.id, lang).into_owned(), caught));
         let png = cx
             .app
             .render(move |r| {
                 r.wrapped_card(&WrappedCard {
+                    lang,
                     year,
                     display_name: &name,
                     avatar_png: &avatar,
-                    title,
+                    title: &title,
                     totals,
                     months: per_month,
                     fish: fish_name.as_ref().map(|(name, caught)| WrappedFish {
@@ -129,7 +134,7 @@ impl Wrapped {
 }
 
 /// The name of a house's owner: the one remembered for them, else Discord's, else a stand-in.
-async fn house_name(app: &App, host: u64) -> String {
+async fn house_name(app: &App, host: u64, lang: Lang) -> String {
     if let Ok(Some(name)) = app.db.remembered_name(host).await
         && !name.is_empty()
     {
@@ -137,6 +142,6 @@ async fn house_name(app: &App, host: u64) -> String {
     }
     match app.user(host).await {
         Some(user) => display_name(&user, None),
-        None => "A friendly crab".to_owned(),
+        None => t!(lang, "wrapped.friendly-crab"),
     }
 }

@@ -1,5 +1,7 @@
 use std::fmt::Write;
 
+use pinchora_core::{i18n::Lang, t};
+
 use super::{PIXEL, SANS, avatar_frame, text};
 use crate::{
     Theme,
@@ -30,14 +32,16 @@ pub struct LastWeekEntry {
 /// 900×716 leaderboard card with up to ten rows; the first three get gold, silver and bronze. With a
 /// `last_week` podium the card grows by a panel of three places under the rows.
 pub struct LeaderboardCard {
+    /// The language of the labels; the title, the rows and the empty text come translated.
+    pub lang: Lang,
     pub title: String,
     pub entries: Vec<LeaderboardEntry>,
-    /// Zero-based; shown as `PAGE n`.
+    /// Zero-based; shown as `PAGE n` (`card.leaderboard.page`).
     pub page: u32,
     /// The previous period's top places (up to three); empty leaves the panel out.
     pub last_week: Vec<LastWeekEntry>,
     /// What a page with no rows says.
-    pub empty: &'static str,
+    pub empty: String,
     pub theme: Theme,
 }
 
@@ -75,7 +79,7 @@ impl LeaderboardCard {
             false,
             &t.gold,
             "end",
-            &format!("PAGE {}", self.page + 1),
+            &t!(self.lang, "card.leaderboard.page", page = self.page + 1),
         );
 
         if self.entries.is_empty() {
@@ -89,7 +93,7 @@ impl LeaderboardCard {
                 false,
                 &t.muted,
                 "middle",
-                &escape(self.empty),
+                &escape(&self.empty),
             );
         }
         let medals = [t.gold.as_str(), "#c9d1e6", "#d08a52"];
@@ -193,7 +197,7 @@ impl LeaderboardCard {
             false,
             &t.muted,
             "start",
-            "LAST WEEK'S TOP 3",
+            &t!(self.lang, "card.leaderboard.last-week"),
         );
         for (i, e) in self.last_week.iter().take(3).enumerate() {
             let x = 56.0 + i as f32 * 268.0;
@@ -259,11 +263,12 @@ mod tests {
     fn renders_full_empty_and_awkward_pages() {
         let r = Renderer::new();
         let card = |entries| LeaderboardCard {
+            lang: Lang::En,
             title: "Server leaderboard".to_owned(),
             entries,
             page: 3,
             last_week: Vec::new(),
-            empty: "Nobody here yet.",
+            empty: "Nobody here yet.".to_owned(),
             theme: Theme::reef(),
         };
         let full = (1..=10)
@@ -285,11 +290,12 @@ mod tests {
             value: "4,210 XP".to_owned(),
         };
         let card = |last_week| LeaderboardCard {
+            lang: Lang::En,
             title: "Weekly XP".to_owned(),
             entries: (1..=3).map(|n| entry(n, "Tide")).collect(),
             page: 0,
             last_week,
-            empty: "Nobody here yet.",
+            empty: "Nobody here yet.".to_owned(),
             theme: Theme::reef(),
         };
         let plain = r.leaderboard_card(&card(Vec::new())).expect("renders");
