@@ -11,6 +11,7 @@ pub mod social;
 pub mod sprites;
 mod style;
 mod svg;
+pub mod templates;
 mod theme;
 
 use std::sync::{Arc, LazyLock};
@@ -30,6 +31,7 @@ pub use cards::{
 pub use cards::{
     BottleCard, DexCard, DexCell, DropCard, DropCritter, EntryPicture, HaulCard, HaulTile, PotCard, PotState,
 };
+pub use cards::{CardFill, DesignedCard, fill_placeholders, ordinal};
 pub use cards::{
     EntriesCard, EntryHeader, EntryRow, LettersCard, PartyLobbyCard, PearlCard, PearlSeat, PostcardCard, PromptCard,
     PromptTone, RaceCard, Racer, RacerState, RatherCard, StandingRow, StandingsCard,
@@ -132,6 +134,11 @@ impl Renderer {
     }
 
     pub fn welcome_card(&self, card: &WelcomeCard<'_>) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    /// A welcome or goodbye image from a server's own design.
+    pub fn designed_card(&self, card: &DesignedCard<'_>) -> anyhow::Result<Vec<u8>> {
         self.svg_to_png(&card.to_svg())
     }
 
