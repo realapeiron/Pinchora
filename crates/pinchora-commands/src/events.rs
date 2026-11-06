@@ -37,6 +37,8 @@ pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<(
         return Ok(());
     };
     let (g, u) = (guild.get(), msg.author.id.get());
+    // With message content on, the server log keeps the message a day to show an edit or delete.
+    server_log::keep_message(&app, g, &msg).await;
     // Chat that makes critters and bottles wash up counts here, before the XP cooldown: it never reads
     // the message, and a failure never keeps a member from their XP.
     let here = Some(msg.channel_id.get());
@@ -57,7 +59,6 @@ pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<(
     let settings = app.guild_settings(g).await?;
     server_log::note_names(
         &app,
-        &settings,
         g,
         &msg.author,
         msg.member.as_ref().and_then(|m| m.nick.as_deref()),
@@ -128,8 +129,9 @@ pub async fn on_member_add(app: Arc<App>, event: MemberAdd) -> anyhow::Result<()
     if let Some(role) = settings.join_role_id.filter(|_| !member.user.bot) {
         roles::give_join_role(&app, guild_id.get(), member.user.id.get(), role as u64).await;
     }
-    server_log::note_names(&app, &settings, guild_id.get(), &member.user, member.nick.as_deref()).await;
-    server_log::member_joined(&app, &settings, &member.user).await;
+    server_log::note_names(&app, guild_id.get(), &member.user, member.nick.as_deref()).await;
+    let roles: Vec<u64> = member.roles.iter().map(|r| r.get()).collect();
+    server_log::member_joined(&app, guild_id.get(), &member.user, &roles).await;
     if member.user.bot {
         return Ok(());
     }
@@ -181,7 +183,7 @@ pub async fn on_member_remove(app: Arc<App>, event: MemberRemove) -> anyhow::Res
     let MemberRemove { guild_id, user } = event;
     let settings = app.guild_settings(guild_id.get()).await?;
     app.log_state.forget(guild_id.get(), user.id.get()).await;
-    server_log::member_left(&app, &settings, &user).await;
+    server_log::member_left(&app, guild_id.get(), &user).await;
     if !app.module_allowed(guild_id.get(), None, Module::Goodbye).await {
         return Ok(());
     }
@@ -215,31 +217,22 @@ pub async fn on_member_remove(app: Arc<App>, event: MemberRemove) -> anyhow::Res
     Ok(())
 }
 
-/// Logs nickname and username changes.
+/// Logs nickname, username and avatar changes.
 pub async fn on_member_update(app: Arc<App>, event: MemberUpdate) -> anyhow::Result<()> {
-    let settings = app.guild_settings(event.guild_id.get()).await?;
-    server_log::names_updated(
-        &app,
-        &settings,
-        event.guild_id.get(),
-        &event.user,
-        event.nick.as_deref(),
-    )
-    .await;
+    let roles: Vec<u64> = event.roles.iter().map(|r| r.get()).collect();
+    server_log::names_updated(&app, event.guild_id.get(), &event.user, event.nick.as_deref(), &roles).await;
     Ok(())
 }
 
 /// Logs a ban.
 pub async fn on_ban_add(app: Arc<App>, event: BanAdd) -> anyhow::Result<()> {
-    let settings = app.guild_settings(event.guild_id.get()).await?;
-    server_log::ban_changed(&app, &settings, &event.user, true).await;
+    server_log::ban_changed(&app, event.guild_id.get(), &event.user, true).await;
     Ok(())
 }
 
 /// Logs an unban.
 pub async fn on_ban_remove(app: Arc<App>, event: BanRemove) -> anyhow::Result<()> {
-    let settings = app.guild_settings(event.guild_id.get()).await?;
-    server_log::ban_changed(&app, &settings, &event.user, false).await;
+    server_log::ban_changed(&app, event.guild_id.get(), &event.user, false).await;
     Ok(())
 }
 
@@ -250,7 +243,7 @@ pub async fn on_voice_state_update(app: Arc<App>, event: VoiceStateUpdate) -> an
         return Ok(());
     };
     let settings = app.guild_settings(guild.get()).await?;
-    server_log::voice_updated(&app, &settings, guild.get(), &state).await;
+    server_log::voice_updated(&app, guild.get(), &state).await;
     voice_xp::track(&app, guild.get(), &state, &settings).await;
     Ok(())
 }

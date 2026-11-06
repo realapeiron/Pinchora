@@ -9,6 +9,7 @@ mod gate;
 mod house_view;
 mod invalidations;
 mod leveling;
+mod log_audit;
 mod responder;
 mod roles;
 mod server_events;
@@ -23,6 +24,7 @@ pub use commands::{
     definitions as command_definitions,
     games::{spawn_janitor as spawn_game_janitor, sweep as sweep_games},
     level_roles::{SyncOutcome, SyncReport, sync_level_roles, sync_resting},
+    moderation::{lift_expired_bans, spawn_ticker as spawn_moderation_ticker},
     modules::{announce_guild_change, module_diff},
     partner::partner_name,
     party_games::{spawn_ticker as spawn_party_ticker, tick as party_tick},
@@ -39,8 +41,10 @@ pub use house_view::{
     seed_at as house_seed_at,
 };
 pub use invalidations::listen as listen_for_invalidations;
+pub use log_audit::on_audit_log_entry;
 pub use responder::Responder;
 pub use server_events::{spawn_ticker as spawn_events_ticker, tick as events_tick};
+pub use server_log::{on_message_delete, on_message_delete_bulk, on_message_update};
 pub use util::fill;
 pub use voice_xp::{
     VoiceSnapshot, forget as forget_voice_presence, prune as voice_prune, rebuild as rebuild_voice,

@@ -29,7 +29,7 @@ use twilight_model::{
     util::ImageHash,
 };
 
-use crate::server_log::LogState;
+use crate::{commands::moderation::ModState, server_log::LogState};
 
 /// Where a channel sits, for XP multipliers that follow a thread to its channel and a channel to its category.
 #[derive(Debug, Clone, Copy)]
@@ -84,6 +84,11 @@ pub struct App {
     rebuild_slots: Arc<Semaphore>,
     /// Last-seen names and voice channels, so the server log can say what changed.
     pub(crate) log_state: LogState,
+    /// Server owners, role positions and the bot's roles, for the moderation hierarchy.
+    pub(crate) moderation: ModState,
+    /// Whether the gateway asks for message content (`gateway.message_content`): the server log then
+    /// keeps recent messages to show what an edited or deleted one said, and `/purge` can filter by text.
+    pub message_content: bool,
     /// Seconds added to the clock by [`App::shift_clock`].
     clock_shift: AtomicI64,
 }
@@ -156,6 +161,8 @@ impl App {
             event_slots: Arc::new(Semaphore::new(1024)),
             rebuild_slots: Arc::new(Semaphore::new(REBUILD_SLOTS)),
             log_state: LogState::new(),
+            moderation: ModState::new(),
+            message_content: false,
             clock_shift: AtomicI64::new(0),
         }
     }
@@ -289,6 +296,12 @@ impl App {
             rules.channels.contains_key(&id)
         })
         .await
+    }
+
+    /// `channel` followed by everything it sits under (a thread's channel, a channel's category), for
+    /// the server log's channel ignore list.
+    pub(crate) async fn place_lineage(&self, channel: u64) -> Vec<u64> {
+        self.lineage(channel, false, |_| false).await
     }
 
     /// [`App::xp_lineage`] for any rule: `none` says the server has no channel rules at all, `has_rule`
@@ -427,6 +440,7 @@ impl App {
 
     pub async fn forget_guild_settings(&self, guild_id: u64) {
         self.guild_settings.invalidate(&guild_id).await;
+        self.log_state.forget_config(guild_id).await;
         self.module_rules.invalidate(&guild_id).await;
         self.voice_guilds.invalidate(&guild_id).await;
     }

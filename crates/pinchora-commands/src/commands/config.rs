@@ -17,6 +17,7 @@ use crate::{
     commands::{
         collection::settings::{ConfigCritters, critters_summary},
         level_roles::ConfigLevelRoles,
+        moderation::setup::{ConfigLogIgnore, ConfigModeration, ConfigWarnLadder, moderation_summary},
         modules::ConfigModules,
         party::ConfigGambling,
         party_games::{ConfigPartyGames, party_summary},
@@ -73,6 +74,12 @@ pub enum ConfigCommand {
     Log(ConfigLog),
     #[command(name = "log-events")]
     LogEvents(ConfigLogEvents),
+    #[command(name = "log-ignore")]
+    LogIgnore(ConfigLogIgnore),
+    #[command(name = "moderation")]
+    Moderation(ConfigModeration),
+    #[command(name = "warn-ladder")]
+    WarnLadder(ConfigWarnLadder),
     #[command(name = "suggestions")]
     Suggestions(ConfigSuggestions),
     #[command(name = "critters")]
@@ -237,6 +244,9 @@ impl ConfigCommand {
             Self::Goodbye(c) => return c.run(cx, guild).await,
             Self::Log(c) => return c.run(cx, guild).await,
             Self::LogEvents(c) => return c.run(cx, guild).await,
+            Self::LogIgnore(c) => return c.run(cx, guild).await,
+            Self::Moderation(c) => return c.run(cx, guild).await,
+            Self::WarnLadder(c) => return c.run(cx, guild).await,
             Self::Suggestions(c) => return c.run(cx, guild).await,
             Self::Critters(c) => return c.run(cx, guild).await,
             Self::Gambling(c) => return c.run(cx, guild).await,
@@ -268,6 +278,16 @@ impl ConfigCommand {
         embed
             .fields
             .push(EmbedFieldBuilder::new("Party games", party_summary(cx.app.db.party_strict(guild).await?)).build());
+        embed.fields.push(
+            EmbedFieldBuilder::new(
+                "Moderation",
+                moderation_summary(
+                    &cx.app.db.mod_settings(guild).await?,
+                    &cx.app.db.warn_thresholds(guild).await?,
+                ),
+            )
+            .build(),
+        );
         cx.reply(InteractionResponseData {
             embeds: Some(vec![embed]),
             flags: Some(MessageFlags::EPHEMERAL),

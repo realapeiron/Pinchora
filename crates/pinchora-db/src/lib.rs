@@ -16,7 +16,9 @@ mod house;
 mod house_read;
 mod interactions;
 mod locks;
+mod logs;
 mod members;
+mod moderation;
 mod modules;
 mod panels;
 mod partners;
@@ -69,6 +71,9 @@ pub use house::{
 pub use interactions::Tally;
 pub use locks::conflict_retries;
 pub use members::{LeaderboardRow, MemberRank, XpGain, XpGrant};
+pub use moderation::{
+    CaseFilter, CaseRow, LadderFull, ModSettings, NewCase, NewStaffAction, OpenedCase, StaffActionRow, StaffFilter,
+};
 pub use panels::{MAX_PANEL_ROLES, PanelRoleRow, PanelRow};
 pub use partners::{PairOutcome, PartnerRow};
 pub use party::{

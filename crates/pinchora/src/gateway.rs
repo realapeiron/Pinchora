@@ -2,8 +2,9 @@ use std::{sync::Arc, time::Duration};
 
 use pinchora_cache::{RedisQueue, StoredSession};
 use pinchora_commands::{
-    App, Responder, handle_gateway_interaction, on_ban_add, on_ban_remove, on_guild_delete, on_member_add,
-    on_member_remove, on_member_update, on_message, on_voice_state_update, rebuild_voice, voice_snapshot,
+    App, Responder, handle_gateway_interaction, on_audit_log_entry, on_ban_add, on_ban_remove, on_guild_delete,
+    on_member_add, on_member_remove, on_member_update, on_message, on_message_delete, on_message_delete_bulk,
+    on_message_update, on_voice_state_update, rebuild_voice, voice_snapshot,
 };
 use pinchora_core::{
     Config, cluster,
@@ -28,6 +29,10 @@ fn wanted_events() -> EventTypeFlags {
     // voice XP right after a restart. Gateway close events always come through.
     EventTypeFlags::INTERACTION_CREATE
         | EventTypeFlags::MESSAGE_CREATE
+        | EventTypeFlags::MESSAGE_UPDATE
+        | EventTypeFlags::MESSAGE_DELETE
+        | EventTypeFlags::MESSAGE_DELETE_BULK
+        | EventTypeFlags::GUILD_AUDIT_LOG_ENTRY_CREATE
         | EventTypeFlags::MEMBER_ADD
         | EventTypeFlags::MEMBER_REMOVE
         | EventTypeFlags::MEMBER_UPDATE
@@ -72,11 +77,16 @@ pub async fn run(config: &Config, app: Arc<App>, ready: Readiness) -> anyhow::Re
         "starting shard cluster"
     );
 
-    // Bans and voice states feed the server log; neither intent is privileged.
+    // Bans, the audit log entries (Guild Moderation), message edits and deletes (Guild Messages) and
+    // voice states feed the server log; none of these is privileged. Server Members and Message
+    // Content are, and each has its own switch.
     let mut intents =
         Intents::GUILDS | Intents::GUILD_MESSAGES | Intents::GUILD_MODERATION | Intents::GUILD_VOICE_STATES;
     if config.gateway.member_events {
         intents |= Intents::GUILD_MEMBERS;
+    }
+    if config.gateway.message_content {
+        intents |= Intents::MESSAGE_CONTENT;
     }
     let presence = UpdatePresencePayload::new(
         vec![
@@ -189,6 +199,38 @@ fn dispatch(app: &Arc<App>, shard: u32, event: Event) {
             app.spawn_event("message_create", async move {
                 if let Err(error) = on_message(app2, *message).await {
                     tracing::warn!(%error, "message handler failed");
+                }
+            });
+        }
+        Event::MessageUpdate(message) => {
+            let app2 = app.clone();
+            app.spawn_event("message_update", async move {
+                if let Err(error) = on_message_update(app2, *message).await {
+                    tracing::warn!(%error, "message edit handler failed");
+                }
+            });
+        }
+        Event::MessageDelete(event) => {
+            let app2 = app.clone();
+            app.spawn_event("message_delete", async move {
+                if let Err(error) = on_message_delete(app2, event).await {
+                    tracing::warn!(%error, "message delete handler failed");
+                }
+            });
+        }
+        Event::MessageDeleteBulk(event) => {
+            let app2 = app.clone();
+            app.spawn_event("message_delete_bulk", async move {
+                if let Err(error) = on_message_delete_bulk(app2, event).await {
+                    tracing::warn!(%error, "bulk delete handler failed");
+                }
+            });
+        }
+        Event::GuildAuditLogEntryCreate(entry) => {
+            let app2 = app.clone();
+            app.spawn_event("audit_log_entry", async move {
+                if let Err(error) = on_audit_log_entry(app2, *entry).await {
+                    tracing::warn!(%error, "audit log handler failed");
                 }
             });
         }

@@ -34,6 +34,7 @@ pub enum Deferral {
 const PRIVATE: &[&str] = &[
     "beachcomb",
     "bio",
+    "case",
     "character",
     "config",
     "crabpot",
@@ -51,6 +52,7 @@ const PRIVATE: &[&str] = &[
     "house edit",
     "house lock",
     "house upgrade",
+    "nick",
     "partner leave",
     "party stop",
     "pet adopt",
@@ -63,13 +65,17 @@ const PRIVATE: &[&str] = &[
     "play 2048",
     "poll",
     "privacy",
+    "purge",
     "quests",
+    "reason",
     "remind",
+    "role",
     "roles",
     "stall manage",
     "stall sell",
     "suggest",
     "suggestion",
+    "warnings",
 ];
 
 /// Component clicks that may answer with a modal, as `prefix:action` of the custom id. The simulator

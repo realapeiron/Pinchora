@@ -66,6 +66,7 @@ pub enum Module {
     Welcome,
     Goodbye,
     Log,
+    Moderation,
     RolePanels,
     Store,
     Suggestions,
@@ -91,12 +92,13 @@ pub enum Module {
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 26] = [
+    pub const ALL: [Self; 27] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
         Self::Goodbye,
         Self::Log,
+        Self::Moderation,
         Self::RolePanels,
         Self::Store,
         Self::Suggestions,
@@ -128,6 +130,7 @@ impl Module {
             Self::Welcome => "welcome",
             Self::Goodbye => "goodbye",
             Self::Log => "log",
+            Self::Moderation => "moderation",
             Self::RolePanels => "role_panels",
             Self::Store => "store",
             Self::Suggestions => "suggestions",
@@ -163,6 +166,7 @@ impl Module {
             Self::Welcome => "Welcome cards",
             Self::Goodbye => "Goodbye messages",
             Self::Log => "Server log",
+            Self::Moderation => "Moderation",
             Self::RolePanels => "Role panels",
             Self::Store => "Points store",
             Self::Suggestions => "Suggestions",
@@ -194,7 +198,10 @@ impl Module {
             Self::Points => "Server points earned by chatting.",
             Self::Welcome => "The welcome card for new members.",
             Self::Goodbye => "The message when a member leaves.",
-            Self::Log => "Joins, name changes, bans and voice in the log channel.",
+            Self::Log => "Members, messages, roles, channels, voice, bans and server changes in the log channels.",
+            Self::Moderation => {
+                "/ban, /kick, /timeout, /warn, /purge, /lock and the other moderation commands, with numbered cases."
+            }
             Self::RolePanels => "/roles and the role buttons.",
             Self::Store => "/store and /points: spending and giving server points.",
             Self::Suggestions => "/suggest and its voting buttons.",
@@ -228,6 +235,7 @@ impl Module {
             | Self::Welcome
             | Self::Goodbye
             | Self::Log
+            | Self::Moderation
             | Self::RolePanels
             | Self::Store
             | Self::Suggestions
@@ -247,7 +255,7 @@ impl Module {
 
     pub const fn scope(self) -> Scope {
         match self {
-            Self::Welcome | Self::Goodbye | Self::Log | Self::Gambling => Scope::Server,
+            Self::Welcome | Self::Goodbye | Self::Log | Self::Moderation | Self::Gambling => Scope::Server,
             _ => Scope::Channels,
         }
     }
@@ -278,6 +286,8 @@ impl Module {
             "plaza" => Self::Plaza,
             "points" | "store" => Self::Store,
             "roles" => Self::RolePanels,
+            "ban" | "unban" | "kick" | "timeout" | "untimeout" | "warn" | "warnings" | "unwarn" | "purge"
+            | "slowmode" | "lock" | "unlock" | "nick" | "role" | "case" | "reason" => Self::Moderation,
             "partner" | "friends" | "hug" | "pat" | "wave" | "highfive" => Self::Social,
             "giveaway" => Self::Giveaways,
             "suggest" | "suggestion" => Self::Suggestions,

@@ -112,7 +112,7 @@ async fn boot(config: &Config, role: &str) -> anyhow::Result<(Arc<App>, Readines
     let interactions = Client::builder().token(token).build();
 
     let node = std::env::var("HOSTNAME").unwrap_or_else(|_| role.to_owned());
-    let app = App::new(
+    let mut app = App::new(
         Arc::new(rest.build()),
         Arc::new(interactions),
         Id::new(config.discord.application_id),
@@ -120,6 +120,7 @@ async fn boot(config: &Config, role: &str) -> anyhow::Result<(Arc<App>, Readines
         cache,
         node,
     );
+    app.message_content = config.gateway.message_content;
     let app = Arc::new(app);
     // Drops cached settings the moment the dashboard changes them, on every pod.
     pinchora_commands::listen_for_invalidations(&app).await;
@@ -130,6 +131,8 @@ async fn boot(config: &Config, role: &str) -> anyhow::Result<(Arc<App>, Readines
     pinchora_commands::spawn_reminder_ticker(app.clone());
     // Ends giveaways and closes polls when their time is up, on whichever pod gets there first.
     pinchora_commands::spawn_events_ticker(app.clone());
+    // Lifts temporary bans whose time is up, on whichever pod claims them first.
+    pinchora_commands::spawn_moderation_ticker(app.clone());
     // Retires critter drops and bottles nobody took in time.
     pinchora_commands::spawn_collection_ticker(app.clone());
     // Moves the party games on: pops a pearl, ends a writing or voting phase, closes a lobby or a poll.
