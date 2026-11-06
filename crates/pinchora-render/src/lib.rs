@@ -60,12 +60,24 @@ pub const FONT_FILES: [(&str, &[u8]); 4] = [
     ),
 ];
 
+/// What is drawn where [`FONT_FILES`] have no glyph, in the order they are tried: a subset of Noto Sans CJK SC
+/// (common Chinese, Japanese kana and kanji, Korean, 2.0 MB) and the monochrome Noto Emoji (0.9 MB). Both SIL OFL;
+/// the dashboard needs neither, so they are not in [`FONT_FILES`].
+const FALLBACK_FONT_FILES: [&[u8]; 2] = [
+    include_bytes!("../../../assets/fonts/NotoSansCJKsc-Subset.otf"),
+    include_bytes!("../../../assets/fonts/NotoEmoji-Subset.ttf"),
+];
+
 /// The fonts the cards are drawn in, loaded once: the renderer draws with them and the text
 /// measuring in [`svg`] lays names out with them.
 pub(crate) fn fonts() -> &'static Arc<usvg::fontdb::Database> {
     static FONTS: LazyLock<Arc<usvg::fontdb::Database>> = LazyLock::new(|| {
         let mut db = usvg::fontdb::Database::new();
         for (_, font) in FONT_FILES {
+            db.load_font_data(font.to_vec());
+        }
+        // After the card fonts: the renderer takes the first face that has a missing glyph.
+        for font in FALLBACK_FONT_FILES {
             db.load_font_data(font.to_vec());
         }
         db.set_sans_serif_family("Noto Sans");

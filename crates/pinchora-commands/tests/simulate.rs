@@ -1431,6 +1431,30 @@ async fn profile_and_daily() {
     assert!(sim.app.db.user(user).await.expect("user row").credits > 0);
 }
 
+/// Emoji and CJK in a name draw as letters on the profile card, where they once drew as empty boxes: the name
+/// differs from the same name written in a script no font has, which draws as boxes.
+#[tokio::test]
+async fn names_with_emoji_and_cjk_draw_on_the_profile_card() {
+    let Some(mut sim) = Sim::new("names_with_emoji_and_cjk_draw_on_the_profile_card").await else {
+        return;
+    };
+    let (user, other) = (unique(), unique());
+    let mut profile_of = async |name: &str| {
+        let resolved = json!({ "users": { other.to_string(): person_json(other, "zoe", Some(name), false) } });
+        let reply = sim
+            .command_resolved(user, "profile", json!([user_option("user", other)]), resolved)
+            .await;
+        assert_eq!(reply.files[0].0, "profile.png");
+        card_pixels(&reply, (960, 540))
+    };
+    let glyphs = profile_of("Zoë ✨ 李 😀").await;
+    let boxes = profile_of("Zoë አ አ አ").await;
+    assert!(
+        differ_in(&glyphs, &boxes, 290..924, 44..96),
+        "the emoji and the Chinese letter are drawn, not boxes"
+    );
+}
+
 /// `data.resolved` for options that name `users` and `roles` (as made by [`Sim::guild_role`]).
 fn resolved(users: &[u64], roles: &[&Value]) -> Value {
     json!({

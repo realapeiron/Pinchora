@@ -443,7 +443,7 @@ crates/
   pinchora-web/       web dashboard API (axum): Discord OAuth, sessions, CSRF, server settings, modules, the SPA
 web/                  dashboard UI (Vite + React + TypeScript), embedded into the binary
 migrations/           SQL migrations
-assets/fonts/         Silkscreen + Noto Sans (SIL OFL)
+assets/fonts/         Silkscreen + Noto Sans, and Noto Sans CJK + Noto Emoji subsets as fallback (SIL OFL)
 deploy/               Kubernetes (kustomize)
 docs/                 architecture, research, game design
 ```
@@ -474,3 +474,15 @@ coloured circle with its first letter.
 
 Silkscreen and Noto Sans are under the SIL Open Font License; the license texts are in
 `assets/fonts/`.
+
+Names, bios and titles in emoji or CJK draw as letters, not empty boxes, because two fallback fonts follow the
+card fonts in the renderer's font database (`pinchora_render::FONT_FILES` for the cards and the dashboard,
+`FALLBACK_FONT_FILES` for these). Both are SIL OFL, made from the official releases with `pyftsubset` (fontTools;
+no hinting, no layout features except the emoji sequences):
+
+| File | From | Holds | Size |
+|---|---|---|---|
+| `NotoSansCJKsc-Subset.otf` | Noto Sans CJK SC Regular 2.004 ([notofonts/noto-cjk](https://github.com/notofonts/noto-cjk)) | 7,174 common hanzi (GB 2312 level 1, Big5 frequently used, JIS X 0208 level 1), kana, the 2,350 hangul syllables of KS X 1001 and compatibility jamo, bopomofo, CJK and full-width punctuation | 2.0 MB |
+| `NotoEmoji-Subset.ttf` | Noto Emoji 3.002 ([google/fonts](https://github.com/google/fonts/tree/main/ofl/notoemoji)), monochrome, Regular weight | every emoji code point of the font (1,489) and its sequences (flags, ZWJ, skin tones) | 0.9 MB |
+
+A character no font has (a rare hanzi, another script) still draws as an empty box.
