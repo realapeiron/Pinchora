@@ -27,6 +27,7 @@ use pinchora_core::{
     t,
 };
 use pinchora_db::{FeedPost, FeedRow, FeedSourceRow, Polled, PostOutcome};
+use sha2::{Digest, Sha256};
 use twilight_model::{channel::message::AllowedMentions, id::Id};
 
 pub use fetch::{FetchError, Fetched, Fetcher, Request, fetcher, install_fetcher};
@@ -90,9 +91,13 @@ pub fn instance() -> &'static Instance {
 
 /// Whether this instance can follow sources of `kind`.
 pub fn available(kind: Kind) -> bool {
+    available_in(kind, instance())
+}
+
+fn available_in(kind: Kind, settings: &Instance) -> bool {
     match kind {
-        Kind::Bridge => instance().bridge.is_some(),
-        Kind::Reddit => instance().reddit,
+        Kind::Bridge => settings.bridge.is_some(),
+        Kind::Reddit => settings.reddit,
         _ => true,
     }
 }
@@ -213,8 +218,8 @@ pub async fn fetch_source(
     etag: Option<&str>,
     last_modified: Option<&str>,
 ) -> Result<Option<Read>, Problem> {
+    let url = source_url(kind, source, instance())?;
     let bridge = instance().bridge.as_deref();
-    let url = feed_url(kind, source, bridge).ok_or(Problem::Unavailable(kind))?;
     let bridge_host = bridge
         .filter(|_| kind == Kind::Bridge)
         .and_then(|b| reqwest::Url::parse(&b.replace("{route}", "")).ok())
@@ -244,6 +249,13 @@ pub async fn fetch_source(
         }
         Err(error) => Err(Problem::Fetch(error)),
     }
+}
+
+fn source_url(kind: Kind, source: &str, settings: &Instance) -> Result<String, Problem> {
+    if !available_in(kind, settings) {
+        return Err(Problem::Unavailable(kind));
+    }
+    feed_url(kind, source, settings.bridge.as_deref()).ok_or(Problem::Unavailable(kind))
 }
 
 /// What one step of the ticker did.
@@ -336,8 +348,27 @@ async fn poll(app: &App, row: FeedSourceRow) -> usize {
 /// Sends the posts this pod can lease; returns how many went out.
 async fn deliver(app: &App, guilds: Option<&[u64]>) -> anyhow::Result<usize> {
     let mut sent = 0;
-    for post in app.db.claim_feed_posts(POST_BATCH, guilds).await? {
-        let outcome = deliver_one(app, &post).await;
+    // Claim just before sending: a rate-limit wait for one post cannot age the others' leases.
+    for _ in 0..POST_BATCH {
+        let Some(post) = app.db.claim_feed_posts(1, guilds).await?.pop() else {
+            break;
+        };
+        let send = deliver_one(app, &post);
+        tokio::pin!(send);
+        let mut heartbeat = tokio::time::interval(Duration::from_secs(30));
+        heartbeat.tick().await;
+        let outcome = loop {
+            tokio::select! {
+                outcome = &mut send => break outcome,
+                _ = heartbeat.tick() => {
+                    if !app.db.renew_feed_post(&post).await? {
+                        // Another pod reclaimed it. The in-flight Discord request may still
+                        // finish, but its stable nonce deduplicates the competing send.
+                        break PostOutcome::Dropped;
+                    }
+                }
+            }
+        };
         if outcome == PostOutcome::Sent {
             sent += 1;
         }
@@ -347,7 +378,10 @@ async fn deliver(app: &App, guilds: Option<&[u64]>) -> anyhow::Result<usize> {
 }
 
 async fn deliver_one(app: &App, post: &FeedPost) -> PostOutcome {
-    if !post.feed.enabled || !app.module_enabled(post.feed.guild_id as u64, Module::Feeds).await {
+    if !post.feed.enabled
+        || Kind::parse(&post.feed.kind).is_none_or(|kind| !available(kind))
+        || !app.module_enabled(post.feed.guild_id as u64, Module::Feeds).await
+    {
         return PostOutcome::Dropped;
     }
     send(app, &post.feed, &post.item, true).await
@@ -365,14 +399,18 @@ pub async fn send(app: &App, feed: &FeedRow, item: &Item, ping: bool) -> PostOut
         ..AllowedMentions::default()
     };
     let embeds: Vec<_> = message.embed.iter().map(|e| e.to_embed(draft.kind)).collect();
-    let mut request = app
+    // Twilight 0.18 has `nonce` but omits Discord's `enforce_nonce` field. Its raw JSON
+    // escape hatch sends the complete payload, including that field.
+    let payload = delivery_payload(
+        &message,
+        &embeds,
+        &mentions,
+        ping.then(|| delivery_nonce(feed.id, &item.id)),
+    );
+    let request = app
         .http
         .create_message(Id::new((feed.channel_id as u64).max(1)))
-        .allowed_mentions(Some(&mentions))
-        .embeds(&embeds);
-    if !message.content.is_empty() {
-        request = request.content(&message.content);
-    }
+        .payload_json(&payload);
     match request.await {
         Ok(_) => PostOutcome::Sent,
         Err(error) => {
@@ -386,6 +424,31 @@ pub async fn send(app: &App, feed: &FeedRow, item: &Item, ping: bool) -> PostOut
             PostOutcome::Refused(code.to_owned())
         }
     }
+}
+
+fn delivery_nonce(feed: i64, item: &str) -> u64 {
+    let mut hash = Sha256::new();
+    hash.update(feed.to_be_bytes());
+    hash.update(item.as_bytes());
+    u64::from_be_bytes(hash.finalize()[..8].try_into().expect("SHA-256 has eight bytes"))
+}
+
+fn delivery_payload(
+    message: &FeedMessage,
+    embeds: &[twilight_model::channel::message::Embed],
+    mentions: &AllowedMentions,
+    nonce: Option<u64>,
+) -> Vec<u8> {
+    let mut payload = serde_json::json!({
+        "content": message.content,
+        "embeds": embeds,
+        "allowed_mentions": mentions,
+    });
+    if let Some(nonce) = nonce {
+        payload["nonce"] = serde_json::json!(nonce.to_string());
+        payload["enforce_nonce"] = serde_json::json!(true);
+    }
+    serde_json::to_vec(&payload).expect("message payload is serializable")
 }
 
 /// Runs [`tick`] for the life of the process, and forgets old items once an hour.
@@ -414,6 +477,39 @@ pub fn spawn_ticker(app: Arc<App>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reddit_off_rejects_stored_sources_before_fetch() {
+        let off = Instance {
+            bridge: None,
+            reddit: false,
+        };
+        assert_eq!(
+            source_url(Kind::Reddit, "existing-subscription", &off),
+            Err(Problem::Unavailable(Kind::Reddit))
+        );
+        assert!(source_url(Kind::Rss, "https://example.com/rss", &off).is_ok());
+    }
+
+    #[test]
+    fn delivery_nonce_is_stable_and_enforced_only_for_announcements() {
+        let message = FeedMessage {
+            content: "Fresh".into(),
+            embed: None,
+        };
+        let mentions = AllowedMentions::default();
+        let nonce = delivery_nonce(42, "entry-1");
+        assert_eq!(nonce, delivery_nonce(42, "entry-1"));
+        assert_ne!(nonce, delivery_nonce(42, "entry-2"));
+        assert_ne!(nonce, delivery_nonce(43, "entry-1"));
+        let payload: serde_json::Value =
+            serde_json::from_slice(&delivery_payload(&message, &[], &mentions, Some(nonce))).unwrap();
+        assert_eq!(payload["nonce"], nonce.to_string());
+        assert_eq!(payload["enforce_nonce"], true);
+        let test_post: serde_json::Value =
+            serde_json::from_slice(&delivery_payload(&message, &[], &mentions, None)).unwrap();
+        assert!(test_post.get("nonce").is_none());
+    }
 
     #[test]
     fn problems_are_worded_in_both_languages() {

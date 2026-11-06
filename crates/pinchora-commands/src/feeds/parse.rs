@@ -12,6 +12,8 @@ const ITEMS_MAX: usize = 50;
 const TITLE_MAX: usize = 256;
 const SUMMARY_MAX: usize = 350;
 const NAME_MAX: usize = 100;
+const XML_DEPTH_MAX: usize = 64;
+const XML_ELEMENTS_MAX: usize = 10_000;
 
 /// What one fetch of a source holds.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -50,6 +52,7 @@ pub fn parse(kind: Kind, body: &[u8]) -> Result<Parsed, ParseError> {
 }
 
 fn xml(kind: Kind, body: &[u8]) -> Result<Parsed, ParseError> {
+    xml_bounds(body)?;
     let feed: Feed = feed_rs::parser::parse(body).map_err(|_| ParseError::NotAFeed)?;
     let title = feed
         .title
@@ -82,6 +85,80 @@ fn xml(kind: Kind, body: &[u8]) -> Result<Parsed, ParseError> {
         ttl: feed.ttl,
         items,
     })
+}
+
+/// Bound recursive work in feed-rs before it sees untrusted XML. This scan has no recursion
+/// and ignores quoted `>` characters, comments, CDATA and processing instructions.
+fn xml_bounds(body: &[u8]) -> Result<(), ParseError> {
+    let mut at = 0;
+    let mut depth: usize = 0;
+    let mut elements = 0;
+    while at < body.len() {
+        if body[at] != b'<' {
+            at += 1;
+            continue;
+        }
+        if body[at..].starts_with(b"<!--") {
+            let end = body[at + 4..]
+                .windows(3)
+                .position(|w| w == b"-->")
+                .ok_or(ParseError::NotAFeed)?;
+            at += 4 + end + 3;
+            continue;
+        }
+        if body[at..].starts_with(b"<![CDATA[") {
+            let end = body[at + 9..]
+                .windows(3)
+                .position(|w| w == b"]]>")
+                .ok_or(ParseError::NotAFeed)?;
+            at += 9 + end + 3;
+            continue;
+        }
+        if body[at..].starts_with(b"<?") {
+            let end = body[at + 2..]
+                .windows(2)
+                .position(|w| w == b"?>")
+                .ok_or(ParseError::NotAFeed)?;
+            at += 2 + end + 2;
+            continue;
+        }
+        // DTDs and other declarations are unnecessary for feeds and may expand entities.
+        if body[at..].starts_with(b"<!") {
+            return Err(ParseError::NotAFeed);
+        }
+        let closing = body.get(at + 1) == Some(&b'/');
+        let mut quote = None;
+        let mut end = at + 1;
+        while end < body.len() {
+            let byte = body[end];
+            match (quote, byte) {
+                (Some(q), b) if q == b => quote = None,
+                (None, b'\'' | b'"') => quote = Some(byte),
+                (None, b'>') => break,
+                _ => {}
+            }
+            end += 1;
+        }
+        if end == body.len() {
+            return Err(ParseError::NotAFeed);
+        }
+        if closing {
+            depth = depth.checked_sub(1).ok_or(ParseError::NotAFeed)?;
+        } else {
+            elements += 1;
+            if elements > XML_ELEMENTS_MAX {
+                return Err(ParseError::NotAFeed);
+            }
+            if body[at + 1..end].iter().rev().find(|b| !b.is_ascii_whitespace()) != Some(&b'/') {
+                depth += 1;
+                if depth > XML_DEPTH_MAX {
+                    return Err(ParseError::NotAFeed);
+                }
+            }
+        }
+        at = end + 1;
+    }
+    (depth == 0).then_some(()).ok_or(ParseError::NotAFeed)
 }
 
 fn entry(kind: Kind, e: &Entry) -> Option<Item> {
@@ -278,11 +355,41 @@ fn first_image(html: &str) -> Option<String> {
     None
 }
 
-/// Whether a link can go into a message: http(s), no spaces or angle brackets.
+/// Parse and serialize an untrusted link for Discord text and embed fields.
+pub(crate) fn web_link(raw: &str) -> Option<String> {
+    if raw.len() > 1000
+        || raw
+            .chars()
+            .any(|c| c.is_whitespace() || c.is_control() || matches!(c, '<' | '>' | '"'))
+    {
+        return None;
+    }
+    let url = url::Url::parse(raw).ok()?;
+    if !matches!(url.scheme(), "http" | "https")
+        || url.host().is_none()
+        || !url.username().is_empty()
+        || url.password().is_some()
+    {
+        return None;
+    }
+    let url = url.to_string();
+    let authority_end = url
+        .find("://")
+        .and_then(|at| url[at + 3..].find(['/', '?', '#']).map(|end| at + 3 + end))
+        .unwrap_or(url.len());
+    let mut safe = String::with_capacity(url.len());
+    for (at, ch) in url.char_indices() {
+        match ch {
+            '(' | ')' | '\\' => safe.push_str(&format!("%{:02X}", ch as u32)),
+            '[' | ']' if at >= authority_end => safe.push_str(&format!("%{:02X}", ch as u32)),
+            _ => safe.push(ch),
+        }
+    }
+    Some(safe)
+}
+
 pub(crate) fn is_web_link(url: &str) -> bool {
-    (url.starts_with("https://") || url.starts_with("http://"))
-        && url.len() <= 1000
-        && !url.chars().any(|c| c.is_whitespace() || matches!(c, '<' | '>' | '"'))
+    web_link(url).is_some()
 }
 
 /// HTML as plain text: tags out, the common entities decoded, spaces collapsed.
@@ -464,6 +571,27 @@ fn embed_picture(embed: &serde_json::Value) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn deeply_nested_media_groups_are_rejected_before_feed_rs() {
+        let mut xml = String::from(
+            r#"<rss xmlns:media="http://search.yahoo.com/mrss/"><channel><title>x</title><item><guid>x</guid>"#,
+        );
+        xml.push_str(&"<media:group>".repeat(20_000));
+        xml.push_str(&"</media:group>".repeat(20_000));
+        xml.push_str("</item></channel></rss>");
+        assert_eq!(parse(Kind::Rss, xml.as_bytes()), Err(ParseError::NotAFeed));
+        let wide = format!("<rss><channel>{}</channel></rss>", "<item/>".repeat(XML_ELEMENTS_MAX));
+        assert_eq!(parse(Kind::Rss, wide.as_bytes()), Err(ParseError::NotAFeed));
+    }
+
+    #[test]
+    fn web_links_keep_ipv6_host_brackets_but_escape_markdown_in_paths() {
+        assert_eq!(
+            web_link("https://[2606:4700:4700::1111]/a)[spoof](https://evil.example)"),
+            Some("https://[2606:4700:4700::1111]/a%29%5Bspoof%5D%28https://evil.example%29".into())
+        );
+    }
 
     const YOUTUBE: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns:yt="http://www.youtube.com/xml/schemas/2015" xmlns:media="http://search.yahoo.com/mrss/" xmlns="http://www.w3.org/2005/Atom">

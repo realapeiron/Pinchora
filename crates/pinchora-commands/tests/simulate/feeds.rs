@@ -6,7 +6,8 @@ use std::sync::OnceLock;
 
 use chrono::{Duration as Span, Utc};
 use pinchora_commands::feeds::{FeedsTick, Fetcher, install_fetcher, tick_for};
-use pinchora_db::{FeedEdit, NewFeed};
+use pinchora_core::feeds::Item;
+use pinchora_db::{FeedAdd, FeedEdit, NewFeed, Polled, PostOutcome};
 
 use super::*;
 
@@ -123,6 +124,172 @@ fn feed_id(reply: &Reply) -> i64 {
         .next()
         .and_then(|n| n.parse().ok())
         .unwrap_or_else(|| panic!("no feed number in {text:?}"))
+}
+
+async fn add_direct(sim: &Sim, guild: u64, source: &str, seen: &[String]) -> i64 {
+    let added = sim
+        .app
+        .db
+        .add_feed(&NewFeed {
+            guild,
+            kind: "rss",
+            source,
+            title: Some("Test"),
+            channel: unique(),
+            message: None,
+            embed: true,
+            ping_role: None,
+            include: &[],
+            exclude: &[],
+            created_by: unique(),
+            seen,
+            interval_secs: 600,
+        })
+        .await
+        .unwrap();
+    let FeedAdd::Added(feed) = added else {
+        panic!("feed was not added: {added:?}")
+    };
+    feed.id
+}
+
+fn polled_item(id: &str) -> Item {
+    Item {
+        id: id.into(),
+        title: id.into(),
+        published: Some(Utc::now()),
+        ..Item::default()
+    }
+}
+
+async fn poll_direct(sim: &Sim, source: &str, items: &[Item]) -> usize {
+    sim.app
+        .db
+        .record_feed_poll(&Polled {
+            kind: "rss",
+            source,
+            title: None,
+            etag: None,
+            last_modified: None,
+            interval_secs: 600,
+            next_poll_at: Utc::now() + Span::minutes(10),
+            items,
+            now: Utc::now(),
+        })
+        .await
+        .unwrap()
+}
+
+#[tokio::test]
+async fn second_subscriber_does_not_consume_first_subscribers_new_item() {
+    let Some(sim) = Sim::new("second_subscriber_does_not_consume_first_subscribers_new_item").await else {
+        return;
+    };
+    let source = format!("https://reef{}.example/rss", unique());
+    let first = add_direct(&sim, sim.guild, &source, &["old".into()]).await;
+    let item = polled_item("new");
+    add_direct(&sim, unique(), &source, &["old".into(), item.id.clone()]).await;
+    assert!(poll_direct(&sim, &source, &[item]).await >= 1);
+    let (count,): (i64,) = sqlx::query_as("SELECT count(*) FROM feed_outbox WHERE feed_id = $1")
+        .bind(first)
+        .fetch_one(sim.app.db.pool())
+        .await
+        .unwrap();
+    assert_eq!(count, 1);
+}
+
+#[tokio::test]
+async fn empty_validation_fetch_primes_the_first_real_item() {
+    let Some(sim) = Sim::new("empty_validation_fetch_primes_the_first_real_item").await else {
+        return;
+    };
+    let source = format!("https://reef{}.example/rss", unique());
+    add_direct(&sim, sim.guild, &source, &[]).await;
+    assert!(sim.app.db.feed_source("rss", &source).await.unwrap().unwrap().primed);
+    assert_eq!(poll_direct(&sim, &source, &[polled_item("first")]).await, 1);
+}
+
+#[tokio::test]
+async fn not_modified_does_not_keep_removed_history_alive() {
+    let Some(sim) = Sim::new("not_modified_does_not_keep_removed_history_alive").await else {
+        return;
+    };
+    let source = format!("https://reef{}.example/rss", unique());
+    add_direct(&sim, sim.guild, &source, &["removed".into()]).await;
+    sqlx::query("UPDATE feed_items_seen SET seen_at = now() - interval '8 days' WHERE kind = 'rss' AND source = $1")
+        .bind(&source)
+        .execute(sim.app.db.pool())
+        .await
+        .unwrap();
+    sim.app
+        .db
+        .record_feed_unchanged("rss", &source, Utc::now())
+        .await
+        .unwrap();
+    let (eligible,): (i64,) =
+        sqlx::query_as("SELECT count(*) FROM feed_items_seen WHERE kind = 'rss' AND source = $1 AND seen_at < $2")
+            .bind(&source)
+            .bind(Utc::now() - Span::days(7))
+            .fetch_one(sim.app.db.pool())
+            .await
+            .unwrap();
+    assert_eq!(eligible, 1, "the seven-day cleanup must still be able to prune it");
+}
+
+#[tokio::test]
+async fn expired_post_lease_cannot_be_completed_by_old_owner() {
+    let Some(sim) = Sim::new("expired_post_lease_cannot_be_completed_by_old_owner").await else {
+        return;
+    };
+    let source = format!("https://reef{}.example/rss", unique());
+    let feed = add_direct(&sim, sim.guild, &source, &[]).await;
+    assert_eq!(poll_direct(&sim, &source, &[polled_item("fresh")]).await, 1);
+    let first = sim
+        .app
+        .db
+        .claim_feed_posts(1, Some(&[sim.guild]))
+        .await
+        .unwrap()
+        .pop()
+        .unwrap();
+    sqlx::query("UPDATE feed_outbox SET lease_until = now() - interval '1 second' WHERE feed_id = $1")
+        .bind(feed)
+        .execute(sim.app.db.pool())
+        .await
+        .unwrap();
+    let second = sim
+        .app
+        .db
+        .claim_feed_posts(1, Some(&[sim.guild]))
+        .await
+        .unwrap()
+        .pop()
+        .unwrap();
+    assert!(second.attempts > first.attempts);
+    assert!(!sim.app.db.renew_feed_post(&first).await.unwrap());
+    sim.app.db.finish_feed_post(&first, &PostOutcome::Sent).await.unwrap();
+    assert!(
+        sim.app
+            .db
+            .feed(sim.guild, feed)
+            .await
+            .unwrap()
+            .unwrap()
+            .last_item_id
+            .is_none()
+    );
+    sim.app.db.finish_feed_post(&second, &PostOutcome::Sent).await.unwrap();
+    assert_eq!(
+        sim.app
+            .db
+            .feed(sim.guild, feed)
+            .await
+            .unwrap()
+            .unwrap()
+            .last_item_id
+            .as_deref(),
+        Some("fresh")
+    );
 }
 
 #[tokio::test]
@@ -403,13 +570,30 @@ async fn new_items_are_posted_once_per_feed_even_with_two_pods() {
         3,
         "two posts for the first server, one for the second"
     );
-    // Whatever one pod left in the outbox, the next step sends; nothing goes out twice.
+    // Whatever one pod left in the outbox, the next step sends. A worker may have
+    // claimed a row just before the other pod finished queuing; expire that test
+    // lease to exercise recovery without waiting two real minutes.
     let rest = pod().await.unwrap();
-    assert_eq!(a.posted + b.posted + rest.posted, 3, "{a:?} {b:?} {rest:?}");
+    let mut posted = a.posted + b.posted + rest.posted;
+    if posted < 3 {
+        sqlx::query(
+            "UPDATE feed_outbox SET lease_until = now() - interval '1 second'
+             WHERE feed_id IN (SELECT id FROM feeds WHERE kind = 'rss' AND source = $1)",
+        )
+        .bind(&stored.source)
+        .execute(sim.app.db.pool())
+        .await
+        .unwrap();
+        posted += pod().await.unwrap().posted;
+    }
+    assert_eq!(posted, 3, "{a:?} {b:?} {rest:?}");
     let posts = sim.posts();
     let here = in_channel(&posts, channel);
     let there = in_channel(&posts, elsewhere);
     assert_eq!((here.len(), there.len()), (2, 1));
+    assert_eq!(here[0].body["enforce_nonce"], true);
+    assert!(here[0].body["nonce"].is_string());
+    assert_ne!(here[0].body["nonce"], here[1].body["nonce"]);
     // Oldest first, with the card, the role pinged and only the role.
     assert!(
         here[0].content().starts_with(&format!("<@&{role_id}> ")),

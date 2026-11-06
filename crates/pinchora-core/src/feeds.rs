@@ -355,6 +355,17 @@ pub fn is_public(ip: IpAddr) -> bool {
                 let [c, d] = s[7].to_be_bytes();
                 return is_public(IpAddr::V4([a, b, c, d].into()));
             }
+            // IPv4-translated form (::ffff:0:0/96) also carries an IPv4 target.
+            if s[..6] == [0, 0, 0, 0, 0xffff, 0] {
+                let [a, b] = s[6].to_be_bytes();
+                let [c, d] = s[7].to_be_bytes();
+                return is_public(IpAddr::V4([a, b, c, d].into()));
+            }
+            // RFC 8215 local-use translation is 64:ff9b:1::/48. The IPv4 bits can
+            // occupy several positions, so none of this prefix is safe to fetch.
+            if s[0..3] == [0x64, 0xff9b, 1] {
+                return false;
+            }
             if s[0] == 0x2002 {
                 let [a, b] = s[1].to_be_bytes();
                 let [c, d] = s[2].to_be_bytes();
@@ -602,6 +613,8 @@ mod tests {
             ("http://169.254.169.254/latest/meta-data", SourceError::Private),
             ("http://[::1]/feed", SourceError::Private),
             ("http://[::ffff:192.168.1.1]/feed", SourceError::Private),
+            ("http://[64:ff9b:1::a9fe:a9fe]/feed", SourceError::Private),
+            ("http://[::ffff:0:127.0.0.1]/feed", SourceError::Private),
             ("http://printer.local/feed", SourceError::Private),
         ] {
             assert_eq!(parse_source(Kind::Rss, bad), Err(why), "{bad}");
@@ -669,8 +682,12 @@ mod tests {
             "fec0::1",
             "ff02::1",
             "::ffff:127.0.0.1",
+            "::ffff:0:127.0.0.1",
             "::127.0.0.1",
             "64:ff9b::a00:1",
+            "64:ff9b:1::a9fe:a9fe",
+            "64:ff9b:1::7f00:1",
+            "64:ff9b:1:0:a9fe:a9fe::",
             "2002:c0a8:101::1",
             "2001:db8::1",
             "2001:0:4136:e378::1",
@@ -683,6 +700,7 @@ mod tests {
             "140.82.112.3",
             "2606:4700:4700::1111",
             "64:ff9b::808:808",
+            "::ffff:0:8.8.8.8",
         ] {
             assert!(is_public(ip.parse().unwrap()), "{ip} counted as private");
         }

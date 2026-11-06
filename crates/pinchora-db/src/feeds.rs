@@ -155,6 +155,7 @@ pub struct Polled<'a> {
 pub struct FeedPost {
     pub feed: FeedRow,
     pub item: Item,
+    /// Incremented on each claim; stale workers cannot complete a newer claim.
     pub attempts: i32,
 }
 
@@ -218,7 +219,7 @@ impl Db {
     }
 
     /// Adds a subscription, at most [`MAX_FEEDS`] per server: the source is created (or woken up) and the
-    /// items it showed when checked are recorded as seen.
+    /// items it showed when checked are recorded as seen only if no other subscriber exists.
     pub async fn add_feed(&self, new: &NewFeed<'_>) -> anyhow::Result<FeedAdd> {
         let guild = sql_id(new.guild);
         let mut tx = self.pool().begin().await?;
@@ -247,6 +248,12 @@ impl Db {
         .bind(new.interval_secs)
         .execute(&mut *tx)
         .await?;
+        let (subscribers,): (i32,) =
+            sqlx::query_as("SELECT subscribers FROM feed_sources WHERE kind = $1 AND source = $2 FOR UPDATE")
+                .bind(new.kind)
+                .bind(new.source)
+                .fetch_one(&mut *tx)
+                .await?;
         let added = sqlx::query_as::<_, FeedRow>(concat!(
             "INSERT INTO feeds (guild_id, kind, source, display_name, channel_id, message, embed, ping_role_id,
                                 filter_include, filter_exclude, created_by)
@@ -271,7 +278,7 @@ impl Db {
         let Some(added) = added else {
             return Ok(FeedAdd::Duplicate);
         };
-        if !new.seen.is_empty() {
+        if subscribers == 0 {
             mark_seen(&mut tx, new.kind, new.source, new.seen).await?;
             sqlx::query("UPDATE feed_sources SET primed = TRUE WHERE kind = $1 AND source = $2")
                 .bind(new.kind)
@@ -413,15 +420,14 @@ impl Db {
         Ok(())
     }
 
-    /// Records a fetch the source answered with "not modified": healthy, nothing new, and everything it
-    /// showed last time is still there.
+    /// Records a fetch the source answered with "not modified": healthy, nothing new. A 304
+    /// does not refresh seen history, since the older ids may have left the latest response.
     pub async fn record_feed_unchanged(
         &self,
         kind: &str,
         source: &str,
         next_poll_at: DateTime<Utc>,
     ) -> anyhow::Result<()> {
-        let mut tx = self.pool().begin().await?;
         sqlx::query(
             "UPDATE feed_sources SET fail_count = 0, last_error = NULL, next_poll_at = $3, last_checked_at = now(),
                  lease_until = NULL, updated_at = now()
@@ -430,14 +436,8 @@ impl Db {
         .bind(kind)
         .bind(source)
         .bind(next_poll_at)
-        .execute(&mut *tx)
+        .execute(self.pool())
         .await?;
-        sqlx::query("UPDATE feed_items_seen SET seen_at = now() WHERE kind = $1 AND source = $2")
-            .bind(kind)
-            .bind(source)
-            .execute(&mut *tx)
-            .await?;
-        tx.commit().await?;
         Ok(())
     }
 
@@ -507,7 +507,8 @@ impl Db {
                             continue;
                         }
                         queued += sqlx::query(
-                            "INSERT INTO feed_outbox (feed_id, item_id, item) VALUES ($1, $2, $3::jsonb)
+                            "INSERT INTO feed_outbox (feed_id, item_id, item, created_at)
+                             VALUES ($1, $2, $3::jsonb, clock_timestamp())
                              ON CONFLICT DO NOTHING",
                         )
                         .bind(feed.id)
@@ -534,7 +535,7 @@ impl Db {
                  SELECT feed_id, item_id FROM feed_outbox
                  WHERE (lease_until IS NULL OR lease_until < now())
                    AND ($3::bigint[] IS NULL OR feed_id IN (SELECT id FROM feeds WHERE guild_id = ANY($3)))
-                 ORDER BY created_at, feed_id LIMIT $1
+                 ORDER BY created_at, feed_id, item_id LIMIT $1
                  FOR UPDATE SKIP LOCKED
              )
              RETURNING feed_id, item_id, item::text, attempts",
@@ -570,13 +571,39 @@ impl Db {
         Ok(())
     }
 
+    /// Extends only this claim's lease. A reclaimed post has a newer attempt number.
+    pub async fn renew_feed_post(&self, post: &FeedPost) -> anyhow::Result<bool> {
+        Ok(sqlx::query(
+            "UPDATE feed_outbox SET lease_until = now() + make_interval(secs => $4)
+             WHERE feed_id = $1 AND item_id = $2 AND attempts = $3 AND lease_until > now()",
+        )
+        .bind(post.feed.id)
+        .bind(&post.item.id)
+        .bind(post.attempts)
+        .bind(LEASE_SECS)
+        .execute(self.pool())
+        .await?
+        .rows_affected()
+            == 1)
+    }
+
     /// Records how a claimed post went: sent or given up, it leaves the outbox; a retry waits for its lease.
     /// A subscription Discord keeps refusing is switched off after [`FEED_REFUSALS_OFF`] refusals in a row.
     pub async fn finish_feed_post(&self, post: &FeedPost, outcome: &PostOutcome) -> anyhow::Result<()> {
         let (feed, item) = (post.feed.id, post.item.id.as_str());
-        match outcome {
-            PostOutcome::Retry(_) if post.attempts < FEED_POST_ATTEMPTS => return Ok(()),
-            _ => self.drop_feed_post(feed, item).await?,
+        let mut tx = self.pool().begin().await?;
+        if matches!(outcome, PostOutcome::Retry(_)) && post.attempts < FEED_POST_ATTEMPTS {
+            return Ok(());
+        }
+        let deleted = sqlx::query("DELETE FROM feed_outbox WHERE feed_id = $1 AND item_id = $2 AND attempts = $3")
+            .bind(feed)
+            .bind(item)
+            .bind(post.attempts)
+            .execute(&mut *tx)
+            .await?
+            .rows_affected();
+        if deleted == 0 {
+            return Ok(());
         }
         match outcome {
             PostOutcome::Sent => {
@@ -586,11 +613,10 @@ impl Db {
                 )
                 .bind(feed)
                 .bind(item)
-                .execute(self.pool())
+                .execute(&mut *tx)
                 .await?;
             }
             PostOutcome::Refused(error) | PostOutcome::Retry(error) => {
-                let mut tx = self.pool().begin().await?;
                 let switched: Option<(bool, String, String)> = sqlx::query_as(
                     "UPDATE feeds SET last_error = $2, delivery_failures = delivery_failures + 1,
                          enabled = enabled AND delivery_failures + 1 < $3
@@ -604,10 +630,10 @@ impl Db {
                 if let Some((false, kind, source)) = switched {
                     count_subscribers(&mut tx, &kind, &source).await?;
                 }
-                tx.commit().await?;
             }
             PostOutcome::Dropped => {}
         }
+        tx.commit().await?;
         Ok(())
     }
 

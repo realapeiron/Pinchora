@@ -473,13 +473,16 @@ channel feed (`videos.xml?channel_id=`) and Reddit's `/r/name/new/.rss` are read
 public `getAuthorFeed` (no replies, no reposts, no pinned post) every 2, an RSS feed every 5 to 15 minutes by its
 own `ttl` (10 by default). Requests carry `If-None-Match`/`If-Modified-Since` and a descriptive user agent. An item
 is new for exactly the transaction that first records it in `feed_items_seen`, which queues one post per
-subscription in `feed_outbox`; posts are leased too, so two pods never post one twice and a pod that dies
-leaves the rest to another. At most the 5 newest new items are posted per check, none older than 3 days, none
+subscription in `feed_outbox`; posts are leased, renewed while Discord handles them, and completed only by the
+current lease holder. Each announcement uses a stable Discord nonce with `enforce_nonce`, which deduplicates
+retries within Discord's recent-message window. A crash after Discord accepts a post but before the database
+records it can still cause a duplicate after that window; delivery is at least once in that case. At most the
+5 newest new items are posted per check, none older than 3 days, none
 published before the feed was added, so a feed that comes back after an outage or changes its ids does not
 flood the channel. A source that fails waits twice as long each time (up to 6 hours; a `Retry-After` is
 honoured) and the reason shows on `/feeds list` and the dashboard. A post Discord refuses (no permission, the
 channel gone) is reported on the feed; after 10 in a row the feed switches itself off. With the module off,
-new items are recorded but not posted. Items a source no longer shows are forgotten after 7 days, sources nobody
+new items are recorded but not posted. Seen item ids expire after 7 days without a fresh full response, sources nobody
 follows after a day.
 
 **What may be fetched.** Every address is checked before a connection is made: http or https only, no
@@ -504,7 +507,8 @@ Discord too).
 `https://rss.example/{route}`) turns on X, Instagram and TikTok: the source is the route the bridge serves,
 read as RSS. Without it those stay greyed out (“not available on this instance”). The bridge's own host is
 trusted (it may be on a private network); where it redirects is checked like any other address. Reddit's RSS is
-for non-commercial use; `PINCHORA_FEEDS__REDDIT=false` switches Reddit off on an instance Reddit blocks. Debug
+for non-commercial use; `PINCHORA_FEEDS__REDDIT=false` stops polling existing Reddit subscriptions and drops
+their pending posts as well as preventing new ones on an instance Reddit blocks. Debug
 builds only: `PINCHORA_FEEDS__DEV_ENDPOINT=127.0.0.1:<port>` sends every feed request to a local server
 (`http://127.0.0.1:<port>/<host><path>`), which the e2e tests use.
 

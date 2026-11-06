@@ -20,7 +20,7 @@ use twilight_model::{
 };
 use twilight_util::builder::embed::{EmbedAuthorBuilder, EmbedBuilder, EmbedFooterBuilder, ImageSource};
 
-use super::parse::{cut, is_web_link};
+use super::parse::{cut, web_link};
 use crate::{custom::scrub_value, util::strip_mentions};
 
 /// Discord's limit for a message's text.
@@ -123,11 +123,11 @@ fn safe(text: &str, max: usize) -> String {
 /// The announcement of `item` for a feed drafted as `draft`, in `lang`.
 pub fn render(lang: Lang, draft: &Draft<'_>, item: &Item) -> FeedMessage {
     let account = account_label(draft.kind, draft.source, draft.display_name);
-    let link = item.url.as_deref().filter(|u| is_web_link(u));
+    let link = item.url.as_deref().and_then(web_link);
     let fields = Fields {
         title: safe(&item.title, 256),
         // With Pinchora's card the link is in angle brackets, so Discord does not add a second preview.
-        url: link.map_or_else(
+        url: link.as_ref().map_or_else(
             String::new,
             |u| {
                 if draft.embed { format!("<{u}>") } else { u.to_owned() }
@@ -149,7 +149,9 @@ pub fn render(lang: Lang, draft: &Draft<'_>, item: &Item) -> FeedMessage {
     if let Some(role) = draft.ping_role {
         content = format!("<@&{role}> {content}");
     }
-    let embed = draft.embed.then(|| card(lang, draft.kind, &account, item, link));
+    let embed = draft
+        .embed
+        .then(|| card(lang, draft.kind, &account, item, link.as_deref()));
     FeedMessage {
         content: cut(&content, CONTENT_MAX),
         embed,
@@ -157,7 +159,7 @@ pub fn render(lang: Lang, draft: &Draft<'_>, item: &Item) -> FeedMessage {
 }
 
 fn card(lang: Lang, kind: Kind, account: &str, item: &Item, link: Option<&str>) -> FeedEmbed {
-    let picture = item.image.as_deref().filter(|u| is_web_link(u)).map(str::to_owned);
+    let picture = item.image.as_deref().and_then(web_link);
     // A video or a post is its picture; an article or an episode only illustrated by one.
     let big = matches!(kind, Kind::YouTube | Kind::Bluesky);
     let mut fields = Vec::new();
@@ -168,7 +170,7 @@ fn card(lang: Lang, kind: Kind, account: &str, item: &Item, link: Option<&str>) 
             inline: true,
         });
     }
-    if let Some(audio) = item.audio.as_deref().filter(|u| is_web_link(u)) {
+    if let Some(audio) = item.audio.as_deref().and_then(web_link) {
         fields.push(FeedField {
             name: t!(lang, "feeds.card.listen"),
             value: format!("[{}]({audio})", t!(lang, "feeds.card.audio-file")),
@@ -345,6 +347,19 @@ mod tests {
         let card = message.embed.unwrap();
         assert_eq!((card.url, card.thumbnail), (None, None));
         assert!(card.title.unwrap().chars().count() <= 256);
+    }
+
+    #[test]
+    fn enclosure_cannot_create_a_masked_link() {
+        let mut hostile = item();
+        hostile.audio = Some("https://cdn.example/a)[Official](https://evil.example".into());
+        hostile.url = Some("https://cdn.example/a)[Official](https://evil.example".into());
+        let rendered = render(Lang::En, &draft(true, Some("{url}"), None), &hostile);
+        let card = rendered.embed.unwrap();
+        assert!(!card.fields[1].value.contains(")[Official]("));
+        assert!(!rendered.content.contains(")[Official]("));
+        assert!(card.fields[1].value.contains("%29%5BOfficial%5D%28"));
+        assert_eq!(web_link("https://user:secret@example.com/a"), None);
     }
 
     #[test]
