@@ -472,6 +472,10 @@ pub fn edit_channels(
             "Pick a channel to add, or choose all channels.",
         ));
     };
+    // Taking a channel off a list the module does not use changes nothing (rather than wiping the one it does).
+    if remove && now.mode != mode {
+        return Ok((now.mode, now.channels.clone()));
+    }
     // A list in another mode means something else: switching the mode starts over.
     let mut list = if now.mode == mode {
         now.channels.clone()
@@ -682,10 +686,14 @@ mod tests {
             edit_channels(&now, ChannelMode::Only, Some(7), true).unwrap(),
             (ChannelMode::Only, vec![1, 2])
         );
-        // Another mode starts a list of its own.
+        // Another mode starts a list of its own; taking a channel off it leaves the one in use alone.
         assert_eq!(
             edit_channels(&now, ChannelMode::Except, Some(9), false).unwrap(),
             (ChannelMode::Except, vec![9])
+        );
+        assert_eq!(
+            edit_channels(&now, ChannelMode::Except, Some(1), true).unwrap(),
+            (ChannelMode::Only, vec![1, 2])
         );
         // The last channel off, and all channels, both mean everywhere.
         let last = ModuleRule {
