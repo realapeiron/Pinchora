@@ -156,7 +156,9 @@ async fn shop_panel(app: &App, user: u64, note: &str) -> anyhow::Result<Interact
     .await?;
     let description = if note.is_empty() {
         "Rods are bought once; better ones give you more time to Reel! and better odds at rare fish. \
-         Bait comes in packs and is used up one a cast, instead of plain bait."
+         Bait comes in packs and is used up one a cast, instead of plain bait. Silver Lure and Tide Crumbs are \
+         for hunting rare and signature fish, not for income: they lose shells at the shallow spots, and \
+         Tide Crumbs cuts the wage at the Abyss."
             .to_owned()
     } else {
         note.to_owned()

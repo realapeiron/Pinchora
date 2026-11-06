@@ -17,7 +17,10 @@ use pinchora_core::{
     modules::Module,
 };
 use pinchora_db::GuildSettings;
-use tokio::{sync::Semaphore, task::JoinSet};
+use tokio::{
+    sync::{OwnedSemaphorePermit, Semaphore},
+    task::JoinSet,
+};
 use twilight_model::{
     guild::{Guild, Member},
     id::Id,
@@ -26,6 +29,7 @@ use twilight_model::{
 
 use crate::{
     App,
+    app::ChannelPlace,
     leveling::{self, LevelUp},
 };
 
@@ -53,6 +57,19 @@ const KEEP_WEEKS: i64 = 6;
 /// cannot be asked.
 const AFK_FRESH: Duration = Duration::from_secs(600);
 const AFK_KEPT: Duration = Duration::from_secs(7 * 86_400);
+/// How long a member who left voice stays written down as having left. A rebuild from the voice states of an
+/// older GUILD_CREATE must not bring them back, and it is merged within seconds of the snapshot, so this
+/// only has to outlast the longest queue of rebuilds; the minute tick then sweeps the note away.
+const LEFT_KEPT: i64 = 15 * 60;
+/// A snapshot older than this is not used any more: the notes of leaves it could be wrong about may be gone
+/// (see [`LEFT_KEPT`]), and the next voice event of the server puts things right anyway.
+const MAX_SNAPSHOT_AGE: i64 = LEFT_KEPT / 3;
+/// How long a server that switched voice XP off keeps refusing to write who is in voice, in Redis, where
+/// every pod sees it at once. The settings a pod holds are at most a minute old, so this is plenty.
+const OFF_KEPT: Duration = Duration::from_secs(10 * 60);
+/// How many rounds of paying a ticker runs at once. A round that is still going when the next minute comes
+/// is not run over by it: that minute is skipped, so a slow database is never given a pile of rounds.
+const ROUNDS_AT_ONCE: usize = 1;
 
 fn members_key(guild: u64) -> String {
     format!("vc:{guild}")
@@ -70,6 +87,21 @@ struct Record {
 }
 
 impl Record {
+    /// A member who left voice at `seen`: channel 0, which nobody is paid in.
+    fn left(seen: i64) -> Self {
+        Self {
+            channel: 0,
+            muted: false,
+            deafened: false,
+            seen,
+            roles: Vec::new(),
+        }
+    }
+
+    fn has_left(&self) -> bool {
+        self.channel == 0
+    }
+
     /// `channel|flags|seen|role,role` with flags 1 for muted and 2 for deafened.
     fn encode(&self) -> String {
         let flags = u8::from(self.muted) | (u8::from(self.deafened) << 1);
@@ -111,13 +143,42 @@ pub(crate) async fn track(app: &App, guild: u64, state: &VoiceState, settings: &
 }
 
 async fn try_track(app: &App, guild: u64, state: &VoiceState) -> anyhow::Result<()> {
+    // The settings this pod holds can be a minute old. A server that just switched voice XP off said so in
+    // Redis, so nothing is written for it here after that, whatever the settings say.
+    if is_switched_off(app, guild).await? {
+        return Ok(());
+    }
     let user = state.user_id.get().to_string();
     let key = members_key(guild);
-    let Some(record) = record_of(state, state.member.as_ref(), app.now().timestamp()) else {
-        return app.cache.map_remove(&key, &user).await;
+    let now = app.now().timestamp();
+    let Some(record) = record_of(state, state.member.as_ref(), now) else {
+        // A leave is written down rather than erased: a rebuild that started from an older GUILD_CREATE and
+        // is still waiting for its settings would otherwise put the member back for a day.
+        return app.cache.map_set(&key, &user, &Record::left(now).encode(), KEEP).await;
     };
     app.cache.map_set(&key, &user, &record.encode(), KEEP).await?;
     app.cache.set_add(GUILDS, &guild.to_string()).await
+}
+
+fn off_key(guild: u64) -> String {
+    format!("vc-off:{guild}")
+}
+
+/// Whether the server switched voice XP off recently (see [`switched_off`]).
+async fn is_switched_off(app: &App, guild: u64) -> anyhow::Result<bool> {
+    Ok(app.cache.get(&off_key(guild)).await?.is_some())
+}
+
+/// A server turned voice XP off: nobody in it is remembered, and for a few minutes no pod writes anyone down
+/// for it, even one whose settings still say voice XP is on.
+pub async fn switched_off(app: &App, guild: u64) -> anyhow::Result<()> {
+    app.cache.put(&off_key(guild), "1", OFF_KEPT).await?;
+    forget(app, guild).await
+}
+
+/// A server turned voice XP on again: writes are taken again.
+pub async fn switched_on(app: &App, guild: u64) -> anyhow::Result<()> {
+    app.cache.forget(&off_key(guild)).await
 }
 
 /// What `state` says about a human sitting in a voice channel; `None` for a bot or a member in none.
@@ -152,18 +213,83 @@ fn snapshot(states: &[VoiceState], members: &[Member], seen: i64) -> Vec<(u64, R
         .collect()
 }
 
-/// Replaces who is remembered in `guild` with the voice states of its GUILD_CREATE. Servers with voice
-/// XP off, or with nobody in voice, are simply forgotten: whatever was remembered from before is wrong.
-pub(crate) async fn rebuild(app: &App, guild: &Guild) -> anyhow::Result<()> {
-    let id = guild.id.get();
-    let records = snapshot(&guild.voice_states, &guild.members, app.now().timestamp());
-    if records.is_empty() || !app.guild_settings(id).await?.voice_xp_enabled {
+/// What the rebuild of a server keeps of its GUILD_CREATE: who is in voice (with the roles and the bot flag
+/// their member entries carry), the AFK channel, where the channels and threads sit, and when the snapshot
+/// was taken. It is taken before anything is awaited, so the guild itself (members, roles, emojis) is dropped
+/// at once and whatever waits for its turn to be rebuilt holds only this.
+#[derive(Debug)]
+pub struct VoiceSnapshot {
+    guild: u64,
+    seen: i64,
+    records: Vec<(u64, Record)>,
+    afk: Option<u64>,
+    places: Vec<(u64, ChannelPlace)>,
+}
+
+impl VoiceSnapshot {
+    /// What the rebuild needs of `guild`, as of `seen` (Unix seconds).
+    pub(crate) fn of(guild: &Guild, seen: i64) -> Self {
+        Self {
+            guild: guild.id.get(),
+            seen,
+            records: snapshot(&guild.voice_states, &guild.members, seen),
+            afk: guild.afk_channel_id.map(|c| c.get()),
+            places: guild
+                .channels
+                .iter()
+                .chain(&guild.threads)
+                .map(|channel| {
+                    (
+                        channel.id.get(),
+                        ChannelPlace {
+                            parent: channel.parent_id.map(|p| p.get()),
+                            thread: channel.kind.is_thread(),
+                        },
+                    )
+                })
+                .collect(),
+        }
+    }
+
+    /// The server this is about.
+    pub fn guild(&self) -> u64 {
+        self.guild
+    }
+}
+
+/// Puts who is remembered in a server right with the voice states of its GUILD_CREATE, which stand for the
+/// moment of the snapshot: whoever a voice event wrote down since (joined, moved, or left) stays as that
+/// event left it, so a rebuild that waited for its settings never undoes an event that came in meanwhile.
+/// Servers with voice XP off, or with nobody in voice, end up with nobody remembered.
+pub async fn rebuild(app: &App, snapshot: VoiceSnapshot) -> anyhow::Result<()> {
+    let VoiceSnapshot {
+        guild: id,
+        seen,
+        records,
+        afk,
+        places,
+    } = snapshot;
+    // Where the channels sit is learned either way: it costs no round trip, and saves many.
+    app.prefill_channel_places(places).await;
+    if app.now().timestamp() - seen > MAX_SNAPSHOT_AGE {
+        tracing::debug!(
+            guild = id,
+            "voice snapshot too old to use; the next voice event puts things right"
+        );
+        return Ok(());
+    }
+    if !app.guild_settings(id).await?.voice_xp_enabled || is_switched_off(app, id).await? {
         return forget(app, id).await;
     }
+    let key = members_key(id);
     let entries: Vec<(String, String)> = records.iter().map(|(user, r)| (user.to_string(), r.encode())).collect();
-    app.cache.map_replace(&members_key(id), &entries, KEEP).await?;
-    app.cache.set_add(GUILDS, &id.to_string()).await?;
-    remember_afk(app, id, guild.afk_channel_id.map(|c| c.get())).await;
+    app.cache.map_merge(&key, &entries, seen, KEEP).await?;
+    if entries.is_empty() {
+        forget_guild(app, id, &key).await?;
+    } else {
+        app.cache.set_add(GUILDS, &id.to_string()).await?;
+    }
+    remember_afk(app, id, afk).await;
     tracing::debug!(guild = id, members = entries.len(), "voice presence rebuilt");
     Ok(())
 }
@@ -269,6 +395,11 @@ async fn pay_minute(app: &Arc<App>, minute: i64) -> anyhow::Result<usize> {
 async fn pay_guild(app: &Arc<App>, guild: u64) -> anyhow::Result<usize> {
     let now = app.now();
     let key = members_key(guild);
+    // The switch in Redis is as fresh as the toggle itself; the view below can be minutes old.
+    if is_switched_off(app, guild).await? {
+        forget(app, guild).await?;
+        return Ok(0);
+    }
     let mut view = app.voice_guild(guild).await?;
     if !view.settings.voice_xp_enabled {
         // The view can lag a change by minutes: ask again before giving up on the guild.
@@ -289,14 +420,16 @@ async fn pay_guild(app: &Arc<App>, guild: u64) -> anyhow::Result<usize> {
     }
     let mut here: Vec<(u64, Record)> = Vec::with_capacity(stored.len());
     for (field, value) in stored {
-        let record = field
-            .parse::<u64>()
-            .ok()
-            .zip(Record::decode(&value))
-            .filter(|(_, r)| now.timestamp() - r.seen <= MAX_AGE_SECS);
+        let record = field.parse::<u64>().ok().zip(Record::decode(&value));
         match record {
-            Some(entry) => here.push(entry),
-            None => app.cache.map_remove(&key, &field).await?,
+            // A member who left stays written down for a while (see `LEFT_KEPT`), then the note goes.
+            Some((_, r)) if r.has_left() => {
+                if now.timestamp() - r.seen > LEFT_KEPT {
+                    app.cache.map_remove(&key, &field).await?;
+                }
+            }
+            Some(entry) if now.timestamp() - entry.1.seen <= MAX_AGE_SECS => here.push(entry),
+            _ => app.cache.map_remove(&key, &field).await?,
         }
     }
     if here.is_empty() {
@@ -375,7 +508,14 @@ async fn pay_guild(app: &Arc<App>, guild: u64) -> anyhow::Result<usize> {
 /// removal: that member would otherwise sit unpaid until the next event in the server.
 async fn forget_guild(app: &App, guild: u64, key: &str) -> anyhow::Result<()> {
     app.cache.set_remove(GUILDS, &guild.to_string()).await?;
-    if !app.cache.map_all(key).await?.is_empty() {
+    // Only a member who is in voice counts: the notes of those who left are no reason to keep ticking.
+    let someone = app
+        .cache
+        .map_all(key)
+        .await?
+        .iter()
+        .any(|(_, value)| Record::decode(value).is_some_and(|r| !r.has_left()));
+    if someone {
         app.cache.set_add(GUILDS, &guild.to_string()).await?;
     }
     Ok(())
@@ -436,26 +576,46 @@ fn due_minutes(next: i64, now: i64) -> std::ops::RangeInclusive<i64> {
     next.max(now - MAX_CATCH_UP)..=now
 }
 
+/// Starts a round of paying if fewer than [`ROUNDS_AT_ONCE`] are running; the permit is the round's, and
+/// ends it when dropped.
+fn start_round(rounds: &Arc<Semaphore>) -> Option<OwnedSemaphorePermit> {
+    rounds.clone().try_acquire_owned().ok()
+}
+
 /// Runs [`tick`] for the life of the process, and prunes old weekly XP and weekly catches once an
-/// hour. Each minute is paid in a task of its own, so a slow round never holds up the next one, and a
-/// round that was late catches up on the minutes it missed.
+/// hour. Paying runs in a task of its own, so a slow round never holds up the clock, and a ticker that
+/// woke late catches up on the minutes it missed, one after the other. Rounds never stack: when the last
+/// one is still paying as a minute comes, that minute is skipped.
 pub fn spawn_ticker(app: Arc<App>) {
     tokio::spawn(async move {
         let mut wake = tokio::time::interval(WAKE);
         wake.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+        let rounds = Arc::new(Semaphore::new(ROUNDS_AT_ONCE));
         let mut next = app.now().timestamp().div_euclid(60);
         let mut pruned_hour = None;
         loop {
             wake.tick().await;
             let now = app.now().timestamp();
             let minute = now.div_euclid(60);
-            for due in due_minutes(next, minute) {
-                let paying = app.clone();
-                app.spawn(async move {
-                    if let Err(error) = pay_minute(&paying, due).await {
-                        tracing::warn!(%error, "voice XP tick failed");
-                    }
-                });
+            let due: Vec<i64> = due_minutes(next, minute).collect();
+            if !due.is_empty() {
+                if let Some(round) = start_round(&rounds) {
+                    let paying = app.clone();
+                    app.spawn(async move {
+                        for minute in due {
+                            if let Err(error) = pay_minute(&paying, minute).await {
+                                tracing::warn!(%error, "voice XP tick failed");
+                            }
+                        }
+                        drop(round);
+                    });
+                } else {
+                    tracing::warn!(
+                        minutes = due.len(),
+                        "voice XP minute skipped: the last round is still paying"
+                    );
+                    metrics::counter!("pinchora_voice_rounds_skipped_total").increment(due.len() as u64);
+                }
             }
             next = next.max(minute + 1);
             let hour = now.div_euclid(3600);
@@ -585,6 +745,88 @@ mod tests {
             due_minutes(100, 500).collect::<Vec<_>>(),
             vec![497, 498, 499, 500],
             "a long stall pays only the latest few"
+        );
+    }
+
+    #[test]
+    fn a_member_who_left_is_a_record_nobody_is_paid_by() {
+        let left = Record::left(1_700_000_000);
+        assert!(left.has_left() && !left.muted && !left.deafened && left.roles.is_empty());
+        assert_eq!(Record::decode(&left.encode()), Some(left));
+        assert_eq!(Record::left(5).encode(), "0|0|5|");
+        let here = Record {
+            channel: 7,
+            muted: false,
+            deafened: false,
+            seen: 1,
+            roles: Vec::new(),
+        };
+        assert!(!here.has_left());
+    }
+
+    #[test]
+    fn rounds_do_not_stack() {
+        let rounds = Arc::new(Semaphore::new(ROUNDS_AT_ONCE));
+        let mut running = Vec::new();
+        for _ in 0..ROUNDS_AT_ONCE {
+            running.push(start_round(&rounds).expect("a round may start"));
+        }
+        assert!(
+            start_round(&rounds).is_none(),
+            "the next minute is skipped while they pay"
+        );
+        running.pop();
+        assert!(start_round(&rounds).is_some(), "once one is done another may start");
+    }
+
+    #[test]
+    fn a_snapshot_keeps_only_what_the_rebuild_needs() {
+        let guild: Guild = serde_json::from_str(
+            r#"{
+                "id": "5", "name": "g", "afk_channel_id": "99", "afk_timeout": 300, "application_id": null,
+                "banner": null, "default_message_notifications": 0, "description": null,
+                "discovery_splash": null, "emojis": [], "explicit_content_filter": 0, "features": [],
+                "icon": null, "large": false, "mfa_level": 0, "nsfw_level": 0, "owner_id": "1",
+                "preferred_locale": "en-US", "premium_progress_bar_enabled": false,
+                "public_updates_channel_id": null, "roles": [], "rules_channel_id": null, "splash": null,
+                "system_channel_flags": 0, "system_channel_id": null, "vanity_url_code": null,
+                "verification_level": 0,
+                "channels": [
+                    { "id": "10", "type": 2, "name": "lounge", "parent_id": "11" },
+                    { "id": "11", "type": 4, "name": "Voice" }
+                ],
+                "threads": [
+                    { "id": "12", "type": 11, "name": "chat", "parent_id": "13", "guild_id": "5" }
+                ],
+                "members": [
+                    { "user": { "id": "1", "username": "a", "discriminator": "0", "avatar": null },
+                      "roles": ["7"], "joined_at": "2024-01-01T00:00:00.000000+00:00", "deaf": false,
+                      "mute": false, "flags": 0 },
+                    { "user": { "id": "2", "username": "b", "discriminator": "0", "avatar": null },
+                      "roles": [], "joined_at": "2024-01-01T00:00:00.000000+00:00", "deaf": false,
+                      "mute": false, "flags": 0 }
+                ],
+                "voice_states": [
+                    { "guild_id": "5", "channel_id": "10", "user_id": "1", "session_id": "s", "deaf": false,
+                      "mute": false, "self_deaf": false, "self_mute": true, "self_video": false,
+                      "suppress": false, "request_to_speak_timestamp": null }
+                ]
+            }"#,
+        )
+        .expect("guild JSON");
+        let snapshot = VoiceSnapshot::of(&guild, 77);
+        assert_eq!((snapshot.guild(), snapshot.seen, snapshot.afk), (5, 77, Some(99)));
+        let users: Vec<u64> = snapshot.records.iter().map(|(user, _)| *user).collect();
+        assert_eq!(users, vec![1], "only the member in voice is kept, with their roles");
+        assert_eq!(snapshot.records[0].1.roles, vec![7]);
+        assert!(snapshot.records[0].1.muted);
+        let mut places = snapshot.places.clone();
+        places.sort_by_key(|(id, _)| *id);
+        let seen: Vec<(u64, Option<u64>, bool)> = places.iter().map(|(id, p)| (*id, p.parent, p.thread)).collect();
+        assert_eq!(
+            seen,
+            vec![(10, Some(11), false), (11, None, false), (12, Some(13), true)],
+            "channels and threads, where they sit"
         );
     }
 

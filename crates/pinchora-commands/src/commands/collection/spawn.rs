@@ -16,7 +16,8 @@ const HOURS: Duration = Duration::from_secs(6 * 3600);
 /// counter alone; a spawn needs [`SPAWN_MESSAGES`] counted messages from at least [`SPAWN_CHATTERS`]
 /// people, and a server gets at most one every [`SPAWN_COOLDOWN_SECS`]. The counters live in Redis and the
 /// last step is an atomic cooldown, so several pods agree on who spawns. A spawn Discord would not take (the
-/// bot cannot post in that channel) gives the cooldown back, so it does not cost the server its next one.
+/// bot cannot post in that channel) gives the cooldown back, so it does not cost the server its next one, and
+/// a channel that already has an open drop gets no second one.
 pub(crate) async fn on_chat(app: &Arc<App>, guild: u64, user: u64, channel: u64) -> anyhow::Result<()> {
     let settings = settings(app, guild).await?;
     if !settings.enabled || settings.channel_id.is_some_and(|set| set as u64 != channel) {
@@ -42,6 +43,11 @@ pub(crate) async fn on_chat(app: &Arc<App>, guild: u64, user: u64, channel: u64)
     // Once the counter is past its threshold every counted message gets here: only the size is asked of
     // the set of chatters, never its members.
     if cache.map_len(&format!("cdwho:{guild}:{cycle}")).await? < SPAWN_CHATTERS {
+        return Ok(());
+    }
+    // One open drop per channel: while something still floats here (a hand-called `/critterdrop`, an earlier
+    // spawn) nothing new lands on top of it, and the counts wait for it to be taken or to drift off.
+    if app.db.drop_waiting_in(channel, app.now()).await? {
         return Ok(());
     }
     let cooldown = format!("cdspawn:{guild}");

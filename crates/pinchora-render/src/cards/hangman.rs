@@ -3,7 +3,7 @@ use std::fmt::Write;
 use super::{PIXEL, text};
 use crate::{
     Theme,
-    svg::{SHELL, background, escape, panel, sprite},
+    svg::{SHELL, background_plain, escape, panel, sprite},
 };
 
 /// A letter of the word on the card.
@@ -174,7 +174,8 @@ impl HangmanCard<'_> {
             s,
             r#"<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}">"#
         );
-        background(&mut s, w, h, &t.bg_top, &t.bg_bottom);
+        // No sparkles: one of the fixed ones sits right before "LIVES" and reads as a full stop.
+        background_plain(&mut s, w, h, &t.bg_top, &t.bg_bottom);
 
         // The picture: runs of one colour are one rectangle.
         panel(&mut s, 24.0, 24.0, 316.0, 196.0, 8.0, &t.panel, &t.gold);
@@ -320,6 +321,17 @@ mod tests {
             status: "Pick a letter",
             theme: Theme::reef(),
         }
+    }
+
+    #[test]
+    fn no_sparkle_sits_in_front_of_the_lives_label() {
+        let lines = vec![vec![HangmanLetter::Hidden; 5]];
+        let svg = card(&lines, 0).to_svg();
+        assert!(
+            !svg.contains(r##"width="4" height="4" fill="#ffffff" fill-opacity="0.35""##),
+            "the card draws no background sparkles, one used to sit right before LIVES"
+        );
+        assert!(svg.contains(">LIVES<"));
     }
 
     #[test]

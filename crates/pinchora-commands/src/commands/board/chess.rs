@@ -344,7 +344,14 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[S
 /// from a board that has moved on (which gets the current one).
 async fn running(cx: &Cx, id: i64, plies: Option<usize>) -> anyhow::Result<Option<(GameSession, [String; 2], State)>> {
     let me = cx.author()?.id.get();
-    let Some(session) = cx.app.db.game(id).await?.filter(|s| s.is_active()) else {
+    // Another kind's id is not this game: its buttons pass another module's switch.
+    let Some(session) = cx
+        .app
+        .db
+        .game(id)
+        .await?
+        .filter(|s| s.is_active() && s.kind == DuelKind::Chess.key())
+    else {
         cx.reply_ephemeral("This game is over.").await?;
         return Ok(None);
     };

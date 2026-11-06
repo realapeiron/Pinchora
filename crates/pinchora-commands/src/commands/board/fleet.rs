@@ -382,7 +382,14 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[S
 /// A running game the clicker plays in. `None` after answering the click when there is nothing to do.
 async fn running(cx: &Cx, id: i64) -> anyhow::Result<Option<(GameSession, [String; 2], State, usize)>> {
     let me = cx.author()?.id.get();
-    let Some(session) = cx.app.db.game(id).await?.filter(|s| s.is_active()) else {
+    // Another kind's id is not this game: its buttons pass another module's switch.
+    let Some(session) = cx
+        .app
+        .db
+        .game(id)
+        .await?
+        .filter(|s| s.is_active() && s.kind == DuelKind::SeaFleet.key())
+    else {
         cx.reply_ephemeral("This game is over.").await?;
         return Ok(None);
     };

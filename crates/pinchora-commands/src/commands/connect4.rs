@@ -206,7 +206,14 @@ pub(crate) async fn on_button(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Res
 
 async fn on_move(cx: &Cx, id: i64, col: usize) -> anyhow::Result<()> {
     let me = cx.author()?.id.get();
-    let Some(session) = cx.app.db.game(id).await?.filter(|s| s.is_active()) else {
+    // Another kind's id is not this game: its buttons pass another module's switch.
+    let Some(session) = cx
+        .app
+        .db
+        .game(id)
+        .await?
+        .filter(|s| s.is_active() && s.kind == Kind::Connect4.key())
+    else {
         return cx.reply_ephemeral("This game is over.").await;
     };
     if !session.has_player(me) {

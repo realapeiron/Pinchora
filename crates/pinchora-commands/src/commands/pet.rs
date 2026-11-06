@@ -470,9 +470,13 @@ pub(crate) async fn on_care(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
         .await?;
     if !saved {
         // The pet changed between the read and the write (a trip started, a claim paid, another
-        // click got in first); nothing was cared for, so the food is refunded.
+        // click got in first); nothing was cared for, so the food is refunded and the action's
+        // cooldown, started above, does not count either.
         if action == Care::Feed {
             cx.app.db.earn_shells(user, FOOD_PRICE, "pet_food_refund").await?;
+        }
+        if let Err(error) = cx.app.cache.release_cooldown(&key).await {
+            tracing::debug!(%error, pet = pet_id, "care cooldown not given back");
         }
         let left = cx
             .app

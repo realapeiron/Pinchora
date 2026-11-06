@@ -120,6 +120,8 @@ async fn deliver(cx: &Cx, kind: Interaction, from: u64, to: u64) -> anyhow::Resu
         kind.verb(),
         mention(to)
     ));
+    // The message names both players, but only the one it is for is pinged.
+    data.allowed_mentions = social::ping_only(to);
     Ok(data)
 }
 

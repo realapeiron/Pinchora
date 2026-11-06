@@ -98,7 +98,7 @@
       "pack": 5,
       "price": 140,
       "boost": { "kind": "rarity", "rarity": "rare", "factor": 2.5 },
-      "blurb": "One flash of silver that rare fish cannot ignore."
+      "blurb": "Rare fish can't resist it. For hunting, not income: it loses shells at shallow spots."
     },
     {
       "id": "tide_crumbs",
@@ -106,7 +106,7 @@
       "pack": 5,
       "price": 120,
       "boost": { "kind": "specials", "factor": 3.0 },
-      "blurb": "A sprinkle of treats for the spot's own favourites."
+      "blurb": "Treats for the spot's signature fish. For hunting, not income: it cuts your wage."
     }
   ],
   "milestones": [

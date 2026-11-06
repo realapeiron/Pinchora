@@ -3,17 +3,55 @@
 
 use std::str::Split;
 
+use std::time::Duration;
+
 use pinchora_game::{Content, character::Character};
 use pinchora_render::character::{Channel, Colors, Paint};
 use twilight_model::{
     channel::message::{
-        Component,
+        AllowedMentions, Component,
         component::{ActionRow, Button, ButtonStyle},
     },
+    id::Id,
     user::User,
 };
 
 use crate::{App, Cx, util::display_name};
+
+/// How long one player must wait before asking the same player again (a friend or partner request).
+const ASK_AGAIN: Duration = Duration::from_secs(60);
+
+/// Allowed mentions that ping `user` and nobody else: what a message that names two players may do.
+pub(super) fn ping_only(user: u64) -> Option<AllowedMentions> {
+    Some(AllowedMentions {
+        users: vec![Id::new(user.max(1))],
+        ..Default::default()
+    })
+}
+
+/// Starts the pair's cooldown for `kind` of request, or tells `cx` to wait and returns true. The request
+/// pings the player it is for, so asking again and again would be a way to spam them.
+pub(super) async fn asked_too_soon(cx: &Cx, kind: &str, from: u64, to: u64) -> anyhow::Result<bool> {
+    let left = cx
+        .app
+        .cache
+        .try_cooldown(&format!("ask:{kind}:{from}:{to}"), ASK_AGAIN)
+        .await
+        .unwrap_or_else(|error| {
+            tracing::warn!(%error, "request cooldown not checked");
+            None
+        });
+    let Some(left) = left else {
+        return Ok(false);
+    };
+    cx.reply_ephemeral(format!(
+        "You just asked {}. You can ask again in {} seconds.",
+        crate::util::mention(to),
+        left.as_secs() + 1
+    ))
+    .await?;
+    Ok(true)
+}
 
 /// The name kept for lists and cards: the global name, or the username; never a server nickname,
 /// which means nothing in another server.

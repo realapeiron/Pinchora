@@ -94,6 +94,9 @@ impl FriendsCommand {
                         ))
                         .await;
                 }
+                if social::asked_too_soon(cx, "friend", me, to).await? {
+                    return Ok(());
+                }
                 social::remember(cx, other).await?;
                 let request = Request {
                     from: me,
@@ -114,6 +117,7 @@ impl FriendsCommand {
                     content: Some(mention(to)),
                     embeds: Some(vec![embed]),
                     components: Some(vec![request.buttons("fd", "Accept")]),
+                    allowed_mentions: social::ping_only(to),
                     ..Default::default()
                 })
                 .await
@@ -285,7 +289,14 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, value: Opti
             let Some(host) = value.and_then(|v| v.parse::<u64>().ok()) else {
                 return cx.reply_ephemeral("Pick a friend to visit.").await;
             };
-            let name = cx.app.db.remembered_name(host).await?.unwrap_or_default();
+            // Somebody nobody remembered still gets a name: "{name} has locked their house" must not start with a space.
+            let name = cx
+                .app
+                .db
+                .remembered_name(host)
+                .await?
+                .filter(|n| !n.is_empty())
+                .unwrap_or_else(|| "A friend".to_owned());
             let author = cx.author()?.clone();
             house::visit(cx, &author, host, name, room.clamp(0, 5)).await
         }

@@ -32,7 +32,7 @@ pub use cx::Cx;
 pub use defer::Deferral;
 pub use events::{
     on_ban_add, on_ban_remove, on_guild_create, on_guild_delete, on_member_add, on_member_remove, on_member_update,
-    on_message, on_voice_state_update,
+    on_message, on_voice_state_update, voice_snapshot,
 };
 pub use house_view::{
     RoomData, catalog as house_catalog, character_png, render_png as render_room_png, room_name as house_room_name,
@@ -43,7 +43,9 @@ pub use responder::Responder;
 pub use server_events::{spawn_ticker as spawn_events_ticker, tick as events_tick};
 pub use util::fill;
 pub use voice_xp::{
-    forget as forget_voice_presence, prune as voice_prune, spawn_ticker as spawn_voice_ticker, tick as voice_tick,
+    VoiceSnapshot, forget as forget_voice_presence, prune as voice_prune, rebuild as rebuild_voice,
+    spawn_ticker as spawn_voice_ticker, switched_off as voice_switched_off, switched_on as voice_switched_on,
+    tick as voice_tick,
 };
 
 use std::{sync::Arc, time::Instant};

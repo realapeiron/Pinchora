@@ -391,9 +391,10 @@ impl Kind {
         }
     }
 
-    /// Whether the player who runs out of time loses a wagered game. The older duels give both bets back.
+    /// Whether the player who runs out of time loses a wagered game (the other takes the pot), so letting the
+    /// clock run cannot cancel a bet. Share or Grab settles its own no-shows.
     fn forfeits(self) -> bool {
-        matches!(self, Self::SeaFleet | Self::Checkers | Self::Chess)
+        !matches!(self, Self::ShareGrab)
     }
 
     /// How long a player has for the first turn or pick once the challenge is accepted.
@@ -487,13 +488,8 @@ async fn challenge(cx: &Cx, kind: Kind, opponent: &ResolvedUser, rounds: u8, bet
             "The sea puts **{}** shells in the pool: share it, or grab it all!",
             pinchora_game::party::share::POOL
         ),
-        (kind, true) if kind.forfeits() => format!(
-            "💰 Wager: **{}** shells each. The winner takes **{}**; a draw or a decline gives the shells back, and a player who runs out of time forfeits.",
-            thousands(bet),
-            thousands(bet * 2)
-        ),
         (_, true) => format!(
-            "💰 Wager: **{}** shells each. The winner takes **{}**; a draw, a decline or a no-show gives the shells back.",
+            "💰 Wager: **{}** shells each. The winner takes **{}**; a draw or a decline gives the shells back, and a player who runs out of time forfeits.",
             thousands(bet),
             thousands(bet * 2)
         ),

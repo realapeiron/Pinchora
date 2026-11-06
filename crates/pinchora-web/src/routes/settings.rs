@@ -228,13 +228,19 @@ pub async fn patch(
             None => return Err(error.into()),
         },
     };
-    // Like `/config xp voice enabled:false`: with nobody remembered in voice, no pod pays anyone,
-    // even one whose cached settings still say voice XP is on.
+    // Like `/config xp voice enabled:false`: with nobody remembered in voice, and writes refused until it is
+    // switched on again, no pod pays anyone, even one whose cached settings still say voice XP is on.
     if current.voice_xp_enabled
         && !updated.voice_xp_enabled
-        && let Err(error) = pinchora_commands::forget_voice_presence(&state.app, guild).await
+        && let Err(error) = pinchora_commands::voice_switched_off(&state.app, guild).await
     {
         tracing::warn!(guild, %error, "voice presence not forgotten");
+    }
+    if !current.voice_xp_enabled
+        && updated.voice_xp_enabled
+        && let Err(error) = pinchora_commands::voice_switched_on(&state.app, guild).await
+    {
+        tracing::warn!(guild, %error, "voice switch not cleared");
     }
     audit::finish(
         &state,

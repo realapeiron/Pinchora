@@ -196,14 +196,7 @@ pub fn module_diff(before: &ModuleRule, after: &ModuleRule) -> (Value, Value) {
 /// Makes this pod and every other forget the cached rules of a server, so a change counts from the
 /// next command or message. A failed announcement is only logged: the caches run out within a minute.
 pub async fn announce_guild_change(app: &App, guild: u64) {
-    app.forget_guild_settings(guild).await;
-    if let Err(error) = app
-        .cache
-        .publish_invalidation(pinchora_cache::Invalidation::Guild(guild))
-        .await
-    {
-        tracing::warn!(%error, guild, "invalidation not published; the bot catches up within a minute");
-    }
+    app.announce_guild_change(guild).await;
 }
 
 /// The state of one module.

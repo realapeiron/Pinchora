@@ -332,6 +332,7 @@ pub fn sleeping_pet(sprite: &RgbaImage, left: bool) -> RgbaImage {
             body = image::imageops::flip_horizontal(&body);
         }
     }
+    close_eyes(&mut body);
     for px in body.pixels_mut().filter(|px| px[3] > 0) {
         for channel in &mut px.0[..3] {
             *channel = (u16::from(*channel) * 7 / 8) as u8;
@@ -345,12 +346,76 @@ pub fn sleeping_pet(sprite: &RgbaImage, left: bool) -> RgbaImage {
         i64::from((width - body.width()) / 2),
         i64::from(ZZ_ROOM),
     );
-    // The small one low and to the left, the big one high and to the right.
+    // The small one low by the head, the big one high and away from it: the snore leaves the head, so it
+    // is mirrored with the way the pet lies. The art faces left, which turning an upright pet to the left
+    // keeps (its top is its head) and mirroring a wide one to the left undoes.
+    let head_left = upright == left;
     let middle = width / 2;
-    for (glyph, (x, y)) in ZZ.iter().zip([(middle.saturating_sub(9), 10), (middle + 1, 1)]) {
+    let places = if head_left {
+        [(middle.saturating_sub(9), 10), (middle + 1, 1)]
+    } else {
+        [(middle + 4, 10), (middle.saturating_sub(8), 1)]
+    };
+    for (glyph, (x, y)) in ZZ.iter().zip(places) {
         draw_glyph(&mut out, glyph, x, y);
     }
     out
+}
+
+/// The most pixels an eye can have: darker, bigger shapes inside a pet are markings.
+const EYE_MAX: usize = 12;
+
+/// Closes the eyes of a sleeper: an eye is a small dark patch with body all around it (the dark pixels
+/// that touch the outline or the edge of the picture are the outline), and a closed one is only its
+/// bottom row, the rest painted over with the body beside it. A patch one row high is shut already.
+fn close_eyes(img: &mut RgbaImage) {
+    let (w, h) = (img.width() as i32, img.height() as i32);
+    let dark = |img: &RgbaImage, x: i32, y: i32| {
+        x >= 0 && y >= 0 && x < w && y < h && {
+            let px = img.get_pixel(x as u32, y as u32);
+            px[3] == 255 && px[0].max(px[1]).max(px[2]) < 80
+        }
+    };
+    let mut seen = vec![false; (w * h) as usize];
+    for y in 0..h {
+        for x in 0..w {
+            if seen[(y * w + x) as usize] || !dark(img, x, y) {
+                continue;
+            }
+            // The patch this pixel is in, and whether it stays clear of the outline.
+            let (mut patch, mut stack, mut inside) = (Vec::new(), vec![(x, y)], true);
+            seen[(y * w + x) as usize] = true;
+            while let Some((px, py)) = stack.pop() {
+                patch.push((px, py));
+                for (dx, dy) in (-1..=1).flat_map(|dx| (-1..=1).map(move |dy| (dx, dy))) {
+                    let (nx, ny) = (px + dx, py + dy);
+                    if nx < 0 || ny < 0 || nx >= w || ny >= h || img.get_pixel(nx as u32, ny as u32)[3] < 255 {
+                        inside = false;
+                    } else if dark(img, nx, ny) && !seen[(ny * w + nx) as usize] {
+                        seen[(ny * w + nx) as usize] = true;
+                        stack.push((nx, ny));
+                    }
+                }
+            }
+            let (top, bottom) = (
+                patch.iter().map(|p| p.1).min().unwrap_or(0),
+                patch.iter().map(|p| p.1).max().unwrap_or(0),
+            );
+            if !inside || patch.len() > EYE_MAX || top == bottom {
+                continue;
+            }
+            for (px, py) in patch.into_iter().filter(|&(_, py)| py < bottom) {
+                // The body above the patch, or failing that beside it.
+                let fill = [(px, top - 1), (px - 1, py), (px + 1, py)]
+                    .into_iter()
+                    .find(|&(fx, fy)| fx >= 0 && fy >= 0 && fx < w && fy < h && !dark(img, fx, fy))
+                    .map(|(fx, fy)| *img.get_pixel(fx as u32, fy as u32));
+                if let Some(color) = fill {
+                    img.put_pixel(px as u32, py as u32, color);
+                }
+            }
+        }
+    }
 }
 
 /// `sprite` without every third row: two thirds as tall, its pixels as sharp as before.
@@ -460,6 +525,79 @@ mod tests {
         let lying = sleeping_pet(&standing, false);
         let body = lying.get_pixel(lying.width() / 2, lying.height() - 3);
         assert_eq!(body.0, [175, 78, 52, 255], "200, 90, 60 at seven eighths");
+    }
+
+    /// Where the snore of `img` is: the columns of its small z and its big one (the centres of the pixels in
+    /// the rows of each).
+    fn snore_columns(img: &RgbaImage) -> (f32, f32) {
+        let centre = |ys: std::ops::Range<u32>| {
+            let xs: Vec<u32> = ys
+                .flat_map(|y| (0..img.width()).map(move |x| (x, y)))
+                .filter(|&(x, y)| img.get_pixel(x, y).0 == [0xcf, 0xd8, 0xff, 255])
+                .map(|(x, _)| x)
+                .collect();
+            xs.iter().sum::<u32>() as f32 / xs.len().max(1) as f32
+        };
+        (centre(10..16), centre(1..8))
+    }
+
+    #[test]
+    fn the_snore_leaves_the_head_whichever_way_the_pet_lies() {
+        // Wide art faces left; `left` mirrors it, so a wide sleeper's head is on the right then.
+        let wide = pet((30, 20), (2, 4), 26, 16);
+        let (head_right, head_left) = (sleeping_pet(&wide, true), sleeping_pet(&wide, false));
+        let (small, big) = snore_columns(&head_left);
+        assert!(
+            small < big,
+            "head on the left: the small z by the head, the big one further right"
+        );
+        let (small, big) = snore_columns(&head_right);
+        assert!(small > big, "head on the right: it is mirrored");
+        // An upright pet turned to the left has its head (its top) on the left.
+        let upright = pet((20, 30), (4, 2), 12, 26);
+        let (small, big) = snore_columns(&sleeping_pet(&upright, true));
+        assert!(small < big, "upright, turned left: head on the left");
+        let (small, big) = snore_columns(&sleeping_pet(&upright, false));
+        assert!(small > big, "upright, turned right: head on the right");
+    }
+
+    /// The dark pixels of `img` (an eye, here) below row `from`.
+    fn dark_pixels(img: &RgbaImage, from: u32) -> usize {
+        img.enumerate_pixels()
+            .filter(|(_, y, px)| *y >= from && px[3] == 255 && px[0].max(px[1]).max(px[2]) < 80)
+            .count()
+    }
+
+    #[test]
+    fn a_sleeper_has_its_eyes_closed() {
+        // A solid pet with an eye three rows high and two wide, well inside the body.
+        let mut standing = pet((30, 20), (2, 4), 26, 16);
+        for y in 8..11 {
+            for x in 6..8 {
+                standing.put_pixel(x, y, Rgba([20, 20, 30, 255]));
+            }
+        }
+        assert_eq!(dark_pixels(&standing, 0), 6);
+        let lying = sleeping_pet(&standing, false);
+        // Flattened, the eye keeps two of its rows; closed, it is one: a line.
+        assert_eq!(dark_pixels(&lying, ZZ_ROOM), 2, "the eye is a line, not two rows");
+        // An eye that is one row high is shut already, and an outline is never an eye: the body still has
+        // its edge and nothing else is painted over.
+        let mut shut = pet((30, 20), (2, 4), 26, 16);
+        shut.put_pixel(6, 8, Rgba([20, 20, 30, 255]));
+        shut.put_pixel(7, 8, Rgba([20, 20, 30, 255]));
+        assert_eq!(dark_pixels(&sleeping_pet(&shut, false), ZZ_ROOM), 2);
+        let mut outlined = pet((30, 20), (2, 4), 26, 16);
+        for x in 2..28 {
+            for y in [4, 5, 19] {
+                outlined.put_pixel(x, y, Rgba([20, 20, 30, 255]));
+            }
+        }
+        let before = dark_pixels(&outlined, 0);
+        assert!(
+            dark_pixels(&sleeping_pet(&outlined, false), ZZ_ROOM) >= before * 2 / 3 - 4,
+            "the outline stays"
+        );
     }
 
     #[test]

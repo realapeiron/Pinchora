@@ -117,3 +117,51 @@ async fn hashes_and_sets_hold_who_is_where() {
     assert_eq!(cache.set_members(&set).await.unwrap(), vec!["11".to_owned()]);
     cache.set_remove(&set, "11").await.unwrap();
 }
+
+#[tokio::test]
+async fn merging_a_snapshot_keeps_the_records_written_since_it_was_taken() {
+    let Some(cache) = cache().await else { return };
+    let key = format!("test-merge:{}", unique());
+    let ttl = Duration::from_secs(30);
+    // Voice presence records are `channel|flags|seen|roles`; the snapshot was taken at second 200.
+    let record = |channel: u64, seen: i64| format!("{channel}|0|{seen}|");
+    cache.map_set(&key, "gone", &record(7, 100), ttl).await.unwrap();
+    cache.map_set(&key, "replaced", &record(7, 100), ttl).await.unwrap();
+    cache.map_set(&key, "newer", &record(7, 205), ttl).await.unwrap();
+    cache.map_set(&key, "left", &record(0, 205), ttl).await.unwrap();
+    cache.map_set(&key, "moved", &record(9, 210), ttl).await.unwrap();
+    let snapshot = [
+        ("replaced".to_owned(), record(8, 200)),
+        ("left".to_owned(), record(8, 200)),
+        ("moved".to_owned(), record(8, 200)),
+        ("fresh".to_owned(), record(8, 200)),
+    ];
+    cache.map_merge(&key, &snapshot, 200, ttl).await.unwrap();
+
+    let mut all = cache.map_all(&key).await.unwrap();
+    all.sort();
+    let expected: Vec<(String, String)> = [
+        ("fresh", record(8, 200)),
+        ("left", record(0, 205)),
+        ("moved", record(9, 210)),
+        ("newer", record(7, 205)),
+        ("replaced", record(8, 200)),
+    ]
+    .into_iter()
+    .map(|(field, value)| (field.to_owned(), value))
+    .collect();
+    assert_eq!(
+        all, expected,
+        "what is older than the snapshot is replaced by it or dropped; what is as new stays as it is"
+    );
+
+    // Nothing in the snapshot and nothing newer: the hash is gone.
+    cache.map_merge(&key, &[], 1_000, ttl).await.unwrap();
+    assert_eq!(cache.map_len(&key).await.unwrap(), 0);
+    // And a snapshot alone fills an empty one.
+    cache
+        .map_merge(&key, &[("a".to_owned(), record(1, 5))], 1_000, ttl)
+        .await
+        .unwrap();
+    assert_eq!(cache.map_len(&key).await.unwrap(), 1);
+}

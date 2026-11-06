@@ -182,6 +182,16 @@ struct Choice {
     description: String,
 }
 
+/// The line under a furniture piece in the menu: its rarity, and "Soulbound" for a piece bought with
+/// fragments, so it is not mistaken for its unbound twin, which has the same name.
+fn furniture_note(rarity: &str, soulbound: bool) -> String {
+    if soulbound {
+        format!("{rarity} · Soulbound")
+    } else {
+        rarity.to_owned()
+    }
+}
+
 /// What the player may pick for `slot`, by name.
 async fn choices(app: &App, user: u64, slot: Slot) -> anyhow::Result<Vec<Choice>> {
     let content = Content::get();
@@ -229,7 +239,7 @@ async fn choices(app: &App, user: u64, slot: Slot) -> anyhow::Result<Vec<Choice>
                 Some(Choice {
                     value: item.id(),
                     label: item.name(),
-                    description: item.base.rarity.label().to_owned(),
+                    description: furniture_note(item.base.rarity.label(), item.bound),
                 })
             })
             .collect(),
@@ -515,6 +525,12 @@ mod tests {
         }
         assert_eq!(Slot::from_letter("z"), None);
         assert_eq!(Slot::from_letter(""), None);
+    }
+
+    #[test]
+    fn a_soulbound_piece_is_told_from_its_unbound_twin() {
+        assert_eq!(furniture_note("Rare", false), "Rare");
+        assert_eq!(furniture_note("Rare", true), "Rare · Soulbound");
     }
 
     #[test]
