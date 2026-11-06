@@ -138,6 +138,8 @@ async fn boot(config: &Config, role: &str) -> anyhow::Result<(Arc<App>, Readines
     // Voice states only arrive on the gateway; its ticker pays everyone sitting in voice.
     if role == "gateway" {
         pinchora_commands::spawn_voice_ticker(app.clone());
+        // Deletes the temp voice rooms nobody is in, in case a leave was never heard.
+        pinchora_commands::spawn_tempvoice_ticker(app.clone());
     }
     Ok((app, ready))
 }

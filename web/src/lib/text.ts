@@ -124,6 +124,8 @@ const ACTIONS: Record<string, string> = {
   "critters.set": "changed critter drops",
   "card.put": "saved an image design",
   "card.upload": "uploaded a background picture",
+  "voice_creator.put": "set up a temp voice creator",
+  "voice_creator.delete": "removed a temp voice creator",
 };
 
 const MODES: Record<string, string> = {

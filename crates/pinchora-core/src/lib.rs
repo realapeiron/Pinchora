@@ -12,6 +12,7 @@ pub mod snowflake;
 pub mod stats;
 pub mod tags;
 pub mod telemetry;
+pub mod temp_voice;
 pub mod wrapped;
 
 pub use config::Config;

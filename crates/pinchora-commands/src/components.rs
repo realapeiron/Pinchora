@@ -6,7 +6,7 @@ use crate::{
         board, character, collection, connect4, contest, customcommand, customize, decorate, derby, duel, fish,
         friends, gift, giveaway, guestbook, hangman, heist, help, house, interact, leaderboard, partner, party_games,
         pet, plaza, poll, privacy, quests, remind, role_panels, rps, share, shells, shop, stall, store, suggest, surge,
-        trivia, wordle,
+        tempvoice, trivia, wordle,
     },
 };
 
@@ -85,6 +85,8 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
         Some("ss") => surge::on_button(cx, parts).await,
         Some("hs") => heist::on_button(cx, parts).await,
         Some(prefix @ ("hl" | "ac" | "cn" | "wx" | "wy" | "td")) => party_games::on_component(cx, prefix, parts).await,
+        Some("vc") => tempvoice::on_button(cx, parts).await,
+        Some("vo") => tempvoice::on_select(cx, parts, values).await,
         _ => cx.reply_ephemeral("This button has expired.").await,
     }
 }
@@ -103,6 +105,7 @@ pub(crate) async fn dispatch_modal(cx: &Cx, custom_id: &str, fields: &[(String, 
         Some("cm") => customcommand::on_modal(cx, parts, fields).await,
         Some("pz") if parts.next() == Some("m") => board::picross::on_modal(cx, parts, fields).await,
         Some(prefix @ ("hl" | "ac" | "cn" | "wx")) => party_games::on_modal(cx, prefix, parts, fields).await,
+        Some("vc") => tempvoice::on_modal(cx, parts, fields).await,
         Some("wo") if parts.next() == Some("m") => {
             let text = fields
                 .iter()

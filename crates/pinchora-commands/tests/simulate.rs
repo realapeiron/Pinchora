@@ -101,6 +101,9 @@ mod grants;
 // What reaches the (still empty) feature hooks.
 #[path = "simulate/hooks.rs"]
 mod hooks;
+// Temp voice: creators, rooms, the owner's controls and the panel.
+#[path = "simulate/tempvoice.rs"]
+mod tempvoice;
 
 const APPLICATION_ID: u64 = 1;
 const CHANNEL_ID: u64 = 2;

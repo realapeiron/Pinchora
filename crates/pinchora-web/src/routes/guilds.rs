@@ -72,6 +72,7 @@ pub fn router() -> Router<WebState> {
         .route("/suggestions/settings", put(community::put_suggestions))
         .route("/critters/settings", put(community::put_critters))
         .route("/surge/settings", put(community::put_surge))
+        .nest("/temp-voice", super::temp_voice::router())
         .route("/preview/card", post(cards::preview))
         .route("/preview/message", post(preview::message))
         .route("/cards", get(cards::cards))

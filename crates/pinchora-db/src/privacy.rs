@@ -93,6 +93,7 @@ pub const USER_COLUMNS: &[(&str, &str)] = &[
     ("suggestions", "author_id"),
     ("poll_votes", "user_id"),
     ("polls", "author_id"),
+    ("temp_voice_bans", "user_id"),
     ("users", "id"),
 ];
 
@@ -115,7 +116,12 @@ pub const ID_LISTS: &[(&str, &str, ListEdit)] = &[
 
 /// Columns that name a player on rows that belong to somebody else and go on without them: the
 /// column is set to NULL.
-pub const CLEARED_COLUMNS: &[(&str, &str)] = &[("suggestions", "decided_by"), ("collection_drops", "host_id")];
+pub const CLEARED_COLUMNS: &[(&str, &str)] = &[
+    ("suggestions", "decided_by"),
+    ("collection_drops", "host_id"),
+    // A room whose owner deleted their data has no owner: whoever is in it may claim it.
+    ("temp_voice_channels", "owner_id"),
+];
 
 /// The games' per-day limits, as (table, player column, day column), the day in days since
 /// 1970-01-01 (UTC): plays that pay, shells paid, shells lost at the tables. Today's rows stay when
@@ -162,6 +168,10 @@ pub const OTHER_TABLES: &[&str] = &[
     "guild_modules",
     "card_designs",
     "card_uploads",
+    "voice_creators",
+    // A room belongs to the server; its owner is cleared (see above) and the members kept out of it go with the
+    // player (`temp_voice_bans`).
+    "temp_voice_channels",
 ];
 
 /// What a player hides.

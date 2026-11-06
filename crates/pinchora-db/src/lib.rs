@@ -37,6 +37,7 @@ mod social;
 mod stalls;
 mod suggestions;
 mod tags;
+mod temp_voice;
 mod users;
 mod xp;
 
@@ -101,6 +102,7 @@ pub use suggestions::{
     APPROVED as SUGGESTION_APPROVED, DENIED as SUGGESTION_DENIED, Decision, SuggestionRow, SuggestionVote,
 };
 pub use tags::{CommandRow, ResponderRow, TagSet, TagWrite};
+pub use temp_voice::{CreatorSave, NewTempRoom, RoomMake, TempRoom, VoiceCreator};
 pub use users::UserRow;
 pub use xp::{MAX_XP_RULES, XpTarget};
 

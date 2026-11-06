@@ -251,6 +251,9 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         "INSERT INTO custom_commands (guild_id, name, responses, created_by) VALUES ($1, 'hello', ARRAY['hi'], $1)",
         "INSERT INTO custom_responders (guild_id, name, trigger_kind, responses, created_by)
          VALUES ($1, 'welcome', 'member_join', ARRAY['hi'], $1)",
+        // A temp voice room they own, and the members kept out of it ($1 doubles as the room and the server).
+        "INSERT INTO temp_voice_channels (channel_id, guild_id, source_id, owner_id) VALUES ($1, $1, $2, $1)",
+        "INSERT INTO temp_voice_bans (channel_id, user_id) VALUES ($1, $1), ($1, $2)",
     ];
     for sql in inserts {
         run(db, sql, user, other).await;

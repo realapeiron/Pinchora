@@ -1632,6 +1632,161 @@
           ],
           "path": "customcommand info",
           "usage": "/customcommand info <name>"
+        },
+        {
+          "description": "Keep new people out of your room",
+          "manager": false,
+          "options": [],
+          "path": "voice lock",
+          "usage": "/voice lock"
+        },
+        {
+          "description": "Let anyone join your room again",
+          "manager": false,
+          "options": [],
+          "path": "voice unlock",
+          "usage": "/voice unlock"
+        },
+        {
+          "description": "Set how many people your room takes",
+          "manager": false,
+          "options": [
+            {
+              "description": "How many people at most (0 for no limit)",
+              "name": "people",
+              "required": true
+            }
+          ],
+          "path": "voice limit",
+          "usage": "/voice limit <people>"
+        },
+        {
+          "description": "Rename your room",
+          "manager": false,
+          "options": [
+            {
+              "description": "The new name",
+              "name": "name",
+              "required": true
+            }
+          ],
+          "path": "voice rename",
+          "usage": "/voice rename <name>"
+        },
+        {
+          "description": "Send someone out of your room and keep them out",
+          "manager": false,
+          "options": [
+            {
+              "description": "Who to kick",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "voice kick",
+          "usage": "/voice kick <user>"
+        },
+        {
+          "description": "Give your room to someone who is in it",
+          "manager": false,
+          "options": [
+            {
+              "description": "The new owner",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "voice transfer",
+          "usage": "/voice transfer <user>"
+        },
+        {
+          "description": "Take over a room whose owner has left",
+          "manager": false,
+          "options": [],
+          "path": "voice claim",
+          "usage": "/voice claim"
+        },
+        {
+          "description": "Hide your room from people who are not in it",
+          "manager": false,
+          "options": [],
+          "path": "voice hide",
+          "usage": "/voice hide"
+        },
+        {
+          "description": "Show your hidden room to everyone again",
+          "manager": false,
+          "options": [],
+          "path": "voice show",
+          "usage": "/voice show"
+        },
+        {
+          "description": "Let someone into your room, even if it is locked or they were kicked",
+          "manager": false,
+          "options": [
+            {
+              "description": "Who to let in",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "voice invite",
+          "usage": "/voice invite <user>"
+        },
+        {
+          "description": "Show the buttons that run your room",
+          "manager": false,
+          "options": [],
+          "path": "voice panel",
+          "usage": "/voice panel"
+        },
+        {
+          "description": "Make a voice channel a creator, or change one (Manage Server)",
+          "manager": true,
+          "options": [
+            {
+              "description": "The voice channel people join to get a room",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "description": "The category the rooms go in (default: the creator's own)",
+              "name": "category",
+              "required": false
+            },
+            {
+              "description": "How many people a room takes at first (0 for no limit)",
+              "name": "limit",
+              "required": false
+            },
+            {
+              "description": "What rooms are called: {user} is the owner's name, {n} the room's number",
+              "name": "template",
+              "required": false
+            }
+          ],
+          "path": "voice creators add",
+          "usage": "/voice creators add <channel> [category] [limit] [template]"
+        },
+        {
+          "description": "Stop a channel making rooms (Manage Server)",
+          "manager": true,
+          "options": [
+            {
+              "description": "The creator channel",
+              "name": "channel",
+              "required": true
+            }
+          ],
+          "path": "voice creators remove",
+          "usage": "/voice creators remove <channel>"
+        },
+        {
+          "description": "The creator channels of this server (Manage Server)",
+          "manager": true,
+          "options": [],
+          "path": "voice creators list",
+          "usage": "/voice creators list"
         }
       ],
       "intro": "Polls, suggestions, giveaways, role buttons, server points and custom commands.",
@@ -2283,5 +2438,5 @@
       "title": "Game & module setup"
     }
   ],
-  "count": 156
+  "count": 170
 }

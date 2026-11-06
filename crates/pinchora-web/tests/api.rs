@@ -47,6 +47,9 @@ use twilight_model::{
 // Custom commands and auto-responders.
 #[path = "api/tags.rs"]
 mod tags;
+// Temp voice: creators and the live list of rooms.
+#[path = "api/tempvoice.rs"]
+mod tempvoice;
 
 const APPLICATION_ID: u64 = 1;
 const PUBLIC_URL: &str = "http://dash.test";

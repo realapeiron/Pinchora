@@ -415,7 +415,48 @@ mention the bot, so text commands work as `@Pinchora profile` and `/help` says s
 
 ### Temp voice
 
-<!-- F4: the Temp voice package replaces this heading's section; keep it one `###` section. -->
+A voice channel a server sets up as a **creator** gives whoever joins it a voice room of their own: the bot makes
+`Mira's room` in the creator's category, moves the member in, and deletes the room when the last person leaves.
+Module `temp_voice` (Community group, switched on or off for the whole server). Needs **Manage Channels**,
+**Move Members** and **Manage Roles** (it writes the channel's permission overwrites); when one is missing,
+`/voice creators add`, the dashboard and the creator's own chat name it.
+
+| Command | What it does |
+|---|---|
+| `/voice creators add channel [category] [limit] [template]` | Make a voice channel a creator, or change one: `category` is where rooms go (default: the creator's own), `limit` how many a room takes at first (0: no limit), `template` what rooms are called (`{user}` is the owner's name, `{n}` the room's number; default `{user}'s room`). Up to 10 per server (Manage Server) |
+| `/voice creators remove channel`, `/voice creators list` | Stop a channel making rooms (its rooms stay until they empty), or list the creators with their rooms alive (Manage Server) |
+| `/voice lock`, `/voice unlock` | Keep new people out of your room (@everyone loses Connect; the owner and the bot keep their seats), or open it again. A room goes back to what its category says, so a private category stays private |
+| `/voice hide`, `/voice show` | Hide the room from people who are not in it (View Channel), or show it again |
+| `/voice limit people` | How many people the room takes, 0 to 99 (0: no limit) |
+| `/voice rename name` | Rename the room; at most once every 5 minutes (Discord allows two renames in ten) |
+| `/voice kick user` | Send someone out and keep them out: they are disconnected, put on the room's kick list and denied Connect, and the bot sends them out again if they get back in |
+| `/voice invite user` | Let someone in even when the room is locked, and lift a kick |
+| `/voice transfer user` | Give the room to someone who is in it (never a bot) |
+| `/voice claim` | Take a room whose owner is not in it any more; the first member to claim gets it. A room whose owner deleted their data has no owner and can be claimed too |
+| `/voice panel` | The buttons that run the room (private). With a creator's **panel** on, each new room also gets them as a message in its own chat (or in a private thread, below): **Lock**, **Unlock**, **Limit** and **Rename** (forms), **Kick** and **Transfer** (a member picker), **Hide / show**, **Claim** |
+
+Only the owner (or a member with Manage Server) runs a room; `/voice` works from anywhere and finds the room you are
+in, else the one you own, and a panel finds the room it sits in. Answers are private and ping nobody.
+
+- **How it works.** The voice events tell the bot where a member is now; it keeps where they were last seen in Redis
+  (`tvoice:at:{guild}:{user}`, the members of each room in `tvoice:in:{channel}`), but only for servers that have a
+  creator or a room, so other servers cost one cached lookup per half minute. Leaving a room's last seat deletes the
+  room; a **sweep every 30 seconds** deletes rooms seen empty twice in a row (a leave the events missed), and a server's
+  `GUILD_CREATE` after a restart puts each room's members right, deletes rooms nobody is in, and forgets rooms whose
+  channel is gone. Voice XP is untouched: members of a temp room earn it like anyone else.
+- **Limits.** 10 creators and 60 rooms per server, 1 to 5 rooms per member per creator (a member over it is taken back
+  to their oldest room), one room request per member every 4 seconds. A full category (Discord allows 50 channels in
+  one) or a server at 500 channels is told so in the creator's chat.
+- **Paired thread.** A creator can name a text channel (the dashboard's *Private chat thread*): each room then gets a
+  private thread there with the panel in it; members are added as they join the room and taken out as they leave, and
+  the thread goes with the room.
+- **Data** (migration 0048): `voice_creators`, `temp_voice_channels` (owner, lock, hide, limit, last rename, panel
+  message, thread) and `temp_voice_bans`. "Delete my data" removes a member's kicks and leaves their rooms without an
+  owner. Custom ids `vc:` (buttons, forms) and `vo:` (the kick and transfer pickers).
+- **Dashboard.** *Temp voice* under COMMUNITY: creators with their room name (live preview), category, people per
+  room, rooms per member, starts locked, button panel, active and the thread channel, each saved on its own and
+  written to the audit log; the live list of rooms (owner, people inside, locked/hidden, age; refreshes every 15
+  seconds, read-only); a warning when the module is off or the bot lacks a permission.
 
 ### Starboard and vote channels
 

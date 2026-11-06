@@ -18,6 +18,7 @@ mod site;
 mod static_files;
 mod store;
 mod tag_common;
+mod temp_voice;
 
 use std::time::Instant;
 

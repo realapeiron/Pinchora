@@ -111,11 +111,12 @@ pub enum Module {
     Collection,
     Gambling,
     TextCommands,
+    TempVoice,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 28] = [
+    pub const ALL: [Self; 29] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -144,6 +145,7 @@ impl Module {
         Self::Collection,
         Self::Gambling,
         Self::TextCommands,
+        Self::TempVoice,
     ];
 
     /// The key stored in the database and used in the API.
@@ -177,6 +179,7 @@ impl Module {
             Self::Collection => "collection",
             Self::Gambling => "gambling",
             Self::TextCommands => "text_commands",
+            Self::TempVoice => "temp_voice",
         }
     }
 
@@ -214,6 +217,7 @@ impl Module {
             Self::Collection => "Critter drops and beachcombing",
             Self::Gambling => "Gambling-style games",
             Self::TextCommands => "Text commands",
+            Self::TempVoice => "Temp voice",
         }
     }
 
@@ -259,6 +263,7 @@ impl Module {
             Self::TextCommands => {
                 "Commands typed as messages, with the prefix or an @mention. Slash commands are not affected."
             }
+            Self::TempVoice => "Creator channels that make a voice room for whoever joins, and /voice to run it.",
         }
     }
 
@@ -285,12 +290,14 @@ impl Module {
             | Self::PartyGames
             | Self::Collection
             | Self::Gambling => Group::Games,
+            Self::TempVoice => Group::Community,
         }
     }
 
     pub const fn scope(self) -> Scope {
         match self {
             Self::Welcome | Self::Goodbye | Self::Log | Self::Gambling => Scope::Server,
+            Self::TempVoice => Scope::Server,
             _ => Scope::Channels,
         }
     }
@@ -342,6 +349,7 @@ impl Module {
                 Some("stats") => Self::Profile,
                 _ => return None,
             },
+            "voice" => Self::TempVoice,
             _ => return None,
         })
     }
@@ -369,6 +377,7 @@ impl Module {
             "tg" | "cm" => Self::CustomCommands,
             "sg" => Self::Suggestions,
             "pl" => Self::Polls,
+            "vc" | "vo" => Self::TempVoice,
             _ => return None,
         })
     }

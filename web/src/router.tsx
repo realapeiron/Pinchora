@@ -17,6 +17,7 @@ import { ResponderEditor } from "./pages/ResponderEditor";
 import { Responders } from "./pages/Responders";
 import { ServerLog } from "./pages/ServerLog";
 import { Servers } from "./pages/Servers";
+import { TempVoice } from "./pages/TempVoice";
 import { Welcome } from "./pages/Welcome";
 import { WelcomeImage } from "./pages/WelcomeImage";
 import { Landing } from "./site/Landing";
@@ -67,6 +68,7 @@ export const router = createBrowserRouter([
       { path: "points", element: <Points /> },
       { path: "log", element: <ServerLog /> },
       { path: "community", element: <Community /> },
+      { path: "temp-voice", element: <TempVoice /> },
       { path: "commands", element: <Commands /> },
       { path: "commands/new", element: <CommandEditor /> },
       { path: "commands/:commandId", element: <CommandEditor /> },
