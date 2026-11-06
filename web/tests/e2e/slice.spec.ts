@@ -32,7 +32,7 @@ test("the login page offers Discord login", async ({ page }) => {
 
 test("login, pick a server, turn leveling off", async ({ page }) => {
   await devLogin(page);
-  await page.goto("/");
+  await page.goto("/servers");
   await expect(page).toHaveURL(/\/servers$/);
 
   const cards = page.locator(".server-card");
