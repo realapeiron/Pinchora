@@ -22,10 +22,13 @@ use twilight_model::{
 };
 use twilight_util::builder::embed::{EmbedBuilder, EmbedFooterBuilder, ImageSource};
 
-use super::undo::{self, History, Kind, Piece, Step};
+use super::{
+    pet::is_asleep,
+    undo::{self, History, Kind, Piece, Step},
+};
 use crate::{
     App, Cx,
-    game::scene::{RoomView, render_view},
+    game::scene::{RoomPet, RoomView, render_view},
     util::{BRAND, DANGER, SUCCESS, WARN, resolved_display_name, thousands},
 };
 
@@ -308,12 +311,19 @@ pub(crate) fn room_title(content: &Content, room: &RoomRow) -> String {
         .map_or_else(|| room.room_type.clone(), |r| r.name.clone())
 }
 
-/// The species of the owner's pets that stand in the house: the active one first, up to
-/// [`DAYCARE`], and none that is away on a field trip.
-fn home_pets(mut owned: Vec<PetRow>, now: DateTime<Utc>) -> Vec<String> {
+/// The owner's pets that are in the house: the active one first, up to [`DAYCARE`], and none that
+/// is away on a field trip. A pet that fell asleep lies in the room instead of wandering.
+fn home_pets(mut owned: Vec<PetRow>, now: DateTime<Utc>) -> Vec<RoomPet> {
     owned.retain(|p| !p.is_away(now));
     owned.sort_by_key(|p| !p.active);
-    owned.into_iter().take(DAYCARE).map(|p| p.species).collect()
+    owned
+        .into_iter()
+        .take(DAYCARE)
+        .map(|p| RoomPet {
+            asleep: is_asleep(&p, now),
+            species: p.species,
+        })
+        .collect()
 }
 
 /// Read-only room card with ◀ ▶ room buttons (`hv:<owner>:<room>`).
@@ -334,7 +344,7 @@ pub(crate) async fn room_card(
     let count = placements.len();
     let content = Content::get();
     let title = room_title(content, &row);
-    let mut pets: Vec<String> = Vec::new();
+    let mut pets: Vec<RoomPet> = Vec::new();
     let mut characters: Vec<Character> = Vec::new();
     // The owner's pets live here (up to DAYCARE, the active one first); a guest brings only
     // their active pet. A guest who is the owner is only there once.
@@ -344,7 +354,10 @@ pub(crate) async fn room_card(
         if who != owner_id
             && let Some(pet) = cx.app.db.active_pet(who).await?.filter(|p| !p.is_away(now))
         {
-            pets.push(pet.species);
+            pets.push(RoomPet {
+                asleep: is_asleep(&pet, now),
+                species: pet.species,
+            });
         }
         if let Some(code) = cx.app.db.character(who).await?
             && let Some(character) = Character::decode(content, &code)
@@ -1776,8 +1789,34 @@ mod tests {
             // Back from its trip (the souvenir is still unclaimed): home again.
             pet(4, "jelly", false, Some(now - hour)),
         ];
-        assert_eq!(home_pets(pets, now), ["guppy", "crab", "jelly"]);
-        assert!(home_pets(Vec::new(), now).is_empty());
+        let home = |pets| home_pets(pets, now);
+        assert_eq!(
+            home(pets),
+            [RoomPet::awake("guppy"), RoomPet::awake("crab"), RoomPet::awake("jelly")]
+        );
+        assert!(home(Vec::new()).is_empty());
+    }
+
+    #[test]
+    fn a_pet_that_fell_asleep_is_drawn_asleep() {
+        let now = Utc::now();
+        // 80 in everything runs dry at 32 h and the pet drops off a day later, at 56 h.
+        let dozing = |hours: i64| PetRow {
+            needs_at: now - chrono::Duration::hours(hours),
+            ..pet(2, "crab", false, None)
+        };
+        assert_eq!(
+            home_pets(vec![pet(1, "guppy", true, None), dozing(60)], now),
+            [RoomPet::awake("guppy"), RoomPet::asleep("crab")]
+        );
+        assert_eq!(home_pets(vec![dozing(50)], now), [RoomPet::awake("crab")]);
+        // An away pet is not home at all, asleep or not.
+        let gone = PetRow {
+            trip_dest: Some("tidepool_meadow".to_owned()),
+            trip_ends_at: Some(now + chrono::Duration::hours(1)),
+            ..dozing(60)
+        };
+        assert!(home_pets(vec![gone], now).is_empty());
     }
 
     #[test]

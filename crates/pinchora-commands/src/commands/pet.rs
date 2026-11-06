@@ -124,7 +124,7 @@ fn current_needs(pet: &PetRow, now: DateTime<Utc>) -> Needs {
 
 /// Whether the pet fell asleep: nobody looked after it from the day its hunger, fun and hygiene
 /// all ran out until a day later. Worked out from the stored needs, so no job has to watch for it.
-fn is_asleep(pet: &PetRow, now: DateTime<Utc>) -> bool {
+pub(crate) fn is_asleep(pet: &PetRow, now: DateTime<Utc>) -> bool {
     if pet.is_away(now) {
         return false;
     }
@@ -441,7 +441,8 @@ pub(crate) async fn on_care(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
             .await;
     };
     let progress = pets::add_xp(pet.level, pet.xp, action.xp());
-    cx.app
+    let saved = cx
+        .app
         .db
         .save_pet(
             user,
@@ -452,6 +453,18 @@ pub(crate) async fn on_care(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
             now,
         )
         .await?;
+    if !saved {
+        // A trip started between the read and the write; nothing was cared for, so the food is refunded.
+        if action == Care::Feed {
+            cx.app.db.earn_shells(user, FOOD_PRICE, "pet_food_refund").await?;
+        }
+        return cx
+            .reply_ephemeral(format!(
+                "{} just left on a trip. It can't be looked after until it is back.",
+                pet.name
+            ))
+            .await;
+    }
     cx.app.quest(user, pinchora_game::quests::QuestKind::Care).await;
     let verb = match action {
         Care::Feed => "munches happily",

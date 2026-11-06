@@ -6,7 +6,10 @@ use pinchora_db::PetRow;
 use pinchora_game::{Content, pets};
 use pinchora_render::{NurseryCard, NurseryPet, PetStatus, Theme};
 use twilight_model::{
-    channel::message::component::{ButtonStyle, SelectMenuOption},
+    channel::message::{
+        MessageFlags,
+        component::{ButtonStyle, SelectMenuOption},
+    },
     http::interaction::InteractionResponseData,
 };
 use twilight_util::builder::embed::EmbedBuilder;
@@ -183,14 +186,11 @@ async fn nursery_card(app: &App, user: u64, page: usize) -> anyhow::Result<Optio
 
 /// `/pet list`: the nursery, privately.
 pub(super) async fn open(cx: &Cx, user: u64) -> anyhow::Result<()> {
-    match nursery_card(&cx.app, user, 0).await? {
-        Some(data) => cx.reply(data).await,
-        None => cx.reply_ephemeral("No pets yet. Start with `/pet adopt`.").await,
-    }
+    open_private(cx, user, 0).await
 }
 
-/// `pn:<action>:<arg>`: `p` a page, `o` a pet picked from the menu, `f` back to the page a pet
-/// is on, `a` make a pet the active one.
+/// `pn:<action>:<arg>`: `p` a page, `o` a pet picked from the menu, `f` the page a pet is on
+/// (opened as a private message when the click is on a public card), `a` make a pet the active one.
 pub(crate) async fn on_nursery(cx: &Cx, mut args: Split<'_, char>, value: Option<&str>) -> anyhow::Result<()> {
     let user = cx.author()?.id.get();
     let action = args.next();
@@ -198,11 +198,17 @@ pub(crate) async fn on_nursery(cx: &Cx, mut args: Split<'_, char>, value: Option
     match action {
         Some("p") => show_page(cx, user, usize::try_from(arg).unwrap_or(0)).await,
         Some("f") => {
-            // Only the pet's owner may turn its card into their nursery.
+            // Only the pet's owner may open its nursery.
             let Some(at) = cx.app.db.pets(user).await?.iter().position(|p| p.id == arg) else {
                 return cx.reply_ephemeral("That pet isn't yours.").await;
             };
-            show_page(cx, user, at / PER_PAGE).await
+            if clicked_privately(cx) {
+                show_page(cx, user, at / PER_PAGE).await
+            } else {
+                // On a public card the nursery opens beside it as a private message: replacing the
+                // card would show everybody the owner's whole nursery.
+                open_private(cx, user, at / PER_PAGE).await
+            }
         }
         Some("o") => {
             let id: i64 = value.and_then(|v| v.parse().ok()).unwrap_or(0);
@@ -216,6 +222,23 @@ pub(crate) async fn on_nursery(cx: &Cx, mut args: Split<'_, char>, value: Option
             open_pet(cx, user, arg, Some(note.to_owned())).await
         }
         _ => cx.reply_ephemeral("This button has expired.").await,
+    }
+}
+
+/// Whether the clicked message is a private one, which only its owner sees.
+fn clicked_privately(cx: &Cx) -> bool {
+    cx.interaction
+        .message
+        .as_ref()
+        .and_then(|m| m.flags)
+        .is_some_and(|f| f.contains(MessageFlags::EPHEMERAL))
+}
+
+/// The nursery page `page` as a new private message, leaving a clicked one as it is.
+async fn open_private(cx: &Cx, user: u64, page: usize) -> anyhow::Result<()> {
+    match nursery_card(&cx.app, user, page).await? {
+        Some(data) => cx.reply(data).await,
+        None => cx.reply_ephemeral("No pets yet. Start with `/pet adopt`.").await,
     }
 }
 

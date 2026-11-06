@@ -150,7 +150,9 @@ impl Db {
         Ok(true)
     }
 
-    /// Stores needs as of `at`, plus new XP and level.
+    /// Stores needs as of `at`, plus new XP and level. Refused (false, nothing written) while the
+    /// pet is out on a trip that is not over by `at`, or when it is not the player's: a care click
+    /// that raced the start of a trip must not unfreeze the needs the trip froze.
     #[allow(clippy::too_many_arguments)]
     pub async fn save_pet(
         &self,
@@ -160,10 +162,10 @@ impl Db {
         level: i32,
         xp: i32,
         at: DateTime<Utc>,
-    ) -> anyhow::Result<()> {
-        sqlx::query(
+    ) -> anyhow::Result<bool> {
+        let n = sqlx::query(
             "UPDATE pets SET hunger = $3, fun = $4, energy = $5, hygiene = $6, level = $7, xp = $8, needs_at = $9
-             WHERE id = $1 AND owner_id = $2",
+             WHERE id = $1 AND owner_id = $2 AND (trip_ends_at IS NULL OR trip_ends_at <= $9)",
         )
         .bind(pet_id)
         .bind(sql_id(owner))
@@ -175,8 +177,9 @@ impl Db {
         .bind(xp)
         .bind(at)
         .execute(self.pool())
-        .await?;
-        Ok(())
+        .await?
+        .rows_affected();
+        Ok(n == 1)
     }
 
     pub async fn rename_pet(&self, owner: u64, pet_id: i64, name: &str) -> anyhow::Result<bool> {
