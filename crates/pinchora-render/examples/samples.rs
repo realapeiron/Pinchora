@@ -387,6 +387,7 @@ fn main() -> anyhow::Result<()> {
         entries: entries(false),
         page: 0,
         last_week: Vec::new(),
+        empty: "Nobody here yet. Chat a bit and check again!",
         theme: Theme::reef(),
     })?;
     std::fs::write(format!("{out}/leaderboard.png"), &board)?;
@@ -395,6 +396,7 @@ fn main() -> anyhow::Result<()> {
         entries: entries(true).into_iter().skip(3).collect(),
         page: 4,
         last_week: Vec::new(),
+        empty: "Nobody here yet. Chat a bit and check again!",
         theme: Theme::reef(),
     })?;
     std::fs::write(format!("{out}/leaderboard-shells.png"), &shells)?;

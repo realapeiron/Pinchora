@@ -3,7 +3,7 @@ use std::fmt::Write;
 use super::{PIXEL, SANS, text};
 use crate::{
     Theme,
-    svg::{SHELL, background, data_uri_png, escape, panel, sprite, truncate},
+    svg::{SHELL, background, data_uri_png, escape, panel, sprite, truncate_to},
 };
 
 /// One cell of an item grid.
@@ -121,7 +121,7 @@ impl ItemGridCard {
                 true,
                 &t.ink,
                 "middle",
-                &escape(&truncate(&slot.name, 20)),
+                &escape(&truncate_to(&slot.name, 17.0, 194.0)),
             );
             let price_x = if slot.shell_price { x + 120.0 } else { x + 110.0 };
             if slot.shell_price {

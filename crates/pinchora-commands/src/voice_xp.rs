@@ -397,8 +397,9 @@ async fn announce(
     }
 }
 
-/// Deletes weekly XP older than [`KEEP_WEEKS`] weeks, once an hour across every gateway pod: the pod
-/// that takes the hour's lock does it and returns how many rows went, the others get `None`.
+/// Deletes weekly XP and weekly catches older than [`KEEP_WEEKS`] weeks, once an hour across every
+/// gateway pod: the pod that takes the hour's lock does it and returns how many rows went, the others
+/// get `None`.
 pub async fn prune(app: &App) -> anyhow::Result<Option<u64>> {
     let now = app.now();
     let hour = now.timestamp().div_euclid(3600);
@@ -410,7 +411,9 @@ pub async fn prune(app: &App) -> anyhow::Result<Option<u64>> {
         return Ok(None);
     }
     let before = week_start(now) - chrono::Duration::weeks(KEEP_WEEKS);
-    Ok(Some(app.db.forget_weeks_before(before).await?))
+    let xp = app.db.forget_weeks_before(before).await?;
+    let catches = app.db.forget_catch_weeks_before(before).await?;
+    Ok(Some(xp + catches))
 }
 
 /// The minutes a ticker whose last round paid up to `next - 1` has to pay now that it is `now`: every
@@ -419,9 +422,9 @@ fn due_minutes(next: i64, now: i64) -> std::ops::RangeInclusive<i64> {
     next.max(now - MAX_CATCH_UP)..=now
 }
 
-/// Runs [`tick`] for the life of the process, and prunes old weekly XP once an hour. Each minute is
-/// paid in a task of its own, so a slow round never holds up the next one, and a round that was
-/// late catches up on the minutes it missed.
+/// Runs [`tick`] for the life of the process, and prunes old weekly XP and weekly catches once an
+/// hour. Each minute is paid in a task of its own, so a slow round never holds up the next one, and a
+/// round that was late catches up on the minutes it missed.
 pub fn spawn_ticker(app: Arc<App>) {
     tokio::spawn(async move {
         let mut wake = tokio::time::interval(WAKE);
@@ -447,9 +450,9 @@ pub fn spawn_ticker(app: Arc<App>) {
                 let pruning = app.clone();
                 app.spawn(async move {
                     match prune(&pruning).await {
-                        Ok(Some(n)) if n > 0 => tracing::debug!(n, "old weekly XP forgotten"),
+                        Ok(Some(n)) if n > 0 => tracing::debug!(n, "old weekly XP and catches forgotten"),
                         Ok(_) => {}
-                        Err(error) => tracing::warn!(%error, "old weekly XP not forgotten"),
+                        Err(error) => tracing::warn!(%error, "old weekly XP and catches not forgotten"),
                     }
                 });
             }

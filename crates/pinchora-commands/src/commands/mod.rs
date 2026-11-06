@@ -85,7 +85,7 @@ commands!(
     shop::ShopCommand,
     shop::Inventory,
     pet::PetCommand,
-    fish::Fish,
+    fish::FishCommand,
     gift::Gift,
     duel::DuelCommand,
     quests::Quests,
