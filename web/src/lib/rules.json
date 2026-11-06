@@ -1170,7 +1170,9 @@
       "customcommand",
       "language",
       "stats",
-      "counters"
+      "counters",
+      "ticket",
+      "tickets"
     ],
     "responder_placeholders": {
       "keyword": [
