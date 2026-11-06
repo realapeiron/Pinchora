@@ -17,7 +17,7 @@ use pinchora_render::{
     character::{placeholder_character, recolor_character},
     encode_png,
     room::{Cursor, RoomScene, SceneItem, SceneLayer, render_room},
-    sprites::{SpriteStore, placeholder_item, placeholder_pet, placeholder_tile, recolor, variant_ramp},
+    sprites::{SpriteStore, placeholder_item, placeholder_pet, placeholder_tile, recolor, sleeping_pet, variant_ramp},
 };
 
 /// How much bigger than the card's 2× a badge's art is drawn for an unlock notice's thumbnail.
@@ -103,6 +103,13 @@ impl Sprites {
             } else {
                 sprite
             }
+        })
+    }
+
+    /// A pet lying asleep with a "z z" above it, facing left or right.
+    pub fn sleeping_pet(&self, species: &str, left: bool) -> Arc<RgbaImage> {
+        self.cached(&format!("ps_{species}_{left}"), || {
+            sleeping_pet(&self.pet(species), left)
         })
     }
 
@@ -252,6 +259,37 @@ pub fn scene_layer(layer: Layer) -> SceneLayer {
     }
 }
 
+/// A pet in a room: awake it wanders from tile to tile, asleep it lies still on one.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RoomPet {
+    pub species: String,
+    pub asleep: bool,
+}
+
+impl RoomPet {
+    pub fn awake(species: impl Into<String>) -> Self {
+        Self {
+            species: species.into(),
+            asleep: false,
+        }
+    }
+
+    pub fn asleep(species: impl Into<String>) -> Self {
+        Self {
+            species: species.into(),
+            asleep: true,
+        }
+    }
+
+    /// The same number for the same species on every draw: where a sleeping pet lies and which
+    /// way, so it does not move with the hour as the wanderers do.
+    fn key(&self) -> u64 {
+        self.species.bytes().fold(0xcbf2_9ce4_8422_2325, |h, b| {
+            (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3)
+        })
+    }
+}
+
 /// Everything needed to draw one room; owned so it can move to the render thread.
 pub struct RoomView {
     pub width: u32,
@@ -262,8 +300,8 @@ pub struct RoomView {
     /// Placement under the cursor, drawn highlighted.
     pub selected: Option<i64>,
     pub edit: bool,
-    /// Pet species to show wandering in the room (owner's and a visitor's).
-    pub pets: Vec<String>,
+    /// Pets to show in the room, wandering or asleep (owner's and a visitor's).
+    pub pets: Vec<RoomPet>,
     /// Characters standing in the room (owner's and a visitor's).
     pub characters: Vec<Character>,
     /// Varies where pets and characters stand, e.g. the current hour.
@@ -334,10 +372,31 @@ fn room_image(sprites: &Sprites, view: &RoomView, scale: u32) -> RgbaImage {
         })
         .collect();
     let mut free = free_tiles(content, view);
+    // Sleepers take their tiles first, each on a spot that stays the same.
+    for pet in view.pets.iter().filter(|p| p.asleep) {
+        if free.is_empty() {
+            break;
+        }
+        let key = pet.key();
+        let (x, y) = free.swap_remove((key >> 16) as usize % free.len());
+        items.push(SceneItem {
+            sprite: sprites.sleeping_pet(&pet.species, key & 1 == 0),
+            x,
+            y,
+            w: 1,
+            d: 1,
+            layer: SceneLayer::Figure,
+            // Drawn already turned the way it lies: a mirrored "z" is not a "z".
+            flipped: false,
+            selected: false,
+            lift: 0,
+        });
+    }
     let figures = view
         .pets
         .iter()
-        .map(|species| sprites.pet(species))
+        .filter(|p| !p.asleep)
+        .map(|p| sprites.pet(&p.species))
         .chain(view.characters.iter().map(|c| sprites.character(c)));
     for (i, sprite) in figures.enumerate() {
         if free.is_empty() {
@@ -464,7 +523,7 @@ mod tests {
             cursor: None,
             selected: None,
             edit: false,
-            pets: vec![pet.clone()],
+            pets: vec![RoomPet::awake(pet.clone())],
             characters,
             seed: 7,
         };
@@ -477,6 +536,54 @@ mod tests {
         .expect("renders");
         assert!(bare.starts_with(b"\x89PNG") && people.starts_with(b"\x89PNG"));
         assert_ne!(bare, people, "the characters are in the picture");
+    }
+
+    #[test]
+    fn a_sleeping_pet_lies_still_while_the_wanderers_move() {
+        let content = Content::get();
+        let sprites = Sprites::default();
+        let (sleeper, walker) = (content.pets[0].id.clone(), content.pets[1].id.clone());
+        let view = |seed: u64, pets: Vec<RoomPet>| RoomView {
+            width: 8,
+            depth: 8,
+            room: RoomRow {
+                idx: 0,
+                room_type: "living".to_owned(),
+                wallpaper: content.surfaces.wallpapers[0].id.clone(),
+                floor: content.surfaces.floors[0].id.clone(),
+            },
+            placements: Vec::new(),
+            cursor: None,
+            selected: None,
+            edit: false,
+            pets,
+            characters: Vec::new(),
+            seed,
+        };
+        let draw = |seed: u64, pets: Vec<RoomPet>| render_view(&sprites, &view(seed, pets)).expect("renders");
+        let asleep = |species: &str| vec![RoomPet::asleep(species)];
+        assert_eq!(
+            draw(1, asleep(&sleeper)),
+            draw(2, asleep(&sleeper)),
+            "a sleeper does not move with the hour"
+        );
+        assert_ne!(
+            draw(1, asleep(&sleeper)),
+            draw(1, vec![RoomPet::awake(sleeper.clone())]),
+            "asleep is drawn differently from awake"
+        );
+        let mixed = |seed| {
+            draw(
+                seed,
+                vec![RoomPet::asleep(sleeper.clone()), RoomPet::awake(walker.clone())],
+            )
+        };
+        assert_ne!(mixed(1), mixed(2), "the awake one still wanders");
+        // The lying sprite is cached per species and side, and is not the standing one.
+        let lying = sprites.sleeping_pet(&sleeper, true);
+        assert!(Arc::ptr_eq(&lying, &sprites.sleeping_pet(&sleeper, true)));
+        assert_ne!(lying.as_ref(), sprites.pet(&sleeper).as_ref());
+        assert_ne!(lying.as_ref(), sprites.sleeping_pet(&sleeper, false).as_ref());
     }
 
     #[test]
@@ -515,7 +622,7 @@ mod tests {
             cursor: None,
             selected: None,
             edit: false,
-            pets: vec![content.pets[0].id.clone()],
+            pets: vec![RoomPet::awake(content.pets[0].id.clone())],
             characters: Vec::new(),
             seed: 1,
         };
@@ -600,7 +707,7 @@ mod tests {
             cursor: None,
             selected: None,
             edit: false,
-            pets: vec![content.pets[0].id.clone()],
+            pets: vec![RoomPet::awake(content.pets[0].id.clone())],
             characters: vec![character(content, 2, 1)],
             seed: 3,
         };

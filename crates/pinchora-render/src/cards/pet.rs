@@ -3,7 +3,7 @@ use std::fmt::Write;
 use super::{PIXEL, SANS, text};
 use crate::{
     Theme,
-    svg::{HEART, STAR, background, data_uri_png, escape, panel, plate, segment_bar, sprite, truncate},
+    svg::{HEART, STAR, background, data_uri_png, escape, panel, pixel_width, plate, segment_bar, sprite, truncate},
 };
 
 /// Whether a pet is up and about, asleep, away on a trip, or back with a souvenir to claim.
@@ -126,18 +126,11 @@ impl PetCard {
         );
 
         text(&mut s, 364.0, 152.0, 16.0, PIXEL, false, &t.muted, "start", "LEVEL");
-        text(
-            &mut s,
-            440.0,
-            154.0,
-            22.0,
-            PIXEL,
-            false,
-            &t.ink,
-            "start",
-            &self.level.to_string(),
-        );
-        sprite(&mut s, STAR, 486.0, 136.0, 3.4, &t.gold, "#fff7d6");
+        let level = self.level.to_string();
+        text(&mut s, 440.0, 154.0, 22.0, PIXEL, false, &t.ink, "start", &level);
+        // The star follows the digits at a fixed gap, so a two-digit level does not crowd it.
+        let star_x = 440.0 + pixel_width(&level, 22.0) + 22.0;
+        sprite(&mut s, STAR, star_x, 136.0, 3.4, &t.gold, "#fff7d6");
         let maxed = self.xp_needed <= 0;
         let xp = match (maxed, self.status) {
             (true, _) => "MAX LEVEL".to_owned(),

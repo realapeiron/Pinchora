@@ -7974,6 +7974,24 @@ fn assert_png(reply: &Reply, width: u32, height: u32) {
     assert_eq!((image.width(), image.height()), (width, height), "{name}");
 }
 
+/// Stores needs, level and XP on a pet the way a care write does, from the row as it is stored now.
+async fn set_pet(
+    db: &Db,
+    user: u64,
+    pet_id: i64,
+    needs: [i16; 4],
+    level: i32,
+    xp: i32,
+    at: chrono::DateTime<chrono::Utc>,
+) -> anyhow::Result<()> {
+    let seen = pet_row(db, user, pet_id).await;
+    anyhow::ensure!(
+        db.save_pet(user, &seen, needs, level, xp, at).await?,
+        "the pet could not be saved"
+    );
+    Ok(())
+}
+
 /// Care costs XP-free needs; a ready pet with every need at `v`.
 fn fresh_needs(v: i16) -> [i16; 4] {
     [v, v, v, v]
@@ -8000,7 +8018,7 @@ async fn pets_level_up_and_the_top_level_stops_earning() {
     );
 
     // Level 3 → 4 on a Play, which opens the next trip.
-    db.save_pet(user, pet.id, fresh_needs(80), 3, 178, app.now())
+    set_pet(&db, user, pet.id, fresh_needs(80), 3, 178, app.now())
         .await
         .unwrap();
     let played = sim.click(user, &card, "Play").await;
@@ -8023,7 +8041,7 @@ async fn pets_level_up_and_the_top_level_stops_earning() {
     assert_eq!(played.followups[0].title(), "Badge unlocked: Pawshake");
 
     // Walks find more at a higher level: level 20 pays 25 to 70 shells.
-    db.save_pet(user, pet.id, fresh_needs(80), 20, 0, app.now())
+    set_pet(&db, user, pet.id, fresh_needs(80), 20, 0, app.now())
         .await
         .unwrap();
     let before = db.user(user).await.unwrap().credits;
@@ -8039,7 +8057,7 @@ async fn pets_level_up_and_the_top_level_stops_earning() {
     );
 
     // Level 29 with the next level five XP away; a bath is worth ten.
-    db.save_pet(user, pet.id, fresh_needs(40), 29, 1_215, app.now())
+    set_pet(&db, user, pet.id, fresh_needs(40), 29, 1_215, app.now())
         .await
         .unwrap();
     let bathed = sim.click(user, &walked, "Bath").await;
@@ -8060,7 +8078,7 @@ async fn pets_level_up_and_the_top_level_stops_earning() {
     assert_eq!((row.level, row.xp), (30, 0));
 
     // An unknown action is an error, not a bath (it used to be one).
-    db.save_pet(user, pet.id, [60, 60, 60, 30], 30, 0, app.now())
+    set_pet(&db, user, pet.id, [60, 60, 60, 30], 30, 0, app.now())
         .await
         .unwrap();
     let odd = sim.component(user, &format!("pc:rub:{}", pet.id), &[], &fed).await;
@@ -8081,6 +8099,52 @@ async fn pets_level_up_and_the_top_level_stops_earning() {
 }
 
 #[tokio::test]
+async fn a_sleeping_pet_lies_in_the_house_instead_of_wandering() {
+    let Some(mut sim) = Sim::new("a_sleeping_pet_lies_in_the_house_instead_of_wandering").await else {
+        return;
+    };
+    let (user, db, app) = (unique(), sim.app.db.clone(), sim.app.clone());
+    let view = || json!([{ "name": "view", "type": 1 }]);
+    let (pip, bub, nod) = (
+        db.adopt(user, "crumbclaw_crab", "Pip").await.unwrap(),
+        db.adopt(user, "ribbonfin_guppy", "Bub").await.unwrap(),
+        db.adopt(user, "noodlenose_seahorse", "Nod").await.unwrap(),
+    );
+    set_pet(&db, user, pip.id, fresh_needs(100), 1, 0, app.now())
+        .await
+        .unwrap();
+    // Bub (a wide one) and Nod (a tall one) have been left alone for days: they fell asleep, so they
+    // lie in the house with a "z z" while Pip wanders.
+    for pet in [&bub, &nod] {
+        set_pet(
+            &db,
+            user,
+            pet.id,
+            [0, 0, 100, 0],
+            4,
+            10,
+            app.now() - chrono::Duration::days(3),
+        )
+        .await
+        .unwrap();
+    }
+    let asleep = sim.command(user, "house", view()).await;
+    assert_eq!(asleep.files.len(), 1, "the room picture");
+
+    // Woken, they are up and about again, which is drawn differently.
+    for pet in [&bub, &nod] {
+        set_pet(&db, user, pet.id, fresh_needs(100), 4, 10, app.now())
+            .await
+            .unwrap();
+    }
+    let awake = sim.command(user, "house", view()).await;
+    assert_ne!(
+        asleep.files[0].1, awake.files[0].1,
+        "a sleeper is not drawn like a wanderer"
+    );
+}
+
+#[tokio::test]
 async fn a_neglected_pet_falls_asleep_and_waking_it_is_free_once_a_day() {
     let Some(mut sim) = Sim::new("a_neglected_pet_falls_asleep_and_waking_it_is_free_once_a_day").await else {
         return;
@@ -8089,7 +8153,7 @@ async fn a_neglected_pet_falls_asleep_and_waking_it_is_free_once_a_day() {
     let pet = db.adopt(user, "ribbonfin_guppy", "Bub").await.unwrap();
 
     // Everything has run dry: a day later, it is asleep. Until then it only looks grumpy.
-    db.save_pet(user, pet.id, [0, 0, 100, 0], 5, 40, app.now())
+    set_pet(&db, user, pet.id, [0, 0, 100, 0], 5, 40, app.now())
         .await
         .unwrap();
     app.shift_clock(chrono::Duration::hours(23));
@@ -8134,7 +8198,7 @@ async fn a_neglected_pet_falls_asleep_and_waking_it_is_free_once_a_day() {
     // The nursery shows it asleep.
     let nursery = sim.command(user, "pet", pet_command("list")).await;
     assert!(nursery.description().contains("1 asleep"), "{}", nursery.description());
-    assert_png(&nursery, 1000, 600);
+    assert_png(&nursery, 1000, 352);
 
     // The day's first wake-up is free. The pet is up, a bit hungry, and rested.
     let woke = sim.click(user, &asleep, "Wake up (free today)").await;
@@ -8149,7 +8213,8 @@ async fn a_neglected_pet_falls_asleep_and_waking_it_is_free_once_a_day() {
     assert!(again.content().contains("already awake"), "{}", again.content());
 
     // It dozes off again the same day: a second wake-up costs 75 shells, which the player lacks.
-    db.save_pet(
+    set_pet(
+        &db,
         user,
         pet.id,
         [0, 0, 100, 0],
@@ -8183,7 +8248,8 @@ async fn a_neglected_pet_falls_asleep_and_waking_it_is_free_once_a_day() {
     assert!(!paid.button("Play").disabled);
 
     // Tomorrow the free wake-up is back.
-    db.save_pet(
+    set_pet(
+        &db,
         user,
         pet.id,
         [0, 0, 100, 0],
@@ -8301,7 +8367,7 @@ async fn a_pet_goes_on_a_trip_and_its_souvenir_is_claimed_once() {
     );
     let nursery = sim.command(user, "pet", pet_command("list")).await;
     assert!(nursery.description().contains("2 away"), "{}", nursery.description());
-    assert_png(&nursery, 1000, 600);
+    assert_png(&nursery, 1000, 352);
 
     // An hour on, both are back and the souvenirs wait. Care works again; a new trip waits for the claim.
     app.shift_clock(chrono::Duration::minutes(61));
@@ -8393,7 +8459,7 @@ async fn a_high_level_trip_can_bring_home_furniture_and_several_pets_claim_toget
         db.adopt(user, "ribbonfin_guppy", "Bub").await.unwrap(),
     );
     for pet in [&pip, &bub] {
-        db.save_pet(user, pet.id, fresh_needs(100), 30, 0, app.now())
+        set_pet(&db, user, pet.id, fresh_needs(100), 30, 0, app.now())
             .await
             .unwrap();
     }
@@ -8489,10 +8555,11 @@ async fn the_nursery_is_a_paged_grid_that_opens_one_pet() {
     }
     let now = app.now();
     let hour = chrono::Duration::hours(1);
-    db.save_pet(user, pets[1].id, [30, 20, 60, 90], 7, 150, now)
+    set_pet(&db, user, pets[1].id, [30, 20, 60, 90], 7, 150, now)
         .await
         .unwrap();
-    db.save_pet(
+    set_pet(
+        &db,
         user,
         pets[2].id,
         [0, 0, 100, 0],
@@ -8508,11 +8575,11 @@ async fn the_nursery_is_a_paged_grid_that_opens_one_pet() {
     db.start_trip(user, pets[4].id, "tidepool_meadow", fresh_needs(70), now - hour)
         .await
         .unwrap();
-    db.save_pet(user, pets[5].id, [100, 95, 90, 100], 30, 0, now)
+    set_pet(&db, user, pets[5].id, [100, 95, 90, 100], 30, 0, now)
         .await
         .unwrap();
-    db.save_pet(user, pets[6].id, [10, 5, 2, 8], 2, 99, now).await.unwrap();
-    db.save_pet(user, pets[9].id, [80, 70, 60, 50], 18, 600, now)
+    set_pet(&db, user, pets[6].id, [10, 5, 2, 8], 2, 99, now).await.unwrap();
+    set_pet(&db, user, pets[9].id, [80, 70, 60, 50], 18, 600, now)
         .await
         .unwrap();
 
@@ -8544,7 +8611,8 @@ async fn the_nursery_is_a_paged_grid_that_opens_one_pet() {
     );
 
     let page2 = sim.click(user, &page1, "Page ▶").await;
-    assert_png(&page2, 1000, 600);
+    // Two pets fill one row, so the card is only as tall as that row.
+    assert_png(&page2, 1000, 352);
     assert_eq!(page2.options("pn:o:").len(), 2);
     assert!(!page2.button("◀ Page").disabled && page2.button("Page ▶").disabled);
     assert_eq!(page2.options("pn:o:")[0].label, "Nib");
@@ -8580,9 +8648,13 @@ async fn the_nursery_is_a_paged_grid_that_opens_one_pet() {
 
     // The cards of the away, sleeping and returned pets.
     let away = sim.pick(user, &page1, "pn:o:", &pets[3].id.to_string()).await;
+    // Three hours out, less what a slow machine took since the trip was sent.
     assert!(
         away.description()
-            .contains("is away at **Kelp Forest Library**, back in 3 h"),
+            .contains("is away at **Kelp Forest Library**, back in 3 h")
+            || away
+                .description()
+                .contains("is away at **Kelp Forest Library**, back in 2 h 5"),
         "{}",
         away.description()
     );
@@ -8612,12 +8684,53 @@ async fn the_nursery_is_a_paged_grid_that_opens_one_pet() {
     // Another player's Nursery click on your public card does not swap it for their own nursery.
     db.adopt(stranger, &content.pets[1].id, "Rex").await.unwrap();
     let public = sim.command(user, "pet", pet_command("view")).await;
+    assert!(!public.ephemeral, "/pet view is a public card");
     let swap = sim.component(stranger, &format!("pn:f:{}", nib.id), &[], &public).await;
     assert!(
         swap.ephemeral && swap.content().contains("isn't yours"),
         "{}",
         swap.content()
     );
+
+    // The owner's own Nursery click on the public card opens the nursery as a private message of its
+    // own: the card stays what everybody sees.
+    let opened = sim.click(user, &public, "Nursery").await;
+    assert!(opened.ephemeral, "the nursery is for its owner's eyes only");
+    assert!(
+        !matches!(
+            opened.kind,
+            InteractionResponseType::UpdateMessage | InteractionResponseType::DeferredUpdateMessage
+        ),
+        "a new message beside the card, not the card replaced: {:?}",
+        opened.kind
+    );
+    assert_png(&opened, 1000, 600);
+    assert_eq!(opened.options("pn:o:").len(), 8);
+    // Paging works on that private copy, and so do the pet cards inside it.
+    let paged = sim.click(user, &opened, "Page ▶").await;
+    assert!(
+        paged.ephemeral && paged.options("pn:o:").len() == 2,
+        "{}",
+        paged.description()
+    );
+    assert_png(&paged, 1000, 352);
+    let inside = sim.pick(user, &paged, "pn:o:", &pets[9].id.to_string()).await;
+    assert!(
+        inside.ephemeral,
+        "a pet card opened inside the private nursery stays private"
+    );
+    // Its own Nursery button turns that message back into the nursery instead of opening another.
+    let again = sim.click(user, &inside, "Nursery").await;
+    assert!(
+        again.ephemeral
+            && matches!(
+                again.kind,
+                InteractionResponseType::UpdateMessage | InteractionResponseType::DeferredUpdateMessage
+            ),
+        "{:?}",
+        again.kind
+    );
+    assert_png(&again, 1000, 352);
 }
 
 // /Server events

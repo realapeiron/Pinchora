@@ -287,3 +287,178 @@ pub fn placeholder_pet(id: &str) -> RgbaImage {
     }
     image::imageops::resize(&img, 36, rows.len() as u32 * 3, image::imageops::FilterType::Nearest)
 }
+
+/// A small "z", and a bigger one: the snore drawn above a sleeping pet.
+const ZZ: [&[&str]; 2] = [
+    &["#####", "...#.", "..#..", ".#...", "#####"],
+    &[
+        "#######", ".....#.", "....#..", "...#...", "..#....", ".#.....", "#######",
+    ],
+];
+/// Rows above the pet the "z z" gets.
+const ZZ_ROOM: u32 = 17;
+
+/// `sprite` as a pet asleep, facing left or right: an upright one (taller than wide) lies on its
+/// side, a wide one flattens to two thirds of its height, both a little dimmed and trimmed to their
+/// pixels so they rest on the floor, with a pixel "z z" rising above. Nothing is drawn by hand, so
+/// it works for every species.
+pub fn sleeping_pet(sprite: &RgbaImage, left: bool) -> RgbaImage {
+    let upright = sprite.height() >= sprite.width();
+    let turned = match (upright, left) {
+        (true, true) => image::imageops::rotate270(sprite),
+        (true, false) => image::imageops::rotate90(sprite),
+        (false, _) => sprite.clone(),
+    };
+    let (mut x0, mut y0, mut x1, mut y1) = (turned.width(), turned.height(), 0, 0);
+    for (x, y, px) in turned.enumerate_pixels() {
+        if px[3] > 0 {
+            (x0, y0, x1, y1) = (x0.min(x), y0.min(y), x1.max(x), y1.max(y));
+        }
+    }
+    let mut body = if x1 < x0 {
+        turned
+    } else {
+        image::imageops::crop_imm(&turned, x0, y0, x1 - x0 + 1, y1 - y0 + 1).to_image()
+    };
+    if !upright {
+        body = flatten(&body);
+        if left {
+            body = image::imageops::flip_horizontal(&body);
+        }
+    }
+    for px in body.pixels_mut().filter(|px| px[3] > 0) {
+        for channel in &mut px.0[..3] {
+            *channel = (u16::from(*channel) * 7 / 8) as u8;
+        }
+    }
+    let width = body.width().max(24);
+    let mut out = RgbaImage::new(width, body.height() + ZZ_ROOM);
+    image::imageops::overlay(
+        &mut out,
+        &body,
+        i64::from((width - body.width()) / 2),
+        i64::from(ZZ_ROOM),
+    );
+    // The small one low and to the left, the big one high and to the right.
+    let middle = width / 2;
+    for (glyph, (x, y)) in ZZ.iter().zip([(middle.saturating_sub(9), 10), (middle + 1, 1)]) {
+        draw_glyph(&mut out, glyph, x, y);
+    }
+    out
+}
+
+/// `sprite` without every third row: two thirds as tall, its pixels as sharp as before.
+fn flatten(sprite: &RgbaImage) -> RgbaImage {
+    let kept: Vec<u32> = (0..sprite.height()).filter(|y| y % 3 != 2).collect();
+    RgbaImage::from_fn(sprite.width(), kept.len() as u32, |x, y| {
+        *sprite.get_pixel(x, kept[y as usize])
+    })
+}
+
+/// `glyph` (`#` pixels) in a soft blue with a dark outline, its top-left corner at (`x`, `y`).
+fn draw_glyph(img: &mut RgbaImage, glyph: &[&str], x: u32, y: u32) {
+    let lit = |gx: i64, gy: i64| {
+        glyph
+            .get(usize::try_from(gy).unwrap_or(usize::MAX))
+            .and_then(|row| row.as_bytes().get(usize::try_from(gx).unwrap_or(usize::MAX)))
+            == Some(&b'#')
+    };
+    let (w, h) = (glyph[0].len() as i64, glyph.len() as i64);
+    for gy in -1..=h {
+        for gx in -1..=w {
+            let near = (-1..=1).any(|dy| (-1..=1).any(|dx| lit(gx + dx, gy + dy)));
+            let (px, py) = (i64::from(x) + gx, i64::from(y) + gy);
+            if !near || px < 0 || py < 0 || px >= i64::from(img.width()) || py >= i64::from(img.height()) {
+                continue;
+            }
+            let color = if lit(gx, gy) {
+                Rgba([0xcf, 0xd8, 0xff, 255])
+            } else {
+                Rgba([0x1b, 0x1d, 0x2b, 255])
+            };
+            img.put_pixel(px as u32, py as u32, color);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A solid `w`×`h` pet in a larger frame with an eye near its top-left corner (on the second row,
+    /// which flattening keeps), so a turn or a mirror shows.
+    fn pet(frame: (u32, u32), at: (u32, u32), w: u32, h: u32) -> RgbaImage {
+        let mut img = RgbaImage::new(frame.0, frame.1);
+        for y in at.1..at.1 + h {
+            for x in at.0..at.0 + w {
+                img.put_pixel(x, y, Rgba([200, 90, 60, 255]));
+            }
+        }
+        img.put_pixel(at.0 + 2, at.1 + 1, Rgba([255, 255, 255, 255]));
+        img
+    }
+
+    /// Rows of `img` from `from` down that have a visible pixel.
+    fn drawn_rows(img: &RgbaImage, from: u32) -> usize {
+        (from..img.height())
+            .filter(|&y| (0..img.width()).any(|x| img.get_pixel(x, y)[3] > 0))
+            .count()
+    }
+
+    /// Pixels of the "z z" colour in rows `ys`.
+    fn snore(img: &RgbaImage, ys: std::ops::Range<u32>) -> usize {
+        ys.flat_map(|y| (0..img.width()).map(move |x| (x, y)))
+            .filter(|&(x, y)| img.get_pixel(x, y).0 == [0xcf, 0xd8, 0xff, 255])
+            .count()
+    }
+
+    #[test]
+    fn an_upright_pet_lies_on_its_side_with_zs_above() {
+        // 12 wide and 26 tall in a 20×30 frame: turned, it is 26 wide and 12 tall.
+        let standing = pet((20, 30), (4, 2), 12, 26);
+        let lying = sleeping_pet(&standing, true);
+        assert_eq!((lying.width(), lying.height()), (26, 12 + ZZ_ROOM));
+        assert_eq!(
+            drawn_rows(&lying, ZZ_ROOM),
+            12,
+            "the body fills its rows, resting on the bottom edge"
+        );
+        assert_eq!(
+            snore(&lying, 0..ZZ_ROOM),
+            13 + 19,
+            "a small z (13 pixels) and a big one (19)"
+        );
+        assert_eq!(snore(&lying, ZZ_ROOM..lying.height()), 0, "nothing on the body");
+        // Turned the other way it is the same size, the other way round.
+        let right = sleeping_pet(&standing, false);
+        assert_eq!((right.width(), right.height()), (lying.width(), lying.height()));
+        assert_ne!(lying, right);
+    }
+
+    #[test]
+    fn a_wide_pet_flattens_instead_of_standing_on_its_head() {
+        // 26 wide and 16 tall: two thirds of the rows stay (11 of 16).
+        let standing = pet((30, 20), (2, 4), 26, 16);
+        let lying = sleeping_pet(&standing, false);
+        assert_eq!((lying.width(), lying.height()), (26, 11 + ZZ_ROOM));
+        assert_eq!(drawn_rows(&lying, ZZ_ROOM), 11);
+        assert_eq!(snore(&lying, 0..ZZ_ROOM), 13 + 19);
+        let mirrored = sleeping_pet(&standing, true);
+        assert_ne!(lying, mirrored, "it can face either way, its z's always read as z's");
+        assert_eq!(snore(&mirrored, 0..ZZ_ROOM), 13 + 19);
+    }
+
+    #[test]
+    fn a_sleeper_is_a_little_darker_than_the_pet_standing() {
+        let standing = pet((30, 20), (2, 4), 26, 16);
+        let lying = sleeping_pet(&standing, false);
+        let body = lying.get_pixel(lying.width() / 2, lying.height() - 3);
+        assert_eq!(body.0, [175, 78, 52, 255], "200, 90, 60 at seven eighths");
+    }
+
+    #[test]
+    fn an_empty_sprite_still_gets_its_zs() {
+        let lying = sleeping_pet(&RgbaImage::new(8, 8), false);
+        assert_eq!((lying.width(), lying.height()), (24, 8 + ZZ_ROOM));
+    }
+}
