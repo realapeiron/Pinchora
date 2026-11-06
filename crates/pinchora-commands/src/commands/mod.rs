@@ -24,6 +24,7 @@ pub(crate) mod house;
 pub(crate) mod interact;
 pub(crate) mod leaderboard;
 pub(crate) mod level_roles;
+pub(crate) mod modules;
 pub(crate) mod partner;
 pub(crate) mod party;
 pub(crate) mod party_games;
@@ -67,6 +68,9 @@ macro_rules! commands {
         }
 
         pub(crate) async fn dispatch(cx: &Cx, data: CommandData) -> anyhow::Result<()> {
+            if crate::gate::refuses_command(cx, &data).await? {
+                return Ok(());
+            }
             let name = data.name.clone();
             $(
                 if name == <$ty as CreateCommand>::NAME {

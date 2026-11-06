@@ -1,6 +1,9 @@
 use std::{sync::Arc, time::Duration};
 
-use pinchora_core::leveling::{MESSAGE_XP, MESSAGE_XP_COOLDOWN_SECS, level_of, scale, week_start};
+use pinchora_core::{
+    leveling::{MESSAGE_XP, MESSAGE_XP_COOLDOWN_SECS, level_of, scale, week_start},
+    modules::Module,
+};
 use pinchora_db::XpGrant;
 use pinchora_render::{Theme, WelcomeCard};
 use twilight_model::{
@@ -36,7 +39,10 @@ pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<(
     let (g, u) = (guild.get(), msg.author.id.get());
     // Chat that makes critters and bottles wash up counts here, before the XP cooldown: it never reads
     // the message, and a failure never keeps a member from their XP.
-    if let Err(error) = collection::spawn::on_chat(&app, g, u, msg.channel_id.get()).await {
+    let here = Some(msg.channel_id.get());
+    if app.module_allowed(g, here, Module::Collection).await
+        && let Err(error) = collection::spawn::on_chat(&app, g, u, msg.channel_id.get()).await
+    {
         tracing::debug!(%error, guild = g, "chat drops not counted");
     }
     let cooldown = Duration::from_secs(MESSAGE_XP_COOLDOWN_SECS);
@@ -57,7 +63,10 @@ pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<(
         msg.member.as_ref().and_then(|m| m.nick.as_deref()),
     )
     .await;
-    let points = if settings.points_enabled {
+    // Leveling and points can also be switched off in some channels (`/config modules`).
+    let leveling_on = settings.leveling_enabled && app.module_allowed(g, here, Module::Leveling).await;
+    let points_on = settings.points_enabled && app.module_allowed(g, here, Module::Points).await;
+    let points = if points_on {
         rand::random_range(i64::from(settings.points_min)..=i64::from(settings.points_max))
     } else {
         0
@@ -72,7 +81,7 @@ pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<(
     let lineage = app.xp_lineage(&rules, msg.channel_id.get()).await;
     let multiplier = rules.multiplier_in(&lineage, &held);
     let points = scale(points, multiplier);
-    if !settings.leveling_enabled {
+    if !leveling_on {
         if points > 0 {
             app.db.give_points(g, u, points).await?;
             metrics::counter!("pinchora_points_granted_total").increment(points as u64);
@@ -173,6 +182,9 @@ pub async fn on_member_remove(app: Arc<App>, event: MemberRemove) -> anyhow::Res
     let settings = app.guild_settings(guild_id.get()).await?;
     app.log_state.forget(guild_id.get(), user.id.get()).await;
     server_log::member_left(&app, &settings, &user).await;
+    if !app.module_allowed(guild_id.get(), None, Module::Goodbye).await {
+        return Ok(());
+    }
     let Some(channel) = settings.goodbye_channel_id.filter(|_| !user.bot) else {
         return Ok(());
     };

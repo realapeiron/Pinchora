@@ -14,6 +14,7 @@ mod guilds;
 mod house;
 mod interactions;
 mod members;
+mod modules;
 mod panels;
 mod partners;
 mod party;
@@ -53,7 +54,7 @@ pub use giveaways::{
     EndedGiveaway, EntryToggle, GiveawayOpen, GiveawayRow, MAX_RUNNING_GIVEAWAYS, NewGiveaway, Reroll,
 };
 pub use guestbook::{NoteRow, SignOutcome, VisitorRow};
-pub use guilds::{GuildSettings, LogKind};
+pub use guilds::{GuildSettings, LogKind, PatchRefused};
 pub use house::{
     HouseRow, InventoryRow, NewRoom, PlaceOutcome, PlacementRow, Refusal, RestoreOutcome, RoomChange, RoomRow,
     SOULBOUND_GUEST, UpgradeOutcome,

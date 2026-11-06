@@ -15,18 +15,70 @@ export function timeAgo(iso: string, now: Date = new Date()): string {
   return new Date(iso).toISOString().slice(0, 10);
 }
 
+/** Looks up what an id is called, so the log reads "#general" instead of a number. */
+export interface Names {
+  channel: (id: string) => string;
+  role: (id: string) => string;
+  module: (key: string) => string;
+}
+
+/** Names when nothing is known about the server: the id itself, worded as what it is. */
+export const plainNames: Names = {
+  channel: (id) => `channel ${id}`,
+  role: (id) => `role ${id}`,
+  module: (key) => key.replaceAll("_", " "),
+};
+
+/** What each settings field is called in the log. */
 const FIELD_NAMES: Record<string, string> = {
   leveling_enabled: "leveling",
-  voice_xp_enabled: "voice XP",
-  welcome_enabled: "welcome cards",
-  points_enabled: "points",
+  levelup_channel_id: "the level-up channel",
+  levelup_message: "the level-up message",
+  levelup_mode: "level-up mode",
   level_roles_stack: "stacking level roles",
+  voice_xp_enabled: "voice XP",
+  voice_xp_amount: "voice XP a minute",
+  welcome_enabled: "welcome cards",
+  welcome_channel_id: "the welcome channel",
+  welcome_message: "the welcome message",
+  welcome_theme: "the welcome card theme",
+  welcome_title: "the welcome card headline",
+  welcome_accent: "the welcome card colour",
+  join_role_id: "the join role",
+  goodbye_channel_id: "the goodbye channel",
+  goodbye_message: "the goodbye message",
+  points_enabled: "points",
+  points_name: "the points name",
+  points_emoji: "the points emoji",
+  points_min: "the least points a message earns",
+  points_max: "the most points a message earns",
+  log_channel_id: "the log channel",
   log_members: "join and leave logs",
   log_names: "name change logs",
   log_bans: "ban logs",
   log_voice: "voice logs",
-  enabled: "critter drops",
 };
+
+/** Fields whose meaning depends on the action that wrote them. */
+const ACTION_FIELDS: Record<string, Record<string, string>> = {
+  "critters.set": { enabled: "critter drops", channel_id: "the critter channel" },
+  "suggestions.set": { channel_id: "the suggestion channel" },
+  "surge.set": {
+    enabled: "timed storms",
+    channel_id: "the storm channel",
+    every_hours: "how often storms come",
+  },
+  "module.set": { enabled: "the switch", channel_mode: "where it works", channels: "the channels" },
+  "level_roles.put": { level: "the level" },
+  "rep_roles.put": { reputation: "the reputation" },
+  "xp_rules.put": { multiplier: "the multiplier" },
+  "store.put": { price: "the price", stock: "the stock" },
+};
+
+/** What a field is called, in words. */
+export function fieldLabel(action: string, field: string): string {
+  return ACTION_FIELDS[action]?.[field] ?? FIELD_NAMES[field] ?? field.replaceAll("_", " ");
+}
 
 /** What list writes did, by audit action. */
 const ACTIONS: Record<string, string> = {
@@ -44,19 +96,72 @@ const ACTIONS: Record<string, string> = {
   "critters.set": "changed critter drops",
 };
 
+const MODES: Record<string, string> = {
+  all: "all channels",
+  only: "only some channels",
+  except: "all but some channels",
+};
+
+/** One value from an audit row, as a person would say it: ids become names, flags on or off. */
+export function showValue(field: string, value: unknown, names: Names = plainNames): string {
+  if (value === null || value === undefined) return "—";
+  if (typeof value === "boolean") return value ? "on" : "off";
+  if (field === "channels" && Array.isArray(value)) {
+    return value.length === 0 ? "none" : value.map((id) => names.channel(String(id))).join(", ");
+  }
+  if (field === "channel_mode" && typeof value === "string") return MODES[value] ?? value;
+  if (typeof value === "string" && /^\d+$/.test(value)) {
+    if (field.endsWith("channel_id")) return names.channel(value);
+    if (field.endsWith("role_id")) return names.role(value);
+  }
+  if (typeof value === "string") return value;
+  if (typeof value === "number") return String(value);
+  return JSON.stringify(value);
+}
+
+/** What an audit row was done to: a role, a channel, a module; `null` when it was the server itself. */
+export function targetLabel(entry: AuditEntry, names: Names = plainNames): string | null {
+  const target = entry.target;
+  if (!target) return null;
+  if (entry.action === "module.set") return names.module(target);
+  const [kind, id] = target.split(":");
+  if (id && (kind === "channel" || kind === "role"))
+    return kind === "channel" ? names.channel(id) : names.role(id);
+  if (/^\d+$/.test(target)) return names.role(target);
+  return target;
+}
+
 /** What an audit row did, as a sentence after the actor's name. */
-export function describeChange(entry: AuditEntry): string {
+export function describeChange(entry: AuditEntry, names: Names = plainNames): string {
+  if (entry.action === "module.set" && entry.target) return describeModule(entry, names);
   const action = ACTIONS[entry.action];
   if (action) return action;
   const after = entry.after ?? {};
   const parts = Object.entries(after).map(([field, value]) => {
-    const name = FIELD_NAMES[field] ?? field.replaceAll("_", " ");
+    const name = fieldLabel(entry.action, field);
     if (typeof value === "boolean") return `turned ${name} ${value ? "on" : "off"}`;
     return `changed ${name}`;
   });
   if (parts.length === 0) return `made a change (${entry.action})`;
   if (parts.length > 3) return `${parts.slice(0, 2).join(", ")} and ${parts.length - 2} more`;
   return parts.join(", ");
+}
+
+/** "turned Pets off", "kept Pets to 2 channels", "moved Pets back to all channels". */
+function describeModule(entry: AuditEntry, names: Names): string {
+  const label = names.module(entry.target ?? "");
+  const after = entry.after ?? {};
+  const said: string[] = [];
+  if (typeof after.enabled === "boolean") said.push(`turned ${label} ${after.enabled ? "on" : "off"}`);
+  if (typeof after.channel_mode === "string" || Array.isArray(after.channels)) {
+    const count = Array.isArray(after.channels) ? after.channels.length : 0;
+    const noun = count === 1 ? "channel" : "channels";
+    if (after.channel_mode === "all") said.push(`opened ${label} to all channels`);
+    else if (after.channel_mode === "only") said.push(`limited ${label} to ${count} ${noun}`);
+    else if (after.channel_mode === "except") said.push(`switched ${label} off in ${count} ${noun}`);
+    else said.push(`changed the channels of ${label}`);
+  }
+  return said.length > 0 ? said.join(" and ") : `changed ${label}`;
 }
 
 /** One or two letters for a server without an icon. */

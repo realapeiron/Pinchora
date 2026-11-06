@@ -3,6 +3,7 @@ pub mod config;
 pub mod economy;
 pub mod items;
 pub mod leveling;
+pub mod modules;
 pub mod server_events;
 pub mod settings;
 pub mod snowflake;

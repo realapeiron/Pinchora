@@ -17,6 +17,7 @@ use crate::{
     commands::{
         collection::settings::{ConfigCritters, critters_summary},
         level_roles::ConfigLevelRoles,
+        modules::ConfigModules,
         party::ConfigGambling,
         party_games::{ConfigPartyGames, party_summary},
         points::ConfigPoints,
@@ -82,6 +83,8 @@ pub enum ConfigCommand {
     Surge(ConfigSurge),
     #[command(name = "partygames")]
     PartyGames(ConfigPartyGames),
+    #[command(name = "modules")]
+    Modules(ConfigModules),
 }
 
 #[derive(CommandOption, CreateOption, Clone, Copy)]
@@ -239,6 +242,7 @@ impl ConfigCommand {
             Self::Gambling(c) => return c.run(cx, guild).await,
             Self::Surge(c) => return c.run(cx, guild).await,
             Self::PartyGames(c) => return c.run(cx, guild).await,
+            Self::Modules(c) => return c.run(cx, guild).await,
             Self::Points(c) => match c.apply(&cx.app.db, guild).await? {
                 Ok(settings) => settings,
                 Err(reason) => return cx.reply_ephemeral(reason).await,

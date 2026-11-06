@@ -206,7 +206,14 @@ pub(crate) async fn on_pick(cx: &Cx, mut args: Split<'_, char>, value: Option<&s
     ) else {
         return cx.reply_ephemeral("This game has expired.").await;
     };
-    let Some(session) = cx.app.db.game(id).await?.filter(|s| s.is_active()) else {
+    // Only a hangman game: another game's id would pass another module's switch.
+    let Some(session) = cx
+        .app
+        .db
+        .game(id)
+        .await?
+        .filter(|s| s.kind == "hangman" && s.is_active())
+    else {
         return cx
             .reply_ephemeral("This game is over. Start a new one with `/play hangman`!")
             .await;

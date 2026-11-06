@@ -12,7 +12,7 @@ use std::{
     path::PathBuf,
     sync::{
         Arc, LazyLock, Mutex,
-        atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
+        atomic::{AtomicBool, AtomicI64, AtomicU64, AtomicUsize, Ordering},
     },
     time::{Duration, Instant, SystemTime},
 };
@@ -105,6 +105,8 @@ struct Mock {
     role_calls: Arc<Mutex<Vec<String>>>,
     /// How many times a server's channels were asked for.
     channel_lookups: Arc<AtomicUsize>,
+    /// Where the bot's own role sits, so a test can move it between two saves.
+    bot_position: Arc<AtomicI64>,
 }
 
 fn user_json(id: u64, name: &str) -> Value {
@@ -144,10 +146,10 @@ fn role_json(id: u64, name: &str, position: i64, managed: bool, permissions: u64
 }
 
 /// `GET /guilds/{id}/roles`: `@everyone` (the server's id) and the fixed roles.
-fn roles_json(guild: u64) -> Value {
+fn roles_json(guild: u64, bot_position: i64) -> Value {
     json!([
         role_json(guild, "@everyone", 0, false, SEND_MESSAGES),
-        role_json(BOT_ROLE, "Pinchora", BOT_ROLE_POSITION, true, MANAGE_ROLES),
+        role_json(BOT_ROLE, "Pinchora", bot_position, true, MANAGE_ROLES),
         role_json(FAN, "Fan", 3, false, 0),
         role_json(REGULAR, "Regular", 5, false, 0),
         role_json(ADMIN, "Admin", 20, false, ADMINISTRATOR),
@@ -353,7 +355,10 @@ async fn discord(State(mock): State<Mock>, method: Method, uri: Uri, headers: He
         }
         (&Method::GET, [.., "guilds", guild, "roles"]) => {
             let id = guild.parse::<u64>().unwrap_or(0);
-            (StatusCode::OK, roles_json(id).to_string())
+            (
+                StatusCode::OK,
+                roles_json(id, mock.bot_position.load(Ordering::SeqCst)).to_string(),
+            )
         }
         (&Method::GET, [.., "guilds", _, "members", user]) => {
             let user = user.parse::<u64>().unwrap_or(0);
@@ -431,6 +436,7 @@ impl Harness {
             return None;
         };
         let mock = Mock::default();
+        mock.bot_position.store(BOT_ROLE_POSITION, Ordering::SeqCst);
         let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind the mock");
         let mock_addr = listener.local_addr().expect("mock address");
         let routes = Router::new()
@@ -703,9 +709,14 @@ async fn announced(heard: &mut (impl futures_util::Stream<Item = Invalidation> +
 
 /// A chat message from `user` in `guild`, as the gateway delivers it.
 fn chat(guild: u64, user: u64) -> MessageCreate {
+    chat_in(guild, user, 2)
+}
+
+/// [`chat`] in a given channel.
+fn chat_in(guild: u64, user: u64, channel: u64) -> MessageCreate {
     serde_json::from_value(json!({
         "id": unique().to_string(),
-        "channel_id": "2",
+        "channel_id": channel.to_string(),
         "guild_id": guild.to_string(),
         "type": 0,
         "author": user_json(user, "chatter"),
@@ -2042,10 +2053,9 @@ async fn suggestions_and_critter_drops_have_their_own_settings() {
     let (guild, _, mut browser) = h.managed_server().await;
     let g = format!("/api/guilds/{guild}");
     let start = browser.get(&format!("{g}/community")).await.json();
-    assert_eq!(
-        start,
-        json!({ "suggestions": { "channel_id": null }, "critters": { "enabled": false, "channel_id": null } })
-    );
+    assert_eq!(start["suggestions"], json!({ "channel_id": null }));
+    assert_eq!(start["critters"], json!({ "enabled": false, "channel_id": null }));
+    assert_eq!(start["surge"]["enabled"], false, "timed storms start off");
 
     let on = browser
         .write(
@@ -2256,4 +2266,676 @@ async fn logging_in_again_ends_the_old_session() {
         StatusCode::UNAUTHORIZED,
         "the cookie from before the new login no longer works"
     );
+}
+
+// /P3: module switches
+
+/// A bot pod's verdict for a module in a channel.
+async fn access(
+    app: &App,
+    guild: u64,
+    channel: u64,
+    module: pinchora_core::modules::Module,
+) -> pinchora_core::modules::Access {
+    app.module_access(guild, Some(channel), module)
+        .await
+        .expect("module access")
+}
+
+#[tokio::test]
+async fn module_switches_save_with_the_command_rules_and_reach_the_bot() {
+    use pinchora_core::modules::{Access, Module};
+    let Some(h) = Harness::new("modules").await else {
+        return;
+    };
+    let guild = unique();
+    h.add_bot(guild);
+    let bot = h.bot_pod().await;
+    listen_for_invalidations(&bot).await;
+    let mut heard = Box::pin(h.state.app.cache.invalidations().await.expect("subscribe"));
+    let manager = unique();
+    let mut browser = h.browser();
+    browser
+        .login(&h, manager, vec![guild_entry(guild, "Reef", false, MANAGE_GUILD)])
+        .await;
+    let g = format!("/api/guilds/{guild}");
+
+    // Everything starts on, except welcome cards and gambling, which are off until a manager says so.
+    let list = browser.get(&format!("{g}/modules")).await;
+    assert_eq!(list.status, StatusCode::OK, "{}", list.text());
+    let list = list.json();
+    assert_eq!(list["max_channels"], 50);
+    assert_eq!(list["groups"].as_array().unwrap().len(), 4);
+    let items = list["items"].as_array().unwrap();
+    assert_eq!(items.len(), Module::ALL.len());
+    for item in items {
+        let key = item["key"].as_str().unwrap();
+        assert_eq!(item["enabled"], !matches!(key, "gambling" | "welcome"), "{key}");
+        assert_eq!(item["channel_mode"], "all", "{key}");
+        assert_eq!(item["channels"], json!([]), "{key}");
+    }
+    let overview = browser.get(&g).await.json();
+    assert_eq!(overview["modules"].as_array().unwrap().len(), Module::ALL.len());
+
+    // Off for the whole server: the bot hears it at once, and it is recorded.
+    assert_eq!(access(&bot, guild, GENERAL, Module::Pets).await, Access::Allowed);
+    let off = browser
+        .write(Method::PUT, &format!("{g}/modules/pets"), json!({ "enabled": false }))
+        .await;
+    assert_eq!(off.status, StatusCode::OK, "{}", off.text());
+    assert_eq!(off.json()["enabled"], false);
+    assert!(
+        announced(&mut heard, Invalidation::Guild(guild)).await,
+        "guild:{guild} was published"
+    );
+    let started = Instant::now();
+    while access(&bot, guild, GENERAL, Module::Pets).await == Access::Allowed
+        && started.elapsed() < Duration::from_secs(5)
+    {
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    assert_eq!(access(&bot, guild, GENERAL, Module::Pets).await, Access::ServerOff);
+    let rows = h.state.app.db.audit_page(guild, None, 10).await.unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(
+        (rows[0].action.as_str(), rows[0].target.as_deref()),
+        ("module.set", Some("pets"))
+    );
+    assert_eq!(rows[0].source, "web");
+    assert_eq!(rows[0].before.as_deref(), Some(r#"{"enabled": true}"#));
+    assert_eq!(rows[0].after.as_deref(), Some(r#"{"enabled": false}"#));
+    // The same value again changes nothing and records nothing.
+    browser
+        .write(Method::PUT, &format!("{g}/modules/pets"), json!({ "enabled": false }))
+        .await;
+    assert_eq!(h.state.app.db.audit_page(guild, None, 10).await.unwrap().len(), 1);
+
+    // Back on, but only in one channel.
+    let only = browser
+        .write(
+            Method::PUT,
+            &format!("{g}/modules/pets"),
+            json!({ "enabled": true, "channel_mode": "only", "channels": [GENERAL.to_string()] }),
+        )
+        .await;
+    assert_eq!(only.status, StatusCode::OK, "{}", only.text());
+    assert_eq!(only.json()["channel_mode"], "only");
+    assert_eq!(only.json()["channels"], json!([GENERAL.to_string()]));
+    let started = Instant::now();
+    while access(&bot, guild, NEWS, Module::Pets).await == Access::ServerOff
+        && started.elapsed() < Duration::from_secs(5)
+    {
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    assert_eq!(access(&bot, guild, GENERAL, Module::Pets).await, Access::Allowed);
+    assert_eq!(access(&bot, guild, NEWS, Module::Pets).await, Access::ChannelOff);
+    // The other mode alone means a new list, which it does not have; the same mode alone keeps it.
+    let bare = browser
+        .write(
+            Method::PUT,
+            &format!("{g}/modules/pets"),
+            json!({ "channel_mode": "except" }),
+        )
+        .await;
+    assert_eq!(
+        (bare.status, bare.json()["error"]["field"].clone()),
+        (StatusCode::UNPROCESSABLE_ENTITY, json!("channels"))
+    );
+    let same_mode = browser
+        .write(
+            Method::PUT,
+            &format!("{g}/modules/pets"),
+            json!({ "channel_mode": "only" }),
+        )
+        .await;
+    assert_eq!(same_mode.json()["channels"], json!([GENERAL.to_string()]));
+    let except = browser
+        .write(
+            Method::PUT,
+            &format!("{g}/modules/pets"),
+            json!({ "channel_mode": "except", "channels": [NEWS.to_string()] }),
+        )
+        .await;
+    assert_eq!(except.json()["channels"], json!([NEWS.to_string()]));
+    // "All" forgets the list and the row goes away.
+    let all = browser
+        .write(
+            Method::PUT,
+            &format!("{g}/modules/pets"),
+            json!({ "channel_mode": "all" }),
+        )
+        .await;
+    assert_eq!(all.json()["channels"], json!([]));
+    let stored: i64 = sqlx_count(&h, guild).await;
+    assert_eq!(stored, 0, "a module that is on everywhere has no row");
+
+    // The switches that already lived in the settings stay there: no second switch for one thing.
+    let leveling = browser
+        .write(
+            Method::PUT,
+            &format!("{g}/modules/leveling"),
+            json!({ "enabled": false }),
+        )
+        .await;
+    assert_eq!(leveling.json()["enabled"], false);
+    assert!(!h.state.app.db.guild_settings(guild).await.unwrap().leveling_enabled);
+    let settings = browser.get(&g).await.json();
+    assert_eq!(settings["settings"]["leveling_enabled"], false);
+    let patched = browser
+        .write(
+            Method::PATCH,
+            &format!("{g}/settings"),
+            json!({ "points_enabled": false }),
+        )
+        .await;
+    assert_eq!(patched.status, StatusCode::OK);
+    let points = browser.get(&format!("{g}/modules")).await.json();
+    let points = points["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|m| m["key"] == "points")
+        .cloned()
+        .unwrap();
+    assert_eq!(
+        points["enabled"], false,
+        "the settings page and the module grid are one switch"
+    );
+    // Leveling keeps a channel rule next to its column switch.
+    let rule = browser
+        .write(
+            Method::PUT,
+            &format!("{g}/modules/leveling"),
+            json!({ "enabled": true, "channel_mode": "except", "channels": [NEWS.to_string()] }),
+        )
+        .await;
+    assert_eq!(rule.status, StatusCode::OK, "{}", rule.text());
+    assert!(h.state.app.db.guild_settings(guild).await.unwrap().leveling_enabled);
+    let gambling = browser
+        .write(
+            Method::PUT,
+            &format!("{g}/modules/gambling"),
+            json!({ "enabled": true }),
+        )
+        .await;
+    assert_eq!(gambling.json()["enabled"], true);
+    assert!(h.state.app.db.gambling_enabled(guild).await.unwrap());
+    let actions: Vec<(String, Option<String>)> = h
+        .state
+        .app
+        .db
+        .audit_page(guild, None, 20)
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|r| (r.action, r.target))
+        .collect();
+    assert!(
+        actions.contains(&("module.set".into(), Some("gambling".into()))),
+        "{actions:?}"
+    );
+    assert!(
+        actions.contains(&("module.set".into(), Some("leveling".into()))),
+        "{actions:?}"
+    );
+}
+
+/// How many `guild_modules` rows a server has.
+async fn sqlx_count(h: &Harness, guild: u64) -> i64 {
+    let row: (i64,) = sqlx::query_as("SELECT count(*) FROM guild_modules WHERE guild_id = $1")
+        .bind(guild as i64)
+        .fetch_one(h.state.app.db.pool())
+        .await
+        .expect("count");
+    row.0
+}
+
+#[tokio::test]
+async fn module_rules_answer_with_the_field_and_the_command_sentence() {
+    let Some(h) = Harness::new("module_rules").await else {
+        return;
+    };
+    let (guild, _, mut browser) = h.managed_server().await;
+    let g = format!("/api/guilds/{guild}");
+    let put = |module: &'static str, body: Value| {
+        let path = format!("{g}/modules/{module}");
+        (path, body)
+    };
+    let mut tries: Vec<(&str, Value, StatusCode, &str)> = vec![
+        (
+            "pets",
+            json!({ "channel_mode": "sideways" }),
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "channel_mode",
+        ),
+        (
+            "pets",
+            json!({ "channel_mode": "only" }),
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "channels",
+        ),
+        (
+            "pets",
+            json!({ "channel_mode": "only", "channels": [] }),
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "channels",
+        ),
+        (
+            "pets",
+            json!({ "channel_mode": "except", "channels": ["0"] }),
+            StatusCode::BAD_REQUEST,
+            "",
+        ),
+        (
+            "pets",
+            json!({ "channel_mode": "only", "channels": ["general"] }),
+            StatusCode::BAD_REQUEST,
+            "",
+        ),
+        (
+            "pets",
+            json!({ "channel_mode": "only", "channels": ["424242"] }),
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "channels",
+        ),
+        (
+            "welcome",
+            json!({ "channel_mode": "only", "channels": [GENERAL.to_string()] }),
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "channel_mode",
+        ),
+        (
+            "log",
+            json!({ "channel_mode": "except", "channels": [GENERAL.to_string()] }),
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "channel_mode",
+        ),
+        ("pets", json!({ "colour": "red" }), StatusCode::BAD_REQUEST, ""),
+    ];
+    let many: Vec<String> = (1..=51u64).map(|n| (7_100 + n).to_string()).collect();
+    tries.push((
+        "pets",
+        json!({ "channel_mode": "only", "channels": many }),
+        StatusCode::UNPROCESSABLE_ENTITY,
+        "channels",
+    ));
+    for (module, body, status, field) in tries {
+        let (path, body) = put(module, body);
+        let response = browser.write(Method::PUT, &path, body.clone()).await;
+        assert_eq!(response.status, status, "{module} {body}: {}", response.text());
+        if !field.is_empty() {
+            assert_eq!(response.json()["error"]["field"], field, "{module} {body}");
+        }
+    }
+    let nothing = browser
+        .write(
+            Method::PUT,
+            &format!("{g}/modules/nonsense"),
+            json!({ "enabled": false }),
+        )
+        .await;
+    assert_eq!(nothing.status, StatusCode::NOT_FOUND);
+    // The sentence is the command's.
+    let none = browser
+        .write(
+            Method::PUT,
+            &format!("{g}/modules/pets"),
+            json!({ "channel_mode": "only", "channels": [] }),
+        )
+        .await;
+    assert_eq!(
+        none.json()["error"]["message"],
+        "Pick at least one channel, or choose all channels."
+    );
+    let welcome = browser
+        .write(
+            Method::PUT,
+            &format!("{g}/modules/welcome"),
+            json!({ "channel_mode": "only", "channels": [GENERAL.to_string()] }),
+        )
+        .await;
+    assert!(
+        welcome.json()["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("works for the whole server"),
+        "{}",
+        welcome.text()
+    );
+    assert_eq!(
+        h.state.app.db.audit_page(guild, None, 10).await.unwrap().len(),
+        0,
+        "refused writes leave no trace"
+    );
+    assert_eq!(sqlx_count(&h, guild).await, 0);
+
+    // Only managers write.
+    let other = unique();
+    let mut member = h.browser();
+    member
+        .login(&h, other, vec![guild_entry(guild, "Reef", false, 0)])
+        .await;
+    let denied = member
+        .write(Method::PUT, &format!("{g}/modules/pets"), json!({ "enabled": false }))
+        .await;
+    assert_eq!(
+        (denied.status, denied.code().as_str()),
+        (StatusCode::FORBIDDEN, "not_manager")
+    );
+    assert_eq!(member.get(&format!("{g}/modules")).await.status, StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn timed_storms_have_web_settings_with_the_command_rules() {
+    let Some(h) = Harness::new("surge_settings").await else {
+        return;
+    };
+    let (guild, _, mut browser) = h.managed_server().await;
+    let g = format!("/api/guilds/{guild}");
+    let start = browser.get(&format!("{g}/community")).await.json();
+    assert_eq!(start["surge"]["enabled"], false);
+    assert_eq!(start["surge"]["every_hours"], 24);
+    assert_eq!(start["surge"]["every_choices"], json!([6, 12, 24, 48, 168]));
+    assert_eq!(start["surge"]["next_at"], Value::Null);
+
+    for (body, field) in [
+        (json!({ "every_hours": 7 }), "every_hours"),
+        (json!({ "every_hours": 5_000_000_000_i64 }), "every_hours"),
+        (json!({ "channel_id": LOUNGE.to_string() }), "channel_id"),
+        (json!({ "channel_id": "424242" }), "channel_id"),
+    ] {
+        let refused = browser
+            .write(Method::PUT, &format!("{g}/surge/settings"), body.clone())
+            .await;
+        assert_eq!(
+            refused.status,
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "{body}: {}",
+            refused.text()
+        );
+        assert_eq!(refused.json()["error"]["field"], field, "{body}");
+    }
+    assert_eq!(h.state.app.db.audit_page(guild, None, 10).await.unwrap().len(), 0);
+
+    let on = browser
+        .write(
+            Method::PUT,
+            &format!("{g}/surge/settings"),
+            json!({ "enabled": true, "channel_id": NEWS.to_string(), "every_hours": 12 }),
+        )
+        .await;
+    assert_eq!(on.status, StatusCode::OK, "{}", on.text());
+    let on = on.json();
+    assert_eq!(
+        (on["enabled"].as_bool(), on["every_hours"].as_i64()),
+        (Some(true), Some(12))
+    );
+    assert_eq!(on["channel_id"], NEWS.to_string());
+    assert!(on["next_at"].is_string(), "the next storm is scheduled");
+    let stored = h.state.app.db.party_settings(guild).await.unwrap();
+    assert_eq!((stored.surge_enabled, stored.surge_every_hours), (true, 12));
+    let rows = h.state.app.db.audit_page(guild, None, 10).await.unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].action, "surge.set");
+
+    // The same values again do not push the next storm back, and are not recorded.
+    let next = stored.surge_next_at;
+    browser
+        .write(
+            Method::PUT,
+            &format!("{g}/surge/settings"),
+            json!({ "enabled": true, "channel_id": NEWS.to_string(), "every_hours": 12 }),
+        )
+        .await;
+    assert_eq!(h.state.app.db.party_settings(guild).await.unwrap().surge_next_at, next);
+    assert_eq!(h.state.app.db.audit_page(guild, None, 10).await.unwrap().len(), 1);
+}
+
+// /Carry-over from the P2 review
+
+#[tokio::test]
+async fn a_sync_from_discord_and_one_from_the_dashboard_never_run_at_once_and_rest_between() {
+    use pinchora_commands::{SyncOutcome, sync_level_roles};
+    let Some(h) = Harness::new("sync_lock").await else {
+        return;
+    };
+    let (guild, _, mut browser) = h.managed_server().await;
+    let g = format!("/api/guilds/{guild}");
+    let veteran = unique();
+    h.seed_xp(guild, veteran, 5_000).await;
+    browser
+        .write(Method::PUT, &format!("{g}/level-roles/{FAN}"), json!({ "level": 2 }))
+        .await;
+    let app = &h.state.app;
+
+    // The slash command's side holds the lock: the dashboard's job starts and reads as failed.
+    assert!(
+        app.cache
+            .try_cooldown(&format!("levelsync:{guild}"), Duration::from_secs(60))
+            .await
+            .unwrap()
+            .is_none()
+    );
+    assert_eq!(sync_level_roles(app, guild, |_| {}).await.unwrap(), SyncOutcome::Busy);
+    let started = browser
+        .write(Method::POST, &format!("{g}/level-roles/sync"), json!({}))
+        .await;
+    assert_eq!(started.status, StatusCode::ACCEPTED, "{}", started.text());
+    let job = started.json()["job_id"].as_str().unwrap().to_owned();
+    let mut state = Value::Null;
+    let waited = Instant::now();
+    while waited.elapsed() < Duration::from_secs(10) {
+        state = browser.get(&format!("{g}/jobs/{job}")).await.json();
+        if state["status"] != "running" {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    assert_eq!(state["status"], "failed", "{state}");
+    assert!(
+        state["message"].as_str().unwrap().contains("already running"),
+        "{state}"
+    );
+    assert!(h.mock.role_calls.lock().unwrap().is_empty(), "nothing ran");
+    assert!(
+        h.state
+            .app
+            .db
+            .audit_page(guild, None, 10)
+            .await
+            .unwrap()
+            .iter()
+            .all(|r| r.action != "level_roles.sync"),
+        "a sync that did not run is not recorded"
+    );
+    app.cache.release_cooldown(&format!("levelsync:{guild}")).await.unwrap();
+    app.cache.release_cooldown(&format!("web:sync:{guild}")).await.unwrap();
+
+    // Free: it runs, and then the server rests, from Discord and from the dashboard alike.
+    let done = sync_level_roles(app, guild, |_| {}).await.unwrap();
+    assert!(
+        matches!(done, SyncOutcome::Done(report) if report.updated == 1),
+        "{done:?}"
+    );
+    match sync_level_roles(app, guild, |_| {}).await.unwrap() {
+        SyncOutcome::Resting(left) => assert!(
+            left > Duration::from_secs(200) && left <= Duration::from_secs(300),
+            "{left:?}"
+        ),
+        other => panic!("expected a rest, got {other:?}"),
+    }
+    let again = browser
+        .write(Method::POST, &format!("{g}/level-roles/sync"), json!({}))
+        .await;
+    assert_eq!(
+        (again.status, again.code().as_str()),
+        (StatusCode::TOO_MANY_REQUESTS, "resting")
+    );
+    assert!(
+        again.json()["error"]["message"].as_str().unwrap().contains("min"),
+        "{}",
+        again.text()
+    );
+    assert!(again.header("retry-after").parse::<u64>().unwrap() > 200);
+}
+
+#[tokio::test]
+async fn a_second_sync_is_told_which_job_is_already_running() {
+    let Some(h) = Harness::new("sync_conflict").await else {
+        return;
+    };
+    let (guild, _, mut browser) = h.managed_server().await;
+    let g = format!("/api/guilds/{guild}");
+    browser
+        .write(Method::PUT, &format!("{g}/level-roles/{FAN}"), json!({ "level": 2 }))
+        .await;
+    // A job of this server is running: its lock and its id are in Redis.
+    let cache = &h.state.app.cache;
+    assert!(
+        cache
+            .try_cooldown(&format!("web:sync:{guild}"), Duration::from_secs(60))
+            .await
+            .unwrap()
+            .is_none()
+    );
+    cache
+        .put(&format!("web:sync-job:{guild}"), "job42", Duration::from_secs(60))
+        .await
+        .unwrap();
+    let second = browser
+        .write(Method::POST, &format!("{g}/level-roles/sync"), json!({}))
+        .await;
+    assert_eq!(
+        (second.status, second.code().as_str()),
+        (StatusCode::CONFLICT, "conflict")
+    );
+    assert_eq!(
+        second.header("x-job-id"),
+        "job42",
+        "the page follows the running job instead"
+    );
+}
+
+#[tokio::test]
+async fn a_refresh_in_flight_cannot_bring_back_a_session_that_was_logged_out() {
+    let Some(h) = Harness::new("refresh_resurrect").await else {
+        return;
+    };
+    h.mock.short_tokens.store(true, Ordering::SeqCst);
+    let user = unique();
+    let mut browser = h.browser();
+    browser.login(&h, user, vec![]).await;
+    h.mock.short_tokens.store(false, Ordering::SeqCst);
+    h.mock.token_delay_ms.store(500, Ordering::SeqCst);
+
+    // The refresh is waiting on Discord when the user logs out.
+    let mut slow = browser.clone();
+    let mut leaving = browser.clone();
+    let (refreshed, out) = tokio::join!(slow.write(Method::POST, "/api/me/guilds/refresh", json!({})), async {
+        tokio::time::sleep(Duration::from_millis(150)).await;
+        leaving.write(Method::POST, "/auth/logout", json!({})).await
+    });
+    assert!(
+        out.status.is_success() || out.status == StatusCode::SEE_OTHER,
+        "{}",
+        out.text()
+    );
+    assert_eq!(refreshed.status, StatusCode::UNAUTHORIZED, "{}", refreshed.text());
+    assert_eq!(refreshed.code(), "session_expired");
+    let mut after = browser.clone();
+    assert_eq!(
+        after.get("/api/me").await.status,
+        StatusCode::UNAUTHORIZED,
+        "the logged out session stays gone"
+    );
+}
+
+#[tokio::test]
+async fn a_role_is_checked_against_the_bots_position_as_it_is_when_saved() {
+    let Some(h) = Harness::new("live_roles").await else {
+        return;
+    };
+    let (guild, _, mut browser) = h.managed_server().await;
+    let g = format!("/api/guilds/{guild}");
+    // The lists are fetched and cached with the bot above Regular.
+    let lists = browser.get(&format!("{g}/discord")).await.json();
+    assert_eq!(lists["bot"]["top_role_position"], BOT_ROLE_POSITION);
+
+    // The bot's role is dragged below it a moment later; the cached lists still say it is fine.
+    h.mock.bot_position.store(4, Ordering::SeqCst);
+    for (method, path, body) in [
+        (Method::PUT, format!("{g}/level-roles/{REGULAR}"), json!({ "level": 2 })),
+        (
+            Method::PUT,
+            format!("{g}/rep-roles/{REGULAR}"),
+            json!({ "reputation": 2 }),
+        ),
+        (Method::PUT, format!("{g}/store/{REGULAR}"), json!({ "price": 5 })),
+        (
+            Method::PATCH,
+            format!("{g}/settings"),
+            json!({ "join_role_id": REGULAR.to_string() }),
+        ),
+    ] {
+        let refused = browser.write(method, &path, body).await;
+        assert_eq!(
+            refused.status,
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "{path}: {}",
+            refused.text()
+        );
+        assert!(
+            refused.json()["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("above my highest role"),
+            "{path}: {}",
+            refused.text()
+        );
+    }
+    // A role below the bot's new position still saves.
+    let fine = browser
+        .write(Method::PUT, &format!("{g}/level-roles/{FAN}"), json!({ "level": 2 }))
+        .await;
+    assert_eq!(fine.status, StatusCode::OK, "{}", fine.text());
+}
+
+#[tokio::test]
+async fn points_that_race_each_other_never_leave_the_least_above_the_most() {
+    let Some(h) = Harness::new("points_race").await else {
+        return;
+    };
+    let (guild, _, browser) = h.managed_server().await;
+    let path = format!("/api/guilds/{guild}/settings");
+    let (mut first, mut second) = (browser.clone(), browser.clone());
+    first
+        .write(Method::PATCH, &path, json!({ "points_min": 1, "points_max": 500 }))
+        .await;
+    for round in 0..8 {
+        // Each patch is fine against the row the other one started from.
+        let (a, b) = tokio::join!(
+            first.write(Method::PATCH, &path, json!({ "points_min": 400 })),
+            second.write(Method::PATCH, &path, json!({ "points_max": 100 })),
+        );
+        let settings = h.state.app.db.guild_settings(guild).await.unwrap();
+        assert!(
+            settings.points_min <= settings.points_max,
+            "round {round}: {} > {} after {} and {}",
+            settings.points_min,
+            settings.points_max,
+            a.text(),
+            b.text()
+        );
+        for response in [&a, &b] {
+            assert!(
+                matches!(response.status, StatusCode::OK | StatusCode::UNPROCESSABLE_ENTITY),
+                "{}",
+                response.text()
+            );
+        }
+        // Back to the starting rows: min first would be refused while the most is still 100.
+        first
+            .write(Method::PATCH, &path, json!({ "points_min": 1, "points_max": 500 }))
+            .await;
+    }
 }

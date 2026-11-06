@@ -76,6 +76,14 @@ pub async fn save(cache: &Cache, sid: &str, session: &Session) -> anyhow::Result
     cache.put(&key(sid), &serde_json::to_string(session)?, IDLE).await
 }
 
+/// Writes a changed session only while it still exists; `false` when it is gone. A request that was
+/// running while the user logged out (or in again) must not bring the old session back.
+pub async fn update(cache: &Cache, sid: &str, session: &Session) -> anyhow::Result<bool> {
+    cache
+        .put_if_present(&key(sid), &serde_json::to_string(session)?, IDLE)
+        .await
+}
+
 /// The live session behind `sid`, its idle clock pushed back; `None` when there is none or it is too old.
 ///
 /// The idle clock lives in the key's expiry, so pushing it back never rewrites the session: a

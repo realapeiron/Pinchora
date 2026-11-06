@@ -8,6 +8,7 @@ pinchora-core.workspace = true
 pinchora-db.workspace = true
 pinchora-cache.workspace = true
 pinchora-commands.workspace = true
+pinchora-game.workspace = true
 pinchora-render.workspace = true
 anyhow.workspace = true
 axum.workspace = true
@@ -27,4 +28,5 @@ twilight-http.workspace = true
 twilight-model.workspace = true
 
 [dev-dependencies]
+sqlx.workspace = true
 tower.workspace = true

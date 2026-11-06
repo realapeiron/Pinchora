@@ -4,6 +4,11 @@ import type { Channel, GuildInfo, Role } from "../lib/api";
 const POSTABLE = new Set([0, 5]);
 const CATEGORY = 4;
 
+/** A channel as the pickers write it: `#general`, `🔊 Lounge`, `▸ Category`. */
+export function channelLabel(channel: Channel): string {
+  return prefix(channel) + channel.name;
+}
+
 function prefix(channel: Channel): string {
   if (channel.type === CATEGORY) return "▸ ";
   if (channel.type === 2 || channel.type === 13) return "🔊 ";
@@ -29,6 +34,7 @@ function grouped(channels: Channel[], keep: (c: Channel) => boolean) {
  */
 export function ChannelPicker({
   id,
+  label,
   info,
   value,
   onChange,
@@ -38,6 +44,8 @@ export function ChannelPicker({
   invalid,
 }: {
   id?: string;
+  /** The picker's name for screen readers, when no `<label>` points at it. */
+  label?: string;
   info: GuildInfo | undefined;
   value: string | null;
   onChange: (id: string | null) => void;
@@ -52,6 +60,7 @@ export function ChannelPicker({
   return (
     <select
       id={id}
+      aria-label={label}
       className="pixel-input pixel-select"
       value={value ?? ""}
       onChange={(event) => onChange(event.target.value || null)}
@@ -134,7 +143,7 @@ export function RolePicker({
       {!known && <option value={value!}>Deleted role ({value})</option>}
       {roles.map((r) => (
         <option key={r.id} value={r.id} disabled={assignable && !r.assignable}>
-          {(r.everyone ? "@everyone" : `@${r.name}`) + (assignable && !r.assignable ? why(r) : "")}
+          {(r.everyone ? "@everyone" : `@${r.name}`) + (assignable && !r.assignable ? why(r, info) : "")}
         </option>
       ))}
     </select>
@@ -142,9 +151,11 @@ export function RolePicker({
 }
 
 /** A short reason for a disabled option; the full sentence shows under the picker. */
-function why(role: Role): string {
+export function why(role: Role, info: GuildInfo | undefined): string {
   if (role.everyone) return " — everyone has it";
   if (role.managed) return " — managed by an integration";
+  // Discord would not say where the bot's own role sits: it may not be above anything.
+  if (info?.bot.top_role_position === null) return " — can't check my role yet";
   return " — above my role";
 }
 

@@ -5,6 +5,7 @@ mod cx;
 mod defer;
 mod events;
 mod game;
+mod gate;
 mod invalidations;
 mod leveling;
 mod responder;
@@ -20,7 +21,8 @@ pub use commands::{
     config::{WelcomeDesign, welcome_card_png},
     definitions as command_definitions,
     games::{spawn_janitor as spawn_game_janitor, sweep as sweep_games},
-    level_roles::{SyncReport, sync_level_roles},
+    level_roles::{SyncOutcome, SyncReport, sync_level_roles, sync_resting},
+    modules::{announce_guild_change, module_diff},
     partner::partner_name,
     party_games::{spawn_ticker as spawn_party_ticker, tick as party_tick},
 };
@@ -40,7 +42,7 @@ pub use voice_xp::{
 
 use std::{sync::Arc, time::Instant};
 
-use twilight_model::application::interaction::{Interaction, InteractionData};
+use twilight_model::application::interaction::{Interaction, InteractionData, InteractionType};
 
 /// [`handle_interaction`] for the gateway, where nothing else answers for a slow handler: one still
 /// running after `defer::DEFER_AFTER` is deferred through REST before Discord's three seconds are up.
@@ -58,6 +60,17 @@ pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, res
         interaction,
         responder,
     };
+    // Typing into an option that suggests: only suggestions go back, and the command itself neither
+    // runs nor passes a module's switch.
+    if cx.interaction.kind == InteractionType::ApplicationCommandAutocomplete {
+        if let Some(InteractionData::ApplicationCommand(command)) = data {
+            let choices = commands::modules::autocomplete(&command);
+            if let Err(error) = cx.responder.suggest(choices).await {
+                tracing::warn!(%error, name = %command.name, "could not answer an autocomplete");
+            }
+        }
+        return;
+    }
     // The handler futures are large (every command's state in one enum); on the heap they
     // cannot overflow a worker thread's stack.
     let (label, result) = match data {

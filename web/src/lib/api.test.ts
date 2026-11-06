@@ -51,6 +51,24 @@ describe("api", () => {
     expect(needsLogin(error)).toBe(false);
   });
 
+  it("carries the running job a 409 names", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ error: { code: "conflict", message: "Already running." } }), {
+            status: 409,
+            headers: { "x-job-id": "abc123" },
+          }),
+      ),
+    );
+    const error = await api("/api/guilds/1/level-roles/sync", "POST").catch((e: unknown) => e);
+    expect(error).toMatchObject({ status: 409, code: "conflict", jobId: "abc123" });
+    vi.stubGlobal("fetch", reply(409, { error: { code: "conflict", message: "Busy." } }));
+    const none = await api("/api/guilds/1/level-roles/sync", "POST").catch((e: unknown) => e);
+    expect((none as ApiError).jobId).toBeUndefined();
+  });
+
   it("copes with empty and non-JSON answers", async () => {
     vi.stubGlobal("fetch", reply(204));
     expect(await api("/auth/logout", "POST")).toBeUndefined();

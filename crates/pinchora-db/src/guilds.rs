@@ -1,7 +1,20 @@
-use pinchora_core::settings::GuildSettingsPatch;
+use pinchora_core::settings::{self, FieldError, GuildSettingsPatch};
 use sqlx::{Postgres, QueryBuilder};
 
 use crate::{Db, sql_id};
+
+/// A patch refused because of what the row holds at the moment of writing, e.g. points that would
+/// end up with the least above the most. Found inside `patch_guild_settings` with `downcast_ref`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PatchRefused(pub FieldError);
+
+impl std::fmt::Display for PatchRefused {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.0.field, self.0.message)
+    }
+}
+
+impl std::error::Error for PatchRefused {}
 
 #[derive(Debug, Clone, Default, sqlx::FromRow)]
 pub struct GuildSettings {
@@ -145,13 +158,28 @@ impl Db {
     }
 
     /// Writes exactly the columns `patch` names (clearing those set to `Some(None)`) and returns the
-    /// row. The patch must have passed `settings::check_patch`, or the database may refuse it.
+    /// row. The patch must have passed `settings::check_patch`. The points range is checked again
+    /// against the row as it is locked for the write, so two patches that each move one end cannot
+    /// leave the least above the most: the second fails with [`PatchRefused`].
     pub async fn patch_guild_settings(
         &self,
         guild_id: u64,
         patch: &GuildSettingsPatch,
     ) -> anyhow::Result<GuildSettings> {
         self.guild_settings(guild_id).await?;
+        let mut tx = self.pool().begin().await?;
+        let (min, max): (i32, i32) =
+            sqlx::query_as("SELECT points_min, points_max FROM guilds WHERE id = $1 FOR UPDATE")
+                .bind(sql_id(guild_id))
+                .fetch_one(&mut *tx)
+                .await?;
+        if patch.points_min.is_some() || patch.points_max.is_some() {
+            let min = patch.points_min.unwrap_or(min.into());
+            let max = patch.points_max.unwrap_or(max.into());
+            if let Err(error) = settings::check_points(min, max) {
+                return Err(PatchRefused(error).into());
+            }
+        }
         let mut sql: QueryBuilder<Postgres> = QueryBuilder::new("UPDATE guilds SET id = id");
         let p = patch;
         let id = |v: Option<u64>| v.map(sql_id);
@@ -198,7 +226,9 @@ impl Db {
         sql.push(" WHERE id = ")
             .push_bind(sql_id(guild_id))
             .push(concat!(" RETURNING ", columns!()));
-        Ok(sql.build_query_as::<GuildSettings>().fetch_one(self.pool()).await?)
+        let row = sql.build_query_as::<GuildSettings>().fetch_one(&mut *tx).await?;
+        tx.commit().await?;
+        Ok(row)
     }
 
     pub async fn update_welcome(

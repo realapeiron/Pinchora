@@ -116,6 +116,14 @@ impl ApiError {
         }
     }
 
+    /// 429 `resting`: something that costs Discord calls was done a moment ago; `left` seconds to go.
+    pub fn resting(message: impl Into<String>, left: u64) -> Self {
+        Self {
+            retry_after: Some(left.max(1)),
+            ..Self::new(StatusCode::TOO_MANY_REQUESTS, "resting", message)
+        }
+    }
+
     pub fn internal(error: anyhow::Error) -> Self {
         tracing::error!(error = ?error, "dashboard request failed");
         Self::new(

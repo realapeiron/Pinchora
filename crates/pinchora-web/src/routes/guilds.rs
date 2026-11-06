@@ -9,7 +9,7 @@ use pinchora_db::{AuditRow, GuildSettings};
 use serde::Serialize;
 use serde_json::Value;
 
-use super::{audit_log, community, discord_info, leveling, me::icon_url, overview, preview, settings, store};
+use super::{audit_log, community, discord_info, leveling, me::icon_url, modules, overview, preview, settings, store};
 use crate::state::WebState;
 
 pub fn router() -> Router<WebState> {
@@ -37,9 +37,12 @@ pub fn router() -> Router<WebState> {
         .route("/jobs/{id}", get(leveling::job))
         .route("/store", get(store::store))
         .route("/store/{role}", put(store::put_item).delete(store::delete_item))
+        .route("/modules", get(modules::modules))
+        .route("/modules/{module}", put(modules::put_module))
         .route("/community", get(community::community))
         .route("/suggestions/settings", put(community::put_suggestions))
         .route("/critters/settings", put(community::put_critters))
+        .route("/surge/settings", put(community::put_surge))
         .route("/preview/welcome-card", post(preview::welcome_card))
         .route("/preview/message", post(preview::message))
 }

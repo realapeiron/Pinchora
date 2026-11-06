@@ -5,6 +5,7 @@ import { Community } from "./pages/Community";
 import { GuildLayout } from "./pages/GuildLayout";
 import { Leveling } from "./pages/Leveling";
 import { Login } from "./pages/Login";
+import { Modules } from "./pages/Modules";
 import { NotFound } from "./pages/NotFound";
 import { Overview } from "./pages/Overview";
 import { Points } from "./pages/Points";
@@ -23,6 +24,7 @@ export const router = createBrowserRouter([
     element: <RequireLogin>{(me) => <GuildLayout me={me} />}</RequireLogin>,
     children: [
       { index: true, element: <Overview /> },
+      { path: "modules", element: <Modules /> },
       { path: "welcome", element: <Welcome /> },
       { path: "leveling", element: <Leveling /> },
       { path: "points", element: <Points /> },

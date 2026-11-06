@@ -11,7 +11,10 @@ use std::{
 use chrono::{DateTime, Utc};
 use moka::future::Cache as Moka;
 use pinchora_cache::Cache;
-use pinchora_core::leveling::XpRules;
+use pinchora_core::{
+    leveling::XpRules,
+    modules::{Access, GuildModules, Module},
+};
 use pinchora_db::{Db, GuildSettings};
 use pinchora_render::{Renderer, placeholder_avatar, prepare_avatar};
 use tokio::sync::Semaphore;
@@ -60,6 +63,7 @@ pub struct App {
     guild_settings: Moka<u64, Arc<GuildSettings>>,
     guild_roles: Moka<u64, Arc<HashMap<u64, String>>>,
     xp_rules: Moka<u64, Arc<XpRules>>,
+    module_rules: Moka<u64, Arc<GuildModules>>,
     voice_guilds: Moka<u64, Arc<VoiceGuild>>,
     channel_places: Moka<u64, ChannelPlace>,
     avatars: Moka<String, Arc<Vec<u8>>>,
@@ -107,6 +111,10 @@ impl App {
                 .time_to_live(Duration::from_secs(60))
                 .build(),
             xp_rules: Moka::builder()
+                .max_capacity(50_000)
+                .time_to_live(Duration::from_secs(60))
+                .build(),
+            module_rules: Moka::builder()
                 .max_capacity(50_000)
                 .time_to_live(Duration::from_secs(60))
                 .build(),
@@ -224,8 +232,17 @@ impl App {
     /// channel rules or the channel has its own. Discord is asked once per channel and the answer
     /// kept; a lookup that fails just leaves the lineage short.
     pub async fn xp_lineage(&self, rules: &XpRules, channel: u64) -> Vec<u64> {
+        self.lineage(channel, rules.channels.is_empty(), |id| {
+            rules.channels.contains_key(&id)
+        })
+        .await
+    }
+
+    /// [`App::xp_lineage`] for any rule: `none` says the server has no channel rules at all, `has_rule`
+    /// whether a channel has its own.
+    async fn lineage(&self, channel: u64, none: bool, has_rule: impl Fn(u64) -> bool) -> Vec<u64> {
         let mut lineage = vec![channel];
-        if rules.channels.is_empty() || rules.channels.contains_key(&channel) {
+        if none || has_rule(channel) {
             return lineage;
         }
         let Some(place) = self.channel_place(channel).await else {
@@ -236,7 +253,7 @@ impl App {
         };
         lineage.push(parent);
         if place.thread
-            && !rules.channels.contains_key(&parent)
+            && !has_rule(parent)
             && let Some(category) = self.channel_place(parent).await.and_then(|p| p.parent)
         {
             lineage.push(category);
@@ -283,8 +300,45 @@ impl App {
         }
     }
 
+    /// What a server switched off, and where: its module rules, cached for a minute like its settings.
+    pub async fn guild_modules(&self, guild_id: u64) -> anyhow::Result<Arc<GuildModules>> {
+        self.module_rules
+            .try_get_with(guild_id, async { self.db.guild_modules(guild_id).await.map(Arc::new) })
+            .await
+            .map_err(|e| anyhow::anyhow!("{e:#}"))
+    }
+
+    /// Whether `module` may act in `channel` of a server, and if not, why. A thread follows its
+    /// channel and a channel its category, like XP multipliers; a place that cannot be found (`None`,
+    /// or a lookup that failed) is not on any list.
+    pub async fn module_access(&self, guild_id: u64, channel: Option<u64>, module: Module) -> anyhow::Result<Access> {
+        let rule = self.guild_modules(guild_id).await?.rule(module);
+        if !rule.needs_lineage() {
+            return Ok(rule.access(&[]));
+        }
+        let lineage = match channel {
+            Some(channel) => self.lineage(channel, false, |id| rule.names(id)).await,
+            None => Vec::new(),
+        };
+        Ok(rule.access(&lineage))
+    }
+
+    /// [`App::module_access`] for events, which have nobody to answer: allowed unless the server
+    /// switched the module off here. A lookup that fails reads as allowed, so a database hiccup
+    /// never silences a server.
+    pub async fn module_allowed(&self, guild_id: u64, channel: Option<u64>, module: Module) -> bool {
+        match self.module_access(guild_id, channel, module).await {
+            Ok(access) => access == Access::Allowed,
+            Err(error) => {
+                tracing::warn!(%error, guild = guild_id, module = module.key(), "module rules unavailable");
+                true
+            }
+        }
+    }
+
     pub async fn forget_guild_settings(&self, guild_id: u64) {
         self.guild_settings.invalidate(&guild_id).await;
+        self.module_rules.invalidate(&guild_id).await;
         self.voice_guilds.invalidate(&guild_id).await;
     }
 

@@ -20,6 +20,10 @@ use crate::{App, Cx, roles, util::BRAND};
 const SYNC_LIMIT: i64 = 1_000;
 /// Stop a sync before the interaction token (15 minutes) runs out.
 const SYNC_BUDGET: Duration = Duration::from_secs(10 * 60);
+/// One sync per server at a time, whoever starts it; past this a crashed one no longer blocks the next.
+const SYNC_LOCK: Duration = Duration::from_secs(15 * 60);
+/// How long a server waits after a sync before it can run another: each one is a Discord call per member.
+const SYNC_REST: Duration = Duration::from_secs(5 * 60);
 
 #[derive(CommandModel, CreateCommand)]
 #[command(name = "level-roles", desc = "Roles members earn when they reach a level")]
@@ -167,16 +171,19 @@ impl ConfigLevelRoles {
 
 /// Re-applies the level roles to the members with XP here, newest XP first.
 async fn sync(cx: &Cx, guild: u64) -> anyhow::Result<()> {
-    let rewards = roles::level_rewards(&cx.app, guild).await?;
-    if rewards.is_empty() {
+    if roles::level_rewards(&cx.app, guild).await?.is_empty() {
         return cx
             .reply_ephemeral("No level roles yet. Add one with `/config level-roles add`.")
             .await;
     }
     // One lookup and a few role changes per member, so this outlasts Discord's first-answer window.
     cx.responder.defer(true).await?;
-    let report = sync_with(&cx.app, guild, &rewards, |_| {}).await?;
-    cx.reply_ephemeral(report.summary()).await
+    let text = match sync_level_roles(&cx.app, guild, |_| {}).await? {
+        SyncOutcome::NoRoles => "No level roles yet. Add one with `/config level-roles add`.".to_owned(),
+        SyncOutcome::Done(report) => report.summary(),
+        other => other.refusal().unwrap_or_default(),
+    };
+    cx.reply_ephemeral(text).await
 }
 
 /// What a level role sync did, so far or in the end.
@@ -208,18 +215,74 @@ impl SyncReport {
     }
 }
 
-/// `/config level-roles sync` for anyone holding an [`App`] (the dashboard runs it as a job):
-/// `None` when the server has no level roles. `progress` hears the count after every member.
-pub async fn sync_level_roles(
-    app: &App,
-    guild: u64,
-    progress: impl FnMut(SyncReport),
-) -> anyhow::Result<Option<SyncReport>> {
+/// How a level role sync ended.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SyncOutcome {
+    /// The server has no level roles to sync.
+    NoRoles,
+    /// A sync of this server is running right now, started from Discord or the dashboard.
+    Busy,
+    /// One ended a moment ago; another may start in this long.
+    Resting(Duration),
+    Done(SyncReport),
+}
+
+impl SyncOutcome {
+    /// What to tell whoever asked, when the sync did not run.
+    pub fn refusal(&self) -> Option<String> {
+        match self {
+            Self::Busy => Some("A sync is already running for this server. Give it a few minutes.".to_owned()),
+            Self::Resting(left) => Some(format!(
+                "A sync just finished. Syncing again is possible in {} min.",
+                left.as_secs().div_ceil(60).max(1)
+            )),
+            Self::NoRoles | Self::Done(_) => None,
+        }
+    }
+}
+
+/// How long until `guild` may sync again, when a sync ended recently.
+pub async fn sync_resting(app: &App, guild: u64) -> anyhow::Result<Option<Duration>> {
+    let Some(until) = app.cache.get(&format!("levelsync-rest:{guild}")).await? else {
+        return Ok(None);
+    };
+    let left = until.parse::<i64>().unwrap_or(0) - chrono::Utc::now().timestamp();
+    Ok((left > 0).then(|| Duration::from_secs(left as u64)))
+}
+
+/// `/config level-roles sync` for anyone holding an [`App`] (the dashboard runs it as a job). It takes
+/// the server's lock itself, so a sync from Discord and one from the dashboard never run at once, and
+/// rests the server for a few minutes after each. `progress` hears the count after every member.
+pub async fn sync_level_roles(app: &App, guild: u64, progress: impl FnMut(SyncReport)) -> anyhow::Result<SyncOutcome> {
     let rewards = roles::level_rewards(app, guild).await?;
     if rewards.is_empty() {
-        return Ok(None);
+        return Ok(SyncOutcome::NoRoles);
     }
-    sync_with(app, guild, &rewards, progress).await.map(Some)
+    let lock = format!("levelsync:{guild}");
+    if app.cache.try_cooldown(&lock, SYNC_LOCK).await?.is_some() {
+        return Ok(SyncOutcome::Busy);
+    }
+    let outcome = async {
+        if let Some(left) = sync_resting(app, guild).await? {
+            return anyhow::Ok(SyncOutcome::Resting(left));
+        }
+        let report = sync_with(app, guild, &rewards, progress).await;
+        // The rest starts when the sync ends, whether it finished or not.
+        let until = (chrono::Utc::now().timestamp() + SYNC_REST.as_secs() as i64).to_string();
+        if let Err(error) = app
+            .cache
+            .put(&format!("levelsync-rest:{guild}"), &until, SYNC_REST)
+            .await
+        {
+            tracing::warn!(%error, guild, "sync rest not saved");
+        }
+        Ok(SyncOutcome::Done(report?))
+    }
+    .await;
+    if let Err(error) = app.cache.release_cooldown(&lock).await {
+        tracing::warn!(%error, guild, "sync lock not released; it runs out by itself");
+    }
+    outcome
 }
 
 async fn sync_with(

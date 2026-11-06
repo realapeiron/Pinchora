@@ -6,6 +6,7 @@ mod discord_info;
 mod guilds;
 mod leveling;
 mod me;
+mod modules;
 mod overview;
 mod preview;
 mod settings;

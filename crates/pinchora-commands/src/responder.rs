@@ -2,7 +2,10 @@ use std::sync::Arc;
 
 use tokio::sync::{Mutex, oneshot};
 use twilight_model::{
-    application::interaction::{Interaction, InteractionType},
+    application::{
+        command::CommandOptionChoice,
+        interaction::{Interaction, InteractionType},
+    },
     channel::message::MessageFlags,
     http::interaction::{InteractionResponse, InteractionResponseData, InteractionResponseType},
     id::{Id, marker::InteractionMarker},
@@ -183,6 +186,25 @@ impl Responder {
         let response = InteractionResponse {
             kind: InteractionResponseType::Modal,
             data: Some(data),
+        };
+        self.initial(tx.take(), response).await?;
+        *state = State::Done;
+        Ok(())
+    }
+
+    /// Answers an autocomplete with its suggestions (Discord takes at most 25). It takes no defer and
+    /// no message: this is the first and only answer.
+    pub async fn suggest(&self, choices: Vec<CommandOptionChoice>) -> anyhow::Result<()> {
+        let mut state = self.state.lock().await;
+        let State::Pending(tx) = &mut *state else {
+            anyhow::bail!("suggestions can only be the first answer");
+        };
+        let response = InteractionResponse {
+            kind: InteractionResponseType::ApplicationCommandAutocompleteResult,
+            data: Some(InteractionResponseData {
+                choices: Some(choices),
+                ..Default::default()
+            }),
         };
         self.initial(tx.take(), response).await?;
         *state = State::Done;
