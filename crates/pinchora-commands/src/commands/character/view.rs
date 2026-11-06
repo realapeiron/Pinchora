@@ -210,26 +210,30 @@ fn controls(draft: &Draft, character: &Character, shelf: &Shelf, outfits: &[Outf
             .iter()
             .map(|p| option(&p.name, &p.id, None, p.code == draft.code))
             .collect(),
-        Tab::Outfits => (1..=OUTFIT_SLOTS)
-            .map(|slot| {
-                let saved = outfits.iter().find(|o| o.slot == slot);
-                let label = saved.map_or_else(|| format!("{slot} · Empty"), |o| format!("{slot} · {}", o.name));
-                let worn = saved.is_some_and(|o| o.code == draft.code);
-                option(
-                    &label,
-                    &slot.to_string(),
-                    Some(
-                        if saved.is_some() {
-                            "Put it on"
-                        } else {
-                            "Nothing kept here yet"
-                        }
-                        .to_owned(),
-                    ),
-                    worn,
-                )
-            })
-            .collect(),
+        Tab::Outfits => {
+            // Two slots can keep the same code; a one-value menu marks only the first.
+            let worn = outfits.iter().find(|o| o.code == draft.code).map(|o| o.slot);
+            (1..=OUTFIT_SLOTS)
+                .map(|slot| {
+                    let saved = outfits.iter().find(|o| o.slot == slot);
+                    let label = saved.map_or_else(|| format!("{slot} · Empty"), |o| format!("{slot} · {}", o.name));
+                    let worn = worn == Some(slot);
+                    option(
+                        &label,
+                        &slot.to_string(),
+                        Some(
+                            if saved.is_some() {
+                                "Put it on"
+                            } else {
+                                "Nothing kept here yet"
+                            }
+                            .to_owned(),
+                        ),
+                        worn,
+                    )
+                })
+                .collect()
+        }
     };
     let placeholder = match draft.tab {
         Tab::Look => "Jump to a look…",
@@ -560,6 +564,14 @@ mod tests {
         let mut character = Character::starter(content);
         character.colors.hair = Paint::Custom(0x12ab3f);
         character.wear(Slot::Head, Some("top_hat"), None);
+        // The same look kept in two slots.
+        let outfits: Vec<OutfitRow> = [1, 2]
+            .map(|slot| OutfitRow {
+                slot,
+                name: format!("Outfit {slot}"),
+                code: character.encode(),
+            })
+            .into();
         for tab in Tab::ALL {
             for slot in Slot::ALL {
                 let draft = Draft {
@@ -570,7 +582,7 @@ mod tests {
                     tab,
                     slot,
                 };
-                let rows = controls(&draft, &character, &shelf, &[]);
+                let rows = controls(&draft, &character, &shelf, &outfits);
                 assert!(rows.len() <= 5, "{tab:?}: {} rows", rows.len());
                 for r in &rows {
                     let Component::ActionRow(r) = r else {
