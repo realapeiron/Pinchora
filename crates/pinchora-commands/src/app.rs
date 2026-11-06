@@ -388,6 +388,11 @@ impl App {
         lineage
     }
 
+    /// Where `id` sits, if it is already known (from GUILD_CREATE or an earlier lookup): Discord is not asked.
+    pub(crate) async fn known_channel_place(&self, id: u64) -> Option<ChannelPlace> {
+        self.channel_places.get(&id).await
+    }
+
     async fn channel_place(&self, id: u64) -> Option<ChannelPlace> {
         if let Some(place) = self.channel_places.get(&id).await {
             return Some(place);

@@ -85,6 +85,7 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
         Some("ss") => surge::on_button(cx, parts).await,
         Some("hs") => heist::on_button(cx, parts).await,
         Some(prefix @ ("hl" | "ac" | "cn" | "wx" | "wy" | "td")) => party_games::on_component(cx, prefix, parts).await,
+        Some("sc") => crate::commands::stats::on_component(cx, parts).await,
         _ => cx.reply_ephemeral("This button has expired.").await,
     }
 }

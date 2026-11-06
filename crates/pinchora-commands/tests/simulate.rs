@@ -98,6 +98,9 @@ mod grants;
 // What reaches the (still empty) feature hooks.
 #[path = "simulate/hooks.rs"]
 mod hooks;
+// Server stats: counting, the flush, the /stats cards and /counters.
+#[path = "simulate/stats.rs"]
+mod stats;
 
 const APPLICATION_ID: u64 = 1;
 const CHANNEL_ID: u64 = 2;
@@ -12635,6 +12638,18 @@ async fn admin_paths_refuse_members_without_manage_server() {
             json!([sub("deny", vec![int_option("id", i64::from(suggestion.number))])]),
         ),
         ("plaza edit", json!([sub("edit", vec![])])),
+        (
+            "counters add",
+            json!([sub(
+                "add",
+                vec![channel_option("channel", channel), text_option("kind", "members")]
+            )]),
+        ),
+        (
+            "counters remove",
+            json!([sub("remove", vec![channel_option("channel", channel)])]),
+        ),
+        ("counters list", json!([sub("list", vec![])])),
     ];
 
     let before = admin_state(&sim, target, suggestion.id).await;

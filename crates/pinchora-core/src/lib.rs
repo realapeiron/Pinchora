@@ -6,6 +6,7 @@ pub mod items;
 pub mod leveling;
 pub mod modules;
 pub mod server_events;
+pub mod server_stats;
 pub mod settings;
 pub mod snowflake;
 pub mod stats;

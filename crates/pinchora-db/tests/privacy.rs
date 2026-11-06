@@ -251,6 +251,8 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         "INSERT INTO custom_commands (guild_id, name, responses, created_by) VALUES ($1, 'hello', ARRAY['hi'], $1)",
         "INSERT INTO custom_responders (guild_id, name, trigger_kind, responses, created_by)
          VALUES ($1, 'welcome', 'member_join', ARRAY['hi'], $1)",
+        // What they did in a server, counted for its stats ($1 doubles as the server).
+        "INSERT INTO member_activity_daily (guild_id, user_id, day, messages) VALUES ($1, $1, current_date, 3)",
     ];
     for sql in inserts {
         run(db, sql, user, other).await;

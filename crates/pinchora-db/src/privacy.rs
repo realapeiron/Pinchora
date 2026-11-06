@@ -93,6 +93,7 @@ pub const USER_COLUMNS: &[(&str, &str)] = &[
     ("suggestions", "author_id"),
     ("poll_votes", "user_id"),
     ("polls", "author_id"),
+    ("member_activity_daily", "user_id"),
     ("users", "id"),
 ];
 
@@ -160,6 +161,12 @@ pub const OTHER_TABLES: &[&str] = &[
     "collection_drops",
     "party_settings",
     "guild_modules",
+    // Stats: whole servers, channels and the bot, no player in them.
+    "guild_activity_hourly",
+    "channel_activity_daily",
+    "counter_channels",
+    "stats_flushes",
+    "global_stats_daily",
 ];
 
 /// What a player hides.

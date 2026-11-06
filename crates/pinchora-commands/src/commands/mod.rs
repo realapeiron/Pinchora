@@ -52,6 +52,7 @@ pub(crate) mod shells;
 pub(crate) mod shop;
 mod social;
 pub(crate) mod stall;
+pub(crate) mod stats;
 pub(crate) mod store;
 pub(crate) mod suggest;
 pub(crate) mod surge;
@@ -81,6 +82,7 @@ macro_rules! commands {
             if crate::gate::refuses_command(cx, &data).await? {
                 return Ok(());
             }
+            crate::stats::count_command(cx).await;
             let name = data.name.clone();
             $(
                 if name == <$ty as CreateCommand>::NAME {
@@ -144,4 +146,6 @@ commands!(
     tag::Tag,
     customcommand::CustomCommand,
     language::LanguageCommand,
+    stats::StatsCommand,
+    stats::CountersCommand,
 );

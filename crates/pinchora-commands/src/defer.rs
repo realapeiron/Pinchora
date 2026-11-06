@@ -36,6 +36,7 @@ const PRIVATE: &[&str] = &[
     "bio",
     "character",
     "config",
+    "counters",
     "crabpot",
     "customcommand delete",
     "customcommand info",

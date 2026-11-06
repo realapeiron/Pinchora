@@ -1632,6 +1632,65 @@
           ],
           "path": "customcommand info",
           "usage": "/customcommand info <name>"
+        },
+        {
+          "description": "This server's activity, busiest channels and members",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Last 7 days",
+                "Last 30 days",
+                "Last 90 days"
+              ],
+              "description": "How far back to look (default: 30 days)",
+              "name": "period",
+              "required": false
+            }
+          ],
+          "path": "stats server",
+          "usage": "/stats server [period]"
+        },
+        {
+          "description": "Your messages and voice time in this server",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Last 7 days",
+                "Last 30 days",
+                "Last 90 days"
+              ],
+              "description": "How far back to look (default: 30 days)",
+              "name": "period",
+              "required": false
+            }
+          ],
+          "path": "stats me",
+          "usage": "/stats me [period]"
+        },
+        {
+          "description": "One channel's messages and voice time",
+          "manager": false,
+          "options": [
+            {
+              "description": "The channel to look at",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "choices": [
+                "Last 7 days",
+                "Last 30 days",
+                "Last 90 days"
+              ],
+              "description": "How far back to look (default: 30 days)",
+              "name": "period",
+              "required": false
+            }
+          ],
+          "path": "stats channel",
+          "usage": "/stats channel <channel> [period]"
         }
       ],
       "intro": "Polls, suggestions, giveaways, role buttons, server points and custom commands.",
@@ -1883,6 +1942,67 @@
           ],
           "path": "config language",
           "usage": "/config language <language>"
+        },
+        {
+          "description": "Make a channel's name show a number, updated every 10 minutes",
+          "manager": true,
+          "options": [
+            {
+              "description": "The channel to rename (a locked voice channel works best)",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "choices": [
+                "Members",
+                "Humans",
+                "Bots",
+                "Online now",
+                "Boosts",
+                "Roles",
+                "Channels",
+                "Members with a role",
+                "Pinchora houses",
+                "Fish caught",
+                "Average level"
+              ],
+              "description": "What it counts",
+              "name": "kind",
+              "required": true
+            },
+            {
+              "description": "The role to count, for \"Members with a role\"",
+              "name": "role",
+              "required": false
+            },
+            {
+              "description": "The name, with {count} where the number goes, e.g. Members: {count}",
+              "name": "template",
+              "required": false
+            }
+          ],
+          "path": "counters add",
+          "usage": "/counters add <channel> <kind> [role] [template]"
+        },
+        {
+          "description": "Stop updating a counter channel (it keeps its last name)",
+          "manager": true,
+          "options": [
+            {
+              "description": "The counter channel",
+              "name": "channel",
+              "required": true
+            }
+          ],
+          "path": "counters remove",
+          "usage": "/counters remove <channel>"
+        },
+        {
+          "description": "This server's counter channels",
+          "manager": true,
+          "options": [],
+          "path": "counters list",
+          "usage": "/counters list"
         }
       ],
       "intro": "Welcome cards, goodbyes, the server log, the language, the text prefix and the settings overview.",
@@ -2283,5 +2403,5 @@
       "title": "Game & module setup"
     }
   ],
-  "count": 156
+  "count": 162
 }

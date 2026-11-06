@@ -134,6 +134,7 @@ pub(crate) const AREAS: &[Area] = &[
             "store",
             "tag",
             "customcommand",
+            "stats",
         ],
     },
     Area {
@@ -150,6 +151,7 @@ pub(crate) const AREAS: &[Area] = &[
             "config log-events",
             "config suggestions",
             "config language",
+            "counters",
         ],
     },
     Area {

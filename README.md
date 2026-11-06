@@ -435,7 +435,38 @@ mention the bot, so text commands work as `@Pinchora profile` and `/help` says s
 
 ### Stats
 
-<!-- F9: the Stats package replaces this heading's section; keep it one `###` section. -->
+Pinchora counts what happens in a server without reading any message text: messages per channel and per member,
+minutes in voice (where voice XP follows who is in voice), joins, leaves and commands. A message costs one Redis round
+trip; once a minute one pod seals the counts and writes them to Postgres (`guild_activity_hourly`,
+`channel_activity_daily`, `member_activity_daily`), and a write cut short is finished by the next one without counting
+anything twice (`stats_flushes`). The numbers are kept 90 days; an hourly sweep forgets older ones. A thread counts in
+its channel (once the bot has seen it in the server's channel list), days and hours are UTC, and the `stats` module switches it all off (or off in some channels).
+
+| Command | What it does |
+|---|---|
+| `/stats server [period]` | A pixel card of the last 7, 30 or 90 days: messages, voice time, joins, leaves, a column a day, joins against leaves, the busiest hours (weekday × hour) and the top channels and members (players hiding from leaderboards are left out), with buttons to switch the period |
+| `/stats me [period]` | Your messages and voice time here, your place among the members and your active days |
+| `/stats channel <channel> [period]` | One channel's messages and voice time, its place and its share of the server |
+| `/counters add <channel> <kind> [role] [template]` | Makes a channel's name show a live number (`👥 Members: 1,234`; `{count}` marks the number): members, humans, bots, online now, boosts, roles, channels, members with a role, and the server's Pinchora houses, fish caught or average level. Renamed when the number changes, never twice within 10 minutes; at most 10 per server. Answers with the exact permission the bot lacks in that channel (View Channel, Connect, Manage Channels). Manage Server |
+| `/counters remove <channel>`, `/counters list` | Stop a counter (the channel keeps its last name); list them with what each shows and what keeps one from updating. Manage Server |
+
+Members, online and boosts come from Discord's approximate counts (one request per server every 10 minutes); humans,
+bots and role counters list the members, so they work in servers of up to 10,000 members.
+
+On the dashboard the **Stats** page (Server group) shows the same numbers for 7, 30 or 90 days with the change from the
+period before: messages and voice time per day, joins against leaves, the busiest hours, the top channels and members,
+each chart with a hover and keyboard readout and a table of its numbers. It also adds, edits and removes counter
+channels (with a preview of the name), draws the `/stats` card as the bot does, and switches on a **public page**,
+`/stats/<server id>`, that shows anyone with the link the last 30 days without naming a member. `/stats` on the public
+site has the whole bot's totals (servers, players, houses, pets, fish, games) and the messages counted each day.
+
+| Address | What it is |
+|---|---|
+| `GET /api/guilds/{g}/stats?days=7\|30\|90` | The period's totals, the period before, each day, the heatmap, top channels and members |
+| `PUT /api/guilds/{g}/stats/settings` | `{ public }` |
+| `GET /api/guilds/{g}/stats/card?days=` | The `/stats server` card PNG |
+| `GET/POST /api/guilds/{g}/stats/counters`, `POST …/counters/preview`, `DELETE …/counters/{channel}` | Counter channels |
+| `GET /api/public/stats`, `GET /api/public/stats/{g}` | The bot's totals and history; a public server's last 30 days (404 unless it is public). Cached five minutes |
 
 ### Raid protection and verification
 
