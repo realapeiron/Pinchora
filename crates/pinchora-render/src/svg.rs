@@ -3,6 +3,7 @@
 use std::fmt::Write;
 
 use base64::Engine;
+use resvg::usvg;
 use unicode_segmentation::UnicodeSegmentation;
 
 pub fn escape(text: &str) -> String {
@@ -57,9 +58,14 @@ pub fn sans_width(text: &str, size: f32) -> f32 {
     em * size
 }
 
-/// How wide `text` is in the pixel font at `size` px: every glyph is a whole number of font
-/// pixels, eight to the em, so this is exact.
+/// How wide `text` is in the pixel font at `size` px. Plain ASCII is exact from a table: every
+/// glyph is a whole number of font pixels, eight to the em. Anything else (accents, other
+/// scripts, emoji) is laid out for real, so font fallback and the empty box the pixel font
+/// draws for what it lacks are counted as the renderer draws them.
 pub fn pixel_width(text: &str, size: f32) -> f32 {
+    if !text.is_ascii() {
+        return laid_out_width(text, crate::cards::PIXEL, false, size);
+    }
     let pixels: u32 = text
         .chars()
         .map(|c| match c {
@@ -71,6 +77,58 @@ pub fn pixel_width(text: &str, size: f32) -> f32 {
         })
         .sum();
     pixels as f32 * size / 8.0
+}
+
+/// How wide the renderer draws `text` in `family` at `size` px, laid out with the card fonts.
+/// A text it cannot lay out counts as a full em per character, which is wider than anything drawn.
+pub fn laid_out_width(text: &str, family: &str, bold: bool, size: f32) -> f32 {
+    let weight = if bold { "bold" } else { "normal" };
+    let svg = format!(
+        r#"<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"><text font-family="{family}" font-size="{size}" font-weight="{weight}">{}</text></svg>"#,
+        escape(text)
+    );
+    let options = usvg::Options {
+        fontdb: crate::fonts().clone(),
+        font_family: crate::cards::SANS.into(),
+        ..Default::default()
+    };
+    match usvg::Tree::from_str(&svg, &options) {
+        Ok(tree) => tree.root().abs_bounding_box().width(),
+        Err(_) => text.graphemes(true).count() as f32 * size,
+    }
+}
+
+/// Cuts `text` to what the renderer draws in at most `max` px in `family` at `size` px, ending
+/// with an ellipsis when shortened.
+pub fn fit_laid_out(text: &str, family: &str, bold: bool, size: f32, max: f32) -> String {
+    fit_by(text, max, |t| laid_out_width(t, family, bold, size))
+}
+
+/// Cuts `text` to what fits `max` px in the pixel font at `size` px, ending with an ellipsis when
+/// shortened.
+pub fn truncate_pixel_to(text: &str, size: f32, max: f32) -> String {
+    fit_by(text, max, |t| pixel_width(t, size))
+}
+
+/// The longest prefix of `text`, whole graphemes, that `width` measures within `max` once an
+/// ellipsis follows it; `text` itself when it fits. Found by halving, so a long name is measured
+/// a handful of times.
+fn fit_by(text: &str, max: f32, width: impl Fn(&str) -> f32) -> String {
+    if width(text) <= max {
+        return text.to_owned();
+    }
+    let graphemes: Vec<&str> = text.graphemes(true).collect();
+    let cut = |n: usize| format!("{}…", graphemes[..n].concat());
+    let (mut fits, mut over) = (0, graphemes.len());
+    while over - fits > 1 {
+        let mid = (fits + over) / 2;
+        if width(&cut(mid)) <= max {
+            fits = mid;
+        } else {
+            over = mid;
+        }
+    }
+    cut(fits)
 }
 
 /// Cuts `text` to what fits `max` px in Noto Sans at `size`, ending with an ellipsis when shortened.
@@ -175,6 +233,33 @@ pub fn panel_alpha(out: &mut String, x: f32, y: f32, w: f32, h: f32, border: f32
         out,
         r#"<path d="{} {inner}" fill="{edge}" fill-rule="evenodd"/><path d="{inner}" fill="{fill}" fill-opacity="{alpha}"/>"#,
         notched_path(x, y, w, h, border),
+    );
+}
+
+/// A shadow in pixel-art steps: an ellipse of half-sizes `rx` and `ry` centred on `(cx, cy)`,
+/// cut into bands two pixels tall, each as wide as the ellipse is there, to a whole two pixels.
+/// Nothing is anti-aliased, so it stays as crisp as the sprite on it.
+pub fn pixel_shadow(out: &mut String, cx: f32, cy: f32, rx: f32, ry: f32, alpha: f32) {
+    let bands = ry.round().max(1.0) as i32;
+    let top = cy - bands as f32;
+    let mut path = String::new();
+    for k in 0..bands {
+        // Where the middle of this band lies, from -1 at the top of the shadow to 1 at the bottom.
+        let along = (2 * k + 1 - bands) as f32 / bands as f32;
+        let half = ((rx * (1.0 - along * along).sqrt() / 2.0).round() * 2.0).max(2.0);
+        let _ = write!(
+            path,
+            "M{},{} h{} v2 h-{} Z ",
+            cx - half,
+            top + 2.0 * k as f32,
+            half * 2.0,
+            half * 2.0
+        );
+    }
+    let _ = write!(
+        out,
+        r##"<path d="{}" fill="#000000" fill-opacity="{alpha}"/>"##,
+        path.trim_end()
     );
 }
 
@@ -341,6 +426,67 @@ mod tests {
         let cut = truncate_to(name, 13.0, 90.0);
         assert!(cut.ends_with('…') && sans_width(&cut, 13.0) <= 90.0, "{cut}");
         assert!(cut.len() > 6, "it keeps what fits: {cut}");
+    }
+
+    #[test]
+    fn text_is_measured_as_drawn_even_where_the_pixel_font_has_no_letters() {
+        // Plain ASCII comes from the table; an accent keeps the width of its letter.
+        let same = |a: f32, b: f32| (a - b).abs() < 0.01;
+        assert!(same(pixel_width("ZOË", 14.0), pixel_width("ZOE", 14.0)));
+        assert!(same(pixel_width("ÑÑ", 8.0), pixel_width("NN", 8.0)));
+        // What the fonts lack draws as an empty box of the same width each time, a whole number of
+        // font pixels wide.
+        let one = pixel_width("李", 8.0);
+        assert!((5.0..=8.0).contains(&one), "{one}");
+        assert!(same(pixel_width("李李李", 8.0), 3.0 * one));
+        // Another script falls back to the sans font and is measured there.
+        assert!(pixel_width("Анна", 14.0) > 0.0);
+        // Cutting follows the measure: the cut text fits, is a prefix and ends in an ellipsis,
+        // whichever letters it holds; text that fits is left alone.
+        for text in [
+            "MMMMMMMMMMMMMMMMMMMMMM",
+            "李李李李李李李李李李李李",
+            "👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦",
+            "ЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖ",
+        ] {
+            let cut = truncate_pixel_to(text, 14.0, 100.0);
+            assert!(cut.ends_with('…') && pixel_width(&cut, 14.0) <= 100.0, "{text}: {cut}");
+            assert!(text.starts_with(cut.trim_end_matches('…')));
+            let wide = fit_laid_out(text, crate::cards::SANS, true, 44.0, 200.0);
+            assert!(
+                wide.ends_with('…') && laid_out_width(&wide, crate::cards::SANS, true, 44.0) <= 200.0,
+                "{wide}"
+            );
+        }
+        assert_eq!(truncate_pixel_to("Marlow", 14.0, 100.0), "Marlow");
+        assert_eq!(fit_laid_out("Pinch", crate::cards::SANS, true, 44.0, 400.0), "Pinch");
+        assert_eq!(truncate_pixel_to("", 14.0, 10.0), "");
+    }
+
+    #[test]
+    fn a_pixel_shadow_is_an_ellipse_in_whole_steps() {
+        let mut s = String::new();
+        pixel_shadow(&mut s, 100.0, 50.0, 20.0, 3.0, 0.3);
+        let bands: Vec<(f32, f32, f32)> = s
+            .trim_start_matches("<path d=\"")
+            .split(" Z")
+            .filter(|b| b.starts_with('M') || b.trim_start().starts_with('M'))
+            .map(|b| {
+                let b = b.trim().trim_start_matches('M');
+                let (xy, rest) = b.split_once(" h").expect("a band");
+                let (x, y) = xy.split_once(',').expect("a point");
+                let width = rest.split(' ').next().expect("width");
+                (x.parse().expect("x"), y.parse().expect("y"), width.parse().expect("w"))
+            })
+            .collect();
+        assert_eq!(bands.len(), 3, "{s}");
+        // Two pixels apart, centred on x = 100, even in width, the middle band the widest.
+        for (i, (x, y, w)) in bands.iter().enumerate() {
+            assert_eq!(*y, 47.0 + 2.0 * i as f32, "{s}");
+            assert_eq!(x + w / 2.0, 100.0);
+            assert_eq!(w % 4.0, 0.0, "whole two-pixel steps on either side: {w}");
+        }
+        assert!(bands[1].2 >= bands[0].2 && bands[1].2 >= bands[2].2, "{s}");
     }
 
     #[test]

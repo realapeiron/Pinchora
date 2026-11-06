@@ -8,7 +8,7 @@ use image::{Rgba, RgbaImage, imageops};
 use super::{PIXEL, SANS, SpriteArt, text};
 use crate::{
     Theme, encode_png,
-    svg::{data_uri_png, escape, notched_path, truncate_to},
+    svg::{data_uri_png, escape, notched_path, pixel_shadow, truncate_to},
 };
 
 /// What a showcase tile shows.
@@ -46,37 +46,50 @@ impl ShowcaseSlot<'_> {
     /// At most this many tiles fit in a row.
     pub const MAX: usize = 4;
     /// The largest sprite a tile has room for.
-    pub const ART_BOX: (u32, u32) = (96, 46);
-    /// The size of the house picture.
-    pub const HOUSE_BOX: (u32, u32) = (160, 88);
-    pub(crate) const HEIGHT: f32 = 96.0;
+    pub const ART_BOX: (u32, u32) = (128, 72);
+    /// The size of the house picture: what a house tile has inside its border.
+    pub const HOUSE_BOX: (u32, u32) = (160, 106);
+    pub(crate) const HEIGHT: f32 = 114.0;
     /// Room between tiles.
     const GAP: f32 = 8.0;
     /// A tile with a sprite is at most this wide, however few there are.
     const WIDEST: f32 = 176.0;
+    /// A small sprite is not blown up more than this: a fish 24 px wide at 4× is as wide as a
+    /// big pet.
+    const MAX_SCALE: u32 = 4;
+    /// Inside a tile, from its top: the baseline of the kind, the top of the art box (the kind sits
+    /// in the corner beside it, above the sprites that are not at their tallest), the floor the
+    /// sprites stand on (the bottom of the art box) and how far the name's baseline is above the
+    /// tile's bottom.
+    const KIND_BASELINE: f32 = 17.0;
+    const ART_TOP: f32 = 18.0;
+    const FLOOR: f32 = 90.0;
+    const NAME_RISE: f32 = 9.0;
 }
 
 impl ShowcaseSlot<'_> {
     /// A sprite fitted to [`ShowcaseSlot::ART_BOX`], as PNG with its size: trimmed of empty
-    /// margin, scaled up by a whole factor when it is small (the pixels stay crisp) and
-    /// smoothly down when it is big.
+    /// margin, then scaled by a whole factor only, so every pixel of every sprite stays a whole,
+    /// crisp block. Small sprites grow by the biggest factor that fits (at most
+    /// [`ShowcaseSlot::MAX_SCALE`]); a sprite too big at 1× shrinks by the smallest whole
+    /// divisor that fits, each new pixel the commonest colour of the block it replaces, so no
+    /// colour is invented and no edge is smoothed.
     pub fn fit_sprite(sprite: &RgbaImage) -> anyhow::Result<(Vec<u8>, u32, u32)> {
         let (box_w, box_h) = Self::ART_BOX;
         let sprite = trimmed(sprite);
-        let (w, h) = (sprite.width(), sprite.height());
+        let (w, h) = (sprite.width().max(1), sprite.height().max(1));
         let fitted = if w <= box_w && h <= box_h {
-            let factor = (box_w / w).min(box_h / h).clamp(1, 4);
+            let factor = (box_w / w).min(box_h / h).clamp(1, Self::MAX_SCALE);
             imageops::resize(&sprite, w * factor, h * factor, imageops::FilterType::Nearest)
         } else {
-            let k = (box_w as f32 / w as f32).min(box_h as f32 / h as f32);
-            let size = |n: u32| ((n as f32 * k).round() as u32).max(1);
-            resize_smooth(&sprite, size(w), size(h))
+            shrunk(&sprite, w.div_ceil(box_w).max(h.div_ceil(box_h)))
         };
         let (w, h) = (fitted.width(), fitted.height());
         Ok((encode_png(&fitted)?, w, h))
     }
 
     /// A picture of a room cut and scaled to fill [`ShowcaseSlot::HOUSE_BOX`], as PNG with its size.
+    /// A room is a scene, not a sprite: it is shrunk smoothly so the whole of it fits the tile.
     pub fn fit_house(room: &RgbaImage) -> anyhow::Result<(Vec<u8>, u32, u32)> {
         let (box_w, box_h) = Self::HOUSE_BOX;
         let k = (box_w as f32 / room.width() as f32).max(box_h as f32 / room.height() as f32);
@@ -106,6 +119,43 @@ fn trimmed(sprite: &RgbaImage) -> RgbaImage {
     imageops::crop_imm(sprite, x0, y0, x1 - x0 + 1, y1 - y0 + 1).to_image()
 }
 
+/// `sprite` made `divisor` times smaller, each pixel the commonest opaque colour of its
+/// `divisor`×`divisor` block (the first met on a tie), and transparent when less than half of the
+/// block is opaque. The colours stay the sprite's own, and so do its hard edges.
+fn shrunk(sprite: &RgbaImage, divisor: u32) -> RgbaImage {
+    let divisor = divisor.max(1);
+    let (w, h) = (sprite.width().div_ceil(divisor), sprite.height().div_ceil(divisor));
+    RgbaImage::from_fn(w, h, |bx, by| {
+        let mut colours: Vec<([u8; 3], u32)> = Vec::new();
+        let (mut opaque, mut total) = (0, 0);
+        for y in by * divisor..(by * divisor + divisor).min(sprite.height()) {
+            for x in bx * divisor..(bx * divisor + divisor).min(sprite.width()) {
+                let px = sprite.get_pixel(x, y);
+                total += 1;
+                if px[3] < 128 {
+                    continue;
+                }
+                opaque += 1;
+                let rgb = [px[0], px[1], px[2]];
+                match colours.iter_mut().find(|(c, _)| *c == rgb) {
+                    Some((_, n)) => *n += 1,
+                    None => colours.push((rgb, 1)),
+                }
+            }
+        }
+        let best = colours
+            .iter()
+            .fold(None, |best: Option<&([u8; 3], u32)>, c| match best {
+                Some(b) if b.1 >= c.1 => Some(b),
+                _ => Some(c),
+            });
+        match best {
+            Some(([r, g, b], _)) if opaque * 2 >= total => Rgba([*r, *g, *b, 255]),
+            _ => Rgba([0, 0, 0, 0]),
+        }
+    })
+}
+
 /// A smooth resize that does not smear dark edges into transparent pixels: the colours are
 /// weighted by their alpha while they are averaged.
 fn resize_smooth(img: &RgbaImage, w: u32, h: u32) -> RgbaImage {
@@ -131,7 +181,8 @@ fn resize_smooth(img: &RgbaImage, w: u32, h: u32) -> RgbaImage {
 }
 
 /// Draws up to [`ShowcaseSlot::MAX`] tiles centred in the `width` pixels from `x`, tops at `y`.
-/// Tiles with a sprite share what the house picture leaves, up to a width of their own.
+/// Tiles with a sprite share what the house picture leaves, up to a width of their own. Every
+/// edge lies on a whole pixel, so nothing is blended.
 pub(crate) fn draw_row(out: &mut String, t: &Theme, slots: &[ShowcaseSlot<'_>], x: f32, y: f32, width: f32) {
     let slots = &slots[..slots.len().min(ShowcaseSlot::MAX)];
     if slots.is_empty() {
@@ -142,12 +193,14 @@ pub(crate) fn draw_row(out: &mut String, t: &Theme, slots: &[ShowcaseSlot<'_>], 
     let gaps = (slots.len() - 1) as f32 * ShowcaseSlot::GAP;
     let house_w = ShowcaseSlot::HOUSE_BOX.0 as f32 + 8.0;
     let tile_w = if others > 0.0 {
-        ((width - gaps - house * house_w) / others).min(ShowcaseSlot::WIDEST)
+        ((width - gaps - house * house_w) / others)
+            .min(ShowcaseSlot::WIDEST)
+            .floor()
     } else {
         0.0
     };
     let total = others * tile_w + house * house_w + gaps;
-    let mut at = x + (width - total) / 2.0;
+    let mut at = x + ((width - total) / 2.0).floor();
     for slot in slots {
         let w = if slot.kind == ShowcaseKind::House {
             house_w
@@ -162,13 +215,14 @@ pub(crate) fn draw_row(out: &mut String, t: &Theme, slots: &[ShowcaseSlot<'_>], 
     }
 }
 
-/// A panel with the kind in its corner, the sprite in the middle and the name under it.
+/// A panel with the kind in its corner, the sprite in the middle and the name under it. Fish
+/// swim in the middle of the art box; everything else stands on the floor of it, on a shadow.
 fn sprite_tile(out: &mut String, t: &Theme, slot: &ShowcaseSlot<'_>, x: f32, y: f32, w: f32) {
     t.panel(out, x, y, w, ShowcaseSlot::HEIGHT, 4.0);
     text(
         out,
         x + 14.0,
-        y + 22.0,
+        y + ShowcaseSlot::KIND_BASELINE,
         10.0,
         PIXEL,
         false,
@@ -177,32 +231,24 @@ fn sprite_tile(out: &mut String, t: &Theme, slot: &ShowcaseSlot<'_>, x: f32, y: 
         slot.kind.caption(),
     );
     let (art_w, art_h) = (slot.art.w as f32, slot.art.h as f32);
-    let (mid_x, floor) = (x + w / 2.0, y + 26.0 + ShowcaseSlot::ART_BOX.1 as f32);
-    if slot.kind != ShowcaseKind::Fish {
-        // Pets and furniture stand on something.
-        let _ = write!(
-            out,
-            r##"<ellipse cx="{mid_x}" cy="{}" rx="{}" ry="5" fill="#000000" fill-opacity="0.3"/>"##,
-            floor - 1.0,
-            (art_w / 2.5).clamp(10.0, 40.0)
-        );
-    }
-    // Fish swim in the middle of the box; everything else stands on its floor.
+    let (mid_x, floor) = ((x + w / 2.0).floor(), y + ShowcaseSlot::FLOOR);
     let top = if slot.kind == ShowcaseKind::Fish {
-        y + 26.0 + (ShowcaseSlot::ART_BOX.1 as f32 - art_h) / 2.0
+        let room = ShowcaseSlot::FLOOR - ShowcaseSlot::ART_TOP;
+        y + ShowcaseSlot::ART_TOP + ((room - art_h) / 2.0).floor()
     } else {
+        pixel_shadow(out, mid_x, floor, (art_w * 0.4).clamp(10.0, 40.0), 3.0, 0.3);
         floor - art_h
     };
     let _ = write!(
         out,
-        r#"<image x="{}" y="{top}" width="{art_w}" height="{art_h}" href="{}"/>"#,
-        mid_x - art_w / 2.0,
+        r#"<image x="{}" y="{top}" width="{art_w}" height="{art_h}" image-rendering="optimizeSpeed" href="{}"/>"#,
+        mid_x - (art_w / 2.0).floor(),
         data_uri_png(slot.art.png)
     );
     text(
         out,
         mid_x,
-        y + 88.0,
+        y + ShowcaseSlot::HEIGHT - ShowcaseSlot::NAME_RISE,
         13.0,
         SANS,
         false,
@@ -226,16 +272,16 @@ fn house_tile(out: &mut String, t: &Theme, slot: &ShowcaseSlot<'_>, x: f32, y: f
         h - 8.0,
         data_uri_png(slot.art.png)
     );
-    // The kind, top left.
+    // The kind, top left, on the same line as the kind of the sprite tiles beside it.
     let _ = write!(
         out,
         r##"<path d="{}" fill="#0b1029" fill-opacity="0.78"/>"##,
-        notched_path(x + 8.0, y + 8.0, 46.0, 18.0, 2.0)
+        notched_path(x + 8.0, y + 6.0, 46.0, 16.0, 2.0)
     );
     text(
         out,
         x + 14.0,
-        y + 21.0,
+        y + ShowcaseSlot::KIND_BASELINE,
         10.0,
         PIXEL,
         false,
@@ -283,32 +329,87 @@ mod tests {
         (image.width(), image.height())
     }
 
+    /// Whether `fitted` is `sprite` made a whole number of times bigger or smaller.
+    fn is_whole_scale(sprite: (u32, u32), fitted: (u32, u32)) -> bool {
+        (1..=ShowcaseSlot::MAX_SCALE).any(|k| fitted == (sprite.0 * k, sprite.1 * k))
+            || (1..=sprite.0.max(sprite.1)).any(|d| fitted == (sprite.0.div_ceil(d), sprite.1.div_ceil(d)))
+    }
+
     #[test]
-    fn small_sprites_grow_by_whole_factors_and_big_ones_shrink_to_the_box() {
+    fn small_sprites_grow_by_whole_factors_and_big_ones_shrink_by_whole_divisors() {
         let (box_w, box_h) = ShowcaseSlot::ART_BOX;
-        // 24×12 inside 4 px of empty margin: trimmed to 24×12, then doubled to fit 96×46 (factor 3: 72×36).
+        // 24×12 inside 4 px of empty margin: trimmed to 24×12, then grown as far as fits, up to 4×.
         let fish = opaque(32, 20, 4);
         let (png, w, h) = ShowcaseSlot::fit_sprite(&fish).expect("fits");
-        assert_eq!((w, h), (72, 36), "factor 3, the margin gone");
+        assert_eq!((w, h), (96, 48), "factor 4, the margin gone");
         assert_eq!(size_of(&png), (w, h));
-        // A sofa far bigger than the box shrinks to fit it, keeping its proportions.
+        // A 24 px pet doubles, and triples where the box allows: it is no longer left at 1×.
+        let (_, w, h) = ShowcaseSlot::fit_sprite(&opaque(24, 24, 0)).expect("fits");
+        assert_eq!((w, h), (72, 72));
+        // A 36×34 pet takes the box's whole height twice.
+        let (_, w, h) = ShowcaseSlot::fit_sprite(&opaque(36, 34, 0)).expect("fits");
+        assert_eq!((w, h), (72, 68));
+        // Too tall for a second copy: it stays as drawn.
+        let (_, w, h) = ShowcaseSlot::fit_sprite(&opaque(52, 44, 0)).expect("fits");
+        assert_eq!((w, h), (52, 44));
+        // A sofa far bigger than the box shrinks by the smallest divisor that fits.
         let (_, w, h) = ShowcaseSlot::fit_sprite(&opaque(160, 150, 0)).expect("fits");
-        assert!(w <= box_w && h <= box_h && h == box_h, "{w}×{h}");
-        assert!((w as f32 / h as f32 - 160.0 / 150.0).abs() < 0.05);
+        assert_eq!((w, h), (54, 50), "a third of it");
         // A tiny sprite is not blown up past four times its size.
         let (_, w, h) = ShowcaseSlot::fit_sprite(&opaque(6, 6, 0)).expect("fits");
         assert_eq!((w, h), (24, 24));
+        // Whatever the size, the sprite fits and is a whole multiple or a whole divisor of itself.
+        for (sw, sh) in [
+            (1, 1),
+            (7, 90),
+            (90, 7),
+            (128, 72),
+            (129, 72),
+            (200, 30),
+            (256, 298),
+            (300, 20),
+            (24, 8),
+        ] {
+            let (png, w, h) = ShowcaseSlot::fit_sprite(&opaque(sw, sh, 0)).expect("fits");
+            assert!(w <= box_w && h <= box_h, "{sw}×{sh} came out {w}×{h}");
+            assert!(is_whole_scale((sw, sh), (w, h)), "{sw}×{sh} came out {w}×{h}");
+            assert_eq!(size_of(&png), (w, h));
+        }
         // An empty picture is kept whole, not turned into nothing.
         assert!(ShowcaseSlot::fit_sprite(&RgbaImage::new(10, 10)).is_ok());
     }
 
     #[test]
-    fn shrinking_does_not_smear_dark_edges_into_the_transparent_pixels() {
-        let (png, _, _) = ShowcaseSlot::fit_sprite(&opaque(200, 160, 20)).expect("fits");
+    fn scaling_invents_no_colour_and_no_half_transparent_pixel() {
+        // Two colours in a fine checker, a hard-edged shape with a see-through margin: shrunk by
+        // 3, the result holds only those colours, each fully opaque or fully empty.
+        let checker = RgbaImage::from_fn(300, 240, |x, y| {
+            if !(20..280).contains(&x) || !(20..220).contains(&y) {
+                Rgba([0, 0, 0, 0])
+            } else if (x / 2 + y / 2) % 2 == 0 {
+                Rgba([200, 120, 60, 255])
+            } else {
+                Rgba([30, 40, 90, 255])
+            }
+        });
+        let (png, w, h) = ShowcaseSlot::fit_sprite(&checker).expect("fits");
+        assert_eq!((w, h), (87, 67), "260×200 shrunk by 3");
         let image = image::load_from_memory(&png).expect("a png").to_rgba8();
-        for px in image.pixels().filter(|p| p[3] > 0) {
-            assert!(px[0] >= 190 && px[1] >= 110, "an edge pixel went dark: {px:?}");
+        for px in image.pixels() {
+            assert!(
+                px.0 == [0, 0, 0, 0] || px.0 == [200, 120, 60, 255] || px.0 == [30, 40, 90, 255],
+                "an invented pixel: {px:?}"
+            );
         }
+        assert!(image.pixels().any(|p| p[3] == 255), "and the shape is still there");
+        // The smallest sprites are only repeated, never blended.
+        let small = RgbaImage::from_fn(5, 5, |x, y| Rgba([(x * 50) as u8, (y * 50) as u8, 7, 255]));
+        let (png, _, _) = ShowcaseSlot::fit_sprite(&small).expect("fits");
+        let big = image::load_from_memory(&png).expect("a png").to_rgba8();
+        assert!(
+            big.pixels()
+                .all(|p| p[2] == 7 && p[3] == 255 && p[0] % 50 == 0 && p[1] % 50 == 0)
+        );
     }
 
     #[test]
@@ -319,5 +420,7 @@ mod tests {
             assert_eq!((pw, ph), ShowcaseSlot::HOUSE_BOX);
             assert_eq!(size_of(&png), ShowcaseSlot::HOUSE_BOX);
         }
+        // The picture is drawn as it is, not stretched to the tile's inside.
+        assert_eq!(ShowcaseSlot::HOUSE_BOX.1 as f32, ShowcaseSlot::HEIGHT - 8.0);
     }
 }

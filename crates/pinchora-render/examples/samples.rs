@@ -35,6 +35,15 @@ fn art(sprite: &(Vec<u8>, u32, u32)) -> SpriteArt<'_> {
     }
 }
 
+/// A showcase tile of `sprite` (PNG, width, height).
+fn tile<'a>(kind: ShowcaseKind, sprite: &'a (Vec<u8>, u32, u32), name: &'a str) -> ShowcaseSlot<'a> {
+    ShowcaseSlot {
+        kind,
+        art: art(sprite),
+        name,
+    }
+}
+
 /// A bright 240×135 beach for backgrounds until the atlas has real scenes: peach sky, turquoise sea, pale
 /// sand. Light art like this is the hardest case for the text on a card.
 fn sample_scene() -> RgbaImage {
@@ -470,44 +479,29 @@ fn main() -> anyhow::Result<()> {
     let pet = tile_art("p_auroraclaw_crab")?;
     let bed = tile_art("f_blushbun_bed")?;
     let lamp = tile_art("f_blushcheek_lamp")?;
+    let house = (house_png, house_w, house_h);
+    let house = |name| tile(ShowcaseKind::House, &house, name);
     let all = [
-        ShowcaseSlot {
-            kind: ShowcaseKind::Fish,
-            art: art(&fish),
-            name: "Amberwink Squidlet",
-        },
-        ShowcaseSlot {
-            kind: ShowcaseKind::Pet,
-            art: art(&pet),
-            name: "Sir Clicks-a-lot",
-        },
-        ShowcaseSlot {
-            kind: ShowcaseKind::Furniture,
-            art: art(&bed),
-            name: "Blushbun Bed (Rose)",
-        },
-        ShowcaseSlot {
-            kind: ShowcaseKind::House,
-            art: SpriteArt {
-                png: &house_png,
-                w: house_w,
-                h: house_h,
-            },
-            name: "Tide Pool Shack",
-        },
+        tile(ShowcaseKind::Fish, &fish, "Amberwink Squidlet"),
+        tile(ShowcaseKind::Pet, &pet, "Sir Clicks-a-lot"),
+        tile(ShowcaseKind::Furniture, &bed, "Blushbun Bed (Rose)"),
+        house("Tide Pool Shack"),
     ];
     let long_bio = "Collector of shiny shells, builder of tiny pixel houses, feeder of crabs and chaser of rare fish. Ask me about Sir Clicks-a-lot or my 4 AM fishing trips!";
-    let busy = |showcase: &[ShowcaseSlot<'_>],
-                partner: Option<&str>,
-                backdrop: Option<Backdrop<'_>>,
-                theme: Theme|
+    let long_name = "Bartholomew Fizzlebottom Smythe!";
+    let busy_bio = |name: &str,
+                    bio: &str,
+                    showcase: &[ShowcaseSlot<'_>],
+                    partner: Option<&str>,
+                    backdrop: Option<Backdrop<'_>>,
+                    theme: Theme|
      -> anyhow::Result<Vec<u8>> {
         r.profile_card(&ProfileCard {
-            display_name: "Bartholomew Fizzlebottom Smythe!",
+            display_name: name,
             title: Some("Lighthouse Keeper"),
             username: "bartholomew.fizzlebottom.smythe.99",
             avatar_png: &placeholder_avatar(42, ProfileCard::AVATAR_SIZE),
-            bio: long_bio,
+            bio,
             level: 41,
             xp_current: 3_120,
             xp_needed: 5_095,
@@ -529,6 +523,17 @@ fn main() -> anyhow::Result<()> {
             theme,
         })
     };
+    let busy_named = |name: &str,
+                      showcase: &[ShowcaseSlot<'_>],
+                      partner: Option<&str>,
+                      backdrop: Option<Backdrop<'_>>,
+                      theme: Theme|
+     -> anyhow::Result<Vec<u8>> { busy_bio(name, long_bio, showcase, partner, backdrop, theme) };
+    let busy = |showcase: &[ShowcaseSlot<'_>],
+                partner: Option<&str>,
+                backdrop: Option<Backdrop<'_>>,
+                theme: Theme|
+     -> anyhow::Result<Vec<u8>> { busy_named(long_name, showcase, partner, backdrop, theme) };
     let write = |name: &str, png: Vec<u8>| std::fs::write(format!("{out}/{name}.png"), png);
     write(
         "profile-showcase",
@@ -557,16 +562,8 @@ fn main() -> anyhow::Result<()> {
         )?,
     )?;
     let two = [
-        ShowcaseSlot {
-            kind: ShowcaseKind::Fish,
-            art: art(&fish),
-            name: "Amberwink Squidlet",
-        },
-        ShowcaseSlot {
-            kind: ShowcaseKind::Furniture,
-            art: art(&lamp),
-            name: "Blushcheek Lamp",
-        },
+        tile(ShowcaseKind::Fish, &fish, "Amberwink Squidlet"),
+        tile(ShowcaseKind::Furniture, &lamp, "Blushcheek Lamp"),
     ];
     write("profile-showcase-two", busy(&two, None, None, Theme::reef())?)?;
     write(
@@ -578,6 +575,173 @@ fn main() -> anyhow::Result<()> {
         busy(&[], Some("Marlow the Quiet"), None, Theme::reef())?,
     )?;
     write("profile-long", busy(&[], None, None, Theme::reef())?)?;
+
+    // Sprites of every size land on the same grid: the smallest, the biggest, and the in-betweens.
+    let sturgeon = tile_art("c_frostlace_sturgeon")?;
+    let cat = tile_art("p_drowsepatch_cat")?;
+    let dish = tile_art("f_soapbud_dish")?;
+    let small = [
+        tile(ShowcaseKind::Fish, &sturgeon, "Frostlace Sturgeon"),
+        tile(ShowcaseKind::Pet, &cat, "Drowsepatch"),
+        tile(ShowcaseKind::Furniture, &dish, "Soapbud Dish"),
+    ];
+    write(
+        "profile-showcase-small",
+        busy(&small, Some("Marlow"), None, Theme::reef())?,
+    )?;
+    let tin = tile_art("c_rattlelip_tin")?;
+    let squid = tile_art("p_starstitch_squid")?;
+    let rig = tile_art("f_motionharbor_rig")?;
+    let big = [
+        tile(ShowcaseKind::Fish, &tin, "Rattlelip Tin"),
+        tile(ShowcaseKind::Pet, &squid, "Starstitch Squid"),
+        tile(ShowcaseKind::Furniture, &rig, "Motion Harbor Rig"),
+        house("Tide Pool Shack"),
+    ];
+    write("profile-showcase-big", busy(&big, Some("Marlow"), None, Theme::reef())?)?;
+    let sunfish = tile_art("c_moonbutton_sunfish")?;
+    let tortoise = tile_art("p_wishroot_tortoise")?;
+    let sofa = tile_art("f_baybloom_circle_sofa")?;
+    let mixed = [
+        tile(ShowcaseKind::Fish, &sunfish, "Moonbutton Sunfish"),
+        tile(ShowcaseKind::Pet, &tortoise, "Wishroot"),
+        tile(ShowcaseKind::Furniture, &sofa, "Baybloom Circle Sofa"),
+    ];
+    write("profile-showcase-mixed", busy(&mixed, None, None, Theme::reef())?)?;
+
+    // Shouting and wide letters in the bio, beside the character.
+    write(
+        "profile-shout",
+        busy_bio(
+            "Captain Pinch",
+            "WELCOME TO MY WORLD OF SHELLS, MOSAICS AND MIGHTY WAVES! ASK ME ABOUT WWWWW MMMMM AND THE WHOLE TIDE",
+            &all,
+            Some("Marlow"),
+            None,
+            Theme::reef(),
+        )?,
+    )?;
+    write(
+        "profile-shout-classic",
+        busy_bio(
+            "Captain Pinch",
+            "WELCOME TO MY WORLD OF SHELLS, MOSAICS AND MIGHTY WAVES! ASK ME ABOUT WWWWW MMMMM AND THE WHOLE TIDE",
+            &[],
+            None,
+            None,
+            Theme::reef(),
+        )?,
+    )?;
+
+    // Names the fonts do not cover, and names that are simply wide.
+    write(
+        "profile-unicode",
+        busy_named("Zoë ✨ 李", &all, Some("Zoë ✨ 李"), None, Theme::reef())?,
+    )?;
+    write(
+        "profile-unicode-classic",
+        busy_named("Zoë ✨ 李", &[], Some("Zoë ✨ 李"), None, Theme::reef())?,
+    )?;
+    write(
+        "profile-wide",
+        busy_named(
+            "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+            &all,
+            Some("MMMMMMMMMMMMMMMMMMMMMM"),
+            None,
+            Theme::reef(),
+        )?,
+    )?;
+    write(
+        "profile-cyrillic",
+        busy_named("Александр Пушкин", &[], Some("Анна Каренина"), None, Theme::reef())?,
+    )?;
+    write(
+        "profile-emoji-family",
+        busy_named("👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦", &[], Some("👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦👨‍👩‍👧‍👦"), None, Theme::reef())?,
+    )?;
+
+    // Backgrounds of every brightness, at every opacity, under the busiest layout.
+    let flat = |rgb: [u8; 3]| RgbaImage::from_pixel(240, 135, image::Rgba([rgb[0], rgb[1], rgb[2], 255]));
+    let stripes = RgbaImage::from_fn(240, 135, |x, y| {
+        if (x / 6 + y / 6) % 2 == 0 {
+            image::Rgba([250, 250, 250, 255])
+        } else {
+            image::Rgba([20, 20, 20, 255])
+        }
+    });
+    for (name, scene) in [
+        ("white", flat([255, 255, 255])),
+        ("black", flat([0, 0, 0])),
+        ("stripes", stripes),
+    ] {
+        let scaled = scaled_png(&scene, Backdrop::SCALE);
+        for opacity in Opacity::ALL {
+            write(
+                &format!("profile-bg-{name}-{}", opacity.label().to_lowercase()),
+                busy(
+                    &all,
+                    Some("Marlow the Quiet"),
+                    Some(Backdrop {
+                        art: Some(art(&scaled)),
+                        accent: "#8eddd1",
+                    }),
+                    themed.clone().with_style(opacity, Frame::Plain),
+                )?,
+            )?;
+        }
+    }
+    // With the real picture the same, and on the classic layout.
+    for opacity in Opacity::ALL {
+        let label = opacity.label().to_lowercase();
+        write(
+            &format!("profile-bg-beach-{label}"),
+            busy(
+                &all,
+                Some("Marlow the Quiet"),
+                Some(backdrop(true)),
+                themed.clone().with_style(opacity, Frame::Plain),
+            )?,
+        )?;
+        write(
+            &format!("profile-bg-beach-{label}-classic"),
+            busy(
+                &[],
+                Some("Marlow the Quiet"),
+                Some(backdrop(true)),
+                themed.clone().with_style(opacity, Frame::Plain),
+            )?,
+        )?;
+        // And no picture at all.
+        write(
+            &format!("profile-nobg-{label}"),
+            busy(&all, None, None, Theme::reef().with_style(opacity, Frame::Plain))?,
+        )?;
+    }
+    let white = scaled_png(&flat([255, 255, 255]), Backdrop::SCALE);
+    for (name, opacity) in [("light", Opacity::Light), ("solid", Opacity::Solid)] {
+        std::fs::write(
+            format!("{out}/rank-bg-white-{name}.png"),
+            rank_card(
+                Some(Backdrop {
+                    art: Some(art(&white)),
+                    accent,
+                }),
+                themed.clone().with_style(opacity, Frame::Plain),
+            )?,
+        )?;
+        std::fs::write(
+            format!("{out}/wallet-bg-white-{name}.png"),
+            wallet_card(
+                Some(Backdrop {
+                    art: Some(art(&white)),
+                    accent,
+                }),
+                themed.clone().with_style(opacity, Frame::Plain),
+            )?,
+        )?;
+    }
+
     for frame in &Frame::ALL[1..] {
         let styled = |opacity| Theme::reef().with_style(opacity, *frame);
         write(

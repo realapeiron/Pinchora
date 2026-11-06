@@ -6,8 +6,8 @@ use super::{
 use crate::{
     Theme,
     svg::{
-        CRAB, HEART, SHELL, STAR, background, compact, data_uri_png, escape, pixel_width, segment_bar, sprite,
-        thousands, truncate, wrap,
+        CRAB, HEART, SHELL, STAR, background, compact, data_uri_png, escape, fit_laid_out, pixel_shadow, pixel_width,
+        segment_bar, sprite, thousands, truncate, truncate_pixel_to, truncate_to, wrap,
     },
 };
 
@@ -103,26 +103,27 @@ impl Rows {
 
     pub(super) fn showcase() -> Self {
         Self {
-            bio_h: 112.0,
-            bio_label_dy: 26.0,
-            bio_first_dy: 50.0,
+            bio_h: 108.0,
+            bio_label_dy: 22.0,
+            bio_first_dy: 46.0,
             bio_leading: 24.0,
             bio_size: 20.0,
-            show_y: Some(260.0),
-            stats_y: 364.0,
+            show_y: Some(254.0),
+            stats_y: 374.0,
             stats_h: 48.0,
-            stats_label_dy: 19.0,
+            // A label and a value with the same room round them: 6 px above, 6 between, 5 below.
+            stats_label_dy: 18.0,
             stats_label_size: 12.0,
-            stats_value_dy: 42.0,
+            stats_value_dy: 39.0,
             stats_value_size: 24.0,
             stats_icon_dx: 150.0,
-            stats_icon_dy: 14.0,
+            stats_icon_dy: 15.0,
             stats_icon_scale: 3.0,
-            xp_y: 432.0,
-            bar_y: 438.0,
-            bar_h: 32.0,
-            foot_y: 474.0,
-            plate: (414.0, 116.0),
+            xp_y: 438.0,
+            bar_y: 444.0,
+            bar_h: 28.0,
+            foot_y: 476.0,
+            plate: (422.0, 108.0),
         }
     }
 }
@@ -133,6 +134,9 @@ impl ProfileCard<'_> {
     pub const MAX_BADGES: usize = 6;
     /// Letters of a partner's name that fit the corner of the about-me panel.
     pub const PARTNER_CHARS: usize = 18;
+    /// The room a partner's name has there, in pixels as drawn: the names that are wider, wide
+    /// letters or letters the pixel font lacks, are cut to this.
+    pub const PARTNER_WIDTH: f32 = 224.0;
 
     pub fn to_svg(&self) -> String {
         let t = &self.theme;
@@ -158,6 +162,9 @@ impl ProfileCard<'_> {
                     t.plate(&mut s, 288.0, 44.0, 640.0, 88.0);
                 }
                 t.plate(&mut s, 288.0, rows.plate.0, 640.0, rows.plate.1);
+                // The footer's small text and busy art get a second plate of their own.
+                let footer = rows.foot_y - 4.0;
+                t.footer_plate(&mut s, 288.0, footer, 640.0, rows.plate.0 + rows.plate.1 - footer);
             }
             None => background(&mut s, w, h, &t.bg_top, &t.bg_bottom),
         }
@@ -209,8 +216,20 @@ impl ProfileCard<'_> {
         );
 
         // Right column: name, bio, stats, XP. With a character, text keeps clear of its corner.
-        let (name_chars, bio_chars) = if self.character.is_some() { (17, 38) } else { (22, 46) };
-        let name = escape(&truncate(self.display_name, name_chars));
+        let (name_room, bio_chars, bio_room) = if self.character.is_some() {
+            (516.0, 38, 490.0)
+        } else {
+            (620.0, 46, 584.0)
+        };
+        // Cut to the pixels the bold name takes, not to a number of letters: wide letters and
+        // the scripts the fonts lack are not as wide as an average one.
+        let name = escape(&fit_laid_out(
+            &truncate(self.display_name, 32),
+            SANS,
+            true,
+            44.0,
+            name_room,
+        ));
         let handle = escape(&truncate(&format!("@{}", self.username), 34));
         match self.title {
             // The title takes a line of its own between the name and the handle.
@@ -269,18 +288,19 @@ impl ProfileCard<'_> {
                 false,
                 &t.ink,
                 "start",
-                &escape(line),
+                // A line of wide letters is cut at the panel's edge, or at the character's.
+                &escape(&truncate_to(line, rows.bio_size, bio_room)),
             );
         }
 
         if let Some(art) = &self.character {
             // Feet near the bottom edge of the about-me panel, head up into the title row.
             let (cx, feet) = (862.0, bio_top + rows.bio_h - 10.0);
+            pixel_shadow(&mut s, cx, feet, (art.w as f32 / 2.5).max(30.0), 6.0, 0.3);
             let _ = write!(
                 s,
-                r##"<ellipse cx="{cx}" cy="{feet}" rx="{}" ry="9" fill="#000000" fill-opacity="0.3"/><image x="{}" y="{}" width="{}" height="{}" href="{}"/>"##,
-                (art.w as f32 / 2.5).max(30.0),
-                cx - art.w as f32 / 2.0,
+                r#"<image x="{}" y="{}" width="{}" height="{}" image-rendering="optimizeSpeed" href="{}"/>"#,
+                cx - (art.w / 2) as f32,
                 feet - art.h as f32,
                 art.w,
                 art.h,
@@ -408,12 +428,20 @@ impl ProfileCard<'_> {
         s
     }
 
-    /// "♥ name", its right end at `right`, on the text baseline `y`.
+    /// "♥ name", its right end at `right`, on the text baseline `y`. The name is measured as it
+    /// is drawn, so a name with accents, another script or emoji keeps the heart next to it, and
+    /// one that does not fit [`ProfileCard::PARTNER_WIDTH`] is cut.
     fn partner_line(&self, s: &mut String, partner: &str, right: f32, y: f32) {
         let t = &self.theme;
-        let name = truncate(&partner.to_uppercase(), Self::PARTNER_CHARS);
+        let name = truncate_pixel_to(
+            &truncate(&partner.to_uppercase(), Self::PARTNER_CHARS),
+            14.0,
+            Self::PARTNER_WIDTH,
+        );
         let width = pixel_width(&name, 14.0);
         text(s, right, y, 14.0, PIXEL, false, &t.ink, "end", &escape(&name));
-        sprite(s, HEART, right - width - 31.0, y - 12.0, 3.0, &t.heart, "#ffc2cf");
+        // On a whole pixel, so the heart's blocks are not blended.
+        let heart = (right - width - 31.0).floor();
+        sprite(s, HEART, heart, y - 12.0, 3.0, &t.heart, "#ffc2cf");
     }
 }

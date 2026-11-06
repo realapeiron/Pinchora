@@ -8,7 +8,10 @@ use twilight_model::user::User;
 
 use crate::{
     Cx,
-    commands::customize::{self, Cosmetics, Showcase},
+    commands::{
+        customize::{self, Cosmetics, Showcase},
+        partner::partner_name,
+    },
     game::scene::scaled_png,
     util::resolved_display_name,
 };
@@ -47,6 +50,21 @@ pub(crate) async fn card(
     background: Option<&Background>,
     badges: &[&Badge],
 ) -> anyhow::Result<Vec<u8>> {
+    let showcase = Showcase::load(&cx.app, user.id.get(), &row).await?;
+    card_with(cx, user, name, row, background, badges, showcase).await
+}
+
+/// Like [`card`], with the showcase already loaded: an editor that has read it for its own sake
+/// does not read it a second time.
+pub(crate) async fn card_with(
+    cx: &Cx,
+    user: &User,
+    name: String,
+    row: UserRow,
+    background: Option<&Background>,
+    badges: &[&Badge],
+    showcase: Showcase,
+) -> anyhow::Result<Vec<u8>> {
     let db = &cx.app.db;
     let global_rank = db.global_xp_rank(row.xp).await?;
     let server_rank = match cx.guild_id() {
@@ -70,7 +88,7 @@ pub(crate) async fn card(
     let cosmetics = Cosmetics::new(&sprites, background, badges);
     let theme = customize::theme(&row, background);
     let title = customize::title_name(&row);
-    let showcase = Showcase::load(&cx.app, user.id.get(), &row).await?;
+    let partner = partner_name(&cx.app, user.id.get()).await;
     cx.app
         .render(move |r| {
             let art = character
@@ -98,8 +116,7 @@ pub(crate) async fn card(
                 backdrop: cosmetics.backdrop(),
                 badges: &icons,
                 showcase: &slots,
-                // Filled in by whatever puts partners on the card.
-                partner: None,
+                partner,
                 theme,
             })
         })

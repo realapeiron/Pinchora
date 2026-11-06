@@ -51,22 +51,28 @@ impl Opacity {
         }
     }
 
-    /// Opacity of the plates behind loose text on a background picture.
+    /// Opacity of the plates behind loose text on a background picture. Light ones stay dark
+    /// enough for small text to read over the brightest picture.
     pub(crate) fn plate(self) -> f32 {
         match self {
-            Self::Light => 0.55,
+            Self::Light => 0.7,
             Self::Normal => 0.8,
             Self::Solid => 0.95,
         }
     }
 
-    /// Opacity of a panel's fill.
+    /// Opacity of a panel's fill. Even the see-through ones keep enough of it for the
+    /// lifted label colour (see [`crate::Theme::with_style`]) to read over a bright picture.
     pub(crate) fn panel(self) -> f32 {
         match self {
-            Self::Light => 0.68,
+            Self::Light => 0.74,
             Self::Normal | Self::Solid => 1.0,
         }
     }
+
+    /// Opacity of the extra plate under the card's footer, on top of the plate everything
+    /// loose sits on: the footer text is small and the crab and the badges are busy.
+    pub(crate) const FOOTER_PLATE: f32 = 0.5;
 }
 
 /// A pixel frame drawn around the whole card.
@@ -190,7 +196,7 @@ pub fn readable(rgb: u32) -> bool {
 }
 
 /// Relative luminance, `0.0` black to `1.0` white.
-fn luminance(rgb: u32) -> f32 {
+pub(crate) fn luminance(rgb: u32) -> f32 {
     let channel = |shift: u32| {
         let c = ((rgb >> shift) & 0xff) as f32 / 255.0;
         if c <= 0.03928 {

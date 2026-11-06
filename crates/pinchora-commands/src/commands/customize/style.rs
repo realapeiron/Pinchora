@@ -44,6 +44,13 @@ fn refusal(error: AccentError) -> &'static str {
     }
 }
 
+/// Whether what is stored for the player is the style every player starts with. The stored
+/// values count, not what the card shows of them: a frame above the player's level is not drawn
+/// but is still saved, and Reset has to clear it.
+fn is_default_style(row: &UserRow) -> bool {
+    row.accent.is_none() && row.panel_opacity == Opacity::Normal.index() && row.frame == Frame::Plain.id()
+}
+
 /// How a frame shows in the menu: free, worn, or locked until a level.
 fn frame_note(frame: Frame, level: u32, worn: bool) -> String {
     match (frame.unlock_level(), worn) {
@@ -92,7 +99,10 @@ pub(super) async fn panel(cx: &Cx, note: &str) -> anyhow::Result<InteractionResp
         .collect();
 
     let worn = worn_badges(&cx.app, id, &player).await?;
-    let is_default = accent.is_none() && opacity == Opacity::Normal && frame == Frame::Plain;
+    let is_default = is_default_style(&player);
+    // Panel opacity only shows over a picture; without one the choice is left out, unless an
+    // earlier choice still has to be undone.
+    let show_opacity = background.is_some() || opacity != Opacity::Normal;
     let png = Box::pin(profile::card(
         cx,
         user,
@@ -123,6 +133,9 @@ pub(super) async fn panel(cx: &Cx, note: &str) -> anyhow::Result<InteractionResp
         opacity.label(),
         frame.name()
     ));
+    if !show_opacity {
+        text.push_str("\nPanel opacity shows over a background picture: pick one with `/customize background`.");
+    }
     let locked: Vec<String> = Frame::ALL
         .iter()
         .filter(|f| !f.is_unlocked(level))
@@ -144,6 +157,17 @@ pub(super) async fn panel(cx: &Cx, note: &str) -> anyhow::Result<InteractionResp
             false,
         )
     };
+    let mut buttons = Vec::new();
+    if show_opacity {
+        buttons.extend(Opacity::ALL.map(opacity_button));
+    }
+    buttons.push(button("cs:h".to_owned(), "Hex code…", ButtonStyle::Secondary, false));
+    buttons.push(button(
+        "cs:r".to_owned(),
+        "Reset style",
+        ButtonStyle::Danger,
+        is_default,
+    ));
     let components = vec![
         row(vec![menu(
             "cs:a".to_owned(),
@@ -154,13 +178,7 @@ pub(super) async fn panel(cx: &Cx, note: &str) -> anyhow::Result<InteractionResp
             "Nothing to show",
         )]),
         row(vec![menu("cs:f".to_owned(), "Frame…", frames, 1, 1, "Nothing to show")]),
-        row(vec![
-            opacity_button(Opacity::Light),
-            opacity_button(Opacity::Normal),
-            opacity_button(Opacity::Solid),
-            button("cs:h".to_owned(), "Hex code…", ButtonStyle::Secondary, false),
-            button("cs:r".to_owned(), "Reset style", ButtonStyle::Danger, is_default),
-        ]),
+        row(buttons),
     ];
     let embed = EmbedBuilder::new().color(BRAND).title("Card style").description(text);
     Ok(Cx::card(embed, "profile.png", png, components, true))

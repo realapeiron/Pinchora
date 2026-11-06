@@ -72,11 +72,14 @@ pub(crate) struct Showcase {
 }
 
 impl Showcase {
+    /// Reads what each pick needs to be checked against: one small query for each slot that has
+    /// a pick (is the fish in the book, is the pet theirs, is the furniture theirs) and, for the
+    /// house, its room. Nothing else is read.
     pub(crate) async fn load(app: &App, user: u64, row: &UserRow) -> anyhow::Result<Self> {
         let content = Content::get();
         let mut tiles = Vec::new();
         if let Some(fish) = row.showcase_fish.as_deref().and_then(|id| content.fish(id))
-            && app.db.fish_book(user).await?.iter().any(|b| b.fish_id == fish.id)
+            && app.db.has_fish(user, &fish.id).await?
         {
             tiles.push(Tile {
                 kind: ShowcaseKind::Fish,
@@ -84,18 +87,17 @@ impl Showcase {
                 source: Source::Fish(fish.id.clone()),
             });
         }
-        if let Some(pet) = row.showcase_pet {
-            let pets = app.db.pets(user).await?;
-            if let Some(pet) = pets.into_iter().find(|p| p.id == pet) {
-                tiles.push(Tile {
-                    kind: ShowcaseKind::Pet,
-                    name: pet.name,
-                    source: Source::Pet(pet.species),
-                });
-            }
+        if let Some(pet) = row.showcase_pet
+            && let Some((name, species)) = app.db.pet_name_species(user, pet).await?
+        {
+            tiles.push(Tile {
+                kind: ShowcaseKind::Pet,
+                name,
+                source: Source::Pet(species),
+            });
         }
         if let Some(item) = row.showcase_item.as_deref().and_then(|id| content.item(id))
-            && app.db.owned_item_ids(user).await?.contains(&item.id())
+            && app.db.owns_item(user, &item.id()).await?
         {
             tiles.push(Tile {
                 kind: ShowcaseKind::Furniture,
@@ -259,7 +261,8 @@ pub(super) async fn panel(cx: &Cx, slot: Slot, page: usize, note: &str) -> anyho
     let id = user.id.get();
     let player = cx.app.db.user(id).await?;
     let showcase = Showcase::load(&cx.app, id, &player).await?;
-    let has_house = cx.app.db.house_preview(id).await?.is_some();
+    // A house on the card has a room; without one on it, a single question tells.
+    let has_house = showcase.name_of(ShowcaseKind::House).is_some() || cx.app.db.has_house_room(id).await?;
     let picked = current(&player, slot);
     let choices = choices(&cx.app, id, slot).await?;
     let pages = choices.len().div_ceil(PER_PAGE).max(1);
@@ -304,16 +307,8 @@ pub(super) async fn panel(cx: &Cx, slot: Slot, page: usize, note: &str) -> anyho
     let slot_filled = picked.is_some();
     let worn = worn_badges(&cx.app, id, &player).await?;
     let background = player.background.as_deref().and_then(|e| content.background(e));
-    let png = Box::pin(profile::card(
-        cx,
-        user,
-        cx.author_display_name(),
-        player,
-        background,
-        &worn,
-    ))
-    .await?;
 
+    // The text first: the card takes the showcase over, so that it is read once for both.
     let mut text = String::new();
     if !note.is_empty() {
         text.push_str(note);
@@ -334,6 +329,16 @@ pub(super) async fn panel(cx: &Cx, slot: Slot, page: usize, note: &str) -> anyho
     if empty_showcase {
         text.push_str("\nNothing is on your showcase, so your card looks as it always did.");
     }
+    let png = Box::pin(profile::card_with(
+        cx,
+        user,
+        cx.author_display_name(),
+        player,
+        background,
+        &worn,
+        showcase,
+    ))
+    .await?;
 
     let letter = slot.letter();
     let mut buttons = Vec::new();
@@ -400,18 +405,36 @@ pub(super) async fn panel(cx: &Cx, slot: Slot, page: usize, note: &str) -> anyho
 }
 
 /// Saves `value` as the pick for `slot` if it is something the player may pick; the name of
-/// what was saved, or `None` for a refused pick.
+/// what was saved, or `None` for a refused pick. Only the one pick is checked, not everything
+/// the player could have picked.
 async fn pick(app: &App, user: u64, slot: Slot, value: &str) -> anyhow::Result<Option<String>> {
-    let allowed = choices(app, user, slot).await?;
-    let Some(choice) = allowed.into_iter().find(|c| c.value == value) else {
-        return Ok(None);
-    };
-    match slot {
-        Slot::Fish => app.db.set_showcase_fish(user, Some(&choice.value)).await?,
-        Slot::Pet => app.db.set_showcase_pet(user, choice.value.parse().ok()).await?,
-        Slot::Furniture => app.db.set_showcase_item(user, Some(&choice.value)).await?,
-    }
-    Ok(Some(choice.label))
+    let content = Content::get();
+    Ok(match slot {
+        Slot::Fish => match content.fish(value) {
+            Some(fish) if app.db.has_fish(user, &fish.id).await? => {
+                app.db.set_showcase_fish(user, Some(&fish.id)).await?;
+                Some(fish.name.clone())
+            }
+            _ => None,
+        },
+        Slot::Pet => match value.parse::<i64>() {
+            Ok(id) => match app.db.pet_name_species(user, id).await? {
+                Some((name, _)) => {
+                    app.db.set_showcase_pet(user, Some(id)).await?;
+                    Some(name)
+                }
+                None => None,
+            },
+            Err(_) => None,
+        },
+        Slot::Furniture => match content.item(value) {
+            Some(item) if app.db.owns_item(user, &item.id()).await? => {
+                app.db.set_showcase_item(user, Some(&item.id())).await?;
+                Some(item.name())
+            }
+            _ => None,
+        },
+    })
 }
 
 /// `sw:<what>:...` selects and buttons of the showcase editor.
@@ -458,7 +481,7 @@ pub(crate) async fn on_showcase(cx: &Cx, mut args: Split<'_, char>, values: &[St
         Some("h") => {
             let slot = slot_arg(args.next());
             let shown = cx.app.db.user(id).await?.showcase_house;
-            let note = if !shown && cx.app.db.house_preview(id).await?.is_none() {
+            let note = if !shown && !cx.app.db.has_house_room(id).await? {
                 "You have no house yet. Open it with `/house edit` first.".to_owned()
             } else {
                 cx.app.db.set_showcase_house(id, !shown).await?;
