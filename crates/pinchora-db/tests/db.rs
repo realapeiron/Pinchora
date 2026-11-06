@@ -1809,6 +1809,16 @@ async fn a_trip_pays_once_and_freezes_the_pets_needs() {
     );
 }
 
+/// The pet as stored now, as a care click reads it before it writes.
+async fn read_pet(db: &Db, owner: u64, id: i64) -> pinchora_db::PetRow {
+    db.pets(owner)
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|p| p.id == id)
+        .expect("the pet")
+}
+
 #[tokio::test]
 async fn care_cannot_write_over_a_trip() {
     let Some(db) = db().await else { return };
@@ -1819,8 +1829,12 @@ async fn care_cannot_write_over_a_trip() {
     let frozen = [10, 20, 30, 40];
 
     // Home, a care write goes through, and only for the owner.
-    assert!(db.save_pet(owner, pet.id, [90, 90, 90, 90], 2, 20, now).await.unwrap());
-    assert!(!db.save_pet(other, pet.id, [1, 1, 1, 1], 9, 9, now).await.unwrap());
+    assert!(!db.save_pet(other, &pet, [1, 1, 1, 1], 9, 9, now).await.unwrap());
+    assert!(db.save_pet(owner, &pet, [90, 90, 90, 90], 2, 20, now).await.unwrap());
+    // A click that read the pet before that write is stale now: refused, nothing written.
+    assert!(!db.save_pet(owner, &pet, [5, 5, 5, 5], 3, 99, now).await.unwrap());
+    let read = read_pet(&db, owner, pet.id).await;
+    assert_eq!((read.hunger, read.level, read.xp), (90, 2, 20));
     assert!(
         db.start_trip(owner, pet.id, "tidepool_meadow", frozen, back)
             .await
@@ -1829,11 +1843,11 @@ async fn care_cannot_write_over_a_trip() {
 
     // A care click that read the pet before it left: refused, and nothing is unfrozen.
     assert!(
-        !db.save_pet(owner, pet.id, [100, 100, 100, 100], 3, 5, now)
+        !db.save_pet(owner, &read, [100, 100, 100, 100], 3, 5, now)
             .await
             .unwrap()
     );
-    let row = db.pets(owner).await.unwrap().remove(0);
+    let row = read_pet(&db, owner, pet.id).await;
     assert_eq!(
         (row.hunger, row.fun, row.energy, row.hygiene, row.needs_at),
         (10, 20, 30, 40, back),
@@ -1841,14 +1855,12 @@ async fn care_cannot_write_over_a_trip() {
     );
     assert_eq!((row.level, row.xp), (2, 20));
     assert_eq!(row.trip_dest.as_deref(), Some("tidepool_meadow"));
+    // Even a click that read the pet mid-trip cannot write until the trip is over.
+    assert!(!db.save_pet(owner, &row, [100, 100, 100, 100], 3, 5, now).await.unwrap());
 
     // Back from the trip, the souvenir not yet claimed: it can be looked after.
     let after = back + chrono::Duration::minutes(1);
-    assert!(
-        db.save_pet(owner, pet.id, [60, 60, 60, 60], 2, 25, after)
-            .await
-            .unwrap()
-    );
+    assert!(db.save_pet(owner, &row, [60, 60, 60, 60], 2, 25, after).await.unwrap());
     // The claim pays from the row as it is, so the XP the care earned is not lost either.
     let pay = |pet: &pinchora_db::PetRow, _: &str| {
         assert_eq!((pet.level, pet.xp), (2, 25));
@@ -1863,38 +1875,95 @@ async fn care_cannot_write_over_a_trip() {
         db.claim_trip(owner, pet.id, after, pay).await.unwrap(),
         TripClaim::Claimed { .. }
     ));
-    assert_eq!(db.pets(owner).await.unwrap()[0].xp, 125);
+    assert_eq!(read_pet(&db, owner, pet.id).await.xp, 125);
 }
 
 #[tokio::test]
-async fn a_care_click_racing_the_start_of_a_trip_never_unfreezes_it() {
+async fn a_care_write_that_read_the_pet_before_a_claim_cannot_undo_the_trip_xp() {
+    let Some(db) = db().await else { return };
+    let [owner] = ids();
+    let now = chrono::Utc::now();
+    let after = now + chrono::Duration::hours(2);
+    let pet = db.adopt(owner, "crumbclaw_crab", "Pip").await.unwrap();
+    assert!(
+        db.start_trip(owner, pet.id, "tidepool_meadow", [50, 50, 50, 50], now)
+            .await
+            .unwrap()
+    );
+    // Back with the souvenir waiting: a care click reads the pet here ...
+    let seen = read_pet(&db, owner, pet.id).await;
+    assert!(seen.has_souvenir(after));
+    // ... the claim pays 100 XP in between ...
+    let pay = |pet: &pinchora_db::PetRow, _: &str| TripPayout {
+        shells: 10,
+        item: None,
+        level: pet.level,
+        xp: pet.xp + 100,
+    };
+    assert!(matches!(
+        db.claim_trip(owner, pet.id, after, pay).await.unwrap(),
+        TripClaim::Claimed { .. }
+    ));
+    // ... and the click's write, worked out from the old XP, is refused instead of undoing it.
+    assert!(!db.save_pet(owner, &seen, [90, 90, 90, 90], 1, 5, after).await.unwrap());
+    let row = read_pet(&db, owner, pet.id).await;
+    assert_eq!((row.level, row.xp, row.trip_dest.clone()), (1, 100, None));
+    // A click that reads the pet afresh goes through on top of the paid XP.
+    assert!(db.save_pet(owner, &row, [90, 90, 90, 90], 1, 105, after).await.unwrap());
+}
+
+#[tokio::test]
+async fn a_care_click_racing_a_claim_or_a_trip_never_loses_the_trips_xp_or_needs() {
     let Some(db) = db().await else { return };
     let [owner] = ids();
     let now = chrono::Utc::now();
     let back = now + chrono::Duration::hours(2);
+    let after = back + chrono::Duration::minutes(1);
+
+    // A care click and the start of a trip: whichever lands first, the pet ends up frozen.
     let frozen = [11, 22, 33, 44];
-    // Whichever of the two lands first, the trip's frozen needs are what the pet ends up with.
     for round in 0..20 {
         let pet = db.adopt(owner, &format!("racer_{round}"), "Pip").await.unwrap();
         let (care, trip) = tokio::join!(
-            db.save_pet(owner, pet.id, [100, 100, 100, 100], 2, 10, now),
+            db.save_pet(owner, &pet, [100, 100, 100, 100], 2, 10, now),
             db.start_trip(owner, pet.id, "tidepool_meadow", frozen, back),
         );
         care.unwrap();
         assert!(trip.unwrap(), "round {round}: the trip started");
-        let row = db
-            .pets(owner)
-            .await
-            .unwrap()
-            .into_iter()
-            .find(|p| p.id == pet.id)
-            .unwrap();
+        let row = read_pet(&db, owner, pet.id).await;
         assert_eq!(
             (row.hunger, row.fun, row.energy, row.hygiene, row.needs_at),
             (11, 22, 33, 44, back),
             "round {round}"
         );
         assert_eq!(row.trip_dest.as_deref(), Some("tidepool_meadow"), "round {round}");
+    }
+
+    // A care click and the claim of a finished trip: the 100 trip XP is always in the end result,
+    // with the care's 5 on top only when the care landed first.
+    let pay = |pet: &pinchora_db::PetRow, _: &str| TripPayout {
+        shells: 10,
+        item: None,
+        level: pet.level,
+        xp: pet.xp + 100,
+    };
+    for round in 0..20 {
+        let pet = db.adopt(owner, &format!("homecomer_{round}"), "Pip").await.unwrap();
+        assert!(
+            db.start_trip(owner, pet.id, "tidepool_meadow", [50, 50, 50, 50], back)
+                .await
+                .unwrap()
+        );
+        let seen = read_pet(&db, owner, pet.id).await;
+        let (care, claim) = tokio::join!(
+            db.save_pet(owner, &seen, [90, 90, 90, 90], 1, 5, after),
+            db.claim_trip(owner, pet.id, after, pay),
+        );
+        let cared = care.unwrap();
+        assert!(matches!(claim.unwrap(), TripClaim::Claimed { .. }), "round {round}");
+        let row = read_pet(&db, owner, pet.id).await;
+        assert_eq!(row.xp, if cared { 105 } else { 100 }, "round {round}: cared = {cared}");
+        assert_eq!(row.trip_dest, None, "round {round}");
     }
 }
 
@@ -1908,7 +1977,7 @@ async fn waking_a_pet_is_free_once_a_day_and_costs_a_fee_after_that() {
     );
     let long_ago = chrono::Utc::now() - chrono::Duration::days(5);
     for p in [&pet, &second] {
-        db.save_pet(owner, p.id, [0, 0, 100, 0], 1, 0, long_ago).await.unwrap();
+        db.save_pet(owner, p, [0, 0, 100, 0], 1, 0, long_ago).await.unwrap();
     }
     let now = chrono::Utc::now();
     assert!(db.free_wake_ready(owner, 20_000).await.unwrap());

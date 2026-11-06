@@ -7424,6 +7424,24 @@ fn assert_png(reply: &Reply, width: u32, height: u32) {
     assert_eq!((image.width(), image.height()), (width, height), "{name}");
 }
 
+/// Stores needs, level and XP on a pet the way a care write does, from the row as it is stored now.
+async fn set_pet(
+    db: &Db,
+    user: u64,
+    pet_id: i64,
+    needs: [i16; 4],
+    level: i32,
+    xp: i32,
+    at: chrono::DateTime<chrono::Utc>,
+) -> anyhow::Result<()> {
+    let seen = pet_row(db, user, pet_id).await;
+    anyhow::ensure!(
+        db.save_pet(user, &seen, needs, level, xp, at).await?,
+        "the pet could not be saved"
+    );
+    Ok(())
+}
+
 /// Care costs XP-free needs; a ready pet with every need at `v`.
 fn fresh_needs(v: i16) -> [i16; 4] {
     [v, v, v, v]
@@ -7450,7 +7468,7 @@ async fn pets_level_up_and_the_top_level_stops_earning() {
     );
 
     // Level 3 → 4 on a Play, which opens the next trip.
-    db.save_pet(user, pet.id, fresh_needs(80), 3, 178, app.now())
+    set_pet(&db, user, pet.id, fresh_needs(80), 3, 178, app.now())
         .await
         .unwrap();
     let played = sim.click(user, &card, "Play").await;
@@ -7473,7 +7491,7 @@ async fn pets_level_up_and_the_top_level_stops_earning() {
     assert_eq!(played.followups[0].title(), "Badge unlocked: Pawshake");
 
     // Walks find more at a higher level: level 20 pays 25 to 70 shells.
-    db.save_pet(user, pet.id, fresh_needs(80), 20, 0, app.now())
+    set_pet(&db, user, pet.id, fresh_needs(80), 20, 0, app.now())
         .await
         .unwrap();
     let before = db.user(user).await.unwrap().credits;
@@ -7489,7 +7507,7 @@ async fn pets_level_up_and_the_top_level_stops_earning() {
     );
 
     // Level 29 with the next level five XP away; a bath is worth ten.
-    db.save_pet(user, pet.id, fresh_needs(40), 29, 1_215, app.now())
+    set_pet(&db, user, pet.id, fresh_needs(40), 29, 1_215, app.now())
         .await
         .unwrap();
     let bathed = sim.click(user, &walked, "Bath").await;
@@ -7510,7 +7528,7 @@ async fn pets_level_up_and_the_top_level_stops_earning() {
     assert_eq!((row.level, row.xp), (30, 0));
 
     // An unknown action is an error, not a bath (it used to be one).
-    db.save_pet(user, pet.id, [60, 60, 60, 30], 30, 0, app.now())
+    set_pet(&db, user, pet.id, [60, 60, 60, 30], 30, 0, app.now())
         .await
         .unwrap();
     let odd = sim.component(user, &format!("pc:rub:{}", pet.id), &[], &fed).await;
@@ -7542,13 +7560,14 @@ async fn a_sleeping_pet_lies_in_the_house_instead_of_wandering() {
         db.adopt(user, "ribbonfin_guppy", "Bub").await.unwrap(),
         db.adopt(user, "noodlenose_seahorse", "Nod").await.unwrap(),
     );
-    db.save_pet(user, pip.id, fresh_needs(100), 1, 0, app.now())
+    set_pet(&db, user, pip.id, fresh_needs(100), 1, 0, app.now())
         .await
         .unwrap();
     // Bub (a wide one) and Nod (a tall one) have been left alone for days: they fell asleep, so they
     // lie in the house with a "z z" while Pip wanders.
     for pet in [&bub, &nod] {
-        db.save_pet(
+        set_pet(
+            &db,
             user,
             pet.id,
             [0, 0, 100, 0],
@@ -7564,7 +7583,7 @@ async fn a_sleeping_pet_lies_in_the_house_instead_of_wandering() {
 
     // Woken, they are up and about again, which is drawn differently.
     for pet in [&bub, &nod] {
-        db.save_pet(user, pet.id, fresh_needs(100), 4, 10, app.now())
+        set_pet(&db, user, pet.id, fresh_needs(100), 4, 10, app.now())
             .await
             .unwrap();
     }
@@ -7584,7 +7603,7 @@ async fn a_neglected_pet_falls_asleep_and_waking_it_is_free_once_a_day() {
     let pet = db.adopt(user, "ribbonfin_guppy", "Bub").await.unwrap();
 
     // Everything has run dry: a day later, it is asleep. Until then it only looks grumpy.
-    db.save_pet(user, pet.id, [0, 0, 100, 0], 5, 40, app.now())
+    set_pet(&db, user, pet.id, [0, 0, 100, 0], 5, 40, app.now())
         .await
         .unwrap();
     app.shift_clock(chrono::Duration::hours(23));
@@ -7644,7 +7663,8 @@ async fn a_neglected_pet_falls_asleep_and_waking_it_is_free_once_a_day() {
     assert!(again.content().contains("already awake"), "{}", again.content());
 
     // It dozes off again the same day: a second wake-up costs 75 shells, which the player lacks.
-    db.save_pet(
+    set_pet(
+        &db,
         user,
         pet.id,
         [0, 0, 100, 0],
@@ -7678,7 +7698,8 @@ async fn a_neglected_pet_falls_asleep_and_waking_it_is_free_once_a_day() {
     assert!(!paid.button("Play").disabled);
 
     // Tomorrow the free wake-up is back.
-    db.save_pet(
+    set_pet(
+        &db,
         user,
         pet.id,
         [0, 0, 100, 0],
@@ -7888,7 +7909,7 @@ async fn a_high_level_trip_can_bring_home_furniture_and_several_pets_claim_toget
         db.adopt(user, "ribbonfin_guppy", "Bub").await.unwrap(),
     );
     for pet in [&pip, &bub] {
-        db.save_pet(user, pet.id, fresh_needs(100), 30, 0, app.now())
+        set_pet(&db, user, pet.id, fresh_needs(100), 30, 0, app.now())
             .await
             .unwrap();
     }
@@ -7984,10 +8005,11 @@ async fn the_nursery_is_a_paged_grid_that_opens_one_pet() {
     }
     let now = app.now();
     let hour = chrono::Duration::hours(1);
-    db.save_pet(user, pets[1].id, [30, 20, 60, 90], 7, 150, now)
+    set_pet(&db, user, pets[1].id, [30, 20, 60, 90], 7, 150, now)
         .await
         .unwrap();
-    db.save_pet(
+    set_pet(
+        &db,
         user,
         pets[2].id,
         [0, 0, 100, 0],
@@ -8003,11 +8025,11 @@ async fn the_nursery_is_a_paged_grid_that_opens_one_pet() {
     db.start_trip(user, pets[4].id, "tidepool_meadow", fresh_needs(70), now - hour)
         .await
         .unwrap();
-    db.save_pet(user, pets[5].id, [100, 95, 90, 100], 30, 0, now)
+    set_pet(&db, user, pets[5].id, [100, 95, 90, 100], 30, 0, now)
         .await
         .unwrap();
-    db.save_pet(user, pets[6].id, [10, 5, 2, 8], 2, 99, now).await.unwrap();
-    db.save_pet(user, pets[9].id, [80, 70, 60, 50], 18, 600, now)
+    set_pet(&db, user, pets[6].id, [10, 5, 2, 8], 2, 99, now).await.unwrap();
+    set_pet(&db, user, pets[9].id, [80, 70, 60, 50], 18, 600, now)
         .await
         .unwrap();
 

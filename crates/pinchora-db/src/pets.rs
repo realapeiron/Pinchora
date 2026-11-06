@@ -150,14 +150,17 @@ impl Db {
         Ok(true)
     }
 
-    /// Stores needs as of `at`, plus new XP and level. Refused (false, nothing written) while the
-    /// pet is out on a trip that is not over by `at`, or when it is not the player's: a care click
-    /// that raced the start of a trip must not unfreeze the needs the trip froze.
+    /// Stores needs as of `at`, plus new XP and level, for a pet as the caller read it (`seen`):
+    /// the write only lands if the pet is still in that state (same needs time, level, XP and
+    /// trip), so a care click that raced a trip start, a claim, a wake-up or another care click
+    /// cannot unfreeze the needs a trip froze or write over the XP a claim paid. Refused (false,
+    /// nothing written) when the pet changed since, is out on a trip that is not over by `at`, or
+    /// is not the player's.
     #[allow(clippy::too_many_arguments)]
     pub async fn save_pet(
         &self,
         owner: u64,
-        pet_id: i64,
+        seen: &PetRow,
         needs: [i16; 4],
         level: i32,
         xp: i32,
@@ -165,9 +168,12 @@ impl Db {
     ) -> anyhow::Result<bool> {
         let n = sqlx::query(
             "UPDATE pets SET hunger = $3, fun = $4, energy = $5, hygiene = $6, level = $7, xp = $8, needs_at = $9
-             WHERE id = $1 AND owner_id = $2 AND (trip_ends_at IS NULL OR trip_ends_at <= $9)",
+             WHERE id = $1 AND owner_id = $2
+               AND needs_at = $10 AND level = $11 AND xp = $12
+               AND trip_dest IS NOT DISTINCT FROM $13 AND trip_ends_at IS NOT DISTINCT FROM $14
+               AND (trip_ends_at IS NULL OR trip_ends_at <= $9)",
         )
-        .bind(pet_id)
+        .bind(seen.id)
         .bind(sql_id(owner))
         .bind(needs[0])
         .bind(needs[1])
@@ -176,6 +182,11 @@ impl Db {
         .bind(level)
         .bind(xp)
         .bind(at)
+        .bind(seen.needs_at)
+        .bind(seen.level)
+        .bind(seen.xp)
+        .bind(seen.trip_dest.as_deref())
+        .bind(seen.trip_ends_at)
         .execute(self.pool())
         .await?
         .rows_affected();

@@ -446,7 +446,7 @@ pub(crate) async fn on_care(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
         .db
         .save_pet(
             user,
-            pet.id,
+            &pet,
             [after.hunger, after.fun, after.energy, after.hygiene],
             progress.level,
             progress.xp,
@@ -454,16 +454,30 @@ pub(crate) async fn on_care(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
         )
         .await?;
     if !saved {
-        // A trip started between the read and the write; nothing was cared for, so the food is refunded.
+        // The pet changed between the read and the write (a trip started, a claim paid, another
+        // click got in first); nothing was cared for, so the food is refunded.
         if action == Care::Feed {
             cx.app.db.earn_shells(user, FOOD_PRICE, "pet_food_refund").await?;
         }
-        return cx
-            .reply_ephemeral(format!(
+        let left = cx
+            .app
+            .db
+            .pets(user)
+            .await?
+            .into_iter()
+            .any(|p| p.id == pet.id && p.is_away(now));
+        let note = if left {
+            format!(
                 "{} just left on a trip. It can't be looked after until it is back.",
                 pet.name
-            ))
-            .await;
+            )
+        } else {
+            format!(
+                "{} changed while you clicked, so nothing was done. Open it again with `/pet view`.",
+                pet.name
+            )
+        };
+        return cx.reply_ephemeral(note).await;
     }
     cx.app.quest(user, pinchora_game::quests::QuestKind::Care).await;
     let verb = match action {
