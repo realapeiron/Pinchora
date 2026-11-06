@@ -109,7 +109,7 @@ impl Renderer {
             font_family: "Noto Sans".into(),
             ..Default::default()
         };
-        let tree = usvg::Tree::from_str(svg, &options)?;
+        let tree = usvg::Tree::from_str(&svg::scrub(svg), &options)?;
         let size = tree.size().to_int_size();
         let mut pixmap =
             tiny_skia::Pixmap::new(size.width(), size.height()).ok_or_else(|| anyhow::anyhow!("empty canvas"))?;
