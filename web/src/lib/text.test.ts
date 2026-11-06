@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { AuditEntry } from "./api";
-import { describeChange, initials, timeAgo } from "./text";
+import { type Names, describeChange, initials, showValue, targetLabel, timeAgo } from "./text";
 
 const now = new Date("2026-11-06T12:00:00Z");
 
@@ -31,11 +31,60 @@ describe("text", () => {
   it("describes changes", () => {
     expect(describeChange(entry({ leveling_enabled: false }))).toBe("turned leveling off");
     expect(describeChange(entry({ leveling_enabled: true, levelup_mode: "dm" }))).toBe(
-      "turned leveling on, changed levelup mode",
+      "turned leveling on, changed level-up mode",
     );
+    expect(describeChange(entry({ welcome_channel_id: "7010" }))).toBe("changed the welcome channel");
     expect(describeChange(entry(null))).toBe("made a change (settings.patch)");
     expect(describeChange(entry({ a: 1, b: 2, c: 3, d: 4 }))).toBe("changed a, changed b and 2 more");
     expect(describeChange({ ...entry({ level: 5 }), action: "level_roles.put" })).toBe("set a level role");
+  });
+
+  const names: Names = {
+    channel: (id) => (id === "7010" ? "#welcome" : "a deleted channel"),
+    role: (id) => (id === "55" ? "@Regulars" : "a deleted role"),
+    module: (key) => (key === "pets" ? "Pets" : key),
+  };
+
+  it("shows ids as names and flags as words", () => {
+    expect(showValue("welcome_channel_id", "7010", names)).toBe("#welcome");
+    expect(showValue("join_role_id", "55", names)).toBe("@Regulars");
+    expect(showValue("log_members", true, names)).toBe("on");
+    expect(showValue("welcome_message", null, names)).toBe("—");
+    expect(showValue("channels", ["7010", "9"], names)).toBe("#welcome, a deleted channel");
+    expect(showValue("channels", [], names)).toBe("none");
+    expect(showValue("channel_mode", "except", names)).toBe("all but some channels");
+    expect(showValue("points_name", "coins", names)).toBe("coins");
+    expect(showValue("level", 5, names)).toBe("5");
+  });
+
+  it("names what a row was done to", () => {
+    const row = (action: string, target: string | null) => ({ ...entry(null), action, target });
+    expect(targetLabel(row("module.set", "pets"), names)).toBe("Pets");
+    expect(targetLabel(row("level_roles.put", "55"), names)).toBe("@Regulars");
+    expect(targetLabel(row("xp_rules.put", "channel:7010"), names)).toBe("#welcome");
+    expect(targetLabel(row("xp_rules.put", "role:55"), names)).toBe("@Regulars");
+    expect(targetLabel(row("settings.patch", null), names)).toBeNull();
+  });
+
+  it("describes module changes in words", () => {
+    const module = (after: Record<string, unknown>) => ({
+      ...entry(after),
+      action: "module.set",
+      target: "pets",
+    });
+    expect(describeChange(module({ enabled: false }), names)).toBe("turned Pets off");
+    expect(describeChange(module({ channel_mode: "only", channels: ["1", "2"] }), names)).toBe(
+      "limited Pets to 2 channels",
+    );
+    expect(describeChange(module({ channel_mode: "except", channels: ["1"] }), names)).toBe(
+      "switched Pets off in 1 channel",
+    );
+    expect(describeChange(module({ channel_mode: "all", channels: [] }), names)).toBe(
+      "opened Pets to all channels",
+    );
+    expect(describeChange(module({ enabled: true, channel_mode: "all", channels: [] }), names)).toBe(
+      "turned Pets on and opened Pets to all channels",
+    );
   });
 
   it("makes initials", () => {

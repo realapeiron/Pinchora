@@ -11036,8 +11036,9 @@ const ADMINISTRATOR: u64 = 1 << 3;
 async fn admin_state(sim: &Sim, target: u64, suggestion: i64) -> String {
     let (db, guild) = (&sim.app.db, sim.guild);
     format!(
-        "{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}",
+        "{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}\n{:?}",
         db.guild_settings(guild).await.unwrap(),
+        db.module_states(guild).await.unwrap(),
         db.level_roles(guild).await.unwrap(),
         db.rep_roles(guild).await.unwrap(),
         db.store_items(guild).await.unwrap(),
@@ -11195,6 +11196,31 @@ async fn admin_paths_refuse_members_without_manage_server() {
         (
             "config surge",
             json!([sub("surge", vec![bool_option("enabled", true)])]),
+        ),
+        ("config modules show", json!([group("modules", sub("show", vec![]))])),
+        (
+            "config modules toggle",
+            json!([group(
+                "modules",
+                sub(
+                    "toggle",
+                    vec![text_option("module", "pets"), bool_option("enabled", false)]
+                )
+            )]),
+        ),
+        (
+            "config modules channels",
+            json!([group(
+                "modules",
+                sub(
+                    "channels",
+                    vec![
+                        text_option("module", "pets"),
+                        text_option("where", "only"),
+                        channel_option("channel", channel),
+                    ]
+                )
+            )]),
         ),
         (
             "roles panel",
@@ -12727,4 +12753,387 @@ async fn the_party_games_are_in_the_stats_and_the_help() {
         help.embeds[0].fields.iter().all(|f| f.value.chars().count() <= 1024),
         "a help field is too long"
     );
+}
+
+// /Modules
+
+/// `/config modules <sub_command>` as a manager; `channels` are what the options name.
+async fn modules(sim: &mut Sim, manager: u64, sub_command: Value, channels: &[u64]) -> Reply {
+    let before = sim.permissions;
+    sim.permissions = MANAGE_GUILD;
+    let reply = sim
+        .command_resolved(
+            manager,
+            "config",
+            json!([group("modules", sub_command)]),
+            resolved_channels(channels),
+        )
+        .await;
+    sim.permissions = before;
+    reply
+}
+
+fn toggle(module: &str, on: bool) -> Value {
+    sub(
+        "toggle",
+        vec![text_option("module", module), bool_option("enabled", on)],
+    )
+}
+
+fn limit(module: &str, place: &str, channel: u64, remove: bool) -> Value {
+    let mut options = vec![
+        text_option("module", module),
+        text_option("where", place),
+        channel_option("channel", channel),
+    ];
+    if remove {
+        options.push(bool_option("remove", true));
+    }
+    sub("channels", options)
+}
+
+#[tokio::test]
+async fn module_off_refuses_commands_and_xp() {
+    let Some(mut sim) = Sim::new("module_off_refuses_commands_and_xp").await else {
+        return;
+    };
+    let _turn = VOICE_TICKS.lock().await;
+    sim.app.shift_clock(chrono::Duration::days((unique() % 36_500) as i64));
+    let (manager, member) = (unique(), unique());
+    let (category, here, there, thread, loose) = (unique(), unique(), unique(), unique(), unique());
+    let (voice, loose_voice) = (unique(), unique());
+    sim.channel_is(category, 4, None);
+    sim.channel_is(here, 0, Some(category));
+    sim.channel_is(there, 0, Some(category));
+    sim.channel_is(thread, 11, Some(here));
+    sim.channel_is(loose, 0, None);
+    sim.channel_is(voice, 2, Some(category));
+    sim.channel_is(loose_voice, 2, None);
+    sim.channel = here;
+    let pet = || json!([sub("view", vec![])]);
+
+    // Everything is on to begin with.
+    let first = sim.command(member, "pet", pet()).await;
+    assert!(!first.content().contains("turned off"), "{}", first.content());
+
+    // A manager switches pets off for the whole server: every way in is shut, privately.
+    let off = modules(&mut sim, manager, toggle("pets", false), &[]).await;
+    assert!(
+        off.ephemeral && off.content().contains("**Pets**") && off.content().contains("off"),
+        "{}",
+        off.content()
+    );
+    let shown = modules(&mut sim, manager, sub("show", vec![]), &[]).await;
+    assert!(shown.ephemeral);
+    assert!(
+        shown.field("Home, pets and fishing").contains("**Pets** · off"),
+        "{:?}",
+        shown.embeds[0].fields
+    );
+    assert!(
+        shown.field("Server tools").contains("**Leveling** · on"),
+        "{:?}",
+        shown.embeds[0].fields
+    );
+    assert!(
+        shown.field("Games").contains("**Gambling-style games** · off"),
+        "{:?}",
+        shown.embeds[0].fields
+    );
+
+    let refused = sim.command(member, "pet", pet()).await;
+    assert!(refused.ephemeral, "a refusal is private");
+    assert_eq!(refused.content(), "This feature is turned off on this server.");
+    let button = sim.component(member, "pc:feed:1", &[], &refused).await;
+    assert!(
+        button.ephemeral && button.content() == "This feature is turned off on this server.",
+        "{}",
+        button.content()
+    );
+    let menu = sim.component(member, "pa", &["kitten"], &refused).await;
+    assert_eq!(menu.content(), "This feature is turned off on this server.");
+    // A manager is told the way back.
+    sim.permissions = MANAGE_GUILD;
+    let manager_sees = sim.command(manager, "pet", pet()).await;
+    assert!(
+        manager_sees.content().contains("/config modules") && manager_sees.content().contains("**Pets**"),
+        "{}",
+        manager_sees.content()
+    );
+    sim.permissions = 0;
+
+    // Never gated: the way back in, the basics. Other modules carry on.
+    let help = sim.command(member, "help", json!([])).await;
+    assert!(!help.content().contains("turned off"), "{}", help.content());
+    let ping = sim.command(member, "ping", json!([])).await;
+    assert!(!ping.content().contains("turned off"), "{}", ping.content());
+    let daily = sim.command(member, "daily", json!([])).await;
+    assert!(!daily.content().contains("turned off"), "{}", daily.content());
+    let hangman = sim.command(member, "play", json!([sub("hangman", vec![])])).await;
+    assert!(!hangman.content().contains("turned off"), "{}", hangman.content());
+
+    // Written down, with who did it and from where; switching back on is just as quick.
+    let rows = sim.app.db.audit_page(sim.guild, None, 10).await.unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(
+        (
+            rows[0].source.as_str(),
+            rows[0].action.as_str(),
+            rows[0].target.as_deref()
+        ),
+        ("discord", "module.set", Some("pets"))
+    );
+    assert_eq!(rows[0].actor_id as u64, manager);
+    assert_eq!(rows[0].before.as_deref(), Some(r#"{"enabled": true}"#));
+    assert_eq!(rows[0].after.as_deref(), Some(r#"{"enabled": false}"#));
+    modules(&mut sim, manager, toggle("pets", false), &[]).await;
+    assert_eq!(
+        sim.app.db.audit_page(sim.guild, None, 10).await.unwrap().len(),
+        1,
+        "no change, no row"
+    );
+    modules(&mut sim, manager, toggle("pets", true), &[]).await;
+    let back = sim.command(member, "pet", pet()).await;
+    assert!(!back.content().contains("turned off"), "{}", back.content());
+
+    // Where it works: a channel list, a category covering what is under it, threads included.
+    let only = modules(&mut sim, manager, limit("pets", "only", there, false), &[there]).await;
+    assert!(
+        only.content().contains("only in 1 channel") && only.content().contains(&format!("<#{there}>")),
+        "{}",
+        only.content()
+    );
+    let blocked = sim.command(member, "pet", pet()).await;
+    assert_eq!(blocked.content(), "This feature is turned off in this channel.");
+    sim.channel = there;
+    let allowed = sim.command(member, "pet", pet()).await;
+    assert!(!allowed.content().contains("turned off"), "{}", allowed.content());
+    sim.channel = here;
+    let everywhere_but = modules(&mut sim, manager, limit("pets", "except", category, false), &[category]).await;
+    assert!(
+        everywhere_but.content().contains("off in 1 channel"),
+        "{}",
+        everywhere_but.content()
+    );
+    for (channel, why) in [
+        (here, "a channel in the category"),
+        (thread, "a thread of a channel in the category"),
+        (there, "its sibling"),
+    ] {
+        sim.channel = channel;
+        let reply = sim.command(member, "pet", pet()).await;
+        assert_eq!(reply.content(), "This feature is turned off in this channel.", "{why}");
+    }
+    sim.channel = loose;
+    let loose_reply = sim.command(member, "pet", pet()).await;
+    assert!(!loose_reply.content().contains("turned off"), "outside the category");
+    // The last channel taken off the list opens it up again.
+    modules(&mut sim, manager, limit("pets", "except", category, true), &[category]).await;
+    sim.channel = here;
+    let open = sim.command(member, "pet", pet()).await;
+    assert!(!open.content().contains("turned off"), "{}", open.content());
+    let shown = modules(&mut sim, manager, sub("show", vec![]), &[]).await;
+    assert!(
+        shown.field("Home, pets and fishing").contains("**Pets** · on"),
+        "{:?}",
+        shown.embeds[0].fields
+    );
+
+    // The slash command's own refusals are the dashboard's sentences.
+    let whole = modules(&mut sim, manager, limit("welcome", "only", here, false), &[here]).await;
+    assert!(
+        whole.content().contains("works for the whole server"),
+        "{}",
+        whole.content()
+    );
+    let nothing = modules(
+        &mut sim,
+        manager,
+        sub(
+            "channels",
+            vec![text_option("module", "pets"), text_option("where", "only")],
+        ),
+        &[],
+    )
+    .await;
+    assert!(nothing.content().contains("Pick a channel"), "{}", nothing.content());
+    assert!(
+        !sim.app
+            .db
+            .module_states(sim.guild)
+            .await
+            .unwrap()
+            .iter()
+            .any(|(m, r)| *m == pinchora_core::modules::Module::Welcome
+                && r.mode != pinchora_core::modules::ChannelMode::All)
+    );
+
+    // The party and the duel games are different modules, and the shell game's switch is the
+    // gambling column.
+    modules(&mut sim, manager, toggle("party", false), &[]).await;
+    for (command, sub_name) in [("play", "derby"), ("play", "heist"), ("duel", "share")] {
+        let reply = sim.command(member, command, json!([sub(sub_name, vec![])])).await;
+        assert_eq!(
+            reply.content(),
+            "This feature is turned off on this server.",
+            "/{command} {sub_name}"
+        );
+    }
+    let stats = sim.command(member, "play", json!([sub("stats", vec![])])).await;
+    assert!(!stats.content().contains("turned off"), "stats belong to profiles");
+    modules(&mut sim, manager, toggle("party", true), &[]).await;
+    assert!(!sim.app.db.gambling_enabled(sim.guild).await.unwrap());
+    modules(&mut sim, manager, toggle("gambling", true), &[]).await;
+    assert!(
+        sim.app.db.gambling_enabled(sim.guild).await.unwrap(),
+        "the module is the /config gambling switch"
+    );
+
+    // Chat XP and points stop in the channels leveling and points are off in; the rest earns.
+    modules(
+        &mut sim,
+        manager,
+        limit("leveling", "except", category, false),
+        &[category],
+    )
+    .await;
+    let (muted, free) = (unique(), unique());
+    sim.say_in(muted, here, &[]).await;
+    sim.say_in(free, loose, &[]).await;
+    assert_eq!(sim.server_xp(muted).await, 0, "leveling is off under the category");
+    assert!(sim.points(muted).await > 0, "points are a module of their own");
+    assert!(
+        (15..=25).contains(&sim.server_xp(free).await),
+        "{}",
+        sim.server_xp(free).await
+    );
+    modules(
+        &mut sim,
+        manager,
+        limit("leveling", "except", category, true),
+        &[category],
+    )
+    .await;
+    modules(&mut sim, manager, limit("points", "except", there, false), &[there]).await;
+    let (no_points, points) = (unique(), unique());
+    sim.say_in(no_points, there, &[]).await;
+    sim.say_in(points, here, &[]).await;
+    assert!(sim.server_xp(no_points).await > 0, "XP is a different module");
+    assert_eq!(sim.points(no_points).await, 0);
+    assert!(sim.points(points).await > 0);
+    // A switch kept in the settings is the settings' switch.
+    modules(&mut sim, manager, toggle("leveling", false), &[]).await;
+    assert!(!sim.app.db.guild_settings(sim.guild).await.unwrap().leveling_enabled);
+    let silent = unique();
+    sim.say_in(silent, here, &[]).await;
+    assert_eq!(sim.server_xp(silent).await, 0);
+    modules(&mut sim, manager, toggle("leveling", true), &[]).await;
+
+    // Voice XP follows the module rule of the voice channel's category.
+    modules(
+        &mut sim,
+        manager,
+        limit("leveling", "except", category, false),
+        &[category],
+    )
+    .await;
+    sim.permissions = MANAGE_GUILD;
+    sim.xp(
+        manager,
+        sub("voice", vec![bool_option("enabled", true), int_option("amount", 20)]),
+    )
+    .await;
+    let (v1, v2, w1, w2) = (unique(), unique(), unique(), unique());
+    for (user, channel) in [(v1, voice), (v2, voice), (w1, loose_voice), (w2, loose_voice)] {
+        sim.voice_in(user, Some(channel), &[], false, false, false).await;
+    }
+    sim.app.shift_clock(chrono::Duration::seconds(60));
+    pinchora_commands::voice_tick(&sim.app).await.expect("tick");
+    assert_eq!(
+        (sim.server_xp(v1).await, sim.server_xp(v2).await),
+        (0, 0),
+        "no voice XP in a channel it is off in"
+    );
+    assert_eq!((sim.server_xp(w1).await, sim.server_xp(w2).await), (20, 20));
+}
+
+#[tokio::test]
+async fn module_off_stops_chat_drops_goodbyes_and_the_log() {
+    let Some(mut sim) = Sim::new("module_off_stops_chat_drops_goodbyes_and_the_log").await else {
+        return;
+    };
+    let manager = unique();
+    let (category, here, loose, bye, log) = (unique(), unique(), unique(), unique(), unique());
+    sim.channel_is(category, 4, None);
+    sim.channel_is(here, 0, Some(category));
+    sim.channel_is(loose, 0, None);
+    sim.permissions = MANAGE_GUILD;
+
+    // Critter drops: counted only where the collection module works.
+    sim.command(
+        manager,
+        "config",
+        json!([sub("critters", vec![bool_option("enabled", true)])]),
+    )
+    .await;
+    modules(
+        &mut sim,
+        manager,
+        limit("collection", "except", category, false),
+        &[category],
+    )
+    .await;
+    for _ in 0..30 {
+        sim.say_in(unique(), here, &[]).await;
+    }
+    assert!(sim.posts().is_empty(), "nothing washes up where the module is off");
+    for _ in 0..25 {
+        sim.say_in(unique(), loose, &[]).await;
+    }
+    let posts = sim.posts();
+    assert_eq!(in_channel(&posts, loose).len(), 1, "the other channels count as usual");
+
+    // Goodbye and the log are modules of their own.
+    sim.command_resolved(
+        manager,
+        "config",
+        json!([sub("goodbye", vec![channel_option("channel", bye)])]),
+        resolved_channels(&[bye]),
+    )
+    .await;
+    sim.command_resolved(
+        manager,
+        "config",
+        json!([sub("log", vec![channel_option("channel", log)])]),
+        resolved_channels(&[log]),
+    )
+    .await;
+    sim.leave(unique(), "Ana", false).await;
+    let posts = sim.posts();
+    assert_eq!((in_channel(&posts, bye).len(), in_channel(&posts, log).len()), (1, 1));
+
+    modules(&mut sim, manager, toggle("goodbye", false), &[]).await;
+    sim.leave(unique(), "Ben", false).await;
+    let posts = sim.posts();
+    assert_eq!(
+        (in_channel(&posts, bye).len(), in_channel(&posts, log).len()),
+        (0, 1),
+        "the log carries on"
+    );
+
+    modules(&mut sim, manager, toggle("log", false), &[]).await;
+    sim.leave(unique(), "Cy", false).await;
+    sim.join(unique(), "Di", false, None).await;
+    sim.ban(unique(), "Ed", true).await;
+    assert!(sim.posts().is_empty(), "switched off, the log says nothing");
+
+    modules(&mut sim, manager, toggle("log", true), &[]).await;
+    sim.leave(unique(), "Flo", false).await;
+    assert_eq!(in_channel(&sim.posts(), log).len(), 1);
+
+    // Welcome cards are the settings' `welcome_enabled`.
+    modules(&mut sim, manager, toggle("welcome", true), &[]).await;
+    assert!(sim.app.db.guild_settings(sim.guild).await.unwrap().welcome_enabled);
+    modules(&mut sim, manager, toggle("welcome", false), &[]).await;
+    assert!(!sim.app.db.guild_settings(sim.guild).await.unwrap().welcome_enabled);
 }

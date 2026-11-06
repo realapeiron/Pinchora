@@ -3,7 +3,7 @@
 use std::{sync::Arc, time::Duration};
 
 use moka::future::Cache as Moka;
-use pinchora_core::snowflake;
+use pinchora_core::{modules::Module, snowflake};
 use pinchora_db::{GuildSettings, LogKind};
 use twilight_model::{
     channel::message::{AllowedMentions, Embed},
@@ -237,20 +237,31 @@ async fn post(app: &App, channel: u64, embed: Embed) {
     }
 }
 
+/// Whether the server has the log module switched on (it is on unless a manager turned it off).
+async fn on(app: &App, settings: &GuildSettings) -> bool {
+    app.module_allowed(settings.id as u64, None, Module::Log).await
+}
+
 pub(crate) async fn member_joined(app: &App, settings: &GuildSettings, user: &User) {
-    if let Some(channel) = settings.log_channel(LogKind::Members) {
+    if let Some(channel) = settings.log_channel(LogKind::Members)
+        && on(app, settings).await
+    {
         post(app, channel, joined_embed(user)).await;
     }
 }
 
 pub(crate) async fn member_left(app: &App, settings: &GuildSettings, user: &User) {
-    if let Some(channel) = settings.log_channel(LogKind::Members) {
+    if let Some(channel) = settings.log_channel(LogKind::Members)
+        && on(app, settings).await
+    {
         post(app, channel, left_embed(user)).await;
     }
 }
 
 pub(crate) async fn ban_changed(app: &App, settings: &GuildSettings, user: &User, banned: bool) {
-    if let Some(channel) = settings.log_channel(LogKind::Bans) {
+    if let Some(channel) = settings.log_channel(LogKind::Bans)
+        && on(app, settings).await
+    {
         post(app, channel, ban_embed(user, banned)).await;
     }
 }
@@ -270,6 +281,9 @@ pub(crate) async fn names_updated(app: &App, settings: &GuildSettings, guild: u6
     let Some(channel) = settings.log_channel(LogKind::Names) else {
         return;
     };
+    if !on(app, settings).await {
+        return;
+    }
     let now = Seen::new(user, nick);
     let before = app.log_state.swap_names(guild, user.id.get(), now.clone()).await;
     let changes = name_changes(before.as_deref(), &now);
@@ -284,6 +298,9 @@ pub(crate) async fn voice_updated(app: &App, settings: &GuildSettings, guild: u6
     let Some(channel) = settings.log_channel(LogKind::Voice) else {
         return;
     };
+    if !on(app, settings).await {
+        return;
+    }
     let user = state.member.as_ref().map(|m| &m.user);
     if user.is_some_and(|u| u.bot) {
         return;

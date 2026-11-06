@@ -22,6 +22,7 @@ import {
   checkVoiceAmount,
   problem,
 } from "../lib/rules";
+import { jobProgress, jobText, rememberJob, rememberedJob } from "../lib/syncJob";
 import { useSettingsForm } from "../lib/useSettingsForm";
 import { PageHead } from "./PageHead";
 
@@ -425,10 +426,18 @@ function LevelRoles({
 /** Gives members already past a level the roles they earned; shows the job's progress. */
 function SyncMembers({ guild, disabled }: { guild: string; disabled: boolean }) {
   const start = useStartSync(guild);
-  const [job, setJob] = useState<string | null>(null);
+  // A reload (or a second tab) picks up the job this browser started last, if it is still running.
+  const [job, setJob] = useState<string | null>(() => rememberedJob(guild));
+  const [started, setStarted] = useState(false);
   const state = useJob(guild, job);
-  const running = start.isPending || state.data?.status === "running" || (job !== null && !state.data);
-  const progress = state.data && state.data.total > 0 ? state.data.checked / state.data.total : 0;
+  const follow = (id: string) => {
+    rememberJob(guild, id);
+    setJob(id);
+  };
+  const running = start.isPending || state.data?.status === "running";
+  // A job that ended before this page opened is not shown again; one started here stays until a reload.
+  const showing = state.data !== undefined && (running || started);
+  const progress = jobProgress(state.data);
   return (
     <div className="sync">
       <div className="sync-text">
@@ -441,11 +450,20 @@ function SyncMembers({ guild, disabled }: { guild: string; disabled: boolean }) 
       <PixelButton
         variant="secondary"
         disabled={disabled || running}
-        onClick={() => start.mutate(undefined, { onSuccess: (r) => setJob(r.job_id) })}
+        onClick={() => {
+          setStarted(true);
+          start.mutate(undefined, {
+            onSuccess: (r) => follow(r.job_id),
+            // Already running (here or in another tab): follow that one instead.
+            onError: (error) => {
+              if (error instanceof ApiError && error.jobId) follow(error.jobId);
+            },
+          });
+        }}
       >
         {running ? "Syncing…" : "Sync members"}
       </PixelButton>
-      {(running || state.data) && (
+      {(showing || start.isPending) && (
         <div className="sync-status" aria-live="polite">
           <div
             className="meter"
@@ -456,16 +474,10 @@ function SyncMembers({ guild, disabled }: { guild: string; disabled: boolean }) 
           >
             <span className="meter-fill" style={{ width: `${Math.round(progress * 100)}%` }} />
           </div>
-          <p>
-            {state.data?.message ? (
-              <RichText text={state.data.message} />
-            ) : (
-              `Checked ${state.data?.checked ?? 0} of ${state.data?.total ?? "…"} members`
-            )}
-          </p>
+          <p>{state.data?.message ? <RichText text={state.data.message} /> : jobText(state.data)}</p>
         </div>
       )}
-      {start.isError && (
+      {start.isError && !(start.error instanceof ApiError && start.error.jobId) && (
         <p className="field-error" role="alert">
           {start.error.message}
         </p>

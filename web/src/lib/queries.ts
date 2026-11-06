@@ -1,6 +1,9 @@
 // Data hooks. Query keys are the API paths.
 
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
+
+import { channelLabel } from "../components/Pickers";
 
 import {
   type AuditPage,
@@ -10,15 +13,19 @@ import {
   type Job,
   type LevelRoles,
   type Me,
+  type ModulePatch,
+  type Modules,
   type Overview,
   type RepRoles,
   type Settings,
   type SettingsPatch,
   type Store,
   type XpRules,
+  ApiError,
   api,
   setCsrfToken,
 } from "./api";
+import { type Names, plainNames } from "./text";
 
 export function useMe() {
   return useQuery({
@@ -107,6 +114,26 @@ export const useLevelRoles = (guild: string) => useList<LevelRoles>(`/api/guilds
 export const useRepRoles = (guild: string) => useList<RepRoles>(`/api/guilds/${guild}/rep-roles`);
 export const useStore = (guild: string) => useList<Store>(`/api/guilds/${guild}/store`);
 
+/** Which part of the Community page a refused save was about, with the refusal. */
+export class CommunitySaveError extends Error {
+  readonly section: "suggestions" | "critters" | "surge";
+  readonly reason: ApiError;
+  constructor(section: CommunitySaveError["section"], reason: ApiError) {
+    super(reason.message);
+    this.name = "CommunitySaveError";
+    this.section = section;
+    this.reason = reason;
+  }
+}
+
+async function inSection<T>(section: CommunitySaveError["section"], run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    throw error instanceof ApiError ? new CommunitySaveError(section, error) : error;
+  }
+}
+
 export function useCommunity(guild: string) {
   const client = useQueryClient();
   const path = `/api/guilds/${guild}/community`;
@@ -116,10 +143,24 @@ export function useCommunity(guild: string) {
       const now = client.getQueryData<Community>([path]);
       const out = { ...now } as Community;
       if (next.suggestions) {
-        out.suggestions = await api(`/api/guilds/${guild}/suggestions/settings`, "PUT", next.suggestions);
+        out.suggestions = await inSection("suggestions", () =>
+          api(`/api/guilds/${guild}/suggestions/settings`, "PUT", next.suggestions),
+        );
       }
       if (next.critters) {
-        out.critters = await api(`/api/guilds/${guild}/critters/settings`, "PUT", next.critters);
+        out.critters = await inSection("critters", () =>
+          api(`/api/guilds/${guild}/critters/settings`, "PUT", next.critters),
+        );
+      }
+      if (next.surge) {
+        const { enabled, channel_id, every_hours } = next.surge;
+        out.surge = await inSection("surge", () =>
+          api(`/api/guilds/${guild}/surge/settings`, "PUT", {
+            enabled,
+            channel_id: channel_id ?? undefined,
+            every_hours,
+          }),
+        );
       }
       return out;
     },
@@ -130,6 +171,61 @@ export function useCommunity(guild: string) {
     },
   });
   return { query, save };
+}
+
+export function modulesKey(guild: string) {
+  return [`/api/guilds/${guild}/modules`];
+}
+
+export function useModules(guild: string) {
+  return useQuery({
+    queryKey: modulesKey(guild),
+    queryFn: () => api<Modules>(`/api/guilds/${guild}/modules`),
+  });
+}
+
+/** One change to a module, by key. */
+export interface ModuleChange {
+  key: string;
+  patch: ModulePatch;
+}
+
+/**
+ * Saves module changes one after the other, stopping at the first the server refuses. Whatever was
+ * saved before that stays saved, and the lists are read again either way.
+ */
+export function useSaveModules(guild: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (changes: ModuleChange[]) => {
+      for (const { key, patch } of changes) {
+        try {
+          await api(`/api/guilds/${guild}/modules/${key}`, "PUT", patch);
+        } catch (error) {
+          throw error instanceof ApiError ? new ModuleSaveError(key, error) : error;
+        }
+      }
+    },
+    onSettled: async () => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: modulesKey(guild) }),
+        client.invalidateQueries({ queryKey: overviewKey(guild) }),
+        client.invalidateQueries({ queryKey: [`/api/guilds/${guild}/audit`] }),
+      ]);
+    },
+  });
+}
+
+/** A module the server refused to save, with the refusal. */
+export class ModuleSaveError extends Error {
+  readonly key: string;
+  readonly reason: ApiError;
+  constructor(key: string, cause: ApiError) {
+    super(cause.message);
+    this.name = "ModuleSaveError";
+    this.key = key;
+    this.reason = cause;
+  }
 }
 
 /** Starts the level role sync; resolves with the job to follow. */
@@ -147,6 +243,28 @@ export function useJob(guild: string, id: string | null) {
     enabled: id !== null,
     refetchInterval: (query) => (query.state.data?.status === "running" ? 1000 : false),
   });
+}
+
+/** What the server calls its channels, roles and modules, for lists that would otherwise show ids. */
+export function useNames(guild: string): Names {
+  const discord = useDiscord(guild).data;
+  const modules = useModules(guild).data;
+  return useMemo(
+    () => ({
+      channel: (id) => {
+        const channel = discord?.channels.find((c) => c.id === id);
+        if (channel) return channelLabel(channel);
+        return discord ? "a deleted channel" : plainNames.channel(id);
+      },
+      role: (id) => {
+        const role = discord?.roles.find((r) => r.id === id);
+        if (role) return role.everyone ? "@everyone" : `@${role.name}`;
+        return discord ? "a deleted role" : plainNames.role(id);
+      },
+      module: (key) => modules?.items.find((m) => m.key === key)?.label ?? plainNames.module(key),
+    }),
+    [discord, modules],
+  );
 }
 
 export function useAudit(guild: string) {

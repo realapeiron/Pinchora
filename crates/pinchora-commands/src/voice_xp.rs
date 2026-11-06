@@ -12,7 +12,10 @@ use std::{
     time::Duration,
 };
 
-use pinchora_core::leveling::{VoicePresence, level_of, scale, voice_earners, week_start};
+use pinchora_core::{
+    leveling::{VoicePresence, level_of, scale, voice_earners, week_start},
+    modules::Module,
+};
 use pinchora_db::GuildSettings;
 use tokio::{sync::Semaphore, task::JoinSet};
 use twilight_model::{
@@ -323,8 +326,19 @@ async fn pay_guild(app: &Arc<App>, guild: u64) -> anyhow::Result<usize> {
     let rules = &view.rules;
     let base = i64::from(view.settings.voice_xp_amount);
     let mut lineages: HashMap<u64, Vec<u64>> = HashMap::new();
+    // Leveling can be switched off in some voice channels (`/config modules`); nobody sitting in one earns.
+    let mut allowed: HashMap<u64, bool> = HashMap::new();
     let mut grants: Vec<(u64, i64)> = Vec::with_capacity(earners.len());
     for (user, record) in here.iter().filter(|(user, _)| earners.contains(user)) {
+        let channel_on = match allowed.entry(record.channel) {
+            Entry::Occupied(known) => *known.get(),
+            Entry::Vacant(free) => {
+                *free.insert(app.module_allowed(guild, Some(record.channel), Module::Leveling).await)
+            }
+        };
+        if !channel_on {
+            continue;
+        }
         let lineage = match lineages.entry(record.channel) {
             Entry::Occupied(known) => known.into_mut(),
             Entry::Vacant(free) => free.insert(app.xp_lineage(rules, record.channel).await),

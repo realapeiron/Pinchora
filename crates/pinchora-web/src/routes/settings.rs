@@ -4,7 +4,7 @@
 use axum::{Json, extract::State};
 use pinchora_cache::Invalidation;
 use pinchora_core::settings::{self, FieldError, GuildSettingsPatch};
-use pinchora_db::GuildSettings;
+use pinchora_db::{GuildSettings, PatchRefused};
 use serde::{Deserialize, Deserializer};
 use serde_json::{Map, Value};
 
@@ -179,10 +179,19 @@ async fn check_discord(state: &WebState, guild: u64, before: &GuildSettings, aft
     if channels.is_empty() && role.is_none() {
         return Ok(());
     }
-    let info: GuildInfo = guild_info::get_with(state, guild, |info| {
-        channels.iter().all(|(_, id)| info.channel(*id).is_some()) && role.is_none_or(|r| info.role(r).is_some())
+    // Channels may come from the minute-old lists; a role to hand out is checked live, like `/config`.
+    let mut info: GuildInfo = guild_info::get_with(state, guild, |info| {
+        channels.iter().all(|(_, id)| info.channel(*id).is_some())
     })
     .await?;
+    if role.is_some() {
+        let live = guild_info::live(state, guild).await?;
+        info = GuildInfo {
+            roles: live.roles,
+            bot: live.bot,
+            ..info
+        };
+    }
     let mut errors: Vec<FieldError> = channels
         .iter()
         .filter_map(|(field, id)| info.check_post_channel(field, *id).err())
@@ -211,7 +220,14 @@ pub async fn patch(
         return Ok(Json(current.into()));
     }
     check_discord(&state, guild, &current, &next).await?;
-    let updated = db.patch_guild_settings(guild, &patch).await?;
+    let updated = match db.patch_guild_settings(guild, &patch).await {
+        Ok(updated) => updated,
+        // Another save moved the other end of the points range between the check and the write.
+        Err(error) => match error.downcast_ref::<PatchRefused>() {
+            Some(PatchRefused(refused)) => return Err(ApiError::invalid(vec![refused.clone()])),
+            None => return Err(error.into()),
+        },
+    };
     // Like `/config xp voice enabled:false`: with nobody remembered in voice, no pod pays anyone,
     // even one whose cached settings still say voice XP is on.
     if current.voice_xp_enabled

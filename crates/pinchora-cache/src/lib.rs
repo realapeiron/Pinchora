@@ -111,6 +111,21 @@ impl Cache {
         Ok(())
     }
 
+    /// Overwrites a value stored with [`Cache::put`] only while it still exists; `false` when it is gone
+    /// (nothing is written). For a session being updated: one that was logged out in the meantime must
+    /// not come back.
+    pub async fn put_if_present(&self, key: &str, value: &str, ttl: Duration) -> anyhow::Result<bool> {
+        let set: Option<String> = redis::cmd("SET")
+            .arg(format!("{PREFIX}:kv:{key}"))
+            .arg(value)
+            .arg("XX")
+            .arg("EX")
+            .arg(ttl.as_secs().max(1))
+            .query_async(&mut self.conn())
+            .await?;
+        Ok(set.is_some())
+    }
+
     /// Reads and deletes a value stored with [`Cache::put`].
     pub async fn take(&self, key: &str) -> anyhow::Result<Option<String>> {
         Ok(self.conn().get_del(format!("{PREFIX}:kv:{key}")).await?)

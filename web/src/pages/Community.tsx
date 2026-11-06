@@ -7,10 +7,18 @@ import { ChannelPicker } from "../components/Pickers";
 import { PixelToggle } from "../components/PixelToggle";
 import { SaveBar } from "../components/SaveBar";
 import { Toast } from "../components/Toast";
-import { ApiError, type Community as CommunityData, type Overview } from "../lib/api";
-import { useCommunity, useDiscord } from "../lib/queries";
+import type { Community as CommunityData, Overview } from "../lib/api";
+import { CommunitySaveError, useCommunity, useDiscord } from "../lib/queries";
 import { Loading, Problem } from "./States";
 import { PageHead } from "./PageHead";
+
+const EVERY: Record<number, string> = {
+  6: "Every 6 hours",
+  12: "Every 12 hours",
+  24: "Every day",
+  48: "Every 2 days",
+  168: "Every week",
+};
 
 export function Community() {
   const data = useOutletContext<Overview>();
@@ -20,7 +28,7 @@ export function Community() {
     <div className="settings-page">
       <PageHead
         title="COMMUNITY"
-        lead="Where /suggest posts ideas, and whether critters wash up while people chat."
+        lead="Where /suggest posts ideas, whether critters wash up while people chat, and timed storm surges."
       />
       {query.isPending && <Loading label="Reading the settings" />}
       {query.isError && <Problem error={query.error} />}
@@ -35,22 +43,44 @@ function CommunityForm({ guild, saved }: { guild: string; saved: CommunityData }
   const [suggestions, setSuggestions] = useState(saved.suggestions.channel_id);
   const [enabled, setEnabled] = useState(saved.critters.enabled);
   const [critterChannel, setCritterChannel] = useState(saved.critters.channel_id);
+  const [surgeOn, setSurgeOn] = useState(saved.surge.enabled);
+  const [surgeChannel, setSurgeChannel] = useState(saved.surge.channel_id);
+  const [surgeEvery, setSurgeEvery] = useState(saved.surge.every_hours);
   const [toast, setToast] = useState<string | null>(null);
   const clearToast = useCallback(() => setToast(null), []);
   const suggestionsChanged = suggestions !== saved.suggestions.channel_id;
   const crittersChanged = enabled !== saved.critters.enabled || critterChannel !== saved.critters.channel_id;
+  const surgeChanged =
+    surgeOn !== saved.surge.enabled ||
+    surgeChannel !== saved.surge.channel_id ||
+    surgeEvery !== saved.surge.every_hours;
   const changes =
     Number(suggestionsChanged) +
     Number(enabled !== saved.critters.enabled) +
-    Number(critterChannel !== saved.critters.channel_id);
-  const fieldError = (field: string) =>
-    save.error instanceof ApiError && save.error.field === field ? save.error.message : null;
+    Number(critterChannel !== saved.critters.channel_id) +
+    Number(surgeOn !== saved.surge.enabled) +
+    Number(surgeChannel !== saved.surge.channel_id) +
+    Number(surgeEvery !== saved.surge.every_hours);
+  // What the server refused, by the part of the page it was about.
+  const refused = save.error instanceof CommunitySaveError ? save.error : null;
+  const fieldError = (section: CommunitySaveError["section"], field: string) =>
+    refused?.section === section && refused.reason.field === field ? refused.message : null;
 
   const submit = () =>
     save.mutate(
       {
         ...(suggestionsChanged ? { suggestions: { channel_id: suggestions } } : {}),
         ...(crittersChanged ? { critters: { enabled, channel_id: critterChannel } } : {}),
+        ...(surgeChanged
+          ? {
+              surge: {
+                ...saved.surge,
+                enabled: surgeOn,
+                channel_id: surgeChannel,
+                every_hours: surgeEvery,
+              },
+            }
+          : {}),
       },
       { onSuccess: () => setToast("Saved. The bot uses it from the next message.") },
     );
@@ -58,6 +88,9 @@ function CommunityForm({ guild, saved }: { guild: string; saved: CommunityData }
     setSuggestions(saved.suggestions.channel_id);
     setEnabled(saved.critters.enabled);
     setCritterChannel(saved.critters.channel_id);
+    setSurgeOn(saved.surge.enabled);
+    setSurgeChannel(saved.surge.channel_id);
+    setSurgeEvery(saved.surge.every_hours);
     save.reset();
   };
 
@@ -67,7 +100,7 @@ function CommunityForm({ guild, saved }: { guild: string; saved: CommunityData }
         <Field
           label="Suggestion channel"
           htmlFor="suggestion-channel"
-          error={suggestionsChanged ? fieldError("channel_id") : null}
+          error={suggestionsChanged ? fieldError("suggestions", "channel_id") : null}
           hint="Members post ideas with /suggest; everyone votes with buttons, managers approve or deny."
         >
           <ChannelPicker
@@ -91,7 +124,7 @@ function CommunityForm({ guild, saved }: { guild: string; saved: CommunityData }
         <Field
           label="Where they land"
           htmlFor="critter-channel"
-          error={crittersChanged ? fieldError("channel_id") : null}
+          error={crittersChanged ? fieldError("critters", "channel_id") : null}
           hint="Only chat in a set channel counts towards a drop."
         >
           <ChannelPicker
@@ -104,10 +137,58 @@ function CommunityForm({ guild, saved }: { guild: string; saved: CommunityData }
         </Field>
       </Panel>
 
+      <Panel title="STORM SURGES">
+        <SwitchRow
+          title="Timed storms"
+          control={<PixelToggle label="Timed storms" checked={surgeOn} onChange={setSurgeOn} />}
+        >
+          A storm surge comes to a channel on a schedule: everyone stacks sandbags to hold the wall. Off until
+          a server turns it on; managers can always call one with /surge.
+        </SwitchRow>
+        <div className="form-grid form-grid-2">
+          <Field
+            label="Storm channel"
+            htmlFor="surge-channel"
+            error={surgeChanged ? fieldError("surge", "channel_id") : null}
+            hint={surgeOn && !surgeChannel ? "Pick the channel storms come to." : undefined}
+          >
+            <ChannelPicker
+              id="surge-channel"
+              info={discord.data}
+              value={surgeChannel}
+              onChange={setSurgeChannel}
+            />
+          </Field>
+          <Field
+            label="How often"
+            htmlFor="surge-every"
+            error={surgeChanged ? fieldError("surge", "every_hours") : null}
+            hint={
+              saved.surge.next_at
+                ? `The next one comes ${new Date(saved.surge.next_at).toLocaleString()}.`
+                : undefined
+            }
+          >
+            <select
+              id="surge-every"
+              className="pixel-input pixel-select"
+              value={surgeEvery}
+              onChange={(event) => setSurgeEvery(Number(event.target.value))}
+            >
+              {saved.surge.every_choices.map((hours) => (
+                <option key={hours} value={hours}>
+                  {EVERY[hours] ?? `Every ${hours} hours`}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+      </Panel>
+
       <SaveBar
         count={changes}
         saving={save.isPending}
-        error={save.isError && !fieldError("channel_id") ? save.error.message : null}
+        error={save.isError && !(refused && refused.reason.field) ? save.error.message : null}
         onSave={submit}
         onReset={reset}
       />

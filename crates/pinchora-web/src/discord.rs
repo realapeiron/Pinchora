@@ -270,7 +270,10 @@ async fn refresh_locked(state: &WebState, current: &mut CurrentSession) -> ApiRe
             current.session.refresh_token = tokens.refresh_token.or(Some(refresh));
             current.session.token_expires_at = now + tokens.expires_in;
             current.session.last_seen_at = now;
-            session::save(&state.app.cache, &current.sid, &current.session).await?;
+            // Logged out (or in again) while Discord was answering: the session is gone, so stays gone.
+            if !session::update(&state.app.cache, &current.sid, &current.session).await? {
+                return Err(ApiError::session_expired());
+            }
             Ok(current.session.access_token.clone())
         }
         Err(CallError::Unauthorized) => Err(end_session(state, current).await),

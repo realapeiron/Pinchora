@@ -2,12 +2,14 @@ import { useCallback, useState } from "react";
 import { Link, useOutletContext } from "react-router";
 
 import { Panel } from "../components/Panel";
+import { PixelLink } from "../components/PixelButton";
 import { PixelToggle } from "../components/PixelToggle";
 import { SaveBar } from "../components/SaveBar";
 import { Toast } from "../components/Toast";
 import type { Overview as OverviewData, Settings } from "../lib/api";
 import { changedFields, patchOf } from "../lib/draft";
-import { useSaveSettings } from "../lib/queries";
+import { badge } from "../lib/modules";
+import { useNames, useSaveSettings } from "../lib/queries";
 import { describeChange, timeAgo } from "../lib/text";
 
 const MODE_WORDS: Record<string, string> = {
@@ -64,6 +66,7 @@ export function Overview() {
   const [draft, setDraft] = useState<Partial<Settings>>({});
   const [toast, setToast] = useState<string | null>(null);
   const save = useSaveSettings(guild);
+  const names = useNames(guild);
   const saved = data.settings;
   const changes = changedFields(saved, draft).length;
   const leveling = (draft.leveling_enabled ?? saved.leveling_enabled) as boolean;
@@ -132,6 +135,29 @@ export function Overview() {
         </ul>
       </Panel>
 
+      <Panel
+        title="MODULES"
+        aside={
+          <PixelLink variant="ghost" className="button-small" href={`/g/${guild}/modules`}>
+            Manage
+          </PixelLink>
+        }
+      >
+        <ul className="module-grid" aria-label="Modules">
+          {data.modules.map((m) => {
+            const state = badge(m.enabled, m.channel_mode, m.channels.length);
+            return (
+              <li key={m.key}>
+                <Link to={`/g/${guild}/modules`} className="module-tile" title={m.blurb}>
+                  <span className="module-tile-name">{m.label}</span>
+                  <span className={`badge badge-${state.tone}`}>{state.text}</span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </Panel>
+
       <Panel title="RECENT CHANGES">
         {data.audit.length === 0 ? (
           <p className="muted">
@@ -143,7 +169,7 @@ export function Overview() {
               <li key={entry.id} className="audit-row">
                 <span className="audit-dot" aria-hidden="true" />
                 <span className="audit-text">
-                  <strong>{entry.actor_name}</strong> {describeChange(entry)}
+                  <strong>{entry.actor_name}</strong> {describeChange(entry, names)}
                   {entry.source === "discord" && <span className="muted"> in Discord</span>}
                 </span>
                 <time className="audit-time muted" dateTime={entry.created_at}>

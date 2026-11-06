@@ -17,6 +17,7 @@ export const NAV: { group: string; pages: { to: string; label: string }[] }[] = 
     group: "SERVER",
     pages: [
       { to: "", label: "Overview" },
+      { to: "modules", label: "Modules" },
       { to: "audit", label: "Audit log" },
     ],
   },

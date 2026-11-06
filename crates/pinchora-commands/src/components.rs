@@ -12,6 +12,9 @@ use crate::{
 /// Routes button clicks by the `prefix:` of their custom id. Ids carry all their
 /// state, so any pod can serve any click.
 pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> anyhow::Result<()> {
+    if crate::gate::refuses_component(cx, custom_id).await? {
+        return Ok(());
+    }
     let mut parts = custom_id.split(':');
     match parts.next() {
         Some("lb") => leaderboard::on_button(cx, parts).await,
@@ -78,6 +81,9 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
 /// Routes a submitted modal by the `prefix:` of its custom id; `fields` are its text inputs
 /// as (custom id, value).
 pub(crate) async fn dispatch_modal(cx: &Cx, custom_id: &str, fields: &[(String, String)]) -> anyhow::Result<()> {
+    if crate::gate::refuses_component(cx, custom_id).await? {
+        return Ok(());
+    }
     let mut parts = custom_id.split(':');
     match parts.next() {
         Some("gb") => guestbook::on_modal(cx, parts, fields).await,

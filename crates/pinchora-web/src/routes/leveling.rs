@@ -10,6 +10,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use pinchora_cache::Invalidation;
+use pinchora_commands::SyncOutcome;
 use pinchora_core::settings;
 use pinchora_db::{MAX_LEVEL_ROLES, MAX_REP_ROLES, MAX_XP_RULES, XpTarget};
 use serde::{Deserialize, Serialize};
@@ -308,7 +309,7 @@ async fn put_reward(
     threshold: i32,
 ) -> ApiResult<Json<Value>> {
     let (guild, role) = (managed.id, path_id(params, "role")?);
-    let info = guild_info::get_with(&state, guild, |info| info.role(role).is_some()).await?;
+    let info = guild_info::live(&state, guild).await?;
     info.check_assignable("role_id", role)?;
     let was = list
         .rows(&state, guild)
@@ -452,6 +453,12 @@ pub async fn sync_level_roles(State(state): State<WebState>, managed: ManagedGui
             "No level roles yet. Add one first.",
         ));
     }
+    // A sync that ended a moment ago: no job to start, and no point polling for one.
+    if let Some(left) = pinchora_commands::sync_resting(&state.app, guild).await?
+        && let Some(message) = SyncOutcome::Resting(left).refusal()
+    {
+        return Err(ApiError::resting(message, left.as_secs()));
+    }
     let lock = format!("web:sync:{guild}");
     if state.app.cache.try_cooldown(&lock, SYNC_LOCK).await?.is_some() {
         // The running job's id rides along, so the page can follow it instead.
@@ -508,11 +515,33 @@ pub async fn sync_level_roles(State(state): State<WebState>, managed: ManagedGui
             }
         };
         match outcome {
-            Ok(report) => {
-                let report = report.unwrap_or_default();
+            Ok(SyncOutcome::Done(report)) => {
                 (job.checked, job.updated, job.total) = (report.checked, report.updated, report.total);
                 job.status = "done".into();
                 job.message = Some(report.summary());
+                // Recorded before the job reads as finished, so a page that waits for it finds the row.
+                audit::finish(
+                    &state,
+                    &session,
+                    Change {
+                        guild,
+                        action: "level_roles.sync",
+                        target: None,
+                        before: Value::Null,
+                        after: json!({ "checked": job.checked, "updated": job.updated }),
+                    },
+                    None,
+                )
+                .await;
+            }
+            // Started from Discord a moment before, or the level roles were removed meanwhile: nothing ran.
+            Ok(other) => {
+                job.status = "failed".into();
+                job.message = Some(
+                    other
+                        .refusal()
+                        .unwrap_or_else(|| "No level roles yet. Add one first.".to_owned()),
+                );
             }
             Err(error) => {
                 tracing::warn!(guild, error = ?error, "level role sync from the dashboard failed");
@@ -520,20 +549,6 @@ pub async fn sync_level_roles(State(state): State<WebState>, managed: ManagedGui
                 job.message = Some("The sync stopped on an error. Try again in a moment.".into());
             }
         }
-        // Recorded before the job reads as finished, so a page that waits for it finds the row.
-        audit::finish(
-            &state,
-            &session,
-            Change {
-                guild,
-                action: "level_roles.sync",
-                target: None,
-                before: Value::Null,
-                after: json!({ "checked": job.checked, "updated": job.updated }),
-            },
-            None,
-        )
-        .await;
         save_job(&state, &job).await;
         if let Err(error) = state.app.cache.release_cooldown(&lock).await {
             tracing::warn!(%error, guild, "sync lock not released; it runs out by itself");

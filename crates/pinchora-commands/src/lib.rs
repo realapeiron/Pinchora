@@ -5,6 +5,7 @@ mod cx;
 mod defer;
 mod events;
 mod game;
+mod gate;
 mod invalidations;
 mod leveling;
 mod responder;
@@ -20,7 +21,8 @@ pub use commands::{
     config::{WelcomeDesign, welcome_card_png},
     definitions as command_definitions,
     games::{spawn_janitor as spawn_game_janitor, sweep as sweep_games},
-    level_roles::{SyncReport, sync_level_roles},
+    level_roles::{SyncOutcome, SyncReport, sync_level_roles, sync_resting},
+    modules::{announce_guild_change, module_diff},
     partner::partner_name,
 };
 pub use cx::Cx;

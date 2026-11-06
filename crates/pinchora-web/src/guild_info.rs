@@ -102,11 +102,61 @@ fn discord_down(error: impl std::fmt::Display) -> ApiError {
 }
 
 async fn fetch(state: &WebState, guild: u64) -> ApiResult<GuildInfo> {
+    let (channels, roles) = tokio::join!(fetch_channels(state, guild), fetch_roles(state, guild));
+    let (roles, bot) = roles?;
+    Ok(GuildInfo {
+        channels: channels?,
+        roles,
+        bot,
+    })
+}
+
+/// The lists with the roles and the bot's own position taken straight from Discord, for a write that
+/// hands a role out: the slash commands check the position live, so a save must not trust a copy up
+/// to a minute old. The channels are the cached ones (asked for only when nothing is cached), and the
+/// cached copy is left as it is.
+pub async fn live(state: &WebState, guild: u64) -> ApiResult<GuildInfo> {
+    let (roles, bot) = fetch_roles(state, guild).await?;
+    let channels = match state.app.cache.get(&key(guild)).await? {
+        Some(raw) => serde_json::from_str::<GuildInfo>(&raw)
+            .map(|info| info.channels)
+            .unwrap_or_default(),
+        None => Vec::new(),
+    };
+    Ok(GuildInfo { channels, roles, bot })
+}
+
+async fn fetch_channels(state: &WebState, guild: u64) -> ApiResult<Vec<ChannelInfo>> {
+    let channels: Vec<Channel> = state
+        .app
+        .http
+        .guild_channels(Id::new(guild.max(1)))
+        .await
+        .map_err(discord_down)?
+        .models()
+        .await
+        .map_err(discord_down)?;
+    let mut channels: Vec<ChannelInfo> = channels
+        .into_iter()
+        .filter(|c| !c.kind.is_thread())
+        .map(|c| ChannelInfo {
+            id: c.id.to_string(),
+            name: c.name.unwrap_or_default(),
+            kind: c.kind.into(),
+            parent_id: c.parent_id.map(|p| p.to_string()),
+            position: c.position.unwrap_or(0),
+        })
+        .collect();
+    channels.sort_by_key(|c| (c.position, c.id.parse::<u64>().unwrap_or(0)));
+    Ok(channels)
+}
+
+/// The roles and where the bot's own highest role sits, as Discord has them now.
+async fn fetch_roles(state: &WebState, guild: u64) -> ApiResult<(Vec<RoleInfo>, BotInfo)> {
     let http = &state.app.http;
     let id = Id::new(guild.max(1));
     let bot = Id::new(state.app.application_id.get());
-    let (channels, roles, me) = tokio::join!(http.guild_channels(id), http.roles(id), http.guild_member(id, bot));
-    let channels: Vec<Channel> = channels.map_err(discord_down)?.models().await.map_err(discord_down)?;
+    let (roles, me) = tokio::join!(http.roles(id), http.guild_member(id, bot));
     let roles: Vec<Role> = roles.map_err(discord_down)?.models().await.map_err(discord_down)?;
     let held = match me {
         Ok(response) => match response.model().await {
@@ -139,19 +189,6 @@ async fn fetch(state: &WebState, guild: u64) -> ApiResult<GuildInfo> {
             })
     });
 
-    let mut channels: Vec<ChannelInfo> = channels
-        .into_iter()
-        .filter(|c| !c.kind.is_thread())
-        .map(|c| ChannelInfo {
-            id: c.id.to_string(),
-            name: c.name.unwrap_or_default(),
-            kind: c.kind.into(),
-            parent_id: c.parent_id.map(|p| p.to_string()),
-            position: c.position.unwrap_or(0),
-        })
-        .collect();
-    channels.sort_by_key(|c| (c.position, c.id.parse::<u64>().unwrap_or(0)));
-
     let mut roles: Vec<RoleInfo> = roles
         .into_iter()
         .map(|r| {
@@ -176,14 +213,13 @@ async fn fetch(state: &WebState, guild: u64) -> ApiResult<GuildInfo> {
         .collect();
     // Discord's order: the highest role first.
     roles.sort_by(|a, b| b.position.cmp(&a.position).then_with(|| a.id.cmp(&b.id)));
-    Ok(GuildInfo {
-        channels,
+    Ok((
         roles,
-        bot: BotInfo {
+        BotInfo {
             top_role_position: top,
             manage_roles,
         },
-    })
+    ))
 }
 
 impl GuildInfo {

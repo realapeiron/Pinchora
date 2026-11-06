@@ -9,6 +9,7 @@
 use std::{str::Split, sync::Arc};
 
 use chrono::{Duration as Span, Utc};
+use pinchora_core::modules::Module;
 use pinchora_db::{ACTIVE, GameSession, NewGame, PartySettings, SurgeHelp, SurgeSettled};
 use pinchora_game::{
     party::surge::{
@@ -457,6 +458,11 @@ async fn start_timed(app: &Arc<App>, settings: &PartySettings) -> anyhow::Result
     };
     let guild = settings.guild_id as u64;
     if !app.db.claim_surge_slot(guild, due, app.now()).await? {
+        return Ok(());
+    }
+    // Taken first: a storm skipped because party games are switched off waits for the next slot,
+    // instead of arriving the moment they are switched on again.
+    if !app.module_allowed(guild, Some(channel as u64), Module::Party).await {
         return Ok(());
     }
     let Some(session) = open_storm(app, guild, channel as u64, 0).await? else {

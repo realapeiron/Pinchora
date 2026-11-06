@@ -13,6 +13,8 @@ export class ApiError extends Error {
   readonly inviteUrl?: string;
   /** Every field a 422 named; at least the one in `field`. */
   readonly errors: FieldError[];
+  /** The job already running, when a 409 says so (`x-job-id`). */
+  readonly jobId?: string;
 
   constructor(
     status: number,
@@ -21,6 +23,7 @@ export class ApiError extends Error {
     field?: string,
     inviteUrl?: string,
     errors?: FieldError[],
+    jobId?: string,
   ) {
     super(message);
     this.name = "ApiError";
@@ -29,6 +32,7 @@ export class ApiError extends Error {
     this.field = field;
     this.inviteUrl = inviteUrl;
     this.errors = errors?.length ? errors : field ? [{ field, message }] : [];
+    this.jobId = jobId;
   }
 }
 
@@ -69,6 +73,7 @@ async function errorOf(response: Response): Promise<ApiError> {
     field("field"),
     field("invite_url"),
     Array.isArray(error?.errors) ? (error.errors as FieldError[]) : undefined,
+    response.headers.get("x-job-id") ?? undefined,
   );
 }
 
@@ -160,7 +165,36 @@ export interface AuditEntry {
 export interface Overview {
   guild: { id: string; name: string; icon_url: string | null };
   settings: Settings;
+  modules: ModuleEntry[];
   audit: AuditEntry[];
+}
+
+export type ChannelMode = "all" | "only" | "except";
+
+/** One part of Pinchora a server can switch off, and where it works. */
+export interface ModuleEntry {
+  key: string;
+  label: string;
+  blurb: string;
+  group: string;
+  /** Happens to the whole server (a join, a log line): it cannot be limited to channels. */
+  server_only: boolean;
+  enabled: boolean;
+  channel_mode: ChannelMode;
+  channels: string[];
+}
+
+export interface Modules {
+  items: ModuleEntry[];
+  groups: { key: string; label: string }[];
+  max_channels: number;
+}
+
+/** What `PUT /modules/{key}` takes: any subset. */
+export interface ModulePatch {
+  enabled?: boolean;
+  channel_mode?: ChannelMode;
+  channels?: string[];
 }
 
 export type SettingsPatch = Partial<Settings>;
@@ -225,9 +259,19 @@ export interface Store {
   max: number;
 }
 
+export interface Surge {
+  enabled: boolean;
+  channel_id: string | null;
+  every_hours: number;
+  every_choices: number[];
+  /** When the next timed storm is due; `null` while timed storms are off or have no channel. */
+  next_at: string | null;
+}
+
 export interface Community {
   suggestions: { channel_id: string | null };
   critters: { enabled: boolean; channel_id: string | null };
+  surge: Surge;
 }
 
 export interface Job {

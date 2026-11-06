@@ -70,7 +70,7 @@ pub async fn put_item(
         (Ok(price), Ok(stock)) => (price, stock),
         (price, stock) => return Err(ApiError::invalid(price.err().into_iter().chain(stock.err()).collect())),
     };
-    let info = guild_info::get_with(&state, guild, |info| info.role(role).is_some()).await?;
+    let info = guild_info::live(&state, guild).await?;
     info.check_assignable("role_id", role)?;
     let db = &state.app.db;
     let was = db

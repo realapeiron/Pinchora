@@ -47,7 +47,7 @@ impl Help {
             ))
             .field(EmbedFieldBuilder::new(
                 "Server admins",
-                "`/config welcome` welcome cards\n`/config leveling` level-up messages\n`/config level-roles` roles for reaching a level\n`/config points` and `/config store` points and role store\n`/config suggestions` where suggestions go\n`/config gambling` switch gambling-style games on\n`/config surge` timed storm surges\n`/points give` and `/points take` adjust balances\n`/config show` current settings",
+                "`/config welcome` welcome cards\n`/config leveling` level-up messages\n`/config level-roles` roles for reaching a level\n`/config points` and `/config store` points and role store\n`/config suggestions` where suggestions go\n`/config gambling` switch gambling-style games on\n`/config surge` timed storm surges\n`/config modules` switch parts of Pinchora off, for the server or per channel\n`/points give` and `/points take` adjust balances\n`/config show` current settings",
             ))
             .footer(EmbedFooterBuilder::new("Houses, pets and mini games are on the way."))
             .build();

@@ -34,6 +34,7 @@ async function previewPixels(page: Page): Promise<string> {
 
 const PAGES = [
   { path: "", name: "overview", heading: "OVERVIEW" },
+  { path: "/modules", name: "modules", heading: "MODULES" },
   { path: "/welcome", name: "welcome", heading: "WELCOME" },
   { path: "/leveling", name: "leveling", heading: "LEVELING" },
   { path: "/points", name: "points", heading: "POINTS" },
