@@ -1,5 +1,6 @@
 mod badges;
 mod character;
+mod collection;
 mod connect4;
 mod frame;
 mod grid;
@@ -18,6 +19,9 @@ mod wordle;
 
 pub use badges::{BadgeCell, BadgeCollectionCard, BadgeState};
 pub use character::CharacterCard;
+pub use collection::{
+    BottleCard, DexCard, DexCell, DropCard, DropCritter, EntryPicture, HaulCard, HaulTile, PotCard, PotState,
+};
 pub use connect4::Connect4Card;
 pub use grid::{GridSlot, ItemGridCard};
 pub use hangman::{HangmanCard, HangmanLetter};

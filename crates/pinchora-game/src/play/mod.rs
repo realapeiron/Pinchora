@@ -19,16 +19,24 @@ pub enum Game {
     Hangman,
     Wordle,
     Trivia,
+    CritterDrop,
+    Bottle,
+    Beachcomb,
+    CrabPot,
 }
 
 impl Game {
-    pub const ALL: [Game; 6] = [
+    pub const ALL: [Game; 10] = [
         Self::TicTacToe,
         Self::Connect4,
         Self::Rps,
         Self::Hangman,
         Self::Wordle,
         Self::Trivia,
+        Self::CritterDrop,
+        Self::Bottle,
+        Self::Beachcomb,
+        Self::CrabPot,
     ];
 
     /// What the database and the reward-cap counters call it.
@@ -40,6 +48,10 @@ impl Game {
             Self::Hangman => "hangman",
             Self::Wordle => "wordle",
             Self::Trivia => "trivia",
+            Self::CritterDrop => "critterdrop",
+            Self::Bottle => "bottle",
+            Self::Beachcomb => "beachcomb",
+            Self::CrabPot => "crabpot",
         }
     }
 
@@ -51,6 +63,10 @@ impl Game {
             Self::Hangman => "Hangman",
             Self::Wordle => "Wordle",
             Self::Trivia => "Trivia",
+            Self::CritterDrop => "Critter drop",
+            Self::Bottle => "Message in a bottle",
+            Self::Beachcomb => "Beachcomb",
+            Self::CrabPot => "Crab pot",
         }
     }
 
@@ -62,6 +78,10 @@ impl Game {
             Self::Hangman => "🏰",
             Self::Wordle => "🟩",
             Self::Trivia => "🧠",
+            Self::CritterDrop => "🦀",
+            Self::Bottle => "🍾",
+            Self::Beachcomb => "🐚",
+            Self::CrabPot => "🦞",
         }
     }
 
@@ -79,6 +99,11 @@ impl Game {
             Self::Hangman => 15,
             Self::Wordle => 10,
             Self::Trivia => 8,
+            // The collection games pay by what they turn up; these are about an average one.
+            Self::CritterDrop => 17,
+            Self::Bottle => 34,
+            Self::Beachcomb => 17,
+            Self::CrabPot => 170,
         }
     }
 
@@ -91,6 +116,11 @@ impl Game {
             Self::Hangman => 6,
             Self::Wordle => 6,
             Self::Trivia => 12,
+            // Plays a day that pay shells; later ones still fill the dex.
+            Self::CritterDrop => 20,
+            Self::Bottle => 10,
+            Self::Beachcomb => 24,
+            Self::CrabPot => 3,
         }
     }
 }

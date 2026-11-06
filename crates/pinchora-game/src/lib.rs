@@ -1,6 +1,7 @@
 //! Game content (items, rooms, pets, fish, looks) and the pure rules that use it.
 
 pub mod character;
+pub mod collection;
 mod content;
 pub mod contest;
 pub mod fishing;

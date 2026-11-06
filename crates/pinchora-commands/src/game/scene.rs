@@ -90,6 +90,11 @@ impl Sprites {
         }))
     }
 
+    /// The atlas sprite `name` as drawn, or `None` while it is not drawn yet.
+    pub fn atlas(&self, name: &str) -> Option<Arc<RgbaImage>> {
+        self.store.get(name)
+    }
+
     pub fn pet(&self, species: &str) -> Arc<RgbaImage> {
         self.cached(&format!("p_{species}"), || {
             let sprite = self

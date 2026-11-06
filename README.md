@@ -50,6 +50,7 @@ Written in Rust and built to run sharded on Kubernetes.
 | `/giveaway start duration winners prize [shells] [channel] [required_role]` | Post a giveaway with an **Enter** button (press again to leave): `duration` like `30m`, `2h`, `1d12h` (1 minute to 30 days), 1 to 20 `winners`, an optional `shells` prize **per winner**, a `channel` (default: here) and a `required_role`. Up to 20 run at once per server (Manage Server) |
 | `/giveaway end id`, `/giveaway reroll id [winners]`, `/giveaway list` | End one now and pick its winners; pick new winners from the entrants who have not won yet (a reroll never pays shells); list the running ones with entries and links. `id` is the number in the giveaway's footer (Manage Server) |
 | `/config suggestions [channel] [off]` | Where `/suggest` posts; with neither option it shows the setting, and `/config show` lists it (Manage Server) |
+| `/config critters [enabled] [channel] [anywhere]` | Let critter drops and bottles wash up while people chat (off until you turn it on): with a `channel`, only chat there counts and the drops land there; with `anywhere`, they land in whichever channel tipped the count. With none of the options it just shows the setting, and `/config show` lists it (Manage Server) |
 | `/suggest text` | Post a suggestion (up to 1000 characters) in the server's suggestion channel as an embed with 👍 and 👎 buttons showing live counts. One vote per member: press the other side to switch, the same side again to take the vote back. One suggestion per 30 seconds |
 | `/suggestion approve\|deny id [reason]` | Decide on the server's suggestion number `id` (the `#n` in its title): the embed turns green or red with who decided and why, its buttons lock with the final counts, and the author gets a direct message (closed DMs are reported to you, not an error). Decided once (Manage Server) |
 | `/poll question options [duration]` | A question with two to five answers separated by `\|`, up to 80 characters each; `duration` like `30m`, `6h`, `1d` (default 1 day, 1 minute to 14 days). One button per answer plus **Results**; one vote per member, the same switch/take-back rule as suggestions. Votes stay hidden while it runs, **Results** shows a private pixel bar-chart card (drawn at most every 10 seconds per poll), and when it closes the channel gets the final card and a line saying who won (or the tie). Three open polls per member |
@@ -119,6 +120,10 @@ channel when the bot starts is only noticed once their state changes.
 | `/pet list` | The nursery: one card with every pet in a grid (portrait, name, level and XP bar, the four needs as icons, a star on the active pet, ASLEEP / AWAY / BACK! badges), 8 to a page, with a menu that opens one pet's card (care buttons, **Make active**, a way back to its page) |
 | `/pet trip go destination [pet]`, `/pet trip claim` | Field trips: send a pet (default: your active one) for 1, 4 or 8 hours to one of 8 cosy places from `content/pet_trips.json` (a place opens at a pet level, 1 to 26; the card's **Trip** button lists them). The pet leaves the house, its needs wait for it and it cannot be looked after meanwhile. Back, **Claim souvenir** (or `/pet trip claim`, which collects every pet that is home and otherwise says who is still away) pays shells, XP and a short story, and sometimes a free-to-earn furniture piece (`reward` items only, weighted by rarity, never shop stock). Higher levels find more shells and rarer pieces. A trip is a stored end time, so it survives restarts, and a claim pays exactly once |
 | `/fish` | Cast, wait for the bite, press **Reel!** in time; 72 catches for the fish book |
+| `/beachcomb` | Walk the shore (once every 20 minutes) for a find: shells, sea glass, driftwood, coins, now and then a critter; some only turn up at a time of day or in a season. A first find is a discovery for your dex and pays well, a spare is recycled for a few shells and fragments. A card shows what you found |
+| `/critterdrop` | Drop three pixel critters in the channel on one picture with a numbered button each: the first click takes a card, nobody takes two, they drift away after 90 seconds. You can call one every 30 minutes, one at a time per channel; chat can make them wash up too (`/config critters`) |
+| `/crabpot` | A crab pot you set for 1, 4 or 8 hours and haul in later (a stored end time, so it survives restarts): 1 to 1.8 catches an hour, more for a longer soak, drawn from the critters of the shallows and the finds. Five levels, bought with shells: a better pot catches more and finds rarer things. The haul is a card of everything it brought |
+| `/dex [user] [tab]` | The Tide Pool Dex: a paged picture book of all 48 critters and 36 finds with a progress bar, how many you met of each, and the ones you have not found as dark silhouettes. **Spend fragments** trades what spares leave behind for a free-to-earn decor piece of the tier you pick (25 / 60 / 150 / 400 / 1,000 fragments from common to legendary) |
 | `/quests` | Three daily quests; clear all three for pearls |
 | `/duel tictactoe user` | Button tic-tac-toe; the winner earns shells |
 | `/duel connect4 user [bet]` | Connect four on a pixel-art board: the challenged player accepts, then each turn is a column button (1-7) within 90 s; the winner earns shells |
@@ -137,7 +142,25 @@ every pod ends games whose clock ran out every 10 seconds). Without a wager the 
 (connect four 25, rock paper scissors 15, hangman 15, wordle 10 and up to 45 for the daily, trivia 8 to 18
 by difficulty) with a daily limit per player and game.
 
-Game content (furniture, rooms, pets, pet trips, fish, looks, card backgrounds, badges, titles, trivia, hangman words and
+Collecting: critters (living things from five habitats) and finds (what the tide leaves) share one
+catalogue of 84 entries in five rarities, `content/critters.json` and `content/finds.json`, and one dex per
+player. The first of an entry is a **discovery** (15 shells for a common one up to 500 for a legendary);
+every later one is a **spare**, recycled at once for 6 to 250 shells and 1 to 30 fragments, and salvage finds
+(planks, cleats) leave extra fragments. Draws pick a rarity first (common 60, uncommon 25, rare 10, epic 4,
+legendary 1; a better crab pot lifts the rare half) and then an entry of it, so how many entries a tier holds
+never moves its odds. Only the first plays of the day pay shells (20 grabs, 10 bottles, 24 walks, 3 hauls);
+later ones still fill the dex. A play is counted, filed and paid in one database transaction, so a double
+click, two pods or a restart never take a card twice or pay twice; the best sustained source is a level 5 pot,
+about 40 shells an hour over its eight-hour soak (a level 1 pot about 19), and a walk or a spare of a common
+critter pays 6, far below the 1,500 an hour the games may pay.
+Chat can make a critter drop or a bottle (a short cosy note and a small prize for whoever opens it first)
+wash up: once a server has turned it on, every 25 messages from at least two people, a person's messages
+counting once every 20 seconds, at most one every 12 minutes per server; message text is never read. Drops
+and bottles are rows in `collection_drops`, closed by a ticker on every pod when their time is up. Until the
+atlas has `cr_<id>` sprites for them, critters and finds borrow a fish, pet or furniture sprite or are drawn
+from small pixel shapes (`pinchora_render::critters`).
+
+Game content (furniture, rooms, pets, pet trips, fish, critters, finds, bottle messages, looks, card backgrounds, badges, titles, trivia, hangman words and
 the wordle lists) lives in
 `content/*.json` (`python3 content/check.py` validates it); see
 [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md). Sprites are drawn by GPT and imported with
@@ -180,6 +203,7 @@ cargo run -p pinchora-render --example samples   # render sample cards to target
                                                  #  the profile and rank samples carry a title; profile-showcase-*, profile-bg-<white|black|stripes|beach>-<opacity>,
                                                  #  profile-nobg-*, profile-unicode/-wide/-cyrillic/-shout and profile-frame-* are the stress variants)
 cargo run -p pinchora-render --example games     # connect four, hangman and wordle sample cards
+cargo run -p pinchora-render --example collection # critter drop, bottle, dex, haul and crab pot sample cards
 ```
 
 Tests: unit tests run with plain `cargo test --workspace`. Database and Redis integration

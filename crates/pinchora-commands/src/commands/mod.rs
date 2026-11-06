@@ -1,5 +1,6 @@
 mod bio;
 pub(crate) mod character;
+pub(crate) mod collection;
 mod config;
 pub(crate) mod connect4;
 pub(crate) mod contest;
@@ -107,4 +108,8 @@ commands!(
     suggest::Suggest,
     suggest::SuggestionCommand,
     poll::Poll,
+    collection::dex::Dex,
+    collection::beachcomb::Beachcomb,
+    collection::crabpot::CrabPot,
+    collection::drops::CritterDrop,
 );

@@ -1,3 +1,4 @@
+mod collection;
 mod contest;
 mod customize;
 mod economy;
@@ -26,6 +27,10 @@ use std::time::Duration;
 
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
+pub use collection::{
+    Award, BOTTLE as DROP_BOTTLE, BottleOpen, BottlePrize, CRITTERS as DROP_CRITTERS, CollectionSettings, Comb, Daily,
+    DexRow, DropRow, Grab, Granted, NewDrop, PotHaul, PotRow, PotUpgrade,
+};
 pub use contest::{ContestEntry, ContestResult};
 pub use customize::{CustomizeBuy, MAX_BADGES, PlayerStats};
 pub use economy::{DailyOutcome, RepOutcome, TransferOutcome};
