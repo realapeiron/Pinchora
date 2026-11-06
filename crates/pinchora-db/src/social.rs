@@ -1,10 +1,15 @@
 use chrono::NaiveDate;
+use pinchora_core::items::is_soulbound;
 
 use crate::{Db, house::add_inventory, sql_id};
 
 impl Db {
-    /// Moves one item from `from`'s inventory to `to`'s. False if `from` has none.
+    /// Moves one item from `from`'s inventory to `to`'s (a gift, or a donation to a plaza). False if `from`
+    /// has none, or it is soulbound: those never change hands.
     pub async fn gift_item(&self, from: u64, to: u64, item_id: &str) -> anyhow::Result<bool> {
+        if is_soulbound(item_id) {
+            return Ok(false);
+        }
         let (from, to) = (sql_id(from), sql_id(to));
         let mut tx = self.pool().begin().await?;
         let taken = sqlx::query(

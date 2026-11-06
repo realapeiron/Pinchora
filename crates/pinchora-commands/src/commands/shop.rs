@@ -1,6 +1,7 @@
 use std::str::Split;
 
 use chrono::Utc;
+use pinchora_core::items::is_soulbound;
 use pinchora_db::{BuyOutcome, Currency as DbCurrency};
 use pinchora_game::{Availability, Category, Content, Currency, market};
 use pinchora_render::{GridSlot, ItemGridCard, Theme};
@@ -388,7 +389,7 @@ async fn inventory_card(app: &App, user_id: u64, page: usize) -> anyhow::Result<
                 .item(&r.item_id)
                 .map_or_else(String::new, |i| i.base.category.label().to_uppercase()),
             bar: None,
-            badge: String::new(),
+            badge: if is_soulbound(&r.item_id) { "SOULBOUND" } else { "" }.to_owned(),
             shell_price: false,
         })
         .collect();

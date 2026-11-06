@@ -14,7 +14,10 @@ use twilight_model::{
     id::Id,
 };
 
-use super::house::{CursorMode, EditState, editor, ensure_house, room_card};
+use super::{
+    collection::{SOULBOUND_RULE, giveable},
+    house::{CursorMode, EditState, editor, ensure_house, room_card},
+};
 use crate::{Cx, util::mention};
 
 #[derive(CommandModel, CreateCommand)]
@@ -93,13 +96,9 @@ impl PlazaCommand {
             }
             Self::Donate(_) => {
                 let content = Content::get();
-                let options: Vec<SelectMenuOption> = cx
-                    .app
-                    .db
-                    .inventory(cx.author()?.id.get())
-                    .await?
+                let (rows, kept_back) = giveable(cx.app.db.inventory(cx.author()?.id.get()).await?);
+                let options: Vec<SelectMenuOption> = rows
                     .into_iter()
-                    .take(25)
                     .filter_map(|row| {
                         let item = content.item(&row.item_id)?;
                         Some(SelectMenuOption {
@@ -112,7 +111,13 @@ impl PlazaCommand {
                     })
                     .collect();
                 if options.is_empty() {
-                    return cx.reply_ephemeral("Your inventory is empty.").await;
+                    return cx
+                        .reply_ephemeral(if kept_back {
+                            format!("Nothing in your inventory can be donated. {SOULBOUND_RULE}")
+                        } else {
+                            "Your inventory is empty.".to_owned()
+                        })
+                        .await;
                 }
                 cx.reply(InteractionResponseData {
                     content: Some("What do you want to donate to the plaza?".to_owned()),
@@ -150,6 +155,11 @@ pub(crate) async fn on_donate(cx: &Cx, value: Option<&str>) -> anyhow::Result<()
         return cx.reply_ephemeral("Pick something to donate.").await;
     };
     let donor = cx.author()?.id.get();
+    if item.bound {
+        return cx
+            .reply_ephemeral(format!("**{}** can't be donated. {SOULBOUND_RULE}", item.name()))
+            .await;
+    }
     ensure_house(&cx.app, guild).await?;
     if !cx.app.db.gift_item(donor, guild, &item.id()).await? {
         return cx

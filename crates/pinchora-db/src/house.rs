@@ -1,3 +1,5 @@
+use pinchora_core::items::is_soulbound;
+
 use crate::{Db, sql_id};
 
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -40,6 +42,9 @@ pub struct NewRoom {
     pub wallpaper: String,
     pub floor: String,
 }
+
+/// Why a soulbound piece cannot go into, or come out of, somebody else's house.
+pub const SOULBOUND_GUEST: &str = "soulbound pieces only go in your own house";
 
 #[derive(Debug, Clone)]
 pub enum PlaceOutcome {
@@ -177,7 +182,8 @@ impl Db {
     }
 
     /// Like [`Db::place_item`] for a piece that comes out of `stock`'s inventory and goes into
-    /// `owner`'s house, where it is the owner's from then on (a partner decorating).
+    /// `owner`'s house, where it is the owner's from then on (a partner decorating). A soulbound
+    /// piece never goes into somebody else's house: that would hand it over.
     #[allow(clippy::too_many_arguments)]
     pub async fn place_item_for<F>(
         &self,
@@ -193,6 +199,9 @@ impl Db {
     where
         F: FnOnce(&[PlacementRow]) -> Result<(), String>,
     {
+        if owner != stock && is_soulbound(item_id) {
+            return Ok(PlaceOutcome::Blocked(SOULBOUND_GUEST.to_owned()));
+        }
         let (id, stock) = (sql_id(owner), sql_id(stock));
         let mut tx = self.pool().begin().await?;
         sqlx::query("SELECT 1 FROM houses WHERE user_id = $1 FOR UPDATE")
@@ -342,6 +351,9 @@ impl Db {
             }
             match change {
                 RoomChange::Remove(p) => {
+                    if refund != id && is_soulbound(&p.item_id) {
+                        return Ok(RestoreOutcome::Refused(Refusal::Blocked(SOULBOUND_GUEST.to_owned())));
+                    }
                     sqlx::query("DELETE FROM placements WHERE id = $1 AND user_id = $2")
                         .bind(p.id)
                         .bind(id)

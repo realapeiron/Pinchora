@@ -1,4 +1,5 @@
 mod character;
+mod collection;
 mod contest;
 mod customize;
 mod economy;
@@ -29,6 +30,10 @@ use std::time::Duration;
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
 pub use character::OutfitRow;
+pub use collection::{
+    Award, BOTTLE as DROP_BOTTLE, BottleOpen, BottlePrize, CRITTERS as DROP_CRITTERS, CollectionSettings, Comb, Daily,
+    DexRow, DropRow, Grab, Granted, NewDrop, PotHaul, PotRow, PotUpgrade,
+};
 pub use contest::{ContestEntry, ContestResult};
 pub use customize::{CustomizeBuy, MAX_BADGES};
 pub use economy::{DailyOutcome, RepOutcome, TransferOutcome};
@@ -45,7 +50,7 @@ pub use guestbook::{NoteRow, SignOutcome, VisitorRow};
 pub use guilds::{GuildSettings, LogKind};
 pub use house::{
     HouseRow, InventoryRow, NewRoom, PlaceOutcome, PlacementRow, Refusal, RestoreOutcome, RoomChange, RoomRow,
-    UpgradeOutcome,
+    SOULBOUND_GUEST, UpgradeOutcome,
 };
 pub use interactions::Tally;
 pub use members::{LeaderboardRow, MemberRank, XpGain, XpGrant};

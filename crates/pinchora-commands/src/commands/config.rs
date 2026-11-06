@@ -13,6 +13,7 @@ use twilight_util::builder::embed::{EmbedBuilder, EmbedFieldBuilder};
 use crate::{
     Cx,
     commands::{
+        collection::settings::{ConfigCritters, critters_summary},
         level_roles::ConfigLevelRoles,
         points::ConfigPoints,
         rep_roles::ConfigRepRoles,
@@ -68,6 +69,8 @@ pub enum ConfigCommand {
     LogEvents(ConfigLogEvents),
     #[command(name = "suggestions")]
     Suggestions(ConfigSuggestions),
+    #[command(name = "critters")]
+    Critters(ConfigCritters),
 }
 
 #[derive(CommandOption, CreateOption, Clone, Copy)]
@@ -177,6 +180,7 @@ impl ConfigCommand {
             Self::Log(c) => return c.run(cx, guild).await,
             Self::LogEvents(c) => return c.run(cx, guild).await,
             Self::Suggestions(c) => return c.run(cx, guild).await,
+            Self::Critters(c) => return c.run(cx, guild).await,
             Self::Points(c) => match c.apply(&cx.app.db, guild).await? {
                 Ok(settings) => settings,
                 Err(reason) => return cx.reply_ephemeral(reason).await,
@@ -188,6 +192,13 @@ impl ConfigCommand {
             EmbedFieldBuilder::new(
                 "Suggestions",
                 suggestions_summary(cx.app.db.suggestion_channel(guild).await?),
+            )
+            .build(),
+        );
+        embed.fields.push(
+            EmbedFieldBuilder::new(
+                "Critter drops",
+                critters_summary(&cx.app.db.collection_settings(guild).await?),
             )
             .build(),
         );

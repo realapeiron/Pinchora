@@ -15,6 +15,7 @@ use twilight_model::{
 
 use crate::{
     App,
+    commands::collection,
     leveling::{self, LevelUp},
     roles, server_log,
     util::{display_name, fill, mention},
@@ -35,6 +36,11 @@ pub async fn on_message(app: Arc<App>, event: MessageCreate) -> anyhow::Result<(
         return Ok(());
     };
     let (g, u) = (guild.get(), msg.author.id.get());
+    // Chat that makes critters and bottles wash up counts here, before the XP cooldown: it never reads
+    // the message, and a failure never keeps a member from their XP.
+    if let Err(error) = collection::spawn::on_chat(&app, g, u, msg.channel_id.get()).await {
+        tracing::debug!(%error, guild = g, "chat drops not counted");
+    }
     let cooldown = Duration::from_secs(MESSAGE_XP_COOLDOWN_SECS);
     if app
         .cache

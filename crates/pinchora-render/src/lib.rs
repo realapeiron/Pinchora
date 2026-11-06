@@ -3,6 +3,7 @@
 mod avatar;
 mod cards;
 pub mod character;
+pub mod critters;
 mod encode;
 pub mod room;
 pub mod social;
@@ -22,6 +23,9 @@ pub use cards::{
     LeaderboardEntry, LevelUpCard, NextRole, NurseryCard, NurseryPet, PRESENT, PetCard, PetStatus, PollCard,
     PollOption, ProfileCard, RankCard, ShowcaseKind, ShowcaseSlot, SpriteArt, WalletCard, WelcomeCard, WordleCard,
     WordleRow,
+};
+pub use cards::{
+    BottleCard, DexCard, DexCell, DropCard, DropCritter, EntryPicture, HaulCard, HaulTile, PotCard, PotState,
 };
 pub use encode::encode_png;
 pub use style::{ACCENT_PRESETS, AccentError, Frame, Opacity, parse_accent, readable};
@@ -135,6 +139,26 @@ impl Renderer {
     }
 
     pub fn poll_card(&self, card: &PollCard) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn dex_card(&self, card: &DexCard) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn drop_card(&self, card: &DropCard) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn bottle_card(&self, card: &BottleCard) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn haul_card(&self, card: &HaulCard) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
+    }
+
+    pub fn pot_card(&self, card: &PotCard) -> anyhow::Result<Vec<u8>> {
         self.svg_to_png(&card.to_svg())
     }
 }

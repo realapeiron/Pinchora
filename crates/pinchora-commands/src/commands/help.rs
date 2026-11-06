@@ -30,6 +30,10 @@ impl Help {
                 "`/duel connect4`, `/duel rps` and `/duel tictactoe` challenge a friend (optional wager)\n`/play hangman`, `/play wordle` and `/play trivia` play on your own or with the channel\n`/play stats` your wins",
             ))
             .field(EmbedFieldBuilder::new(
+                "Collecting",
+                "`/beachcomb` walk the shore for shells, sea glass and critters\n`/crabpot` set a crab pot, haul it in hours later\n`/critterdrop` drop three critters for the channel to grab\n`/dex` your Tide Pool Dex, and where fragments buy decor\nManagers: `/config critters` lets critters and bottles wash up while people chat",
+            ))
+            .field(EmbedFieldBuilder::new(
                 "Leaderboards",
                 "`/leaderboard` server XP, server points, global XP or global shells",
             ))

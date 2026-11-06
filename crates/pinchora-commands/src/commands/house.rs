@@ -1,6 +1,7 @@
 use std::str::Split;
 
 use chrono::{DateTime, Utc};
+use pinchora_core::items::is_soulbound;
 use pinchora_db::{
     HouseRow, NewRoom, PetRow, PlaceOutcome, PlacementRow, Refusal, RestoreOutcome, RoomChange, RoomRow,
     UpgradeOutcome, VisitOutcome,
@@ -1385,10 +1386,15 @@ pub(crate) async fn editor_as(
     let (house_row, rooms) = ensure_house(&cx.app, user_id).await?;
     let tier = house::tier(house_row.tier);
     let room = rooms[state.room.clamp(0, rooms.len() as i16 - 1) as usize].clone();
-    let (placements, inventory) = tokio::try_join!(
+    let (placements, mut inventory) = tokio::try_join!(
         cx.app.db.placements(user_id, state.room),
         cx.app.db.inventory(who.stock)
     )?;
+    // A soulbound piece never goes into somebody else's house, so a guest's menu leaves them out.
+    let kept_back = who.is_guest() && inventory.iter().any(|r| is_soulbound(&r.item_id));
+    if who.is_guest() {
+        inventory.retain(|r| !is_soulbound(&r.item_id));
+    }
     let mut history = match history {
         Some(history) => history,
         None => undo::load(&cx.app, who, state.room, &placements).await,
@@ -1518,7 +1524,12 @@ pub(crate) async fn editor_as(
         Some(name) => (
             format!("Decorating {name}'s room {} · {title}", state.room + 1),
             format!(
-                "A piece you place comes from your inventory and belongs to {name} from then on. Stored pieces go to their inventory."
+                "A piece you place comes from your inventory and belongs to {name} from then on. Stored pieces go to their inventory.{}",
+                if kept_back {
+                    " Your soulbound pieces stay out of this menu."
+                } else {
+                    ""
+                }
             ),
         ),
         None => (
@@ -1561,8 +1572,9 @@ pub(crate) async fn editor_as(
                     &item.name(),
                     &row.item_id,
                     Some(format!(
-                        "x{} · {} · {iw}×{id}",
+                        "x{} · {}{} · {iw}×{id}",
                         row.quantity,
+                        if item.bound { "Soulbound · " } else { "" },
                         item.base.category.label()
                     )),
                     state.item.as_deref() == Some(row.item_id.as_str()),

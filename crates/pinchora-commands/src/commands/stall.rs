@@ -13,7 +13,10 @@ use twilight_util::builder::embed::EmbedBuilder;
 
 use crate::{
     Cx,
-    commands::shop::{SlotSpec, grid_png},
+    commands::{
+        collection::{SOULBOUND_RULE, giveable},
+        shop::{SlotSpec, grid_png},
+    },
     util::{BRAND, mention, resolved_display_name, thousands},
 };
 
@@ -84,13 +87,9 @@ impl StallCommand {
             }
             Self::Sell(c) => {
                 let content = Content::get();
-                let options: Vec<SelectMenuOption> = cx
-                    .app
-                    .db
-                    .inventory(me.id.get())
-                    .await?
+                let (rows, kept_back) = giveable(cx.app.db.inventory(me.id.get()).await?);
+                let options: Vec<SelectMenuOption> = rows
                     .into_iter()
-                    .take(25)
                     .filter_map(|row| {
                         let item = content.item(&row.item_id)?;
                         Some(SelectMenuOption {
@@ -107,7 +106,13 @@ impl StallCommand {
                     })
                     .collect();
                 if options.is_empty() {
-                    return cx.reply_ephemeral("Your inventory is empty.").await;
+                    return cx
+                        .reply_ephemeral(if kept_back {
+                            format!("Nothing in your inventory can go on a stall. {SOULBOUND_RULE}")
+                        } else {
+                            "Your inventory is empty.".to_owned()
+                        })
+                        .await;
                 }
                 cx.reply(InteractionResponseData {
                     content: Some(format!(
@@ -215,6 +220,11 @@ pub(crate) async fn on_list(cx: &Cx, mut args: std::str::Split<'_, char>, value:
     let Some(item) = value.and_then(|v| Content::get().item(v)) else {
         return cx.reply_ephemeral("Pick an item.").await;
     };
+    if item.bound {
+        return cx
+            .reply_ephemeral(format!("**{}** can't go on a stall. {SOULBOUND_RULE}", item.name()))
+            .await;
+    }
     let text = if cx.app.db.list_item(cx.author()?.id.get(), &item.id(), price).await? {
         format!(
             "🏷️ **{}** is on your stall for {} shells.",

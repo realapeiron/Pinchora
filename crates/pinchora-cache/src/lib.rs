@@ -67,6 +67,12 @@ impl Cache {
         Ok(Some(Duration::from_millis(left.max(0) as u64)))
     }
 
+    /// Ends a cooldown started with [`Cache::try_cooldown`] early, for a step that turned out not to count.
+    pub async fn release_cooldown(&self, key: &str) -> anyhow::Result<()> {
+        let _: () = self.conn().del(format!("{PREFIX}:cd:{key}")).await?;
+        Ok(())
+    }
+
     pub async fn store_session(&self, shard: u32, session: &StoredSession, ttl: Duration) -> anyhow::Result<()> {
         let _: () = self
             .conn()
@@ -192,6 +198,11 @@ impl Cache {
     pub async fn map_all(&self, key: &str) -> anyhow::Result<Vec<(String, String)>> {
         let all: std::collections::HashMap<String, String> = self.conn().hgetall(format!("{PREFIX}:h:{key}")).await?;
         Ok(all.into_iter().collect())
+    }
+
+    /// How many fields a hash has, without reading them; 0 when there is none.
+    pub async fn map_len(&self, key: &str) -> anyhow::Result<usize> {
+        Ok(self.conn().hlen(format!("{PREFIX}:h:{key}")).await?)
     }
 
     /// Adds a member to a set.

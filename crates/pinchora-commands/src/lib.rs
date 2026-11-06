@@ -15,6 +15,7 @@ mod voice_xp;
 
 pub use app::App;
 pub use commands::{
+    collection::{post_bottle, post_critter_drop, spawn_ticker as spawn_collection_ticker, tick as collection_tick},
     definitions as command_definitions,
     games::{spawn_janitor as spawn_game_janitor, sweep as sweep_games},
     partner::partner_name,

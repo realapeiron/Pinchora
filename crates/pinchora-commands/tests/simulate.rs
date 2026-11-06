@@ -67,6 +67,10 @@ use twilight_model::{
     id::Id,
 };
 
+// The collection games' flows (Critter Drop, bottles, Beachcomb, Tide Pool Dex, Crab Pot).
+#[path = "simulate/collection.rs"]
+mod collection;
+
 const APPLICATION_ID: u64 = 1;
 const CHANNEL_ID: u64 = 2;
 /// The role the mock bot holds; its position is the ceiling for roles the bot can hand out.
