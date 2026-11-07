@@ -96,6 +96,7 @@ pub fn router() -> Router<WebState> {
         .nest("/roles", roles::router())
         .nest("/stats", super::stats::router())
         .nest("/tickets", super::tickets::router())
+        .nest("/birthdays", super::birthdays::router())
         .nest("/feeds", super::feeds::router())
 }
 

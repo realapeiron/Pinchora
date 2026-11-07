@@ -125,11 +125,12 @@ pub enum Module {
     Feeds,
     TempVoice,
     Info,
+    Birthdays,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 37] = [
+    pub const ALL: [Self; 38] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -167,6 +168,7 @@ impl Module {
         Self::Feeds,
         Self::TempVoice,
         Self::Info,
+        Self::Birthdays,
     ];
 
     /// The key stored in the database and used in the API.
@@ -209,6 +211,7 @@ impl Module {
             Self::Feeds => "feeds",
             Self::TempVoice => "temp_voice",
             Self::Info => "info",
+            Self::Birthdays => "birthdays",
         }
     }
 
@@ -255,6 +258,7 @@ impl Module {
             Self::Feeds => "Social feeds",
             Self::TempVoice => "Temp voice",
             Self::Info => "Info commands",
+            Self::Birthdays => "Birthdays",
         }
     }
 
@@ -318,6 +322,7 @@ impl Module {
             }
             Self::TempVoice => "Creator channels that make a voice room for whoever joins, and /voice to run it.",
             Self::Info => "Server, member, role, channel, emoji and invite information.",
+            Self::Birthdays => "Opt-in birthdays, private dates and server celebrations.",
         }
     }
 
@@ -351,6 +356,7 @@ impl Module {
             Self::Feeds => Group::Feeds,
             Self::TempVoice => Group::Community,
             Self::Info => Group::Server,
+            Self::Birthdays => Group::Community,
         }
     }
 
@@ -362,6 +368,7 @@ impl Module {
             Self::AutoMod => Scope::Server,
             Self::Feeds => Scope::Server,
             Self::TempVoice => Scope::Server,
+            Self::Birthdays => Scope::Server,
             _ => Scope::Channels,
         }
     }
@@ -424,6 +431,7 @@ impl Module {
             },
             "automod" => Self::AutoMod,
             "voice" => Self::TempVoice,
+            "birthday" | "birthdays" => Self::Birthdays,
             _ => return None,
         })
     }
@@ -459,6 +467,7 @@ impl Module {
             "vc" | "vo" => Self::TempVoice,
             "nf" => Self::Info,
             "xi" => Self::Leveling,
+            "bd" => Self::Birthdays,
             _ => return None,
         })
     }

@@ -1177,7 +1177,9 @@
       "feeds",
       "voice",
       "xp",
-      "info"
+      "info",
+      "birthday",
+      "birthdays"
     ],
     "responder_placeholders": {
       "keyword": [

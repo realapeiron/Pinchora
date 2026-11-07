@@ -8,6 +8,7 @@ import { PixelToggle } from "../components/PixelToggle";
 import { SaveBar } from "../components/SaveBar";
 import { Toast } from "../components/Toast";
 import type { Community as CommunityData, ModuleEntry, Overview } from "../lib/api";
+import { useBirthdays } from "../lib/birthdays";
 import { CommunitySaveError, useCommunity, useDiscord } from "../lib/queries";
 import { Loading, Problem } from "./States";
 import { PageHead } from "./PageHead";
@@ -28,7 +29,7 @@ export function Community() {
     <div className="settings-page">
       <PageHead
         title="COMMUNITY"
-        lead="Where /suggest posts ideas, whether critters wash up while people chat, and timed storm surges."
+        lead="Where /suggest posts ideas, whether critters wash up while people chat, timed storm surges, and birthday celebrations."
       />
       {query.isPending && <Loading label="Reading the settings" />}
       {query.isError && <Problem error={query.error} />}
@@ -208,6 +209,8 @@ function CommunityForm({
         </div>
       </Panel>
 
+      <BirthdaySummary guild={guild} />
+
       <SaveBar
         count={changes}
         saving={save.isPending}
@@ -217,5 +220,40 @@ function CommunityForm({
       />
       <Toast message={toast} onDone={clearToast} />
     </>
+  );
+}
+
+function BirthdaySummary({ guild }: { guild: string }) {
+  const birthdays = useBirthdays(guild);
+  const data = birthdays.data;
+  return (
+    <Panel title="BIRTHDAYS" aside={<Link to={`/g/${guild}/birthdays`}>Edit settings →</Link>}>
+      <p className="panel-lead muted">
+        Members choose whether to share their date. Birth years stay private; celebrations use each member’s
+        local midnight.
+      </p>
+      {birthdays.isPending && <Loading label="Reading birthdays" />}
+      {birthdays.isError && <Problem error={birthdays.error} />}
+      {data && (
+        <>
+          <p>
+            <strong>{data.settings.enabled ? "Announcements on" : "Announcements off"}</strong>
+            {data.settings.channel_id ? ` · Channel ${data.settings.channel_id}` : " · No channel"}
+            {` · ${data.settings.shells_gift} shell gift`}
+          </p>
+          <p className="muted">
+            {data.upcoming.length
+              ? `Next: ${data.upcoming
+                  .slice(0, 3)
+                  .map((b) => `${b.name} (${b.day}/${b.month})`)
+                  .join(", ")}`
+              : "No shared birthdays in the next 30 days."}
+          </p>
+          <Link to={`/g/${guild}/birthdays`}>
+            Set the role, message and time zone; see all upcoming dates
+          </Link>
+        </>
+      )}
+    </Panel>
   );
 }

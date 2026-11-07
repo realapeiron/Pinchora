@@ -1,5 +1,6 @@
 pub(crate) mod automod;
 mod bio;
+pub(crate) mod birthdays;
 pub(crate) mod board;
 pub(crate) mod character;
 pub(crate) mod collection;
@@ -180,4 +181,6 @@ commands!(
     tempvoice::VoiceCommand,
     xp_admin::XpAdmin,
     info::Info,
+    birthdays::BirthdayCommand,
+    birthdays::BirthdaysAdmin,
 );

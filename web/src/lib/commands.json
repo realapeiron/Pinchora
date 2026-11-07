@@ -327,6 +327,91 @@
           ],
           "path": "remind cancel",
           "usage": "/remind cancel <id>"
+        },
+        {
+          "description": "Save your birthday privately; you choose whether others can see it",
+          "manager": false,
+          "options": [
+            {
+              "description": "Day of the month",
+              "name": "day",
+              "required": true
+            },
+            {
+              "description": "Month of the year",
+              "name": "month",
+              "required": true
+            },
+            {
+              "description": "Optional birth year, kept private",
+              "name": "year",
+              "required": false
+            },
+            {
+              "description": "IANA time zone; defaults to this server's zone",
+              "name": "timezone",
+              "required": false
+            },
+            {
+              "description": "Let others see the month and day",
+              "name": "public",
+              "required": false
+            },
+            {
+              "description": "Let servers display your age when they allow it",
+              "name": "show_age",
+              "required": false
+            }
+          ],
+          "path": "birthday set",
+          "usage": "/birthday set <day> <month> [year] [timezone] [public] [show_age]"
+        },
+        {
+          "description": "Remove your birthday and stop future celebrations",
+          "manager": false,
+          "options": [],
+          "path": "birthday remove",
+          "usage": "/birthday remove"
+        },
+        {
+          "description": "See the birthday and privacy choices you saved",
+          "manager": false,
+          "options": [],
+          "path": "birthday me",
+          "usage": "/birthday me"
+        },
+        {
+          "description": "See a member's birthday if they share it",
+          "manager": false,
+          "options": [
+            {
+              "description": "Member to view",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "birthday view",
+          "usage": "/birthday view <user>"
+        },
+        {
+          "description": "See the next public birthday in this server",
+          "manager": false,
+          "options": [],
+          "path": "birthday next",
+          "usage": "/birthday next"
+        },
+        {
+          "description": "Public birthdays in this server",
+          "manager": false,
+          "options": [
+            {
+              "description": "Optional month (1 to 12)",
+              "name": "month",
+              "required": false
+            }
+          ],
+          "path": "birthday list",
+          "usage": "/birthday list [month]"
         }
       ],
       "intro": "Bigger rewards every week and month, shells for friends, reputation, and reminders.",
@@ -3998,6 +4083,71 @@
           ],
           "path": "config modules channels",
           "usage": "/config modules channels <module> <where> [channel] [remove]"
+        },
+        {
+          "description": "Set the birthday channel, role, message and gift",
+          "manager": true,
+          "options": [
+            {
+              "description": "Turn announcements on or off",
+              "name": "enabled",
+              "required": false
+            },
+            {
+              "description": "Where birthday cards are posted",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Stop posting cards",
+              "name": "clear_channel",
+              "required": false
+            },
+            {
+              "description": "Role members get for 24 hours",
+              "name": "role",
+              "required": false
+            },
+            {
+              "description": "Stop granting a birthday role",
+              "name": "clear_role",
+              "required": false
+            },
+            {
+              "description": "Message with {user} and optional {age}",
+              "name": "message",
+              "required": false
+            },
+            {
+              "description": "Server's IANA time zone, used as the default for /birthday set",
+              "name": "timezone",
+              "required": false
+            },
+            {
+              "description": "System birthday gift, 0 to 500 shells once per year globally",
+              "name": "shells_gift",
+              "required": false
+            },
+            {
+              "description": "Allow ages in messages when members also opt in",
+              "name": "allow_age",
+              "required": false
+            },
+            {
+              "description": "Show the Cake Day badge on birthday cards",
+              "name": "badge",
+              "required": false
+            }
+          ],
+          "path": "birthdays settings",
+          "usage": "/birthdays settings [enabled] [channel] [clear_channel] [role] [clear_role] [message] [timezone] [shells_gift] [allow_age] [badge]"
+        },
+        {
+          "description": "Preview the birthday card and message",
+          "manager": true,
+          "options": [],
+          "path": "birthdays preview",
+          "usage": "/birthdays preview"
         }
       ],
       "intro": "Switch games and whole parts of Pinchora on or off, for the server or per channel.",
@@ -4005,5 +4155,5 @@
       "title": "Game & module setup"
     }
   ],
-  "count": 247
+  "count": 255
 }

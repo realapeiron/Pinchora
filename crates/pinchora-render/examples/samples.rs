@@ -122,6 +122,7 @@ fn main() -> anyhow::Result<()> {
         badges: &[],
         showcase: &[],
         partner: None,
+        birthday_today: false,
         theme: Theme::reef(),
     })?;
     let profile_ms = started.elapsed().as_millis();
@@ -202,6 +203,7 @@ fn main() -> anyhow::Result<()> {
             badges,
             showcase: &[],
             partner: None,
+            birthday_today: false,
             theme,
         })?;
         std::fs::write(format!("{out}/{name}.png"), png)?;
@@ -610,6 +612,7 @@ fn main() -> anyhow::Result<()> {
             badges: &icons(true),
             showcase,
             partner: partner.map(str::to_owned),
+            birthday_today: false,
             theme,
         })
     };

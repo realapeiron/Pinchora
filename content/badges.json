@@ -386,5 +386,13 @@
     "kind": "shop",
     "price": 25000,
     "icon_brief": "Draw a text-free 24x24 pixel icon of a seafoam dragon curled around one cream pearl, with a rounded snout, two tiny horns and a dark outline on a transparent background."
+  },
+  {
+    "id": "cake_day",
+    "name": "Cake Day",
+    "description": "Celebrate a birthday with a community that shares Cake Day badges.",
+    "rarity": "rare",
+    "kind": "granted",
+    "icon_brief": "Draw a text-free 24x24 pixel birthday cake with coral frosting, one candle, and a teal stand, using a dark outline on a transparent background."
   }
 ]

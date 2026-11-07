@@ -97,6 +97,7 @@ fn hostile_text_renders_on_every_card() {
             badges: &badges,
             showcase: &slots,
             partner: Some(hostile()),
+            birthday_today: false,
             theme: t(),
         }),
     ));

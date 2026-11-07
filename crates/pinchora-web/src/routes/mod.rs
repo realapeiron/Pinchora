@@ -2,6 +2,7 @@
 
 mod audit_log;
 mod automod;
+mod birthdays;
 mod cards;
 mod commands;
 mod community;

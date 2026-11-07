@@ -205,6 +205,7 @@ fn profile(r: &Renderer, sprites: &Sprites) -> anyhow::Result<RgbaImage> {
         badges: &icons,
         showcase: &slots,
         partner: Some("Marlowe".to_owned()),
+        birthday_today: false,
         lang: Lang::En,
         theme: Theme::reef().with_accent(accent),
     })?;
@@ -321,7 +322,7 @@ fn leaderboard(r: &Renderer) -> anyhow::Result<RgbaImage> {
     Ok(decode(&png))
 }
 
-/// All 40 badges: most earned, a few part-way, the shop ones for sale.
+/// Every badge: most earned, a few part-way, the shop ones for sale.
 fn badges(r: &Renderer, sprites: &Sprites) -> anyhow::Result<RgbaImage> {
     let content = Content::get();
     let arts: Vec<_> = content.badges.iter().map(|b| sprites.badge(&b.id)).collect();

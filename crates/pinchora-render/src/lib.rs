@@ -21,9 +21,9 @@ use resvg::{tiny_skia, usvg};
 pub use avatar::{placeholder_avatar, prepare_avatar};
 pub use cards::stats::{HEAT, HEAT_EMPTY, SERIES, StatFlows, StatHeat, StatList, StatRow, StatTile, StatsCard};
 pub use cards::{
-    ABSENT, Backdrop, BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, CORRECT, CharacterCard, CheckersCard,
-    ChessCard, Connect4Card, CrewView, DerbyCard, DerbyLane, EditorCell, EditorSection, FleetCard, GridSlot,
-    HangmanCard, HangmanLetter, HeistCard, InfoCard, InfoRow, ItemGridCard, LastWeekEntry, LeaderboardCard,
+    ABSENT, Backdrop, BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, BirthdayCard, CORRECT, CharacterCard,
+    CheckersCard, ChessCard, Connect4Card, CrewView, DerbyCard, DerbyLane, EditorCell, EditorSection, FleetCard,
+    GridSlot, HangmanCard, HangmanLetter, HeistCard, InfoCard, InfoRow, ItemGridCard, LastWeekEntry, LeaderboardCard,
     LeaderboardEntry, LevelUpCard, Mood, NextRole, NurseryCard, NurseryPet, PRESENT, PetCard, PetStatus, PickView,
     PicrossCard, PollCard, PollOption, ProfileCard, RadarCard, RankCard, Reveal, SHIP_COLORS, SHIP_NAMES, SeaView,
     ShareGrabCard, ShellCard, ShipView, ShowcaseKind, ShowcaseSlot, SpriteArt, StageView, SurgeCard, SurgeState,

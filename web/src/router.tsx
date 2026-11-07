@@ -82,6 +82,7 @@ export const router = createBrowserRouter([
       { path: "cases", element: <Cases /> },
       { path: "staff-log", element: <StaffLog /> },
       { path: "temp-voice", element: <TempVoice /> },
+      { path: "birthdays", lazy: async () => ({ Component: (await import("./pages/Birthdays")).Birthdays }) },
       { path: "commands", element: <Commands /> },
       { path: "commands/new", element: <CommandEditor /> },
       { path: "commands/:commandId", element: <CommandEditor /> },

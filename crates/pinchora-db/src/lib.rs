@@ -1,5 +1,6 @@
 mod activity;
 mod audit;
+mod birthdays;
 mod board_games;
 mod card_designs;
 mod character;
@@ -54,6 +55,7 @@ use sqlx::{PgPool, postgres::PgPoolOptions};
 
 pub use activity::{Activity, Counter};
 pub use audit::{AuditRow, AuditSource, NewAudit};
+pub use birthdays::*;
 pub use board_games::{PicrossGame, SoloGame, SoloStep};
 pub use card_designs::{CardDesignRow, CardUploadRow};
 pub use character::OutfitRow;

@@ -22,6 +22,9 @@ const WALK_LOCK: Duration = Duration::minutes(45);
 /// [`OTHER_TABLES`], [`ID_LISTS`], [`CLEARED_COLUMNS`], [`DAILY_LIMITS`], [`ANONYMISED`] or [`ZEROED_COLUMNS`]) before it
 /// can ship.
 pub const USER_COLUMNS: &[(&str, &str)] = &[
+    ("birthdays", "user_id"),
+    ("birthday_sent", "user_id"),
+    ("birthday_gift_years", "user_id"),
     ("automod_hits", "user_id"),
     ("automod_strikes", "user_id"),
     ("placements", "user_id"),
@@ -175,6 +178,7 @@ pub const ZEROED_COLUMNS: &[(&str, &str)] = &[
 
 /// Tables that belong to no player: server settings and shared stock.
 pub const OTHER_TABLES: &[&str] = &[
+    "birthday_settings",
     "automod_settings",
     "automod_rules",
     "automod_hit_actions",

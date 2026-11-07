@@ -124,6 +124,7 @@ pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, res
     if cx.interaction.kind == InteractionType::ApplicationCommandAutocomplete {
         if let Some(InteractionData::ApplicationCommand(command)) = data {
             let choices = match command.name.as_str() {
+                "birthday" | "birthdays" => commands::birthdays::autocomplete(&command),
                 "tag" | "customcommand" => commands::tag::autocomplete(&cx, &command).await,
                 _ => commands::modules::autocomplete(cx.lang(), &command),
             };
@@ -168,7 +169,9 @@ pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, res
 }
 
 mod automod;
+mod birthdays;
 pub use automod::{
     check_config_roles as check_automod_roles, on_native_execution as on_automod_execution,
     on_native_rule_change as on_automod_rule_change, spawn_ticker as spawn_automod_ticker, sync_guild as sync_automod,
 };
+pub use birthdays::{spawn_ticker as spawn_birthdays_ticker, tick as birthdays_tick};

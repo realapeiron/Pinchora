@@ -19,6 +19,7 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
     }
     let mut parts = custom_id.split(':');
     match parts.next() {
+        Some("bd") => crate::commands::birthdays::on_component(cx, parts).await,
         Some("am") => crate::commands::automod::on_component(cx, "am", parts, values).await,
         Some("ax") => crate::commands::automod::on_component(cx, "ax", parts, values).await,
         Some("lb") => leaderboard::on_button(cx, parts).await,

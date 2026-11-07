@@ -1,0 +1,101 @@
+.birthdays-page .birthday-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.3rem 1.6rem;
+  margin: 1.5rem 0;
+}
+.birthdays-page .birthday-message {
+  width: 100%;
+  min-height: 7rem;
+  resize: vertical;
+}
+.birthdays-page .birthday-chips {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.5rem 0 1.5rem;
+}
+.birthdays-page .birthday-preview {
+  display: grid;
+  grid-template-columns: 210px 1fr;
+  align-items: center;
+  gap: 2rem;
+  min-height: 220px;
+  margin-top: 1.4rem;
+  padding: 1.7rem;
+  border: 3px solid var(--color-accent, #73cdbd);
+  background: linear-gradient(125deg, #153944, #10262e);
+  box-shadow: 6px 6px 0 #08191d;
+}
+.birthday-preview h3 {
+  font-size: 2rem;
+  margin: 0.4rem 0;
+  color: #fff4d6;
+}
+.birthday-preview p {
+  color: #d9e5de;
+}
+.birthday-ribbon {
+  color: #fbd281;
+  font-family: var(--font-pixel, monospace);
+  font-size: 0.8rem;
+}
+.birthday-cake {
+  position: relative;
+  height: 120px;
+  width: 150px;
+  margin: auto;
+  border-bottom: 14px solid #e5ac73;
+  background: linear-gradient(to bottom, transparent 30%, #f9d594 30% 40%, #eea77d 40% 90%, #87585c 90%);
+  clip-path: polygon(10% 25%, 90% 25%, 90% 95%, 100% 95%, 100% 100%, 0 100%, 0 95%, 10% 95%);
+}
+.birthday-cake i,
+.birthday-cake b,
+.birthday-cake strong {
+  position: absolute;
+  top: 0;
+  width: 12px;
+  height: 29px;
+  background: #ffdb70;
+}
+.birthday-cake i {
+  left: 32px;
+}
+.birthday-cake b {
+  left: 70px;
+}
+.birthday-cake strong {
+  left: 108px;
+}
+.birthday-upcoming {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.birthday-upcoming li {
+  display: grid;
+  grid-template-columns: 90px 1fr auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.8rem 0;
+  border-top: 1px solid #34525c;
+}
+.birthday-upcoming time {
+  color: #fbd281;
+  font-weight: 700;
+}
+@media (max-width: 680px) {
+  .birthdays-page .birthday-fields {
+    grid-template-columns: 1fr;
+  }
+  .birthdays-page .birthday-preview {
+    grid-template-columns: 1fr;
+    text-align: center;
+    padding: 1.2rem;
+  }
+  .birthday-upcoming li {
+    grid-template-columns: 75px 1fr;
+  }
+  .birthday-upcoming .pixel-label {
+    display: none;
+  }
+}

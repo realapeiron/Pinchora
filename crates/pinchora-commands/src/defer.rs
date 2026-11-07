@@ -33,6 +33,8 @@ pub enum Deferral {
 /// command, and the simulator that nothing listed here ever answers publicly.
 const PRIVATE: &[&str] = &[
     "autoroles",
+    "birthday",
+    "birthdays",
     "beachcomb",
     "bio",
     "case",
