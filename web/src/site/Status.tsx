@@ -8,7 +8,6 @@ export interface PublicStatus {
   servers: number;
   approximate_members: number;
   players: number;
-  channels: number;
   shards: { id: number; total: number; latency_ms: number | null; guilds: number }[];
   uptime_seconds: number;
   version: string;
@@ -66,7 +65,6 @@ export function StatusPage() {
     [t("Servers"), number(data.servers)],
     [t("Approx. members"), `≈${number(data.approximate_members)}`],
     [t("Players"), number(data.players)],
-    [t("Channels"), number(data.channels)],
     [t("Shards"), number(data.shards.length)],
     [
       t("Uptime"),

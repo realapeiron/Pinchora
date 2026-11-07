@@ -1083,6 +1083,10 @@ consume the daily allowance; replace changes only members present in the importe
    docker compose up -d
    ```
 
+   For a deploy with the source commit on `/info`, build the image with
+   `GIT_SHA=$(git rev-parse --short HEAD) docker compose build`, then run
+   `docker compose up -d`. Compose uses `dev` when `GIT_SHA` is unset.
+
 4. Register the slash commands (to `PINCHORA_DISCORD__DEV_GUILD_ID` if set, else globally):
 
    ```bash

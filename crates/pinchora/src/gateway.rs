@@ -29,6 +29,13 @@ use twilight_model::gateway::{
 /// Discord keeps a closed session resumable for a short while; a rolling restart
 /// must come back within this window to skip a full identify.
 const SESSION_TTL: Duration = Duration::from_secs(240);
+const GUILD_REFRESH: Duration = Duration::from_secs(600);
+
+#[derive(Clone)]
+struct GuildCounts {
+    started: Instant,
+    by_shard: HashMap<u32, HashMap<u64, u64>>,
+}
 
 fn wanted_events() -> EventTypeFlags {
     // Only events we handle get deserialized. GUILD_CREATE is the costly one (the whole server in one
@@ -151,6 +158,7 @@ pub async fn run(config: &Config, app: Arc<App>, ready: Readiness) -> anyhow::Re
         .build();
 
     let (stop, stopped) = watch::channel(false);
+    let (counts_tx, counts_rx) = watch::channel(None::<GuildCounts>);
     let mut tasks = Vec::with_capacity(ids.len());
     let process_shard_id = ids.first().map(|first| first.number());
     for id in ids {
@@ -176,14 +184,36 @@ pub async fn run(config: &Config, app: Arc<App>, ready: Readiness) -> anyhow::Re
             stopped.clone(),
             process_shard_id == Some(id.number()),
             total,
+            counts_rx.clone(),
         )));
     }
+    let counts_app = app.clone();
+    let counts_task = tokio::spawn(async move {
+        let mut delay = Duration::ZERO;
+        loop {
+            tokio::time::sleep(delay).await;
+            let started = Instant::now();
+            match pinchora_commands::status::fetch_guild_counts(&counts_app.http, total).await {
+                Ok(by_shard) => {
+                    delay = GUILD_REFRESH;
+                    if counts_tx.send(Some(GuildCounts { started, by_shard })).is_err() {
+                        break;
+                    }
+                }
+                Err(error) => {
+                    delay = Duration::from_secs(30);
+                    tracing::warn!(%error, "guild status refresh failed");
+                }
+            }
+        }
+    });
     ready.set(true);
 
     telemetry::shutdown_signal().await;
     ready.set(false);
     tracing::info!("shutdown requested; closing shards with RESUME");
     let _ = stop.send(true);
+    counts_task.abort();
     for task in tasks {
         match tokio::time::timeout(Duration::from_secs(10), task).await {
             Ok(Ok((shard, Some(session)))) => {
@@ -208,28 +238,53 @@ async fn run_shard(
     mut stopped: watch::Receiver<bool>,
     process_shard: bool,
     total: u32,
+    mut counts: watch::Receiver<Option<GuildCounts>>,
 ) -> (u32, Option<StoredSession>) {
     let id = shard.id().number();
     let flags = wanted_events();
     let mut closing = false;
     let started = Instant::now();
-    let mut guilds: HashMap<u64, (u64, u64)> = HashMap::new();
+    let mut guilds: HashMap<u64, u64> = HashMap::new();
+    let mut changes = HashMap::<u64, (Instant, Option<u64>)>::new();
+    let mut counts_ready = false;
+    let mut counts_open = true;
     let mut heartbeat = tokio::time::interval(Duration::from_secs(30));
     loop {
         tokio::select! {
             _ = heartbeat.tick() => {
+                if !counts_ready {
+                    continue;
+                }
                 let health = pinchora_commands::status::ShardHealth {
                     id,
                     total,
                     latency_ms: shard.latency().recent().first().map(|d| d.as_millis() as u64),
                     guilds: guilds.len() as u64,
-                    members: guilds.values().map(|(members, _)| members).sum(),
-                    channels: guilds.values().map(|(_, channels)| channels).sum(),
+                    members: guilds.values().sum(),
                     rss_mb: if process_shard { pinchora_commands::status::process_rss_mb() } else { 0 },
                     uptime_seconds: started.elapsed().as_secs(),
                 };
                 if let Err(error) = pinchora_commands::status::publish_shard(&app.cache, &health).await {
                     tracing::debug!(shard = id, %error, "status heartbeat failed");
+                }
+            }
+            changed = counts.changed(), if counts_open => {
+                if changed.is_ok() {
+                    if let Some(fresh) = counts.borrow_and_update().as_ref() {
+                        guilds = fresh.by_shard.get(&id).cloned().unwrap_or_default();
+                        changes.retain(|_, (at, _)| *at >= fresh.started);
+                        for (guild, (_, members)) in &changes {
+                            if let Some(members) = members {
+                                guilds.insert(*guild, *members);
+                            } else {
+                                guilds.remove(guild);
+                            }
+                        }
+                        counts_ready = true;
+                        heartbeat = tokio::time::interval(Duration::from_secs(30));
+                    }
+                } else {
+                    counts_open = false;
                 }
             }
             changed = stopped.changed(), if !closing => {
@@ -245,10 +300,15 @@ async fn run_shard(
                     match &event {
                         Event::GuildCreate(event) => {
                             if let twilight_model::gateway::payload::incoming::GuildCreate::Available(guild) = &**event {
-                                guilds.insert(guild.id.get(), (guild.approximate_member_count.or(guild.member_count).unwrap_or(0), guild.channels.len() as u64));
+                                let members = guild.approximate_member_count.or(guild.member_count).unwrap_or(0);
+                                guilds.insert(guild.id.get(), members);
+                                changes.insert(guild.id.get(), (Instant::now(), Some(members)));
                             }
                         }
-                        Event::GuildDelete(event) => { guilds.remove(&event.id.get()); }
+                        Event::GuildDelete(event) => {
+                            guilds.remove(&event.id.get());
+                            changes.insert(event.id.get(), (Instant::now(), None));
+                        }
                         _ => {}
                     }
                     dispatch(&app, id, event);

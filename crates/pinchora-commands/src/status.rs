@@ -1,12 +1,22 @@
 //! Public bot health snapshot. Gateway pods publish expiring shard records; readers never trust
 //! a stale pod and never expose configuration, host names, tokens or connection strings.
 
-use std::{collections::BTreeMap, sync::LazyLock, time::Duration};
+use std::{
+    collections::{BTreeMap, HashMap},
+    sync::LazyLock,
+    time::Duration,
+};
 
 use pinchora_cache::Cache;
 use pinchora_db::Db;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use tokio::sync::Mutex;
+use twilight_http::{
+    Client,
+    request::{Method, RequestBuilder},
+    response::marker::ListBody,
+};
 
 const SHARD_PREFIX: &str = "pinchora:status:shard:";
 const SNAPSHOT_KEY: &str = "public:status:v1";
@@ -20,7 +30,6 @@ pub struct ShardHealth {
     pub latency_ms: Option<u64>,
     pub guilds: u64,
     pub members: u64,
-    pub channels: u64,
     pub rss_mb: u64,
     pub uptime_seconds: u64,
 }
@@ -30,7 +39,6 @@ pub struct PublicStatus {
     pub servers: u64,
     pub approximate_members: u64,
     pub players: u64,
-    pub channels: u64,
     pub shards: Vec<ShardHealth>,
     pub uptime_seconds: u64,
     pub version: String,
@@ -60,6 +68,41 @@ pub fn format_number(n: u64, turkish: bool) -> String {
         out.push(ch);
     }
     out
+}
+
+/// Enumerate the bot's guilds through Twilight's rate-limited client. The typed endpoint does
+/// not expose `with_counts`, so use its raw request path and decode just the fields we need.
+pub async fn fetch_guild_counts(http: &Client, total: u32) -> anyhow::Result<HashMap<u32, HashMap<u64, u64>>> {
+    let mut guilds: HashMap<u32, HashMap<u64, u64>> = HashMap::new();
+    let mut after = None;
+    loop {
+        let path = match after {
+            Some(id) => format!("users/@me/guilds?with_counts=true&limit=200&after={id}"),
+            None => "users/@me/guilds?with_counts=true&limit=200".to_owned(),
+        };
+        let request = RequestBuilder::raw(Method::Get, path).build()?;
+        let page: Vec<Value> = http.request::<ListBody<Value>>(request).await?.models().await?;
+        let count = page.len();
+        if count == 0 {
+            break;
+        }
+        for guild in page {
+            let id: u64 = guild["id"]
+                .as_str()
+                .ok_or_else(|| anyhow::anyhow!("guild list missing id"))?
+                .parse()?;
+            let members = guild["approximate_member_count"]
+                .as_u64()
+                .ok_or_else(|| anyhow::anyhow!("guild {id} missing approximate_member_count"))?;
+            let shard = ((id >> 22) % u64::from(total.max(1))) as u32;
+            guilds.entry(shard).or_default().insert(id, members);
+            after = Some(after.map_or(id, |previous: u64| previous.max(id)));
+        }
+        if count < 200 {
+            break;
+        }
+    }
+    Ok(guilds)
 }
 
 /// Linux procfs reports kB. On other platforms or inaccessible procfs the measurement is absent.
@@ -203,7 +246,6 @@ pub async fn snapshot(db: &Db, cache: &Cache, application_id: u64, public_url: &
         servers: shards.iter().map(|s| s.guilds).sum(),
         approximate_members: shards.iter().map(|s| s.members).sum(),
         players,
-        channels: shards.iter().map(|s| s.channels).sum(),
         uptime_seconds: shards.iter().map(|s| s.uptime_seconds).max().unwrap_or(0),
         rss_mb: shards.iter().map(|s| s.rss_mb).sum(),
         shards,

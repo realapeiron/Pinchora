@@ -216,10 +216,17 @@ async fn bot_card(cx: &Cx) -> anyhow::Result<()> {
     .await;
     let tr = cx.lang() == pinchora_core::i18n::Lang::Tr;
     let number = |n| format_number(n, tr);
-    let duration = format!("{}h {}m", s.uptime_seconds / 3600, s.uptime_seconds / 60 % 60);
+    let duration = t!(
+        cx.lang(),
+        "info.bot-uptime-value",
+        hours = s.uptime_seconds / 3600,
+        minutes = s.uptime_seconds / 60 % 60
+    );
     let this_shard = cx.guild_id().and_then(|guild| {
         let total = s.shards.first()?.total.max(1);
-        s.shards.iter().find(|shard| shard.id == (guild >> 22) as u32 % total)
+        s.shards
+            .iter()
+            .find(|shard| shard.id == ((guild >> 22) % u64::from(total)) as u32)
     });
     let latency = this_shard
         .and_then(|shard| shard.latency_ms)
@@ -228,7 +235,6 @@ async fn bot_card(cx: &Cx) -> anyhow::Result<()> {
         row(t!(cx.lang(), "info.bot-servers"), number(s.servers)),
         row(t!(cx.lang(), "info.bot-members"), number(s.approximate_members)),
         row(t!(cx.lang(), "info.bot-players"), number(s.players)),
-        row(t!(cx.lang(), "info.bot-channels"), number(s.channels)),
         row(t!(cx.lang(), "info.bot-shards"), number(s.shards.len() as u64)),
         row(
             t!(cx.lang(), "info.bot-this-shard"),

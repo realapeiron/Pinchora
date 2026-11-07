@@ -22,7 +22,6 @@ const status: PublicStatus = {
   servers: 1234,
   approximate_members: 54321,
   players: 28000,
-  channels: 8000,
   shards: [{ id: 3, total: 8, latency_ms: 42, guilds: 100 }],
   uptime_seconds: 3660,
   version: "e814163 · 2026-11-07",

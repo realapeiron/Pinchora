@@ -3,6 +3,51 @@
 use super::*;
 
 #[tokio::test]
+async fn resumed_gateway_status_uses_rest_guild_counts() {
+    let Some(sim) = Sim::new("resumed_gateway_status_uses_rest_guild_counts").await else {
+        return;
+    };
+    let base = 1_u64 << 22;
+    let guilds: Vec<Value> = (1..=201)
+        .map(|n| json!({ "id": (base * n).to_string(), "approximate_member_count": n }))
+        .collect();
+    *sim.mock.bot_guilds.lock().unwrap() = guilds;
+    let counts = pinchora_commands::status::fetch_guild_counts(&sim.app.http, 1)
+        .await
+        .unwrap();
+    let own = &counts[&0];
+    assert_eq!(own.len(), 201);
+    {
+        let queries = sim.mock.bot_guild_queries.lock().unwrap();
+        assert_eq!(queries.len(), 2);
+        assert!(
+            queries
+                .iter()
+                .all(|query| query.contains("with_counts=true") && query.contains("limit=200"))
+        );
+        assert!(queries[1].contains(&format!("after={}", base * 200)));
+    }
+    pinchora_commands::status::publish_shard(
+        &sim.app.cache,
+        &pinchora_commands::status::ShardHealth {
+            id: 0,
+            total: 1,
+            guilds: own.len() as u64,
+            members: own.values().sum(),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    sim.app.cache.forget("public:status:v1").await.unwrap();
+    let status =
+        pinchora_commands::status::snapshot(&sim.app.db, &sim.app.cache, APPLICATION_ID, "https://example.test").await;
+    assert_eq!(status.servers, 201);
+    assert_eq!(status.approximate_members, 201 * 202 / 2);
+    assert!(serde_json::to_value(status).unwrap().get("channels").is_none());
+}
+
+#[tokio::test]
 async fn info_cards_render_and_hide_private_profile_data() {
     let Some(mut sim) = Sim::new("info_cards_render_and_hide_private_profile_data").await else {
         return;
