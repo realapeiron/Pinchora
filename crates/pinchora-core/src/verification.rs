@@ -156,9 +156,15 @@ mod tests {
     }
 }
 
-/// Excludes 0/O, 1/I/L, 5/S and 2/Z, including case-insensitive lookalikes.
-pub const CAPTCHA_ALPHABET: &[u8] = b"ABCDEFGHJKMNPQRTUVWXY346789";
+/// One readable choice per lookalike group in the Silkscreen font.
+pub const CAPTCHA_ALPHABET: &[u8] = b"ACDEFHJKPRTUXY34";
 #[test]
 fn captcha_alphabet_has_no_ambiguous_pairs() {
-    assert!(CAPTCHA_ALPHABET.iter().all(|c| !b"0O1IL5S2Z".contains(c)));
+    assert_eq!(CAPTCHA_ALPHABET.len(), 16);
+    assert!(CAPTCHA_ALPHABET.iter().all(|c| !b"0OQ1IL75S2Z8B6G9VWMN".contains(c)));
+    assert!(
+        CAPTCHA_ALPHABET
+            .iter()
+            .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
+    );
 }

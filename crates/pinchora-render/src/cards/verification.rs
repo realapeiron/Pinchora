@@ -2,6 +2,7 @@
 use crate::{Renderer, Theme, svg};
 use pinchora_core::{i18n::Lang, t};
 use std::fmt::Write;
+const GLYPH_SIZE: u32 = 92;
 pub struct CaptchaCard<'a> {
     pub answer: &'a str,
     pub seed: u64,
@@ -29,53 +30,55 @@ impl CaptchaCard<'_> {
             seed ^= seed << 17;
             seed
         };
-        // Near-ink clutter survives simple colour thresholding. Clip every distortion to the well.
+        // Clutter stays in narrow bands above and below the letters.
         out.push_str(r#"<defs><clipPath id="well"><rect x="44" y="80" width="552" height="118"/></clipPath></defs><g clip-path="url(#well)">"#);
-        for _ in 0..140 {
-            let x = 46 + next() % 545;
-            let y = 84 + next() % 108;
-            let size = 2 + next() % 4;
-            let opacity = 0.3 + (next() % 50) as f32 / 100.;
+        for _ in 0..80 {
+            let x = 48 + next() % 540;
+            let y = if next() % 2 == 0 {
+                84 + next() % 9
+            } else {
+                190 + next() % 5
+            };
+            let size = 1 + next() % 3;
+            let opacity = 0.35 + (next() % 30) as f32 / 100.;
             let _ = write!(
                 out,
                 r#"<rect x="{x}" y="{y}" width="{size}" height="{size}" fill="{}" opacity="{opacity}"/>"#,
-                theme.ink
+                theme.muted
             );
         }
-        // Incomplete pixel strokes resemble glyph parts, without introducing extra readable letters.
-        for _ in 0..18 {
-            let x = 55 + next() % 520;
-            let y = 90 + next() % 90;
-            let w = 7 + next() % 14;
-            let h = 5 + next() % 12;
+        for _ in 0..12 {
+            let x = 56 + next() % 520;
+            let y = if next() % 2 == 0 { 86 } else { 191 };
+            let w = 5 + next() % 9;
             let _ = write!(
                 out,
-                r#"<path d="M{x} {y} h{w} v{h}" fill="none" stroke="{}" stroke-width="3" opacity="0.6"/>"#,
-                theme.ink
+                r#"<path d="M{x} {y} h{w}" fill="none" stroke="{}" stroke-width="1.5" opacity="0.55"/>"#,
+                theme.muted
             );
         }
         let phase = (next() % 628) as f32 / 100.;
         for (i, glyph) in self.answer.chars().take(5).enumerate() {
-            let x = 103 + i as i32 * 102 + (next() % 23) as i32 - 11;
-            let wave = (phase + i as f32 * 1.4).sin() * 12.;
-            let y = 151 + wave as i32 + (next() % 13) as i32 - 6;
-            let rotation = (next() % 33) as i32 - 16;
-            let sx = 0.88 + (next() % 25) as f32 / 100.;
-            let sy = 0.9 + (next() % 24) as f32 / 100.;
+            let x = 101 + i as i32 * 107 + (next() % 9) as i32 - 4;
+            let wave = (phase + i as f32 * 1.4).sin() * 6.;
+            let y = 174 + wave as i32 + (next() % 7) as i32 - 3;
+            let rotation = (next() % 15) as i32 - 7;
+            let sx = 0.98 + (next() % 7) as f32 / 100.;
+            let sy = 0.96 + (next() % 9) as f32 / 100.;
             let text = svg::escape(&glyph.to_string());
+            let left = svg::pixel_width(&text, GLYPH_SIZE as f32) / -2.;
             let _ = write!(
                 out,
-                r#"<g transform="translate({x},{y}) rotate({rotation}) scale({sx},{sy})"><text x="-22" fill="{}" font-family="Silkscreen" font-size="56">{text}</text></g>"#,
+                r#"<g transform="translate({x},{y}) rotate({rotation}) scale({sx},{sy})"><text x="{left}" fill="{}" font-family="Silkscreen" font-size="{GLYPH_SIZE}">{text}</text></g>"#,
                 theme.ink
             );
         }
-        // Same-colour crossings connect glyph strokes; thin enough to retain human readability.
-        for line in 0..3 {
-            let y = 112 + line * 18 + (next() % 13) as i32;
-            let bend = (next() % 39) as i32 - 19;
+        for line in 0..2 {
+            let y = 132 + line * 28 + (next() % 7) as i32 - 3;
+            let bend = (next() % 11) as i32 - 5;
             let _ = write!(
                 out,
-                r#"<path d="M48 {y} Q190 {} 318 {y} T592 {}" fill="none" stroke="{}" stroke-width="2.5"/>"#,
+                r#"<path d="M48 {y} Q190 {} 318 {y} T592 {}" fill="none" stroke="{}" stroke-width="1.25" opacity="0.65"/>"#,
                 y + bend,
                 y - bend,
                 theme.ink
@@ -95,11 +98,27 @@ impl Renderer {
 mod tests {
     use super::*;
     #[test]
+    fn captcha_alphabet_and_glyph_size_are_readable() {
+        assert_eq!(pinchora_core::verification::CAPTCHA_ALPHABET, b"ACDEFHJKPRTUXY34");
+        assert_eq!(GLYPH_SIZE, 92);
+        assert!(GLYPH_SIZE as f32 / 56. >= 1.6);
+        assert!(GLYPH_SIZE as f32 / 56. <= 1.8);
+    }
+    #[test]
     fn verification_cards_render_in_both_languages() {
         for lang in [Lang::En, Lang::Tr] {
-            for (sample, (answer, seed)) in [("A7K3M", 12345), ("R8H6V", 987654), ("N4X9E", 54321)]
-                .into_iter()
-                .enumerate()
+            for (sample, (answer, seed)) in [
+                ("ACDEF", 12345),
+                ("HJKPR", 987654),
+                ("TUXY3", 54321),
+                ("4APCX", 333333),
+                ("D3FHK", 98765),
+                ("RJ4TU", 24680),
+                ("XEYCA", 13579),
+                ("KPR34", 555555),
+            ]
+            .into_iter()
+            .enumerate()
             {
                 let card = CaptchaCard { answer, seed, lang };
                 let svg = card.to_svg();
