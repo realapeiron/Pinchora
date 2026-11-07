@@ -115,7 +115,20 @@ pub fn check_edit(old: &Config, next: &Config, owner: u64, actor: u64, lang: Lan
     validate(next, lang)?;
     if !may_configure(old, owner, actor)
         || (actor != owner
-            && (old.trusted_users != next.trusted_users || old.owner_only_config != next.owner_only_config))
+            && (old.trusted_users != next.trusted_users
+                || old.owner_only_config != next.owner_only_config
+                || (old.enabled && !next.enabled)
+                || old.response != next.response
+                || old.quarantine_role_id != next.quarantine_role_id
+                || old.log_channel_id != next.log_channel_id
+                || old.vip_roles.iter().any(|r| !next.vip_roles.contains(r))
+                || (old.auto_restore && !next.auto_restore)
+                || (old.revert_vip_bans && !next.revert_vip_bans)
+                || (old.remove_bots && !next.remove_bots)
+                || old
+                    .limits
+                    .iter()
+                    .any(|(k, l)| next.limits[k].count > l.count || next.limits[k].window_secs < l.window_secs)))
     {
         return Err(t!(lang, "anti_nuke.owner_only"));
     }
@@ -139,6 +152,38 @@ mod tests {
         assert!(exempt(&c, 1, 3, 1));
         assert!(exempt(&c, 1, 3, 3));
         assert!(!exempt(&c, 1, 3, 2));
+    }
+    #[test]
+    fn trusted_staff_cannot_weaken_owner_protections() {
+        let old = Config {
+            enabled: true,
+            owner_only_config: false,
+            trusted_users: vec!["2".into()],
+            vip_roles: vec!["3".into()],
+            auto_restore: true,
+            revert_vip_bans: true,
+            remove_bots: true,
+            ..Config::default()
+        };
+        for change in 0..8 {
+            let mut next = old.clone();
+            match change {
+                0 => next.enabled = false,
+                1 => next.vip_roles.clear(),
+                2 => next.trusted_users.push("4".into()),
+                3 => next.auto_restore = false,
+                4 => next.revert_vip_bans = false,
+                5 => next.remove_bots = false,
+                6 => next.limits.get_mut("ban").unwrap().count += 1,
+                _ => next.limits.get_mut("ban").unwrap().window_secs -= 1,
+            }
+            assert!(check_edit(&old, &next, 1, 2, Lang::En).is_err(), "change {change}");
+            assert!(check_edit(&old, &next, 1, 1, Lang::En).is_ok(), "owner change {change}");
+        }
+        let mut next = old.clone();
+        next.vip_roles.push("4".into());
+        next.limits.get_mut("ban").unwrap().count = 1;
+        assert!(check_edit(&old, &next, 1, 2, Lang::En).is_ok());
     }
     #[test]
     fn limits_and_permission_deltas() {

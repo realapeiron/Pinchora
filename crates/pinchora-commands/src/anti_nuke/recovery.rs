@@ -12,11 +12,11 @@ use twilight_model::{
 /// Restore one incident window, scoped by guild and actor. A REST request with an uncertain outcome
 /// is never automatically retried: the durable claim remains failed for staff inspection.
 pub async fn restore(app: &App, guild: u64, id: i64, actor: u64, automatic: bool) -> anyhow::Result<String> {
+    let lang = app.guild_lang(guild).await;
+    let _guard = app.db.lock_antinuke(guild).await?;
     if !automatic {
         safety::authorize(app, guild, actor).await?;
     }
-    let lang = app.guild_lang(guild).await;
-    let _guard = app.db.lock_antinuke(guild).await?;
     let root = app
         .db
         .antinuke_event(guild, id)
@@ -41,27 +41,49 @@ pub async fn restore(app: &App, guild: u64, id: i64, actor: u64, automatic: bool
     {
         anyhow::bail!(t!(lang, "anti_nuke.exempt"));
     }
-    let window = c.limits[&root.kind].window_secs;
+    if !app
+        .guild_modules(guild)
+        .await?
+        .rule(pinchora_core::modules::Module::AntiNuke)
+        .enabled
+    {
+        anyhow::bail!(t!(lang, "anti_nuke.off"));
+    }
+    let window = root.details["window_secs"]
+        .as_u64()
+        .and_then(|n| u32::try_from(n).ok())
+        .filter(|n| (5..=300).contains(n))
+        .ok_or_else(|| anyhow::anyhow!(t!(lang, "anti_nuke.not_restorable")))?;
     let mut events = app
         .db
         .antinuke_recovery_window(guild, root.actor_id, &root.kind, root.created_at, window)
         .await?;
-    // Discord requires categories before their children; role restoration precedes channel remapping.
-    if root.kind == "channel_delete" {
+    // Insert lower positions first, otherwise a later insertion shifts previously restored
+    // roles/channels. Categories must exist before their children are remapped.
+    if matches!(root.kind.as_str(), "channel_delete" | "role_delete") {
+        let snapshot_kind = if root.kind == "channel_delete" {
+            "channel"
+        } else {
+            "role"
+        };
         let mut ordered = vec![];
         for e in events {
-            let category = if let Some(target) = e.target_id {
-                app.db
-                    .antinuke_snapshot(guild, "channel", target as u64)
-                    .await?
-                    .is_some_and(|s| s["type"] == 4)
+            let snapshot = if let Some(target) = e.target_id {
+                app.db.antinuke_snapshot(guild, snapshot_kind, target as u64).await?
             } else {
-                false
+                None
             };
-            ordered.push((!category, e));
+            let category = snapshot.as_ref().is_some_and(|s| s["type"] == 4);
+            let position = if snapshot_kind == "role" {
+                e.details["deleted_position"].as_i64()
+            } else {
+                snapshot.as_ref().and_then(|s| s["position"].as_i64())
+            }
+            .unwrap_or(i64::MAX);
+            ordered.push((!category, position, e));
         }
-        ordered.sort_by_key(|(category, _)| *category);
-        events = ordered.into_iter().map(|(_, e)| e).collect();
+        ordered.sort_by_key(|(category, position, _)| (*category, *position));
+        events = ordered.into_iter().map(|(_, _, e)| e).collect();
     }
     let mut done = 0;
     let mut failed = 0;
@@ -119,7 +141,8 @@ async fn restore_one(
         // Hold Pinchora's ban lock while checking later audit entries. External Discord actions
         // cannot take this lock, so the final audit read is as close to the unban as possible.
         let _ban = app.db.lock_ban(guild, user).await?;
-        let mut after = e.id as u64;
+        let mut after = e.id as u64 - 1;
+        let mut witnessed = false;
         for page in 0..10 {
             let log = app
                 .http
@@ -130,10 +153,16 @@ async fn restore_one(
                 .await?
                 .model()
                 .await?;
+            witnessed |= log.entries.iter().any(|other| {
+                other.id.get() == e.id as u64
+                    && other.action_type == twilight_model::guild::audit_log::AuditLogEventType::MemberBanAdd
+                    && other.target_id.map(|n| n.get()) == Some(user)
+                    && other.user_id.map(|n| n.get()) == Some(e.actor_id as u64)
+            });
             if log.entries.iter().any(|other| {
                 other.target_id.map(|n| n.get()) == Some(user)
                     && other.id.get() > e.id as u64
-                    && other.user_id.map(|n| n.get()) != Some(e.actor_id as u64)
+                    && other.action_type == twilight_model::guild::audit_log::AuditLogEventType::MemberBanAdd
             }) {
                 anyhow::bail!(t!(lang, "anti_nuke.newer_ban"));
             }
@@ -145,6 +174,9 @@ async fn restore_one(
                 anyhow::bail!(t!(lang, "anti_nuke.audit_incomplete"));
             }
             after = next;
+        }
+        if !witnessed {
+            anyhow::bail!(t!(lang, "anti_nuke.audit_incomplete"));
         }
         *attempted = true;
         match app.http.delete_ban(Id::new(guild), Id::new(user)).reason(&reason).await {
@@ -170,7 +202,18 @@ async fn restore_one(
         .await?
         .ok_or_else(|| anyhow::anyhow!(t!(lang, "anti_nuke.no_snapshot")))?;
     if kind == "role" {
-        let role: Role = serde_json::from_value(data)?;
+        let mut role: Role = serde_json::from_value(data)?;
+        // A periodic snapshot can predate a permission reduction. The deletion audit is
+        // authoritative; missing evidence must not recreate the old, broader permissions.
+        let deleted = e.details["deleted_permissions"]
+            .as_str()
+            .and_then(|s| s.parse::<u64>().ok())
+            .ok_or_else(|| anyhow::anyhow!(t!(lang, "anti_nuke.no_snapshot")))?;
+        role.permissions = Permissions::from_bits_retain(deleted);
+        role.position = e.details["deleted_position"]
+            .as_i64()
+            .filter(|p| *p > 0)
+            .ok_or_else(|| anyhow::anyhow!(t!(lang, "anti_nuke.no_snapshot")))?;
         let (roles, bot) = safety::require(app, guild, Permissions::MANAGE_ROLES, lang).await?;
         if role.id.get() == guild || role.managed || role.position >= safety::top(&roles, &bot) {
             anyhow::bail!(t!(lang, "anti_nuke.hierarchy"));
@@ -203,7 +246,13 @@ async fn restore_one(
             .reason(&reason)
             .await?;
     } else {
+        if data["deletion_snapshot"] != true {
+            anyhow::bail!(t!(lang, "anti_nuke.no_snapshot"));
+        }
         let mut channel: Channel = serde_json::from_value(data)?;
+        if channel.position.is_none() || channel.permission_overwrites.is_none() {
+            anyhow::bail!(t!(lang, "anti_nuke.no_snapshot"));
+        }
         if !matches!(
             channel.kind,
             ChannelType::GuildText
@@ -221,6 +270,13 @@ async fn restore_one(
             if overwrite.kind == PermissionOverwriteType::Role {
                 overwrite.id = Id::new(app.db.antinuke_remap(guild, "role", overwrite.id.get()).await?);
             }
+        }
+        let roles = app.http.roles(Id::new(guild)).await?.models().await?;
+        if overwrites
+            .iter()
+            .any(|o| o.kind == PermissionOverwriteType::Role && !roles.iter().any(|r| r.id.get() == o.id.get()))
+        {
+            anyhow::bail!(t!(lang, "anti_nuke.no_snapshot"));
         }
         let restored_name = t!(lang, "anti_nuke.restored_channel");
         let mut request = app
@@ -293,8 +349,13 @@ pub(super) async fn restore_member(app: &App, guild: u64, user: u64, actor: Opti
         anyhow::bail!(t!(lang, "anti_nuke.hierarchy"));
     }
     let mut restore = vec![];
-    for id in backup.role_ids {
-        let id = app.db.antinuke_remap(guild, "role", id as u64).await?;
+    for original in backup.role_ids {
+        let id = app.db.antinuke_remap(guild, "role", original as u64).await?;
+        if id != original as u64 {
+            // Deleted role denies on surviving channels are gone. Reassigning its new ID
+            // before a staff ACL review could grant access the original role did not have.
+            anyhow::bail!(t!(lang, "anti_nuke.role_acl_review"));
+        }
         let Some(role) = roles.iter().find(|r| r.id.get() == id) else {
             continue;
         };
@@ -314,6 +375,10 @@ pub(super) async fn restore_member(app: &App, guild: u64, user: u64, actor: Opti
     );
     restore.sort();
     restore.dedup();
+    // Consume before REST: an uncertain result cannot replay a grant after staff revoke it.
+    if !app.db.claim_antinuke_member_restore(guild, user).await? {
+        anyhow::bail!(t!(lang, "anti_nuke.busy"));
+    }
     app.http
         .update_guild_member(Id::new(guild), Id::new(user))
         .roles(&restore)
@@ -323,9 +388,9 @@ pub(super) async fn restore_member(app: &App, guild: u64, user: u64, actor: Opti
     Ok(())
 }
 pub async fn restore_actor_roles(app: &App, guild: u64, id: i64, actor: u64) -> anyhow::Result<String> {
-    safety::authorize(app, guild, actor).await?;
     let lang = app.guild_lang(guild).await;
     let _guard = app.db.lock_antinuke(guild).await?;
+    safety::authorize(app, guild, actor).await?;
     let event = app
         .db
         .antinuke_event(guild, id)

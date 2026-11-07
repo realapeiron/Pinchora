@@ -77,13 +77,20 @@ async fn save(
             guild,
             action: "antinuke.set",
             target: None,
-            before: json!(before),
-            after: json!(c),
+            before: audit_config(&before),
+            after: audit_config(&c),
         },
         None,
     )
     .await;
     view(&state, &managed).await
+}
+// Trust IDs belong only in the privacy-indexed configuration, never in audit JSON.
+fn audit_config(c: &Config) -> Value {
+    let mut value = json!(c);
+    value.as_object_mut().unwrap().remove("trusted_users");
+    value["trusted_count"] = json!(c.trusted_users.len());
+    value
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -139,5 +146,18 @@ async fn restore(
         pinchora_commands::restore_antinuke(&state.app, managed.id, id, managed.current.session.user_id, false)
             .await
             .map_err(|e| ApiError::blocked(e.to_string()))?;
+    audit::finish(
+        &state,
+        &managed.current.session,
+        Change {
+            guild: managed.id,
+            action: "antinuke.restore",
+            target: Some(&id.to_string()),
+            before: json!({"event":id.to_string()}),
+            after: json!({"message":message}),
+        },
+        None,
+    )
+    .await;
     Ok(Json(json!({"message":message})))
 }

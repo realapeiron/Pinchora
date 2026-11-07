@@ -1,5 +1,6 @@
 [anti_nuke]
-audit_incomplete = "Bu yasağı güvenle doğrulamak için çok fazla yeni denetim kaydı var. Elle incele."
+role_acl_review = "Yeniden oluşturulan bir rol üyelere verilmeden önce kanal izinleri incelenmeli."
+audit_incomplete = "Denetim kaydı bu yasağı güvenle doğrulamaya yetmiyor. Elle incele."
 restored_channel = "geri-yuklenen-kanal"
 invalid = "Geçerli bir işlem seç; 5–300 saniyelik sürede 1–100 işleme izin verebilirsin. En fazla 50 farklı üye veya rol eklenebilir. Karantina için güvenli bir rol gerekir."
 owner_only = "Bu ayarları ve güvenilen üye listesini yalnızca sunucu sahibi değiştirebilir."
@@ -29,8 +30,8 @@ restore_roles = "Üyenin rollerini geri ver"
 not_found = "Bu olay bu sunucuda bulunamadı."
 not_restorable = "Bu işlem otomatik geri alınamıyor. Yetkili günlüğünden inceleyebilirsin."
 busy = "Bu geri yükleme daha önce başlatılmış. Elle müdahale etmeden önce olay kaydını kontrol et."
-no_snapshot = "Güncel bir yedek bulunamadı. Yedekler yedi gün saklanır."
-newer_ban = "Başka bir yetkilinin daha sonra uyguladığı yasak var; bu yasak kaldırılmadı."
+no_snapshot = "Eksiksiz ve doğrulanmış bir yedek bulunamadı. Yedekler yedi gün saklanır."
+newer_ban = "Daha sonra uygulanmış bir yasak var; bu yasak kaldırılmadı."
 restored = "Geri yüklenen: {done}. İnceleme gereken: {failed}."
 
 [anti_nuke.ui]

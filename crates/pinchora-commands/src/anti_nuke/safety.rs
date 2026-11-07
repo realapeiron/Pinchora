@@ -65,9 +65,24 @@ pub(super) async fn require(
     }
     Ok((roles, bot))
 }
+/// Generic module switches must not bypass the owner's protection policy.
+pub async fn authorize_module(app: &App, guild: u64, actor: u64) -> anyhow::Result<()> {
+    if actor != owner(app, guild).await? {
+        anyhow::bail!(t!(app.guild_lang(guild).await, "anti_nuke.owner_only"));
+    }
+    Ok(())
+}
 pub async fn authorize(app: &App, guild: u64, actor: u64) -> anyhow::Result<()> {
     let c = app.db.antinuke_config(guild).await?;
     let lang = app.guild_lang(guild).await;
+    if !app
+        .guild_modules(guild)
+        .await?
+        .rule(pinchora_core::modules::Module::AntiNuke)
+        .enabled
+    {
+        anyhow::bail!(t!(lang, "anti_nuke.off"));
+    }
     if actor != owner(app, guild).await? && !c.trusted_users.contains(&actor.to_string()) {
         anyhow::bail!(t!(lang, "anti_nuke.trusted_only"));
     }
@@ -130,7 +145,13 @@ pub async fn save_config(app: &std::sync::Arc<App>, guild: u64, actor: u64, next
             anyhow::bail!(t!(lang, "anti_nuke.invalid"));
         }
     }
+    if next.enabled && !old.enabled {
+        app.cache
+            .antinuke_activation(guild, app.now().timestamp_millis(), true)
+            .await?;
+    }
     app.db.save_antinuke(guild, actor, next).await?;
+    app.announce_guild_change(guild).await;
     staff(app, guild, actor, "antinuke.settings", &t!(lang, "anti_nuke.saved")).await?;
     drop(_guard);
     if next.enabled {
@@ -165,19 +186,20 @@ pub(super) async fn punish(app: &App, guild: u64, actor: u64, c: &Config) -> any
     if !current.enabled || rules::exempt(&current, owner, app.application_id.get(), actor) {
         return Ok(t!(lang, "anti_nuke.exempt"));
     }
-    let actor_is_bot = if c.remove_bots {
-        app.http
-            .guild_member(Id::new(guild), Id::new(actor))
-            .await?
-            .model()
-            .await?
-            .user
-            .bot
-    } else {
-        false
-    };
-    let mut effective = c.clone();
-    if actor_is_bot {
+    let member = app
+        .http
+        .guild_member(Id::new(guild), Id::new(actor))
+        .await?
+        .model()
+        .await?;
+    if member.user.system.unwrap_or(false)
+        || (member.user.bot && protected_bot(app, guild, actor, owner, &current).await?)
+    {
+        return Ok(t!(lang, "anti_nuke.exempt"));
+    }
+    let mut effective = current.clone();
+    // remove_bot explicitly requests a kick, but only while the live switch still allows it.
+    if current.remove_bots && member.user.bot && c.remove_bots {
         effective.response = "kick".into();
     }
     let c = &effective;
@@ -266,6 +288,30 @@ pub(super) async fn punish(app: &App, guild: u64, actor: u64, c: &Config) -> any
     staff(app, guild, actor, "antinuke.response", &reason).await?;
     Ok(t!(lang, &format!("anti_nuke.response.{}", c.response)))
 }
+/// Resolve the current installation, not an old BotAdd audit after a removal/reinvite.
+/// Discord may omit integration ownership or refuse this read; both fail closed.
+async fn protected_bot(app: &App, guild: u64, user: u64, owner: u64, c: &Config) -> anyhow::Result<bool> {
+    let integrations = app.http.guild_integrations(Id::new(guild)).await?.models().await?;
+    let installer = integrations
+        .iter()
+        .find(|i| {
+            i.application
+                .as_ref()
+                .is_some_and(|a| a.bot.as_ref().is_some_and(|b| b.id.get() == user))
+        })
+        .and_then(|i| i.user.as_ref())
+        .map(|u| u.id.get());
+    Ok(installer.is_none_or(|installer| rules::exempt(c, owner, app.application_id.get(), installer)))
+}
+pub(super) async fn protected_actor(app: &App, guild: u64, actor: u64, owner: u64, c: &Config) -> anyhow::Result<bool> {
+    let member = app
+        .http
+        .guild_member(Id::new(guild), Id::new(actor))
+        .await?
+        .model()
+        .await?;
+    Ok(member.user.system.unwrap_or(false) || (member.user.bot && protected_bot(app, guild, actor, owner, c).await?))
+}
 pub(super) async fn remove_bot(app: &App, guild: u64, user: u64, c: &Config) -> anyhow::Result<()> {
     let mut c = c.clone();
     c.response = "kick".into();
@@ -284,7 +330,10 @@ pub(super) async fn remove_bot(app: &App, guild: u64, user: u64, c: &Config) -> 
     {
         anyhow::bail!(t!(lang, "anti_nuke.invalid"));
     }
-    punish(app, guild, user, &c).await?;
+    let outcome = punish(app, guild, user, &c).await?;
+    if outcome != t!(lang, "anti_nuke.response.kick") {
+        anyhow::bail!("{outcome}");
+    }
     Ok(())
 }
 pub(super) async fn staff(app: &App, guild: u64, actor: u64, action: &str, details: &str) -> anyhow::Result<()> {

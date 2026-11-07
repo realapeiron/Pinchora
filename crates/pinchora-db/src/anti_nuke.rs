@@ -169,6 +169,10 @@ impl Db {
     pub async fn antinuke_backup(&self, guild: u64, user: u64) -> anyhow::Result<Option<AntiNukeBackup>> {
         Ok(sqlx::query_as("SELECT user_id,role_ids,quarantined,restore_on_join FROM antinuke_role_backups WHERE guild_id=$1 AND user_id=$2 AND taken_at>now()-interval '7 days'").bind(sql_id(guild)).bind(sql_id(user)).fetch_optional(&self.pool).await?)
     }
+    pub async fn claim_antinuke_member_restore(&self, guild: u64, user: u64) -> anyhow::Result<bool> {
+        Ok(sqlx::query("UPDATE antinuke_role_backups SET quarantined=FALSE,restore_on_join=FALSE WHERE guild_id=$1 AND user_id=$2 AND (quarantined OR restore_on_join)")
+            .bind(sql_id(guild)).bind(sql_id(user)).execute(&self.pool).await?.rows_affected() == 1)
+    }
     pub async fn antinuke_rejoin(&self, guild: u64, user: u64, pending: bool) -> anyhow::Result<()> {
         sqlx::query("UPDATE antinuke_role_backups SET restore_on_join=$3,quarantined=CASE WHEN $3 THEN quarantined ELSE FALSE END WHERE guild_id=$1 AND user_id=$2").bind(sql_id(guild)).bind(sql_id(user)).bind(pending).execute(&self.pool).await?;
         Ok(())
@@ -195,7 +199,11 @@ impl Db {
         overwrites: &[(i64, String, String)],
     ) -> anyhow::Result<()> {
         anyhow::ensure!(
-            serde_json::to_vec(data)?.len() <= MAX_SNAPSHOT_BYTES && overwrites.len() <= 100,
+            serde_json::to_vec(&(data, overwrites))?.len() <= MAX_SNAPSHOT_BYTES
+                && overwrites.len() <= 100
+                && overwrites.iter().all(|(user, allow, deny)| *user > 0
+                    && allow.parse::<u64>().is_ok()
+                    && deny.parse::<u64>().is_ok()),
             "snapshot too large"
         );
         let previous: Vec<i64> =
@@ -212,8 +220,12 @@ impl Db {
             .bind(sql_id(guild))
             .execute(&mut *tx)
             .await?;
-        sqlx::query("INSERT INTO antinuke_snapshots(guild_id,kind,object_id,data) VALUES($1,$2,$3,$4) ON CONFLICT(guild_id,kind,object_id) DO UPDATE SET data=$4,taken_at=now() WHERE antinuke_snapshots.restored_id IS NULL").bind(sql_id(guild)).bind(kind).bind(sql_id(id)).bind(Json(data)).execute(&mut *tx).await?;
+        let mut data = data.clone();
         if kind == "channel" {
+            data["member_overwrite_count"] = serde_json::json!(overwrites.len());
+        }
+        let saved = sqlx::query("INSERT INTO antinuke_snapshots(guild_id,kind,object_id,data) VALUES($1,$2,$3,$4) ON CONFLICT(guild_id,kind,object_id) DO UPDATE SET data=$4,taken_at=now() WHERE antinuke_snapshots.restored_id IS NULL").bind(sql_id(guild)).bind(kind).bind(sql_id(id)).bind(Json(&data)).execute(&mut *tx).await?.rows_affected();
+        if kind == "channel" && saved > 0 {
             let actual: Vec<i64> =
                 sqlx::query_scalar("SELECT user_id FROM antinuke_overwrites WHERE guild_id=$1 AND channel_id=$2")
                     .bind(sql_id(guild))
@@ -245,6 +257,9 @@ impl Db {
             .bind(sql_id(id))
             .fetch_all(&self.pool)
             .await?;
+            if data["member_overwrite_count"].as_u64() != Some(rows.len() as u64) {
+                return Ok(None);
+            }
             let list = data["permission_overwrites"]
                 .as_array_mut()
                 .ok_or_else(|| anyhow::anyhow!("missing overwrites"))?;

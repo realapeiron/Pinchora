@@ -44,7 +44,7 @@ struct World {
     bot_users: Vec<u64>,
     member_roles: HashMap<u64, Vec<u64>>,
     extra_roles: Vec<Value>,
-    voice_delay: Option<(std::time::Duration, Arc<tokio::sync::Notify>)>,
+    voice_delay: Option<(Arc<tokio::sync::Notify>, Arc<tokio::sync::Notify>)>,
     review_gate: Option<Arc<tokio::sync::Barrier>>,
 }
 
@@ -80,9 +80,9 @@ async fn voice_discord(
     } else {
         None
     };
-    if let Some((duration, started)) = voice_delay {
+    if let Some((started, release)) = voice_delay {
         started.notify_one();
-        tokio::time::sleep(duration).await;
+        release.notified().await;
     }
     let gate = { world.lock().unwrap().review_gate.clone() };
     if let Some(gate) = gate {
@@ -1726,15 +1726,28 @@ async fn tempvoice_sweep_fence_survives_slow_discord_reads() {
         .await
         .unwrap();
     let started = Arc::new(tokio::sync::Notify::new());
-    v.world.lock().unwrap().voice_delay = Some((std::time::Duration::from_millis(300), started.clone()));
+    let release = Arc::new(tokio::sync::Notify::new());
+    v.world.lock().unwrap().voice_delay = Some((started.clone(), release.clone()));
     let notified = started.notified();
     let app = v.app.clone();
     let first = tokio::spawn(async move { pinchora_commands::tempvoice_tick(&app).await.unwrap() });
     tokio::time::timeout(std::time::Duration::from_secs(10), notified)
         .await
         .unwrap();
-    assert_eq!(pinchora_commands::tempvoice_tick(&v.app).await.unwrap(), 0);
+    let second_app = v.app.clone();
+    let mut second = tokio::spawn(async move { pinchora_commands::tempvoice_tick(&second_app).await.unwrap() });
+    assert!(
+        tokio::time::timeout(std::time::Duration::from_millis(100), &mut second)
+            .await
+            .is_err(),
+        "the second sweep must wait for the first sweep's Discord read"
+    );
+    // The sweep is global: unrelated old fixtures may be deleted. Its total is not a
+    // per-room assertion. Release the deterministic gate, then check this room survives.
+    v.world.lock().unwrap().voice_delay = None;
+    release.notify_one();
     first.await.unwrap();
+    second.await.unwrap();
     assert!(v.app.db.temp_room(room).await.unwrap().is_some());
 }
 

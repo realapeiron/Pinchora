@@ -10,7 +10,9 @@ use pinchora_core::{
 use pinchora_db::AntiNukeEvent;
 pub use recovery::{restore as restore_antinuke, restore_actor_roles as restore_antinuke_actor_roles};
 pub(crate) use safety::vip_refusal;
-pub use safety::{authorize as authorize_antinuke, save_config as save_antinuke_config};
+pub use safety::{
+    authorize as authorize_antinuke, authorize_module as authorize_antinuke_module, save_config as save_antinuke_config,
+};
 use serde_json::json;
 use std::{sync::Arc, time::Duration};
 use twilight_model::{
@@ -61,8 +63,18 @@ pub fn on_gateway(app: &Arc<App>, event: &Event) {
     });
 }
 async fn enabled(app: &App, guild: u64) -> anyhow::Result<Option<Config>> {
+    // Cache the off switch, including absent rows. Trust/response are always read fresh.
+    let active = app
+        .antinuke_enabled
+        .try_get_with(guild, async { app.db.antinuke_config(guild).await.map(|c| c.enabled) })
+        .await
+        .map_err(|e| anyhow::anyhow!("{e:#}"))?;
+    if !active || !app.guild_modules(guild).await?.rule(Module::AntiNuke).enabled {
+        return Ok(None);
+    }
     let c = app.db.antinuke_config(guild).await?;
-    if !c.enabled || !app.guild_modules(guild).await?.rule(Module::AntiNuke).enabled {
+    if !c.enabled {
+        app.antinuke_enabled.insert(guild, false).await;
         return Ok(None);
     }
     Ok(Some(c))
@@ -77,7 +89,7 @@ async fn gateway(app: &Arc<App>, event: Event) -> anyhow::Result<()> {
             if enabled(app, g).await?.is_none() {
                 return Ok(());
             }
-            snapshot_channel(app, g, &e).await?;
+            snapshot_channel(app, g, &e, false).await?;
             (g, Some(A::ChannelCreate), Some(e.id.get()))
         }
         Event::ChannelUpdate(e) => {
@@ -87,7 +99,7 @@ async fn gateway(app: &Arc<App>, event: Event) -> anyhow::Result<()> {
             if enabled(app, g).await?.is_none() {
                 return Ok(());
             }
-            snapshot_channel(app, g, &e).await?;
+            snapshot_channel(app, g, &e, false).await?;
             // Overwrite grants have their own audit action types, but share the channel target.
             (g, None, Some(e.id.get()))
         }
@@ -98,7 +110,7 @@ async fn gateway(app: &Arc<App>, event: Event) -> anyhow::Result<()> {
             if enabled(app, g).await?.is_none() {
                 return Ok(());
             }
-            snapshot_channel(app, g, &e).await?;
+            snapshot_channel(app, g, &e, true).await?;
             (g, Some(A::ChannelDelete), Some(e.id.get()))
         }
         Event::RoleCreate(e) => {
@@ -131,6 +143,7 @@ async fn gateway(app: &Arc<App>, event: Event) -> anyhow::Result<()> {
                 .await?
                 .is_some_and(|b| b.restore_on_join)
             {
+                let _guard = app.db.lock_antinuke(g).await?;
                 recovery::restore_member(app, g, e.user.id.get(), None).await?;
             }
             remember_member(app, g, e.user.id.get(), &e.roles).await?;
@@ -156,30 +169,40 @@ async fn gateway(app: &Arc<App>, event: Event) -> anyhow::Result<()> {
     if enabled(app, guild).await?.is_none() {
         return Ok(());
     }
-    // Audit events may arrive after the destructive gateway event. Poll 3 times over five seconds.
+    // One guild-wide batch replaces a REST request for every gateway event. Entries carry
+    // their own actor, action and target; never attribute a gateway target to the newest actor.
+    let _ = (kind, target);
+    if app
+        .cache
+        .try_cooldown(&format!("antinuke:audit-batch:{guild}"), Duration::from_secs(6))
+        .await?
+        .is_some()
+    {
+        return Ok(());
+    }
     for delay in [0, 2, 3] {
         if delay > 0 {
             tokio::time::sleep(Duration::from_secs(delay)).await;
         }
-        let mut request = app.http.audit_log(Id::new(guild)).limit(50);
-        if let Some(kind) = kind {
-            request = request.action_type(kind);
-        }
-        let log = request.await?.model().await?;
-        let mut found = false;
-        for mut entry in log.entries {
-            if target.is_some() && entry.target_id.map(|t| t.get()) != target {
-                continue;
-            }
-            if (app.now() - snowflake::timestamp(entry.id.get())).num_seconds().abs() > 15 {
-                continue;
-            }
-            entry.guild_id = Some(Id::new(guild));
-            process(app, entry).await?;
-            found = true;
-        }
-        if found {
+        if enabled(app, guild).await?.is_none() {
             break;
+        }
+        if app
+            .cache
+            .try_cooldown(&format!("antinuke:audit-fetch:{guild}"), Duration::from_secs(2))
+            .await?
+            .is_some()
+        {
+            continue;
+        }
+        let log = app.http.audit_log(Id::new(guild)).limit(100).await?.model().await?;
+        let mut entries = log.entries;
+        entries.sort_by_key(|e| e.id);
+        for mut entry in entries {
+            entry.guild_id = Some(Id::new(guild));
+            if let Err(error) = process(app, entry).await {
+                tracing::warn!(%error, guild, "anti-nuke audit entry failed; continuing the batch");
+            }
         }
     }
     Ok(())
@@ -203,8 +226,14 @@ async fn remember_member(
     }
     Ok(())
 }
-async fn snapshot_channel(app: &App, guild: u64, c: &twilight_model::channel::Channel) -> anyhow::Result<()> {
+async fn snapshot_channel(
+    app: &App,
+    guild: u64,
+    c: &twilight_model::channel::Channel,
+    deleted: bool,
+) -> anyhow::Result<()> {
     let mut data = serde_json::to_value(c)?;
+    data["deletion_snapshot"] = json!(deleted);
     let mut users = vec![];
     if let Some(overwrites) = data["permission_overwrites"].as_array_mut() {
         overwrites.retain(|o| {
@@ -222,7 +251,8 @@ async fn snapshot_channel(app: &App, guild: u64, c: &twilight_model::channel::Ch
             }
         });
     } else {
-        data["permission_overwrites"] = json!([]);
+        // Missing overwrite data is not evidence of an empty ACL.
+        return Ok(());
     }
     // Never persist message content or resolved members in structural snapshots.
     data.as_object_mut().unwrap().remove("recipients");
@@ -240,6 +270,9 @@ pub async fn seed(app: &App, guild: u64) -> anyhow::Result<()> {
     if enabled(app, guild).await?.is_none() {
         return Ok(());
     }
+    app.cache
+        .antinuke_activation(guild, app.now().timestamp_millis(), false)
+        .await?;
     for role in app
         .http
         .roles(Id::new(guild))
@@ -260,7 +293,7 @@ pub async fn seed(app: &App, guild: u64) -> anyhow::Result<()> {
         .into_iter()
         .take(500)
     {
-        snapshot_channel(app, guild, &channel).await?;
+        snapshot_channel(app, guild, &channel, false).await?;
     }
     let c = app.db.antinuke_config(guild).await?;
     if !c.vip_roles.is_empty() {
@@ -353,10 +386,23 @@ pub async fn process(app: &App, entry: AuditLogEntry) -> anyhow::Result<()> {
     let (Some(guild), Some(actor)) = (entry.guild_id.map(|n| n.get()), entry.user_id.map(|n| n.get())) else {
         return Ok(());
     };
-    let Some(config) = enabled(app, guild).await? else {
+    let Some(_) = enabled(app, guild).await? else {
         return Ok(());
     };
-    if (app.now() - snowflake::timestamp(entry.id.get())).num_seconds().abs() > 30 {
+    let age = (app.now() - snowflake::timestamp(entry.id.get())).num_milliseconds();
+    if !(0..=30_000).contains(&age) {
+        return Ok(());
+    }
+    let _guard = app.db.lock_antinuke(guild).await?;
+    let config = app.db.antinuke_config(guild).await?;
+    if !config.enabled {
+        return Ok(());
+    }
+    let activated = app
+        .cache
+        .antinuke_activation(guild, app.now().timestamp_millis(), false)
+        .await?;
+    if snowflake::timestamp(entry.id.get()).timestamp_millis() <= activated {
         return Ok(());
     }
     let owner = safety::owner(app, guild).await?;
@@ -366,6 +412,9 @@ pub async fn process(app: &App, entry: AuditLogEntry) -> anyhow::Result<()> {
     let Some(mut kind) = kind(app, guild, &entry).await? else {
         return Ok(());
     };
+    if safety::protected_actor(app, guild, actor, owner, &config).await? {
+        return Ok(());
+    }
     let target = entry.target_id.map(|n| n.get());
     let user_target = matches!(
         entry.action_type,
@@ -401,7 +450,6 @@ pub async fn process(app: &App, entry: AuditLogEntry) -> anyhow::Result<()> {
     if kind == "vip_action" && !is_vip {
         return Ok(());
     }
-    let _guard = app.db.lock_antinuke(guild).await?;
     let event = AntiNukeEvent {
         id: entry.id.get() as i64,
         guild_id: guild as i64,
@@ -415,7 +463,15 @@ pub async fn process(app: &App, entry: AuditLogEntry) -> anyhow::Result<()> {
         kind: kind.into(),
         count: 0,
         action_taken: "observed".into(),
-        details: json!({}),
+        details: json!({"window_secs":config.limits[kind].window_secs,
+        "deleted_permissions": entry.changes.iter().find_map(|change| match change {
+            AuditLogChange::Permissions {old:Some(old), ..} if entry.action_type == A::RoleDelete => Some(old.bits().to_string()),
+            _ => None,
+        }),
+        "deleted_position": entry.changes.iter().find_map(|change| match change {
+            AuditLogChange::Position {old:Some(old), ..} if entry.action_type == A::RoleDelete => Some(*old),
+            _ => None,
+        })}),
         created_at: snowflake::timestamp(entry.id.get()),
         reverted: false,
         recovery_state: "ready".into(),
@@ -432,6 +488,8 @@ pub async fn process(app: &App, entry: AuditLogEntry) -> anyhow::Result<()> {
             kind,
             entry.id.get(),
             app.now().timestamp_millis(),
+            snowflake::timestamp(entry.id.get()).timestamp_millis(),
+            activated,
             limit.window_secs,
             entry
                 .options

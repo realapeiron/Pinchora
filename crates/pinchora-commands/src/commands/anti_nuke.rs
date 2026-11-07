@@ -226,8 +226,17 @@ impl AntiNuke {
 }
 pub(crate) async fn on_component(cx: &Cx, prefix: &str, mut parts: std::str::Split<'_, char>) -> anyhow::Result<()> {
     let action = parts.next().unwrap_or("");
-    let id = parts.next().and_then(|s| s.parse::<i64>().ok()).filter(|i| *i > 0);
-    let named_guild = parts.next().and_then(|s| s.parse::<u64>().ok()).filter(|i| *i > 0);
+    let id = parts
+        .next()
+        .filter(|s| rules::valid_id(s))
+        .and_then(|s| s.parse::<i64>().ok());
+    let raw_guild = parts.next();
+    let named_guild = raw_guild
+        .filter(|s| rules::valid_id(s))
+        .and_then(|s| s.parse::<u64>().ok());
+    if parts.next().is_some() || (raw_guild.is_some() && named_guild.is_none()) {
+        return cx.reply_ephemeral(t!(cx.lang(), "anti_nuke.invalid")).await;
+    }
     let Some(guild) = cx.guild_id().or(named_guild) else {
         return cx.reply_ephemeral(t!(cx.lang(), "anti_nuke.manage")).await;
     };

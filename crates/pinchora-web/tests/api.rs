@@ -59,6 +59,8 @@ mod tickets;
 #[path = "api/feeds.rs"]
 mod feeds;
 // Temp voice: creators and the live list of rooms.
+#[path = "api/anti_nuke.rs"]
+mod anti_nuke;
 #[path = "api/tempvoice.rs"]
 mod tempvoice;
 mod xp_admin;
@@ -112,6 +114,7 @@ struct Mock {
     codes: Arc<Mutex<HashMap<String, (String, String)>>>,
     /// Servers the bot is in.
     bot_guilds: Arc<Mutex<HashSet<u64>>>,
+    guild_owners: Arc<Mutex<HashMap<u64, u64>>>,
     /// Forms posted to the token endpoint, oldest first.
     token_forms: Arc<Mutex<Vec<HashMap<String, String>>>>,
     /// Tokens revoked at logout.
@@ -440,7 +443,11 @@ async fn discord(
             }
             let id = guild.parse::<u64>().unwrap_or(0);
             if mock.bot_guilds.lock().unwrap().contains(&id) {
-                (StatusCode::OK, guild_json(id).to_string())
+                let mut guild = guild_json(id);
+                if let Some(owner) = mock.guild_owners.lock().unwrap().get(&id) {
+                    guild["owner_id"] = json!(owner.to_string());
+                }
+                (StatusCode::OK, guild.to_string())
             } else {
                 let gone = json!({ "message": "Unknown Guild", "code": 10004 });
                 (StatusCode::NOT_FOUND, gone.to_string())

@@ -728,7 +728,8 @@ site has the whole bot's totals (servers, players, houses, pets, fish, games) an
 
 `/antinuke` and **Safety → Anti-nuke** watch destructive actions per actor in rolling Redis windows.
 Protection starts disabled, with alert-only responses. The owner always stays exempt; trusted users
-are exempt too, and only the owner can edit trust. Nobody can add themselves.
+are exempt too, and only the owner can edit trust or weaken existing protections. Nobody can add themselves.
+Discord system users and owner/trusted-installed integrations are exempt; unknown integration owners fail closed.
 
 | Command | What it does |
 |---|---|
@@ -742,7 +743,8 @@ are exempt too, and only the owner can edit trust. Nobody can add themselves.
 
 Watches channel/role create and delete bursts, bans, kicks/prunes, webhook creation, dangerous role/member
 permission grants, bot additions, guild/vanity changes and emoji deletion. Gateway audit entries and
-three REST audit retries over five seconds share durable audit IDs, so replays count once. Responses:
+guild-wide REST audit batches over five seconds share durable audit IDs, so replays count once.
+Counts use the action timestamp, not delivery time. Disabled guilds use an invalidated negative cache. Responses:
 alert, strip roles and assign a safe quarantine role, kick, ban, and optional removal of attack bots.
 Pinchora checks its permissions and live role hierarchy; if it cannot act it says why in the alert.
 VIP members cannot be banned, kicked, timed out or role-stripped by Pinchora moderation; AutoMod and
@@ -751,9 +753,11 @@ warn escalations honor the same guard. External VIP bans alert immediately and c
 `an:undo:<event>:<guild>` and `vp:roles:<event>:<guild>` open a private confirmation; `an:confirm` and
 `vp:confirm` recheck owner/trust at execution. The web log also confirms recovery. Recreated roles/channels
 receive new IDs, with role/category ID remapping, overwrites and positions restored from bounded snapshots.
-A newer ban by another moderator is preserved. Safe VIP roles can return when an unbanned member rejoins.
+Every newer ban is preserved, including one by the same moderator; recovery uses the original incident window. Safe VIP roles can return when an unbanned member rejoins.
 Messages, original IDs and integration roles cannot be restored; dangerous role permissions require an
-authorized manual recovery. Uncertain REST outcomes are recorded for review and never blindly retried.
+authorized manual recovery. Incomplete/deidentified channel ACL snapshots are refused, and deleted role permissions
+and positions require deletion-audit evidence. Recreated roles need staff review of channel permissions before
+membership restoration. Uncertain REST outcomes are recorded for review and never blindly retried.
 
 Migration **0055** adds `antinuke`, `antinuke_events`, `antinuke_role_backups`, `antinuke_snapshots` and
 `antinuke_overwrites`; module **anti_nuke**, group **Safety**. Snapshots: at most 750 objects/server,

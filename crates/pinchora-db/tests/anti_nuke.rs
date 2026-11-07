@@ -42,9 +42,10 @@ async fn antinuke_privacy_cleans_actor_trust_and_member_overwrites() {
     db.delete_user_data(user, chrono::Utc::now()).await.unwrap();
     assert!(db.antinuke_config(guild).await.unwrap().trusted_users.is_empty());
     assert!(db.antinuke_backup(guild, user).await.unwrap().is_none());
-    let snapshot = db.antinuke_snapshot(guild, "channel", guild).await.unwrap().unwrap();
-    assert_eq!(snapshot["permission_overwrites"].as_array().unwrap().len(), 1);
-    assert_eq!(snapshot["permission_overwrites"][0]["id"], role.to_string());
+    assert!(
+        db.antinuke_snapshot(guild, "channel", guild).await.unwrap().is_none(),
+        "privacy erasure must not silently drop a deny overwrite on restore"
+    );
 }
 #[tokio::test]
 async fn antinuke_snapshot_and_backup_limits() {
@@ -59,6 +60,18 @@ async fn antinuke_snapshot_and_backup_limits() {
         db.backup_antinuke_roles(guild, guild, &vec![1; 251], false)
             .await
             .is_err()
+    );
+    assert!(
+        db.save_antinuke_snapshot(
+            guild,
+            "channel",
+            guild,
+            &json!({"permission_overwrites":[]}),
+            &[(guild as i64, "1".repeat(65537), "0".into())]
+        )
+        .await
+        .is_err(),
+        "normalized ACL data is bounded too"
     );
     for n in 1..=752 {
         db.save_antinuke_snapshot(guild, "role", n, &json!({"name":"bounded"}), &[])
@@ -92,4 +105,25 @@ async fn antinuke_actor_lock_bursts_do_not_exhaust_the_pool() {
     })
     .await
     .expect("contenders release pool connections");
+}
+
+#[tokio::test]
+async fn antinuke_restored_snapshots_are_immutable_and_member_grants_single_use() {
+    let Some(db) = db().await else { return };
+    let guild = unique();
+    let data = json!({"permission_overwrites":[]});
+    db.save_antinuke_snapshot(guild, "channel", guild, &data, &[(1, "0".into(), "1024".into())])
+        .await
+        .unwrap();
+    db.antinuke_restored_object(guild, "channel", guild, guild + 1)
+        .await
+        .unwrap();
+    db.save_antinuke_snapshot(guild, "channel", guild, &data, &[])
+        .await
+        .unwrap();
+    let snapshot = db.antinuke_snapshot(guild, "channel", guild).await.unwrap().unwrap();
+    assert_eq!(snapshot["permission_overwrites"][0]["deny"], "1024");
+    db.backup_antinuke_roles(guild, guild, &[123], true).await.unwrap();
+    assert!(db.claim_antinuke_member_restore(guild, guild).await.unwrap());
+    assert!(!db.claim_antinuke_member_restore(guild, guild).await.unwrap());
 }

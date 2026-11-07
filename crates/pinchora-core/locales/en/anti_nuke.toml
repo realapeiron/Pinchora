@@ -1,5 +1,6 @@
 [anti_nuke]
-audit_incomplete = "Too many newer audit entries to verify this ban safely. Review it manually."
+role_acl_review = "A recreated role needs a channel permission review before it can be assigned to members."
+audit_incomplete = "The audit log cannot verify this ban safely. Review it manually."
 restored_channel = "restored-channel"
 invalid = "Choose a valid action, 1–100 allowed actions in 5–300 seconds, and no more than 50 unique users or roles. Quarantine requires a safe role."
 owner_only = "Only the server owner can change these settings or manage trusted users."
@@ -29,8 +30,8 @@ restore_roles = "Restore actor roles"
 not_found = "This incident does not exist in this server."
 not_restorable = "This action cannot be restored automatically. Review it in the staff log."
 busy = "This recovery was already claimed. Check the event log before retrying manually."
-no_snapshot = "No recent snapshot is available. Snapshots expire after seven days."
-newer_ban = "A later ban by another moderator exists; it was left in place."
+no_snapshot = "No complete, verified snapshot is available. Snapshots expire after seven days."
+newer_ban = "A later ban exists; it was left in place."
 restored = "Restored: {done}. Needs review: {failed}."
 
 [anti_nuke.ui]
