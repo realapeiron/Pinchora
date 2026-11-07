@@ -36,14 +36,31 @@ pub fn valid_template(template: &str) -> bool {
         return false;
     }
     let stripped = template.replace("{roblox-name}", "").replace("{discord-name}", "");
-    !stripped.contains('{') && !stripped.contains('}')
+    (template.contains("{roblox-name}") || template.contains("{discord-name}"))
+        && !stripped.contains('{')
+        && !stripped.contains('}')
+        && sanitize_name(template) == template
+}
+
+fn sanitize_name(value: &str) -> String {
+    value
+        .chars()
+        .filter(|c| {
+            !c.is_control()
+                && !matches!(c,
+        '@' | '<' | '>' | '`' | '*' | '_' | '~' | '\\' | '|' | '\u{200b}' | '\u{feff}'
+        | '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}')
+        })
+        .collect()
 }
 
 pub fn nickname(template: &str, discord_name: &str, roblox_name: &str) -> String {
     use unicode_segmentation::UnicodeSegmentation;
-    let expanded = template
-        .replace("{roblox-name}", roblox_name)
-        .replace("{discord-name}", discord_name);
+    let expanded = sanitize_name(
+        &template
+            .replace("{roblox-name}", roblox_name)
+            .replace("{discord-name}", discord_name),
+    );
     let mut out = String::new();
     let mut chars = 0;
     for grapheme in expanded.graphemes(true) {
@@ -80,6 +97,16 @@ mod tests {
     fn code_is_token() {
         assert!(description_has_code("hello pinchora-crab-ab12!", "pinchora-crab-ab12"));
         assert!(!description_has_code("xxpinchora-crab-ab12yy", "pinchora-crab-ab12"));
+    }
+    #[test]
+    fn nickname_neutralizes_mentions_markup_and_controls() {
+        assert!(!valid_template("@everyone {roblox-name}"));
+        assert!(!valid_template("constant"));
+        assert_eq!(
+            nickname("{discord-name} ({roblox-name})", "<@123> **hi**\n\u{202e}", "Crab"),
+            "123 hi (Crab)"
+        );
+        assert_eq!(nickname("{discord-name}", "`~_|\\", ""), "");
     }
     #[test]
     fn nickname_is_bounded() {

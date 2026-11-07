@@ -533,6 +533,8 @@ impl Db {
                 .await?;
         sqlx::query("INSERT INTO starboard_copy_cleanup(channel_id,copy_id) SELECT b.channel_id,p.board_message_id FROM starboard_posts p JOIN starboards b ON b.id=p.starboard_id WHERE p.author_id=$1 AND p.board_message_id>0 ON CONFLICT DO NOTHING")
             .bind(id).execute(&mut **tx).await?;
+        sqlx::query("DELETE FROM roblox_cache WHERE key IN (SELECT 'groups:' || roblox_id::text FROM roblox_links WHERE user_id=$1)")
+            .bind(sql_id(user)).execute(&mut **tx).await?;
         for (table, column) in USER_COLUMNS {
             // Table and column names are the constants above.
             let rows = sqlx::query(sqlx::AssertSqlSafe(format!("DELETE FROM {table} WHERE {column} = $1")))

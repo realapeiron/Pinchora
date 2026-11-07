@@ -3,6 +3,9 @@ roblox = "Roblox"
 [module-blurb]
 roblox = "Roblox profile verification, group binds and nicknames."
 [roblox]
+cleanup-failed = "I couldn't remove your Roblox roles. No data was deleted. Try again later."
+busy = "Another Roblox update is running. Try again shortly."
+verify-cooldown = "Wait 60 seconds before starting verification again."
 join-prompt = "<@{user}>, link your Roblox account with /roblox verify to finish joining."
 guild-only = "Use this in a server."
 already-linked = "Your Discord account already has a Roblox link. Unverify it first."

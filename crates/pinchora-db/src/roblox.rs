@@ -47,6 +47,15 @@ impl Db {
             .fetch_optional(self.pool())
             .await?)
     }
+    pub async fn roblox_refresh_name(&self, user: u64, roblox: u64, name: &str) -> anyhow::Result<()> {
+        sqlx::query("UPDATE roblox_links SET roblox_name=$3 WHERE user_id=$1 AND roblox_id=$2")
+            .bind(sql_id(user))
+            .bind(sql_id(roblox))
+            .bind(name)
+            .execute(self.pool())
+            .await?;
+        Ok(())
+    }
     pub async fn roblox_link_by_id(&self, roblox: u64) -> anyhow::Result<Option<RobloxLink>> {
         Ok(sqlx::query_as("SELECT * FROM roblox_links WHERE roblox_id=$1")
             .bind(sql_id(roblox))
@@ -62,8 +71,11 @@ impl Db {
         )
     }
     pub async fn roblox_start(&self, user: u64, roblox: u64, name: &str, code: &str) -> anyhow::Result<()> {
+        let mut tx = self.pool().begin().await?;
+        crate::locks::lock_users(&mut tx, &[sql_id(user)]).await?;
         sqlx::query("INSERT INTO roblox_pending(user_id,roblox_id,roblox_name,code,expires_at) VALUES($1,$2,$3,$4,now()+interval '10 minutes') ON CONFLICT(user_id) DO UPDATE SET roblox_id=$2,roblox_name=$3,code=$4,last_check_at=NULL,expires_at=now()+interval '10 minutes'")
-            .bind(sql_id(user)).bind(sql_id(roblox)).bind(name).bind(code).execute(self.pool()).await?;
+            .bind(sql_id(user)).bind(sql_id(roblox)).bind(name).bind(code).execute(&mut *tx).await?;
+        tx.commit().await?;
         Ok(())
     }
     pub async fn roblox_check_attempt(&self, user: u64, code: &str) -> anyhow::Result<bool> {
@@ -72,6 +84,10 @@ impl Db {
     }
     pub async fn roblox_complete(&self, user: u64, pending: &RobloxPending) -> anyhow::Result<bool> {
         let mut tx = self.pool().begin().await?;
+        crate::locks::lock_users(&mut tx, &[sql_id(user)]).await?;
+        if pending.user_id != sql_id(user) {
+            return Ok(false);
+        }
         let valid: Option<i64> = sqlx::query_scalar("SELECT roblox_id FROM roblox_pending WHERE user_id=$1 AND roblox_id=$2 AND code=$3 AND expires_at>now() FOR UPDATE")
             .bind(sql_id(user)).bind(pending.roblox_id).bind(&pending.code).fetch_optional(&mut *tx).await?;
         if valid.is_none() {
@@ -98,14 +114,24 @@ impl Db {
         Ok(inserted)
     }
     pub async fn roblox_unlink(&self, user: u64) -> anyhow::Result<()> {
-        sqlx::query("DELETE FROM roblox_links WHERE user_id=$1")
-            .bind(sql_id(user))
-            .execute(self.pool())
-            .await?;
+        let mut tx = self.pool().begin().await?;
+        crate::locks::lock_users(&mut tx, &[sql_id(user)]).await?;
         sqlx::query("DELETE FROM roblox_pending WHERE user_id=$1")
             .bind(sql_id(user))
-            .execute(self.pool())
+            .execute(&mut *tx)
             .await?;
+        sqlx::query("DELETE FROM roblox_cache WHERE key IN (SELECT 'groups:' || roblox_id::text FROM roblox_links WHERE user_id=$1)")
+            .bind(sql_id(user)).execute(&mut *tx).await?;
+        sqlx::query("DELETE FROM roblox_links WHERE user_id=$1")
+            .bind(sql_id(user))
+            .execute(&mut *tx)
+            .await?;
+        // Retain already queued guilds even when the members table has no row.
+        sqlx::query("UPDATE roblox_sync SET next_update_at=now() WHERE user_id=$1")
+            .bind(sql_id(user))
+            .execute(&mut *tx)
+            .await?;
+        tx.commit().await?;
         Ok(())
     }
     pub async fn roblox_settings(&self, guild: u64) -> anyhow::Result<RobloxSettings> {
@@ -192,6 +218,10 @@ impl Db {
                 .rows_affected()
                 > 0,
         )
+    }
+    pub async fn roblox_user_guilds(&self, user: u64) -> anyhow::Result<Vec<i64>> {
+        Ok(sqlx::query_scalar("SELECT guild_id FROM roblox_sync WHERE user_id=$1 UNION SELECT s.guild_id FROM roblox_settings s JOIN members m ON m.guild_id=s.guild_id WHERE m.user_id=$1")
+            .bind(sql_id(user)).fetch_all(self.pool()).await?)
     }
     pub async fn roblox_queue_linked_guilds(&self, user: u64) -> anyhow::Result<()> {
         sqlx::query("INSERT INTO roblox_sync(guild_id,user_id,next_update_at) SELECT s.guild_id,$1,now() FROM roblox_settings s JOIN members m ON m.guild_id=s.guild_id AND m.user_id=$1 WHERE s.enabled ON CONFLICT(guild_id,user_id) DO UPDATE SET next_update_at=now()")

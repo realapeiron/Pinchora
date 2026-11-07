@@ -392,7 +392,11 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         }
     }
 
+    db.roblox_cache_put(&format!("groups:{user}"), &serde_json::json!([[42, 100]]))
+        .await
+        .unwrap();
     let deleted = db.delete_user_data(user, Utc::now()).await.unwrap();
+    assert!(db.roblox_cache(&format!("groups:{user}")).await.unwrap().is_none());
     assert!(deleted.rows >= filled.len() as u64, "{deleted:?}");
     let mut tables: Vec<&str> = filled.iter().map(|(t, _)| *t).collect();
     tables.dedup();

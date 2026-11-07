@@ -3,6 +3,9 @@ roblox = "Roblox"
 [module-blurb]
 roblox = "Roblox profil doğrulaması, grup rolleri ve takma adlar."
 [roblox]
+cleanup-failed = "Roblox rollerini kaldıramadım. Hiçbir veri silinmedi. Daha sonra yeniden dene."
+busy = "Başka bir Roblox güncellemesi sürüyor. Birazdan yeniden dene."
+verify-cooldown = "Doğrulamayı yeniden başlatmadan önce 60 saniye bekle."
 join-prompt = "<@{user}>, katılımı tamamlamak için /roblox verify ile Roblox hesabını bağla."
 guild-only = "Bunu bir sunucuda kullan."
 already-linked = "Discord hesabın zaten bir Roblox hesabına bağlı. Önce bağlantıyı kaldır."

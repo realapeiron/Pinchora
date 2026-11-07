@@ -336,6 +336,9 @@ async fn release(app: &Arc<App>, guild: u64, user: u64) -> anyhow::Result<()> {
             vec![],
         )
         .await;
+        if crate::roblox::on_join(app, guild, user, false).await {
+            return Ok(());
+        }
         if let Err(error) = resume::member(app, guild, m).await {
             tracing::warn!(guild,user,%error,"verified member welcome failed");
         }

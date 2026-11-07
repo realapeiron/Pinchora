@@ -51,7 +51,10 @@ export async function lookupRanks(guild: string, group: string) {
   return api<{ roles: { id: number; name: string; rank: number }[] }>(`${path(guild)}/groups/${group}/ranks`);
 }
 export function nicknamePreview(template: string, discordName: string, robloxName: string): string {
-  const expanded = template.replaceAll("{roblox-name}", robloxName).replaceAll("{discord-name}", discordName);
+  const expanded = template
+    .replaceAll("{roblox-name}", robloxName)
+    .replaceAll("{discord-name}", discordName)
+    .replace(/[\p{Cc}@<>`*_~\\|\u200b\ufeff\u202a-\u202e\u2066-\u2069]/gu, "");
   const segments = new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(expanded);
   let result = "";
   let chars = 0;

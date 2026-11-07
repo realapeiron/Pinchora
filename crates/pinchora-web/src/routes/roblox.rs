@@ -239,7 +239,7 @@ async fn ranks(
     let ranks = if let Some(value) = state.app.db.roblox_cache(&key).await? {
         value
     } else {
-        let value = RobloxApi::new()
+        let value = RobloxApi::with_cache(&state.app.cache)
             .ranks(id)
             .await
             .map_err(|_| ApiError::blocked(t!(lang, "roblox.web.group-failed")))?;

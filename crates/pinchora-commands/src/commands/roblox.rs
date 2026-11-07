@@ -133,24 +133,44 @@ impl RobloxCommand {
             return cx.reply_ephemeral(t!(cx.lang(), "roblox.guild-only")).await;
         };
         let me = cx.author()?.id.get();
+        let _lease = if matches!(&self, Self::Verify(_) | Self::Unverify(_)) {
+            let Some(lease) = cx
+                .app
+                .cache
+                .verification_lease(
+                    &format!("roblox:user:{me}"),
+                    &format!("{:032x}", rand::random::<u128>()),
+                )
+                .await?
+            else {
+                return cx.reply_ephemeral(t!(cx.lang(), "roblox.busy")).await;
+            };
+            Some(lease)
+        } else {
+            None
+        };
         match self {
             Self::Verify(command) => {
                 if cx.app.db.roblox_link(me).await?.is_some() {
                     return cx.reply_ephemeral(t!(cx.lang(), "roblox.already-linked")).await;
                 }
-                let (id, name) = match RobloxApi::new().lookup(&command.username).await {
+                if cx
+                    .app
+                    .cache
+                    .try_cooldown(&format!("roblox:verify:{me}"), std::time::Duration::from_secs(60))
+                    .await?
+                    .is_some()
+                {
+                    return cx.reply_ephemeral(t!(cx.lang(), "roblox.verify-cooldown")).await;
+                }
+                let (id, name) = match RobloxApi::with_cache(&cx.app.cache).lookup(&command.username).await {
                     Ok(v) => v,
                     Err(_) => return cx.reply_ephemeral(t!(cx.lang(), "roblox.not-found")).await,
                 };
                 if cx.app.db.roblox_link_by_id(id).await?.is_some() {
                     return cx.reply_ephemeral(t!(cx.lang(), "roblox.taken")).await;
                 }
-                const WORDS: &[&str] = &["crab", "shell", "reef", "pearl", "coral", "wave", "tide", "sand"];
-                let code = format!(
-                    "pinchora-{}-{:04x}",
-                    WORDS[usize::from(rand::random::<u8>()) % WORDS.len()],
-                    rand::random::<u16>()
-                );
+                let code = format!("pinchora-{me:x}-{id:x}-{:032x}", rand::random::<u128>());
                 cx.app.db.roblox_start(me, id, &name, &code).await?;
                 let button = Component::ActionRow(ActionRow {
                     id: None,
@@ -185,9 +205,27 @@ impl RobloxCommand {
                     return Ok(());
                 }
                 match cx.app.db.roblox_link(user).await? {
-                    Some(link) => {
+                    Some(mut link) => {
+                        match RobloxApi::with_cache(&cx.app.cache)
+                            .profile(link.roblox_id as u64)
+                            .await
+                        {
+                            Ok(Some(profile)) if !profile.is_banned => {
+                                cx.app
+                                    .db
+                                    .roblox_refresh_name(user, link.roblox_id as u64, &profile.name)
+                                    .await?;
+                                link.roblox_name = profile.name;
+                            }
+                            Ok(_) => return cx.reply_ephemeral(t!(cx.lang(), "roblox.no-link")).await,
+                            Err(_) => return cx.reply_ephemeral(t!(cx.lang(), "roblox.api-error")).await,
+                        }
                         let url = format!("https://www.roblox.com/users/{}/profile", link.roblox_id);
-                        let headshot = RobloxApi::new().headshot(link.roblox_id as u64).await.ok().flatten();
+                        let headshot = RobloxApi::with_cache(&cx.app.cache)
+                            .headshot(link.roblox_id as u64)
+                            .await
+                            .ok()
+                            .flatten();
                         let mut card = EmbedBuilder::new()
                             .title(&link.roblox_name)
                             .description(t!(
@@ -230,7 +268,7 @@ impl RobloxCommand {
                     return cx.reply_ephemeral(t!(cx.lang(), "roblox.cooldown")).await;
                 }
                 match crate::roblox::sync(&cx.app, guild, user).await {
-                    Ok(()) => cx.reply_ephemeral(t!(cx.lang(), "roblox.updated")).await,
+                    Ok(_) => cx.reply_ephemeral(t!(cx.lang(), "roblox.updated")).await,
                     Err(error) => {
                         tracing::warn!(%error,"Roblox manual update failed");
                         cx.reply_ephemeral(t!(cx.lang(), "roblox.update-failed")).await
@@ -272,6 +310,16 @@ impl RobloxAdmin {
                     saved.nickname_template = if v == "off" { None } else { Some(v) };
                 }
                 if let Some(v) = change.verify_channel {
+                    let channel = cx.app.http.channel(v).await?.model().await?;
+                    if channel.guild_id != Some(Id::new(guild))
+                        || !matches!(
+                            channel.kind,
+                            twilight_model::channel::ChannelType::GuildText
+                                | twilight_model::channel::ChannelType::GuildAnnouncement
+                        )
+                    {
+                        return cx.reply_ephemeral(t!(cx.lang(), "roblox.web.channel")).await;
+                    }
                     saved.verify_channel_id = Some(v.get() as i64);
                 }
                 if let Some(v) = change.require_verified {
@@ -300,8 +348,10 @@ impl RobloxAdmin {
                 let min = change.rank_min.and_then(|n| i16::try_from(n).ok());
                 let max = change.rank_max.and_then(|n| i16::try_from(n).ok());
                 let valid = match change.kind {
-                    BindKind::Verified => change.group.is_none() && min.is_none() && max.is_none(),
-                    BindKind::GroupMember => group.is_some() && min.is_none() && max.is_none(),
+                    BindKind::Verified => {
+                        change.group.is_none() && change.rank_min.is_none() && change.rank_max.is_none()
+                    }
+                    BindKind::GroupMember => group.is_some() && change.rank_min.is_none() && change.rank_max.is_none(),
                     BindKind::GroupRank => {
                         group.is_some()
                             && min.is_some_and(|v| (1..=255).contains(&v))
@@ -357,7 +407,12 @@ impl RobloxAdmin {
                         .collect::<Vec<_>>()
                         .join("\n")
                 };
-                cx.reply_ephemeral(text).await
+                cx.reply(InteractionResponseData {
+                    embeds: Some(vec![EmbedBuilder::new().description(text).build()]),
+                    flags: Some(twilight_model::channel::message::MessageFlags::EPHEMERAL),
+                    ..Default::default()
+                })
+                .await
             }
         }
     }
@@ -368,19 +423,34 @@ pub async fn on_component(cx: &Cx, mut parts: std::str::Split<'_, char>) -> anyh
         return Ok(());
     }
     let user = cx.author()?.id.get();
-    let Some(pending) = cx.app.db.roblox_pending(user).await? else {
+    let Some(_lease) = cx
+        .app
+        .cache
+        .verification_lease(
+            &format!("roblox:user:{user}"),
+            &format!("{:032x}", rand::random::<u128>()),
+        )
+        .await?
+    else {
+        return cx.reply_ephemeral(t!(cx.lang(), "roblox.busy")).await;
+    };
+    let Some(mut pending) = cx.app.db.roblox_pending(user).await? else {
         return cx.reply_ephemeral(t!(cx.lang(), "roblox.expired")).await;
     };
     if !cx.app.db.roblox_check_attempt(user, &pending.code).await? {
         return cx.reply_ephemeral(t!(cx.lang(), "roblox.check-cooldown")).await;
     }
-    let profile = match RobloxApi::new().profile(pending.roblox_id as u64).await {
-        Ok(p) => p,
-        Err(_) => return cx.reply_ephemeral(t!(cx.lang(), "roblox.api-error")).await,
+    let profile = match RobloxApi::with_cache(&cx.app.cache)
+        .profile(pending.roblox_id as u64)
+        .await
+    {
+        Ok(Some(p)) if !p.is_banned => p,
+        _ => return cx.reply_ephemeral(t!(cx.lang(), "roblox.api-error")).await,
     };
-    if !roblox::description_has_code(profile["description"].as_str().unwrap_or(""), &pending.code) {
+    if !roblox::description_has_code(&profile.description, &pending.code) {
         return cx.reply_ephemeral(t!(cx.lang(), "roblox.code-missing")).await;
     }
+    pending.roblox_name = profile.name;
     if !cx.app.db.roblox_complete(user, &pending).await? {
         return cx.reply_ephemeral(t!(cx.lang(), "roblox.taken")).await;
     }
