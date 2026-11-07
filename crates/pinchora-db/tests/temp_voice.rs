@@ -55,8 +55,28 @@ fn room(guild: u64, channel: u64, source: u64, owner: u64) -> NewTempRoom {
 async fn made(db: &Db, new: NewTempRoom) -> pinchora_db::TempRoom {
     match db.create_temp_room(new).await.unwrap() {
         RoomMake::Made(room) => room,
-        RoomMake::Full => panic!("the server is full"),
+        RoomMake::Full | RoomMake::PerUserFull => panic!("the server or owner is full"),
     }
+}
+
+#[tokio::test]
+async fn room_creation_reserves_capacity_across_concurrent_discord_calls() {
+    let Some(db) = db().await else { return };
+    let [guild, owner] = ids();
+    let reservation = db.reserve_temp_room(guild, owner).await.unwrap();
+    let raced = tokio::time::timeout(
+        std::time::Duration::from_millis(150),
+        db.reserve_temp_room(guild, owner),
+    )
+    .await;
+    assert!(raced.is_err(), "another creation passed the active reservation");
+    drop(reservation);
+    db.reserve_temp_room(guild, owner)
+        .await
+        .unwrap()
+        .commit()
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -108,6 +128,9 @@ async fn a_server_has_a_limited_number_of_creators() {
 async fn rooms_are_recorded_found_changed_and_forgotten() {
     let Some(db) = db().await else { return };
     let [guild, source, a, b, owner, other] = ids();
+    let mut setup = creator(guild, source);
+    setup.max_per_user = 2;
+    db.save_voice_creator(&setup).await.unwrap();
     let first = made(&db, room(guild, a, source, owner)).await;
     assert_eq!(first.owner_id, Some(owner as i64));
     let second = made(&db, room(guild, b, source, owner)).await;
@@ -187,7 +210,7 @@ async fn a_server_holds_a_limited_number_of_rooms() {
     let Some(db) = db().await else { return };
     let [guild, source, owner, first] = ids();
     for n in 0..MAX_ROOMS as u64 {
-        made(&db, room(guild, first + n, source, owner)).await;
+        made(&db, room(guild, first + n, source, owner + n)).await;
     }
     assert!(matches!(
         db.create_temp_room(room(guild, first + 10_000, source, owner))
@@ -204,7 +227,7 @@ async fn the_sweep_walks_old_rooms_in_batches() {
     let Some(db) = db().await else { return };
     let [guild, source, owner, first] = ids();
     for n in 0..5 {
-        made(&db, room(guild, first + n, source, owner)).await;
+        made(&db, room(guild, first + n, source, owner + n)).await;
     }
     // Rooms younger than the cut-off are left alone.
     assert!(

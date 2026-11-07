@@ -70,6 +70,10 @@ pub(crate) async fn members(app: &App, channel: u64) -> anyhow::Result<Vec<u64>>
     Ok(found)
 }
 
+pub(crate) async fn remove_from_room(app: &App, channel: u64, user: u64) -> anyhow::Result<()> {
+    app.cache.set_remove(&room_key(channel), &user.to_string()).await
+}
+
 /// Makes `channel`'s member list exactly `now`, and notes where each of them is.
 pub(crate) async fn set_members(app: &App, guild: u64, channel: u64, now: &[u64]) -> anyhow::Result<()> {
     let key = room_key(channel);

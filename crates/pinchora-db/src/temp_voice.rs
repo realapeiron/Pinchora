@@ -3,7 +3,7 @@
 use chrono::{DateTime, Utc};
 use pinchora_core::temp_voice::{MAX_CREATORS, MAX_ROOMS};
 
-use crate::{Db, sql_id};
+use crate::{Db, locks::lock_users, sql_id};
 
 /// A voice channel a server set up as a creator.
 #[derive(Debug, Clone, PartialEq, Eq, sqlx::FromRow)]
@@ -71,6 +71,7 @@ pub enum RoomMake {
     Made(TempRoom),
     /// The server has [`MAX_ROOMS`] rooms alive already.
     Full,
+    PerUserFull,
 }
 
 macro_rules! creator_columns {
@@ -88,6 +89,46 @@ macro_rules! room_columns {
 }
 
 impl Db {
+    /// Serializes voice events and destructive checks for the affected rooms across pods.
+    pub async fn lock_temp_voice_rooms(
+        &self,
+        channels: &[u64],
+    ) -> anyhow::Result<sqlx::Transaction<'_, sqlx::Postgres>> {
+        let mut tx = self.pool().begin().await?;
+        let mut channels = channels.to_vec();
+        channels.sort_unstable();
+        channels.dedup();
+        for channel in channels {
+            sqlx::query("SELECT pg_advisory_xact_lock($1)")
+                .bind(sql_id(channel) ^ 0x7465_6d70_726f_6f6d)
+                .execute(&mut *tx)
+                .await?;
+        }
+        Ok(tx)
+    }
+
+    /// A transaction-scoped sweep fence; a slow Discord call cannot let a second pod enter.
+    pub async fn lock_temp_voice_sweep(&self) -> anyhow::Result<sqlx::Transaction<'_, sqlx::Postgres>> {
+        let mut tx = self.pool().begin().await?;
+        sqlx::query("SELECT pg_advisory_xact_lock($1)")
+            .bind(0x7465_6d70_7377_6565_i64)
+            .execute(&mut *tx)
+            .await?;
+        Ok(tx)
+    }
+
+    /// Holds the room's Discord overwrite mutation lock until the returned transaction is committed or dropped.
+    pub async fn lock_temp_room_mutation(
+        &self,
+        channel_id: u64,
+    ) -> anyhow::Result<sqlx::Transaction<'_, sqlx::Postgres>> {
+        let mut tx = self.pool().begin().await?;
+        sqlx::query("SELECT pg_advisory_xact_lock($1)")
+            .bind(sql_id(channel_id) ^ 0x7465_6d70_6f76_6572)
+            .execute(&mut *tx)
+            .await?;
+        Ok(tx)
+    }
     /// The server's creators, oldest first.
     pub async fn voice_creators(&self, guild_id: u64) -> anyhow::Result<Vec<VoiceCreator>> {
         Ok(sqlx::query_as::<_, VoiceCreator>(concat!(
@@ -223,6 +264,15 @@ impl Db {
         .await?)
     }
 
+    pub async fn tracked_temp_voice_thread(&self, thread_id: u64) -> anyhow::Result<bool> {
+        let (found,): (bool,) =
+            sqlx::query_as("SELECT EXISTS (SELECT 1 FROM temp_voice_channels WHERE text_channel_id = $1)")
+                .bind(sql_id(thread_id))
+                .fetch_one(self.pool())
+                .await?;
+        Ok(found)
+    }
+
     /// The room a channel belongs to: the voice channel itself, or the thread paired with it.
     pub async fn temp_room_of(&self, guild_id: u64, channel_id: u64) -> anyhow::Result<Option<TempRoom>> {
         Ok(sqlx::query_as::<_, TempRoom>(concat!(
@@ -260,17 +310,63 @@ impl Db {
 
     /// Records a room just made, unless the server has [`MAX_ROOMS`] already.
     pub async fn create_temp_room(&self, room: NewTempRoom) -> anyhow::Result<RoomMake> {
+        let mut tx = self.reserve_temp_room(room.guild_id, room.owner_id).await?;
+        let result = Self::create_temp_room_in(&mut tx, room).await?;
+        tx.commit().await?;
+        Ok(result)
+    }
+
+    /// Reserve guild capacity and this owner's slot before calling Discord.
+    pub async fn reserve_temp_room(
+        &self,
+        guild_id: u64,
+        owner_id: u64,
+    ) -> anyhow::Result<sqlx::Transaction<'_, sqlx::Postgres>> {
+        let had_user: Option<(DateTime<Utc>,)> = sqlx::query_as("SELECT created_at FROM users WHERE id = $1")
+            .bind(sql_id(owner_id))
+            .fetch_optional(self.pool())
+            .await?;
         let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(owner_id)]).await?;
+        let has_user: Option<(DateTime<Utc>,)> = sqlx::query_as("SELECT created_at FROM users WHERE id = $1")
+            .bind(sql_id(owner_id))
+            .fetch_optional(&mut *tx)
+            .await?;
+        if had_user.is_some() && had_user != has_user {
+            anyhow::bail!("room creation overlapped player data deletion");
+        }
         sqlx::query("SELECT pg_advisory_xact_lock($1)")
-            .bind(sql_id(room.guild_id) ^ 0x7465_6d70_726f_6f6d)
+            .bind(sql_id(guild_id) ^ 0x7465_6d70_726f_6f6d)
             .execute(&mut *tx)
             .await?;
+        Ok(tx)
+    }
+
+    /// Records a channel while its creation reservation is still held.
+    pub async fn create_temp_room_in(
+        tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+        room: NewTempRoom,
+    ) -> anyhow::Result<RoomMake> {
         let (count,): (i64,) = sqlx::query_as("SELECT count(*) FROM temp_voice_channels WHERE guild_id = $1")
             .bind(sql_id(room.guild_id))
-            .fetch_one(&mut *tx)
+            .fetch_one(&mut **tx)
             .await?;
         if count >= MAX_ROOMS {
             return Ok(RoomMake::Full);
+        }
+        let (owned,): (i64,) =
+            sqlx::query_as("SELECT count(*) FROM temp_voice_channels WHERE source_id = $1 AND owner_id = $2")
+                .bind(sql_id(room.source_id))
+                .bind(sql_id(room.owner_id))
+                .fetch_one(&mut **tx)
+                .await?;
+        let (max_per_user,): (i32,) =
+            sqlx::query_as("SELECT COALESCE((SELECT max_per_user FROM voice_creators WHERE channel_id = $1), 1)")
+                .bind(sql_id(room.source_id))
+                .fetch_one(&mut **tx)
+                .await?;
+        if owned >= i64::from(max_per_user) {
+            return Ok(RoomMake::PerUserFull);
         }
         let made = sqlx::query_as::<_, TempRoom>(concat!(
             "INSERT INTO temp_voice_channels (channel_id, guild_id, source_id, owner_id, locked, user_limit)
@@ -285,9 +381,8 @@ impl Db {
         .bind(sql_id(room.owner_id))
         .bind(room.locked)
         .bind(room.user_limit)
-        .fetch_one(&mut *tx)
+        .fetch_one(&mut **tx)
         .await?;
-        tx.commit().await?;
         Ok(RoomMake::Made(made))
     }
 
@@ -303,15 +398,60 @@ impl Db {
     /// Hands a room to `to`, but only if it is still `from`'s (`None`: nobody's). `false` when somebody got
     /// there first.
     pub async fn move_room_owner(&self, channel_id: u64, from: Option<u64>, to: u64) -> anyhow::Result<bool> {
+        let had_user: Option<(DateTime<Utc>,)> = sqlx::query_as("SELECT created_at FROM users WHERE id = $1")
+            .bind(sql_id(to))
+            .fetch_optional(self.pool())
+            .await?;
+        let mut tx = self.pool().begin().await?;
+        let mut users = vec![sql_id(to)];
+        if let Some(from) = from {
+            users.push(sql_id(from));
+        }
+        lock_users(&mut tx, &users).await?;
+        let has_user: Option<(DateTime<Utc>,)> = sqlx::query_as("SELECT created_at FROM users WHERE id = $1")
+            .bind(sql_id(to))
+            .fetch_optional(&mut *tx)
+            .await?;
+        if had_user.is_some() && had_user != has_user {
+            return Ok(false);
+        }
+        let room: Option<(i64, i64)> = sqlx::query_as(
+            "SELECT guild_id, source_id FROM temp_voice_channels WHERE channel_id = $1 AND owner_id IS NOT DISTINCT FROM $2",
+        )
+        .bind(sql_id(channel_id))
+        .bind(from.map(sql_id))
+        .fetch_optional(&mut *tx)
+        .await?;
+        let Some((guild, source)) = room else {
+            return Ok(false);
+        };
+        sqlx::query("SELECT pg_advisory_xact_lock($1)")
+            .bind(guild ^ 0x7465_6d70_726f_6f6d)
+            .execute(&mut *tx)
+            .await?;
+        let (owned,): (i64,) =
+            sqlx::query_as("SELECT count(*) FROM temp_voice_channels WHERE source_id = $1 AND owner_id = $2")
+                .bind(source)
+                .bind(sql_id(to))
+                .fetch_one(&mut *tx)
+                .await?;
+        let (max_per_user,): (i32,) =
+            sqlx::query_as("SELECT COALESCE((SELECT max_per_user FROM voice_creators WHERE channel_id = $1), 1)")
+                .bind(source)
+                .fetch_one(&mut *tx)
+                .await?;
+        if owned >= i64::from(max_per_user) {
+            return Ok(false);
+        }
         let done = sqlx::query(
-            "UPDATE temp_voice_channels SET owner_id = $3
-             WHERE channel_id = $1 AND owner_id IS NOT DISTINCT FROM $2",
+            "UPDATE temp_voice_channels SET owner_id = $3 WHERE channel_id = $1 AND owner_id IS NOT DISTINCT FROM $2",
         )
         .bind(sql_id(channel_id))
         .bind(from.map(sql_id))
         .bind(sql_id(to))
-        .execute(self.pool())
+        .execute(&mut *tx)
         .await?;
+        tx.commit().await?;
         Ok(done.rows_affected() > 0)
     }
 
@@ -372,24 +512,41 @@ impl Db {
 
     /// Keeps `user` out of a room.
     pub async fn ban_from_room(&self, channel_id: u64, user: u64) -> anyhow::Result<()> {
+        let had_user: Option<(DateTime<Utc>,)> = sqlx::query_as("SELECT created_at FROM users WHERE id = $1")
+            .bind(sql_id(user))
+            .fetch_optional(self.pool())
+            .await?;
+        let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(user)]).await?;
+        let has_user: Option<(DateTime<Utc>,)> = sqlx::query_as("SELECT created_at FROM users WHERE id = $1")
+            .bind(sql_id(user))
+            .fetch_optional(&mut *tx)
+            .await?;
+        if had_user.is_some() && had_user != has_user {
+            anyhow::bail!("room ban overlapped player data deletion");
+        }
         sqlx::query(
             "INSERT INTO temp_voice_bans (channel_id, user_id) VALUES ($1, $2)
              ON CONFLICT DO NOTHING",
         )
         .bind(sql_id(channel_id))
         .bind(sql_id(user))
-        .execute(self.pool())
+        .execute(&mut *tx)
         .await?;
+        tx.commit().await?;
         Ok(())
     }
 
     /// Lets `user` back into a room. `true` when they were kept out.
     pub async fn unban_from_room(&self, channel_id: u64, user: u64) -> anyhow::Result<bool> {
+        let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(user)]).await?;
         let done = sqlx::query("DELETE FROM temp_voice_bans WHERE channel_id = $1 AND user_id = $2")
             .bind(sql_id(channel_id))
             .bind(sql_id(user))
-            .execute(self.pool())
+            .execute(&mut *tx)
             .await?;
+        tx.commit().await?;
         Ok(done.rows_affected() > 0)
     }
 

@@ -13,6 +13,10 @@ const VIEW_CHANNEL: u64 = 1 << 10;
 const MANAGE_CHANNELS: u64 = 1 << 4;
 const MOVE_MEMBERS: u64 = 1 << 24;
 
+// These mocks use separate Discord worlds but share the same real Redis pending-cleanup set.
+// Keep their sweeps from deleting another test's mock-only channel markers.
+static TEMP_VOICE_TESTS: std::sync::OnceLock<Arc<tokio::sync::Mutex<()>>> = std::sync::OnceLock::new();
+
 // /World
 
 /// What the mock Discord holds for one test.
@@ -38,6 +42,10 @@ struct World {
     thread_members: Vec<(u64, u64)>,
     /// Users who are bots, for a picker transfer's user lookup.
     bot_users: Vec<u64>,
+    member_roles: HashMap<u64, Vec<u64>>,
+    extra_roles: Vec<Value>,
+    voice_delay: Option<(std::time::Duration, Arc<tokio::sync::Notify>)>,
+    review_gate: Option<Arc<tokio::sync::Barrier>>,
 }
 
 type Shared = Arc<Mutex<World>>;
@@ -67,7 +75,29 @@ async fn voice_discord(
     let parts: Vec<&str> = path.trim_matches('/').split('/').collect();
     let number = |part: &str| part.parse::<u64>().unwrap_or(0);
     let (json_body, files) = request_body(&headers, &body);
+    let voice_delay = if path.contains("/voice-states/") {
+        world.lock().unwrap().voice_delay.clone()
+    } else {
+        None
+    };
+    if let Some((duration, started)) = voice_delay {
+        started.notify_one();
+        tokio::time::sleep(duration).await;
+    }
+    let gate = { world.lock().unwrap().review_gate.clone() };
+    if let Some(gate) = gate {
+        let rename = method == Method::PATCH && json_body.get("name").is_some();
+        let overwrite = method == Method::PUT && path.contains("/permissions/") && json_body["type"] == json!(0);
+        if rename || overwrite {
+            let _ = tokio::time::timeout(std::time::Duration::from_millis(100), gate.wait()).await;
+        }
+    }
     let mut w = world.lock().unwrap();
+    if path.contains("/voice-states/")
+        && let Some(answer) = refused(&w, "voice")
+    {
+        return answer;
+    }
     let note = |w: &mut World| w.log.push((method.to_string(), path.clone(), json_body.clone()));
     let gone = || (StatusCode::NOT_FOUND, error_json(10003, "Unknown Channel"));
     match (&method, parts.as_slice()) {
@@ -111,6 +141,11 @@ async fn voice_discord(
         (&Method::DELETE, [.., "channels", id]) => {
             note(&mut w);
             if let Some(answer) = refused(&w, "delete") {
+                return answer;
+            }
+            if w.channels.get(&number(id)).is_some_and(|c| c["type"] == json!(12))
+                && let Some(answer) = refused(&w, "thread_delete")
+            {
                 return answer;
             }
             match w.channels.remove(&number(id)) {
@@ -181,7 +216,7 @@ async fn voice_discord(
             let roles = if number(user) == APPLICATION_ID {
                 vec![BOT_ROLE_ID]
             } else {
-                Vec::new()
+                w.member_roles.get(&number(user)).cloned().unwrap_or_default()
             };
             (StatusCode::OK, member_json(number(user), &roles).to_string())
         }
@@ -189,7 +224,9 @@ async fn voice_discord(
             let mut bot = role_json(BOT_ROLE_ID, "Pinchora", BOT_ROLE_POSITION, true);
             bot["permissions"] = json!(w.bot_permissions.to_string());
             let everyone = role_json(number(guild), "@everyone", 0, false);
-            (StatusCode::OK, json!([bot, everyone]).to_string())
+            let mut roles = vec![bot, everyone];
+            roles.extend(w.extra_roles.iter().cloned());
+            (StatusCode::OK, json!(roles).to_string())
         }
         (&Method::GET, [.., "guilds", guild]) => (StatusCode::OK, guild_json(number(guild)).to_string()),
         (&Method::GET, [.., "users", user]) => {
@@ -264,6 +301,7 @@ async fn voice_discord(
 
 /// The real [`App`] on the test databases, with Discord replaced by [`voice_discord`].
 struct Voice {
+    _test_guard: tokio::sync::OwnedMutexGuard<()>,
     app: Arc<App>,
     world: Shared,
     guild: u64,
@@ -271,6 +309,7 @@ struct Voice {
     step: usize,
     /// Whether the invoker has Manage Server.
     manage: bool,
+    extra_permissions: u64,
     /// The channel interactions come from.
     here: u64,
     /// The invoker's Discord client language.
@@ -286,6 +325,11 @@ impl Voice {
             eprintln!("{name}: skipped, set PINCHORA_TEST_DATABASE_URL and PINCHORA_TEST_REDIS_URL");
             return None;
         };
+        let test_guard = TEMP_VOICE_TESTS
+            .get_or_init(|| Arc::new(tokio::sync::Mutex::new(())))
+            .clone()
+            .lock_owned()
+            .await;
         init_logging();
         let db = Db::connect_waiting(&database, 5, std::time::Duration::from_secs(60))
             .await
@@ -317,12 +361,14 @@ impl Voice {
         // A fresh server for the test: the module cache of an earlier run cannot be seen.
         pinchora_commands::forget_temp_voice(guild).await;
         Some(Self {
+            _test_guard: test_guard,
             app: Arc::new(app),
             world,
             guild,
             name,
             step: 0,
             manage: false,
+            extra_permissions: 0,
             here: CHANNEL_ID,
             locale: "en-US",
         })
@@ -509,7 +555,7 @@ impl Voice {
                 "user": person_json(user, &format!("sim{user}"), Some("Sim"), false),
                 "roles": [], "joined_at": "2024-01-01T00:00:00.000000+00:00",
                 "deaf": false, "mute": false, "flags": 0,
-                "permissions": if self.manage { MANAGE_GUILD } else { 0 }.to_string(),
+                "permissions": (self.extra_permissions | if self.manage { MANAGE_GUILD } else { 0 }).to_string(),
             },
             "data": data,
         });
@@ -703,7 +749,13 @@ async fn joining_a_creator_makes_a_room_and_the_last_one_out_deletes_it() {
     assert!(v.deleted().is_empty(), "Bob is still inside");
     assert!(v.app.db.temp_room(room).await.unwrap().is_some());
     v.leave(bob, "Bob").await;
-    assert_eq!(v.deleted(), [room], "the last one out turns the lights off");
+    sqlx::query("UPDATE temp_voice_channels SET created_at = now() - interval '5 minutes' WHERE channel_id = $1")
+        .bind(room as i64)
+        .execute(v.app.db.pool())
+        .await
+        .unwrap();
+    pinchora_commands::tempvoice_tick(&v.app).await.unwrap();
+    assert_eq!(v.deleted(), [room], "the empty room is removed by the fenced sweep");
     assert!(v.app.db.temp_room(room).await.unwrap().is_none());
     assert!(pinchora_commands::temp_voice_members(&v.app, room).await == 0);
 }
@@ -1446,6 +1498,12 @@ async fn a_room_can_have_a_private_thread_for_its_chat() {
     assert!(!v.world.lock().unwrap().thread_members.contains(&(thread, bob)));
     // The room goes with its thread.
     v.leave(alice, "Alice").await;
+    sqlx::query("UPDATE temp_voice_channels SET created_at = now() - interval '5 minutes' WHERE channel_id = $1")
+        .bind(room as i64)
+        .execute(v.app.db.pool())
+        .await
+        .unwrap();
+    pinchora_commands::tempvoice_tick(&v.app).await.unwrap();
     let gone = v.deleted();
     assert!(gone.contains(&room) && gone.contains(&thread), "{gone:?}");
 }
@@ -1477,7 +1535,7 @@ async fn turkish_members_and_servers_get_turkish_text() {
     let english = v.say(alice, "unlock").await;
     assert!(english.content().contains("open again"), "{}", english.content());
     // The room is named after the member, Turkish letters and all.
-    assert!(v.created().iter().any(|c| c["name"] == "Ayşe's room"));
+    assert!(v.created().iter().any(|c| c["name"] == "Ayşe odası"));
 }
 
 #[tokio::test]
@@ -1509,4 +1567,506 @@ async fn a_server_holds_a_limited_number_of_rooms() {
     let posts = v.posts();
     let notice = posts.iter().find(|p| p.channel == creator).expect("a notice");
     assert!(notice.content().contains("temp rooms already"), "{}", notice.content());
+}
+
+// Review-only negative tests: assertions describe required safe behavior.
+#[tokio::test]
+async fn review_probe_kick_cannot_disconnect_a_bot_in_another_room() {
+    let mut v = Voice::new("review_bot_elsewhere").await.unwrap();
+    let (admin, alice, robot) = (unique(), unique(), unique());
+    let creator = v.channel(2, "Creator", None);
+    let other = v.channel(2, "Unrelated music room", None);
+    v.add_creator(admin, creator, vec![]).await;
+    v.join(alice, "Alice", creator).await;
+    v.world.lock().unwrap().voice.insert(robot, other);
+    v.command(
+        alice,
+        json!([sub("kick", vec![user_option("user", robot)])]),
+        json!({"users": {robot.to_string(): person_json(robot, "Music", None, true)}}),
+    )
+    .await;
+    assert_eq!(
+        v.world.lock().unwrap().voice.get(&robot).copied(),
+        Some(other),
+        "room owner disconnected a bot from an unrelated room"
+    );
+}
+
+#[tokio::test]
+async fn review_probe_stale_presence_cannot_disconnect_a_human_elsewhere() {
+    let mut v = Voice::new("review_human_elsewhere").await.unwrap();
+    let (admin, alice, bob) = (unique(), unique(), unique());
+    let creator = v.channel(2, "Creator", None);
+    let other = v.channel(2, "Private meeting", None);
+    v.add_creator(admin, creator, vec![]).await;
+    v.join(alice, "Alice", creator).await;
+    let room = v.room_of(alice).await;
+    v.join(bob, "Bob", room).await;
+    // Bob moves, but this gateway event is dropped/delayed.
+    v.world.lock().unwrap().voice.insert(bob, other);
+    v.command(
+        alice,
+        json!([sub("kick", vec![user_option("user", bob)])]),
+        v.users(&[bob]),
+    )
+    .await;
+    assert_eq!(
+        v.world.lock().unwrap().voice.get(&bob).copied(),
+        Some(other),
+        "stale Redis membership lets an owner disconnect a human in another room"
+    );
+}
+
+#[tokio::test]
+async fn tempvoice_kick_respects_higher_role() {
+    let Some(mut v) = Voice::new("tempvoice_kick_hierarchy").await else {
+        return;
+    };
+    let (admin, alice, moderator, role) = (unique(), unique(), unique(), unique());
+    let creator = v.channel(2, "Creator", None);
+    v.add_creator(admin, creator, vec![]).await;
+    v.join(alice, "Alice", creator).await;
+    let room = v.room_of(alice).await;
+    v.join(moderator, "Moderator", room).await;
+    {
+        let mut world = v.world.lock().unwrap();
+        world.member_roles.insert(moderator, vec![role]);
+        world.extra_roles.push(role_json(role, "Moderator", 5, false));
+    }
+    v.command(
+        alice,
+        json!([sub("kick", vec![user_option("user", moderator)])]),
+        v.users(&[moderator]),
+    )
+    .await;
+    assert_eq!(v.world.lock().unwrap().voice.get(&moderator).copied(), Some(room));
+    assert!(!v.app.db.is_banned_from_room(room, moderator).await.unwrap());
+}
+
+#[tokio::test]
+async fn review_probe_sweep_preserves_an_occupied_room_after_presence_loss() {
+    let mut v = Voice::new("review_sweep_live").await.unwrap();
+    let (admin, alice) = (unique(), unique());
+    let creator = v.channel(2, "Creator", None);
+    v.add_creator(admin, creator, vec![]).await;
+    v.join(alice, "Alice", creator).await;
+    let room = v.room_of(alice).await;
+    sqlx::query("UPDATE temp_voice_channels SET created_at = now() - interval '5 minutes' WHERE channel_id = $1")
+        .bind(room as i64)
+        .execute(v.app.db.pool())
+        .await
+        .unwrap();
+    v.app
+        .cache
+        .set_remove(&format!("tvoice:in:{room}"), &alice.to_string())
+        .await
+        .unwrap();
+    for _ in 0..2 {
+        v.app.cache.release_cooldown("tvoice:sweep").await.unwrap();
+        pinchora_commands::tempvoice_tick(&v.app).await.unwrap();
+    }
+    assert!(
+        v.channel_json(room).is_some(),
+        "sweep deleted a room still occupied on Discord"
+    );
+}
+
+#[tokio::test]
+async fn review_probe_sweep_removes_stale_member_without_a_place_key() {
+    let mut v = Voice::new("review_sweep_leak").await.unwrap();
+    let (admin, alice) = (unique(), unique());
+    let creator = v.channel(2, "Creator", None);
+    v.add_creator(admin, creator, vec![]).await;
+    v.join(alice, "Alice", creator).await;
+    let room = v.room_of(alice).await;
+    sqlx::query("UPDATE temp_voice_channels SET created_at = now() - interval '5 minutes' WHERE channel_id = $1")
+        .bind(room as i64)
+        .execute(v.app.db.pool())
+        .await
+        .unwrap();
+    // The 48-hour place key expires; the non-expiring member set survives a missed leave.
+    v.app
+        .cache
+        .forget(&format!("tvoice:at:{}:{alice}", v.guild))
+        .await
+        .unwrap();
+    v.world.lock().unwrap().voice.remove(&alice);
+    for round in 0..8 {
+        if round % 4 == 0 {
+            // Simulate the 120-second verification cooldown expiring every fourth sweep.
+            v.app
+                .cache
+                .release_cooldown(&format!("tvoice:verify:{room}"))
+                .await
+                .unwrap();
+        }
+        v.app.cache.release_cooldown("tvoice:sweep").await.unwrap();
+        pinchora_commands::tempvoice_tick(&v.app).await.unwrap();
+    }
+    assert!(
+        v.app.db.temp_room(room).await.unwrap().is_none(),
+        "empty room never passes two empty rounds because stale membership survives reconciliation"
+    );
+}
+
+#[tokio::test]
+async fn tempvoice_sweep_fence_survives_slow_discord_reads() {
+    let Some(mut v) = Voice::new("tempvoice_sweep_fence").await else {
+        return;
+    };
+    let (admin, alice) = (unique(), unique());
+    let creator = v.channel(2, "Creator", None);
+    v.add_creator(admin, creator, vec![]).await;
+    v.join(alice, "Alice", creator).await;
+    let room = v.room_of(alice).await;
+    sqlx::query("UPDATE temp_voice_channels SET created_at = now() - interval '5 minutes' WHERE channel_id = $1")
+        .bind(room as i64)
+        .execute(v.app.db.pool())
+        .await
+        .unwrap();
+    let started = Arc::new(tokio::sync::Notify::new());
+    v.world.lock().unwrap().voice_delay = Some((std::time::Duration::from_millis(300), started.clone()));
+    let notified = started.notified();
+    let app = v.app.clone();
+    let first = tokio::spawn(async move { pinchora_commands::tempvoice_tick(&app).await.unwrap() });
+    tokio::time::timeout(std::time::Duration::from_secs(10), notified)
+        .await
+        .unwrap();
+    assert_eq!(pinchora_commands::tempvoice_tick(&v.app).await.unwrap(), 0);
+    first.await.unwrap();
+    assert!(v.app.db.temp_room(room).await.unwrap().is_some());
+}
+
+#[tokio::test]
+async fn review_probe_transfer_respects_per_member_room_limit() {
+    let mut v = Voice::new("review_transfer_cap").await.unwrap();
+    let (admin, alice, bob, guest) = (unique(), unique(), unique(), unique());
+    let creator = v.channel(2, "Creator", None);
+    v.add_creator(admin, creator, vec![]).await;
+    v.join(alice, "Alice", creator).await;
+    let alice_room = v.room_of(alice).await;
+    v.join(guest, "Guest", alice_room).await;
+    v.join(bob, "Bob", creator).await;
+    let bob_room = v.room_of(bob).await;
+    v.join(alice, "Alice", bob_room).await;
+    v.command(
+        bob,
+        json!([sub("transfer", vec![user_option("user", alice)])]),
+        v.users(&[alice]),
+    )
+    .await;
+    assert_eq!(
+        v.app.db.rooms_owned_by(v.guild, alice).await.unwrap().len(),
+        1,
+        "transfer bypasses max_per_user=1"
+    );
+}
+
+#[tokio::test]
+async fn review_probe_rename_filters_mentions_and_profanity() {
+    let mut v = Voice::new("review_name_filter").await.unwrap();
+    let (admin, alice) = (unique(), unique());
+    let creator = v.channel(2, "Creator", None);
+    v.add_creator(admin, creator, vec![]).await;
+    v.join(alice, "Alice", creator).await;
+    let room = v.room_of(alice).await;
+    let raw = "@everyone fuck";
+    v.command(alice, json!([sub("rename", vec![text_option("name", raw)])]), json!({}))
+        .await;
+    assert_ne!(
+        v.channel_json(room).unwrap()["name"],
+        json!(raw),
+        "unfiltered name sent to Discord unchanged"
+    );
+}
+
+#[tokio::test]
+async fn review_probe_claim_fails_closed_when_owner_presence_is_unknown() {
+    let mut v = Voice::new("review_claim_unknown").await.unwrap();
+    let (admin, alice, bob) = (unique(), unique(), unique());
+    let creator = v.channel(2, "Creator", None);
+    v.add_creator(admin, creator, vec![]).await;
+    v.join(alice, "Alice", creator).await;
+    let room = v.room_of(alice).await;
+    v.join(bob, "Bob", room).await;
+    // Alice remains in Discord, but her Redis entry was lost and REST cannot confirm presence.
+    v.app
+        .cache
+        .set_remove(&format!("tvoice:in:{room}"), &alice.to_string())
+        .await
+        .unwrap();
+    v.refuse("voice", 50013);
+    v.here = room;
+    v.say(bob, "claim").await;
+    assert_eq!(
+        v.app.db.temp_room(room).await.unwrap().unwrap().owner_id,
+        Some(alice as i64),
+        "claim treats Discord permission errors as evidence that the owner left"
+    );
+}
+
+#[tokio::test]
+async fn review_probe_failed_thread_deletion_remains_tracked() {
+    let mut v = Voice::new("review_thread_leak").await.unwrap();
+    let (admin, alice) = (unique(), unique());
+    let creator = v.channel(2, "Creator", None);
+    v.add_creator(admin, creator, vec![]).await;
+    v.join(alice, "Alice", creator).await;
+    let room = v.room_of(alice).await;
+    let parent = v.channel(0, "Private chats", None);
+    let thread = v.channel(12, "Room chat", Some(parent));
+    v.app.db.set_room_panel(room, Some(thread), None, None).await.unwrap();
+    v.refuse("thread_delete", 50013);
+    v.leave(alice, "Alice").await;
+    assert!(
+        v.channel_json(thread).is_none() || v.app.db.temp_room(room).await.unwrap().is_some(),
+        "thread survives but its only database reference is removed, so the sweep cannot retry"
+    );
+}
+
+#[tokio::test]
+async fn tempvoice_orphan_channels_and_threads_retry_cleanup() {
+    let Some(v) = Voice::new("tempvoice_orphan_cleanup").await else {
+        return;
+    };
+    let channel = v.channel(2, "Untracked room", None);
+    let thread = v.channel(12, "Untracked chat", None);
+    for (kind, id) in [("channel", channel), ("thread", thread)] {
+        let entry = format!("{kind}:{id}");
+        v.app
+            .cache
+            .put(
+                &format!("tvoice:pending-at:{entry}"),
+                "0",
+                std::time::Duration::from_secs(300),
+            )
+            .await
+            .unwrap();
+        v.app.cache.set_add("tvoice:pending", &entry).await.unwrap();
+    }
+    v.refuse("delete", 50013);
+    pinchora_commands::tempvoice_tick(&v.app).await.unwrap();
+    assert!(v.channel_json(channel).is_some() && v.channel_json(thread).is_some());
+    v.allow("delete");
+    pinchora_commands::tempvoice_tick(&v.app).await.unwrap();
+    assert!(v.channel_json(channel).is_none() && v.channel_json(thread).is_none());
+}
+
+async fn review_parallel_commands(v: &Voice, user: u64, first: Value, second: Value) {
+    let data = |options: Value| {
+        json!({
+            "id": unique().to_string(), "name": "voice", "type": 1, "options": options, "resolved": {}
+        })
+    };
+    let a = v.interaction(user, 2, data(first), None);
+    let b = v.interaction(user, 2, data(second), None);
+    let (ta, _ra) = oneshot::channel();
+    let (tb, _rb) = oneshot::channel();
+    let ra = Arc::new(Responder::http(v.app.clone(), &a, ta));
+    let rb = Arc::new(Responder::http(v.app.clone(), &b, tb));
+    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+        tokio::join!(
+            handle_interaction(v.app.clone(), a, ra),
+            handle_interaction(v.app.clone(), b, rb)
+        );
+    })
+    .await
+    .expect("both commands should reach Discord");
+}
+
+#[tokio::test]
+async fn review_probe_parallel_renames_share_one_cooldown() {
+    let mut v = Voice::new("review_rename_race").await.unwrap();
+    let (admin, alice) = (unique(), unique());
+    let creator = v.channel(2, "Creator", None);
+    v.add_creator(admin, creator, vec![]).await;
+    v.join(alice, "Alice", creator).await;
+    v.world.lock().unwrap().review_gate = Some(Arc::new(tokio::sync::Barrier::new(2)));
+    review_parallel_commands(
+        &v,
+        alice,
+        json!([sub("rename", vec![text_option("name", "First")])]),
+        json!([sub("rename", vec![text_option("name", "Second")])]),
+    )
+    .await;
+    let edits = v
+        .world
+        .lock()
+        .unwrap()
+        .log
+        .iter()
+        .filter(|(method, _, body)| method == "PATCH" && body.get("name").is_some())
+        .count();
+    assert_eq!(edits, 1, "parallel requests both spend the same rename cooldown");
+}
+
+#[tokio::test]
+async fn tempvoice_failed_rename_releases_only_its_reservation() {
+    let Some(mut v) = Voice::new("tempvoice_rename_retry").await else {
+        return;
+    };
+    let (admin, alice) = (unique(), unique());
+    let creator = v.channel(2, "Creator", None);
+    v.add_creator(admin, creator, vec![]).await;
+    v.join(alice, "Alice", creator).await;
+    let room = v.room_of(alice).await;
+    v.refuse("edit", 50013);
+    v.command(
+        alice,
+        json!([sub("rename", vec![text_option("name", "First")])]),
+        json!({}),
+    )
+    .await;
+    v.allow("edit");
+    v.command(
+        alice,
+        json!([sub("rename", vec![text_option("name", "Second")])]),
+        json!({}),
+    )
+    .await;
+    assert_eq!(v.channel_json(room).unwrap()["name"], "Second");
+}
+
+#[tokio::test]
+async fn review_probe_parallel_lock_and_hide_preserve_both_denies() {
+    let mut v = Voice::new("review_overwrite_race").await.unwrap();
+    let (admin, alice) = (unique(), unique());
+    let creator = v.channel(2, "Creator", None);
+    v.add_creator(admin, creator, vec![]).await;
+    v.join(alice, "Alice", creator).await;
+    let room = v.room_of(alice).await;
+    v.world.lock().unwrap().review_gate = Some(Arc::new(tokio::sync::Barrier::new(2)));
+    review_parallel_commands(&v, alice, json!([sub("lock", vec![])]), json!([sub("hide", vec![])])).await;
+    let saved = v.app.db.temp_room(room).await.unwrap().unwrap();
+    assert!(saved.locked && saved.hidden);
+    assert_eq!(
+        v.overwrite(room, v.guild).unwrap().1 & (CONNECT | VIEW_CHANNEL),
+        CONNECT | VIEW_CHANNEL,
+        "read-modify-write overwrites lose one of the protection bits while DB claims both applied"
+    );
+}
+
+#[tokio::test]
+async fn review_probe_creation_waits_for_delete_my_data_user_lock() {
+    let v = Voice::new("review_privacy_lock").await.unwrap();
+    let alice = unique();
+    let room = unique();
+    let mut deletion = v.app.db.pool().begin().await.unwrap();
+    pinchora_db::Db::delete_user_data_in(&mut deletion, alice, v.app.now())
+        .await
+        .unwrap();
+    let spare = v.app.db.pool().acquire().await.unwrap();
+    drop(spare);
+    let raced = tokio::time::timeout(
+        std::time::Duration::from_secs(2),
+        v.app.db.create_temp_room(pinchora_db::NewTempRoom {
+            channel_id: room,
+            guild_id: v.guild,
+            source_id: unique(),
+            owner_id: alice,
+            locked: false,
+            user_limit: 0,
+        }),
+    )
+    .await;
+    deletion.commit().await.unwrap();
+    if let Ok(result) = &raced {
+        assert!(
+            matches!(result, Ok(pinchora_db::RoomMake::Made(_))),
+            "unexpected creation result: {result:?}"
+        );
+        assert_eq!(
+            v.app.db.temp_room(room).await.unwrap().unwrap().owner_id,
+            Some(alice as i64)
+        );
+        println!("owner_id persisted while delete-my-data held the user lock, and survived its commit");
+    }
+    assert!(
+        raced.is_err(),
+        "create_temp_room bypasses the active privacy user lock and commits owner_id after privacy cleared it"
+    );
+}
+
+#[tokio::test]
+async fn tempvoice_creation_started_before_erasure_does_not_restore_owner() {
+    let Some(v) = Voice::new("tempvoice_privacy_revalidation").await else {
+        return;
+    };
+    let (alice, room) = (unique(), unique());
+    v.app.db.user(alice).await.unwrap();
+    let mut deletion = v.app.db.pool().begin().await.unwrap();
+    pinchora_db::Db::delete_user_data_in(&mut deletion, alice, v.app.now())
+        .await
+        .unwrap();
+    let app = v.app.clone();
+    let guild = v.guild;
+    let creating = tokio::spawn(async move {
+        app.db
+            .create_temp_room(pinchora_db::NewTempRoom {
+                channel_id: room,
+                guild_id: guild,
+                source_id: unique(),
+                owner_id: alice,
+                locked: false,
+                user_limit: 0,
+            })
+            .await
+    });
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    deletion.commit().await.unwrap();
+    assert!(creating.await.unwrap().is_err());
+    assert!(v.app.db.temp_room(room).await.unwrap().is_none());
+}
+
+#[tokio::test]
+async fn review_probe_lock_and_hide_override_inherited_member_role_allows() {
+    let mut v = Voice::new("review_role_allow").await.unwrap();
+    let (admin, alice, members_role) = (unique(), unique(), unique());
+    let category = v.channel(4, "Community", None);
+    v.world.lock().unwrap().channels.get_mut(&category).unwrap()["permission_overwrites"] = json!([
+        {"id": members_role.to_string(), "type": 0, "allow": (CONNECT | VIEW_CHANNEL).to_string(), "deny": "0"}
+    ]);
+    let creator = v.channel(2, "Creator", Some(category));
+    v.add_creator(admin, creator, vec![]).await;
+    v.join(alice, "Alice", creator).await;
+    let room = v.room_of(alice).await;
+    v.say(alice, "lock").await;
+    v.say(alice, "hide").await;
+    // Discord applies @everyone, then role overwrites. A non-owner carrying Members can still enter.
+    let (everyone_allow, everyone_deny) = v.overwrite(room, v.guild).unwrap();
+    let (role_allow, role_deny) = v.overwrite(room, members_role).unwrap();
+    let effective = (((CONNECT | VIEW_CHANNEL) & !everyone_deny) | everyone_allow) & !role_deny | role_allow;
+    assert_eq!(
+        effective & (CONNECT | VIEW_CHANNEL),
+        0,
+        "non-owner role still has CONNECT and VIEW_CHANNEL after successful lock and hide"
+    );
+}
+
+#[tokio::test]
+async fn tempvoice_creator_admin_paths_require_manage_guild_with_other_permissions() {
+    let Some(mut v) = Voice::new("tempvoice_admin_matrix").await else {
+        return;
+    };
+    let member = unique();
+    let creator = v.channel(2, "Creator", None);
+    v.extra_permissions = twilight_model::guild::Permissions::all().bits()
+        & !(MANAGE_GUILD | twilight_model::guild::Permissions::ADMINISTRATOR.bits());
+    let resolved = v.resolved(&[(creator, 2)]);
+    for options in [
+        json!([group("creators", sub("add", vec![channel_option("channel", creator)]))]),
+        json!([group(
+            "creators",
+            sub("remove", vec![channel_option("channel", creator)])
+        )]),
+        json!([group("creators", sub("list", vec![]))]),
+    ] {
+        let reply = v.command(member, options, resolved.clone()).await;
+        assert!(
+            reply.ephemeral && reply.content().contains("Manage Server"),
+            "{}",
+            reply.content()
+        );
+    }
+    assert!(v.app.db.voice_creators(v.guild).await.unwrap().is_empty());
 }

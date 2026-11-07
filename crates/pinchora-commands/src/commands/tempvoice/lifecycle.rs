@@ -4,9 +4,10 @@ use std::{collections::HashSet, sync::Arc, time::Duration};
 
 use pinchora_core::{
     t,
-    temp_voice::{MAX_ROOMS, owner_label, room_name},
+    temp_voice::{DEFAULT_TEMPLATE, MAX_ROOMS, owner_label, room_name},
 };
 use pinchora_db::{NewTempRoom, RoomMake, TempRoom, VoiceCreator};
+use pinchora_game::party::filter::is_profane_for;
 use twilight_model::{
     channel::{ChannelType, message::AllowedMentions},
     guild::Permissions,
@@ -25,6 +26,26 @@ use crate::App;
 const MAKE_COOLDOWN: Duration = Duration::from_secs(4);
 /// How long a notice in a creator's chat stays.
 const NOTICE_KEPT: Duration = Duration::from_secs(30);
+const PENDING_KEEP: Duration = Duration::from_secs(7 * 86_400);
+
+async fn pending(app: &App, kind: &str, channel: u64) -> anyhow::Result<()> {
+    let entry = format!("{kind}:{channel}");
+    app.cache
+        .put(
+            &format!("tvoice:pending-at:{entry}"),
+            &app.now().timestamp().to_string(),
+            PENDING_KEEP,
+        )
+        .await?;
+    app.cache.set_add("tvoice:pending", &entry).await
+}
+
+pub(crate) async fn clear_pending(app: &App, kind: &str, channel: u64) {
+    let entry = format!("{kind}:{channel}");
+    if let Err(error) = app.cache.set_remove("tvoice:pending", &entry).await {
+        tracing::warn!(%error, channel, "temp voice: cleanup marker was not removed");
+    }
+}
 
 /// A member's name as the room should be called after them: their nickname, else their display name, else
 /// their username.
@@ -79,6 +100,7 @@ pub(crate) async fn create_for(
     {
         return Ok(());
     }
+    let mut reservation = app.db.reserve_temp_room(guild, user).await?;
     let lang = lang_of(app, guild).await;
     let rooms_now = app.db.temp_rooms(guild).await?;
     let mine: Vec<&TempRoom> = rooms_now
@@ -103,7 +125,17 @@ pub(crate) async fn create_for(
     }
 
     let number = rooms_now.iter().filter(|r| r.source_id == creator.channel_id).count() + 1;
-    let name = room_name(&creator.name_template, &owner_name(state, lang), number);
+    let template = if creator.name_template == DEFAULT_TEMPLATE {
+        t!(lang, "voice.default-template", user = "{user}")
+    } else {
+        creator.name_template.clone()
+    };
+    let name = room_name(&template, &owner_name(state, lang), number);
+    let name = if is_profane_for(&name, false, lang) {
+        t!(lang, "voice.safe-room-name")
+    } else {
+        name
+    };
 
     // The room starts as the category is (a private category stays private) with its owner let in.
     let mut parent = creator.category_id.map(|c| c as u64);
@@ -121,6 +153,20 @@ pub(crate) async fn create_for(
     let mut edits = vec![Edit::member(user, Op::Allow, rooms::entry_bits())];
     if creator.default_locked {
         edits.push(Edit::role(guild, Op::Deny, Permissions::CONNECT));
+        for inherited in &list {
+            if inherited.id != guild
+                && inherited.id != user
+                && inherited.id != app.application_id.get()
+                && inherited.allow.contains(Permissions::CONNECT)
+            {
+                edits.push(Edit {
+                    id: inherited.id,
+                    member: inherited.member,
+                    op: Op::Deny,
+                    bits: Permissions::CONNECT,
+                });
+            }
+        }
         edits.push(Edit::member(app.application_id.get(), Op::Allow, rooms::entry_bits()));
     }
     for edit in edits {
@@ -135,25 +181,46 @@ pub(crate) async fn create_for(
             return Ok(());
         }
     };
-    let room = match app
-        .db
-        .create_temp_room(NewTempRoom {
+    if let Err(error) = pending(app, "channel", channel).await {
+        let _ = rooms::delete_channel(app, channel).await;
+        return Err(error);
+    }
+    let made = pinchora_db::Db::create_temp_room_in(
+        &mut reservation,
+        NewTempRoom {
             channel_id: channel,
             guild_id: guild,
             source_id: source,
             owner_id: user,
             locked: creator.default_locked,
             user_limit: creator.default_limit,
-        })
-        .await?
-    {
-        RoomMake::Made(room) => room,
-        RoomMake::Full => {
-            let _ = rooms::delete_channel(app, channel).await;
+        },
+    )
+    .await;
+    let room = match made {
+        Err(error) => {
+            tracing::warn!(%error, channel, "temp voice: room persistence failed");
+            if let Err(fail) = rooms::delete_channel(app, channel).await {
+                tracing::warn!(?fail, channel, "temp voice: untracked room cleanup failed");
+            }
+            return Err(error);
+        }
+        Ok(RoomMake::Made(room)) => {
+            if let Err(error) = reservation.commit().await {
+                let _ = rooms::delete_channel(app, channel).await;
+                return Err(error.into());
+            }
+            room
+        }
+        Ok(RoomMake::Full | RoomMake::PerUserFull) => {
+            if let Err(fail) = rooms::delete_channel(app, channel).await {
+                tracing::warn!(?fail, channel, "temp voice: excess room cleanup failed");
+            }
             notice(app, source, user, t!(lang, "voice.too-many-rooms", count = MAX_ROOMS)).await;
             return Ok(());
         }
     };
+    clear_pending(app, "channel", channel).await;
     // The room is known (and its owner in it) before the member is moved, so the voice event that the move
     // causes finds everything in place.
     setups::forget(guild).await;
@@ -183,6 +250,11 @@ async fn attach_panel(app: &App, lang: pinchora_core::i18n::Lang, creator: &Voic
     if let Some(parent) = creator.panel_channel_id {
         match make_thread(app, parent as u64, name, room.owner_id.map(|o| o as u64)).await {
             Some(id) => {
+                if let Err(error) = pending(app, "thread", id).await {
+                    tracing::warn!(%error, id, "temp voice: thread cleanup could not be tracked");
+                    let _ = rooms::delete_channel(app, id).await;
+                    return;
+                }
                 chat = id;
                 thread = Some(id);
             }
@@ -204,6 +276,8 @@ async fn attach_panel(app: &App, lang: pinchora_core::i18n::Lang, creator: &Voic
             .await;
         if let Err(error) = saved {
             tracing::warn!(%error, channel, "temp voice: the panel was not recorded");
+        } else if let Some(thread) = thread {
+            clear_pending(app, "thread", thread).await;
         }
     }
 }
@@ -248,18 +322,26 @@ pub(crate) async fn thread_member(app: &App, room: &TempRoom, user: u64, add: bo
 /// channel deletion, keep the database row so the sweep can try again instead of leaving an untracked room.
 pub(crate) async fn delete_room(app: &App, room: &TempRoom) -> bool {
     let channel = room.channel_id as u64;
+    let mut thread_pending = false;
     if let Some(thread) = room.text_channel_id
         && let Err(fail) = rooms::delete_channel(app, thread as u64).await
+        && fail != Fail::Gone
     {
         tracing::debug!(?fail, thread, "temp voice: a thread was not deleted");
+        thread_pending = true;
     }
-    if let Err(fail) = rooms::delete_channel(app, channel).await {
+    if let Err(fail) = rooms::delete_channel(app, channel).await
+        && fail != Fail::Gone
+    {
         tracing::warn!(
             guild = room.guild_id,
             channel,
             ?fail,
             "temp voice: a room was not deleted; the sweep will retry"
         );
+        return false;
+    }
+    if thread_pending {
         return false;
     }
     forget_room(app, room.guild_id as u64, channel).await;

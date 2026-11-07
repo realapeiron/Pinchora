@@ -1,6 +1,19 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { FALLBACK_NAME, MAX_NAME, ago, roomName, templateProblem } from "./tempVoice";
+import { t, tf } from "./tempVoiceI18n";
+
+afterEach(() => vi.unstubAllGlobals());
+
+describe("temp voice localization", () => {
+  it("renders Turkish copy and values without changing channel or command tokens", () => {
+    vi.stubGlobal("navigator", { language: "tr-TR" });
+    expect(t("LIVE ROOMS")).toBe("AÇIK ODALAR");
+    expect(tf("{count} min ago", { count: 12 })).toBe("12 dk önce");
+    expect(t("/voice")).toBe("/voice");
+    expect(roomName("   ", "Mira", 1)).toBe("Ses odası");
+  });
+});
 
 describe("room names", () => {
   it("name a room after its owner and number it", () => {

@@ -9,6 +9,7 @@ use pinchora_core::{
     temp_voice::{RENAME_COOLDOWN_SECS, check_limit, clean_name},
 };
 use pinchora_db::TempRoom;
+use pinchora_game::party::filter::is_profane_for;
 use twilight_model::{guild::Permissions, id::Id};
 
 use super::{
@@ -63,20 +64,30 @@ pub(crate) async fn resolve(app: &App, guild: u64, user: u64, here: Option<u64>)
 
 /// Whether `user` is in the room: as far as the voice events say, and failing that as Discord says.
 pub(crate) async fn is_inside(app: &App, room: &TempRoom, user: u64) -> bool {
+    matches!(presence(app, room, user).await, Presence::Inside)
+}
+
+#[derive(PartialEq, Eq)]
+enum Presence {
+    Inside,
+    Outside,
+    Unknown,
+}
+
+async fn presence(app: &App, room: &TempRoom, user: u64) -> Presence {
     let channel = room.channel_id as u64;
-    if track::members(app, channel).await.is_ok_and(|m| m.contains(&user)) {
-        return true;
-    }
     match app
         .http
         .user_voice_state(Id::new((room.guild_id as u64).max(1)), Id::new(user.max(1)))
         .await
     {
-        Ok(response) => response
-            .model()
-            .await
-            .is_ok_and(|state| state.channel_id.is_some_and(|c| c.get() == channel)),
-        Err(_) => false,
+        Ok(response) => match response.model().await {
+            Ok(state) if state.channel_id.is_some_and(|c| c.get() == channel) => Presence::Inside,
+            Ok(_) => Presence::Outside,
+            Err(_) => Presence::Unknown,
+        },
+        Err(error) if matches!(crate::roles::error_code(&error), Some(10065 | 10007)) => Presence::Outside,
+        Err(_) => Presence::Unknown,
     }
 }
 
@@ -96,51 +107,31 @@ pub(crate) async fn act(app: &App, who: &Who, room: TempRoom, act: Act) -> anyho
         return Ok(not_owner(who.lang, &room));
     }
     let lang = who.lang;
-    let (guild, channel) = (room.guild_id as u64, room.channel_id as u64);
+    let channel = room.channel_id as u64;
     let bot = app.application_id.get();
     match act {
         Act::Lock => {
-            let edits = [
-                Edit::role(guild, Op::Deny, Permissions::CONNECT),
-                Edit::member(bot, Op::Allow, rooms::entry_bits()),
-            ];
-            if let Err(fail) = rooms::apply(app, channel, &edits).await {
+            if let Err(fail) = entry_policy(app, &room, Permissions::CONNECT, true, bot).await {
                 return Ok(fail.text(lang));
             }
-            app.db.set_room_state(channel, Some(true), None, None).await?;
             finished(app, channel, t!(lang, "voice.locked")).await
         }
         Act::Unlock => {
-            let op = match category_says(app, channel, guild, Permissions::CONNECT).await {
-                Ok(op) => op,
-                Err(fail) => return Ok(fail.text(lang)),
-            };
-            if let Err(fail) = rooms::apply(app, channel, &[Edit::role(guild, op, Permissions::CONNECT)]).await {
+            if let Err(fail) = entry_policy(app, &room, Permissions::CONNECT, false, bot).await {
                 return Ok(fail.text(lang));
             }
-            app.db.set_room_state(channel, Some(false), None, None).await?;
             finished(app, channel, t!(lang, "voice.unlocked")).await
         }
         Act::Hide => {
-            let edits = [
-                Edit::role(guild, Op::Deny, Permissions::VIEW_CHANNEL),
-                Edit::member(bot, Op::Allow, rooms::entry_bits()),
-            ];
-            if let Err(fail) = rooms::apply(app, channel, &edits).await {
+            if let Err(fail) = entry_policy(app, &room, Permissions::VIEW_CHANNEL, true, bot).await {
                 return Ok(fail.text(lang));
             }
-            app.db.set_room_state(channel, None, Some(true), None).await?;
             finished(app, channel, t!(lang, "voice.hidden")).await
         }
         Act::Show => {
-            let op = match category_says(app, channel, guild, Permissions::VIEW_CHANNEL).await {
-                Ok(op) => op,
-                Err(fail) => return Ok(fail.text(lang)),
-            };
-            if let Err(fail) = rooms::apply(app, channel, &[Edit::role(guild, op, Permissions::VIEW_CHANNEL)]).await {
+            if let Err(fail) = entry_policy(app, &room, Permissions::VIEW_CHANNEL, false, bot).await {
                 return Ok(fail.text(lang));
             }
-            app.db.set_room_state(channel, None, Some(false), None).await?;
             finished(app, channel, t!(lang, "voice.shown")).await
         }
         Act::Limit(wanted) => {
@@ -180,12 +171,54 @@ pub(crate) async fn act(app: &App, who: &Who, room: TempRoom, act: Act) -> anyho
 }
 
 /// What the room's category says about `@everyone` and `bit`: unlocking or showing the room goes back to it.
-async fn category_says(app: &App, channel: u64, guild: u64, bit: Permissions) -> Result<Op, Fail> {
-    let Some(parent) = rooms::parent_of(app, channel).await? else {
-        return Ok(Op::Clear);
+async fn entry_policy(app: &App, room: &TempRoom, bit: Permissions, closed: bool, bot: u64) -> Result<(), Fail> {
+    let channel = room.channel_id as u64;
+    let guild = room.guild_id as u64;
+    let category = match rooms::parent_of(app, channel).await? {
+        Some(parent) => rooms::overwrites_of(app, parent, rooms::VIEW_CHANNEL).await?,
+        None => Vec::new(),
     };
-    let list = rooms::overwrites_of(app, parent, rooms::VIEW_CHANNEL).await?;
-    Ok(rooms::default_op(&list, guild, bit))
+    let mut edits = vec![Edit::role(
+        guild,
+        if closed {
+            Op::Deny
+        } else {
+            rooms::default_op(&category, guild, bit)
+        },
+        bit,
+    )];
+    for inherited in &category {
+        if inherited.id == guild || inherited.id == bot || room.owner_id == Some(inherited.id as i64) {
+            continue;
+        }
+        if !inherited.allow.contains(bit) && !inherited.deny.contains(bit) {
+            continue;
+        }
+        let op = if closed {
+            Op::Deny
+        } else if inherited.allow.contains(bit) {
+            Op::Allow
+        } else {
+            Op::Deny
+        };
+        edits.push(Edit {
+            id: inherited.id,
+            member: inherited.member,
+            op,
+            bits: bit,
+        });
+    }
+    if closed {
+        edits.push(Edit::member(bot, Op::Allow, rooms::entry_bits()));
+    }
+    rooms::apply_state(
+        app,
+        channel,
+        &edits,
+        (bit == Permissions::CONNECT).then_some(closed),
+        (bit == Permissions::VIEW_CHANNEL).then_some(closed),
+    )
+    .await
 }
 
 /// Says `text`, after the panel has been made to show the room as it is now.
@@ -227,7 +260,26 @@ async fn rename(app: &App, who: &Who, room: &TempRoom, raw: &str) -> anyhow::Res
     let Some(name) = clean_name(raw) else {
         return Ok(t!(lang, "voice.rename-empty"));
     };
+    if is_profane_for(&name, false, lang) {
+        return Ok(t!(lang, "voice.rename-filtered"));
+    }
+    let reservation = format!("{}:{}", std::process::id(), rand::random::<u64>());
+    if let Some(wait) = app
+        .cache
+        .try_reserve(
+            &rename_key(channel),
+            &reservation,
+            Duration::from_secs(RENAME_COOLDOWN_SECS),
+        )
+        .await?
+    {
+        let until = now + wait.as_secs() as i64;
+        return Ok(t!(lang, "voice.rename-wait", when = format!("<t:{until}:R>")));
+    }
     if let Err(fail) = rooms::edit_channel(app, channel, Some(&name), None).await {
+        app.cache
+            .release_reservation(&rename_key(channel), &reservation)
+            .await?;
         return Ok(fail.text(lang));
     }
     app.db.mark_room_renamed(channel, app.now()).await?;
@@ -247,7 +299,7 @@ async fn rename(app: &App, who: &Who, room: &TempRoom, raw: &str) -> anyhow::Res
     .await
 }
 
-async fn kick(app: &App, who: &Who, room: &TempRoom, user: u64, is_bot: bool) -> anyhow::Result<String> {
+async fn kick(app: &App, who: &Who, room: &TempRoom, user: u64, _is_bot: bool) -> anyhow::Result<String> {
     let lang = who.lang;
     let channel = room.channel_id as u64;
     if user == who.user {
@@ -255,6 +307,12 @@ async fn kick(app: &App, who: &Who, room: &TempRoom, user: u64, is_bot: bool) ->
     }
     if room.owner_id == Some(user as i64) {
         return Ok(t!(lang, "voice.kick-owner"));
+    }
+    let _room_fence = app.db.lock_temp_voice_rooms(&[channel]).await?;
+    if presence(app, room, user).await != Presence::Inside
+        || !can_disconnect(app, room.guild_id as u64, who.user, user).await
+    {
+        return Ok(t!(lang, "voice.kick-protected"));
     }
     app.db.ban_from_room(channel, user).await?;
     // Discord keeps them out of a locked room; this keeps them out of an open one. Without Manage Roles
@@ -267,8 +325,7 @@ async fn kick(app: &App, who: &Who, room: &TempRoom, user: u64, is_bot: bool) ->
             "temp voice: the kicked member's overwrite was not written"
         );
     }
-    let there = is_bot || is_inside(app, room, user).await;
-    if there
+    if presence(app, room, user).await == Presence::Inside
         && let Err(fail) = rooms::move_member(app, room.guild_id as u64, user, None).await
         && !matches!(fail, Fail::NotInVoice | Fail::Gone)
     {
@@ -277,12 +334,52 @@ async fn kick(app: &App, who: &Who, room: &TempRoom, user: u64, is_bot: bool) ->
     Ok(t!(lang, "voice.kicked", user = format!("<@{user}>")))
 }
 
+pub(crate) async fn can_disconnect(app: &App, guild: u64, actor: u64, target: u64) -> bool {
+    let guild_id = Id::new(guild.max(1));
+    let Ok(server) = app.http.guild(guild_id).await else {
+        return false;
+    };
+    let Ok(server) = server.model().await else {
+        return false;
+    };
+    if target == server.owner_id.get() {
+        return false;
+    }
+    if actor == server.owner_id.get() {
+        return true;
+    }
+    let (Ok(actor_member), Ok(target_member), Ok(roles)) = (
+        app.http.guild_member(guild_id, Id::new(actor.max(1))).await,
+        app.http.guild_member(guild_id, Id::new(target.max(1))).await,
+        app.http.roles(guild_id).await,
+    ) else {
+        return false;
+    };
+    let (Ok(actor_member), Ok(target_member), Ok(roles)) = (
+        actor_member.model().await,
+        target_member.model().await,
+        roles.models().await,
+    ) else {
+        return false;
+    };
+    let top = |ids: &[Id<twilight_model::id::marker::RoleMarker>]| {
+        roles
+            .iter()
+            .filter(|r| ids.contains(&r.id))
+            .map(|r| (r.position, r.id.get()))
+            .max()
+            .unwrap_or((0, 0))
+    };
+    top(&actor_member.roles) >= top(&target_member.roles)
+}
+
 async fn transfer(app: &App, who: &Who, room: TempRoom, target: u64) -> anyhow::Result<String> {
     let lang = who.lang;
     let channel = room.channel_id as u64;
     if room.owner_id == Some(target as i64) {
         return Ok(t!(lang, "voice.transfer-already"));
     }
+    let _room_fence = app.db.lock_temp_voice_rooms(&[channel]).await?;
     if !is_inside(app, &room, target).await {
         return Ok(t!(lang, "voice.transfer-absent", user = format!("<@{target}>")));
     }
@@ -308,11 +405,12 @@ async fn claim(app: &App, who: &Who, room: TempRoom) -> anyhow::Result<String> {
     if room.owner_id == Some(who.user as i64) {
         return Ok(t!(lang, "voice.claim-own"));
     }
+    let _room_fence = app.db.lock_temp_voice_rooms(&[channel]).await?;
     if !is_inside(app, &room, who.user).await {
         return Ok(t!(lang, "voice.claim-outside"));
     }
     if let Some(owner) = room.owner_id
-        && is_inside(app, &room, owner as u64).await
+        && presence(app, &room, owner as u64).await != Presence::Outside
     {
         return Ok(t!(lang, "voice.claim-owner-here", owner = format!("<@{owner}>")));
     }

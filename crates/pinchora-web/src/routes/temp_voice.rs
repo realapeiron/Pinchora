@@ -11,8 +11,10 @@ use axum::{
 };
 use pinchora_cache::Invalidation;
 use pinchora_core::{
+    i18n::Lang,
     modules::Module,
     settings::FieldError,
+    t,
     temp_voice::{
         DEFAULT_TEMPLATE, MAX_CREATORS, MAX_LIMIT, MAX_PER_USER, MAX_ROOMS, MAX_TEMPLATE, check_limit, check_per_user,
         check_template,
@@ -118,6 +120,7 @@ async fn view(state: &WebState, guild: u64) -> ApiResult<Value> {
         .map(|c| creator_json(c, rooms.iter().filter(|r| r.source_id == c.channel_id).count()))
         .collect();
     let missing = pinchora_commands::temp_voice_gaps(&state.app, guild).await.ok();
+    let lang = state.app.guild_lang(guild).await;
     Ok(json!({
         "enabled": enabled,
         "creators": created,
@@ -129,7 +132,7 @@ async fn view(state: &WebState, guild: u64) -> ApiResult<Value> {
             "max_per_user": MAX_PER_USER,
             "max_template": MAX_TEMPLATE,
             "max_limit": MAX_LIMIT,
-            "default_template": DEFAULT_TEMPLATE,
+            "default_template": t!(lang, "voice.default-template", user = "{user}"),
         },
     }))
 }
@@ -156,26 +159,40 @@ pub struct CreatorBody {
     enabled: Option<bool>,
 }
 
-fn channel_of(params: &HashMap<String, String>) -> ApiResult<u64> {
+fn channel_of(params: &HashMap<String, String>, lang: Lang) -> ApiResult<u64> {
     params
         .get("channel")
         .and_then(|raw| parse_id(raw))
-        .ok_or_else(|| ApiError::malformed("Channel ids are numbers."))
+        .ok_or_else(|| ApiError::malformed(t!(lang, "voice.web.channel-id")))
 }
 
 /// A channel id from the body, checked against the server's channels with `fits`.
 fn channel_field(
     info: &GuildInfo,
+    lang: Lang,
     field: &'static str,
     raw: &str,
     fits: impl Fn(&guild_info::ChannelInfo) -> Option<String>,
 ) -> Result<u64, FieldError> {
-    let id = parse_id(raw).ok_or_else(|| FieldError::new(field, "That isn't a Discord id."))?;
-    let channel = info.check_channel(field, id)?;
+    let id = parse_id(raw).ok_or_else(|| FieldError::new(field, t!(lang, "voice.web.invalid-id")))?;
+    let channel = info.check_channel(field, id).map_err(|error| {
+        FieldError::new(
+            field,
+            t!(
+                lang,
+                "voice.web.unknown-channel",
+                detail = localized_detail(lang, error.message, "voice.web.unknown-channel-detail")
+            ),
+        )
+    })?;
     match fits(channel) {
         Some(why) => Err(FieldError::new(field, why)),
         None => Ok(id),
     }
+}
+
+fn localized_detail(lang: Lang, english: String, tr_key: &str) -> String {
+    if lang == Lang::Tr { t!(lang, tr_key) } else { english }
 }
 
 /// The value of a check, or the problem noted in `errors` so every problem of a form is reported at once.
@@ -197,7 +214,8 @@ pub async fn put_creator(
     ApiJson(body): ApiJson<CreatorBody>,
 ) -> ApiResult<Json<Value>> {
     let guild = managed.id;
-    let channel = channel_of(&params)?;
+    let lang = state.app.guild_lang(guild).await;
+    let channel = channel_of(&params, lang)?;
     let db = &state.app.db;
     let info = guild_info::get_with(&state, guild, |info| {
         info.channel(channel).is_some()
@@ -209,15 +227,36 @@ pub async fn put_creator(
                 .all(|id| info.channel(id).is_some())
     })
     .await?;
-    let named = info.check_channel("channel_id", channel)?;
+    let named = info.check_channel("channel_id", channel).map_err(|error| {
+        FieldError::new(
+            "channel_id",
+            t!(
+                lang,
+                "voice.web.unknown-channel",
+                detail = localized_detail(lang, error.message, "voice.web.unknown-channel-detail")
+            ),
+        )
+    })?;
     if named.kind != VOICE {
-        return Err(FieldError::new("channel_id", format!("#{} isn't a voice channel.", named.name)).into());
+        return Err(FieldError::new("channel_id", t!(lang, "voice.web.not-voice", name = &named.name)).into());
     }
     let before = db.voice_creator(guild, channel).await?;
 
     let mut errors = Vec::new();
     let template = match &body.name_template {
-        Some(raw) => collect(&mut errors, check_template(raw)),
+        Some(raw) => collect(
+            &mut errors,
+            check_template(raw).map_err(|error| {
+                FieldError::new(
+                    "name_template",
+                    t!(
+                        lang,
+                        "voice.web.bad-template",
+                        detail = localized_detail(lang, error.message, "voice.web.bad-template-detail")
+                    ),
+                )
+            }),
+        ),
         None => Some(
             before
                 .as_ref()
@@ -225,19 +264,43 @@ pub async fn put_creator(
         ),
     };
     let limit = match body.default_limit {
-        Some(limit) => collect(&mut errors, check_limit(limit)),
+        Some(limit) => collect(
+            &mut errors,
+            check_limit(limit).map_err(|error| {
+                FieldError::new(
+                    "default_limit",
+                    t!(
+                        lang,
+                        "voice.web.bad-limit",
+                        detail = localized_detail(lang, error.message, "voice.web.bad-limit-detail")
+                    ),
+                )
+            }),
+        ),
         None => Some(before.as_ref().map_or(0, |b| b.default_limit)),
     };
     let per_user = match body.max_per_user {
-        Some(count) => collect(&mut errors, check_per_user(count)),
+        Some(count) => collect(
+            &mut errors,
+            check_per_user(count).map_err(|error| {
+                FieldError::new(
+                    "max_per_user",
+                    t!(
+                        lang,
+                        "voice.web.bad-per-user",
+                        detail = localized_detail(lang, error.message, "voice.web.bad-per-user-detail")
+                    ),
+                )
+            }),
+        ),
         None => Some(before.as_ref().map_or(1, |b| b.max_per_user)),
     };
     // The category: named, cleared (`null`: rooms at the top), or as it was (else the creator's own).
     let category = match &body.category_id {
         Some(Some(raw)) => collect(
             &mut errors,
-            channel_field(&info, "category_id", raw, |c| {
-                (c.kind != CATEGORY).then(|| format!("#{} isn't a category.", c.name))
+            channel_field(&info, lang, "category_id", raw, |c| {
+                (c.kind != CATEGORY).then(|| t!(lang, "voice.web.not-category", name = &c.name))
             }),
         )
         .map(|id| Some(id as i64)),
@@ -250,8 +313,8 @@ pub async fn put_creator(
     let thread_in = match &body.panel_channel_id {
         Some(Some(raw)) => collect(
             &mut errors,
-            channel_field(&info, "panel_channel_id", raw, |c| {
-                (!c.takes_posts()).then(|| format!("#{} isn't a text or announcement channel.", c.name))
+            channel_field(&info, lang, "panel_channel_id", raw, |c| {
+                (!c.takes_posts()).then(|| t!(lang, "voice.web.not-text", name = &c.name))
             }),
         )
         .map(|id| Some(id as i64)),
@@ -285,12 +348,10 @@ pub async fn put_creator(
     match db.save_voice_creator(&creator).await? {
         CreatorSave::Saved(_) => {}
         CreatorSave::Full => {
-            return Err(ApiError::limit(format!(
-                "A server can have {MAX_CREATORS} creators. Remove one first."
-            )));
+            return Err(ApiError::limit(t!(lang, "voice.web.creator-cap", count = MAX_CREATORS)));
         }
         CreatorSave::Taken => {
-            return Err(FieldError::new("channel_id", "That channel can't be a creator.").into());
+            return Err(FieldError::new("channel_id", t!(lang, "voice.web.taken")).into());
         }
     }
     pinchora_commands::forget_temp_voice(guild).await;
@@ -346,7 +407,7 @@ pub async fn delete_creator(
     Path(params): Path<HashMap<String, String>>,
 ) -> ApiResult<Json<Value>> {
     let guild = managed.id;
-    let channel = channel_of(&params)?;
+    let channel = channel_of(&params, state.app.guild_lang(guild).await)?;
     let db = &state.app.db;
     if let Some(was) = db.voice_creator(guild, channel).await?
         && db.remove_voice_creator(guild, channel).await?

@@ -6,13 +6,11 @@ use std::{collections::HashSet, sync::Arc, time::Duration};
 use pinchora_core::temp_voice::EMPTY_GRACE_SECS;
 use twilight_model::id::Id;
 
-use super::{lifecycle, track};
+use super::{lifecycle, rooms, track};
 use crate::{App, roles};
 
 /// The ticker wakes this often.
 const WAKE: Duration = Duration::from_secs(30);
-/// Only one pod sweeps in a given round.
-const ROUND_LOCK: Duration = Duration::from_secs(20);
 /// An empty room must have been seen empty by two rounds in a row, so a slow event cannot cost a room.
 const SEEN_EMPTY: Duration = Duration::from_secs(150);
 /// Rooms looked at per query.
@@ -29,7 +27,7 @@ fn marker(channel: u64) -> String {
 pub(crate) async fn still_occupied(app: &App, guild: u64, channel: u64) -> anyhow::Result<Option<bool>> {
     let members = track::members(app, channel).await?;
     if members.is_empty() {
-        return Ok(Some(false));
+        return Ok(app.cache.get(&marker(channel)).await?.map(|_| false));
     }
     if app
         .cache
@@ -63,23 +61,56 @@ pub(crate) async fn still_occupied(app: &App, guild: u64, channel: u64) -> anyho
             occupied = true;
             continue;
         }
+        track::remove_from_room(app, channel, user).await?;
         track::moved(app, guild, user, current, &HashSet::from([channel])).await?;
     }
     Ok(Some(occupied))
 }
 
+pub(crate) async fn note_empty(app: &App, channel: u64) -> anyhow::Result<()> {
+    app.cache.put(&marker(channel), "1", SEEN_EMPTY).await
+}
+
+pub(crate) async fn note_join(app: &App, channel: u64) -> anyhow::Result<()> {
+    app.cache.forget(&marker(channel)).await
+}
+
 /// One round: deletes the rooms that were empty last round too. Returns how many it deleted.
 pub async fn tick(app: &Arc<App>) -> anyhow::Result<usize> {
-    if app.cache.try_cooldown("tvoice:sweep", ROUND_LOCK).await?.is_some() {
-        return Ok(0);
-    }
+    let _sweep_fence = app.db.lock_temp_voice_sweep().await?;
     let older_than = app.now() - chrono::Duration::seconds(EMPTY_GRACE_SECS);
+    for entry in app.cache.set_members("tvoice:pending").await? {
+        let Some((kind, raw)) = entry.split_once(':') else {
+            continue;
+        };
+        let Ok(channel) = raw.parse::<u64>() else {
+            continue;
+        };
+        let created = app
+            .cache
+            .get(&format!("tvoice:pending-at:{entry}"))
+            .await?
+            .and_then(|s| s.parse::<i64>().ok())
+            .unwrap_or(0);
+        if created > app.now().timestamp() - 60 {
+            continue;
+        }
+        let tracked = match kind {
+            "channel" => app.db.temp_room(channel).await?.is_some(),
+            "thread" => app.db.tracked_temp_voice_thread(channel).await?,
+            _ => continue,
+        };
+        if tracked || rooms::delete_channel(app, channel).await.is_ok() {
+            lifecycle::clear_pending(app, kind, channel).await;
+        }
+    }
     let (mut after, mut deleted) = (0u64, 0usize);
     loop {
         let batch = app.db.rooms_to_sweep(older_than, after, BATCH).await?;
         for room in &batch {
             let channel = room.channel_id as u64;
             after = channel;
+            let _room_fence = app.db.lock_temp_voice_rooms(&[channel]).await?;
             match still_occupied(app, room.guild_id as u64, channel).await? {
                 Some(true) | None => {
                     app.cache.forget(&marker(channel)).await?;

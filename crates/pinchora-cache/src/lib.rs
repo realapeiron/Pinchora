@@ -77,6 +77,37 @@ impl Cache {
         Ok(())
     }
 
+    /// Reserves a cooldown for one request. A failing request can release only its own reservation.
+    pub async fn try_reserve(&self, key: &str, token: &str, ttl: Duration) -> anyhow::Result<Option<Duration>> {
+        let key = format!("{PREFIX}:reserve:{key}");
+        let mut conn = self.conn();
+        let set: Option<String> = redis::cmd("SET")
+            .arg(&key)
+            .arg(token)
+            .arg("NX")
+            .arg("PX")
+            .arg(ttl.as_millis() as u64)
+            .query_async(&mut conn)
+            .await?;
+        if set.is_some() {
+            return Ok(None);
+        }
+        let left: i64 = conn.pttl(&key).await?;
+        Ok(Some(Duration::from_millis(left.max(0) as u64)))
+    }
+
+    pub async fn release_reservation(&self, key: &str, token: &str) -> anyhow::Result<bool> {
+        let key = format!("{PREFIX}:reserve:{key}");
+        let deleted: i64 = redis::Script::new(
+            "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) else return 0 end",
+        )
+        .key(key)
+        .arg(token)
+        .invoke_async(&mut self.conn())
+        .await?;
+        Ok(deleted > 0)
+    }
+
     pub async fn store_session(&self, shard: u32, session: &StoredSession, ttl: Duration) -> anyhow::Result<()> {
         let _: () = self
             .conn()

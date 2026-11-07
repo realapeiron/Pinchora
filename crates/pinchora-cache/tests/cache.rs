@@ -15,6 +15,35 @@ fn unique() -> String {
 }
 
 #[tokio::test]
+async fn rename_reservation_can_only_be_released_by_its_owner() {
+    let Some(cache) = cache().await else { return };
+    let key = format!("test:rename:{}", unique());
+    assert!(
+        cache
+            .try_reserve(&key, "first", Duration::from_secs(30))
+            .await
+            .unwrap()
+            .is_none()
+    );
+    assert!(!cache.release_reservation(&key, "second").await.unwrap());
+    assert!(
+        cache
+            .try_reserve(&key, "second", Duration::from_secs(30))
+            .await
+            .unwrap()
+            .is_some()
+    );
+    assert!(cache.release_reservation(&key, "first").await.unwrap());
+    assert!(
+        cache
+            .try_reserve(&key, "second", Duration::from_secs(30))
+            .await
+            .unwrap()
+            .is_none()
+    );
+}
+
+#[tokio::test]
 async fn cooldowns_and_sessions() {
     let Some(cache) = cache().await else { return };
     cache.ping().await.unwrap();

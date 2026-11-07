@@ -6,7 +6,7 @@ use std::{collections::HashSet, sync::Arc};
 use pinchora_core::{modules::Module, temp_voice::EMPTY_GRACE_SECS};
 use twilight_model::voice::VoiceState;
 
-use super::{lifecycle, rooms, setups, sweep, track};
+use super::{control, lifecycle, rooms, setups, sweep, track};
 use crate::App;
 
 /// A voice state changed: `state` says where the member is now.
@@ -30,6 +30,13 @@ async fn handle(app: &Arc<App>, guild: u64, state: &VoiceState) -> anyhow::Resul
     }
     let user = state.user_id.get();
     let to = state.channel_id.map(|c| c.get());
+    let prior = track::place_of(app, guild, user).await?;
+    let channels: Vec<u64> = [prior, to]
+        .into_iter()
+        .flatten()
+        .filter(|c| setup.rooms.contains(c))
+        .collect();
+    let _room_fence = app.db.lock_temp_voice_rooms(&channels).await?;
     let from = track::moved(app, guild, user, to, &setup.rooms).await?;
     // Muting, deafening or streaming changes the state without changing the channel.
     if from == to {
@@ -60,7 +67,7 @@ async fn left_room(app: &Arc<App>, channel: u64, user: u64) -> anyhow::Result<()
     };
     lifecycle::thread_member(app, &room, user, false).await;
     if track::members(app, channel).await?.is_empty() {
-        lifecycle::delete_room(app, &room).await;
+        sweep::note_empty(app, channel).await?;
     }
     Ok(())
 }
@@ -70,7 +77,12 @@ async fn joined_room(app: &Arc<App>, guild: u64, channel: u64, user: u64) -> any
     let Some(room) = app.db.temp_room(channel).await? else {
         return Ok(());
     };
-    if app.db.is_banned_from_room(channel, user).await? {
+    sweep::note_join(app, channel).await?;
+    if app.db.is_banned_from_room(channel, user).await?
+        && control::is_inside(app, &room, user).await
+        && room.owner_id.is_some_and(|owner| owner > 0)
+        && control::can_disconnect(app, guild, room.owner_id.unwrap() as u64, user).await
+    {
         if let Err(fail) = rooms::move_member(app, guild, user, None).await {
             tracing::debug!(guild, user, ?fail, "temp voice: a kicked member was not sent out");
         }
@@ -121,6 +133,7 @@ async fn put_right(
     let now = app.now();
     for room in &rooms {
         let channel = room.channel_id as u64;
+        let _room_fence = app.db.lock_temp_voice_rooms(&[channel]).await?;
         // A room made after the snapshot is absent from its channel list, but is not gone.
         if !channels.contains(&channel) && room.created_at.timestamp() < seen {
             lifecycle::forget_room(app, guild, channel).await;
@@ -129,7 +142,10 @@ async fn put_right(
         let inside: Vec<u64> = voice.iter().filter(|(_, c)| *c == channel).map(|(u, _)| *u).collect();
         // An event after GUILD_CREATE may have put somebody in a room while this snapshot waited in
         // the rebuild queue. Check Discord before replacing that newer presence with an empty list.
-        if inside.is_empty() && matches!(sweep::still_occupied(app, guild, channel).await?, Some(true) | None) {
+        if inside.is_empty()
+            && !track::members(app, channel).await?.is_empty()
+            && matches!(sweep::still_occupied(app, guild, channel).await?, Some(true) | None)
+        {
             continue;
         }
         track::set_members(app, guild, channel, &inside).await?;

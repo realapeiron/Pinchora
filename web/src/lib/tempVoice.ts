@@ -4,6 +4,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "./api";
+import { t, tf } from "./tempVoiceI18n";
 
 export interface Creator {
   channel_id: string;
@@ -93,12 +94,16 @@ export const MAX_NAME = 100;
 export const MAX_TEMPLATE = 80;
 export const PLACEHOLDERS = ["user", "n"] as const;
 export const FALLBACK_NAME = "Voice room";
+const DEFAULT_TEMPLATE = "{user}'s room";
 
 /** Whitespace collapsed to single spaces, control characters dropped. */
 function tidy(text: string): string {
   return text
     .replace(/\s/g, " ")
     .replace(/\p{Cc}/gu, "")
+    .replaceAll("@", "＠")
+    .replaceAll("<", "‹")
+    .replaceAll(">", "›")
     .split(" ")
     .filter(Boolean)
     .join(" ");
@@ -107,37 +112,43 @@ function tidy(text: string): string {
 /** The first `max` characters (code points, as Discord counts them), never empty. */
 function clip(name: string): string {
   const cut = [...name].slice(0, MAX_NAME).join("").trim();
-  return cut === "" ? FALLBACK_NAME : cut;
+  return cut === "" ? t(FALLBACK_NAME) : cut;
 }
 
 /** What a room is called: the owner's name where `{user}` is, the room's number where `{n}` is. */
 export function roomName(template: string, owner: string, number: number): string {
-  return clip(tidy(template.replaceAll("{n}", String(number)).replaceAll("{user}", owner)));
+  const shown = template === DEFAULT_TEMPLATE ? t(template) : template;
+  return clip(tidy(shown.replaceAll("{n}", String(number)).replaceAll("{user}", owner)));
 }
 
 /** Why a name template is not good enough, as the bot would say it, or `null` when it is fine. */
 export function templateProblem(raw: string): string | null {
   const template = tidy(raw);
-  if (template === "") return "Give the rooms a name, like {user}'s room.";
-  if ([...template].length > MAX_TEMPLATE) return `A name template is at most ${MAX_TEMPLATE} characters.`;
+  if (template === "") return t("Give the rooms a name, like {user}'s room.");
+  if ([...template].length > MAX_TEMPLATE)
+    return tf("A name template is at most {max} characters.", { max: MAX_TEMPLATE });
   for (const match of template.matchAll(/\{([^{}]*)\}/g)) {
     const word = match[1] ?? "";
     if (!(PLACEHOLDERS as readonly string[]).includes(word)) {
-      return `{${word}} isn't one of the words a name can use: {user} and {n}.`;
+      return tf("{word} isn't one of the words a name can use: {user} and {n}.", {
+        word: `{${word}}`,
+        user: "{user}",
+        n: "{n}",
+      });
     }
   }
   const open = template.replace(/\{[^{}]*\}/g, "");
-  if (open.includes("{") || open.includes("}")) return "There is a { without its }.";
+  if (open.includes("{") || open.includes("}")) return t("There is a { without its }.");
   return null;
 }
 
 /** How long ago, in the units a person says it: "just now", "12 min ago", "3 h ago", "2 d ago". */
 export function ago(iso: string, now: number = Date.now()): string {
   const seconds = Math.max(0, Math.round((now - Date.parse(iso)) / 1000));
-  if (seconds < 45) return "just now";
+  if (seconds < 45) return t("just now");
   const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `${minutes} min ago`;
+  if (minutes < 60) return tf("{count} min ago", { count: minutes });
   const hours = Math.round(minutes / 60);
-  if (hours < 48) return `${hours} h ago`;
-  return `${Math.round(hours / 24)} d ago`;
+  if (hours < 48) return tf("{count} h ago", { count: hours });
+  return tf("{count} d ago", { count: Math.round(hours / 24) });
 }

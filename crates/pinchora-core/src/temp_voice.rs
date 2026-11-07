@@ -1,6 +1,6 @@
 //! Temp voice: the limits and the naming rules `/voice creators` and the dashboard share. Pure.
 
-use crate::settings::FieldError;
+use crate::{i18n::Lang, settings::FieldError, t};
 
 /// Most creator channels one server may set up.
 pub const MAX_CREATORS: usize = 10;
@@ -33,35 +33,44 @@ pub fn check_template(raw: &str) -> Result<String, FieldError> {
     if template.is_empty() {
         return Err(FieldError::new(
             "name_template",
-            "Give the rooms a name, like `{user}'s room`.",
+            t!(Lang::En, "voice.validation.empty-template"),
         ));
     }
     if template.chars().count() > MAX_TEMPLATE {
         return Err(FieldError::new(
             "name_template",
-            format!("A name template is at most {MAX_TEMPLATE} characters."),
+            t!(Lang::En, "voice.validation.template-length", count = MAX_TEMPLATE),
         ));
     }
     let mut rest = template.as_str();
     while let Some(open) = rest.find('{') {
         if rest[..open].contains('}') {
-            return Err(FieldError::new("name_template", "There is a `}` without its `{`."));
+            return Err(FieldError::new(
+                "name_template",
+                t!(Lang::En, "voice.validation.extra-close"),
+            ));
         }
         let after = &rest[open + 1..];
         let Some(close) = after.find('}') else {
-            return Err(FieldError::new("name_template", "There is a `{` without its `}`."));
+            return Err(FieldError::new(
+                "name_template",
+                t!(Lang::En, "voice.validation.unclosed-open"),
+            ));
         };
         let word = &after[..close];
         if !PLACEHOLDERS.contains(&word) {
             return Err(FieldError::new(
                 "name_template",
-                format!("`{{{word}}}` isn't one of the words a name can use: {{user}} and {{n}}."),
+                t!(Lang::En, "voice.validation.unknown-word", word = format!("{{{word}}}")),
             ));
         }
         rest = &after[close + 1..];
     }
     if rest.contains('}') {
-        return Err(FieldError::new("name_template", "There is a `}` without its `{`."));
+        return Err(FieldError::new(
+            "name_template",
+            t!(Lang::En, "voice.validation.extra-close"),
+        ));
     }
     Ok(template)
 }
@@ -74,7 +83,7 @@ pub fn check_limit(limit: i64) -> Result<i32, FieldError> {
         .ok_or_else(|| {
             FieldError::new(
                 "default_limit",
-                format!("A limit is 0 (no limit) to {MAX_LIMIT} people."),
+                t!(Lang::En, "voice.validation.limit", count = MAX_LIMIT),
             )
         })
 }
@@ -87,7 +96,7 @@ pub fn check_per_user(count: i64) -> Result<i32, FieldError> {
         .ok_or_else(|| {
             FieldError::new(
                 "max_per_user",
-                format!("A member may own 1 to {MAX_PER_USER} rooms at once."),
+                t!(Lang::En, "voice.validation.per-user", count = MAX_PER_USER),
             )
         })
 }
@@ -95,7 +104,13 @@ pub fn check_per_user(count: i64) -> Result<i32, FieldError> {
 /// Whitespace collapsed to single spaces, control characters dropped.
 fn tidy(text: &str) -> String {
     text.chars()
-        .map(|c| if c.is_whitespace() { ' ' } else { c })
+        .map(|c| match c {
+            '@' => '＠',
+            '<' => '‹',
+            '>' => '›',
+            c if c.is_whitespace() => ' ',
+            c => c,
+        })
         .filter(|c| !c.is_control())
         .collect::<String>()
         .split_whitespace()

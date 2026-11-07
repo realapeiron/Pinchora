@@ -302,6 +302,30 @@ impl Edit {
 /// Applies `edits` to a channel's overwrites as they are now and writes what changed: one that ends up
 /// with nothing in it is deleted.
 pub(crate) async fn apply(app: &App, channel: u64, edits: &[Edit]) -> Result<(), Fail> {
+    let tx = app.db.lock_temp_room_mutation(channel).await.map_err(|_| Fail::Other)?;
+    apply_unlocked(app, channel, edits).await?;
+    tx.commit().await.map_err(|_| Fail::Other)?;
+    Ok(())
+}
+
+pub(crate) async fn apply_state(
+    app: &App,
+    channel: u64,
+    edits: &[Edit],
+    locked: Option<bool>,
+    hidden: Option<bool>,
+) -> Result<(), Fail> {
+    let tx = app.db.lock_temp_room_mutation(channel).await.map_err(|_| Fail::Other)?;
+    apply_unlocked(app, channel, edits).await?;
+    app.db
+        .set_room_state(channel, locked, hidden, None)
+        .await
+        .map_err(|_| Fail::Other)?;
+    tx.commit().await.map_err(|_| Fail::Other)?;
+    Ok(())
+}
+
+async fn apply_unlocked(app: &App, channel: u64, edits: &[Edit]) -> Result<(), Fail> {
     let mut list = overwrites_of(app, channel, MANAGE_ROLES).await?;
     for edit_one in edits {
         let before = list

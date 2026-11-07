@@ -273,6 +273,48 @@ async fn only_managers_see_or_change_temp_voice() {
         .await;
     assert_eq!(write.code(), "not_manager");
     assert!(h.state.app.db.voice_creators(guild).await.unwrap().is_empty());
+    browser
+        .login(
+            &h,
+            unique(),
+            vec![guild_entry(
+                guild,
+                "Pinchora Reef",
+                false,
+                !(MANAGE_GUILD | ADMINISTRATOR),
+            )],
+        )
+        .await;
+    assert_eq!(browser.get(&g(guild)).await.code(), "not_manager");
+    assert_eq!(
+        browser
+            .write(Method::PUT, &format!("{}/creators/{LOUNGE}", g(guild)), json!({}))
+            .await
+            .code(),
+        "not_manager"
+    );
+}
+
+#[tokio::test]
+async fn temp_voice_field_errors_follow_the_servers_language() {
+    let Some(h) = Harness::new("tempvoice_turkish_errors").await else {
+        return;
+    };
+    let (guild, _, mut browser) = h.managed_server().await;
+    h.state
+        .app
+        .set_guild_lang(guild, Some(pinchora_core::i18n::Lang::Tr))
+        .await
+        .unwrap();
+    let bad = browser
+        .write(
+            Method::PUT,
+            &format!("{}/creators/{LOUNGE}", g(guild)),
+            json!({"default_limit": 100}),
+        )
+        .await;
+    assert_eq!(bad.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(refusal(&bad).1.contains("Kişi sınırı"), "{}", bad.text());
 }
 
 #[tokio::test]

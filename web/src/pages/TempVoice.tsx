@@ -23,6 +23,7 @@ import {
   useTempVoice,
 } from "../lib/tempVoice";
 import { Loading, Problem } from "./States";
+import { t, tf } from "../lib/tempVoiceI18n";
 import { PageHead } from "./PageHead";
 
 import "../styles/temp-voice.css";
@@ -53,10 +54,12 @@ export function TempVoice() {
   return (
     <div className="settings-page temp-voice-page">
       <PageHead
-        title="TEMP VOICE"
-        lead="Members join a creator channel and get a voice room of their own, with the keys. It goes away when the last person leaves."
+        title={t("TEMP VOICE")}
+        lead={t(
+          "Members join a creator channel and get a voice room of their own, with the keys. It goes away when the last person leaves.",
+        )}
       />
-      {query.isPending && <Loading label="Reading the creators" />}
+      {query.isPending && <Loading label={t("Reading the creators")} />}
       {query.isError && <Problem error={query.error} />}
       {query.isSuccess && <Body guild={guild} data={query.data} />}
     </div>
@@ -82,7 +85,7 @@ function Body({ guild, data }: { guild: string; data: TempVoiceData }) {
         onSuccess: () => {
           setEditing(picked);
           setPicked("");
-          setToast("Creator added. Join it to try it out.");
+          setToast(t("Creator added. Join it to try it out."));
         },
       },
     );
@@ -92,34 +95,39 @@ function Body({ guild, data }: { guild: string; data: TempVoiceData }) {
     <>
       {!data.enabled && (
         <p className="notice" role="note">
-          <strong>Temp voice</strong> is switched off in <Link to={`/g/${guild}/modules`}>Modules</Link>, so
-          joining a creator does nothing until you switch it on.
+          <strong>{t("Temp voice")}</strong>
+          {t(" is switched off in ")}
+          <Link to={`/g/${guild}/modules`}>{t("Modules")}</Link>
+          {t(", so joining a creator does nothing until you switch it on. ")}
         </p>
       )}
       {data.missing && data.missing.length > 0 && (
         <p className="notice notice-heart" role="note">
-          Pinchora is missing <strong>{data.missing.join(", ")}</strong> in this server, so rooms won&rsquo;t
-          work properly yet. Give its role{" "}
-          {data.missing.length === 1 ? "that permission" : "those permissions"} in Server Settings.
+          {t("Pinchora is missing ")}
+          <strong>{data.missing.map(t).join(", ")}</strong>
+          {t(" in this server, so rooms won&rsquo;t work properly yet. Give its role ")}
+          {data.missing.length === 1 ? t("that permission") : t("those permissions")}
+          {t(" in Server Settings. ")}
         </p>
       )}
 
       <Panel
-        title="CREATORS"
+        title={t("CREATORS")}
         aside={
           <span className="pixel-label muted">{`${data.creators.length}/${data.limits.max_creators}`}</span>
         }
       >
         <p className="muted panel-lead">
-          A creator is a voice channel people join to get a room. Rooms are made in the creator&rsquo;s
-          category, named by its template, and the person who joined is moved into theirs.
+          {t(
+            "A creator is a voice channel people join to get a room. Rooms are made in the creator&rsquo;s category, named by its template, and the person who joined is moved into theirs. ",
+          )}
         </p>
         {data.creators.length === 0 ? (
           <p className="empty-row muted">
-            No creator channels yet. Pick a voice channel below and everyone who joins it gets a room.
+            {t("No creator channels yet. Pick a voice channel below and everyone who joins it gets a room. ")}
           </p>
         ) : (
-          <ul className="creator-list" aria-label="Creator channels">
+          <ul className="creator-list" aria-label={t("Creator channels")}>
             {data.creators.map((creator) => (
               <CreatorRow
                 key={creator.channel_id}
@@ -129,7 +137,7 @@ function Body({ guild, data }: { guild: string; data: TempVoiceData }) {
                 limits={data.limits}
                 open={editing === creator.channel_id}
                 onToggle={() => setEditing(editing === creator.channel_id ? null : creator.channel_id)}
-                onSaved={() => setToast("Saved. The bot uses it from the next room.")}
+                onSaved={() => setToast(t("Saved. The bot uses it from the next room."))}
               />
             ))}
           </ul>
@@ -137,14 +145,16 @@ function Body({ guild, data }: { guild: string; data: TempVoiceData }) {
 
         <div className="add-creator">
           <Field
-            label="Add a creator"
+            label={t("Add a creator")}
             htmlFor="creator-channel"
             error={refused ? refused.message : null}
             hint={
               data.creators.length >= data.limits.max_creators
-                ? `A server can have ${data.limits.max_creators} creators. Remove one to add another.`
+                ? tf("A server can have {count} creators. Remove one to add another.", {
+                    count: data.limits.max_creators,
+                  })
                 : voices.length === 0 && discord.data
-                  ? "This server has no voice channels yet. Make one in Discord first."
+                  ? t("This server has no voice channels yet. Make one in Discord first.")
                   : undefined
             }
           >
@@ -156,23 +166,23 @@ function Body({ guild, data }: { guild: string; data: TempVoiceData }) {
               disabled={!discord.data || data.creators.length >= data.limits.max_creators}
               aria-invalid={refused ? true : undefined}
             >
-              <option value="">Pick a voice channel…</option>
+              <option value="">{t("Pick a voice channel…")}</option>
               {voices.map((c) => (
                 <option key={c.id} value={c.id} disabled={taken.has(c.id)}>
                   {channelLabel(c)}
-                  {taken.has(c.id) ? " (already a creator)" : ""}
+                  {taken.has(c.id) ? t(" (already a creator)") : ""}
                 </option>
               ))}
             </select>
           </Field>
           <PixelButton onClick={add} disabled={!picked || save.isPending}>
-            {save.isPending && save.variables?.channel === picked ? "Adding…" : "Add creator"}
+            {save.isPending && save.variables?.channel === picked ? t("Adding…") : t("Add creator")}
           </PixelButton>
         </div>
       </Panel>
 
       <Panel
-        title="LIVE ROOMS"
+        title={t("LIVE ROOMS")}
         aside={
           <span className="live-count" role="status">
             <span className="live-dot" aria-hidden="true" />
@@ -180,21 +190,22 @@ function Body({ guild, data }: { guild: string; data: TempVoiceData }) {
               {`${data.rooms.length}/${data.limits.max_rooms}`}
             </span>
             <span className="visually-hidden">
-              {`${data.rooms.length} of ${data.limits.max_rooms} rooms open`}
+              {tf("{open} of {max} rooms open", { open: data.rooms.length, max: data.limits.max_rooms })}
             </span>
           </span>
         }
       >
         <p className="muted panel-lead">
-          Rooms open right now. Members run their own rooms with the commands below; this list only shows them
-          and refreshes by itself.
+          {t(
+            "Rooms open right now. Members run their own rooms with the commands below; this list only shows them and refreshes by itself. ",
+          )}
         </p>
         {data.rooms.length === 0 ? (
           <p className="empty-row muted">
-            No rooms right now. One appears as soon as somebody joins a creator.
+            {t("No rooms right now. One appears as soon as somebody joins a creator. ")}
           </p>
         ) : (
-          <ul className="room-list" aria-label="Live rooms">
+          <ul className="room-list" aria-label={t("Live rooms")}>
             {data.rooms.map((room) => (
               <RoomRow key={room.channel_id} room={room} info={discord.data} creators={data.creators} />
             ))}
@@ -202,16 +213,19 @@ function Body({ guild, data }: { guild: string; data: TempVoiceData }) {
         )}
       </Panel>
 
-      <Panel title="WHAT MEMBERS CAN DO">
+      <Panel title={t("WHAT MEMBERS CAN DO")}>
         <p className="muted panel-lead">
-          The owner of a room runs it with <code>/voice</code>, or with the button panel that appears in the
-          room&rsquo;s chat. Managers can run any room they reach.
+          {t("The owner of a room runs it with ")}
+          <code>{t("/voice")}</code>
+          {t(
+            ", or with the button panel that appears in the room&rsquo;s chat. Managers can run any room they reach. ",
+          )}
         </p>
-        <ul className="command-list" aria-label="Member commands">
+        <ul className="command-list" aria-label={t("Member commands")}>
           {MEMBER_COMMANDS.map((c) => (
             <li key={c.command}>
               <code>{c.command}</code>
-              <span className="muted">{c.what}</span>
+              <span className="muted">{t(c.what)}</span>
             </li>
           ))}
         </ul>
@@ -264,9 +278,9 @@ function CreatorRow({
 }) {
   const remove = useRemoveCreator(guild);
   const [sure, setSure] = useState(false);
-  const name = nameOf(info, creator.channel_id, "a deleted channel");
+  const name = nameOf(info, creator.channel_id, t("a deleted channel"));
   const gone = info !== undefined && !info.channels.some((c) => c.id === creator.channel_id);
-  const category = creator.category_id ? nameOf(info, creator.category_id, "a deleted category") : null;
+  const category = creator.category_id ? nameOf(info, creator.category_id, t("a deleted category")) : null;
   return (
     <li className={`creator ${open ? "is-open" : ""} ${creator.enabled ? "" : "is-off"}`}>
       <div className="creator-head">
@@ -275,10 +289,10 @@ function CreatorRow({
             🔊 {name}
           </span>
           <span className={`badge ${creator.enabled ? "badge-mint" : "badge-dim"}`}>
-            {creator.enabled ? "ON" : "OFF"}
+            {creator.enabled ? t("ON") : t("OFF")}
           </span>
-          {gone && <span className="badge badge-heart">CHANNEL DELETED</span>}
-          {creator.default_locked && <span className="badge badge-dim">STARTS LOCKED</span>}
+          {gone && <span className="badge badge-heart">{t("CHANNEL DELETED")}</span>}
+          {creator.default_locked && <span className="badge badge-dim">{t("STARTS LOCKED")}</span>}
         </div>
         <div className="creator-actions">
           <PixelButton
@@ -286,43 +300,45 @@ function CreatorRow({
             className="button-small"
             aria-expanded={open}
             aria-controls={open ? `creator-${creator.channel_id}-form` : undefined}
-            aria-label={`${open ? "Close the settings of" : "Edit"} ${name}`}
+            aria-label={`${t(open ? "Close the settings of" : "Edit")} ${name}`}
             onClick={onToggle}
           >
-            {open ? "Close" : "Edit"}
+            {t(open ? "Close" : "Edit")}
           </PixelButton>
           {sure ? (
             <>
               <PixelButton
                 variant="secondary"
                 className="button-small"
-                aria-label={`Really remove ${name}`}
+                aria-label={tf("Really remove {name}", { name })}
                 disabled={remove.isPending}
                 onClick={() => remove.mutate(creator.channel_id, { onSettled: () => setSure(false) })}
               >
-                {remove.isPending ? "Removing…" : "Yes, remove"}
+                {t(remove.isPending ? "Removing…" : "Yes, remove")}
               </PixelButton>
               <PixelButton variant="ghost" className="button-small" onClick={() => setSure(false)}>
-                Keep
+                {t("Keep ")}
               </PixelButton>
             </>
           ) : (
             <PixelButton
               variant="ghost"
               className="button-small"
-              aria-label={`Remove ${name}`}
+              aria-label={tf("Remove {name}", { name })}
               onClick={() => setSure(true)}
             >
-              Remove
+              {t("Remove ")}
             </PixelButton>
           )}
         </div>
       </div>
       <p className="creator-summary muted">
         <span className="creator-sample">{roomName(creator.name_template, SAMPLE_OWNER, 1)}</span>
-        {category ? ` · in ${category}` : " · at the top of the list"}
-        {creator.default_limit > 0 ? ` · ${creator.default_limit} people` : " · no limit"}
-        {creator.rooms > 0 ? ` · ${creator.rooms} open now` : ""}
+        {category ? tf(" · in {category}", { category }) : t(" · at the top of the list")}
+        {creator.default_limit > 0
+          ? tf(" · {count} people", { count: creator.default_limit })
+          : t(" · no limit")}
+        {creator.rooms > 0 ? tf(" · {count} open now", { count: creator.rooms }) : ""}
       </p>
       {remove.isError && (
         <p className="field-error" role="alert">
@@ -374,7 +390,7 @@ function CreatorForm({
   const limit = Number.isNaN(value.default_limit) ? null : value.default_limit;
   const limitError =
     limit === null || !Number.isInteger(limit) || limit < 0 || limit > limits.max_limit
-      ? `A limit is 0 (no limit) to ${limits.max_limit} people.`
+      ? tf("A limit is 0 (no limit) to {max} people.", { max: limits.max_limit })
       : null;
   const refused = save.error instanceof ApiError ? save.error : null;
   const serverError = (field: string) => refused?.errors.find((e) => e.field === field)?.message ?? null;
@@ -383,11 +399,11 @@ function CreatorForm({
   const blocked = templateError !== null || limitError !== null;
   const previewChat = value.panel
     ? value.panel_channel_id
-      ? "Controls appear in a private thread."
-      : "Controls appear in the room chat."
+      ? t("Controls appear in a private thread.")
+      : t("Controls appear in the room chat.")
     : value.panel_channel_id
-      ? "A private chat thread is created. Members use /voice commands."
-      : "Members use /voice commands.";
+      ? t("A private chat thread is created. Members use /voice commands.")
+      : t("Members use /voice commands.");
 
   const submit = () => {
     if (blocked || changed === 0) return;
@@ -399,7 +415,7 @@ function CreatorForm({
     <form
       id={`${id}-form`}
       className="creator-form"
-      aria-label={`Settings of ${nameOf(info, creator.channel_id, "this creator")}`}
+      aria-label={tf("Settings of {name}", { name: nameOf(info, creator.channel_id, t("this creator")) })}
       onSubmit={(event) => {
         event.preventDefault();
         submit();
@@ -407,12 +423,15 @@ function CreatorForm({
     >
       <div className="form-grid form-grid-2">
         <Field
-          label="Room name"
+          label={t("Room name")}
           htmlFor={`${id}-template`}
           error={templateError ?? serverError("name_template")}
           hint={
             <>
-              <code>{"{user}"}</code> is the owner&rsquo;s name, <code>{"{n}"}</code> the room&rsquo;s number.
+              <code>{"{user}"}</code>
+              {t("is the owner&rsquo;s name, ")}
+              <code>{"{n}"}</code>
+              {t("the room&rsquo;s number. ")}
             </>
           }
           aside={
@@ -429,7 +448,7 @@ function CreatorForm({
             onChange={(event) => set("name_template", event.target.value)}
             aria-invalid={templateError || serverError("name_template") ? true : undefined}
           />
-          <div className="chips" aria-label="Words to add to the name">
+          <div className="chips" aria-label={t("Words to add to the name")}>
             <button type="button" className="chip" onClick={() => insert("user")}>
               {"{user}"}
             </button>
@@ -439,10 +458,10 @@ function CreatorForm({
           </div>
         </Field>
         <Field
-          label="Category for the rooms"
+          label={t("Category for the rooms")}
           htmlFor={`${id}-category`}
           error={serverError("category_id")}
-          hint="Rooms take on the category's permissions."
+          hint={t("Rooms take on the category's permissions.")}
         >
           <select
             id={`${id}-category`}
@@ -451,9 +470,12 @@ function CreatorForm({
             onChange={(event) => set("category_id", event.target.value || null)}
             disabled={!info}
           >
-            <option value="">No category (top of the list)</option>
+            <option value="">{t("No category (top of the list)")}</option>
             {value.category_id && !categories.some((c: Channel) => c.id === value.category_id) && (
-              <option value={value.category_id}>Deleted category ({value.category_id})</option>
+              <option value={value.category_id}>
+                {t("Deleted category (")}
+                {value.category_id})
+              </option>
             )}
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
@@ -463,10 +485,10 @@ function CreatorForm({
           </select>
         </Field>
         <Field
-          label="People per room"
+          label={t("People per room")}
           htmlFor={`${id}-limit`}
           error={limitError ?? serverError("default_limit")}
-          hint="Where rooms start. 0 means no limit; owners can change it."
+          hint={t("Where rooms start. 0 means no limit; owners can change it.")}
         >
           <input
             id={`${id}-limit`}
@@ -482,10 +504,10 @@ function CreatorForm({
           />
         </Field>
         <Field
-          label="Rooms per member"
+          label={t("Rooms per member")}
           htmlFor={`${id}-per-user`}
           error={serverError("max_per_user")}
-          hint="A member over this is taken back to their oldest room."
+          hint={t("A member over this is taken back to their oldest room.")}
         >
           <select
             id={`${id}-per-user`}
@@ -504,67 +526,75 @@ function CreatorForm({
 
       <div className="creator-switches">
         <SwitchRow
-          title="Starts locked"
+          title={t("Starts locked")}
           control={
             <PixelToggle
-              label="Starts locked"
+              label={t("Starts locked")}
               checked={value.default_locked}
               onChange={(on) => set("default_locked", on)}
             />
           }
         >
-          New rooms keep everyone out until the owner invites them or unlocks it.
+          {t("New rooms keep everyone out until the owner invites them or unlocks it. ")}
         </SwitchRow>
         <SwitchRow
-          title="Button panel"
+          title={t("Button panel")}
           control={
-            <PixelToggle label="Button panel" checked={value.panel} onChange={(on) => set("panel", on)} />
+            <PixelToggle
+              label={t("Button panel")}
+              checked={value.panel}
+              onChange={(on) => set("panel", on)}
+            />
           }
         >
-          Each room gets a message of buttons (lock, rename, kick…) in its own chat.
+          {t("Each room gets a message of buttons (lock, rename, kick…) in its own chat. ")}
         </SwitchRow>
         <SwitchRow
-          title="Active"
+          title={t("Active")}
           control={
-            <PixelToggle label="Active" checked={value.enabled} onChange={(on) => set("enabled", on)} />
+            <PixelToggle label={t("Active")} checked={value.enabled} onChange={(on) => set("enabled", on)} />
           }
         >
-          Off makes no new rooms; the ones that exist carry on and are cleaned up.
+          {t("Off makes no new rooms; the ones that exist carry on and are cleaned up. ")}
         </SwitchRow>
       </div>
 
       <Field
-        label="Private chat thread"
+        label={t("Private chat thread")}
         htmlFor={`${id}-thread`}
         error={serverError("panel_channel_id")}
-        hint="Optional. Pick a text channel and each room also gets a private thread there, with the panel in it. Members are added as they join."
+        hint={t(
+          "Optional. Pick a text channel and each room also gets a private thread there, with the panel in it. Members are added as they join.",
+        )}
       >
         <ChannelPicker
           id={`${id}-thread`}
           info={info}
           value={value.panel_channel_id}
           onChange={(channel) => set("panel_channel_id", channel)}
-          none="No thread: the room's own chat"
+          none={t("No thread: the room's own chat")}
         />
       </Field>
 
       <p className="sample-line">
-        <span className="pixel-label muted">LOOKS LIKE</span>
+        <span className="pixel-label muted">{t("LOOKS LIKE")}</span>
         <span className="creator-sample">
           🔊 {templateError ? "…" : roomName(value.name_template, SAMPLE_OWNER, creator.rooms + 1)}
         </span>
       </p>
       {preview && (
-        <div className="creator-preview" role="region" aria-label="New room preview">
+        <div className="creator-preview" role="region" aria-label={t("New room preview")}>
           <strong>
             🔊{" "}
             {templateError
-              ? "Fix the room name above"
+              ? t("Fix the room name above")
               : roomName(value.name_template, SAMPLE_OWNER, creator.rooms + 1)}
           </strong>
           <span>
-            {value.default_locked ? "Starts locked" : "Starts open"} ·{" "}
-            {value.default_limit ? `${value.default_limit} people` : "No people limit"}
+            {t(value.default_locked ? "Starts locked" : "Starts open")} ·{" "}
+            {value.default_limit
+              ? tf("{count} people", { count: value.default_limit })
+              : t("No people limit")}
           </span>
           <span>{previewChat}</span>
         </div>
@@ -577,13 +607,13 @@ function CreatorForm({
       )}
       <div className="creator-foot">
         <PixelButton variant="ghost" onClick={() => setPreview((shown) => !shown)} aria-expanded={preview}>
-          {preview ? "Hide preview" : "Preview room"}
+          {t(preview ? "Hide preview" : "Preview room")}
         </PixelButton>
         <PixelButton variant="ghost" onClick={onClose}>
-          {changed > 0 ? "Discard" : "Close"}
+          {t(changed > 0 ? "Discard" : "Close")}
         </PixelButton>
         <PixelButton onClick={submit} disabled={blocked || changed === 0 || save.isPending}>
-          {save.isPending ? "Saving…" : "Save creator"}
+          {t(save.isPending ? "Saving…" : "Save creator")}
         </PixelButton>
       </div>
     </form>
@@ -593,9 +623,10 @@ function CreatorForm({
 // /Rooms
 
 function RoomRow({ room, info, creators }: { room: Room; info: GuildInfo | undefined; creators: Creator[] }) {
-  const name = nameOf(info, room.channel_id, "Voice room");
+  const name = nameOf(info, room.channel_id, t("Voice room"));
   const source = creators.find((c) => c.channel_id === room.source_id);
-  const owner = room.owner_name ?? (room.owner_id ? `Member ${room.owner_id.slice(-4)}` : "Nobody");
+  const owner =
+    room.owner_name ?? (room.owner_id ? tf("Member {id}", { id: room.owner_id.slice(-4) }) : t("Nobody"));
   const full = room.user_limit > 0 ? `${room.members}/${room.user_limit}` : String(room.members);
   return (
     <li className="room">
@@ -603,16 +634,16 @@ function RoomRow({ room, info, creators }: { room: Room; info: GuildInfo | undef
         🔊 {name}
       </span>
       <span className="room-owner">
-        <span className="pixel-label muted">OWNER</span> {owner}
+        <span className="pixel-label muted">{t("OWNER")}</span> {owner}
       </span>
       <span className="room-people">
-        <span className="pixel-label muted">INSIDE</span>{" "}
-        <span aria-label={`${full} people inside`}>{full}</span>
+        <span className="pixel-label muted">{t("INSIDE")}</span>{" "}
+        <span aria-label={tf("{count} people inside", { count: full })}>{full}</span>
       </span>
       <span className="room-flags">
-        {room.locked && <span className="badge badge-gold">LOCKED</span>}
-        {room.hidden && <span className="badge badge-dim">HIDDEN</span>}
-        {!source && <span className="badge badge-dim">CREATOR REMOVED</span>}
+        {room.locked && <span className="badge badge-gold">{t("LOCKED")}</span>}
+        {room.hidden && <span className="badge badge-dim">{t("HIDDEN")}</span>}
+        {!source && <span className="badge badge-dim">{t("CREATOR REMOVED")}</span>}
       </span>
       <span className="room-age muted">{ago(room.created_at)}</span>
     </li>
