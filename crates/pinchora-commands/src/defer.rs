@@ -117,12 +117,25 @@ const PRIVATE: &[&str] = &[
     "verification",
     "raid",
     "afk",
+    "qotd",
+    "counting",
+    "form list",
+    "modmail",
+    "community qotd",
+    "community counting",
+    "community forms",
+    "community modmail",
     "sticky",
     "schedule",
 ];
 
 /// Slash commands that answer with a form, which only works as the first answer: never deferred.
-const OPENS_FORM: &[&str] = &["customcommand create", "customcommand edit", "event create"];
+const OPENS_FORM: &[&str] = &[
+    "customcommand create",
+    "customcommand edit",
+    "event create",
+    "form open",
+];
 
 /// Component clicks that may answer with a modal, as `prefix:action` of the custom id. The simulator
 /// checks that every modal it sees opened comes from one of these.
@@ -145,6 +158,7 @@ const OPENS_MODAL: &[&str] = &[
     "sk:e",
     "sm:c",
     "ev:c",
+    "fm:o",
     "mi:coord",
     "ag:answer",
     "yt:answer",

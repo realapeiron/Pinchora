@@ -1,5 +1,10 @@
 # Command tree release rehearsal
 
+F20 adds four member roots (`/qotd`, `/counting`, `/form`, `/modmail`)
+and configuration groups under `/community`. The projected registration
+is 70 roots. Its `/community` size remains under the 7,200-character
+headroom gate; the four new roots do not alter the old-path manifest.
+
 Slices 13–18 complete the transition from 95 registered roots to **66 roots** and 330 executable actions.
 The manifest is the action inventory; all 160 moved actions have one canonical destination. Old typed
 models remain internal for in-flight interactions and prefix compatibility. The eight planned feature

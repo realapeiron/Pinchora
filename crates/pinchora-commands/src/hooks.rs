@@ -65,6 +65,7 @@ pub(crate) async fn after_message(app: &Arc<App>, msg: &Message, _settings: &Gui
         .await;
     // F19 AFK and sticky messages come after F1.
     crate::utility::after_message(app, msg).await;
+    crate::community_pack::on_guild_message(app, msg).await;
     // F15 AI characters answer mentions.
     Verdict::Continue
 }
@@ -107,7 +108,7 @@ pub(crate) async fn on_reaction(app: &Arc<App>, event: &ReactionEvent) {
 
 /// A message sent to the bot in a direct message (from a human; DM text needs no privileged intent).
 pub(crate) async fn on_dm(_app: &Arc<App>, _msg: &Message) {
-    // F20 modmail routes it to a server's staff.
+    crate::community_pack::on_dm(_app, _msg).await;
 }
 
 /// A member gained a level, after their level roles were given. `role` is the role they earned, if any.

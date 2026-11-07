@@ -87,6 +87,8 @@ mod achievements;
 mod anti_nuke;
 #[path = "simulate/automod.rs"]
 mod automod;
+#[path = "simulate/community_pack.rs"]
+mod community_pack;
 #[path = "simulate/events.rs"]
 mod events;
 #[path = "simulate/moderation.rs"]

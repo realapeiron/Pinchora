@@ -187,6 +187,32 @@ pub const SECTIONS: &[Section] = &[
         "id",
         true
     ),
+    section!(
+        "qotd_settings",
+        "channel_id,ping_role_id,hour,timezone,thread_per_question",
+        "",
+        false
+    ),
+    section!("qotd_questions", "text,text_tr,approved", "text", true),
+    section!(
+        "counting_channels",
+        "channel_id,reset_on_fail,allow_math,fail_role_id",
+        "channel_id",
+        false
+    ),
+    section!(
+        "forms",
+        "name,questions,submit_channel_id,review_roles,accept_role_id,dm_result,open",
+        "name",
+        true
+    ),
+    section!(
+        "modmail_settings",
+        "enabled,forum_channel_id,staff_roles,greeting,close_after_hours,anonymous_staff,log_channel_id",
+        "",
+        false
+    ),
+    section!("modmail_snippets", "name,text", "name", false),
 ];
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]

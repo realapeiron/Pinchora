@@ -69,6 +69,7 @@ pub use collection::{
     Award, BOTTLE as DROP_BOTTLE, BottleOpen, BottlePrize, CRITTERS as DROP_CRITTERS, CollectionSettings, Comb, Daily,
     DexRow, DropRow, Grab, Granted, NewDrop, PotHaul, PotRow, PotUpgrade,
 };
+pub use community::*;
 pub use contest::{ContestEntry, ContestResult};
 pub use customize::{CustomizeBuy, MAX_BADGES};
 pub use economy::{DailyOutcome, RepOutcome, TransferOutcome};
@@ -187,6 +188,7 @@ mod anti_nuke;
 pub use anti_nuke::*;
 
 mod command_control;
+mod community;
 
 mod config_backup;
 mod reef_safety;

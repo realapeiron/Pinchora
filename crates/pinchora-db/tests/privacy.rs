@@ -366,6 +366,17 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         "INSERT INTO antinuke_snapshots (guild_id,kind,object_id,data) VALUES ($1,'channel',$2,'{\"permission_overwrites\":[]}')",
         "INSERT INTO antinuke_overwrites (guild_id,channel_id,user_id,allow_bits,deny_bits) VALUES ($1,$2,$1,'1024','0')",
         "INSERT INTO antinuke (guild_id,trusted_users) VALUES ($1,ARRAY[$1,$2])",
+        // Community pack: suggestions, counting, applications and private staff mail.
+        "INSERT INTO qotd_questions(guild_id,text,suggested_by) VALUES($1,'Privacy question?',$1)",
+        "INSERT INTO counting_channels(channel_id,guild_id,current,last_user_id) VALUES($1,$1,1,$1)",
+        "INSERT INTO counting_stats(guild_id,user_id,correct) VALUES($1,$1,1)",
+        "INSERT INTO forms(guild_id,name,questions) VALUES($1,'Privacy','[\"Why?\"]')",
+        "INSERT INTO form_submissions(form_id,user_id,answers,status,decided_by)
+         SELECT id,$1,'[\"Because\"]','accepted',$1 FROM forms WHERE guild_id=$1 AND name='Privacy'",
+        "INSERT INTO modmail_threads(guild_id,user_id,thread_id,status,closed_at,closed_by)
+         VALUES($1,$1,$1,'closed',now(),$1)",
+        "INSERT INTO modmail_blocks(guild_id,user_id) VALUES($1,$1)",
+        "INSERT INTO modmail_pending(user_id,body) VALUES($1,'Private text')",
 
     ];
     for sql in [

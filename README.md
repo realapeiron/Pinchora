@@ -1039,7 +1039,25 @@ invite cards are private and check the viewer’s channel permissions; role page
 
 ### Community pack
 
-<!-- F20: the Community pack package replaces this heading's section; keep it one `###` section. -->
+The Community pack adds four member roots, bringing the registered command tree to 70:
+`/qotd suggest`, `/counting stats`, `/form list|open` and
+`/modmail close|block|snippet-add|snippet-use|snippet-list`. Manage Server
+configuration lives under `/community qotd|counting|forms|modmail`.
+The dashboard's **Community pack** page manages the question queue, counting
+channel, application forms and reviews, and modmail settings and open threads.
+
+QOTD posts once daily at the configured local hour. A 300-question English and
+Turkish pack seeds an empty queue; member suggestions wait for staff approval.
+The counting channel accepts the next number, or small arithmetic when enabled,
+rejects consecutive turns by the same member, reacts with ✅ or ❌, and tracks
+records and per-member results. Counting and staff forum replies need Discord's
+privileged Message Content intent; the dashboard shows a lock notice when it is
+off. Member DMs for modmail still work with DIRECT_MESSAGES intent, which is
+always requested. Modmail chooses a shared server when several have it enabled,
+opens a staff forum thread, relays replies, and closes idle threads on schedule.
+Application forms use up to five questions in a Discord modal; submissions are
+reviewed from Discord buttons or the dashboard, with optional result DM and a
+safe acceptance role.
 
 ### Events
 

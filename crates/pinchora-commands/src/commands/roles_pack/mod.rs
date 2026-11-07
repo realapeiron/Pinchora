@@ -17,6 +17,7 @@ pub use color::{
     ColorCommand, ColorRoleReport, ColorStop, create_palette_roles, delete_color_role, stop_text as color_stop_text,
 };
 pub(crate) use give::configure_refusal;
+pub(crate) use give::give as give_safe_role;
 pub use join::{give_after_verify, start_sticky_snapshot, sticky_changed};
 pub(crate) use join::{on_member_join, on_member_leave, on_member_update};
 pub use palette::{PaletteColor, palette};
