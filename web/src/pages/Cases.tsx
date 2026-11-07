@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useState } from "react";
 import { useOutletContext } from "react-router";
 
@@ -54,7 +55,7 @@ export function Cases() {
               placeholder="spam, Mia, 1234…"
             />
           </Field>
-          <Field label="Kind" htmlFor="case-kind">
+          <Field label={spaTranslate("Kind")} htmlFor="case-kind">
             <select
               id="case-kind"
               className="pixel-input pixel-select"
@@ -90,7 +91,7 @@ export function Cases() {
           </p>
         )}
         {rows.length > 0 && (
-          <ol className="audit-table" aria-label="Cases">
+          <ol className="audit-table" aria-label={spaTranslate("Cases")}>
             {rows.map((c) => (
               <CaseRow
                 key={c.number}
@@ -168,7 +169,7 @@ function CaseDetail({ guild, number }: { guild: string; number: number }) {
             </td>
           </tr>
           <tr>
-            <th scope="row">Moderator</th>
+            <th scope="row">{spaTranslate("Moderator")}</th>
             <td>
               {c.moderator_name} <span className="muted">({c.moderator_id})</span>
             </td>
@@ -181,7 +182,7 @@ function CaseDetail({ guild, number }: { guild: string; number: number }) {
           )}
           {c.duration && (
             <tr>
-              <th scope="row">Duration</th>
+              <th scope="row">{spaTranslate("Duration")}</th>
               <td>
                 {c.duration}
                 {c.expires_at && (
@@ -191,17 +192,17 @@ function CaseDetail({ guild, number }: { guild: string; number: number }) {
             </tr>
           )}
           <tr>
-            <th scope="row">Status</th>
+            <th scope="row">{spaTranslate("Status")}</th>
             <td>{status(c)}</td>
           </tr>
           {c.dm_sent !== null && (
             <tr>
-              <th scope="row">Direct message</th>
+              <th scope="row">{spaTranslate("Direct message")}</th>
               <td>{c.dm_sent ? "Delivered" : "Not delivered"}</td>
             </tr>
           )}
           <tr>
-            <th scope="row">Opened</th>
+            <th scope="row">{spaTranslate("Opened")}</th>
             <td>{new Date(c.created_at).toLocaleString()}</td>
           </tr>
         </tbody>
@@ -243,7 +244,7 @@ function ReasonEditor({ guild, entry }: { guild: string; entry: Case }) {
   return (
     <div className="reason-editor">
       <Field
-        label="Reason"
+        label={spaTranslate("Reason")}
         htmlFor={`reason-${entry.number}`}
         error={error}
         hint="Saving edits the case in the mod-log too."

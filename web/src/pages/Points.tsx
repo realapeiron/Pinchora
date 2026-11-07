@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useState } from "react";
 import { useOutletContext } from "react-router";
 
@@ -60,7 +61,7 @@ export function Points() {
         </SwitchRow>
         <div className="form-grid form-grid-2">
           <Field
-            label="Name"
+            label={spaTranslate("Name")}
             htmlFor="points-name"
             error={errors.points_name}
             hint="What members see, e.g. coins or shells."
@@ -114,7 +115,7 @@ export function Points() {
           </Field>
         </div>
         <p className="sample-line">
-          <span className="pixel-label muted">LOOKS LIKE</span>
+          <span className="pixel-label muted">{spaTranslate("LOOKS LIKE")}</span>
           <span>
             Each message earns{" "}
             <strong>
@@ -175,7 +176,7 @@ function StoreItems({ guild, emoji, name }: { guild: string; emoji: string; name
       {items.length === 0 ? (
         <p className="empty-row muted">Nothing on sale yet.</p>
       ) : (
-        <ul className="list" aria-label="Store">
+        <ul className="list" aria-label={spaTranslate("Store")}>
           {items.map((item) => (
             <li key={item.id} className="list-row">
               <span className="list-main">
@@ -188,7 +189,7 @@ function StoreItems({ guild, emoji, name }: { guild: string; emoji: string; name
                 {item.stock === null ? "unlimited" : `${item.stock} left`}
               </span>
               <PixelButton variant="ghost" className="button-small" onClick={() => edit(item.role_id)}>
-                Edit
+                {spaTranslate("Edit")}
               </PixelButton>
               <PixelButton
                 variant="ghost"
@@ -197,14 +198,14 @@ function StoreItems({ guild, emoji, name }: { guild: string; emoji: string; name
                 disabled={write.isPending}
                 onClick={() => write.mutate({ method: "DELETE", sub: `/${item.role_id}` })}
               >
-                Remove
+                {spaTranslate("Remove")}
               </PixelButton>
             </li>
           ))}
         </ul>
       )}
       <div className="add-row add-row-store">
-        <Field label="Role" htmlFor="store-role" error={roleProblem}>
+        <Field label={spaTranslate("Role")} htmlFor="store-role" error={roleProblem}>
           <RolePicker id="store-role" info={discord.data} value={role} onChange={setRole} assignable />
         </Field>
         <Field label={`Price (${name})`} htmlFor="store-price" error={priceProblem}>

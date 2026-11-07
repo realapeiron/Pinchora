@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useCallback, useState } from "react";
 import { Link, useLocation, useOutletContext } from "react-router";
 
@@ -107,7 +108,9 @@ export function Responders() {
                       </Link>
                       <p className="tag-detail muted">
                         {when(responder, roleName)}
-                        {asleep && <span className="badge badge-gold tag-lock">LOCKED</span>}
+                        {asleep && (
+                          <span className="badge badge-gold tag-lock">{spaTranslate("LOCKED")}</span>
+                        )}
                       </p>
                       <p className="tag-facts muted">
                         {responder.destination === "dm"
@@ -134,7 +137,7 @@ export function Responders() {
                         className="button-small"
                         href={`/g/${guild}/responders/${responder.id}`}
                       >
-                        Edit
+                        {spaTranslate("Edit")}
                       </PixelLink>
                       <PixelButton
                         variant="ghost"
@@ -142,7 +145,7 @@ export function Responders() {
                         aria-label={`Delete ${responder.name}`}
                         onClick={() => setAsking(responder)}
                       >
-                        Delete
+                        {spaTranslate("Delete")}
                       </PixelButton>
                     </div>
                   </li>
@@ -175,7 +178,7 @@ export function Responders() {
                     remove.reset();
                   }}
                 >
-                  Keep it
+                  {spaTranslate("Keep it")}
                 </PixelButton>
                 <PixelButton
                   disabled={remove.isPending}

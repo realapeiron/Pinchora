@@ -42,7 +42,7 @@ pub use xp_admin::{
 
 pub use app::{App, PreviewError};
 pub use card_images::{CardSubject, ServerCard, atlas_has, card_png, classic_card, deliver, preview_png, server_card};
-pub use catalog::{command_catalog, site_facts};
+pub use catalog::{command_catalog, command_catalog_tr, site_facts};
 pub use commands::achievements::{
     evaluate as evaluate_achievements, invalidate as invalidate_achievements, on_message as achievement_tick,
     source_enabled as achievement_source_enabled,

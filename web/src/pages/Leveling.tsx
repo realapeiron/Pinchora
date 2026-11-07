@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useState } from "react";
 import { useOutletContext } from "react-router";
 
@@ -65,10 +66,10 @@ export function Leveling() {
 
       <Panel title="CHAT XP">
         <SwitchRow
-          title="Leveling"
+          title={spaTranslate("Leveling")}
           control={
             <PixelToggle
-              label="Leveling"
+              label={spaTranslate("Leveling")}
               checked={value.leveling_enabled}
               onChange={(on) => set("leveling_enabled", on)}
             />
@@ -116,10 +117,10 @@ export function Leveling() {
 
       <Panel title="VOICE XP">
         <SwitchRow
-          title="Voice XP"
+          title={spaTranslate("Voice XP")}
           control={
             <PixelToggle
-              label="Voice XP"
+              label={spaTranslate("Voice XP")}
               checked={value.voice_xp_enabled}
               onChange={(on) => set("voice_xp_enabled", on)}
             />
@@ -210,7 +211,7 @@ function Multipliers({ guild, info }: { guild: string; info: GuildInfo | undefin
       {items.length === 0 ? (
         <p className="empty-row muted">No multipliers yet: everything earns normal XP.</p>
       ) : (
-        <ul className="list" aria-label="XP multipliers">
+        <ul className="list" aria-label={spaTranslate("XP multipliers")}>
           {items.map((rule) => (
             <li key={`${rule.kind}:${rule.target_id}`} className="list-row">
               <span className="list-main">
@@ -230,7 +231,7 @@ function Multipliers({ guild, info }: { guild: string; info: GuildInfo | undefin
                 disabled={write.isPending}
                 onClick={() => write.mutate({ method: "DELETE", sub: `/${rule.kind}/${rule.target_id}` })}
               >
-                Remove
+                {spaTranslate("Remove")}
               </PixelButton>
             </li>
           ))}
@@ -305,7 +306,7 @@ function Multipliers({ guild, info }: { guild: string; info: GuildInfo | undefin
             </>
           ) : (
             <PixelButton variant="ghost" onClick={() => setConfirmClear(true)}>
-              Clear all
+              {spaTranslate("Clear all")}
             </PixelButton>
           )}
         </div>
@@ -354,7 +355,7 @@ function LevelRoles({
       {items.length === 0 ? (
         <p className="empty-row muted">No level roles yet.</p>
       ) : (
-        <ul className="list" aria-label="Level roles">
+        <ul className="list" aria-label={spaTranslate("Level roles")}>
           {items.map((row) => (
             <li key={row.role_id} className="list-row">
               <span className="list-level pixel-label">LV {row.level}</span>
@@ -368,7 +369,7 @@ function LevelRoles({
                 disabled={write.isPending}
                 onClick={() => write.mutate({ method: "DELETE", sub: `/${row.role_id}` })}
               >
-                Remove
+                {spaTranslate("Remove")}
               </PixelButton>
             </li>
           ))}
@@ -376,7 +377,7 @@ function LevelRoles({
       )}
       <div className="add-row add-row-role">
         <Field
-          label="Level"
+          label={spaTranslate("Level")}
           htmlFor="level-role-level"
           error={local ?? (serverField === "level" ? writeError(write.error) : null)}
         >
@@ -391,7 +392,7 @@ function LevelRoles({
           />
         </Field>
         <Field
-          label="Role"
+          label={spaTranslate("Role")}
           htmlFor="level-role-role"
           error={
             (picked && !picked.assignable ? picked.why_not : null) ??
@@ -508,7 +509,7 @@ function RepRoles({ guild, info }: { guild: string; info: GuildInfo | undefined 
       {items.length === 0 ? (
         <p className="empty-row muted">No reputation roles yet.</p>
       ) : (
-        <ul className="list" aria-label="Reputation roles">
+        <ul className="list" aria-label={spaTranslate("Reputation roles")}>
           {items.map((row) => (
             <li key={row.role_id} className="list-row">
               <span className="list-level pixel-label">{row.reputation} REP</span>
@@ -522,14 +523,14 @@ function RepRoles({ guild, info }: { guild: string; info: GuildInfo | undefined 
                 disabled={write.isPending}
                 onClick={() => write.mutate({ method: "DELETE", sub: `/${row.role_id}` })}
               >
-                Remove
+                {spaTranslate("Remove")}
               </PixelButton>
             </li>
           ))}
         </ul>
       )}
       <div className="add-row add-row-role">
-        <Field label="Reputation" htmlFor="rep-role-count" error={local}>
+        <Field label={spaTranslate("Reputation")} htmlFor="rep-role-count" error={local}>
           <input
             id="rep-role-count"
             className="pixel-input input-short"
@@ -541,7 +542,7 @@ function RepRoles({ guild, info }: { guild: string; info: GuildInfo | undefined 
           />
         </Field>
         <Field
-          label="Role"
+          label={spaTranslate("Role")}
           htmlFor="rep-role-role"
           error={picked && !picked.assignable ? picked.why_not : null}
         >

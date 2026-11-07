@@ -4,6 +4,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tansta
 import { useMemo } from "react";
 
 import { channelLabel } from "../components/Pickers";
+import { clearUser, configureUser } from "../i18n";
 
 import {
   type AuditPage,
@@ -44,14 +45,16 @@ import { ATLAS_URL, type AtlasIndex } from "../components/card/CardSvg";
 import type { Cards } from "./card";
 import { type Names, plainNames } from "./text";
 
-export function useMe() {
+export function useMe(enabled = true) {
   return useQuery({
     queryKey: ["/api/me"],
     queryFn: async () => {
       const me = await api<Me>("/api/me");
       setCsrfToken(me.csrf);
+      configureUser(me.user.id, me.language);
       return me;
     },
+    enabled,
     staleTime: 5 * 60_000,
   });
 }
@@ -313,6 +316,7 @@ export function useLogout() {
     mutationFn: () => api<void>("/auth/logout", "POST"),
     onSettled: () => {
       setCsrfToken(null);
+      clearUser();
       client.clear();
       window.location.assign("/login");
     },

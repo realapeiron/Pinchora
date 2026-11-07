@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useCallback, useState } from "react";
 import { Link, useOutletContext } from "react-router";
 
@@ -30,7 +31,7 @@ export function Community() {
   return (
     <div className="settings-page">
       <PageHead
-        title="COMMUNITY"
+        title={spaTranslate("COMMUNITY")}
         lead={t(
           "Where /suggest posts ideas, whether critters wash up while people chat, timed storm surges, and birthday celebrations.",
         )}
@@ -48,8 +49,9 @@ function ModuleOff({ guild, modules, module }: { guild: string; modules: ModuleE
   if (!found || found.enabled) return null;
   return (
     <p className="notice" role="note">
-      <strong>{found.label}</strong> is switched off in <Link to={`/g/${guild}/modules`}>Modules</Link>, so
-      nothing here does anything until you switch it on.
+      <strong>{found.label}</strong>
+      {spaTranslate("is switched off in")} <Link to={`/g/${guild}/modules`}>{spaTranslate("Modules")}</Link>,
+      so nothing here does anything until you switch it on.
     </p>
   );
 }

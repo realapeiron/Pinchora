@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 // The stats charts, drawn as SVG and CSS in the cards' pixel style: one column a day, joins against
 // leaves, the busiest hours and ranked bars. Each has a hover and keyboard readout and a table with
 // the same numbers, so no value hides behind a pointer.
@@ -259,10 +260,12 @@ export function JoinsLeaves({ days, height = 200 }: { days: DayRow[]; height?: n
     <div className="chart" ref={ref}>
       <ul className="chart-legend">
         <li>
-          <Key series={2} shape="box" /> Joins <strong>{thousands(joins)}</strong>
+          <Key series={2} shape="box" />
+          {spaTranslate("Joins")} <strong>{thousands(joins)}</strong>
         </li>
         <li>
-          <Key series={3} shape="box" /> Leaves <strong>{thousands(leaves)}</strong>
+          <Key series={3} shape="box" />
+          {spaTranslate("Leaves")} <strong>{thousands(leaves)}</strong>
         </li>
       </ul>
       <svg

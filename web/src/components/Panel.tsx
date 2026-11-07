@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { translate } from "../i18n";
 
 /** The cards' notched panel: a coloured outline around a dark fill, corners cut by one step. */
 export function Panel({
@@ -17,7 +18,7 @@ export function Panel({
       <div className="panel-body">
         {(title || aside) && (
           <header className="panel-head">
-            {title && <h2 className="pixel-title">{title}</h2>}
+            {title && <h2 className="pixel-title">{translate(title)}</h2>}
             {aside}
           </header>
         )}

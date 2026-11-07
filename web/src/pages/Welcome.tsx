@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useOutletContext } from "react-router";
 
 import { Field, SwitchRow } from "../components/Field";
@@ -44,10 +45,10 @@ export function Welcome() {
 
       <Panel title="WELCOME MESSAGES">
         <SwitchRow
-          title="Welcome cards"
+          title={spaTranslate("Welcome cards")}
           control={
             <PixelToggle
-              label="Welcome cards"
+              label={spaTranslate("Welcome cards")}
               checked={value.welcome_enabled}
               onChange={(on) => set("welcome_enabled", on)}
             />
@@ -57,7 +58,7 @@ export function Welcome() {
         </SwitchRow>
         <div className="form-grid">
           <Field
-            label="Channel"
+            label={spaTranslate("Channel")}
             htmlFor="welcome-channel"
             error={errors.welcome_channel_id}
             hint={
@@ -71,7 +72,7 @@ export function Welcome() {
               info={discord.data}
               value={value.welcome_channel_id}
               onChange={(id) => set("welcome_channel_id", id)}
-              none="Not set"
+              none={spaTranslate("Not set")}
               invalid={!!errors.welcome_channel_id}
             />
           </Field>
@@ -133,7 +134,7 @@ export function Welcome() {
             info={discord.data}
             value={value.join_role_id}
             onChange={(id) => set("join_role_id", id)}
-            none="No role"
+            none={spaTranslate("No role")}
             assignable
             invalid={!!errors.join_role_id}
           />
@@ -147,7 +148,7 @@ export function Welcome() {
 
       <Panel title="GOODBYE">
         <SwitchRow
-          title="Goodbye messages"
+          title={spaTranslate("Goodbye messages")}
           control={
             <span className={`badge ${value.goodbye_channel_id ? "badge-mint" : "badge-dim"}`}>
               {value.goodbye_channel_id ? "ON" : "OFF"}
@@ -157,7 +158,7 @@ export function Welcome() {
           Say goodbye in a channel when a member leaves. Pick a channel to turn it on.
         </SwitchRow>
         <div className="form-grid">
-          <Field label="Channel" htmlFor="goodbye-channel" error={errors.goodbye_channel_id}>
+          <Field label={spaTranslate("Channel")} htmlFor="goodbye-channel" error={errors.goodbye_channel_id}>
             <ChannelPicker
               id="goodbye-channel"
               info={discord.data}

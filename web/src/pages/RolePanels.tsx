@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useState } from "react";
 
 import { Choice } from "../components/Choice";
@@ -101,19 +102,21 @@ export function RolePanels({
         {panels.length === 0 ? (
           <p className="empty-row muted">No panels yet.</p>
         ) : (
-          <ul className="panel-cards" aria-label="Role panels">
+          <ul className="panel-cards" aria-label={spaTranslate("Role panels")}>
             {panels.map((panel) => (
               <li key={panel.id} className={`panel-card ${editing === panel.id ? "is-open" : ""}`}>
                 <h3 className="panel-card-title">{panel.title}</h3>
                 <p className="panel-card-meta">
                   <span className="badge badge-ink">{panel.style.toUpperCase()}</span>
                   <span className="muted">
-                    {panel.roles.length} role{panel.roles.length === 1 ? "" : "s"}
+                    {panel.roles.length}
+                    {spaTranslate("role")}
+                    {panel.roles.length === 1 ? "" : "s"}
                   </span>
                   {panel.channel_id ? (
                     <ChannelTag info={info} id={panel.channel_id} />
                   ) : (
-                    <span className="badge badge-gold">DRAFT</span>
+                    <span className="badge badge-gold">{spaTranslate("DRAFT")}</span>
                   )}
                 </p>
                 <div className="panel-card-actions">
@@ -123,7 +126,7 @@ export function RolePanels({
                     aria-label={`Edit ${panel.title}`}
                     onClick={() => open(panel)}
                   >
-                    Edit
+                    {spaTranslate("Edit")}
                   </PixelButton>
                   {confirmDelete === panel.id ? (
                     <>
@@ -149,7 +152,7 @@ export function RolePanels({
                         className="button-small"
                         onClick={() => setConfirmDelete(null)}
                       >
-                        Keep it
+                        {spaTranslate("Keep it")}
                       </PixelButton>
                     </>
                   ) : (
@@ -159,7 +162,7 @@ export function RolePanels({
                       aria-label={`Delete ${panel.title}`}
                       onClick={() => setConfirmDelete(panel.id)}
                     >
-                      Delete
+                      {spaTranslate("Delete")}
                     </PixelButton>
                   )}
                 </div>
@@ -269,7 +272,7 @@ function Editor({
         <div className="designer-controls">
           <div className="form-grid form-grid-2" style={{ marginTop: 0 }}>
             <Field
-              label="Title"
+              label={spaTranslate("Title")}
               htmlFor="panel-title"
               error={why("title")}
               aside={
@@ -324,7 +327,7 @@ function Editor({
 
           <div className="panel-rules">
             <Field
-              label="Required role"
+              label={spaTranslate("Required role")}
               htmlFor="panel-required"
               hint="Only members with it can use the panel."
             >
@@ -382,7 +385,7 @@ function Editor({
 
           <div>
             <div className="editor-title">
-              <h3 className="setting-name">Roles</h3>
+              <h3 className="setting-name">{spaTranslate("Roles")}</h3>
               <PixelButton
                 variant="secondary"
                 className="button-small"
@@ -415,7 +418,7 @@ function Editor({
                   <li key={row.key} className="entry">
                     <div className="entry-fields">
                       <div className="field-wide">
-                        <Field label="Role" htmlFor={`${id}-role`} error={refused}>
+                        <Field label={spaTranslate("Role")} htmlFor={`${id}-role`} error={refused}>
                           <RolePicker
                             id={`${id}-role`}
                             info={info}
@@ -580,7 +583,7 @@ function PostRow({
             info={info}
             value={channel}
             onChange={setChannel}
-            none="Pick a channel"
+            none={spaTranslate("Pick a channel")}
           />
         </Field>
         <div className="add-actions">
@@ -687,7 +690,7 @@ function PanelPreview({ draft, info }: { draft: PanelDraft; info: GuildInfo | un
         {draft.style === "select" && rows.length > 0 && (
           <>
             <div className="preview-select" role="group" aria-label="Menu">
-              <span>Pick your roles</span>
+              <span>{spaTranslate("Pick your roles")}</span>
               <span aria-hidden="true">▾</span>
             </div>
             <div className="preview-select-menu">

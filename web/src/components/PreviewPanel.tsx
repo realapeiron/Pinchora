@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useMemo, useState } from "react";
 
 import { ApiError } from "../lib/api";
@@ -38,7 +39,7 @@ export function PreviewPanel({
   const stale = settledKey !== key || preview.isFetching;
   return (
     <Panel
-      title="PREVIEW"
+      title={spaTranslate("PREVIEW")}
       aside={
         <PixelButton variant="ghost" className="button-small" onClick={() => setRoll(roll + 1)}>
           Roll again

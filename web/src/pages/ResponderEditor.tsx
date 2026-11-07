@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useMemo } from "react";
 import { useNavigate, useOutletContext, useParams } from "react-router";
 
@@ -124,7 +125,7 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
         lead="Sent by the bot by itself when the trigger happens."
         action={
           <PixelLink variant="secondary" href={`/g/${guild}/responders`}>
-            Back to the list
+            {spaTranslate("Back to the list")}
           </PixelLink>
         }
       />
@@ -132,7 +133,7 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
         <div className="editor-form">
           <Panel title="BASICS">
             <Field
-              label="Name"
+              label={spaTranslate("Name")}
               htmlFor="responder-name"
               error={editor.problem("name")}
               hint="Only for you, to tell responders apart."
@@ -147,10 +148,10 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
               />
             </Field>
             <SwitchRow
-              title="Switched on"
+              title={spaTranslate("Switched on")}
               control={
                 <PixelToggle
-                  label="Switched on"
+                  label={spaTranslate("Switched on")}
                   checked={draft.enabled}
                   disabled={kind === "keyword" && keywordLocked && !draft.enabled}
                   onChange={(next) => set("enabled", next)}
@@ -183,7 +184,7 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
                     <span className="choice-title">
                       {t.label}
                       {t.needs_message_content && keywordLocked && (
-                        <span className="badge badge-gold choice-lock">LOCKED</span>
+                        <span className="badge badge-gold choice-lock">{spaTranslate("LOCKED")}</span>
                       )}
                     </span>
                     {t.needs_message_content && keywordLocked && (
@@ -202,7 +203,7 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
                   info={info}
                   value={draft.trigger_value}
                   onChange={(next) => set("trigger_value", next)}
-                  none="Pick a role"
+                  none={spaTranslate("Pick a role")}
                 />
               </Field>
             )}
@@ -308,7 +309,11 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
               onChange={(next) => set("destination", next)}
             />
             {draft.destination === "channel" && (
-              <Field label="Channel" htmlFor="responder-channel" error={editor.problem("channel_id")}>
+              <Field
+                label={spaTranslate("Channel")}
+                htmlFor="responder-channel"
+                error={editor.problem("channel_id")}
+              >
                 <ChannelPicker
                   id="responder-channel"
                   info={info}
@@ -355,7 +360,7 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
                 />
               </Field>
               <Field
-                label="Cooldown"
+                label={spaTranslate("Cooldown")}
                 htmlFor="responder-cooldown"
                 error={editor.problem("cooldown_secs")}
                 hint={`Seconds before it can answer the same member again, up to ${LIMITS.responder_cooldown_max}. With actions, at least ${LIMITS.action_cooldown_min}.`}

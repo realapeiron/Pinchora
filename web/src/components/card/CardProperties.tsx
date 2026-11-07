@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../../i18n";
 import { type ReactNode, useRef, useState } from "react";
 
 import {
@@ -299,7 +300,7 @@ export function CanvasProperties({
       {bg.type === "solid" && (
         <ColorField
           id="bg-color"
-          label="Colour"
+          label={spaTranslate("Colour")}
           value={bg.color}
           onChange={(color) => setBackground({ ...bg, color })}
         />
@@ -491,7 +492,7 @@ export function LayerProperties({
           {CARD.glyphs.includes(layer.sprite) && (
             <ColorField
               id={id("color")}
-              label="Colour"
+              label={spaTranslate("Colour")}
               value={layer.color}
               onChange={(color) => set({ ...layer, color })}
             />
@@ -607,7 +608,7 @@ function TextProperties({
   };
   return (
     <>
-      <Row label="Text" htmlFor="layer-text" wide>
+      <Row label={spaTranslate("Text")} htmlFor="layer-text" wide>
         <textarea
           id="layer-text"
           ref={area}
@@ -655,7 +656,7 @@ function TextProperties({
       />
       <ColorField
         id="layer-color"
-        label="Colour"
+        label={spaTranslate("Colour")}
         value={layer.color}
         onChange={(color) => onChange({ ...layer, color })}
       />
@@ -833,7 +834,7 @@ export function Dialog({
           <header className="panel-head">
             <h2 className="pixel-title">{title}</h2>
             <PixelButton variant="ghost" className="button-small" onClick={onClose} autoFocus>
-              Close
+              {spaTranslate("Close")}
             </PixelButton>
           </header>
           {children}

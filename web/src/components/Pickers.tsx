@@ -1,4 +1,5 @@
 import type { Channel, GuildInfo, Role } from "../lib/api";
+import { t } from "../i18n";
 
 /** Channel types the bot posts into: text and announcement. */
 const POSTABLE = new Set([0, 5]);
@@ -70,10 +71,10 @@ export function ChannelPicker({
       {none !== undefined && <option value="">{none}</option>}
       {none === undefined && !value && (
         <option value="" disabled>
-          Pick a channel
+          {t("Pick a channel")}
         </option>
       )}
-      {!known && <option value={value!}>Deleted channel ({value})</option>}
+      {!known && <option value={value!}>{t("Deleted channel ({value})", { value: value! })}</option>}
       {loose.map((c) => (
         <option key={c.id} value={c.id}>
           {prefix(c) + c.name}
@@ -81,7 +82,7 @@ export function ChannelPicker({
       ))}
       {groups.map(({ category, channels }) => (
         <optgroup key={category.id} label={category.name.toUpperCase()}>
-          {any && <option value={category.id}>{`▸ ${category.name} (whole category)`}</option>}
+          {any && <option value={category.id}>{`▸ ${category.name} (${t("whole category")})`}</option>}
           {channels.map((c) => (
             <option key={c.id} value={c.id}>
               {prefix(c) + c.name}
@@ -142,10 +143,10 @@ export function RolePicker({
       {none !== undefined && <option value="">{none}</option>}
       {none === undefined && !value && (
         <option value="" disabled>
-          Pick a role
+          {t("Pick a role")}
         </option>
       )}
-      {!known && <option value={value!}>Deleted role ({value})</option>}
+      {!known && <option value={value!}>{t("Deleted role ({value})", { value: value! })}</option>}
       {roles.map((r) => (
         <option key={r.id} value={r.id} disabled={refused(r)}>
           {(r.everyone ? "@everyone" : `@${r.name}`) + (refused(r) ? why(r, info, forActions) : "")}
@@ -157,26 +158,26 @@ export function RolePicker({
 
 /** A short reason for a disabled option; the full sentence shows under the picker. */
 export function why(role: Role, info: GuildInfo | undefined, forActions = false): string {
-  if (role.everyone) return " — everyone has it";
-  if (role.managed) return " — managed by an integration";
+  if (role.everyone) return t(" — everyone has it");
+  if (role.managed) return t(" — managed by an integration");
   // Discord would not say where the bot's own role sits: it may not be above anything.
   const bot = info?.bot.top_role_position;
-  if (bot === null) return " — can't check my role yet";
-  if (bot !== undefined && role.position >= bot) return " — above my role";
+  if (bot === null) return t(" — can't check my role yet");
+  if (bot !== undefined && role.position >= bot) return t(" — above my role");
   const you = info?.you;
   if (role.powers.length > 0 && (forActions || !(you?.owner || you?.administrator)))
-    return " — has admin powers";
+    return t(" — has admin powers");
   if (you && !you.owner) {
-    if (you.top_role_position === null) return " — can't check your roles yet";
-    if (role.position >= you.top_role_position) return " — not below your top role";
+    if (you.top_role_position === null) return t(" — can't check your roles yet");
+    if (role.position >= you.top_role_position) return t(" — not below your top role");
   }
-  return " — not allowed";
+  return t(" — not allowed");
 }
 
 /** A role name in its colour, for lists. */
 export function RoleTag({ info, id }: { info: GuildInfo | undefined; id: string }) {
   const role = info?.roles.find((r) => r.id === id);
-  const name = role ? (role.everyone ? "@everyone" : `@${role.name}`) : `Deleted role`;
+  const name = role ? (role.everyone ? "@everyone" : `@${role.name}`) : t("Deleted role");
   return (
     <span className="role-tag" title={id}>
       <span className="role-dot" style={{ background: roleColor(role) }} aria-hidden="true" />
@@ -189,7 +190,7 @@ export function ChannelTag({ info, id }: { info: GuildInfo | undefined; id: stri
   const channel = info?.channels.find((c) => c.id === id);
   return (
     <span className="channel-tag" title={id}>
-      {channel ? prefix(channel) + channel.name : "Deleted channel"}
+      {channel ? prefix(channel) + channel.name : t("Deleted channel")}
     </span>
   );
 }

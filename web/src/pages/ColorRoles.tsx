@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useState } from "react";
 
 import { Choice } from "../components/Choice";
@@ -68,7 +69,7 @@ export function ColorRoles({
         title="Let members pick a colour"
         control={
           <PixelToggle
-            label="Colour roles"
+            label={spaTranslate("Colour roles")}
             checked={colors.enabled}
             disabled={write.isPending}
             onChange={(on) => save({ enabled: on })}
@@ -221,7 +222,7 @@ export function ColorRoles({
           <h3 className="setting-name" style={{ marginTop: 24 }}>
             Colour roles made
           </h3>
-          <ul className="list" aria-label="Colour roles">
+          <ul className="list" aria-label={spaTranslate("Colour roles")}>
             {colors.roles.map((r) => (
               <li key={r.role_id} className="list-row">
                 <span className="list-main colour-role-name">
@@ -242,7 +243,7 @@ export function ColorRoles({
                     })
                   }
                 >
-                  Remove
+                  {spaTranslate("Remove")}
                 </PixelButton>
               </li>
             ))}

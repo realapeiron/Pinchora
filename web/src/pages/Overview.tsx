@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useCallback, useState } from "react";
 import { Link, useOutletContext } from "react-router";
 
@@ -190,7 +191,7 @@ export function Overview() {
           </PixelLink>
         }
       >
-        <ul className="module-grid" aria-label="Modules">
+        <ul className="module-grid" aria-label={spaTranslate("Modules")}>
           {data.modules.map((m) => {
             const state = badge(m.enabled, m.channel_mode, m.channels.length);
             return (

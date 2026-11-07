@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { ACCENTS } from "../lib/rules";
 import type { EmbedField, EmbedSpec } from "../lib/api";
 import { LIMITS, blankEmbed, embedChars } from "../lib/tags";
@@ -50,7 +51,7 @@ export function EmbedEditor({
         </p>
       )}
       <div className="form-grid form-grid-2">
-        <Field label="Title" htmlFor="embed-title">
+        <Field label={spaTranslate("Title")} htmlFor="embed-title">
           <input
             id="embed-title"
             className="pixel-input"
@@ -59,7 +60,7 @@ export function EmbedEditor({
             onChange={(event) => set("title", event.target.value)}
           />
         </Field>
-        <Field label="Colour" htmlFor="embed-color" hint="The edge of the card.">
+        <Field label={spaTranslate("Colour")} htmlFor="embed-color" hint="The edge of the card.">
           <div className="colour-row">
             <span
               className="colour-swatch"
@@ -92,7 +93,7 @@ export function EmbedEditor({
           </div>
         </Field>
       </div>
-      <Field label="Description" htmlFor="embed-description">
+      <Field label={spaTranslate("Description")} htmlFor="embed-description">
         <textarea
           id="embed-description"
           className="pixel-input pixel-textarea"
@@ -158,7 +159,7 @@ export function EmbedEditor({
             <input
               className="pixel-input"
               aria-label={`Field ${index + 1} name`}
-              placeholder="Name"
+              placeholder={spaTranslate("Name")}
               value={field.name}
               maxLength={LIMITS.embed_field_name_max}
               onChange={(event) => editField(index, { name: event.target.value })}
@@ -191,7 +192,7 @@ export function EmbedEditor({
                 )
               }
             >
-              Remove
+              {spaTranslate("Remove")}
             </PixelButton>
           </div>
         ))}

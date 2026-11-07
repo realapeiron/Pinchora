@@ -2,6 +2,7 @@ import { Panel } from "../components/Panel";
 import { PixelButton, PixelLink } from "../components/PixelButton";
 import { ServerIcon } from "../components/ServerIcon";
 import { TopBar } from "../components/TopBar";
+import { t } from "../i18n";
 import type { GuildEntry, Me } from "../lib/api";
 import { useGuilds, useRefreshGuilds } from "../lib/queries";
 import { Loading, Problem } from "./States";
@@ -15,21 +16,22 @@ export function Servers({ me }: { me: Me }) {
       <main className="content content-narrow">
         <div className="page-head">
           <div>
-            <h1 className="pixel-heading">YOUR SERVERS</h1>
-            <p className="muted">Servers where you have Manage Server. Pick one to set it up.</p>
+            <h1 className="pixel-heading">{t("YOUR SERVERS")}</h1>
+            <p className="muted">{t("Servers where you have Manage Server. Pick one to set it up.")}</p>
           </div>
           <PixelButton variant="secondary" onClick={() => refresh.mutate()} disabled={refresh.isPending}>
-            {refresh.isPending ? "Refreshing…" : "Refresh list"}
+            {refresh.isPending ? t("Refreshing…") : t("Refresh list")}
           </PixelButton>
         </div>
         {refresh.isError && <p className="notice notice-heart">{refresh.error.message}</p>}
-        {guilds.isPending && <Loading label="Finding your servers" />}
+        {guilds.isPending && <Loading label={t("Finding your servers")} />}
         {guilds.isError && <Problem error={guilds.error} />}
         {guilds.isSuccess && guilds.data.length === 0 && (
-          <Panel title="Nothing here yet">
+          <Panel title={t("Nothing here yet")}>
             <p>
-              You do not manage any servers. Ask a server owner for Manage Server, or create a server of your
-              own on Discord, then refresh the list.
+              {t(
+                "You do not manage any servers. Ask a server owner for Manage Server, or create a server of your own on Discord, then refresh the list.",
+              )}
             </p>
           </Panel>
         )}
@@ -54,11 +56,11 @@ function ServerCard({ guild }: { guild: GuildEntry }) {
           <h2 className="server-name" title={guild.name}>
             {guild.name}
           </h2>
-          <span className="pixel-label muted">{guild.owner ? "OWNER" : "MANAGER"}</span>
+          <span className="pixel-label muted">{guild.owner ? t("OWNER") : t("MANAGER")}</span>
         </div>
         {guild.bot_present ? (
-          <PixelLink href={`/g/${guild.id}`} aria-label={`Open ${guild.name}`}>
-            Open
+          <PixelLink href={`/g/${guild.id}`} aria-label={t("Open {name}", { name: guild.name })}>
+            {t("Open")}
           </PixelLink>
         ) : (
           <PixelLink
@@ -66,9 +68,9 @@ function ServerCard({ guild }: { guild: GuildEntry }) {
             href={guild.invite_url ?? "#"}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label={`Add Pinchora to ${guild.name}`}
+            aria-label={t("Add Pinchora to {name}", { name: guild.name })}
           >
-            Add bot
+            {t("Add bot")}
           </PixelLink>
         )}
       </div>

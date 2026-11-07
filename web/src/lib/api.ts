@@ -123,6 +123,7 @@ export function needsLogin(error: unknown): boolean {
 export interface Me {
   user: { id: string; username: string; global_name: string | null; avatar_url: string };
   csrf: string;
+  language: "en" | "tr" | null;
   /** What the bot runs with: keyword auto-responders need the Message Content intent. */
   capabilities: { message_content: boolean };
 }
@@ -181,6 +182,7 @@ export interface AuditEntry {
 }
 
 export interface Overview {
+  language?: "en" | "tr";
   navigation?: Record<string, string>;
   guild: { id: string; name: string; icon_url: string | null };
   settings: Settings;

@@ -6,6 +6,7 @@
 use pinchora_core::i18n::Lang;
 use pinchora_game::Content;
 use serde_json::{Value, json};
+use std::collections::HashMap;
 use twilight_model::application::command::{CommandOption, CommandOptionType};
 
 use crate::commands::help::{AREAS, area_of, leaves};
@@ -45,17 +46,25 @@ fn usage(path: &str, options: &[CommandOption]) -> String {
     text
 }
 
-fn option_json(option: &CommandOption) -> Value {
+fn localized(value: &str, localizations: Option<&HashMap<String, String>>, lang: Lang) -> String {
+    lang.discord_locales()
+        .first()
+        .and_then(|locale| localizations?.get(*locale))
+        .map_or(value, String::as_str)
+        .to_owned()
+}
+
+fn option_json(option: &CommandOption, lang: Lang) -> Value {
     let mut value = json!({
         "name": option.name,
-        "description": option.description,
+        "description": localized(&option.description, option.description_localizations.as_ref(), lang),
         "required": option.required.unwrap_or(false),
     });
-    let choices: Vec<&str> = option
+    let choices: Vec<String> = option
         .choices
         .iter()
         .flatten()
-        .map(|choice| choice.name.as_str())
+        .map(|choice| localized(&choice.name, choice.name_localizations.as_ref(), lang))
         .collect();
     if !choices.is_empty() && choices.len() <= MAX_CHOICES {
         value["choices"] = json!(choices);
@@ -67,8 +76,17 @@ fn option_json(option: &CommandOption) -> Value {
 /// `{ "count": n, "areas": [{ "key", "title", "intro", "commands": [{ "path", "usage", "description",
 /// "manager", "options": [{ "name", "description", "required", "choices"? }] }] }] }`.
 pub fn command_catalog() -> Value {
+    command_catalog_lang(Lang::En)
+}
+
+/// The same paths and areas, with the descriptions Discord shows a Turkish-speaking player.
+pub fn command_catalog_tr() -> Value {
+    command_catalog_lang(Lang::Tr)
+}
+
+fn command_catalog_lang(lang: Lang) -> Value {
     let tree = crate::command_definitions();
-    let leaves = leaves(&tree, Lang::En);
+    let leaves = leaves(&tree, lang);
     let count = leaves.len();
     let mut by_area: Vec<Vec<(usize, Value)>> = AREAS.iter().map(|_| Vec::new()).collect();
     for leaf in leaves {
@@ -98,7 +116,7 @@ pub fn command_catalog() -> Value {
                 "usage": usage(&leaf.path, &leaf.options),
                 "description": leaf.text,
                 "manager": leaf.manager,
-                "options": options.into_iter().map(option_json).collect::<Vec<_>>(),
+                "options": options.into_iter().map(|option| option_json(option, lang)).collect::<Vec<_>>(),
             }),
         ));
     }
@@ -107,11 +125,11 @@ pub fn command_catalog() -> Value {
         .zip(by_area)
         .map(|(area, mut commands)| {
             commands.sort_by_key(|(order, _)| *order);
-            let title = area.title(Lang::En);
+            let title = area.title(lang);
             json!({
-                "key": slug(&title),
+                "key": slug(&area.title(Lang::En)),
                 "title": title,
-                "intro": area.intro(Lang::En),
+                "intro": area.intro(lang),
                 "commands": commands.into_iter().map(|(_, c)| c).collect::<Vec<_>>(),
             })
         })
@@ -180,6 +198,24 @@ mod tests {
             .map(|a| a["key"].as_str().expect("key"))
             .collect();
         assert_eq!(keys.len(), AREAS.len(), "two areas share an anchor");
+    }
+
+    #[test]
+    fn turkish_catalog_keeps_command_paths_and_counts() {
+        let en = command_catalog();
+        let tr = command_catalog_tr();
+        assert_eq!(en["count"], tr["count"]);
+        let paths = |catalog: &Value| {
+            catalog["areas"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .flat_map(|area| area["commands"].as_array().unwrap())
+                .map(|command| command["path"].as_str().unwrap().to_owned())
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(paths(&en), paths(&tr));
+        assert_ne!(en["areas"][0]["title"], tr["areas"][0]["title"]);
     }
 
     #[test]

@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useRef } from "react";
 import { Link, useSearchParams } from "react-router";
+import { number, t, translate, useLocale } from "../i18n";
 
 import { Amp } from "./Amp";
 import { InviteButton } from "./Buttons";
 import { type Catalog, type CommandEntry, countCommands, filterAreas } from "./commandsSearch";
 import catalogJson from "../lib/commands.json";
+import catalogTrJson from "../lib/commands.tr.json";
 
-const catalog = catalogJson as Catalog;
+const enCatalog = catalogJson as Catalog;
+const trCatalog = catalogTrJson as Catalog;
 
 /** `/give <user> <amount>` with the words coloured by what they are. */
 function Usage({ command }: { command: CommandEntry }) {
@@ -28,26 +31,32 @@ function Command({ command }: { command: CommandEntry }) {
       <div className="cmd-head">
         <Usage command={command} />
         {command.manager && (
-          <span className="cmd-manager" title="Needs the Manage Server permission">
-            MANAGE SERVER
+          <span className="cmd-manager" title={t("Needs the Manage Server permission")}>
+            {t("MANAGE SERVER")}
           </span>
         )}
       </div>
-      <p className="cmd-description">{command.description}</p>
+      <p className="cmd-description">{translate(command.description)}</p>
       {command.options.length > 0 && (
         <details className="cmd-options">
           <summary>
-            {command.options.length} {command.options.length === 1 ? "option" : "options"}
+            {number(command.options.length)} {command.options.length === 1 ? t("option") : t("options")}
           </summary>
           <dl>
             {command.options.map((o) => (
               <div key={o.name} className="cmd-option">
                 <dt>
-                  <code>{o.name}</code> <span className="muted">{o.required ? "required" : "optional"}</span>
+                  <code>{o.name}</code>{" "}
+                  <span className="muted">{o.required ? t("required") : t("optional")}</span>
                 </dt>
                 <dd>
-                  {o.description}
-                  {o.choices && <span className="muted"> One of: {o.choices.join(", ")}.</span>}
+                  {translate(o.description)}
+                  {o.choices && (
+                    <span className="muted">
+                      {" "}
+                      {t("One of:")} {o.choices.join(", ")}.
+                    </span>
+                  )}
                 </dd>
               </div>
             ))}
@@ -59,12 +68,17 @@ function Command({ command }: { command: CommandEntry }) {
 }
 
 export function Commands() {
+  const language = useLocale();
+  const catalog = language === "tr" ? trCatalog : enCatalog;
   const [params, setParams] = useSearchParams();
   const query = params.get("q") ?? "";
   const managersOnly = params.get("managers") === "1";
   const search = useRef<HTMLInputElement>(null);
 
-  const areas = useMemo(() => filterAreas(catalog.areas, query, managersOnly), [query, managersOnly]);
+  const areas = useMemo(
+    () => filterAreas(catalog.areas, query, managersOnly),
+    [catalog, query, managersOnly],
+  );
   const shown = countCommands(areas);
 
   const update = (next: { q?: string; managers?: boolean }) => {
@@ -96,23 +110,26 @@ export function Commands() {
   return (
     <div className="wrap commands-page">
       <header className="page-intro">
-        <p className="pixel-label eyebrow">COMMANDS</p>
-        <h1 className="section-title">Everything Pinchora can do</h1>
+        <p className="pixel-label eyebrow">{t("COMMANDS")}</p>
+        <h1 className="section-title">{t("Everything Pinchora can do")}</h1>
         <p className="section-lead">
-          {catalog.count} slash commands in {catalog.areas.length} areas, listed from the same command tree
-          the bot answers with. Type <code>/help</code> in Discord for the same guide as pixel cards.
+          {t(
+            "{count} slash commands in {areas} areas, listed from the same command tree the bot answers with. Type",
+            { count: catalog.count, areas: catalog.areas.length },
+          )}{" "}
+          <code>/help</code> {t("in Discord for the same guide as pixel cards.")}
         </p>
       </header>
 
       <div className="commands-tools">
         <label className="commands-search" htmlFor="command-search">
-          <span className="visually-hidden">Search commands</span>
+          <span className="visually-hidden">{t("Search commands")}</span>
           <input
             id="command-search"
             ref={search}
             type="search"
             value={query}
-            placeholder="Search, e.g. fish or welcome"
+            placeholder={t("Search, e.g. fish or welcome")}
             autoComplete="off"
             spellCheck={false}
             onChange={(e) => update({ q: e.target.value })}
@@ -127,20 +144,22 @@ export function Commands() {
             checked={managersOnly}
             onChange={(e) => update({ managers: e.target.checked })}
           />
-          <span>Only for server managers</span>
+          <span>{t("Only for server managers")}</span>
         </label>
         <p className="commands-count muted" role="status" aria-live="polite">
-          {shown === catalog.count ? `${shown} commands` : `${shown} of ${catalog.count} commands`}
+          {shown === catalog.count
+            ? t("{count} commands", { count: shown })
+            : t("{shown} of {count} commands", { shown, count: catalog.count })}
         </p>
       </div>
 
       <div className="commands-layout">
-        <nav className="commands-nav" aria-label="Areas">
+        <nav className="commands-nav" aria-label={t("Areas")}>
           <ul>
             {areas.map((area) => (
               <li key={area.key}>
                 <a href={`#${area.key}`}>
-                  {area.title} <span className="muted">{area.commands.length}</span>
+                  {translate(area.title)} <span className="muted">{number(area.commands.length)}</span>
                 </a>
               </li>
             ))}
@@ -150,15 +169,15 @@ export function Commands() {
           {areas.length === 0 && (
             <div className="panel commands-empty">
               <div className="panel-body">
-                <p className="pixel-title">NOTHING WASHED UP</p>
+                <p className="pixel-title">{t("NOTHING WASHED UP")}</p>
                 <p>
-                  No command matches <b>{query}</b>.{" "}
+                  {t("No command matches")} <b>{query}</b>.{" "}
                   <button
                     type="button"
                     className="link-button"
                     onClick={() => update({ q: "", managers: false })}
                   >
-                    Show every command
+                    {t("Show every command")}
                   </button>
                 </p>
               </div>
@@ -172,9 +191,9 @@ export function Commands() {
               aria-labelledby={`${area.key}-title`}
             >
               <h2 id={`${area.key}-title`} className="pixel-title commands-area-title">
-                <Amp text={area.title} />
+                <Amp text={translate(area.title)} />
               </h2>
-              <p className="muted commands-area-intro">{area.intro}</p>
+              <p className="muted commands-area-intro">{translate(area.intro)}</p>
               <ul className="cmd-list">
                 {area.commands.map((c) => (
                   <Command key={c.path} command={c} />
@@ -188,7 +207,7 @@ export function Commands() {
       <div className="commands-cta panel">
         <div className="panel-body">
           <p>
-            Want to try them? <Link to="/#how">Here is how to get started</Link>, or
+            {t("Want to try them?")} <Link to="/#how">{t("Here is how to get started")}</Link>, {t("or")}
           </p>
           <InviteButton />
         </div>

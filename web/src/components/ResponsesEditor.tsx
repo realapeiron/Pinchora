@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useRef, useState } from "react";
 
 import { type Placeholder, LIMITS } from "../lib/tags";
@@ -74,7 +75,7 @@ export function ResponsesEditor({
                       setLast(0);
                     }}
                   >
-                    Remove
+                    {spaTranslate("Remove")}
                   </PixelButton>
                 )}
               </div>

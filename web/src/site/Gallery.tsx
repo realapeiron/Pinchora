@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useRef, useState, type KeyboardEvent } from "react";
 
 import { Crab } from "../components/Crab";
@@ -109,7 +110,8 @@ export function Gallery() {
             <div className="chat">
               <div className="chat-used">
                 <span className="chat-used-arm" aria-hidden="true" />
-                <b>{tab.user}</b> used <span className="chat-command">{tab.command}</span>
+                <b>{tab.user}</b>
+                {spaTranslate("used")} <span className="chat-command">{tab.command}</span>
               </div>
               <div className="chat-message">
                 <span className="chat-avatar" aria-hidden="true">

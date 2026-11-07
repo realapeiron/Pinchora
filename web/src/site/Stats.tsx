@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 // The public stats pages: the whole bot's totals at /stats, and a server's last 30 days at
 // /stats/:guildId when its managers made the page public (no member is named there).
 
@@ -27,7 +28,7 @@ export function GlobalStatsPage() {
     <div className="wrap stats-site">
       <header className="page-intro">
         <p className="pixel-label eyebrow">STATS</p>
-        <h1 className="section-title">Pinchora in numbers</h1>
+        <h1 className="section-title">{spaTranslate("Pinchora in numbers")}</h1>
         <p className="section-lead">
           Every server, player, house and fish, counted straight from the bot's database and brought up to
           date every few minutes. Servers can open their own stats page from the dashboard.
@@ -43,10 +44,10 @@ export function GlobalStatsPage() {
         <div className="settings-page">
           <div className="stat-tiles stat-tiles-6">
             <StatTile label="SERVERS" value={thousands(totals.servers)} />
-            <StatTile label="PLAYERS" value={thousands(totals.players)} />
+            <StatTile label={spaTranslate("PLAYERS")} value={thousands(totals.players)} />
             <StatTile label="HOUSES BUILT" value={thousands(totals.houses)} />
             <StatTile label="PETS ADOPTED" value={thousands(totals.pets)} />
-            <StatTile label="FISH CAUGHT" value={thousands(totals.fish)} />
+            <StatTile label={spaTranslate("FISH CAUGHT")} value={thousands(totals.fish)} />
             <StatTile label="GAMES PLAYED" value={thousands(totals.games)} note="Counted once per player" />
           </div>
           <section className="panel">
@@ -57,7 +58,7 @@ export function GlobalStatsPage() {
               {days.length > 1 ? (
                 <>
                   <div className="chart-room">
-                    <DailyColumns days={days} value={(d) => d.messages} label="messages" />
+                    <DailyColumns days={days} value={(d) => d.messages} label={spaTranslate("messages")} />
                   </div>
                   <NumbersTable
                     caption="Each day's totals"

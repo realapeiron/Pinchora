@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import "../styles/starboard.css";
 
 import { useState } from "react";
@@ -32,8 +33,8 @@ export function Starboard() {
       />
       {module && !module.enabled && (
         <p className="notice">
-          <strong>Starboard is off.</strong> Turn it on in <Link to={`/g/${guild}/modules`}>Modules</Link> to
-          count reactions.
+          <strong>Starboard is off.</strong> Turn it on in{" "}
+          <Link to={`/g/${guild}/modules`}>{spaTranslate("Modules")}</Link> to count reactions.
         </p>
       )}
       {query.isPending && <Loading label="Reading starboards" />}
@@ -112,7 +113,7 @@ export function Starboard() {
                     {item.create_thread ? " · Threads" : ""}
                   </small>
                   <button type="button" onClick={() => setVote({ ...item })}>
-                    Edit
+                    {spaTranslate("Edit")}
                   </button>
                   <button
                     type="button"
@@ -123,11 +124,13 @@ export function Starboard() {
                       })
                     }
                   >
-                    Remove
+                    {spaTranslate("Remove")}
                   </button>
                 </div>
               ))}
-              {query.data.votes.length === 0 && <p className="empty-row muted">No vote channels yet.</p>}
+              {query.data.votes.length === 0 && (
+                <p className="empty-row muted">{spaTranslate("No vote channels yet.")}</p>
+              )}
             </div>
             <PixelButton variant="secondary" onClick={() => setVote(newVote())}>
               Add vote channel
@@ -156,7 +159,7 @@ export function Starboard() {
             <p className="notice" role="status">
               {notice}{" "}
               <button type="button" onClick={() => setNotice(null)}>
-                Dismiss
+                {spaTranslate("Dismiss")}
               </button>
             </p>
           )}
@@ -203,7 +206,7 @@ function BoardCard({
           Edit board
         </button>
         <button type="button" onClick={onRemove}>
-          Remove
+          {spaTranslate("Remove")}
         </button>
       </div>
     </div>
@@ -237,7 +240,7 @@ function BoardEditor({
     <Panel title={board.id ? "EDIT BOARD" : "NEW BOARD"}>
       <div className="star-form-grid">
         <label>
-          Name
+          {spaTranslate("Name")}
           <input
             className="pixel-input"
             value={board.name}
@@ -275,7 +278,7 @@ function BoardEditor({
           />
         </label>
         <label>
-          Colour
+          {spaTranslate("Colour")}
           <input
             className="pixel-input"
             type="color"
@@ -346,7 +349,7 @@ function BoardEditor({
             value={role}
             onChange={(e) => setRole(e.target.value)}
           >
-            <option value="">Choose a role</option>
+            <option value="">{spaTranslate("Choose a role")}</option>
             {(info?.roles ?? [])
               .filter((r) => !r.everyone)
               .map((r) => (
@@ -414,7 +417,7 @@ function BoardEditor({
           {preview ? "Hide preview" : "Preview board"}
         </PixelButton>
         <PixelButton variant="secondary" onClick={onCancel}>
-          Cancel
+          {spaTranslate("Cancel")}
         </PixelButton>
         <PixelButton
           variant="secondary"
@@ -453,7 +456,7 @@ function VoteEditor({
     <Panel title="VOTE CHANNEL">
       <div className="star-form-grid">
         <label>
-          Channel
+          {spaTranslate("Channel")}
           <ChannelPicker
             info={info}
             value={vote.channel_id || null}
@@ -495,7 +498,11 @@ function VoteEditor({
           checked={vote.create_thread}
           onChange={(v) => change({ create_thread: v })}
         />
-        <PixelToggle label="Enabled" checked={vote.enabled} onChange={(v) => change({ enabled: v })} />
+        <PixelToggle
+          label={spaTranslate("Enabled")}
+          checked={vote.enabled}
+          onChange={(v) => change({ enabled: v })}
+        />
       </div>
       {error && (
         <p className="field-error" role="alert">
@@ -504,7 +511,7 @@ function VoteEditor({
       )}
       <div className="star-form-actions">
         <PixelButton variant="secondary" onClick={onCancel}>
-          Cancel
+          {spaTranslate("Cancel")}
         </PixelButton>
         <PixelButton
           variant="secondary"

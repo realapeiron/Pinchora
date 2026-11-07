@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useOutletContext } from "react-router";
@@ -448,9 +449,9 @@ function Editor({
           className="button-small"
           onClick={() => setHist(undo)}
           disabled={hist.past.length === 0}
-          aria-label="Undo"
+          aria-label={spaTranslate("Undo")}
         >
-          ↶ Undo
+          {spaTranslate("↶ Undo")}
         </PixelButton>
         <PixelButton
           variant="ghost"
@@ -477,7 +478,7 @@ function Editor({
               variant="ghost"
               className="button-small"
               onClick={() => zoomBy(-1)}
-              aria-label="Zoom out"
+              aria-label={spaTranslate("Zoom out")}
             >
               −
             </PixelButton>
@@ -486,7 +487,7 @@ function Editor({
               variant="ghost"
               className="button-small"
               onClick={() => zoomBy(1)}
-              aria-label="Zoom in"
+              aria-label={spaTranslate("Zoom in")}
             >
               +
             </PixelButton>
@@ -635,10 +636,10 @@ function Editor({
               {layer && (
                 <div className="layer-actions">
                   <PixelButton variant="secondary" className="button-small" onClick={() => duplicate(layer)}>
-                    Duplicate
+                    {spaTranslate("Duplicate")}
                   </PixelButton>
                   <PixelButton variant="ghost" className="button-small" onClick={() => removeLayer(layer.id)}>
-                    Delete
+                    {spaTranslate("Delete")}
                   </PixelButton>
                 </div>
               )}

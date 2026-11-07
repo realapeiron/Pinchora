@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useState } from "react";
 import { useOutletContext } from "react-router";
 
@@ -71,8 +72,8 @@ function AuditRow({ entry, names }: { entry: AuditEntry; names: Names }) {
           <thead>
             <tr>
               <th scope="col">Field</th>
-              <th scope="col">Before</th>
-              <th scope="col">After</th>
+              <th scope="col">{spaTranslate("Before")}</th>
+              <th scope="col">{spaTranslate("After")}</th>
             </tr>
           </thead>
           <tbody>

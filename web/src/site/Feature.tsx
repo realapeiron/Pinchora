@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { Link, useParams } from "react-router";
 
 import { PixelLink } from "../components/PixelButton";
@@ -19,7 +20,7 @@ export function FeaturePage() {
       <nav className="crumbs" aria-label="Breadcrumb">
         <Link to="/">Home</Link>
         <span aria-hidden="true"> / </span>
-        <Link to="/#features">Features</Link>
+        <Link to="/#features">{spaTranslate("Features")}</Link>
         <span aria-hidden="true"> / </span>
         <span aria-current="page">{feature.title}</span>
       </nav>
@@ -34,7 +35,7 @@ export function FeaturePage() {
           <div className="hero-actions">
             <InviteButton />
             <PixelLink href="/servers" variant="secondary">
-              Open dashboard
+              {spaTranslate("Open dashboard")}
             </PixelLink>
           </div>
         </div>

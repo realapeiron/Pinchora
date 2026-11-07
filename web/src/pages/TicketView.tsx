@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { PixelButton, PixelLink } from "../components/PixelButton";
 import { Panel } from "../components/Panel";
 import {
@@ -85,7 +86,7 @@ function TicketBody({ guild, detail }: { guild: string; detail: TicketDetail }) 
             <dd>{personLabel(ticket.opener)}</dd>
           </div>
           <div>
-            <dt>Opened</dt>
+            <dt>{spaTranslate("Opened")}</dt>
             <dd>{when(ticket.opened_at)}</dd>
           </div>
           <div>
@@ -101,11 +102,11 @@ function TicketBody({ guild, detail }: { guild: string; detail: TicketDetail }) 
             <dd>{ticket.closed_at ? (ticket.closed_by ? personLabel(ticket.closed_by) : "The bot") : "—"}</dd>
           </div>
           <div>
-            <dt>Closed</dt>
+            <dt>{spaTranslate("Closed")}</dt>
             <dd>{when(ticket.closed_at)}</dd>
           </div>
           <div>
-            <dt>Reason</dt>
+            <dt>{spaTranslate("Reason")}</dt>
             <dd>{ticket.close_reason || "—"}</dd>
           </div>
           <div>
@@ -134,7 +135,14 @@ function TicketBody({ guild, detail }: { guild: string; detail: TicketDetail }) 
       </Panel>
       <Panel
         title="TRANSCRIPT"
-        aside={transcript && <span className="muted counter">{transcript.messages} messages</span>}
+        aside={
+          transcript && (
+            <span className="muted counter">
+              {transcript.messages}
+              {spaTranslate("messages")}
+            </span>
+          )
+        }
       >
         {!transcript ? (
           <p className="empty-row muted">
@@ -151,7 +159,7 @@ function TicketBody({ guild, detail }: { guild: string; detail: TicketDetail }) 
               </p>
             )}
             {transcript.lines.length === 0 ? (
-              <p className="empty-row muted">Nobody wrote anything in this ticket.</p>
+              <p className="empty-row muted">{spaTranslate("Nobody wrote anything in this ticket.")}</p>
             ) : (
               <ol className="tk-transcript" aria-label={`Transcript of ticket ${number}`}>
                 {transcript.lines.map((line, n) => {

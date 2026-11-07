@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useState } from "react";
 import { useOutletContext } from "react-router";
 
@@ -107,7 +108,7 @@ function StaffRow({ entry }: { entry: StaffEntry }) {
           <tbody>
             {entry.reason && (
               <tr>
-                <th scope="row">Reason</th>
+                <th scope="row">{spaTranslate("Reason")}</th>
                 <td>{entry.reason}</td>
               </tr>
             )}

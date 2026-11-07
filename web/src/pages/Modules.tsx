@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useCallback, useId, useState } from "react";
 import { useOutletContext } from "react-router";
 
@@ -214,7 +215,7 @@ function ChannelList({
       {channels.length === 0 ? (
         <p className="muted">No channels yet.</p>
       ) : (
-        <ul className="channel-chips" aria-label="Channels">
+        <ul className="channel-chips" aria-label={spaTranslate("Channels")}>
           {channels.map((id) => (
             <li key={id} className="channel-chip">
               <ChannelTag info={info} id={id} />

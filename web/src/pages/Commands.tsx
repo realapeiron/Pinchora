@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useCallback, useState } from "react";
 import { Link, useLocation, useOutletContext } from "react-router";
 
@@ -51,7 +52,7 @@ export function Commands() {
       {list.isError && <Problem error={list.error} />}
       {list.isSuccess && (
         <Panel
-          title="COMMANDS"
+          title={spaTranslate("COMMANDS")}
           aside={
             <span className="muted counter">
               {list.data.items.length}/{list.data.max}
@@ -77,7 +78,7 @@ export function Commands() {
                     </Link>
                     {command.description && <p className="muted tag-detail">{command.description}</p>}
                     <p className="tag-facts muted">
-                      Used {command.uses} {command.uses === 1 ? "time" : "times"}
+                      {spaTranslate("Used")} {command.uses} {command.uses === 1 ? "time" : "times"}
                       {command.cooldown_secs > 0 && ` · cooldown ${cooldownLabel(command.cooldown_secs)}`}
                       {command.reply_mode === "ephemeral" && " · private answer"}
                       {command.embed && " · embed"}
@@ -99,7 +100,7 @@ export function Commands() {
                       className="button-small"
                       href={`/g/${guild}/commands/${command.id}`}
                     >
-                      Edit
+                      {spaTranslate("Edit")}
                     </PixelLink>
                     <PixelButton
                       variant="ghost"
@@ -107,7 +108,7 @@ export function Commands() {
                       aria-label={`Delete ${command.name}`}
                       onClick={() => setAsking(command)}
                     >
-                      Delete
+                      {spaTranslate("Delete")}
                     </PixelButton>
                   </div>
                 </li>
@@ -141,7 +142,7 @@ export function Commands() {
                     remove.reset();
                   }}
                 >
-                  Keep it
+                  {spaTranslate("Keep it")}
                 </PixelButton>
                 <PixelButton
                   disabled={remove.isPending}

@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { type KeyboardEvent, useId, useRef, useState } from "react";
 
 import { Choice } from "../components/Choice";
@@ -60,7 +61,12 @@ export function CategoryPicker({
       aria-invalid={invalid || undefined}
     >
       <option value="">{none}</option>
-      {!known && <option value={value!}>Deleted category ({value})</option>}
+      {!known && (
+        <option value={value!}>
+          {spaTranslate("Deleted category (")}
+          {value})
+        </option>
+      )}
       {categories.map((c) => (
         <option key={c.id} value={c.id}>
           {`▸ ${c.name}`}
@@ -134,7 +140,7 @@ export function TicketPanels({
                   ) : (
                     <span className="badge tk-badge-quiet">NOT POSTED</span>
                   )}
-                  {!panel.enabled && <span className="badge badge-gold">OFF</span>}
+                  {!panel.enabled && <span className="badge badge-gold">{spaTranslate("OFF")}</span>}
                 </span>
                 <p className="tk-panel-facts">
                   <ChannelTag info={info} id={panel.channel_id} /> ·{" "}
@@ -170,7 +176,7 @@ export function TicketPanels({
                   onClick={() => setAsking(panel)}
                   aria-label={`Delete ${panel.name}`}
                 >
-                  Delete
+                  {spaTranslate("Delete")}
                 </PixelButton>
               </div>
             </li>
@@ -233,7 +239,7 @@ export function TicketPanels({
                     remove.reset();
                   }}
                 >
-                  Keep it
+                  {spaTranslate("Keep it")}
                 </PixelButton>
                 <PixelButton
                   disabled={remove.isPending}
@@ -403,7 +409,7 @@ function PanelEditor({
             <>
               <div className="form-grid form-grid-2">
                 <Field
-                  label="Name"
+                  label={spaTranslate("Name")}
                   htmlFor={`${base}-name`}
                   error={errors.name}
                   hint="How /tickets and this page find it. Members never see it."
@@ -433,7 +439,7 @@ function PanelEditor({
                 </Field>
               </div>
               <Field
-                label="Title"
+                label={spaTranslate("Title")}
                 htmlFor={`${base}-title`}
                 error={errors.title}
                 aside={
@@ -451,7 +457,7 @@ function PanelEditor({
                 />
               </Field>
               <Field
-                label="Text"
+                label={spaTranslate("Text")}
                 htmlFor={`${base}-description`}
                 error={errors.description}
                 hint="Markdown works: **bold**, *italic*. Mentions are dropped."
@@ -470,7 +476,7 @@ function PanelEditor({
                 />
               </Field>
               <Field
-                label="Colour"
+                label={spaTranslate("Colour")}
                 htmlFor={`${base}-color`}
                 error={errors.color}
                 hint="The stripe down the side."
@@ -629,7 +635,9 @@ function PanelEditor({
                 <textarea
                   id={`${base}-welcome`}
                   className="pixel-input pixel-textarea"
-                  placeholder="Hi {user}, thanks for reaching out. Tell us what's going on and a staff member will be with you soon."
+                  placeholder={spaTranslate(
+                    "Hi {user}, thanks for reaching out. Tell us what's going on and a staff member will be with you soon.",
+                  )}
                   value={draft.welcome_text}
                   onChange={(e) => set("welcome_text", e.target.value)}
                   aria-invalid={errors.welcome_text ? true : undefined}
@@ -648,7 +656,7 @@ function PanelEditor({
                 </div>
               </Field>
               <Field
-                label="Category"
+                label={spaTranslate("Category")}
                 htmlFor={`${base}-category`}
                 error={errors.open_category_id}
                 hint="Where this panel's ticket channels go, if not the server's ticket category."
@@ -762,7 +770,7 @@ function PanelEditor({
           {tab === "log" && (
             <>
               <Field
-                label="Log channel"
+                label={spaTranslate("Log channel")}
                 htmlFor={`${base}-log`}
                 error={errors.log_channel_id}
                 hint="Opened, claimed, reopened and closed tickets of this panel, with the transcript, if not the server's log channel."
@@ -787,7 +795,7 @@ function PanelEditor({
       <div className="tk-editor-side">
         <div className="tk-editor-preview">
           <span className="field-label" id={`${base}-preview`}>
-            Preview
+            {spaTranslate("Preview")}
           </span>
           <PanelPreview draft={draft} labelledBy={`${base}-preview`} />
           <p className="muted fine">
@@ -882,7 +890,7 @@ function SupportRoles({
             setPick(null);
           }}
         >
-          Add role
+          {spaTranslate("Add role")}
         </PixelButton>
       </div>
     </div>
@@ -912,7 +920,7 @@ export function PanelPreview({ draft, labelledBy }: { draft: PanelDraft; labelle
               <RichText text={draft.description} />
             </p>
           )}
-          <p className="embed-footer muted">Pick a topic to open a private ticket.</p>
+          <p className="embed-footer muted">{spaTranslate("Pick a topic to open a private ticket.")}</p>
         </div>
       </div>
       {draft.style === "buttons" ? (
@@ -927,7 +935,7 @@ export function PanelPreview({ draft, labelledBy }: { draft: PanelDraft; labelle
       ) : (
         <>
           <div className="dc-select" aria-hidden="true">
-            <span>What do you need help with?</span>
+            <span>{spaTranslate("What do you need help with?")}</span>
             <span>▾</span>
           </div>
           <ul className="dc-options" aria-label="Menu options">

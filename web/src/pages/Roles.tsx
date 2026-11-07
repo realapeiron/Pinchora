@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useState } from "react";
 import { useOutletContext } from "react-router";
 
@@ -47,7 +48,7 @@ export function Roles() {
   return (
     <div className="settings-page">
       <PageHead
-        title="ROLES"
+        title={spaTranslate("ROLES")}
         lead="Roles members get on their own, panels where they pick their own, and colours for their names."
       />
       {discord.data && !discord.data.bot.manage_roles && (
@@ -106,7 +107,7 @@ function AutoRoles({ guild, info, view }: { guild: string; info: GuildInfo | und
       {items.length === 0 ? (
         <p className="empty-row muted">No auto roles yet.</p>
       ) : (
-        <ul className="list" aria-label="Auto roles">
+        <ul className="list" aria-label={spaTranslate("Auto roles")}>
           {items.map((row) => (
             <li
               key={`${row.role_id}:${row.kind}`}
@@ -120,7 +121,7 @@ function AutoRoles({ guild, info, view }: { guild: string; info: GuildInfo | und
                   {row.remove_after_secs > 0 && (
                     <span className="muted">taken back after {spanText(row.remove_after_secs)}</span>
                   )}
-                  {!row.enabled && <span className="badge badge-heart">PAUSED</span>}
+                  {!row.enabled && <span className="badge badge-heart">{spaTranslate("PAUSED")}</span>}
                 </span>
               </span>
               <PixelToggle
@@ -144,7 +145,7 @@ function AutoRoles({ guild, info, view }: { guild: string; info: GuildInfo | und
                 disabled={write.isPending}
                 onClick={() => write.mutate({ method: "DELETE", sub: `/auto/${row.role_id}/${row.kind}` })}
               >
-                Remove
+                {spaTranslate("Remove")}
               </PixelButton>
             </li>
           ))}
@@ -157,7 +158,7 @@ function AutoRoles({ guild, info, view }: { guild: string; info: GuildInfo | und
         </Field>
         <div className="auto-fields">
           <Field
-            label="Role"
+            label={spaTranslate("Role")}
             htmlFor="auto-role"
             error={refused ?? problemOf(write.error, "role_id")}
             hint="The bot's role must sit above it."

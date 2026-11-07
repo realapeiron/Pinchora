@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { type ReactNode, useCallback, useState } from "react";
 import { useOutletContext } from "react-router";
 
@@ -59,7 +60,7 @@ function LogForm({ guild, saved }: { guild: string; saved: LogSettings }) {
     <>
       <Panel title="LOG CHANNEL">
         <Field
-          label="Channel"
+          label={spaTranslate("Channel")}
           htmlFor="log-channel"
           error={fieldError("channel_id")}
           hint="Picking a channel turns the log on. Keep it private to moderators. A category below can have a channel of its own."
@@ -127,7 +128,7 @@ function LogForm({ guild, saved }: { guild: string; saved: LogSettings }) {
           (a category covers its channels, a channel its threads). Up to {saved.max_ignored} of each.
         </p>
         <SwitchRow
-          title="Bots"
+          title={spaTranslate("Bots")}
           control={
             <PixelToggle
               label="Leave bots alone"
@@ -202,7 +203,7 @@ function IgnoreChannels({
           info={info}
           value={pick}
           onChange={setPick}
-          none="Pick a channel"
+          none={spaTranslate("Pick a channel")}
           any
         />
         <PixelButton
@@ -244,9 +245,15 @@ function IgnoreRoles({
 }) {
   const [pick, setPick] = useState<string | null>(null);
   return (
-    <Field label="Roles" htmlFor="ignore-role" error={error}>
+    <Field label={spaTranslate("Roles")} htmlFor="ignore-role" error={error}>
       <div className="ignore-add">
-        <RolePicker id="ignore-role" info={info} value={pick} onChange={setPick} none="Pick a role" />
+        <RolePicker
+          id="ignore-role"
+          info={info}
+          value={pick}
+          onChange={setPick}
+          none={spaTranslate("Pick a role")}
+        />
         <PixelButton
           variant="secondary"
           disabled={!pick || list.includes(pick)}
@@ -284,7 +291,7 @@ function IgnoreUsers({
   const valid = isDiscordId(id);
   return (
     <Field
-      label="Members"
+      label={spaTranslate("Members")}
       htmlFor="ignore-user"
       error={error}
       hint="Paste a member's user id (with Developer Mode on in Discord: right-click them, Copy User ID)."

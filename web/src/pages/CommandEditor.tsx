@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useMemo, useState } from "react";
 import { useNavigate, useOutletContext, useParams } from "react-router";
 
@@ -107,7 +108,7 @@ function CommandForm({ guild, id, initial }: { guild: string; id?: string; initi
         }
         action={
           <PixelLink variant="secondary" href={`/g/${guild}/commands`}>
-            Back to the list
+            {spaTranslate("Back to the list")}
           </PixelLink>
         }
       />
@@ -116,7 +117,7 @@ function CommandForm({ guild, id, initial }: { guild: string; id?: string; initi
           <Panel title="BASICS">
             <div className="form-grid form-grid-2">
               <Field
-                label="Name"
+                label={spaTranslate("Name")}
                 htmlFor="command-name"
                 error={nameProblem}
                 hint="What members type after /tag. Lowercase letters, numbers, - and _."
@@ -137,7 +138,7 @@ function CommandForm({ guild, id, initial }: { guild: string; id?: string; initi
                 </div>
               </Field>
               <Field
-                label="Description"
+                label={spaTranslate("Description")}
                 htmlFor="command-description"
                 error={editor.problem("description")}
                 hint="Shown next to the name in suggestions. Optional."
@@ -170,10 +171,10 @@ function CommandForm({ guild, id, initial }: { guild: string; id?: string; initi
               onChange={(next) => set("reply_mode", next)}
             />
             <SwitchRow
-              title="Switched on"
+              title={spaTranslate("Switched on")}
               control={
                 <PixelToggle
-                  label="Switched on"
+                  label={spaTranslate("Switched on")}
                   checked={draft.enabled}
                   onChange={(next) => set("enabled", next)}
                 />
@@ -282,7 +283,7 @@ function CommandForm({ guild, id, initial }: { guild: string; id?: string; initi
               </Field>
             </div>
             <Field
-              label="Cooldown"
+              label={spaTranslate("Cooldown")}
               htmlFor="command-cooldown"
               error={editor.problem("cooldown_secs")}
               hint={`Seconds a member waits between uses, up to ${LIMITS.command_cooldown_max}. 0 is none. With actions, at least ${LIMITS.action_cooldown_min}.`}

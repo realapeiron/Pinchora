@@ -6,6 +6,7 @@ import { Panel } from "../components/Panel";
 import { ServerIcon } from "../components/ServerIcon";
 import { TopBar } from "../components/TopBar";
 import { ApiError, type Me } from "../lib/api";
+import { configureGuild, t, translate } from "../i18n";
 import { isDiscordId } from "../lib/ids";
 import { type NavGroup, visibleNav } from "../lib/nav";
 import { useOverview } from "../lib/queries";
@@ -83,6 +84,7 @@ export function GuildLayout({ me }: { me: Me }) {
 
 function ValidGuildLayout({ me, guildId }: { me: Me; guildId: string }) {
   const overview = useOverview(guildId);
+  useEffect(() => configureGuild(overview.data?.language ?? null), [overview.data?.language]);
   const nav = useRef<HTMLElement>(null);
   const [filter, setFilter] = useState("");
   const shown = visibleNav(
@@ -90,7 +92,7 @@ function ValidGuildLayout({ me, guildId }: { me: Me; guildId: string }) {
       ...group,
       pages: group.pages.map((page) => ({
         ...page,
-        label: overview.data?.navigation?.[page.to] ?? page.label,
+        label: translate(overview.data?.navigation?.[page.to] ?? page.label),
       })),
     })),
     filter,
@@ -123,23 +125,23 @@ function ValidGuildLayout({ me, guildId }: { me: Me; guildId: string }) {
             <div className="sidebar-server-text">
               <strong className="sidebar-server-name">{overview.data?.guild.name ?? "…"}</strong>
               <NavLink to="/servers" className="sidebar-switch">
-                Switch server
+                {t("Switch server")}
               </NavLink>
             </div>
           </div>
           <input
             type="search"
             className="pixel-input sidebar-filter"
-            aria-label="Filter pages"
-            placeholder="Filter pages"
+            aria-label={t("Filter pages")}
+            placeholder={t("Filter pages")}
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
           />
-          <nav ref={nav} aria-label="Server settings" className="sidebar-nav">
-            {shown.length === 0 && <p className="muted sidebar-empty">No page matches.</p>}
+          <nav ref={nav} aria-label={t("Server settings")} className="sidebar-nav">
+            {shown.length === 0 && <p className="muted sidebar-empty">{t("No page matches.")}</p>}
             {shown.map(({ group, pages }) => (
               <div key={group} className="sidebar-section">
-                <p className="sidebar-group pixel-label">{group}</p>
+                <p className="sidebar-group pixel-label">{translate(group)}</p>
                 {pages.map((page) => (
                   <NavLink
                     key={page.to}
@@ -155,7 +157,7 @@ function ValidGuildLayout({ me, guildId }: { me: Me; guildId: string }) {
           </nav>
         </aside>
         <main className="content">
-          {overview.isPending && <Loading label="Opening the server" />}
+          {overview.isPending && <Loading label={t("Opening the server")} />}
           {overview.isError && <GuildProblem error={overview.error} />}
           {overview.isSuccess && <Outlet context={overview.data} />}
         </main>
@@ -167,11 +169,11 @@ function ValidGuildLayout({ me, guildId }: { me: Me; guildId: string }) {
 function GuildProblem({ error }: { error: Error }) {
   if (error instanceof ApiError && error.code === "bot_missing") {
     return (
-      <Panel title="Pinchora is not here yet" tone="gold">
-        <p>Add the bot to this server first, then come back to set it up.</p>
+      <Panel title={t("Pinchora is not here yet")} tone="gold">
+        <p>{t("Add the bot to this server first, then come back to set it up.")}</p>
         {error.inviteUrl && (
           <PixelLink href={error.inviteUrl} target="_blank" rel="noopener noreferrer">
-            Add Pinchora
+            {t("Add Pinchora")}
           </PixelLink>
         )}
       </Panel>

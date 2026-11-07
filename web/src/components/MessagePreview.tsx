@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import type { EmbedSpec, Preview } from "../lib/api";
 import { RichText } from "./RichText";
 
@@ -56,7 +57,9 @@ export function MessagePreview({ preview, label = "Message preview" }: { preview
         <span className="discord-avatar" aria-hidden="true" />
         <strong>Pinchora</strong>
         <span className="discord-tag">APP</span>
-        {preview.ephemeral && <span className="muted discord-private">Only you can see this</span>}
+        {preview.ephemeral && (
+          <span className="muted discord-private">{spaTranslate("Only you can see this")}</span>
+        )}
       </div>
       {preview.text && (
         <p className="discord-text">

@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import type { GuildInfo, TagAction, TriggerKind } from "../lib/api";
 import { LIMITS, actionNeedsRole } from "../lib/tags";
 import { Field } from "./Field";
@@ -75,7 +76,7 @@ export function ActionsEditor({
                     onChange={(id) => set(index, { ...action, role_id: id ?? "" })}
                     assignable
                     forActions
-                    none="Pick a role"
+                    none={spaTranslate("Pick a role")}
                   />
                   {role && !role.action_ok && (
                     <p className="field-error" role="alert">
@@ -119,7 +120,7 @@ export function ActionsEditor({
                 aria-label={`Remove action ${index + 1}`}
                 onClick={() => onChange(actions.filter((_, i) => i !== index))}
               >
-                Remove
+                {spaTranslate("Remove")}
               </PixelButton>
             </li>
           );

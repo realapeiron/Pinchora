@@ -66,8 +66,7 @@ export const FAQ: { question: string; answer: string }[] = [
   },
   {
     question: "Which languages does it speak?",
-    answer:
-      "English. Names in other scripts and emoji draw correctly on the cards, so a server of any language can use it.",
+    answer: "English and Turkish. Names in other scripts and emoji draw correctly on the cards, too.",
   },
   {
     question: "How do I get help or report a bug?",

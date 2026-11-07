@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useCallback, useState } from "react";
 import { Link, useOutletContext } from "react-router";
 
@@ -53,7 +54,7 @@ export function PeriodTabs({ days, onChange }: { days: Days; onChange: (days: Da
           aria-pressed={d === days}
           onClick={() => onChange(d)}
         >
-          {d} days
+          {d} {spaTranslate("days")}
         </button>
       ))}
     </div>
@@ -94,14 +95,15 @@ function Notes({ guild, stats }: { guild: string; stats: GuildStats }) {
     <>
       {!stats.module_on && (
         <p className="notice" role="note">
-          <strong>Stats</strong> is switched off in <Link to={`/g/${guild}/modules`}>Modules</Link>: nothing
-          new is counted and counter channels keep their last number.
+          <strong>{spaTranslate("Stats")}</strong> {spaTranslate("is switched off in")}{" "}
+          <Link to={`/g/${guild}/modules`}>{spaTranslate("Modules")}</Link>: nothing new is counted and
+          counter channels keep their last number.
         </p>
       )}
       {!stats.voice_counted && (
         <p className="notice" role="note">
           Voice time is counted where voice XP is on. Switch it on in{" "}
-          <Link to={`/g/${guild}/leveling`}>Leveling</Link> to see it here.
+          <Link to={`/g/${guild}/leveling`}>{spaTranslate("Leveling")}</Link> to see it here.
         </p>
       )}
     </>
@@ -125,7 +127,7 @@ export function Activity({ stats, showMembers = true }: { stats: PeriodStats; sh
     <>
       <div className="stat-tiles">
         <StatTile
-          label="MESSAGES"
+          label={spaTranslate("MESSAGES")}
           value={thousands(t.messages)}
           delta={change(t.messages, p?.messages)}
           period={stats.days}
@@ -161,7 +163,7 @@ export function Activity({ stats, showMembers = true }: { stats: PeriodStats; sh
 
       <Panel title="MESSAGES PER DAY">
         <div className="chart-room">
-          <DailyColumns days={stats.daily} value={(d) => d.messages} label="messages" />
+          <DailyColumns days={stats.daily} value={(d) => d.messages} label={spaTranslate("messages")} />
         </div>
         <NumbersTable
           caption="Each day's numbers"
@@ -181,7 +183,7 @@ export function Activity({ stats, showMembers = true }: { stats: PeriodStats; sh
             <DailyColumns
               days={stats.daily}
               value={(d) => d.voice_minutes}
-              label="voice minutes"
+              label={spaTranslate("voice minutes")}
               format={minutes}
               height={200}
             />
@@ -201,7 +203,7 @@ export function Activity({ stats, showMembers = true }: { stats: PeriodStats; sh
       <div className={showMembers && members ? "stats-grid-2" : undefined}>
         <Panel title="TOP CHANNELS">
           <RankBars
-            label="Top channels"
+            label={spaTranslate("Top channels")}
             empty="Nobody has written anywhere yet."
             rows={stats.top_channels.map((c) => ({
               id: c.id ?? "other",
@@ -214,7 +216,7 @@ export function Activity({ stats, showMembers = true }: { stats: PeriodStats; sh
         {showMembers && members && (
           <Panel title="TOP MEMBERS">
             <RankBars
-              label="Top members"
+              label={spaTranslate("Top members")}
               empty="Nobody has written yet. Members who hide from leaderboards are left out."
               rows={members.map((m) => ({
                 id: m.id,
@@ -323,7 +325,7 @@ function CounterChannels({ guild }: { guild: string }) {
                 </div>
                 <div className="add-actions">
                   <PixelButton variant="ghost" className="button-small" onClick={() => edit(c)}>
-                    Edit
+                    {spaTranslate("Edit")}
                   </PixelButton>
                   <PixelButton
                     variant="ghost"
@@ -336,7 +338,7 @@ function CounterChannels({ guild }: { guild: string }) {
                       })
                     }
                   >
-                    Remove
+                    {spaTranslate("Remove")}
                   </PixelButton>
                 </div>
                 {c.problem && (
@@ -350,7 +352,7 @@ function CounterChannels({ guild }: { guild: string }) {
         ))}
 
       <div className={`add-row add-row-counter ${chosen?.needs_role ? "add-row-counter-3" : ""}`}>
-        <Field label="Channel" htmlFor="counter-channel" error={fieldError("channel_id")}>
+        <Field label={spaTranslate("Channel")} htmlFor="counter-channel" error={fieldError("channel_id")}>
           <ChannelPicker
             id="counter-channel"
             info={discord.data}
@@ -382,13 +384,13 @@ function CounterChannels({ guild }: { guild: string }) {
           </select>
         </Field>
         {chosen?.needs_role && (
-          <Field label="Role" htmlFor="counter-role" error={fieldError("role_id")}>
+          <Field label={spaTranslate("Role")} htmlFor="counter-role" error={fieldError("role_id")}>
             <RolePicker id="counter-role" info={discord.data} value={role} onChange={setRole} />
           </Field>
         )}
         <div className="field-wide">
           <Field
-            label="Name"
+            label={spaTranslate("Name")}
             htmlFor="counter-template"
             error={templateProblem ?? fieldError("template")}
             hint={
@@ -487,7 +489,7 @@ function Sharing({ guild, days, isPublic }: { guild: string; days: Days; isPubli
   const clearToast = useCallback(() => setToast(null), []);
   const link = `/stats/${guild}`;
   return (
-    <Panel title="SHARE">
+    <Panel title={spaTranslate("SHARE")}>
       <SwitchRow
         title="Public stats page"
         control={

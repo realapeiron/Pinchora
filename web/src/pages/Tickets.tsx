@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import "../styles/tickets.css";
 
 import { useCallback, useId, useState } from "react";
@@ -58,8 +59,9 @@ function TicketsHome({ guild, modules }: { guild: string; modules: ModuleEntry[]
       />
       {module && !module.enabled && (
         <p className="notice" role="note">
-          <strong>{module.label}</strong> is switched off in <Link to={`/g/${guild}/modules`}>Modules</Link>,
-          so panels don't open tickets until you switch it on.
+          <strong>{module.label}</strong> {spaTranslate("is switched off in")}{" "}
+          <Link to={`/g/${guild}/modules`}>{spaTranslate("Modules")}</Link>, so panels don't open tickets
+          until you switch it on.
         </p>
       )}
       {query.isPending && <Loading label="Reading the tickets" />}
@@ -131,11 +133,11 @@ function SummaryPanel({ summary }: { summary: TicketsOverview["summary"] }) {
           <span className="tk-stat-value">{numbers.open_now}</span>
         </li>
         <li className="tk-stat">
-          <span className="tk-stat-name">Opened</span>
+          <span className="tk-stat-name">{spaTranslate("Opened")}</span>
           <span className="tk-stat-value">{numbers.opened}</span>
         </li>
         <li className="tk-stat">
-          <span className="tk-stat-name">Closed</span>
+          <span className="tk-stat-name">{spaTranslate("Closed")}</span>
           <span className="tk-stat-value">{numbers.closed}</span>
         </li>
         <li className="tk-stat">
@@ -235,7 +237,7 @@ function SettingsForm({
       <Panel title="SETTINGS">
         <div className="form-grid form-grid-2">
           <Field
-            label="Ticket category"
+            label={spaTranslate("Ticket category")}
             htmlFor={`${base}-open`}
             error={errors.open_category_id}
             hint="Where ticket channels are made. A panel can pick its own."
@@ -245,12 +247,12 @@ function SettingsForm({
               info={info}
               value={value.open_category_id}
               onChange={(id) => set("open_category_id", id)}
-              none="No category (top of the list)"
+              none={spaTranslate("No category (top of the list)")}
               invalid={!!errors.open_category_id}
             />
           </Field>
           <Field
-            label="Closed category"
+            label={spaTranslate("Closed category")}
             htmlFor={`${base}-closed`}
             error={errors.closed_category_id}
             hint="Closed tickets move here. None: they stay where they are."
@@ -265,7 +267,7 @@ function SettingsForm({
             />
           </Field>
           <Field
-            label="Log channel"
+            label={spaTranslate("Log channel")}
             htmlFor={`${base}-log`}
             error={errors.log_channel_id}
             hint="Opened, claimed and closed tickets, with each transcript."
@@ -280,7 +282,7 @@ function SettingsForm({
             />
           </Field>
           <Field
-            label="Channel name"
+            label={spaTranslate("Channel name")}
             htmlFor={`${base}-naming`}
             error={errors.naming}
             hint={
@@ -359,10 +361,10 @@ function SettingsForm({
           The member gets their ticket's transcript when it closes (unless they turned server DMs off).
         </SwitchRow>
         <SwitchRow
-          title="Ratings"
+          title={spaTranslate("Ratings")}
           control={
             <PixelToggle
-              label="Ratings"
+              label={spaTranslate("Ratings")}
               checked={value.rating_enabled}
               onChange={(on) => set("rating_enabled", on)}
             />
@@ -497,7 +499,7 @@ function TicketList({ guild }: { guild: string }) {
                 Ticket
               </th>
               <th scope="col" role="columnheader">
-                State
+                {spaTranslate("State")}
               </th>
               <th scope="col" role="columnheader">
                 Opened by
@@ -506,16 +508,16 @@ function TicketList({ guild }: { guild: string }) {
                 Staff
               </th>
               <th scope="col" role="columnheader">
-                Opened
+                {spaTranslate("Opened")}
               </th>
               <th scope="col" role="columnheader">
-                Closed
+                {spaTranslate("Closed")}
               </th>
               <th scope="col" role="columnheader">
                 Rating
               </th>
               <th scope="col" role="columnheader">
-                Action
+                {spaTranslate("Action")}
               </th>
             </tr>
           </thead>
@@ -563,7 +565,7 @@ function TicketList({ guild }: { guild: string }) {
                       disabled={close.isPending}
                       onClick={() => close.mutate(t.id)}
                     >
-                      Close
+                      {spaTranslate("Close")}
                     </PixelButton>
                   )}
                 </td>

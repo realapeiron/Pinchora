@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 import { useBlocker } from "react-router";
 
-import { unsavedLabel } from "../lib/draft";
+import { translate } from "../i18n";
+import { en } from "../i18n/en";
 import { PixelButton } from "./PixelButton";
 
 /**
@@ -26,12 +27,9 @@ export function SaveBar({
   onReset: () => void;
   words?: (key: string, values?: Record<string, string | number>) => string;
 }) {
-  const t =
-    words ??
-    ((key: string, values: Record<string, string | number> = {}) =>
-      key.replace(/\{(\w+)\}/g, (match, name: string) => String(values[name] ?? match)));
-  const changes = (n: number) =>
-    words ? t(n === 1 ? "1 unsaved change" : "{count} unsaved changes", { count: n }) : unsavedLabel(n);
+  const t = (key: string, values: Record<string, string | number> = {}) =>
+    key in en ? translate(key, values) : (words?.(key, values) ?? translate(key, values));
+  const changes = (n: number) => t(n === 1 ? "1 unsaved change" : "{count} unsaved changes", { count: n });
   const dirty = count > 0;
   // While the bar slides away after a save, it keeps showing what it said.
   const lastCount = useRef(count);

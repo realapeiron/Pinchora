@@ -1,4 +1,6 @@
 /** One-of-several picker drawn as cards: a radio group with a title and a line per option. */
+import { translate } from "../i18n";
+
 export function Choice<T extends string>({
   name,
   value,
@@ -13,7 +15,7 @@ export function Choice<T extends string>({
   disabled?: boolean;
 }) {
   return (
-    <div className="choice" role="radiogroup" aria-label={name}>
+    <div className="choice" role="radiogroup" aria-label={translate(name)}>
       {options.map((option) => {
         const checked = option.value === value;
         return (
@@ -26,8 +28,8 @@ export function Choice<T extends string>({
               disabled={disabled}
               onChange={() => onChange(option.value)}
             />
-            <span className="choice-title">{option.title}</span>
-            <span className="choice-detail muted">{option.detail}</span>
+            <span className="choice-title">{translate(option.title)}</span>
+            <span className="choice-detail muted">{translate(option.detail)}</span>
           </label>
         );
       })}

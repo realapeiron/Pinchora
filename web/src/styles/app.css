@@ -2312,3 +2312,26 @@ input[type="number"].pixel-input {
     max-width: none;
   }
 }
+.language-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.2rem;
+  border: 1px solid currentColor;
+  border-radius: 0.4rem;
+}
+
+.language-switcher button {
+  border: 0;
+  border-radius: 0.2rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0.15rem 0.4rem;
+}
+
+.language-switcher button.is-active {
+  background: currentColor;
+  color: var(--color-bg, #101923);
+}

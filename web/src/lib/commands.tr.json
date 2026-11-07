@@ -1,0 +1,5547 @@
+{
+  "areas": [
+    {
+      "commands": [
+        {
+          "description": "Bir profil kartı gösterir",
+          "manager": false,
+          "options": [
+            {
+              "description": "Kimin profili (varsayılan: sen)",
+              "name": "user",
+              "required": false
+            }
+          ],
+          "path": "profile",
+          "usage": "/profile [user]"
+        },
+        {
+          "description": "Sunucu seviye kartını gösterir",
+          "manager": false,
+          "options": [
+            {
+              "description": "Kimin sırası (varsayılan: sen)",
+              "name": "user",
+              "required": false
+            }
+          ],
+          "path": "rank",
+          "usage": "/rank [user]"
+        },
+        {
+          "description": "XP, kabuk, sunucu puanı ya da en büyük avda en iyiler",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Bu sunucu (XP)",
+                "Bu sunucu (puan)",
+                "Haftalık XP",
+                "Haftalık av",
+                "Dünya (XP)",
+                "Dünya (kabuk)"
+              ],
+              "description": "Hangi tablo (varsayılan: bu sunucu)",
+              "name": "board",
+              "required": false
+            }
+          ],
+          "path": "leaderboard",
+          "usage": "/leaderboard [board]"
+        },
+        {
+          "description": "Günlük kabuklarını topla",
+          "manager": false,
+          "options": [],
+          "path": "daily",
+          "usage": "/daily"
+        },
+        {
+          "description": "Bir kabuk cüzdanını gösterir",
+          "manager": false,
+          "options": [
+            {
+              "description": "Kimin cüzdanı (varsayılan: sen)",
+              "name": "user",
+              "required": false
+            }
+          ],
+          "path": "balance",
+          "usage": "/balance [user]"
+        },
+        {
+          "description": "Bugünün üç görevi ve ödülleri",
+          "manager": false,
+          "options": [],
+          "path": "quests",
+          "usage": "/quests"
+        },
+        {
+          "description": "Pinchora neler yapabilir",
+          "manager": false,
+          "options": [],
+          "path": "help",
+          "usage": "/help"
+        },
+        {
+          "description": "Dilini seç ya da Discord dilini takip et",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Otomatik",
+                "English",
+                "Türkçe"
+              ],
+              "description": "Her yerde kullanılacak dil",
+              "name": "language",
+              "required": true
+            }
+          ],
+          "path": "language set",
+          "usage": "/language set <language>"
+        },
+        {
+          "description": "Pinchora uyanık mı, ne kadar hızlı yanıt veriyor, bak",
+          "manager": false,
+          "options": [],
+          "path": "ping",
+          "usage": "/ping"
+        }
+      ],
+      "intro": "Her günün temelleri. Geri kalan her şey için menüden bir bölüm seç.",
+      "key": "start-here",
+      "title": "Buradan başla"
+    },
+    {
+      "commands": [
+        {
+          "description": "Profil kartındaki hakkımda yazını ayarla",
+          "manager": false,
+          "options": [
+            {
+              "description": "En fazla 160 karakter; silmek için \"-\" gönder",
+              "name": "text",
+              "required": true
+            }
+          ],
+          "path": "bio",
+          "usage": "/bio <text>"
+        },
+        {
+          "description": "Piksel karakterini tasarla: görünüş, renkler, aksesuarlar ve kıyafetler",
+          "manager": false,
+          "options": [],
+          "path": "character",
+          "usage": "/character"
+        },
+        {
+          "description": "Profil, sıra ve cüzdan kartların için bir arka plan al ve kullan",
+          "manager": false,
+          "options": [],
+          "path": "customize background",
+          "usage": "/customize background"
+        },
+        {
+          "description": "Rozet koleksiyonun: profil kartındaki rozetleri kazan, al ve tak",
+          "manager": false,
+          "options": [],
+          "path": "customize badges",
+          "usage": "/customize badges"
+        },
+        {
+          "description": "Profil ve sıra kartlarında adının altındaki unvanı seç",
+          "manager": false,
+          "options": [],
+          "path": "customize title",
+          "usage": "/customize title"
+        },
+        {
+          "description": "Profil, sıra ve cüzdan kartların için vurgu rengi, panel saydamlığı ve çerçeve",
+          "manager": false,
+          "options": [],
+          "path": "customize style",
+          "usage": "/customize style"
+        },
+        {
+          "description": "Profil kartına sevdiğin bir balığı, hayvanı, mobilyayı ve evini koy",
+          "manager": false,
+          "options": [],
+          "path": "customize showcase",
+          "usage": "/customize showcase"
+        },
+        {
+          "description": "Yılın sayılarla (1 Aralık - 31 Ocak arası açık)",
+          "manager": false,
+          "options": [
+            {
+              "description": "Hangi yıl (varsayılan: yeni biten)",
+              "name": "year",
+              "required": false
+            }
+          ],
+          "path": "wrapped",
+          "usage": "/wrapped [year]"
+        },
+        {
+          "description": "Başkalarının senden ne göreceğini, sunucuların sana DM atıp atamayacağını seç ya da verilerini sil",
+          "manager": false,
+          "options": [
+            {
+              "description": "Sunucuların özel komutları, otomatik yanıtları, bildirimleri ve moderatörleri sana DM atabilsin",
+              "name": "server_dms",
+              "required": false
+            }
+          ],
+          "path": "privacy",
+          "usage": "/privacy [server_dms]"
+        },
+        {
+          "description": "Biri kaç oyun oynamış ve kazanmış",
+          "manager": false,
+          "options": [
+            {
+              "description": "Kimin istatistikleri (varsayılan: seninki)",
+              "name": "user",
+              "required": false
+            }
+          ],
+          "path": "play stats",
+          "usage": "/play stats [user]"
+        },
+        {
+          "description": "Sunucu başarımlarını göster",
+          "manager": false,
+          "options": [
+            {
+              "description": "Başarımları gösterilecek üye (varsayılan: sen)",
+              "name": "user",
+              "required": false
+            }
+          ],
+          "path": "achievements",
+          "usage": "/achievements [user]"
+        },
+        {
+          "description": "Başarım oluştur (en fazla 25)",
+          "manager": true,
+          "options": [
+            {
+              "description": "Kartta gösterilecek ad",
+              "name": "name",
+              "required": true
+            },
+            {
+              "choices": [
+                "Mesajlar",
+                "Ses dakikası",
+                "Seviye",
+                "Etkin günler",
+                "Davetler",
+                "Alınan yıldızlar",
+                "Kapatılan talepler",
+                "İtibar",
+                "Kazanılan oyunlar",
+                "Yakalanan balıklar",
+                "Özel"
+              ],
+              "description": "Kazanma koşulu",
+              "name": "kind",
+              "required": true
+            },
+            {
+              "description": "Gereken ilerleme",
+              "name": "target",
+              "required": true
+            },
+            {
+              "description": "Kısa açıklama",
+              "name": "description",
+              "required": false
+            },
+            {
+              "description": "Paneldeki simge adı",
+              "name": "icon",
+              "required": false
+            },
+            {
+              "description": "Rol ödülü",
+              "name": "role",
+              "required": false
+            },
+            {
+              "description": "Sunucu puanı ödülü",
+              "name": "points",
+              "required": false
+            },
+            {
+              "description": "Duyuru kanalı",
+              "name": "announce_channel",
+              "required": false
+            },
+            {
+              "description": "Kazanılana dek gizle",
+              "name": "secret",
+              "required": false
+            }
+          ],
+          "path": "achievementadmin add",
+          "usage": "/achievementadmin add <name> <kind> <target> [description] [icon] [role] [points] [announce_channel] [secret]"
+        },
+        {
+          "description": "Başarımı düzenle",
+          "manager": true,
+          "options": [
+            {
+              "description": "Listedeki başarım kimliği",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "Yeni ad",
+              "name": "name",
+              "required": false
+            },
+            {
+              "description": "Yeni açıklama",
+              "name": "description",
+              "required": false
+            },
+            {
+              "choices": [
+                "Messages",
+                "Voice minutes",
+                "Level",
+                "Days active",
+                "Invites",
+                "Stars received",
+                "Tickets closed",
+                "Reputation",
+                "Games won",
+                "Fish caught",
+                "Custom"
+              ],
+              "description": "Yeni koşul türü",
+              "name": "kind",
+              "required": false
+            },
+            {
+              "description": "Yeni simge",
+              "name": "icon",
+              "required": false
+            },
+            {
+              "description": "Yeni hedef",
+              "name": "target",
+              "required": false
+            },
+            {
+              "description": "Yeni rol ödülü",
+              "name": "role",
+              "required": false
+            },
+            {
+              "description": "Rol ödülünü kaldır",
+              "name": "clear_role",
+              "required": false
+            },
+            {
+              "description": "Yeni puan ödülü",
+              "name": "points",
+              "required": false
+            },
+            {
+              "description": "Yeni duyuru kanalı",
+              "name": "announce_channel",
+              "required": false
+            },
+            {
+              "description": "Duyuru kanalını kaldır",
+              "name": "clear_announce_channel",
+              "required": false
+            },
+            {
+              "description": "Kazanılana dek gizle",
+              "name": "secret",
+              "required": false
+            },
+            {
+              "description": "Aç veya kapat",
+              "name": "enabled",
+              "required": false
+            }
+          ],
+          "path": "achievementadmin edit",
+          "usage": "/achievementadmin edit <id> [name] [description] [kind] [icon] [target] [role] [clear_role] [points] [announce_channel] [clear_announce_channel] [secret] [enabled]"
+        },
+        {
+          "description": "Başarımı ve kazanım kayıtlarını sil",
+          "manager": true,
+          "options": [
+            {
+              "description": "Başarım kimliği",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "achievementadmin remove",
+          "usage": "/achievementadmin remove <id>"
+        },
+        {
+          "description": "Tanımlı başarımları listele",
+          "manager": true,
+          "options": [],
+          "path": "achievementadmin list",
+          "usage": "/achievementadmin list"
+        },
+        {
+          "description": "Özel başarımı bir üyeye ver",
+          "manager": true,
+          "options": [
+            {
+              "description": "Başarım kimliği",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "Başarımı kazanacak üye",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "achievementadmin grant",
+          "usage": "/achievementadmin grant <id> <user>"
+        }
+      ],
+      "intro": "Görünüşün, karakterin ve başkalarının senden neler görebileceği.",
+      "key": "profile-and-cards",
+      "title": "Profil ve kartlar"
+    },
+    {
+      "commands": [
+        {
+          "description": "Haftalık kabuklarını topla (7 günde bir)",
+          "manager": false,
+          "options": [],
+          "path": "weekly",
+          "usage": "/weekly"
+        },
+        {
+          "description": "Aylık kabuklarını topla (30 günde bir)",
+          "manager": false,
+          "options": [],
+          "path": "monthly",
+          "usage": "/monthly"
+        },
+        {
+          "description": "Birine kabuk gönder",
+          "manager": false,
+          "options": [
+            {
+              "description": "Kabukları kim alacak",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Kaç kabuk",
+              "name": "amount",
+              "required": true
+            }
+          ],
+          "path": "give",
+          "usage": "/give <user> <amount>"
+        },
+        {
+          "description": "Birine itibar puanı ver (günde bir kez)",
+          "manager": false,
+          "options": [
+            {
+              "description": "Kim hak ediyor",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "rep",
+          "usage": "/rep <user>"
+        },
+        {
+          "description": "Bir ödül, hayvanım ya da bir hayvan gezisi hazır olunca bana yaz",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "günlük",
+                "haftalık",
+                "aylık",
+                "hayvan (bakım istiyor)",
+                "gezi (bir hayvan eve döndü)"
+              ],
+              "description": "Neyi haber vereyim",
+              "name": "what",
+              "required": true
+            },
+            {
+              "choices": [
+                "açık",
+                "kapalı"
+              ],
+              "description": "Aç ya da kapat",
+              "name": "state",
+              "required": true
+            }
+          ],
+          "path": "remind me when",
+          "usage": "/remind me when <what> <state>"
+        },
+        {
+          "description": "Bir süre sonra bana yaz: 45m, 2h30m, 3d",
+          "manager": false,
+          "options": [
+            {
+              "description": "Şu andan ne kadar sonra, ör. 45m, 2h30m ya da 3d",
+              "name": "duration",
+              "required": true
+            },
+            {
+              "description": "Sana neyi hatırlatayım",
+              "name": "text",
+              "required": true
+            }
+          ],
+          "path": "remind me in",
+          "usage": "/remind me in <duration> <text>"
+        },
+        {
+          "description": "Hatırlatıcıların ve hangi bildirimlerin açık olduğu",
+          "manager": false,
+          "options": [],
+          "path": "remind list",
+          "usage": "/remind list"
+        },
+        {
+          "description": "/remind me in ile kurduğun bir hatırlatıcıyı iptal et",
+          "manager": false,
+          "options": [
+            {
+              "description": "/remind list'teki numara",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "remind cancel",
+          "usage": "/remind cancel <id>"
+        },
+        {
+          "description": "Doğum gününü gizlilik seçimlerinle kaydet",
+          "manager": false,
+          "options": [
+            {
+              "description": "Ayın kaçıncı günü",
+              "name": "day",
+              "required": true
+            },
+            {
+              "description": "Yılın kaçıncı ayı",
+              "name": "month",
+              "required": true
+            },
+            {
+              "description": "İsteğe bağlı doğum yılı; gizli tutulur",
+              "name": "year",
+              "required": false
+            },
+            {
+              "description": "IANA saat dilimi; varsayılan sunucunundur",
+              "name": "timezone",
+              "required": false
+            },
+            {
+              "description": "Gününü ve ayını başkaları görsün",
+              "name": "public",
+              "required": false
+            },
+            {
+              "description": "Sunucu izin verirse yaşın gösterilsin",
+              "name": "show_age",
+              "required": false
+            }
+          ],
+          "path": "birthday set",
+          "usage": "/birthday set <day> <month> [year] [timezone] [public] [show_age]"
+        },
+        {
+          "description": "Doğum gününü sil ve kutlamaları durdur",
+          "manager": false,
+          "options": [],
+          "path": "birthday remove",
+          "usage": "/birthday remove"
+        },
+        {
+          "description": "Kaydettiğin tarihi ve gizlilik seçimlerini gör",
+          "manager": false,
+          "options": [],
+          "path": "birthday me",
+          "usage": "/birthday me"
+        },
+        {
+          "description": "Paylaşmışsa bir üyenin doğum gününü gör",
+          "manager": false,
+          "options": [
+            {
+              "description": "Bakılacak üye",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "birthday view",
+          "usage": "/birthday view <user>"
+        },
+        {
+          "description": "Bu sunucudaki sıradaki paylaşılan doğum günü",
+          "manager": false,
+          "options": [],
+          "path": "birthday next",
+          "usage": "/birthday next"
+        },
+        {
+          "description": "Bu sunucudaki paylaşılan doğum günleri",
+          "manager": false,
+          "options": [
+            {
+              "description": "İsteğe bağlı ay (1 ile 12 arası)",
+              "name": "month",
+              "required": false
+            }
+          ],
+          "path": "birthday list",
+          "usage": "/birthday list [month]"
+        }
+      ],
+      "intro": "Her hafta ve ay daha büyük ödüller, arkadaşlara kabuk, itibar ve hatırlatıcılar.",
+      "key": "shells-and-rewards",
+      "title": "Kabuklar ve ödüller"
+    },
+    {
+      "commands": [
+        {
+          "description": "Saatlik pazar: dünya çapında sınırlı stoklu nadir parçalar",
+          "manager": false,
+          "options": [],
+          "path": "shop market",
+          "usage": "/shop market"
+        },
+        {
+          "description": "Mobilya kataloğuna göz at",
+          "manager": false,
+          "options": [
+            {
+              "description": "Ne tür mobilya",
+              "name": "category",
+              "required": false
+            }
+          ],
+          "path": "shop catalog",
+          "usage": "/shop catalog [category]"
+        },
+        {
+          "description": "Sahip olduğun ama yerleştirmediğin mobilyalar",
+          "manager": false,
+          "options": [],
+          "path": "inventory",
+          "usage": "/inventory"
+        },
+        {
+          "description": "Bir arkadaşına mobilya gönder",
+          "manager": false,
+          "options": [
+            {
+              "description": "Hediyeyi kim alacak",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "gift",
+          "usage": "/gift <user>"
+        },
+        {
+          "description": "Bir oyuncunun tezgâhına göz at",
+          "manager": false,
+          "options": [
+            {
+              "description": "Kimin tezgâhı (varsayılan: seninki)",
+              "name": "user",
+              "required": false
+            }
+          ],
+          "path": "stall view",
+          "usage": "/stall view [user]"
+        },
+        {
+          "description": "Envanterindeki bir eşyayı tezgâhına koy",
+          "manager": false,
+          "options": [
+            {
+              "description": "Kabuk olarak fiyat (satışta %5 pazar payı alınır)",
+              "name": "price",
+              "required": true
+            }
+          ],
+          "path": "stall sell",
+          "usage": "/stall sell <price>"
+        },
+        {
+          "description": "Tezgâhındaki eşyaları geri al",
+          "manager": false,
+          "options": [],
+          "path": "stall manage",
+          "usage": "/stall manage"
+        }
+      ],
+      "intro": "Mobilya al, envanterinde sakla, hediye et ya da kendi tezgâhında sat.",
+      "key": "shops-and-trading",
+      "title": "Mağaza ve ticaret"
+    },
+    {
+      "commands": [
+        {
+          "description": "Evine bir bak",
+          "manager": false,
+          "options": [
+            {
+              "description": "Oda numarası (varsayılan: 1)",
+              "name": "room",
+              "required": false
+            }
+          ],
+          "path": "house view",
+          "usage": "/house view [room]"
+        },
+        {
+          "description": "Birinin evini ziyaret et (her günün ilk ziyareti kabuk kazandırır)",
+          "manager": false,
+          "options": [
+            {
+              "description": "Kimin evi (boş bırakırsan arkadaşlarından seçersin)",
+              "name": "user",
+              "required": false
+            },
+            {
+              "description": "Oda numarası (varsayılan: 1)",
+              "name": "room",
+              "required": false
+            }
+          ],
+          "path": "house visit",
+          "usage": "/house visit [user] [room]"
+        },
+        {
+          "description": "Bir odayı döşe: imleci gezdir, mobilya seç, yerleştir",
+          "manager": false,
+          "options": [
+            {
+              "description": "Oda numarası (varsayılan: 1)",
+              "name": "room",
+              "required": false
+            },
+            {
+              "description": "Kimin evi: birlikte döşemek için partnerinin (varsayılan: seninki)",
+              "name": "owner",
+              "required": false
+            }
+          ],
+          "path": "house edit",
+          "usage": "/house edit [room] [owner]"
+        },
+        {
+          "description": "Daha büyük bir eve taşın (mobilyaların seninle gelir)",
+          "manager": false,
+          "options": [],
+          "path": "house upgrade",
+          "usage": "/house upgrade"
+        },
+        {
+          "description": "Evini ziyaretçilere kilitle ya da aç",
+          "manager": false,
+          "options": [
+            {
+              "description": "True ziyaretleri durdurur",
+              "name": "locked",
+              "required": true
+            }
+          ],
+          "path": "house lock",
+          "usage": "/house lock <locked>"
+        },
+        {
+          "description": "Birinin evine beğeni bırak (günde bir kez)",
+          "manager": false,
+          "options": [
+            {
+              "description": "Kimin evini beğeniyorsun",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "house like",
+          "usage": "/house like <user>"
+        },
+        {
+          "description": "Bir odanın duvar kâğıdını ve zeminini değiştir",
+          "manager": false,
+          "options": [
+            {
+              "description": "Oda numarası (varsayılan: 1)",
+              "name": "room",
+              "required": false
+            }
+          ],
+          "path": "house decorate",
+          "usage": "/house decorate [room]"
+        },
+        {
+          "description": "Bir evin ziyaretçi defterini oku, kimlerin geldiğine bak",
+          "manager": false,
+          "options": [
+            {
+              "description": "Kimin defteri (varsayılan: seninki)",
+              "name": "user",
+              "required": false
+            }
+          ],
+          "path": "house guestbook",
+          "usage": "/house guestbook [user]"
+        },
+        {
+          "description": "Bu haftanın teması, kalan süre, katılanlar ve geçen haftanın kazananları",
+          "manager": false,
+          "options": [],
+          "path": "house contest view",
+          "usage": "/house contest view"
+        },
+        {
+          "description": "Bir odayı şu anki haliyle yarışmaya sok (tekrar katılmak onu günceller)",
+          "manager": false,
+          "options": [
+            {
+              "description": "Oda numarası (varsayılan: 1)",
+              "name": "room",
+              "required": false
+            }
+          ],
+          "path": "house contest enter",
+          "usage": "/house contest enter [room]"
+        },
+        {
+          "description": "Diğer üyelerin katıldığı odaları puanla",
+          "manager": false,
+          "options": [],
+          "path": "house contest vote",
+          "usage": "/house contest vote"
+        },
+        {
+          "description": "Geçen haftanın kazanan odası",
+          "manager": false,
+          "options": [],
+          "path": "house contest winners",
+          "usage": "/house contest winners"
+        },
+        {
+          "description": "Sunucu meydanında bir tur at",
+          "manager": false,
+          "options": [],
+          "path": "plaza view",
+          "usage": "/plaza view"
+        },
+        {
+          "description": "Sunucu meydanına bir mobilya bağışla",
+          "manager": false,
+          "options": [],
+          "path": "plaza donate",
+          "usage": "/plaza donate"
+        },
+        {
+          "description": "Meydana bağışlanan mobilyaları düzenle (Sunucuyu Yönet)",
+          "manager": true,
+          "options": [],
+          "path": "plaza edit",
+          "usage": "/plaza edit"
+        }
+      ],
+      "intro": "Kendi piksel evin, haftalık oda yarışması ve tüm sunucunun paylaştığı meydan.",
+      "key": "house-and-plaza",
+      "title": "Ev ve meydan"
+    },
+    {
+      "commands": [
+        {
+          "description": "Aktif hayvanını gör ve ona bak",
+          "manager": false,
+          "options": [],
+          "path": "pet view",
+          "usage": "/pet view"
+        },
+        {
+          "description": "İlk hayvanını ücretsiz sahiplen",
+          "manager": false,
+          "options": [],
+          "path": "pet adopt",
+          "usage": "/pet adopt"
+        },
+        {
+          "description": "Rastgele bir hayvan için hayvan kapsülü aç (1.500 kabuk)",
+          "manager": false,
+          "options": [],
+          "path": "pet capsule",
+          "usage": "/pet capsule"
+        },
+        {
+          "description": "Yuvan: tüm hayvanların bir bakışta; birini aç ya da aktif hayvanını seç",
+          "manager": false,
+          "options": [],
+          "path": "pet list",
+          "usage": "/pet list"
+        },
+        {
+          "description": "Aktif hayvanının adını değiştir",
+          "manager": false,
+          "options": [
+            {
+              "description": "Yeni ad",
+              "name": "name",
+              "required": true
+            }
+          ],
+          "path": "pet rename",
+          "usage": "/pet rename <name>"
+        },
+        {
+          "description": "Bir hayvanı 1, 4 ya da 8 saatliğine gönder; kabuk ve bazen mobilya getirir",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Gelgit Havuzu Çayırı · 1 sa · 1. seviye",
+                "Deniz Odunu Koyu · 1 sa · 4. seviye",
+                "Kumdan Kale Sığlığı · 1 sa · 8. seviye",
+                "Yosun Ormanı Kütüphanesi · 4 sa · 10. seviye",
+                "Fener Lagünü · 4 sa · 14. seviye",
+                "Mercan Fırın Resifi · 4 sa · 18. seviye",
+                "Ay İncisi Adaları · 8 sa · 22. seviye",
+                "Yıldız Yağmuru Kumluğu · 8 sa · 26. seviye"
+              ],
+              "description": "Nereye",
+              "name": "destination",
+              "required": true
+            },
+            {
+              "description": "Hangi hayvan, adıyla (varsayılan: aktif hayvanın)",
+              "name": "pet",
+              "required": false
+            }
+          ],
+          "path": "pet trip go",
+          "usage": "/pet trip go <destination> [pet]"
+        },
+        {
+          "description": "Dönen hayvanların hatıralarını topla ya da kimin hâlâ yolda olduğuna bak",
+          "manager": false,
+          "options": [],
+          "path": "pet trip claim",
+          "usage": "/pet trip claim"
+        }
+      ],
+      "intro": "Bir hayvan sahiplen, ona iyi bak ve eve hatıra getirdiği gezilere gönder.",
+      "key": "pets",
+      "title": "Evcil hayvanlar"
+    },
+    {
+      "commands": [
+        {
+          "description": "Olta at (sade yem 10 kabuk). Bir şey vurduğu an Çek'e bas!",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Kıyı",
+                "Resif (5. seviye)",
+                "Yosun Ormanı (12. seviye)",
+                "Derin Deniz (20. seviye)",
+                "Abis (30. seviye)"
+              ],
+              "description": "Nerede balık tutulacak; en son tuttuğun yer hatırlanır",
+              "name": "spot",
+              "required": false
+            }
+          ],
+          "path": "fish cast",
+          "usage": "/fish cast [spot]"
+        },
+        {
+          "description": "Kabukla olta ve yem al",
+          "manager": false,
+          "options": [],
+          "path": "fish shop",
+          "usage": "/fish shop"
+        },
+        {
+          "description": "Yerini, oltanı ve yemini seç",
+          "manager": false,
+          "options": [],
+          "path": "fish gear",
+          "usage": "/fish gear"
+        },
+        {
+          "description": "Kovandaki balıkları kabuk karşılığı sat",
+          "manager": false,
+          "options": [],
+          "path": "fish sell",
+          "usage": "/fish sell"
+        },
+        {
+          "description": "Balık defterin: her tür, rekor boylar ve kilometre taşı ödülleri",
+          "manager": false,
+          "options": [],
+          "path": "fish book",
+          "usage": "/fish book"
+        }
+      ],
+      "intro": "Oltanı at, kovanı doldur, avını sat ve balık defterini tamamla.",
+      "key": "fishing",
+      "title": "Balıkçılık"
+    },
+    {
+      "commands": [
+        {
+          "description": "Birine arkadaşın olmasını teklif et",
+          "manager": false,
+          "options": [
+            {
+              "description": "Kime soruyorsun",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "friends add",
+          "usage": "/friends add <user>"
+        },
+        {
+          "description": "Biriyle arkadaşlığı bitir",
+          "manager": false,
+          "options": [
+            {
+              "description": "Kimi çıkaracaksın",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "friends remove",
+          "usage": "/friends remove <user>"
+        },
+        {
+          "description": "Senin ya da başka birinin arkadaşları",
+          "manager": false,
+          "options": [
+            {
+              "description": "Kimin arkadaşları (varsayılan: seninkiler)",
+              "name": "user",
+              "required": false
+            }
+          ],
+          "path": "friends list",
+          "usage": "/friends list [user]"
+        },
+        {
+          "description": "Birine partnerin olmasını teklif et",
+          "manager": false,
+          "options": [
+            {
+              "description": "Kime soruyorsun",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "partner propose",
+          "usage": "/partner propose <user>"
+        },
+        {
+          "description": "Bir çifte bak: ne zamandan beri, kaç gün birlikte, neleri paylaşıyorlar",
+          "manager": false,
+          "options": [
+            {
+              "description": "Kimin partnerliği (varsayılan: seninki)",
+              "name": "user",
+              "required": false
+            }
+          ],
+          "path": "partner view",
+          "usage": "/partner view [user]"
+        },
+        {
+          "description": "Partnerliğini bitir",
+          "manager": false,
+          "options": [],
+          "path": "partner leave",
+          "usage": "/partner leave"
+        },
+        {
+          "description": "Birine sarıl",
+          "manager": false,
+          "options": [
+            {
+              "description": "Kime",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "hug",
+          "usage": "/hug <user>"
+        },
+        {
+          "description": "Birinin başını okşa",
+          "manager": false,
+          "options": [
+            {
+              "description": "Kime",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "pat",
+          "usage": "/pat <user>"
+        },
+        {
+          "description": "Birine el salla",
+          "manager": false,
+          "options": [
+            {
+              "description": "Kime",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "wave",
+          "usage": "/wave <user>"
+        },
+        {
+          "description": "Biriyle çak bir beşlik",
+          "manager": false,
+          "options": [
+            {
+              "description": "Kiminle",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "highfive",
+          "usage": "/highfive <user>"
+        }
+      ],
+      "intro": "Arkadaş ekle, bir partnerle eşleş ve hareketli selamlar gönder.",
+      "key": "friends-and-partners",
+      "title": "Arkadaşlar ve partnerler"
+    },
+    {
+      "commands": [
+        {
+          "description": "Düğmelerle XOX; kazanan kabuk kazanır",
+          "manager": false,
+          "options": [
+            {
+              "description": "Rakibin",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "duel tictactoe",
+          "usage": "/duel tictactoe <user>"
+        },
+        {
+          "description": "Piksel tahtada Dört Bağla; kazanan kabuk ya da potu alır",
+          "manager": false,
+          "options": [
+            {
+              "description": "Rakibin",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "İkinizin de koyacağı kabuk (10-500); eğlencesine oynamak için boş bırak",
+              "name": "bet",
+              "required": false
+            }
+          ],
+          "path": "duel connect4",
+          "usage": "/duel connect4 <user> [bet]"
+        },
+        {
+          "description": "Gizlice seçilen taş kâğıt makas; kazanan kabuk ya da potu alır",
+          "manager": false,
+          "options": [
+            {
+              "description": "Rakibin",
+              "name": "user",
+              "required": true
+            },
+            {
+              "choices": [
+                "Tek tur",
+                "3'te en iyi",
+                "5'te en iyi"
+              ],
+              "description": "Maç kaç tur (varsayılan: 3'te en iyi)",
+              "name": "rounds",
+              "required": false
+            },
+            {
+              "description": "İkinizin de koyacağı kabuk (10-500); eğlencesine oynamak için boş bırak",
+              "name": "bet",
+              "required": false
+            }
+          ],
+          "path": "duel rps",
+          "usage": "/duel rps <user> [rounds] [bet]"
+        },
+        {
+          "description": "Paylaş ya da Kap: havuzu bölüş ya da hepsini kap ve onun paylaşmasını um",
+          "manager": false,
+          "options": [
+            {
+              "description": "Rakibin",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "İkinizin de koyacağı kabuk (10-500); denizin havuzu için oynamak için boş bırak",
+              "name": "bet",
+              "required": false
+            }
+          ],
+          "path": "duel share",
+          "usage": "/duel share <user> [bet]"
+        },
+        {
+          "description": "Deniz Filosu: gemilerini sakla, onunkileri batır; kazanan kabuk ya da potu alır",
+          "manager": false,
+          "options": [
+            {
+              "description": "Rakibin",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "İkinizin de koyacağı kabuk (10-500); eğlencesine oynamak için boş bırak",
+              "name": "bet",
+              "required": false
+            }
+          ],
+          "path": "duel seafleet",
+          "usage": "/duel seafleet <user> [bet]"
+        },
+        {
+          "description": "Piksel tahtada İnci Dama; kazanan kabuk ya da potu alır",
+          "manager": false,
+          "options": [
+            {
+              "description": "Rakibin",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "İkinizin de koyacağı kabuk (10-500); eğlencesine oynamak için boş bırak",
+              "name": "bet",
+              "required": false
+            }
+          ],
+          "path": "duel checkers",
+          "usage": "/duel checkers <user> [bet]"
+        },
+        {
+          "description": "Piksel tahtada Resif Satrancı; kazanan kabuk ya da potu alır",
+          "manager": false,
+          "options": [
+            {
+              "description": "Rakibin",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "İkinizin de koyacağı kabuk (10-500); eğlencesine oynamak için boş bırak",
+              "name": "bet",
+              "required": false
+            }
+          ],
+          "path": "duel chess",
+          "usage": "/duel chess <user> [bet]"
+        },
+        {
+          "description": "8×8 tahtada İnci Çevirme; rakibin incilerini çevir",
+          "manager": false,
+          "options": [
+            {
+              "description": "Rakibin",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "İkinizin de koyacağı kabuk (10-500); eğlencesine oynamak için boş bırak",
+              "name": "bet",
+              "required": false
+            }
+          ],
+          "path": "duel othello",
+          "usage": "/duel othello <user> [bet]"
+        }
+      ],
+      "intro": "Bir arkadaşına hızlı bir oyun için meydan oku. Çoğunda isteğe bağlı bahis var.",
+      "key": "duels",
+      "title": "Düellolar"
+    },
+    {
+      "commands": [
+        {
+          "description": "Dalgalar kumdan kaleyi almadan kelimeyi bul",
+          "manager": false,
+          "options": [],
+          "path": "play hangman",
+          "usage": "/play hangman"
+        },
+        {
+          "description": "Beş harfli kelimeyi altı denemede bul",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Günün kelimesi (herkes için aynı)",
+                "Alıştırma (rastgele bir kelime)"
+              ],
+              "description": "Bugün herkesin ortak kelimesi (varsayılan) ya da alıştırma için rastgele biri",
+              "name": "mode",
+              "required": false
+            }
+          ],
+          "path": "play wordle",
+          "usage": "/play wordle [mode]"
+        },
+        {
+          "description": "Kanal için bir bilgi yarışması turu: 20 saniye, herkes cevaplayabilir",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Okyanus",
+                "Hayvanlar",
+                "Doğa",
+                "Bilim",
+                "Coğrafya",
+                "Yemek",
+                "Tarih",
+                "Ev"
+              ],
+              "description": "Bir konu seç (varsayılan: herhangi biri)",
+              "name": "category",
+              "required": false
+            }
+          ],
+          "path": "play trivia",
+          "usage": "/play trivia [category]"
+        },
+        {
+          "description": "Piksel Picross: ipuçlarından ızgarayı doldur, deniz canlısını bul",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Günün bulmacası (herkes için aynı)",
+                "Alıştırma (rastgele bir bulmaca)"
+              ],
+              "description": "Bugün herkesin ortak bulmacası (varsayılan) ya da alıştırma için rastgele biri",
+              "name": "mode",
+              "required": false
+            }
+          ],
+          "path": "play picross",
+          "usage": "/play picross [mode]"
+        },
+        {
+          "description": "Gelgit 2048: deniz canlılarını kaydır, birleştirip büyüt",
+          "manager": false,
+          "options": [],
+          "path": "play 2048",
+          "usage": "/play 2048"
+        },
+        {
+          "description": "Piksel ızgaradaki sekiz kabuk çiftini bul",
+          "manager": false,
+          "options": [],
+          "path": "play memory",
+          "usage": "/play memory"
+        },
+        {
+          "description": "Güvenli kareleri aç ya da mayınları işaretle",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "8 × 8",
+                "10 × 10"
+              ],
+              "description": "Tahtanın kenarı; varsayılan 8, uzun oyun için 10",
+              "name": "size",
+              "required": false
+            }
+          ],
+          "path": "play minesweeper",
+          "usage": "/play minesweeper [size]"
+        },
+        {
+          "description": "Sıradaki gelgit kartı daha yüksek mi düşük mü",
+          "manager": false,
+          "options": [],
+          "path": "play higherlower",
+          "usage": "/play higherlower"
+        },
+        {
+          "description": "Karışık harflerden sözcüğü bul",
+          "manager": false,
+          "options": [],
+          "path": "play anagram",
+          "usage": "/play anagram"
+        },
+        {
+          "description": "Piksel karttaki cümleyi hızlı ve doğru yaz",
+          "manager": false,
+          "options": [],
+          "path": "play typing",
+          "usage": "/play typing"
+        },
+        {
+          "description": "Sıcak soğuk ipuçlarıyla gizli sayıyı bul",
+          "manager": false,
+          "options": [],
+          "path": "play guessnumber",
+          "usage": "/play guessnumber"
+        },
+        {
+          "description": "İnci patlamadan heceyi içeren bir kelime yaz; canı kalan son kişi kazanır",
+          "manager": false,
+          "options": [
+            {
+              "description": "Her oyuncunun başlangıç canı (varsayılan 2)",
+              "name": "lives",
+              "required": false
+            }
+          ],
+          "path": "party hotpearl",
+          "usage": "/party hotpearl [lives]"
+        },
+        {
+          "description": "Birkaç harften bir cümle kur, sonra en iyisine oy ver",
+          "manager": false,
+          "options": [
+            {
+              "description": "Kaç tur oynanacak (varsayılan 3)",
+              "name": "rounds",
+              "required": false
+            }
+          ],
+          "path": "party acronym",
+          "usage": "/party acronym [rounds]"
+        },
+        {
+          "description": "Piksel bir kartpostala altyazı yaz, sonra en komiğine oy ver",
+          "manager": false,
+          "options": [
+            {
+              "description": "Kaç tur oynanacak (varsayılan 3)",
+              "name": "rounds",
+              "required": false
+            }
+          ],
+          "path": "party postcard",
+          "usage": "/party postcard [rounds]"
+        },
+        {
+          "description": "İki ila dört oyuncu, gizli tahtalarda aynı beş harfli kelimeyi bulmak için yarışır",
+          "manager": false,
+          "options": [],
+          "path": "party wordrace",
+          "usage": "/party wordrace"
+        },
+        {
+          "description": "Kanalın oylaması için bir \"hangisini seçerdin\" sorusu gönder",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Saçma",
+                "Yemek",
+                "Macera",
+                "Okyanus",
+                "Zekâ",
+                "Rahat"
+              ],
+              "description": "Bir konu seç (varsayılan: herhangi biri)",
+              "name": "topic",
+              "required": false
+            }
+          ],
+          "path": "party wouldyourrather",
+          "usage": "/party wouldyourrather [topic]"
+        },
+        {
+          "description": "Sırayla doğruluk ya da cesaret seçin; her tur rastgele bir oyuncu seçilir",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Saçma",
+                "Yemek",
+                "Macera",
+                "Okyanus",
+                "Zekâ",
+                "Rahat"
+              ],
+              "description": "Bir konu seç (varsayılan: herhangi biri)",
+              "name": "topic",
+              "required": false
+            }
+          ],
+          "path": "party truthordare",
+          "usage": "/party truthordare [topic]"
+        },
+        {
+          "description": "Bu kanalda süren parti oyununu durdur (kurucusu ya da bir sunucu yöneticisi)",
+          "manager": false,
+          "options": [],
+          "path": "party stop",
+          "usage": "/party stop"
+        },
+        {
+          "description": "Ben Hiç: aile dostu bir grup sorusu",
+          "manager": false,
+          "options": [],
+          "path": "party nhie",
+          "usage": "/party nhie"
+        },
+        {
+          "description": "Sihirli Deniz Kabuğu'na sor, seçenek seç ya da zar at",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Sihirli Deniz Kabuğu",
+                "Seç",
+                "Zar at"
+              ],
+              "description": "Hangi küçük oyun",
+              "name": "mode",
+              "required": true
+            },
+            {
+              "description": "Soru ya da virgülle ayrılmış seçenekler",
+              "name": "prompt",
+              "required": false
+            },
+            {
+              "description": "Zarın yüz sayısı, 2 ile 100; varsayılan 6",
+              "name": "sides",
+              "required": false
+            }
+          ],
+          "path": "party fun",
+          "usage": "/party fun <mode> [prompt] [sides]"
+        }
+      ],
+      "intro": "Tek başına oyna ya da tüm kanal için bir parti oyunu başlat.",
+      "key": "puzzles-and-word-games",
+      "title": "Bulmacalar ve kelime oyunları"
+    },
+    {
+      "commands": [
+        {
+          "description": "Keşiş Yengeç Yarışı: herkes bir yengeç seçip yarışı izler; kazananlar potu paylaşır",
+          "manager": false,
+          "options": [
+            {
+              "description": "Her yarışçının bir yengece yatırdığı kabuk (10-500, /config gambling gerekir); boşsa eğlencesine",
+              "name": "bet",
+              "required": false
+            }
+          ],
+          "path": "play derby",
+          "usage": "/play derby [bet]"
+        },
+        {
+          "description": "Hazine Soygunu: batık bir kasaya karşı ekip kur, kimse kabuk kaybetmez",
+          "manager": false,
+          "options": [],
+          "path": "play heist",
+          "usage": "/play heist"
+        },
+        {
+          "description": "Kabuk Oyunu: üç kabuktan birinin altındaki inciyi bul (şans oyunları açık olmalı)",
+          "manager": false,
+          "options": [
+            {
+              "description": "Yatırılacak kabuk (5-100); doğru tahmin iki buçuk katını öder",
+              "name": "bet",
+              "required": true
+            }
+          ],
+          "path": "play shells",
+          "usage": "/play shells <bet>"
+        },
+        {
+          "description": "Tüm sunucunun durdurması gereken bir fırtına kabarması çağır (yöneticiler)",
+          "manager": true,
+          "options": [],
+          "path": "surge",
+          "usage": "/surge"
+        },
+        {
+          "description": "Kabuk, deniz camı ve yaratıklar için sahilde yürü (20 dakikada bir)",
+          "manager": false,
+          "options": [],
+          "path": "beachcomb",
+          "usage": "/beachcomb"
+        },
+        {
+          "description": "Birkaç saatliğine yengeç kafesi kur, sonra yakaladıklarını çek",
+          "manager": false,
+          "options": [],
+          "path": "crabpot",
+          "usage": "/crabpot"
+        },
+        {
+          "description": "Herkes kapsın diye bu kanalda üç yaratık belirlesin",
+          "manager": false,
+          "options": [],
+          "path": "critterdrop",
+          "usage": "/critterdrop"
+        },
+        {
+          "description": "Gelgit Havuzu Defterin: topladığın her yaratık ve buluntu",
+          "manager": false,
+          "options": [
+            {
+              "description": "Kimin defteri (varsayılan: seninki)",
+              "name": "user",
+              "required": false
+            },
+            {
+              "choices": [
+                "Yaratıklar",
+                "Buluntular"
+              ],
+              "description": "Defterin hangi yarısı açılsın (varsayılan: yaratıklar)",
+              "name": "tab",
+              "required": false
+            }
+          ],
+          "path": "dex",
+          "usage": "/dex [user] [tab]"
+        }
+      ],
+      "intro": "Kanal için yarışlar, soygunlar ve fırtınalar; kıyıda bulunacak minik yaratıklar.",
+      "key": "crowd-games-and-collecting",
+      "title": "Kalabalık oyunları ve koleksiyon"
+    },
+    {
+      "commands": [
+        {
+          "description": "Sunucuya en fazla beş cevaplı bir soru sor",
+          "manager": false,
+          "options": [
+            {
+              "description": "Soru",
+              "name": "question",
+              "required": true
+            },
+            {
+              "description": "| ile ayrılmış iki ila beş cevap",
+              "name": "options",
+              "required": true
+            },
+            {
+              "description": "Ne kadar açık kalır: 30m, 6h, 1d (varsayılan 1 gün, en çok 14 gün)",
+              "name": "duration",
+              "required": false
+            }
+          ],
+          "path": "poll",
+          "usage": "/poll <question> <options> [duration]"
+        },
+        {
+          "description": "Bu sunucu için bir öneride bulun",
+          "manager": false,
+          "options": [
+            {
+              "description": "Önerin",
+              "name": "text",
+              "required": true
+            }
+          ],
+          "path": "suggest",
+          "usage": "/suggest <text>"
+        },
+        {
+          "description": "Bir öneriyi onayla ve sahibine haber ver",
+          "manager": true,
+          "options": [
+            {
+              "description": "Önerinin numarası",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "Neden (sahibi görür)",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "suggestion approve",
+          "usage": "/suggestion approve <id> [reason]"
+        },
+        {
+          "description": "Bir öneriyi reddet ve sahibine haber ver",
+          "manager": true,
+          "options": [
+            {
+              "description": "Önerinin numarası",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "Neden (sahibi görür)",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "suggestion deny",
+          "usage": "/suggestion deny <id> [reason]"
+        },
+        {
+          "description": "Bir çekiliş başlat",
+          "manager": true,
+          "options": [
+            {
+              "description": "Ne kadar sürer: 30m, 2h, 1d, 1d12h (1 dakika ile 30 gün arası)",
+              "name": "duration",
+              "required": true
+            },
+            {
+              "description": "Kaç kazanan (1 ile 20 arası)",
+              "name": "winners",
+              "required": true
+            },
+            {
+              "description": "Ne veriliyor",
+              "name": "prize",
+              "required": true
+            },
+            {
+              "description": "Her kazanana ödenecek kabuk: şimdi senden alınır, kazanılmayan geri döner",
+              "name": "shells",
+              "required": false
+            },
+            {
+              "description": "Nereye gönderilecek (varsayılan: burası)",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Yalnızca bu role sahip üyeler katılabilir",
+              "name": "required_role",
+              "required": false
+            }
+          ],
+          "path": "giveaway start",
+          "usage": "/giveaway start <duration> <winners> <prize> [shells] [channel] [required_role]"
+        },
+        {
+          "description": "Süren bir çekilişi şimdi bitir ve kazananları seç",
+          "manager": true,
+          "options": [
+            {
+              "description": "Çekilişin numarası",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "giveaway end",
+          "usage": "/giveaway end <id>"
+        },
+        {
+          "description": "Biten bir çekiliş için yeni kazananlar seç",
+          "manager": true,
+          "options": [
+            {
+              "description": "Çekilişin numarası",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "Kaç yeni kazanan (varsayılan 1)",
+              "name": "winners",
+              "required": false
+            }
+          ],
+          "path": "giveaway reroll",
+          "usage": "/giveaway reroll <id> [winners]"
+        },
+        {
+          "description": "Bu sunucuda süren çekilişler",
+          "manager": true,
+          "options": [],
+          "path": "giveaway list",
+          "usage": "/giveaway list"
+        },
+        {
+          "description": "Bir rol paneli başlat ya da yazısını, stilini ve kurallarını değiştir",
+          "manager": true,
+          "options": [
+            {
+              "description": "Panelin başlığı; diğer komutlar onu bununla bulur",
+              "name": "title",
+              "required": true
+            },
+            {
+              "description": "Rollerin üstünde görünen yazı",
+              "name": "description",
+              "required": false
+            },
+            {
+              "choices": [
+                "Düğme: her rol için bir düğme",
+                "Menü: açılır listeden seç",
+                "Tepki: rol almak için tepki ver"
+              ],
+              "description": "Düğme, menü ya da tepki",
+              "name": "style",
+              "required": false
+            },
+            {
+              "description": "Üyeler panelden aynı anda bir rol tutar: yenisini seçmek eskisini değiştirir",
+              "name": "exclusive",
+              "required": false
+            },
+            {
+              "description": "Paneli kullanmak için gereken rol (@everyone gerekliliği kaldırır)",
+              "name": "required",
+              "required": false
+            },
+            {
+              "description": "Bir üyenin panelden tuttuğu en az rol sayısı",
+              "name": "min",
+              "required": false
+            },
+            {
+              "description": "Bir üyenin panelden tuttuğu en çok rol sayısı (0: sınır yok)",
+              "name": "max",
+              "required": false
+            }
+          ],
+          "path": "roles panel",
+          "usage": "/roles panel <title> [description] [style] [exclusive] [required] [min] [max]"
+        },
+        {
+          "description": "Bir panele rol ekle (en fazla 25) ya da etiketini değiştir",
+          "manager": true,
+          "options": [
+            {
+              "description": "Panelin başlığı ya da numarası",
+              "name": "panel",
+              "required": true
+            },
+            {
+              "description": "Düğmenin verip aldığı rol",
+              "name": "role",
+              "required": true
+            },
+            {
+              "description": "Düğmenin üstündeki yazı",
+              "name": "label",
+              "required": true
+            },
+            {
+              "description": "Düğmedeki emoji: Unicode ya da özel bir emoji",
+              "name": "emoji",
+              "required": false
+            },
+            {
+              "description": "Menüde etiketin altındaki satır",
+              "name": "description",
+              "required": false
+            }
+          ],
+          "path": "roles add",
+          "usage": "/roles add <panel> <role> <label> [emoji] [description]"
+        },
+        {
+          "description": "Bir panelden rolü kaldır",
+          "manager": true,
+          "options": [
+            {
+              "description": "Panelin başlığı ya da numarası",
+              "name": "panel",
+              "required": true
+            },
+            {
+              "description": "Kaldırılacak rol",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "roles remove",
+          "usage": "/roles remove <panel> <role>"
+        },
+        {
+          "description": "Bir paneli bir kanala gönder ya da zaten oradaysa güncelle",
+          "manager": true,
+          "options": [
+            {
+              "description": "Panelin başlığı ya da numarası",
+              "name": "panel",
+              "required": true
+            },
+            {
+              "description": "Nereye gönderilecek",
+              "name": "channel",
+              "required": true
+            }
+          ],
+          "path": "roles post",
+          "usage": "/roles post <panel> <channel>"
+        },
+        {
+          "description": "Panelden alınan rolün yalnızca bir süre kalmasını sağla",
+          "manager": true,
+          "options": [
+            {
+              "description": "Rol",
+              "name": "role",
+              "required": true
+            },
+            {
+              "description": "Ne kadar kalır, örn. 7d ya da 12h (off: sonsuza dek)",
+              "name": "duration",
+              "required": true
+            },
+            {
+              "description": "Yalnızca bu panelde: başlığı ya da numarası (varsayılan: rolün olduğu her panel)",
+              "name": "panel",
+              "required": false
+            }
+          ],
+          "path": "roles temp",
+          "usage": "/roles temp <role> <duration> [panel]"
+        },
+        {
+          "description": "Bir sunucu puanı bakiyesini gösterir",
+          "manager": false,
+          "options": [
+            {
+              "description": "Kimin bakiyesi (varsayılan: sen)",
+              "name": "user",
+              "required": false
+            }
+          ],
+          "path": "points show",
+          "usage": "/points show [user]"
+        },
+        {
+          "description": "Birine sunucu puanı ver (Sunucuyu Yönet)",
+          "manager": true,
+          "options": [
+            {
+              "description": "Puanları kim alacak",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Kaç puan",
+              "name": "amount",
+              "required": true
+            }
+          ],
+          "path": "points give",
+          "usage": "/points give <user> <amount>"
+        },
+        {
+          "description": "Birinden sunucu puanı al (Sunucuyu Yönet)",
+          "manager": true,
+          "options": [
+            {
+              "description": "Puanları kim kaybedecek",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Kaç puan (asla sıfırın altına inmez)",
+              "name": "amount",
+              "required": true
+            }
+          ],
+          "path": "points take",
+          "usage": "/points take <user> <amount>"
+        },
+        {
+          "description": "Sunucu puanlarını rollere harca",
+          "manager": false,
+          "options": [],
+          "path": "store",
+          "usage": "/store"
+        },
+        {
+          "description": "Bu sunucunun özel komutlarından birini çalıştır",
+          "manager": false,
+          "options": [
+            {
+              "description": "Çalıştırılacak komut (adını yazmaya başla)",
+              "name": "name",
+              "required": true
+            },
+            {
+              "description": "Komutun kullanacağı sözcükler: {args}, {1}, {2}...",
+              "name": "args",
+              "required": false
+            }
+          ],
+          "path": "tag",
+          "usage": "/tag <name> [args]"
+        },
+        {
+          "description": "Yeni bir özel komut yaz (yanıtını bir form sorar)",
+          "manager": true,
+          "options": [
+            {
+              "description": "Üyelerin /tag'den sonra yazacağı ad: harf, rakam, - ve _",
+              "name": "name",
+              "required": true
+            },
+            {
+              "description": "Önerilerde adın yanında görünen satır",
+              "name": "description",
+              "required": false
+            },
+            {
+              "description": "Gizli yanıtla, böylece yalnızca çalıştıran kişi görsün",
+              "name": "private",
+              "required": false
+            }
+          ],
+          "path": "customcommand create",
+          "usage": "/customcommand create <name> [description] [private]"
+        },
+        {
+          "description": "Bir özel komutun yanıtını, açıklamasını ya da bekleme süresini değiştir",
+          "manager": true,
+          "options": [
+            {
+              "description": "Değiştirilecek komut (adını yazmaya başla)",
+              "name": "name",
+              "required": true
+            },
+            {
+              "description": "Gizli (true) ya da kanalda (false) yanıtla; verilmezse olduğu gibi kalır",
+              "name": "private",
+              "required": false
+            }
+          ],
+          "path": "customcommand edit",
+          "usage": "/customcommand edit <name> [private]"
+        },
+        {
+          "description": "Bir özel komutu kaldır",
+          "manager": true,
+          "options": [
+            {
+              "description": "Kaldırılacak komut (adını yazmaya başla)",
+              "name": "name",
+              "required": true
+            }
+          ],
+          "path": "customcommand delete",
+          "usage": "/customcommand delete <name>"
+        },
+        {
+          "description": "Bu sunucunun bütün özel komutları",
+          "manager": true,
+          "options": [],
+          "path": "customcommand list",
+          "usage": "/customcommand list"
+        },
+        {
+          "description": "Bir özel komutun nasıl ayarlandığına bak",
+          "manager": true,
+          "options": [
+            {
+              "description": "Bakılacak komut (adını yazmaya başla)",
+              "name": "name",
+              "required": true
+            }
+          ],
+          "path": "customcommand info",
+          "usage": "/customcommand info <name>"
+        },
+        {
+          "description": "Odana yeni kimsenin girmesini engelle",
+          "manager": false,
+          "options": [],
+          "path": "voice lock",
+          "usage": "/voice lock"
+        },
+        {
+          "description": "Odanı yeniden herkese aç",
+          "manager": false,
+          "options": [],
+          "path": "voice unlock",
+          "usage": "/voice unlock"
+        },
+        {
+          "description": "Odanın kaç kişi alacağını ayarla",
+          "manager": false,
+          "options": [
+            {
+              "description": "En fazla kaç kişi (sınırsız için 0)",
+              "name": "people",
+              "required": true
+            }
+          ],
+          "path": "voice limit",
+          "usage": "/voice limit <people>"
+        },
+        {
+          "description": "Odanı yeniden adlandır",
+          "manager": false,
+          "options": [
+            {
+              "description": "Yeni ad",
+              "name": "name",
+              "required": true
+            }
+          ],
+          "path": "voice rename",
+          "usage": "/voice rename <name>"
+        },
+        {
+          "description": "Birini odandan at ve geri girmesini engelle",
+          "manager": false,
+          "options": [
+            {
+              "description": "Kimi atacaksın",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "voice kick",
+          "usage": "/voice kick <user>"
+        },
+        {
+          "description": "Odanı içindeki birine devret",
+          "manager": false,
+          "options": [
+            {
+              "description": "Yeni sahip",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "voice transfer",
+          "usage": "/voice transfer <user>"
+        },
+        {
+          "description": "Sahibi ayrılmış bir odayı devral",
+          "manager": false,
+          "options": [],
+          "path": "voice claim",
+          "usage": "/voice claim"
+        },
+        {
+          "description": "Odanı içinde olmayanlardan gizle",
+          "manager": false,
+          "options": [],
+          "path": "voice hide",
+          "usage": "/voice hide"
+        },
+        {
+          "description": "Gizli odanı herkese yeniden göster",
+          "manager": false,
+          "options": [],
+          "path": "voice show",
+          "usage": "/voice show"
+        },
+        {
+          "description": "Birini odana al; oda kilitliyse ya da o atılmışsa bile",
+          "manager": false,
+          "options": [
+            {
+              "description": "Kimi alacaksın",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "voice invite",
+          "usage": "/voice invite <user>"
+        },
+        {
+          "description": "Odanı yöneten düğmeleri göster",
+          "manager": false,
+          "options": [],
+          "path": "voice panel",
+          "usage": "/voice panel"
+        },
+        {
+          "description": "Bir ses kanalını oluşturucu yap ya da değiştir (Sunucuyu Yönet)",
+          "manager": true,
+          "options": [
+            {
+              "description": "Oda almak için katılınan ses kanalı",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "description": "Odaların açılacağı kategori (varsayılan: oluşturucunun kategorisi)",
+              "name": "category",
+              "required": false
+            },
+            {
+              "description": "Odaların başlangıç kişi sınırı (sınırsız için 0)",
+              "name": "limit",
+              "required": false
+            },
+            {
+              "description": "Oda adları: {user} sahibin adı, {n} odanın numarası",
+              "name": "template",
+              "required": false
+            }
+          ],
+          "path": "voice creators add",
+          "usage": "/voice creators add <channel> [category] [limit] [template]"
+        },
+        {
+          "description": "Bir kanalın oda açmasını durdur (Sunucuyu Yönet)",
+          "manager": true,
+          "options": [
+            {
+              "description": "Oluşturucu kanal",
+              "name": "channel",
+              "required": true
+            }
+          ],
+          "path": "voice creators remove",
+          "usage": "/voice creators remove <channel>"
+        },
+        {
+          "description": "Bu sunucudaki oluşturucu kanallar (Sunucuyu Yönet)",
+          "manager": true,
+          "options": [],
+          "path": "voice creators list",
+          "usage": "/voice creators list"
+        },
+        {
+          "description": "Bir kaynağı takip et ve yeni paylaşımları bir kanala gönder",
+          "manager": true,
+          "options": [
+            {
+              "choices": [
+                "YouTube",
+                "RSS ya da podcast",
+                "Reddit",
+                "Bluesky",
+                "X, Instagram ya da TikTok (köprü)"
+              ],
+              "description": "Paylaşımlar nereden geliyor",
+              "name": "kind",
+              "required": true
+            },
+            {
+              "description": "Kanal bağlantısı, @kullanıcıadı ya da kimlik; akış adresi; r/subreddit; Bluesky kullanıcı adı",
+              "name": "source",
+              "required": true
+            },
+            {
+              "description": "Yeni paylaşımlar nereye gitsin",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "description": "Mesaj: {title} {url} {author} {account} {published} (varsayılan: her tür için bir tane)",
+              "name": "message",
+              "required": false
+            },
+            {
+              "description": "Her yeni paylaşımda etiketlenecek rol",
+              "name": "role",
+              "required": false
+            }
+          ],
+          "path": "feeds add",
+          "usage": "/feeds add <kind> <source> <channel> [message] [role]"
+        },
+        {
+          "description": "Bu sunucunun takip ettiği akışlar ve durumları",
+          "manager": true,
+          "options": [],
+          "path": "feeds list",
+          "usage": "/feeds list"
+        },
+        {
+          "description": "Bir akışın kanalını, mesajını, rolünü, kartını ya da süzgeçlerini değiştir",
+          "manager": true,
+          "options": [
+            {
+              "description": "Akışın numarası (/feeds list'te yazar)",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "Bundan sonra bu kanala gönder",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Yeni mesaj; - yazarsan varsayılana döner",
+              "name": "message",
+              "required": false
+            },
+            {
+              "description": "Her yeni paylaşımda bu rolü etiketle",
+              "name": "role",
+              "required": false
+            },
+            {
+              "description": "Artık rol etiketleme",
+              "name": "no_role",
+              "required": false
+            },
+            {
+              "description": "Mesajın altına Pinchora kartını (başlık, resim, özet) ekle",
+              "name": "embed",
+              "required": false
+            },
+            {
+              "description": "Yalnızca bu kelimelerden biri geçen başlıklar, virgülle ayır; - temizler",
+              "name": "include",
+              "required": false
+            },
+            {
+              "description": "Bu kelimeler geçen başlıkları hiç gönderme, virgülle ayır; - temizler",
+              "name": "exclude",
+              "required": false
+            },
+            {
+              "description": "Akışı aç ya da kapat",
+              "name": "enabled",
+              "required": false
+            }
+          ],
+          "path": "feeds edit",
+          "usage": "/feeds edit <id> [channel] [message] [role] [no_role] [embed] [include] [exclude] [enabled]"
+        },
+        {
+          "description": "Kaynağın son paylaşımını şimdi akışın kanalına gönder",
+          "manager": true,
+          "options": [
+            {
+              "description": "Akışın numarası (/feeds list'te yazar)",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "feeds test",
+          "usage": "/feeds test <id>"
+        },
+        {
+          "description": "Bir kaynağı takip etmeyi bırak",
+          "manager": true,
+          "options": [
+            {
+              "description": "Akışın numarası (/feeds list'te yazar)",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "feeds remove",
+          "usage": "/feeds remove <id>"
+        },
+        {
+          "description": "Katılan herkese bir rol ver (en fazla 10) ya da bir rolü değiştir",
+          "manager": true,
+          "options": [
+            {
+              "description": "Verilecek rol",
+              "name": "role",
+              "required": true
+            },
+            {
+              "choices": [
+                "Katılan üyeler",
+                "Katılan botlar",
+                "Doğrulamayı geçen üyeler"
+              ],
+              "description": "Kim alır (varsayılan: katılan üyeler)",
+              "name": "kind",
+              "required": false
+            },
+            {
+              "description": "Katıldıktan şu kadar sonra ver, örn. 10m ya da 1d (varsayılan: hemen)",
+              "name": "delay",
+              "required": false
+            },
+            {
+              "description": "Şu kadar sonra geri al, örn. 7d (varsayılan: sonsuza dek kalsın)",
+              "name": "remove_after",
+              "required": false
+            }
+          ],
+          "path": "autoroles add",
+          "usage": "/autoroles add <role> [kind] [delay] [remove_after]"
+        },
+        {
+          "description": "Bir rolü otomatik vermeyi bırak",
+          "manager": true,
+          "options": [
+            {
+              "description": "Verilmesi bırakılacak rol",
+              "name": "role",
+              "required": true
+            },
+            {
+              "choices": [
+                "Katılan üyeler",
+                "Katılan botlar",
+                "Doğrulamayı geçen üyeler"
+              ],
+              "description": "Yalnızca bu tür (varsayılan: her tür)",
+              "name": "kind",
+              "required": false
+            }
+          ],
+          "path": "autoroles remove",
+          "usage": "/autoroles remove <role> [kind]"
+        },
+        {
+          "description": "Otomatik rolleri ve kalıcı rollerin açık olup olmadığını göster",
+          "manager": true,
+          "options": [],
+          "path": "autoroles list",
+          "usage": "/autoroles list"
+        },
+        {
+          "description": "Üyelere ayrılıp dönünce rollerini geri ver",
+          "manager": true,
+          "options": [
+            {
+              "description": "Ayrılan üyeler için rolleri sakla",
+              "name": "enabled",
+              "required": true
+            }
+          ],
+          "path": "autoroles sticky",
+          "usage": "/autoroles sticky <enabled>"
+        },
+        {
+          "description": "Menüden ismin için bir renk seç",
+          "manager": false,
+          "options": [],
+          "path": "color pick",
+          "usage": "/color pick"
+        },
+        {
+          "description": "Sunucu izin veriyorsa ismini istediğin hex koduyla renklendir",
+          "manager": false,
+          "options": [
+            {
+              "description": "#ff6b4a gibi bir renk kodu",
+              "name": "hex",
+              "required": true
+            }
+          ],
+          "path": "color set",
+          "usage": "/color set <hex>"
+        },
+        {
+          "description": "İsim rengini kaldır",
+          "manager": false,
+          "options": [],
+          "path": "color remove",
+          "usage": "/color remove"
+        },
+        {
+          "description": "Bu sunucunun sunduğu renkleri göster",
+          "manager": false,
+          "options": [],
+          "path": "color list",
+          "usage": "/color list"
+        },
+        {
+          "description": "Renk rollerini kur: aç, kimler seçebilir, hangi roller",
+          "manager": false,
+          "options": [
+            {
+              "description": "Renk rollerini aç ya da kapat",
+              "name": "enabled",
+              "required": false
+            },
+            {
+              "choices": [
+                "Palet: yalnızca sunucunun renkleri",
+                "Her renk: üyeler hex kodu yazabilir"
+              ],
+              "description": "Yalnızca palet mi, hex kodu da mı",
+              "name": "mode",
+              "required": false
+            },
+            {
+              "description": "Renk seçebilen bir rol (biri belirtilince yalnızca bu roller seçebilir)",
+              "name": "allow",
+              "required": false
+            },
+            {
+              "description": "Seçebilenler listesinden bir rolü çıkar",
+              "name": "disallow",
+              "required": false
+            },
+            {
+              "description": "Yeni renk rolleri tam bu rolün altında oluşturulur",
+              "name": "anchor",
+              "required": false
+            },
+            {
+              "description": "Renk olarak sunacağın kendi rollerin: etiketle (en fazla 10)",
+              "name": "roles",
+              "required": false
+            }
+          ],
+          "path": "color setup",
+          "usage": "/color setup [enabled] [mode] [allow] [disallow] [anchor] [roles]"
+        },
+        {
+          "description": "Bu sunucunun hareketi, en aktif kanalları ve üyeleri",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Son 7 gün",
+                "Son 30 gün",
+                "Son 90 gün"
+              ],
+              "description": "Ne kadar geriye bakılsın (varsayılan: 30 gün)",
+              "name": "period",
+              "required": false
+            }
+          ],
+          "path": "stats server",
+          "usage": "/stats server [period]"
+        },
+        {
+          "description": "Bu sunucudaki mesajların ve sesteki süren",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Son 7 gün",
+                "Son 30 gün",
+                "Son 90 gün"
+              ],
+              "description": "Ne kadar geriye bakılsın (varsayılan: 30 gün)",
+              "name": "period",
+              "required": false
+            }
+          ],
+          "path": "stats me",
+          "usage": "/stats me [period]"
+        },
+        {
+          "description": "Tek bir kanalın mesajları ve sesteki süresi",
+          "manager": false,
+          "options": [
+            {
+              "description": "Bakılacak kanal",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "choices": [
+                "Son 7 gün",
+                "Son 30 gün",
+                "Son 90 gün"
+              ],
+              "description": "Ne kadar geriye bakılsın (varsayılan: 30 gün)",
+              "name": "period",
+              "required": false
+            }
+          ],
+          "path": "stats channel",
+          "usage": "/stats channel <channel> [period]"
+        },
+        {
+          "description": "Yeni etkinlik için form aç",
+          "manager": true,
+          "options": [],
+          "path": "event create",
+          "usage": "/event create"
+        },
+        {
+          "description": "Yaklaşan etkinlikleri listele",
+          "manager": true,
+          "options": [],
+          "path": "event list",
+          "usage": "/event list"
+        },
+        {
+          "description": "Etkinliğin saatini, kapasitesini veya tekrarını değiştir",
+          "manager": true,
+          "options": [
+            {
+              "description": "Etkinlik numarası",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "Yeni ad",
+              "name": "title",
+              "required": false
+            },
+            {
+              "description": "Sunucu saat diliminde yeni başlangıç",
+              "name": "when",
+              "required": false
+            },
+            {
+              "description": "Dakika cinsinden süre",
+              "name": "duration",
+              "required": false
+            },
+            {
+              "description": "Yeni açıklama",
+              "name": "description",
+              "required": false
+            },
+            {
+              "description": "Katılacakların kapasitesi; sıfır sınırsız",
+              "name": "capacity",
+              "required": false
+            },
+            {
+              "description": "Belki yanıtının kapasitesi; sıfır sınırsız",
+              "name": "maybe_capacity",
+              "required": false
+            },
+            {
+              "description": "Katılmayacakların kapasitesi; sıfır sınırsız",
+              "name": "declined_capacity",
+              "required": false
+            },
+            {
+              "description": "İlk özel yanıt seçeneği; kaldırmak için -",
+              "name": "custom_one",
+              "required": false
+            },
+            {
+              "description": "İlk özel yanıtın kapasitesi",
+              "name": "custom_one_capacity",
+              "required": false
+            },
+            {
+              "description": "İkinci özel yanıt seçeneği; kaldırmak için -",
+              "name": "custom_two",
+              "required": false
+            },
+            {
+              "description": "İkinci özel yanıtın kapasitesi",
+              "name": "custom_two_capacity",
+              "required": false
+            },
+            {
+              "description": "Gerekli rol numarası; kaldırmak için 0",
+              "name": "role",
+              "required": false
+            },
+            {
+              "description": "daily, weekly veya off",
+              "name": "repeat",
+              "required": false
+            },
+            {
+              "description": "Tekrarın son günü (YYYY-AA-GG, dahil)",
+              "name": "until",
+              "required": false
+            },
+            {
+              "description": "Discord Planlanmış Etkinlikler ile eşitle",
+              "name": "sync",
+              "required": false
+            }
+          ],
+          "path": "event edit",
+          "usage": "/event edit <id> [title] [when] [duration] [description] [capacity] [maybe_capacity] [declined_capacity] [custom_one] [custom_one_capacity] [custom_two] [custom_two_capacity] [role] [repeat] [until] [sync]"
+        },
+        {
+          "description": "Etkinliği iptal et",
+          "manager": true,
+          "options": [
+            {
+              "description": "Etkinlik numarası",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "event cancel",
+          "usage": "/event cancel <id>"
+        },
+        {
+          "description": "Katılım yanıtlarını sayfa sayfa göster",
+          "manager": true,
+          "options": [
+            {
+              "description": "Etkinlik numarası",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "event attendees",
+          "usage": "/event attendees <id>"
+        },
+        {
+          "description": "Etkinlik hatırlatmalarını yeniden ayarla",
+          "manager": true,
+          "options": [
+            {
+              "description": "Etkinlik numarası",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "event remind",
+          "usage": "/event remind <id>"
+        },
+        {
+          "description": "Etkinlik şablonunu ve oluşturma düğmesini göster",
+          "manager": true,
+          "options": [],
+          "path": "event template",
+          "usage": "/event template"
+        },
+        {
+          "description": "Bu talebi kapat ve dökümünü sakla",
+          "manager": false,
+          "options": [
+            {
+              "description": "Neden kapandığı: talepte, kayıtta ve dökümde görünür",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "ticket close",
+          "usage": "/ticket close [reason]"
+        },
+        {
+          "description": "Bu taleple senin ilgilendiğini duyur (yetkililer)",
+          "manager": false,
+          "options": [],
+          "path": "ticket claim",
+          "usage": "/ticket claim"
+        },
+        {
+          "description": "Bu talebi sıraya geri bırak (yetkililer)",
+          "manager": false,
+          "options": [],
+          "path": "ticket unclaim",
+          "usage": "/ticket unclaim"
+        },
+        {
+          "description": "Bir üyenin bu talebi görüp yazabilmesini sağla (yetkililer)",
+          "manager": false,
+          "options": [
+            {
+              "description": "Kimi ekleyeceğin",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "ticket add",
+          "usage": "/ticket add <user>"
+        },
+        {
+          "description": "Bir üyeyi bu talepten çıkar (yetkililer)",
+          "manager": false,
+          "options": [
+            {
+              "description": "Kimi çıkaracağın",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "ticket remove",
+          "usage": "/ticket remove <user>"
+        },
+        {
+          "description": "Bu talebin kanalını yeniden adlandır (yetkililer)",
+          "manager": false,
+          "options": [
+            {
+              "description": "Yeni ad; {number}, {user} ve {topic} doldurulur",
+              "name": "name",
+              "required": true
+            }
+          ],
+          "path": "ticket rename",
+          "usage": "/ticket rename <name>"
+        },
+        {
+          "description": "Bu talebin mesajlarını yalnızca sana özel bir web sayfası olarak al",
+          "manager": false,
+          "options": [],
+          "path": "ticket transcript",
+          "usage": "/ticket transcript"
+        },
+        {
+          "description": "Kapanmış bu talebi yeniden aç (yetkililer)",
+          "manager": false,
+          "options": [],
+          "path": "ticket reopen",
+          "usage": "/ticket reopen"
+        },
+        {
+          "description": "Bu talebin kanalını başka bir kategoriye taşı (yetkililer)",
+          "manager": false,
+          "options": [
+            {
+              "description": "Taşınacak kategori",
+              "name": "category",
+              "required": true
+            }
+          ],
+          "path": "ticket move",
+          "usage": "/ticket move <category>"
+        },
+        {
+          "description": "Panel oluştur (en fazla 10); /tickets panel post ile paylaş",
+          "manager": true,
+          "options": [
+            {
+              "description": "Diğer komutların ve panelin onu bulduğu ad",
+              "name": "name",
+              "required": true
+            },
+            {
+              "description": "Paylaşılacağı kanal; alt başlık biçiminde talepler burada açılır",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "description": "Başlığı (varsayılan: Yardım mı lazım?)",
+              "name": "title",
+              "required": false
+            },
+            {
+              "description": "Düğmelerin üstündeki metin",
+              "name": "description",
+              "required": false
+            },
+            {
+              "description": "Konular, her biri bir düğme ya da seçenek: Destek, Ödeme, Üye şikâyeti",
+              "name": "topics",
+              "required": false
+            },
+            {
+              "choices": [
+                "Düğmeler (en fazla 5 konu)",
+                "Menü (en fazla 25 konu)"
+              ],
+              "description": "Düğmeler ya da menü",
+              "name": "style",
+              "required": false
+            },
+            {
+              "description": "Bu taleplere bakan rol",
+              "name": "support_role",
+              "required": false
+            }
+          ],
+          "path": "tickets panel create",
+          "usage": "/tickets panel create <name> <channel> [title] [description] [topics] [style] [support_role]"
+        },
+        {
+          "description": "Paneli değiştir; paylaşılmışsa güncellemek için yeniden paylaş",
+          "manager": true,
+          "options": [
+            {
+              "description": "Panelin adı ya da numarası",
+              "name": "panel",
+              "required": true
+            },
+            {
+              "description": "Yeni ad",
+              "name": "name",
+              "required": false
+            },
+            {
+              "description": "Yeni başlık",
+              "name": "title",
+              "required": false
+            },
+            {
+              "description": "Düğmelerin üstündeki yeni metin",
+              "name": "description",
+              "required": false
+            },
+            {
+              "description": "Yeni konular, her biri bir düğme ya da seçenek: Destek, Ödeme, Üye şikâyeti",
+              "name": "topics",
+              "required": false
+            },
+            {
+              "choices": [
+                "Düğmeler (en fazla 5 konu)",
+                "Menü (en fazla 25 konu)"
+              ],
+              "description": "Düğmeler ya da menü",
+              "name": "style",
+              "required": false
+            },
+            {
+              "description": "Bu taleplere bakan rol (panelin rollerinin yerine geçer)",
+              "name": "support_role",
+              "required": false
+            },
+            {
+              "description": "Panelin rengi, örneğin #ff6b4a",
+              "name": "color",
+              "required": false
+            },
+            {
+              "description": "Talebin ilk mesajı; {user}, {server}, {number} ve {topic} doldurulur",
+              "name": "welcome",
+              "required": false
+            },
+            {
+              "description": "Paylaşılacağı kanal",
+              "name": "channel",
+              "required": false
+            }
+          ],
+          "path": "tickets panel edit",
+          "usage": "/tickets panel edit <panel> [name] [title] [description] [topics] [style] [support_role] [color] [welcome] [channel]"
+        },
+        {
+          "description": "Paneli paylaş ya da olduğu yerde güncelle",
+          "manager": true,
+          "options": [
+            {
+              "description": "Panelin adı ya da numarası",
+              "name": "panel",
+              "required": true
+            }
+          ],
+          "path": "tickets panel post",
+          "usage": "/tickets panel post <panel>"
+        },
+        {
+          "description": "Paneli sil; talepleri durur",
+          "manager": true,
+          "options": [
+            {
+              "description": "Panelin adı ya da numarası",
+              "name": "panel",
+              "required": true
+            }
+          ],
+          "path": "tickets panel delete",
+          "usage": "/tickets panel delete <panel>"
+        },
+        {
+          "description": "Sunucunun panelleri",
+          "manager": true,
+          "options": [],
+          "path": "tickets panel list",
+          "usage": "/tickets panel list"
+        },
+        {
+          "description": "Taleplerin işleyişi; seçeneksiz kullanırsan ayarları gösterir",
+          "manager": true,
+          "options": [
+            {
+              "description": "Yeni talep kanallarının açıldığı kategori",
+              "name": "category",
+              "required": false
+            },
+            {
+              "description": "Kapanan taleplerin taşındığı kategori",
+              "name": "closed_category",
+              "required": false
+            },
+            {
+              "description": "Açılan ve kapanan taleplerin dökümleriyle kaydedildiği kanal",
+              "name": "log_channel",
+              "required": false
+            },
+            {
+              "description": "Bu kadar saat kimsenin yazmadığı talebi kapat (0: asla)",
+              "name": "auto_close_hours",
+              "required": false
+            },
+            {
+              "description": "Dökümü üyeye özel mesajla gönder",
+              "name": "dm_transcript",
+              "required": false
+            },
+            {
+              "description": "Kapanınca üyeden 1-5 yıldız iste",
+              "name": "ratings",
+              "required": false
+            },
+            {
+              "choices": [
+                "Otomatik (400 kanaldan sonra alt başlık)",
+                "Kanallar",
+                "Gizli alt başlıklar"
+              ],
+              "description": "Kanallar ya da gizli alt başlıklar",
+              "name": "mode",
+              "required": false
+            },
+            {
+              "description": "Kanal adı: {number}, {user} ve {topic} doldurulur",
+              "name": "naming",
+              "required": false
+            },
+            {
+              "description": "Bir üyenin aynı anda açık tutabileceği talep sayısı (1-10)",
+              "name": "max_open",
+              "required": false
+            },
+            {
+              "choices": [
+                "Talep kategorisi",
+                "Kapalı talep kategorisi",
+                "Kayıt kanalı"
+              ],
+              "description": "Yukarıdaki kanallardan birini boşalt",
+              "name": "clear",
+              "required": false
+            }
+          ],
+          "path": "tickets settings",
+          "usage": "/tickets settings [category] [closed_category] [log_channel] [auto_close_hours] [dm_transcript] [ratings] [mode] [naming] [max_open] [clear]"
+        },
+        {
+          "description": "Yıldız panosu kur (en fazla üç pano).",
+          "manager": true,
+          "options": [
+            {
+              "description": "Panonun adı",
+              "name": "name",
+              "required": true
+            },
+            {
+              "description": "Pano kanalı",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "description": "Özel emoji de kullanılabilen yıldız emojisi",
+              "name": "emoji",
+              "required": false
+            },
+            {
+              "description": "Paylaşımın panoya çıkması için gereken yıldız sayısı (1–50)",
+              "name": "threshold",
+              "required": false
+            },
+            {
+              "description": "Üyeler kendi paylaşımlarını yıldızlayabilsin",
+              "name": "self_star",
+              "required": false
+            },
+            {
+              "description": "Bot paylaşımlarındaki yıldızları say",
+              "name": "allow_bots",
+              "required": false
+            },
+            {
+              "description": "Görsel zorunlu olsun",
+              "name": "require_image",
+              "required": false
+            },
+            {
+              "description": "Yıldız sayısı eşiğin altına düşünce pano paylaşımını sil",
+              "name": "remove_below",
+              "required": false
+            },
+            {
+              "description": "Kaynak kanalları virgülle ayırarak yaz veya etiketle",
+              "name": "only_channels",
+              "required": false
+            },
+            {
+              "description": "Hariç tutulan kanalları virgülle ayırarak yaz veya etiketle",
+              "name": "except_channels",
+              "required": false
+            },
+            {
+              "description": "Rol kimliği=ağırlık çiftlerini virgülle ayırarak yaz",
+              "name": "role_weights",
+              "required": false
+            },
+            {
+              "description": "Pano rengi; örnek: #ffc857",
+              "name": "color",
+              "required": false
+            }
+          ],
+          "path": "starboard setup",
+          "usage": "/starboard setup <name> <channel> [emoji] [threshold] [self_star] [allow_bots] [require_image] [remove_below] [only_channels] [except_channels] [role_weights] [color]"
+        },
+        {
+          "description": "Panonun eşiğini, emojisini veya kurallarını değiştir.",
+          "manager": true,
+          "options": [
+            {
+              "description": "/starboard list içindeki pano kimliği",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "Yeni ad",
+              "name": "name",
+              "required": false
+            },
+            {
+              "description": "Yeni yıldız emojisi",
+              "name": "emoji",
+              "required": false
+            },
+            {
+              "description": "Yeni eşik",
+              "name": "threshold",
+              "required": false
+            },
+            {
+              "description": "Kendi paylaşımını yıldızlamaya izin ver",
+              "name": "self_star",
+              "required": false
+            },
+            {
+              "description": "Bot paylaşımlarındaki yıldızları say",
+              "name": "allow_bots",
+              "required": false
+            },
+            {
+              "description": "Görsel zorunlu olsun",
+              "name": "require_image",
+              "required": false
+            },
+            {
+              "description": "Eşiğin altına düşünce pano paylaşımını kaldır",
+              "name": "remove_below",
+              "required": false
+            },
+            {
+              "description": "Kaynak kanallar; temizlemek için `all` yaz",
+              "name": "only_channels",
+              "required": false
+            },
+            {
+              "description": "Hariç tutulan kanallar; temizlemek için `all` yaz",
+              "name": "except_channels",
+              "required": false
+            },
+            {
+              "description": "Rol kimliği=ağırlık çiftleri; temizlemek için `all` yaz",
+              "name": "role_weights",
+              "required": false
+            },
+            {
+              "description": "Pano rengi",
+              "name": "color",
+              "required": false
+            },
+            {
+              "description": "Bu panoyu aç veya kapat",
+              "name": "enabled",
+              "required": false
+            }
+          ],
+          "path": "starboard edit",
+          "usage": "/starboard edit <id> [name] [emoji] [threshold] [self_star] [allow_bots] [require_image] [remove_below] [only_channels] [except_channels] [role_weights] [color] [enabled]"
+        },
+        {
+          "description": "Yıldız panosunu kaldır.",
+          "manager": true,
+          "options": [
+            {
+              "description": "/starboard list içindeki pano kimliği",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "starboard remove",
+          "usage": "/starboard remove <id>"
+        },
+        {
+          "description": "Sunucunun yıldız panolarını listele.",
+          "manager": true,
+          "options": [],
+          "path": "starboard list",
+          "usage": "/starboard list"
+        },
+        {
+          "description": "En çok yıldız alan paylaşımları ve yıldız verenleri göster.",
+          "manager": true,
+          "options": [
+            {
+              "description": "Pano kimliği; boş bırakılırsa ilk pano kullanılır",
+              "name": "board",
+              "required": false
+            }
+          ],
+          "path": "starboard top",
+          "usage": "/starboard top [board]"
+        },
+        {
+          "description": "Oylama kanalı ekle veya ayarlarını değiştir.",
+          "manager": true,
+          "options": [
+            {
+              "description": "Tepki eklenecek kanal",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "description": "Yukarı oy emojisi",
+              "name": "up",
+              "required": false
+            },
+            {
+              "description": "Aşağı oy emojisi",
+              "name": "down",
+              "required": false
+            },
+            {
+              "description": "Yalnızca medya içeren paylaşımlara tepki ekle",
+              "name": "only_media",
+              "required": false
+            },
+            {
+              "description": "Her paylaşım altında konu başlat",
+              "name": "thread",
+              "required": false
+            }
+          ],
+          "path": "starboard votes add",
+          "usage": "/starboard votes add <channel> [up] [down] [only_media] [thread]"
+        },
+        {
+          "description": "Bir kanalda otomatik tepki eklemeyi durdur.",
+          "manager": true,
+          "options": [
+            {
+              "description": "Otomatik tepkiyi durduracağın kanal",
+              "name": "channel",
+              "required": true
+            }
+          ],
+          "path": "starboard votes remove",
+          "usage": "/starboard votes remove <channel>"
+        },
+        {
+          "description": "Oylama kanallarını listele.",
+          "manager": true,
+          "options": [],
+          "path": "starboard votes list",
+          "usage": "/starboard votes list"
+        },
+        {
+          "description": "Bir üyenin davet kartını göster",
+          "manager": false,
+          "options": [
+            {
+              "description": "Davetlerine bakılacak üye (varsayılan: sen)",
+              "name": "user",
+              "required": false
+            }
+          ],
+          "path": "invites user",
+          "usage": "/invites user [user]"
+        },
+        {
+          "description": "Davet sıralamasını göster",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Tüm zamanlar",
+                "Son 7 gün",
+                "Son 30 gün"
+              ],
+              "description": "Sıralamanın dönemi",
+              "name": "period",
+              "required": false
+            }
+          ],
+          "path": "invites top",
+          "usage": "/invites top [period]"
+        },
+        {
+          "description": "Bir arkadaşın için kısa süreli davet bağlantısı al",
+          "manager": false,
+          "options": [],
+          "path": "invites temp",
+          "usage": "/invites temp"
+        },
+        {
+          "description": "Davet takibi ve arkadaş bağlantısı ayarlarını değiştir",
+          "manager": true,
+          "options": [
+            {
+              "description": "Yeni katılanları say",
+              "name": "enabled",
+              "required": false
+            },
+            {
+              "description": "Bu günden yeni hesapları şüpheli say",
+              "name": "fake_days",
+              "required": false
+            },
+            {
+              "description": "Katılma kayıtlarının kanalı",
+              "name": "log_channel",
+              "required": false
+            },
+            {
+              "description": "Üyeler arkadaş bağlantısı oluşturabilsin",
+              "name": "temp_enabled",
+              "required": false
+            },
+            {
+              "description": "Arkadaş bağlantılarının açacağı kanal",
+              "name": "temp_channel",
+              "required": false
+            },
+            {
+              "description": "Üye başına günlük bağlantı sınırı",
+              "name": "temp_daily",
+              "required": false
+            },
+            {
+              "description": "Bağlantının geçerlilik süresi (saniye)",
+              "name": "temp_age",
+              "required": false
+            },
+            {
+              "description": "Bağlantının kullanım sınırı",
+              "name": "temp_uses",
+              "required": false
+            }
+          ],
+          "path": "inviteadmin settings",
+          "usage": "/inviteadmin settings [enabled] [fake_days] [log_channel] [temp_enabled] [temp_channel] [temp_daily] [temp_age] [temp_uses]"
+        },
+        {
+          "description": "Bir üyenin davet puanına bonus ekle",
+          "manager": true,
+          "options": [
+            {
+              "description": "Üye",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Eklenecek miktar",
+              "name": "amount",
+              "required": true
+            }
+          ],
+          "path": "inviteadmin bonus-add",
+          "usage": "/inviteadmin bonus-add <user> <amount>"
+        },
+        {
+          "description": "Bir üyenin davet puanından bonus çıkar",
+          "manager": true,
+          "options": [
+            {
+              "description": "Üye",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Çıkarılacak miktar",
+              "name": "amount",
+              "required": true
+            }
+          ],
+          "path": "inviteadmin bonus-remove",
+          "usage": "/inviteadmin bonus-remove <user> <amount>"
+        },
+        {
+          "description": "Davet eşiğine kalıcı rol ödülü ekle",
+          "manager": true,
+          "options": [
+            {
+              "description": "Gereken davet sayısı",
+              "name": "invites",
+              "required": true
+            },
+            {
+              "description": "Verilecek rol",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "inviteadmin reward-add",
+          "usage": "/inviteadmin reward-add <invites> <role>"
+        },
+        {
+          "description": "Bir davet rolü ödülünü kaldır",
+          "manager": true,
+          "options": [
+            {
+              "description": "Davet eşiği",
+              "name": "invites",
+              "required": true
+            }
+          ],
+          "path": "inviteadmin reward-remove",
+          "usage": "/inviteadmin reward-remove <invites>"
+        },
+        {
+          "description": "Bu kanala Arkadaşını davet et düğmesi gönder",
+          "manager": true,
+          "options": [],
+          "path": "inviteadmin post",
+          "usage": "/inviteadmin post"
+        },
+        {
+          "description": "AFK nedenini ayarla",
+          "manager": false,
+          "options": [
+            {
+              "description": "Neden uzaktasın?",
+              "name": "reason",
+              "required": false
+            },
+            {
+              "description": "Tüm sunucularda geçerli olsun",
+              "name": "global",
+              "required": false
+            },
+            {
+              "description": "İznim varsa adına [AFK] ekleyeyim",
+              "name": "nickname",
+              "required": false
+            }
+          ],
+          "path": "afk set",
+          "usage": "/afk set [reason] [global] [nickname]"
+        },
+        {
+          "description": "Sabit mesaj oluştur ya da değiştir",
+          "manager": true,
+          "options": [
+            {
+              "description": "Mesajın tutulacağı kanal",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "description": "Mesaj metni",
+              "name": "text",
+              "required": true
+            },
+            {
+              "description": "Kaç üye mesajından sonra yeniden gönderilsin?",
+              "name": "messages",
+              "required": false
+            },
+            {
+              "description": "Kaç saniyede bir yeniden gönderilsin?",
+              "name": "seconds",
+              "required": false
+            }
+          ],
+          "path": "sticky set",
+          "usage": "/sticky set <channel> <text> [messages] [seconds]"
+        },
+        {
+          "description": "Bir kanalın sabit mesajını kaldır",
+          "manager": true,
+          "options": [
+            {
+              "description": "Sabit mesajı kaldırılacak kanal",
+              "name": "channel",
+              "required": true
+            }
+          ],
+          "path": "sticky remove",
+          "usage": "/sticky remove <channel>"
+        },
+        {
+          "description": "Sabit mesajları göster",
+          "manager": true,
+          "options": [],
+          "path": "sticky show",
+          "usage": "/sticky show"
+        },
+        {
+          "description": "Tek seferlik ya da yinelenen mesaj kaydet",
+          "manager": true,
+          "options": [
+            {
+              "description": "Mesajın gönderileceği kanal",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "description": "Mesaj metni",
+              "name": "text",
+              "required": true
+            },
+            {
+              "description": "İlk gönderim zamanı (RFC3339)",
+              "name": "when",
+              "required": true
+            },
+            {
+              "description": "once, daily, weekly, every:saniye ya da cron:…",
+              "name": "every",
+              "required": false
+            },
+            {
+              "description": "IANA saat dilimi, örneğin Europe/Istanbul",
+              "name": "tz",
+              "required": false
+            }
+          ],
+          "path": "schedule add",
+          "usage": "/schedule add <channel> <text> <when> [every] [tz]"
+        },
+        {
+          "description": "Zamanlanmış mesajları göster",
+          "manager": true,
+          "options": [],
+          "path": "schedule list",
+          "usage": "/schedule list"
+        },
+        {
+          "description": "Zamanlanmış mesajı kaldır",
+          "manager": true,
+          "options": [
+            {
+              "description": "Mesaj numarası",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "schedule remove",
+          "usage": "/schedule remove <id>"
+        },
+        {
+          "description": "Zamanlanmış mesajı duraklat",
+          "manager": true,
+          "options": [
+            {
+              "description": "Mesaj numarası",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "schedule pause",
+          "usage": "/schedule pause <id>"
+        },
+        {
+          "description": "Zamanlanmış mesajı yeniden başlat",
+          "manager": true,
+          "options": [
+            {
+              "description": "Mesaj numarası",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "schedule resume",
+          "usage": "/schedule resume <id>"
+        },
+        {
+          "description": "Zamanlanmış mesajı şimdi gönder",
+          "manager": true,
+          "options": [
+            {
+              "description": "Mesaj numarası",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "schedule run-now",
+          "usage": "/schedule run-now <id>"
+        },
+        {
+          "description": "Sonraki beş gönderimi göster",
+          "manager": true,
+          "options": [
+            {
+              "description": "Mesaj numarası",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "schedule preview",
+          "usage": "/schedule preview <id>"
+        }
+      ],
+      "intro": "Anketler, öneriler, çekilişler, rol düğmeleri, sunucu puanları ve özel komutlar.",
+      "key": "community",
+      "title": "Topluluk"
+    },
+    {
+      "commands": [
+        {
+          "description": "AutoMod profilini ve açık kuralları göster",
+          "manager": true,
+          "options": [],
+          "path": "automod show",
+          "usage": "/automod show"
+        },
+        {
+          "description": "Esnek, standart (48 saat gözlem), sıkı veya kapalı profilini uygula",
+          "manager": true,
+          "options": [
+            {
+              "description": "relaxed, standard, strict veya off",
+              "name": "name",
+              "required": true
+            }
+          ],
+          "path": "automod profile",
+          "usage": "/automod profile <name>"
+        },
+        {
+          "description": "Bir kuralı aç veya kapat",
+          "manager": true,
+          "options": [
+            {
+              "description": "Kural adı veya kimliği",
+              "name": "rule",
+              "required": true
+            },
+            {
+              "description": "Bu kural açık olsun mu",
+              "name": "enabled",
+              "required": true
+            }
+          ],
+          "path": "automod toggle",
+          "usage": "/automod toggle <rule> <enabled>"
+        },
+        {
+          "description": "Muaf rol ekle veya kaldır",
+          "manager": true,
+          "options": [
+            {
+              "description": "Eklemek için add, kaldırmak için remove",
+              "name": "action",
+              "required": true
+            },
+            {
+              "description": "Muaf tutulacak rol",
+              "name": "role",
+              "required": true
+            },
+            {
+              "description": "Kural adı (tüm kurallar için boş bırak)",
+              "name": "rule",
+              "required": false
+            }
+          ],
+          "path": "automod exempt role",
+          "usage": "/automod exempt role <action> <role> [rule]"
+        },
+        {
+          "description": "Muaf kanal ekle veya kaldır",
+          "manager": true,
+          "options": [
+            {
+              "description": "Eklemek için add, kaldırmak için remove",
+              "name": "action",
+              "required": true
+            },
+            {
+              "description": "Muaf tutulacak kanal",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "description": "Kural adı (tüm kurallar için boş bırak)",
+              "name": "rule",
+              "required": false
+            }
+          ],
+          "path": "automod exempt channel",
+          "usage": "/automod exempt channel <action> <channel> [rule]"
+        },
+        {
+          "description": "Yaptırım uygulamadan ve ihlal eklemeden metni özel olarak test et",
+          "manager": true,
+          "options": [
+            {
+              "description": "Kontrol edilecek metin",
+              "name": "text",
+              "required": true
+            }
+          ],
+          "path": "automod test",
+          "usage": "/automod test <text>"
+        },
+        {
+          "description": "Komut denetimi ayarlarını gösterir",
+          "manager": true,
+          "options": [],
+          "path": "commandcontrol show",
+          "usage": "/commandcontrol show"
+        },
+        {
+          "description": "Bir komuta veya alt komuta ek kısıtlamalar uygular",
+          "manager": true,
+          "options": [
+            {
+              "description": "Komut yolu; örneğin play wordle",
+              "name": "command",
+              "required": true
+            },
+            {
+              "description": "Bu komutu aç veya kapat",
+              "name": "enabled",
+              "required": false
+            },
+            {
+              "description": "Ek bekleme süresi, saniye (0 sıfırlar)",
+              "name": "cooldown",
+              "required": false
+            },
+            {
+              "description": "Bot yanıtını kaç saniye sonra sileceği (0 silmeyi kapatır)",
+              "name": "delete_reply",
+              "required": false
+            },
+            {
+              "description": "Önekli mesajı kaç saniye sonra sileceği (0 silmeyi kapatır)",
+              "name": "delete_invocation",
+              "required": false
+            },
+            {
+              "description": "Desteklenen komutlarda varsayılan olarak gizli yanıt",
+              "name": "ephemeral",
+              "required": false
+            },
+            {
+              "description": "Komutu kullanabilecek bir rol ekle",
+              "name": "allow_role",
+              "required": false
+            },
+            {
+              "description": "Komutu kullanamayacak bir rol ekle",
+              "name": "deny_role",
+              "required": false
+            },
+            {
+              "description": "İzin verilen bir kanal veya kategori ekle",
+              "name": "allow_channel",
+              "required": false
+            },
+            {
+              "description": "Engellenen bir kanal veya kategori ekle",
+              "name": "deny_channel",
+              "required": false
+            }
+          ],
+          "path": "commandcontrol set",
+          "usage": "/commandcontrol set <command> [enabled] [cooldown] [delete_reply] [delete_invocation] [ephemeral] [allow_role] [deny_role] [allow_channel] [deny_channel]"
+        },
+        {
+          "description": "Bir komutun ek ayarlarını kaldırır",
+          "manager": true,
+          "options": [
+            {
+              "description": "Komut yolu",
+              "name": "command",
+              "required": true
+            }
+          ],
+          "path": "commandcontrol reset",
+          "usage": "/commandcontrol reset <command>"
+        },
+        {
+          "description": "Kısayol ekler; komut belirtilmezse kısayolu kaldırır",
+          "manager": true,
+          "options": [
+            {
+              "description": "Kısayol adı",
+              "name": "name",
+              "required": true
+            },
+            {
+              "description": "Hedef komut yolu",
+              "name": "command",
+              "required": false
+            }
+          ],
+          "path": "commandcontrol alias",
+          "usage": "/commandcontrol alias <name> [command]"
+        },
+        {
+          "description": "Sürümlü JSON ayar yedeğini indirir",
+          "manager": true,
+          "options": [],
+          "path": "backup export",
+          "usage": "/backup export"
+        },
+        {
+          "description": "Son on otomatik geri yükleme noktasını listeler",
+          "manager": true,
+          "options": [],
+          "path": "backup list",
+          "usage": "/backup list"
+        },
+        {
+          "description": "Geri yükleme noktasını uygulamadan önce önizler",
+          "manager": true,
+          "options": [
+            {
+              "description": "Geri yükleme noktası kimliği",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "backup restore",
+          "usage": "/backup restore <id>"
+        },
+        {
+          "description": "JSON yedeğini önizlemek ve içe aktarmak için paneli açar",
+          "manager": true,
+          "options": [],
+          "path": "backup import",
+          "usage": "/backup import"
+        },
+        {
+          "description": "Bu sunucunun katılım doğrulamasını geç",
+          "manager": false,
+          "options": [],
+          "path": "verify",
+          "usage": "/verify"
+        },
+        {
+          "description": "Katılım kapısını aç veya kapat; güvenli rolleri seç",
+          "manager": true,
+          "options": [
+            {
+              "description": "Katılım kapısı açık olsun mu",
+              "name": "enabled",
+              "required": true
+            },
+            {
+              "description": "Doğrulama tamamlanınca verilecek rol",
+              "name": "verified_role",
+              "required": false
+            },
+            {
+              "description": "Doğrulama tamamlanınca kaldırılacak rol",
+              "name": "unverified_role",
+              "required": false
+            },
+            {
+              "description": "Doğrulama panelinin kanalı",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Kaç dakika sonra atılsın; sıfır kapatır",
+              "name": "kick_after",
+              "required": false
+            }
+          ],
+          "path": "verification setup",
+          "usage": "/verification setup <enabled> [verified_role] [unverified_role] [channel] [kick_after]"
+        },
+        {
+          "description": "Düğme, piksel kartı veya web doğrulamasını seç",
+          "manager": true,
+          "options": [
+            {
+              "description": "button, captcha veya web",
+              "name": "mode",
+              "required": true
+            }
+          ],
+          "path": "verification mode",
+          "usage": "/verification mode <mode>"
+        },
+        {
+          "description": "Doğrulama düğmesinin üstündeki mesajı düzenle",
+          "manager": true,
+          "options": [
+            {
+              "description": "Gösterilecek mesaj",
+              "name": "text",
+              "required": true
+            }
+          ],
+          "path": "verification message",
+          "usage": "/verification message <text>"
+        },
+        {
+          "description": "Doğrulama panelini seçili kanala gönder",
+          "manager": true,
+          "options": [],
+          "path": "verification post",
+          "usage": "/verification post"
+        },
+        {
+          "description": "Piksel doğrulamayı zorunlu kıl ve sunucuyu geçici olarak kısıtla",
+          "manager": true,
+          "options": [
+            {
+              "description": "Ayarlar kaç dakika sonra geri yüklensin",
+              "name": "minutes",
+              "required": false
+            }
+          ],
+          "path": "raid lockdown",
+          "usage": "/raid lockdown [minutes]"
+        },
+        {
+          "description": "Baskını bitir ve değiştirdiği ayarları geri yükle",
+          "manager": true,
+          "options": [],
+          "path": "raid unlock",
+          "usage": "/raid unlock"
+        },
+        {
+          "description": "Canlı baskın durumunu göster",
+          "manager": true,
+          "options": [],
+          "path": "raid status",
+          "usage": "/raid status"
+        },
+        {
+          "description": "Koruma durumunu ve geri yükleme sınırlarını göster",
+          "manager": true,
+          "options": [],
+          "path": "antinuke status",
+          "usage": "/antinuke status"
+        },
+        {
+          "description": "Son sunucu koruması olaylarını göster",
+          "manager": true,
+          "options": [],
+          "path": "antinuke events",
+          "usage": "/antinuke events"
+        },
+        {
+          "description": "Birini kalıcı olarak ya da bir süreliğine yasakla",
+          "manager": true,
+          "options": [
+            {
+              "description": "Kim yasaklanacak: bir üye ya da kullanıcı kimliğiyle herhangi biri",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Neden (kendisine söylenir ve mod kaydında kalır)",
+              "name": "reason",
+              "required": false
+            },
+            {
+              "description": "Ne kadar, 12h ya da 7d gibi (varsayılan: kalıcı)",
+              "name": "duration",
+              "required": false
+            },
+            {
+              "description": "Son 0 ila 7 günün mesajlarını sil",
+              "name": "delete_days",
+              "required": false
+            }
+          ],
+          "path": "ban",
+          "usage": "/ban <user> [reason] [duration] [delete_days]"
+        },
+        {
+          "description": "Birinin yasağını kaldır",
+          "manager": true,
+          "options": [
+            {
+              "description": "Kimin yasağı kaldırılacak (kullanıcı kimliğini yapıştır)",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Neden",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "unban",
+          "usage": "/unban <user> [reason]"
+        },
+        {
+          "description": "Bir üyeyi sunucudan at (tekrar katılabilir)",
+          "manager": true,
+          "options": [
+            {
+              "description": "Kim atılacak",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Neden (kendisine söylenir ve mod kaydında kalır)",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "kick",
+          "usage": "/kick <user> [reason]"
+        },
+        {
+          "description": "Bir üyeyi bir süreliğine yazmaktan ve konuşmaktan alıkoy",
+          "manager": true,
+          "options": [
+            {
+              "description": "Kim susturulacak",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Ne kadar, 10m, 2h ya da 7d gibi (en fazla 28 gün)",
+              "name": "duration",
+              "required": true
+            },
+            {
+              "description": "Neden (kendisine söylenir ve mod kaydında kalır)",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "timeout",
+          "usage": "/timeout <user> <duration> [reason]"
+        },
+        {
+          "description": "Bir üyenin susturmasını erken bitir",
+          "manager": true,
+          "options": [
+            {
+              "description": "Kimin susturması bitecek",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Neden",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "untimeout",
+          "usage": "/untimeout <user> [reason]"
+        },
+        {
+          "description": "Bir üyeyi uyar; yeterince uyarı kendiliğinden işlem yapar",
+          "manager": true,
+          "options": [
+            {
+              "description": "Kim uyarılacak",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Neden (kendisine söylenir ve mod kaydında kalır)",
+              "name": "reason",
+              "required": true
+            }
+          ],
+          "path": "warn",
+          "usage": "/warn <user> <reason>"
+        },
+        {
+          "description": "Bir üyenin hâlâ geçerli olan uyarıları",
+          "manager": true,
+          "options": [
+            {
+              "description": "Kimin uyarıları",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "warnings",
+          "usage": "/warnings <user>"
+        },
+        {
+          "description": "Bir uyarıyı geri al, artık sayılmasın",
+          "manager": true,
+          "options": [
+            {
+              "description": "Uyarının vaka numarası",
+              "name": "case",
+              "required": true
+            },
+            {
+              "description": "Neden",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "unwarn",
+          "usage": "/unwarn <case> [reason]"
+        },
+        {
+          "description": "Buradaki son mesajları sil (en fazla 100)",
+          "manager": true,
+          "options": [
+            {
+              "description": "Kaç mesaj silinecek",
+              "name": "count",
+              "required": true
+            },
+            {
+              "description": "Yalnızca bu üyenin mesajları",
+              "name": "user",
+              "required": false
+            },
+            {
+              "description": "Yalnızca botların mesajları",
+              "name": "bots",
+              "required": false
+            },
+            {
+              "description": "Yalnızca bu metni içeren mesajlar",
+              "name": "contains",
+              "required": false
+            },
+            {
+              "description": "Yalnızca bağlantı içeren mesajlar",
+              "name": "links",
+              "required": false
+            },
+            {
+              "description": "Yalnızca eki olan mesajlar",
+              "name": "attachments",
+              "required": false
+            },
+            {
+              "description": "Neden",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "purge",
+          "usage": "/purge <count> [user] [bots] [contains] [links] [attachments] [reason]"
+        },
+        {
+          "description": "Üyelerin bir kanalda mesajlar arasında ne kadar bekleyeceği",
+          "manager": true,
+          "options": [
+            {
+              "description": "5s, 30s, 2m ya da 1h gibi (en fazla 6 saat) ya da off",
+              "name": "duration",
+              "required": true
+            },
+            {
+              "description": "Kanal (varsayılan: bu kanal)",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Neden",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "slowmode",
+          "usage": "/slowmode <duration> [channel] [reason]"
+        },
+        {
+          "description": "Üyelerin bir kanala mesaj göndermesini durdur",
+          "manager": true,
+          "options": [
+            {
+              "description": "Kanal (varsayılan: bu kanal)",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Neden",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "lock",
+          "usage": "/lock [channel] [reason]"
+        },
+        {
+          "description": "Kilitli bir kanalda üyeler yeniden mesaj gönderebilsin",
+          "manager": true,
+          "options": [
+            {
+              "description": "Kanal (varsayılan: bu kanal)",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Neden",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "unlock",
+          "usage": "/unlock [channel] [reason]"
+        },
+        {
+          "description": "Bir üyenin takma adını değiştir ya da sıfırla",
+          "manager": true,
+          "options": [
+            {
+              "description": "Kimin takma adı",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Yeni takma ad (sıfırlamak için boş bırak)",
+              "name": "nickname",
+              "required": false
+            },
+            {
+              "description": "Neden",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "nick",
+          "usage": "/nick <user> [nickname] [reason]"
+        },
+        {
+          "description": "Bir üyeye rol ver",
+          "manager": true,
+          "options": [
+            {
+              "description": "Kime verilecek",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Rol (seninkinin ve benimkinin altında)",
+              "name": "role",
+              "required": true
+            },
+            {
+              "description": "Neden",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "role add",
+          "usage": "/role add <user> <role> [reason]"
+        },
+        {
+          "description": "Bir üyeden rol al",
+          "manager": true,
+          "options": [
+            {
+              "description": "Kimden alınacak",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Rol (seninkinin ve benimkinin altında)",
+              "name": "role",
+              "required": true
+            },
+            {
+              "description": "Neden",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "role remove",
+          "usage": "/role remove <user> <role> [reason]"
+        },
+        {
+          "description": "Bir moderasyon vakasına bak",
+          "manager": true,
+          "options": [
+            {
+              "description": "Vaka numarası",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "case",
+          "usage": "/case <id>"
+        },
+        {
+          "description": "Bir moderasyon vakasına yeni sebep ver",
+          "manager": true,
+          "options": [
+            {
+              "description": "Vaka numarası",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "Sebep",
+              "name": "reason",
+              "required": true
+            }
+          ],
+          "path": "reason",
+          "usage": "/reason <id> <reason>"
+        }
+      ],
+      "intro": "Yasak, atma, susturma ve uyarılar, her biri mod kaydında bir vaka; kanal temizliği.",
+      "key": "moderation",
+      "title": "Moderasyon"
+    },
+    {
+      "commands": [
+        {
+          "description": "Şu anki ayarları gösterir",
+          "manager": true,
+          "options": [],
+          "path": "config show",
+          "usage": "/config show"
+        },
+        {
+          "description": "Öneki seç (1-5 karakter, boşluksuz)",
+          "manager": true,
+          "options": [
+            {
+              "description": "Yeni önek, ör. ! ya da z!",
+              "name": "prefix",
+              "required": true
+            }
+          ],
+          "path": "config prefix set",
+          "usage": "/config prefix set <prefix>"
+        },
+        {
+          "description": "Varsayılan öneke, p!'ye dön",
+          "manager": true,
+          "options": [],
+          "path": "config prefix reset",
+          "usage": "/config prefix reset"
+        },
+        {
+          "description": "Öneki göster",
+          "manager": true,
+          "options": [],
+          "path": "config prefix show",
+          "usage": "/config prefix show"
+        },
+        {
+          "description": "Yeni üyeler için karşılama kartları",
+          "manager": true,
+          "options": [
+            {
+              "description": "Biri katıldığında karşılama kartı gönder",
+              "name": "enabled",
+              "required": false
+            },
+            {
+              "description": "Karşılama kartlarının kanalı",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Kartın üstündeki yazı. Yer tutucular: {user} {server} {count}",
+              "name": "message",
+              "required": false
+            }
+          ],
+          "path": "config welcome",
+          "usage": "/config welcome [enabled] [channel] [message]"
+        },
+        {
+          "description": "Karşılama kartını tasarla ve önizlemesine bak",
+          "manager": true,
+          "options": [
+            {
+              "choices": [
+                "Resif (lacivert ve mercan)",
+                "Gün batımı",
+                "Orman",
+                "Şeker",
+                "Gece yarısı"
+              ],
+              "description": "Renk teması",
+              "name": "theme",
+              "required": false
+            },
+            {
+              "description": "Karttaki büyük başlık, ör. HOŞ GELDİN ya da SELAM",
+              "name": "title",
+              "required": false
+            },
+            {
+              "description": "Vurgu rengi (hex), ör. #ff6b4a",
+              "name": "color",
+              "required": false
+            }
+          ],
+          "path": "config welcome-card",
+          "usage": "/config welcome-card [theme] [title] [color]"
+        },
+        {
+          "description": "XP ve seviye atlama mesajları",
+          "manager": true,
+          "options": [
+            {
+              "description": "Sohbet edenlere XP ver",
+              "name": "enabled",
+              "required": false
+            },
+            {
+              "description": "Seviye atlamaları üyenin yazdığı yer yerine buraya gönder",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Seviye atlama yazısı. {user} {level} {server} {role} (yeni kazanılan ödül rolü, yoksa boş)",
+              "name": "message",
+              "required": false
+            },
+            {
+              "choices": [
+                "Kanal: seviye kanalı ya da yazdığı yer",
+                "Şimdiki: her zaman yazdığı yer",
+                "DM: kendisine özel mesaj",
+                "Kapalı: seviye mesajı yok (roller yine verilir)"
+              ],
+              "description": "Seviye atlamalar nereye gider (varsayılan: kanal)",
+              "name": "mode",
+              "required": false
+            }
+          ],
+          "path": "config leveling",
+          "usage": "/config leveling [enabled] [channel] [message] [mode]"
+        },
+        {
+          "description": "Her yeni üyeye bir rol ver",
+          "manager": true,
+          "options": [
+            {
+              "description": "Yeni üyelerin alacağı rol (botlar atlanır)",
+              "name": "role",
+              "required": false
+            },
+            {
+              "description": "Yeni üyelere rol vermeyi bırak",
+              "name": "off",
+              "required": false
+            }
+          ],
+          "path": "config join-role",
+          "usage": "/config join-role [role] [off]"
+        },
+        {
+          "description": "Bir üye ayrılınca veda et",
+          "manager": true,
+          "options": [
+            {
+              "description": "Veda mesajlarının kanalı (bu onları açar)",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Yazı. Yer tutucular: {user} {server} {members}",
+              "name": "message",
+              "required": false
+            },
+            {
+              "description": "Veda mesajlarını kapat",
+              "name": "off",
+              "required": false
+            }
+          ],
+          "path": "config goodbye",
+          "usage": "/config goodbye [channel] [message] [off]"
+        },
+        {
+          "description": "/suggest önerilerinin gideceği yer",
+          "manager": true,
+          "options": [
+            {
+              "description": "Önerilerin kanalı (bu onları açar)",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Önerileri kapat",
+              "name": "off",
+              "required": false
+            }
+          ],
+          "path": "config suggestions",
+          "usage": "/config suggestions [channel] [off]"
+        },
+        {
+          "description": "Karşılamalar, seviye atlamalar ve diğer sunucu mesajları için varsayılan dil",
+          "manager": true,
+          "options": [
+            {
+              "choices": [
+                "Otomatik",
+                "English",
+                "Türkçe"
+              ],
+              "description": "Sunucunun dili (Otomatik: İngilizce)",
+              "name": "language",
+              "required": true
+            }
+          ],
+          "path": "config language",
+          "usage": "/config language <language>"
+        },
+        {
+          "description": "Bir üyenin hesabını ve sunucu bilgilerini gösterir",
+          "manager": false,
+          "options": [
+            {
+              "description": "Bilgileri gösterilecek üye",
+              "name": "user",
+              "required": false
+            }
+          ],
+          "path": "info user",
+          "usage": "/info user [user]"
+        },
+        {
+          "description": "Sunucu bilgilerini gösterir",
+          "manager": false,
+          "options": [],
+          "path": "info server",
+          "usage": "/info server"
+        },
+        {
+          "description": "Bir kullanıcının avatarını gösterir",
+          "manager": false,
+          "options": [
+            {
+              "description": "Avatarı gösterilecek üye",
+              "name": "user",
+              "required": false
+            },
+            {
+              "description": "Sunucu avatarını tercih et",
+              "name": "server",
+              "required": false
+            }
+          ],
+          "path": "info avatar",
+          "usage": "/info avatar [user] [server]"
+        },
+        {
+          "description": "Bir kullanıcının afişini gösterir",
+          "manager": false,
+          "options": [
+            {
+              "description": "Afişi gösterilecek üye",
+              "name": "user",
+              "required": false
+            }
+          ],
+          "path": "info banner",
+          "usage": "/info banner [user]"
+        },
+        {
+          "description": "Bir rolün bilgilerini gösterir",
+          "manager": false,
+          "options": [
+            {
+              "description": "Bilgileri gösterilecek rol",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "info role",
+          "usage": "/info role <role>"
+        },
+        {
+          "description": "Bir kanalın bilgilerini gösterir",
+          "manager": false,
+          "options": [
+            {
+              "description": "Bilgileri gösterilecek kanal",
+              "name": "channel",
+              "required": false
+            }
+          ],
+          "path": "info channel",
+          "usage": "/info channel [channel]"
+        },
+        {
+          "description": "Üye sayılarını gösterir",
+          "manager": false,
+          "options": [],
+          "path": "info members",
+          "usage": "/info members"
+        },
+        {
+          "description": "Bir emojinin bilgilerini gösterir",
+          "manager": false,
+          "options": [
+            {
+              "description": "Özel ya da Unicode emoji",
+              "name": "emoji",
+              "required": false
+            }
+          ],
+          "path": "info emoji",
+          "usage": "/info emoji [emoji]"
+        },
+        {
+          "description": "Bir davetin bilgilerini gösterir",
+          "manager": false,
+          "options": [
+            {
+              "description": "Davet kodu",
+              "name": "code",
+              "required": true
+            }
+          ],
+          "path": "info invite",
+          "usage": "/info invite <code>"
+        },
+        {
+          "description": "Bir kanalın adında sayı göster, her 10 dakikada bir güncellenir",
+          "manager": true,
+          "options": [
+            {
+              "description": "Yeniden adlandırılacak kanal (kilitli bir ses kanalı en iyisi)",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "choices": [
+                "Üyeler",
+                "İnsanlar",
+                "Botlar",
+                "Şu an çevrimiçi",
+                "Takviyeler",
+                "Roller",
+                "Kanallar",
+                "Bir roldeki üyeler",
+                "Pinchora evleri",
+                "Tutulan balıklar",
+                "Ortalama seviye"
+              ],
+              "description": "Ne sayılacak",
+              "name": "kind",
+              "required": true
+            },
+            {
+              "description": "\"Bir roldeki üyeler\" için sayılacak rol",
+              "name": "role",
+              "required": false
+            },
+            {
+              "description": "Ad; sayının geleceği yere {count} yaz, örneğin Üyeler: {count}",
+              "name": "template",
+              "required": false
+            }
+          ],
+          "path": "counters add",
+          "usage": "/counters add <channel> <kind> [role] [template]"
+        },
+        {
+          "description": "Bir sayaç kanalını güncellemeyi bırak (son adını korur)",
+          "manager": true,
+          "options": [
+            {
+              "description": "Sayaç kanalı",
+              "name": "channel",
+              "required": true
+            }
+          ],
+          "path": "counters remove",
+          "usage": "/counters remove <channel>"
+        },
+        {
+          "description": "Bu sunucunun sayaç kanalları",
+          "manager": true,
+          "options": [],
+          "path": "counters list",
+          "usage": "/counters list"
+        }
+      ],
+      "intro": "Karşılama kartları, vedalar, öneriler, dil, metin komutu öneki ve ayarlara genel bakış.",
+      "key": "server-setup",
+      "title": "Sunucu kurulumu"
+    },
+    {
+      "commands": [
+        {
+          "description": "Korumayı aç; başka bir müdahale seçmezsen yalnızca uyarı gönderilir",
+          "manager": true,
+          "options": [
+            {
+              "description": "Uyarı kanalı (seçilmezse yetkili günlüğü veya sunucu sahibine DM)",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "alert (uyarı), quarantine (karantina), kick (atma) veya ban (yasaklama)",
+              "name": "response",
+              "required": false
+            },
+            {
+              "description": "Üyenin rolleri alındıktan sonra verilecek güvenli rol",
+              "name": "quarantine",
+              "required": false
+            },
+            {
+              "description": "Kurtarılabilen hasarı otomatik geri al",
+              "name": "restore",
+              "required": false
+            },
+            {
+              "description": "Korunan VIP üyelerin yasaklarını otomatik kaldır",
+              "name": "revert_vip",
+              "required": false
+            },
+            {
+              "description": "Saldırıda eklenen botları sunucudan at",
+              "name": "remove_bots",
+              "required": false
+            },
+            {
+              "description": "Ayarları yalnızca sunucu sahibi değiştirebilsin (güven listesi her zaman sahibindir)",
+              "name": "owner_only",
+              "required": false
+            }
+          ],
+          "path": "antinuke enable",
+          "usage": "/antinuke enable [channel] [response] [quarantine] [restore] [revert_vip] [remove_bots] [owner_only]"
+        },
+        {
+          "description": "Zararlı işlem takibini duraklat",
+          "manager": true,
+          "options": [],
+          "path": "antinuke disable",
+          "usage": "/antinuke disable"
+        },
+        {
+          "description": "Her üyenin belirli bir sürede yapabileceği en fazla işlem sayısını ayarla",
+          "manager": true,
+          "options": [
+            {
+              "description": "İşlem anahtarı; örneğin channel_delete, ban, permission_grant veya bot_add",
+              "name": "kind",
+              "required": true
+            },
+            {
+              "description": "Müdahaleden önce izin verilen işlem sayısı (1–100)",
+              "name": "count",
+              "required": true
+            },
+            {
+              "description": "İzleme süresi, saniye (5–300)",
+              "name": "seconds",
+              "required": true
+            }
+          ],
+          "path": "antinuke limits",
+          "usage": "/antinuke limits <kind> <count> <seconds>"
+        },
+        {
+          "description": "Başka bir üyeyi güven listesine ekle (yalnızca sunucu sahibi)",
+          "manager": true,
+          "options": [
+            {
+              "description": "Güvenilecek üye",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "antinuke trust add",
+          "usage": "/antinuke trust add <user>"
+        },
+        {
+          "description": "Bir üyeyi güven listesinden çıkar (yalnızca sunucu sahibi)",
+          "manager": true,
+          "options": [
+            {
+              "description": "Listeden çıkarılacak üye",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "antinuke trust remove",
+          "usage": "/antinuke trust remove <user>"
+        },
+        {
+          "description": "Bir VIP rolünü korumaya al",
+          "manager": true,
+          "options": [
+            {
+              "description": "Korunacak rol",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "antinuke vip add",
+          "usage": "/antinuke vip add <role>"
+        },
+        {
+          "description": "Bir rolün VIP korumasını kaldır",
+          "manager": true,
+          "options": [
+            {
+              "description": "Korunan rol",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "antinuke vip remove",
+          "usage": "/antinuke vip remove <role>"
+        },
+        {
+          "description": "Sunucu kaydının kanalı ya da bir kategorinin kendi kanalı",
+          "manager": true,
+          "options": [
+            {
+              "description": "Sunucu kaydının kanalı (bu onu açar) ya da seçtiğin kategorinin kanalı",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Sunucu kaydını kapat ya da kategoriyi kayıt kanalına geri gönder",
+              "name": "off",
+              "required": false
+            },
+            {
+              "choices": [
+                "Üyeler",
+                "Mesajlar",
+                "Roller",
+                "Kanallar ve alt başlıklar",
+                "Ses",
+                "Moderasyon",
+                "Sunucu",
+                "Davetler",
+                "Emojiler ve çıkartmalar"
+              ],
+              "description": "Kendi kanalı olan bir kategori",
+              "name": "category",
+              "required": false
+            }
+          ],
+          "path": "config log",
+          "usage": "/config log [channel] [off] [category]"
+        },
+        {
+          "description": "Sunucu kaydının neleri bildireceğini seç",
+          "manager": true,
+          "options": [
+            {
+              "description": "Katılan ve ayrılan üyeler",
+              "name": "members",
+              "required": false
+            },
+            {
+              "description": "Takma ad ve kullanıcı adı değişiklikleri",
+              "name": "names",
+              "required": false
+            },
+            {
+              "description": "Banlar ve ban kaldırmalar",
+              "name": "bans",
+              "required": false
+            },
+            {
+              "description": "Seste katılma, ayrılma ve taşınmalar",
+              "name": "voice",
+              "required": false
+            },
+            {
+              "description": "Mesaj düzenleme ve silmeler",
+              "name": "messages",
+              "required": false
+            },
+            {
+              "description": "Oluşturulan, değişen ya da silinen roller ve üyelerin rolleri",
+              "name": "roles",
+              "required": false
+            },
+            {
+              "description": "Oluşturulan, değişen ya da silinen kanallar ve alt başlıklar, izinler dahil",
+              "name": "channels",
+              "required": false
+            },
+            {
+              "description": "Yasaklar, atmalar ve susturmalar, kimin yaptığıyla",
+              "name": "moderation",
+              "required": false
+            },
+            {
+              "description": "Sunucu ayarlarındaki değişiklikler",
+              "name": "server",
+              "required": false
+            },
+            {
+              "description": "Oluşturulan ya da silinen davetler",
+              "name": "invites",
+              "required": false
+            },
+            {
+              "description": "Eklenen, değişen ya da kaldırılan emojiler ve çıkartmalar",
+              "name": "emojis",
+              "required": false
+            }
+          ],
+          "path": "config log-events",
+          "usage": "/config log-events [members] [names] [bans] [voice] [messages] [roles] [channels] [moderation] [server] [invites] [emojis]"
+        },
+        {
+          "description": "Sunucu kaydının görmezden geldiği kişiler ve yerler",
+          "manager": true,
+          "options": [
+            {
+              "description": "Görmezden gelinecek kanal (ya da kategori)",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Bu role sahip üyeler görmezden gelinir",
+              "name": "role",
+              "required": false
+            },
+            {
+              "description": "Görmezden gelinecek üye",
+              "name": "user",
+              "required": false
+            },
+            {
+              "description": "Bütün botları görmezden gel",
+              "name": "bots",
+              "required": false
+            },
+            {
+              "description": "Kanalı, rolü ya da üyeyi listeden çıkar",
+              "name": "remove",
+              "required": false
+            }
+          ],
+          "path": "config log-ignore",
+          "usage": "/config log-ignore [channel] [role] [user] [bots] [remove]"
+        },
+        {
+          "description": "Vakaların nereye gideceği ve üyelere haber verilip verilmeyeceği",
+          "manager": true,
+          "options": [
+            {
+              "description": "Her vaka için mod kaydı kanalı",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Ayrı mod kaydı kanalı yok: vakalar sunucu kaydının moderasyon kanalına gider",
+              "name": "off",
+              "required": false
+            },
+            {
+              "description": "Uyarılan, susturulan, atılan ya da yasaklanan üyelere özel mesajla haber ver",
+              "name": "dm",
+              "required": false
+            }
+          ],
+          "path": "config moderation",
+          "usage": "/config moderation [channel] [off] [dm]"
+        },
+        {
+          "description": "Belli sayıda uyarının getirdiği ceza",
+          "manager": true,
+          "options": [
+            {
+              "description": "Kaç geçerli uyarı",
+              "name": "warns",
+              "required": false
+            },
+            {
+              "choices": [
+                "Susturma",
+                "Atma",
+                "Yasak"
+              ],
+              "description": "Ne olacak (aynı uyarı sayısı tekrar verilirse yerine geçer)",
+              "name": "action",
+              "required": false
+            },
+            {
+              "description": "Ne kadar, 1h ya da 7d gibi (susturma için gerekli; süresiz yasak kalıcıdır)",
+              "name": "duration",
+              "required": false
+            },
+            {
+              "description": "Bunun yerine bu uyarı sayısındaki basamağı kaldır",
+              "name": "remove",
+              "required": false
+            }
+          ],
+          "path": "config warn-ladder",
+          "usage": "/config warn-ladder [warns] [action] [duration] [remove]"
+        }
+      ],
+      "intro": "Sunucu kaydının kanalları, olayları ve yok sayılanlar; mod kaydı ve uyarı merdiveni.",
+      "key": "log-and-moderation-setup",
+      "title": "Kayıt ve moderasyon ayarları"
+    },
+    {
+      "commands": [
+        {
+          "description": "Bir seviyeye ulaşan herkese bir rol ver",
+          "manager": true,
+          "options": [
+            {
+              "description": "Rolü kazandıran seviye",
+              "name": "level",
+              "required": true
+            },
+            {
+              "description": "Verilecek rol (yeniden eklemek onu yeni seviyeye taşır)",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "config level-roles add",
+          "usage": "/config level-roles add <level> <role>"
+        },
+        {
+          "description": "Bir seviyede rol vermeyi bırak",
+          "manager": true,
+          "options": [
+            {
+              "description": "Artık verilmeyecek rol",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "config level-roles remove",
+          "usage": "/config level-roles remove <role>"
+        },
+        {
+          "description": "Seviye rollerini gösterir",
+          "manager": true,
+          "options": [],
+          "path": "config level-roles list",
+          "usage": "/config level-roles list"
+        },
+        {
+          "description": "Tüm seviye rolleri kalsın mı, yalnızca en yükseği mi",
+          "manager": true,
+          "options": [
+            {
+              "choices": [
+                "Biriktir: kazanılan her rol kalır",
+                "Değiştir: yalnızca en yüksek rol kalır"
+              ],
+              "description": "Roller nasıl birikir",
+              "name": "mode",
+              "required": true
+            }
+          ],
+          "path": "config level-roles mode",
+          "usage": "/config level-roles mode <mode>"
+        },
+        {
+          "description": "Bir seviyeyi çoktan geçmiş üyelere hak ettikleri rolleri ver",
+          "manager": true,
+          "options": [],
+          "path": "config level-roles sync",
+          "usage": "/config level-roles sync"
+        },
+        {
+          "description": "Bir kanalın ya da rolün kazandığı XP ve puanı ölçekle",
+          "manager": true,
+          "options": [
+            {
+              "description": "1 normal, 2 iki katı, 0 hiç XP vermez",
+              "name": "value",
+              "required": true
+            },
+            {
+              "description": "Değişecek kanal ya da kategori: yazı, ses ya da forum (bunu ya da bir rolü seç)",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Değişecek rol; @everyone tüm sunucu için ayarlar (bunu ya da bir kanalı seç)",
+              "name": "role",
+              "required": false
+            }
+          ],
+          "path": "config xp multiplier",
+          "usage": "/config xp multiplier <value> [channel] [role]"
+        },
+        {
+          "description": "Bir çarpanı ya da hepsini kaldır",
+          "manager": true,
+          "options": [
+            {
+              "description": "Sıfırlanacak kanal ya da kategori",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Sıfırlanacak rol",
+              "name": "role",
+              "required": false
+            }
+          ],
+          "path": "config xp clear",
+          "usage": "/config xp clear [channel] [role]"
+        },
+        {
+          "description": "Çarpanları ve ses XP'si ayarlarını gösterir",
+          "manager": true,
+          "options": [],
+          "path": "config xp show",
+          "usage": "/config xp show"
+        },
+        {
+          "description": "Ses kanallarında geçen süreye XP ver",
+          "manager": true,
+          "options": [
+            {
+              "description": "Ses kanalında başka biriyle olan üyeler her dakika sunucu XP'si kazanır",
+              "name": "enabled",
+              "required": false
+            },
+            {
+              "description": "Seste bir dakikanın kazandırdığı sunucu XP'si",
+              "name": "amount",
+              "required": false
+            }
+          ],
+          "path": "config xp voice",
+          "usage": "/config xp voice [enabled] [amount]"
+        },
+        {
+          "description": "İtibarı bir sayıya ulaşan herkese bir rol ver",
+          "manager": true,
+          "options": [
+            {
+              "description": "Rolü kazandıran itibar",
+              "name": "reputation",
+              "required": true
+            },
+            {
+              "description": "Verilecek rol (yeniden eklemek onu yeni sayıya taşır)",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "config rep-roles add",
+          "usage": "/config rep-roles add <reputation> <role>"
+        },
+        {
+          "description": "İtibar için rol vermeyi bırak",
+          "manager": true,
+          "options": [
+            {
+              "description": "Artık verilmeyecek rol",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "config rep-roles remove",
+          "usage": "/config rep-roles remove <role>"
+        },
+        {
+          "description": "İtibar rollerini gösterir",
+          "manager": true,
+          "options": [],
+          "path": "config rep-roles list",
+          "usage": "/config rep-roles list"
+        },
+        {
+          "description": "Sunucu puanları: sohbetin kazandırdıkları",
+          "manager": true,
+          "options": [
+            {
+              "description": "Sohbet edince puan kazanılsın",
+              "name": "enabled",
+              "required": false
+            },
+            {
+              "description": "Puanların adı, ör. altın",
+              "name": "name",
+              "required": false
+            },
+            {
+              "description": "Miktarların yanındaki emoji: Unicode ya da özel bir emoji",
+              "name": "emoji",
+              "required": false
+            },
+            {
+              "description": "Bir mesajın kazandırabileceği en az puan",
+              "name": "min",
+              "required": false
+            },
+            {
+              "description": "Bir mesajın kazandırabileceği en çok puan",
+              "name": "max",
+              "required": false
+            }
+          ],
+          "path": "config points",
+          "usage": "/config points [enabled] [name] [emoji] [min] [max]"
+        },
+        {
+          "description": "Bir rolü satışa koy ya da fiyatını ve stoğunu değiştir",
+          "manager": true,
+          "options": [
+            {
+              "description": "Satılacak rol",
+              "name": "role",
+              "required": true
+            },
+            {
+              "description": "Sunucu puanı olarak fiyat",
+              "name": "price",
+              "required": true
+            },
+            {
+              "description": "Kaç tane alınabilir (varsayılan: sınırsız)",
+              "name": "stock",
+              "required": false
+            }
+          ],
+          "path": "config store add",
+          "usage": "/config store add <role> <price> [stock]"
+        },
+        {
+          "description": "Bir rolü satıştan kaldır",
+          "manager": true,
+          "options": [
+            {
+              "description": "Artık satılmayacak rol",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "config store remove",
+          "usage": "/config store remove <role>"
+        },
+        {
+          "description": "Satıştakileri gösterir",
+          "manager": true,
+          "options": [],
+          "path": "config store list",
+          "usage": "/config store list"
+        },
+        {
+          "description": "Bir üyeye sunucu XP'si ekle",
+          "manager": true,
+          "options": [
+            {
+              "description": "XP verilecek üye",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "XP miktarı",
+              "name": "amount",
+              "required": true
+            }
+          ],
+          "path": "xp add",
+          "usage": "/xp add <user> <amount>"
+        },
+        {
+          "description": "Bir üyeden sunucu XP'si çıkar",
+          "manager": true,
+          "options": [
+            {
+              "description": "XP'si azaltılacak üye",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "XP miktarı",
+              "name": "amount",
+              "required": true
+            }
+          ],
+          "path": "xp remove",
+          "usage": "/xp remove <user> <amount>"
+        },
+        {
+          "description": "Bir üyenin sunucu XP'sini ayarla",
+          "manager": true,
+          "options": [
+            {
+              "description": "XP'si ayarlanacak üye",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "XP miktarı",
+              "name": "amount",
+              "required": true
+            }
+          ],
+          "path": "xp set",
+          "usage": "/xp set <user> <amount>"
+        },
+        {
+          "description": "Bir üyenin sunucu XP'sini sıfırla",
+          "manager": true,
+          "options": [
+            {
+              "description": "XP'si sıfırlanacak üye",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "xp reset",
+          "usage": "/xp reset <user>"
+        },
+        {
+          "description": "Herkesin sunucu XP'sini sıfırla; iki onay gerekir",
+          "manager": true,
+          "options": [],
+          "path": "xp reset-all",
+          "usage": "/xp reset-all"
+        },
+        {
+          "description": "MEE6 XP'sini içe aktar (günde bir kez)",
+          "manager": true,
+          "options": [
+            {
+              "choices": [
+                "Birleştir: yüksek XP kalsın",
+                "Değiştir: MEE6 XP'sini kullan"
+              ],
+              "description": "XP'nin mevcut XP ile nasıl birleştirileceği",
+              "name": "mode",
+              "required": true
+            }
+          ],
+          "path": "xp import mee6",
+          "usage": "/xp import mee6 <mode>"
+        }
+      ],
+      "intro": "Seviye rolleri, XP çarpanları, ses XP'si, itibar rolleri ve puan mağazası.",
+      "key": "levels-xp-and-points-setup",
+      "title": "Seviye, XP ve puan ayarları"
+    },
+    {
+      "commands": [
+        {
+          "description": "Sohbette beliren yaratıkları ve kıyıya vuran şişeleri ayarla",
+          "manager": true,
+          "options": [
+            {
+              "description": "Yaratık etkinliğini aç ya da kapat (kapalı başlar)",
+              "name": "enabled",
+              "required": false
+            },
+            {
+              "description": "Yaratıklar burada belirsin; yalnızca buradaki sohbet sayılsın",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Yaratıklar sohbetin yoğun olduğu kanalda belirsin",
+              "name": "anywhere",
+              "required": false
+            }
+          ],
+          "path": "config critters",
+          "usage": "/config critters [enabled] [channel] [anywhere]"
+        },
+        {
+          "description": "Kabuk oyununu, bahisli yarışları ve diğer şans oyunlarını bu sunucuda aç ya da kapat",
+          "manager": true,
+          "options": [
+            {
+              "description": "Açık: üyeler şans oyunlarına kabuk yatırabilir; kapalı (varsayılan): kapanırlar",
+              "name": "enabled",
+              "required": true
+            }
+          ],
+          "path": "config gambling",
+          "usage": "/config gambling <enabled>"
+        },
+        {
+          "description": "Zamanlı fırtınalar: aç, kanalı ve ne sıklıkla geleceğini seç",
+          "manager": true,
+          "options": [
+            {
+              "description": "Zamanlı fırtınaları aç ya da kapat (yöneticiler /surge ile her zaman çağırabilir)",
+              "name": "enabled",
+              "required": false
+            },
+            {
+              "description": "Fırtınaların geleceği kanal",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "choices": [
+                "6 saatte bir",
+                "12 saatte bir",
+                "Her gün",
+                "2 günde bir",
+                "Her hafta"
+              ],
+              "description": "Ne sıklıkla fırtına gelir (varsayılan: her gün)",
+              "name": "every",
+              "required": false
+            }
+          ],
+          "path": "config surge",
+          "usage": "/config surge [enabled] [channel] [every]"
+        },
+        {
+          "description": "Sıcak İnci, kısaltmalar ve altyazılarda kelime filtresi ne kadar sıkı",
+          "manager": true,
+          "options": [
+            {
+              "description": "Hafif sözleri ve lakap takmayı da engelle (ağır sözler ve hakaretler hep engelli)",
+              "name": "strict",
+              "required": false
+            }
+          ],
+          "path": "config partygames",
+          "usage": "/config partygames [strict]"
+        },
+        {
+          "description": "Pinchora'nın hangi bölümleri açık, nerede",
+          "manager": true,
+          "options": [],
+          "path": "config modules show",
+          "usage": "/config modules show"
+        },
+        {
+          "description": "Pinchora'nın bir bölümünü tüm sunucu için aç ya da kapat",
+          "manager": true,
+          "options": [
+            {
+              "description": "Değişecek bölüm (adını yazmaya başla)",
+              "name": "module",
+              "required": true
+            },
+            {
+              "description": "Açık ya da herkes için kapalı",
+              "name": "enabled",
+              "required": true
+            }
+          ],
+          "path": "config modules toggle",
+          "usage": "/config modules toggle <module> <enabled>"
+        },
+        {
+          "description": "Bir bölümü bazı kanallarla sınırla ya da bazılarından uzak tut, kanal kanal",
+          "manager": true,
+          "options": [
+            {
+              "description": "Sınırlanacak bölüm (adını yazmaya başla)",
+              "name": "module",
+              "required": true
+            },
+            {
+              "choices": [
+                "Tüm kanallar",
+                "Yalnızca bu kanallarda",
+                "Bu kanallar dışında her yerde"
+              ],
+              "description": "Nerede çalışır (kanal ya da kategori altındaki alt başlık ve kanalları da kapsar)",
+              "name": "where",
+              "required": true
+            },
+            {
+              "description": "Listeye eklenecek kanal",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Kanalı eklemek yerine listeden çıkar",
+              "name": "remove",
+              "required": false
+            }
+          ],
+          "path": "config modules channels",
+          "usage": "/config modules channels <module> <where> [channel] [remove]"
+        },
+        {
+          "description": "Kutlama kanalı, rolü, mesajı ve hediyesini ayarla",
+          "manager": true,
+          "options": [
+            {
+              "description": "Kutlamaları aç veya kapat",
+              "name": "enabled",
+              "required": false
+            },
+            {
+              "description": "Doğum günü kartlarının gönderileceği kanal",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Kart göndermeyi durdur",
+              "name": "clear_channel",
+              "required": false
+            },
+            {
+              "description": "Üyeye 24 saatlik verilecek rol",
+              "name": "role",
+              "required": false
+            },
+            {
+              "description": "Doğum günü rolünü kaldır",
+              "name": "clear_role",
+              "required": false
+            },
+            {
+              "description": "{user} ve isteğe bağlı {age} içeren mesaj",
+              "name": "message",
+              "required": false
+            },
+            {
+              "description": "Sunucunun varsayılan IANA saat dilimi",
+              "name": "timezone",
+              "required": false
+            },
+            {
+              "description": "Dünya genelinde yılda bir kez verilen 0–500 kabuk",
+              "name": "shells_gift",
+              "required": false
+            },
+            {
+              "description": "Üye de izin verirse yaşı mesajda göster",
+              "name": "allow_age",
+              "required": false
+            },
+            {
+              "description": "Pasta Günü rozetini kartta göster",
+              "name": "badge",
+              "required": false
+            }
+          ],
+          "path": "birthdays settings",
+          "usage": "/birthdays settings [enabled] [channel] [clear_channel] [role] [clear_role] [message] [timezone] [shells_gift] [allow_age] [badge]"
+        },
+        {
+          "description": "Doğum günü kartını ve mesajını önizle",
+          "manager": true,
+          "options": [],
+          "path": "birthdays preview",
+          "usage": "/birthdays preview"
+        }
+      ],
+      "intro": "Oyunları ve Pinchora'nın bütün bölümlerini sunucu ya da kanal bazında aç veya kapat.",
+      "key": "game-and-module-setup",
+      "title": "Oyun ve modül ayarları"
+    }
+  ],
+  "count": 330
+}
