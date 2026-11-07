@@ -35,6 +35,7 @@ pub mod anti_nuke;
 pub mod anti_raid;
 
 pub mod command_control;
+pub mod trackers;
 
 pub mod chat_text;
 pub mod config_backup;

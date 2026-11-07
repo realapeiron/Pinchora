@@ -1411,6 +1411,108 @@
       "commands": [
         {
           "aliases": [],
+          "description": "League hesabının derecesini ve şampiyonlarını göster",
+          "manager": false,
+          "options": [
+            {
+              "description": "Riot kimliği, örneğin Player#EUW",
+              "name": "name",
+              "required": true
+            },
+            {
+              "choices": [
+                "Europe West",
+                "North America",
+                "Europe Nordic",
+                "Korea",
+                "Brazil",
+                "Turkey",
+                "Japan"
+              ],
+              "description": "League bölgesi",
+              "name": "region",
+              "required": true
+            }
+          ],
+          "path": "game lol profile",
+          "usage": "/game lol profile <name> <region>"
+        },
+        {
+          "aliases": [],
+          "description": "League Riot kimliğini bağla",
+          "manager": false,
+          "options": [
+            {
+              "description": "Riot kimliği, örneğin Player#EUW",
+              "name": "name",
+              "required": true
+            },
+            {
+              "choices": [
+                "Europe West",
+                "North America",
+                "Europe Nordic",
+                "Korea",
+                "Brazil",
+                "Turkey",
+                "Japan"
+              ],
+              "description": "League bölgesi",
+              "name": "region",
+              "required": true
+            }
+          ],
+          "path": "game lol link",
+          "usage": "/game lol link <name> <region>"
+        },
+        {
+          "aliases": [],
+          "description": "Bağlı League hesabını kaldır",
+          "manager": false,
+          "options": [],
+          "path": "game lol unlink",
+          "usage": "/game lol unlink"
+        },
+        {
+          "aliases": [],
+          "description": "Valorant profil durumu",
+          "manager": false,
+          "options": [],
+          "path": "game valorant profile",
+          "usage": "/game valorant profile"
+        },
+        {
+          "aliases": [],
+          "description": "Herkese açık Minecraft Java sunucusunu sorgula",
+          "manager": false,
+          "options": [
+            {
+              "description": "Herkese açık DNS adı ve isteğe bağlı bağlantı noktası",
+              "name": "host",
+              "required": true
+            }
+          ],
+          "path": "game mc status",
+          "usage": "/game mc status <host>"
+        },
+        {
+          "aliases": [],
+          "description": "Son Minecraft Java sürümleri",
+          "manager": false,
+          "options": [],
+          "path": "game mc news",
+          "usage": "/game mc news"
+        },
+        {
+          "aliases": [],
+          "description": "Minecraft bilgi yarışması başlat",
+          "manager": false,
+          "options": [],
+          "path": "game mc trivia",
+          "usage": "/game mc trivia"
+        },
+        {
+          "aliases": [],
           "description": "Dalgalar kumdan kaleyi almadan kelimeyi bul",
           "manager": false,
           "options": [],
@@ -1449,7 +1551,8 @@
                 "Coğrafya",
                 "Yemek",
                 "Tarih",
-                "Ev"
+                "Ev",
+                "Minecraft"
               ],
               "description": "Bir konu seç (varsayılan: herhangi biri)",
               "name": "category",
@@ -2606,6 +2709,121 @@
           ],
           "path": "integrations feeds test",
           "usage": "/integrations feeds test <id>"
+        },
+        {
+          "aliases": [
+            "trackers mc-news-channel"
+          ],
+          "description": "Minecraft haber kanalını ayarla",
+          "manager": true,
+          "options": [
+            {
+              "description": "Minecraft haberlerinin kanalı",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Kanalı temizle",
+              "name": "clear",
+              "required": false
+            }
+          ],
+          "path": "integrations trackers mc-news-channel",
+          "usage": "/integrations trackers mc-news-channel [channel] [clear]"
+        },
+        {
+          "aliases": [
+            "trackers mc-unwatch"
+          ],
+          "description": "Minecraft sunucusunu izlemeyi bırak",
+          "manager": true,
+          "options": [
+            {
+              "description": "Kaldırılacak Minecraft sunucusu",
+              "name": "host",
+              "required": true
+            }
+          ],
+          "path": "integrations trackers mc-unwatch",
+          "usage": "/integrations trackers mc-unwatch <host>"
+        },
+        {
+          "aliases": [
+            "trackers mc-watch"
+          ],
+          "description": "Minecraft sunucusunun durumunu beş dakikada bir güncelle",
+          "manager": true,
+          "options": [
+            {
+              "description": "Herkese açık Minecraft adresi ve isteğe bağlı bağlantı noktası",
+              "name": "host",
+              "required": true
+            },
+            {
+              "description": "Durum güncellemelerinin kanalı",
+              "name": "channel",
+              "required": true
+            }
+          ],
+          "path": "integrations trackers mc-watch",
+          "usage": "/integrations trackers mc-watch <host> <channel>"
+        },
+        {
+          "aliases": [
+            "trackers patch-add"
+          ],
+          "description": "Resmî yama notlarını kanala gönder",
+          "manager": true,
+          "options": [
+            {
+              "choices": [
+                "League of Legends",
+                "Valorant",
+                "Minecraft"
+              ],
+              "description": "Takip edilecek oyun",
+              "name": "game",
+              "required": true
+            },
+            {
+              "description": "Yama notlarının kanalı",
+              "name": "channel",
+              "required": true
+            }
+          ],
+          "path": "integrations trackers patch-add",
+          "usage": "/integrations trackers patch-add <game> <channel>"
+        },
+        {
+          "aliases": [
+            "trackers patch-list"
+          ],
+          "description": "Oyun yama kanallarını listele",
+          "manager": true,
+          "options": [],
+          "path": "integrations trackers patch-list",
+          "usage": "/integrations trackers patch-list"
+        },
+        {
+          "aliases": [
+            "trackers patch-remove"
+          ],
+          "description": "Bir oyunun yama notlarını durdur",
+          "manager": true,
+          "options": [
+            {
+              "choices": [
+                "League of Legends",
+                "Valorant",
+                "Minecraft"
+              ],
+              "description": "Takibi bırakılacak oyun",
+              "name": "game",
+              "required": true
+            }
+          ],
+          "path": "integrations trackers patch-remove",
+          "usage": "/integrations trackers patch-remove <game>"
         },
         {
           "aliases": [
@@ -6218,5 +6436,5 @@
       "title": "Oyun ve modül ayarları"
     }
   ],
-  "count": 331
+  "count": 344
 }

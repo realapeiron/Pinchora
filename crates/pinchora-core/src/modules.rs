@@ -144,11 +144,12 @@ pub enum Module {
     Utility,
     Events,
     CommandControl,
+    GameTrackers,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 47] = [
+    pub const ALL: [Self; 48] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -196,6 +197,7 @@ impl Module {
         Self::Utility,
         Self::Events,
         Self::CommandControl,
+        Self::GameTrackers,
     ];
 
     /// The key stored in the database and used in the API.
@@ -248,6 +250,7 @@ impl Module {
             Self::Utility => "utility",
             Self::Events => "events",
             Self::CommandControl => "command_control",
+            Self::GameTrackers => "game_trackers",
         }
     }
 
@@ -304,6 +307,7 @@ impl Module {
             Self::Utility => "Messages",
             Self::Events => "Events",
             Self::CommandControl => "Command control",
+            Self::GameTrackers => "Game trackers",
         }
     }
 
@@ -373,6 +377,7 @@ impl Module {
             Self::Achievements => "Server achievements and their rewards.",
             Self::Events => "/event: scheduled server events and RSVPs.",
             Self::CommandControl => "Command permissions, aliases and configuration backups.",
+            Self::GameTrackers => "/game: League profiles and Minecraft status; patch and watch settings.",
             Self::Feeds => {
                 "/integrations feeds: new YouTube videos, RSS and podcast episodes, Reddit and Bluesky posts in a channel."
             }
@@ -414,6 +419,7 @@ impl Module {
             Self::Tickets => Group::Community,
             Self::AutoMod => Group::Safety,
             Self::Feeds => Group::Feeds,
+            Self::GameTrackers => Group::Feeds,
             Self::TempVoice => Group::Community,
             Self::Info => Group::Server,
             Self::Starboard => Group::Community,
@@ -436,6 +442,7 @@ impl Module {
             Self::AutoMod => Scope::Server,
             Self::AntiNuke => Scope::Server,
             Self::Feeds => Scope::Server,
+            Self::GameTrackers => Scope::Server,
             Self::TempVoice => Scope::Server,
             Self::Invites => Scope::Server,
             Self::Verification => Scope::Server,
@@ -483,6 +490,7 @@ impl Module {
             "suggest" | "suggestion" => Self::Suggestions,
             "poll" => Self::Polls,
             "feeds" => Self::Feeds,
+            "game" | "trackers" => Self::GameTrackers,
             "info" => Self::Info,
             "xp" => Self::Leveling,
             "dex" | "beachcomb" | "crabpot" | "critterdrop" => Self::Collection,
@@ -561,6 +569,7 @@ impl Module {
             "bd" => Self::Birthdays,
             "af" | "sk" | "sm" => Self::Utility,
             "ev" => Self::Events,
+            "gt" | "mc" => Self::GameTrackers,
             _ => return None,
         })
     }

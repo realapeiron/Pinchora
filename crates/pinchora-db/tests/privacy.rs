@@ -11,7 +11,7 @@ use pinchora_core::{
 use pinchora_db::{
     ANONYMISED, Award, CLEARED_COLUMNS, Comb, Counter, DAILY_LIMITS, DELETED_NAME, Daily, DailyOutcome, Db, DerbyJoin,
     DuelStart, EventDraft, GiveawayOpen, Hide, ID_LISTS, ListEdit, NewGame, NewGiveaway, OTHER_TABLES, PENDING,
-    PeriodOutcome, RepOutcome, USER_COLUMNS, VisitOutcome, XpGrant, ZEROED_COLUMNS,
+    PeriodOutcome, RepOutcome, RiotLink, USER_COLUMNS, VisitOutcome, XpGrant, ZEROED_COLUMNS,
 };
 
 async fn db() -> Option<Db> {
@@ -63,6 +63,18 @@ async fn count(db: &Db, table: &str, column: &str, user: u64) -> i64 {
 /// players), deletes `user`, and checks nothing is left. Returns the columns it filled.
 async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'static str, &'static str)> {
     db.guild_settings(user).await.unwrap();
+    db.save_riot_link(
+        user,
+        "lol",
+        &RiotLink {
+            puuid: format!("privacy-puuid-{user}"),
+            game_name: "Privacy".into(),
+            tag_line: "TEST".into(),
+            region: "euw1".into(),
+        },
+    )
+    .await
+    .unwrap();
     // Through the game's own calls: the account, the ledger, chat XP and the monthly numbers.
     db.earn_shells(user, 500, "test").await.unwrap();
     db.earn_shells(other, 500, "test").await.unwrap();

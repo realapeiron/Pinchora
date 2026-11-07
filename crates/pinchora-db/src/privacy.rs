@@ -22,6 +22,7 @@ const WALK_LOCK: Duration = Duration::minutes(45);
 /// [`OTHER_TABLES`], [`ID_LISTS`], [`CLEARED_COLUMNS`], [`DAILY_LIMITS`], [`ANONYMISED`] or [`ZEROED_COLUMNS`]) before it
 /// can ship.
 pub const USER_COLUMNS: &[(&str, &str)] = &[
+    ("riot_links", "user_id"),
     ("reef_layout_outbox", "owner_id"),
     ("reef_room_leases", "owner_id"),
     ("feed_channel_links", "user_id"),
@@ -214,6 +215,9 @@ pub const ZEROED_COLUMNS: &[(&str, &str)] = &[
 
 /// Tables that belong to no player: server settings and shared stock.
 pub const OTHER_TABLES: &[&str] = &[
+    "tracker_settings",
+    "tracker_cache",
+    "patch_seen",
     // Minimal, expiring moderation tombstones: deletion/rejoin must not bypass a sanction.
     // Actor is zeroed and house-owned sanctions are deleted with the owner; no raw text retained.
     "reef_sanctions",

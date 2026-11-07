@@ -135,6 +135,13 @@ fish shop
 friends add
 friends list
 friends remove
+game lol link
+game lol profile
+game lol unlink
+game mc news
+game mc status
+game mc trivia
+game valorant profile
 gift
 give
 giveaway end
@@ -295,6 +302,12 @@ tickets panel list
 tickets panel post
 tickets settings
 timeout
+trackers mc-news-channel
+trackers mc-unwatch
+trackers mc-watch
+trackers patch-add
+trackers patch-list
+trackers patch-remove
 unban
 unlock
 untimeout

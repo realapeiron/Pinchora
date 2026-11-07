@@ -119,6 +119,8 @@ const PRIVATE: &[&str] = &[
     "afk",
     "sticky",
     "schedule",
+    "game lol unlink",
+    "trackers",
 ];
 
 /// Slash commands that answer with a form, which only works as the first answer: never deferred.

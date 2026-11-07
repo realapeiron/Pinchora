@@ -1023,7 +1023,21 @@ alters them). A feed's `created_by` becomes 0 when its author deletes their data
 
 ### Game trackers
 
-<!-- F17: the Game trackers package replaces this heading's section; keep it one `###` section. -->
+`/game lol profile <name#tag> <region>` looks up a Riot ID, Solo Queue rank and top three
+champion masteries on pixel-card tabs. `/game lol link` saves the account on your profile and `/game lol unlink`
+deletes the link. Set `PINCHORA_TRACKERS__RIOT_API_KEY` to enable Riot lookups; the shared Redis
+limiter caps them at 20 requests per second and 100 per two minutes per region. Valorant profile
+lookups wait for Riot production and RSO approval, even when `PINCHORA_TRACKERS__RIOT_PRODUCTION`
+is enabled.
+
+`/game mc status <host[:port]>` pings a public Minecraft Java server. The Rust ping resolves DNS
+before connecting, refuses local and reserved addresses, caps packets and times out after three
+seconds. `/game mc news` shows Java releases from Mojang's manifest and official launcher news; `/game mc trivia`
+starts a round from 40 Minecraft questions in English or Turkish. Manager controls live under
+`/integrations trackers`: `patch-add`, `patch-remove`, `patch-list`, `mc-watch`, `mc-unwatch`
+and `mc-news-channel`. The Trackers dashboard page has the same settings. A five-minute ticker
+updates watch messages and posts newly discovered official patch links, Minecraft releases and launcher news.
+Settings and cached source data use migration 0075; Riot links participate in `/privacy` deletion.
 
 ### Info commands
 

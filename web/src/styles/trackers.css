@@ -1,0 +1,52 @@
+.trackers-page .trackers-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+.trackers-page .panel {
+  min-width: 0;
+}
+.trackers-page .field {
+  margin-top: 1rem;
+}
+.trackers-watch-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+  display: grid;
+  gap: 0.5rem;
+}
+.trackers-watch-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.65rem 0.8rem;
+  background: var(--surface-sunken, #14223e);
+  border: 1px solid var(--edge, #405273);
+}
+.trackers-watch-list span {
+  display: grid;
+  gap: 0.2rem;
+  overflow-wrap: anywhere;
+}
+.trackers-watch-list small {
+  color: var(--muted, #a4b5c9);
+}
+.trackers-add {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+.trackers-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 1.25rem;
+}
+@media (max-width: 850px) {
+  .trackers-page .trackers-grid,
+  .trackers-add {
+    grid-template-columns: 1fr;
+  }
+}

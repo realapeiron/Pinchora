@@ -15,6 +15,45 @@ fn unique() -> String {
 }
 
 #[tokio::test]
+async fn riot_windows_are_atomic_across_cache_clones() {
+    let Ok(url) = std::env::var("PINCHORA_TEST_REDIS_URL") else {
+        return;
+    };
+    let scope = format!(
+        "riot_test_{}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    );
+    let cache = Cache::connect_scoped(&url, &scope).await.unwrap();
+    let other = cache.clone();
+    for i in 0..20 {
+        assert!(
+            if i % 2 == 0 {
+                cache.reserve_riot("europe").await
+            } else {
+                other.reserve_riot("europe").await
+            }
+            .unwrap()
+        );
+    }
+    assert!(!other.reserve_riot("europe").await.unwrap());
+    assert!(cache.reserve_riot("americas").await.unwrap());
+    for _ in 0..4 {
+        tokio::time::sleep(Duration::from_millis(1100)).await;
+        for _ in 0..20 {
+            assert!(other.reserve_riot("europe").await.unwrap());
+        }
+    }
+    tokio::time::sleep(Duration::from_millis(1100)).await;
+    assert!(
+        !cache.reserve_riot("europe").await.unwrap(),
+        "the two-minute window holds 100 requests"
+    );
+}
+
+#[tokio::test]
 async fn rename_reservation_can_only_be_released_by_its_owner() {
     let Some(cache) = cache().await else { return };
     let key = format!("test:rename:{}", unique());

@@ -12,9 +12,9 @@ use twilight_model::{
     guild::Permissions,
 };
 
-pub const COMPLETED_SLICE: u8 = 18;
-pub const PROJECTED_ROOTS: usize = 66;
-pub const FUTURE_ROOT_RESERVE: usize = 4;
+pub const COMPLETED_SLICE: u8 = 19;
+pub const PROJECTED_ROOTS: usize = 67;
+pub const FUTURE_ROOT_RESERVE: usize = 3;
 
 /// Administration roots share the original setup permission and privacy boundary.
 pub fn is_admin_path(path: &str) -> bool {

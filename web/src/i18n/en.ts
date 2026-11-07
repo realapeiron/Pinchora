@@ -3414,4 +3414,25 @@ export const en = {
   "Live now role": "Live now role",
   "Given only to a linked streamer while this channel is live.":
     "Given only to a linked streamer while this channel is live.",
+  "Game trackers": "Game trackers",
+  "Follow official game updates and keep Minecraft servers in sight.":
+    "Follow official game updates and keep Minecraft servers in sight.",
+  "The Game trackers module is off.": "The Game trackers module is off.",
+  "Open modules": "Open modules",
+  "PATCH NOTES": "PATCH NOTES",
+  "Official League, Valorant and Minecraft updates are posted once per release.":
+    "Official League, Valorant and Minecraft updates are posted once per release.",
+  "League of Legends": "League of Legends",
+  Minecraft: "Minecraft",
+  Valorant: "Valorant",
+  "MINECRAFT WATCH LIST": "MINECRAFT WATCH LIST",
+  "Status cards refresh every five minutes. Public Java servers only.":
+    "Status cards refresh every five minutes. Public Java servers only.",
+  "Server address": "Server address",
+  "Example: play.example.com:25565": "Example: play.example.com:25565",
+  "Status channel": "Status channel",
+  "Add server": "Add server",
+  "MINECRAFT NEWS": "MINECRAFT NEWS",
+  "Release channel": "Release channel",
+  "Tracker settings saved.": "Tracker settings saved.",
 } as const;

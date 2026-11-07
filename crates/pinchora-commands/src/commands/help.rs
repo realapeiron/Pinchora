@@ -110,6 +110,7 @@ pub(crate) const AREAS: &[Area] = &[
     Area {
         key: "puzzles",
         covers: &[
+            "game",
             "play hangman",
             "play wordle",
             "play trivia",
@@ -151,6 +152,7 @@ pub(crate) const AREAS: &[Area] = &[
             "customcommand",
             "voice",
             "feeds",
+            "trackers",
             "autoroles",
             "color",
             "stats",

@@ -6030,5 +6030,525 @@
       "Hallway"
     ],
     "answer": "Attic"
+  },
+  {
+    "id": "minecraft_001",
+    "category": "minecraft",
+    "difficulty": "medium",
+    "question": "Which block is needed to craft a crafting table?",
+    "options": [
+      "Wood planks",
+      "Cobblestone",
+      "Sand",
+      "Iron ingots"
+    ],
+    "answer": "Wood planks"
+  },
+  {
+    "id": "minecraft_002",
+    "category": "minecraft",
+    "difficulty": "hard",
+    "question": "How many planks make a crafting table?",
+    "options": [
+      "Four",
+      "Two",
+      "Six",
+      "Eight"
+    ],
+    "answer": "Four"
+  },
+  {
+    "id": "minecraft_003",
+    "category": "minecraft",
+    "difficulty": "easy",
+    "question": "Which tool mines stone faster?",
+    "options": [
+      "Pickaxe",
+      "Axe",
+      "Shovel",
+      "Hoe"
+    ],
+    "answer": "Pickaxe"
+  },
+  {
+    "id": "minecraft_004",
+    "category": "minecraft",
+    "difficulty": "medium",
+    "question": "Which tool chops logs faster?",
+    "options": [
+      "Axe",
+      "Pickaxe",
+      "Shovel",
+      "Sword"
+    ],
+    "answer": "Axe"
+  },
+  {
+    "id": "minecraft_005",
+    "category": "minecraft",
+    "difficulty": "hard",
+    "question": "Which tool digs dirt faster?",
+    "options": [
+      "Shovel",
+      "Axe",
+      "Pickaxe",
+      "Hoe"
+    ],
+    "answer": "Shovel"
+  },
+  {
+    "id": "minecraft_006",
+    "category": "minecraft",
+    "difficulty": "easy",
+    "question": "What do you need to make a torch?",
+    "options": [
+      "Coal and a stick",
+      "Sand and a stick",
+      "Stone and coal",
+      "Iron and wood"
+    ],
+    "answer": "Coal and a stick"
+  },
+  {
+    "id": "minecraft_007",
+    "category": "minecraft",
+    "difficulty": "medium",
+    "question": "Which mob drops string?",
+    "options": [
+      "Spider",
+      "Zombie",
+      "Skeleton",
+      "Creeper"
+    ],
+    "answer": "Spider"
+  },
+  {
+    "id": "minecraft_008",
+    "category": "minecraft",
+    "difficulty": "hard",
+    "question": "Which mob drops bones?",
+    "options": [
+      "Skeleton",
+      "Spider",
+      "Slime",
+      "Cow"
+    ],
+    "answer": "Skeleton"
+  },
+  {
+    "id": "minecraft_009",
+    "category": "minecraft",
+    "difficulty": "easy",
+    "question": "Which mob can explode near a player?",
+    "options": [
+      "Creeper",
+      "Sheep",
+      "Pig",
+      "Villager"
+    ],
+    "answer": "Creeper"
+  },
+  {
+    "id": "minecraft_010",
+    "category": "minecraft",
+    "difficulty": "medium",
+    "question": "Which animal gives wool when sheared?",
+    "options": [
+      "Sheep",
+      "Cow",
+      "Pig",
+      "Chicken"
+    ],
+    "answer": "Sheep"
+  },
+  {
+    "id": "minecraft_011",
+    "category": "minecraft",
+    "difficulty": "hard",
+    "question": "Which animal gives milk with a bucket?",
+    "options": [
+      "Cow",
+      "Sheep",
+      "Chicken",
+      "Pig"
+    ],
+    "answer": "Cow"
+  },
+  {
+    "id": "minecraft_012",
+    "category": "minecraft",
+    "difficulty": "easy",
+    "question": "Which animal lays eggs?",
+    "options": [
+      "Chicken",
+      "Cow",
+      "Sheep",
+      "Horse"
+    ],
+    "answer": "Chicken"
+  },
+  {
+    "id": "minecraft_013",
+    "category": "minecraft",
+    "difficulty": "medium",
+    "question": "What is used to tame a wolf?",
+    "options": [
+      "Bone",
+      "Wheat",
+      "Carrot",
+      "Fish"
+    ],
+    "answer": "Bone"
+  },
+  {
+    "id": "minecraft_014",
+    "category": "minecraft",
+    "difficulty": "hard",
+    "question": "What is used to tame a cat?",
+    "options": [
+      "Raw fish",
+      "Bone",
+      "Wheat",
+      "Apple"
+    ],
+    "answer": "Raw fish"
+  },
+  {
+    "id": "minecraft_015",
+    "category": "minecraft",
+    "difficulty": "easy",
+    "question": "Which crop grows from common grain seeds?",
+    "options": [
+      "Wheat",
+      "Carrot",
+      "Potato",
+      "Beetroot"
+    ],
+    "answer": "Wheat"
+  },
+  {
+    "id": "minecraft_016",
+    "category": "minecraft",
+    "difficulty": "medium",
+    "question": "What do you put in a furnace as fuel?",
+    "options": [
+      "Coal",
+      "Sand",
+      "Glass",
+      "Stone"
+    ],
+    "answer": "Coal"
+  },
+  {
+    "id": "minecraft_017",
+    "category": "minecraft",
+    "difficulty": "hard",
+    "question": "What does smelting sand make?",
+    "options": [
+      "Glass",
+      "Stone",
+      "Clay",
+      "Brick"
+    ],
+    "answer": "Glass"
+  },
+  {
+    "id": "minecraft_018",
+    "category": "minecraft",
+    "difficulty": "easy",
+    "question": "Which block results when rough grey rock is smelted?",
+    "options": [
+      "Stone",
+      "Glass",
+      "Iron",
+      "Sand"
+    ],
+    "answer": "Stone"
+  },
+  {
+    "id": "minecraft_019",
+    "category": "minecraft",
+    "difficulty": "medium",
+    "question": "Where can players fight the dragon boss?",
+    "options": [
+      "The End",
+      "The Nether",
+      "Overworld",
+      "Deep Dark"
+    ],
+    "answer": "The End"
+  },
+  {
+    "id": "minecraft_020",
+    "category": "minecraft",
+    "difficulty": "hard",
+    "question": "Which dimension has ghasts?",
+    "options": [
+      "The Nether",
+      "The End",
+      "Overworld",
+      "Deep Dark"
+    ],
+    "answer": "The Nether"
+  },
+  {
+    "id": "minecraft_021",
+    "category": "minecraft",
+    "difficulty": "easy",
+    "question": "What block forms a Nether portal frame?",
+    "options": [
+      "Obsidian",
+      "Bedrock",
+      "Stone",
+      "Deepslate"
+    ],
+    "answer": "Obsidian"
+  },
+  {
+    "id": "minecraft_022",
+    "category": "minecraft",
+    "difficulty": "medium",
+    "question": "What item activates an unlit Nether portal?",
+    "options": [
+      "Flint and steel",
+      "Compass",
+      "Map",
+      "Bucket"
+    ],
+    "answer": "Flint and steel"
+  },
+  {
+    "id": "minecraft_023",
+    "category": "minecraft",
+    "difficulty": "hard",
+    "question": "What do Endermen drop?",
+    "options": [
+      "Ender pearl",
+      "Blaze rod",
+      "Bone",
+      "Slimeball"
+    ],
+    "answer": "Ender pearl"
+  },
+  {
+    "id": "minecraft_024",
+    "category": "minecraft",
+    "difficulty": "easy",
+    "question": "What do Blazes drop?",
+    "options": [
+      "Blaze rod",
+      "Ender pearl",
+      "String",
+      "Leather"
+    ],
+    "answer": "Blaze rod"
+  },
+  {
+    "id": "minecraft_025",
+    "category": "minecraft",
+    "difficulty": "medium",
+    "question": "What does a compass point toward by default?",
+    "options": [
+      "World spawn",
+      "Nearest village",
+      "North",
+      "Stronghold"
+    ],
+    "answer": "World spawn"
+  },
+  {
+    "id": "minecraft_026",
+    "category": "minecraft",
+    "difficulty": "hard",
+    "question": "What is required to make paper?",
+    "options": [
+      "Sugar cane",
+      "Bamboo",
+      "Wheat",
+      "Leaves"
+    ],
+    "answer": "Sugar cane"
+  },
+  {
+    "id": "minecraft_027",
+    "category": "minecraft",
+    "difficulty": "easy",
+    "question": "Which item is used to make a book?",
+    "options": [
+      "Paper",
+      "Glass",
+      "Stone",
+      "Coal"
+    ],
+    "answer": "Paper"
+  },
+  {
+    "id": "minecraft_028",
+    "category": "minecraft",
+    "difficulty": "medium",
+    "question": "Which block enchants equipment?",
+    "options": [
+      "Enchanting table",
+      "Crafting table",
+      "Furnace",
+      "Anvil"
+    ],
+    "answer": "Enchanting table"
+  },
+  {
+    "id": "minecraft_029",
+    "category": "minecraft",
+    "difficulty": "hard",
+    "question": "Which block repairs items with materials or combines enchantments?",
+    "options": [
+      "Anvil",
+      "Furnace",
+      "Loom",
+      "Lectern"
+    ],
+    "answer": "Anvil"
+  },
+  {
+    "id": "minecraft_030",
+    "category": "minecraft",
+    "difficulty": "easy",
+    "question": "Which block supports the red fungal ingredient used in brewing?",
+    "options": [
+      "Soul sand",
+      "Sand",
+      "Dirt",
+      "Gravel"
+    ],
+    "answer": "Soul sand"
+  },
+  {
+    "id": "minecraft_031",
+    "category": "minecraft",
+    "difficulty": "medium",
+    "question": "Which item is needed to brew potions?",
+    "options": [
+      "Brewing stand",
+      "Cauldron",
+      "Furnace",
+      "Loom"
+    ],
+    "answer": "Brewing stand"
+  },
+  {
+    "id": "minecraft_032",
+    "category": "minecraft",
+    "difficulty": "hard",
+    "question": "Which ore can be smelted into iron ingots?",
+    "options": [
+      "Iron ore",
+      "Gold ore",
+      "Copper ore",
+      "Coal ore"
+    ],
+    "answer": "Iron ore"
+  },
+  {
+    "id": "minecraft_033",
+    "category": "minecraft",
+    "difficulty": "easy",
+    "question": "Which ore yields diamonds when mined with the right pickaxe?",
+    "options": [
+      "Diamond ore",
+      "Emerald ore",
+      "Lapis ore",
+      "Redstone ore"
+    ],
+    "answer": "Diamond ore"
+  },
+  {
+    "id": "minecraft_034",
+    "category": "minecraft",
+    "difficulty": "medium",
+    "question": "Which mineral is used to trade with villagers?",
+    "options": [
+      "Emerald",
+      "Diamond",
+      "Coal",
+      "Quartz"
+    ],
+    "answer": "Emerald"
+  },
+  {
+    "id": "minecraft_035",
+    "category": "minecraft",
+    "difficulty": "hard",
+    "question": "Which block makes redstone signals repeat?",
+    "options": [
+      "Repeater",
+      "Observer",
+      "Dispenser",
+      "Piston"
+    ],
+    "answer": "Repeater"
+  },
+  {
+    "id": "minecraft_036",
+    "category": "minecraft",
+    "difficulty": "easy",
+    "question": "Which block pushes blocks when powered?",
+    "options": [
+      "Piston",
+      "Hopper",
+      "Furnace",
+      "Chest"
+    ],
+    "answer": "Piston"
+  },
+  {
+    "id": "minecraft_037",
+    "category": "minecraft",
+    "difficulty": "medium",
+    "question": "Which block stores items?",
+    "options": [
+      "Chest",
+      "Furnace",
+      "Loom",
+      "Beacon"
+    ],
+    "answer": "Chest"
+  },
+  {
+    "id": "minecraft_038",
+    "category": "minecraft",
+    "difficulty": "hard",
+    "question": "Which block collects dropped items into containers?",
+    "options": [
+      "Hopper",
+      "Piston",
+      "Beacon",
+      "Anvil"
+    ],
+    "answer": "Hopper"
+  },
+  {
+    "id": "minecraft_039",
+    "category": "minecraft",
+    "difficulty": "easy",
+    "question": "What does a bed do when used at night in the Overworld?",
+    "options": [
+      "Skip to morning",
+      "Open a portal",
+      "Summon a boss",
+      "Grow crops"
+    ],
+    "answer": "Skip to morning"
+  },
+  {
+    "id": "minecraft_040",
+    "category": "minecraft",
+    "difficulty": "medium",
+    "question": "Which boss is summoned with three dark skeleton skulls and four soul blocks?",
+    "options": [
+      "Wither",
+      "Ender Dragon",
+      "Warden",
+      "Elder Guardian"
+    ],
+    "answer": "Wither"
   }
 ]

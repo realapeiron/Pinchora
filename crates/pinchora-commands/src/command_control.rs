@@ -201,6 +201,7 @@ pub(crate) fn owner(prefix: &str) -> Option<&'static str> {
         "sn" => "feeds list",
         "vc" | "vo" => "voice",
         "nf" => "info user",
+        "gt" => "game lol profile",
         "xi" => "xp",
         "sr" => "starboard top",
         "in" => "invites top",
