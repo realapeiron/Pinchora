@@ -95,7 +95,6 @@ macro_rules! commands {
             static COMMANDS: std::sync::LazyLock<Vec<Command>> = std::sync::LazyLock::new(|| {
                 let mut commands = vec![$(<$ty as CreateCommand>::create_command().into()),*];
                 commands.push(moderation::report_context::definition());
-                commands.retain(|command: &Command| !matches!(command.name.as_str(), "qotd" | "counting" | "form" | "modmail"));
                 crate::lang::localize(&mut commands);
                 commands
             });
@@ -106,8 +105,6 @@ macro_rules! commands {
             let mut commands = legacy_definitions();
             crate::routing::extend(&mut commands);
             crate::routing::remove_replaced(&mut commands);
-            community_pack::extend_admin(&mut commands);
-            commands.extend(community_pack::member_definitions());
             crate::lang::localize(&mut commands);
             commands
         }
@@ -120,12 +117,6 @@ macro_rules! commands {
                 if !cx.can_manage_guild() {
                     return cx.reply_ephemeral(pinchora_core::t!(cx.lang(), "config.needs-manage-server")).await;
                 }
-            }
-            if data.name == "community"
-                && data.options.first().is_some_and(|option| matches!(option.name.as_str(), "qotd" | "counting" | "forms" | "modmail"))
-            {
-                if crate::gate::refuses_command(cx, &data).await? { return Ok(()); }
-                return community_pack::CommunityAdmin::from_interaction(data.into())?.run(cx).await;
             }
             let data = crate::routing::adapt(data)?;
             if crate::gate::refuses_command(cx, &data).await? {
@@ -145,6 +136,7 @@ macro_rules! commands {
 
 commands!(
     moderation::parity::Parity,
+    community_pack::CommunityAdmin,
     community_pack::QotdCommand,
     community_pack::CountingCommand,
     community_pack::FormCommand,
@@ -255,7 +247,7 @@ mod quick_command_budget {
         let definitions = definitions();
         assert_eq!(
             definitions.len(),
-            crate::routing::PROJECTED_ROOTS + 4,
+            crate::routing::PROJECTED_ROOTS,
             "Discord's 100-command budget must not grow"
         );
         for (name, expected) in [

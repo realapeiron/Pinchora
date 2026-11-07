@@ -1044,7 +1044,9 @@ invite cards are private and check the viewer’s channel permissions; role page
 The Community pack adds four member roots. Together with D11, the tree has 65 slash roots plus Report:
 `/qotd suggest`, `/counting stats`, `/form list|open` and
 `/modmail close|block|snippet-add|snippet-use|snippet-list`. Manage Server
-configuration lives under `/community qotd|counting|forms|modmail`.
+configuration uses `/qotd settings|queue`, `/counting setup|reset`,
+`/form create|post|close` and `/modmail settings`. These leaves require Manage Server;
+member actions remain available to members. Old `/community` settings paths still resolve.
 The dashboard's **Community pack** page manages the question queue, counting
 channel, application forms and reviews, and modmail settings and open threads.
 

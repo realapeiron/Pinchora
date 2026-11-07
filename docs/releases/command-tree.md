@@ -8,6 +8,15 @@ softban, stay under `/mod`. Old `/mod ban|kick|warn|timeout|purge` interactions 
 resolve during propagation; saved `/mod` parent restrictions still cover the restored roots.
 No migration is needed: runtime policy matching and backup normalization preserve old restrictions.
 
+F20 configuration now uses admin-only leaves on its four feature roots:
+`/qotd settings|queue`, `/counting setup|reset`, `/form create|post|close`, and
+`/modmail settings`. The shared router preserves the former `/community` payloads,
+text aliases, private replies, module ownership and saved parent/leaf restrictions.
+Manage Server is enforced per action; member leaves retain their existing permissions.
+Registration enforces **6,400 characters for `/community`** and **6,800 for every other root**.
+Current largest commands: `/community` **6,367**, `/setup` **6,234**, `/progression` **5,567**,
+`/safety` **4,767**, and `/mod` **2,977**. No command exceeds its budget.
+
 Slices 13–18 originally completed the transition from 95 registered roots to **66 roots** and 330 executable actions.
 The manifest is the action inventory; all 160 moved actions have one canonical destination. Old typed
 models remain internal for in-flight interactions and prefix compatibility. The eight planned feature
@@ -105,9 +114,9 @@ No registration, deployment or production data changes are part of the local reh
 Discord allows **8,000 characters per command**, including nested option/group/subcommand names,
 descriptions and choice names/values. For each localized field it counts the longest translation or
 default, not their sum ([Discord documentation](https://docs.discord.com/developers/interactions/application-commands#slash-commands)).
-The validator and regression test cap every command at **7,200** (10% headroom), counting Unicode
+The validator and regression test cap every command at **6,800**, with `/community` capped at **6,400**, counting Unicode
 characters and numeric choice values conservatively, and the test prints the ten largest commands.
-After the split the largest roots are `/community` **6,445**, `/setup` **6,234**,
+Historically, immediately after the domain split, the largest roots were `/community` **6,445**, `/setup` **6,234**,
 `/progression` **5,567**, `/safety` **4,493**, and `/integrations` **2,772**.
 The rejected payload's item 59 was `/setup`: **25,276** characters. `/mod` was **1,772**.
 

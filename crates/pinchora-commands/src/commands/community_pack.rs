@@ -3,7 +3,6 @@ use crate::Cx;
 use pinchora_core::t;
 use twilight_interactions::command::{CommandModel, CreateCommand};
 use twilight_model::{
-    application::command::Command,
     application::interaction::InteractionChannel,
     channel::message::{
         Component, MessageFlags,
@@ -16,21 +15,6 @@ use twilight_util::builder::embed::EmbedBuilder;
 
 fn manage_guild() -> Permissions {
     Permissions::MANAGE_GUILD
-}
-
-pub fn extend_admin(commands: &mut [Command]) {
-    let extra: Command = CommunityAdmin::create_command().into();
-    if let Some(root) = commands.iter_mut().find(|c| c.name == "community") {
-        root.options.extend(extra.options);
-    }
-}
-pub fn member_definitions() -> Vec<Command> {
-    vec![
-        QotdCommand::create_command().into(),
-        CountingCommand::create_command().into(),
-        FormCommand::create_command().into(),
-        ModmailCommand::create_command().into(),
-    ]
 }
 
 #[derive(CommandModel, CreateCommand)]

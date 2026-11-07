@@ -270,6 +270,46 @@
     "slice": 11
   },
   {
+    "legacy": "community counting reset",
+    "canonical": "counting reset",
+    "slice": 18
+  },
+  {
+    "legacy": "community counting setup",
+    "canonical": "counting setup",
+    "slice": 18
+  },
+  {
+    "legacy": "community forms close",
+    "canonical": "form close",
+    "slice": 18
+  },
+  {
+    "legacy": "community forms create",
+    "canonical": "form create",
+    "slice": 18
+  },
+  {
+    "legacy": "community forms post",
+    "canonical": "form post",
+    "slice": 18
+  },
+  {
+    "legacy": "community modmail settings",
+    "canonical": "modmail settings",
+    "slice": 18
+  },
+  {
+    "legacy": "community qotd queue",
+    "canonical": "qotd queue",
+    "slice": 18
+  },
+  {
+    "legacy": "community qotd settings",
+    "canonical": "qotd settings",
+    "slice": 18
+  },
+  {
     "legacy": "config critters",
     "canonical": "progression economy critters",
     "slice": 4
@@ -480,6 +520,11 @@
     "slice": 7
   },
   {
+    "legacy": "counting stats",
+    "canonical": "counting stats",
+    "slice": 0
+  },
+  {
     "legacy": "crabpot",
     "canonical": "crabpot",
     "slice": 0
@@ -672,6 +717,16 @@
   {
     "legacy": "fish shop",
     "canonical": "fish shop",
+    "slice": 0
+  },
+  {
+    "legacy": "form list",
+    "canonical": "form list",
+    "slice": 0
+  },
+  {
+    "legacy": "form open",
+    "canonical": "form open",
     "slice": 0
   },
   {
@@ -913,6 +968,31 @@
     "legacy": "lock",
     "canonical": "mod lock",
     "slice": 9
+  },
+  {
+    "legacy": "modmail block",
+    "canonical": "modmail block",
+    "slice": 0
+  },
+  {
+    "legacy": "modmail close",
+    "canonical": "modmail close",
+    "slice": 0
+  },
+  {
+    "legacy": "modmail snippet-add",
+    "canonical": "modmail snippet-add",
+    "slice": 0
+  },
+  {
+    "legacy": "modmail snippet-list",
+    "canonical": "modmail snippet-list",
+    "slice": 0
+  },
+  {
+    "legacy": "modmail snippet-use",
+    "canonical": "modmail snippet-use",
+    "slice": 0
   },
   {
     "legacy": "modtools mass",
@@ -1193,6 +1273,11 @@
     "legacy": "purge",
     "canonical": "purge",
     "slice": 18
+  },
+  {
+    "legacy": "qotd suggest",
+    "canonical": "qotd suggest",
+    "slice": 0
   },
   {
     "legacy": "quests",

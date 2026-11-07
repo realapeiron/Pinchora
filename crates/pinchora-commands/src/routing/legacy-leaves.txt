@@ -52,6 +52,14 @@ commandcontrol alias
 commandcontrol reset
 commandcontrol set
 commandcontrol show
+community counting reset
+community counting setup
+community forms close
+community forms create
+community forms post
+community modmail settings
+community qotd queue
+community qotd settings
 config critters
 config gambling
 config goodbye
@@ -94,6 +102,7 @@ config xp voice
 counters add
 counters list
 counters remove
+counting stats
 crabpot
 critterdrop
 customcommand create
@@ -133,6 +142,8 @@ fish cast
 fish gear
 fish sell
 fish shop
+form list
+form open
 friends add
 friends list
 friends remove
@@ -181,6 +192,11 @@ kick
 language set
 leaderboard
 lock
+modmail block
+modmail close
+modmail snippet-add
+modmail snippet-list
+modmail snippet-use
 modtools mass
 modtools names
 modtools notes
@@ -237,6 +253,7 @@ poll
 privacy
 profile
 purge
+qotd suggest
 quests
 raid lockdown
 raid status

@@ -314,7 +314,7 @@ pub(crate) fn leaves(commands: &[Command], lang: Lang) -> Vec<Leaf> {
                 .map_or(text, |(_, words)| (*words).to_owned());
             out.push(Leaf {
                 path: path.to_owned(),
-                manager: manager || english.contains("Manage Server"),
+                manager: manager || crate::routing::is_admin_path(path) || english.contains("Manage Server"),
                 text,
                 options: options.to_vec(),
             });

@@ -32,7 +32,7 @@ async fn setup_every_action_refuses_without_manage_server_without_mutation() {
         {
             let parts: Vec<_> = route.canonical.split(' ').collect();
             let reply = sim
-                .legacy_command(user, parts[0], json!([group(parts[1], sub(parts[2], vec![]))]))
+                .legacy_command(user, parts[0], options_for(&route.canonical, vec![]))
                 .await;
             let old = sim
                 .legacy_command(

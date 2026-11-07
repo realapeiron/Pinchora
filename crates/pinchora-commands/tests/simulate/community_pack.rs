@@ -465,6 +465,11 @@ async fn every_community_admin_action_refuses_unprivileged_members() {
                 reply.ephemeral && reply.content().contains("Manage Server"),
                 "{section} {action}: {reply}"
             );
+            let old = sim
+                .legacy_command(unique(), "community", json!([group(section, sub(action, vec![]))]))
+                .await;
+            assert!(old.ephemeral);
+            assert_eq!(old.content(), reply.content(), "legacy {section} {action}");
         }
     }
 }

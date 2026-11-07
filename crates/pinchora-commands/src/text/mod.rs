@@ -493,16 +493,17 @@ async fn prepare(
             return Ok(Prepared::Notice(hint));
         }
     };
-    if crate::routing::is_admin_path(&parsed.command.name) {
+    if crate::routing::is_admin_path(&parsed.path) {
         let facts = app.permission_facts(guild).await?;
         if !guild_permissions(&facts, guild, user, held).contains(Permissions::MANAGE_GUILD) {
             return Ok(Prepared::Notice(t!(lang, "config.needs-manage-server")));
         }
     }
     if parsed.path != "customize bio"
-        && SLASH_ONLY
-            .iter()
-            .any(|e| parsed.path == *e || parsed.path.starts_with(&format!("{e} ")))
+        && (crate::routing::COMMUNITY_ADMIN_PATHS.contains(&parsed.path.as_str())
+            || SLASH_ONLY
+                .iter()
+                .any(|e| parsed.path == *e || parsed.path.starts_with(&format!("{e} "))))
     {
         let notice = t!(lang, "text.slash-only", path = parsed.path);
         return Ok(Prepared::Notice(notice));

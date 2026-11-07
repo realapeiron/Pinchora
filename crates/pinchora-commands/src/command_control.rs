@@ -54,6 +54,9 @@ pub fn control_catalog() -> Vec<Command> {
     }
     let original = crate::commands::legacy_definitions();
     for command in &mut out {
+        if crate::routing::is_admin_path(&command.path) {
+            command.permissions = twilight_model::guild::Permissions::MANAGE_GUILD.bits().to_string();
+        }
         let legacy = crate::routing::legacy(&command.path);
         let root = legacy.split(' ').next().unwrap();
         if legacy != command.path {
@@ -222,7 +225,7 @@ pub(crate) fn owner(prefix: &str) -> Option<&'static str> {
         "sk" => "sticky set",
         "sm" => "schedule add",
         "ev" => "event",
-        "qd" => "community qotd queue",
+        "qd" => "qotd queue",
         "fm" => "form open",
         "mml" => "modmail close",
         _ => return None,
@@ -235,7 +238,7 @@ pub(crate) async fn component_owner(cx: &Cx, custom_id: &str) -> anyhow::Result<
     let path = match (prefix, action) {
         ("ev", "c") => Some("event create"),
         ("ev", "p") => Some("event attendees"),
-        ("fm", "a" | "d") => Some("community forms post"),
+        ("fm", "a" | "d") => Some("form post"),
         ("fx", "p") => Some("fish shop"),
         ("fz", "b") => Some("fish book"),
         ("sc", "s") => Some("stats server"),

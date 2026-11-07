@@ -12,10 +12,10 @@ fn snapshot_every_original_leaf_and_projected_budget() {
     paths.sort();
     assert_eq!(paths.join("\n") + "\n", include_str!("legacy-leaves.txt"));
     assert_eq!(paths, MANIFEST.iter().map(|r| r.legacy.clone()).collect::<Vec<_>>());
-    assert_eq!(tree.len(), 97);
-    assert_eq!(paths.len(), 340);
+    assert_eq!(tree.len(), 102);
+    assert_eq!(paths.len(), 357);
     let registered = crate::command_definitions();
-    assert_eq!(registered.len(), PROJECTED_ROOTS + 4);
+    assert_eq!(registered.len(), PROJECTED_ROOTS);
     let actual: BTreeSet<_> = crate::commands::help::leaves(&registered, Lang::En)
         .into_iter()
         .map(|l| l.path)
@@ -32,7 +32,7 @@ fn snapshot_every_original_leaf_and_projected_budget() {
         .map(|r| r.canonical.split(' ').next().unwrap())
         .collect();
     assert_eq!(projected.len(), PROJECTED_ROOTS);
-    assert_eq!(MANIFEST.iter().filter(|r| r.active()).count(), 173);
+    assert_eq!(MANIFEST.iter().filter(|r| r.active()).count(), 181);
     assert_eq!(
         MANIFEST.iter().map(|r| &r.canonical).collect::<BTreeSet<_>>().len(),
         MANIFEST.len()
@@ -321,7 +321,10 @@ fn migration_covers_every_active_leaf_without_broadening_split_parents() {
         include_str!("../../../../migrations/0066_command_paths.sql"),
         include_str!("../../../../migrations/0074_mod_parity.sql")
     );
-    for route in MANIFEST.iter().filter(|r| r.active()) {
+    for route in MANIFEST
+        .iter()
+        .filter(|r| r.active() && !r.legacy.starts_with("community "))
+    {
         assert!(
             sql.contains(&format!("('{}', '{}')", route.legacy, previous_path(route)))
                 || sql.contains(&format!("('{}', '{}')", route.legacy, route.canonical)),
@@ -444,7 +447,7 @@ fn quick_games_retain_paths_arguments_and_localizations() {
 }
 
 #[test]
-fn registered_command_sizes_keep_ten_percent_headroom() {
+fn registered_command_sizes_keep_growth_headroom() {
     let tree = crate::command_definitions();
     let mut sizes: Vec<_> = tree.iter().map(|c| (super::command_size(c), &c.name)).collect();
     sizes.sort_by(|a, b| b.cmp(a));
@@ -452,6 +455,9 @@ fn registered_command_sizes_keep_ten_percent_headroom() {
         eprintln!("/{name}: {size} characters");
     }
     for (size, name) in sizes {
+        if name == "community" {
+            assert!(size <= COMMUNITY_SIZE_BUDGET);
+        }
         assert!(
             size <= super::COMMAND_SIZE_BUDGET,
             "/{name}: {size} exceeds {} characters (10% margin)",
@@ -678,4 +684,89 @@ fn urgent_moderation_roots_keep_d11_options_permissions_and_previous_paths() {
     ] {
         assert!(purge.options.iter().any(|o| o.name == name));
     }
+}
+
+#[test]
+fn community_settings_keep_private_admin_boundaries_and_legacy_policies() {
+    use pinchora_core::command_control::{Config, Rule};
+    let tree = crate::command_definitions();
+    let catalog = crate::control_catalog();
+    let leaves = crate::commands::help::leaves(&tree, Lang::En);
+    for path in COMMUNITY_ADMIN_PATHS {
+        let route = route(path).unwrap();
+        assert!(is_admin_path(path));
+        assert_eq!(crate::Deferral::for_path(path), crate::Deferral::Private);
+        assert_eq!(
+            catalog.iter().find(|c| c.path == *path).unwrap().permissions,
+            Permissions::MANAGE_GUILD.bits().to_string()
+        );
+        assert!(leaves.iter().find(|leaf| leaf.path == *path).unwrap().manager);
+        assert_eq!(
+            resolve_text(&format!("{} value:123", route.legacy)).0,
+            format!("{path} value:123")
+        );
+        let config = Config {
+            rules: [
+                (
+                    "community".into(),
+                    Rule {
+                        enabled: false,
+                        constraints: [(
+                            "historical-community".into(),
+                            Rule {
+                                denied_channels: vec!["9".into()],
+                                ..Rule::default()
+                            },
+                        )]
+                        .into(),
+                        ..Rule::default()
+                    },
+                ),
+                (
+                    route.legacy.clone(),
+                    Rule {
+                        cooldown_secs: 13,
+                        ..Rule::default()
+                    },
+                ),
+            ]
+            .into(),
+            aliases: [("old-settings".into(), route.legacy.clone())].into(),
+        };
+        let normalized = normalize_control(&config);
+        assert_eq!(normalized.aliases["old-settings"], *path);
+        assert_eq!(normalize_control(&normalized), normalized);
+        assert_eq!(
+            normalized.rules[*path].constraints["historical-community"].denied_channels,
+            ["9"]
+        );
+        for policies in [&config, &normalized] {
+            assert!(matching(policies, path).iter().any(|(_, rule)| !rule.enabled));
+            assert!(
+                matching(policies, path)
+                    .iter()
+                    .any(|(_, rule)| rule.cooldown_secs == 13)
+            );
+            assert!(
+                matching(policies, "community tickets settings")
+                    .iter()
+                    .any(|(_, rule)| !rule.enabled)
+            );
+        }
+        normalized
+            .validate(&catalog, &crate::command_reserved_aliases(), Lang::En)
+            .unwrap();
+    }
+    for path in [
+        "qotd suggest",
+        "counting stats",
+        "form list",
+        "form open",
+        "modmail close",
+    ] {
+        assert!(!is_admin_path(path));
+        assert!(!leaves.iter().find(|leaf| leaf.path == path).unwrap().manager);
+        assert_eq!(catalog.iter().find(|c| c.path == path).unwrap().permissions, "0");
+    }
+    validate(&tree).unwrap();
 }

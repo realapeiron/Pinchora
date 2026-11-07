@@ -3116,7 +3116,19 @@
           "usage": "/modmail snippet-list"
         },
         {
-          "aliases": [],
+          "aliases": [
+            "community qotd queue"
+          ],
+          "description": "Review questions",
+          "manager": true,
+          "options": [],
+          "path": "qotd queue",
+          "usage": "/qotd queue"
+        },
+        {
+          "aliases": [
+            "community qotd settings"
+          ],
           "description": "Set channel and time",
           "manager": true,
           "options": [
@@ -3146,19 +3158,23 @@
               "required": false
             }
           ],
-          "path": "community qotd settings",
-          "usage": "/community qotd settings [channel] [hour] [timezone] [thread] [role]"
+          "path": "qotd settings",
+          "usage": "/qotd settings [channel] [hour] [timezone] [thread] [role]"
         },
         {
-          "aliases": [],
-          "description": "Review questions",
+          "aliases": [
+            "community counting reset"
+          ],
+          "description": "Reset count",
           "manager": true,
           "options": [],
-          "path": "community qotd queue",
-          "usage": "/community qotd queue"
+          "path": "counting reset",
+          "usage": "/counting reset"
         },
         {
-          "aliases": [],
+          "aliases": [
+            "community counting setup"
+          ],
           "description": "Set counting rules",
           "manager": true,
           "options": [
@@ -3183,19 +3199,29 @@
               "required": false
             }
           ],
-          "path": "community counting setup",
-          "usage": "/community counting setup <channel> [reset_on_fail] [allow_math] [fail_role]"
+          "path": "counting setup",
+          "usage": "/counting setup <channel> [reset_on_fail] [allow_math] [fail_role]"
         },
         {
-          "aliases": [],
-          "description": "Reset count",
+          "aliases": [
+            "community forms close"
+          ],
+          "description": "Close a form",
           "manager": true,
-          "options": [],
-          "path": "community counting reset",
-          "usage": "/community counting reset"
+          "options": [
+            {
+              "description": "Form ID",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "form close",
+          "usage": "/form close <id>"
         },
         {
-          "aliases": [],
+          "aliases": [
+            "community forms create"
+          ],
           "description": "Create a form",
           "manager": true,
           "options": [
@@ -3220,11 +3246,13 @@
               "required": false
             }
           ],
-          "path": "community forms create",
-          "usage": "/community forms create <name> <questions> <review_channel> [accept_role]"
+          "path": "form create",
+          "usage": "/form create <name> <questions> <review_channel> [accept_role]"
         },
         {
-          "aliases": [],
+          "aliases": [
+            "community forms post"
+          ],
           "description": "Post form",
           "manager": true,
           "options": [
@@ -3234,25 +3262,13 @@
               "required": true
             }
           ],
-          "path": "community forms post",
-          "usage": "/community forms post <id>"
+          "path": "form post",
+          "usage": "/form post <id>"
         },
         {
-          "aliases": [],
-          "description": "Close a form",
-          "manager": true,
-          "options": [
-            {
-              "description": "Form ID",
-              "name": "id",
-              "required": true
-            }
+          "aliases": [
+            "community modmail settings"
           ],
-          "path": "community forms close",
-          "usage": "/community forms close <id>"
-        },
-        {
-          "aliases": [],
           "description": "Set mail forum",
           "manager": true,
           "options": [
@@ -3292,8 +3308,8 @@
               "required": false
             }
           ],
-          "path": "community modmail settings",
-          "usage": "/community modmail settings [enabled] [forum] [greeting] [anonymous_staff] [staff_role] [log_channel] [close_after_hours]"
+          "path": "modmail settings",
+          "usage": "/modmail settings [enabled] [forum] [greeting] [anonymous_staff] [staff_role] [log_channel] [close_after_hours]"
         },
         {
           "aliases": [],

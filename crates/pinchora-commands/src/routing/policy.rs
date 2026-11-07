@@ -14,18 +14,19 @@ pub fn normalize_control(config: &Config) -> Config {
         if !targets.iter().any(|r| r.legacy != r.canonical) {
             continue;
         }
-        result.rules.remove(path);
+        if path != "community" {
+            result.rules.remove(path);
+        }
         for target in targets {
             if protected(&target.canonical) {
                 continue;
             }
             // Keep the original key as the cooldown identity, including across split siblings.
-            result
-                .rules
-                .entry(previous_path(target))
-                .or_default()
-                .constraints
-                .insert(path.clone(), rule.clone());
+            let constraints = &mut result.rules.entry(previous_path(target)).or_default().constraints;
+            constraints.extend(rule.constraints.clone());
+            let mut own = rule.clone();
+            own.constraints.clear();
+            constraints.insert(path.clone(), own);
         }
     }
     // 0068 runs after v1. Flatten inherited constraints so every old cooldown identity and

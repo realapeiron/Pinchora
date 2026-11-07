@@ -13,15 +13,27 @@ use twilight_model::{
 };
 
 pub const COMPLETED_SLICE: u8 = 18;
-pub const PROJECTED_ROOTS: usize = 67;
+pub const PROJECTED_ROOTS: usize = 71;
 pub const FUTURE_ROOT_RESERVE: usize = 4;
+
+pub(crate) const COMMUNITY_ADMIN_PATHS: &[&str] = &[
+    "qotd settings",
+    "qotd queue",
+    "counting setup",
+    "counting reset",
+    "form create",
+    "form post",
+    "form close",
+    "modmail settings",
+];
 
 /// Administration roots share the original setup permission and privacy boundary.
 pub fn is_admin_path(path: &str) -> bool {
-    matches!(
-        path.split(' ').next(),
-        Some("setup" | "safety" | "community" | "integrations" | "progression")
-    )
+    COMMUNITY_ADMIN_PATHS.contains(&path)
+        || matches!(
+            path.split(' ').next(),
+            Some("setup" | "safety" | "community" | "integrations" | "progression")
+        )
 }
 
 /// The applied 0066 paths remain valid for stored policies, backups and typed shortcuts.
@@ -240,13 +252,16 @@ pub(crate) fn resolve_text(text: &str) -> (String, Option<&'static Route>) {
 /// Rebuild the exact old nesting without changing resolved objects, focused options or values.
 pub(crate) fn adapt(mut data: CommandData) -> anyhow::Result<CommandData> {
     let path = crate::command_control::path(&data);
-    let Some(route) = route(&path).filter(|r| r.active() && (r.canonical == path || previous_path(r) == path)) else {
+    let Some(route) = route(&path).filter(|r| r.active()) else {
         anyhow::ensure!(
             !(is_admin_path(&data.name) || matches!(data.name.as_str(), "mod" | "rewards")),
             "unknown command action `{path}`"
         );
         return Ok(data);
     };
+    if path == route.legacy {
+        return Ok(data);
+    }
     let mut options = data.options;
     for _ in path.split(' ').skip(1) {
         anyhow::ensure!(options.len() == 1, "expected one command action");
@@ -298,6 +313,8 @@ fn source(tree: &[Command], path: &str) -> CommandOption {
 /// Only canonical roots are registered; legacy models remain available to dispatch.
 pub(crate) fn extend(tree: &mut Vec<Command>) {
     let original = tree.clone();
+    // The former F20 community definition is retained only as a legacy handler model.
+    tree.retain(|command| command.name != "community");
     // Wrapped remains usable in DMs. The existing info handlers retain their own guild guard.
     tree.iter_mut().find(|c| c.name == "info").unwrap().contexts =
         original.iter().find(|c| c.name == "wrapped").unwrap().contexts.clone();
@@ -314,7 +331,7 @@ pub(crate) fn extend(tree: &mut Vec<Command>) {
         ),
         (
             "community",
-            "Configure tickets, highlights, events and utilities",
+            "Configure community tools",
             Some(Permissions::MANAGE_GUILD),
         ),
         (
@@ -353,6 +370,8 @@ pub(crate) fn extend(tree: &mut Vec<Command>) {
             if !root.options.iter().any(|o| o.name == name) {
                 let description = if parts[0] == "mod" {
                     original.iter().find(|c| c.name == name).unwrap().description.clone()
+                } else if parts[0] == "community" {
+                    format!("{name} settings")
                 } else {
                     format!("Configure {name} settings")
                 };
@@ -423,7 +442,8 @@ pub fn has_legacy_paths(tree: &[Command]) -> bool {
 /// Discord counts the longest localized value (including the default) per field.
 /// https://docs.discord.com/developers/interactions/application-commands#slash-commands
 pub const COMMAND_SIZE_LIMIT: usize = 8_000;
-pub const COMMAND_SIZE_BUDGET: usize = COMMAND_SIZE_LIMIT * 9 / 10;
+pub const COMMAND_SIZE_BUDGET: usize = 6_800;
+pub const COMMUNITY_SIZE_BUDGET: usize = 6_400;
 
 pub fn command_size(command: &Command) -> usize {
     size_of_node(&serde_json::to_value(command).expect("serializable command"))
@@ -514,9 +534,14 @@ pub fn validate(tree: &[Command]) -> anyhow::Result<()> {
     }
     for root in tree {
         let size = command_size(root);
+        let budget = if root.name == "community" {
+            COMMUNITY_SIZE_BUDGET
+        } else {
+            COMMAND_SIZE_BUDGET
+        };
         anyhow::ensure!(
-            size <= COMMAND_SIZE_BUDGET,
-            "/{}: {size} characters exceeds {COMMAND_SIZE_BUDGET} (10% margin below Discord's {COMMAND_SIZE_LIMIT})",
+            size <= budget,
+            "/{}: {size} characters exceeds {budget} (Discord limit {COMMAND_SIZE_LIMIT})",
             root.name
         );
         anyhow::ensure!(roots.insert(&root.name), "duplicate root {}", root.name);
