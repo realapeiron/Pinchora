@@ -22,6 +22,7 @@ mod leveling;
 mod log_audit;
 mod responder;
 mod roles;
+pub mod routing;
 mod server_events;
 mod server_log;
 mod starboard;
@@ -152,6 +153,7 @@ pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, res
             let allowed = command_control::autocomplete_allowed(&cx, &command)
                 .await
                 .unwrap_or(false);
+            let command = routing::adapt((*command).clone()).unwrap_or(*command);
             let choices = match command.name.as_str() {
                 _ if !allowed => Vec::new(),
                 "birthday" | "birthdays" => commands::birthdays::autocomplete(&command),
@@ -168,7 +170,8 @@ pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, res
     // cannot overflow a worker thread's stack.
     let (label, result) = match data {
         Some(InteractionData::ApplicationCommand(command)) => {
-            let label = command.name.clone();
+            let invoked = command_control::path(&command);
+            let label = routing::canonical(&invoked).to_owned();
             (label, Box::pin(commands::dispatch(&cx, *command)).await)
         }
         Some(InteractionData::MessageComponent(component)) => {

@@ -1,7 +1,7 @@
 //! One command policy boundary for slash, text, components and forms.
 use crate::Cx;
 use pinchora_core::{
-    command_control::{Command, PROTECTED, Rule},
+    command_control::{Command, Rule},
     t,
 };
 use std::time::Duration;
@@ -17,7 +17,7 @@ pub fn control_catalog() -> Vec<Command> {
             path: path.clone(),
             description,
             permissions: permissions.into(),
-            protected: PROTECTED.contains(&top),
+            protected: crate::routing::protected(&path),
             ephemeral_supported: matches!(
                 top,
                 "balance" | "rank" | "profile" | "info" | "inventory" | "leaderboard" | "stats" | "dex"
@@ -223,11 +223,15 @@ pub(crate) async fn component_owner(cx: &Cx, custom_id: &str) -> anyhow::Result<
 /// Autocomplete must not disclose suggestions for a denied command or consume its cooldown.
 pub(crate) async fn autocomplete_allowed(cx: &Cx, data: &CommandData) -> anyhow::Result<bool> {
     use pinchora_core::modules::{Access, Module};
+    if data.name == "setup" && (cx.guild_id().is_none() || !cx.can_manage_guild()) {
+        return Ok(false);
+    }
+    let data = crate::routing::adapt(data.clone())?;
     let Some(guild) = cx.guild_id() else { return Ok(true) };
     if data.name == "customcommand" && !cx.can_manage_guild() {
         return Ok(false);
     }
-    let path = path(data);
+    let path = path(&data);
     let sub = path.split(' ').nth(1);
     if let Some(module) = Module::of_command(&data.name, sub)
         && cx
@@ -255,8 +259,8 @@ async fn policy_check(
         .map(|m| m.roles.iter().map(ToString::to_string).collect())
         .unwrap_or_default();
     roles.push(guild.to_string());
-    let needs_channels = config
-        .matching(path)
+    let needs_channels = crate::routing::matching(config, path)
+        .into_iter()
         .any(|(_, r)| !r.allowed_channels.is_empty() || !r.denied_channels.is_empty());
     let lineage = match cx.interaction.channel.as_ref() {
         Some(channel) if needs_channels => cx
@@ -268,14 +272,19 @@ async fn policy_check(
             .collect(),
         _ => vec![],
     };
-    config.check(path, &roles, &lineage)
+    if !crate::routing::protected(path) {
+        for (_, rule) in crate::routing::matching(config, path) {
+            rule.check(&roles, &lineage)?;
+        }
+    }
+    Ok(())
 }
 
 pub(crate) async fn refuses(cx: &Cx, path: &str, _component: bool) -> anyhow::Result<bool> {
     let Some(guild) = cx.guild_id() else {
         return Ok(false);
     };
-    if PROTECTED.contains(&path.split(' ').next().unwrap_or_default()) {
+    if crate::routing::protected(path) {
         return Ok(false);
     }
     let config = cx.app.command_control(guild).await?;
@@ -285,10 +294,14 @@ pub(crate) async fn refuses(cx: &Cx, path: &str, _component: bool) -> anyhow::Re
     }
     // A policy cooldown is additional to every handler’s built-in cooldown.
     {
-        let seconds = config.matching(path).map(|(_, r)| r.cooldown_secs).max().unwrap_or(0);
+        let seconds = crate::routing::matching(&config, path)
+            .into_iter()
+            .map(|(_, r)| r.cooldown_secs)
+            .max()
+            .unwrap_or(0);
         if seconds > 0 {
-            let root = config
-                .matching(path)
+            let root = crate::routing::matching(&config, path)
+                .into_iter()
                 .filter(|(_, r)| r.cooldown_secs == seconds)
                 .map(|(p, _)| p.as_str())
                 .next()
@@ -313,7 +326,7 @@ pub(crate) async fn refuses(cx: &Cx, path: &str, _component: bool) -> anyhow::Re
         }
     }
     let mut policy = Rule::default();
-    for (_, rule) in config.matching(path) {
+    for (_, rule) in crate::routing::matching(&config, path) {
         policy.ephemeral |= rule.ephemeral;
         for (out, value) in [
             (&mut policy.delete_reply_secs, rule.delete_reply_secs),

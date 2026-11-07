@@ -523,6 +523,36 @@ The bot owner turns this on in two places: **Message Content Intent** on the Bot
 Portal, and `PINCHORA_GATEWAY__MESSAGE_CONTENT=true`. Without them Discord only sends the text of messages that
 mention the bot, so text commands work as `@Pinchora profile` and `/help` says so.
 
+### Command-tree transition (slices 1–6)
+
+`/setup` is the new configuration entry point. All 95 existing roots remain registered during
+this transition: **96 roots now**, with **62 projected** after the complete consolidation plan.
+Both paths call the same typed business handlers; `/setup` also checks Manage Server on every
+invocation. Existing role, ticket and verification panel buttons keep their custom IDs and member access.
+No policy/alias data migration is needed while both trees remain available. `setup` is reserved
+for new custom-command names and aliases. Existing custom content named `setup` remains accessible
+through `/tag setup`; existing server aliases keep their usual first-token expansion.
+
+| New command group | Actions (typed arguments are unchanged) |
+| --- | --- |
+| `/setup server` | `language`, `modules-channels`, `modules-show`, `modules-toggle`, `prefix-reset`, `prefix-set`, `prefix-show`, `show` |
+| `/setup welcome` | `goodbye`, `message`, `card` |
+| `/setup moderation` | `log`, `log-events`, `log-ignore`, `settings`, `warn-ladder` |
+| `/setup leveling` | `roles-add`, `roles-list`, `roles-mode`, `roles-remove`, `roles-sync`, `settings`, `xp-clear`, `xp-multiplier`, `xp-show`, `xp-voice`, `xp-add`, `xp-import-mee6`, `xp-remove`, `xp-reset`, `xp-reset-all`, `xp-set` |
+| `/setup economy` | `critters`, `gambling`, `partygames`, `points-settings`, `rep-roles-add`, `rep-roles-list`, `rep-roles-remove`, `store-add`, `store-list`, `store-remove`, `surge`, `points-give`, `points-take` |
+| `/setup roles` | `auto-add`, `auto-list`, `auto-remove`, `auto-sticky`, `color-setup`, `join-role`, `panel-add`, `panel-create`, `panel-post`, `panel-remove`, `panel-temp` |
+| `/setup tickets` | `panel-create`, `panel-delete`, `panel-edit`, `panel-list`, `panel-post`, `settings` |
+| `/setup utility` | `voice-add`, `voice-list`, `voice-remove` |
+| `/setup automod` | `exempt-channel`, `exempt-role`, `profile`, `show`, `test`, `toggle` |
+| `/setup verification` | `message`, `mode`, `post`, `setup` |
+| `/setup antinuke` | `disable`, `enable`, `events`, `limits`, `status`, `trust-add`, `trust-remove`, `vip-add`, `vip-remove` |
+
+The route manifest in `crates/pinchora-commands/src/routing/manifest.json` records every original
+leaf, its final path and rollout slice. Registration validates the 100-root budget, command depth,
+and 25-child/argument/choice limits before making an HTTP request. Old and new paths share policy
+restrictions and cooldowns; recovery protection follows the original action. Help appends new
+pages so existing `hp:<page-index>` buttons keep their destinations.
+
 ### Command control and configuration backup (D2)
 
 | Command (Manage Server) | What it does |

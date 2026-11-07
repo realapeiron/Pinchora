@@ -336,6 +336,7 @@ pub(crate) fn leaves(commands: &[Command], lang: Lang) -> Vec<Leaf> {
 
 /// The area that holds `path`: the one with the longest start of the path, if exactly one has it.
 pub(crate) fn area_of(path: &str) -> Option<usize> {
+    let path = crate::routing::legacy(path);
     let mut best: Option<(usize, usize)> = None;
     let mut tied = false;
     for (index, area) in AREAS.iter().enumerate() {
@@ -360,6 +361,14 @@ pub(crate) fn area_of(path: &str) -> Option<usize> {
 /// page whenever the rows would not fit one card. Anything no area claims lands on a last page, so
 /// the guide never leaves a command out (a test keeps that page empty).
 fn build(commands: &[Command], lang: Lang) -> Vec<Page> {
+    // Existing hp:<page-index> buttons retain their destinations throughout the transition.
+    let (legacy, setup): (Vec<_>, Vec<_>) = commands.iter().cloned().partition(|c| c.name != "setup");
+    let mut pages = build_pages(&legacy, lang);
+    pages.extend(build_pages(&setup, lang));
+    pages
+}
+
+fn build_pages(commands: &[Command], lang: Lang) -> Vec<Page> {
     let leaves = leaves(commands, lang);
     let mut by_area: Vec<Vec<(usize, HelpRow)>> = (0..=AREAS.len()).map(|_| Vec::new()).collect();
     for leaf in leaves {
@@ -368,7 +377,10 @@ fn build(commands: &[Command], lang: Lang) -> Vec<Page> {
             AREAS[a]
                 .covers
                 .iter()
-                .position(|c| leaf.path == *c || leaf.path.starts_with(&format!("{c} ")))
+                .position(|c| {
+                    crate::routing::legacy(&leaf.path) == *c
+                        || crate::routing::legacy(&leaf.path).starts_with(&format!("{c} "))
+                })
                 .unwrap_or(0)
         });
         by_area[area.unwrap_or(AREAS.len())].push((
@@ -716,5 +728,25 @@ mod tests {
         let manager = |path: &str| rows_of(&pages, path)[0].manager;
         assert!(manager("config show") && manager("giveaway start") && manager("plaza edit"));
         assert!(!manager("house view") && !manager("duel chess"));
+    }
+}
+
+#[cfg(test)]
+mod transition_tests {
+    use super::*;
+    #[test]
+    fn existing_help_buttons_keep_their_page_destinations() {
+        for lang in Lang::ALL {
+            let old = build(&crate::commands::legacy_definitions(), lang);
+            let new = build(&crate::command_definitions(), lang);
+            assert!(new.len() > old.len());
+            for (old, new) in old.iter().zip(&new) {
+                assert_eq!(old.title, new.title);
+                assert_eq!(
+                    old.rows.iter().map(|r| &r.command).collect::<Vec<_>>(),
+                    new.rows.iter().map(|r| &r.command).collect::<Vec<_>>()
+                );
+            }
+        }
     }
 }

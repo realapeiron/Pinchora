@@ -6,6 +6,7 @@ pub async fn run(config: &Config, global: bool) -> anyhow::Result<()> {
     let http = Client::new(config.discord.token.expose().to_owned());
     let client = http.interaction(Id::new(config.discord.application_id));
     let commands = pinchora_commands::command_definitions();
+    pinchora_commands::routing::validate(&commands)?;
     // Bulk overwrite: idempotent, and removes commands that no longer exist.
     match config.discord.dev_guild_id.filter(|_| !global) {
         Some(guild) => {

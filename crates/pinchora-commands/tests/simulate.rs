@@ -163,6 +163,9 @@ mod info_xp;
 #[path = "simulate/tempvoice.rs"]
 mod tempvoice;
 
+#[path = "simulate/command_tree.rs"]
+mod command_tree;
+
 const APPLICATION_ID: u64 = 1;
 const CHANNEL_ID: u64 = 2;
 /// The role the mock bot holds; its position is the ceiling for roles the bot can hand out.
@@ -13189,6 +13192,21 @@ async fn admin_paths_refuse_members_without_manage_server() {
         for (label, options) in &rows {
             let name = label.split(' ').next().expect("a command name");
             let reply = sim.command_resolved(member, name, options.clone(), known.clone()).await;
+            if let Some((group_name, action, arguments)) = command_tree::setup_options(label, options) {
+                let canonical = sim
+                    .command_resolved(
+                        member,
+                        "setup",
+                        json!([group(&group_name, sub(&action, arguments))]),
+                        known.clone(),
+                    )
+                    .await;
+                assert!(
+                    canonical.ephemeral && canonical.content().contains("Manage Server"),
+                    "{label}: {}",
+                    canonical.content()
+                );
+            }
             let wanted = if name == "plaza" {
                 "server managers"
             } else {

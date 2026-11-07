@@ -89,13 +89,29 @@ use crate::Cx;
 macro_rules! commands {
     ($($ty:ty),* $(,)?) => {
         /// Every slash command, for registration.
-        pub fn definitions() -> Vec<Command> {
+        pub(crate) fn legacy_definitions() -> Vec<Command> {
             let mut commands = vec![$(<$ty as CreateCommand>::create_command().into()),*];
             crate::lang::localize(&mut commands);
             commands
         }
 
+        pub fn definitions() -> Vec<Command> {
+            let mut commands = legacy_definitions();
+            commands.push(crate::routing::setup(&commands));
+            crate::lang::localize(&mut commands);
+            commands
+        }
+
         pub(crate) async fn dispatch(cx: &Cx, data: CommandData) -> anyhow::Result<()> {
+            if data.name == "setup" {
+                if cx.guild_id().is_none() {
+                    return cx.reply_ephemeral(pinchora_core::t!(cx.lang(), "config.guild-only")).await;
+                }
+                if !cx.can_manage_guild() {
+                    return cx.reply_ephemeral(pinchora_core::t!(cx.lang(), "config.needs-manage-server")).await;
+                }
+            }
+            let data = crate::routing::adapt(data)?;
             if crate::gate::refuses_command(cx, &data).await? {
                 return Ok(());
             }

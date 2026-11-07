@@ -48,6 +48,7 @@ static TREE: LazyLock<Vec<Command>> = LazyLock::new(crate::command_definitions);
 const SLASH_ONLY: &[&str] = &[
     "character",
     "config",
+    "setup",
     "backup",
     "commandcontrol",
     "customize",

@@ -126,18 +126,24 @@ const OPENS_MODAL: &[&str] = &[
 ];
 
 impl Deferral {
+    pub(crate) fn for_path(path: &str) -> Self {
+        let path = crate::routing::legacy(path);
+        if covers(OPENS_FORM, path, ' ') {
+            Self::Never
+        } else if covers(PRIVATE, path, ' ') {
+            Self::Private
+        } else {
+            Self::Public
+        }
+    }
+
     pub(crate) fn of(interaction: &Interaction) -> Self {
         // Suggestions are the only answer an autocomplete takes: a defer would break it.
         if interaction.kind == InteractionType::ApplicationCommandAutocomplete {
             return Self::Never;
         }
         match &interaction.data {
-            Some(InteractionData::ApplicationCommand(command)) if covers(OPENS_FORM, &command_path(command), ' ') => {
-                Self::Never
-            }
-            Some(InteractionData::ApplicationCommand(command)) if covers(PRIVATE, &command_path(command), ' ') => {
-                Self::Private
-            }
+            Some(InteractionData::ApplicationCommand(command)) => Self::for_path(&command_path(command)),
             Some(InteractionData::MessageComponent(component)) if covers(OPENS_MODAL, &component.custom_id, ':') => {
                 Self::Never
             }
@@ -165,7 +171,7 @@ fn command_path(command: &CommandData) -> String {
         path.push_str(&option.name);
         options = inner;
     }
-    path
+    crate::routing::legacy(&path).to_owned()
 }
 
 /// Gateway mode: runs `handler`, and defers through REST if it is still going after `budget`.

@@ -1194,7 +1194,8 @@
       "birthdays",
       "afk",
       "sticky",
-      "schedule"
+      "schedule",
+      "setup"
     ],
     "responder_placeholders": {
       "keyword": [
