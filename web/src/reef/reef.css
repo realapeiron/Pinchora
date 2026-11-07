@@ -335,6 +335,7 @@
   max-width: 100%;
 }
 .reef-transcript {
+  min-height: 6rem;
   max-height: 16rem;
   overflow-y: auto;
   margin: 0.75rem 0;
