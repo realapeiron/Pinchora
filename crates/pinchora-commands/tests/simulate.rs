@@ -453,6 +453,9 @@ async fn discord(
     if let Some(answer) = roles::mock(&mock, &method, &uri, &parts, &body) {
         return answer;
     }
+    if let Some(answer) = command_control::mock(&mock, &method, &parts) {
+        return answer;
+    }
     match (&method, parts.as_slice()) {
         (&Method::GET, [.., "guilds", guild, "roles"]) => {
             let mut roles = vec![role_json(BOT_ROLE_ID, "Pinchora", BOT_ROLE_POSITION, true)];
@@ -12657,6 +12660,23 @@ async fn admin_paths_refuse_members_without_manage_server() {
         "channels": channels,
     });
     let rows: Vec<(&str, Value)> = vec![
+        ("commandcontrol show", json!([sub("show", vec![])])),
+        (
+            "commandcontrol set",
+            json!([sub("set", vec![text_option("command", "afk")])]),
+        ),
+        (
+            "commandcontrol reset",
+            json!([sub("reset", vec![text_option("command", "afk")])]),
+        ),
+        (
+            "commandcontrol alias",
+            json!([sub("alias", vec![text_option("name", "away")])]),
+        ),
+        ("backup export", json!([sub("export", vec![])])),
+        ("backup list", json!([sub("list", vec![])])),
+        ("backup restore", json!([sub("restore", vec![text_option("id", "1")])])),
+        ("backup import", json!([sub("import", vec![])])),
         ("event create", json!([sub("create", vec![])])),
         ("event list", json!([sub("list", vec![])])),
         ("event template", json!([sub("template", vec![])])),
@@ -15233,3 +15253,6 @@ fn simulator_message_identity_survives_updates_and_repeated_clicks() {
 
 #[path = "simulate/verification.rs"]
 mod verification;
+
+#[path = "simulate/command_control.rs"]
+mod command_control;

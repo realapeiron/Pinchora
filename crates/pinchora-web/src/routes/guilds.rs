@@ -81,6 +81,8 @@ pub fn router() -> Router<WebState> {
         .route("/cases", get(moderation::cases))
         .route("/cases/{case}", get(moderation::case).patch(moderation::patch_case))
         .route("/staff-log", get(moderation::staff_log))
+        .nest("/command-control", super::command_control::router())
+        .nest("/backup", super::config_backup::router())
         .nest("/automod", super::automod::router())
         .nest("/anti_nuke", super::anti_nuke::router())
         .nest("/temp-voice", super::temp_voice::router())

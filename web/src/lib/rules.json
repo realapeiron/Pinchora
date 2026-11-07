@@ -1178,6 +1178,8 @@
       "event",
       "tickets",
       "automod",
+      "commandcontrol",
+      "backup",
       "verify",
       "verification",
       "raid",

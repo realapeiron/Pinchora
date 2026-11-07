@@ -56,6 +56,9 @@ pub struct Responder {
     component: bool,
     deferral: Deferral,
     state: Mutex<State>,
+    command_policy: OnceLock<pinchora_core::command_control::Rule>,
+    deletion_scheduled: OnceLock<()>,
+    deferred_private: OnceLock<bool>,
 }
 
 enum State {
@@ -98,7 +101,42 @@ impl Responder {
             component: false,
             deferral: Deferral::Never,
             state: Mutex::new(State::Pending(None)),
+            command_policy: OnceLock::new(),
+            deletion_scheduled: OnceLock::new(),
+            deferred_private: OnceLock::new(),
         }
+    }
+
+    pub(crate) fn set_command_policy(&self, policy: pinchora_core::command_control::Rule) {
+        if let Some(text) = &self.text
+            && policy.delete_invocation_secs > 0
+        {
+            self.app.delete_later(
+                text.channel,
+                text.message,
+                Duration::from_secs(policy.delete_invocation_secs.into()),
+            );
+        }
+        let _ = self.command_policy.set(policy);
+    }
+
+    fn private_default(&self) -> bool {
+        !self.component && self.command_policy.get().is_some_and(|p| p.ephemeral)
+    }
+
+    fn schedule_original_deletion(&self) {
+        let seconds = self.command_policy.get().map_or(0, |p| p.delete_reply_secs);
+        if seconds == 0 || self.deletion_scheduled.set(()).is_err() {
+            return;
+        }
+        let app = self.app.clone();
+        let token = self.token.clone();
+        self.app.spawn(async move {
+            tokio::time::sleep(Duration::from_secs(seconds.into())).await;
+            if let Err(error) = app.interaction().delete_response(&token).await {
+                tracing::debug!(%error, "command reply deletion failed");
+            }
+        });
     }
 
     /// Whether this answers a text command rather than an interaction.
@@ -117,6 +155,9 @@ impl Responder {
                 || (interaction.kind == InteractionType::ModalSubmit && interaction.message.is_some()),
             deferral: Deferral::of(interaction),
             state: Mutex::new(State::Pending(tx)),
+            command_policy: OnceLock::new(),
+            deletion_scheduled: OnceLock::new(),
+            deferred_private: OnceLock::new(),
         }
     }
 
@@ -134,6 +175,7 @@ impl Responder {
     }
 
     fn defer_response(&self, ephemeral: bool) -> InteractionResponse {
+        let _ = self.deferred_private.set(ephemeral);
         InteractionResponse {
             kind: self.defer_kind(),
             data: ephemeral.then(|| InteractionResponseData {
@@ -150,7 +192,7 @@ impl Responder {
         match &mut *state {
             State::Pending(Some(_)) => {
                 *state = State::Deferred;
-                Some(self.defer_response(self.deferral == Deferral::Private))
+                Some(self.defer_response(self.deferral == Deferral::Private || self.private_default()))
             }
             _ => None,
         }
@@ -168,8 +210,11 @@ impl Responder {
         if !matches!(&*state, State::Pending(None)) {
             return Ok(false);
         }
-        self.initial(None, self.defer_response(self.deferral == Deferral::Private))
-            .await?;
+        self.initial(
+            None,
+            self.defer_response(self.deferral == Deferral::Private || self.private_default()),
+        )
+        .await?;
         *state = State::Deferred;
         Ok(true)
     }
@@ -184,7 +229,8 @@ impl Responder {
         }
         let mut state = self.state.lock().await;
         if let State::Pending(tx) = &mut *state {
-            self.initial(tx.take(), self.defer_response(ephemeral)).await?;
+            self.initial(tx.take(), self.defer_response(ephemeral || self.private_default()))
+                .await?;
             *state = State::Deferred;
         }
         Ok(())
@@ -194,6 +240,9 @@ impl Responder {
     /// sets no `allowed_mentions` pings nobody, so a name or a role in its text (a member's note, a role the
     /// server configured) never pings by accident; the replies that mean to ping say whom.
     pub async fn respond(&self, mut data: InteractionResponseData, update: bool) -> anyhow::Result<()> {
+        if !update && self.private_default() {
+            *data.flags.get_or_insert(MessageFlags::empty()) |= MessageFlags::EPHEMERAL;
+        }
         data.allowed_mentions.get_or_insert_with(AllowedMentions::default);
         dump_attachments(&data);
         if let Some(text) = &self.text {
@@ -204,7 +253,16 @@ impl Responder {
             };
         }
         let mut state = self.state.lock().await;
-        match &mut *state {
+        // A slow cache miss can outlast the automatic defer. Discord cannot make a public
+        // original private by editing flags, so deliver the private result as a follow-up.
+        let replace_public = matches!(*state, State::Deferred)
+            && !self.component
+            && data.flags.is_some_and(|flags| flags.contains(MessageFlags::EPHEMERAL))
+            && !self.deferred_private.get().copied().unwrap_or(false);
+        let deletes_original = !matches!(*state, State::Done)
+            && !(matches!(*state, State::Deferred) && self.component && !update)
+            && !replace_public;
+        let result = match &mut *state {
             State::Pending(tx) => {
                 let has_files = data.attachments.as_ref().is_some_and(|a| !a.is_empty());
                 if tx.is_some() && has_files {
@@ -240,7 +298,12 @@ impl Responder {
             State::Deferred => {
                 // A button's defer shows nothing, so a new message (a private notice, say) belongs
                 // beside the clicked message; editing it would put the notice on it for everyone.
-                if self.component && !update {
+                if replace_public {
+                    self.followup(&data).await?;
+                    if let Err(error) = self.app.interaction().delete_response(&self.token).await {
+                        tracing::debug!(%error, "public command placeholder deletion failed");
+                    }
+                } else if self.component && !update {
                     self.followup(&data).await?;
                 } else {
                     self.edit_original(&data).await?;
@@ -249,7 +312,11 @@ impl Responder {
                 Ok(())
             }
             State::Done => self.followup(&data).await,
+        };
+        if result.is_ok() && deletes_original {
+            self.schedule_original_deletion();
         }
+        result
     }
 
     /// Opens a modal. Discord only takes one as the first answer.
@@ -376,6 +443,15 @@ impl Responder {
         }
         let posted = request.await?.model().await?;
         let _ = text.first.set(posted.id);
+        if let Some(seconds) = self
+            .command_policy
+            .get()
+            .map(|p| p.delete_reply_secs)
+            .filter(|s| *s > 0)
+        {
+            self.app
+                .delete_later(text.channel, posted.id, Duration::from_secs(seconds.into()));
+        }
         if private {
             self.app.delete_later(text.channel, posted.id, TEXT_PRIVATE_LINGER);
         }
@@ -451,7 +527,19 @@ impl Responder {
         if let Some(mentions) = &data.allowed_mentions {
             request = request.allowed_mentions(Some(mentions));
         }
-        request.await?;
+        let response = request.await?;
+        let seconds = self.command_policy.get().map_or(0, |p| p.delete_reply_secs);
+        if seconds > 0 {
+            let message = response.model().await?;
+            let app = self.app.clone();
+            let token = self.token.clone();
+            self.app.spawn(async move {
+                tokio::time::sleep(Duration::from_secs(seconds.into())).await;
+                if let Err(error) = app.interaction().delete_followup(&token, message.id).await {
+                    tracing::debug!(%error, "command followup deletion failed");
+                }
+            });
+        }
         Ok(())
     }
 }

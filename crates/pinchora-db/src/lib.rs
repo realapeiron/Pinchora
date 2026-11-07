@@ -185,3 +185,7 @@ mod verification;
 pub use verification::*;
 mod anti_nuke;
 pub use anti_nuke::*;
+
+mod command_control;
+
+mod config_backup;

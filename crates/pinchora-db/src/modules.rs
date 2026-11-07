@@ -96,6 +96,9 @@ impl Db {
         enabled: Option<bool>,
         channels: Option<(ChannelMode, &[u64])>,
     ) -> anyhow::Result<ModuleRule> {
+        if module == Module::CommandControl {
+            return Ok(ModuleRule::default());
+        }
         let id = sql_id(guild);
         let mut tx = self.pool().begin().await?;
         sqlx::query("INSERT INTO guilds (id) VALUES ($1) ON CONFLICT (id) DO NOTHING")

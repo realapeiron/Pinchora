@@ -3590,6 +3590,136 @@
           "usage": "/automod test <text>"
         },
         {
+          "description": "Show command control settings",
+          "manager": true,
+          "options": [],
+          "path": "commandcontrol show",
+          "usage": "/commandcontrol show"
+        },
+        {
+          "description": "Set additional restrictions for a command or subcommand",
+          "manager": true,
+          "options": [
+            {
+              "description": "Command path, for example play wordle",
+              "name": "command",
+              "required": true
+            },
+            {
+              "description": "Enable or disable this command",
+              "name": "enabled",
+              "required": false
+            },
+            {
+              "description": "Additional cooldown in seconds (0 resets it)",
+              "name": "cooldown",
+              "required": false
+            },
+            {
+              "description": "Delete bot replies after this many seconds (0 disables deletion)",
+              "name": "delete_reply",
+              "required": false
+            },
+            {
+              "description": "Delete prefix invocations after this many seconds (0 disables deletion)",
+              "name": "delete_invocation",
+              "required": false
+            },
+            {
+              "description": "Reply privately by default where supported",
+              "name": "ephemeral",
+              "required": false
+            },
+            {
+              "description": "Add a role allowed to use the command",
+              "name": "allow_role",
+              "required": false
+            },
+            {
+              "description": "Add a role denied access to the command",
+              "name": "deny_role",
+              "required": false
+            },
+            {
+              "description": "Add an allowed channel or category",
+              "name": "allow_channel",
+              "required": false
+            },
+            {
+              "description": "Add a denied channel or category",
+              "name": "deny_channel",
+              "required": false
+            }
+          ],
+          "path": "commandcontrol set",
+          "usage": "/commandcontrol set <command> [enabled] [cooldown] [delete_reply] [delete_invocation] [ephemeral] [allow_role] [deny_role] [allow_channel] [deny_channel]"
+        },
+        {
+          "description": "Remove a command override",
+          "manager": true,
+          "options": [
+            {
+              "description": "Command path",
+              "name": "command",
+              "required": true
+            }
+          ],
+          "path": "commandcontrol reset",
+          "usage": "/commandcontrol reset <command>"
+        },
+        {
+          "description": "Add a prefix alias, or remove it by omitting the command",
+          "manager": true,
+          "options": [
+            {
+              "description": "Shortcut name",
+              "name": "name",
+              "required": true
+            },
+            {
+              "description": "Target command path",
+              "name": "command",
+              "required": false
+            }
+          ],
+          "path": "commandcontrol alias",
+          "usage": "/commandcontrol alias <name> [command]"
+        },
+        {
+          "description": "Download a versioned JSON configuration backup",
+          "manager": true,
+          "options": [],
+          "path": "backup export",
+          "usage": "/backup export"
+        },
+        {
+          "description": "List the last ten automatic restore points",
+          "manager": true,
+          "options": [],
+          "path": "backup list",
+          "usage": "/backup list"
+        },
+        {
+          "description": "Preview a restore point before applying it",
+          "manager": true,
+          "options": [
+            {
+              "description": "Restore point ID",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "backup restore",
+          "usage": "/backup restore <id>"
+        },
+        {
+          "description": "Open the dashboard to preview and import a JSON backup",
+          "manager": true,
+          "options": [],
+          "path": "backup import",
+          "usage": "/backup import"
+        },
+        {
           "description": "Pass this server's join gate",
           "manager": false,
           "options": [],

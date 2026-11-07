@@ -33,3 +33,7 @@ pub mod verification;
 pub mod achievements;
 pub mod anti_nuke;
 pub mod anti_raid;
+
+pub mod command_control;
+
+pub mod config_backup;

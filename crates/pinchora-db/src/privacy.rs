@@ -205,6 +205,8 @@ pub const OTHER_TABLES: &[&str] = &[
     "server_achievements",
     "event_settings",
     "events",
+    "command_control",
+    "config_restore_points",
     "verification",
     "raid_settings",
     "raid_events",

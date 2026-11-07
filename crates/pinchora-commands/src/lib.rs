@@ -149,7 +149,11 @@ pub async fn handle_interaction(app: Arc<App>, mut interaction: Interaction, res
     // runs nor passes a module's switch.
     if cx.interaction.kind == InteractionType::ApplicationCommandAutocomplete {
         if let Some(InteractionData::ApplicationCommand(command)) = data {
+            let allowed = command_control::autocomplete_allowed(&cx, &command)
+                .await
+                .unwrap_or(false);
             let choices = match command.name.as_str() {
+                _ if !allowed => Vec::new(),
                 "birthday" | "birthdays" => commands::birthdays::autocomplete(&command),
                 "tag" | "customcommand" => commands::tag::autocomplete(&cx, &command).await,
                 _ => commands::modules::autocomplete(cx.lang(), &command),
@@ -214,3 +218,9 @@ pub use anti_nuke::{
     restore_antinuke, restore_antinuke_actor_roles, save_antinuke_config, spawn_ticker as spawn_antinuke_ticker,
 };
 pub use birthdays::{spawn_ticker as spawn_birthdays_ticker, tick as birthdays_tick};
+
+mod command_control;
+pub use command_control::{command_reserved_aliases, control_catalog};
+
+mod config_backup;
+pub use config_backup::{backup_apply, backup_names, backup_preview, backup_rate_limit, validate_backup};

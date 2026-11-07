@@ -123,3 +123,6 @@ async fn headers(State(state): State<WebState>, request: Request, next: Next) ->
     metrics::histogram!("pinchora_web_request_seconds", "route" => route).record(started.elapsed().as_secs_f64());
     response
 }
+
+mod command_control;
+mod config_backup;

@@ -12,11 +12,20 @@ pub const MAX_CHANNELS: usize = 50;
 /// Commands that stay available whatever a server switches off: the way back in, the basics, and
 /// what is the player's own business rather than the server's (their privacy and data, and the
 /// reminders they asked for).
-pub const NEVER_GATED: [&str; 6] = ["config", "help", "language", "ping", "privacy", "remind"];
+pub const NEVER_GATED: [&str; 8] = [
+    "config",
+    "help",
+    "language",
+    "ping",
+    "privacy",
+    "remind",
+    "commandcontrol",
+    "backup",
+];
 
 /// The custom-id prefixes of the buttons and menus the [`NEVER_GATED`] commands send: they have no
 /// module either.
-pub const NEVER_GATED_PREFIXES: [&str; 3] = ["hp", "pr", "rm"];
+pub const NEVER_GATED_PREFIXES: [&str; 5] = ["hp", "pr", "rm", "kc", "cf"];
 
 /// Where a module's settings are shown together. Roles, Safety, Community and Feeds start empty: the
 /// dashboard shows a group once a module belongs to it.
@@ -134,11 +143,12 @@ pub enum Module {
     Achievements,
     Utility,
     Events,
+    CommandControl,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 46] = [
+    pub const ALL: [Self; 47] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -185,6 +195,7 @@ impl Module {
         Self::Achievements,
         Self::Utility,
         Self::Events,
+        Self::CommandControl,
     ];
 
     /// The key stored in the database and used in the API.
@@ -236,6 +247,7 @@ impl Module {
             Self::Achievements => "achievements",
             Self::Utility => "utility",
             Self::Events => "events",
+            Self::CommandControl => "command_control",
         }
     }
 
@@ -291,6 +303,7 @@ impl Module {
             Self::Achievements => "Achievements",
             Self::Utility => "Messages",
             Self::Events => "Events",
+            Self::CommandControl => "Command control",
         }
     }
 
@@ -353,6 +366,7 @@ impl Module {
             Self::AntiRaid => "Join detection and reversible raid lockdown.",
             Self::Achievements => "Server achievements and their rewards.",
             Self::Events => "/event: scheduled server events and RSVPs.",
+            Self::CommandControl => "Command permissions, aliases and configuration backups.",
             Self::Feeds => {
                 "/feeds: new YouTube videos, RSS and podcast episodes, Reddit and Bluesky posts in a channel."
             }
@@ -404,6 +418,7 @@ impl Module {
             Self::Achievements => Group::Players,
             Self::Utility => Group::Server,
             Self::Events => Group::Community,
+            Self::CommandControl => Group::Server,
         }
     }
 
@@ -421,6 +436,7 @@ impl Module {
             Self::AntiRaid => Scope::Server,
             Self::Birthdays => Scope::Server,
             Self::Achievements => Scope::Server,
+            Self::CommandControl => Scope::Server,
             _ => Scope::Channels,
         }
     }
@@ -643,6 +659,9 @@ impl GuildModules {
     /// `enabled` means nothing, so it reads as on.
     pub fn rule(&self, module: Module) -> ModuleRule {
         let mut rule = self.rules.get(&module).cloned().unwrap_or_default();
+        if module == Module::CommandControl {
+            return ModuleRule::default();
+        }
         if module.setting().is_some() {
             rule.enabled = true;
         }
