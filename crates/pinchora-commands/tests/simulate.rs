@@ -12649,6 +12649,30 @@ async fn admin_paths_refuse_members_without_manage_server() {
     });
     let rows: Vec<(&str, Value)> = vec![
         (
+            "achievementadmin add",
+            json!([sub(
+                "add",
+                vec![
+                    text_option("name", "No"),
+                    text_option("kind", "custom"),
+                    int_option("target", 1)
+                ]
+            )]),
+        ),
+        (
+            "achievementadmin edit",
+            json!([sub("edit", vec![int_option("id", 1), text_option("name", "No")])]),
+        ),
+        (
+            "achievementadmin remove",
+            json!([sub("remove", vec![int_option("id", 1)])]),
+        ),
+        ("achievementadmin list", json!([sub("list", vec![])])),
+        (
+            "achievementadmin grant",
+            json!([sub("grant", vec![int_option("id", 1), user_option("user", target)])]),
+        ),
+        (
             "verification setup",
             json!([sub("setup", vec![bool_option("enabled", true)])]),
         ),

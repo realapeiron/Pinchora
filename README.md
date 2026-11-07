@@ -705,7 +705,7 @@ Attribution compares Discord invite uses on each join, with a Redis snapshot per
 
 ### Achievements
 
-Servers can configure up to 25 achievements. Members see earned and locked milestones on a paged pixel card, with a progress bar for each visible rule. Secret achievements appear only after they are earned. Progress is checked at most once per member per minute after accepted chat, and immediately on level-up; rules are cached for 60 seconds. A milestone can give server points, a safe role, and an announcement. It never mints shells.
+Servers can configure up to 25 achievements. Members see earned and locked milestones on a paged pixel card, with a progress bar for each visible rule. Secret achievements appear only after they are earned. Accepted chat, voice XP ticks and level-ups share a once-per-member-per-minute evaluation limit (at most 100 members per server per minute and 32 concurrent evaluations per process). Rules are cached for 60 seconds and edits invalidate every subscribed pod. A milestone can give server points, a safe role, and an announcement. It never mints shells.
 
 | Command | What it does |
 |---|---|
@@ -714,7 +714,7 @@ Servers can configure up to 25 achievements. Members see earned and locked miles
 | `/achievementadmin edit id […]`, `/achievementadmin remove id`, `/achievementadmin list` | Change, remove, or list milestones (Manage Server). |
 | `/achievementadmin grant id user` | Grant a custom achievement once (Manage Server). |
 
-Kinds: messages, voice minutes, level, active days, invites, stars received, tickets closed, reputation, games won, fish caught, and custom. A kind whose source module is off is hidden and does not grant. The dashboard's **Achievements** page edits cards, picks icons from the existing glyphs and badge atlas, previews a card, and lists members who earned one. Grants are unique in `member_achievements`; point rewards and the grant commit together under the player lock. `server_achievements` holds the server's rules.
+Kinds: messages, voice minutes, level, active days, invites, stars received, tickets closed, reputation, games won, fish caught, and custom. A kind whose source module is off is hidden and does not grant. The dashboard's **Achievements** page edits cards, picks icons from the existing glyphs and badge atlas, previews a card, and lists members who earned one. Grants are unique in `member_achievements`; point rewards and the grant commit together under the player lock. `server_achievements` holds the server's rules. Announcement batches post one summary per channel per minute, including when existing progress earns a new rule. Invites exclude self, fake and under-seven-day accounts and count each eligible live invitee once. Stars count distinct external reactions from boards that disallow bots, excluding accounts under seven days old and role weight multipliers; closing one's own ticket earns no progress.
 
 ### Stats
 

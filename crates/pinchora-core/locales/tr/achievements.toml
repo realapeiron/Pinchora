@@ -3,6 +3,7 @@ achievements = "Başarımlar"
 [module-blurb]
 achievements = "Sunucu başarımları ve ödülleri."
 [achievements]
+announcement-batch = "Üyeler sunucu başarımları kazandı! İlerlemeni görmek için /achievements kullan."
 guild-only = "Bu komutu bir sunucuda kullan."
 no-bots = "Botlar başarım kazanamaz."
 manage-needed = "Başarımları değiştirmek için Sunucuyu Yönet iznin olmalı."

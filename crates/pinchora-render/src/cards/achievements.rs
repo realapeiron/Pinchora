@@ -7,7 +7,7 @@ use pinchora_core::i18n::Lang;
 use super::{PIXEL, SANS, text};
 use crate::{
     Theme,
-    svg::{CRAB, HEART, SHELL, STAR, background, data_uri_png, escape, fit_laid_out, sprite},
+    svg::{CRAB, HEART, SHELL, STAR, background, data_uri_png, escape, fit_laid_out, sprite, thousands_in},
 };
 
 pub struct AchievementCell {
@@ -185,7 +185,11 @@ impl AchievementsCard {
                 false,
                 &t.muted,
                 "end",
-                &format!("{}/{}", cell.progress.min(cell.target), cell.target),
+                &format!(
+                    "{}/{}",
+                    thousands_in(self.lang, cell.progress.clamp(0, cell.target.max(0))),
+                    thousands_in(self.lang, cell.target)
+                ),
             );
         }
         s.push_str("</svg>");

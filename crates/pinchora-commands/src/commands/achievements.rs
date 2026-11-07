@@ -9,7 +9,7 @@ use std::{
 use moka::future::Cache;
 use pinchora_core::{
     achievements::{self, Kind},
-    modules::Module,
+    modules::{Access, Module},
     settings::{self, RoleFacts},
     t,
 };
@@ -43,7 +43,15 @@ static RULES: LazyLock<Cache<u64, Arc<Vec<AchievementRow>>>> = LazyLock::new(|| 
         .build()
 });
 
-pub async fn invalidate(guild: u64) {
+pub async fn invalidate(app: &App, guild: u64) -> anyhow::Result<()> {
+    forget(guild).await;
+    app.cache
+        .publish_invalidation(pinchora_cache::Invalidation::Guild(guild))
+        .await?;
+    Ok(())
+}
+
+pub(crate) async fn forget(guild: u64) {
     RULES.invalidate(&guild).await;
 }
 
@@ -265,7 +273,7 @@ impl AchievementAdmin {
                     enabled: true,
                 };
                 let result = cx.app.db.save_achievement(guild, None, &draft).await?;
-                RULES.invalidate(&guild).await;
+                invalidate(&cx.app, guild).await?;
                 cx.reply_ephemeral(save_text(cx, result)).await
             }
             Self::Edit(c) => {
@@ -320,12 +328,12 @@ impl AchievementAdmin {
                     enabled: c.enabled.unwrap_or(old.enabled),
                 };
                 let result = cx.app.db.save_achievement(guild, Some(c.id), &draft).await?;
-                RULES.invalidate(&guild).await;
+                invalidate(&cx.app, guild).await?;
                 cx.reply_ephemeral(save_text(cx, result)).await
             }
             Self::Remove(c) => {
                 let removed = cx.app.db.remove_achievement(guild, c.id).await?;
-                RULES.invalidate(&guild).await;
+                invalidate(&cx.app, guild).await?;
                 cx.reply_ephemeral(t!(
                     cx.lang(),
                     if removed {
@@ -358,7 +366,7 @@ impl AchievementAdmin {
                 cx.reply_ephemeral(text).await
             }
             Self::Grant(c) => {
-                if c.user.resolved.bot {
+                if c.user.resolved.bot || !human_member(&cx.app, guild, c.user.resolved.id.get()).await? {
                     return cx.reply_ephemeral(t!(cx.lang(), "achievements.no-bots")).await;
                 }
                 let Some(row) = cx.app.db.achievement(guild, c.id).await? else {
@@ -368,7 +376,7 @@ impl AchievementAdmin {
                     return cx.reply_ephemeral(t!(cx.lang(), "achievements.custom-only")).await;
                 }
                 let user = c.user.resolved.id.get();
-                let Some(rule) = cx.app.db.grant_achievement(guild, user, c.id, true).await? else {
+                let Some(rule) = cx.app.db.grant_achievement(guild, user, c.id, Kind::Custom).await? else {
                     return cx.reply_ephemeral(t!(cx.lang(), "achievements.already-earned")).await;
                 };
                 deliver(&cx.app, guild, user, &rule).await;
@@ -422,7 +430,7 @@ async fn visible(app: &App, guild: u64, rules: &[AchievementRow]) -> Vec<Achieve
             let on = match allowed.get(&module) {
                 Some(on) => *on,
                 None => {
-                    let on = app.module_allowed(guild, None, module).await;
+                    let on = source_enabled(app, guild, kind).await;
                     allowed.insert(module, on);
                     on
                 }
@@ -437,7 +445,8 @@ async fn visible(app: &App, guild: u64, rules: &[AchievementRow]) -> Vec<Achieve
 }
 
 async fn card(cx: &Cx, guild: u64, user: u64, name: &str, page: usize) -> anyhow::Result<InteractionResponseData> {
-    let all = rules(&cx.app, guild).await?;
+    // A privacy edit must take effect even if this pod missed a cache notification.
+    let all = cx.app.db.achievements(guild).await?;
     let earned: HashSet<i64> = cx
         .app
         .db
@@ -477,9 +486,9 @@ async fn card(cx: &Cx, guild: u64, user: u64, name: &str, page: usize) -> anyhow
             earned: got,
         });
     }
-    let title = t!(cx.lang(), "achievements.card.title", user = name);
-    let page_label = t!(cx.lang(), "achievements.card.page", page = page + 1, pages = pages);
-    let lang = cx.lang();
+    let lang = cx.app.guild_lang(guild).await;
+    let title = t!(lang, "achievements.card.title", user = name);
+    let page_label = t!(lang, "achievements.card.page", page = page + 1, pages = pages);
     let png = cx
         .app
         .render(move |r| {
@@ -551,7 +560,10 @@ pub async fn on_component(cx: &Cx, mut parts: std::str::Split<'_, char>) -> anyh
 
 /// Called after moderation accepts a message; Redis limits evaluation to once per member per minute.
 pub async fn on_message(app: &Arc<App>, guild: u64, user: u64) {
-    if !app.module_allowed(guild, None, Module::Achievements).await {
+    if !matches!(
+        app.module_access(guild, None, Module::Achievements).await,
+        Ok(Access::Allowed)
+    ) {
         return;
     }
     match rules(app, guild).await {
@@ -562,14 +574,29 @@ pub async fn on_message(app: &Arc<App>, guild: u64, user: u64) {
             return;
         }
     }
+    static SLOTS: LazyLock<Arc<tokio::sync::Semaphore>> = LazyLock::new(|| Arc::new(tokio::sync::Semaphore::new(32)));
+    let Ok(permit) = SLOTS.clone().try_acquire_owned() else {
+        return;
+    };
     match app
         .cache
         .try_cooldown(&format!("ah:tick:{guild}:{user}"), Duration::from_secs(60))
         .await
     {
         Ok(None) => {
+            // A shared fixed-minute budget bounds work even across gateway pods.
+            let minute = app.now().timestamp().div_euclid(60);
+            if !matches!(
+                app.cache
+                    .incr(&format!("ah:budget:{guild}:{minute}"), Duration::from_secs(120))
+                    .await,
+                Ok(1..=100)
+            ) {
+                return;
+            }
             let task_app = app.clone();
-            app.spawn(async move {
+            app.spawn_event("achievement", async move {
+                let _permit = permit;
                 if let Err(error) = evaluate(&task_app, guild, user).await {
                     tracing::warn!(guild, user, %error, "achievement evaluation failed");
                 }
@@ -581,20 +608,25 @@ pub async fn on_message(app: &Arc<App>, guild: u64, user: u64) {
 }
 
 pub async fn on_level_up(app: &Arc<App>, guild: u64, user: u64) {
-    let task_app = app.clone();
-    app.spawn(async move {
-        if let Err(error) = evaluate(&task_app, guild, user).await {
-            tracing::warn!(guild, user, %error, "level achievement evaluation failed");
-        }
-    });
+    on_message(app, guild, user).await;
 }
 
 pub async fn evaluate(app: &App, guild: u64, user: u64) -> anyhow::Result<()> {
-    if !app.module_allowed(guild, None, Module::Achievements).await {
+    if !matches!(
+        app.module_access(guild, None, Module::Achievements).await,
+        Ok(Access::Allowed)
+    ) {
         return Ok(());
     }
     let all = rules(app, guild).await?;
     let visible = visible(app, guild, &all).await;
+    if !visible.iter().any(|r| r.kind != "custom") {
+        return Ok(());
+    }
+    // Resolve the recipient at grant time; cached counters are not proof of a human member.
+    if !human_member(app, guild, user).await? {
+        return Ok(());
+    }
     let earned: HashSet<i64> = app
         .db
         .earned_achievements(guild, user)
@@ -603,7 +635,11 @@ pub async fn evaluate(app: &App, guild: u64, user: u64) -> anyhow::Result<()> {
         .map(|(id, _)| id)
         .collect();
     let mut progress = HashMap::new();
-    for rule in visible.iter().filter(|r| !earned.contains(&r.id)) {
+    for rule in visible
+        .iter()
+        .filter(|r| !earned.contains(&r.id))
+        .take(achievements::MAX_ACHIEVEMENTS)
+    {
         let Some(kind) = Kind::parse(&rule.kind) else { continue };
         if kind == Kind::Custom {
             continue;
@@ -617,7 +653,7 @@ pub async fn evaluate(app: &App, guild: u64, user: u64) -> anyhow::Result<()> {
             }
         };
         if value >= rule.target
-            && let Some(granted) = app.db.grant_achievement(guild, user, rule.id, false).await?
+            && let Some(granted) = app.db.grant_achievement(guild, user, rule.id, kind).await?
         {
             deliver(app, guild, user, &granted).await;
         }
@@ -631,14 +667,15 @@ async fn deliver(app: &App, guild: u64, user: u64, rule: &AchievementRow) {
     {
         tracing::warn!(guild, user, role_id, %error, "achievement role not granted");
     }
-    if let Some(channel) = rule.announce_channel_id {
+    if let Some(channel) = rule.announce_channel_id
+        && app
+            .cache
+            .once(&format!("ah:announce:{guild}:{channel}"), Duration::from_secs(60))
+            .await
+            .unwrap_or(false)
+    {
         let lang = app.guild_lang(guild).await;
-        let text = t!(
-            lang,
-            "achievements.announcement",
-            user = user,
-            name = crate::custom::scrub_value(&rule.name)
-        );
+        let text = t!(lang, "achievements.announcement-batch");
         if let Err(error) = app
             .http
             .create_message(Id::new(channel as u64))
@@ -686,4 +723,35 @@ async fn grant_role(app: &App, guild: u64, user: u64, role_id: u64) -> anyhow::R
         .reason("Achievement reward")
         .await?;
     Ok(())
+}
+
+async fn human_member(app: &App, guild: u64, user: u64) -> anyhow::Result<bool> {
+    if user == app.application_id.get() {
+        return Ok(false);
+    }
+    let member = app
+        .http
+        .guild_member(Id::new(guild), Id::new(user))
+        .await?
+        .model()
+        .await?;
+    Ok(!member.user.bot)
+}
+
+/// The legacy leveling switch lives in guild settings, outside the module channel rules.
+/// Reward evaluation fails closed when either source of configuration is unavailable.
+pub async fn source_enabled(app: &App, guild: u64, kind: Kind) -> bool {
+    let Some(module) = kind.module() else { return true };
+    // These are server totals: a source restricted to selected channels is still enabled.
+    let Ok(rules) = app.guild_modules(guild).await else {
+        return false;
+    };
+    if !rules.rule(module).enabled {
+        return false;
+    }
+    module != Module::Leveling
+        || app
+            .guild_settings(guild)
+            .await
+            .is_ok_and(|settings| settings.leveling_enabled)
 }

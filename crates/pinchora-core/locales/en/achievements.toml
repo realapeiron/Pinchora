@@ -3,6 +3,7 @@ achievements = "Achievements"
 [module-blurb]
 achievements = "Server achievements and their rewards."
 [achievements]
+announcement-batch = "Members earned server achievements! Use /achievements to see your progress."
 guild-only = "Use this in a server."
 no-bots = "Bots cannot earn achievements."
 manage-needed = "You need Manage Server to change achievements."

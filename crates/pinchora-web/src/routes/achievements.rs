@@ -42,8 +42,8 @@ async fn list(State(state): State<WebState>, managed: ManagedGuild) -> ApiResult
     let lang = state.app.guild_lang(managed.id).await;
     let mut items = Vec::new();
     for row in state.app.db.achievements(managed.id).await? {
-        let module_off = match Kind::parse(&row.kind).and_then(Kind::module) {
-            Some(module) => !state.app.module_allowed(managed.id, None, module).await,
+        let module_off = match Kind::parse(&row.kind) {
+            Some(kind) => !pinchora_commands::achievement_source_enabled(&state.app, managed.id, kind).await,
             None => false,
         };
         items.push(row_json(&row, module_off));
@@ -156,6 +156,15 @@ async fn save(state: &WebState, managed: &ManagedGuild, id: Option<i64>, body: B
         secret: body.secret,
         enabled: body.enabled,
     };
+    let before = match id {
+        Some(id) => state
+            .app
+            .db
+            .achievement(managed.id, id)
+            .await?
+            .map(|row| row_json(&row, false)),
+        None => None,
+    };
     let outcome = state.app.db.save_achievement(managed.id, id, &draft).await?;
     let id = match outcome {
         AchievementSave::Saved(id) => id,
@@ -163,7 +172,7 @@ async fn save(state: &WebState, managed: &ManagedGuild, id: Option<i64>, body: B
         AchievementSave::NameTaken => return Err(invalid("name")),
         AchievementSave::Missing => return Err(ApiError::not_found()),
     };
-    pinchora_commands::invalidate_achievements(managed.id).await;
+    pinchora_commands::invalidate_achievements(&state.app, managed.id).await?;
     let row = state
         .app
         .db
@@ -177,7 +186,7 @@ async fn save(state: &WebState, managed: &ManagedGuild, id: Option<i64>, body: B
             guild: managed.id,
             action: "achievements.save",
             target: Some(&body.name),
-            before: json!({"id":id,"previous":id}),
+            before: json!(before),
             after: row_json(&row, false),
         },
         None,
@@ -209,10 +218,16 @@ async fn remove(
     managed: ManagedGuild,
     Path((_, id)): Path<(String, i64)>,
 ) -> ApiResult<StatusCode> {
+    let before = state
+        .app
+        .db
+        .achievement(managed.id, id)
+        .await?
+        .ok_or_else(ApiError::not_found)?;
     if !state.app.db.remove_achievement(managed.id, id).await? {
         return Err(ApiError::not_found());
     }
-    pinchora_commands::invalidate_achievements(managed.id).await;
+    pinchora_commands::invalidate_achievements(&state.app, managed.id).await?;
     let target = id.to_string();
     audit::finish(
         &state,
@@ -221,7 +236,7 @@ async fn remove(
             guild: managed.id,
             action: "achievements.remove",
             target: Some(&target),
-            before: json!({"id":id}),
+            before: row_json(&before, false),
             after: json!(null),
         },
         None,

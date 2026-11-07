@@ -98,7 +98,13 @@ impl Db {
             if count >= MAX_ACHIEVEMENTS as i64 {
                 return Ok(AchievementSave::Full);
             }
-        } else if self.achievement(guild, id.unwrap_or_default()).await?.is_none() {
+        } else if sqlx::query("SELECT id FROM server_achievements WHERE guild_id=$1 AND id=$2 FOR UPDATE")
+            .bind(sql_id(guild))
+            .bind(id)
+            .fetch_optional(&mut *tx)
+            .await?
+            .is_none()
+        {
             return Ok(AchievementSave::Missing);
         }
         let result = sqlx::query_scalar::<_, i64>("INSERT INTO server_achievements (id,guild_id,name,description,icon,kind,target,reward_role_id,reward_points,announce_channel_id,secret,enabled)
@@ -181,39 +187,8 @@ impl Db {
 
     /// Only callers with a configured kind ask for progress. Old stats are retained for 90 days.
     pub async fn achievement_progress(&self, guild: u64, user: u64, kind: Kind) -> anyhow::Result<i64> {
-        let g = sql_id(guild);
-        let u = sql_id(user);
-        let value = match kind {
-            Kind::Messages | Kind::VoiceMinutes | Kind::DaysActive => {
-                let column = match kind { Kind::Messages => "sum(messages)", Kind::VoiceMinutes => "sum(voice_minutes)", _ => "count(*) FILTER (WHERE messages > 0 OR voice_minutes > 0)" };
-                sqlx::query_scalar::<_, Option<i64>>(sqlx::AssertSqlSafe(format!("SELECT {column} FROM member_activity_daily WHERE guild_id=$1 AND user_id=$2")))
-                    .bind(g).bind(u).fetch_one(self.pool()).await?.unwrap_or(0)
-            }
-            Kind::Level => {
-                let xp: Option<i64> = sqlx::query_scalar("SELECT xp FROM members WHERE guild_id=$1 AND user_id=$2")
-                    .bind(g).bind(u).fetch_optional(self.pool()).await?;
-                i64::from(leveling::level_of(xp.unwrap_or(0)))
-            }
-            Kind::Invites => {
-                let regular: i64 = sqlx::query_scalar("SELECT count(*) FROM invite_joins WHERE guild_id=$1 AND inviter_id=$2 AND left_at IS NULL AND NOT fake AND source IN ('invite','temporary')")
-                    .bind(g).bind(u).fetch_one(self.pool()).await?;
-                let bonus: Option<i32> = sqlx::query_scalar("SELECT bonus FROM invite_bonus WHERE guild_id=$1 AND user_id=$2")
-                    .bind(g).bind(u).fetch_optional(self.pool()).await?;
-                (regular + i64::from(bonus.unwrap_or(0))).max(0)
-            }
-            Kind::StarsReceived => sqlx::query_scalar::<_, Option<i64>>("SELECT sum(p.star_count)::BIGINT FROM starboard_posts p JOIN starboards b ON b.id=p.starboard_id WHERE b.guild_id=$1 AND p.author_id=$2")
-                .bind(g).bind(u).fetch_one(self.pool()).await?.unwrap_or(0),
-            Kind::TicketsClosed => sqlx::query_scalar::<_, i64>("SELECT count(*) FROM tickets WHERE guild_id=$1 AND closed_by=$2 AND status='closed'")
-                .bind(g).bind(u).fetch_one(self.pool()).await?,
-            Kind::Reputation => i64::from(sqlx::query_scalar::<_, i32>("SELECT reputation FROM users WHERE id=$1")
-                .bind(u).fetch_optional(self.pool()).await?.unwrap_or(0)),
-            Kind::GamesWon => sqlx::query_scalar::<_, Option<i64>>("SELECT sum(won)::BIGINT FROM game_stats WHERE user_id=$1")
-                .bind(u).fetch_one(self.pool()).await?.unwrap_or(0),
-            Kind::FishCaught => sqlx::query_scalar::<_, Option<i64>>("SELECT sum(caught)::BIGINT FROM fish_book WHERE user_id=$1")
-                .bind(u).fetch_one(self.pool()).await?.unwrap_or(0),
-            Kind::Custom => 0,
-        };
-        Ok(value.max(0))
+        let mut conn = self.pool().acquire().await?;
+        achievement_progress_on(&mut conn, guild, user, kind).await
     }
 
     /// Inserts the grant and its server points in one transaction. A duplicate gives nothing.
@@ -222,7 +197,7 @@ impl Db {
         guild: u64,
         user: u64,
         id: i64,
-        manual: bool,
+        expected_kind: Kind,
     ) -> anyhow::Result<Option<AchievementRow>> {
         retry("grant_achievement", || async {
             let mut tx = self.pool().begin().await?;
@@ -230,16 +205,62 @@ impl Db {
             let rule: Option<AchievementRow> = sqlx::query_as(sqlx::AssertSqlSafe(format!("SELECT {COLUMNS} FROM server_achievements WHERE guild_id=$1 AND id=$2 AND enabled FOR UPDATE")))
                 .bind(sql_id(guild)).bind(id).fetch_optional(&mut *tx).await?;
             let Some(rule) = rule else { return Ok(None) };
-            if (rule.kind == "custom") != manual { return Ok(None) }
+            if rule.kind != expected_kind.key() { return Ok(None) }
+            // A cached rule may have been edited while evaluation was in flight. Check the
+            // locked definition's kind and target before any reward is written.
+            if expected_kind != Kind::Custom {
+                let Some(kind) = Kind::parse(&rule.kind) else { return Ok(None) };
+                if achievement_progress_on(&mut tx, guild, user, kind).await? < rule.target { return Ok(None) }
+            }
             let fresh = sqlx::query("INSERT INTO member_achievements(guild_id,user_id,achievement_id) SELECT $1,$2,$3 WHERE NOT EXISTS (SELECT 1 FROM deleted_users WHERE user_id=$2) ON CONFLICT DO NOTHING")
                 .bind(sql_id(guild)).bind(sql_id(user)).bind(id).execute(&mut *tx).await?.rows_affected() == 1;
             if !fresh { return Ok(None) }
             if rule.reward_points > 0 {
-                sqlx::query("INSERT INTO members(guild_id,user_id,points) VALUES($1,$2,$3) ON CONFLICT(guild_id,user_id) DO UPDATE SET points=members.points+EXCLUDED.points")
-                    .bind(sql_id(guild)).bind(sql_id(user)).bind(rule.reward_points).execute(&mut *tx).await?;
+                crate::members::give_points_in(&mut tx, guild, user, rule.reward_points).await?;
             }
             tx.commit().await?;
             Ok(Some(rule))
         }).await
     }
+}
+
+async fn achievement_progress_on(
+    conn: &mut sqlx::PgConnection,
+    guild: u64,
+    user: u64,
+    kind: Kind,
+) -> anyhow::Result<i64> {
+    let g = sql_id(guild);
+    let u = sql_id(user);
+    let value = match kind {
+            Kind::Messages | Kind::VoiceMinutes | Kind::DaysActive => {
+                let column = match kind { Kind::Messages => "sum(messages)::BIGINT", Kind::VoiceMinutes => "sum(voice_minutes)::BIGINT", _ => "count(*) FILTER (WHERE messages > 0 OR voice_minutes > 0)" };
+                sqlx::query_scalar::<_, Option<i64>>(sqlx::AssertSqlSafe(format!("SELECT {column} FROM member_activity_daily WHERE guild_id=$1 AND user_id=$2")))
+                    .bind(g).bind(u).fetch_one(&mut *conn).await?.unwrap_or(0)
+            }
+            Kind::Level => {
+                let xp: Option<i64> = sqlx::query_scalar("SELECT xp FROM members WHERE guild_id=$1 AND user_id=$2")
+                    .bind(g).bind(u).fetch_optional(&mut *conn).await?;
+                i64::from(leveling::level_of(xp.unwrap_or(0)))
+            }
+            Kind::Invites => {
+                let regular: i64 = sqlx::query_scalar("SELECT count(DISTINCT user_id) FROM invite_joins WHERE guild_id=$1 AND inviter_id=$2 AND user_id<>$2 AND left_at IS NULL AND NOT fake AND source IN ('invite','temporary') AND to_timestamp(((user_id >> 22) + 1420070400000)::DOUBLE PRECISION / 1000) <= joined_at - interval '7 days'")
+                    .bind(g).bind(u).fetch_one(&mut *conn).await?;
+                let bonus: Option<i32> = sqlx::query_scalar("SELECT bonus FROM invite_bonus WHERE guild_id=$1 AND user_id=$2")
+                    .bind(g).bind(u).fetch_optional(&mut *conn).await?;
+                (regular + i64::from(bonus.unwrap_or(0))).max(0)
+            }
+            Kind::StarsReceived => sqlx::query_scalar::<_, i64>("SELECT count(DISTINCT (s.message_id,s.user_id)) FROM starboard_stars s JOIN starboard_posts p USING(starboard_id,message_id) JOIN starboards b ON b.id=p.starboard_id WHERE b.guild_id=$1 AND p.author_id=$2 AND s.user_id<>$2 AND b.enabled AND NOT b.allow_bots AND p.sync_due IS NULL AND to_timestamp(((s.user_id >> 22) + 1420070400000)::DOUBLE PRECISION / 1000) <= p.created_at - interval '7 days'")
+                .bind(g).bind(u).fetch_one(&mut *conn).await?,
+            Kind::TicketsClosed => sqlx::query_scalar::<_, i64>("SELECT count(*) FROM tickets WHERE guild_id=$1 AND closed_by=$2 AND opener_id<>$2 AND status='closed'")
+                .bind(g).bind(u).fetch_one(&mut *conn).await?,
+            Kind::Reputation => i64::from(sqlx::query_scalar::<_, i32>("SELECT reputation FROM users WHERE id=$1")
+                .bind(u).fetch_optional(&mut *conn).await?.unwrap_or(0)),
+            Kind::GamesWon => sqlx::query_scalar::<_, Option<i64>>("SELECT sum(won)::BIGINT FROM game_stats WHERE user_id=$1")
+                .bind(u).fetch_one(&mut *conn).await?.unwrap_or(0),
+            Kind::FishCaught => sqlx::query_scalar::<_, Option<i64>>("SELECT sum(caught)::BIGINT FROM fish_book WHERE user_id=$1")
+                .bind(u).fetch_one(&mut *conn).await?.unwrap_or(0),
+            Kind::Custom => 0,
+        };
+    Ok(value.max(0))
 }
