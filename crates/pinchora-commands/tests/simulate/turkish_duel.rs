@@ -130,6 +130,7 @@ fn mover(reply: &Reply, a: u64, b: u64) -> u64 {
 fn reply_of(post: &Post) -> Reply {
     use twilight_model::http::interaction::InteractionResponseType;
     let mut reply = Reply::new(InteractionResponseType::UpdateMessage);
+    reply.message_id = post.message;
     let embeds = serde_json::from_value(post.body["embeds"].clone()).ok();
     let components = serde_json::from_value::<Vec<Component>>(post.body["components"].clone()).ok();
     reply.edit(post.body["content"].as_str().map(str::to_owned), embeds, components);
@@ -530,7 +531,7 @@ async fn duel_time_outs_are_in_the_servers_language() {
     // An unanswered challenge expires on its message.
     let unanswered = invite(&mut sim, a, b, "rps", vec![int_option("bet", 50)]).await;
     let session = session_of(&unanswered);
-    let message = unique();
+    let message = unanswered.message_id;
     sim.app
         .db
         .set_game_message(session, CHANNEL_ID, message)
@@ -575,7 +576,7 @@ async fn duel_time_outs_are_in_the_servers_language() {
     assert_no_keys(edit.content());
     assert_eq!(edit.body["components"].as_array().map(Vec::len), Some(0));
 
-    // A click on a late game ends it in place, in the language of the click.
+    // A click on a late public game ends it in the server's language, even for an English clicker.
     let e = unique();
     fund(&sim, e, 300).await;
     let challenge = invite(&mut sim, e, d, "connect4", vec![int_option("bet", 50)]).await;
@@ -586,7 +587,7 @@ async fn duel_time_outs_are_in_the_servers_language() {
         .component(e, &board.button("4").custom_id.clone().expect("id"), &[], &board)
         .await;
     assert!(
-        ended.content().contains("ran out of time") && ended.components.is_empty(),
+        ended.content().contains("için süre doldu, hükmen yenildi") && ended.components.is_empty(),
         "{}",
         ended.content()
     );

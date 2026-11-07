@@ -226,6 +226,8 @@ type Calls = Arc<Mutex<Vec<Call>>>;
 #[derive(Clone)]
 struct Mock {
     calls: Calls,
+    /// An interaction token always resolves to the same channel and original message.
+    originals: Arc<Mutex<HashMap<String, (u64, u64)>>>,
     /// Roles the server has besides the bot's own, as Discord's JSON.
     roles: Arc<Mutex<Vec<Value>>>,
     /// Roles each member holds; the role routes change them.
@@ -655,8 +657,16 @@ async fn discord(
         _ => {}
     }
     // A handler asking which message it just posted (`GET .../messages/@original`).
-    if method == Method::GET && path.contains("/webhooks/") && path.ends_with("/messages/@original") {
-        return (StatusCode::OK, message_json(CHANNEL_ID, unique()).to_string());
+    if method == Method::GET
+        && let [.., "webhooks", _, token, "messages", "@original"] = parts.as_slice()
+    {
+        let (channel, message) = *mock
+            .originals
+            .lock()
+            .unwrap()
+            .entry((*token).to_owned())
+            .or_insert_with(|| (CHANNEL_ID, unique()));
+        return (StatusCode::OK, message_json(channel, message).to_string());
     }
     if method == Method::GET || !path.contains("/webhooks/") {
         return (StatusCode::NOT_FOUND, "{}".to_owned());
@@ -769,6 +779,8 @@ fn init_logging() {
 /// edits applied.
 #[derive(Clone)]
 struct Reply {
+    /// Discord preserves this id across updates and later component interactions.
+    message_id: u64,
     /// How the handler first answered; a defer means the real content came by REST.
     kind: InteractionResponseType,
     content: Option<String>,
@@ -790,6 +802,7 @@ struct Reply {
 impl Reply {
     fn new(kind: InteractionResponseType) -> Self {
         Self {
+            message_id: unique(),
             kind,
             content: None,
             embeds: Vec::new(),
@@ -822,7 +835,7 @@ impl Reply {
 
     /// `first` is the answer that went back to Discord; `on` the message a button was
     /// clicked on, which an update edits in place.
-    fn build(first: InteractionResponse, on: Option<&Reply>, calls: Vec<Call>) -> Self {
+    fn build(first: InteractionResponse, on: Option<&Reply>, calls: Vec<Call>, token: &str) -> Self {
         let updates = matches!(
             first.kind,
             InteractionResponseType::UpdateMessage | InteractionResponseType::DeferredUpdateMessage
@@ -870,7 +883,14 @@ impl Reply {
                 .map(|a| (a.filename, a.file))
                 .collect();
         }
-        for call in calls {
+        // A delayed bite or another background edit belongs to its original interaction, even if
+        // it arrives while this handler is running. Discord never applies it to this reply.
+        let webhook = format!("/webhooks/{APPLICATION_ID}/{token}");
+        for call in calls.into_iter().filter(|call| {
+            call.path
+                .split_once(&webhook)
+                .is_some_and(|(_, tail)| tail.is_empty() || tail.starts_with('/'))
+        }) {
             let body = &call.body;
             let embeds = body
                 .get("embeds")
@@ -1009,7 +1029,7 @@ impl Reply {
     /// The message as Discord attaches it to a component interaction.
     fn message_json(&self) -> Value {
         json!({
-            "id": unique().to_string(),
+            "id": self.message_id.to_string(),
             "channel_id": CHANNEL_ID.to_string(),
             "type": 0,
             "author": {
@@ -1150,6 +1170,7 @@ impl Sim {
         let calls = Calls::default();
         let state = Mock {
             calls: calls.clone(),
+            originals: Arc::default(),
             roles: Arc::default(),
             member_roles: Arc::default(),
             role_calls: Arc::default(),
@@ -1568,6 +1589,12 @@ impl Sim {
         self.step += 1;
         let step = self.step;
         let interaction = self.interaction(user, kind, data, on);
+        let token = interaction.token.clone();
+        let response_message = unique();
+        self.mock.originals.lock().unwrap().insert(
+            token.clone(),
+            (self.channel, on.map_or(response_message, |reply| reply.message_id)),
+        );
         self.calls.lock().unwrap().clear();
         ERRORS.with_borrow_mut(Vec::clear);
 
@@ -1586,7 +1613,18 @@ impl Sim {
             .try_recv()
             .unwrap_or_else(|_| panic!("step {step} ({label}): the handler never answered"));
         let calls = std::mem::take(&mut *self.calls.lock().unwrap());
-        let reply = Reply::build(first, on, calls);
+        let mut reply = Reply::build(first, on, calls, &token);
+        if !matches!(
+            reply.kind,
+            InteractionResponseType::UpdateMessage | InteractionResponseType::DeferredUpdateMessage
+        ) {
+            reply.message_id = response_message;
+        }
+        self.mock
+            .originals
+            .lock()
+            .unwrap()
+            .insert(token, (self.channel, reply.message_id));
         // What the gateway's slow-handler defer assumes: a command it makes private never answers
         // publicly, and a form can only follow an answer that is no defer.
         if kind == 2 && deferral == Deferral::Private {
@@ -4963,6 +5001,7 @@ fn resolved_channels(ids: &[u64]) -> Value {
 /// A message a handler posted, as the `Reply` a member would see, so its buttons can be clicked.
 fn posted_reply(post: &Post) -> Reply {
     let mut reply = Reply::new(InteractionResponseType::ChannelMessageWithSource);
+    reply.message_id = post.message;
     let embeds = serde_json::from_value(post.body["embeds"].clone()).ok();
     let components = serde_json::from_value::<Vec<Component>>(post.body["components"].clone()).ok();
     reply.edit(post.body["content"].as_str().map(str::to_owned), embeds, components);
@@ -10367,6 +10406,7 @@ static EVENTS: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 /// A message the handlers posted, as a member sees it: its text, embeds and buttons.
 fn reply_of(post: &Post) -> Reply {
     let mut reply = Reply::new(InteractionResponseType::ChannelMessageWithSource);
+    reply.message_id = post.message;
     reply.content = post.body["content"].as_str().map(str::to_owned);
     reply.embeds = post
         .body
@@ -14961,4 +15001,45 @@ async fn module_off_refuses_the_board_and_word_party_games() {
     // The crab party games are a module of their own.
     let derby = sim.command(member, "play", json!([sub("derby", vec![])])).await;
     assert!(!derby.content().contains("turned off"), "{}", derby.content());
+}
+
+#[test]
+fn simulator_keeps_late_webhook_edits_on_their_original_reply() {
+    let first = serde_json::from_value(json!({"type": 5})).unwrap();
+    let calls = [
+        (
+            Method::PATCH,
+            "sim-current",
+            "/messages/@original",
+            "Fishing at the Deep Sea",
+        ),
+        (Method::PATCH, "sim-old", "/messages/@original", "Something bit!"),
+        (Method::POST, "sim-current", "", "Current follow-up"),
+        (Method::POST, "sim-current-older", "", "Unrelated follow-up"),
+    ]
+    .into_iter()
+    .map(|(method, token, suffix, content)| Call {
+        method,
+        path: format!("/api/v10/webhooks/{APPLICATION_ID}/{token}{suffix}"),
+        body: json!({"content": content}),
+        files: vec![],
+    })
+    .collect();
+    let reply = Reply::build(first, None, calls, "sim-current");
+    assert_eq!(reply.content(), "Fishing at the Deep Sea");
+    assert_eq!(reply.followups.len(), 1);
+    assert_eq!(reply.followups[0].content(), "Current follow-up");
+}
+
+#[test]
+fn simulator_message_identity_survives_updates_and_repeated_clicks() {
+    let original = Reply::new(InteractionResponseType::ChannelMessageWithSource);
+    let first = serde_json::from_value(json!({"type": 7, "data": {"content": "updated"}})).unwrap();
+    let updated = Reply::build(first, Some(&original), vec![], "sim-current");
+    assert_eq!(original.message_json()["id"], updated.message_json()["id"]);
+    assert_eq!(updated.message_json()["id"], updated.message_json()["id"]);
+    assert_ne!(
+        original.message_id,
+        Reply::new(InteractionResponseType::ChannelMessageWithSource).message_id
+    );
 }

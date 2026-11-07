@@ -46,6 +46,7 @@ async fn set_fields(sim: &Sim, session: i64, fields: &str) {
 fn reply_of(post: &Post) -> Reply {
     use twilight_model::{channel::message::Component, http::interaction::InteractionResponseType};
     let mut reply = Reply::new(InteractionResponseType::UpdateMessage);
+    reply.message_id = post.message;
     let embeds = serde_json::from_value(post.body["embeds"].clone()).ok();
     let components = serde_json::from_value::<Vec<Component>>(post.body["components"].clone()).ok();
     reply.edit(post.body["content"].as_str().map(str::to_owned), embeds, components);

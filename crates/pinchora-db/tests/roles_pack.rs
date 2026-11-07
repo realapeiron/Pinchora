@@ -8,6 +8,9 @@ use pinchora_db::{
     ColorAdded, ColorSettings, Db, NewAutoRole, PanelDoc, PanelEntry, PanelPatch, PanelRoleDoc, PanelSaved,
 };
 
+// Pruning visits every guild; own the sweep before creating old rows.
+static STICKY_PRUNE: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 async fn db() -> Option<Db> {
     let url = std::env::var("PINCHORA_TEST_DATABASE_URL").ok()?;
     let db = Db::connect_waiting(&url, 5, std::time::Duration::from_secs(60))
@@ -283,6 +286,7 @@ async fn auto_roles_are_limited_per_server_and_updated_in_place() {
 
 #[tokio::test]
 async fn sticky_roles_are_kept_for_those_who_left() {
+    let _sweep = STICKY_PRUNE.lock().await;
     let Some(db) = db().await else { return };
     let [guild, user, other] = ids();
     assert!(!db.sticky_enabled(guild).await.unwrap());
@@ -549,6 +553,7 @@ async fn concurrent_role_locks_leave_a_connection_for_timers() {
 
 #[tokio::test]
 async fn sticky_prune_skips_a_user_being_deleted() {
+    let _sweep = STICKY_PRUNE.lock().await;
     let Some(db) = db().await else { return };
     let [guild, user, role] = ids();
     db.remember_roles(guild, user, &[role]).await.unwrap();

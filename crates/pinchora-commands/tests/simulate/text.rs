@@ -220,6 +220,7 @@ impl Sim {
                 "step {step}: the reply may ping anyone it names"
             );
             let mut reply = Reply::new(InteractionResponseType::ChannelMessageWithSource);
+            reply.message_id = post.message;
             reply.edit(
                 post.body["content"].as_str().map(str::to_owned),
                 serde_json::from_value(post.body["embeds"].clone()).ok(),
