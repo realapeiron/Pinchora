@@ -71,6 +71,21 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
     db.add_xp(guild, user, grant, NaiveDate::from_ymd_opt(2026, 1, 5).unwrap())
         .await
         .unwrap();
+    db.guild_settings(guild).await.unwrap();
+    db.set_birthday(
+        user,
+        &pinchora_db::BirthdayInput {
+            month: 3,
+            day: 9,
+            year: Some(1999),
+            tz: "UTC",
+            public: true,
+            show_age: true,
+        },
+    )
+    .await
+    .unwrap();
+    db.claim_birthday(guild, user, 2026, 1, true, None).await.unwrap();
     db.claim_period(user, Period::Weekly, Utc::now()).await.unwrap();
     db.set_optin(user, "daily", true).await.unwrap();
     db.add_text_reminder(user, "water the plants", Utc::now() + Duration::hours(1))

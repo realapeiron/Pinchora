@@ -32,7 +32,7 @@ export const SHOTS: Record<ShotKey, Shot> = {
   wallet: { src: wallet, width: 900, height: 300 },
   pet: { src: pet, width: 860, height: 420 },
   leaderboard: { src: leaderboard, width: 900, height: 716 },
-  badges: { src: badges, width: 960, height: 826 },
+  badges: { src: badges, width: 960, height: 960 },
   levelup: { src: levelup, width: 720, height: 220 },
 };
 

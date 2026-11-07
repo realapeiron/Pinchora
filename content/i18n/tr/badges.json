@@ -158,5 +158,9 @@
  "pearl_wyrm": {
   "name": "İnci Ejderi",
   "description": "Çok kıymetli bir çakıl taşı taşıyan minik bir deniz ejderi."
+ },
+ "cake_day": {
+  "name": "Doğum Günü",
+  "description": "Doğum günü rozetlerini paylaşan bir toplulukta doğum gününü kutla."
  }
 }

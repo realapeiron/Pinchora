@@ -130,11 +130,12 @@ pub enum Module {
     Verification,
     AntiRaid,
     AntiNuke,
+    Birthdays,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 42] = [
+    pub const ALL: [Self; 43] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -177,6 +178,7 @@ impl Module {
         Self::Verification,
         Self::AntiRaid,
         Self::AntiNuke,
+        Self::Birthdays,
     ];
 
     /// The key stored in the database and used in the API.
@@ -224,6 +226,7 @@ impl Module {
             Self::Verification => "verification",
             Self::AntiRaid => "anti_raid",
             Self::AntiNuke => "anti_nuke",
+            Self::Birthdays => "birthdays",
         }
     }
 
@@ -275,6 +278,7 @@ impl Module {
             Self::Verification => "Verification",
             Self::AntiRaid => "Raid protection",
             Self::AntiNuke => "Anti-nuke",
+            Self::Birthdays => "Birthdays",
         }
     }
 
@@ -343,6 +347,7 @@ impl Module {
             Self::Starboard => "/starboard: highlight popular posts and set up vote channels.",
             Self::Invites => "/invites: invite counts, leaderboards, rewards and temporary links.",
             Self::AntiNuke => "Protect server structure, staff and VIP members.",
+            Self::Birthdays => "Opt-in birthdays, private dates and server celebrations.",
         }
     }
 
@@ -380,6 +385,7 @@ impl Module {
             Self::Verification => Group::Safety,
             Self::AntiRaid => Group::Safety,
             Self::AntiNuke => Group::Safety,
+            Self::Birthdays => Group::Community,
         }
     }
 
@@ -395,6 +401,7 @@ impl Module {
             Self::Invites => Scope::Server,
             Self::Verification => Scope::Server,
             Self::AntiRaid => Scope::Server,
+            Self::Birthdays => Scope::Server,
             _ => Scope::Channels,
         }
     }
@@ -462,6 +469,7 @@ impl Module {
             "voice" => Self::TempVoice,
             "verify" | "verification" => Self::Verification,
             "raid" => Self::AntiRaid,
+            "birthday" | "birthdays" => Self::Birthdays,
             _ => return None,
         })
     }
@@ -502,6 +510,7 @@ impl Module {
             "xi" => Self::Leveling,
             "sr" => Self::Starboard,
             "in" | "tl" => Self::Invites,
+            "bd" => Self::Birthdays,
             _ => return None,
         })
     }

@@ -65,6 +65,8 @@ mod feeds;
 // Temp voice: creators and the live list of rooms.
 #[path = "api/anti_nuke.rs"]
 mod anti_nuke;
+#[path = "api/birthdays.rs"]
+mod birthdays;
 #[path = "api/tempvoice.rs"]
 mod tempvoice;
 #[path = "api/verification.rs"]

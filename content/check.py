@@ -60,7 +60,7 @@ BACKGROUND_BANDS = {
 BADGE_STATS = (
     "level", "fish_species", "house_likes", "pets", "streak", "placed", "reputation", "shells",
 )
-BADGE_KINDS = ("achievement", "shop")
+BADGE_KINDS = ("achievement", "shop", "granted")
 # Shop badges are rarer the dearer they are; achievements are rarer the harder they are.
 BADGE_SHOP_BANDS = {
     "common": (1, 2500), "uncommon": (2501, 6500), "rare": (6501, 10000),
@@ -740,7 +740,7 @@ def check_backgrounds(raw):
 
 
 def check_badges(raw, fish_count):
-    records = entries(raw, "badges.json", 40)
+    records = entries(raw, "badges.json", 41)
     seen, names = {}, {}
     for item, where in records:
         kind = item.get("kind")
@@ -749,6 +749,8 @@ def check_badges(raw, fish_count):
             fields(item, where, common + ("stat", "at"))
         elif kind == "shop":
             fields(item, where, common + ("price",))
+        elif kind == "granted":
+            fields(item, where, common)
         else:
             fields(item, where, common, ("stat", "at", "price"))
         identity(item, where, seen, names)

@@ -72,7 +72,7 @@ pub(crate) const AREAS: &[Area] = &[
     },
     Area {
         key: "rewards",
-        covers: &["weekly", "monthly", "give", "rep", "remind"],
+        covers: &["weekly", "monthly", "give", "rep", "remind", "birthday"],
     },
     Area {
         key: "shops",
@@ -219,6 +219,7 @@ pub(crate) const AREAS: &[Area] = &[
             "config surge",
             "config partygames",
             "config modules",
+            "birthdays",
         ],
     },
 ];

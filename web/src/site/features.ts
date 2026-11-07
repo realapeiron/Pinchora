@@ -146,7 +146,7 @@ export const FEATURES: Feature[] = [
     blurb: "Pixel-art profile, rank and wallet cards with backgrounds, badges and a character you design.",
     metaTitle: "Pixel profile, rank and wallet cards | Pinchora",
     metaDescription:
-      "Collectible Discord profile cards: 36 backgrounds, 40 badges, titles, frames and a pixel character you design. Rank and wallet cards match.",
+      "Collectible Discord profile cards: 36 backgrounds, 41 badges, titles, frames and a pixel character you design. Rank and wallet cards match.",
     lead: "Your profile is a card you can be proud of. Pick a background, wear your best badges and show off a pet, a fish and a house.",
     points: [
       {
@@ -155,7 +155,7 @@ export const FEATURES: Feature[] = [
       },
       {
         title: "Backgrounds, badges and titles",
-        text: "36 backgrounds in five rarities, 40 badges earned by playing or bought with shells, and titles that follow your stats.",
+        text: "36 backgrounds in five rarities, 41 badges earned through play and celebrations or bought with shells, and titles that follow your stats.",
       },
       {
         title: "A showcase row",

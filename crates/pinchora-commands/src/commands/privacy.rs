@@ -166,7 +166,11 @@ fn confirm(until: i64, lang: Lang) -> InteractionResponseData {
     let embed = EmbedBuilder::new()
         .color(DANGER)
         .title(t!(lang, "privacy.confirm-title"))
-        .description(t!(lang, "privacy.confirm", days = TOMBSTONE_DAYS))
+        .description(format!(
+            "{}\n\n{}",
+            t!(lang, "privacy.confirm", days = TOMBSTONE_DAYS),
+            t!(lang, "birthdays.deletion-retention")
+        ))
         .build();
     ephemeral(
         embed,
@@ -226,6 +230,13 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>) -> anyhow::
                 let data = panel(cx, user, &t!(cx.lang(), "privacy.timed-out")).await?;
                 return cx.update(data).await;
             }
+            let _birthday_guard = match crate::birthdays::before_delete(&cx.app, user).await {
+                Ok(guard) => guard,
+                Err(error) => {
+                    tracing::warn!(user, %error, "birthday role cleanup blocked data deletion");
+                    return cx.reply_ephemeral(t!(cx.lang(), "birthdays.cleanup-failed")).await;
+                }
+            };
             let deleted = cx.app.db.delete_user_data(user, cx.app.now()).await?;
             cx.app.cache.stats_forget_member(user).await?;
             tracing::info!(

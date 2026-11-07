@@ -373,6 +373,8 @@ pub enum BadgeKind {
     Achievement { stat: BadgeStat, at: i64 },
     /// Bought once with shells.
     Shop { price: i64 },
+    /// Granted by a game event and stored with the player's owned badges.
+    Granted,
 }
 
 /// The player's number that `stat` counts.
@@ -409,6 +411,7 @@ impl Badge {
         match self.kind {
             BadgeKind::Achievement { stat, at } => stat_value(stats, stat) >= at,
             BadgeKind::Shop { .. } => bought.contains(&self.id),
+            BadgeKind::Granted => bought.contains(&self.id),
         }
     }
 }

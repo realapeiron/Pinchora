@@ -289,6 +289,14 @@ impl Wardrobe {
                 "🛒 **{name}** · {}",
                 t!(lang, "customize.line.price", price = thousands_in(lang, price))
             ),
+            BadgeKind::Granted if self.has(badge) => format!(
+                "✅ **{name}** · {}{worn}",
+                content.description(&badge.id, lang).unwrap_or_default()
+            ),
+            BadgeKind::Granted => format!(
+                "🔒 **{name}** · {}",
+                content.description(&badge.id, lang).unwrap_or_default()
+            ),
         }
     }
 
@@ -727,6 +735,7 @@ fn collection_cells(
                     at,
                 },
                 BadgeKind::Shop { price } => BadgeState::ForSale { price },
+                BadgeKind::Granted => BadgeState::Locked { have: 0, at: 1 },
             };
             CollectionCell {
                 art: sprites.badge(&b.id),

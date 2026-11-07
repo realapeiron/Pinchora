@@ -183,6 +183,7 @@ fn turkish_profile<'a>(avatar: &'a [u8]) -> ProfileCard<'a> {
         badges: &[],
         showcase: &[],
         partner: Some("ığdırlı Öğüt".to_owned()),
+        birthday_today: false,
         theme: Theme::reef(),
     }
 }

@@ -94,6 +94,29 @@ pub(crate) async fn card_with(
     let lang = cx.lang();
     let title = customize::title_name(&row, lang);
     let partner = partner_name(&cx.app, user.id.get()).await;
+    let birthday_today = if let Some(guild) = cx.guild_id()
+        && cx
+            .app
+            .module_allowed(guild, None, pinchora_core::modules::Module::Birthdays)
+            .await
+    {
+        db.birthday_profile(guild, user.id.get())
+            .await?
+            .is_some_and(|(month, day, zone, public)| {
+                let visible = public || cx.author().is_ok_and(|viewer| viewer.id == user.id);
+                visible
+                    && pinchora_core::birthdays::timezone(&zone).is_some_and(|tz| {
+                        let today = pinchora_core::birthdays::local_date(cx.app.now(), tz);
+                        pinchora_core::birthdays::birthday_this_year(
+                            month as u32,
+                            day as u32,
+                            chrono::Datelike::year(&today),
+                        ) == Some(today)
+                    })
+            })
+    } else {
+        false
+    };
     cx.app
         .render(move |r| {
             let art = character
@@ -123,6 +146,7 @@ pub(crate) async fn card_with(
                 badges: &icons,
                 showcase: &slots,
                 partner,
+                birthday_today,
                 theme,
             })
         })

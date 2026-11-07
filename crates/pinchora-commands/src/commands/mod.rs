@@ -1,6 +1,7 @@
 pub(crate) mod anti_nuke;
 pub(crate) mod automod;
 mod bio;
+pub(crate) mod birthdays;
 pub(crate) mod board;
 pub(crate) mod character;
 pub(crate) mod collection;
@@ -191,4 +192,6 @@ commands!(
     info::Info,
     invites::InvitesCommand,
     invites::InviteAdmin,
+    birthdays::BirthdayCommand,
+    birthdays::BirthdaysAdmin,
 );

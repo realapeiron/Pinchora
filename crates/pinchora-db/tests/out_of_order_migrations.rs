@@ -20,7 +20,7 @@ async fn assigned_feature_migrations_apply_after_later_versions() {
     let all = sqlx::migrate!("../../migrations");
     let baseline = Migrator::with_migrations(
         all.iter()
-            .filter(|m| ![50, 54, 55].contains(&m.version))
+            .filter(|m| ![50, 51, 54, 55].contains(&m.version))
             .cloned()
             .collect(),
     );
@@ -31,7 +31,10 @@ async fn assigned_feature_migrations_apply_after_later_versions() {
         .unwrap();
     assert!(latest > 55, "exercise migrations older than the applied maximum");
     all.run(&mut *tx).await.unwrap();
-    for version in [50, 54, 55].into_iter().filter(|v| all.iter().any(|m| m.version == *v)) {
+    for version in [50, 51, 54, 55]
+        .into_iter()
+        .filter(|v| all.iter().any(|m| m.version == *v))
+    {
         let applied: bool = sqlx::query_scalar("SELECT success FROM _sqlx_migrations WHERE version = $1")
             .bind(version)
             .fetch_one(&mut *tx)

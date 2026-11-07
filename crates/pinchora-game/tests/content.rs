@@ -143,10 +143,15 @@ fn backgrounds_and_badges_are_consistent() {
                 shop += 1;
                 assert!(price > 0, "{}", b.id);
             }
+            BadgeKind::Granted => {}
         }
         assert_eq!(c.badge(&b.id).map(|x| x.id.as_str()), Some(b.id.as_str()));
     }
     assert!(achievements > 0 && shop > 0);
+    assert!(
+        c.badge("cake_day")
+            .is_some_and(|b| matches!(b.kind, BadgeKind::Granted))
+    );
     for stat in BadgeStat::ALL {
         assert!(
             c.badges

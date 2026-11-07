@@ -148,6 +148,9 @@ mod tickets;
 // Social feeds: /feeds and the poller, against a local feed server.
 #[path = "simulate/feeds.rs"]
 mod feeds;
+// Birthdays: opt-in confirmation, privacy and pixel card.
+#[path = "simulate/birthdays.rs"]
+mod birthdays;
 // Temp voice: creators, rooms, the owner's controls and the panel.
 #[path = "simulate/info_xp.rs"]
 mod info_xp;
@@ -3514,7 +3517,7 @@ async fn buying_and_wearing_a_background() {
 /// Where the badges stand along the foot of the profile card.
 const BADGE_FOOT: (std::ops::Range<u32>, std::ops::Range<u32>) = (450..780, 482..534);
 
-/// The collection card's height for the 40 badges.
+/// The collection card's height for all catalog badges.
 fn collection_height() -> u32 {
     BadgeCollectionCard::height_for(Content::get().badges.len())
 }
@@ -12648,6 +12651,8 @@ async fn admin_paths_refuse_members_without_manage_server() {
         "channels": channels,
     });
     let rows: Vec<(&str, Value)> = vec![
+        ("birthdays settings", json!([sub("settings", vec![])])),
+        ("birthdays preview", json!([sub("preview", vec![])])),
         (
             "verification setup",
             json!([sub("setup", vec![bool_option("enabled", true)])]),

@@ -8,6 +8,7 @@ import { PixelToggle } from "../components/PixelToggle";
 import { SaveBar } from "../components/SaveBar";
 import { Toast } from "../components/Toast";
 import type { Community as CommunityData, ModuleEntry, Overview } from "../lib/api";
+import { birthdayWords, useBirthdays } from "../lib/birthdays";
 import { CommunitySaveError, useCommunity, useDiscord } from "../lib/queries";
 import { Loading, Problem } from "./States";
 import { PageHead } from "./PageHead";
@@ -24,11 +25,15 @@ export function Community() {
   const data = useOutletContext<Overview>();
   const guild = data.guild.id;
   const { query } = useCommunity(guild);
+  const birthdays = useBirthdays(guild);
+  const t = birthdayWords(birthdays.data?.strings, birthdays.data?.language);
   return (
     <div className="settings-page">
       <PageHead
         title="COMMUNITY"
-        lead="Where /suggest posts ideas, whether critters wash up while people chat, and timed storm surges."
+        lead={t(
+          "Where /suggest posts ideas, whether critters wash up while people chat, timed storm surges, and birthday celebrations.",
+        )}
       />
       {query.isPending && <Loading label="Reading the settings" />}
       {query.isError && <Problem error={query.error} />}
@@ -208,6 +213,8 @@ function CommunityForm({
         </div>
       </Panel>
 
+      <BirthdaySummary guild={guild} />
+
       <SaveBar
         count={changes}
         saving={save.isPending}
@@ -217,5 +224,46 @@ function CommunityForm({
       />
       <Toast message={toast} onDone={clearToast} />
     </>
+  );
+}
+
+function BirthdaySummary({ guild }: { guild: string }) {
+  const birthdays = useBirthdays(guild);
+  const data = birthdays.data;
+  const t = birthdayWords(data?.strings, data?.language);
+  return (
+    <Panel title={t("BIRTHDAYS")} aside={<Link to={`/g/${guild}/birthdays`}>{t("Edit settings →")}</Link>}>
+      <p className="panel-lead muted">
+        {t(
+          "Members choose whether to share their date. Birth years stay private; celebrations use each member’s local midnight.",
+        )}
+      </p>
+      {birthdays.isPending && <Loading label={t("Reading birthdays")} />}
+      {birthdays.isError && <Problem error={birthdays.error} />}
+      {data && (
+        <>
+          <p>
+            <strong>{data.settings.enabled ? t("Announcements on") : t("Announcements off")}</strong>
+            {data.settings.channel_id
+              ? t(" · Channel {id}", { id: data.settings.channel_id })
+              : t(" · No channel")}
+            {t(" · {count} shell gift", { count: data.settings.shells_gift })}
+          </p>
+          <p className="muted">
+            {data.upcoming.length
+              ? t("Next: {list}", {
+                  list: data.upcoming
+                    .slice(0, 3)
+                    .map((b) => `${b.name} (${b.day}/${b.month})`)
+                    .join(", "),
+                })
+              : t("No shared birthdays in the next 30 days.")}
+          </p>
+          <Link to={`/g/${guild}/birthdays`}>
+            {t("Set the role, message and time zone; see all upcoming dates")}
+          </Link>
+        </>
+      )}
+    </Panel>
   );
 }

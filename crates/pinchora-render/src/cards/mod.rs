@@ -1,4 +1,5 @@
 mod badges;
+mod birthdays;
 mod boards;
 mod character;
 mod checkers;
@@ -32,6 +33,7 @@ mod wordle;
 mod wrapped;
 
 pub use badges::{BadgeCell, BadgeCollectionCard, BadgeState};
+pub use birthdays::BirthdayCard;
 pub use character::{CharacterCard, EditorCell, EditorSection};
 pub use checkers::CheckersCard;
 pub use chess::ChessCard;
@@ -294,6 +296,7 @@ mod tests {
             badges,
             showcase: &[],
             partner: None,
+            birthday_today: false,
             theme: Theme::reef(),
         }
     }

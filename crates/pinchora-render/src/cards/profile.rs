@@ -46,6 +46,8 @@ pub struct ProfileCard<'a> {
     pub showcase: &'a [ShowcaseSlot<'a>],
     /// Who the player is with, drawn as "♥ name" in the corner of the about-me panel.
     pub partner: Option<String>,
+    /// A small cake icon on the member's birthday when the server enables it.
+    pub birthday_today: bool,
     pub theme: Theme,
 }
 
@@ -434,6 +436,16 @@ impl ProfileCard<'_> {
             badge.draw(&mut s, 450.0 + i as f32 * (BadgeIcon::PLATE + 3.0), rows.foot_y);
         }
 
+        if self.birthday_today {
+            let y = rows.foot_y + 8.0;
+            let _ = write!(
+                s,
+                r#"<path d="M762 {y}h7v-8h5v8h7v17h-19z" fill="{}"/><path d="M760 {}h23v6h-23z" fill="{}"/>"#,
+                t.gold,
+                y + 17.0,
+                t.accent
+            );
+        }
         sprite(&mut s, CRAB, 804.0, rows.foot_y + 16.0, 3.0, &t.accent, "#fff1e8");
         text(
             &mut s,
