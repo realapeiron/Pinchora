@@ -124,7 +124,9 @@ pub(crate) fn command_key(path: &str) -> String {
 pub(crate) fn localize(commands: &mut [Command]) {
     for command in commands {
         let path = command.name.clone();
-        command.description_localizations = descriptions(&path);
+        if command.kind == twilight_model::application::command::CommandType::ChatInput {
+            command.description_localizations = descriptions(&path);
+        }
         for option in &mut command.options {
             localize_option(option, &path);
         }

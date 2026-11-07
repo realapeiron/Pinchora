@@ -80,6 +80,16 @@ async fn channel_permitted(cx: &Cx, named: Option<&InteractionChannel>) -> anyho
 pub(crate) struct PurgeFilter {
     pub(crate) user: Option<u64>,
     pub(crate) bots: bool,
+    pub(crate) humans: bool,
+    pub(crate) embeds: bool,
+    pub(crate) regex: Option<String>,
+    pub(crate) after: Option<u64>,
+    pub(crate) before: Option<u64>,
+    pub(crate) starts: Option<String>,
+    pub(crate) ends: Option<String>,
+    pub(crate) not: Option<String>,
+    pub(crate) mentions: bool,
+    pub(crate) reactions: bool,
     pub(crate) contains: Option<String>,
     pub(crate) links: bool,
     pub(crate) attachments: bool,
@@ -97,6 +107,25 @@ impl PurgeFilter {
         let content = message.content.to_lowercase();
         self.user.is_none_or(|u| message.author.id.get() == u)
             && (!self.bots || message.author.bot)
+            && (!self.humans || !message.author.bot)
+            && (!self.embeds || !message.embeds.is_empty())
+            && (!self.mentions
+                || message.mention_everyone
+                || !message.mentions.is_empty()
+                || !message.mention_roles.is_empty())
+            && (!self.reactions || !message.reactions.is_empty())
+            && self.after.is_none_or(|id| message.id.get() > id)
+            && self.before.is_none_or(|id| message.id.get() < id)
+            && self
+                .starts
+                .as_ref()
+                .is_none_or(|s| content.starts_with(&s.to_lowercase()))
+            && self.ends.as_ref().is_none_or(|s| content.ends_with(&s.to_lowercase()))
+            && self.not.as_ref().is_none_or(|s| !content.contains(&s.to_lowercase()))
+            && self
+                .regex
+                .as_ref()
+                .is_none_or(|s| pinchora_core::automod::compile(s).is_ok_and(|r| r.is_match(&message.content)))
             && self
                 .contains
                 .as_deref()
@@ -111,7 +140,15 @@ impl PurgeFilter {
     /// Whether the filters look at what a message says or carries, which Discord only shows a bot
     /// with the Message Content intent.
     pub(crate) fn reads(&self) -> bool {
-        self.contains.is_some() || self.links || self.attachments
+        self.contains.is_some()
+            || self.links
+            || self.attachments
+            || self.embeds
+            || self.regex.is_some()
+            || self.starts.is_some()
+            || self.ends.is_some()
+            || self.not.is_some()
+            || self.mentions
     }
 
     /// The filters in words, for the case: "from @Mia, with links".
@@ -152,6 +189,27 @@ pub struct Purge {
     user: Option<ResolvedUser>,
     /// Only messages from bots
     bots: Option<bool>,
+    /// Only human authors
+    humans: Option<bool>,
+    /// Only messages with embeds
+    embeds: Option<bool>,
+    /// Regular expression
+    #[command(max_length = 100)]
+    regex: Option<String>,
+    /// After this message ID
+    after: Option<String>,
+    /// Before this message ID
+    before: Option<String>,
+    /// Starts with text
+    starts: Option<String>,
+    /// Ends with text
+    ends: Option<String>,
+    /// Exclude this text
+    not: Option<String>,
+    /// Only messages with mentions
+    mentions: Option<bool>,
+    /// Only messages with reactions
+    reactions: Option<bool>,
     /// Only messages containing this text
     #[command(max_length = 100)]
     contains: Option<String>,
@@ -174,7 +232,28 @@ impl Purge {
             Ok(reason) => reason,
             Err(error) => return cx.reply_ephemeral(error.text(lang)).await,
         };
+        if self
+            .regex
+            .as_ref()
+            .is_some_and(|s| pinchora_core::automod::compile(s).is_err())
+            || [&self.after, &self.before]
+                .into_iter()
+                .flatten()
+                .any(|s| pinchora_core::mod_parity::id(s).is_none())
+        {
+            return cx.reply_ephemeral(t!(lang, "parity.invalid")).await;
+        }
         let filter = PurgeFilter {
+            humans: self.humans == Some(true),
+            embeds: self.embeds == Some(true),
+            regex: self.regex,
+            after: self.after.as_deref().and_then(pinchora_core::mod_parity::id),
+            before: self.before.as_deref().and_then(pinchora_core::mod_parity::id),
+            starts: self.starts,
+            ends: self.ends,
+            not: self.not,
+            mentions: self.mentions == Some(true),
+            reactions: self.reactions == Some(true),
             user: self.user.as_ref().map(|u| u.resolved.id.get()),
             bots: self.bots == Some(true),
             contains: self.contains.map(|t| t.trim().to_owned()).filter(|t| !t.is_empty()),
@@ -189,7 +268,13 @@ impl Purge {
         if filter.reads() && !cx.app.message_content {
             return cx.reply_ephemeral(t!(lang, "mod.purge-needs-content")).await;
         }
-        let messages = match cx.app.http.channel_messages(Id::new(channel)).limit(100).await {
+        let request = cx.app.http.channel_messages(Id::new(channel)).limit(100);
+        let response = if let Some(before) = filter.before {
+            request.before(Id::new(before)).await
+        } else {
+            request.await
+        };
+        let messages = match response {
             Ok(response) => response.models().await?,
             Err(error) => {
                 let text = t!(lang, "mod.read-failed", why = refusal(lang, &error));
@@ -559,6 +644,64 @@ mod tests {
             .describe(Lang::En, Some("Mia")),
             "from Mia, from bots, with links"
         );
+    }
+
+    #[test]
+    fn purge_variants_keep_boundaries_and_combine_content_with_author_filters() {
+        let now = chrono::Utc::now();
+        let mut msg = message(1, false, "offer 42 end", false, false);
+        msg.embeds.push(
+            twilight_util::builder::embed::EmbedBuilder::new()
+                .description("Evidence")
+                .build(),
+        );
+        let mut filter = PurgeFilter {
+            humans: true,
+            embeds: true,
+            regex: Some(r"offer \d+".into()),
+            starts: Some("OFFER".into()),
+            ends: Some("END".into()),
+            not: Some("safe".into()),
+            after: Some(msg.id.get() - 1),
+            before: Some(msg.id.get() + 1),
+            ..Default::default()
+        };
+        assert!(filter.reads());
+        assert!(filter.takes(&msg, now));
+        filter.after = Some(msg.id.get());
+        assert!(!filter.takes(&msg, now), "the lower boundary is exclusive");
+        filter.after = None;
+        filter.before = Some(msg.id.get());
+        assert!(!filter.takes(&msg, now), "the upper boundary is exclusive");
+        filter.before = None;
+        msg.author.bot = true;
+        assert!(!filter.takes(&msg, now));
+        msg.author.bot = false;
+        msg.pinned = true;
+        assert!(!filter.takes(&msg, now));
+        msg.pinned = false;
+        msg.content.push_str(" safe");
+        assert!(!filter.takes(&msg, now));
+    }
+
+    #[test]
+    fn purge_mentions_include_everyone_and_age_boundary_is_strict() {
+        let now = chrono::Utc::now();
+        let mut msg = message(0, false, "@everyone", false, false);
+        msg.mention_everyone = true;
+        let filter = PurgeFilter {
+            mentions: true,
+            ..Default::default()
+        };
+        assert!(filter.takes(&msg, now));
+        for (age, expected) in [
+            (PURGE_AGE - Duration::seconds(61), true),
+            (PURGE_AGE - Duration::seconds(60), false),
+            (PURGE_AGE, false),
+        ] {
+            msg.id = Id::new(((now - age).timestamp_millis() as u64 - 1_420_070_400_000) << 22);
+            assert_eq!(filter.takes(&msg, now), expected);
+        }
     }
 
     #[test]

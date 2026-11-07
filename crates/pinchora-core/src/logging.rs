@@ -107,6 +107,12 @@ impl Group {
 /// Something the log can report.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum LogEvent {
+    Report,
+    Appeal,
+    Restriction,
+    RoleRule,
+    AutoPurge,
+
     MemberJoin,
     MemberLeave,
     Nickname,
@@ -143,7 +149,12 @@ pub enum LogEvent {
 }
 
 impl LogEvent {
-    pub const ALL: [Self; 33] = [
+    pub const ALL: [Self; 38] = [
+        Self::Report,
+        Self::Appeal,
+        Self::Restriction,
+        Self::RoleRule,
+        Self::AutoPurge,
         Self::MemberJoin,
         Self::MemberLeave,
         Self::Nickname,
@@ -183,6 +194,12 @@ impl LogEvent {
     pub const fn key(self) -> &'static str {
         match self {
             Self::MemberJoin => "member_join",
+            Self::Report => "report",
+            Self::Appeal => "appeal",
+            Self::Restriction => "restriction",
+            Self::RoleRule => "role_rule",
+            Self::AutoPurge => "autopurge",
+
             Self::MemberLeave => "member_leave",
             Self::Nickname => "nickname",
             Self::Username => "username",
@@ -225,6 +242,12 @@ impl LogEvent {
     pub const fn label(self) -> &'static str {
         match self {
             Self::MemberJoin => "Member joined",
+            Self::Report => "Report",
+            Self::Appeal => "Appeal",
+            Self::Restriction => "Restriction",
+            Self::RoleRule => "RoleRule",
+            Self::AutoPurge => "AutoPurge",
+
             Self::MemberLeave => "Member left",
             Self::Nickname => "Nickname changed",
             Self::Username => "Username or display name changed",
@@ -277,7 +300,15 @@ impl LogEvent {
             Self::VoiceJoin | Self::VoiceLeave | Self::VoiceMove | Self::VoiceModeration | Self::VoiceSelf => {
                 LogCategory::Voice
             }
-            Self::Ban | Self::Unban | Self::Kick | Self::Timeout => LogCategory::Moderation,
+            Self::Ban
+            | Self::Unban
+            | Self::Kick
+            | Self::Timeout
+            | Self::Report
+            | Self::Appeal
+            | Self::Restriction
+            | Self::RoleRule
+            | Self::AutoPurge => LogCategory::Moderation,
             Self::ServerUpdate => LogCategory::Server,
             Self::InviteCreate | Self::InviteDelete => LogCategory::Invites,
             Self::Emojis | Self::Stickers => LogCategory::Emojis,

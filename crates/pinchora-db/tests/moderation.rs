@@ -266,6 +266,13 @@ fn servers_that_logged_before_keep_only_the_old_four_on() {
     let newer: Vec<&str> = LogEvent::ALL
         .into_iter()
         .filter(|e| e.group().is_none())
+        // Migration 0044 is immutable and predates the opt-in D11 workflows.
+        .filter(|e| {
+            !matches!(
+                e,
+                LogEvent::Report | LogEvent::Appeal | LogEvent::Restriction | LogEvent::RoleRule | LogEvent::AutoPurge
+            )
+        })
         .map(LogEvent::key)
         .collect();
     assert_eq!(off, newer);

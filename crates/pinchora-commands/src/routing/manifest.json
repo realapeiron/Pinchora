@@ -1,5 +1,10 @@
 [
   {
+    "legacy": "Report",
+    "canonical": "Report",
+    "slice": 0
+  },
+  {
     "legacy": "achievementadmin add",
     "canonical": "progression achievements add",
     "slice": 8
@@ -156,8 +161,8 @@
   },
   {
     "legacy": "ban",
-    "canonical": "ban",
-    "slice": 0
+    "canonical": "mod ban",
+    "slice": 18
   },
   {
     "legacy": "beachcomb",
@@ -891,8 +896,8 @@
   },
   {
     "legacy": "kick",
-    "canonical": "kick",
-    "slice": 0
+    "canonical": "mod kick",
+    "slice": 18
   },
   {
     "legacy": "language set",
@@ -908,6 +913,46 @@
     "legacy": "lock",
     "canonical": "mod lock",
     "slice": 9
+  },
+  {
+    "legacy": "modtools mass",
+    "canonical": "mod mass",
+    "slice": 18
+  },
+  {
+    "legacy": "modtools names",
+    "canonical": "mod names",
+    "slice": 18
+  },
+  {
+    "legacy": "modtools notes",
+    "canonical": "mod notes",
+    "slice": 18
+  },
+  {
+    "legacy": "modtools policy",
+    "canonical": "safety moderation policy",
+    "slice": 18
+  },
+  {
+    "legacy": "modtools report",
+    "canonical": "mod report",
+    "slice": 18
+  },
+  {
+    "legacy": "modtools restrict",
+    "canonical": "mod restrict",
+    "slice": 18
+  },
+  {
+    "legacy": "modtools roles",
+    "canonical": "mod roles",
+    "slice": 18
+  },
+  {
+    "legacy": "modtools voice",
+    "canonical": "mod voice",
+    "slice": 18
   },
   {
     "legacy": "monthly",
@@ -1146,8 +1191,8 @@
   },
   {
     "legacy": "purge",
-    "canonical": "purge",
-    "slice": 0
+    "canonical": "mod purge",
+    "slice": 18
   },
   {
     "legacy": "quests",
@@ -1481,8 +1526,8 @@
   },
   {
     "legacy": "timeout",
-    "canonical": "timeout",
-    "slice": 0
+    "canonical": "mod timeout",
+    "slice": 18
   },
   {
     "legacy": "unban",
@@ -1601,8 +1646,8 @@
   },
   {
     "legacy": "warn",
-    "canonical": "warn",
-    "slice": 0
+    "canonical": "mod warn",
+    "slice": 18
   },
   {
     "legacy": "warnings",

@@ -176,6 +176,8 @@ pub(crate) const AREAS: &[Area] = &[
             "raid",
             "antinuke status",
             "antinuke events",
+            "modtools",
+            "Report",
             "ban",
             "unban",
             "kick",
@@ -325,6 +327,15 @@ pub(crate) fn leaves(commands: &[Command], lang: Lang) -> Vec<Leaf> {
     }
     let mut out = Vec::new();
     for command in commands {
+        if command.kind == twilight_model::application::command::CommandType::Message {
+            out.push(Leaf {
+                path: command.name.clone(),
+                text: pinchora_core::t!(lang, "parity.context-help"),
+                manager: false,
+                options: Vec::new(),
+            });
+            continue;
+        }
         walk(
             &command.options,
             &command.name,

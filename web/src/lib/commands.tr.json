@@ -4385,9 +4385,302 @@
           "usage": "/safety antinuke events"
         },
         {
-          "aliases": [],
-          "description": "Birini kalıcı olarak ya da bir süreliğine yasakla",
+          "aliases": [
+            "modtools policy"
+          ],
+          "description": "Moderasyon ve rol ayarları",
           "manager": true,
+          "options": [
+            {
+              "description": "Bildirim kanalı",
+              "name": "reports",
+              "required": false
+            },
+            {
+              "description": "Susturma rolü",
+              "name": "mute",
+              "required": false
+            },
+            {
+              "description": "Kısıtlama rolü",
+              "name": "jail",
+              "required": false
+            },
+            {
+              "description": "Üye itirazlarını aç",
+              "name": "appeals",
+              "required": false
+            },
+            {
+              "description": "Takviye ödül rolü",
+              "name": "booster",
+              "required": false
+            },
+            {
+              "description": "Takviye yapanlara kişisel rol izni ver",
+              "name": "personal",
+              "required": false
+            },
+            {
+              "description": "Bildirim erişimi değişen üye",
+              "name": "report_user",
+              "required": false
+            },
+            {
+              "description": "Bu üyenin bildirim göndermesini engelle",
+              "name": "blocked",
+              "required": false
+            }
+          ],
+          "path": "safety moderation policy",
+          "usage": "/safety moderation policy [reports] [mute] [jail] [appeals] [booster] [personal] [report_user] [blocked]"
+        },
+        {
+          "aliases": [
+            "modtools mass"
+          ],
+          "description": "Toplu işlemi önizle ve onayla",
+          "manager": false,
+          "options": [
+            {
+              "description": "İşlem",
+              "name": "action",
+              "required": true
+            },
+            {
+              "description": "Boşlukla ayrılmış üye kimlikleri",
+              "name": "ids",
+              "required": false
+            },
+            {
+              "description": "Kullanıcı adı düzenli ifadesi",
+              "name": "regex",
+              "required": false
+            },
+            {
+              "description": "Bu UTC tarihinden sonra katılanlar (RFC3339)",
+              "name": "after",
+              "required": false
+            },
+            {
+              "description": "Bu UTC tarihinden önce katılanlar (RFC3339)",
+              "name": "before",
+              "required": false
+            },
+            {
+              "description": "Rol",
+              "name": "role",
+              "required": false
+            },
+            {
+              "description": "Gerekçe",
+              "name": "reason",
+              "required": false
+            },
+            {
+              "description": "Önizlemedeki onay bilgisi",
+              "name": "confirm",
+              "required": false
+            }
+          ],
+          "path": "mod mass",
+          "usage": "/mod mass <action> [ids] [regex] [after] [before] [role] [reason] [confirm]"
+        },
+        {
+          "aliases": [
+            "modtools names"
+          ],
+          "description": "İsim süslerini veya sıralama önekini kaldır",
+          "manager": false,
+          "options": [
+            {
+              "description": "Üye",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "İsim süslerini de temizle",
+              "name": "normalize",
+              "required": false
+            }
+          ],
+          "path": "mod names",
+          "usage": "/mod names <user> [normalize]"
+        },
+        {
+          "aliases": [
+            "modtools notes"
+          ],
+          "description": "Yetkili notlarını yönet",
+          "manager": false,
+          "options": [
+            {
+              "description": "İşlem",
+              "name": "action",
+              "required": true
+            },
+            {
+              "description": "Üye",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Not metni",
+              "name": "text",
+              "required": false
+            },
+            {
+              "description": "Not numarası",
+              "name": "id",
+              "required": false
+            }
+          ],
+          "path": "mod notes",
+          "usage": "/mod notes <action> <user> [text] [id]"
+        },
+        {
+          "aliases": [
+            "modtools report"
+          ],
+          "description": "Bir üyeyi yetkililere bildir",
+          "manager": false,
+          "options": [
+            {
+              "description": "Üye",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Gerekçe",
+              "name": "reason",
+              "required": true
+            }
+          ],
+          "path": "mod report",
+          "usage": "/mod report <user> <reason>"
+        },
+        {
+          "aliases": [
+            "modtools restrict"
+          ],
+          "description": "Sustur, kısıtla, serbest bırak veya geçici çıkar",
+          "manager": false,
+          "options": [
+            {
+              "description": "İşlem",
+              "name": "action",
+              "required": true
+            },
+            {
+              "description": "Üye",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Gerekçe",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "mod restrict",
+          "usage": "/mod restrict <action> <user> [reason]"
+        },
+        {
+          "aliases": [
+            "modtools roles"
+          ],
+          "description": "Rol oluştur, düzenle veya sil",
+          "manager": false,
+          "options": [
+            {
+              "description": "İşlem",
+              "name": "action",
+              "required": true
+            },
+            {
+              "description": "Rol",
+              "name": "role",
+              "required": false
+            },
+            {
+              "description": "Rol adı",
+              "name": "name",
+              "required": false
+            },
+            {
+              "description": "Onaltılık renk",
+              "name": "color",
+              "required": false
+            },
+            {
+              "description": "Etiketlenebilir",
+              "name": "mentionable",
+              "required": false
+            },
+            {
+              "description": "Önizlemedeki onay bilgisi",
+              "name": "confirm",
+              "required": false
+            }
+          ],
+          "path": "mod roles",
+          "usage": "/mod roles <action> [role] [name] [color] [mentionable] [confirm]"
+        },
+        {
+          "aliases": [
+            "modtools voice"
+          ],
+          "description": "Ses üyelerini yönet",
+          "manager": false,
+          "options": [
+            {
+              "description": "İşlem",
+              "name": "action",
+              "required": true
+            },
+            {
+              "description": "Üye",
+              "name": "user",
+              "required": false
+            },
+            {
+              "description": "Kaynak ses kanalı",
+              "name": "source",
+              "required": false
+            },
+            {
+              "description": "Hedef ses kanalı",
+              "name": "destination",
+              "required": false
+            },
+            {
+              "description": "Önizlemedeki onay bilgisi",
+              "name": "confirm",
+              "required": false
+            },
+            {
+              "description": "Gerekçe",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "mod voice",
+          "usage": "/mod voice <action> [user] [source] [destination] [confirm] [reason]"
+        },
+        {
+          "aliases": [],
+          "description": "Mesajın Uygulamalar menüsünden yetkililere bildirim gönder",
+          "manager": false,
+          "options": [],
+          "path": "Report",
+          "usage": "Mesaj → Uygulamalar → Report"
+        },
+        {
+          "aliases": [
+            "ban"
+          ],
+          "description": "Birini kalıcı olarak ya da bir süreliğine yasakla",
+          "manager": false,
           "options": [
             {
               "description": "Kim yasaklanacak: bir üye ya da kullanıcı kimliğiyle herhangi biri",
@@ -4410,8 +4703,8 @@
               "required": false
             }
           ],
-          "path": "ban",
-          "usage": "/ban <user> [reason] [duration] [delete_days]"
+          "path": "mod ban",
+          "usage": "/mod ban <user> [reason] [duration] [delete_days]"
         },
         {
           "aliases": [
@@ -4435,9 +4728,11 @@
           "usage": "/mod unban <user> [reason]"
         },
         {
-          "aliases": [],
+          "aliases": [
+            "kick"
+          ],
           "description": "Bir üyeyi sunucudan at (tekrar katılabilir)",
-          "manager": true,
+          "manager": false,
           "options": [
             {
               "description": "Kim atılacak",
@@ -4450,13 +4745,15 @@
               "required": false
             }
           ],
-          "path": "kick",
-          "usage": "/kick <user> [reason]"
+          "path": "mod kick",
+          "usage": "/mod kick <user> [reason]"
         },
         {
-          "aliases": [],
+          "aliases": [
+            "timeout"
+          ],
           "description": "Bir üyeyi bir süreliğine yazmaktan ve konuşmaktan alıkoy",
-          "manager": true,
+          "manager": false,
           "options": [
             {
               "description": "Kim susturulacak",
@@ -4474,8 +4771,8 @@
               "required": false
             }
           ],
-          "path": "timeout",
-          "usage": "/timeout <user> <duration> [reason]"
+          "path": "mod timeout",
+          "usage": "/mod timeout <user> <duration> [reason]"
         },
         {
           "aliases": [
@@ -4499,9 +4796,11 @@
           "usage": "/mod untimeout <user> [reason]"
         },
         {
-          "aliases": [],
+          "aliases": [
+            "warn"
+          ],
           "description": "Bir üyeyi uyar; yeterince uyarı kendiliğinden işlem yapar",
-          "manager": true,
+          "manager": false,
           "options": [
             {
               "description": "Kim uyarılacak",
@@ -4514,8 +4813,8 @@
               "required": true
             }
           ],
-          "path": "warn",
-          "usage": "/warn <user> <reason>"
+          "path": "mod warn",
+          "usage": "/mod warn <user> <reason>"
         },
         {
           "aliases": [
@@ -4555,9 +4854,11 @@
           "usage": "/mod unwarn <case> [reason]"
         },
         {
-          "aliases": [],
+          "aliases": [
+            "purge"
+          ],
           "description": "Buradaki son mesajları sil (en fazla 100)",
-          "manager": true,
+          "manager": false,
           "options": [
             {
               "description": "Kaç mesaj silinecek",
@@ -4572,6 +4873,56 @@
             {
               "description": "Yalnızca botların mesajları",
               "name": "bots",
+              "required": false
+            },
+            {
+              "description": "Yalnız insan üyeler",
+              "name": "humans",
+              "required": false
+            },
+            {
+              "description": "Embed içeren mesajlar",
+              "name": "embeds",
+              "required": false
+            },
+            {
+              "description": "Düzenli ifade",
+              "name": "regex",
+              "required": false
+            },
+            {
+              "description": "Bu mesaj kimliğinden sonra",
+              "name": "after",
+              "required": false
+            },
+            {
+              "description": "Bu mesaj kimliğinden önce",
+              "name": "before",
+              "required": false
+            },
+            {
+              "description": "Bu metinle başlayan",
+              "name": "starts",
+              "required": false
+            },
+            {
+              "description": "Bu metinle biten",
+              "name": "ends",
+              "required": false
+            },
+            {
+              "description": "Bu metni içermeyen",
+              "name": "not",
+              "required": false
+            },
+            {
+              "description": "Etiket içeren",
+              "name": "mentions",
+              "required": false
+            },
+            {
+              "description": "Tepki içeren",
+              "name": "reactions",
               "required": false
             },
             {
@@ -4595,8 +4946,8 @@
               "required": false
             }
           ],
-          "path": "purge",
-          "usage": "/purge <count> [user] [bots] [contains] [links] [attachments] [reason]"
+          "path": "mod purge",
+          "usage": "/mod purge <count> [user] [bots] [humans] [embeds] [regex] [after] [before] [starts] [ends] [not] [mentions] [reactions] [contains] [links] [attachments] [reason]"
         },
         {
           "aliases": [
@@ -6218,5 +6569,5 @@
       "title": "Oyun ve modül ayarları"
     }
   ],
-  "count": 331
+  "count": 340
 }

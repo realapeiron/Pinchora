@@ -65,6 +65,11 @@ export const router = createBrowserRouter([
     ],
   },
   { path: "/verify/:token", lazy: async () => ({ Component: (await import("./pages/Verify")).Verify }) },
+  {
+    path: "/appeals/:guild/:caseNumber",
+    lazy: async () => ({ Component: (await import("./pages/ModParity")).AppealForm }),
+  },
+  { path: "/appeals", lazy: async () => ({ Component: (await import("./pages/ModParity")).AppealForm }) },
   { path: "/login", element: <Login /> },
   { path: "/servers", element: <RequireLogin>{(me) => <Servers me={me} />}</RequireLogin> },
   {
@@ -88,6 +93,10 @@ export const router = createBrowserRouter([
       { path: "community", element: <Community /> },
       { path: "events", lazy: async () => ({ Component: (await import("./pages/Events")).Events }) },
       { path: "moderation", element: <Moderation /> },
+      {
+        path: "mod-parity",
+        lazy: async () => ({ Component: (await import("./pages/ModParity")).ModParity }),
+      },
       { path: "safety", lazy: async () => ({ Component: (await import("./pages/Safety")).Safety }) },
       { path: "anti-nuke", lazy: async () => ({ Component: (await import("./pages/AntiNuke")).AntiNuke }) },
       {

@@ -74,7 +74,7 @@ impl Warn {
 }
 
 /// Applies the rung a warn reached, with the bot as the moderator. Returns the line for the answer.
-async fn climb(
+pub(crate) async fn climb(
     cx: &Cx,
     guild: u64,
     ranks: &Ranks,

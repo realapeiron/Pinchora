@@ -420,6 +420,7 @@ fn dispatch(app: &Arc<App>, shard: u32, event: Event) {
         Event::VoiceStateUpdate(event) => {
             let app2 = app.clone();
             app.spawn_event("voice_state_update", async move {
+                pinchora_commands::on_mod_parity_voice(&app2, &event.0).await;
                 if let Err(error) = on_voice_state_update(app2, *event).await {
                     tracing::warn!(%error, "voice handler failed");
                 }
@@ -444,6 +445,7 @@ fn dispatch(app: &Arc<App>, shard: u32, event: Event) {
             // Everything the rebuild needs is taken here, and the guild is dropped: a storm of them at
             // identify must not sit in the event slots (a message or a member joining would be dropped)
             // holding every server's member list while the database answers.
+            pinchora_commands::seed_mod_parity_voice(app, &event);
             if let Some(snapshot) = voice_snapshot(app, *event) {
                 let app2 = app.clone();
                 app.spawn_rebuild(async move {

@@ -32,6 +32,8 @@ pub enum Deferral {
 /// a command whose success is public stays out. A unit test checks that every entry names a real
 /// command, and the simulator that nothing listed here ever answers publicly.
 const PRIVATE: &[&str] = &[
+    "modtools",
+    "Report",
     "achievementadmin",
     "autoroles",
     "birthday",

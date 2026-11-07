@@ -473,8 +473,10 @@ impl Module {
             "plaza" => Self::Plaza,
             "points" | "store" => Self::Store,
             "roles" => Self::RolePanels,
-            "ban" | "unban" | "kick" | "timeout" | "untimeout" | "warn" | "warnings" | "unwarn" | "purge"
-            | "slowmode" | "lock" | "unlock" | "nick" | "role" | "case" | "reason" => Self::Moderation,
+            "modtools" | "Report" | "ban" | "unban" | "kick" | "timeout" | "untimeout" | "warn" | "warnings"
+            | "unwarn" | "purge" | "slowmode" | "lock" | "unlock" | "nick" | "role" | "case" | "reason" => {
+                Self::Moderation
+            }
             "autoroles" => Self::AutoRoles,
             "color" => Self::ColorRoles,
             "partner" | "friends" | "hug" | "pat" | "wave" | "highfive" => Self::Social,

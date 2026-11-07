@@ -498,6 +498,13 @@ pub fn validate_backup(backup: &Backup, lang: Lang) -> Result<(), String> {
             return Err(fields(errors));
         }
     }
+    if let Some(row) = get("mod_parity_settings").first() {
+        let config: pinchora_core::mod_parity::Config =
+            serde_json::from_value(row["config"].clone()).map_err(|_| invalid())?;
+        if !config.valid() {
+            return Err(invalid());
+        }
+    }
     if let Some(row) = get("automod_settings").first() {
         let mut row = row.clone();
         row["observe_until"] = Value::Null;
@@ -678,6 +685,10 @@ fn discord_id(value: &Value, lang: Lang) -> anyhow::Result<Option<u64>> {
 async fn check_grants(app: &App, guild: u64, actor: u64, backup: &Backup, lang: Lang) -> anyhow::Result<()> {
     use settings::{Grantor, RoleFacts};
     use twilight_model::guild::Permissions;
+    if let Some(row) = backup.sections.get("mod_parity_settings").and_then(|rows| rows.first()) {
+        let config = serde_json::from_value(row["config"].clone())?;
+        crate::check_mod_parity_config(app, guild, actor, &config).await?;
+    }
     let mut grants = Vec::new();
     for (table, field) in [
         ("level_roles", "role_id"),

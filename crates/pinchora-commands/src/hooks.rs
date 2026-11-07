@@ -71,6 +71,9 @@ pub(crate) async fn after_message(app: &Arc<App>, msg: &Message, _settings: &Gui
 
 /// A member joined, before their join role and welcome.
 pub(crate) async fn on_member_join(app: &Arc<App>, event: &MemberAdd) -> JoinVerdict {
+    if crate::mod_parity::member_join(app, event.guild_id.get(), event.user.id.get()).await == JoinVerdict::Held {
+        return JoinVerdict::Held;
+    }
     let verdict = crate::verification::on_member_join(app, event).await;
     // F9 stats counts every join, held or not.
     crate::stats::count_member(app, event.guild_id.get(), true).await;
@@ -120,6 +123,7 @@ pub(crate) async fn on_level_up(_app: &Arc<App>, _guild: u64, _user: u64, _level
 /// A member's roles or name changed, before the server log hears of it. Not one of the first six: sticky roles
 /// need to see every change to a member's roles, because Discord's leave event does not say what they held.
 pub(crate) async fn on_member_update(app: &Arc<App>, event: &MemberUpdate) {
+    crate::mod_parity::member_event(app, event.guild_id.get(), event.user.id.get()).await;
     crate::verification::on_member_update(app, event).await;
     // F2 sticky roles keep what the member holds now.
     crate::commands::roles_pack::on_member_update(app, event).await;

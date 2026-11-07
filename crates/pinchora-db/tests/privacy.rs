@@ -209,6 +209,14 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
     // Everything else, with the player on each side of every table that names two players.
     // ($1 is the player, $2 someone else.)
     let inserts: &[&str] = &[
+        // D11 evidence and restriction records cover each affected member, author and reviewer.
+        "INSERT INTO mod_notes(guild_id,user_id,author_id,body) VALUES($1,$1,$2,'Note'),($1,$2,$1,'Authored note')",
+        "INSERT INTO mod_reports(guild_id,user_id,reporter_id,reviewer_id,body) VALUES($1,$1,$2,$2,'Target'),($1,$2,$1,$2,'Reporter'),($1,$2,$2,$1,'Reviewer')",
+        "INSERT INTO mod_appeals(guild_id,case_number,user_id,reviewer_id,body) VALUES($1,1,$1,$2,'Own appeal body'),($1,1,$2,$1,'Reviewed appeal body')",
+        "INSERT INTO mod_restrictions(guild_id,user_id,role_id,role_ids,kind) VALUES($1,$1,$2,ARRAY[$2::BIGINT],'mute')",
+        "INSERT INTO mod_voice_bans(guild_id,user_id) VALUES($2,$1)",
+        "INSERT INTO mod_report_blocks(guild_id,user_id) VALUES($2,$1)",
+        "INSERT INTO mod_booster_roles(guild_id,user_id,role_id) VALUES($1,$1,$2)",
         "INSERT INTO afk (guild_id, user_id, message) VALUES ($1, $1, 'away')",
         "INSERT INTO sticky_messages (channel_id, guild_id, content, updated_by) VALUES ($1, $1, 'note', $1)",
         "INSERT INTO scheduled_messages (guild_id, channel_id, content, schedule, next_run_at, created_by)
