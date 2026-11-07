@@ -18,9 +18,11 @@ async fn assigned_feature_migrations_apply_after_later_versions() {
         .await
         .unwrap();
     let all = sqlx::migrate!("../../migrations");
+    // Reproduce the shipped 0067 state. Later migrations such as 0068 depend on 0066
+    // and must run only after the missing feature migrations have been applied.
     let baseline = Migrator::with_migrations(
         all.iter()
-            .filter(|m| ![50, 51, 52, 54, 55, 66].contains(&m.version))
+            .filter(|m| m.version <= 67 && ![50, 51, 52, 54, 55, 66].contains(&m.version))
             .cloned()
             .collect(),
     );

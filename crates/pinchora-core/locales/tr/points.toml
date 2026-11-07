@@ -1,4 +1,4 @@
-# /points and /store: server points, the role store and its /setup economy subcommands.
+# /points and /store: server points, the role store and its /progression economy subcommands.
 
 [points]
 guild-only = "Puanlar yalnızca sunucu içinde geçerli."
@@ -22,12 +22,12 @@ option = "{price} {name}"
 title = "Puan mağazası"
 footer = "{name} ile öde. Bakiyene /points show ile bakabilirsin"
 buy-placeholder = "Bir rol satın al…"
-empty = "Mağaza boş. Sunucu yöneticileri `/setup economy store-add` ile rol ekleyebilir."
-max-roles = "Bir mağazada en fazla {max} rol olur. Önce `/setup economy store-remove` ile birini kaldır."
+empty = "Mağaza boş. Sunucu yöneticileri `/progression economy store-add` ile rol ekleyebilir."
+max-roles = "Bir mağazada en fazla {max} rol olur. Önce `/progression economy store-remove` ile birini kaldır."
 on-sale = "Satışta: {line}"
 removed = "{role} artık satışta değil. Daha önce alanlar rolü korur."
 not-in-store = "{role} mağazada yok."
-list-empty = "Satışta bir şey yok. `/setup economy store-add` ile bir rol ekle."
+list-empty = "Satışta bir şey yok. `/progression economy store-add` ile bir rol ekle."
 list-title = "{name} mağazası"
 list-footer = "{count}/{max} rol"
 pick = "Almak için bir şey seç."

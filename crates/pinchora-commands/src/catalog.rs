@@ -210,7 +210,7 @@ mod tests {
         };
         assert_eq!(find("give")["usage"], "/give <user> <amount>");
         assert_eq!(find("profile")["usage"], "/profile [user]");
-        assert_eq!(find("setup leveling xp-voice")["manager"], true);
+        assert_eq!(find("progression leveling xp-voice")["manager"], true);
         assert_eq!(find("daily")["manager"], false);
     }
 }

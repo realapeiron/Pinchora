@@ -280,7 +280,7 @@ mod tests {
 
     #[test]
     fn consolidated_paths_wrap_without_truncating_the_action() {
-        let row = row("/setup leveling xp-import-mee6", "Import server XP", true);
+        let row = row("/progression leveling xp-import-mee6", "Import server XP", true);
         assert!(HelpCard::fits(&row));
         assert_eq!(HelpCard::row_height(&row), TWO_LINES);
         let lines = HelpCard::command_lines(&row.command);

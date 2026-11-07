@@ -362,10 +362,10 @@ impl Module {
             Self::AutoRoles => "/setup roles: roles given to members who join, and roles kept for those who come back.",
             Self::ColorRoles => "/color: colour roles members pick for their names.",
             Self::Stats => {
-                "/stats, /setup stats, the Stats page and counting messages, voice minutes, joins and leaves."
+                "/stats, /integrations stats, the Stats page and counting messages, voice minutes, joins and leaves."
             }
             Self::Tickets => {
-                "/ticket and /setup tickets: private support tickets opened from a panel, with transcripts."
+                "/ticket and /community tickets: private support tickets opened from a panel, with transcripts."
             }
             Self::AutoMod => "Automatic message rules and moderation actions.",
             Self::Verification => "Join gate and pixel captcha verification.",
@@ -374,11 +374,11 @@ impl Module {
             Self::Events => "/event: scheduled server events and RSVPs.",
             Self::CommandControl => "Command permissions, aliases and configuration backups.",
             Self::Feeds => {
-                "/setup feeds: new YouTube videos, RSS and podcast episodes, Reddit and Bluesky posts in a channel."
+                "/integrations feeds: new YouTube videos, RSS and podcast episodes, Reddit and Bluesky posts in a channel."
             }
             Self::TempVoice => "Creator channels that make a voice room for whoever joins, and /voice to run it.",
             Self::Info => "Server, member, role, channel, emoji and invite information.",
-            Self::Starboard => "/setup starboard: highlight popular posts and set up vote channels.",
+            Self::Starboard => "/community starboard: highlight popular posts and set up vote channels.",
             Self::Invites => "/invites: invite counts, leaderboards, rewards and temporary links.",
             Self::AntiNuke => "Protect server structure, staff and VIP members.",
             Self::Birthdays => "Opt-in birthdays, private dates and server celebrations.",

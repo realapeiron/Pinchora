@@ -62,7 +62,7 @@ export const FAQ: { question: string; answer: string }[] = [
   {
     question: "Is there gambling?",
     answer:
-      "One optional game, Shell Game, is a gambling-style bet with shells. It stays off until a manager runs /setup economy gambling and has daily limits. Nobody can lose shells in the heist, the party games or the puzzles.",
+      "One optional game, Shell Game, is a gambling-style bet with shells. It stays off until a manager runs /progression economy gambling and has daily limits. Nobody can lose shells in the heist, the party games or the puzzles.",
   },
   {
     question: "Which languages does it speak?",

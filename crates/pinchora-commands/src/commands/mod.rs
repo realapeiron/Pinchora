@@ -108,7 +108,7 @@ macro_rules! commands {
         }
 
         pub(crate) async fn dispatch(cx: &Cx, data: CommandData) -> anyhow::Result<()> {
-            if data.name == "setup" || crate::routing::canonical(&crate::command_control::path(&data)).starts_with("setup ") {
+            if crate::routing::is_admin_path(crate::routing::canonical(&crate::command_control::path(&data))) {
                 if cx.guild_id().is_none() {
                     return cx.reply_ephemeral(pinchora_core::t!(cx.lang(), "config.guild-only")).await;
                 }
@@ -236,7 +236,11 @@ mod quick_command_budget {
     #[test]
     fn quick_games_keep_the_slash_command_budget() {
         let definitions = definitions();
-        assert_eq!(definitions.len(), 62, "Discord's 100-command budget must not grow");
+        assert_eq!(
+            definitions.len(),
+            crate::routing::PROJECTED_ROOTS,
+            "Discord's 100-command budget must not grow"
+        );
         for (name, expected) in [
             (
                 "play",

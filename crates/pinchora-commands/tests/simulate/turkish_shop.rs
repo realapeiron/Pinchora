@@ -406,7 +406,7 @@ async fn turkish_gifts_stalls_and_the_plaza() {
             && news
                 .content()
                 .contains(&format!("<@{member}>, meydana **{}** bağışladı", name_of(&donation)))
-            && news.content().contains("`/setup community plaza-edit`"),
+            && news.content().contains("`/community server plaza-edit`"),
         "{}",
         news.content()
     );
@@ -591,7 +591,7 @@ async fn turkish_quests_points_and_the_store() {
     );
     assert!(footer(&shown).contains(". sırada"), "{}", footer(&shown));
 
-    // The store: setup with /setup economy, the public listing, a refused purchase and a real one.
+    // The store: setup with /progression economy, the public listing, a refused purchase and a real one.
     let (vip_id, pricey_id) = (unique(), unique());
     let vip = sim.guild_role(vip_id, "VIP", 2);
     let pricey = sim.guild_role(pricey_id, "Whale", 3);

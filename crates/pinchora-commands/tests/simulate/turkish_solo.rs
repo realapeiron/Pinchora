@@ -412,7 +412,7 @@ async fn turkish_critterdrop_command_and_settings_answer_in_turkish() {
 
     let off = sim.command(host, "critterdrop", json!([])).await;
     assert!(
-        off.ephemeral && off.content().contains("kapalı") && off.content().contains("/setup economy critters"),
+        off.ephemeral && off.content().contains("kapalı") && off.content().contains("/progression economy critters"),
         "{}",
         off.content()
     );

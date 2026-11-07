@@ -581,7 +581,7 @@ async fn the_plaza_takes_donations_and_managers_place_them() {
     assert!(donated.content().contains("Donated"), "{}", donated.content());
     let news = donated.followups.first().expect("the channel is told");
     assert!(
-        !news.ephemeral && news.content().contains(&name) && news.content().contains("/setup community plaza-edit"),
+        !news.ephemeral && news.content().contains(&name) && news.content().contains("/community server plaza-edit"),
         "{}",
         news.content()
     );

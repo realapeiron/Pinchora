@@ -1,11 +1,11 @@
-# /setup leveling and /setup roles.
+# /progression leveling and /setup roles.
 
 [level-roles]
-full = "A server can have {max} level roles. Remove one with `/setup leveling roles-remove` first."
-added = "Members who reach level **{level}** now get {role}. Run `/setup leveling roles-sync` to give it to members who are already there."
+full = "A server can have {max} level roles. Remove one with `/progression leveling roles-remove` first."
+added = "Members who reach level **{level}** now get {role}. Run `/progression leveling roles-sync` to give it to members who are already there."
 removed = "{role} is no longer a level role. Members keep the role they already have."
 not-one = "{role} isn't a level role."
-empty = "No level roles yet. Add one with `/setup leveling roles-add`."
+empty = "No level roles yet. Add one with `/progression leveling roles-add`."
 row = "Level **{level}** · {role}"
 title = "Level roles"
 footer = "{count}/{max} · {mode}"

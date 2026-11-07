@@ -1,4 +1,4 @@
-# Sosyal akışlar: /setup feeds, akış denetçisinin gönderdiği paylaşımlar ve panelin gösterdiği sorunlar.
+# Sosyal akışlar: /integrations feeds, akış denetçisinin gönderdiği paylaşımlar ve panelin gösterdiği sorunlar.
 
 [module]
 feeds = "Sosyal akışlar"
@@ -8,13 +8,13 @@ name = "**#{id}** · {kind} · **{account}**"
 no-everyone = "Bir akış @everyone'ı etiketleyemez. Bir rol seç ya da rolü boş bırak."
 cannot-read = "Bunu takip edemiyorum: {why}"
 test-cannot-read = "Kaynağı şu an okuyamadım: {why}"
-full = "Bu sunucu zaten {max} akışı takip ediyor. Önce `/setup feeds remove` ile birini kaldır."
+full = "Bu sunucu zaten {max} akışı takip ediyor. Önce `/integrations feeds remove` ile birini kaldır."
 duplicate = "Bu kaynak zaten {channel} kanalına gönderiliyor."
-added = "{name} artık {channel} kanalında takipte. {latest}\nYeni paylaşımlara yaklaşık {minutes} dakikada bir bakıyorum. Şimdi bir örnek görmek için `/setup feeds test {id}`, mesajı, kartı ya da süzgeçleri değiştirmek için `/setup feeds edit {id}` yaz."
+added = "{name} artık {channel} kanalında takipte. {latest}\nYeni paylaşımlara yaklaşık {minutes} dakikada bir bakıyorum. Şimdi bir örnek görmek için `/integrations feeds test {id}`, mesajı, kartı ya da süzgeçleri değiştirmek için `/integrations feeds edit {id}` yaz."
 added-latest = "Son paylaşımı: “{title}”."
 added-empty = "Henüz hiçbir şey paylaşmamış."
 list-title = "Akışlar ({count}/{max})"
-list-empty = "Bu sunucu henüz hiçbir akışı takip etmiyor. `/setup feeds add` ile ya da paneldeki Akışlar sayfasından ekleyebilirsin."
+list-empty = "Bu sunucu henüz hiçbir akışı takip etmiyor. `/integrations feeds add` ile ya da paneldeki Akışlar sayfasından ekleyebilirsin."
 list-footer = "Sayfa {page} / {pages}"
 list-pings = " · {role} etiketlenir"
 previous = "Önceki"
@@ -22,7 +22,7 @@ next = "Sonraki"
 expired = "Bu düğmenin süresi doldu."
 slow-down = "Bir dakikada epey sorgu yapıldı. Biraz sonra yeniden dene."
 edit-nothing = "Değiştirilecek en az bir şey seç: kanal, mesaj, rol, kart, süzgeçler ya da açma/kapama."
-no-such = "Bu sunucuda #{id} numaralı bir akış yok. Numaraları `/setup feeds list` gösterir."
+no-such = "Bu sunucuda #{id} numaralı bir akış yok. Numaraları `/integrations feeds list` gösterir."
 edited = "{name} kaydedildi. Yeni paylaşımlar {channel} kanalına gidecek."
 removed = "{name} artık takip edilmiyor."
 test-empty = "Kaynakta henüz gösterilecek bir şey yok, bu yüzden deneyemiyorum."
@@ -130,7 +130,7 @@ ping-role = "Her yeni paylaşımda @{role} rolünü etiketler (denemede kimse et
 role = "rol"
 
 [module-blurb]
-feeds = "/setup feeds: yeni YouTube videoları, RSS ve podcast bölümleri, Reddit ve Bluesky paylaşımları bir kanala gelsin."
+feeds = "/integrations feeds: yeni YouTube videoları, RSS ve podcast bölümleri, Reddit ve Bluesky paylaşımları bir kanala gelsin."
 
 [feeds.ui]
 social-feeds = "SOSYAL AKIŞLAR"

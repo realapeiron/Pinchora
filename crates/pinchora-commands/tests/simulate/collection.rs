@@ -142,7 +142,7 @@ async fn the_collection_commands_fit_discords_limits() {
             assert!(option["description"].as_str().unwrap().len() <= 100, "{name} {option}");
         }
     }
-    let critters = command_tree::definition("setup economy critters");
+    let critters = command_tree::definition("progression economy critters");
     let names: Vec<&str> = critters["options"]
         .as_array()
         .unwrap()
@@ -434,7 +434,9 @@ async fn critterdrop_command_follows_the_server_setting_and_has_cooldowns() {
     // Switched off (the default): refused politely, and neither cooldown was started.
     let off = sim.command(host, "critterdrop", json!([])).await;
     assert!(
-        off.ephemeral && off.content().contains("switched off") && off.content().contains("/setup economy critters"),
+        off.ephemeral
+            && off.content().contains("switched off")
+            && off.content().contains("/progression economy critters"),
         "{}",
         off.content()
     );

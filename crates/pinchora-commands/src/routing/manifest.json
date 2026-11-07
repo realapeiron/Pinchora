@@ -1,27 +1,27 @@
 [
   {
     "legacy": "achievementadmin add",
-    "canonical": "setup achievements add",
+    "canonical": "progression achievements add",
     "slice": 8
   },
   {
     "legacy": "achievementadmin edit",
-    "canonical": "setup achievements edit",
+    "canonical": "progression achievements edit",
     "slice": 8
   },
   {
     "legacy": "achievementadmin grant",
-    "canonical": "setup achievements grant",
+    "canonical": "progression achievements grant",
     "slice": 8
   },
   {
     "legacy": "achievementadmin list",
-    "canonical": "setup achievements list",
+    "canonical": "progression achievements list",
     "slice": 8
   },
   {
     "legacy": "achievementadmin remove",
-    "canonical": "setup achievements remove",
+    "canonical": "progression achievements remove",
     "slice": 8
   },
   {
@@ -36,77 +36,77 @@
   },
   {
     "legacy": "antinuke disable",
-    "canonical": "setup antinuke disable",
+    "canonical": "safety antinuke disable",
     "slice": 6
   },
   {
     "legacy": "antinuke enable",
-    "canonical": "setup antinuke enable",
+    "canonical": "safety antinuke enable",
     "slice": 6
   },
   {
     "legacy": "antinuke events",
-    "canonical": "setup antinuke events",
+    "canonical": "safety antinuke events",
     "slice": 6
   },
   {
     "legacy": "antinuke limits",
-    "canonical": "setup antinuke limits",
+    "canonical": "safety antinuke limits",
     "slice": 6
   },
   {
     "legacy": "antinuke status",
-    "canonical": "setup antinuke status",
+    "canonical": "safety antinuke status",
     "slice": 6
   },
   {
     "legacy": "antinuke trust add",
-    "canonical": "setup antinuke trust-add",
+    "canonical": "safety antinuke trust-add",
     "slice": 6
   },
   {
     "legacy": "antinuke trust remove",
-    "canonical": "setup antinuke trust-remove",
+    "canonical": "safety antinuke trust-remove",
     "slice": 6
   },
   {
     "legacy": "antinuke vip add",
-    "canonical": "setup antinuke vip-add",
+    "canonical": "safety antinuke vip-add",
     "slice": 6
   },
   {
     "legacy": "antinuke vip remove",
-    "canonical": "setup antinuke vip-remove",
+    "canonical": "safety antinuke vip-remove",
     "slice": 6
   },
   {
     "legacy": "automod exempt channel",
-    "canonical": "setup automod exempt-channel",
+    "canonical": "safety automod exempt-channel",
     "slice": 6
   },
   {
     "legacy": "automod exempt role",
-    "canonical": "setup automod exempt-role",
+    "canonical": "safety automod exempt-role",
     "slice": 6
   },
   {
     "legacy": "automod profile",
-    "canonical": "setup automod profile",
+    "canonical": "safety automod profile",
     "slice": 6
   },
   {
     "legacy": "automod show",
-    "canonical": "setup automod show",
+    "canonical": "safety automod show",
     "slice": 6
   },
   {
     "legacy": "automod test",
-    "canonical": "setup automod test",
+    "canonical": "safety automod test",
     "slice": 6
   },
   {
     "legacy": "automod toggle",
-    "canonical": "setup automod toggle",
+    "canonical": "safety automod toggle",
     "slice": 6
   },
   {
@@ -201,12 +201,12 @@
   },
   {
     "legacy": "birthdays preview",
-    "canonical": "setup birthdays preview",
+    "canonical": "community birthdays preview",
     "slice": 8
   },
   {
     "legacy": "birthdays settings",
-    "canonical": "setup birthdays settings",
+    "canonical": "community birthdays settings",
     "slice": 8
   },
   {
@@ -266,12 +266,12 @@
   },
   {
     "legacy": "config critters",
-    "canonical": "setup economy critters",
+    "canonical": "progression economy critters",
     "slice": 4
   },
   {
     "legacy": "config gambling",
-    "canonical": "setup economy gambling",
+    "canonical": "progression economy gambling",
     "slice": 4
   },
   {
@@ -291,52 +291,52 @@
   },
   {
     "legacy": "config level-roles add",
-    "canonical": "setup leveling roles-add",
+    "canonical": "progression leveling roles-add",
     "slice": 4
   },
   {
     "legacy": "config level-roles list",
-    "canonical": "setup leveling roles-list",
+    "canonical": "progression leveling roles-list",
     "slice": 4
   },
   {
     "legacy": "config level-roles mode",
-    "canonical": "setup leveling roles-mode",
+    "canonical": "progression leveling roles-mode",
     "slice": 4
   },
   {
     "legacy": "config level-roles remove",
-    "canonical": "setup leveling roles-remove",
+    "canonical": "progression leveling roles-remove",
     "slice": 4
   },
   {
     "legacy": "config level-roles sync",
-    "canonical": "setup leveling roles-sync",
+    "canonical": "progression leveling roles-sync",
     "slice": 4
   },
   {
     "legacy": "config leveling",
-    "canonical": "setup leveling settings",
+    "canonical": "progression leveling settings",
     "slice": 4
   },
   {
     "legacy": "config log",
-    "canonical": "setup moderation log",
+    "canonical": "safety moderation log",
     "slice": 3
   },
   {
     "legacy": "config log-events",
-    "canonical": "setup moderation log-events",
+    "canonical": "safety moderation log-events",
     "slice": 3
   },
   {
     "legacy": "config log-ignore",
-    "canonical": "setup moderation log-ignore",
+    "canonical": "safety moderation log-ignore",
     "slice": 3
   },
   {
     "legacy": "config moderation",
-    "canonical": "setup moderation settings",
+    "canonical": "safety moderation settings",
     "slice": 3
   },
   {
@@ -356,12 +356,12 @@
   },
   {
     "legacy": "config partygames",
-    "canonical": "setup economy partygames",
+    "canonical": "progression economy partygames",
     "slice": 4
   },
   {
     "legacy": "config points",
-    "canonical": "setup economy points-settings",
+    "canonical": "progression economy points-settings",
     "slice": 4
   },
   {
@@ -381,17 +381,17 @@
   },
   {
     "legacy": "config rep-roles add",
-    "canonical": "setup economy rep-roles-add",
+    "canonical": "progression economy rep-roles-add",
     "slice": 4
   },
   {
     "legacy": "config rep-roles list",
-    "canonical": "setup economy rep-roles-list",
+    "canonical": "progression economy rep-roles-list",
     "slice": 4
   },
   {
     "legacy": "config rep-roles remove",
-    "canonical": "setup economy rep-roles-remove",
+    "canonical": "progression economy rep-roles-remove",
     "slice": 4
   },
   {
@@ -401,32 +401,32 @@
   },
   {
     "legacy": "config store add",
-    "canonical": "setup economy store-add",
+    "canonical": "progression economy store-add",
     "slice": 4
   },
   {
     "legacy": "config store list",
-    "canonical": "setup economy store-list",
+    "canonical": "progression economy store-list",
     "slice": 4
   },
   {
     "legacy": "config store remove",
-    "canonical": "setup economy store-remove",
+    "canonical": "progression economy store-remove",
     "slice": 4
   },
   {
     "legacy": "config suggestions",
-    "canonical": "setup community suggestions",
+    "canonical": "community server suggestions",
     "slice": 8
   },
   {
     "legacy": "config surge",
-    "canonical": "setup economy surge",
+    "canonical": "progression economy surge",
     "slice": 4
   },
   {
     "legacy": "config warn-ladder",
-    "canonical": "setup moderation warn-ladder",
+    "canonical": "safety moderation warn-ladder",
     "slice": 3
   },
   {
@@ -441,37 +441,37 @@
   },
   {
     "legacy": "config xp clear",
-    "canonical": "setup leveling xp-clear",
+    "canonical": "progression leveling xp-clear",
     "slice": 4
   },
   {
     "legacy": "config xp multiplier",
-    "canonical": "setup leveling xp-multiplier",
+    "canonical": "progression leveling xp-multiplier",
     "slice": 4
   },
   {
     "legacy": "config xp show",
-    "canonical": "setup leveling xp-show",
+    "canonical": "progression leveling xp-show",
     "slice": 4
   },
   {
     "legacy": "config xp voice",
-    "canonical": "setup leveling xp-voice",
+    "canonical": "progression leveling xp-voice",
     "slice": 4
   },
   {
     "legacy": "counters add",
-    "canonical": "setup stats counter-add",
+    "canonical": "integrations stats counter-add",
     "slice": 7
   },
   {
     "legacy": "counters list",
-    "canonical": "setup stats counter-list",
+    "canonical": "integrations stats counter-list",
     "slice": 7
   },
   {
     "legacy": "counters remove",
-    "canonical": "setup stats counter-remove",
+    "canonical": "integrations stats counter-remove",
     "slice": 7
   },
   {
@@ -616,32 +616,32 @@
   },
   {
     "legacy": "event template",
-    "canonical": "setup events template",
+    "canonical": "community events template",
     "slice": 8
   },
   {
     "legacy": "feeds add",
-    "canonical": "setup feeds add",
+    "canonical": "integrations feeds add",
     "slice": 7
   },
   {
     "legacy": "feeds edit",
-    "canonical": "setup feeds edit",
+    "canonical": "integrations feeds edit",
     "slice": 7
   },
   {
     "legacy": "feeds list",
-    "canonical": "setup feeds list",
+    "canonical": "integrations feeds list",
     "slice": 7
   },
   {
     "legacy": "feeds remove",
-    "canonical": "setup feeds remove",
+    "canonical": "integrations feeds remove",
     "slice": 7
   },
   {
     "legacy": "feeds test",
-    "canonical": "setup feeds test",
+    "canonical": "integrations feeds test",
     "slice": 7
   },
   {
@@ -841,32 +841,32 @@
   },
   {
     "legacy": "inviteadmin bonus-add",
-    "canonical": "setup invites bonus-add",
+    "canonical": "integrations invites bonus-add",
     "slice": 7
   },
   {
     "legacy": "inviteadmin bonus-remove",
-    "canonical": "setup invites bonus-remove",
+    "canonical": "integrations invites bonus-remove",
     "slice": 7
   },
   {
     "legacy": "inviteadmin post",
-    "canonical": "setup invites post",
+    "canonical": "integrations invites post",
     "slice": 7
   },
   {
     "legacy": "inviteadmin reward-add",
-    "canonical": "setup invites reward-add",
+    "canonical": "integrations invites reward-add",
     "slice": 7
   },
   {
     "legacy": "inviteadmin reward-remove",
-    "canonical": "setup invites reward-remove",
+    "canonical": "integrations invites reward-remove",
     "slice": 7
   },
   {
     "legacy": "inviteadmin settings",
-    "canonical": "setup invites settings",
+    "canonical": "integrations invites settings",
     "slice": 7
   },
   {
@@ -1101,7 +1101,7 @@
   },
   {
     "legacy": "plaza edit",
-    "canonical": "setup community plaza-edit",
+    "canonical": "community server plaza-edit",
     "slice": 8
   },
   {
@@ -1111,7 +1111,7 @@
   },
   {
     "legacy": "points give",
-    "canonical": "setup economy points-give",
+    "canonical": "progression economy points-give",
     "slice": 4
   },
   {
@@ -1121,7 +1121,7 @@
   },
   {
     "legacy": "points take",
-    "canonical": "setup economy points-take",
+    "canonical": "progression economy points-take",
     "slice": 4
   },
   {
@@ -1236,37 +1236,37 @@
   },
   {
     "legacy": "schedule add",
-    "canonical": "setup utility schedule-add",
+    "canonical": "community utility schedule-add",
     "slice": 8
   },
   {
     "legacy": "schedule list",
-    "canonical": "setup utility schedule-list",
+    "canonical": "community utility schedule-list",
     "slice": 8
   },
   {
     "legacy": "schedule pause",
-    "canonical": "setup utility schedule-pause",
+    "canonical": "community utility schedule-pause",
     "slice": 8
   },
   {
     "legacy": "schedule preview",
-    "canonical": "setup utility schedule-preview",
+    "canonical": "community utility schedule-preview",
     "slice": 8
   },
   {
     "legacy": "schedule remove",
-    "canonical": "setup utility schedule-remove",
+    "canonical": "community utility schedule-remove",
     "slice": 8
   },
   {
     "legacy": "schedule resume",
-    "canonical": "setup utility schedule-resume",
+    "canonical": "community utility schedule-resume",
     "slice": 8
   },
   {
     "legacy": "schedule run-now",
-    "canonical": "setup utility schedule-run-now",
+    "canonical": "community utility schedule-run-now",
     "slice": 8
   },
   {
@@ -1301,42 +1301,42 @@
   },
   {
     "legacy": "starboard edit",
-    "canonical": "setup starboard edit",
+    "canonical": "community starboard edit",
     "slice": 7
   },
   {
     "legacy": "starboard list",
-    "canonical": "setup starboard list",
+    "canonical": "community starboard list",
     "slice": 7
   },
   {
     "legacy": "starboard remove",
-    "canonical": "setup starboard remove",
+    "canonical": "community starboard remove",
     "slice": 7
   },
   {
     "legacy": "starboard setup",
-    "canonical": "setup starboard setup",
+    "canonical": "community starboard setup",
     "slice": 7
   },
   {
     "legacy": "starboard top",
-    "canonical": "setup starboard top",
+    "canonical": "community starboard top",
     "slice": 7
   },
   {
     "legacy": "starboard votes add",
-    "canonical": "setup starboard votes-add",
+    "canonical": "community starboard votes-add",
     "slice": 7
   },
   {
     "legacy": "starboard votes list",
-    "canonical": "setup starboard votes-list",
+    "canonical": "community starboard votes-list",
     "slice": 7
   },
   {
     "legacy": "starboard votes remove",
-    "canonical": "setup starboard votes-remove",
+    "canonical": "community starboard votes-remove",
     "slice": 7
   },
   {
@@ -1356,17 +1356,17 @@
   },
   {
     "legacy": "sticky remove",
-    "canonical": "setup utility sticky-remove",
+    "canonical": "community utility sticky-remove",
     "slice": 8
   },
   {
     "legacy": "sticky set",
-    "canonical": "setup utility sticky-set",
+    "canonical": "community utility sticky-set",
     "slice": 8
   },
   {
     "legacy": "sticky show",
-    "canonical": "setup utility sticky-show",
+    "canonical": "community utility sticky-show",
     "slice": 8
   },
   {
@@ -1446,32 +1446,32 @@
   },
   {
     "legacy": "tickets panel create",
-    "canonical": "setup tickets panel-create",
+    "canonical": "community tickets panel-create",
     "slice": 5
   },
   {
     "legacy": "tickets panel delete",
-    "canonical": "setup tickets panel-delete",
+    "canonical": "community tickets panel-delete",
     "slice": 5
   },
   {
     "legacy": "tickets panel edit",
-    "canonical": "setup tickets panel-edit",
+    "canonical": "community tickets panel-edit",
     "slice": 5
   },
   {
     "legacy": "tickets panel list",
-    "canonical": "setup tickets panel-list",
+    "canonical": "community tickets panel-list",
     "slice": 5
   },
   {
     "legacy": "tickets panel post",
-    "canonical": "setup tickets panel-post",
+    "canonical": "community tickets panel-post",
     "slice": 5
   },
   {
     "legacy": "tickets settings",
-    "canonical": "setup tickets settings",
+    "canonical": "community tickets settings",
     "slice": 5
   },
   {
@@ -1501,22 +1501,22 @@
   },
   {
     "legacy": "verification message",
-    "canonical": "setup verification message",
+    "canonical": "safety verification message",
     "slice": 6
   },
   {
     "legacy": "verification mode",
-    "canonical": "setup verification mode",
+    "canonical": "safety verification mode",
     "slice": 6
   },
   {
     "legacy": "verification post",
-    "canonical": "setup verification post",
+    "canonical": "safety verification post",
     "slice": 6
   },
   {
     "legacy": "verification setup",
-    "canonical": "setup verification setup",
+    "canonical": "safety verification setup",
     "slice": 6
   },
   {
@@ -1531,17 +1531,17 @@
   },
   {
     "legacy": "voice creators add",
-    "canonical": "setup utility voice-add",
+    "canonical": "community utility voice-add",
     "slice": 5
   },
   {
     "legacy": "voice creators list",
-    "canonical": "setup utility voice-list",
+    "canonical": "community utility voice-list",
     "slice": 5
   },
   {
     "legacy": "voice creators remove",
-    "canonical": "setup utility voice-remove",
+    "canonical": "community utility voice-remove",
     "slice": 5
   },
   {
@@ -1621,32 +1621,32 @@
   },
   {
     "legacy": "xp add",
-    "canonical": "setup leveling xp-add",
+    "canonical": "progression leveling xp-add",
     "slice": 4
   },
   {
     "legacy": "xp import mee6",
-    "canonical": "setup leveling xp-import-mee6",
+    "canonical": "progression leveling xp-import-mee6",
     "slice": 4
   },
   {
     "legacy": "xp remove",
-    "canonical": "setup leveling xp-remove",
+    "canonical": "progression leveling xp-remove",
     "slice": 4
   },
   {
     "legacy": "xp reset",
-    "canonical": "setup leveling xp-reset",
+    "canonical": "progression leveling xp-reset",
     "slice": 4
   },
   {
     "legacy": "xp reset-all",
-    "canonical": "setup leveling xp-reset-all",
+    "canonical": "progression leveling xp-reset-all",
     "slice": 4
   },
   {
     "legacy": "xp set",
-    "canonical": "setup leveling xp-set",
+    "canonical": "progression leveling xp-set",
     "slice": 4
   }
 ]

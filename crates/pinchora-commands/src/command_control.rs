@@ -57,7 +57,7 @@ pub fn control_catalog() -> Vec<Command> {
         let legacy = crate::routing::legacy(&command.path);
         let root = legacy.split(' ').next().unwrap();
         if legacy != command.path {
-            if !command.path.starts_with("setup ") {
+            if !crate::routing::is_admin_path(&command.path) {
                 command.permissions = original
                     .iter()
                     .find(|c| c.name == root)
@@ -281,7 +281,7 @@ pub(crate) async fn component_owner(cx: &Cx, custom_id: &str) -> anyhow::Result<
 /// Autocomplete must not disclose suggestions for a denied command or consume its cooldown.
 pub(crate) async fn autocomplete_allowed(cx: &Cx, data: &CommandData) -> anyhow::Result<bool> {
     use pinchora_core::modules::{Access, Module};
-    if (data.name == "setup" || crate::routing::canonical(&path(data)).starts_with("setup "))
+    if crate::routing::is_admin_path(crate::routing::canonical(&path(data)))
         && (cx.guild_id().is_none() || !cx.can_manage_guild())
     {
         return Ok(false);

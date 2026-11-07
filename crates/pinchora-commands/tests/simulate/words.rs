@@ -1518,7 +1518,7 @@ async fn the_party_commands_fit_discords_limits_and_help_knows_them() {
     }
     let config = command_tree::definition("setup");
     assert_eq!(
-        command_tree::definition("setup economy partygames")["name"],
+        command_tree::definition("progression economy partygames")["name"],
         "partygames"
     );
 

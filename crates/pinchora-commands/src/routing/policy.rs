@@ -1,7 +1,7 @@
 //! Version-one command path normalization, also used for pre-consolidation backups.
 use pinchora_core::{command_control::Config, config_backup::Backup};
 
-use super::{MANIFEST, canonical, protected};
+use super::{MANIFEST, canonical, previous_path, protected};
 
 /// Expand a split parent over exactly its former leaves; never broaden it to a shared setup group.
 pub fn normalize_control(config: &Config) -> Config {
@@ -22,10 +22,37 @@ pub fn normalize_control(config: &Config) -> Config {
             // Keep the original key as the cooldown identity, including across split siblings.
             result
                 .rules
-                .entry(target.canonical.clone())
+                .entry(previous_path(target))
                 .or_default()
                 .constraints
                 .insert(path.clone(), rule.clone());
+        }
+    }
+    // 0068 runs after v1. Flatten inherited constraints so every old cooldown identity and
+    // independent role/channel restriction survives a second remap and backup validation.
+    let original = result.rules.clone();
+    for (path, rule) in &original {
+        let targets: Vec<_> = MANIFEST
+            .iter()
+            .filter(|r| {
+                let previous = previous_path(r);
+                previous.starts_with("setup ")
+                    && (previous == *path || previous.strip_prefix(path).is_some_and(|s| s.starts_with(' ')))
+            })
+            .collect();
+        if !targets.iter().any(|r| previous_path(r) != r.canonical) {
+            continue;
+        }
+        result.rules.remove(path);
+        for target in targets {
+            if protected(&target.canonical) {
+                continue;
+            }
+            let constraints = &mut result.rules.entry(target.canonical.clone()).or_default().constraints;
+            constraints.extend(rule.constraints.clone());
+            let mut own = rule.clone();
+            own.constraints.clear();
+            constraints.insert(path.clone(), own);
         }
     }
     for path in result.aliases.values_mut() {

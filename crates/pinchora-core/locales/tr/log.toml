@@ -1,9 +1,9 @@
-# The server log: its entries (in the server's language) and the /setup moderation log summaries.
+# The server log: its entries (in the server's language) and the /safety moderation log summaries.
 
 [log]
 prefix = "Sunucu kaydı: {summary}"
 head-on = "**açık** · {channel}"
-head-off = "**kapalı** · `/setup moderation log` ile bir kanal seç"
+head-off = "**kapalı** · `/safety moderation log` ile bir kanal seç"
 category-line = "> {category}: {on}/{total} açık · {channel}"
 log-channel = "kayıt kanalı"
 no-channel = "kanal yok"

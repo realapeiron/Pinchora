@@ -804,7 +804,7 @@ mod tests {
     fn managers_are_marked_where_the_command_asks_for_them() {
         let pages = build(&tree(), Lang::Tr);
         let manager = |path: &str| rows_of(&pages, path)[0].manager;
-        assert!(manager("setup server show") && manager("giveaway start") && manager("setup community plaza-edit"));
+        assert!(manager("setup server show") && manager("giveaway start") && manager("community server plaza-edit"));
         assert!(!manager("house view") && !manager("duel chess"));
     }
 }

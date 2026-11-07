@@ -1,4 +1,4 @@
-# Destek talepleri: /ticket, /setup tickets, paneller, talebin içindeki düğmeler, kayıt kanalı, döküm sayfası.
+# Destek talepleri: /ticket, /community tickets, paneller, talebin içindeki düğmeler, kayıt kanalı, döküm sayfası.
 
 [module]
 tickets = "Destek talepleri"
@@ -93,7 +93,7 @@ thread = "{channel} kanalında gizli alt başlık açamıyorum: orada **Özel Al
 manage = "{channel} kanalını değiştiremiyorum: orada **Kanalları Yönet** ve **Rolleri Yönet** izinlerine (alt başlıksa **Alt Başlıkları Yönet** iznine) ihtiyacım var."
 post = "{channel} kanalına yazamıyorum: orada Kanalı Görüntüle, Mesaj Gönder ve Bağlantı Yerleştir izinlerine ihtiyacım var."
 gone = "O kanal artık yok."
-full = "Bu sunucuda Discord'un sınırı olan 500 kanal var. `/setup tickets settings mode` ile talepleri gizli alt başlıklara geçir."
+full = "Bu sunucuda Discord'un sınırı olan 500 kanal var. `/community tickets settings mode` ile talepleri gizli alt başlıklara geçir."
 refused = "Discord bunu kabul etmedi."
 unreachable = "Discord'a ulaşılamadı. Birazdan yeniden dene."
 history = "Bu talebin mesajlarını okuyamadım: burada **Mesaj Geçmişini Oku** iznine ihtiyacım var."
@@ -125,17 +125,17 @@ staff-only = "Bunu yalnızca talebin yetkilileri yapabilir."
 default-title = "Yardım mı lazım?"
 default-description = "Aşağıdaki düğmeye bas, yalnızca seninle yetkililerin görebileceği gizli bir talep açılsın."
 default-topic = "Talep aç"
-no-panel = "**{panel}** adında bir panel yok. `/setup tickets panel-list` hepsini gösterir."
+no-panel = "**{panel}** adında bir panel yok. `/community tickets panel-list` hepsini gösterir."
 full = "Bir sunucuda en fazla {max} panel olabilir. Önce birini sil."
 name-taken = "**{name}** adında başka bir panel zaten var."
 color = "Renkler `#ff6b4a` gibi yazılır."
-created = "**{name}** paneli hazır. `/setup tickets panel-post` ile {channel} kanalında paylaş."
+created = "**{name}** paneli hazır. `/community tickets panel-post` ile {channel} kanalında paylaş."
 edited = "**{name}** paneli kaydedildi. Paylaşılmışsa, güncellemek için yeniden paylaş."
 posted = "**{name}** paneli paylaşıldı: {link}"
 updated = "**{name}** paneli yerinde güncellendi: {link}"
 deleted = "**{name}** paneli silindi. Talepleri duruyor."
 list-title = "Talep panelleri ({count}/{max})"
-list-empty = "Henüz panel yok. `/setup tickets panel-create` ile bir tane oluştur."
+list-empty = "Henüz panel yok. `/community tickets panel-create` ile bir tane oluştur."
 list-open = { one = "Şu an 1 açık talep var.", other = "Şu an {count} açık talep var." }
 list-posted = "{channel} kanalında paylaşıldı"
 list-draft = "Henüz paylaşılmadı ({channel} için)"
@@ -217,4 +217,4 @@ already-closed = "Bu talep zaten kapatılmış."
 "ticket move category" = "Taşınacak kategori"
 
 [module-blurb]
-tickets = "/ticket ve /setup tickets: panelden açılan özel destek talepleri ve konuşma dökümleri."
+tickets = "/ticket ve /community tickets: panelden açılan özel destek talepleri ve konuşma dökümleri."

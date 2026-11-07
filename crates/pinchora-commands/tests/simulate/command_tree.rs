@@ -1,14 +1,19 @@
 use super::*;
 use pinchora_commands::routing::{MANIFEST, route};
 
-pub(super) fn setup_options(path: &str, options: &Value) -> Option<(String, String, Vec<Value>)> {
-    let route = route(path).filter(|r| r.active() && r.canonical.starts_with("setup "))?;
+pub(super) fn setup_options(path: &str, options: &Value) -> Option<(String, String, String, Vec<Value>)> {
+    let route = route(path).filter(|r| r.active() && pinchora_commands::routing::is_admin_path(&r.canonical))?;
     let mut arguments = options.as_array().unwrap();
     while let Some(option) = arguments.first().filter(|o| o["type"] == 1 || o["type"] == 2) {
         arguments = option["options"].as_array().unwrap();
     }
-    let mut parts = route.canonical.split(' ').skip(1);
-    Some((parts.next()?.into(), parts.next()?.into(), arguments.clone()))
+    let mut parts = route.canonical.split(' ');
+    Some((
+        parts.next()?.into(),
+        parts.next()?.into(),
+        parts.next()?.into(),
+        arguments.clone(),
+    ))
 }
 
 #[tokio::test]
@@ -23,11 +28,11 @@ async fn setup_every_action_refuses_without_manage_server_without_mutation() {
         sim.permissions = permissions;
         for route in MANIFEST
             .iter()
-            .filter(|r| r.active() && r.canonical.starts_with("setup "))
+            .filter(|r| r.active() && pinchora_commands::routing::is_admin_path(&r.canonical))
         {
             let parts: Vec<_> = route.canonical.split(' ').collect();
             let reply = sim
-                .legacy_command(user, "setup", json!([group(parts[1], sub(parts[2], vec![]))]))
+                .legacy_command(user, parts[0], json!([group(parts[1], sub(parts[2], vec![]))]))
                 .await;
             let old = sim
                 .legacy_command(
@@ -79,9 +84,9 @@ async fn setup_groups_reach_the_same_handlers_as_legacy_paths() {
         let old = sim
             .legacy_command(user, path.split(' ').next().unwrap(), options.clone())
             .await;
-        let (group_name, action, args) = setup_options(path, &options).unwrap();
+        let (root, group_name, action, args) = setup_options(path, &options).unwrap();
         let new = sim
-            .legacy_command(user, "setup", json!([group(&group_name, sub(&action, args))]))
+            .legacy_command(user, &root, json!([group(&group_name, sub(&action, args))]))
             .await;
         assert_eq!(new.content(), old.content(), "{path}");
         assert_eq!(new.ephemeral, old.ephemeral, "{path}");
@@ -99,7 +104,7 @@ async fn setup_cannot_bypass_antinuke_owner_checks_or_legacy_policy() {
     sim.permissions = MANAGE_GUILD;
     for (name, options) in [
         ("antinuke", json!([sub("status", vec![])])),
-        ("setup", json!([group("antinuke", sub("status", vec![]))])),
+        ("safety", json!([group("antinuke", sub("status", vec![]))])),
     ] {
         let reply = sim.legacy_command(user, name, options).await;
         assert!(
@@ -107,7 +112,7 @@ async fn setup_cannot_bypass_antinuke_owner_checks_or_legacy_policy() {
             "{reply}"
         );
     }
-    for denied in ["automod", "setup automod", "setup automod show"] {
+    for denied in ["automod", "safety automod", "safety automod show"] {
         let config = Config {
             rules: [(
                 denied.into(),
@@ -123,7 +128,7 @@ async fn setup_cannot_bypass_antinuke_owner_checks_or_legacy_policy() {
         sim.app.announce_guild_change(sim.guild).await;
         for (name, options) in [
             ("automod", json!([sub("show", vec![])])),
-            ("setup", json!([group("automod", sub("show", vec![]))])),
+            ("safety", json!([group("automod", sub("show", vec![]))])),
         ] {
             let reply = sim.legacy_command(user, name, options).await;
             assert!(reply.content().contains("disabled"), "{denied}: {reply}");
@@ -271,7 +276,11 @@ async fn setup_slices_seven_eight_eleven_reach_legacy_handlers() {
             .legacy_command(user, path.split(' ').next().unwrap(), options_for(path, vec![]))
             .await;
         let new = sim
-            .legacy_command(user, "setup", options_for(&route.canonical, vec![]))
+            .legacy_command(
+                user,
+                route.canonical.split(' ').next().unwrap(),
+                options_for(&route.canonical, vec![]),
+            )
             .await;
         assert_eq!(old.content(), new.content(), "{path}");
         assert_eq!(old.ephemeral, new.ephemeral, "{path}");
@@ -295,7 +304,7 @@ async fn command_path_migration_is_idempotent_and_keeps_conflicting_restrictions
                 },
             ),
             (
-                "setup feeds list".into(),
+                "integrations feeds list".into(),
                 Rule {
                     allowed_roles: vec!["123".into()],
                     ..Rule::default()
@@ -325,22 +334,22 @@ async fn command_path_migration_is_idempotent_and_keeps_conflicting_restrictions
     };
     sim.app.db.set_command_control(sim.guild, &config).await.unwrap();
     let migrated = sim.app.db.command_control(sim.guild).await.unwrap();
-    assert_eq!(migrated.aliases["feed"], "setup feeds list");
-    assert_eq!(migrated.aliases["xpimport"], "setup leveling xp-import-mee6");
-    assert!(migrated.rules.contains_key("setup starboard top"));
+    assert_eq!(migrated.aliases["feed"], "integrations feeds list");
+    assert_eq!(migrated.aliases["xpimport"], "progression leveling xp-import-mee6");
+    assert!(migrated.rules.contains_key("community starboard top"));
     assert!(!migrated.rules.contains_key("starboard top"));
     assert!(!migrated.rules.contains_key("feeds list"));
     assert_eq!(
-        migrated.rules["setup feeds list"].constraints["feeds list"],
+        migrated.rules["integrations feeds list"].constraints["feeds list"],
         config.rules["feeds list"]
     );
     assert_eq!(
-        migrated.rules["setup feeds list"].allowed_roles,
-        config.rules["setup feeds list"].allowed_roles
+        migrated.rules["integrations feeds list"].allowed_roles,
+        config.rules["integrations feeds list"].allowed_roles
     );
     assert!(!migrated.rules.contains_key("sticky"));
     assert!(
-        migrated.rules["setup utility sticky-show"]
+        migrated.rules["community utility sticky-show"]
             .constraints
             .contains_key("sticky")
     );

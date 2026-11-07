@@ -1,4 +1,4 @@
-# Temp voice: /voice, the panel of buttons in a room, and /setup utility.
+# Temp voice: /voice, the panel of buttons in a room, and /community utility.
 
 [module]
 temp_voice = "Temp voice"
@@ -97,7 +97,7 @@ full = "A server can have {count} creators. Remove one first."
 taken = "{channel} can't be a creator."
 removed = "{channel} isn't a creator any more. Rooms it made stay until they empty."
 unknown = "{channel} isn't a creator."
-none = "No creators yet. Make one with `/setup utility voice-add`."
+none = "No creators yet. Make one with `/community utility voice-add`."
 head = "**Creators** ({count}/{max})"
 line = "{channel} · {template} · {limit} · {rooms} · {state}"
 rooms-now = { one = "{count} room open", other = "{count} rooms open" }
