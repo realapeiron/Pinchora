@@ -133,11 +133,12 @@ pub enum Module {
     Birthdays,
     Achievements,
     Utility,
+    Events,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 45] = [
+    pub const ALL: [Self; 46] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -183,6 +184,7 @@ impl Module {
         Self::Birthdays,
         Self::Achievements,
         Self::Utility,
+        Self::Events,
     ];
 
     /// The key stored in the database and used in the API.
@@ -233,6 +235,7 @@ impl Module {
             Self::Birthdays => "birthdays",
             Self::Achievements => "achievements",
             Self::Utility => "utility",
+            Self::Events => "events",
         }
     }
 
@@ -287,6 +290,7 @@ impl Module {
             Self::Birthdays => "Birthdays",
             Self::Achievements => "Achievements",
             Self::Utility => "Messages",
+            Self::Events => "Events",
         }
     }
 
@@ -348,6 +352,7 @@ impl Module {
             Self::Verification => "Join gate and pixel captcha verification.",
             Self::AntiRaid => "Join detection and reversible raid lockdown.",
             Self::Achievements => "Server achievements and their rewards.",
+            Self::Events => "/event: scheduled server events and RSVPs.",
             Self::Feeds => {
                 "/feeds: new YouTube videos, RSS and podcast episodes, Reddit and Bluesky posts in a channel."
             }
@@ -398,6 +403,7 @@ impl Module {
             Self::Birthdays => Group::Community,
             Self::Achievements => Group::Players,
             Self::Utility => Group::Server,
+            Self::Events => Group::Community,
         }
     }
 
@@ -485,6 +491,7 @@ impl Module {
             "raid" => Self::AntiRaid,
             "birthday" | "birthdays" => Self::Birthdays,
             "achievements" | "achievementadmin" => Self::Achievements,
+            "event" => Self::Events,
             _ => return None,
         })
     }
@@ -528,6 +535,7 @@ impl Module {
             "in" | "tl" => Self::Invites,
             "bd" => Self::Birthdays,
             "af" | "sk" | "sm" => Self::Utility,
+            "ev" => Self::Events,
             _ => return None,
         })
     }

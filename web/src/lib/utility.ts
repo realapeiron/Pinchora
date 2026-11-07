@@ -37,6 +37,8 @@ export interface Scheduled {
 }
 
 export interface UtilityList {
+  language: string;
+  strings: Record<string, string>;
   sticky: Sticky[];
   scheduled: Scheduled[];
   max_scheduled: number;

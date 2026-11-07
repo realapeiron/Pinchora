@@ -1,6 +1,6 @@
 import "../styles/utility.css";
 
-import { useState } from "react";
+import { createContext, useContext, useState } from "react";
 import { Link, useOutletContext } from "react-router";
 
 import { EmbedEditor } from "../components/EmbedEditor";
@@ -11,6 +11,7 @@ import { ChannelPicker, channelLabel } from "../components/Pickers";
 import { PixelButton } from "../components/PixelButton";
 import { PixelToggle } from "../components/PixelToggle";
 import { type EmbedSpec, type GuildInfo, type Overview } from "../lib/api";
+import { catalogWords } from "../lib/catalogWords";
 import { useDiscord } from "../lib/queries";
 import {
   type Recurrence,
@@ -26,6 +27,8 @@ import {
 } from "../lib/utility";
 import { PageHead } from "./PageHead";
 import { Loading, Problem } from "./States";
+
+const UtilityWords = createContext({ t: catalogWords(), language: "en" });
 
 function name(info: GuildInfo | undefined, id: string) {
   const channel = info?.channels.find((item) => item.id === id);
@@ -65,6 +68,8 @@ export function Utility() {
     previewDraft,
     saveTimezone,
   } = useUtility(guild);
+  const language = query.data?.language ?? "en";
+  const t = catalogWords(query.data?.strings, language);
   const discord = useDiscord(guild);
   const [sticky, setSticky] = useState<Sticky | null>(null);
   const [scheduled, setScheduled] = useState<ScheduledDraft | null>(null);
@@ -80,259 +85,278 @@ export function Utility() {
       </p>
     );
   return (
-    <div className="settings-page utility-page">
-      <PageHead
-        title="MESSAGES"
-        lead="Keep an important note visible, or send a message at the right time. AFK notices are set by each member with /afk set."
-      />
-      {module && !module.enabled && (
-        <p className="notice">
-          <strong>Messages are off.</strong> Turn the module on in{" "}
-          <Link to={`/g/${guild}/modules`}>Modules</Link> to use sticky posts and AFK notices.
-        </p>
-      )}
-      {query.isPending && <Loading label="Reading messages" />}
-      {query.isError && <Problem error={query.error} />}
-      {query.isSuccess && (
-        <>
-          <div className="utility-summary">
-            <div>
-              <span className="pixel-label">STICKY</span>
-              <strong>{query.data.sticky.length}</strong>
-              <small>channel notes</small>
+    <UtilityWords.Provider value={{ t, language }}>
+      <div className="settings-page utility-page">
+        <PageHead
+          title={t("MESSAGES")}
+          lead={t(
+            "Keep an important note visible, or send a message at the right time. AFK notices are set by each member with /afk set.",
+          )}
+        />
+        {module && !module.enabled && (
+          <p className="notice">
+            <strong>{t("Messages are off.")}</strong>{" "}
+            {t("Enable Messages to use sticky posts and AFK notices.")}{" "}
+            <Link to={`/g/${guild}/modules`}>{t("Modules")}</Link>
+          </p>
+        )}
+        {query.isPending && <Loading label={t("Reading messages")} />}
+        {query.isError && <Problem error={query.error} />}
+        {query.isSuccess && (
+          <>
+            <div className="utility-summary">
+              <div>
+                <span className="pixel-label">{t("STICKY")}</span>
+                <strong>{query.data.sticky.length}</strong>
+                <small>{t("channel notes")}</small>
+              </div>
+              <div>
+                <span className="pixel-label">{t("SCHEDULED")}</span>
+                <strong>
+                  {query.data.scheduled.length}/{query.data.max_scheduled}
+                </strong>
+                <small>{t("used")}</small>
+              </div>
+              <div>
+                <span className="pixel-label">{t("AFK")}</span>
+                <strong>{t("5 min")}</strong>
+                <small>{t("mention cooldown per channel")}</small>
+              </div>
             </div>
-            <div>
-              <span className="pixel-label">SCHEDULED</span>
-              <strong>
-                {query.data.scheduled.length}/{query.data.max_scheduled}
-              </strong>
-              <small>used</small>
-            </div>
-            <div>
-              <span className="pixel-label">AFK</span>
-              <strong>5 min</strong>
-              <small>mention cooldown per channel</small>
-            </div>
-          </div>
-          <TimezoneEditor
-            initial={query.data.timezone}
-            busy={saveTimezone.isPending}
-            error={saveTimezone.error}
-            onSave={(value) =>
-              saveTimezone.mutate(value, {
-                onSuccess: () => setNotice("Server time zone saved."),
-                onError: (e) => setNotice(e.message),
+            <TimezoneEditor
+              initial={query.data.timezone}
+              busy={saveTimezone.isPending}
+              error={saveTimezone.error}
+              onSave={(value) =>
+                saveTimezone.mutate(value, {
+                  onSuccess: () => setNotice(t("Server time zone saved.")),
+                  onError: (e) => setNotice(e.message),
+                })
+              }
+            />
+            <Panel title={t("STICKY MESSAGES")}>
+              <p className="panel-lead muted">
+                {t(
+                  "After both the chosen number of member messages and the minimum time interval, Pinchora posts a fresh copy and removes the old one. Counts are batched to prevent bursts. It needs Manage Messages.",
+                )}
+              </p>
+              <div className="utility-list">
+                {query.data.sticky.map((item) => (
+                  <article className="utility-item" key={item.channel_id}>
+                    <div className="utility-item-main">
+                      <strong>{name(discord.data, item.channel_id)}</strong>
+                      <span className="badge">{item.enabled ? t("ON") : t("OFF")}</span>
+                      <p>{item.content || t("Embed only")}</p>
+                      {pauseReason(item.pause_reason) && (
+                        <p role="status">
+                          {item.pause_reason_text ?? t(pauseReason(item.pause_reason) ?? "")}
+                        </p>
+                      )}
+                      <small>
+                        {t("Every {messages} messages and at least {seconds} seconds · {count} counted", {
+                          messages: item.min_messages,
+                          seconds: item.min_gap_secs,
+                          count: item.message_count,
+                        })}
+                      </small>
+                    </div>
+                    <div className="utility-actions">
+                      <PixelButton variant="secondary" onClick={() => setSticky({ ...item })}>
+                        {t("Edit")}
+                      </PixelButton>
+                      <PixelButton
+                        variant="ghost"
+                        onClick={() => {
+                          setPreviewItem(item);
+                          setRuns([]);
+                        }}
+                      >
+                        {t("Preview")}
+                      </PixelButton>
+                      <PixelButton
+                        variant="ghost"
+                        onClick={() =>
+                          removeSticky.mutate(item.channel_id, {
+                            onSuccess: () => setNotice(t("Sticky message removed.")),
+                            onError: (e) => setNotice(e.message),
+                          })
+                        }
+                      >
+                        {t("Remove")}
+                      </PixelButton>
+                    </div>
+                  </article>
+                ))}
+                {query.data.sticky.length === 0 && (
+                  <p className="empty-row muted">{t("No sticky messages yet.")}</p>
+                )}
+              </div>
+              <PixelButton onClick={() => setSticky(newSticky())}>{t("＋ New sticky")}</PixelButton>
+            </Panel>
+            <Panel
+              title={t("SCHEDULED MESSAGES · {count}/{max} USED", {
+                count: query.data.scheduled.length,
+                max: query.data.max_scheduled,
+              })}
+            >
+              <p className="panel-lead muted">
+                {t(
+                  "Send once, every few minutes, daily, weekly, or with a five-field cron pattern. Choose an IANA time zone for the server's local time.",
+                )}{" "}
+                {query.data.timezone_notice ?? t(TIMEZONE_NOTICE)}
+              </p>
+              <div className="utility-list">
+                {query.data.scheduled.map((item) => (
+                  <ScheduleCard
+                    key={item.id}
+                    item={item}
+                    info={discord.data}
+                    onPreview={() =>
+                      preview.mutate(item.id, {
+                        onSuccess: (result) => {
+                          setPreviewItem(item);
+                          setRuns(result.runs);
+                        },
+                        onError: (e) => setNotice(e.message),
+                      })
+                    }
+                    onEdit={() => {
+                      setEditingId(item.id);
+                      setScheduled({
+                        channel_id: item.channel_id,
+                        content: item.content,
+                        embed: item.embed,
+                        schedule: item.schedule,
+                        tz: item.tz,
+                        next_run_at: item.next_run_at,
+                      });
+                    }}
+                    onToggle={() =>
+                      enableScheduled.mutate(
+                        { id: item.id, enabled: !item.enabled },
+                        { onError: (e) => setNotice(e.message) },
+                      )
+                    }
+                    onRemove={() =>
+                      removeScheduled.mutate(item.id, {
+                        onSuccess: () => setNotice(t("Scheduled message removed.")),
+                        onError: (e) => setNotice(e.message),
+                      })
+                    }
+                  />
+                ))}
+                {query.data.scheduled.length === 0 && (
+                  <p className="empty-row muted">{t("Nothing scheduled yet.")}</p>
+                )}
+              </div>
+              <PixelButton
+                disabled={query.data.scheduled.length >= query.data.max_scheduled}
+                onClick={() => {
+                  setEditingId(null);
+                  setScheduled(newScheduled(query.data.timezone));
+                }}
+              >
+                {t("＋ Schedule a message")}
+              </PixelButton>
+            </Panel>
+          </>
+        )}
+        {sticky && (
+          <StickyEditor
+            draft={sticky}
+            info={discord.data}
+            busy={saveSticky.isPending}
+            error={saveSticky.error}
+            onChange={setSticky}
+            onPreview={() => {
+              setPreviewItem(sticky);
+              setRuns([]);
+            }}
+            onCancel={() => setSticky(null)}
+            onSave={() =>
+              saveSticky.mutate(sticky, {
+                onSuccess: () => {
+                  setSticky(null);
+                  setNotice(t("Sticky message saved."));
+                },
               })
             }
           />
-          <Panel title="STICKY MESSAGES">
-            <p className="panel-lead muted">
-              After both the chosen number of member messages and the minimum time interval, Pinchora posts a
-              fresh copy and removes the old one. Counts are batched to prevent bursts. It needs Manage
-              Messages.
-            </p>
-            <div className="utility-list">
-              {query.data.sticky.map((item) => (
-                <article className="utility-item" key={item.channel_id}>
-                  <div className="utility-item-main">
-                    <strong>{name(discord.data, item.channel_id)}</strong>
-                    <span className="badge">{item.enabled ? "ON" : "OFF"}</span>
-                    <p>{item.content || "Embed only"}</p>
-                    {pauseReason(item.pause_reason) && (
-                      <p role="status">{item.pause_reason_text ?? pauseReason(item.pause_reason)}</p>
-                    )}
-                    <small>
-                      Every {item.min_messages} messages and at least {item.min_gap_secs} seconds ·{" "}
-                      {item.message_count} counted
-                    </small>
-                  </div>
-                  <div className="utility-actions">
-                    <PixelButton variant="secondary" onClick={() => setSticky({ ...item })}>
-                      Edit
-                    </PixelButton>
-                    <PixelButton
-                      variant="ghost"
-                      onClick={() => {
-                        setPreviewItem(item);
-                        setRuns([]);
-                      }}
-                    >
-                      Preview
-                    </PixelButton>
-                    <PixelButton
-                      variant="ghost"
-                      onClick={() =>
-                        removeSticky.mutate(item.channel_id, {
-                          onSuccess: () => setNotice("Sticky message removed."),
-                          onError: (e) => setNotice(e.message),
-                        })
-                      }
-                    >
-                      Remove
-                    </PixelButton>
-                  </div>
-                </article>
-              ))}
-              {query.data.sticky.length === 0 && <p className="empty-row muted">No sticky messages yet.</p>}
-            </div>
-            <PixelButton onClick={() => setSticky(newSticky())}>＋ New sticky</PixelButton>
-          </Panel>
-          <Panel
-            title={`SCHEDULED MESSAGES · ${query.data.scheduled.length}/${query.data.max_scheduled} USED`}
-          >
-            <p className="panel-lead muted">
-              Send once, every few minutes, daily, weekly, or with a five-field cron pattern. Choose an IANA
-              time zone for the server's local time. {query.data.timezone_notice ?? TIMEZONE_NOTICE}
-            </p>
-            <div className="utility-list">
-              {query.data.scheduled.map((item) => (
-                <ScheduleCard
-                  key={item.id}
-                  item={item}
-                  info={discord.data}
-                  onPreview={() =>
-                    preview.mutate(item.id, {
-                      onSuccess: (result) => {
-                        setPreviewItem(item);
-                        setRuns(result.runs);
-                      },
-                      onError: (e) => setNotice(e.message),
-                    })
-                  }
-                  onEdit={() => {
-                    setEditingId(item.id);
-                    setScheduled({
-                      channel_id: item.channel_id,
-                      content: item.content,
-                      embed: item.embed,
-                      schedule: item.schedule,
-                      tz: item.tz,
-                      next_run_at: item.next_run_at,
-                    });
-                  }}
-                  onToggle={() =>
-                    enableScheduled.mutate(
-                      { id: item.id, enabled: !item.enabled },
-                      { onError: (e) => setNotice(e.message) },
-                    )
-                  }
-                  onRemove={() =>
-                    removeScheduled.mutate(item.id, {
-                      onSuccess: () => setNotice("Scheduled message removed."),
-                      onError: (e) => setNotice(e.message),
-                    })
-                  }
-                />
-              ))}
-              {query.data.scheduled.length === 0 && <p className="empty-row muted">Nothing scheduled yet.</p>}
-            </div>
-            <PixelButton
-              disabled={query.data.scheduled.length >= query.data.max_scheduled}
-              onClick={() => {
-                setEditingId(null);
-                setScheduled(newScheduled(query.data.timezone));
-              }}
-            >
-              ＋ Schedule a message
-            </PixelButton>
-          </Panel>
-        </>
-      )}
-      {sticky && (
-        <StickyEditor
-          draft={sticky}
-          info={discord.data}
-          busy={saveSticky.isPending}
-          error={saveSticky.error}
-          onChange={setSticky}
-          onPreview={() => {
-            setPreviewItem(sticky);
-            setRuns([]);
-          }}
-          onCancel={() => setSticky(null)}
-          onSave={() =>
-            saveSticky.mutate(sticky, {
-              onSuccess: () => {
-                setSticky(null);
-                setNotice("Sticky message saved.");
-              },
-            })
-          }
-        />
-      )}
-      {scheduled && (
-        <ScheduleEditor
-          draft={scheduled}
-          editing={editingId !== null}
-          info={discord.data}
-          busy={editingId === null ? addScheduled.isPending : saveScheduled.isPending}
-          error={editingId === null ? addScheduled.error : saveScheduled.error}
-          onChange={setScheduled}
-          onPreview={() => {
-            previewDraft.mutate(scheduled, {
-              onSuccess: (result) => {
-                setPreviewItem(scheduled);
-                setRuns(result.runs);
-              },
-              onError: (e) => setNotice(e.message),
-            });
-          }}
-          onCancel={() => {
-            setScheduled(null);
-            setEditingId(null);
-          }}
-          onSave={() => {
-            const onSuccess = () => {
+        )}
+        {scheduled && (
+          <ScheduleEditor
+            draft={scheduled}
+            editing={editingId !== null}
+            info={discord.data}
+            busy={editingId === null ? addScheduled.isPending : saveScheduled.isPending}
+            error={editingId === null ? addScheduled.error : saveScheduled.error}
+            onChange={setScheduled}
+            onPreview={() => {
+              previewDraft.mutate(scheduled, {
+                onSuccess: (result) => {
+                  setPreviewItem(scheduled);
+                  setRuns(result.runs);
+                },
+                onError: (e) => setNotice(e.message),
+              });
+            }}
+            onCancel={() => {
               setScheduled(null);
               setEditingId(null);
-              setNotice("Scheduled message saved.");
-            };
-            if (editingId === null) addScheduled.mutate(scheduled, { onSuccess });
-            else saveScheduled.mutate({ id: editingId, draft: scheduled }, { onSuccess });
-          }}
-        />
-      )}
-      {previewItem && (
-        <div className="utility-overlay" role="presentation" onClick={() => setPreviewItem(null)}>
-          <section
-            className="utility-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Message preview"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="utility-dialog-head">
-              <strong>PREVIEW</strong>
-              <button onClick={() => setPreviewItem(null)} aria-label="Close preview">
-                ×
-              </button>
-            </div>
-            <MessagePreview
-              preview={{ text: previewItem.content, embed: previewItem.embed, ephemeral: false, notes: [] }}
-            />
-            {runs.length > 0 && (
-              <div className="utility-runs">
-                <strong>NEXT RUNS</strong>
-                <ol>
-                  {runs.map((run) => (
-                    <li key={run}>{new Date(run).toLocaleString()}</li>
-                  ))}
-                </ol>
+            }}
+            onSave={() => {
+              const onSuccess = () => {
+                setScheduled(null);
+                setEditingId(null);
+                setNotice(t("Scheduled message saved."));
+              };
+              if (editingId === null) addScheduled.mutate(scheduled, { onSuccess });
+              else saveScheduled.mutate({ id: editingId, draft: scheduled }, { onSuccess });
+            }}
+          />
+        )}
+        {previewItem && (
+          <div className="utility-overlay" role="presentation" onClick={() => setPreviewItem(null)}>
+            <section
+              className="utility-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-label={t("Message preview")}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="utility-dialog-head">
+                <strong>{t("PREVIEW")}</strong>
+                <button onClick={() => setPreviewItem(null)} aria-label={t("Close preview")}>
+                  ×
+                </button>
               </div>
-            )}
-          </section>
-        </div>
-      )}
-      {notice && (
-        <div className="notice" role="status">
-          {notice}
-          <button onClick={() => setNotice(null)} aria-label="Dismiss">
-            ×
-          </button>
-        </div>
-      )}
-      {showError(removeSticky.error || removeScheduled.error || enableScheduled.error)}
-    </div>
+              <MessagePreview
+                preview={{ text: previewItem.content, embed: previewItem.embed, ephemeral: false, notes: [] }}
+              />
+              {runs.length > 0 && (
+                <div className="utility-runs">
+                  <strong>{t("NEXT RUNS")}</strong>
+                  <ol>
+                    {runs.map((run) => (
+                      <li key={run}>{new Date(run).toLocaleString(language)}</li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+            </section>
+          </div>
+        )}
+        {notice && (
+          <div className="notice" role="status">
+            {notice}
+            <button onClick={() => setNotice(null)} aria-label={t("Dismiss")}>
+              ×
+            </button>
+          </div>
+        )}
+        {showError(removeSticky.error || removeScheduled.error || enableScheduled.error)}
+      </div>
+    </UtilityWords.Provider>
   );
 }
 
@@ -347,11 +371,12 @@ function TimezoneEditor({
   error: Error | null;
   onSave: (value: string) => void;
 }) {
+  const { t } = useContext(UtilityWords);
   const [value, setValue] = useState(initial);
   return (
-    <Panel title="SERVER TIME">
+    <Panel title={t("SERVER TIME")}>
       <div className="utility-timezone">
-        <Field label="Default IANA time zone" htmlFor="utility-offset" hint={TIMEZONE_NOTICE}>
+        <Field label={t("Default IANA time zone")} htmlFor="utility-offset" hint={t(TIMEZONE_NOTICE)}>
           <input
             id="utility-offset"
             className="pixel-input"
@@ -364,7 +389,7 @@ function TimezoneEditor({
           disabled={busy || value === initial || !validTimezone(value)}
           onClick={() => onSave(value)}
         >
-          {busy ? "Saving…" : "Save time zone"}
+          {busy ? t("Saving…") : t("Save time zone")}
         </PixelButton>
       </div>
       {error && (
@@ -391,6 +416,7 @@ function ScheduleCard({
   onToggle: () => void;
   onRemove: () => void;
 }) {
+  const { t, language } = useContext(UtilityWords);
   return (
     <article className="utility-item">
       <div className="utility-item-main">
@@ -398,29 +424,32 @@ function ScheduleCard({
           #{item.id} · {name(info, item.channel_id)}
         </strong>
         <span className={`badge ${item.enabled ? "badge-gold" : ""}`}>
-          {item.enabled ? "ACTIVE" : "PAUSED"}
+          {item.enabled ? t("ACTIVE") : t("PAUSED")}
         </span>
-        <p>{item.content || "Embed only"}</p>
+        <p>{item.content || t("Embed only")}</p>
         {pauseReason(item.pause_reason) && (
-          <p role="status">{item.pause_reason_text ?? pauseReason(item.pause_reason)}</p>
+          <p role="status">{item.pause_reason_text ?? t(pauseReason(item.pause_reason) ?? "")}</p>
         )}
         <small>
-          {item.schedule.kind.replace("_", " ")} · next {new Date(item.next_run_at).toLocaleString()} ·{" "}
-          {item.runs} sent
+          {t("{kind} · next {when} · {count} sent", {
+            kind: t(item.schedule.kind),
+            when: new Date(item.next_run_at).toLocaleString(language),
+            count: item.runs,
+          })}
         </small>
       </div>
       <div className="utility-actions">
         <PixelButton variant="secondary" onClick={onEdit}>
-          Edit
+          {t("Edit")}
         </PixelButton>
         <PixelButton variant="secondary" onClick={onPreview}>
-          Preview 5 runs
+          {t("Preview 5 runs")}
         </PixelButton>
         <PixelButton variant="ghost" onClick={onToggle}>
-          {item.enabled ? "Pause" : "Resume"}
+          {item.enabled ? t("Pause") : t("Resume")}
         </PixelButton>
         <PixelButton variant="ghost" onClick={onRemove}>
-          Remove
+          {t("Remove")}
         </PixelButton>
       </div>
     </article>
@@ -446,6 +475,7 @@ function StickyEditor({
   onCancel: () => void;
   onSave: () => void;
 }) {
+  const { t } = useContext(UtilityWords);
   const set = <K extends keyof Sticky>(key: K, value: Sticky[K]) => onChange({ ...draft, [key]: value });
   return (
     <div className="utility-overlay" role="presentation" onClick={onCancel}>
@@ -453,28 +483,28 @@ function StickyEditor({
         className="utility-dialog utility-editor"
         role="dialog"
         aria-modal="true"
-        aria-label="Sticky message editor"
+        aria-label={t("Sticky message editor")}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="utility-dialog-head">
-          <strong>STICKY MESSAGE</strong>
-          <button onClick={onCancel} aria-label="Close editor">
+          <strong>{t("STICKY MESSAGE")}</strong>
+          <button onClick={onCancel} aria-label={t("Close editor")}>
             ×
           </button>
         </div>
-        <Field label="Channel" htmlFor="sticky-channel">
+        <Field label={t("Channel")} htmlFor="sticky-channel">
           <ChannelPicker
             id="sticky-channel"
             info={info}
             value={draft.channel_id}
             onChange={(v) => set("channel_id", v ?? "")}
-            none="Choose a channel"
+            none={t("Choose a channel")}
           />
         </Field>
         <Field
-          label="Message"
+          label={t("Message")}
           htmlFor="sticky-content"
-          aside={<span className="counter">{draft.content.length}/1000</span>}
+          aside={<span className="counter">{t("{count}/1,000", { count: draft.content.length })}</span>}
         >
           <textarea
             id="sticky-content"
@@ -486,7 +516,7 @@ function StickyEditor({
           />
         </Field>
         <div className="utility-two">
-          <Field label="After messages" htmlFor="sticky-messages">
+          <Field label={t("After messages")} htmlFor="sticky-messages">
             <input
               id="sticky-messages"
               className="pixel-input"
@@ -497,7 +527,7 @@ function StickyEditor({
               onChange={(e) => set("min_messages", Number(e.target.value))}
             />
           </Field>
-          <Field label="Time interval (seconds)" htmlFor="sticky-gap">
+          <Field label={t("Time interval (seconds)")} htmlFor="sticky-gap">
             <input
               id="sticky-gap"
               className="pixel-input"
@@ -510,8 +540,8 @@ function StickyEditor({
           </Field>
         </div>
         <div className="utility-toggle">
-          <span>Enabled</span>
-          <PixelToggle label="Enabled" checked={draft.enabled} onChange={(v) => set("enabled", v)} />
+          <span>{t("Enabled")}</span>
+          <PixelToggle label={t("Enabled")} checked={draft.enabled} onChange={(v) => set("enabled", v)} />
         </div>
         <EmbedEditor embed={draft.embed} onChange={(v) => set("embed", v)} />
         {error && (
@@ -521,16 +551,16 @@ function StickyEditor({
         )}
         <div className="utility-editor-actions">
           <PixelButton variant="ghost" onClick={onCancel}>
-            Cancel
+            {t("Cancel")}
           </PixelButton>
           <PixelButton variant="secondary" onClick={onPreview}>
-            Preview
+            {t("Preview")}
           </PixelButton>
           <PixelButton
             disabled={busy || !draft.channel_id || (!draft.content.trim() && !draft.embed)}
             onClick={onSave}
           >
-            {busy ? "Saving…" : "Save sticky"}
+            {busy ? t("Saving…") : t("Save sticky")}
           </PixelButton>
         </div>
       </section>
@@ -559,6 +589,7 @@ function ScheduleEditor({
   onCancel: () => void;
   onSave: () => void;
 }) {
+  const { t } = useContext(UtilityWords);
   const set = <K extends keyof ScheduledDraft>(key: K, value: ScheduledDraft[K]) =>
     onChange({ ...draft, [key]: value });
   const kind = draft.schedule.kind;
@@ -572,28 +603,28 @@ function ScheduleEditor({
         className="utility-dialog utility-editor"
         role="dialog"
         aria-modal="true"
-        aria-label="Schedule editor"
+        aria-label={t("Schedule editor")}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="utility-dialog-head">
-          <strong>{editing ? "EDIT SCHEDULE" : "SCHEDULE A MESSAGE"}</strong>
-          <button onClick={onCancel} aria-label="Close editor">
+          <strong>{editing ? t("EDIT SCHEDULE") : t("SCHEDULE A MESSAGE")}</strong>
+          <button onClick={onCancel} aria-label={t("Close editor")}>
             ×
           </button>
         </div>
-        <Field label="Channel" htmlFor="schedule-channel">
+        <Field label={t("Channel")} htmlFor="schedule-channel">
           <ChannelPicker
             id="schedule-channel"
             info={info}
             value={draft.channel_id}
             onChange={(v) => set("channel_id", v ?? "")}
-            none="Choose a channel"
+            none={t("Choose a channel")}
           />
         </Field>
         <Field
-          label="Message"
+          label={t("Message")}
           htmlFor="schedule-content"
-          aside={<span className="counter">{draft.content.length}/2000</span>}
+          aside={<span className="counter">{t("{count}/2,000", { count: draft.content.length })}</span>}
         >
           <textarea
             id="schedule-content"
@@ -605,7 +636,7 @@ function ScheduleEditor({
           />
         </Field>
         <div className="utility-two">
-          <Field label="First run (UTC)" htmlFor="schedule-when">
+          <Field label={t("First run (UTC)")} htmlFor="schedule-when">
             <input
               id="schedule-when"
               className="pixel-input"
@@ -614,7 +645,7 @@ function ScheduleEditor({
               onChange={(e) => set("next_run_at", firstRunUtc(e.target.value))}
             />
           </Field>
-          <Field label="IANA time zone" htmlFor="schedule-tz" hint={TIMEZONE_NOTICE}>
+          <Field label={t("IANA time zone")} htmlFor="schedule-tz" hint={t(TIMEZONE_NOTICE)}>
             <input
               id="schedule-tz"
               className="pixel-input"
@@ -623,22 +654,22 @@ function ScheduleEditor({
             />
           </Field>
         </div>
-        <Field label="Repeat" htmlFor="schedule-kind">
+        <Field label={t("Repeat")} htmlFor="schedule-kind">
           <select
             id="schedule-kind"
             className="pixel-input pixel-select"
             value={kind}
             onChange={(e) => changeKind(e.target.value as Recurrence["kind"])}
           >
-            <option value="once">Once</option>
-            <option value="interval">Every interval</option>
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly</option>
-            <option value="cron">Cron pattern</option>
+            <option value="once">{t("Once")}</option>
+            <option value="interval">{t("Every interval")}</option>
+            <option value="daily">{t("Daily")}</option>
+            <option value="weekly">{t("Weekly")}</option>
+            <option value="cron">{t("Cron pattern")}</option>
           </select>
         </Field>
         {kind === "interval" && (
-          <Field label="Every seconds" htmlFor="schedule-interval">
+          <Field label={t("Every seconds")} htmlFor="schedule-interval">
             <input
               id="schedule-interval"
               className="pixel-input"
@@ -653,7 +684,7 @@ function ScheduleEditor({
         {kind === "daily" && <TimeFields schedule={draft.schedule} onChange={(s) => set("schedule", s)} />}
         {kind === "weekly" && (
           <>
-            <Field label="Day of week" htmlFor="schedule-weekday">
+            <Field label={t("Day of week")} htmlFor="schedule-weekday">
               <select
                 id="schedule-weekday"
                 className="pixel-input pixel-select"
@@ -667,13 +698,19 @@ function ScheduleEditor({
                   })
                 }
               >
-                {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map(
-                  (day, i) => (
-                    <option key={day} value={i}>
-                      {day}
-                    </option>
-                  ),
-                )}
+                {[
+                  t("Sunday"),
+                  t("Monday"),
+                  t("Tuesday"),
+                  t("Wednesday"),
+                  t("Thursday"),
+                  t("Friday"),
+                  t("Saturday"),
+                ].map((day, i) => (
+                  <option key={day} value={i}>
+                    {day}
+                  </option>
+                ))}
               </select>
             </Field>
             <TimeFields schedule={draft.schedule} onChange={(s) => set("schedule", s)} />
@@ -681,9 +718,9 @@ function ScheduleEditor({
         )}
         {kind === "cron" && (
           <Field
-            label="Cron: minute hour day month weekday"
+            label={t("Cron: minute hour day month weekday")}
             htmlFor="schedule-cron"
-            hint="Use * or one number in each field. Example: 0 9 * * 1"
+            hint={t("Use * or one number in each field. Example: 0 9 * * 1")}
           >
             <input
               id="schedule-cron"
@@ -717,16 +754,16 @@ function ScheduleEditor({
         )}
         <div className="utility-editor-actions">
           <PixelButton variant="ghost" onClick={onCancel}>
-            Cancel
+            {t("Cancel")}
           </PixelButton>
           <PixelButton variant="secondary" disabled={!validTime} onClick={onPreview}>
-            Preview
+            {t("Preview")}
           </PixelButton>
           <PixelButton
             disabled={busy || !validTime || !draft.channel_id || (!draft.content.trim() && !draft.embed)}
             onClick={onSave}
           >
-            {busy ? "Saving…" : editing ? "Save schedule" : "Schedule"}
+            {busy ? t("Saving…") : editing ? t("Save schedule") : t("Schedule")}
           </PixelButton>
         </div>
       </section>
@@ -741,9 +778,10 @@ function TimeFields({
   schedule: Extract<Recurrence, { kind: "daily" | "weekly" }>;
   onChange: (s: Recurrence) => void;
 }) {
+  const { t } = useContext(UtilityWords);
   return (
     <div className="utility-two">
-      <Field label="Hour" htmlFor="schedule-hour">
+      <Field label={t("Hour")} htmlFor="schedule-hour">
         <input
           id="schedule-hour"
           className="pixel-input"
@@ -754,7 +792,7 @@ function TimeFields({
           onChange={(e) => onChange({ ...schedule, hour: Number(e.target.value) })}
         />
       </Field>
-      <Field label="Minute" htmlFor="schedule-minute">
+      <Field label={t("Minute")} htmlFor="schedule-minute">
         <input
           id="schedule-minute"
           className="pixel-input"

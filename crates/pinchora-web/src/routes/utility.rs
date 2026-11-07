@@ -124,7 +124,7 @@ async fn list(State(state): State<WebState>, managed: ManagedGuild) -> ApiResult
         value
     };
     Ok(Json(
-        json!({"sticky":sticky.iter().map(sticky_json).map(localize).collect::<Vec<_>>(),"scheduled":scheduled.iter().map(scheduled_json).map(localize).collect::<Vec<_>>(),"max_scheduled":20,"timezone":timezone,"timezone_notice":pinchora_core::t!(lang,"utility.timezone-notice")}),
+        json!({"language":lang.code(), "strings": pinchora_core::i18n::keys(lang).into_iter().filter_map(|key| key.strip_prefix("utility.ui.").map(|name| (name.to_owned(), pinchora_core::t!(lang, &key)))).collect::<std::collections::BTreeMap<_,_>>(), "sticky":sticky.iter().map(sticky_json).map(localize).collect::<Vec<_>>(),"scheduled":scheduled.iter().map(scheduled_json).map(localize).collect::<Vec<_>>(),"max_scheduled":20,"timezone":timezone,"timezone_notice":pinchora_core::t!(lang,"utility.timezone-notice")}),
     ))
 }
 

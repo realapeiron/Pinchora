@@ -70,6 +70,8 @@ mod feeds;
 mod anti_nuke;
 #[path = "api/birthdays.rs"]
 mod birthdays;
+#[path = "api/events.rs"]
+mod events;
 #[path = "api/tempvoice.rs"]
 mod tempvoice;
 #[path = "api/utility.rs"]

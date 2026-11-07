@@ -9,6 +9,20 @@ async fn schedule_can_be_previewed_edited_paused_and_removed() {
     };
     let (guild, _owner, mut browser) = h.managed_server().await;
     let base = format!("/api/guilds/{guild}/utility");
+    h.state
+        .app
+        .set_guild_lang(guild, Some(pinchora_core::i18n::Lang::Tr))
+        .await
+        .unwrap();
+    let localized = browser.get(&base).await.json();
+    assert_eq!(localized["language"], "tr");
+    assert_eq!(localized["strings"]["MESSAGES"], "MESAJLAR");
+    h.state
+        .app
+        .set_guild_lang(guild, Some(pinchora_core::i18n::Lang::En))
+        .await
+        .unwrap();
+
     let empty = browser.get(&base).await;
     assert_eq!(empty.status, StatusCode::OK, "{}", empty.text());
     assert_eq!(empty.json()["scheduled"], json!([]));

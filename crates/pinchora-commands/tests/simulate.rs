@@ -85,6 +85,8 @@ mod achievements;
 mod anti_nuke;
 #[path = "simulate/automod.rs"]
 mod automod;
+#[path = "simulate/events.rs"]
+mod events;
 #[path = "simulate/moderation.rs"]
 mod moderation;
 #[path = "simulate/utility.rs"]
@@ -12655,6 +12657,13 @@ async fn admin_paths_refuse_members_without_manage_server() {
         "channels": channels,
     });
     let rows: Vec<(&str, Value)> = vec![
+        ("event create", json!([sub("create", vec![])])),
+        ("event list", json!([sub("list", vec![])])),
+        ("event template", json!([sub("template", vec![])])),
+        ("event attendees", json!([sub("attendees", vec![int_option("id", 1)])])),
+        ("event edit", json!([sub("edit", vec![int_option("id", 1)])])),
+        ("event cancel", json!([sub("cancel", vec![int_option("id", 1)])])),
+        ("event remind", json!([sub("remind", vec![int_option("id", 1)])])),
         (
             "sticky set",
             json!([sub(

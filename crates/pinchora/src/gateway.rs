@@ -58,6 +58,7 @@ fn wanted_events() -> EventTypeFlags {
         | EventTypeFlags::REACTION_REMOVE
         | EventTypeFlags::REACTION_REMOVE_ALL
         | EventTypeFlags::REACTION_REMOVE_EMOJI
+        | EventTypeFlags::GUILD_SCHEDULED_EVENT_UPDATE
         // What text commands judge a member's permissions by: the server's owner and roles, a
         // channel's overwrites and the Integrations settings. Cheap, and they come under the
         // Guilds intent (the last one with no intent at all).
@@ -115,6 +116,7 @@ pub async fn run(config: &Config, app: Arc<App>, ready: Readiness) -> anyhow::Re
     intents |= Intents::GUILD_MESSAGE_REACTIONS;
     intents |= Intents::AUTO_MODERATION_CONFIGURATION | Intents::AUTO_MODERATION_EXECUTION;
     intents |= Intents::GUILD_INVITES;
+    intents |= Intents::GUILD_SCHEDULED_EVENTS;
     if config.gateway.member_events {
         intents |= Intents::GUILD_MEMBERS;
     }
@@ -391,6 +393,12 @@ fn dispatch(app: &Arc<App>, shard: u32, event: Event) {
                 if let Err(error) = pinchora_commands::on_automod_execution(owned, event).await {
                     tracing::warn!(%error, "automod native event failed");
                 }
+            });
+        }
+        Event::GuildScheduledEventUpdate(event) => {
+            let owned = app.clone();
+            app.spawn(async move {
+                pinchora_commands::on_scheduled_event_update(owned, event).await;
             });
         }
         Event::ReactionAdd(event) => reacted(app, ReactionEvent::Add(event)),

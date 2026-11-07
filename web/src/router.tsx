@@ -78,6 +78,7 @@ export const router = createBrowserRouter([
       { path: "points", element: <Points /> },
       { path: "log", element: <ServerLog /> },
       { path: "community", element: <Community /> },
+      { path: "events", lazy: async () => ({ Component: (await import("./pages/Events")).Events }) },
       { path: "moderation", element: <Moderation /> },
       { path: "safety", lazy: async () => ({ Component: (await import("./pages/Safety")).Safety }) },
       { path: "anti-nuke", lazy: async () => ({ Component: (await import("./pages/AntiNuke")).AntiNuke }) },
