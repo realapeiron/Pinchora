@@ -454,6 +454,29 @@ async fn capacity_and_controller_replacement() {
     assert_eq!(replacement.join(owner).await["players"].as_array().unwrap().len(), 16);
 }
 #[tokio::test]
+async fn replaced_socket_stays_closed_while_new_controller_remains_active() {
+    let Some(site) = Site::new().await else {
+        return;
+    };
+    let owner = unique();
+    let guest = unique();
+    site.house(owner).await;
+    let browser = site.browser(guest).await;
+    let mut old = browser.connect().await;
+    old.join(owner).await;
+    let mut replacement = browser.connect().await;
+    assert_eq!(old.close_reason().await, "controller_replaced");
+    let snapshot = replacement.join(owner).await;
+    assert_eq!(snapshot["players"].as_array().unwrap().len(), 1);
+    // The previous transport has no way to regain control; a new connection needs a new ticket.
+    assert!(old.socket.send(Message::Text("{}".into())).await.is_err());
+    replacement.send(json!({"type":"snapshot"})).await;
+    assert_eq!(
+        replacement.until("snapshot").await["players"].as_array().unwrap().len(),
+        1
+    );
+}
+#[tokio::test]
 async fn hidden_locked_and_blocked_houses_refuse_visitors_but_allow_owner() {
     let Some(site) = Site::new().await else {
         return;
@@ -530,7 +553,7 @@ async fn seed_reef_multiplayer() {
             .execute(&site.pool)
             .await
             .unwrap();
-        sqlx::query("UPDATE houses SET tier=0 WHERE user_id=$1")
+        sqlx::query("UPDATE houses SET tier=1 WHERE user_id=$1")
             .bind(user as i64)
             .execute(&site.pool)
             .await

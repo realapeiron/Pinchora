@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { PixelButton } from "../components/PixelButton";
 import type { RoomJson } from "../iso/scene";
 import { bootstrap } from "./bootstrap";
-import { ReefNet } from "./net";
+import { ReefNet, type NetworkState } from "./net";
 import { poseAt, type Animation } from "./animation";
 import { Camera, Gesture } from "./camera";
 import { actorItem, Compositor, type ActorDraw } from "./compositor";
@@ -59,6 +59,8 @@ export default function ReefStage({
     requestAnimationFrame(() => drawerClose.current?.focus({ preventScroll: true }));
   };
   const [status, setStatus] = useState("Loading your character…");
+  const [network, setNetwork] = useState<NetworkState>("preview");
+  const controller = useRef<ReefNet | null>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [targets, setTargets] = useState<Target[]>([]);
@@ -72,6 +74,7 @@ export default function ReefStage({
     let dispose = () => {};
     let data: Awaited<ReturnType<typeof bootstrap>> | null = null;
     if (canvas.current) canvas.current.dataset.ready = "false";
+    setNetwork("preview");
     setReady(false);
     setError(null);
     setStreaming(true);
@@ -101,7 +104,8 @@ export default function ReefStage({
       const net = new ReefNet(
         roomKey,
         (message) => {
-          el.dataset.network = net.ready ? "connected" : "preview";
+          el.dataset.network = net.network;
+          setNetwork(net.network);
           player.message = message;
           if (!net.ready && wasOnline && player.tile)
             player.synchronize(player.tile, [...player.tile], player.direction, "idle", null);
@@ -111,6 +115,7 @@ export default function ReefStage({
         () => refreshLayout.current(),
         room,
       );
+      controller.current = net;
       void net.connect();
       const camera = new Camera(window.devicePixelRatio || 1);
       const gesture = new Gesture();
@@ -502,6 +507,7 @@ export default function ReefStage({
       el.dataset.artReady = "false";
       dispose = () => {
         net.dispose();
+        if (controller.current === net) controller.current = null;
         for (const tag of tags.values()) tag.remove();
         cancelAnimationFrame(raf);
         observer.disconnect();
@@ -559,6 +565,7 @@ export default function ReefStage({
         <canvas
           ref={canvas}
           className="reef-canvas"
+          data-network={network}
           tabIndex={0}
           role="application"
           aria-label={t("Playable room. Arrow keys move one tile. Home centres the camera.")}
@@ -639,6 +646,11 @@ export default function ReefStage({
         <p className="reef-status" role="status" aria-live="polite">
           {playerStatus(status)}
         </p>
+        {network === "replaced" && (
+          <PixelButton type="button" onClick={() => controller.current?.takeOver()}>
+            {t("Take over here")}
+          </PixelButton>
+        )}
         {error && (
           <p className="reef-error" role="alert">
             {error}

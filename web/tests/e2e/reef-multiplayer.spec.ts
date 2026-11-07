@@ -59,9 +59,12 @@ test("two players see saved characters, walk, contend for a seat and reconnect",
     // A second tab for the same session becomes the sole controller; the old tab stays a preview.
     const replacement = await guestContext.newPage();
     await replacement.goto(`/house/${HOST}?play=1`);
-    await expect(replacement.locator(".reef-canvas")).toHaveAttribute("data-network", "connected");
-    await expect(guest.locator(".reef-canvas")).toHaveAttribute("data-network", "preview");
+    await expect(replacement.locator(".reef-canvas")).toHaveAttribute("data-network", "connected", {
+      timeout: 15_000,
+    });
+    await expect(guest.locator(".reef-canvas")).toHaveAttribute("data-network", "replaced");
     await expect(guest.locator(".reef-status")).toContainText("This account is playing in another tab.");
+    await expect(guest.getByRole("button", { name: "Take over here" })).toBeVisible();
     await expect(host.locator(".reef-canvas")).toHaveAttribute("data-players", "2");
   } finally {
     await hostContext.close();

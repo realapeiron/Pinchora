@@ -15,6 +15,7 @@ const tr: Record<string, string> = {
   Sit: "Otur",
   Use: "Kullan",
   View: "Görünüm",
+  "Take over here": "Burada devral",
   Room: "Oda",
   "Loading your character…": "Karakterin yükleniyor…",
   "Tap a tile to explore": "Keşfetmek için bir karoya dokun",

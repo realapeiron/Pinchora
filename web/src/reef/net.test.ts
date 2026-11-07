@@ -120,20 +120,44 @@ describe("Reef socket", () => {
     expect(socket.sent.filter((m) => m.type === "use")).toHaveLength(1);
   });
   it("clears peers and reconnects with a new ticket", async () => {
+    vi.mocked(api)
+      .mockResolvedValueOnce({ ticket: "first-ticket" })
+      .mockResolvedValueOnce({ ticket: "second-ticket" });
     const socket = await connected();
+    expect(socket.sent[0]).toMatchObject({ type: "authenticate", ticket: "first-ticket" });
     socket.close();
+    expect(net.network).toBe("offline");
     expect(net.ready).toBe(false);
     expect(net.players.size).toBe(0);
     await vi.advanceTimersByTimeAsync(601);
     expect(api).toHaveBeenCalledTimes(2);
     expect(Socket.instances).toHaveLength(2);
+    Socket.instances[1]!.onopen?.();
+    expect(Socket.instances[1]!.sent[0]).toMatchObject({ type: "authenticate", ticket: "second-ticket" });
   });
   it("does not fight a replacement controller", async () => {
     const socket = await connected();
     socket.onclose?.({ reason: "controller_replaced" });
+    expect(net.network).toBe("replaced");
     await vi.advanceTimersByTimeAsync(60_000);
     expect(api).toHaveBeenCalledTimes(1);
     expect(net.ready).toBe(false);
+    expect(status).toHaveBeenLastCalledWith("controller_replaced");
+    vi.mocked(api).mockResolvedValueOnce({ ticket: "takeover-ticket" });
+    net.takeOver();
+    await Promise.resolve();
+    Socket.instances[1]!.onopen?.();
+    expect(Socket.instances[1]!.sent[0]).toMatchObject({ type: "authenticate", ticket: "takeover-ticket" });
+  });
+  it("keeps network state within the documented states", async () => {
+    expect(net.network).toBe("preview");
+    const socket = await connected();
+    expect(net.network).toBe("connected");
+    socket.close();
+    expect(net.network).toBe("offline");
+    await vi.advanceTimersByTimeAsync(601);
+    expect(net.network).toBe("connecting");
+    expect(["preview", "connecting", "connected", "replaced", "offline"]).toContain(net.network);
   });
   it("refreshes layout and suppresses further intentions until a new snapshot", async () => {
     const socket = await connected();

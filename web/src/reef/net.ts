@@ -13,6 +13,7 @@ export interface NetPlayer {
   state: "idle" | "walk" | "sit" | "use";
   seat: Omit<Target, "label"> | null;
 }
+export type NetworkState = "preview" | "connecting" | "connected" | "replaced" | "offline";
 interface Sample {
   at: number;
   player: NetPlayer;
@@ -49,6 +50,7 @@ const layoutKey = (room: RoomJson) =>
 /** One room subscription. Server positions drive the roster; credentials never enter a URL. */
 export class ReefNet {
   ready = false;
+  network: NetworkState = "preview";
   userId = "";
   revision = "";
   epoch = "";
@@ -81,7 +83,11 @@ export class ReefNet {
     this.layoutChanged = layoutChanged;
   }
   async connect() {
+    if (this.disposed) return;
+    clearTimeout(this.retry);
     const generation = ++this.generation;
+    this.network = "connecting";
+    this.changed("Local preview — reconnecting");
     try {
       const { ticket } = await api<{ ticket: string }>("/api/reef/socket-ticket", "POST");
       if (this.disposed || generation !== this.generation) return;
@@ -111,6 +117,7 @@ export class ReefNet {
       socket.onclose = ({ reason }) => {
         if (socket !== this.socket) return;
         clearTimeout(this.deadline);
+        this.socket = null;
         this.reset();
         const terminal = [
           "controller_replaced",
@@ -118,16 +125,21 @@ export class ReefNet {
           "session_expired",
           "authentication_failed",
         ].includes(reason);
+        this.network = reason === "controller_replaced" ? "replaced" : terminal ? "preview" : "offline";
         this.changed(terminal ? reason : "Local preview — reconnecting");
         if (!this.disposed && !terminal) this.schedule();
       };
       socket.onerror = () => socket.close();
     } catch {
       if (!this.disposed && generation === this.generation) {
+        this.network = "offline";
         this.changed("Local preview — reconnecting");
         this.schedule();
       }
     }
+  }
+  takeOver() {
+    if (this.network === "replaced" && !this.disposed) void this.connect();
   }
   private schedule() {
     clearTimeout(this.retry);
@@ -206,6 +218,7 @@ export class ReefNet {
       this.recovering = false;
       for (const player of message.players ?? []) this.record(player, now);
       this.ready = true;
+      this.network = "connected";
       this.attempt = 0;
       this.changed("Connected");
     } else if (message.room_epoch === this.epoch) {
