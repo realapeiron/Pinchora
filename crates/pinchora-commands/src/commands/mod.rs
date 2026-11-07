@@ -1,3 +1,4 @@
+pub(crate) mod achievements;
 pub(crate) mod anti_nuke;
 pub(crate) mod automod;
 mod bio;
@@ -107,6 +108,8 @@ macro_rules! commands {
 }
 
 commands!(
+    achievements::AchievementsCommand,
+    achievements::AchievementAdmin,
     ping::Ping,
     help::Help,
     profile::Profile,

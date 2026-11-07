@@ -486,6 +486,9 @@ async fn pay_guild(app: &Arc<App>, guild: u64) -> anyhow::Result<usize> {
         }
     }
     let gains = app.db.add_voice_xp(guild, &grants, week_start(now)).await?;
+    for (user, _) in &gains {
+        crate::commands::achievements::on_message(app, guild, *user).await;
+    }
     metrics::counter!("pinchora_voice_xp_granted_total").increment(grants.iter().map(|(_, xp)| *xp as u64).sum());
     let climbs: Vec<(u64, u32, u32)> = gains
         .iter()

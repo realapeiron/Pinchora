@@ -31,6 +31,7 @@ pub async fn overview(State(state): State<WebState>, managed: ManagedGuild) -> A
         "navigation": {
             "birthdays": t!(lang, "module.birthdays"),
             "anti-nuke": t!(lang, "module.anti_nuke"),
+            "achievements": t!(lang, "module.achievements"),
             "invites": t!(lang, "module.invites"),
             "safety": t!(lang, "verification.ui.title"),
         },

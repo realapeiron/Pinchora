@@ -67,7 +67,7 @@ export const NAV: NavGroup[] = [
     ],
   },
   { group: "FEEDS", pages: [{ to: "feeds", label: "Social feeds" }] },
-  { group: "PLAYERS", pages: [] },
+  { group: "PLAYERS", pages: [{ to: "achievements", label: "Achievements" }] },
 ];
 
 /** The admin side of one server: sidebar with the server and its pages, the page on the right. */

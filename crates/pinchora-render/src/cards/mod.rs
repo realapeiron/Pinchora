@@ -1,3 +1,4 @@
+mod achievements;
 mod badges;
 mod birthdays;
 mod boards;
@@ -32,6 +33,7 @@ mod welcome;
 mod wordle;
 mod wrapped;
 
+pub use achievements::{AchievementCell, AchievementsCard};
 pub use badges::{BadgeCell, BadgeCollectionCard, BadgeState};
 pub use birthdays::BirthdayCard;
 pub use character::{CharacterCard, EditorCell, EditorSection};

@@ -37,6 +37,10 @@ pub use xp_admin::{
 pub use app::{App, PreviewError};
 pub use card_images::{CardSubject, ServerCard, atlas_has, card_png, classic_card, deliver, preview_png, server_card};
 pub use catalog::{command_catalog, site_facts};
+pub use commands::achievements::{
+    evaluate as evaluate_achievements, invalidate as invalidate_achievements, on_message as achievement_tick,
+    source_enabled as achievement_source_enabled,
+};
 pub use commands::invites::{
     grant_invite_reward, reconcile_all_invite_rewards, refresh_created_snapshot as refresh_created_invite_snapshot,
     refresh_deleted_snapshot as refresh_deleted_invite_snapshot, refresh_snapshot as refresh_invite_snapshot,

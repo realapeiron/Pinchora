@@ -79,6 +79,8 @@ mod cards;
 #[path = "simulate/collection.rs"]
 mod collection;
 // Moderation commands, cases and the mod-log; the detailed server log.
+#[path = "simulate/achievements.rs"]
+mod achievements;
 #[path = "simulate/anti_nuke.rs"]
 mod anti_nuke;
 #[path = "simulate/automod.rs"]
@@ -12653,6 +12655,30 @@ async fn admin_paths_refuse_members_without_manage_server() {
     let rows: Vec<(&str, Value)> = vec![
         ("birthdays settings", json!([sub("settings", vec![])])),
         ("birthdays preview", json!([sub("preview", vec![])])),
+        (
+            "achievementadmin add",
+            json!([sub(
+                "add",
+                vec![
+                    text_option("name", "No"),
+                    text_option("kind", "custom"),
+                    int_option("target", 1)
+                ]
+            )]),
+        ),
+        (
+            "achievementadmin edit",
+            json!([sub("edit", vec![int_option("id", 1), text_option("name", "No")])]),
+        ),
+        (
+            "achievementadmin remove",
+            json!([sub("remove", vec![int_option("id", 1)])]),
+        ),
+        ("achievementadmin list", json!([sub("list", vec![])])),
+        (
+            "achievementadmin grant",
+            json!([sub("grant", vec![int_option("id", 1), user_option("user", target)])]),
+        ),
         (
             "verification setup",
             json!([sub("setup", vec![bool_option("enabled", true)])]),

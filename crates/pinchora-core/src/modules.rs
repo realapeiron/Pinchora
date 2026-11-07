@@ -131,11 +131,12 @@ pub enum Module {
     AntiRaid,
     AntiNuke,
     Birthdays,
+    Achievements,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 43] = [
+    pub const ALL: [Self; 44] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -179,6 +180,7 @@ impl Module {
         Self::AntiRaid,
         Self::AntiNuke,
         Self::Birthdays,
+        Self::Achievements,
     ];
 
     /// The key stored in the database and used in the API.
@@ -227,6 +229,7 @@ impl Module {
             Self::AntiRaid => "anti_raid",
             Self::AntiNuke => "anti_nuke",
             Self::Birthdays => "birthdays",
+            Self::Achievements => "achievements",
         }
     }
 
@@ -279,6 +282,7 @@ impl Module {
             Self::AntiRaid => "Raid protection",
             Self::AntiNuke => "Anti-nuke",
             Self::Birthdays => "Birthdays",
+            Self::Achievements => "Achievements",
         }
     }
 
@@ -339,6 +343,7 @@ impl Module {
             Self::AutoMod => "Automatic message rules and moderation actions.",
             Self::Verification => "Join gate and pixel captcha verification.",
             Self::AntiRaid => "Join detection and reversible raid lockdown.",
+            Self::Achievements => "Server achievements and their rewards.",
             Self::Feeds => {
                 "/feeds: new YouTube videos, RSS and podcast episodes, Reddit and Bluesky posts in a channel."
             }
@@ -386,6 +391,7 @@ impl Module {
             Self::AntiRaid => Group::Safety,
             Self::AntiNuke => Group::Safety,
             Self::Birthdays => Group::Community,
+            Self::Achievements => Group::Players,
         }
     }
 
@@ -402,6 +408,7 @@ impl Module {
             Self::Verification => Scope::Server,
             Self::AntiRaid => Scope::Server,
             Self::Birthdays => Scope::Server,
+            Self::Achievements => Scope::Server,
             _ => Scope::Channels,
         }
     }
@@ -470,6 +477,7 @@ impl Module {
             "verify" | "verification" => Self::Verification,
             "raid" => Self::AntiRaid,
             "birthday" | "birthdays" => Self::Birthdays,
+            "achievements" | "achievementadmin" => Self::Achievements,
             _ => return None,
         })
     }
@@ -504,6 +512,7 @@ impl Module {
             "vf" | "cq" => Self::Verification,
             "rd" => Self::AntiRaid,
             "an" | "vp" => Self::AntiNuke,
+            "ah" => Self::Achievements,
             "sn" => Self::Feeds,
             "vc" | "vo" => Self::TempVoice,
             "nf" => Self::Info,

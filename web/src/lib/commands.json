@@ -208,6 +208,209 @@
           ],
           "path": "play stats",
           "usage": "/play stats [user]"
+        },
+        {
+          "description": "Show server achievements",
+          "manager": false,
+          "options": [
+            {
+              "description": "Whose achievements to show (default: you)",
+              "name": "user",
+              "required": false
+            }
+          ],
+          "path": "achievements",
+          "usage": "/achievements [user]"
+        },
+        {
+          "description": "Create an achievement (up to 25)",
+          "manager": true,
+          "options": [
+            {
+              "description": "Name shown on the card",
+              "name": "name",
+              "required": true
+            },
+            {
+              "choices": [
+                "Messages",
+                "Voice minutes",
+                "Level",
+                "Days active",
+                "Invites",
+                "Stars received",
+                "Tickets closed",
+                "Reputation",
+                "Games won",
+                "Fish caught",
+                "Custom"
+              ],
+              "description": "What earns it",
+              "name": "kind",
+              "required": true
+            },
+            {
+              "description": "Progress needed",
+              "name": "target",
+              "required": true
+            },
+            {
+              "description": "Short description",
+              "name": "description",
+              "required": false
+            },
+            {
+              "description": "Icon name from the dashboard picker",
+              "name": "icon",
+              "required": false
+            },
+            {
+              "description": "Role reward",
+              "name": "role",
+              "required": false
+            },
+            {
+              "description": "Server points reward",
+              "name": "points",
+              "required": false
+            },
+            {
+              "description": "Channel to announce grants",
+              "name": "announce_channel",
+              "required": false
+            },
+            {
+              "description": "Hide until earned",
+              "name": "secret",
+              "required": false
+            }
+          ],
+          "path": "achievementadmin add",
+          "usage": "/achievementadmin add <name> <kind> <target> [description] [icon] [role] [points] [announce_channel] [secret]"
+        },
+        {
+          "description": "Edit an achievement",
+          "manager": true,
+          "options": [
+            {
+              "description": "Achievement ID from list",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "New name",
+              "name": "name",
+              "required": false
+            },
+            {
+              "description": "New description",
+              "name": "description",
+              "required": false
+            },
+            {
+              "choices": [
+                "Messages",
+                "Voice minutes",
+                "Level",
+                "Days active",
+                "Invites",
+                "Stars received",
+                "Tickets closed",
+                "Reputation",
+                "Games won",
+                "Fish caught",
+                "Custom"
+              ],
+              "description": "New kind",
+              "name": "kind",
+              "required": false
+            },
+            {
+              "description": "New icon",
+              "name": "icon",
+              "required": false
+            },
+            {
+              "description": "New progress target",
+              "name": "target",
+              "required": false
+            },
+            {
+              "description": "New role reward",
+              "name": "role",
+              "required": false
+            },
+            {
+              "description": "Remove the current role reward",
+              "name": "clear_role",
+              "required": false
+            },
+            {
+              "description": "New points reward",
+              "name": "points",
+              "required": false
+            },
+            {
+              "description": "New announcement channel",
+              "name": "announce_channel",
+              "required": false
+            },
+            {
+              "description": "Remove the current announcement channel",
+              "name": "clear_announce_channel",
+              "required": false
+            },
+            {
+              "description": "Hide until earned",
+              "name": "secret",
+              "required": false
+            },
+            {
+              "description": "Enable or disable",
+              "name": "enabled",
+              "required": false
+            }
+          ],
+          "path": "achievementadmin edit",
+          "usage": "/achievementadmin edit <id> [name] [description] [kind] [icon] [target] [role] [clear_role] [points] [announce_channel] [clear_announce_channel] [secret] [enabled]"
+        },
+        {
+          "description": "Remove an achievement and its grants",
+          "manager": true,
+          "options": [
+            {
+              "description": "Achievement ID",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "achievementadmin remove",
+          "usage": "/achievementadmin remove <id>"
+        },
+        {
+          "description": "List configured achievements",
+          "manager": true,
+          "options": [],
+          "path": "achievementadmin list",
+          "usage": "/achievementadmin list"
+        },
+        {
+          "description": "Give a custom achievement to a member",
+          "manager": true,
+          "options": [
+            {
+              "description": "Achievement ID",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "Member who earns it",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "achievementadmin grant",
+          "usage": "/achievementadmin grant <id> <user>"
         }
       ],
       "intro": "Your look, your character, and what other people may see of you.",
@@ -4492,5 +4695,5 @@
       "title": "Game & module setup"
     }
   ],
-  "count": 272
+  "count": 278
 }

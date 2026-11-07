@@ -28,5 +28,6 @@ pub mod automod;
 
 pub mod verification;
 
+pub mod achievements;
 pub mod anti_nuke;
 pub mod anti_raid;

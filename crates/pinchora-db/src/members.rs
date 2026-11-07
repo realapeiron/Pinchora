@@ -172,16 +172,10 @@ impl Db {
     /// Adds server points, creating the member row if they have none yet. Returns the new balance.
     pub async fn give_points(&self, guild_id: u64, user_id: u64, amount: i64) -> anyhow::Result<i64> {
         anyhow::ensure!(amount > 0, "invalid amount");
-        let (balance,): (i64,) = sqlx::query_as(
-            "INSERT INTO members (guild_id, user_id, points) VALUES ($1, $2, $3)
-             ON CONFLICT (guild_id, user_id) DO UPDATE SET points = members.points + EXCLUDED.points
-             RETURNING points",
-        )
-        .bind(sql_id(guild_id))
-        .bind(sql_id(user_id))
-        .bind(amount)
-        .fetch_one(self.pool())
-        .await?;
+        let mut tx = self.pool().begin().await?;
+        crate::locks::lock_users(&mut tx, &[sql_id(user_id)]).await?;
+        let balance = give_points_in(&mut tx, guild_id, user_id, amount).await?;
+        tx.commit().await?;
         Ok(balance)
     }
 
@@ -260,4 +254,24 @@ impl Db {
         .fetch_all(self.pool())
         .await?)
     }
+}
+
+/// Shared points credit, inside the caller's player lock and transaction. Never mints shells.
+pub(crate) async fn give_points_in(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    guild: u64,
+    user: u64,
+    amount: i64,
+) -> anyhow::Result<i64> {
+    anyhow::ensure!((1..=1_000_000_000).contains(&amount), "invalid points amount");
+    Ok(sqlx::query_scalar(
+        "INSERT INTO members (guild_id,user_id,points) VALUES ($1,$2,$3)
+        ON CONFLICT (guild_id,user_id) DO UPDATE SET points =
+        LEAST(members.points::NUMERIC + EXCLUDED.points, 9223372036854775807)::BIGINT RETURNING points",
+    )
+    .bind(sql_id(guild))
+    .bind(sql_id(user))
+    .bind(amount)
+    .fetch_one(&mut **tx)
+    .await?)
 }

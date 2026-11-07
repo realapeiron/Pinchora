@@ -282,6 +282,11 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
          VALUES ($1, 'welcome', 'member_join', ARRAY['hi'], $1)",
         // What they did in a server, counted for its stats ($1 doubles as the server).
         "INSERT INTO member_activity_daily (guild_id, user_id, day, messages) VALUES ($1, $1, current_date, 3)",
+        // A server achievement the player earned ($1 doubles as the server).
+        "INSERT INTO server_achievements (guild_id,name,description,icon,kind,target)
+         VALUES ($1,'Privacy prize','','star','custom',1)",
+        "INSERT INTO member_achievements (guild_id,user_id,achievement_id)
+         SELECT guild_id,$1,id FROM server_achievements WHERE guild_id=$1 AND name='Privacy prize'",
         // Invite history, a link they created, and a bonus ($1 doubles as the server).
         "INSERT INTO guild_invites (guild_id, code, inviter_id) VALUES ($1, 'private', $1)",
         "INSERT INTO invite_joins (guild_id, user_id, inviter_id, source)

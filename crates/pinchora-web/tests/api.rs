@@ -44,6 +44,9 @@ use twilight_model::{
     id::Id,
 };
 
+#[path = "api/achievements.rs"]
+mod achievements;
+
 // Custom commands and auto-responders.
 #[path = "api/stats.rs"]
 mod stats;
