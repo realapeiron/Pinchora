@@ -1,6 +1,6 @@
 # Reef client engine (R02–R08, R12)
 
-Open `/me/house?play=1` or `/house/<user-id>?play=1` with an existing authenticated session and a saved Discord character. The player's own appearance is used when visiting. The flag starts Play; View keeps the existing reference viewer and Compare with Discord. Room tabs preserve the flag.
+Open `/me/house?play=1` or `/house/<user-id>?play=1` with an existing authenticated session and a saved Discord character. The player's own appearance is used when visiting. The flag starts Play; View keeps the existing reference viewer and Compare with Discord. The room picker in Controls preserves the flag.
 
 Run from `web/`:
 
@@ -29,6 +29,14 @@ No new npm dependencies. `reef:assets` runs automatically before dev/build and u
 - Rugs/walls are walkable; floor and loose surface items default to solid. Three pilot seats are allowlisted (`pebblerest_stool`, `duneplait_stool`, `mosshem_pouf`); game-tagged items play the use animation. Seat approaches and directions transpose when flipped. Unknown seats remain solid. All other furniture offers walking to a reachable adjacent tile.
 - All 32 frames per look are composed once with the fixed foot anchor. Key skin/hair/top/bottom ramps are sourced from the bot; custom OKLCH ramps are checked against 136 fixtures generated from the actual Rust palette implementation. The palette file in this checkout is `assets/sprites/avatar_palette.hex`.
 - Accessories use original procedural pixels obtained by comparing the existing character endpoint's base and single-accessory images. These layers are positioned by metadata, ordered by slot, mirrored by facing and padded beyond the character cell. Faces are occluded while facing away; use poses put held items away. Missing hand landmarks retain a saved anchor and produce a visible warning; unknown accessories are named in a warning. No replacement art is generated.
+
+## Play presentation
+
+Play fills `100dvh` with the header in its own row and restores page scrolling on exit. Desktop has a 264px controls panel; touch starts with the accessible drawer closed. Opening the drawer focuses its close button; Escape/close returns focus to the trigger. The room picker, keyboard instructions, coordinates and complete furniture action list live there. English/Turkish UI follows the browser-language pattern used elsewhere in the web app.
+
+The camera fits the room with 24 CSS pixels of padding at the largest integer **physical-pixel** scale from 1–4, then eases toward the player without cropping room axes that fit. Walking follows with a 24 CSS pixel dead zone; the centre icon explicitly centres the player, including at the fitted scale. Dragging suspends following; walking or the centre icon resumes it. If the room cannot fit even at ×1 on a low-DPR viewport, native pixels take priority and the camera keeps the player in view. Resize/orientation changes refit. Reduced motion jumps the camera and disables bobbing, marker pulses and dust. Footstep dust reuses 12 particles; shadows retain the room renderer's shape/alpha and draw order. Only Play requests a transparent backdrop; the reference viewer's golden pixels are unchanged.
+
+`play.spec.ts` saves six CSS-resolution screenshots in `test-results/reef/`: `play-phone-{open,walk,seated}.png` at 390×844 and `play-desktop-{open,walk,seated}.png` at 1280×800. It waits for streamed art, fonts and opening camera motion; checks room fit, player visibility, header clearance, no page overflow, focus restoration, integer zoom, reduced motion, gestures and the Turkish seat bubble. `perf.spec.ts` still runs once, in the phone project, with its original 4× throttle and unchanged 16.7ms / 16MiB limits.
 
 ## Measurements and limits
 

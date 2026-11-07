@@ -159,6 +159,7 @@ export function renderRoom(
   pass: "all" | "background" | "foreground" = "all",
   fixedBounds?: Box,
   underlay?: Img,
+  transparentBackdrop = false,
 ): Rendered {
   // Floor, surface and figure sprites are mirrored when flipped; wall items hang on the other wall instead.
   const sprites = scene.items.map((item) =>
@@ -167,7 +168,7 @@ export function renderRoom(
   const [minX, minY, maxX, maxY] = fixedBounds ?? bounds(scene, sprites);
   const [cw, ch] = [maxX - minX + 2 * MARGIN, maxY - minY + 2 * MARGIN];
   const img = underlay ?? blank(cw, ch);
-  if (pass !== "foreground")
+  if (pass !== "foreground" && !transparentBackdrop)
     for (let y = 0; y < ch; y++) {
       const t = f32(y / ch);
       const u = f32(1 - t);

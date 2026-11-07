@@ -45,3 +45,56 @@ it("separates taps, drags, pinch, and cancellation", () => {
   g.cancel();
   expect(g.up(1)).toBe(false);
 });
+it("fits the whole room at the largest supported integer physical scale", () => {
+  for (const [width, height, dpr] of [
+    [390, 760, 2.625],
+    [1016, 720, 1],
+    [1280, 800, 2],
+  ]) {
+    const c = new Camera(dpr);
+    const room: [number, number] = [860, 559];
+    c.fit(width!, height!, room);
+    expect(c.scale).toBe(
+      Math.min(4, Math.floor(Math.min(((width! - 48) * dpr!) / 860, ((height! - 48) * dpr!) / 559))),
+    );
+    for (let frame = 0; frame < 160; frame++) c.follow(width!, height!, [46, 268], room, 16, false, 0);
+    expect(c.x).toBeGreaterThanOrEqual(Math.floor(24 * dpr!));
+    expect(c.x + room[0] * c.scale).toBeLessThanOrEqual(Math.ceil((width! - 24) * dpr!));
+    expect(c.y).toBeGreaterThanOrEqual(Math.floor(24 * dpr!));
+    expect(c.y + room[1] * c.scale).toBeLessThanOrEqual(Math.ceil((height! - 24) * dpr!));
+    expect(Number.isInteger(c.x) && Number.isInteger(c.y)).toBe(true);
+  }
+});
+it("tracks a zoomed player outside the dead zone and jumps with reduced motion", () => {
+  const c = new Camera();
+  c.zoom(4, [0, 0]);
+  c.center(400, 600, [200, 200]);
+  const start = [c.x, c.y];
+  c.follow(400, 600, [203, 202], [860, 559], 16, false);
+  expect([c.x, c.y]).toEqual(start);
+  c.follow(400, 600, [250, 230], [860, 559], 16, false);
+  expect(c.x).toBeLessThan(start[0]!);
+  expect(c.x).toBeGreaterThan(200 - 250 * 4 + 24);
+  c.follow(400, 600, [250, 230], [860, 559], 16, true, 0);
+  expect([c.x, c.y]).toEqual([200 - 250 * 4, 300 - 230 * 4]);
+});
+it("clamps zoom to 1–4 and retains the native pixel under its anchor", () => {
+  const c = new Camera(2.625);
+  c.fit(390, 760, [860, 559]);
+  const before = c.scene(180, 310);
+  c.zoom(99, [180, 310]);
+  expect(c.scale).toBe(4);
+  const after = c.scene(180, 310);
+  expect(Math.abs(after[0] - before[0])).toBeLessThanOrEqual(1);
+  expect(Math.abs(after[1] - before[1])).toBeLessThanOrEqual(1);
+  c.zoom(-99, [180, 310]);
+  expect(c.scale).toBe(1);
+});
+
+it("explicit centring can place the player at the viewport centre even when the whole room fits", () => {
+  const c = new Camera(2.625);
+  c.fit(390, 760, [860, 559]);
+  c.follow(390, 760, [46, 268], [860, 559], 16, true, 0, false);
+  expect(c.x).toBe(Math.round((390 * 2.625) / 2 - 46));
+  expect(c.y).toBe(Math.round((760 * 2.625) / 2 - 268));
+});

@@ -20,11 +20,11 @@ export class RoomPreparation {
       this.pending.clear();
     };
   }
-  prepare(scene: Scene): Promise<PreparedRoom> {
+  prepare(scene: Scene, transparentBackdrop = false): Promise<PreparedRoom> {
     const id = this.next++;
     return new Promise((resolve, reject) => {
       this.pending.set(id, { resolve, reject });
-      this.worker.postMessage({ id, scene });
+      this.worker.postMessage({ id, scene, transparentBackdrop });
     });
   }
   dispose() {

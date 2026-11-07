@@ -8,6 +8,8 @@ import { actorItem, Compositor } from "./compositor";
 import type { Point } from "./manifest";
 import { findPath, type Target, type WalkTarget } from "./navigation";
 import { Player } from "./player";
+import { Footsteps } from "./effects";
+import { t, playerStatus } from "./i18n";
 import "./reef.css";
 
 interface Controls {
@@ -16,9 +18,39 @@ interface Controls {
   zoom: (delta: number) => void;
   center: () => void;
 }
-export default function ReefStage({ room, own }: { room: RoomJson; own: boolean }) {
+export default function ReefStage({
+  room,
+  own,
+  roomName,
+  playerName,
+  onExit,
+  rooms,
+  onRoom,
+}: {
+  room: RoomJson;
+  own: boolean;
+  roomName: string;
+  playerName: string;
+  onExit: () => void;
+  rooms: { idx: number; name: string }[];
+  onRoom: (idx: number) => void;
+}) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const controls = useRef<Controls | null>(null);
+  const nameTag = useRef<HTMLDivElement>(null);
+  const bubble = useRef<HTMLDivElement>(null);
+  const drawerToggle = useRef<HTMLButtonElement>(null);
+  const drawerClose = useRef<HTMLButtonElement>(null);
+  const [drawer, setDrawer] = useState(() => !matchMedia("(pointer: coarse), (max-width: 767px)").matches);
+  const [selected, setSelected] = useState<Target | null>(null);
+  const closeDrawer = () => {
+    setDrawer(false);
+    drawerToggle.current?.focus({ preventScroll: true });
+  };
+  const openDrawer = () => {
+    setDrawer(true);
+    requestAnimationFrame(() => drawerClose.current?.focus({ preventScroll: true }));
+  };
   const [status, setStatus] = useState("Loading your character…");
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +69,7 @@ export default function ReefStage({ room, own }: { room: RoomJson; own: boolean 
     setError(null);
     setStreaming(true);
     setTargets([]);
+    setSelected(null);
     setWarnings([]);
     void (async () => {
       const loaded = await bootstrap(room, own, abort.signal);
@@ -47,7 +80,7 @@ export default function ReefStage({ room, own }: { room: RoomJson; own: boolean 
       }
       const el = canvas.current!;
       const ctx = el.getContext("2d")!;
-      let compositor = new Compositor(await loaded.preparation.prepare(loaded.makeScene()));
+      let compositor = new Compositor(await loaded.preparation.prepare(loaded.makeScene(), true));
       if (abort.signal.aborted) {
         loaded.dispose();
         compositor.dispose();
@@ -65,13 +98,39 @@ export default function ReefStage({ room, own }: { room: RoomJson; own: boolean 
         focused = false;
       const frames: number[] = [];
       let ticks = 0;
-      const center = () => {
-        const p = player.position;
+      const dust = new Footsteps();
+      let following = true;
+      let keepRoomVisible = true;
+      let centering = true;
+      let interacted = false;
+      let openingTime = 0;
+      let destination: Point | null = null;
+      let markerAge = 0;
+      let contextTarget: Target | null = null;
+      const size = (): Point => [el.width / camera.dpr, el.height / camera.dpr];
+      const roomSize = (): Point => [compositor.background.width, compositor.background.height];
+      const playerPoint = (): Point => {
+        const p = player.state === "sit" && player.target ? player.target.anchor : player.position;
         const [ox, oy] = compositor.room.origin;
-        const point: Point = p
+        return p
           ? [ox + 32 * (p[0] - p[1]), oy + 16 * (p[0] + p[1]) - 30]
-          : [compositor.room.background.width / 2, compositor.room.background.height / 2];
-        camera.center(el.width / camera.dpr, el.height / camera.dpr, point);
+          : [roomSize()[0] / 2, roomSize()[1] / 2];
+      };
+      const fit = () => {
+        camera.fit(...size(), roomSize());
+        // A low-DPR viewport can be smaller than the native room even at ×1.
+        // In that case show the player immediately rather than opening on an empty corner.
+        if (
+          roomSize()[0] * camera.scale > el.width - 48 * camera.dpr ||
+          roomSize()[1] * camera.scale > el.height - 48 * camera.dpr
+        )
+          camera.follow(...size(), playerPoint(), roomSize(), 0, true, 0);
+      };
+      const center = () => {
+        keepRoomVisible = false;
+        following = true;
+        centering = true;
+        openingTime = 1000;
       };
       const resize = () => {
         camera.dpr = window.devicePixelRatio || 1;
@@ -81,7 +140,10 @@ export default function ReefStage({ room, own }: { room: RoomJson; own: boolean 
         el.style.width = `${el.width / camera.dpr}px`;
         el.style.height = `${el.height / camera.dpr}px`;
         el.style.transform = `translate(${(Math.round(rect.left * camera.dpr) - rect.left * camera.dpr) / camera.dpr}px, ${(Math.round(rect.top * camera.dpr) - rect.top * camera.dpr) / camera.dpr}px)`;
-        center();
+        fit();
+        keepRoomVisible = true;
+        following = true;
+        centering = true;
       };
       const observer = new ResizeObserver(resize);
       observer.observe(el.parentElement!);
@@ -89,17 +151,30 @@ export default function ReefStage({ room, own }: { room: RoomJson; own: boolean 
       const announce = () => {
         if (announced !== player.message) {
           announced = player.message;
-          setStatus(announced);
+          setStatus(playerStatus(announced));
         }
         if (player.tile) el.dataset.tile = player.tile.join(",");
         el.dataset.state = player.state;
       };
       const move = (p: Point, t?: Target) => {
-        player.move(p, t);
+        interacted = true;
+        if (player.move(p, t)) {
+          destination = p;
+          markerAge = 0;
+          following = true;
+          keepRoomVisible = false;
+          centering = false;
+          openingTime = 1801;
+        }
+        contextTarget = null;
+        setSelected(null);
         announce();
       };
-      const zoom = (delta: number) =>
-        camera.zoom(camera.scale + delta, [el.width / camera.dpr / 2, el.height / camera.dpr / 2]);
+      const zoom = (delta: number) => {
+        interacted = true;
+        centering = false;
+        camera.zoom(camera.scale + delta, [size()[0] / 2, size()[1] / 2]);
+      };
       const walkTo = (id: string) => {
         const object = loaded.nav.objects.find((o) => o.id === id);
         if (!object || !player.tile) return;
@@ -128,6 +203,11 @@ export default function ReefStage({ room, own }: { room: RoomJson; own: boolean 
       const drag = (e: PointerEvent) => {
         const result = gesture.move(e.pointerId, local(e));
         if (!result) return;
+        if (result.pan[0] || result.pan[1] || result.pinch) {
+          interacted = true;
+          following = false;
+          centering = false;
+        }
         camera.pan(...result.pan);
         pinch += result.pinch;
         if (Math.abs(pinch) >= 40) {
@@ -142,8 +222,10 @@ export default function ReefStage({ room, own }: { room: RoomJson; own: boolean 
         const index = compositor.pick(x, y);
         const item = index === null ? null : compositor.room.scene.items[index];
         const target = loaded.nav.targets.find((t) => t.id === item?.info.placement);
-        if (target) move(target.anchor, target);
-        else if (item?.info.placement) walkTo(item.info.placement);
+        if (target) {
+          contextTarget = target;
+          setSelected(target);
+        } else if (item?.info.placement) walkTo(item.info.placement);
         else {
           const tile = camera.tile(...p, compositor.room.origin, room.width, room.depth);
           if (tile) move(tile);
@@ -156,6 +238,9 @@ export default function ReefStage({ room, own }: { room: RoomJson; own: boolean 
       const wheel = (e: WheelEvent) => {
         if (e.ctrlKey || e.metaKey) {
           e.preventDefault();
+          interacted = true;
+          following = false;
+          centering = false;
           const r = el.getBoundingClientRect();
           camera.zoom(camera.scale + (e.deltaY < 0 ? 1 : -1), [e.clientX - r.left, e.clientY - r.top]);
         }
@@ -171,6 +256,10 @@ export default function ReefStage({ room, own }: { room: RoomJson; own: boolean 
         if (step && player.tile) {
           e.preventDefault();
           move([player.tile[0] + step[0], player.tile[1] + step[1]]);
+        }
+        if (e.key === "Escape") {
+          contextTarget = null;
+          setSelected(null);
         }
         if (e.key === "Home") {
           e.preventDefault();
@@ -192,15 +281,65 @@ export default function ReefStage({ room, own }: { room: RoomJson; own: boolean 
       el.addEventListener("keydown", keydown);
       el.addEventListener("focus", focus);
       el.addEventListener("blur", blur);
+      const ground = () => {
+        const [ox, oy] = compositor.room.origin;
+        if (destination && markerAge < 2400) {
+          const x = ox + 32 * (destination[0] - destination[1]);
+          const y = oy + 16 * (destination[0] + destination[1]);
+          ctx.globalAlpha = motion.matches ? 0.55 : 0.45 + Math.sin(markerAge / 160) * 0.15;
+          ctx.fillStyle = "#ffd166";
+          ctx.strokeStyle = "#fff1e8";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(x, y + 2);
+          ctx.lineTo(x + 28, y + 16);
+          ctx.lineTo(x, y + 30);
+          ctx.lineTo(x - 28, y + 16);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+        dust.draw(ctx, compositor.room.origin);
+      };
+      const placeOverlay = (node: HTMLDivElement | null, point: Point, lift: number) => {
+        if (!node) return;
+        const [ox, oy] = compositor.room.origin;
+        const x = (camera.x + (ox + 32 * (point[0] - point[1])) * camera.scale) / camera.dpr;
+        const y = (camera.y + (oy + 16 * (point[0] + point[1]) - lift) * camera.scale) / camera.dpr;
+        node.style.left = `${x}px`;
+        node.style.top = `${y}px`;
+      };
       const frame = (now: number) => {
         const started = performance.now();
         const dt = last ? Math.min(100, now - last) : 0;
         last = now;
         player.update(dt, motion.matches);
         announce();
+        openingTime += dt;
+        markerAge += dt;
+        dust.update(dt, player.state === "walk", motion.matches, player.position);
+        if (following) {
+          if (openingTime > 700 || motion.matches) {
+            camera.follow(
+              ...size(),
+              playerPoint(),
+              roomSize(),
+              dt,
+              motion.matches,
+              centering ? 0 : 24,
+              keepRoomVisible,
+            );
+            if (openingTime > 1800) centering = false;
+          }
+        }
+        el.dataset.origin = compositor.room.origin.join(",");
+        el.dataset.roomSize = roomSize().join(",");
+        el.dataset.scale = String(camera.scale);
+        el.dataset.camera = `${camera.x},${camera.y}`;
+        el.dataset.cameraSettled = String(openingTime > 1800);
         ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.fillStyle = "#121420";
-        ctx.fillRect(0, 0, el.width, el.height);
+        ctx.clearRect(0, 0, el.width, el.height);
         ctx.setTransform(camera.scale, 0, 0, camera.scale, camera.x, camera.y);
         const pos = player.state === "sit" && player.target ? player.target.anchor : player.position;
         if (pos) {
@@ -214,7 +353,15 @@ export default function ReefStage({ room, own }: { room: RoomJson; own: boolean 
             player.state === "sit" && player.target
               ? 122 - player.target.height - (f.meta.seat_contact?.[1] ?? 101)
               : 8;
-          compositor.draw(ctx, [{ item: actor, image: f.image, offset: [-f.padding, lift - f.padding] }]);
+          const bob =
+            !motion.matches && player.state === "idle" ? Math.round(Math.sin(player.elapsed / 450)) : 0;
+          compositor.draw(
+            ctx,
+            [{ item: actor, image: f.image, offset: [-f.padding, lift - f.padding + bob] }],
+            ground,
+          );
+          placeOverlay(nameTag.current, pos, 105 - lift - bob);
+          if (contextTarget) placeOverlay(bubble.current, contextTarget.anchor, contextTarget.height + 36);
           if (focused) {
             ctx.strokeStyle = "#ffd166";
             ctx.lineWidth = 1;
@@ -226,7 +373,7 @@ export default function ReefStage({ room, own }: { room: RoomJson; own: boolean 
               14,
             );
           }
-        } else compositor.draw(ctx);
+        } else compositor.draw(ctx, [], ground);
         frames.push(performance.now() - started);
         if (frames.length > 600) frames.shift();
         if (++ticks % 60 === 0) {
@@ -245,6 +392,7 @@ export default function ReefStage({ room, own }: { room: RoomJson; own: boolean 
       loaded.ledger.markPlayable();
       setBytes(loaded.ledger.firstInteraction!);
       el.dataset.ready = "true";
+      el.dataset.artReady = "false";
       dispose = () => {
         cancelAnimationFrame(raf);
         observer.disconnect();
@@ -263,14 +411,22 @@ export default function ReefStage({ room, own }: { room: RoomJson; own: boolean 
       };
       try {
         await loaded.stream(async () => {
-          const next = new Compositor(await loaded.preparation.prepare(loaded.makeScene()));
+          const next = new Compositor(await loaded.preparation.prepare(loaded.makeScene(), true));
+          if (abort.signal.aborted) {
+            next.dispose();
+            return;
+          }
           // Bounds can grow when a tall sprite streams in; keep world coordinates fixed on screen.
           camera.x += (compositor.room.origin[0] - next.room.origin[0]) * camera.scale;
           camera.y += (compositor.room.origin[1] - next.room.origin[1]) * camera.scale;
           compositor.dispose();
           compositor = next;
+          if (!interacted) fit();
         });
-        if (!abort.signal.aborted) setStreaming(false);
+        if (!abort.signal.aborted) {
+          setStreaming(false);
+          el.dataset.artReady = "true";
+        }
       } catch (err) {
         if (!abort.signal.aborted) {
           setStreaming(false);
@@ -289,112 +445,199 @@ export default function ReefStage({ room, own }: { room: RoomJson; own: boolean 
     };
   }, [room, own]);
   return (
-    <section className="reef" aria-label="Play in this room">
-      <div className="room-toolbar" role="toolbar" aria-label="Play camera">
-        <PixelButton
-          variant="secondary"
-          disabled={!ready}
-          onClick={() => controls.current?.zoom(-1)}
-          aria-label="Zoom out"
-        >
-          −
-        </PixelButton>
-        <PixelButton
-          variant="secondary"
-          disabled={!ready}
-          onClick={() => controls.current?.zoom(1)}
-          aria-label="Zoom in"
-        >
-          +
-        </PixelButton>
-        <PixelButton variant="secondary" disabled={!ready} onClick={() => controls.current?.center()}>
-          Centre on me
-        </PixelButton>
-        <span className="muted">Play · local preview</span>
-      </div>
-      {error && <p role="alert">{error} Switch to View to see the room.</p>}
+    <section className="reef" aria-label={t("Play in this room")} data-controls-open={drawer}>
       <div className="reef-surface">
         <canvas
           ref={canvas}
           className="reef-canvas"
           tabIndex={0}
           role="application"
-          aria-label="Playable room. Arrow keys move one tile. Home centres the camera."
+          aria-label={t("Playable room. Arrow keys move one tile. Home centres the camera.")}
           aria-describedby="reef-help"
         />
+        <div className="reef-vignette" aria-hidden="true" />
+        <div className="reef-room-hud">
+          <span className="reef-room-name">{roomName}</span>
+          <button type="button" className="reef-text-button" onClick={onExit}>
+            {t("View")}
+          </button>
+        </div>
+        <div className="reef-name-tag" ref={nameTag} hidden={!ready}>
+          {playerName}
+        </div>
+        <div className="reef-context" ref={bubble} hidden={!selected}>
+          <button
+            type="button"
+            onClick={() => {
+              if (selected) controls.current?.move(selected.anchor, selected);
+              canvas.current?.focus({ preventScroll: true });
+            }}
+          >
+            {selected?.kind === "seat" ? t("Sit") : t("Use")}
+          </button>
+        </div>
+        <div className="reef-camera" role="group" aria-label={t("Play camera")}>
+          <button
+            type="button"
+            disabled={!ready}
+            onClick={() => controls.current?.zoom(-1)}
+            aria-label={t("Zoom out")}
+          >
+            −
+          </button>
+          <button
+            type="button"
+            disabled={!ready}
+            onClick={() => controls.current?.zoom(1)}
+            aria-label={t("Zoom in")}
+          >
+            +
+          </button>
+          <button
+            type="button"
+            disabled={!ready}
+            onClick={() => controls.current?.center()}
+            aria-label={t("Centre on me")}
+            title={t("Centre on me")}
+          >
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+            >
+              <path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5" />
+              <path d="M9 9h6v6H9z" />
+            </svg>
+          </button>
+        </div>
+        <div className="reef-bottom-hud">
+          <p className="reef-hint">{t("Tap a tile to explore")}</p>
+          <button
+            ref={drawerToggle}
+            type="button"
+            className="reef-text-button"
+            aria-controls="reef-controls"
+            aria-expanded={drawer}
+            onClick={() => (drawer ? closeDrawer() : openDrawer())}
+          >
+            {t("Controls")}
+          </button>
+        </div>
+        <p className="reef-status" role="status" aria-live="polite">
+          {playerStatus(status)}
+        </p>
+        {error && (
+          <p className="reef-error" role="alert">
+            {error}
+          </p>
+        )}
       </div>
-      <p id="reef-help" className="muted">
-        Tap or click to walk or interact. Drag to pan; pinch or use + / − to zoom. Arrow keys move one tile.
-      </p>
-      <p role="status" aria-live="polite">
-        {status}
-      </p>
-      {ready && (
-        <p className="muted">
-          {streaming ? "Decorative art is loading; movement is ready." : "Room art loaded."} Art and data to
-          play: {Math.ceil(bytes / 1000)} KB.
-        </p>
-      )}
-      {warnings.map((w) => (
-        <p key={w} role="status">
-          {w}
-        </p>
-      ))}
-      <form
-        className="reef-walk"
-        onSubmit={(e) => {
-          e.preventDefault();
-          controls.current?.move(tile);
+      <aside
+        id="reef-controls"
+        className="reef-controls"
+        hidden={!drawer}
+        aria-label={t("Controls")}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            e.preventDefault();
+            closeDrawer();
+          }
         }}
       >
-        <label>
-          Tile X{" "}
-          <input
-            type="number"
-            min={0}
-            max={room.width - 1}
-            value={tile[0]}
-            onChange={(e) => setTile([Number(e.target.value), tile[1]])}
-          />
-        </label>
-        <label>
-          Tile Y{" "}
-          <input
-            type="number"
-            min={0}
-            max={room.depth - 1}
-            value={tile[1]}
-            onChange={(e) => setTile([tile[0], Number(e.target.value)])}
-          />
-        </label>
-        <PixelButton type="submit" disabled={!ready}>
-          Walk to tile
-        </PixelButton>
-      </form>
-      <details>
-        <summary>Furniture and actions</summary>
+        <div className="reef-drawer-heading">
+          <h2>{t("Controls")}</h2>
+          <button ref={drawerClose} type="button" aria-label={t("Close controls")} onClick={closeDrawer}>
+            ×
+          </button>
+        </div>
+        {rooms.length > 1 && (
+          <label className="reef-room-picker">
+            {t("Room")}
+            <select value={room.idx} onChange={(e) => onRoom(Number(e.target.value))}>
+              {rooms.map((r) => (
+                <option key={r.idx} value={r.idx}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        <p id="reef-help" className="muted">
+          {t(
+            "Tap or click to walk or interact. Drag to pan; pinch or use + / − to zoom. Arrow keys move one tile. Home centres the camera.",
+          )}
+        </p>
+        <form
+          className="reef-walk"
+          onSubmit={(e) => {
+            e.preventDefault();
+            controls.current?.move(tile);
+          }}
+        >
+          <label>
+            {t("Tile X")}
+            <input
+              type="number"
+              min={0}
+              max={room.width - 1}
+              value={tile[0]}
+              onChange={(e) => setTile([Number(e.target.value), tile[1]])}
+            />
+          </label>
+          <label>
+            {t("Tile Y")}
+            <input
+              type="number"
+              min={0}
+              max={room.depth - 1}
+              value={tile[1]}
+              onChange={(e) => setTile([tile[0], Number(e.target.value)])}
+            />
+          </label>
+          <PixelButton type="submit" disabled={!ready}>
+            {t("Walk to tile")}
+          </PixelButton>
+        </form>
+        <h3>{t("Furniture and actions")}</h3>
         <ul className="reef-objects">
           {room.placements.map((p) => {
             const target = targets.find((t) => t.id === p.id);
             return (
               <li key={p.id}>
                 <span>
-                  {objects.find((o) => o.id === p.id)?.label ?? p.item_id} ({p.x}, {p.y})
+                  {objects.find((o) => o.id === p.id)?.label ?? p.item_id}{" "}
+                  <small>
+                    ({p.x}, {p.y})
+                  </small>
                 </span>
-                <PixelButton
-                  variant="secondary"
+                <button
+                  type="button"
                   disabled={!ready}
                   onClick={() =>
                     target ? controls.current?.move(target.anchor, target) : controls.current?.walkTo(p.id)
                   }
                 >
-                  {target?.kind === "seat" ? "Sit" : target?.kind === "usable" ? "Use" : "Walk to"}
-                </PixelButton>
+                  {target?.kind === "seat" ? t("Sit") : target?.kind === "usable" ? t("Use") : t("Walk to")}
+                </button>
               </li>
             );
           })}
         </ul>
-      </details>
+        {ready && (
+          <p className="reef-loading muted">
+            {streaming ? "…" : "✓"} {Math.ceil(bytes / 1000)} KB
+          </p>
+        )}
+        {warnings.map((w) => (
+          <p key={w} role="status">
+            {w}
+          </p>
+        ))}
+      </aside>
     </section>
   );
 }

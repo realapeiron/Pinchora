@@ -1,45 +1,253 @@
+/* Header and game occupy separate rows; play never scrolls behind sticky chrome. */
+.house-playing.page {
+  position: fixed;
+  inset: 0;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  padding-top: env(safe-area-inset-top);
+}
+.house-playing > .top-bar {
+  position: relative;
+  flex: none;
+  z-index: 2;
+}
+.house-playing .content.content-wide {
+  display: flex;
+  flex-direction: column;
+  max-width: none;
+  min-height: 0;
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+.house-playing .house-page {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: 0;
+}
 .reef {
-  border: 1px solid var(--border, #44445c);
-  padding: 12px;
-  background: #191b2a;
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  color: var(--ink);
+  background: #28344e;
+  overflow: hidden;
+}
+.reef [hidden] {
+  display: none;
 }
 .reef-surface {
-  width: 100%;
-  height: min(60vh, 600px);
-  min-height: 320px;
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
   overflow: hidden;
+  background: radial-gradient(ellipse at 50% 45%, #53646b 0%, #334455 55%, #1d2b53 100%);
 }
 .reef-canvas {
   display: block;
+  position: absolute;
+  inset: 0;
   touch-action: none;
   image-rendering: pixelated;
 }
-.reef-surface:focus-within {
-  outline: 3px solid #ffd166;
-  outline-offset: 3px;
+.reef-canvas:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: -4px;
+}
+.reef-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 0 100px rgb(15 22 49 / 0.25);
 }
 .reef button,
 .reef input,
-.reef summary {
+.reef select {
   min-height: 44px;
+}
+.reef button:not(.pixel-button) {
+  cursor: pointer;
+  color: var(--ink);
+  background: var(--panel);
+  border: 2px solid var(--panel-edge);
+  box-shadow: 0 3px 0 var(--outline);
+  padding: 8px 12px;
+  font: 400 12px/1.4 var(--font-pixel);
+}
+.reef button:hover:not(:disabled) {
+  border-color: var(--gold);
+}
+.reef button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.reef :is(button, input, select):focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+.reef-room-hud {
+  position: absolute;
+  top: 16px;
+  left: max(16px, env(safe-area-inset-left));
+  right: max(16px, env(safe-area-inset-right));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  pointer-events: none;
+}
+.reef-room-hud button {
+  pointer-events: auto;
+}
+.reef-room-name {
+  font: 700 16px/1.4 var(--font-pixel);
+  text-shadow: 2px 2px var(--outline);
+  max-width: 65%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.reef-name-tag,
+.reef-context {
+  position: absolute;
+  transform: translate(-50%, -100%);
+}
+.reef-name-tag {
+  padding: 5px 8px;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 400 11px/1.4 var(--font-pixel);
+  color: var(--ink);
+  background: rgb(20 27 61 / 0.88);
+  border-bottom: 2px solid var(--gold);
+  pointer-events: none;
+}
+.reef-context {
+  z-index: 1;
+}
+.reef-context button {
+  border-color: var(--gold) !important;
+}
+.reef-context::after {
+  content: "";
+  position: absolute;
+  left: calc(50% - 4px);
+  bottom: -7px;
+  width: 8px;
+  height: 8px;
+  background: var(--gold);
+  pointer-events: none;
+}
+.reef-camera {
+  position: absolute;
+  right: max(16px, env(safe-area-inset-right));
+  top: 80px;
+  display: grid;
+  gap: 8px;
+}
+.reef-camera button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0 !important;
+  font-size: 20px !important;
+}
+.reef-bottom-hud {
+  position: absolute;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  left: max(16px, env(safe-area-inset-left));
+  right: max(16px, env(safe-area-inset-right));
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+}
+.reef-bottom-hud button {
+  pointer-events: auto;
+  flex: none;
+}
+.reef-hint {
+  font-size: 12px;
+  max-width: 160px;
+  margin: 0;
+  text-shadow: 1px 1px 2px var(--outline);
+}
+.reef-status {
+  position: absolute;
+  bottom: calc(max(18px, env(safe-area-inset-bottom)) + 52px);
+  left: 16px;
+  max-width: calc(100% - 32px);
+  font-size: 12px;
+  margin: 0;
+  pointer-events: none;
+  text-shadow: 1px 1px 2px var(--outline);
+}
+.reef-error {
+  position: absolute;
+  inset: 40% 24px auto;
+  padding: 16px;
+  background: var(--panel);
+  border: 2px solid var(--accent);
+}
+.reef-controls {
+  flex: 0 0 264px;
+  padding: 16px 16px max(20px, env(safe-area-inset-bottom));
+  background: var(--panel);
+  border-left: 2px solid var(--panel-edge);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  font-size: 13px;
+}
+.reef-drawer-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.reef-drawer-heading h2,
+.reef-controls h3 {
+  font: 400 13px/1.5 var(--font-pixel);
+}
+.reef-drawer-heading button {
+  flex: none;
+  min-width: 44px;
 }
 .reef-walk {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
   align-items: end;
-  margin-block: 16px;
+  margin-block: 20px;
 }
-.reef-walk label {
+.reef-walk label,
+.reef-room-picker {
   display: grid;
-  gap: 4px;
+  gap: 6px;
+}
+.reef-walk input,
+.reef-room-picker select {
+  color: var(--ink);
+  background: var(--bg-bottom);
+  border: 2px solid var(--panel-edge);
+  padding: 8px;
+  font: inherit;
 }
 .reef-walk input {
   width: 84px;
-  color: inherit;
-  background: #121420;
-  border: 1px solid #74738c;
-  padding: 8px;
+}
+.reef-walk .pixel-button {
+  font-size: 11px;
+  padding-inline: 12px;
 }
 .reef-objects {
   padding: 0;
@@ -50,13 +258,42 @@
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  border-bottom: 1px solid #44445c;
-  padding-block: 8px;
+  border-bottom: 1px solid var(--panel-edge);
+  padding-block: 12px;
 }
-.house-tabs {
-  flex-wrap: nowrap;
-  overflow-x: auto;
+.reef-objects small {
+  display: block;
+  color: var(--muted);
 }
-.house-tabs > button {
-  flex-shrink: 0;
+.reef-loading {
+  font-size: 11px;
+}
+@media (max-width: 767px) {
+  .house-playing > .top-bar {
+    gap: 8px;
+    padding-inline: max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right));
+  }
+  .reef-controls {
+    position: absolute;
+    z-index: 3;
+    inset: auto 0 0;
+    max-height: 65%;
+    border: 0;
+    border-top: 3px solid var(--gold);
+    box-shadow: 0 -8px 24px rgb(15 22 49 / 0.3);
+  }
+  .reef-controls .reef-drawer-heading {
+    position: sticky;
+    top: -16px;
+    background: var(--panel);
+    z-index: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reef *,
+  .reef *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
 }

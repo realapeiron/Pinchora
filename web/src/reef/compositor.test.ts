@@ -52,3 +52,19 @@ it("alpha picking chooses the exposed object, ignores transparent holes and reje
   expect(pick(x + room.origin[0] + 1, y + room.origin[1] + 1)).toBe(0);
   expect(pick(-1, -1)).toBeNull();
 });
+it("immersive preparation removes only the backdrop and preserves opaque room pixels", async () => {
+  const f = fixtureJson<SceneFile>(`${fixtureJson<{ scenes: string[] }>("index.json").scenes[0]}.json`);
+  const scene = await sceneOf(f, content);
+  const opaque = prepareRoom(scene).background;
+  const immersive = prepareRoom(scene, true).background;
+  expect(immersive.data[3]).toBe(0);
+  let solid = 0;
+  let changed = 0;
+  for (let i = 0; i < immersive.data.length; i += 4) {
+    if (immersive.data[i + 3] !== 255) continue;
+    solid++;
+    for (let c = 0; c < 4; c++) if (immersive.data[i + c] !== opaque.data[i + c]) changed++;
+  }
+  expect(solid).toBeGreaterThan(1000);
+  expect(changed).toBe(0);
+});

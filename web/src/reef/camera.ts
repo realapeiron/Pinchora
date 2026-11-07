@@ -8,7 +8,52 @@ export class Camera {
   dpr: number;
   constructor(dpr = 1) {
     this.dpr = dpr;
-    this.scale = Math.max(1, Math.round(dpr));
+    this.scale = Math.max(1, Math.min(4, Math.round(dpr)));
+  }
+  /** Scale is in physical pixels, not CSS pixels (also on fractional-DPR phones). */
+  fit(width: number, height: number, room: Point, padding = 24): void {
+    this.scale = Math.max(
+      1,
+      Math.min(
+        4,
+        Math.floor(
+          Math.min(
+            ((width - padding * 2) * this.dpr) / room[0],
+            ((height - padding * 2) * this.dpr) / room[1],
+          ),
+        ),
+      ),
+    );
+    this.center(width, height, [room[0] / 2, room[1] / 2]);
+  }
+  /** Keep a fitted room visible; once zoomed in, follow within a small CSS-pixel dead zone. */
+  follow(
+    width: number,
+    height: number,
+    point: Point,
+    room: Point,
+    dt: number,
+    reduced: boolean,
+    deadZone = 24,
+    keepRoomVisible = true,
+  ): void {
+    const axis = (position: number, size: number, focus: number, extent: number) => {
+      const middle = (size * this.dpr) / 2;
+      const delta = middle - (position + focus * this.scale);
+      const dead = deadZone * this.dpr;
+      let next = position + Math.sign(delta) * Math.max(0, Math.abs(delta) - dead);
+      const pad = 24 * this.dpr;
+      if (keepRoomVisible && extent * this.scale <= size * this.dpr - pad * 2)
+        next = Math.max(pad, Math.min(size * this.dpr - pad - extent * this.scale, next));
+      const distance = next - position;
+      if (reduced || Math.abs(distance) <= 1) return Math.round(next);
+      const step = distance * (1 - Math.exp(-dt / 140));
+      return Math.round(
+        position + Math.sign(step) * Math.min(Math.abs(distance), Math.max(1, Math.round(Math.abs(step)))),
+      );
+    };
+    this.x = axis(this.x, width, point[0], room[0]);
+    this.y = axis(this.y, height, point[1], room[1]);
   }
   center(width: number, height: number, point: Point): void {
     this.x = Math.round((width * this.dpr) / 2 - point[0] * this.scale);
@@ -25,7 +70,7 @@ export class Camera {
     this.y += Math.round(dy * this.dpr);
   }
   zoom(next: number, at: Point): void {
-    const scale = Math.max(1, Math.min(8, Math.round(next)));
+    const scale = Math.max(1, Math.min(4, Math.round(next)));
     const x = (at[0] * this.dpr - this.x) / this.scale;
     const y = (at[1] * this.dpr - this.y) / this.scale;
     this.x = Math.round(at[0] * this.dpr - x * scale);

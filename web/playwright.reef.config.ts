@@ -7,11 +7,25 @@ export default defineConfig({
   use: {
     baseURL: "http://127.0.0.1:18194",
     browserName: "chromium",
-    viewport: { width: 390, height: 844 },
-    deviceScaleFactor: 2.625,
-    hasTouch: true,
+    locale: "en-US",
     trace: "retain-on-failure",
   },
+  projects: [
+    {
+      name: "phone",
+      use: {
+        viewport: { width: 390, height: 844 },
+        deviceScaleFactor: 2.625,
+        hasTouch: true,
+        isMobile: true,
+      },
+    },
+    {
+      name: "desktop",
+      testIgnore: /perf\.spec\.ts/,
+      use: { viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1, hasTouch: false },
+    },
+  ],
   webServer: [
     {
       command: "npx vite preview --host 127.0.0.1 --port 18194",

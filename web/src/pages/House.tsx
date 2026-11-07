@@ -35,6 +35,14 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
   const playEnabled = params.get("play") === "1";
   const [mode, setMode] = useState<"view" | "play">("play");
   const playing = playEnabled && mode === "play";
+  useEffect(() => {
+    if (!playing) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [playing]);
   const art = useArt(!playing);
   const [grid, setGrid] = useState(false);
   const [compare, setCompare] = useState(false);
@@ -80,55 +88,57 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
   const info = drawn && hover !== null ? drawn.scene.items[hover]?.info : null;
 
   return (
-    <div className="page">
+    <div className={playing ? "page house-playing" : "page"}>
       <TopBar me={me} />
       <main className="content content-wide">
         <div className="house-page">
-          <PageHead
-            title={title}
-            lead={
-              house.data
-                ? `${house.data.house.tier_name} · ${house.data.rooms.length} ${house.data.rooms.length === 1 ? "room" : "rooms"} · ${house.data.house.likes} likes`
-                : target.kind === "own"
-                  ? "Your rooms, as they stand."
-                  : "Somebody else's rooms, as they stand."
-            }
-            action={
-              house.data?.scope === "own" ? (
-                <form
-                  className="house-visit"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    if (/^\d{15,21}$/.test(visitId.trim())) navigate(`/house/${visitId.trim()}`);
-                  }}
-                >
-                  <input
-                    value={visitId}
-                    onChange={(event) => setVisitId(event.target.value)}
-                    inputMode="numeric"
-                    placeholder="Player ID to visit"
-                    aria-label="Discord ID of a player to visit"
-                  />
-                  <PixelButton
-                    type="submit"
-                    variant="secondary"
-                    disabled={!/^\d{15,21}$/.test(visitId.trim())}
+          {!playing && (
+            <PageHead
+              title={title}
+              lead={
+                house.data
+                  ? `${house.data.house.tier_name} · ${house.data.rooms.length} ${house.data.rooms.length === 1 ? "room" : "rooms"} · ${house.data.house.likes} likes`
+                  : target.kind === "own"
+                    ? "Your rooms, as they stand."
+                    : "Somebody else's rooms, as they stand."
+              }
+              action={
+                house.data?.scope === "own" ? (
+                  <form
+                    className="house-visit"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      if (/^\d{15,21}$/.test(visitId.trim())) navigate(`/house/${visitId.trim()}`);
+                    }}
                   >
-                    Visit
+                    <input
+                      value={visitId}
+                      onChange={(event) => setVisitId(event.target.value)}
+                      inputMode="numeric"
+                      placeholder="Player ID to visit"
+                      aria-label="Discord ID of a player to visit"
+                    />
+                    <PixelButton
+                      type="submit"
+                      variant="secondary"
+                      disabled={!/^\d{15,21}$/.test(visitId.trim())}
+                    >
+                      Visit
+                    </PixelButton>
+                  </form>
+                ) : (
+                  <PixelButton variant="secondary" onClick={() => navigate("/me/house")}>
+                    My house
                   </PixelButton>
-                </form>
-              ) : (
-                <PixelButton variant="secondary" onClick={() => navigate("/me/house")}>
-                  My house
-                </PixelButton>
-              )
-            }
-          />
+                )
+              }
+            />
+          )}
           {house.isPending && <Loading label="Opening the door" />}
           {house.isError && <Problem error={house.error} />}
           {house.isSuccess && (
             <>
-              {house.data.rooms.length > 1 && (
+              {!playing && house.data.rooms.length > 1 && (
                 <div className="house-tabs" role="tablist" aria-label="Rooms">
                   {house.data.rooms.map((r) => (
                     <PixelButton
@@ -152,7 +162,7 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
                   ))}
                 </div>
               )}
-              {playEnabled && (
+              {playEnabled && !playing && (
                 <div className="house-options" role="group" aria-label="Room mode">
                   <PixelButton aria-pressed={playing} onClick={() => setMode("play")}>
                     Play
@@ -164,7 +174,24 @@ function House({ me, target }: { me: Me; target: HouseTarget }) {
               )}
               {playing && room.data && (
                 <Suspense fallback={<Loading label="Opening Play" />}>
-                  <ReefStage room={room.data} own={house.data.scope === "own"} />
+                  <ReefStage
+                    room={room.data}
+                    own={house.data.scope === "own"}
+                    roomName={summary?.name ?? house.data.house.name}
+                    playerName={me.user.global_name ?? me.user.username}
+                    onExit={() => setMode("view")}
+                    rooms={house.data.rooms}
+                    onRoom={(nextRoom) =>
+                      setParams(
+                        (previous) => {
+                          const next = new URLSearchParams(previous);
+                          next.set("room", String(nextRoom));
+                          return next;
+                        },
+                        { replace: true },
+                      )
+                    }
+                  />
                 </Suspense>
               )}
               {!playing &&

@@ -16,10 +16,10 @@ export interface PreparedRoom {
   sprites: Img[];
 }
 /** One expensive pixel-accurate pass per layout/art revision, never per animation frame. */
-export function prepareRoom(scene: Scene): PreparedRoom {
+export function prepareRoom(scene: Scene, transparentBackdrop = false): PreparedRoom {
   const sprites = scene.items.map((i) => (i.flipped && isStanding(i) ? flipHorizontal(i.sprite) : i.sprite));
   const b = bounds(scene, sprites);
-  const background = renderRoom(scene, "background", b);
+  const background = renderRoom(scene, "background", b, undefined, transparentBackdrop);
   const origin: Point = [MARGIN - b[0], MARGIN - b[1]];
   const foreground = blank(background.image.width, background.image.height);
   if (scene.grid || scene.cursor || scene.items.some((i) => i.selected)) {
@@ -88,10 +88,11 @@ export class Compositor {
       }
     this.shadow = bitmap(shadow);
   }
-  draw(ctx: CanvasRenderingContext2D, actors: ActorDraw[] = []): void {
+  draw(ctx: CanvasRenderingContext2D, actors: ActorDraw[] = [], ground?: () => void): void {
     const [ox, oy] = this.room.origin;
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(this.background, 0, 0);
+    ground?.();
     const key = actors.map((a) => `${a.item.x},${a.item.y}`).join(";");
     if (key !== this.positionKey || !this.lastItems.length) {
       this.lastItems = [...this.room.scene.items, ...actors.map((a) => a.item)];

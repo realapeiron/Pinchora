@@ -1,8 +1,8 @@
 import { prepareRoom } from "./compositor";
 import type { Scene } from "../iso/scene";
-self.onmessage = (event: MessageEvent<{ id: number; scene: Scene }>) => {
+self.onmessage = (event: MessageEvent<{ id: number; scene: Scene; transparentBackdrop?: boolean }>) => {
   try {
-    const room = prepareRoom(event.data.scene);
+    const room = prepareRoom(event.data.scene, event.data.transparentBackdrop);
     const buffers = new Set<ArrayBuffer>([
       room.background.data.buffer,
       room.foreground.data.buffer,
