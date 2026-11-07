@@ -19,6 +19,7 @@ mod responders;
 mod roles;
 mod settings;
 mod site;
+mod starboard;
 mod static_files;
 mod stats;
 mod store;

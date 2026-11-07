@@ -57,6 +57,8 @@ pub(crate) async fn after_message(app: &Arc<App>, msg: &Message, _settings: &Gui
     if crate::automod::after_message(app, msg, _settings).await == Verdict::Blocked {
         return Verdict::Blocked;
     }
+    // F5 vote channels react only after moderation accepts the message.
+    crate::starboard::on_message(app, msg).await;
     // F9 stats counts the message.
     crate::stats::count_message(app, msg).await;
     // F19 AFK and sticky messages come after F1.
@@ -89,6 +91,7 @@ pub(crate) async fn on_reaction(app: &Arc<App>, event: &ReactionEvent) {
     // F2 reaction roles.
     crate::commands::roles_pack::on_reaction(app, event).await;
     // F5 starboard counts stars.
+    crate::starboard::on_reaction(app, event).await;
     // F13 workflows' reaction trigger.
 }
 

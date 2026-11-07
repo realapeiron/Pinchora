@@ -694,6 +694,7 @@ fn shown(lang: Lang, text: &str) -> String {
 
 /// Logs an edit: who, where, a link, and the text before and after when it is known.
 pub async fn on_message_update(app: Arc<App>, event: MessageUpdate) -> anyhow::Result<()> {
+    crate::starboard::on_update(&app, &event).await;
     let mut message = event.0;
     if !app.message_content {
         message.content.clear();
@@ -756,6 +757,7 @@ pub async fn on_message_update(app: Arc<App>, event: MessageUpdate) -> anyhow::R
 
 /// Logs a deleted message: what it said and who sent it when it was kept, otherwise where and when.
 pub async fn on_message_delete(app: Arc<App>, event: MessageDelete) -> anyhow::Result<()> {
+    crate::starboard::on_delete(&app, &event).await;
     let Some(guild) = event.guild_id.map(|g| g.get()) else {
         return Ok(());
     };
@@ -808,6 +810,7 @@ pub async fn on_message_delete(app: Arc<App>, event: MessageDelete) -> anyhow::R
 
 /// Logs a bulk delete: how many, where, and the messages that were kept, oldest first.
 pub async fn on_message_delete_bulk(app: Arc<App>, event: MessageDeleteBulk) -> anyhow::Result<()> {
+    crate::starboard::on_delete_bulk(&app, &event).await;
     let Some(guild) = event.guild_id.map(|g| g.get()) else {
         return Ok(());
     };

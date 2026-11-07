@@ -57,6 +57,7 @@ pub(crate) mod shells;
 pub(crate) mod shop;
 mod social;
 pub(crate) mod stall;
+pub(crate) mod starboard;
 pub(crate) mod stats;
 pub(crate) mod store;
 pub(crate) mod suggest;
@@ -172,6 +173,7 @@ commands!(
     customcommand::CustomCommand,
     language::LanguageCommand,
     stats::StatsCommand,
+    starboard::StarboardCommand,
     stats::CountersCommand,
     tickets::TicketCommand,
     tickets::TicketsCommand,

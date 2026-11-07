@@ -23,6 +23,7 @@ mod responder;
 mod roles;
 mod server_events;
 mod server_log;
+mod starboard;
 mod stats;
 mod text;
 mod tickets;
@@ -79,6 +80,11 @@ pub use log_audit::on_audit_log_entry;
 pub use responder::Responder;
 pub use server_events::{spawn_ticker as spawn_events_ticker, tick as events_tick};
 pub use server_log::{on_message_delete, on_message_delete_bulk, on_message_update};
+pub use starboard::{
+    cleanup_one as cleanup_starboard_copy, on_message as on_starboard_message, on_reaction as on_starboard_reaction,
+    on_update as on_starboard_update, reconcile_one as reconcile_starboard_post,
+    spawn_ticker as spawn_starboard_ticker, tick as starboard_tick,
+};
 pub use stats::{
     cards::server_card_png as stats_card_png, counter_problem as stats_counter_problem,
     counter_value as stats_counter_value, counters::missing_permission as stats_missing_permission,

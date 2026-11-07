@@ -1,0 +1,43 @@
+[module]
+starboard = "Starboard"
+[module-blurb]
+starboard = "Highlight popular posts and set up vote channels."
+[starboard]
+guild-only = "Use this command in a server."
+manage-needed = "You need Manage Server to configure starboards."
+full = "This server already has 3/3 starboards. Remove one first."
+missing = "That board or vote channel no longer exists."
+invalid = "Check the emoji, colour, channel IDs and role weights. Weights must be 1–50."
+saved = "Starboard #{id} now posts in {channel}."
+changed = "Starboard settings saved."
+removed = "Starboard removed."
+empty = "No starboards yet. Use /starboard setup."
+list-line = "#{id} · {emoji} **{name}** → {channel} · {threshold} stars"
+[starboard.post]
+title = "{board}"
+heading = "⭐ {count} · {channel}"
+author = "By {author}"
+message = "Message"
+attachments = "Attachments"
+locked = "Message text and attachments need the Message Content intent."
+[starboard.top]
+title = "Top posts · {board}"
+empty = "No starred posts yet."
+stargazers = "Top stargazers"
+previous = "Previous"
+next = "Next"
+[starboard.vote]
+saved = "Voting is on in {channel}."
+removed = "Vote channel removed."
+empty = "No vote channels yet."
+line = "{channel} · {up} / {down}"
+content-needed = "Media-only vote channels need the Message Content intent."
+thread = "Discuss this post"
+
+[starboard.permission]
+view = "Pinchora needs View Channel in that channel."
+send = "Pinchora needs Send Messages in that channel."
+embed = "Pinchora needs Embed Links in that channel."
+history = "Pinchora needs Read Message History in that channel."
+react = "Pinchora needs Add Reactions in that channel."
+thread = "Pinchora needs Create Public Threads in that channel."

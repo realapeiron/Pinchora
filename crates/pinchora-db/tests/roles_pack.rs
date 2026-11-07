@@ -558,13 +558,14 @@ async fn sticky_prune_skips_a_user_being_deleted() {
     let [guild, user, role] = ids();
     db.remember_roles(guild, user, &[role]).await.unwrap();
     let before = Utc::now() - Duration::days(61);
-    db.note_left(guild, user, before - Duration::days(1)).await.unwrap();
     let mut privacy = db.pool().begin().await.unwrap();
     sqlx::query("SELECT lock_user($1)")
         .bind(user as i64)
         .execute(&mut *privacy)
         .await
         .unwrap();
+    db.note_left(guild, user, before - Duration::days(1)).await.unwrap();
+    assert!(db.sticky_waiting(guild, user).await.unwrap());
     assert_eq!(
         tokio::time::timeout(std::time::Duration::from_secs(2), db.prune_sticky(before))
             .await
@@ -573,7 +574,8 @@ async fn sticky_prune_skips_a_user_being_deleted() {
         0
     );
     privacy.rollback().await.unwrap();
-    assert_eq!(db.prune_sticky(before).await.unwrap(), 1);
+    db.prune_sticky(before).await.unwrap();
+    assert!(!db.sticky_waiting(guild, user).await.unwrap());
 }
 
 #[tokio::test]

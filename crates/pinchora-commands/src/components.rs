@@ -95,6 +95,7 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
         Some("sn") => crate::commands::feeds::on_component(cx, parts).await,
         Some(prefix @ ("hl" | "ac" | "cn" | "wx" | "wy" | "td")) => party_games::on_component(cx, prefix, parts).await,
         Some("sc") => crate::commands::stats::on_component(cx, parts).await,
+        Some("sr") => crate::commands::starboard::on_component(cx, parts).await,
         Some("tk") => crate::tickets::on_open(cx, parts, values).await,
         Some("tp") => crate::tickets::on_control(cx, parts).await,
         Some("tr") => crate::tickets::on_rating(cx, parts).await,

@@ -39,6 +39,7 @@ mod shop;
 mod showcase;
 mod social;
 mod stalls;
+mod starboard;
 mod stats;
 mod suggestions;
 mod tags;
@@ -112,6 +113,7 @@ pub use roles_pack::{
 pub use shop::{BuyOutcome, Currency, MarketRow, VisitOutcome};
 pub use showcase::{FishBookRow, HousePreview};
 pub use stalls::{ListingRow, MAX_LISTINGS, STALL_FEE_PERCENT, StallBuy};
+pub use starboard::{StarPost, Starboard, VoteChannel};
 pub use stats::{ActivityDay, ActivityRank, CounterRow, CounterSave, GlobalDay, GlobalTotals};
 pub use suggestions::{
     APPROVED as SUGGESTION_APPROVED, DENIED as SUGGESTION_DENIED, Decision, SuggestionRow, SuggestionVote,

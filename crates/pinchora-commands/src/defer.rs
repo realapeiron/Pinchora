@@ -92,6 +92,7 @@ const PRIVATE: &[&str] = &[
     "xp",
     "info channel",
     "info invite",
+    "starboard",
 ];
 
 /// Slash commands that answer with a form, which only works as the first answer: never deferred.

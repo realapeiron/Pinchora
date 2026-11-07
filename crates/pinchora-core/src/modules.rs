@@ -125,11 +125,12 @@ pub enum Module {
     Feeds,
     TempVoice,
     Info,
+    Starboard,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 37] = [
+    pub const ALL: [Self; 38] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -167,6 +168,7 @@ impl Module {
         Self::Feeds,
         Self::TempVoice,
         Self::Info,
+        Self::Starboard,
     ];
 
     /// The key stored in the database and used in the API.
@@ -209,6 +211,7 @@ impl Module {
             Self::Feeds => "feeds",
             Self::TempVoice => "temp_voice",
             Self::Info => "info",
+            Self::Starboard => "starboard",
         }
     }
 
@@ -255,6 +258,7 @@ impl Module {
             Self::Feeds => "Social feeds",
             Self::TempVoice => "Temp voice",
             Self::Info => "Info commands",
+            Self::Starboard => "Starboard",
         }
     }
 
@@ -318,6 +322,7 @@ impl Module {
             }
             Self::TempVoice => "Creator channels that make a voice room for whoever joins, and /voice to run it.",
             Self::Info => "Server, member, role, channel, emoji and invite information.",
+            Self::Starboard => "/starboard: highlight popular posts and set up vote channels.",
         }
     }
 
@@ -351,6 +356,7 @@ impl Module {
             Self::Feeds => Group::Feeds,
             Self::TempVoice => Group::Community,
             Self::Info => Group::Server,
+            Self::Starboard => Group::Community,
         }
     }
 
@@ -409,6 +415,7 @@ impl Module {
             "party" => Self::PartyGames,
             "stats" | "counters" => Self::Stats,
             "ticket" | "tickets" => Self::Tickets,
+            "starboard" => Self::Starboard,
             "duel" => match sub {
                 Some("share") => Self::Party,
                 Some("tictactoe" | "connect4" | "rps") => Self::Duels,
@@ -459,6 +466,7 @@ impl Module {
             "vc" | "vo" => Self::TempVoice,
             "nf" => Self::Info,
             "xi" => Self::Leveling,
+            "sr" => Self::Starboard,
             _ => return None,
         })
     }

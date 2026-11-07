@@ -671,7 +671,22 @@ in, else the one you own, and a panel finds the room it sits in. Answers are pri
 
 ### Starboard and vote channels
 
-<!-- F5: the Starboard and vote channels package replaces this heading's section; keep it one `###` section. -->
+`/starboard setup|edit|remove|list|top` manages up to three boards per server. Each board has an emoji,
+threshold (1–50), self-star and bot rules, source channel allow/deny lists, image requirement, colour,
+role weights and an option to remove posts that fall below the threshold. A reaction is counted once per
+member and board after a short debounce against Discord's current reactions and membership. A qualifying
+post is claimed in Postgres before sending; stale senders clean up any losing copy. Removing stars
+updates the count, and deleted or edited sources are reconciled with the board copy. NSFW sources only
+copy to NSFW boards. Private sources are excluded even when selected in a source allow list.
+
+`/starboard votes add|remove|list` sets channels where each new message gets the up reaction followed
+by the down reaction; the server may choose emojis, restrict to media posts and open discussion threads.
+Discussion threads have per-member and per-channel cooldowns and a bounded worker pool.
+The **Starboard** dashboard page edits boards and vote channels and previews the board card. With the
+Message Content intent off, board copies show the author and source link but omit message
+text and attachments; the dashboard shows why. The module key is `starboard` (Community). Old star records are swept
+after 180 days. The bot needs View Channel, Read Message History, Add Reactions and Send Messages in
+the relevant channels; thread creation additionally needs Create Public Threads.
 
 ### Invite tracker
 

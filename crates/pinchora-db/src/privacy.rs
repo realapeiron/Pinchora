@@ -105,6 +105,8 @@ pub const USER_COLUMNS: &[(&str, &str)] = &[
     ("ticket_transcript_authors", "user_id"),
     ("tickets", "opener_id"),
     ("temp_voice_bans", "user_id"),
+    ("starboard_stars", "user_id"),
+    ("starboard_posts", "author_id"),
     ("users", "id"),
 ];
 
@@ -227,6 +229,10 @@ pub const OTHER_TABLES: &[&str] = &[
     // A room belongs to the server; its owner is cleared (see above) and the members kept out of it go with the
     // player (`temp_voice_bans`).
     "temp_voice_channels",
+    "starboards",
+    "vote_channels",
+    "starboard_deleted_sources",
+    "starboard_copy_cleanup",
 ];
 
 /// What a player hides.
@@ -454,6 +460,13 @@ impl Db {
 
         let mut deleted = Deleted::default();
         let mut touched: Vec<&str> = Vec::new();
+        let affected_stars: Vec<(i64, i64)> =
+            sqlx::query_as("SELECT starboard_id,message_id FROM starboard_stars WHERE user_id=$1")
+                .bind(id)
+                .fetch_all(&mut **tx)
+                .await?;
+        sqlx::query("INSERT INTO starboard_copy_cleanup(channel_id,copy_id) SELECT b.channel_id,p.board_message_id FROM starboard_posts p JOIN starboards b ON b.id=p.starboard_id WHERE p.author_id=$1 AND p.board_message_id>0 ON CONFLICT DO NOTHING")
+            .bind(id).execute(&mut **tx).await?;
         for (table, column) in USER_COLUMNS {
             // Table and column names are the constants above.
             let rows = sqlx::query(sqlx::AssertSqlSafe(format!("DELETE FROM {table} WHERE {column} = $1")))
@@ -467,6 +480,10 @@ impl Db {
                     touched.push(table);
                 }
             }
+        }
+        for (board, message) in affected_stars {
+            sqlx::query("UPDATE starboard_posts SET star_count=(SELECT COALESCE(SUM(weight),0)::INT FROM starboard_stars WHERE starboard_id=$1 AND message_id=$2),sync_due=now(),sync_version=sync_version+1 WHERE starboard_id=$1 AND message_id=$2")
+                .bind(board).bind(message).execute(&mut **tx).await?;
         }
         deleted.tables = touched.len();
         Ok(deleted)
@@ -561,7 +578,11 @@ async fn others_written(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, id: i64)
          WHERE status = 'active' AND bet > 0 AND (host_id = $1 OR guest_id = $1)
          UNION SELECT m.user_id FROM party_members m JOIN game_sessions s ON s.id = m.session_id
          WHERE s.host_id = $1 AND s.kind = 'derby' AND s.status = 'pending' AND m.amount > 0
-         UNION SELECT host_id FROM house_likes WHERE liker_id = $1",
+         UNION SELECT host_id FROM house_likes WHERE liker_id = $1
+         UNION SELECT s.user_id FROM starboard_stars s JOIN starboard_posts p
+             ON p.starboard_id=s.starboard_id AND p.message_id=s.message_id WHERE p.author_id=$1
+         UNION SELECT p.author_id FROM starboard_posts p JOIN starboard_stars s
+             ON s.starboard_id=p.starboard_id AND s.message_id=p.message_id WHERE s.user_id=$1",
     )
     .bind(id)
     .fetch_all(&mut **tx)

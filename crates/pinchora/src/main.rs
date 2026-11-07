@@ -142,6 +142,7 @@ async fn boot(config: &Config, role: &str) -> anyhow::Result<(Arc<App>, Readines
     pinchora_commands::spawn_roles_ticker(app.clone());
     // Writes the server stats counted in Redis to Postgres every minute and keeps counter channels' names current.
     pinchora_commands::spawn_stats_ticker(app.clone());
+    pinchora_commands::spawn_starboard_ticker(app.clone());
     // Closes tickets nobody wrote in for longer than their server allows.
     pinchora_commands::spawn_tickets_ticker(app.clone());
     pinchora_commands::spawn_feeds_ticker(app.clone());
