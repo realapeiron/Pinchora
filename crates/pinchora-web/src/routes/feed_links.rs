@@ -28,23 +28,34 @@ pub fn router() -> Router<WebState> {
         .route("/my-channels/{kind}", axum::routing::delete(unlink))
 }
 
-fn kind(raw: &str) -> ApiResult<Kind> {
+fn kind(raw: &str, lang: Lang) -> ApiResult<Kind> {
     match Kind::parse(raw) {
         Some(kind @ (Kind::Twitch | Kind::Kick)) => Ok(kind),
-        _ => Err(ApiError::malformed(t!(Lang::En, "feeds.link.kind"))),
+        _ => Err(ApiError::malformed(t!(lang, "feeds.link.kind"))),
     }
 }
 
 async fn list(State(state): State<WebState>, current: CurrentSession) -> ApiResult<Json<Value>> {
+    let lang = state
+        .app
+        .db
+        .user_language(current.session.user_id)
+        .await?
+        .unwrap_or(Lang::En);
     let rows = state.app.db.channel_links(current.session.user_id).await?;
-    let kinds: Vec<Value> = [Kind::Twitch, Kind::Kick].iter().map(|kind| json!({
-        "key": kind.key(), "available": feeds::available(*kind),
-        "why_not": (!feeds::available(*kind)).then(|| t!(Lang::En, &format!("feeds.unavailable.{}", kind.key())))
-    })).collect();
-    let strings: std::collections::BTreeMap<_, _> = pinchora_core::i18n::keys(Lang::En)
+    let kinds: Vec<Value> = [Kind::Twitch, Kind::Kick]
+        .iter()
+        .map(|kind| {
+            json!({
+                "key": kind.key(), "available": feeds::available(*kind),
+                "why_not": (!feeds::available(*kind)).then(|| t!(lang, &format!("feeds.unavailable.{}", kind.key())))
+            })
+        })
+        .collect();
+    let strings: std::collections::BTreeMap<_, _> = pinchora_core::i18n::keys(lang)
         .into_iter()
         .filter(|key| key.starts_with("feeds.ui."))
-        .map(|key| (key.trim_start_matches("feeds.ui."), t!(Lang::En, key)))
+        .map(|key| (key.trim_start_matches("feeds.ui."), t!(lang, key)))
         .collect();
     Ok(Json(json!({ "items": rows.iter().map(|row| json!({
         "kind": row.kind, "source": row.source, "code": row.verification_code,
@@ -66,8 +77,15 @@ async fn start(
     current: CurrentSession,
     ApiJson(body): ApiJson<StartBody>,
 ) -> ApiResult<Json<Value>> {
-    let lang = Lang::En;
-    let kind = kind(&body.kind)?;
+    let _guard = state.app.db.lock_feed_link(current.session.user_id).await?;
+    let lang = state
+        .app
+        .db
+        .user_language(current.session.user_id)
+        .await?
+        .unwrap_or(Lang::En);
+    lookup_budget(&state, current.session.user_id).await?;
+    let kind = kind(&body.kind, lang)?;
     if !feeds::available(kind) {
         return Err(ApiError::blocked(t!(
             lang,
@@ -91,10 +109,12 @@ async fn start(
         .find(|row| row.kind == kind.key() && row.verified_at.is_some())
     {
         for feed in state.app.db.live_feeds_for_channel(kind.key(), &old.source).await? {
-            feeds::change_live_role(&state.app, &feed, false).await;
+            if !feeds::change_live_role_for(&state.app, &feed, current.session.user_id, false).await {
+                return Err(ApiError::blocked(t!(lang, "feeds.link.role-retry")));
+            }
         }
     }
-    let code = format!("pinchora-{:016x}", rand::random::<u64>());
+    let code = format!("pinchora-{:032x}", rand::random::<u128>());
     if !state
         .app
         .db
@@ -116,7 +136,21 @@ async fn verify(
     current: CurrentSession,
     Path(raw): Path<String>,
 ) -> ApiResult<Json<Value>> {
-    let kind = kind(&raw)?;
+    let _guard = state.app.db.lock_feed_link(current.session.user_id).await?;
+    let lang = state
+        .app
+        .db
+        .user_language(current.session.user_id)
+        .await?
+        .unwrap_or(Lang::En);
+    let kind = kind(&raw, lang)?;
+    if !feeds::available(kind) {
+        return Err(ApiError::blocked(t!(
+            lang,
+            &format!("feeds.unavailable.{}", kind.key())
+        )));
+    }
+    lookup_budget(&state, current.session.user_id).await?;
     let row = state
         .app
         .db
@@ -127,14 +161,14 @@ async fn verify(
         .ok_or_else(ApiError::not_found)?;
     let code = row.verification_code.ok_or_else(ApiError::not_found)?;
     if row.code_expires_at.is_none_or(|at| at <= chrono::Utc::now()) {
-        return Err(ApiError::blocked(t!(Lang::En, "feeds.link.expired")));
+        return Err(ApiError::blocked(t!(lang, "feeds.link.expired")));
     }
     let read = live::lookup(kind, &row.source)
         .await
-        .map_err(|_| ApiError::blocked(t!(Lang::En, "feeds.link.check-failed")))?;
+        .map_err(|_| ApiError::blocked(t!(lang, "feeds.link.check-failed")))?;
     let title = read.item.as_ref().map(|item| item.title.as_str()).unwrap_or_default();
     if !read.bio.contains(&code) && !title.contains(&code) {
-        return Err(ApiError::blocked(t!(Lang::En, "feeds.link.code-missing")));
+        return Err(ApiError::blocked(t!(lang, "feeds.link.code-missing")));
     }
     if !state
         .app
@@ -142,10 +176,12 @@ async fn verify(
         .verify_channel_link(current.session.user_id, kind.key(), &row.source, &code)
         .await?
     {
-        return Err(ApiError::blocked(t!(Lang::En, "feeds.link.expired")));
+        return Err(ApiError::blocked(t!(lang, "feeds.link.expired")));
     }
     for feed in state.app.db.live_feeds_for_channel(kind.key(), &row.source).await? {
-        feeds::change_live_role(&state.app, &feed, true).await;
+        if state.app.db.feed_channel_is_live(kind.key(), &row.source).await? {
+            feeds::change_live_role_for(&state.app, &feed, current.session.user_id, true).await;
+        }
     }
     Ok(Json(json!({"verified": true})))
 }
@@ -155,19 +191,43 @@ async fn unlink(
     current: CurrentSession,
     Path(raw): Path<String>,
 ) -> ApiResult<Json<Value>> {
-    let kind = kind(&raw)?;
+    let _guard = state.app.db.lock_feed_link(current.session.user_id).await?;
+    let lang = state
+        .app
+        .db
+        .user_language(current.session.user_id)
+        .await?
+        .unwrap_or(Lang::En);
+    let kind = kind(&raw, lang)?;
     if let Some(row) = state
         .app
         .db
         .channel_links(current.session.user_id)
         .await?
         .into_iter()
-        .find(|row| row.kind == kind.key())
+        .find(|row| row.kind == kind.key() && row.verified_at.is_some())
     {
         for feed in state.app.db.live_feeds_for_channel(kind.key(), &row.source).await? {
-            feeds::change_live_role(&state.app, &feed, false).await;
+            if !feeds::change_live_role_for(&state.app, &feed, current.session.user_id, false).await {
+                return Err(ApiError::blocked(t!(lang, "feeds.link.role-retry")));
+            }
         }
     }
     state.app.db.unlink_channel(current.session.user_id, kind.key()).await?;
     Ok(Json(json!({"removed": true})))
+}
+
+async fn lookup_budget(state: &WebState, user: u64) -> ApiResult<()> {
+    let count = state
+        .app
+        .cache
+        .incr(
+            &format!("feeds:link-lookups:{user}"),
+            std::time::Duration::from_secs(60),
+        )
+        .await?;
+    if count > 10 {
+        return Err(ApiError::too_many(60));
+    }
+    Ok(())
 }

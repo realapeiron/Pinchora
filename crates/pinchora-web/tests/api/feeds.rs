@@ -293,3 +293,79 @@ async fn feeds_dashboard_and_errors_follow_the_guild_language() {
             .starts_with("Bu örnek bir paylaşım")
     );
 }
+
+#[tokio::test]
+async fn personal_channels_require_csrf_are_private_and_use_the_member_language() {
+    let Some(h) = Harness::new("feeds_personal_auth").await else {
+        return;
+    };
+    let (_, user, mut browser) = h.managed_server().await;
+    h.state.app.db.set_user_language(user, Some(Lang::Tr)).await.unwrap();
+    let source = format!("stream{user}");
+    h.state
+        .app
+        .db
+        .start_channel_link(user, "twitch", &source, "private-proof")
+        .await
+        .unwrap();
+    let list = browser.get("/api/feeds/my-channels").await;
+    assert_eq!(list.status, StatusCode::OK);
+    assert_eq!(list.json()["items"][0]["code"], "private-proof");
+    assert_eq!(
+        list.json()["strings"]["my-channels"],
+        pinchora_core::t!(Lang::Tr, "feeds.ui.my-channels")
+    );
+    for (method, path) in [
+        (Method::POST, "/api/feeds/my-channels"),
+        (Method::POST, "/api/feeds/my-channels/twitch/verify"),
+        (Method::DELETE, "/api/feeds/my-channels/twitch"),
+    ] {
+        let rejected = browser
+            .send(
+                Request::builder()
+                    .method(method)
+                    .uri(path)
+                    .header("content-type", "application/json")
+                    .body(Body::from("{}"))
+                    .unwrap(),
+            )
+            .await;
+        assert_eq!(rejected.status, StatusCode::FORBIDDEN, "{}", rejected.text());
+    }
+    let mut stranger = h.browser();
+    assert_eq!(
+        stranger.get("/api/feeds/my-channels").await.status,
+        StatusCode::UNAUTHORIZED
+    );
+    stranger.login(&h, unique(), vec![]).await;
+    assert_eq!(stranger.get("/api/feeds/my-channels").await.json()["items"], json!([]));
+    // Missing credentials disable verification cleanly; repeated lookup attempts are still bounded.
+    assert_eq!(list.json()["kinds"][0]["available"], false);
+    let disabled = browser
+        .write(Method::POST, "/api/feeds/my-channels/twitch/verify", json!({}))
+        .await;
+    assert_eq!(disabled.status, StatusCode::UNPROCESSABLE_ENTITY);
+    for _ in 0..10 {
+        let disabled = browser
+            .write(
+                Method::POST,
+                "/api/feeds/my-channels",
+                json!({"kind":"twitch", "source":"abc"}),
+            )
+            .await;
+        assert_eq!(disabled.status, StatusCode::UNPROCESSABLE_ENTITY);
+    }
+    let limited = browser
+        .write(
+            Method::POST,
+            "/api/feeds/my-channels",
+            json!({"kind":"twitch", "source":"abc"}),
+        )
+        .await;
+    assert_eq!(limited.status, StatusCode::TOO_MANY_REQUESTS);
+    let removed = browser
+        .write(Method::DELETE, "/api/feeds/my-channels/twitch", json!({}))
+        .await;
+    assert_eq!(removed.status, StatusCode::OK, "{}", removed.text());
+    assert!(h.state.app.db.channel_links(user).await.unwrap().is_empty());
+}

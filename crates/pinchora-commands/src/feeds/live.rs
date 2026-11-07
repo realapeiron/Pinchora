@@ -30,10 +30,29 @@ static KICK_TOKEN: LazyLock<Mutex<Option<Token>>> = LazyLock::new(|| Mutex::new(
 static HTTP: LazyLock<Client> = LazyLock::new(|| {
     Client::builder()
         .no_proxy()
+        .redirect(reqwest::redirect::Policy::none())
         .timeout(Duration::from_secs(10))
         .build()
         .expect("live HTTP client")
 });
+
+/// Media is embedded remotely, never fetched by our server. Restrict live media to provider CDNs.
+pub fn media_url(kind: Kind, raw: &str) -> Option<String> {
+    let url = reqwest::Url::parse(raw).ok()?;
+    let host = url.host_str()?;
+    let allowed = match kind {
+        Kind::Twitch => host == "static-cdn.jtvnw.net",
+        Kind::Kick => host == "images.kick.com" || host == "stream.kick.com",
+        _ => false,
+    };
+    (allowed
+        && url.scheme() == "https"
+        && url.port_or_known_default() == Some(443)
+        && url.username().is_empty()
+        && url.password().is_none()
+        && raw.len() <= 1000)
+        .then(|| url.to_string())
+}
 
 fn credentials(kind: Kind) -> Option<(String, String)> {
     let prefix = match kind {
@@ -81,7 +100,7 @@ async fn token(kind: Kind) -> anyhow::Result<(String, String)> {
 }
 
 async fn request_token(http: &Client, endpoint: &str, client_id: &str, client_secret: &str) -> anyhow::Result<Value> {
-    Ok(http
+    let response = http
         .post(endpoint)
         .form(&[
             ("grant_type", "client_credentials"),
@@ -89,10 +108,9 @@ async fn request_token(http: &Client, endpoint: &str, client_id: &str, client_se
             ("client_secret", client_secret),
         ])
         .send()
-        .await?
-        .error_for_status()?
-        .json::<Value>()
-        .await?)
+        .await
+        .map_err(|_| anyhow::anyhow!("provider token request failed"))?;
+    response_json(response).await
 }
 
 async fn get(kind: Kind, path: &str) -> anyhow::Result<Value> {
@@ -110,7 +128,31 @@ async fn request_json(http: &Client, kind: Kind, url: &str, id: &str, token: &st
     if kind == Kind::Twitch {
         request = request.header("Client-Id", id);
     }
-    Ok(request.send().await?.error_for_status()?.json::<Value>().await?)
+    response_json(
+        request
+            .send()
+            .await
+            .map_err(|_| anyhow::anyhow!("provider request failed"))?,
+    )
+    .await
+}
+
+async fn response_json(mut response: reqwest::Response) -> anyhow::Result<Value> {
+    if !response.status().is_success() {
+        anyhow::bail!("provider request was refused");
+    }
+    let mut bytes = Vec::new();
+    while let Some(chunk) = response
+        .chunk()
+        .await
+        .map_err(|_| anyhow::anyhow!("provider response failed"))?
+    {
+        if bytes.len() + chunk.len() > 2 * 1024 * 1024 {
+            anyhow::bail!("provider response too large");
+        }
+        bytes.extend_from_slice(&chunk);
+    }
+    serde_json::from_slice(&bytes).map_err(|_| anyhow::anyhow!("invalid provider response"))
 }
 
 fn string(value: &Value, key: &str) -> String {
@@ -146,7 +188,7 @@ pub fn twitch_read(source: &str, user: &Value, stream: &Value) -> Option<LiveRea
             author: Some(string(user, "display_name")),
             summary: Some(string(entry, "game_name")),
             published: date(entry, "started_at"),
-            image: thumbnail,
+            image: thumbnail.as_deref().and_then(|url| media_url(Kind::Twitch, url)),
             ..Item::default()
         })
     });
@@ -198,7 +240,7 @@ pub fn kick_read(source: &str, response: &Value) -> Option<LiveRead> {
             author: Some(source.to_owned()),
             summary: channel["category"]["name"].as_str().map(str::to_owned),
             published: started,
-            image: stream["thumbnail"].as_str().map(str::to_owned),
+            image: stream["thumbnail"].as_str().and_then(|url| media_url(Kind::Kick, url)),
             ..Item::default()
         }
     });
@@ -273,6 +315,51 @@ mod tests {
     };
     use serde_json::json;
     use tokio::net::TcpListener;
+    #[test]
+    fn live_media_cannot_target_internal_or_untrusted_hosts() {
+        for kind in [Kind::Twitch, Kind::Kick] {
+            for url in [
+                "http://127.0.0.1/a",
+                "https://[::1]/a",
+                "https://169.254.169.254/a",
+                "https://static-cdn.jtvnw.net.evil.test/a",
+                "https://user@static-cdn.jtvnw.net/a",
+                "https://images.kick.com:8443/a",
+                "file:///etc/passwd",
+            ] {
+                assert!(media_url(kind, url).is_none(), "{url}");
+            }
+        }
+        assert!(media_url(Kind::Twitch, "https://static-cdn.jtvnw.net/a.jpg").is_some());
+        assert!(media_url(Kind::Kick, "https://images.kick.com/a.jpg").is_some());
+    }
+
+    #[tokio::test]
+    async fn provider_redirects_are_not_followed_and_errors_omit_secrets() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let base = format!("http://{}", listener.local_addr().unwrap());
+        let router = Router::new().route(
+            "/",
+            get(|| async {
+                (
+                    axum::http::StatusCode::TEMPORARY_REDIRECT,
+                    [("location", "http://127.0.0.1/private?secret=do-not-log")],
+                )
+            }),
+        );
+        let router = router.route("/large", get(|| async { "x".repeat(2 * 1024 * 1024 + 1) }));
+        let server = tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });
+        let error = request_json(&HTTP, Kind::Twitch, &base, "id", "secret")
+            .await
+            .unwrap_err();
+        assert_eq!(error.to_string(), "provider request was refused");
+        let error = request_json(&HTTP, Kind::Twitch, &format!("{base}/large"), "id", "secret")
+            .await
+            .unwrap_err();
+        assert_eq!(error.to_string(), "provider response too large");
+        server.abort();
+    }
+
     #[test]
     fn parses_helix_live_and_offline() {
         let user = json!({"data":[{"id":"42","login":"abc","display_name":"ABC","description":"hello"}]});

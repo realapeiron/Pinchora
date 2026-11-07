@@ -161,7 +161,13 @@ pub fn render(lang: Lang, draft: &Draft<'_>, item: &Item) -> FeedMessage {
 }
 
 fn card(lang: Lang, kind: Kind, account: &str, item: &Item, link: Option<&str>) -> FeedEmbed {
-    let picture = item.image.as_deref().and_then(web_link);
+    let picture = item.image.as_deref().and_then(|url| {
+        if matches!(kind, Kind::Twitch | Kind::Kick) {
+            super::live::media_url(kind, url)
+        } else {
+            web_link(url)
+        }
+    });
     // A video or a post is its picture; an article or an episode only illustrated by one.
     let big = matches!(kind, Kind::YouTube | Kind::Bluesky | Kind::Twitch | Kind::Kick);
     let mut fields = Vec::new();

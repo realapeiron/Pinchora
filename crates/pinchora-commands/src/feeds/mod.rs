@@ -440,18 +440,6 @@ async fn live_failure(app: &App, row: &FeedSourceRow) {
 
 async fn poll_live_read(app: &App, row: &FeedSourceRow, kind: Kind, read: live::LiveRead) -> usize {
     let now = app.now();
-    if kind == Kind::Twitch && row.eventsub_registered_at.is_none() && live::webhook_callback().is_some() {
-        match live::subscribe_twitch(&read.broadcaster_id).await {
-            Ok(()) => {
-                if let Err(error) = app.db.mark_eventsub_registered(&row.source).await {
-                    tracing::warn!(%error, "EventSub registration was not recorded");
-                }
-            }
-            Err(error) => {
-                tracing::warn!(%error, source = %row.source, "EventSub registration failed; polling continues")
-            }
-        }
-    }
     let stream_id = read.item.as_ref().map(|item| item.id.as_str());
     match app
         .db
@@ -464,6 +452,25 @@ async fn poll_live_read(app: &App, row: &FeedSourceRow, kind: Kind, read: live::
             }
         }
         Err(error) => tracing::warn!(%error, "live stream state was not saved"),
+    }
+    if kind == Kind::Twitch && row.eventsub_registered_at.is_none() && live::webhook_callback().is_some() {
+        match live::subscribe_twitch(&read.broadcaster_id).await {
+            Ok(()) => {
+                if let Err(error) = app.db.mark_eventsub_registered(&row.source).await {
+                    tracing::warn!(%error, "EventSub registration was not recorded");
+                }
+            }
+            Err(error) => {
+                tracing::warn!(%error, source = %row.source, "EventSub registration failed; polling continues")
+            }
+        }
+    }
+    if read.item.is_some()
+        && let Ok(feeds) = app.db.live_feeds_for_channel(&row.kind, &row.source).await
+    {
+        for feed in feeds {
+            change_live_role(app, &feed, true).await;
+        }
     }
     let items: Vec<Item> = read.item.into_iter().collect();
     match app
@@ -569,7 +576,9 @@ pub async fn send(app: &App, feed: &FeedRow, item: &Item, ping: bool) -> PostOut
             if ping && matches!(draft.kind, Kind::Twitch | Kind::Kick) {
                 match response.model().await {
                     Ok(message) => match app.db.set_live_message(feed.id, message.id.get(), &item.id).await {
-                        Ok(true) => change_live_role(app, feed, true).await,
+                        Ok(true) => {
+                            change_live_role(app, feed, true).await;
+                        }
                         Ok(false) => {
                             let mut ended = feed.clone();
                             ended.live_message_id = Some(message.id.get() as i64);
@@ -596,32 +605,73 @@ pub async fn send(app: &App, feed: &FeedRow, item: &Item, ping: bool) -> PostOut
 }
 
 /// The role is only handed out to a verified owner and only while it passes the shared role rule.
-pub async fn change_live_role(app: &App, feed: &FeedRow, add: bool) {
-    let Some(role) = feed.live_role_id.map(|id| id as u64) else {
-        return;
+pub async fn change_live_role(app: &App, feed: &FeedRow, add: bool) -> bool {
+    let user = match app.db.linked_streamer(&feed.kind, &feed.source).await {
+        Ok(Some(user)) => user,
+        Ok(None) => return true,
+        Err(_) => return false,
     };
-    let Ok(Some(user)) = app.db.linked_streamer(&feed.kind, &feed.source).await else {
-        return;
+    let Ok(_guard) = app.db.lock_feed_link(user).await else {
+        return false;
+    };
+    if app.db.linked_streamer(&feed.kind, &feed.source).await.ok().flatten() != Some(user) {
+        return true;
+    }
+    change_live_role_for(app, feed, user, add).await
+}
+
+/// Caller holds the member's link lock, so unlink cannot race a role grant.
+pub async fn change_live_role_for(app: &App, feed: &FeedRow, user: u64, add: bool) -> bool {
+    if add
+        && (!app.module_enabled(feed.guild_id as u64, Module::Feeds).await
+            || !app
+                .db
+                .feed_channel_is_live(&feed.kind, &feed.source)
+                .await
+                .unwrap_or(false)
+            || app
+                .db
+                .feed(feed.guild_id as u64, feed.id)
+                .await
+                .ok()
+                .flatten()
+                .is_none_or(|current| !current.enabled || current.live_role_id != feed.live_role_id))
+    {
+        return false;
+    }
+    let Some(role) = feed.live_role_id.map(|id| id as u64) else {
+        return true;
     };
     let guild = feed.guild_id as u64;
+    if !add {
+        return match app
+            .http
+            .remove_guild_member_role(Id::new(guild), Id::new(user), Id::new(role))
+            .reason("Stream ended or channel unlinked")
+            .await
+        {
+            Ok(_) => true,
+            Err(error) => matches!(error_code(&error), Some(10007 | 10011 | 10013)),
+        };
+    }
     let Ok(roles) = app.http.roles(Id::new(guild)).await else {
-        return;
+        return false;
     };
     let Ok(roles) = roles.models().await else {
-        return;
+        return false;
     };
     let Some(target) = roles.iter().find(|r| r.id.get() == role) else {
-        return;
+        return false;
     };
     let Ok(me) = app
         .http
         .guild_member(Id::new(guild), Id::new(app.application_id.get()))
         .await
     else {
-        return;
+        return false;
     };
     let Ok(me) = me.model().await else {
-        return;
+        return false;
     };
     let top = roles
         .iter()
@@ -635,23 +685,72 @@ pub async fn change_live_role(app: &App, feed: &FeedRow, add: bool) {
         position: target.position,
         permissions: target.permissions.bits(),
     };
-    if pinchora_core::settings::role_refusal(facts, Some(top), "Live now").is_some() {
-        return;
+    if pinchora_core::settings::role_refusal(facts, Some(top), "Live now").is_some()
+        || pinchora_core::settings::run_time_refusal(facts.permissions, "Live now").is_some()
+    {
+        return false;
     }
-    let request = if add {
-        app.http
-            .add_guild_member_role(Id::new(guild), Id::new(user), Id::new(role))
-            .reason("Stream went live")
-            .await
-    } else {
-        app.http
-            .remove_guild_member_role(Id::new(guild), Id::new(user), Id::new(role))
-            .reason("Stream ended")
-            .await
-    };
+    let request = app
+        .http
+        .add_guild_member_role(Id::new(guild), Id::new(user), Id::new(role))
+        .reason("Stream went live")
+        .await;
     if let Err(error) = request {
         tracing::warn!(%error, guild, user, role, "live role update failed");
+        return false;
     }
+    true
+}
+
+/// Remove a granted role before its configuration is erased; retain the member lock through the write.
+pub async fn before_live_change(
+    app: &App,
+    feed: Option<&FeedRow>,
+    edit: Option<&pinchora_db::FeedEdit>,
+) -> anyhow::Result<impl Send> {
+    let Some(feed) = feed.filter(|f| f.live_message_id.is_some()) else {
+        return Ok(None);
+    };
+    let changes_role = edit.is_none_or(|edit| {
+        edit.enabled == Some(false)
+            || edit.channel.is_some_and(|id| id as i64 != feed.channel_id)
+            || edit
+                .live_role
+                .is_some_and(|id| id.map(|id| id as i64) != feed.live_role_id)
+    });
+    if !changes_role {
+        return Ok(None);
+    }
+    let Some(user) = app.db.linked_streamer(&feed.kind, &feed.source).await? else {
+        return Ok(None);
+    };
+    let guard = app.db.lock_feed_link(user).await?;
+    if app.db.linked_streamer(&feed.kind, &feed.source).await? != Some(user) {
+        anyhow::bail!("channel owner changed during cleanup");
+    }
+    let current = app.db.feed(feed.guild_id as u64, feed.id).await?;
+    if let Some(current) = current.as_ref()
+        && !change_live_role_for(app, current, user, false).await
+    {
+        anyhow::bail!("live role cleanup failed");
+    }
+    Ok(Some(guard))
+}
+
+/// Keep role grants stopped until privacy deletion has erased the member's links.
+pub(crate) async fn before_delete(app: &App, user: u64) -> anyhow::Result<impl Send> {
+    let guard = app.db.lock_feed_link(user).await?;
+    for link in app.db.channel_links(user).await? {
+        if link.verified_at.is_none() {
+            continue;
+        }
+        for feed in app.db.live_feeds_for_channel(&link.kind, &link.source).await? {
+            if !change_live_role_for(app, &feed, user, false).await {
+                anyhow::bail!("live role cleanup failed");
+            }
+        }
+    }
+    Ok(guard)
 }
 
 pub async fn reconcile_live_edit(app: &App, before: &FeedRow, after: &FeedRow) {
@@ -690,7 +789,10 @@ pub async fn end_live(app: &App, feed: &FeedRow) {
         .update_message(Id::new(feed.channel_id as u64), Id::new(id))
         .payload_json(&body)
         .await;
-    change_live_role(app, feed, false).await;
+    let removed = change_live_role(app, feed, false).await;
+    if !removed {
+        return;
+    }
     if let Err(error) = edited {
         tracing::warn!(%error, feed = feed.id, "live message edit failed");
         return;

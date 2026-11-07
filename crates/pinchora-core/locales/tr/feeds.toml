@@ -66,6 +66,7 @@ ended = "Yayın sona erdi · Kaydı izle"
 game = "Oyun"
 
 [feeds.link]
+role-retry = "Canlı yayın rolü kaldırılamadı. Bağlantıyı kaldırmadan önce tekrar dene."
 kind = "Twitch veya Kick seç."
 expired = "Doğrulama kodunun süresi doldu. Yeniden başla."
 check-failed = "Kanal şu an kontrol edilemedi."

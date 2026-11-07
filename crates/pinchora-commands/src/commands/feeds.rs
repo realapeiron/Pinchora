@@ -515,7 +515,14 @@ async fn edit(cx: &Cx, guild: u64, c: FeedsEdit) -> anyhow::Result<()> {
     if nothing {
         return cx.reply_ephemeral(t!(lang, "feeds.edit-nothing")).await;
     }
-    match cx.app.db.edit_feed(guild, c.id, &change).await? {
+    let current = cx.app.db.feed(guild, c.id).await?;
+    let guard = match feeds::before_live_change(&cx.app, current.as_ref(), Some(&change)).await {
+        Ok(guard) => guard,
+        Err(_) => return cx.reply_ephemeral(t!(lang, "feeds.link.role-retry")).await,
+    };
+    let result = cx.app.db.edit_feed(guild, c.id, &change).await?;
+    drop(guard);
+    match result {
         FeedChange::NotFound => cx.reply_ephemeral(t!(lang, "feeds.no-such", id = c.id)).await,
         FeedChange::Duplicate => {
             let channel = change.channel.map_or_else(String::new, |ch| format!("<#{ch}>"));
@@ -596,7 +603,14 @@ async fn test(cx: &Cx, guild: u64, id: i64) -> anyhow::Result<()> {
 
 async fn remove(cx: &Cx, guild: u64, id: i64) -> anyhow::Result<()> {
     let lang = cx.lang();
-    let Some(feed) = cx.app.db.remove_feed(guild, id).await? else {
+    let current = cx.app.db.feed(guild, id).await?;
+    let guard = match feeds::before_live_change(&cx.app, current.as_ref(), None).await {
+        Ok(guard) => guard,
+        Err(_) => return cx.reply_ephemeral(t!(lang, "feeds.link.role-retry")).await,
+    };
+    let removed = cx.app.db.remove_feed(guild, id).await?;
+    drop(guard);
+    let Some(feed) = removed else {
         return cx.reply_ephemeral(t!(lang, "feeds.no-such", id = id)).await;
     };
     if feed.live_message_id.is_some() {

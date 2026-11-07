@@ -468,7 +468,13 @@ pub async fn replace(
             )]));
         }
     }
-    match state.app.db.edit_feed(guild, id, &edit).await? {
+    let current = state.app.db.feed(guild, id).await?;
+    let guard = feeds::before_live_change(&state.app, current.as_ref(), Some(&edit))
+        .await
+        .map_err(|_| ApiError::blocked(t!(lang, "feeds.link.role-retry")))?;
+    let result = state.app.db.edit_feed(guild, id, &edit).await?;
+    drop(guard);
+    match result {
         FeedChange::NotFound => Err(ApiError::not_found()),
         FeedChange::Duplicate => Err(ApiError::invalid(vec![FieldError::new(
             "channel_id",
@@ -505,7 +511,13 @@ pub async fn delete(
 ) -> ApiResult<Json<Value>> {
     let lang = state.app.guild_lang(managed.id).await;
     let (guild, id) = (managed.id, feed_id(lang, &params)?);
-    if let Some(feed) = state.app.db.remove_feed(guild, id).await? {
+    let current = state.app.db.feed(guild, id).await?;
+    let guard = feeds::before_live_change(&state.app, current.as_ref(), None)
+        .await
+        .map_err(|_| ApiError::blocked(t!(lang, "feeds.link.role-retry")))?;
+    let removed = state.app.db.remove_feed(guild, id).await?;
+    drop(guard);
+    if let Some(feed) = removed {
         if feed.live_message_id.is_some() {
             feeds::end_live(&state.app, &feed).await;
         }

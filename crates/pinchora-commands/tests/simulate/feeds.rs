@@ -156,12 +156,13 @@ async fn add_direct(sim: &Sim, guild: u64, source: &str, seen: &[String]) -> i64
 
 #[tokio::test]
 async fn live_post_is_edited_and_verified_streamer_role_is_removed() {
-    let Some(sim) = Sim::new("live_post_is_edited_and_verified_streamer_role_is_removed").await else {
+    let Some(mut sim) = Sim::new("live_post_is_edited_and_verified_streamer_role_is_removed").await else {
         return;
     };
     let source = format!("streamer{}", unique());
     let user = unique();
     let role = unique();
+    let role_text = role.to_string();
     let channel = unique();
     sim.mock
         .roles
@@ -236,6 +237,43 @@ async fn live_post_is_edited_and_verified_streamer_role_is_removed() {
             .iter()
             .any(|post| { post.channel == channel && post.body["components"][0]["components"][0]["style"] == 5 })
     );
+    // A role promoted to Administrator after configuration must never be granted again.
+    sim.mock
+        .roles
+        .lock()
+        .unwrap()
+        .iter_mut()
+        .find(|r| r["id"].as_str() == Some(role_text.as_str()))
+        .unwrap()["permissions"] = json!("8");
+    sim.mock.role_calls.lock().unwrap().clear();
+    assert!(!pinchora_commands::feeds::change_live_role(&sim.app, &live, true).await);
+    assert!(sim.mock.role_calls.lock().unwrap().is_empty());
+
+    // A failed removal preserves the message/role association for the next poll and blocks deletion.
+    sim.mock.roles_allowed.store(false, Ordering::SeqCst);
+    assert!(
+        pinchora_commands::feeds::before_live_change(&sim.app, Some(&live), None)
+            .await
+            .is_err()
+    );
+    end_live(&sim.app, &live).await;
+    assert!(
+        sim.app
+            .db
+            .feed(sim.guild, feed.id)
+            .await
+            .unwrap()
+            .unwrap()
+            .live_message_id
+            .is_some()
+    );
+    sim.mock.roles_allowed.store(true, Ordering::SeqCst);
+    // Revocation does not depend on fetching role metadata or grant permission safety.
+    sim.mock
+        .roles
+        .lock()
+        .unwrap()
+        .retain(|r| r["id"].as_str() != Some(role_text.as_str()));
     end_live(&sim.app, &live).await;
     assert!(
         sim.mock
@@ -263,6 +301,28 @@ async fn live_post_is_edited_and_verified_streamer_role_is_removed() {
             .unwrap()
             .live_message_id
             .is_none()
+    );
+    // Privacy must remove the role before erasing the only link to its member.
+    sim.app
+        .db
+        .set_live_message(feed.id, live.live_message_id.unwrap() as u64, "stream-42")
+        .await
+        .unwrap();
+    sim.mock.roles_allowed.store(false, Ordering::SeqCst);
+    let refused = delete_through_the_panel(&mut sim, user).await;
+    assert!(refused.content().contains("live role could not be removed"));
+    assert!(!sim.app.db.channel_links(user).await.unwrap().is_empty());
+    sim.mock.roles_allowed.store(true, Ordering::SeqCst);
+    sim.mock.role_calls.lock().unwrap().clear();
+    let deleted = delete_through_the_panel(&mut sim, user).await;
+    assert_eq!(deleted.title(), "Your data is deleted");
+    assert!(sim.app.db.channel_links(user).await.unwrap().is_empty());
+    assert!(
+        sim.mock
+            .role_calls
+            .lock()
+            .unwrap()
+            .contains(&format!("DELETE {user} {role}"))
     );
 }
 

@@ -68,6 +68,7 @@ ended = "Stream ended · Watch the VOD"
 game = "Game"
 
 [feeds.link]
+role-retry = "The live role could not be removed. Try again before unlinking."
 kind = "Choose Twitch or Kick."
 expired = "Verification code expired. Start again."
 check-failed = "The channel could not be checked right now."

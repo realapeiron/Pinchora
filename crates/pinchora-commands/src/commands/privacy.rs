@@ -237,6 +237,10 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>) -> anyhow::
                     return cx.reply_ephemeral(t!(cx.lang(), "birthdays.cleanup-failed")).await;
                 }
             };
+            let _feed_guard = match crate::feeds::before_delete(&cx.app, user).await {
+                Ok(guard) => guard,
+                Err(_) => return cx.reply_ephemeral(t!(cx.lang(), "feeds.link.role-retry")).await,
+            };
             let deleted = cx.app.db.delete_user_data(user, cx.app.now()).await?;
             cx.app.cache.stats_forget_member(user).await?;
             tracing::info!(
