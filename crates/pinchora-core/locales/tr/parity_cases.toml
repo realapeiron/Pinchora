@@ -1,0 +1,35 @@
+[mod.kind]
+note = "Not"
+report = "Bildirim"
+appeal = "İtiraz"
+mute = "Susturma"
+unmute = "Susturmayı kaldırma"
+jail = "Kısıtlama"
+unjail = "Kısıtlamayı kaldırma"
+softban = "Geçici çıkarma"
+voice = "Ses işlemi"
+role_edit = "Rol düzenleme"
+
+[mod.summary]
+note = "{who} · Not {details}"
+report = "{who} · Bildirim {details}"
+appeal = "{who} · İtiraz {details}"
+mute = "{who} · Susturma {details}"
+unmute = "{who} · Susturmayı kaldırma {details}"
+jail = "{who} · Kısıtlama {details}"
+unjail = "{who} · Kısıtlamayı kaldırma {details}"
+softban = "{who} · Geçici çıkarma {details}"
+voice = "{who} · Ses işlemi {details}"
+role_edit = "{who} · Rol düzenleme {details}"
+
+[mod.perm]
+move-members="Üyeleri Taşı"
+mute-members="Üyeleri Sustur"
+deafen-members="Üyeleri Sağırlaştır"
+
+[log.event]
+report = "Üye bildirimi"
+appeal = "Moderasyon itirazı"
+restriction = "Üye kısıtlaması"
+role_rule = "Koşullu rol"
+autopurge = "Otomatik temizlik"

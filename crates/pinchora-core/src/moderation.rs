@@ -31,6 +31,17 @@ pub const NICK_MAX: usize = 32;
 /// What a case records.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CaseKind {
+    Note,
+    Report,
+    Appeal,
+    Mute,
+    Unmute,
+    Jail,
+    Unjail,
+    Softban,
+    Voice,
+    RoleEdit,
+
     Ban,
     Unban,
     Kick,
@@ -48,7 +59,17 @@ pub enum CaseKind {
 }
 
 impl CaseKind {
-    pub const ALL: [Self; 14] = [
+    pub const ALL: [Self; 24] = [
+        Self::Note,
+        Self::Report,
+        Self::Appeal,
+        Self::Mute,
+        Self::Unmute,
+        Self::Jail,
+        Self::Unjail,
+        Self::Softban,
+        Self::Voice,
+        Self::RoleEdit,
         Self::Ban,
         Self::Unban,
         Self::Kick,
@@ -69,6 +90,17 @@ impl CaseKind {
     pub const fn key(self) -> &'static str {
         match self {
             Self::Ban => "ban",
+            Self::Note => "note",
+            Self::Report => "report",
+            Self::Appeal => "appeal",
+            Self::Mute => "mute",
+            Self::Unmute => "unmute",
+            Self::Jail => "jail",
+            Self::Unjail => "unjail",
+            Self::Softban => "softban",
+            Self::Voice => "voice",
+            Self::RoleEdit => "role_edit",
+
             Self::Unban => "unban",
             Self::Kick => "kick",
             Self::Timeout => "timeout",
@@ -92,6 +124,17 @@ impl CaseKind {
     pub const fn label(self) -> &'static str {
         match self {
             Self::Ban => "Ban",
+            Self::Note => "Note",
+            Self::Report => "Report",
+            Self::Appeal => "Appeal",
+            Self::Mute => "Mute",
+            Self::Unmute => "Unmute",
+            Self::Jail => "Jail",
+            Self::Unjail => "Unjail",
+            Self::Softban => "Softban",
+            Self::Voice => "Voice",
+            Self::RoleEdit => "RoleEdit",
+
             Self::Unban => "Unban",
             Self::Kick => "Kick",
             Self::Timeout => "Timeout",

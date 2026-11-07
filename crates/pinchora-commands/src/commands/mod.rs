@@ -93,6 +93,7 @@ macro_rules! commands {
         pub(crate) fn legacy_definitions() -> Vec<Command> {
             static COMMANDS: std::sync::LazyLock<Vec<Command>> = std::sync::LazyLock::new(|| {
                 let mut commands = vec![$(<$ty as CreateCommand>::create_command().into()),*];
+                commands.push(moderation::report_context::definition());
                 crate::lang::localize(&mut commands);
                 commands
             });
@@ -120,6 +121,7 @@ macro_rules! commands {
             if crate::gate::refuses_command(cx, &data).await? {
                 return Ok(());
             }
+            if data.name == "Report" { return moderation::report_context::run(cx, data).await; }
             let name = data.name.clone();
             $(
                 if name == <$ty as CreateCommand>::NAME {
@@ -132,6 +134,7 @@ macro_rules! commands {
 }
 
 commands!(
+    moderation::parity::Parity,
     achievements::AchievementsCommand,
     achievements::AchievementAdmin,
     ping::Ping,

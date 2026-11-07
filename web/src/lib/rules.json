@@ -1100,6 +1100,7 @@
       "ends_with"
     ],
     "reserved": [
+      "Report",
       "achievementadmin",
       "achievements",
       "afk",
@@ -1152,6 +1153,7 @@
       "leaderboard",
       "lock",
       "mod",
+      "modtools",
       "monthly",
       "nick",
       "partner",

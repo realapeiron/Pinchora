@@ -1,3 +1,4 @@
+Report
 achievementadmin add
 achievementadmin edit
 achievementadmin grant
@@ -180,6 +181,14 @@ kick
 language set
 leaderboard
 lock
+modtools mass
+modtools names
+modtools notes
+modtools policy
+modtools report
+modtools restrict
+modtools roles
+modtools voice
 monthly
 nick
 partner leave

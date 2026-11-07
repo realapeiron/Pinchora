@@ -53,6 +53,7 @@ export const NAV: NavGroup[] = [
   {
     group: "SAFETY",
     pages: [
+      { to: "mod-parity", label: "Moderation desk" },
       { to: "moderation", label: "Moderation" },
       { to: "safety", label: "Safety" },
       { to: "automod", label: "AutoMod" },

@@ -1,0 +1,40 @@
+.mod-parity fieldset {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid var(--panel-edge);
+}
+.mod-parity .list-row {
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.mod-parity .list-row > div {
+  min-width: 0;
+  max-width: 100%;
+}
+.mod-parity .list-row p,
+.mod-parity .list-row strong {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.mod-parity textarea {
+  width: 100%;
+  min-height: 8rem;
+  resize: vertical;
+}
+.mod-parity .save-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+@media (max-width: 600px) {
+  .mod-parity fieldset {
+    padding: 0.75rem;
+  }
+  .mod-parity .save-bar button {
+    flex: 1 1 auto;
+  }
+}

@@ -60,6 +60,7 @@ pub const SECTIONS: &[Section] = &[
     section!("card_uploads", "id,png,width,height", "id", false),
     section!("card_designs", "kind,design,delivery", "kind", false),
     section!("mod_settings", "log_channel_id,dm_members", "", false),
+    section!("mod_parity_settings", "config", "", false),
     section!("mod_warn_thresholds", "warns,action,duration_secs", "warns", false),
     section!(
         "log_settings",

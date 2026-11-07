@@ -231,3 +231,11 @@ pub use command_control::{command_reserved_aliases, control_catalog, control_val
 
 mod config_backup;
 pub use config_backup::{backup_apply, backup_names, backup_preview, backup_rate_limit, validate_backup};
+
+mod mod_parity;
+pub use commands::moderation::parity::check_config as check_mod_parity_config;
+pub use mod_parity::{spawn_ticker as spawn_mod_parity_ticker, voice_event as on_mod_parity_voice};
+
+pub use commands::moderation::parity::review as review_mod_parity;
+
+pub use mod_parity::seed_voice as seed_mod_parity_voice;

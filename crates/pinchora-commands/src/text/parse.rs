@@ -478,6 +478,9 @@ mod tests {
 
     fn tree() -> Vec<Command> {
         crate::command_definitions()
+            .into_iter()
+            .filter(|c| c.kind == twilight_model::application::command::CommandType::ChatInput)
+            .collect()
     }
 
     fn ok<'a>(tree: &'a [Command], text: &str) -> Parsed<'a> {

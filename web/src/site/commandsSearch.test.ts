@@ -91,7 +91,11 @@ describe("the committed command list", () => {
       expect(area.commands.length, area.title).toBeGreaterThan(0);
       for (const c of area.commands) {
         expect(c.description.length, c.path).toBeGreaterThan(3);
-        expect(c.usage.startsWith(`/${c.path}`), c.path).toBe(true);
+        if (c.path === "Report") {
+          expect(c.usage).toBe("Message → Apps → Report");
+        } else {
+          expect(c.usage.startsWith(`/${c.path}`), c.path).toBe(true);
+        }
       }
     }
   });
@@ -114,8 +118,8 @@ describe("the committed command list", () => {
 
 it("finds canonical commands by their old names without duplicate slash entries", () => {
   const commands = catalog.areas.flatMap((a) => a.commands);
-  expect(commands).toHaveLength(331);
-  expect(new Set(commands.map((c) => c.path.split(" ")[0])).size).toBe(66);
+  expect(commands).toHaveLength(340);
+  expect(new Set(commands.map((c) => c.path.split(" ")[0])).size).toBe(62);
   for (const command of commands) {
     for (const alias of command.aliases ?? []) {
       expect(filterAreas(catalog.areas, alias, false).flatMap((a) => a.commands)).toContain(command);

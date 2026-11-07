@@ -237,6 +237,11 @@ mod tests {
         let commands = crate::command_definitions();
         assert!(commands.len() <= 100, "{} commands", commands.len());
         for command in &commands {
+            if command.kind != twilight_model::application::command::CommandType::ChatInput {
+                assert!(command.description.is_empty(), "context menus have no descriptions");
+                assert!(command.options.is_empty(), "context menus have no options");
+                continue;
+            }
             assert!(
                 (1..=32).contains(&command.name.len()),
                 "`{}`: name length",

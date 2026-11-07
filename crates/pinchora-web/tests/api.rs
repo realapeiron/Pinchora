@@ -3549,7 +3549,11 @@ async fn moderation_logs_cases_and_the_staff_log_follow_the_command_rules() {
         .await
         .json();
     assert_eq!(found["items"].as_array().unwrap().len(), 1);
-    let bad_kind = browser.get(&format!("{g}/cases?kind=mute")).await;
+    assert_eq!(
+        browser.get(&format!("{g}/cases?kind=mute")).await.status,
+        StatusCode::OK
+    );
+    let bad_kind = browser.get(&format!("{g}/cases?kind=unknown-action")).await;
     assert_eq!(bad_kind.status, StatusCode::BAD_REQUEST);
     let detail = browser.get(&format!("{g}/cases/2")).await.json();
     assert_eq!(detail["case"]["reason"], "raid");
@@ -3900,3 +3904,6 @@ async fn public_bot_status_has_safe_cached_numbers() {
     assert!(!raw.contains("postgres://") && !raw.contains("redis://") && !raw.contains("token"));
     assert_eq!(browser.get("/api/public/status").await.json(), body);
 }
+
+#[path = "api/mod_parity.rs"]
+mod mod_parity;

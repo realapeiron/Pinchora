@@ -398,6 +398,7 @@ pub(crate) async fn record(
         tracing::warn!(%error, guild, "could not note the direct message");
     }
     post_case(app, guild, case).await;
+    parity::appeal_hint(app, guild, case).await;
     metrics::counter!("pinchora_mod_cases_total", "kind" => act.kind.key()).increment(1);
     Ok(opened)
 }
@@ -843,3 +844,7 @@ mod tests {
         assert_eq!(turkish.description.as_deref(), Some("**Mia** 1 gün süreyle yasaklandı"));
     }
 }
+
+pub mod parity;
+
+pub(crate) mod report_context;

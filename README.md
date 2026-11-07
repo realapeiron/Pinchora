@@ -1474,3 +1474,31 @@ Set matching `PINCHORA_ENV` on bot/web pods: Redis channels include both environ
 settings invalidation (the former global channel is retired). See [multi-pod operations](web/src/reef/README.md#multi-pod-routing-and-recovery-r21r24).
 
 Chat and movement give no rewards. See [the Reef protocol and test instructions](web/src/reef/README.md#private-house-multiplayer-r09r11).
+
+### Moderation + roles parity (D11)
+
+All member actions use `/mod`; configuration uses `/safety moderation policy` and the dashboard's
+**Moderation desk** (`/g/:guildId/mod-parity`). Existing ban, kick, timeout, warn and purge roots move
+under `/mod`; their old text paths and stored restrictions remain compatible. The message context
+menu is **Report**. There are 61 slash roots plus this message context command.
+
+| Command | Behavior |
+|---|---|
+| `/mod notes action:add\|list\|edit\|delete user [text] [id]` | Private staff notes; Timeout Members required. |
+| `/mod report user reason`, message **Report** | Private acknowledgment, staff inbox and review queue; one report per member/minute. |
+| `/safety moderation policy reports mute jail appeals booster personal report_user blocked` | Report inbox, safe restriction/reward roles, appeals, personal booster roles and report blocking. |
+| `/mod restrict action:mute\|unmute\|jail\|unjail\|softban user [reason]` | Role restriction saves roles before replacing them; release restores eligible roles. Softban records ban and unban separately. |
+| `/mod mass action:ban\|kick\|warn\|mute\|role-add\|role-remove [ids] [regex] [after] [before] [role] [reason]` | Maximum 100 targets. IDs or username regex / UTC join window; preview supplies an owner-bound, single-use two-minute confirmation token. Rechecks target hierarchy and permissions for every action and reports partial success. |
+| `/mod names user [normalize]` | Remove hoist prefixes or normalize nickname decoration while preserving native letters. |
+| `/mod voice action:move\|disconnect\|ban\|unban\|mute\|unmute\|deafen\|undeafen [user] [source] [destination] [confirm]` | Individual or all source members; own Move/Mute/Deafen permission and hierarchy checks. Voice bans survive reconnects. |
+| `/mod roles action:create\|edit\|delete [role] [name] [color] [mentionable] [confirm]` | Role CRUD with role safety and delete confirmation; bulk give/take uses `/mod mass`. |
+| `/mod roles action:booster [name] [color]` | Opt-in personal cosmetic role for a current booster, capped at 25/server. |
+| `/mod purge count [user] [bots] [humans] [regex] [embeds] [after] [before] [starts] [ends] [not] [mentions] [reactions]` | Existing link/text/attachment filters remain; filters combine, pinned/old messages are protected, content filters require Message Content. |
+
+The dashboard adds per-channel autopurge (1 hour–14 days, pinned messages protected), booster reward
+roles and AND/OR role conditions, optionally limited to a voice channel. Automated roles never grant
+dangerous permissions. Appeal links are `/appeals/:guild/:caseNumber`: Discord sign-in binds a submission
+to the affected member, including banned members. Staff review retains both Manage Server and the
+case-specific permission/hierarchy boundary; accepted appeals reverse the active ban or warn.
+Migration **0074** owns policy, notes, reports, appeals, saved restriction roles, voice bans and personal
+booster mappings. Configuration backups include policy only; evidence and sanctions remain private.

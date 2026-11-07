@@ -4385,9 +4385,302 @@
           "usage": "/safety antinuke events"
         },
         {
-          "aliases": [],
-          "description": "Ban someone, for good or for a while",
+          "aliases": [
+            "modtools policy"
+          ],
+          "description": "Moderation and role policy",
           "manager": true,
+          "options": [
+            {
+              "description": "Report inbox",
+              "name": "reports",
+              "required": false
+            },
+            {
+              "description": "Mute role",
+              "name": "mute",
+              "required": false
+            },
+            {
+              "description": "Jail role",
+              "name": "jail",
+              "required": false
+            },
+            {
+              "description": "Enable member appeals",
+              "name": "appeals",
+              "required": false
+            },
+            {
+              "description": "Booster reward role",
+              "name": "booster",
+              "required": false
+            },
+            {
+              "description": "Allow personal booster roles",
+              "name": "personal",
+              "required": false
+            },
+            {
+              "description": "Member report access",
+              "name": "report_user",
+              "required": false
+            },
+            {
+              "description": "Block reports from this member",
+              "name": "blocked",
+              "required": false
+            }
+          ],
+          "path": "safety moderation policy",
+          "usage": "/safety moderation policy [reports] [mute] [jail] [appeals] [booster] [personal] [report_user] [blocked]"
+        },
+        {
+          "aliases": [
+            "modtools mass"
+          ],
+          "description": "Preview then confirm a bulk action",
+          "manager": false,
+          "options": [
+            {
+              "description": "ban, kick, warn, mute, role-add or role-remove",
+              "name": "action",
+              "required": true
+            },
+            {
+              "description": "Space-separated member IDs",
+              "name": "ids",
+              "required": false
+            },
+            {
+              "description": "Username regular expression",
+              "name": "regex",
+              "required": false
+            },
+            {
+              "description": "Joined after this UTC date (RFC3339)",
+              "name": "after",
+              "required": false
+            },
+            {
+              "description": "Joined before this UTC date (RFC3339)",
+              "name": "before",
+              "required": false
+            },
+            {
+              "description": "Role for bulk role actions",
+              "name": "role",
+              "required": false
+            },
+            {
+              "description": "Why",
+              "name": "reason",
+              "required": false
+            },
+            {
+              "description": "Confirmation token from the preview",
+              "name": "confirm",
+              "required": false
+            }
+          ],
+          "path": "mod mass",
+          "usage": "/mod mass <action> [ids] [regex] [after] [before] [role] [reason] [confirm]"
+        },
+        {
+          "aliases": [
+            "modtools names"
+          ],
+          "description": "Remove nickname hoisting or decoration",
+          "manager": false,
+          "options": [
+            {
+              "description": "Member",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Normalize decorations as well as hoisting",
+              "name": "normalize",
+              "required": false
+            }
+          ],
+          "path": "mod names",
+          "usage": "/mod names <user> [normalize]"
+        },
+        {
+          "aliases": [
+            "modtools notes"
+          ],
+          "description": "Staff notes",
+          "manager": false,
+          "options": [
+            {
+              "description": "add, list, edit or delete",
+              "name": "action",
+              "required": true
+            },
+            {
+              "description": "Member",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Note text",
+              "name": "text",
+              "required": false
+            },
+            {
+              "description": "Note number",
+              "name": "id",
+              "required": false
+            }
+          ],
+          "path": "mod notes",
+          "usage": "/mod notes <action> <user> [text] [id]"
+        },
+        {
+          "aliases": [
+            "modtools report"
+          ],
+          "description": "Report a member to staff",
+          "manager": false,
+          "options": [
+            {
+              "description": "Member",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "What happened",
+              "name": "reason",
+              "required": true
+            }
+          ],
+          "path": "mod report",
+          "usage": "/mod report <user> <reason>"
+        },
+        {
+          "aliases": [
+            "modtools restrict"
+          ],
+          "description": "Mute, jail, release or softban",
+          "manager": false,
+          "options": [
+            {
+              "description": "mute, unmute, jail, unjail or softban",
+              "name": "action",
+              "required": true
+            },
+            {
+              "description": "Member",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Why",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "mod restrict",
+          "usage": "/mod restrict <action> <user> [reason]"
+        },
+        {
+          "aliases": [
+            "modtools roles"
+          ],
+          "description": "Create, edit or delete a role",
+          "manager": false,
+          "options": [
+            {
+              "description": "create, edit or delete",
+              "name": "action",
+              "required": true
+            },
+            {
+              "description": "Role to edit or delete",
+              "name": "role",
+              "required": false
+            },
+            {
+              "description": "Role name",
+              "name": "name",
+              "required": false
+            },
+            {
+              "description": "Hex color, such as ff8844",
+              "name": "color",
+              "required": false
+            },
+            {
+              "description": "Allow mentions",
+              "name": "mentionable",
+              "required": false
+            },
+            {
+              "description": "Confirm deleting the role",
+              "name": "confirm",
+              "required": false
+            }
+          ],
+          "path": "mod roles",
+          "usage": "/mod roles <action> [role] [name] [color] [mentionable] [confirm]"
+        },
+        {
+          "aliases": [
+            "modtools voice"
+          ],
+          "description": "Move, disconnect, mute or ban voice members",
+          "manager": false,
+          "options": [
+            {
+              "description": "move, disconnect, ban, unban, mute, unmute, deafen or undeafen",
+              "name": "action",
+              "required": true
+            },
+            {
+              "description": "Member (omit for everyone in source)",
+              "name": "user",
+              "required": false
+            },
+            {
+              "description": "Source voice channel for all members",
+              "name": "source",
+              "required": false
+            },
+            {
+              "description": "Destination for move",
+              "name": "destination",
+              "required": false
+            },
+            {
+              "description": "Confirm acting on all source members",
+              "name": "confirm",
+              "required": false
+            },
+            {
+              "description": "Why",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "mod voice",
+          "usage": "/mod voice <action> [user] [source] [destination] [confirm] [reason]"
+        },
+        {
+          "aliases": [],
+          "description": "Report a message to staff from its Apps context menu",
+          "manager": false,
+          "options": [],
+          "path": "Report",
+          "usage": "Message → Apps → Report"
+        },
+        {
+          "aliases": [
+            "ban"
+          ],
+          "description": "Ban someone, for good or for a while",
+          "manager": false,
           "options": [
             {
               "description": "Who to ban: a member, or anyone by their user id",
@@ -4410,8 +4703,8 @@
               "required": false
             }
           ],
-          "path": "ban",
-          "usage": "/ban <user> [reason] [duration] [delete_days]"
+          "path": "mod ban",
+          "usage": "/mod ban <user> [reason] [duration] [delete_days]"
         },
         {
           "aliases": [
@@ -4435,9 +4728,11 @@
           "usage": "/mod unban <user> [reason]"
         },
         {
-          "aliases": [],
+          "aliases": [
+            "kick"
+          ],
           "description": "Remove a member (they can join again)",
-          "manager": true,
+          "manager": false,
           "options": [
             {
               "description": "Who to kick",
@@ -4450,13 +4745,15 @@
               "required": false
             }
           ],
-          "path": "kick",
-          "usage": "/kick <user> [reason]"
+          "path": "mod kick",
+          "usage": "/mod kick <user> [reason]"
         },
         {
-          "aliases": [],
+          "aliases": [
+            "timeout"
+          ],
           "description": "Stop a member chatting and talking for a while",
-          "manager": true,
+          "manager": false,
           "options": [
             {
               "description": "Who to time out",
@@ -4474,8 +4771,8 @@
               "required": false
             }
           ],
-          "path": "timeout",
-          "usage": "/timeout <user> <duration> [reason]"
+          "path": "mod timeout",
+          "usage": "/mod timeout <user> <duration> [reason]"
         },
         {
           "aliases": [
@@ -4499,9 +4796,11 @@
           "usage": "/mod untimeout <user> [reason]"
         },
         {
-          "aliases": [],
+          "aliases": [
+            "warn"
+          ],
           "description": "Warn a member; enough warns act on their own",
-          "manager": true,
+          "manager": false,
           "options": [
             {
               "description": "Who to warn",
@@ -4514,8 +4813,8 @@
               "required": true
             }
           ],
-          "path": "warn",
-          "usage": "/warn <user> <reason>"
+          "path": "mod warn",
+          "usage": "/mod warn <user> <reason>"
         },
         {
           "aliases": [
@@ -4555,9 +4854,11 @@
           "usage": "/mod unwarn <case> [reason]"
         },
         {
-          "aliases": [],
+          "aliases": [
+            "purge"
+          ],
           "description": "Delete recent messages here (up to 100)",
-          "manager": true,
+          "manager": false,
           "options": [
             {
               "description": "How many messages to delete",
@@ -4572,6 +4873,56 @@
             {
               "description": "Only messages from bots",
               "name": "bots",
+              "required": false
+            },
+            {
+              "description": "Only human authors",
+              "name": "humans",
+              "required": false
+            },
+            {
+              "description": "Only messages with embeds",
+              "name": "embeds",
+              "required": false
+            },
+            {
+              "description": "Regular expression",
+              "name": "regex",
+              "required": false
+            },
+            {
+              "description": "After this message ID",
+              "name": "after",
+              "required": false
+            },
+            {
+              "description": "Before this message ID",
+              "name": "before",
+              "required": false
+            },
+            {
+              "description": "Starts with text",
+              "name": "starts",
+              "required": false
+            },
+            {
+              "description": "Ends with text",
+              "name": "ends",
+              "required": false
+            },
+            {
+              "description": "Exclude this text",
+              "name": "not",
+              "required": false
+            },
+            {
+              "description": "Only messages with mentions",
+              "name": "mentions",
+              "required": false
+            },
+            {
+              "description": "Only messages with reactions",
+              "name": "reactions",
               "required": false
             },
             {
@@ -4595,8 +4946,8 @@
               "required": false
             }
           ],
-          "path": "purge",
-          "usage": "/purge <count> [user] [bots] [contains] [links] [attachments] [reason]"
+          "path": "mod purge",
+          "usage": "/mod purge <count> [user] [bots] [humans] [embeds] [regex] [after] [before] [starts] [ends] [not] [mentions] [reactions] [contains] [links] [attachments] [reason]"
         },
         {
           "aliases": [
@@ -6218,5 +6569,5 @@
       "title": "Game & module setup"
     }
   ],
-  "count": 331
+  "count": 340
 }

@@ -18,6 +18,7 @@ mod house;
 mod invites;
 mod leveling;
 mod me;
+mod mod_parity;
 mod moderation;
 mod modules;
 mod overview;
@@ -83,6 +84,7 @@ pub fn router(state: WebState) -> Router {
         .nest("/api/house", house::router())
         .nest("/api/reef", reef::router())
         .nest("/api/verify", verification::member_router())
+        .nest("/api/appeals", mod_parity::member_router())
         .nest("/api/feeds", feed_links::router())
         .route("/api/{*rest}", any(|| async { ApiError::not_found() }));
     Router::new()

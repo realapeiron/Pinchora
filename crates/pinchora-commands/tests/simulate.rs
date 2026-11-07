@@ -458,6 +458,9 @@ async fn discord(
     let path = uri.path().to_owned();
     let parts: Vec<&str> = path.trim_matches('/').split('/').collect();
     let number = |part: &str| part.parse::<u64>().unwrap_or(0);
+    if let Some(answer) = mod_parity::mock(&mock, &method, &parts, &body) {
+        return answer;
+    }
     if let Some(answer) = roles::mock(&mock, &method, &uri, &parts, &body) {
         return answer;
     }
@@ -5675,7 +5678,7 @@ async fn join_role_goodbye_and_server_log() {
     assert!(
         reply.content().contains("Members: 3/5 on")
             && reply.content().contains("Voice: 1/5 on")
-            && reply.content().contains("Moderation: 4/4 on"),
+            && reply.content().contains("Moderation: 9/9 on"),
         "{}",
         reply.content()
     );
@@ -15304,3 +15307,6 @@ mod verification;
 
 #[path = "simulate/command_control.rs"]
 mod command_control;
+
+#[path = "simulate/mod_parity.rs"]
+mod mod_parity;

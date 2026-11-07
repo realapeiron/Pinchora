@@ -19,6 +19,7 @@ use crate::state::WebState;
 
 pub fn router() -> Router<WebState> {
     Router::new()
+        .nest("/mod-parity", super::mod_parity::router())
         .route("/", get(overview::overview))
         .route("/discord", get(discord_info::discord))
         .route("/settings", patch(settings::patch))

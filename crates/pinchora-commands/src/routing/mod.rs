@@ -13,7 +13,7 @@ use twilight_model::{
 };
 
 pub const COMPLETED_SLICE: u8 = 18;
-pub const PROJECTED_ROOTS: usize = 66;
+pub const PROJECTED_ROOTS: usize = 62;
 pub const FUTURE_ROOT_RESERVE: usize = 4;
 
 /// Administration roots share the original setup permission and privacy boundary.

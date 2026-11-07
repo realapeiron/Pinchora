@@ -38,3 +38,5 @@ pub mod command_control;
 
 pub mod chat_text;
 pub mod config_backup;
+
+pub mod mod_parity;

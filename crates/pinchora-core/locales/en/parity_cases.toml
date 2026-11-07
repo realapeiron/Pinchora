@@ -1,0 +1,35 @@
+[mod.kind]
+note = "Note"
+report = "Report"
+appeal = "Appeal"
+mute = "Mute"
+unmute = "Unmute"
+jail = "Jail"
+unjail = "Release"
+softban = "Softban"
+voice = "Voice action"
+role_edit = "Role edit"
+
+[mod.summary]
+note = "{who} · Note {details}"
+report = "{who} · Report {details}"
+appeal = "{who} · Appeal {details}"
+mute = "{who} · Mute {details}"
+unmute = "{who} · Unmute {details}"
+jail = "{who} · Jail {details}"
+unjail = "{who} · Release {details}"
+softban = "{who} · Softban {details}"
+voice = "{who} · Voice action {details}"
+role_edit = "{who} · Role edit {details}"
+
+[mod.perm]
+move-members="Move Members"
+mute-members="Mute Members"
+deafen-members="Deafen Members"
+
+[log.event]
+report = "Member report"
+appeal = "Moderation appeal"
+restriction = "Member restriction"
+role_rule = "Conditional role"
+autopurge = "Automatic cleanup"
