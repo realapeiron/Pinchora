@@ -152,7 +152,10 @@ pub async fn callback(
 /// `POST /auth/logout`: ends the session and revokes the Discord token.
 pub async fn logout(State(state): State<WebState>, current: CurrentSession) -> ApiResult<Response> {
     session::delete(&state.app.cache, &current.sid).await?;
-    state.reef.terminate(current.session.user_id, "logged_out").await;
+    state
+        .reef
+        .terminate(&state, current.session.user_id, "logged_out")
+        .await;
     if current.session.dev_guilds.is_none() {
         let (state, token) = (state.clone(), current.session.access_token.clone());
         tokio::spawn(async move { state.discord.revoke(&state.settings, &token).await });

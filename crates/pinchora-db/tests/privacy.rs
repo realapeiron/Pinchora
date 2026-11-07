@@ -367,6 +367,7 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
 
     ];
     for sql in [
+        "INSERT INTO reef_room_leases(namespace,owner_id,room_idx,expires_at) VALUES('privacy-fixture',$1,0,now()+interval '3 seconds')",
         "INSERT INTO reef_consents(user_id,version,age_band,accepted) VALUES($1,1,'13_plus',true)",
         "INSERT INTO reef_chat_evidence(id,owner_id,room_idx,sender_id,text) VALUES($1,$1,0,$1,'privacy fixture')",
         "INSERT INTO reef_chat_recipients(message_id,user_id) VALUES($1,$1)",

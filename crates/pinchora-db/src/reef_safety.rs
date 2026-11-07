@@ -73,10 +73,30 @@ impl Db {
         text: &str,
         peers: &[u64],
     ) -> anyhow::Result<Result<(ReefEvidence, Vec<u64>), &'static str>> {
+        self.reef_chat_fenced(owner, idx, sender, text, peers, None).await
+    }
+    /// The fence is locked in the evidence transaction, before checking access or writing chat.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn reef_chat_fenced(
+        &self,
+        owner: u64,
+        idx: i16,
+        sender: u64,
+        text: &str,
+        peers: &[u64],
+        fence: Option<&crate::ReefFence>,
+    ) -> anyhow::Result<Result<(ReefEvidence, Vec<u64>), &'static str>> {
         let mut ids: Vec<i64> = peers.iter().copied().map(sql_id).collect();
         ids.extend([sql_id(owner), sql_id(sender)]);
         let mut tx = self.pool().begin().await?;
         lock_users(&mut tx, &ids).await?;
+        if let Some(fence) = fence {
+            let valid: Option<i64> = sqlx::query_scalar("SELECT token FROM reef_room_leases WHERE namespace=$1 AND owner_id=$2 AND room_idx=$3 AND token=$4 AND expires_at>clock_timestamp() FOR UPDATE")
+                .bind(&fence.namespace).bind(sql_id(owner)).bind(idx).bind(fence.token).fetch_optional(&mut *tx).await?;
+            if valid.is_none() {
+                return Ok(Err("ownership_lost"));
+            }
+        }
         let accessible: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM houses h JOIN rooms r ON r.user_id=h.user_id WHERE h.user_id=$1 AND r.idx=$2 AND ($1=$3 OR (NOT h.locked AND NOT EXISTS(SELECT 1 FROM user_privacy p WHERE p.user_id=$1 AND p.hide_house)))) AND NOT EXISTS(SELECT 1 FROM guestbook_blocks WHERE (host_id=$1 AND blocked_id=$3) OR (host_id=$3 AND blocked_id=$1))")
             .bind(sql_id(owner)).bind(idx).bind(sql_id(sender)).fetch_one(&mut *tx).await?;
         if !accessible {

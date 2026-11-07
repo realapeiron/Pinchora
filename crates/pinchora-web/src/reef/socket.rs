@@ -28,7 +28,11 @@ pub async fn ticket(State(state): State<WebState>, current: CurrentSession) -> A
     state
         .app
         .cache
-        .put(&format!("reef:ticket:{token}"), &current.sid, Duration::from_secs(30))
+        .put(
+            &state.app.cache.reef_key(&format!("ticket:{token}")),
+            &current.sid,
+            Duration::from_secs(30),
+        )
         .await?;
     Ok(Json(json!({"ticket":token,"expires_in":30,"protocol_version":1})))
 }
@@ -40,7 +44,11 @@ pub async fn consume(cache: &pinchora_cache::Cache, ticket: &str, sid: &str) -> 
     {
         return Ok(false);
     }
-    Ok(cache.take(&format!("reef:ticket:{ticket}")).await?.as_deref() == Some(sid))
+    Ok(cache
+        .take(&cache.reef_key(&format!("ticket:{ticket}")))
+        .await?
+        .as_deref()
+        == Some(sid))
 }
 pub async fn upgrade(
     State(state): State<WebState>,
@@ -107,15 +115,30 @@ async fn connection(state: WebState, current: CurrentSession, mut socket: WebSoc
         outgoing,
         close,
     };
-    state.reef.claim(&peer).await;
+    let Ok(control) = state.app.cache.reef_subscribe(&format!("control:{}", peer.user)).await else {
+        return;
+    };
+    let mut control = Box::pin(control);
+    if state.reef.claim(&state, &peer).await.is_err() {
+        let _ = socket
+            .send(Message::Close(Some(CloseFrame {
+                code: 4001,
+                reason: "routing_unavailable".into(),
+            })))
+            .await;
+        return;
+    }
     peer.send(
         "",
         &request,
         json!({"type":"authenticated","user_id":peer.user.to_string()}),
     );
     let (mut writer, mut reader) = socket.split();
+    let writer_peer = peer.clone();
     let writer_task = tokio::spawn(async move {
         let mut sequence = 0u64;
+        let mut delivery = 0u64;
+        let mut delivery_stream = String::new();
         loop {
             tokio::select! {
                 biased;
@@ -128,29 +151,61 @@ async fn connection(state: WebState, current: CurrentSession, mut socket: WebSoc
                 }
                 event=incoming.recv() => {
                     let Some(event)=event else { break; };
-                    sequence+=1;
+                    if event.delivery > 0 {
+                        if delivery_stream != event.stream { delivery=0; delivery_stream=event.stream.clone(); }
+                        if event.delivery <= delivery {continue;}
+                        sequence += event.delivery - delivery;
+                        delivery = event.delivery;
+                    } else { sequence+=1; }
                     let mut body=event.body;
                     body["protocol_version"]=json!(1); body["request_id"]=json!(event.request);
                     body["room_epoch"]=json!(event.epoch); body["sequence"]=json!(sequence);
-                    if !matches!(tokio::time::timeout(Duration::from_secs(2),writer.send(Message::Text(body.to_string().into()))).await,Ok(Ok(()))) { break; }
+                    if !matches!(tokio::time::timeout(Duration::from_secs(2),writer.send(Message::Text(body.to_string().into()))).await,Ok(Ok(()))) {
+                        writer_peer.terminate("slow_client");
+                        let _=tokio::time::timeout(Duration::from_secs(2),writer.send(Message::Close(Some(CloseFrame {code:4001,reason:"slow_client".into()})))).await;
+                        break;
+                    }
                 }
             }
         }
     });
     let mut current_room: Option<mpsc::Sender<Input>> = None;
+    let mut current_key: Option<RoomKey> = None;
     let mut sequence = 1;
     let mut seen = Instant::now();
     let mut heartbeat = tokio::time::interval(Duration::from_secs(15));
     heartbeat.tick().await;
     let mut validity = tokio::time::interval(Duration::from_secs(1));
     let mut shutdown = peer.close.subscribe();
+    let mut draining = state.reef.shutdown.subscribe();
     loop {
         tokio::select! {
             _=shutdown.changed() => break,
+            _=draining.changed() => {peer.terminate("pod_draining");break;},
+            message=control.next() => {
+                match message {
+                    Some(message) => {
+                        if let Ok(body) = serde_json::from_str::<Value>(&message) {
+                            if let Some(reason)=body["close"].as_str() {peer.terminate(super::routing::close_reason(reason));break;}
+                            peer.send("","",json!({"type":"policy_changed"}));
+                        }
+                    }
+                    None => {peer.terminate("routing_unavailable");break;}
+                }
+            },
             _=tokio::time::sleep_until(tokio::time::Instant::from_std(seen + Duration::from_secs(45))) => {
                 peer.terminate("presence_expired"); break;
             }
             _=validity.tick() => {
+                if let Some(key)=current_key
+                    && !matches!(state.app.cache.reef_renew(&super::routing::location_key(&peer.token), &key.name(), 5000).await,Ok(true)) {
+                    peer.terminate("routing_unavailable");break;
+                }
+                match state.app.cache.reef_renew(&super::routing::controller_key(peer.user), &peer.token, 5000).await {
+                    Ok(true) => {},
+                    Ok(false) => {peer.terminate(super::routing::controller(&state,&peer).await.err().unwrap_or("routing_unavailable"));break;},
+                    Err(_) => {peer.terminate("routing_unavailable");break;}
+                }
                 match session::load(&state.app.cache,&current.sid,chrono::Utc::now().timestamp()).await {
                     Ok(Some(s)) if s.user_id==peer.user => {},
                     _ => { peer.terminate("session_expired"); break; }
@@ -192,11 +247,19 @@ async fn connection(state: WebState, current: CurrentSession, mut socket: WebSoc
                         // Check before leaving the old room. Actor repeats this check at admission.
                         if room_access(&state,key,peer.user).await.is_err() {peer.error("",&envelope.request_id,"access_denied");continue;}
                         if let Some(tx)=current_room.take() { let _=tx.send(Input::Leave(peer.token.clone())).await; }
+                        if state.app.cache.reef_claim(&super::routing::location_key(&peer.token), &key.name(), 5000, true).await.is_err() {
+                            peer.terminate("routing_unavailable");break;
+                        }
+                        current_key=Some(key);
                         let tx=state.reef.room(&state,key).await;
                         if tx.try_send(Input::Join(peer.clone(),envelope.request_id)).is_err() {peer.terminate("room_busy");break;}
+                        state.reef.locate(peer.user,key).await;
                         current_room=Some(tx);
                     }
                     Command::Leave => {
+                        if let Some(key)=current_key.take() {
+                            let _=state.app.cache.reef_release(&super::routing::location_key(&peer.token), &key.name()).await;
+                        }
                         state.reef.unlocate(peer.user).await;
                         if let Some(tx)=current_room.take() {let _=tx.send(Input::Leave(peer.token.clone())).await;}
                         peer.send("",&envelope.request_id,json!({"type":"left"}));
@@ -213,7 +276,14 @@ async fn connection(state: WebState, current: CurrentSession, mut socket: WebSoc
     if let Some(tx) = current_room {
         let _ = tx.send(Input::Leave(peer.token.clone())).await;
     }
-    state.reef.release(&peer).await;
+    if let Some(key) = current_key {
+        let _ = state
+            .app
+            .cache
+            .reef_release(&super::routing::location_key(&peer.token), &key.name())
+            .await;
+    }
+    state.reef.release(&state, &peer).await;
     if peer.close.borrow().is_none() {
         peer.terminate("closed");
     }
@@ -251,7 +321,11 @@ mod tests {
         let cache = pinchora_cache::Cache::connect(&url).await.expect("test Redis");
         let ticket = session::random_token(32);
         cache
-            .put(&format!("reef:ticket:{ticket}"), "session-a", Duration::from_secs(30))
+            .put(
+                &cache.reef_key(&format!("ticket:{ticket}")),
+                "session-a",
+                Duration::from_secs(30),
+            )
             .await
             .unwrap();
         let (a, b) = tokio::join!(
@@ -261,7 +335,11 @@ mod tests {
         assert_ne!(a.unwrap(), b.unwrap());
         let ticket = session::random_token(32);
         cache
-            .put(&format!("reef:ticket:{ticket}"), "session-a", Duration::from_secs(30))
+            .put(
+                &cache.reef_key(&format!("ticket:{ticket}")),
+                "session-a",
+                Duration::from_secs(30),
+            )
             .await
             .unwrap();
         assert!(!consume(&cache, &ticket, "session-b").await.unwrap());

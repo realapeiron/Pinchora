@@ -27,12 +27,14 @@ use twilight_model::id::Id;
 type Socket = WebSocketStream<MaybeTlsStream<TcpStream>>;
 struct Site {
     app: Arc<App>,
+    state: WebState,
     pool: PgPool,
     url: String,
     server: JoinHandle<()>,
 }
 impl Drop for Site {
     fn drop(&mut self) {
+        self.state.drain_reef();
         self.server.abort();
     }
 }
@@ -47,6 +49,9 @@ fn unique() -> u64 {
 }
 impl Site {
     async fn new() -> Option<Self> {
+        Self::with_redis(None).await
+    }
+    async fn with_redis(redis_override: Option<&str>) -> Option<Self> {
         let (Ok(database), Ok(redis)) = (
             std::env::var("PINCHORA_TEST_DATABASE_URL"),
             std::env::var("PINCHORA_TEST_REDIS_URL"),
@@ -56,7 +61,9 @@ impl Site {
         };
         let db = Db::connect(&database, 5).await.expect("test Postgres reachable");
         db.migrate().await.unwrap();
-        let cache = Cache::connect(&redis).await.expect("test Redis reachable");
+        let cache = Cache::connect(redis_override.unwrap_or(&redis))
+            .await
+            .expect("test Redis reachable");
         let rest = Arc::new(
             Client::builder()
                 .token("Bot reef-test".into())
@@ -75,16 +82,18 @@ impl Site {
             ..WebConfig::default()
         };
         let state = WebState::new(app.clone(), WebSettings::resolve(&config, 1).unwrap());
+        let server_state = state.clone();
         let server = tokio::spawn(async move {
             axum::serve(
                 listener,
-                pinchora_web::router(state).into_make_service_with_connect_info::<SocketAddr>(),
+                pinchora_web::router(server_state).into_make_service_with_connect_info::<SocketAddr>(),
             )
             .await
             .unwrap();
         });
         Some(Self {
             app,
+            state,
             pool: PgPool::connect(&database).await.unwrap(),
             url,
             server,
@@ -1011,3 +1020,6 @@ async fn operator_site_scope_room_scope_and_reversal_are_authorized() {
     assert!(site.app.db.reef_sanctioned(guest, owner, 1, true).await.unwrap());
     assert!(!site.app.db.reef_sanctioned(guest, owner, 1, false).await.unwrap());
 }
+
+#[path = "reef/multipod.rs"]
+mod multipod;

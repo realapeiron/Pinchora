@@ -1440,7 +1440,7 @@ A character no font has (a rare hanzi, another script) still draws as an empty b
 ### Reef private-house multiplayer
 
 The web Play view (/me/house?play=1 or /house/OWNER?play=1) supports up to 16 players in a
-server-authoritative room on one web pod. Separate logged-in browser profiles can walk and use the pilot seats,
+server-authoritative room shared across web pods. Separate logged-in browser profiles can walk and use the pilot seats,
 with saved appearances and filtered name tags. Hidden/locked houses and bidirectional social blocks restrict visitor access.
 House chat requires versioned 13+ self-acknowledgment (Discord login does not verify age). EN/TR text checks,
 200-grapheme messages, 1/second burst 3 and 20/minute limits, plain-text bubbles and an accessible transcript apply.
@@ -1450,4 +1450,9 @@ Reports have receipts, dispositions and appeals; evidence reads and actions are 
 privacy-registered safety records. Active sanctions survive account deletion only until their expiry.
 Public plaza chat remains disabled. No automatic Discord chat bridge exists.
 A second tab for an account replaces its earlier controller. An unavailable socket falls back to local preview.
+Rooms now route presence, movement and chat across web pods with fenced ownership and one controller per account.
+Migration `0070` adds room leases and a transactional layout outbox for bot/web edits; reconnects recover by snapshot.
+Set matching `PINCHORA_ENV` on bot/web pods: Redis channels include both environment and logical database, including
+settings invalidation (the former global channel is retired). See [multi-pod operations](web/src/reef/README.md#multi-pod-routing-and-recovery-r21r24).
+
 Chat and movement give no rewards. See [the Reef protocol and test instructions](web/src/reef/README.md#private-house-multiplayer-r09r11).
