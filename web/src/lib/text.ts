@@ -2,18 +2,19 @@
 
 import type { AuditEntry, TagAction } from "./api";
 import { describeAction } from "./tags";
+import { date, number, translate } from "../i18n";
 
 /** "just now", "5 min ago", "3 h ago", "2 d ago", then the date. */
 export function timeAgo(iso: string, now: Date = new Date()): string {
   const seconds = Math.max(0, Math.round((now.getTime() - new Date(iso).getTime()) / 1000));
-  if (seconds < 60) return "just now";
+  if (seconds < 60) return translate("just now");
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} min ago`;
+  if (minutes < 60) return translate("{count} min ago", { count: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} h ago`;
+  if (hours < 24) return translate("{count} h ago", { count: hours });
   const days = Math.floor(hours / 24);
-  if (days < 30) return `${days} d ago`;
-  return new Date(iso).toISOString().slice(0, 10);
+  if (days < 30) return translate("{count} d ago", { count: days });
+  return date(iso);
 }
 
 /** Looks up what an id is called, so the log reads "#general" instead of a number. */
@@ -25,8 +26,8 @@ export interface Names {
 
 /** Names when nothing is known about the server: the id itself, worded as what it is. */
 export const plainNames: Names = {
-  channel: (id) => `channel ${id}`,
-  role: (id) => `role ${id}`,
+  channel: (id) => translate("channel {id}", { id }),
+  role: (id) => translate("role {id}", { id }),
   module: (key) => key.replaceAll("_", " "),
 };
 
@@ -105,7 +106,7 @@ const ACTION_FIELDS: Record<string, Record<string, string>> = {
 
 /** What a field is called, in words. */
 export function fieldLabel(action: string, field: string): string {
-  return ACTION_FIELDS[action]?.[field] ?? FIELD_NAMES[field] ?? field.replaceAll("_", " ");
+  return translate(ACTION_FIELDS[action]?.[field] ?? FIELD_NAMES[field] ?? field.replaceAll("_", " "));
 }
 
 /** What list writes did, by audit action. */
@@ -139,30 +140,34 @@ const MODES: Record<string, string> = {
 /** One value from an audit row, as a person would say it: ids become names, flags on or off. */
 export function showValue(field: string, value: unknown, names: Names = plainNames): string {
   if (value === null || value === undefined) return "—";
-  if (typeof value === "boolean") return value ? "on" : "off";
+  if (typeof value === "boolean") return translate(value ? "on" : "off");
   if (field === "channels" && Array.isArray(value)) {
-    return value.length === 0 ? "none" : value.map((id) => names.channel(String(id))).join(", ");
+    return value.length === 0 ? translate("none") : value.map((id) => names.channel(String(id))).join(", ");
   }
-  if (field === "embed") return "an embed";
+  if (field === "embed") return translate("an embed");
   if (Array.isArray(value)) {
-    if (value.length === 0) return "none";
+    if (value.length === 0) return translate("none");
     if (field.endsWith("_roles")) return value.map((id) => names.role(String(id))).join(", ");
     if (field.endsWith("_channels")) return value.map((id) => names.channel(String(id))).join(", ");
     if (field === "actions") return value.map((a) => describeAction(a as TagAction)).join(", ");
     if (value.every((v) => typeof v === "string")) return value.map((v) => `“${v}”`).join(" · ");
   }
-  if (field === "channel_mode" && typeof value === "string") return MODES[value] ?? value;
+  if (field === "channel_mode" && typeof value === "string") return translate(MODES[value] ?? value);
   if (field === "design" && typeof value === "object") {
     const design = value as { width?: number; height?: number; layers?: unknown[] };
-    return `${design.width}×${design.height}, ${design.layers?.length ?? 0} layers`;
+    return translate("{width}×{height}, {count} layers", {
+      width: design.width ?? 0,
+      height: design.height ?? 0,
+      count: design.layers?.length ?? 0,
+    });
   }
-  if (field === "design" && value === "classic") return "the classic card";
+  if (field === "design" && value === "classic") return translate("the classic card");
   if (typeof value === "string" && /^\d+$/.test(value)) {
     if (field.endsWith("channel_id")) return names.channel(value);
     if (field.endsWith("role_id")) return names.role(value);
   }
   if (typeof value === "string") return value;
-  if (typeof value === "number") return String(value);
+  if (typeof value === "number") return number(value);
   return JSON.stringify(value);
 }
 
@@ -187,15 +192,20 @@ export function describeChange(entry: AuditEntry, names: Names = plainNames): st
   const tag = describeTag(entry);
   if (tag) return tag;
   const action = ACTIONS[entry.action];
-  if (action) return action;
+  if (action) return translate(action);
   const after = entry.after ?? {};
   const parts = Object.entries(after).map(([field, value]) => {
     const name = fieldLabel(entry.action, field);
-    if (typeof value === "boolean") return `turned ${name} ${value ? "on" : "off"}`;
-    return `changed ${name}`;
+    if (typeof value === "boolean")
+      return translate("turned {name} {status}", { name, status: translate(value ? "on" : "off") });
+    return translate("changed {name}", { name });
   });
-  if (parts.length === 0) return `made a change (${entry.action})`;
-  if (parts.length > 3) return `${parts.slice(0, 2).join(", ")} and ${parts.length - 2} more`;
+  if (parts.length === 0) return translate("made a change ({action})", { action: entry.action });
+  if (parts.length > 3)
+    return translate("{first} and {count} more", {
+      first: parts.slice(0, 2).join(", "),
+      count: parts.length - 2,
+    });
   return parts.join(", ");
 }
 
@@ -206,30 +216,41 @@ function describeTag(entry: AuditEntry): string | null {
   const count = (key: string) => (Array.isArray(after[key]) ? (after[key] as unknown[]).length : 0);
   const [kind] = entry.action.split(".");
   if (kind !== "command" && kind !== "responder" && kind !== "commands" && kind !== "responders") return null;
-  const what = kind.startsWith("command") ? `/tag ${name}` : `the auto-responder “${name}”`;
+  const what = kind.startsWith("command")
+    ? `/tag ${name}`
+    : translate("the auto-responder “{name}”", { name });
   switch (entry.action) {
     case "command.create":
-      return `wrote the custom command ${what}`;
+      return translate("wrote the custom command {what}", { what });
     case "responder.create":
-      return `wrote ${what}`;
+      return translate("wrote {what}", { what });
     case "command.delete":
     case "responder.delete":
-      return `deleted ${what}`;
+      return translate("deleted {what}", { what });
     case "commands.import":
     case "responders.import": {
       const noun = kind === "commands" ? "custom command" : "auto-responder";
       const added = count("created");
       const replaced = count("replaced");
-      const parts = [added > 0 && `${added} new`, replaced > 0 && `${replaced} replaced`].filter(Boolean);
-      return `imported ${noun}s (${parts.join(", ") || "none"})`;
+      const parts = [
+        added > 0 && translate("{count} new", { count: added }),
+        replaced > 0 && translate("{count} replaced", { count: replaced }),
+      ].filter(Boolean);
+      return translate("imported {noun}s ({parts})", {
+        noun: translate(noun),
+        parts: parts.join(", ") || translate("none"),
+      });
     }
     case "command.update":
     case "responder.update": {
       if (typeof after.enabled === "boolean" && Object.keys(after).length === 1) {
-        return `turned ${what} ${after.enabled ? "on" : "off"}`;
+        return translate("turned {name} {status}", {
+          name: what,
+          status: translate(after.enabled ? "on" : "off"),
+        });
       }
       const fields = Object.keys(after).map((f) => fieldLabel(entry.action, f));
-      return `changed ${what}: ${fields.join(", ")}`;
+      return translate("changed {what}: {fields}", { what, fields: fields.join(", ") });
     }
     default:
       return null;
@@ -241,16 +262,21 @@ function describeModule(entry: AuditEntry, names: Names): string {
   const label = names.module(entry.target ?? "");
   const after = entry.after ?? {};
   const said: string[] = [];
-  if (typeof after.enabled === "boolean") said.push(`turned ${label} ${after.enabled ? "on" : "off"}`);
+  if (typeof after.enabled === "boolean")
+    said.push(
+      translate("turned {name} {status}", { name: label, status: translate(after.enabled ? "on" : "off") }),
+    );
   if (typeof after.channel_mode === "string" || Array.isArray(after.channels)) {
     const count = Array.isArray(after.channels) ? after.channels.length : 0;
     const noun = count === 1 ? "channel" : "channels";
-    if (after.channel_mode === "all") said.push(`opened ${label} to all channels`);
-    else if (after.channel_mode === "only") said.push(`limited ${label} to ${count} ${noun}`);
-    else if (after.channel_mode === "except") said.push(`switched ${label} off in ${count} ${noun}`);
-    else said.push(`changed the channels of ${label}`);
+    if (after.channel_mode === "all") said.push(translate("opened {label} to all channels", { label }));
+    else if (after.channel_mode === "only")
+      said.push(translate("limited {label} to {count} {noun}", { label, count, noun: translate(noun) }));
+    else if (after.channel_mode === "except")
+      said.push(translate("switched {label} off in {count} {noun}", { label, count, noun: translate(noun) }));
+    else said.push(translate("changed the channels of {label}", { label }));
   }
-  return said.length > 0 ? said.join(" and ") : `changed ${label}`;
+  return said.length > 0 ? said.join(translate(" and ")) : translate("changed {name}", { name: label });
 }
 
 /** One or two letters for a server without an icon. */

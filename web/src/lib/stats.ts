@@ -3,6 +3,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "./api";
+import { locale, number } from "../i18n";
 
 export const PERIODS = [7, 30, 90] as const;
 export type Days = (typeof PERIODS)[number];
@@ -175,18 +176,16 @@ export function useGlobalStats() {
 
 // /Numbers
 
-const grouped = new Intl.NumberFormat("en-US");
-
 /** `1,234`. */
 export function thousands(n: number): string {
-  return grouped.format(n);
+  return number(n);
 }
 
 /** `999`, `1.2K`, `48K`, `1.3M`: for axis ticks and tight tiles. */
 export function compact(n: number): string {
   const a = Math.abs(n);
   const unit = (value: number, suffix: string) => {
-    const text = value >= 100 ? value.toFixed(0) : value.toFixed(1).replace(/\.0$/, "");
+    const text = number(value >= 100 ? Math.round(value) : Math.round(value * 10) / 10);
     return `${n < 0 ? "-" : ""}${text}${suffix}`;
   };
   if (a >= 1e9) return unit(a / 1e9, "B");
@@ -224,13 +223,17 @@ export function heatStep(n: number, max: number, steps = 5): number | null {
   return Math.min(steps, Math.max(1, Math.ceil((n / max) * steps))) - 1;
 }
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 export const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 /** `2026-11-06` as `6 Nov`, read as a UTC day. */
 export function dayLabel(day: string, withYear = false): string {
   const [y, m, d] = day.split("-").map(Number);
-  return `${d} ${MONTHS[(m ?? 1) - 1]}${withYear ? ` ${y}` : ""}`;
+  return new Intl.DateTimeFormat(locale() === "tr" ? "tr-TR" : "en-US", {
+    day: "numeric",
+    month: "short",
+    ...(withYear ? { year: "numeric" as const } : {}),
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(y!, (m ?? 1) - 1, d!)));
 }
 
 /** `09:00–10:00 UTC`. */

@@ -1,3 +1,4 @@
+import { dateTime } from "../i18n";
 import { translate as spaTranslate } from "../i18n";
 import { useCallback, useState } from "react";
 import { Link, useOutletContext } from "react-router";
@@ -36,7 +37,7 @@ export function Community() {
           "Where /suggest posts ideas, whether critters wash up while people chat, timed storm surges, and birthday celebrations.",
         )}
       />
-      {query.isPending && <Loading label="Reading the settings" />}
+      {query.isPending && <Loading label={spaTranslate("Reading the settings")} />}
       {query.isError && <Problem error={query.error} />}
       {query.isSuccess && <CommunityForm guild={guild} saved={query.data} modules={data.modules} />}
     </div>
@@ -49,9 +50,9 @@ function ModuleOff({ guild, modules, module }: { guild: string; modules: ModuleE
   if (!found || found.enabled) return null;
   return (
     <p className="notice" role="note">
-      <strong>{found.label}</strong>
-      {spaTranslate("is switched off in")} <Link to={`/g/${guild}/modules`}>{spaTranslate("Modules")}</Link>,
-      so nothing here does anything until you switch it on.
+      <strong>{spaTranslate(found.label)}</strong>
+      {spaTranslate("is switched off in")} <Link to={`/g/${guild}/modules`}>{spaTranslate("Modules")}</Link>
+      {spaTranslate(", so nothing here does anything until you switch it on.")}{" "}
     </p>
   );
 }
@@ -109,7 +110,7 @@ function CommunityForm({
             }
           : {}),
       },
-      { onSuccess: () => setToast("Saved. The bot uses it from the next message.") },
+      { onSuccess: () => setToast(spaTranslate("Saved. The bot uses it from the next message.")) },
     );
   const reset = () => {
     setSuggestions(saved.suggestions.channel_id);
@@ -123,64 +124,72 @@ function CommunityForm({
 
   return (
     <>
-      <Panel title="SUGGESTIONS">
+      <Panel title={spaTranslate("SUGGESTIONS")}>
         <ModuleOff guild={guild} modules={modules} module="suggestions" />
         <Field
-          label="Suggestion channel"
+          label={spaTranslate("Suggestion channel")}
           htmlFor="suggestion-channel"
           error={suggestionsChanged ? fieldError("suggestions", "channel_id") : null}
-          hint="Members post ideas with /suggest; everyone votes with buttons, managers approve or deny."
+          hint={spaTranslate(
+            "Members post ideas with /suggest; everyone votes with buttons, managers approve or deny.",
+          )}
         >
           <ChannelPicker
             id="suggestion-channel"
             info={discord.data}
             value={suggestions}
             onChange={setSuggestions}
-            none="No channel yet: /suggest asks for one"
+            none={spaTranslate("No channel yet: /suggest asks for one")}
           />
         </Field>
       </Panel>
 
-      <Panel title="CRITTER DROPS">
+      <Panel title={spaTranslate("CRITTER DROPS")}>
         <ModuleOff guild={guild} modules={modules} module="collection" />
         <SwitchRow
-          title="Chat drops"
-          control={<PixelToggle label="Chat drops" checked={enabled} onChange={setEnabled} />}
+          title={spaTranslate("Chat drops")}
+          control={<PixelToggle label={spaTranslate("Chat drops")} checked={enabled} onChange={setEnabled} />}
         >
-          While people chat, critters and message bottles now and then wash up for the quickest to grab. Off
-          until a server turns it on.
+          {" "}
+          {spaTranslate(
+            "While people chat, critters and message bottles now and then wash up for the quickest to grab. Off until a server turns it on.",
+          )}{" "}
         </SwitchRow>
         <Field
-          label="Where they land"
+          label={spaTranslate("Where they land")}
           htmlFor="critter-channel"
           error={crittersChanged ? fieldError("critters", "channel_id") : null}
-          hint="Only chat in a set channel counts towards a drop."
+          hint={spaTranslate("Only chat in a set channel counts towards a drop.")}
         >
           <ChannelPicker
             id="critter-channel"
             info={discord.data}
             value={critterChannel}
             onChange={setCritterChannel}
-            none="Anywhere busy"
+            none={spaTranslate("Anywhere busy")}
           />
         </Field>
       </Panel>
 
-      <Panel title="STORM SURGES">
+      <Panel title={spaTranslate("STORM SURGES")}>
         <ModuleOff guild={guild} modules={modules} module="party" />
         <SwitchRow
-          title="Timed storms"
-          control={<PixelToggle label="Timed storms" checked={surgeOn} onChange={setSurgeOn} />}
+          title={spaTranslate("Timed storms")}
+          control={
+            <PixelToggle label={spaTranslate("Timed storms")} checked={surgeOn} onChange={setSurgeOn} />
+          }
         >
-          A storm surge comes to a channel on a schedule: everyone stacks sandbags to hold the wall. Off until
-          a server turns it on; managers can always call one with /surge.
+          {" "}
+          {spaTranslate(
+            "A storm surge comes to a channel on a schedule: everyone stacks sandbags to hold the wall. Off until a server turns it on; managers can always call one with /surge.",
+          )}{" "}
         </SwitchRow>
         <div className="form-grid form-grid-2">
           <Field
-            label="Storm channel"
+            label={spaTranslate("Storm channel")}
             htmlFor="surge-channel"
             error={surgeChanged ? fieldError("surge", "channel_id") : null}
-            hint={surgeOn && !surgeChannel ? "Pick the channel storms come to." : undefined}
+            hint={surgeOn && !surgeChannel ? spaTranslate("Pick the channel storms come to.") : undefined}
           >
             <ChannelPicker
               id="surge-channel"
@@ -190,12 +199,12 @@ function CommunityForm({
             />
           </Field>
           <Field
-            label="How often"
+            label={spaTranslate("How often")}
             htmlFor="surge-every"
             error={surgeChanged ? fieldError("surge", "every_hours") : null}
             hint={
               saved.surge.next_at
-                ? `The next one comes ${new Date(saved.surge.next_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}.`
+                ? spaTranslate("The next one comes {arg1}.", { arg1: dateTime(saved.surge.next_at) })
                 : undefined
             }
           >
@@ -207,7 +216,9 @@ function CommunityForm({
             >
               {saved.surge.every_choices.map((hours) => (
                 <option key={hours} value={hours}>
-                  {EVERY[hours] ?? `Every ${hours} hours`}
+                  {EVERY[hours]
+                    ? spaTranslate(EVERY[hours])
+                    : spaTranslate("Every {arg1} hours", { arg1: hours })}
                 </option>
               ))}
             </select>

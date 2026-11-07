@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
+import { serverText } from "../i18n";
 
 export interface BirthdaySettings {
   enabled: boolean;
@@ -48,9 +49,5 @@ export function useSaveBirthdays(guild: string) {
 
 export function birthdayWords(strings: Record<string, string> = {}, language = "en") {
   return (key: string, args: Record<string, string | number> = {}) =>
-    (strings[key] ?? key).replace(/\{(\w+)\}/g, (match, name: string) =>
-      typeof args[name] === "number"
-        ? args[name].toLocaleString(language === "tr" ? "tr-TR" : "en-US")
-        : String(args[name] ?? match),
-    );
+    serverText(key, strings, args, language);
 }

@@ -28,46 +28,57 @@ const MODE_WORDS: Record<string, string> = {
  */
 function glance(s: Settings, modules: ModuleEntry[]) {
   const switched = (key: string) => modules.find((m) => m.key === key)?.enabled ?? true;
-  const off = "switched off";
+  const off = spaTranslate("switched off");
   return [
     {
       to: "welcome",
-      name: "Welcome cards",
+      name: spaTranslate("Welcome cards"),
       on: switched("welcome") && s.welcome_channel_id !== null,
       detail: !switched("welcome")
         ? off
-        : (s.welcome_channel_id ? `${s.welcome_theme ?? "reef"} theme` : "no channel yet") +
-          (s.join_role_id ? ", join role" : ""),
+        : (s.welcome_channel_id
+            ? spaTranslate("{theme} theme", { theme: s.welcome_theme ?? "reef" })
+            : spaTranslate("no channel yet")) + (s.join_role_id ? spaTranslate(", join role") : ""),
     },
     {
       to: "leveling",
-      name: "Leveling",
+      name: spaTranslate("Leveling"),
       on: switched("leveling"),
-      detail: `${MODE_WORDS[s.levelup_mode] ?? s.levelup_mode}${s.voice_xp_enabled ? ", voice XP" : ""}`,
+      detail: `${spaTranslate(MODE_WORDS[s.levelup_mode] ?? s.levelup_mode)}${s.voice_xp_enabled ? spaTranslate(", voice XP") : ""}`,
     },
     {
       to: "points",
-      name: "Server points",
+      name: spaTranslate("Server points"),
       on: switched("points"),
-      detail: `${s.points_emoji} ${s.points_min}–${s.points_max} ${s.points_name} a message`,
+      detail: spaTranslate("{emoji} {min}–{max} {name} per message", {
+        emoji: s.points_emoji,
+        min: s.points_min,
+        max: s.points_max,
+        name: s.points_name,
+      }),
     },
     {
       to: "welcome",
-      name: "Goodbye",
+      name: spaTranslate("Goodbye"),
       on: switched("goodbye") && s.goodbye_channel_id !== null,
-      detail: !switched("goodbye") ? off : s.goodbye_channel_id ? "when someone leaves" : "no channel yet",
+      detail: !switched("goodbye")
+        ? off
+        : s.goodbye_channel_id
+          ? spaTranslate("when someone leaves")
+          : spaTranslate("no channel yet"),
     },
     {
       to: "log",
-      name: "Server log",
+      name: spaTranslate("Server log"),
       on: switched("log") && s.log_channel_id !== null,
       detail: !switched("log")
         ? off
         : s.log_channel_id === null
-          ? "no channel yet"
+          ? spaTranslate("no channel yet")
           : [s.log_members && "joins", s.log_names && "names", s.log_bans && "bans", s.log_voice && "voice"]
               .filter(Boolean)
-              .join(", ") || "nothing picked",
+              .map((word) => spaTranslate(String(word)))
+              .join(", ") || spaTranslate("nothing picked"),
     },
   ];
 }
@@ -92,7 +103,7 @@ export function Overview() {
     save.mutate(patchOf(saved, draft), {
       onSuccess: () => {
         setDraft({});
-        setToast("Saved. The bot uses it from the next message.");
+        setToast(spaTranslate("Saved. The bot uses it from the next message."));
       },
     });
   };
@@ -101,17 +112,17 @@ export function Overview() {
     <div className="overview">
       <div className="page-head">
         <div>
-          <h1 className="pixel-heading">OVERVIEW</h1>
+          <h1 className="pixel-heading">{spaTranslate("OVERVIEW")}</h1>
           <p className="muted">{data.guild.name}</p>
         </div>
       </div>
 
       <Panel
-        title="LEVELING"
+        title={spaTranslate("LEVELING")}
         aside={
           <span
             className={`badge ${saved.leveling_enabled ? "badge-mint" : "badge-dim"}`}
-            title="What the bot uses right now"
+            title={spaTranslate("What the bot uses right now")}
           >
             {saved.leveling_enabled ? "LIVE" : "PAUSED"}
           </span>
@@ -120,15 +131,18 @@ export function Overview() {
         <div className="setting-row">
           <div className="setting-text">
             <h3 className="setting-name" id="chat-xp">
-              Chat XP
+              {" "}
+              {spaTranslate("Chat XP")}{" "}
             </h3>
             <p className="muted">
-              Members earn XP for chatting, climb levels and get a level-up card. Turn it off to pause XP in
-              this server; levels already earned stay.
+              {" "}
+              {spaTranslate(
+                "Members earn XP for chatting, climb levels and get a level-up card. Turn it off to pause XP in this server; levels already earned stay.",
+              )}{" "}
             </p>
           </div>
           <PixelToggle
-            label="Chat XP"
+            label={spaTranslate("Chat XP")}
             checked={leveling}
             onChange={(next) => setDraft((d) => ({ ...d, leveling_enabled: next }))}
             disabled={save.isPending}
@@ -136,12 +150,14 @@ export function Overview() {
         </div>
       </Panel>
 
-      <Panel title="TEXT COMMANDS">
+      <Panel title={spaTranslate("TEXT COMMANDS")}>
         <Field
-          label="Prefix"
+          label={spaTranslate("Prefix")}
           htmlFor="text-prefix"
           error={prefixError}
-          hint={`Every command also works as text: ${prefix.trim() || DEFAULTS.prefix}profile, or @Pinchora profile.`}
+          hint={spaTranslate("Every command also works as text: {arg1}profile, or @Pinchora profile.", {
+            arg1: prefix.trim() || DEFAULTS.prefix,
+          })}
           aside={
             prefix !== DEFAULTS.prefix && (
               <PixelButton
@@ -150,7 +166,8 @@ export function Overview() {
                 onClick={() => setDraft((d) => ({ ...d, prefix: DEFAULTS.prefix }))}
                 disabled={save.isPending}
               >
-                Default
+                {" "}
+                {spaTranslate("Default")}{" "}
               </PixelButton>
             )
           }
@@ -167,16 +184,16 @@ export function Overview() {
         </Field>
       </Panel>
 
-      <Panel title="AT A GLANCE">
+      <Panel title={spaTranslate("AT A GLANCE")}>
         <ul className="glance">
           {glance(saved, data.modules).map((tile) => (
             <li key={tile.name}>
               <Link to={`/g/${guild}/${tile.to}`} className="glance-tile">
-                <span className="glance-name">{tile.name}</span>
+                <span className="glance-name">{spaTranslate(tile.name)}</span>
                 <span className={`badge ${tile.on ? "badge-mint" : "badge-dim"}`}>
                   {tile.on ? "ON" : "OFF"}
                 </span>
-                <span className="glance-detail muted">{tile.detail}</span>
+                <span className="glance-detail muted">{spaTranslate(tile.detail)}</span>
               </Link>
             </li>
           ))}
@@ -184,10 +201,11 @@ export function Overview() {
       </Panel>
 
       <Panel
-        title="MODULES"
+        title={spaTranslate("MODULES")}
         aside={
           <PixelLink variant="ghost" className="button-small" href={`/g/${guild}/modules`}>
-            Manage
+            {" "}
+            {spaTranslate("Manage")}{" "}
           </PixelLink>
         }
       >
@@ -196,8 +214,8 @@ export function Overview() {
             const state = badge(m.enabled, m.channel_mode, m.channels.length);
             return (
               <li key={m.key}>
-                <Link to={`/g/${guild}/modules`} className="module-tile" title={m.blurb}>
-                  <span className="module-tile-name">{m.label}</span>
+                <Link to={`/g/${guild}/modules`} className="module-tile" title={spaTranslate(m.blurb)}>
+                  <span className="module-tile-name">{spaTranslate(m.label)}</span>
                   <span className={`badge badge-${state.tone}`}>{state.text}</span>
                 </Link>
               </li>
@@ -206,10 +224,13 @@ export function Overview() {
         </ul>
       </Panel>
 
-      <Panel title="RECENT CHANGES">
+      <Panel title={spaTranslate("RECENT CHANGES")}>
         {data.audit.length === 0 ? (
           <p className="muted">
-            No changes from the dashboard yet. What you save here shows up in this list.
+            {" "}
+            {spaTranslate(
+              "No changes from the dashboard yet. What you save here shows up in this list.",
+            )}{" "}
           </p>
         ) : (
           <ol className="audit-list">
@@ -218,7 +239,7 @@ export function Overview() {
                 <span className="audit-dot" aria-hidden="true" />
                 <span className="audit-text">
                   <strong>{entry.actor_name}</strong> {describeChange(entry, names)}
-                  {entry.source === "discord" && <span className="muted"> in Discord</span>}
+                  {entry.source === "discord" && <span className="muted"> {spaTranslate("in Discord")}</span>}
                 </span>
                 <time className="audit-time muted" dateTime={entry.created_at}>
                   {timeAgo(entry.created_at)}

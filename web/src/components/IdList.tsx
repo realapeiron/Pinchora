@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useState } from "react";
 
 import type { GuildInfo } from "../lib/api";
@@ -41,7 +42,7 @@ export function IdList({
               <button
                 type="button"
                 className="chip-remove"
-                aria-label={`Remove ${nameOf(id)}`}
+                aria-label={spaTranslate("Remove {arg1}", { arg1: nameOf(id) })}
                 onClick={() => onChange(ids.filter((x) => x !== id))}
               >
                 ×
@@ -56,17 +57,17 @@ export function IdList({
             info={info}
             value={pick}
             onChange={setPick}
-            none={full ? `Up to ${max}` : "Pick a role"}
+            none={full ? `Up to ${max}` : spaTranslate("Pick a role")}
             disabled={full}
           />
         ) : (
           <ChannelPicker
-            label={`Add to ${name}`}
+            label={spaTranslate("Add to {arg1}", { arg1: name })}
             info={info}
             value={pick}
             onChange={setPick}
             any
-            none={full ? `Up to ${max}` : "Pick a channel"}
+            none={full ? `Up to ${max}` : spaTranslate("Pick a channel")}
             disabled={full}
           />
         )}
@@ -79,7 +80,8 @@ export function IdList({
             setPick(null);
           }}
         >
-          Add
+          {" "}
+          {spaTranslate("Add")}{" "}
         </PixelButton>
       </div>
     </div>

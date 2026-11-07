@@ -87,7 +87,7 @@ function useMediaQuery(query: string): boolean {
 function problems(design: CardDesign): string[] {
   const layers = design.layers.flatMap((layer, i) => {
     if (layer.type !== "text") return [];
-    const name = `Layer ${i + 1} (Text)`;
+    const name = spaTranslate("Layer {arg1} (Text)", { arg1: i + 1 });
     if (layer.text.trim() === "") return [`${name}: write something, or delete the layer.`];
     const unknown = unknownPlaceholders(layer.text);
     return unknown.length ? [`${name}: ${unknown[0]} isn't a placeholder.`] : [];
@@ -95,7 +95,9 @@ function problems(design: CardDesign): string[] {
   const avatars = design.layers.filter((l) => l.type === "avatar").length;
   return [
     ...layers,
-    ...(avatars > CARD.max_avatars ? [`A design has at most ${CARD.max_avatars} avatars.`] : []),
+    ...(avatars > CARD.max_avatars
+      ? [spaTranslate("A design has at most {arg1} avatars.", { arg1: CARD.max_avatars })]
+      : []),
     ...(designCost(design.layers) > CARD.layer_cost_max ? [heavyMessage(design.layers)] : []),
   ];
 }
@@ -106,7 +108,7 @@ export function WelcomeImage() {
   const cards = useCards(guild);
   const atlas = useAtlasIndex();
   const me = useMe();
-  if (cards.isPending || me.isPending) return <Loading label="Opening the editor" />;
+  if (cards.isPending || me.isPending) return <Loading label={spaTranslate("Opening the editor")} />;
   if (cards.isError) return <Problem error={cards.error} />;
   if (me.isError) return <Problem error={me.error} />;
   return (
@@ -201,18 +203,20 @@ function Editor({
 
   const addLayer = (next: Layer) => {
     if (design.layers.length >= CARD.max_layers) {
-      setToast(`A design has at most ${CARD.max_layers} layers.`);
+      setToast(spaTranslate("A design has at most {arg1} layers.", { arg1: CARD.max_layers }));
       return;
     }
     if (
       next.type === "avatar" &&
       design.layers.filter((l) => l.type === "avatar").length >= CARD.max_avatars
     ) {
-      setToast(`A design has at most ${CARD.max_avatars} avatars.`);
+      setToast(spaTranslate("A design has at most {arg1} avatars.", { arg1: CARD.max_avatars }));
       return;
     }
     if (designCost([...design.layers, next]) > CARD.layer_cost_max) {
-      setToast("That would make the image too heavy to draw quickly. Shrink or hide a layer first.");
+      setToast(
+        spaTranslate("That would make the image too heavy to draw quickly. Shrink or hide a layer first."),
+      );
       return;
     }
     setDesign({ ...design, layers: [...design.layers, next] });
@@ -341,12 +345,12 @@ function Editor({
         old ? { ...old, ...Object.fromEntries(views.map((v) => [v.kind, v])) } : old,
       );
       await client.invalidateQueries({ queryKey: [`/api/guilds/${guild}/audit`] });
-      setToast("Saved. The next member who joins gets it.");
+      setToast(spaTranslate("Saved. The next member who joins gets it."));
     } catch (error) {
       setErrors(
         error instanceof ApiError
           ? error.errors.map((e) => e.message).concat(error.errors.length ? [] : [error.message])
-          : ["The design could not be saved."],
+          : [spaTranslate("The design could not be saved.")],
       );
     } finally {
       setSaving(false);
@@ -355,7 +359,9 @@ function Editor({
 
   const upload = async (file: File) => {
     if (file.size > CARD.upload_max_bytes) {
-      setErrors([`A picture is at most ${CARD.upload_max_bytes / 1024 / 1024} MB.`]);
+      setErrors([
+        spaTranslate("A picture is at most {arg1} MB.", { arg1: CARD.upload_max_bytes / 1024 / 1024 }),
+      ]);
       return;
     }
     setUploading(true);
@@ -366,7 +372,9 @@ function Editor({
       );
       setDesign({ ...design, background: { type: "upload", id: made.id } });
     } catch (error) {
-      setErrors([error instanceof ApiError ? error.message : "The picture could not be uploaded."]);
+      setErrors([
+        error instanceof ApiError ? error.message : spaTranslate("The picture could not be uploaded."),
+      ]);
     } finally {
       setUploading(false);
     }
@@ -382,9 +390,9 @@ function Editor({
         channel_id: testChannel,
       });
       const name = discord.data?.channels.find((c) => c.id === testChannel)?.name;
-      setToast(`Test posted${name ? ` in #${name}` : ""}.`);
+      setToast(spaTranslate("Test posted{arg1}.", { arg1: name ? ` in #${name}` : "" }));
     } catch (error) {
-      setErrors(error instanceof ApiError ? [error.message] : ["The test could not be sent."]);
+      setErrors(error instanceof ApiError ? [error.message] : [spaTranslate("The test could not be sent.")]);
     } finally {
       setTesting(false);
     }
@@ -402,12 +410,14 @@ function Editor({
   return (
     <div className="settings-page card-editor">
       <PageHead
-        title="WELCOME IMAGE"
-        lead="Design the picture new members get, and the one that says goodbye. Drag things around on the canvas; Try it, further down, shows the picture the bot really draws."
+        title={spaTranslate("WELCOME IMAGE")}
+        lead={spaTranslate(
+          "Design the picture new members get, and the one that says goodbye. Drag things around on the canvas; Try it, further down, shows the picture the bot really draws.",
+        )}
       />
 
-      <div className="card-toolbar" role="toolbar" aria-label="Editor">
-        <div className="segmented" role="tablist" aria-label="Which image">
+      <div className="card-toolbar" role="toolbar" aria-label={spaTranslate("Editor")}>
+        <div className="segmented" role="tablist" aria-label={spaTranslate("Which image")}>
           {KINDS.map((k) => (
             <button
               key={k.kind}
@@ -420,29 +430,32 @@ function Editor({
                 setSelected(null);
               }}
             >
-              {k.label}
-              {!same(draft[k.kind], saved[k.kind]) && <span className="dot" aria-label="unsaved" />}
+              {spaTranslate(k.label)}
+              {!same(draft[k.kind], saved[k.kind]) && (
+                <span className="dot" aria-label={spaTranslate("unsaved")} />
+              )}
             </button>
           ))}
         </div>
         <label className="card-send">
-          <span className="pixel-label">SEND</span>
+          <span className="pixel-label">{spaTranslate("SEND")}</span>
           <select
             className="pixel-input pixel-select"
-            aria-label="How the image is sent"
+            aria-label={spaTranslate("How the image is sent")}
             value={side.delivery}
             onChange={(event) => setSide({ delivery: event.target.value as Delivery })}
           >
             {cards[kind].deliveries.map((d) => (
               <option key={d} value={d}>
-                {DELIVERY_LABELS[d]}
+                {spaTranslate(DELIVERY_LABELS[d])}
               </option>
             ))}
           </select>
         </label>
         <span className="card-toolbar-gap" />
         <PixelButton variant="secondary" className="button-small" onClick={() => setDialog("templates")}>
-          Templates
+          {" "}
+          {spaTranslate("Templates")}{" "}
         </PixelButton>
         <PixelButton
           variant="ghost"
@@ -458,22 +471,26 @@ function Editor({
           className="button-small"
           onClick={() => setHist(redo)}
           disabled={hist.future.length === 0}
-          aria-label="Redo"
+          aria-label={spaTranslate("Redo")}
         >
-          ↷ Redo
+          {" "}
+          {spaTranslate("↷ Redo")}{" "}
         </PixelButton>
       </div>
 
       {imageOff && (
         <p className="notice">
-          This {kind} goes out as text only, so the image is not sent. Pick another way to send it to use the
-          design.
+          {" "}
+          {spaTranslate("This")} {kind}{" "}
+          {spaTranslate(
+            "goes out as text only, so the image is not sent. Pick another way to send it to use the design.",
+          )}{" "}
         </p>
       )}
 
       <div className={`card-workspace ${simple ? "is-simple" : ""}`}>
         <div className="card-center">
-          <div className="card-zoom" role="group" aria-label="Zoom">
+          <div className="card-zoom" role="group" aria-label={spaTranslate("Zoom")}>
             <PixelButton
               variant="ghost"
               className="button-small"
@@ -497,7 +514,8 @@ function Editor({
               onClick={() => setZoom("fit")}
               aria-pressed={zoom === "fit"}
             >
-              Fit
+              {" "}
+              {spaTranslate("Fit")}{" "}
             </PixelButton>
             <label className="card-snap">
               <input
@@ -505,7 +523,7 @@ function Editor({
                 checked={snapping}
                 onChange={(event) => setSnapping(event.target.checked)}
               />{" "}
-              Snap
+              {spaTranslate("Snap")}{" "}
             </label>
             <span className="muted fine card-size">
               {design.width}×{design.height}
@@ -530,7 +548,7 @@ function Editor({
         <div className="card-aside">
           <div className="card-layers">
             <Panel
-              title="LAYERS"
+              title={spaTranslate("LAYERS")}
               aside={
                 <span className="counter">
                   {design.layers.length}/{CARD.max_layers}
@@ -539,27 +557,31 @@ function Editor({
             >
               <div className="layer-add">
                 <PixelButton className="button-small" onClick={() => addLayer(newLayer(design, "text"))}>
-                  + Text
+                  {" "}
+                  {spaTranslate("+ Text")}{" "}
                 </PixelButton>
                 <PixelButton className="button-small" onClick={() => addLayer(newLayer(design, "avatar"))}>
-                  + Avatar
+                  {" "}
+                  {spaTranslate("+ Avatar")}{" "}
                 </PixelButton>
                 <PixelButton className="button-small" onClick={() => setDialog("sticker")}>
-                  + Sticker
+                  {" "}
+                  {spaTranslate("+ Sticker")}{" "}
                 </PixelButton>
                 <PixelButton className="button-small" onClick={() => addLayer(newLayer(design, "shape"))}>
-                  + Shape
+                  {" "}
+                  {spaTranslate("+ Shape")}{" "}
                 </PixelButton>
               </div>
               <div className={`cost-meter ${share > 100 ? "is-over" : share >= 80 ? "is-high" : ""}`}>
                 <span className="cost-label">
-                  <span className="pixel-label">DRAW COST</span>
+                  <span className="pixel-label">{spaTranslate("DRAW COST")}</span>
                   <span>{share}%</span>
                 </span>
                 <span
                   className="cost-bar"
                   role="meter"
-                  aria-label="How much of a card's drawing allowance the visible layers use"
+                  aria-label={spaTranslate("How much of a card's drawing allowance the visible layers use")}
                   aria-valuemin={0}
                   aria-valuemax={100}
                   aria-valuenow={Math.min(100, share)}
@@ -567,7 +589,7 @@ function Editor({
                   <span style={{ width: `${Math.min(100, share)}%` }} />
                 </span>
               </div>
-              <ol className="layer-list" aria-label="Layers, top first">
+              <ol className="layer-list" aria-label={spaTranslate("Layers, top first")}>
                 {ordered.map((l) => {
                   const index = design.layers.indexOf(l);
                   return (
@@ -578,7 +600,11 @@ function Editor({
                       <button
                         type="button"
                         className="layer-icon"
-                        aria-label={l.hidden ? `Show ${layerLabel(l)}` : `Hide ${layerLabel(l)}`}
+                        aria-label={
+                          l.hidden
+                            ? spaTranslate("Show {arg1}", { arg1: layerLabel(l) })
+                            : spaTranslate("Hide {arg1}", { arg1: layerLabel(l) })
+                        }
                         aria-pressed={!l.hidden}
                         onClick={() => setLayer({ ...l, hidden: !l.hidden })}
                       >
@@ -587,7 +613,11 @@ function Editor({
                       <button
                         type="button"
                         className="layer-icon layer-lock"
-                        aria-label={l.locked ? `Unlock ${layerLabel(l)}` : `Lock ${layerLabel(l)}`}
+                        aria-label={
+                          l.locked
+                            ? spaTranslate("Unlock {arg1}", { arg1: layerLabel(l) })
+                            : spaTranslate("Lock {arg1}", { arg1: layerLabel(l) })
+                        }
                         aria-pressed={l.locked}
                         onClick={() => setLayer({ ...l, locked: !l.locked })}
                       >
@@ -608,7 +638,7 @@ function Editor({
                         <button
                           type="button"
                           className="layer-icon"
-                          aria-label={`Move ${layerLabel(l)} up`}
+                          aria-label={spaTranslate("Move {arg1} up", { arg1: layerLabel(l) })}
                           disabled={index === design.layers.length - 1}
                           onClick={() => restack(l.id, 1)}
                         >
@@ -617,7 +647,7 @@ function Editor({
                         <button
                           type="button"
                           className="layer-icon"
-                          aria-label={`Move ${layerLabel(l)} down`}
+                          aria-label={spaTranslate("Move {arg1} down", { arg1: layerLabel(l) })}
                           disabled={index === 0}
                           onClick={() => restack(l.id, -1)}
                         >
@@ -629,7 +659,8 @@ function Editor({
                 })}
                 {design.layers.length === 0 && (
                   <li className="empty-row muted">
-                    Nothing on the canvas yet. Add a layer or pick a template.
+                    {" "}
+                    {spaTranslate("Nothing on the canvas yet. Add a layer or pick a template.")}{" "}
                   </li>
                 )}
               </ol>
@@ -646,7 +677,7 @@ function Editor({
             </Panel>
           </div>
           <div className="card-props">
-            <Panel title="PROPERTIES">
+            <Panel title={spaTranslate("PROPERTIES")}>
               {layer ? (
                 <LayerProperties
                   layer={layer}
@@ -672,7 +703,7 @@ function Editor({
       </div>
 
       {(errors.length > 0 || local.length > 0) && (
-        <Panel title="FIX THIS FIRST" tone="accent">
+        <Panel title={spaTranslate("FIX THIS FIRST")} tone="accent">
           <ul className="card-errors" role="alert">
             {[...local, ...errors].map((e) => (
               <li key={e}>{e}</li>
@@ -682,7 +713,7 @@ function Editor({
       )}
 
       <Panel
-        title="TRY IT"
+        title={spaTranslate("TRY IT")}
         aside={
           <PixelButton
             variant="secondary"
@@ -691,15 +722,17 @@ function Editor({
             aria-controls="card-bot-preview"
             onClick={() => setShowBot((on) => !on)}
           >
-            {showBot ? "Hide the bot's picture" : "Show the bot's picture"}
+            {showBot ? spaTranslate("Hide the bot's picture") : spaTranslate("Show the bot's picture")}
           </PixelButton>
         }
       >
         <div className="card-test">
           <Field
-            label="Post a test in"
+            label={spaTranslate("Post a test in")}
             htmlFor="card-test-channel"
-            hint="With you as the member, pinging nobody. A direct message is tried out here too."
+            hint={spaTranslate(
+              "With you as the member, pinging nobody. A direct message is tried out here too.",
+            )}
           >
             <ChannelPicker
               id="card-test-channel"
@@ -709,12 +742,12 @@ function Editor({
             />
           </Field>
           <PixelButton onClick={sendTest} disabled={!testChannel || testing || local.length > 0}>
-            {testing ? "Sending…" : "Send test"}
+            {testing ? spaTranslate("Sending…") : spaTranslate("Send test")}
           </PixelButton>
         </div>
         {showBot && (
           <div className="card-bot-preview" id="card-bot-preview">
-            <h3 className="pixel-label">WHAT THE BOT POSTS</h3>
+            <h3 className="pixel-label">{spaTranslate("WHAT THE BOT POSTS")}</h3>
             <PreviewFrame
               path={`/api/guilds/${guild}/preview/card`}
               body={local.length === 0 ? { design } : null}
@@ -724,17 +757,23 @@ function Editor({
               delay={1500}
             />
             <p className="muted fine">
-              Drawn by the bot with you as the member, from the design above, at most twenty times a minute
-              for the whole server.{" "}
-              {side.custom ? "" : "This is the classic card from /config welcome-card until you change it."}
+              {" "}
+              {spaTranslate(
+                "Drawn by the bot with you as the member, from the design above, at most twenty times a minute for the whole server.",
+              )}{" "}
+              {side.custom
+                ? ""
+                : spaTranslate("This is the classic card from /config welcome-card until you change it.")}
             </p>
           </div>
         )}
       </Panel>
 
       {dialog === "templates" && (
-        <Dialog title="TEMPLATES" onClose={() => setDialog(null)}>
-          <p className="muted">Start from one of these; your current design stays one undo away.</p>
+        <Dialog title={spaTranslate("TEMPLATES")} onClose={() => setDialog(null)}>
+          <p className="muted">
+            {spaTranslate("Start from one of these; your current design stays one undo away.")}
+          </p>
           <div className="template-grid">
             {cards.templates.map((t) => (
               <button
@@ -784,7 +823,7 @@ function Editor({
         count={changed}
         saving={saving}
         blocked={local.length > 0}
-        error={local.length > 0 ? "Fix the marked layers first" : null}
+        error={local.length > 0 ? spaTranslate("Fix the marked layers first") : null}
         onSave={save}
         onReset={reset}
       />

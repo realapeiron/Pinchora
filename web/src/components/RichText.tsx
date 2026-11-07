@@ -1,6 +1,7 @@
 import { Fragment, type ReactNode } from "react";
 
 import { richParts } from "../lib/text";
+import { translate } from "../i18n";
 
 /**
  * The little Discord markdown the bot's sentences and messages use: **bold**, *italic* and `code`, and
@@ -8,7 +9,7 @@ import { richParts } from "../lib/text";
  * written (React escapes it).
  */
 export function RichText({ text }: { text: string }) {
-  return <>{render(text)}</>;
+  return <>{render(translate(text))}</>;
 }
 
 function render(text: string): ReactNode[] {

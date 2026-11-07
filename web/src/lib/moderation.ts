@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 // Pure helpers of the moderation pages: what a staff log line says, and what a draft of the log or
 // moderation settings changes.
 
@@ -9,6 +10,7 @@ import type {
   ModerationSettings,
   StaffEntry,
 } from "./api";
+import { translate } from "../i18n";
 
 /** What a staff action did, after the actor's name. */
 const DID: Record<string, string> = {
@@ -86,12 +88,14 @@ export const SOURCES: Record<StaffEntry["source"], string> = {
 /** "banned Mia", "changed the channel lobby", "changed the server settings". */
 export function staffLine(entry: StaffEntry): string {
   if (entry.source === "web" && !DID[entry.action]) {
-    const changed = CHANGED[entry.action] ?? `changed the settings (${entry.action})`;
+    const changed = translate(
+      CHANGED[entry.action] ?? spaTranslate("changed the settings ({arg1})", { arg1: entry.action }),
+    );
     return changed.endsWith(":") && entry.target_name
       ? `${changed} ${entry.target_name}`
       : changed.replace(/:$/, "");
   }
-  const did = DID[entry.action] ?? entry.action.replaceAll("_", " ");
+  const did = translate(DID[entry.action] ?? entry.action.replaceAll("_", " "));
   return entry.target_name ? `${did} ${entry.target_name}` : did;
 }
 

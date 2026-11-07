@@ -45,7 +45,7 @@ import "../styles/stats.css";
 /** 7 / 30 / 90 days: one row above everything it scopes. */
 export function PeriodTabs({ days, onChange }: { days: Days; onChange: (days: Days) => void }) {
   return (
-    <div className="period-tabs" role="group" aria-label="Period">
+    <div className="period-tabs" role="group" aria-label={spaTranslate("Period")}>
       {PERIODS.map((d) => (
         <button
           key={d}
@@ -69,11 +69,13 @@ export function Stats() {
   return (
     <div className="settings-page stats-page">
       <PageHead
-        title="STATS"
-        lead="What happens in your server, counted without reading anyone's messages. Days and hours are in UTC."
+        title={spaTranslate("STATS")}
+        lead={spaTranslate(
+          "What happens in your server, counted without reading anyone's messages. Days and hours are in UTC.",
+        )}
         action={<PeriodTabs days={days} onChange={setDays} />}
       />
-      {stats.isPending && <Loading label="Counting" />}
+      {stats.isPending && <Loading label={spaTranslate("Counting")} />}
       {stats.isError && <Problem error={stats.error} />}
       {stats.data && (
         <div
@@ -96,14 +98,16 @@ function Notes({ guild, stats }: { guild: string; stats: GuildStats }) {
       {!stats.module_on && (
         <p className="notice" role="note">
           <strong>{spaTranslate("Stats")}</strong> {spaTranslate("is switched off in")}{" "}
-          <Link to={`/g/${guild}/modules`}>{spaTranslate("Modules")}</Link>: nothing new is counted and
-          counter channels keep their last number.
+          <Link to={`/g/${guild}/modules`}>{spaTranslate("Modules")}</Link>
+          {spaTranslate(": nothing new is counted and counter channels keep their last number.")}{" "}
         </p>
       )}
       {!stats.voice_counted && (
         <p className="notice" role="note">
-          Voice time is counted where voice XP is on. Switch it on in{" "}
-          <Link to={`/g/${guild}/leveling`}>{spaTranslate("Leveling")}</Link> to see it here.
+          {" "}
+          {spaTranslate("Voice time is counted where voice XP is on. Switch it on in")}{" "}
+          <Link to={`/g/${guild}/leveling`}>{spaTranslate("Leveling")}</Link>{" "}
+          {spaTranslate("to see it here.")}{" "}
         </p>
       )}
     </>
@@ -135,50 +139,56 @@ export function Activity({ stats, showMembers = true }: { stats: PeriodStats; sh
             t.active_members === null
               ? undefined
               : t.active_members === 0
-                ? "Nobody took part yet"
+                ? spaTranslate("Nobody took part yet")
                 : `${thousands(t.active_members)} members took part`
           }
         />
         <StatTile
-          label="VOICE TIME"
+          label={spaTranslate("VOICE TIME")}
           value={minutes(t.voice_minutes)}
           delta={change(t.voice_minutes, p?.voice_minutes)}
           period={stats.days}
         />
         <StatTile
-          label="JOINS"
+          label={spaTranslate("JOINS")}
           value={thousands(t.joins)}
           delta={change(t.joins, p?.joins)}
           period={stats.days}
         />
         <StatTile
-          label="LEAVES"
+          label={spaTranslate("LEAVES")}
           value={thousands(t.leaves)}
           delta={change(t.leaves, p?.leaves)}
           upIsGood={false}
           period={stats.days}
-          note={`Net ${net > 0 ? "+" : ""}${thousands(net)} members`}
+          note={spaTranslate("Net {arg1}{arg2} members", { arg1: net > 0 ? "+" : "", arg2: thousands(net) })}
         />
       </div>
 
-      <Panel title="MESSAGES PER DAY">
+      <Panel title={spaTranslate("MESSAGES PER DAY")}>
         <div className="chart-room">
           <DailyColumns days={stats.daily} value={(d) => d.messages} label={spaTranslate("messages")} />
         </div>
         <NumbersTable
-          caption="Each day's numbers"
-          columns={["Day (UTC)", "Messages", "Voice minutes", "Joins", "Leaves"]}
+          caption={spaTranslate("Each day's numbers")}
+          columns={[
+            spaTranslate("Day (UTC)"),
+            spaTranslate("Messages"),
+            spaTranslate("Voice minutes"),
+            spaTranslate("Joins"),
+            spaTranslate("Leaves"),
+          ]}
           rows={rows}
         />
       </Panel>
 
       <div className="stats-grid-2">
-        <Panel title="JOINS AND LEAVES">
+        <Panel title={spaTranslate("JOINS AND LEAVES")}>
           <div className="chart-room">
             <JoinsLeaves days={stats.daily} />
           </div>
         </Panel>
-        <Panel title="VOICE TIME PER DAY">
+        <Panel title={spaTranslate("VOICE TIME PER DAY")}>
           <div className="chart-room">
             <DailyColumns
               days={stats.daily}
@@ -191,33 +201,40 @@ export function Activity({ stats, showMembers = true }: { stats: PeriodStats; sh
         </Panel>
       </div>
 
-      <Panel title="BUSIEST HOURS (UTC)">
+      <Panel title={spaTranslate("BUSIEST HOURS (UTC)")}>
         <Heatmap grid={stats.heatmap} />
         <NumbersTable
-          caption="Messages by weekday and hour, UTC"
-          columns={["Day", ...Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, "0")}h`)]}
-          rows={stats.heatmap.map((hours, d) => [WEEKDAYS[d]!, ...hours])}
+          caption={spaTranslate("Messages by weekday and hour, UTC")}
+          columns={[
+            spaTranslate("Day"),
+            ...Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, "0")}h`),
+          ]}
+          rows={stats.heatmap.map((hours, d) => [spaTranslate(WEEKDAYS[d]!), ...hours])}
         />
       </Panel>
 
       <div className={showMembers && members ? "stats-grid-2" : undefined}>
-        <Panel title="TOP CHANNELS">
+        <Panel title={spaTranslate("TOP CHANNELS")}>
           <RankBars
             label={spaTranslate("Top channels")}
-            empty="Nobody has written anywhere yet."
+            empty={spaTranslate("Nobody has written anywhere yet.")}
             rows={stats.top_channels.map((c) => ({
               id: c.id ?? "other",
-              name: c.id ? (c.name ? `#${c.name}` : "A thread or a deleted channel") : "Other",
+              name: c.id
+                ? c.name
+                  ? `#${c.name}`
+                  : spaTranslate("A thread or a deleted channel")
+                : spaTranslate("Other"),
               value: c.messages,
               shown: `${thousands(c.messages)} msgs`,
             }))}
           />
         </Panel>
         {showMembers && members && (
-          <Panel title="TOP MEMBERS">
+          <Panel title={spaTranslate("TOP MEMBERS")}>
             <RankBars
               label={spaTranslate("Top members")}
-              empty="Nobody has written yet. Members who hide from leaderboards are left out."
+              empty={spaTranslate("Nobody has written yet. Members who hide from leaderboards are left out.")}
               rows={members.map((m) => ({
                 id: m.id,
                 name: m.name ?? "Unknown member",
@@ -261,9 +278,9 @@ function CounterChannels({ guild }: { guild: string }) {
   const full = counters.length >= max && !existing;
   const templateProblem =
     template.trim() && !template.includes("{count}")
-      ? "Put {count} where the number goes."
+      ? spaTranslate("Put {count} where the number goes.")
       : template.length > (list?.template_max ?? 80)
-        ? `Keep it to ${list?.template_max ?? 80} characters.`
+        ? spaTranslate("Keep it to {arg1} characters.", { arg1: list?.template_max ?? 80 })
         : null;
   const refused = add.error instanceof ApiError ? add.error : null;
   const fieldError = (field: string) => refused?.errors.find((e) => e.field === field)?.message ?? null;
@@ -277,7 +294,8 @@ function CounterChannels({ guild }: { guild: string }) {
         setPreview({
           name: null,
           value: null,
-          problem: error instanceof Error ? error.message : "The preview could not be worked out.",
+          problem:
+            error instanceof Error ? error.message : spaTranslate("The preview could not be worked out."),
         }),
       )
       .finally(() => setPreviewing(false));
@@ -293,21 +311,25 @@ function CounterChannels({ guild }: { guild: string }) {
 
   return (
     <Panel
-      title="COUNTER CHANNELS"
+      title={spaTranslate("COUNTER CHANNELS")}
       aside={<span className="pixel-label muted">{`${counters.length}/${max} USED`}</span>}
     >
       <p className="muted panel-lead">
-        A channel whose name shows a live number, like <strong>Members: 1,234</strong>. Pinchora renames it
-        when the number changes, at most once every 10 minutes. A locked voice channel works best. Same as{" "}
-        <code>/counters</code> in Discord.
+        {" "}
+        {spaTranslate("A channel whose name shows a live number, like")}{" "}
+        <strong>{spaTranslate("Members: 1,234")}</strong>
+        {spaTranslate(
+          ". Pinchora renames it when the number changes, at most once every 10 minutes. A locked voice channel works best. Same as",
+        )}{" "}
+        <code>/counters</code> {spaTranslate("in Discord.")}{" "}
       </p>
-      {query.isPending && <Loading label="Reading the counters" />}
+      {query.isPending && <Loading label={spaTranslate("Reading the counters")} />}
       {query.isError && <Problem error={query.error} />}
       {list &&
         (counters.length === 0 ? (
-          <p className="empty-row muted">No counter channels yet.</p>
+          <p className="empty-row muted">{spaTranslate("No counter channels yet.")}</p>
         ) : (
-          <ul className="counter-list" aria-label="Counter channels">
+          <ul className="counter-list" aria-label={spaTranslate("Counter channels")}>
             {counters.map((c) => (
               <li key={c.channel_id} className="counter-row">
                 <div>
@@ -320,7 +342,11 @@ function CounterChannels({ guild }: { guild: string }) {
                   <p className="counter-meta muted">
                     <span>{channelName(discord.data, c)}</span>
                     <span>{KIND_LABEL(list, c.kind)}</span>
-                    <span>{c.name ? `Renamed ${relative(c.renamed_at)}` : "Not renamed yet"}</span>
+                    <span>
+                      {c.name
+                        ? spaTranslate("Renamed {arg1}", { arg1: relative(c.renamed_at) })
+                        : spaTranslate("Not renamed yet")}
+                    </span>
                   </p>
                 </div>
                 <div className="add-actions">
@@ -330,11 +356,13 @@ function CounterChannels({ guild }: { guild: string }) {
                   <PixelButton
                     variant="ghost"
                     className="button-small"
-                    aria-label={`Stop counting in ${channelName(discord.data, c)}`}
+                    aria-label={spaTranslate("Stop counting in {arg1}", {
+                      arg1: channelName(discord.data, c),
+                    })}
                     disabled={remove.isPending}
                     onClick={() =>
                       remove.mutate(c.channel_id, {
-                        onSuccess: () => setToast("Removed. The channel keeps its last name."),
+                        onSuccess: () => setToast(spaTranslate("Removed. The channel keeps its last name.")),
                       })
                     }
                   >
@@ -366,7 +394,7 @@ function CounterChannels({ guild }: { guild: string }) {
             invalid={!!fieldError("channel_id")}
           />
         </Field>
-        <Field label="Counts" htmlFor="counter-kind" error={fieldError("kind")}>
+        <Field label={spaTranslate("Counts")} htmlFor="counter-kind" error={fieldError("kind")}>
           <select
             id="counter-kind"
             className="pixel-input pixel-select"
@@ -378,7 +406,7 @@ function CounterChannels({ guild }: { guild: string }) {
           >
             {(list?.kinds ?? []).map((k) => (
               <option key={k.key} value={k.key}>
-                {k.label}
+                {spaTranslate(k.label)}
               </option>
             ))}
           </select>
@@ -395,8 +423,10 @@ function CounterChannels({ guild }: { guild: string }) {
             error={templateProblem ?? fieldError("template")}
             hint={
               <>
-                Leave it empty for <strong>{chosen?.template ?? "Members: {count}"}</strong>. Write{" "}
-                <code>{"{count}"}</code> where the number goes.
+                {" "}
+                {spaTranslate("Leave it empty for")} <strong>{chosen?.template ?? "Members: {count}"}</strong>
+                {spaTranslate(". Write")} <code>{"{count}"}</code>{" "}
+                {spaTranslate("where the number goes.")}{" "}
               </>
             }
           >
@@ -422,7 +452,7 @@ function CounterChannels({ guild }: { guild: string }) {
           disabled={!!templateProblem || previewing || (chosen?.needs_role && !role)}
           onClick={runPreview}
         >
-          {previewing ? "Asking Discord…" : "Preview name"}
+          {previewing ? spaTranslate("Asking Discord…") : spaTranslate("Preview name")}
         </PixelButton>
         <PixelButton
           disabled={!channel || full || !!templateProblem || add.isPending || (chosen?.needs_role && !role)}
@@ -432,7 +462,9 @@ function CounterChannels({ guild }: { guild: string }) {
               {
                 onSuccess: () => {
                   setToast(
-                    existing ? "Counter updated." : "Counter added. The channel is renamed in a moment.",
+                    existing
+                      ? spaTranslate("Counter updated.")
+                      : spaTranslate("Counter added. The channel is renamed in a moment."),
                   );
                   setChannel(null);
                   setTemplate("");
@@ -442,13 +474,13 @@ function CounterChannels({ guild }: { guild: string }) {
             )
           }
         >
-          {existing ? "Update counter" : "Add counter"}
+          {existing ? spaTranslate("Update counter") : spaTranslate("Add counter")}
         </PixelButton>
         {preview && (
           <p role="status">
             {preview.name && (
               <>
-                <span className="muted">It would read </span>
+                <span className="muted">{spaTranslate("It would read")} </span>
                 <span className="counter-preview-name">{preview.name}</span>
               </>
             )}
@@ -460,7 +492,11 @@ function CounterChannels({ guild }: { guild: string }) {
             )}
           </p>
         )}
-        {full && <p className="muted">All {max} counters are in use: remove one to add another.</p>}
+        {full && (
+          <p className="muted">
+            {spaTranslate("All")} {max} {spaTranslate("counters are in use: remove one to add another.")}
+          </p>
+        )}
       </div>
       {refused && !refused.field && (
         <p className="field-error" role="alert">
@@ -476,7 +512,7 @@ function CounterChannels({ guild }: { guild: string }) {
 function relative(at: string | null): string {
   if (!at) return "never";
   const seconds = Math.max(0, (Date.now() - Date.parse(at)) / 1000);
-  if (seconds < 60) return "just now";
+  if (seconds < 60) return spaTranslate("just now");
   if (seconds < 3600) return `${Math.floor(seconds / 60)} min ago`;
   if (seconds < 86_400) return `${Math.floor(seconds / 3600)} h ago`;
   return `${Math.floor(seconds / 86_400)} days ago`;
@@ -491,23 +527,29 @@ function Sharing({ guild, days, isPublic }: { guild: string; days: Days; isPubli
   return (
     <Panel title={spaTranslate("SHARE")}>
       <SwitchRow
-        title="Public stats page"
+        title={spaTranslate("Public stats page")}
         control={
           <PixelToggle
-            label="Public stats page"
+            label={spaTranslate("Public stats page")}
             checked={isPublic}
             disabled={setPublic.isPending}
             onChange={(on) =>
               setPublic.mutate(on, {
                 onSuccess: () =>
-                  setToast(on ? "Anyone with the link can see it now." : "The page is private again."),
+                  setToast(
+                    on
+                      ? spaTranslate("Anyone with the link can see it now.")
+                      : spaTranslate("The page is private again."),
+                  ),
               })
             }
           />
         }
       >
-        Anyone with the link sees the last 30 days: the charts, the busiest hours and channels. No member is
-        named.
+        {" "}
+        {spaTranslate(
+          "Anyone with the link sees the last 30 days: the charts, the busiest hours and channels. No member is named.",
+        )}{" "}
       </SwitchRow>
       {setPublic.isError && (
         <p className="field-error" role="alert">
@@ -517,18 +559,22 @@ function Sharing({ guild, days, isPublic }: { guild: string; days: Days; isPubli
       <div className="panel-foot">
         {isPublic && (
           <PixelLink href={link} variant="ghost" target="_blank" rel="noreferrer">
-            Open the public page
+            {" "}
+            {spaTranslate("Open the public page")}{" "}
           </PixelLink>
         )}
         <PixelButton variant="secondary" onClick={() => setCard(Date.now())}>
-          {card ? "Draw it again" : "Preview the /stats card"}
+          {card ? spaTranslate("Draw it again") : spaTranslate("Preview the /stats card")}
         </PixelButton>
       </div>
       {card && (
         <figure className="card-preview">
           <img
             src={`/api/guilds/${guild}/stats/card?days=${days}&v=${card}`}
-            alt={`The /stats server card for the last ${days} days, as Pinchora draws it in Discord`}
+            alt={spaTranslate(
+              "The /stats server card for the last {arg1} days, as Pinchora draws it in Discord",
+              { arg1: days },
+            )}
             width={900}
             height={1258}
             loading="lazy"

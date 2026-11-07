@@ -1,4 +1,4 @@
-import { translate as spaTranslate } from "../i18n";
+import { locale, translate as spaTranslate } from "../i18n";
 import { useCallback, useId, useState } from "react";
 import { useOutletContext } from "react-router";
 
@@ -41,10 +41,12 @@ export function Modules() {
   return (
     <div className="settings-page">
       <PageHead
-        title="MODULES"
-        lead="Switch parts of Pinchora off for the whole server, or keep them to some channels. Switched-off commands answer privately that the feature is off."
+        title={spaTranslate("MODULES")}
+        lead={spaTranslate(
+          "Switch parts of Pinchora off for the whole server, or keep them to some channels. Switched-off commands answer privately that the feature is off.",
+        )}
       />
-      {query.isPending && <Loading label="Reading the modules" />}
+      {query.isPending && <Loading label={spaTranslate("Reading the modules")} />}
       {query.isError && <Problem error={query.error} />}
       {query.isSuccess && <ModulesForm guild={guild} data={query.data} />}
     </div>
@@ -74,7 +76,7 @@ function ModulesForm({ guild, data }: { guild: string; data: ModulesData }) {
     save.mutate(todo, {
       onSuccess: () => {
         setDrafts({});
-        setToast("Saved. The bot follows it from the next command or message.");
+        setToast(spaTranslate("Saved. The bot follows it from the next command or message."));
       },
     });
   };
@@ -86,7 +88,10 @@ function ModulesForm({ guild, data }: { guild: string; data: ModulesData }) {
         // A group no module belongs to yet stays off the page.
         if (items.length === 0) return null;
         return (
-          <Panel key={group.key} title={group.label.toUpperCase()}>
+          <Panel
+            key={group.key}
+            title={spaTranslate(group.label).toLocaleUpperCase(locale() === "tr" ? "tr-TR" : "en-US")}
+          >
             <ul className="module-list">
               {items.map((saved) => (
                 <ModuleRow
@@ -144,11 +149,11 @@ function ModuleRow({
     <li className={`module-row ${edited ? "is-edited" : ""}`} data-module={saved.key}>
       <div className="module-main">
         <div className="module-title">
-          <h3 className="setting-name">{saved.label}</h3>
+          <h3 className="setting-name">{spaTranslate(saved.label)}</h3>
           {/* The switch already says on or off; the badge is for what it does not say: kept to some channels. */}
           {state.tone === "gold" && <span className={`badge badge-${state.tone}`}>{state.text}</span>}
         </div>
-        <p className="muted">{saved.blurb}</p>
+        <p className="muted">{spaTranslate(saved.blurb)}</p>
         {(error || why) && (
           <p className="field-error" role="alert">
             {error ?? why}
@@ -157,7 +162,7 @@ function ModuleRow({
       </div>
       <div className="module-actions">
         {saved.server_only ? (
-          <span className="module-scope muted">Whole server</span>
+          <span className="module-scope muted">{spaTranslate("Whole server")}</span>
         ) : (
           <PixelButton
             variant="ghost"
@@ -166,11 +171,11 @@ function ModuleRow({
             aria-controls={sheet}
             onClick={() => setOpen(!open)}
           >
-            {open ? "Close" : "Channels"}
+            {open ? spaTranslate("Close") : spaTranslate("Channels")}
           </PixelButton>
         )}
         <PixelToggle
-          label={saved.label}
+          label={spaTranslate(saved.label)}
           checked={now.enabled}
           onChange={(enabled) => onChange({ ...draft, enabled })}
         />
@@ -178,7 +183,7 @@ function ModuleRow({
       {open && !saved.server_only && (
         <div className="module-sheet" id={sheet}>
           <Choice
-            name={`Where ${saved.label} works`}
+            name={spaTranslate("Where {arg1} works", { arg1: saved.label })}
             value={now.mode}
             options={MODES}
             onChange={(mode) => onChange(withMode(saved, draft, mode))}
@@ -213,7 +218,7 @@ function ChannelList({
   return (
     <div className="module-channels">
       {channels.length === 0 ? (
-        <p className="muted">No channels yet.</p>
+        <p className="muted">{spaTranslate("No channels yet.")}</p>
       ) : (
         <ul className="channel-chips" aria-label={spaTranslate("Channels")}>
           {channels.map((id) => (
@@ -222,7 +227,9 @@ function ChannelList({
               <button
                 type="button"
                 className="chip-remove"
-                aria-label={`Remove ${info?.channels.find((c) => c.id === id)?.name ?? id}`}
+                aria-label={spaTranslate("Remove {arg1}", {
+                  arg1: info?.channels.find((c) => c.id === id)?.name ?? id,
+                })}
                 onClick={() => onChange(channels.filter((c) => c !== id))}
               >
                 ×
@@ -233,12 +240,12 @@ function ChannelList({
       )}
       <div className="module-add">
         <ChannelPicker
-          label="Add a channel"
+          label={spaTranslate("Add a channel")}
           info={info}
           value={pick}
           onChange={setPick}
           any
-          none={full ? `Up to ${max} channels` : "Pick a channel or category"}
+          none={full ? `Up to ${max} channels` : spaTranslate("Pick a channel or category")}
           disabled={full}
         />
         <PixelButton
@@ -250,11 +257,14 @@ function ChannelList({
             setPick(null);
           }}
         >
-          Add
+          {" "}
+          {spaTranslate("Add")}{" "}
         </PixelButton>
       </div>
       <p className="field-hint muted">
-        A category covers the channels and threads under it. {channels.length} of {max}.
+        {" "}
+        {spaTranslate("A category covers the channels and threads under it.")} {channels.length}{" "}
+        {spaTranslate("of")} {max}.
       </p>
     </div>
   );

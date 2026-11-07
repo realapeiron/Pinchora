@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useEffect, useRef, useState } from "react";
 import { PixelButton } from "../components/PixelButton";
 import type { RoomJson } from "../iso/scene";
@@ -58,7 +59,7 @@ export default function ReefStage({
     setDrawer(true);
     requestAnimationFrame(() => drawerClose.current?.focus({ preventScroll: true }));
   };
-  const [status, setStatus] = useState("Loading your character…");
+  const [status, setStatus] = useState(spaTranslate("Loading your character…"));
   const [network, setNetwork] = useState<NetworkState>("preview");
   const controller = useRef<ReefNet | null>(null);
   const [chatNet, setChatNet] = useState<ReefNet | null>(null);
@@ -401,7 +402,7 @@ export default function ReefStage({
                 })
                 .catch(() => {
                   if (!abort.signal.aborted)
-                    setWarnings((w) => [...w, "A player's saved appearance could not load."]);
+                    setWarnings((w) => [...w, spaTranslate("A player's saved appearance could not load.")]);
                 });
             }
             const animation = remoteArt.get(remote.character);
@@ -536,7 +537,9 @@ export default function ReefStage({
       setReady(Boolean(player.tile));
       setTargets(loaded.nav.targets);
       setObjects(loaded.nav.objects);
-      setWarnings(loaded.warnings.length ? ["Some accessories could not be displayed correctly."] : []);
+      setWarnings(
+        loaded.warnings.length ? [spaTranslate("Some accessories could not be displayed correctly.")] : [],
+      );
       announce();
       loaded.ledger.markPlayable();
       setBytes(loaded.ledger.firstInteraction!);
@@ -583,7 +586,7 @@ export default function ReefStage({
       } catch {
         if (!abort.signal.aborted) {
           setStreaming(false);
-          setWarnings((w) => [...w, "Some room art could not load."]);
+          setWarnings((w) => [...w, spaTranslate("Some room art could not load.")]);
         }
       }
     })().catch((err: unknown) => {
@@ -591,8 +594,8 @@ export default function ReefStage({
         data?.dispose();
         setError(
           err instanceof Error && err.message === "character_required"
-            ? "Create your character in Discord before playing."
-            : "This room could not load. Please try again.",
+            ? spaTranslate("Create your character in Discord before playing.")
+            : spaTranslate("This room could not load. Please try again."),
         );
       }
     });

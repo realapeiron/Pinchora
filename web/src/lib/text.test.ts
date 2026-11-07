@@ -34,7 +34,7 @@ describe("text", () => {
     expect(timeAgo("2026-11-06T11:55:00Z", now)).toBe("5 min ago");
     expect(timeAgo("2026-11-06T09:00:00Z", now)).toBe("3 h ago");
     expect(timeAgo("2026-11-04T12:00:00Z", now)).toBe("2 d ago");
-    expect(timeAgo("2026-01-02T12:00:00Z", now)).toBe("2026-01-02");
+    expect(timeAgo("2026-01-02T12:00:00Z", now)).toBe("Jan 2, 2026");
   });
 
   it("describes changes", () => {
@@ -151,7 +151,7 @@ describe("text", () => {
     expect(describeChange(card, names)).toBe("saved an image design");
     expect(targetLabel(card, names)).toBe("welcome");
     expect(targetLabel({ ...card, action: "card.upload", target: "0".repeat(32) }, names)).toBeNull();
-    expect(showValue("design", { width: 1100, height: 500, layers: [1, 2, 3] })).toBe("1100×500, 3 layers");
+    expect(showValue("design", { width: 1100, height: 500, layers: [1, 2, 3] })).toBe("1,100×500, 3 layers");
     expect(showValue("design", "classic")).toBe("the classic card");
     expect(fieldLabel("card.put", "delivery")).toBe("how it is sent");
   });

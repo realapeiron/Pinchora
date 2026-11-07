@@ -76,7 +76,12 @@ export function Gallery() {
 
   return (
     <div className="gallery">
-      <div className="gallery-tabs" role="tablist" aria-label="What Pinchora draws" onKeyDown={onKey}>
+      <div
+        className="gallery-tabs"
+        role="tablist"
+        aria-label={spaTranslate("What Pinchora draws")}
+        onKeyDown={onKey}
+      >
         {TABS.map((tab, i) => (
           <button
             key={tab.id}
@@ -92,7 +97,7 @@ export function Gallery() {
             className="gallery-tab"
             onClick={() => setActive(i)}
           >
-            {tab.label}
+            {spaTranslate(tab.label)}
           </button>
         ))}
       </div>
@@ -120,15 +125,15 @@ export function Gallery() {
                 <div className="chat-body">
                   <div className="chat-head">
                     <span className="chat-name">Pinchora</span>
-                    <span className="chat-app">APP</span>
-                    <span className="chat-time">Today at 4:20 PM</span>
+                    <span className="chat-app">{spaTranslate("APP")}</span>
+                    <span className="chat-time">{spaTranslate("Today at 4:20 PM")}</span>
                   </div>
                   <img
                     className="chat-image"
                     src={shot.src}
                     width={shot.width}
                     height={shot.height}
-                    alt={altOf(tab.shot)}
+                    alt={spaTranslate(altOf(tab.shot))}
                     loading={i === 0 ? "eager" : "lazy"}
                     decoding="async"
                   />
@@ -136,10 +141,12 @@ export function Gallery() {
               </div>
             </div>
             <div className="gallery-text">
-              <h3 className="pixel-title">{tab.title}</h3>
-              <p>{tab.text}</p>
+              <h3 className="pixel-title">{spaTranslate(tab.title)}</h3>
+              <p>{spaTranslate(tab.text)}</p>
               <p className="gallery-try muted">
-                Try <code>{tab.command.startsWith("/") ? tab.command : "/config welcome"}</code>
+                {" "}
+                {spaTranslate("Try")}{" "}
+                <code>{tab.command.startsWith("/") ? tab.command : "/config welcome"}</code>
               </p>
             </div>
           </div>

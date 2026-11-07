@@ -1,6 +1,7 @@
 import "../styles/utility.css";
 
 import { createContext, useContext, useState } from "react";
+import { dateTime } from "../i18n";
 import { Link, useOutletContext } from "react-router";
 
 import { EmbedEditor } from "../components/EmbedEditor";
@@ -338,7 +339,7 @@ export function Utility() {
                   <strong>{t("NEXT RUNS")}</strong>
                   <ol>
                     {runs.map((run) => (
-                      <li key={run}>{new Date(run).toLocaleString(language)}</li>
+                      <li key={run}>{dateTime(run)}</li>
                     ))}
                   </ol>
                 </div>
@@ -416,7 +417,7 @@ function ScheduleCard({
   onToggle: () => void;
   onRemove: () => void;
 }) {
-  const { t, language } = useContext(UtilityWords);
+  const { t } = useContext(UtilityWords);
   return (
     <article className="utility-item">
       <div className="utility-item-main">
@@ -433,7 +434,7 @@ function ScheduleCard({
         <small>
           {t("{kind} · next {when} · {count} sent", {
             kind: t(item.schedule.kind),
-            when: new Date(item.next_run_at).toLocaleString(language),
+            when: dateTime(item.next_run_at),
             count: item.runs,
           })}
         </small>

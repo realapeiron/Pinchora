@@ -3,7 +3,7 @@ import { idList, words } from "./verification";
 describe("Safety settings", () => {
   it("formats counts in Turkish without changing identifier strings", () =>
     expect(
-      words({ used: "{count}/{max} · {id}" }, "tr")("used", {
+      words({ "demo.used": "{count}/{max} · {id}" }, "tr")("demo.used", {
         count: 2500,
         max: 10000,
         id: "123456789012345678",
@@ -15,7 +15,7 @@ describe("Safety settings", () => {
       "987654321098765432",
     ]));
   it("interpolates translated copy without interpreting markup", () =>
-    expect(words({ used: "{count}/{max} kullanıldı" })("used", { count: 3, max: 50 })).toBe(
+    expect(words({ "demo.used": "{count}/{max} kullanıldı" })("demo.used", { count: 3, max: 50 })).toBe(
       "3/50 kullanıldı",
     ));
 });

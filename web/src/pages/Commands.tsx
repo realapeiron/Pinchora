@@ -31,11 +31,15 @@ export function Commands() {
   return (
     <div className="settings-page">
       <PageHead
-        title="CUSTOM COMMANDS"
+        title={spaTranslate("CUSTOM COMMANDS")}
         lead={
           <>
-            Commands your members run with <code>/tag</code>: a reply, an embed, a role to give. You can also
-            write simple ones in Discord with <code>/customcommand</code>.
+            {" "}
+            {spaTranslate("Commands your members run with")} <code>/tag</code>
+            {spaTranslate(
+              ": a reply, an embed, a role to give. You can also write simple ones in Discord with",
+            )}{" "}
+            <code>/customcommand</code>.
           </>
         }
         action={
@@ -44,11 +48,12 @@ export function Commands() {
             aria-disabled={full}
             className={full ? "is-disabled" : ""}
           >
-            New command
+            {" "}
+            {spaTranslate("New command")}{" "}
           </PixelLink>
         }
       />
-      {list.isPending && <Loading label="Reading the commands" />}
+      {list.isPending && <Loading label={spaTranslate("Reading the commands")} />}
       {list.isError && <Problem error={list.error} />}
       {list.isSuccess && (
         <Panel
@@ -66,7 +71,10 @@ export function Commands() {
           )}
           {list.data.items.length === 0 ? (
             <p className="empty-row muted">
-              No custom commands yet. Make the first one: a rules reminder, a link list, an FAQ answer.
+              {" "}
+              {spaTranslate(
+                "No custom commands yet. Make the first one: a rules reminder, a link list, an FAQ answer.",
+              )}{" "}
             </p>
           ) : (
             <ul className="tag-list">
@@ -79,7 +87,8 @@ export function Commands() {
                     {command.description && <p className="muted tag-detail">{command.description}</p>}
                     <p className="tag-facts muted">
                       {spaTranslate("Used")} {command.uses} {command.uses === 1 ? "time" : "times"}
-                      {command.cooldown_secs > 0 && ` · cooldown ${cooldownLabel(command.cooldown_secs)}`}
+                      {command.cooldown_secs > 0 &&
+                        spaTranslate(" · cooldown {arg1}", { arg1: cooldownLabel(command.cooldown_secs) })}
                       {command.reply_mode === "ephemeral" && " · private answer"}
                       {command.embed && " · embed"}
                       {command.responses.length > 1 && ` · ${command.responses.length} replies`}
@@ -90,7 +99,7 @@ export function Commands() {
                   </div>
                   <div className="tag-actions">
                     <PixelToggle
-                      label={`Command ${command.name}`}
+                      label={spaTranslate("Command {arg1}", { arg1: command.name })}
                       checked={command.enabled}
                       onChange={(enabled) => toggle.mutate({ id: command.id, enabled })}
                       disabled={toggle.isPending}
@@ -105,7 +114,7 @@ export function Commands() {
                     <PixelButton
                       variant="ghost"
                       className="button-small"
-                      aria-label={`Delete ${command.name}`}
+                      aria-label={spaTranslate("Delete {arg1}", { arg1: command.name })}
                       onClick={() => setAsking(command)}
                     >
                       {spaTranslate("Delete")}
@@ -115,7 +124,11 @@ export function Commands() {
               ))}
             </ul>
           )}
-          {full && <p className="field-hint muted">A server has at most {list.data.max} custom commands.</p>}
+          {full && (
+            <p className="field-hint muted">
+              {spaTranslate("A server has at most")} {list.data.max} {spaTranslate("custom commands.")}
+            </p>
+          )}
         </Panel>
       )}
       {list.isSuccess && <TagTransfer guild={guild} kind="commands" />}
@@ -124,10 +137,14 @@ export function Commands() {
           <div className="panel panel-gold dialog" role="alertdialog" aria-labelledby="delete-title">
             <div className="panel-body">
               <h2 id="delete-title" className="pixel-title">
-                Delete /tag {asking.name}?
+                {" "}
+                {spaTranslate("Delete /tag")} {asking.name}?
               </h2>
               <p>
-                Members can't run it any more. This can't be undone, but you can export your commands first.
+                {" "}
+                {spaTranslate(
+                  "Members can't run it any more. This can't be undone, but you can export your commands first.",
+                )}{" "}
               </p>
               {remove.isError && (
                 <p className="field-error" role="alert">
@@ -149,13 +166,13 @@ export function Commands() {
                   onClick={() =>
                     remove.mutate(asking.id, {
                       onSuccess: () => {
-                        setToast(`Deleted /tag ${asking.name}.`);
+                        setToast(spaTranslate("Deleted /tag {arg1}.", { arg1: asking.name }));
                         setAsking(null);
                       },
                     })
                   }
                 >
-                  {remove.isPending ? "Deleting…" : "Delete it"}
+                  {remove.isPending ? spaTranslate("Deleting…") : "Delete it"}
                 </PixelButton>
               </div>
             </div>

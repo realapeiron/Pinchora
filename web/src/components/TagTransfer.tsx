@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useRef, useState } from "react";
 
 import { ApiError, type ImportReport } from "../lib/api";
@@ -27,7 +28,9 @@ export function TagTransfer({ guild, kind }: { guild: string; kind: TagKind }) {
       link.click();
       URL.revokeObjectURL(url);
     } catch (error) {
-      setProblem(error instanceof ApiError ? error.message : "The export did not work. Try again.");
+      setProblem(
+        error instanceof ApiError ? error.message : spaTranslate("The export did not work. Try again."),
+      );
     }
   };
 
@@ -39,12 +42,16 @@ export function TagTransfer({ guild, kind }: { guild: string; kind: TagKind }) {
     try {
       parsed = JSON.parse(await file.text());
     } catch {
-      setProblem("That file isn't JSON. Choose a file you exported from Pinchora.");
+      setProblem(spaTranslate("That file isn't JSON. Choose a file you exported from Pinchora."));
       return;
     }
     const body = parsed as { version?: unknown; items?: unknown };
     if (!body || typeof body !== "object" || !Array.isArray(body.items)) {
-      setProblem("That file doesn't hold a list of " + noun + ". Choose a file you exported from Pinchora.");
+      setProblem(
+        spaTranslate("That file doesn't hold a list of ") +
+          noun +
+          ". Choose a file you exported from Pinchora.",
+      );
       return;
     }
     importing.mutate(
@@ -61,26 +68,30 @@ export function TagTransfer({ guild, kind }: { guild: string; kind: TagKind }) {
   };
 
   return (
-    <Panel title="IMPORT AND EXPORT">
+    <Panel title={spaTranslate("IMPORT AND EXPORT")}>
       <p className="panel-lead muted">
-        Export your {noun} to a file, and import a file into this or another server. Roles and channels the
-        other server lacks are left out.
+        {" "}
+        {spaTranslate("Export your")} {noun}{" "}
+        {spaTranslate(
+          "to a file, and import a file into this or another server. Roles and channels the other server lacks are left out.",
+        )}{" "}
       </p>
       <div className="transfer-row">
         <PixelButton variant="secondary" onClick={() => void download()}>
-          Export to a file
+          {" "}
+          {spaTranslate("Export to a file")}{" "}
         </PixelButton>
         <PixelButton
           variant="secondary"
           onClick={() => input.current?.click()}
           disabled={importing.isPending}
         >
-          {importing.isPending ? "Importing…" : "Import from a file"}
+          {importing.isPending ? spaTranslate("Importing…") : spaTranslate("Import from a file")}
         </PixelButton>
         {kind === "commands" && (
           <label className="check">
-            <input type="checkbox" checked={replace} onChange={(event) => setReplace(event.target.checked)} />
-            Replace commands that have the same name
+            <input type="checkbox" checked={replace} onChange={(event) => setReplace(event.target.checked)} />{" "}
+            {spaTranslate("Replace commands that have the same name")}{" "}
           </label>
         )}
         <input
@@ -88,7 +99,7 @@ export function TagTransfer({ guild, kind }: { guild: string; kind: TagKind }) {
           type="file"
           accept="application/json,.json"
           hidden
-          aria-label={`Import ${noun} file`}
+          aria-label={spaTranslate("Import {arg1} file", { arg1: noun })}
           onChange={(event) => {
             void upload(event.target.files?.[0]);
             event.target.value = "";
@@ -115,7 +126,7 @@ function ImportResult({ report }: { report: ImportReport }) {
   return (
     <div className="import-result" role="status">
       <p>
-        <strong>{parts.length > 0 ? parts.join(", ") : "Nothing to import"}.</strong>
+        <strong>{parts.length > 0 ? parts.join(", ") : spaTranslate("Nothing to import")}.</strong>
       </p>
       <ul className="preview-notes">
         {[...report.created, ...report.replaced].map((line) => (
@@ -123,7 +134,7 @@ function ImportResult({ report }: { report: ImportReport }) {
         ))}
         {report.failed.map((f) => (
           <li key={f.index} className="import-failed">
-            {f.name ? `${f.name}: ` : `Entry ${f.index + 1}: `}
+            {f.name ? `${f.name}: ` : spaTranslate("Entry {arg1}: ", { arg1: f.index + 1 })}
             {f.message}
           </li>
         ))}

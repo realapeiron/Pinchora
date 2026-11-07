@@ -3,6 +3,8 @@ import { useSyncExternalStore } from "react";
 import { en } from "./en";
 import { tr } from "./tr";
 
+const englishForTurkish = new Map(Object.entries(tr).map(([key, value]) => [value, key]));
+
 export type Locale = "en" | "tr";
 export type MessageKey = keyof typeof en;
 type Values = Record<string, string | number>;
@@ -91,12 +93,43 @@ export function date(value: Date | string | number, choice: Locale = locale()): 
   }).format(new Date(value));
 }
 
+export function dateTime(value: Date | string | number, choice: Locale = locale()): string {
+  return new Intl.DateTimeFormat(choice === "tr" ? "tr-TR" : "en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
 export function translate(key: string, values: Values = {}, choice: Locale = locale()): string {
   const catalog: Record<string, string> = choice === "tr" ? tr : en;
   const template = catalog[key] ?? key;
   return template.replace(/\{(\w+)\}/g, (match, name: string) => {
     const value = values[name];
     return typeof value === "number" ? number(value, choice) : (value ?? match);
+  });
+}
+
+/** Prefer the active dashboard language over the guild language used by API UI catalogs. */
+export function serverText(
+  key: string,
+  strings: Record<string, string> = {},
+  values: Values = {},
+  fallbackLanguage?: string,
+): string {
+  const supplied = strings[key];
+  const catalogKey = supplied
+    ? supplied in en
+      ? supplied
+      : englishForTurkish.get(supplied)
+    : key in en
+      ? key
+      : undefined;
+  if (catalogKey) return translate(catalogKey, values);
+  return (supplied ?? key).replace(/\{(\w+)\}/g, (match, name: string) => {
+    const value = values[name];
+    return typeof value === "number"
+      ? number(value, fallbackLanguage === "tr" ? "tr" : fallbackLanguage === "en" ? "en" : locale())
+      : (value ?? match);
   });
 }
 

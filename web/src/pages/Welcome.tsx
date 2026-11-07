@@ -39,11 +39,13 @@ export function Welcome() {
   return (
     <div className="settings-page">
       <PageHead
-        title="WELCOME"
-        lead="Greet new members with a card, give them a role, and say goodbye when someone leaves."
+        title={spaTranslate("WELCOME")}
+        lead={spaTranslate(
+          "Greet new members with a card, give them a role, and say goodbye when someone leaves.",
+        )}
       />
 
-      <Panel title="WELCOME MESSAGES">
+      <Panel title={spaTranslate("WELCOME MESSAGES")}>
         <SwitchRow
           title={spaTranslate("Welcome cards")}
           control={
@@ -54,7 +56,10 @@ export function Welcome() {
             />
           }
         >
-          Post a card with the new member&apos;s avatar when someone joins. Needs the Server Members intent.
+          {" "}
+          {spaTranslate(
+            "Post a card with the new member's avatar when someone joins. Needs the Server Members intent.",
+          )}{" "}
         </SwitchRow>
         <div className="form-grid">
           <Field
@@ -63,8 +68,8 @@ export function Welcome() {
             error={errors.welcome_channel_id}
             hint={
               value.welcome_enabled && !value.welcome_channel_id
-                ? "Pick a channel, or no card is posted."
-                : "Text or announcement channels the bot can see."
+                ? spaTranslate("Pick a channel, or no card is posted.")
+                : spaTranslate("Text or announcement channels the bot can see.")
             }
           >
             <ChannelPicker
@@ -79,7 +84,7 @@ export function Welcome() {
           <MessageField
             guild={guild}
             kind="welcome"
-            label="Text above the card"
+            label={spaTranslate("Text above the card")}
             value={value.welcome_message}
             onChange={(text) => set("welcome_message", text)}
             error={errors.welcome_message}
@@ -88,23 +93,25 @@ export function Welcome() {
       </Panel>
 
       <Panel
-        title="WELCOME IMAGE"
+        title={spaTranslate("WELCOME IMAGE")}
         aside={
           <PixelLink href={`/g/${guild}/welcome-image`} className="button-small">
-            Open the editor
+            {" "}
+            {spaTranslate("Open the editor")}{" "}
           </PixelLink>
         }
       >
         <div className="designer">
           <div className="designer-controls">
             <p className="panel-lead">
-              Design the welcome and goodbye pictures on a canvas: move the avatar and the text, add pixel
-              stickers, pick a pixel-art background or upload one, start from a template, and choose how they
-              are sent.
+              {" "}
+              {spaTranslate(
+                "Design the welcome and goodbye pictures on a canvas: move the avatar and the text, add pixel stickers, pick a pixel-art background or upload one, start from a template, and choose how they are sent.",
+              )}{" "}
             </p>
             <p className="muted">
               {cards.data
-                ? `${cards.data.welcome.custom ? "Your own design" : "The classic card"}, sent ${DELIVERY_LABELS[cards.data.welcome.delivery].toLowerCase()}.`
+                ? `${cards.data.welcome.custom ? spaTranslate("Your own design") : spaTranslate("The classic card")}, ${spaTranslate(DELIVERY_LABELS[cards.data.welcome.delivery]).toLowerCase()}.`
                 : "…"}
             </p>
           </div>
@@ -113,7 +120,7 @@ export function Welcome() {
               <PreviewFrame
                 path={`/api/guilds/${guild}/preview/card`}
                 body={{ design: cards.data.welcome.design }}
-                alt="The welcome image a new member gets"
+                alt={spaTranslate("The welcome image a new member gets")}
                 width={cards.data.welcome.design.width}
                 height={cards.data.welcome.design.height}
               />
@@ -122,12 +129,12 @@ export function Welcome() {
         </div>
       </Panel>
 
-      <Panel title="JOIN ROLE">
+      <Panel title={spaTranslate("JOIN ROLE")}>
         <Field
-          label="Role new members get"
+          label={spaTranslate("Role new members get")}
           htmlFor="join-role"
           error={errors.join_role_id ?? (joinRole && !joinRole.assignable ? joinRole.why_not : null)}
-          hint="Bots are skipped. The bot's role must sit above it."
+          hint={spaTranslate("Bots are skipped. The bot's role must sit above it.")}
         >
           <RolePicker
             id="join-role"
@@ -146,7 +153,7 @@ export function Welcome() {
         )}
       </Panel>
 
-      <Panel title="GOODBYE">
+      <Panel title={spaTranslate("GOODBYE")}>
         <SwitchRow
           title={spaTranslate("Goodbye messages")}
           control={
@@ -155,7 +162,8 @@ export function Welcome() {
             </span>
           }
         >
-          Say goodbye in a channel when a member leaves. Pick a channel to turn it on.
+          {" "}
+          {spaTranslate("Say goodbye in a channel when a member leaves. Pick a channel to turn it on.")}{" "}
         </SwitchRow>
         <div className="form-grid">
           <Field label={spaTranslate("Channel")} htmlFor="goodbye-channel" error={errors.goodbye_channel_id}>
@@ -164,14 +172,14 @@ export function Welcome() {
               info={discord.data}
               value={value.goodbye_channel_id}
               onChange={(id) => set("goodbye_channel_id", id)}
-              none="Off: no goodbye messages"
+              none={spaTranslate("Off: no goodbye messages")}
               invalid={!!errors.goodbye_channel_id}
             />
           </Field>
           <MessageField
             guild={guild}
             kind="goodbye"
-            label="Goodbye text"
+            label={spaTranslate("Goodbye text")}
             value={value.goodbye_message}
             onChange={(text) => set("goodbye_message", text)}
             error={errors.goodbye_message}

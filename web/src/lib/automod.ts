@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { serverText } from "../i18n";
 import { api } from "./api";
 export interface AutoAction {
   kind: string;
@@ -60,8 +61,7 @@ export interface AutoData {
 }
 export type Words = (key: string, args?: Record<string, string | number>) => string;
 export function words(strings: Record<string, string>): Words {
-  return (key, args = {}) =>
-    (strings[key] ?? key).replace(/\{(\w+)\}/g, (match, name: string) => String(args[name] ?? match));
+  return (key, args = {}) => serverText(key, strings, args);
 }
 export function contentLocked(rule: AutoRule, content: boolean): boolean {
   return !content && !["spam", "mentions", "honeypot"].includes(rule.kind) && !rule.discord_rule_id;

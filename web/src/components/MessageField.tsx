@@ -71,7 +71,7 @@ export function MessageField({
         onChange={(event) => onChange(event.target.value === "" ? null : event.target.value)}
         aria-invalid={error ? true : undefined}
       />
-      <div className="chips" role="group" aria-label="Insert a placeholder">
+      <div className="chips" role="group" aria-label={spaTranslate("Insert a placeholder")}>
         {meta.placeholders.map((p) => (
           <button key={p} type="button" className="chip" onClick={() => insert(p)}>
             {p}
@@ -89,7 +89,7 @@ export function MessageField({
           {preview.data !== undefined ? (
             <RichText text={preview.data} />
           ) : (
-            <span className="muted">{valid ? "…" : "Fix the message to see it."}</span>
+            <span className="muted">{valid ? "…" : spaTranslate("Fix the message to see it.")}</span>
           )}
         </p>
       </div>

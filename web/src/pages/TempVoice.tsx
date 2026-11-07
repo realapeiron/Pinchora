@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useCallback, useState } from "react";
 import { Link, useOutletContext } from "react-router";
 
@@ -150,7 +151,7 @@ function Body({ guild, data }: { guild: string; data: TempVoiceData }) {
             error={refused ? refused.message : null}
             hint={
               data.creators.length >= data.limits.max_creators
-                ? tf("A server can have {count} creators. Remove one to add another.", {
+                ? tf(spaTranslate("A server can have {count} creators. Remove one to add another."), {
                     count: data.limits.max_creators,
                   })
                 : voices.length === 0 && discord.data
@@ -190,7 +191,10 @@ function Body({ guild, data }: { guild: string; data: TempVoiceData }) {
               {`${data.rooms.length}/${data.limits.max_rooms}`}
             </span>
             <span className="visually-hidden">
-              {tf("{open} of {max} rooms open", { open: data.rooms.length, max: data.limits.max_rooms })}
+              {tf(spaTranslate("{open} of {max} rooms open"), {
+                open: data.rooms.length,
+                max: data.limits.max_rooms,
+              })}
             </span>
           </span>
         }
@@ -300,21 +304,21 @@ function CreatorRow({
             className="button-small"
             aria-expanded={open}
             aria-controls={open ? `creator-${creator.channel_id}-form` : undefined}
-            aria-label={`${t(open ? "Close the settings of" : "Edit")} ${name}`}
+            aria-label={`${t(open ? spaTranslate("Close the settings of") : spaTranslate("Edit"))} ${name}`}
             onClick={onToggle}
           >
-            {t(open ? "Close" : "Edit")}
+            {t(open ? spaTranslate("Close") : spaTranslate("Edit"))}
           </PixelButton>
           {sure ? (
             <>
               <PixelButton
                 variant="secondary"
                 className="button-small"
-                aria-label={tf("Really remove {name}", { name })}
+                aria-label={tf(spaTranslate("Really remove {name}"), { name })}
                 disabled={remove.isPending}
                 onClick={() => remove.mutate(creator.channel_id, { onSettled: () => setSure(false) })}
               >
-                {t(remove.isPending ? "Removing…" : "Yes, remove")}
+                {t(remove.isPending ? spaTranslate("Removing…") : spaTranslate("Yes, remove"))}
               </PixelButton>
               <PixelButton variant="ghost" className="button-small" onClick={() => setSure(false)}>
                 {t("Keep ")}
@@ -324,7 +328,7 @@ function CreatorRow({
             <PixelButton
               variant="ghost"
               className="button-small"
-              aria-label={tf("Remove {name}", { name })}
+              aria-label={tf(spaTranslate("Remove {name}"), { name })}
               onClick={() => setSure(true)}
             >
               {t("Remove ")}
@@ -334,11 +338,11 @@ function CreatorRow({
       </div>
       <p className="creator-summary muted">
         <span className="creator-sample">{roomName(creator.name_template, SAMPLE_OWNER, 1)}</span>
-        {category ? tf(" · in {category}", { category }) : t(" · at the top of the list")}
+        {category ? tf(spaTranslate(" · in {category}"), { category }) : t(" · at the top of the list")}
         {creator.default_limit > 0
-          ? tf(" · {count} people", { count: creator.default_limit })
+          ? tf(spaTranslate(" · {count} people"), { count: creator.default_limit })
           : t(" · no limit")}
-        {creator.rooms > 0 ? tf(" · {count} open now", { count: creator.rooms }) : ""}
+        {creator.rooms > 0 ? tf(spaTranslate(" · {count} open now"), { count: creator.rooms }) : ""}
       </p>
       {remove.isError && (
         <p className="field-error" role="alert">
@@ -390,7 +394,7 @@ function CreatorForm({
   const limit = Number.isNaN(value.default_limit) ? null : value.default_limit;
   const limitError =
     limit === null || !Number.isInteger(limit) || limit < 0 || limit > limits.max_limit
-      ? tf("A limit is 0 (no limit) to {max} people.", { max: limits.max_limit })
+      ? tf(spaTranslate("A limit is 0 (no limit) to {max} people."), { max: limits.max_limit })
       : null;
   const refused = save.error instanceof ApiError ? save.error : null;
   const serverError = (field: string) => refused?.errors.find((e) => e.field === field)?.message ?? null;
@@ -415,7 +419,9 @@ function CreatorForm({
     <form
       id={`${id}-form`}
       className="creator-form"
-      aria-label={tf("Settings of {name}", { name: nameOf(info, creator.channel_id, t("this creator")) })}
+      aria-label={tf(spaTranslate("Settings of {name}"), {
+        name: nameOf(info, creator.channel_id, t("this creator")),
+      })}
       onSubmit={(event) => {
         event.preventDefault();
         submit();
@@ -591,9 +597,9 @@ function CreatorForm({
               : roomName(value.name_template, SAMPLE_OWNER, creator.rooms + 1)}
           </strong>
           <span>
-            {t(value.default_locked ? "Starts locked" : "Starts open")} ·{" "}
+            {t(value.default_locked ? spaTranslate("Starts locked") : spaTranslate("Starts open"))} ·{" "}
             {value.default_limit
-              ? tf("{count} people", { count: value.default_limit })
+              ? tf(spaTranslate("{count} people"), { count: value.default_limit })
               : t("No people limit")}
           </span>
           <span>{previewChat}</span>
@@ -607,13 +613,13 @@ function CreatorForm({
       )}
       <div className="creator-foot">
         <PixelButton variant="ghost" onClick={() => setPreview((shown) => !shown)} aria-expanded={preview}>
-          {t(preview ? "Hide preview" : "Preview room")}
+          {t(preview ? spaTranslate("Hide preview") : spaTranslate("Preview room"))}
         </PixelButton>
         <PixelButton variant="ghost" onClick={onClose}>
-          {t(changed > 0 ? "Discard" : "Close")}
+          {t(changed > 0 ? spaTranslate("Discard") : spaTranslate("Close"))}
         </PixelButton>
         <PixelButton onClick={submit} disabled={blocked || changed === 0 || save.isPending}>
-          {t(save.isPending ? "Saving…" : "Save creator")}
+          {t(save.isPending ? spaTranslate("Saving…") : spaTranslate("Save creator"))}
         </PixelButton>
       </div>
     </form>
@@ -626,7 +632,8 @@ function RoomRow({ room, info, creators }: { room: Room; info: GuildInfo | undef
   const name = nameOf(info, room.channel_id, t("Voice room"));
   const source = creators.find((c) => c.channel_id === room.source_id);
   const owner =
-    room.owner_name ?? (room.owner_id ? tf("Member {id}", { id: room.owner_id.slice(-4) }) : t("Nobody"));
+    room.owner_name ??
+    (room.owner_id ? tf(spaTranslate("Member {id}"), { id: room.owner_id.slice(-4) }) : t("Nobody"));
   const full = room.user_limit > 0 ? `${room.members}/${room.user_limit}` : String(room.members);
   return (
     <li className="room">
@@ -638,7 +645,7 @@ function RoomRow({ room, info, creators }: { room: Room; info: GuildInfo | undef
       </span>
       <span className="room-people">
         <span className="pixel-label muted">{t("INSIDE")}</span>{" "}
-        <span aria-label={tf("{count} people inside", { count: full })}>{full}</span>
+        <span aria-label={tf(spaTranslate("{count} people inside"), { count: full })}>{full}</span>
       </span>
       <span className="room-flags">
         {room.locked && <span className="badge badge-gold">{t("LOCKED")}</span>}

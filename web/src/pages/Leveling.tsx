@@ -60,11 +60,13 @@ export function Leveling() {
   return (
     <div className="settings-page">
       <PageHead
-        title="LEVELING"
-        lead="XP for chatting and voice, where level-ups go, multipliers, and the roles levels earn."
+        title={spaTranslate("LEVELING")}
+        lead={spaTranslate(
+          "XP for chatting and voice, where level-ups go, multipliers, and the roles levels earn.",
+        )}
       />
 
-      <Panel title="CHAT XP">
+      <Panel title={spaTranslate("CHAT XP")}>
         <SwitchRow
           title={spaTranslate("Leveling")}
           control={
@@ -75,31 +77,37 @@ export function Leveling() {
             />
           }
         >
-          Members earn XP for chatting, climb levels and get a level-up message. Levels already earned stay
-          when it is off.
+          {" "}
+          {spaTranslate(
+            "Members earn XP for chatting, climb levels and get a level-up message. Levels already earned stay when it is off.",
+          )}{" "}
         </SwitchRow>
-        <Field label="Where level-ups go" error={errors.levelup_mode}>
+        <Field label={spaTranslate("Where level-ups go")} error={errors.levelup_mode}>
           <Choice
             name="Where level-ups go"
             value={value.levelup_mode}
-            options={MODES}
+            options={MODES.map((mode) => ({
+              ...mode,
+              title: spaTranslate(mode.title),
+              detail: spaTranslate(mode.detail),
+            }))}
             onChange={(mode) => set("levelup_mode", mode)}
           />
         </Field>
         <div className="form-grid">
           {value.levelup_mode === "channel" && (
             <Field
-              label="Level-up channel"
+              label={spaTranslate("Level-up channel")}
               htmlFor="levelup-channel"
               error={errors.levelup_channel_id}
-              hint="Empty posts where the member chatted."
+              hint={spaTranslate("Empty posts where the member chatted.")}
             >
               <ChannelPicker
                 id="levelup-channel"
                 info={discord.data}
                 value={value.levelup_channel_id}
                 onChange={(id) => set("levelup_channel_id", id)}
-                none="Where they chatted"
+                none={spaTranslate("Where they chatted")}
                 invalid={!!errors.levelup_channel_id}
               />
             </Field>
@@ -107,7 +115,7 @@ export function Leveling() {
           <MessageField
             guild={guild}
             kind="levelup"
-            label="Level-up message"
+            label={spaTranslate("Level-up message")}
             value={value.levelup_message}
             onChange={(text) => set("levelup_message", text)}
             error={errors.levelup_message}
@@ -115,7 +123,7 @@ export function Leveling() {
         </div>
       </Panel>
 
-      <Panel title="VOICE XP">
+      <Panel title={spaTranslate("VOICE XP")}>
         <SwitchRow
           title={spaTranslate("Voice XP")}
           control={
@@ -126,11 +134,13 @@ export function Leveling() {
             />
           }
         >
-          Members in a voice channel with someone else earn XP every minute; not while muted and deafened, and
-          not in the AFK channel.
+          {" "}
+          {spaTranslate(
+            "Members in a voice channel with someone else earn XP every minute; not while muted and deafened, and not in the AFK channel.",
+          )}{" "}
         </SwitchRow>
         <Field
-          label="XP a minute"
+          label={spaTranslate("XP a minute")}
           htmlFor="voice-amount"
           error={errors.voice_xp_amount}
           hint={`${LIMITS.voice_xp[0]} to ${LIMITS.voice_xp[1]}. Chat gives 15 to 25 a minute.`}
@@ -147,7 +157,7 @@ export function Leveling() {
           />
         </Field>
         {value.voice_xp_enabled && !value.leveling_enabled && (
-          <p className="notice">Leveling is off, so nobody earns XP. Turn it on above.</p>
+          <p className="notice">{spaTranslate("Leveling is off, so nobody earns XP. Turn it on above.")}</p>
         )}
       </Panel>
 
@@ -187,7 +197,8 @@ function Multipliers({ guild, info }: { guild: string; info: GuildInfo | undefin
   const [target, setTarget] = useState<string | null>(null);
   const [multiplier, setMultiplier] = useState("2");
   const [confirmClear, setConfirmClear] = useState(false);
-  const local = multiplier === "" ? "Write a multiplier." : problem(checkMultiplier(Number(multiplier)));
+  const local =
+    multiplier === "" ? spaTranslate("Write a multiplier.") : problem(checkMultiplier(Number(multiplier)));
   const items = query.data?.items ?? [];
   const add = (value: number) =>
     target &&
@@ -198,18 +209,19 @@ function Multipliers({ guild, info }: { guild: string; info: GuildInfo | undefin
 
   return (
     <Panel
-      title="XP MULTIPLIERS"
+      title={spaTranslate("XP MULTIPLIERS")}
       aside={
         <span className="pixel-label muted">{`${items.length}/${query.data?.max ?? LIMITS.max_xp_rules}`}</span>
       }
     >
       <p className="muted panel-lead">
-        Scale the XP and points a channel or role earns: 2 doubles it, 0 earns none. A channel&apos;s
-        multiplier times the member&apos;s best role multiplier; a no-XP role always wins. Server XP only;
-        global XP stays normal.
+        {" "}
+        {spaTranslate(
+          "Scale the XP and points a channel or role earns: 2 doubles it, 0 earns none. A channel's multiplier times the member's best role multiplier; a no-XP role always wins. Server XP only; global XP stays normal.",
+        )}{" "}
       </p>
       {items.length === 0 ? (
-        <p className="empty-row muted">No multipliers yet: everything earns normal XP.</p>
+        <p className="empty-row muted">{spaTranslate("No multipliers yet: everything earns normal XP.")}</p>
       ) : (
         <ul className="list" aria-label={spaTranslate("XP multipliers")}>
           {items.map((rule) => (
@@ -222,12 +234,12 @@ function Multipliers({ guild, info }: { guild: string; info: GuildInfo | undefin
                 )}
               </span>
               <span className={`badge ${rule.multiplier === 0 ? "badge-heart" : "badge-gold"}`}>
-                {rule.multiplier === 0 ? "NO XP" : `×${rule.multiplier}`}
+                {rule.multiplier === 0 ? spaTranslate("NO XP") : `×${rule.multiplier}`}
               </span>
               <PixelButton
                 variant="ghost"
                 className="button-small"
-                aria-label="Remove multiplier"
+                aria-label={spaTranslate("Remove multiplier")}
                 disabled={write.isPending}
                 onClick={() => write.mutate({ method: "DELETE", sub: `/${rule.kind}/${rule.target_id}` })}
               >
@@ -238,7 +250,7 @@ function Multipliers({ guild, info }: { guild: string; info: GuildInfo | undefin
         </ul>
       )}
       <div className="add-row add-row-rule">
-        <Field label="For" htmlFor="rule-kind">
+        <Field label={spaTranslate("For")} htmlFor="rule-kind">
           <select
             id="rule-kind"
             className="pixel-input pixel-select"
@@ -248,18 +260,21 @@ function Multipliers({ guild, info }: { guild: string; info: GuildInfo | undefin
               setTarget(null);
             }}
           >
-            <option value="channel">A channel or category</option>
-            <option value="role">A role</option>
+            <option value="channel">{spaTranslate("A channel or category")}</option>
+            <option value="role">{spaTranslate("A role")}</option>
           </select>
         </Field>
-        <Field label={kind === "channel" ? "Channel" : "Role"} htmlFor="rule-target">
+        <Field
+          label={kind === "channel" ? spaTranslate("Channel") : spaTranslate("Role")}
+          htmlFor="rule-target"
+        >
           {kind === "channel" ? (
             <ChannelPicker id="rule-target" info={info} value={target} onChange={setTarget} any />
           ) : (
             <RolePicker id="rule-target" info={info} value={target} onChange={setTarget} everyone />
           )}
         </Field>
-        <Field label="Multiplier" htmlFor="rule-value" error={local}>
+        <Field label={spaTranslate("Multiplier")} htmlFor="rule-value" error={local}>
           <input
             id="rule-value"
             className="pixel-input input-short"
@@ -276,10 +291,12 @@ function Multipliers({ guild, info }: { guild: string; info: GuildInfo | undefin
             disabled={!target || !!local || write.isPending}
             onClick={() => add(Number(multiplier))}
           >
-            Set
+            {" "}
+            {spaTranslate("Set")}{" "}
           </PixelButton>
           <PixelButton variant="secondary" disabled={!target || write.isPending} onClick={() => add(0)}>
-            No XP
+            {" "}
+            {spaTranslate("No XP")}{" "}
           </PixelButton>
         </div>
       </div>
@@ -292,16 +309,20 @@ function Multipliers({ guild, info }: { guild: string; info: GuildInfo | undefin
         <div className="panel-foot">
           {confirmClear ? (
             <>
-              <span>Remove all {items.length} multipliers?</span>
+              <span>
+                {spaTranslate("Remove all")} {items.length} {spaTranslate("multipliers?")}
+              </span>
               <PixelButton variant="ghost" onClick={() => setConfirmClear(false)}>
-                Keep them
+                {" "}
+                {spaTranslate("Keep them")}{" "}
               </PixelButton>
               <PixelButton
                 onClick={() =>
                   write.mutate({ method: "DELETE", sub: "" }, { onSettled: () => setConfirmClear(false) })
                 }
               >
-                Remove all
+                {" "}
+                {spaTranslate("Remove all")}{" "}
               </PixelButton>
             </>
           ) : (
@@ -330,42 +351,48 @@ function LevelRoles({
   const [level, setLevel] = useState("5");
   const [role, setRole] = useState<string | null>(null);
   const picked = info?.roles.find((r) => r.id === role);
-  const local = level === "" ? "Write a level." : problem(checkLevel(Number(level)));
+  const local = level === "" ? spaTranslate("Write a level.") : problem(checkLevel(Number(level)));
   const items = query.data?.items ?? [];
   const serverField = write.error instanceof ApiError ? write.error.field : undefined;
 
   return (
     <Panel
-      title="LEVEL ROLES"
+      title={spaTranslate("LEVEL ROLES")}
       aside={
         <span className="pixel-label muted">{`${items.length}/${query.data?.max ?? LIMITS.max_level_roles}`}</span>
       }
     >
-      <Field label="When a member earns a new one">
+      <Field label={spaTranslate("When a member earns a new one")}>
         <Choice
           name="Level role mode"
           value={stack ? "stack" : "replace"}
           options={[
-            { value: "stack", title: "Stack", detail: "Keep every role earned." },
-            { value: "replace", title: "Replace", detail: "Keep only the highest one." },
+            { value: "stack", title: spaTranslate("Stack"), detail: spaTranslate("Keep every role earned.") },
+            {
+              value: "replace",
+              title: spaTranslate("Replace"),
+              detail: spaTranslate("Keep only the highest one."),
+            },
           ]}
           onChange={(mode) => setStack(mode === "stack")}
         />
       </Field>
       {items.length === 0 ? (
-        <p className="empty-row muted">No level roles yet.</p>
+        <p className="empty-row muted">{spaTranslate("No level roles yet.")}</p>
       ) : (
         <ul className="list" aria-label={spaTranslate("Level roles")}>
           {items.map((row) => (
             <li key={row.role_id} className="list-row">
-              <span className="list-level pixel-label">LV {row.level}</span>
+              <span className="list-level pixel-label">
+                {spaTranslate("LV")} {row.level}
+              </span>
               <span className="list-main">
                 <RoleTag info={info} id={row.role_id} />
               </span>
               <PixelButton
                 variant="ghost"
                 className="button-small"
-                aria-label="Remove level role"
+                aria-label={spaTranslate("Remove level role")}
                 disabled={write.isPending}
                 onClick={() => write.mutate({ method: "DELETE", sub: `/${row.role_id}` })}
               >
@@ -412,7 +439,8 @@ function LevelRoles({
               )
             }
           >
-            Add
+            {" "}
+            {spaTranslate("Add")}{" "}
           </PixelButton>
         </div>
       </div>
@@ -444,10 +472,12 @@ function SyncMembers({ guild, disabled }: { guild: string; disabled: boolean }) 
   return (
     <div className="sync">
       <div className="sync-text">
-        <h3 className="setting-name">Sync members</h3>
+        <h3 className="setting-name">{spaTranslate("Sync members")}</h3>
         <p className="muted">
-          Give members who are already past a level the roles they earned. Checks up to 1,000 members with the
-          newest XP first.
+          {" "}
+          {spaTranslate(
+            "Give members who are already past a level the roles they earned. Checks up to 1,000 members with the newest XP first.",
+          )}{" "}
         </p>
       </div>
       <PixelButton
@@ -464,7 +494,7 @@ function SyncMembers({ guild, disabled }: { guild: string; disabled: boolean }) 
           });
         }}
       >
-        {running ? "Syncing…" : "Sync members"}
+        {running ? spaTranslate("Syncing…") : spaTranslate("Sync members")}
       </PixelButton>
       {(showing || start.isPending) && (
         <div className="sync-status" aria-live="polite">
@@ -494,32 +524,38 @@ function RepRoles({ guild, info }: { guild: string; info: GuildInfo | undefined 
   const [reputation, setReputation] = useState("10");
   const [role, setRole] = useState<string | null>(null);
   const picked = info?.roles.find((r) => r.id === role);
-  const local = reputation === "" ? "Write a count." : problem(checkReputation(Number(reputation)));
+  const local =
+    reputation === "" ? spaTranslate("Write a count.") : problem(checkReputation(Number(reputation)));
   const items = query.data?.items ?? [];
   return (
     <Panel
-      title="REPUTATION ROLES"
+      title={spaTranslate("REPUTATION ROLES")}
       aside={
         <span className="pixel-label muted">{`${items.length}/${query.data?.max ?? LIMITS.max_rep_roles}`}</span>
       }
     >
       <p className="muted panel-lead">
-        Roles members get the moment their reputation reaches a count. They keep every one.
+        {" "}
+        {spaTranslate(
+          "Roles members get the moment their reputation reaches a count. They keep every one.",
+        )}{" "}
       </p>
       {items.length === 0 ? (
-        <p className="empty-row muted">No reputation roles yet.</p>
+        <p className="empty-row muted">{spaTranslate("No reputation roles yet.")}</p>
       ) : (
         <ul className="list" aria-label={spaTranslate("Reputation roles")}>
           {items.map((row) => (
             <li key={row.role_id} className="list-row">
-              <span className="list-level pixel-label">{row.reputation} REP</span>
+              <span className="list-level pixel-label">
+                {row.reputation} {spaTranslate("REP")}
+              </span>
               <span className="list-main">
                 <RoleTag info={info} id={row.role_id} />
               </span>
               <PixelButton
                 variant="ghost"
                 className="button-small"
-                aria-label="Remove reputation role"
+                aria-label={spaTranslate("Remove reputation role")}
                 disabled={write.isPending}
                 onClick={() => write.mutate({ method: "DELETE", sub: `/${row.role_id}` })}
               >
@@ -559,7 +595,8 @@ function RepRoles({ guild, info }: { guild: string; info: GuildInfo | undefined 
               )
             }
           >
-            Add
+            {" "}
+            {spaTranslate("Add")}{" "}
           </PixelButton>
         </div>
       </div>

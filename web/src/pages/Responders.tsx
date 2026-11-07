@@ -1,4 +1,4 @@
-import { translate as spaTranslate } from "../i18n";
+import { plural as spaPlural, translate as spaTranslate } from "../i18n";
 import { useCallback, useState } from "react";
 import { Link, useLocation, useOutletContext } from "react-router";
 
@@ -15,7 +15,9 @@ import { Loading, Problem } from "./States";
 
 /** What fires a responder, in a few words: "A member gets @VIP", "A message has “good morning”". */
 function when(responder: AutoResponder, roleName: (id: string) => string): string {
-  const label = TRIGGERS.find((t) => t.key === responder.trigger_kind)?.label ?? responder.trigger_kind;
+  const label = spaTranslate(
+    TRIGGERS.find((t) => t.key === responder.trigger_kind)?.label ?? responder.trigger_kind,
+  );
   switch (responder.trigger_kind) {
     case "role_added":
     case "role_removed":
@@ -45,7 +47,7 @@ export function Responders() {
   const [asking, setAsking] = useState<AutoResponder | null>(null);
   const roleName = (id: string) => {
     const role = info?.roles.find((r) => r.id === id);
-    return role ? `@${role.name}` : "a deleted role";
+    return role ? `@${role.name}` : spaTranslate("a deleted role");
   };
   const locked = list.data ? !list.data.message_content : false;
   const full = list.data ? list.data.items.length >= list.data.max : false;
@@ -54,33 +56,41 @@ export function Responders() {
   return (
     <div className="settings-page">
       <PageHead
-        title="AUTO-RESPONDERS"
-        lead="Messages the bot sends by itself: a greeting when someone joins, a cheer on a level-up, an answer to a keyword."
+        title={spaTranslate("AUTO-RESPONDERS")}
+        lead={spaTranslate(
+          "Messages the bot sends by itself: a greeting when someone joins, a cheer on a level-up, an answer to a keyword.",
+        )}
         action={
           <PixelLink
             href={`/g/${guild}/responders/new`}
             aria-disabled={full}
             className={full ? "is-disabled" : ""}
           >
-            New responder
+            {" "}
+            {spaTranslate("New responder")}{" "}
           </PixelLink>
         }
       />
       {locked && (
         <div className="notice" role="note" data-testid="keyword-lock">
-          <strong>Keyword triggers are locked.</strong> Hearing keywords means reading chat, which needs
-          Discord's privileged Message Content intent. This bot runs without it
+          <strong>{spaTranslate("Keyword triggers are locked.")}</strong>{" "}
+          {spaTranslate(
+            "Hearing keywords means reading chat, which needs Discord's privileged Message Content intent. This bot runs without it",
+          )}{" "}
           {keywords.length > 0
-            ? `, so your ${keywords.length} keyword responder${keywords.length === 1 ? "" : "s"} stay quiet`
-            : ""}
-          . Joins, leaves, level-ups and role changes work as usual.
+            ? spaPlural(keywords.length, {
+                one: ", so your {count} keyword responder stays quiet",
+                other: ", so your {count} keyword responders stay quiet",
+              })
+            : ""}{" "}
+          {spaTranslate(". Joins, leaves, level-ups and role changes work as usual.")}{" "}
         </div>
       )}
-      {list.isPending && <Loading label="Reading the responders" />}
+      {list.isPending && <Loading label={spaTranslate("Reading the responders")} />}
       {list.isError && <Problem error={list.error} />}
       {list.isSuccess && (
         <Panel
-          title="RESPONDERS"
+          title={spaTranslate("RESPONDERS")}
           aside={
             <span className="muted counter">
               {list.data.items.length}/{list.data.max}
@@ -94,7 +104,10 @@ export function Responders() {
           )}
           {list.data.items.length === 0 ? (
             <p className="empty-row muted">
-              No auto-responders yet. A welcome message for new members is a good first one.
+              {" "}
+              {spaTranslate(
+                "No auto-responders yet. A welcome message for new members is a good first one.",
+              )}{" "}
             </p>
           ) : (
             <ul className="tag-list">
@@ -114,20 +127,25 @@ export function Responders() {
                       </p>
                       <p className="tag-facts muted">
                         {responder.destination === "dm"
-                          ? "Answers by direct message"
+                          ? spaTranslate("Answers by direct message")
                           : responder.destination === "channel"
-                            ? "Answers in one channel"
-                            : "Answers where it happened"}
+                            ? spaTranslate("Answers in one channel")
+                            : spaTranslate("Answers where it happened")}
                         {responder.chance < 100 && ` · ${responder.chance}% of the time`}
                         {responder.cooldown_secs > 0 &&
-                          ` · cooldown ${cooldownLabel(responder.cooldown_secs)}`}
+                          spaTranslate(" · cooldown {arg1}", {
+                            arg1: cooldownLabel(responder.cooldown_secs),
+                          })}
                         {responder.actions.length > 0 &&
-                          ` · ${responder.actions.length} action${responder.actions.length === 1 ? "" : "s"}`}
+                          spaPlural(responder.actions.length, {
+                            one: " · {count} action",
+                            other: " · {count} actions",
+                          })}
                       </p>
                     </div>
                     <div className="tag-actions">
                       <PixelToggle
-                        label={`Responder ${responder.name}`}
+                        label={spaTranslate("Responder {arg1}", { arg1: responder.name })}
                         checked={responder.enabled}
                         onChange={(enabled) => toggle.mutate({ id: responder.id, enabled })}
                         disabled={toggle.isPending || (asleep && !responder.enabled)}
@@ -142,7 +160,7 @@ export function Responders() {
                       <PixelButton
                         variant="ghost"
                         className="button-small"
-                        aria-label={`Delete ${responder.name}`}
+                        aria-label={spaTranslate("Delete {arg1}", { arg1: responder.name })}
                         onClick={() => setAsking(responder)}
                       >
                         {spaTranslate("Delete")}
@@ -153,7 +171,11 @@ export function Responders() {
               })}
             </ul>
           )}
-          {full && <p className="field-hint muted">A server has at most {list.data.max} auto-responders.</p>}
+          {full && (
+            <p className="field-hint muted">
+              {spaTranslate("A server has at most")} {list.data.max} {spaTranslate("auto-responders.")}
+            </p>
+          )}
         </Panel>
       )}
       {list.isSuccess && <TagTransfer guild={guild} kind="responders" />}
@@ -162,9 +184,15 @@ export function Responders() {
           <div className="panel panel-gold dialog" role="alertdialog" aria-labelledby="delete-title">
             <div className="panel-body">
               <h2 id="delete-title" className="pixel-title">
-                Delete “{asking.name}”?
+                {" "}
+                {spaTranslate("Delete “")}
+                {asking.name}”?
               </h2>
-              <p>The bot stops answering this way. This can't be undone, but you can export first.</p>
+              <p>
+                {spaTranslate(
+                  "The bot stops answering this way. This can't be undone, but you can export first.",
+                )}
+              </p>
               {remove.isError && (
                 <p className="field-error" role="alert">
                   {remove.error.message}
@@ -185,13 +213,13 @@ export function Responders() {
                   onClick={() =>
                     remove.mutate(asking.id, {
                       onSuccess: () => {
-                        setToast(`Deleted “${asking.name}”.`);
+                        setToast(spaTranslate("Deleted “{arg1}”.", { arg1: asking.name }));
                         setAsking(null);
                       },
                     })
                   }
                 >
-                  {remove.isPending ? "Deleting…" : "Delete it"}
+                  {remove.isPending ? spaTranslate("Deleting…") : "Delete it"}
                 </PixelButton>
               </div>
             </div>

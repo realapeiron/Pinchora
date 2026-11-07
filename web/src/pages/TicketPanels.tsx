@@ -1,4 +1,4 @@
-import { translate as spaTranslate } from "../i18n";
+import { plural as spaPlural, translate as spaTranslate } from "../i18n";
 import { type KeyboardEvent, useId, useRef, useState } from "react";
 
 import { Choice } from "../components/Choice";
@@ -106,7 +106,7 @@ export function TicketPanels({
 
   return (
     <Panel
-      title="PANELS"
+      title={spaTranslate("PANELS")}
       aside={
         <span className="muted counter">
           {panels.length}/{limits.panels}
@@ -114,8 +114,10 @@ export function TicketPanels({
       }
     >
       <p className="panel-lead muted">
-        A panel is the message members open tickets from: up to {limits.buttons} topic buttons, or a menu of
-        up to {limits.options}. Save it, then post it; posting again updates the message in place.
+        {" "}
+        {spaTranslate("A panel is the message members open tickets from: up to")} {limits.buttons}{" "}
+        {spaTranslate("topic buttons, or a menu of up to")} {limits.options}
+        {spaTranslate(". Save it, then post it; posting again updates the message in place.")}{" "}
       </p>
       {post.isError && (
         <p className="field-error" role="alert">
@@ -123,7 +125,9 @@ export function TicketPanels({
         </p>
       )}
       {panels.length === 0 ? (
-        <p className="empty-row muted">No panels yet. Make one and post it where members ask for help.</p>
+        <p className="empty-row muted">
+          {spaTranslate("No panels yet. Make one and post it where members ask for help.")}
+        </p>
       ) : (
         <ul className="tk-panel-list">
           {panels.map((panel) => (
@@ -136,20 +140,26 @@ export function TicketPanels({
                 <span className="tk-panel-name">
                   {panel.name}
                   {panel.message_id ? (
-                    <span className="badge badge-mint">POSTED</span>
+                    <span className="badge badge-mint">{spaTranslate("POSTED")}</span>
                   ) : (
-                    <span className="badge tk-badge-quiet">NOT POSTED</span>
+                    <span className="badge tk-badge-quiet">{spaTranslate("NOT POSTED")}</span>
                   )}
                   {!panel.enabled && <span className="badge badge-gold">{spaTranslate("OFF")}</span>}
                 </span>
                 <p className="tk-panel-facts">
                   <ChannelTag info={info} id={panel.channel_id} /> ·{" "}
-                  {panel.style === "buttons" ? "Buttons" : "Menu"} · {panel.topics.length} topic
-                  {panel.topics.length === 1 ? "" : "s"}
+                  {panel.style === "buttons" ? spaTranslate("Buttons") : spaTranslate("Menu")} ·{" "}
+                  {spaPlural(panel.topics.length, { one: "{count} topic", other: "{count} topics" })}
                   {panel.questions.length > 0 &&
-                    ` · form of ${panel.questions.length} question${panel.questions.length === 1 ? "" : "s"}`}
+                    spaPlural(panel.questions.length, {
+                      one: " · form of {count} question",
+                      other: " · form of {count} questions",
+                    })}
                   {panel.support_roles.length > 0 &&
-                    ` · ${panel.support_roles.length} support role${panel.support_roles.length === 1 ? "" : "s"}`}
+                    spaPlural(panel.support_roles.length, {
+                      one: " · {count} support role",
+                      other: " · {count} support roles",
+                    })}
                 </p>
               </div>
               <div className="tk-panel-actions">
@@ -158,23 +168,23 @@ export function TicketPanels({
                   className="button-small"
                   onClick={() => setEditing(editing === panel.id ? null : panel.id)}
                   aria-expanded={editing === panel.id}
-                  aria-label={`Edit ${panel.name}`}
+                  aria-label={spaTranslate("Edit {arg1}", { arg1: panel.name })}
                 >
-                  {editing === panel.id ? "Close" : "Edit"}
+                  {editing === panel.id ? spaTranslate("Close") : spaTranslate("Edit")}
                 </PixelButton>
                 <PixelButton
                   className="button-small"
                   onClick={() => publish(panel)}
                   disabled={post.isPending}
-                  aria-label={`${panel.message_id ? "Update the post of" : "Post"} ${panel.name}`}
+                  aria-label={`${panel.message_id ? spaTranslate("Update the post of") : spaTranslate("Post")} ${panel.name}`}
                 >
-                  {panel.message_id ? "Update post" : "Post"}
+                  {panel.message_id ? spaTranslate("Update post") : spaTranslate("Post")}
                 </PixelButton>
                 <PixelButton
                   variant="ghost"
                   className="button-small"
                   onClick={() => setAsking(panel)}
-                  aria-label={`Delete ${panel.name}`}
+                  aria-label={spaTranslate("Delete {arg1}", { arg1: panel.name })}
                 >
                   {spaTranslate("Delete")}
                 </PixelButton>
@@ -184,9 +194,14 @@ export function TicketPanels({
         </ul>
       )}
       <div className="panel-foot">
-        {full && <span className="muted fine">A server has at most {limits.panels} panels.</span>}
+        {full && (
+          <span className="muted fine">
+            {spaTranslate("A server has at most")} {limits.panels} {spaTranslate("panels.")}
+          </span>
+        )}
         <PixelButton onClick={() => setEditing("new")} disabled={full || editing === "new"}>
-          New panel
+          {" "}
+          {spaTranslate("New panel")}{" "}
         </PixelButton>
       </div>
       {editing && (
@@ -222,9 +237,13 @@ export function TicketPanels({
           >
             <div className="panel-body">
               <h2 id="panel-delete-title" className="pixel-title">
-                Delete “{asking.name}”?
+                {" "}
+                {spaTranslate("Delete “")}
+                {asking.name}”?
               </h2>
-              <p>The panel and its posted message go. Its tickets and their transcripts stay.</p>
+              <p>
+                {spaTranslate("The panel and its posted message go. Its tickets and their transcripts stay.")}
+              </p>
               {remove.isError && (
                 <p className="field-error" role="alert">
                   {remove.error.message}
@@ -246,14 +265,14 @@ export function TicketPanels({
                   onClick={() =>
                     remove.mutate(asking.id, {
                       onSuccess: () => {
-                        onToast(`Deleted “${asking.name}”.`);
+                        onToast(spaTranslate("Deleted “{arg1}”.", { arg1: asking.name }));
                         if (editing === asking.id) setEditing(null);
                         setAsking(null);
                       },
                     })
                   }
                 >
-                  {remove.isPending ? "Deleting…" : "Delete it"}
+                  {remove.isPending ? spaTranslate("Deleting…") : "Delete it"}
                 </PixelButton>
               </div>
             </div>
@@ -330,7 +349,13 @@ function PanelEditor({
           onSaved(saved);
           if (andPost) onPost(saved);
           else
-            onDone(`Saved “${saved.name}”.${saved.message_id ? " Update the post to show it." : ""}`, true);
+            onDone(
+              spaTranslate("Saved “{arg1}”.{arg2}", {
+                arg1: saved.name,
+                arg2: saved.message_id ? spaTranslate(" Update the post to show it.") : "",
+              }),
+              true,
+            );
         },
         onError: (error) => {
           const list = error instanceof ApiError ? error.errors : [];
@@ -367,9 +392,12 @@ function PanelEditor({
     );
 
   return (
-    <section className="tk-editor" aria-label={panel ? `Edit panel ${panel.name}` : "New panel"}>
+    <section
+      className="tk-editor"
+      aria-label={panel ? spaTranslate("Edit panel {arg1}", { arg1: panel.name }) : spaTranslate("New panel")}
+    >
       <div>
-        <div className="tk-tabs" role="tablist" aria-label="Panel settings">
+        <div className="tk-tabs" role="tablist" aria-label={spaTranslate("Panel settings")}>
           {TABS.map((t, n) => {
             const broken = Object.keys(errors).some((field) => t.fields.includes(field));
             return (
@@ -392,7 +420,7 @@ function PanelEditor({
                 {broken && (
                   <>
                     <span className="tk-tab-dot" aria-hidden="true" />
-                    <span className="sr-only"> (needs a fix)</span>
+                    <span className="sr-only"> {spaTranslate("(needs a fix)")}</span>
                   </>
                 )}
               </button>
@@ -412,7 +440,7 @@ function PanelEditor({
                   label={spaTranslate("Name")}
                   htmlFor={`${base}-name`}
                   error={errors.name}
-                  hint="How /tickets and this page find it. Members never see it."
+                  hint={spaTranslate("How /tickets and this page find it. Members never see it.")}
                 >
                   <input
                     id={`${base}-name`}
@@ -424,10 +452,10 @@ function PanelEditor({
                   />
                 </Field>
                 <Field
-                  label="Posted in"
+                  label={spaTranslate("Posted in")}
                   htmlFor={`${base}-channel`}
                   error={errors.channel_id}
-                  hint="Private threads open off this channel in thread mode."
+                  hint={spaTranslate("Private threads open off this channel in thread mode.")}
                 >
                   <ChannelPicker
                     id={`${base}-channel`}
@@ -460,7 +488,7 @@ function PanelEditor({
                 label={spaTranslate("Text")}
                 htmlFor={`${base}-description`}
                 error={errors.description}
-                hint="Markdown works: **bold**, *italic*. Mentions are dropped."
+                hint={spaTranslate("Markdown works: **bold**, *italic*. Mentions are dropped.")}
                 aside={
                   <span className="counter">
                     {[...draft.description].length}/{limits.description}
@@ -479,12 +507,12 @@ function PanelEditor({
                 label={spaTranslate("Colour")}
                 htmlFor={`${base}-color`}
                 error={errors.color}
-                hint="The stripe down the side."
+                hint={spaTranslate("The stripe down the side.")}
               >
                 <div className="tk-color">
                   <input
                     type="color"
-                    aria-label="Pick the colour"
+                    aria-label={spaTranslate("Pick the colour")}
                     value={/^#[0-9a-fA-F]{6}$/.test(draft.color) ? draft.color : "#ff6b4a"}
                     onChange={(e) => set("color", e.target.value)}
                   />
@@ -499,7 +527,7 @@ function PanelEditor({
                   />
                 </div>
               </Field>
-              <Field label="Style" htmlFor={`${base}-style-buttons`}>
+              <Field label={spaTranslate("Style")} htmlFor={`${base}-style-buttons`}>
                 <Choice
                   name="Panel style"
                   value={draft.style}
@@ -507,19 +535,19 @@ function PanelEditor({
                   options={[
                     {
                       value: "buttons",
-                      title: "Buttons",
-                      detail: `One button per topic, up to ${limits.buttons}.`,
+                      title: spaTranslate("Buttons"),
+                      detail: spaTranslate("One button per topic, up to {arg1}.", { arg1: limits.buttons }),
                     },
                     {
                       value: "select",
-                      title: "Menu",
-                      detail: `A drop-down of up to ${limits.options} topics.`,
+                      title: spaTranslate("Menu"),
+                      detail: spaTranslate("A drop-down of up to {arg1} topics.", { arg1: limits.options }),
                     },
                   ]}
                 />
               </Field>
               <Field
-                label="Topics"
+                label={spaTranslate("Topics")}
                 error={errors.buttons}
                 aside={
                   <span className={`counter ${draft.topics.length > most ? "is-over" : ""}`}>
@@ -532,7 +560,7 @@ function PanelEditor({
                     <li key={n} className={`tk-topic ${draft.style === "select" ? "is-menu" : ""}`}>
                       <input
                         className="pixel-input tk-emoji"
-                        aria-label={`Topic ${n + 1} emoji`}
+                        aria-label={spaTranslate("Topic {arg1} emoji", { arg1: n + 1 })}
                         placeholder="🎫"
                         value={topic.emoji ?? ""}
                         maxLength={8}
@@ -540,7 +568,7 @@ function PanelEditor({
                       />
                       <input
                         className="pixel-input"
-                        aria-label={`Topic ${n + 1} label`}
+                        aria-label={spaTranslate("Topic {arg1} label", { arg1: n + 1 })}
                         value={topic.label}
                         maxLength={limits.label}
                         onChange={(e) => updateTopic(n, { label: e.target.value })}
@@ -548,7 +576,7 @@ function PanelEditor({
                       {draft.style === "buttons" ? (
                         <select
                           className="pixel-input pixel-select"
-                          aria-label={`Topic ${n + 1} colour`}
+                          aria-label={spaTranslate("Topic {arg1} colour", { arg1: n + 1 })}
                           value={topic.tone}
                           onChange={(e) => updateTopic(n, { tone: e.target.value as Tone })}
                         >
@@ -561,8 +589,8 @@ function PanelEditor({
                       ) : (
                         <input
                           className="pixel-input"
-                          aria-label={`Topic ${n + 1} description`}
-                          placeholder="A line under it (optional)"
+                          aria-label={spaTranslate("Topic {arg1} description", { arg1: n + 1 })}
+                          placeholder={spaTranslate("A line under it (optional)")}
                           value={topic.description ?? ""}
                           maxLength={limits.option_description}
                           onChange={(e) => updateTopic(n, { description: e.target.value })}
@@ -571,7 +599,7 @@ function PanelEditor({
                       <button
                         type="button"
                         className="tk-icon-button"
-                        aria-label={`Remove topic ${n + 1}`}
+                        aria-label={spaTranslate("Remove topic {arg1}", { arg1: n + 1 })}
                         onClick={() =>
                           set(
                             "topics",
@@ -595,7 +623,8 @@ function PanelEditor({
                     ])
                   }
                 >
-                  Add topic
+                  {" "}
+                  {spaTranslate("Add topic")}{" "}
                 </PixelButton>
               </Field>
             </>
@@ -603,10 +632,12 @@ function PanelEditor({
           {tab === "behaviour" && (
             <>
               <Field
-                label="Support roles"
+                label={spaTranslate("Support roles")}
                 htmlFor={`${base}-roles`}
                 error={errors.support_roles}
-                hint="They see these tickets, get pinged in new ones and may claim, lock and close them. Manage Server and Manage Channels always may."
+                hint={spaTranslate(
+                  "They see these tickets, get pinged in new ones and may claim, lock and close them. Manage Server and Manage Channels always may.",
+                )}
                 aside={
                   <span className="counter">
                     {draft.support_roles.length}/{limits.support_roles}
@@ -622,10 +653,10 @@ function PanelEditor({
                 />
               </Field>
               <Field
-                label="Welcome text"
+                label={spaTranslate("Welcome text")}
                 htmlFor={`${base}-welcome`}
                 error={errors.welcome_text}
-                hint="The ticket's first message. Empty uses a friendly default."
+                hint={spaTranslate("The ticket's first message. Empty uses a friendly default.")}
                 aside={
                   <span className="counter">
                     {[...draft.welcome_text].length}/{limits.welcome}
@@ -642,7 +673,7 @@ function PanelEditor({
                   onChange={(e) => set("welcome_text", e.target.value)}
                   aria-invalid={errors.welcome_text ? true : undefined}
                 />
-                <div className="chips" role="group" aria-label="Insert a placeholder">
+                <div className="chips" role="group" aria-label={spaTranslate("Insert a placeholder")}>
                   {WELCOME_PLACEHOLDERS.map((token) => (
                     <button
                       key={token}
@@ -659,36 +690,41 @@ function PanelEditor({
                 label={spaTranslate("Category")}
                 htmlFor={`${base}-category`}
                 error={errors.open_category_id}
-                hint="Where this panel's ticket channels go, if not the server's ticket category."
+                hint={spaTranslate(
+                  "Where this panel's ticket channels go, if not the server's ticket category.",
+                )}
               >
                 <CategoryPicker
                   id={`${base}-category`}
                   info={info}
                   value={draft.open_category_id}
                   onChange={(id) => set("open_category_id", id)}
-                  none="The server's ticket category"
+                  none={spaTranslate("The server's ticket category")}
                   invalid={!!errors.open_category_id}
                 />
               </Field>
               <SwitchRow
-                title="Takes tickets"
+                title={spaTranslate("Takes tickets")}
                 control={
                   <PixelToggle
-                    label="Panel takes tickets"
+                    label={spaTranslate("Panel takes tickets")}
                     checked={draft.enabled}
                     onChange={(on) => set("enabled", on)}
                   />
                 }
               >
-                Off, its buttons are greyed out once you update the post.
+                {" "}
+                {spaTranslate("Off, its buttons are greyed out once you update the post.")}{" "}
               </SwitchRow>
             </>
           )}
           {tab === "form" && (
             <Field
-              label="Questions"
+              label={spaTranslate("Questions")}
               error={errors.questions}
-              hint="Asked in a form before the ticket opens; the answers are the ticket's first message. No questions, no form."
+              hint={spaTranslate(
+                "Asked in a form before the ticket opens; the answers are the ticket's first message. No questions, no form.",
+              )}
               aside={
                 <span className="counter">
                   {draft.questions.length}/{limits.questions}
@@ -696,23 +732,23 @@ function PanelEditor({
               }
             >
               {draft.questions.length === 0 ? (
-                <p className="empty-row muted">No form: the ticket opens straight away.</p>
+                <p className="empty-row muted">{spaTranslate("No form: the ticket opens straight away.")}</p>
               ) : (
                 <ol className="tk-questions">
                   {draft.questions.map((q, n) => (
                     <li key={n} className="tk-question">
                       <input
                         className="pixel-input"
-                        aria-label={`Question ${n + 1}`}
-                        placeholder="What is your order number?"
+                        aria-label={spaTranslate("Question {arg1}", { arg1: n + 1 })}
+                        placeholder={spaTranslate("What is your order number?")}
                         value={q.label}
                         maxLength={limits.question}
                         onChange={(e) => updateQuestion(n, { label: e.target.value })}
                       />
                       <input
                         className="pixel-input"
-                        aria-label={`Question ${n + 1} example`}
-                        placeholder="An example answer (optional)"
+                        aria-label={spaTranslate("Question {arg1} example", { arg1: n + 1 })}
+                        placeholder={spaTranslate("An example answer (optional)")}
                         value={q.placeholder}
                         maxLength={limits.placeholder}
                         onChange={(e) => updateQuestion(n, { placeholder: e.target.value })}
@@ -720,7 +756,7 @@ function PanelEditor({
                       <button
                         type="button"
                         className="tk-icon-button"
-                        aria-label={`Remove question ${n + 1}`}
+                        aria-label={spaTranslate("Remove question {arg1}", { arg1: n + 1 })}
                         onClick={() =>
                           set(
                             "questions",
@@ -736,16 +772,16 @@ function PanelEditor({
                             type="checkbox"
                             checked={q.long}
                             onChange={(e) => updateQuestion(n, { long: e.target.checked })}
-                          />
-                          Long answer
+                          />{" "}
+                          {spaTranslate("Long answer")}{" "}
                         </label>
                         <label className="tk-check">
                           <input
                             type="checkbox"
                             checked={q.required}
                             onChange={(e) => updateQuestion(n, { required: e.target.checked })}
-                          />
-                          Required
+                          />{" "}
+                          {spaTranslate("Required")}{" "}
                         </label>
                       </div>
                     </li>
@@ -763,7 +799,8 @@ function PanelEditor({
                   ])
                 }
               >
-                Add question
+                {" "}
+                {spaTranslate("Add question")}{" "}
               </PixelButton>
             </Field>
           )}
@@ -773,20 +810,23 @@ function PanelEditor({
                 label={spaTranslate("Log channel")}
                 htmlFor={`${base}-log`}
                 error={errors.log_channel_id}
-                hint="Opened, claimed, reopened and closed tickets of this panel, with the transcript, if not the server's log channel."
+                hint={spaTranslate(
+                  "Opened, claimed, reopened and closed tickets of this panel, with the transcript, if not the server's log channel.",
+                )}
               >
                 <ChannelPicker
                   id={`${base}-log`}
                   info={info}
                   value={draft.log_channel_id}
                   onChange={(id) => set("log_channel_id", id)}
-                  none="The server's log channel"
+                  none={spaTranslate("The server's log channel")}
                   invalid={!!errors.log_channel_id}
                 />
               </Field>
               <p className="notice" role="note">
-                Transcripts by direct message and ratings are server settings, above in{" "}
-                <strong>Settings</strong>.
+                {" "}
+                {spaTranslate("Transcripts by direct message and ratings are server settings, above in")}{" "}
+                <strong>{spaTranslate("Settings")}</strong>.
               </p>
             </>
           )}
@@ -799,7 +839,10 @@ function PanelEditor({
           </span>
           <PanelPreview draft={draft} labelledBy={`${base}-preview`} />
           <p className="muted fine">
-            This is how the panel looks in Discord. Nothing is posted until you post it.
+            {" "}
+            {spaTranslate(
+              "This is how the panel looks in Discord. Nothing is posted until you post it.",
+            )}{" "}
           </p>
         </div>
       </div>
@@ -812,22 +855,22 @@ function PanelEditor({
         {local.length > 0 && dirty && (
           <span className="muted fine" role="status">
             {local.length === 1
-              ? "Fix the marked field first"
-              : `Fix the ${local.length} marked fields first`}
+              ? spaTranslate("Fix the marked field first")
+              : spaTranslate("Fix the {arg1} marked fields first", { arg1: local.length })}
           </span>
         )}
         <PixelButton variant="ghost" onClick={onCancel}>
-          {dirty ? "Discard" : "Close"}
+          {dirty ? spaTranslate("Discard") : spaTranslate("Close")}
         </PixelButton>
         <PixelButton
           variant="secondary"
           onClick={() => submit(false)}
           disabled={save.isPending || local.length > 0 || (!dirty && !!panel)}
         >
-          {save.isPending ? "Saving…" : "Save panel"}
+          {save.isPending ? spaTranslate("Saving…") : spaTranslate("Save panel")}
         </PixelButton>
         <PixelButton onClick={() => submit(true)} disabled={save.isPending || local.length > 0}>
-          {panel?.message_id ? "Save and update post" : "Save and post"}
+          {panel?.message_id ? spaTranslate("Save and update post") : spaTranslate("Save and post")}
         </PixelButton>
       </div>
     </section>
@@ -854,16 +897,18 @@ function SupportRoles({
   return (
     <div className="id-list">
       {ids.length === 0 ? (
-        <p className="muted id-list-empty">No support role: only managers see the tickets.</p>
+        <p className="muted id-list-empty">
+          {spaTranslate("No support role: only managers see the tickets.")}
+        </p>
       ) : (
-        <ul className="channel-chips" aria-label="Support roles">
+        <ul className="channel-chips" aria-label={spaTranslate("Support roles")}>
           {ids.map((role) => (
             <li key={role} className="channel-chip">
               <RoleTag info={info} id={role} />
               <button
                 type="button"
                 className="chip-remove"
-                aria-label={`Remove ${nameOf(role)}`}
+                aria-label={spaTranslate("Remove {arg1}", { arg1: nameOf(role) })}
                 onClick={() => onChange(ids.filter((x) => x !== role))}
               >
                 ×
@@ -878,7 +923,7 @@ function SupportRoles({
           info={info}
           value={pick}
           onChange={setPick}
-          none={full ? `Up to ${max}` : "Pick a role"}
+          none={full ? `Up to ${max}` : spaTranslate("Pick a role")}
           disabled={full}
         />
         <PixelButton
@@ -908,12 +953,12 @@ export function PanelPreview({ draft, labelledBy }: { draft: PanelDraft; labelle
       <div className="discord-head">
         <span className="discord-avatar" aria-hidden="true" />
         <strong>Pinchora</strong>
-        <span className="discord-tag">APP</span>
+        <span className="discord-tag">{spaTranslate("APP")}</span>
       </div>
       <div className="embed-card" style={{ borderLeftColor: color }}>
         <div className="embed-main">
           <p className="embed-title">
-            {draft.title.trim() ? <RichText text={draft.title} /> : "Untitled panel"}
+            {draft.title.trim() ? <RichText text={draft.title} /> : spaTranslate("Untitled panel")}
           </p>
           {draft.description.trim() && (
             <p className="embed-description">
@@ -924,7 +969,7 @@ export function PanelPreview({ draft, labelledBy }: { draft: PanelDraft; labelle
         </div>
       </div>
       {draft.style === "buttons" ? (
-        <div className="dc-buttons" aria-label="Buttons">
+        <div className="dc-buttons" aria-label={spaTranslate("Buttons")}>
           {topics.slice(0, 5).map((t, n) => (
             <span key={n} className={`dc-button is-${t.tone}`}>
               {t.emoji && <span aria-hidden="true">{t.emoji}</span>}
@@ -938,7 +983,7 @@ export function PanelPreview({ draft, labelledBy }: { draft: PanelDraft; labelle
             <span>{spaTranslate("What do you need help with?")}</span>
             <span>▾</span>
           </div>
-          <ul className="dc-options" aria-label="Menu options">
+          <ul className="dc-options" aria-label={spaTranslate("Menu options")}>
             {topics.slice(0, 25).map((t, n) => (
               <li key={n}>
                 <span>

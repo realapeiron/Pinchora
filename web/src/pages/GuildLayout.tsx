@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useParams } from "react-router";
 
@@ -181,10 +182,11 @@ function GuildProblem({ error }: { error: Error }) {
   }
   if (error instanceof ApiError && error.code === "not_manager") {
     return (
-      <Panel title="Not your server" tone="accent">
+      <Panel title={spaTranslate("Not your server")} tone="accent">
         <p>{error.message}</p>
         <PixelLink variant="secondary" href="/servers">
-          Back to your servers
+          {" "}
+          {spaTranslate("Back to your servers")}{" "}
         </PixelLink>
       </Panel>
     );

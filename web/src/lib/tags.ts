@@ -1,3 +1,4 @@
+import { locale, number, translate as spaTranslate } from "../i18n";
 // Custom commands and auto-responders in the browser: the limits and placeholders (written from
 // pinchora_core::tags into rules.json), blank drafts, and the instant checks. The server checks again
 // on save with the same rules; rules.test.ts keeps `checkCommandName` in step with it.
@@ -174,7 +175,10 @@ export function checkCommandName(raw: string): Check<string> {
     return {
       ok: false,
       field: "name",
-      message: `A name is 1 to ${LIMITS.name_max} characters: lowercase letters, numbers, \`-\` and \`_\`, starting with a letter or number.`,
+      message: spaTranslate(
+        "A name is 1 to {arg1} characters: lowercase letters, numbers, `-` and `_`, starting with a letter or number.",
+        { arg1: LIMITS.name_max },
+      ),
     };
   }
   if (TAGS.reserved.includes(name)) {
@@ -237,12 +241,16 @@ export function actionNeedsRole(action: TagAction): action is Extract<TagAction,
 export function actionsProblem(actions: TagAction[]): string | null {
   for (const [index, action] of actions.entries()) {
     const n = index + 1;
-    if (actionNeedsRole(action) && action.role_id === "") return `Action ${n} needs a role.`;
+    if (actionNeedsRole(action) && action.role_id === "")
+      return spaTranslate("Action {arg1} needs a role.", { arg1: n });
     if (
       action.kind === "dm" &&
       (action.text.trim() === "" || [...action.text].length > LIMITS.response_max)
     ) {
-      return `Action ${n}: a direct message is 1 to ${LIMITS.response_max} characters.`;
+      return spaTranslate("Action {arg1}: a direct message is 1 to {arg2} characters.", {
+        arg1: n,
+        arg2: LIMITS.response_max,
+      });
     }
     if (action.kind === "give_points") {
       const [low, high] = LIMITS.points_action as [number, number];
@@ -252,10 +260,15 @@ export function actionsProblem(actions: TagAction[]): string | null {
         action.amount < low ||
         action.amount > high
       ) {
-        return `Action ${n}: points go from ${low} to ${high}, and not 0.`;
+        return spaTranslate("Action {arg1}: points go from {arg2} to {arg3}, and not 0.", {
+          arg1: n,
+          arg2: locale() === "tr" ? number(low) : String(low),
+          arg3: locale() === "tr" ? number(high) : String(high),
+        });
       }
     }
-    if (action.kind === "react" && action.emoji.trim() === "") return `Action ${n} needs an emoji.`;
+    if (action.kind === "react" && action.emoji.trim() === "")
+      return spaTranslate("Action {arg1} needs an emoji.", { arg1: n });
   }
   return null;
 }
@@ -269,17 +282,19 @@ export function finishedActions(actions: TagAction[]): TagAction[] {
 export function describeAction(action: TagAction): string {
   switch (action.kind) {
     case "add_role":
-      return "gives a role";
+      return spaTranslate("gives a role");
     case "remove_role":
-      return "takes a role";
+      return spaTranslate("takes a role");
     case "toggle_role":
-      return "toggles a role";
+      return spaTranslate("toggles a role");
     case "give_points":
-      return action.amount >= 0 ? `gives ${action.amount} points` : `takes ${-action.amount} points`;
+      return action.amount >= 0
+        ? spaTranslate("gives {arg1} points", { arg1: action.amount })
+        : spaTranslate("takes {arg1} points", { arg1: -action.amount });
     case "dm":
-      return "sends a direct message";
+      return spaTranslate("sends a direct message");
     case "react":
-      return `reacts with ${action.emoji}`;
+      return spaTranslate("reacts with {arg1}", { arg1: action.emoji });
   }
 }
 
@@ -290,7 +305,7 @@ export function cooldownFor(actions: TagAction[], seconds: number): number {
 
 /** A cooldown in the biggest unit that reads well: "30 s", "5 min", "2 h". */
 export function cooldownLabel(seconds: number): string {
-  if (seconds <= 0) return "none";
+  if (seconds <= 0) return spaTranslate("none");
   if (seconds < 90) return `${seconds} s`;
   if (seconds < 5400) return `${Math.round(seconds / 60)} min`;
   return `${Math.round(seconds / 3600)} h`;

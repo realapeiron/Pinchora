@@ -1,4 +1,4 @@
-import { translate as spaTranslate } from "../i18n";
+import { plural as spaPlural, translate as spaTranslate } from "../i18n";
 import { useState } from "react";
 
 import { Choice } from "../components/Choice";
@@ -80,7 +80,7 @@ export function RolePanels({
             setDraft(draftOf(panel));
             setEditing(panel.id);
           }
-          setToast("Panel saved.");
+          setToast(spaTranslate("Panel saved."));
         },
       },
     );
@@ -90,28 +90,30 @@ export function RolePanels({
   return (
     <>
       <Panel
-        title="ROLE PANELS"
+        title={spaTranslate("ROLE PANELS")}
         aside={
-          <span className="pixel-label muted">{`${panels.length} panel${panels.length === 1 ? "" : "s"}`}</span>
+          <span className="pixel-label muted">
+            {spaPlural(panels.length, { one: "{count} panel", other: "{count} panels" })}
+          </span>
         }
       >
         <p className="muted panel-lead">
-          A message where members pick their own roles: with buttons, a menu or reactions. The bot posts it,
-          and edits the same message when you change the panel.
+          {" "}
+          {spaTranslate(
+            "A message where members pick their own roles: with buttons, a menu or reactions. The bot posts it, and edits the same message when you change the panel.",
+          )}{" "}
         </p>
         {panels.length === 0 ? (
-          <p className="empty-row muted">No panels yet.</p>
+          <p className="empty-row muted">{spaTranslate("No panels yet.")}</p>
         ) : (
           <ul className="panel-cards" aria-label={spaTranslate("Role panels")}>
             {panels.map((panel) => (
               <li key={panel.id} className={`panel-card ${editing === panel.id ? "is-open" : ""}`}>
                 <h3 className="panel-card-title">{panel.title}</h3>
                 <p className="panel-card-meta">
-                  <span className="badge badge-ink">{panel.style.toUpperCase()}</span>
+                  <span className="badge badge-ink">{spaTranslate(panel.style.toUpperCase())}</span>
                   <span className="muted">
-                    {panel.roles.length}
-                    {spaTranslate("role")}
-                    {panel.roles.length === 1 ? "" : "s"}
+                    {spaPlural(panel.roles.length, { one: "{count} role", other: "{count} roles" })}
                   </span>
                   {panel.channel_id ? (
                     <ChannelTag info={info} id={panel.channel_id} />
@@ -123,7 +125,7 @@ export function RolePanels({
                   <PixelButton
                     variant="secondary"
                     className="button-small"
-                    aria-label={`Edit ${panel.title}`}
+                    aria-label={spaTranslate("Edit {arg1}", { arg1: panel.title })}
                     onClick={() => open(panel)}
                   >
                     {spaTranslate("Edit")}
@@ -145,7 +147,8 @@ export function RolePanels({
                           )
                         }
                       >
-                        Delete it
+                        {" "}
+                        {spaTranslate("Delete it")}{" "}
                       </PixelButton>
                       <PixelButton
                         variant="ghost"
@@ -159,7 +162,7 @@ export function RolePanels({
                     <PixelButton
                       variant="ghost"
                       className="button-small"
-                      aria-label={`Delete ${panel.title}`}
+                      aria-label={spaTranslate("Delete {arg1}", { arg1: panel.title })}
                       onClick={() => setConfirmDelete(panel.id)}
                     >
                       {spaTranslate("Delete")}
@@ -172,7 +175,8 @@ export function RolePanels({
         )}
         <div className="panel-foot">
           <PixelButton onClick={() => open(null)} disabled={editing === "new"}>
-            New panel
+            {" "}
+            {spaTranslate("New panel")}{" "}
           </PixelButton>
         </div>
       </Panel>
@@ -200,7 +204,7 @@ export function RolePanels({
           serverProblem && serverProblem.field !== "channel_id"
             ? serverProblem.message
             : local
-              ? `Fix first: ${local.message}`
+              ? spaTranslate("Fix first: {arg1}", { arg1: local.message })
               : null
         }
         onSave={save}
@@ -262,7 +266,7 @@ function Editor({
 
   return (
     <Panel
-      title={current ? "EDIT PANEL" : "NEW PANEL"}
+      title={current ? spaTranslate("EDIT PANEL") : spaTranslate("NEW PANEL")}
       aside={<span className="pixel-label muted">{`${draft.roles.length}/${LIMITS.entries} roles`}</span>}
     >
       <div className="panel-designer">
@@ -287,13 +291,13 @@ function Editor({
                 aria-required="true"
                 value={draft.title}
                 maxLength={LIMITS.title + 20}
-                placeholder="Pick your colours"
+                placeholder={spaTranslate("Pick your colours")}
                 onChange={(event) => set("title", event.target.value)}
                 aria-invalid={why("title") ? true : undefined}
               />
             </Field>
             <Field
-              label="Text above the roles"
+              label={spaTranslate("Text above the roles")}
               htmlFor="panel-description"
               error={why("description")}
               aside={
@@ -309,14 +313,14 @@ function Editor({
                 className="pixel-input pixel-textarea"
                 rows={3}
                 value={draft.description}
-                placeholder="What are these roles for?"
+                placeholder={spaTranslate("What are these roles for?")}
                 onChange={(event) => set("description", event.target.value)}
                 aria-invalid={why("description") ? true : undefined}
               />
             </Field>
           </div>
 
-          <Field label="Style">
+          <Field label={spaTranslate("Style")}>
             <Choice
               name="Panel style"
               value={draft.style}
@@ -329,17 +333,21 @@ function Editor({
             <Field
               label={spaTranslate("Required role")}
               htmlFor="panel-required"
-              hint="Only members with it can use the panel."
+              hint={spaTranslate("Only members with it can use the panel.")}
             >
               <RolePicker
                 id="panel-required"
                 info={info}
                 value={draft.required_role}
                 onChange={(role) => set("required_role", role)}
-                none="Anyone"
+                none={spaTranslate("Anyone")}
               />
             </Field>
-            <Field label="Fewest roles" htmlFor="panel-min" hint="They keep at least this many.">
+            <Field
+              label={spaTranslate("Fewest roles")}
+              htmlFor="panel-min"
+              hint={spaTranslate("They keep at least this many.")}
+            >
               <input
                 id="panel-min"
                 className="pixel-input input-short"
@@ -351,7 +359,11 @@ function Editor({
                 aria-invalid={rules || why("rules") ? true : undefined}
               />
             </Field>
-            <Field label="Most roles" htmlFor="panel-max" hint="0 has no limit.">
+            <Field
+              label={spaTranslate("Most roles")}
+              htmlFor="panel-max"
+              hint={spaTranslate("0 has no limit.")}
+            >
               <input
                 id="panel-max"
                 className="pixel-input input-short"
@@ -371,16 +383,19 @@ function Editor({
             </p>
           )}
           <SwitchRow
-            title="One at a time"
+            title={spaTranslate("One at a time")}
             control={
               <PixelToggle
-                label="One at a time"
+                label={spaTranslate("One at a time")}
                 checked={draft.exclusive}
                 onChange={(on) => setDraft({ ...draft, exclusive: on, max_picks: on ? 0 : draft.max_picks })}
               />
             }
           >
-            Picking a role takes the member&apos;s other role from this panel away, like a team or a colour.
+            {" "}
+            {spaTranslate(
+              "Picking a role takes the member's other role from this panel away, like a team or a colour.",
+            )}{" "}
           </SwitchRow>
 
           <div>
@@ -404,11 +419,14 @@ function Editor({
                   ])
                 }
               >
-                Add a role
+                {" "}
+                {spaTranslate("Add a role")}{" "}
               </PixelButton>
             </div>
-            {draft.roles.length === 0 && <p className="empty-row muted">No roles on this panel yet.</p>}
-            <ol className="entry-list" aria-label="Roles on the panel">
+            {draft.roles.length === 0 && (
+              <p className="empty-row muted">{spaTranslate("No roles on this panel yet.")}</p>
+            )}
+            <ol className="entry-list" aria-label={spaTranslate("Roles on the panel")}>
               {draft.roles.map((row, index) => {
                 const picked = info?.roles.find((r) => r.id === row.role_id);
                 const kept = saved.roles.some((r) => r.role_id === row.role_id);
@@ -433,7 +451,7 @@ function Editor({
                           />
                         </Field>
                       </div>
-                      <Field label="Label" htmlFor={`${id}-label`}>
+                      <Field label={spaTranslate("Label")} htmlFor={`${id}-label`}>
                         <input
                           id={`${id}-label`}
                           className="pixel-input"
@@ -443,24 +461,28 @@ function Editor({
                         />
                       </Field>
                       <Field
-                        label="Emoji"
+                        label={spaTranslate("Emoji")}
                         htmlFor={`${id}-emoji`}
-                        hint={draft.style === "reactions" ? "Needed: it is the reaction." : undefined}
+                        hint={
+                          draft.style === "reactions"
+                            ? spaTranslate("Needed: it is the reaction.")
+                            : undefined
+                        }
                       >
                         <input
                           id={`${id}-emoji`}
                           className="pixel-input"
                           value={row.emoji ?? ""}
                           maxLength={64}
-                          placeholder="🎮 or <:name:id>"
+                          placeholder={spaTranslate("🎮 or <:name:id>")}
                           onChange={(event) => setRow(row.key, { emoji: event.target.value || null })}
                         />
                       </Field>
                       <div>
                         <Field
-                          label="Line under the label"
+                          label={spaTranslate("Line under the label")}
                           htmlFor={`${id}-line`}
-                          hint={draft.style === "select" ? "Shown in the menu." : undefined}
+                          hint={draft.style === "select" ? spaTranslate("Shown in the menu.") : undefined}
                         >
                           <input
                             id={`${id}-line`}
@@ -472,9 +494,9 @@ function Editor({
                         </Field>
                       </div>
                       <Field
-                        label="Lasts"
+                        label={spaTranslate("Lasts")}
                         htmlFor={`${id}-lasts`}
-                        hint="After a member takes it; 0 keeps it."
+                        hint={spaTranslate("After a member takes it; 0 keeps it.")}
                       >
                         <DurationInput
                           id={`${id}-lasts`}
@@ -487,7 +509,7 @@ function Editor({
                     <div className="entry-tools">
                       <PixelButton
                         variant="secondary"
-                        aria-label={`Move ${row.label || "this role"} up`}
+                        aria-label={spaTranslate("Move {arg1} up", { arg1: row.label || "this role" })}
                         disabled={index === 0}
                         onClick={() => move(index, -1)}
                       >
@@ -495,7 +517,7 @@ function Editor({
                       </PixelButton>
                       <PixelButton
                         variant="secondary"
-                        aria-label={`Move ${row.label || "this role"} down`}
+                        aria-label={spaTranslate("Move {arg1} down", { arg1: row.label || "this role" })}
                         disabled={index === draft.roles.length - 1}
                         onClick={() => move(index, 1)}
                       >
@@ -503,7 +525,7 @@ function Editor({
                       </PixelButton>
                       <PixelButton
                         variant="ghost"
-                        aria-label={`Remove ${row.label || "this role"}`}
+                        aria-label={spaTranslate("Remove {arg1}", { arg1: row.label || "this role" })}
                         onClick={() =>
                           set(
                             "roles",
@@ -525,7 +547,8 @@ function Editor({
             )}
             {warnings.length > 0 && (
               <p className="notice">
-                A reactions panel needs its own emoji on every role: {warnings.join(" ")}
+                {" "}
+                {spaTranslate("A reactions panel needs its own emoji on every role:")} {warnings.join(" ")}
               </p>
             )}
           </div>
@@ -539,7 +562,9 @@ function Editor({
               blocked={warnings.length > 0 || draft.roles.length === 0}
             />
           )}
-          {!current && <p className="muted fine">Save the panel first, then post it in a channel.</p>}
+          {!current && (
+            <p className="muted fine">{spaTranslate("Save the panel first, then post it in a channel.")}</p>
+          )}
         </div>
       </div>
     </Panel>
@@ -567,15 +592,15 @@ function PostRow({
     <div>
       <div className="post-row">
         <Field
-          label="Post it in"
+          label={spaTranslate("Post it in")}
           htmlFor="panel-channel"
           error={error?.field === "channel_id" ? error.message : null}
           hint={
             unsaved
-              ? "Save your changes first: the bot posts what is saved."
+              ? spaTranslate("Save your changes first: the bot posts what is saved.")
               : sameSpot
-                ? "The panel's message is edited in place."
-                : "Text or announcement channels the bot can see."
+                ? spaTranslate("The panel's message is edited in place.")
+                : spaTranslate("Text or announcement channels the bot can see.")
           }
         >
           <ChannelPicker
@@ -598,7 +623,11 @@ function PostRow({
               })
             }
           >
-            {posting.isPending ? "Posting…" : sameSpot ? "Update message" : "Post panel"}
+            {posting.isPending
+              ? spaTranslate("Posting…")
+              : sameSpot
+                ? spaTranslate("Update message")
+                : spaTranslate("Post panel")}
           </PixelButton>
         </div>
       </div>
@@ -609,12 +638,17 @@ function PostRow({
       )}
       {posted && posting.variables?.sub === `/panels/${panel.id}/post` && (
         <p className="notice" role="status">
-          {posted.updated ? "Updated" : "Posted"} in <ChannelTag info={info} id={posted.channel_id} />:{" "}
+          {posted.updated ? spaTranslate("Updated") : spaTranslate("Posted")} {spaTranslate("in")}{" "}
+          <ChannelTag info={info} id={posted.channel_id} />:{" "}
           <a href={posted.url} target="_blank" rel="noopener noreferrer">
-            open the message
+            {" "}
+            {spaTranslate("open the message")}{" "}
           </a>
           {posted.unusable.length > 0 && (
-            <> Discord would not take these as reactions: {posted.unusable.join(" ")}.</>
+            <>
+              {" "}
+              {spaTranslate("Discord would not take these as reactions:")} {posted.unusable.join(" ")}.
+            </>
           )}
         </p>
       )}
@@ -638,19 +672,19 @@ function PanelPreview({ draft, info }: { draft: PanelDraft; info: GuildInfo | un
   const color = (id: string) => roleColor(info?.roles.find((r) => r.id === id));
   const rows = draft.roles.filter((r) => r.role_id);
   return (
-    <div className="panel-preview" role="region" aria-label="Panel preview">
+    <div className="panel-preview" role="region" aria-label={spaTranslate("Panel preview")}>
       <div className="discord">
         <div className="discord-head">
           <span className="discord-avatar" aria-hidden="true" />
           <strong>Pinchora</strong>
-          <span className="discord-tag">APP</span>
+          <span className="discord-tag">{spaTranslate("APP")}</span>
         </div>
         <div className="embed-card" style={{ borderLeftColor: "#ff6b4a" }}>
           <div className="embed-main">
             <p className="embed-title">{draft.title.trim() || "Untitled panel"}</p>
             <div className="embed-description">
               {draft.description.trim() && <span>{draft.description.trim()}</span>}
-              {rows.length === 0 && <span className="muted">No roles yet.</span>}
+              {rows.length === 0 && <span className="muted">{spaTranslate("No roles yet.")}</span>}
               {rows.map((r) => (
                 <span key={r.key} className="preview-line">
                   {r.emoji && (
@@ -670,7 +704,8 @@ function PanelPreview({ draft, info }: { draft: PanelDraft; info: GuildInfo | un
               ))}
               {draft.required_role && (
                 <span className="muted">
-                  Needs <span className="preview-mention">{name(draft.required_role)}</span>
+                  {" "}
+                  {spaTranslate("Needs")} <span className="preview-mention">{name(draft.required_role)}</span>
                 </span>
               )}
             </div>
@@ -678,7 +713,7 @@ function PanelPreview({ draft, info }: { draft: PanelDraft; info: GuildInfo | un
           </div>
         </div>
         {draft.style === "buttons" && rows.length > 0 && (
-          <div className="preview-buttons" role="group" aria-label="Buttons">
+          <div className="preview-buttons" role="group" aria-label={spaTranslate("Buttons")}>
             {rows.map((r) => (
               <span key={r.key} className="preview-button">
                 {r.emoji && <Emoji text={r.emoji} />}
@@ -689,7 +724,7 @@ function PanelPreview({ draft, info }: { draft: PanelDraft; info: GuildInfo | un
         )}
         {draft.style === "select" && rows.length > 0 && (
           <>
-            <div className="preview-select" role="group" aria-label="Menu">
+            <div className="preview-select" role="group" aria-label={spaTranslate("Menu")}>
               <span>{spaTranslate("Pick your roles")}</span>
               <span aria-hidden="true">▾</span>
             </div>
@@ -707,12 +742,16 @@ function PanelPreview({ draft, info }: { draft: PanelDraft; info: GuildInfo | un
                   {r.description && <small>{r.description}</small>}
                 </div>
               ))}
-              {rows.length > 4 && <small>and {rows.length - 4} more…</small>}
+              {rows.length > 4 && (
+                <small>
+                  {spaTranslate("and")} {rows.length - 4} {spaTranslate("more…")}
+                </small>
+              )}
             </div>
           </>
         )}
         {draft.style === "reactions" && rows.length > 0 && (
-          <div className="preview-reactions" role="group" aria-label="Reactions">
+          <div className="preview-reactions" role="group" aria-label={spaTranslate("Reactions")}>
             {rows.map((r) => (
               <span key={r.key} className="preview-reaction">
                 {r.emoji ? <Emoji text={r.emoji} /> : "?"} 1
@@ -722,7 +761,10 @@ function PanelPreview({ draft, info }: { draft: PanelDraft; info: GuildInfo | un
         )}
       </div>
       <p className="preview-note muted">
-        Drawn here as Discord would show it. Nothing is posted until you press Post panel.
+        {" "}
+        {spaTranslate(
+          "Drawn here as Discord would show it. Nothing is posted until you press Post panel.",
+        )}{" "}
       </p>
     </div>
   );

@@ -1,4 +1,4 @@
-import { translate as spaTranslate } from "../i18n";
+import { number as spaNumber, translate as spaTranslate } from "../i18n";
 import { useState } from "react";
 import { useOutletContext } from "react-router";
 
@@ -30,7 +30,7 @@ function check(value: Settings): (FieldError | null)[] {
   return [...out, range].map((c) => (c.ok ? null : c));
 }
 
-const thousands = (n: number) => n.toLocaleString("en-US");
+const thousands = (n: number) => spaNumber(n);
 
 export function Points() {
   const data = useOutletContext<Overview>();
@@ -42,29 +42,32 @@ export function Points() {
   return (
     <div className="settings-page">
       <PageHead
-        title="POINTS"
-        lead="A currency for this server only: members earn it by chatting and spend it on roles in /store."
+        title={spaTranslate("POINTS")}
+        lead={spaTranslate(
+          "A currency for this server only: members earn it by chatting and spend it on roles in /store.",
+        )}
       />
 
-      <Panel title="SERVER POINTS">
+      <Panel title={spaTranslate("SERVER POINTS")}>
         <SwitchRow
-          title="Earn points for chatting"
+          title={spaTranslate("Earn points for chatting")}
           control={
             <PixelToggle
-              label="Earn points for chatting"
+              label={spaTranslate("Earn points for chatting")}
               checked={value.points_enabled}
               onChange={(on) => set("points_enabled", on)}
             />
           }
         >
-          Off keeps balances and the store; chatting just stops earning more.
+          {" "}
+          {spaTranslate("Off keeps balances and the store; chatting just stops earning more.")}{" "}
         </SwitchRow>
         <div className="form-grid form-grid-2">
           <Field
             label={spaTranslate("Name")}
             htmlFor="points-name"
             error={errors.points_name}
-            hint="What members see, e.g. coins or shells."
+            hint={spaTranslate("What members see, e.g. coins or shells.")}
           >
             <input
               id="points-name"
@@ -76,10 +79,10 @@ export function Points() {
             />
           </Field>
           <Field
-            label="Emoji"
+            label={spaTranslate("Emoji")}
             htmlFor="points-emoji"
             error={errors.points_emoji}
-            hint="One emoji, or a custom one as <:name:id>."
+            hint={spaTranslate("One emoji, or a custom one as <:name:id>.")}
           >
             <input
               id="points-emoji"
@@ -89,7 +92,7 @@ export function Points() {
               aria-invalid={errors.points_emoji ? true : undefined}
             />
           </Field>
-          <Field label="Least per message" htmlFor="points-min" error={errors.points_min}>
+          <Field label={spaTranslate("Least per message")} htmlFor="points-min" error={errors.points_min}>
             <input
               id="points-min"
               className="pixel-input input-short"
@@ -101,7 +104,7 @@ export function Points() {
               aria-invalid={errors.points_min ? true : undefined}
             />
           </Field>
-          <Field label="Most per message" htmlFor="points-max" error={errors.points_max}>
+          <Field label={spaTranslate("Most per message")} htmlFor="points-max" error={errors.points_max}>
             <input
               id="points-max"
               className="pixel-input input-short"
@@ -117,11 +120,13 @@ export function Points() {
         <p className="sample-line">
           <span className="pixel-label muted">{spaTranslate("LOOKS LIKE")}</span>
           <span>
-            Each message earns{" "}
+            {" "}
+            {spaTranslate("Each message earns")}{" "}
             <strong>
               {value.points_min}–{value.points_max}
             </strong>{" "}
-            {value.points_emoji} {value.points_name}. XP multipliers scale it too.
+            {value.points_emoji} {value.points_name}
+            {spaTranslate(". XP multipliers scale it too.")}{" "}
           </span>
         </p>
       </Panel>
@@ -150,7 +155,7 @@ function StoreItems({ guild, emoji, name }: { guild: string; emoji: string; name
   const items = query.data?.items ?? [];
   const picked = discord.data?.roles.find((r) => r.id === role);
   const existing = items.find((i) => i.role_id === role);
-  const priceProblem = price === "" ? "Write a price." : problem(checkPrice(Number(price)));
+  const priceProblem = price === "" ? spaTranslate("Write a price.") : problem(checkPrice(Number(price)));
   const stockProblem = stock === "" ? null : problem(checkStock(Number(stock)));
   const roleProblem = picked && !picked.assignable ? picked.why_not : null;
 
@@ -164,17 +169,18 @@ function StoreItems({ guild, emoji, name }: { guild: string; emoji: string; name
 
   return (
     <Panel
-      title="STORE"
+      title={spaTranslate("STORE")}
       aside={
         <span className="pixel-label muted">{`${items.length}/${query.data?.max ?? LIMITS.max_store_items}`}</span>
       }
     >
       <p className="muted panel-lead">
-        Roles members can buy with {name} in <code>/store</code>. The bot gives the role right away; members
-        keep it when it goes off sale.
+        {" "}
+        {spaTranslate("Roles members can buy with")} {name} {spaTranslate("in")} <code>/store</code>
+        {spaTranslate(". The bot gives the role right away; members keep it when it goes off sale.")}{" "}
       </p>
       {items.length === 0 ? (
-        <p className="empty-row muted">Nothing on sale yet.</p>
+        <p className="empty-row muted">{spaTranslate("Nothing on sale yet.")}</p>
       ) : (
         <ul className="list" aria-label={spaTranslate("Store")}>
           {items.map((item) => (
@@ -194,7 +200,7 @@ function StoreItems({ guild, emoji, name }: { guild: string; emoji: string; name
               <PixelButton
                 variant="ghost"
                 className="button-small"
-                aria-label="Take off sale"
+                aria-label={spaTranslate("Take off sale")}
                 disabled={write.isPending}
                 onClick={() => write.mutate({ method: "DELETE", sub: `/${item.role_id}` })}
               >
@@ -208,7 +214,11 @@ function StoreItems({ guild, emoji, name }: { guild: string; emoji: string; name
         <Field label={spaTranslate("Role")} htmlFor="store-role" error={roleProblem}>
           <RolePicker id="store-role" info={discord.data} value={role} onChange={setRole} assignable />
         </Field>
-        <Field label={`Price (${name})`} htmlFor="store-price" error={priceProblem}>
+        <Field
+          label={spaTranslate("Price ({arg1})", { arg1: name })}
+          htmlFor="store-price"
+          error={priceProblem}
+        >
           <input
             id="store-price"
             className="pixel-input input-short"
@@ -218,14 +228,14 @@ function StoreItems({ guild, emoji, name }: { guild: string; emoji: string; name
             onChange={(event) => setPrice(event.target.value)}
           />
         </Field>
-        <Field label="Stock" htmlFor="store-stock" error={stockProblem}>
+        <Field label={spaTranslate("Stock")} htmlFor="store-stock" error={stockProblem}>
           <input
             id="store-stock"
             className="pixel-input input-short"
             type="number"
             min={LIMITS.stock[0]}
             value={stock}
-            placeholder="∞ unlimited"
+            placeholder={spaTranslate("∞ unlimited")}
             onChange={(event) => setStock(event.target.value)}
           />
         </Field>
@@ -244,7 +254,7 @@ function StoreItems({ guild, emoji, name }: { guild: string; emoji: string; name
               )
             }
           >
-            {existing ? "Update" : "Put on sale"}
+            {existing ? spaTranslate("Update") : spaTranslate("Put on sale")}
           </PixelButton>
         </div>
       </div>

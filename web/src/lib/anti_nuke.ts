@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
+import { serverText } from "../i18n";
 export interface AntiNukeConfig {
   enabled: boolean;
   limits: Record<string, { count: number; window_secs: number }>;
@@ -39,11 +40,7 @@ export interface AntiNukeData {
 }
 export function words(strings: Record<string, string>, language = "en") {
   return (key: string, args: Record<string, string | number> = {}) =>
-    (strings[key] ?? key).replace(/\{(\w+)\}/g, (match, name: string) =>
-      typeof args[name] === "number"
-        ? args[name].toLocaleString(language === "tr" ? "tr-TR" : "en-US")
-        : String(args[name] ?? match),
-    );
+    serverText(key, strings, args, language);
 }
 export function validUserId(id: string, viewer: string): boolean {
   if (!/^[1-9]\d{0,18}$/.test(id) || id === viewer) return false;

@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 // The dashboard's API client: JSON in and out, the CSRF token on every write, errors as ApiError.
 
 /** One field a form got wrong, with the sentence the bot would answer with. */
@@ -73,7 +74,7 @@ async function errorOf(response: Response): Promise<ApiError> {
   return new ApiError(
     response.status,
     field("code") ?? "http_" + response.status,
-    field("message") ?? `The server answered ${response.status}.`,
+    field("message") ?? spaTranslate("The server answered {arg1}.", { arg1: response.status }),
     field("field"),
     field("invite_url"),
     Array.isArray(error?.errors) ? (error.errors as FieldError[]) : undefined,

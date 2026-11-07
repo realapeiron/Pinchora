@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../../i18n";
 import { type ReactNode, useId } from "react";
 
 import {
@@ -452,7 +453,7 @@ export function CardSvg({
       height={design.height * scale}
       viewBox={`0 0 ${design.width} ${design.height}`}
       role="img"
-      aria-label="The image as designed"
+      aria-label={spaTranslate("The image as designed")}
     >
       <Background design={design} ctx={ctx} />
       {design.dim > 0 && (

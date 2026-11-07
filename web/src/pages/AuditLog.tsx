@@ -18,17 +18,19 @@ export function AuditLog() {
   return (
     <div className="settings-page">
       <PageHead
-        title="AUDIT LOG"
-        lead="Every change made on the dashboard: who, what, and when. Kept 180 days."
+        title={spaTranslate("AUDIT LOG")}
+        lead={spaTranslate("Every change made on the dashboard: who, what, and when. Kept 180 days.")}
       />
-      <Panel title="CHANGES">
-        {audit.isPending && <Loading label="Reading the log" />}
+      <Panel title={spaTranslate("CHANGES")}>
+        {audit.isPending && <Loading label={spaTranslate("Reading the log")} />}
         {audit.isError && <Problem error={audit.error} />}
         {audit.isSuccess && rows.length === 0 && (
-          <p className="empty-row muted">No changes yet. What you save on the dashboard shows up here.</p>
+          <p className="empty-row muted">
+            {spaTranslate("No changes yet. What you save on the dashboard shows up here.")}
+          </p>
         )}
         {rows.length > 0 && (
-          <ol className="audit-table" aria-label="Changes">
+          <ol className="audit-table" aria-label={spaTranslate("Changes")}>
             {rows.map((entry) => (
               <AuditRow key={entry.id} entry={entry} names={names} />
             ))}
@@ -41,7 +43,7 @@ export function AuditLog() {
               disabled={audit.isFetchingNextPage}
               onClick={() => void audit.fetchNextPage()}
             >
-              {audit.isFetchingNextPage ? "Loading…" : "Older changes"}
+              {audit.isFetchingNextPage ? spaTranslate("Loading…") : spaTranslate("Older changes")}
             </PixelButton>
           </div>
         )}
@@ -61,7 +63,7 @@ function AuditRow({ entry, names }: { entry: AuditEntry; names: Names }) {
         <span className="audit-text">
           <strong>{entry.actor_name}</strong> {describeChange(entry, names)}
           {target && <span className="muted"> · {target}</span>}
-          {entry.source === "discord" && <span className="muted"> in Discord</span>}
+          {entry.source === "discord" && <span className="muted"> {spaTranslate("in Discord")}</span>}
         </span>
         <time className="audit-time muted" dateTime={entry.created_at} title={entry.created_at}>
           {timeAgo(entry.created_at)}
@@ -71,7 +73,7 @@ function AuditRow({ entry, names }: { entry: AuditEntry; names: Names }) {
         <table className="diff">
           <thead>
             <tr>
-              <th scope="col">Field</th>
+              <th scope="col">{spaTranslate("Field")}</th>
               <th scope="col">{spaTranslate("Before")}</th>
               <th scope="col">{spaTranslate("After")}</th>
             </tr>

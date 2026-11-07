@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, ScrollRestoration, useLocation } from "react-router";
 
@@ -152,7 +153,7 @@ export function SiteLayout() {
           </nav>
         </div>
         <p className="site-footer-legal muted">
-          © {new Date().getFullYear()} Pinchora.{" "}
+          © {new Date().getFullYear()} {spaTranslate("Pinchora.")}{" "}
           {t("Pinchora is not affiliated with or endorsed by Discord Inc.")}
         </p>
       </footer>

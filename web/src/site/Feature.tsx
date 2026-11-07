@@ -17,21 +17,21 @@ export function FeaturePage() {
   const others = FEATURES.filter((f) => f.slug !== feature.slug);
   return (
     <div className="wrap feature-page">
-      <nav className="crumbs" aria-label="Breadcrumb">
-        <Link to="/">Home</Link>
+      <nav className="crumbs" aria-label={spaTranslate("Breadcrumb")}>
+        <Link to="/">{spaTranslate("Home")}</Link>
         <span aria-hidden="true"> / </span>
         <Link to="/#features">{spaTranslate("Features")}</Link>
         <span aria-hidden="true"> / </span>
-        <span aria-current="page">{feature.title}</span>
+        <span aria-current="page">{spaTranslate(feature.title)}</span>
       </nav>
 
       <header className="feature-hero">
         <PixelIcon name={feature.icon} scale={8} className="feature-hero-icon" />
         <div>
           <h1 className="section-title">
-            <Amp text={feature.title} />
+            <Amp text={spaTranslate(feature.title)} />
           </h1>
-          <p className="section-lead">{feature.lead}</p>
+          <p className="section-lead">{spaTranslate(feature.lead)}</p>
           <div className="hero-actions">
             <InviteButton />
             <PixelLink href="/servers" variant="secondary">
@@ -45,8 +45,8 @@ export function FeaturePage() {
         {feature.points.map((p) => (
           <li key={p.title} className="point panel">
             <div className="panel-body">
-              <h2 className="pixel-title point-title">{p.title}</h2>
-              <p>{p.text}</p>
+              <h2 className="pixel-title point-title">{spaTranslate(p.title)}</h2>
+              <p>{spaTranslate(p.text)}</p>
             </div>
           </li>
         ))}
@@ -54,13 +54,14 @@ export function FeaturePage() {
 
       <section aria-labelledby="shots-title" className="feature-shots">
         <h2 id="shots-title" className="pixel-title">
-          WHAT IT LOOKS LIKE
+          {" "}
+          {spaTranslate("WHAT IT LOOKS LIKE")}{" "}
         </h2>
         <div className="shot-grid">
           {feature.shots.map((s) => (
             <figure key={s.key} className="shot-figure">
-              <Shot name={s.key} alt={s.alt} />
-              <figcaption className="muted">{s.caption}</figcaption>
+              <Shot name={s.key} alt={spaTranslate(s.alt)} />
+              <figcaption className="muted">{spaTranslate(s.caption)}</figcaption>
             </figure>
           ))}
         </div>
@@ -68,7 +69,8 @@ export function FeaturePage() {
 
       <section aria-labelledby="try-title" className="feature-try">
         <h2 id="try-title" className="pixel-title">
-          TRY THESE FIRST
+          {" "}
+          {spaTranslate("TRY THESE FIRST")}{" "}
         </h2>
         <ul className="try-list">
           {feature.try.map((command) => (
@@ -79,7 +81,7 @@ export function FeaturePage() {
                 </Link>
               ) : (
                 <Link to="/servers" className="try-chip">
-                  {command}
+                  {spaTranslate(command)}
                 </Link>
               )}
             </li>
@@ -89,14 +91,15 @@ export function FeaturePage() {
 
       <section aria-labelledby="more-title" className="feature-more-areas">
         <h2 id="more-title" className="pixel-title">
-          MORE FROM PINCHORA
+          {" "}
+          {spaTranslate("MORE FROM PINCHORA")}{" "}
         </h2>
         <ul className="more-list">
           {others.map((f) => (
             <li key={f.slug}>
               <Link to={`/features/${f.slug}`} className="more-link">
                 <PixelIcon name={f.icon} scale={3} />
-                {f.title}
+                {spaTranslate(f.title)}
               </Link>
             </li>
           ))}

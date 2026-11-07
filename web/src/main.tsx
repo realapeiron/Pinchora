@@ -6,7 +6,7 @@ import { RouterProvider } from "react-router/dom";
 
 import { ApiError, needsLogin } from "./lib/api";
 import { router } from "./router";
-import { watchMeta } from "./site/meta";
+import { refreshMeta, watchMeta } from "./site/meta";
 import "./styles/tokens.css";
 import "./styles/app.css";
 import "./styles/site.css";
@@ -48,6 +48,7 @@ function LocalizedRouter() {
   const language = useLocale();
   useEffect(() => {
     document.documentElement.lang = language;
+    refreshMeta(router.state.location.pathname);
   }, [language]);
   return <RouterProvider key={language} router={router} />;
 }

@@ -33,8 +33,8 @@ describe("stats numbers", () => {
   });
 
   it("reads days and hours as UTC", () => {
-    expect(dayLabel("2026-11-06")).toBe("6 Nov");
-    expect(dayLabel("2026-01-31", true)).toBe("31 Jan 2026");
+    expect(dayLabel("2026-11-06")).toBe("Nov 6");
+    expect(dayLabel("2026-01-31", true)).toBe("Jan 31, 2026");
     expect(hourLabel(23)).toBe("23:00–00:00 UTC");
   });
 

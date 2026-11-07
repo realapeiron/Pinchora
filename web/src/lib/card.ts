@@ -1,8 +1,10 @@
+import { translate as spaTranslate } from "../i18n";
 // The welcome and goodbye image editor's model: the design JSON the API stores (pinchora_core::card_design),
 // the limits from rules.json, and the pure geometry of the canvas (moving, resizing, snapping) and its
 // undo history. Nothing here touches the DOM, so all of it is unit-tested.
 
 import rules from "./rules.json";
+import { locale, number } from "../i18n";
 
 export const CARD = rules.card;
 
@@ -136,19 +138,21 @@ export function textHeight(size: number, lines: number): number {
 export function layerLabel(layer: Layer): string {
   switch (layer.type) {
     case "avatar":
-      return "Avatar";
+      return spaTranslate("Avatar");
     case "text":
-      return layer.text.trim().slice(0, 28) || "Text";
+      return layer.text.trim().slice(0, 28) || spaTranslate("Text");
     case "sprite":
       return stickerName(layer.sprite);
     case "shape":
-      return {
-        rect: "Rectangle",
-        rounded: "Rounded box",
-        notched: "Pixel panel",
-        ellipse: "Ellipse",
-        dashes: "Dashes",
-      }[layer.shape];
+      return spaTranslate(
+        {
+          rect: "Rectangle",
+          rounded: "Rounded box",
+          notched: "Pixel panel",
+          ellipse: "Ellipse",
+          dashes: "Dashes",
+        }[layer.shape],
+      );
   }
 }
 
@@ -343,7 +347,10 @@ export const costShare = (layers: Layer[]) => Math.ceil((designCost(layers) * 10
 
 /** The sentence the API gives when the layers cost too much. */
 export const heavyMessage = (layers: Layer[]) =>
-  `The visible layers are too heavy to draw quickly together (${costShare(layers)}% of what a card may use). Shrink, remove or hide some; avatars and long texts weigh the most.`;
+  spaTranslate(
+    "The visible layers are too heavy to draw quickly together ({arg1}% of what a card may use). Shrink, remove or hide some; avatars and long texts weigh the most.",
+    { arg1: costShare(layers) },
+  );
 
 // /Geometry
 
@@ -499,14 +506,14 @@ export interface Fill {
   members: number | null;
 }
 
-const thousands = (n: number) => n.toLocaleString("en-US");
+const thousands = (n: number) => number(n);
 
 export function ordinal(n: number): string {
   const suffix =
     n % 100 >= 11 && n % 100 <= 13
       ? "th"
       : (({ 1: "st", 2: "nd", 3: "rd" } as Record<number, string>)[n % 10] ?? "th");
-  return thousands(n) + suffix;
+  return locale() === "tr" ? `${thousands(n)}.` : thousands(n) + suffix;
 }
 
 /** `text` with its placeholders filled in, in one pass, as the bot fills them. */

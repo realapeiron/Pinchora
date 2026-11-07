@@ -24,7 +24,7 @@ export function Landing() {
       <Reveal as="section" className="band" id="showcase">
         <div className="wrap">
           <SectionHead
-            eyebrow="SEE IT IN DISCORD"
+            eyebrow={spaTranslate("SEE IT IN DISCORD")}
             title={spaTranslate("Cards drawn by the bot, not by a template")}
             lead={spaTranslate(
               "Every picture on this page was rendered by Pinchora's own code. This is exactly what lands in your channel.",
@@ -146,7 +146,7 @@ function Features() {
     <Reveal as="section" className="band band-plain" id="features">
       <div className="wrap">
         <SectionHead
-          eyebrow="WHAT IT DOES"
+          eyebrow={spaTranslate("WHAT IT DOES")}
           title={spaTranslate("One bot, six corners of your server")}
           lead={spaTranslate(
             "Switch on what you like and leave the rest. Every part can be turned off for the server or for single channels.",
@@ -179,7 +179,10 @@ function HowItWorks() {
   return (
     <Reveal as="section" className="band" id="how">
       <div className="wrap">
-        <SectionHead eyebrow="HOW IT WORKS" title={spaTranslate("Up and running in three steps")} />
+        <SectionHead
+          eyebrow={spaTranslate("HOW IT WORKS")}
+          title={spaTranslate("Up and running in three steps")}
+        />
         <ol className="steps">
           {STEPS.map((step, i) => (
             <li key={step.title} className="step panel">
@@ -237,7 +240,7 @@ function DashboardSpotlight() {
               <span className="mock-dot" />
               <span className="mock-dot" />
               <span className="mock-dot" />
-              <span className="pixel-label mock-url">pinchora / welcome</span>
+              <span className="pixel-label mock-url">{spaTranslate("pinchora / welcome")}</span>
             </div>
             <div className="mock-row">
               <div>
@@ -252,7 +255,9 @@ function DashboardSpotlight() {
             <div className="mock-field">
               <p className="pixel-label muted">{t("MESSAGE")}</p>
               <p className="mock-input">
-                Welcome to {"{server}"}, {"{user}"}! You are member number {"{members}"}.
+                {" "}
+                {spaTranslate("Welcome to")} {"{server}"}, {"{user}"}
+                {spaTranslate("! You are member number")} {"{members}"}.
               </p>
             </div>
             <div className="mock-preview">
@@ -271,7 +276,7 @@ function Faq() {
   return (
     <Reveal as="section" className="band" id="faq">
       <div className="wrap wrap-narrow">
-        <SectionHead eyebrow="QUESTIONS" title={spaTranslate("Before you add it")} />
+        <SectionHead eyebrow={spaTranslate("QUESTIONS")} title={spaTranslate("Before you add it")} />
         <div className="faq">
           {FAQ.map((item) => (
             <details key={item.question} className="faq-item panel">
