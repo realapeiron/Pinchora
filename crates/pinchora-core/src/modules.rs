@@ -121,11 +121,12 @@ pub enum Module {
     ColorRoles,
     Stats,
     Tickets,
+    Invites,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 33] = [
+    pub const ALL: [Self; 34] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -159,6 +160,7 @@ impl Module {
         Self::ColorRoles,
         Self::Stats,
         Self::Tickets,
+        Self::Invites,
     ];
 
     /// The key stored in the database and used in the API.
@@ -197,6 +199,7 @@ impl Module {
             Self::ColorRoles => "color_roles",
             Self::Stats => "stats",
             Self::Tickets => "tickets",
+            Self::Invites => "invites",
         }
     }
 
@@ -239,6 +242,7 @@ impl Module {
             Self::ColorRoles => "Colour roles",
             Self::Stats => "Stats",
             Self::Tickets => "Tickets",
+            Self::Invites => "Invites",
         }
     }
 
@@ -296,6 +300,7 @@ impl Module {
             Self::ColorRoles => "/color: colour roles members pick for their names.",
             Self::Stats => "/stats, /counters, the Stats page and counting messages, voice minutes, joins and leaves.",
             Self::Tickets => "/ticket and /tickets: private support tickets opened from a panel, with transcripts.",
+            Self::Invites => "/invites: invite counts, leaderboards, rewards and temporary links.",
         }
     }
 
@@ -323,16 +328,20 @@ impl Module {
             | Self::Gambling => Group::Games,
             Self::Moderation => Group::Safety,
             Self::RolePanels | Self::AutoRoles | Self::ColorRoles => Group::Roles,
-            Self::Stats => Group::Server,
+            Self::Stats | Self::Invites => Group::Server,
             Self::Tickets => Group::Community,
         }
     }
 
     pub const fn scope(self) -> Scope {
         match self {
-            Self::Welcome | Self::Goodbye | Self::Log | Self::Moderation | Self::Gambling | Self::AutoRoles => {
-                Scope::Server
-            }
+            Self::Welcome
+            | Self::Goodbye
+            | Self::Log
+            | Self::Moderation
+            | Self::Gambling
+            | Self::AutoRoles
+            | Self::Invites => Scope::Server,
             _ => Scope::Channels,
         }
     }
@@ -377,6 +386,7 @@ impl Module {
             "party" => Self::PartyGames,
             "stats" | "counters" => Self::Stats,
             "ticket" | "tickets" => Self::Tickets,
+            "invites" | "inviteadmin" => Self::Invites,
             "duel" => match sub {
                 Some("share") => Self::Party,
                 Some("tictactoe" | "connect4" | "rps") => Self::Duels,
@@ -420,6 +430,7 @@ impl Module {
             "pl" => Self::Polls,
             "sc" => Self::Stats,
             "tk" | "tp" | "tf" | "tr" => Self::Tickets,
+            "in" | "tl" => Self::Invites,
             _ => return None,
         })
     }

@@ -5,7 +5,7 @@ use pinchora_commands::{
     App, PermissionChange, Responder, handle_gateway_interaction, on_audit_log_entry, on_ban_add, on_ban_remove,
     on_guild_delete, on_member_add, on_member_remove, on_member_update, on_message, on_message_delete,
     on_message_delete_bulk, on_message_update, on_permissions_changed, on_ticket_place_deleted, on_voice_state_update,
-    rebuild_voice, voice_snapshot,
+    rebuild_voice, refresh_deleted_invite_snapshot, refresh_invite_snapshot, voice_snapshot,
 };
 use pinchora_commands::{ReactionEvent, on_reaction};
 use pinchora_core::{
@@ -35,6 +35,8 @@ fn wanted_events() -> EventTypeFlags {
         | EventTypeFlags::MESSAGE_DELETE
         | EventTypeFlags::MESSAGE_DELETE_BULK
         | EventTypeFlags::GUILD_AUDIT_LOG_ENTRY_CREATE
+        | EventTypeFlags::INVITE_CREATE
+        | EventTypeFlags::INVITE_DELETE
         | EventTypeFlags::MEMBER_ADD
         | EventTypeFlags::MEMBER_REMOVE
         | EventTypeFlags::MEMBER_UPDATE
@@ -101,6 +103,7 @@ pub async fn run(config: &Config, app: Arc<App>, ready: Readiness) -> anyhow::Re
         Intents::GUILDS | Intents::GUILD_MESSAGES | Intents::GUILD_MODERATION | Intents::GUILD_VOICE_STATES;
     // Reaction roles and the starboard listen to reactions; not privileged either.
     intents |= Intents::GUILD_MESSAGE_REACTIONS;
+    intents |= Intents::GUILD_INVITES;
     if config.gateway.member_events {
         intents |= Intents::GUILD_MEMBERS;
     }
@@ -307,6 +310,13 @@ fn dispatch(app: &Arc<App>, shard: u32, event: Event) {
             });
         }
         Event::GuildCreate(event) => {
+            if let twilight_model::gateway::payload::incoming::GuildCreate::Available(ref guild) = *event {
+                let app2 = app.clone();
+                let guild_id = guild.id.get();
+                app.spawn_event("invite_snapshot", async move {
+                    if let Err(error) = refresh_invite_snapshot(&app2, guild_id).await { tracing::warn!(guild_id, %error, "invite snapshot failed; Manage Server permission is required"); }
+                });
+            }
             // Everything the rebuild needs is taken here, and the guild is dropped: a storm of them at
             // identify must not sit in the event slots (a message or a member joining would be dropped)
             // holding every server's member list while the database answers.
@@ -319,6 +329,24 @@ fn dispatch(app: &Arc<App>, shard: u32, event: Event) {
                     }
                 });
             }
+        }
+        Event::InviteCreate(event) => {
+            let app2 = app.clone();
+            let guild = event.guild_id.get();
+            app.spawn_event("invite_create", async move {
+                if let Err(error) = refresh_invite_snapshot(&app2, guild).await {
+                    tracing::warn!(guild, %error, "invite refresh failed");
+                }
+            });
+        }
+        Event::InviteDelete(event) => {
+            let app2 = app.clone();
+            let guild = event.guild_id.get();
+            app.spawn_event("invite_delete", async move {
+                if let Err(error) = refresh_deleted_invite_snapshot(&app2, guild).await {
+                    tracing::warn!(guild, %error, "invite refresh failed");
+                }
+            });
         }
         Event::GuildDelete(event) => {
             let app2 = app.clone();

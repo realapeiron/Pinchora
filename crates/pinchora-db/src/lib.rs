@@ -16,6 +16,7 @@ mod guilds;
 mod house;
 mod house_read;
 mod interactions;
+mod invites;
 mod language;
 mod locks;
 mod logs;
@@ -77,6 +78,7 @@ pub use house::{
     SOULBOUND_GUEST, UpgradeOutcome,
 };
 pub use interactions::Tally;
+pub use invites::{GuildInvite, InviteJoin, InviteObservation, InviteScore, InviteSettings, JoinCredit};
 pub use locks::conflict_retries;
 pub use members::{LeaderboardRow, MemberRank, XpGain, XpGrant};
 pub use moderation::{

@@ -59,6 +59,7 @@ async fn count(db: &Db, table: &str, column: &str, user: u64) -> i64 {
 /// Fills every table that can name `user` (with `other` on the far side of the ones that name two
 /// players), deletes `user`, and checks nothing is left. Returns the columns it filled.
 async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'static str, &'static str)> {
+    db.guild_settings(user).await.unwrap();
     // Through the game's own calls: the account, the ledger, chat XP and the monthly numbers.
     db.earn_shells(user, 500, "test").await.unwrap();
     db.earn_shells(other, 500, "test").await.unwrap();
@@ -263,6 +264,11 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
          VALUES ($1, 'welcome', 'member_join', ARRAY['hi'], $1)",
         // What they did in a server, counted for its stats ($1 doubles as the server).
         "INSERT INTO member_activity_daily (guild_id, user_id, day, messages) VALUES ($1, $1, current_date, 3)",
+        // Invite history, a link they created, and a bonus ($1 doubles as the server).
+        "INSERT INTO guild_invites (guild_id, code, inviter_id) VALUES ($1, 'private', $1)",
+        "INSERT INTO invite_joins (guild_id, user_id, inviter_id, source)
+         VALUES ($1, $1, $2, 'invite'), ($1, $2, $1, 'invite')",
+        "INSERT INTO invite_bonus (guild_id, user_id, bonus) VALUES ($1, $1, 2)",
         // A ticket they opened, and the other player's one they claimed, closed and wrote in, with its
         // transcript ($1 doubles as the server).
         "INSERT INTO tickets (guild_id, number, opener_id, status, claimed_by, closed_by)

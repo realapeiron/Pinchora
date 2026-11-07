@@ -31,6 +31,10 @@ mod voice_xp;
 pub use app::{App, PreviewError};
 pub use card_images::{CardSubject, ServerCard, atlas_has, card_png, classic_card, deliver, preview_png, server_card};
 pub use catalog::{command_catalog, site_facts};
+pub use commands::invites::{
+    grant_invite_reward, refresh_deleted_snapshot as refresh_deleted_invite_snapshot,
+    refresh_snapshot as refresh_invite_snapshot,
+};
 pub use commands::role_panels::{check_emoji, rules_problem as role_rules_problem};
 pub use commands::roles_pack::{
     ColorRoleReport, ColorStop, PaletteColor, PostRefusal, PostedPanel, color_stop_text, create_palette_roles,

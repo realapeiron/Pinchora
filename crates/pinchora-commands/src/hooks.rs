@@ -69,6 +69,7 @@ pub(crate) async fn on_member_join(app: &Arc<App>, event: &MemberAdd) -> JoinVer
     // F2 auto roles (they honour Held).
     crate::commands::roles_pack::on_member_join(app, event).await;
     // F6 invite tracker works out who invited them.
+    crate::commands::invites::on_member_join(app, event).await;
     JoinVerdict::Continue
 }
 
@@ -77,6 +78,7 @@ pub(crate) async fn on_member_leave(app: &Arc<App>, event: &MemberRemove) {
     // F2 sticky roles remember what they held.
     crate::commands::roles_pack::on_member_leave(app, event).await;
     // F6 invite tracker takes the invite back.
+    crate::commands::invites::on_member_leave(app, event).await;
     // F9 stats counts the leave.
     crate::stats::count_member(app, event.guild_id.get(), false).await;
 }

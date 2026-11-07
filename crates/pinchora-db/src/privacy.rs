@@ -102,6 +102,10 @@ pub const USER_COLUMNS: &[(&str, &str)] = &[
     // then the tickets they opened, whose transcripts go with them.
     ("ticket_transcript_authors", "user_id"),
     ("tickets", "opener_id"),
+    ("invite_joins", "user_id"),
+    ("invite_joins", "inviter_id"),
+    ("invite_bonus", "user_id"),
+    ("guild_invites", "inviter_id"),
     ("users", "id"),
 ];
 
@@ -201,6 +205,8 @@ pub const OTHER_TABLES: &[&str] = &[
     "counter_channels",
     "stats_flushes",
     "global_stats_daily",
+    "invite_settings",
+    "invite_rewards",
     "ticket_settings",
     "ticket_forms",
     "ticket_panels",

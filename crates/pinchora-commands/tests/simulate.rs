@@ -134,6 +134,8 @@ mod roles;
 #[path = "simulate/stats.rs"]
 mod stats;
 // Tickets: panels, ticket channels and threads, closing with transcripts, the idle ticker.
+#[path = "simulate/invites.rs"]
+mod invites;
 #[path = "simulate/tickets.rs"]
 mod tickets;
 

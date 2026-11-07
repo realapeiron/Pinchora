@@ -87,6 +87,7 @@ export const router = createBrowserRouter([
       { path: "responders/:responderId", element: <ResponderEditor /> },
       { path: "roles", element: <Roles /> },
       { path: "audit", element: <AuditLog /> },
+      { path: "invites", lazy: async () => ({ Component: (await import("./pages/Invites")).Invites }) },
       { path: "stats", lazy: async () => ({ Component: (await import("./pages/Stats")).Stats }) },
       {
         path: "tickets/:ticketId?",

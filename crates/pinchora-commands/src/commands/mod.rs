@@ -23,6 +23,7 @@ pub(crate) mod heist;
 pub(crate) mod help;
 pub(crate) mod house;
 pub(crate) mod interact;
+pub(crate) mod invites;
 pub(crate) mod language;
 pub(crate) mod leaderboard;
 pub(crate) mod level_roles;
@@ -170,4 +171,6 @@ commands!(
     stats::CountersCommand,
     tickets::TicketCommand,
     tickets::TicketsCommand,
+    invites::InvitesCommand,
+    invites::InviteAdmin,
 );

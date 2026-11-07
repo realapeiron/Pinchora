@@ -7,6 +7,7 @@ mod community;
 mod discord_info;
 mod guilds;
 mod house;
+mod invites;
 mod leveling;
 mod me;
 mod moderation;

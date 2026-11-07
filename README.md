@@ -25,6 +25,9 @@ Written in Rust and built to run sharded on Kubernetes.
 | `/customize showcase` | Private editor with a live preview: up to three picks for the profile card, a favourite **fish** (from your fish book), a **pet** and a **furniture** item (owned or placed), chosen from menus of what you have (25 per page), plus a **Show house** switch for a thumbnail of your first room (drawn once and kept until the room changes). Sprites are drawn at whole-number scales only, so every pixel stays a crisp block: small ones are enlarged up to 4×, big ones reduced by a whole divisor without blending colours. **Clear slot** and **Clear all** empty it again; empty slots are simply not drawn |
 | Badge unlocked notices | When a command or chat level-up earns you an achievement badge (`/daily`, `/fish`, `/pet`, placing furniture, `/give`, a new chat level), a short "Badge unlocked" embed with the badge art follows the reply, once per badge |
 | `/leaderboard [board]` | Server XP, server points, **Weekly XP** (resets Monday 00:00 UTC, with last week's top three in a panel under the board), **Weekly catch** (each player's biggest catch of the week by size for its species, so a 7.9 cm minnow can beat a 200 cm sailfish; boots and tins do not count; same Monday reset and last-week podium), global XP or global shells as a pixel-art card, with page buttons |
+| `/invites user [user]`, `/invites top [all|week|month]` | Pixel invite card and a paged server leaderboard; counts eligible joins, accounts too new to count, leavers and manager bonuses |
+| `/invites temp` | Private expiring, limited-use friend link when enabled; the bot needs Create Instant Invite in the selected channel |
+| `/inviteadmin settings`, `bonus-add`, `bonus-remove`, `reward-add`, `reward-remove`, `post` | Manage invite tracking, bonus counts, reward roles and the friend-link button (Manage Server) |
 | `/daily` | Daily shells; the streak bonus grows for 20 days |
 | `/weekly`, `/monthly` | A bigger reward each, on a cooldown of their own: 1,500 shells every 7 days and 6,500 every 30. The cooldown counts from the claim, and a claim made at the same moment as another pays once |
 | `/balance [user]`, `/give user amount` | Wallet and transfers. The wallet card shows the time left on the daily, weekly and monthly reward side by side (`ready` in green once it can be collected) |
@@ -604,7 +607,11 @@ dashboard's Community group).
 
 ### Invite tracker
 
-<!-- F6: the Invite tracker package replaces this heading's section; keep it one `###` section. -->
+`/invites user [user]` draws a pixel card with regular invitations, members who left, accounts younger than the configured fake window, bonus, and the counted total. `/invites top [all|week|month]` shows the leaderboard with `in:` page buttons. `/invites temp` gives a private expiring link when the server enables friend links; the same action is available from an “Invite a friend” button. A member can request only the configured number of links per UTC day. The bot needs **Create Instant Invite** in the selected channel.
+
+Managers use `/inviteadmin settings` to enable tracking, choose the log and invite channels, set the fake age window and daily quota; `/inviteadmin bonus-add|bonus-remove`, `/inviteadmin reward-add|reward-remove`, and `/inviteadmin post` manage bonuses, role milestones and the friend button. A reward role is checked against the bot hierarchy and dangerous permissions when configured and again before grant. The **Invites** dashboard page edits these settings, shows reward roles, leaderboards and member details, and exports counts as CSV.
+
+Attribution compares Discord invite uses on each join, with a Redis snapshot per server and a database lock to prevent pods crediting one use twice. **Manage Server** is required to list server invites; if the bot lacks it, the join remains unknown. A used-up temporary invite may disappear before it can be matched, so it is labeled temporary/unknown rather than credited by guess. Vanity and widget joins are not credited to a person. Rejoining restores the original member record and does not earn a second invite. No invite channel is shown to ordinary members.
 
 ### Birthdays
 

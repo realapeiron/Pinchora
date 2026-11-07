@@ -139,6 +139,8 @@ pub(crate) const AREAS: &[Area] = &[
             "stats",
             "ticket",
             "tickets",
+            "invites",
+            "inviteadmin",
         ],
     },
     Area {

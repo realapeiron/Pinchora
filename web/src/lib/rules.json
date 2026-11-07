@@ -1172,7 +1172,9 @@
       "stats",
       "counters",
       "ticket",
-      "tickets"
+      "tickets",
+      "invites",
+      "inviteadmin"
     ],
     "responder_placeholders": {
       "keyword": [
