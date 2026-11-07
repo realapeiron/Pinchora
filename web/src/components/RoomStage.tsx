@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import type { Rendered } from "../iso/render";
@@ -137,12 +138,12 @@ export function RoomStage({
 
   return (
     <div className="room-stage">
-      <div className="room-toolbar" role="toolbar" aria-label="Zoom">
+      <div className="room-toolbar" role="toolbar" aria-label={spaTranslate("Zoom")}>
         <PixelButton
           variant="secondary"
           onClick={() => zoomTo(zoom - 1)}
           disabled={zoom <= MIN_ZOOM}
-          aria-label="Zoom out"
+          aria-label={spaTranslate("Zoom out")}
         >
           −
         </PixelButton>
@@ -153,12 +154,13 @@ export function RoomStage({
           variant="secondary"
           onClick={() => zoomTo(zoom + 1)}
           disabled={zoom >= MAX_ZOOM}
-          aria-label="Zoom in"
+          aria-label={spaTranslate("Zoom in")}
         >
           +
         </PixelButton>
         <PixelButton variant="ghost" onClick={() => zoomTo(fit())}>
-          Fit
+          {" "}
+          {spaTranslate("Fit")}{" "}
         </PixelButton>
       </div>
       <div
@@ -206,7 +208,11 @@ export function RoomStage({
             aria-hidden="true"
           />
           {botPicture && (
-            <img className="room-bot" src={botPicture} alt="The same room as Discord draws it" />
+            <img
+              className="room-bot"
+              src={botPicture}
+              alt={spaTranslate("The same room as Discord draws it")}
+            />
           )}
         </div>
       </div>

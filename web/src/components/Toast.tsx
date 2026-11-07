@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { translate } from "../i18n";
 
 /** A short note in the corner that goes away by itself. */
 export function Toast({ message, onDone }: { message: string | null; onDone: () => void }) {
@@ -10,7 +11,7 @@ export function Toast({ message, onDone }: { message: string | null; onDone: () 
   if (!message) return null;
   return (
     <div className="toast" role="status">
-      {message}
+      {translate(message)}
     </div>
   );
 }

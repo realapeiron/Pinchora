@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useCallback, useState } from "react";
 import { useOutletContext } from "react-router";
 
@@ -22,8 +23,8 @@ const ACTIONS: { key: LadderAction; label: string }[] = [
 
 /** What the length box says while empty. */
 function placeholder(action: LadderAction): string {
-  if (action === "kick") return "no length";
-  return action === "ban" ? "for good" : "1h";
+  if (action === "kick") return spaTranslate("no length");
+  return action === "ban" ? spaTranslate("for good") : "1h";
 }
 
 export function Moderation() {
@@ -32,10 +33,12 @@ export function Moderation() {
   return (
     <div className="settings-page mod-page">
       <PageHead
-        title="MODERATION"
-        lead="Where the cases of /ban, /kick, /timeout, /warn and the others are posted, whether members hear about them, and what enough warns bring."
+        title={spaTranslate("MODERATION")}
+        lead={spaTranslate(
+          "Where the cases of /ban, /kick, /timeout, /warn and the others are posted, whether members hear about them, and what enough warns bring.",
+        )}
       />
-      {query.isPending && <Loading label="Reading the settings" />}
+      {query.isPending && <Loading label={spaTranslate("Reading the settings")} />}
       {query.isError && <Problem error={query.error} />}
       {query.isSuccess && <ModerationForm guild={data.guild.id} saved={query.data} />}
     </div>
@@ -67,7 +70,7 @@ function ModerationForm({ guild, saved }: { guild: string; saved: ModerationSett
     save.mutate(patch, {
       onSuccess: (now) => {
         setLadder(draftLadder(now));
-        setToast("Saved. The next case follows it.");
+        setToast(spaTranslate("Saved. The next case follows it."));
       },
     });
   const reset = () => {
@@ -79,56 +82,64 @@ function ModerationForm({ guild, saved }: { guild: string; saved: ModerationSett
 
   return (
     <>
-      <Panel title="MOD-LOG">
+      <Panel title={spaTranslate("MOD-LOG")}>
         <Field
-          label="Mod-log channel"
+          label={spaTranslate("Mod-log channel")}
           htmlFor="modlog-channel"
           error={fieldError("log_channel_id")}
-          hint="Every case is posted here with its number, the moderator, the member, the reason and how long. Keep it private to staff."
+          hint={spaTranslate(
+            "Every case is posted here with its number, the moderator, the member, the reason and how long. Keep it private to staff.",
+          )}
         >
           <ChannelPicker
             id="modlog-channel"
             info={discord.data}
             value={channel}
             onChange={setChannel}
-            none="The server log's moderation channel"
+            none={spaTranslate("The server log's moderation channel")}
           />
         </Field>
         <SwitchRow
-          title="Tell members"
-          control={<PixelToggle label="Tell members" checked={dm} onChange={setDm} />}
+          title={spaTranslate("Tell members")}
+          control={<PixelToggle label={spaTranslate("Tell members")} checked={dm} onChange={setDm} />}
         >
-          A direct message when they are warned, timed out, kicked or banned, with the reason and how long.
-          Members with closed direct messages are skipped; the case says so.
+          {" "}
+          {spaTranslate(
+            "A direct message when they are warned, timed out, kicked or banned, with the reason and how long. Members with closed direct messages are skipped; the case says so.",
+          )}{" "}
         </SwitchRow>
       </Panel>
 
-      <Panel title="WARN LADDER">
+      <Panel title={spaTranslate("WARN LADDER")}>
         <p className="panel-lead muted">
-          When a warn brings a member's active warns to a number on the ladder, Pinchora acts on its own, as a
-          case of its own. Taking a warn back with /mod unwarn lowers the count again.
+          {" "}
+          {spaTranslate(
+            "When a warn brings a member's active warns to a number on the ladder, Pinchora acts on its own, as a case of its own. Taking a warn back with /mod unwarn lowers the count again.",
+          )}{" "}
         </p>
         {ladder.length === 0 ? (
-          <p className="empty-row muted">No rungs yet: warns are only counted.</p>
+          <p className="empty-row muted">{spaTranslate("No rungs yet: warns are only counted.")}</p>
         ) : (
-          <ul className="list" aria-label="Warn ladder">
+          <ul className="list" aria-label={spaTranslate("Warn ladder")}>
             {ladder.map((rung, n) => (
               <li key={`${rung.warns}-${n}`} className="list-row ladder-row">
-                <span className="list-level pixel-label">{rung.warns} warns</span>
+                <span className="list-level pixel-label">
+                  {rung.warns} {spaTranslate("warns")}
+                </span>
                 <select
-                  aria-label={`What ${rung.warns} warns bring`}
+                  aria-label={spaTranslate("What {arg1} warns bring", { arg1: rung.warns })}
                   className="pixel-input pixel-select"
                   value={rung.action}
                   onChange={(event) => change(n, { action: event.target.value as LadderAction })}
                 >
                   {ACTIONS.map((a) => (
                     <option key={a.key} value={a.key}>
-                      {a.label}
+                      {spaTranslate(a.label)}
                     </option>
                   ))}
                 </select>
                 <input
-                  aria-label={`How long, at ${rung.warns} warns`}
+                  aria-label={spaTranslate("How long, at {arg1} warns", { arg1: rung.warns })}
                   className="pixel-input input-short"
                   value={rung.duration}
                   disabled={rung.action === "kick"}
@@ -138,7 +149,7 @@ function ModerationForm({ guild, saved }: { guild: string; saved: ModerationSett
                 <button
                   type="button"
                   className="chip-remove"
-                  aria-label={`Remove the rung at ${rung.warns} warns`}
+                  aria-label={spaTranslate("Remove the rung at {arg1} warns", { arg1: rung.warns })}
                   onClick={() => setLadder((rungs) => rungs.filter((_, i) => i !== n))}
                 >
                   ×
@@ -153,7 +164,7 @@ function ModerationForm({ guild, saved }: { guild: string; saved: ModerationSett
           </p>
         )}
         <div className="add-row add-row-role">
-          <Field label="Warns" htmlFor="rung-warns">
+          <Field label={spaTranslate("Warns")} htmlFor="rung-warns">
             <input
               id="rung-warns"
               type="number"
@@ -164,7 +175,7 @@ function ModerationForm({ guild, saved }: { guild: string; saved: ModerationSett
               onChange={(event) => setAdding({ ...adding, warns: Number(event.target.value) })}
             />
           </Field>
-          <Field label="Brings" htmlFor="rung-action">
+          <Field label={spaTranslate("Brings")} htmlFor="rung-action">
             <div className="ladder-add">
               <select
                 id="rung-action"
@@ -180,12 +191,12 @@ function ModerationForm({ guild, saved }: { guild: string; saved: ModerationSett
               >
                 {ACTIONS.map((a) => (
                   <option key={a.key} value={a.key}>
-                    {a.label}
+                    {spaTranslate(a.label)}
                   </option>
                 ))}
               </select>
               <input
-                aria-label="How long"
+                aria-label={spaTranslate("How long")}
                 className="pixel-input input-short"
                 value={adding.duration}
                 disabled={adding.action === "kick"}
@@ -200,12 +211,16 @@ function ModerationForm({ guild, saved }: { guild: string; saved: ModerationSett
               disabled={full || taken || adding.warns < 1 || adding.warns > 50}
               onClick={add}
             >
-              Add rung
+              {" "}
+              {spaTranslate("Add rung")}{" "}
             </PixelButton>
           </div>
         </div>
         {full && (
-          <p className="notice">The ladder holds {saved.max_rungs} rungs. Remove one to add another.</p>
+          <p className="notice">
+            {spaTranslate("The ladder holds")} {saved.max_rungs}{" "}
+            {spaTranslate("rungs. Remove one to add another.")}
+          </p>
         )}
       </Panel>
 

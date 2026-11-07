@@ -1,3 +1,4 @@
+import { number, translate as spaTranslate } from "../i18n";
 // Module edits: what the page lets you change, and the request that saves it.
 
 import type { ChannelMode, ModuleEntry, ModulePatch } from "./api";
@@ -53,7 +54,8 @@ export function problem(saved: ModuleEntry, draft: ModuleDraft | undefined, max:
   if (!saved.server_only && now.mode !== "all" && now.channels.length === 0) {
     return "Pick at least one channel, or choose all channels.";
   }
-  if (now.channels.length > max) return `A module can name at most ${max} channels.`;
+  if (now.channels.length > max)
+    return spaTranslate("A module can name at most {arg1} channels.", { arg1: max });
   return null;
 }
 
@@ -63,10 +65,12 @@ export function badge(
   mode: ChannelMode,
   channels: number,
 ): { text: string; tone: "mint" | "gold" | "dim" } {
-  if (!enabled) return { text: "OFF", tone: "dim" };
-  if (mode === "all") return { text: "ON", tone: "mint" };
-  const n = `${channels} ${channels === 1 ? "CHANNEL" : "CHANNELS"}`;
-  return mode === "only" ? { text: `ONLY IN ${n}`, tone: "gold" } : { text: `OFF IN ${n}`, tone: "gold" };
+  if (!enabled) return { text: spaTranslate("OFF"), tone: "dim" };
+  if (mode === "all") return { text: spaTranslate("ON"), tone: "mint" };
+  const n = `${number(channels)} ${spaTranslate(channels === 1 ? "CHANNEL" : "CHANNELS")}`;
+  return mode === "only"
+    ? { text: spaTranslate("ONLY IN {arg1}", { arg1: n }), tone: "gold" }
+    : { text: spaTranslate("OFF IN {arg1}", { arg1: n }), tone: "gold" };
 }
 
 /** Picks a mode, keeping the channels already chosen so switching between the two lists loses nothing. */

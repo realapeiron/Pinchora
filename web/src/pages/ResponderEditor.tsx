@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useMemo } from "react";
 import { useNavigate, useOutletContext, useParams } from "react-router";
 
@@ -51,7 +52,8 @@ export function ResponderEditor() {
   const guild = data.guild.id;
   const { responderId } = useParams();
   const query = useTag(guild, "responders", responderId ?? null);
-  if (responderId !== undefined && query.isPending) return <Loading label="Opening the responder" />;
+  if (responderId !== undefined && query.isPending)
+    return <Loading label={spaTranslate("Opening the responder")} />;
   if (responderId !== undefined && query.isError) return <Problem error={query.error} />;
   return (
     <ResponderForm
@@ -111,7 +113,11 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
     if (nameMissing || unfinished) return;
     void editor.save(() =>
       navigate(`/g/${guild}/responders`, {
-        state: { toast: `Saved “${draft.name.trim()}”. The bot uses it from the next event.` },
+        state: {
+          toast: spaTranslate("Saved “{arg1}”. The bot uses it from the next event.", {
+            arg1: draft.name.trim(),
+          }),
+        },
       }),
     );
   };
@@ -120,22 +126,22 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
   return (
     <div className="settings-page">
       <PageHead
-        title={id ? "EDIT RESPONDER" : "NEW RESPONDER"}
-        lead="Sent by the bot by itself when the trigger happens."
+        title={id ? spaTranslate("EDIT RESPONDER") : spaTranslate("NEW RESPONDER")}
+        lead={spaTranslate("Sent by the bot by itself when the trigger happens.")}
         action={
           <PixelLink variant="secondary" href={`/g/${guild}/responders`}>
-            Back to the list
+            {spaTranslate("Back to the list")}
           </PixelLink>
         }
       />
       <div className="editor">
         <div className="editor-form">
-          <Panel title="BASICS">
+          <Panel title={spaTranslate("BASICS")}>
             <Field
-              label="Name"
+              label={spaTranslate("Name")}
               htmlFor="responder-name"
               error={editor.problem("name")}
-              hint="Only for you, to tell responders apart."
+              hint={spaTranslate("Only for you, to tell responders apart.")}
             >
               <input
                 id="responder-name"
@@ -147,10 +153,10 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
               />
             </Field>
             <SwitchRow
-              title="Switched on"
+              title={spaTranslate("Switched on")}
               control={
                 <PixelToggle
-                  label="Switched on"
+                  label={spaTranslate("Switched on")}
                   checked={draft.enabled}
                   disabled={kind === "keyword" && keywordLocked && !draft.enabled}
                   onChange={(next) => set("enabled", next)}
@@ -158,13 +164,13 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
               }
             >
               {kind === "keyword" && keywordLocked
-                ? "Keyword triggers can't be switched on while the bot can't read chat."
-                : "Off, it stays written but the bot never sends it."}
+                ? spaTranslate("Keyword triggers can't be switched on while the bot can't read chat.")
+                : spaTranslate("Off, it stays written but the bot never sends it.")}
             </SwitchRow>
           </Panel>
 
-          <Panel title="WHEN IT FIRES">
-            <div className="choice choice-triggers" role="radiogroup" aria-label="Trigger">
+          <Panel title={spaTranslate("WHEN IT FIRES")}>
+            <div className="choice choice-triggers" role="radiogroup" aria-label={spaTranslate("Trigger")}>
               {TRIGGERS.map((t) => {
                 const locked = t.needs_message_content && keywordLocked && kind !== t.key;
                 return (
@@ -181,14 +187,15 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
                       onChange={() => pickTrigger(t.key)}
                     />
                     <span className="choice-title">
-                      {t.label}
+                      {spaTranslate(t.label)}
                       {t.needs_message_content && keywordLocked && (
-                        <span className="badge badge-gold choice-lock">LOCKED</span>
+                        <span className="badge badge-gold choice-lock">{spaTranslate("LOCKED")}</span>
                       )}
                     </span>
                     {t.needs_message_content && keywordLocked && (
                       <span className="choice-detail muted" data-testid="keyword-reason">
-                        Needs the Message Content intent, which this bot runs without.
+                        {" "}
+                        {spaTranslate("Needs the Message Content intent, which this bot runs without.")}{" "}
                       </span>
                     )}
                   </label>
@@ -196,22 +203,26 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
               })}
             </div>
             {(kind === "role_added" || kind === "role_removed") && (
-              <Field label="Which role" htmlFor="responder-role" error={editor.problem("trigger_value")}>
+              <Field
+                label={spaTranslate("Which role")}
+                htmlFor="responder-role"
+                error={editor.problem("trigger_value")}
+              >
                 <RolePicker
                   id="responder-role"
                   info={info}
                   value={draft.trigger_value}
                   onChange={(next) => set("trigger_value", next)}
-                  none="Pick a role"
+                  none={spaTranslate("Pick a role")}
                 />
               </Field>
             )}
             {kind === "level_up" && (
               <Field
-                label="From level"
+                label={spaTranslate("From level")}
                 htmlFor="responder-level"
                 error={editor.problem("trigger_value")}
-                hint="Fires for every level-up from this level on. Empty: every level-up."
+                hint={spaTranslate("Fires for every level-up from this level on. Empty: every level-up.")}
               >
                 <input
                   id="responder-level"
@@ -230,10 +241,10 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
               <>
                 <div className="form-grid form-grid-2">
                   <Field
-                    label="Word or phrase"
+                    label={spaTranslate("Word or phrase")}
                     htmlFor="responder-keyword"
                     error={editor.problem("trigger_value")}
-                    hint="Capital letters don't matter."
+                    hint={spaTranslate("Capital letters don't matter.")}
                   >
                     <input
                       id="responder-keyword"
@@ -244,7 +255,7 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
                     />
                   </Field>
                   <Field
-                    label="How it matches"
+                    label={spaTranslate("How it matches")}
                     htmlFor="responder-match"
                     error={editor.problem("match_kind")}
                   >
@@ -258,21 +269,23 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
                     >
                       {MATCH_KINDS.map((m) => (
                         <option key={m.value} value={m.value}>
-                          {m.title}: {m.detail}
+                          {spaTranslate(m.title)}: {spaTranslate(m.detail)}
                         </option>
                       ))}
                     </select>
                   </Field>
                 </div>
                 <p className="field-hint muted">
-                  One answer per message at most: if several responders match, the first that is ready
-                  answers.
+                  {" "}
+                  {spaTranslate(
+                    "One answer per message at most: if several responders match, the first that is ready answers.",
+                  )}{" "}
                 </p>
               </>
             )}
           </Panel>
 
-          <Panel title="REPLY">
+          <Panel title={spaTranslate("REPLY")}>
             <ResponsesEditor
               responses={draft.responses}
               onChange={(next) => set("responses", next)}
@@ -286,21 +299,23 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
               error={editor.problem("embed")}
             />
             <SwitchRow
-              title="Allow mentions"
+              title={spaTranslate("Allow mentions")}
               control={
                 <PixelToggle
-                  label="Allow mentions"
+                  label={spaTranslate("Allow mentions")}
                   checked={draft.allow_mentions}
                   onChange={(next) => set("allow_mentions", next)}
                 />
               }
             >
-              Off, people and roles you write in the text show as plain words and only the member it is about
-              is pinged. @everyone and @here never are.
+              {" "}
+              {spaTranslate(
+                "Off, people and roles you write in the text show as plain words and only the member it is about is pinged. @everyone and @here never are.",
+              )}{" "}
             </SwitchRow>
           </Panel>
 
-          <Panel title="WHERE IT ANSWERS">
+          <Panel title={spaTranslate("WHERE IT ANSWERS")}>
             <Choice
               name="Where it answers"
               value={draft.destination}
@@ -308,7 +323,11 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
               onChange={(next) => set("destination", next)}
             />
             {draft.destination === "channel" && (
-              <Field label="Channel" htmlFor="responder-channel" error={editor.problem("channel_id")}>
+              <Field
+                label={spaTranslate("Channel")}
+                htmlFor="responder-channel"
+                error={editor.problem("channel_id")}
+              >
                 <ChannelPicker
                   id="responder-channel"
                   info={info}
@@ -324,7 +343,7 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
             )}
           </Panel>
 
-          <Panel title="ACTIONS">
+          <Panel title={spaTranslate("ACTIONS")}>
             <ActionsEditor
               actions={draft.actions}
               onChange={(next) =>
@@ -336,13 +355,13 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
             />
           </Panel>
 
-          <Panel title="HOW OFTEN">
+          <Panel title={spaTranslate("HOW OFTEN")}>
             <div className="form-grid form-grid-2">
               <Field
-                label="Chance"
+                label={spaTranslate("Chance")}
                 htmlFor="responder-chance"
                 error={editor.problem("chance")}
-                hint="Percent of the times it fires that it answers."
+                hint={spaTranslate("Percent of the times it fires that it answers.")}
               >
                 <input
                   id="responder-chance"
@@ -355,10 +374,13 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
                 />
               </Field>
               <Field
-                label="Cooldown"
+                label={spaTranslate("Cooldown")}
                 htmlFor="responder-cooldown"
                 error={editor.problem("cooldown_secs")}
-                hint={`Seconds before it can answer the same member again, up to ${LIMITS.responder_cooldown_max}. With actions, at least ${LIMITS.action_cooldown_min}.`}
+                hint={spaTranslate(
+                  "Seconds before it can answer the same member again, up to {arg1}. With actions, at least {arg2}.",
+                  { arg1: LIMITS.responder_cooldown_max, arg2: LIMITS.action_cooldown_min },
+                )}
               >
                 <input
                   id="responder-cooldown"
@@ -374,9 +396,11 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
             {hearsChat && (
               <div className="form-grid form-grid-2">
                 <Field
-                  label="Only in these channels"
+                  label={spaTranslate("Only in these channels")}
                   error={editor.problem("allow_channels")}
-                  hint="Where the message was sent, or the member levelled up. A category covers the channels under it."
+                  hint={spaTranslate(
+                    "Where the message was sent, or the member levelled up. A category covers the channels under it.",
+                  )}
                 >
                   <IdList
                     kind="channel"
@@ -385,10 +409,13 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
                     onChange={(next) => set("allow_channels", next)}
                     max={LIMITS.max_list}
                     name="Allowed channels"
-                    none="Every channel."
+                    none={spaTranslate("Every channel.")}
                   />
                 </Field>
-                <Field label="Never in these channels" error={editor.problem("deny_channels")}>
+                <Field
+                  label={spaTranslate("Never in these channels")}
+                  error={editor.problem("deny_channels")}
+                >
                   <IdList
                     kind="channel"
                     info={info}
@@ -396,7 +423,7 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
                     onChange={(next) => set("deny_channels", next)}
                     max={LIMITS.max_list}
                     name="Denied channels"
-                    none="No channel is off limits."
+                    none={spaTranslate("No channel is off limits.")}
                   />
                 </Field>
               </div>
@@ -414,7 +441,11 @@ function ResponderForm({ guild, id, initial }: { guild: string; id?: string; ini
         blocked={nameMissing || unfinished !== null}
         error={
           editor.failure ??
-          (nameMissing ? "Give it a name first" : unfinished ? "Finish the action first" : null)
+          (nameMissing
+            ? spaTranslate("Give it a name first")
+            : unfinished
+              ? spaTranslate("Finish the action first")
+              : null)
         }
         onSave={onSave}
         onReset={editor.reset}

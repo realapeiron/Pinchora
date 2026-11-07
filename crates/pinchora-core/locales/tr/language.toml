@@ -1,6 +1,7 @@
 # /language and /setup server language.
 
 [language]
+choose-supported = "İngilizce veya Türkçe seçin."
 set = "Tamam, bundan sonra her sunucuda seninle **{language}** konuşacağım."
 auto = "Tamam, yeniden Discord dilini takip edeceğim (şu an **{language}**)."
 server-set = "Bu sunucunun varsayılan dili artık **{language}**. Karşılama kartları, seviye atlamaları ve çekilişler gibi kimseye özel olmayan mesajlarda kullanılır; herkes yine kendi dilinde yanıt alır."

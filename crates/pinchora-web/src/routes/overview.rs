@@ -26,6 +26,7 @@ pub async fn overview(State(state): State<WebState>, managed: ManagedGuild) -> A
     Ok(Json(json!({
         "guild": GuildView::new(managed.id, &managed.guild.name, managed.guild.icon.as_deref()),
         "settings": SettingsView::from(settings),
+        "language": lang.code(),
         "modules": module_list(&state, managed.id).await?,
         "audit": audit,
         "navigation": {

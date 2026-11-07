@@ -1,11 +1,12 @@
 import { QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { StrictMode } from "react";
+import { StrictMode, useEffect } from "react";
+import { useLocale } from "./i18n";
 import { createRoot } from "react-dom/client";
 import { RouterProvider } from "react-router/dom";
 
 import { ApiError, needsLogin } from "./lib/api";
 import { router } from "./router";
-import { watchMeta } from "./site/meta";
+import { refreshMeta, watchMeta } from "./site/meta";
 import "./styles/tokens.css";
 import "./styles/app.css";
 import "./styles/site.css";
@@ -43,10 +44,19 @@ router.subscribe(playFonts);
 // The tab title and tags follow the page the router is on.
 watchMeta(router);
 
+function LocalizedRouter() {
+  const language = useLocale();
+  useEffect(() => {
+    document.documentElement.lang = language;
+    refreshMeta(router.state.location.pathname);
+  }, [language]);
+  return <RouterProvider key={language} router={router} />;
+}
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <LocalizedRouter />
     </QueryClientProvider>
   </StrictMode>,
 );

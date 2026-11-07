@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { date, locale, number, serverText } from "../i18n";
 import { useOutletContext } from "react-router";
 
 import { Field } from "../components/Field";
@@ -89,8 +90,7 @@ export function Achievements() {
   if (query.isPending) return <Loading />;
   if (query.isError) return <Problem error={query.error} />;
   const data = query.data;
-  const t = (key: string) => data.strings[key] ?? key;
-  const number = (value: number) => value.toLocaleString(data.language === "tr" ? "tr-TR" : "en-US");
+  const t = (key: string) => serverText(key, data.strings);
   const open = (row?: Achievement) => {
     setEditing(row?.id ?? "new");
     setDraft(
@@ -165,7 +165,7 @@ export function Achievements() {
           title={
             editing === "new"
               ? t("Add achievement").toUpperCase()
-              : t("Achievements").toLocaleUpperCase(data.language)
+              : t("Achievements").toLocaleUpperCase(locale() === "tr" ? "tr-TR" : "en-US")
           }
         >
           <div className="ach-editor-grid">
@@ -336,7 +336,7 @@ export function Achievements() {
 
       <div className="ach-list" aria-label={t("Achievements")}>
         {data.items.length === 0 && (
-          <Panel title={t("Achievements").toLocaleUpperCase(data.language)}>
+          <Panel title={t("Achievements").toLocaleUpperCase(locale() === "tr" ? "tr-TR" : "en-US")}>
             <p className="empty-row muted">{t("No achievements yet. Add one to start a collection.")}</p>
           </Panel>
         )}
@@ -385,7 +385,7 @@ export function Achievements() {
                 {holdersQuery.data?.members.map((m) => (
                   <p key={m.user_id}>
                     <span>{m.user_id}</span>
-                    <time>{new Date(m.earned_at).toLocaleDateString(data.language)}</time>
+                    <time>{date(m.earned_at)}</time>
                   </p>
                 ))}
               </div>

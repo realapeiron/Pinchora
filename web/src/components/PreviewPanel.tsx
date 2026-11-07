@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useMemo, useState } from "react";
 
 import { ApiError } from "../lib/api";
@@ -38,46 +39,49 @@ export function PreviewPanel({
   const stale = settledKey !== key || preview.isFetching;
   return (
     <Panel
-      title="PREVIEW"
+      title={spaTranslate("PREVIEW")}
       aside={
         <PixelButton variant="ghost" className="button-small" onClick={() => setRoll(roll + 1)}>
-          Roll again
+          {" "}
+          {spaTranslate("Roll again")}{" "}
         </PixelButton>
       }
     >
       {onArgs !== undefined && (
         <Field
-          label="Try it with"
+          label={spaTranslate("Try it with")}
           htmlFor="preview-args"
-          hint="What a member would type after the command's name."
+          hint={spaTranslate("What a member would type after the command's name.")}
         >
           <input
             id="preview-args"
             className="pixel-input"
             value={args ?? ""}
             maxLength={200}
-            placeholder="Sam looks great"
+            placeholder={spaTranslate("Sam looks great")}
             onChange={(event) => onArgs(event.target.value)}
           />
         </Field>
       )}
       <div className={`preview-live ${stale ? "is-busy" : ""}`} aria-live="polite" aria-busy={stale}>
         {!ready ? (
-          <p className="muted">Write a reply to see it here.</p>
+          <p className="muted">{spaTranslate("Write a reply to see it here.")}</p>
         ) : preview.data ? (
           <MessagePreview preview={preview.data} />
         ) : preview.isError ? (
           <p className="muted">
             {preview.error instanceof ApiError && preview.error.status === 422
-              ? `Fix this first to see it: ${preview.error.message}`
-              : "The preview is not available just now."}
+              ? spaTranslate("Fix this first to see it: {arg1}", { arg1: preview.error.message })
+              : spaTranslate("The preview is not available just now.")}
           </p>
         ) : (
           <p className="muted">…</p>
         )}
         {preview.data && preview.isError && (
           <p className="field-hint muted">
-            {preview.error instanceof ApiError ? preview.error.message : "The preview is not up to date."}
+            {preview.error instanceof ApiError
+              ? preview.error.message
+              : spaTranslate("The preview is not up to date.")}
           </p>
         )}
       </div>

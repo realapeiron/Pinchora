@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { ACCENTS } from "../lib/rules";
 import type { EmbedField, EmbedSpec } from "../lib/api";
 import { LIMITS, blankEmbed, embedChars } from "../lib/tags";
@@ -20,9 +21,12 @@ export function EmbedEditor({
     return (
       <div className="embed-off">
         <PixelButton variant="secondary" onClick={() => onChange(blankEmbed())}>
-          Add an embed
+          {" "}
+          {spaTranslate("Add an embed")}{" "}
         </PixelButton>
-        <p className="muted">A card under the text, with a coloured edge, a title, fields and pictures.</p>
+        <p className="muted">
+          {spaTranslate("A card under the text, with a coloured edge, a title, fields and pictures.")}
+        </p>
       </div>
     );
   }
@@ -38,10 +42,11 @@ export function EmbedEditor({
     <div className="embed-editor">
       <div className="embed-editor-head">
         <span className={`counter ${total > LIMITS.embed_total_max ? "is-over" : ""}`}>
-          {total}/{LIMITS.embed_total_max} characters
+          {total}/{LIMITS.embed_total_max} {spaTranslate("characters")}{" "}
         </span>
         <PixelButton variant="ghost" className="button-small" onClick={() => onChange(null)}>
-          Remove the embed
+          {" "}
+          {spaTranslate("Remove the embed")}{" "}
         </PixelButton>
       </div>
       {error && (
@@ -50,7 +55,7 @@ export function EmbedEditor({
         </p>
       )}
       <div className="form-grid form-grid-2">
-        <Field label="Title" htmlFor="embed-title">
+        <Field label={spaTranslate("Title")} htmlFor="embed-title">
           <input
             id="embed-title"
             className="pixel-input"
@@ -59,7 +64,11 @@ export function EmbedEditor({
             onChange={(event) => set("title", event.target.value)}
           />
         </Field>
-        <Field label="Colour" htmlFor="embed-color" hint="The edge of the card.">
+        <Field
+          label={spaTranslate("Colour")}
+          htmlFor="embed-color"
+          hint={spaTranslate("The edge of the card.")}
+        >
           <div className="colour-row">
             <span
               className="colour-swatch"
@@ -72,12 +81,12 @@ export function EmbedEditor({
               id="embed-color"
               className="pixel-input"
               value={text(embed.color)}
-              placeholder="#ff6b4a"
+              placeholder={spaTranslate("#ff6b4a")}
               maxLength={7}
               onChange={(event) => set("color", event.target.value)}
             />
           </div>
-          <div className="palette" role="group" aria-label="Colour presets">
+          <div className="palette" role="group" aria-label={spaTranslate("Colour presets")}>
             {ACCENTS.map((accent) => (
               <button
                 key={accent.hex}
@@ -92,7 +101,7 @@ export function EmbedEditor({
           </div>
         </Field>
       </div>
-      <Field label="Description" htmlFor="embed-description">
+      <Field label={spaTranslate("Description")} htmlFor="embed-description">
         <textarea
           id="embed-description"
           className="pixel-input pixel-textarea"
@@ -103,7 +112,7 @@ export function EmbedEditor({
         />
       </Field>
       <div className="form-grid form-grid-2">
-        <Field label="Author line" htmlFor="embed-author">
+        <Field label={spaTranslate("Author line")} htmlFor="embed-author">
           <input
             id="embed-author"
             className="pixel-input"
@@ -112,7 +121,7 @@ export function EmbedEditor({
             onChange={(event) => set("author", event.target.value)}
           />
         </Field>
-        <Field label="Footer" htmlFor="embed-footer">
+        <Field label={spaTranslate("Footer")} htmlFor="embed-footer">
           <input
             id="embed-footer"
             className="pixel-input"
@@ -121,7 +130,11 @@ export function EmbedEditor({
             onChange={(event) => set("footer", event.target.value)}
           />
         </Field>
-        <Field label="Picture address" htmlFor="embed-image" hint="A web address starting with https://.">
+        <Field
+          label={spaTranslate("Picture address")}
+          htmlFor="embed-image"
+          hint={spaTranslate("A web address starting with https://.")}
+        >
           <input
             id="embed-image"
             className="pixel-input"
@@ -130,7 +143,7 @@ export function EmbedEditor({
             onChange={(event) => set("image", event.target.value)}
           />
         </Field>
-        <Field label="Small picture address" htmlFor="embed-thumbnail">
+        <Field label={spaTranslate("Small picture address")} htmlFor="embed-thumbnail">
           <input
             id="embed-thumbnail"
             className="pixel-input"
@@ -139,7 +152,11 @@ export function EmbedEditor({
             onChange={(event) => set("thumbnail", event.target.value)}
           />
         </Field>
-        <Field label="Title link" htmlFor="embed-url" hint="Makes the title a link. Needs a title.">
+        <Field
+          label={spaTranslate("Title link")}
+          htmlFor="embed-url"
+          hint={spaTranslate("Makes the title a link. Needs a title.")}
+        >
           <input
             id="embed-url"
             className="pixel-input"
@@ -151,22 +168,24 @@ export function EmbedEditor({
       </div>
       <div className="embed-fields-editor">
         <span className="field-label">
-          Fields ({embed.fields.length}/{LIMITS.embed_fields_max})
+          {" "}
+          {spaTranslate("Fields (")}
+          {embed.fields.length}/{LIMITS.embed_fields_max})
         </span>
         {embed.fields.map((field, index) => (
           <div key={index} className="embed-field-row">
             <input
               className="pixel-input"
-              aria-label={`Field ${index + 1} name`}
-              placeholder="Name"
+              aria-label={spaTranslate("Field {arg1} name", { arg1: index + 1 })}
+              placeholder={spaTranslate("Name")}
               value={field.name}
               maxLength={LIMITS.embed_field_name_max}
               onChange={(event) => editField(index, { name: event.target.value })}
             />
             <textarea
               className="pixel-input pixel-textarea"
-              aria-label={`Field ${index + 1} value`}
-              placeholder="Value"
+              aria-label={spaTranslate("Field {arg1} value", { arg1: index + 1 })}
+              placeholder={spaTranslate("Value")}
               rows={2}
               value={field.value}
               maxLength={LIMITS.embed_field_value_max}
@@ -177,13 +196,13 @@ export function EmbedEditor({
                 type="checkbox"
                 checked={field.inline}
                 onChange={(event) => editField(index, { inline: event.target.checked })}
-              />
-              Side by side
+              />{" "}
+              {spaTranslate("Side by side")}{" "}
             </label>
             <PixelButton
               variant="ghost"
               className="button-small"
-              aria-label={`Remove field ${index + 1}`}
+              aria-label={spaTranslate("Remove field {arg1}", { arg1: index + 1 })}
               onClick={() =>
                 set(
                   "fields",
@@ -191,7 +210,7 @@ export function EmbedEditor({
                 )
               }
             >
-              Remove
+              {spaTranslate("Remove")}
             </PixelButton>
           </div>
         ))}
@@ -202,7 +221,8 @@ export function EmbedEditor({
               className="button-small"
               onClick={() => set("fields", [...embed.fields, { name: "", value: "", inline: false }])}
             >
-              Add a field
+              {" "}
+              {spaTranslate("Add a field")}{" "}
             </PixelButton>
           </div>
         )}

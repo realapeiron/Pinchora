@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { setLocale } from "../i18n";
 
 import { type Feed, ago, blankDraft, bodyOf, changedFields, draftOf, words, wordsProblem } from "./feeds";
 import { feedWords } from "./feedsWords";
@@ -97,11 +98,13 @@ describe("ago", () => {
   });
 });
 
-it("uses Turkish time and validation strings from the server", () => {
+it("uses Turkish time and validation strings from the server", async () => {
+  await setLocale("tr");
   const tr = feedWords({
     "count-min-ago": "{count} dk önce",
     "at-most-max-words": "En fazla {max} kelime.",
   });
   expect(ago("2026-11-06T11:57:00Z", tr, Date.parse("2026-11-06T12:00:00Z"))).toBe("3 dk önce");
   expect(wordsProblem("a, b, c", 2, 40, tr)).toBe("En fazla 2 kelime.");
+  await setLocale("en");
 });

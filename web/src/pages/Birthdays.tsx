@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { locale } from "../i18n";
 import { Link, useOutletContext } from "react-router";
 import { ChannelPicker, RolePicker } from "../components/Pickers";
 import { Field, SwitchRow } from "../components/Field";
@@ -262,7 +263,7 @@ function BirthdayBody({
               <li key={row.user_id}>
                 <time dateTime={row.date}>
                   {new Date(`${row.date}T12:00:00`).toLocaleDateString(
-                    language === "tr" ? "tr-TR" : "en-US",
+                    locale() === "tr" ? "tr-TR" : "en-US",
                     {
                       month: "short",
                       day: "numeric",

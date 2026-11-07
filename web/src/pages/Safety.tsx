@@ -1,3 +1,4 @@
+import { dateTime } from "../i18n";
 import { useState } from "react";
 import { useOutletContext } from "react-router";
 import type { Overview } from "../lib/api";
@@ -93,7 +94,7 @@ function Editor({ guild, saved }: { guild: string; saved: SafetyData }) {
       <section className={`safety-status ${active ? "is-active" : ""}`} aria-label={t("status")}>
         <div>
           <h2 className="pixel-title">{t(active ? "active" : "calm")}</h2>
-          {active && <p>{t("restores", { time: new Date(active.expires_at).toLocaleString() })}</p>}
+          {active && <p>{t("restores", { time: dateTime(active.expires_at) })}</p>}
         </div>
         <PixelButton
           variant={active ? "secondary" : "ghost"}
@@ -317,7 +318,7 @@ function Editor({ guild, saved }: { guild: string; saved: SafetyData }) {
               {saved.joins.map((j) => (
                 <tr key={j.user_id}>
                   <td>{j.user_id}</td>
-                  <td>{new Date(j.joined_at).toLocaleString()}</td>
+                  <td>{dateTime(j.joined_at)}</td>
                   <td>{t(j.status)}</td>
                 </tr>
               ))}
@@ -332,7 +333,7 @@ function Editor({ guild, saved }: { guild: string; saved: SafetyData }) {
             <article key={e.id}>
               <strong>{t("raid_id", { id: e.id })}</strong>
               <span>{t(e.action)}</span>
-              <time>{new Date(e.started_at).toLocaleString()}</time>
+              <time>{dateTime(e.started_at)}</time>
               {e.error && <p className="field-error">{e.error}</p>}
             </article>
           ))}

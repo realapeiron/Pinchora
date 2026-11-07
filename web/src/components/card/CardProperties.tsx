@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../../i18n";
 import { type ReactNode, useRef, useState } from "react";
 
 import {
@@ -171,7 +172,7 @@ function Choice<T extends string>({
             className={`segment ${value === o.value ? "is-checked" : ""}`}
             onClick={() => onChange(o.value)}
           >
-            {o.label}
+            {spaTranslate(o.label)}
           </button>
         ))}
       </span>
@@ -276,30 +277,30 @@ export function CanvasProperties({
   };
   return (
     <div className="props">
-      <h3 className="pixel-label props-title">CANVAS</h3>
+      <h3 className="pixel-label props-title">{spaTranslate("CANVAS")}</h3>
       {!simple && (
         <div className="prop-grid">
           <NumberField
             id="canvas-w"
-            label="Width"
+            label={spaTranslate("Width")}
             value={design.width}
             range={CARD.width}
             onChange={(width) => onChange({ ...design, width }, "width")}
           />
           <NumberField
             id="canvas-h"
-            label="Height"
+            label={spaTranslate("Height")}
             value={design.height}
             range={CARD.height}
             onChange={(height) => onChange({ ...design, height }, "height")}
           />
         </div>
       )}
-      <Choice label="Background" value={bg.type} options={BACKGROUNDS} onChange={switchTo} />
+      <Choice label={spaTranslate("Background")} value={bg.type} options={BACKGROUNDS} onChange={switchTo} />
       {bg.type === "solid" && (
         <ColorField
           id="bg-color"
-          label="Colour"
+          label={spaTranslate("Colour")}
           value={bg.color}
           onChange={(color) => setBackground({ ...bg, color })}
         />
@@ -309,31 +310,36 @@ export function CanvasProperties({
           <div className="prop-grid">
             <ColorField
               id="bg-from"
-              label="From"
+              label={spaTranslate("From")}
               value={bg.from}
               onChange={(from) => setBackground({ ...bg, from })}
             />
-            <ColorField id="bg-to" label="To" value={bg.to} onChange={(to) => setBackground({ ...bg, to })} />
+            <ColorField
+              id="bg-to"
+              label={spaTranslate("To")}
+              value={bg.to}
+              onChange={(to) => setBackground({ ...bg, to })}
+            />
           </div>
           <Choice
-            label="Direction"
+            label={spaTranslate("Direction")}
             value={bg.direction}
             options={[
-              { value: "vertical", label: "Down" },
-              { value: "horizontal", label: "Across" },
-              { value: "diagonal", label: "Corner" },
+              { value: "vertical", label: spaTranslate("Down") },
+              { value: "horizontal", label: spaTranslate("Across") },
+              { value: "diagonal", label: spaTranslate("Corner") },
             ]}
             onChange={(direction) => setBackground({ ...bg, direction })}
           />
           <Switch
-            label="Pixel dither & sparkles"
+            label={spaTranslate("Pixel dither & sparkles")}
             checked={bg.pixel}
             onChange={(pixel) => setBackground({ ...bg, pixel })}
           />
         </>
       )}
       {bg.type === "sprite" && (
-        <div className="picture-grid" role="listbox" aria-label="Background pictures">
+        <div className="picture-grid" role="listbox" aria-label={spaTranslate("Background pictures")}>
           {pictures.map((id) => (
             <button
               key={id}
@@ -350,7 +356,7 @@ export function CanvasProperties({
         </div>
       )}
       {bg.type === "upload" && uploads.length > 0 && (
-        <div className="picture-grid" role="listbox" aria-label="Uploaded pictures">
+        <div className="picture-grid" role="listbox" aria-label={spaTranslate("Uploaded pictures")}>
           {uploads.map((u) => (
             <button
               key={u.id}
@@ -384,17 +390,18 @@ export function CanvasProperties({
           onClick={() => file.current?.click()}
           disabled={uploading}
         >
-          {uploading ? "Uploading…" : "Upload a picture"}
+          {uploading ? spaTranslate("Uploading…") : spaTranslate("Upload a picture")}
         </PixelButton>
         <p className="fine muted">
-          PNG, JPEG, WebP or GIF up to {CARD.upload_max_bytes / 1024 / 1024} MB. It is shrunk to fit and
-          covers the canvas.
+          {" "}
+          {spaTranslate("PNG, JPEG, WebP or GIF up to")} {CARD.upload_max_bytes / 1024 / 1024}{" "}
+          {spaTranslate("MB. It is shrunk to fit and covers the canvas.")}{" "}
         </p>
       </div>
       {bg.type !== "transparent" && (
         <Slider
           id="canvas-dim"
-          label="Darken"
+          label={spaTranslate("Darken")}
           value={design.dim}
           range={[0, CARD.dim_max]}
           unit="%"
@@ -450,14 +457,14 @@ export function LayerProperties({
       {layer.type === "avatar" && (
         <>
           <Choice
-            label="Shape"
+            label={spaTranslate("Shape")}
             value={layer.shape}
             options={AVATAR_SHAPES}
             onChange={(shape) => set({ ...layer, shape })}
           />
           <Slider
             id={id("border")}
-            label="Border"
+            label={spaTranslate("Border")}
             value={layer.border_width}
             range={[0, Math.min(CARD.border_max, Math.floor(layer.w / 4))]}
             unit=" px"
@@ -466,14 +473,14 @@ export function LayerProperties({
           {layer.border_width > 0 && (
             <ColorField
               id={id("border-color")}
-              label="Border colour"
+              label={spaTranslate("Border colour")}
               value={layer.border_color}
               onChange={(border_color) => set({ ...layer, border_color })}
             />
           )}
           {!simple && (
             <Switch
-              label="Chunky pixels"
+              label={spaTranslate("Chunky pixels")}
               checked={layer.pixelate}
               onChange={(pixelate) => set({ ...layer, pixelate })}
             />
@@ -483,15 +490,15 @@ export function LayerProperties({
       {layer.type === "sprite" && (
         <>
           <div className="prop prop-wide">
-            <span className="prop-label">Picture</span>
+            <span className="prop-label">{spaTranslate("Picture")}</span>
             <PixelButton variant="secondary" className="button-small" onClick={onPickSticker}>
-              {stickerName(layer.sprite)} · change
+              {stickerName(layer.sprite)} {spaTranslate("· change")}{" "}
             </PixelButton>
           </div>
           {CARD.glyphs.includes(layer.sprite) && (
             <ColorField
               id={id("color")}
-              label="Colour"
+              label={spaTranslate("Colour")}
               value={layer.color}
               onChange={(color) => set({ ...layer, color })}
             />
@@ -501,21 +508,21 @@ export function LayerProperties({
       {layer.type === "shape" && (
         <>
           <Choice
-            label="Shape"
+            label={spaTranslate("Shape")}
             value={layer.shape}
             options={SHAPES}
             onChange={(shape) => set({ ...layer, shape })}
           />
           <ColorField
             id={id("fill")}
-            label="Fill"
+            label={spaTranslate("Fill")}
             value={layer.fill}
             onChange={(fill) => set({ ...layer, fill })}
           />
           {!simple && (
             <Slider
               id={id("border")}
-              label="Border"
+              label={spaTranslate("Border")}
               value={layer.border_width}
               range={[0, CARD.border_max]}
               unit=" px"
@@ -525,7 +532,7 @@ export function LayerProperties({
           {!simple && layer.border_width > 0 && (
             <ColorField
               id={id("border-color")}
-              label="Border colour"
+              label={spaTranslate("Border colour")}
               value={layer.border_color}
               onChange={(border_color) => set({ ...layer, border_color })}
             />
@@ -536,7 +543,7 @@ export function LayerProperties({
         <>
           <Slider
             id={id("opacity")}
-            label="Opacity"
+            label={spaTranslate("Opacity")}
             value={layer.opacity}
             range={[0, 100]}
             unit="%"
@@ -559,7 +566,7 @@ export function LayerProperties({
             />
             <NumberField
               id={id("w")}
-              label="Width"
+              label={spaTranslate("Width")}
               value={layer.w}
               range={[CARD.size[0] ?? 4, layer.type === "avatar" ? maxAvatarSide(canvas) : canvas.width]}
               onChange={(w) => set(layer.type === "avatar" ? { ...layer, w, h: w } : { ...layer, w }, "w")}
@@ -567,7 +574,7 @@ export function LayerProperties({
             {layer.type !== "text" && layer.type !== "avatar" && (
               <NumberField
                 id={id("h")}
-                label="Height"
+                label={spaTranslate("Height")}
                 value={layer.h}
                 range={[CARD.size[0] ?? 4, canvas.height]}
                 onChange={(h) => set({ ...layer, h }, "h")}
@@ -607,7 +614,7 @@ function TextProperties({
   };
   return (
     <>
-      <Row label="Text" htmlFor="layer-text" wide>
+      <Row label={spaTranslate("Text")} htmlFor="layer-text" wide>
         <textarea
           id="layer-text"
           ref={area}
@@ -619,7 +626,7 @@ function TextProperties({
           onChange={(event) => onChange({ ...layer, text: event.target.value }, "text")}
         />
       </Row>
-      <div className="chips" aria-label="Placeholders">
+      <div className="chips" aria-label={spaTranslate("Placeholders")}>
         {CARD.placeholders.map((p) => (
           <button key={p} type="button" className="chip" onClick={() => insert(p)}>
             {p}
@@ -628,26 +635,27 @@ function TextProperties({
       </div>
       {unknown.length > 0 && (
         <p className="field-error" role="alert">
-          {unknown[0]} isn&apos;t a placeholder. Use {CARD.placeholders.join(" ")}.
+          {unknown[0]} {spaTranslate("isn't a placeholder. Use")} {CARD.placeholders.join(" ")}.
         </p>
       )}
       {layer.text.trim() === "" && (
         <p className="field-error" role="alert">
-          Write something, or delete the layer.
+          {" "}
+          {spaTranslate("Write something, or delete the layer.")}{" "}
         </p>
       )}
       <Choice
-        label="Font"
+        label={spaTranslate("Font")}
         value={layer.font}
         options={[
           { value: "sans", label: "Noto Sans" },
-          { value: "pixel", label: "Pixel" },
+          { value: "pixel", label: spaTranslate("Pixel") },
         ]}
         onChange={(font) => onChange({ ...layer, font })}
       />
       <Slider
         id="layer-size"
-        label="Size"
+        label={spaTranslate("Size")}
         value={layer.size}
         range={[CARD.text_size[0] ?? 8, maxTextSize(layer.max_lines, canvas.height)]}
         unit=" px"
@@ -655,38 +663,42 @@ function TextProperties({
       />
       <ColorField
         id="layer-color"
-        label="Colour"
+        label={spaTranslate("Colour")}
         value={layer.color}
         onChange={(color) => onChange({ ...layer, color })}
       />
       <Choice
-        label="Align"
+        label={spaTranslate("Align")}
         value={layer.align}
         options={[
-          { value: "left", label: "Left" },
-          { value: "center", label: "Centre" },
-          { value: "right", label: "Right" },
+          { value: "left", label: spaTranslate("Left") },
+          { value: "center", label: spaTranslate("Centre") },
+          { value: "right", label: spaTranslate("Right") },
         ]}
         onChange={(align) => onChange({ ...layer, align })}
       />
       {!simple && (
         <>
           <div className="prop-grid">
-            <Switch label="Bold" checked={layer.bold} onChange={(bold) => onChange({ ...layer, bold })} />
             <Switch
-              label="Capitals"
+              label={spaTranslate("Bold")}
+              checked={layer.bold}
+              onChange={(bold) => onChange({ ...layer, bold })}
+            />
+            <Switch
+              label={spaTranslate("Capitals")}
               checked={layer.uppercase}
               onChange={(uppercase) => onChange({ ...layer, uppercase })}
             />
             <Switch
-              label="Shadow"
+              label={spaTranslate("Shadow")}
               checked={layer.shadow}
               onChange={(shadow) => onChange({ ...layer, shadow })}
             />
           </div>
           <Slider
             id="layer-lines"
-            label="Lines at most"
+            label={spaTranslate("Lines at most")}
             value={layer.max_lines}
             range={[1, CARD.max_lines]}
             onChange={(max_lines) =>
@@ -695,7 +707,7 @@ function TextProperties({
           />
           <Slider
             id="layer-outline"
-            label="Outline"
+            label={spaTranslate("Outline")}
             value={layer.outline_width}
             range={[0, CARD.outline_max]}
             unit=" px"
@@ -704,7 +716,7 @@ function TextProperties({
           {layer.outline_width > 0 && (
             <ColorField
               id="layer-outline-color"
-              label="Outline colour"
+              label={spaTranslate("Outline colour")}
               value={layer.outline_color}
               onChange={(outline_color) => onChange({ ...layer, outline_color })}
             />
@@ -728,7 +740,7 @@ export function StickerPicker({
   const [query, setQuery] = useState("");
   const names = Object.keys(atlas ?? {}).sort();
   const groups = [
-    { name: "Pixel glyphs", ids: CARD.glyphs },
+    { name: spaTranslate("Pixel glyphs"), ids: CARD.glyphs },
     ...STICKER_GROUPS.map((g) => ({ name: g.name, ids: names.filter((n) => n.startsWith(g.prefix)) })),
   ];
   const q = query.trim().toLowerCase();
@@ -739,11 +751,11 @@ export function StickerPicker({
     else if (region) onPick({ id, w: region.w, h: region.h });
   };
   return (
-    <Dialog title="CHOOSE A STICKER" onClose={onClose}>
+    <Dialog title={spaTranslate("CHOOSE A STICKER")} onClose={onClose}>
       <input
         className="pixel-input"
-        placeholder="Search, e.g. cat, koi, lantern"
-        aria-label="Search stickers"
+        placeholder={spaTranslate("Search, e.g. cat, koi, lantern")}
+        aria-label={spaTranslate("Search stickers")}
         value={query}
         onChange={(event) => setQuery(event.target.value)}
       />
@@ -756,7 +768,7 @@ export function StickerPicker({
           if (ids.length === 0) return null;
           return (
             <section key={g.name}>
-              <h4 className="pixel-label sticker-group">{g.name.toUpperCase()}</h4>
+              <h4 className="pixel-label sticker-group">{spaTranslate(g.name).toLocaleUpperCase()}</h4>
               <div className="sticker-grid">
                 {ids.slice(0, 120).map((id) => (
                   <button
@@ -774,7 +786,7 @@ export function StickerPicker({
             </section>
           );
         })}
-        {!q && <p className="fine muted">Search to find furniture too.</p>}
+        {!q && <p className="fine muted">{spaTranslate("Search to find furniture too.")}</p>}
       </div>
     </Dialog>
   );
@@ -833,7 +845,7 @@ export function Dialog({
           <header className="panel-head">
             <h2 className="pixel-title">{title}</h2>
             <PixelButton variant="ghost" className="button-small" onClick={onClose} autoFocus>
-              Close
+              {spaTranslate("Close")}
             </PixelButton>
           </header>
           {children}

@@ -1,3 +1,4 @@
+import { date, translate as spaTranslate } from "../i18n";
 import { InviteWordsContext, useInviteWords } from "../lib/inviteWords";
 import "../styles/invites.css";
 
@@ -352,7 +353,9 @@ function Rewards({
               </strong>
               <PixelButton
                 variant="ghost"
-                aria-label={`Remove reward at ${t("{count} invites", { count: r.invites })}`}
+                aria-label={spaTranslate("Remove reward at {arg1}", {
+                  arg1: t("{count} invites", { count: r.invites }),
+                })}
                 onClick={() => remove.mutate(r.invites, { onSuccess: () => onToast(t("Reward removed.")) })}
               >
                 {t("Remove")}
@@ -526,7 +529,7 @@ function Leaderboard({ guild }: { guild: string }) {
               {detail.data.joins.map((j, i) => (
                 <li key={`${j.user_id}-${i}`}>
                   <span>{j.user_id}</span>
-                  <span>{new Date(j.joined_at).toLocaleDateString()}</span>
+                  <span>{date(j.joined_at)}</span>
                   <span className={`inv-source ${j.source}`}>
                     {j.source === "temporary" ? t("possible used-up link") : t(j.source)}
                     {j.fake ? t(" · new account") : ""}

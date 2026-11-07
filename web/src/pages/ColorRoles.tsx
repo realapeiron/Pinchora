@@ -1,3 +1,4 @@
+import { plural as spaPlural, translate as spaTranslate } from "../i18n";
 import { useState } from "react";
 
 import { Choice } from "../components/Choice";
@@ -57,28 +58,33 @@ export function ColorRoles({
 
   return (
     <Panel
-      title="COLOUR ROLES"
+      title={spaTranslate("COLOUR ROLES")}
       aside={<span className="pixel-label muted">{`${colors.roles.length}/${colors.max} roles made`}</span>}
     >
       <p className="muted panel-lead">
-        Members colour their name with <code>/color pick</code>. Each colour is a role the bot makes the first
-        time somebody picks it, and a member holds one at a time.
+        {" "}
+        {spaTranslate("Members colour their name with")} <code>/color pick</code>
+        {spaTranslate(
+          ". Each colour is a role the bot makes the first time somebody picks it, and a member holds one at a time.",
+        )}{" "}
       </p>
       <SwitchRow
-        title="Let members pick a colour"
+        title={spaTranslate("Let members pick a colour")}
         control={
           <PixelToggle
-            label="Colour roles"
+            label={spaTranslate("Colour roles")}
             checked={colors.enabled}
             disabled={write.isPending}
             onChange={(on) => save({ enabled: on })}
           />
         }
       >
-        Off hides <code>/color</code> from members. Colours already given stay.
+        {" "}
+        {spaTranslate("Off hides")} <code>/color</code>{" "}
+        {spaTranslate("from members. Colours already given stay.")}{" "}
       </SwitchRow>
 
-      <Field label="Which colours">
+      <Field label={spaTranslate("Which colours")}>
         <Choice
           name="Colour mode"
           value={colors.mode}
@@ -89,26 +95,29 @@ export function ColorRoles({
       </Field>
 
       <h3 className="setting-name" style={{ marginTop: 24 }}>
-        The palette
+        {" "}
+        {spaTranslate("The palette")}{" "}
       </h3>
       <p className="muted fine">
-        The card colours. A green tick means the role exists; the others are made the first time somebody
-        picks them. Select a colour to try it on a name.
+        {" "}
+        {spaTranslate(
+          "The card colours. A green tick means the role exists; the others are made the first time somebody picks them. Select a colour to try it on a name.",
+        )}{" "}
       </p>
-      <ul className="colour-grid" aria-label="Palette">
+      <ul className="colour-grid" aria-label={spaTranslate("Palette")}>
         {colors.palette.map((c) => (
           <li key={c.hex}>
             <button
               type="button"
               className={`colour-tile ${sample === c.hex ? "is-picked" : ""}`}
               aria-pressed={sample === c.hex}
-              aria-label={`${c.name}, ${made.has(c.hex) ? "role made" : "made when picked"}`}
+              aria-label={`${c.name}, ${made.has(c.hex) ? spaTranslate("role made") : spaTranslate("made when picked")}`}
               onClick={() => setSample(c.hex)}
             >
               <span className="tone-swatch" style={{ background: c.hex }} aria-hidden="true" />
               <span>{c.name}</span>
               <span className={`colour-state ${made.has(c.hex) ? "is-made" : ""}`} aria-hidden="true">
-                {made.has(c.hex) ? "✓ ROLE MADE" : "\u00a0"}
+                {made.has(c.hex) ? spaTranslate("✓ ROLE MADE") : "\u00a0"}
               </span>
             </button>
           </li>
@@ -117,19 +126,21 @@ export function ColorRoles({
       <div
         className="colour-sample"
         role="img"
-        aria-label={`A name in ${sample}`}
+        aria-label={spaTranslate("A name in {arg1}", { arg1: sample })}
         aria-live="polite"
         style={{ marginTop: 12 }}
       >
         <span className="discord-avatar" aria-hidden="true" />
         <strong style={{ color: isHex(sample) ? sample : undefined }}>Captain Crab</strong>
-        <span className="muted">· how the name looks on Discord&apos;s dark chat</span>
+        <span className="muted">{spaTranslate("· how the name looks on Discord's dark chat")}</span>
       </div>
       <div className="panel-foot">
         {missing > 0 ? (
-          <span className="muted fine">{missing} palette colours have no role yet.</span>
+          <span className="muted fine">
+            {missing} {spaTranslate("palette colours have no role yet.")}
+          </span>
         ) : (
-          <span className="muted fine">Every palette colour has its role.</span>
+          <span className="muted fine">{spaTranslate("Every palette colour has its role.")}</span>
         )}
         <PixelButton
           variant="secondary"
@@ -137,28 +148,35 @@ export function ColorRoles({
           onClick={() => write.mutate({ method: "POST", sub: "/colors/create-missing" })}
         >
           {write.isPending && write.variables?.sub === "/colors/create-missing"
-            ? "Making roles…"
-            : "Create the missing roles"}
+            ? spaTranslate("Making roles…")
+            : spaTranslate("Create the missing roles")}
         </PixelButton>
       </div>
       {report && (
         <p className={`notice ${report.stopped ? "notice-heart" : ""}`} role="status">
           {report.created.length > 0
-            ? `Made ${report.created.length} role${report.created.length === 1 ? "" : "s"}: ${report.created.join(", ")}. `
-            : "Made no roles. "}
+            ? spaPlural(
+                report.created.length,
+                { one: "Made {count} role: {names}. ", other: "Made {count} roles: {names}. " },
+                { names: report.created.join(", ") },
+              )
+            : spaTranslate("Made no roles. ")}
           {report.stopped && <RichText text={report.stopped} />}
         </p>
       )}
 
       <div className="form-grid form-grid-2">
         <Field
-          label="Who may pick"
+          label={spaTranslate("Who may pick")}
           htmlFor="colour-allow"
           error={error?.field === "allowed_roles" ? error.message : null}
           hint={
             colors.allowed_roles.length === 0
-              ? "Everyone may. Add a role to limit it, for boosters, say."
-              : `Only members with one of these roles. ${colors.allowed_roles.length}/${colors.max_allowed}`
+              ? spaTranslate("Everyone may. Add a role to limit it, for boosters, say.")
+              : spaTranslate("Only members with one of these roles. {arg1}/{arg2}", {
+                  arg1: colors.allowed_roles.length,
+                  arg2: colors.max_allowed,
+                })
           }
         >
           <div className="chip-row">
@@ -167,18 +185,19 @@ export function ColorRoles({
               info={info}
               value={allow}
               onChange={setAllow}
-              none="Pick a role to add"
+              none={spaTranslate("Pick a role to add")}
             />
             <PixelButton
               variant="secondary"
               disabled={!allow || colors.allowed_roles.includes(allow) || write.isPending}
               onClick={() => allow && save({ allowed_roles: [...colors.allowed_roles, allow] })}
             >
-              Add
+              {" "}
+              {spaTranslate("Add")}{" "}
             </PixelButton>
           </div>
           {colors.allowed_roles.length > 0 && (
-            <ul className="channel-chips" aria-label="Roles that may pick">
+            <ul className="channel-chips" aria-label={spaTranslate("Roles that may pick")}>
               {colors.allowed_roles.map((id) => (
                 <li key={id} className="channel-chip">
                   <RoleTag info={info} id={id} />
@@ -196,20 +215,22 @@ export function ColorRoles({
           )}
         </Field>
         <Field
-          label="Make new colour roles under"
+          label={spaTranslate("Make new colour roles under")}
           htmlFor="colour-anchor"
           error={
             (picked && !picked.assignable ? picked.why_not : null) ??
             (error?.field === "anchor_role_id" ? error.message : null)
           }
-          hint="A colour only shows when no role above it has one. Pick a role below the bot, and put it above the roles that colour names."
+          hint={spaTranslate(
+            "A colour only shows when no role above it has one. Pick a role below the bot, and put it above the roles that colour names.",
+          )}
         >
           <RolePicker
             id="colour-anchor"
             info={info}
             value={colors.anchor_role_id}
             onChange={(role) => save({ anchor_role_id: role })}
-            none="None: new roles land at the bottom"
+            none={spaTranslate("None: new roles land at the bottom")}
             assignable
             disabled={write.isPending}
           />
@@ -219,21 +240,24 @@ export function ColorRoles({
       {colors.roles.length > 0 && (
         <>
           <h3 className="setting-name" style={{ marginTop: 24 }}>
-            Colour roles made
+            {" "}
+            {spaTranslate("Colour roles made")}{" "}
           </h3>
-          <ul className="list" aria-label="Colour roles">
+          <ul className="list" aria-label={spaTranslate("Colour roles")}>
             {colors.roles.map((r) => (
               <li key={r.role_id} className="list-row">
                 <span className="list-main colour-role-name">
                   <span className="role-dot" style={{ background: r.hex }} aria-hidden="true" />
                   <RoleTag info={info} id={r.role_id} />
                   <span className="muted list-note">{r.hex}</span>
-                  {own.some((o) => o.role_id === r.role_id) && <span className="badge badge-dim">YOURS</span>}
+                  {own.some((o) => o.role_id === r.role_id) && (
+                    <span className="badge badge-dim">{spaTranslate("YOURS")}</span>
+                  )}
                 </span>
                 <PixelButton
                   variant="ghost"
                   className="button-small"
-                  aria-label={`Remove ${r.name} from the colours`}
+                  aria-label={spaTranslate("Remove {arg1} from the colours", { arg1: r.name })}
                   disabled={write.isPending}
                   onClick={() =>
                     write.mutate({
@@ -242,7 +266,7 @@ export function ColorRoles({
                     })
                   }
                 >
-                  Remove
+                  {spaTranslate("Remove")}
                 </PixelButton>
               </li>
             ))}
@@ -252,8 +276,8 @@ export function ColorRoles({
               type="checkbox"
               checked={deleteOnDiscord}
               onChange={(event) => setDeleteOnDiscord(event.target.checked)}
-            />
-            Remove also deletes the role on Discord
+            />{" "}
+            {spaTranslate("Remove also deletes the role on Discord")}{" "}
           </label>
         </>
       )}

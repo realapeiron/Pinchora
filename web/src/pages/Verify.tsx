@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router";
 import { api } from "../lib/api";
+import { configureGuild } from "../i18n";
 import { words } from "../lib/verification";
 import { RequireLogin } from "./RequireLogin";
 import { Loading, Problem } from "./States";
@@ -21,6 +22,10 @@ function MemberGate() {
     queryFn: () => api<{ language: string; strings: Record<string, string> }>(path),
     retry: false,
   });
+  useEffect(() => {
+    const language = data.data?.language;
+    configureGuild(language === "en" || language === "tr" ? language : null);
+  }, [data.data?.language]);
   const card = useMutation({
     mutationFn: () => api<{ nonce: string; image: string }>(`${path}/captcha`, "POST"),
   });

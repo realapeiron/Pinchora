@@ -1,3 +1,4 @@
+import { dateTime } from "../i18n";
 import { useCallback, useState } from "react";
 import { useOutletContext } from "react-router";
 import { Field, SwitchRow } from "../components/Field";
@@ -68,7 +69,7 @@ function Editor({ guild, saved }: { guild: string; saved: AutoData }) {
         <p className="automod-observation">{t("ui.observe")}</p>
         {observe && (
           <p className="automod-until">
-            {t("ui.observing_until", { time: new Date(config.observe_until!).toLocaleString() })}
+            {t("ui.observing_until", { time: dateTime(config.observe_until!) })}
           </p>
         )}
         {profile.isError && (
@@ -238,8 +239,7 @@ function Editor({ guild, saved }: { guild: string; saved: AutoData }) {
         </details>
         <p className="muted">
           {t("ui.sync")}:{" "}
-          {saved.sync_error ??
-            (saved.synced_at ? new Date(saved.synced_at).toLocaleString() : t("ui.sync_pending"))}
+          {saved.sync_error ?? (saved.synced_at ? dateTime(saved.synced_at) : t("ui.sync_pending"))}
         </p>
       </Panel>
       <Panel title={t("ui.test")}>
@@ -304,7 +304,7 @@ function Editor({ guild, saved }: { guild: string; saved: AutoData }) {
               <li key={h.id}>
                 <div>
                   <strong>{config.rules.find((r) => r.id === h.rule_id)?.name ?? `#${h.id}`}</strong>
-                  <time dateTime={h.created_at}>{new Date(h.created_at).toLocaleString()}</time>
+                  <time dateTime={h.created_at}>{dateTime(h.created_at)}</time>
                 </div>
                 <p>
                   {t("ui.member")}: <code>{h.user_id}</code> · <code>#{h.channel_id}</code>

@@ -1,3 +1,4 @@
+import { plural as spaPlural, translate as spaTranslate } from "../i18n";
 import "../styles/tickets.css";
 
 import { useCallback, useId, useState } from "react";
@@ -53,24 +54,28 @@ function TicketsHome({ guild, modules }: { guild: string; modules: ModuleEntry[]
   return (
     <div className="settings-page">
       <PageHead
-        title="TICKETS"
-        lead="Members open a private ticket from a panel: a channel or thread just for them and your staff, closed with a transcript."
+        title={spaTranslate("TICKETS")}
+        lead={spaTranslate(
+          "Members open a private ticket from a panel: a channel or thread just for them and your staff, closed with a transcript.",
+        )}
       />
       {module && !module.enabled && (
         <p className="notice" role="note">
-          <strong>{module.label}</strong> is switched off in <Link to={`/g/${guild}/modules`}>Modules</Link>,
-          so panels don't open tickets until you switch it on.
+          <strong>{spaTranslate(module.label)}</strong> {spaTranslate("is switched off in")}{" "}
+          <Link to={`/g/${guild}/modules`}>{spaTranslate("Modules")}</Link>
+          {spaTranslate(", so panels don't open tickets until you switch it on.")}{" "}
         </p>
       )}
-      {query.isPending && <Loading label="Reading the tickets" />}
+      {query.isPending && <Loading label={spaTranslate("Reading the tickets")} />}
       {query.isError && <Problem error={query.error} />}
       {query.isSuccess && (
         <>
           {!query.data.message_content && (
             <p className="notice" role="note" data-testid="content-lock">
-              <span className="badge badge-gold">NEEDS MESSAGE CONTENT</span> Transcripts keep who wrote,
-              when, and the file names, but not the words: reading message text needs Discord's privileged
-              Message Content intent, which this bot runs without.
+              <span className="badge badge-gold">{spaTranslate("NEEDS MESSAGE CONTENT")}</span>{" "}
+              {spaTranslate(
+                "Transcripts keep who wrote, when, and the file names, but not the words: reading message text needs Discord's privileged Message Content intent, which this bot runs without.",
+              )}{" "}
             </p>
           )}
           <SummaryPanel summary={query.data.summary} />
@@ -103,13 +108,13 @@ function SummaryPanel({ summary }: { summary: TicketsOverview["summary"] }) {
   const numbers: Summary = summary[span];
   return (
     <Panel
-      title="AT A GLANCE"
+      title={spaTranslate("AT A GLANCE")}
       aside={
-        <div className="tk-segment is-tight" role="group" aria-label="Period">
+        <div className="tk-segment is-tight" role="group" aria-label={spaTranslate("Period")}>
           {(
             [
-              ["week", "7 days"],
-              ["month", "30 days"],
+              ["week", spaTranslate("7 days")],
+              ["month", spaTranslate("30 days")],
             ] as const
           ).map(([key, label]) => (
             <button
@@ -127,24 +132,24 @@ function SummaryPanel({ summary }: { summary: TicketsOverview["summary"] }) {
     >
       <ul className="tk-stats">
         <li className="tk-stat">
-          <span className="tk-stat-name">Open now</span>
+          <span className="tk-stat-name">{spaTranslate("Open now")}</span>
           <span className="tk-stat-value">{numbers.open_now}</span>
         </li>
         <li className="tk-stat">
-          <span className="tk-stat-name">Opened</span>
+          <span className="tk-stat-name">{spaTranslate("Opened")}</span>
           <span className="tk-stat-value">{numbers.opened}</span>
         </li>
         <li className="tk-stat">
-          <span className="tk-stat-name">Closed</span>
+          <span className="tk-stat-name">{spaTranslate("Closed")}</span>
           <span className="tk-stat-value">{numbers.closed}</span>
         </li>
         <li className="tk-stat">
-          <span className="tk-stat-name">First reply</span>
+          <span className="tk-stat-name">{spaTranslate("First reply")}</span>
           <span className="tk-stat-value">{duration(numbers.median_first_reply_secs)}</span>
-          <span className="tk-stat-detail">median</span>
+          <span className="tk-stat-detail">{spaTranslate("median")}</span>
         </li>
         <li className="tk-stat">
-          <span className="tk-stat-name">Rating</span>
+          <span className="tk-stat-name">{spaTranslate("Rating")}</span>
           <span className="tk-stat-value">
             {numbers.rating_avg === null ? "—" : numbers.rating_avg.toFixed(1)}
             {numbers.rating_avg !== null && (
@@ -155,7 +160,7 @@ function SummaryPanel({ summary }: { summary: TicketsOverview["summary"] }) {
             )}
           </span>
           <span className="tk-stat-detail">
-            {numbers.ratings} rating{numbers.ratings === 1 ? "" : "s"}
+            {spaPlural(numbers.ratings, { one: "{count} rating", other: "{count} ratings" })}
           </span>
         </li>
       </ul>
@@ -213,7 +218,7 @@ function SettingsForm({
     value.auto_close_hours < 0 ||
     value.auto_close_hours > limits.auto_close_hours
   ) {
-    errors.auto_close_hours ??= `0 (never) to ${limits.auto_close_hours} hours.`;
+    errors.auto_close_hours ??= spaTranslate("0 (never) to {arg1} hours.", { arg1: limits.auto_close_hours });
     local.push("auto_close_hours");
   }
   if (
@@ -232,60 +237,61 @@ function SettingsForm({
 
   return (
     <>
-      <Panel title="SETTINGS">
+      <Panel title={spaTranslate("SETTINGS")}>
         <div className="form-grid form-grid-2">
           <Field
-            label="Ticket category"
+            label={spaTranslate("Ticket category")}
             htmlFor={`${base}-open`}
             error={errors.open_category_id}
-            hint="Where ticket channels are made. A panel can pick its own."
+            hint={spaTranslate("Where ticket channels are made. A panel can pick its own.")}
           >
             <CategoryPicker
               id={`${base}-open`}
               info={info}
               value={value.open_category_id}
               onChange={(id) => set("open_category_id", id)}
-              none="No category (top of the list)"
+              none={spaTranslate("No category (top of the list)")}
               invalid={!!errors.open_category_id}
             />
           </Field>
           <Field
-            label="Closed category"
+            label={spaTranslate("Closed category")}
             htmlFor={`${base}-closed`}
             error={errors.closed_category_id}
-            hint="Closed tickets move here. None: they stay where they are."
+            hint={spaTranslate("Closed tickets move here. None: they stay where they are.")}
           >
             <CategoryPicker
               id={`${base}-closed`}
               info={info}
               value={value.closed_category_id}
               onChange={(id) => set("closed_category_id", id)}
-              none="Don't move closed tickets"
+              none={spaTranslate("Don't move closed tickets")}
               invalid={!!errors.closed_category_id}
             />
           </Field>
           <Field
-            label="Log channel"
+            label={spaTranslate("Log channel")}
             htmlFor={`${base}-log`}
             error={errors.log_channel_id}
-            hint="Opened, claimed and closed tickets, with each transcript."
+            hint={spaTranslate("Opened, claimed and closed tickets, with each transcript.")}
           >
             <ChannelPicker
               id={`${base}-log`}
               info={info}
               value={value.log_channel_id}
               onChange={(id) => set("log_channel_id", id)}
-              none="No log"
+              none={spaTranslate("No log")}
               invalid={!!errors.log_channel_id}
             />
           </Field>
           <Field
-            label="Channel name"
+            label={spaTranslate("Channel name")}
             htmlFor={`${base}-naming`}
             error={errors.naming}
             hint={
               <span className="tk-sample">
-                {"{number}"}, {"{user}"} and {"{topic}"} are filled in: <code>#{example || "…"}</code>
+                {"{number}"}, {"{user}"} {spaTranslate("and")} {"{topic}"} {spaTranslate("are filled in:")}{" "}
+                <code>#{example || "…"}</code>
               </span>
             }
           >
@@ -300,13 +306,15 @@ function SettingsForm({
             />
           </Field>
           <Field
-            label="Auto-close after (hours)"
+            label={spaTranslate("Auto-close after (hours)")}
             htmlFor={`${base}-auto`}
             error={errors.auto_close_hours}
             hint={
               value.auto_close_hours === 0
-                ? "0: tickets never close by themselves."
-                : `A ticket nobody writes in for ${value.auto_close_hours} h closes.`
+                ? spaTranslate("0: tickets never close by themselves.")
+                : spaTranslate("A ticket nobody writes in for {arg1} h closes.", {
+                    arg1: value.auto_close_hours,
+                  })
             }
           >
             <input
@@ -321,7 +329,7 @@ function SettingsForm({
             />
           </Field>
           <Field
-            label="Open tickets per member"
+            label={spaTranslate("Open tickets per member")}
             htmlFor={`${base}-max`}
             error={errors.max_open_per_user}
             hint={`1 to ${limits.open_per_user}. One ticket a minute per member either way.`}
@@ -338,7 +346,7 @@ function SettingsForm({
             />
           </Field>
         </div>
-        <Field label="Tickets are" htmlFor={`${base}-mode`}>
+        <Field label={spaTranslate("Tickets are")} htmlFor={`${base}-mode`}>
           <Choice
             name="Where tickets live"
             value={value.mode}
@@ -347,28 +355,34 @@ function SettingsForm({
           />
         </Field>
         <SwitchRow
-          title="Transcript by direct message"
+          title={spaTranslate("Transcript by direct message")}
           control={
             <PixelToggle
-              label="Transcript by direct message"
+              label={spaTranslate("Transcript by direct message")}
               checked={value.dm_transcript}
               onChange={(on) => set("dm_transcript", on)}
             />
           }
         >
-          The member gets their ticket's transcript when it closes (unless they turned server DMs off).
+          {" "}
+          {spaTranslate(
+            "The member gets their ticket's transcript when it closes (unless they turned server DMs off).",
+          )}{" "}
         </SwitchRow>
         <SwitchRow
-          title="Ratings"
+          title={spaTranslate("Ratings")}
           control={
             <PixelToggle
-              label="Ratings"
+              label={spaTranslate("Ratings")}
               checked={value.rating_enabled}
               onChange={(on) => set("rating_enabled", on)}
             />
           }
         >
-          Ask the member for one to five stars after a close; the numbers above show the average.
+          {" "}
+          {spaTranslate(
+            "Ask the member for one to five stars after a close; the numbers above show the average.",
+          )}{" "}
         </SwitchRow>
       </Panel>
       <SaveBar
@@ -377,14 +391,14 @@ function SettingsForm({
         blocked={local.length > 0}
         error={
           local.length > 0
-            ? "Fix the marked fields first"
+            ? spaTranslate("Fix the marked fields first")
             : save.isError && refused.length === 0
               ? save.error.message
               : null
         }
         onSave={() =>
           save.mutate(value, {
-            onSuccess: () => onToast("Saved. New tickets use it right away."),
+            onSuccess: () => onToast(spaTranslate("Saved. New tickets use it right away.")),
           })
         }
         onReset={() => {
@@ -420,17 +434,17 @@ function TicketList({ guild }: { guild: string }) {
     setFilter(merged);
   };
   return (
-    <Panel title="ALL TICKETS">
+    <Panel title={spaTranslate("ALL TICKETS")}>
       <form
         className="tk-filters"
         role="search"
-        aria-label="Filter tickets"
+        aria-label={spaTranslate("Filter tickets")}
         onSubmit={(event) => {
           event.preventDefault();
           setFilter(typed);
         }}
       >
-        <div className="tk-segment" role="group" aria-label="Show">
+        <div className="tk-segment" role="group" aria-label={spaTranslate("Show")}>
           {STATES.map((s) => (
             <button
               key={s.key}
@@ -438,84 +452,89 @@ function TicketList({ guild }: { guild: string }) {
               aria-pressed={filter.state === s.key}
               onClick={() => apply({ state: s.key })}
             >
-              {s.label}
+              {spaTranslate(s.label)}
             </button>
           ))}
         </div>
-        <Field label="Words or number" htmlFor={`${base}-q`}>
+        <Field label={spaTranslate("Words or number")} htmlFor={`${base}-q`}>
           <input
             id={`${base}-q`}
             className="pixel-input"
             type="search"
-            placeholder="billing, 42…"
+            placeholder={spaTranslate("billing, 42…")}
             value={typed.q}
             onChange={(e) => setTyped({ ...typed, q: e.target.value })}
             onBlur={() => setFilter(typed)}
           />
         </Field>
-        <Field label="Member id" htmlFor={`${base}-user`}>
+        <Field label={spaTranslate("Member id")} htmlFor={`${base}-user`}>
           <input
             id={`${base}-user`}
             className="pixel-input"
             inputMode="numeric"
-            placeholder="Who opened it"
+            placeholder={spaTranslate("Who opened it")}
             value={typed.user}
             onChange={(e) => setTyped({ ...typed, user: e.target.value.replace(/\D/g, "") })}
             onBlur={() => setFilter(typed)}
           />
         </Field>
-        <Field label="Staff id" htmlFor={`${base}-staff`}>
+        <Field label={spaTranslate("Staff id")} htmlFor={`${base}-staff`}>
           <input
             id={`${base}-staff`}
             className="pixel-input"
             inputMode="numeric"
-            placeholder="Who claimed or closed it"
+            placeholder={spaTranslate("Who claimed or closed it")}
             value={typed.staff}
             onChange={(e) => setTyped({ ...typed, staff: e.target.value.replace(/\D/g, "") })}
             onBlur={() => setFilter(typed)}
           />
         </Field>
         <PixelButton type="submit" variant="secondary" className="tk-search">
-          Search
+          {" "}
+          {spaTranslate("Search")}{" "}
         </PixelButton>
       </form>
-      {list.isPending && <Loading label="Reading the tickets" />}
+      {list.isPending && <Loading label={spaTranslate("Reading the tickets")} />}
       {list.isError && <Problem error={list.error} />}
       {list.isSuccess && items.length === 0 && (
         <p className="empty-row muted">
           {filter.state || filter.q || filter.user || filter.staff
-            ? "No ticket matches."
-            : "No tickets yet. Once a panel is posted, the tickets members open show up here."}
+            ? spaTranslate("No ticket matches.")
+            : spaTranslate("No tickets yet. Once a panel is posted, the tickets members open show up here.")}
         </p>
       )}
       {items.length > 0 && (
         <table className="tk-table" role="table">
-          <caption className="sr-only">Tickets, newest first</caption>
+          <caption className="sr-only">{spaTranslate("Tickets, newest first")}</caption>
           <thead role="rowgroup">
             <tr role="row">
               <th scope="col" role="columnheader">
-                Ticket
+                {" "}
+                {spaTranslate("Ticket")}{" "}
               </th>
               <th scope="col" role="columnheader">
-                State
+                {spaTranslate("State")}
               </th>
               <th scope="col" role="columnheader">
-                Opened by
+                {" "}
+                {spaTranslate("Opened by")}{" "}
               </th>
               <th scope="col" role="columnheader">
-                Staff
+                {" "}
+                {spaTranslate("Staff")}{" "}
               </th>
               <th scope="col" role="columnheader">
-                Opened
+                {spaTranslate("Opened")}
               </th>
               <th scope="col" role="columnheader">
-                Closed
+                {spaTranslate("Closed")}
               </th>
               <th scope="col" role="columnheader">
-                Rating
+                {" "}
+                {spaTranslate("Rating")}{" "}
               </th>
               <th scope="col" role="columnheader">
-                Action
+                {spaTranslate("Action")}
               </th>
             </tr>
           </thead>
@@ -531,7 +550,7 @@ function TicketList({ guild }: { guild: string }) {
                 </td>
                 <td role="cell" data-label="State">
                   <span className={`badge ${STATE_BADGE[t.state]}`}>
-                    {STATE_LABEL[t.state].toUpperCase()}
+                    {spaTranslate(STATE_LABEL[t.state]).toLocaleUpperCase()}
                   </span>
                 </td>
                 <td role="cell" data-label="Opened by">
@@ -563,7 +582,7 @@ function TicketList({ guild }: { guild: string }) {
                       disabled={close.isPending}
                       onClick={() => close.mutate(t.id)}
                     >
-                      Close
+                      {spaTranslate("Close")}
                     </PixelButton>
                   )}
                 </td>
@@ -580,7 +599,7 @@ function TicketList({ guild }: { guild: string }) {
             onClick={() => list.fetchNextPage()}
             disabled={list.isFetchingNextPage}
           >
-            {list.isFetchingNextPage ? "Loading…" : "Older tickets"}
+            {list.isFetchingNextPage ? spaTranslate("Loading…") : spaTranslate("Older tickets")}
           </PixelButton>
         </div>
       )}

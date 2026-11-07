@@ -4,6 +4,7 @@ import { Crab } from "../components/Crab";
 import { Panel } from "../components/Panel";
 import { PixelLink } from "../components/PixelButton";
 import { useMe } from "../lib/queries";
+import { t, translate } from "../i18n";
 
 const ERRORS: Record<string, string> = {
   denied: "Login was cancelled on Discord. Try again when you are ready.",
@@ -28,23 +29,24 @@ export function Login() {
         <div className="login-brand">
           <Crab scale={8} />
           <h1 className="login-title">PINCHORA</h1>
-          <p className="pixel-label muted">SERVER DASHBOARD</p>
+          <p className="pixel-label muted">{t("SERVER DASHBOARD")}</p>
         </div>
         <Panel tone="accent">
           <p className="login-lead">
-            Set up leveling, welcome cards and more for the servers you run, from your browser.
+            {t("Set up leveling, welcome cards and more for the servers you run, from your browser.")}
           </p>
           {error && (
             <p className="notice notice-heart" role="alert">
-              {error}
+              {translate(error)}
             </p>
           )}
           <PixelLink href={`/auth/login?next=${encodeURIComponent(next)}`} className="login-button">
-            Log in with Discord
+            {t("Log in with Discord")}
           </PixelLink>
           <p className="fine-print">
-            Pinchora asks Discord for your name and server list only. You need Manage Server in a server to
-            change its settings.
+            {t(
+              "Pinchora asks Discord for your name and server list only. You need Manage Server in a server to change its settings.",
+            )}
           </p>
         </Panel>
       </div>

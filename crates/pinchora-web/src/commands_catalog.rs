@@ -1,5 +1,5 @@
 //! The command list and the content counts as the public site shows them, written to
-//! `web/src/lib/commands.json` and `web/src/lib/facts.json`: every command grouped in the areas of `/help`,
+//! `web/src/lib/commands.json`, `commands.tr.json`, and `facts.json`: every command grouped in the areas of `/help`,
 //! from the same registered command tree the bot answers with, and how much furniture, how many pets, fish,
 //! backgrounds and badges there are. The `/commands` page and the landing page read these files, so a command
 //! added (or renamed, or re-described) or content added and forgotten here fails `committed_site_data_matches`.
@@ -7,7 +7,7 @@
 //! Rewrite after changing a command or the content:
 //! `cargo test -p pinchora-web commands_catalog -- --ignored write_site_data`.
 
-use pinchora_commands::{command_catalog, site_facts};
+use pinchora_commands::{command_catalog, command_catalog_tr, site_facts};
 use serde_json::Value;
 
 const DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../web/src/lib");
@@ -18,9 +18,10 @@ fn rendered(value: &Value) -> String {
     text
 }
 
-fn files() -> [(&'static str, String); 2] {
+fn files() -> [(&'static str, String); 3] {
     [
         ("commands.json", rendered(&command_catalog())),
+        ("commands.tr.json", rendered(&command_catalog_tr())),
         ("facts.json", rendered(&site_facts())),
     ]
 }

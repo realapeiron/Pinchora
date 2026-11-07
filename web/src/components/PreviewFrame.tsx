@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useEffect, useState } from "react";
 
 import { ApiError, apiImage } from "../lib/api";
@@ -50,7 +51,7 @@ export function PreviewFrame({
             ? error.retryAfter
             : undefined;
         if (wait) retry = window.setTimeout(() => setAttempt((n) => n + 1), wait * 1000 + 250);
-        const base = error instanceof Error ? error.message : "The preview could not be drawn.";
+        const base = error instanceof Error ? error.message : spaTranslate("The preview could not be drawn.");
         setMessage(wait ? `${base} Trying again in ${wait} s.` : base);
         setState("error");
       });
@@ -71,9 +72,11 @@ export function PreviewFrame({
       ) : (
         <div className="preview-empty" style={{ aspectRatio: `${width} / ${height}` }} />
       )}
-      {busy && <span className="preview-badge pixel-label">DRAWING…</span>}
+      {busy && <span className="preview-badge pixel-label">{spaTranslate("DRAWING…")}</span>}
       {paused && (
-        <span className="preview-badge preview-badge-paused pixel-label">FIX THE FORM TO REDRAW</span>
+        <span className="preview-badge preview-badge-paused pixel-label">
+          {spaTranslate("FIX THE FORM TO REDRAW")}
+        </span>
       )}
       {state === "error" && !busy && <figcaption className="field-error">{message}</figcaption>}
     </figure>

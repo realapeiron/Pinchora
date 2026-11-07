@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 // The stats charts, drawn as SVG and CSS in the cards' pixel style: one column a day, joins against
 // leaves, the busiest hours and ranked bars. Each has a hover and keyboard readout and a table with
 // the same numbers, so no value hides behind a pointer.
@@ -165,7 +166,12 @@ export function DailyColumns({
         role="img"
         tabIndex={0}
         aria-label={`${label} per day: ${format(total)} in all${
-          peakIndex >= 0 ? `, the most on ${dayLabel(days[peakIndex]!.day)} with ${format(most)}` : ""
+          peakIndex >= 0
+            ? spaTranslate(", the most on {arg1} with {arg2}", {
+                arg1: dayLabel(days[peakIndex]!.day),
+                arg2: format(most),
+              })
+            : ""
         }. Use the arrow keys to read each day.`}
         onKeyDown={cursor.onKeyDown}
         onBlur={() => cursor.setActive(null)}
@@ -232,7 +238,7 @@ export function DailyColumns({
       )}
       {most === 0 && (
         <p className="chart-empty">
-          <span className="muted">Nothing counted in these days yet.</span>
+          <span className="muted">{spaTranslate("Nothing counted in these days yet.")}</span>
         </p>
       )}
     </div>
@@ -259,10 +265,12 @@ export function JoinsLeaves({ days, height = 200 }: { days: DayRow[]; height?: n
     <div className="chart" ref={ref}>
       <ul className="chart-legend">
         <li>
-          <Key series={2} shape="box" /> Joins <strong>{thousands(joins)}</strong>
+          <Key series={2} shape="box" />
+          {spaTranslate("Joins")} <strong>{thousands(joins)}</strong>
         </li>
         <li>
-          <Key series={3} shape="box" /> Leaves <strong>{thousands(leaves)}</strong>
+          <Key series={3} shape="box" />
+          {spaTranslate("Leaves")} <strong>{thousands(leaves)}</strong>
         </li>
       </ul>
       <svg
@@ -270,9 +278,10 @@ export function JoinsLeaves({ days, height = 200 }: { days: DayRow[]; height?: n
         height={height}
         role="img"
         tabIndex={0}
-        aria-label={`Joins and leaves per day: ${thousands(joins)} joined and ${thousands(
-          leaves,
-        )} left. Use the arrow keys to read each day.`}
+        aria-label={spaTranslate(
+          "Joins and leaves per day: {arg1} joined and {arg2} left. Use the arrow keys to read each day.",
+          { arg1: thousands(joins), arg2: thousands(leaves) },
+        )}
         onKeyDown={cursor.onKeyDown}
         onBlur={() => cursor.setActive(null)}
         onPointerLeave={() => cursor.setActive(null)}
@@ -329,16 +338,18 @@ export function JoinsLeaves({ days, height = 200 }: { days: DayRow[]; height?: n
       </svg>
       {most === 0 && (
         <p className="chart-empty">
-          <span className="muted">Nobody joined or left in these days.</span>
+          <span className="muted">{spaTranslate("Nobody joined or left in these days.")}</span>
         </p>
       )}
       {shown && active !== null && (
         <Readout x={PAD.left + active * slot + slot / 2} width={width} spoken={cursor.spoken}>
           <span className="chart-readout-row">
-            <Key series={2} /> <strong>{thousands(shown.joins)}</strong> <span className="muted">joined</span>
+            <Key series={2} /> <strong>{thousands(shown.joins)}</strong>{" "}
+            <span className="muted">{spaTranslate("joined")}</span>
           </span>
           <span className="chart-readout-row">
-            <Key series={3} /> <strong>{thousands(shown.leaves)}</strong> <span className="muted">left</span>
+            <Key series={3} /> <strong>{thousands(shown.leaves)}</strong>{" "}
+            <span className="muted">{spaTranslate("left")}</span>
           </span>
           <span className="chart-readout-sub">{dayLabel(shown.day, true)}</span>
         </Readout>
@@ -384,10 +395,15 @@ export function Heatmap({ grid }: { grid: number[][] }) {
         tabIndex={0}
         aria-label={
           best
-            ? `Busiest hour: ${WEEKDAYS[best.weekday]} ${hourLabel(best.hour)}, ${thousands(
-                best.messages,
-              )} messages. Use the arrow keys to read each hour.`
-            : "No messages counted yet."
+            ? spaTranslate(
+                "Busiest hour: {arg1} {arg2}, {arg3} messages. Use the arrow keys to read each hour.",
+                {
+                  arg1: spaTranslate(WEEKDAYS[best.weekday]!),
+                  arg2: hourLabel(best.hour),
+                  arg3: thousands(best.messages),
+                },
+              )
+            : spaTranslate("No messages counted yet.")
         }
         onKeyDown={onKeyDown}
         onBlur={() => setActive(null)}
@@ -396,7 +412,7 @@ export function Heatmap({ grid }: { grid: number[][] }) {
         {grid.map((hours, d) => (
           <div className="heat-row" key={d}>
             <span className="heat-day pixel-label" aria-hidden="true">
-              {WEEKDAYS[d]!.slice(0, 3).toUpperCase()}
+              {spaTranslate(WEEKDAYS[d]!).slice(0, 3).toUpperCase()}
             </span>
             {hours.map((n, h) => {
               const step = heatStep(n, max);
@@ -427,23 +443,24 @@ export function Heatmap({ grid }: { grid: number[][] }) {
         <p className="heat-readout" aria-live={spoken ? "polite" : "off"}>
           {active && shown !== null ? (
             <>
-              <strong>{thousands(shown)}</strong> <span className="muted">messages ·</span>{" "}
-              {WEEKDAYS[active.d]} {hourLabel(active.h)}
+              <strong>{thousands(shown)}</strong> <span className="muted">{spaTranslate("messages ·")}</span>{" "}
+              {spaTranslate(WEEKDAYS[active.d]!)} {hourLabel(active.h)}
             </>
           ) : best ? (
             <>
-              <span className="muted">Busiest:</span> {WEEKDAYS[best.weekday]} {hourLabel(best.hour)}
+              <span className="muted">{spaTranslate("Busiest:")}</span>{" "}
+              {spaTranslate(WEEKDAYS[best.weekday]!)} {hourLabel(best.hour)}
             </>
           ) : (
-            <span className="muted">Nothing counted yet.</span>
+            <span className="muted">{spaTranslate("Nothing counted yet.")}</span>
           )}
         </p>
         <span className="heat-scale" aria-hidden="true">
-          <span className="pixel-label muted">QUIET</span>
+          <span className="pixel-label muted">{spaTranslate("QUIET")}</span>
           {[0, 1, 2, 3, 4].map((s) => (
             <span key={s} className={`heat-cell heat-${s}`} />
           ))}
-          <span className="pixel-label muted">BUSY</span>
+          <span className="pixel-label muted">{spaTranslate("BUSY")}</span>
         </span>
       </div>
     </div>
@@ -497,7 +514,7 @@ export function NumbersTable({
 }) {
   return (
     <details className="chart-table">
-      <summary>Show the numbers</summary>
+      <summary>{spaTranslate("Show the numbers")}</summary>
       <div className="chart-table-scroll">
         <table>
           <caption className="visually-hidden">{caption}</caption>
@@ -563,9 +580,15 @@ export function StatTile({
             {direction === "up" ? "▲" : direction === "down" ? "▼" : "■"}
           </span>
           <span>
-            {direction === "flat" ? "No change" : `${delta! > 0 ? "+" : ""}${delta}%`}
-            <span className="muted delta-long"> vs the {period} days before</span>
-            <span className="muted delta-short"> vs previous {period}d</span>
+            {direction === "flat" ? spaTranslate("No change") : `${delta! > 0 ? "+" : ""}${delta}%`}
+            <span className="muted delta-long">
+              {" "}
+              {spaTranslate("vs the")} {period} {spaTranslate("days before")}
+            </span>
+            <span className="muted delta-short">
+              {" "}
+              {spaTranslate("vs previous")} {period}d
+            </span>
           </span>
         </span>
       )}

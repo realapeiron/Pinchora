@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import type { GuildInfo, TagAction, TriggerKind } from "../lib/api";
 import { LIMITS, actionNeedsRole } from "../lib/tags";
 import { Field } from "./Field";
@@ -45,11 +46,18 @@ export function ActionsEditor({
   const set = (index: number, next: TagAction) => onChange(actions.map((a, i) => (i === index ? next : a)));
   return (
     <Field
-      label="Actions"
+      label={spaTranslate("Actions")}
       error={error}
-      hint={`Done right after the answer, for the member it is about. With actions, a member waits at least ${LIMITS.action_cooldown_min} s between uses; points from actions stop at ${LIMITS.action_points_daily_max.toLocaleString("en-US")} a member a day, direct messages at ${LIMITS.action_dms_per_hour} an hour, and roles with admin powers are never handed out.`}
+      hint={spaTranslate(
+        "Done right after the answer, for the member it is about. With actions, a member waits at least {arg1} s between uses; points from actions stop at {arg2} a member a day, direct messages at {arg3} an hour, and roles with admin powers are never handed out.",
+        {
+          arg1: LIMITS.action_cooldown_min,
+          arg2: LIMITS.action_points_daily_max,
+          arg3: LIMITS.action_dms_per_hour,
+        },
+      )}
     >
-      {actions.length === 0 && <p className="muted">Nothing besides the answer.</p>}
+      {actions.length === 0 && <p className="muted">{spaTranslate("Nothing besides the answer.")}</p>}
       <ul className="actions-list">
         {actions.map((action, index) => {
           const role = actionNeedsRole(action) ? info?.roles.find((r) => r.id === action.role_id) : undefined;
@@ -57,13 +65,13 @@ export function ActionsEditor({
             <li key={index} className="action-row">
               <select
                 className="pixel-input pixel-select"
-                aria-label={`Action ${index + 1}`}
+                aria-label={spaTranslate("Action {arg1}", { arg1: index + 1 })}
                 value={action.kind}
                 onChange={(event) => set(index, fresh(event.target.value as TagAction["kind"]))}
               >
                 {kinds.map((k) => (
                   <option key={k.value} value={k.value}>
-                    {k.label}
+                    {spaTranslate(k.label)}
                   </option>
                 ))}
               </select>
@@ -75,7 +83,7 @@ export function ActionsEditor({
                     onChange={(id) => set(index, { ...action, role_id: id ?? "" })}
                     assignable
                     forActions
-                    none="Pick a role"
+                    none={spaTranslate("Pick a role")}
                   />
                   {role && !role.action_ok && (
                     <p className="field-error" role="alert">
@@ -88,7 +96,7 @@ export function ActionsEditor({
                 <input
                   type="number"
                   className="pixel-input input-short"
-                  aria-label="Points, negative to take"
+                  aria-label={spaTranslate("Points, negative to take")}
                   min={LIMITS.points_action[0]}
                   max={LIMITS.points_action[1]}
                   value={action.amount}
@@ -98,7 +106,7 @@ export function ActionsEditor({
               {action.kind === "dm" && (
                 <textarea
                   className="pixel-input pixel-textarea action-value"
-                  aria-label="Direct message text"
+                  aria-label={spaTranslate("Direct message text")}
                   rows={2}
                   maxLength={LIMITS.response_max}
                   value={action.text}
@@ -108,7 +116,7 @@ export function ActionsEditor({
               {action.kind === "react" && (
                 <input
                   className="pixel-input input-short"
-                  aria-label="Emoji"
+                  aria-label={spaTranslate("Emoji")}
                   value={action.emoji}
                   onChange={(event) => set(index, { ...action, emoji: event.target.value })}
                 />
@@ -116,10 +124,10 @@ export function ActionsEditor({
               <PixelButton
                 variant="ghost"
                 className="button-small"
-                aria-label={`Remove action ${index + 1}`}
+                aria-label={spaTranslate("Remove action {arg1}", { arg1: index + 1 })}
                 onClick={() => onChange(actions.filter((_, i) => i !== index))}
               >
-                Remove
+                {spaTranslate("Remove")}
               </PixelButton>
             </li>
           );
@@ -132,7 +140,9 @@ export function ActionsEditor({
             className="button-small"
             onClick={() => onChange([...actions, fresh("add_role")])}
           >
-            Add an action ({actions.length}/{LIMITS.max_actions})
+            {" "}
+            {spaTranslate("Add an action (")}
+            {actions.length}/{LIMITS.max_actions})
           </PixelButton>
         </div>
       )}

@@ -1,3 +1,5 @@
+import { number as spaNumber } from "../i18n";
+import { translate as spaTranslate } from "../i18n";
 import { useState } from "react";
 
 import { Field } from "../components/Field";
@@ -83,7 +85,7 @@ export function XpAdmin({ guild }: { guild: string }) {
                   />{" "}
                   {item.name} <span className="muted">({item.id})</span>
                 </label>
-                <span className="pixel-label">{item.xp.toLocaleString()} XP</span>
+                <span className="pixel-label">{spaNumber(item.xp)} XP</span>
               </li>
             ))}
           </ul>
@@ -195,7 +197,7 @@ export function XpAdmin({ guild }: { guild: string }) {
             </div>
             <p>
               {job.data?.message ??
-                tf("Checked {count} members. Import {status}.", {
+                tf(spaTranslate("Checked {count} members. Import {status}."), {
                   count: job.data?.checked ?? 0,
                   status: t(job.data?.status ?? "starting"),
                 })}

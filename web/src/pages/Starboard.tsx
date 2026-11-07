@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import "../styles/starboard.css";
 
 import { useState } from "react";
@@ -27,29 +28,41 @@ export function Starboard() {
   return (
     <div className="settings-page starboard-page">
       <PageHead
-        title="STARBOARD"
-        lead="Give the best posts a place of their own. Stars move a post onto a board; vote channels add reactions to every new message."
+        title={spaTranslate("STARBOARD")}
+        lead={spaTranslate(
+          "Give the best posts a place of their own. Stars move a post onto a board; vote channels add reactions to every new message.",
+        )}
       />
       {module && !module.enabled && (
         <p className="notice">
-          <strong>Starboard is off.</strong> Turn it on in <Link to={`/g/${guild}/modules`}>Modules</Link> to
-          count reactions.
+          <strong>{spaTranslate("Starboard is off.")}</strong> {spaTranslate("Turn it on in")}{" "}
+          <Link to={`/g/${guild}/modules`}>{spaTranslate("Modules")}</Link>{" "}
+          {spaTranslate("to count reactions.")}{" "}
         </p>
       )}
-      {query.isPending && <Loading label="Reading starboards" />}
+      {query.isPending && <Loading label={spaTranslate("Reading starboards")} />}
       {query.isError && <Problem error={query.error} />}
       {query.isSuccess && (
         <>
           {!query.data.message_content && (
             <p className="notice" data-testid="content-lock">
-              <span className="badge badge-gold">NEEDS MESSAGE CONTENT</span> Board posts show the jump link,
-              author, and source link. To copy message text and attachments, enable Discord's privileged
-              Message Content intent for Pinchora. Media-only voting needs this intent too.
+              <span className="badge badge-gold">{spaTranslate("NEEDS MESSAGE CONTENT")}</span>{" "}
+              {spaTranslate(
+                "Board posts show the jump link, author, and source link. To copy message text and attachments, enable Discord's privileged Message Content intent for Pinchora. Media-only voting needs this intent too.",
+              )}{" "}
             </p>
           )}
-          <Panel title={`BOARDS · ${query.data.boards.length}/${maxBoards} used`}>
+          <Panel
+            title={spaTranslate("BOARDS · {arg1}/{arg2} used", {
+              arg1: query.data.boards.length,
+              arg2: maxBoards,
+            })}
+          >
             <p className="panel-lead muted">
-              Each board has its own emoji and threshold. A message can appear on more than one board.
+              {" "}
+              {spaTranslate(
+                "Each board has its own emoji and threshold. A message can appear on more than one board.",
+              )}{" "}
             </p>
             <div className="star-grid">
               {query.data.boards.map((board) => (
@@ -62,7 +75,7 @@ export function Starboard() {
                   onRemove={() => {
                     if (!board.id) return;
                     removeBoard.mutate(board.id, {
-                      onSuccess: () => setNotice("Board removed."),
+                      onSuccess: () => setNotice(spaTranslate("Board removed.")),
                       onError: (error) => setNotice(error.message),
                     });
                   }}
@@ -71,8 +84,8 @@ export function Starboard() {
               {query.data.boards.length < maxBoards && (
                 <button className="star-add" type="button" onClick={() => setEditing(newBoard())}>
                   <span>＋</span>
-                  <strong>New board</strong>
-                  <small>Choose a channel and an emoji</small>
+                  <strong>{spaTranslate("New board")}</strong>
+                  <small>{spaTranslate("Choose a channel and an emoji")}</small>
                 </button>
               )}
             </div>
@@ -90,15 +103,18 @@ export function Starboard() {
                 saveBoard.mutate(next, {
                   onSuccess: () => {
                     setEditing(null);
-                    setNotice("Board saved.");
+                    setNotice(spaTranslate("Board saved."));
                   },
                 })
               }
             />
           )}
-          <Panel title={`VOTE CHANNELS · ${query.data.votes.length} used`}>
+          <Panel title={spaTranslate("VOTE CHANNELS · {arg1} used", { arg1: query.data.votes.length })}>
             <p className="panel-lead muted">
-              Pinchora adds the up reaction first, then the down reaction. A thread can open under each post.
+              {" "}
+              {spaTranslate(
+                "Pinchora adds the up reaction first, then the down reaction. A thread can open under each post.",
+              )}{" "}
             </p>
             <div className="vote-list">
               {query.data.votes.map((item) => (
@@ -108,29 +124,32 @@ export function Starboard() {
                   </span>
                   <strong>{channelName(discord.data, item.channel_id)}</strong>
                   <small>
-                    {item.only_media ? "Media only" : "All posts"}
-                    {item.create_thread ? " · Threads" : ""}
+                    {item.only_media ? spaTranslate("Media only") : spaTranslate("All posts")}
+                    {item.create_thread ? spaTranslate(" · Threads") : ""}
                   </small>
                   <button type="button" onClick={() => setVote({ ...item })}>
-                    Edit
+                    {spaTranslate("Edit")}
                   </button>
                   <button
                     type="button"
                     onClick={() =>
                       removeVote.mutate(item.channel_id, {
-                        onSuccess: () => setNotice("Vote channel removed."),
+                        onSuccess: () => setNotice(spaTranslate("Vote channel removed.")),
                         onError: (error) => setNotice(error.message),
                       })
                     }
                   >
-                    Remove
+                    {spaTranslate("Remove")}
                   </button>
                 </div>
               ))}
-              {query.data.votes.length === 0 && <p className="empty-row muted">No vote channels yet.</p>}
+              {query.data.votes.length === 0 && (
+                <p className="empty-row muted">{spaTranslate("No vote channels yet.")}</p>
+              )}
             </div>
             <PixelButton variant="secondary" onClick={() => setVote(newVote())}>
-              Add vote channel
+              {" "}
+              {spaTranslate("Add vote channel")}{" "}
             </PixelButton>
           </Panel>
           {vote && (
@@ -146,7 +165,7 @@ export function Starboard() {
                 saveVote.mutate(next, {
                   onSuccess: () => {
                     setVote(null);
-                    setNotice("Vote channel saved.");
+                    setNotice(spaTranslate("Vote channel saved."));
                   },
                 })
               }
@@ -156,7 +175,7 @@ export function Starboard() {
             <p className="notice" role="status">
               {notice}{" "}
               <button type="button" onClick={() => setNotice(null)}>
-                Dismiss
+                {spaTranslate("Dismiss")}
               </button>
             </p>
           )}
@@ -194,16 +213,22 @@ function BoardCard({
         {channelName(info, board.channel_id)} · {board.threshold} {board.threshold === 1 ? "star" : "stars"}
       </p>
       <div className="star-preview">
-        <span>⭐ {board.threshold} · #source</span>
-        <strong>A standout post appears here</strong>
-        <small>Author · jump link{messageContent ? " · attachments" : ""}</small>
+        <span>
+          ⭐ {board.threshold} {spaTranslate("· #source")}
+        </span>
+        <strong>{spaTranslate("A standout post appears here")}</strong>
+        <small>
+          {spaTranslate("Author · jump link")}
+          {messageContent ? spaTranslate(" · attachments") : ""}
+        </small>
       </div>
       <div className="star-actions">
         <button type="button" onClick={onEdit}>
-          Edit board
+          {" "}
+          {spaTranslate("Edit board")}{" "}
         </button>
         <button type="button" onClick={onRemove}>
-          Remove
+          {spaTranslate("Remove")}
         </button>
       </div>
     </div>
@@ -234,10 +259,10 @@ function BoardEditor({
   const change = (next: Partial<Board>) => setBoard({ ...board, ...next });
   const channels = info?.channels.filter((c) => c.type === 0 || c.type === 5) ?? [];
   return (
-    <Panel title={board.id ? "EDIT BOARD" : "NEW BOARD"}>
+    <Panel title={board.id ? spaTranslate("EDIT BOARD") : spaTranslate("NEW BOARD")}>
       <div className="star-form-grid">
         <label>
-          Name
+          {spaTranslate("Name")}
           <input
             className="pixel-input"
             value={board.name}
@@ -246,7 +271,8 @@ function BoardEditor({
           />
         </label>
         <label>
-          Board channel
+          {" "}
+          {spaTranslate("Board channel")}{" "}
           <ChannelPicker
             info={info}
             value={board.channel_id || null}
@@ -255,7 +281,8 @@ function BoardEditor({
           />
         </label>
         <label>
-          Star emoji
+          {" "}
+          {spaTranslate("Star emoji")}{" "}
           <input
             className="pixel-input"
             value={board.emoji}
@@ -264,7 +291,8 @@ function BoardEditor({
           />
         </label>
         <label>
-          Threshold · {board.threshold}/50
+          {" "}
+          {spaTranslate("Threshold ·")} {board.threshold}/50
           <input
             className="pixel-input"
             type="number"
@@ -275,7 +303,7 @@ function BoardEditor({
           />
         </label>
         <label>
-          Colour
+          {spaTranslate("Colour")}
           <input
             className="pixel-input"
             type="color"
@@ -286,7 +314,8 @@ function BoardEditor({
       </div>
       <div className="star-options">
         <label>
-          Only from channels{" "}
+          {" "}
+          {spaTranslate("Only from channels")}{" "}
           <select
             className="pixel-input pixel-select"
             multiple
@@ -300,11 +329,15 @@ function BoardEditor({
             ))}
           </select>
           <small>
-            Leave empty for all channels. Private sources remain excluded to protect their audience.
+            {" "}
+            {spaTranslate(
+              "Leave empty for all channels. Private sources remain excluded to protect their audience.",
+            )}{" "}
           </small>
         </label>
         <label>
-          Except channels{" "}
+          {" "}
+          {spaTranslate("Except channels")}{" "}
           <select
             className="pixel-input pixel-select"
             multiple
@@ -324,29 +357,35 @@ function BoardEditor({
       <div className="star-switches">
         {(
           [
-            ["self_star", "Allow self stars"],
-            ["allow_bots", "Include bot posts and stars"],
-            ["require_image", "Require an image"],
-            ["remove_below", "Remove below threshold"],
-            ["enabled", "Board enabled"],
+            ["self_star", spaTranslate("Allow self stars")],
+            ["allow_bots", spaTranslate("Include bot posts and stars")],
+            ["require_image", spaTranslate("Require an image")],
+            ["remove_below", spaTranslate("Remove below threshold")],
+            ["enabled", spaTranslate("Board enabled")],
           ] as const
         ).map(([key, label]) => (
           <PixelToggle key={key} label={label} checked={board[key]} onChange={(v) => change({ [key]: v })} />
         ))}
       </div>
       <div className="star-weights">
-        <strong>Role weights · {Object.keys(board.role_weights).length}/25 used</strong>
+        <strong>
+          {spaTranslate("Role weights ·")} {Object.keys(board.role_weights).length}
+          {spaTranslate("/25 used")}
+        </strong>
         <p className="muted">
-          Members with a weighted role count for its highest weight. Everyone else counts once.
+          {" "}
+          {spaTranslate(
+            "Members with a weighted role count for its highest weight. Everyone else counts once.",
+          )}{" "}
         </p>
         <div className="star-weight-inputs">
           <select
             className="pixel-input pixel-select"
-            aria-label="Weighted role"
+            aria-label={spaTranslate("Weighted role")}
             value={role}
             onChange={(e) => setRole(e.target.value)}
           >
-            <option value="">Choose a role</option>
+            <option value="">{spaTranslate("Choose a role")}</option>
             {(info?.roles ?? [])
               .filter((r) => !r.everyone)
               .map((r) => (
@@ -357,7 +396,7 @@ function BoardEditor({
           </select>
           <input
             className="pixel-input"
-            aria-label="Role weight"
+            aria-label={spaTranslate("Role weight")}
             type="number"
             min={1}
             max={50}
@@ -369,7 +408,8 @@ function BoardEditor({
             disabled={!role || weight < 1 || weight > 50 || Object.keys(board.role_weights).length >= 25}
             onClick={() => change({ role_weights: { ...board.role_weights, [role]: weight } })}
           >
-            Add weight
+            {" "}
+            {spaTranslate("Add weight")}{" "}
           </button>
         </div>
         {Object.entries(board.role_weights).map(([id, amount]) => (
@@ -377,7 +417,7 @@ function BoardEditor({
             @{info?.roles.find((r) => r.id === id)?.name ?? id} ×{amount}{" "}
             <button
               type="button"
-              aria-label={`Remove weight for ${id}`}
+              aria-label={spaTranslate("Remove weight for {arg1}", { arg1: id })}
               onClick={() => {
                 const next = { ...board.role_weights };
                 delete next[id];
@@ -395,12 +435,14 @@ function BoardEditor({
           style={{ "--star-accent": board.color } as React.CSSProperties}
         >
           <span>
-            {board.emoji} {board.threshold} · #source
+            {board.emoji} {board.threshold} {spaTranslate("· #source")}{" "}
           </span>
           <strong>{board.name}</strong>
           <small>
-            Author · jump link{messageContent ? " · attachments" : ""}
-            {board.require_image ? " · image" : ""}
+            {" "}
+            {spaTranslate("Author · jump link")}
+            {messageContent ? spaTranslate(" · attachments") : ""}
+            {board.require_image ? spaTranslate(" · image") : ""}
           </small>
         </div>
       )}
@@ -411,10 +453,10 @@ function BoardEditor({
       )}
       <div className="star-form-actions">
         <PixelButton variant="secondary" onClick={() => setPreview((v) => !v)}>
-          {preview ? "Hide preview" : "Preview board"}
+          {preview ? spaTranslate("Hide preview") : spaTranslate("Preview board")}
         </PixelButton>
         <PixelButton variant="secondary" onClick={onCancel}>
-          Cancel
+          {spaTranslate("Cancel")}
         </PixelButton>
         <PixelButton
           variant="secondary"
@@ -423,7 +465,8 @@ function BoardEditor({
             busy || !board.channel_id || board.threshold < 1 || board.threshold > 50 || !board.name.trim()
           }
         >
-          Save board
+          {" "}
+          {spaTranslate("Save board")}{" "}
         </PixelButton>
       </div>
     </Panel>
@@ -450,10 +493,10 @@ function VoteEditor({
   const [vote, setVote] = useState(draft);
   const change = (next: Partial<VoteChannel>) => setVote({ ...vote, ...next });
   return (
-    <Panel title="VOTE CHANNEL">
+    <Panel title={spaTranslate("VOTE CHANNEL")}>
       <div className="star-form-grid">
         <label>
-          Channel
+          {spaTranslate("Channel")}
           <ChannelPicker
             info={info}
             value={vote.channel_id || null}
@@ -461,7 +504,8 @@ function VoteEditor({
           />
         </label>
         <label>
-          Up emoji
+          {" "}
+          {spaTranslate("Up emoji")}{" "}
           <input
             className="pixel-input"
             value={vote.up_emoji}
@@ -469,7 +513,8 @@ function VoteEditor({
           />
         </label>
         <label>
-          Down emoji
+          {" "}
+          {spaTranslate("Down emoji")}{" "}
           <input
             className="pixel-input"
             value={vote.down_emoji}
@@ -479,23 +524,27 @@ function VoteEditor({
       </div>
       {!messageContent && (
         <p className="notice">
-          <span className="badge badge-gold">NEEDS MESSAGE CONTENT</span> Media-only voting needs the Message
-          Content intent.
+          <span className="badge badge-gold">{spaTranslate("NEEDS MESSAGE CONTENT")}</span>{" "}
+          {spaTranslate("Media-only voting needs the Message Content intent.")}{" "}
         </p>
       )}
       <div className="star-switches">
         <PixelToggle
-          label="Media posts only"
+          label={spaTranslate("Media posts only")}
           disabled={!messageContent && !vote.only_media}
           checked={vote.only_media}
           onChange={(v) => change({ only_media: v })}
         />
         <PixelToggle
-          label="Create a discussion thread"
+          label={spaTranslate("Create a discussion thread")}
           checked={vote.create_thread}
           onChange={(v) => change({ create_thread: v })}
         />
-        <PixelToggle label="Enabled" checked={vote.enabled} onChange={(v) => change({ enabled: v })} />
+        <PixelToggle
+          label={spaTranslate("Enabled")}
+          checked={vote.enabled}
+          onChange={(v) => change({ enabled: v })}
+        />
       </div>
       {error && (
         <p className="field-error" role="alert">
@@ -504,7 +553,7 @@ function VoteEditor({
       )}
       <div className="star-form-actions">
         <PixelButton variant="secondary" onClick={onCancel}>
-          Cancel
+          {spaTranslate("Cancel")}
         </PixelButton>
         <PixelButton
           variant="secondary"
@@ -517,7 +566,8 @@ function VoteEditor({
             vote.up_emoji === vote.down_emoji
           }
         >
-          Save vote channel
+          {" "}
+          {spaTranslate("Save vote channel")}{" "}
         </PixelButton>
       </div>
     </Panel>

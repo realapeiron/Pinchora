@@ -1,7 +1,9 @@
+import { translate as spaTranslate } from "../i18n";
 import { useEffect, useRef } from "react";
 import { useBlocker } from "react-router";
 
-import { unsavedLabel } from "../lib/draft";
+import { translate } from "../i18n";
+import { en } from "../i18n/en";
 import { PixelButton } from "./PixelButton";
 
 /**
@@ -26,12 +28,10 @@ export function SaveBar({
   onReset: () => void;
   words?: (key: string, values?: Record<string, string | number>) => string;
 }) {
-  const t =
-    words ??
-    ((key: string, values: Record<string, string | number> = {}) =>
-      key.replace(/\{(\w+)\}/g, (match, name: string) => String(values[name] ?? match)));
+  const t = (key: string, values: Record<string, string | number> = {}) =>
+    key in en ? translate(key, values) : (words?.(key, values) ?? translate(key, values));
   const changes = (n: number) =>
-    words ? t(n === 1 ? "1 unsaved change" : "{count} unsaved changes", { count: n }) : unsavedLabel(n);
+    t(n === 1 ? spaTranslate("1 unsaved change") : spaTranslate("{count} unsaved changes"), { count: n });
   const dirty = count > 0;
   // While the bar slides away after a save, it keeps showing what it said.
   const lastCount = useRef(count);
@@ -62,7 +62,7 @@ export function SaveBar({
               {t("Reset")}
             </PixelButton>
             <PixelButton onClick={onSave} disabled={saving || !dirty || blocked}>
-              {t(saving ? "Saving…" : "Save changes")}
+              {t(saving ? spaTranslate("Saving…") : spaTranslate("Save changes"))}
             </PixelButton>
           </div>
         </div>

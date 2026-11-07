@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { UNITS, type Unit, joinSpan, splitSpan } from "../lib/roles";
+import { translate } from "../i18n";
 
 /**
  * A time as an amount and a unit (minutes, hours, days), reported in seconds; 0 is none. It starts from
@@ -45,7 +46,7 @@ export function DurationInput({
       />
       <select
         className="pixel-input pixel-select"
-        aria-label={`${label}: unit of time`}
+        aria-label={translate("Unit of time for {label}", { label })}
         value={unit}
         onChange={(event) => {
           const next = event.target.value as Unit;
@@ -55,7 +56,7 @@ export function DurationInput({
       >
         {UNITS.map((u) => (
           <option key={u.unit} value={u.unit}>
-            {u.name}
+            {translate(u.name)}
           </option>
         ))}
       </select>

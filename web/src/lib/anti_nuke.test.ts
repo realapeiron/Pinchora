@@ -21,8 +21,8 @@ describe("anti-nuke editor guardrails", () => {
     expect(words({ count: "{count} · {id}" }, "tr")("count", { count: 1234, id: "123456789012345678" })).toBe(
       "1.234 · 123456789012345678",
     );
-    expect(words({ used: "{count}/{max} kullanılıyor" })("used", { count: 2, max: 50 })).toBe(
-      "2/50 kullanılıyor",
-    );
+    expect(
+      words({ "demo.used": "{count}/{max} deneme kullanılıyor" })("demo.used", { count: 2, max: 50 }),
+    ).toBe("2/50 deneme kullanılıyor");
   });
 });

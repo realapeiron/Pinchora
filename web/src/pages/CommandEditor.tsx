@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useMemo, useState } from "react";
 import { useNavigate, useOutletContext, useParams } from "react-router";
 
@@ -48,7 +49,8 @@ export function CommandEditor() {
   const guild = data.guild.id;
   const { commandId } = useParams();
   const query = useTag(guild, "commands", commandId ?? null);
-  if (commandId !== undefined && query.isPending) return <Loading label="Opening the command" />;
+  if (commandId !== undefined && query.isPending)
+    return <Loading label={spaTranslate("Opening the command")} />;
   if (commandId !== undefined && query.isError) return <Problem error={query.error} />;
   return (
     <CommandForm
@@ -91,7 +93,11 @@ function CommandForm({ guild, id, initial }: { guild: string; id?: string; initi
     if (!checkCommandName(draft.name).ok || unfinished) return;
     void editor.save(() =>
       navigate(`/g/${guild}/commands`, {
-        state: { toast: `Saved /tag ${tidyName(draft.name)}. The bot uses it from the next command.` },
+        state: {
+          toast: spaTranslate("Saved /tag {arg1}. The bot uses it from the next command.", {
+            arg1: tidyName(draft.name),
+          }),
+        },
       }),
     );
   };
@@ -99,27 +105,28 @@ function CommandForm({ guild, id, initial }: { guild: string; id?: string; initi
   return (
     <div className="settings-page">
       <PageHead
-        title={id ? "EDIT COMMAND" : "NEW COMMAND"}
+        title={id ? spaTranslate("EDIT COMMAND") : spaTranslate("NEW COMMAND")}
         lead={
           <>
-            Members run it with <code>/tag {tidyName(draft.name) || "name"}</code>.
+            {" "}
+            {spaTranslate("Members run it with")} <code>/tag {tidyName(draft.name) || "name"}</code>.
           </>
         }
         action={
           <PixelLink variant="secondary" href={`/g/${guild}/commands`}>
-            Back to the list
+            {spaTranslate("Back to the list")}
           </PixelLink>
         }
       />
       <div className="editor">
         <div className="editor-form">
-          <Panel title="BASICS">
+          <Panel title={spaTranslate("BASICS")}>
             <div className="form-grid form-grid-2">
               <Field
-                label="Name"
+                label={spaTranslate("Name")}
                 htmlFor="command-name"
                 error={nameProblem}
-                hint="What members type after /tag. Lowercase letters, numbers, - and _."
+                hint={spaTranslate("What members type after /tag. Lowercase letters, numbers, - and _.")}
               >
                 <div className="input-prefix">
                   <span className="input-prefix-text" aria-hidden="true">
@@ -137,10 +144,10 @@ function CommandForm({ guild, id, initial }: { guild: string; id?: string; initi
                 </div>
               </Field>
               <Field
-                label="Description"
+                label={spaTranslate("Description")}
                 htmlFor="command-description"
                 error={editor.problem("description")}
-                hint="Shown next to the name in suggestions. Optional."
+                hint={spaTranslate("Shown next to the name in suggestions. Optional.")}
                 aside={
                   <span className="counter">
                     {[...draft.description].length}/{LIMITS.description_max}
@@ -162,28 +169,33 @@ function CommandForm({ guild, id, initial }: { guild: string; id?: string; initi
               options={[
                 {
                   value: "public",
-                  title: "Everyone in the channel",
-                  detail: "The answer is a normal message.",
+                  title: spaTranslate("Everyone in the channel"),
+                  detail: spaTranslate("The answer is a normal message."),
                 },
-                { value: "ephemeral", title: "Only the person who ran it", detail: "A private answer." },
+                {
+                  value: "ephemeral",
+                  title: spaTranslate("Only the person who ran it"),
+                  detail: spaTranslate("A private answer."),
+                },
               ]}
               onChange={(next) => set("reply_mode", next)}
             />
             <SwitchRow
-              title="Switched on"
+              title={spaTranslate("Switched on")}
               control={
                 <PixelToggle
-                  label="Switched on"
+                  label={spaTranslate("Switched on")}
                   checked={draft.enabled}
                   onChange={(next) => set("enabled", next)}
                 />
               }
             >
-              Off, members are told it is switched off and it leaves the suggestions.
+              {" "}
+              {spaTranslate("Off, members are told it is switched off and it leaves the suggestions.")}{" "}
             </SwitchRow>
           </Panel>
 
-          <Panel title="REPLY">
+          <Panel title={spaTranslate("REPLY")}>
             <ResponsesEditor
               responses={draft.responses}
               onChange={(next) => set("responses", next)}
@@ -197,21 +209,23 @@ function CommandForm({ guild, id, initial }: { guild: string; id?: string; initi
               error={editor.problem("embed")}
             />
             <SwitchRow
-              title="Allow mentions"
+              title={spaTranslate("Allow mentions")}
               control={
                 <PixelToggle
-                  label="Allow mentions"
+                  label={spaTranslate("Allow mentions")}
                   checked={draft.allow_mentions}
                   onChange={(next) => set("allow_mentions", next)}
                 />
               }
             >
-              Off, people and roles you write in the text show as plain words and nobody is pinged. On, the
-              ones you wrote can be pinged. What members type, and @everyone and @here, never can.
+              {" "}
+              {spaTranslate(
+                "Off, people and roles you write in the text show as plain words and nobody is pinged. On, the ones you wrote can be pinged. What members type, and @everyone and @here, never can.",
+              )}{" "}
             </SwitchRow>
           </Panel>
 
-          <Panel title="ACTIONS">
+          <Panel title={spaTranslate("ACTIONS")}>
             <ActionsEditor
               actions={draft.actions}
               onChange={(next) =>
@@ -222,12 +236,12 @@ function CommandForm({ guild, id, initial }: { guild: string; id?: string; initi
             />
           </Panel>
 
-          <Panel title="WHO CAN USE IT, AND WHERE">
+          <Panel title={spaTranslate("WHO CAN USE IT, AND WHERE")}>
             <div className="form-grid form-grid-2">
               <Field
-                label="Only these roles"
+                label={spaTranslate("Only these roles")}
                 error={editor.problem("allow_roles")}
-                hint="Empty: everyone may."
+                hint={spaTranslate("Empty: everyone may.")}
               >
                 <IdList
                   kind="role"
@@ -236,13 +250,13 @@ function CommandForm({ guild, id, initial }: { guild: string; id?: string; initi
                   onChange={(next) => set("allow_roles", next)}
                   max={LIMITS.max_list}
                   name="Allowed roles"
-                  none="Every role."
+                  none={spaTranslate("Every role.")}
                 />
               </Field>
               <Field
-                label="Never these roles"
+                label={spaTranslate("Never these roles")}
                 error={editor.problem("deny_roles")}
-                hint="A denied role wins."
+                hint={spaTranslate("A denied role wins.")}
               >
                 <IdList
                   kind="role"
@@ -251,13 +265,13 @@ function CommandForm({ guild, id, initial }: { guild: string; id?: string; initi
                   onChange={(next) => set("deny_roles", next)}
                   max={LIMITS.max_list}
                   name="Denied roles"
-                  none="No role is turned away."
+                  none={spaTranslate("No role is turned away.")}
                 />
               </Field>
               <Field
-                label="Only in these channels"
+                label={spaTranslate("Only in these channels")}
                 error={editor.problem("allow_channels")}
-                hint="A category covers the channels under it. Empty: everywhere."
+                hint={spaTranslate("A category covers the channels under it. Empty: everywhere.")}
               >
                 <IdList
                   kind="channel"
@@ -266,10 +280,10 @@ function CommandForm({ guild, id, initial }: { guild: string; id?: string; initi
                   onChange={(next) => set("allow_channels", next)}
                   max={LIMITS.max_list}
                   name="Allowed channels"
-                  none="Every channel."
+                  none={spaTranslate("Every channel.")}
                 />
               </Field>
-              <Field label="Never in these channels" error={editor.problem("deny_channels")}>
+              <Field label={spaTranslate("Never in these channels")} error={editor.problem("deny_channels")}>
                 <IdList
                   kind="channel"
                   info={info}
@@ -277,15 +291,18 @@ function CommandForm({ guild, id, initial }: { guild: string; id?: string; initi
                   onChange={(next) => set("deny_channels", next)}
                   max={LIMITS.max_list}
                   name="Denied channels"
-                  none="No channel is off limits."
+                  none={spaTranslate("No channel is off limits.")}
                 />
               </Field>
             </div>
             <Field
-              label="Cooldown"
+              label={spaTranslate("Cooldown")}
               htmlFor="command-cooldown"
               error={editor.problem("cooldown_secs")}
-              hint={`Seconds a member waits between uses, up to ${LIMITS.command_cooldown_max}. 0 is none. With actions, at least ${LIMITS.action_cooldown_min}.`}
+              hint={spaTranslate(
+                "Seconds a member waits between uses, up to {arg1}. 0 is none. With actions, at least {arg2}.",
+                { arg1: LIMITS.command_cooldown_max, arg2: LIMITS.action_cooldown_min },
+              )}
             >
               <input
                 id="command-cooldown"
@@ -315,7 +332,7 @@ function CommandForm({ guild, id, initial }: { guild: string; id?: string; initi
         count={editor.changes}
         saving={editor.saving}
         blocked={(nameCheck !== null && !nameCheck.ok) || unfinished !== null}
-        error={editor.failure ?? (unfinished ? "Finish the action first" : null)}
+        error={editor.failure ?? (unfinished ? spaTranslate("Finish the action first") : null)}
         onSave={onSave}
         onReset={editor.reset}
       />

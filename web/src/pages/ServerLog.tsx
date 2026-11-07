@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { type ReactNode, useCallback, useState } from "react";
 import { useOutletContext } from "react-router";
 
@@ -21,10 +22,12 @@ export function ServerLog() {
   return (
     <div className="settings-page mod-page">
       <PageHead
-        title="SERVER LOG"
-        lead="A channel (or one per category) where the bot notes who came and went, what was edited or deleted, and what staff changed."
+        title={spaTranslate("SERVER LOG")}
+        lead={spaTranslate(
+          "A channel (or one per category) where the bot notes who came and went, what was edited or deleted, and what staff changed.",
+        )}
       />
-      {query.isPending && <Loading label="Reading the log settings" />}
+      {query.isPending && <Loading label={spaTranslate("Reading the log settings")} />}
       {query.isError && <Problem error={query.error} />}
       {query.isSuccess && <LogForm guild={data.guild.id} saved={query.data} />}
     </div>
@@ -47,7 +50,7 @@ function LogForm({ guild, saved }: { guild: string; saved: LogSettings }) {
     save.mutate(patch, {
       onSuccess: (now) => {
         setDraft(logDraft(now));
-        setToast("Saved. The log follows it from the next event.");
+        setToast(spaTranslate("Saved. The log follows it from the next event."));
       },
     });
   const reset = () => {
@@ -57,28 +60,34 @@ function LogForm({ guild, saved }: { guild: string; saved: LogSettings }) {
 
   return (
     <>
-      <Panel title="LOG CHANNEL">
+      <Panel title={spaTranslate("LOG CHANNEL")}>
         <Field
-          label="Channel"
+          label={spaTranslate("Channel")}
           htmlFor="log-channel"
           error={fieldError("channel_id")}
-          hint="Picking a channel turns the log on. Keep it private to moderators. A category below can have a channel of its own."
+          hint={spaTranslate(
+            "Picking a channel turns the log on. Keep it private to moderators. A category below can have a channel of its own.",
+          )}
         >
           <ChannelPicker
             id="log-channel"
             info={discord.data}
             value={draft.channel_id}
             onChange={(id) => set({ channel_id: id })}
-            none="Off: no server log"
+            none={spaTranslate("Off: no server log")}
             invalid={!!fieldError("channel_id")}
           />
         </Field>
       </Panel>
 
-      <Panel title="WHAT IT REPORTS">
+      <Panel title={spaTranslate("WHAT IT REPORTS")}>
         <p className="panel-lead muted">
-          Entries marked <span className="badge badge-dim">audit log</span> come from Discord's audit log and
-          say who did it; Pinchora needs the View Audit Log permission for them.
+          {" "}
+          {spaTranslate("Entries marked")}{" "}
+          <span className="badge badge-dim">{spaTranslate("audit log")}</span>{" "}
+          {spaTranslate(
+            "come from Discord's audit log and say who did it; Pinchora needs the View Audit Log permission for them.",
+          )}{" "}
         </p>
         {fieldError("category_channels") && (
           <p className="field-error" role="alert">
@@ -87,28 +96,30 @@ function LogForm({ guild, saved }: { guild: string; saved: LogSettings }) {
         )}
         <div className={`log-matrix ${on ? "" : "is-muted"}`}>
           {saved.categories.map((category) => (
-            <section key={category.key} className="log-category" aria-label={category.label}>
+            <section key={category.key} className="log-category" aria-label={spaTranslate(category.label)}>
               <header className="log-category-head">
-                <h3 className="setting-name">{category.label}</h3>
+                <h3 className="setting-name">{spaTranslate(category.label)}</h3>
                 <ChannelPicker
-                  label={`Channel for ${category.label}`}
+                  label={spaTranslate("Channel for {arg1}", { arg1: spaTranslate(category.label) })}
                   info={discord.data}
                   value={draft.category_channels[category.key] ?? null}
                   onChange={(id) =>
                     set({ category_channels: { ...draft.category_channels, [category.key]: id } })
                   }
-                  none="The log channel"
+                  none={spaTranslate("The log channel")}
                 />
               </header>
               <ul className="log-events">
                 {category.events.map((event) => (
                   <li key={event.key} className="log-event">
                     <span className="log-event-name">
-                      {event.label}
-                      {event.audit_log && <span className="badge badge-dim">audit log</span>}
+                      {spaTranslate(event.label)}
+                      {event.audit_log && (
+                        <span className="badge badge-dim">{spaTranslate("audit log")}</span>
+                      )}
                     </span>
                     <PixelToggle
-                      label={event.label}
+                      label={spaTranslate(event.label)}
                       checked={draft.events[event.key] ?? false}
                       onChange={(next) => set({ events: { ...draft.events, [event.key]: next } })}
                     />
@@ -118,25 +129,33 @@ function LogForm({ guild, saved }: { guild: string; saved: LogSettings }) {
             </section>
           ))}
         </div>
-        {!on && <p className="notice">Pick a log channel above; until then nothing is reported.</p>}
+        {!on && (
+          <p className="notice">
+            {spaTranslate("Pick a log channel above; until then nothing is reported.")}
+          </p>
+        )}
       </Panel>
 
-      <Panel title="LEFT ALONE">
+      <Panel title={spaTranslate("LEFT ALONE")}>
         <p className="panel-lead muted">
-          Nothing is logged about these members, members with these roles, or what happens in these channels
-          (a category covers its channels, a channel its threads). Up to {saved.max_ignored} of each.
+          {" "}
+          {spaTranslate(
+            "Nothing is logged about these members, members with these roles, or what happens in these channels (a category covers its channels, a channel its threads). Up to",
+          )}{" "}
+          {saved.max_ignored} {spaTranslate("of each.")}{" "}
         </p>
         <SwitchRow
-          title="Bots"
+          title={spaTranslate("Bots")}
           control={
             <PixelToggle
-              label="Leave bots alone"
+              label={spaTranslate("Leave bots alone")}
               checked={draft.ignore_bots}
               onChange={(bots) => set({ ignore_bots: bots })}
             />
           }
         >
-          Messages, joins and changes of bots stay out of the log.
+          {" "}
+          {spaTranslate("Messages, joins and changes of bots stay out of the log.")}{" "}
         </SwitchRow>
         <IgnoreChannels
           info={discord.data}
@@ -195,14 +214,14 @@ function IgnoreChannels({
 }) {
   const [pick, setPick] = useState<string | null>(null);
   return (
-    <Field label="Channels and categories" htmlFor="ignore-channel" error={error}>
+    <Field label={spaTranslate("Channels and categories")} htmlFor="ignore-channel" error={error}>
       <div className="ignore-add">
         <ChannelPicker
           id="ignore-channel"
           info={info}
           value={pick}
           onChange={setPick}
-          none="Pick a channel"
+          none={spaTranslate("Pick a channel")}
           any
         />
         <PixelButton
@@ -213,15 +232,16 @@ function IgnoreChannels({
             setPick(null);
           }}
         >
-          Add
+          {" "}
+          {spaTranslate("Add")}{" "}
         </PixelButton>
       </div>
-      <Chips empty="No channels.">
+      <Chips empty={spaTranslate("No channels.")}>
         {list.map((id) => (
           <li key={id} className="channel-chip">
             <ChannelTag info={info} id={id} />
             <RemoveChip
-              label="Log this channel again"
+              label={spaTranslate("Log this channel again")}
               onClick={() => onChange(list.filter((x) => x !== id))}
             />
           </li>
@@ -244,9 +264,15 @@ function IgnoreRoles({
 }) {
   const [pick, setPick] = useState<string | null>(null);
   return (
-    <Field label="Roles" htmlFor="ignore-role" error={error}>
+    <Field label={spaTranslate("Roles")} htmlFor="ignore-role" error={error}>
       <div className="ignore-add">
-        <RolePicker id="ignore-role" info={info} value={pick} onChange={setPick} none="Pick a role" />
+        <RolePicker
+          id="ignore-role"
+          info={info}
+          value={pick}
+          onChange={setPick}
+          none={spaTranslate("Pick a role")}
+        />
         <PixelButton
           variant="secondary"
           disabled={!pick || list.includes(pick)}
@@ -255,14 +281,18 @@ function IgnoreRoles({
             setPick(null);
           }}
         >
-          Add
+          {" "}
+          {spaTranslate("Add")}{" "}
         </PixelButton>
       </div>
-      <Chips empty="No roles.">
+      <Chips empty={spaTranslate("No roles.")}>
         {list.map((id) => (
           <li key={id} className="channel-chip">
             <RoleTag info={info} id={id} />
-            <RemoveChip label="Log this role again" onClick={() => onChange(list.filter((x) => x !== id))} />
+            <RemoveChip
+              label={spaTranslate("Log this role again")}
+              onClick={() => onChange(list.filter((x) => x !== id))}
+            />
           </li>
         ))}
       </Chips>
@@ -284,17 +314,19 @@ function IgnoreUsers({
   const valid = isDiscordId(id);
   return (
     <Field
-      label="Members"
+      label={spaTranslate("Members")}
       htmlFor="ignore-user"
       error={error}
-      hint="Paste a member's user id (with Developer Mode on in Discord: right-click them, Copy User ID)."
+      hint={spaTranslate(
+        "Paste a member's user id (with Developer Mode on in Discord: right-click them, Copy User ID).",
+      )}
     >
       <div className="ignore-add">
         <input
           id="ignore-user"
           className="pixel-input"
           inputMode="numeric"
-          placeholder="User id"
+          placeholder={spaTranslate("User id")}
           value={typed}
           onChange={(event) => setTyped(event.target.value)}
           aria-invalid={(id !== "" && !valid) || undefined}
@@ -307,15 +339,16 @@ function IgnoreUsers({
             setTyped("");
           }}
         >
-          Add
+          {" "}
+          {spaTranslate("Add")}{" "}
         </PixelButton>
       </div>
-      <Chips empty="No members.">
+      <Chips empty={spaTranslate("No members.")}>
         {list.map((user) => (
           <li key={user} className="channel-chip">
             <span className="channel-tag">{user}</span>
             <RemoveChip
-              label="Log this member again"
+              label={spaTranslate("Log this member again")}
               onClick={() => onChange(list.filter((x) => x !== user))}
             />
           </li>

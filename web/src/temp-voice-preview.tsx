@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "./i18n";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRoot } from "react-dom/client";
 import { createMemoryRouter, Outlet, RouterProvider } from "react-router";
@@ -124,11 +125,11 @@ function Layout() {
           <div className="sidebar-server">
             <strong className="sidebar-server-name">Pinchora Reef</strong>
           </div>
-          <nav className="sidebar-nav" aria-label="Server settings">
+          <nav className="sidebar-nav" aria-label={spaTranslate("Server settings")}>
             <div className="sidebar-section">
-              <p className="sidebar-group pixel-label">COMMUNITY</p>
+              <p className="sidebar-group pixel-label">{spaTranslate("COMMUNITY")}</p>
               <a className="sidebar-link active" href="#">
-                Temp voice
+                {spaTranslate("Temp voice")}
               </a>
             </div>
           </nav>

@@ -1,6 +1,8 @@
+import { translate as spaTranslate } from "../i18n";
 import { Link } from "react-router";
 
 import { Crab } from "../components/Crab";
+import { number, t, translate } from "../i18n";
 import { PixelLink } from "../components/PixelButton";
 import { Amp } from "./Amp";
 import { InviteButton } from "./Buttons";
@@ -22,9 +24,11 @@ export function Landing() {
       <Reveal as="section" className="band" id="showcase">
         <div className="wrap">
           <SectionHead
-            eyebrow="SEE IT IN DISCORD"
-            title="Cards drawn by the bot, not by a template"
-            lead="Every picture on this page was rendered by Pinchora's own code. This is exactly what lands in your channel."
+            eyebrow={spaTranslate("SEE IT IN DISCORD")}
+            title={spaTranslate("Cards drawn by the bot, not by a template")}
+            lead={spaTranslate(
+              "Every picture on this page was rendered by Pinchora's own code. This is exactly what lands in your channel.",
+            )}
           />
           <Gallery />
         </div>
@@ -41,9 +45,9 @@ export function Landing() {
 function SectionHead({ eyebrow, title, lead }: { eyebrow: string; title: string; lead?: string }) {
   return (
     <div className="section-head">
-      <p className="pixel-label eyebrow">{eyebrow}</p>
-      <h2 className="section-title">{title}</h2>
-      {lead && <p className="section-lead">{lead}</p>}
+      <p className="pixel-label eyebrow">{translate(eyebrow)}</p>
+      <h2 className="section-title">{translate(title)}</h2>
+      {lead && <p className="section-lead">{translate(lead)}</p>}
     </div>
   );
 }
@@ -55,21 +59,24 @@ function Hero() {
     <section className="hero" aria-labelledby="hero-title">
       <div className="wrap hero-grid">
         <div className="hero-copy">
-          <p className="pixel-label eyebrow">A COZY PIXEL WORLD FOR DISCORD</p>
+          <p className="pixel-label eyebrow">{t("A COZY PIXEL WORLD FOR DISCORD")}</p>
           <h1 id="hero-title" className="hero-title">
-            Make your server a cozy pixel world.
+            {t("Make your server a cozy pixel world.")}
           </h1>
           <p className="hero-lead">
-            Every member gets a house to decorate, a pet to raise, a shore to fish from and friends to play
-            with. Levels, welcome cards, polls and giveaways keep the server itself running.
+            {t(
+              "Every member gets a house to decorate, a pet to raise, a shore to fish from and friends to play with. Levels, welcome cards, polls and giveaways keep the server itself running.",
+            )}
           </p>
           <div className="hero-actions">
             <InviteButton className="hero-cta" />
             <PixelLink href="/servers" variant="secondary" className="hero-cta">
-              Open dashboard
+              {t("Open dashboard")}
             </PixelLink>
           </div>
-          <p className="hero-note muted">Slash commands only, nothing to install. Type /help and start.</p>
+          <p className="hero-note muted">
+            {t("Slash commands only, nothing to install. Type /help and start.")}
+          </p>
         </div>
         <div className="hero-stage">
           <Shot name="room" className="hero-room" eager />
@@ -97,10 +104,10 @@ function Stat({ value, label, run }: { value: number; label: string; run: boolea
   const shown = useCountUp(value, run);
   return (
     <li className="stat">
-      <span className="stat-value" aria-label={`${value.toLocaleString("en-US")} ${label}`}>
+      <span className="stat-value" aria-label={`${number(value)} ${translate(label)}`}>
         <span aria-hidden="true">{compact(shown)}</span>
       </span>
-      <span className="pixel-label stat-label">{label.toUpperCase()}</span>
+      <span className="pixel-label stat-label">{translate(label).toLocaleUpperCase()}</span>
     </li>
   );
 }
@@ -110,20 +117,20 @@ function Stats() {
   const stats = landing.data?.stats;
   const [ref, seen] = useInView<HTMLDivElement>();
   return (
-    <section className="stats-band" aria-label="Pinchora in numbers">
+    <section className="stats-band" aria-label={t("Pinchora in numbers")}>
       <div className="wrap" ref={ref}>
         {stats && (
           <ul className="stats">
-            <Stat value={stats.servers} label="servers" run={seen} />
-            <Stat value={stats.players} label="players" run={seen} />
-            <Stat value={stats.houses} label="houses built" run={seen} />
-            <Stat value={stats.pets} label="pets adopted" run={seen} />
+            <Stat value={stats.servers} label={spaTranslate("servers")} run={seen} />
+            <Stat value={stats.players} label={spaTranslate("players")} run={seen} />
+            <Stat value={stats.houses} label={spaTranslate("houses built")} run={seen} />
+            <Stat value={stats.pets} label={spaTranslate("pets adopted")} run={seen} />
           </ul>
         )}
         <ul className="facts">
           {FACTS.map((f) => (
             <li key={f.label}>
-              <b>{f.value.toLocaleString("en-US")}</b> {f.label}
+              <b>{number(f.value)}</b> {translate(f.label)}
             </li>
           ))}
         </ul>
@@ -139,9 +146,11 @@ function Features() {
     <Reveal as="section" className="band band-plain" id="features">
       <div className="wrap">
         <SectionHead
-          eyebrow="WHAT IT DOES"
-          title="One bot, six corners of your server"
-          lead="Switch on what you like and leave the rest. Every part can be turned off for the server or for single channels."
+          eyebrow={spaTranslate("WHAT IT DOES")}
+          title={spaTranslate("One bot, six corners of your server")}
+          lead={spaTranslate(
+            "Switch on what you like and leave the rest. Every part can be turned off for the server or for single channels.",
+          )}
         />
         <ul className="feature-grid">
           {FEATURES.map((f) => (
@@ -150,10 +159,10 @@ function Features() {
                 <span className="panel-body feature-card-body">
                   <PixelIcon name={f.icon} scale={5} className="feature-icon" />
                   <span className="pixel-title feature-title">
-                    <Amp text={f.title} />
+                    <Amp text={translate(f.title)} />
                   </span>
-                  <span className="feature-blurb">{f.blurb}</span>
-                  <span className="pixel-label feature-more">LEARN MORE</span>
+                  <span className="feature-blurb">{translate(f.blurb)}</span>
+                  <span className="pixel-label feature-more">{t("LEARN MORE")}</span>
                 </span>
               </Link>
             </li>
@@ -170,7 +179,10 @@ function HowItWorks() {
   return (
     <Reveal as="section" className="band" id="how">
       <div className="wrap">
-        <SectionHead eyebrow="HOW IT WORKS" title="Up and running in three steps" />
+        <SectionHead
+          eyebrow={spaTranslate("HOW IT WORKS")}
+          title={spaTranslate("Up and running in three steps")}
+        />
         <ol className="steps">
           {STEPS.map((step, i) => (
             <li key={step.title} className="step panel">
@@ -178,9 +190,9 @@ function HowItWorks() {
                 <span className="step-number" aria-hidden="true">
                   {i + 1}
                 </span>
-                <h3 className="pixel-title">{step.title}</h3>
-                <p>{step.text}</p>
-                <p className="pixel-label step-detail">{step.detail.toUpperCase()}</p>
+                <h3 className="pixel-title">{translate(step.title)}</h3>
+                <p>{translate(step.text)}</p>
+                <p className="pixel-label step-detail">{translate(step.detail).toLocaleUpperCase()}</p>
               </div>
             </li>
           ))}
@@ -188,7 +200,7 @@ function HowItWorks() {
         <div className="steps-cta">
           <InviteButton />
           <Link to="/commands" className="steps-link">
-            Browse every command
+            {t("Browse every command")}
           </Link>
         </div>
       </div>
@@ -205,20 +217,20 @@ function DashboardSpotlight() {
     <Reveal as="section" className="band band-plain" id="dashboard">
       <div className="wrap spotlight">
         <div className="spotlight-copy">
-          <p className="pixel-label eyebrow">WEB DASHBOARD</p>
-          <h2 className="section-title">Settings on a page, with a live preview</h2>
-          <p className="section-lead">{feature?.lead}</p>
+          <p className="pixel-label eyebrow">{t("WEB DASHBOARD")}</p>
+          <h2 className="section-title">{t("Settings on a page, with a live preview")}</h2>
+          <p className="section-lead">{feature?.lead && translate(feature.lead)}</p>
           <ul className="ticks">
             {feature?.points.slice(0, 4).map((p) => (
               <li key={p.title}>
-                <b>{p.title}.</b> {p.text}
+                <b>{translate(p.title)}.</b> {translate(p.text)}
               </li>
             ))}
           </ul>
           <div className="spotlight-actions">
-            <PixelLink href="/servers">Open dashboard</PixelLink>
+            <PixelLink href="/servers">{t("Open dashboard")}</PixelLink>
             <Link to="/features/web-dashboard" className="steps-link">
-              About the dashboard
+              {t("About the dashboard")}
             </Link>
           </div>
         </div>
@@ -228,22 +240,24 @@ function DashboardSpotlight() {
               <span className="mock-dot" />
               <span className="mock-dot" />
               <span className="mock-dot" />
-              <span className="pixel-label mock-url">pinchora / welcome</span>
+              <span className="pixel-label mock-url">{spaTranslate("pinchora / welcome")}</span>
             </div>
             <div className="mock-row">
               <div>
-                <p className="pixel-title">WELCOME CARDS</p>
-                <p className="muted mock-small">Greet new members in #welcome</p>
+                <p className="pixel-title">{t("WELCOME CARDS")}</p>
+                <p className="muted mock-small">{t("Greet new members in #welcome")}</p>
               </div>
               <span className="pixel-toggle is-on mock-toggle">
                 <span className="pixel-toggle-knob" />
-                <span className="pixel-toggle-text">ON</span>
+                <span className="pixel-toggle-text">{t("ON")}</span>
               </span>
             </div>
             <div className="mock-field">
-              <p className="pixel-label muted">MESSAGE</p>
+              <p className="pixel-label muted">{t("MESSAGE")}</p>
               <p className="mock-input">
-                Welcome to {"{server}"}, {"{user}"}! You are member number {"{members}"}.
+                {" "}
+                {spaTranslate("Welcome to")} {"{server}"}, {"{user}"}
+                {spaTranslate("! You are member number")} {"{members}"}.
               </p>
             </div>
             <div className="mock-preview">
@@ -262,13 +276,13 @@ function Faq() {
   return (
     <Reveal as="section" className="band" id="faq">
       <div className="wrap wrap-narrow">
-        <SectionHead eyebrow="QUESTIONS" title="Before you add it" />
+        <SectionHead eyebrow={spaTranslate("QUESTIONS")} title={spaTranslate("Before you add it")} />
         <div className="faq">
           {FAQ.map((item) => (
             <details key={item.question} className="faq-item panel">
-              <summary className="faq-question">{item.question}</summary>
+              <summary className="faq-question">{translate(item.question)}</summary>
               <div className="faq-answer">
-                <p>{item.answer}</p>
+                <p>{translate(item.answer)}</p>
               </div>
             </details>
           ))}
@@ -287,14 +301,14 @@ function ClosingCall() {
         <div className="panel panel-accent closing-panel">
           <div className="panel-body closing-body">
             <Crab scale={8} className="closing-crab" />
-            <h2 className="section-title">Ready to meet the crab?</h2>
+            <h2 className="section-title">{t("Ready to meet the crab?")}</h2>
             <p className="section-lead">
-              Add Pinchora to your server and give everyone a house to come home to.
+              {t("Add Pinchora to your server and give everyone a house to come home to.")}
             </p>
             <div className="hero-actions closing-actions">
               <InviteButton className="hero-cta" />
               <PixelLink href="/servers" variant="secondary" className="hero-cta">
-                Open dashboard
+                {t("Open dashboard")}
               </PixelLink>
             </div>
           </div>

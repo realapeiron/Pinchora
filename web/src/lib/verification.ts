@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { serverText } from "../i18n";
 import { api } from "./api";
 export interface Gate {
   enabled: boolean;
@@ -56,12 +57,7 @@ export interface SafetyData {
 }
 export function words(strings: Record<string, string>, language = "en") {
   return (key: string, args: Record<string, string | number> = {}) =>
-    (strings[key] ?? key).replace(/\{(\w+)\}/g, (match, name: string) => {
-      const value = args[name];
-      return typeof value === "number"
-        ? value.toLocaleString(language === "tr" ? "tr-TR" : "en-US")
-        : (value ?? match);
-    });
+    serverText(key, strings, args, language);
 }
 export function idList(raw: string) {
   return [...new Set(raw.split(/[\s,]+/).filter(Boolean))];

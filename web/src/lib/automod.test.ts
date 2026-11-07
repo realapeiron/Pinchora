@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { setLocale } from "../i18n";
 import { contentLocked, moveAction, words, type AutoRule } from "./automod";
 describe("AutoMod editing", () => {
   it("reorders a chain without mutating it or dropping actions", () => {
@@ -16,9 +17,11 @@ describe("AutoMod editing", () => {
     expect(contentLocked({ ...rule, kind: "mentions" }, false)).toBe(false);
     expect(contentLocked({ ...rule, kind: "bad_words", discord_rule_id: "123" }, false)).toBe(false);
   });
-  it("uses the server catalog with named values", () => {
+  it("uses the active language with named values", async () => {
+    await setLocale("tr");
     expect(words({ "ui.used": "{count}/{max} kullanılıyor" })("ui.used", { count: 4, max: 30 })).toBe(
       "4/30 kullanılıyor",
     );
+    await setLocale("en");
   });
 });

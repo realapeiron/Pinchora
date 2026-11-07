@@ -1,4 +1,5 @@
 import { SHOTS, altOf } from "./shots";
+import { translate } from "../i18n";
 import type { ShotKey } from "./features";
 
 /** A card the bot drew, in a pixel frame, with its size set so the page does not jump when it loads. */
@@ -20,7 +21,7 @@ export function Shot({
         src={shot.src}
         width={shot.width}
         height={shot.height}
-        alt={alt ?? altOf(name)}
+        alt={alt ?? translate(altOf(name))}
         loading={eager ? "eager" : "lazy"}
         decoding={eager ? "sync" : "async"}
         fetchPriority={eager ? "high" : "auto"}

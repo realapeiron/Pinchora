@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { RichText } from "./RichText";
+import { translate } from "../i18n";
 
 /** A labelled form control with an optional hint and the problem with its value, if any. */
 export function Field({
@@ -23,7 +24,7 @@ export function Field({
     <div className={`field ${error ? "has-error" : ""}`}>
       <div className="field-head">
         <label className="field-label" htmlFor={htmlFor}>
-          {label}
+          {translate(label)}
         </label>
         {aside}
       </div>
@@ -56,7 +57,7 @@ export function SwitchRow({
   return (
     <div className="setting-row">
       <div className="setting-text">
-        <h3 className="setting-name">{title}</h3>
+        <h3 className="setting-name">{translate(title)}</h3>
         {children && <p className="muted">{children}</p>}
       </div>
       {control}

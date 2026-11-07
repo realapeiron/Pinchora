@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 // The level role sync job a page is following, kept across a reload.
 
 const key = (guild: string) => `pinchora:sync-job:${guild}`;
@@ -29,6 +30,6 @@ export function jobProgress(job: { status: string; checked: number; total: numbe
 
 /** What to say while a job runs: nothing is known until the first count comes in. */
 export function jobText(job: { checked: number; total: number } | undefined): string {
-  if (!job || job.total === 0) return "Looking for members with XP…";
-  return `Checked ${job.checked} of ${job.total} members`;
+  if (!job || job.total === 0) return spaTranslate("Looking for members with XP…");
+  return spaTranslate("Checked {arg1} of {arg2} members", { arg1: job.checked, arg2: job.total });
 }

@@ -1,3 +1,4 @@
+import { locale, translate as spaTranslate } from "../i18n";
 import "../styles/events.css";
 
 import { useState } from "react";
@@ -33,9 +34,9 @@ const fresh = (tz: string): EventBody => {
     channel_id: null,
     required_role_id: null,
     options: [
-      { key: "going", label: "Going", capacity: 0 },
-      { key: "maybe", label: "Maybe", capacity: 0 },
-      { key: "declined", label: "Declined", capacity: 0 },
+      { key: "going", label: spaTranslate("Going"), capacity: 0 },
+      { key: "maybe", label: spaTranslate("Maybe"), capacity: 0 },
+      { key: "declined", label: spaTranslate("Declined"), capacity: 0 },
     ],
     recurrence: null,
     sync: false,
@@ -73,7 +74,7 @@ export function Events() {
   const data = useOutletContext<Overview>();
   const guild = data.guild.id;
   const events = useEvents(guild);
-  const language = events.query.data?.language ?? "en";
+  const language = locale() === "tr" ? "tr-TR" : "en-US";
   const t = catalogWords(events.query.data?.strings, language);
   const discord = useDiscord(guild);
   const [editing, setEditing] = useState<{ id?: string; body: EventBody } | null>(null);

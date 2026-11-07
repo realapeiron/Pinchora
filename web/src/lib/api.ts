@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 // The dashboard's API client: JSON in and out, the CSRF token on every write, errors as ApiError.
 
 /** One field a form got wrong, with the sentence the bot would answer with. */
@@ -73,7 +74,7 @@ async function errorOf(response: Response): Promise<ApiError> {
   return new ApiError(
     response.status,
     field("code") ?? "http_" + response.status,
-    field("message") ?? `The server answered ${response.status}.`,
+    field("message") ?? spaTranslate("The server answered {arg1}.", { arg1: response.status }),
     field("field"),
     field("invite_url"),
     Array.isArray(error?.errors) ? (error.errors as FieldError[]) : undefined,
@@ -123,6 +124,7 @@ export function needsLogin(error: unknown): boolean {
 export interface Me {
   user: { id: string; username: string; global_name: string | null; avatar_url: string };
   csrf: string;
+  language: "en" | "tr" | null;
   /** What the bot runs with: keyword auto-responders need the Message Content intent. */
   capabilities: { message_content: boolean };
 }
@@ -181,6 +183,7 @@ export interface AuditEntry {
 }
 
 export interface Overview {
+  language?: "en" | "tr";
   navigation?: Record<string, string>;
   guild: { id: string; name: string; icon_url: string | null };
   settings: Settings;

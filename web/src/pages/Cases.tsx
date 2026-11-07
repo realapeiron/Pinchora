@@ -1,3 +1,5 @@
+import { dateTime } from "../i18n";
+import { translate as spaTranslate } from "../i18n";
 import { useState } from "react";
 import { useOutletContext } from "react-router";
 
@@ -35,15 +37,17 @@ export function Cases() {
   return (
     <div className="settings-page">
       <PageHead
-        title="CASES"
-        lead="Every moderation action taken with Pinchora, numbered per server. Open one to see it whole and give it a better reason."
+        title={spaTranslate("CASES")}
+        lead={spaTranslate(
+          "Every moderation action taken with Pinchora, numbered per server. Open one to see it whole and give it a better reason.",
+        )}
       />
-      <Panel title="FIND">
+      <Panel title={spaTranslate("FIND")}>
         <div className="filters">
           <Field
-            label="Search"
+            label={spaTranslate("Search")}
             htmlFor="case-search"
-            hint="A name, a reason, a word in the details, or a user id."
+            hint={spaTranslate("A name, a reason, a word in the details, or a user id.")}
           >
             <input
               id="case-search"
@@ -51,46 +55,46 @@ export function Cases() {
               className="pixel-input"
               value={typed}
               onChange={(event) => setTyped(event.target.value)}
-              placeholder="spam, Mia, 1234…"
+              placeholder={spaTranslate("spam, Mia, 1234…")}
             />
           </Field>
-          <Field label="Kind" htmlFor="case-kind">
+          <Field label={spaTranslate("Kind")} htmlFor="case-kind">
             <select
               id="case-kind"
               className="pixel-input pixel-select"
               value={kind}
               onChange={(event) => setKind(event.target.value)}
             >
-              <option value="">Every kind</option>
+              <option value="">{spaTranslate("Every kind")}</option>
               {kinds.map((k) => (
                 <option key={k.key} value={k.key}>
-                  {k.label}
+                  {spaTranslate(k.label)}
                 </option>
               ))}
             </select>
           </Field>
           <div className="filters-switch">
-            <span className="field-label">Still standing</span>
+            <span className="field-label">{spaTranslate("Still standing")}</span>
             <PixelToggle
-              label="Only bans, warns and timeouts that still stand"
+              label={spaTranslate("Only bans, warns and timeouts that still stand")}
               checked={active}
               onChange={setActive}
             />
           </div>
         </div>
       </Panel>
-      <Panel title="ALL CASES">
-        {cases.isPending && <Loading label="Reading the cases" />}
+      <Panel title={spaTranslate("ALL CASES")}>
+        {cases.isPending && <Loading label={spaTranslate("Reading the cases")} />}
         {cases.isError && <Problem error={cases.error} />}
         {cases.isSuccess && rows.length === 0 && (
           <p className="empty-row muted">
             {q || kind || active
-              ? "No case matches."
-              : "No cases yet. /warn, /timeout, /ban and the others open them."}
+              ? spaTranslate("No case matches.")
+              : spaTranslate("No cases yet. /warn, /timeout, /ban and the others open them.")}
           </p>
         )}
         {rows.length > 0 && (
-          <ol className="audit-table" aria-label="Cases">
+          <ol className="audit-table" aria-label={spaTranslate("Cases")}>
             {rows.map((c) => (
               <CaseRow
                 key={c.number}
@@ -109,7 +113,7 @@ export function Cases() {
               disabled={cases.isFetchingNextPage}
               onClick={() => void cases.fetchNextPage()}
             >
-              {cases.isFetchingNextPage ? "Loading…" : "Older cases"}
+              {cases.isFetchingNextPage ? spaTranslate("Loading…") : spaTranslate("Older cases")}
             </PixelButton>
           </div>
         )}
@@ -138,9 +142,12 @@ function CaseRow({
       <button type="button" className="audit-summary" aria-expanded={open} onClick={onToggle}>
         <span className={`case-number pixel-label ${tone(entry.kind)}`}>#{entry.number}</span>
         <span className="audit-text">
-          <strong>{entry.label}</strong> · {who(entry)}
+          <strong>{spaTranslate(entry.label)}</strong> · {who(entry)}
           {entry.duration && <span className="muted"> · {entry.duration}</span>}
-          <span className="muted"> · by {entry.moderator_name}</span>
+          <span className="muted">
+            {" "}
+            {spaTranslate("· by")} {entry.moderator_name}
+          </span>
           {entry.reason && <span className="case-reason muted"> — {entry.reason}</span>}
         </span>
         <time className="audit-time muted" dateTime={entry.created_at} title={entry.created_at}>
@@ -154,7 +161,7 @@ function CaseRow({
 
 function CaseDetail({ guild, number }: { guild: string; number: number }) {
   const detail = useCase(guild, number);
-  if (detail.isPending) return <Loading label="Opening the case" />;
+  if (detail.isPending) return <Loading label={spaTranslate("Opening the case")} />;
   if (detail.isError) return <Problem error={detail.error} />;
   const { case: c, history } = detail.data;
   return (
@@ -162,60 +169,63 @@ function CaseDetail({ guild, number }: { guild: string; number: number }) {
       <table className="diff">
         <tbody>
           <tr>
-            <th scope="row">{c.on_channel ? "Channel" : "Member"}</th>
+            <th scope="row">{c.on_channel ? spaTranslate("Channel") : spaTranslate("Member")}</th>
             <td>
               {c.target_name} <span className="muted">({c.target_id})</span>
             </td>
           </tr>
           <tr>
-            <th scope="row">Moderator</th>
+            <th scope="row">{spaTranslate("Moderator")}</th>
             <td>
               {c.moderator_name} <span className="muted">({c.moderator_id})</span>
             </td>
           </tr>
           {c.details && (
             <tr>
-              <th scope="row">What</th>
+              <th scope="row">{spaTranslate("What")}</th>
               <td>{c.details}</td>
             </tr>
           )}
           {c.duration && (
             <tr>
-              <th scope="row">Duration</th>
+              <th scope="row">{spaTranslate("Duration")}</th>
               <td>
                 {c.duration}
                 {c.expires_at && (
-                  <span className="muted"> · ends {new Date(c.expires_at).toLocaleString()}</span>
+                  <span className="muted">
+                    {" "}
+                    {spaTranslate("· ends")} {dateTime(c.expires_at)}
+                  </span>
                 )}
               </td>
             </tr>
           )}
           <tr>
-            <th scope="row">Status</th>
+            <th scope="row">{spaTranslate("Status")}</th>
             <td>{status(c)}</td>
           </tr>
           {c.dm_sent !== null && (
             <tr>
-              <th scope="row">Direct message</th>
-              <td>{c.dm_sent ? "Delivered" : "Not delivered"}</td>
+              <th scope="row">{spaTranslate("Direct message")}</th>
+              <td>{c.dm_sent ? spaTranslate("Delivered") : spaTranslate("Not delivered")}</td>
             </tr>
           )}
           <tr>
-            <th scope="row">Opened</th>
-            <td>{new Date(c.created_at).toLocaleString()}</td>
+            <th scope="row">{spaTranslate("Opened")}</th>
+            <td>{dateTime(c.created_at)}</td>
           </tr>
         </tbody>
       </table>
       <ReasonEditor guild={guild} entry={c} />
       {history.length > 0 && (
         <div className="case-history">
-          <p className="pixel-label muted">Their other cases</p>
+          <p className="pixel-label muted">{spaTranslate("Their other cases")}</p>
           <ul className="list">
             {history.map((h) => (
               <li key={h.number} className="list-row">
                 <span className={`case-number pixel-label ${tone(h.kind)}`}>#{h.number}</span>
                 <span className="list-main">
-                  {h.label}
+                  {spaTranslate(h.label)}
                   {h.reason && <span className="muted"> — {h.reason}</span>}
                 </span>
                 <span className="muted list-note">{timeAgo(h.created_at)}</span>
@@ -229,9 +239,9 @@ function CaseDetail({ guild, number }: { guild: string; number: number }) {
 }
 
 function status(c: Case): string {
-  if (!["ban", "warn", "timeout"].includes(c.kind)) return "Done";
-  if (!c.active) return c.kind === "warn" ? "Taken back" : "Ended";
-  return c.kind === "warn" ? "Counts" : "Standing";
+  if (!["ban", "warn", "timeout"].includes(c.kind)) return spaTranslate("Done");
+  if (!c.active) return c.kind === "warn" ? spaTranslate("Taken back") : "Ended";
+  return c.kind === "warn" ? spaTranslate("Counts") : spaTranslate("Standing");
 }
 
 function ReasonEditor({ guild, entry }: { guild: string; entry: Case }) {
@@ -239,14 +249,18 @@ function ReasonEditor({ guild, entry }: { guild: string; entry: Case }) {
   const [reason, setReason] = useState(entry.reason ?? "");
   const changed = reason.trim() !== (entry.reason ?? "");
   const error =
-    save.error instanceof ApiError ? save.error.message : save.error ? "Could not save the reason." : null;
+    save.error instanceof ApiError
+      ? save.error.message
+      : save.error
+        ? spaTranslate("Could not save the reason.")
+        : null;
   return (
     <div className="reason-editor">
       <Field
-        label="Reason"
+        label={spaTranslate("Reason")}
         htmlFor={`reason-${entry.number}`}
         error={error}
-        hint="Saving edits the case in the mod-log too."
+        hint={spaTranslate("Saving edits the case in the mod-log too.")}
         aside={<span className={`counter ${reason.length > 512 ? "is-over" : ""}`}>{reason.length}/512</span>}
       >
         <textarea
@@ -262,7 +276,11 @@ function ReasonEditor({ guild, entry }: { guild: string; entry: Case }) {
         disabled={!changed || save.isPending || reason.length > 512}
         onClick={() => save.mutate({ number: entry.number, reason: reason.trim() || null })}
       >
-        {save.isPending ? "Saving…" : save.isSuccess && !changed ? "Saved" : "Save reason"}
+        {save.isPending
+          ? spaTranslate("Saving…")
+          : save.isSuccess && !changed
+            ? spaTranslate("Saved")
+            : spaTranslate("Save reason")}
       </PixelButton>
     </div>
   );

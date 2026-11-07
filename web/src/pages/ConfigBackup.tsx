@@ -1,3 +1,4 @@
+import { dateTime } from "../i18n";
 import { useState } from "react";
 import { useOutletContext } from "react-router";
 import type { Overview } from "../lib/api";
@@ -174,7 +175,7 @@ function BackupEditor({ guild, data }: { guild: string; data: BackupData }) {
           <div className="backup-point" key={p.id}>
             <div>
               <strong>#{p.id}</strong>
-              <time dateTime={p.created_at}>{new Date(p.created_at).toLocaleString()}</time>
+              <time dateTime={p.created_at}>{dateTime(p.created_at)}</time>
             </div>
             <PixelButton
               variant="secondary"

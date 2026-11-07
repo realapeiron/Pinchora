@@ -46,6 +46,8 @@ use twilight_model::{
 
 #[path = "api/achievements.rs"]
 mod achievements;
+#[path = "api/web_i18n.rs"]
+mod web_i18n;
 
 // Custom commands and auto-responders.
 #[path = "api/stats.rs"]

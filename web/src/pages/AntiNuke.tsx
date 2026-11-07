@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { dateTime, number } from "../i18n";
 import { useOutletContext } from "react-router";
 import { Field, SwitchRow } from "../components/Field";
 import { Panel } from "../components/Panel";
@@ -347,14 +348,9 @@ function Editor({ guild, saved }: { guild: string; saved: AntiNukeData }) {
               <li key={event.id}>
                 <div className="antinuke-event-head">
                   <h3>
-                    {t(`kind.${event.kind}`)}{" "}
-                    <span className="muted">
-                      ×{event.count.toLocaleString(saved.language === "tr" ? "tr-TR" : "en-US")}
-                    </span>
+                    {t(`kind.${event.kind}`)} <span className="muted">×{number(event.count)}</span>
                   </h3>
-                  <time dateTime={event.created_at}>
-                    {new Date(event.created_at).toLocaleString(saved.language === "tr" ? "tr-TR" : "en-US")}
-                  </time>
+                  <time dateTime={event.created_at}>{dateTime(event.created_at)}</time>
                 </div>
                 <p>
                   <span className="muted">{t("ui.actor")}: </span>

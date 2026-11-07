@@ -1,3 +1,4 @@
+import { locale, translate as spaTranslate } from "../i18n";
 // Tickets: the shapes `/api/guilds/{g}/tickets/...` answers with, the hooks that read and write them, and
 // the small rules the page checks before the server does (the server's sentences are the final word).
 
@@ -341,15 +342,24 @@ export function checkPanel(draft: PanelDraft, limits: Limits): FieldError[] {
   const name = draft.name.trim();
   if (!name) errors.push({ field: "name", message: "Give the panel a name." });
   else if (chars(name) > limits.name)
-    errors.push({ field: "name", message: `A panel's name is at most ${limits.name} characters.` });
+    errors.push({
+      field: "name",
+      message: spaTranslate("A panel's name is at most {arg1} characters.", { arg1: limits.name }),
+    });
   else if (/^\d+$/.test(name))
     errors.push({ field: "name", message: "A panel's name can't be only a number." });
   if (!draft.channel_id) errors.push({ field: "channel_id", message: "Pick the channel it is posted in." });
   if (!draft.title.trim()) errors.push({ field: "title", message: "Give the panel a title." });
   else if (chars(draft.title) > limits.title)
-    errors.push({ field: "title", message: `A title is at most ${limits.title} characters.` });
+    errors.push({
+      field: "title",
+      message: spaTranslate("A title is at most {arg1} characters.", { arg1: limits.title }),
+    });
   if (chars(draft.description) > limits.description)
-    errors.push({ field: "description", message: `The text is at most ${limits.description} characters.` });
+    errors.push({
+      field: "description",
+      message: spaTranslate("The text is at most {arg1} characters.", { arg1: limits.description }),
+    });
   if (!/^#?[0-9a-fA-F]{6}$/.test(draft.color.trim()))
     errors.push({ field: "color", message: "Colours look like `#ff6b4a`." });
   const most = draft.style === "buttons" ? limits.buttons : limits.options;
@@ -361,29 +371,46 @@ export function checkPanel(draft: PanelDraft, limits: Limits): FieldError[] {
   else if (draft.topics.length > most)
     errors.push({
       field: "buttons",
-      message: `This style shows at most ${most} topics. Use a menu for more.`,
+      message: spaTranslate("This style shows at most {arg1} topics. Use a menu for more.", { arg1: most }),
     });
   draft.topics.forEach((t, n) => {
-    if (!t.label.trim()) errors.push({ field: "buttons", message: `Topic ${n + 1} needs a label.` });
+    if (!t.label.trim())
+      errors.push({
+        field: "buttons",
+        message: spaTranslate("Topic {arg1} needs a label.", { arg1: n + 1 }),
+      });
     else if (chars(t.label.trim()) > limits.label)
       errors.push({
         field: "buttons",
-        message: `Topic ${n + 1}'s label is at most ${limits.label} characters.`,
+        message: spaTranslate("Topic {arg1}'s label is at most {arg2} characters.", {
+          arg1: n + 1,
+          arg2: limits.label,
+        }),
       });
   });
   if (chars(draft.welcome_text) > limits.welcome)
     errors.push({
       field: "welcome_text",
-      message: `The welcome text is at most ${limits.welcome} characters.`,
+      message: spaTranslate("The welcome text is at most {arg1} characters.", { arg1: limits.welcome }),
     });
   if (draft.questions.length > limits.questions)
-    errors.push({ field: "questions", message: `A form asks at most ${limits.questions} questions.` });
+    errors.push({
+      field: "questions",
+      message: spaTranslate("A form asks at most {arg1} questions.", { arg1: limits.questions }),
+    });
   draft.questions.forEach((q, n) => {
-    if (!q.label.trim()) errors.push({ field: "questions", message: `Question ${n + 1} needs a label.` });
+    if (!q.label.trim())
+      errors.push({
+        field: "questions",
+        message: spaTranslate("Question {arg1} needs a label.", { arg1: n + 1 }),
+      });
     else if (chars(q.label.trim()) > limits.question)
       errors.push({
         field: "questions",
-        message: `Question ${n + 1} is at most ${limits.question} characters.`,
+        message: spaTranslate("Question {arg1} is at most {arg2} characters.", {
+          arg1: n + 1,
+          arg2: limits.question,
+        }),
       });
   });
   return errors;
@@ -407,7 +434,7 @@ export function exampleName(template: string, number = 42, user = "sam", topic =
 export function duration(secs: number | null): string {
   if (secs === null || !Number.isFinite(secs)) return "—";
   const minutes = Math.round(secs / 60);
-  if (minutes < 1) return "under a minute";
+  if (minutes < 1) return spaTranslate("under a minute");
   if (minutes < 60) return `${minutes} min`;
   const hours = Math.floor(minutes / 60);
   if (hours < 48) return minutes % 60 ? `${hours} h ${minutes % 60} min` : `${hours} h`;
@@ -429,13 +456,13 @@ export const STATE_LABEL: Record<TicketState, string> = {
 /** A person as the table shows them: the name Discord has, else the id. */
 export function personLabel(person: Person | null): string {
   if (!person) return "—";
-  return person.name ?? `User ${person.id}`;
+  return person.name ?? spaTranslate("User {arg1}", { arg1: person.id });
 }
 
 /** A time as "6 Nov, 18:04", in the viewer's zone. */
 export function when(iso: string | null): string {
   if (!iso) return "—";
-  return new Date(iso).toLocaleString(undefined, {
+  return new Date(iso).toLocaleString(locale() === "tr" ? "tr-TR" : "en-US", {
     day: "numeric",
     month: "short",
     hour: "2-digit",

@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useRef, useState } from "react";
 
 import { type Placeholder, LIMITS } from "../lib/tags";
@@ -41,15 +42,15 @@ export function ResponsesEditor({
 
   return (
     <Field
-      label={responses.length > 1 ? "Replies" : "Reply"}
+      label={responses.length > 1 ? spaTranslate("Replies") : spaTranslate("Reply")}
       htmlFor="reply-0"
       error={error}
       hint={
         responses.length > 1
-          ? "One of these is picked at random each time."
+          ? spaTranslate("One of these is picked at random each time.")
           : optional
-            ? "Optional text above the embed."
-            : "What the bot says. Add more replies to have it pick one at random."
+            ? spaTranslate("Optional text above the embed.")
+            : spaTranslate("What the bot says. Add more replies to have it pick one at random.")
       }
     >
       <div className="variants">
@@ -59,7 +60,7 @@ export function ResponsesEditor({
             <div key={index} className="variant">
               <div className="variant-head">
                 <span className="pixel-label muted">
-                  {responses.length > 1 ? `REPLY ${index + 1}` : "TEXT"}
+                  {responses.length > 1 ? spaTranslate("REPLY {arg1}", { arg1: index + 1 }) : "TEXT"}
                 </span>
                 <span className={`counter ${length > LIMITS.response_max ? "is-over" : ""}`}>
                   {length}/{LIMITS.response_max}
@@ -68,19 +69,19 @@ export function ResponsesEditor({
                   <PixelButton
                     variant="ghost"
                     className="button-small"
-                    aria-label={`Remove reply ${index + 1}`}
+                    aria-label={spaTranslate("Remove reply {arg1}", { arg1: index + 1 })}
                     onClick={() => {
                       onChange(responses.filter((_, i) => i !== index));
                       setLast(0);
                     }}
                   >
-                    Remove
+                    {spaTranslate("Remove")}
                   </PixelButton>
                 )}
               </div>
               <textarea
                 id={`reply-${index}`}
-                aria-label={`Reply ${index + 1}`}
+                aria-label={spaTranslate("Reply {arg1}", { arg1: index + 1 })}
                 ref={(el) => {
                   areas.current[index] = el;
                 }}
@@ -106,7 +107,9 @@ export function ResponsesEditor({
               setLast(responses.length);
             }}
           >
-            Add another reply ({responses.length}/{LIMITS.max_responses})
+            {" "}
+            {spaTranslate("Add another reply (")}
+            {responses.length}/{LIMITS.max_responses})
           </PixelButton>
         </div>
       )}

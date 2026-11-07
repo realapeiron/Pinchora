@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useState } from "react";
 import { useOutletContext } from "react-router";
 
@@ -34,21 +35,23 @@ const KINDS: { value: AutoKind; title: string; detail: string }[] = [
   { value: "after_verify", title: "After the join gate", detail: "Members once they are let in." },
 ];
 
-const kindName = (kind: AutoKind) => KINDS.find((k) => k.value === kind)?.title ?? kind;
+const kindName = (kind: AutoKind) => spaTranslate(KINDS.find((k) => k.value === kind)?.title ?? kind);
 
 export function Roles() {
   const data = useOutletContext<Overview>();
   const guild = data.guild.id;
   const discord = useDiscord(guild);
   const roles = useRoles(guild);
-  if (roles.isPending) return <Loading label="Loading roles" />;
+  if (roles.isPending) return <Loading label={spaTranslate("Loading roles")} />;
   if (roles.isError) return <Problem error={roles.error} />;
   const view = roles.data;
   return (
     <div className="settings-page">
       <PageHead
-        title="ROLES"
-        lead="Roles members get on their own, panels where they pick their own, and colours for their names."
+        title={spaTranslate("ROLES")}
+        lead={spaTranslate(
+          "Roles members get on their own, panels where they pick their own, and colours for their names.",
+        )}
       />
       {discord.data && !discord.data.bot.manage_roles && (
         <p className="notice notice-heart">
@@ -98,15 +101,20 @@ function AutoRoles({ guild, info, view }: { guild: string; info: GuildInfo | und
     );
 
   return (
-    <Panel title="AUTO ROLES" aside={<span className="pixel-label muted">{`${items.length}/${max}`}</span>}>
+    <Panel
+      title={spaTranslate("AUTO ROLES")}
+      aside={<span className="pixel-label muted">{`${items.length}/${max}`}</span>}
+    >
       <p className="muted panel-lead">
-        Give a role to everyone who joins, with a delay if you like, and take it back after a while. Adding
-        the same role and kind again changes it.
+        {" "}
+        {spaTranslate(
+          "Give a role to everyone who joins, with a delay if you like, and take it back after a while. Adding the same role and kind again changes it.",
+        )}{" "}
       </p>
       {items.length === 0 ? (
-        <p className="empty-row muted">No auto roles yet.</p>
+        <p className="empty-row muted">{spaTranslate("No auto roles yet.")}</p>
       ) : (
-        <ul className="list" aria-label="Auto roles">
+        <ul className="list" aria-label={spaTranslate("Auto roles")}>
           {items.map((row) => (
             <li
               key={`${row.role_id}:${row.kind}`}
@@ -116,15 +124,24 @@ function AutoRoles({ guild, info, view }: { guild: string; info: GuildInfo | und
                 <RoleTag info={info} id={row.role_id} />
                 <span className="auto-meta">
                   <span className="badge badge-ink">{kindName(row.kind).toUpperCase()}</span>
-                  {row.delay_secs > 0 && <span className="muted">after {spanText(row.delay_secs)}</span>}
-                  {row.remove_after_secs > 0 && (
-                    <span className="muted">taken back after {spanText(row.remove_after_secs)}</span>
+                  {row.delay_secs > 0 && (
+                    <span className="muted">
+                      {spaTranslate("after")} {spanText(row.delay_secs)}
+                    </span>
                   )}
-                  {!row.enabled && <span className="badge badge-heart">PAUSED</span>}
+                  {row.remove_after_secs > 0 && (
+                    <span className="muted">
+                      {spaTranslate("taken back after")} {spanText(row.remove_after_secs)}
+                    </span>
+                  )}
+                  {!row.enabled && <span className="badge badge-heart">{spaTranslate("PAUSED")}</span>}
                 </span>
               </span>
               <PixelToggle
-                label={`Give ${roleName(row.role_id)} to ${kindName(row.kind).toLowerCase()}`}
+                label={spaTranslate("Give {arg1} to {arg2}", {
+                  arg1: roleName(row.role_id),
+                  arg2: kindName(row.kind).toLowerCase(),
+                })}
                 checked={row.enabled}
                 disabled={write.isPending}
                 onChange={(on) =>
@@ -140,11 +157,14 @@ function AutoRoles({ guild, info, view }: { guild: string; info: GuildInfo | und
               <PixelButton
                 variant="ghost"
                 className="button-small"
-                aria-label={`Remove ${roleName(row.role_id)} from ${kindName(row.kind).toLowerCase()}`}
+                aria-label={spaTranslate("Remove {arg1} from {arg2}", {
+                  arg1: roleName(row.role_id),
+                  arg2: kindName(row.kind).toLowerCase(),
+                })}
                 disabled={write.isPending}
                 onClick={() => write.mutate({ method: "DELETE", sub: `/auto/${row.role_id}/${row.kind}` })}
               >
-                Remove
+                {spaTranslate("Remove")}
               </PixelButton>
             </li>
           ))}
@@ -152,43 +172,52 @@ function AutoRoles({ guild, info, view }: { guild: string; info: GuildInfo | und
       )}
 
       <div className="auto-form">
-        <Field label="Who gets it">
-          <Choice name="Who gets the role" value={kind} options={KINDS} onChange={setKind} />
+        <Field label={spaTranslate("Who gets it")}>
+          <Choice
+            name={spaTranslate("Who gets the role")}
+            value={kind}
+            options={KINDS.map((item) => ({
+              ...item,
+              title: spaTranslate(item.title),
+              detail: spaTranslate(item.detail),
+            }))}
+            onChange={setKind}
+          />
         </Field>
         <div className="auto-fields">
           <Field
-            label="Role"
+            label={spaTranslate("Role")}
             htmlFor="auto-role"
             error={refused ?? problemOf(write.error, "role_id")}
-            hint="The bot's role must sit above it."
+            hint={spaTranslate("The bot's role must sit above it.")}
           >
             <RolePicker id="auto-role" info={info} value={role} onChange={setRole} assignable />
           </Field>
           <Field
-            label="Wait before giving it"
+            label={spaTranslate("Wait before giving it")}
             htmlFor="auto-delay"
             error={delayProblem ?? problemOf(write.error, "delay_secs")}
-            hint="0 gives it at once."
+            hint={spaTranslate("0 gives it at once.")}
           >
             <DurationInput
               key={`d${fresh}`}
               id="auto-delay"
-              label="Wait before giving it"
+              label={spaTranslate("Wait before giving it")}
               value={delay}
               onChange={setDelay}
               invalid={!!delayProblem}
             />
           </Field>
           <Field
-            label="Take it back after"
+            label={spaTranslate("Take it back after")}
             htmlFor="auto-expiry"
             error={expiryProblem ?? problemOf(write.error, "remove_after_secs")}
-            hint="0 keeps it for good."
+            hint={spaTranslate("0 keeps it for good.")}
           >
             <DurationInput
               key={`e${fresh}`}
               id="auto-expiry"
-              label="Take it back after"
+              label={spaTranslate("Take it back after")}
               value={expiry}
               onChange={setExpiry}
               invalid={!!expiryProblem}
@@ -206,12 +235,14 @@ function AutoRoles({ guild, info, view }: { guild: string; info: GuildInfo | und
                     setDelay(0);
                     setExpiry(0);
                     setFresh((n) => n + 1);
-                    setToast("Auto role saved.");
+                    setToast(spaTranslate("Auto role saved."));
                   },
                 )
               }
             >
-              {items.some((r) => r.role_id === role && r.kind === kind) ? "Update" : "Add"}
+              {items.some((r) => r.role_id === role && r.kind === kind)
+                ? spaTranslate("Update")
+                : spaTranslate("Add")}
             </PixelButton>
           </div>
         </div>
@@ -226,24 +257,26 @@ function AutoRoles({ guild, info, view }: { guild: string; info: GuildInfo | und
         )}
 
       <h3 className="setting-name" style={{ marginTop: 24 }}>
-        What happens when someone joins
+        {" "}
+        {spaTranslate("What happens when someone joins")}{" "}
       </h3>
       <Timeline items={items} info={info} />
 
       <SwitchRow
-        title="Sticky roles"
+        title={spaTranslate("Sticky roles")}
         control={
           <PixelToggle
-            label="Sticky roles"
+            label={spaTranslate("Sticky roles")}
             checked={sticky}
             disabled={write.isPending}
             onChange={(on) => write.mutate({ method: "PUT", sub: "/sticky", body: { enabled: on } })}
           />
         }
       >
-        A member who leaves and comes back within 60 days gets their roles back, as far as the bot can give
-        them (not roles above its own, roles with admin powers, or roles an integration owns). Turning it on
-        starts from the roles members hold now; turning it off forgets what was kept.
+        {" "}
+        {spaTranslate(
+          "A member who leaves and comes back within 60 days gets their roles back, as far as the bot can give them (not roles above its own, roles with admin powers, or roles an integration owns). Turning it on starts from the roles members hold now; turning it off forgets what was kept.",
+        )}{" "}
       </SwitchRow>
       <Toast message={toast} onDone={() => setToast(null)} />
     </Panel>
@@ -253,12 +286,13 @@ function AutoRoles({ guild, info, view }: { guild: string; info: GuildInfo | und
 /** The auto roles in the order a member meets them: what they get at once, and what comes later. */
 function Timeline({ items, info }: { items: AutoRole[]; info: GuildInfo | undefined }) {
   const kinds = KINDS.filter((k) => items.some((r) => r.kind === k.value && r.enabled));
-  if (kinds.length === 0) return <p className="empty-row muted">Nobody gets a role on their own yet.</p>;
+  if (kinds.length === 0)
+    return <p className="empty-row muted">{spaTranslate("Nobody gets a role on their own yet.")}</p>;
   return (
     <div className="stack">
       {kinds.map((k) => (
-        <section key={k.value} aria-label={k.title}>
-          <p className="pixel-label muted">{k.title.toUpperCase()}</p>
+        <section key={k.value} aria-label={spaTranslate(k.title)}>
+          <p className="pixel-label muted">{spaTranslate(k.title).toLocaleUpperCase()}</p>
           <ol className="timeline">
             {items
               .filter((r) => r.kind === k.value && r.enabled)
@@ -266,11 +300,13 @@ function Timeline({ items, info }: { items: AutoRole[]; info: GuildInfo | undefi
               .map((r) => (
                 <li key={r.role_id}>
                   <span className="timeline-when pixel-label">
-                    {r.delay_secs > 0 ? `+ ${spanText(r.delay_secs)}` : "AT ONCE"}
+                    {r.delay_secs > 0 ? `+ ${spanText(r.delay_secs)}` : spaTranslate("AT ONCE")}
                   </span>
                   <RoleTag info={info} id={r.role_id} />
                   {r.remove_after_secs > 0 && (
-                    <span className="muted list-note">taken back {spanText(r.remove_after_secs)} later</span>
+                    <span className="muted list-note">
+                      {spaTranslate("taken back")} {spanText(r.remove_after_secs)} {spaTranslate("later")}
+                    </span>
                   )}
                 </li>
               ))}

@@ -3,6 +3,8 @@
 use std::time::Duration;
 
 use axum::{Json, extract::State};
+use pinchora_core::{i18n::Lang, t};
+use serde::Deserialize;
 use serde::Serialize;
 use serde_json::{Value, json};
 
@@ -20,6 +22,7 @@ const REFRESH_COOLDOWN: Duration = Duration::from_secs(10);
 /// `GET /api/me`: who is logged in, and the token writes must carry.
 pub async fn me(State(state): State<WebState>, current: CurrentSession) -> Json<Value> {
     let s = &current.session;
+    let language = state.app.user_lang_choice(s.user_id).await.map(Lang::code);
     Json(json!({
         "user": {
             "id": s.user_id.to_string(),
@@ -28,8 +31,36 @@ pub async fn me(State(state): State<WebState>, current: CurrentSession) -> Json<
             "avatar_url": avatar_url(s),
         },
         "csrf": s.csrf,
+        "language": language,
         "capabilities": { "message_content": state.settings.message_content },
     }))
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LanguageChoice {
+    language: String,
+}
+
+/// Keep the web switcher and the player's `/language` pick in sync.
+pub async fn language(
+    State(state): State<WebState>,
+    current: CurrentSession,
+    Json(choice): Json<LanguageChoice>,
+) -> ApiResult<Json<Value>> {
+    let current_lang = state
+        .app
+        .user_lang_choice(current.session.user_id)
+        .await
+        .unwrap_or_default();
+    let lang = Lang::from_code(&choice.language)
+        .ok_or_else(|| ApiError::malformed(t!(current_lang, "language.choose-supported")))?;
+    state
+        .app
+        .set_user_lang(current.session.user_id, Some(lang))
+        .await
+        .map_err(ApiError::internal)?;
+    Ok(Json(json!({ "language": lang.code() })))
 }
 
 /// The user's avatar on Discord's CDN, or the default one their id picks.

@@ -1,3 +1,4 @@
+import { translate as spaTranslate } from "../i18n";
 import { useRef } from "react";
 
 import { type MessageKind, LIMITS, MESSAGES, checkMessage } from "../lib/rules";
@@ -70,7 +71,7 @@ export function MessageField({
         onChange={(event) => onChange(event.target.value === "" ? null : event.target.value)}
         aria-invalid={error ? true : undefined}
       />
-      <div className="chips" role="group" aria-label="Insert a placeholder">
+      <div className="chips" role="group" aria-label={spaTranslate("Insert a placeholder")}>
         {meta.placeholders.map((p) => (
           <button key={p} type="button" className="chip" onClick={() => insert(p)}>
             {p}
@@ -78,17 +79,17 @@ export function MessageField({
         ))}
         {value !== null && (
           <PixelButton variant="ghost" className="chip-reset" onClick={() => onChange(null)}>
-            Use default
+            {spaTranslate("Use default")}
           </PixelButton>
         )}
       </div>
       <div className="message-preview" aria-live="polite">
-        <span className="pixel-label muted">PREVIEW</span>
+        <span className="pixel-label muted">{spaTranslate("PREVIEW")}</span>
         <p>
           {preview.data !== undefined ? (
             <RichText text={preview.data} />
           ) : (
-            <span className="muted">{valid ? "…" : "Fix the message to see it."}</span>
+            <span className="muted">{valid ? "…" : spaTranslate("Fix the message to see it.")}</span>
           )}
         </p>
       </div>

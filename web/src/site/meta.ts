@@ -1,6 +1,7 @@
 // Keeps the tab title and the tags in step with the page while the app changes pages without a reload.
 
 import { DASHBOARD_TITLE, isAppPath, publicRoute } from "./routes";
+import { translate } from "../i18n";
 
 /** What the router offers: where it is, and a way to hear about changes. */
 interface Watchable {
@@ -26,16 +27,16 @@ function setRobots(value: string | null): void {
   tag.content = value;
 }
 
-function apply(pathname: string): void {
+export function refreshMeta(pathname: string): void {
   const route = publicRoute(pathname);
   const title = route?.title ?? (isAppPath(pathname) ? DASHBOARD_TITLE : "Page not found | Pinchora");
-  document.title = title;
+  document.title = translate(title);
   if (route) {
-    setContent('meta[name="description"]', route.description);
-    setContent('meta[property="og:title"]', title);
-    setContent('meta[property="og:description"]', route.description);
-    setContent('meta[name="twitter:title"]', title);
-    setContent('meta[name="twitter:description"]', route.description);
+    setContent('meta[name="description"]', translate(route.description));
+    setContent('meta[property="og:title"]', translate(title));
+    setContent('meta[property="og:description"]', translate(route.description));
+    setContent('meta[name="twitter:title"]', translate(title));
+    setContent('meta[name="twitter:description"]', translate(route.description));
     document.head
       .querySelector('link[rel="canonical"]')
       ?.setAttribute("href", `${window.location.origin}${route.path}`);
@@ -47,6 +48,6 @@ function apply(pathname: string): void {
 
 /** Applies the title and tags of the current page and of every page the router moves to. */
 export function watchMeta(router: Watchable): () => void {
-  apply(router.state.location.pathname);
-  return router.subscribe((state) => apply(state.location.pathname));
+  refreshMeta(router.state.location.pathname);
+  return router.subscribe((state) => refreshMeta(state.location.pathname));
 }

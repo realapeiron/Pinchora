@@ -1,7 +1,11 @@
+import { translate as spaTranslate } from "../i18n";
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, ScrollRestoration, useLocation } from "react-router";
 
 import { Crab } from "../components/Crab";
+import { t, translate } from "../i18n";
+import { LanguageSwitcher } from "../i18n/LanguageSwitcher";
+import { useMe } from "../lib/queries";
 import { PixelLink } from "../components/PixelButton";
 import { InviteButton } from "./Buttons";
 import { DOCS_URL, GITHUB_URL, SUPPORT_URL } from "./content";
@@ -14,6 +18,7 @@ export function SiteLayout() {
   const location = useLocation();
   const landing = useLanding();
   const viewer = landing.data?.viewer;
+  const me = useMe(Boolean(viewer));
 
   // A page change closes the phone menu.
   useEffect(() => setOpen(false), [location.pathname, location.hash]);
@@ -21,11 +26,11 @@ export function SiteLayout() {
   return (
     <div className="site">
       <a className="skip-link" href="#main">
-        Skip to content
+        {t("Skip to content")}
       </a>
       <header className="site-nav">
         <div className="site-nav-inner">
-          <Link to="/" className="brand" aria-label="Pinchora home">
+          <Link to="/" className="brand" aria-label={t("Pinchora home")}>
             <Crab scale={3} />
             <span className="brand-name">PINCHORA</span>
           </Link>
@@ -37,23 +42,23 @@ export function SiteLayout() {
             onClick={() => setOpen((o) => !o)}
           >
             <span className="site-nav-toggle-bars" aria-hidden="true" />
-            <span className="visually-hidden">{open ? "Close menu" : "Open menu"}</span>
+            <span className="visually-hidden">{open ? t("Close menu") : t("Open menu")}</span>
           </button>
-          <nav id="site-menu" className={open ? "site-menu is-open" : "site-menu"} aria-label="Main">
+          <nav id="site-menu" className={open ? "site-menu is-open" : "site-menu"} aria-label={t("Main")}>
             <ul className="site-links">
               <li>
                 <Link to="/#features" className="site-link">
-                  Features
+                  {t("Features")}
                 </Link>
               </li>
               <li>
                 <Link to="/#how" className="site-link">
-                  How it works
+                  {t("How it works")}
                 </Link>
               </li>
               <li>
                 <NavLink to="/commands" className="site-link">
-                  Commands
+                  {t("Commands")}
                 </NavLink>
               </li>
               <li>
@@ -63,14 +68,15 @@ export function SiteLayout() {
               </li>
             </ul>
             <div className="site-actions">
+              <LanguageSwitcher me={me.data} disabled={Boolean(viewer) && !me.data} />
               {viewer ? (
                 <PixelLink href="/servers" variant="secondary" className="site-dashboard">
                   <img className="avatar" src={viewer.avatar_url} alt="" width={24} height={24} />
-                  Dashboard
+                  {t("Dashboard")}
                 </PixelLink>
               ) : (
                 <PixelLink href="/servers" variant="ghost" className="site-dashboard">
-                  Log in
+                  {t("Log in")}
                 </PixelLink>
               )}
               <InviteButton />
@@ -86,45 +92,45 @@ export function SiteLayout() {
       <footer className="site-footer">
         <div className="site-footer-inner">
           <div className="footer-brand">
-            <Link to="/" className="brand" aria-label="Pinchora home">
+            <Link to="/" className="brand" aria-label={t("Pinchora home")}>
               <Crab scale={4} />
               <span className="brand-name">PINCHORA</span>
             </Link>
-            <p className="muted">A cozy pixel world for Discord servers.</p>
+            <p className="muted">{t("A cozy pixel world for Discord servers.")}</p>
           </div>
-          <nav className="footer-column" aria-label="Features">
-            <h2 className="pixel-label footer-title">FEATURES</h2>
+          <nav className="footer-column" aria-label={t("Features")}>
+            <h2 className="pixel-label footer-title">{t("Features").toLocaleUpperCase()}</h2>
             <ul>
               {FEATURES.map((f) => (
                 <li key={f.slug}>
-                  <Link to={`/features/${f.slug}`}>{f.title}</Link>
+                  <Link to={`/features/${f.slug}`}>{translate(f.title)}</Link>
                 </li>
               ))}
             </ul>
           </nav>
-          <nav className="footer-column" aria-label="Product">
+          <nav className="footer-column" aria-label={t("Product")}>
             <h2 className="pixel-label footer-title">PINCHORA</h2>
             <ul>
               <li>
-                <a href="/invite">Add to Discord</a>
+                <a href="/invite">{t("Add to Discord")}</a>
               </li>
               <li>
-                <Link to="/servers">Dashboard</Link>
+                <Link to="/servers">{t("Dashboard")}</Link>
               </li>
               <li>
-                <Link to="/commands">Commands</Link>
+                <Link to="/commands">{t("Commands")}</Link>
               </li>
               <li>
                 <Link to="/#faq">FAQ</Link>
               </li>
             </ul>
           </nav>
-          <nav className="footer-column" aria-label="Community and legal">
-            <h2 className="pixel-label footer-title">MORE</h2>
+          <nav className="footer-column" aria-label={t("Community and legal")}>
+            <h2 className="pixel-label footer-title">{t("MORE")}</h2>
             <ul>
               <li>
                 <a href={SUPPORT_URL} rel="noopener noreferrer">
-                  Support server
+                  {t("Support server")}
                 </a>
               </li>
               <li>
@@ -134,20 +140,21 @@ export function SiteLayout() {
               </li>
               <li>
                 <a href={DOCS_URL} rel="noopener noreferrer">
-                  Docs
+                  {t("Docs")}
                 </a>
               </li>
               <li>
-                <Link to="/terms">Terms</Link>
+                <Link to="/terms">{t("Terms")}</Link>
               </li>
               <li>
-                <Link to="/privacy">Privacy</Link>
+                <Link to="/privacy">{t("Privacy")}</Link>
               </li>
             </ul>
           </nav>
         </div>
         <p className="site-footer-legal muted">
-          © {new Date().getFullYear()} Pinchora. Pinchora is not affiliated with or endorsed by Discord Inc.
+          © {new Date().getFullYear()} {spaTranslate("Pinchora.")}{" "}
+          {t("Pinchora is not affiliated with or endorsed by Discord Inc.")}
         </p>
       </footer>
       <ScrollRestoration />
