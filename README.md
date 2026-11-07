@@ -1019,7 +1019,16 @@ alters them). A feed's `created_by` becomes 0 when its author deletes their data
 
 ### Roblox verification
 
-<!-- F16: the Roblox verification package replaces this heading's section; keep it one `###` section. -->
+`/roblox verify <username>` gives a short code to place in your Roblox profile **About**.
+Press **Check profile** to link the account. `/roblox whois [user]` shows a link;
+`/roblox update [user]` refreshes roles and nickname (once per minute per member), and
+`/roblox unverify` removes your link. Server managers configure verified and unverified
+roles, group membership and rank binds, and a nickname template on the **Roblox** dashboard
+page or with `/integrations roblox settings|bind-add|bind-remove|bind-list`.
+The bot checks Roblox's public user and group APIs; no Roblox OAuth credentials are needed
+in this phase. The bot role must sit above every role it grants, and roles with unsafe
+permissions are refused. Group data is cached for 10 minutes; a scheduled sync refreshes
+joined members about hourly.
 
 ### Game trackers
 

@@ -151,6 +151,8 @@ mod starboard;
 // Tickets: panels, ticket channels and threads, closing with transcripts, the idle ticker.
 #[path = "simulate/invites.rs"]
 mod invites;
+#[path = "simulate/roblox.rs"]
+mod roblox;
 #[path = "simulate/tickets.rs"]
 mod tickets;
 // Social feeds: /integrations feeds and the poller, against a local feed server.
@@ -12694,6 +12696,22 @@ async fn admin_paths_refuse_members_without_manage_server() {
         "channels": channels,
     });
     let rows: Vec<(&str, Value)> = vec![
+        (
+            "robloxadmin settings",
+            json!([sub("settings", vec![bool_option("enabled", true)])]),
+        ),
+        (
+            "robloxadmin bind-add",
+            json!([sub(
+                "bind-add",
+                vec![text_option("kind", "verified"), role_option("role", &role)]
+            )]),
+        ),
+        (
+            "robloxadmin bind-remove",
+            json!([sub("bind-remove", vec![int_option("id", 1)])]),
+        ),
+        ("robloxadmin bind-list", json!([sub("bind-list", vec![])])),
         ("commandcontrol show", json!([sub("show", vec![])])),
         (
             "commandcontrol set",

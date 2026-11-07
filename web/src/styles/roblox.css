@@ -1,0 +1,52 @@
+.roblox-page .settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.25rem;
+  margin-block: 1rem;
+}
+.roblox-page .field {
+  min-width: 0;
+}
+.roblox-page .field .pixel-input {
+  width: 100%;
+}
+.roblox-bind-list {
+  list-style: none;
+  margin: 1rem 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+.roblox-bind-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--panel-edge);
+  border-radius: 0.5rem;
+}
+.roblox-bind-list li span {
+  overflow-wrap: anywhere;
+}
+.roblox-inline {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+.roblox-inline .pixel-input {
+  min-width: 0;
+  flex: 1;
+}
+@media (max-width: 650px) {
+  .roblox-page .settings-grid {
+    grid-template-columns: 1fr;
+  }
+  .roblox-bind-list li {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .roblox-inline {
+    flex-wrap: wrap;
+  }
+}

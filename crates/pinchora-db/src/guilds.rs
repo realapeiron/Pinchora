@@ -159,10 +159,21 @@ impl Db {
             columns!(),
             " FROM guilds WHERE id = $1 LIMIT 1"
         );
-        Ok(sqlx::query_as::<_, GuildSettings>(sql)
+        if let Some(settings) = sqlx::query_as::<_, GuildSettings>(sql)
             .bind(sql_id(guild_id))
-            .fetch_one(self.pool())
-            .await?)
+            .fetch_optional(self.pool())
+            .await?
+        {
+            return Ok(settings);
+        }
+        // A concurrent insert can win ON CONFLICT after this statement's snapshot was taken.
+        // Its row is visible to the next statement once the conflicting transaction commits.
+        Ok(
+            sqlx::query_as::<_, GuildSettings>(concat!("SELECT ", columns!(), " FROM guilds WHERE id=$1"))
+                .bind(sql_id(guild_id))
+                .fetch_one(self.pool())
+                .await?,
+        )
     }
 
     /// Writes exactly the columns `patch` names (clearing those set to `Some(None)`) and returns the

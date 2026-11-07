@@ -220,6 +220,169 @@
         },
         {
           "aliases": [],
+          "description": "Start Roblox profile-code verification",
+          "manager": false,
+          "options": [
+            {
+              "description": "Roblox username",
+              "name": "username",
+              "required": true
+            }
+          ],
+          "path": "roblox verify",
+          "usage": "/roblox verify <username>"
+        },
+        {
+          "aliases": [],
+          "description": "Remove your Roblox link",
+          "manager": false,
+          "options": [],
+          "path": "roblox unverify",
+          "usage": "/roblox unverify"
+        },
+        {
+          "aliases": [],
+          "description": "See a member's linked Roblox account",
+          "manager": false,
+          "options": [
+            {
+              "description": "Discord member",
+              "name": "user",
+              "required": false
+            }
+          ],
+          "path": "roblox whois",
+          "usage": "/roblox whois [user]"
+        },
+        {
+          "aliases": [],
+          "description": "Refresh Roblox roles and nickname",
+          "manager": false,
+          "options": [
+            {
+              "description": "Member to refresh (requires Manage Server)",
+              "name": "user",
+              "required": false
+            }
+          ],
+          "path": "roblox update",
+          "usage": "/roblox update [user]"
+        },
+        {
+          "aliases": [
+            "robloxadmin bind-add"
+          ],
+          "description": "Assign a safe role for a Roblox group rank",
+          "manager": true,
+          "options": [
+            {
+              "choices": [
+                "Verified account",
+                "Group member",
+                "Group rank"
+              ],
+              "description": "Condition",
+              "name": "kind",
+              "required": true
+            },
+            {
+              "description": "Role to grant",
+              "name": "role",
+              "required": true
+            },
+            {
+              "description": "Roblox group ID",
+              "name": "group",
+              "required": false
+            },
+            {
+              "description": "Inclusive minimum rank",
+              "name": "rank_min",
+              "required": false
+            },
+            {
+              "description": "Inclusive maximum rank",
+              "name": "rank_max",
+              "required": false
+            },
+            {
+              "description": "Remove role when condition stops matching",
+              "name": "remove_if_unmet",
+              "required": false
+            }
+          ],
+          "path": "integrations roblox bind-add",
+          "usage": "/integrations roblox bind-add <kind> <role> [group] [rank_min] [rank_max] [remove_if_unmet]"
+        },
+        {
+          "aliases": [
+            "robloxadmin bind-list"
+          ],
+          "description": "List Roblox role binds",
+          "manager": true,
+          "options": [],
+          "path": "integrations roblox bind-list",
+          "usage": "/integrations roblox bind-list"
+        },
+        {
+          "aliases": [
+            "robloxadmin bind-remove"
+          ],
+          "description": "Remove a Roblox bind",
+          "manager": true,
+          "options": [
+            {
+              "description": "Bind number from bind-list",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "integrations roblox bind-remove",
+          "usage": "/integrations roblox bind-remove <id>"
+        },
+        {
+          "aliases": [
+            "robloxadmin settings"
+          ],
+          "description": "Set Roblox roles, nickname and join policy",
+          "manager": true,
+          "options": [
+            {
+              "description": "Enable Roblox integration",
+              "name": "enabled",
+              "required": false
+            },
+            {
+              "description": "Role for linked members",
+              "name": "verified_role",
+              "required": false
+            },
+            {
+              "description": "Role for unlinked members",
+              "name": "unverified_role",
+              "required": false
+            },
+            {
+              "description": "Nickname with {roblox-name} and {discord-name}; use 'off' to clear",
+              "name": "nickname_template",
+              "required": false
+            },
+            {
+              "description": "Channel where members verify",
+              "name": "verify_channel",
+              "required": false
+            },
+            {
+              "description": "Hold unverified newcomers",
+              "name": "require_verified",
+              "required": false
+            }
+          ],
+          "path": "integrations roblox settings",
+          "usage": "/integrations roblox settings [enabled] [verified_role] [unverified_role] [nickname_template] [verify_channel] [require_verified]"
+        },
+        {
+          "aliases": [],
           "description": "How many games someone played and won",
           "manager": false,
           "options": [
@@ -6218,5 +6381,5 @@
       "title": "Game & module setup"
     }
   ],
-  "count": 331
+  "count": 339
 }

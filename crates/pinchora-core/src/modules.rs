@@ -144,11 +144,12 @@ pub enum Module {
     Utility,
     Events,
     CommandControl,
+    Roblox,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 47] = [
+    pub const ALL: [Self; 48] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -196,6 +197,7 @@ impl Module {
         Self::Utility,
         Self::Events,
         Self::CommandControl,
+        Self::Roblox,
     ];
 
     /// The key stored in the database and used in the API.
@@ -248,6 +250,7 @@ impl Module {
             Self::Utility => "utility",
             Self::Events => "events",
             Self::CommandControl => "command_control",
+            Self::Roblox => "roblox",
         }
     }
 
@@ -304,6 +307,7 @@ impl Module {
             Self::Utility => "Messages",
             Self::Events => "Events",
             Self::CommandControl => "Command control",
+            Self::Roblox => "Roblox",
         }
     }
 
@@ -373,6 +377,7 @@ impl Module {
             Self::Achievements => "Server achievements and their rewards.",
             Self::Events => "/event: scheduled server events and RSVPs.",
             Self::CommandControl => "Command permissions, aliases and configuration backups.",
+            Self::Roblox => "Roblox profile verification, group binds and nicknames.",
             Self::Feeds => {
                 "/integrations feeds: new YouTube videos, RSS and podcast episodes, Reddit and Bluesky posts in a channel."
             }
@@ -425,6 +430,7 @@ impl Module {
             Self::Utility => Group::Server,
             Self::Events => Group::Community,
             Self::CommandControl => Group::Server,
+            Self::Roblox => Group::Feeds,
         }
     }
 
@@ -443,6 +449,7 @@ impl Module {
             Self::Birthdays => Scope::Server,
             Self::Achievements => Scope::Server,
             Self::CommandControl => Scope::Server,
+            Self::Roblox => Scope::Server,
             _ => Scope::Channels,
         }
     }
@@ -517,6 +524,7 @@ impl Module {
             "birthday" | "birthdays" => Self::Birthdays,
             "achievements" | "achievementadmin" => Self::Achievements,
             "event" => Self::Events,
+            "roblox" | "robloxadmin" => Self::Roblox,
             _ => return None,
         })
     }
@@ -561,6 +569,7 @@ impl Module {
             "bd" => Self::Birthdays,
             "af" | "sk" | "sm" => Self::Utility,
             "ev" => Self::Events,
+            "rx" | "rk" => Self::Roblox,
             _ => return None,
         })
     }

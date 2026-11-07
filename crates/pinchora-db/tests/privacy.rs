@@ -209,6 +209,9 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
     // Everything else, with the player on each side of every table that names two players.
     // ($1 is the player, $2 someone else.)
     let inserts: &[&str] = &[
+        "INSERT INTO roblox_links(user_id,roblox_id,roblox_name) VALUES($1,$1,'Crab')",
+        "INSERT INTO roblox_pending(user_id,roblox_id,roblox_name,code,expires_at) VALUES($1,$1,'Crab','pinchora-crab-ab12',now()+interval '10 minutes')",
+        "INSERT INTO roblox_sync(guild_id,user_id) VALUES($1,$1)",
         "INSERT INTO afk (guild_id, user_id, message) VALUES ($1, $1, 'away')",
         "INSERT INTO sticky_messages (channel_id, guild_id, content, updated_by) VALUES ($1, $1, 'note', $1)",
         "INSERT INTO scheduled_messages (guild_id, channel_id, content, schedule, next_run_at, created_by)

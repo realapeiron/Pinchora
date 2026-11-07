@@ -65,6 +65,8 @@
 "section.vote_channels" = "Oylama kanalları"
 "section.counter_channels" = "İstatistik sayaçları"
 "section.invite_settings" = "Davet ayarları"
+"section.roblox_settings" = "Roblox ayarları"
+"section.roblox_binds" = "Roblox rol bağları"
 "section.invite_rewards" = "Davet ödülleri"
 "section.verification" = "Doğrulama"
 "section.raid_settings" = "Baskın koruması"

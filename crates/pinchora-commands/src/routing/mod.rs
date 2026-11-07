@@ -13,8 +13,8 @@ use twilight_model::{
 };
 
 pub const COMPLETED_SLICE: u8 = 18;
-pub const PROJECTED_ROOTS: usize = 66;
-pub const FUTURE_ROOT_RESERVE: usize = 4;
+pub const PROJECTED_ROOTS: usize = 67;
+pub const FUTURE_ROOT_RESERVE: usize = 3;
 
 /// Administration roots share the original setup permission and privacy boundary.
 pub fn is_admin_path(path: &str) -> bool {
@@ -334,6 +334,9 @@ pub(crate) fn extend(tree: &mut Vec<Command>) {
         tree.push(root);
     }
     for route in MANIFEST.iter().filter(|r| r.active()) {
+        if route.legacy == route.canonical {
+            continue;
+        }
         let parts: Vec<_> = route.canonical.split(' ').collect();
         let root = tree.iter_mut().find(|c| c.name == parts[0]).expect("canonical root");
         let mut leaf = source(&original, &route.legacy);
@@ -405,7 +408,11 @@ pub(crate) fn remove_replaced(tree: &mut Vec<Command>) {
 pub fn has_legacy_paths(tree: &[Command]) -> bool {
     crate::commands::help::leaves(tree, pinchora_core::i18n::Lang::En)
         .iter()
-        .any(|leaf| MANIFEST.iter().any(|r| r.active() && r.legacy == leaf.path))
+        .any(|leaf| {
+            MANIFEST
+                .iter()
+                .any(|r| r.active() && r.legacy != r.canonical && r.legacy == leaf.path)
+        })
 }
 
 /// Discord counts the longest localized value (including the default) per field.

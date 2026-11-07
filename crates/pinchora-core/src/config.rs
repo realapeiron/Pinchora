@@ -26,6 +26,8 @@ pub struct Config {
     pub log: LogConfig,
     #[serde(default)]
     pub web: WebConfig,
+    #[serde(default)]
+    pub roblox: RobloxConfig,
 }
 
 impl Config {
@@ -222,4 +224,12 @@ impl Default for LogConfig {
             filter: "info,pinchora=debug".into(),
         }
     }
+}
+
+/// Reserved for phase 2 Roblox OAuth. Profile-code verification uses no credentials.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(default)]
+pub struct RobloxConfig {
+    pub client_id: Option<String>,
+    pub client_secret: Option<Secret>,
 }

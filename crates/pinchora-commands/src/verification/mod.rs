@@ -767,3 +767,14 @@ pub(crate) async fn audit_settings(app: &App, guild: u64, actor: u64, action: &s
     )
     .await
 }
+
+/// Continue join side effects after Roblox profile verification released a Roblox-only hold.
+pub(crate) async fn resume_roblox(app: &Arc<App>, guild: u64, user: u64) -> anyhow::Result<()> {
+    let member = app
+        .http
+        .guild_member(Id::new(guild), Id::new(user))
+        .await?
+        .model()
+        .await?;
+    resume::member(app, guild, member).await
+}

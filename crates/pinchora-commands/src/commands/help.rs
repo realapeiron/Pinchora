@@ -74,6 +74,8 @@ pub(crate) const AREAS: &[Area] = &[
             "customize",
             "wrapped",
             "privacy",
+            "roblox",
+            "robloxadmin",
             "play stats",
             "achievements",
             "achievementadmin",

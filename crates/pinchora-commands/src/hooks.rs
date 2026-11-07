@@ -76,8 +76,15 @@ pub(crate) async fn on_member_join(app: &Arc<App>, event: &MemberAdd) -> JoinVer
     crate::stats::count_member(app, event.guild_id.get(), true).await;
     // F6 attribution must observe every join, including members held by the gate.
     crate::commands::invites::on_member_join(app, event).await;
-    // F10 join gate and captcha goes first: a member it holds is `JoinVerdict::Held`.
-    if verdict == JoinVerdict::Held {
+    // F10 join gate and captcha goes first. Roblox queues every join, including one it held.
+    let roblox_held = crate::roblox::on_join(
+        app,
+        event.guild_id.get(),
+        event.member.user.id.get(),
+        verdict == JoinVerdict::Held,
+    )
+    .await;
+    if verdict == JoinVerdict::Held || roblox_held {
         return JoinVerdict::Held;
     }
     // F2 auto roles (they honour Held).
@@ -88,6 +95,13 @@ pub(crate) async fn on_member_join(app: &Arc<App>, event: &MemberAdd) -> JoinVer
 /// A member left or was removed, before the goodbye.
 pub(crate) async fn on_member_leave(app: &Arc<App>, event: &MemberRemove) {
     crate::verification::on_member_leave(app, event).await;
+    if let Err(error) = app
+        .db
+        .roblox_forget_member(event.guild_id.get(), event.user.id.get())
+        .await
+    {
+        tracing::warn!(%error,"Roblox member cleanup failed");
+    }
     // F2 sticky roles remember what they held.
     crate::commands::roles_pack::on_member_leave(app, event).await;
     // F6 invite tracker takes the invite back.

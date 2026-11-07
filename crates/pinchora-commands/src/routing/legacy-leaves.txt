@@ -239,6 +239,14 @@ remind list
 remind me in
 remind me when
 rep
+roblox unverify
+roblox update
+roblox verify
+roblox whois
+robloxadmin bind-add
+robloxadmin bind-list
+robloxadmin bind-remove
+robloxadmin settings
 role add
 role remove
 roles add

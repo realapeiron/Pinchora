@@ -3414,4 +3414,35 @@ export const en = {
   "Live now role": "Live now role",
   "Given only to a linked streamer while this channel is live.":
     "Given only to a linked streamer while this channel is live.",
+  Roblox: "Roblox",
+  "Roblox verification": "Roblox verification",
+  "Link Roblox profiles, then assign safe roles from group membership and ranks.":
+    "Link Roblox profiles, then assign safe roles from group membership and ranks.",
+  "Verification settings": "Verification settings",
+  "Enable Roblox verification": "Enable Roblox verification",
+  "Members use /roblox verify to link their profile.": "Members use /roblox verify to link their profile.",
+  "Hold unverified newcomers": "Hold unverified newcomers",
+  "Requires the server join gate and a verification channel.":
+    "Requires the server join gate and a verification channel.",
+  "Nickname template": "Nickname template",
+  "Use {roblox-name} and {discord-name}. Leave empty to keep Discord names.":
+    "Use {roblox-name} and {discord-name}. Leave empty to keep Discord names.",
+  "Role binds": "Role binds",
+  "A bind gives a role only while the Roblox condition matches. Up to 25 binds per server.":
+    "A bind gives a role only while the Roblox condition matches. Up to 25 binds per server.",
+  "No role binds yet.": "No role binds yet.",
+  Condition: "Condition",
+  "Role to grant": "Role to grant",
+  "Verified account": "Verified account",
+  "Group member": "Group member",
+  "Group rank": "Group rank",
+  "Roblox group ID": "Roblox group ID",
+  "Find ranks": "Find ranks",
+  "Group lookup failed.": "Group lookup failed.",
+  "Minimum rank": "Minimum rank",
+  "Maximum rank": "Maximum rank",
+  "Remove role when unmatched": "Remove role when unmatched",
+  "Add bind": "Add bind",
+  "Role bind added.": "Role bind added.",
+  "Roblox settings saved.": "Roblox settings saved.",
 } as const;
