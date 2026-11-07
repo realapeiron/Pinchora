@@ -1,0 +1,10 @@
+[nhie]
+subtitle = "Seashell Confessions"
+open = "Vote in private"
+result = "Have: {yes} · Have not: {no}"
+until = "Cast a private vote before {when}."
+yes = "I have"
+no = "I have not"
+closed = "This question has closed."
+saved = "Your answer is saved. You can change it until the timer ends."
+cooldown = "Let this question breathe before starting another."

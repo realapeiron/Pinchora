@@ -50,6 +50,7 @@ pub(crate) mod prefix;
 pub(crate) mod privacy;
 pub(crate) mod profile;
 pub(crate) mod quests;
+pub(crate) mod quick;
 mod rank;
 pub(crate) mod remind;
 mod rep;
@@ -204,3 +205,40 @@ commands!(
     utility::StickyCommand,
     utility::ScheduleCommand,
 );
+
+#[cfg(test)]
+mod quick_command_budget {
+    use super::*;
+
+    #[test]
+    fn quick_games_keep_the_slash_command_budget() {
+        let definitions = definitions();
+        assert_eq!(definitions.len(), 93, "Discord's 100-command budget must not grow");
+        for (name, expected) in [
+            (
+                "play",
+                [
+                    "memory",
+                    "minesweeper",
+                    "higherlower",
+                    "anagram",
+                    "typing",
+                    "guessnumber",
+                ]
+                .as_slice(),
+            ),
+            ("duel", ["othello"].as_slice()),
+            ("party", ["nhie", "fun"].as_slice()),
+        ] {
+            let command = definitions.iter().find(|c| c.name == name).unwrap();
+            assert!(
+                command.options.len() <= 25,
+                "/{name} has {} subcommands",
+                command.options.len()
+            );
+            for sub in expected {
+                assert!(command.options.iter().any(|o| o.name == *sub), "/{name} {sub} missing");
+            }
+        }
+    }
+}

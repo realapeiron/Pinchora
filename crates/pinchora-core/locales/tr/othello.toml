@@ -1,0 +1,8 @@
+[othello]
+finished = "Maç bitti"
+turn = "Sıra {name} oyuncusunda"
+over = "İnci {score1} · Mercan {score2}. {note}"
+playing = "Sıra {mover} oyuncusunda. Hamle süresi {when} doluyor."
+move = "İnci yerleştir"
+square = "Geçerli kare (A1–H8)"
+hint = "Işıklı yıldızlar geçerli hamleleri gösterir. İnci yerleştirmek için koordinat gir."

@@ -1,0 +1,10 @@
+[nhie]
+subtitle = "Kabuk İtirafları"
+open = "Gizli oy ver"
+result = "Yaptım: {yes} · Yapmadım: {no}"
+until = "{when} zamanına kadar gizli oy ver."
+yes = "Yaptım"
+no = "Yapmadım"
+closed = "Bu soru kapandı."
+saved = "Yanıtın kaydedildi. Süre dolana kadar değiştirebilirsin."
+cooldown = "Yeni bir soru açmadan önce biraz bekle."

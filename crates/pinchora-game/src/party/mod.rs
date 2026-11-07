@@ -32,16 +32,18 @@ pub enum Party {
     WordRace,
     TruthOrDare,
     WouldYouRather,
+    NeverHaveIEver,
 }
 
 impl Party {
-    pub const ALL: [Party; 6] = [
+    pub const ALL: [Party; 7] = [
         Self::HotPearl,
         Self::Acronym,
         Self::Postcard,
         Self::WordRace,
         Self::TruthOrDare,
         Self::WouldYouRather,
+        Self::NeverHaveIEver,
     ];
 
     /// What the database keeps in `party_games.kind`.
@@ -53,6 +55,7 @@ impl Party {
             Self::WordRace => "wordrace",
             Self::TruthOrDare => "truthordare",
             Self::WouldYouRather => "wouldyourrather",
+            Self::NeverHaveIEver => "nhie",
         }
     }
 
@@ -73,6 +76,7 @@ impl Party {
             Self::WordRace => "Wordle Race",
             Self::TruthOrDare => "Truth or Dare",
             Self::WouldYouRather => "Would You Rather",
+            Self::NeverHaveIEver => "Never Have I Ever",
         }
     }
 
@@ -89,6 +93,7 @@ impl Party {
             Self::WordRace => "🏁",
             Self::TruthOrDare => "🎲",
             Self::WouldYouRather => "⚖️",
+            Self::NeverHaveIEver => "🦪",
         }
     }
 
@@ -101,6 +106,7 @@ impl Party {
             Self::WordRace => "wx",
             Self::TruthOrDare => "td",
             Self::WouldYouRather => "wy",
+            Self::NeverHaveIEver => "ni",
         }
     }
 
@@ -113,6 +119,7 @@ impl Party {
             Self::WordRace => Game::WordRace,
             Self::TruthOrDare => Game::TruthOrDare,
             Self::WouldYouRather => Game::WouldYouRather,
+            Self::NeverHaveIEver => Game::NeverHaveIEver,
         }
     }
 
@@ -123,7 +130,7 @@ impl Party {
             Self::Acronym | Self::Postcard => (3, 10),
             Self::WordRace => (2, 4),
             Self::TruthOrDare => (2, 10),
-            Self::WouldYouRather => (1, usize::MAX),
+            Self::WouldYouRather | Self::NeverHaveIEver => (1, usize::MAX),
         }
     }
 

@@ -1,0 +1,38 @@
+[quick]
+subtitle = "A quick game by the reef"
+memory-status = "Misses: {misses}"
+mines-status = "Flags: {flags}"
+higher-status = "Streak: {streak}/8"
+tries = "Tries: {tries}"
+type-status = "Type what you see"
+coordinate = "Pick square"
+flag-on = "Flag mode: ON"
+flag-off = "Flag mode: OFF"
+higher = "Higher"
+lower = "Lower"
+answer = "Answer"
+new = "New game"
+finished = "Round finished. {note}"
+expired = "This game has moved on or timed out."
+invalid = "That move is not valid."
+match = "A pair!"
+drew = "The next card was {card}."
+word = "The word was {word}."
+wpm = "Speed: {wpm} WPM"
+correct = "Exactly right!"
+hot = "Very hot!"
+warm = "Warm."
+cold = "Cold."
+
+[quick.memory]
+intro = "Find all eight pairs before 24 misses. {note}"
+[quick.minesweeper]
+intro = "Enter a coordinate such as A1. The first square and its neighbors are safe. Switch to flag mode to mark mines. {note}"
+[quick.higherlower]
+intro = "Will the next card, 1 to 13, be higher or lower? Equal counts as right. Reach a streak of eight. {note}"
+[quick.anagram]
+intro = "Unscramble the word in three tries. {note}"
+[quick.typing]
+intro = "Type the sentence shown on the card. Exact spelling counts; speed is measured in WPM. {note}"
+[quick.guessnumber]
+intro = "Find the hidden number from 1 to 100 in eight guesses. {note}"

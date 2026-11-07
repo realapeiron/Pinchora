@@ -46,7 +46,7 @@ fn blurb(lang: Lang, party: Party, game: &PartyGame) -> (String, String) {
         ),
         Party::WordRace => (t!(lang, "wordrace.blurb"), t!(lang, "wordrace.rules", table = table)),
         Party::TruthOrDare => (t!(lang, "dare.blurb"), t!(lang, "dare.rules", table = table)),
-        Party::WouldYouRather => (String::new(), String::new()),
+        Party::WouldYouRather | Party::NeverHaveIEver => (String::new(), String::new()),
     }
 }
 
@@ -303,7 +303,9 @@ async fn start(cx: &Cx, party: Party, id: i64) -> anyhow::Result<()> {
             Party::Acronym | Party::Postcard => writing::start(cx, &game, &players).await?,
             Party::WordRace => race::start(cx, &game, &players).await?,
             Party::TruthOrDare => dare::start(cx, &game, &players).await?,
-            Party::WouldYouRather => return cx.reply_ephemeral(t!(cx.lang(), "party.lobby.none")).await,
+            Party::WouldYouRather | Party::NeverHaveIEver => {
+                return cx.reply_ephemeral(t!(cx.lang(), "party.lobby.none")).await;
+            }
         };
         if matches!(started, Started::Yes) {
             return Ok(());

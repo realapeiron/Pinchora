@@ -6,8 +6,8 @@ use crate::{
     commands::{
         board, character, collection, connect4, contest, customcommand, customize, decorate, derby, duel, fish,
         friends, gift, giveaway, guestbook, hangman, heist, help, house, interact, leaderboard, partner, party_games,
-        pet, plaza, poll, privacy, quests, remind, role_panels, roles_pack, rps, share, shells, shop, stall, store,
-        suggest, surge, tempvoice, trivia, wordle,
+        pet, plaza, poll, privacy, quests, quick, remind, role_panels, roles_pack, rps, share, shells, shop, stall,
+        store, suggest, surge, tempvoice, trivia, wordle,
     },
 };
 
@@ -74,8 +74,12 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
         Some("bs") => board::fleet::on_component(cx, parts, values).await,
         Some("ck") => board::checkers::on_component(cx, parts, values).await,
         Some("cc") => board::chess::on_component(cx, parts, values).await,
+        Some("of") => board::othello::on_component(cx, parts).await,
         Some("pz") => board::picross::on_component(cx, parts, values).await,
         Some("tz") => board::tide2048::on_button(cx, parts).await,
+        Some(prefix @ ("mm" | "mi" | "yl" | "ag" | "yt" | "gn")) => {
+            quick::on_button(cx, quick::Kind::from_prefix(prefix).expect("quick prefix"), parts).await
+        }
         Some("rp") => rps::on_button(cx, parts).await,
         Some("hm") => hangman::on_pick(cx, parts, values.first().map(String::as_str)).await,
         Some("wo") => wordle::on_button(cx, parts).await,
@@ -100,7 +104,9 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
         Some("ss") => surge::on_button(cx, parts).await,
         Some("hs") => heist::on_button(cx, parts).await,
         Some("sn") => crate::commands::feeds::on_component(cx, parts).await,
-        Some(prefix @ ("hl" | "ac" | "cn" | "wx" | "wy" | "td")) => party_games::on_component(cx, prefix, parts).await,
+        Some(prefix @ ("hl" | "ac" | "cn" | "wx" | "wy" | "td" | "ni")) => {
+            party_games::on_component(cx, prefix, parts).await
+        }
         Some("in") => crate::commands::invites::on_component(cx, parts).await,
         Some("tl") => crate::commands::invites::on_temp_component(cx, parts).await,
         Some("sc") => crate::commands::stats::on_component(cx, parts).await,
@@ -138,6 +144,16 @@ pub(crate) async fn dispatch_modal(cx: &Cx, custom_id: &str, fields: &[(String, 
                 .find(|(id, _)| id == wordle::GUESS_FIELD)
                 .map_or("", |(_, value)| value.as_str());
             wordle::on_guess(cx, parts, text).await
+        }
+        Some("of") => board::othello::on_modal(cx, parts, fields).await,
+        Some(prefix @ ("mm" | "mi" | "yl" | "ag" | "yt" | "gn")) => {
+            quick::on_modal(
+                cx,
+                quick::Kind::from_prefix(prefix).expect("quick prefix"),
+                parts,
+                fields,
+            )
+            .await
         }
         Some("ev") => crate::commands::events::on_modal(cx, parts, fields).await,
         Some("tf") => crate::tickets::on_form(cx, parts, fields).await,

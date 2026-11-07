@@ -1,0 +1,38 @@
+[quick]
+subtitle = "Resifte kısa bir oyun"
+memory-status = "Hata: {misses}"
+mines-status = "Bayrak: {flags}"
+higher-status = "Seri: {streak}/8"
+tries = "Deneme: {tries}"
+type-status = "Gördüğünü yaz"
+coordinate = "Kare seç"
+flag-on = "Bayrak modu: AÇIK"
+flag-off = "Bayrak modu: KAPALI"
+higher = "Yüksek"
+lower = "Düşük"
+answer = "Yanıtla"
+new = "Yeni oyun"
+finished = "Tur bitti. {note}"
+expired = "Bu oyun ilerledi veya süresi doldu."
+invalid = "Bu hamle geçerli değil."
+match = "Bir çift!"
+drew = "Sonraki kart {card} idi."
+word = "Sözcük {word} idi."
+wpm = "Hız: {wpm} sözcük/dk"
+correct = "Tam isabet!"
+hot = "Çok sıcak!"
+warm = "Ilık."
+cold = "Soğuk."
+
+[quick.memory]
+intro = "24 hata yapmadan sekiz çifti bul. {note}"
+[quick.minesweeper]
+intro = "A1 gibi bir koordinat gir. İlk kare ve komşuları güvenli. Mayınları işaretlemek için bayrak modunu aç. {note}"
+[quick.higherlower]
+intro = "Sıradaki 1 ile 13 arasındaki kart daha yüksek mi, düşük mü? Eşitlik doğru sayılır. Sekizli seri yap. {note}"
+[quick.anagram]
+intro = "Sözcüğü üç denemede çöz. {note}"
+[quick.typing]
+intro = "Kartta gördüğün cümleyi yaz. Yazım birebir olmalı; hızın sözcük/dk olarak ölçülür. {note}"
+[quick.guessnumber]
+intro = "1 ile 100 arasındaki gizli sayıyı sekiz denemede bul. {note}"

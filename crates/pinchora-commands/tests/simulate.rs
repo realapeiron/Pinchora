@@ -72,6 +72,8 @@ use twilight_model::{
 mod basics;
 #[path = "simulate/board.rs"]
 mod board;
+#[path = "simulate/quick.rs"]
+mod quick;
 // Welcome and goodbye images from the dashboard's editor.
 #[path = "simulate/cards.rs"]
 mod cards;

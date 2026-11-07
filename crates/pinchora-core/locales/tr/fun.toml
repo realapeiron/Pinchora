@@ -1,0 +1,5 @@
+[fun]
+subtitle = "Kabuk konuştu"
+ask = "Denize küçük bir soru"
+result = "Küçük bir şans dalgası"
+need-choices = "Virgülle ayrılmış en az iki seçenek gir."

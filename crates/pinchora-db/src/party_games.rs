@@ -675,7 +675,7 @@ impl Db {
         let Some(game) = lock_game(&mut tx, id).await? else {
             return Ok(PollChoice::Closed);
         };
-        if game.kind != "wouldyourrather" || !game.is_playing() || game.late(now) {
+        if !matches!(game.kind.as_str(), "wouldyourrather" | "nhie") || !game.is_playing() || game.late(now) {
             return Ok(PollChoice::Closed);
         }
         let previous: Option<(i64,)> =

@@ -5,7 +5,9 @@
 //! only one of them gets to announce it. `/party stop` lets the host or a manager end a game that is on.
 
 mod dare;
+mod fun;
 mod lobby;
+mod nhie;
 mod pearl;
 mod postcard;
 mod race;
@@ -63,7 +65,37 @@ pub enum PartyCommand {
     TruthOrDare(PartyDare),
     #[command(name = "stop")]
     Stop(PartyStop),
+    #[command(name = "nhie")]
+    Nhie(PartyNhie),
+    #[command(name = "fun")]
+    Fun(PartyFun),
 }
+
+#[derive(CommandOption, CreateOption, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FunMode {
+    #[option(name = "Magic Conch", value = "conch")]
+    Conch,
+    #[option(name = "Choose", value = "choose")]
+    Choose,
+    #[option(name = "Roll", value = "roll")]
+    Roll,
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "fun", desc = "Ask the Magic Conch, choose an option or roll a die")]
+pub struct PartyFun {
+    /// Which toy to play
+    mode: FunMode,
+    /// A question, or comma-separated choices
+    prompt: Option<String>,
+    /// Dice sides from 2 to 100; default 6
+    #[command(min_value = 2, max_value = 100)]
+    sides: Option<i64>,
+}
+
+#[derive(CommandModel, CreateCommand)]
+#[command(name = "nhie", desc = "Never Have I Ever: a family-friendly group question")]
+pub struct PartyNhie;
 
 #[derive(CommandModel, CreateCommand)]
 #[command(
@@ -194,6 +226,8 @@ impl PartyCommand {
             Self::WouldYouRather(c) => rather::open(cx, c.topic.map(Topic::category)).await,
             Self::TruthOrDare(c) => dare::open(cx, c.topic.map(Topic::category)).await,
             Self::Stop(_) => stop::run(cx).await,
+            Self::Nhie(_) => nhie::open(cx).await,
+            Self::Fun(c) => fun::run(cx, c.mode, c.prompt, c.sides).await,
         }
     }
 }
@@ -208,6 +242,7 @@ pub(crate) async fn on_component(cx: &Cx, prefix: &str, parts: Split<'_, char>) 
         Some(Party::WordRace) => race::on_button(cx, parts).await,
         Some(Party::TruthOrDare) => dare::on_button(cx, parts).await,
         Some(Party::WouldYouRather) => rather::on_button(cx, parts).await,
+        Some(Party::NeverHaveIEver) => nhie::on_button(cx, parts).await,
         None => cx.reply_ephemeral(t!(cx.lang(), "party.expired-button")).await,
     }
 }
@@ -496,6 +531,7 @@ async fn due_game(app: &Arc<App>, game: PartyGame) -> anyhow::Result<bool> {
         Some(Party::WordRace) => race::on_due(app, game).await,
         Some(Party::TruthOrDare) => dare::on_due(app, game).await,
         Some(Party::WouldYouRather) => rather::on_due(app, game).await,
+        Some(Party::NeverHaveIEver) => nhie::on_due(app, game).await,
         None => {
             tracing::warn!(kind = %game.kind, game = game.id, "late party game of an unknown kind");
             Ok(false)

@@ -1,0 +1,8 @@
+[othello]
+finished = "Match complete"
+turn = "{name} to move"
+over = "Pearls {score1} · Coral {score2}. {note}"
+playing = "{mover} to move. Turn ends {when}."
+move = "Place a pearl"
+square = "Legal square (A1–H8)"
+hint = "Glowing stars mark legal moves. Enter a coordinate to place a pearl."

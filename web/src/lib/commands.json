@@ -1272,6 +1272,24 @@
           ],
           "path": "duel chess",
           "usage": "/duel chess <user> [bet]"
+        },
+        {
+          "description": "Pearl Flip on an 8 by 8 board; flip the other player's pearls",
+          "manager": false,
+          "options": [
+            {
+              "description": "Your opponent",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Shells each of you puts up (10-500); leave empty to play for fun",
+              "name": "bet",
+              "required": false
+            }
+          ],
+          "path": "duel othello",
+          "usage": "/duel othello <user> [bet]"
         }
       ],
       "intro": "Challenge a friend to a quick game. Most take an optional wager.",
@@ -1350,6 +1368,58 @@
           "options": [],
           "path": "play 2048",
           "usage": "/play 2048"
+        },
+        {
+          "description": "Find all eight shell pairs on a pixel grid",
+          "manager": false,
+          "options": [],
+          "path": "play memory",
+          "usage": "/play memory"
+        },
+        {
+          "description": "Reveal the safe sea squares, or flag the mines",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "8 × 8",
+                "10 × 10"
+              ],
+              "description": "Board side length, 8 by default; 10 for a longer puzzle",
+              "name": "size",
+              "required": false
+            }
+          ],
+          "path": "play minesweeper",
+          "usage": "/play minesweeper [size]"
+        },
+        {
+          "description": "Guess whether the next tide card is higher or lower",
+          "manager": false,
+          "options": [],
+          "path": "play higherlower",
+          "usage": "/play higherlower"
+        },
+        {
+          "description": "Unscramble the sea word",
+          "manager": false,
+          "options": [],
+          "path": "play anagram",
+          "usage": "/play anagram"
+        },
+        {
+          "description": "Type the sentence on the pixel card accurately and quickly",
+          "manager": false,
+          "options": [],
+          "path": "play typing",
+          "usage": "/play typing"
+        },
+        {
+          "description": "Find the secret number using hot and cold clues",
+          "manager": false,
+          "options": [],
+          "path": "play guessnumber",
+          "usage": "/play guessnumber"
         },
         {
           "description": "Type a word with the syllable before the pearl pops; last one with lives wins",
@@ -1445,6 +1515,41 @@
           "options": [],
           "path": "party stop",
           "usage": "/party stop"
+        },
+        {
+          "description": "Never Have I Ever: a family-friendly group question",
+          "manager": false,
+          "options": [],
+          "path": "party nhie",
+          "usage": "/party nhie"
+        },
+        {
+          "description": "Ask the Magic Conch, choose an option or roll a die",
+          "manager": false,
+          "options": [
+            {
+              "choices": [
+                "Magic Conch",
+                "Choose",
+                "Roll"
+              ],
+              "description": "Which toy to play",
+              "name": "mode",
+              "required": true
+            },
+            {
+              "description": "A question, or comma-separated choices",
+              "name": "prompt",
+              "required": false
+            },
+            {
+              "description": "Dice sides from 2 to 100; default 6",
+              "name": "sides",
+              "required": false
+            }
+          ],
+          "path": "party fun",
+          "usage": "/party fun <mode> [prompt] [sides]"
         }
       ],
       "intro": "Play on your own, or start a party game for the whole channel.",
@@ -5308,5 +5413,5 @@
       "title": "Game & module setup"
     }
   ],
-  "count": 313
+  "count": 322
 }

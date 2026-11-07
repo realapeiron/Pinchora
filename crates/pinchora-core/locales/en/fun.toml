@@ -1,0 +1,5 @@
+[fun]
+subtitle = "The shell has spoken"
+ask = "A little question for the sea"
+result = "A tiny tide of chance"
+need-choices = "Give at least two comma-separated choices."

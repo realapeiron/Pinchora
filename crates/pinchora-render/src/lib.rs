@@ -19,6 +19,7 @@ use std::sync::{Arc, LazyLock};
 use resvg::{tiny_skia, usvg};
 
 pub use avatar::{placeholder_avatar, prepare_avatar};
+pub use cards::QuickCard;
 pub use cards::stats::{HEAT, HEAT_EMPTY, SERIES, StatFlows, StatHeat, StatList, StatRow, StatTile, StatsCard};
 pub use cards::{
     ABSENT, Backdrop, BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, BirthdayCard, CORRECT, CharacterCard,
@@ -113,6 +114,10 @@ impl Renderer {
 
     pub fn svg_to_png(&self, svg: &str) -> anyhow::Result<Vec<u8>> {
         Ok(self.svg_to_pixmap(svg)?.encode_png()?)
+    }
+
+    pub fn quick_card(&self, card: &QuickCard<'_>) -> anyhow::Result<Vec<u8>> {
+        self.svg_to_png(&card.to_svg())
     }
 
     fn svg_to_pixmap(&self, svg: &str) -> anyhow::Result<tiny_skia::Pixmap> {
