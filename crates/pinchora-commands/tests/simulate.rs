@@ -12646,6 +12646,22 @@ async fn admin_paths_refuse_members_without_manage_server() {
         "channels": channels,
     });
     let rows: Vec<(&str, Value)> = vec![
+        (
+            "verification setup",
+            json!([sub("setup", vec![bool_option("enabled", true)])]),
+        ),
+        (
+            "verification mode",
+            json!([sub("mode", vec![text_option("mode", "captcha")])]),
+        ),
+        (
+            "verification message",
+            json!([sub("message", vec![text_option("text", "Welcome")])]),
+        ),
+        ("verification post", json!([sub("post", vec![])])),
+        ("raid lockdown", json!([sub("lockdown", vec![])])),
+        ("raid unlock", json!([sub("unlock", vec![])])),
+        ("raid status", json!([sub("status", vec![])])),
         ("inviteadmin settings", json!([sub("settings", vec![])])),
         ("inviteadmin post", json!([sub("post", vec![])])),
         (
@@ -15141,3 +15157,6 @@ fn simulator_message_identity_survives_updates_and_repeated_clicks() {
         Reply::new(InteractionResponseType::ChannelMessageWithSource).message_id
     );
 }
+
+#[path = "simulate/verification.rs"]
+mod verification;

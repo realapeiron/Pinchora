@@ -83,6 +83,7 @@ pub fn router() -> Router<WebState> {
         .route("/staff-log", get(moderation::staff_log))
         .nest("/automod", super::automod::router())
         .nest("/temp-voice", super::temp_voice::router())
+        .nest("/safety", super::verification::router())
         .route("/preview/card", post(cards::preview))
         .route("/preview/message", post(preview::message))
         .route("/cards", get(cards::cards))

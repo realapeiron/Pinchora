@@ -1,0 +1,23 @@
+[anti_raid]
+alert = "Raid #{id}: {joins} joins. Response: {action}."
+ended = "Raid #{id} ended. Settings changed by the raid were restored."
+status = "Raid #{id} is active until <t:{until}:R>. {error}"
+calm = "No active raid."
+unlock = "End raid"
+kick = "Kick raid joins"
+ban = "Ban raid joins"
+
+uncertain = "A Discord write was interrupted; a moderator must reconcile these operations before closing this raid: {operations}."
+
+[anti_raid.action]
+alert = "Alert only"
+lockdown = "Lockdown"
+kick = "Kick member"
+ban = "Ban member"
+
+[module]
+anti_raid = "Raid protection"
+
+[module-blurb]
+anti_raid = "Join detection and reversible raid lockdown."
+

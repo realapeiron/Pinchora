@@ -19,6 +19,9 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
     }
     let mut parts = custom_id.split(':');
     match parts.next() {
+        Some("vf") => crate::verification::on_component(cx, "vf", parts).await,
+        Some("cq") => crate::verification::on_component(cx, "cq", parts).await,
+        Some("rd") => crate::verification::on_component(cx, "rd", parts).await,
         Some("am") => crate::commands::automod::on_component(cx, "am", parts, values).await,
         Some("ax") => crate::commands::automod::on_component(cx, "ax", parts, values).await,
         Some("lb") => leaderboard::on_button(cx, parts).await,
@@ -115,6 +118,7 @@ pub(crate) async fn dispatch_modal(cx: &Cx, custom_id: &str, fields: &[(String, 
     }
     let mut parts = custom_id.split(':');
     match parts.next() {
+        Some("cq") => crate::verification::on_modal(cx, parts, fields).await,
         Some("gb") => guestbook::on_modal(cx, parts, fields).await,
         Some("cs") => customize::on_style_modal(cx, parts, fields).await,
         Some("ca") => character::on_modal(cx, parts, fields).await,

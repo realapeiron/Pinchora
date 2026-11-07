@@ -183,3 +183,11 @@ pub use automod::{
     check_config_roles as check_automod_roles, on_native_execution as on_automod_execution,
     on_native_rule_change as on_automod_rule_change, spawn_ticker as spawn_automod_ticker, sync_guild as sync_automod,
 };
+
+mod verification;
+pub use verification::raid::{start as start_raid, unlock as unlock_raid};
+pub use verification::{
+    answer as verification_answer, challenge as verification_challenge, check_roles as check_verification_roles,
+    post as post_verification, request_help as verification_help, spawn_ticker as spawn_verification_ticker,
+    tick as verification_tick, web_identity as verification_web_identity,
+};

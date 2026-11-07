@@ -121,6 +121,7 @@ async fn boot(config: &Config, role: &str) -> anyhow::Result<(Arc<App>, Readines
         node,
     );
     app.message_content = config.gateway.message_content;
+    app.public_url.clone_from(&config.web.public_url);
     let app = Arc::new(app);
     // Drops cached settings the moment the dashboard changes them, on every pod.
     pinchora_commands::listen_for_invalidations(&app).await;
@@ -133,6 +134,7 @@ async fn boot(config: &Config, role: &str) -> anyhow::Result<(Arc<App>, Readines
     pinchora_commands::spawn_events_ticker(app.clone());
     pinchora_commands::spawn_automod_ticker(app.clone());
     pinchora_commands::spawn_invite_reward_ticker(app.clone());
+    pinchora_commands::spawn_verification_ticker(app.clone());
     // Lifts temporary bans whose time is up, on whichever pod claims them first.
     pinchora_commands::spawn_moderation_ticker(app.clone());
     // Retires critter drops and bottles nobody took in time.

@@ -298,6 +298,12 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         "INSERT INTO starboard_stars (starboard_id, message_id, user_id, weight)
          SELECT id, $2, $1, 1 FROM starboards WHERE guild_id=$1
          UNION ALL SELECT id, $1, $2, 1 FROM starboards WHERE guild_id=$1",
+        // F10 gate progress, recent joins, exemptions and the moderator who ended a raid.
+        "INSERT INTO verification_pending (guild_id,user_id,joined_at) VALUES ($1,$1,now())",
+        "INSERT INTO raid_joins (guild_id,user_id,joined_at,name_family,young) VALUES ($1,$1,now(),'pinch',false)",
+        "INSERT INTO verification (guild_id,exempt_users) VALUES ($1,ARRAY[$1,$2])",
+        "INSERT INTO raid_events (guild_id,started_at,ended_at,joins,action,ended_by,expires_at)
+         VALUES ($1,now(),now(),3,'alert',$1,now())",
     ];
     for sql in inserts {
         run(db, sql, user, other).await;

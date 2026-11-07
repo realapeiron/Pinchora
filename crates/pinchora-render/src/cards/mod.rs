@@ -1126,3 +1126,4 @@ mod tests {
         assert!(art(Opacity::Solid).contains(r#"fill-opacity="0.95""#));
     }
 }
+pub mod verification;

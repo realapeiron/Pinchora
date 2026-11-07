@@ -68,18 +68,23 @@ pub(crate) async fn after_message(app: &Arc<App>, msg: &Message, _settings: &Gui
 
 /// A member joined, before their join role and welcome.
 pub(crate) async fn on_member_join(app: &Arc<App>, event: &MemberAdd) -> JoinVerdict {
-    // F9 stats counts every join, held or not, so it comes before the gate.
+    let verdict = crate::verification::on_member_join(app, event).await;
+    // F9 stats counts every join, held or not.
     crate::stats::count_member(app, event.guild_id.get(), true).await;
+    // F6 attribution must observe every join, including members held by the gate.
+    crate::commands::invites::on_member_join(app, event).await;
     // F10 join gate and captcha goes first: a member it holds is `JoinVerdict::Held`.
+    if verdict == JoinVerdict::Held {
+        return JoinVerdict::Held;
+    }
     // F2 auto roles (they honour Held).
     crate::commands::roles_pack::on_member_join(app, event).await;
-    // F6 invite tracker works out who invited them.
-    crate::commands::invites::on_member_join(app, event).await;
     JoinVerdict::Continue
 }
 
 /// A member left or was removed, before the goodbye.
 pub(crate) async fn on_member_leave(app: &Arc<App>, event: &MemberRemove) {
+    crate::verification::on_member_leave(app, event).await;
     // F2 sticky roles remember what they held.
     crate::commands::roles_pack::on_member_leave(app, event).await;
     // F6 invite tracker takes the invite back.
@@ -111,6 +116,7 @@ pub(crate) async fn on_level_up(_app: &Arc<App>, _guild: u64, _user: u64, _level
 /// A member's roles or name changed, before the server log hears of it. Not one of the first six: sticky roles
 /// need to see every change to a member's roles, because Discord's leave event does not say what they held.
 pub(crate) async fn on_member_update(app: &Arc<App>, event: &MemberUpdate) {
+    crate::verification::on_member_update(app, event).await;
     // F2 sticky roles keep what the member holds now.
     crate::commands::roles_pack::on_member_update(app, event).await;
 }

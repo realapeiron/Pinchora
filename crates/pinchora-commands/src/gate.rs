@@ -38,6 +38,10 @@ async fn refuses(cx: &Cx, module: Option<Module>) -> anyhow::Result<bool> {
     let (Some(module), Some(guild)) = (module, cx.guild_id()) else {
         return Ok(false);
     };
+    if matches!(module, Module::Verification | Module::AntiRaid) && crate::verification::active_gate(cx, module).await?
+    {
+        return Ok(false);
+    }
     let channel = cx.interaction.channel.as_ref().map(|c| c.id.get());
     match cx.app.module_access(guild, channel, module).await? {
         Access::Allowed => Ok(false),

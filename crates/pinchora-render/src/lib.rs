@@ -322,3 +322,4 @@ impl Renderer {
         self.svg_to_png(&card.to_svg())
     }
 }
+pub use cards::verification::CaptchaCard;
