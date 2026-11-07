@@ -109,7 +109,10 @@ impl PurgeFilter {
             && (!self.bots || message.author.bot)
             && (!self.humans || !message.author.bot)
             && (!self.embeds || !message.embeds.is_empty())
-            && (!self.mentions || !message.mentions.is_empty() || !message.mention_roles.is_empty())
+            && (!self.mentions
+                || message.mention_everyone
+                || !message.mentions.is_empty()
+                || !message.mention_roles.is_empty())
             && (!self.reactions || !message.reactions.is_empty())
             && self.after.is_none_or(|id| message.id.get() > id)
             && self.before.is_none_or(|id| message.id.get() < id)
@@ -679,6 +682,26 @@ mod tests {
         msg.pinned = false;
         msg.content.push_str(" safe");
         assert!(!filter.takes(&msg, now));
+    }
+
+    #[test]
+    fn purge_mentions_include_everyone_and_age_boundary_is_strict() {
+        let now = chrono::Utc::now();
+        let mut msg = message(0, false, "@everyone", false, false);
+        msg.mention_everyone = true;
+        let filter = PurgeFilter {
+            mentions: true,
+            ..Default::default()
+        };
+        assert!(filter.takes(&msg, now));
+        for (age, expected) in [
+            (PURGE_AGE - Duration::seconds(61), true),
+            (PURGE_AGE - Duration::seconds(60), false),
+            (PURGE_AGE, false),
+        ] {
+            msg.id = Id::new(((now - age).timestamp_millis() as u64 - 1_420_070_400_000) << 22);
+            assert_eq!(filter.takes(&msg, now), expected);
+        }
     }
 
     #[test]

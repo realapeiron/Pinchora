@@ -234,7 +234,9 @@ pub use config_backup::{backup_apply, backup_names, backup_preview, backup_rate_
 
 mod mod_parity;
 pub use commands::moderation::parity::check_config as check_mod_parity_config;
-pub use mod_parity::{spawn_ticker as spawn_mod_parity_ticker, voice_event as on_mod_parity_voice};
+pub use mod_parity::{
+    spawn_ticker as spawn_mod_parity_ticker, sweep as sweep_mod_parity, voice_event as on_mod_parity_voice,
+};
 
 pub use commands::moderation::parity::review as review_mod_parity;
 

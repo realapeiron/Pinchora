@@ -3503,4 +3503,5 @@ export const tr: { [K in keyof typeof en]: string } = {
   "Reported by": "Bildiren",
   "Open reported message": "Bildirilen mesajı aç",
   "Record the outcome of this report for staff.": "Bu bildirimin sonucunu yetkililer için kaydedin.",
+  "Download moderation data": "Moderasyon verilerini indir",
 };

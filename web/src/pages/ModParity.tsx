@@ -481,6 +481,9 @@ function AppealCases() {
         title={t("Member appeals")}
         lead={t("Explain what happened and why staff should reconsider this case.")}
       />
+      <a href="/api/appeals/export" download="moderation-data.json">
+        {t("Download moderation data")}
+      </a>
       {cases.isPending && <Loading />}
       {cases.isError && <Problem error={cases.error} />}
       {cases.data && (

@@ -22,6 +22,7 @@ pub fn router() -> Router<WebState> {
 pub fn member_router() -> Router<WebState> {
     Router::new()
         .route("/", get(member_cases))
+        .route("/export", get(export))
         .route("/{guild}/{case}", get(member).post(submit))
 }
 async fn show(State(s): State<WebState>, m: ManagedGuild) -> ApiResult<Json<Value>> {
@@ -155,4 +156,8 @@ async fn member_cases(State(s): State<WebState>, current: CurrentSession) -> Api
     Ok(Json(
         json!({"cases":s.app.db.member_appealable_cases(current.session.user_id).await?}),
     ))
+}
+
+async fn export(State(s): State<WebState>, current: CurrentSession) -> ApiResult<Json<Value>> {
+    Ok(Json(s.app.db.export_mod_parity_data(current.session.user_id).await?))
 }

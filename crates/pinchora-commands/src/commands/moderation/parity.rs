@@ -337,7 +337,7 @@ pub(crate) async fn submit_report(
     log(
         &cx.app,
         g,
-        (cx.author()?.id.get(), &cx.author_display_name()),
+        (cx.app.application_id.get(), BOT_NAME),
         CaseKind::Report,
         user,
         None,
@@ -346,6 +346,59 @@ pub(crate) async fn submit_report(
     .await?;
     done(cx).await
 }
+/// Mutations must not use the cached hierarchy: roles can move while a preview is open.
+async fn fresh_ranks(app: &App, g: u64, actor: &Moderator, needed: Permissions) -> anyhow::Result<(Ranks, bool)> {
+    let table = app.http.roles(Id::new(g)).await?.models().await?;
+    let member = app
+        .http
+        .guild_member(Id::new(g), Id::new(actor.id))
+        .await?
+        .model()
+        .await?;
+    let bot = app
+        .http
+        .guild_member(Id::new(g), Id::new(app.application_id.get()))
+        .await?
+        .model()
+        .await?;
+    let owner = app.http.guild(Id::new(g)).await?.model().await?.owner_id.get();
+    let perms = table
+        .iter()
+        .filter(|r| r.id.get() == g || member.roles.contains(&r.id))
+        .fold(Permissions::empty(), |p, r| p | r.permissions);
+    anyhow::ensure!(
+        actor.id == owner || perms.contains(Permissions::ADMINISTRATOR) || perms.contains(needed),
+        "permission"
+    );
+    let table: HashMap<_, _> = table
+        .into_iter()
+        .map(|r| {
+            (
+                r.id.get(),
+                RoleInfo {
+                    position: r.position,
+                    permissions: r.permissions,
+                },
+            )
+        })
+        .collect();
+    Ok((
+        Ranks {
+            owner,
+            actor: Rank {
+                id: actor.id,
+                top: top(&table, member.roles.iter().map(|r| r.get())),
+            },
+            bot: Rank {
+                id: app.application_id.get(),
+                top: top(&table, bot.roles.iter().map(|r| r.get())),
+            },
+            table: Arc::new(table),
+        },
+        perms.contains(Permissions::ADMINISTRATOR),
+    ))
+}
+
 /// Fresh role safety checks, shared by slash and dashboard policy writes.
 pub async fn check_config(app: &App, g: u64, actor: u64, c: &Config) -> anyhow::Result<()> {
     anyhow::ensure!(c.valid(), "invalid moderation policy");
@@ -357,11 +410,7 @@ pub async fn check_config(app: &App, g: u64, actor: u64, c: &Config) -> anyhow::
         .await?
         .model()
         .await?;
-    let owner = app
-        .guild_facts(g)
-        .await
-        .ok_or_else(|| anyhow::anyhow!("guild unavailable"))?
-        .owner;
+    let owner = app.http.guild(Id::new(g)).await?.model().await?.owner_id.get();
     let top = |held: &[Id<twilight_model::id::marker::RoleMarker>]| {
         table
             .iter()
@@ -370,9 +419,58 @@ pub async fn check_config(app: &App, g: u64, actor: u64, c: &Config) -> anyhow::
             .max()
             .unwrap_or(0)
     };
-    let admin = table
+    let permissions = table
         .iter()
-        .any(|r| member.roles.contains(&r.id) && r.permissions.contains(Permissions::ADMINISTRATOR));
+        .filter(|r| r.id.get() == g || member.roles.contains(&r.id))
+        .fold(Permissions::empty(), |p, r| p | r.permissions);
+    let admin = permissions.contains(Permissions::ADMINISTRATOR);
+    let mut needed = Permissions::MANAGE_GUILD;
+    let previous = app.db.mod_parity_config(g).await?;
+    for policy in [c, &previous] {
+        if policy.mute_role.is_some()
+            || policy.jail_role.is_some()
+            || policy.booster_role.is_some()
+            || policy.booster_personal
+            || !policy.conditions.is_empty()
+        {
+            needed |= Permissions::MANAGE_ROLES;
+        }
+        if !policy.autopurge.is_empty() {
+            needed |= Permissions::MANAGE_MESSAGES;
+        }
+    }
+    anyhow::ensure!(owner == actor || admin || permissions.contains(needed), "permission");
+    let channels = app.http.guild_channels(Id::new(g)).await?.models().await?;
+    for (id, permission) in c.report_channel.iter().map(|id| (id, Permissions::VIEW_CHANNEL)).chain(
+        c.autopurge
+            .iter()
+            .map(|r| (&r.channel, Permissions::VIEW_CHANNEL | Permissions::MANAGE_MESSAGES)),
+    ) {
+        let channel = channels
+            .iter()
+            .find(|ch| {
+                ch.id.to_string() == *id
+                    && matches!(
+                        ch.kind,
+                        twilight_model::channel::ChannelType::GuildText
+                            | twilight_model::channel::ChannelType::GuildAnnouncement
+                    )
+            })
+            .ok_or_else(|| anyhow::anyhow!("channel unavailable"))?;
+        let base = if owner == actor {
+            Permissions::ADMINISTRATOR
+        } else {
+            permissions
+        };
+        let effective = crate::text::access::channel_permissions(
+            base,
+            g,
+            actor,
+            &member.roles.iter().map(|r| r.get()).collect::<Vec<_>>(),
+            channel.permission_overwrites.as_deref().unwrap_or_default(),
+        );
+        anyhow::ensure!(effective.contains(permission), "channel permission");
+    }
     for rule in &c.conditions {
         anyhow::ensure!(
             rule.requires
@@ -382,7 +480,6 @@ pub async fn check_config(app: &App, g: u64, actor: u64, c: &Config) -> anyhow::
         );
     }
     if c.conditions.iter().any(|r| r.voice_channel.is_some()) {
-        let channels = app.http.guild_channels(Id::new(g)).await?.models().await?;
         for id in c.conditions.iter().filter_map(|r| r.voice_channel.as_ref()) {
             anyhow::ensure!(
                 channels.iter().any(|ch| ch.id.to_string() == *id
@@ -458,6 +555,23 @@ async fn policy(cx: &Cx, c: Policy) -> anyhow::Result<()> {
         if !allowed(cx, Permissions::MODERATE_MEMBERS) {
             return invalid(cx).await;
         }
+        let actor = Moderator::of(cx)?;
+        let Ok((ranks, _)) = fresh_ranks(
+            &cx.app,
+            g,
+            &actor,
+            Permissions::MANAGE_GUILD | Permissions::MODERATE_MEMBERS,
+        )
+        .await
+        else {
+            return invalid(cx).await;
+        };
+        let Some(target) = ranks.of(&cx.app, g, user.resolved.id.get()).await else {
+            return invalid(cx).await;
+        };
+        if may_act(ranks.owner, ranks.actor, ranks.bot, target).is_err() {
+            return cx.reply_ephemeral(t!(cx.lang(), "parity.refused")).await;
+        }
         if c.blocked.unwrap_or(true) {
             sqlx::query("INSERT INTO mod_report_blocks(guild_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING")
                 .bind(g as i64)
@@ -505,9 +619,12 @@ async fn execute(
     let (p, _) = permission(action).ok_or_else(|| anyhow::anyhow!("action"))?;
     anyhow::ensure!(allowed(cx, p), "permission");
     let actor = Moderator::of(cx)?;
-    let ranks = Ranks::read(&cx.app, g, &actor)
-        .await
-        .ok_or_else(|| anyhow::anyhow!("hierarchy unavailable"))?;
+    let needed = if matches!(action, "mute" | "jail" | "unmute" | "unjail") {
+        p | Permissions::MANAGE_ROLES
+    } else {
+        p
+    };
+    let (ranks, admin) = fresh_ranks(&cx.app, g, &actor, needed).await?;
     let rank = ranks
         .of(&cx.app, g, user)
         .await
@@ -610,7 +727,7 @@ async fn execute(
                     facts,
                     Grantor {
                         owner: actor.id == ranks.owner,
-                        administrator: administrator(cx),
+                        administrator: admin,
                         top_role: Some(ranks.actor.top)
                     },
                     Some(ranks.bot.top),
@@ -646,33 +763,22 @@ async fn execute(
                     .and_then(pinchora_core::mod_parity::id)
                     .ok_or_else(|| anyhow::anyhow!("restriction role not configured"))?;
                 anyhow::ensure!(roles.iter().filter(safe).any(|r| r.id.get() == rid), "unsafe role");
-                // Role-based restrictions must deny messaging and voice in every current channel.
-                let denied = Permissions::SEND_MESSAGES
-                    | Permissions::SEND_MESSAGES_IN_THREADS
-                    | Permissions::CREATE_PUBLIC_THREADS
-                    | Permissions::CREATE_PRIVATE_THREADS
-                    | Permissions::ADD_REACTIONS
-                    | Permissions::CONNECT
-                    | Permissions::SPEAK;
-                for channel in http.guild_channels(gid).await?.models().await? {
-                    let old = channel
-                        .permission_overwrites
-                        .as_ref()
-                        .and_then(|rows| rows.iter().find(|o| o.id.get() == rid));
-                    let allow = old.map_or(Permissions::empty(), |o| o.allow) & !denied;
-                    let deny = old.map_or(Permissions::empty(), |o| o.deny) | denied;
-                    http.update_channel_permission(
-                        channel.id,
-                        &twilight_model::http::permission_overwrite::PermissionOverwrite {
-                            id: Id::new(rid),
-                            kind: twilight_model::http::permission_overwrite::PermissionOverwriteType::Role,
-                            allow: Some(allow),
-                            deny: Some(deny),
-                        },
-                    )
-                    .reason(&audit)
-                    .await?;
-                }
+                // Reject before stripping anything if the same role cannot be safely restored.
+                anyhow::ensure!(
+                    member.roles.iter().all(|id| roles.iter().any(|r| r.id == *id
+                        && if r.managed {
+                            !r.permissions.contains(Permissions::ADMINISTRATOR)
+                        } else {
+                            safe(&r)
+                        })),
+                    "unrestorable roles"
+                );
+                let managed: Vec<_> = roles
+                    .iter()
+                    .filter(|r| r.managed && member.roles.contains(&r.id))
+                    .map(|r| r.id.get())
+                    .collect();
+                crate::mod_parity::restriction_overwrites(&cx.app, g, user, rid, &managed, &audit).await?;
                 let saved: Vec<i64> = member.roles.iter().map(|r| r.get() as i64).collect();
                 let inserted=sqlx::query("INSERT INTO mod_restrictions(guild_id,user_id,role_id,role_ids,kind) VALUES($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING").bind(g as i64).bind(user as i64).bind(rid as i64).bind(&saved).bind(action).execute(cx.app.db.pool()).await?.rows_affected();
                 anyhow::ensure!(inserted == 1, "already restricted; release first");
@@ -711,11 +817,26 @@ async fn execute(
                     (action == "unmute" && kind == "mute") || (action == "unjail" && kind == "jail"),
                     "wrong restriction"
                 );
+                anyhow::ensure!(
+                    roles
+                        .iter()
+                        .filter(|r| saved.contains(&(r.id.get() as i64)) && !r.managed)
+                        .all(|r| safe(&r)),
+                    "saved roles changed; keep the snapshot for staff resolution"
+                );
+                if let Some(r) = roles.iter().find(|r| r.id.get() == rid as u64) {
+                    anyhow::ensure!(
+                        !r.managed
+                            && r.position < ranks.bot.top
+                            && (actor.id == ranks.owner || r.position < ranks.actor.top),
+                        "restriction role moved"
+                    );
+                }
                 let mut desired: Vec<_> = member.roles.into_iter().filter(|id| id.get() != rid as u64).collect();
                 for r in roles
                     .iter()
                     .filter(safe)
-                    .filter(|r| saved.contains(&(r.id.get() as i64)))
+                    .filter(|r| r.id.get() != rid as u64 && saved.contains(&(r.id.get() as i64)))
                 {
                     if !desired.contains(&r.id) {
                         desired.push(r.id)
@@ -763,6 +884,38 @@ struct Batch {
     role: Option<u64>,
     reason: Option<String>,
 }
+async fn batch_slot(cx: &Cx, g: u64) -> anyhow::Result<bool> {
+    if cx
+        .app
+        .cache
+        .try_cooldown(&format!("modparity:batch:{g}"), StdDuration::from_secs(60))
+        .await?
+        .is_some()
+    {
+        cx.reply_ephemeral(t!(cx.lang(), "parity.batch-limit")).await?;
+        return Ok(false);
+    }
+    Ok(true)
+}
+async fn batch_reply(cx: &Cx, ok: usize, total: usize, failed: &[u64]) -> anyhow::Result<()> {
+    let mut text = t!(cx.lang(), "parity.batch-result", ok = ok, total = total);
+    if !failed.is_empty() {
+        text.push_str(&format!(
+            "\n{}",
+            t!(
+                cx.lang(),
+                "parity.batch-failed",
+                ids = failed.iter().map(u64::to_string).collect::<Vec<_>>().join(", ")
+            )
+        ));
+    }
+    if text.chars().count() <= 1900 {
+        cx.reply_ephemeral(text).await
+    } else {
+        cx.reply(members::private(EmbedBuilder::new().description(text).build()))
+            .await
+    }
+}
 async fn mass(cx: &Cx, c: Mass) -> anyhow::Result<()> {
     let Some((p, label)) = permission(&c.action) else {
         return invalid(cx).await;
@@ -784,7 +937,11 @@ async fn mass(cx: &Cx, c: Mass) -> anyhow::Result<()> {
         if batch.action != c.action {
             return invalid(cx).await;
         }
+        if !batch_slot(cx, g).await? {
+            return Ok(());
+        }
         let mut ok = 0;
+        let mut failed = Vec::new();
         let total = batch.ids.len();
         for user in batch.ids {
             if execute(cx, g, &batch.action, user, batch.role, batch.reason.clone())
@@ -792,11 +949,11 @@ async fn mass(cx: &Cx, c: Mass) -> anyhow::Result<()> {
                 .is_ok()
             {
                 ok += 1
+            } else {
+                failed.push(user);
             }
         }
-        return cx
-            .reply_ephemeral(t!(cx.lang(), "parity.batch-result", ok = ok, total = total))
-            .await;
+        return batch_reply(cx, ok, total, &failed).await;
     }
     let ids = if let Some(s) = c.ids {
         let Some(ids) = parse_ids(&s) else {
@@ -884,11 +1041,14 @@ async fn names(cx: &Cx, c: Names) -> anyhow::Result<()> {
         return Ok(());
     };
     let actor = Moderator::of(cx)?;
-    let Some(ranks) = Ranks::read(&cx.app, g, &actor).await else {
+    let Ok((ranks, _)) = fresh_ranks(&cx.app, g, &actor, Permissions::MANAGE_NICKNAMES).await else {
         return invalid(cx).await;
     };
-    if let Some(why) = ranks.refusal(cx.lang(), &c.user, "rename") {
-        return cx.reply_ephemeral(why).await;
+    let Some(rank) = ranks.of(&cx.app, g, c.user.resolved.id.get()).await else {
+        return invalid(cx).await;
+    };
+    if may_act(ranks.owner, ranks.actor, ranks.bot, rank).is_err() {
+        return cx.reply_ephemeral(t!(cx.lang(), "parity.refused")).await;
     }
     let name = nickname(
         &crate::util::resolved_display_name(&c.user),
@@ -920,7 +1080,7 @@ async fn roles(cx: &Cx, c: Roles) -> anyhow::Result<()> {
         return Ok(());
     };
     let actor = Moderator::of(cx)?;
-    let Some(ranks) = Ranks::read(&cx.app, g, &actor).await else {
+    let Ok((ranks, admin)) = fresh_ranks(&cx.app, g, &actor, Permissions::MANAGE_ROLES).await else {
         return invalid(cx).await;
     };
     let audit = members::audit_reason(cx.lang(), &actor, None);
@@ -948,7 +1108,13 @@ async fn roles(cx: &Cx, c: Roles) -> anyhow::Result<()> {
             .await?
             .id
     } else {
-        let Some(r) = c.role else { return invalid(cx).await };
+        let Some(selected) = c.role else {
+            return invalid(cx).await;
+        };
+        let current = cx.app.http.roles(Id::new(g)).await?.models().await?;
+        let Some(r) = current.iter().find(|r| r.id == selected.id) else {
+            return invalid(cx).await;
+        };
         let facts = RoleFacts {
             everyone: r.id.get() == g,
             managed: r.managed,
@@ -959,7 +1125,7 @@ async fn roles(cx: &Cx, c: Roles) -> anyhow::Result<()> {
             facts,
             Grantor {
                 owner: actor.id == ranks.owner,
-                administrator: administrator(cx),
+                administrator: admin,
                 top_role: Some(ranks.actor.top),
             },
             Some(ranks.bot.top),
@@ -1025,9 +1191,47 @@ async fn voice(cx: &Cx, c: Voice) -> anyhow::Result<()> {
         return invalid(cx).await;
     }
     let actor = Moderator::of(cx)?;
-    let Some(ranks) = Ranks::read(&cx.app, g, &actor).await else {
+    let Ok((ranks, _)) = fresh_ranks(&cx.app, g, &actor, p).await else {
         return invalid(cx).await;
     };
+    let current = cx
+        .app
+        .http
+        .guild_member(Id::new(g), Id::new(actor.id))
+        .await?
+        .model()
+        .await?;
+    let held: Vec<_> = current.roles.iter().map(|r| r.get()).collect();
+    let base = if actor.id == ranks.owner {
+        Permissions::ADMINISTRATOR
+    } else {
+        held.iter()
+            .copied()
+            .chain([g])
+            .filter_map(|id| ranks.table.get(&id))
+            .fold(Permissions::empty(), |p, r| p | r.permissions)
+    };
+    let channels = cx.app.http.guild_channels(Id::new(g)).await?.models().await?;
+    let can_use = |id| {
+        channels.iter().find(|ch| ch.id == id).is_some_and(|ch| {
+            crate::text::access::channel_permissions(
+                base,
+                g,
+                actor.id,
+                &held,
+                ch.permission_overwrites.as_deref().unwrap_or_default(),
+            )
+            .contains(p | Permissions::VIEW_CHANNEL)
+        })
+    };
+    if [&c.source, &c.destination]
+        .into_iter()
+        .flatten()
+        .any(|ch| !can_use(ch.id))
+    {
+        return invalid(cx).await;
+    }
+    let presence = cx.app.cache.map_all(&format!("modparity:voice-v2:{g}")).await?;
     let users = if let Some(u) = c.user {
         vec![u.resolved.id.get()]
     } else {
@@ -1039,24 +1243,43 @@ async fn voice(cx: &Cx, c: Voice) -> anyhow::Result<()> {
         }
         cx.app
             .cache
-            .set_members(&format!("modparity:voice:{g}:{}", source.id))
+            .map_all(&format!("modparity:voice-v2:{g}"))
             .await?
             .iter()
-            .filter_map(|s| s.parse().ok())
+            .filter(|(_, value)| {
+                crate::mod_parity::voice_channel(value).as_deref() == Some(source.id.to_string().as_str())
+            })
+            .filter_map(|(id, _)| id.parse().ok())
             .collect()
     };
     if users.len() > 100 {
         return invalid(cx).await;
     }
+    if users.len() > 1 && !batch_slot(cx, g).await? {
+        return Ok(());
+    }
     let mut ok = 0;
+    let mut failed = Vec::new();
     let total = users.len();
     for uid in users {
+        if let Some(source) = presence
+            .iter()
+            .find(|(id, _)| id == &uid.to_string())
+            .and_then(|(_, value)| crate::mod_parity::voice_channel(value))
+            .and_then(|id| id.parse::<u64>().ok())
+            && !can_use(Id::new(source))
+        {
+            failed.push(uid);
+            continue;
+        }
         let Some(rank) = ranks.of(&cx.app, g, uid).await else {
+            failed.push(uid);
             continue;
         };
         if may_act(ranks.owner, ranks.actor, ranks.bot, rank).is_err()
             || crate::anti_nuke::vip_refusal(&cx.app, g, uid).await?.is_some()
         {
+            failed.push(uid);
             continue;
         }
         if c.action == "ban" {
@@ -1091,8 +1314,8 @@ async fn voice(cx: &Cx, c: Voice) -> anyhow::Result<()> {
                 .reason(&members::audit_reason(cx.lang(), &actor, c.reason.as_deref()))
                 .await
                 .is_err()
-                && c.action != "ban"
             {
+                failed.push(uid);
                 continue;
             }
         }
@@ -1108,8 +1331,7 @@ async fn voice(cx: &Cx, c: Voice) -> anyhow::Result<()> {
         .await?;
         ok += 1;
     }
-    cx.reply_ephemeral(t!(cx.lang(), "parity.batch-result", ok = ok, total = total))
-        .await
+    batch_reply(cx, ok, total, &failed).await
 }
 /// Review queues share the actual sanction permission and hierarchy, including the original moderator.
 pub async fn review(
@@ -1132,9 +1354,7 @@ pub async fn review(
         name: name.into(),
         roles: member.roles.iter().map(|r| r.get()).collect(),
     };
-    let ranks = Ranks::read(app, g, &moderator)
-        .await
-        .ok_or_else(|| anyhow::anyhow!("hierarchy unavailable"))?;
+    let (ranks, _) = fresh_ranks(app, g, &moderator, Permissions::empty()).await?;
     let perms = member
         .roles
         .iter()
@@ -1211,7 +1431,11 @@ pub async fn review(
                 anyhow::ensure!(newest == Some(number), "newer ban exists");
                 app.http
                     .delete_ban(Id::new(g), Id::new(user as u64))
-                    .reason(reason)
+                    .reason(&members::audit_reason(
+                        app.guild_lang(g).await,
+                        &moderator,
+                        Some(reason),
+                    ))
                     .await?;
             }
             sqlx::query("UPDATE mod_cases SET active=false,updated_at=now() WHERE guild_id=$1 AND number=$2")
@@ -1278,6 +1502,15 @@ async fn booster_role(cx: &Cx, c: Roles) -> anyhow::Result<()> {
         return invalid(cx).await;
     }
     let _guard = cx.app.db.lock_ban(g, g).await?;
+    let _member_guard = cx.app.db.lock_ban(g, user.get()).await?;
+    if sqlx::query_scalar::<_, bool>("SELECT EXISTS(SELECT 1 FROM mod_restrictions WHERE guild_id=$1 AND user_id=$2)")
+        .bind(g as i64)
+        .bind(user.get() as i64)
+        .fetch_one(cx.app.db.pool())
+        .await?
+    {
+        return invalid(cx).await;
+    }
     let existing: Option<i64> =
         sqlx::query_scalar("SELECT role_id FROM mod_booster_roles WHERE guild_id=$1 AND user_id=$2")
             .bind(g as i64)

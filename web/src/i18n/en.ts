@@ -3477,4 +3477,5 @@ export const en = {
   "Reported by": "Reported by",
   "Open reported message": "Open reported message",
   "Record the outcome of this report for staff.": "Record the outcome of this report for staff.",
+  "Download moderation data": "Download moderation data",
 } as const;

@@ -458,7 +458,7 @@ async fn discord(
     let path = uri.path().to_owned();
     let parts: Vec<&str> = path.trim_matches('/').split('/').collect();
     let number = |part: &str| part.parse::<u64>().unwrap_or(0);
-    if let Some(answer) = mod_parity::mock(&mock, &method, &parts, &body) {
+    if let Some(answer) = mod_parity::mock(&mock, &method, &uri, &parts, &headers, &body) {
         return answer;
     }
     if let Some(answer) = roles::mock(&mock, &method, &uri, &parts, &body) {
