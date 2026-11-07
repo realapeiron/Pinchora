@@ -59,15 +59,19 @@
   "generation_tool": "built-in image_gen",
   "generation_input_sha256": "5de59f3a51d60c31f1609124bd2bd4e949d5ad792f4e7a6acbb324ac38f107b3",
   "processing": [
-    "green key; connected silhouette",
-    "NEAREST pixel snap; per-look exact palette",
-    "original SW idle copied pixel-for-pixel",
-    "front original head pixels reused; SE mirror",
-    "AI rear idle canonical head and torso locked",
-    "two source-pixel leg layers articulated for opposite contacts/passing",
-    "AI sit/use body with identity restoration",
-    "reviewed sit contour at y99; upper body translated, lower legs NEAREST aligned to ground120",
-    "Front walk arms remain static; no claim of natural arm counter-swing"
+    "alpha/chroma extraction",
+    "largest component cleanup",
+    "NEAREST pixel snap",
+    "own-palette quantisation",
+    "existing directional head restoration",
+    "collar registration",
+    "seat underside y96, floor y120",
+    "unchanged cells copied byte-for-byte",
+    "retain footwear height while normalizing shin",
+    "source long-hair continuation restoration for looks 02/08/10/20",
+    "reviewed anatomical hip split for long garments 20/22",
+    "look01 NE excess generated skirt tail removed",
+    "look01 rear excess generated skirt tails removed"
   ],
   "frames": [
     {
@@ -146,53 +150,59 @@
         120
       ],
       "silhouette_bbox": [
-        30,
+        26,
         23,
         73,
         120
       ],
       "head": [
-        52.53,
-        40.07
+        53,
+        39
       ],
       "hands": {
         "screen_left": [
-          38.37,
-          74.79
+          34,
+          75
         ],
         "screen_right": [
-          61.0,
-          81.55
+          62,
+          82
         ]
       },
       "feet": {
         "screen_left": [
-          38.46,
-          114.23
+          37,
+          115
         ],
         "screen_right": [
-          56.02,
-          108.38
+          60,
+          108
         ]
       },
       "seat_contact": null,
       "accessory_anchors": {
         "hat": [
-          52.53,
+          53,
           23
         ],
         "head": [
-          52.53,
-          40.07
+          53,
+          39
         ],
         "torso": [
-          48,
-          58
+          52,
+          69
         ]
       },
       "gait_phase": "contact_near_forward",
-      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
-      "source": "source-pixel articulated leg repair; fixed canonical head/torso; front original/rear AI idle"
+      "landmark_status": "colour-derived estimates, visual anatomy reviewed separately",
+      "source": "built-in imagegen action; existing directional head restored; exact source palette",
+      "head_translation": [
+        0,
+        0
+      ],
+      "head_region_preserved": true,
+      "seat_surface_span": null
     },
     {
       "direction": "SW",
@@ -214,47 +224,53 @@
         120
       ],
       "head": [
-        52.54,
-        40.07
+        53,
+        39
       ],
       "hands": {
         "screen_left": [
-          37.76,
-          79.7
+          39,
+          77
         ],
         "screen_right": [
-          61.82,
-          79.54
+          62,
+          80
         ]
       },
       "feet": {
         "screen_left": [
-          44.16,
-          112.84
+          44,
+          115
         ],
         "screen_right": [
-          50.67,
-          114.15
+          56,
+          111
         ]
       },
       "seat_contact": null,
       "accessory_anchors": {
         "hat": [
-          52.54,
+          53,
           23
         ],
         "head": [
-          52.54,
-          40.07
+          53,
+          39
         ],
         "torso": [
-          48,
-          58
+          52,
+          69
         ]
       },
       "gait_phase": "passing_far",
-      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
-      "source": "source-pixel articulated leg repair; fixed canonical head/torso; front original/rear AI idle"
+      "landmark_status": "colour-derived estimates, visual anatomy reviewed separately",
+      "source": "built-in imagegen action; existing directional head restored; exact source palette",
+      "head_translation": [
+        0,
+        0
+      ],
+      "head_region_preserved": true,
+      "seat_surface_span": null
     },
     {
       "direction": "SW",
@@ -270,53 +286,59 @@
         120
       ],
       "silhouette_bbox": [
-        26,
+        24,
         23,
         73,
         120
       ],
       "head": [
-        52.54,
-        40.13
+        53,
+        39
       ],
       "hands": {
         "screen_left": [
-          38.37,
-          74.79
+          33,
+          74
         ],
         "screen_right": [
-          61.93,
-          79.49
+          61,
+          83
         ]
       },
       "feet": {
         "screen_left": [
-          37.16,
-          112.85
+          35,
+          115
         ],
         "screen_right": [
-          56.29,
-          108.88
+          59,
+          108
         ]
       },
       "seat_contact": null,
       "accessory_anchors": {
         "hat": [
-          52.54,
+          53,
           23
         ],
         "head": [
-          52.54,
-          40.13
+          53,
+          39
         ],
         "torso": [
-          48,
-          58
+          52,
+          69
         ]
       },
       "gait_phase": "contact_far_forward",
-      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
-      "source": "source-pixel articulated leg repair; fixed canonical head/torso; front original/rear AI idle"
+      "landmark_status": "colour-derived estimates, visual anatomy reviewed separately",
+      "source": "built-in imagegen action; existing directional head restored; exact source palette",
+      "head_translation": [
+        0,
+        0
+      ],
+      "head_region_preserved": true,
+      "seat_surface_span": null
     },
     {
       "direction": "SW",
@@ -338,47 +360,53 @@
         120
       ],
       "head": [
-        52.53,
-        40.13
+        53,
+        39
       ],
       "hands": {
         "screen_left": [
-          38.37,
-          74.79
+          37,
+          78
         ],
         "screen_right": [
-          61.24,
-          80.94
+          63,
+          81
         ]
       },
       "feet": {
         "screen_left": [
-          42.2,
-          110.73
+          42,
+          115
         ],
         "screen_right": [
-          51.21,
-          112.0
+          58,
+          106
         ]
       },
       "seat_contact": null,
       "accessory_anchors": {
         "hat": [
-          52.53,
+          53,
           23
         ],
         "head": [
-          52.53,
-          40.13
+          53,
+          39
         ],
         "torso": [
-          48,
-          58
+          52,
+          69
         ]
       },
       "gait_phase": "passing_near",
-      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
-      "source": "source-pixel articulated leg repair; fixed canonical head/torso; front original/rear AI idle"
+      "landmark_status": "colour-derived estimates, visual anatomy reviewed separately",
+      "source": "built-in imagegen action; existing directional head restored; exact source palette",
+      "head_translation": [
+        0,
+        0
+      ],
+      "head_region_preserved": true,
+      "seat_surface_span": null
     },
     {
       "direction": "SW",
@@ -394,56 +422,60 @@
         120
       ],
       "silhouette_bbox": [
-        26,
-        37,
+        22,
+        31,
         73,
         120
       ],
       "head": [
-        52.64,
-        53.63
+        53,
+        47
       ],
       "hands": {
         "screen_left": [
-          43.56,
-          76.12
+          39,
+          80
         ],
         "screen_right": [
-          56.49,
-          82.31
+          59,
+          85
         ]
       },
       "feet": {
         "screen_left": [
-          36.28,
-          114.83
+          34,
+          115
         ],
-        "screen_right": [
-          48.56,
-          114.22
-        ]
+        "screen_right": null
       },
       "seat_contact": [
-        48,
-        99
+        52,
+        96
       ],
       "accessory_anchors": {
         "hat": [
-          52.64,
-          37
+          53,
+          31
         ],
         "head": [
-          52.64,
-          53.63
+          53,
+          47
         ],
         "torso": [
-          48,
-          58
+          52,
+          77
         ]
       },
       "gait_phase": null,
-      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
-      "source": "AI action body; source front head / fixed AI rear head; NEAREST + source palette"
+      "landmark_status": "colour-derived estimates, visual anatomy reviewed separately",
+      "source": "built-in imagegen action; existing directional head restored; exact source palette",
+      "head_translation": [
+        0,
+        8
+      ],
+      "head_region_preserved": true,
+      "seat_hip_y": 96,
+      "seat_surface_span": null
     },
     {
       "direction": "SW",
@@ -647,51 +679,57 @@
       "silhouette_bbox": [
         23,
         23,
-        66,
+        72,
         120
       ],
       "head": [
-        42.47,
-        40.07
+        42,
+        39
       ],
       "hands": {
         "screen_left": [
-          34.0,
-          81.55
+          34,
+          83
         ],
         "screen_right": [
-          56.63,
-          74.79
+          62,
+          75
         ]
       },
       "feet": {
         "screen_left": [
-          38.98,
-          108.38
+          34,
+          107
         ],
         "screen_right": [
-          56.54,
-          114.23
+          59,
+          114
         ]
       },
       "seat_contact": null,
       "accessory_anchors": {
         "hat": [
-          42.47,
+          42,
           23
         ],
         "head": [
-          42.47,
-          40.07
+          42,
+          39
         ],
         "torso": [
-          48,
-          58
+          43,
+          69
         ]
       },
       "gait_phase": "contact_near_forward",
-      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
-      "source": "source-pixel articulated leg repair; fixed canonical head/torso; front original/rear AI idle"
+      "landmark_status": "colour-derived estimates, visual anatomy reviewed separately",
+      "source": "built-in imagegen action; existing directional head restored; exact source palette",
+      "head_translation": [
+        0,
+        0
+      ],
+      "head_region_preserved": true,
+      "seat_surface_span": null
     },
     {
       "direction": "SE",
@@ -713,47 +751,53 @@
         120
       ],
       "head": [
-        42.46,
-        40.07
+        42,
+        39
       ],
       "hands": {
         "screen_left": [
-          33.18,
-          79.54
+          38,
+          80
         ],
         "screen_right": [
-          57.24,
-          79.7
+          58,
+          80
         ]
       },
       "feet": {
         "screen_left": [
-          44.33,
-          114.15
+          40,
+          110
         ],
         "screen_right": [
-          50.84,
-          112.84
+          52,
+          114
         ]
       },
       "seat_contact": null,
       "accessory_anchors": {
         "hat": [
-          42.46,
+          42,
           23
         ],
         "head": [
-          42.46,
-          40.07
+          42,
+          39
         ],
         "torso": [
-          48,
-          58
+          43,
+          69
         ]
       },
       "gait_phase": "passing_far",
-      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
-      "source": "source-pixel articulated leg repair; fixed canonical head/torso; front original/rear AI idle"
+      "landmark_status": "colour-derived estimates, visual anatomy reviewed separately",
+      "source": "built-in imagegen action; existing directional head restored; exact source palette",
+      "head_translation": [
+        0,
+        0
+      ],
+      "head_region_preserved": true,
+      "seat_surface_span": null
     },
     {
       "direction": "SE",
@@ -771,51 +815,57 @@
       "silhouette_bbox": [
         23,
         23,
-        70,
+        71,
         120
       ],
       "head": [
-        42.46,
-        40.13
+        42,
+        39
       ],
       "hands": {
         "screen_left": [
-          33.07,
-          79.49
+          33,
+          80
         ],
         "screen_right": [
-          56.63,
-          74.79
+          62,
+          74
         ]
       },
       "feet": {
         "screen_left": [
-          38.71,
-          108.88
+          33,
+          108
         ],
         "screen_right": [
-          57.84,
-          112.85
+          60,
+          114
         ]
       },
       "seat_contact": null,
       "accessory_anchors": {
         "hat": [
-          42.46,
+          42,
           23
         ],
         "head": [
-          42.46,
-          40.13
+          42,
+          39
         ],
         "torso": [
-          48,
-          58
+          43,
+          69
         ]
       },
       "gait_phase": "contact_far_forward",
-      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
-      "source": "source-pixel articulated leg repair; fixed canonical head/torso; front original/rear AI idle"
+      "landmark_status": "colour-derived estimates, visual anatomy reviewed separately",
+      "source": "built-in imagegen action; existing directional head restored; exact source palette",
+      "head_translation": [
+        0,
+        0
+      ],
+      "head_region_preserved": true,
+      "seat_surface_span": null
     },
     {
       "direction": "SE",
@@ -837,47 +887,53 @@
         120
       ],
       "head": [
-        42.47,
-        40.13
+        42,
+        39
       ],
       "hands": {
         "screen_left": [
-          33.76,
-          80.94
+          36,
+          79
         ],
         "screen_right": [
-          56.63,
-          74.79
+          59,
+          78
         ]
       },
       "feet": {
         "screen_left": [
-          43.79,
-          112.0
+          41,
+          110
         ],
         "screen_right": [
-          52.8,
-          110.73
+          52,
+          114
         ]
       },
       "seat_contact": null,
       "accessory_anchors": {
         "hat": [
-          42.47,
+          42,
           23
         ],
         "head": [
-          42.47,
-          40.13
+          42,
+          39
         ],
         "torso": [
-          48,
-          58
+          43,
+          69
         ]
       },
       "gait_phase": "passing_near",
-      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
-      "source": "source-pixel articulated leg repair; fixed canonical head/torso; front original/rear AI idle"
+      "landmark_status": "colour-derived estimates, visual anatomy reviewed separately",
+      "source": "built-in imagegen action; existing directional head restored; exact source palette",
+      "head_translation": [
+        0,
+        0
+      ],
+      "head_region_preserved": true,
+      "seat_surface_span": null
     },
     {
       "direction": "SE",
@@ -894,55 +950,62 @@
       ],
       "silhouette_bbox": [
         23,
-        37,
-        70,
+        33,
+        75,
         120
       ],
       "head": [
-        42.36,
-        53.63
+        42,
+        49
       ],
       "hands": {
         "screen_left": [
-          37.96,
-          82.46
+          35,
+          86
         ],
         "screen_right": [
-          51.31,
-          75.97
+          57,
+          82
         ]
       },
       "feet": {
         "screen_left": [
-          46.0,
-          114.62
+          47,
+          113
         ],
         "screen_right": [
-          58.48,
-          114.32
+          59,
+          115
         ]
       },
       "seat_contact": [
-        48,
-        99
+        43,
+        96
       ],
       "accessory_anchors": {
         "hat": [
-          42.36,
-          37
+          42,
+          33
         ],
         "head": [
-          42.36,
-          53.63
+          42,
+          49
         ],
         "torso": [
-          48,
-          58
+          43,
+          79
         ]
       },
       "gait_phase": null,
-      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
-      "source": "AI action body; source front head / fixed AI rear head; NEAREST + source palette"
+      "landmark_status": "colour-derived estimates, visual anatomy reviewed separately",
+      "source": "built-in imagegen action; existing directional head restored; exact source palette",
+      "head_translation": [
+        0,
+        10
+      ],
+      "head_region_preserved": true,
+      "seat_hip_y": 96,
+      "seat_surface_span": null
     },
     {
       "direction": "SE",
@@ -1150,47 +1213,53 @@
         120
       ],
       "head": [
-        48.9,
-        42.9
+        49,
+        43
       ],
       "hands": {
         "screen_left": [
-          35.95,
-          81.04
+          35,
+          80
         ],
         "screen_right": [
-          57.44,
-          80.75
+          59,
+          84
         ]
       },
       "feet": {
         "screen_left": [
-          37.43,
-          115.93
+          33,
+          110
         ],
         "screen_right": [
-          57.22,
-          109.13
+          60,
+          112
         ]
       },
       "seat_contact": null,
       "accessory_anchors": {
         "hat": [
-          48.9,
+          49,
           23
         ],
         "head": [
-          48.9,
-          42.9
+          49,
+          43
         ],
         "torso": [
-          48,
-          58
+          46,
+          73
         ]
       },
       "gait_phase": "contact_near_forward",
-      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
-      "source": "source-pixel articulated leg repair; fixed canonical head/torso; front original/rear AI idle"
+      "landmark_status": "colour-derived estimates, visual anatomy reviewed separately",
+      "source": "built-in imagegen action; existing directional head restored; exact source palette",
+      "head_translation": [
+        0,
+        0
+      ],
+      "head_region_preserved": true,
+      "seat_surface_span": null
     },
     {
       "direction": "NW",
@@ -1212,47 +1281,53 @@
         120
       ],
       "head": [
-        48.9,
-        42.9
+        49,
+        43
       ],
       "hands": {
         "screen_left": [
-          35.8,
-          81.41
+          38,
+          83
         ],
         "screen_right": [
-          58.38,
-          80.75
+          55,
+          86
         ]
       },
       "feet": {
         "screen_left": [
-          43.07,
-          112.04
+          42,
+          111
         ],
         "screen_right": [
-          50.38,
-          116.08
+          51,
+          112
         ]
       },
       "seat_contact": null,
       "accessory_anchors": {
         "hat": [
-          48.9,
+          49,
           23
         ],
         "head": [
-          48.9,
-          42.9
+          49,
+          43
         ],
         "torso": [
-          48,
-          58
+          46,
+          73
         ]
       },
       "gait_phase": "passing_far",
-      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
-      "source": "source-pixel articulated leg repair; fixed canonical head/torso; front original/rear AI idle"
+      "landmark_status": "colour-derived estimates, visual anatomy reviewed separately",
+      "source": "built-in imagegen action; existing directional head restored; exact source palette",
+      "head_translation": [
+        0,
+        0
+      ],
+      "head_region_preserved": true,
+      "seat_surface_span": null
     },
     {
       "direction": "NW",
@@ -1268,53 +1343,59 @@
         120
       ],
       "silhouette_bbox": [
-        26,
+        23,
         23,
         70,
         120
       ],
       "head": [
-        48.9,
-        42.9
+        49,
+        43
       ],
       "hands": {
         "screen_left": [
-          35.74,
-          81.22
+          31,
+          79
         ],
         "screen_right": [
-          59.3,
-          80.23
+          57,
+          85
         ]
       },
       "feet": {
         "screen_left": [
-          39.66,
-          114.58
+          33,
+          110
         ],
         "screen_right": [
-          55.38,
-          110.38
+          58,
+          113
         ]
       },
       "seat_contact": null,
       "accessory_anchors": {
         "hat": [
-          48.9,
+          49,
           23
         ],
         "head": [
-          48.9,
-          42.9
+          49,
+          43
         ],
         "torso": [
-          48,
-          58
+          46,
+          73
         ]
       },
       "gait_phase": "contact_far_forward",
-      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
-      "source": "source-pixel articulated leg repair; fixed canonical head/torso; front original/rear AI idle"
+      "landmark_status": "colour-derived estimates, visual anatomy reviewed separately",
+      "source": "built-in imagegen action; existing directional head restored; exact source palette",
+      "head_translation": [
+        0,
+        0
+      ],
+      "head_region_preserved": true,
+      "seat_surface_span": null
     },
     {
       "direction": "NW",
@@ -1336,47 +1417,53 @@
         120
       ],
       "head": [
-        48.9,
-        42.9
+        49,
+        43
       ],
       "hands": {
         "screen_left": [
-          35.9,
-          81.22
+          37,
+          81
         ],
         "screen_right": [
-          58.72,
-          80.4
+          58,
+          79
         ]
       },
       "feet": {
         "screen_left": [
-          43.47,
-          112.35
+          40,
+          110
         ],
         "screen_right": [
-          51.3,
-          113.2
+          51,
+          115
         ]
       },
       "seat_contact": null,
       "accessory_anchors": {
         "hat": [
-          48.9,
+          49,
           23
         ],
         "head": [
-          48.9,
-          42.9
+          49,
+          43
         ],
         "torso": [
-          48,
-          58
+          46,
+          73
         ]
       },
       "gait_phase": "passing_near",
-      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
-      "source": "source-pixel articulated leg repair; fixed canonical head/torso; front original/rear AI idle"
+      "landmark_status": "colour-derived estimates, visual anatomy reviewed separately",
+      "source": "built-in imagegen action; existing directional head restored; exact source palette",
+      "head_translation": [
+        0,
+        0
+      ],
+      "head_region_preserved": true,
+      "seat_surface_span": null
     },
     {
       "direction": "NW",
@@ -1392,53 +1479,60 @@
         120
       ],
       "silhouette_bbox": [
-        13,
-        35,
+        18,
+        29,
         70,
         120
       ],
       "head": [
-        48.62,
-        53.83
+        49,
+        49
       ],
       "hands": {
         "screen_left": [
-          29.95,
-          86.19
+          37,
+          86
         ],
         "screen_right": [
-          51.23,
-          89.23
+          59,
+          85
         ]
       },
       "feet": {
         "screen_left": [
-          26.05,
-          114.18
+          32,
+          115
         ],
         "screen_right": null
       },
       "seat_contact": [
-        48,
-        99
+        46,
+        96
       ],
       "accessory_anchors": {
         "hat": [
-          48.62,
-          35
+          49,
+          29
         ],
         "head": [
-          48.62,
-          53.83
+          49,
+          49
         ],
         "torso": [
-          48,
-          58
+          46,
+          79
         ]
       },
       "gait_phase": null,
-      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
-      "source": "AI action body; source front head / fixed AI rear head; NEAREST + source palette"
+      "landmark_status": "colour-derived estimates, visual anatomy reviewed separately",
+      "source": "built-in imagegen action; existing directional head restored; exact source palette",
+      "head_translation": [
+        0,
+        6
+      ],
+      "head_region_preserved": true,
+      "seat_hip_y": 96,
+      "seat_surface_span": null
     },
     {
       "direction": "NW",
@@ -1642,51 +1736,57 @@
       "silhouette_bbox": [
         25,
         23,
-        68,
+        71,
         120
       ],
       "head": [
-        44.74,
-        42.65
+        45,
+        42
       ],
       "hands": {
         "screen_left": [
-          37.33,
-          80.5
+          36,
+          84
         ],
         "screen_right": [
-          58.46,
-          81.17
+          63,
+          81
         ]
       },
       "feet": {
         "screen_left": [
-          37.7,
-          109.09
+          39,
+          114
         ],
         "screen_right": [
-          57.09,
-          116.15
+          60,
+          109
         ]
       },
       "seat_contact": null,
       "accessory_anchors": {
         "hat": [
-          44.74,
+          45,
           23
         ],
         "head": [
-          44.74,
-          42.65
+          45,
+          42
         ],
         "torso": [
-          48,
-          58
+          49,
+          73
         ]
       },
       "gait_phase": "contact_near_forward",
-      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
-      "source": "source-pixel articulated leg repair; fixed canonical head/torso; front original/rear AI idle"
+      "landmark_status": "colour-derived estimates, visual anatomy reviewed separately",
+      "source": "built-in imagegen action; existing directional head restored; exact source palette",
+      "head_translation": [
+        0,
+        0
+      ],
+      "head_region_preserved": true,
+      "seat_surface_span": null
     },
     {
       "direction": "NE",
@@ -1708,47 +1808,53 @@
         120
       ],
       "head": [
-        44.74,
-        42.65
+        45,
+        42
       ],
       "hands": {
         "screen_left": [
-          36.47,
-          80.5
+          38,
+          84
         ],
         "screen_right": [
-          58.77,
-          81.28
+          58,
+          80
         ]
       },
       "feet": {
         "screen_left": [
-          44.47,
-          115.94
+          43,
+          112
         ],
         "screen_right": [
-          53.25,
-          111.0
+          52,
+          112
         ]
       },
       "seat_contact": null,
       "accessory_anchors": {
         "hat": [
-          44.74,
+          45,
           23
         ],
         "head": [
-          44.74,
-          42.65
+          45,
+          42
         ],
         "torso": [
-          48,
-          58
+          49,
+          73
         ]
       },
       "gait_phase": "passing_far",
-      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
-      "source": "source-pixel articulated leg repair; fixed canonical head/torso; front original/rear AI idle"
+      "landmark_status": "colour-derived estimates, visual anatomy reviewed separately",
+      "source": "built-in imagegen action; existing directional head restored; exact source palette",
+      "head_translation": [
+        0,
+        0
+      ],
+      "head_region_preserved": true,
+      "seat_surface_span": null
     },
     {
       "direction": "NE",
@@ -1766,51 +1872,57 @@
       "silhouette_bbox": [
         25,
         23,
-        68,
+        71,
         120
       ],
       "head": [
-        44.74,
-        42.65
+        45,
+        42
       ],
       "hands": {
         "screen_left": [
-          35.67,
-          80.15
+          36,
+          85
         ],
         "screen_right": [
-          58.83,
-          81.41
+          62,
+          78
         ]
       },
       "feet": {
         "screen_left": [
-          39.32,
-          110.35
+          37,
+          113
         ],
         "screen_right": [
-          56.21,
-          114.08
+          60,
+          111
         ]
       },
       "seat_contact": null,
       "accessory_anchors": {
         "hat": [
-          44.74,
+          45,
           23
         ],
         "head": [
-          44.74,
-          42.65
+          45,
+          42
         ],
         "torso": [
-          48,
-          58
+          49,
+          73
         ]
       },
       "gait_phase": "contact_far_forward",
-      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
-      "source": "source-pixel articulated leg repair; fixed canonical head/torso; front original/rear AI idle"
+      "landmark_status": "colour-derived estimates, visual anatomy reviewed separately",
+      "source": "built-in imagegen action; existing directional head restored; exact source palette",
+      "head_translation": [
+        0,
+        0
+      ],
+      "head_region_preserved": true,
+      "seat_surface_span": null
     },
     {
       "direction": "NE",
@@ -1832,47 +1944,53 @@
         120
       ],
       "head": [
-        44.74,
-        42.65
+        45,
+        42
       ],
       "hands": {
         "screen_left": [
-          36.02,
-          79.88
+          38,
+          84
         ],
         "screen_right": [
-          58.59,
-          81.41
+          58,
+          81
         ]
       },
       "feet": {
         "screen_left": [
-          43.59,
-          112.59
+          43,
+          112
         ],
         "screen_right": [
-          52.15,
-          112.02
+          53,
+          110
         ]
       },
       "seat_contact": null,
       "accessory_anchors": {
         "hat": [
-          44.74,
+          45,
           23
         ],
         "head": [
-          44.74,
-          42.65
+          45,
+          42
         ],
         "torso": [
-          48,
-          58
+          49,
+          73
         ]
       },
       "gait_phase": "passing_near",
-      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
-      "source": "source-pixel articulated leg repair; fixed canonical head/torso; front original/rear AI idle"
+      "landmark_status": "colour-derived estimates, visual anatomy reviewed separately",
+      "source": "built-in imagegen action; existing directional head restored; exact source palette",
+      "head_translation": [
+        0,
+        0
+      ],
+      "head_region_preserved": true,
+      "seat_surface_span": null
     },
     {
       "direction": "NE",
@@ -1889,52 +2007,59 @@
       ],
       "silhouette_bbox": [
         25,
-        35,
-        78,
+        30,
+        79,
         120
       ],
       "head": [
-        44.9,
-        53.75
+        45,
+        49
       ],
       "hands": {
         "screen_left": [
-          39.31,
-          89.41
+          39,
+          87
         ],
         "screen_right": [
-          60.36,
-          86.26
+          60,
+          86
         ]
       },
       "feet": {
         "screen_left": null,
         "screen_right": [
-          62.97,
-          114.65
+          63,
+          115
         ]
       },
       "seat_contact": [
-        48,
-        99
+        49,
+        96
       ],
       "accessory_anchors": {
         "hat": [
-          44.9,
-          35
+          45,
+          30
         ],
         "head": [
-          44.9,
-          53.75
+          45,
+          49
         ],
         "torso": [
-          48,
-          58
+          49,
+          80
         ]
       },
       "gait_phase": null,
-      "landmark_status": "head/hands/feet/accessories inferred; seat artwork aligned to y99; furniture integration untested",
-      "source": "AI action body; source front head / fixed AI rear head; NEAREST + source palette"
+      "landmark_status": "colour-derived estimates, visual anatomy reviewed separately",
+      "source": "built-in imagegen action; existing directional head restored; exact source palette",
+      "head_translation": [
+        0,
+        7
+      ],
+      "head_region_preserved": true,
+      "seat_hip_y": 96,
+      "seat_surface_span": null
     },
     {
       "direction": "NE",
@@ -2062,37 +2187,86 @@
     }
   ],
   "checks": {
-    "frame_count": 32,
-    "original_idle_pixel_exact": true,
-    "palette_exact": true,
+    "sheet_size": [
+      768,
+      512
+    ],
     "binary_alpha": true,
-    "unique_walk_frames_per_direction": 4,
-    "fixed_walk_upper_body_pixel_exact": true,
-    "preview_scale": 3,
-    "preview_average_fps": 8,
+    "own_palette_only": true,
+    "SW_idle_pixel_exact": true,
+    "untouched_cells_pixel_exact": true,
+    "directional_heads_pixel_exact": true,
+    "seat_hip_y": 96,
+    "foot_anchor": [
+      48,
+      120
+    ],
+    "preview_fps_average": 8,
     "preview_frame_durations_ms": [
       120,
       130,
       120,
       130
     ],
-    "all_final_mechanical_checks_pass": true,
-    "natural_anatomical_gait_approved": false,
-    "seat_footwear_preserved_during_shin_alignment": true,
-    "seat_plane_y": 99
+    "contact_size": [
+      2304,
+      1536
+    ]
   },
   "visual_review": {
-    "status": "further art work required",
-    "production_ready": false,
-    "notes": [
-      "Original face and flared trousers retained; opposite contacts are visibly different.",
-      "Flared trouser deformation and knee transitions remain rigid; fixed arms reduce natural motion."
+    "status": "PARTIAL: SEAT REDRAW; GAIT NOT ACCEPTED",
+    "contact_opened": true,
+    "seat_diagnostic_opened": true,
+    "notes": "Seated flared trousers now bend at knees. Flare is compressed when seated and walking trouser deformation remains stiff.",
+    "gait_redrawn": true,
+    "gait_acceptance": "NOT ACHIEVED",
+    "furniture_integration_tested": false,
+    "contact_sha256": "18888aa92aa5aad0eeab39be399693da793de85a8d0b2e4d11b5c9d78e83a640"
+  },
+  "seat_hip_y": 96,
+  "approval": "PASS2 REVIEW CANDIDATE; see visual_review",
+  "pass2": {
+    "changed_columns": [
+      1,
+      2,
+      3,
+      4,
+      5
     ],
-    "inspected": [
-      "final contact sheet opened",
-      "preview GIF opened",
-      "all four walk preview frames opened as walk_review.png"
-    ],
-    "unresolved_critical": false
+    "source_sheet_sha256": "0e97feb712b6dad2bba27e1997f8f74b839fc954e50b72d764d5540bfb2a1ad8",
+    "generation_sha256": "34dec051ce0c03778bfd1e0a3d1345f467afd64dfce69832ee44fc0ed361c288",
+    "prompt": "prompts.json",
+    "tool": "built-in image_gen",
+    "seat_hip_y": 96,
+    "processing": [
+      "alpha/chroma extraction",
+      "largest component cleanup",
+      "NEAREST pixel snap",
+      "own-palette quantisation",
+      "existing directional head restoration",
+      "collar registration",
+      "seat underside y96, floor y120",
+      "unchanged cells copied byte-for-byte",
+      "retain footwear height while normalizing shin",
+      "source long-hair continuation restoration for looks 02/08/10/20",
+      "reviewed anatomical hip split for long garments 20/22",
+      "look01 NE excess generated skirt tail removed",
+      "look01 rear excess generated skirt tails removed"
+    ]
+  },
+  "validation_pass2": {
+    "sheet_dimensions": true,
+    "contact_dimensions": true,
+    "preview_dimensions": true,
+    "preview_8fps_average": true,
+    "binary_alpha": true,
+    "own_palette_only": true,
+    "sw_idle_exact": true,
+    "untouched_cells_exact": true,
+    "all_cells_populated": true,
+    "seat_hip_y_is_96": true,
+    "no_seated_horizontal_gaps": true,
+    "head_region_preserved": true,
+    "layout_metadata_unchanged": true
   }
 }

@@ -356,57 +356,56 @@
         120
       ],
       "silhouette_bbox": [
-        20,
-        29,
+        5,
+        30,
         69,
         120
       ],
       "head": [
         51,
-        44
+        45
       ],
       "feet": {
         "screen_left": [
-          32,
+          19,
           109
         ],
         "screen_right": null
       },
       "hands": {
         "screen_left": [
-          35,
-          89
+          20,
+          91
         ],
-        "screen_right": [
-          48,
-          81
-        ]
+        "screen_right": null
       },
       "seat_contact": [
-        55,
+        42,
         96
       ],
-      "seat_surface_span": [
-        53,
-        57,
-        96
-      ],
+      "seat_surface_span": null,
       "accessory_anchors": {
         "hat": [
           51,
-          29
+          30
         ],
         "head": [
           51,
-          44
+          45
         ],
         "torso": [
-          48,
-          76
+          42,
+          77
         ]
       },
-      "landmark_status": "feet/hands/accessories are pixel-colour estimates; seat y is normalized to the visible underside",
-      "source": "AI action body; original head pixels restored (SE head mirrored); NEAREST + exact source palette"
+      "landmark_status": "colour-derived estimates, visual anatomy reviewed separately",
+      "source": "built-in imagegen action; existing directional head restored; exact source palette",
+      "head_translation": [
+        0,
+        8
+      ],
+      "head_region_preserved": true,
+      "seat_hip_y": 96
     },
     {
       "direction": "SW",
@@ -857,56 +856,55 @@
       ],
       "silhouette_bbox": [
         27,
-        26,
-        75,
+        31,
+        91,
         120
       ],
       "head": [
         44,
-        41
+        46
       ],
       "feet": {
         "screen_left": null,
         "screen_right": [
-          62,
+          75,
           109
         ]
       },
       "hands": {
-        "screen_left": [
-          46,
-          80
-        ],
+        "screen_left": null,
         "screen_right": [
-          59,
-          88
+          73,
+          90
         ]
       },
       "seat_contact": [
-        42,
+        52,
         96
       ],
-      "seat_surface_span": [
-        36,
-        49,
-        96
-      ],
+      "seat_surface_span": null,
       "accessory_anchors": {
         "hat": [
           44,
-          26
+          31
         ],
         "head": [
           44,
-          41
+          46
         ],
         "torso": [
-          48,
-          73
+          52,
+          78
         ]
       },
-      "landmark_status": "feet/hands/accessories are pixel-colour estimates; seat y is normalized to the visible underside",
-      "source": "AI action body; original head pixels restored (SE head mirrored); NEAREST + exact source palette"
+      "landmark_status": "colour-derived estimates, visual anatomy reviewed separately",
+      "source": "built-in imagegen action; existing directional head restored; exact source palette",
+      "head_translation": [
+        0,
+        9
+      ],
+      "head_region_preserved": true,
+      "seat_hip_y": 96
     },
     {
       "direction": "SE",
@@ -1356,54 +1354,56 @@
         120
       ],
       "silhouette_bbox": [
-        23,
-        26,
+        15,
+        29,
         69,
         120
       ],
       "head": [
         49,
-        43
+        46
       ],
       "feet": {
         "screen_left": [
-          35,
-          109
+          28,
+          111
         ],
         "screen_right": null
       },
       "hands": {
         "screen_left": [
-          32,
-          90
+          29,
+          95
         ],
         "screen_right": null
       },
       "seat_contact": [
-        58,
+        54,
         96
       ],
-      "seat_surface_span": [
-        56,
-        61,
-        96
-      ],
+      "seat_surface_span": null,
       "accessory_anchors": {
         "hat": [
           49,
-          26
+          29
         ],
         "head": [
           49,
-          43
+          46
         ],
         "torso": [
-          48,
-          73
+          54,
+          76
         ]
       },
-      "landmark_status": "feet/hands/accessories are pixel-colour estimates; seat y is normalized to the visible underside",
-      "source": "AI action body and fixed generated rear head; NEAREST + exact source palette"
+      "landmark_status": "colour-derived estimates, visual anatomy reviewed separately",
+      "source": "built-in imagegen action; existing directional head restored; exact source palette",
+      "head_translation": [
+        0,
+        7
+      ],
+      "head_region_preserved": true,
+      "seat_hip_y": 96
     },
     {
       "direction": "NW",
@@ -1854,53 +1854,58 @@
       ],
       "silhouette_bbox": [
         26,
-        26,
-        75,
+        27,
+        82,
         120
       ],
       "head": [
         46,
-        43
+        44
       ],
       "feet": {
         "screen_left": null,
         "screen_right": [
-          62,
+          67,
           109
         ]
       },
       "hands": {
-        "screen_left": null,
+        "screen_left": [
+          40,
+          79
+        ],
         "screen_right": [
-          65,
+          69,
           90
         ]
       },
       "seat_contact": [
-        38,
+        51,
         96
       ],
-      "seat_surface_span": [
-        35,
-        40,
-        96
-      ],
+      "seat_surface_span": null,
       "accessory_anchors": {
         "hat": [
           46,
-          26
+          27
         ],
         "head": [
           46,
-          43
+          44
         ],
         "torso": [
-          48,
-          73
+          51,
+          75
         ]
       },
-      "landmark_status": "feet/hands/accessories are pixel-colour estimates; seat y is normalized to the visible underside",
-      "source": "AI action body and fixed generated rear head; NEAREST + exact source palette"
+      "landmark_status": "colour-derived estimates, visual anatomy reviewed separately",
+      "source": "built-in imagegen action; existing directional head restored; exact source palette",
+      "head_translation": [
+        0,
+        5
+      ],
+      "head_region_preserved": true,
+      "seat_hip_y": 96
     },
     {
       "direction": "NE",
@@ -2078,47 +2083,22 @@
     ]
   },
   "checks": {
-    "frame_count": 32,
-    "palette_exact": true,
+    "sheet_size": [
+      768,
+      512
+    ],
     "binary_alpha": true,
-    "original_idle_pixel_exact": true,
-    "foot_ground_y": 120,
-    "fixed_root": [
+    "own_palette_only": true,
+    "SW_idle_pixel_exact": true,
+    "untouched_cells_pixel_exact": true,
+    "directional_heads_pixel_exact": true,
+    "seat_hip_y": 96,
+    "foot_anchor": [
       48,
       120
     ],
-    "alignment": "fixed neck/skull registration; original head pixels stationary; foot root (48,120)",
-    "front_heads_source_pixels": true,
-    "walk_unique_bitmaps_per_direction": 4,
-    "seat_surface_y": 96,
-    "seat_contact_spans": [
-      [
-        53,
-        57,
-        96
-      ],
-      [
-        36,
-        49,
-        96
-      ],
-      [
-        56,
-        61,
-        96
-      ],
-      [
-        35,
-        40,
-        96
-      ]
-    ],
-    "preview_size": [
-      1152,
-      384
-    ],
-    "preview_fps": 8,
-    "preview_durations_ms": [
+    "preview_fps_average": 8,
+    "preview_frame_durations_ms": [
       120,
       130,
       120,
@@ -2127,36 +2107,32 @@
     "contact_size": [
       2304,
       1536
-    ],
-    "front_head_pixel_exact_verified": true,
-    "source_file_pixel_match_verified": true,
-    "all_silhouettes_clear_of_cell_borders": true,
-    "gait_bitmap_uniqueness_is_not_anatomical_certification": true,
-    "standing_front_head_lateral_drift_px": 0
-  },
-  "visual_review": {
-    "status": "REVIEWED_WITH_NOTES",
-    "quality_note": "Original face and bangs are exact; braid and skirt width still vary across poses.",
-    "issues": [
-      "The lower braid and skirt silhouette vary between contact and passing poses.",
-      "Rear arm counter-swing is modest; not a compositor-certified anatomical cycle."
-    ],
-    "inspected": [
-      "final contact sheet",
-      "GIF opened",
-      "all four decoded GIF frames",
-      "flat-seat diagnostic"
     ]
   },
+  "visual_review": {
+    "status": "SEAT REVIEW CANDIDATE",
+    "contact_opened": true,
+    "seat_diagnostic_opened": true,
+    "notes": "Seated thighs extend forward and original braid pixels are restored; boot silhouette remains broader than idle.",
+    "gait_redrawn": false,
+    "gait_acceptance": "UNCHANGED, OUTSIDE REQUESTED GAIT SET",
+    "furniture_integration_tested": false,
+    "contact_sha256": "e9919c4dad19e5fe17d79abaf14dccb9b5a15d75c03b26ea36e16226e2c5bf60"
+  },
   "processing": [
-    "Built-in image generation from original reference",
-    "green key and component cleanup",
-    "NEAREST true-pixel snap",
-    "quantize to own source palette",
-    "source front-head restoration and fixed rear-head reuse",
-    "fixed torso registration",
-    "seat underside normalized to y96; soles y120",
-    "SW idle exact copy"
+    "alpha/chroma extraction",
+    "largest component cleanup",
+    "NEAREST pixel snap",
+    "own-palette quantisation",
+    "existing directional head restoration",
+    "collar registration",
+    "seat underside y96, floor y120",
+    "unchanged cells copied byte-for-byte",
+    "retain footwear height while normalizing shin",
+    "source long-hair continuation restoration for looks 02/08/10/20",
+    "reviewed anatomical hip split for long garments 20/22",
+    "look01 NE excess generated skirt tail removed",
+    "look01 rear excess generated skirt tails removed"
   ],
   "generation_input_sha256": "3be0b5df12439f811f873f8a2a4407b86c229744fe669db394c271c2882b987c",
   "generation": {
@@ -2169,5 +2145,47 @@
     ],
     "walk_input_sha256": "f472fc4ce15479897bb3e36f52927fbc6d0d7e726b4e7a2788119db45100b674"
   },
-  "seating_validation": "Visible underside at y96 tested against a flat diagnostic seat; no room furniture compositor certification."
+  "seating_validation": "Visible underside at y96 tested against a flat diagnostic seat; no room furniture compositor certification.",
+  "seat_hip_y": 96,
+  "approval": "PASS2 REVIEW CANDIDATE; see visual_review",
+  "pass2": {
+    "changed_columns": [
+      5
+    ],
+    "source_sheet_sha256": "031a7d1d37a6ea7ef8b49fb5659d30294fd6398c5b1f6d2cacec77b20118f14e",
+    "generation_sha256": "943cd4cc1636debd3607aed99f2aa58e02539429b302f690f0fc3f829c8068bb",
+    "prompt": "prompts.json",
+    "tool": "built-in image_gen",
+    "seat_hip_y": 96,
+    "processing": [
+      "alpha/chroma extraction",
+      "largest component cleanup",
+      "NEAREST pixel snap",
+      "own-palette quantisation",
+      "existing directional head restoration",
+      "collar registration",
+      "seat underside y96, floor y120",
+      "unchanged cells copied byte-for-byte",
+      "retain footwear height while normalizing shin",
+      "source long-hair continuation restoration for looks 02/08/10/20",
+      "reviewed anatomical hip split for long garments 20/22",
+      "look01 NE excess generated skirt tail removed",
+      "look01 rear excess generated skirt tails removed"
+    ]
+  },
+  "validation_pass2": {
+    "sheet_dimensions": true,
+    "contact_dimensions": true,
+    "preview_dimensions": true,
+    "preview_8fps_average": true,
+    "binary_alpha": true,
+    "own_palette_only": true,
+    "sw_idle_exact": true,
+    "untouched_cells_exact": true,
+    "all_cells_populated": true,
+    "seat_hip_y_is_96": true,
+    "no_seated_horizontal_gaps": true,
+    "head_region_preserved": true,
+    "layout_metadata_unchanged": true
+  }
 }
