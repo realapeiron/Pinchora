@@ -8,8 +8,8 @@ use crate::{
     sql_id,
 };
 
-/// How long a deleted player's id is remembered: past the longest cooldown (a month), so by then
-/// nothing they could have used up is still locked.
+/// Default retention for ordinary cooldowns. A live birthday expiry can retain the id longer,
+/// through the annual claim window; no birthday date is kept in that tombstone.
 pub const TOMBSTONE_DAYS: i64 = 35;
 
 /// How long after deleting their data a pet cannot be taken for a walk: the walk's own cooldown, which
@@ -477,16 +477,20 @@ impl Db {
     }
 
     /// Drops the tombstones of players who deleted their data more than [`TOMBSTONE_DAYS`] before
-    /// `now`; returns how many went.
+    /// `now`, except those with a live birthday expiry; returns how many went.
     pub async fn forget_old_tombstones(&self, now: DateTime<Utc>) -> anyhow::Result<u64> {
         let before = now - Duration::days(TOMBSTONE_DAYS);
         retry("forget_old_tombstones", || async move {
+            // An annual birthday lock must not extend retention of unrelated cooldowns or ids.
+            sqlx::query("UPDATE deleted_users SET deleted_at='epoch', last_daily_at=NULL, last_rep_at=NULL, weekly_at=NULL, monthly_at=NULL, day=NULL, visits=0, liked='{}', wordle_day=NULL, walk_until=NULL, pet_wake_day=NULL, picross_day=NULL, comb_ready_at=NULL WHERE user_id IN (SELECT user_id FROM deleted_users WHERE deleted_at<$1 AND deleted_at<>'epoch' AND birthday_until>$2 FOR UPDATE SKIP LOCKED)")
+                .bind(before).bind(now).execute(self.pool()).await?;
             Ok(sqlx::query(
                 "WITH old AS MATERIALIZED (
-                     SELECT user_id FROM deleted_users WHERE deleted_at < $1 FOR UPDATE SKIP LOCKED)
+                     SELECT user_id FROM deleted_users WHERE deleted_at < $1 AND (birthday_until IS NULL OR birthday_until <= $2) FOR UPDATE SKIP LOCKED)
                  DELETE FROM deleted_users WHERE user_id IN (SELECT user_id FROM old)",
             )
             .bind(before)
+            .bind(now)
             .execute(self.pool())
             .await?
             .rows_affected())
@@ -661,5 +665,9 @@ async fn leave_tombstone(
     .bind(used.comb_ready_at)
     .execute(&mut **tx)
     .await?;
+    // Preserve only an expiry, not the erased birthday or server membership. A claimed celebration
+    // stays spent until the next UTC year; an unclaimed date keeps its original 30-day change lock.
+    sqlx::query("UPDATE deleted_users SET birthday_until=GREATEST(birthday_until, (SELECT max(locked_until) FROM birthday_gift_years WHERE user_id=$1), (SELECT make_date(max(utc_year)::int+1,1,1)::timestamp AT TIME ZONE 'UTC' FROM birthday_sent WHERE user_id=$1)) WHERE user_id=$1")
+        .bind(id).execute(&mut **tx).await?;
     Ok(())
 }

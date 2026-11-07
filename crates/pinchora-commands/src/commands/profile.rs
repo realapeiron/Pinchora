@@ -94,7 +94,12 @@ pub(crate) async fn card_with(
     let lang = cx.lang();
     let title = customize::title_name(&row, lang);
     let partner = partner_name(&cx.app, user.id.get()).await;
-    let birthday_today = if let Some(guild) = cx.guild_id() {
+    let birthday_today = if let Some(guild) = cx.guild_id()
+        && cx
+            .app
+            .module_allowed(guild, None, pinchora_core::modules::Module::Birthdays)
+            .await
+    {
         db.birthday_profile(guild, user.id.get())
             .await?
             .is_some_and(|(month, day, zone, public)| {

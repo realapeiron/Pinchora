@@ -225,10 +225,7 @@ async fn show_me(cx: &Cx) -> anyhow::Result<()> {
     cx.reply_ephemeral(t!(
         cx.lang(),
         "birthdays.mine",
-        date = b.year.map_or_else(
-            || format!("{:02}/{:02}", b.day, b.month),
-            |year| format!("{:02}/{:02}/{year}", b.day, b.month)
-        ),
+        date = format!("{:02}/{:02}", b.day, b.month),
         zone = b.tz,
         visibility = t!(
             cx.lang(),
@@ -244,6 +241,9 @@ async fn show_me(cx: &Cx) -> anyhow::Result<()> {
 async fn view(cx: &Cx, user: u64) -> anyhow::Result<()> {
     if user == cx.author()?.id.get() {
         return show_me(cx).await;
+    }
+    if cx.app.db.privacy(user).await?.hide_profile {
+        return cx.reply_ephemeral(t!(cx.lang(), "birthdays.hidden")).await;
     }
     let Some(b) = cx.app.db.birthday(user).await?.filter(|b| b.public) else {
         return cx.reply_ephemeral(t!(cx.lang(), "birthdays.hidden")).await;
@@ -447,7 +447,8 @@ pub(crate) async fn on_component(cx: &Cx, mut parts: std::str::Split<'_, char>) 
     {
         return cx.reply_ephemeral(t!(cx.lang(), "birthdays.invalid-date")).await;
     }
-    cx.app
+    let saved = cx
+        .app
         .db
         .set_birthday(
             user as u64,
@@ -461,7 +462,11 @@ pub(crate) async fn on_component(cx: &Cx, mut parts: std::str::Split<'_, char>) 
             },
         )
         .await?;
-    cx.reply_ephemeral(t!(cx.lang(), "birthdays.saved")).await
+    cx.reply_ephemeral(t!(
+        cx.lang(),
+        if saved { "birthdays.saved" } else { "birthdays.locked" }
+    ))
+    .await
 }
 
 pub(crate) fn autocomplete(data: &CommandData) -> Vec<CommandOptionChoice> {

@@ -98,6 +98,12 @@ pub fn check_settings(s: &BirthdaySettings) -> Result<(), &'static str> {
     {
         return Err("message");
     }
+    if s.channel_id.is_some_and(|id| id == 0 || id > i64::MAX as u64) {
+        return Err("channel_id");
+    }
+    if s.role_id.is_some_and(|id| id == 0 || id > i64::MAX as u64) {
+        return Err("role_id");
+    }
     if s.enabled && s.channel_id.is_none() {
         return Err("channel");
     }
@@ -105,14 +111,70 @@ pub fn check_settings(s: &BirthdaySettings) -> Result<(), &'static str> {
 }
 
 pub fn format_message(template: &str, user: u64, age: Option<i32>) -> String {
-    template
+    let message = template
         .replace("{user}", &format!("<@{user}>"))
-        .replace("{age}", &age.map_or_else(|| "".into(), |n| n.to_string()))
+        .replace("{age}", &age.map_or_else(|| "".into(), |n| n.to_string()));
+    truncate_message(&message, 1800)
+}
+
+/// Discord limits content by UTF-16 units; template expansion can exceed its input limit.
+pub fn truncate_message(message: &str, limit: usize) -> String {
+    if message.encode_utf16().count() <= limit {
+        return message.to_owned();
+    }
+    let mut units = 0;
+    let mut text: String = message
+        .chars()
+        .take_while(|c| {
+            units += c.len_utf16();
+            units < limit
+        })
+        .collect();
+    text.push('…');
+    text
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn odd_offsets_and_skipped_midnight() {
+        for (zone, instant) in [
+            ("Asia/Kathmandu", "2026-01-01T18:20:00Z"),
+            ("Pacific/Tongatapu", "2026-01-01T11:05:00Z"),
+            ("America/Santiago", "2026-09-06T04:05:00Z"),
+        ] {
+            let now = DateTime::parse_from_rfc3339(instant).unwrap().with_timezone(&Utc);
+            let tz = timezone(zone).unwrap();
+            assert!(local_midnight_window(now, tz), "{zone}");
+            assert_eq!(
+                next_date(local_date(now, tz).month(), local_date(now, tz).day(), now, tz),
+                Some(local_date(now, tz))
+            );
+        }
+    }
+    #[test]
+    fn expanded_messages_and_ids_are_bounded() {
+        let message = format_message(&"{user}".repeat(83), u64::MAX, None);
+        assert!(message.encode_utf16().count() <= 1800);
+        assert!(truncate_message(&"🎂".repeat(1000), 1900).encode_utf16().count() <= 1900);
+        for id in [0, u64::MAX] {
+            assert!(
+                check_settings(&BirthdaySettings {
+                    role_id: Some(id),
+                    ..Default::default()
+                })
+                .is_err()
+            );
+            assert!(
+                check_settings(&BirthdaySettings {
+                    channel_id: Some(id),
+                    ..Default::default()
+                })
+                .is_err()
+            );
+        }
+    }
     #[test]
     fn leap_day_and_privacy() {
         assert_eq!(birthday_this_year(2, 29, 2025), NaiveDate::from_ymd_opt(2025, 2, 28));

@@ -12644,6 +12644,8 @@ async fn admin_paths_refuse_members_without_manage_server() {
         "channels": channels,
     });
     let rows: Vec<(&str, Value)> = vec![
+        ("birthdays settings", json!([sub("settings", vec![])])),
+        ("birthdays preview", json!([sub("preview", vec![])])),
         (
             "voice creators add",
             json!([group(

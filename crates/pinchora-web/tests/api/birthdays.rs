@@ -54,4 +54,54 @@ async fn birthday_settings_and_upcoming_respect_id_and_date_privacy() {
     assert_eq!(upcoming[0]["user_id"], member.to_string());
     assert!(upcoming[0].get("year").is_none());
     assert!(upcoming[0].get("age").is_none());
+    h.state
+        .app
+        .db
+        .set_privacy(member, pinchora_db::Hide::Profile, true)
+        .await
+        .unwrap();
+    assert_eq!(browser.get(&path).await.json()["upcoming"], json!([]));
+}
+
+#[tokio::test]
+async fn birthday_writes_require_manager_csrf_and_audit() {
+    let Some(h) = Harness::new("birthday_access").await else {
+        return;
+    };
+    let (guild, _, mut browser) = h.managed_server().await;
+    let path = format!("/api/guilds/{guild}/birthdays");
+    let body = json!({"enabled":false,"channel_id":null,"role_id":null,"message":"Hello {user}","announce_hour":0,"server_tz":"UTC","shells_gift":0,"allow_age":false,"badge":false});
+    let csrf = browser.csrf.take();
+    assert_eq!(
+        browser.write(Method::PUT, &path, body.clone()).await.status,
+        StatusCode::FORBIDDEN
+    );
+    browser.csrf = csrf;
+    let stranger = guild + 1;
+    h.add_bot(stranger);
+    assert_eq!(
+        browser.get(&format!("/api/guilds/{stranger}/birthdays")).await.status,
+        StatusCode::FORBIDDEN
+    );
+    assert_eq!(
+        browser
+            .write(Method::PUT, &format!("/api/guilds/{stranger}/birthdays"), body.clone())
+            .await
+            .status,
+        StatusCode::FORBIDDEN
+    );
+    for id in ["0", "18446744073709551615"] {
+        let mut invalid = body.clone();
+        invalid["role_id"] = json!(id);
+        assert_ne!(browser.write(Method::PUT, &path, invalid).await.status, StatusCode::OK);
+    }
+    assert_eq!(browser.write(Method::PUT, &path, body).await.status, StatusCode::OK);
+    let audit = browser.get(&format!("/api/guilds/{guild}/audit")).await.json();
+    assert!(
+        audit["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|r| r["action"] == "birthdays.set")
+    );
 }

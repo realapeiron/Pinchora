@@ -88,6 +88,9 @@ fn id(value: Option<String>, lang: pinchora_core::i18n::Lang) -> ApiResult<Optio
     value
         .map(|s| {
             s.parse::<u64>()
+                .ok()
+                .filter(|id| *id > 0 && *id <= i64::MAX as u64)
+                .ok_or(())
                 .map_err(|_| ApiError::malformed(t!(lang, "birthdays.invalid-id")))
         })
         .transpose()

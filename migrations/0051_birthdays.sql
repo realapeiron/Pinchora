@@ -26,12 +26,23 @@ CREATE TABLE birthday_sent (
     user_id BIGINT NOT NULL,
     year SMALLINT NOT NULL,
     role_until TIMESTAMPTZ,
+    role_id BIGINT,
+    role_done BOOLEAN NOT NULL DEFAULT FALSE,
+    delivery_id BIGSERIAL UNIQUE,
+    batch_id BIGINT,
+    announced_at TIMESTAMPTZ,
+    utc_year SMALLINT NOT NULL DEFAULT EXTRACT(YEAR FROM now() AT TIME ZONE 'UTC'),
     sent_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    PRIMARY KEY (guild_id, user_id, year)
+    PRIMARY KEY (guild_id, user_id, year),
+    UNIQUE (guild_id, user_id, utc_year)
 );
 CREATE TABLE birthday_gift_years (
     user_id BIGINT NOT NULL,
     year SMALLINT NOT NULL,
+    locked_until TIMESTAMPTZ, -- year 0 is a date-change cooldown, retained by /birthday remove
     PRIMARY KEY (user_id, year)
 );
 CREATE INDEX birthday_sent_user ON birthday_sent(user_id);
+
+-- Minimal abuse retention after erasure: no birthday date, year, zone or guild is retained.
+ALTER TABLE deleted_users ADD COLUMN birthday_until TIMESTAMPTZ;
