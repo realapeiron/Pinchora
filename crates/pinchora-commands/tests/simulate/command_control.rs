@@ -492,7 +492,7 @@ async fn permissive_overrides_and_aliases_cannot_open_manage_server_paths() {
     sim.app.announce_guild_change(sim.guild).await;
     assert_eq!(
         sim.app.command_control(sim.guild).await.unwrap().expand("ccmanage"),
-        "customcommand list"
+        "setup commands custom-list"
     );
     assert_eq!(
         sim.app.command_control(sim.guild + 1).await.unwrap().expand("ccmanage"),

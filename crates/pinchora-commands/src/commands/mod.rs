@@ -97,7 +97,7 @@ macro_rules! commands {
 
         pub fn definitions() -> Vec<Command> {
             let mut commands = legacy_definitions();
-            commands.push(crate::routing::setup(&commands));
+            crate::routing::extend(&mut commands);
             crate::lang::localize(&mut commands);
             commands
         }

@@ -59,6 +59,7 @@ pub struct Responder {
     command_policy: OnceLock<pinchora_core::command_control::Rule>,
     deletion_scheduled: OnceLock<()>,
     deferred_private: OnceLock<bool>,
+    migration_notice: OnceLock<String>,
 }
 
 enum State {
@@ -104,7 +105,12 @@ impl Responder {
             command_policy: OnceLock::new(),
             deletion_scheduled: OnceLock::new(),
             deferred_private: OnceLock::new(),
+            migration_notice: OnceLock::new(),
         }
+    }
+
+    pub(crate) fn set_migration_notice(&self, notice: String) {
+        let _ = self.migration_notice.set(notice);
     }
 
     pub(crate) fn set_command_policy(&self, policy: pinchora_core::command_control::Rule) {
@@ -158,6 +164,7 @@ impl Responder {
             command_policy: OnceLock::new(),
             deletion_scheduled: OnceLock::new(),
             deferred_private: OnceLock::new(),
+            migration_notice: OnceLock::new(),
         }
     }
 
@@ -415,6 +422,17 @@ impl Responder {
         let private = flags.contains(MessageFlags::EPHEMERAL);
         if private && data.components.as_ref().is_some_and(|c| !c.is_empty()) {
             data = slash_only_notice(&text.path, text.lang);
+        }
+        if text.first.get().is_none()
+            && let Some(notice) = self.migration_notice.get()
+        {
+            let content = data.content.get_or_insert_with(String::new);
+            if content.chars().count() + notice.chars().count() < 2000 {
+                if !content.is_empty() {
+                    content.push('\n');
+                }
+                content.push_str(notice);
+            }
         }
         let none = AllowedMentions::default();
         let mentions = data.allowed_mentions.as_ref().unwrap_or(&none);

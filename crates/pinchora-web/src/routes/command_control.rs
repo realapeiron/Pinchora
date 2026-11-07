@@ -68,8 +68,10 @@ async fn save(
     ApiJson(config): ApiJson<Config>,
 ) -> ApiResult<Json<Value>> {
     let lang = state.app.guild_lang(managed.id).await;
+    let before = state.app.db.command_control(managed.id).await?;
     config
-        .validate(
+        .validate_update(
+            &before,
             &pinchora_commands::control_catalog(),
             &pinchora_commands::command_reserved_aliases(),
             lang,
@@ -93,7 +95,6 @@ async fn save(
             )?;
         }
     }
-    let before = state.app.db.command_control(managed.id).await?;
     state.app.db.set_command_control(managed.id, &config).await?;
     audit::finish(
         &state,

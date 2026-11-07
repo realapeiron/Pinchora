@@ -129,6 +129,209 @@
           "usage": "/bio <text>"
         },
         {
+          "description": "Your year in numbers (open from 1 December to 31 January)",
+          "manager": false,
+          "options": [
+            {
+              "description": "Which year (default: the one that just ended)",
+              "name": "year",
+              "required": false
+            }
+          ],
+          "path": "info wrapped",
+          "usage": "/info wrapped [year]"
+        },
+        {
+          "description": "Create an achievement (up to 25)",
+          "manager": true,
+          "options": [
+            {
+              "description": "Name shown on the card",
+              "name": "name",
+              "required": true
+            },
+            {
+              "choices": [
+                "Messages",
+                "Voice minutes",
+                "Level",
+                "Days active",
+                "Invites",
+                "Stars received",
+                "Tickets closed",
+                "Reputation",
+                "Games won",
+                "Fish caught",
+                "Custom"
+              ],
+              "description": "What earns it",
+              "name": "kind",
+              "required": true
+            },
+            {
+              "description": "Progress needed",
+              "name": "target",
+              "required": true
+            },
+            {
+              "description": "Short description",
+              "name": "description",
+              "required": false
+            },
+            {
+              "description": "Icon name from the dashboard picker",
+              "name": "icon",
+              "required": false
+            },
+            {
+              "description": "Role reward",
+              "name": "role",
+              "required": false
+            },
+            {
+              "description": "Server points reward",
+              "name": "points",
+              "required": false
+            },
+            {
+              "description": "Channel to announce grants",
+              "name": "announce_channel",
+              "required": false
+            },
+            {
+              "description": "Hide until earned",
+              "name": "secret",
+              "required": false
+            }
+          ],
+          "path": "setup achievements add",
+          "usage": "/setup achievements add <name> <kind> <target> [description] [icon] [role] [points] [announce_channel] [secret]"
+        },
+        {
+          "description": "Edit an achievement",
+          "manager": true,
+          "options": [
+            {
+              "description": "Achievement ID from list",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "New name",
+              "name": "name",
+              "required": false
+            },
+            {
+              "description": "New description",
+              "name": "description",
+              "required": false
+            },
+            {
+              "choices": [
+                "Messages",
+                "Voice minutes",
+                "Level",
+                "Days active",
+                "Invites",
+                "Stars received",
+                "Tickets closed",
+                "Reputation",
+                "Games won",
+                "Fish caught",
+                "Custom"
+              ],
+              "description": "New kind",
+              "name": "kind",
+              "required": false
+            },
+            {
+              "description": "New icon",
+              "name": "icon",
+              "required": false
+            },
+            {
+              "description": "New progress target",
+              "name": "target",
+              "required": false
+            },
+            {
+              "description": "New role reward",
+              "name": "role",
+              "required": false
+            },
+            {
+              "description": "Remove the current role reward",
+              "name": "clear_role",
+              "required": false
+            },
+            {
+              "description": "New points reward",
+              "name": "points",
+              "required": false
+            },
+            {
+              "description": "New announcement channel",
+              "name": "announce_channel",
+              "required": false
+            },
+            {
+              "description": "Remove the current announcement channel",
+              "name": "clear_announce_channel",
+              "required": false
+            },
+            {
+              "description": "Hide until earned",
+              "name": "secret",
+              "required": false
+            },
+            {
+              "description": "Enable or disable",
+              "name": "enabled",
+              "required": false
+            }
+          ],
+          "path": "setup achievements edit",
+          "usage": "/setup achievements edit <id> [name] [description] [kind] [icon] [target] [role] [clear_role] [points] [announce_channel] [clear_announce_channel] [secret] [enabled]"
+        },
+        {
+          "description": "Give a custom achievement to a member",
+          "manager": true,
+          "options": [
+            {
+              "description": "Achievement ID",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "Member who earns it",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "setup achievements grant",
+          "usage": "/setup achievements grant <id> <user>"
+        },
+        {
+          "description": "List configured achievements",
+          "manager": true,
+          "options": [],
+          "path": "setup achievements list",
+          "usage": "/setup achievements list"
+        },
+        {
+          "description": "Remove an achievement and its grants",
+          "manager": true,
+          "options": [
+            {
+              "description": "Achievement ID",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "setup achievements remove",
+          "usage": "/setup achievements remove <id>"
+        },
+        {
           "description": "Design your pixel character: looks, colours, accessories and outfits",
           "manager": false,
           "options": [],
@@ -169,6 +372,19 @@
           "options": [],
           "path": "customize showcase",
           "usage": "/customize showcase"
+        },
+        {
+          "description": "Set the about-me text on your profile card",
+          "manager": false,
+          "options": [
+            {
+              "description": "Up to 160 characters; send \"-\" to clear it",
+              "name": "text",
+              "required": true
+            }
+          ],
+          "path": "customize bio",
+          "usage": "/customize bio <text>"
         },
         {
           "description": "Your year in numbers (open from 1 December to 31 January)",
@@ -425,6 +641,20 @@
           "options": [],
           "path": "weekly",
           "usage": "/weekly"
+        },
+        {
+          "description": "Collect your monthly shells (every 30 days)",
+          "manager": false,
+          "options": [],
+          "path": "rewards monthly",
+          "usage": "/rewards monthly"
+        },
+        {
+          "description": "Collect your weekly shells (every 7 days)",
+          "manager": false,
+          "options": [],
+          "path": "rewards weekly",
+          "usage": "/rewards weekly"
         },
         {
           "description": "Collect your monthly shells (every 30 days)",
@@ -844,6 +1074,13 @@
           "options": [],
           "path": "house contest winners",
           "usage": "/house contest winners"
+        },
+        {
+          "description": "Arrange the plaza's donated furniture (Manage Server)",
+          "manager": true,
+          "options": [],
+          "path": "setup community plaza-edit",
+          "usage": "/setup community plaza-edit"
         },
         {
           "description": "Look around the server plaza",
@@ -1567,42 +1804,6 @@
           "usage": "/poll <question> <options> [duration]"
         },
         {
-          "description": "Give someone server points (Manage Server)",
-          "manager": true,
-          "options": [
-            {
-              "description": "Who gets the points",
-              "name": "user",
-              "required": true
-            },
-            {
-              "description": "How many points",
-              "name": "amount",
-              "required": true
-            }
-          ],
-          "path": "setup economy points-give",
-          "usage": "/setup economy points-give <user> <amount>"
-        },
-        {
-          "description": "Take server points from someone (Manage Server)",
-          "manager": true,
-          "options": [
-            {
-              "description": "Who loses the points",
-              "name": "user",
-              "required": true
-            },
-            {
-              "description": "How many points (they never go below zero)",
-              "name": "amount",
-              "required": true
-            }
-          ],
-          "path": "setup economy points-take",
-          "usage": "/setup economy points-take <user> <amount>"
-        },
-        {
           "description": "Give a role to everyone who joins (up to 10), or change one",
           "manager": true,
           "options": [
@@ -1861,6 +2062,799 @@
           "usage": "/setup roles panel-temp <role> <duration> [panel]"
         },
         {
+          "description": "Write a new custom command (a form asks for its reply)",
+          "manager": true,
+          "options": [
+            {
+              "description": "What members type after /tag: letters, numbers, - and _",
+              "name": "name",
+              "required": true
+            },
+            {
+              "description": "A line shown next to the name in suggestions",
+              "name": "description",
+              "required": false
+            },
+            {
+              "description": "Answer privately, so only the person who ran it sees it",
+              "name": "private",
+              "required": false
+            }
+          ],
+          "path": "setup commands custom-create",
+          "usage": "/setup commands custom-create <name> [description] [private]"
+        },
+        {
+          "description": "Remove a custom command",
+          "manager": true,
+          "options": [
+            {
+              "description": "The command to remove (start typing its name)",
+              "name": "name",
+              "required": true
+            }
+          ],
+          "path": "setup commands custom-delete",
+          "usage": "/setup commands custom-delete <name>"
+        },
+        {
+          "description": "Change a custom command's reply, description or cooldown",
+          "manager": true,
+          "options": [
+            {
+              "description": "The command to change (start typing its name)",
+              "name": "name",
+              "required": true
+            },
+            {
+              "description": "Answer privately (true) or in the channel (false); left alone when not given",
+              "name": "private",
+              "required": false
+            }
+          ],
+          "path": "setup commands custom-edit",
+          "usage": "/setup commands custom-edit <name> [private]"
+        },
+        {
+          "description": "How one custom command is set up",
+          "manager": true,
+          "options": [
+            {
+              "description": "The command to look at (start typing its name)",
+              "name": "name",
+              "required": true
+            }
+          ],
+          "path": "setup commands custom-info",
+          "usage": "/setup commands custom-info <name>"
+        },
+        {
+          "description": "Every custom command of this server",
+          "manager": true,
+          "options": [],
+          "path": "setup commands custom-list",
+          "usage": "/setup commands custom-list"
+        },
+        {
+          "description": "Give someone server points (Manage Server)",
+          "manager": true,
+          "options": [
+            {
+              "description": "Who gets the points",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "How many points",
+              "name": "amount",
+              "required": true
+            }
+          ],
+          "path": "setup economy points-give",
+          "usage": "/setup economy points-give <user> <amount>"
+        },
+        {
+          "description": "Take server points from someone (Manage Server)",
+          "manager": true,
+          "options": [
+            {
+              "description": "Who loses the points",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "How many points (they never go below zero)",
+              "name": "amount",
+              "required": true
+            }
+          ],
+          "path": "setup economy points-take",
+          "usage": "/setup economy points-take <user> <amount>"
+        },
+        {
+          "description": "Show an event template and create button",
+          "manager": true,
+          "options": [],
+          "path": "setup events template",
+          "usage": "/setup events template"
+        },
+        {
+          "description": "Follow a source and post what is new in a channel",
+          "manager": true,
+          "options": [
+            {
+              "choices": [
+                "YouTube",
+                "RSS or podcast",
+                "Reddit",
+                "Bluesky",
+                "X, Instagram or TikTok (bridge)"
+              ],
+              "description": "Where the posts come from",
+              "name": "kind",
+              "required": true
+            },
+            {
+              "description": "A channel link, @handle or id; a feed address; r/subreddit; a Bluesky handle",
+              "name": "source",
+              "required": true
+            },
+            {
+              "description": "Where new posts go",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "description": "The text: {title} {url} {author} {account} {published} (default: one per kind)",
+              "name": "message",
+              "required": false
+            },
+            {
+              "description": "A role to ping with every new post",
+              "name": "role",
+              "required": false
+            }
+          ],
+          "path": "setup feeds add",
+          "usage": "/setup feeds add <kind> <source> <channel> [message] [role]"
+        },
+        {
+          "description": "Change a feed's channel, message, role, card or filters",
+          "manager": true,
+          "options": [
+            {
+              "description": "The feed's number, from /feeds list",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "Post in this channel instead",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "The new text; - goes back to the default",
+              "name": "message",
+              "required": false
+            },
+            {
+              "description": "Ping this role with every new post",
+              "name": "role",
+              "required": false
+            },
+            {
+              "description": "Stop pinging a role",
+              "name": "no_role",
+              "required": false
+            },
+            {
+              "description": "Add Pinchora's card (title, picture, summary) under the text",
+              "name": "embed",
+              "required": false
+            },
+            {
+              "description": "Only post titles with one of these words, comma-separated; - clears",
+              "name": "include",
+              "required": false
+            },
+            {
+              "description": "Never post titles with these words, comma-separated; - clears",
+              "name": "exclude",
+              "required": false
+            },
+            {
+              "description": "Switch the feed on or off",
+              "name": "enabled",
+              "required": false
+            }
+          ],
+          "path": "setup feeds edit",
+          "usage": "/setup feeds edit <id> [channel] [message] [role] [no_role] [embed] [include] [exclude] [enabled]"
+        },
+        {
+          "description": "The feeds this server follows, with how they are doing",
+          "manager": true,
+          "options": [],
+          "path": "setup feeds list",
+          "usage": "/setup feeds list"
+        },
+        {
+          "description": "Stop following a source",
+          "manager": true,
+          "options": [
+            {
+              "description": "The feed's number, from /feeds list",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "setup feeds remove",
+          "usage": "/setup feeds remove <id>"
+        },
+        {
+          "description": "Post the source's latest item in the feed's channel now",
+          "manager": true,
+          "options": [
+            {
+              "description": "The feed's number, from /feeds list",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "setup feeds test",
+          "usage": "/setup feeds test <id>"
+        },
+        {
+          "description": "Add invitations to a member's score",
+          "manager": true,
+          "options": [
+            {
+              "description": "Member",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Amount",
+              "name": "amount",
+              "required": true
+            }
+          ],
+          "path": "setup invites bonus-add",
+          "usage": "/setup invites bonus-add <user> <amount>"
+        },
+        {
+          "description": "Remove a bonus from a member's score",
+          "manager": true,
+          "options": [
+            {
+              "description": "Member",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Amount",
+              "name": "amount",
+              "required": true
+            }
+          ],
+          "path": "setup invites bonus-remove",
+          "usage": "/setup invites bonus-remove <user> <amount>"
+        },
+        {
+          "description": "Post an Invite a friend button in this channel",
+          "manager": true,
+          "options": [],
+          "path": "setup invites post",
+          "usage": "/setup invites post"
+        },
+        {
+          "description": "Give a role at an invite milestone",
+          "manager": true,
+          "options": [
+            {
+              "description": "Invite threshold",
+              "name": "invites",
+              "required": true
+            },
+            {
+              "description": "Role to give",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "setup invites reward-add",
+          "usage": "/setup invites reward-add <invites> <role>"
+        },
+        {
+          "description": "Remove an invite reward",
+          "manager": true,
+          "options": [
+            {
+              "description": "Invite threshold",
+              "name": "invites",
+              "required": true
+            }
+          ],
+          "path": "setup invites reward-remove",
+          "usage": "/setup invites reward-remove <invites>"
+        },
+        {
+          "description": "Set the tracking and friend-link options",
+          "manager": true,
+          "options": [
+            {
+              "description": "Count new joins",
+              "name": "enabled",
+              "required": false
+            },
+            {
+              "description": "Account age below this is suspicious",
+              "name": "fake_days",
+              "required": false
+            },
+            {
+              "description": "Channel for join logs",
+              "name": "log_channel",
+              "required": false
+            },
+            {
+              "description": "Let members create friend links",
+              "name": "temp_enabled",
+              "required": false
+            },
+            {
+              "description": "Channel friend links lead to",
+              "name": "temp_channel",
+              "required": false
+            },
+            {
+              "description": "Daily links allowed per member",
+              "name": "temp_daily",
+              "required": false
+            },
+            {
+              "description": "Friend link lifetime in seconds",
+              "name": "temp_age",
+              "required": false
+            },
+            {
+              "description": "Maximum uses for each friend link",
+              "name": "temp_uses",
+              "required": false
+            }
+          ],
+          "path": "setup invites settings",
+          "usage": "/setup invites settings [enabled] [fake_days] [log_channel] [temp_enabled] [temp_channel] [temp_daily] [temp_age] [temp_uses]"
+        },
+        {
+          "description": "Save a once or recurring message",
+          "manager": true,
+          "options": [
+            {
+              "description": "Channel for the message",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "description": "Message text",
+              "name": "text",
+              "required": true
+            },
+            {
+              "description": "First run (RFC3339, such as 2026-12-01T09:00:00+03:00)",
+              "name": "when",
+              "required": true
+            },
+            {
+              "description": "once, daily, weekly, every:seconds, or cron:minute hour day month weekday",
+              "name": "every",
+              "required": false
+            },
+            {
+              "description": "IANA time zone, such as Europe/Istanbul",
+              "name": "tz",
+              "required": false
+            }
+          ],
+          "path": "setup utility schedule-add",
+          "usage": "/setup utility schedule-add <channel> <text> <when> [every] [tz]"
+        },
+        {
+          "description": "List scheduled messages",
+          "manager": true,
+          "options": [],
+          "path": "setup utility schedule-list",
+          "usage": "/setup utility schedule-list"
+        },
+        {
+          "description": "Pause a scheduled message",
+          "manager": true,
+          "options": [
+            {
+              "description": "Scheduled message ID",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "setup utility schedule-pause",
+          "usage": "/setup utility schedule-pause <id>"
+        },
+        {
+          "description": "Show the next five runs",
+          "manager": true,
+          "options": [
+            {
+              "description": "Scheduled message ID",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "setup utility schedule-preview",
+          "usage": "/setup utility schedule-preview <id>"
+        },
+        {
+          "description": "Remove a scheduled message",
+          "manager": true,
+          "options": [
+            {
+              "description": "Scheduled message ID",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "setup utility schedule-remove",
+          "usage": "/setup utility schedule-remove <id>"
+        },
+        {
+          "description": "Resume a scheduled message",
+          "manager": true,
+          "options": [
+            {
+              "description": "Scheduled message ID",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "setup utility schedule-resume",
+          "usage": "/setup utility schedule-resume <id>"
+        },
+        {
+          "description": "Send a scheduled message now",
+          "manager": true,
+          "options": [
+            {
+              "description": "Scheduled message ID",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "setup utility schedule-run-now",
+          "usage": "/setup utility schedule-run-now <id>"
+        },
+        {
+          "description": "Remove a channel's sticky message",
+          "manager": true,
+          "options": [
+            {
+              "description": "Channel to remove",
+              "name": "channel",
+              "required": true
+            }
+          ],
+          "path": "setup utility sticky-remove",
+          "usage": "/setup utility sticky-remove <channel>"
+        },
+        {
+          "description": "Create or replace a sticky message",
+          "manager": true,
+          "options": [
+            {
+              "description": "Channel to keep the message in",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "description": "Message text",
+              "name": "text",
+              "required": true
+            },
+            {
+              "description": "Number of human messages before reposting",
+              "name": "messages",
+              "required": false
+            },
+            {
+              "description": "Minimum seconds between posts",
+              "name": "seconds",
+              "required": false
+            }
+          ],
+          "path": "setup utility sticky-set",
+          "usage": "/setup utility sticky-set <channel> <text> [messages] [seconds]"
+        },
+        {
+          "description": "List sticky messages",
+          "manager": true,
+          "options": [],
+          "path": "setup utility sticky-show",
+          "usage": "/setup utility sticky-show"
+        },
+        {
+          "description": "Make a voice channel a creator, or change one (Manage Server)",
+          "manager": true,
+          "options": [
+            {
+              "description": "The voice channel people join to get a room",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "description": "The category the rooms go in (default: the creator's own)",
+              "name": "category",
+              "required": false
+            },
+            {
+              "description": "How many people a room takes at first (0 for no limit)",
+              "name": "limit",
+              "required": false
+            },
+            {
+              "description": "What rooms are called: {user} is the owner's name, {n} the room's number",
+              "name": "template",
+              "required": false
+            }
+          ],
+          "path": "setup utility voice-add",
+          "usage": "/setup utility voice-add <channel> [category] [limit] [template]"
+        },
+        {
+          "description": "The creator channels of this server (Manage Server)",
+          "manager": true,
+          "options": [],
+          "path": "setup utility voice-list",
+          "usage": "/setup utility voice-list"
+        },
+        {
+          "description": "Stop a channel making rooms (Manage Server)",
+          "manager": true,
+          "options": [
+            {
+              "description": "The creator channel",
+              "name": "channel",
+              "required": true
+            }
+          ],
+          "path": "setup utility voice-remove",
+          "usage": "/setup utility voice-remove <channel>"
+        },
+        {
+          "description": "Change a board's threshold, emoji or rules",
+          "manager": true,
+          "options": [
+            {
+              "description": "Board ID from /starboard list",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "New name",
+              "name": "name",
+              "required": false
+            },
+            {
+              "description": "New star emoji",
+              "name": "emoji",
+              "required": false
+            },
+            {
+              "description": "New threshold",
+              "name": "threshold",
+              "required": false
+            },
+            {
+              "description": "Allow self stars",
+              "name": "self_star",
+              "required": false
+            },
+            {
+              "description": "Count bot messages",
+              "name": "allow_bots",
+              "required": false
+            },
+            {
+              "description": "Require an image",
+              "name": "require_image",
+              "required": false
+            },
+            {
+              "description": "Remove below threshold",
+              "name": "remove_below",
+              "required": false
+            },
+            {
+              "description": "Source channels, comma separated; use `all` to clear",
+              "name": "only_channels",
+              "required": false
+            },
+            {
+              "description": "Excluded channels, comma separated; use `all` to clear",
+              "name": "except_channels",
+              "required": false
+            },
+            {
+              "description": "Role ID=weight pairs; use `all` to clear",
+              "name": "role_weights",
+              "required": false
+            },
+            {
+              "description": "Board colour",
+              "name": "color",
+              "required": false
+            },
+            {
+              "description": "Enable or disable this board",
+              "name": "enabled",
+              "required": false
+            }
+          ],
+          "path": "setup starboard edit",
+          "usage": "/setup starboard edit <id> [name] [emoji] [threshold] [self_star] [allow_bots] [require_image] [remove_below] [only_channels] [except_channels] [role_weights] [color] [enabled]"
+        },
+        {
+          "description": "List this server's starboards",
+          "manager": true,
+          "options": [],
+          "path": "setup starboard list",
+          "usage": "/setup starboard list"
+        },
+        {
+          "description": "Remove a starboard",
+          "manager": true,
+          "options": [
+            {
+              "description": "Board ID from /starboard list",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "setup starboard remove",
+          "usage": "/setup starboard remove <id>"
+        },
+        {
+          "description": "Create or replace a starboard (up to three)",
+          "manager": true,
+          "options": [
+            {
+              "description": "Name of this board",
+              "name": "name",
+              "required": true
+            },
+            {
+              "description": "The board channel",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "description": "Star emoji, including custom emoji",
+              "name": "emoji",
+              "required": false
+            },
+            {
+              "description": "Stars needed before a message appears (1 to 50)",
+              "name": "threshold",
+              "required": false
+            },
+            {
+              "description": "Allow members to star their own posts",
+              "name": "self_star",
+              "required": false
+            },
+            {
+              "description": "Count stars on bot messages",
+              "name": "allow_bots",
+              "required": false
+            },
+            {
+              "description": "Require an image",
+              "name": "require_image",
+              "required": false
+            },
+            {
+              "description": "Delete the board post when its stars fall below the threshold",
+              "name": "remove_below",
+              "required": false
+            },
+            {
+              "description": "Limit sources to channel IDs or mentions, separated by commas",
+              "name": "only_channels",
+              "required": false
+            },
+            {
+              "description": "Exclude channel IDs or mentions, separated by commas",
+              "name": "except_channels",
+              "required": false
+            },
+            {
+              "description": "Role weights as role ID=weight pairs, separated by commas",
+              "name": "role_weights",
+              "required": false
+            },
+            {
+              "description": "Board colour, for example #ffc857",
+              "name": "color",
+              "required": false
+            }
+          ],
+          "path": "setup starboard setup",
+          "usage": "/setup starboard setup <name> <channel> [emoji] [threshold] [self_star] [allow_bots] [require_image] [remove_below] [only_channels] [except_channels] [role_weights] [color]"
+        },
+        {
+          "description": "See the most starred posts and top stargazers",
+          "manager": true,
+          "options": [
+            {
+              "description": "Board ID, or the first board if omitted",
+              "name": "board",
+              "required": false
+            }
+          ],
+          "path": "setup starboard top",
+          "usage": "/setup starboard top [board]"
+        },
+        {
+          "description": "Add or change a vote channel",
+          "manager": true,
+          "options": [
+            {
+              "description": "Channel to react in",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "description": "Upvote emoji",
+              "name": "up",
+              "required": false
+            },
+            {
+              "description": "Downvote emoji",
+              "name": "down",
+              "required": false
+            },
+            {
+              "description": "React only to posts with media",
+              "name": "only_media",
+              "required": false
+            },
+            {
+              "description": "Start a thread under each post",
+              "name": "thread",
+              "required": false
+            }
+          ],
+          "path": "setup starboard votes-add",
+          "usage": "/setup starboard votes-add <channel> [up] [down] [only_media] [thread]"
+        },
+        {
+          "description": "List vote channels",
+          "manager": true,
+          "options": [],
+          "path": "setup starboard votes-list",
+          "usage": "/setup starboard votes-list"
+        },
+        {
+          "description": "Stop automatic reactions in a channel",
+          "manager": true,
+          "options": [
+            {
+              "description": "Channel to stop reacting in",
+              "name": "channel",
+              "required": true
+            }
+          ],
+          "path": "setup starboard votes-remove",
+          "usage": "/setup starboard votes-remove <channel>"
+        },
+        {
           "description": "Make a panel (up to 10); post it with /tickets panel post",
           "manager": true,
           "options": [
@@ -2071,52 +3065,40 @@
           "usage": "/setup tickets settings [category] [closed_category] [log_channel] [auto_close_hours] [dm_transcript] [ratings] [mode] [naming] [max_open] [clear]"
         },
         {
-          "description": "Make a voice channel a creator, or change one (Manage Server)",
+          "description": "Approve a suggestion and tell its author",
           "manager": true,
           "options": [
             {
-              "description": "The voice channel people join to get a room",
-              "name": "channel",
+              "description": "The suggestion's number",
+              "name": "id",
               "required": true
             },
             {
-              "description": "The category the rooms go in (default: the creator's own)",
-              "name": "category",
-              "required": false
-            },
-            {
-              "description": "How many people a room takes at first (0 for no limit)",
-              "name": "limit",
-              "required": false
-            },
-            {
-              "description": "What rooms are called: {user} is the owner's name, {n} the room's number",
-              "name": "template",
+              "description": "Why (the author sees it)",
+              "name": "reason",
               "required": false
             }
           ],
-          "path": "setup utility voice-add",
-          "usage": "/setup utility voice-add <channel> [category] [limit] [template]"
+          "path": "mod suggestion approve",
+          "usage": "/mod suggestion approve <id> [reason]"
         },
         {
-          "description": "The creator channels of this server (Manage Server)",
-          "manager": true,
-          "options": [],
-          "path": "setup utility voice-list",
-          "usage": "/setup utility voice-list"
-        },
-        {
-          "description": "Stop a channel making rooms (Manage Server)",
+          "description": "Deny a suggestion and tell its author",
           "manager": true,
           "options": [
             {
-              "description": "The creator channel",
-              "name": "channel",
+              "description": "The suggestion's number",
+              "name": "id",
               "required": true
+            },
+            {
+              "description": "Why (the author sees it)",
+              "name": "reason",
+              "required": false
             }
           ],
-          "path": "setup utility voice-remove",
-          "usage": "/setup utility voice-remove <channel>"
+          "path": "mod suggestion deny",
+          "usage": "/mod suggestion deny <id> [reason]"
         },
         {
           "description": "Suggest something for this server",
@@ -4142,6 +5124,20 @@
           "usage": "/automod test <text>"
         },
         {
+          "description": "Show recent anti-nuke incidents",
+          "manager": true,
+          "options": [],
+          "path": "setup antinuke events",
+          "usage": "/setup antinuke events"
+        },
+        {
+          "description": "Show protection status and recovery limits",
+          "manager": true,
+          "options": [],
+          "path": "setup antinuke status",
+          "usage": "/setup antinuke status"
+        },
+        {
           "description": "Add or remove an exempt channel",
           "manager": true,
           "options": [
@@ -4239,6 +5235,136 @@
           "usage": "/setup automod toggle <rule> <enabled>"
         },
         {
+          "description": "Download a versioned JSON configuration backup",
+          "manager": true,
+          "options": [],
+          "path": "setup backup export",
+          "usage": "/setup backup export"
+        },
+        {
+          "description": "Open the dashboard to preview and import a JSON backup",
+          "manager": true,
+          "options": [],
+          "path": "setup backup import",
+          "usage": "/setup backup import"
+        },
+        {
+          "description": "List the last ten automatic restore points",
+          "manager": true,
+          "options": [],
+          "path": "setup backup list",
+          "usage": "/setup backup list"
+        },
+        {
+          "description": "Preview a restore point before applying it",
+          "manager": true,
+          "options": [
+            {
+              "description": "Restore point ID",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "setup backup restore",
+          "usage": "/setup backup restore <id>"
+        },
+        {
+          "description": "Add a prefix alias, or remove it by omitting the command",
+          "manager": true,
+          "options": [
+            {
+              "description": "Shortcut name",
+              "name": "name",
+              "required": true
+            },
+            {
+              "description": "Target command path",
+              "name": "command",
+              "required": false
+            }
+          ],
+          "path": "setup commands alias",
+          "usage": "/setup commands alias <name> [command]"
+        },
+        {
+          "description": "Remove a command override",
+          "manager": true,
+          "options": [
+            {
+              "description": "Command path",
+              "name": "command",
+              "required": true
+            }
+          ],
+          "path": "setup commands reset",
+          "usage": "/setup commands reset <command>"
+        },
+        {
+          "description": "Set additional restrictions for a command or subcommand",
+          "manager": true,
+          "options": [
+            {
+              "description": "Command path, for example play wordle",
+              "name": "command",
+              "required": true
+            },
+            {
+              "description": "Enable or disable this command",
+              "name": "enabled",
+              "required": false
+            },
+            {
+              "description": "Additional cooldown in seconds (0 resets it)",
+              "name": "cooldown",
+              "required": false
+            },
+            {
+              "description": "Delete bot replies after this many seconds (0 disables deletion)",
+              "name": "delete_reply",
+              "required": false
+            },
+            {
+              "description": "Delete prefix invocations after this many seconds (0 disables deletion)",
+              "name": "delete_invocation",
+              "required": false
+            },
+            {
+              "description": "Reply privately by default where supported",
+              "name": "ephemeral",
+              "required": false
+            },
+            {
+              "description": "Add a role allowed to use the command",
+              "name": "allow_role",
+              "required": false
+            },
+            {
+              "description": "Add a role denied access to the command",
+              "name": "deny_role",
+              "required": false
+            },
+            {
+              "description": "Add an allowed channel or category",
+              "name": "allow_channel",
+              "required": false
+            },
+            {
+              "description": "Add a denied channel or category",
+              "name": "deny_channel",
+              "required": false
+            }
+          ],
+          "path": "setup commands set",
+          "usage": "/setup commands set <command> [enabled] [cooldown] [delete_reply] [delete_invocation] [ephemeral] [allow_role] [deny_role] [allow_channel] [deny_channel]"
+        },
+        {
+          "description": "Show command control settings",
+          "manager": true,
+          "options": [],
+          "path": "setup commands show",
+          "usage": "/setup commands show"
+        },
+        {
           "description": "Set the message displayed above the verification button",
           "manager": true,
           "options": [
@@ -4305,18 +5431,257 @@
           "usage": "/setup verification setup <enabled> [verified_role] [unverified_role] [channel] [kick_after]"
         },
         {
-          "description": "Show recent anti-nuke incidents",
-          "manager": true,
-          "options": [],
-          "path": "setup antinuke events",
-          "usage": "/setup antinuke events"
+          "description": "Look up a moderation case",
+          "manager": false,
+          "options": [
+            {
+              "description": "The case number",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "mod case",
+          "usage": "/mod case <id>"
         },
         {
-          "description": "Show protection status and recovery limits",
+          "description": "Stop members from sending messages in a channel",
+          "manager": false,
+          "options": [
+            {
+              "description": "The channel (default: this one)",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Why",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "mod lock",
+          "usage": "/mod lock [channel] [reason]"
+        },
+        {
+          "description": "Change or reset a member's nickname",
+          "manager": false,
+          "options": [
+            {
+              "description": "Whose nickname",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "The new nickname (leave it out to reset it)",
+              "name": "nickname",
+              "required": false
+            },
+            {
+              "description": "Why",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "mod nick",
+          "usage": "/mod nick <user> [nickname] [reason]"
+        },
+        {
+          "description": "Force captcha and temporarily restrict the server",
+          "manager": true,
+          "options": [
+            {
+              "description": "Minutes before restoring settings automatically",
+              "name": "minutes",
+              "required": false
+            }
+          ],
+          "path": "mod raid lockdown",
+          "usage": "/mod raid lockdown [minutes]"
+        },
+        {
+          "description": "Show the live raid state",
           "manager": true,
           "options": [],
-          "path": "setup antinuke status",
-          "usage": "/setup antinuke status"
+          "path": "mod raid status",
+          "usage": "/mod raid status"
+        },
+        {
+          "description": "End the raid and restore the settings it changed",
+          "manager": true,
+          "options": [],
+          "path": "mod raid unlock",
+          "usage": "/mod raid unlock"
+        },
+        {
+          "description": "Give a moderation case a new reason",
+          "manager": false,
+          "options": [
+            {
+              "description": "The case number",
+              "name": "id",
+              "required": true
+            },
+            {
+              "description": "The reason",
+              "name": "reason",
+              "required": true
+            }
+          ],
+          "path": "mod reason",
+          "usage": "/mod reason <id> <reason>"
+        },
+        {
+          "description": "Give a member a role",
+          "manager": false,
+          "options": [
+            {
+              "description": "Who gets it",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "The role (below yours and mine)",
+              "name": "role",
+              "required": true
+            },
+            {
+              "description": "Why",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "mod role add",
+          "usage": "/mod role add <user> <role> [reason]"
+        },
+        {
+          "description": "Take a role from a member",
+          "manager": false,
+          "options": [
+            {
+              "description": "Who loses it",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "The role (below yours and mine)",
+              "name": "role",
+              "required": true
+            },
+            {
+              "description": "Why",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "mod role remove",
+          "usage": "/mod role remove <user> <role> [reason]"
+        },
+        {
+          "description": "How long members wait between messages in a channel",
+          "manager": false,
+          "options": [
+            {
+              "description": "Like 5s, 30s, 2m or 1h (up to 6 hours), or off",
+              "name": "duration",
+              "required": true
+            },
+            {
+              "description": "The channel (default: this one)",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Why",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "mod slowmode",
+          "usage": "/mod slowmode <duration> [channel] [reason]"
+        },
+        {
+          "description": "Lift someone's ban",
+          "manager": false,
+          "options": [
+            {
+              "description": "Who to unban (paste their user id)",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Why",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "mod unban",
+          "usage": "/mod unban <user> [reason]"
+        },
+        {
+          "description": "Let members send messages in a locked channel again",
+          "manager": false,
+          "options": [
+            {
+              "description": "The channel (default: this one)",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Why",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "mod unlock",
+          "usage": "/mod unlock [channel] [reason]"
+        },
+        {
+          "description": "End a member's timeout early",
+          "manager": false,
+          "options": [
+            {
+              "description": "Whose timeout to end",
+              "name": "user",
+              "required": true
+            },
+            {
+              "description": "Why",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "mod untimeout",
+          "usage": "/mod untimeout <user> [reason]"
+        },
+        {
+          "description": "Take a warn back, so it no longer counts",
+          "manager": false,
+          "options": [
+            {
+              "description": "The warn's case number",
+              "name": "case",
+              "required": true
+            },
+            {
+              "description": "Why",
+              "name": "reason",
+              "required": false
+            }
+          ],
+          "path": "mod unwarn",
+          "usage": "/mod unwarn <case> [reason]"
+        },
+        {
+          "description": "A member's warns that still count",
+          "manager": false,
+          "options": [
+            {
+              "description": "Whose warns",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "mod warnings",
+          "usage": "/mod warnings <user>"
         },
         {
           "description": "Show command control settings",
@@ -4933,56 +6298,22 @@
           "usage": "/config show"
         },
         {
-          "description": "The default language for welcomes, level-ups and other server messages",
+          "description": "Give every new member a role",
           "manager": true,
           "options": [
             {
-              "choices": [
-                "Automatic",
-                "English",
-                "Türkçe"
-              ],
-              "description": "The server's language (Automatic: English)",
-              "name": "language",
-              "required": true
-            }
-          ],
-          "path": "setup server language",
-          "usage": "/setup server language <language>"
-        },
-        {
-          "description": "Go back to the default prefix, p!",
-          "manager": true,
-          "options": [],
-          "path": "setup server prefix-reset",
-          "usage": "/setup server prefix-reset"
-        },
-        {
-          "description": "Pick the prefix (1-5 characters, no spaces)",
-          "manager": true,
-          "options": [
+              "description": "The role new members get (bots are skipped)",
+              "name": "role",
+              "required": false
+            },
             {
-              "description": "The new prefix, e.g. ! or z!",
-              "name": "prefix",
-              "required": true
+              "description": "Stop giving new members a role",
+              "name": "off",
+              "required": false
             }
           ],
-          "path": "setup server prefix-set",
-          "usage": "/setup server prefix-set <prefix>"
-        },
-        {
-          "description": "Show the prefix",
-          "manager": true,
-          "options": [],
-          "path": "setup server prefix-show",
-          "usage": "/setup server prefix-show"
-        },
-        {
-          "description": "Show the current settings",
-          "manager": true,
-          "options": [],
-          "path": "setup server show",
-          "usage": "/setup server show"
+          "path": "setup roles join-role",
+          "usage": "/setup roles join-role [role] [off]"
         },
         {
           "description": "Say goodbye when a member leaves",
@@ -5061,6 +6392,58 @@
           "usage": "/setup welcome card [theme] [title] [color]"
         },
         {
+          "description": "The default language for welcomes, level-ups and other server messages",
+          "manager": true,
+          "options": [
+            {
+              "choices": [
+                "Automatic",
+                "English",
+                "Türkçe"
+              ],
+              "description": "The server's language (Automatic: English)",
+              "name": "language",
+              "required": true
+            }
+          ],
+          "path": "setup server language",
+          "usage": "/setup server language <language>"
+        },
+        {
+          "description": "Go back to the default prefix, p!",
+          "manager": true,
+          "options": [],
+          "path": "setup server prefix-reset",
+          "usage": "/setup server prefix-reset"
+        },
+        {
+          "description": "Pick the prefix (1-5 characters, no spaces)",
+          "manager": true,
+          "options": [
+            {
+              "description": "The new prefix, e.g. ! or z!",
+              "name": "prefix",
+              "required": true
+            }
+          ],
+          "path": "setup server prefix-set",
+          "usage": "/setup server prefix-set <prefix>"
+        },
+        {
+          "description": "Show the prefix",
+          "manager": true,
+          "options": [],
+          "path": "setup server prefix-show",
+          "usage": "/setup server prefix-show"
+        },
+        {
+          "description": "Show the current settings",
+          "manager": true,
+          "options": [],
+          "path": "setup server show",
+          "usage": "/setup server show"
+        },
+        {
           "description": "XP and level-up messages",
           "manager": true,
           "options": [
@@ -5095,22 +6478,83 @@
           "usage": "/setup leveling settings [enabled] [channel] [message] [mode]"
         },
         {
-          "description": "Give every new member a role",
+          "description": "Where /suggest posts suggestions",
           "manager": true,
           "options": [
             {
-              "description": "The role new members get (bots are skipped)",
-              "name": "role",
+              "description": "Channel for suggestions (this turns them on)",
+              "name": "channel",
               "required": false
             },
             {
-              "description": "Stop giving new members a role",
+              "description": "Turn suggestions off",
               "name": "off",
               "required": false
             }
           ],
-          "path": "setup roles join-role",
-          "usage": "/setup roles join-role [role] [off]"
+          "path": "setup community suggestions",
+          "usage": "/setup community suggestions [channel] [off]"
+        },
+        {
+          "description": "Make a channel's name show a number, updated every 10 minutes",
+          "manager": true,
+          "options": [
+            {
+              "description": "The channel to rename (a locked voice channel works best)",
+              "name": "channel",
+              "required": true
+            },
+            {
+              "choices": [
+                "Members",
+                "Humans",
+                "Bots",
+                "Online now",
+                "Boosts",
+                "Roles",
+                "Channels",
+                "Members with a role",
+                "Pinchora houses",
+                "Fish caught",
+                "Average level"
+              ],
+              "description": "What it counts",
+              "name": "kind",
+              "required": true
+            },
+            {
+              "description": "The role to count, for \"Members with a role\"",
+              "name": "role",
+              "required": false
+            },
+            {
+              "description": "The name, with {count} where the number goes, e.g. Members: {count}",
+              "name": "template",
+              "required": false
+            }
+          ],
+          "path": "setup stats counter-add",
+          "usage": "/setup stats counter-add <channel> <kind> [role] [template]"
+        },
+        {
+          "description": "This server's counter channels",
+          "manager": true,
+          "options": [],
+          "path": "setup stats counter-list",
+          "usage": "/setup stats counter-list"
+        },
+        {
+          "description": "Stop updating a counter channel (it keeps its last name)",
+          "manager": true,
+          "options": [
+            {
+              "description": "The counter channel",
+              "name": "channel",
+              "required": true
+            }
+          ],
+          "path": "setup stats counter-remove",
+          "usage": "/setup stats counter-remove <channel>"
         },
         {
           "description": "Pick the prefix (1-5 characters, no spaces)",
@@ -5607,6 +7051,131 @@
           "usage": "/antinuke vip remove <role>"
         },
         {
+          "description": "Pause anti-nuke detection",
+          "manager": true,
+          "options": [],
+          "path": "setup antinuke disable",
+          "usage": "/setup antinuke disable"
+        },
+        {
+          "description": "Enable protection; alert-only unless you choose a response",
+          "manager": true,
+          "options": [
+            {
+              "description": "Alert channel (otherwise the moderation log or an owner DM)",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "alert, quarantine, kick or ban",
+              "name": "response",
+              "required": false
+            },
+            {
+              "description": "Safe role assigned after stripping the actor's roles",
+              "name": "quarantine",
+              "required": false
+            },
+            {
+              "description": "Automatically restore recoverable damage",
+              "name": "restore",
+              "required": false
+            },
+            {
+              "description": "Automatically unban protected VIP members",
+              "name": "revert_vip",
+              "required": false
+            },
+            {
+              "description": "Remove bots added in an attack",
+              "name": "remove_bots",
+              "required": false
+            },
+            {
+              "description": "Only the owner can change settings (trust always belongs to the owner)",
+              "name": "owner_only",
+              "required": false
+            }
+          ],
+          "path": "setup antinuke enable",
+          "usage": "/setup antinuke enable [channel] [response] [quarantine] [restore] [revert_vip] [remove_bots] [owner_only]"
+        },
+        {
+          "description": "Set the maximum actions allowed per actor in a time window",
+          "manager": true,
+          "options": [
+            {
+              "description": "Action key, for example channel_delete, ban, permission_grant or bot_add",
+              "name": "kind",
+              "required": true
+            },
+            {
+              "description": "Maximum allowed before a response (1 to 100)",
+              "name": "count",
+              "required": true
+            },
+            {
+              "description": "Window in seconds (5 to 300)",
+              "name": "seconds",
+              "required": true
+            }
+          ],
+          "path": "setup antinuke limits",
+          "usage": "/setup antinuke limits <kind> <count> <seconds>"
+        },
+        {
+          "description": "Trust another member (owner only)",
+          "manager": true,
+          "options": [
+            {
+              "description": "Member to trust",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "setup antinuke trust-add",
+          "usage": "/setup antinuke trust-add <user>"
+        },
+        {
+          "description": "Remove trust from a member (owner only)",
+          "manager": true,
+          "options": [
+            {
+              "description": "Member to remove",
+              "name": "user",
+              "required": true
+            }
+          ],
+          "path": "setup antinuke trust-remove",
+          "usage": "/setup antinuke trust-remove <user>"
+        },
+        {
+          "description": "Protect a VIP role",
+          "manager": true,
+          "options": [
+            {
+              "description": "Role to protect",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "setup antinuke vip-add",
+          "usage": "/setup antinuke vip-add <role>"
+        },
+        {
+          "description": "Remove VIP protection from a role",
+          "manager": true,
+          "options": [
+            {
+              "description": "Protected role",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "setup antinuke vip-remove",
+          "usage": "/setup antinuke vip-remove <role>"
+        },
+        {
           "description": "The server log's channel, or one category's",
           "manager": true,
           "options": [
@@ -5791,131 +7360,6 @@
           ],
           "path": "setup moderation warn-ladder",
           "usage": "/setup moderation warn-ladder [warns] [action] [duration] [remove]"
-        },
-        {
-          "description": "Pause anti-nuke detection",
-          "manager": true,
-          "options": [],
-          "path": "setup antinuke disable",
-          "usage": "/setup antinuke disable"
-        },
-        {
-          "description": "Enable protection; alert-only unless you choose a response",
-          "manager": true,
-          "options": [
-            {
-              "description": "Alert channel (otherwise the moderation log or an owner DM)",
-              "name": "channel",
-              "required": false
-            },
-            {
-              "description": "alert, quarantine, kick or ban",
-              "name": "response",
-              "required": false
-            },
-            {
-              "description": "Safe role assigned after stripping the actor's roles",
-              "name": "quarantine",
-              "required": false
-            },
-            {
-              "description": "Automatically restore recoverable damage",
-              "name": "restore",
-              "required": false
-            },
-            {
-              "description": "Automatically unban protected VIP members",
-              "name": "revert_vip",
-              "required": false
-            },
-            {
-              "description": "Remove bots added in an attack",
-              "name": "remove_bots",
-              "required": false
-            },
-            {
-              "description": "Only the owner can change settings (trust always belongs to the owner)",
-              "name": "owner_only",
-              "required": false
-            }
-          ],
-          "path": "setup antinuke enable",
-          "usage": "/setup antinuke enable [channel] [response] [quarantine] [restore] [revert_vip] [remove_bots] [owner_only]"
-        },
-        {
-          "description": "Set the maximum actions allowed per actor in a time window",
-          "manager": true,
-          "options": [
-            {
-              "description": "Action key, for example channel_delete, ban, permission_grant or bot_add",
-              "name": "kind",
-              "required": true
-            },
-            {
-              "description": "Maximum allowed before a response (1 to 100)",
-              "name": "count",
-              "required": true
-            },
-            {
-              "description": "Window in seconds (5 to 300)",
-              "name": "seconds",
-              "required": true
-            }
-          ],
-          "path": "setup antinuke limits",
-          "usage": "/setup antinuke limits <kind> <count> <seconds>"
-        },
-        {
-          "description": "Trust another member (owner only)",
-          "manager": true,
-          "options": [
-            {
-              "description": "Member to trust",
-              "name": "user",
-              "required": true
-            }
-          ],
-          "path": "setup antinuke trust-add",
-          "usage": "/setup antinuke trust-add <user>"
-        },
-        {
-          "description": "Remove trust from a member (owner only)",
-          "manager": true,
-          "options": [
-            {
-              "description": "Member to remove",
-              "name": "user",
-              "required": true
-            }
-          ],
-          "path": "setup antinuke trust-remove",
-          "usage": "/setup antinuke trust-remove <user>"
-        },
-        {
-          "description": "Protect a VIP role",
-          "manager": true,
-          "options": [
-            {
-              "description": "Role to protect",
-              "name": "role",
-              "required": true
-            }
-          ],
-          "path": "setup antinuke vip-add",
-          "usage": "/setup antinuke vip-add <role>"
-        },
-        {
-          "description": "Remove VIP protection from a role",
-          "manager": true,
-          "options": [
-            {
-              "description": "Protected role",
-              "name": "role",
-              "required": true
-            }
-          ],
-          "path": "setup antinuke vip-remove",
-          "usage": "/setup antinuke vip-remove <role>"
         },
         {
           "description": "The server log's channel, or one category's",
@@ -6173,6 +7617,120 @@
           "usage": "/config level-roles sync"
         },
         {
+          "description": "Server points: what chatting earns",
+          "manager": true,
+          "options": [
+            {
+              "description": "Earn points for chatting",
+              "name": "enabled",
+              "required": false
+            },
+            {
+              "description": "What the points are called, e.g. coins",
+              "name": "name",
+              "required": false
+            },
+            {
+              "description": "Emoji shown next to amounts: a Unicode emoji or a custom one",
+              "name": "emoji",
+              "required": false
+            },
+            {
+              "description": "Least points one message can earn",
+              "name": "min",
+              "required": false
+            },
+            {
+              "description": "Most points one message can earn",
+              "name": "max",
+              "required": false
+            }
+          ],
+          "path": "setup economy points-settings",
+          "usage": "/setup economy points-settings [enabled] [name] [emoji] [min] [max]"
+        },
+        {
+          "description": "Give a role to everyone whose reputation reaches a count",
+          "manager": true,
+          "options": [
+            {
+              "description": "Reputation that earns the role",
+              "name": "reputation",
+              "required": true
+            },
+            {
+              "description": "The role to give (adding it again moves it to the new count)",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "setup economy rep-roles-add",
+          "usage": "/setup economy rep-roles-add <reputation> <role>"
+        },
+        {
+          "description": "Show the reputation roles",
+          "manager": true,
+          "options": [],
+          "path": "setup economy rep-roles-list",
+          "usage": "/setup economy rep-roles-list"
+        },
+        {
+          "description": "Stop giving a role for reputation",
+          "manager": true,
+          "options": [
+            {
+              "description": "The role to stop giving",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "setup economy rep-roles-remove",
+          "usage": "/setup economy rep-roles-remove <role>"
+        },
+        {
+          "description": "Put a role on sale, or change its price and stock",
+          "manager": true,
+          "options": [
+            {
+              "description": "The role to sell",
+              "name": "role",
+              "required": true
+            },
+            {
+              "description": "Price in server points",
+              "name": "price",
+              "required": true
+            },
+            {
+              "description": "How many can be bought (default: unlimited)",
+              "name": "stock",
+              "required": false
+            }
+          ],
+          "path": "setup economy store-add",
+          "usage": "/setup economy store-add <role> <price> [stock]"
+        },
+        {
+          "description": "Show what is on sale",
+          "manager": true,
+          "options": [],
+          "path": "setup economy store-list",
+          "usage": "/setup economy store-list"
+        },
+        {
+          "description": "Take a role off sale",
+          "manager": true,
+          "options": [
+            {
+              "description": "The role to stop selling",
+              "name": "role",
+              "required": true
+            }
+          ],
+          "path": "setup economy store-remove",
+          "usage": "/setup economy store-remove <role>"
+        },
+        {
           "description": "Give a role to everyone who reaches a level",
           "manager": true,
           "options": [
@@ -6390,120 +7948,6 @@
           ],
           "path": "setup leveling xp-set",
           "usage": "/setup leveling xp-set <user> <amount>"
-        },
-        {
-          "description": "Server points: what chatting earns",
-          "manager": true,
-          "options": [
-            {
-              "description": "Earn points for chatting",
-              "name": "enabled",
-              "required": false
-            },
-            {
-              "description": "What the points are called, e.g. coins",
-              "name": "name",
-              "required": false
-            },
-            {
-              "description": "Emoji shown next to amounts: a Unicode emoji or a custom one",
-              "name": "emoji",
-              "required": false
-            },
-            {
-              "description": "Least points one message can earn",
-              "name": "min",
-              "required": false
-            },
-            {
-              "description": "Most points one message can earn",
-              "name": "max",
-              "required": false
-            }
-          ],
-          "path": "setup economy points-settings",
-          "usage": "/setup economy points-settings [enabled] [name] [emoji] [min] [max]"
-        },
-        {
-          "description": "Give a role to everyone whose reputation reaches a count",
-          "manager": true,
-          "options": [
-            {
-              "description": "Reputation that earns the role",
-              "name": "reputation",
-              "required": true
-            },
-            {
-              "description": "The role to give (adding it again moves it to the new count)",
-              "name": "role",
-              "required": true
-            }
-          ],
-          "path": "setup economy rep-roles-add",
-          "usage": "/setup economy rep-roles-add <reputation> <role>"
-        },
-        {
-          "description": "Show the reputation roles",
-          "manager": true,
-          "options": [],
-          "path": "setup economy rep-roles-list",
-          "usage": "/setup economy rep-roles-list"
-        },
-        {
-          "description": "Stop giving a role for reputation",
-          "manager": true,
-          "options": [
-            {
-              "description": "The role to stop giving",
-              "name": "role",
-              "required": true
-            }
-          ],
-          "path": "setup economy rep-roles-remove",
-          "usage": "/setup economy rep-roles-remove <role>"
-        },
-        {
-          "description": "Put a role on sale, or change its price and stock",
-          "manager": true,
-          "options": [
-            {
-              "description": "The role to sell",
-              "name": "role",
-              "required": true
-            },
-            {
-              "description": "Price in server points",
-              "name": "price",
-              "required": true
-            },
-            {
-              "description": "How many can be bought (default: unlimited)",
-              "name": "stock",
-              "required": false
-            }
-          ],
-          "path": "setup economy store-add",
-          "usage": "/setup economy store-add <role> <price> [stock]"
-        },
-        {
-          "description": "Show what is on sale",
-          "manager": true,
-          "options": [],
-          "path": "setup economy store-list",
-          "usage": "/setup economy store-list"
-        },
-        {
-          "description": "Take a role off sale",
-          "manager": true,
-          "options": [
-            {
-              "description": "The role to stop selling",
-              "name": "role",
-              "required": true
-            }
-          ],
-          "path": "setup economy store-remove",
-          "usage": "/setup economy store-remove <role>"
         },
         {
           "description": "Scale the XP and points a channel or role earns",
@@ -6807,62 +8251,69 @@
           "usage": "/config critters [enabled] [channel] [anywhere]"
         },
         {
-          "description": "Limit a part of Pinchora to some channels, or keep it out of some, one channel at a time",
+          "description": "Preview the birthday card and message",
+          "manager": true,
+          "options": [],
+          "path": "setup birthdays preview",
+          "usage": "/setup birthdays preview"
+        },
+        {
+          "description": "Set the birthday channel, role, message and gift",
           "manager": true,
           "options": [
             {
-              "description": "The part to limit (start typing its name)",
-              "name": "module",
-              "required": true
+              "description": "Turn announcements on or off",
+              "name": "enabled",
+              "required": false
             },
             {
-              "choices": [
-                "All channels",
-                "Only in these channels",
-                "Everywhere except these channels"
-              ],
-              "description": "Where it works (a channel or category also covers the threads and channels under it)",
-              "name": "where",
-              "required": true
-            },
-            {
-              "description": "The channel to add to the list",
+              "description": "Where birthday cards are posted",
               "name": "channel",
               "required": false
             },
             {
-              "description": "Take the channel off the list instead of adding it",
-              "name": "remove",
+              "description": "Stop posting cards",
+              "name": "clear_channel",
+              "required": false
+            },
+            {
+              "description": "Role members get for 24 hours",
+              "name": "role",
+              "required": false
+            },
+            {
+              "description": "Stop granting a birthday role",
+              "name": "clear_role",
+              "required": false
+            },
+            {
+              "description": "Message with {user} and optional {age}",
+              "name": "message",
+              "required": false
+            },
+            {
+              "description": "Server's IANA time zone, used as the default for /birthday set",
+              "name": "timezone",
+              "required": false
+            },
+            {
+              "description": "System birthday gift, 0 to 500 shells once per year globally",
+              "name": "shells_gift",
+              "required": false
+            },
+            {
+              "description": "Allow ages in messages when members also opt in",
+              "name": "allow_age",
+              "required": false
+            },
+            {
+              "description": "Show the Cake Day badge on birthday cards",
+              "name": "badge",
               "required": false
             }
           ],
-          "path": "setup server modules-channels",
-          "usage": "/setup server modules-channels <module> <where> [channel] [remove]"
-        },
-        {
-          "description": "Which parts of Pinchora are on, and where",
-          "manager": true,
-          "options": [],
-          "path": "setup server modules-show",
-          "usage": "/setup server modules-show"
-        },
-        {
-          "description": "Switch a part of Pinchora on or off for the whole server",
-          "manager": true,
-          "options": [
-            {
-              "description": "The part to switch (start typing its name)",
-              "name": "module",
-              "required": true
-            },
-            {
-              "description": "On, or off for everyone",
-              "name": "enabled",
-              "required": true
-            }
-          ],
-          "path": "setup server modules-toggle",
-          "usage": "/setup server modules-toggle <module> <enabled>"
+          "path": "setup birthdays settings",
+          "usage": "/setup birthdays settings [enabled] [channel] [clear_channel] [role] [clear_role] [message] [timezone] [shells_gift] [allow_age] [badge]"
         },
         {
           "description": "Critter drops and bottles that wash up while people chat",
@@ -6942,6 +8393,64 @@
           ],
           "path": "setup economy surge",
           "usage": "/setup economy surge [enabled] [channel] [every]"
+        },
+        {
+          "description": "Limit a part of Pinchora to some channels, or keep it out of some, one channel at a time",
+          "manager": true,
+          "options": [
+            {
+              "description": "The part to limit (start typing its name)",
+              "name": "module",
+              "required": true
+            },
+            {
+              "choices": [
+                "All channels",
+                "Only in these channels",
+                "Everywhere except these channels"
+              ],
+              "description": "Where it works (a channel or category also covers the threads and channels under it)",
+              "name": "where",
+              "required": true
+            },
+            {
+              "description": "The channel to add to the list",
+              "name": "channel",
+              "required": false
+            },
+            {
+              "description": "Take the channel off the list instead of adding it",
+              "name": "remove",
+              "required": false
+            }
+          ],
+          "path": "setup server modules-channels",
+          "usage": "/setup server modules-channels <module> <where> [channel] [remove]"
+        },
+        {
+          "description": "Which parts of Pinchora are on, and where",
+          "manager": true,
+          "options": [],
+          "path": "setup server modules-show",
+          "usage": "/setup server modules-show"
+        },
+        {
+          "description": "Switch a part of Pinchora on or off for the whole server",
+          "manager": true,
+          "options": [
+            {
+              "description": "The part to switch (start typing its name)",
+              "name": "module",
+              "required": true
+            },
+            {
+              "description": "On, or off for everyone",
+              "name": "enabled",
+              "required": true
+            }
+          ],
+          "path": "setup server modules-toggle",
+          "usage": "/setup server modules-toggle <module> <enabled>"
         },
         {
           "description": "Switch the shell game, staked derbies and other gambling-style games on or off for this server",
@@ -7128,5 +8637,5 @@
       "title": "Game & module setup"
     }
   ],
-  "count": 405
+  "count": 481
 }

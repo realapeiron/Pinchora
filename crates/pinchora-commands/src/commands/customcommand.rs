@@ -41,7 +41,16 @@ fn manage_guild() -> Permissions {
 /// The names the bot's own commands use, which a custom command cannot take.
 pub fn reserved_names() -> &'static [String] {
     static NAMES: OnceLock<Vec<String>> = OnceLock::new();
-    NAMES.get_or_init(|| super::definitions().into_iter().map(|c| c.name).collect())
+    NAMES.get_or_init(|| {
+        let mut names: Vec<_> = super::definitions()
+            .into_iter()
+            .map(|c| c.name)
+            .chain(crate::command_reserved_aliases().into_iter().map(str::to_owned))
+            .collect();
+        names.sort();
+        names.dedup();
+        names
+    })
 }
 
 #[derive(CommandModel, CreateCommand)]

@@ -4,6 +4,7 @@
 # pick, else the server's default (`/config language`), else English.
 
 [text]
+moved = "`{old}` moved to `/{new}`. Your shortcut still works."
 # `/help`: the line under the description. {prefix} is the server's prefix, or `@Pinchora ` without the
 # Message Content intent.
 help-hint = "Every command also works as text here: `{prefix}profile`, `{prefix}fish cast reef`."

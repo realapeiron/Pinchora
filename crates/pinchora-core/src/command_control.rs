@@ -7,13 +7,29 @@ pub const MAX_ALIASES: usize = 50;
 pub const PROTECTED: &[&str] = &[
     "commandcontrol",
     "backup",
-    "config",
+    "config show",
+    "config modules",
+    "config prefix",
+    "config language",
+    "setup server",
+    "setup commands show",
+    "setup commands set",
+    "setup commands reset",
+    "setup commands alias",
+    "setup backup",
     "help",
     "ping",
     "privacy",
     "language",
     "remind",
 ];
+
+/// Recovery paths are protected individually; unrelated setup actions remain policy-controlled.
+pub fn protected(path: &str) -> bool {
+    PROTECTED
+        .iter()
+        .any(|p| path == *p || path.strip_prefix(p).is_some_and(|s| s.starts_with(' ')))
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(default, deny_unknown_fields)]
@@ -108,7 +124,7 @@ impl Config {
         })
     }
     pub fn check(&self, path: &str, roles: &[String], lineage: &[String]) -> Result<(), Denial> {
-        if PROTECTED.contains(&path.split(' ').next().unwrap_or(path)) {
+        if protected(path) {
             return Ok(());
         }
         for (_, rule) in self.matching(path) {
@@ -125,6 +141,28 @@ impl Config {
             None => text.to_owned(),
         }
     }
+    /// Existing aliases that collide with a newly shipped root keep their text meaning.
+    /// Editing an unrelated rule must not delete them; new collisions are still rejected.
+    pub fn validate_update(
+        &self,
+        previous: &Self,
+        commands: &[Command],
+        reserved: &[&str],
+        lang: Lang,
+    ) -> Result<(), String> {
+        let mut check = self.clone();
+        check.aliases.retain(|name, target| {
+            !(previous.aliases.get(name) == Some(target)
+                && commands.iter().any(|c| &c.path == target)
+                && (reserved.contains(&name.as_str())
+                    || commands.iter().any(|c| c.path.split(' ').next() == Some(name))))
+        });
+        if self.aliases.len() > MAX_ALIASES {
+            return Err(t!(lang, "command_control.alias_invalid"));
+        }
+        check.validate(commands, reserved, lang)
+    }
+
     pub fn validate(&self, commands: &[Command], reserved: &[&str], lang: Lang) -> Result<(), String> {
         let invalid = || t!(lang, "command_control.invalid");
         if self.aliases.len() > MAX_ALIASES || self.rules.len() > commands.len() {

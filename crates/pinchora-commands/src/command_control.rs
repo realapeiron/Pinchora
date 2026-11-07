@@ -52,10 +52,39 @@ pub fn control_catalog() -> Vec<Command> {
             &command.options,
         );
     }
+    let original = crate::commands::legacy_definitions();
+    for command in &mut out {
+        let legacy = crate::routing::legacy(&command.path);
+        let root = legacy.split(' ').next().unwrap();
+        if legacy != command.path {
+            if !command.path.starts_with("setup ") {
+                command.permissions = original
+                    .iter()
+                    .find(|c| c.name == root)
+                    .unwrap()
+                    .default_member_permissions
+                    .unwrap_or_else(twilight_model::guild::Permissions::empty)
+                    .bits()
+                    .to_string();
+            }
+            command.ephemeral_supported = matches!(
+                root,
+                "balance" | "rank" | "profile" | "info" | "inventory" | "leaderboard" | "stats" | "dex"
+            );
+        }
+    }
     out
 }
 pub fn command_reserved_aliases() -> Vec<&'static str> {
-    crate::text::parse::ALIASES.iter().map(|(alias, _)| *alias).collect()
+    crate::text::parse::ALIASES
+        .iter()
+        .map(|(alias, _)| *alias)
+        .chain(
+            crate::routing::MANIFEST
+                .iter()
+                .map(|r| r.legacy.split(' ').next().unwrap()),
+        )
+        .collect()
 }
 pub(crate) fn path(data: &CommandData) -> String {
     let mut path = data.name.clone();

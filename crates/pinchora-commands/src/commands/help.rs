@@ -331,6 +331,18 @@ pub(crate) fn leaves(commands: &[Command], lang: Lang) -> Vec<Leaf> {
             &mut out,
         );
     }
+    if out.iter().any(|leaf| leaf.path.starts_with("mod ")) {
+        let original = crate::commands::legacy_definitions();
+        for leaf in out.iter_mut().filter(|leaf| leaf.path.starts_with("mod ")) {
+            let root = crate::routing::legacy(&leaf.path).split(' ').next().unwrap();
+            leaf.manager = original
+                .iter()
+                .find(|c| c.name == root)
+                .unwrap()
+                .default_member_permissions
+                .is_some_and(|p| p.contains(twilight_model::guild::Permissions::MANAGE_GUILD));
+        }
+    }
     out
 }
 
@@ -361,15 +373,42 @@ pub(crate) fn area_of(path: &str) -> Option<usize> {
 /// page whenever the rows would not fit one card. Anything no area claims lands on a last page, so
 /// the guide never leaves a command out (a test keeps that page empty).
 fn build(commands: &[Command], lang: Lang) -> Vec<Page> {
-    // Existing hp:<page-index> buttons retain their destinations throughout the transition.
-    let (legacy, setup): (Vec<_>, Vec<_>) = commands.iter().cloned().partition(|c| c.name != "setup");
-    let mut pages = build_pages(&legacy, lang);
-    pages.extend(build_pages(&setup, lang));
+    // Append each rollout cohort. Both original and slices 1–6 hp:<page-index> destinations
+    // must remain stable when later groups introduce more rows in the same help area.
+    let mut pages = build_pages(&crate::commands::legacy_definitions(), lang);
+    let (mut early, late): (Vec<_>, Vec<_>) = leaves(commands, lang)
+        .into_iter()
+        .filter(|leaf| crate::routing::route(&leaf.path).is_some_and(|r| r.active() && r.canonical == leaf.path))
+        .partition(|leaf| crate::routing::route(&leaf.path).unwrap().slice <= 6);
+    let order = [
+        "server",
+        "welcome",
+        "moderation",
+        "leveling",
+        "economy",
+        "roles",
+        "tickets",
+        "utility",
+        "automod",
+        "verification",
+        "antinuke",
+    ];
+    early.sort_by_key(|leaf| {
+        order
+            .iter()
+            .position(|g| Some(*g) == leaf.path.split(' ').nth(1))
+            .unwrap()
+    });
+    pages.extend(build_leaf_pages(early, lang));
+    pages.extend(build_leaf_pages(late, lang));
     pages
 }
 
 fn build_pages(commands: &[Command], lang: Lang) -> Vec<Page> {
-    let leaves = leaves(commands, lang);
+    build_leaf_pages(leaves(commands, lang), lang)
+}
+
+fn build_leaf_pages(leaves: Vec<Leaf>, lang: Lang) -> Vec<Page> {
     let mut by_area: Vec<Vec<(usize, HelpRow)>> = (0..=AREAS.len()).map(|_| Vec::new()).collect();
     for leaf in leaves {
         let area = area_of(&leaf.path);
@@ -737,8 +776,21 @@ mod transition_tests {
     #[test]
     fn existing_help_buttons_keep_their_page_destinations() {
         for lang in Lang::ALL {
-            let old = build(&crate::commands::legacy_definitions(), lang);
-            let new = build(&crate::command_definitions(), lang);
+            let tree = crate::command_definitions();
+            let mut previous = crate::commands::legacy_definitions();
+            let mut setup = tree.iter().find(|c| c.name == "setup").unwrap().clone();
+            setup.options.retain_mut(|group| {
+                group.options.as_mut().unwrap().retain(|leaf| {
+                    crate::routing::route(&format!("setup {} {}", group.name, leaf.name))
+                        .unwrap()
+                        .slice
+                        <= 6
+                });
+                !group.options.as_ref().unwrap().is_empty()
+            });
+            previous.push(setup);
+            let old = build(&previous, lang);
+            let new = build(&tree, lang);
             assert!(new.len() > old.len());
             for (old, new) in old.iter().zip(&new) {
                 assert_eq!(old.title, new.title);

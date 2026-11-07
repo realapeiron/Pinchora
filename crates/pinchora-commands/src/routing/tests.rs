@@ -14,14 +14,14 @@ fn snapshot_every_original_leaf_and_projected_budget() {
     assert_eq!(paths, MANIFEST.iter().map(|r| r.legacy.clone()).collect::<Vec<_>>());
     assert_eq!(tree.len(), 95);
     let registered = crate::command_definitions();
-    assert_eq!(registered.len(), 96);
+    assert_eq!(registered.len(), 98);
     validate(&registered).unwrap();
     let projected: BTreeSet<_> = MANIFEST
         .iter()
         .map(|r| r.canonical.split(' ').next().unwrap())
         .collect();
     assert_eq!(projected.len(), PROJECTED_ROOTS);
-    assert_eq!(MANIFEST.iter().filter(|r| r.active()).count(), 84);
+    assert_eq!(MANIFEST.iter().filter(|r| r.active()).count(), 160);
     assert_eq!(
         MANIFEST.iter().map(|r| &r.canonical).collect::<BTreeSet<_>>().len(),
         MANIFEST.len()
@@ -36,7 +36,14 @@ fn every_alias_preserves_handler_arguments_permissions_and_metadata() {
     assert_eq!(setup.default_member_permissions, Some(Permissions::MANAGE_GUILD));
     for route in MANIFEST.iter().filter(|r| r.active()) {
         let metadata = route.metadata();
-        assert_eq!(metadata.setup_permissions, Permissions::MANAGE_GUILD);
+        assert_eq!(
+            metadata.setup_permissions,
+            if route.canonical.starts_with("setup ") {
+                Permissions::MANAGE_GUILD
+            } else {
+                Permissions::empty()
+            }
+        );
         assert_eq!(metadata.operation, route.legacy);
         assert_eq!(metadata.response, crate::Deferral::for_path(&route.canonical));
         let original = source(&old, &route.legacy);
@@ -49,11 +56,12 @@ fn every_alias_preserves_handler_arguments_permissions_and_metadata() {
         assert_eq!(original.description_localizations, aliased.description_localizations);
         let parts: Vec<_> = route.canonical.split(' ').collect();
         // An opaque argument and resolved map must survive unchanged, regardless of the old depth.
+        let mut options = json!([{"type":3,"name":"sentinel","value":"unchanged"}]);
+        for (index, part) in parts.iter().enumerate().skip(1).rev() {
+            options = json!([{"type": if index == parts.len()-1 {1} else {2}, "name":part,"options":options}]);
+        }
         let data: CommandData = serde_json::from_value(json!({
-            "id":"1", "name":"setup", "type":1,
-            "options":[{"type":2,"name":parts[1],"options":[{"type":1,"name":parts[2],
-                "options":[{"type":3,"name":"sentinel","value":"unchanged"}]}]}],
-            "resolved":{}
+            "id":"1", "name":parts[0], "type":1, "options":options, "resolved":{}
         }))
         .unwrap();
         let resolved = data.resolved.clone();
@@ -184,4 +192,125 @@ fn validators_reject_argument_and_choice_overflows() {
             .to_string()
             .contains("more than 25 choices")
     );
+}
+
+#[test]
+fn mod_permissions_and_form_deferrals_are_action_specific() {
+    let tree = crate::command_definitions();
+    assert_eq!(
+        tree.iter()
+            .find(|c| c.name == "mod")
+            .unwrap()
+            .default_member_permissions,
+        None
+    );
+    let catalog = crate::control_catalog();
+    for route in MANIFEST.iter().filter(|r| r.slice == 9 || r.slice == 10) {
+        let old = catalog.iter().find(|c| c.path == route.legacy).unwrap();
+        let new = catalog.iter().find(|c| c.path == route.canonical).unwrap();
+        assert_eq!(old.permissions, new.permissions, "{}", route.canonical);
+        assert_eq!(old.ephemeral_supported, new.ephemeral_supported);
+    }
+    for path in ["setup commands custom-create", "setup commands custom-edit"] {
+        assert_eq!(crate::Deferral::for_path(path), crate::Deferral::Never);
+        assert!(!protected(path));
+    }
+    for path in [
+        "setup commands set",
+        "setup commands reset",
+        "setup backup restore",
+        "setup server modules-toggle",
+    ] {
+        assert!(protected(path), "{path}");
+    }
+    assert!(!protected("setup welcome message"));
+    assert!(!protected("setup commands"));
+    assert_eq!(canonical("customcommand"), "customcommand");
+    assert_eq!(canonical("sticky"), "sticky");
+}
+
+#[test]
+fn legacy_prefix_resolution_preserves_argument_bytes_and_expands_once() {
+    use pinchora_core::command_control::Config;
+    for (old, new) in [
+        ("config xp voice amount:5", "setup leveling xp-voice amount:5"),
+        (
+            "tickets panel create name:\"two words\"",
+            "setup tickets panel-create name:\"two words\"",
+        ),
+        (
+            "XP\tIMPORT  MEE6  multiplier:2",
+            "setup leveling xp-import-mee6  multiplier:2",
+        ),
+        ("weekly", "rewards weekly"),
+        (
+            "bio \"I like weekly rewards\"",
+            "customize bio \"I like weekly rewards\"",
+        ),
+        ("feeds listing", "feeds listing"),
+        ("tag setup", "tag setup"),
+        ("mod lock", "mod lock"),
+    ] {
+        assert_eq!(resolve_text(old).0, new);
+    }
+    let config = Config {
+        aliases: [
+            ("levels".into(), "config xp voice".into()),
+            ("setup".into(), "ping".into()),
+        ]
+        .into(),
+        ..Config::default()
+    };
+    assert_eq!(
+        resolve_text(&config.expand("levels amount:3")).0,
+        "setup leveling xp-voice amount:3"
+    );
+    // Existing colliding aliases keep their meaning. New ones are rejected by validation.
+    assert_eq!(resolve_text(&config.expand("setup")).0, "ping");
+    assert!(
+        config
+            .validate(&crate::control_catalog(), &crate::command_reserved_aliases(), Lang::En)
+            .is_err()
+    );
+    config
+        .validate_update(
+            &config,
+            &crate::control_catalog(),
+            &crate::command_reserved_aliases(),
+            Lang::En,
+        )
+        .unwrap();
+    for route in MANIFEST.iter().filter(|r| r.active()) {
+        assert_eq!(resolve_text(&route.legacy).0, route.canonical);
+    }
+}
+
+#[test]
+fn migration_covers_every_active_leaf_without_broadening_split_parents() {
+    let sql = include_str!("../../../../migrations/0066_command_paths.sql");
+    for route in MANIFEST.iter().filter(|r| r.active()) {
+        assert!(
+            sql.contains(&format!("('{}', '{}')", route.legacy, route.canonical)),
+            "{}",
+            route.legacy
+        );
+    }
+    for path in ["sticky", "schedule", "config", "customcommand", "commandcontrol"] {
+        assert_eq!(canonical(path), path);
+        assert!(!sql.contains(&format!("('{path}',")));
+    }
+}
+
+#[test]
+fn member_additions_preserve_dm_contexts() {
+    let old = crate::commands::legacy_definitions();
+    let new = crate::command_definitions();
+    for route in MANIFEST.iter().filter(|r| r.slice == 10) {
+        let source = old.iter().find(|c| c.name == route.legacy).unwrap();
+        let target = new
+            .iter()
+            .find(|c| Some(c.name.as_str()) == route.canonical.split(' ').next())
+            .unwrap();
+        assert_eq!(source.contexts, target.contexts, "{}", route.canonical);
+    }
 }

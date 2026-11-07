@@ -4,6 +4,7 @@
 # varsayılan diliyle (`/config language`), o da yoksa İngilizceyle yanıtlanır.
 
 [text]
+moved = "`{old}` artık `/{new}`. Eski kısayolun çalışmaya devam ediyor."
 # `/help`: açıklamanın altındaki satır. {prefix} sunucunun öneki; Message Content intent'i kapalıysa `@Pinchora `.
 help-hint = "Her komut burada yazıyla da çalışır: `{prefix}profile`, `{prefix}fish cast reef`."
 # `/config show`: alanın adı.

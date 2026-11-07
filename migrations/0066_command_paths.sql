@@ -1,0 +1,216 @@
+-- Command path mapping v1. Generated from routing/manifest.json; retain conflicting
+-- old/new rules independently so their role/channel allowlists remain conjunctive.
+-- Split parents stay in the compatibility evaluator until slice 13.
+CREATE FUNCTION pinchora_command_path_v1(path TEXT) RETURNS TEXT
+LANGUAGE sql IMMUTABLE AS $$
+SELECT COALESCE((SELECT canonical FROM (VALUES
+    ('achievementadmin', 'setup achievements'),
+    ('achievementadmin add', 'setup achievements add'),
+    ('achievementadmin edit', 'setup achievements edit'),
+    ('achievementadmin grant', 'setup achievements grant'),
+    ('achievementadmin list', 'setup achievements list'),
+    ('achievementadmin remove', 'setup achievements remove'),
+    ('antinuke', 'setup antinuke'),
+    ('antinuke disable', 'setup antinuke disable'),
+    ('antinuke enable', 'setup antinuke enable'),
+    ('antinuke events', 'setup antinuke events'),
+    ('antinuke limits', 'setup antinuke limits'),
+    ('antinuke status', 'setup antinuke status'),
+    ('antinuke trust add', 'setup antinuke trust-add'),
+    ('antinuke trust remove', 'setup antinuke trust-remove'),
+    ('antinuke vip add', 'setup antinuke vip-add'),
+    ('antinuke vip remove', 'setup antinuke vip-remove'),
+    ('automod', 'setup automod'),
+    ('automod exempt channel', 'setup automod exempt-channel'),
+    ('automod exempt role', 'setup automod exempt-role'),
+    ('automod profile', 'setup automod profile'),
+    ('automod show', 'setup automod show'),
+    ('automod test', 'setup automod test'),
+    ('automod toggle', 'setup automod toggle'),
+    ('autoroles add', 'setup roles auto-add'),
+    ('autoroles list', 'setup roles auto-list'),
+    ('autoroles remove', 'setup roles auto-remove'),
+    ('autoroles sticky', 'setup roles auto-sticky'),
+    ('backup', 'setup backup'),
+    ('backup export', 'setup backup export'),
+    ('backup import', 'setup backup import'),
+    ('backup list', 'setup backup list'),
+    ('backup restore', 'setup backup restore'),
+    ('bio', 'customize bio'),
+    ('birthdays', 'setup birthdays'),
+    ('birthdays preview', 'setup birthdays preview'),
+    ('birthdays settings', 'setup birthdays settings'),
+    ('case', 'mod case'),
+    ('color setup', 'setup roles color-setup'),
+    ('commandcontrol alias', 'setup commands alias'),
+    ('commandcontrol reset', 'setup commands reset'),
+    ('commandcontrol set', 'setup commands set'),
+    ('commandcontrol show', 'setup commands show'),
+    ('config critters', 'setup economy critters'),
+    ('config gambling', 'setup economy gambling'),
+    ('config goodbye', 'setup welcome goodbye'),
+    ('config join-role', 'setup roles join-role'),
+    ('config language', 'setup server language'),
+    ('config level-roles add', 'setup leveling roles-add'),
+    ('config level-roles list', 'setup leveling roles-list'),
+    ('config level-roles mode', 'setup leveling roles-mode'),
+    ('config level-roles remove', 'setup leveling roles-remove'),
+    ('config level-roles sync', 'setup leveling roles-sync'),
+    ('config leveling', 'setup leveling settings'),
+    ('config log', 'setup moderation log'),
+    ('config log-events', 'setup moderation log-events'),
+    ('config log-ignore', 'setup moderation log-ignore'),
+    ('config moderation', 'setup moderation settings'),
+    ('config modules channels', 'setup server modules-channels'),
+    ('config modules show', 'setup server modules-show'),
+    ('config modules toggle', 'setup server modules-toggle'),
+    ('config partygames', 'setup economy partygames'),
+    ('config points', 'setup economy points-settings'),
+    ('config prefix reset', 'setup server prefix-reset'),
+    ('config prefix set', 'setup server prefix-set'),
+    ('config prefix show', 'setup server prefix-show'),
+    ('config rep-roles add', 'setup economy rep-roles-add'),
+    ('config rep-roles list', 'setup economy rep-roles-list'),
+    ('config rep-roles remove', 'setup economy rep-roles-remove'),
+    ('config show', 'setup server show'),
+    ('config store add', 'setup economy store-add'),
+    ('config store list', 'setup economy store-list'),
+    ('config store remove', 'setup economy store-remove'),
+    ('config suggestions', 'setup community suggestions'),
+    ('config surge', 'setup economy surge'),
+    ('config warn-ladder', 'setup moderation warn-ladder'),
+    ('config welcome', 'setup welcome message'),
+    ('config welcome-card', 'setup welcome card'),
+    ('config xp clear', 'setup leveling xp-clear'),
+    ('config xp multiplier', 'setup leveling xp-multiplier'),
+    ('config xp show', 'setup leveling xp-show'),
+    ('config xp voice', 'setup leveling xp-voice'),
+    ('counters', 'setup stats'),
+    ('counters add', 'setup stats counter-add'),
+    ('counters list', 'setup stats counter-list'),
+    ('counters remove', 'setup stats counter-remove'),
+    ('customcommand create', 'setup commands custom-create'),
+    ('customcommand delete', 'setup commands custom-delete'),
+    ('customcommand edit', 'setup commands custom-edit'),
+    ('customcommand info', 'setup commands custom-info'),
+    ('customcommand list', 'setup commands custom-list'),
+    ('event template', 'setup events template'),
+    ('feeds', 'setup feeds'),
+    ('feeds add', 'setup feeds add'),
+    ('feeds edit', 'setup feeds edit'),
+    ('feeds list', 'setup feeds list'),
+    ('feeds remove', 'setup feeds remove'),
+    ('feeds test', 'setup feeds test'),
+    ('inviteadmin', 'setup invites'),
+    ('inviteadmin bonus-add', 'setup invites bonus-add'),
+    ('inviteadmin bonus-remove', 'setup invites bonus-remove'),
+    ('inviteadmin post', 'setup invites post'),
+    ('inviteadmin reward-add', 'setup invites reward-add'),
+    ('inviteadmin reward-remove', 'setup invites reward-remove'),
+    ('inviteadmin settings', 'setup invites settings'),
+    ('lock', 'mod lock'),
+    ('monthly', 'rewards monthly'),
+    ('nick', 'mod nick'),
+    ('plaza edit', 'setup community plaza-edit'),
+    ('points give', 'setup economy points-give'),
+    ('points take', 'setup economy points-take'),
+    ('raid', 'mod raid'),
+    ('raid lockdown', 'mod raid lockdown'),
+    ('raid status', 'mod raid status'),
+    ('raid unlock', 'mod raid unlock'),
+    ('reason', 'mod reason'),
+    ('role', 'mod role'),
+    ('role add', 'mod role add'),
+    ('role remove', 'mod role remove'),
+    ('roles add', 'setup roles panel-add'),
+    ('roles panel', 'setup roles panel-create'),
+    ('roles post', 'setup roles panel-post'),
+    ('roles remove', 'setup roles panel-remove'),
+    ('roles temp', 'setup roles panel-temp'),
+    ('schedule add', 'setup utility schedule-add'),
+    ('schedule list', 'setup utility schedule-list'),
+    ('schedule pause', 'setup utility schedule-pause'),
+    ('schedule preview', 'setup utility schedule-preview'),
+    ('schedule remove', 'setup utility schedule-remove'),
+    ('schedule resume', 'setup utility schedule-resume'),
+    ('schedule run-now', 'setup utility schedule-run-now'),
+    ('slowmode', 'mod slowmode'),
+    ('starboard', 'setup starboard'),
+    ('starboard edit', 'setup starboard edit'),
+    ('starboard list', 'setup starboard list'),
+    ('starboard remove', 'setup starboard remove'),
+    ('starboard setup', 'setup starboard setup'),
+    ('starboard top', 'setup starboard top'),
+    ('starboard votes add', 'setup starboard votes-add'),
+    ('starboard votes list', 'setup starboard votes-list'),
+    ('starboard votes remove', 'setup starboard votes-remove'),
+    ('sticky remove', 'setup utility sticky-remove'),
+    ('sticky set', 'setup utility sticky-set'),
+    ('sticky show', 'setup utility sticky-show'),
+    ('suggestion', 'mod suggestion'),
+    ('suggestion approve', 'mod suggestion approve'),
+    ('suggestion deny', 'mod suggestion deny'),
+    ('tickets', 'setup tickets'),
+    ('tickets panel create', 'setup tickets panel-create'),
+    ('tickets panel delete', 'setup tickets panel-delete'),
+    ('tickets panel edit', 'setup tickets panel-edit'),
+    ('tickets panel list', 'setup tickets panel-list'),
+    ('tickets panel post', 'setup tickets panel-post'),
+    ('tickets settings', 'setup tickets settings'),
+    ('unban', 'mod unban'),
+    ('unlock', 'mod unlock'),
+    ('untimeout', 'mod untimeout'),
+    ('unwarn', 'mod unwarn'),
+    ('verification', 'setup verification'),
+    ('verification message', 'setup verification message'),
+    ('verification mode', 'setup verification mode'),
+    ('verification post', 'setup verification post'),
+    ('verification setup', 'setup verification setup'),
+    ('voice creators add', 'setup utility voice-add'),
+    ('voice creators list', 'setup utility voice-list'),
+    ('voice creators remove', 'setup utility voice-remove'),
+    ('warnings', 'mod warnings'),
+    ('weekly', 'rewards weekly'),
+    ('wrapped', 'info wrapped'),
+    ('xp add', 'setup leveling xp-add'),
+    ('xp import', 'setup leveling xp-import-mee6'),
+    ('xp import mee6', 'setup leveling xp-import-mee6'),
+    ('xp remove', 'setup leveling xp-remove'),
+    ('xp reset', 'setup leveling xp-reset'),
+    ('xp reset-all', 'setup leveling xp-reset-all'),
+    ('xp set', 'setup leveling xp-set')
+) AS routes(legacy, canonical) WHERE legacy = path), path)
+$$;
+
+CREATE FUNCTION pinchora_normalize_command_control_v1(config JSONB) RETURNS JSONB
+LANGUAGE plpgsql IMMUTABLE AS $$
+DECLARE
+    rules JSONB := COALESCE(config->'rules', '{}'::jsonb);
+    aliases JSONB := '{}'::jsonb;
+    item RECORD;
+    target TEXT;
+BEGIN
+    FOR item IN SELECT key, value FROM jsonb_each(rules) LOOP
+        target := pinchora_command_path_v1(item.key);
+        IF target <> item.key AND (NOT rules ? target OR rules->target = item.value) THEN
+            rules := (rules - item.key) || jsonb_build_object(target, item.value);
+        END IF;
+    END LOOP;
+    FOR item IN SELECT key, value FROM jsonb_each_text(COALESCE(config->'aliases', '{}'::jsonb)) LOOP
+        aliases := aliases || jsonb_build_object(item.key, pinchora_command_path_v1(item.value));
+    END LOOP;
+    RETURN config || jsonb_build_object('rules', rules, 'aliases', aliases);
+END
+$$;
+
+CREATE FUNCTION pinchora_command_paths_on_write() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+    NEW.config := pinchora_normalize_command_control_v1(NEW.config);
+    RETURN NEW;
+END
+$$;
+CREATE TRIGGER command_paths_on_write BEFORE INSERT OR UPDATE OF config ON command_control
+FOR EACH ROW EXECUTE FUNCTION pinchora_command_paths_on_write();
+UPDATE command_control SET config = pinchora_normalize_command_control_v1(config), revision = revision + 1
+WHERE config IS DISTINCT FROM pinchora_normalize_command_control_v1(config);
