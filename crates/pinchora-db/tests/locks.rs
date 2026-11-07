@@ -82,6 +82,23 @@ async fn queued(db: &Db, pid: i32, what: &str) {
     panic!("{what} never queued on a lock");
 }
 
+#[tokio::test]
+async fn guild_settings_reads_a_concurrent_first_insert_after_it_commits() {
+    let Some(db) = db_with(3).await else { return };
+    let [guild] = ids();
+    let mut first = db.pool().begin().await.unwrap();
+    sqlx::query("INSERT INTO guilds (id) VALUES ($1)")
+        .bind(guild as i64)
+        .execute(&mut *first)
+        .await
+        .unwrap();
+    let (reader, pid) = side().await;
+    let read = tokio::spawn(async move { reader.guild_settings(guild).await });
+    queued(&db, pid, "guild settings lookup").await;
+    first.commit().await.unwrap();
+    assert_eq!(read.await.unwrap().unwrap().id, guild as i64);
+}
+
 async fn credits(db: &Db, user: u64) -> i64 {
     let row: Option<(i64,)> = sqlx::query_as("SELECT credits FROM users WHERE id = $1")
         .bind(user as i64)

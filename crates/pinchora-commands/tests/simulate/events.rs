@@ -197,10 +197,23 @@ async fn event_form_rsvp_waitlist_and_recurrence() {
         .unwrap();
     let now = chrono::Utc::now();
     let (first_pod, second_pod) = tokio::join!(sim.app.db.advance_events(now), sim.app.db.advance_events(now));
-    let next: Vec<_> = first_pod.unwrap().into_iter().chain(second_pod.unwrap()).collect();
+    let next: Vec<_> = first_pod
+        .unwrap()
+        .into_iter()
+        .chain(second_pod.unwrap())
+        .filter(|event| event.guild_id == sim.guild as i64)
+        .collect();
     assert_eq!(next.len(), 1);
     assert_eq!(next[0].parent_id, Some(id));
-    assert!(sim.app.db.advance_events(chrono::Utc::now()).await.unwrap().is_empty());
+    assert!(
+        sim.app
+            .db
+            .advance_events(chrono::Utc::now())
+            .await
+            .unwrap()
+            .iter()
+            .all(|event| event.guild_id != sim.guild as i64)
+    );
 }
 
 async fn scheduled_discord(
