@@ -13,8 +13,8 @@ use twilight_model::{
 };
 
 pub const COMPLETED_SLICE: u8 = 18;
-pub const PROJECTED_ROOTS: usize = 71;
-pub const FUTURE_ROOT_RESERVE: usize = 4;
+pub const PROJECTED_ROOTS: usize = 72;
+pub const FUTURE_ROOT_RESERVE: usize = 3;
 
 pub(crate) const COMMUNITY_ADMIN_PATHS: &[&str] = &[
     "qotd settings",

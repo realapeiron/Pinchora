@@ -336,6 +336,9 @@ async fn release(app: &Arc<App>, guild: u64, user: u64) -> anyhow::Result<()> {
             vec![],
         )
         .await;
+        if crate::roblox::on_join(app, guild, user, false).await {
+            return Ok(());
+        }
         if let Err(error) = resume::member(app, guild, m).await {
             tracing::warn!(guild,user,%error,"verified member welcome failed");
         }
@@ -766,4 +769,15 @@ pub(crate) async fn audit_settings(app: &App, guild: u64, actor: u64, action: &s
         vec![],
     )
     .await
+}
+
+/// Continue join side effects after Roblox profile verification released a Roblox-only hold.
+pub(crate) async fn resume_roblox(app: &Arc<App>, guild: u64, user: u64) -> anyhow::Result<()> {
+    let member = app
+        .http
+        .guild_member(Id::new(guild), Id::new(user))
+        .await?
+        .model()
+        .await?;
+    resume::member(app, guild, member).await
 }

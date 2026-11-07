@@ -12,10 +12,24 @@ fn snapshot_every_original_leaf_and_projected_budget() {
     paths.sort();
     assert_eq!(paths.join("\n") + "\n", include_str!("legacy-leaves.txt"));
     assert_eq!(paths, MANIFEST.iter().map(|r| r.legacy.clone()).collect::<Vec<_>>());
-    assert_eq!(tree.len(), 102);
-    assert_eq!(paths.len(), 357);
+    assert_eq!(tree.len(), 104);
+    assert_eq!(paths.len(), 365);
     let registered = crate::command_definitions();
     assert_eq!(registered.len(), PROJECTED_ROOTS);
+    assert_eq!(
+        registered
+            .iter()
+            .filter(|c| c.kind == twilight_model::application::command::CommandType::ChatInput)
+            .count(),
+        71
+    );
+    assert_eq!(
+        registered
+            .iter()
+            .filter(|c| c.kind == twilight_model::application::command::CommandType::Message && c.name == "Report")
+            .count(),
+        1
+    );
     let actual: BTreeSet<_> = crate::commands::help::leaves(&registered, Lang::En)
         .into_iter()
         .map(|l| l.path)
@@ -32,7 +46,7 @@ fn snapshot_every_original_leaf_and_projected_budget() {
         .map(|r| r.canonical.split(' ').next().unwrap())
         .collect();
     assert_eq!(projected.len(), PROJECTED_ROOTS);
-    assert_eq!(MANIFEST.iter().filter(|r| r.active()).count(), 181);
+    assert_eq!(MANIFEST.iter().filter(|r| r.active()).count(), 189);
     assert_eq!(
         MANIFEST.iter().map(|r| &r.canonical).collect::<BTreeSet<_>>().len(),
         MANIFEST.len()
@@ -323,7 +337,7 @@ fn migration_covers_every_active_leaf_without_broadening_split_parents() {
     );
     for route in MANIFEST
         .iter()
-        .filter(|r| r.active() && !r.legacy.starts_with("community "))
+        .filter(|r| r.active() && !r.legacy.starts_with("community ") && !r.legacy.starts_with("roblox"))
     {
         assert!(
             sql.contains(&format!("('{}', '{}')", route.legacy, previous_path(route)))
@@ -460,7 +474,7 @@ fn registered_command_sizes_keep_growth_headroom() {
         }
         assert!(
             size <= super::COMMAND_SIZE_BUDGET,
-            "/{name}: {size} exceeds {} characters (10% margin)",
+            "/{name}: {size} exceeds {} characters (growth budget)",
             super::COMMAND_SIZE_BUDGET
         );
     }

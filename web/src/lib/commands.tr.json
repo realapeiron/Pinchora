@@ -220,6 +220,169 @@
         },
         {
           "aliases": [],
+          "description": "Roblox profil koduyla doğrula",
+          "manager": false,
+          "options": [
+            {
+              "description": "Roblox kullanıcı adı",
+              "name": "username",
+              "required": true
+            }
+          ],
+          "path": "roblox verify",
+          "usage": "/roblox verify <username>"
+        },
+        {
+          "aliases": [],
+          "description": "Roblox bağlantını kaldır",
+          "manager": false,
+          "options": [],
+          "path": "roblox unverify",
+          "usage": "/roblox unverify"
+        },
+        {
+          "aliases": [],
+          "description": "Üyenin Roblox hesabını göster",
+          "manager": false,
+          "options": [
+            {
+              "description": "Discord üyesi",
+              "name": "user",
+              "required": false
+            }
+          ],
+          "path": "roblox whois",
+          "usage": "/roblox whois [user]"
+        },
+        {
+          "aliases": [],
+          "description": "Roblox rollerini ve takma adını güncelle",
+          "manager": false,
+          "options": [
+            {
+              "description": "Güncellenecek üye",
+              "name": "user",
+              "required": false
+            }
+          ],
+          "path": "roblox update",
+          "usage": "/roblox update [user]"
+        },
+        {
+          "aliases": [
+            "robloxadmin bind-add"
+          ],
+          "description": "Roblox rol bağı ekle",
+          "manager": true,
+          "options": [
+            {
+              "choices": [
+                "Doğrulanmış hesap",
+                "Grup üyesi",
+                "Grup sırası"
+              ],
+              "description": "Rol bağının koşulu",
+              "name": "kind",
+              "required": true
+            },
+            {
+              "description": "Verilecek rol",
+              "name": "role",
+              "required": true
+            },
+            {
+              "description": "Roblox grup kimliği",
+              "name": "group",
+              "required": false
+            },
+            {
+              "description": "En düşük sıra",
+              "name": "rank_min",
+              "required": false
+            },
+            {
+              "description": "En yüksek sıra",
+              "name": "rank_max",
+              "required": false
+            },
+            {
+              "description": "Koşul bozulursa rolü kaldır",
+              "name": "remove_if_unmet",
+              "required": false
+            }
+          ],
+          "path": "integrations roblox bind-add",
+          "usage": "/integrations roblox bind-add <kind> <role> [group] [rank_min] [rank_max] [remove_if_unmet]"
+        },
+        {
+          "aliases": [
+            "robloxadmin bind-list"
+          ],
+          "description": "Roblox rol bağlarını listele",
+          "manager": true,
+          "options": [],
+          "path": "integrations roblox bind-list",
+          "usage": "/integrations roblox bind-list"
+        },
+        {
+          "aliases": [
+            "robloxadmin bind-remove"
+          ],
+          "description": "Roblox rol bağını kaldır",
+          "manager": true,
+          "options": [
+            {
+              "description": "Listede görünen rol bağı numarası",
+              "name": "id",
+              "required": true
+            }
+          ],
+          "path": "integrations roblox bind-remove",
+          "usage": "/integrations roblox bind-remove <id>"
+        },
+        {
+          "aliases": [
+            "robloxadmin settings"
+          ],
+          "description": "Roblox ayarlarını değiştir",
+          "manager": true,
+          "options": [
+            {
+              "description": "Roblox entegrasyonunu aç",
+              "name": "enabled",
+              "required": false
+            },
+            {
+              "description": "Bağlı üyelere verilecek rol",
+              "name": "verified_role",
+              "required": false
+            },
+            {
+              "description": "Bağlı olmayan üyelere verilecek rol",
+              "name": "unverified_role",
+              "required": false
+            },
+            {
+              "description": "{roblox-name} ve {discord-name} ile takma ad şablonu; kapatmak için off",
+              "name": "nickname_template",
+              "required": false
+            },
+            {
+              "description": "Üyelerin doğrulama yaptığı kanal",
+              "name": "verify_channel",
+              "required": false
+            },
+            {
+              "description": "Doğrulanmamış yeni üyeleri beklet",
+              "name": "require_verified",
+              "required": false
+            }
+          ],
+          "path": "integrations roblox settings",
+          "usage": "/integrations roblox settings [enabled] [verified_role] [unverified_role] [nickname_template] [verify_channel] [require_verified]"
+        },
+        {
+          "aliases": [],
           "description": "Biri kaç oyun oynamış ve kazanmış",
           "manager": false,
           "options": [
@@ -6883,5 +7046,5 @@
       "title": "Oyun ve modül ayarları"
     }
   ],
-  "count": 357
+  "count": 365
 }

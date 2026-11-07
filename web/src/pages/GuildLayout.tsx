@@ -74,7 +74,13 @@ export const NAV: NavGroup[] = [
       { to: "community-pack", label: "Community pack" },
     ],
   },
-  { group: "FEEDS", pages: [{ to: "feeds", label: "Social feeds" }] },
+  {
+    group: "FEEDS",
+    pages: [
+      { to: "feeds", label: "Social feeds" },
+      { to: "roblox", label: "Roblox" },
+    ],
+  },
   { group: "PLAYERS", pages: [{ to: "achievements", label: "Achievements" }] },
 ];
 

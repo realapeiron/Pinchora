@@ -3583,4 +3583,36 @@ export const tr: { [K in keyof typeof en]: string } = {
     "Karşılama mesajını, kapanma süresini ve ekip rollerini kontrol edin.",
   "Choose a staff forum.": "Ekip için bir forum kanalı seçin.",
   "Choose a forum in this server.": "Bu sunucudaki bir forum kanalını seçin.",
+  Roblox: "Roblox",
+  "Roblox verification": "Roblox doğrulaması",
+  "Link Roblox profiles, then assign safe roles from group membership and ranks.":
+    "Roblox profillerini bağla; grup üyeliği ve sıralarına göre güvenli roller ata.",
+  "Verification settings": "Doğrulama ayarları",
+  "Enable Roblox verification": "Roblox doğrulamasını aç",
+  "Members use /roblox verify to link their profile.":
+    "Üyeler profillerini bağlamak için /roblox verify kullanır.",
+  "Hold unverified newcomers": "Doğrulanmamış yeni üyeleri beklet",
+  "Requires the server join gate and a verification channel.":
+    "Sunucu giriş kapısı ve doğrulama kanalı gerektirir.",
+  "Nickname template": "Takma ad şablonu",
+  "Use {roblox-name} and {discord-name}. Leave empty to keep Discord names.":
+    "{roblox-name} ve {discord-name} kullan. Discord adlarını korumak için boş bırak.",
+  "Role binds": "Rol bağları",
+  "A bind gives a role only while the Roblox condition matches. Up to 25 binds per server.":
+    "Roblox koşulu sağlandığı sürece rol verilir. Sunucu başına en fazla 25 bağ.",
+  "No role binds yet.": "Henüz rol bağı yok.",
+  Condition: "Koşul",
+  "Role to grant": "Verilecek rol",
+  "Verified account": "Doğrulanmış hesap",
+  "Group member": "Grup üyesi",
+  "Group rank": "Grup sırası",
+  "Roblox group ID": "Roblox grup kimliği",
+  "Find ranks": "Sıraları bul",
+  "Group lookup failed.": "Grup sorgusu başarısız.",
+  "Minimum rank": "En düşük sıra",
+  "Maximum rank": "En yüksek sıra",
+  "Remove role when unmatched": "Koşul sağlanmayınca rolü kaldır",
+  "Add bind": "Rol bağı ekle",
+  "Role bind added.": "Rol bağı eklendi.",
+  "Roblox settings saved.": "Roblox ayarları kaydedildi.",
 };

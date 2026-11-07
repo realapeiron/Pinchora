@@ -217,6 +217,9 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         "INSERT INTO mod_voice_bans(guild_id,user_id) VALUES($2,$1)",
         "INSERT INTO mod_report_blocks(guild_id,user_id) VALUES($2,$1)",
         "INSERT INTO mod_booster_roles(guild_id,user_id,role_id) VALUES($1,$1,$2)",
+        "INSERT INTO roblox_links(user_id,roblox_id,roblox_name) VALUES($1,$1,'Crab')",
+        "INSERT INTO roblox_pending(user_id,roblox_id,roblox_name,code,expires_at) VALUES($1,$1,'Crab','pinchora-crab-ab12',now()+interval '10 minutes')",
+        "INSERT INTO roblox_sync(guild_id,user_id) VALUES($1,$1)",
         "INSERT INTO afk (guild_id, user_id, message) VALUES ($1, $1, 'away')",
         "INSERT INTO sticky_messages (channel_id, guild_id, content, updated_by) VALUES ($1, $1, 'note', $1)",
         "INSERT INTO scheduled_messages (guild_id, channel_id, content, schedule, next_run_at, created_by)
@@ -408,7 +411,11 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         }
     }
 
+    db.roblox_cache_put(&format!("groups:{user}"), &serde_json::json!([[42, 100]]))
+        .await
+        .unwrap();
     let deleted = db.delete_user_data(user, Utc::now()).await.unwrap();
+    assert!(db.roblox_cache(&format!("groups:{user}")).await.unwrap().is_none());
     assert!(deleted.rows >= filled.len() as u64, "{deleted:?}");
     let mut tables: Vec<&str> = filled.iter().map(|(t, _)| *t).collect();
     tables.dedup();

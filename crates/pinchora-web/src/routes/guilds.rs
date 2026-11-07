@@ -107,6 +107,7 @@ pub fn router() -> Router<WebState> {
         .nest("/feeds", super::feeds::router())
         .nest("/starboard", super::starboard::router())
         .nest("/invites", super::invites::router())
+        .nest("/roblox", super::roblox::router())
         .nest("/achievements", super::achievements::router())
         .nest("/utility", super::utility::router())
 }

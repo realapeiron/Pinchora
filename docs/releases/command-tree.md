@@ -1,7 +1,7 @@
 # Command tree release rehearsal
 
 F20 adds four member roots (`/qotd`, `/counting`, `/form`, `/modmail`). Registration has
-**70 slash roots plus the Report message action** (71 total). `/ban`, `/kick`, `/warn`,
+**71 slash roots plus the Report message action** (72 total). `/ban`, `/kick`, `/warn`,
 `/timeout` and `/purge` remain direct roots with their D11 options and original Ban Members,
 Kick Members, Moderate Members and Manage Messages permissions. Secondary actions, including
 softban, stay under `/mod`. Old `/mod ban|kick|warn|timeout|purge` interactions and text aliases
@@ -15,7 +15,11 @@ text aliases, private replies, module ownership and saved parent/leaf restrictio
 Manage Server is enforced per action; member leaves retain their existing permissions.
 Registration enforces **6,400 characters for `/community`** and **6,800 for every other root**.
 Current largest commands: `/community` **6,367**, `/setup` **6,234**, `/progression` **5,567**,
-`/safety` **4,767**, and `/mod` **2,977**. No command exceeds its budget.
+`/safety` **4,767**, and `/integrations` **3,785**. No command exceeds its budget.
+
+F16 adds `/roblox verify|unverify|whois|update`, with administration under
+`/integrations roblox settings|bind-add|bind-remove|bind-list`. Migration **0073** is
+imported unchanged from the reviewed branch. There are **365 executable entries**.
 
 Slices 13–18 originally completed the transition from 95 registered roots to **66 roots** and 330 executable actions.
 The manifest is the action inventory; all 160 moved actions have one canonical destination. Old typed
@@ -103,7 +107,7 @@ new help uses versioned controls. The public catalog searches old names but list
 
 Run the workspace Rust checks with the assigned real PostgreSQL/Redis URLs and `PINCHORA_TEST_MIX_SECS=60`,
 then the web lint/typecheck/Vitest/build checks. Re-run failing binaries alone. The manifest test requires
-71 registrations and one reachable canonical leaf for every pre-migration action, preserves typed arguments,
+72 registrations and one reachable canonical leaf for every pre-migration action, preserves typed arguments,
 permissions/module metadata and defer behavior. Simulator feature fixtures rewrite both the root and
 nested Discord options to canonical paths; explicit legacy fixtures separately compare original handlers.
 Regenerate rules, command/fact catalogs and landing images through their ignored writer tests when stale.

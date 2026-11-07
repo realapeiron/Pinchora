@@ -228,6 +228,7 @@ pub(crate) fn owner(prefix: &str) -> Option<&'static str> {
         "qd" => "qotd queue",
         "fm" => "form open",
         "mml" => "modmail close",
+        "rx" => "roblox verify",
         _ => return None,
     })
 }
@@ -236,6 +237,7 @@ pub(crate) async fn component_owner(cx: &Cx, custom_id: &str) -> anyhow::Result<
     let prefix = parts.next().unwrap_or_default();
     let action = parts.next().unwrap_or_default();
     let path = match (prefix, action) {
+        ("rx", "check") => Some("roblox verify"),
         ("ev", "c") => Some("event create"),
         ("ev", "p") => Some("event attendees"),
         ("fm", "a" | "d") => Some("form post"),

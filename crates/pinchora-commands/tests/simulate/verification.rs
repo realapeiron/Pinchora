@@ -972,3 +972,93 @@ async fn verification_partial_restore_retry_does_not_rewrite_completed_operation
     assert_eq!(sim.mock.channels.lock().unwrap()[&CHANNEL_ID]["rate_limit_per_user"], 0);
     task.abort();
 }
+
+#[tokio::test]
+async fn roblox_and_captcha_require_both_proofs_before_join_actions() {
+    let Some((sim, _, task)) = setup("roblox_captcha_order").await else {
+        return;
+    };
+    config(&sim, "captcha").await;
+    let after = unique();
+    sim.guild_role(after, "After verification", 2);
+    sim.app
+        .db
+        .save_auto_role(
+            sim.guild,
+            &pinchora_db::NewAutoRole {
+                role_id: after,
+                kind: "after_verify",
+                delay_secs: 0,
+                remove_after_secs: 0,
+                enabled: true,
+            },
+            10,
+        )
+        .await
+        .unwrap();
+    sim.app
+        .db
+        .roblox_save_settings(
+            sim.guild,
+            &pinchora_db::RobloxSettings {
+                enabled: true,
+                require_verified: true,
+                verified_role_id: Some(after as i64),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+    for roblox_first in [true, false] {
+        let user = unique();
+        sim.join(user, "Crab", false, None).await;
+        sim.role_changes();
+        if roblox_first {
+            sim.app.db.roblox_start(user, unique(), "Crab", "proof").await.unwrap();
+            let pending = sim.app.db.roblox_pending(user).await.unwrap().unwrap();
+            assert!(sim.app.db.roblox_complete(user, &pending).await.unwrap());
+            assert!(
+                !pinchora_commands::roblox::sync(&sim.app, sim.guild, user)
+                    .await
+                    .unwrap()
+            );
+            pinchora_commands::roblox::release_hold(&sim.app, sim.guild, user)
+                .await
+                .unwrap();
+            assert!(sim.role_changes().is_empty(), "Roblox cannot bypass pending CAPTCHA");
+        }
+        let nonce = "a123456789abcdef0123456789abcdef";
+        let hash = format!("{:x}", Sha256::digest(format!("{nonce}:A7K3M")));
+        sim.app
+            .cache
+            .captcha_issue(sim.guild, user, nonce, &hash)
+            .await
+            .unwrap();
+        pinchora_commands::verification_answer(
+            &sim.app,
+            sim.guild,
+            user,
+            nonce,
+            "a7k3m",
+            pinchora_core::i18n::Lang::En,
+        )
+        .await
+        .unwrap();
+        let changes = sim.role_changes();
+        assert_eq!(
+            changes.contains(&format!("PUT {user} {after}")),
+            roblox_first,
+            "CAPTCHA alone cannot resume join actions: {changes:?}"
+        );
+        if !roblox_first {
+            sim.app.db.roblox_start(user, unique(), "Crab", "proof").await.unwrap();
+            let pending = sim.app.db.roblox_pending(user).await.unwrap().unwrap();
+            assert!(sim.app.db.roblox_complete(user, &pending).await.unwrap());
+            pinchora_commands::roblox::release_hold(&sim.app, sim.guild, user)
+                .await
+                .unwrap();
+            assert!(sim.role_changes().contains(&format!("PUT {user} {after}")));
+        }
+    }
+    task.abort();
+}

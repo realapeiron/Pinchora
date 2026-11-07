@@ -95,6 +95,7 @@ export const router = createBrowserRouter([
         path: "community-pack",
         lazy: async () => ({ Component: (await import("./pages/CommunityPack")).CommunityPack }),
       },
+      { path: "roblox", lazy: async () => ({ Component: (await import("./pages/Roblox")).Roblox }) },
       { path: "events", lazy: async () => ({ Component: (await import("./pages/Events")).Events }) },
       { path: "moderation", element: <Moderation /> },
       {

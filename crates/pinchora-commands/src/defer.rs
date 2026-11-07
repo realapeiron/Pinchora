@@ -94,6 +94,8 @@ const PRIVATE: &[&str] = &[
     "privacy",
     "purge",
     "quests",
+    "roblox",
+    "robloxadmin",
     "reason",
     "remind",
     "role",

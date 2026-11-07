@@ -368,7 +368,7 @@ impl fmt::Display for PrivateAddress {
 impl StdError for PrivateAddress {}
 
 /// Resolves names with the system resolver and refuses any whose addresses are not all public.
-struct PublicOnly;
+pub(crate) struct PublicOnly;
 
 impl Resolve for PublicOnly {
     fn resolve(&self, name: Name) -> Resolving {

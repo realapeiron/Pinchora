@@ -159,6 +159,18 @@ pub const SECTIONS: &[Section] = &[
     ),
     section!("invite_rewards", "invites,role_id", "invites", false),
     section!(
+        "roblox_settings",
+        "enabled,verified_role_id,unverified_role_id,nickname_template,verify_channel_id,require_verified",
+        "",
+        false
+    ),
+    section!(
+        "roblox_binds",
+        "kind,group_id,rank_min,rank_max,role_id,remove_if_unmet",
+        "id",
+        true
+    ),
+    section!(
         "verification",
         "enabled,mode,verified_role_id,unverified_role_id,channel_id,kick_after_mins,min_account_age_hours,block_default_avatar,block_name_patterns,dm_on_block,log_channel_id,message,rule_action,exempt_roles",
         "",

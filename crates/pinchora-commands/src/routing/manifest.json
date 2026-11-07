@@ -1335,6 +1335,46 @@
     "slice": 0
   },
   {
+    "legacy": "roblox unverify",
+    "canonical": "roblox unverify",
+    "slice": 18
+  },
+  {
+    "legacy": "roblox update",
+    "canonical": "roblox update",
+    "slice": 18
+  },
+  {
+    "legacy": "roblox verify",
+    "canonical": "roblox verify",
+    "slice": 18
+  },
+  {
+    "legacy": "roblox whois",
+    "canonical": "roblox whois",
+    "slice": 18
+  },
+  {
+    "legacy": "robloxadmin bind-add",
+    "canonical": "integrations roblox bind-add",
+    "slice": 18
+  },
+  {
+    "legacy": "robloxadmin bind-list",
+    "canonical": "integrations roblox bind-list",
+    "slice": 18
+  },
+  {
+    "legacy": "robloxadmin bind-remove",
+    "canonical": "integrations roblox bind-remove",
+    "slice": 18
+  },
+  {
+    "legacy": "robloxadmin settings",
+    "canonical": "integrations roblox settings",
+    "slice": 18
+  },
+  {
     "legacy": "role add",
     "canonical": "mod role add",
     "slice": 9

@@ -65,6 +65,8 @@
 "section.vote_channels" = "Voting channels"
 "section.counter_channels" = "Statistics counters"
 "section.invite_settings" = "Invite settings"
+"section.roblox_settings" = "Roblox settings"
+"section.roblox_binds" = "Roblox role binds"
 "section.invite_rewards" = "Invite rewards"
 "section.verification" = "Verification"
 "section.raid_settings" = "Raid protection"

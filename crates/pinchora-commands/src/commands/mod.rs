@@ -57,6 +57,7 @@ mod rank;
 pub(crate) mod remind;
 mod rep;
 mod rep_roles;
+pub(crate) mod roblox;
 pub(crate) mod role_panels;
 pub(crate) mod roles_pack;
 pub(crate) mod rps;
@@ -231,6 +232,8 @@ commands!(
     info::Info,
     invites::InvitesCommand,
     invites::InviteAdmin,
+    roblox::RobloxCommand,
+    roblox::RobloxAdmin,
     birthdays::BirthdayCommand,
     birthdays::BirthdaysAdmin,
     utility::AfkCommand,

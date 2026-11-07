@@ -148,11 +148,12 @@ pub enum Module {
     Counting,
     Forms,
     Modmail,
+    Roblox,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 51] = [
+    pub const ALL: [Self; 52] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -204,6 +205,7 @@ impl Module {
         Self::Counting,
         Self::Forms,
         Self::Modmail,
+        Self::Roblox,
     ];
 
     /// The key stored in the database and used in the API.
@@ -260,6 +262,7 @@ impl Module {
             Self::Counting => "counting",
             Self::Forms => "forms",
             Self::Modmail => "modmail",
+            Self::Roblox => "roblox",
         }
     }
 
@@ -320,6 +323,7 @@ impl Module {
             Self::Counting => "Counting",
             Self::Forms => "Application forms",
             Self::Modmail => "Modmail",
+            Self::Roblox => "Roblox",
         }
     }
 
@@ -393,6 +397,7 @@ impl Module {
             Self::Counting => "A channel for sequential counting.",
             Self::Forms => "Application forms and reviews.",
             Self::Modmail => "Private member messages to server staff.",
+            Self::Roblox => "Roblox profile verification, group binds and nicknames.",
             Self::Feeds => {
                 "/integrations feeds: new YouTube videos, RSS and podcast episodes, Reddit and Bluesky posts in a channel."
             }
@@ -446,6 +451,7 @@ impl Module {
             Self::Events => Group::Community,
             Self::CommandControl => Group::Server,
             Self::Qotd | Self::Counting | Self::Forms | Self::Modmail => Group::Community,
+            Self::Roblox => Group::Feeds,
         }
     }
 
@@ -465,6 +471,7 @@ impl Module {
             Self::Achievements => Scope::Server,
             Self::CommandControl => Scope::Server,
             Self::Modmail => Scope::Server,
+            Self::Roblox => Scope::Server,
             _ => Scope::Channels,
         }
     }
@@ -552,6 +559,7 @@ impl Module {
             "counting" => Self::Counting,
             "form" => Self::Forms,
             "modmail" => Self::Modmail,
+            "roblox" | "robloxadmin" => Self::Roblox,
             _ => return None,
         })
     }
@@ -600,6 +608,7 @@ impl Module {
             "ct" => Self::Counting,
             "fm" => Self::Forms,
             "mml" => Self::Modmail,
+            "rx" | "rk" => Self::Roblox,
             _ => return None,
         })
     }
