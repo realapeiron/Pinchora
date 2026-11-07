@@ -276,6 +276,9 @@ struct Mock {
     channel_lookups: Arc<Mutex<HashMap<u64, usize>>>,
     /// Whether looking up the server itself fails (Discord is down).
     guild_lookup_fails: Arc<AtomicBool>,
+    /// Guilds and requests for the current bot guild list.
+    bot_guilds: Arc<Mutex<Vec<Value>>>,
+    bot_guild_queries: Arc<Mutex<Vec<String>>>,
     /// Who owns the server, as `GET /guilds/{id}` says (the bot, 1, until a test hands it to someone).
     owner: Arc<AtomicU64>,
     /// Users the server has banned.
@@ -462,6 +465,25 @@ async fn discord(
         return answer;
     }
     match (&method, parts.as_slice()) {
+        (&Method::GET, [.., "users", "@me", "guilds"]) => {
+            let query = uri.query().unwrap_or_default().to_owned();
+            mock.bot_guild_queries.lock().unwrap().push(query.clone());
+            let after = query
+                .split('&')
+                .find_map(|part| part.strip_prefix("after="))
+                .map(number)
+                .unwrap_or(0);
+            let page: Vec<Value> = mock
+                .bot_guilds
+                .lock()
+                .unwrap()
+                .iter()
+                .filter(|guild| number(guild["id"].as_str().unwrap_or_default()) > after)
+                .take(200)
+                .cloned()
+                .collect();
+            return (StatusCode::OK, Value::Array(page).to_string());
+        }
         (&Method::GET, [.., "guilds", guild, "roles"]) => {
             let mut roles = vec![role_json(BOT_ROLE_ID, "Pinchora", BOT_ROLE_POSITION, true)];
             if mock.everyone_role.load(Ordering::SeqCst) {
@@ -1211,6 +1233,8 @@ impl Sim {
             channels: Arc::default(),
             channel_lookups: Arc::default(),
             guild_lookup_fails: Arc::default(),
+            bot_guilds: Arc::default(),
+            bot_guild_queries: Arc::default(),
             owner: Arc::new(AtomicU64::new(APPLICATION_ID)),
             bans: Arc::default(),
             bans_refused: Arc::default(),

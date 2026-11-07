@@ -14,6 +14,8 @@ name: pinchora
 x-app: &app
   build:
     context: .
+    args:
+      GIT_SHA: ${GIT_SHA:-dev}
   image: pinchora:dev
   env_file: .env
   environment:

@@ -2,6 +2,7 @@ use std::process::Command;
 
 fn main() {
     println!("cargo:rerun-if-changed=../../.git/HEAD");
+    println!("cargo:rerun-if-env-changed=GIT_SHA");
     let output = |program: &str, args: &[&str]| -> String {
         Command::new(program)
             .args(args)
@@ -13,7 +14,10 @@ fn main() {
     };
     println!(
         "cargo:rustc-env=PINCHORA_BUILD_COMMIT={}",
-        output("git", &["rev-parse", "--short", "HEAD"])
+        std::env::var("GIT_SHA")
+            .ok()
+            .filter(|sha| !sha.trim().is_empty())
+            .unwrap_or_else(|| output("git", &["rev-parse", "--short", "HEAD"]))
     );
     println!(
         "cargo:rustc-env=PINCHORA_BUILD_DATE={}",

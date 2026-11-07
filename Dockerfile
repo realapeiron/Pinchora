@@ -62,6 +62,8 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
 # dashboard: pinchora-web's build.rs bakes web/dist into the binary.
 COPY . .
 COPY --from=web /src/web/dist web/dist
+ARG GIT_SHA=dev
+ENV GIT_SHA=${GIT_SHA}
 RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
     cargo build --release --locked -p pinchora \
