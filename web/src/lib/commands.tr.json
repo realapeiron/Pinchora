@@ -2462,7 +2462,9 @@
                 "RSS ya da podcast",
                 "Reddit",
                 "Bluesky",
-                "X, Instagram ya da TikTok (köprü)"
+                "X, Instagram ya da TikTok (köprü)",
+                "Twitch",
+                "Kick"
               ],
               "description": "Paylaşımlar nereden geliyor",
               "name": "kind",
@@ -2487,10 +2489,15 @@
               "description": "Her yeni paylaşımda etiketlenecek rol",
               "name": "role",
               "required": false
+            },
+            {
+              "description": "Doğrulanmış yayıncı canlıyken verilecek rol (Twitch veya Kick)",
+              "name": "live_role",
+              "required": false
             }
           ],
           "path": "integrations feeds add",
-          "usage": "/integrations feeds add <kind> <source> <channel> [message] [role]"
+          "usage": "/integrations feeds add <kind> <source> <channel> [message] [role] [live_role]"
         },
         {
           "aliases": [
@@ -2525,6 +2532,16 @@
               "required": false
             },
             {
+              "description": "Doğrulanmış yayıncı canlıyken bu rolü ver",
+              "name": "live_role",
+              "required": false
+            },
+            {
+              "description": "Canlı yayın rolü vermeyi bırak",
+              "name": "no_live_role",
+              "required": false
+            },
+            {
               "description": "Mesajın altına Pinchora kartını (başlık, resim, özet) ekle",
               "name": "embed",
               "required": false
@@ -2546,7 +2563,7 @@
             }
           ],
           "path": "integrations feeds edit",
-          "usage": "/integrations feeds edit <id> [channel] [message] [role] [no_role] [embed] [include] [exclude] [enabled]"
+          "usage": "/integrations feeds edit <id> [channel] [message] [role] [no_role] [live_role] [no_live_role] [embed] [include] [exclude] [enabled]"
         },
         {
           "aliases": [

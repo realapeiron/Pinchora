@@ -2462,7 +2462,9 @@
                 "RSS or podcast",
                 "Reddit",
                 "Bluesky",
-                "X, Instagram or TikTok (bridge)"
+                "X, Instagram or TikTok (bridge)",
+                "Twitch",
+                "Kick"
               ],
               "description": "Where the posts come from",
               "name": "kind",
@@ -2487,10 +2489,15 @@
               "description": "A role to ping with every new post",
               "name": "role",
               "required": false
+            },
+            {
+              "description": "Give this role to the verified streamer while live (Twitch or Kick only)",
+              "name": "live_role",
+              "required": false
             }
           ],
           "path": "integrations feeds add",
-          "usage": "/integrations feeds add <kind> <source> <channel> [message] [role]"
+          "usage": "/integrations feeds add <kind> <source> <channel> [message] [role] [live_role]"
         },
         {
           "aliases": [
@@ -2525,6 +2532,16 @@
               "required": false
             },
             {
+              "description": "Give this role to the verified streamer while live",
+              "name": "live_role",
+              "required": false
+            },
+            {
+              "description": "Stop giving a live role",
+              "name": "no_live_role",
+              "required": false
+            },
+            {
               "description": "Add Pinchora's card (title, picture, summary) under the text",
               "name": "embed",
               "required": false
@@ -2546,7 +2563,7 @@
             }
           ],
           "path": "integrations feeds edit",
-          "usage": "/integrations feeds edit <id> [channel] [message] [role] [no_role] [embed] [include] [exclude] [enabled]"
+          "usage": "/integrations feeds edit <id> [channel] [message] [role] [no_role] [live_role] [no_live_role] [embed] [include] [exclude] [enabled]"
         },
         {
           "aliases": [
