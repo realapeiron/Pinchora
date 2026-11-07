@@ -26,6 +26,7 @@ async fn partners_friends_hugs_and_reputation_speak_turkish() {
         return;
     };
     sim.locale = "tr";
+    sim.app.set_guild_lang(sim.guild, Some(Lang::Tr)).await.unwrap();
     let (a, b, c, d, e) = (unique(), unique(), unique(), unique(), unique());
 
     // A partner request, its answer, the pair's page and the way out.
@@ -46,8 +47,10 @@ async fn partners_friends_hugs_and_reputation_speak_turkish() {
     asked.button("Reddet");
     let stolen = sim.click(c, &asked, "Kabul et").await;
     assert!(stolen.content().contains("senin için değil"), "{}", stolen.content());
+    sim.locale = "en-US";
     let paired = sim.click(b, &asked, "Kabul et").await;
     assert_eq!(paired.title(), "💞 Yeni partnerler");
+    sim.locale = "tr";
     keep(&sim, &paired, "partners-new");
     sim.app.db.record_interaction("hug", a, b).await.unwrap();
     let view = sim.command(a, "partner", partner_options("view", vec![])).await;
@@ -303,7 +306,7 @@ async fn the_server_tools_answer_in_turkish() {
     let shown = sim.command(admin, "config", config(sub("show", vec![]))).await;
     assert_eq!(shown.title(), "Sunucu ayarları");
     assert!(shown.field("Parti oyunları").contains("ağır sözler ve hakaretler"));
-    assert!(shown.field("Canlı düşüşleri").contains("ile açabilirsin"));
+    assert!(shown.field("Yaratık etkinliği").contains("ile açabilirsin"));
     assert!(shown.field("Karşılama kartları").contains("**kapalı** · ayarlanmadı"));
     assert!(
         shown.field("Karşılama kartları").contains("sunucusuna hoş geldin"),

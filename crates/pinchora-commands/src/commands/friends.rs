@@ -101,11 +101,15 @@ impl FriendsCommand {
                     to,
                     until: cx.app.now().timestamp() + REQUEST_SECS,
                 };
+                let public_lang = match cx.guild_id() {
+                    Some(guild) => cx.app.guild_lang(guild).await,
+                    None => cx.lang(),
+                };
                 let embed = EmbedBuilder::new()
                     .color(BRAND)
-                    .title(t!(cx.lang(), "friends.request-title"))
+                    .title(t!(public_lang, "friends.request-title"))
                     .description(t!(
-                        cx.lang(),
+                        public_lang,
                         "friends.request",
                         from = mention(me),
                         to = mention(to),
@@ -115,7 +119,11 @@ impl FriendsCommand {
                 cx.reply(InteractionResponseData {
                     content: Some(mention(to)),
                     embeds: Some(vec![embed]),
-                    components: Some(vec![request.buttons(cx.lang(), "fd", &t!(cx.lang(), "friends.accept"))]),
+                    components: Some(vec![request.buttons(
+                        public_lang,
+                        "fd",
+                        &t!(public_lang, "friends.accept"),
+                    )]),
                     allowed_mentions: social::ping_only(to),
                     ..Default::default()
                 })
@@ -328,18 +336,22 @@ async fn closed(cx: &Cx, text: impl Into<String>) -> anyhow::Result<()> {
 
 async fn on_answer(cx: &Cx, accept: bool, request: Request) -> anyhow::Result<()> {
     let me = cx.author()?.id.get();
+    let public_lang = match cx.guild_id() {
+        Some(guild) => cx.app.guild_lang(guild).await,
+        None => cx.lang(),
+    };
     if me != request.to && !(me == request.from && !accept) {
         return cx.reply_ephemeral(t!(cx.lang(), "social.not-for-you")).await;
     }
     if request.expired(&cx.app) {
-        return closed(cx, t!(cx.lang(), "friends.expired")).await;
+        return closed(cx, t!(public_lang, "friends.expired")).await;
     }
     if !accept {
         let text = if me == request.from {
-            t!(cx.lang(), "friends.withdrawn", from = mention(request.from))
+            t!(public_lang, "friends.withdrawn", from = mention(request.from))
         } else {
             t!(
-                cx.lang(),
+                public_lang,
                 "social.said-no",
                 to = mention(request.to),
                 from = mention(request.from)
@@ -355,8 +367,8 @@ async fn on_answer(cx: &Cx, accept: bool, request: Request) -> anyhow::Result<()
             cx.app.db.remember_name(me, &social::plain_name(user)).await?;
             let embed = EmbedBuilder::new()
                 .color(SUCCESS)
-                .title(t!(cx.lang(), "friends.new-title"))
-                .description(t!(cx.lang(), "friends.new", from = from, to = to))
+                .title(t!(public_lang, "friends.new-title"))
+                .description(t!(public_lang, "friends.new", from = from, to = to))
                 .build();
             cx.update(InteractionResponseData {
                 content: Some(String::new()),
@@ -367,12 +379,17 @@ async fn on_answer(cx: &Cx, accept: bool, request: Request) -> anyhow::Result<()
             .await
         }
         BefriendOutcome::AlreadyFriends => {
-            closed(cx, t!(cx.lang(), "friends.already-pair", from = from, to = to)).await
+            closed(cx, t!(public_lang, "friends.already-pair", from = from, to = to)).await
         }
         BefriendOutcome::Full { user } => {
             closed(
                 cx,
-                t!(cx.lang(), "friends.they-full", user = mention(user), max = MAX_FRIENDS),
+                t!(
+                    public_lang,
+                    "friends.they-full",
+                    user = mention(user),
+                    max = MAX_FRIENDS
+                ),
             )
             .await
         }

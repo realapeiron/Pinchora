@@ -94,10 +94,24 @@ impl FieldError {
         if lang == Lang::En || self.key.is_empty() {
             return self.message.clone();
         }
-        let args: Vec<(&str, &dyn std::fmt::Display)> = self
+        let values: Vec<(&str, String)> = self
             .args
             .iter()
-            .map(|(k, v)| (*k, v as &dyn std::fmt::Display))
+            .map(|(key, value)| {
+                if self.key == "whole-server" && *key == "module" {
+                    let name = crate::modules::Module::ALL
+                        .into_iter()
+                        .find(|module| module.key() == value)
+                        .map_or_else(|| value.clone(), |module| module.name(lang));
+                    (*key, name)
+                } else {
+                    (*key, value.clone())
+                }
+            })
+            .collect();
+        let args: Vec<(&str, &dyn std::fmt::Display)> = values
+            .iter()
+            .map(|(key, value)| (*key, value as &dyn std::fmt::Display))
             .collect();
         i18n::text(lang, &format!("settings-error.{}", self.key), &args)
     }
@@ -109,10 +123,24 @@ impl FieldError {
         if self.key.is_empty() {
             return None;
         }
-        let args: Vec<(&str, &dyn std::fmt::Display)> = self
+        let values: Vec<(&str, String)> = self
             .args
             .iter()
-            .map(|(k, v)| (*k, v as &dyn std::fmt::Display))
+            .map(|(key, value)| {
+                if self.key == "whole-server" && *key == "module" {
+                    let name = crate::modules::Module::ALL
+                        .into_iter()
+                        .find(|module| module.key() == value)
+                        .map_or_else(|| value.clone(), |module| module.label().to_owned());
+                    (*key, name)
+                } else {
+                    (*key, value.clone())
+                }
+            })
+            .collect();
+        let args: Vec<(&str, &dyn std::fmt::Display)> = values
+            .iter()
+            .map(|(key, value)| (*key, value as &dyn std::fmt::Display))
             .collect();
         Some(i18n::text(Lang::En, &format!("settings-error.{}", self.key), &args))
     }

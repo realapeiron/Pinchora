@@ -35,7 +35,7 @@ use super::{
 use crate::{
     App, Cx,
     server_events::{button, row},
-    util::{BRAND, DANGER, SUCCESS, mention, relative, thousands},
+    util::{BRAND, DANGER, SUCCESS, mention, relative, thousands_in},
 };
 
 fn manage_guild() -> Permissions {
@@ -367,7 +367,12 @@ async fn ended(
         .take(10)
         .map(|(m, paid)| match paid {
             0 => format!("🧱 {} ×{}", mention(m.user_id), m.amount),
-            shells => format!("🧱 {} ×{} **+{}**", mention(m.user_id), m.amount, thousands(*shells)),
+            shells => format!(
+                "🧱 {} ×{} **+{}**",
+                mention(m.user_id),
+                m.amount,
+                thousands_in(lang, *shells)
+            ),
         })
         .collect();
     let more = match helpers.len().saturating_sub(10) {

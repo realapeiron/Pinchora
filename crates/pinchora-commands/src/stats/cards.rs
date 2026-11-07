@@ -7,7 +7,7 @@ use chrono::{Datelike, NaiveDate, NaiveTime};
 use futures_util::future::join_all;
 use pinchora_core::{
     i18n::Lang,
-    server_stats::{self, DayTotals, Period, grouped, minutes_text},
+    server_stats::{self, DayTotals, Period, grouped_in, minutes_text},
     t,
 };
 use pinchora_db::ActivityDay;
@@ -65,8 +65,8 @@ fn day_text(day: NaiveDate, lang: Lang) -> String {
     )
 }
 
-fn pixel(text: String) -> String {
-    text.to_uppercase()
+fn pixel(lang: Lang, text: String) -> String {
+    lang.upper(&text)
 }
 
 fn first_moment(day: NaiveDate) -> chrono::DateTime<chrono::Utc> {
@@ -150,15 +150,16 @@ impl Frame {
 fn base(app_lang: Lang, frame: &Frame, kicker: &str, title: String, period: Period) -> StatsCard {
     let lang = app_lang;
     StatsCard {
-        kicker: pixel(t!(lang, kicker)),
+        lang,
+        kicker: pixel(lang, t!(lang, kicker)),
         title,
-        period: pixel(t!(lang, "stats.card.period", count = period.days())),
+        period: pixel(lang, t!(lang, "stats.card.period", count = period.days())),
         range: frame.range(lang),
         tiles: Vec::new(),
-        chart_title: pixel(t!(lang, "stats.card.messages-per-day")),
+        chart_title: pixel(lang, t!(lang, "stats.card.messages-per-day")),
         days: Vec::new(),
-        first_day: pixel(day_text(frame.first, lang)),
-        last_day: pixel(day_text(frame.today, lang)),
+        first_day: pixel(lang, day_text(frame.first, lang)),
+        last_day: pixel(lang, day_text(frame.today, lang)),
         empty: t!(lang, "stats.card.empty"),
         flows: None,
         heat: None,
@@ -169,7 +170,7 @@ fn base(app_lang: Lang, frame: &Frame, kicker: &str, title: String, period: Peri
 
 fn tile(lang: Lang, label: &str, value: String, note: Option<String>) -> StatTile {
     StatTile {
-        label: pixel(t!(lang, label)),
+        label: pixel(lang, t!(lang, label)),
         value,
         note,
     }
@@ -232,7 +233,7 @@ pub(crate) async fn server_card_for(
         tile(
             lang,
             "stats.card.messages",
-            grouped(sum.messages),
+            grouped_in(lang, sum.messages),
             visible
                 .is_none()
                 .then(|| t!(lang, "stats.card.members-wrote", count = active)),
@@ -243,38 +244,44 @@ pub(crate) async fn server_card_for(
             minutes_text(sum.voice_minutes, lang),
             voice_note,
         ),
-        tile(lang, "stats.card.joins", grouped(sum.joins), None),
+        tile(lang, "stats.card.joins", grouped_in(lang, sum.joins), None),
         tile(
             lang,
             "stats.card.leaves",
-            grouped(sum.leaves),
-            Some(t!(lang, "stats.card.net", net = signed(sum.joins - sum.leaves))),
+            grouped_in(lang, sum.leaves),
+            Some(t!(lang, "stats.card.net", net = signed(lang, sum.joins - sum.leaves))),
         ),
     ];
     card.days = days.iter().map(|d| d.messages).collect();
     card.flows = Some(StatFlows {
-        title: pixel(t!(lang, "stats.card.joins-and-leaves")),
+        title: pixel(lang, t!(lang, "stats.card.joins-and-leaves")),
         joins: days.iter().map(|d| d.joins).collect(),
         leaves: days.iter().map(|d| d.leaves).collect(),
-        joins_label: pixel(t!(lang, "stats.card.joins-total", count = grouped(sum.joins))),
-        leaves_label: pixel(t!(lang, "stats.card.leaves-total", count = grouped(sum.leaves))),
+        joins_label: pixel(
+            lang,
+            t!(lang, "stats.card.joins-total", count = grouped_in(lang, sum.joins)),
+        ),
+        leaves_label: pixel(
+            lang,
+            t!(lang, "stats.card.leaves-total", count = grouped_in(lang, sum.leaves)),
+        ),
     });
     card.heat = visible.is_none().then(|| StatHeat {
-        title: pixel(t!(lang, "stats.card.busiest-hours")),
+        title: pixel(lang, t!(lang, "stats.card.busiest-hours")),
         grid: if visible.is_some() {
             [[0_i64; 24]; 7]
         } else {
             server_stats::heatmap(&hours)
         },
-        weekdays: std::array::from_fn(|d| pixel(t!(lang, &format!("stats.weekday.{}", d + 1)))),
-        less: pixel(t!(lang, "stats.card.quiet")),
-        more: pixel(t!(lang, "stats.card.busy")),
+        weekdays: std::array::from_fn(|d| pixel(lang, t!(lang, &format!("stats.weekday.{}", d + 1)))),
+        less: pixel(lang, t!(lang, "stats.card.quiet")),
+        more: pixel(lang, t!(lang, "stats.card.busy")),
     });
     let unknown_channel = t!(lang, "stats.card.unknown-channel");
     let unknown_member = t!(lang, "stats.card.unknown-member");
     card.lists = vec![
         StatList {
-            title: pixel(t!(lang, "stats.card.top-channels")),
+            title: pixel(lang, t!(lang, "stats.card.top-channels")),
             rows: channels
                 .iter()
                 .map(|c| StatRow {
@@ -282,13 +289,13 @@ pub(crate) async fn server_card_for(
                         .get(&(c.id as u64))
                         .map_or_else(|| unknown_channel.clone(), |n| format!("#{n}")),
                     value: c.messages,
-                    shown: grouped(c.messages),
+                    shown: grouped_in(lang, c.messages),
                 })
                 .collect(),
             empty: t!(lang, "stats.card.nobody-yet"),
         },
         StatList {
-            title: pixel(t!(lang, "stats.card.top-members")),
+            title: pixel(lang, t!(lang, "stats.card.top-members")),
             rows: members
                 .iter()
                 .map(|m| StatRow {
@@ -297,7 +304,7 @@ pub(crate) async fn server_card_for(
                         .cloned()
                         .unwrap_or_else(|| unknown_member.clone()),
                     value: m.messages,
-                    shown: grouped(m.messages),
+                    shown: grouped_in(lang, m.messages),
                 })
                 .collect(),
             empty: t!(lang, "stats.card.nobody-yet"),
@@ -309,8 +316,12 @@ pub(crate) async fn server_card_for(
     Ok(card)
 }
 
-fn signed(n: i64) -> String {
-    if n > 0 { format!("+{}", grouped(n)) } else { grouped(n) }
+fn signed(lang: Lang, n: i64) -> String {
+    if n > 0 {
+        format!("+{}", grouped_in(lang, n))
+    } else {
+        grouped_in(lang, n)
+    }
 }
 
 /// A member's card: `name` is how the server knows them.
@@ -333,13 +344,13 @@ pub(crate) async fn member_card(
     let active = days.iter().filter(|d| d.messages > 0 || d.voice_minutes > 0).count();
     let mut card = base(lang, &frame, "stats.card.member-kicker", name, period);
     card.tiles = vec![
-        tile(lang, "stats.card.messages", grouped(messages), None),
+        tile(lang, "stats.card.messages", grouped_in(lang, messages), None),
         tile(lang, "stats.card.voice", minutes_text(voice, lang), None),
         rank_tile(lang, place, "stats.card.of-members"),
         tile(
             lang,
             "stats.card.active-days",
-            grouped(active as i64),
+            grouped_in(lang, active as i64),
             Some(t!(lang, "stats.card.of-days", count = frame.days)),
         ),
     ];
@@ -352,7 +363,7 @@ fn rank_tile(lang: Lang, place: Option<(i64, i64)>, of: &str) -> StatTile {
         Some((place, out_of)) => tile(
             lang,
             "stats.card.rank",
-            format!("#{}", grouped(place)),
+            format!("#{}", grouped_in(lang, place)),
             Some(t!(lang, of, count = out_of)),
         ),
         None => tile(
@@ -409,7 +420,7 @@ pub(crate) async fn channel_card(
     };
     let mut card = base(lang, &frame, "stats.card.channel-kicker", format!("#{name}"), period);
     card.tiles = vec![
-        tile(lang, "stats.card.messages", grouped(messages), None),
+        tile(lang, "stats.card.messages", grouped_in(lang, messages), None),
         tile(lang, "stats.card.voice", minutes_text(voice, lang), None),
         rank_tile(lang, None, "stats.card.of-channels"),
         tile(

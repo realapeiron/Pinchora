@@ -15,7 +15,7 @@ use twilight_model::{
 };
 
 use super::games::{button, pay_win, record};
-use crate::{App, Cx, util::thousands};
+use crate::{App, Cx, util::thousands_in};
 
 pub(crate) mod checkers;
 pub(crate) mod chess;
@@ -77,7 +77,7 @@ pub(crate) async fn conclude(
         record(app, game, player, winner == Some(player)).await;
     }
     let note = match winner {
-        Some(_) if session.bet > 0 => t!(lang, "duel.pot-won", pot = thousands(session.bet * 2)),
+        Some(_) if session.bet > 0 => t!(lang, "duel.pot-won", pot = thousands_in(lang, session.bet * 2)),
         Some(_) if moves < game.min_moves() => t!(lang, "board.too-short"),
         Some(w) => {
             let paid = pay_win(app, w, game, game.win_reward(), &format!("{}_win", game.key())).await?;

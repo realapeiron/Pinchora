@@ -34,7 +34,7 @@ use crate::{
     App, Cx,
     game::scene::scaled_png,
     server_events::{button, row},
-    util::{BRAND, SUCCESS, mention, relative, thousands},
+    util::{BRAND, SUCCESS, mention, relative, thousands_in},
 };
 
 const _: () = assert!(CRABS == DERBY_LANES);
@@ -159,7 +159,7 @@ async fn lobby_message(
         .await?;
     let host = mention(session.host_id);
     let stake_line = if session.bet > 0 {
-        t!(lang, "derby.lobby-stake", stake = thousands(session.bet))
+        t!(lang, "derby.lobby-stake", stake = thousands_in(lang, session.bet))
     } else {
         t!(lang, "derby.lobby-free")
     };
@@ -277,8 +277,8 @@ async fn on_pick(cx: &Cx, id: i64, crab: usize) -> anyhow::Result<()> {
                 .reply_ephemeral(t!(
                     lang,
                     "derby.broke",
-                    balance = thousands(balance),
-                    stake = thousands(session.bet)
+                    balance = thousands_in(lang, balance),
+                    stake = thousands_in(lang, session.bet)
                 ))
                 .await;
         }
@@ -287,8 +287,8 @@ async fn on_pick(cx: &Cx, id: i64, crab: usize) -> anyhow::Result<()> {
                 .reply_ephemeral(t!(
                     lang,
                     "derby.down",
-                    limit = thousands(DAILY_LOSS_LIMIT),
-                    net = thousands(net)
+                    limit = thousands_in(lang, DAILY_LOSS_LIMIT),
+                    net = thousands_in(lang, net)
                 ))
                 .await;
         }
@@ -527,10 +527,10 @@ fn results_text(
                 lang,
                 "derby.paid",
                 crab = winner.name,
-                pool = thousands(pool),
+                pool = thousands_in(lang, pool),
                 list = list(
                     paid.iter()
-                        .map(|(u, s)| format!("{} +{}", mention(u), thousands(*s)))
+                        .map(|(u, s)| format!("{} +{}", mention(u), thousands_in(lang, *s)))
                         .collect()
                 )
             )

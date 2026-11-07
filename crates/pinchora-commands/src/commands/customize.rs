@@ -21,7 +21,7 @@ use crate::{
     App, Cx,
     commands::profile,
     game::scene::{ScaledArt, Sprites},
-    util::{BRAND, thousands},
+    util::{BRAND, thousands_in},
 };
 
 mod showcase;
@@ -276,8 +276,8 @@ impl Wardrobe {
                 } else {
                     format!(
                         "🔒 **{name}** · {}/{} {}",
-                        thousands(have.max(0)),
-                        thousands(at),
+                        thousands_in(lang, have.max(0)),
+                        thousands_in(lang, at),
                         stat.noun_in(lang)
                     )
                 }
@@ -287,7 +287,7 @@ impl Wardrobe {
             }
             BadgeKind::Shop { price } => format!(
                 "🛒 **{name}** · {}",
-                t!(lang, "customize.line.price", price = thousands(price))
+                t!(lang, "customize.line.price", price = thousands_in(lang, price))
             ),
         }
     }
@@ -318,8 +318,8 @@ impl Wardrobe {
         match &title.kind {
             TitleKind::Stat { stat, at } => format!(
                 "🔒 **{name}** · {}/{} {}",
-                thousands(stat_value(&self.stats, *stat).max(0)),
-                thousands(*at),
+                thousands_in(lang, stat_value(&self.stats, *stat).max(0)),
+                thousands_in(lang, *at),
                 stat.noun_in(lang)
             ),
             _ => format!("🔒 **{name}** · {description}"),
@@ -476,7 +476,7 @@ async fn background_panel(
             } else if is_owned(b) {
                 t!(lang, "customize.owned")
             } else {
-                t!(lang, "customize.price", price = thousands(b.price))
+                t!(lang, "customize.price", price = thousands_in(cx.lang(), b.price))
             };
             option(
                 &content.name(&b.id, lang),
@@ -503,7 +503,7 @@ async fn background_panel(
             } else if is_owned(b) {
                 t!(lang, "customize.owned-not-worn")
             } else {
-                t!(lang, "customize.price", price = thousands(b.price))
+                t!(lang, "customize.price", price = thousands_in(cx.lang(), b.price))
             };
             text.push_str(&format!(
                 "**{}** · {} · {status}",
@@ -514,7 +514,11 @@ async fn background_panel(
         None => text.push_str(&t!(lang, "customize.background.pick-hint")),
     }
     text.push('\n');
-    text.push_str(&t!(lang, "customize.balance", balance = thousands(credits)));
+    text.push_str(&t!(
+        lang,
+        "customize.balance",
+        balance = thousands_in(cx.lang(), credits)
+    ));
 
     let hid = id_part(shown);
     let can_buy = shown.is_some_and(|b| !is_owned(b));
@@ -587,8 +591,8 @@ async fn buy_background(cx: &Cx, id: &str) -> anyhow::Result<()> {
             cx.lang(),
             "customize.background.bought",
             item = Content::get().name(&background.id, cx.lang()),
-            price = thousands(background.price),
-            balance = thousands(balance)
+            price = thousands_in(cx.lang(), background.price),
+            balance = thousands_in(cx.lang(), balance)
         ),
         CustomizeBuy::AlreadyOwned => t!(
             cx.lang(),
@@ -599,8 +603,8 @@ async fn buy_background(cx: &Cx, id: &str) -> anyhow::Result<()> {
             cx.lang(),
             "customize.costs",
             item = Content::get().name(&background.id, cx.lang()),
-            price = thousands(background.price),
-            balance = thousands(balance)
+            price = thousands_in(cx.lang(), background.price),
+            balance = thousands_in(cx.lang(), balance)
         ),
     };
     let data = background_panel(cx, Highlight::Id(&background.id), None, &note).await?;
@@ -793,7 +797,7 @@ async fn badges_panel(cx: &Cx, page: usize, note: &str, fresh: Fresh) -> anyhow:
                 t!(
                     lang,
                     "customize.badges.buy-option",
-                    price = thousands(price),
+                    price = thousands_in(cx.lang(), price),
                     description = content.description(&b.id, lang).unwrap_or_default()
                 ),
                 false,
@@ -870,7 +874,11 @@ async fn badges_panel(cx: &Cx, page: usize, note: &str, fresh: Fresh) -> anyhow:
     });
     text.push_str(&t!(lang, "customize.badges.pick-up-to", max = MAX_BADGES));
     text.push('\n');
-    text.push_str(&t!(lang, "customize.balance", balance = thousands(credits)));
+    text.push_str(&t!(
+        lang,
+        "customize.balance",
+        balance = thousands_in(cx.lang(), credits)
+    ));
     let mut embed = EmbedBuilder::new()
         .color(BRAND)
         .title(t!(lang, "customize.badges.title"))
@@ -981,8 +989,8 @@ async fn buy_badge(cx: &Cx, id: &str, fresh: u128) -> anyhow::Result<()> {
             cx.lang(),
             "customize.badges.bought",
             item = Content::get().name(&badge.id, cx.lang()),
-            price = thousands(price),
-            balance = thousands(balance)
+            price = thousands_in(cx.lang(), price),
+            balance = thousands_in(cx.lang(), balance)
         ),
         CustomizeBuy::AlreadyOwned => t!(
             cx.lang(),
@@ -993,8 +1001,8 @@ async fn buy_badge(cx: &Cx, id: &str, fresh: u128) -> anyhow::Result<()> {
             cx.lang(),
             "customize.costs",
             item = Content::get().name(&badge.id, cx.lang()),
-            price = thousands(price),
-            balance = thousands(balance)
+            price = thousands_in(cx.lang(), price),
+            balance = thousands_in(cx.lang(), balance)
         ),
     };
     let data = badges_panel(cx, 0, &note, Fresh::Keep(fresh)).await?;

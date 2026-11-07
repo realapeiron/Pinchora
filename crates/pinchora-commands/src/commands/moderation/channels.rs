@@ -172,7 +172,7 @@ impl Purge {
         };
         let reason = match check_reason(self.reason.as_deref()) {
             Ok(reason) => reason,
-            Err(error) => return cx.reply_ephemeral(error.message).await,
+            Err(error) => return cx.reply_ephemeral(error.text(lang)).await,
         };
         let filter = PurgeFilter {
             user: self.user.as_ref().map(|u| u.resolved.id.get()),
@@ -287,11 +287,11 @@ impl Slowmode {
         };
         let reason = match check_reason(self.reason.as_deref()) {
             Ok(reason) => reason,
-            Err(error) => return cx.reply_ephemeral(error.message).await,
+            Err(error) => return cx.reply_ephemeral(error.text(lang)).await,
         };
         let seconds = match parse_slowmode(&self.duration) {
             Ok(s) => s,
-            Err(error) => return cx.reply_ephemeral(error.message).await,
+            Err(error) => return cx.reply_ephemeral(error.text(lang)).await,
         };
         let Some((channel, name)) = target_channel(cx, self.channel.as_ref()) else {
             return cx.reply_ephemeral(t!(lang, "mod.which-channel")).await;
@@ -402,7 +402,7 @@ async fn lock(cx: &Cx, named: Option<&InteractionChannel>, reason: Option<&str>,
     };
     let reason = match check_reason(reason) {
         Ok(reason) => reason,
-        Err(error) => return cx.reply_ephemeral(error.message).await,
+        Err(error) => return cx.reply_ephemeral(error.text(lang)).await,
     };
     let Some((channel, name)) = target_channel(cx, named) else {
         return cx.reply_ephemeral(t!(lang, "mod.which-channel")).await;

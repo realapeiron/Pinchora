@@ -25,7 +25,7 @@ shared = "{user} günlük kelime oyununu oynadı."
 bad-guess = "Bir tahmin tam olarak beş harf olmalı (Türk alfabesi)."
 not-listed = "**{word}** kelime listemde yok. Başka bir kelime dene!"
 board-finished = "Bu tahta bitti. `/play wordle` ile yenisini başlat!"
-paid = "+**{paid}** deniz kabuğu!"
+paid = "+**{paid}** kabuk!"
 other-language = "(Bugünün günlük ödülünü diğer dilde zaten aldın.)"
 replayed = "(Bugünkü günlüğü verilerini silmeden önce oynadın, bu yüzden tekrar ödül vermez.)"
 limit-reached = "(Alıştırma için bugünkü ödül sınırına ulaşıldı.)"
@@ -51,7 +51,7 @@ over = "Bu oyun bitti."
 already-tried = "**{letter}** harfini zaten denedin."
 bad-pick = "Harfi menülerden seç."
 too-quick = "Çok hızlısın! Tahtaya bak, sonra yeniden seç."
-paid = "+**{paid}** deniz kabuğu!"
+paid = "+**{paid}** kabuk!"
 limit-reached = "(Bu oyun için bugünkü ödül sınırına ulaşıldı.)"
 timeout = "🌊 Kimse bakmazken gelgit geldi. Kelime **{word}** idi."
 
@@ -109,9 +109,9 @@ cells-help = "Dolacak hücreler (A1), satır ya da sütun boyunca aralık (B3-B7
 unreadable = "Bunu okuyamadım. `A1` gibi hücreler, tek satır ya da sütun boyunca `B3-B7` gibi aralıklar yaz; silmek için başa tire koy: `-C2`."
 board-changed = "Sen işaretlerken tahta değişti. Tekrar dene."
 replayed = "(Bugünkü bulmacayı verilerini silmeden önce çözdün, bu yüzden tekrar ödül vermez.)"
-paid-daily = { other = "+**{shells}** deniz kabuğu, **{count}** günlük seri!" }
-paid-daily-checked = { other = "+**{shells}** deniz kabuğu (kontrol ettiğin için daha az), **{count}** günlük seri!" }
-paid = "+**{paid}** deniz kabuğu!"
+paid-daily = { other = "+**{shells}** kabuk, **{count}** günlük seri!" }
+paid-daily-checked = { other = "+**{shells}** kabuk (kontrol ettiğin için daha az), **{count}** günlük seri!" }
+paid = "+**{paid}** kabuk!"
 limit-reached = "(Alıştırma için bugünkü ödül sınırına ulaşıldı.)"
 already-shared = "Bu sonucu zaten paylaştın."
 shared = "🧩 {user} günlük Piksel Picross #{number} bulmacasını çözdü! 🔥 {streak} günlük seri"
@@ -224,7 +224,7 @@ button-expired = "Bu düğmenin süresi doldu."
 nothing-moves = "O yöne hiçbir şey kaymıyor."
 more-moves = "Önce birkaç hamle daha yap."
 reach-256 = "Kabuk kazanmak için 256 karosuna ulaş."
-paid = "+**{paid}** deniz kabuğu!"
+paid = "+**{paid}** kabuk!"
 limit-reached = "(Bu oyun için bugünkü ödül sınırına ulaşıldı.)"
 
 [tide.card]

@@ -181,7 +181,7 @@ impl Connect4Card<'_> {
             &t.ink,
             "start",
             &escape(&truncate(
-                &self.status.to_uppercase(),
+                &self.lang.upper(self.status),
                 if self.pot > 0 { 26 } else { 40 },
             )),
         );
@@ -196,7 +196,7 @@ impl Connect4Card<'_> {
                 false,
                 &t.gold,
                 "end",
-                &crate::svg::compact(self.pot),
+                &crate::svg::compact_in(self.lang, self.pot),
             );
         }
         s.push_str("</svg>");

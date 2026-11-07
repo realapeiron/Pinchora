@@ -180,7 +180,7 @@ impl CheckersCard<'_> {
             }
         }
         boards::targets(&mut s, t, (ox, oy), &marks);
-        boards::status_panel(&mut s, t, 650.0, self.status, self.pot);
+        boards::status_panel(&mut s, t, self.lang, 650.0, self.status, self.pot);
         s.push_str("</svg>");
         s
     }

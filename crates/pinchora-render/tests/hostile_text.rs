@@ -157,6 +157,7 @@ fn hostile_text_renders_on_every_card() {
         *text = format!("{HOSTILE} {{user}}");
     }
     let fill = CardFill {
+        lang: pinchora_core::i18n::Lang::En,
         user: HOSTILE,
         username: HOSTILE,
         server: HOSTILE,
@@ -317,6 +318,7 @@ fn hostile_text_renders_on_every_card() {
     drawn.push((
         "item grid",
         r.item_grid(&ItemGridCard {
+            lang: pinchora_core::i18n::Lang::En,
             title: hostile(),
             subtitle: hostile(),
             slots: vec![GridSlot {

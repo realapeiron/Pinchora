@@ -333,7 +333,14 @@ async fn try_fire(app: &Arc<App>, row: &ResponderRow, m: &Moment<'_>) -> anyhow:
         embed: def.embed.as_ref(),
         allow_mentions: def.allow_mentions,
     };
-    let vars = scene_vars(app, &scene, &all_texts(&spec, &def.actions), points.balance).await;
+    let vars = scene_vars(
+        app,
+        &scene,
+        &all_texts(&spec, &def.actions),
+        points.balance,
+        app.guild_lang(guild).await,
+    )
+    .await;
     let rendered = render_message(&spec, &vars, &mut pick);
     let (content, embed, mentions) = to_discord(&rendered, guild, user);
     if !(content.is_empty() && embed.is_none()) {

@@ -20,7 +20,7 @@ fishing = { title = "Balıkçılık", intro = "Oltanı at, kovanı doldur, avın
 friends = { title = "Arkadaşlar ve partnerler", intro = "Arkadaş ekle, bir partnerle eşleş ve hareketli selamlar gönder." }
 duels = { title = "Düellolar", intro = "Bir arkadaşına hızlı bir oyun için meydan oku. Çoğunda isteğe bağlı bahis var." }
 puzzles = { title = "Bulmacalar ve kelime oyunları", intro = "Tek başına oyna ya da tüm kanal için bir parti oyunu başlat." }
-crowd = { title = "Kalabalık oyunları ve koleksiyon", intro = "Kanal için yarışlar, soygunlar ve fırtınalar; kıyıda bulunacak minik canlılar." }
+crowd = { title = "Kalabalık oyunları ve koleksiyon", intro = "Kanal için yarışlar, soygunlar ve fırtınalar; kıyıda bulunacak minik yaratıklar." }
 community = { title = "Topluluk", intro = "Anketler, öneriler, çekilişler, rol düğmeleri, sunucu puanları ve özel komutlar." }
 moderation = { title = "Moderasyon", intro = "Yasak, atma, susturma ve uyarılar, her biri mod kaydında bir vaka; kanal temizliği." }
 setup = { title = "Sunucu kurulumu", intro = "Karşılama kartları, vedalar, öneriler, dil, metin komutu öneki ve ayarlara genel bakış." }

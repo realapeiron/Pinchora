@@ -24,7 +24,7 @@ use crate::{
         duel::{Kind as DuelKind, answer, expire_here},
         games::{location, pack, quiet, unpack},
     },
-    util::{BRAND, SUCCESS, mention, relative, thousands},
+    util::{BRAND, SUCCESS, mention, relative, thousands_in},
 };
 
 /// The state's own fields: which player (0 host, 1 guest) has the pearls and moves first, the position,
@@ -243,8 +243,8 @@ async fn message(
         description.push_str(&t!(
             lang,
             "duel.pot-line",
-            pot = thousands(pot),
-            bet = thousands(session.bet)
+            pot = thousands_in(lang, pot),
+            bet = thousands_in(lang, session.bet)
         ));
     }
     let embed = EmbedBuilder::new()

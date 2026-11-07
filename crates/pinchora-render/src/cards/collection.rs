@@ -410,7 +410,12 @@ impl DexCard {
             &mut s,
             t,
             &self.title,
-            &format!("{} {}/{}", self.tab, self.found, self.total),
+            &format!(
+                "{} {}/{}",
+                self.tab,
+                crate::svg::thousands_in(self.lang, self.found as i64),
+                crate::svg::thousands_in(self.lang, self.total as i64)
+            ),
             964.0,
         );
         let fraction = if self.total == 0 {
@@ -482,7 +487,7 @@ impl DexCard {
                     false,
                     &t.gold,
                     "end",
-                    &format!("x{}", cell.caught),
+                    &format!("x{}", crate::svg::thousands_in(self.lang, cell.caught as i64)),
                 );
             }
             let cx = x + cw / 2.0;
@@ -973,12 +978,12 @@ impl PotCard {
             false,
             &t.muted,
             "start",
-            &escape(&self.rate.to_uppercase()),
+            &escape(&self.lang.upper(&self.rate)),
         );
         let upgrade = if self.upgrade.is_empty() {
             t!(self.lang, "crabpot.card.top-level")
         } else {
-            self.upgrade.to_uppercase()
+            self.lang.upper(&self.upgrade)
         };
         text(
             &mut s,

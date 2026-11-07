@@ -9,7 +9,7 @@ use twilight_util::builder::embed::{EmbedBuilder, EmbedFooterBuilder};
 
 use crate::{
     Cx,
-    util::{BRAND, SUCCESS, mention, resolved_display_name, thousands},
+    util::{BRAND, SUCCESS, mention, resolved_display_name, thousands_in},
 };
 
 #[derive(CommandModel, CreateCommand)]
@@ -145,7 +145,7 @@ impl PointsCommand {
                         "points.balance",
                         user = mention(user.id),
                         display = display,
-                        points = thousands(points),
+                        points = thousands_in(lang, points),
                         emoji = emoji,
                         name = name
                     ))
@@ -167,11 +167,11 @@ impl PointsCommand {
                     .description(t!(
                         lang,
                         "points.gave",
-                        amount = thousands(c.amount),
+                        amount = thousands_in(lang, c.amount),
                         emoji = emoji,
                         name = name,
                         user = mention(target.id),
-                        balance = thousands(balance)
+                        balance = thousands_in(lang, balance)
                     ))
                     .build();
                 cx.reply_embed(embed).await
@@ -197,11 +197,11 @@ impl PointsCommand {
                     .description(t!(
                         lang,
                         "points.took",
-                        amount = thousands(taken),
+                        amount = thousands_in(lang, taken),
                         emoji = emoji,
                         name = name,
                         user = mention(target.id),
-                        balance = thousands(balance)
+                        balance = thousands_in(lang, balance)
                     ))
                     .build();
                 cx.reply_embed(embed).await

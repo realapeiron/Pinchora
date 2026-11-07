@@ -117,7 +117,7 @@
   "name": "Kıyıya vurmuş"
  },
  "kind.critter": {
-  "name": "Minik canlılar"
+  "name": "Yaratıklar"
  },
  "kind.find": {
   "name": "Buluntular"
@@ -144,7 +144,7 @@
   "name": "İtibar"
  },
  "stat.shells": {
-  "name": "Deniz kabuğu"
+  "name": "Kabuk"
  },
  "stat.level.noun": {
   "name": "seviye"
@@ -168,7 +168,7 @@
   "name": "itibar"
  },
  "stat.shells.noun": {
-  "name": "deniz kabuğu"
+  "name": "kabuk"
  },
  "time.any": {
   "name": "Her zaman"
@@ -234,16 +234,16 @@
   "name": "2 mobilya yerleştir"
  },
  "quest.buy": {
-  "name": "Dükkândan bir şey satın al"
+  "name": "Mağazadan bir şey satın al"
  },
  "quest.like": {
   "name": "Birinin evini beğen"
  },
  "quest.daily": {
-  "name": "Günlük deniz kabuğunu topla"
+  "name": "Günlük kabuk ödülünü al"
  },
  "currency.shells": {
-  "name": "Deniz kabuğu"
+  "name": "Kabuk"
  },
  "currency.pearls": {
   "name": "İnci"

@@ -11,6 +11,7 @@ use pinchora_core::card_design::{
     Align, AvatarShape, Background, CardDesign, Content, Direction, Font, LINE_HEIGHT, Layer, NAME_MAX, SERVER_MAX,
     ShapeKind,
 };
+use pinchora_core::i18n::Lang;
 
 use super::{PIXEL, SANS};
 use crate::{
@@ -25,6 +26,7 @@ use crate::{
 /// What the placeholders of a design's text turn into.
 #[derive(Debug, Clone, Default)]
 pub struct CardFill<'a> {
+    pub lang: Lang,
     /// `{user}`: the member's name as the server shows it.
     pub user: &'a str,
     /// `{username}`: their Discord username.
@@ -59,6 +61,13 @@ const BACKGROUND_CACHE: usize = 64;
 
 /// `1234` → `1,234th`.
 pub fn ordinal(n: u64) -> String {
+    ordinal_in(Lang::En, n)
+}
+
+pub fn ordinal_in(lang: Lang, n: u64) -> String {
+    if lang == Lang::Tr {
+        return format!("{}.", pinchora_core::server_stats::grouped_in(lang, n as i64));
+    }
     let suffix = match (n % 10, n % 100) {
         (_, 11..=13) => "th",
         (1, _) => "st",
@@ -77,8 +86,13 @@ pub fn fill_placeholders(text: &str, fill: &CardFill<'_>) -> String {
             "user" => truncate(fill.user, NAME_MAX),
             "username" => truncate(fill.username, NAME_MAX),
             "server" => truncate(fill.server, SERVER_MAX),
-            "members" => fill.members.map_or_else(|| "?".to_owned(), |n| thousands(n as i64)),
-            "ordinal" => fill.members.map_or_else(|| "newest".to_owned(), ordinal),
+            "members" => fill.members.map_or_else(
+                || "?".to_owned(),
+                |n| pinchora_core::server_stats::grouped_in(fill.lang, n as i64),
+            ),
+            "ordinal" => fill
+                .members
+                .map_or_else(|| "newest".to_owned(), |n| ordinal_in(fill.lang, n)),
             _ => return None,
         })
     };
@@ -202,7 +216,11 @@ impl DesignedCard<'_> {
                 outline_width,
             } => {
                 let filled = fill_placeholders(text, self.fill);
-                let filled = if *uppercase { filled.to_uppercase() } else { filled };
+                let filled = if *uppercase {
+                    self.fill.lang.upper(&filled)
+                } else {
+                    filled
+                };
                 let style = TextStyle {
                     family: match font {
                         Font::Pixel => PIXEL,

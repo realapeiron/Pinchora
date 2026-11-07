@@ -24,7 +24,7 @@ use super::{
 };
 use crate::{
     Cx,
-    util::{BRAND, SUCCESS, mention, relative, thousands},
+    util::{BRAND, SUCCESS, mention, relative, thousands_in},
 };
 
 /// Rounds shown in the history under the score.
@@ -183,7 +183,7 @@ fn view(
             embed = embed.footer(twilight_util::builder::embed::EmbedFooterBuilder::new(t!(
                 lang,
                 "rps.pot-footer",
-                pot = thousands(session.bet * 2)
+                pot = thousands_in(lang, session.bet * 2)
             )));
         }
         embed.build()
@@ -218,7 +218,7 @@ fn view(
         }
         Some(end) => {
             let note = match end.reward {
-                Reward::Pot => t!(lang, "duel.pot-won", pot = thousands(session.bet * 2)),
+                Reward::Pot => t!(lang, "duel.pot-won", pot = thousands_in(lang, session.bet * 2)),
                 Reward::Paid(paid) => t!(lang, "duel.paid", paid = paid),
                 Reward::Limit => t!(lang, "duel.limit-reached"),
             };

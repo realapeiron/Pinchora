@@ -17,7 +17,7 @@ use twilight_util::builder::embed::{EmbedBuilder, EmbedFooterBuilder};
 
 use crate::{
     Cx,
-    util::{BRAND, DANGER, SUCCESS, thousands},
+    util::{BRAND, DANGER, SUCCESS, thousands_in},
 };
 
 /// How long the "yes, delete" button of the confirm step works, in seconds.
@@ -240,7 +240,7 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>) -> anyhow::
                 .description(t!(
                     cx.lang(),
                     "privacy.deleted",
-                    rows = thousands(deleted.rows as i64),
+                    rows = thousands_in(cx.lang(), deleted.rows as i64),
                     tables = deleted.tables
                 ))
                 .build();

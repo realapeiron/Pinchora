@@ -19,7 +19,7 @@ use crate::{
     App, Cx,
     commands::games::record,
     server_events::{button, row},
-    util::{BRAND, SUCCESS, thousands},
+    util::{BRAND, SUCCESS, thousands_in},
 };
 
 #[derive(CommandModel, CreateCommand)]
@@ -87,10 +87,15 @@ async fn view(
         rate: t!(
             lang,
             "crabpot.rate",
-            rate = format!("{:.1}", collection::pot_rate(pot.level))
+            rate = pinchora_core::server_stats::decimal_in(lang, collection::pot_rate(pot.level), 1)
         ),
         upgrade: cost.map_or(String::new(), |c| {
-            t!(lang, "crabpot.upgrade-line", level = pot.level + 1, cost = thousands(c))
+            t!(
+                lang,
+                "crabpot.upgrade-line",
+                level = pot.level + 1,
+                cost = thousands_in(lang, c)
+            )
         }),
         lang,
         theme: Theme::reef(),
@@ -127,7 +132,7 @@ async fn view(
     if let Some(cost) = cost {
         buttons.push(button(
             format!("kp:u:{user}:{}", pot.level),
-            &t!(lang, "crabpot.upgrade", cost = thousands(cost)),
+            &t!(lang, "crabpot.upgrade", cost = thousands_in(lang, cost)),
             Some("⬆️"),
             ButtonStyle::Secondary,
             false,
@@ -230,10 +235,14 @@ fn haul_card(app: &App, lang: Lang, granted: &[Granted], paid: bool, hours: i16)
         .collect();
     let mut parts = vec![catches(lang, granted.len())];
     if shells > 0 {
-        parts.push(t!(lang, "crabpot.footer-shells", shells = thousands(shells)));
+        parts.push(t!(lang, "crabpot.footer-shells", shells = thousands_in(lang, shells)));
     }
     if fragments > 0 {
-        parts.push(t!(lang, "crabpot.footer-fragments", fragments = thousands(fragments)));
+        parts.push(t!(
+            lang,
+            "crabpot.footer-fragments",
+            fragments = thousands_in(lang, fragments)
+        ));
     }
     if more > 0 {
         parts.push(t!(lang, "crabpot.footer-more", count = more));
@@ -282,15 +291,20 @@ pub(crate) async fn on_component(cx: &Cx, mut parts: Split<'_, char>) -> anyhow:
             };
             Some(match app.db.upgrade_pot(me, from, cost).await? {
                 PotUpgrade::Upgraded { level, balance } => {
-                    t!(lang, "crabpot.upgraded", level = level, balance = thousands(balance))
+                    t!(
+                        lang,
+                        "crabpot.upgraded",
+                        level = level,
+                        balance = thousands_in(lang, balance)
+                    )
                 }
                 PotUpgrade::Stale => t!(lang, "crabpot.stale"),
                 PotUpgrade::Poor { balance } => {
                     t!(
                         lang,
                         "crabpot.poor",
-                        cost = thousands(cost),
-                        balance = thousands(balance)
+                        cost = thousands_in(lang, cost),
+                        balance = thousands_in(lang, balance)
                     )
                 }
             })

@@ -18,7 +18,7 @@ weekly-unit = "BU HAFTA XP"
 level = "SEVİYE {level}"
 xp = "{xp} XP"
 size = "{size} CM"
-usual = "{fish} · NORMALİN %{percent}"
+usual = "{fish} · NORMAL BOYUN %{percent} KADARI"
 # One place of last week's catch podium.
 catch-size = "{name} {size} cm"
 

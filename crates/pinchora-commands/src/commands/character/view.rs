@@ -353,7 +353,7 @@ fn controls(draft: &Draft, character: &Character, shelf: &Shelf, outfits: &[Outf
             lang,
             "character.button.buy",
             item = item.name,
-            price = crate::util::thousands(price)
+            price = crate::util::thousands_in(lang, price)
         );
         last.push(button(format!("ca:buy:{s}"), &buy, ButtonStyle::Primary, false));
     }
@@ -479,7 +479,7 @@ fn card(
                     label: a.name.clone(),
                     note: match &access {
                         Access::Owned => String::new(),
-                        Access::Buy(p) => compact_price(*p),
+                        Access::Buy(p) => compact_price(lang, *p),
                         Access::Level(at) => t!(lang, "character.card.level", level = at),
                         Access::Badge(_) => t!(lang, "character.card.badge"),
                     },
@@ -583,13 +583,13 @@ fn card(
 }
 
 /// A price short enough for a tile's corner: `900`, `1.2K`.
-fn compact_price(p: i64) -> String {
+fn compact_price(lang: Lang, p: i64) -> String {
     if p >= 1000 {
         let k = p as f32 / 1000.0;
         if (k - k.round()).abs() < 0.05 {
             format!("{}K", k.round())
         } else {
-            format!("{k:.1}K")
+            format!("{}K", pinchora_core::server_stats::decimal_in(lang, k, 1))
         }
     } else {
         p.to_string()
@@ -602,9 +602,10 @@ mod tests {
 
     #[test]
     fn prices_fit_a_corner() {
-        assert_eq!(compact_price(900), "900");
-        assert_eq!(compact_price(1200), "1.2K");
-        assert_eq!(compact_price(2000), "2K");
+        assert_eq!(compact_price(Lang::En, 900), "900");
+        assert_eq!(compact_price(Lang::En, 1200), "1.2K");
+        assert_eq!(compact_price(Lang::En, 2000), "2K");
+        assert_eq!(compact_price(Lang::Tr, 1200), "1,2K");
     }
 
     #[test]

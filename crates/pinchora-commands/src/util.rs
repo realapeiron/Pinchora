@@ -72,7 +72,7 @@ pub fn resolved_display_name(resolved: &ResolvedUser) -> String {
     )
 }
 
-pub use pinchora_render::thousands;
+pub use pinchora_render::thousands_in;
 
 /// The length of the user or role mention (`<@1>`, `<@!1>`, `<@&1>`) at the start of `text`, if any.
 fn mention_len(text: &str) -> Option<usize> {

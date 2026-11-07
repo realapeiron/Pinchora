@@ -72,7 +72,7 @@ impl ReasonCommand {
         let reason = match check_reason(Some(&self.reason)) {
             Ok(Some(reason)) => reason,
             Ok(None) => return cx.reply_ephemeral(t!(lang, "mod.new-reason")).await,
-            Err(error) => return cx.reply_ephemeral(error.message).await,
+            Err(error) => return cx.reply_ephemeral(error.text(lang)).await,
         };
         let number = self.id.clamp(1, i64::from(i32::MAX)) as i32;
         let moderator = Moderator::of(cx)?;

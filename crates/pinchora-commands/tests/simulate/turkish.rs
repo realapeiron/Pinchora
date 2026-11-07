@@ -86,7 +86,7 @@ async fn a_turkish_player_gets_the_turkish_daily_wordle_with_the_turkish_keyboar
 
     let won = sim.submit(player, &form, &answer, &board).await;
     assert!(
-        won.description().contains("**2** denemede buldun") && won.description().contains("+**40** deniz kabuğu"),
+        won.description().contains("**2** denemede buldun") && won.description().contains("+**40** kabuk"),
         "{}",
         won.description()
     );

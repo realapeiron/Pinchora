@@ -5,7 +5,7 @@ use pinchora_core::{i18n::Lang, t};
 use super::{PIXEL, SANS, avatar_frame, text};
 use crate::{
     Theme,
-    svg::{CRAB, background, compact, escape, panel, sprite, truncate},
+    svg::{CRAB, background, compact_in, escape, panel, pixel_width, sprite, truncate, truncate_pixel_to},
 };
 
 /// One ranked row.
@@ -126,7 +126,7 @@ impl LeaderboardCard {
                     false,
                     &t.muted,
                     "middle",
-                    &compact(e.rank),
+                    &compact_in(self.lang, e.rank),
                 ),
             }
             avatar_frame(&mut s, &e.avatar_png, 96.0, y + 6.0, 40.0, 4.0, edge, &format!("a{i}"));
@@ -158,16 +158,26 @@ impl LeaderboardCard {
                 &escape(&e.value),
             );
             if detail {
+                let size = if self.lang == Lang::Tr {
+                    (11.0 * 320.0 / pixel_width(&e.detail, 11.0)).clamp(8.0, 11.0)
+                } else {
+                    11.0
+                };
+                let shown = if self.lang == Lang::Tr {
+                    truncate_pixel_to(&e.detail, size, 320.0)
+                } else {
+                    e.detail.clone()
+                };
                 text(
                     &mut s,
                     844.0,
                     y + 44.0,
-                    11.0,
+                    size,
                     PIXEL,
                     false,
                     &t.muted,
                     "end",
-                    &escape(&e.detail),
+                    &escape(&shown),
                 );
             }
         }

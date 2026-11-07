@@ -337,7 +337,7 @@ async fn remind_in(cx: &Cx, user: u64, duration: &str, text: &str) -> anyhow::Re
         return cx.reply_ephemeral(t!(lang, "remind.write-text")).await;
     }
     let due = cx.app.now() + after;
-    match cx.app.db.add_text_reminder(user, &body, due).await? {
+    match cx.app.db.add_text_reminder_in(user, &body, lang.code(), due).await? {
         None => {
             cx.reply_ephemeral(t!(lang, "remind.too-many", max = MAX_TEXT_REMINDERS))
                 .await
@@ -603,7 +603,7 @@ enum Delivery {
 /// (the automatic kinds keep it in their `body`), else English.
 async fn delivery_lang(app: &App, r: &ReminderRow) -> Lang {
     let stored = if r.kind == TEXT_REMINDER {
-        None
+        Lang::from_code(&r.language)
     } else {
         Lang::from_code(&r.body)
     };

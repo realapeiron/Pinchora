@@ -24,7 +24,7 @@ use twilight_util::builder::embed::{EmbedBuilder, EmbedFooterBuilder};
 use crate::{
     App, Cx,
     commands::customize,
-    util::{BRAND, SUCCESS, WARN, thousands},
+    util::{BRAND, SUCCESS, WARN, thousands_in},
 };
 
 mod art;
@@ -409,7 +409,7 @@ pub(crate) async fn on_reel(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
         notes.push(t!(
             lang,
             "fish.catch.record",
-            best = format!("{:.1}", log.previous_best)
+            best = pinchora_core::server_stats::decimal_in(lang, log.previous_best, 1)
         ));
     }
     if log.week_best && ratio >= 1.15 {
@@ -423,7 +423,7 @@ pub(crate) async fn on_reel(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
     } else {
         format!("\n{}", notes.join("\n"))
     };
-    let reaction = format!("{:.2}", late_by as f64 / 1000.0);
+    let reaction = pinchora_core::server_stats::decimal_in(lang, late_by as f64 / 1000.0, 2);
     let flavor = content
         .description(&fish.id, lang)
         .map_or_else(|| fish.flavor.clone(), |text| text.into_owned());
@@ -455,8 +455,8 @@ pub(crate) async fn on_reel(cx: &Cx, mut args: Split<'_, char>) -> anyhow::Resul
             lang,
             "fish.catch.body",
             flavor = flavor,
-            size = format!("{size:.1}"),
-            value = thousands(value),
+            size = pinchora_core::server_stats::decimal_in(lang, size, 1),
+            value = thousands_in(lang, value),
             notes = notes
         ))
         .footer(EmbedFooterBuilder::new(t!(
@@ -498,7 +498,7 @@ fn milestone_embed(lang: Lang, paid: &MilestonePaid) -> Embed {
         .description(t!(
             lang,
             key,
-            shells = thousands(paid.reward.shells),
+            shells = thousands_in(lang, paid.reward.shells),
             name = content.name(id, lang),
             hint = hint
         ))

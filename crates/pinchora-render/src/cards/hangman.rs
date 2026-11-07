@@ -243,7 +243,7 @@ impl HangmanCard<'_> {
             false,
             &t.muted,
             "start",
-            &escape(&self.category.to_uppercase()),
+            &escape(&self.lang.upper(self.category)),
         );
         let longest = self.lines.iter().map(Vec::len).max().unwrap_or(1).max(1) as f32;
         let slot = ((332.0 - 40.0) / longest).clamp(16.0, 36.0).floor();
@@ -324,7 +324,7 @@ impl HangmanCard<'_> {
             false,
             &t.gold,
             "start",
-            &escape(&self.status.to_uppercase()),
+            &escape(&self.lang.upper(self.status)),
         );
         s.push_str("</svg>");
         s

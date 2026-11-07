@@ -5,7 +5,7 @@ use pinchora_core::{i18n::Lang, t};
 use super::{PIXEL, SpriteArt, text};
 use crate::{
     Theme,
-    svg::{background, compact, data_uri_png, escape, mix, panel, truncate},
+    svg::{background, compact_in, data_uri_png, escape, mix, panel, truncate},
 };
 
 const TILE: f32 = 112.0;
@@ -65,7 +65,7 @@ impl Tide2048Card<'_> {
                 false,
                 &t.gold,
                 "start",
-                &compact(i64::from(*value)),
+                &compact_in(self.lang, i64::from(*value)),
             );
         }
 
@@ -140,7 +140,7 @@ impl Tide2048Card<'_> {
             false,
             &t.ink,
             "start",
-            &escape(&truncate(&self.status.to_uppercase(), 40)),
+            &escape(&truncate(&self.lang.upper(self.status), 40)),
         );
         s.push_str("</svg>");
         s

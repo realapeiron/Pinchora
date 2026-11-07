@@ -112,11 +112,18 @@ pub(super) fn coordinate_color(t: &Theme) -> String {
 pub(super) const COORDINATE_SIZE: f32 = 14.0;
 
 /// The status line along the bottom of a card, with the pot beside it when shells are on the table.
-pub(super) fn status_panel(out: &mut String, t: &Theme, y: f32, status: &str, pot: i64) {
+pub(super) fn status_panel(
+    out: &mut String,
+    t: &Theme,
+    lang: pinchora_core::i18n::Lang,
+    y: f32,
+    status: &str,
+    pot: i64,
+) {
     panel(out, 24.0, y, 532.0, 56.0, 4.0, &t.panel, &t.panel_edge);
     // The pot sits at the right; the words get what is left of the panel.
     let max = if pot > 0 { 406.0 } else { 492.0 };
-    fitted_pixel_text(out, (44.0, y + 35.0), max, &t.ink, "start", &status.to_uppercase());
+    fitted_pixel_text(out, (44.0, y + 35.0), max, &t.ink, "start", &lang.upper(status));
     if pot > 0 {
         crate::svg::sprite(out, crate::svg::SHELL, 462.0, y + 16.0, 3.0, &t.gold, "#ffffff");
         text(
@@ -128,7 +135,7 @@ pub(super) fn status_panel(out: &mut String, t: &Theme, y: f32, status: &str, po
             false,
             &t.gold,
             "end",
-            &crate::svg::compact(pot),
+            &crate::svg::compact_in(lang, pot),
         );
     }
 }

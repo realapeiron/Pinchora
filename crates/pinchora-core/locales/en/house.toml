@@ -9,6 +9,19 @@ already-liked = "You already liked this house today."
 locked = "Your house is locked. Visitors will be turned away."
 unlocked = "Your house is open for visitors again."
 
+[house.decorate]
+shell-price = "{price} shells"
+pearl-price = "{price} pearls"
+title = "Decorating room {room}"
+body = "{note}\nWallpaper: **{wallpaper}** · Floor: **{floor}**\nA new pattern is bought the first time you use it; switching back is free."
+wallpaper-menu = "Wallpaper (page {page}/{pages})…"
+floor-menu = "Floor (page {page}/{pages})…"
+more = "More patterns ▶"
+next-room = "Next room"
+pick = "Pick a pattern."
+bought = "Bought **{name}** for {price}."
+costs = "**{name}** costs {price}."
+
 [house.edit]
 start = "Pick furniture: it jumps to a free spot, then press **Place**."
 start-partner = "Pick furniture from your inventory: it jumps to a free spot, then press **Place**."

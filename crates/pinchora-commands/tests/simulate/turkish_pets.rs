@@ -137,7 +137,7 @@ async fn a_turkish_player_adopts_cares_for_and_travels_with_a_pet() {
     keep_png(&sim, &nursery, "nursery");
     let poor = sim.command(user, "pet", pet_command("capsule")).await;
     assert!(
-        poor.ephemeral && poor.content().contains("Bir kapsül 1,500 kabuk") && poor.content().contains("Şanslar: "),
+        poor.ephemeral && poor.content().contains("Bir kapsül 1.500 kabuk") && poor.content().contains("Şanslar: "),
         "{}",
         poor.content()
     );
@@ -349,7 +349,7 @@ async fn the_card_editors_speak_turkish() {
     assert!(
         fish.description
             .as_deref()
-            .is_some_and(|d| d.contains("en iyi 31.5 cm") && d.contains("tutuldu")),
+            .is_some_and(|d| d.contains("en iyi 31,5 cm") && d.contains("tutuldu")),
         "{:?}",
         fish.description
     );

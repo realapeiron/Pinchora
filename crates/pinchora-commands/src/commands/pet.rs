@@ -1,7 +1,7 @@
 use std::{borrow::Cow, str::Split, time::Duration};
 
 use chrono::{DateTime, Utc};
-use pinchora_core::{i18n::Lang, t};
+use pinchora_core::{i18n::Lang, server_stats::decimal_in, t};
 use pinchora_db::{PetRow, Wake};
 use pinchora_game::{
     Content, Rarity,
@@ -24,7 +24,7 @@ use crate::{
     App, Cx,
     commands::{customize, remind},
     game::scene::Sprites,
-    util::{BRAND, WARN, thousands},
+    util::{BRAND, WARN, thousands_in},
 };
 
 mod nursery;
@@ -605,7 +605,7 @@ async fn wake(cx: &Cx, pet_id: i64) -> anyhow::Result<()> {
             "pet.wake.paid",
             name = pet.name,
             fee = WAKE_FEE,
-            balance = thousands(balance)
+            balance = thousands_in(lang, balance)
         ),
         Wake::Stale => {
             return cx.reply_ephemeral(t!(lang, "pet.wake.awake", name = pet.name)).await;
@@ -616,7 +616,7 @@ async fn wake(cx: &Cx, pet_id: i64) -> anyhow::Result<()> {
                     lang,
                     "pet.wake.poor",
                     fee = WAKE_FEE,
-                    balance = thousands(balance),
+                    balance = thousands_in(lang, balance),
                     name = pet.name
                 ))
                 .await;
@@ -708,14 +708,14 @@ async fn capsule(cx: &Cx, user: u64) -> anyhow::Result<()> {
     let Some(balance) = cx.app.db.spend_shells(user, CAPSULE_PRICE, "pet_capsule").await? else {
         let odds = pets::odds(content)
             .into_iter()
-            .map(|(r, p)| format!("{} {:.1}%", r.label_in(lang), p * 100.0))
+            .map(|(r, p)| format!("{} {}%", r.label_in(lang), decimal_in(lang, p * 100.0, 1)))
             .collect::<Vec<_>>()
             .join(" · ");
         return cx
             .reply_ephemeral(t!(
                 lang,
                 "pet.capsule.odds",
-                price = thousands(CAPSULE_PRICE),
+                price = thousands_in(lang, CAPSULE_PRICE),
                 odds = odds
             ))
             .await;
@@ -739,7 +739,7 @@ async fn capsule(cx: &Cx, user: u64) -> anyhow::Result<()> {
                 lang,
                 "pet.capsule.duplicate",
                 refund = DUPLICATE_REFUND,
-                balance = thousands(balance)
+                balance = thousands_in(lang, balance)
             ))
             .build();
         return cx.reply_embed(embed).await;
@@ -750,7 +750,7 @@ async fn capsule(cx: &Cx, user: u64) -> anyhow::Result<()> {
         "pet.capsule.opened",
         rarity = species.rarity.label_in(lang),
         name = name,
-        balance = thousands(balance)
+        balance = thousands_in(lang, balance)
     );
     let data = pet_card(&cx.app, lang, &pet, Some(note)).await?;
     cx.reply(data).await?;

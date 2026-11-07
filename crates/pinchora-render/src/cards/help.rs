@@ -109,16 +109,21 @@ impl HelpCard {
             "middle",
             &chip_text,
         );
+        let (title_font, title_bold) = if self.lang == Lang::Tr {
+            (PIXEL, false)
+        } else {
+            (SANS, true)
+        };
         text(
             &mut s,
             36.0,
             92.0,
             34.0,
-            SANS,
-            true,
+            title_font,
+            title_bold,
             &t.ink,
             "start",
-            &escape(&fit_laid_out(&self.title, SANS, true, 34.0, 828.0)),
+            &escape(&fit_laid_out(&self.title, title_font, title_bold, 34.0, 828.0)),
         );
         text(
             &mut s,

@@ -27,6 +27,7 @@ const RUNS: usize = 5;
 const UPLOAD_ID: &str = "0123456789abcdef0123456789abcdef";
 
 const FILL: CardFill<'static> = CardFill {
+    lang: pinchora_core::i18n::Lang::En,
     user: "Captain Pinch the Third of Reef",
     username: "captain.pinch",
     server: "Pinchora Reef",

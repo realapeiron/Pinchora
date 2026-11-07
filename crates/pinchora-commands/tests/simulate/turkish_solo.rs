@@ -134,7 +134,7 @@ async fn turkish_picross_is_marked_checked_solved_and_shared() {
     assert!(
         state
             .description()
-            .contains("+**15** deniz kabuğu (kontrol ettiğin için daha az), **1** günlük seri!"),
+            .contains("+**15** kabuk (kontrol ettiğin için daha az), **1** günlük seri!"),
         "{}",
         state.description()
     );
@@ -253,11 +253,7 @@ async fn turkish_tide_2048_slides_refuses_and_ends_with_the_creature_names() {
         "{}",
         over.description()
     );
-    assert!(
-        over.description().contains("+**10** deniz kabuğu"),
-        "{}",
-        over.description()
-    );
+    assert!(over.description().contains("+**10** kabuk"), "{}", over.description());
     assert!(over.has_button("Yeni oyun") && !over.has_button("Bitir"));
     keep_png(&sim, &over, "tide2048-tr-over");
     assert_eq!(shells(&sim, user).await, 10);
@@ -293,9 +289,9 @@ async fn turkish_critter_drops_and_bottles_wash_up_get_taken_and_drift_away() {
     assert!(post_critter_drop(&sim.app, sim.guild, channel).await.expect("posts"));
     let posts = sim.posts();
     let post = only(&posts, channel, Method::POST);
-    assert_eq!(post.title(), "🦀 Kıyıya canlılar vurdu!");
+    assert_eq!(post.title(), "🦀 Kıyıya yaratıklar vurdu!");
     assert!(
-        post.description().contains("ilk tıklayan kazanır"),
+        post.description().contains("kart numarasına bas"),
         "{}",
         post.description()
     );
@@ -309,7 +305,7 @@ async fn turkish_critter_drops_and_bottles_wash_up_get_taken_and_drift_away() {
     let details = &ana.followups[0];
     assert!(details.ephemeral);
     assert!(
-        details.description().contains("canlısını aldın") && details.description().contains("defterin için yeni!"),
+        details.description().contains("adlı yaratığı aldın") && details.description().contains("defterin için yeni!"),
         "{}",
         details.description()
     );
@@ -333,7 +329,7 @@ async fn turkish_critter_drops_and_bottles_wash_up_get_taken_and_drift_away() {
         .iter()
         .find(|p| p.message == post.message && p.method == Method::PATCH)
         .expect("the drop's message is edited");
-    assert_eq!(over.title(), "🦀 Canlı düşüşü bitti");
+    assert_eq!(over.title(), "🦀 Yaratık etkinliği bitti");
     assert!(
         over.description().contains("denize karıştı") && !over.description().contains("boşta"),
         "{}",
@@ -462,15 +458,17 @@ async fn turkish_critterdrop_command_and_settings_answer_in_turkish() {
         )
         .await;
     assert!(
-        anywhere.content().contains("hangi kanal hareketliyse"),
+        anywhere.content().contains("sohbetin yoğun olduğu kanalda"),
         "{}",
         anywhere.content()
     );
     let shown = sim.command(admin, "config", json!([sub("show", vec![])])).await;
     assert!(
-        shown.field("Canlı düşüşleri").contains("hangi kanal hareketliyse"),
+        shown
+            .field("Yaratık etkinliği")
+            .contains("sohbetin yoğun olduğu kanalda"),
         "{}",
-        shown.field("Canlı düşüşleri")
+        shown.field("Yaratık etkinliği")
     );
 
     // The drop is posted for the whole channel, so it speaks the server's language.
@@ -480,7 +478,7 @@ async fn turkish_critterdrop_command_and_settings_answer_in_turkish() {
         .expect("language");
     let drop = sim.command(host, "critterdrop", json!([])).await;
     assert!(!drop.ephemeral);
-    assert_eq!(drop.title(), "🦀 Kıyıya canlılar vurdu!");
+    assert_eq!(drop.title(), "🦀 Kıyıya yaratıklar vurdu!");
     assert!(
         drop.description().contains(&format!("Başlatan: {}", mention(host))),
         "{}",
@@ -489,7 +487,7 @@ async fn turkish_critterdrop_command_and_settings_answer_in_turkish() {
     keep_png(&sim, &drop, "drop-tr");
     let busy = sim.command(unique(), "critterdrop", json!([])).await;
     assert!(
-        busy.ephemeral && busy.content().contains("bekleyen bir düşüş"),
+        busy.ephemeral && busy.content().contains("açık bir yaratık etkinliği"),
         "{}",
         busy.content()
     );
@@ -497,7 +495,10 @@ async fn turkish_critterdrop_command_and_settings_answer_in_turkish() {
     collection_tick(&sim.app).await.expect("tick");
     let soon = sim.command(host, "critterdrop", json!([])).await;
     assert!(
-        soon.ephemeral && soon.content().contains("Bu kanalda biraz önce bir düşüş oldu"),
+        soon.ephemeral
+            && soon
+                .content()
+                .contains("Bu kanalda biraz önce yaratık etkinliği yapıldı"),
         "{}",
         soon.content()
     );
@@ -566,13 +567,13 @@ async fn turkish_dex_pages_both_tabs_and_trades_fragments() {
     let book = sim.command(owner, "dex", json!([])).await;
     assert!(
         book.description().contains("Gelgit Havuzu Defteri")
-            && book.description().contains("minik canlılar 25/48")
+            && book.description().contains("yaratıklar 25/48")
             && book.description().contains("34 / 84 bulundu"),
         "{}",
         book.description()
     );
     assert!(
-        book.button("Minik canlılar").disabled && !book.button("Buluntular").disabled,
+        book.button("Yaratıklar").disabled && !book.button("Buluntular").disabled,
         "tabs"
     );
     assert!(book.has_button("Parçacıkları harca"));
@@ -621,13 +622,17 @@ async fn turkish_dex_pages_both_tabs_and_trades_fragments() {
     assert!(
         broke
             .description()
-            .contains("Bir efsanevi parça **8,900** parçacık tutuyor"),
+            .contains("**8.900** parçacıkla efsanevi bir parça alabilirsin"),
         "{}",
         broke.description()
     );
     let bought = sim.pick(owner, &panel, "bc:xs:", "common").await;
     assert!(bought.title().ends_with(" senin oldu!"), "{}", bought.title());
-    assert!(bought.description().contains("Ruh bağlı"), "{}", bought.description());
+    assert!(
+        bought.description().contains("Bu parça yalnızca senin"),
+        "{}",
+        bought.description()
+    );
     keep_png(&sim, &bought, "dex-tr-piece");
     let back = sim.click(owner, &bought, "Deftere dön").await;
     assert_eq!(back.files[0].0, "dex.png");
@@ -717,7 +722,7 @@ async fn turkish_crab_pot_soaks_hauls_and_upgrades() {
         "{}",
         upgraded.description()
     );
-    assert!(upgraded.has_button("Yükselt (1,000 kabuk)"));
+    assert!(upgraded.has_button("Yükselt (1.000 kabuk)"));
     keep_png(&sim, &upgraded, "pot-tr-upgraded");
     let stale = sim.click(user, &pot, "Yükselt (400 kabuk)").await;
     assert!(

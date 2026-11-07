@@ -29,7 +29,7 @@ use twilight_model::channel::message::{
     component::{Label, TextInput, TextInputStyle},
 };
 
-use crate::{App, Cx, util::thousands};
+use crate::{App, Cx, util::thousands_in};
 
 /// How long an untouched draft is kept.
 const DRAFT_TTL: Duration = Duration::from_secs(2 * 3600);
@@ -193,7 +193,7 @@ pub(crate) async fn load_shelf(app: &App, user: u64) -> anyhow::Result<Shelf> {
 pub(crate) fn access_note(access: &Access, lang: Lang) -> String {
     match access {
         Access::Owned => t!(lang, "character.access.owned"),
-        Access::Buy(price) => t!(lang, "character.access.buy", price = thousands(*price)),
+        Access::Buy(price) => t!(lang, "character.access.buy", price = thousands_in(lang, *price)),
         Access::Level(at) => t!(lang, "character.access.level", level = at),
         Access::Badge(id) => t!(
             lang,
@@ -398,16 +398,16 @@ pub(crate) async fn on_component(cx: &Cx, mut args: Split<'_, char>, values: &[S
                         cx.lang(),
                         "character.bought",
                         item = item.name,
-                        price = thousands(price),
-                        balance = thousands(balance)
+                        price = thousands_in(cx.lang(), price),
+                        balance = thousands_in(cx.lang(), balance)
                     ),
                     CustomizeBuy::AlreadyOwned => t!(cx.lang(), "character.already-own", item = item.name),
                     CustomizeBuy::Insufficient { balance } => t!(
                         cx.lang(),
                         "character.costs",
                         item = item.name,
-                        price = thousands(price),
-                        balance = thousands(balance)
+                        price = thousands_in(cx.lang(), price),
+                        balance = thousands_in(cx.lang(), balance)
                     ),
                 },
                 Access::Owned => t!(cx.lang(), "character.already-own", item = item.name),

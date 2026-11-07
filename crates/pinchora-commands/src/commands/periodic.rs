@@ -9,7 +9,7 @@ use twilight_util::builder::embed::EmbedBuilder;
 use crate::{
     Cx,
     commands::{customize, remind},
-    util::{SUCCESS, WARN, relative, thousands},
+    util::{SUCCESS, WARN, relative, thousands_in},
 };
 
 #[derive(CommandModel, CreateCommand)]
@@ -48,11 +48,11 @@ async fn claim(cx: &Cx, period: Period) -> anyhow::Result<()> {
             remind::after_claim(&cx.app, user, period.key(), next_at, cx.lang()).await;
             EmbedBuilder::new()
                 .color(SUCCESS)
-                .title(t!(lang, "daily.claimed-title", amount = thousands(amount)))
+                .title(t!(lang, "daily.claimed-title", amount = thousands_in(lang, amount)))
                 .description(t!(
                     lang,
                     &key("claimed"),
-                    balance = thousands(balance),
+                    balance = thousands_in(lang, balance),
                     when = relative(next_at)
                 ))
                 .build()

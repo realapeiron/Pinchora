@@ -9,6 +9,19 @@ already-liked = "Bu evi bugün zaten beğendin."
 locked = "Evin kilitlendi. Ziyaretçiler kapıdan dönecek."
 unlocked = "Evin yeniden ziyaretçilere açık."
 
+[house.decorate]
+shell-price = "{price} kabuk"
+pearl-price = "{price} inci"
+title = "{room}. oda döşeniyor"
+body = "{note}\nDuvar kâğıdı: **{wallpaper}** · Zemin: **{floor}**\nBir deseni ilk kullanımında satın alırsın; sonrasında istediğin zaman ücretsiz değiştirebilirsin."
+wallpaper-menu = "Duvar kâğıdı (sayfa {page}/{pages})…"
+floor-menu = "Zemin (sayfa {page}/{pages})…"
+more = "Diğer desenler ▶"
+next-room = "Sonraki oda"
+pick = "Bir desen seç."
+bought = "**{name}** satın alındı: {price}."
+costs = "**{name}** için {price} gerekiyor."
+
 [house.edit]
 start = "Bir mobilya seç: boş bir yere atlar, sonra **Yerleştir**'e bas."
 start-partner = "Envanterinden bir mobilya seç: boş bir yere atlar, sonra **Yerleştir**'e bas."

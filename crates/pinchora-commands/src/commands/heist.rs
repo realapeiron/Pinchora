@@ -27,7 +27,7 @@ use super::{
 use crate::{
     App, Cx,
     server_events::{button, row},
-    util::{BRAND, DANGER, SUCCESS, WARN, mention, relative, thousands},
+    util::{BRAND, DANGER, SUCCESS, WARN, mention, relative, thousands_in},
 };
 
 /// The roles of a crew, in the order they joined.
@@ -448,7 +448,7 @@ async fn finish(app: &Arc<App>, id: i64, forced: Option<u64>, lang: Lang) -> any
             match got {
                 0 if busted => format!("{role} {}", mention(m.user_id)),
                 0 => format!("{role} {} {}", mention(m.user_id), t!(lang, "heist.limit-reached")),
-                shells => format!("{role} {} **+{}**", mention(m.user_id), thousands(shells)),
+                shells => format!("{role} {} **+{}**", mention(m.user_id), thousands_in(lang, shells)),
             }
         })
         .collect();

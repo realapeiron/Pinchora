@@ -1,3 +1,4 @@
+use pinchora_core::{i18n::Lang, t};
 use std::fmt::Write;
 
 use super::{PIXEL, SANS, text};
@@ -28,6 +29,7 @@ pub struct GridSlot {
 
 /// 1000×600 card with up to 8 items in a 4×2 grid: hourly market, catalog, inventory.
 pub struct ItemGridCard {
+    pub lang: Lang,
     pub title: String,
     pub subtitle: String,
     pub slots: Vec<GridSlot>,
@@ -56,7 +58,7 @@ impl ItemGridCard {
             false,
             &t.ink,
             "start",
-            &escape(&self.title.to_uppercase()),
+            &escape(&self.lang.upper(&self.title)),
         );
         text(
             &mut s,
@@ -182,7 +184,7 @@ impl ItemGridCard {
                 false,
                 &t.muted,
                 "middle",
-                "NOTHING HERE YET",
+                &t!(self.lang, "card.grid.empty"),
             );
         }
         text(

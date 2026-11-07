@@ -6,7 +6,8 @@ use super::{BadgeIcon, PIXEL, SANS, text};
 use crate::{
     Theme,
     svg::{
-        CRAB, SHELL, background, compact, escape, mix, notched_path, pixel_width, segment_bar, sprite, thousands, wrap,
+        CRAB, SHELL, background, compact_in, escape, mix, notched_path, pixel_width, segment_bar, sprite, thousands_in,
+        wrap,
     },
 };
 
@@ -54,6 +55,7 @@ impl BadgeCollectionCard<'_> {
     /// The NEW tag's gold: the pixel font at 8 px (a font pixel is a pixel of the card) spells NEW
     /// in 17×5 pixels; the gold leaves 6 pixels either side and 4 above and below.
     const NEW_W: f32 = 29.0;
+    const TR_NEW_W: f32 = 35.0;
     const NEW_H: f32 = 13.0;
     /// The disc under the worn badge's place number, which is set at 16 px: a digit is 10 pixels
     /// tall, and the disc leaves 6 around it.
@@ -226,15 +228,30 @@ impl BadgeCollectionCard<'_> {
                 );
                 if new {
                     let (nx, ny) = Self::new_tag_origin(plate_x, plate_y);
+                    let tag_width = if self.lang == Lang::Tr {
+                        Self::TR_NEW_W
+                    } else {
+                        Self::NEW_W
+                    };
                     let _ = write!(
                         s,
                         r##"<path d="{}" fill="#0b1029"/><path d="{}" fill="{}"/>"##,
-                        notched_path(nx - 2.0, ny - 2.0, Self::NEW_W + 4.0, Self::NEW_H + 4.0, 3.0),
-                        notched_path(nx, ny, Self::NEW_W, Self::NEW_H, 3.0),
+                        notched_path(nx - 2.0, ny - 2.0, tag_width + 4.0, Self::NEW_H + 4.0, 3.0),
+                        notched_path(nx, ny, tag_width, Self::NEW_H, 3.0),
                         t.gold,
                     );
                     // The ink starts one font pixel after the text's x, and sits on its baseline.
-                    text(s, nx + 5.0, ny + 9.0, 8.0, PIXEL, false, "#0b1029", "start", "NEW");
+                    text(
+                        s,
+                        nx + 5.0,
+                        ny + 9.0,
+                        8.0,
+                        PIXEL,
+                        false,
+                        "#0b1029",
+                        "start",
+                        &t!(self.lang, "card.badge-new"),
+                    );
                 }
                 if let Some(place) = worn {
                     let disc = Self::WORN_DISC;
@@ -282,11 +299,11 @@ impl BadgeCollectionCard<'_> {
                     false,
                     &t.muted,
                     "middle",
-                    &format!("{}/{}", compact(have.max(0)), compact(at)),
+                    &format!("{}/{}", compact_in(self.lang, have.max(0)), compact_in(self.lang, at)),
                 );
             }
             BadgeState::ForSale { price } => {
-                let label = thousands(price);
+                let label = thousands_in(self.lang, price);
                 let width = label.chars().count() as f32 * 7.6 + 22.0;
                 let x = cx - width / 2.0;
                 sprite(s, SHELL, x, status_y - 5.0, 2.4, &t.gold, "#fff7d6");
@@ -391,5 +408,18 @@ mod tests {
                 "place {place}: {left} px left, {right} px right"
             );
         }
+    }
+
+    #[test]
+    fn turkish_new_tag_fits_its_plate() {
+        let cells = [cell(BadgeState::Earned { new: true, worn: None })];
+        let card = BadgeCollectionCard {
+            lang: Lang::Tr,
+            cells: &cells,
+            legend: &[],
+            theme: Theme::reef(),
+        };
+        assert!(card.to_svg().contains(">YENİ</text>"));
+        assert!(pixel_width("YENİ", 8.0) + 10.0 <= BadgeCollectionCard::TR_NEW_W);
     }
 }

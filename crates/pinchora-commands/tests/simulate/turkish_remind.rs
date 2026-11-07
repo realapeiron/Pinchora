@@ -185,9 +185,8 @@ async fn reminders_are_set_listed_cancelled_and_delivered_in_turkish() {
         bad.content()
     );
 
-    // A note arrives in the language the player picked (a text reminder knows no other).
+    // A note arrives in the language of the command, even without a /language pick.
     sim.command(user, "remind", remind_in("5dk", "su iç")).await;
-    sim.app.set_user_lang(user, Some(Lang::Tr)).await.unwrap();
     sim.app.shift_clock(chrono::Duration::minutes(6));
     reminder_tick(&sim.app).await.unwrap();
     let posts = sim.posts();

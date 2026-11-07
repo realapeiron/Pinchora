@@ -22,7 +22,7 @@ use super::{
 };
 use crate::{
     App, Cx,
-    util::{BRAND, DANGER, SUCCESS, mention, thousands},
+    util::{BRAND, DANGER, SUCCESS, mention, thousands_in},
 };
 
 /// How long a partner request can be answered, in seconds.
@@ -98,11 +98,15 @@ impl PartnerCommand {
                     to,
                     until: cx.app.now().timestamp() + REQUEST_SECS,
                 };
+                let public_lang = match cx.guild_id() {
+                    Some(guild) => cx.app.guild_lang(guild).await,
+                    None => cx.lang(),
+                };
                 let embed = EmbedBuilder::new()
                     .color(BRAND)
-                    .title(t!(cx.lang(), "partner.request-title"))
+                    .title(t!(public_lang, "partner.request-title"))
                     .description(t!(
-                        cx.lang(),
+                        public_lang,
                         "partner.request",
                         from = mention(me),
                         to = mention(to),
@@ -112,7 +116,11 @@ impl PartnerCommand {
                 cx.reply(InteractionResponseData {
                     content: Some(mention(to)),
                     embeds: Some(vec![embed]),
-                    components: Some(vec![request.buttons(cx.lang(), "pt", &t!(cx.lang(), "partner.accept"))]),
+                    components: Some(vec![request.buttons(
+                        public_lang,
+                        "pt",
+                        &t!(public_lang, "partner.accept"),
+                    )]),
                     allowed_mentions: social::ping_only(to),
                     ..Default::default()
                 })
@@ -198,7 +206,7 @@ async fn card(cx: &Cx, a: u64, b: u64, since: chrono::DateTime<Utc>) -> anyhow::
         .color(BRAND)
         .title(format!("💞 {name_a} & {name_b}"))
         .field(EmbedFieldBuilder::new(t!(lang, "partner.card-since"), format!("<t:{}:D>", since.timestamp())).inline())
-        .field(EmbedFieldBuilder::new(t!(lang, "partner.card-days"), thousands(days)).inline())
+        .field(EmbedFieldBuilder::new(t!(lang, "partner.card-days"), thousands_in(lang, days)).inline())
         .field(EmbedFieldBuilder::new(
             t!(lang, "partner.card-sent"),
             Interaction::ALL
@@ -210,8 +218,8 @@ async fn card(cx: &Cx, a: u64, b: u64, since: chrono::DateTime<Utc>) -> anyhow::
             t!(
                 lang,
                 "partner.card-houses-value",
-                likes = thousands(likes),
-                pieces = thousands(pieces)
+                likes = thousands_in(lang, likes),
+                pieces = thousands_in(lang, pieces)
             ),
         ))
         .footer(EmbedFooterBuilder::new(t!(lang, "partner.card-footer")));
@@ -269,18 +277,22 @@ async fn closed(cx: &Cx, text: impl Into<String>) -> anyhow::Result<()> {
 
 async fn on_answer(cx: &Cx, accept: bool, request: Request) -> anyhow::Result<()> {
     let me = cx.author()?.id.get();
+    let public_lang = match cx.guild_id() {
+        Some(guild) => cx.app.guild_lang(guild).await,
+        None => cx.lang(),
+    };
     if me != request.to && !(me == request.from && !accept) {
         return cx.reply_ephemeral(t!(cx.lang(), "social.not-for-you")).await;
     }
     if request.expired(&cx.app) {
-        return closed(cx, t!(cx.lang(), "partner.expired")).await;
+        return closed(cx, t!(public_lang, "partner.expired")).await;
     }
     if !accept {
         let text = if me == request.from {
-            t!(cx.lang(), "partner.withdrawn", from = mention(request.from))
+            t!(public_lang, "partner.withdrawn", from = mention(request.from))
         } else {
             t!(
-                cx.lang(),
+                public_lang,
                 "social.said-no",
                 to = mention(request.to),
                 from = mention(request.from)
@@ -295,9 +307,9 @@ async fn on_answer(cx: &Cx, accept: bool, request: Request) -> anyhow::Result<()
             let png = together(&cx.app, request.from, request.to).await?;
             let embed = EmbedBuilder::new()
                 .color(SUCCESS)
-                .title(t!(cx.lang(), "partner.new-title"))
+                .title(t!(public_lang, "partner.new-title"))
                 .description(t!(
-                    cx.lang(),
+                    public_lang,
                     "partner.new",
                     from = mention(request.from),
                     to = mention(request.to)
@@ -316,13 +328,13 @@ async fn on_answer(cx: &Cx, accept: bool, request: Request) -> anyhow::Result<()
                 .is_some_and(|p| p.partner_id == request.to);
             let text = if together {
                 t!(
-                    cx.lang(),
+                    public_lang,
                     "partner.already-partners",
                     from = mention(request.from),
                     to = mention(request.to)
                 )
             } else {
-                t!(cx.lang(), "partner.taken", user = mention(user))
+                t!(public_lang, "partner.taken", user = mention(user))
             };
             closed(cx, text).await
         }

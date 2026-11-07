@@ -9,8 +9,9 @@ use image::{Rgba, RgbaImage};
 use pinchora_core::{i18n::Lang, t};
 use pinchora_game::{Content, lang};
 use pinchora_render::{
-    CORRECT, GridSlot, HelpCard, HelpRow, ItemGridCard, PRESENT, ProfileCard, Renderer, Theme, WalletCard, WordleCard,
-    WordleRow, encode_png, placeholder_avatar,
+    BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, CORRECT, GridSlot, HelpCard, HelpRow, ItemGridCard,
+    LeaderboardCard, LeaderboardEntry, PRESENT, ProfileCard, Renderer, Theme, WalletCard, WordleCard, WordleRow,
+    encode_png, placeholder_avatar,
 };
 
 fn out(name: &str) -> std::path::PathBuf {
@@ -59,6 +60,7 @@ fn the_item_grid_holds_the_longest_turkish_names() {
         })
         .collect();
     let card = ItemGridCard {
+        lang: Lang::Tr,
         title: format!("{} katalog", pinchora_game::Category::WindowsDoors.label_in(Lang::Tr)),
         subtitle: "SAYFA 1/3".to_owned(),
         slots,
@@ -68,6 +70,70 @@ fn the_item_grid_holds_the_longest_turkish_names() {
     let png = Renderer::new().item_grid(&card).expect("renders");
     assert!(is_png(&png));
     std::fs::write(out("item_grid_longest.png"), png).expect("write png");
+}
+
+#[test]
+fn turkish_empty_grid_and_new_badge_render() {
+    let grid = ItemGridCard {
+        lang: Lang::Tr,
+        title: "Boş envanter".to_owned(),
+        subtitle: "SAYFA 1/1".to_owned(),
+        slots: Vec::new(),
+        footer: "HENÜZ ÜRÜN YOK".to_owned(),
+        theme: Theme::reef(),
+    };
+    let renderer = Renderer::new();
+    let png = renderer.item_grid(&grid).expect("empty grid renders");
+    assert!(is_png(&png));
+    std::fs::write(out("item_grid_empty.png"), png).expect("write png");
+
+    let cells = [BadgeCell {
+        icon: BadgeIcon {
+            art: None,
+            letter: 'İ',
+            color: 0x06d6a0,
+            rarity: 0x8fa0d8,
+        },
+        name: "Ay İncisi",
+        rarity: "Nadir",
+        state: BadgeState::Earned { new: true, worn: None },
+    }];
+    let badges = BadgeCollectionCard {
+        lang: Lang::Tr,
+        cells: &cells,
+        legend: &[],
+        theme: Theme::reef(),
+    };
+    let png = renderer.badge_collection(&badges).expect("Turkish badge renders");
+    assert!(is_png(&png));
+    std::fs::write(out("badge_new.png"), png).expect("write png");
+}
+
+#[test]
+fn turkish_catch_leaderboard_keeps_its_detail_inside_the_row() {
+    let card = LeaderboardCard {
+        lang: Lang::Tr,
+        title: "Haftalık av".to_owned(),
+        entries: vec![LeaderboardEntry {
+            rank: 1,
+            avatar_png: placeholder_avatar(9, LeaderboardCard::AVATAR_SIZE),
+            name: "Şirin Çağlayan".to_owned(),
+            value: "125,3 CM".to_owned(),
+            detail: t!(
+                Lang::Tr,
+                "leaderboard.usual",
+                fish = "AY İNCİSİ DENİZATI",
+                percent = 125
+            ),
+        }],
+        page: 0,
+        last_week: Vec::new(),
+        empty: String::new(),
+        theme: Theme::reef(),
+    };
+    let png = Renderer::new().leaderboard_card(&card).expect("renders");
+    assert!(is_png(&png));
+    std::fs::write(out("catch_leaderboard.png"), png).expect("write png");
 }
 
 /// Every pixel letter of the Turkish alphabet at the sizes the cards draw them, both weights.
@@ -121,7 +187,7 @@ fn turkish_profile<'a>(avatar: &'a [u8]) -> ProfileCard<'a> {
     }
 }
 
-/// The profile card: SEVİYE, DENEYİM, İNCİ, SERİ and EVCİL from the catalog, and a title and a partner the card
+/// The profile card: SEVİYE, DENEYİM, İNCİ, SERİ and HAYVAN from the catalog, and a title and a partner the card
 /// capitalises itself, with Turkish `i` and `ı`.
 #[test]
 fn the_turkish_profile_card_draws_its_capitals() {
@@ -161,7 +227,7 @@ fn the_turkish_wallet_card_draws_its_capitals() {
         theme: Theme::reef(),
     };
     let svg = card.to_svg();
-    for label in ["CÜZDAN", "İNCİ", "SERİ", "EVCİL", "GÜNLÜK", "HAFTALIK", "HAZIR"] {
+    for label in ["CÜZDAN", "İNCİ", "SERİ", "HAYVAN", "GÜNLÜK", "HAFTALIK", "HAZIR"] {
         assert!(svg.contains(label), "{label} is on the card");
     }
     let png = Renderer::new().wallet_card(&card).expect("renders");

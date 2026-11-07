@@ -4,6 +4,7 @@
 use std::io::Cursor;
 
 use image::{Rgba, RgbaImage};
+use pinchora_core::i18n::Lang;
 use pinchora_game::{
     Rarity,
     fishing::{Bait, Boost},
@@ -60,6 +61,7 @@ pub(super) struct Slot {
 /// An 8-slot item grid card as PNG. The art is drawn on the render thread.
 pub(super) async fn grid_png(
     app: &App,
+    lang: Lang,
     title: String,
     subtitle: String,
     footer: String,
@@ -87,6 +89,7 @@ pub(super) async fn grid_png(
             })
             .collect();
         r.item_grid(&ItemGridCard {
+            lang,
             title,
             subtitle,
             slots,

@@ -29,7 +29,7 @@ use super::{
 use crate::{
     Cx,
     game::scene::RoomView,
-    util::{BRAND, SUCCESS, WARN, thousands},
+    util::{BRAND, SUCCESS, WARN, thousands_in},
 };
 
 const MEDALS: [&str; 3] = ["🥇", "🥈", "🥉"];
@@ -205,7 +205,7 @@ async fn podium(cx: &Cx, guild: u64, result: &ContestResult) -> anyhow::Result<S
                 medal = medal,
                 name = name,
                 votes = counted(lang, "contest.votes", (*votes).into()),
-                prize = thousands(prize)
+                prize = thousands_in(lang, prize)
             )
         })
         .collect();

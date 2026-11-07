@@ -123,7 +123,14 @@ async fn run_command(cx: &Cx, guild: u64, row: &CommandRow, args: &str) -> anyho
         embed: def.embed.as_ref(),
         allow_mentions: def.allow_mentions,
     };
-    let vars = scene_vars(&cx.app, &scene, &all_texts(&spec, &def.actions), points.balance).await;
+    let vars = scene_vars(
+        &cx.app,
+        &scene,
+        &all_texts(&spec, &def.actions),
+        points.balance,
+        cx.lang(),
+    )
+    .await;
     let rendered = render_message(&spec, &vars, &mut pick);
     let (content, embed, mentions) = to_discord(&rendered, guild, user.id.get());
     // Discord refuses a message with nothing in it (`{1}` with no words typed, say).

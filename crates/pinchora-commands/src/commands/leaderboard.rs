@@ -17,7 +17,7 @@ use twilight_model::http::{attachment::Attachment, interaction::InteractionRespo
 
 use crate::{
     App, Cx,
-    util::{display_name, thousands},
+    util::{display_name, thousands_in},
 };
 
 const PAGE_SIZE: i64 = LeaderboardCard::ROWS as i64;
@@ -108,7 +108,7 @@ async fn last_week_podium(
         podium.push(LastWeekEntry {
             rank: i as i64 + 1,
             name,
-            value: t!(lang, "leaderboard.xp", xp = thousands(row.value)),
+            value: t!(lang, "leaderboard.xp", xp = thousands_in(lang, row.value)),
         });
     }
     Ok(podium)
@@ -119,9 +119,9 @@ async fn last_week_podium(
 fn catch_text(row: &CatchBoardRow, lang: Lang) -> String {
     let name = fish_name(&row.fish_id, lang);
     let size = if row.size_cm >= 100.0 {
-        format!("{:.0}", row.size_cm)
+        pinchora_core::server_stats::decimal_in(lang, row.size_cm, 0)
     } else {
-        format!("{:.1}", row.size_cm)
+        pinchora_core::server_stats::decimal_in(lang, row.size_cm, 1)
     };
     let text = t!(lang, "leaderboard.catch-size", name = &name, size = &size);
     // A place of the podium is drawn in a column this wide: a longer fish name gives way, never the size.
@@ -249,25 +249,29 @@ async fn page(
     for (i, (row, person)) in rows.iter().zip(people).enumerate() {
         let (user, avatar) = person.await?;
         let (value, detail) = match board {
-            Board::GlobalShells => (thousands(row.value), t!(lang, "leaderboard.shells-unit")),
-            Board::ServerPoints => (thousands(row.value), lang.upper(&points_name)),
-            Board::Weekly => (thousands(row.value), t!(lang, "leaderboard.weekly-unit")),
+            Board::GlobalShells => (thousands_in(lang, row.value), t!(lang, "leaderboard.shells-unit")),
+            Board::ServerPoints => (thousands_in(lang, row.value), lang.upper(&points_name)),
+            Board::Weekly => (thousands_in(lang, row.value), t!(lang, "leaderboard.weekly-unit")),
             Board::WeeklyCatch => {
                 let catch = &catches[i];
                 let fish = lang.upper(&fish_name(&catch.fish_id, lang));
                 (
-                    t!(lang, "leaderboard.size", size = format!("{:.1}", catch.size_cm)),
+                    t!(
+                        lang,
+                        "leaderboard.size",
+                        size = pinchora_core::server_stats::decimal_in(lang, catch.size_cm, 1)
+                    ),
                     t!(
                         lang,
                         "leaderboard.usual",
                         fish = fish,
-                        percent = format!("{:.0}", catch.ratio * 100.0)
+                        percent = pinchora_core::server_stats::decimal_in(lang, catch.ratio * 100.0, 0)
                     ),
                 )
             }
             _ => (
                 t!(lang, "leaderboard.level", level = leveling::level_of(row.value)),
-                t!(lang, "leaderboard.xp", xp = thousands(row.value)),
+                t!(lang, "leaderboard.xp", xp = thousands_in(lang, row.value)),
             ),
         };
         entries.push(LeaderboardEntry {

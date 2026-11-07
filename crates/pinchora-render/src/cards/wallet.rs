@@ -5,7 +5,7 @@ use pinchora_core::{i18n::Lang, t};
 use super::{Backdrop, PIXEL, SANS, avatar_frame, backdrop, text};
 use crate::{
     Theme,
-    svg::{HEART, SHELL, STAR, background, compact, escape, sprite, truncate},
+    svg::{HEART, SHELL, STAR, background, compact_in, escape, sprite, truncate},
 };
 
 /// 900×300 wallet card.
@@ -76,12 +76,12 @@ impl WalletCard<'_> {
         let big = [
             (
                 t!(self.lang, "card.shells"),
-                compact(self.shells),
+                compact_in(self.lang, self.shells),
                 Some((SHELL, t.gold.as_str())),
             ),
             (
                 t!(self.lang, "card.pearls"),
-                compact(self.pearls),
+                compact_in(self.lang, self.pearls),
                 Some((STAR, "#8fd3ff")),
             ),
         ];

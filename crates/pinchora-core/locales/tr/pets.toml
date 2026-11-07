@@ -86,10 +86,10 @@ welcome = "Eve hoş geldin, **{name}**! Adını `/pet rename` ile değiştirebil
 
 [pet.capsule]
 odds = "Bir kapsül {price} kabuk.\nŞanslar: {odds}"
-restocking = "Kapsüller henüz yeniden dolduruluyor."
-duplicate-title = "Bir {rarity} {name}!"
+restocking = "Kapsüller hazırlanıyor. Birazdan tekrar dene."
+duplicate-title = "Kapsülden {rarity} bir {name} çıktı!"
 duplicate = "Bu zaten sende var, o yüzden bir arkadaşının evine gitti ve sana {refund} kabuk bıraktı. Bakiye: {balance}."
-opened = "✨ Kapsül çatlayıp açılıyor… bir **{rarity}** {name}! ({balance} kabuk kaldı)\n`/pet list` ile onu aktif hayvanın yapabilirsin."
+opened = "✨ Kapsül çatlayıp açılıyor… **{rarity}** bir {name}! ({balance} kabuk kaldı)\n`/pet list` ile onu aktif hayvanın yapabilirsin."
 
 [pet.switch]
 changed = "Aktif hayvan değişti. Evinde ziyaretçileri o karşılayacak."

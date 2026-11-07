@@ -5,7 +5,7 @@ use pinchora_core::{i18n::Lang, t};
 use super::{Backdrop, PIXEL, SANS, avatar_frame, backdrop, text};
 use crate::{
     Theme,
-    svg::{STAR, background, compact, escape, segment_bar, sprite, thousands, truncate},
+    svg::{STAR, background, compact_in, escape, segment_bar, sprite, thousands_in, truncate},
 };
 
 /// The next level reward, shown as "Next role: <name> at level N".
@@ -66,7 +66,7 @@ impl RankCard<'_> {
             "end",
             &t!(self.lang, "card.rank"),
         );
-        let rank = format!("#{}", compact(self.rank));
+        let rank = format!("#{}", compact_in(self.lang, self.rank));
         let level = self.level.to_string();
         // Right-aligned "RANK #n  LEVEL n" cluster.
         text(&mut s, 900.0, 118.0, 44.0, PIXEL, false, &t.ink, "end", &escape(&rank));
@@ -111,8 +111,8 @@ impl RankCard<'_> {
 
         let xp = format!(
             "{} / {} XP",
-            thousands(self.xp_current as i64),
-            thousands(self.xp_needed as i64)
+            thousands_in(self.lang, self.xp_current as i64),
+            thousands_in(self.lang, self.xp_needed as i64)
         );
         text(&mut s, 900.0, 186.0, 16.0, PIXEL, false, &t.ink, "end", &xp);
         if let Some(next) = &self.next_role {

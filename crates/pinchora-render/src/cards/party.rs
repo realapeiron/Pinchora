@@ -9,8 +9,8 @@ use super::{PIXEL, SANS, SpriteArt, text};
 use crate::{
     Theme,
     svg::{
-        CRAB, HEART, SHELL, STAR, background, compact, data_uri_png, escape, mix, notched_path, panel, pixel_width,
-        segment_bar, sprite, thousands, truncate_to, wrap,
+        CRAB, HEART, SHELL, STAR, background, compact_in, data_uri_png, escape, mix, notched_path, panel, pixel_width,
+        segment_bar, sprite, thousands_in, truncate_to, wrap,
     },
 };
 
@@ -94,7 +94,7 @@ impl DerbyCard<'_> {
         );
         if self.stake > 0 {
             let pool = self.stake * self.racers as i64;
-            let label = t!(self.lang, "derby.card.pool", pool = compact(pool));
+            let label = t!(self.lang, "derby.card.pool", pool = compact_in(self.lang, pool));
             chip(&mut s, w - 28.0, 26.0, &label, &t.gold, t);
             sprite(&mut s, SHELL, 28.0, 68.0, 3.0, &t.gold, "#ffffff");
             text(
@@ -106,7 +106,7 @@ impl DerbyCard<'_> {
                 false,
                 &t.muted,
                 "start",
-                &t!(self.lang, "derby.card.entry", stake = compact(self.stake)),
+                &t!(self.lang, "derby.card.entry", stake = compact_in(self.lang, self.stake)),
             );
         } else {
             chip(&mut s, w - 28.0, 26.0, &t!(self.lang, "derby.card.for-fun"), &t.mint, t);
@@ -201,7 +201,7 @@ impl DerbyCard<'_> {
             false,
             &t.gold,
             "middle",
-            &escape(&self.status.to_uppercase()),
+            &escape(&self.lang.upper(self.status)),
         );
         s.push_str("</svg>");
         s
@@ -317,7 +317,7 @@ impl ShareGrabCard<'_> {
             "middle",
             &pinchora_core::t!(self.lang, "share.card.in-pool"),
         );
-        let pool = compact(self.pool);
+        let pool = compact_in(self.lang, self.pool);
         let group = 21.0 + 14.0 + pixel_width(&pool, 24.0);
         sprite(&mut s, SHELL, 290.0 - group / 2.0, 212.0, 3.0, &t.gold, "#ffffff");
         text(
@@ -389,7 +389,7 @@ impl ShareGrabCard<'_> {
             false,
             ink,
             "middle",
-            &escape(&self.banner.to_uppercase()),
+            &escape(&self.lang.upper(self.banner)),
         );
         s.push_str("</svg>");
         s
@@ -450,8 +450,8 @@ impl ShellCard<'_> {
         let label = t!(
             self.lang,
             "shells.card.stake",
-            stake = compact(self.stake),
-            payout = compact(self.payout.max(0))
+            stake = compact_in(self.lang, self.stake),
+            payout = compact_in(self.lang, self.payout.max(0))
         );
         chip(&mut s, w - 28.0, 26.0, &label, &t.gold, t);
         // The table.
@@ -515,7 +515,7 @@ impl ShellCard<'_> {
             false,
             &t.ink,
             "middle",
-            &escape(&self.status.to_uppercase()),
+            &escape(&self.lang.upper(self.status)),
         );
         s.push_str("</svg>");
         s
@@ -771,7 +771,11 @@ impl HeistCard<'_> {
             &t!(self.lang, "heist.card.crew", count = self.crew.len()),
         );
         if self.each > 0 {
-            let label = t!(self.lang, "heist.card.each", amount = thousands(self.each));
+            let label = t!(
+                self.lang,
+                "heist.card.each",
+                amount = thousands_in(self.lang, self.each)
+            );
             sprite(
                 &mut s,
                 SHELL,
@@ -1012,8 +1016,8 @@ impl SurgeCard<'_> {
             &t!(
                 self.lang,
                 "surge.card.wall",
-                wall = thousands(self.wall),
-                goal = thousands(self.goal)
+                wall = thousands_in(self.lang, self.wall),
+                goal = thousands_in(self.lang, self.goal)
             ),
         );
         text(
@@ -1025,7 +1029,11 @@ impl SurgeCard<'_> {
             false,
             &t.muted,
             "start",
-            &t!(self.lang, "surge.card.helping", count = thousands(self.helpers)),
+            &t!(
+                self.lang,
+                "surge.card.helping",
+                count = thousands_in(self.lang, self.helpers)
+            ),
         );
         for (n, (name, bags)) in self.top.iter().take(3).enumerate() {
             let y = 328.0 + n as f32 * 18.0;

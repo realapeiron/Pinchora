@@ -19,6 +19,7 @@ use pinchora_render::{
 };
 
 const FILL: CardFill<'static> = CardFill {
+    lang: pinchora_core::i18n::Lang::En,
     user: "Captain Pinch",
     username: "captain.pinch",
     server: "Pinchora Reef",
@@ -80,7 +81,8 @@ fn the_classic_template_is_the_old_welcome_card() {
                 .expect("a png")
                 .to_rgba8();
             let design = templates::classic(CardKind::Welcome, theme, title, accent, lang);
-            let new = draw(&design, &FILL);
+            let fill = CardFill { lang, ..FILL };
+            let new = draw(&design, &fill);
             assert_eq!(differing(&old, &new, 0), 0, "{theme} {title:?} {accent:?} {lang:?}");
         }
     }
@@ -180,6 +182,7 @@ fn placeholders_fill_in_and_hostile_names_still_draw() {
     assert_eq!(ordinal(101), "101st");
     assert_eq!(ordinal(1112), "1,112th");
     let sneaky = CardFill {
+        lang: pinchora_core::i18n::Lang::En,
         user: "{server}",
         ..FILL
     };
@@ -189,6 +192,7 @@ fn placeholders_fill_in_and_hostile_names_still_draw() {
 
     let hostile = "Zoë ✨ 李 😀 <b>&amp;\"'</b> \u{FFFE}\u{FFFF}\u{FDD0}\u{0}\u{7}\u{85} end";
     let fill = CardFill {
+        lang: pinchora_core::i18n::Lang::En,
         user: hostile,
         username: hostile,
         server: hostile,

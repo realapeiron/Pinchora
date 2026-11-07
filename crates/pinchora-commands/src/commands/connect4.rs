@@ -25,7 +25,7 @@ use super::{
 };
 use crate::{
     App, Cx,
-    util::{BRAND, mention, relative, thousands},
+    util::{BRAND, mention, relative, thousands_in},
 };
 
 /// The state's own fields: the board, whose turn it is (1 or 2) and the cell dropped last.
@@ -153,8 +153,8 @@ async fn message(
         embed = embed.description(t!(
             lang,
             "duel.pot-line",
-            pot = thousands(pot),
-            bet = thousands(session.bet)
+            pot = thousands_in(lang, pot),
+            bet = thousands_in(lang, session.bet)
         ));
     }
     let components = if end.is_some() {
@@ -294,7 +294,7 @@ async fn on_move(cx: &Cx, id: i64, col: usize) -> anyhow::Result<()> {
         record(&cx.app, Game::Connect4, player, winner == Some(player)).await;
     }
     let note = match winner {
-        Some(_) if session.bet > 0 => t!(board_lang, "duel.pot-won", pot = thousands(session.bet * 2)),
+        Some(_) if session.bet > 0 => t!(board_lang, "duel.pot-won", pot = thousands_in(lang, session.bet * 2)),
         Some(w) => {
             let paid = pay_win(&cx.app, w, Game::Connect4, Game::Connect4.win_reward(), "connect4_win").await?;
             if paid > 0 {

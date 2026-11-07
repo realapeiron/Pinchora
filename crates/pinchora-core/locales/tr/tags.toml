@@ -23,6 +23,7 @@ roles-no = "Rollerin bu komuta izin vermiyor."
 role-needed = "Bu komut belirli bir role sahip üyeler için."
 
 [customcommand]
+this-server = "bu sunucu"
 guild-only = "Özel komutlar sunucularda yaşar."
 needs-manage = "Özel komutları yönetmek için Sunucuyu Yönet iznine ihtiyacın var."
 none = "`{name}` adında bir özel komut yok. Hepsini `/customcommand list` ile gör."

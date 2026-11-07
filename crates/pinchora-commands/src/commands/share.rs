@@ -27,7 +27,7 @@ use super::{
 use crate::{
     App, Cx,
     server_events::row,
-    util::{BRAND, SUCCESS, mention, relative, thousands},
+    util::{BRAND, SUCCESS, mention, relative, thousands_in},
 };
 
 pub(crate) fn initial_fields() -> String {
@@ -88,7 +88,7 @@ impl Ending {
     /// The line under the card.
     fn note(&self, lang: Lang, session: &GameSession) -> String {
         let players = [session.host_id as u64, session.guest_id.unwrap_or(0) as u64];
-        let pot = thousands(pool_of(session));
+        let pot = thousands_in(lang, pool_of(session));
         let line = match self.cause {
             Cause::BothShare if session.bet > 0 => t!(lang, "share.shared-wager"),
             Cause::BothShare => t!(lang, "share.shared", each = POOL / 2),
@@ -193,7 +193,7 @@ async fn message(
                 host = mention(players[0]),
                 guest = mention(players[1]),
                 when = relative(deadline),
-                pool = thousands(pool_of(session)),
+                pool = thousands_in(lang, pool_of(session)),
                 host_status = status(0),
                 guest_status = status(1)
             ),
@@ -299,7 +299,7 @@ async fn on_open(cx: &Cx, id: i64) -> anyhow::Result<()> {
             .await;
     }
     let stakes = if session.bet > 0 {
-        t!(lang, "share.stakes-wager", pot = thousands(session.bet * 2))
+        t!(lang, "share.stakes-wager", pot = thousands_in(lang, session.bet * 2))
     } else {
         t!(lang, "share.stakes-free")
     };

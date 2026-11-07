@@ -16,7 +16,7 @@ use crate::{
         periodic::ready_in,
         privacy,
     },
-    util::{SUCCESS, mention, resolved_display_name, thousands},
+    util::{SUCCESS, mention, resolved_display_name, thousands_in},
 };
 
 #[derive(CommandModel, CreateCommand)]
@@ -116,9 +116,9 @@ impl Give {
                     .description(t!(
                         cx.lang(),
                         "give.sent",
-                        amount = thousands(self.amount),
+                        amount = thousands_in(cx.lang(), self.amount),
                         user = mention(to),
-                        balance = thousands(sender_balance)
+                        balance = thousands_in(cx.lang(), sender_balance)
                     ))
                     .build();
                 cx.reply_embed(embed).await?;
@@ -128,8 +128,12 @@ impl Give {
                 Ok(())
             }
             TransferOutcome::Insufficient { balance } => {
-                cx.reply_ephemeral(t!(cx.lang(), "give.insufficient", balance = thousands(balance)))
-                    .await
+                cx.reply_ephemeral(t!(
+                    cx.lang(),
+                    "give.insufficient",
+                    balance = thousands_in(cx.lang(), balance)
+                ))
+                .await
             }
         }
     }
