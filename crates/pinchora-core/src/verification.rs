@@ -155,3 +155,10 @@ mod tests {
         assert!(validate(&c, Lang::En).is_err());
     }
 }
+
+/// Excludes 0/O, 1/I/L, 5/S and 2/Z, including case-insensitive lookalikes.
+pub const CAPTCHA_ALPHABET: &[u8] = b"ABCDEFGHJKMNPQRTUVWXY346789";
+#[test]
+fn captcha_alphabet_has_no_ambiguous_pairs() {
+    assert!(CAPTCHA_ALPHABET.iter().all(|c| !b"0O1IL5S2Z".contains(c)));
+}

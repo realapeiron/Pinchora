@@ -1,4 +1,5 @@
 //! Release the delayed join effects once, after the gate transition succeeds.
+use super::safety;
 use crate::{
     App, auto,
     card_images::{CardSubject, card_png, deliver, server_card},
@@ -39,7 +40,10 @@ pub(super) async fn member(app: &Arc<App>, guild: u64, member: Member) -> anyhow
             None => return Ok(()),
         },
     };
-    let guild = app.http.guild(guild_id).with_counts(true).await?.model().await?;
+    let guild = safety::request(app, app.http.guild(guild_id).with_counts(true))
+        .await?
+        .model()
+        .await?;
     // The welcome answers nobody in particular: it speaks the server's language.
     let lang = app.guild_lang(guild_id.get()).await;
     let count = guild.approximate_member_count;

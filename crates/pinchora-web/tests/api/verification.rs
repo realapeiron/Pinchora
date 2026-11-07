@@ -17,6 +17,9 @@ async fn safety_settings_require_manage_and_csrf_and_preview_a_real_png() {
     owner.csrf = csrf;
     let saved = owner.write(Method::PUT, &path, config.clone()).await;
     assert_eq!(saved.status, StatusCode::OK, "{}", saved.text());
+    let audit = h.state.app.db.audit_page(guild, None, 10).await.unwrap();
+    assert_eq!(audit.len(), 1);
+    assert_eq!(audit[0].action, "safety.set");
     assert_eq!(
         owner.get(&path).await.json()["config"]["verification"]["min_account_age_hours"],
         24
@@ -50,19 +53,33 @@ async fn web_captcha_is_bound_to_its_member_and_requires_csrf() {
         return;
     };
     let (guild, user, mut browser) = h.managed_server().await;
+    let mut config = pinchora_core::verification::Config::default();
+    config.verification.enabled = true;
+    config.verification.verified_role_id = Some("123".into());
+    h.state.app.db.save_safety(guild, &config).await.unwrap();
     h.state
         .app
         .db
         .hold_verification(guild, user, chrono::Utc::now(), None)
         .await
         .unwrap();
+    let joined = h
+        .state
+        .app
+        .db
+        .pending_verification(guild, user)
+        .await
+        .unwrap()
+        .unwrap()
+        .joined_at
+        .timestamp_micros();
     let token = format!("{:032x}", unique());
     h.state
         .app
         .cache
         .put(
             &format!("vf:web:{token}"),
-            &format!("{guild}:{user}"),
+            &format!("{guild}:{user}:{joined}"),
             Duration::from_secs(600),
         )
         .await
@@ -105,5 +122,70 @@ async fn web_captcha_is_bound_to_its_member_and_requires_csrf() {
             .unwrap()
             .attempts,
         0
+    );
+}
+
+#[tokio::test]
+async fn web_captcha_token_cannot_cross_rejoin_or_disabled_module() {
+    let Some(h) = Harness::new("safety_rejoin_api").await else {
+        return;
+    };
+    let (guild, user, mut browser) = h.managed_server().await;
+    let mut c = pinchora_core::verification::Config::default();
+    c.verification.enabled = true;
+    c.verification.verified_role_id = Some("123".into());
+    h.state.app.db.save_safety(guild, &c).await.unwrap();
+    let joined = chrono::Utc::now();
+    h.state
+        .app
+        .db
+        .hold_verification(guild, user, joined, None)
+        .await
+        .unwrap();
+    let token = format!("{:032x}", unique());
+    h.state
+        .app
+        .cache
+        .put(
+            &format!("vf:web:{token}"),
+            &format!("{guild}:{user}:{}", joined.timestamp_micros()),
+            Duration::from_secs(600),
+        )
+        .await
+        .unwrap();
+    let path = format!("/api/verify/{token}");
+    assert_eq!(browser.get(&path).await.status, StatusCode::OK);
+    h.state
+        .app
+        .db
+        .hold_verification(guild, user, joined + chrono::Duration::microseconds(1), None)
+        .await
+        .unwrap();
+    assert!(!browser.get(&path).await.status.is_success());
+    assert!(
+        !browser
+            .write(Method::POST, &format!("{path}/captcha"), json!({}))
+            .await
+            .status
+            .is_success()
+    );
+    h.state
+        .app
+        .cache
+        .put(
+            &format!("vf:web:{token}"),
+            &format!("{guild}:{user}:{}", joined.timestamp_micros() + 1),
+            Duration::from_secs(600),
+        )
+        .await
+        .unwrap();
+    c.verification.enabled = false;
+    h.state.app.db.save_safety(guild, &c).await.unwrap();
+    assert!(
+        !browser
+            .write(Method::POST, &format!("{path}/captcha"), json!({}))
+            .await
+            .status
+            .is_success()
     );
 }

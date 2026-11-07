@@ -78,6 +78,7 @@ impl Verification {
         match self {
             Self::Post(_) => {
                 verification::post(&cx.app, guild).await?;
+                verification::audit_settings(&cx.app, guild, cx.author()?.id.get(), "verification.post").await?;
                 return cx.reply_ephemeral(t!(cx.lang(), "verification.posted")).await;
             }
             Self::Setup(s) => {
@@ -102,6 +103,7 @@ impl Verification {
             return cx.reply_ephemeral(error.to_string()).await;
         }
         cx.app.db.save_safety(guild, &c).await?;
+        verification::audit_settings(&cx.app, guild, cx.author()?.id.get(), "verification.set").await?;
         cx.reply_ephemeral(t!(cx.lang(), "verification.saved")).await
     }
 }

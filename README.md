@@ -683,12 +683,14 @@ site has the whole bot's totals (servers, players, houses, pets, fish, games) an
 
 | Command | What it does |
 |---|---|
-| `/verify` | Pass the join gate: button, five-character pixel captcha with a private answer modal, or a member-bound web link. Captchas last 10 minutes; three wrong answers trigger a 15-minute cooldown. **Ask a moderator** sends a staff alert. |
+| `/verify` | Pass the join gate: button, five-character pixel captcha with a private answer modal, or a member-bound web link. Captchas last 10 minutes and each answer consumes its image; three wrong answers trigger a 15-minute cooldown. **Ask a moderator** sends a staff alert. |
 | `/verification setup enabled [verified_role] [unverified_role] [channel] [kick_after]` | Configure the gate and optional timeout kick (Manage Server). Holds join roles, welcome and join responders until verified; then grants join and `after_verify` auto roles. |
 | `/verification mode mode`, `/verification message text`, `/verification post` | Choose `button`, `captcha` or `web`, edit the message and post its `vf:go` panel (Manage Server). |
 | `/raid lockdown [minutes]`, `/raid unlock`, `/raid status` | Start, end or inspect a raid (Manage Server). Lockdown forces captcha, raises Discord verification, and optionally pauses invites, sets slowmode or locks selected channels. Automatic expiry restores the captured settings while preserving unrelated staff edits. |
 
 **Safety** in the dashboard configures account-age/avatar/name checks, safe roles, exemptions, join-rate and similarity thresholds, automatic alert/lockdown/kick/ban, and displays captcha previews, live raid state and recent joins/events. Use a verified role to unlock member channels alongside Discord onboarding; configure role/channel permissions in Discord. The owner, staff, bots, whitelisted members and anyone above the bot are protected; roles are checked on save and again when applied. Raid alert buttons (`rd:unlock|kick|ban:<event>`) recheck Manage Server and member hierarchy. Modal IDs use `cq:a:<nonce>`. Actions appear in moderation cases/logs and the staff log. Web mode uses `PINCHORA_WEB__PUBLIC_URL` for its private `/verify/<token>` link and requires the same signed-in Discord account.
+
+Join volume alone alerts; automatic lockdown/kick/ban requires correlated names (young accounts by default) or matching custom avatars. A longer correlation window catches slow drips. Safety REST is paced across pods. Successful lockdown writes are journaled individually; interrupted writes with an unknown Discord outcome keep the raid open for moderator reconciliation instead of guessing ownership.
 
 Migration **0054** adds `verification`, `verification_pending`, `raid_settings`, `raid_events` and `raid_joins`; recent join and closed raid data are retained for 30 days. Modules: `verification` and `anti_raid` in Safety.
 

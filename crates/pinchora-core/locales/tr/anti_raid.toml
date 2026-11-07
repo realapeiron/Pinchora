@@ -7,6 +7,8 @@ unlock = "Baskını bitir"
 kick = "Baskın katılımlarını at"
 ban = "Baskın katılımlarını yasakla"
 
+uncertain = "Bir Discord işlemi kesildi; baskın kapatılmadan önce bir yetkili şu işlemleri kontrol etmeli: {operations}."
+
 [anti_raid.action]
 alert = "Yalnızca bildir"
 lockdown = "Koruma modu"

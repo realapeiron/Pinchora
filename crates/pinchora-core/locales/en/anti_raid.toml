@@ -7,6 +7,8 @@ unlock = "End raid"
 kick = "Kick raid joins"
 ban = "Ban raid joins"
 
+uncertain = "A Discord write was interrupted; a moderator must reconcile these operations before closing this raid: {operations}."
+
 [anti_raid.action]
 alert = "Alert only"
 lockdown = "Lockdown"

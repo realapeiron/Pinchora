@@ -25,7 +25,7 @@ use twilight_model::{
         AllowedMentions, Component,
         component::{ButtonStyle, Label, TextInput, TextInputStyle},
     },
-    gateway::payload::incoming::{MemberAdd, MemberRemove},
+    gateway::payload::incoming::{MemberAdd, MemberRemove, MemberUpdate},
     id::Id,
 };
 use twilight_util::builder::embed::EmbedBuilder;
@@ -51,12 +51,9 @@ async fn join(app: &Arc<App>, event: &MemberAdd) -> anyhow::Result<JoinVerdict> 
     if !gate && !raid_on && app.db.active_raid(guild).await?.is_none() {
         return Ok(JoinVerdict::Continue);
     }
-    if safety::member(app, guild, user, &c).await?.is_none() {
-        return Ok(JoinVerdict::Continue);
-    }
     let joined = event
         .joined_at
-        .and_then(|t| chrono::DateTime::from_timestamp(t.as_secs(), 0))
+        .and_then(|t| chrono::DateTime::from_timestamp_micros(t.as_micros()))
         .unwrap_or(app.now());
     let _guard = lock(app, &format!("member:{guild}:{user}")).await?;
     if _guard.is_none() {
@@ -66,8 +63,11 @@ async fn join(app: &Arc<App>, event: &MemberAdd) -> anyhow::Result<JoinVerdict> 
         && p.joined_at >= joined
         && p.verified_at.is_some()
     {
-        return Ok(JoinVerdict::Continue);
+        return Ok(JoinVerdict::Held);
     }
+    let Some(member) = safety::member(app, guild, user, &c).await? else {
+        return Ok(JoinVerdict::Continue);
+    };
     let active = raid::joined(
         app,
         guild,
@@ -133,9 +133,7 @@ async fn join(app: &Arc<App>, event: &MemberAdd) -> anyhow::Result<JoinVerdict> 
     }
     app.db.hold_verification(guild, user, joined, expires).await?;
     app.db.raid_join_status(guild, user, "held").await?;
-    if let Some(role) = &c.verification.unverified_role_id {
-        safety::role(app, guild, user, role, true).await?;
-    }
+    enforce_roles(app, guild, &member, &c).await?;
     if c.verification.dm_on_block {
         dm(app, user, &t!(lang, "verification.prompt")).await;
     }
@@ -143,15 +141,75 @@ async fn join(app: &Arc<App>, event: &MemberAdd) -> anyhow::Result<JoinVerdict> 
 }
 async fn dm(app: &App, user: u64, text: &str) {
     if let Some(channel) = crate::leveling::private_channel(app, user).await {
-        let _ = app
-            .http
-            .create_message(channel)
-            .content(text)
-            .allowed_mentions(Some(&AllowedMentions::default()))
-            .await;
+        let _ = safety::request(
+            app,
+            app.http
+                .create_message(channel)
+                .content(text)
+                .allowed_mentions(Some(&AllowedMentions::default())),
+        )
+        .await;
     }
 }
+// A verified role supplied by another auto-role bot is never proof of passing this gate.
+async fn enforce_roles(
+    app: &App,
+    guild: u64,
+    m: &twilight_model::guild::Member,
+    c: &verification::Config,
+) -> anyhow::Result<()> {
+    if let Some(role) = &c.verification.verified_role_id
+        && m.roles.iter().any(|r| r.to_string() == *role)
+    {
+        safety::role(app, guild, m.user.id.get(), role, false).await?;
+    }
+    if let Some(role) = &c.verification.unverified_role_id
+        && !m.roles.iter().any(|r| r.to_string() == *role)
+    {
+        safety::role(app, guild, m.user.id.get(), role, true).await?;
+    }
+    Ok(())
+}
+pub(crate) async fn on_member_update(app: &Arc<App>, event: &MemberUpdate) {
+    let (guild, user) = (event.guild_id.get(), event.user.id.get());
+    let result: anyhow::Result<()> = async {
+        let _guard = loop {
+            if let Some(guard) = lock(app, &format!("member:{guild}:{user}")).await? {
+                break guard;
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        };
+        if app
+            .db
+            .pending_verification(guild, user)
+            .await?
+            .is_none_or(|p| p.verified_at.is_some())
+        {
+            return Ok(());
+        }
+        let c = app.db.safety_config(guild).await?;
+        if !enabled(app, guild).await? {
+            return Ok(());
+        }
+        if let Some(m) = safety::member(app, guild, user, &c).await? {
+            enforce_roles(app, guild, &m, &c).await?;
+        }
+        Ok(())
+    }
+    .await;
+    if let Err(error) = result {
+        tracing::warn!(guild,user,%error,"could not reconcile held roles");
+    }
+}
+async fn enabled(app: &App, guild: u64) -> anyhow::Result<bool> {
+    Ok((app.db.safety_config(guild).await?.verification.enabled
+        && app.module_allowed(guild, None, Module::Verification).await)
+        || app.db.active_raid(guild).await?.is_some_and(|e| e.action != "alert"))
+}
 pub(crate) async fn on_member_leave(app: &Arc<App>, event: &MemberRemove) {
+    let Ok(Some(_guard)) = lock(app, &format!("member:{}:{}", event.guild_id, event.user.id)).await else {
+        return;
+    };
     let _ = app.cache.captcha_clear(event.guild_id.get(), event.user.id.get()).await;
     if let Err(error) = app
         .db
@@ -171,6 +229,10 @@ fn digest(nonce: &str, answer: &str) -> String {
     )
 }
 pub async fn challenge(app: &Arc<App>, guild: u64, user: u64, lang: Lang) -> anyhow::Result<(String, Vec<u8>)> {
+    let Some(_guard) = lock(app, &format!("member:{guild}:{user}")).await? else {
+        anyhow::bail!(t!(lang, "verification.busy"));
+    };
+    anyhow::ensure!(enabled(app, guild).await?, t!(lang, "verification.disabled"));
     let pending = app.db.pending_verification(guild, user).await?;
     anyhow::ensure!(
         pending.is_some_and(|p| p.verified_at.is_none()),
@@ -179,7 +241,7 @@ pub async fn challenge(app: &Arc<App>, guild: u64, user: u64, lang: Lang) -> any
     let nonce = nonce();
     let answer: String = {
         let mut rng = rand::rng();
-        let alphabet = b"ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        let alphabet = pinchora_core::verification::CAPTCHA_ALPHABET;
         (0..5)
             .map(|_| alphabet[rng.random_range(0..alphabet.len())] as char)
             .collect()
@@ -217,6 +279,7 @@ pub async fn answer(
     let Some(_guard) = lock(app, &format!("member:{guild}:{user}")).await? else {
         return Ok(t!(lang, "verification.busy"));
     };
+    anyhow::ensure!(enabled(app, guild).await?, t!(lang, "verification.disabled"));
     match app
         .cache
         .captcha_answer(guild, user, nonce, &digest(nonce, text))
@@ -252,7 +315,8 @@ async fn release(app: &Arc<App>, guild: u64, user: u64) -> anyhow::Result<()> {
     };
     // Never grant a role for a challenge issued before a leave/rejoin.
     anyhow::ensure!(
-        m.joined_at.is_some_and(|t| t.as_secs() <= p.joined_at.timestamp()),
+        m.joined_at
+            .is_some_and(|t| t.as_micros() == p.joined_at.timestamp_micros()),
         t!(lang, "verification.expired")
     );
     if let Some(id) = &c.verification.verified_role_id {
@@ -295,11 +359,20 @@ pub(crate) async fn begin(cx: &Cx) -> anyhow::Result<()> {
         return cx.reply_ephemeral(t!(cx.lang(), "verification.success")).await;
     }
     if c.verification.mode == "button" && !active {
+        // Serialize the final button decision with lockdown start; a pre-lockdown panel
+        // must not release somebody after a raid has forced captcha.
+        let Some(_raid) = lock(&cx.app, &format!("raid:{guild}")).await? else {
+            return cx.reply_ephemeral(t!(cx.lang(), "verification.busy")).await;
+        };
         let Some(_guard) = lock(&cx.app, &format!("member:{guild}:{user}")).await? else {
             return cx.reply_ephemeral(t!(cx.lang(), "verification.busy")).await;
         };
-        release(&cx.app, guild, user).await?;
-        return cx.reply_ephemeral(t!(cx.lang(), "verification.success")).await;
+        let current = cx.app.db.safety_config(guild).await?;
+        let forced = cx.app.db.active_raid(guild).await?.is_some_and(|e| e.action != "alert");
+        if current.verification.mode == "button" && !forced && enabled(&cx.app, guild).await? {
+            release(&cx.app, guild, user).await?;
+            return cx.reply_ephemeral(t!(cx.lang(), "verification.success")).await;
+        }
     }
     if c.verification.mode == "web" && !active {
         let token = nonce();
@@ -307,7 +380,7 @@ pub(crate) async fn begin(cx: &Cx) -> anyhow::Result<()> {
             .cache
             .put(
                 &format!("vf:web:{token}"),
-                &format!("{guild}:{user}"),
+                &format!("{guild}:{user}:{}", p.joined_at.timestamp_micros()),
                 Duration::from_secs(600),
             )
             .await?;
@@ -358,6 +431,9 @@ pub(crate) async fn begin(cx: &Cx) -> anyhow::Result<()> {
 pub(crate) async fn on_component(cx: &Cx, prefix: &str, mut parts: Split<'_, char>) -> anyhow::Result<()> {
     let action = parts.next().unwrap_or_default();
     if prefix == "vf" {
+        if parts.next().is_some() {
+            return cx.reply_ephemeral(t!(cx.lang(), "verification.expired")).await;
+        }
         return match action {
             "go" => begin(cx).await,
             "help" => {
@@ -403,6 +479,9 @@ pub(crate) async fn on_component(cx: &Cx, prefix: &str, mut parts: Split<'_, cha
         else {
             return cx.reply_ephemeral(t!(cx.lang(), "verification.expired")).await;
         };
+        if parts.next().is_some() {
+            return cx.reply_ephemeral(t!(cx.lang(), "verification.expired")).await;
+        }
         return cx
             .modal(
                 format!("cq:a:{nonce}"),
@@ -456,7 +535,7 @@ pub(crate) async fn on_modal(cx: &Cx, mut parts: Split<'_, char>, fields: &[(Str
     let Some(guild) = cx.guild_id() else {
         return cx.reply_ephemeral(t!(cx.lang(), "verification.guild_only")).await;
     };
-    if action != Some("a") {
+    if action != Some("a") || parts.next().is_some() {
         return cx.reply_ephemeral(t!(cx.lang(), "verification.expired")).await;
     }
     let value = fields
@@ -476,9 +555,21 @@ pub async fn web_identity(app: &App, token: &str, user: u64) -> anyhow::Result<u
         .get(&format!("vf:web:{token}"))
         .await?
         .ok_or_else(|| anyhow::anyhow!("expired token"))?;
-    let (g, u) = raw.split_once(':').ok_or_else(|| anyhow::anyhow!("invalid token"))?;
-    anyhow::ensure!(u == user.to_string(), "token belongs to another member");
-    Ok(g.parse()?)
+    let mut parts = raw.split(':');
+    let guild: u64 = parts.next().unwrap_or_default().parse()?;
+    anyhow::ensure!(
+        parts.next() == Some(user.to_string().as_str()),
+        "token belongs to another member"
+    );
+    let joined: i64 = parts.next().unwrap_or_default().parse()?;
+    let pending = app.db.pending_verification(guild, user).await?;
+    anyhow::ensure!(
+        parts.next().is_none()
+            && pending.is_some_and(|p| p.verified_at.is_none() && p.joined_at.timestamp_micros() == joined),
+        "expired token"
+    );
+    anyhow::ensure!(enabled(app, guild).await?, "disabled gate");
+    Ok(guild)
 }
 pub async fn post(app: &Arc<App>, guild: u64) -> anyhow::Result<()> {
     let c = app.db.safety_config(guild).await?;
@@ -489,7 +580,10 @@ pub async fn post(app: &Arc<App>, guild: u64) -> anyhow::Result<()> {
         .as_deref()
         .ok_or_else(|| anyhow::anyhow!(t!(lang, "verification.channel_required")))?
         .parse()?;
-    let found = app.http.channel(Id::new(channel)).await?.model().await?;
+    let found = safety::request(app, app.http.channel(Id::new(channel)))
+        .await?
+        .model()
+        .await?;
     anyhow::ensure!(
         found.guild_id.map(|g| g.get()) == Some(guild),
         t!(lang, "verification.invalid")
@@ -521,28 +615,36 @@ pub async fn post(app: &Arc<App>, guild: u64) -> anyhow::Result<()> {
         .as_deref()
         .and_then(|id| id.parse::<u64>().ok())
     {
-        match app
-            .http
-            .update_message(Id::new(channel), Id::new(id))
-            .content(Some(&text))
-            .components(Some(&components))
-            .allowed_mentions(Some(&AllowedMentions::default()))
-            .await
+        match safety::request(
+            app,
+            app.http
+                .update_message(Id::new(channel), Id::new(id))
+                .content(Some(&text))
+                .components(Some(&components))
+                .allowed_mentions(Some(&AllowedMentions::default())),
+        )
+        .await
         {
             Ok(_) => return Ok(()),
-            Err(error) if crate::roles::error_code(&error) == Some(10008) => {}
-            Err(error) => return Err(error.into()),
+            Err(error)
+                if error
+                    .downcast_ref::<twilight_http::Error>()
+                    .and_then(crate::roles::error_code)
+                    == Some(10008) => {}
+            Err(error) => return Err(error),
         }
     }
-    let message = app
-        .http
-        .create_message(Id::new(channel))
-        .content(&text)
-        .components(&components)
-        .allowed_mentions(Some(&AllowedMentions::default()))
-        .await?
-        .model()
-        .await?;
+    let message = safety::request(
+        app,
+        app.http
+            .create_message(Id::new(channel))
+            .content(&text)
+            .components(&components)
+            .allowed_mentions(Some(&AllowedMentions::default())),
+    )
+    .await?
+    .model()
+    .await?;
     app.db.verification_posted(guild, message.id.get()).await
 }
 pub async fn tick(app: &Arc<App>) -> anyhow::Result<()> {
@@ -564,10 +666,21 @@ pub async fn tick(app: &Arc<App>) -> anyhow::Result<()> {
             || c.verification.kick_after_mins == 0
             || !app.module_allowed(g, None, Module::Verification).await
         {
+            app.db.cancel_verification_timeout(g, u).await?;
             continue;
         }
-        if let Err(error) = safety::punish(app, g, u, &c, false, None).await {
-            tracing::warn!(g,u,%error,"verification timeout action failed");
+        match safety::punish(app, g, u, &c, false, None).await {
+            Ok(false) => app.db.cancel_verification_timeout(g, u).await?,
+            Ok(true) => {}
+            Err(error)
+                if error
+                    .downcast_ref::<twilight_http::Error>()
+                    .and_then(crate::roles::error_code)
+                    == Some(10007) =>
+            {
+                app.db.forget_verification(g, u).await?
+            }
+            Err(error) => tracing::warn!(g,u,%error,"verification timeout action failed"),
         }
     }
     for e in app.db.due_raids(app.now()).await? {
@@ -640,4 +753,17 @@ async fn lock(app: &App, key: &str) -> anyhow::Result<Option<pinchora_cache::Ver
         tokio::time::sleep(Duration::from_millis(20)).await;
     }
     Ok(None)
+}
+
+pub(crate) async fn audit_settings(app: &App, guild: u64, actor: u64, action: &str) -> anyhow::Result<()> {
+    safety::log(
+        app,
+        guild,
+        actor,
+        None,
+        action,
+        &t!(app.guild_lang(guild).await, "verification.saved"),
+        vec![],
+    )
+    .await
 }

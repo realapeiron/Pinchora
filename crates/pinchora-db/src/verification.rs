@@ -127,7 +127,15 @@ impl Db {
         Ok(())
     }
     pub async fn verification_attempt(&self, guild: u64, user: u64) -> anyhow::Result<()> {
-        sqlx::query("UPDATE verification_pending SET attempts=attempts+1 WHERE guild_id=$1 AND user_id=$2 AND verified_at IS NULL").bind(sql_id(guild)).bind(sql_id(user)).execute(&self.pool).await?;
+        sqlx::query("UPDATE verification_pending SET attempts=LEAST(attempts+1,3) WHERE guild_id=$1 AND user_id=$2 AND verified_at IS NULL").bind(sql_id(guild)).bind(sql_id(user)).execute(&self.pool).await?;
+        Ok(())
+    }
+    pub async fn cancel_verification_timeout(&self, guild: u64, user: u64) -> anyhow::Result<()> {
+        sqlx::query("UPDATE verification_pending SET expires_at=NULL WHERE guild_id=$1 AND user_id=$2")
+            .bind(sql_id(guild))
+            .bind(sql_id(user))
+            .execute(&self.pool)
+            .await?;
         Ok(())
     }
     pub async fn due_verifications(&self, now: DateTime<Utc>) -> anyhow::Result<Vec<VerificationPending>> {
@@ -149,6 +157,23 @@ impl Db {
         .bind(since)
         .fetch_all(&self.pool)
         .await?)
+    }
+    pub async fn raid_join(&self, guild: u64, user: u64) -> anyhow::Result<Option<RaidJoin>> {
+        Ok(
+            sqlx::query_as("SELECT * FROM raid_joins WHERE guild_id=$1 AND user_id=$2")
+                .bind(sql_id(guild))
+                .bind(sql_id(user))
+                .fetch_optional(&self.pool)
+                .await?,
+        )
+    }
+    pub async fn raid_snapshot(&self, id: i64, snapshot: &serde_json::Value) -> anyhow::Result<()> {
+        sqlx::query("UPDATE raid_events SET snapshot=$2 WHERE id=$1 AND ended_at IS NULL")
+            .bind(id)
+            .bind(snapshot)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
     }
     pub async fn raid_join_status(&self, guild: u64, user: u64, status: &str) -> anyhow::Result<()> {
         sqlx::query("UPDATE raid_joins SET status=$3 WHERE guild_id=$1 AND user_id=$2")

@@ -111,6 +111,7 @@ pub(crate) async fn on_level_up(_app: &Arc<App>, _guild: u64, _user: u64, _level
 /// A member's roles or name changed, before the server log hears of it. Not one of the first six: sticky roles
 /// need to see every change to a member's roles, because Discord's leave event does not say what they held.
 pub(crate) async fn on_member_update(app: &Arc<App>, event: &MemberUpdate) {
+    crate::verification::on_member_update(app, event).await;
     // F2 sticky roles keep what the member holds now.
     crate::commands::roles_pack::on_member_update(app, event).await;
 }

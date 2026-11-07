@@ -27,6 +27,11 @@ function MemberGate() {
   const check = useMutation({
     mutationFn: () =>
       api<{ message: string; done: boolean }>(`${path}/answer`, "POST", { nonce: card.data?.nonce, answer }),
+    onSuccess: (result) => {
+      setAnswer("");
+      card.reset();
+      if (!result.done) card.mutate();
+    },
   });
   const help = useMutation({ mutationFn: () => api<{ message: string }>(`${path}/help`, "POST") });
   if (data.isPending) return <Loading full />;

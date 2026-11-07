@@ -26,8 +26,9 @@ impl Cache {
           local value=redis.call('GET',KEYS[1])
           if not value or string.sub(value,1,string.len(ARGV[1])+1)~=ARGV[1]..':' then return -1 end
           if value==ARGV[1]..':'..ARGV[2] then
-            redis.call('DEL',KEYS[1]); return 1
+            redis.call('DEL',KEYS[1],KEYS[3]); return 1
           end
+          redis.call('DEL',KEYS[1],KEYS[3])
           local n=redis.call('INCR',KEYS[2])
           if n==1 then redis.call('EXPIRE',KEYS[2],900) end
           if n>=3 then redis.call('DEL',KEYS[1]);redis.call('EXPIRE',KEYS[2],900);return -2 end
@@ -36,6 +37,7 @@ impl Cache {
         Ok(redis::Script::new(script)
             .key(format!("pinchora:cq:{guild}:{user}"))
             .key(format!("pinchora:cq:attempts:{guild}:{user}"))
+            .key(format!("pinchora:cq:issue:{guild}:{user}"))
             .arg(nonce)
             .arg(hash)
             .invoke_async(&mut self.conn())
@@ -137,5 +139,25 @@ impl Drop for VerificationLease {
                 .await;
             });
         }
+    }
+}
+
+impl Cache {
+    /// Fleet-wide admission before safety REST, leaving headroom for ordinary bot traffic.
+    pub async fn verification_rest_slot(&self, application: u64) -> anyhow::Result<bool> {
+        let result: i32 = redis::Script::new(
+            r#"
+            local t=redis.call('TIME')
+            local now=tonumber(t[1])*1000+math.floor(tonumber(t[2])/1000)
+            local next=tonumber(redis.call('GET',KEYS[1]) or '0')
+            if next>now then return 0 end
+            redis.call('SET',KEYS[1],now+50,'PX',1000)
+            return 1
+        "#,
+        )
+        .key(format!("pinchora:vf:rest:{application}"))
+        .invoke_async(&mut self.conn())
+        .await?;
+        Ok(result == 1)
     }
 }

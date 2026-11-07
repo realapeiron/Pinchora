@@ -92,6 +92,19 @@ async fn panel(State(s): State<WebState>, m: ManagedGuild) -> ApiResult<Json<Val
     pinchora_commands::post_verification(&s.app, m.id)
         .await
         .map_err(|e| ApiError::blocked(e.to_string()))?;
+    audit::finish(
+        &s,
+        &m.current.session,
+        Change {
+            guild: m.id,
+            action: "safety.post",
+            target: None,
+            before: json!(null),
+            after: json!({"message_id":s.app.db.safety_config(m.id).await?.verification.message_id}),
+        },
+        None,
+    )
+    .await;
     data(&s, m.id).await
 }
 #[derive(Deserialize)]
@@ -101,6 +114,7 @@ struct RaidBody {
 }
 async fn raid(State(s): State<WebState>, m: ManagedGuild, ApiJson(body): ApiJson<RaidBody>) -> ApiResult<Json<Value>> {
     let lang = s.app.guild_lang(m.id).await;
+    let before = s.app.db.active_raid(m.id).await?.map(|e| e.id);
     match body.action.as_str() {
         "lockdown" => {
             pinchora_commands::start_raid(&s.app, m.id, Some(m.current.session.user_id), 10, 0, "lockdown").await
@@ -109,6 +123,19 @@ async fn raid(State(s): State<WebState>, m: ManagedGuild, ApiJson(body): ApiJson
         _ => return Err(ApiError::blocked(t!(lang, "verification.invalid"))),
     }
     .map_err(|e| ApiError::blocked(e.to_string()))?;
+    audit::finish(
+        &s,
+        &m.current.session,
+        Change {
+            guild: m.id,
+            action: "safety.raid",
+            target: None,
+            before: json!({"event":before}),
+            after: json!({"action":body.action,"event":s.app.db.active_raid(m.id).await?.map(|e| e.id)}),
+        },
+        None,
+    )
+    .await;
     data(&s, m.id).await
 }
 async fn identity(s: &WebState, token: &str, current: &CurrentSession) -> ApiResult<(u64, Lang)> {

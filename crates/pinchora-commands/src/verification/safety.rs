@@ -40,17 +40,13 @@ fn facts(role: &Role, guild: u64) -> RoleFacts {
 }
 /// Fresh Discord facts: unknown hierarchy never authorizes a mutation.
 pub(super) async fn member(app: &App, guild: u64, user: u64, c: &Config) -> anyhow::Result<Option<Member>> {
-    let m = app
-        .http
-        .guild_member(Id::new(guild), Id::new(user))
+    let m = request(app, app.http.guild_member(Id::new(guild), Id::new(user)))
         .await?
         .model()
         .await?;
-    let g = app.http.guild(Id::new(guild)).await?.model().await?;
-    let roles = app.http.roles(Id::new(guild)).await?.models().await?;
-    let bot = app
-        .http
-        .guild_member(Id::new(guild), app.application_id.cast())
+    let g = request(app, app.http.guild(Id::new(guild))).await?.model().await?;
+    let roles = request(app, app.http.roles(Id::new(guild))).await?.models().await?;
+    let bot = request(app, app.http.guild_member(Id::new(guild), app.application_id.cast()))
         .await?
         .model()
         .await?;
@@ -79,10 +75,8 @@ pub(super) async fn member(app: &App, guild: u64, user: u64, c: &Config) -> anyh
     Ok(Some(m))
 }
 pub(super) async fn permission(app: &App, guild: u64, needed: Permissions, key: &str) -> anyhow::Result<()> {
-    let roles = app.http.roles(Id::new(guild)).await?.models().await?;
-    let bot = app
-        .http
-        .guild_member(Id::new(guild), app.application_id.cast())
+    let roles = request(app, app.http.roles(Id::new(guild))).await?.models().await?;
+    let bot = request(app, app.http.guild_member(Id::new(guild), app.application_id.cast()))
         .await?
         .model()
         .await?;
@@ -100,20 +94,16 @@ pub(super) async fn permission(app: &App, guild: u64, needed: Permissions, key: 
 pub async fn check_roles(app: &App, guild: u64, actor: u64, c: &Config) -> anyhow::Result<()> {
     let lang = app.guild_lang(guild).await;
     pinchora_core::verification::validate(c, lang).map_err(anyhow::Error::msg)?;
-    let roles = app.http.roles(Id::new(guild)).await?.models().await?;
-    let a = app
-        .http
-        .guild_member(Id::new(guild), Id::new(actor))
+    let roles = request(app, app.http.roles(Id::new(guild))).await?.models().await?;
+    let a = request(app, app.http.guild_member(Id::new(guild), Id::new(actor)))
         .await?
         .model()
         .await?;
-    let bot = app
-        .http
-        .guild_member(Id::new(guild), app.application_id.cast())
+    let bot = request(app, app.http.guild_member(Id::new(guild), app.application_id.cast()))
         .await?
         .model()
         .await?;
-    let g = app.http.guild(Id::new(guild)).await?.model().await?;
+    let g = request(app, app.http.guild(Id::new(guild))).await?.model().await?;
     let grantor = Grantor {
         owner: g.owner_id.get() == actor,
         administrator: powers(&roles, guild, &a.roles).contains(Permissions::ADMINISTRATOR),
@@ -143,7 +133,10 @@ pub async fn check_roles(app: &App, guild: u64, actor: u64, c: &Config) -> anyho
         .chain(&c.raid.alert_channel_id)
         .chain(&c.raid.channels)
     {
-        let channel = app.http.channel(Id::new(id.parse()?)).await?.model().await?;
+        let channel = request(app, app.http.channel(Id::new(id.parse()?)))
+            .await?
+            .model()
+            .await?;
         anyhow::ensure!(
             channel.guild_id.map(|g| g.get()) == Some(guild),
             t!(lang, "verification.invalid")
@@ -153,14 +146,20 @@ pub async fn check_roles(app: &App, guild: u64, actor: u64, c: &Config) -> anyho
 }
 pub(super) async fn role(app: &App, guild: u64, user: u64, id: &str, add: bool) -> anyhow::Result<()> {
     let lang = app.guild_lang(guild).await;
-    permission(app, guild, Permissions::MANAGE_ROLES, "manage_roles").await?;
-    let roles = app.http.roles(Id::new(guild)).await?.models().await?;
-    let bot = app
-        .http
-        .guild_member(Id::new(guild), app.application_id.cast())
+    let roles = request(app, app.http.roles(Id::new(guild))).await?.models().await?;
+    let bot = request(app, app.http.guild_member(Id::new(guild), app.application_id.cast()))
         .await?
         .model()
         .await?;
+    let permissions = powers(&roles, guild, &bot.roles);
+    anyhow::ensure!(
+        permissions.intersects(Permissions::ADMINISTRATOR | Permissions::MANAGE_ROLES),
+        t!(
+            lang,
+            "verification.missing_permission",
+            permission = t!(lang, "verification.perm.manage_roles")
+        )
+    );
     let r = roles
         .iter()
         .find(|r| r.id.to_string() == id)
@@ -171,13 +170,13 @@ pub(super) async fn role(app: &App, guild: u64, user: u64, id: &str, add: bool) 
         anyhow::bail!(why)
     }
     if add {
-        app.http
-            .add_guild_member_role(Id::new(guild), Id::new(user), r.id)
-            .await?;
+        request(app, app.http.add_guild_member_role(Id::new(guild), Id::new(user), r.id)).await?;
     } else {
-        app.http
-            .remove_guild_member_role(Id::new(guild), Id::new(user), r.id)
-            .await?;
+        request(
+            app,
+            app.http.remove_guild_member_role(Id::new(guild), Id::new(user), r.id),
+        )
+        .await?;
     }
     Ok(())
 }
@@ -192,6 +191,12 @@ pub(super) async fn punish(
     let Some(m) = member(app, guild, user, c).await? else {
         return Ok(false);
     };
+    let joined = m.joined_at.map(|t| t.as_micros());
+    if app.db.raid_join(guild, user).await?.is_none_or(|j| {
+        Some(j.joined_at.timestamp_micros()) != joined || matches!(j.status.as_str(), "verified" | "kicked" | "banned")
+    }) {
+        return Ok(false);
+    }
     let lang = app.guild_lang(guild).await;
     let (needed, key, kind) = if ban {
         (Permissions::BAN_MEMBERS, "ban_members", CaseKind::Ban)
@@ -200,20 +205,16 @@ pub(super) async fn punish(
     };
     permission(app, guild, needed, key).await?;
     if let Some(actor) = actor {
-        let roles = app.http.roles(Id::new(guild)).await?.models().await?;
-        let a = app
-            .http
-            .guild_member(Id::new(guild), Id::new(actor))
+        let roles = request(app, app.http.roles(Id::new(guild))).await?.models().await?;
+        let a = request(app, app.http.guild_member(Id::new(guild), Id::new(actor)))
             .await?
             .model()
             .await?;
-        let bot = app
-            .http
-            .guild_member(Id::new(guild), app.application_id.cast())
+        let bot = request(app, app.http.guild_member(Id::new(guild), app.application_id.cast()))
             .await?
             .model()
             .await?;
-        let g = app.http.guild(Id::new(guild)).await?.model().await?;
+        let g = request(app, app.http.guild(Id::new(guild))).await?.model().await?;
         anyhow::ensure!(
             g.owner_id.get() == actor
                 || powers(&roles, guild, &a.roles).intersects(Permissions::ADMINISTRATOR | Permissions::MANAGE_GUILD),
@@ -242,9 +243,9 @@ pub(super) async fn punish(
         None
     };
     if ban {
-        app.http.create_ban(Id::new(guild), Id::new(user)).await?;
+        request(app, app.http.create_ban(Id::new(guild), Id::new(user))).await?;
     } else {
-        app.http.remove_guild_member(Id::new(guild), Id::new(user)).await?;
+        request(app, app.http.remove_guild_member(Id::new(guild), Id::new(user))).await?;
     }
     moderation::record(
         app,
@@ -309,12 +310,29 @@ pub(super) async fn log(
     channels.sort_unstable();
     channels.dedup();
     for channel in channels {
-        app.http
-            .create_message(Id::new(channel))
-            .content(text)
-            .components(&components)
-            .allowed_mentions(Some(&AllowedMentions::default()))
-            .await?;
+        request(
+            app,
+            app.http
+                .create_message(Id::new(channel))
+                .content(text)
+                .components(&components)
+                .allowed_mentions(Some(&AllowedMentions::default())),
+        )
+        .await?;
     }
     Ok(())
+}
+
+/// Shared across pods, including joins, moderation batches, role repairs and lockdown restoration.
+pub(super) async fn request<T, E>(
+    app: &App,
+    request: impl std::future::IntoFuture<Output = Result<T, E>>,
+) -> anyhow::Result<T>
+where
+    E: Into<anyhow::Error>,
+{
+    while !app.cache.verification_rest_slot(app.application_id.get()).await? {
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    }
+    request.await.map_err(Into::into)
 }
