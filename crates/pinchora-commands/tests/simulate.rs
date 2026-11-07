@@ -141,6 +141,9 @@ mod tickets;
 // Social feeds: /feeds and the poller, against a local feed server.
 #[path = "simulate/feeds.rs"]
 mod feeds;
+// Temp voice: creators, rooms, the owner's controls and the panel.
+#[path = "simulate/tempvoice.rs"]
+mod tempvoice;
 
 const APPLICATION_ID: u64 = 1;
 const CHANNEL_ID: u64 = 2;
@@ -12587,7 +12590,8 @@ async fn admin_state(sim: &Sim, target: u64, suggestion: i64) -> String {
         (
             db.log_config(guild).await.unwrap(),
             db.ticket_settings(guild).await.unwrap(),
-            db.ticket_panels(guild).await.unwrap()
+            db.ticket_panels(guild).await.unwrap(),
+            db.voice_creators(guild).await.unwrap()
         ),
         db.mod_settings(guild).await.unwrap(),
         db.warn_thresholds(guild).await.unwrap(),
@@ -12618,7 +12622,7 @@ async fn admin_paths_refuse_members_without_manage_server() {
         return;
     };
     let (member, target, author) = (unique(), unique(), unique());
-    let (role_id, channel) = (unique(), unique());
+    let (role_id, channel, voice_channel) = (unique(), unique(), unique());
     let role = sim.guild_role(role_id, "Gated", 2);
     let suggestion = sim
         .app
@@ -12627,12 +12631,29 @@ async fn admin_paths_refuse_members_without_manage_server() {
         .await
         .unwrap();
     // Resolved data that no option names is ignored, so one blob serves every row.
+    let mut channels = resolved_channels(&[channel, voice_channel])["channels"].clone();
+    channels[voice_channel.to_string()]["type"] = json!(2);
     let known = json!({
         "users": resolved(&[target], &[])["users"],
         "roles": resolved(&[], &[&role])["roles"],
-        "channels": resolved_channels(&[channel])["channels"],
+        "channels": channels,
     });
     let rows: Vec<(&str, Value)> = vec![
+        (
+            "voice creators add",
+            json!([group(
+                "creators",
+                sub("add", vec![channel_option("channel", voice_channel)])
+            )]),
+        ),
+        (
+            "voice creators remove",
+            json!([group(
+                "creators",
+                sub("remove", vec![channel_option("channel", voice_channel)])
+            )]),
+        ),
+        ("voice creators list", json!([group("creators", sub("list", vec![]))])),
         ("feeds list", json!([sub("list", vec![])])),
         (
             "feeds add",

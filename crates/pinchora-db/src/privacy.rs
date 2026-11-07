@@ -104,6 +104,7 @@ pub const USER_COLUMNS: &[(&str, &str)] = &[
     // then the tickets they opened, whose transcripts go with them.
     ("ticket_transcript_authors", "user_id"),
     ("tickets", "opener_id"),
+    ("temp_voice_bans", "user_id"),
     ("users", "id"),
 ];
 
@@ -134,6 +135,8 @@ pub const CLEARED_COLUMNS: &[(&str, &str)] = &[
     ("tickets", "claimed_by"),
     ("tickets", "closed_by"),
     ("automod_rules", "created_by"),
+    // A room whose owner deleted their data has no owner: whoever is in it may claim it.
+    ("temp_voice_channels", "owner_id"),
 ];
 
 /// The games' per-day limits, as (table, player column, day column), the day in days since
@@ -220,6 +223,10 @@ pub const OTHER_TABLES: &[&str] = &[
     "feed_sources",
     "feed_items_seen",
     "feed_outbox",
+    "voice_creators",
+    // A room belongs to the server; its owner is cleared (see above) and the members kept out of it go with the
+    // player (`temp_voice_bans`).
+    "temp_voice_channels",
 ];
 
 /// What a player hides.

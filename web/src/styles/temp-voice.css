@@ -1,0 +1,292 @@
+/* Temp voice: the creators a server set up, and the rooms alive right now. Same tokens as the rest. */
+
+.temp-voice-page {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* /Creators */
+
+.creator-list {
+  list-style: none;
+  margin: 0 0 20px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+}
+
+.creator {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  background: #10173a;
+}
+.creator.is-open {
+  background: #121a42;
+  box-shadow: inset var(--px) 0 0 var(--accent);
+}
+.creator.is-off .creator-sample {
+  opacity: 0.6;
+}
+
+.creator-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.creator-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  min-width: 0;
+}
+.creator-title .channel-tag {
+  font-size: 16px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.creator-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.creator-summary {
+  margin: 0;
+  font-size: 14px;
+}
+.creator-sample {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.creator-form {
+  display: grid;
+  gap: 20px;
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 2px solid #232e5c;
+}
+.creator-form .form-grid {
+  margin-top: 0;
+}
+.creator-form .sample-line {
+  margin-top: 0;
+}
+
+.creator-switches {
+  display: grid;
+  gap: 16px;
+  padding: 14px;
+  background: rgb(46 61 117 / 0.18);
+  box-shadow: inset 0 0 0 2px #232e5c;
+}
+.creator-switches .setting-row + .setting-row {
+  margin-top: 0;
+  padding-top: 16px;
+  border-top: 2px solid #232e5c;
+}
+
+.creator-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.creator-preview {
+  display: grid;
+  gap: 5px;
+  padding: 12px 14px;
+  color: var(--ink);
+  background: #10173a;
+  box-shadow: inset 0 0 0 2px #364575;
+}
+.creator-preview strong {
+  overflow-wrap: anywhere;
+}
+.creator-preview span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.add-creator {
+  display: grid;
+  grid-template-columns: minmax(0, 420px) auto;
+  gap: 14px;
+  align-items: end;
+  justify-content: start;
+  padding: 14px;
+  background: rgb(46 61 117 / 0.18);
+  box-shadow: inset 0 0 0 2px #232e5c;
+}
+.add-creator:has(.field-error, .field-hint) {
+  align-items: start;
+}
+.add-creator:has(.field-error, .field-hint) > .pixel-button {
+  margin-top: 26px;
+}
+.add-creator .pixel-select {
+  min-width: 0;
+}
+
+/* /Live rooms */
+
+.live-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--mint);
+  box-shadow: 0 0 0 2px rgb(6 214 160 / 0.25);
+  animation: live-blink 2s steps(2) infinite;
+}
+
+@keyframes live-blink {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.35;
+  }
+}
+
+.room-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.room {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.2fr) minmax(70px, 0.6fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 16px;
+  min-height: 52px;
+  padding: 8px 14px;
+  background: #10173a;
+}
+
+.room-name {
+  font-size: 15px;
+}
+
+.room-owner,
+.room-people {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
+.room-owner .pixel-label,
+.room-people .pixel-label {
+  margin-right: 4px;
+  font-size: 11px;
+}
+
+.room-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.room-age {
+  font-size: 13px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* /What members can do */
+
+.command-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+}
+.command-list li {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  background: #10173a;
+  box-shadow: inset 0 0 0 2px #1a2350;
+}
+.command-list code {
+  padding: 0;
+  color: var(--gold);
+  font-size: 14px;
+  background: none;
+  border: 0;
+}
+.command-list .muted {
+  font-size: 13px;
+}
+
+@media (max-width: 1023px) {
+  .room {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .room-name {
+    grid-column: 1 / -1;
+  }
+  .room-owner,
+  .room-people {
+    white-space: normal;
+  }
+  .room-flags {
+    grid-column: 1 / -1;
+  }
+  .room-flags:empty {
+    display: none;
+  }
+  .room-age {
+    grid-column: 2;
+    grid-row: 2;
+  }
+}
+
+@media (max-width: 767px) {
+  .creator-head {
+    align-items: flex-start;
+  }
+  .add-creator {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .add-creator:has(.field-error, .field-hint) > .pixel-button {
+    margin-top: 0;
+  }
+  .add-creator > .pixel-button {
+    justify-self: start;
+  }
+  .creator-foot {
+    justify-content: stretch;
+  }
+  .creator-foot .pixel-button {
+    flex: 1;
+  }
+  .command-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-dot {
+    animation: none;
+  }
+}

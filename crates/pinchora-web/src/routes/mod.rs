@@ -23,6 +23,7 @@ mod static_files;
 mod stats;
 mod store;
 mod tag_common;
+mod temp_voice;
 mod tickets;
 
 use std::time::Instant;

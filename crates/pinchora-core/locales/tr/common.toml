@@ -43,3 +43,7 @@ party_games = "Kelime parti oyunları"
 collection = "Canlı düşüşleri ve sahil taraması"
 gambling = "Şans oyunları"
 text_commands = "Metin komutları"
+
+[component]
+button-expired = "Bu düğmenin süresi doldu."
+form-expired = "Bu formun süresi doldu."

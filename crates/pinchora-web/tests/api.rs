@@ -58,6 +58,9 @@ mod tickets;
 // The Feeds page.
 #[path = "api/feeds.rs"]
 mod feeds;
+// Temp voice: creators and the live list of rooms.
+#[path = "api/tempvoice.rs"]
+mod tempvoice;
 
 const APPLICATION_ID: u64 = 1;
 const PUBLIC_URL: &str = "http://dash.test";

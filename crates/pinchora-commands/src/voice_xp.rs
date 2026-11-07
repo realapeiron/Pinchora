@@ -269,6 +269,9 @@ pub async fn rebuild(app: &App, snapshot: VoiceSnapshot) -> anyhow::Result<()> {
         afk,
         places,
     } = snapshot;
+    // Temp voice puts its rooms right with the same snapshot, whether voice XP is on or not.
+    let inside = records.iter().map(|(user, record)| (*user, record.channel));
+    crate::commands::tempvoice::reconcile(app, id, seen, inside, places.iter().map(|(channel, _)| *channel)).await;
     // Where the channels sit is learned either way: it costs no round trip, and saves many.
     app.prefill_channel_places(places).await;
     if app.now().timestamp() - seen > MAX_SNAPSHOT_AGE {

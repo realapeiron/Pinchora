@@ -21,6 +21,7 @@ import { Roles } from "./pages/Roles";
 import { ServerLog } from "./pages/ServerLog";
 import { Servers } from "./pages/Servers";
 import { StaffLog } from "./pages/StaffLog";
+import { TempVoice } from "./pages/TempVoice";
 import { Welcome } from "./pages/Welcome";
 import { WelcomeImage } from "./pages/WelcomeImage";
 import { Landing } from "./site/Landing";
@@ -80,6 +81,7 @@ export const router = createBrowserRouter([
       { path: "automod", lazy: async () => ({ Component: (await import("./pages/AutoMod")).AutoMod }) },
       { path: "cases", element: <Cases /> },
       { path: "staff-log", element: <StaffLog /> },
+      { path: "temp-voice", element: <TempVoice /> },
       { path: "commands", element: <Commands /> },
       { path: "commands/new", element: <CommandEditor /> },
       { path: "commands/:commandId", element: <CommandEditor /> },

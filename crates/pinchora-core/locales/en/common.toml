@@ -43,3 +43,7 @@ party_games = "Word party games"
 collection = "Critter drops and beachcombing"
 gambling = "Gambling-style games"
 text_commands = "Text commands"
+
+[component]
+button-expired = "This button has expired."
+form-expired = "This form has expired."

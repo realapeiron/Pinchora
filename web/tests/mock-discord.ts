@@ -126,6 +126,8 @@ function channelsJson(guild: string) {
     channel(guild, "7001", "general", 0, 4, "7004"),
     channel(guild, "7002", "memes", 0, 5, "7004"),
     channel(guild, "7003", "Lounge", 2, 6, "7004"),
+    channel(guild, "7005", "Gaming", 2, 6, "7004"),
+    channel(guild, "7006", "Study hall", 2, 6, "7004"),
     channel(guild, "7020", "Staff", 4, 7, null),
     channel(guild, "7021", "mod-log", 0, 8, "7020"),
   ];
@@ -204,6 +206,18 @@ createServer((req, res) => {
     return botIn(id)
       ? send(res, 200, guildJson(id))
       : send(res, 404, { message: "Unknown Guild", code: 10004 });
+  }
+  if (api === "api" && resource === "users" && id && !sub && req.method === "GET") {
+    // Members have names: whoever owns a temp voice room shows up in the live list by one of these.
+    const names = ["Mira", "Tavi", "Juno", "Kestrel", "Pip"];
+    const name = names[Number(id.slice(-1)) % names.length] ?? "Mira";
+    return send(res, 200, {
+      id,
+      username: name.toLowerCase(),
+      discriminator: "0",
+      global_name: name,
+      avatar: null,
+    });
   }
   if (api === "api" && resource === "channels" && id && sub === "messages" && req.method === "POST") {
     return send(res, 200, messageJson(id));

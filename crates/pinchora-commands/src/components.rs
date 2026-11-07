@@ -1,3 +1,4 @@
+use pinchora_core::t;
 use twilight_model::application::interaction::modal::ModalInteractionComponent;
 
 use crate::{
@@ -6,7 +7,7 @@ use crate::{
         board, character, collection, connect4, contest, customcommand, customize, decorate, derby, duel, fish,
         friends, gift, giveaway, guestbook, hangman, heist, help, house, interact, leaderboard, partner, party_games,
         pet, plaza, poll, privacy, quests, remind, role_panels, roles_pack, rps, share, shells, shop, stall, store,
-        suggest, surge, trivia, wordle,
+        suggest, surge, tempvoice, trivia, wordle,
     },
 };
 
@@ -95,7 +96,9 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
         Some("tk") => crate::tickets::on_open(cx, parts, values).await,
         Some("tp") => crate::tickets::on_control(cx, parts).await,
         Some("tr") => crate::tickets::on_rating(cx, parts).await,
-        _ => cx.reply_ephemeral("This button has expired.").await,
+        Some("vc") => tempvoice::on_button(cx, parts).await,
+        Some("vo") => tempvoice::on_select(cx, parts, values).await,
+        _ => cx.reply_ephemeral(t!(cx.lang(), "component.button-expired")).await,
     }
 }
 
@@ -113,6 +116,7 @@ pub(crate) async fn dispatch_modal(cx: &Cx, custom_id: &str, fields: &[(String, 
         Some("cm") => customcommand::on_modal(cx, parts, fields).await,
         Some("pz") if parts.next() == Some("m") => board::picross::on_modal(cx, parts, fields).await,
         Some(prefix @ ("hl" | "ac" | "cn" | "wx")) => party_games::on_modal(cx, prefix, parts, fields).await,
+        Some("vc") => tempvoice::on_modal(cx, parts, fields).await,
         Some("wo") if parts.next() == Some("m") => {
             let text = fields
                 .iter()
@@ -121,7 +125,7 @@ pub(crate) async fn dispatch_modal(cx: &Cx, custom_id: &str, fields: &[(String, 
             wordle::on_guess(cx, parts, text).await
         }
         Some("tf") => crate::tickets::on_form(cx, parts, fields).await,
-        _ => cx.reply_ephemeral("This form has expired.").await,
+        _ => cx.reply_ephemeral(t!(cx.lang(), "component.form-expired")).await,
     }
 }
 

@@ -123,11 +123,12 @@ pub enum Module {
     Tickets,
     AutoMod,
     Feeds,
+    TempVoice,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 35] = [
+    pub const ALL: [Self; 36] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -163,6 +164,7 @@ impl Module {
         Self::Tickets,
         Self::AutoMod,
         Self::Feeds,
+        Self::TempVoice,
     ];
 
     /// The key stored in the database and used in the API.
@@ -203,6 +205,7 @@ impl Module {
             Self::Tickets => "tickets",
             Self::AutoMod => "automod",
             Self::Feeds => "feeds",
+            Self::TempVoice => "temp_voice",
         }
     }
 
@@ -247,6 +250,7 @@ impl Module {
             Self::Tickets => "Tickets",
             Self::AutoMod => "AutoMod",
             Self::Feeds => "Social feeds",
+            Self::TempVoice => "Temp voice",
         }
     }
 
@@ -308,6 +312,7 @@ impl Module {
             Self::Feeds => {
                 "/feeds: new YouTube videos, RSS and podcast episodes, Reddit and Bluesky posts in a channel."
             }
+            Self::TempVoice => "Creator channels that make a voice room for whoever joins, and /voice to run it.",
         }
     }
 
@@ -339,6 +344,7 @@ impl Module {
             Self::Tickets => Group::Community,
             Self::AutoMod => Group::Safety,
             Self::Feeds => Group::Feeds,
+            Self::TempVoice => Group::Community,
         }
     }
 
@@ -349,6 +355,7 @@ impl Module {
             }
             Self::AutoMod => Scope::Server,
             Self::Feeds => Scope::Server,
+            Self::TempVoice => Scope::Server,
             _ => Scope::Channels,
         }
     }
@@ -408,6 +415,7 @@ impl Module {
                 _ => return None,
             },
             "automod" => Self::AutoMod,
+            "voice" => Self::TempVoice,
             _ => return None,
         })
     }
@@ -440,6 +448,7 @@ impl Module {
             "tk" | "tp" | "tf" | "tr" => Self::Tickets,
             "am" | "ax" => Self::AutoMod,
             "sn" => Self::Feeds,
+            "vc" | "vo" => Self::TempVoice,
             _ => return None,
         })
     }

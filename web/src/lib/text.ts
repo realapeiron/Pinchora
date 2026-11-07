@@ -126,6 +126,8 @@ const ACTIONS: Record<string, string> = {
   "logs.set": "changed the server log",
   "card.put": "saved an image design",
   "card.upload": "uploaded a background picture",
+  "voice_creator.put": "set up a temp voice creator",
+  "voice_creator.delete": "removed a temp voice creator",
 };
 
 const MODES: Record<string, string> = {

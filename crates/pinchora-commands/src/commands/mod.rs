@@ -61,6 +61,7 @@ pub(crate) mod store;
 pub(crate) mod suggest;
 pub(crate) mod surge;
 pub(crate) mod tag;
+pub(crate) mod tempvoice;
 pub(crate) mod tickets;
 pub(crate) mod trivia;
 mod undo;
@@ -174,4 +175,5 @@ commands!(
     tickets::TicketsCommand,
     automod::AutoMod,
     feeds::FeedsCommand,
+    tempvoice::VoiceCommand,
 );

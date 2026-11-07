@@ -337,6 +337,7 @@ pub async fn on_voice_state_update(app: Arc<App>, event: VoiceStateUpdate) -> an
     let settings = app.guild_settings(guild.get()).await?;
     server_log::voice_updated(&app, guild.get(), &state).await;
     voice_xp::track(&app, guild.get(), &state, &settings).await;
+    crate::commands::tempvoice::on_voice_state(&app, &state).await;
     Ok(())
 }
 
