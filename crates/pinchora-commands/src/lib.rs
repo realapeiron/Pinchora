@@ -191,3 +191,9 @@ pub use verification::{
     post as post_verification, request_help as verification_help, spawn_ticker as spawn_verification_ticker,
     tick as verification_tick, web_identity as verification_web_identity,
 };
+
+mod command_control;
+pub use command_control::{command_reserved_aliases, control_catalog};
+
+mod config_backup;
+pub use config_backup::{backup_apply, backup_names, backup_preview, validate_backup};

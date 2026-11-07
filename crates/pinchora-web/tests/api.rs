@@ -3849,3 +3849,6 @@ async fn case_reason_edits_require_the_author_or_a_higher_moderator() {
         assert_eq!(higher.status, StatusCode::OK, "{}", higher.json());
     }
 }
+
+#[path = "api/command_control.rs"]
+mod command_control;

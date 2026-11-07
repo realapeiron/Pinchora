@@ -80,6 +80,14 @@ export const router = createBrowserRouter([
       { path: "community", element: <Community /> },
       { path: "moderation", element: <Moderation /> },
       { path: "safety", lazy: async () => ({ Component: (await import("./pages/Safety")).Safety }) },
+      {
+        path: "command-control",
+        lazy: async () => ({ Component: (await import("./pages/CommandControl")).CommandControl }),
+      },
+      {
+        path: "backup",
+        lazy: async () => ({ Component: (await import("./pages/ConfigBackup")).ConfigBackup }),
+      },
       { path: "automod", lazy: async () => ({ Component: (await import("./pages/AutoMod")).AutoMod }) },
       { path: "cases", element: <Cases /> },
       { path: "staff-log", element: <StaffLog /> },

@@ -3,6 +3,7 @@ mod bio;
 pub(crate) mod board;
 pub(crate) mod character;
 pub(crate) mod collection;
+pub(crate) mod command_control;
 pub(crate) mod config;
 pub(crate) mod connect4;
 pub(crate) mod contest;
@@ -180,6 +181,8 @@ commands!(
     tickets::TicketCommand,
     tickets::TicketsCommand,
     automod::AutoMod,
+    command_control::CommandControl,
+    command_control::BackupCommand,
     verification::Verify,
     verification::Verification,
     verification::Raid,

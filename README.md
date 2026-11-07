@@ -523,6 +523,35 @@ The bot owner turns this on in two places: **Message Content Intent** on the Bot
 Portal, and `PINCHORA_GATEWAY__MESSAGE_CONTENT=true`. Without them Discord only sends the text of messages that
 mention the bot, so text commands work as `@Pinchora profile` and `/help` says so.
 
+### Command control and configuration backup (D2)
+
+| Command (Manage Server) | What it does |
+| --- | --- |
+| `/commandcontrol show` | Show override and alias counts. |
+| `/commandcontrol set command [enabled] [cooldown] [delete_reply] [delete_invocation] [ephemeral] [allow_role] [deny_role] [allow_channel] [deny_channel]` | Add restrictions to a command or full subcommand path. Parent restrictions and the command's original permission/cooldown checks always apply. Channel lists include categories and threads. |
+| `/commandcontrol reset command` | Remove an override. |
+| `/commandcontrol alias name [command]` | Set a prefix shortcut (up to 50); omit the command to remove it. For example `w` → `play wordle`. |
+| `/backup export`, `/backup list`, `/backup restore id`, `/backup import` | Download configuration, list the last ten restore points, preview a restore before confirming, or open the import dashboard. |
+
+The **Commands** dashboard searches the full registered command tree, edits access and reply behavior in a drawer,
+and shows Discord integration permission rows when available. Discord's integration permissions and all server-side
+Manage Server checks remain authoritative. Command policies use the guild cache and invalidation bus.
+The `command_control` Server module and recovery commands always remain available.
+Aliases retain the target command's prefix support; private-panel commands such as Wordle still direct members to slash.
+Reply deletion supports 1–840 seconds; prefix invocation deletion supports up to 24 hours.
+
+**Backup** exports version 1 JSON from an explicit configuration allowlist, including modules, command rules, aliases,
+welcome designs and uploaded backgrounds, moderation, AutoMod, role panels, tickets, feeds, starboards, counters,
+invites, verification/raid, leveling, store, temporary voice, custom commands and responders. Member data, activity,
+transcripts, author ids, user exemption lists and runtime state are excluded. Merge overwrites matching natural keys;
+replace also removes absent entries. Preview does not write. Apply validates again and atomically saves a restore point
+before importing, retaining ten points per server. Cross-server imports remap role/channel ids by unique names and report
+missing or ambiguous matches; resolve those before applying. Posted panel messages are not copied to another server.
+Responders may share names: same-server imports match their ids; cross-server merges append them as separate records.
+Files support up to 32 MiB including card uploads. Exports over Discord's attachment limit use the dashboard download.
+New configuration tables: `command_control`, `config_restore_points` (migration `0064`). Recovery buttons use `cf:`;
+`kc:` handles command-control interactions.
+
 ### AutoMod
 
 | Command | What it does |

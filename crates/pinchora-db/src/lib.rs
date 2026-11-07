@@ -175,3 +175,7 @@ pub use automod::*;
 
 mod verification;
 pub use verification::*;
+
+mod command_control;
+
+mod config_backup;

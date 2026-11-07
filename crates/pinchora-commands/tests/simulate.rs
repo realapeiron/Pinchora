@@ -15160,3 +15160,6 @@ fn simulator_message_identity_survives_updates_and_repeated_clicks() {
 
 #[path = "simulate/verification.rs"]
 mod verification;
+
+#[path = "simulate/command_control.rs"]
+mod command_control;

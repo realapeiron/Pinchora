@@ -7,7 +7,7 @@
 //! differently, as replies to the message (see [`Responder::text`]).
 
 pub(crate) mod access;
-mod parse;
+pub(crate) mod parse;
 
 use std::{collections::HashMap, sync::Arc, sync::LazyLock, time::Duration};
 
@@ -48,6 +48,8 @@ static TREE: LazyLock<Vec<Command>> = LazyLock::new(crate::command_definitions);
 const SLASH_ONLY: &[&str] = &[
     "character",
     "config",
+    "backup",
+    "commandcontrol",
     "customize",
     "house decorate",
     "house edit",
@@ -360,6 +362,14 @@ pub async fn on_text_command(app: Arc<App>, message: &Message) -> bool {
     } else {
         prefix.clone()
     };
+    let expanded = match app.command_control(guild).await {
+        Ok(config) => config.expand(rest),
+        Err(error) => {
+            tracing::warn!(%error, "command policy unavailable");
+            return true;
+        }
+    };
+    let rest = expanded.as_str();
     if !mentioned && !parse::is_command(&TREE, rest) {
         return false;
     }

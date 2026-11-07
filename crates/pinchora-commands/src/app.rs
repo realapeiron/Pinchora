@@ -149,6 +149,7 @@ pub struct App {
     command_ids: Moka<(), Arc<HashMap<String, u64>>>,
     command_overrides: Moka<u64, Arc<CommandOverrides>>,
     xp_rules: Moka<u64, Arc<XpRules>>,
+    command_control: Moka<u64, Arc<pinchora_core::command_control::Config>>,
     module_rules: Moka<u64, Arc<GuildModules>>,
     automod_configs: Moka<u64, Arc<AutoModConfig>>,
     voice_guilds: Moka<u64, Arc<VoiceGuild>>,
@@ -228,6 +229,10 @@ impl App {
                 .time_to_live(Duration::from_secs(300))
                 .build(),
             xp_rules: Moka::builder()
+                .max_capacity(50_000)
+                .time_to_live(Duration::from_secs(60))
+                .build(),
+            command_control: Moka::builder()
                 .max_capacity(50_000)
                 .time_to_live(Duration::from_secs(60))
                 .build(),
@@ -704,6 +709,14 @@ impl App {
             .map_err(|e| anyhow::anyhow!("{e:#}"))
     }
 
+    /// Command policies share the guild invalidation bus and a bounded fallback TTL.
+    pub async fn command_control(&self, guild: u64) -> anyhow::Result<Arc<pinchora_core::command_control::Config>> {
+        self.command_control
+            .try_get_with(guild, async { self.db.command_control(guild).await.map(Arc::new) })
+            .await
+            .map_err(|e| anyhow::anyhow!("{e:#}"))
+    }
+
     /// Whether `module` may act in `channel` of a server, and if not, why. A thread follows its
     /// channel and a channel its category, like XP multipliers; a place that cannot be found (`None`,
     /// or a lookup that failed) is not on any list.
@@ -745,6 +758,7 @@ impl App {
         self.guild_settings.invalidate(&guild_id).await;
         self.log_state.forget_config(guild_id).await;
         self.module_rules.invalidate(&guild_id).await;
+        self.command_control.invalidate(&guild_id).await;
         self.voice_guilds.invalidate(&guild_id).await;
         self.custom.forget(guild_id).await;
     }

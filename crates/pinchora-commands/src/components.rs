@@ -19,6 +19,8 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
     }
     let mut parts = custom_id.split(':');
     match parts.next() {
+        Some("kc") => crate::commands::command_control::on_control_component(cx).await,
+        Some("cf") => crate::commands::command_control::on_component(cx, parts).await,
         Some("vf") => crate::verification::on_component(cx, "vf", parts).await,
         Some("cq") => crate::verification::on_component(cx, "cq", parts).await,
         Some("rd") => crate::verification::on_component(cx, "rd", parts).await,

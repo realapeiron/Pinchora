@@ -29,6 +29,8 @@ pub async fn overview(State(state): State<WebState>, managed: ManagedGuild) -> A
         "modules": module_list(&state, managed.id).await?,
         "audit": audit,
         "navigation": {
+            "command-control": t!(lang, "command_control.ui.title"),
+            "backup": t!(lang, "config_backup.ui.title"),
             "invites": t!(lang, "module.invites"),
             "safety": t!(lang, "verification.ui.title"),
         },

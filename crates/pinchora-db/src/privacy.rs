@@ -187,6 +187,8 @@ pub const ZEROED_COLUMNS: &[(&str, &str)] = &[
 
 /// Tables that belong to no player: server settings and shared stock.
 pub const OTHER_TABLES: &[&str] = &[
+    "command_control",
+    "config_restore_points",
     "verification",
     "raid_settings",
     "raid_events",

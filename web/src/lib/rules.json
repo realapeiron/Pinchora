@@ -1175,6 +1175,8 @@
       "ticket",
       "tickets",
       "automod",
+      "commandcontrol",
+      "backup",
       "verify",
       "verification",
       "raid",
