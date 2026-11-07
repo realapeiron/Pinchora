@@ -3,11 +3,16 @@
 use chrono::{DateTime, Utc};
 use sqlx::FromRow;
 
-use crate::{Db, locks::lock_users, sql_id};
+use crate::{
+    Db,
+    locks::{lock_users, retry, try_lock_users},
+    sql_id,
+};
 
 #[derive(Debug, Clone, FromRow)]
 pub struct InviteSettings {
     pub enabled: bool,
+    pub baseline_required: bool,
     pub log_channel_id: Option<i64>,
     pub fake_days: i32,
     pub temp_enabled: bool,
@@ -22,6 +27,7 @@ impl Default for InviteSettings {
     fn default() -> Self {
         Self {
             enabled: true,
+            baseline_required: false,
             log_channel_id: None,
             fake_days: 7,
             temp_enabled: false,
@@ -70,7 +76,7 @@ pub struct InviteObservation<'a> {
     pub invites: &'a [GuildInvite],
     pub vanity_changed: bool,
     pub list_available: bool,
-    /// Redis use-count diff picks among simultaneously changing codes; the database verifies it under lock.
+    /// A hint from the REST snapshot; ambiguous changes are never attributed using this hint.
     pub preferred_code: Option<&'a str>,
 }
 
@@ -78,6 +84,7 @@ pub struct InviteObservation<'a> {
 struct ExistingJoin {
     id: i64,
     inviter_id: Option<i64>,
+    code: Option<String>,
     left_at: Option<DateTime<Utc>>,
     source: String,
 }
@@ -92,8 +99,21 @@ pub struct JoinCredit {
 }
 
 impl Db {
+    /// Holds a player's reward ordering lock until the returned transaction is committed
+    /// or dropped. The user lock comes first, as required by `locks.rs`.
+    pub async fn invite_reward_guard(
+        &self,
+        guild: u64,
+        user: u64,
+    ) -> anyhow::Result<sqlx::Transaction<'_, sqlx::Postgres>> {
+        let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &[sql_id(user)]).await?;
+        lock_reward_in_tx(&mut tx, guild, sql_id(user)).await?;
+        Ok(tx)
+    }
+
     pub async fn invite_settings(&self, guild: u64) -> anyhow::Result<InviteSettings> {
-        Ok(sqlx::query_as("SELECT enabled, log_channel_id, fake_days, temp_enabled, temp_channel_id, \
+        Ok(sqlx::query_as("SELECT enabled, baseline_required, log_channel_id, fake_days, temp_enabled, temp_channel_id, \
             temp_max_age_secs, temp_max_uses, temp_per_user_daily, temp_message_id FROM invite_settings WHERE guild_id=$1").bind(sql_id(guild)).fetch_optional(self.pool()).await?.unwrap_or_default())
     }
 
@@ -103,6 +123,7 @@ impl Db {
             "INSERT INTO invite_settings (guild_id, enabled, log_channel_id, fake_days, temp_enabled, \
             temp_channel_id, temp_max_age_secs, temp_max_uses, temp_per_user_daily, temp_message_id) \
             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT (guild_id) DO UPDATE SET \
+            baseline_required=invite_settings.baseline_required OR invite_settings.enabled IS DISTINCT FROM $2, \
             enabled=$2, log_channel_id=$3, fake_days=$4, temp_enabled=$5, temp_channel_id=$6, \
             temp_max_age_secs=$7, temp_max_uses=$8, temp_per_user_daily=$9, temp_message_id=$10",
         )
@@ -130,18 +151,113 @@ impl Db {
         )
     }
 
+    pub async fn invite_rewards_with_grantor(&self, guild: u64) -> anyhow::Result<Vec<(i32, i64, Option<i64>)>> {
+        Ok(
+            sqlx::query_as("SELECT invites,role_id,grantor_id FROM invite_rewards WHERE guild_id=$1 ORDER BY invites")
+                .bind(sql_id(guild))
+                .fetch_all(self.pool())
+                .await?,
+        )
+    }
+
     pub async fn put_invite_reward(&self, guild: u64, count: i32, role: u64) -> anyhow::Result<()> {
+        self.put_invite_reward_by(guild, count, role, None).await
+    }
+
+    pub async fn put_invite_reward_by(
+        &self,
+        guild: u64,
+        count: i32,
+        role: u64,
+        grantor: Option<u64>,
+    ) -> anyhow::Result<()> {
         self.guild_settings(guild).await?;
         sqlx::query(
-            "INSERT INTO invite_rewards(guild_id,invites,role_id) VALUES($1,$2,$3) \
-            ON CONFLICT(guild_id,invites) DO UPDATE SET role_id=$3",
+            "INSERT INTO invite_rewards(guild_id,invites,role_id,grantor_id) VALUES($1,$2,$3,$4) \
+            ON CONFLICT(guild_id,invites) DO UPDATE SET role_id=$3,grantor_id=$4",
         )
         .bind(sql_id(guild))
         .bind(count)
         .bind(sql_id(role))
+        .bind(grantor.map(sql_id))
         .execute(self.pool())
         .await?;
         Ok(())
+    }
+
+    pub async fn invite_reward_authority(&self, guild: u64, role: u64) -> anyhow::Result<Vec<Option<u64>>> {
+        Ok(sqlx::query_as::<_, (Option<i64>,)>(
+            "SELECT grantor_id FROM invite_rewards WHERE guild_id=$1 AND role_id=$2",
+        )
+        .bind(sql_id(guild))
+        .bind(sql_id(role))
+        .fetch_all(self.pool())
+        .await?
+        .into_iter()
+        .map(|(id,)| id.map(|n| n as u64))
+        .collect())
+    }
+
+    pub async fn invite_granted_roles(&self, guild: u64, user: u64) -> anyhow::Result<Vec<u64>> {
+        Ok(
+            sqlx::query_as::<_, (i64,)>("SELECT role_id FROM invite_role_grants WHERE guild_id=$1 AND user_id=$2")
+                .bind(sql_id(guild))
+                .bind(sql_id(user))
+                .fetch_all(self.pool())
+                .await?
+                .into_iter()
+                .map(|(id,)| id as u64)
+                .collect(),
+        )
+    }
+
+    pub async fn mark_invite_role(&self, guild: u64, user: u64, role: u64, granted: bool) -> anyhow::Result<()> {
+        if granted {
+            sqlx::query(
+                "INSERT INTO invite_role_grants(guild_id,user_id,role_id) VALUES($1,$2,$3) ON CONFLICT DO NOTHING",
+            )
+            .bind(sql_id(guild))
+            .bind(sql_id(user))
+            .bind(sql_id(role))
+            .execute(self.pool())
+            .await?;
+        } else {
+            sqlx::query("DELETE FROM invite_role_grants WHERE guild_id=$1 AND user_id=$2 AND role_id=$3")
+                .bind(sql_id(guild))
+                .bind(sql_id(user))
+                .bind(sql_id(role))
+                .execute(self.pool())
+                .await?;
+        }
+        Ok(())
+    }
+
+    pub async fn invite_inviter_for_member(&self, guild: u64, user: u64) -> anyhow::Result<Option<u64>> {
+        let row: Option<(Option<i64>,)> = sqlx::query_as(
+            "SELECT inviter_id FROM invite_joins WHERE guild_id=$1 AND user_id=$2 ORDER BY joined_at DESC LIMIT 1",
+        )
+        .bind(sql_id(guild))
+        .bind(sql_id(user))
+        .fetch_optional(self.pool())
+        .await?;
+        Ok(row.and_then(|(id,)| id.map(|n| n as u64)))
+    }
+
+    pub async fn invite_reward_candidates(&self, guild: u64) -> anyhow::Result<Vec<u64>> {
+        Ok(sqlx::query_as::<_, (i64,)>("SELECT DISTINCT user_id FROM invite_role_grants WHERE guild_id=$1 UNION SELECT DISTINCT inviter_id FROM invite_joins WHERE guild_id=$1 AND inviter_id IS NOT NULL UNION SELECT user_id FROM invite_bonus WHERE guild_id=$1")
+            .bind(sql_id(guild)).fetch_all(self.pool()).await?
+            .into_iter().map(|(id,)| id as u64).collect())
+    }
+
+    pub async fn invite_reward_guilds(&self) -> anyhow::Result<Vec<u64>> {
+        Ok(sqlx::query_as::<_, (i64,)>(
+            "SELECT guild_id FROM invite_rewards UNION SELECT guild_id FROM invite_role_grants",
+        )
+        .fetch_all(self.pool())
+        .await?
+        .into_iter()
+        .map(|(id,)| id as u64)
+        .collect())
     }
 
     pub async fn remove_invite_reward(&self, guild: u64, count: i32) -> anyhow::Result<()> {
@@ -163,8 +279,31 @@ impl Db {
         .await?)
     }
 
-    /// Store a baseline after startup or an invite event; it never credits a member.
+    /// Add newly observed codes without consuming pending uses on existing codes.
     pub async fn baseline_invites(&self, guild: u64, invites: &[GuildInvite]) -> anyhow::Result<()> {
+        self.guild_settings(guild).await?;
+        let mut tx = self.pool().begin().await?;
+        let ids = invites.iter().filter_map(|i| i.inviter_id).collect::<Vec<_>>();
+        lock_users(&mut tx, &ids).await?;
+        sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended('invites:' || $1::text, 0))")
+            .bind(sql_id(guild))
+            .execute(&mut *tx)
+            .await?;
+        for invite in invites {
+            let old: Option<(i32,)> = sqlx::query_as("SELECT uses FROM guild_invites WHERE guild_id=$1 AND code=$2")
+                .bind(sql_id(guild))
+                .bind(&invite.code)
+                .fetch_optional(&mut *tx)
+                .await?;
+            upsert_invite(&mut tx, guild, invite, old.map_or(invite.uses, |(n,)| n)).await?;
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+
+    /// A gateway connection epoch starts from Discord's current counts. Uses accumulated
+    /// while offline belong to unknown joins and must not be assigned after reconnect.
+    pub async fn reset_invite_baseline(&self, guild: u64, invites: &[GuildInvite]) -> anyhow::Result<()> {
         self.guild_settings(guild).await?;
         let mut tx = self.pool().begin().await?;
         let ids = invites.iter().filter_map(|i| i.inviter_id).collect::<Vec<_>>();
@@ -176,7 +315,46 @@ impl Db {
         for invite in invites {
             upsert_invite(&mut tx, guild, invite, invite.uses).await?;
         }
+        sqlx::query("UPDATE invite_settings SET baseline_required=FALSE WHERE guild_id=$1")
+            .bind(sql_id(guild))
+            .execute(&mut *tx)
+            .await?;
         tx.commit().await?;
+        Ok(())
+    }
+
+    /// The first join after re-enabling claims the new baseline. Concurrent joins cannot
+    /// each reset it and erase uses observed after the first reset.
+    pub async fn reset_required_invite_baseline(&self, guild: u64, invites: &[GuildInvite]) -> anyhow::Result<bool> {
+        let mut tx = self.pool().begin().await?;
+        let ids = invites.iter().filter_map(|i| i.inviter_id).collect::<Vec<_>>();
+        lock_users(&mut tx, &ids).await?;
+        sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended('invites:' || $1::text, 0))")
+            .bind(sql_id(guild))
+            .execute(&mut *tx)
+            .await?;
+        let changed = sqlx::query(
+            "UPDATE invite_settings SET baseline_required=FALSE WHERE guild_id=$1 AND baseline_required=TRUE",
+        )
+        .bind(sql_id(guild))
+        .execute(&mut *tx)
+        .await?;
+        if changed.rows_affected() == 0 {
+            tx.commit().await?;
+            return Ok(false);
+        }
+        for invite in invites {
+            upsert_invite(&mut tx, guild, invite, invite.uses).await?;
+        }
+        tx.commit().await?;
+        Ok(true)
+    }
+
+    pub async fn require_invite_baseline(&self, guild: u64) -> anyhow::Result<()> {
+        sqlx::query("UPDATE invite_settings SET baseline_required=TRUE WHERE guild_id=$1")
+            .bind(sql_id(guild))
+            .execute(self.pool())
+            .await?;
         Ok(())
     }
 
@@ -213,6 +391,49 @@ impl Db {
             .bind(sql_id(guild))
             .execute(&mut *tx)
             .await?;
+        let existing: Option<ExistingJoin> = sqlx::query_as(
+            "SELECT id, inviter_id, code, left_at, source FROM invite_joins WHERE guild_id=$1 AND user_id=$2 ORDER BY joined_at DESC LIMIT 1")
+            .bind(sql_id(guild)).bind(sql_id(user)).fetch_optional(&mut *tx).await?;
+        if let Some(existing) = existing {
+            // A gateway replay must not spend the next member's pending use. A leave recorded
+            // before a slow join is a tombstone, not a rejoin.
+            if let Some(inviter) = existing.inviter_id {
+                if !ids.contains(&inviter) {
+                    try_lock_users(&mut tx, &[inviter]).await?;
+                }
+                lock_reward_in_tx(&mut tx, guild, inviter).await?;
+            }
+            if existing.code.as_deref() == Some("__leave_before_join__") {
+                sqlx::query("UPDATE invite_joins SET code='__ignored_join__' WHERE id=$1")
+                    .bind(existing.id)
+                    .execute(&mut *tx)
+                    .await?;
+            } else if existing.left_at.is_some_and(|left| now > left) {
+                sqlx::query("UPDATE invite_joins SET left_at=NULL WHERE id=$1")
+                    .bind(existing.id)
+                    .execute(&mut *tx)
+                    .await?;
+            }
+            let total = if let Some(inviter) = existing.inviter_id {
+                score_in_tx(&mut tx, guild, inviter, None).await?.total
+            } else {
+                0
+            };
+            tx.commit().await?;
+            return Ok(JoinCredit {
+                inviter_id: existing.inviter_id.map(|n| n as u64),
+                source: match existing.source.as_str() {
+                    "invite" => "invite",
+                    "vanity" => "vanity",
+                    "temporary" => "temporary",
+                    "widget" => "widget",
+                    _ => "unknown",
+                },
+                code: None,
+                total,
+                fresh: false,
+            });
+        }
         let old: Vec<(String, i32)> = sqlx::query_as("SELECT code, uses FROM guild_invites WHERE guild_id=$1")
             .bind(sql_id(guild))
             .fetch_all(&mut *tx)
@@ -225,12 +446,11 @@ impl Db {
                     .find(|(code, _)| code == &i.code)
                     .is_some_and(|(_, uses)| i.uses > *uses)
             })
-            .max_by_key(|i| {
-                (
-                    i.uses - old.iter().find(|(code, _)| code == &i.code).map_or(0, |(_, n)| *n),
-                    observation.preferred_code == Some(i.code.as_str()),
-                )
-            });
+            .collect::<Vec<_>>();
+        // Two changed codes (or a code plus vanity) contain no evidence of which one
+        // this member used. Retire all those deltas so a later join cannot inherit them.
+        let ambiguous = changed.len() > 1 || (observation.vanity_changed && !changed.is_empty());
+        let selected = if ambiguous { None } else { changed.first().copied() };
         let codes = observed.iter().map(|i| i.code.clone()).collect::<Vec<_>>();
         let (recent_missing,): (bool,) = sqlx::query_as(
             "SELECT EXISTS (SELECT 1 FROM guild_invites WHERE guild_id=$1 \
@@ -241,86 +461,118 @@ impl Db {
         .bind(now)
         .fetch_one(&mut *tx)
         .await?;
-        let (inviter, code, source) = match changed {
+        let (inviter, code, source) = match selected {
             Some(i) => (i.inviter_id, Some(i.code.clone()), "invite"),
-            None if observation.vanity_changed => (None, None, "vanity"),
+            None if observation.vanity_changed && !ambiguous => (None, None, "vanity"),
             None if observation.list_available && recent_missing => (None, None, "temporary"),
             None => (None, None, "unknown"),
         };
+        if let Some(inviter) = inviter {
+            lock_reward_in_tx(&mut tx, guild, inviter).await?;
+        }
         for invite in observed {
             let used = old
                 .iter()
                 .find(|(code, _)| code == &invite.code)
                 .map_or(invite.uses, |(_, n)| {
-                    if changed.is_some_and(|selected| selected.code == invite.code) {
+                    if selected.is_some_and(|selected| selected.code == invite.code) {
                         *n + 1
+                    } else if ambiguous && changed.iter().any(|i| i.code == invite.code) {
+                        invite.uses
                     } else {
                         *n
                     }
                 });
-            upsert_invite(&mut tx, guild, invite, used.min(invite.uses)).await?;
-        }
-        let existing: Option<ExistingJoin> = sqlx::query_as(
-            "SELECT id, inviter_id, left_at, source FROM invite_joins WHERE guild_id=$1 AND user_id=$2 ORDER BY joined_at DESC LIMIT 1")
-            .bind(sql_id(guild)).bind(sql_id(user)).fetch_optional(&mut *tx).await?;
-        let fresh = existing.is_none();
-        let (actual_inviter, actual_source) = if let Some(existing) = existing {
-            if existing.left_at.is_some() {
-                sqlx::query("UPDATE invite_joins SET left_at=NULL WHERE id=$1")
-                    .bind(existing.id)
-                    .execute(&mut *tx)
-                    .await?;
-            }
-            (
-                existing.inviter_id,
-                match existing.source.as_str() {
-                    "invite" => "invite",
-                    "vanity" => "vanity",
-                    "temporary" => "temporary",
-                    "widget" => "widget",
-                    _ => "unknown",
-                },
+            upsert_invite(
+                &mut tx,
+                guild,
+                invite,
+                used.max(
+                    *old.iter()
+                        .find(|(code, _)| code == &invite.code)
+                        .map(|(_, n)| n)
+                        .unwrap_or(&0),
+                ),
             )
-        } else {
-            sqlx::query(
-                "INSERT INTO invite_joins(guild_id,user_id,inviter_id,code,joined_at,fake,source) \
-                VALUES($1,$2,$3,$4,$5,$6,$7)",
-            )
-            .bind(sql_id(guild))
-            .bind(sql_id(user))
-            .bind(inviter)
-            .bind(&code)
-            .bind(now)
-            .bind(fake)
-            .bind(source)
-            .execute(&mut *tx)
             .await?;
-            (inviter, source)
-        };
-        let total = if let Some(inviter) = actual_inviter {
+        }
+        sqlx::query(
+            "INSERT INTO invite_joins(guild_id,user_id,inviter_id,code,joined_at,fake,source) \
+                VALUES($1,$2,$3,$4,$5,$6,$7)",
+        )
+        .bind(sql_id(guild))
+        .bind(sql_id(user))
+        .bind(inviter)
+        .bind(&code)
+        .bind(now)
+        .bind(fake)
+        .bind(source)
+        .execute(&mut *tx)
+        .await?;
+        let total = if let Some(inviter) = inviter {
             score_in_tx(&mut tx, guild, inviter, None).await?.total
         } else {
             0
         };
         tx.commit().await?;
         Ok(JoinCredit {
-            inviter_id: actual_inviter.map(|n| n as u64),
-            source: actual_source,
+            inviter_id: inviter.map(|n| n as u64),
+            source,
             code,
             total,
-            fresh,
+            fresh: true,
         })
     }
 
     pub async fn leave_invite(&self, guild: u64, user: u64) -> anyhow::Result<()> {
-        sqlx::query(
+        retry("invite leave", || self.leave_invite_once(guild, user)).await
+    }
+
+    async fn leave_invite_once(&self, guild: u64, user: u64) -> anyhow::Result<()> {
+        self.guild_settings(guild).await?;
+        let prior: Option<(Option<i64>,)> = sqlx::query_as(
+            "SELECT inviter_id FROM invite_joins WHERE guild_id=$1 AND user_id=$2 AND left_at IS NULL ORDER BY joined_at DESC LIMIT 1")
+            .bind(sql_id(guild)).bind(sql_id(user)).fetch_optional(self.pool()).await?;
+        let mut ids = vec![sql_id(user)];
+        if let Some((Some(inviter),)) = prior {
+            ids.push(inviter);
+        }
+        let mut tx = self.pool().begin().await?;
+        lock_users(&mut tx, &ids).await?;
+        sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended('invites:' || $1::text, 0))")
+            .bind(sql_id(guild))
+            .execute(&mut *tx)
+            .await?;
+        let active_inviter: Option<(Option<i64>,)> = sqlx::query_as(
+            "SELECT inviter_id FROM invite_joins WHERE guild_id=$1 AND user_id=$2 AND left_at IS NULL ORDER BY joined_at DESC LIMIT 1")
+            .bind(sql_id(guild)).bind(sql_id(user)).fetch_optional(&mut *tx).await?;
+        if let Some((Some(inviter),)) = active_inviter {
+            if !ids.contains(&inviter) {
+                try_lock_users(&mut tx, &[inviter]).await?;
+            }
+            lock_reward_in_tx(&mut tx, guild, inviter).await?;
+        }
+        let changed = sqlx::query(
             "UPDATE invite_joins SET left_at=now() WHERE id=(SELECT id FROM invite_joins \
             WHERE guild_id=$1 AND user_id=$2 AND left_at IS NULL ORDER BY joined_at DESC LIMIT 1)",
         )
         .bind(sql_id(guild))
         .bind(sql_id(user))
-        .execute(self.pool())
+        .execute(&mut *tx)
         .await?;
+        if changed.rows_affected() == 0 {
+            let prior: (bool,) =
+                sqlx::query_as("SELECT EXISTS(SELECT 1 FROM invite_joins WHERE guild_id=$1 AND user_id=$2)")
+                    .bind(sql_id(guild))
+                    .bind(sql_id(user))
+                    .fetch_one(&mut *tx)
+                    .await?;
+            if !prior.0 {
+                sqlx::query("INSERT INTO invite_joins(guild_id,user_id,code,joined_at,left_at,source) VALUES($1,$2,'__leave_before_join__',now(),now(),'unknown')")
+                    .bind(sql_id(guild)).bind(sql_id(user)).execute(&mut *tx).await?;
+            }
+        }
+        tx.commit().await?;
         Ok(())
     }
 
@@ -383,6 +635,7 @@ impl Db {
 
     pub async fn change_invite_bonus(&self, guild: u64, user: u64, by: i32) -> anyhow::Result<i32> {
         self.guild_settings(guild).await?;
+        let mut tx = self.invite_reward_guard(guild, user).await?;
         let (bonus,): (i32,) = sqlx::query_as(
             "INSERT INTO invite_bonus(guild_id,user_id,bonus) VALUES($1,$2,$3) \
             ON CONFLICT(guild_id,user_id) DO UPDATE SET bonus=invite_bonus.bonus+$3 RETURNING bonus",
@@ -390,10 +643,24 @@ impl Db {
         .bind(sql_id(guild))
         .bind(sql_id(user))
         .bind(by)
-        .fetch_one(self.pool())
+        .fetch_one(&mut *tx)
         .await?;
+        tx.commit().await?;
         Ok(bonus)
     }
+}
+
+async fn lock_reward_in_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    guild: u64,
+    user: i64,
+) -> anyhow::Result<()> {
+    sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended('invite-reward:' || $1::text || ':' || $2::text, 0))")
+        .bind(sql_id(guild))
+        .bind(user)
+        .execute(&mut **tx)
+        .await?;
+    Ok(())
 }
 
 async fn upsert_invite(

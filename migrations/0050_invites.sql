@@ -46,3 +46,13 @@ CREATE TABLE invite_bonus (
     bonus INT NOT NULL DEFAULT 0,
     PRIMARY KEY (guild_id, user_id)
 );
+
+-- Keep reward authority and the roles the invite system has actually granted.
+ALTER TABLE invite_rewards ADD COLUMN grantor_id BIGINT;
+ALTER TABLE invite_settings ADD COLUMN baseline_required BOOLEAN NOT NULL DEFAULT FALSE;
+CREATE TABLE invite_role_grants (
+    guild_id BIGINT NOT NULL REFERENCES guilds(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL,
+    role_id BIGINT NOT NULL,
+    PRIMARY KEY (guild_id, user_id, role_id)
+);

@@ -39,7 +39,8 @@ empty = "Henüz sayılan davet yok."
 off = "Bu sunucuda arkadaş bağlantıları kapalı."
 no-channel = "Bir yönetici arkadaş bağlantıları için kanal seçmemiş."
 quota = "Bugünlük {limit} bağlantı hakkını kullandın. Yarın yeniden dene."
-permission = "Bağlantı oluşturmak için seçilen kanalda Davet Oluştur iznine ihtiyacım var."
+permission = "Seçilen kanalı ikimiz de görebilmeli ve orada davet oluşturabilmeliyiz."
+invalid-button = "Bu davet düğmesinin süresi dolmuş."
 link = "Sana özel davet: {link}"
 
 [invites.web]

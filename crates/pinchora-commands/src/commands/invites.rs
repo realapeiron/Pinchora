@@ -164,6 +164,9 @@ impl InvitesCommand {
                     Some(u) => (u.resolved.id.get(), crate::util::resolved_display_name(&u)),
                     None => (cx.author()?.id.get(), cx.author_display_name()),
                 };
+                if super::privacy::private_profile(cx, user).await? {
+                    return Ok(());
+                }
                 let score = cx.app.db.invite_score(guild, user).await?;
                 let name = name.chars().take(24).collect::<String>();
                 let title = t!(cx.lang(), "invites.card.title", user = name);
@@ -241,12 +244,14 @@ impl InviteAdmin {
                 }
                 cx.app
                     .db
-                    .put_invite_reward(guild, c.invites as i32, c.role.id.get())
+                    .put_invite_reward_by(guild, c.invites as i32, c.role.id.get(), Some(cx.author()?.id.get()))
                     .await?;
+                reconcile_all_invite_rewards(&cx.app, guild).await?;
                 cx.reply_ephemeral(t!(cx.lang(), "invites.saved")).await
             }
             Self::RewardRemove(c) => {
                 cx.app.db.remove_invite_reward(guild, c.invites as i32).await?;
+                reconcile_all_invite_rewards(&cx.app, guild).await?;
                 cx.reply_ephemeral(t!(cx.lang(), "invites.saved")).await
             }
             Self::Post(_) => {
@@ -287,6 +292,7 @@ async fn bonus(cx: &Cx, guild: u64, user: u64, amount: i64, remove: bool) -> any
     }
     let by = if remove { -amount } else { amount };
     let total = cx.app.db.change_invite_bonus(guild, user, by as i32).await?;
+    reconcile_invite_rewards(&cx.app, guild, user).await?;
     cx.reply_ephemeral(t!(cx.lang(), "invites.bonus-saved", total = total))
         .await
 }
@@ -406,7 +412,10 @@ pub(crate) async fn on_component(cx: &Cx, mut parts: std::str::Split<'_, char>) 
     top(cx, guild, span, page).await
 }
 
-pub(crate) async fn on_temp_component(cx: &Cx) -> anyhow::Result<()> {
+pub(crate) async fn on_temp_component(cx: &Cx, mut parts: std::str::Split<'_, char>) -> anyhow::Result<()> {
+    if parts.next() != Some("new") || parts.next().is_some() {
+        return cx.reply_ephemeral(t!(cx.lang(), "invites.temp.invalid-button")).await;
+    }
     let Some(guild) = cx.guild_id() else {
         return cx.reply_ephemeral(t!(cx.lang(), "invites.guild-only")).await;
     };
@@ -421,7 +430,10 @@ async fn create_temp(cx: &Cx, guild: u64) -> anyhow::Result<()> {
     let Some(channel) = saved.temp_channel_id else {
         return cx.reply_ephemeral(t!(cx.lang(), "invites.temp.no-channel")).await;
     };
-    if matches!(can_create_invite(&cx.app, guild, channel as u64).await, Some(false)) {
+    if !can_create_invite(&cx.app, guild, channel as u64, cx.author()?.id.get())
+        .await
+        .unwrap_or(false)
+    {
         return cx.reply_ephemeral(t!(cx.lang(), "invites.temp.permission")).await;
     }
     let user = cx.author()?.id.get();
@@ -434,7 +446,6 @@ async fn create_temp(cx: &Cx, guild: u64) -> anyhow::Result<()> {
             .reply_ephemeral(t!(cx.lang(), "invites.temp.quota", limit = saved.temp_per_user_daily))
             .await;
     }
-    // Discord is the final permission check if the cached facts are unavailable or change.
     let response = cx
         .app
         .http
@@ -467,41 +478,51 @@ async fn create_temp(cx: &Cx, guild: u64) -> anyhow::Result<()> {
     }
 }
 
-async fn can_create_invite(app: &App, guild: u64, channel: u64) -> Option<bool> {
-    let facts = app.permission_facts(guild).await.ok()?;
-    let rules = app.channel_rules(channel).await.ok()?;
+async fn can_create_invite(app: &App, guild: u64, channel: u64, user: u64) -> anyhow::Result<bool> {
+    let facts = app.http.guild(Id::new(guild)).await?.model().await?;
+    let roles = app.http.roles(Id::new(guild)).await?.models().await?;
+    let target = app.http.channel(Id::new(channel)).await?.model().await?;
+    if target.guild_id.map(|id| id.get()) != Some(guild) || target.kind.is_thread() {
+        return Ok(false);
+    }
+    let overwrites = target.permission_overwrites.unwrap_or_default();
     let bot = app.application_id.get();
-    let held = if facts.owner == bot {
-        Vec::new()
-    } else {
-        app.http
-            .guild_member(Id::new(guild), Id::new(bot))
-            .await
-            .ok()?
+    for member in [user, bot] {
+        let held = app
+            .http
+            .guild_member(Id::new(guild), Id::new(member))
+            .await?
             .model()
-            .await
-            .ok()?
+            .await?
             .roles
             .iter()
             .map(|role| role.get())
-            .collect::<Vec<_>>()
-    };
-    let base = if facts.owner == bot {
-        Permissions::all()
-    } else {
-        facts
-            .roles
-            .iter()
-            .filter(|role| role.id.get() == guild || held.contains(&role.id.get()))
-            .fold(Permissions::empty(), |permissions, role| permissions | role.permissions)
-    };
-    let here = channel_permissions(base, guild, bot, &held, &rules.overwrites);
-    Some(here.contains(Permissions::CREATE_INVITE))
+            .collect::<Vec<_>>();
+        let base = if facts.owner_id.get() == member {
+            Permissions::all()
+        } else {
+            roles
+                .iter()
+                .filter(|role| role.id.get() == guild || held.contains(&role.id.get()))
+                .fold(Permissions::empty(), |permissions, role| permissions | role.permissions)
+        };
+        let here = channel_permissions(base, guild, member, &held, &overwrites);
+        if !here.contains(Permissions::VIEW_CHANNEL | Permissions::CREATE_INVITE) {
+            return Ok(false);
+        }
+    }
+    Ok(true)
 }
 
 pub async fn refresh_snapshot(app: &Arc<App>, guild: u64) -> anyhow::Result<()> {
     let invites = fetch_invites(app, guild).await?;
     remember_vanity(app, guild).await;
+    app.db.reset_invite_baseline(guild, &invites).await?;
+    write_snapshot(app, guild, &invites).await
+}
+
+pub async fn refresh_created_snapshot(app: &Arc<App>, guild: u64) -> anyhow::Result<()> {
+    let invites = fetch_invites(app, guild).await?;
     app.db.baseline_invites(guild, &invites).await?;
     write_snapshot(app, guild, &invites).await
 }
@@ -546,20 +567,16 @@ async fn remember_vanity(app: &App, guild: u64) {
 
 async fn vanity_advanced(app: &App, guild: u64) -> bool {
     let key = format!("invites:vanity:{guild}");
-    let old = app
-        .cache
-        .get(&key)
-        .await
-        .ok()
-        .flatten()
-        .and_then(|v| v.parse::<u64>().ok());
     let Ok(response) = app.http.guild_vanity_url(Id::new(guild)).await else {
         return false;
     };
     let Ok(vanity) = response.model().await else {
         return false;
     };
-    old.is_some_and(|uses| vanity.uses > uses)
+    app.cache
+        .claim_observed_value(&key, vanity.uses, Duration::from_secs(86400))
+        .await
+        .unwrap_or(false)
 }
 
 async fn write_snapshot(app: &App, guild: u64, invites: &[GuildInvite]) -> anyhow::Result<()> {
@@ -585,38 +602,38 @@ pub(crate) async fn on_member_join(app: &Arc<App>, event: &MemberAdd) {
 async fn track_join(app: &Arc<App>, event: &MemberAdd) -> anyhow::Result<()> {
     let guild = event.guild_id.get();
     let saved = app.db.invite_settings(guild).await?;
-    if !saved.enabled || event.user.bot || !app.module_allowed(guild, None, Module::Invites).await {
+    if event.user.bot {
         return Ok(());
     }
-    let now = Utc::now();
+    if !saved.enabled || !app.module_allowed(guild, None, Module::Invites).await {
+        app.db.require_invite_baseline(guild).await?;
+        return Ok(());
+    }
+    let now = event
+        .joined_at
+        .and_then(|joined| Utc.timestamp_opt(joined.as_secs(), 0).single())
+        .unwrap_or_else(Utc::now);
     let fake = is_fake_account(event.user.id.get(), saved.fake_days, now);
-    let cached = app
-        .cache
-        .map_all(&format!("invites:snapshot:{guild}"))
-        .await
-        .unwrap_or_default();
-    let observed = match fetch_invites(app, guild).await {
-        Ok(v) => Some(v),
-        Err(error) => {
-            tracing::warn!(guild, %error, "Manage Server permission is required to read invites");
-            None
+    let mut rebaselined = false;
+    if saved.baseline_required && !app.invite_baseline_pending(guild) {
+        let invites = fetch_invites(app, guild).await?;
+        rebaselined = app.db.reset_required_invite_baseline(guild, &invites).await?;
+        if rebaselined {
+            remember_vanity(app, guild).await;
+            write_snapshot(app, guild, &invites).await?;
+        }
+    }
+    let observed = if rebaselined || app.invite_baseline_pending(guild) {
+        None
+    } else {
+        match fetch_invites(app, guild).await {
+            Ok(v) => Some(v),
+            Err(error) => {
+                tracing::warn!(guild, %error, "Manage Server permission is required to read invites");
+                None
+            }
         }
     };
-    let preferred_code = observed.as_ref().and_then(|invites| {
-        invites
-            .iter()
-            .filter_map(|invite| {
-                let previous = cached
-                    .iter()
-                    .find(|(code, _)| code == &invite.code)?
-                    .1
-                    .parse::<i32>()
-                    .ok()?;
-                (invite.uses > previous).then_some((invite.code.as_str(), invite.uses - previous))
-            })
-            .max_by_key(|(_, delta)| *delta)
-            .map(|(code, _)| code)
-    });
     let vanity_changed = if observed.is_some() {
         vanity_advanced(app, guild).await
     } else {
@@ -633,16 +650,10 @@ async fn track_join(app: &Arc<App>, event: &MemberAdd) -> anyhow::Result<()> {
                 invites: observed.as_deref().unwrap_or(&[]),
                 vanity_changed,
                 list_available: observed.is_some(),
-                preferred_code,
+                preferred_code: None,
             },
         )
         .await?;
-    if credit.source == "vanity" {
-        let _ = app
-            .cache
-            .incr(&format!("invites:vanity:{guild}"), Duration::from_secs(86400))
-            .await;
-    }
     if observed.is_some() {
         let credited = app.db.invite_snapshot(guild).await?;
         write_snapshot(app, guild, &credited).await?;
@@ -659,18 +670,10 @@ async fn track_join(app: &Arc<App>, event: &MemberAdd) -> anyhow::Result<()> {
         let content = t!(lang, "invites.join-log", user = event.user.id.get(), source = source);
         let _ = app.http.create_message(Id::new(channel as u64)).content(&content).await;
     }
-    if credit.fresh
-        && !fake
-        && let Some(inviter) = credit.inviter_id
+    if let Some(inviter) = credit.inviter_id
+        && let Err(error) = reconcile_invite_rewards(app, guild, inviter).await
     {
-        for (threshold, role) in app.db.invite_rewards(guild).await? {
-            if credit.total >= i64::from(threshold)
-                && credit.total - 1 < i64::from(threshold)
-                && let Err(error) = grant_invite_reward(app, guild, inviter, role as u64).await
-            {
-                tracing::warn!(guild, inviter, role, %error, "invite reward refused");
-            }
-        }
+        tracing::warn!(guild, inviter, %error, "invite reward reconciliation failed");
     }
     Ok(())
 }
@@ -711,14 +714,161 @@ pub async fn grant_invite_reward(app: &App, guild: u64, user: u64, role: u64) ->
     Ok(())
 }
 
+async fn grantor_can_grant(app: &App, guild: u64, role: &Role, authority: Option<i64>) -> anyhow::Result<bool> {
+    let Some(authority) = authority else { return Ok(false) };
+    let guild_data = app.http.guild(Id::new(guild)).await?.model().await?;
+    let roles = app.http.roles(Id::new(guild)).await?.models().await?;
+    let Some(role) = roles.iter().find(|current| current.id == role.id) else {
+        return Ok(false);
+    };
+    let facts = RoleFacts {
+        everyone: role.id.get() == guild,
+        managed: role.managed,
+        position: role.position,
+        permissions: role.permissions.bits(),
+    };
+    let owner = guild_data.owner_id.get() == authority as u64;
+    let member = match app.http.guild_member(Id::new(guild), Id::new(authority as u64)).await {
+        Ok(response) => response.model().await.ok(),
+        Err(_) => None,
+    };
+    let Some(member) = member else { return Ok(false) };
+    let permissions = roles
+        .iter()
+        .filter(|r| r.id.get() == guild || member.roles.contains(&r.id))
+        .fold(Permissions::empty(), |bits, r| bits | r.permissions);
+    if !owner && !permissions.intersects(Permissions::MANAGE_GUILD | Permissions::ADMINISTRATOR) {
+        return Ok(false);
+    }
+    let grantor = settings::Grantor {
+        owner,
+        administrator: permissions.contains(Permissions::ADMINISTRATOR),
+        top_role: Some(
+            roles
+                .iter()
+                .filter(|r| member.roles.contains(&r.id))
+                .map(|r| r.position)
+                .max()
+                .unwrap_or(0),
+        ),
+    };
+    Ok(settings::grant_refusal(facts, grantor, &format!("<@&{}>", role.id)).is_none())
+}
+
+async fn reconcile_invite_rewards(app: &App, guild: u64, user: u64) -> anyhow::Result<()> {
+    let guard = app.db.invite_reward_guard(guild, user).await?;
+    let score = app.db.invite_score(guild, user).await?.total;
+    let rewards = app.db.invite_rewards_with_grantor(guild).await?;
+    let granted = app.db.invite_granted_roles(guild, user).await?;
+    let member = app
+        .http
+        .guild_member(Id::new(guild), Id::new(user))
+        .await?
+        .model()
+        .await?;
+    let roles = app.http.roles(Id::new(guild)).await?.models().await?;
+    let mut desired = std::collections::HashSet::new();
+    for (threshold, role, authority) in &rewards {
+        if score < i64::from(*threshold) {
+            continue;
+        }
+        let Some(found) = roles.iter().find(|r| r.id.get() == *role as u64) else {
+            continue;
+        };
+        if settings::run_time_refusal(found.permissions.bits(), &format!("<@&{role}>")).is_none()
+            && grantor_can_grant(app, guild, found, *authority).await?
+        {
+            desired.insert(*role as u64);
+        }
+    }
+    for role in granted {
+        if !desired.contains(&role) {
+            app.http
+                .remove_guild_member_role(Id::new(guild), Id::new(user), Id::new(role))
+                .await?;
+            app.db.mark_invite_role(guild, user, role, false).await?;
+        }
+    }
+    for role in desired {
+        if member.roles.iter().any(|held| held.get() == role) {
+            continue;
+        }
+        // Re-read the score before the remote write; a concurrent leave can lower it.
+        let current_score = app.db.invite_score(guild, user).await?.total;
+        let Some(found) = roles.iter().find(|r| r.id.get() == role) else {
+            continue;
+        };
+        let mut authorized = false;
+        for (_, _, authority) in rewards
+            .iter()
+            .filter(|(threshold, id, _)| *id as u64 == role && current_score >= i64::from(*threshold))
+        {
+            if grantor_can_grant(app, guild, found, *authority).await? {
+                authorized = true;
+                break;
+            }
+        }
+        if !authorized {
+            continue;
+        }
+        // Record ownership first so a crash after Discord accepts the role cannot
+        // leave an untracked reward that future score drops fail to revoke.
+        app.db.mark_invite_role(guild, user, role, true).await?;
+        if let Err(error) = grant_invite_reward(app, guild, user, role).await {
+            tracing::warn!(guild, user, role, %error, "invite reward refused");
+            continue;
+        }
+    }
+    guard.commit().await?;
+    Ok(())
+}
+
+pub async fn reconcile_all_invite_rewards(app: &App, guild: u64) -> anyhow::Result<()> {
+    for user in app.db.invite_reward_candidates(guild).await? {
+        if let Err(error) = reconcile_invite_rewards(app, guild, user).await {
+            tracing::warn!(guild, user, %error, "invite reward reconciliation failed");
+        }
+    }
+    Ok(())
+}
+
+/// Repairs failed Discord grants and revokes roles after score, reward, or role changes.
+pub fn spawn_reward_ticker(app: Arc<App>) {
+    app.clone().spawn(async move {
+        let mut interval = tokio::time::interval(Duration::from_secs(300));
+        loop {
+            interval.tick().await;
+            match app.db.invite_reward_guilds().await {
+                Ok(guilds) => {
+                    for guild in guilds {
+                        let key = format!("invites:reward-reconcile:{guild}");
+                        if app.cache.once(&key, Duration::from_secs(240)).await.unwrap_or(false)
+                            && let Err(error) = reconcile_all_invite_rewards(&app, guild).await
+                        {
+                            tracing::warn!(guild, %error, "invite reward sweep failed");
+                        }
+                    }
+                }
+                Err(error) => tracing::warn!(%error, "invite reward guild lookup failed"),
+            }
+        }
+    });
+}
+
 pub(crate) async fn on_member_leave(app: &Arc<App>, event: &MemberRemove) {
     let app = app.clone();
     let guild = event.guild_id.get();
     let user = event.user.id.get();
     app.clone().spawn_event("invite_leave", async move {
+        let inviter = app.db.invite_inviter_for_member(guild, user).await.ok().flatten();
         if let Err(error) = app.db.leave_invite(guild, user).await {
             tracing::warn!(guild, %error, "invite leave tracking failed");
             return;
+        }
+        if let Some(inviter) = inviter
+            && let Err(error) = reconcile_invite_rewards(&app, guild, inviter).await
+        {
+            tracing::warn!(guild, inviter, %error, "invite reward reconciliation failed");
         }
         if let Ok(settings) = app.db.invite_settings(guild).await
             && let Some(channel) = settings.log_channel_id

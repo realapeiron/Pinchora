@@ -269,6 +269,8 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         "INSERT INTO invite_joins (guild_id, user_id, inviter_id, source)
          VALUES ($1, $1, $2, 'invite'), ($1, $2, $1, 'invite')",
         "INSERT INTO invite_bonus (guild_id, user_id, bonus) VALUES ($1, $1, 2)",
+        "INSERT INTO invite_rewards (guild_id, invites, role_id, grantor_id) VALUES ($1, 1, 123, $1)",
+        "INSERT INTO invite_role_grants (guild_id, user_id, role_id) VALUES ($1, $1, 123)",
         // A ticket they opened, and the other player's one they claimed, closed and wrote in, with its
         // transcript ($1 doubles as the server).
         "INSERT INTO tickets (guild_id, number, opener_id, status, claimed_by, closed_by)

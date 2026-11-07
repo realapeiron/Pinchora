@@ -105,6 +105,7 @@ pub const USER_COLUMNS: &[(&str, &str)] = &[
     ("invite_joins", "user_id"),
     ("invite_joins", "inviter_id"),
     ("invite_bonus", "user_id"),
+    ("invite_role_grants", "user_id"),
     ("guild_invites", "inviter_id"),
     ("users", "id"),
 ];
@@ -131,6 +132,7 @@ pub const ID_LISTS: &[(&str, &str, ListEdit)] = &[
 /// Columns that name a player on rows that belong to somebody else and go on without them: the
 /// column is set to NULL.
 pub const CLEARED_COLUMNS: &[(&str, &str)] = &[
+    ("invite_rewards", "grantor_id"),
     ("suggestions", "decided_by"),
     ("collection_drops", "host_id"),
     ("tickets", "claimed_by"),

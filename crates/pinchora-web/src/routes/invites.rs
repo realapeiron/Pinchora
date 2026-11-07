@@ -19,6 +19,7 @@ use serde_json::{Value, json};
 
 use super::settings::parse_id;
 use crate::{
+    audit::{self, Change},
     error::{ApiError, ApiResult},
     extract::ManagedGuild,
     guild_info,
@@ -120,6 +121,7 @@ async fn save_settings(
         }
     }
     let mut saved = state.app.db.invite_settings(managed.id).await?;
+    let before = settings_json(&saved);
     saved.enabled = body.enabled;
     saved.log_channel_id = log;
     saved.fake_days = body.fake_days;
@@ -129,6 +131,19 @@ async fn save_settings(
     saved.temp_max_uses = body.temp_max_uses;
     saved.temp_per_user_daily = body.temp_per_user_daily;
     state.app.db.save_invite_settings(managed.id, &saved).await?;
+    audit::finish(
+        &state,
+        &managed.current.session,
+        Change {
+            guild: managed.id,
+            action: "invites.settings.put",
+            target: None,
+            before,
+            after: settings_json(&saved),
+        },
+        None,
+    )
+    .await;
     Ok(Json(settings_json(&saved)))
 }
 
@@ -175,7 +190,31 @@ async fn save_reward(
     if rewards.len() >= 20 && !rewards.iter().any(|(n, _)| *n == count) {
         return Err(ApiError::limit(t!(Lang::En, "invites.web.rewards-limit")));
     }
-    state.app.db.put_invite_reward(managed.id, count, role_id).await?;
+    let before = rewards.iter().find(|(n, _)| *n == count).map(|(_, r)| r.to_string());
+    state
+        .app
+        .db
+        .put_invite_reward_by(managed.id, count, role_id, Some(managed.current.session.user_id))
+        .await?;
+    let target = count.to_string();
+    audit::finish(
+        &state,
+        &managed.current.session,
+        Change {
+            guild: managed.id,
+            action: "invites.reward.put",
+            target: Some(&target),
+            before: json!({"role_id": before}),
+            after: json!({"role_id": body.role_id}),
+        },
+        None,
+    )
+    .await;
+    let app = state.app.clone();
+    let guild = managed.id;
+    app.clone().spawn(async move {
+        let _ = pinchora_commands::reconcile_all_invite_rewards(&app, guild).await;
+    });
     Ok(Json(json!({"invites":count,"role_id":body.role_id})))
 }
 
@@ -184,7 +223,34 @@ async fn delete_reward(
     managed: ManagedGuild,
     Path((_, count)): Path<(String, i32)>,
 ) -> ApiResult<StatusCode> {
+    let before = state
+        .app
+        .db
+        .invite_rewards(managed.id)
+        .await?
+        .into_iter()
+        .find(|(n, _)| *n == count)
+        .map(|(_, r)| r.to_string());
     state.app.db.remove_invite_reward(managed.id, count).await?;
+    let target = count.to_string();
+    audit::finish(
+        &state,
+        &managed.current.session,
+        Change {
+            guild: managed.id,
+            action: "invites.reward.delete",
+            target: Some(&target),
+            before: json!({"role_id": before}),
+            after: Value::Null,
+        },
+        None,
+    )
+    .await;
+    let app = state.app.clone();
+    let guild = managed.id;
+    app.clone().spawn(async move {
+        let _ = pinchora_commands::reconcile_all_invite_rewards(&app, guild).await;
+    });
     Ok(StatusCode::NO_CONTENT)
 }
 

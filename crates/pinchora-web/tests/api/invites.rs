@@ -34,6 +34,26 @@ async fn reward_and_member_routes_accept_nested_path_ids() {
             .unwrap()
             .is_empty()
     );
+    let rows = h.state.app.db.audit_page(guild, None, 10).await.unwrap();
+    let actions: Vec<_> = rows.iter().map(|row| row.action.as_str()).collect();
+    assert!(actions.contains(&"invites.reward.put"));
+    assert!(actions.contains(&"invites.reward.delete"));
+}
+
+#[tokio::test]
+async fn settings_edit_is_audited_with_the_manager() {
+    let Some(h) = Harness::new("invite_settings_audit").await else {
+        return;
+    };
+    let (guild, user, mut browser) = h.managed_server().await;
+    let base = format!("/api/guilds/{guild}/invites");
+    let mut settings = browser.get(&base).await.json()["settings"].clone();
+    settings["temp_enabled"] = json!(true);
+    let saved = browser.write(Method::PUT, &format!("{base}/settings"), settings).await;
+    assert_eq!(saved.status, StatusCode::OK, "{}", saved.text());
+    let rows = h.state.app.db.audit_page(guild, None, 10).await.unwrap();
+    assert_eq!(rows[0].action, "invites.settings.put");
+    assert_eq!(rows[0].actor_id, user as i64);
 }
 
 #[tokio::test]

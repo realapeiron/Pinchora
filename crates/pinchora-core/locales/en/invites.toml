@@ -39,7 +39,8 @@ empty = "No counted invites yet."
 off = "Friend links are turned off for this server."
 no-channel = "A manager has not picked a channel for friend links."
 quota = "You've used today's {limit} friend links. Try again tomorrow."
-permission = "I need Create Instant Invite in the selected channel to make this link."
+permission = "You and I both need to see the selected channel and create invites there."
+invalid-button = "This invite button has expired."
 link = "Your private invite: {link}"
 
 [invites.web]

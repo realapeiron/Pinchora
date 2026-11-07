@@ -123,6 +123,15 @@ impl Db {
             (None, Some(on)) => rule.enabled = on,
             (_, None) => {}
         }
+        if module == Module::Invites && enabled.is_some() {
+            sqlx::query(
+                "INSERT INTO invite_settings(guild_id,baseline_required) VALUES($1,TRUE) \
+                ON CONFLICT(guild_id) DO UPDATE SET baseline_required=TRUE",
+            )
+            .bind(id)
+            .execute(&mut *tx)
+            .await?;
+        }
         // A switch in a `guilds` column is the only one: the row never says.
         let stored = if column.is_some() { true } else { rule.enabled };
         if stored && rule.mode == ChannelMode::All {
