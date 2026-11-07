@@ -102,12 +102,7 @@ async fn connection(state: WebState, current: CurrentSession, mut socket: WebSoc
     let peer = Peer {
         token: session::random_token(16),
         user: saved.user_id,
-        name: saved
-            .display_name()
-            .chars()
-            .filter(|c| !c.is_control())
-            .take(64)
-            .collect(),
+        name: pinchora_game::chat::display_name(saved.display_name()),
         character,
         outgoing,
         close,
@@ -147,12 +142,19 @@ async fn connection(state: WebState, current: CurrentSession, mut socket: WebSoc
     let mut seen = Instant::now();
     let mut heartbeat = tokio::time::interval(Duration::from_secs(15));
     heartbeat.tick().await;
+    let mut validity = tokio::time::interval(Duration::from_secs(1));
     let mut shutdown = peer.close.subscribe();
     loop {
         tokio::select! {
             _=shutdown.changed() => break,
             _=tokio::time::sleep_until(tokio::time::Instant::from_std(seen + Duration::from_secs(45))) => {
                 peer.terminate("presence_expired"); break;
+            }
+            _=validity.tick() => {
+                match session::load(&state.app.cache,&current.sid,chrono::Utc::now().timestamp()).await {
+                    Ok(Some(s)) if s.user_id==peer.user => {},
+                    _ => { peer.terminate("session_expired"); break; }
+                }
             }
             _=heartbeat.tick() => {
                 if writer_task.is_finished() {
@@ -195,6 +197,7 @@ async fn connection(state: WebState, current: CurrentSession, mut socket: WebSoc
                         current_room=Some(tx);
                     }
                     Command::Leave => {
+                        state.reef.unlocate(peer.user).await;
                         if let Some(tx)=current_room.take() {let _=tx.send(Input::Leave(peer.token.clone())).await;}
                         peer.send("",&envelope.request_id,json!({"type":"left"}));
                     }
@@ -217,6 +220,11 @@ async fn connection(state: WebState, current: CurrentSession, mut socket: WebSoc
     let _ = writer_task.await;
 }
 pub(super) async fn room_access(state: &WebState, key: RoomKey, user: u64) -> anyhow::Result<()> {
+    anyhow::ensure!(state.app.db.character(user).await?.is_some(), "access denied");
+    anyhow::ensure!(
+        !state.app.db.reef_sanctioned(user, key.owner, key.idx, false).await?,
+        "sanctioned"
+    );
     anyhow::ensure!(!state.app.db.is_guild(key.owner).await?, "access denied");
     if key.owner == user {
         return Ok(());
@@ -229,19 +237,7 @@ pub(super) async fn room_access(state: &WebState, key: RoomKey, user: u64) -> an
         .await?
         .ok_or_else(|| anyhow::anyhow!("access denied"))?;
     anyhow::ensure!(!house.locked && rooms.iter().any(|r| r.idx == key.idx), "access denied");
-    // This checkout has guestbook blocks, but no broader social-block or friends-only house policy.
-    for (a, b) in [(key.owner, user), (user, key.owner)] {
-        anyhow::ensure!(
-            !state
-                .app
-                .db
-                .guestbook_blocks(a)
-                .await?
-                .iter()
-                .any(|(id, _)| *id == b as i64),
-            "access denied"
-        );
-    }
+    anyhow::ensure!(!state.app.db.socially_blocked(key.owner, user).await?, "access denied");
     Ok(())
 }
 #[cfg(test)]

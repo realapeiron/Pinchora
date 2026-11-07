@@ -70,6 +70,7 @@ impl Site {
         let url = format!("http://{addr}");
         let config = WebConfig {
             public_url: url.clone(),
+            operator_ids: "770000000000000099".into(),
             bind: addr,
             ..WebConfig::default()
         };
@@ -541,6 +542,18 @@ async fn seed_reef_multiplayer() {
     let owner = 770000000000000091u64;
     let guest = 770000000000000092u64;
     let content = Content::get();
+    sqlx::query("DELETE FROM reef_sanctions WHERE user_id IN ($1,$2)")
+        .bind(owner as i64)
+        .bind(guest as i64)
+        .execute(&site.pool)
+        .await
+        .unwrap();
+    sqlx::query("DELETE FROM guestbook_blocks WHERE host_id IN ($1,$2) OR blocked_id IN ($1,$2)")
+        .bind(owner as i64)
+        .bind(guest as i64)
+        .execute(&site.pool)
+        .await
+        .unwrap();
     for (index, user) in [owner, guest].into_iter().enumerate() {
         site.house(user).await;
         let mut character = Character::starter(content);
@@ -566,4 +579,398 @@ async fn seed_reef_multiplayer() {
         .execute(&site.pool)
         .await
         .unwrap();
+}
+
+impl Browser {
+    async fn api(&self, method: reqwest::Method, path: &str, body: Value) -> reqwest::Response {
+        reqwest::Client::new()
+            .request(method, format!("{}{}", self.url, path))
+            .header("cookie", format!("pinchora_sid={}", self.sid))
+            .header("origin", &self.url)
+            .header("x-csrf-token", "reef-test-csrf")
+            .json(&body)
+            .send()
+            .await
+            .unwrap()
+    }
+    async fn consent(&self) {
+        assert!(
+            self.api(
+                reqwest::Method::PUT,
+                "/api/reef/consent",
+                json!({"version":1,"age_band":"13_plus","accepted":true})
+            )
+            .await
+            .status()
+            .is_success()
+        );
+    }
+}
+#[tokio::test]
+async fn chat_eligibility_report_queue_action_appeal_and_audit() {
+    let Some(site) = Site::new().await else { return };
+    let host = unique();
+    let guest = unique();
+    site.house(host).await;
+    let a = site.browser(host).await;
+    let b = site.browser(guest).await;
+    let mut p = a.connect().await;
+    let mut q = b.connect().await;
+    p.join(host).await;
+    q.join(host).await;
+    q.send(json!({"type":"chat","text":"Before consent"})).await;
+    assert_eq!(q.until("error").await["reason"], "eligibility_required");
+    a.consent().await;
+    b.consent().await;
+    q.send(json!({"type":"chat","text":"Merhaba dünya"})).await;
+    let sent = q.until("chat").await;
+    let received = p.until("chat").await;
+    assert_eq!(sent["message_id"], received["message_id"]);
+    assert_eq!(sent["request_id"], q.sequence.to_string());
+    let response = a
+        .api(
+            reqwest::Method::POST,
+            "/api/reef/reports",
+            json!({"message_id":received["message_id"],"reason":"harassment"}),
+        )
+        .await;
+    assert_eq!(response.status(), 200);
+    let receipt = response.json::<Value>().await.unwrap()["receipt"].clone();
+    let stranger = site.browser(unique()).await;
+    assert_eq!(
+        stranger
+            .api(
+                reqwest::Method::POST,
+                "/api/reef/reports",
+                json!({"message_id":received["message_id"],"reason":"other"})
+            )
+            .await
+            .status(),
+        403
+    );
+    let queue = a
+        .api(reqwest::Method::GET, "/api/reef/moderation", json!(null))
+        .await
+        .json::<Value>()
+        .await
+        .unwrap();
+    assert!(
+        queue["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|item| item["id"] == receipt && item["text"] == "Merhaba dünya")
+    );
+    assert!(
+        stranger
+            .api(reqwest::Method::GET, "/api/reef/moderation", json!(null))
+            .await
+            .json::<Value>()
+            .await
+            .unwrap()["items"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+    let action = json!({"target":guest.to_string(),"owner":host.to_string(),"room_idx":null,"kind":"mute","seconds":3600,"report":receipt});
+    assert_eq!(
+        b.api(reqwest::Method::POST, "/api/reef/moderation", action.clone())
+            .await
+            .status(),
+        403
+    );
+    assert_eq!(
+        a.api(reqwest::Method::POST, "/api/reef/moderation", action)
+            .await
+            .status(),
+        204
+    );
+    q.send(json!({"type":"chat","text":"Muted message"})).await;
+    assert_eq!(q.until("error").await["reason"], "chat_muted");
+    assert_eq!(
+        b.api(
+            reqwest::Method::POST,
+            &format!("/api/reef/reports/{}/appeal", receipt.as_str().unwrap()),
+            json!({"text":"Please review this decision"})
+        )
+        .await
+        .status(),
+        204
+    );
+    let (reads,actions):(i64,i64)=sqlx::query_as("SELECT count(*) FILTER(WHERE action='evidence_read'),count(*) FILTER(WHERE action='mute') FROM reef_moderator_audit WHERE actor_id=$1").bind(host as i64).fetch_one(&site.pool).await.unwrap();
+    assert!(reads > 0);
+    assert_eq!(actions, 1);
+    assert_eq!(a.api(reqwest::Method::POST,"/api/reef/moderation",json!({"target":guest.to_string(),"owner":host.to_string(),"room_idx":null,"kind":"ban","seconds":3600,"report":receipt})).await.status(),204);
+    assert_eq!(q.close_reason().await, "sanctioned");
+}
+#[tokio::test]
+async fn bidirectional_blocks_suppress_chat_in_third_party_house_and_revoke_visits() {
+    let Some(site) = Site::new().await else { return };
+    let owner = unique();
+    let alice = unique();
+    let bob = unique();
+    site.house(owner).await;
+    site.house(alice).await;
+    let a = site.browser(alice).await;
+    let b = site.browser(bob).await;
+    let c = site.browser(owner).await;
+    for browser in [&a, &b, &c] {
+        browser.consent().await;
+    }
+    let mut p = a.connect().await;
+    let mut q = b.connect().await;
+    let mut observer = c.connect().await;
+    p.join(owner).await;
+    q.join(owner).await;
+    observer.join(owner).await;
+    assert_eq!(
+        a.api(reqwest::Method::PUT, &format!("/api/reef/blocks/{bob}"), json!(null))
+            .await
+            .status(),
+        204
+    );
+    p.send(json!({"type":"chat","text":"Only the host sees Alice"})).await;
+    let first = p.until("chat").await;
+    assert_eq!(observer.until("chat").await["sender_id"], alice.to_string());
+    q.send(json!({"type":"chat","text":"Only the host sees Bob"})).await;
+    let second = q.until("chat").await;
+    assert_eq!(observer.until("chat").await["sender_id"], bob.to_string());
+    for (socket, other) in [(&mut p, bob), (&mut q, alice)] {
+        let other = other.to_string();
+        let received = tokio::time::timeout(Duration::from_millis(350), async {
+            while let Some(Ok(Message::Text(raw))) = socket.socket.next().await {
+                let value: Value = serde_json::from_str(&raw).unwrap();
+                assert!(
+                    !(value["type"] == "chat" && value["sender_id"] == other.as_str()),
+                    "blocked message leaked"
+                );
+            }
+        })
+        .await;
+        assert!(received.is_err());
+    }
+    for (message, recipient) in [
+        (first["message_id"].as_str().unwrap(), bob),
+        (second["message_id"].as_str().unwrap(), alice),
+    ] {
+        let count: i64 =
+            sqlx::query_scalar("SELECT count(*) FROM reef_chat_recipients WHERE message_id=$1 AND user_id=$2")
+                .bind(message.parse::<i64>().unwrap())
+                .bind(recipient as i64)
+                .fetch_one(&site.pool)
+                .await
+                .unwrap();
+        assert_eq!(count, 0);
+    }
+    q.send(json!({"type":"join","room":format!("house:{alice}:0")})).await;
+    assert_eq!(q.until("error").await["reason"], "access_denied");
+    assert_eq!(
+        b.api(reqwest::Method::GET, &format!("/api/house/visit/{alice}"), json!(null))
+            .await
+            .status(),
+        403
+    );
+    assert_eq!(
+        site.app
+            .db
+            .sign_guestbook(alice, bob, "Bob", "hello", chrono::Utc::now().date_naive())
+            .await
+            .unwrap(),
+        pinchora_db::SignOutcome::Blocked
+    );
+    assert_eq!(
+        site.app
+            .db
+            .sign_guestbook(bob, alice, "Alice", "hello", chrono::Utc::now().date_naive())
+            .await
+            .unwrap(),
+        pinchora_db::SignOutcome::Blocked
+    );
+    assert!(matches!(
+        site.app
+            .db
+            .record_visit(alice, bob, chrono::Utc::now().date_naive(), 25, 10)
+            .await
+            .unwrap(),
+        pinchora_db::VisitOutcome::Unavailable
+    ));
+    a.api(reqwest::Method::DELETE, &format!("/api/reef/blocks/{bob}"), json!(null))
+        .await;
+    q.join(alice).await;
+    a.api(reqwest::Method::PUT, &format!("/api/reef/blocks/{bob}"), json!(null))
+        .await;
+    assert_eq!(q.close_reason().await, "access_revoked");
+}
+#[tokio::test]
+async fn consent_revocation_logout_and_filter_fail_closed() {
+    let Some(site) = Site::new().await else { return };
+    let user = unique();
+    site.house(user).await;
+    let browser = site.browser(user).await;
+    browser.consent().await;
+    let mut player = browser.connect().await;
+    player.join(user).await;
+    player.send(json!({"type":"chat","text":"discord.gg/reef"})).await;
+    assert_eq!(player.until("error").await["reason"], "chat_filtered");
+    browser
+        .api(
+            reqwest::Method::PUT,
+            "/api/reef/consent",
+            json!({"version":1,"age_band":"13_plus","accepted":false}),
+        )
+        .await;
+    assert_eq!(player.close_reason().await, "consent_revoked");
+    browser.consent().await;
+    let mut player = browser.connect().await;
+    player.join(user).await;
+    assert_eq!(
+        browser
+            .api(reqwest::Method::POST, "/auth/logout", json!(null))
+            .await
+            .status(),
+        204
+    );
+    assert_eq!(player.close_reason().await, "logged_out");
+}
+#[tokio::test]
+async fn retention_preserves_reported_evidence_and_deletion_removes_chat_but_not_active_bans() {
+    let Some(site) = Site::new().await else { return };
+    let user = unique();
+    let host = unique();
+    site.house(host).await;
+    let browser = site.browser(user).await;
+    browser.consent().await;
+    let mut player = browser.connect().await;
+    player.join(host).await;
+    player.send(json!({"type":"chat","text":"A retained report"})).await;
+    let msg = player.until("chat").await["message_id"]
+        .as_str()
+        .unwrap()
+        .parse::<i64>()
+        .unwrap();
+    site.app.db.reef_report(user, msg, "other").await.unwrap();
+    sqlx::query("UPDATE reef_chat_evidence SET created_at=now()-interval '8 days' WHERE id=$1")
+        .bind(msg)
+        .execute(&site.pool)
+        .await
+        .unwrap();
+    let ordinary:i64=sqlx::query_scalar("INSERT INTO reef_chat_evidence(owner_id,room_idx,sender_id,text,created_at) VALUES($1,0,$2,'ordinary',now()-interval '8 days') RETURNING id").bind(host as i64).bind(user as i64).fetch_one(&site.pool).await.unwrap();
+    site.app.db.reef_retain(chrono::Utc::now()).await.unwrap();
+    let ids: Vec<i64> = sqlx::query_scalar("SELECT id FROM reef_chat_evidence WHERE id IN ($1,$2)")
+        .bind(msg)
+        .bind(ordinary)
+        .fetch_all(&site.pool)
+        .await
+        .unwrap();
+    assert_eq!(ids, vec![msg]);
+    sqlx::query("UPDATE reef_chat_evidence SET created_at=now()-interval '91 days' WHERE id=$1")
+        .bind(msg)
+        .execute(&site.pool)
+        .await
+        .unwrap();
+    site.app.db.reef_retain(chrono::Utc::now()).await.unwrap();
+    let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM reef_reports WHERE message_id=$1)")
+        .bind(msg)
+        .fetch_one(&site.pool)
+        .await
+        .unwrap();
+    assert!(!exists);
+    player.send(json!({"type":"chat","text":"Delete this evidence"})).await;
+    let fresh = player.until("chat").await["message_id"]
+        .as_str()
+        .unwrap()
+        .parse::<i64>()
+        .unwrap();
+    site.app.db.reef_report(user, fresh, "other").await.unwrap();
+    site.app
+        .db
+        .reef_moderate(&pinchora_db::ReefModeration {
+            actor: host,
+            operator: false,
+            target: user,
+            owner: Some(host),
+            idx: None,
+            kind: "ban".into(),
+            seconds: 3600,
+            report: None,
+        })
+        .await
+        .unwrap();
+    site.app.db.delete_user_data(user, chrono::Utc::now()).await.unwrap();
+    assert!(!site.app.db.reef_eligible(user).await.unwrap());
+    assert!(site.app.db.reef_sanctioned(user, host, 0, false).await.unwrap());
+    for sql in [
+        "SELECT count(*) FROM reef_chat_evidence WHERE sender_id=$1",
+        "SELECT count(*) FROM reef_chat_recipients WHERE user_id=$1",
+        "SELECT count(*) FROM reef_reports WHERE reporter_id=$1",
+        "SELECT count(*) FROM reef_consents WHERE user_id=$1",
+    ] {
+        let count: i64 = sqlx::query_scalar(sql)
+            .bind(user as i64)
+            .fetch_one(&site.pool)
+            .await
+            .unwrap();
+        assert_eq!(count, 0);
+    }
+}
+
+#[tokio::test]
+async fn socket_rate_limits_and_session_expiry() {
+    let Some(site) = Site::new().await else { return };
+    let user = unique();
+    site.house(user).await;
+    let browser = site.browser(user).await;
+    browser.consent().await;
+    let mut p = browser.connect().await;
+    p.join(user).await;
+    for text in ["first", "second", "third"] {
+        p.send(json!({"type":"chat","text":text})).await;
+        p.until("chat").await;
+    }
+    p.send(json!({"type":"chat","text":"fourth"})).await;
+    assert_eq!(p.until("error").await["reason"], "rate_limited");
+    site.app
+        .cache
+        .put(&format!("web:sess:{}", browser.sid), "{}", Duration::from_secs(1))
+        .await
+        .unwrap();
+    assert_eq!(p.close_reason().await, "session_expired");
+}
+
+#[tokio::test]
+async fn operator_site_scope_room_scope_and_reversal_are_authorized() {
+    let Some(site) = Site::new().await else { return };
+    let owner = unique();
+    let guest = unique();
+    site.house(owner).await;
+    let host = site.browser(owner).await;
+    let member = site.browser(guest).await;
+    let operator = site.browser(770000000000000099).await;
+    let mut player = member.connect().await;
+    player.join(owner).await;
+    let action =
+        json!({"target":guest.to_string(),"owner":null,"room_idx":null,"kind":"ban","seconds":3600,"report":null});
+    assert_eq!(
+        host.api(reqwest::Method::POST, "/api/reef/moderation", action.clone())
+            .await
+            .status(),
+        403
+    );
+    assert_eq!(
+        operator
+            .api(reqwest::Method::POST, "/api/reef/moderation", action)
+            .await
+            .status(),
+        204
+    );
+    assert_eq!(player.close_reason().await, "sanctioned");
+    let other = unique();
+    site.house(other).await;
+    assert!(site.app.db.reef_sanctioned(guest, other, 0, false).await.unwrap());
+    assert_eq!(operator.api(reqwest::Method::POST,"/api/reef/moderation",json!({"target":guest.to_string(),"owner":null,"room_idx":null,"kind":"revoke","seconds":1,"report":null})).await.status(),204);
+    assert!(!site.app.db.reef_sanctioned(guest, other, 0, false).await.unwrap());
+    assert_eq!(host.api(reqwest::Method::POST,"/api/reef/moderation",json!({"target":guest.to_string(),"owner":owner.to_string(),"room_idx":1,"kind":"mute","seconds":3600,"report":null})).await.status(),204);
+    assert!(!site.app.db.reef_sanctioned(guest, owner, 0, true).await.unwrap());
+    assert!(site.app.db.reef_sanctioned(guest, owner, 1, true).await.unwrap());
+    assert!(!site.app.db.reef_sanctioned(guest, owner, 1, false).await.unwrap());
 }

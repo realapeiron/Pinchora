@@ -7,6 +7,7 @@ use axum::{
 };
 pub fn router() -> Router<WebState> {
     Router::new()
+        .merge(reef::safety::router())
         .route("/bootstrap", get(bootstrap))
         .route("/socket-ticket", post(reef::ticket))
         .route("/ws", get(reef::upgrade))
@@ -19,6 +20,9 @@ async fn bootstrap(State(state): State<WebState>, current: CurrentSession) -> Ap
         "navigation_version": 1,
         "user_id": current.session.user_id.to_string(),
         "character": state.app.db.character(current.session.user_id).await?,
-        "chat_enabled": false
+        "chat_enabled": state.app.db.reef_eligible(current.session.user_id).await?,
+        "consent_version": pinchora_db::REEF_CONSENT_VERSION,
+        "operator": reef::safety::operator(&state,current.session.user_id),
+        "display_name": pinchora_game::chat::display_name(current.session.display_name())
     })))
 }

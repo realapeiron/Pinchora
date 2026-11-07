@@ -82,7 +82,7 @@ table in this checkout. Owners bypass visitor privacy checks. Guild plazas are n
   DB layouts before movement/use and every second, so missed notifications also recover. Layout changes stop routes,
   release seats and relocate blocked actors to the deterministic free entry. The client refetches the room.
   Redis/DB failures close rooms, and full outbound queues evict slow clients.
-- This is single-pod authority only. No chat, rewards, new personal-data tables, migrations, outbox or cross-pod fencing.
+- This is single-pod authority only. Chat safety is described below; rewards, outbox and cross-pod fencing remain out of scope.
   The existing shared invalidation channel carries only a house ID hint; each actor rereads its own database.
   Reliable environment-isolated outbox notifications and multi-pod ownership remain Wave 6 work.
 
@@ -96,3 +96,34 @@ and frontend with the assigned test DB/Redis environment:
 
 The spec seeds two stable test accounts (IDs ending 091/092), then checks presence, walking, seat contention,
 reconnect and replacement controllers. It uses neither mocked WebSockets nor the preview-only Reef config.
+
+## Chat safety (R13–R20)
+
+Migration 0065 adds `reef_consents`, `reef_sanctions`, `reef_chat_evidence`,
+`reef_chat_recipients`, `reef_reports`, and `reef_moderator_audit`. `guestbook_blocks`
+is the general social block source; both directions apply to chat and visits/signing.
+`Db::socially_blocked` is the shared gate for future doorbell/invitation services (these do not yet exist).
+
+- `GET /api/reef/bootstrap`: consent version, eligibility, safe name, operator capability.
+- `PUT /api/reef/consent`: version, `under_13`/`13_plus`, accepted. No birth date is stored.
+- `GET /api/reef/blocks`, `PUT/DELETE /api/reef/blocks/{user}`.
+- `POST /api/reef/reports`: delivered message id and reason; returns a receipt.
+- `GET /api/reef/reports`: own receipts and decisions; `POST /reports/{id}/appeal`.
+- `GET /api/reef/moderation`: up to 100 oldest pending/appealed reports, restricted to own house or operators, every evidence read audited.
+- `POST /api/reef/moderation`: target, owner (null is operator-only site scope), optional room_idx,
+  kind (mute/kick/ban/no_action/warned/revoke), seconds (1–7,776,000), optional report id.
+  The UI applies one-hour house sanctions; kicks prevent reconnect for 60 seconds.
+- Socket `chat {text}` produces an accepted `chat` with server message_id, sender_id, name, room,
+  text, created_at, and the sender's request_id. Rejections are `error {reason}`. No optimistic delivery/replay.
+- `policy_changed` clears cached chat; logout, consent withdrawal, expiry, sanctions and access revocation
+  close with a localized client explanation. Blocks never identify the blocking account to the other user.
+
+The hourly retention worker deletes batches with SKIP LOCKED: 7 days ordinary / 90 days reported,
+based on message creation time. There is no indefinite legal-hold feature. Report and receipt rows cascade
+with expired evidence. Audit records expire after 90 days. All raw evidence stays out of operational logs.
+Deletion removes consent, authored evidence, delivery records, reports and audit identities; minimal active
+sanctions retain the target id until expiry to prevent deletion/rejoin bypass, following moderation tombstones.
+
+Run `web/tests/e2e/reef-chat.spec.ts` with the real development server and assigned database/Redis.
+The lead owns execution of Playwright; the spec uses two contexts and verifies chat, report receipt, queue,
+and block revocation. The existing seed resets the two fixture accounts' blocks and sanctions.

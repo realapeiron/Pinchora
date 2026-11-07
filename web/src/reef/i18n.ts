@@ -1,5 +1,69 @@
 // Match the web's English-key / browser-language pattern (xpAdminI18n, tempVoiceI18n).
 const tr: Record<string, string> = {
+  "No action": "İşlem gerekmiyor",
+  "Personal information": "Kişisel bilgi",
+  "Lift sanctions in this scope": "Bu kapsamdaki yaptırımları kaldır",
+  "Room chat": "Oda sohbeti",
+  "Reports and moderation": "Bildirimler ve moderasyon",
+  "House hosts moderate chat. Messages are kept for 7 days, or 90 days when reported.":
+    "Sohbeti ev sahibi yönetir. Mesajlar 7 gün, bildirilen mesajlar 90 gün saklanır.",
+  "I am 13 or older and agree to the chat rules: be respectful and do not share personal information.":
+    "13 yaşında veya daha büyüğüm; saygılı davranmayı ve kişisel bilgi paylaşmamayı kabul ediyorum.",
+  "Discord login does not verify your age.": "Discord ile giriş yapmak yaşını doğrulamaz.",
+  "Enable chat": "Sohbeti aç",
+  "Chat transcript": "Sohbet geçmişi",
+  You: "Sen",
+  pending: "Gönderiliyor",
+  delivered: "İletildi",
+  failed: "İletilemedi",
+  Report: "Bildir",
+  Block: "Engelle",
+  mute: "Sustur",
+  kick: "Çıkar",
+  ban: "Yasakla",
+  Message: "Mesaj",
+  Send: "Gönder",
+  "Withdraw chat consent": "Sohbet onayını geri çek",
+  "Blocked accounts": "Engellenen hesaplar",
+  Unblock: "Engeli kaldır",
+  "Report message": "Mesajı bildir",
+  "Report receipt": "Bildirim numarası",
+  Reason: "Neden",
+  harassment: "Taciz veya zorbalık",
+  personal_info: "Kişisel bilgi",
+  spam: "İstenmeyen mesaj",
+  other: "Diğer",
+  "Submit report": "Bildirimi gönder",
+  Cancel: "Vazgeç",
+  "Block saved.": "Engelleme kaydedildi.",
+  "Moderation action recorded.": "Moderasyon işlemi kaydedildi.",
+  "Return to your house": "Evine dön",
+  "Hosts see reports in their house. Operators see all reports. Evidence access is audited.":
+    "Ev sahipleri kendi evlerindeki bildirimleri görür. Operatörler tüm bildirimleri görür. Kanıtlara erişim kaydedilir.",
+  "Apply across the site": "Tüm sitede uygula",
+  Refresh: "Yenile",
+  "Moderation queue": "Moderasyon kuyruğu",
+  "No reports.": "Bildirim yok.",
+  Appeal: "İtiraz et",
+  no_action: "İşlem gerekmiyor",
+  warned: "Uyarıldı",
+  open: "Açık",
+  resolved: "Sonuçlandı",
+  appealed: "İtiraz edildi",
+  "Your report receipts and decisions": "Bildirim numaraların ve kararlar",
+  "Appeal explanation": "İtiraz açıklaması",
+  "Confirm the chat age requirement and rules first.": "Önce sohbetin yaş koşulunu ve kurallarını onayla.",
+  "Chat is muted in this room.": "Bu odada sohbet için susturuldun.",
+  "Your message was not sent. Please remove unsafe language, links or personal information.":
+    "Mesajın gönderilmedi. Uygunsuz ifadeleri, bağlantıları veya kişisel bilgileri kaldır.",
+  "Messages must contain 1–200 characters.": "Mesajlar 1–200 karakter içermeli.",
+  "Delivery could not be confirmed.": "Mesajın iletildiği doğrulanamadı.",
+  "Your session ended because of a moderation action.": "Bir moderasyon işlemi nedeniyle oturumun sona erdi.",
+  "You signed out.": "Çıkış yaptın.",
+  "Chat consent was withdrawn.": "Sohbet onayı geri çekildi.",
+  "This request could not be completed.": "Bu istek tamamlanamadı.",
+  "Check the safety form and try again.": "Formu kontrol edip yeniden dene.",
+
   "Play in this room": "Bu odada oyna",
   "Play camera": "Oyun kamerası",
   "Zoom out": "Uzaklaştır",
@@ -44,11 +108,25 @@ const tr: Record<string, string> = {
   Using: "Kullanıyor:",
 };
 export function t(english: string): string {
+  if (english === "no_action") english = "No action";
+  if (english === "personal_info") english = "Personal information";
+  if (english === "revoke") english = "Lift sanctions in this scope";
   return typeof navigator !== "undefined" && navigator.language.toLowerCase().startsWith("tr")
     ? (tr[english] ?? english)
     : english;
 }
 const networkReasons: Record<string, string> = {
+  eligibility_required: "Confirm the chat age requirement and rules first.",
+  chat_muted: "Chat is muted in this room.",
+  chat_filtered: "Your message was not sent. Please remove unsafe language, links or personal information.",
+  chat_length: "Messages must contain 1\u2013200 characters.",
+  delivery_unknown: "Delivery could not be confirmed.",
+  sanctioned: "Your session ended because of a moderation action.",
+  logged_out: "You signed out.",
+  consent_revoked: "Chat consent was withdrawn.",
+  safety_unavailable: "This request could not be completed.",
+  invalid_safety_request: "Check the safety form and try again.",
+
   controller_replaced: "This account is playing in another tab.",
   access_revoked: "You can no longer enter this house.",
   access_denied: "You can no longer enter this house.",

@@ -1334,6 +1334,13 @@ A character no font has (a rare hanzi, another script) still draws as an empty b
 
 The web Play view (/me/house?play=1 or /house/OWNER?play=1) supports up to 16 players in a
 server-authoritative room on one web pod. Separate logged-in browser profiles can walk and use the pilot seats,
-with saved appearances and name tags. Hidden/locked houses and guestbook blocks restrict visitor access.
+with saved appearances and filtered name tags. Hidden/locked houses and bidirectional social blocks restrict visitor access.
+House chat requires versioned 13+ self-acknowledgment (Discord login does not verify age). EN/TR text checks,
+200-grapheme messages, 1/second burst 3 and 20/minute limits, plain-text bubbles and an accessible transcript apply.
+Hosts moderate their house; comma-separated `PINCHORA_WEB__OPERATOR_IDS` grants site moderation at `/reef/moderation`.
+Reports have receipts, dispositions and appeals; evidence reads and actions are audited. Evidence expires after
+7 days, or 90 days if reported. Migration 0065 extends guestbook blocks to general social exclusion and adds
+privacy-registered safety records. Active sanctions survive account deletion only until their expiry.
+Public plaza chat remains disabled. No automatic Discord chat bridge exists.
 A second tab for an account replaces its earlier controller. An unavailable socket falls back to local preview.
-There is no chat or movement reward. See [the Reef protocol and test instructions](web/src/reef/README.md#private-house-multiplayer-r09r11).
+Chat and movement give no rewards. See [the Reef protocol and test instructions](web/src/reef/README.md#private-house-multiplayer-r09r11).

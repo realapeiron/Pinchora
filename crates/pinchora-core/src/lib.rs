@@ -31,3 +31,5 @@ pub mod verification;
 pub mod achievements;
 pub mod anti_nuke;
 pub mod anti_raid;
+
+pub mod chat_text;

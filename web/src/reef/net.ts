@@ -1,3 +1,4 @@
+import { ChatState, type ChatLine } from "./chat";
 import { api } from "../lib/api";
 import type { Direction, Point } from "./manifest";
 import type { Target } from "./navigation";
@@ -32,6 +33,11 @@ interface ServerMessage {
   action?: string;
   reason?: string;
   layout?: RoomJson;
+  message_id?: string;
+  sender_id?: string;
+  name?: string;
+  text?: string;
+  created_at?: string;
 }
 export const retryDelay = (attempt: number, random = Math.random()) =>
   Math.min(30_000, 500 * 2 ** Math.min(attempt, 6)) * (0.8 + random * 0.4);
@@ -49,6 +55,7 @@ const layoutKey = (room: RoomJson) =>
 
 /** One room subscription. Server positions drive the roster; credentials never enter a URL. */
 export class ReefNet {
+  readonly chat = new ChatState();
   ready = false;
   network: NetworkState = "preview";
   userId = "";
@@ -124,6 +131,9 @@ export class ReefNet {
           "access_revoked",
           "session_expired",
           "authentication_failed",
+          "logged_out",
+          "consent_revoked",
+          "sanctioned",
         ].includes(reason);
         this.network = reason === "controller_replaced" ? "replaced" : terminal ? "preview" : "offline";
         this.changed(terminal ? reason : "Local preview — reconnecting");
@@ -146,6 +156,7 @@ export class ReefNet {
     this.retry = setTimeout(() => void this.connect(), retryDelay(this.attempt++));
   }
   private reset() {
+    this.chat.disconnected();
     this.ready = false;
     this.pending = null;
     this.players.clear();
@@ -162,6 +173,13 @@ export class ReefNet {
         sequence: this.sequence,
       }),
     );
+    return true;
+  }
+  say(text: string) {
+    if (!this.ready) return false;
+    const request = String(this.sequence + 1);
+    this.chat.pending(request, this.userId, text);
+    if (!this.send({ type: "chat", text })) this.chat.reject(request, "delivery_unknown");
     return true;
   }
   move(tile: Point, seat?: { id: string; tile: Point }) {
@@ -192,7 +210,16 @@ export class ReefNet {
       this.send({ type: "join", room: this.room });
       return;
     }
+    if (message.type === "policy_changed") {
+      this.chat.clear();
+      return;
+    }
+    if (message.type === "chat" && message.room_epoch === this.epoch) {
+      this.chat.accept(message as unknown as Omit<ChatLine, "delivery">);
+      return;
+    }
     if (message.type === "error") {
+      this.chat.reject(message.request_id, message.reason ?? "chat_filtered");
       this.pending = null;
       this.changed(message.reason ?? "Request rejected");
       if (["access_denied", "room_full", "no_free_entry", "invalid_room"].includes(message.reason ?? "")) {

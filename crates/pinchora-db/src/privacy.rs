@@ -22,6 +22,14 @@ const WALK_LOCK: Duration = Duration::minutes(45);
 /// [`OTHER_TABLES`], [`ID_LISTS`], [`CLEARED_COLUMNS`], [`DAILY_LIMITS`], [`ANONYMISED`] or [`ZEROED_COLUMNS`]) before it
 /// can ship.
 pub const USER_COLUMNS: &[(&str, &str)] = &[
+    ("reef_consents", "user_id"),
+    ("reef_chat_recipients", "user_id"),
+    ("reef_reports", "reporter_id"),
+    ("reef_chat_evidence", "sender_id"),
+    ("reef_chat_evidence", "owner_id"),
+    ("reef_sanctions", "owner_id"),
+    ("reef_moderator_audit", "actor_id"),
+    ("reef_moderator_audit", "target_user_id"),
     ("member_achievements", "user_id"),
     ("verification_pending", "user_id"),
     ("raid_joins", "user_id"),
@@ -189,6 +197,7 @@ pub const DELETED_NAME: &str = "Deleted user";
 /// the player: the record stays (a server's custom commands outlive the manager who wrote them) and
 /// the id becomes 0.
 pub const ZEROED_COLUMNS: &[(&str, &str)] = &[
+    ("reef_sanctions", "actor_id"),
     ("custom_commands", "created_by"),
     ("custom_responders", "created_by"),
     ("feeds", "created_by"),
@@ -196,6 +205,9 @@ pub const ZEROED_COLUMNS: &[(&str, &str)] = &[
 
 /// Tables that belong to no player: server settings and shared stock.
 pub const OTHER_TABLES: &[&str] = &[
+    // Minimal, expiring moderation tombstones: deletion/rejoin must not bypass a sanction.
+    // Actor is zeroed and house-owned sanctions are deleted with the owner; no raw text retained.
+    "reef_sanctions",
     "server_achievements",
     "verification",
     "raid_settings",
@@ -614,7 +626,13 @@ async fn others_written(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, id: i64)
          UNION SELECT s.user_id FROM starboard_stars s JOIN starboard_posts p
              ON p.starboard_id=s.starboard_id AND p.message_id=s.message_id WHERE p.author_id=$1
          UNION SELECT p.author_id FROM starboard_posts p JOIN starboard_stars s
-             ON s.starboard_id=p.starboard_id AND s.message_id=p.message_id WHERE s.user_id=$1",
+             ON s.starboard_id=p.starboard_id AND s.message_id=p.message_id WHERE s.user_id=$1
+         UNION SELECT r.user_id FROM reef_chat_recipients r JOIN reef_chat_evidence e ON e.id=r.message_id
+             WHERE e.sender_id=$1 OR e.owner_id=$1
+         UNION SELECT r.reporter_id FROM reef_reports r JOIN reef_chat_evidence e ON e.id=r.message_id
+             WHERE e.sender_id=$1 OR e.owner_id=$1
+         UNION SELECT e.sender_id FROM reef_chat_evidence e WHERE e.owner_id=$1
+         UNION SELECT e.owner_id FROM reef_chat_evidence e WHERE e.sender_id=$1",
     )
     .bind(id)
     .fetch_all(&mut **tx)

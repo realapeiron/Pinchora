@@ -445,7 +445,7 @@ pub(crate) async fn visit(cx: &Cx, author: &User, host_id: u64, name: String, ro
         return cx.reply(data).await;
     }
     // A hidden house is not there at all: nobody can walk in, not even by name.
-    if cx.app.db.privacy(host_id).await?.hide_house {
+    if cx.app.db.privacy(host_id).await?.hide_house || cx.app.db.socially_blocked(host_id, author.id.get()).await? {
         return cx
             .reply_ephemeral(t!(cx.lang(), "house.visit.private", name = name))
             .await;
@@ -476,6 +476,11 @@ pub(crate) async fn visit(cx: &Cx, author: &User, host_id: u64, name: String, ro
         VisitOutcome::Rewarded { reward } if reward > 0 => Some(t!(cx.lang(), "house.visit.paid", reward = reward)),
         VisitOutcome::Rewarded { .. } => Some(t!(cx.lang(), "house.visit.cap", cap = VISIT_CAP)),
         VisitOutcome::AlreadyToday => None,
+        VisitOutcome::Unavailable => {
+            return cx
+                .reply_ephemeral(t!(cx.lang(), "house.visit.private", name = name))
+                .await;
+        }
     };
     let data = room_card(cx, host_id, &name, room, footer, Some(author.id.get())).await?;
     cx.reply(data).await

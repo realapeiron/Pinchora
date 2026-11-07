@@ -42,7 +42,7 @@ signed-note = "✍️ Yazıldı! Notun artık ziyaretçi defterinde:\n> {note}"
 signed = "Yazıldı!"
 already-today = "Bu ziyaretçi defterine bugün zaten yazdın. Yarın yine gel!"
 locked = "Bu ev kilitli, bu yüzden ziyaretçi defteri de kapalı."
-blocked = "Bu evin sahibi senin ziyaretçi defterine yazmanı engelledi."
+blocked = "Bu ziyaretçi defteri şu anda kullanılamıyor."
 no-visit = "Önce `/house visit` ile evi ziyaret et, sonra ziyaretçi defterine yaz."
 
 [contest]

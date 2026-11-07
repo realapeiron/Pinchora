@@ -1,3 +1,4 @@
+import { ModerationPage } from "./reef/ModerationPage";
 import { Navigate, createBrowserRouter } from "react-router";
 
 import { AuditLog } from "./pages/AuditLog";
@@ -64,6 +65,7 @@ export const router = createBrowserRouter([
   { path: "/verify/:token", lazy: async () => ({ Component: (await import("./pages/Verify")).Verify }) },
   { path: "/login", element: <Login /> },
   { path: "/servers", element: <RequireLogin>{(me) => <Servers me={me} />}</RequireLogin> },
+  { path: "/reef/moderation", element: <RequireLogin>{() => <ModerationPage />}</RequireLogin> },
   { path: "/me/house", element: <RequireLogin>{(me) => <MyHouse me={me} />}</RequireLogin> },
   { path: "/house/:userId", element: <RequireLogin>{(me) => <VisitHouse me={me} />}</RequireLogin> },
   {

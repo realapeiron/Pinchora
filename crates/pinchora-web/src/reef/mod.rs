@@ -1,6 +1,7 @@
-//! Single-pod authoritative rooms. No economy writes, chat, or persisted presence.
+//! Single-pod authoritative rooms. No economy writes or persisted presence.
 mod navigation;
 mod room;
+pub(crate) mod safety;
 mod socket;
 pub(crate) use socket::{ticket, upgrade};
 
@@ -33,6 +34,7 @@ impl Envelope {
         let fields: &[&str] = match &envelope.command {
             Command::Authenticate { .. } => &["ticket"],
             Command::Join { .. } => &["room"],
+            Command::Chat { .. } => &["text"],
             Command::MoveTo { .. } => &["tile"],
             Command::Use { .. } => &["placement_id", "revision"],
             _ => &[],
@@ -58,6 +60,7 @@ pub enum Command {
     Use { placement_id: String, revision: String },
     Stand,
     Ping,
+    Chat { text: String },
 }
 pub struct Event {
     pub epoch: String,
@@ -129,12 +132,58 @@ pub enum Input {
 }
 #[derive(Default)]
 pub struct Runtime {
+    pub(crate) safety: Mutex<()>,
+    locations: Mutex<HashMap<u64, RoomKey>>,
     rooms: Mutex<HashMap<RoomKey, mpsc::Sender<Input>>>,
     controllers: Mutex<HashMap<u64, Peer>>,
     limits: Mutex<HashMap<u64, Limits>>,
 }
 impl Runtime {
+    pub async fn terminate(&self, user: u64, reason: &'static str) {
+        if let Some(peer) = self.controllers.lock().await.get(&user) {
+            peer.terminate(reason);
+        }
+    }
+    pub async fn policy_changed(&self, user: u64) {
+        if let Some(peer) = self.controllers.lock().await.get(&user) {
+            peer.send("", "", json!({"type":"policy_changed"}));
+        }
+    }
+    pub async fn locate(&self, user: u64, key: RoomKey) {
+        self.locations.lock().await.insert(user, key);
+    }
+    pub async fn recheck(&self, state: &WebState) {
+        let locations = self.locations.lock().await.clone();
+        for (user, key) in locations {
+            let Some(peer) = self.controllers.lock().await.get(&user).cloned() else {
+                continue;
+            };
+            let reason = if matches!(
+                state.app.db.reef_sanctioned(user, key.owner, key.idx, false).await,
+                Ok(true)
+            ) {
+                Some("sanctioned")
+            } else if socket::room_access(state, key, user).await.is_err() {
+                Some("access_revoked")
+            } else {
+                None
+            };
+            if let Some(reason) = reason {
+                // A room transition or controller replacement may have completed during the DB read.
+                let controllers = self.controllers.lock().await;
+                let locations = self.locations.lock().await;
+                if controllers.get(&user).is_some_and(|p| p.token == peer.token) && locations.get(&user) == Some(&key) {
+                    peer.terminate(reason);
+                }
+            }
+        }
+    }
+
+    pub async fn unlocate(&self, user: u64) {
+        self.locations.lock().await.remove(&user);
+    }
     pub async fn claim(&self, peer: &Peer) {
+        self.locations.lock().await.remove(&peer.user);
         if let Some(old) = self.controllers.lock().await.insert(peer.user, peer.clone()) {
             old.terminate("controller_replaced");
         }
@@ -143,6 +192,7 @@ impl Runtime {
         let mut controllers = self.controllers.lock().await;
         if controllers.get(&peer.user).is_some_and(|p| p.token == peer.token) {
             controllers.remove(&peer.user);
+            self.locations.lock().await.remove(&peer.user);
         }
     }
     pub async fn allow(&self, user: u64, command: &Command) -> bool {
@@ -192,6 +242,9 @@ impl Bucket {
     }
 }
 struct Limits {
+    chat: Bucket,
+    chats: Vec<Instant>,
+    duplicate: Vec<(String, Instant)>,
     movement: Bucket,
     furniture: Bucket,
     joins: Vec<Instant>,
@@ -202,6 +255,9 @@ struct Limits {
 impl Limits {
     fn new() -> Self {
         Self {
+            chat: Bucket::new(1.0, 3.0),
+            chats: Vec::new(),
+            duplicate: Vec::new(),
             movement: Bucket::new(5.0, 10.0),
             furniture: Bucket::new(2.0, 2.0),
             joins: Vec::new(),
@@ -216,6 +272,22 @@ impl Limits {
             return false;
         }
         match command {
+            Command::Chat { text } => {
+                self.chats
+                    .retain(|at| now.duration_since(*at) < Duration::from_secs(60));
+                self.duplicate
+                    .retain(|(_, at)| now.duration_since(*at) < Duration::from_secs(60));
+                let fingerprint = pinchora_game::chat::fingerprint(text);
+                if !self.chat.take(now)
+                    || self.chats.len() >= 20
+                    || self.duplicate.iter().any(|(old, _)| old == &fingerprint)
+                {
+                    return false;
+                }
+                self.chats.push(now);
+                self.duplicate.push((fingerprint, now));
+                true
+            }
             Command::Join { .. } => {
                 self.joins
                     .retain(|at| now.duration_since(*at) < Duration::from_secs(60));
@@ -279,6 +351,29 @@ mod tests {
         assert!(limits.allow(&Command::Stand, now));
         assert!(limits.allow(&Command::Stand, now));
         assert!(!limits.allow(&Command::Stand, now));
+    }
+    #[test]
+    fn chat_burst_minute_and_duplicates() {
+        let mut limits = Limits::new();
+        let now = Instant::now();
+        for text in ["one", "two", "three"] {
+            assert!(limits.allow(&Command::Chat { text: text.into() }, now));
+        }
+        assert!(!limits.allow(&Command::Chat { text: "four".into() }, now));
+        assert!(limits.allow(&Command::Chat { text: "four".into() }, now + Duration::from_secs(1)));
+        assert!(!limits.allow(&Command::Chat { text: "FOUR".into() }, now + Duration::from_secs(2)));
+        let mut limits = Limits::new();
+        let now = Instant::now();
+        for i in 0..20 {
+            assert!(limits.allow(
+                &Command::Chat {
+                    text: format!("message {}", (b'a' + i) as char)
+                },
+                now + Duration::from_secs(i as u64)
+            ));
+        }
+        assert!(!limits.allow(&Command::Chat { text: "another".into() }, now + Duration::from_secs(20)));
+        assert!(limits.allow(&Command::Chat { text: "another".into() }, now + Duration::from_secs(60)));
     }
     #[test]
     fn private_room_keys_only() {

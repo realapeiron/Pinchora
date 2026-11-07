@@ -331,6 +331,16 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
         "INSERT INTO antinuke (guild_id,trusted_users) VALUES ($1,ARRAY[$1,$2])",
 
     ];
+    for sql in [
+        "INSERT INTO reef_consents(user_id,version,age_band,accepted) VALUES($1,1,'13_plus',true)",
+        "INSERT INTO reef_chat_evidence(id,owner_id,room_idx,sender_id,text) VALUES($1,$1,0,$1,'privacy fixture')",
+        "INSERT INTO reef_chat_recipients(message_id,user_id) VALUES($1,$1)",
+        "INSERT INTO reef_reports(id,message_id,reporter_id,reason) VALUES($1,$1,$1,'other')",
+        "INSERT INTO reef_moderator_audit(actor_id,target_user_id,action) VALUES($1,$1,'report')",
+        "INSERT INTO reef_sanctions(user_id,actor_id,owner_id,kind,expires_at) VALUES($2,$2,$1,'mute',now()+interval '1 hour'),($1,$1,NULL,'ban',now()+interval '1 hour')",
+    ] {
+        run(db, sql, user, other).await;
+    }
     for sql in inserts {
         run(db, sql, user, other).await;
     }
@@ -402,7 +412,12 @@ async fn fill_and_delete(db: &Db, user: u64, other: u64, guild: u64) -> Vec<(&'s
             0,
             "{table}.{column} still names the player"
         );
-        let sql = format!("SELECT count(*) FROM {table} WHERE guild_id = $1 AND {column} = 0");
+        let scope = if *table == "reef_sanctions" {
+            "user_id"
+        } else {
+            "guild_id"
+        };
+        let sql = format!("SELECT count(*) FROM {table} WHERE {scope} = $1 AND {column} = 0");
         let (kept,): (i64,) = sqlx::query_as(sqlx::AssertSqlSafe(sql))
             .bind(user as i64)
             .fetch_one(db.pool())
@@ -1129,7 +1144,7 @@ async fn paid_visits_likes_wordle_and_walks_survive_deleting() {
     let (reward, cap) = (25, 2);
     let paid = |outcome: VisitOutcome| match outcome {
         VisitOutcome::Rewarded { reward } => reward,
-        VisitOutcome::AlreadyToday => -1,
+        VisitOutcome::AlreadyToday | VisitOutcome::Unavailable => -1,
     };
 
     // A guest is paid for two houses a day, whoever deletes what afterwards.

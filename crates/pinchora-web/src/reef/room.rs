@@ -245,6 +245,7 @@ impl Room {
             using: false,
         };
         let presence = member.json();
+        state.reef.locate(peer.user, self.key).await;
         self.members.insert(peer.token.clone(), member);
         self.snapshot(&peer, &request);
         self.broadcast("", json!({"type":"presence","action":"join","player":presence}));
@@ -268,6 +269,46 @@ impl Room {
         }
         if room_access(state, self.key, member.peer.user).await.is_err() {
             member.peer.terminate("access_revoked");
+            return Ok(());
+        }
+        if let Command::Chat { text } = &envelope.command {
+            let peer = member.peer.clone();
+            if let Err(reason) = pinchora_game::chat::check(text) {
+                peer.error(&self.epoch, request, reason);
+                return Ok(());
+            }
+            let _guard = state.reef.safety.lock().await;
+            if peer.close.borrow().is_some() {
+                return Ok(());
+            }
+            let peers: Vec<_> = self
+                .members
+                .values()
+                .filter(|m| m.peer.close.borrow().is_none())
+                .map(|m| m.peer.user)
+                .collect();
+            match state
+                .app
+                .db
+                .reef_chat(self.key.owner, self.key.idx, peer.user, text, &peers)
+                .await?
+            {
+                Err(reason) => peer.error(&self.epoch, request, reason),
+                Ok((evidence, recipients)) => {
+                    let mut event = evidence.json();
+                    event["type"] = json!("chat");
+                    event["name"] = json!(peer.name);
+                    for member in self.members.values() {
+                        if recipients.contains(&member.peer.user) {
+                            member.peer.send(
+                                &self.epoch,
+                                if member.peer.user == peer.user { request } else { "" },
+                                event.clone(),
+                            );
+                        }
+                    }
+                }
+            }
             return Ok(());
         }
         // Refresh before accepting an intention, including after missed pub/sub notifications.
@@ -407,9 +448,10 @@ pub async fn run(state: WebState, key: RoomKey, epoch: String, mut input: mpsc::
                     if state.app.cache.ping().await.is_err() || room.refresh(&state).await.is_err() {break;}
                     refreshed=Instant::now();
                 }
-                if policy.elapsed()>=Duration::from_secs(15) {
+                if policy.elapsed()>=Duration::from_secs(1) {
                     for member in room.members.values() {
-                        if room_access(&state,key,member.peer.user).await.is_err() {member.peer.terminate("access_revoked");}
+                        if matches!(state.app.db.reef_sanctioned(member.peer.user,key.owner,key.idx,false).await,Ok(true)) {member.peer.terminate("sanctioned");}
+                        else if room_access(&state,key,member.peer.user).await.is_err() {member.peer.terminate("access_revoked");}
                     }
                     policy=Instant::now();
                 }

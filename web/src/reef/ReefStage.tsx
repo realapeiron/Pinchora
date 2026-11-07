@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { PixelButton } from "../components/PixelButton";
 import type { RoomJson } from "../iso/scene";
 import { bootstrap } from "./bootstrap";
+import { ChatPanel } from "./ChatPanel";
 import { ReefNet, type NetworkState } from "./net";
 import { poseAt, type Animation } from "./animation";
 import { Camera, Gesture } from "./camera";
@@ -25,7 +26,6 @@ export default function ReefStage({
   roomKey,
   onLayout,
   roomName,
-  playerName,
   onExit,
   rooms,
   onRoom,
@@ -61,6 +61,7 @@ export default function ReefStage({
   const [status, setStatus] = useState("Loading your character…");
   const [network, setNetwork] = useState<NetworkState>("preview");
   const controller = useRef<ReefNet | null>(null);
+  const [chatNet, setChatNet] = useState<ReefNet | null>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [targets, setTargets] = useState<Target[]>([]);
@@ -100,6 +101,7 @@ export default function ReefStage({
       const remoteArt = new Map<string, Animation>();
       const pendingArt = new Set<string>();
       const tags = new Map<string, HTMLDivElement>();
+      const chatBubbles = new Map<string, HTMLButtonElement>();
       let wasOnline = false;
       const net = new ReefNet(
         roomKey,
@@ -116,6 +118,7 @@ export default function ReefStage({
         room,
       );
       controller.current = net;
+      setChatNet(net);
       void net.connect();
       const camera = new Camera(window.devicePixelRatio || 1);
       const gesture = new Gesture();
@@ -344,7 +347,7 @@ export default function ReefStage({
         }
         dust.draw(ctx, compositor.room.origin);
       };
-      const placeOverlay = (node: HTMLDivElement | null, point: Point, lift: number) => {
+      const placeOverlay = (node: HTMLElement | null, point: Point, lift: number) => {
         if (!node) return;
         const [ox, oy] = compositor.room.origin;
         const x = (camera.x + (ox + 32 * (point[0] - point[1])) * camera.scale) / camera.dpr;
@@ -486,6 +489,40 @@ export default function ReefStage({
             );
           }
         } else compositor.draw(ctx, [], ground);
+        const latest = new Map(
+          net.chat
+            .snapshot()
+            .filter(
+              (line) => line.delivery === "delivered" && Date.now() - Date.parse(line.created_at) < 8000,
+            )
+            .map((line) => [line.sender_id, line]),
+        );
+        for (const [id, node] of chatBubbles) {
+          if (!latest.has(id) || !net.players.has(id)) {
+            node.remove();
+            chatBubbles.delete(id);
+          }
+        }
+        for (const [id, line] of latest) {
+          const person = net.visual(id, now);
+          if (!person) continue;
+          let node = chatBubbles.get(id);
+          if (!node) {
+            node = document.createElement("button");
+            node.type = "button";
+            node.className = "reef-chat-bubble";
+            node.onclick = () =>
+              window.dispatchEvent(new CustomEvent("reef-report", { detail: node!.dataset.messageId }));
+            el.parentElement!.append(node);
+            chatBubbles.set(id, node);
+          }
+          node.textContent = line.text;
+          node.dataset.messageId = line.message_id;
+          node.setAttribute("aria-label", `${t("Report message")}: ${line.name}: ${line.text}`);
+          placeOverlay(node, person.position, 145);
+        }
+        if (nameTag.current && net.ready)
+          nameTag.current.textContent = net.players.get(net.userId)?.name ?? "🐚";
         frames.push(performance.now() - started);
         if (frames.length > 600) frames.shift();
         if (++ticks % 60 === 0) {
@@ -509,6 +546,7 @@ export default function ReefStage({
         net.dispose();
         if (controller.current === net) controller.current = null;
         for (const tag of tags.values()) tag.remove();
+        for (const node of chatBubbles.values()) node.remove();
         cancelAnimationFrame(raf);
         observer.disconnect();
         controls.current = null;
@@ -579,7 +617,7 @@ export default function ReefStage({
           </button>
         </div>
         <div className="reef-name-tag" ref={nameTag} hidden={!ready}>
-          {playerName}
+          {t("You")}
         </div>
         <div className="reef-context" ref={bubble} hidden={!selected}>
           <button
@@ -759,6 +797,7 @@ export default function ReefStage({
           </p>
         ))}
       </aside>
+      {chatNet && <ChatPanel key={roomKey} net={chatNet} roomKey={roomKey} />}
     </section>
   );
 }
