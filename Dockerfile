@@ -16,9 +16,15 @@ ARG NODE_VERSION=22
 
 # --- web: the dashboard SPA (web/), embedded into the binary by pinchora-web ------
 FROM node:${NODE_VERSION}-alpine AS web
-WORKDIR /web
+# The Reef asset pages are cut from the sprite atlas and the look sheets by a stdlib-only Python script.
+RUN apk add --no-cache python3
+WORKDIR /src/web
 COPY web/package.json web/package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
+COPY assets/sprites/atlas.png assets/sprites/atlas.json /src/assets/sprites/
+COPY assets/reef/looks/ /src/assets/reef/looks/
+COPY crates/pinchora-render/src/character/palette.rs /src/crates/pinchora-render/src/character/
+COPY content/accessories.json /src/content/
 COPY web/ ./
 RUN npm run build
 
@@ -55,7 +61,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
 # embedded at compile time, so both must be in the build context. So is the built
 # dashboard: pinchora-web's build.rs bakes web/dist into the binary.
 COPY . .
-COPY --from=web /web/dist web/dist
+COPY --from=web /src/web/dist web/dist
 RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
     cargo build --release --locked -p pinchora \
