@@ -3375,4 +3375,43 @@ export const en = {
     "Members run these commands with {tag}: send a reply or embed, or give a role. Create simple commands in Discord with {setup}.",
   "{count}/{max} USED": "{count}/{max} USED",
   "Choose English or Turkish.": "Choose English or Turkish.",
+  " · live role {role}": " · live role {role}",
+  Twitch: "Twitch",
+  "🔴 **{account}** is live: {title}\n{url}": "🔴 **{account}** is live: {title}\n{url}",
+  "Stream ended or channel unlinked": "Stream ended or channel unlinked",
+  "Stream went live": "Stream went live",
+  "Watch stream": "Watch stream",
+  "Stream ended · Watch the VOD": "Stream ended · Watch the VOD",
+  Game: "Game",
+  "The live role could not be removed. Try again before unlinking.":
+    "The live role could not be removed. Try again before unlinking.",
+  "Choose Twitch or Kick.": "Choose Twitch or Kick.",
+  "Verification code expired. Start again.": "Verification code expired. Start again.",
+  "The channel could not be checked right now.": "The channel could not be checked right now.",
+  "Put the code in the channel bio or stream title, then try again.":
+    "Put the code in the channel bio or stream title, then try again.",
+  "This channel is already linked to another member.": "This channel is already linked to another member.",
+  "Playing live now": "Playing live now",
+  "Enter a Twitch login or channel URL.": "Enter a Twitch login or channel URL.",
+  "Enter a Kick login or channel URL.": "Enter a Kick login or channel URL.",
+  "Twitch feeds are not configured on this Pinchora.": "Twitch feeds are not configured on this Pinchora.",
+  "Kick feeds are not configured on this Pinchora.": "Kick feeds are not configured on this Pinchora.",
+  "A Live now role can only be set on Twitch or Kick feeds.":
+    "A Live now role can only be set on Twitch or Kick feeds.",
+  "MY CHANNELS": "MY CHANNELS",
+  "Link your Twitch or Kick channel to receive a Live now role in servers that follow you.":
+    "Link your Twitch or Kick channel to receive a Live now role in servers that follow you.",
+  "Put this code in your stream title or channel bio": "Put this code in your stream title or channel bio",
+  Verify: "Verify",
+  Unlink: "Unlink",
+  Platform: "Platform",
+  "Channel login": "Channel login",
+  "Link channel": "Link channel",
+  "Twitch channel login or link; Pinchora checks the stream every two minutes.":
+    "Twitch channel login or link; Pinchora checks the stream every two minutes.",
+  "Kick channel login or link; Pinchora checks the stream every two minutes.":
+    "Kick channel login or link; Pinchora checks the stream every two minutes.",
+  "Live now role": "Live now role",
+  "Given only to a linked streamer while this channel is live.":
+    "Given only to a linked streamer while this channel is live.",
 } as const;

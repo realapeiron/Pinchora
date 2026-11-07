@@ -3401,4 +3401,43 @@ export const tr: { [K in keyof typeof en]: string } = {
     "Üyeleriniz bu komutları {tag} ile çalıştırarak mesaj veya gömülü mesaj gönderebilir ya da rol alabilir. Basit komutları Discord’da {setup} ile oluşturabilirsiniz.",
   "{count}/{max} USED": "{count}/{max} KULLANILAN",
   "Choose English or Turkish.": "İngilizce veya Türkçe seçin.",
+  " · live role {role}": " · canlı yayın rolü {role}",
+  Twitch: "Twitch",
+  "🔴 **{account}** is live: {title}\n{url}": "🔴 **{account}** canlı yayında: {title}\n{url}",
+  "Stream ended or channel unlinked": "Yayın sona erdi ya da kanal bağlantısı kaldırıldı",
+  "Stream went live": "Canlı yayın başladı",
+  "Watch stream": "Yayını izle",
+  "Stream ended · Watch the VOD": "Yayın sona erdi · Kaydı izle",
+  Game: "Oyun",
+  "The live role could not be removed. Try again before unlinking.":
+    "Canlı yayın rolü kaldırılamadı. Bağlantıyı kaldırmadan önce tekrar dene.",
+  "Choose Twitch or Kick.": "Twitch veya Kick seç.",
+  "Verification code expired. Start again.": "Doğrulama kodunun süresi doldu. Yeniden başla.",
+  "The channel could not be checked right now.": "Kanal şu an kontrol edilemedi.",
+  "Put the code in the channel bio or stream title, then try again.":
+    "Kodu kanal açıklamana ya da yayın başlığına ekleyip yeniden dene.",
+  "This channel is already linked to another member.": "Bu kanal zaten başka bir üyeye bağlı.",
+  "Playing live now": "Şimdi canlı yayında",
+  "Enter a Twitch login or channel URL.": "Twitch kullanıcı adını ya da kanal bağlantısını yaz.",
+  "Enter a Kick login or channel URL.": "Kick kullanıcı adını ya da kanal bağlantısını yaz.",
+  "Twitch feeds are not configured on this Pinchora.": "Bu Pinchora’da Twitch akışları henüz ayarlanmamış.",
+  "Kick feeds are not configured on this Pinchora.": "Bu Pinchora’da Kick akışları henüz ayarlanmamış.",
+  "A Live now role can only be set on Twitch or Kick feeds.":
+    "Canlı yayın rolü yalnızca Twitch veya Kick akışlarında kullanılabilir.",
+  "MY CHANNELS": "KANALLARIM",
+  "Link your Twitch or Kick channel to receive a Live now role in servers that follow you.":
+    "Seni takip eden sunucularda canlı yayın rolü almak için Twitch veya Kick kanalını bağla.",
+  "Put this code in your stream title or channel bio": "Bu kodu yayın başlığına ya da kanal açıklamana ekle",
+  Verify: "Doğrula",
+  Unlink: "Bağlantıyı kaldır",
+  Platform: "Platform",
+  "Channel login": "Kanal kullanıcı adı",
+  "Link channel": "Kanalı bağla",
+  "Twitch channel login or link; Pinchora checks the stream every two minutes.":
+    "Twitch kullanıcı adı veya kanal bağlantısı; Pinchora yayını iki dakikada bir kontrol eder.",
+  "Kick channel login or link; Pinchora checks the stream every two minutes.":
+    "Kick kullanıcı adı veya kanal bağlantısı; Pinchora yayını iki dakikada bir kontrol eder.",
+  "Live now role": "Canlı yayın rolü",
+  "Given only to a linked streamer while this channel is live.":
+    "Yalnızca bağlı yayıncı canlı yayındayken verilir.",
 };

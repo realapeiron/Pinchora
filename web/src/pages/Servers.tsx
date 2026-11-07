@@ -4,12 +4,14 @@ import { ServerIcon } from "../components/ServerIcon";
 import { TopBar } from "../components/TopBar";
 import { t } from "../i18n";
 import type { GuildEntry, Me } from "../lib/api";
+import { useMyChannels } from "../lib/feeds";
 import { useGuilds, useRefreshGuilds } from "../lib/queries";
 import { Loading, Problem } from "./States";
 
 export function Servers({ me }: { me: Me }) {
   const guilds = useGuilds();
   const refresh = useRefreshGuilds();
+  const channels = useMyChannels();
   return (
     <div className="page">
       <TopBar me={me} />
@@ -23,6 +25,14 @@ export function Servers({ me }: { me: Me }) {
             {refresh.isPending ? t("Refreshing…") : t("Refresh list")}
           </PixelButton>
         </div>
+        {channels.data && (
+          <Panel title={t("MY CHANNELS")}>
+            <p>
+              {t("Link your Twitch or Kick channel to receive a Live now role in servers that follow you.")}
+            </p>
+            <PixelLink href="/feeds/my-channels">{t("MY CHANNELS")}</PixelLink>
+          </Panel>
+        )}
         {refresh.isError && <p className="notice notice-heart">{refresh.error.message}</p>}
         {guilds.isPending && <Loading label={t("Finding your servers")} />}
         {guilds.isError && <Problem error={guilds.error} />}

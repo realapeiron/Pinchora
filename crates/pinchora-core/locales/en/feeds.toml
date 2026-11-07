@@ -17,6 +17,7 @@ list-title = "Feeds ({count}/{max})"
 list-empty = "This server follows no feed yet. Add one with `/integrations feeds add` or on the dashboard's Feeds page."
 list-footer = "Page {page} of {pages}"
 list-pings = " · pings {role}"
+list-live-role = " · live role {role}"
 previous = "Previous"
 next = "Next"
 expired = "This button has expired."
@@ -47,6 +48,8 @@ podcast = "Podcast"
 reddit = "Reddit"
 bluesky = "Bluesky"
 bridge = "Bridge"
+twitch = "Twitch"
+kick = "Kick"
 
 # What a new post says when the feed has no message of its own. {account} is the channel, feed,
 # subreddit or account; {title} {url} {author} {published} are the post's.
@@ -56,6 +59,23 @@ rss = "New from **{account}**: {title}\n{url}"
 reddit = "New in **{account}**: {title}\n{url}"
 bluesky = "**{account}** posted on Bluesky:\n{url}"
 bridge = "New from **{account}**: {title}\n{url}"
+twitch = "🔴 **{account}** is live: {title}\n{url}"
+kick = "🔴 **{account}** is live: {title}\n{url}"
+
+[feeds.live]
+role-removed = "Stream ended or channel unlinked"
+role-added = "Stream went live"
+watch = "Watch stream"
+ended = "Stream ended · Watch the VOD"
+game = "Game"
+
+[feeds.link]
+role-retry = "The live role could not be removed. Try again before unlinking."
+kind = "Choose Twitch or Kick."
+expired = "Verification code expired. Start again."
+check-failed = "The channel could not be checked right now."
+code-missing = "Put the code in the channel bio or stream title, then try again."
+taken = "This channel is already linked to another member."
 
 [feeds.card]
 length = "Length"
@@ -69,6 +89,8 @@ rss = "Ten things we learned this year"
 reddit = "What is the coziest game you played this month?"
 bluesky = "Morning walk by the reef 🌊"
 bridge = "A new post"
+twitch = "Playing live now"
+kick = "Playing live now"
 summary = "The first lines of the article show here."
 account = "Your source"
 
@@ -81,10 +103,14 @@ private = "That address points inside a private network, so I won't fetch it."
 reddit = "That isn't a subreddit. Write it as r/name or paste its link."
 bluesky = "That isn't a Bluesky account. Write the handle, like name.bsky.social, or paste the profile link."
 bridge = "That isn't a bridge route. Write the path the bridge serves, like twitter/user/name."
+twitch = "Enter a Twitch login or channel URL."
+kick = "Enter a Kick login or channel URL."
 
 [feeds.unavailable]
 bridge = "X, Instagram and TikTok need an RSS bridge, and this Pinchora has none set up."
 reddit = "Reddit feeds are switched off on this Pinchora."
+twitch = "Twitch feeds are not configured on this Pinchora."
+kick = "Kick feeds are not configured on this Pinchora."
 
 [feeds.error]
 blocked = "it points inside a private network, so I won't fetch it."
@@ -128,11 +154,28 @@ full = "A server follows at most {max} feeds. Remove one first."
 post-refused = "I couldn't post there: {why}"
 ping-role = "Pings @{role} with every new post (a test post pings nobody)."
 role = "role"
+live-only = "A Live now role can only be set on Twitch or Kick feeds."
 
 [module-blurb]
 feeds = "/integrations feeds: new YouTube videos, RSS and podcast episodes, Reddit and Bluesky posts in a channel."
 
 [feeds.ui]
+twitch = "Twitch"
+kick = "Kick"
+my-channels = "MY CHANNELS"
+my-channels-help = "Link your Twitch or Kick channel to receive a Live now role in servers that follow you."
+channel-verified = "Verified"
+channel-pending = "Waiting for verification"
+put-code-in-title-or-bio = "Put this code in your stream title or channel bio"
+verify-channel = "Verify"
+unlink-channel = "Unlink"
+platform = "Platform"
+channel-login = "Channel login"
+link-channel = "Link channel"
+twitch-live-help = "Twitch channel login or link; Pinchora checks the stream every two minutes."
+kick-live-help = "Kick channel login or link; Pinchora checks the stream every two minutes."
+live-now-role = "Live now role"
+live-now-role-hint = "Given only to a linked streamer while this channel is live."
 social-feeds = "SOCIAL FEEDS"
 new-videos-posts-and-episodes-from-the-places = "New videos, posts and episodes from the places your server follows, posted in a channel as they appear."
 add-a-feed = "Add a feed"

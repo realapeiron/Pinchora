@@ -992,3 +992,8 @@
 "community" = "Destek talepleri, öne çıkanlar, etkinlikler ve araçları yapılandır"
 "integrations" = "Akışları, sayaçları ve davet takibini yapılandır"
 "progression" = "Seviye, ekonomi ve başarıları yapılandır"
+"integrations feeds add kind=Twitch" = "Twitch"
+"integrations feeds add kind=Kick" = "Kick"
+"integrations feeds add live_role" = "Doğrulanmış yayıncı canlıyken verilecek rol (Twitch veya Kick)"
+"integrations feeds edit live_role" = "Doğrulanmış yayıncı canlıyken bu rolü ver"
+"integrations feeds edit no_live_role" = "Canlı yayın rolü vermeyi bırak"

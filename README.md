@@ -922,17 +922,29 @@ All feature text is in `locales/{en,tr}/anti_nuke.toml`. The dashboard includes 
 
 ### Social feeds
 
-New YouTube videos, RSS and podcast episodes, Reddit posts and Bluesky posts, posted in a channel as they
+New YouTube videos, RSS and podcast episodes, Reddit and Bluesky posts, and Twitch or Kick live streams, posted in a channel as they
 appear: the **Social feeds** module (group Feeds), `/integrations feeds` in Discord and the dashboard's **Social feeds** page.
 A server follows up to 10 sources.
 
 | Command | What it does |
 |---|---|
-| `/integrations feeds add kind source channel [message] [role]` | Follow a source. `kind` is YouTube, RSS or podcast, Reddit, Bluesky, or X/Instagram/TikTok (only with a bridge, below). `source` is a YouTube channel link, `@handle` or `UC…` id (a handle is read from the channel's page, best effort; the channel link always works), a feed address (`https://` is added when missing), `r/name` or a subreddit link, or a Bluesky handle, DID or profile link. The source is fetched once to show what it is and its latest post; what it already shows is never posted, only what comes after. `message` takes `{title}` `{url}` `{author}` `{account}` `{published}` (up to 500 characters; empty uses the kind's default, in the server's language); `role` is pinged with every new post (never `@everyone`) (Manage Server) |
+| `/integrations feeds add kind source channel [message] [role] [live_role]` | Follow a source. `kind` is YouTube, RSS or podcast, Reddit, Bluesky, Twitch, Kick, or X/Instagram/TikTok (only with a bridge, below). Twitch and Kick take a channel login or profile URL; `live_role` is given only to a verified streamer while live, subject to the shared role safety rule. `source` is a YouTube channel link, `@handle` or `UC…` id (a handle is read from the channel's page, best effort; the channel link always works), a feed address (`https://` is added when missing), `r/name` or a subreddit link, or a Bluesky handle, DID or profile link. The source is fetched once to show what it is and its latest post; what it already shows is never posted, only what comes after. `message` takes `{title}` `{url}` `{author}` `{account}` `{published}` (up to 500 characters; empty uses the kind's default, in the server's language); `role` is pinged with every new post (never `@everyone`) (Manage Server) |
 | `/integrations feeds list` | The feeds with their number, channel, role and health: when the source was last checked and the last post went out, or why it fails (the site's error, “I need View Channel, Send Messages and Embed Links in that channel”), five per page (Manage Server) |
-| `/integrations feeds edit id [channel] [message] [role] [no_role] [embed] [include] [exclude] [enabled]` | Change a feed: another channel, the message (`-` back to the default), the role, Pinchora's card, filter words (comma-separated, `-` clears; `include` posts only titles with one of them, `exclude` never titles with one; up to 10 words of 40 characters each, any case), or switch it off and on (Manage Server) |
+| `/integrations feeds edit id [channel] [message] [role] [no_role] [live_role] [no_live_role] [embed] [include] [exclude] [enabled]` | Change a feed: another channel, the message (`-` back to the default), the role, Pinchora's card, filter words (comma-separated, `-` clears; `include` posts only titles with one of them, `exclude` never titles with one; up to 10 words of 40 characters each, any case), or switch it off and on (Manage Server) |
 | `/integrations feeds test id` | Post the source's latest item in the feed's channel now, the way new posts look; nobody is pinged (Manage Server) |
 | `/integrations feeds remove id` | Stop following a source (Manage Server) |
+
+**Live streams.** Twitch Helix and Kick's public API are checked every two minutes. Twitch stream checks batch up to
+100 logins per request. A new stream gets a title/game/thumbnail embed and Watch button; when it ends, Pinchora edits
+that message to link to the channel's videos and removes the optional live role. Members link their own account on the
+Feeds page under **My channels** by putting a 15-minute code in their public channel bio or stream title. Roles are
+given only to verified accounts and only while the configured role passes the shared grant rule.
+
+Twitch requires `PINCHORA_FEEDS__TWITCH_CLIENT_ID` and `PINCHORA_FEEDS__TWITCH_CLIENT_SECRET`; Kick requires
+`PINCHORA_FEEDS__KICK_CLIENT_ID` and `PINCHORA_FEEDS__KICK_CLIENT_SECRET`. Each kind is unavailable with an explanation
+until its pair is set. An HTTPS `PINCHORA_FEEDS__WEBHOOK_PUBLIC_URL` registers Twitch `stream.online` and `stream.offline`
+EventSub callbacks at `POST /hooks/twitch`; the handler verifies HMAC-SHA256 and deduplicates message IDs. Polling
+continues as a safety net and is used alone without a public URL. Kick uses polling.
 
 **How a post looks.** The message, then (when the card is on, the default for everything but YouTube)
 Pinchora's card: the title linking to the post, the account, a summary for articles, the picture (a video's

@@ -73,10 +73,20 @@ pub enum Kind {
     Bluesky,
     /// A route on the operator's RSSHub-style bridge (X, Instagram, TikTok), read as RSS.
     Bridge,
+    Twitch,
+    Kick,
 }
 
 impl Kind {
-    pub const ALL: [Self; 5] = [Self::YouTube, Self::Rss, Self::Reddit, Self::Bluesky, Self::Bridge];
+    pub const ALL: [Self; 7] = [
+        Self::YouTube,
+        Self::Rss,
+        Self::Reddit,
+        Self::Bluesky,
+        Self::Bridge,
+        Self::Twitch,
+        Self::Kick,
+    ];
 
     /// The key stored in the database and used in the API.
     pub const fn key(self) -> &'static str {
@@ -86,6 +96,8 @@ impl Kind {
             Self::Reddit => "reddit",
             Self::Bluesky => "bluesky",
             Self::Bridge => "bridge",
+            Self::Twitch => "twitch",
+            Self::Kick => "kick",
         }
     }
 
@@ -100,6 +112,7 @@ impl Kind {
             Self::Rss => 600,
             Self::Bluesky => 120,
             Self::Bridge => 900,
+            Self::Twitch | Self::Kick => 120,
         }
     }
 
@@ -132,6 +145,8 @@ pub enum SourceError {
     Reddit,
     Bluesky,
     Bridge,
+    Twitch,
+    Kick,
 }
 
 impl SourceError {
@@ -145,6 +160,8 @@ impl SourceError {
             Self::Reddit => "feeds.source.reddit",
             Self::Bluesky => "feeds.source.bluesky",
             Self::Bridge => "feeds.source.bridge",
+            Self::Twitch => "feeds.source.twitch",
+            Self::Kick => "feeds.source.kick",
         }
     }
 }
@@ -164,7 +181,40 @@ pub fn parse_source(kind: Kind, input: &str) -> Result<Parsed, SourceError> {
         Kind::Reddit => subreddit(input).map(Parsed::Ready).ok_or(SourceError::Reddit),
         Kind::Bluesky => bluesky_actor(input).map(Parsed::Ready).ok_or(SourceError::Bluesky),
         Kind::Bridge => bridge_route(input).map(Parsed::Ready).ok_or(SourceError::Bridge),
+        Kind::Twitch => stream_login(input, "twitch.tv", 25)
+            .map(Parsed::Ready)
+            .ok_or(SourceError::Twitch),
+        Kind::Kick => stream_login(input, "kick.com", 25)
+            .map(Parsed::Ready)
+            .ok_or(SourceError::Kick),
     }
+}
+
+/// A public streamer login or its profile URL. Query strings and extra path segments are refused.
+fn stream_login(input: &str, host: &str, max: usize) -> Option<String> {
+    let login = if input.contains("/") || input.contains("://") {
+        let url = loose_url(input)?;
+        if !matches!(url.host_str()?, h if h == host || h == format!("www.{host}"))
+            || !matches!(url.scheme(), "http" | "https")
+            || url.query().is_some()
+            || url.fragment().is_some()
+        {
+            return None;
+        }
+        let mut parts = url.path_segments()?.filter(|part| !part.is_empty());
+        let name = parts.next()?;
+        if parts.next().is_some() {
+            return None;
+        }
+        name.to_owned()
+    } else {
+        input.trim_start_matches('@').to_owned()
+    };
+    ((2..=max).contains(&login.len())
+        && login
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'_' || (host == "kick.com" && b == b'-')))
+    .then(|| login.to_ascii_lowercase())
 }
 
 /// Whether `id` looks like a YouTube channel id: `UC` and 22 more URL-safe characters.
@@ -403,6 +453,7 @@ pub fn feed_url(kind: Kind, source: &str, bridge: Option<&str>) -> Option<String
                 format!("{}/{source}", bridge.trim_end_matches('/'))
             }
         }
+        Kind::Twitch | Kind::Kick => return None,
     })
 }
 
@@ -414,6 +465,8 @@ pub fn page_url(kind: Kind, source: &str) -> Option<String> {
         Kind::Reddit => Some(format!("https://www.reddit.com/r/{source}/")),
         Kind::Bluesky => Some(format!("https://bsky.app/profile/{source}")),
         Kind::Bridge => None,
+        Kind::Twitch => Some(format!("https://www.twitch.tv/{source}")),
+        Kind::Kick => Some(format!("https://kick.com/{source}")),
     }
 }
 
@@ -656,6 +709,22 @@ mod tests {
         assert_eq!(ready(Kind::Bridge, "/twitter/user/jack"), "twitter/user/jack");
         assert!(parse_source(Kind::Bridge, "twitter/../admin").is_err());
         assert!(parse_source(Kind::Bridge, "x y").is_err());
+    }
+
+    #[test]
+    fn live_sources_are_canonical_and_reject_extra_url_parts() {
+        assert_eq!(ready(Kind::Twitch, "@Streamer_12"), "streamer_12");
+        assert_eq!(ready(Kind::Twitch, "https://www.twitch.tv/Streamer_12"), "streamer_12");
+        assert_eq!(ready(Kind::Kick, "https://kick.com/John-Doe"), "john-doe");
+        for bad in [
+            "https://twitch.tv/name/videos",
+            "https://twitch.tv/name?x=1",
+            "https://example.com/name",
+        ] {
+            assert!(parse_source(Kind::Twitch, bad).is_err(), "{bad}");
+        }
+        assert_eq!(Kind::Twitch.interval_secs(), 120);
+        assert_eq!(Kind::Kick.interval_secs(), 120);
     }
 
     #[test]

@@ -20,7 +20,7 @@ pub const FEED_REFUSALS_OFF: i32 = 10;
 macro_rules! feed_columns {
     () => {
         "id, guild_id, kind, source, display_name, channel_id, message, embed, ping_role_id, filter_include, \
-         filter_exclude, enabled, last_item_id, last_sent_at, last_error, delivery_failures, created_by, created_at"
+         filter_exclude, enabled, last_item_id, last_sent_at, last_error, delivery_failures, created_by, created_at, live_role_id, live_message_id"
     };
 }
 
@@ -45,6 +45,8 @@ pub struct FeedRow {
     pub delivery_failures: i32,
     pub created_by: i64,
     pub created_at: DateTime<Utc>,
+    pub live_role_id: Option<i64>,
+    pub live_message_id: Option<i64>,
 }
 
 /// What the poller knows about a source.
@@ -63,13 +65,16 @@ pub struct FeedSourceRow {
     pub last_item_at: Option<DateTime<Utc>>,
     pub primed: bool,
     pub subscribers: i32,
+    pub live_stream_id: Option<String>,
+    pub broadcaster_id: Option<String>,
+    pub eventsub_registered_at: Option<DateTime<Utc>>,
 }
 
 /// The columns of [`FeedSourceRow`].
 macro_rules! source_columns {
     () => {
         "kind, source, title, etag, last_modified, next_poll_at, interval_secs, fail_count, last_error, \
-         last_checked_at, last_item_at, primed, subscribers"
+         last_checked_at, last_item_at, primed, subscribers, live_stream_id, broadcaster_id, eventsub_registered_at"
     };
 }
 
@@ -92,6 +97,7 @@ pub struct NewFeed<'a> {
     pub message: Option<&'a str>,
     pub embed: bool,
     pub ping_role: Option<u64>,
+    pub live_role: Option<u64>,
     pub include: &'a [String],
     pub exclude: &'a [String],
     pub created_by: u64,
@@ -121,6 +127,16 @@ pub struct FeedEdit {
     pub include: Option<Vec<String>>,
     pub exclude: Option<Vec<String>>,
     pub enabled: Option<bool>,
+    pub live_role: Option<Option<u64>>,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct FeedChannelLink {
+    pub kind: String,
+    pub source: String,
+    pub verification_code: Option<String>,
+    pub code_expires_at: Option<DateTime<Utc>>,
+    pub verified_at: Option<DateTime<Utc>>,
 }
 
 /// How changing a subscription went.
@@ -256,8 +272,8 @@ impl Db {
                 .await?;
         let added = sqlx::query_as::<_, FeedRow>(concat!(
             "INSERT INTO feeds (guild_id, kind, source, display_name, channel_id, message, embed, ping_role_id,
-                                filter_include, filter_exclude, created_by)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                                filter_include, filter_exclude, created_by, live_role_id)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
              ON CONFLICT (guild_id, kind, source, channel_id) DO NOTHING
              RETURNING ",
             feed_columns!()
@@ -273,6 +289,7 @@ impl Db {
         .bind(new.include)
         .bind(new.exclude)
         .bind(sql_id(new.created_by))
+        .bind(new.live_role.map(sql_id))
         .fetch_optional(&mut *tx)
         .await?;
         let Some(added) = added else {
@@ -312,7 +329,7 @@ impl Db {
         let enabled = edit.enabled.unwrap_or(before.enabled);
         let after = sqlx::query_as::<_, FeedRow>(concat!(
             "UPDATE feeds SET channel_id = $3, message = $4, embed = $5, ping_role_id = $6, filter_include = $7,
-                 filter_exclude = $8, enabled = $9,
+                 filter_exclude = $8, enabled = $9, live_role_id = $10,
                  last_error = CASE WHEN $9 AND NOT enabled THEN NULL ELSE last_error END,
                  delivery_failures = CASE WHEN ($9 AND NOT enabled) OR channel_id <> $3 THEN 0
                                           ELSE delivery_failures END
@@ -331,6 +348,7 @@ impl Db {
         .bind(edit.include.as_ref().unwrap_or(&before.filter_include))
         .bind(edit.exclude.as_ref().unwrap_or(&before.filter_exclude))
         .bind(enabled)
+        .bind(edit.live_role.map_or(before.live_role_id, |r| r.map(sql_id)))
         .fetch_optional(&mut *tx)
         .await?;
         let Some(after) = after else {
@@ -649,6 +667,10 @@ impl Db {
             .execute(self.pool())
             .await?
             .rows_affected();
+        let webhooks = sqlx::query("DELETE FROM feed_webhook_messages WHERE received_at < now() - interval '7 days'")
+            .execute(self.pool())
+            .await?
+            .rows_affected();
         let sources = sqlx::query(
             "WITH gone AS (
                  DELETE FROM feed_sources s
@@ -661,7 +683,280 @@ impl Db {
         .execute(self.pool())
         .await?
         .rows_affected();
-        Ok(seen + posts + sources)
+        Ok(seen + posts + webhooks + sources)
+    }
+
+    /// A live source's current stream. Returns announcements to edit when it goes offline.
+    pub async fn set_live_stream(
+        &self,
+        kind: &str,
+        source: &str,
+        broadcaster_id: &str,
+        stream_id: Option<&str>,
+    ) -> anyhow::Result<Vec<FeedRow>> {
+        let mut tx = self.pool().begin().await?;
+        let previous: Option<(Option<String>,)> =
+            sqlx::query_as("SELECT live_stream_id FROM feed_sources WHERE kind = $1 AND source = $2 FOR UPDATE")
+                .bind(kind)
+                .bind(source)
+                .fetch_optional(&mut *tx)
+                .await?;
+        let Some((previous,)) = previous else {
+            return Ok(Vec::new());
+        };
+        sqlx::query("UPDATE feed_sources SET live_stream_id = $3, broadcaster_id = $4 WHERE kind = $1 AND source = $2")
+            .bind(kind)
+            .bind(source)
+            .bind(stream_id)
+            .bind(broadcaster_id)
+            .execute(&mut *tx)
+            .await?;
+        if previous.as_deref() != stream_id {
+            sqlx::query(
+                "DELETE FROM feed_outbox o USING feeds f
+                WHERE o.feed_id = f.id AND f.kind = $1 AND f.source = $2
+                AND ($3::text IS NULL OR o.item_id <> $3)",
+            )
+            .bind(kind)
+            .bind(source)
+            .bind(stream_id)
+            .execute(&mut *tx)
+            .await?;
+        }
+        let ended = if (previous.is_some() && previous.as_deref() != stream_id) || stream_id.is_none() {
+            sqlx::query_as::<_, FeedRow>(concat!(
+                "SELECT ",
+                feed_columns!(),
+                " FROM feeds WHERE kind = $1 AND source = $2 AND live_message_id IS NOT NULL"
+            ))
+            .bind(kind)
+            .bind(source)
+            .fetch_all(&mut *tx)
+            .await?
+        } else {
+            Vec::new()
+        };
+        tx.commit().await?;
+        Ok(ended)
+    }
+
+    pub async fn set_live_message(&self, feed: i64, message: u64, stream: &str) -> anyhow::Result<bool> {
+        let written = sqlx::query(
+            "UPDATE feeds f SET live_message_id = $2 WHERE id = $1
+            AND EXISTS (SELECT 1 FROM feed_sources s WHERE s.kind = f.kind AND s.source = f.source
+                AND s.live_stream_id = $3)",
+        )
+        .bind(feed)
+        .bind(sql_id(message))
+        .bind(stream)
+        .execute(self.pool())
+        .await?;
+        Ok(written.rows_affected() == 1)
+    }
+
+    pub async fn clear_live_message(&self, feed: i64, message: u64) -> anyhow::Result<()> {
+        sqlx::query("UPDATE feeds SET live_message_id = NULL WHERE id = $1 AND live_message_id = $2")
+            .bind(feed)
+            .bind(sql_id(message))
+            .execute(self.pool())
+            .await?;
+        Ok(())
+    }
+
+    /// A verified member who owns this public channel, if one exists.
+    pub async fn linked_streamer(&self, kind: &str, source: &str) -> anyhow::Result<Option<u64>> {
+        let row: Option<(i64,)> = sqlx::query_as(
+            "SELECT user_id FROM feed_channel_links WHERE kind = $1 AND source = $2 AND verified_at IS NOT NULL",
+        )
+        .bind(kind)
+        .bind(source)
+        .fetch_optional(self.pool())
+        .await?;
+        Ok(row.map(|(id,)| id as u64))
+    }
+
+    /// Serializes a member's channel mutations with role grants on every pod.
+    pub async fn lock_feed_link(&self, user: u64) -> anyhow::Result<sqlx::Transaction<'_, sqlx::Postgres>> {
+        let mut tx = self.pool().begin().await?;
+        sqlx::query("SET LOCAL lock_timeout = '2s'").execute(&mut *tx).await?;
+        sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1, 7192))")
+            .bind(user.to_string())
+            .execute(&mut *tx)
+            .await?;
+        Ok(tx)
+    }
+
+    pub async fn channel_links(&self, user: u64) -> anyhow::Result<Vec<FeedChannelLink>> {
+        Ok(sqlx::query_as(
+            "SELECT kind, source, verification_code, code_expires_at, verified_at
+            FROM feed_channel_links WHERE user_id = $1 ORDER BY kind",
+        )
+        .bind(sql_id(user))
+        .fetch_all(self.pool())
+        .await?)
+    }
+
+    pub async fn feed_channel_is_live(&self, kind: &str, source: &str) -> anyhow::Result<bool> {
+        Ok(sqlx::query_scalar(
+            "SELECT EXISTS (SELECT 1 FROM feed_sources WHERE kind = $1 AND source = $2
+            AND live_stream_id IS NOT NULL)",
+        )
+        .bind(kind)
+        .bind(source)
+        .fetch_one(self.pool())
+        .await?)
+    }
+
+    pub async fn live_feeds_for_channel(&self, kind: &str, source: &str) -> anyhow::Result<Vec<FeedRow>> {
+        Ok(sqlx::query_as::<_, FeedRow>(concat!(
+            "SELECT ",
+            feed_columns!(),
+            " FROM feeds f WHERE f.kind = $1 AND f.source = $2
+              AND f.live_role_id IS NOT NULL AND f.live_message_id IS NOT NULL"
+        ))
+        .bind(kind)
+        .bind(source)
+        .fetch_all(self.pool())
+        .await?)
+    }
+
+    pub async fn start_channel_link(&self, user: u64, kind: &str, source: &str, code: &str) -> anyhow::Result<bool> {
+        let mut tx = self.pool().begin().await?;
+        // Serialize contenders for a channel and release expired reservations.
+        sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1, 7191))")
+            .bind(format!("{kind}:{source}"))
+            .execute(&mut *tx)
+            .await?;
+        sqlx::query(
+            "DELETE FROM feed_channel_links WHERE kind = $1 AND source = $2
+            AND verified_at IS NULL AND code_expires_at <= now()",
+        )
+        .bind(kind)
+        .bind(source)
+        .execute(&mut *tx)
+        .await?;
+        let saved = sqlx::query(
+            "INSERT INTO feed_channel_links (user_id, kind, source, verification_code, code_expires_at)
+            VALUES ($1, $2, $3, $4, now() + interval '15 minutes')
+            ON CONFLICT (user_id, kind) DO UPDATE SET source = EXCLUDED.source,
+                verification_code = EXCLUDED.verification_code, code_expires_at = EXCLUDED.code_expires_at,
+                verified_at = NULL",
+        )
+        .bind(sql_id(user))
+        .bind(kind)
+        .bind(source)
+        .bind(code)
+        .execute(&mut *tx)
+        .await;
+        match saved {
+            Ok(_) => {
+                tx.commit().await?;
+                Ok(true)
+            }
+            Err(sqlx::Error::Database(error)) if error.code().is_some_and(|code| code == "23505") => Ok(false),
+            Err(error) => Err(error.into()),
+        }
+    }
+
+    pub async fn verify_channel_link(&self, user: u64, kind: &str, source: &str, code: &str) -> anyhow::Result<bool> {
+        Ok(sqlx::query(
+            "UPDATE feed_channel_links SET verified_at = now(), verification_code = NULL,
+            code_expires_at = NULL WHERE user_id = $1 AND kind = $2 AND source = $3 AND
+            verification_code = $4 AND code_expires_at > now()",
+        )
+        .bind(sql_id(user))
+        .bind(kind)
+        .bind(source)
+        .bind(code)
+        .execute(self.pool())
+        .await?
+        .rows_affected()
+            == 1)
+    }
+
+    pub async fn unlink_channel(&self, user: u64, kind: &str) -> anyhow::Result<()> {
+        sqlx::query("DELETE FROM feed_channel_links WHERE user_id = $1 AND kind = $2")
+            .bind(sql_id(user))
+            .bind(kind)
+            .execute(self.pool())
+            .await?;
+        Ok(())
+    }
+
+    /// A verified webhook wakes the source once across pods; retries are ignored for a week.
+    pub async fn record_twitch_webhook(&self, id: &str, source: &str) -> anyhow::Result<bool> {
+        let mut tx = self.pool().begin().await?;
+        let fresh = sqlx::query("INSERT INTO feed_webhook_messages (message_id) VALUES ($1) ON CONFLICT DO NOTHING")
+            .bind(id)
+            .execute(&mut *tx)
+            .await?
+            .rows_affected()
+            == 1;
+        if fresh {
+            sqlx::query("UPDATE feed_sources SET next_poll_at = LEAST(next_poll_at, now()) WHERE kind = 'twitch' AND source = $1")
+                .bind(source).execute(&mut *tx).await?;
+        }
+        tx.commit().await?;
+        Ok(fresh)
+    }
+
+    /// Challenge retries return the same authenticated response, with one durable replay record.
+    pub async fn record_twitch_challenge(&self, id: &str) -> anyhow::Result<()> {
+        sqlx::query("INSERT INTO feed_webhook_messages (message_id) VALUES ($1) ON CONFLICT DO NOTHING")
+            .bind(id)
+            .execute(self.pool())
+            .await?;
+        Ok(())
+    }
+
+    pub async fn twitch_subscription_source(&self, broadcaster: &str) -> anyhow::Result<Option<String>> {
+        Ok(sqlx::query_scalar(
+            "SELECT source FROM feed_sources WHERE kind = 'twitch'
+            AND broadcaster_id = $1 AND subscribers > 0",
+        )
+        .bind(broadcaster)
+        .fetch_optional(self.pool())
+        .await?)
+    }
+
+    pub async fn record_twitch_revocation(&self, id: &str, broadcaster: &str) -> anyhow::Result<()> {
+        let mut tx = self.pool().begin().await?;
+        let fresh = sqlx::query("INSERT INTO feed_webhook_messages (message_id) VALUES ($1) ON CONFLICT DO NOTHING")
+            .bind(id)
+            .execute(&mut *tx)
+            .await?
+            .rows_affected()
+            == 1;
+        if fresh {
+            sqlx::query(
+                "UPDATE feed_sources SET eventsub_registered_at = NULL, next_poll_at = now()
+                WHERE kind = 'twitch' AND broadcaster_id = $1",
+            )
+            .bind(broadcaster)
+            .execute(&mut *tx)
+            .await?;
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+
+    pub async fn mark_eventsub_registered(&self, source: &str) -> anyhow::Result<()> {
+        sqlx::query("UPDATE feed_sources SET eventsub_registered_at = now() WHERE kind = 'twitch' AND source = $1")
+            .bind(source)
+            .execute(self.pool())
+            .await?;
+        Ok(())
+    }
+
+    pub async fn revoke_eventsub(&self, broadcaster_id: &str) -> anyhow::Result<()> {
+        sqlx::query(
+            "UPDATE feed_sources SET eventsub_registered_at = NULL, next_poll_at = now()
+            WHERE kind = 'twitch' AND broadcaster_id = $1",
+        )
+        .bind(broadcaster_id)
+        .execute(self.pool())
+        .await?;
+        Ok(())
     }
 }
 

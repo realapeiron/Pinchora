@@ -43,7 +43,15 @@ describe("SPA message catalogs", () => {
         .join("\n");
     // These two are looked up from API status codes, so they do not appear as literal calls.
     const runtimeKeys = new Set(["appealed", "Messages must contain 1–200 characters."]);
-    expect(Object.keys(en).filter((key) => !source.includes(key) && !runtimeKeys.has(key))).toEqual([]);
+    // TOML and TypeScript sources can spell multiline messages with escaped newlines.
+    expect(
+      Object.keys(en).filter(
+        (key) =>
+          !source.includes(key) &&
+          !source.includes(JSON.stringify(key).slice(1, -1)) &&
+          !runtimeKeys.has(key),
+      ),
+    ).toEqual([]);
     const missing: string[] = [];
     for (const file of sourceFiles(join(process.cwd(), "src"))) {
       const tree = ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true);

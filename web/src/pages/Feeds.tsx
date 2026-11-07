@@ -1,3 +1,4 @@
+import { t as spaT, serverText } from "../i18n";
 import { FeedWordsContext, useFeedWords, type FeedWords } from "../lib/feedsWords";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
@@ -12,7 +13,8 @@ import { PixelToggle } from "../components/PixelToggle";
 import { PlaceholderChips } from "../components/PlaceholderChips";
 import { SaveBar } from "../components/SaveBar";
 import { Toast } from "../components/Toast";
-import { ApiError, type FieldError, type GuildInfo, type Overview } from "../lib/api";
+import { TopBar } from "../components/TopBar";
+import { ApiError, type FieldError, type GuildInfo, type Me, type Overview } from "../lib/api";
 import {
   type Feed,
   type FeedDraft,
@@ -32,6 +34,10 @@ import {
   useFeeds,
   useSaveFeed,
   useTestFeed,
+  useMyChannels,
+  useStartChannel,
+  useVerifyChannel,
+  useUnlinkChannel,
   words,
   wordsProblem,
 } from "../lib/feeds";
@@ -40,6 +46,7 @@ import { useDebounced } from "../lib/useDebounced";
 import "../styles/feeds.css";
 import { NotFound } from "./NotFound";
 import { PageHead } from "./PageHead";
+import { RequireLogin } from "./RequireLogin";
 import { Loading, Problem } from "./States";
 
 export function Feeds() {
@@ -189,6 +196,13 @@ function FeedsList({ guild, list }: { guild: string; list: FeedList }) {
                         <RoleTag info={info} id={feed.ping_role_id} />
                       </>
                     )}
+                    {feed.live_role_id && (
+                      <>
+                        <span aria-hidden="true"> · </span>
+                        <span className="visually-hidden">{t("live-now-role")} </span>
+                        <RoleTag info={info} id={feed.live_role_id} />
+                      </>
+                    )}
                   </p>
                   <p className={`feed-health is-${feed.health.state}`}>
                     <span className="feed-dot" aria-hidden="true" />
@@ -240,6 +254,7 @@ function FeedsList({ guild, list }: { guild: string; list: FeedList }) {
           <p className="field-hint muted">{t("a-server-follows-at-most-max-feeds", { max: list.max })}</p>
         )}
       </Panel>
+      <MyChannels list={list} />
       {asking && (
         <div className="dialog-backdrop" role="presentation">
           <div className="panel panel-gold dialog" role="alertdialog" aria-labelledby="delete-title">
@@ -299,6 +314,8 @@ const KIND_LINE: Record<FeedKind, string> = {
   reddit: "the-newest-posts-of-a-subreddit",
   bluesky: "new-posts-of-an-account",
   bridge: "x-instagram-and-tiktok-through-an-rss-bridge",
+  twitch: "twitch-live-help",
+  kick: "kick-live-help",
 };
 
 const CARD_LABEL: Record<FeedKind, string> = {
@@ -307,7 +324,111 @@ const CARD_LABEL: Record<FeedKind, string> = {
   reddit: "reddit",
   bluesky: "bluesky",
   bridge: "x-instagram-tiktok",
+  twitch: "twitch",
+  kick: "kick",
 };
+
+export function MyFeedsChannels({ me }: { me: Me }) {
+  const channels = useMyChannels();
+  if (channels.isPending) return <Loading />;
+  if (channels.isError) return <Problem error={channels.error} />;
+  return (
+    <div className="page">
+      <TopBar me={me} />
+      <main className="content content-narrow settings-page">
+        <FeedWordsContext.Provider value={channels.data.strings}>
+          <PageHead
+            title={spaT("MY CHANNELS")}
+            lead={spaT(
+              "Link your Twitch or Kick channel to receive a Live now role in servers that follow you.",
+            )}
+          />
+          <MyChannels />
+        </FeedWordsContext.Provider>
+      </main>
+    </div>
+  );
+}
+
+export function MyFeedsChannelsRoute() {
+  return <RequireLogin>{(me) => <MyFeedsChannels me={me} />}</RequireLogin>;
+}
+
+function MyChannels({ list }: { list?: FeedList }) {
+  const t = useFeedWords();
+  const channels = useMyChannels();
+  const start = useStartChannel();
+  const verify = useVerifyChannel();
+  const unlink = useUnlinkChannel();
+  const [kind, setKind] = useState<"twitch" | "kick">("twitch");
+  const [source, setSource] = useState("");
+  const selectedKind = (list?.kinds ?? channels.data?.kinds)?.find((item) => item.key === kind);
+  return (
+    <Panel title={t("my-channels")}>
+      <p className="muted">{t("my-channels-help")}</p>
+      {channels.data?.items.map((channel) => (
+        <div key={channel.kind} className="tag-row feed-row">
+          <div className="tag-main">
+            <strong>
+              {t(channel.kind)}: {channel.source}
+            </strong>
+            <p className="muted">{channel.verified_at ? t("channel-verified") : t("channel-pending")}</p>
+            {channel.code && (
+              <p>
+                {t("put-code-in-title-or-bio")}: <code>{channel.code}</code>
+              </p>
+            )}
+          </div>
+          <div className="tag-actions">
+            {!channel.verified_at && (
+              <PixelButton disabled={verify.isPending} onClick={() => verify.mutate(channel.kind)}>
+                {t("verify-channel")}
+              </PixelButton>
+            )}
+            <PixelButton
+              variant="ghost"
+              disabled={unlink.isPending}
+              onClick={() => unlink.mutate(channel.kind)}
+            >
+              {t("unlink-channel")}
+            </PixelButton>
+          </div>
+        </div>
+      ))}
+      <div className="form-grid form-grid-2">
+        <Field label={t("platform")} htmlFor="my-channel-kind">
+          <select
+            id="my-channel-kind"
+            value={kind}
+            onChange={(event) => setKind(event.target.value as "twitch" | "kick")}
+          >
+            <option value="twitch">{t("twitch")}</option>
+            <option value="kick">{t("kick")}</option>
+          </select>
+        </Field>
+        <Field label={t("channel-login")} htmlFor="my-channel-login">
+          <input id="my-channel-login" value={source} onChange={(event) => setSource(event.target.value)} />
+        </Field>
+      </div>
+      {!selectedKind?.available && (
+        <p className="field-hint muted">
+          {selectedKind?.why_not && serverText("unavailable", { unavailable: selectedKind.why_not })}
+        </p>
+      )}
+      <PixelButton
+        disabled={!source.trim() || start.isPending || !selectedKind?.available}
+        onClick={() => start.mutate({ kind, source })}
+      >
+        {t("link-channel")}
+      </PixelButton>
+      {[channels.error, start.error, verify.error, unlink.error].filter(Boolean).map((error, i) => (
+        <p className="field-error" role="alert" key={i}>
+          {serverText("error", { error: (error as Error).message })}
+        </p>
+      ))}
+    </Panel>
+  );
+}
 
 /** No feed yet: what can be followed, each a way into the form. */
 function Empty({ guild, list }: { guild: string; list: FeedList }) {
@@ -329,13 +450,20 @@ function Empty({ guild, list }: { guild: string; list: FeedList }) {
                 </span>
               </Link>
             ) : (
-              <span className="feed-kind-card is-locked" title={kind.why_not ?? undefined}>
+              <span
+                className="feed-kind-card is-locked"
+                title={kind.why_not ? serverText("unavailable", { unavailable: kind.why_not }) : undefined}
+              >
                 <span className={`feed-kind feed-kind-${kind.key}`} aria-hidden="true">
                   {KIND_TAG[kind.key]}
                 </span>
                 <span className="feed-kind-card-text">
-                  <strong>{CARD_LABEL[kind.key]}</strong>
-                  <span className="muted">{t("not-available-on-this-instance")}</span>
+                  <strong>{t(CARD_LABEL[kind.key])}</strong>
+                  <span className="muted">
+                    {kind.why_not
+                      ? serverText("unavailable", { unavailable: kind.why_not })
+                      : t("not-available-on-this-instance")}
+                  </span>
                 </span>
               </span>
             )}
@@ -603,10 +731,14 @@ function FeedEditor({
                         <span className={`feed-kind feed-kind-${kind.key}`} aria-hidden="true">
                           {KIND_TAG[kind.key]}
                         </span>
-                        <span>{CARD_LABEL[kind.key]}</span>
+                        <span>{t(CARD_LABEL[kind.key])}</span>
                       </span>
                       <span className="choice-detail muted">
-                        {kind.available ? KIND_LINE[kind.key] : t("not-available-on-this-instance")}
+                        {kind.available
+                          ? t(KIND_LINE[kind.key])
+                          : kind.why_not
+                            ? serverText("unavailable", { unavailable: kind.why_not })
+                            : t("not-available-on-this-instance")}
                       </span>
                     </label>
                   ))}
@@ -678,6 +810,25 @@ function FeedEditor({
               </Field>
             </div>
           </Panel>
+
+          {(draft.kind === "twitch" || draft.kind === "kick") && (
+            <Panel title={t("live-now-role")}>
+              <Field
+                label={t("live-now-role")}
+                htmlFor="feed-live-role"
+                error={problem("live_role_id")}
+                hint={t("live-now-role-hint")}
+              >
+                <RolePicker
+                  id="feed-live-role"
+                  info={info}
+                  value={draft.live_role_id}
+                  onChange={(next) => set("live_role_id", next)}
+                  none={t("nobody")}
+                />
+              </Field>
+            </Panel>
+          )}
 
           <Panel title={t("message")}>
             <Field

@@ -24,6 +24,7 @@ const WALK_LOCK: Duration = Duration::minutes(45);
 pub const USER_COLUMNS: &[(&str, &str)] = &[
     ("reef_layout_outbox", "owner_id"),
     ("reef_room_leases", "owner_id"),
+    ("feed_channel_links", "user_id"),
     ("reef_consents", "user_id"),
     ("reef_chat_recipients", "user_id"),
     ("reef_reports", "reporter_id"),
@@ -283,6 +284,7 @@ pub const OTHER_TABLES: &[&str] = &[
     "feed_sources",
     "feed_items_seen",
     "feed_outbox",
+    "feed_webhook_messages",
     "voice_creators",
     // A room belongs to the server; its owner is cleared (see above) and the members kept out of it go with the
     // player (`temp_voice_bans`).
