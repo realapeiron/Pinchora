@@ -70,6 +70,19 @@ afterEach(() => {
 });
 
 describe("Reef socket", () => {
+  it("clears private chat when a policy event is lost or arrives during gap recovery", async () => {
+    const socket = await connected();
+    const chat = { message_id: "private", sender_id: "2", name: "guest", text: "hello", created_at: "now" };
+    socket.message({ type: "chat", ...chat }, 3);
+    expect(net.chat.snapshot()).toHaveLength(1);
+    socket.message({ type: "correction" }, 5);
+    expect(net.chat.snapshot()).toHaveLength(0);
+    net.chat.accept(chat);
+    socket.message({ type: "policy_changed" }, 6, "");
+    expect(net.chat.snapshot()).toHaveLength(0);
+    socket.message({ type: "snapshot", revision: "r1", players: [player()] }, 7);
+    expect(net.chat.snapshot()).toHaveLength(0);
+  });
   it("authenticates in a frame, joins, and sends only intentions", async () => {
     const socket = await connected();
     expect(socket.url.href).toBe("wss://reef.test/api/reef/ws");
@@ -98,6 +111,47 @@ describe("Reef socket", () => {
     expect(net.players.size).toBe(1);
     socket.message({ type: "presence", player: player("4") }, 5, "room-b");
     expect(net.players.size).toBe(1);
+  });
+  it("pauses intentions during recovery and requests only one snapshot", async () => {
+    const socket = await connected();
+    socket.message({ type: "correction", players: [player("2", [4, 7])] }, 4);
+    expect(net.ready).toBe(false);
+    expect(net.move([1, 7])).toBe(false);
+    expect(net.say("Wait for the snapshot")).toBe(false);
+    socket.message({ type: "correction", players: [player("2", [5, 7])] }, 7);
+    expect(socket.sent.filter((m) => m.type === "snapshot")).toHaveLength(1);
+    socket.message({ type: "snapshot", revision: "r2", players: [player()] }, 8);
+    expect(net.ready).toBe(true);
+    await vi.advanceTimersByTimeAsync(3001);
+    expect(Socket.instances).toHaveLength(1);
+    expect(net.ready).toBe(true);
+  });
+  it("reconnects if the requested snapshot is lost despite ongoing traffic", async () => {
+    const socket = await connected();
+    socket.message({ type: "correction" }, 4);
+    await vi.advanceTimersByTimeAsync(2000);
+    socket.message({ type: "correction" }, 5);
+    await vi.advanceTimersByTimeAsync(1601);
+    expect(Socket.instances).toHaveLength(2);
+    expect(net.ready).toBe(false);
+    const next = Socket.instances[1]!;
+    next.onopen?.();
+    next.message({ type: "authenticated", user_id: "1" }, 1, "");
+    expect(next.sent.at(-1)).toMatchObject({ type: "join", room: "house:1:0" });
+    next.message({ type: "snapshot", revision: "r2", players: [player()] }, 2, "fresh");
+    expect(net.ready).toBe(true);
+    expect(net.epoch).toBe("fresh");
+  });
+  it("recovers when the first routed snapshot is missing", async () => {
+    await net.connect();
+    const socket = Socket.instances[0]!;
+    socket.onopen?.();
+    socket.message({ type: "authenticated", user_id: "1" }, 1, "");
+    socket.message({ type: "presence", player: player("2") }, 3);
+    expect(socket.sent.at(-1)?.type).toBe("snapshot");
+    expect(net.ready).toBe(false);
+    socket.message({ type: "snapshot", revision: "r1", players: [player()] }, 4);
+    expect(net.ready).toBe(true);
   });
   it("interpolates server samples at visual frame times", async () => {
     let now = 0;

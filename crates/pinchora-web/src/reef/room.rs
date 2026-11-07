@@ -4,8 +4,6 @@ use super::{
     socket::room_access,
 };
 use crate::state::WebState;
-use futures_util::StreamExt;
-use pinchora_cache::Invalidation;
 use pinchora_commands::RoomData;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -64,6 +62,7 @@ struct Member {
     used: Option<Instant>,
     advanced: Instant,
     using: bool,
+    last_sequence: u64,
 }
 impl Member {
     fn position(&self) -> [f64; 2] {
@@ -150,6 +149,8 @@ struct Room {
     key: RoomKey,
     epoch: String,
     layout: Layout,
+    fence: pinchora_db::ReefFence,
+    layout_events: std::collections::HashSet<i64>,
     members: BTreeMap<String, Member>,
 }
 impl Room {
@@ -178,8 +179,15 @@ impl Room {
         }
     }
     async fn refresh(&mut self, state: &WebState) -> anyhow::Result<()> {
+        let events = state.app.db.reef_layout_events(self.key.owner).await?;
+        let fresh: Vec<_> = events
+            .iter()
+            .filter(|id| !self.layout_events.contains(id))
+            .map(|id| id.to_string())
+            .collect();
         let layout = Layout::load(state, self.key).await?;
-        if layout.revision == self.layout.revision {
+        self.layout_events = events.into_iter().collect();
+        if layout.revision == self.layout.revision && fresh.is_empty() {
             return Ok(());
         }
         let entry = layout.grid.spawn().ok_or_else(|| anyhow::anyhow!("no free entry"))?;
@@ -194,10 +202,21 @@ impl Room {
             }
         }
         self.layout = layout;
-        self.broadcast(
-            "",
-            json!({"type":"layout_changed","revision":self.layout.revision,"layout":self.layout.json}),
-        );
+        // Publish each committed transaction once per live room epoch, even when several commits
+        // coalesce into the same loaded geometry. Reconnecting clients obtain the current snapshot.
+        for event in &fresh {
+            self.broadcast(
+                "",
+                json!({"type":"layout_changed","revision":self.layout.revision,
+                "layout":self.layout.json,"event_id":event,"event_ids":[event]}),
+            );
+        }
+        if fresh.is_empty() {
+            self.broadcast(
+                "",
+                json!({"type":"layout_changed","revision":self.layout.revision,"layout":self.layout.json}),
+            );
+        }
         for member in self.members.values() {
             self.snapshot(&member.peer, "");
         }
@@ -206,6 +225,13 @@ impl Room {
     async fn join(&mut self, state: &WebState, peer: Peer, request: String) {
         // Old connections can have queued work when a replacement claims the account.
         if peer.close.borrow().is_some() {
+            return;
+        }
+        if let Err(reason) = super::routing::controller(state, &peer).await {
+            peer.terminate(reason);
+            return;
+        }
+        if !super::routing::in_room(state, &peer, self.key).await {
             return;
         }
         if room_access(state, self.key, peer.user).await.is_err() {
@@ -243,20 +269,41 @@ impl Room {
             used: None,
             advanced: Instant::now(),
             using: false,
+            last_sequence: 0,
         };
         let presence = member.json();
-        state.reef.locate(peer.user, self.key).await;
         self.members.insert(peer.token.clone(), member);
         self.snapshot(&peer, &request);
         self.broadcast("", json!({"type":"presence","action":"join","player":presence}));
     }
     async fn command(&mut self, state: &WebState, token: &str, envelope: Envelope) -> anyhow::Result<()> {
-        let Some(member) = self.members.get(token) else {
+        let Some(member) = self.members.get_mut(token) else {
             return Ok(());
         };
         if member.peer.close.borrow().is_some() {
             return Ok(());
         }
+        if let Err(reason) = super::routing::controller(state, &member.peer).await {
+            member.peer.terminate(reason);
+            return Ok(());
+        }
+        if !super::routing::in_room(state, &member.peer, self.key).await {
+            self.leave(token);
+            return Ok(());
+        }
+        // Recovery and duplicate-command snapshots expose the same private room as movement.
+        // A remote revocation must apply before any early snapshot return.
+        if room_access(state, self.key, member.peer.user).await.is_err() {
+            member.peer.terminate("access_revoked");
+            return Ok(());
+        }
+        if envelope.sequence > 0 && envelope.sequence <= member.last_sequence {
+            let peer = member.peer.clone();
+            self.snapshot(&peer, &envelope.request_id);
+            return Ok(());
+        }
+        member.last_sequence = member.last_sequence.max(envelope.sequence);
+        let member = &self.members[token];
         let request = &envelope.request_id;
         if envelope.room_epoch != self.epoch {
             member.peer.error(&self.epoch, request, "stale_epoch");
@@ -265,10 +312,6 @@ impl Room {
         }
         if matches!(envelope.command, Command::Snapshot) {
             self.snapshot(&member.peer, request);
-            return Ok(());
-        }
-        if room_access(state, self.key, member.peer.user).await.is_err() {
-            member.peer.terminate("access_revoked");
             return Ok(());
         }
         if let Command::Chat { text } = &envelope.command {
@@ -290,7 +333,7 @@ impl Room {
             match state
                 .app
                 .db
-                .reef_chat(self.key.owner, self.key.idx, peer.user, text, &peers)
+                .reef_chat_fenced(self.key.owner, self.key.idx, peer.user, text, &peers, Some(&self.fence))
                 .await?
             {
                 Err(reason) => peer.error(&self.epoch, request, reason),
@@ -386,13 +429,41 @@ impl Room {
             _ => member.peer.error(&self.epoch, request, "invalid_command"),
         }
         if let Some(event) = event {
-            self.broadcast(request, event);
+            for (recipient, member) in &self.members {
+                member.peer.send(
+                    &self.epoch,
+                    if recipient == token { request } else { "" },
+                    event.clone(),
+                );
+            }
         }
         Ok(())
     }
 }
-pub async fn run(state: WebState, key: RoomKey, epoch: String, mut input: mpsc::Receiver<Input>) {
-    let layout = match Layout::load(&state, key).await {
+pub async fn run(state: WebState, key: RoomKey, fence: pinchora_db::ReefFence, input: mpsc::Receiver<Input>) {
+    // Room work can wait on player locks or layout reads. Renewal must keep running during
+    // those waits; loss cancels the in-flight work instead of draining stale commands.
+    tokio::select! {
+        biased;
+        _ = async {
+            let mut tick = tokio::time::interval(Duration::from_millis(500));
+            tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+            loop {
+                tick.tick().await;
+                if !matches!(tokio::time::timeout(Duration::from_secs(1), super::routing::valid(&state, key, &fence)).await, Ok(true)) {
+                    break;
+                }
+            }
+        } => {},
+        _ = run_owned(&state, key, &fence, input) => {},
+    }
+}
+async fn run_owned(state: &WebState, key: RoomKey, fence: &pinchora_db::ReefFence, mut input: mpsc::Receiver<Input>) {
+    let epoch = fence.token.to_string();
+    let Ok(events) = state.app.db.reef_layout_events(key.owner).await else {
+        return;
+    };
+    let layout = match Layout::load(state, key).await {
         Ok(layout) => layout,
         Err(_) => {
             if let Some(Input::Join(peer, request)) = input.recv().await {
@@ -405,13 +476,9 @@ pub async fn run(state: WebState, key: RoomKey, epoch: String, mut input: mpsc::
         key,
         epoch,
         layout,
+        fence: fence.clone(),
+        layout_events: events.into_iter().collect(),
         members: BTreeMap::new(),
-    };
-    // Existing bot/web invalidation stream; periodic refresh also covers dropped announcements.
-    let stream = state.app.cache.invalidations().await;
-    let mut stream: std::pin::Pin<Box<dyn futures_util::Stream<Item = Invalidation> + Send>> = match stream {
-        Ok(stream) => Box::pin(stream),
-        Err(_) => Box::pin(futures_util::stream::pending()),
     };
     let mut tick = tokio::time::interval(Duration::from_millis(100));
     tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
@@ -421,23 +488,21 @@ pub async fn run(state: WebState, key: RoomKey, epoch: String, mut input: mpsc::
     loop {
         tokio::select! {
             command=input.recv()=>{
+                if !super::routing::valid(state,key,fence).await {break;}
                 match command {
-                    Some(Input::Join(peer,request))=>room.join(&state,peer,request).await,
+                    Some(Input::Join(peer,request))=>room.join(state,peer,request).await,
                     Some(Input::Leave(token))=>room.leave(&token),
+                    Some(Input::Layout(id))=>{
+                        if !room.layout_events.contains(&id) && room.refresh(state).await.is_err() {break;}
+                    }
                     Some(Input::Command(token,envelope))=>{
-                        if room.command(&state,&token,envelope).await.is_err() {break;}
+                        if room.command(state,&token,envelope).await.is_err() {break;}
                     }
                     None=>break,
                 }
             }
-            notification=stream.next()=>{
-                match notification {
-                    Some(Invalidation::House(owner)) if owner==key.owner && room.refresh(&state).await.is_err() => break,
-                    None=>{stream=Box::pin(futures_util::stream::pending());},
-                    _=>{}
-                }
-            }
             _=tick.tick()=>{
+                if !super::routing::valid(state,key,fence).await {break;}
                 let now=Instant::now();
                 let gone:Vec<_>=room.members.iter().filter(|(_,m)|m.peer.close.borrow().is_some() || m.peer.outgoing.is_closed()).map(|(k,_)|k.clone()).collect();
                 for token in gone {room.leave(&token);}
@@ -445,14 +510,18 @@ pub async fn run(state: WebState, key: RoomKey, epoch: String, mut input: mpsc::
                     if empty_since.elapsed()>Duration::from_secs(2) {break;}
                 } else {empty_since=now;}
                 if refreshed.elapsed()>=Duration::from_secs(1) {
-                    if state.app.cache.ping().await.is_err() || room.refresh(&state).await.is_err() {break;}
+                    if state.app.cache.ping().await.is_err() || room.refresh(state).await.is_err() {break;}
                     refreshed=Instant::now();
                 }
                 if policy.elapsed()>=Duration::from_secs(1) {
-                    for member in room.members.values() {
-                        if matches!(state.app.db.reef_sanctioned(member.peer.user,key.owner,key.idx,false).await,Ok(true)) {member.peer.terminate("sanctioned");}
-                        else if room_access(&state,key,member.peer.user).await.is_err() {member.peer.terminate("access_revoked");}
+                    let mut relocated=Vec::new();
+                    for (token,member) in &room.members {
+                        if !super::routing::in_room(state,&member.peer,key).await {relocated.push(token.clone());continue;}
+                        if let Err(reason)=super::routing::controller(state,&member.peer).await {member.peer.terminate(reason);}
+                        else if matches!(state.app.db.reef_sanctioned(member.peer.user,key.owner,key.idx,false).await,Ok(true)) {member.peer.terminate("sanctioned");}
+                        else if room_access(state,key,member.peer.user).await.is_err() {member.peer.terminate("access_revoked");}
                     }
+                    for token in relocated {room.leave(&token);}
                     policy=Instant::now();
                 }
                 for member in room.members.values_mut() {
@@ -464,7 +533,7 @@ pub async fn run(state: WebState, key: RoomKey, epoch: String, mut input: mpsc::
         }
     }
     for member in room.members.values() {
-        member.peer.terminate("room_unavailable");
+        member.peer.terminate("ownership_lost");
     }
 }
 #[cfg(test)]
@@ -492,6 +561,7 @@ mod tests {
             used: None,
             advanced: Instant::now(),
             using: false,
+            last_sequence: 0,
         };
         m.advance(0.1);
         assert!((m.position()[0] - 0.3).abs() < 0.0001);

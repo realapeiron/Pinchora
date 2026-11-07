@@ -6,10 +6,6 @@ use redis::AsyncCommands;
 
 use crate::Cache;
 
-/// The pub/sub channel changes are announced on. Pub/sub ignores the database number, so every
-/// Pinchora on one Redis hears it; the ids in the messages keep that harmless.
-pub const INVALIDATE_CHANNEL: &str = "pinchora:invalidate";
-
 /// What changed. The message on the wire is `guild:<id>`, `xp:<id>` or `house:<id>`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Invalidation {
@@ -47,16 +43,20 @@ impl Invalidation {
 }
 
 impl Cache {
+    pub fn invalidation_channel(&self) -> String {
+        format!("{}:invalidate", self.namespace())
+    }
+
     /// Announces a change; returns how many subscribers heard it.
     pub async fn publish_invalidation(&self, what: Invalidation) -> anyhow::Result<usize> {
-        Ok(self.conn().publish(INVALIDATE_CHANNEL, what.encode()).await?)
+        Ok(self.conn().publish(self.invalidation_channel(), what.encode()).await?)
     }
 
     /// Subscribes to announced changes. Returns once subscribed; the stream ends when the
     /// connection drops, and messages it cannot read are skipped.
     pub async fn invalidations(&self) -> anyhow::Result<impl Stream<Item = Invalidation> + Send + use<>> {
         let mut pubsub = self.client.get_async_pubsub().await?;
-        pubsub.subscribe(INVALIDATE_CHANNEL).await?;
+        pubsub.subscribe(self.invalidation_channel()).await?;
         Ok(pubsub.into_on_message().filter_map(|message| async move {
             let payload: String = message.get_payload().ok()?;
             Invalidation::decode(&payload)

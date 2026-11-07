@@ -65,7 +65,10 @@ async fn consent(
         .await?;
     let eligible = body.accepted && body.age_band == "13_plus";
     if !eligible {
-        state.reef.terminate(current.session.user_id, "consent_revoked").await;
+        state
+            .reef
+            .terminate(&state, current.session.user_id, "consent_revoked")
+            .await;
     }
     Ok(Json(json!({"eligible":eligible,"version":REEF_CONSENT_VERSION})))
 }
@@ -92,8 +95,8 @@ async fn block(
     let _guard = state.reef.safety.lock().await;
     state.app.db.block_signer(current.session.user_id, user, "").await?;
     // Generic policy notification clears local transcripts without disclosing the blocker.
-    state.reef.policy_changed(current.session.user_id).await;
-    state.reef.policy_changed(user).await;
+    state.reef.policy_changed(&state, current.session.user_id).await;
+    state.reef.policy_changed(&state, user).await;
     state.reef.recheck(&state).await;
     Ok(StatusCode::NO_CONTENT)
 }
@@ -187,7 +190,7 @@ async fn moderate(
         return Err(denied());
     }
     if action.owner.is_none() && ["ban", "kick"].contains(&action.kind.as_str()) {
-        state.reef.terminate(action.target, "sanctioned").await;
+        state.reef.terminate(&state, action.target, "sanctioned").await;
     }
     state.reef.recheck(&state).await;
     Ok(StatusCode::NO_CONTENT)
@@ -196,6 +199,9 @@ pub async fn retention(app: std::sync::Arc<pinchora_commands::App>) {
     let mut interval = tokio::time::interval(std::time::Duration::from_secs(3600));
     loop {
         interval.tick().await;
+        if app.db.reef_prune_outbox().await.is_err() {
+            tracing::warn!("Reef outbox retention failed");
+        }
         loop {
             match app.db.reef_retain(chrono::Utc::now()).await {
                 Ok(500) => tokio::task::yield_now().await,

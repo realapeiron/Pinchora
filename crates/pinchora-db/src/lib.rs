@@ -191,3 +191,6 @@ mod command_control;
 mod config_backup;
 mod reef_safety;
 pub use reef_safety::*;
+
+mod reef_realtime;
+pub use reef_realtime::ReefFence;

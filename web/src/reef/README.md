@@ -1,4 +1,4 @@
-# Reef client engine and multiplayer (R02–R12)
+# Reef client engine and multiplayer (R02–R24)
 
 Open `/me/house?play=1` or `/house/<user-id>?play=1` with an existing authenticated session and a saved Discord character. The player's own appearance is used when visiting. The flag starts Play; View keeps the existing reference viewer and Compare with Discord. The room picker in Controls preserves the flag.
 
@@ -50,11 +50,10 @@ Local preview remains available when multiplayer cannot connect. Seat heights an
 
 ## Private-house multiplayer (R09–R11)
 
-Play now attempts a single-pod room connection; an unavailable socket leaves the local preview usable.
+Play attempts a fenced room connection across pods; an unavailable socket leaves the local preview usable.
 Two separate browser profiles, signed in as different accounts with saved characters, can open
 /house/&lt;owner-id&gt;?play=1. The owner can use /me/house?play=1. Hidden or locked houses and
-bidirectional guestbook blocks refuse visitors. There is no friends-only policy or global Reef sanction
-table in this checkout. Owners bypass visitor privacy checks. Guild plazas are not admitted.
+bidirectional guestbook blocks refuse visitors. There is no friends-only policy; house and global Reef sanctions apply. Owners bypass visitor privacy checks. Guild plazas are not admitted.
 
 - GET /api/reef/bootstrap: authenticated saved appearance; visitors do not need to own a house.
 - POST /api/reef/socket-ticket: authenticated, CSRF-protected, Redis single-use ticket, 30-second TTL.
@@ -62,7 +61,7 @@ table in this checkout. Owners bypass visitor privacy checks. Guild plazas are n
 - Every JSON message has protocol_version (1), request_id, room_epoch and sequence.
   Client request IDs are 1–64 characters; unsolicited server events use an empty request ID.
   Each direction has its own increasing connection sequence starting at 1. Connection control messages use an empty epoch;
-  snapshots supply the actor's random epoch. Room keys are house:OWNER:INDEX; all database IDs are strings.
+  snapshots supply the actor's Postgres fencing token as a string. Room keys are house:OWNER:INDEX; all database IDs are strings.
 - Client types: authenticate {ticket}, join {room}, leave, snapshot, move_to {tile:[x,y]},
   stop, use {placement_id,revision}, stand, ping.
 - Server types: authenticated, snapshot, presence, path, correction, posture,
@@ -78,13 +77,58 @@ table in this checkout. Owners bypass visitor privacy checks. Guild plazas are n
 - Heartbeats run every 15 seconds, expire after 45 seconds without a valid client frame, and revalidate the session.
   A new authenticated controller closes the old one with controller_replaced; the old tab does not reconnect.
   Gaps request snapshots; reconnect uses bounded exponential backoff with jitter.
-- House editor, surface and upgrade changes publish on the existing invalidation channel. Actors reload authoritative
-  DB layouts before movement/use and every second, so missed notifications also recover. Layout changes stop routes,
-  release seats and relocate blocked actors to the deterministic free entry. The client refetches the room.
-  Redis/DB failures close rooms, and full outbound queues evict slow clients.
-- This is single-pod authority only. Chat safety is described below; rewards, outbox and cross-pod fencing remain out of scope.
-  The existing shared invalidation channel carries only a house ID hint; each actor rereads its own database.
-  Reliable environment-isolated outbox notifications and multi-pod ownership remain Wave 6 work.
+- House editor, surface and upgrade changes write a transactional Postgres outbox. Actors reload authoritative
+  DB layouts before movement/use and every second. Layout changes stop routes, release seats and relocate blocked
+  actors to the deterministic free entry. The client refetches the room.
+- Redis/DB failures pause gameplay by closing affected sockets. Bounded queues and two-second write deadlines
+  evict slow clients with `slow_client`; reconnect starts with a fresh snapshot.
+
+## Multi-pod routing and recovery (R21–R24)
+
+Apply migration `0070` before starting the new web pods. Set **the same `PINCHORA_ENV` on bot and web pods**
+(for example `production`, `staging`, or a test-run name). Only letters, digits, `_` and `-` are accepted;
+when unset it is `default`. Reef keys/channels use `pinchora:<env>:db<N>:reef:*`. Existing settings/XP/house
+invalidation uses `pinchora:<env>:db<N>:invalidate`; the global `pinchora:invalidate` channel is no longer used.
+Redis Pub/Sub ignores SELECT, so the database number is explicitly part of these channel names.
+Roll bot and web together for the channel-name change; older pods will retain their normal cache TTL fallback.
+Use separate Postgres databases for separate deployment environments.
+
+Each subscribed frontend relays intentions to one room actor. A three-second Redis lease gates publication
+atomically; a renewable Postgres lease and monotonically increasing fencing sequence survive Redis key loss.
+Persistent chat locks and checks the Postgres fence inside its evidence transaction. Stale owners cannot renew,
+publish, or persist chat after a successor takes over. Account controllers use compare-and-renew five-second
+leases, checked before actor commands and frontend delivery. Expiring room-location records remove ghosts even
+when a transition's leave message is lost. Logout, blocks and consent changes reach other pods.
+`WebState::drain_reef()` cancels room/relay tasks immediately; ownership becomes available after lease expiry.
+There is no persisted footstep stream: failover returns players to deterministic spawn via a new snapshot.
+Renewal runs independently of room work every 500 ms, with a one-second deadline; a failed renewal cancels
+in-flight room work. Postgres checks expiry after acquiring the fencing row lock, including after lock waits.
+Chat recipients are authorized inside the evidence transaction and checked again at frontend relay delivery,
+so a committed remote block or ban also suppresses delayed chat events.
+
+Outbox triggers cover placements, rooms, and house tier changes from both bot and web, including direct surface/
+flip updates and bulk restore/clear. Multiple row writes in one transaction produce one house notification;
+rollback produces none. Each active room relay polls committed event IDs and publishes missing IDs. Subscribers
+and room actors deduplicate IDs; scans do not use `max(id)` because transactions can commit out of order.
+`layout_changed` carries a string `event_id` and is applied once per committed transaction per live room epoch,
+even if geometry refreshes coalesce. This is logical exactly-once application over retryable delivery, not a claim
+that Pub/Sub itself delivers exactly once. New/restarted pods use the current snapshot as their baseline.
+The hourly retention task prunes outbox rows older than one day in batches and stale fencing rows.
+
+Relay delivery counters preserve gaps through the socket writer. The client pauses intentions, requests one
+snapshot, and reconnects if recovery has not completed within three seconds. A missing command acknowledgment
+closes the affected connection after three seconds; chat is never automatically replayed. Duplicate routed
+command sequences return a snapshot without repeating their side effects. Full queues close with `slow_client`.
+Frontend connection rate budgets remain per pod; room ownership and account controller exclusivity are global.
+Reef subscriptions require Redis 6+ (RESP3), with 128 buffered messages of at most 256 KiB each; overflow,
+oversized messages, and disconnects end the subscription and force recovery. The Redis driver's unbounded
+RESP2 subscription queue is not used for Reef. Sequence gaps clear chat because a lost policy event cannot
+be reconstructed from a room snapshot. Local location indexes contain only locally controlled accounts.
+
+`cargo test -p pinchora-web --test reef -- --test-threads=2` includes two independent app instances sharing the
+assigned Postgres/Redis, cross-pod presence/movement/chat, controller and consent replacement, transactional
+outbox rollback/deduplication, stopped-owner failover, and Redis restart recovery. The restart test launches a
+private `redis-server` child on a free loopback port; it never restarts the configured shared service or containers.
 
 Rust and TS both read navigation-manifest.json, the seven A* cases in fixtures/navigation.json,
 and the three collision/interaction cases in fixtures/navigation-layout.json.

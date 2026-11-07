@@ -71,6 +71,7 @@ export class ReefNet {
   private sequence = 0;
   private received = 0;
   private recovering = false;
+  private recoveryDeadline: ReturnType<typeof setTimeout> | undefined;
   private generation = 0;
   private pending: { id: string; tile: Point } | null = null;
   private room: string;
@@ -156,6 +157,7 @@ export class ReefNet {
     this.retry = setTimeout(() => void this.connect(), retryDelay(this.attempt++));
   }
   private reset() {
+    clearTimeout(this.recoveryDeadline);
     this.chat.disconnected();
     this.ready = false;
     this.pending = null;
@@ -199,9 +201,17 @@ export class ReefNet {
     if (message.sequence <= this.received) return;
     const gap = this.received > 0 && message.sequence !== this.received + 1;
     this.received = message.sequence;
+    // A missing event may have revoked chat visibility. Snapshots do not replay policy
+    // notifications, and a policy event must take effect even while recovering a gap.
+    if (gap || message.type === "policy_changed") this.chat.clear();
     if (message.type === "ping") this.send({ type: "ping" });
-    if ((gap || this.recovering) && message.type !== "snapshot" && this.epoch) {
-      if (!this.recovering) this.send({ type: "snapshot" });
+    if ((gap || this.recovering) && message.type !== "snapshot" && (this.epoch || this.userId)) {
+      if (!this.recovering) {
+        this.send({ type: "snapshot" });
+        this.recoveryDeadline = setTimeout(() => this.socket?.close(), 3000);
+      }
+      this.ready = false;
+      this.pending = null;
       this.recovering = true;
       return;
     }
@@ -210,10 +220,7 @@ export class ReefNet {
       this.send({ type: "join", room: this.room });
       return;
     }
-    if (message.type === "policy_changed") {
-      this.chat.clear();
-      return;
-    }
+    if (message.type === "policy_changed") return;
     if (message.type === "chat" && message.room_epoch === this.epoch) {
       this.chat.accept(message as unknown as Omit<ChatLine, "delivery">);
       return;

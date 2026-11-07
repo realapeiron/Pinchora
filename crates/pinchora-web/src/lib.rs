@@ -62,6 +62,7 @@ pub async fn run(config: &Config, app: Arc<App>, ready: Readiness) -> anyhow::Re
     tracing::info!(%bind, "web dashboard listening");
     ready.set(true);
     let shutdown_ready = ready.clone();
+    let drain = state.clone();
     axum::serve(
         listener,
         router(state).into_make_service_with_connect_info::<SocketAddr>(),
@@ -69,6 +70,7 @@ pub async fn run(config: &Config, app: Arc<App>, ready: Readiness) -> anyhow::Re
     .with_graceful_shutdown(async move {
         telemetry::shutdown_signal().await;
         shutdown_ready.set(false);
+        drain.drain_reef();
     })
     .await?;
     app.drain(Duration::from_secs(10)).await;

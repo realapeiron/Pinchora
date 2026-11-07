@@ -1,5 +1,6 @@
 mod invalidate;
 mod queue;
+mod reef;
 mod stats;
 
 use std::time::Duration;
@@ -7,7 +8,7 @@ use std::time::Duration;
 use redis::{AsyncCommands, aio::ConnectionManager};
 use serde::{Deserialize, Serialize};
 
-pub use invalidate::{INVALIDATE_CHANNEL, Invalidation};
+pub use invalidate::Invalidation;
 pub use queue::RedisQueue;
 pub use stats::StatsBatch;
 
@@ -19,6 +20,7 @@ pub struct Cache {
     conn: ConnectionManager,
     /// For pub/sub, which needs a connection of its own.
     client: redis::Client,
+    namespace: String,
 }
 
 /// What a shard needs to resume its gateway session after a restart.
@@ -36,12 +38,33 @@ pub struct StoredSession {
 
 impl Cache {
     pub async fn connect(url: &str) -> anyhow::Result<Self> {
+        let environment = std::env::var("PINCHORA_ENV").unwrap_or_else(|_| "default".into());
+        Self::connect_scoped(url, &environment).await
+    }
+
+    /// Pub/Sub ignores SELECT. Include both deployment environment and database in every channel.
+    pub async fn connect_scoped(url: &str, environment: &str) -> anyhow::Result<Self> {
+        anyhow::ensure!(
+            !environment.is_empty()
+                && environment
+                    .bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-'),
+            "invalid PINCHORA_ENV"
+        );
         let client = redis::Client::open(url)?;
+        let namespace = format!(
+            "pinchora:{environment}:db{}",
+            client.get_connection_info().redis_settings().db()
+        );
         let config = redis::aio::ConnectionManagerConfig::new()
             .set_connection_timeout(Some(Duration::from_secs(5)))
             .set_response_timeout(Some(Duration::from_secs(5)));
         let conn = ConnectionManager::new_with_config(client.clone(), config).await?;
-        Ok(Self { conn, client })
+        Ok(Self {
+            conn,
+            client,
+            namespace,
+        })
     }
 
     pub fn conn(&self) -> ConnectionManager {

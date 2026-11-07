@@ -1,12 +1,13 @@
-//! Single-pod authoritative rooms. No economy writes or persisted presence.
+//! Fenced, multi-pod authoritative rooms. No economy writes or persisted presence.
 mod navigation;
 mod room;
+mod routing;
 pub(crate) mod safety;
 mod socket;
 pub(crate) use socket::{ticket, upgrade};
 
-use crate::{auth::session::random_token, state::WebState};
-use serde::Deserialize;
+use crate::state::WebState;
+use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::{
     collections::HashMap,
@@ -17,7 +18,7 @@ use tokio::sync::{Mutex, mpsc, watch};
 pub const QUEUE: usize = 64;
 pub const MAX_MESSAGE: usize = 4096;
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Envelope {
     pub protocol_version: u8,
     pub request_id: String,
@@ -48,7 +49,7 @@ impl Envelope {
             .then_some(envelope)
     }
 }
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Command {
     Authenticate { ticket: String },
@@ -62,7 +63,12 @@ pub enum Command {
     Ping,
     Chat { text: String },
 }
+#[derive(Serialize, Deserialize)]
 pub struct Event {
+    #[serde(default)]
+    pub delivery: u64,
+    #[serde(default)]
+    pub stream: String,
     pub epoch: String,
     pub request: String,
     pub body: Value,
@@ -91,6 +97,8 @@ impl Peer {
         if self
             .outgoing
             .try_send(Event {
+                delivery: 0,
+                stream: String::new(),
                 epoch: epoch.into(),
                 request: request.into(),
                 body,
@@ -129,28 +137,42 @@ pub enum Input {
     Join(Peer, String),
     Command(String, Envelope),
     Leave(String),
+    Layout(i64),
 }
 #[derive(Default)]
 pub struct Runtime {
     pub(crate) safety: Mutex<()>,
+    pub shutdown: watch::Sender<bool>,
+    pub tasks: std::sync::Mutex<Vec<tokio::task::AbortHandle>>,
     locations: Mutex<HashMap<u64, RoomKey>>,
     rooms: Mutex<HashMap<RoomKey, mpsc::Sender<Input>>>,
     controllers: Mutex<HashMap<u64, Peer>>,
     limits: Mutex<HashMap<u64, Limits>>,
 }
 impl Runtime {
-    pub async fn terminate(&self, user: u64, reason: &'static str) {
+    pub async fn terminate(&self, state: &WebState, user: u64, reason: &'static str) {
+        let _ = state
+            .app
+            .cache
+            .reef_publish(&format!("control:{user}"), &json!({"close":reason}).to_string())
+            .await;
         if let Some(peer) = self.controllers.lock().await.get(&user) {
             peer.terminate(reason);
         }
     }
-    pub async fn policy_changed(&self, user: u64) {
+    pub async fn policy_changed(&self, state: &WebState, user: u64) {
+        let _ = state.app.cache.reef_publish(&format!("control:{user}"), "{}").await;
         if let Some(peer) = self.controllers.lock().await.get(&user) {
             peer.send("", "", json!({"type":"policy_changed"}));
         }
     }
     pub async fn locate(&self, user: u64, key: RoomKey) {
-        self.locations.lock().await.insert(user, key);
+        // This index belongs to local sockets. Remote actor proxies have no local release
+        // callback, so recording them here would retain their identities indefinitely.
+        let controllers = self.controllers.lock().await;
+        if controllers.contains_key(&user) {
+            self.locations.lock().await.insert(user, key);
+        }
     }
     pub async fn recheck(&self, state: &WebState) {
         let locations = self.locations.lock().await.clone();
@@ -182,13 +204,24 @@ impl Runtime {
     pub async fn unlocate(&self, user: u64) {
         self.locations.lock().await.remove(&user);
     }
-    pub async fn claim(&self, peer: &Peer) {
+    pub async fn claim(&self, state: &WebState, peer: &Peer) -> anyhow::Result<()> {
+        state
+            .app
+            .cache
+            .reef_claim(&routing::controller_key(peer.user), &peer.token, 5000, true)
+            .await?;
         self.locations.lock().await.remove(&peer.user);
         if let Some(old) = self.controllers.lock().await.insert(peer.user, peer.clone()) {
             old.terminate("controller_replaced");
         }
+        Ok(())
     }
-    pub async fn release(&self, peer: &Peer) {
+    pub async fn release(&self, state: &WebState, peer: &Peer) {
+        let _ = state
+            .app
+            .cache
+            .reef_release(&routing::controller_key(peer.user), &peer.token)
+            .await;
         let mut controllers = self.controllers.lock().await;
         if controllers.get(&peer.user).is_some_and(|p| p.token == peer.token) {
             controllers.remove(&peer.user);
@@ -209,7 +242,10 @@ impl Runtime {
             .entry(key)
             .or_insert_with(|| {
                 let (tx, rx) = mpsc::channel(QUEUE);
-                tokio::spawn(room::run(state.clone(), key, random_token(16), rx));
+                let task = tokio::spawn(routing::run(state.clone(), key, rx));
+                let mut tasks = self.tasks.lock().expect("room task registry");
+                tasks.retain(|task| !task.is_finished());
+                tasks.push(task.abort_handle());
                 tx
             })
             .clone()
@@ -319,6 +355,33 @@ impl Limits {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[tokio::test]
+    async fn remote_peers_do_not_accumulate_in_the_local_location_index() {
+        let runtime = Runtime::default();
+        for user in 1..1000 {
+            runtime.locate(user, RoomKey { owner: 1, idx: 0 }).await;
+        }
+        assert!(runtime.locations.lock().await.is_empty());
+    }
+    #[tokio::test]
+    async fn slow_client_eviction_preserves_the_reason() {
+        let (outgoing, mut incoming) = mpsc::channel(1);
+        let (close, _) = watch::channel(None);
+        let peer = Peer {
+            token: "slow".into(),
+            user: 1,
+            name: "slow".into(),
+            character: "".into(),
+            outgoing,
+            close,
+        };
+        peer.send("1", "1", json!({"type":"snapshot"}));
+        peer.send("1", "2", json!({"type":"correction"}));
+        assert_eq!(*peer.close.borrow(), Some("slow_client"));
+        peer.terminate("closed");
+        assert_eq!(*peer.close.borrow(), Some("slow_client"));
+        assert_eq!(incoming.recv().await.unwrap().request, "1");
+    }
     #[test]
     fn protocol_intentions_only() {
         let envelope = serde_json::json!({"protocol_version":1,"request_id":"1","room_epoch":"","sequence":1,"type":"authenticate","ticket":"test"});
