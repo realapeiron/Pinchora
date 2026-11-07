@@ -43,8 +43,8 @@ export function Starboard() {
           {!query.data.message_content && (
             <p className="notice" data-testid="content-lock">
               <span className="badge badge-gold">NEEDS MESSAGE CONTENT</span> Board posts show the jump link,
-              author, and attachments. To copy message text too, enable Discord's privileged Message Content
-              intent for Pinchora. Media-only voting needs this intent too.
+              author, and source link. To copy message text and attachments, enable Discord's privileged
+              Message Content intent for Pinchora. Media-only voting needs this intent too.
             </p>
           )}
           <Panel title={`BOARDS · ${query.data.boards.length}/${maxBoards} used`}>
@@ -57,10 +57,14 @@ export function Starboard() {
                   key={board.id}
                   board={board}
                   info={discord.data}
+                  messageContent={query.data.message_content}
                   onEdit={() => setEditing({ ...board })}
                   onRemove={() => {
                     if (!board.id) return;
-                    removeBoard.mutate(board.id, { onSuccess: () => setNotice("Board removed.") });
+                    removeBoard.mutate(board.id, {
+                      onSuccess: () => setNotice("Board removed."),
+                      onError: (error) => setNotice(error.message),
+                    });
                   }}
                 />
               ))}
@@ -78,6 +82,7 @@ export function Starboard() {
               key={editing.id ?? "new"}
               draft={editing}
               info={discord.data}
+              messageContent={query.data.message_content}
               busy={saveBoard.isPending}
               error={saveBoard.error?.message}
               onCancel={() => setEditing(null)}
@@ -114,6 +119,7 @@ export function Starboard() {
                     onClick={() =>
                       removeVote.mutate(item.channel_id, {
                         onSuccess: () => setNotice("Vote channel removed."),
+                        onError: (error) => setNotice(error.message),
                       })
                     }
                   >
@@ -167,11 +173,13 @@ function channelName(info: GuildInfo | undefined, id: string): string {
 function BoardCard({
   board,
   info,
+  messageContent,
   onEdit,
   onRemove,
 }: {
   board: Board;
   info: GuildInfo | undefined;
+  messageContent: boolean;
   onEdit: () => void;
   onRemove: () => void;
 }) {
@@ -188,7 +196,7 @@ function BoardCard({
       <div className="star-preview">
         <span>⭐ {board.threshold} · #source</span>
         <strong>A standout post appears here</strong>
-        <small>Author · jump link · attachments</small>
+        <small>Author · jump link{messageContent ? " · attachments" : ""}</small>
       </div>
       <div className="star-actions">
         <button type="button" onClick={onEdit}>
@@ -205,6 +213,7 @@ function BoardCard({
 function BoardEditor({
   draft,
   info,
+  messageContent,
   busy,
   error,
   onCancel,
@@ -212,6 +221,7 @@ function BoardEditor({
 }: {
   draft: Board;
   info: GuildInfo | undefined;
+  messageContent: boolean;
   busy: boolean;
   error?: string;
   onCancel: () => void;
@@ -290,7 +300,7 @@ function BoardEditor({
             ))}
           </select>
           <small>
-            Leave empty for all channels. Select a private source explicitly to allow it on this board.
+            Leave empty for all channels. Private sources remain excluded to protect their audience.
           </small>
         </label>
         <label>
@@ -315,7 +325,7 @@ function BoardEditor({
         {(
           [
             ["self_star", "Allow self stars"],
-            ["allow_bots", "Include bot posts"],
+            ["allow_bots", "Include bot posts and stars"],
             ["require_image", "Require an image"],
             ["remove_below", "Remove below threshold"],
             ["enabled", "Board enabled"],
@@ -388,7 +398,10 @@ function BoardEditor({
             {board.emoji} {board.threshold} · #source
           </span>
           <strong>{board.name}</strong>
-          <small>Author · jump link · attachments{board.require_image ? " · image" : ""}</small>
+          <small>
+            Author · jump link{messageContent ? " · attachments" : ""}
+            {board.require_image ? " · image" : ""}
+          </small>
         </div>
       )}
       {error && (

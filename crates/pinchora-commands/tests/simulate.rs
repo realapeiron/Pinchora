@@ -12887,6 +12887,23 @@ async fn admin_paths_refuse_members_without_manage_server() {
             "tickets settings",
             json!([sub("settings", vec![int_option("max_open", 2)])]),
         ),
+        (
+            "starboard setup",
+            json!([sub(
+                "setup",
+                vec![text_option("name", "Gated"), channel_option("channel", channel)]
+            )]),
+        ),
+        ("starboard edit", json!([sub("edit", vec![int_option("id", 1)])])),
+        ("starboard remove", json!([sub("remove", vec![int_option("id", 1)])])),
+        (
+            "starboard votes add",
+            json!([group("votes", sub("add", vec![channel_option("channel", channel)]))]),
+        ),
+        (
+            "starboard votes remove",
+            json!([group("votes", sub("remove", vec![channel_option("channel", channel)]))]),
+        ),
     ];
 
     let before = admin_state(&sim, target, suggestion.id).await;

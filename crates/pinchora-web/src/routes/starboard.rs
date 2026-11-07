@@ -5,6 +5,7 @@ use axum::{
     extract::{Path, State},
     routing::{get, post},
 };
+use pinchora_cache::Invalidation;
 use pinchora_core::{
     settings::{FieldError, parse_hex_color},
     starboard::{MAX_BOARDS, MAX_ROLE_WEIGHT, MAX_SOURCE_CHANNELS, MAX_THRESHOLD, MAX_WEIGHTED_ROLES},
@@ -14,11 +15,22 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use crate::{
+    audit::{self, Change},
     error::{ApiError, ApiJson, ApiResult},
     extract::ManagedGuild,
     guild_info,
     state::WebState,
 };
+
+#[derive(Deserialize)]
+struct BoardPath {
+    id: i64,
+}
+
+#[derive(Deserialize)]
+struct VotePath {
+    channel: String,
+}
 
 pub fn router() -> Router<WebState> {
     Router::new()
@@ -132,7 +144,8 @@ async fn save_board(
         return Err(bad("role_weights", "Use up to 25 role IDs with weights from 1 to 50."));
     }
     let before = body.id.as_deref().map(|v| id(v, "id")).transpose()?.map(|v| v as i64);
-    if let Some(before) = before {
+    let previous = if let Some(before) = before {
+        let previous = db.starboard(before).await?;
         if db
             .starboard(before)
             .await?
@@ -140,9 +153,12 @@ async fn save_board(
         {
             return Err(ApiError::not_found());
         }
+        previous
     } else if db.starboards(guild.id).await?.len() >= MAX_BOARDS {
         return Err(ApiError::limit("This server already has 3/3 starboards."));
-    }
+    } else {
+        None
+    };
     let saved = db
         .save_starboard(&Starboard {
             id: before.unwrap_or(0),
@@ -162,17 +178,52 @@ async fn save_board(
             enabled: body.enabled,
         })
         .await?;
+    let target = saved.id.to_string();
+    audit::finish(
+        &state,
+        &guild.current.session,
+        Change {
+            guild: guild.id,
+            action: "starboard.save",
+            target: Some(&target),
+            before: previous.as_ref().map_or(Value::Null, board_json),
+            after: board_json(&saved),
+        },
+        Some(Invalidation::Guild(guild.id)),
+    )
+    .await;
     Ok(Json(board_json(&saved)))
 }
 
 async fn delete_board(
     State(state): State<WebState>,
     guild: ManagedGuild,
-    Path(id): Path<i64>,
+    Path(BoardPath { id }): Path<BoardPath>,
 ) -> ApiResult<Json<Value>> {
+    let previous = state
+        .app
+        .db
+        .starboard(id)
+        .await?
+        .filter(|b| b.guild_id == guild.id as i64)
+        .ok_or_else(ApiError::not_found)?;
     if !state.app.db.delete_starboard(guild.id, id).await? {
         return Err(ApiError::not_found());
     }
+    let target = id.to_string();
+    audit::finish(
+        &state,
+        &guild.current.session,
+        Change {
+            guild: guild.id,
+            action: "starboard.delete",
+            target: Some(&target),
+            before: board_json(&previous),
+            after: Value::Null,
+        },
+        Some(Invalidation::Guild(guild.id)),
+    )
+    .await;
     Ok(Json(json!({"removed": true})))
 }
 
@@ -214,17 +265,59 @@ async fn save_vote(
         create_thread: body.create_thread,
         enabled: body.enabled,
     };
+    let previous = state
+        .app
+        .db
+        .votes(guild.id)
+        .await?
+        .into_iter()
+        .find(|v| v.channel_id == row.channel_id);
     state.app.db.save_vote(&row).await?;
+    audit::finish(
+        &state,
+        &guild.current.session,
+        Change {
+            guild: guild.id,
+            action: "starboard.vote.save",
+            target: Some(&body.channel_id),
+            before: previous.as_ref().map_or(Value::Null, vote_json),
+            after: vote_json(&row),
+        },
+        Some(Invalidation::Guild(guild.id)),
+    )
+    .await;
     Ok(Json(vote_json(&row)))
 }
 
 async fn delete_vote(
     State(state): State<WebState>,
     guild: ManagedGuild,
-    Path(channel): Path<String>,
+    Path(VotePath { channel }): Path<VotePath>,
 ) -> ApiResult<Json<Value>> {
-    if !state.app.db.delete_vote(guild.id, id(&channel, "channel")?).await? {
+    let channel_id = id(&channel, "channel")?;
+    let previous = state
+        .app
+        .db
+        .votes(guild.id)
+        .await?
+        .into_iter()
+        .find(|v| v.channel_id == channel_id as i64)
+        .ok_or_else(ApiError::not_found)?;
+    if !state.app.db.delete_vote(guild.id, channel_id).await? {
         return Err(ApiError::not_found());
     }
+    audit::finish(
+        &state,
+        &guild.current.session,
+        Change {
+            guild: guild.id,
+            action: "starboard.vote.delete",
+            target: Some(&channel),
+            before: vote_json(&previous),
+            after: Value::Null,
+        },
+        Some(Invalidation::Guild(guild.id)),
+    )
+    .await;
     Ok(Json(json!({"removed": true})))
 }

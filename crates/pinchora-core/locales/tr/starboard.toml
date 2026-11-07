@@ -19,7 +19,7 @@ heading = "⭐ {count} · {channel}"
 author = "Gönderen: {author}"
 message = "Mesaj"
 attachments = "Ekler"
-locked = "Mesaj metnini göstermek için Message Content izni gerekiyor."
+locked = "Mesaj metni ve ekleri göstermek için Message Content izni gerekiyor."
 [starboard.top]
 title = "En çok yıldız alanlar · {board}"
 empty = "Henüz yıldızlanan paylaşım yok."

@@ -1,6 +1,11 @@
 //! Reaction-driven starboards and vote channels.
 
-use std::{sync::Arc, time::Duration};
+use std::{
+    sync::{Arc, LazyLock},
+    time::Duration,
+};
+
+use tokio::sync::Semaphore;
 
 use pinchora_core::{modules::Module, t};
 use pinchora_db::{StarPost, Starboard};
@@ -17,6 +22,8 @@ use twilight_model::{
 use twilight_util::builder::embed::EmbedBuilder;
 
 use crate::{App, hooks::ReactionEvent};
+
+static VOTE_SLOTS: LazyLock<Arc<Semaphore>> = LazyLock::new(|| Arc::new(Semaphore::new(32)));
 
 fn emoji_matches(configured: &str, reaction: &EmojiReactionType) -> bool {
     match reaction {
@@ -51,14 +58,20 @@ fn everyone_visible(guild: u64, roles: &[twilight_model::guild::Role], channel: 
         .iter()
         .find(|r| r.id.get() == guild)
         .map_or(Permissions::empty(), |r| r.permissions);
-    crate::text::access::channel_permissions(
+    let view = crate::text::access::channel_permissions(
         base,
         guild,
         guild,
         &[],
         channel.permission_overwrites.as_deref().unwrap_or(&[]),
     )
-    .contains(Permissions::VIEW_CHANNEL)
+    .contains(Permissions::VIEW_CHANNEL);
+    view && !channel
+        .permission_overwrites
+        .as_deref()
+        .unwrap_or(&[])
+        .iter()
+        .any(|overwrite| overwrite.deny.contains(Permissions::VIEW_CHANNEL))
 }
 
 fn nsfw_compatible(source: Option<bool>, parent: Option<bool>, target: Option<bool>) -> bool {
@@ -96,14 +109,11 @@ async fn can_copy(app: &App, board: &Starboard, source: &Channel) -> anyhow::Res
     let source_public = if source.kind == ChannelType::PrivateThread {
         false
     } else if let Some(parent) = &parent {
-        everyone_visible(guild, &roles, parent)
+        everyone_visible(guild, &roles, parent) && everyone_visible(guild, &roles, source)
     } else {
         everyone_visible(guild, &roles, source)
     };
-    if source_public || !everyone_visible(guild, &roles, &target) {
-        return Ok(true);
-    }
-    Ok(board.only_channels.contains(&(source.id.get() as i64)))
+    Ok(source_public)
 }
 
 fn has_image(message: &Message) -> bool {
@@ -135,19 +145,16 @@ struct Who {
     guild: u64,
     channel: u64,
     message: u64,
-    user: u64,
 }
 
-pub(crate) async fn on_reaction(app: &Arc<App>, event: &ReactionEvent) {
-    let (guild, channel, message, user, emoji, adding, roles) = match event {
+pub async fn on_reaction(app: &Arc<App>, event: &ReactionEvent) {
+    let (guild, channel, message, user, emoji) = match event {
         ReactionEvent::Add(e) => (
             e.guild_id.map(|v| v.get()),
             e.channel_id.get(),
             e.message_id.get(),
             e.user_id.get(),
             &e.emoji,
-            true,
-            e.member.as_ref().map(|m| m.roles.as_slice()),
         ),
         ReactionEvent::Remove(e) => (
             e.guild_id.map(|v| v.get()),
@@ -155,8 +162,6 @@ pub(crate) async fn on_reaction(app: &Arc<App>, event: &ReactionEvent) {
             e.message_id.get(),
             e.user_id.get(),
             &e.emoji,
-            false,
-            None,
         ),
         ReactionEvent::RemoveAll(e) => {
             if let Some(guild) = e.guild_id {
@@ -177,7 +182,7 @@ pub(crate) async fn on_reaction(app: &Arc<App>, event: &ReactionEvent) {
         }
     };
     let Some(guild) = guild else { return };
-    if user == app.application_id.get() || !app.module_allowed(guild, Some(channel), Module::Starboard).await {
+    if user == app.application_id.get() {
         return;
     }
     let app = app.clone();
@@ -185,21 +190,16 @@ pub(crate) async fn on_reaction(app: &Arc<App>, event: &ReactionEvent) {
         guild,
         channel,
         message,
-        user,
     };
     let emoji = emoji.clone();
-    let roles = roles.map(<[_]>::to_vec);
     app.clone().spawn(async move {
-        if let Err(error) = process_reaction(&app, who, &emoji, adding, roles.as_deref()).await {
+        if let Err(error) = process_reaction(&app, who, &emoji).await {
             tracing::warn!(guild, message, %error, "starboard reaction failed");
         }
     });
 }
 
 async fn cleared(app: &Arc<App>, guild: u64, channel: u64, message: u64, emoji: Option<&EmojiReactionType>) {
-    if !app.module_allowed(guild, Some(channel), Module::Starboard).await {
-        return;
-    }
     let app = app.clone();
     let emoji = emoji.cloned();
     app.clone().spawn(async move {
@@ -210,31 +210,23 @@ async fn cleared(app: &Arc<App>, guild: u64, channel: u64, message: u64, emoji: 
             .into_iter()
             .filter(|b| eligible(b, channel) && emoji.as_ref().is_none_or(|e| emoji_matches(&b.emoji, e)))
         {
-            match app.db.clear_stars(board.id, message).await {
-                Ok(Some(post)) => {
-                    if let Err(error) = sync_post(&app, &board, &post, None).await {
-                        tracing::warn!(%error, "starboard reaction clear failed");
-                    }
-                }
-                Ok(None) => {}
-                Err(error) => tracing::warn!(%error, "starboard reaction clear failed"),
+            if let Ok(Some(post)) = app.db.star_post(board.id, message).await
+                && let Err(error) = app
+                    .db
+                    .touch_star_post(board.id, message, channel, post.author_id as u64)
+                    .await
+            {
+                tracing::warn!(%error, "starboard reaction clear failed");
             }
         }
     });
 }
 
-async fn process_reaction(
-    app: &App,
-    who: Who,
-    emoji: &EmojiReactionType,
-    adding: bool,
-    roles: Option<&[Id<twilight_model::id::marker::RoleMarker>]>,
-) -> anyhow::Result<()> {
+async fn process_reaction(app: &App, who: Who, emoji: &EmojiReactionType) -> anyhow::Result<()> {
     let Who {
         guild,
         channel,
         message,
-        user,
     } = who;
     let boards = app.db.starboards(guild).await?;
     let matched: Vec<_> = boards
@@ -244,7 +236,6 @@ async fn process_reaction(
     if matched.is_empty() {
         return Ok(());
     }
-    let source = app.http.channel(Id::new(channel)).await?.model().await?;
     let original = app
         .http
         .message(Id::new(channel), Id::new(message))
@@ -252,51 +243,137 @@ async fn process_reaction(
         .model()
         .await?;
     for board in matched {
-        if !can_copy(app, &board, &source).await.unwrap_or(false)
-            || board.require_image && !has_image(&original)
-            || !board.allow_bots && original.author.bot
-            || !board.self_star && original.author.id.get() == user
-        {
-            continue;
-        }
-        let held = if adding {
-            match roles {
-                Some(held) => held.to_vec(),
-                None => {
-                    app.http
-                        .guild_member(Id::new(guild), Id::new(user))
-                        .await?
-                        .model()
-                        .await?
-                        .roles
-                }
-            }
-        } else {
-            Vec::new()
-        };
-        let count = app
-            .db
-            .star_change(
-                board.id,
-                message,
-                channel,
-                original.author.id.get(),
-                user,
-                adding.then(|| weight(&board, &held)),
-            )
+        app.db
+            .touch_star_post(board.id, message, channel, original.author.id.get())
             .await?;
-        sync_post(app, &board, &count, Some(&original)).await?;
     }
     Ok(())
+}
+
+fn unknown_message(error: &twilight_http::Error) -> bool {
+    matches!(error.kind(), twilight_http::error::ErrorType::Response { status, .. } if status.get() == 404)
+}
+
+async fn reconcile_post(app: &App, board: &Starboard, post: &StarPost, force: bool) -> anyhow::Result<()> {
+    let guild = board.guild_id as u64;
+    let channel = post.channel_id as u64;
+    let source = match app.http.channel(Id::new(channel)).await {
+        Ok(response) => response.model().await?,
+        Err(error) if unknown_message(&error) => {
+            if let Some(copy) = post.board_message_id.filter(|id| *id > 0) {
+                app.db
+                    .clear_star_copy(board.id, post.message_id as u64, copy as u64)
+                    .await?;
+            }
+            return Ok(());
+        }
+        Err(error) => return Err(error.into()),
+    };
+    let policy = board.enabled
+        && eligible(board, channel)
+        && app.module_allowed(guild, Some(channel), Module::Starboard).await
+        && can_copy(app, board, &source).await?;
+    let original = if policy {
+        match app
+            .http
+            .message(Id::new(channel), Id::new(post.message_id as u64))
+            .await
+        {
+            Ok(response) => Some(response.model().await?),
+            Err(error) if unknown_message(&error) => None,
+            Err(error) => return Err(error.into()),
+        }
+    } else {
+        None
+    };
+    let allowed = original.as_ref().is_some_and(|message| {
+        (!board.require_image || app.message_content && has_image(message)) && (board.allow_bots || !message.author.bot)
+    });
+    if !allowed {
+        if let Some(copy) = post.board_message_id.filter(|id| *id > 0) {
+            app.db
+                .clear_star_copy(board.id, post.message_id as u64, copy as u64)
+                .await?;
+        }
+        return Ok(());
+    }
+    let original = original.expect("allowed original");
+    let roles = app.http.roles(Id::new(guild)).await?.models().await?;
+    let base = roles
+        .iter()
+        .find(|role| role.id.get() == guild)
+        .map_or(Permissions::empty(), |role| role.permissions);
+    let mut votes = Vec::new();
+    let mut after = None;
+    let emoji = reaction_type(&board.emoji);
+    loop {
+        let request = app
+            .http
+            .reactions(Id::new(channel), Id::new(post.message_id as u64), &emoji)
+            .limit(100);
+        let users = match after {
+            Some(id) => request.after(Id::new(id)).await?.models().await?,
+            None => request.await?.models().await?,
+        };
+        for user in &users {
+            if user.id.get() == app.application_id.get()
+                || (!board.allow_bots && user.bot)
+                || (!board.self_star && user.id == original.author.id)
+            {
+                continue;
+            }
+            let member = match app.http.guild_member(Id::new(guild), user.id).await {
+                Ok(response) => response.model().await?,
+                Err(error) if unknown_message(&error) => continue,
+                Err(error) => return Err(error.into()),
+            };
+            let held: Vec<u64> = member.roles.iter().map(|role| role.get()).collect();
+            let permissions = crate::text::access::channel_permissions(
+                roles
+                    .iter()
+                    .filter(|role| held.contains(&role.id.get()))
+                    .fold(base, |permissions, role| permissions | role.permissions),
+                guild,
+                user.id.get(),
+                &held,
+                source.permission_overwrites.as_deref().unwrap_or(&[]),
+            );
+            if permissions.contains(Permissions::VIEW_CHANNEL) {
+                votes.push((user.id.get(), weight(board, &member.roles)));
+            }
+        }
+        if users.len() < 100 {
+            break;
+        }
+        after = users.last().map(|user| user.id.get());
+    }
+    if let Some((current, changed)) = app
+        .db
+        .replace_star_votes(board.id, post.message_id as u64, &votes)
+        .await?
+        && (force || changed || current.board_message_id.is_none())
+    {
+        sync_post(app, board, &current, Some(&original)).await?;
+    }
+    Ok(())
+}
+
+pub async fn reconcile_one(app: &App, board_id: i64, message: u64) -> anyhow::Result<()> {
+    let Some(board) = app.db.starboard(board_id).await? else {
+        return Ok(());
+    };
+    let Some(post) = app.db.star_post(board_id, message).await? else {
+        return Ok(());
+    };
+    reconcile_post(app, &board, &post, true).await
 }
 
 async fn sync_post(app: &App, board: &Starboard, post: &StarPost, original: Option<&Message>) -> anyhow::Result<()> {
     let dest = Id::new(board.channel_id as u64);
     if post.star_count < board.threshold && board.remove_below {
         if let Some(copy) = post.board_message_id.filter(|v| *v > 0) {
-            let _ = app.http.delete_message(dest, Id::new(copy as u64)).await;
             app.db
-                .clear_star_copy(board.id, post.message_id as u64, copy as u64)
+                .clear_star_copy_if_below(board.id, post.message_id as u64, copy as u64, board.threshold)
                 .await?;
         }
         return Ok(());
@@ -351,7 +428,11 @@ async fn sync_post(app: &App, board: &Starboard, post: &StarPost, original: Opti
             "starboard.post.locked"
         )));
     }
-    let files: Vec<_> = original.attachments.iter().take(5).map(|a| a.url.as_str()).collect();
+    let files: Vec<_> = if app.message_content {
+        original.attachments.iter().take(5).map(|a| a.url.as_str()).collect()
+    } else {
+        Vec::new()
+    };
     if !files.is_empty() {
         embed = embed.field(twilight_util::builder::embed::EmbedFieldBuilder::new(
             t!(lang, "starboard.post.attachments"),
@@ -360,34 +441,21 @@ async fn sync_post(app: &App, board: &Starboard, post: &StarPost, original: Opti
     }
     let embeds = [embed.build()];
     if let Some(copy) = post.board_message_id.filter(|v| *v > 0) {
-        if app
-            .cache
-            .try_cooldown(
-                &format!("star-edit:{}:{}", board.id, post.message_id),
-                Duration::from_secs(2),
-            )
-            .await?
-            .is_none()
+        match app
+            .http
+            .update_message(dest, Id::new(copy as u64))
+            .embeds(Some(&embeds))
+            .await
         {
-            app.http
-                .update_message(dest, Id::new(copy as u64))
-                .embeds(Some(&embeds))
-                .await?;
-        } else if app
-            .cache
-            .try_cooldown(
-                &format!("star-edit-pending:{}:{}", board.id, post.message_id),
-                Duration::from_secs(2),
-            )
-            .await?
-            .is_none()
-        {
-            tokio::time::sleep(Duration::from_millis(2_100)).await;
-            if let Some(latest) = app.db.star_post(board.id, post.message_id as u64).await? {
-                Box::pin(sync_post(app, board, &latest, None)).await?;
+            Ok(_) => {}
+            Err(error) if unknown_message(&error) => {
+                app.db
+                    .clear_star_copy(board.id, post.message_id as u64, copy as u64)
+                    .await?;
             }
+            Err(error) => return Err(error.into()),
         }
-    } else if app
+    } else if let Some(token) = app
         .db
         .claim_star_post(board.id, post.message_id as u64, board.threshold)
         .await?
@@ -402,17 +470,34 @@ async fn sync_post(app: &App, board: &Starboard, post: &StarPost, original: Opti
         match sent {
             Ok(response) => {
                 let copy = response.model().await?.id.get();
-                app.db
-                    .finish_star_post(board.id, post.message_id as u64, Some(copy))
-                    .await?;
-                if let Some(latest) = app.db.star_post(board.id, post.message_id as u64).await?
-                    && latest.star_count != post.star_count
+                if !app
+                    .db
+                    .finish_star_post(board.id, post.message_id as u64, token, Some(copy))
+                    .await?
                 {
-                    Box::pin(sync_post(app, board, &latest, Some(original))).await?;
+                    app.db.queue_star_cleanup(board.channel_id as u64, copy).await?;
                 }
             }
             Err(error) => {
-                app.db.finish_star_post(board.id, post.message_id as u64, None).await?;
+                if !matches!(
+                    error.kind(),
+                    twilight_http::error::ErrorType::RequestTimedOut
+                        | twilight_http::error::ErrorType::RequestError
+                        | twilight_http::error::ErrorType::RequestCanceled
+                ) {
+                    app.db
+                        .finish_star_post(board.id, post.message_id as u64, token, None)
+                        .await?;
+                } else {
+                    app.db
+                        .mark_star_post_ambiguous(board.id, post.message_id as u64, token, board.channel_id as u64)
+                        .await?;
+                    tracing::error!(
+                        board = board.id,
+                        message = post.message_id,
+                        "ambiguous starboard send requires reconciliation"
+                    );
+                }
                 return Err(error.into());
             }
         }
@@ -430,9 +515,14 @@ pub async fn on_message(app: &Arc<App>, message: &Message) {
     {
         return;
     }
+    let Ok(permit) = VOTE_SLOTS.clone().try_acquire_owned() else {
+        tracing::warn!(guild, "vote channel queue full");
+        return;
+    };
     let app = app.clone();
     let msg = message.clone();
     app.clone().spawn(async move {
+        let _permit = permit;
         if let Err(error) = react_vote(&app, &msg).await {
             tracing::warn!(guild, %error, "vote channel reaction failed");
         }
@@ -455,6 +545,25 @@ async fn react_vote(app: &App, message: &Message) -> anyhow::Result<()> {
         .create_reaction(channel, id, &reaction_type(&vote.down_emoji))
         .await?;
     if vote.create_thread {
+        if app
+            .cache
+            .try_cooldown(
+                &format!("vote-thread-user:{}:{}", vote.channel_id, message.author.id),
+                Duration::from_secs(30),
+            )
+            .await?
+            .is_some()
+            || app
+                .cache
+                .try_cooldown(
+                    &format!("vote-thread-channel:{}", vote.channel_id),
+                    Duration::from_secs(6),
+                )
+                .await?
+                .is_some()
+        {
+            return Ok(());
+        }
         let lang = app.guild_lang(vote.guild_id as u64).await;
         app.http
             .create_thread_from_message(channel, id, &t!(lang, "starboard.vote.thread"))
@@ -463,7 +572,7 @@ async fn react_vote(app: &App, message: &Message) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub(crate) async fn on_update(app: &Arc<App>, event: &MessageUpdate) {
+pub async fn on_update(app: &Arc<App>, event: &MessageUpdate) {
     let Some(guild) = event.0.guild_id.map(|g| g.get()) else {
         return;
     };
@@ -478,29 +587,15 @@ pub(crate) async fn on_update(app: &Arc<App>, event: &MessageUpdate) {
 
 async fn refresh(app: &App, guild: u64, message: u64) -> anyhow::Result<()> {
     let posts = app.db.star_posts_for_source(guild, message).await?;
-    let Some(first) = posts.first() else {
-        return Ok(());
-    };
-    let original = app
-        .http
-        .message(Id::new(first.channel_id as u64), Id::new(message))
-        .await?
-        .model()
-        .await?;
     for post in posts {
-        if let Some(board) = app.db.starboard(post.starboard_id).await? {
-            if board.require_image && !has_image(&original) {
-                if let Some(copy) = post.board_message_id.filter(|v| *v > 0) {
-                    let _ = app
-                        .http
-                        .delete_message(Id::new(board.channel_id as u64), Id::new(copy as u64))
-                        .await;
-                    app.db.clear_star_copy(board.id, message, copy as u64).await?;
-                }
-            } else {
-                sync_post(app, &board, &post, Some(&original)).await?;
-            }
-        }
+        app.db
+            .touch_star_post(
+                post.starboard_id,
+                message,
+                post.channel_id as u64,
+                post.author_id as u64,
+            )
+            .await?;
     }
     Ok(())
 }
@@ -523,18 +618,7 @@ async fn delete_source(app: &Arc<App>, guild: u64, message: u64) {
     let app = app.clone();
     app.clone().spawn(async move {
         match app.db.delete_star_source(guild, message).await {
-            Ok(posts) => {
-                for post in posts {
-                    if let Some(copy) = post.board_message_id.filter(|v| *v > 0)
-                        && let Ok(Some(board)) = app.db.starboard(post.starboard_id).await
-                    {
-                        let _ = app
-                            .http
-                            .delete_message(Id::new(board.channel_id as u64), Id::new(copy as u64))
-                            .await;
-                    }
-                }
-            }
+            Ok(_) => {}
             Err(error) => tracing::warn!(%error, "starboard source delete failed"),
         }
     });
@@ -542,14 +626,109 @@ async fn delete_source(app: &Arc<App>, guild: u64, message: u64) {
 
 pub fn spawn_ticker(app: Arc<App>) {
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(Duration::from_secs(86_400));
+        let mut interval = tokio::time::interval(Duration::from_secs(2));
+        let mut sweeps = 0_u64;
         loop {
             interval.tick().await;
-            if let Err(error) = app.db.sweep_star_posts().await {
+            if let Err(error) = tick_with_periodic(&app, sweeps.is_multiple_of(30)).await {
+                tracing::warn!(%error, "starboard reconciliation failed");
+            }
+            sweeps += 1;
+            if sweeps.is_multiple_of(43_200)
+                && let Err(error) = app.db.sweep_star_posts().await
+            {
                 tracing::warn!(%error, "starboard sweep failed");
             }
         }
     });
+}
+
+pub async fn tick(app: &App) -> anyhow::Result<()> {
+    tick_with_periodic(app, true).await
+}
+
+async fn tick_with_periodic(app: &App, periodic: bool) -> anyhow::Result<()> {
+    for (channel, copy) in app.db.due_star_cleanups().await? {
+        cleanup_one(app, channel, copy).await?;
+    }
+    for (board_id, message, token, force) in app.db.due_star_posts(100, periodic).await? {
+        let version = app.db.star_sync_version(board_id, message as u64).await?;
+        let result = async {
+            let Some(board) = app.db.starboard(board_id).await? else {
+                return Ok(());
+            };
+            let Some(post) = app.db.star_post(board_id, message as u64).await? else {
+                return Ok(());
+            };
+            reconcile_post(app, &board, &post, force).await
+        }
+        .await;
+        if let Some(version) = version {
+            app.db
+                .finish_star_sync(board_id, message as u64, token, version, result.is_ok())
+                .await?;
+        }
+        if let Err(error) = result {
+            tracing::warn!(board_id, message, %error, "starboard post sync will retry");
+        }
+    }
+    Ok(())
+}
+
+pub async fn cleanup_one(app: &App, channel: i64, copy: i64) -> anyhow::Result<()> {
+    if copy < 0 {
+        let source = (-copy) as u64;
+        let destination = Id::new(channel as u64);
+        let mut before = None;
+        for _ in 0..20 {
+            let response = match before {
+                Some(id) => app.http.channel_messages(destination).before(id).limit(100).await,
+                None => app.http.channel_messages(destination).limit(100).await,
+            };
+            let messages = match response {
+                Ok(response) => response.models().await?,
+                Err(error) if unknown_message(&error) => {
+                    app.db.finish_star_cleanup(channel, copy).await?;
+                    return Ok(());
+                }
+                Err(error) => return Err(error.into()),
+            };
+            if let Some(found) = messages.iter().find(|message| {
+                message.author.id.get() == app.application_id.get()
+                    && message.embeds.iter().any(|embed| {
+                        embed
+                            .description
+                            .as_deref()
+                            .is_some_and(|description| description.ends_with(&format!("/{source}")))
+                    })
+            }) {
+                if !app
+                    .db
+                    .recover_ambiguous_star_post(channel as u64, source, found.id.get())
+                    .await?
+                {
+                    app.db.queue_star_cleanup(channel as u64, found.id.get()).await?;
+                }
+                app.db.finish_star_cleanup(channel, copy).await?;
+                return Ok(());
+            }
+            if messages.len() < 100 {
+                break;
+            }
+            before = messages.last().map(|message| message.id);
+        }
+        return Ok(());
+    }
+    match app
+        .http
+        .delete_message(Id::new(channel as u64), Id::new(copy as u64))
+        .await
+    {
+        Ok(_) => app.db.finish_star_cleanup(channel, copy).await?,
+        Err(error) if unknown_message(&error) => app.db.finish_star_cleanup(channel, copy).await?,
+        Err(error) => tracing::warn!(channel, copy, %error, "starboard copy delete will retry"),
+    }
+    Ok(())
 }
 
 #[cfg(test)]
