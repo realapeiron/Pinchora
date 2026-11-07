@@ -23,11 +23,12 @@ pub use cards::stats::{HEAT, HEAT_EMPTY, SERIES, StatFlows, StatHeat, StatList, 
 pub use cards::{
     ABSENT, Backdrop, BadgeCell, BadgeCollectionCard, BadgeIcon, BadgeState, CORRECT, CharacterCard, CheckersCard,
     ChessCard, Connect4Card, CrewView, DerbyCard, DerbyLane, EditorCell, EditorSection, FleetCard, GridSlot,
-    HangmanCard, HangmanLetter, HeistCard, ItemGridCard, LastWeekEntry, LeaderboardCard, LeaderboardEntry, LevelUpCard,
-    Mood, NextRole, NurseryCard, NurseryPet, PRESENT, PetCard, PetStatus, PickView, PicrossCard, PollCard, PollOption,
-    ProfileCard, RadarCard, RankCard, Reveal, SHIP_COLORS, SHIP_NAMES, SeaView, ShareGrabCard, ShellCard, ShipView,
-    ShowcaseKind, ShowcaseSlot, SpriteArt, StageView, SurgeCard, SurgeState, Tide2048Card, WalletCard, WelcomeCard,
-    WordleCard, WordleRow, WrappedCard, WrappedFish, WrappedHouse, WrappedTotals,
+    HangmanCard, HangmanLetter, HeistCard, InfoCard, InfoRow, ItemGridCard, LastWeekEntry, LeaderboardCard,
+    LeaderboardEntry, LevelUpCard, Mood, NextRole, NurseryCard, NurseryPet, PRESENT, PetCard, PetStatus, PickView,
+    PicrossCard, PollCard, PollOption, ProfileCard, RadarCard, RankCard, Reveal, SHIP_COLORS, SHIP_NAMES, SeaView,
+    ShareGrabCard, ShellCard, ShipView, ShowcaseKind, ShowcaseSlot, SpriteArt, StageView, SurgeCard, SurgeState,
+    Tide2048Card, WalletCard, WelcomeCard, WordleCard, WordleRow, WrappedCard, WrappedFish, WrappedHouse,
+    WrappedTotals,
 };
 pub use cards::{
     BottleCard, DexCard, DexCell, DropCard, DropCritter, EntryPicture, HaulCard, HaulTile, PotCard, PotState,

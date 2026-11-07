@@ -142,6 +142,8 @@ mod tickets;
 #[path = "simulate/feeds.rs"]
 mod feeds;
 // Temp voice: creators, rooms, the owner's controls and the panel.
+#[path = "simulate/info_xp.rs"]
+mod info_xp;
 #[path = "simulate/tempvoice.rs"]
 mod tempvoice;
 
@@ -12701,6 +12703,27 @@ async fn admin_paths_refuse_members_without_manage_server() {
                     vec![text_option("action", "add"), channel_option("channel", channel)]
                 )
             )]),
+        ),
+        (
+            "xp add",
+            json!([sub("add", vec![user_option("user", target), int_option("amount", 1)])]),
+        ),
+        (
+            "xp remove",
+            json!([sub(
+                "remove",
+                vec![user_option("user", target), int_option("amount", 1)]
+            )]),
+        ),
+        (
+            "xp set",
+            json!([sub("set", vec![user_option("user", target), int_option("amount", 1)])]),
+        ),
+        ("xp reset", json!([sub("reset", vec![user_option("user", target)])])),
+        ("xp reset-all", json!([sub("reset-all", vec![])])),
+        (
+            "xp import mee6",
+            json!([group("import", sub("mee6", vec![text_option("mode", "merge")]))]),
         ),
         (
             "config welcome",

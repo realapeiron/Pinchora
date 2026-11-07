@@ -177,6 +177,7 @@ pub(crate) const AREAS: &[Area] = &[
             "config goodbye",
             "config suggestions",
             "config language",
+            "info",
             "counters",
         ],
     },
@@ -198,6 +199,7 @@ pub(crate) const AREAS: &[Area] = &[
             "config rep-roles",
             "config points",
             "config store",
+            "xp",
         ],
     },
     Area {

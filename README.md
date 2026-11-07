@@ -823,7 +823,11 @@ alters them). A feed's `created_by` becomes 0 when its author deletes their data
 
 ### Info commands
 
-<!-- F18: the Info commands package replaces this heading's section; keep it one `###` section. -->
+`/info user [user]`, `/info server`, `/info avatar [user] [server]`, `/info banner [user]`,
+`/info role <role>`, `/info channel [channel]`, `/info members`, `/info emoji [emoji]` and
+`/info invite <code>` show pixel cards. Role lists have pages. Private profiles hide Pinchora
+levels, badges and titles on the user card, including when the owner requests it. Channel and
+invite cards are private and check the viewer’s channel permissions; role pages belong to their requester.
 
 ### Utility
 
@@ -839,7 +843,12 @@ alters them). A feed's `created_by` becomes 0 when its author deletes their data
 
 ### XP admin
 
-<!-- F22: the XP admin package replaces this heading's section; keep it one `###` section. -->
+Managers can `/xp add|remove|set <user> <amount>`, `/xp reset <user>`,
+`/xp reset-all` (two confirmations), or `/xp import mee6` (merge or replace,
+once per server per day). The Leveling dashboard has member XP search and an
+import job with progress. Edits affect server XP only, resync level roles, and are audited.
+Confirmations expire after five minutes and can be used once. Failed or partial imports also
+consume the daily allowance; replace changes only members present in the imported leaderboard.
 
 ### Brand kit
 

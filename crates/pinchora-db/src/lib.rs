@@ -46,6 +46,7 @@ mod temp_voice;
 mod tickets;
 mod users;
 mod xp;
+mod xp_admin;
 
 use std::time::Duration;
 
@@ -120,6 +121,7 @@ pub use temp_voice::{CreatorSave, NewTempRoom, RoomMake, TempRoom, VoiceCreator}
 pub use tickets::*;
 pub use users::UserRow;
 pub use xp::{MAX_XP_RULES, XpTarget};
+pub use xp_admin::XpEdit;
 
 /// Handle to PostgreSQL. Cheap to clone.
 #[derive(Clone, Debug)]

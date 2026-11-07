@@ -124,11 +124,12 @@ pub enum Module {
     AutoMod,
     Feeds,
     TempVoice,
+    Info,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 36] = [
+    pub const ALL: [Self; 37] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -165,6 +166,7 @@ impl Module {
         Self::AutoMod,
         Self::Feeds,
         Self::TempVoice,
+        Self::Info,
     ];
 
     /// The key stored in the database and used in the API.
@@ -206,6 +208,7 @@ impl Module {
             Self::AutoMod => "automod",
             Self::Feeds => "feeds",
             Self::TempVoice => "temp_voice",
+            Self::Info => "info",
         }
     }
 
@@ -251,6 +254,7 @@ impl Module {
             Self::AutoMod => "AutoMod",
             Self::Feeds => "Social feeds",
             Self::TempVoice => "Temp voice",
+            Self::Info => "Info commands",
         }
     }
 
@@ -313,6 +317,7 @@ impl Module {
                 "/feeds: new YouTube videos, RSS and podcast episodes, Reddit and Bluesky posts in a channel."
             }
             Self::TempVoice => "Creator channels that make a voice room for whoever joins, and /voice to run it.",
+            Self::Info => "Server, member, role, channel, emoji and invite information.",
         }
     }
 
@@ -345,6 +350,7 @@ impl Module {
             Self::AutoMod => Group::Safety,
             Self::Feeds => Group::Feeds,
             Self::TempVoice => Group::Community,
+            Self::Info => Group::Server,
         }
     }
 
@@ -396,6 +402,8 @@ impl Module {
             "suggest" | "suggestion" => Self::Suggestions,
             "poll" => Self::Polls,
             "feeds" => Self::Feeds,
+            "info" => Self::Info,
+            "xp" => Self::Leveling,
             "dex" | "beachcomb" | "crabpot" | "critterdrop" => Self::Collection,
             "surge" => Self::Party,
             "party" => Self::PartyGames,
@@ -449,6 +457,8 @@ impl Module {
             "am" | "ax" => Self::AutoMod,
             "sn" => Self::Feeds,
             "vc" | "vo" => Self::TempVoice,
+            "nf" => Self::Info,
+            "xi" => Self::Leveling,
             _ => return None,
         })
     }

@@ -12,6 +12,7 @@ mod frame;
 mod grid;
 mod hangman;
 mod help;
+mod info;
 mod leaderboard;
 mod levelup;
 mod nursery;
@@ -44,6 +45,7 @@ pub use fleet::{FleetCard, RadarCard, SHIP_COLORS, SHIP_NAMES, SeaView, ShipView
 pub use grid::{GridSlot, ItemGridCard};
 pub use hangman::{HangmanCard, HangmanLetter};
 pub use help::{HelpCard, HelpRow};
+pub use info::{InfoCard, InfoRow};
 pub use leaderboard::{LastWeekEntry, LeaderboardCard, LeaderboardEntry};
 pub use levelup::LevelUpCard;
 pub use nursery::{NurseryCard, NurseryPet};
