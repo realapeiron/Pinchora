@@ -10,7 +10,7 @@ use twilight_model::{
         Component,
         component::{ActionRow, Button, ButtonStyle},
     },
-    guild::Role,
+    guild::{Permissions, Role},
     id::{
         Id,
         marker::{ChannelMarker, EmojiMarker, GuildMarker, UserMarker},
@@ -90,7 +90,7 @@ pub struct InfoMembers;
 #[command(name = "emoji", desc = "Show a custom emoji")]
 pub struct InfoEmoji {
     /// Custom or Unicode emoji
-    emoji: String,
+    emoji: Option<String>,
 }
 #[derive(CommandModel, CreateCommand)]
 #[command(name = "invite", desc = "Show an invite's details")]
@@ -143,11 +143,16 @@ async fn send(
     page: Option<(u64, u64, usize, usize)>,
     update: bool,
 ) -> anyhow::Result<()> {
+    let private = subtitle == t!(cx.lang(), "info.channel") || subtitle == t!(cx.lang(), "info.invite");
+    let lang = cx.lang();
+    let actor = cx.author()?.id.get();
+    let expires = chrono::Utc::now().timestamp() + 300;
     let png = cx
         .app
         .render(move |r| {
             r.svg_to_png(
                 &InfoCard {
+                    lang,
                     title,
                     subtitle,
                     rows,
@@ -161,7 +166,7 @@ async fn send(
     let components = page.map_or_else(Vec::new, |(guild, user, current, pages)| {
         let button = |label: String, target: usize, disabled: bool| {
             Component::Button(Button {
-                custom_id: Some(format!("nf:roles:{guild}:{user}:{target}")),
+                custom_id: Some(format!("nf:roles:{guild}:{user}:{actor}:{expires}:{target}")),
                 disabled,
                 emoji: None,
                 id: None,
@@ -179,7 +184,7 @@ async fn send(
             ],
         })]
     });
-    let data = Cx::card(EmbedBuilder::new().color(BRAND), "info.png", png, components, false);
+    let data = Cx::card(EmbedBuilder::new().color(BRAND), "info.png", png, components, private);
     if update {
         cx.update(data).await
     } else {
@@ -216,12 +221,9 @@ async fn user_card(cx: &Cx, guild: u64, user: User, member: Value, page: usize, 
                 t!(cx.lang(), "info.no")
             },
         ),
-        row(
-            t!(cx.lang(), "info.roles"),
-            t!(cx.lang(), "info.role-count", count = roles.len()),
-        ),
+        row(t!(cx.lang(), "info.roles"), roles.len().to_string()),
     ];
-    let private = id != cx.author()?.id.get() && cx.app.db.privacy(id).await?.hide_profile;
+    let private = cx.app.db.privacy(id).await?.hide_profile;
     if private {
         rows.push(row(t!(cx.lang(), "info.pinchora"), t!(cx.lang(), "info.private")));
     } else {
@@ -261,12 +263,72 @@ async fn user_card(cx: &Cx, guild: u64, user: User, member: Value, page: usize, 
     .await
 }
 
+fn channel_kind(lang: pinchora_core::i18n::Lang, kind: twilight_model::channel::ChannelType) -> String {
+    use twilight_model::channel::ChannelType;
+    t!(
+        lang,
+        match kind {
+            ChannelType::GuildText => "info.text-channel",
+            ChannelType::GuildVoice => "info.voice-channel",
+            ChannelType::GuildCategory => "info.category-channel",
+            ChannelType::GuildAnnouncement => "info.announcement-channel",
+            ChannelType::GuildForum => "info.forum-channel",
+            ChannelType::GuildStageVoice => "info.stage-channel",
+            kind if kind.is_thread() => "info.thread-channel",
+            _ => "info.channel",
+        }
+    )
+}
+
+/// Use fresh guild roles and member roles; bot visibility does not imply caller visibility.
+async fn visible_channel(cx: &Cx, guild: u64, channel: &twilight_model::channel::Channel) -> anyhow::Result<bool> {
+    if channel.guild_id.map(|id| id.get()) != Some(guild) {
+        return Ok(false);
+    }
+    let user = cx.author()?.id;
+    let owner = cx.app.http.guild(Id::new(guild)).await?.model().await?.owner_id;
+    let member = cx.app.http.guild_member(Id::new(guild), user).await?.model().await?;
+    let roles = cx.app.http.roles(Id::new(guild)).await?.models().await?;
+    let base = roles
+        .iter()
+        .filter(|r| r.id.get() == guild || member.roles.contains(&r.id))
+        .fold(Permissions::empty(), |p, r| p | r.permissions);
+    if user == owner || base.contains(Permissions::ADMINISTRATOR) {
+        return Ok(true);
+    }
+    let parent;
+    let overwrites = if channel.kind.is_thread() {
+        let Some(id) = channel.parent_id else {
+            return Ok(false);
+        };
+        parent = cx.app.http.channel(id).await?.model().await?;
+        parent.permission_overwrites.as_deref().unwrap_or_default()
+    } else {
+        channel.permission_overwrites.as_deref().unwrap_or_default()
+    };
+    let held: Vec<_> = member.roles.iter().map(|id| id.get()).collect();
+    let effective = crate::text::access::channel_permissions(base, guild, user.get(), &held, overwrites);
+    if !effective.contains(Permissions::VIEW_CHANNEL) {
+        return Ok(false);
+    }
+    // The parent's overwrites can deny Manage Threads even when a guild role grants it.
+    if channel.kind == twilight_model::channel::ChannelType::PrivateThread
+        && !effective.contains(Permissions::MANAGE_THREADS)
+        && cx.app.http.thread_member(channel.id, user).await.is_err()
+    {
+        return Ok(false);
+    }
+    Ok(true)
+}
+
 impl Info {
     pub async fn run(self, cx: &Cx) -> anyhow::Result<()> {
         let Some(guild) = cx.guild_id() else {
             return cx.reply_ephemeral(t!(cx.lang(), "error.guild-only")).await;
         };
-        cx.responder.defer(false).await?;
+        cx.responder
+            .defer(matches!(self, Self::Channel(_) | Self::Invite(_)))
+            .await?;
         let gid = Id::<GuildMarker>::new(guild);
         match self {
             Self::User(c) => {
@@ -287,6 +349,11 @@ impl Info {
                 } else {
                     vec![
                         row(t!(cx.lang(), "info.owner"), field(&data, "owner_id")),
+                        row(t!(cx.lang(), "info.boost"), field(&data, "premium_subscription_count")),
+                        row(
+                            t!(cx.lang(), "info.pinchora-members"),
+                            cx.app.db.guild_member_count(guild).await?.to_string(),
+                        ),
                         row(t!(cx.lang(), "info.members"), field(&data, "approximate_member_count")),
                         row(
                             t!(cx.lang(), "info.roles"),
@@ -304,12 +371,27 @@ impl Info {
                         ),
                     ]
                 };
+                let icon = match data.get("icon").and_then(Value::as_str) {
+                    Some(hash) => {
+                        thumbnail(
+                            cx,
+                            &format!("https://cdn.discordapp.com/icons/{guild}/{hash}.png?size=256"),
+                        )
+                        .await
+                    }
+                    None => None,
+                }
+                .unwrap_or_else(|| pinchora_render::placeholder_avatar(guild, 208));
                 send(
                     cx,
                     field(&data, "name"),
-                    t!(cx.lang(), "info.server"),
+                    if matches!(self, Self::Members(_)) {
+                        t!(cx.lang(), "info.members")
+                    } else {
+                        t!(cx.lang(), "info.server")
+                    },
                     rows,
-                    None,
+                    Some(icon),
                     None,
                     false,
                 )
@@ -388,10 +470,34 @@ impl Info {
                     t!(cx.lang(), "info.role"),
                     vec![
                         row(t!(cx.lang(), "info.id"), c.role.id.to_string()),
-                        row(t!(cx.lang(), "info.color"), field(&data, "color")),
+                        row(
+                            t!(cx.lang(), "info.color"),
+                            format!(
+                                "#{:06X}",
+                                data.get("colors")
+                                    .and_then(|v| v.get("primary_color"))
+                                    .and_then(Value::as_u64)
+                                    .or_else(|| data.get("color").and_then(Value::as_u64))
+                                    .unwrap_or(0)
+                            ),
+                        ),
                         row(t!(cx.lang(), "info.position"), field(&data, "position")),
-                        row(t!(cx.lang(), "info.mentionable"), field(&data, "mentionable")),
-                        row(t!(cx.lang(), "info.hoisted"), field(&data, "hoist")),
+                        row(
+                            t!(cx.lang(), "info.mentionable"),
+                            if c.role.mentionable {
+                                t!(cx.lang(), "info.yes")
+                            } else {
+                                t!(cx.lang(), "info.no")
+                            },
+                        ),
+                        row(
+                            t!(cx.lang(), "info.hoisted"),
+                            if c.role.hoist {
+                                t!(cx.lang(), "info.yes")
+                            } else {
+                                t!(cx.lang(), "info.no")
+                            },
+                        ),
                     ],
                     None,
                     None,
@@ -407,21 +513,27 @@ impl Info {
                 let Some(channel) = channel else {
                     return cx.reply_ephemeral(t!(cx.lang(), "info.unavailable")).await;
                 };
-                let data = serde_json::to_value(
-                    cx.app
-                        .http
-                        .channel(Id::<ChannelMarker>::new(channel.get()))
-                        .await?
-                        .model()
-                        .await?,
-                )?;
+                let found = cx.app.http.channel(channel).await?.model().await?;
+                if !visible_channel(cx, guild, &found).await? {
+                    return cx.reply_ephemeral(t!(cx.lang(), "info.unavailable")).await;
+                }
+                let mut data = serde_json::to_value(&found)?;
+                // Even the category ID is withheld when its own overwrites hide it.
+                if let Some(parent) = found.parent_id {
+                    let parent = cx.app.http.channel(parent).await?.model().await?;
+                    if !visible_channel(cx, guild, &parent).await? {
+                        data["parent_id"] = Value::Null;
+                    } else {
+                        data["parent_id"] = parent.name.map(Value::String).unwrap_or(Value::Null);
+                    }
+                }
                 send(
                     cx,
                     field(&data, "name"),
                     t!(cx.lang(), "info.channel"),
                     vec![
                         row(t!(cx.lang(), "info.id"), channel.to_string()),
-                        row(t!(cx.lang(), "info.type"), field(&data, "type")),
+                        row(t!(cx.lang(), "info.type"), channel_kind(cx.lang(), found.kind)),
                         row(t!(cx.lang(), "info.parent"), field(&data, "parent_id")),
                         row(t!(cx.lang(), "info.topic"), field(&data, "topic")),
                     ],
@@ -432,8 +544,24 @@ impl Info {
                 .await
             }
             Self::Emoji(c) => {
-                let id = c
-                    .emoji
+                let Some(emoji) = c.emoji else {
+                    let server = cx.app.http.guild(gid).await?.model().await?;
+                    let animated = server.emojis.iter().filter(|e| e.animated).count();
+                    return send(
+                        cx,
+                        server.name,
+                        t!(cx.lang(), "info.emoji"),
+                        vec![
+                            row(t!(cx.lang(), "info.emoji"), server.emojis.len().to_string()),
+                            row(t!(cx.lang(), "info.animated"), animated.to_string()),
+                        ],
+                        None,
+                        None,
+                        false,
+                    )
+                    .await;
+                };
+                let id = emoji
                     .split(':')
                     .next_back()
                     .unwrap_or("")
@@ -442,15 +570,18 @@ impl Info {
                 let Ok(id) = id else {
                     return send(
                         cx,
-                        c.emoji.clone(),
+                        emoji.clone(),
                         t!(cx.lang(), "info.emoji"),
-                        vec![row(t!(cx.lang(), "info.unicode"), c.emoji)],
+                        vec![row(t!(cx.lang(), "info.unicode"), emoji)],
                         None,
                         None,
                         false,
                     )
                     .await;
                 };
+                if id == 0 {
+                    return cx.reply_ephemeral(t!(cx.lang(), "info.unavailable")).await;
+                }
                 let data = serde_json::to_value(
                     cx.app
                         .http
@@ -465,7 +596,14 @@ impl Info {
                     t!(cx.lang(), "info.emoji"),
                     vec![
                         row(t!(cx.lang(), "info.id"), id.to_string()),
-                        row(t!(cx.lang(), "info.animated"), field(&data, "animated")),
+                        row(
+                            t!(cx.lang(), "info.animated"),
+                            if data.get("animated").and_then(Value::as_bool).unwrap_or(false) {
+                                t!(cx.lang(), "info.yes")
+                            } else {
+                                t!(cx.lang(), "info.no")
+                            },
+                        ),
                     ],
                     None,
                     None,
@@ -477,6 +615,25 @@ impl Info {
                 let data = serde_json::to_value(cx.app.http.invite(&c.code).await?.model().await?)?;
                 if data.get("guild").and_then(|v| v.get("id")).and_then(Value::as_str) != Some(&guild.to_string()) {
                     return cx.reply_ephemeral(t!(cx.lang(), "info.invite-other")).await;
+                }
+                let channel = data
+                    .get("channel")
+                    .and_then(|v| v.get("id"))
+                    .and_then(Value::as_str)
+                    .and_then(|v| v.parse::<u64>().ok())
+                    .filter(|id| *id > 0);
+                let Some(channel) = channel else {
+                    return cx.reply_ephemeral(t!(cx.lang(), "info.unavailable")).await;
+                };
+                let channel = cx
+                    .app
+                    .http
+                    .channel(Id::<ChannelMarker>::new(channel))
+                    .await?
+                    .model()
+                    .await?;
+                if !visible_channel(cx, guild, &channel).await? {
+                    return cx.reply_ephemeral(t!(cx.lang(), "info.unavailable")).await;
                 }
                 send(
                     cx,
@@ -505,15 +662,23 @@ pub(crate) async fn on_component<'a>(cx: &Cx, mut parts: impl Iterator<Item = &'
     if parts.next() != Some("roles") {
         return cx.reply_ephemeral(t!(cx.lang(), "info.unavailable")).await;
     }
-    let (guild, user, page) = (
+    let (guild, user, actor, expires, page) = (
         parts.next().and_then(|v| v.parse::<u64>().ok()),
         parts.next().and_then(|v| v.parse::<u64>().ok()),
+        parts.next().and_then(|v| v.parse::<u64>().ok()),
+        parts.next().and_then(|v| v.parse::<i64>().ok()),
         parts.next().and_then(|v| v.parse::<usize>().ok()),
     );
-    let (Some(guild), Some(user), Some(page)) = (guild, user, page) else {
+    let (Some(guild), Some(user), Some(actor), Some(expires), Some(page)) = (guild, user, actor, expires, page) else {
         return cx.reply_ephemeral(t!(cx.lang(), "info.unavailable")).await;
     };
-    if cx.guild_id() != Some(guild) {
+    if cx.guild_id() != Some(guild)
+        || user == 0
+        || actor != cx.author()?.id.get()
+        || expires < chrono::Utc::now().timestamp()
+        || expires > chrono::Utc::now().timestamp() + 300
+        || parts.next().is_some()
+    {
         return cx.reply_ephemeral(t!(cx.lang(), "info.unavailable")).await;
     }
     let member = cx

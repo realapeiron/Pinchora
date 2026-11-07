@@ -2,6 +2,13 @@
 info = "Bilgi komutları"
 
 [info]
+text-channel = "Metin"
+voice-channel = "Ses"
+category-channel = "Kategori"
+announcement-channel = "Duyurular"
+forum-channel = "Forum"
+stage-channel = "Sahne"
+thread-channel = "Alt başlık"
 unavailable = "Bu bilgi şu anda alınamıyor."
 previous = "Önceki"
 next = "Sonraki"

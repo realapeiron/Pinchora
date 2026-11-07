@@ -1975,11 +1975,11 @@
             {
               "description": "Custom or Unicode emoji",
               "name": "emoji",
-              "required": true
+              "required": false
             }
           ],
           "path": "info emoji",
-          "usage": "/info emoji <emoji>"
+          "usage": "/info emoji [emoji]"
         },
         {
           "description": "Show an invite's details",

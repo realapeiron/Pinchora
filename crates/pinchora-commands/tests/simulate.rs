@@ -12428,6 +12428,27 @@ async fn admin_paths_refuse_members_without_manage_server() {
     });
     let rows: Vec<(&str, Value)> = vec![
         (
+            "xp add",
+            json!([sub("add", vec![user_option("user", target), int_option("amount", 1)])]),
+        ),
+        (
+            "xp remove",
+            json!([sub(
+                "remove",
+                vec![user_option("user", target), int_option("amount", 1)]
+            )]),
+        ),
+        (
+            "xp set",
+            json!([sub("set", vec![user_option("user", target), int_option("amount", 1)])]),
+        ),
+        ("xp reset", json!([sub("reset", vec![user_option("user", target)])])),
+        ("xp reset-all", json!([sub("reset-all", vec![])])),
+        (
+            "xp import mee6",
+            json!([group("import", sub("mee6", vec![text_option("mode", "merge")]))]),
+        ),
+        (
             "config welcome",
             json!([sub("welcome", vec![bool_option("enabled", true)])]),
         ),

@@ -25,7 +25,9 @@ mod text;
 mod util;
 mod voice_xp;
 mod xp_admin;
-pub use xp_admin::{ImportMode, ImportProgress, ImportRequest, import_mee6, mee6_resting};
+pub use xp_admin::{
+    ImportMode, ImportProgress, ImportRequest, import_mee6, import_mee6_with_fetch, mee6_resting, sync_member_roles,
+};
 
 pub use app::{App, PreviewError};
 pub use card_images::{CardSubject, ServerCard, atlas_has, card_png, classic_card, deliver, preview_png, server_card};

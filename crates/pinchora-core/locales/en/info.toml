@@ -2,6 +2,13 @@
 info = "Info commands"
 
 [info]
+text-channel = "Text"
+voice-channel = "Voice"
+category-channel = "Category"
+announcement-channel = "Announcements"
+forum-channel = "Forum"
+stage-channel = "Stage"
+thread-channel = "Thread"
 unavailable = "This information is unavailable right now."
 previous = "Previous"
 next = "Next"

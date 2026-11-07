@@ -47,6 +47,7 @@ use twilight_model::{
 // Custom commands and auto-responders.
 #[path = "api/tags.rs"]
 mod tags;
+mod xp_admin;
 
 const APPLICATION_ID: u64 = 1;
 const PUBLIC_URL: &str = "http://dash.test";

@@ -1,4 +1,6 @@
 [xp]
+invalid-amount = "XP must be between 0 and 1,000,000,000."
+import-error = "The import could not finish. Please try again later."
 guild-only = "Server XP can only be managed in a server."
 permission = "You need Manage Server to change XP."
 confirm = "Confirm"

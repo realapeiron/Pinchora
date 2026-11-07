@@ -1,6 +1,6 @@
 //! MEE6 leaderboard import, shared by Discord and the dashboard.
 
-use std::time::Duration;
+use std::{collections::BTreeMap, future::Future, time::Duration};
 
 use anyhow::Context;
 use pinchora_core::leveling;
@@ -69,11 +69,14 @@ fn mapped_xp(player: &Mee6Player) -> i64 {
     let Some(current) = player.detailed_xp.first().copied() else {
         return player.xp.max(0);
     };
-    let completed: u64 = (0..player.level.min(10_000)).map(leveling::xp_to_next).sum();
+    // Sum 5*l*l + 50*l + 100 in constant time, even for hostile remote levels.
+    let n = u64::from(player.level.min(10_000));
+    let previous = n.saturating_sub(1);
+    let completed = 5 * previous * n * (2 * n).saturating_sub(1) / 6 + 25 * previous * n + 100 * n;
     completed.saturating_add(current.max(0) as u64).min(i64::MAX as u64) as i64
 }
 
-/// The last successful import is audited in Postgres, so restarts do not reset the daily limit.
+/// Import attempts are audited in Postgres, so restarts and partial failures keep the daily limit.
 pub async fn mee6_resting(app: &App, guild: u64) -> anyhow::Result<Option<Duration>> {
     let Some(last) = app.db.last_mee6_import(guild).await? else {
         return Ok(None);
@@ -83,13 +86,54 @@ pub async fn mee6_resting(app: &App, guild: u64) -> anyhow::Result<Option<Durati
     Ok(remaining.to_std().ok().filter(|left| !left.is_zero()))
 }
 
-/// Import leaderboard pages. `base` is injectable so tests only reach a local mock server.
+/// Fetch only the fixed MEE6 endpoint: no redirects, ambient proxies, or unbounded bodies.
 pub async fn import_mee6(
     app: &App,
-    base: &str,
+    request: ImportRequest<'_>,
+    progress: impl FnMut(ImportProgress),
+) -> anyhow::Result<ImportProgress> {
+    // Integration suites must inject their local fetcher, including when exercising failures.
+    anyhow::ensure!(
+        std::env::var_os("PINCHORA_TEST_DATABASE_URL").is_none(),
+        "live MEE6 disabled in tests"
+    );
+    let client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .no_proxy()
+        .connect_timeout(Duration::from_secs(5))
+        .timeout(Duration::from_secs(15))
+        .build()?;
+    let guild = request.guild;
+    import_mee6_with_fetch(app, request, progress, |page| {
+        let client = client.clone();
+        async move {
+            let url = format!("https://mee6.xyz/api/plugins/levels/leaderboard/{guild}?page={page}&limit=1000");
+            let mut response = client.get(url).send().await.context("MEE6 request failed")?;
+            anyhow::ensure!(response.status().is_success(), "MEE6 returned {}", response.status());
+            let mut bytes = Vec::new();
+            while let Some(chunk) = response.chunk().await? {
+                anyhow::ensure!(bytes.len() + chunk.len() <= MAX_PAGE_BYTES, "MEE6 response too large");
+                bytes.extend_from_slice(&chunk);
+            }
+            Ok(bytes)
+        }
+    })
+    .await
+}
+
+const MAX_PAGE_BYTES: usize = 2 * 1024 * 1024;
+
+/// Shared import engine; tests inject an offline transport, never an arbitrary production URL.
+pub async fn import_mee6_with_fetch<F, Fut>(
+    app: &App,
     request: ImportRequest<'_>,
     mut progress: impl FnMut(ImportProgress),
-) -> anyhow::Result<ImportProgress> {
+    mut fetch: F,
+) -> anyhow::Result<ImportProgress>
+where
+    F: FnMut(usize) -> Fut,
+    Fut: Future<Output = anyhow::Result<Vec<u8>>>,
+{
     let ImportRequest {
         guild,
         actor,
@@ -106,31 +150,44 @@ pub async fn import_mee6(
         app.cache.try_cooldown(&key, DAY).await?.is_none(),
         "A MEE6 import is already running or finished today."
     );
-    let result = async {
-        let mut report = ImportProgress::default();
+    app.db
+        .audit(&NewAudit {
+            guild,
+            actor,
+            actor_name,
+            source,
+            action: "xp.import.mee6.started",
+            target: None,
+            before: None,
+            after: Some(&serde_json::json!({"mode": mode.key()}).to_string()),
+        })
+        .await?;
+    let mut report = ImportProgress::default();
+    let result = tokio::time::timeout(Duration::from_secs(600), async {
         for page in 0..PAGE_LIMIT {
-            let url = format!("{base}/{guild}?page={page}&limit=1000");
-            let response = app.web.get(url).send().await.context("MEE6 request failed")?;
-            anyhow::ensure!(response.status().is_success(), "MEE6 returned {}", response.status());
-            let body: Leaderboard = serde_json::from_str(&response.text().await?)?;
+            let bytes = tokio::time::timeout(Duration::from_secs(20), fetch(page)).await??;
+            anyhow::ensure!(bytes.len() <= MAX_PAGE_BYTES, "MEE6 response too large");
+            let body: Leaderboard = serde_json::from_slice(&bytes)?;
             anyhow::ensure!(body.players.len() <= 1000, "MEE6 page exceeds 1000 players");
             let count = body.players.len();
-            let rows: Vec<(u64, i64)> = body
-                .players
-                .iter()
-                .filter_map(|p| {
-                    p.id.parse::<u64>()
-                        .ok()
-                        .filter(|id| *id > 0)
-                        .map(|id| (id, mapped_xp(p)))
-                })
-                .collect();
+            let mut unique = BTreeMap::new();
+            for player in &body.players {
+                let id = player.id.parse::<u64>().context("invalid MEE6 member id")?;
+                anyhow::ensure!(id > 0 && id <= i64::MAX as u64, "invalid MEE6 member id");
+                unique
+                    .entry(id)
+                    .and_modify(|xp: &mut i64| *xp = (*xp).max(mapped_xp(player)))
+                    .or_insert(mapped_xp(player));
+            }
+            let rows: Vec<_> = unique.into_iter().collect();
             report.updated += app
                 .db
                 .import_member_xp_page(guild, &rows, matches!(mode, ImportMode::Replace))
                 .await? as usize;
             report.checked += rows.len();
             progress(report);
+            let users: Vec<_> = rows.iter().map(|(user, _)| *user).collect();
+            sync_members_roles(app, guild, &users).await?;
             if count < 1000 {
                 break;
             }
@@ -155,12 +212,75 @@ pub async fn import_mee6(
             })
             .await?;
         Ok(report)
-    }
-    .await;
+    })
+    .await
+    .context("MEE6 import timed out")
+    .and_then(|result| result);
     if result.is_err() {
-        app.cache.release_cooldown(&key).await?;
+        app.db
+            .audit(&NewAudit {
+                guild,
+                actor,
+                actor_name,
+                source,
+                action: "xp.import.mee6.failed",
+                target: None,
+                before: None,
+                after: Some(
+                    &serde_json::json!({"mode": mode.key(), "checked": report.checked, "updated": report.updated})
+                        .to_string(),
+                ),
+            })
+            .await?;
     }
     result
+}
+
+/// A failed Discord update must not prevent the rest of a changed batch being reconciled.
+pub(crate) async fn sync_members_roles(app: &App, guild: u64, users: &[u64]) -> anyhow::Result<()> {
+    let mut first_error = None;
+    for &user in users {
+        if let Err(error) = sync_member_roles(app, guild, user).await {
+            tracing::warn!(guild, user, %error, "XP role sync failed");
+            first_error.get_or_insert(error);
+        }
+    }
+    first_error.map_or(Ok(()), Err)
+}
+
+/// Reconcile all configured level rewards, including rewards above a newly lowered level.
+pub async fn sync_member_roles(app: &App, guild: u64, user: u64) -> anyhow::Result<()> {
+    use twilight_model::id::Id;
+    let rewards = crate::roles::level_rewards(app, guild).await?;
+    if rewards.is_empty() {
+        return Ok(());
+    }
+    let member = match app.http.guild_member(Id::new(guild), Id::new(user)).await {
+        Ok(response) => response.model().await?,
+        Err(error) if crate::roles::member_is_gone(&error) => return Ok(()),
+        Err(error) => return Err(error.into()),
+    };
+    let xp = app.db.member_rank(guild, user).await?.map_or(0, |r| r.xp);
+    let level = leveling::level_of(xp);
+    let stack = app.db.guild_settings(guild).await?.level_roles_stack;
+    let held: Vec<_> = member.roles.iter().map(|r| r.get()).collect();
+    let (wanted, _) = leveling::role_changes(&rewards, level, stack, &[]);
+    for role in rewards
+        .iter()
+        .map(|r| r.role_id)
+        .collect::<std::collections::BTreeSet<_>>()
+    {
+        if held.contains(&role) && !wanted.contains(&role) {
+            app.http
+                .remove_guild_member_role(Id::new(guild), Id::new(user), Id::new(role))
+                .await?;
+        } else if !held.contains(&role) && wanted.contains(&role) {
+            app.http
+                .add_guild_member_role(Id::new(guild), Id::new(user), Id::new(role))
+                .await?;
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]

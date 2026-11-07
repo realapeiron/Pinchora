@@ -14,9 +14,22 @@ pub enum XpEdit {
 }
 
 impl Db {
+    /// Members whose reward roles must be reconciled after a bulk reset.
+    pub async fn xp_member_ids(&self, guild: u64) -> anyhow::Result<Vec<u64>> {
+        let ids: Vec<i64> = sqlx::query_scalar("SELECT user_id FROM members WHERE guild_id = $1 ORDER BY user_id")
+            .bind(sql_id(guild))
+            .fetch_all(self.pool())
+            .await?;
+        Ok(ids.into_iter().map(|id| id as u64).collect())
+    }
+
     /// Edit one member's server XP without touching global XP or earned rewards.
     pub async fn edit_member_xp(&self, guild: u64, user: u64, edit: XpEdit, amount: i64) -> anyhow::Result<(i64, i64)> {
-        anyhow::ensure!(amount >= 0, "XP must be nonnegative");
+        anyhow::ensure!((0..=1_000_000_000).contains(&amount), "XP amount out of range");
+        anyhow::ensure!(
+            guild > 0 && user > 0 && guild <= i64::MAX as u64 && user <= i64::MAX as u64,
+            "invalid Discord id"
+        );
         retry("edit_member_xp", || async move {
             let mut tx = self.pool().begin().await?;
             lock_users(&mut tx, &[sql_id(user)]).await?;
@@ -25,7 +38,7 @@ impl Db {
                 .bind(sql_id(user))
                 .fetch_optional(&mut *tx)
                 .await?;
-            let old = old.unwrap_or(0);
+            let old = old.unwrap_or(0).max(0);
             let new = match edit {
                 XpEdit::Add => old.saturating_add(amount),
                 XpEdit::Remove => old.saturating_sub(amount).max(0),
@@ -49,11 +62,13 @@ impl Db {
     /// Reset members in bounded batches, taking every player's lock before their rows.
     pub async fn reset_all_member_xp(&self, guild: u64) -> anyhow::Result<u64> {
         let mut changed = 0;
+        let mut cursor = 0i64;
         loop {
             let users: Vec<i64> = sqlx::query_scalar(
-                "SELECT user_id FROM members WHERE guild_id = $1 AND xp > 0 ORDER BY user_id LIMIT 100",
+                "SELECT user_id FROM members WHERE guild_id = $1 AND xp > 0 AND user_id > $2 ORDER BY user_id LIMIT 100",
             )
             .bind(sql_id(guild))
+            .bind(cursor)
             .fetch_all(self.pool())
             .await?;
             if users.is_empty() {
@@ -75,6 +90,7 @@ impl Db {
                 }
             })
             .await?;
+            cursor = *users.last().expect("nonempty batch");
             changed += count;
         }
         Ok(changed)
@@ -91,7 +107,10 @@ impl Db {
             return Ok(0);
         }
         anyhow::ensure!(
-            players.len() <= 1000 && players.iter().all(|(_, xp)| *xp >= 0),
+            players.len() <= 1000
+                && players
+                    .iter()
+                    .all(|(user, xp)| *user > 0 && *user <= i64::MAX as u64 && *xp >= 0),
             "invalid import page"
         );
         let ids: Vec<i64> = players.iter().map(|(id, _)| sql_id(*id)).collect();
@@ -123,9 +142,9 @@ impl Db {
         .await
     }
 
-    /// Last completed import, from the existing audit table.
+    /// Last import attempt, from the existing audit table.
     pub async fn last_mee6_import(&self, guild: u64) -> anyhow::Result<Option<chrono::DateTime<chrono::Utc>>> {
-        Ok(sqlx::query_scalar("SELECT created_at FROM dashboard_audit WHERE guild_id = $1 AND action = 'xp.import.mee6' ORDER BY id DESC LIMIT 1")
+        Ok(sqlx::query_scalar("SELECT created_at FROM dashboard_audit WHERE guild_id = $1 AND action IN ('xp.import.mee6', 'xp.import.mee6.started') ORDER BY id DESC LIMIT 1")
             .bind(sql_id(guild)).fetch_optional(self.pool()).await?)
     }
 }

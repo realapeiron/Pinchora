@@ -56,16 +56,19 @@ async fn members(
     }
     let guild = managed.id;
     let people: Vec<(u64, String)> = if let Ok(id) = search.parse::<u64>() {
+        if id == 0 || id > i64::MAX as u64 {
+            return Err(ApiError::malformed("Invalid member id."));
+        }
         let user = state
             .app
             .http
-            .user(Id::<UserMarker>::new(id))
+            .guild_member(Id::<GuildMarker>::new(guild), Id::<UserMarker>::new(id))
             .await
             .map_err(|_| ApiError::not_found())?
             .model()
             .await
             .map_err(|_| ApiError::not_found())?;
-        vec![(id, user.name)]
+        vec![(id, user.user.name)]
     } else {
         let members = state
             .app
@@ -104,7 +107,7 @@ async fn edit_member(
     let user = params
         .get("user")
         .and_then(|v| v.parse::<u64>().ok())
-        .filter(|id| *id > 0)
+        .filter(|id| *id > 0 && *id <= i64::MAX as u64)
         .ok_or_else(|| ApiError::malformed("Invalid member id."))?;
     if !(0..=1_000_000_000).contains(&body.amount) {
         return Err(ApiError::malformed("XP must be between 0 and 1,000,000,000."));
@@ -115,6 +118,12 @@ async fn edit_member(
         "set" => XpEdit::Set,
         _ => return Err(ApiError::malformed("Choose add, remove or set.")),
     };
+    state
+        .app
+        .http
+        .guild_member(Id::new(managed.id), Id::new(user))
+        .await
+        .map_err(|_| ApiError::not_found())?;
     let (old, new) = state.app.db.edit_member_xp(managed.id, user, edit, body.amount).await?;
     audit::finish(
         &state,
@@ -129,6 +138,7 @@ async fn edit_member(
         None,
     )
     .await;
+    pinchora_commands::sync_member_roles(&state.app, managed.id, user).await?;
     Ok(Json(json!({ "id": user.to_string(), "xp": new })))
 }
 
@@ -204,7 +214,6 @@ async fn start_import(
         let (report_tx, mut report_rx) = watch::channel(ImportProgress::default());
         let run = import_mee6(
             &state.app,
-            "https://mee6.xyz/api/plugins/levels/leaderboard",
             ImportRequest {
                 guild,
                 actor,

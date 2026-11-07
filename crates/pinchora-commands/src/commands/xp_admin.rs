@@ -17,7 +17,19 @@ use crate::{
     xp_admin::{self, ImportMode},
 };
 
-const MEE6: &str = "https://mee6.xyz/api/plugins/levels/leaderboard";
+async fn confirmation_id(cx: &Cx, payload: String) -> anyhow::Result<String> {
+    let nonce = format!("{:032x}", rand::random::<u128>());
+    let key = format!(
+        "xp:confirm:{}:{}:{nonce}",
+        cx.guild_id().unwrap_or_default(),
+        cx.author()?.id
+    );
+    cx.app
+        .cache
+        .put(&key, &payload, std::time::Duration::from_secs(300))
+        .await?;
+    Ok(format!("xi:confirm:{nonce}"))
+}
 fn manage_guild() -> Permissions {
     Permissions::MANAGE_GUILD
 }
@@ -129,6 +141,7 @@ fn buttons(options: &[(&str, String, ButtonStyle)]) -> Vec<Component> {
 }
 
 async fn confirm(cx: &Cx, text: String, id: String) -> anyhow::Result<()> {
+    let id = confirmation_id(cx, id).await?;
     cx.reply(InteractionResponseData {
         content: Some(text),
         flags: Some(MessageFlags::EPHEMERAL),
@@ -196,9 +209,13 @@ async fn edit(
     kind: XpEdit,
     action: &str,
 ) -> anyhow::Result<()> {
+    if !(0..=1_000_000_000).contains(&amount) {
+        return cx.reply_ephemeral(t!(cx.lang(), "xp.invalid-amount")).await;
+    }
     let user = target.resolved.id.get();
     let (old, new) = cx.app.db.edit_member_xp(guild, user, kind, amount).await?;
     audit(cx, guild, action, Some(user.to_string()), old, new).await?;
+    xp_admin::sync_member_roles(&cx.app, guild, user).await?;
     cx.reply_ephemeral(t!(cx.lang(), "xp.changed", user = user, old = old, new = new))
         .await
 }
@@ -223,6 +240,26 @@ async fn audit(cx: &Cx, guild: u64, action: &str, target: Option<String>, old: i
 }
 
 pub(crate) async fn on_component<'a>(cx: &Cx, mut parts: impl Iterator<Item = &'a str>) -> anyhow::Result<()> {
+    if !cx.can_manage_guild() || cx.guild_id().is_none() {
+        return cx.reply_ephemeral(t!(cx.lang(), "xp.permission")).await;
+    }
+    if parts.next() != Some("confirm") {
+        return cx.reply_ephemeral(t!(cx.lang(), "xp.expired")).await;
+    }
+    let nonce = parts.next().unwrap_or("");
+    if nonce.len() != 32 || !nonce.bytes().all(|b| b.is_ascii_hexdigit()) || parts.next().is_some() {
+        return cx.reply_ephemeral(t!(cx.lang(), "xp.expired")).await;
+    }
+    let key = format!(
+        "xp:confirm:{}:{}:{nonce}",
+        cx.guild_id().unwrap_or_default(),
+        cx.author()?.id
+    );
+    // GETDEL makes every stage single use, even across pods. The next stage is only minted here.
+    let Some(payload) = cx.app.cache.take(&key).await? else {
+        return cx.reply_ephemeral(t!(cx.lang(), "xp.expired")).await;
+    };
+    let mut parts = payload.split(':').skip(1);
     let action = parts.next().unwrap_or("");
     let next = parts.next().unwrap_or("");
     let (guild, actor, extra) = if action == "all" {
@@ -242,7 +279,7 @@ pub(crate) async fn on_component<'a>(cx: &Cx, mut parts: impl Iterator<Item = &'
                 content: Some(t!(cx.lang(), "xp.all-confirm-second")),
                 components: Some(buttons(&[(
                     &t!(cx.lang(), "xp.confirm"),
-                    format!("xi:all:2:{guild}:{}", actor.unwrap_or_default()),
+                    confirmation_id(cx, format!("xi:all:2:{guild}:{}", actor.unwrap_or_default())).await?,
                     ButtonStyle::Danger,
                 )])),
                 ..Default::default()
@@ -251,8 +288,10 @@ pub(crate) async fn on_component<'a>(cx: &Cx, mut parts: impl Iterator<Item = &'
     }
     let text = match action {
         "all" if next == "2" => {
+            let users = cx.app.db.xp_member_ids(guild).await?;
             let changed = cx.app.db.reset_all_member_xp(guild).await?;
             audit(cx, guild, "xp.reset_all", None, changed as i64, 0).await?;
+            xp_admin::sync_members_roles(&cx.app, guild, &users).await?;
             t!(cx.lang(), "xp.all-done", count = changed)
         }
         "reset" => {
@@ -261,6 +300,7 @@ pub(crate) async fn on_component<'a>(cx: &Cx, mut parts: impl Iterator<Item = &'
             };
             let (old, new) = cx.app.db.edit_member_xp(guild, user, XpEdit::Set, 0).await?;
             audit(cx, guild, "xp.reset", Some(user.to_string()), old, new).await?;
+            xp_admin::sync_member_roles(&cx.app, guild, user).await?;
             t!(cx.lang(), "xp.changed", user = user, old = old, new = new)
         }
         "go" => {
@@ -271,7 +311,6 @@ pub(crate) async fn on_component<'a>(cx: &Cx, mut parts: impl Iterator<Item = &'
             let actor_name = cx.author_display_name();
             match xp_admin::import_mee6(
                 &cx.app,
-                MEE6,
                 xp_admin::ImportRequest {
                     guild,
                     actor: actor.unwrap_or_default(),
@@ -284,7 +323,10 @@ pub(crate) async fn on_component<'a>(cx: &Cx, mut parts: impl Iterator<Item = &'
             .await
             {
                 Ok(report) => t!(cx.lang(), "xp.import-done", count = report.updated),
-                Err(error) => t!(cx.lang(), "xp.import-failed", reason = error),
+                Err(error) => {
+                    tracing::warn!(%error, guild, "MEE6 import failed");
+                    t!(cx.lang(), "xp.import-error")
+                }
             }
         }
         _ => return cx.reply_ephemeral(t!(cx.lang(), "xp.expired")).await,
