@@ -37,6 +37,7 @@ pub mod anti_raid;
 pub mod command_control;
 
 pub mod chat_text;
+pub mod community;
 pub mod config_backup;
 
 pub mod mod_parity;

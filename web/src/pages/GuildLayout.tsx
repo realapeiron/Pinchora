@@ -71,6 +71,7 @@ export const NAV: NavGroup[] = [
       { to: "temp-voice", label: "Temp voice" },
       { to: "starboard", label: "Starboard" },
       { to: "birthdays", label: "Birthdays" },
+      { to: "community-pack", label: "Community pack" },
     ],
   },
   { group: "FEEDS", pages: [{ to: "feeds", label: "Social feeds" }] },

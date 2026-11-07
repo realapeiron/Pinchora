@@ -183,6 +183,10 @@ impl Db {
             "backup must be remapped before import"
         );
         let mut tx = self.pool().begin().await?;
+        sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))")
+            .bind(format!("community:forms:{guild}"))
+            .execute(&mut *tx)
+            .await?;
         sqlx::query("INSERT INTO guilds(id) VALUES($1) ON CONFLICT DO NOTHING")
             .bind(sql_id(guild))
             .execute(&mut *tx)
@@ -266,6 +270,17 @@ impl Db {
                 }
             }
         }
+        let forms: Vec<(String, Value)> = sqlx::query_as("SELECT name,questions FROM forms WHERE guild_id=$1")
+            .bind(sql_id(guild))
+            .fetch_all(&mut *tx)
+            .await?;
+        anyhow::ensure!(
+            forms.len() <= 10
+                && forms
+                    .iter()
+                    .all(|(name, questions)| pinchora_core::community::valid_form(name, questions)),
+            "invalid community forms"
+        );
         sqlx::query("UPDATE feed_sources s SET subscribers=(SELECT count(*) FROM feeds f WHERE f.kind=s.kind AND f.source=s.source AND f.enabled)").execute(&mut *tx).await?;
         sqlx::query("UPDATE automod_settings SET revision=revision+1,sync_generation=sync_generation+1,sync_after=now() WHERE guild_id=$1")
             .bind(sql_id(guild))

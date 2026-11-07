@@ -1,5 +1,4 @@
-//! The feature hooks (`hooks.rs`) are empty until the phase-4 packages fill them: what reaches them must
-//! pass through quietly. A direct message and a reaction have no handler of their own yet.
+//! DM and reaction hooks accept their gateway events; an unconfigured DM gets a private reply.
 
 use pinchora_commands::{ReactionEvent, on_reaction};
 use twilight_model::gateway::payload::incoming::ReactionAdd;
@@ -7,7 +6,7 @@ use twilight_model::gateway::payload::incoming::ReactionAdd;
 use super::*;
 
 #[tokio::test]
-async fn direct_messages_and_reactions_pass_the_empty_hooks_quietly() {
+async fn direct_messages_get_a_modmail_reply_and_reactions_pass_quietly() {
     let Some(sim) = Sim::new("direct_messages_and_reactions_pass_the_empty_hooks_quietly").await else {
         return;
     };
@@ -34,6 +33,9 @@ async fn direct_messages_and_reactions_pass_the_empty_hooks_quietly() {
     on_message(sim.app.clone(), dm)
         .await
         .expect("the message handler failed");
+    let dm_posts = sim.posts();
+    assert_eq!(dm_posts.len(), 1, "a server-free DM should get one response");
+    assert!(dm_posts[0].content().contains("No shared server"));
 
     let reaction: ReactionAdd = serde_json::from_value(json!({
         "burst": false,

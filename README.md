@@ -14,8 +14,9 @@ Written in Rust and built to run sharded on Kubernetes.
 
 ## What works today
 
-Command-tree consolidation (slices 1–18): **62 registered roots**, covering all **330 executable actions**.
-The eight planned feature families project **70 roots**. `/setup` has 21 groups;
+The merged D11/F20 command tree has **65 slash roots plus the Report message action**,
+covering **357 executable entries**. D11 moves five existing roots under `/mod`,
+and F20 adds four member roots. `/setup` has five groups;
 `/mod` keeps each action's own permission checks, and `/rewards` groups weekly/monthly claims.
 Old prefix paths and server aliases resolve to the new paths, with a daily English/Turkish notice.
 Private setup actions redirect to slash. Existing colliding server aliases keep their text meaning;
@@ -539,8 +540,9 @@ mention the bot, so text commands work as `@Pinchora profile` and `/help` says s
 
 ### Consolidated command tree (slices 1–18)
 
-The original 95 roots now occupy **62 registered roots** including `/setup`, `/mod`, and `/rewards`.
-Every one of the 330 actions is reachable, including the 9 quick-game actions. The 160 moved actions call their original
+The original command tree and D11/F20 now occupy **65 slash roots plus Report**, including
+`/setup`, `/mod`, and `/rewards`. All **357 executable entries** are reachable, including the
+9 quick-game actions. The 173 moved actions call their original
 typed handlers. `/setup` adds Manage Server authorization on every action; `/mod` has no restrictive
 root default and preserves each action's existing authorization and feature module.
 Member panel buttons keep their custom IDs and authorization. Old prefix paths use longest-token
@@ -1039,7 +1041,31 @@ invite cards are private and check the viewer’s channel permissions; role page
 
 ### Community pack
 
-<!-- F20: the Community pack package replaces this heading's section; keep it one `###` section. -->
+The Community pack adds four member roots. Together with D11, the tree has 65 slash roots plus Report:
+`/qotd suggest`, `/counting stats`, `/form list|open` and
+`/modmail close|block|snippet-add|snippet-use|snippet-list`. Manage Server
+configuration lives under `/community qotd|counting|forms|modmail`.
+The dashboard's **Community pack** page manages the question queue, counting
+channel, application forms and reviews, and modmail settings and open threads.
+
+QOTD posts once daily at the configured local hour. A 300-question English and
+Turkish pack seeds an empty queue; member suggestions wait for staff approval.
+The counting channel accepts the next number, or small arithmetic when enabled,
+rejects consecutive turns by the same member, reacts with ✅ or ❌, and tracks
+records and per-member results. Counting and staff forum replies need Discord's
+privileged Message Content intent; the dashboard shows a lock notice when it is
+off. Member DMs for modmail still work with DIRECT_MESSAGES intent, which is
+always requested. Modmail chooses a shared server when several have it enabled,
+opens a staff forum thread, relays replies, and closes idle threads on schedule.
+Application forms use up to five questions in a Discord modal; submissions are
+reviewed from Discord buttons or the dashboard, with optional result DM and a
+safe acceptance role. Form names and questions are limited to 45 characters. Members
+may have one pending submission per form and submit at most once per hour. Modmail
+limits incoming DMs to one per five seconds and new threads to one per ten minutes
+per member across servers. Empty staff-role settings allow only server managers to
+relay replies. Accepted counts are durable: editing or deleting a message does not
+change the sequence. QOTD reserves the local calendar day before sending; an
+ambiguous network failure can lose that day's post, but cannot trigger duplicate pings.
 
 ### Events
 

@@ -1,5 +1,12 @@
 # Command tree release rehearsal
 
+F20 adds four member roots (`/qotd`, `/counting`, `/form`, `/modmail`)
+and configuration groups under `/community`. With D11, registration has **65 slash roots
+plus the Report message action** (66 total): D11 moved `/ban`, `/kick`, `/purge`,
+`/timeout` and `/warn` under `/mod`. The earlier 70-root projection did not account
+for that consolidation. `/community` is largest at **7,196 characters**, below
+the 7,200-character gate; `/mod` uses 4,265. There are 357 executable entries.
+
 Slices 13–18 complete the transition from 95 registered roots to **66 roots** and 330 executable actions.
 The manifest is the action inventory; all 160 moved actions have one canonical destination. Old typed
 models remain internal for in-flight interactions and prefix compatibility. The eight planned feature

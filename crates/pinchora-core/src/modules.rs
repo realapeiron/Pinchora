@@ -144,11 +144,15 @@ pub enum Module {
     Utility,
     Events,
     CommandControl,
+    Qotd,
+    Counting,
+    Forms,
+    Modmail,
 }
 
 impl Module {
     /// Every module, in the order the dashboard lists them within a group.
-    pub const ALL: [Self; 47] = [
+    pub const ALL: [Self; 51] = [
         Self::Leveling,
         Self::Points,
         Self::Welcome,
@@ -196,6 +200,10 @@ impl Module {
         Self::Utility,
         Self::Events,
         Self::CommandControl,
+        Self::Qotd,
+        Self::Counting,
+        Self::Forms,
+        Self::Modmail,
     ];
 
     /// The key stored in the database and used in the API.
@@ -248,6 +256,10 @@ impl Module {
             Self::Utility => "utility",
             Self::Events => "events",
             Self::CommandControl => "command_control",
+            Self::Qotd => "qotd",
+            Self::Counting => "counting",
+            Self::Forms => "forms",
+            Self::Modmail => "modmail",
         }
     }
 
@@ -304,6 +316,10 @@ impl Module {
             Self::Utility => "Messages",
             Self::Events => "Events",
             Self::CommandControl => "Command control",
+            Self::Qotd => "Question of the day",
+            Self::Counting => "Counting",
+            Self::Forms => "Application forms",
+            Self::Modmail => "Modmail",
         }
     }
 
@@ -373,6 +389,10 @@ impl Module {
             Self::Achievements => "Server achievements and their rewards.",
             Self::Events => "/event: scheduled server events and RSVPs.",
             Self::CommandControl => "Command permissions, aliases and configuration backups.",
+            Self::Qotd => "Daily server questions and suggestions.",
+            Self::Counting => "A channel for sequential counting.",
+            Self::Forms => "Application forms and reviews.",
+            Self::Modmail => "Private member messages to server staff.",
             Self::Feeds => {
                 "/integrations feeds: new YouTube videos, RSS and podcast episodes, Reddit and Bluesky posts in a channel."
             }
@@ -425,6 +445,7 @@ impl Module {
             Self::Utility => Group::Server,
             Self::Events => Group::Community,
             Self::CommandControl => Group::Server,
+            Self::Qotd | Self::Counting | Self::Forms | Self::Modmail => Group::Community,
         }
     }
 
@@ -443,6 +464,7 @@ impl Module {
             Self::Birthdays => Scope::Server,
             Self::Achievements => Scope::Server,
             Self::CommandControl => Scope::Server,
+            Self::Modmail => Scope::Server,
             _ => Scope::Channels,
         }
     }
@@ -519,6 +541,17 @@ impl Module {
             "birthday" | "birthdays" => Self::Birthdays,
             "achievements" | "achievementadmin" => Self::Achievements,
             "event" => Self::Events,
+            "community" => match sub {
+                Some("qotd") => Self::Qotd,
+                Some("counting") => Self::Counting,
+                Some("forms") => Self::Forms,
+                Some("modmail") => Self::Modmail,
+                _ => return None,
+            },
+            "qotd" => Self::Qotd,
+            "counting" => Self::Counting,
+            "form" => Self::Forms,
+            "modmail" => Self::Modmail,
             _ => return None,
         })
     }
@@ -563,6 +596,10 @@ impl Module {
             "bd" => Self::Birthdays,
             "af" | "sk" | "sm" => Self::Utility,
             "ev" => Self::Events,
+            "qd" => Self::Qotd,
+            "ct" => Self::Counting,
+            "fm" => Self::Forms,
+            "mml" => Self::Modmail,
             _ => return None,
         })
     }

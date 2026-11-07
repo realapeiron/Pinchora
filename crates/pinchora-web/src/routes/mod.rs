@@ -8,6 +8,7 @@ mod birthdays;
 mod cards;
 mod commands;
 mod community;
+mod community_pack;
 mod discord_info;
 mod events;
 mod feed_links;

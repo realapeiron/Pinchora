@@ -76,3 +76,15 @@
 "section.sticky_messages" = "Sticky messages"
 "section.scheduled_messages" = "Scheduled messages"
 "section.event_settings" = "Event settings"
+
+"section.qotd_settings" = "Daily question settings"
+
+"section.qotd_questions" = "Daily questions"
+
+"section.counting_channels" = "Counting"
+
+"section.forms" = "Application forms"
+
+"section.modmail_settings" = "Private support settings"
+
+"section.modmail_snippets" = "Private support snippets"

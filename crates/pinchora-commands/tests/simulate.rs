@@ -87,6 +87,8 @@ mod achievements;
 mod anti_nuke;
 #[path = "simulate/automod.rs"]
 mod automod;
+#[path = "simulate/community_pack.rs"]
+mod community_pack;
 #[path = "simulate/events.rs"]
 mod events;
 #[path = "simulate/moderation.rs"]
@@ -258,6 +260,7 @@ struct Mock {
     roles: Arc<Mutex<Vec<Value>>>,
     /// Roles each member holds; the role routes change them.
     member_roles: Arc<Mutex<HashMap<u64, Vec<u64>>>>,
+    missing_members: Arc<Mutex<Vec<(u64, u64)>>>,
     /// Role changes seen, as `PUT <member> <role>` or `DELETE <member> <role>`.
     role_calls: Arc<Mutex<Vec<String>>>,
     /// Whether role changes work. Off, Discord answers Missing Permissions.
@@ -467,6 +470,9 @@ async fn discord(
     if let Some(answer) = command_control::mock(&mock, &method, &parts) {
         return answer;
     }
+    if let Some(answer) = community_pack::mock(&mock, &method, &parts, &body) {
+        return answer;
+    }
     match (&method, parts.as_slice()) {
         (&Method::GET, [.., "users", "@me", "guilds"]) => {
             let query = uri.query().unwrap_or_default().to_owned();
@@ -498,8 +504,14 @@ async fn discord(
             roles.extend(mock.roles.lock().unwrap().iter().cloned());
             return (StatusCode::OK, Value::Array(roles).to_string());
         }
-        (&Method::GET, [.., "guilds", _, "members", user]) => {
+        (&Method::GET, [.., "guilds", guild, "members", user]) => {
             let user = number(user);
+            if mock.missing_members.lock().unwrap().contains(&(number(guild), user)) {
+                return (
+                    StatusCode::NOT_FOUND,
+                    json!({"code":10007,"message":"Unknown Member"}).to_string(),
+                );
+            }
             let roles = if user == APPLICATION_ID {
                 vec![BOT_ROLE_ID]
             } else {
@@ -1227,6 +1239,7 @@ impl Sim {
             originals: Arc::default(),
             roles: Arc::default(),
             member_roles: Arc::default(),
+            missing_members: Arc::default(),
             role_calls: Arc::default(),
             roles_allowed: Arc::new(AtomicBool::new(true)),
             posts: Arc::default(),

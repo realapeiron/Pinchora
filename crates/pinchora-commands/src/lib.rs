@@ -3,6 +3,7 @@ mod auto;
 mod card_images;
 mod catalog;
 mod commands;
+mod community_pack;
 mod components;
 mod custom;
 mod cx;
@@ -76,6 +77,7 @@ pub use commands::{
         spawn_ticker as spawn_tempvoice_ticker, tick as tempvoice_tick,
     },
 };
+pub use community_pack::{spawn_ticker as spawn_community_ticker, tick as community_tick};
 pub use custom::{
     Rendered, Spec, def_diff, escape_markdown, mention_ids, pick as pick_random, render_message, scrub_value, templates,
 };
@@ -124,6 +126,20 @@ pub use voice_xp::{
     spawn_ticker as spawn_voice_ticker, switched_off as voice_switched_off, switched_on as voice_switched_on,
     tick as voice_tick,
 };
+
+/// Grant a form acceptance role after rechecking the bot hierarchy and role permissions.
+pub async fn grant_community_role(app: &App, guild: u64, user: u64, role: u64) -> anyhow::Result<()> {
+    commands::roles_pack::give_safe_role(app, guild, user, role, "Form accepted").await
+}
+pub async fn close_community_mail(
+    app: &Arc<App>,
+    guild: u64,
+    thread: u64,
+    actor: u64,
+    reason: Option<&str>,
+) -> anyhow::Result<bool> {
+    community_pack::close_thread(app, guild, thread, actor, reason).await
+}
 
 use std::{sync::Arc, time::Instant};
 

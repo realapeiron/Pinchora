@@ -76,3 +76,15 @@
 "section.sticky_messages" = "Sabit mesajlar"
 "section.scheduled_messages" = "Zamanlanmış mesajlar"
 "section.event_settings" = "Etkinlik ayarları"
+
+"section.qotd_settings" = "Günün sorusu ayarları"
+
+"section.qotd_questions" = "Günün soruları"
+
+"section.counting_channels" = "Sayı sayma"
+
+"section.forms" = "Başvuru formları"
+
+"section.modmail_settings" = "Özel destek ayarları"
+
+"section.modmail_snippets" = "Özel destek hazır yanıtları"

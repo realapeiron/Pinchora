@@ -156,6 +156,11 @@ impl From<anyhow::Error> for ApiError {
         Self::internal(error)
     }
 }
+impl From<sqlx::Error> for ApiError {
+    fn from(error: sqlx::Error) -> Self {
+        Self::internal(error.into())
+    }
+}
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {

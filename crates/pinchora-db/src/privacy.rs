@@ -33,6 +33,12 @@ pub const USER_COLUMNS: &[(&str, &str)] = &[
     ("mod_restrictions", "user_id"),
     ("mod_voice_bans", "user_id"),
     ("mod_report_blocks", "user_id"),
+    ("qotd_questions", "suggested_by"),
+    ("counting_stats", "user_id"),
+    ("form_submissions", "user_id"),
+    ("modmail_threads", "user_id"),
+    ("modmail_blocks", "user_id"),
+    ("modmail_pending", "user_id"),
     ("reef_layout_outbox", "owner_id"),
     ("reef_room_leases", "owner_id"),
     ("feed_channel_links", "user_id"),
@@ -174,6 +180,9 @@ pub const ID_LISTS: &[(&str, &str, ListEdit)] = &[
 /// Columns that name a player on rows that belong to somebody else and go on without them: the
 /// column is set to NULL.
 pub const CLEARED_COLUMNS: &[(&str, &str)] = &[
+    ("form_submissions", "decided_by"),
+    ("modmail_threads", "closed_by"),
+    ("counting_channels", "last_user_id"),
     ("invite_rewards", "grantor_id"),
     ("raid_events", "ended_by"),
     ("sticky_messages", "updated_by"),
@@ -226,6 +235,11 @@ pub const ZEROED_COLUMNS: &[(&str, &str)] = &[
 /// Tables that belong to no player: server settings and shared stock.
 pub const OTHER_TABLES: &[&str] = &[
     "mod_parity_settings",
+    "qotd_settings",
+    "counting_channels",
+    "forms",
+    "modmail_settings",
+    "modmail_snippets",
     // Minimal, expiring moderation tombstones: deletion/rejoin must not bypass a sanction.
     // Actor is zeroed and house-owned sanctions are deleted with the owner; no raw text retained.
     "reef_sanctions",

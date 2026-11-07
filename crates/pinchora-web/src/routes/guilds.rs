@@ -71,6 +71,7 @@ pub fn router() -> Router<WebState> {
         )
         .route("/responders/{id}/test", post(responders::test))
         .route("/community", get(community::community))
+        .nest("/community-pack", super::community_pack::router())
         .route("/suggestions/settings", put(community::put_suggestions))
         .route("/critters/settings", put(community::put_critters))
         .route("/surge/settings", put(community::put_surge))

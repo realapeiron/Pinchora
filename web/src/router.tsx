@@ -91,6 +91,10 @@ export const router = createBrowserRouter([
       { path: "points", element: <Points /> },
       { path: "log", element: <ServerLog /> },
       { path: "community", element: <Community /> },
+      {
+        path: "community-pack",
+        lazy: async () => ({ Component: (await import("./pages/CommunityPack")).CommunityPack }),
+      },
       { path: "events", lazy: async () => ({ Component: (await import("./pages/Events")).Events }) },
       { path: "moderation", element: <Moderation /> },
       {

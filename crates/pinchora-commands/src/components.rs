@@ -115,6 +115,9 @@ pub(crate) async fn dispatch(cx: &Cx, custom_id: &str, values: &[String]) -> any
         Some("sr") => crate::commands::starboard::on_component(cx, parts).await,
         Some(prefix @ ("sk" | "sm")) => crate::commands::utility::on_component(cx, prefix, parts).await,
         Some("ev") => crate::commands::events::on_component(cx, parts).await,
+        Some("fm") => crate::commands::community_pack::on_component(cx, parts).await,
+        Some("qd") => crate::commands::community_pack::on_qotd_decision(cx, parts).await,
+        Some("mml") if parts.next() == Some("g") => crate::commands::community_pack::on_mail_select(cx, values).await,
         Some("tk") => crate::tickets::on_open(cx, parts, values).await,
         Some("tp") => crate::tickets::on_control(cx, parts).await,
         Some("tr") => crate::tickets::on_rating(cx, parts).await,
@@ -158,6 +161,7 @@ pub(crate) async fn dispatch_modal(cx: &Cx, custom_id: &str, fields: &[(String, 
             .await
         }
         Some("ev") => crate::commands::events::on_modal(cx, parts, fields).await,
+        Some("fm") => crate::commands::community_pack::on_modal(cx, parts, fields).await,
         Some("tf") => crate::tickets::on_form(cx, parts, fields).await,
         Some(prefix @ ("sk" | "sm")) => crate::commands::utility::on_modal(cx, prefix, parts, fields).await,
         _ => cx.reply_ephemeral(t!(cx.lang(), "component.form-expired")).await,

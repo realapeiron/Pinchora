@@ -58,6 +58,8 @@ mod tags;
 #[path = "api/roles.rs"]
 mod roles;
 // Tickets: settings, panels, the tickets list and transcripts.
+#[path = "api/community_pack.rs"]
+mod community_pack;
 #[path = "api/invites.rs"]
 mod invites;
 #[path = "api/starboard.rs"]

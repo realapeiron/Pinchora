@@ -128,6 +128,7 @@ pub async fn run(config: &Config, app: Arc<App>, ready: Readiness) -> anyhow::Re
     intents |= Intents::AUTO_MODERATION_CONFIGURATION | Intents::AUTO_MODERATION_EXECUTION;
     intents |= Intents::GUILD_INVITES;
     intents |= Intents::GUILD_SCHEDULED_EVENTS;
+    intents |= Intents::DIRECT_MESSAGES;
     if config.gateway.member_events {
         intents |= Intents::GUILD_MEMBERS;
     }
