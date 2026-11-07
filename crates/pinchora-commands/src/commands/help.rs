@@ -431,11 +431,14 @@ fn preview(page: &Page) -> String {
     text.chars().take(100).collect()
 }
 
-/// The menu that jumps to any page, and the buttons that turn one page at a time.
+/// Up to 25 nearby pages fit Discord's menu; the buttons still reach the whole guide.
 fn controls(pages: &[Page], at: usize, lang: Lang) -> Vec<Component> {
+    let start = at.saturating_sub(12).min(pages.len().saturating_sub(25));
     let options = pages
         .iter()
         .enumerate()
+        .skip(start)
+        .take(25)
         .map(|(n, page)| SelectMenuOption {
             default: n == at,
             description: Some(preview(page)),
@@ -653,11 +656,6 @@ mod tests {
     fn the_menu_offers_every_page_within_discords_limits() {
         for lang in Lang::ALL {
             let pages = build(&tree(), lang);
-            assert!(
-                pages.len() <= 25,
-                "a menu holds 25 options, the guide has {}",
-                pages.len()
-            );
             for at in 0..pages.len() {
                 let rows = controls(&pages, at, lang);
                 assert_eq!(rows.len(), 2);
@@ -668,9 +666,9 @@ mod tests {
                     panic!("a select menu")
                 };
                 let options = menu.options.as_deref().unwrap_or_default();
-                assert_eq!(options.len(), pages.len());
+                assert_eq!(options.len(), pages.len().min(25));
                 assert_eq!(options.iter().filter(|o| o.default).count(), 1);
-                assert!(options[at].default);
+                assert!(options.iter().any(|o| o.default && o.value == at.to_string()));
                 for option in options {
                     assert!(option.label.chars().count() <= 100 && option.value.len() <= 100);
                     assert!(option.description.as_ref().is_some_and(|d| d.chars().count() <= 100));

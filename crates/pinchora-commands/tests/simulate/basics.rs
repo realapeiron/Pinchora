@@ -60,7 +60,7 @@ async fn ping_answers_and_help_pages_through_every_area() {
         pong.embeds[0].footer
     );
 
-    // The help is a private card; its menu names every page, and Next walks through all of them.
+    // The help is a private card; its menu stays within 25 options, and Next reaches every page.
     let first = sim.command(user, "help", json!([])).await;
     assert!(first.ephemeral && first.title() == "Pinchora", "{}", first.title());
     let areas = help_areas(&first);
@@ -75,42 +75,45 @@ async fn ping_answers_and_help_pages_through_every_area() {
         reply
             .options("hp:s")
             .iter()
-            .position(|o| o.default)
+            .find(|o| o.default)
             .expect("a page is chosen")
+            .value
+            .parse::<usize>()
+            .expect("a page number")
     };
     assert_eq!(chosen(&first), 0);
 
     let mut page = first.clone();
     let mut heights = vec![size_of(&page).1];
-    for n in 1..areas.len() {
+    for n in 1..100 {
+        if page.button("Next ▶").disabled {
+            break;
+        }
         page = sim.click(user, &page, "Next ▶").await;
         assert_eq!(chosen(&page), n, "the menu follows the page");
         assert_eq!(size_of(&page).0, 900);
         heights.push(size_of(&page).1);
-        assert_eq!(page.button("Next ▶").disabled, n + 1 == areas.len());
+        assert!(page.options("hp:s").len() <= 25);
     }
     assert!(page.button("Next ▶").disabled, "the last page has no next");
+    let page_count = heights.len();
     assert!(heights.iter().all(|h| (250..=900).contains(h)), "{heights:?}");
 
     // Back one page, then straight to a page by the menu; a page the guide does not have is the last.
     let back = sim.click(user, &page, "◀ Previous").await;
-    assert_eq!(chosen(&back), areas.len() - 2);
-    let house_page = areas
-        .iter()
-        .find(|a| a.starts_with("House & plaza"))
-        .expect("a house page");
+    assert_eq!(chosen(&back), page_count - 2);
     let value = back
         .options("hp:s")
         .iter()
-        .find(|o| &o.label == house_page)
-        .expect("in the menu")
+        .find(|o| !o.default)
+        .expect("another page")
         .value
         .clone();
-    let house = sim.pick(user, &back, "hp:s", &value).await;
-    assert_eq!(&back.options("hp:s")[chosen(&house)].label, house_page);
-    let far = sim.component(user, "hp:999", &[], &house).await;
-    assert_eq!(chosen(&far), areas.len() - 1);
-    let junk = sim.component(user, "hp:x", &[], &house).await;
+    let picked = sim.pick(user, &back, "hp:s", &value).await;
+    assert_eq!(chosen(&picked), value.parse::<usize>().unwrap());
+    let far = sim.component(user, "hp:999", &[], &picked).await;
+    assert_eq!(chosen(&far), page_count - 1);
+    let junk = sim.component(user, "hp:x", &[], &picked).await;
     assert_eq!(chosen(&junk), 0, "an id that is not a page is the first page");
 }
 

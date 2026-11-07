@@ -8,7 +8,7 @@
 
 use std::{
     collections::{HashMap, HashSet},
-    net::SocketAddr,
+    net::{Ipv6Addr, SocketAddr},
     path::PathBuf,
     sync::{
         Arc, LazyLock, Mutex,
@@ -527,7 +527,8 @@ impl Harness {
             router: self.router.clone(),
             cookies: HashMap::new(),
             csrf: None,
-            address: SocketAddr::from(([10, 0, (unique() % 250) as u8, (unique() % 250) as u8], 4000)),
+            // Keep the whole per-run ID: modulo pairs reused login rate-limit buckets in large suites.
+            address: SocketAddr::new(Ipv6Addr::from((0xfd_u128 << 120) | u128::from(unique())).into(), 4000),
         }
     }
 
@@ -2603,7 +2604,7 @@ async fn a_trusted_proxy_names_the_client_for_the_login_limit() {
     let Some(h) = Harness::with("trusted_proxy", |web| web.trusted_proxies = "10.0.0.0/8".into()).await else {
         return;
     };
-    // Every browser below connects through the proxy at 10.x.
+    // This browser connects through the explicitly trusted proxy at 10.x.
     let behind = |client: &str| {
         Request::get("/auth/login")
             .header("x-forwarded-for", client)
@@ -2611,20 +2612,22 @@ async fn a_trusted_proxy_names_the_client_for_the_login_limit() {
             .unwrap()
     };
     let mut proxy = h.browser();
+    proxy.address = SocketAddr::from(([10, 0, 0, 1], 4000));
+    let clients: [String; 2] =
+        std::array::from_fn(|_| Ipv6Addr::from((0x2001_0db8_u128 << 96) | u128::from(unique())).to_string());
     let mut statuses = Vec::new();
     for _ in 0..21 {
-        statuses.push(proxy.send(behind("203.0.113.7")).await.status);
+        statuses.push(proxy.send(behind(&clients[0])).await.status);
     }
     assert!(statuses.contains(&StatusCode::TOO_MANY_REQUESTS), "{statuses:?}");
     assert_eq!(
-        proxy.send(behind("203.0.113.8")).await.status,
+        proxy.send(behind(&clients[1])).await.status,
         StatusCode::SEE_OTHER,
         "another client behind the same proxy has its own bucket"
     );
 
     // An untrusted peer cannot pick a bucket by sending the header itself.
     let mut outsider = h.browser();
-    outsider.address = SocketAddr::from(([198, 51, 100, (unique() % 250) as u8], 4000));
     let mut statuses = Vec::new();
     for n in 0..21 {
         statuses.push(outsider.send(behind(&format!("192.0.2.{n}"))).await.status);

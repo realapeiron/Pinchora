@@ -44,7 +44,7 @@ struct World {
     bot_users: Vec<u64>,
     member_roles: HashMap<u64, Vec<u64>>,
     extra_roles: Vec<Value>,
-    voice_delay: Option<(std::time::Duration, Arc<tokio::sync::Notify>)>,
+    voice_pause: Option<(Arc<tokio::sync::Notify>, Arc<tokio::sync::Notify>)>,
     review_gate: Option<Arc<tokio::sync::Barrier>>,
 }
 
@@ -75,14 +75,14 @@ async fn voice_discord(
     let parts: Vec<&str> = path.trim_matches('/').split('/').collect();
     let number = |part: &str| part.parse::<u64>().unwrap_or(0);
     let (json_body, files) = request_body(&headers, &body);
-    let voice_delay = if path.contains("/voice-states/") {
-        world.lock().unwrap().voice_delay.clone()
+    let voice_pause = if path.contains("/voice-states/") {
+        world.lock().unwrap().voice_pause.take()
     } else {
         None
     };
-    if let Some((duration, started)) = voice_delay {
+    if let Some((started, release)) = voice_pause {
         started.notify_one();
-        tokio::time::sleep(duration).await;
+        release.notified().await;
     }
     let gate = { world.lock().unwrap().review_gate.clone() };
     if let Some(gate) = gate {
@@ -1726,15 +1726,26 @@ async fn tempvoice_sweep_fence_survives_slow_discord_reads() {
         .await
         .unwrap();
     let started = Arc::new(tokio::sync::Notify::new());
-    v.world.lock().unwrap().voice_delay = Some((std::time::Duration::from_millis(300), started.clone()));
+    let release = Arc::new(tokio::sync::Notify::new());
+    v.world.lock().unwrap().voice_pause = Some((started.clone(), release.clone()));
     let notified = started.notified();
     let app = v.app.clone();
     let first = tokio::spawn(async move { pinchora_commands::tempvoice_tick(&app).await.unwrap() });
     tokio::time::timeout(std::time::Duration::from_secs(10), notified)
         .await
         .unwrap();
-    assert_eq!(pinchora_commands::tempvoice_tick(&v.app).await.unwrap(), 0);
+    let app = v.app.clone();
+    let mut second = tokio::spawn(async move { pinchora_commands::tempvoice_tick(&app).await.unwrap() });
+    assert!(
+        tokio::time::timeout(std::time::Duration::from_millis(50), &mut second)
+            .await
+            .is_err(),
+        "the second sweep waits while the first is paused inside Discord"
+    );
+    release.notify_one();
     first.await.unwrap();
+    second.await.unwrap();
+    // The global sweep may clean up rooms from earlier fixtures, but this occupied room stays.
     assert!(v.app.db.temp_room(room).await.unwrap().is_some());
 }
 

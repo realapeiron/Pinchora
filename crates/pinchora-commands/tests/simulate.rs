@@ -14511,8 +14511,13 @@ async fn the_party_games_are_in_the_stats_and_the_help() {
     }
     // /help lists them on its pages (every command is checked against the registered tree by a unit
     // test); here the pages that hold them exist and open.
-    let help = sim.command(player, "help", json!([])).await;
-    let areas = help_areas(&help);
+    let mut help = sim.command(player, "help", json!([])).await;
+    let mut areas = help_areas(&help);
+    while !help.button("Next ▶").disabled {
+        let last = help.options("hp:s").last().expect("pages in the menu").value.clone();
+        help = sim.pick(player, &help, "hp:s", &last).await;
+        areas.extend(help_areas(&help));
+    }
     for area in ["Crowd games & collecting", "Duels", "Game & module setup"] {
         assert!(areas.iter().any(|a| a == area), "{area} in {areas:?}");
     }
