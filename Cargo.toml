@@ -66,5 +66,5 @@ url = "2.5"
 
 [profile.release]
 lto = "thin"
-codegen-units = 1
+codegen-units = 16
 strip = "debuginfo"
